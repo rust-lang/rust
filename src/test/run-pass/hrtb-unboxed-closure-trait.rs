@@ -8,10 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Test HRTB used with the `Fn` trait.
+
 #![feature(unboxed_closures)]
 
-fn main() {
-    let mut unboxed = |&mut:| {};
-    unboxed();
+fn foo<F:Fn(&int)>(f: F) {
+    let x = 22;
+    f(&x);
 }
 
+fn main() {
+    foo(|&: x: &int| println!("{}", *x));
+}

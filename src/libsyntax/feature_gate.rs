@@ -58,7 +58,6 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("quote", Active),
     ("linkage", Active),
     ("struct_inherit", Removed),
-    ("overloaded_calls", Active),
 
     ("quad_precision_float", Removed),
 
@@ -101,7 +100,7 @@ enum Status {
 /// A set of features to be used by later passes.
 pub struct Features {
     pub default_type_params: bool,
-    pub overloaded_calls: bool,
+    pub unboxed_closures: bool,
     pub rustc_diagnostic_macros: bool,
     pub import_shadowing: bool,
     pub visible_private_types: bool,
@@ -112,7 +111,7 @@ impl Features {
     pub fn new() -> Features {
         Features {
             default_type_params: false,
-            overloaded_calls: false,
+            unboxed_closures: false,
             rustc_diagnostic_macros: false,
             import_shadowing: false,
             visible_private_types: false,
@@ -458,7 +457,7 @@ pub fn check_crate(span_handler: &SpanHandler, krate: &ast::Crate) -> (Features,
 
     (Features {
         default_type_params: cx.has_feature("default_type_params"),
-        overloaded_calls: cx.has_feature("overloaded_calls"),
+        unboxed_closures: cx.has_feature("unboxed_closures"),
         rustc_diagnostic_macros: cx.has_feature("rustc_diagnostic_macros"),
         import_shadowing: cx.has_feature("import_shadowing"),
         visible_private_types: cx.has_feature("visible_private_types"),

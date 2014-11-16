@@ -11,7 +11,7 @@
 // Checks that extern fn points implement the full range of Fn traits.
 
 #![feature(unboxed_closures)]
-#![feature(overloaded_calls)]
+#![feature(unboxed_closures)]
 
 use std::ops::{Fn,FnMut,FnOnce};
 

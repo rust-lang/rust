@@ -2264,11 +2264,11 @@ fn try_overloaded_call<'a>(fcx: &FnCtxt,
         fcx.inh.method_map.borrow_mut().insert(method_call, method_callee);
         write_call(fcx, call_expression, output_type);
 
-        if !fcx.tcx().sess.features.borrow().overloaded_calls {
+        if !fcx.tcx().sess.features.borrow().unboxed_closures {
             span_err!(fcx.tcx().sess, call_expression.span, E0056,
                 "overloaded calls are experimental");
             span_help!(fcx.tcx().sess, call_expression.span,
-                "add `#![feature(overloaded_calls)]` to \
+                "add `#![feature(unboxed_closures)]` to \
                 the crate attributes to enable");
         }
 

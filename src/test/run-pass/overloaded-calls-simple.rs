@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(lang_items, overloaded_calls)]
+#![feature(lang_items, unboxed_closures)]
 
 use std::ops::{Fn, FnMut, FnOnce};
 

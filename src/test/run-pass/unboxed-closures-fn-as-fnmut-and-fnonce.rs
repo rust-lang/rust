@@ -12,7 +12,7 @@
 // any Fn trait to be used where Fn is implemented.
 
 #![feature(unboxed_closures)]
-#![feature(overloaded_calls)]
+#![feature(unboxed_closures)]
 
 use std::ops::{Fn,FnMut,FnOnce};
 

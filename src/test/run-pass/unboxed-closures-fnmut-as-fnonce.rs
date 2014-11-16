@@ -12,7 +12,7 @@
 // FnMut or FnOnce to be used where FnMut is implemented.
 
 #![feature(unboxed_closures)]
-#![feature(overloaded_calls)]
+#![feature(unboxed_closures)]
 
 use std::ops::{FnMut,FnOnce};
 

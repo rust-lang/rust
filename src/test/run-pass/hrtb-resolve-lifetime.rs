@@ -8,10 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(unboxed_closures)]
+// A basic test of using a higher-ranked trait bound.
 
-fn main() {
-    let mut unboxed = |&mut:| {};
-    unboxed();
+trait FnLike<A,R> {
+    fn call(&self, arg: A) -> R;
 }
 
+type FnObject<'b> = for<'a> FnLike<&'a int, &'a int> + 'b;
+
+fn main() {
+}

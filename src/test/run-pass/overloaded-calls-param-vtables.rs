@@ -10,7 +10,7 @@
 
 // Tests that nested vtables work with overloaded calls.
 
-#![feature(overloaded_calls)]
+#![feature(unboxed_closures)]
 
 use std::ops::Fn;
 
