@@ -220,7 +220,6 @@ pub mod time;
 
 pub mod error;
 pub mod num;
-pub mod to_string;
 
 /* Common data structures */
 
