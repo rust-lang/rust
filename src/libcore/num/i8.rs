@@ -10,8 +10,7 @@
 
 //! Operations and constants for signed 8-bits integers (`i8` type)
 
-#![unstable]
+#![stable]
 #![doc(primitive = "i8")]
 
 int_module!(i8, 8)
-

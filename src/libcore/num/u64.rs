@@ -10,8 +10,7 @@
 
 //! Operations and constants for unsigned 64-bits integer (`u64` type)
 
-#![unstable]
+#![stable]
 #![doc(primitive = "u64")]
 
 uint_module!(u64, i64, 64)
-
