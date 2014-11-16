@@ -16,6 +16,7 @@ use super::MethodIndex;
 use super::NoMatch;
 use super::TraitSource;
 
+use middle::fast_reject;
 use middle::subst;
 use middle::subst::Subst;
 use middle::traits;
@@ -36,6 +37,7 @@ struct ProbeContext<'a, 'tcx:'a> {
     span: Span,
     method_name: ast::Name,
     steps: Rc<Vec<CandidateStep>>,
+    opt_simplified_steps: Option<Vec<fast_reject::SimplifiedType>>,
     inherent_candidates: Vec<Candidate>,
     extension_candidates: Vec<Candidate>,
     impl_dups: HashSet<ast::DefId>,
@@ -44,7 +46,7 @@ struct ProbeContext<'a, 'tcx:'a> {
 
 struct CandidateStep {
     self_ty: ty::t,
-    adjustment: PickAdjustment
+    adjustment: PickAdjustment,
 }
 
 struct Candidate {
@@ -123,16 +125,31 @@ pub fn probe(fcx: &FnCtxt,
     // take place in the `fcx.infcx().probe` below.
     let steps = create_steps(fcx, span, self_ty);
 
+    // Create a list of simplified self types, if we can.
+    let mut simplified_steps = Vec::new();
+    for step in steps.iter() {
+        match fast_reject::simplify_type(fcx.tcx(), step.self_ty, true) {
+            None => { break; }
+            Some(simplified_type) => { simplified_steps.push(simplified_type); }
+        }
+    }
+    let opt_simplified_steps =
+        if simplified_steps.len() < steps.len() {
+            None // failed to convert at least one of the steps
+        } else {
+            Some(simplified_steps)
+        };
+
     debug!("ProbeContext: steps for self_ty={} are {}",
            self_ty.repr(fcx.tcx()),
            steps.repr(fcx.tcx()));
 
     // this creates one big transaction so that all type variables etc
     // that we create during the probe process are removed later
-    let mut steps = Some(steps); // FIXME(#18101) need once closures
+    let mut dummy = Some((steps, opt_simplified_steps)); // FIXME(#18101) need once closures
     fcx.infcx().probe(|| {
-        let steps = steps.take().unwrap();
-        let mut probe_cx = ProbeContext::new(fcx, span, method_name, steps);
+        let (steps, opt_simplified_steps) = dummy.take().unwrap();
+        let mut probe_cx = ProbeContext::new(fcx, span, method_name, steps, opt_simplified_steps);
         probe_cx.assemble_inherent_candidates();
         probe_cx.assemble_extension_candidates_for_traits_in_scope(call_expr_id);
         probe_cx.pick()
@@ -177,7 +194,8 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
     fn new(fcx: &'a FnCtxt<'a,'tcx>,
            span: Span,
            method_name: ast::Name,
-           steps: Vec<CandidateStep>)
+           steps: Vec<CandidateStep>,
+           opt_simplified_steps: Option<Vec<fast_reject::SimplifiedType>>)
            -> ProbeContext<'a,'tcx>
     {
         ProbeContext {
@@ -188,6 +206,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             extension_candidates: Vec::new(),
             impl_dups: HashSet::new(),
             steps: Rc::new(steps),
+            opt_simplified_steps: opt_simplified_steps,
             static_candidates: Vec::new(),
         }
     }
@@ -473,6 +492,10 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                    trait_def_id.repr(self.tcx()),
                    impl_def_id.repr(self.tcx()));
 
+            if !self.impl_can_possibly_match(impl_def_id) {
+                continue;
+            }
+
             let impl_pty = check::impl_self_ty(self.fcx, self.span, impl_def_id);
             let impl_substs = impl_pty.substs;
 
@@ -497,6 +520,22 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                 kind: ExtensionImplCandidate(impl_def_id, impl_trait_ref, impl_substs, method_index)
             });
         }
+    }
+
+    fn impl_can_possibly_match(&self, impl_def_id: ast::DefId) -> bool {
+        let simplified_steps = match self.opt_simplified_steps {
+            Some(ref simplified_steps) => simplified_steps,
+            None => { return true; }
+        };
+
+        let impl_type = ty::lookup_item_type(self.tcx(), impl_def_id);
+        let impl_simplified_type =
+            match fast_reject::simplify_type(self.tcx(), impl_type.ty, false) {
+                Some(simplified_type) => simplified_type,
+                None => { return true; }
+            };
+
+        simplified_steps.contains(&impl_simplified_type)
     }
 
     fn assemble_unboxed_closure_candidates(&mut self,
