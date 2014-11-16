@@ -10,7 +10,7 @@
 
 //! Operations and constants for unsigned 32-bits integers (`u32` type)
 
-#![unstable]
+#![stable]
 #![doc(primitive = "u32")]
 
 pub use core::u32::{BITS, BYTES, MIN, MAX};

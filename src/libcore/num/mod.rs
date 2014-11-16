@@ -12,6 +12,7 @@
 
 //! Numeric traits and functions for the built-in numeric types.
 
+#![stable]
 #![allow(missing_docs)]
 
 pub use self::FPCategory::*;
@@ -34,6 +35,7 @@ use str::{FromStr, from_str, StrPrelude};
 
 /// Simultaneous division and remainder
 #[inline]
+#[deprecated = "use division and remainder directly"]
 pub fn div_rem<T: Div<T, T> + Rem<T, T>>(x: T, y: T) -> (T, T) {
     (x / y, x % y)
 }
@@ -46,6 +48,7 @@ pub fn pow<T: Int>(base: T, exp: uint) -> T {
 }
 
 /// A built-in signed or unsigned integer.
+#[unstable = "recently settled as part of numerics reform"]
 pub trait Int
     : Copy + Clone
     + NumCast
@@ -384,6 +387,7 @@ macro_rules! uint_impl {
      $add_with_overflow:path,
      $sub_with_overflow:path,
      $mul_with_overflow:path) => {
+        #[unstable = "trait is unstable"]
         impl Int for $T {
             #[inline]
             fn zero() -> $T { 0 }
@@ -514,6 +518,7 @@ macro_rules! int_impl {
      $add_with_overflow:path,
      $sub_with_overflow:path,
      $mul_with_overflow:path) => {
+        #[unstable = "trait is unstable"]
         impl Int for $T {
             #[inline]
             fn zero() -> $T { 0 }
@@ -606,6 +611,7 @@ int_impl!(int = i64, u64, 64,
     intrinsics::i64_mul_with_overflow)
 
 /// A built-in two's complement integer.
+#[unstable = "recently settled as part of numerics reform"]
 pub trait SignedInt
     : Int
     + Neg<Self>
@@ -663,6 +669,7 @@ signed_int_impl!(i64)
 signed_int_impl!(int)
 
 /// A built-in unsigned integer.
+#[unstable = "recently settled as part of numerics reform"]
 pub trait UnsignedInt: Int {
     /// Returns `true` iff `self == 2^k` for some `k`.
     fn is_power_of_two(self) -> bool {
@@ -697,13 +704,23 @@ pub trait UnsignedInt: Int {
     }
 }
 
+#[unstable = "trait is unstable"]
 impl UnsignedInt for uint {}
+
+#[unstable = "trait is unstable"]
 impl UnsignedInt for u8 {}
+
+#[unstable = "trait is unstable"]
 impl UnsignedInt for u16 {}
+
+#[unstable = "trait is unstable"]
 impl UnsignedInt for u32 {}
+
+#[unstable = "trait is unstable"]
 impl UnsignedInt for u64 {}
 
 /// A generic trait for converting a value to a number.
+#[experimental = "trait is likely to be removed"]
 pub trait ToPrimitive {
     /// Converts the value of `self` to an `int`.
     #[inline]
@@ -968,6 +985,7 @@ impl_to_primitive_float!(f32)
 impl_to_primitive_float!(f64)
 
 /// A generic trait for converting a number to a value.
+#[experimental = "trait is likely to be removed"]
 pub trait FromPrimitive {
     /// Convert an `int` to return an optional value of this type. If the
     /// value cannot be represented by this value, the `None` is returned.
@@ -1049,61 +1067,73 @@ pub trait FromPrimitive {
 }
 
 /// A utility function that just calls `FromPrimitive::from_int`.
+#[experimental = "likely to be removed"]
 pub fn from_int<A: FromPrimitive>(n: int) -> Option<A> {
     FromPrimitive::from_int(n)
 }
 
 /// A utility function that just calls `FromPrimitive::from_i8`.
+#[experimental = "likely to be removed"]
 pub fn from_i8<A: FromPrimitive>(n: i8) -> Option<A> {
     FromPrimitive::from_i8(n)
 }
 
 /// A utility function that just calls `FromPrimitive::from_i16`.
+#[experimental = "likely to be removed"]
 pub fn from_i16<A: FromPrimitive>(n: i16) -> Option<A> {
     FromPrimitive::from_i16(n)
 }
 
 /// A utility function that just calls `FromPrimitive::from_i32`.
+#[experimental = "likely to be removed"]
 pub fn from_i32<A: FromPrimitive>(n: i32) -> Option<A> {
     FromPrimitive::from_i32(n)
 }
 
 /// A utility function that just calls `FromPrimitive::from_i64`.
+#[experimental = "likely to be removed"]
 pub fn from_i64<A: FromPrimitive>(n: i64) -> Option<A> {
     FromPrimitive::from_i64(n)
 }
 
 /// A utility function that just calls `FromPrimitive::from_uint`.
+#[experimental = "likely to be removed"]
 pub fn from_uint<A: FromPrimitive>(n: uint) -> Option<A> {
     FromPrimitive::from_uint(n)
 }
 
 /// A utility function that just calls `FromPrimitive::from_u8`.
+#[experimental = "likely to be removed"]
 pub fn from_u8<A: FromPrimitive>(n: u8) -> Option<A> {
     FromPrimitive::from_u8(n)
 }
 
 /// A utility function that just calls `FromPrimitive::from_u16`.
+#[experimental = "likely to be removed"]
 pub fn from_u16<A: FromPrimitive>(n: u16) -> Option<A> {
     FromPrimitive::from_u16(n)
 }
 
 /// A utility function that just calls `FromPrimitive::from_u32`.
+#[experimental = "likely to be removed"]
 pub fn from_u32<A: FromPrimitive>(n: u32) -> Option<A> {
     FromPrimitive::from_u32(n)
 }
 
 /// A utility function that just calls `FromPrimitive::from_u64`.
+#[experimental = "likely to be removed"]
 pub fn from_u64<A: FromPrimitive>(n: u64) -> Option<A> {
     FromPrimitive::from_u64(n)
 }
 
 /// A utility function that just calls `FromPrimitive::from_f32`.
+#[experimental = "likely to be removed"]
 pub fn from_f32<A: FromPrimitive>(n: f32) -> Option<A> {
     FromPrimitive::from_f32(n)
 }
 
 /// A utility function that just calls `FromPrimitive::from_f64`.
+#[experimental = "likely to be removed"]
 pub fn from_f64<A: FromPrimitive>(n: f64) -> Option<A> {
     FromPrimitive::from_f64(n)
 }
@@ -1154,11 +1184,13 @@ impl_from_primitive!(f64, to_f64)
 /// ```
 ///
 #[inline]
+#[experimental = "likely to be removed"]
 pub fn cast<T: NumCast,U: NumCast>(n: T) -> Option<U> {
     NumCast::from(n)
 }
 
 /// An interface for casting between machine scalars.
+#[experimental = "trait is likely to be removed"]
 pub trait NumCast: ToPrimitive {
     /// Creates a number from another value that can be converted into a primitive via the
     /// `ToPrimitive` trait.
@@ -1193,6 +1225,7 @@ impl_num_cast!(f64,   to_f64)
 
 /// Used for representing the classification of floating point numbers
 #[deriving(PartialEq, Show)]
+#[unstable = "may be renamed"]
 pub enum FPCategory {
     /// "Not a Number", often obtained by dividing by zero
     FPNaN,
@@ -1212,6 +1245,7 @@ pub enum FPCategory {
 //
 // FIXME(#8888): Several of these functions have a parameter named
 //               `unused_self`. Removing it requires #8888 to be fixed.
+#[unstable = "recently settled as part of numerics reform"]
 pub trait Float
     : Copy + Clone
     + NumCast
@@ -1329,38 +1363,51 @@ pub trait Float
     /// Take the reciprocal (inverse) square root of a number, `1/sqrt(x)`.
     fn rsqrt(self) -> Self;
 
-    // FIXME (#5527): These should be associated constants
-
     /// Archimedes' constant.
+    #[deprecated = "use f32::consts or f64::consts instead"]
     fn pi() -> Self;
     /// 2.0 * pi.
+    #[deprecated = "use f32::consts or f64::consts instead"]
     fn two_pi() -> Self;
     /// pi / 2.0.
+    #[deprecated = "use f32::consts or f64::consts instead"]
     fn frac_pi_2() -> Self;
     /// pi / 3.0.
+    #[deprecated = "use f32::consts or f64::consts instead"]
     fn frac_pi_3() -> Self;
     /// pi / 4.0.
+    #[deprecated = "use f32::consts or f64::consts instead"]
     fn frac_pi_4() -> Self;
     /// pi / 6.0.
+    #[deprecated = "use f32::consts or f64::consts instead"]
     fn frac_pi_6() -> Self;
     /// pi / 8.0.
+    #[deprecated = "use f32::consts or f64::consts instead"]
     fn frac_pi_8() -> Self;
     /// 1.0 / pi.
+    #[deprecated = "use f32::consts or f64::consts instead"]
     fn frac_1_pi() -> Self;
     /// 2.0 / pi.
+    #[deprecated = "use f32::consts or f64::consts instead"]
     fn frac_2_pi() -> Self;
     /// 2.0 / sqrt(pi).
+    #[deprecated = "use f32::consts or f64::consts instead"]
     fn frac_2_sqrtpi() -> Self;
 
     /// Euler's number.
+    #[deprecated = "use f32::consts or f64::consts instead"]
     fn e() -> Self;
     /// log2(e).
+    #[deprecated = "use f32::consts or f64::consts instead"]
     fn log2_e() -> Self;
     /// log10(e).
+    #[deprecated = "use f32::consts or f64::consts instead"]
     fn log10_e() -> Self;
     /// ln(2.0).
+    #[deprecated = "use f32::consts or f64::consts instead"]
     fn ln_2() -> Self;
     /// ln(10.0).
+    #[deprecated = "use f32::consts or f64::consts instead"]
     fn ln_10() -> Self;
 
     /// Returns `e^(self)`, (the exponential function).
