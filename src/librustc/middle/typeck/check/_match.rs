@@ -297,22 +297,38 @@ pub fn check_pat_struct(pcx: &pat_ctxt, pat: &ast::Pat,
     let tcx = pcx.fcx.ccx.tcx;
 
     let def = tcx.def_map.borrow()[pat.id].clone();
-    let def_type = ty::lookup_item_type(tcx, def.def_id());
-    let (enum_def_id, variant_def_id) = match ty::get(def_type.ty).sty {
-        ty::ty_struct(struct_def_id, _) =>
-            (struct_def_id, struct_def_id),
-        ty::ty_enum(enum_def_id, _) if def == def::DefVariant(enum_def_id, def.def_id(), true) =>
-            (enum_def_id, def.def_id()),
-        _ => {
+    let (enum_def_id, variant_def_id) = match def {
+        def::DefTrait(_) => {
             let name = pprust::path_to_string(path);
-            span_err!(tcx.sess, pat.span, E0163,
-                "`{}` does not name a struct or a struct variant", name);
+            span_err!(tcx.sess, pat.span, E0168,
+                "use of trait `{}` in a struct pattern", name);
             fcx.write_error(pat.id);
 
             for field in fields.iter() {
                 check_pat(pcx, &*field.node.pat, ty::mk_err());
             }
             return;
+        },
+        _ => {
+            let def_type = ty::lookup_item_type(tcx, def.def_id());
+            match ty::get(def_type.ty).sty {
+                ty::ty_struct(struct_def_id, _) =>
+                    (struct_def_id, struct_def_id),
+                ty::ty_enum(enum_def_id, _)
+                    if def == def::DefVariant(enum_def_id, def.def_id(), true) =>
+                    (enum_def_id, def.def_id()),
+                _ => {
+                    let name = pprust::path_to_string(path);
+                    span_err!(tcx.sess, pat.span, E0163,
+                        "`{}` does not name a struct or a struct variant", name);
+                    fcx.write_error(pat.id);
+
+                    for field in fields.iter() {
+                        check_pat(pcx, &*field.node.pat, ty::mk_err());
+                    }
+                    return;
+                }
+            }
         }
     };
 
