@@ -16,8 +16,6 @@
 #![experimental]
 #![allow(missing_docs)]
 
-use option::Option;
-
 #[cfg(test)] use cmp::PartialEq;
 #[cfg(test)] use fmt::Show;
 #[cfg(test)] use ops::{Add, Sub, Mul, Div, Rem};
@@ -31,6 +29,7 @@ pub use core::num::{checked_next_power_of_two};
 pub use core::num::{from_int, from_i8, from_i16, from_i32, from_i64};
 pub use core::num::{from_uint, from_u8, from_u16, from_u32, from_u64};
 pub use core::num::{from_f32, from_f64};
+pub use core::num::{FromStrRadix, from_str_radix};
 pub use core::num::{FPCategory, FPNaN, FPInfinite, FPZero, FPSubnormal};
 pub use core::num::{FPNormal, Float};
 
@@ -113,18 +112,6 @@ pub trait FloatMath: Float {
     fn acosh(self) -> Self;
     /// Inverse hyperbolic tangent function.
     fn atanh(self) -> Self;
-}
-
-/// A generic trait for converting a string with a radix (base) to a value
-#[experimental = "might need to return Result"]
-pub trait FromStrRadix {
-    fn from_str_radix(str: &str, radix: uint) -> Option<Self>;
-}
-
-/// A utility function that just calls FromStrRadix::from_str_radix.
-#[experimental = "might need to return Result"]
-pub fn from_str_radix<T: FromStrRadix>(str: &str, radix: uint) -> Option<T> {
-    FromStrRadix::from_str_radix(str, radix)
 }
 
 // DEPRECATED
@@ -764,8 +751,9 @@ mod tests {
 
     #[test]
     fn test_pow() {
-        fn naive_pow<T: One + Mul<T, T>>(base: T, exp: uint) -> T {
-            range(0, exp).fold(one::<T>(), |acc, _| acc * base)
+        fn naive_pow<T: Int>(base: T, exp: uint) -> T {
+            let one: T = Int::one();
+            range(0, exp).fold(one, |acc, _| acc * base)
         }
         macro_rules! assert_pow(
             (($num:expr, $exp:expr) => $expected:expr) => {{

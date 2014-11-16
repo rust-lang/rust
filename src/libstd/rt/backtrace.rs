@@ -12,13 +12,12 @@
 
 #![allow(non_camel_case_types)]
 
-use from_str::from_str;
 use io::{IoResult, Writer};
 use iter::Iterator;
 use option::{Some, None};
 use os;
 use result::{Ok, Err};
-use str::StrPrelude;
+use str::{StrPrelude, from_str};
 use sync::atomic;
 use unicode::char::UnicodeChar;
 

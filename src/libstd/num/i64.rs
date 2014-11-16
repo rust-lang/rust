@@ -13,11 +13,6 @@
 #![unstable]
 #![doc(primitive = "i64")]
 
-use from_str::FromStr;
-use num::FromStrRadix;
-use num::strconv;
-use option::Option;
-
 pub use core::i64::{BITS, BYTES, MIN, MAX};
 
 int_module!(i64)

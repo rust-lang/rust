@@ -12,8 +12,6 @@ use common::Config;
 use common;
 use util;
 
-use std::from_str::FromStr;
-
 pub struct TestProps {
     // Lines that should be expected, in order, on standard out
     pub error_patterns: Vec<String> ,
@@ -353,8 +351,8 @@ pub fn gdb_version_to_int(version_string: &str) -> int {
         panic!("{}", error_string);
     }
 
-    let major: int = FromStr::from_str(components[0]).expect(error_string);
-    let minor: int = FromStr::from_str(components[1]).expect(error_string);
+    let major: int = from_str(components[0]).expect(error_string);
+    let minor: int = from_str(components[1]).expect(error_string);
 
     return major * 1000 + minor;
 }
@@ -364,6 +362,6 @@ pub fn lldb_version_to_int(version_string: &str) -> int {
         "Encountered LLDB version string with unexpected format: {}",
         version_string);
     let error_string = error_string.as_slice();
-    let major: int = FromStr::from_str(version_string).expect(error_string);
+    let major: int = from_str(version_string).expect(error_string);
     return major;
 }
