@@ -88,6 +88,7 @@ use intrinsics::TypeId;
 #[stable]
 pub trait Any: 'static {
     /// Get the `TypeId` of `self`
+    #[stable]
     fn get_type_id(&self) -> TypeId;
 }
 
@@ -117,7 +118,6 @@ pub trait AnyRefExt<'a> {
 #[stable]
 impl<'a> AnyRefExt<'a> for &'a Any {
     #[inline]
-    #[stable]
     fn is<T: 'static>(self) -> bool {
         // Get TypeId of the type this function is instantiated with
         let t = TypeId::of::<T>();
@@ -130,7 +130,6 @@ impl<'a> AnyRefExt<'a> for &'a Any {
     }
 
     #[inline]
-    #[unstable = "naming conventions around acquiring references may change"]
     fn downcast_ref<T: 'static>(self) -> Option<&'a T> {
         if self.is::<T>() {
             unsafe {
@@ -159,7 +158,6 @@ pub trait AnyMutRefExt<'a> {
 #[stable]
 impl<'a> AnyMutRefExt<'a> for &'a mut Any {
     #[inline]
-    #[unstable = "naming conventions around acquiring references may change"]
     fn downcast_mut<T: 'static>(self) -> Option<&'a mut T> {
         if self.is::<T>() {
             unsafe {
