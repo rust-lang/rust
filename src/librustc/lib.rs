@@ -62,11 +62,6 @@ pub mod back {
     pub use rustc_back::target_strs;
     pub use rustc_back::x86;
     pub use rustc_back::x86_64;
-
-    pub mod link;
-    pub mod lto;
-    pub mod write;
-
 }
 
 pub mod middle {
@@ -99,11 +94,9 @@ pub mod middle {
     pub mod region;
     pub mod resolve;
     pub mod resolve_lifetime;
-    pub mod save;
     pub mod stability;
     pub mod subst;
     pub mod traits;
-    pub mod trans;
     pub mod ty;
     pub mod ty_fold;
     pub mod typeck;
@@ -112,7 +105,7 @@ pub mod middle {
 
 pub mod metadata;
 
-pub mod driver;
+pub mod session;
 
 pub mod plugin;
 
@@ -141,10 +134,4 @@ __build_diagnostic_array!(DIAGNOSTICS)
 #[doc(hidden)]
 mod rustc {
     pub use lint;
-}
-
-pub fn main() {
-    let args = std::os::args();
-    let result = driver::run(args);
-    std::os::set_exit_status(result);
 }
