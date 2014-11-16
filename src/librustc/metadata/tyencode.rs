@@ -199,7 +199,6 @@ pub fn enc_trait_store(w: &mut SeekableMemWriter, cx: &ctxt, s: ty::TraitStore) 
 
 fn enc_sty(w: &mut SeekableMemWriter, cx: &ctxt, st: &ty::sty) {
     match *st {
-        ty::ty_nil => mywrite!(w, "n"),
         ty::ty_bool => mywrite!(w, "b"),
         ty::ty_char => mywrite!(w, "c"),
         ty::ty_int(t) => {

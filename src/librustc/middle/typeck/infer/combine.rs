@@ -433,7 +433,6 @@ pub fn super_tys<'tcx, C: Combine<'tcx>>(this: &C, a: ty::t, b: ty::t) -> cres<t
         }
 
       (&ty::ty_char, _) |
-      (&ty::ty_nil, _) |
       (&ty::ty_bool, _) |
       (&ty::ty_int(_), _) |
       (&ty::ty_uint(_), _) |
@@ -540,9 +539,11 @@ pub fn super_tys<'tcx, C: Combine<'tcx>>(this: &C, a: ty::t, b: ty::t) -> cres<t
                .map(|(a, b)| this.tys(*a, *b))
                .collect::<Result<_, _>>()
                .map(|ts| ty::mk_tup(tcx, ts))
-        } else {
+        } else if as_.len() != 0 && bs.len() != 0 {
             Err(ty::terr_tuple_size(
                 expected_found(this, as_.len(), bs.len())))
+        } else {
+            Err(ty::terr_sorts(expected_found(this, a, b)))
         }
       }
 

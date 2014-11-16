@@ -66,7 +66,6 @@ register_diagnostics!(
     E0055,
     E0056,
     E0057,
-    E0058,
     E0059,
     E0060,
     E0061,

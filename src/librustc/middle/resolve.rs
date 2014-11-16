@@ -4285,7 +4285,9 @@ impl<'a> Resolver<'a> {
                                     _ => {}
                                 }
 
-                                this.resolve_type(&*ty_m.decl.output);
+                                if let ast::Return(ref ret_ty) = ty_m.decl.output {
+                                    this.resolve_type(&**ret_ty);
+                                }
                             });
                           }
                           ast::ProvidedMethod(ref m) => {
@@ -4467,7 +4469,9 @@ impl<'a> Resolver<'a> {
                         debug!("(resolving function) recorded argument");
                     }
 
-                    this.resolve_type(&*declaration.output);
+                    if let ast::Return(ref ret_ty) = declaration.output {
+                        this.resolve_type(&**ret_ty);
+                    }
                 }
             }
 

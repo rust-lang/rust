@@ -718,7 +718,9 @@ fn declare_intrinsic(ccx: &CrateContext, key: & &'static str) -> Option<ValueRef
     macro_rules! ifn (
         ($name:expr fn() -> $ret:expr) => (
             if *key == $name {
-                let f = base::decl_cdecl_fn(ccx, $name, Type::func([], &$ret), ty::mk_nil());
+                let f = base::decl_cdecl_fn(
+                    ccx, $name, Type::func([], &$ret),
+                    ty::mk_nil(ccx.tcx()));
                 ccx.intrinsics().borrow_mut().insert($name, f.clone());
                 return Some(f);
             }
@@ -726,7 +728,7 @@ fn declare_intrinsic(ccx: &CrateContext, key: & &'static str) -> Option<ValueRef
         ($name:expr fn($($arg:expr),*) -> $ret:expr) => (
             if *key == $name {
                 let f = base::decl_cdecl_fn(ccx, $name,
-                                  Type::func([$($arg),*], &$ret), ty::mk_nil());
+                                  Type::func([$($arg),*], &$ret), ty::mk_nil(ccx.tcx()));
                 ccx.intrinsics().borrow_mut().insert($name, f.clone());
                 return Some(f);
             }
@@ -863,7 +865,7 @@ fn declare_intrinsic(ccx: &CrateContext, key: & &'static str) -> Option<ValueRef
             } else if *key == $name {
                 let f = base::decl_cdecl_fn(ccx, stringify!($cname),
                                       Type::func([$($arg),*], &$ret),
-                                      ty::mk_nil());
+                                      ty::mk_nil(ccx.tcx()));
                 ccx.intrinsics().borrow_mut().insert($name, f.clone());
                 return Some(f);
             }

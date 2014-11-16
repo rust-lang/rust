@@ -391,8 +391,7 @@ pub fn noop_fold_ty<T: Folder>(t: P<Ty>, fld: &mut T) -> P<Ty> {
     t.map(|Ty {id, node, span}| Ty {
         id: fld.new_id(id),
         node: match node {
-            TyNil | TyBot | TyInfer => node,
-            TyUniq(ty) => TyUniq(fld.fold_ty(ty)),
+            TyInfer => node,
             TyVec(ty) => TyVec(fld.fold_ty(ty)),
             TyPtr(mt) => TyPtr(fld.fold_mt(mt)),
             TyRptr(region, mt) => {
@@ -706,10 +705,12 @@ pub fn noop_fold_interpolated<T: Folder>(nt: token::Nonterminal, fld: &mut T)
 }
 
 pub fn noop_fold_fn_decl<T: Folder>(decl: P<FnDecl>, fld: &mut T) -> P<FnDecl> {
-    decl.map(|FnDecl {inputs, output, cf, variadic}| FnDecl {
+    decl.map(|FnDecl {inputs, output, variadic}| FnDecl {
         inputs: inputs.move_map(|x| fld.fold_arg(x)),
-        output: fld.fold_ty(output),
-        cf: cf,
+        output: match output {
+            Return(ty) => Return(fld.fold_ty(ty)),
+            NoReturn(span) => NoReturn(span)
+        },
         variadic: variadic
     })
 }
@@ -1146,10 +1147,12 @@ pub fn noop_fold_foreign_item<T: Folder>(ni: P<ForeignItem>, folder: &mut T) -> 
         attrs: attrs.move_map(|x| folder.fold_attribute(x)),
         node: match node {
             ForeignItemFn(fdec, generics) => {
-                ForeignItemFn(fdec.map(|FnDecl {inputs, output, cf, variadic}| FnDecl {
+                ForeignItemFn(fdec.map(|FnDecl {inputs, output, variadic}| FnDecl {
                     inputs: inputs.move_map(|a| folder.fold_arg(a)),
-                    output: folder.fold_ty(output),
-                    cf: cf,
+                    output: match output {
+                        Return(ty) => Return(folder.fold_ty(ty)),
+                        NoReturn(span) => NoReturn(span)
+                    },
                     variadic: variadic
                 }), folder.fold_generics(generics))
             }

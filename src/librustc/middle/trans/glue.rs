@@ -159,7 +159,7 @@ pub fn get_drop_glue(ccx: &CrateContext, t: ty::t) -> ValueRef {
 
     let (glue, new_sym) = match ccx.available_drop_glues().borrow().get(&t) {
         Some(old_sym) => {
-            let glue = decl_cdecl_fn(ccx, old_sym.as_slice(), llfnty, ty::mk_nil());
+            let glue = decl_cdecl_fn(ccx, old_sym.as_slice(), llfnty, ty::mk_nil(ccx.tcx()));
             (glue, None)
         },
         None => {
@@ -288,7 +288,7 @@ fn trans_struct_drop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }
 
         let dtor_ty = ty::mk_ctor_fn(variant_cx.tcx(), ast::DUMMY_NODE_ID,
-                                     [get_drop_glue_type(bcx.ccx(), t)], ty::mk_nil());
+                                     [get_drop_glue_type(bcx.ccx(), t)], ty::mk_nil(bcx.tcx()));
         let (_, variant_cx) = invoke(variant_cx, dtor_addr, args, dtor_ty, None, false);
 
         variant_cx.fcx.pop_and_trans_custom_cleanup_scope(variant_cx, field_scope);
@@ -520,7 +520,7 @@ fn declare_generic_glue(ccx: &CrateContext, t: ty::t, llfnty: Type,
         ccx,
         t,
         format!("glue_{}", name).as_slice());
-    let llfn = decl_cdecl_fn(ccx, fn_nm.as_slice(), llfnty, ty::mk_nil());
+    let llfn = decl_cdecl_fn(ccx, fn_nm.as_slice(), llfnty, ty::mk_nil(ccx.tcx()));
     note_unique_llvm_symbol(ccx, fn_nm.clone());
     return (fn_nm, llfn);
 }
@@ -538,10 +538,11 @@ fn make_generic_glue(ccx: &CrateContext,
 
     let arena = TypedArena::new();
     let empty_param_substs = param_substs::empty();
-    let fcx = new_fn_ctxt(ccx, llfn, ast::DUMMY_NODE_ID, false, ty::FnConverging(ty::mk_nil()),
+    let fcx = new_fn_ctxt(ccx, llfn, ast::DUMMY_NODE_ID, false,
+                          ty::FnConverging(ty::mk_nil(ccx.tcx())),
                           &empty_param_substs, None, &arena);
 
-    let bcx = init_function(&fcx, false, ty::FnConverging(ty::mk_nil()));
+    let bcx = init_function(&fcx, false, ty::FnConverging(ty::mk_nil(ccx.tcx())));
 
     update_linkage(ccx, llfn, None, OriginalTranslation);
 
@@ -556,7 +557,7 @@ fn make_generic_glue(ccx: &CrateContext,
 
     let llrawptr0 = get_param(llfn, fcx.arg_pos(0) as c_uint);
     let bcx = helper(bcx, llrawptr0, t);
-    finish_fn(&fcx, bcx, ty::FnConverging(ty::mk_nil()));
+    finish_fn(&fcx, bcx, ty::FnConverging(ty::mk_nil(ccx.tcx())));
 
     llfn
 }

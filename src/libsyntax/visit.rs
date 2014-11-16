@@ -341,7 +341,7 @@ pub fn skip_ty<'v, V: Visitor<'v>>(_: &mut V, _: &'v Ty) {
 
 pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty) {
     match typ.node {
-        TyUniq(ref ty) | TyVec(ref ty) | TyParen(ref ty) => {
+        TyVec(ref ty) | TyParen(ref ty) => {
             visitor.visit_ty(&**ty)
         }
         TyPtr(ref mutable_type) => {
@@ -360,7 +360,7 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty) {
             for argument in function_declaration.decl.inputs.iter() {
                 visitor.visit_ty(&*argument.ty)
             }
-            visitor.visit_ty(&*function_declaration.decl.output);
+            walk_fn_ret_ty(visitor, &function_declaration.decl.output);
             walk_ty_param_bounds(visitor, &function_declaration.bounds);
             walk_lifetime_decls(visitor, &function_declaration.lifetimes);
         }
@@ -368,7 +368,7 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty) {
             for argument in function_declaration.decl.inputs.iter() {
                 visitor.visit_ty(&*argument.ty)
             }
-            visitor.visit_ty(&*function_declaration.decl.output);
+            walk_fn_ret_ty(visitor, &function_declaration.decl.output);
             walk_ty_param_bounds(visitor, &function_declaration.bounds);
             walk_lifetime_decls(visitor, &function_declaration.lifetimes);
         }
@@ -376,7 +376,7 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty) {
             for argument in function_declaration.decl.inputs.iter() {
                 visitor.visit_ty(&*argument.ty)
             }
-            visitor.visit_ty(&*function_declaration.decl.output);
+            walk_fn_ret_ty(visitor, &function_declaration.decl.output);
             walk_lifetime_decls(visitor, &function_declaration.lifetimes);
         }
         TyPath(ref path, ref opt_bounds, id) => {
@@ -403,7 +403,7 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty) {
         TyTypeof(ref expression) => {
             visitor.visit_expr(&**expression)
         }
-        TyNil | TyBot | TyInfer => {}
+        TyInfer => {}
     }
 }
 
@@ -538,12 +538,18 @@ pub fn walk_generics<'v, V: Visitor<'v>>(visitor: &mut V, generics: &'v Generics
     }
 }
 
+pub fn walk_fn_ret_ty<'v, V: Visitor<'v>>(visitor: &mut V, ret_ty: &'v FunctionRetTy) {
+    if let Return(ref output_ty) = *ret_ty {
+        visitor.visit_ty(&**output_ty)
+    }
+}
+
 pub fn walk_fn_decl<'v, V: Visitor<'v>>(visitor: &mut V, function_declaration: &'v FnDecl) {
     for argument in function_declaration.inputs.iter() {
         visitor.visit_pat(&*argument.pat);
         visitor.visit_ty(&*argument.ty)
     }
-    visitor.visit_ty(&*function_declaration.output)
+    walk_fn_ret_ty(visitor, &function_declaration.output)
 }
 
 // Note: there is no visit_method() method in the visitor, instead override
@@ -601,7 +607,7 @@ pub fn walk_ty_method<'v, V: Visitor<'v>>(visitor: &mut V, method_type: &'v Type
         visitor.visit_ty(&*argument_type.ty)
     }
     visitor.visit_generics(&method_type.generics);
-    visitor.visit_ty(&*method_type.decl.output);
+    walk_fn_ret_ty(visitor, &method_type.decl.output);
     for attr in method_type.attrs.iter() {
         visitor.visit_attribute(attr);
     }

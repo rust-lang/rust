@@ -645,12 +645,6 @@ impl<'a> State<'a> {
         try!(self.maybe_print_comment(ty.span.lo));
         try!(self.ibox(0u));
         match ty.node {
-            ast::TyNil => try!(word(&mut self.s, "()")),
-            ast::TyBot => try!(word(&mut self.s, "!")),
-            ast::TyUniq(ref ty) => {
-                try!(word(&mut self.s, "~"));
-                try!(self.print_type(&**ty));
-            }
             ast::TyVec(ref ty) => {
                 try!(word(&mut self.s, "["));
                 try!(self.print_type(&**ty));
@@ -2307,15 +2301,7 @@ impl<'a> State<'a> {
         }
         try!(self.pclose());
 
-        try!(self.maybe_print_comment(decl.output.span.lo));
-        match decl.output.node {
-            ast::TyNil => Ok(()),
-            _ => {
-                try!(self.space_if_not_bol());
-                try!(self.word_space("->"));
-                self.print_type(&*decl.output)
-            }
-        }
+        self.print_fn_output(decl)
     }
 
     pub fn print_fn_block_args(
@@ -2333,16 +2319,24 @@ impl<'a> State<'a> {
         try!(self.print_fn_args(decl, None));
         try!(word(&mut self.s, "|"));
 
-        match decl.output.node {
-            ast::TyInfer => {}
-            _ => {
-                try!(self.space_if_not_bol());
-                try!(self.word_space("->"));
-                try!(self.print_type(&*decl.output));
+        if let ast::Return(ref ty) = decl.output {
+            if ty.node == ast::TyInfer {
+                return self.maybe_print_comment(ty.span.lo);
             }
         }
 
-        self.maybe_print_comment(decl.output.span.lo)
+        try!(self.space_if_not_bol());
+        try!(self.word_space("->"));
+        match decl.output {
+            ast::Return(ref ty) => {
+                try!(self.print_type(&**ty));
+                self.maybe_print_comment(ty.span.lo)
+            }
+            ast::NoReturn(span) => {
+                try!(self.word_nbsp("!"));
+                self.maybe_print_comment(span.lo)
+            }
+        }
     }
 
     pub fn print_capture_clause(&mut self, capture_clause: ast::CaptureClause)
@@ -2359,16 +2353,24 @@ impl<'a> State<'a> {
         try!(self.print_fn_args(decl, None));
         try!(word(&mut self.s, ")"));
 
-        match decl.output.node {
-            ast::TyInfer => {}
-            _ => {
-                try!(self.space_if_not_bol());
-                try!(self.word_space("->"));
-                try!(self.print_type(&*decl.output));
+        if let ast::Return(ref ty) = decl.output {
+            if ty.node == ast::TyInfer {
+                return self.maybe_print_comment(ty.span.lo);
             }
         }
 
-        self.maybe_print_comment(decl.output.span.lo)
+        try!(self.space_if_not_bol());
+        try!(self.word_space("->"));
+        match decl.output {
+            ast::Return(ref ty) => {
+                try!(self.print_type(&**ty));
+                self.maybe_print_comment(ty.span.lo)
+            }
+            ast::NoReturn(span) => {
+                try!(self.word_nbsp("!"));
+                self.maybe_print_comment(span.lo)
+            }
+        }
     }
 
     pub fn print_bounds(&mut self,
@@ -2627,19 +2629,29 @@ impl<'a> State<'a> {
     }
 
     pub fn print_fn_output(&mut self, decl: &ast::FnDecl) -> IoResult<()> {
-        match decl.output.node {
-            ast::TyNil => Ok(()),
-            _ => {
-                try!(self.space_if_not_bol());
-                try!(self.ibox(indent_unit));
-                try!(self.word_space("->"));
-                if decl.cf == ast::NoReturn {
-                    try!(self.word_nbsp("!"));
-                } else {
-                    try!(self.print_type(&*decl.output));
+        if let ast::Return(ref ty) = decl.output {
+            match ty.node {
+                ast::TyTup(ref tys) if tys.is_empty() => {
+                    return self.maybe_print_comment(ty.span.lo);
                 }
-                self.end()
+                _ => ()
             }
+        }
+
+        try!(self.space_if_not_bol());
+        try!(self.ibox(indent_unit));
+        try!(self.word_space("->"));
+        match decl.output {
+            ast::NoReturn(_) =>
+                try!(self.word_nbsp("!")),
+            ast::Return(ref ty) =>
+                try!(self.print_type(&**ty))
+        }
+        try!(self.end());
+
+        match decl.output {
+            ast::Return(ref output) => self.maybe_print_comment(output.span.lo),
+            _ => Ok(())
         }
     }
 
@@ -2699,8 +2711,6 @@ impl<'a> State<'a> {
         }
 
         try!(self.print_bounds(":", bounds));
-
-        try!(self.maybe_print_comment(decl.output.span.lo));
 
         try!(self.print_fn_output(decl));
 
@@ -2807,7 +2817,6 @@ impl<'a> State<'a> {
                          ast_util::float_ty_to_string(t).as_slice()).as_slice())
             }
             ast::LitFloatUnsuffixed(ref f) => word(&mut self.s, f.get()),
-            ast::LitNil => word(&mut self.s, "()"),
             ast::LitBool(val) => {
                 if val { word(&mut self.s, "true") } else { word(&mut self.s, "false") }
             }
@@ -3003,10 +3012,9 @@ mod test {
 
         let decl = ast::FnDecl {
             inputs: Vec::new(),
-            output: P(ast::Ty {id: 0,
-                               node: ast::TyNil,
-                               span: codemap::DUMMY_SP}),
-            cf: ast::Return,
+            output: ast::Return(P(ast::Ty {id: 0,
+                               node: ast::TyTup(vec![]),
+                               span: codemap::DUMMY_SP})),
             variadic: false
         };
         let generics = ast_util::empty_generics();
