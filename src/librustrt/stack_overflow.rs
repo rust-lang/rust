@@ -62,7 +62,7 @@ pub unsafe fn report() {
 // It returns the guard page of the current task or 0 if that
 // guard page doesn't exist. None is returned if there's currently
 // no local task.
-#[cfg(any(windows, target_os = "linux", target_os = "macos"))]
+#[cfg(any(windows, target_os = "linux", target_os = "android", target_os = "macos"))]
 unsafe fn get_task_guard_page() -> Option<uint> {
     let task: Option<*mut Task> = Local::try_unsafe_borrow();
 
@@ -167,7 +167,7 @@ mod imp {
     }
 }
 
-#[cfg(any(target_os = "linux", target_os = "macos"))]
+#[cfg(any(target_os = "linux", target_os = "macos", target_os = "android"))]
 mod imp {
     use core::prelude::*;
     use stack;
@@ -176,9 +176,9 @@ mod imp {
     use core::mem;
     use core::ptr;
     use core::intrinsics;
-    use self::signal::{siginfo, sigaction, SIGBUS, SIG_DFL,
-                       SA_SIGINFO, SA_ONSTACK, sigaltstack,
-                       SIGSTKSZ};
+    use self::signal::{siginfo, sigaction, SIGBUS,
+                       SA_SIGINFO, SA_ONSTACK, SA_RESETHAND,
+                       sigaltstack, SIGSTKSZ};
     use libc;
     use libc::funcs::posix88::mman::{mmap, munmap};
     use libc::consts::os::posix88::{SIGSEGV,
@@ -200,14 +200,6 @@ mod imp {
         // We can not return from a SIGSEGV or SIGBUS signal.
         // See: https://www.gnu.org/software/libc/manual/html_node/Handler-Returns.html
 
-        unsafe fn term(signum: libc::c_int) -> ! {
-            use core::mem::transmute;
-
-            signal(signum, transmute(SIG_DFL));
-            raise(signum);
-            intrinsics::abort();
-        }
-
         // We're calling into functions with stack checks
         stack::record_sp_limit(0);
 
@@ -216,14 +208,18 @@ mod imp {
                 let addr = (*info).si_addr as uint;
 
                 if guard == 0 || addr < guard - PAGE_SIZE || addr >= guard {
-                    term(signum);
+                    raise(signum);
+                    intrinsics::abort();
                 }
 
                 report();
 
                 intrinsics::abort()
             }
-            None => term(signum)
+            None => {
+                raise(signum);
+                intrinsics::abort();
+            }
         }
     }
 
@@ -238,7 +234,7 @@ mod imp {
         PAGE_SIZE = psize as uint;
 
         let mut action: sigaction = mem::zeroed();
-        action.sa_flags = SA_SIGINFO | SA_ONSTACK;
+        action.sa_flags = SA_SIGINFO | SA_ONSTACK | SA_RESETHAND;
         action.sa_sigaction = signal_handler as sighandler_t;
         sigaction(SIGSEGV, &action, ptr::null_mut());
         sigaction(SIGBUS, &action, ptr::null_mut());
@@ -288,13 +284,13 @@ mod imp {
         use libc;
         use super::sighandler_t;
 
-        pub static SA_ONSTACK: libc::c_int = 0x08000000;
-        pub static SA_SIGINFO: libc::c_int = 0x00000004;
-        pub static SIGBUS: libc::c_int = 7;
+        pub const SA_ONSTACK: libc::c_int = 0x08000000;
+        pub const SA_SIGINFO: libc::c_int = 0x00000004;
+        pub const SA_RESETHAND: libc::c_int = 0x80000000 as libc::c_uint as libc::c_int;
 
-        pub static SIGSTKSZ: libc::size_t = 8192;
+        pub const SIGBUS: libc::c_int = 7;
 
-        pub static SIG_DFL: sighandler_t = 0i as sighandler_t;
+        pub const SIGSTKSZ: libc::size_t = 8192;
 
         // This definition is not as accurate as it could be, {si_addr} is
         // actually a giant union. Currently we're only interested in that field,
@@ -342,11 +338,10 @@ mod imp {
 
         pub const SA_ONSTACK: libc::c_int = 0x0001;
         pub const SA_SIGINFO: libc::c_int = 0x0040;
+        pub const SA_RESETHAND: libc::c_int = 0x0004;
         pub const SIGBUS: libc::c_int = 10;
 
         pub const SIGSTKSZ: libc::size_t = 131072;
-
-        pub const SIG_DFL: sighandler_t = 0i as sighandler_t;
 
         pub type sigset_t = u32;
 
@@ -379,7 +374,6 @@ mod imp {
     }
 
     extern {
-        pub fn signal(signum: libc::c_int, handler: sighandler_t) -> sighandler_t;
         pub fn raise(signum: libc::c_int) -> libc::c_int;
 
         pub fn sigaction(signum: libc::c_int,
@@ -392,6 +386,7 @@ mod imp {
 }
 
 #[cfg(not(any(target_os = "linux",
+              target_os = "android",
               target_os = "macos",
               windows)))]
 mod imp {
