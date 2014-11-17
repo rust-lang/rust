@@ -11,6 +11,7 @@
 use core::option::*;
 use core::kinds::marker;
 use core::mem;
+use core::clone::Clone;
 
 #[test]
 fn test_get_ptr() {
@@ -238,4 +239,16 @@ fn test_collect() {
     let v: Option<Vec<()>> = functions.iter_mut().map(|f| (*f)()).collect();
 
     assert!(v == None);
+}
+
+fn test_cloned() {
+    let s = 1u32;
+    let n: Option<&'static u32> = None;
+    let o = Some(&s);
+
+    assert_eq!(o.clone(), Some(&s));
+    assert_eq!(o.cloned(), Some(1u32));
+
+    assert_eq!(n.clone(), None);
+    assert_eq!(n.cloned(), None);
 }

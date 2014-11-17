@@ -449,7 +449,7 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
     match expr.node {
       // live nodes required for uses or definitions of variables:
       ExprPath(_) => {
-        let def = ir.tcx.def_map.borrow().get_copy(&expr.id);
+        let def = ir.tcx.def_map.borrow()[expr.id].clone();
         debug!("expr {}: path that leads to {}", expr.id, def);
         match def {
             DefLocal(..) => ir.add_live_node_for_node(expr.id, ExprNode(expr.span)),
@@ -1316,7 +1316,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
     fn access_path(&mut self, expr: &Expr, succ: LiveNode, acc: uint)
                    -> LiveNode {
-        match self.ir.tcx.def_map.borrow().get_copy(&expr.id) {
+        match self.ir.tcx.def_map.borrow()[expr.id].clone() {
           DefLocal(nid) => {
             let ln = self.live_node(expr.id, expr.span);
             if acc != 0u {
@@ -1582,7 +1582,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn check_lvalue(&mut self, expr: &Expr) {
         match expr.node {
           ExprPath(_) => {
-            match self.ir.tcx.def_map.borrow().get_copy(&expr.id) {
+            match self.ir.tcx.def_map.borrow()[expr.id].clone() {
               DefLocal(nid) => {
                 // Assignment to an immutable variable or argument: only legal
                 // if there is no later assignment. If this local is actually
