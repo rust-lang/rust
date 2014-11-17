@@ -460,6 +460,20 @@ mod this_crate {
     }
 
     #[deprecated]
+    fn test_fn_body() {
+        fn fn_in_body() {}
+        fn_in_body();
+    }
+
+    impl MethodTester {
+        #[deprecated]
+        fn test_method_body(&self) {
+            fn fn_in_body() {}
+            fn_in_body();
+        }
+    }
+
+    #[deprecated]
     pub trait DeprecatedTrait {}
 
     struct S;
