@@ -15,12 +15,13 @@ use middle::ty;
 use middle::typeck::infer::combine::*;
 use middle::typeck::infer::lattice::*;
 use middle::typeck::infer::equate::Equate;
+use middle::typeck::infer::fold_regions_in_sig;
+use middle::typeck::infer::LateBoundRegionConversionTime::FnType;
 use middle::typeck::infer::lub::Lub;
+use middle::typeck::infer::region_inference::RegionMark;
 use middle::typeck::infer::sub::Sub;
 use middle::typeck::infer::{cres, InferCtxt};
 use middle::typeck::infer::{TypeTrace, Subtype};
-use middle::typeck::infer::fold_regions_in_sig;
-use middle::typeck::infer::region_inference::RegionMark;
 use syntax::ast::{Many, Once, MutImmutable, MutMutable};
 use syntax::ast::{NormalFn, UnsafeFn, NodeId};
 use syntax::ast::{Onceness, FnStyle};
@@ -140,12 +141,12 @@ impl<'f, 'tcx> Combine<'tcx> for Glb<'f, 'tcx> {
 
         // Instantiate each bound region with a fresh region variable.
         let (a_with_fresh, a_map) =
-            self.fields.infcx.replace_late_bound_regions_with_fresh_regions(
-                self.trace(), a);
+            self.fields.infcx.replace_late_bound_regions_with_fresh_var(
+                a.binder_id, self.trace().span(), FnType, a);
         let a_vars = var_ids(self, &a_map);
         let (b_with_fresh, b_map) =
-            self.fields.infcx.replace_late_bound_regions_with_fresh_regions(
-                self.trace(), b);
+            self.fields.infcx.replace_late_bound_regions_with_fresh_var(
+                b.binder_id, self.trace().span(), FnType, b);
         let b_vars = var_ids(self, &b_map);
 
         // Collect constraints.

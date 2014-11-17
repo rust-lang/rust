@@ -11,7 +11,7 @@
 trait T<'a> {
     fn a(&'a self) -> &'a bool;
     fn b(&self) {
-        self.a(); //~ ERROR mismatched types: expected `&'a Self`, found `&Self` (lifetime mismatch)
+        self.a(); //~ ERROR cannot infer
     }
 }
 
