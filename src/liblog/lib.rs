@@ -137,7 +137,7 @@
 //! includes 'foo'.
 //! * `info/f.o` turns on all info logging where the log message includes 'foo',
 //! 'f1o', 'fao', etc.
-//! * `hello=debug/foo*foo` turns on debug logging for 'hello' where the the log
+//! * `hello=debug/foo*foo` turns on debug logging for 'hello' where the log
 //! message includes 'foofoo' or 'fofoo' or 'fooooooofoo', etc.
 //! * `error,hello=warn/[0-9] scopes` turn on global error logging and also warn for
 //!  hello. In both cases the log message must include a single digit number
