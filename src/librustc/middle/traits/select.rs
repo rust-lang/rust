@@ -351,7 +351,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // matches this obligation, then we can assume that the
         // obligation is satisfied for now (still all other conditions
         // must be met of course). One obvious case this comes up is
-        // marker traits like `Send`. Think of a a linked list:
+        // marker traits like `Send`. Think of a linked list:
         //
         //    struct List<T> { data: T, next: Option<Box<List<T>>> {
         //
