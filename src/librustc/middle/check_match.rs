@@ -932,7 +932,7 @@ fn check_fn(cx: &mut MatchCheckCtxt,
 
 fn is_refutable<A>(cx: &MatchCheckCtxt, pat: &Pat, refutable: |&Pat| -> A) -> Option<A> {
     let pats = Matrix(vec!(vec!(pat)));
-    match is_useful(cx, &pats, [DUMMY_WILD_PAT], ConstructWitness) {
+    match is_useful(cx, &pats, &[DUMMY_WILD_PAT], ConstructWitness) {
         UsefulWithWitness(pats) => {
             assert_eq!(pats.len(), 1);
             Some(refutable(&*pats[0]))

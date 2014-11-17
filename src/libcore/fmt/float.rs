@@ -315,7 +315,7 @@ pub fn float_to_str_bytes_common<T: Float, U>(
                 }
             }
 
-            let mut filler = Filler { buf: buf, end: &mut end };
+            let mut filler = Filler { buf: &mut buf, end: &mut end };
             match sign {
                 SignNeg => {
                     let _ = format_args!(|args| {

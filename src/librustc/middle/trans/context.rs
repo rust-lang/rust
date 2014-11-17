@@ -434,7 +434,7 @@ impl LocalCrateContext {
                 let ccx = local_ccx.dummy_ccx(shared);
 
                 let mut str_slice_ty = Type::named_struct(&ccx, "str_slice");
-                str_slice_ty.set_struct_body([Type::i8p(&ccx), ccx.int_type()], false);
+                str_slice_ty.set_struct_body(&[Type::i8p(&ccx), ccx.int_type()], false);
                 ccx.tn().associate_type("str_slice", &str_slice_ty);
 
                 ccx.tn().associate_type("tydesc", &Type::tydesc(&ccx, str_slice_ty));
@@ -719,7 +719,7 @@ fn declare_intrinsic(ccx: &CrateContext, key: & &'static str) -> Option<ValueRef
         ($name:expr fn() -> $ret:expr) => (
             if *key == $name {
                 let f = base::decl_cdecl_fn(
-                    ccx, $name, Type::func([], &$ret),
+                    ccx, $name, Type::func(&[], &$ret),
                     ty::mk_nil(ccx.tcx()));
                 ccx.intrinsics().borrow_mut().insert($name, f.clone());
                 return Some(f);
@@ -728,14 +728,14 @@ fn declare_intrinsic(ccx: &CrateContext, key: & &'static str) -> Option<ValueRef
         ($name:expr fn($($arg:expr),*) -> $ret:expr) => (
             if *key == $name {
                 let f = base::decl_cdecl_fn(ccx, $name,
-                                  Type::func([$($arg),*], &$ret), ty::mk_nil(ccx.tcx()));
+                                  Type::func(&[$($arg),*], &$ret), ty::mk_nil(ccx.tcx()));
                 ccx.intrinsics().borrow_mut().insert($name, f.clone());
                 return Some(f);
             }
         )
     )
     macro_rules! mk_struct (
-        ($($field_ty:expr),*) => (Type::struct_(ccx, [$($field_ty),*], false))
+        ($($field_ty:expr),*) => (Type::struct_(ccx, &[$($field_ty),*], false))
     )
 
     let i8p = Type::i8p(ccx);
@@ -864,7 +864,7 @@ fn declare_intrinsic(ccx: &CrateContext, key: & &'static str) -> Option<ValueRef
                 ifn!($name fn($($arg),*) -> $ret);
             } else if *key == $name {
                 let f = base::decl_cdecl_fn(ccx, stringify!($cname),
-                                      Type::func([$($arg),*], &$ret),
+                                      Type::func(&[$($arg),*], &$ret),
                                       ty::mk_nil(ccx.tcx()));
                 ccx.intrinsics().borrow_mut().insert($name, f.clone());
                 return Some(f);

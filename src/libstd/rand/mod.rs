@@ -522,7 +522,7 @@ mod test {
     #[test]
     fn test_choose() {
         let mut r = task_rng();
-        assert_eq!(r.choose([1i, 1, 1]).map(|&x|x), Some(1));
+        assert_eq!(r.choose(&[1i, 1, 1]).map(|&x|x), Some(1));
 
         let v: &[int] = &[];
         assert_eq!(r.choose(v), None);
@@ -534,16 +534,16 @@ mod test {
         let empty: &mut [int] = &mut [];
         r.shuffle(empty);
         let mut one = [1i];
-        r.shuffle(one);
+        r.shuffle(&mut one);
         let b: &[_] = &[1];
         assert_eq!(one.as_slice(), b);
 
         let mut two = [1i, 2];
-        r.shuffle(two);
+        r.shuffle(&mut two);
         assert!(two == [1, 2] || two == [2, 1]);
 
         let mut x = [1i, 1, 1];
-        r.shuffle(x);
+        r.shuffle(&mut x);
         let b: &[_] = &[1, 1, 1];
         assert_eq!(x.as_slice(), b);
     }
@@ -553,7 +553,7 @@ mod test {
         let mut r = task_rng();
         r.gen::<int>();
         let mut v = [1i, 1, 1];
-        r.shuffle(v);
+        r.shuffle(&mut v);
         let b: &[_] = &[1, 1, 1];
         assert_eq!(v.as_slice(), b);
         assert_eq!(r.gen_range(0u, 1u), 0u);
@@ -673,7 +673,7 @@ mod bench {
     #[bench]
     fn rand_shuffle_100(b: &mut Bencher) {
         let mut rng = weak_rng();
-        let x : &mut[uint] = [1,..100];
+        let x : &mut[uint] = &mut [1,..100];
         b.iter(|| {
             rng.shuffle(x);
         })

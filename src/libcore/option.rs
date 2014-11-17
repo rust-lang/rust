@@ -271,9 +271,9 @@ impl<T> Option<T> {
     /// let mut x = Some("Diamonds");
     /// {
     ///     let v = x.as_mut_slice();
-    ///     assert!(v == ["Diamonds"]);
+    ///     assert!(v == &mut ["Diamonds"]);
     ///     v[0] = "Dirt";
-    ///     assert!(v == ["Dirt"]);
+    ///     assert!(v == &mut ["Dirt"]);
     /// }
     /// assert_eq!(x, Some("Dirt"));
     /// ```

@@ -139,7 +139,7 @@ impl FixedBuffer for FixedBuffer64 {
                         self.buffer[mut self.buffer_idx..size],
                         input[..buffer_remaining]);
                 self.buffer_idx = 0;
-                func(self.buffer);
+                func(&self.buffer);
                 i += buffer_remaining;
             } else {
                 copy_memory(
@@ -657,7 +657,7 @@ mod bench {
         let mut sh = Sha256::new();
         let bytes = [1u8, ..10];
         b.iter(|| {
-            sh.input(bytes);
+            sh.input(&bytes);
         });
         b.bytes = bytes.len() as u64;
     }
@@ -667,7 +667,7 @@ mod bench {
         let mut sh = Sha256::new();
         let bytes = [1u8, ..1024];
         b.iter(|| {
-            sh.input(bytes);
+            sh.input(&bytes);
         });
         b.bytes = bytes.len() as u64;
     }
@@ -677,7 +677,7 @@ mod bench {
         let mut sh = Sha256::new();
         let bytes = [1u8, ..65536];
         b.iter(|| {
-            sh.input(bytes);
+            sh.input(&bytes);
         });
         b.bytes = bytes.len() as u64;
     }

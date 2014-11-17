@@ -11,7 +11,7 @@
 use std::io;
 
 fn foo(a: &mut io::Writer) {
-    a.write([]).unwrap();
+    a.write(&[]).unwrap();
 }
 
 pub fn main(){}

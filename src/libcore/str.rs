@@ -1008,7 +1008,7 @@ impl<'a> Iterator<Utf16Item> for Utf16Items<'a> {
 ///          0x0073, 0xDD1E, 0x0069, 0x0063,
 ///          0xD834];
 ///
-/// assert_eq!(str::utf16_items(v).collect::<Vec<_>>(),
+/// assert_eq!(str::utf16_items(&v).collect::<Vec<_>>(),
 ///            vec![ScalarValue('𝄞'),
 ///                 ScalarValue('m'), ScalarValue('u'), ScalarValue('s'),
 ///                 LoneSurrogate(0xDD1E),
@@ -1030,12 +1030,12 @@ pub fn utf16_items<'a>(v: &'a [u16]) -> Utf16Items<'a> {
 /// // "abcd"
 /// let mut v = ['a' as u16, 'b' as u16, 'c' as u16, 'd' as u16];
 /// // no NULs so no change
-/// assert_eq!(str::truncate_utf16_at_nul(v), v.as_slice());
+/// assert_eq!(str::truncate_utf16_at_nul(&v), v.as_slice());
 ///
 /// // "ab\0d"
 /// v[2] = 0;
 /// let b: &[_] = &['a' as u16, 'b' as u16];
-/// assert_eq!(str::truncate_utf16_at_nul(v), b);
+/// assert_eq!(str::truncate_utf16_at_nul(&v), b);
 /// ```
 pub fn truncate_utf16_at_nul<'a>(v: &'a [u16]) -> &'a [u16] {
     match v.iter().position(|c| *c == 0) {

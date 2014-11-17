@@ -140,7 +140,7 @@ mod test {
 
     #[test]
     fn test_rpaths_to_flags() {
-        let flags = rpaths_to_flags([
+        let flags = rpaths_to_flags(&[
             "path1".to_string(),
             "path2".to_string()
         ]);
@@ -151,12 +151,12 @@ mod test {
 
     #[test]
     fn test_minimize1() {
-        let res = minimize_rpaths([
+        let res = minimize_rpaths(&[
             "rpath1".to_string(),
             "rpath2".to_string(),
             "rpath1".to_string()
         ]);
-        assert!(res.as_slice() == [
+        assert!(res.as_slice() == &[
             "rpath1".to_string(),
             "rpath2".to_string()
         ]);
@@ -164,7 +164,7 @@ mod test {
 
     #[test]
     fn test_minimize2() {
-        let res = minimize_rpaths([
+        let res = minimize_rpaths(&[
             "1a".to_string(),
             "2".to_string(),
             "2".to_string(),
@@ -176,7 +176,7 @@ mod test {
             "4a".to_string(),
             "3".to_string()
         ]);
-        assert!(res.as_slice() == [
+        assert!(res.as_slice() == &[
             "1a".to_string(),
             "2".to_string(),
             "4a".to_string(),

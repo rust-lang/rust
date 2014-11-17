@@ -44,7 +44,7 @@ use sys::udp::UdpSocket as UdpSocketImp;
 ///     };
 ///
 ///     let mut buf = [0, ..10];
-///     match socket.recv_from(buf) {
+///     match socket.recv_from(&mut buf) {
 ///         Ok((amt, src)) => {
 ///             // Send a reply to the socket we received data from
 ///             let buf = buf[mut ..amt];
@@ -266,7 +266,7 @@ mod test {
             match UdpSocket::bind(client_ip) {
                 Ok(ref mut client) => {
                     rx1.recv();
-                    client.send_to([99], server_ip).unwrap()
+                    client.send_to(&[99], server_ip).unwrap()
                 }
                 Err(..) => panic!()
             }
@@ -277,7 +277,7 @@ mod test {
             Ok(ref mut server) => {
                 tx1.send(());
                 let mut buf = [0];
-                match server.recv_from(buf) {
+                match server.recv_from(&mut buf) {
                     Ok((nread, src)) => {
                         assert_eq!(nread, 1);
                         assert_eq!(buf[0], 99);
@@ -301,7 +301,7 @@ mod test {
             match UdpSocket::bind(client_ip) {
                 Ok(ref mut client) => {
                     rx.recv();
-                    client.send_to([99], server_ip).unwrap()
+                    client.send_to(&[99], server_ip).unwrap()
                 }
                 Err(..) => panic!()
             }
@@ -311,7 +311,7 @@ mod test {
             Ok(ref mut server) => {
                 tx.send(());
                 let mut buf = [0];
-                match server.recv_from(buf) {
+                match server.recv_from(&mut buf) {
                     Ok((nread, src)) => {
                         assert_eq!(nread, 1);
                         assert_eq!(buf[0], 99);
@@ -345,8 +345,8 @@ mod test {
                 }
             };
             rx1.recv();
-            send_as(dummy_ip, [98]);
-            send_as(client_ip, [99]);
+            send_as(dummy_ip, &[98]);
+            send_as(client_ip, &[99]);
             tx2.send(());
         });
 
@@ -356,7 +356,7 @@ mod test {
                 let mut stream = server.connect(client_ip);
                 tx1.send(());
                 let mut buf = [0];
-                match stream.read(buf) {
+                match stream.read(&mut buf) {
                     Ok(nread) => {
                         assert_eq!(nread, 1);
                         assert_eq!(buf[0], 99);
@@ -383,7 +383,7 @@ mod test {
                     let client = box client;
                     let mut stream = client.connect(server_ip);
                     rx1.recv();
-                    stream.write([99]).unwrap();
+                    stream.write(&[99]).unwrap();
                 }
                 Err(..) => panic!()
             }
@@ -396,7 +396,7 @@ mod test {
                 let mut stream = server.connect(client_ip);
                 tx1.send(());
                 let mut buf = [0];
-                match stream.read(buf) {
+                match stream.read(&mut buf) {
                     Ok(nread) => {
                         assert_eq!(nread, 1);
                         assert_eq!(buf[0], 99);
@@ -442,9 +442,9 @@ mod test {
         spawn(proc() {
             let mut sock2 = sock2;
             let mut buf = [0, 0];
-            assert_eq!(sock2.recv_from(buf), Ok((1, addr1)));
+            assert_eq!(sock2.recv_from(&mut buf), Ok((1, addr1)));
             assert_eq!(buf[0], 1);
-            sock2.send_to([2], addr1).unwrap();
+            sock2.send_to(&[2], addr1).unwrap();
         });
 
         let sock3 = sock1.clone();
@@ -454,12 +454,12 @@ mod test {
         spawn(proc() {
             let mut sock3 = sock3;
             rx1.recv();
-            sock3.send_to([1], addr2).unwrap();
+            sock3.send_to(&[1], addr2).unwrap();
             tx2.send(());
         });
         tx1.send(());
         let mut buf = [0, 0];
-        assert_eq!(sock1.recv_from(buf), Ok((1, addr2)));
+        assert_eq!(sock1.recv_from(&mut buf), Ok((1, addr2)));
         rx2.recv();
     }
 
@@ -474,9 +474,9 @@ mod test {
 
         spawn(proc() {
             let mut sock2 = sock2;
-            sock2.send_to([1], addr1).unwrap();
+            sock2.send_to(&[1], addr1).unwrap();
             rx.recv();
-            sock2.send_to([2], addr1).unwrap();
+            sock2.send_to(&[2], addr1).unwrap();
             rx.recv();
         });
 
@@ -486,12 +486,12 @@ mod test {
         spawn(proc() {
             let mut sock3 = sock3;
             let mut buf = [0, 0];
-            sock3.recv_from(buf).unwrap();
+            sock3.recv_from(&mut buf).unwrap();
             tx2.send(());
             done.send(());
         });
         let mut buf = [0, 0];
-        sock1.recv_from(buf).unwrap();
+        sock1.recv_from(&mut buf).unwrap();
         tx1.send(());
 
         rx.recv();
@@ -512,7 +512,7 @@ mod test {
             let mut buf = [0, 1];
 
             rx.recv();
-            match sock2.recv_from(buf) {
+            match sock2.recv_from(&mut buf) {
                 Ok(..) => {}
                 Err(e) => panic!("failed receive: {}", e),
             }
@@ -525,13 +525,13 @@ mod test {
         let tx2 = tx.clone();
         spawn(proc() {
             let mut sock3 = sock3;
-            match sock3.send_to([1], addr2) {
+            match sock3.send_to(&[1], addr2) {
                 Ok(..) => { let _ = tx2.send_opt(()); }
                 Err(..) => {}
             }
             done.send(());
         });
-        match sock1.send_to([2], addr2) {
+        match sock1.send_to(&[2], addr2) {
             Ok(..) => { let _ = tx.send_opt(()); }
             Err(..) => {}
         }
@@ -552,28 +552,28 @@ mod test {
         let (tx2, rx2) = channel();
         spawn(proc() {
             let mut a = UdpSocket::bind(addr2).unwrap();
-            assert_eq!(a.recv_from([0]), Ok((1, addr1)));
-            assert_eq!(a.send_to([0], addr1), Ok(()));
+            assert_eq!(a.recv_from(&mut [0]), Ok((1, addr1)));
+            assert_eq!(a.send_to(&[0], addr1), Ok(()));
             rx.recv();
-            assert_eq!(a.send_to([0], addr1), Ok(()));
+            assert_eq!(a.send_to(&[0], addr1), Ok(()));
 
             tx2.send(());
         });
 
         // Make sure that reads time out, but writes can continue
         a.set_read_timeout(Some(20));
-        assert_eq!(a.recv_from([0]).err().unwrap().kind, TimedOut);
-        assert_eq!(a.recv_from([0]).err().unwrap().kind, TimedOut);
-        assert_eq!(a.send_to([0], addr2), Ok(()));
+        assert_eq!(a.recv_from(&mut [0]).err().unwrap().kind, TimedOut);
+        assert_eq!(a.recv_from(&mut [0]).err().unwrap().kind, TimedOut);
+        assert_eq!(a.send_to(&[0], addr2), Ok(()));
 
         // Cloned handles should be able to block
         let mut a2 = a.clone();
-        assert_eq!(a2.recv_from([0]), Ok((1, addr2)));
+        assert_eq!(a2.recv_from(&mut [0]), Ok((1, addr2)));
 
         // Clearing the timeout should allow for receiving
         a.set_timeout(None);
         tx.send(());
-        assert_eq!(a2.recv_from([0]), Ok((1, addr2)));
+        assert_eq!(a2.recv_from(&mut [0]), Ok((1, addr2)));
 
         // Make sure the child didn't die
         rx2.recv();
@@ -588,7 +588,7 @@ mod test {
 
         a.set_write_timeout(Some(1000));
         for _ in range(0u, 100) {
-            match a.send_to([0, ..4*1024], addr2) {
+            match a.send_to(&[0, ..4*1024], addr2) {
                 Ok(()) | Err(IoError { kind: ShortWrite(..), .. }) => {},
                 Err(IoError { kind: TimedOut, .. }) => break,
                 Err(e) => panic!("other error: {}", e),

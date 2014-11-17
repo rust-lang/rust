@@ -399,7 +399,7 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
             procsrv::run("",
                          config.adb_path.as_slice(),
                          None,
-                         [
+                         &[
                             "push".to_string(),
                             exe_file.as_str().unwrap().to_string(),
                             config.adb_test_dir.clone()
@@ -411,7 +411,7 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
             procsrv::run("",
                          config.adb_path.as_slice(),
                          None,
-                         [
+                         &[
                             "forward".to_string(),
                             "tcp:5039".to_string(),
                             "tcp:5039".to_string()
@@ -432,7 +432,7 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
                                                       config.adb_path
                                                             .as_slice(),
                                                       None,
-                                                      [
+                                                      &[
                                                         "shell".to_string(),
                                                         adb_arg.clone()
                                                       ],
@@ -746,7 +746,7 @@ fn run_debuginfo_lldb_test(config: &Config, props: &TestProps, testfile: &Path) 
         cmd.arg(lldb_script_path)
            .arg(test_executable)
            .arg(debugger_script)
-           .env_set_all([("PYTHONPATH", config.lldb_python_dir.clone().unwrap().as_slice())]);
+           .env_set_all(&[("PYTHONPATH", config.lldb_python_dir.clone().unwrap().as_slice())]);
 
         let (status, out, err) = match cmd.spawn() {
             Ok(process) => {
@@ -1142,11 +1142,11 @@ struct ProcRes {
 
 fn compile_test(config: &Config, props: &TestProps,
                 testfile: &Path) -> ProcRes {
-    compile_test_(config, props, testfile, [])
+    compile_test_(config, props, testfile, &[])
 }
 
 fn jit_test(config: &Config, props: &TestProps, testfile: &Path) -> ProcRes {
-    compile_test_(config, props, testfile, ["--jit".to_string()])
+    compile_test_(config, props, testfile, &["--jit".to_string()])
 }
 
 fn compile_test_(config: &Config, props: &TestProps,
@@ -1507,7 +1507,7 @@ fn _arm_exec_compiled_test(config: &Config,
     let copy_result = procsrv::run("",
                                    config.adb_path.as_slice(),
                                    None,
-                                   [
+                                   &[
                                     "push".to_string(),
                                     args.prog.clone(),
                                     config.adb_test_dir.clone()
@@ -1624,7 +1624,7 @@ fn _arm_push_aux_shared_library(config: &Config, testfile: &Path) {
             let copy_result = procsrv::run("",
                                            config.adb_path.as_slice(),
                                            None,
-                                           [
+                                           &[
                                             "push".to_string(),
                                             file.as_str()
                                                 .unwrap()

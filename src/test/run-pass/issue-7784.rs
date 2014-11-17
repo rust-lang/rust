@@ -33,6 +33,6 @@ fn main() {
     let out = bar("baz", "foo");
     let [a, xs.., d] = out;
     assert_eq!(a, "baz");
-    assert!(xs == ["foo", "foo"]);
+    assert!(xs == &["foo", "foo"]);
     assert_eq!(d, "baz");
 }

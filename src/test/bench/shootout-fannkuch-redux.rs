@@ -118,7 +118,7 @@ impl Perm {
     fn max(&self) -> u32 { self.fact[self.n as uint] }
 
     fn next(&mut self) -> P {
-        next_permutation(self.perm.p, self.cnt);
+        next_permutation(&mut self.perm.p, &mut self.cnt);
         self.permcount += 1;
 
         self.perm
@@ -141,7 +141,7 @@ fn work(mut perm: Perm, n: uint, max: uint) -> (i32, i32) {
 
         while p.p[0] != 1 {
             let k = p.p[0] as uint;
-            reverse(p.p, k);
+            reverse(&mut p.p, k);
             flips += 1;
         }
 

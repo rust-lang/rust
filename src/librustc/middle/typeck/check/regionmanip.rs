@@ -412,9 +412,9 @@ impl<'a, 'tcx> Wf<'a, 'tcx> {
         // region bounds required from all of the trait types:
         let required_region_bounds =
             ty::required_region_bounds(self.tcx,
-                                       [],
+                                       &[],
                                        bounds.builtin_bounds,
-                                       []);
+                                       &[]);
         for &r_d in required_region_bounds.iter() {
             // Each of these is an instance of the `'c <= 'b`
             // constraint above

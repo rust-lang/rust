@@ -337,7 +337,7 @@ pub fn at_box_body(bcx: Block, body_t: ty::t, boxptr: ValueRef) -> ValueRef {
     let ccx = bcx.ccx();
     let ty = Type::at_box(ccx, type_of(ccx, body_t));
     let boxptr = PointerCast(bcx, boxptr, ty.ptr_to());
-    GEPi(bcx, boxptr, [0u, abi::box_field_body])
+    GEPi(bcx, boxptr, &[0u, abi::box_field_body])
 }
 
 fn require_alloc_fn(bcx: Block, info_ty: ty::t, it: LangItem) -> ast::DefId {
@@ -365,7 +365,7 @@ pub fn malloc_raw_dyn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     // Allocate space:
     let r = callee::trans_lang_call(bcx,
         require_alloc_fn(bcx, info_ty, ExchangeMallocFnLangItem),
-        [size, align],
+        &[size, align],
         None);
 
     Result::new(r.bcx, PointerCast(r.bcx, r.val, llty_ptr))
@@ -385,7 +385,7 @@ pub fn malloc_raw_dyn_proc<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: ty::t) -> Resu
 
     // Allocate space and store the destructor pointer:
     let Result {bcx, val: llbox} = malloc_raw_dyn(bcx, ptr_llty, t, size, llalign);
-    let dtor_ptr = GEPi(bcx, llbox, [0u, abi::box_field_drop_glue]);
+    let dtor_ptr = GEPi(bcx, llbox, &[0u, abi::box_field_drop_glue]);
     let drop_glue_field_ty = type_of(ccx, ty::mk_nil_ptr(bcx.tcx()));
     let drop_glue = PointerCast(bcx, glue::get_drop_glue(ccx, ty::mk_uniq(bcx.tcx(), t)),
                                 drop_glue_field_ty);
@@ -517,7 +517,7 @@ pub fn get_res_dtor(ccx: &CrateContext,
         let class_ty = ty::lookup_item_type(tcx, parent_id).ty.subst(tcx, substs);
         let llty = type_of_dtor(ccx, class_ty);
         let dtor_ty = ty::mk_ctor_fn(ccx.tcx(), ast::DUMMY_NODE_ID,
-                                     [glue::get_drop_glue_type(ccx, t)], ty::mk_nil(ccx.tcx()));
+                                     &[glue::get_drop_glue_type(ccx, t)], ty::mk_nil(ccx.tcx()));
         get_extern_fn(ccx,
                       &mut *ccx.externs().borrow_mut(),
                       name.as_slice(),
@@ -694,8 +694,8 @@ pub fn iter_structural_ty<'a, 'blk, 'tcx>(cx: Block<'blk, 'tcx>,
     let (data_ptr, info) = if ty::type_is_sized(cx.tcx(), t) {
         (av, None)
     } else {
-        let data = GEPi(cx, av, [0, abi::slice_elt_base]);
-        let info = GEPi(cx, av, [0, abi::slice_elt_len]);
+        let data = GEPi(cx, av, &[0, abi::slice_elt_base]);
+        let info = GEPi(cx, av, &[0, abi::slice_elt_len]);
         (Load(cx, data), Some(Load(cx, info)))
     };
 
@@ -713,8 +713,8 @@ pub fn iter_structural_ty<'a, 'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                   } else {
                       let boxed_ty = ty::mk_open(cx.tcx(), field_ty);
                       let scratch = datum::rvalue_scratch_datum(cx, boxed_ty, "__fat_ptr_iter");
-                      Store(cx, llfld_a, GEPi(cx, scratch.val, [0, abi::slice_elt_base]));
-                      Store(cx, info.unwrap(), GEPi(cx, scratch.val, [0, abi::slice_elt_len]));
+                      Store(cx, llfld_a, GEPi(cx, scratch.val, &[0, abi::slice_elt_base]));
+                      Store(cx, info.unwrap(), GEPi(cx, scratch.val, &[0, abi::slice_elt_len]));
                       scratch.val
                   };
                   cx = f(cx, val, field_ty);
@@ -1110,7 +1110,7 @@ pub fn call_lifetime_start(cx: Block, ptr: ValueRef) {
     let llsize = C_u64(ccx, machine::llsize_of_alloc(ccx, val_ty(ptr).element_type()));
     let ptr = PointerCast(cx, ptr, Type::i8p(ccx));
     let lifetime_start = ccx.get_intrinsic(&"llvm.lifetime.start");
-    Call(cx, lifetime_start, [llsize, ptr], None);
+    Call(cx, lifetime_start, &[llsize, ptr], None);
 }
 
 pub fn call_lifetime_end(cx: Block, ptr: ValueRef) {
@@ -1124,7 +1124,7 @@ pub fn call_lifetime_end(cx: Block, ptr: ValueRef) {
     let llsize = C_u64(ccx, machine::llsize_of_alloc(ccx, val_ty(ptr).element_type()));
     let ptr = PointerCast(cx, ptr, Type::i8p(ccx));
     let lifetime_end = ccx.get_intrinsic(&"llvm.lifetime.end");
-    Call(cx, lifetime_end, [llsize, ptr], None);
+    Call(cx, lifetime_end, &[llsize, ptr], None);
 }
 
 pub fn call_memcpy(cx: Block, dst: ValueRef, src: ValueRef, n_bytes: ValueRef, align: u32) {
@@ -1141,7 +1141,7 @@ pub fn call_memcpy(cx: Block, dst: ValueRef, src: ValueRef, n_bytes: ValueRef, a
     let size = IntCast(cx, n_bytes, ccx.int_type());
     let align = C_i32(ccx, align as i32);
     let volatile = C_bool(ccx, false);
-    Call(cx, memcpy, [dst_ptr, src_ptr, size, align, volatile], None);
+    Call(cx, memcpy, &[dst_ptr, src_ptr, size, align, volatile], None);
 }
 
 pub fn memcpy_ty(bcx: Block, dst: ValueRef, src: ValueRef, t: ty::t) {
@@ -1187,7 +1187,7 @@ fn memzero(b: &Builder, llptr: ValueRef, ty: ty::t) {
     let size = machine::llsize_of(ccx, llty);
     let align = C_i32(ccx, type_of::align_of(ccx, ty) as i32);
     let volatile = C_bool(ccx, false);
-    b.call(llintrinsicfn, [llptr, llzeroval, size, align, volatile], None);
+    b.call(llintrinsicfn, &[llptr, llzeroval, size, align, volatile], None);
 }
 
 pub fn alloc_ty(bcx: Block, t: ty::t, name: &str) -> ValueRef {
@@ -1563,7 +1563,7 @@ fn create_datums_for_fn_args_under_call_abi(
                             let llarg =
                                 get_param(bcx.fcx.llfn,
                                           bcx.fcx.arg_pos(i + j) as c_uint);
-                            let lldest = GEPi(bcx, llval, [0, j]);
+                            let lldest = GEPi(bcx, llval, &[0, j]);
                             let datum = datum::Datum::new(
                                 llarg,
                                 tupled_arg_ty,
@@ -1654,7 +1654,7 @@ fn copy_unboxed_closure_args_to_allocas<'blk, 'tcx>(
         let tuple_element_datum =
             tuple_datum.get_element(bcx,
                                     tuple_element_type,
-                                    |llval| GEPi(bcx, llval, [0, j]));
+                                    |llval| GEPi(bcx, llval, &[0, j]));
         let tuple_element_datum = tuple_element_datum.to_expr_datum();
         let tuple_element_datum =
             unpack_datum!(bcx,
@@ -2551,7 +2551,7 @@ pub fn create_entry_wrapper(ccx: &CrateContext,
     fn create_entry_fn(ccx: &CrateContext,
                        rust_main: ValueRef,
                        use_start_lang_item: bool) {
-        let llfty = Type::func([ccx.int_type(), Type::i8p(ccx).ptr_to()],
+        let llfty = Type::func(&[ccx.int_type(), Type::i8p(ccx).ptr_to()],
                                &ccx.int_type());
 
         let llfn = decl_cdecl_fn(ccx, "main", llfty, ty::mk_nil(ccx.tcx()));
@@ -2908,7 +2908,7 @@ pub fn write_metadata(cx: &SharedCrateContext, krate: &ast::Crate) -> Vec<u8> {
         None => cx.sess().fatal("failed to compress metadata"),
     }.as_slice());
     let llmeta = C_bytes_in_context(cx.metadata_llcx(), compressed.as_slice());
-    let llconst = C_struct_in_context(cx.metadata_llcx(), [llmeta], false);
+    let llconst = C_struct_in_context(cx.metadata_llcx(), &[llmeta], false);
     let name = format!("rust_metadata_{}_{}",
                        cx.link_meta().crate_name,
                        cx.link_meta().crate_hash);
