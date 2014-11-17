@@ -14,8 +14,6 @@
 #![allow(dead_code)]
 
 use core::prelude::*;
-use self::Flavor::*;
-
 use alloc::boxed::Box;
 use rustrt::mutex;
 
