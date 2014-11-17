@@ -1457,10 +1457,10 @@ macro_rules! from_str_radix_float_impl {
                 }
 
                 let (is_positive, src) =  match src.slice_shift_char() {
-                    (None, _)        => return None,
-                    (Some('-'), "")  => return None,
-                    (Some('-'), src) => (false, src),
-                    (Some(_), _)     => (true,  src),
+                    None             => return None,
+                    Some(('-', ""))  => return None,
+                    Some(('-', src)) => (false, src),
+                    Some((_, _))     => (true,  src),
                 };
 
                 // The significand to accumulate
@@ -1563,10 +1563,10 @@ macro_rules! from_str_radix_float_impl {
                         // Parse the exponent as decimal integer
                         let src = src[offset..];
                         let (is_positive, exp) = match src.slice_shift_char() {
-                            (Some('-'), src) => (false, from_str::<uint>(src)),
-                            (Some('+'), src) => (true,  from_str::<uint>(src)),
-                            (Some(_), _)     => (true,  from_str::<uint>(src)),
-                            (None, _)        => return None,
+                            Some(('-', src)) => (false, from_str::<uint>(src)),
+                            Some(('+', src)) => (true,  from_str::<uint>(src)),
+                            Some((_, _))     => (true,  from_str::<uint>(src)),
+                            None             => return None,
                         };
 
                         match (is_positive, exp) {
@@ -1606,7 +1606,7 @@ macro_rules! from_str_radix_int_impl {
                 let is_signed_ty = (0 as $T) > Int::min_value();
 
                 match src.slice_shift_char() {
-                    (Some('-'), src) if is_signed_ty => {
+                    Some(('-', src)) if is_signed_ty => {
                         // The number is negative
                         let mut result = 0;
                         for c in src.chars() {
@@ -1625,7 +1625,7 @@ macro_rules! from_str_radix_int_impl {
                         }
                         Some(result)
                     },
-                    (Some(_), _) => {
+                    Some((_, _)) => {
                         // The number is signed
                         let mut result = 0;
                         for c in src.chars() {
@@ -1644,7 +1644,7 @@ macro_rules! from_str_radix_int_impl {
                         }
                         Some(result)
                     },
-                    (None, _) => None,
+                    None => None,
                 }
             }
         }
