@@ -2122,7 +2122,7 @@ impl<'a> fmt::Show for Sidebar<'a> {
 
         fn block(w: &mut fmt::Formatter, short: &str, longty: &str,
                  cur: &clean::Item, cx: &Context) -> fmt::Result {
-            let items = match cx.sidebar.find_equiv(short) {
+            let items = match cx.sidebar.get(short) {
                 Some(items) => items.as_slice(),
                 None => return Ok(())
             };
