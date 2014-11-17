@@ -12,11 +12,11 @@ use middle::trans::context::CrateContext;
 use middle::trans::type_::Type;
 use llvm::ValueRef;
 
-pub trait LlvmRepr {
+pub trait LlvmRepr for Sized? {
     fn llrepr(&self, ccx: &CrateContext) -> String;
 }
 
-impl<'a, T:LlvmRepr> LlvmRepr for &'a [T] {
+impl<T:LlvmRepr> LlvmRepr for [T] {
     fn llrepr(&self, ccx: &CrateContext) -> String {
         let reprs: Vec<String> = self.iter().map(|t| t.llrepr(ccx)).collect();
         format!("[{}]", reprs.connect(","))
