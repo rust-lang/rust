@@ -16,7 +16,7 @@ use middle::typeck::check::regionmanip::replace_late_bound_regions;
 use middle::typeck::infer::combine::*;
 use middle::typeck::infer::{cres, CresCompare};
 use middle::typeck::infer::equate::Equate;
-use middle::typeck::infer::FnType;
+use middle::typeck::infer::LateBoundRegionConversionTime::FnType;
 use middle::typeck::infer::glb::Glb;
 use middle::typeck::infer::InferCtxt;
 use middle::typeck::infer::lub::Lub;

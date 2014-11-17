@@ -30,6 +30,9 @@ use syntax::ast::{DefId};
 use syntax::ast;
 use syntax::codemap::Span;
 
+pub use self::MethodError::*;
+pub use self::CandidateSource::*;
+
 mod confirm;
 mod doc;
 mod probe;
