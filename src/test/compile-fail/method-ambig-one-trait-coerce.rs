@@ -27,8 +27,14 @@ impl foo for Box<Object+Send> {
 }
 
 fn test1(x: Box<Object+Send+Sync>) {
-    // Ambiguous because we could coerce to either impl:
-    x.foo(); //~ ERROR E0034
+    // FIXME(#18737) -- we ought to consider this to be ambiguous,
+    // since we could coerce to either impl. However, what actually
+    // happens is that we consider both impls applicable because of
+    // incorrect subtyping relation. We then decide to call this a
+    // call to the `foo` trait, leading to the following error
+    // message.
+
+    x.foo(); //~ ERROR `foo` is not implemented
 }
 
 fn test2(x: Box<Object+Send>) {

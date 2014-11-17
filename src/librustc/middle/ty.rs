@@ -3491,43 +3491,45 @@ pub fn adjust_ty(cx: &ctxt,
                         }
                     }
 
-                    match adj.autoref {
-                        None => adjusted_ty,
-                        Some(ref autoref) => adjust_for_autoref(cx, span, adjusted_ty, autoref)
-                    }
+                    adjust_ty_for_autoref(cx, span, adjusted_ty, adj.autoref.as_ref())
                 }
             }
         }
         None => unadjusted_ty
     };
+}
 
-    fn adjust_for_autoref(cx: &ctxt,
-                          span: Span,
-                          ty: ty::t,
-                          autoref: &AutoRef) -> ty::t{
-        match *autoref {
-            AutoPtr(r, m, ref a) => {
-                let adjusted_ty = match a {
-                    &Some(box ref a) => adjust_for_autoref(cx, span, ty, a),
-                    &None => ty
-                };
-                mk_rptr(cx, r, mt {
-                    ty: adjusted_ty,
-                    mutbl: m
-                })
-            }
+pub fn adjust_ty_for_autoref(cx: &ctxt,
+                             span: Span,
+                             ty: ty::t,
+                             autoref: Option<&AutoRef>)
+                             -> ty::t
+{
+    match autoref {
+        None => ty,
 
-            AutoUnsafe(m, ref a) => {
-                let adjusted_ty = match a {
-                    &Some(box ref a) => adjust_for_autoref(cx, span, ty, a),
-                    &None => ty
-                };
-                mk_ptr(cx, mt {ty: adjusted_ty, mutbl: m})
-            }
-
-            AutoUnsize(ref k) => unsize_ty(cx, ty, k, span),
-            AutoUnsizeUniq(ref k) => ty::mk_uniq(cx, unsize_ty(cx, ty, k, span)),
+        Some(&AutoPtr(r, m, ref a)) => {
+            let adjusted_ty = match a {
+                &Some(box ref a) => adjust_ty_for_autoref(cx, span, ty, Some(a)),
+                &None => ty
+            };
+            mk_rptr(cx, r, mt {
+                ty: adjusted_ty,
+                mutbl: m
+            })
         }
+
+        Some(&AutoUnsafe(m, ref a)) => {
+            let adjusted_ty = match a {
+                &Some(box ref a) => adjust_ty_for_autoref(cx, span, ty, Some(a)),
+                &None => ty
+            };
+            mk_ptr(cx, mt {ty: adjusted_ty, mutbl: m})
+        }
+
+        Some(&AutoUnsize(ref k)) => unsize_ty(cx, ty, k, span),
+
+        Some(&AutoUnsizeUniq(ref k)) => ty::mk_uniq(cx, unsize_ty(cx, ty, k, span)),
     }
 }
 
