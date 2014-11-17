@@ -5609,6 +5609,14 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// Parse a ViewItem, e.g. `use foo::bar` or `extern crate foo`
+    pub fn parse_view_item(&mut self, attrs: Vec<Attribute>) -> ViewItem {
+        match self.parse_item_or_view_item(attrs, false) {
+            IoviViewItem(vi) => vi,
+            _ => self.fatal("expected `use` or `extern crate`"),
+        }
+    }
+
     /// Parse, e.g., "use a::b::{z,y}"
     fn parse_use(&mut self) -> ViewItem_ {
         return ViewItemUse(self.parse_view_path());
