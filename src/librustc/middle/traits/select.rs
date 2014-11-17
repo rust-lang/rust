@@ -33,6 +33,7 @@ use middle::subst::{Subst, Substs, VecPerParamSpace};
 use middle::ty;
 use middle::typeck::check::regionmanip;
 use middle::typeck::infer;
+use middle::typeck::infer::LateBoundRegionConversionTime::*;
 use middle::typeck::infer::{InferCtxt, TypeSkolemizer};
 use middle::ty_fold::TypeFoldable;
 use std::cell::RefCell;

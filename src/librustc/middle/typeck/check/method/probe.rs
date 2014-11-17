@@ -8,13 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use super::Ambiguity;
-use super::CandidateSource;
-use super::ImplSource;
-use super::MethodError;
+use super::{MethodError,Ambiguity,NoMatch};
 use super::MethodIndex;
-use super::NoMatch;
-use super::TraitSource;
+use super::{CandidateSource,ImplSource,TraitSource};
 
 use middle::fast_reject;
 use middle::subst;
@@ -31,6 +27,10 @@ use syntax::codemap::{Span, DUMMY_SP};
 use std::collections::HashSet;
 use std::rc::Rc;
 use util::ppaux::Repr;
+
+use self::CandidateKind::*;
+pub use self::PickAdjustment::*;
+pub use self::PickKind::*;
 
 struct ProbeContext<'a, 'tcx:'a> {
     fcx: &'a FnCtxt<'a, 'tcx>,
