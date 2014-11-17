@@ -79,8 +79,8 @@ impl<'v> Visitor<'v> for Annotator {
         }
     }
 
-    fn visit_fn(&mut self, fk: FnKind<'v>, fd: &'v FnDecl,
-                b: &'v Block, s: Span, _: NodeId) {
+    fn visit_fn(&mut self, fk: FnKind<'v>, _: &'v FnDecl,
+                _: &'v Block, _: Span, _: NodeId) {
         match fk {
             FkMethod(_, _, meth) => {
                 // Methods are not already annotated, so we annotate it

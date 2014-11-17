@@ -47,6 +47,7 @@
 use clone::Clone;
 use kinds::Sized;
 use ops::Deref;
+use self::Cow::*;
 
 /// A trait for borrowing data.
 pub trait BorrowFrom<Sized? Owned> for Sized? {

@@ -836,7 +836,7 @@ r#"digraph syntax_tree {
 
     #[test]
     fn simple_id_construction() {
-        let id1 = dot::Id::new("hello");
+        let id1 = Id::new("hello");
         match id1 {
             Ok(_) => {;},
             Err(_) => panic!("'hello' is not a valid value for id anymore")
@@ -845,7 +845,7 @@ r#"digraph syntax_tree {
 
     #[test]
     fn badly_formatted_id() {
-        let id2 = dot::Id::new("Weird { struct : ure } !!!");
+        let id2 = Id::new("Weird { struct : ure } !!!");
         match id2 {
             Ok(_) => panic!("graphviz id suddenly allows spaces, brackets and stuff"),
             Err(_) => {;}
