@@ -242,6 +242,8 @@ fn visit_item(e: &Env, i: &ast::Item) {
                                     cstore::NativeFramework
                                 } else if k.equiv(&("framework")) {
                                     cstore::NativeFramework
+                                } else if k.equiv(&("dylib")) {
+                                    cstore::NativeUnknown
                                 } else {
                                     e.sess.span_err(m.span,
                                         format!("unknown kind: `{}`",
