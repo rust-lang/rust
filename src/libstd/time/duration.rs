@@ -554,11 +554,4 @@ mod tests {
         assert_eq!(format!("{:30}", Duration::days(1) + Duration::milliseconds(2345)),
                    "P1DT2.345S".to_string());
     }
-
-    #[test]
-    fn span() {
-        use io::timer::sleep;
-        let dur = Duration::span(|| sleep(Duration::milliseconds(5)));
-        assert!(dur > Duration::milliseconds(1));
-    }
 }
