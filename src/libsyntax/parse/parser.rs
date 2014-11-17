@@ -5178,7 +5178,15 @@ impl<'a> Parser<'a> {
             if self.eat(&token::OpenDelim(token::Brace)) {
                 // Parse a struct variant.
                 all_nullary = false;
-                kind = StructVariantKind(self.parse_struct_def());
+                let start_span = self.span;
+                let struct_def = self.parse_struct_def();
+                if struct_def.fields.len() == 0 {
+                    self.span_err(start_span,
+                        format!("unit-like struct variant should be written \
+                                 without braces, as `{},`",
+                                token::get_ident(ident)).as_slice());
+                }
+                kind = StructVariantKind(struct_def);
             } else if self.token == token::OpenDelim(token::Paren) {
                 all_nullary = false;
                 let arg_tys = self.parse_enum_variant_seq(
