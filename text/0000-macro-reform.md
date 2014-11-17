@@ -337,8 +337,6 @@ pub enum Item_ {
 }
 ```
 
-The current `macro_rules!`, which parses as an `ItemMac`.
-
 Leaving the body as an uninterpreted token tree also provides flexibility to
 make backwards-compatible changes.  One can imagine
 
