@@ -382,7 +382,7 @@ pub fn copy(from: &Path, to: &Path) -> IoResult<()> {
     let mut reader = try!(File::open(from));
     let mut writer = try!(File::create(to));
 
-    try!(super::util::copy(&mut reader, &mut writer));
+    try!(update_err(super::util::copy(&mut reader, &mut writer), from, to));
 
     chmod(to, try!(update_err(from.stat(), from, to)).perm)
 }
