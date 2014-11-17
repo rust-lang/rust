@@ -143,7 +143,7 @@ fn data_log_string(data: &[u8], pos: uint, max: uint) -> String {
     }
     if end < data.len() {
         buf.push_str(
-            format!( " ({} more bytes)", data.len() - end ).as_slice() 
+            format!( " ({} more bytes)", data.len() - end ).as_slice()
         );
     }
     buf.push_str(">>");
