@@ -36,7 +36,7 @@ use driver::config::{NoDebugInfo, FullDebugInfo};
 use driver::driver::{CrateAnalysis, CrateTranslation, ModuleTranslation};
 use driver::session::Session;
 use lint;
-use llvm::{BasicBlockRef, ValueRef, Vector, get_param};
+use llvm::{BasicBlockRef, Linkage, ValueRef, Vector, get_param};
 use llvm;
 use metadata::{csearch, encoder, loader};
 use middle::astencode;
@@ -2137,6 +2137,32 @@ impl<'a, 'tcx, 'v> Visitor<'v> for TransItemVisitor<'a, 'tcx> {
     }
 }
 
+pub fn llvm_linkage_by_name(name: &str) -> Option<Linkage> {
+    // Use the names from src/llvm/docs/LangRef.rst here. Most types are only
+    // applicable to variable declarations and may not really make sense for
+    // Rust code in the first place but whitelist them anyway and trust that
+    // the user knows what s/he's doing. Who knows, unanticipated use cases
+    // may pop up in the future.
+    //
+    // ghost, dllimport, dllexport and linkonce_odr_autohide are not supported
+    // and don't have to be, LLVM treats them as no-ops.
+    match name {
+        "appending" => Some(llvm::AppendingLinkage),
+        "available_externally" => Some(llvm::AvailableExternallyLinkage),
+        "common" => Some(llvm::CommonLinkage),
+        "extern_weak" => Some(llvm::ExternalWeakLinkage),
+        "external" => Some(llvm::ExternalLinkage),
+        "internal" => Some(llvm::InternalLinkage),
+        "linkonce" => Some(llvm::LinkOnceAnyLinkage),
+        "linkonce_odr" => Some(llvm::LinkOnceODRLinkage),
+        "private" => Some(llvm::PrivateLinkage),
+        "weak" => Some(llvm::WeakAnyLinkage),
+        "weak_odr" => Some(llvm::WeakODRLinkage),
+        _ => None,
+    }
+}
+
+
 /// Enum describing the origin of an LLVM `Value`, for linkage purposes.
 pub enum ValueOrigin {
     /// The LLVM `Value` is in this context because the corresponding item was
@@ -2172,6 +2198,23 @@ pub fn update_linkage(ccx: &CrateContext,
             return;
         },
         OriginalTranslation => {},
+    }
+
+    match id {
+        Some(id) => {
+            let item = ccx.tcx().map.get(id);
+            if let ast_map::NodeItem(i) = item {
+                if let Some(name) =  attr::first_attr_value_str_by_name(i.attrs[], "linkage") {
+                    if let Some(linkage) = llvm_linkage_by_name(name.get()) {
+                        llvm::SetLinkage(llval, linkage);
+                    } else {
+                        ccx.sess().span_fatal(i.span, "invalid linkage specified");
+                    }
+                    return;
+                }
+            }
+        }
+        _ => {}
     }
 
     match id {
