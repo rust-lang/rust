@@ -7,7 +7,7 @@ CFG_LIB_NAME_mipsel-unknown-linux-gnu=lib$(1).so
 CFG_STATIC_LIB_NAME_mipsel-unknown-linux-gnu=lib$(1).a
 CFG_LIB_GLOB_mipsel-unknown-linux-gnu=lib$(1)-*.so
 CFG_LIB_DSYM_GLOB_mipsel-unknown-linux-gnu=lib$(1)-*.dylib.dSYM
-CFG_CFLAGS_mipsel-unknown-linux-gnu := -mips32 -mabi=32 $(CFLAGS)
+CFG_JEMALLOC_CFLAGS_mipsel-unknown-linux-gnu := -mips32 -mabi=32 $(CFLAGS)
 CFG_GCCISH_CFLAGS_mipsel-unknown-linux-gnu := -Wall -g -fPIC -mips32 -mabi=32 $(CFLAGS)
 CFG_GCCISH_CXXFLAGS_mipsel-unknown-linux-gnu := -fno-rtti $(CXXFLAGS)
 CFG_GCCISH_LINK_FLAGS_mipsel-unknown-linux-gnu := -shared -fPIC -g -mips32
