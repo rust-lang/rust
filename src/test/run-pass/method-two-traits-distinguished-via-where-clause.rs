@@ -8,15 +8,27 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that regionck suggestions in a provided method of a trait
-// don't ICE
+// Test that we select between traits A and B. To do that, we must
+// consider the `Sized` bound.
 
-trait Foo<'a> {
-    fn foo(&'a self);
-    fn bar(&self) {
-        self.foo();
-        //~^ ERROR cannot infer
-    }
+trait A {
+    fn foo(self);
 }
 
-fn main() {}
+trait B {
+    fn foo(self);
+}
+
+impl<T: Sized> A for *const T {
+    fn foo(self) {}
+}
+
+impl<T> B for *const [T] {
+    fn foo(self) {}
+}
+
+fn main() {
+    let x: [int, ..4] = [1,2,3,4];
+    let xptr = x.as_slice() as *const _;
+    xptr.foo();
+}
