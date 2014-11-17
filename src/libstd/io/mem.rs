@@ -159,6 +159,19 @@ impl Reader for MemReader {
 
         return Ok(write_len);
     }
+
+    #[inline]
+    fn skip_exact(&mut self, n: uint) -> IoResult<()> {
+        let remaining = self.buf.len() - self.pos;
+        if remaining < n {
+            self.pos = self.buf.len();
+            Err(io::standard_error(io::EndOfFile))
+        }
+        else {
+            self.pos += n;
+            Ok(())
+        }
+    }
 }
 
 impl Seek for MemReader {
@@ -304,6 +317,19 @@ impl<'a> Reader for BufReader<'a> {
         assert!(self.pos <= self.buf.len());
 
         return Ok(write_len);
+     }
+
+     #[inline]
+     fn skip_exact(&mut self, n: uint) -> IoResult<()> {
+        let remaining = self.buf.len() - self.pos;
+        if remaining < n {
+            self.pos = self.buf.len();
+            Err(io::standard_error(io::EndOfFile))
+        }
+        else {
+            self.pos += n;
+            Ok(())
+        }
      }
 }
 

@@ -55,7 +55,7 @@ fs::unlink(&path);
 use clone::Clone;
 use io::standard_error;
 use io::{FilePermission, Write, Open, FileAccess, FileMode};
-use io::{IoResult, IoError, FileStat, SeekStyle, Seek, Writer, Reader};
+use io::{IoResult, IoError, FileStat, SeekStyle, Seek, SeekCur, Writer, Reader};
 use io::{Read, Truncate, ReadWrite, Append};
 use io::UpdateIoError;
 use io;
@@ -67,6 +67,7 @@ use result::{Err, Ok};
 use slice::SlicePrelude;
 use string::String;
 use vec::Vec;
+use num::ToPrimitive;
 
 use sys::fs as fs_imp;
 use sys_common;
@@ -704,6 +705,13 @@ impl Reader for File {
                 }
             },
             Err(e) => Err(e)
+        }
+    }
+
+    fn skip_exact(&mut self, n: uint) -> IoResult<()> {
+        match n.to_i64() {
+          Some(i) => self.seek(i, SeekCur),
+          None    => Err(io::standard_error(io::InvalidInput)),
         }
     }
 }

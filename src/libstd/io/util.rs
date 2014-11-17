@@ -93,6 +93,11 @@ impl Reader for ZeroReader {
         buf.set_memory(0);
         Ok(buf.len())
     }
+
+    #[inline]
+    fn skip_exact(&mut self, _: uint) -> io::IoResult<()> {
+        Ok(())
+    }
 }
 
 impl Buffer for ZeroReader {
