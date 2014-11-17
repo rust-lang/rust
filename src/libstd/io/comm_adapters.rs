@@ -30,7 +30,7 @@ use vec::Vec;
 /// let mut reader = ChanReader::new(rx);
 ///
 /// let mut buf = [0u8, ..100];
-/// match reader.read(buf) {
+/// match reader.read(&mut buf) {
 ///     Ok(nread) => println!("Read {} bytes", nread),
 ///     Err(e) => println!("read error: {}", e),
 /// }
@@ -172,17 +172,17 @@ mod test {
         let mut reader = ChanReader::new(rx);
         let mut buf = [0u8, ..3];
 
-        assert_eq!(Ok(0), reader.read([]));
+        assert_eq!(Ok(0), reader.read(&mut []));
 
-        assert_eq!(Ok(3), reader.read(buf));
+        assert_eq!(Ok(3), reader.read(&mut buf));
         let a: &[u8] = &[1,2,3];
         assert_eq!(a, buf.as_slice());
 
-        assert_eq!(Ok(3), reader.read(buf));
+        assert_eq!(Ok(3), reader.read(&mut buf));
         let a: &[u8] = &[4,5,6];
         assert_eq!(a, buf.as_slice());
 
-        assert_eq!(Ok(2), reader.read(buf));
+        assert_eq!(Ok(2), reader.read(&mut buf));
         let a: &[u8] = &[7,8,6];
         assert_eq!(a, buf.as_slice());
 

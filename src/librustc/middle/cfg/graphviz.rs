@@ -40,7 +40,7 @@ fn replace_newline_with_backslash_l(s: String) -> String {
         let mut last_two: Vec<_> =
             s.as_slice().chars().rev().take(2).collect();
         last_two.reverse();
-        if last_two.as_slice() != ['\\', 'l'] {
+        if last_two.as_slice() != &['\\', 'l'] {
             s.push_str("\\l");
         }
         s

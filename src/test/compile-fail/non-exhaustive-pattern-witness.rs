@@ -54,7 +54,7 @@ enum Enum {
 }
 
 fn vectors_with_nested_enums() {
-    let x: &'static [Enum] = [First, Second(false)];
+    let x: &'static [Enum] = &[First, Second(false)];
     match x {
     //~^ ERROR non-exhaustive patterns: `[Second(true), Second(false)]` not covered
         [] => (),

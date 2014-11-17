@@ -44,8 +44,8 @@ impl Stack {
         // allocation failure, which would fail to spawn the task. But there's
         // not many sensible things to do on OOM.  Failure seems fine (and is
         // what the old stack allocation did).
-        let stack = match MemoryMap::new(size, [MapReadable, MapWritable,
-                                         MapNonStandardFlags(STACK_FLAGS)]) {
+        let stack = match MemoryMap::new(size, &[MapReadable, MapWritable,
+                                                 MapNonStandardFlags(STACK_FLAGS)]) {
             Ok(map) => map,
             Err(e) => panic!("mmap for stack of size {} failed: {}", size, e)
         };

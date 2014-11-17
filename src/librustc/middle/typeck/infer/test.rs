@@ -376,7 +376,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
 
 #[test]
 fn contravariant_region_ptr_ok() {
-    test_env("contravariant_region_ptr", EMPTY_SOURCE_STR, errors([]), |env| {
+    test_env("contravariant_region_ptr", EMPTY_SOURCE_STR, errors(&[]), |env| {
         env.create_simple_region_hierarchy();
         let t_rptr1 = env.t_rptr_scope(1);
         let t_rptr10 = env.t_rptr_scope(10);
@@ -390,7 +390,7 @@ fn contravariant_region_ptr_ok() {
 fn contravariant_region_ptr_err() {
     test_env("contravariant_region_ptr",
              EMPTY_SOURCE_STR,
-             errors(["lifetime mismatch"]),
+             errors(&["lifetime mismatch"]),
              |env| {
                  env.create_simple_region_hierarchy();
                  let t_rptr1 = env.t_rptr_scope(1);
@@ -405,114 +405,114 @@ fn contravariant_region_ptr_err() {
 
 #[test]
 fn lub_bound_bound() {
-    test_env("contravariant_region_ptr", EMPTY_SOURCE_STR, errors([]), |env| {
+    test_env("contravariant_region_ptr", EMPTY_SOURCE_STR, errors(&[]), |env| {
         let t_rptr_bound1 = env.t_rptr_late_bound(22, 1);
         let t_rptr_bound2 = env.t_rptr_late_bound(22, 2);
-        env.check_lub(env.t_fn(22, [t_rptr_bound1], env.t_int()),
-                      env.t_fn(22, [t_rptr_bound2], env.t_int()),
-                      env.t_fn(22, [t_rptr_bound1], env.t_int()));
+        env.check_lub(env.t_fn(22, &[t_rptr_bound1], env.t_int()),
+                      env.t_fn(22, &[t_rptr_bound2], env.t_int()),
+                      env.t_fn(22, &[t_rptr_bound1], env.t_int()));
     })
 }
 
 #[test]
 fn lub_bound_free() {
-    test_env("contravariant_region_ptr", EMPTY_SOURCE_STR, errors([]), |env| {
+    test_env("contravariant_region_ptr", EMPTY_SOURCE_STR, errors(&[]), |env| {
         let t_rptr_bound1 = env.t_rptr_late_bound(22, 1);
         let t_rptr_free1 = env.t_rptr_free(0, 1);
-        env.check_lub(env.t_fn(22, [t_rptr_bound1], env.t_int()),
-                      env.t_fn(22, [t_rptr_free1], env.t_int()),
-                      env.t_fn(22, [t_rptr_free1], env.t_int()));
+        env.check_lub(env.t_fn(22, &[t_rptr_bound1], env.t_int()),
+                      env.t_fn(22, &[t_rptr_free1], env.t_int()),
+                      env.t_fn(22, &[t_rptr_free1], env.t_int()));
     })
 }
 
 #[test]
 fn lub_bound_static() {
-    test_env("contravariant_region_ptr", EMPTY_SOURCE_STR, errors([]), |env| {
+    test_env("contravariant_region_ptr", EMPTY_SOURCE_STR, errors(&[]), |env| {
         let t_rptr_bound1 = env.t_rptr_late_bound(22, 1);
         let t_rptr_static = env.t_rptr_static();
-        env.check_lub(env.t_fn(22, [t_rptr_bound1], env.t_int()),
-                      env.t_fn(22, [t_rptr_static], env.t_int()),
-                      env.t_fn(22, [t_rptr_static], env.t_int()));
+        env.check_lub(env.t_fn(22, &[t_rptr_bound1], env.t_int()),
+                      env.t_fn(22, &[t_rptr_static], env.t_int()),
+                      env.t_fn(22, &[t_rptr_static], env.t_int()));
     })
 }
 
 #[test]
 fn lub_bound_bound_inverse_order() {
-    test_env("contravariant_region_ptr", EMPTY_SOURCE_STR, errors([]), |env| {
+    test_env("contravariant_region_ptr", EMPTY_SOURCE_STR, errors(&[]), |env| {
         let t_rptr_bound1 = env.t_rptr_late_bound(22, 1);
         let t_rptr_bound2 = env.t_rptr_late_bound(22, 2);
-        env.check_lub(env.t_fn(22, [t_rptr_bound1, t_rptr_bound2], t_rptr_bound1),
-                      env.t_fn(22, [t_rptr_bound2, t_rptr_bound1], t_rptr_bound1),
-                      env.t_fn(22, [t_rptr_bound1, t_rptr_bound1], t_rptr_bound1));
+        env.check_lub(env.t_fn(22, &[t_rptr_bound1, t_rptr_bound2], t_rptr_bound1),
+                      env.t_fn(22, &[t_rptr_bound2, t_rptr_bound1], t_rptr_bound1),
+                      env.t_fn(22, &[t_rptr_bound1, t_rptr_bound1], t_rptr_bound1));
     })
 }
 
 #[test]
 fn lub_free_free() {
-    test_env("contravariant_region_ptr", EMPTY_SOURCE_STR, errors([]), |env| {
+    test_env("contravariant_region_ptr", EMPTY_SOURCE_STR, errors(&[]), |env| {
         let t_rptr_free1 = env.t_rptr_free(0, 1);
         let t_rptr_free2 = env.t_rptr_free(0, 2);
         let t_rptr_static = env.t_rptr_static();
-        env.check_lub(env.t_fn(22, [t_rptr_free1], env.t_int()),
-                      env.t_fn(22, [t_rptr_free2], env.t_int()),
-                      env.t_fn(22, [t_rptr_static], env.t_int()));
+        env.check_lub(env.t_fn(22, &[t_rptr_free1], env.t_int()),
+                      env.t_fn(22, &[t_rptr_free2], env.t_int()),
+                      env.t_fn(22, &[t_rptr_static], env.t_int()));
     })
 }
 
 #[test]
 fn lub_returning_scope() {
     test_env("contravariant_region_ptr", EMPTY_SOURCE_STR,
-             errors(["cannot infer an appropriate lifetime"]), |env| {
+             errors(&["cannot infer an appropriate lifetime"]), |env| {
                  let t_rptr_scope10 = env.t_rptr_scope(10);
                  let t_rptr_scope11 = env.t_rptr_scope(11);
 
                  // this should generate an error when regions are resolved
-                 env.make_lub_ty(env.t_fn(22, [], t_rptr_scope10),
-                                 env.t_fn(22, [], t_rptr_scope11));
+                 env.make_lub_ty(env.t_fn(22, &[], t_rptr_scope10),
+                                 env.t_fn(22, &[], t_rptr_scope11));
              })
 }
 
 #[test]
 fn glb_free_free_with_common_scope() {
-    test_env("contravariant_region_ptr", EMPTY_SOURCE_STR, errors([]), |env| {
+    test_env("contravariant_region_ptr", EMPTY_SOURCE_STR, errors(&[]), |env| {
         let t_rptr_free1 = env.t_rptr_free(0, 1);
         let t_rptr_free2 = env.t_rptr_free(0, 2);
         let t_rptr_scope = env.t_rptr_scope(0);
-        env.check_glb(env.t_fn(22, [t_rptr_free1], env.t_int()),
-                      env.t_fn(22, [t_rptr_free2], env.t_int()),
-                      env.t_fn(22, [t_rptr_scope], env.t_int()));
+        env.check_glb(env.t_fn(22, &[t_rptr_free1], env.t_int()),
+                      env.t_fn(22, &[t_rptr_free2], env.t_int()),
+                      env.t_fn(22, &[t_rptr_scope], env.t_int()));
     })
 }
 
 #[test]
 fn glb_bound_bound() {
-    test_env("contravariant_region_ptr", EMPTY_SOURCE_STR, errors([]), |env| {
+    test_env("contravariant_region_ptr", EMPTY_SOURCE_STR, errors(&[]), |env| {
         let t_rptr_bound1 = env.t_rptr_late_bound(22, 1);
         let t_rptr_bound2 = env.t_rptr_late_bound(22, 2);
-        env.check_glb(env.t_fn(22, [t_rptr_bound1], env.t_int()),
-                      env.t_fn(22, [t_rptr_bound2], env.t_int()),
-                      env.t_fn(22, [t_rptr_bound1], env.t_int()));
+        env.check_glb(env.t_fn(22, &[t_rptr_bound1], env.t_int()),
+                      env.t_fn(22, &[t_rptr_bound2], env.t_int()),
+                      env.t_fn(22, &[t_rptr_bound1], env.t_int()));
     })
 }
 
 #[test]
 fn glb_bound_free() {
-    test_env("contravariant_region_ptr", EMPTY_SOURCE_STR, errors([]), |env| {
+    test_env("contravariant_region_ptr", EMPTY_SOURCE_STR, errors(&[]), |env| {
         let t_rptr_bound1 = env.t_rptr_late_bound(22, 1);
         let t_rptr_free1 = env.t_rptr_free(0, 1);
-        env.check_glb(env.t_fn(22, [t_rptr_bound1], env.t_int()),
-                      env.t_fn(22, [t_rptr_free1], env.t_int()),
-                      env.t_fn(22, [t_rptr_bound1], env.t_int()));
+        env.check_glb(env.t_fn(22, &[t_rptr_bound1], env.t_int()),
+                      env.t_fn(22, &[t_rptr_free1], env.t_int()),
+                      env.t_fn(22, &[t_rptr_bound1], env.t_int()));
     })
 }
 
 #[test]
 fn glb_bound_static() {
-    test_env("contravariant_region_ptr", EMPTY_SOURCE_STR, errors([]), |env| {
+    test_env("contravariant_region_ptr", EMPTY_SOURCE_STR, errors(&[]), |env| {
         let t_rptr_bound1 = env.t_rptr_late_bound(22, 1);
         let t_rptr_static = env.t_rptr_static();
-        env.check_glb(env.t_fn(22, [t_rptr_bound1], env.t_int()),
-                      env.t_fn(22, [t_rptr_static], env.t_int()),
-                      env.t_fn(22, [t_rptr_bound1], env.t_int()));
+        env.check_glb(env.t_fn(22, &[t_rptr_bound1], env.t_int()),
+                      env.t_fn(22, &[t_rptr_static], env.t_int()),
+                      env.t_fn(22, &[t_rptr_bound1], env.t_int()));
     })
 }

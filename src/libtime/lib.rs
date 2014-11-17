@@ -904,7 +904,7 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ParseError> {
     fn parse_type(s: &str, pos: uint, ch: char, tm: &mut Tm)
       -> Result<uint, ParseError> {
         match ch {
-          'A' => match match_strs(s, pos, [
+          'A' => match match_strs(s, pos, &[
               ("Sunday", 0_i32),
               ("Monday", 1_i32),
               ("Tuesday", 2_i32),
@@ -916,7 +916,7 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ParseError> {
             Some(item) => { let (v, pos) = item; tm.tm_wday = v; Ok(pos) }
             None => Err(InvalidDay)
           },
-          'a' => match match_strs(s, pos, [
+          'a' => match match_strs(s, pos, &[
               ("Sun", 0_i32),
               ("Mon", 1_i32),
               ("Tue", 2_i32),
@@ -928,7 +928,7 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ParseError> {
             Some(item) => { let (v, pos) = item; tm.tm_wday = v; Ok(pos) }
             None => Err(InvalidDay)
           },
-          'B' => match match_strs(s, pos, [
+          'B' => match match_strs(s, pos, &[
               ("January", 0_i32),
               ("February", 1_i32),
               ("March", 2_i32),
@@ -945,7 +945,7 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ParseError> {
             Some(item) => { let (v, pos) = item; tm.tm_mon = v; Ok(pos) }
             None => Err(InvalidMonth)
           },
-          'b' | 'h' => match match_strs(s, pos, [
+          'b' | 'h' => match match_strs(s, pos, &[
               ("Jan", 0_i32),
               ("Feb", 1_i32),
               ("Mar", 2_i32),
@@ -1071,13 +1071,13 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ParseError> {
           }
           'n' => parse_char(s, pos, '\n'),
           'P' => match match_strs(s, pos,
-                                  [("am", 0_i32), ("pm", 12_i32)]) {
+                                  &[("am", 0_i32), ("pm", 12_i32)]) {
 
             Some(item) => { let (v, pos) = item; tm.tm_hour += v; Ok(pos) }
             None => Err(InvalidHour)
           },
           'p' => match match_strs(s, pos,
-                                  [("AM", 0_i32), ("PM", 12_i32)]) {
+                                  &[("AM", 0_i32), ("PM", 12_i32)]) {
 
             Some(item) => { let (v, pos) = item; tm.tm_hour += v; Ok(pos) }
             None => Err(InvalidHour)
@@ -1225,13 +1225,13 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ParseError> {
         let next = range.next;
 
         let mut buf = [0];
-        let c = match rdr.read(buf) {
+        let c = match rdr.read(&mut buf) {
             Ok(..) => buf[0] as char,
             Err(..) => break
         };
         match c {
             '%' => {
-                let ch = match rdr.read(buf) {
+                let ch = match rdr.read(&mut buf) {
                     Ok(..) => buf[0] as char,
                     Err(..) => break
                 };

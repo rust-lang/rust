@@ -51,7 +51,7 @@ pub fn trans_exchange_free_dyn<'blk, 'tcx>(cx: Block<'blk, 'tcx>, v: ValueRef,
     let ccx = cx.ccx();
     callee::trans_lang_call(cx,
         langcall(cx, None, "", ExchangeFreeFnLangItem),
-        [PointerCast(cx, v, Type::i8p(ccx)), size, align],
+        &[PointerCast(cx, v, Type::i8p(ccx)), size, align],
         Some(expr::Ignore)).bcx
 }
 
@@ -124,7 +124,7 @@ pub fn drop_ty<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             None => debuginfo::clear_source_location(bcx.fcx)
         };
 
-        Call(bcx, glue, [ptr], None);
+        Call(bcx, glue, &[ptr], None);
     }
     bcx
 }
@@ -195,7 +195,7 @@ fn trans_struct_drop_flag<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     let struct_data = if ty::type_is_sized(bcx.tcx(), t) {
         v0
     } else {
-        let llval = GEPi(bcx, v0, [0, abi::slice_elt_base]);
+        let llval = GEPi(bcx, v0, &[0, abi::slice_elt_base]);
         Load(bcx, llval)
     };
     let drop_flag = unpack_datum!(bcx, adt::trans_drop_flag_ptr(bcx, &*repr, struct_data));
@@ -236,8 +236,8 @@ fn trans_struct_drop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let (struct_data, info) = if ty::type_is_sized(bcx.tcx(), t) {
         (v0, None)
     } else {
-        let data = GEPi(bcx, v0, [0, abi::slice_elt_base]);
-        let info = GEPi(bcx, v0, [0, abi::slice_elt_len]);
+        let data = GEPi(bcx, v0, &[0, abi::slice_elt_base]);
+        let info = GEPi(bcx, v0, &[0, abi::slice_elt_len]);
         (Load(bcx, data), Some(Load(bcx, info)))
     };
 
@@ -254,14 +254,14 @@ fn trans_struct_drop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             // The dtor expects a fat pointer, so make one, even if we have to fake it.
             let boxed_ty = ty::mk_open(bcx.tcx(), t);
             let scratch = datum::rvalue_scratch_datum(bcx, boxed_ty, "__fat_ptr_drop_self");
-            Store(bcx, value, GEPi(bcx, scratch.val, [0, abi::slice_elt_base]));
+            Store(bcx, value, GEPi(bcx, scratch.val, &[0, abi::slice_elt_base]));
             Store(bcx,
                   // If we just had a thin pointer, make a fat pointer by sticking
                   // null where we put the unsizing info. This works because t
                   // is a sized type, so we will only unpack the fat pointer, never
                   // use the fake info.
                   info.unwrap_or(C_null(Type::i8p(bcx.ccx()))),
-                  GEPi(bcx, scratch.val, [0, abi::slice_elt_len]));
+                  GEPi(bcx, scratch.val, &[0, abi::slice_elt_len]));
             PointerCast(variant_cx, scratch.val, params[0])
         } else {
             PointerCast(variant_cx, value, params[0])
@@ -279,8 +279,8 @@ fn trans_struct_drop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             } else {
                 let boxed_ty = ty::mk_open(bcx.tcx(), *ty);
                 let scratch = datum::rvalue_scratch_datum(bcx, boxed_ty, "__fat_ptr_drop_field");
-                Store(bcx, llfld_a, GEPi(bcx, scratch.val, [0, abi::slice_elt_base]));
-                Store(bcx, info.unwrap(), GEPi(bcx, scratch.val, [0, abi::slice_elt_len]));
+                Store(bcx, llfld_a, GEPi(bcx, scratch.val, &[0, abi::slice_elt_base]));
+                Store(bcx, info.unwrap(), GEPi(bcx, scratch.val, &[0, abi::slice_elt_len]));
                 scratch.val
             };
             variant_cx.fcx.schedule_drop_mem(cleanup::CustomScope(field_scope),
@@ -288,7 +288,7 @@ fn trans_struct_drop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }
 
         let dtor_ty = ty::mk_ctor_fn(variant_cx.tcx(), ast::DUMMY_NODE_ID,
-                                     [get_drop_glue_type(bcx.ccx(), t)], ty::mk_nil(bcx.tcx()));
+                                     &[get_drop_glue_type(bcx.ccx(), t)], ty::mk_nil(bcx.tcx()));
         let (_, variant_cx) = invoke(variant_cx, dtor_addr, args, dtor_ty, None, false);
 
         variant_cx.fcx.pop_and_trans_custom_cleanup_scope(variant_cx, field_scope);
@@ -335,8 +335,8 @@ fn size_and_align_of_dst(bcx: Block, t :ty::t, info: ValueRef) -> (ValueRef, Val
             // info points to the vtable and the second entry in the vtable is the
             // dynamic size of the object.
             let info = PointerCast(bcx, info, Type::int(bcx.ccx()).ptr_to());
-            let size_ptr = GEPi(bcx, info, [1u]);
-            let align_ptr = GEPi(bcx, info, [2u]);
+            let size_ptr = GEPi(bcx, info, &[1u]);
+            let align_ptr = GEPi(bcx, info, &[2u]);
             (Load(bcx, size_ptr), Load(bcx, align_ptr))
         }
         ty::ty_vec(unit_ty, None) => {
@@ -366,26 +366,26 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, t: ty::t)
                     tvec::make_drop_glue_unboxed(bcx, v0, unit_ty, true)
                 }
                 ty::ty_trait(..) => {
-                    let lluniquevalue = GEPi(bcx, v0, [0, abi::trt_field_box]);
+                    let lluniquevalue = GEPi(bcx, v0, &[0, abi::trt_field_box]);
                     // Only drop the value when it is non-null
                     let concrete_ptr = Load(bcx, lluniquevalue);
                     with_cond(bcx, IsNotNull(bcx, concrete_ptr), |bcx| {
-                        let dtor_ptr = Load(bcx, GEPi(bcx, v0, [0, abi::trt_field_vtable]));
+                        let dtor_ptr = Load(bcx, GEPi(bcx, v0, &[0, abi::trt_field_vtable]));
                         let dtor = Load(bcx, dtor_ptr);
                         Call(bcx,
                              dtor,
-                             [PointerCast(bcx, lluniquevalue, Type::i8p(bcx.ccx()))],
+                             &[PointerCast(bcx, lluniquevalue, Type::i8p(bcx.ccx()))],
                              None);
                         bcx
                     })
                 }
                 ty::ty_struct(..) if !ty::type_is_sized(bcx.tcx(), content_ty) => {
-                    let llval = GEPi(bcx, v0, [0, abi::slice_elt_base]);
+                    let llval = GEPi(bcx, v0, &[0, abi::slice_elt_base]);
                     let llbox = Load(bcx, llval);
                     let not_null = IsNotNull(bcx, llbox);
                     with_cond(bcx, not_null, |bcx| {
                         let bcx = drop_ty(bcx, v0, content_ty, None);
-                        let info = GEPi(bcx, v0, [0, abi::slice_elt_len]);
+                        let info = GEPi(bcx, v0, &[0, abi::slice_elt_len]);
                         let info = Load(bcx, info);
                         let (llsize, llalign) = size_and_align_of_dst(bcx, content_ty, info);
                         trans_exchange_free_dyn(bcx, llbox, llsize, llalign)
@@ -437,14 +437,14 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, t: ty::t)
                                                          t,
                                                          |bb, vv, tt| drop_ty(bb, vv, tt, None)),
         ty::ty_closure(ref f) if f.store == ty::UniqTraitStore => {
-            let box_cell_v = GEPi(bcx, v0, [0u, abi::fn_field_box]);
+            let box_cell_v = GEPi(bcx, v0, &[0u, abi::fn_field_box]);
             let env = Load(bcx, box_cell_v);
             let env_ptr_ty = Type::at_box(bcx.ccx(), Type::i8(bcx.ccx())).ptr_to();
             let env = PointerCast(bcx, env, env_ptr_ty);
             with_cond(bcx, IsNotNull(bcx, env), |bcx| {
-                let dtor_ptr = GEPi(bcx, env, [0u, abi::box_field_drop_glue]);
+                let dtor_ptr = GEPi(bcx, env, &[0u, abi::box_field_drop_glue]);
                 let dtor = Load(bcx, dtor_ptr);
-                Call(bcx, dtor, [PointerCast(bcx, box_cell_v, Type::i8p(bcx.ccx()))], None);
+                Call(bcx, dtor, &[PointerCast(bcx, box_cell_v, Type::i8p(bcx.ccx()))], None);
                 bcx
             })
         }
@@ -453,12 +453,12 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, t: ty::t)
             // above), because this happens for a trait field in an unsized
             // struct. If anything is null, it is the whole struct and we won't
             // get here.
-            let lluniquevalue = GEPi(bcx, v0, [0, abi::trt_field_box]);
-            let dtor_ptr = Load(bcx, GEPi(bcx, v0, [0, abi::trt_field_vtable]));
+            let lluniquevalue = GEPi(bcx, v0, &[0, abi::trt_field_box]);
+            let dtor_ptr = Load(bcx, GEPi(bcx, v0, &[0, abi::trt_field_vtable]));
             let dtor = Load(bcx, dtor_ptr);
             Call(bcx,
                  dtor,
-                 [PointerCast(bcx, Load(bcx, lluniquevalue), Type::i8p(bcx.ccx()))],
+                 &[PointerCast(bcx, Load(bcx, lluniquevalue), Type::i8p(bcx.ccx()))],
                  None);
             bcx
         }
@@ -578,10 +578,10 @@ pub fn emit_tydescs(ccx: &CrateContext) {
         ccx.stats().n_real_glues.set(ccx.stats().n_real_glues.get() + 1);
 
         let tydesc = C_named_struct(ccx.tydesc_type(),
-                                    [ti.size, // size
-                                     ti.align, // align
-                                     drop_glue, // drop_glue
-                                     ti.name]); // name
+                                    &[ti.size, // size
+                                      ti.align, // align
+                                      drop_glue, // drop_glue
+                                      ti.name]); // name
 
         unsafe {
             let gvar = ti.tydesc;

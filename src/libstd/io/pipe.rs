@@ -125,12 +125,12 @@ mod test {
         let (tx, rx) = channel();
         spawn(proc() {
             let mut out = out;
-            out.write([10]).unwrap();
+            out.write(&[10]).unwrap();
             rx.recv(); // don't close the pipe until the other read has finished
         });
 
         let mut buf = [0, ..10];
-        input.read(buf).unwrap();
+        input.read(&mut buf).unwrap();
         tx.send(());
     }
 }

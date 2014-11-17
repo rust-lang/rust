@@ -361,8 +361,8 @@ fn escape_str(writer: &mut io::Writer, v: &str) -> Result<(), io::IoError> {
 
 fn escape_char(writer: &mut io::Writer, v: char) -> Result<(), io::IoError> {
     let mut buf = [0, .. 4];
-    v.encode_utf8(buf);
-    escape_bytes(writer, buf)
+    v.encode_utf8(&mut buf);
+    escape_bytes(writer, &mut buf)
 }
 
 fn spaces(wr: &mut io::Writer, mut n: uint) -> Result<(), io::IoError> {
@@ -370,7 +370,7 @@ fn spaces(wr: &mut io::Writer, mut n: uint) -> Result<(), io::IoError> {
     static BUF: [u8, ..LEN] = [b' ', ..LEN];
 
     while n >= LEN {
-        try!(wr.write(BUF));
+        try!(wr.write(&BUF));
         n -= LEN;
     }
 
@@ -2584,27 +2584,27 @@ mod tests {
 
     #[test]
     fn test_write_object() {
-        assert_eq!(mk_object([]).to_string().into_string(), "{}".to_string());
-        assert_eq!(mk_object([]).to_pretty_str().into_string(), "{}".to_string());
+        assert_eq!(mk_object(&[]).to_string().into_string(), "{}".to_string());
+        assert_eq!(mk_object(&[]).to_pretty_str().into_string(), "{}".to_string());
 
         assert_eq!(
-            mk_object([
+            mk_object(&[
                 ("a".to_string(), Boolean(true))
             ]).to_string().into_string(),
             "{\"a\":true}".to_string()
         );
         assert_eq!(
-            mk_object([("a".to_string(), Boolean(true))]).to_pretty_str(),
+            mk_object(&[("a".to_string(), Boolean(true))]).to_pretty_str(),
             "\
             {\n  \
                 \"a\": true\n\
             }".to_string()
         );
 
-        let complex_obj = mk_object([
+        let complex_obj = mk_object(&[
                 ("b".to_string(), List(vec![
-                    mk_object([("c".to_string(), String("\x0c\r".to_string()))]),
-                    mk_object([("d".to_string(), String("".to_string()))])
+                    mk_object(&[("c".to_string(), String("\x0c\r".to_string()))]),
+                    mk_object(&[("d".to_string(), String("".to_string()))])
                 ]))
             ]);
 
@@ -2632,11 +2632,11 @@ mod tests {
             }".to_string()
         );
 
-        let a = mk_object([
+        let a = mk_object(&[
             ("a".to_string(), Boolean(true)),
             ("b".to_string(), List(vec![
-                mk_object([("c".to_string(), String("\x0c\r".to_string()))]),
-                mk_object([("d".to_string(), String("".to_string()))])
+                mk_object(&[("c".to_string(), String("\x0c\r".to_string()))]),
+                mk_object(&[("d".to_string(), String("".to_string()))])
             ]))
         ]);
 
@@ -2941,22 +2941,22 @@ mod tests {
         assert_eq!(from_str("{\"a\":1 1"), Err(SyntaxError(InvalidSyntax,         1, 8)));
         assert_eq!(from_str("{\"a\":1,"),  Err(SyntaxError(EOFWhileParsingObject, 1, 8)));
 
-        assert_eq!(from_str("{}").unwrap(), mk_object([]));
+        assert_eq!(from_str("{}").unwrap(), mk_object(&[]));
         assert_eq!(from_str("{\"a\": 3}").unwrap(),
-                  mk_object([("a".to_string(), U64(3))]));
+                  mk_object(&[("a".to_string(), U64(3))]));
 
         assert_eq!(from_str(
                       "{ \"a\": null, \"b\" : true }").unwrap(),
-                  mk_object([
+                  mk_object(&[
                       ("a".to_string(), Null),
                       ("b".to_string(), Boolean(true))]));
         assert_eq!(from_str("\n{ \"a\": null, \"b\" : true }\n").unwrap(),
-                  mk_object([
+                  mk_object(&[
                       ("a".to_string(), Null),
                       ("b".to_string(), Boolean(true))]));
         assert_eq!(from_str(
                       "{\"a\" : 1.0 ,\"b\": [ true ]}").unwrap(),
-                  mk_object([
+                  mk_object(&[
                       ("a".to_string(), F64(1.0)),
                       ("b".to_string(), List(vec![Boolean(true)]))
                   ]));
@@ -2969,13 +2969,13 @@ mod tests {
                               { \"c\": {\"d\": null} } \
                           ]\
                       }").unwrap(),
-                  mk_object([
+                  mk_object(&[
                       ("a".to_string(), F64(1.0)),
                       ("b".to_string(), List(vec![
                           Boolean(true),
                           String("foo\nbar".to_string()),
-                          mk_object([
-                              ("c".to_string(), mk_object([("d".to_string(), Null)]))
+                          mk_object(&[
+                              ("c".to_string(), mk_object(&[("d".to_string(), Null)]))
                           ])
                       ]))
                   ]));
@@ -3639,20 +3639,20 @@ mod tests {
         stack.bump_index();
 
         assert!(stack.len() == 1);
-        assert!(stack.is_equal_to([Index(1)]));
-        assert!(stack.starts_with([Index(1)]));
-        assert!(stack.ends_with([Index(1)]));
+        assert!(stack.is_equal_to(&[Index(1)]));
+        assert!(stack.starts_with(&[Index(1)]));
+        assert!(stack.ends_with(&[Index(1)]));
         assert!(stack.last_is_index());
         assert!(stack.get(0) == Index(1));
 
         stack.push_key("foo".to_string());
 
         assert!(stack.len() == 2);
-        assert!(stack.is_equal_to([Index(1), Key("foo")]));
-        assert!(stack.starts_with([Index(1), Key("foo")]));
-        assert!(stack.starts_with([Index(1)]));
-        assert!(stack.ends_with([Index(1), Key("foo")]));
-        assert!(stack.ends_with([Key("foo")]));
+        assert!(stack.is_equal_to(&[Index(1), Key("foo")]));
+        assert!(stack.starts_with(&[Index(1), Key("foo")]));
+        assert!(stack.starts_with(&[Index(1)]));
+        assert!(stack.ends_with(&[Index(1), Key("foo")]));
+        assert!(stack.ends_with(&[Key("foo")]));
         assert!(!stack.last_is_index());
         assert!(stack.get(0) == Index(1));
         assert!(stack.get(1) == Key("foo"));
@@ -3660,13 +3660,13 @@ mod tests {
         stack.push_key("bar".to_string());
 
         assert!(stack.len() == 3);
-        assert!(stack.is_equal_to([Index(1), Key("foo"), Key("bar")]));
-        assert!(stack.starts_with([Index(1)]));
-        assert!(stack.starts_with([Index(1), Key("foo")]));
-        assert!(stack.starts_with([Index(1), Key("foo"), Key("bar")]));
-        assert!(stack.ends_with([Key("bar")]));
-        assert!(stack.ends_with([Key("foo"), Key("bar")]));
-        assert!(stack.ends_with([Index(1), Key("foo"), Key("bar")]));
+        assert!(stack.is_equal_to(&[Index(1), Key("foo"), Key("bar")]));
+        assert!(stack.starts_with(&[Index(1)]));
+        assert!(stack.starts_with(&[Index(1), Key("foo")]));
+        assert!(stack.starts_with(&[Index(1), Key("foo"), Key("bar")]));
+        assert!(stack.ends_with(&[Key("bar")]));
+        assert!(stack.ends_with(&[Key("foo"), Key("bar")]));
+        assert!(stack.ends_with(&[Index(1), Key("foo"), Key("bar")]));
         assert!(!stack.last_is_index());
         assert!(stack.get(0) == Index(1));
         assert!(stack.get(1) == Key("foo"));
@@ -3675,11 +3675,11 @@ mod tests {
         stack.pop();
 
         assert!(stack.len() == 2);
-        assert!(stack.is_equal_to([Index(1), Key("foo")]));
-        assert!(stack.starts_with([Index(1), Key("foo")]));
-        assert!(stack.starts_with([Index(1)]));
-        assert!(stack.ends_with([Index(1), Key("foo")]));
-        assert!(stack.ends_with([Key("foo")]));
+        assert!(stack.is_equal_to(&[Index(1), Key("foo")]));
+        assert!(stack.starts_with(&[Index(1), Key("foo")]));
+        assert!(stack.starts_with(&[Index(1)]));
+        assert!(stack.ends_with(&[Index(1), Key("foo")]));
+        assert!(stack.ends_with(&[Key("foo")]));
         assert!(!stack.last_is_index());
         assert!(stack.get(0) == Index(1));
         assert!(stack.get(1) == Key("foo"));

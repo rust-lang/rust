@@ -1034,11 +1034,11 @@ mod tests {
             assert_eq!(out, expected);
         }
 
-        t(&Summary::new([-2.0f64, -1.0f64]),
+        t(&Summary::new(&[-2.0f64, -1.0f64]),
                         "-2 |[------******#*****---]| -1".to_string());
-        t(&Summary::new([0.0f64, 2.0f64]),
+        t(&Summary::new(&[0.0f64, 2.0f64]),
                         "0 |[-------*****#*******---]| 2".to_string());
-        t(&Summary::new([-2.0f64, 0.0f64]),
+        t(&Summary::new(&[-2.0f64, 0.0f64]),
                         "-2 |[------******#******---]| 0".to_string());
 
     }

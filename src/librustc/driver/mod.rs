@@ -48,7 +48,7 @@ fn run_compiler(args: &[String]) {
         None => return
     };
 
-    let descriptions = diagnostics::registry::Registry::new(super::DIAGNOSTICS);
+    let descriptions = diagnostics::registry::Registry::new(&super::DIAGNOSTICS);
     match matches.opt_str("explain") {
         Some(ref code) => {
             match descriptions.find_description(code.as_slice()) {
