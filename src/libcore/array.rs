@@ -8,22 +8,36 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
- * Implementations of things like `Eq` for fixed-length arrays
- * up to a certain length. Eventually we should able to generalize
- * to all lengths.
- */
+//! Implementations of things like `Eq` for fixed-length arrays
+//! up to a certain length. Eventually we should able to generalize
+//! to all lengths.
 
-#![stable]
 #![experimental] // not yet reviewed
 
-use cmp::*;
-use option::{Option};
+use clone::Clone;
+use cmp::{PartialEq, Eq, PartialOrd, Ord, Ordering};
+use fmt;
+use kinds::Copy;
+use option::Option;
 
 // macro for implementing n-ary tuple functions and operations
 macro_rules! array_impls {
     ($($N:expr)+) => {
         $(
+            #[unstable = "waiting for Clone to stabilize"]
+            impl<T:Copy> Clone for [T, ..$N] {
+                fn clone(&self) -> [T, ..$N] {
+                    *self
+                }
+            }
+
+            #[unstable = "waiting for Show to stabilize"]
+            impl<T:fmt::Show> fmt::Show for [T, ..$N] {
+                fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                    fmt::Show::fmt(&self[], f)
+                }
+            }
+
             #[unstable = "waiting for PartialEq to stabilize"]
             impl<T:PartialEq> PartialEq for [T, ..$N] {
                 #[inline]
