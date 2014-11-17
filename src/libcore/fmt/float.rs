@@ -10,6 +10,10 @@
 
 #![allow(missing_docs)]
 
+pub use self::ExponentFormat::*;
+pub use self::SignificantDigits::*;
+pub use self::SignFormat::*;
+
 use char;
 use fmt;
 use iter::{range, DoubleEndedIterator};

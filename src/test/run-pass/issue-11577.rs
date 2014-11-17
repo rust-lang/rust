@@ -19,8 +19,8 @@ enum Foo {
 struct SBar { num: int }
 
 pub fn main() {
-    let vbar = VBar { num: 1 };
-    let VBar { num } = vbar;
+    let vbar = Foo::VBar { num: 1 };
+    let Foo::VBar { num } = vbar;
     assert_eq!(num, 1);
 
     let sbar = SBar { num: 2 };

@@ -86,7 +86,7 @@ pub fn pub_fn() {
     let used_struct1 = UsedStruct1 { x: 1 };
     let used_struct2 = UsedStruct2(1);
     let used_struct3 = UsedStruct3;
-    let e = foo3;
+    let e = used_enum::foo3;
     SemiUsedStruct::la_la_la();
 
     let i = 1i;
@@ -104,7 +104,7 @@ fn used_fn() {}
 
 fn foo() { //~ ERROR: function is never used
     bar();
-    let unused_enum = foo2;
+    let unused_enum = priv_enum::foo2;
 }
 
 fn bar() { //~ ERROR: function is never used

@@ -29,6 +29,7 @@
 use core::prelude::*;
 use core::mem::replace;
 
+use self::FutureState::*;
 use comm::{Receiver, channel};
 use task::spawn;
 

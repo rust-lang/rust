@@ -25,6 +25,7 @@ of children of the current node. The tokens are everything that's
 left.
 
 */
+use HTMLFragment::{tag, text};
 
 macro_rules! html (
     ( $($body:tt)* ) => (

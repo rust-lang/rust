@@ -62,6 +62,17 @@
 
 #![allow(non_camel_case_types)]
 
+pub use self::PointerKind::*;
+pub use self::InteriorKind::*;
+pub use self::FieldName::*;
+pub use self::ElementKind::*;
+pub use self::MutabilityCategory::*;
+pub use self::InteriorSafety::*;
+pub use self::AliasableReason::*;
+pub use self::Note::*;
+pub use self::deref_kind::*;
+pub use self::categorization::*;
+
 use middle::def;
 use middle::ty;
 use middle::typeck;

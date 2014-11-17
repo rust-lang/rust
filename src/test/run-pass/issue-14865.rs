@@ -14,17 +14,17 @@ enum X {
 }
 
 fn main() {
-    let x = match Foo(42) {
-        Foo(..) => 1i,
+    let x = match X::Foo(42) {
+        X::Foo(..) => 1i,
         _ if true => 0,
-        Bar(..) => panic!("Oh dear")
+        X::Bar(..) => panic!("Oh dear")
     };
     assert_eq!(x, 1);
 
-    let x = match Foo(42) {
+    let x = match X::Foo(42) {
         _ if true => 0i,
-        Foo(..) => 1,
-        Bar(..) => panic!("Oh dear")
+        X::Foo(..) => 1,
+        X::Bar(..) => panic!("Oh dear")
     };
     assert_eq!(x, 0);
 }

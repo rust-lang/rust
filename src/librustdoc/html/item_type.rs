@@ -9,6 +9,7 @@
 // except according to those terms.
 
 //! Item types.
+pub use self::ItemType::*;
 
 use std::fmt;
 use clean;

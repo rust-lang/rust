@@ -180,6 +180,10 @@
 //!                                    Named(~[(<ident of x>, <span of x>)]))])
 //! ```
 
+pub use self::StaticFields::*;
+pub use self::SubstructureFields::*;
+use self::StructType::*;
+
 use std::cell::RefCell;
 use std::vec;
 
@@ -192,7 +196,7 @@ use attr;
 use attr::AttrMetaMethods;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
-use codemap;
+use codemap::{mod, DUMMY_SP};
 use codemap::Span;
 use fold::MoveMap;
 use owned_slice::OwnedSlice;
@@ -543,12 +547,12 @@ impl<'a> TraitDef<'a> {
     }
 }
 
-fn variant_to_pat(cx: &mut ExtCtxt, sp: Span, variant: &ast::Variant)
+fn variant_to_pat(cx: &mut ExtCtxt, sp: Span, enum_ident: ast::Ident, variant: &ast::Variant)
                   -> P<ast::Pat> {
-    let ident = cx.path_ident(sp, variant.node.name);
+    let path = cx.path(sp, vec![enum_ident, variant.node.name]);
     cx.pat(sp, match variant.node.kind {
-        ast::TupleVariantKind(..) => ast::PatEnum(ident, None),
-        ast::StructVariantKind(..) => ast::PatStruct(ident, Vec::new(), true),
+        ast::TupleVariantKind(..) => ast::PatEnum(path, None),
+        ast::StructVariantKind(..) => ast::PatStruct(path, Vec::new(), true),
     })
 }
 
@@ -714,9 +718,10 @@ impl<'a> MethodDef<'a> {
                                  // [fields of next Self arg], [etc]]
         let mut patterns = Vec::new();
         for i in range(0u, self_args.len()) {
+            let struct_path= cx.path(DUMMY_SP, vec!( type_ident ));
             let (pat, ident_expr) =
                 trait_.create_struct_pattern(cx,
-                                             type_ident,
+                                             struct_path,
                                              struct_def,
                                              format!("__self_{}",
                                                      i).as_slice(),
@@ -900,7 +905,8 @@ impl<'a> MethodDef<'a> {
         let mut match_arms: Vec<ast::Arm> = variants.iter().enumerate()
             .map(|(index, variant)| {
                 let mk_self_pat = |cx: &mut ExtCtxt, self_arg_name: &str| {
-                    let (p, idents) = trait_.create_enum_variant_pattern(cx, &**variant,
+                    let (p, idents) = trait_.create_enum_variant_pattern(cx, type_ident,
+                                                                         &**variant,
                                                                          self_arg_name,
                                                                          ast::MutImmutable);
                     (cx.pat(sp, ast::PatRegion(p)), idents)
@@ -996,7 +1002,7 @@ impl<'a> MethodDef<'a> {
         if variants.len() > 1 && self_args.len() > 1 {
             let arms: Vec<ast::Arm> = variants.iter().enumerate()
                 .map(|(index, variant)| {
-                    let pat = variant_to_pat(cx, sp, &**variant);
+                    let pat = variant_to_pat(cx, sp, type_ident, &**variant);
                     let lit = ast::LitInt(index as u64, ast::UnsignedIntLit(ast::TyU));
                     cx.arm(sp, vec![pat], cx.expr_lit(sp, lit))
                 }).collect();
@@ -1199,19 +1205,14 @@ impl<'a> TraitDef<'a> {
 
     fn create_struct_pattern(&self,
                              cx: &mut ExtCtxt,
-                             struct_ident: Ident,
+                             struct_path: ast::Path,
                              struct_def: &StructDef,
                              prefix: &str,
                              mutbl: ast::Mutability)
                              -> (P<ast::Pat>, Vec<(Span, Option<Ident>, P<Expr>)>) {
         if struct_def.fields.is_empty() {
-            return (
-                cx.pat_ident_binding_mode(
-                    self.span, struct_ident, ast::BindByValue(ast::MutImmutable)),
-                Vec::new());
+            return (cx.pat_enum(self.span, struct_path, vec![]), vec![]);
         }
-
-        let matching_path = cx.path(self.span, vec!( struct_ident ));
 
         let mut paths = Vec::new();
         let mut ident_expr = Vec::new();
@@ -1253,9 +1254,9 @@ impl<'a> TraitDef<'a> {
                     node: ast::FieldPat { ident: id.unwrap(), pat: pat, is_shorthand: false },
                 }
             }).collect();
-            cx.pat_struct(self.span, matching_path, field_pats)
+            cx.pat_struct(self.span, struct_path, field_pats)
         } else {
-            cx.pat_enum(self.span, matching_path, subpats)
+            cx.pat_enum(self.span, struct_path, subpats)
         };
 
         (pattern, ident_expr)
@@ -1263,20 +1264,18 @@ impl<'a> TraitDef<'a> {
 
     fn create_enum_variant_pattern(&self,
                                    cx: &mut ExtCtxt,
+                                   enum_ident: ast::Ident,
                                    variant: &ast::Variant,
                                    prefix: &str,
                                    mutbl: ast::Mutability)
         -> (P<ast::Pat>, Vec<(Span, Option<Ident>, P<Expr>)>) {
         let variant_ident = variant.node.name;
+        let variant_path = cx.path(variant.span, vec![enum_ident, variant_ident]);
         match variant.node.kind {
             ast::TupleVariantKind(ref variant_args) => {
                 if variant_args.is_empty() {
-                    return (cx.pat_ident_binding_mode(variant.span, variant_ident,
-                                                          ast::BindByValue(ast::MutImmutable)),
-                            Vec::new());
+                    return (cx.pat_enum(variant.span, variant_path, vec![]), vec![]);
                 }
-
-                let matching_path = cx.path_ident(variant.span, variant_ident);
 
                 let mut paths = Vec::new();
                 let mut ident_expr = Vec::new();
@@ -1292,11 +1291,11 @@ impl<'a> TraitDef<'a> {
 
                 let subpats = self.create_subpatterns(cx, paths, mutbl);
 
-                (cx.pat_enum(variant.span, matching_path, subpats),
+                (cx.pat_enum(variant.span, variant_path, subpats),
                  ident_expr)
             }
             ast::StructVariantKind(ref struct_def) => {
-                self.create_struct_pattern(cx, variant_ident, &**struct_def,
+                self.create_struct_pattern(cx, variant_path, &**struct_def,
                                            prefix, mutbl)
             }
         }

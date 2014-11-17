@@ -12,6 +12,9 @@
 
 //! The Gamma and derived distributions.
 
+use self::GammaRepr::*;
+use self::ChiSquaredRepr::*;
+
 use core::num::Float;
 
 use {Rng, Open01};

@@ -14,6 +14,6 @@
 enum option<T> { some(Box<T>), none, }
 
 pub fn main() {
-    let mut a: option<int> = some::<int>(box 10);
-    a = none::<int>;
+    let mut a: option<int> = option::some::<int>(box 10);
+    a = option::none::<int>;
 }

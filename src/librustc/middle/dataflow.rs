@@ -16,6 +16,7 @@
  * GEN and KILL bits for each expression.
  */
 
+pub use self::EntryOrExit::*;
 
 use middle::cfg;
 use middle::cfg::CFGIndex;

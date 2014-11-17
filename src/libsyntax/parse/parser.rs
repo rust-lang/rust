@@ -10,6 +10,9 @@
 
 #![macro_escape]
 
+pub use self::PathParsingMode::*;
+use self::ItemOrViewItem::*;
+
 use abi;
 use ast::{AssociatedType, BareFnTy, ClosureTy};
 use ast::{RegionTyParamBound, TraitTyParamBound};

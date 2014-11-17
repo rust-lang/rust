@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+pub use self::MaybeOwnedVector::*;
+
 use std::default::Default;
 use std::fmt;
 use std::iter::FromIterator;

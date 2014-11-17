@@ -29,7 +29,8 @@ bounds for each parameter.  Type parameters themselves are represented
 as `ty_param()` instances.
 
 */
-
+use self::ConvertMethodContext::*;
+use self::CreateTypeParametersForAssociatedTypesFlag::*;
 
 use metadata::csearch;
 use middle::def;

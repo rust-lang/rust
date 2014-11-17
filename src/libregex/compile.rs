@@ -11,6 +11,8 @@
 // Enable this to squash warnings due to exporting pieces of the representation
 // for use with the regex! macro. See lib.rs for explanation.
 
+pub use self::Inst::*;
+
 use std::cmp;
 use parse;
 use parse::{

@@ -11,6 +11,7 @@
 /*
  * Inline assembly support.
  */
+use self::State::*;
 
 use ast;
 use codemap;

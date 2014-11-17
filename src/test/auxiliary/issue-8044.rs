@@ -19,7 +19,7 @@ pub enum TreeItem<V> {
 }
 
 pub fn leaf<V>(value: V) -> TreeItem<V> {
-    TreeLeaf { value: value }
+    TreeItem::TreeLeaf { value: value }
 }
 
 fn main() {

@@ -11,6 +11,7 @@
 // Type resolution: the phase that finds all the types in the AST with
 // unresolved type variables and replaces "ty_var" types with their
 // substitutions.
+use self::ResolveReason::*;
 
 use middle::def;
 use middle::pat_util;

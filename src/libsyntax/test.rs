@@ -12,6 +12,7 @@
 
 #![allow(dead_code)]
 #![allow(unused_imports)]
+use self::HasTestSignature::*;
 
 use std::slice;
 use std::mem;
@@ -276,15 +277,16 @@ fn strip_test_functions(krate: ast::Crate) -> ast::Crate {
     })
 }
 
+#[deriving(PartialEq)]
+enum HasTestSignature {
+    Yes,
+    No,
+    NotEvenAFunction,
+}
+
+
 fn is_test_fn(cx: &TestCtxt, i: &ast::Item) -> bool {
     let has_test_attr = attr::contains_name(i.attrs.as_slice(), "test");
-
-    #[deriving(PartialEq)]
-    enum HasTestSignature {
-        Yes,
-        No,
-        NotEvenAFunction,
-    }
 
     fn has_test_signature(i: &ast::Item) -> HasTestSignature {
         match &i.node {

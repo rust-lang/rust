@@ -51,19 +51,19 @@ enum Tree<'a> {
 
 fn item_check(t: &Tree) -> int {
     match *t {
-        Nil => 0,
-        Node(l, r, i) => i + item_check(l) - item_check(r)
+        Tree::Nil => 0,
+        Tree::Node(l, r, i) => i + item_check(l) - item_check(r)
     }
 }
 
 fn bottom_up_tree<'r>(arena: &'r TypedArena<Tree<'r>>, item: int, depth: int)
                   -> &'r Tree<'r> {
     if depth > 0 {
-        arena.alloc(Node(bottom_up_tree(arena, 2 * item - 1, depth - 1),
-                         bottom_up_tree(arena, 2 * item, depth - 1),
-                         item))
+        arena.alloc(Tree::Node(bottom_up_tree(arena, 2 * item - 1, depth - 1),
+                               bottom_up_tree(arena, 2 * item, depth - 1),
+                               item))
     } else {
-        arena.alloc(Nil)
+        arena.alloc(Tree::Nil)
     }
 }
 

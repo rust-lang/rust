@@ -14,4 +14,4 @@ mod foo {
     enum y { y1, }
 }
 
-fn main() { let z = foo::y1; } //~ ERROR: is inaccessible
+fn main() { let z = foo::y::y1; } //~ ERROR: is inaccessible

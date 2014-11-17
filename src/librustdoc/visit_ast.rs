@@ -249,7 +249,8 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                                 self.visit_item(&**i, None, om);
                             }
                         }
-                        _ => { panic!("glob not mapped to a module"); }
+                        ast::ItemEnum(..) => {}
+                        _ => { panic!("glob not mapped to a module or enum"); }
                     }
                 } else {
                     self.visit_item(it, renamed, om);

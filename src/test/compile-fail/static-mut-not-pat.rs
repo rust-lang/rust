@@ -38,16 +38,16 @@ struct Foo {
     baz: NewBool
 }
 
-static mut STATIC_MUT_FOO: Foo = Foo { bar: Some(West), baz: NEW_FALSE };
+static mut STATIC_MUT_FOO: Foo = Foo { bar: Some(Direction::West), baz: NEW_FALSE };
 
 fn mutable_statics() {
-    match (Foo { bar: Some(North), baz: NewBool(true) }) {
+    match (Foo { bar: Some(Direction::North), baz: NewBool(true) }) {
         Foo { bar: None, baz: NewBool(true) } => (),
         STATIC_MUT_FOO => (),
         //~^ ERROR static variables cannot be referenced in a pattern
-        Foo { bar: Some(South), .. } => (),
+        Foo { bar: Some(Direction::South), .. } => (),
         Foo { bar: Some(EAST), .. } => (),
-        Foo { bar: Some(North), baz: NewBool(true) } => (),
+        Foo { bar: Some(Direction::North), baz: NewBool(true) } => (),
         Foo { bar: Some(EAST), baz: NewBool(false) } => ()
     }
 }

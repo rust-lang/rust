@@ -10,6 +10,11 @@
 
 //! Parameterized string expansion
 
+pub use self::Param::*;
+use self::States::*;
+use self::FormatState::*;
+use self::FormatOp::*;
+
 use std::char;
 use std::mem::replace;
 

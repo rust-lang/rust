@@ -51,6 +51,10 @@
 
 #![doc(primitive = "str")]
 
+pub use self::MaybeOwned::*;
+use self::RecompositionState::*;
+use self::DecompositionType::*;
+
 use core::default::Default;
 use core::fmt;
 use core::cmp;

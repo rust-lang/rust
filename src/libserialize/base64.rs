@@ -11,6 +11,10 @@
 // ignore-lexer-test FIXME #15679
 
 //! Base64 binary-to-text encoding
+
+pub use self::FromBase64Error::*;
+pub use self::CharacterSet::*;
+
 use std::fmt;
 use std::string;
 use std::error;

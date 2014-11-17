@@ -11,6 +11,12 @@
 //! Contains infrastructure for configuring the compiler, including parsing
 //! command line options.
 
+pub use self::EntryFnType::*;
+pub use self::CrateType::*;
+pub use self::Passes::*;
+pub use self::OptLevel::*;
+pub use self::DebugInfoLevel::*;
+
 use driver::{early_error, early_warn};
 use driver::driver;
 use driver::session::Session;

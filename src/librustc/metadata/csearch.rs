@@ -12,6 +12,8 @@
 
 #![allow(non_camel_case_types)]
 
+pub use self::found_ast::*;
+
 use metadata::common::*;
 use metadata::cstore;
 use metadata::decoder;

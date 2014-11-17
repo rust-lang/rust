@@ -19,10 +19,10 @@ impl PartialEq for chan {
 }
 
 fn wrapper3(i: chan) {
-    assert_eq!(i, chan_t);
+    assert_eq!(i, chan::chan_t);
 }
 
 pub fn main() {
-    let wrapped = {||wrapper3(chan_t)};
+    let wrapped = {||wrapper3(chan::chan_t)};
     wrapped();
 }

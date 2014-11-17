@@ -8,12 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use self::Strategy::*;
 use llvm::*;
 use middle::trans::cabi::{ArgType, FnType};
 use middle::trans::type_::Type;
 use super::common::*;
 use super::machine::*;
 
+enum Strategy { RetValue(Type), RetPointer }
 pub fn compute_abi_info(ccx: &CrateContext,
                         atys: &[Type],
                         rty: Type,
@@ -32,7 +34,6 @@ pub fn compute_abi_info(ccx: &CrateContext,
         // http://www.angelcode.com/dev/callconv/callconv.html
         // Clang's ABI handling is in lib/CodeGen/TargetInfo.cpp
 
-        enum Strategy { RetValue(Type), RetPointer }
         let t = &ccx.sess().target.target;
         let strategy = if t.options.is_like_osx || t.options.is_like_windows {
             match llsize_of_alloc(ccx, rty) {

@@ -59,6 +59,10 @@
 //! line (which it can't) and so naturally place the content on its own line to
 //! avoid combining it with other lines and making matters even worse.
 
+pub use self::PrintStackBreak::*;
+pub use self::Breaks::*;
+pub use self::Token::*;
+
 use std::io;
 use std::string;
 

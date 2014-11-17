@@ -20,6 +20,11 @@
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 #![feature(macro_rules, globs, import_shadowing)]
+pub use self::Piece::*;
+pub use self::Position::*;
+pub use self::Alignment::*;
+pub use self::Flag::*;
+pub use self::Count::*;
 
 use std::char;
 use std::str;

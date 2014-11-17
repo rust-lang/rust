@@ -14,7 +14,7 @@ enum A {
 }
 
 fn c(c:char) {
-    B(c);
+    A::B(c);
     //~^ ERROR cannot move a value of type A: the size of A cannot be statically determined
 }
 

@@ -16,9 +16,9 @@ enum color {
 }
 
 pub fn main() {
-    println!("{}", match red {
-        red => { 1i }
-        green => { 2i }
-        blue => { 3i }
+    println!("{}", match color::red {
+        color::red => { 1i }
+        color::green => { 2i }
+        color::blue => { 3i }
     });
 }

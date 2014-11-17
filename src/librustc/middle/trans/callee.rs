@@ -16,6 +16,10 @@
  * closure.
  */
 
+pub use self::AutorefArg::*;
+pub use self::CalleeData::*;
+pub use self::CallArgs::*;
+
 use arena::TypedArena;
 use back::abi;
 use back::link;

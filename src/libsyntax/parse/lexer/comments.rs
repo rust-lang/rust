@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+pub use self::CommentStyle::*;
+
 use ast;
 use codemap::{BytePos, CharPos, CodeMap, Pos};
 use diagnostic;

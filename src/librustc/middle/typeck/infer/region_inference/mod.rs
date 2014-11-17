@@ -10,6 +10,13 @@
 
 /*! See doc.rs */
 
+pub use self::Constraint::*;
+pub use self::Verify::*;
+pub use self::UndoLogEntry::*;
+pub use self::CombineMapType::*;
+pub use self::RegionResolutionError::*;
+pub use self::VarValue::*;
+use self::Classification::*;
 
 use middle::ty;
 use middle::ty::{BoundRegion, FreeRegion, Region, RegionVid};

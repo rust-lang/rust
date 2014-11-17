@@ -221,6 +221,12 @@ responding to errors that may occur while attempting to read the numbers.
 #![experimental]
 #![deny(unused_must_use)]
 
+pub use self::SeekStyle::*;
+pub use self::FileMode::*;
+pub use self::FileAccess::*;
+pub use self::FileType::*;
+pub use self::IoErrorKind::*;
+
 use char::Char;
 use clone::Clone;
 use default::Default;
@@ -1899,6 +1905,7 @@ impl fmt::Show for FilePermission {
 
 #[cfg(test)]
 mod tests {
+    use self::BadReaderBehavior::*;
     use super::{IoResult, Reader, MemReader, NoProgress, InvalidInput};
     use prelude::*;
     use uint;

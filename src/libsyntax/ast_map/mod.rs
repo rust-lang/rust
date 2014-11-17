@@ -8,6 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+pub use self::Node::*;
+pub use self::PathElem::*;
+use self::MapEntry::*;
+
 use abi;
 use ast::*;
 use ast_util;

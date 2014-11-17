@@ -24,8 +24,8 @@ macro_rules! test(
     ($id1:ident, $id2:ident, $e:expr) => (
         fn foo(a:T, b:T) -> T {
             match (a, b) {
-                (A($id1), A($id2)) => A($e),
-                (B($id1), B($id2)) => B($e),
+                (T::A($id1), T::A($id2)) => T::A($e),
+                (T::B($id1), T::B($id2)) => T::B($e),
                 _ => panic!()
             }
         }
@@ -35,5 +35,5 @@ macro_rules! test(
 test!(x,y,x + y)
 
 pub fn main() {
-    foo(A(1), A(2));
+    foo(T::A(1), T::A(2));
 }

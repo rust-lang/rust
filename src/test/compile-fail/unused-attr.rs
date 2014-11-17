@@ -37,7 +37,7 @@ mod foo {
 fn bar(f: foo::Foo) {
     match f {
         #[foo] //~ ERROR unused attribute
-        foo::Bar => {}
+        foo::Foo::Bar => {}
     }
 }
 

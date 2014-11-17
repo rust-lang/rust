@@ -20,8 +20,8 @@ enum shape {
 
 fn compute_area(shape: &shape) -> f64 {
     match *shape {
-        circle(_, radius) => 0.5 * tau * radius * radius,
-        rectangle(_, ref size) => size.w * size.h
+        shape::circle(_, radius) => 0.5 * tau * radius * radius,
+        shape::rectangle(_, ref size) => size.w * size.h
     }
 }
 
@@ -36,7 +36,7 @@ impl shape {
 fn select_based_on_unit_circle<'r, T>(
     threshold: f64, a: &'r T, b: &'r T) -> &'r T {
 
-    let shape = &circle(Point{x: 0.0, y: 0.0}, 1.0);
+    let shape = &shape::circle(Point{x: 0.0, y: 0.0}, 1.0);
     shape.select(threshold, a, b)
 }
 

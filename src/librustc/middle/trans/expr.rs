@@ -33,6 +33,10 @@
 
 #![allow(non_camel_case_types)]
 
+pub use self::cast_kind::*;
+pub use self::Dest::*;
+use self::lazy_binop_ty::*;
+
 use back::abi;
 use llvm;
 use llvm::{ValueRef};

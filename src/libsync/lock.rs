@@ -21,6 +21,8 @@
 
 use core::prelude::*;
 
+use self::Inner::*;
+
 use core::cell::UnsafeCell;
 use rustrt::local::Local;
 use rustrt::task::Task;

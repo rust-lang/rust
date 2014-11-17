@@ -7134,6 +7134,7 @@ pub mod charwidth {
 }
 
 pub mod grapheme {
+    pub use self::GraphemeCat::*;
     use core::slice::SlicePrelude;
     use core::slice;
 

@@ -8,6 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+pub use self::Os::*;
+pub use self::Abi::*;
+pub use self::Architecture::*;
+pub use self::AbiArchitecture::*;
+
 use std::fmt;
 
 #[deriving(PartialEq)]

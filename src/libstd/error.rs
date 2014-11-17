@@ -59,13 +59,13 @@
 //!
 //! impl FromError<IoError> for MyError {
 //!     fn from_error(err: IoError) -> MyError {
-//!         Io(err)
+//!         MyError::Io(err)
 //!     }
 //! }
 //!
 //! impl FromError<MapError> for MyError {
 //!     fn from_error(err: MapError) -> MyError {
-//!         Map(err)
+//!         MyError::Map(err)
 //!     }
 //! }
 //!

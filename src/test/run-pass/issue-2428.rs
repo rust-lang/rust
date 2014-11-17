@@ -16,5 +16,5 @@ pub fn main() {
         Bar = quux
     }
 
-    assert_eq!(Bar as int, quux);
+    assert_eq!(Stuff::Bar as int, quux);
 }

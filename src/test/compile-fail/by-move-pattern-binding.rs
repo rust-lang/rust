@@ -20,13 +20,13 @@ struct S {
 fn f(x: String) {}
 
 fn main() {
-    let s = S { x: Bar("hello".to_string()) };
+    let s = S { x: E::Bar("hello".to_string()) };
     match &s.x {
-        &Foo => {}
-        &Bar(identifier) => f(identifier.clone())  //~ ERROR cannot move
+        &E::Foo => {}
+        &E::Bar(identifier) => f(identifier.clone())  //~ ERROR cannot move
     };
     match &s.x {
-        &Foo => {}
-        &Bar(ref identifier) => println!("{}", *identifier)
+        &E::Foo => {}
+        &E::Bar(ref identifier) => println!("{}", *identifier)
     };
 }

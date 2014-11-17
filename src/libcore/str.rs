@@ -16,6 +16,9 @@
 
 #![doc(primitive = "str")]
 
+pub use self::Utf16Item::*;
+pub use self::Searcher::{Naive, TwoWay, TwoWayLong};
+
 use mem;
 use char;
 use char::Char;

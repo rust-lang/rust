@@ -87,7 +87,7 @@ pub fn main() {
     // if they had the bogus definition
     assert!((b));
     let _x: t = true;
-    let _y: tg = bar;
+    let _y: tg = tg::bar;
 
     test_in_fn_ctxt();
 }

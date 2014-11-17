@@ -11,6 +11,10 @@
 // This module represents all the internal representation and logic for a B-Tree's node
 // with a safe interface, so that BTreeMap itself does not depend on any of these details.
 
+pub use self::InsertionResult::*;
+pub use self::SearchResult::*;
+pub use self::TraversalItem::*;
+
 use core::prelude::*;
 
 use core::{slice, mem, ptr};

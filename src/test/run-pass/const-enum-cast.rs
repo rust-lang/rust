@@ -12,10 +12,10 @@ enum A { A1, A2 }
 enum B { B1=0, B2=2 }
 
 pub fn main () {
-    static c1: int = A2 as int;
-    static c2: int = B2 as int;
-    let a1 = A2 as int;
-    let a2 = B2 as int;
+    static c1: int = A::A2 as int;
+    static c2: int = B::B2 as int;
+    let a1 = A::A2 as int;
+    let a2 = B::B2 as int;
     assert_eq!(c1, 1);
     assert_eq!(c2, 2);
     assert_eq!(a1, 1);

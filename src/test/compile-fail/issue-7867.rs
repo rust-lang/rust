@@ -14,7 +14,7 @@ mod foo { pub fn bar() {} }
 
 fn main() {
     match (true, false) {
-        B => (), //~ ERROR expected `(bool, bool)`, found `A` (expected tuple, found enum A)
+        A::B => (), //~ ERROR expected `(bool, bool)`, found `A` (expected tuple, found enum A)
         _ => ()
     }
 
