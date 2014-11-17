@@ -85,7 +85,7 @@ pub fn join_all<It: Iterator<constness>>(mut cs: It) -> constness {
 }
 
 fn lookup_const<'a>(tcx: &'a ty::ctxt, e: &Expr) -> Option<&'a Expr> {
-    let opt_def = tcx.def_map.borrow().find_copy(&e.id);
+    let opt_def = tcx.def_map.borrow().get(&e.id).cloned();
     match opt_def {
         Some(def::DefConst(def_id)) => {
             lookup_const_by_id(tcx, def_id)
@@ -320,7 +320,7 @@ pub fn const_expr_to_pat(tcx: &ty::ctxt, expr: &Expr) -> P<Pat> {
             PatTup(exprs.iter().map(|expr| const_expr_to_pat(tcx, &**expr)).collect()),
 
         ExprCall(ref callee, ref args) => {
-            let def = tcx.def_map.borrow().get_copy(&callee.id);
+            let def = tcx.def_map.borrow()[callee.id].clone();
             match tcx.def_map.borrow_mut().entry(expr.id) {
               Vacant(entry) => { entry.set(def); }
               _ => {}
@@ -352,7 +352,7 @@ pub fn const_expr_to_pat(tcx: &ty::ctxt, expr: &Expr) -> P<Pat> {
         }
 
         ExprPath(ref path) => {
-            let opt_def = tcx.def_map.borrow().find_copy(&expr.id);
+            let opt_def = tcx.def_map.borrow().get(&expr.id).cloned();
             match opt_def {
                 Some(def::DefStruct(..)) =>
                     PatStruct(path.clone(), vec![], false),

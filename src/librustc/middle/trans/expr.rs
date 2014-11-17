@@ -184,7 +184,7 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     let mut bcx = bcx;
     let mut datum = datum;
-    let adjustment = match bcx.tcx().adjustments.borrow().find_copy(&expr.id) {
+    let adjustment = match bcx.tcx().adjustments.borrow().get(&expr.id).cloned() {
         None => {
             return DatumBlock::new(bcx, datum);
         }
@@ -1293,7 +1293,7 @@ pub fn with_field_tys<R>(tcx: &ty::ctxt,
                         ty.repr(tcx)).as_slice());
                 }
                 Some(node_id) => {
-                    let def = tcx.def_map.borrow().get_copy(&node_id);
+                    let def = tcx.def_map.borrow()[node_id].clone();
                     match def {
                         def::DefVariant(enum_id, variant_id, _) => {
                             let variant_info = ty::enum_variant_with_id(

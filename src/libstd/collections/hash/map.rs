@@ -37,7 +37,6 @@ use super::table::{
 };
 
 // FIXME(conventions): update capacity management to match other collections (no auto-shrink)
-// FIXME(conventions): axe find_copy/get_copy in favour of Option.cloned (also implement that)
 
 const INITIAL_LOG2_CAP: uint = 5;
 pub const INITIAL_CAPACITY: uint = 1 << INITIAL_LOG2_CAP; // 2^5
@@ -1220,36 +1219,18 @@ fn search_entry_hashed<'a, K: Eq, V>(table: &'a mut RawTable<K,V>, hash: SafeHas
 }
 
 impl<K: Eq + Hash<S>, V: Clone, S, H: Hasher<S>> HashMap<K, V, H> {
+    /// Deprecated: Use `map.get(k).cloned()`.
+    ///
     /// Return a copy of the value corresponding to the key.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use std::collections::HashMap;
-    ///
-    /// let mut map: HashMap<uint, String> = HashMap::new();
-    /// map.insert(1u, "foo".to_string());
-    /// let s: String = map.find_copy(&1).unwrap();
-    /// ```
+    #[deprecated = "Use `map.get(k).cloned()`"]
     pub fn find_copy(&self, k: &K) -> Option<V> {
-        self.get(k).map(|v| (*v).clone())
+        self.get(k).cloned()
     }
 
+    /// Deprecated: Use `map[k].clone()`.
+    ///
     /// Return a copy of the value corresponding to the key.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the key is not present.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use std::collections::HashMap;
-    ///
-    /// let mut map: HashMap<uint, String> = HashMap::new();
-    /// map.insert(1u, "foo".to_string());
-    /// let s: String = map.get_copy(&1);
-    /// ```
+    #[deprecated = "Use `map[k].clone()`"]
     pub fn get_copy(&self, k: &K) -> V {
         self[*k].clone()
     }
@@ -1844,6 +1825,7 @@ mod test_map {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_find_copy() {
         let mut m = HashMap::new();
         assert!(m.get(&1i).is_none());
