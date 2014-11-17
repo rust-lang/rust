@@ -2403,7 +2403,7 @@ impl<A:ToJson> ToJson for Option<A> {
 impl fmt::Show for Json {
     /// Encodes a json value into a string
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.to_writer(f).map_err(|_| fmt::WriteError)
+        self.to_writer(f).map_err(|_| fmt::Error)
     }
 }
 

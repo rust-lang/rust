@@ -224,13 +224,13 @@ Available lint options:
     };
 
     println!("Lint checks provided by rustc:\n");
-    println!("    {}  {:7.7s}  {}", padded("name"), "default", "meaning");
-    println!("    {}  {:7.7s}  {}", padded("----"), "-------", "-------");
+    println!("    {}  {:7.7}  {}", padded("name"), "default", "meaning");
+    println!("    {}  {:7.7}  {}", padded("----"), "-------", "-------");
 
     let print_lints = |lints: Vec<&Lint>| {
         for lint in lints.into_iter() {
             let name = lint.name_lower().replace("_", "-");
-            println!("    {}  {:7.7s}  {}",
+            println!("    {}  {:7.7}  {}",
                      padded(name.as_slice()), lint.default_level.as_str(), lint.desc);
         }
         println!("\n");
@@ -293,7 +293,7 @@ fn describe_debug_flags() {
     for tuple in r.iter() {
         match *tuple {
             (ref name, ref desc, _) => {
-                println!("    -Z {:>20s} -- {}", *name, *desc);
+                println!("    -Z {:>20} -- {}", *name, *desc);
             }
         }
     }
@@ -306,7 +306,7 @@ fn describe_codegen_flags() {
             Some(..) => (21, "=val"),
             None => (25, "")
         };
-        println!("    -C {:>width$s}{} -- {}", name.replace("_", "-"),
+        println!("    -C {:>width$}{} -- {}", name.replace("_", "-"),
                  extra, desc, width=width);
     }
 }

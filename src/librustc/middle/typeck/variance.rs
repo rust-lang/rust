@@ -603,7 +603,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
 
             let is_inferred;
             macro_rules! cannot_happen { () => { {
-                panic!("invalid parent: {:s} for {:s}",
+                panic!("invalid parent: {} for {}",
                       tcx.map.node_to_string(parent_id),
                       tcx.map.node_to_string(param_id));
             } } }

@@ -102,7 +102,7 @@ pub fn check_crate(tcx: &ty::ctxt) {
     fn make_stat(bccx: &BorrowckCtxt, stat: uint) -> String {
         let total = bccx.stats.guaranteed_paths as f64;
         let perc = if total == 0.0 { 0.0 } else { stat as f64 * 100.0 / total };
-        format!("{} ({:.0f}%)", stat, perc)
+        format!("{} ({:.0}%)", stat, perc)
     }
 }
 

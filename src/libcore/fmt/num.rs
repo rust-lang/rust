@@ -109,6 +109,7 @@ radix!(UpperHex, 16, "0x", x @  0 ...  9 => b'0' + x,
 
 /// A radix with in the range of `2..36`.
 #[deriving(Clone, PartialEq)]
+#[unstable = "may be renamed or move to a different module"]
 pub struct Radix {
     base: u8,
 }
@@ -132,6 +133,7 @@ impl GenericRadix for Radix {
 }
 
 /// A helper type for formatting radixes.
+#[unstable = "may be renamed or move to a different module"]
 pub struct RadixFmt<T, R>(T, R);
 
 /// Constructs a radix formatter in the range of `2..36`.
@@ -142,6 +144,7 @@ pub struct RadixFmt<T, R>(T, R);
 /// use std::fmt::radix;
 /// assert_eq!(format!("{}", radix(55i, 36)), "1j".to_string());
 /// ```
+#[unstable = "may be renamed or move to a different module"]
 pub fn radix<T>(x: T, base: u8) -> RadixFmt<T, Radix> {
     RadixFmt(x, Radix::new(base))
 }
@@ -167,7 +170,6 @@ macro_rules! int_base {
 macro_rules! integer {
     ($Int:ident, $Uint:ident) => {
         int_base!(Show     for $Int as $Int   -> Decimal)
-        int_base!(Signed   for $Int as $Int   -> Decimal)
         int_base!(Binary   for $Int as $Uint  -> Binary)
         int_base!(Octal    for $Int as $Uint  -> Octal)
         int_base!(LowerHex for $Int as $Uint  -> LowerHex)
@@ -175,7 +177,6 @@ macro_rules! integer {
         radix_fmt!($Int as $Int, fmt_int)
 
         int_base!(Show     for $Uint as $Uint -> Decimal)
-        int_base!(Unsigned for $Uint as $Uint -> Decimal)
         int_base!(Binary   for $Uint as $Uint -> Binary)
         int_base!(Octal    for $Uint as $Uint -> Octal)
         int_base!(LowerHex for $Uint as $Uint -> LowerHex)

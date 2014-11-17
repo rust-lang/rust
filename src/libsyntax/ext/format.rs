@@ -237,7 +237,7 @@ impl<'a, 'b> Context<'a, 'b> {
         match arg {
             Exact(arg) => {
                 if self.args.len() <= arg {
-                    let msg = format!("invalid reference to argument `{}` ({:s})",
+                    let msg = format!("invalid reference to argument `{}` ({})",
                                       arg, self.describe_num_args());
 
                     self.ecx.span_err(self.fmtsp, msg.as_slice());
@@ -670,17 +670,11 @@ impl<'a, 'b> Context<'a, 'b> {
             Known(ref tyname) => {
                 match tyname.as_slice() {
                     ""  => "Show",
-                    "b" => "Bool",
-                    "c" => "Char",
-                    "d" | "i" => "Signed",
                     "e" => "LowerExp",
                     "E" => "UpperExp",
-                    "f" => "Float",
                     "o" => "Octal",
                     "p" => "Pointer",
-                    "s" => "String",
-                    "t" => "Binary",
-                    "u" => "Unsigned",
+                    "b" => "Binary",
                     "x" => "LowerHex",
                     "X" => "UpperHex",
                     _ => {
@@ -716,18 +710,6 @@ pub fn expand_format_args<'cx>(ecx: &'cx mut ExtCtxt, sp: Span,
                                -> Box<base::MacResult+'cx> {
 
     match parse_args(ecx, sp, false, tts) {
-        (invocation, Some((efmt, args, order, names))) => {
-            MacExpr::new(expand_preparsed_format_args(ecx, sp, invocation, efmt,
-                                                      args, order, names))
-        }
-        (_, None) => MacExpr::new(ecx.expr_uint(sp, 2))
-    }
-}
-
-pub fn expand_format_args_method<'cx>(ecx: &'cx mut ExtCtxt, sp: Span,
-                                      tts: &[ast::TokenTree]) -> Box<base::MacResult+'cx> {
-
-    match parse_args(ecx, sp, true, tts) {
         (invocation, Some((efmt, args, order, names))) => {
             MacExpr::new(expand_preparsed_format_args(ecx, sp, invocation, efmt,
                                                       args, order, names))
