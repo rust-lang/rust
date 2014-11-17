@@ -1232,7 +1232,8 @@ impl<'a> Parser<'a> {
     {
         if self.eat(&token::Lt) {
             if lifetime_defs.is_empty() {
-                self.warn("deprecated syntax, use `for` keyword now");
+                self.warn("deprecated syntax; use the `for` keyword now \
+                            (e.g. change `fn<'a>` to `for<'a> fn`)");
                 let lifetime_defs = self.parse_lifetime_defs();
                 self.expect_gt();
                 lifetime_defs
