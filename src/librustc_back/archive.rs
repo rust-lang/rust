@@ -141,12 +141,12 @@ impl<'a> Archive<'a> {
 
     /// Removes a file from this archive
     pub fn remove_file(&mut self, file: &str) {
-        run_ar(self.handler, &self.maybe_ar_prog, "d", None, [&self.dst, &Path::new(file)]);
+        run_ar(self.handler, &self.maybe_ar_prog, "d", None, &[&self.dst, &Path::new(file)]);
     }
 
     /// Lists all files in an archive
     pub fn files(&self) -> Vec<String> {
-        let output = run_ar(self.handler, &self.maybe_ar_prog, "t", None, [&self.dst]);
+        let output = run_ar(self.handler, &self.maybe_ar_prog, "t", None, &[&self.dst]);
         let output = str::from_utf8(output.output.as_slice()).unwrap();
         // use lines_any because windows delimits output with `\r\n` instead of
         // just `\n`
@@ -288,7 +288,7 @@ impl<'a> ArchiveBuilder<'a> {
         // of filename collisions.
         let archive = os::make_absolute(archive);
         run_ar(self.archive.handler, &self.archive.maybe_ar_prog,
-               "x", Some(loc.path()), [&archive]);
+               "x", Some(loc.path()), &[&archive]);
 
         // Next, we must rename all of the inputs to "guaranteed unique names".
         // We move each file into `self.work_dir` under its new unique name.

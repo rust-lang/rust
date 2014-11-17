@@ -50,7 +50,7 @@ fn combine(seek: SeekStyle, cur: uint, end: uint, offset: i64) -> IoResult<u64> 
 /// use std::io::MemWriter;
 ///
 /// let mut w = MemWriter::new();
-/// w.write([0, 1, 2]);
+/// w.write(&[0, 1, 2]);
 ///
 /// assert_eq!(w.unwrap(), vec!(0, 1, 2));
 /// ```
@@ -200,8 +200,8 @@ impl Buffer for MemReader {
 ///
 /// let mut buf = [0, ..4];
 /// {
-///     let mut w = BufWriter::new(buf);
-///     w.write([0, 1, 2]);
+///     let mut w = BufWriter::new(&mut buf);
+///     w.write(&[0, 1, 2]);
 /// }
 /// assert!(buf == [0, 1, 2, 0]);
 /// ```
@@ -262,7 +262,7 @@ impl<'a> Seek for BufWriter<'a> {
 /// use std::io::BufReader;
 ///
 /// let mut buf = [0, 1, 2, 3];
-/// let mut r = BufReader::new(buf);
+/// let mut r = BufReader::new(&mut buf);
 ///
 /// assert_eq!(r.read_to_end().unwrap(), vec!(0, 1, 2, 3));
 /// ```
@@ -346,9 +346,9 @@ mod test {
     #[test]
     fn test_mem_writer() {
         let mut writer = MemWriter::new();
-        writer.write([0]).unwrap();
-        writer.write([1, 2, 3]).unwrap();
-        writer.write([4, 5, 6, 7]).unwrap();
+        writer.write(&[0]).unwrap();
+        writer.write(&[1, 2, 3]).unwrap();
+        writer.write(&[4, 5, 6, 7]).unwrap();
         let b: &[_] = &[0, 1, 2, 3, 4, 5, 6, 7];
         assert_eq!(writer.get_ref(), b);
     }
@@ -357,14 +357,14 @@ mod test {
     fn test_buf_writer() {
         let mut buf = [0 as u8, ..8];
         {
-            let mut writer = BufWriter::new(buf);
+            let mut writer = BufWriter::new(&mut buf);
             assert_eq!(writer.tell(), Ok(0));
-            writer.write([0]).unwrap();
+            writer.write(&[0]).unwrap();
             assert_eq!(writer.tell(), Ok(1));
-            writer.write([1, 2, 3]).unwrap();
-            writer.write([4, 5, 6, 7]).unwrap();
+            writer.write(&[1, 2, 3]).unwrap();
+            writer.write(&[4, 5, 6, 7]).unwrap();
             assert_eq!(writer.tell(), Ok(8));
-            writer.write([]).unwrap();
+            writer.write(&[]).unwrap();
             assert_eq!(writer.tell(), Ok(8));
         }
         let b: &[_] = &[0, 1, 2, 3, 4, 5, 6, 7];
@@ -375,24 +375,24 @@ mod test {
     fn test_buf_writer_seek() {
         let mut buf = [0 as u8, ..8];
         {
-            let mut writer = BufWriter::new(buf);
+            let mut writer = BufWriter::new(&mut buf);
             assert_eq!(writer.tell(), Ok(0));
-            writer.write([1]).unwrap();
+            writer.write(&[1]).unwrap();
             assert_eq!(writer.tell(), Ok(1));
 
             writer.seek(2, SeekSet).unwrap();
             assert_eq!(writer.tell(), Ok(2));
-            writer.write([2]).unwrap();
+            writer.write(&[2]).unwrap();
             assert_eq!(writer.tell(), Ok(3));
 
             writer.seek(-2, SeekCur).unwrap();
             assert_eq!(writer.tell(), Ok(1));
-            writer.write([3]).unwrap();
+            writer.write(&[3]).unwrap();
             assert_eq!(writer.tell(), Ok(2));
 
             writer.seek(-1, SeekEnd).unwrap();
             assert_eq!(writer.tell(), Ok(7));
-            writer.write([4]).unwrap();
+            writer.write(&[4]).unwrap();
             assert_eq!(writer.tell(), Ok(8));
 
         }
@@ -403,10 +403,10 @@ mod test {
     #[test]
     fn test_buf_writer_error() {
         let mut buf = [0 as u8, ..2];
-        let mut writer = BufWriter::new(buf);
-        writer.write([0]).unwrap();
+        let mut writer = BufWriter::new(&mut buf);
+        writer.write(&[0]).unwrap();
 
-        match writer.write([0, 0]) {
+        match writer.write(&[0, 0]) {
             Ok(..) => panic!(),
             Err(e) => assert_eq!(e.kind, io::OtherIoError),
         }
@@ -416,26 +416,26 @@ mod test {
     fn test_mem_reader() {
         let mut reader = MemReader::new(vec!(0, 1, 2, 3, 4, 5, 6, 7));
         let mut buf = [];
-        assert_eq!(reader.read(buf), Ok(0));
+        assert_eq!(reader.read(&mut buf), Ok(0));
         assert_eq!(reader.tell(), Ok(0));
         let mut buf = [0];
-        assert_eq!(reader.read(buf), Ok(1));
+        assert_eq!(reader.read(&mut buf), Ok(1));
         assert_eq!(reader.tell(), Ok(1));
         let b: &[_] = &[0];
         assert_eq!(buf.as_slice(), b);
         let mut buf = [0, ..4];
-        assert_eq!(reader.read(buf), Ok(4));
+        assert_eq!(reader.read(&mut buf), Ok(4));
         assert_eq!(reader.tell(), Ok(5));
         let b: &[_] = &[1, 2, 3, 4];
         assert_eq!(buf.as_slice(), b);
-        assert_eq!(reader.read(buf), Ok(3));
+        assert_eq!(reader.read(&mut buf), Ok(3));
         let b: &[_] = &[5, 6, 7];
         assert_eq!(buf[0..3], b);
-        assert!(reader.read(buf).is_err());
+        assert!(reader.read(&mut buf).is_err());
         let mut reader = MemReader::new(vec!(0, 1, 2, 3, 4, 5, 6, 7));
         assert_eq!(reader.read_until(3).unwrap(), vec!(0, 1, 2, 3));
         assert_eq!(reader.read_until(3).unwrap(), vec!(4, 5, 6, 7));
-        assert!(reader.read(buf).is_err());
+        assert!(reader.read(&mut buf).is_err());
     }
 
     #[test]
@@ -443,26 +443,26 @@ mod test {
         let in_buf = vec![0, 1, 2, 3, 4, 5, 6, 7];
         let mut reader = BufReader::new(in_buf.as_slice());
         let mut buf = [];
-        assert_eq!(reader.read(buf), Ok(0));
+        assert_eq!(reader.read(&mut buf), Ok(0));
         assert_eq!(reader.tell(), Ok(0));
         let mut buf = [0];
-        assert_eq!(reader.read(buf), Ok(1));
+        assert_eq!(reader.read(&mut buf), Ok(1));
         assert_eq!(reader.tell(), Ok(1));
         let b: &[_] = &[0];
         assert_eq!(buf.as_slice(), b);
         let mut buf = [0, ..4];
-        assert_eq!(reader.read(buf), Ok(4));
+        assert_eq!(reader.read(&mut buf), Ok(4));
         assert_eq!(reader.tell(), Ok(5));
         let b: &[_] = &[1, 2, 3, 4];
         assert_eq!(buf.as_slice(), b);
-        assert_eq!(reader.read(buf), Ok(3));
+        assert_eq!(reader.read(&mut buf), Ok(3));
         let b: &[_] = &[5, 6, 7];
         assert_eq!(buf[0..3], b);
-        assert!(reader.read(buf).is_err());
+        assert!(reader.read(&mut buf).is_err());
         let mut reader = BufReader::new(in_buf.as_slice());
         assert_eq!(reader.read_until(3).unwrap(), vec!(0, 1, 2, 3));
         assert_eq!(reader.read_until(3).unwrap(), vec!(4, 5, 6, 7));
-        assert!(reader.read(buf).is_err());
+        assert!(reader.read(&mut buf).is_err());
     }
 
     #[test]
@@ -506,7 +506,7 @@ mod test {
     #[test]
     fn test_read_whole_string_bad() {
         let buf = [0xff];
-        let mut r = BufReader::new(buf);
+        let mut r = BufReader::new(&buf);
         match r.read_to_string() {
             Ok(..) => panic!(),
             Err(..) => {}
@@ -516,7 +516,7 @@ mod test {
     #[test]
     fn seek_past_end() {
         let buf = [0xff];
-        let mut r = BufReader::new(buf);
+        let mut r = BufReader::new(&buf);
         r.seek(10, SeekSet).unwrap();
         assert!(r.read(&mut []).is_err());
 
@@ -525,22 +525,22 @@ mod test {
         assert!(r.read(&mut []).is_err());
 
         let mut buf = [0];
-        let mut r = BufWriter::new(buf);
+        let mut r = BufWriter::new(&mut buf);
         r.seek(10, SeekSet).unwrap();
-        assert!(r.write([3]).is_err());
+        assert!(r.write(&[3]).is_err());
     }
 
     #[test]
     fn seek_before_0() {
         let buf = [0xff];
-        let mut r = BufReader::new(buf);
+        let mut r = BufReader::new(&buf);
         assert!(r.seek(-1, SeekSet).is_err());
 
         let mut r = MemReader::new(vec!(10));
         assert!(r.seek(-1, SeekSet).is_err());
 
         let mut buf = [0];
-        let mut r = BufWriter::new(buf);
+        let mut r = BufWriter::new(&mut buf);
         assert!(r.seek(-1, SeekSet).is_err());
     }
 
@@ -548,15 +548,15 @@ mod test {
     fn io_read_at_least() {
         let mut r = MemReader::new(vec![1, 2, 3, 4, 5, 6, 7, 8]);
         let mut buf = [0, ..3];
-        assert!(r.read_at_least(buf.len(), buf).is_ok());
+        assert!(r.read_at_least(buf.len(), &mut buf).is_ok());
         let b: &[_] = &[1, 2, 3];
         assert_eq!(buf.as_slice(), b);
         assert!(r.read_at_least(0, buf[mut ..0]).is_ok());
         assert_eq!(buf.as_slice(), b);
-        assert!(r.read_at_least(buf.len(), buf).is_ok());
+        assert!(r.read_at_least(buf.len(), &mut buf).is_ok());
         let b: &[_] = &[4, 5, 6];
         assert_eq!(buf.as_slice(), b);
-        assert!(r.read_at_least(buf.len(), buf).is_err());
+        assert!(r.read_at_least(buf.len(), &mut buf).is_err());
         let b: &[_] = &[7, 8, 6];
         assert_eq!(buf.as_slice(), b);
     }
@@ -625,7 +625,7 @@ mod test {
                 let mut rdr = MemReader::new(buf);
                 for _i in range(0u, 10) {
                     let mut buf = [0 as u8, .. 10];
-                    rdr.read(buf).unwrap();
+                    rdr.read(&mut buf).unwrap();
                     assert_eq!(buf.as_slice(), [5, .. 10].as_slice());
                 }
             }
@@ -637,9 +637,9 @@ mod test {
         b.iter(|| {
             let mut buf = [0 as u8, ..100];
             {
-                let mut wr = BufWriter::new(buf);
+                let mut wr = BufWriter::new(&mut buf);
                 for _i in range(0u, 10) {
-                    wr.write([5, .. 10]).unwrap();
+                    wr.write(&[5, .. 10]).unwrap();
                 }
             }
             assert_eq!(buf.as_slice(), [5, .. 100].as_slice());
@@ -651,10 +651,10 @@ mod test {
         b.iter(|| {
             let buf = [5 as u8, ..100];
             {
-                let mut rdr = BufReader::new(buf);
+                let mut rdr = BufReader::new(&buf);
                 for _i in range(0u, 10) {
                     let mut buf = [0 as u8, .. 10];
-                    rdr.read(buf).unwrap();
+                    rdr.read(&mut buf).unwrap();
                     assert_eq!(buf.as_slice(), [5, .. 10].as_slice());
                 }
             }

@@ -1088,8 +1088,8 @@ mod tests {
 
     #[test]
     fn test_merge() {
-        let mut m = list_from([0i, 1, 3, 5, 6, 7, 2]);
-        let n = list_from([-1i, 0, 0, 7, 7, 9]);
+        let mut m = list_from(&[0i, 1, 3, 5, 6, 7, 2]);
+        let n = list_from(&[-1i, 0, 0, 7, 7, 9]);
         let len = m.len() + n.len();
         m.merge(n, |a, b| a <= b);
         assert_eq!(m.len(), len);
@@ -1129,7 +1129,7 @@ mod tests {
 
     #[test]
     fn test_send() {
-        let n = list_from([1i,2,3]);
+        let n = list_from(&[1i,2,3]);
         spawn(proc() {
             check_links(&n);
             let a: &[_] = &[&1,&2,&3];
@@ -1139,16 +1139,16 @@ mod tests {
 
     #[test]
     fn test_eq() {
-        let mut n: DList<u8> = list_from([]);
-        let mut m = list_from([]);
+        let mut n: DList<u8> = list_from(&[]);
+        let mut m = list_from(&[]);
         assert!(n == m);
         n.push_front(1);
         assert!(n != m);
         m.push_back(1);
         assert!(n == m);
 
-        let n = list_from([2i,3,4]);
-        let m = list_from([1i,2,3]);
+        let n = list_from(&[2i,3,4]);
+        let m = list_from(&[1i,2,3]);
         assert!(n != m);
     }
 
@@ -1172,8 +1172,8 @@ mod tests {
 
     #[test]
     fn test_ord() {
-        let n: DList<int> = list_from([]);
-        let m = list_from([1i,2,3]);
+        let n: DList<int> = list_from(&[]);
+        let m = list_from(&[1i,2,3]);
         assert!(n < m);
         assert!(m > n);
         assert!(n <= n);
@@ -1183,29 +1183,29 @@ mod tests {
     #[test]
     fn test_ord_nan() {
         let nan = 0.0f64/0.0;
-        let n = list_from([nan]);
-        let m = list_from([nan]);
+        let n = list_from(&[nan]);
+        let m = list_from(&[nan]);
         assert!(!(n < m));
         assert!(!(n > m));
         assert!(!(n <= m));
         assert!(!(n >= m));
 
-        let n = list_from([nan]);
-        let one = list_from([1.0f64]);
+        let n = list_from(&[nan]);
+        let one = list_from(&[1.0f64]);
         assert!(!(n < one));
         assert!(!(n > one));
         assert!(!(n <= one));
         assert!(!(n >= one));
 
-        let u = list_from([1.0f64,2.0,nan]);
-        let v = list_from([1.0f64,2.0,3.0]);
+        let u = list_from(&[1.0f64,2.0,nan]);
+        let v = list_from(&[1.0f64,2.0,3.0]);
         assert!(!(u < v));
         assert!(!(u > v));
         assert!(!(u <= v));
         assert!(!(u >= v));
 
-        let s = list_from([1.0f64,2.0,4.0,2.0]);
-        let t = list_from([1.0f64,2.0,3.0,2.0]);
+        let s = list_from(&[1.0f64,2.0,4.0,2.0]);
+        let t = list_from(&[1.0f64,2.0,3.0,2.0]);
         assert!(!(s < t));
         assert!(s > one);
         assert!(!(s <= one));

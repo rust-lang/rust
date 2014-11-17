@@ -121,8 +121,8 @@ impl TcpAcceptor {
                 -1 => return Err(last_net_error()),
                 fd => return Ok(TcpStream::new(fd as sock_t)),
             }
-            try!(await([self.fd(), self.inner.reader.fd()],
-                             deadline, Readable));
+            try!(await(&[self.fd(), self.inner.reader.fd()],
+                       deadline, Readable));
         }
 
         Err(sys_common::eof())
@@ -139,7 +139,7 @@ impl TcpAcceptor {
     pub fn close_accept(&mut self) -> IoResult<()> {
         self.inner.closed.store(true, atomic::SeqCst);
         let fd = FileDesc::new(self.inner.writer.fd(), false);
-        match fd.write([0]) {
+        match fd.write(&[0]) {
             Ok(..) => Ok(()),
             Err(..) if wouldblock() => Ok(()),
             Err(e) => Err(e),

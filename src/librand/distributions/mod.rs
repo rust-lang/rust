@@ -349,7 +349,7 @@ mod tests {
 
     #[test] #[should_fail]
     fn test_weighted_choice_no_items() {
-        WeightedChoice::<int>::new([]);
+        WeightedChoice::<int>::new(&mut []);
     }
     #[test] #[should_fail]
     fn test_weighted_choice_zero_weight() {

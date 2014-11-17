@@ -179,10 +179,10 @@ pub fn monomorphic_fn(ccx: &CrateContext,
                   if needs_body {
                       if abi != abi::Rust {
                           foreign::trans_rust_fn_with_foreign_abi(
-                              ccx, &**decl, &**body, [], d, &psubsts, fn_id.node,
+                              ccx, &**decl, &**body, &[], d, &psubsts, fn_id.node,
                               Some(hash.as_slice()));
                       } else {
-                          trans_fn(ccx, &**decl, &**body, d, &psubsts, fn_id.node, []);
+                          trans_fn(ccx, &**decl, &**body, d, &psubsts, fn_id.node, &[]);
                       }
                   }
 
@@ -226,7 +226,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
                                  d,
                                  &psubsts,
                                  mth.id,
-                                 []);
+                                 &[]);
                     }
                     d
                 }
@@ -242,7 +242,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
                     let needs_body = setup_lldecl(d, mth.attrs.as_slice());
                     if needs_body {
                         trans_fn(ccx, mth.pe_fn_decl(), mth.pe_body(), d,
-                                 &psubsts, mth.id, []);
+                                 &psubsts, mth.id, &[]);
                     }
                     d
                 }

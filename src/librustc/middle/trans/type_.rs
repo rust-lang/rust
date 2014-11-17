@@ -162,7 +162,7 @@ impl Type {
     }
 
     pub fn empty_struct(ccx: &CrateContext) -> Type {
-        Type::struct_(ccx, [], false)
+        Type::struct_(ccx, &[], false)
     }
 
     pub fn vtable(ccx: &CrateContext) -> Type {
@@ -182,7 +182,7 @@ impl Type {
     }
 
     pub fn glue_fn(ccx: &CrateContext, t: Type) -> Type {
-        Type::func([t], &Type::void(ccx))
+        Type::func(&[t], &Type::void(ccx))
     }
 
     pub fn tydesc(ccx: &CrateContext, str_slice_ty: Type) -> Type {
@@ -199,7 +199,7 @@ impl Type {
                      int_ty,     // align
                      glue_fn_ty, // drop
                      str_slice_ty]; // name
-        tydesc.set_struct_body(elems, false);
+        tydesc.set_struct_body(&elems, false);
 
         tydesc
     }
@@ -214,7 +214,7 @@ impl Type {
 
     pub fn vec(ccx: &CrateContext, ty: &Type) -> Type {
         Type::struct_(ccx,
-            [Type::array(ty, 0), Type::int(ccx)],
+            &[Type::array(ty, 0), Type::int(ccx)],
         false)
     }
 
@@ -224,7 +224,7 @@ impl Type {
 
     // The box pointed to by @T.
     pub fn at_box(ccx: &CrateContext, ty: Type) -> Type {
-        Type::struct_(ccx, [
+        Type::struct_(ccx, &[
             ccx.int_type(), Type::glue_fn(ccx, Type::i8p(ccx)).ptr_to(),
             Type::i8p(ccx), Type::i8p(ccx), ty
         ], false)
@@ -235,7 +235,7 @@ impl Type {
     }
 
     pub fn opaque_trait(ccx: &CrateContext) -> Type {
-        Type::struct_(ccx, [Type::opaque_trait_data(ccx).ptr_to(), Type::vtable_ptr(ccx)], false)
+        Type::struct_(ccx, &[Type::opaque_trait_data(ccx).ptr_to(), Type::vtable_ptr(ccx)], false)
     }
 
     pub fn opaque_trait_data(ccx: &CrateContext) -> Type {

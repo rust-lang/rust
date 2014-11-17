@@ -923,13 +923,13 @@ mod tests {
         fn t(v: &[String], s: &str) {
             assert_eq!(v.concat().as_slice(), s);
         }
-        t([String::from_str("you"), String::from_str("know"),
-           String::from_str("I'm"),
-           String::from_str("no"), String::from_str("good")],
+        t(&[String::from_str("you"), String::from_str("know"),
+            String::from_str("I'm"),
+            String::from_str("no"), String::from_str("good")],
           "youknowI'mnogood");
-        let v: &[String] = [];
+        let v: &[String] = &[];
         t(v, "");
-        t([String::from_str("hi")], "hi");
+        t(&[String::from_str("hi")], "hi");
     }
 
     #[test]
@@ -937,13 +937,13 @@ mod tests {
         fn t(v: &[String], sep: &str, s: &str) {
             assert_eq!(v.connect(sep).as_slice(), s);
         }
-        t([String::from_str("you"), String::from_str("know"),
-           String::from_str("I'm"),
-           String::from_str("no"), String::from_str("good")],
+        t(&[String::from_str("you"), String::from_str("know"),
+            String::from_str("I'm"),
+            String::from_str("no"), String::from_str("good")],
           " ", "you know I'm no good");
-        let v: &[String] = [];
+        let v: &[String] = &[];
         t(v, " ", "");
-        t([String::from_str("hi")], " ", "hi");
+        t(&[String::from_str("hi")], " ", "hi");
     }
 
     #[test]
@@ -951,10 +951,10 @@ mod tests {
         fn t(v: &[&str], s: &str) {
             assert_eq!(v.concat().as_slice(), s);
         }
-        t(["you", "know", "I'm", "no", "good"], "youknowI'mnogood");
-        let v: &[&str] = [];
+        t(&["you", "know", "I'm", "no", "good"], "youknowI'mnogood");
+        let v: &[&str] = &[];
         t(v, "");
-        t(["hi"], "hi");
+        t(&["hi"], "hi");
     }
 
     #[test]
@@ -962,10 +962,10 @@ mod tests {
         fn t(v: &[&str], sep: &str, s: &str) {
             assert_eq!(v.connect(sep).as_slice(), s);
         }
-        t(["you", "know", "I'm", "no", "good"],
+        t(&["you", "know", "I'm", "no", "good"],
           " ", "you know I'm no good");
-        t([], " ", "");
-        t(["hi"], " ", "hi");
+        t(&[], " ", "");
+        t(&["hi"], " ", "hi");
     }
 
     #[test]
@@ -1266,26 +1266,26 @@ mod tests {
     #[test]
     fn test_is_utf8() {
         // deny overlong encodings
-        assert!(!is_utf8([0xc0, 0x80]));
-        assert!(!is_utf8([0xc0, 0xae]));
-        assert!(!is_utf8([0xe0, 0x80, 0x80]));
-        assert!(!is_utf8([0xe0, 0x80, 0xaf]));
-        assert!(!is_utf8([0xe0, 0x81, 0x81]));
-        assert!(!is_utf8([0xf0, 0x82, 0x82, 0xac]));
-        assert!(!is_utf8([0xf4, 0x90, 0x80, 0x80]));
+        assert!(!is_utf8(&[0xc0, 0x80]));
+        assert!(!is_utf8(&[0xc0, 0xae]));
+        assert!(!is_utf8(&[0xe0, 0x80, 0x80]));
+        assert!(!is_utf8(&[0xe0, 0x80, 0xaf]));
+        assert!(!is_utf8(&[0xe0, 0x81, 0x81]));
+        assert!(!is_utf8(&[0xf0, 0x82, 0x82, 0xac]));
+        assert!(!is_utf8(&[0xf4, 0x90, 0x80, 0x80]));
 
         // deny surrogates
-        assert!(!is_utf8([0xED, 0xA0, 0x80]));
-        assert!(!is_utf8([0xED, 0xBF, 0xBF]));
+        assert!(!is_utf8(&[0xED, 0xA0, 0x80]));
+        assert!(!is_utf8(&[0xED, 0xBF, 0xBF]));
 
-        assert!(is_utf8([0xC2, 0x80]));
-        assert!(is_utf8([0xDF, 0xBF]));
-        assert!(is_utf8([0xE0, 0xA0, 0x80]));
-        assert!(is_utf8([0xED, 0x9F, 0xBF]));
-        assert!(is_utf8([0xEE, 0x80, 0x80]));
-        assert!(is_utf8([0xEF, 0xBF, 0xBF]));
-        assert!(is_utf8([0xF0, 0x90, 0x80, 0x80]));
-        assert!(is_utf8([0xF4, 0x8F, 0xBF, 0xBF]));
+        assert!(is_utf8(&[0xC2, 0x80]));
+        assert!(is_utf8(&[0xDF, 0xBF]));
+        assert!(is_utf8(&[0xE0, 0xA0, 0x80]));
+        assert!(is_utf8(&[0xED, 0x9F, 0xBF]));
+        assert!(is_utf8(&[0xEE, 0x80, 0x80]));
+        assert!(is_utf8(&[0xEF, 0xBF, 0xBF]));
+        assert!(is_utf8(&[0xF0, 0x90, 0x80, 0x80]));
+        assert!(is_utf8(&[0xF4, 0x8F, 0xBF, 0xBF]));
     }
 
     #[test]
@@ -1293,58 +1293,58 @@ mod tests {
         macro_rules! pos ( ($($e:expr),*) => { { $(assert!(is_utf16($e));)* } });
 
         // non-surrogates
-        pos!([0x0000],
-             [0x0001, 0x0002],
-             [0xD7FF],
-             [0xE000]);
+        pos!(&[0x0000],
+             &[0x0001, 0x0002],
+             &[0xD7FF],
+             &[0xE000]);
 
         // surrogate pairs (randomly generated with Python 3's
         // .encode('utf-16be'))
-        pos!([0xdb54, 0xdf16, 0xd880, 0xdee0, 0xdb6a, 0xdd45],
-             [0xd91f, 0xdeb1, 0xdb31, 0xdd84, 0xd8e2, 0xde14],
-             [0xdb9f, 0xdc26, 0xdb6f, 0xde58, 0xd850, 0xdfae]);
+        pos!(&[0xdb54, 0xdf16, 0xd880, 0xdee0, 0xdb6a, 0xdd45],
+             &[0xd91f, 0xdeb1, 0xdb31, 0xdd84, 0xd8e2, 0xde14],
+             &[0xdb9f, 0xdc26, 0xdb6f, 0xde58, 0xd850, 0xdfae]);
 
         // mixtures (also random)
-        pos!([0xd921, 0xdcc2, 0x002d, 0x004d, 0xdb32, 0xdf65],
-             [0xdb45, 0xdd2d, 0x006a, 0xdacd, 0xddfe, 0x0006],
-             [0x0067, 0xd8ff, 0xddb7, 0x000f, 0xd900, 0xdc80]);
+        pos!(&[0xd921, 0xdcc2, 0x002d, 0x004d, 0xdb32, 0xdf65],
+             &[0xdb45, 0xdd2d, 0x006a, 0xdacd, 0xddfe, 0x0006],
+             &[0x0067, 0xd8ff, 0xddb7, 0x000f, 0xd900, 0xdc80]);
 
         // negative tests
         macro_rules! neg ( ($($e:expr),*) => { { $(assert!(!is_utf16($e));)* } });
 
         neg!(
             // surrogate + regular unit
-            [0xdb45, 0x0000],
+            &[0xdb45, 0x0000],
             // surrogate + lead surrogate
-            [0xd900, 0xd900],
+            &[0xd900, 0xd900],
             // unterminated surrogate
-            [0xd8ff],
+            &[0xd8ff],
             // trail surrogate without a lead
-            [0xddb7]);
+            &[0xddb7]);
 
         // random byte sequences that Python 3's .decode('utf-16be')
         // failed on
-        neg!([0x5b3d, 0x0141, 0xde9e, 0x8fdc, 0xc6e7],
-             [0xdf5a, 0x82a5, 0x62b9, 0xb447, 0x92f3],
-             [0xda4e, 0x42bc, 0x4462, 0xee98, 0xc2ca],
-             [0xbe00, 0xb04a, 0x6ecb, 0xdd89, 0xe278],
-             [0x0465, 0xab56, 0xdbb6, 0xa893, 0x665e],
-             [0x6b7f, 0x0a19, 0x40f4, 0xa657, 0xdcc5],
-             [0x9b50, 0xda5e, 0x24ec, 0x03ad, 0x6dee],
-             [0x8d17, 0xcaa7, 0xf4ae, 0xdf6e, 0xbed7],
-             [0xdaee, 0x2584, 0x7d30, 0xa626, 0x121a],
-             [0xd956, 0x4b43, 0x7570, 0xccd6, 0x4f4a],
-             [0x9dcf, 0x1b49, 0x4ba5, 0xfce9, 0xdffe],
-             [0x6572, 0xce53, 0xb05a, 0xf6af, 0xdacf],
-             [0x1b90, 0x728c, 0x9906, 0xdb68, 0xf46e],
-             [0x1606, 0xbeca, 0xbe76, 0x860f, 0xdfa5],
-             [0x8b4f, 0xde7a, 0xd220, 0x9fac, 0x2b6f],
-             [0xb8fe, 0xebbe, 0xda32, 0x1a5f, 0x8b8b],
-             [0x934b, 0x8956, 0xc434, 0x1881, 0xddf7],
-             [0x5a95, 0x13fc, 0xf116, 0xd89b, 0x93f9],
-             [0xd640, 0x71f1, 0xdd7d, 0x77eb, 0x1cd8],
-             [0x348b, 0xaef0, 0xdb2c, 0xebf1, 0x1282],
-             [0x50d7, 0xd824, 0x5010, 0xb369, 0x22ea]);
+        neg!(&[0x5b3d, 0x0141, 0xde9e, 0x8fdc, 0xc6e7],
+             &[0xdf5a, 0x82a5, 0x62b9, 0xb447, 0x92f3],
+             &[0xda4e, 0x42bc, 0x4462, 0xee98, 0xc2ca],
+             &[0xbe00, 0xb04a, 0x6ecb, 0xdd89, 0xe278],
+             &[0x0465, 0xab56, 0xdbb6, 0xa893, 0x665e],
+             &[0x6b7f, 0x0a19, 0x40f4, 0xa657, 0xdcc5],
+             &[0x9b50, 0xda5e, 0x24ec, 0x03ad, 0x6dee],
+             &[0x8d17, 0xcaa7, 0xf4ae, 0xdf6e, 0xbed7],
+             &[0xdaee, 0x2584, 0x7d30, 0xa626, 0x121a],
+             &[0xd956, 0x4b43, 0x7570, 0xccd6, 0x4f4a],
+             &[0x9dcf, 0x1b49, 0x4ba5, 0xfce9, 0xdffe],
+             &[0x6572, 0xce53, 0xb05a, 0xf6af, 0xdacf],
+             &[0x1b90, 0x728c, 0x9906, 0xdb68, 0xf46e],
+             &[0x1606, 0xbeca, 0xbe76, 0x860f, 0xdfa5],
+             &[0x8b4f, 0xde7a, 0xd220, 0x9fac, 0x2b6f],
+             &[0xb8fe, 0xebbe, 0xda32, 0x1a5f, 0x8b8b],
+             &[0x934b, 0x8956, 0xc434, 0x1881, 0xddf7],
+             &[0x5a95, 0x13fc, 0xf116, 0xd89b, 0x93f9],
+             &[0xd640, 0x71f1, 0xdd7d, 0x77eb, 0x1cd8],
+             &[0x348b, 0xaef0, 0xdb2c, 0xebf1, 0x1282],
+             &[0x50d7, 0xd824, 0x5010, 0xb369, 0x22ea]);
     }
 
     #[test]
@@ -1456,22 +1456,22 @@ mod tests {
     fn test_truncate_utf16_at_nul() {
         let v = [];
         let b: &[u16] = &[];
-        assert_eq!(truncate_utf16_at_nul(v), b);
+        assert_eq!(truncate_utf16_at_nul(&v), b);
 
         let v = [0, 2, 3];
-        assert_eq!(truncate_utf16_at_nul(v), b);
+        assert_eq!(truncate_utf16_at_nul(&v), b);
 
         let v = [1, 0, 3];
         let b: &[u16] = &[1];
-        assert_eq!(truncate_utf16_at_nul(v), b);
+        assert_eq!(truncate_utf16_at_nul(&v), b);
 
         let v = [1, 2, 0];
         let b: &[u16] = &[1, 2];
-        assert_eq!(truncate_utf16_at_nul(v), b);
+        assert_eq!(truncate_utf16_at_nul(&v), b);
 
         let v = [1, 2, 3];
         let b: &[u16] = &[1, 2, 3];
-        assert_eq!(truncate_utf16_at_nul(v), b);
+        assert_eq!(truncate_utf16_at_nul(&v), b);
     }
 
     #[test]
@@ -1585,7 +1585,7 @@ mod tests {
     fn test_chars_decoding() {
         let mut bytes = [0u8, ..4];
         for c in range(0u32, 0x110000).filter_map(|c| ::core::char::from_u32(c)) {
-            let len = c.encode_utf8(bytes).unwrap_or(0);
+            let len = c.encode_utf8(&mut bytes).unwrap_or(0);
             let s = ::core::str::from_utf8(bytes[..len]).unwrap();
             if Some(c) != s.chars().next() {
                 panic!("character {:x}={} does not decode correctly", c as u32, c);
@@ -1597,7 +1597,7 @@ mod tests {
     fn test_chars_rev_decoding() {
         let mut bytes = [0u8, ..4];
         for c in range(0u32, 0x110000).filter_map(|c| ::core::char::from_u32(c)) {
-            let len = c.encode_utf8(bytes).unwrap_or(0);
+            let len = c.encode_utf8(&mut bytes).unwrap_or(0);
             let s = ::core::str::from_utf8(bytes[..len]).unwrap();
             if Some(c) != s.chars().rev().next() {
                 panic!("character {:x}={} does not decode correctly", c as u32, c);
@@ -2114,20 +2114,20 @@ mod tests {
             let v: Vec<&str> = s.split_str(sep).collect();
             assert_eq!(v.as_slice(), u.as_slice());
         }
-        t("--1233345--", "12345", ["--1233345--"]);
-        t("abc::hello::there", "::", ["abc", "hello", "there"]);
-        t("::hello::there", "::", ["", "hello", "there"]);
-        t("hello::there::", "::", ["hello", "there", ""]);
-        t("::hello::there::", "::", ["", "hello", "there", ""]);
-        t("ประเทศไทย中华Việt Nam", "中华", ["ประเทศไทย", "Việt Nam"]);
-        t("zzXXXzzYYYzz", "zz", ["", "XXX", "YYY", ""]);
-        t("zzXXXzYYYz", "XXX", ["zz", "zYYYz"]);
-        t(".XXX.YYY.", ".", ["", "XXX", "YYY", ""]);
-        t("", ".", [""]);
-        t("zz", "zz", ["",""]);
-        t("ok", "z", ["ok"]);
-        t("zzz", "zz", ["","z"]);
-        t("zzzzz", "zz", ["","","z"]);
+        t("--1233345--", "12345", &["--1233345--"]);
+        t("abc::hello::there", "::", &["abc", "hello", "there"]);
+        t("::hello::there", "::", &["", "hello", "there"]);
+        t("hello::there::", "::", &["hello", "there", ""]);
+        t("::hello::there::", "::", &["", "hello", "there", ""]);
+        t("ประเทศไทย中华Việt Nam", "中华", &["ประเทศไทย", "Việt Nam"]);
+        t("zzXXXzzYYYzz", "zz", &["", "XXX", "YYY", ""]);
+        t("zzXXXzYYYz", "XXX", &["zz", "zYYYz"]);
+        t(".XXX.YYY.", ".", &["", "XXX", "YYY", ""]);
+        t("", ".", &[""]);
+        t("zz", "zz", &["",""]);
+        t("ok", "z", &["ok"]);
+        t("zzz", "zz", &["","z"]);
+        t("zzzzz", "zz", &["","","z"]);
     }
 
     #[test]
@@ -2149,12 +2149,12 @@ mod tests {
         }
 
         let s = String::from_str("01234");
-        assert_eq!(5, sum_len(["012", "", "34"]));
-        assert_eq!(5, sum_len([String::from_str("01").as_slice(),
-                               String::from_str("2").as_slice(),
-                               String::from_str("34").as_slice(),
-                               String::from_str("").as_slice()]));
-        assert_eq!(5, sum_len([s.as_slice()]));
+        assert_eq!(5, sum_len(&["012", "", "34"]));
+        assert_eq!(5, sum_len(&[String::from_str("01").as_slice(),
+                                String::from_str("2").as_slice(),
+                                String::from_str("34").as_slice(),
+                                String::from_str("").as_slice()]));
+        assert_eq!(5, sum_len(&[s.as_slice()]));
     }
 
     #[test]

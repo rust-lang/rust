@@ -198,7 +198,7 @@ impl<'a, W: Writer> RandomFasta<'a, W> {
                 buf[i] = self.nextc();
             }
             buf[LINE_LEN] = '\n' as u8;
-            try!(self.out.write(buf));
+            try!(self.out.write(&buf));
         }
         for i in range(0u, chars_left) {
             buf[i] = self.nextc();
@@ -225,12 +225,12 @@ fn main() {
     }
 
     out.write_line(">TWO IUB ambiguity codes").unwrap();
-    let iub = sum_and_scale(IUB);
+    let iub = sum_and_scale(&IUB);
     let mut random = RandomFasta::new(&mut out, iub.as_slice());
     random.make(n * 3).unwrap();
 
     random.out.write_line(">THREE Homo sapiens frequency").unwrap();
-    let homo_sapiens = sum_and_scale(HOMO_SAPIENS);
+    let homo_sapiens = sum_and_scale(&HOMO_SAPIENS);
     random.lookup = make_lookup(homo_sapiens.as_slice());
     random.make(n * 5).unwrap();
 

@@ -8,5 +8,5 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-static DATA:&'static [&'static str] = ["my string"];
+static DATA:&'static [&'static str] = &["my string"];
 fn main() { }

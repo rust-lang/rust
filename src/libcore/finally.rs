@@ -79,7 +79,7 @@ impl<T> Finally<T> for fn() -> T {
  *
  * struct State<'a> { buffer: &'a mut [u8], len: uint }
  * # let mut buf = [];
- * let mut state = State { buffer: buf, len: 0 };
+ * let mut state = State { buffer: &mut buf, len: 0 };
  * try_finally(
  *     &mut state, (),
  *     |state, ()| {

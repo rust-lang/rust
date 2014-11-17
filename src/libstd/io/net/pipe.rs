@@ -53,7 +53,7 @@ impl UnixStream {
     ///
     /// let server = Path::new("path/to/my/socket");
     /// let mut stream = UnixStream::connect(&server);
-    /// stream.write([1, 2, 3]);
+    /// stream.write(&[1, 2, 3]);
     /// ```
     pub fn connect<P: ToCStr>(path: &P) -> IoResult<UnixStream> {
         UnixStreamImp::connect(&path.to_c_str(), None)
@@ -169,7 +169,7 @@ impl UnixListener {
     /// let server = Path::new("/path/to/my/socket");
     /// let stream = UnixListener::bind(&server);
     /// for mut client in stream.listen().incoming() {
-    ///     client.write([1, 2, 3, 4]);
+    ///     client.write(&[1, 2, 3, 4]);
     /// }
     /// # }
     /// ```
@@ -307,10 +307,10 @@ mod tests {
     fn smoke() {
         smalltest(proc(mut server) {
             let mut buf = [0];
-            server.read(buf).unwrap();
+            server.read(&mut buf).unwrap();
             assert!(buf[0] == 99);
         }, proc(mut client) {
-            client.write([99]).unwrap();
+            client.write(&[99]).unwrap();
         })
     }
 
@@ -319,8 +319,8 @@ mod tests {
     fn read_eof() {
         smalltest(proc(mut server) {
             let mut buf = [0];
-            assert!(server.read(buf).is_err());
-            assert!(server.read(buf).is_err());
+            assert!(server.read(&mut buf).is_err());
+            assert!(server.read(&mut buf).is_err());
         }, proc(_client) {
             // drop the client
         })
@@ -331,7 +331,7 @@ mod tests {
         smalltest(proc(mut server) {
             let buf = [0];
             loop {
-                match server.write(buf) {
+                match server.write(&buf) {
                     Ok(..) => {}
                     Err(e) => {
                         assert!(e.kind == BrokenPipe ||
@@ -361,7 +361,7 @@ mod tests {
         spawn(proc() {
             for _ in range(0u, times) {
                 let mut stream = UnixStream::connect(&path2);
-                match stream.write([100]) {
+                match stream.write(&[100]) {
                     Ok(..) => {}
                     Err(e) => panic!("failed write: {}", e)
                 }
@@ -371,7 +371,7 @@ mod tests {
         for _ in range(0, times) {
             let mut client = acceptor.accept();
             let mut buf = [0];
-            match client.read(buf) {
+            match client.read(&mut buf) {
                 Ok(..) => {}
                 Err(e) => panic!("failed read/accept: {}", e),
             }
@@ -396,10 +396,10 @@ mod tests {
             let mut s = UnixStream::connect(&addr);
             let mut buf = [0, 0];
             debug!("client reading");
-            assert_eq!(s.read(buf), Ok(1));
+            assert_eq!(s.read(&mut buf), Ok(1));
             assert_eq!(buf[0], 1);
             debug!("client writing");
-            s.write([2]).unwrap();
+            s.write(&[2]).unwrap();
             debug!("client dropping");
         });
 
@@ -412,14 +412,14 @@ mod tests {
             let mut s2 = s2;
             rx1.recv();
             debug!("writer writing");
-            s2.write([1]).unwrap();
+            s2.write(&[1]).unwrap();
             debug!("writer done");
             tx2.send(());
         });
         tx1.send(());
         let mut buf = [0, 0];
         debug!("reader reading");
-        assert_eq!(s1.read(buf), Ok(1));
+        assert_eq!(s1.read(&mut buf), Ok(1));
         debug!("reader done");
         rx2.recv();
     }
@@ -433,9 +433,9 @@ mod tests {
 
         spawn(proc() {
             let mut s = UnixStream::connect(&addr);
-            s.write([1]).unwrap();
+            s.write(&[1]).unwrap();
             rx.recv();
-            s.write([2]).unwrap();
+            s.write(&[2]).unwrap();
             rx.recv();
         });
 
@@ -446,12 +446,12 @@ mod tests {
         spawn(proc() {
             let mut s2 = s2;
             let mut buf = [0, 0];
-            s2.read(buf).unwrap();
+            s2.read(&mut buf).unwrap();
             tx2.send(());
             done.send(());
         });
         let mut buf = [0, 0];
-        s1.read(buf).unwrap();
+        s1.read(&mut buf).unwrap();
         tx1.send(());
 
         rx.recv();
@@ -464,7 +464,7 @@ mod tests {
 
         spawn(proc() {
             let mut s = UnixStream::connect(&addr);
-            let mut buf = [0, 1];
+            let buf = &mut [0, 1];
             s.read(buf).unwrap();
             s.read(buf).unwrap();
         });
@@ -475,10 +475,10 @@ mod tests {
         let (tx, rx) = channel();
         spawn(proc() {
             let mut s2 = s2;
-            s2.write([1]).unwrap();
+            s2.write(&[1]).unwrap();
             tx.send(());
         });
-        s1.write([2]).unwrap();
+        s1.write(&[2]).unwrap();
 
         rx.recv();
     }
@@ -588,18 +588,18 @@ mod tests {
 
         // closing should prevent reads/writes
         s.close_write().unwrap();
-        assert!(s.write([0]).is_err());
+        assert!(s.write(&[0]).is_err());
         s.close_read().unwrap();
-        assert!(s.read(b).is_err());
+        assert!(s.read(&mut b).is_err());
 
         // closing should affect previous handles
-        assert!(s2.write([0]).is_err());
-        assert!(s2.read(b).is_err());
+        assert!(s2.write(&[0]).is_err());
+        assert!(s2.read(&mut b).is_err());
 
         // closing should affect new handles
         let mut s3 = s.clone();
-        assert!(s3.write([0]).is_err());
-        assert!(s3.read(b).is_err());
+        assert!(s3.write(&[0]).is_err());
+        assert!(s3.read(&mut b).is_err());
 
         // make sure these don't die
         let _ = s2.close_read();
@@ -624,7 +624,7 @@ mod tests {
         let (tx, rx) = channel();
         spawn(proc() {
             let mut s2 = s2;
-            assert!(s2.read([0]).is_err());
+            assert!(s2.read(&mut [0]).is_err());
             tx.send(());
         });
         // this should wake up the child task
@@ -642,18 +642,18 @@ mod tests {
         spawn(proc() {
             let mut s = UnixStream::connect(&addr).unwrap();
             rx.recv();
-            assert!(s.write([0]).is_ok());
+            assert!(s.write(&[0]).is_ok());
             let _ = rx.recv_opt();
         });
 
         let mut s = a.accept().unwrap();
         s.set_timeout(Some(20));
-        assert_eq!(s.read([0]).err().unwrap().kind, TimedOut);
-        assert_eq!(s.read([0]).err().unwrap().kind, TimedOut);
+        assert_eq!(s.read(&mut [0]).err().unwrap().kind, TimedOut);
+        assert_eq!(s.read(&mut [0]).err().unwrap().kind, TimedOut);
 
         s.set_timeout(Some(20));
         for i in range(0u, 1001) {
-            match s.write([0, .. 128 * 1024]) {
+            match s.write(&[0, .. 128 * 1024]) {
                 Ok(()) | Err(IoError { kind: ShortWrite(..), .. }) => {},
                 Err(IoError { kind: TimedOut, .. }) => break,
                 Err(e) => panic!("{}", e),
@@ -664,12 +664,12 @@ mod tests {
         // I'm not sure as to why, but apparently the write on windows always
         // succeeds after the previous timeout. Who knows?
         if !cfg!(windows) {
-            assert_eq!(s.write([0]).err().unwrap().kind, TimedOut);
+            assert_eq!(s.write(&[0]).err().unwrap().kind, TimedOut);
         }
 
         tx.send(());
         s.set_timeout(None);
-        assert_eq!(s.read([0, 0]), Ok(1));
+        assert_eq!(s.read(&mut [0, 0]), Ok(1));
     }
 
     #[test]
@@ -682,7 +682,7 @@ mod tests {
             rx.recv();
             let mut amt = 0;
             while amt < 100 * 128 * 1024 {
-                match s.read([0, ..128 * 1024]) {
+                match s.read(&mut [0, ..128 * 1024]) {
                     Ok(n) => { amt += n; }
                     Err(e) => panic!("{}", e),
                 }
@@ -692,12 +692,12 @@ mod tests {
 
         let mut s = a.accept().unwrap();
         s.set_read_timeout(Some(20));
-        assert_eq!(s.read([0]).err().unwrap().kind, TimedOut);
-        assert_eq!(s.read([0]).err().unwrap().kind, TimedOut);
+        assert_eq!(s.read(&mut [0]).err().unwrap().kind, TimedOut);
+        assert_eq!(s.read(&mut [0]).err().unwrap().kind, TimedOut);
 
         tx.send(());
         for _ in range(0u, 100) {
-            assert!(s.write([0, ..128 * 1024]).is_ok());
+            assert!(s.write(&[0, ..128 * 1024]).is_ok());
         }
     }
 
@@ -709,14 +709,14 @@ mod tests {
         spawn(proc() {
             let mut s = UnixStream::connect(&addr).unwrap();
             rx.recv();
-            assert!(s.write([0]).is_ok());
+            assert!(s.write(&[0]).is_ok());
             let _ = rx.recv_opt();
         });
 
         let mut s = a.accept().unwrap();
         s.set_write_timeout(Some(20));
         for i in range(0u, 1001) {
-            match s.write([0, .. 128 * 1024]) {
+            match s.write(&[0, .. 128 * 1024]) {
                 Ok(()) | Err(IoError { kind: ShortWrite(..), .. }) => {},
                 Err(IoError { kind: TimedOut, .. }) => break,
                 Err(e) => panic!("{}", e),
@@ -725,7 +725,7 @@ mod tests {
         }
 
         tx.send(());
-        assert!(s.read([0]).is_ok());
+        assert!(s.read(&mut [0]).is_ok());
     }
 
     #[test]
@@ -736,7 +736,7 @@ mod tests {
         spawn(proc() {
             let mut s = UnixStream::connect(&addr).unwrap();
             rx.recv();
-            assert!(s.write([0]).is_ok());
+            assert!(s.write(&[0]).is_ok());
             let _ = rx.recv_opt();
         });
 
@@ -745,12 +745,12 @@ mod tests {
         let (tx2, rx2) = channel();
         spawn(proc() {
             let mut s2 = s2;
-            assert!(s2.read([0]).is_ok());
+            assert!(s2.read(&mut [0]).is_ok());
             tx2.send(());
         });
 
         s.set_read_timeout(Some(20));
-        assert_eq!(s.read([0]).err().unwrap().kind, TimedOut);
+        assert_eq!(s.read(&mut [0]).err().unwrap().kind, TimedOut);
         tx.send(());
 
         rx2.recv();

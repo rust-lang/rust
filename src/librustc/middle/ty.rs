@@ -2656,7 +2656,7 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
                        bounds: ExistentialBounds)
                        -> TypeContents {
         // These are the type contents of the (opaque) interior
-        kind_bounds_to_contents(cx, bounds.builtin_bounds, [])
+        kind_bounds_to_contents(cx, bounds.builtin_bounds, &[])
     }
 
     fn kind_bounds_to_contents(cx: &ctxt,
@@ -4850,7 +4850,7 @@ pub fn required_region_bounds(tcx: &ctxt,
 
     all_bounds.push_all(region_bounds);
 
-    push_region_bounds([],
+    push_region_bounds(&[],
                        builtin_bounds,
                        &mut all_bounds);
 

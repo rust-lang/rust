@@ -55,7 +55,7 @@
 //!
 //!     let program = args[0].clone();
 //!
-//!     let opts = [
+//!     let opts = &[
 //!         optopt("o", "", "set output file name", "NAME"),
 //!         optflag("h", "help", "print this help menu")
 //!     ];
@@ -942,16 +942,16 @@ fn test_split_within() {
         each_split_within(s, i, |s| { v.push(s.to_string()); true });
         assert!(v.iter().zip(u.iter()).all(|(a,b)| a == b));
     }
-    t("", 0, []);
-    t("", 15, []);
-    t("hello", 15, ["hello".to_string()]);
-    t("\nMary had a little lamb\nLittle lamb\n", 15, [
+    t("", 0, &[]);
+    t("", 15, &[]);
+    t("hello", 15, &["hello".to_string()]);
+    t("\nMary had a little lamb\nLittle lamb\n", 15, &[
         "Mary had a".to_string(),
         "little lamb".to_string(),
         "Little lamb".to_string()
     ]);
     t("\nMary had a little lamb\nLittle lamb\n", ::std::uint::MAX,
-        ["Mary had a little lamb\nLittle lamb".to_string()]);
+        &["Mary had a little lamb\nLittle lamb".to_string()]);
 }
 
 #[cfg(test)]
@@ -1414,17 +1414,17 @@ mod tests {
           result::Ok(m) => m,
           result::Err(_) => panic!()
         };
-        assert!(matches_single.opts_present(["e".to_string()]));
-        assert!(matches_single.opts_present(["encrypt".to_string(), "e".to_string()]));
-        assert!(matches_single.opts_present(["e".to_string(), "encrypt".to_string()]));
-        assert!(!matches_single.opts_present(["encrypt".to_string()]));
-        assert!(!matches_single.opts_present(["thing".to_string()]));
-        assert!(!matches_single.opts_present([]));
+        assert!(matches_single.opts_present(&["e".to_string()]));
+        assert!(matches_single.opts_present(&["encrypt".to_string(), "e".to_string()]));
+        assert!(matches_single.opts_present(&["e".to_string(), "encrypt".to_string()]));
+        assert!(!matches_single.opts_present(&["encrypt".to_string()]));
+        assert!(!matches_single.opts_present(&["thing".to_string()]));
+        assert!(!matches_single.opts_present(&[]));
 
-        assert_eq!(matches_single.opts_str(["e".to_string()]).unwrap(), "foo".to_string());
-        assert_eq!(matches_single.opts_str(["e".to_string(), "encrypt".to_string()]).unwrap(),
+        assert_eq!(matches_single.opts_str(&["e".to_string()]).unwrap(), "foo".to_string());
+        assert_eq!(matches_single.opts_str(&["e".to_string(), "encrypt".to_string()]).unwrap(),
                    "foo".to_string());
-        assert_eq!(matches_single.opts_str(["encrypt".to_string(), "e".to_string()]).unwrap(),
+        assert_eq!(matches_single.opts_str(&["encrypt".to_string(), "e".to_string()]).unwrap(),
                    "foo".to_string());
 
         let args_both = vec!("-e".to_string(), "foo".to_string(), "--encrypt".to_string(),
@@ -1434,19 +1434,19 @@ mod tests {
           result::Ok(m) => m,
           result::Err(_) => panic!()
         };
-        assert!(matches_both.opts_present(["e".to_string()]));
-        assert!(matches_both.opts_present(["encrypt".to_string()]));
-        assert!(matches_both.opts_present(["encrypt".to_string(), "e".to_string()]));
-        assert!(matches_both.opts_present(["e".to_string(), "encrypt".to_string()]));
-        assert!(!matches_both.opts_present(["f".to_string()]));
-        assert!(!matches_both.opts_present(["thing".to_string()]));
-        assert!(!matches_both.opts_present([]));
+        assert!(matches_both.opts_present(&["e".to_string()]));
+        assert!(matches_both.opts_present(&["encrypt".to_string()]));
+        assert!(matches_both.opts_present(&["encrypt".to_string(), "e".to_string()]));
+        assert!(matches_both.opts_present(&["e".to_string(), "encrypt".to_string()]));
+        assert!(!matches_both.opts_present(&["f".to_string()]));
+        assert!(!matches_both.opts_present(&["thing".to_string()]));
+        assert!(!matches_both.opts_present(&[]));
 
-        assert_eq!(matches_both.opts_str(["e".to_string()]).unwrap(), "foo".to_string());
-        assert_eq!(matches_both.opts_str(["encrypt".to_string()]).unwrap(), "foo".to_string());
-        assert_eq!(matches_both.opts_str(["e".to_string(), "encrypt".to_string()]).unwrap(),
+        assert_eq!(matches_both.opts_str(&["e".to_string()]).unwrap(), "foo".to_string());
+        assert_eq!(matches_both.opts_str(&["encrypt".to_string()]).unwrap(), "foo".to_string());
+        assert_eq!(matches_both.opts_str(&["e".to_string(), "encrypt".to_string()]).unwrap(),
                    "foo".to_string());
-        assert_eq!(matches_both.opts_str(["encrypt".to_string(), "e".to_string()]).unwrap(),
+        assert_eq!(matches_both.opts_str(&["encrypt".to_string(), "e".to_string()]).unwrap(),
                    "foo".to_string());
     }
 
@@ -1459,10 +1459,10 @@ mod tests {
           result::Ok(m) => m,
           result::Err(_) => panic!()
         };
-        assert!(matches.opts_present(["L".to_string()]));
-        assert_eq!(matches.opts_str(["L".to_string()]).unwrap(), "foo".to_string());
-        assert!(matches.opts_present(["M".to_string()]));
-        assert_eq!(matches.opts_str(["M".to_string()]).unwrap(), ".".to_string());
+        assert!(matches.opts_present(&["L".to_string()]));
+        assert_eq!(matches.opts_str(&["L".to_string()]).unwrap(), "foo".to_string());
+        assert!(matches.opts_present(&["M".to_string()]));
+        assert_eq!(matches.opts_str(&["M".to_string()]).unwrap(), ".".to_string());
 
     }
 
@@ -1475,9 +1475,9 @@ mod tests {
           result::Ok(m) => m,
           result::Err(e) => panic!( "{}", e )
         };
-        assert!(matches.opts_present(["L".to_string()]));
-        assert_eq!(matches.opts_str(["L".to_string()]).unwrap(), "verbose".to_string());
-        assert!(matches.opts_present(["v".to_string()]));
+        assert!(matches.opts_present(&["L".to_string()]));
+        assert_eq!(matches.opts_str(&["L".to_string()]).unwrap(), "verbose".to_string());
+        assert!(matches.opts_present(&["v".to_string()]));
         assert_eq!(3, matches.opt_count("v"));
     }
 
