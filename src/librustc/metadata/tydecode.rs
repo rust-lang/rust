@@ -23,10 +23,13 @@ use middle::ty;
 use std::rc::Rc;
 use std::str;
 use std::string::String;
+use std::cmp;
 use syntax::abi;
 use syntax::ast;
 use syntax::ast::*;
 use syntax::parse::token;
+
+static DATA_TRUNCATE : uint = 32;
 
 // Compact string representation for ty::t values. API ty_str &
 // parse_from_str. Extra parameters are for converting to/from def_ids in the
@@ -123,16 +126,25 @@ pub fn parse_state_from_data<'a, 'tcx>(data: &'a [u8], crate_num: ast::CrateNum,
     }
 }
 
-fn data_log_string(data: &[u8], pos: uint) -> String {
+fn data_log_string(data: &[u8], pos: uint, max: uint) -> String {
     let mut buf = String::new();
+    let end = match max {
+        0u => data.len(),
+        x => cmp::min( pos + x, data.len() )
+    };
     buf.push_str("<<");
-    for i in range(pos, data.len()) {
+    for i in range(pos, end) {
         let c = data[i];
         if c > 0x20 && c <= 0x7F {
             buf.push(c as char);
         } else {
             buf.push('.');
         }
+    }
+    if end < data.len() {
+        buf.push_str(
+            format!( " ({} more bytes)", data.len() - end ).as_slice() 
+        );
     }
     buf.push_str(">>");
     buf
@@ -150,35 +162,35 @@ pub fn parse_ty_closure_data(data: &[u8],
 
 pub fn parse_ty_data(data: &[u8], crate_num: ast::CrateNum, pos: uint, tcx: &ty::ctxt,
                      conv: conv_did) -> ty::t {
-    debug!("parse_ty_data {}", data_log_string(data, pos));
+    debug!("parse_ty_data {}", data_log_string(data, pos, DATA_TRUNCATE));
     let mut st = parse_state_from_data(data, crate_num, pos, tcx);
     parse_ty(&mut st, conv)
 }
 
 pub fn parse_region_data(data: &[u8], crate_num: ast::CrateNum, pos: uint, tcx: &ty::ctxt,
                          conv: conv_did) -> ty::Region {
-    debug!("parse_region_data {}", data_log_string(data, pos));
+    debug!("parse_region_data {}", data_log_string(data, pos, DATA_TRUNCATE));
     let mut st = parse_state_from_data(data, crate_num, pos, tcx);
     parse_region(&mut st, conv)
 }
 
 pub fn parse_bare_fn_ty_data(data: &[u8], crate_num: ast::CrateNum, pos: uint, tcx: &ty::ctxt,
                              conv: conv_did) -> ty::BareFnTy {
-    debug!("parse_bare_fn_ty_data {}", data_log_string(data, pos));
+    debug!("parse_bare_fn_ty_data {}", data_log_string(data, pos, DATA_TRUNCATE));
     let mut st = parse_state_from_data(data, crate_num, pos, tcx);
     parse_bare_fn_ty(&mut st, conv)
 }
 
 pub fn parse_trait_ref_data(data: &[u8], crate_num: ast::CrateNum, pos: uint, tcx: &ty::ctxt,
                             conv: conv_did) -> ty::TraitRef {
-    debug!("parse_trait_ref_data {}", data_log_string(data, pos));
+    debug!("parse_trait_ref_data {}", data_log_string(data, pos, DATA_TRUNCATE));
     let mut st = parse_state_from_data(data, crate_num, pos, tcx);
     parse_trait_ref(&mut st, conv)
 }
 
 pub fn parse_substs_data(data: &[u8], crate_num: ast::CrateNum, pos: uint, tcx: &ty::ctxt,
                          conv: conv_did) -> subst::Substs {
-    debug!("parse_substs_data {}", data_log_string(data, pos));
+    debug!("parse_substs_data {}", data_log_string(data, pos, DATA_TRUNCATE));
     let mut st = parse_state_from_data(data, crate_num, pos, tcx);
     parse_substs(&mut st, conv)
 }
