@@ -83,10 +83,13 @@ impl<'v> Visitor<'v> for Annotator {
                 b: &'v Block, s: Span, _: NodeId) {
         match fk {
             FkMethod(_, _, meth) => {
-                self.annotate(meth.id, &meth.attrs, |v| visit::walk_fn(v, fk, fd, b, s));
+                // Methods are not already annotated, so we annotate it
+                self.annotate(meth.id, &meth.attrs, |_| {});
             }
-            _ => visit::walk_fn(self, fk, fd, b, s)
+            _ => {}
         }
+        // Items defined in a function body have no reason to have
+        // a stability attribute, so we don't recurse.
     }
 
     fn visit_trait_item(&mut self, t: &TraitItem) {
