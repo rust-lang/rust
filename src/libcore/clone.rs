@@ -23,6 +23,8 @@ the `clone` method.
 
 #![unstable]
 
+use kinds::Sized;
+
 /// A common trait for cloning an object.
 pub trait Clone {
     /// Returns a copy of the value.
@@ -40,22 +42,10 @@ pub trait Clone {
     }
 }
 
-impl<'a, T> Clone for &'a T {
+impl<'a, Sized? T> Clone for &'a T {
     /// Return a shallow copy of the reference.
     #[inline]
     fn clone(&self) -> &'a T { *self }
-}
-
-impl<'a, T> Clone for &'a [T] {
-    /// Return a shallow copy of the slice.
-    #[inline]
-    fn clone(&self) -> &'a [T] { *self }
-}
-
-impl<'a> Clone for &'a str {
-    /// Return a shallow copy of the slice.
-    #[inline]
-    fn clone(&self) -> &'a str { *self }
 }
 
 macro_rules! clone_impl(
