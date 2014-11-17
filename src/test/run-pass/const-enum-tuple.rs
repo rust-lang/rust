@@ -9,7 +9,7 @@
 // except according to those terms.
 
 enum E { V16(u16), V32(u32) }
-static C: (E, u16, u16) = (V16(0xDEAD), 0x600D, 0xBAD);
+static C: (E, u16, u16) = (E::V16(0xDEAD), 0x600D, 0xBAD);
 
 pub fn main() {
     let (_, n, _) = C;

@@ -52,7 +52,7 @@ mod map_reduce {
             }
             let (tx, rx) = channel();
             println!("sending find_reducer");
-            ctrl.send(find_reducer(key.as_bytes().to_vec(), tx));
+            ctrl.send(ctrl_proto::find_reducer(key.as_bytes().to_vec(), tx));
             println!("receiving");
             let c = rx.recv();
             println!("{}", c);
@@ -61,7 +61,7 @@ mod map_reduce {
 
         let ctrl_clone = ctrl.clone();
         ::map(input, |a,b| emit(&mut intermediates, ctrl.clone(), a, b) );
-        ctrl_clone.send(mapper_done);
+        ctrl_clone.send(ctrl_proto::mapper_done);
     }
 
     pub fn map_reduce(inputs: Vec<String>) {
@@ -80,8 +80,8 @@ mod map_reduce {
 
         while num_mappers > 0 {
             match rx.recv() {
-              mapper_done => { num_mappers -= 1; }
-              find_reducer(k, cc) => {
+              ctrl_proto::mapper_done => { num_mappers -= 1; }
+              ctrl_proto::find_reducer(k, cc) => {
                 let mut c;
                 match reducers.get(&str::from_utf8(
                         k.as_slice()).unwrap().to_string()) {

@@ -17,6 +17,11 @@
 /// High level implementation details can be found in the comment of the parent
 /// module.
 
+pub use self::Failure::*;
+pub use self::UpgradeResult::*;
+pub use self::SelectionResult::*;
+use self::Message::*;
+
 use core::prelude::*;
 
 use alloc::boxed::Box;

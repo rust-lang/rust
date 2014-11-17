@@ -32,6 +32,7 @@
 //! for creating the corresponding search index and source file renderings.
 //! These tasks are not parallelized (they haven't been a bottleneck yet), and
 //! both occur before the crate is rendered.
+pub use self::ExternalLocation::*;
 
 use std::collections::{HashMap, HashSet};
 use std::collections::hash_map::{Occupied, Vacant};

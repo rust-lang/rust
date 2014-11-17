@@ -191,6 +191,8 @@ represents the "variance transform" as defined in the paper:
   `C<E>` is `V3 = V1.xform(V2)`.
 
 */
+use self::VarianceTerm::*;
+use self::ParamKind::*;
 
 use arena;
 use arena::Arena;

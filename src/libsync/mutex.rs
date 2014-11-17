@@ -58,6 +58,7 @@
 // it's locked or not.
 
 use core::prelude::*;
+use self::Flavor::*;
 
 use alloc::boxed::Box;
 use core::atomic;

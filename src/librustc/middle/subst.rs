@@ -10,6 +10,9 @@
 
 // Type substitutions.
 
+pub use self::ParamSpace::*;
+pub use self::RegionSubsts::*;
+
 use middle::ty;
 use middle::ty_fold;
 use middle::ty_fold::{TypeFoldable, TypeFolder};

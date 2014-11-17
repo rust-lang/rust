@@ -55,9 +55,9 @@ fn encode_rbml<'a,
 pub fn main() {
     let target = Foo{baz: false,};
     let mut wr = SeekableMemWriter::new();
-    let proto = JSON;
+    let proto = WireProtocol::JSON;
     match proto {
-        JSON => encode_json(&target, &mut wr),
-        RBML => encode_rbml(&target, &mut wr)
+        WireProtocol::JSON => encode_json(&target, &mut wr),
+        WireProtocol::RBML => encode_rbml(&target, &mut wr)
     }
 }

@@ -25,13 +25,16 @@
        html_root_url = "http://doc.rust-lang.org/nightly/",
        html_playground_url = "http://play.rust-lang.org/")]
 #![allow(unknown_features)]
-#![feature(macro_rules, phase, slicing_syntax)]
+#![feature(macro_rules, phase, slicing_syntax, globs)]
 #![allow(missing_docs)]
 
 extern crate serialize;
 
 #[phase(plugin, link)] extern crate log;
 #[cfg(test)] extern crate test;
+
+pub use self::EbmlEncoderTag::*;
+pub use self::Error::*;
 
 use std::str;
 

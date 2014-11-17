@@ -17,7 +17,7 @@ enum Foo {
 fn bar<T: Send>(_: T) {}
 
 fn main() {
-    let x = A(marker::NoSend);
+    let x = Foo::A(marker::NoSend);
     bar(x);
     //~^ ERROR `core::kinds::Send` is not implemented
 }

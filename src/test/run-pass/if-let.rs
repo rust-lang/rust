@@ -46,12 +46,12 @@ pub fn main() {
         Three(String, int)
     }
 
-    let foo = Three("three".to_string(), 42i);
-    if let One = foo {
+    let foo = Foo::Three("three".to_string(), 42i);
+    if let Foo::One = foo {
         panic!("bad pattern match");
-    } else if let Two(_x) = foo {
+    } else if let Foo::Two(_x) = foo {
         panic!("bad pattern match");
-    } else if let Three(s, _) = foo {
+    } else if let Foo::Three(s, _) = foo {
         assert_eq!(s.as_slice(), "three");
     } else {
         panic!("bad else");
@@ -59,8 +59,8 @@ pub fn main() {
 
     if false {
         panic!("wat");
-    } else if let a@Two(_) = Two(42u) {
-        if let Two(b) = a {
+    } else if let a@Foo::Two(_) = Foo::Two(42u) {
+        if let Foo::Two(b) = a {
             assert_eq!(b, 42u);
         } else {
             panic!("panic in nested if-let");

@@ -79,6 +79,10 @@ obtained the type `Foo`, we would never match this method.
 
 */
 
+pub use self::CheckTraitsFlag::*;
+pub use self::AutoderefReceiverFlag::*;
+pub use self::MethodError::*;
+pub use self::CandidateSource::*;
 
 use middle::subst;
 use middle::subst::{Subst, SelfSpace};

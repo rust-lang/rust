@@ -12,6 +12,9 @@
 
 #![allow(non_camel_case_types)]
 
+pub use self::DefLike::*;
+use self::Family::*;
+
 use back::svh::Svh;
 use metadata::cstore::crate_metadata;
 use metadata::common::*;

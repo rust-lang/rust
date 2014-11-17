@@ -10,6 +10,11 @@
 
 // Functions dealing with attributes and meta items
 
+pub use self::InlineAttr::*;
+pub use self::StabilityLevel::*;
+pub use self::ReprAttr::*;
+pub use self::IntType::*;
+
 use ast;
 use ast::{AttrId, Attribute, Attribute_, MetaItem, MetaWord, MetaNameValue, MetaList};
 use codemap::{Span, Spanned, spanned, dummy_spanned};

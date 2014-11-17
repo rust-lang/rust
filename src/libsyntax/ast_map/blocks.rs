@@ -21,6 +21,8 @@
 //! nested within a uniquely determined `FnLike`), and users can ask
 //! for the `Code` associated with a particular NodeId.
 
+pub use self::Code::*;
+
 use abi;
 use ast::{Block, FnDecl, NodeId};
 use ast;

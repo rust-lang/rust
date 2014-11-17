@@ -10,6 +10,8 @@
 
 
 // Example from lkuper's intern talk, August 2012.
+use Color::{cyan, magenta, yellow, black};
+use ColorTree::{leaf, branch};
 
 trait Equal {
     fn isEq(&self, a: &Self) -> bool;

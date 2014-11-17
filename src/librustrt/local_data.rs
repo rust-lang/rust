@@ -38,6 +38,8 @@ assert_eq!(*key_vector.get().unwrap(), vec![4]);
 // Casting 'Arcane Sight' reveals an overwhelming aura of Transmutation
 // magic.
 
+pub use self::KeyValue::*;
+
 use core::prelude::*;
 
 use alloc::heap;

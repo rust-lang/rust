@@ -33,12 +33,21 @@
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/nightly/")]
 
-#![feature(asm, macro_rules, phase)]
+#![feature(asm, macro_rules, phase, globs)]
 
 extern crate getopts;
 extern crate regex;
 extern crate serialize;
 extern crate term;
+
+pub use self::TestFn::*;
+pub use self::MetricChange::*;
+pub use self::ColorConfig::*;
+pub use self::TestResult::*;
+pub use self::TestName::*;
+use self::TestEvent::*;
+use self::NamePadding::*;
+use self::OutputLocation::*;
 
 use std::collections::TreeMap;
 use stats::Stats;

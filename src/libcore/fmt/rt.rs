@@ -14,6 +14,11 @@
 //! These definitions are similar to their `ct` equivalents, but differ in that
 //! these can be statically allocated and are slightly optimized for the runtime
 
+pub use self::Alignment::*;
+pub use self::Count::*;
+pub use self::Position::*;
+pub use self::Flag::*;
+
 #[doc(hidden)]
 pub struct Argument<'a> {
     pub position: Position,

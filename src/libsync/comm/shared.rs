@@ -18,6 +18,8 @@
 /// module. You'll also note that the implementation of the shared and stream
 /// channels are quite similar, and this is no coincidence!
 
+pub use self::Failure::*;
+
 use core::prelude::*;
 
 use alloc::boxed::Box;

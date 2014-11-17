@@ -210,6 +210,7 @@ mod test {
           target_os = "freebsd",
           target_os = "dragonfly"))]
 pub mod dl {
+    pub use self::Rtld::*;
 
     use c_str::{CString, ToCStr};
     use libc;

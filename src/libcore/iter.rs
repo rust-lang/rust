@@ -58,6 +58,8 @@ This `for` loop syntax can be applied to any iterator over any type.
 
 */
 
+pub use self::MinMaxResult::*;
+
 use clone::Clone;
 use cmp;
 use cmp::Ord;

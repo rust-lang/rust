@@ -37,8 +37,8 @@ fn server(requests: &Receiver<request>, responses: &Sender<uint>) {
     let mut done = false;
     while !done {
         match requests.recv_opt() {
-          Ok(get_count) => { responses.send(count.clone()); }
-          Ok(bytes(b)) => {
+          Ok(request::get_count) => { responses.send(count.clone()); }
+          Ok(request::bytes(b)) => {
             //println!("server: received {} bytes", b);
             count += b;
           }
@@ -67,7 +67,7 @@ fn run(args: &[String]) {
             worker_results.push(task::try_future(proc() {
                 for _ in range(0u, size / workers) {
                     //println!("worker {}: sending {} bytes", i, num_bytes);
-                    to_child.send(bytes(num_bytes));
+                    to_child.send(request::bytes(num_bytes));
                 }
                 //println!("worker {} exiting", i);
             }));
@@ -81,7 +81,7 @@ fn run(args: &[String]) {
         }
 
         //println!("sending stop message");
-        to_child.send(stop);
+        to_child.send(request::stop);
         move_out(to_child);
         result = Some(from_child.recv());
     });

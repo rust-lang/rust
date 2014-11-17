@@ -18,12 +18,12 @@ enum cycle {
     empty
 }
 fn main() {
-    let mut x = box node(node_ {a: box empty});
+    let mut x = box cycle::node(node_ {a: box cycle::empty});
     // Create a cycle!
     match *x {
-      node(ref mut y) => {
+      cycle::node(ref mut y) => {
         y.a = x; //~ ERROR cannot move out of
       }
-      empty => {}
+      cycle::empty => {}
     };
 }

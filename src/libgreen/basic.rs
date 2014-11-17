@@ -14,6 +14,7 @@
 //!
 //! This implementation is also used as the fallback implementation of an event
 //! loop if no other one is provided (and M:N scheduling is desired).
+use self::Message::*;
 
 use alloc::arc::Arc;
 use std::sync::atomic;

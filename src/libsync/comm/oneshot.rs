@@ -32,6 +32,11 @@
 /// The one caveat to consider is that when a port sees a disconnected channel
 /// it must check for data because there is no "data plus upgrade" state.
 
+pub use self::Failure::*;
+pub use self::UpgradeResult::*;
+pub use self::SelectionResult::*;
+use self::MyUpgrade::*;
+
 use core::prelude::*;
 
 use alloc::boxed::Box;

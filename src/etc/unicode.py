@@ -391,6 +391,7 @@ def emit_conversions_module(f, lowerupper, upperlower):
 def emit_grapheme_module(f, grapheme_table, grapheme_cats):
     f.write("""pub mod grapheme {
     use core::slice::SlicePrelude;
+    pub use self::GraphemeCat::*;
     use core::slice;
 
     #[allow(non_camel_case_types)]

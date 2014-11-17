@@ -15,8 +15,11 @@
 // writing (August 2014) freely licensed under the following Creative Commons Attribution
 // License: [CC BY 2.5 CA](http://creativecommons.org/licenses/by/2.5/ca/).
 
+pub use self::Entry::*;
+
 use core::prelude::*;
 
+use self::StackOp::*;
 use super::node::*;
 use std::hash::{Writer, Hash};
 use core::default::Default;
@@ -445,6 +448,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
 /// to nodes. By using this module much better safety guarantees can be made, and more search
 /// boilerplate gets cut out.
 mod stack {
+    pub use self::PushResult::*;
     use core::prelude::*;
     use super::BTreeMap;
     use super::super::node::*;

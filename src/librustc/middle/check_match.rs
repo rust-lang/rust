@@ -8,6 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+pub use self::Constructor::*;
+use self::Usefulness::*;
+use self::WitnessPreference::*;
+
 use middle::const_eval::{compare_const_vals, const_bool, const_float, const_val};
 use middle::const_eval::{const_expr_to_pat, eval_const_expr, lookup_const_by_id};
 use middle::def::*;

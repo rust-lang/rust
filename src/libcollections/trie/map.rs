@@ -9,9 +9,10 @@
 // except according to those terms.
 
 //! Ordered maps and sets, implemented as simple tries.
-
 use core::prelude::*;
 
+pub use self::Entry::*;
+use self::TrieNode::*;
 use alloc::boxed::Box;
 use core::default::Default;
 use core::fmt;
@@ -105,7 +106,7 @@ struct InternalNode<T> {
 }
 
 // Each child of an InternalNode may be internal, in which case nesting continues,
-// external (containing a value), or empty.
+// external (containing a value), or empty
 #[deriving(Clone)]
 enum TrieNode<T> {
     Internal(Box<InternalNode<T>>),
@@ -1221,8 +1222,9 @@ mod test {
     use std::uint;
     use std::hash;
 
-    use super::{TrieMap, InternalNode, Internal, External, Nothing};
-    use super::{Occupied, Vacant};
+    use super::{TrieMap, InternalNode};
+    use super::Entry::*;
+    use super::TrieNode::*;
 
     fn check_integrity<T>(trie: &InternalNode<T>) {
         assert!(trie.count != 0);

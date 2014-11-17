@@ -12,7 +12,7 @@ enum A { B, C }
 
 fn main() {
     match (true, false) {
-        B => (),
+        A::B => (),
 //~^ ERROR mismatched types: expected `(bool, bool)`, found `A` (expected tuple, found enum A)
         _ => ()
     }

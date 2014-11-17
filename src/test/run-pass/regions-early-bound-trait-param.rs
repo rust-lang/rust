@@ -90,14 +90,14 @@ enum List<'l> {
 impl<'l> List<'l> {
     fn car<'m>(&'m self) -> int {
         match self {
-            &Cons(car, _) => car,
-            &Null => panic!(),
+            &List::Cons(car, _) => car,
+            &List::Null => panic!(),
         }
     }
     fn cdr<'n>(&'n self) -> &'l List<'l> {
         match self {
-            &Cons(_, cdr) => cdr,
-            &Null => panic!(),
+            &List::Cons(_, cdr) => cdr,
+            &List::Null => panic!(),
         }
     }
 }
@@ -127,9 +127,9 @@ pub fn main() {
     // to consume a value of type T and return a &T).  Easiest thing
     // that came to my mind: consume a cell of a linked list and
     // return a reference to the list it points to.
-    let l0 = Null;
-    let l1 = Cons(1, &l0);
-    let l2 = Cons(2, &l1);
+    let l0 = List::Null;
+    let l1 = List::Cons(1, &l0);
+    let l2 = List::Cons(2, &l1);
     let rl1 = &l1;
     let r  = make_ref(l2);
     assert_eq!(rl1.car(), r.car());

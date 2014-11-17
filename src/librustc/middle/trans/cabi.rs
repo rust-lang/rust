@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+pub use self::ArgKind::*;
+
 use llvm::Attribute;
 use std::option;
 use middle::trans::context::CrateContext;

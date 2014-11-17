@@ -23,7 +23,7 @@ enum HashMap<K,V> {
 }
 
 fn linear_map<K,V>() -> HashMap<K,V> {
-    HashMap_(LM{
+    HashMap::HashMap_(LM{
         resize_at: 32,
         size: 0})
 }
@@ -31,7 +31,7 @@ fn linear_map<K,V>() -> HashMap<K,V> {
 impl<K,V> HashMap<K,V> {
     pub fn len(&mut self) -> uint {
         match *self {
-            HashMap_(l) => l.size
+            HashMap::HashMap_(l) => l.size
         }
     }
 }

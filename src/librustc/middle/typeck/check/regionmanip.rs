@@ -10,6 +10,8 @@
 
 // #![warn(deprecated_mode)]
 
+pub use self::WfConstraint::*;
+
 use middle::subst::{ParamSpace, Subst, Substs};
 use middle::ty;
 use middle::ty_fold;

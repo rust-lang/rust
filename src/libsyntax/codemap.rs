@@ -23,6 +23,8 @@ source code snippets, etc.
 
 */
 
+pub use self::MacroFormat::*;
+
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 use std::cell::RefCell;
 use std::rc::Rc;

@@ -183,8 +183,7 @@
        html_root_url = "http://doc.rust-lang.org/nightly/",
        html_playground_url = "http://play.rust-lang.org/")]
 
-// NB this does *not* include globs, please keep it that way.
-#![feature(macro_rules, phase, default_type_params)]
+#![feature(macro_rules, phase, default_type_params, globs)]
 #![allow(deprecated)]
 
 #[cfg(test)] #[phase(plugin, link)] extern crate log;

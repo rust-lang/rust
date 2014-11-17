@@ -1263,17 +1263,17 @@ enum OptionalInt {
 }
 
 fn main() {
-    let x = Value(5);
-    let y = Missing;
+    let x = OptionalInt::Value(5);
+    let y = OptionalInt::Missing;
 
     match x {
-        Value(n) => println!("x is {}", n),
-        Missing  => println!("x is missing!"),
+        OptionalInt::Value(n) => println!("x is {}", n),
+        OptionalInt::Missing  => println!("x is missing!"),
     }
 
     match y {
-        Value(n) => println!("y is {}", n),
-        Missing  => println!("y is missing!"),
+        OptionalInt::Value(n) => println!("y is {}", n),
+        OptionalInt::Missing  => println!("y is missing!"),
     }
 }
 ```
@@ -1702,17 +1702,17 @@ enum OptionalInt {
 }
 
 fn main() {
-    let x = Value(5);
-    let y = Missing;
+    let x = OptionalInt::Value(5);
+    let y = OptionalInt::Missing;
 
     match x {
-        Value(n) => println!("x is {}", n),
-        Missing  => println!("x is missing!"),
+        OptionalInt::Value(n) => println!("x is {}", n),
+        OptionalInt::Missing  => println!("x is missing!"),
     }
 
     match y {
-        Value(n) => println!("y is {}", n),
-        Missing  => println!("y is missing!"),
+        OptionalInt::Value(n) => println!("y is {}", n),
+        OptionalInt::Missing  => println!("y is missing!"),
     }
 }
 ```
@@ -3709,7 +3709,7 @@ enum List {
 }
 
 fn main() {
-    let list = Node(0, box Node(1, box Nil));
+    let list = List::Node(0, box List::Node(1, box List::Nil));
 }
 ```
 
@@ -3895,11 +3895,11 @@ enum OptionalInt {
     Missing,
 }
 
-let x = Value(5i);
+let x = OptionalInt::Value(5i);
 
 match x {
-    Value(..) => println!("Got an int!"),
-    Missing   => println!("No such luck."),
+    OptionalInt::Value(..) => println!("Got an int!"),
+    OptionalInt::Missing   => println!("No such luck."),
 }
 ```
 
@@ -3911,12 +3911,12 @@ enum OptionalInt {
     Missing,
 }
 
-let x = Value(5i);
+let x = OptionalInt::Value(5i);
 
 match x {
-    Value(i) if i > 5 => println!("Got an int bigger than five!"),
-    Value(..) => println!("Got an int!"),
-    Missing   => println!("No such luck."),
+    OptionalInt::Value(i) if i > 5 => println!("Got an int bigger than five!"),
+    OptionalInt::Value(..) => println!("Got an int!"),
+    OptionalInt::Missing   => println!("No such luck."),
 }
 ```
 

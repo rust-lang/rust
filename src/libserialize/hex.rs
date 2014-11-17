@@ -11,6 +11,9 @@
 // ignore-lexer-test FIXME #15679
 
 //! Hex binary-to-text encoding
+
+pub use self::FromHexError::*;
+
 use std::fmt;
 use std::string;
 use std::error;

@@ -10,6 +10,32 @@
 
 #![allow(non_camel_case_types)]
 
+pub use self::terr_vstore_kind::*;
+pub use self::type_err::*;
+pub use self::BuiltinBound::*;
+pub use self::InferTy::*;
+pub use self::InferRegion::*;
+pub use self::ImplOrTraitItemId::*;
+pub use self::UnboxedClosureKind::*;
+pub use self::TraitStore::*;
+pub use self::ast_ty_to_ty_cache_entry::*;
+pub use self::Variance::*;
+pub use self::AutoAdjustment::*;
+pub use self::Representability::*;
+pub use self::UnsizeKind::*;
+pub use self::AutoRef::*;
+pub use self::ExprKind::*;
+pub use self::DtorKind::*;
+pub use self::ExplicitSelfCategory::*;
+pub use self::FnOutput::*;
+pub use self::Region::*;
+pub use self::ImplOrTraitItemContainer::*;
+pub use self::BorrowKind::*;
+pub use self::ImplOrTraitItem::*;
+pub use self::BoundRegion::*;
+pub use self::sty::*;
+pub use self::IntVarValue::*;
+
 use back::svh::Svh;
 use driver::session::Session;
 use lint;

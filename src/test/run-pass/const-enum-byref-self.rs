@@ -9,13 +9,13 @@
 // except according to those terms.
 
 enum E { V, VV(int) }
-static C: E = V;
+static C: E = E::V;
 
 impl E {
     pub fn method(&self) {
         match *self {
-            V => {}
-            VV(..) => panic!()
+            E::V => {}
+            E::VV(..) => panic!()
         }
     }
 }

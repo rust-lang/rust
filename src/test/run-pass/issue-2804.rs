@@ -46,11 +46,11 @@ fn add_interface(_store: int, managed_ip: String, data: json::Json) -> (String, 
                               "".to_string());
             let label = format!("{}-{}", managed_ip, name);
 
-            (label, bool_value(false))
+            (label, object::bool_value(false))
         }
         _ => {
             println!("Expected dict for {} interfaces, found {}", managed_ip, data);
-            ("gnos:missing-interface".to_string(), bool_value(true))
+            ("gnos:missing-interface".to_string(), object::bool_value(true))
         }
     }
 }

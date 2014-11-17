@@ -15,11 +15,11 @@ enum E {
     S1 { u: uint }
 }
 
-static C: E = S1 { u: 23 };
+static C: E = E::S1 { u: 23 };
 
 pub fn main() {
     match C {
-        S0 { .. } => panic!(),
-        S1 { u } => assert!(u == 23)
+        E::S0 { .. } => panic!(),
+        E::S1 { u } => assert!(u == 23)
     }
 }

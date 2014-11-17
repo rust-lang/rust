@@ -12,6 +12,6 @@
 
 enum option<T> { none, some(T), }
 
-fn f<T>() -> option<T> { return none; }
+fn f<T>() -> option<T> { return option::none; }
 
 pub fn main() { f::<int>(); }

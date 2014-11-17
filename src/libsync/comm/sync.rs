@@ -35,6 +35,9 @@
 
 use core::prelude::*;
 
+pub use self::Failure::*;
+use self::Blocker::*;
+
 use alloc::boxed::Box;
 use collections::Vec;
 use core::mem;

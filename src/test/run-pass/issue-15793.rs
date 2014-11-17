@@ -21,14 +21,14 @@ enum Enum {
 #[inline(never)]
 fn foo(x: Enum) -> int {
     match x {
-        Variant1(true) => 1,
-        Variant1(false) => 2,
-        Variant2(Second) => 3,
-        Variant2(Third) => 4,
-        Variant2(First) => 5
+        Enum::Variant1(true) => 1,
+        Enum::Variant1(false) => 2,
+        Enum::Variant2(NestedEnum::Second) => 3,
+        Enum::Variant2(NestedEnum::Third) => 4,
+        Enum::Variant2(NestedEnum::First) => 5
     }
 }
 
 fn main() {
-    assert_eq!(foo(Variant2(Third)), 4);
+    assert_eq!(foo(Enum::Variant2(NestedEnum::Third)), 4);
 }

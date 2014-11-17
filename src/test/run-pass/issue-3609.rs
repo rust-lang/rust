@@ -26,7 +26,7 @@ fn foo(name: String, samples_chan: Sender<Msg>) {
                 println!("{}: {}", i, buffer[i])
             }
         };
-        samples_chan.send(GetSamples(name.clone(), callback));
+        samples_chan.send(Msg::GetSamples(name.clone(), callback));
     });
 }
 

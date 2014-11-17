@@ -17,7 +17,7 @@ pub enum Foo {
 }
 
 pub static TEST: Test = Test {
-    foo: Bar,
+    foo: Foo::Bar,
     c: 'a'
 };
 

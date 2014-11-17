@@ -27,6 +27,8 @@ out.write(b"Hello, world!");
 
 */
 
+use self::StdSource::*;
+
 use failure::local_stderr;
 use fmt;
 use io::{Reader, Writer, IoResult, IoError, OtherIoError,

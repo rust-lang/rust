@@ -598,7 +598,7 @@ enum List<T> {
 }
 
 fn main() {
-    let list: List<int> = Cons(1, box Cons(2, box Cons(3, box Nil)));
+    let list: List<int> = List::Cons(1, box List::Cons(2, box List::Cons(3, box List::Nil)));
     println!("{}", list);
 }
 ```

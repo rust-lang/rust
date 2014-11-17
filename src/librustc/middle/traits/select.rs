@@ -11,6 +11,12 @@
 /*! See `doc.rs` for high-level documentation */
 #![allow(dead_code)] // FIXME -- just temporarily
 
+pub use self::MethodMatchResult::*;
+pub use self::MethodMatchedData::*;
+use self::Candidate::*;
+use self::BuiltinBoundConditions::*;
+use self::EvaluationResult::*;
+
 use super::{ErrorReported};
 use super::{Obligation, ObligationCause};
 use super::{SelectionError, Unimplemented, Overflow,

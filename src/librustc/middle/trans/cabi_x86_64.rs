@@ -12,6 +12,7 @@
 // https://github.com/jckarter/clay/blob/master/compiler/src/externals.cpp
 
 #![allow(non_upper_case_globals)]
+use self::RegClass::*;
 
 use llvm;
 use llvm::{Integer, Pointer, Float, Double};

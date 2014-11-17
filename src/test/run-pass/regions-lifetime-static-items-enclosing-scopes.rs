@@ -20,7 +20,7 @@ fn f<T:PartialEq>(o: &mut Option<T>) {
 pub fn main() {
     mod t {
         enum E {V=1, A=0}
-        static C: E = V;
+        static C: E = E::V;
     }
 
     f::<int>(&mut None);
