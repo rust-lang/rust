@@ -18,6 +18,7 @@ use core::fmt;
 use core::intrinsics;
 use core::kinds::Sized;
 use core::mem;
+use core::ops::{Deref, DerefMut};
 use core::option::Option;
 use core::raw::TraitObject;
 use core::result::{Ok, Err, Result};
@@ -50,6 +51,14 @@ impl<T: Default> Default for Box<T> {
 
 impl<T> Default for Box<[T]> {
     fn default() -> Box<[T]> { box [] }
+}
+
+impl<Sized? T> Deref<T> for Box<T> {
+    fn deref(&self) -> &T { &**self }
+}
+
+impl<Sized? T> DerefMut<T> for Box<T> {
+    fn deref_mut(&mut self) -> &mut T { &mut **self }
 }
 
 #[unstable]
@@ -182,5 +191,12 @@ mod test {
         assert_eq!(s.as_slice(), "&Any");
         let s = format!("{}", b);
         assert_eq!(s.as_slice(), "&Any");
+    }
+
+    #[test]
+    fn auto_deref() {
+    	fn test<U: Deref<int> >(_: U) {}
+	let foo = box 1;
+	test(foo);
     }
 }
