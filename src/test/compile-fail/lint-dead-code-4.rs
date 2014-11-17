@@ -14,7 +14,7 @@
 
 extern crate libc;
 
-use std::num;
+use std::num::Int;
 
 struct Foo {
     x: uint,
@@ -23,7 +23,7 @@ struct Foo {
 }
 
 fn field_read(f: Foo) -> uint {
-    num::pow(f.x, 2)
+    f.x.pow(2)
 }
 
 enum XYZ {

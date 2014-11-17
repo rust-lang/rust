@@ -37,28 +37,10 @@ pub fn div_rem<T: Div<T, T> + Rem<T, T>>(x: T, y: T) -> (T, T) {
 }
 
 /// Raises a `base` to the power of `exp`, using exponentiation by squaring.
-///
-/// # Example
-///
-/// ```rust
-/// use std::num;
-///
-/// assert_eq!(num::pow(2i, 4), 16);
-/// ```
 #[inline]
-pub fn pow<T: Int>(mut base: T, mut exp: uint) -> T {
-    if exp == 1 { base }
-    else {
-        let mut acc: T = Int::one();
-        while exp > 0 {
-            if (exp & 1) == 1 {
-                acc = acc * base;
-            }
-            base = base * base;
-            exp = exp >> 1;
-        }
-        acc
-    }
+#[deprecated = "Use Int::pow() instead, as in 2i.pow(4)"]
+pub fn pow<T: Int>(base: T, exp: uint) -> T {
+    base.pow(exp)
 }
 
 /// A built-in signed or unsigned integer.
@@ -358,6 +340,29 @@ pub trait Int
             None if other >= Int::zero() => Int::min_value(),
             None                         => Int::max_value(),
         }
+    }
+
+    /// Raises self to the power of `exp`, using exponentiation by squaring.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use std::num::Int;
+    ///
+    /// assert_eq!(2i.pow(4), 16);
+    /// ```
+    #[inline]
+    fn pow(self, mut exp: uint) -> Self {
+        let mut base = self;
+        let mut acc: Self = Int::one();
+        while exp > 0 {
+            if (exp & 1) == 1 {
+                acc = acc * base;
+            }
+            base = base * base;
+            exp /= 2;
+        }
+        acc
     }
 }
 
