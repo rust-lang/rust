@@ -283,7 +283,7 @@ impl Bitv {
         x != 0
     }
 
-    /// Sets the value of a bit at a index `i`.
+    /// Sets the value of a bit at an index `i`.
     ///
     /// # Panics
     ///
@@ -582,7 +582,7 @@ impl Bitv {
     ///
     /// # Panics
     ///
-    /// Panics if the the `Bitv` and slice are of different length.
+    /// Panics if the `Bitv` and slice are of different length.
     ///
     /// # Example
     ///
