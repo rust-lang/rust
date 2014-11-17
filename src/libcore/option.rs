@@ -235,7 +235,10 @@ impl<T> Option<T> {
     #[inline]
     #[stable]
     pub fn as_ref<'r>(&'r self) -> Option<&'r T> {
-        match *self { Some(ref x) => Some(x), None => None }
+        match *self {
+            Some(ref x) => Some(x),
+            None => None
+        }
     }
 
     /// Convert from `Option<T>` to `Option<&mut T>`
@@ -253,7 +256,10 @@ impl<T> Option<T> {
     #[inline]
     #[unstable = "waiting for mut conventions"]
     pub fn as_mut<'r>(&'r mut self) -> Option<&'r mut T> {
-        match *self { Some(ref mut x) => Some(x), None => None }
+        match *self {
+            Some(ref mut x) => Some(x),
+            None => None
+        }
     }
 
     /// Convert from `Option<T>` to `&mut [T]` (without copying)
@@ -401,7 +407,10 @@ impl<T> Option<T> {
     #[inline]
     #[unstable = "waiting for unboxed closures"]
     pub fn map<U>(self, f: |T| -> U) -> Option<U> {
-        match self { Some(x) => Some(f(x)), None => None }
+        match self {
+            Some(x) => Some(f(x)),
+            None => None
+        }
     }
 
     /// Applies a function to the contained value or returns a default.
@@ -418,7 +427,10 @@ impl<T> Option<T> {
     #[inline]
     #[unstable = "waiting for unboxed closures"]
     pub fn map_or<U>(self, def: U, f: |T| -> U) -> U {
-        match self { None => def, Some(t) => f(t) }
+        match self {
+            Some(t) => f(t),
+            None => def
+        }
     }
 
     /// Applies a function to the contained value or computes a default.
@@ -437,7 +449,10 @@ impl<T> Option<T> {
     #[inline]
     #[unstable = "waiting for unboxed closures"]
     pub fn map_or_else<U>(self, def: || -> U, f: |T| -> U) -> U {
-        match self { None => def(), Some(t) => f(t) }
+        match self {
+            Some(t) => f(t),
+            None => def()
+        }
     }
 
     /// Transforms the `Option<T>` into a `Result<T, E>`, mapping `Some(v)` to
