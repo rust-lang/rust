@@ -139,7 +139,7 @@ pub fn lookup(tcx: &ty::ctxt, id: DefId) -> Option<Stability> {
             lookup(tcx, trait_method_id)
         }
         _ if is_local(id) => {
-            tcx.stability.borrow().local.find_copy(&id.node)
+            tcx.stability.borrow().local.get(&id.node).cloned()
         }
         _ => {
             let stab = csearch::get_stability(&tcx.sess.cstore, id);

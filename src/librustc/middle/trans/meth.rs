@@ -301,7 +301,7 @@ pub fn trans_static_method_callee(bcx: Block,
 
 fn method_with_name(ccx: &CrateContext, impl_id: ast::DefId, name: ast::Name)
                     -> ast::DefId {
-    match ccx.impl_method_cache().borrow().find_copy(&(impl_id, name)) {
+    match ccx.impl_method_cache().borrow().get(&(impl_id, name)).cloned() {
         Some(m) => return m,
         None => {}
     }
