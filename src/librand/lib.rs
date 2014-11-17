@@ -237,7 +237,7 @@ pub trait Rng {
     /// use std::rand::{task_rng, Rng};
     ///
     /// let mut rng = task_rng();
-    /// println!("{:b}", rng.gen_weighted_bool(3));
+    /// println!("{}", rng.gen_weighted_bool(3));
     /// ```
     fn gen_weighted_bool(&mut self, n: uint) -> bool {
         n == 0 || self.gen_range(0, n) == 0

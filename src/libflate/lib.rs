@@ -130,7 +130,7 @@ mod tests {
                    input.len());
             let cmp = deflate_bytes(input.as_slice()).expect("deflation failed");
             let out = inflate_bytes(cmp.as_slice()).expect("inflation failed");
-            debug!("{} bytes deflated to {} ({:.1f}% size)",
+            debug!("{} bytes deflated to {} ({:.1}% size)",
                    input.len(), cmp.len(),
                    100.0 * ((cmp.len() as f64) / (input.len() as f64)));
             assert_eq!(input.as_slice(), out.as_slice());

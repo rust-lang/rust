@@ -887,7 +887,7 @@ impl<'a> MethodDef<'a> {
         // a series of let statements mapping each self_arg to a uint
         // corresponding to its variant index.
         let vi_idents: Vec<ast::Ident> = self_arg_names.iter()
-            .map(|name| { let vi_suffix = format!("{:s}_vi", name.as_slice());
+            .map(|name| { let vi_suffix = format!("{}_vi", name.as_slice());
                           cx.ident_of(vi_suffix.as_slice()) })
             .collect::<Vec<ast::Ident>>();
 

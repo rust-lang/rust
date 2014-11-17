@@ -179,11 +179,11 @@ fn main() {
     let mut bodies = BODIES;
 
     offset_momentum(&mut bodies);
-    println!("{:.9f}", energy(&bodies));
+    println!("{:.9}", energy(&bodies));
 
     advance(&mut bodies, 0.01, n);
 
-    println!("{:.9f}", energy(&bodies));
+    println!("{:.9}", energy(&bodies));
 }
 
 /// Pop a mutable reference off the head of a slice, mutating the slice to no

@@ -38,11 +38,11 @@ Some examples of the `format!` extension are:
 ```rust
 # fn main() {
 format!("Hello");                  // => "Hello"
-format!("Hello, {:s}!", "world");  // => "Hello, world!"
-format!("The number is {:d}", 1i); // => "The number is 1"
+format!("Hello, {}!", "world");    // => "Hello, world!"
+format!("The number is {}", 1i);   // => "The number is 1"
 format!("{}", (3i, 4i));           // => "(3, 4)"
 format!("{value}", value=4i);      // => "4"
-format!("{} {}", 1i, 2i);          // => "1 2"
+format!("{} {}", 1i, 2u);          // => "1 2"
 # }
 ```
 
@@ -94,9 +94,9 @@ For example, the following `format!` expressions all use named argument:
 
 ```rust
 # fn main() {
-format!("{argument}", argument = "test");        // => "test"
-format!("{name} {}", 1i, name = 2i);             // => "2 1"
-format!("{a:s} {c:d} {b}", a="a", b=(), c=3i); // => "a 3 ()"
+format!("{argument}", argument = "test");   // => "test"
+format!("{name} {}", 1i, name = 2i);        // => "2 1"
+format!("{a} {c} {b}", a="a", b=(), c=3i);  // => "a 3 ()"
 # }
 ```
 
@@ -138,23 +138,16 @@ multiple actual types to be formatted via `{:d}` (like `i8` as well as `int`).
 The current mapping of types to traits is:
 
 * *nothing* ⇒ `Show`
-* `d` ⇒ `Signed`
-* `i` ⇒ `Signed`
-* `u` ⇒ `Unsigned`
-* `b` ⇒ `Bool`
-* `c` ⇒ `Char`
 * `o` ⇒ `Octal`
 * `x` ⇒ `LowerHex`
 * `X` ⇒ `UpperHex`
-* `s` ⇒ `String`
 * `p` ⇒ `Pointer`
-* `t` ⇒ `Binary`
-* `f` ⇒ `Float`
+* `b` ⇒ `Binary`
 * `e` ⇒ `LowerExp`
 * `E` ⇒ `UpperExp`
 
 What this means is that any type of argument which implements the
-`std::fmt::Binary` trait can then be formatted with `{:t}`. Implementations are
+`std::fmt::Binary` trait can then be formatted with `{:b}`. Implementations are
 provided for these traits for a number of primitive types by the standard
 library as well. If no format is specified (as in `{}` or `{:6}`), then the
 format trait used is the `Show` trait. This is one of the more commonly
@@ -216,7 +209,7 @@ impl fmt::Binary for Vector2D {
         // Respect the formatting flags by using the helper method
         // `pad_integral` on the Formatter object. See the method documentation
         // for details, and the function `pad` can be used to pad strings.
-        let decimals = f.precision.unwrap_or(3);
+        let decimals = f.precision().unwrap_or(3);
         let string = f64::to_str_exact(magnitude, decimals);
         f.pad_integral(true, "", string.as_bytes())
     }
@@ -226,7 +219,7 @@ fn main() {
     let myvector = Vector2D { x: 3, y: 4 };
 
     println!("{}", myvector);       // => "(3, 4)"
-    println!("{:10.3t}", myvector); // => "     5.000"
+    println!("{:10.3b}", myvector); // => "     5.000"
 }
 ```
 
@@ -418,10 +411,10 @@ use string;
 use vec::Vec;
 
 pub use core::fmt::{Formatter, Result, FormatWriter, rt};
-pub use core::fmt::{Show, Bool, Char, Signed, Unsigned, Octal, Binary};
-pub use core::fmt::{LowerHex, UpperHex, String, Pointer};
-pub use core::fmt::{Float, LowerExp, UpperExp};
-pub use core::fmt::{FormatError, WriteError};
+pub use core::fmt::{Show, Octal, Binary};
+pub use core::fmt::{LowerHex, UpperHex, Pointer};
+pub use core::fmt::{LowerExp, UpperExp};
+pub use core::fmt::Error;
 pub use core::fmt::{Argument, Arguments, write, radix, Radix, RadixFmt};
 
 #[doc(hidden)]
@@ -444,6 +437,8 @@ pub use core::fmt::{argument, argumentstr, argumentuint};
 /// let s = format_args!(fmt::format, "Hello, {}!", "world");
 /// assert_eq!(s, "Hello, world!".to_string());
 /// ```
+#[experimental = "this is an implementation detail of format! and should not \
+                  be called directly"]
 pub fn format(args: &Arguments) -> string::String {
     let mut output = Vec::new();
     let _ = write!(&mut output as &mut Writer, "{}", args);
@@ -454,7 +449,7 @@ impl<'a> Writer for Formatter<'a> {
     fn write(&mut self, b: &[u8]) -> io::IoResult<()> {
         match (*self).write(b) {
             Ok(()) => Ok(()),
-            Err(WriteError) => Err(io::standard_error(io::OtherIoError))
+            Err(Error) => Err(io::standard_error(io::OtherIoError))
         }
     }
 }

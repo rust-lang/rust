@@ -3135,7 +3135,7 @@ pub fn trans_crate<'tcx>(analysis: CrateAnalysis<'tcx>)
     }
     if shared_ccx.sess().count_llvm_insns() {
         for (k, v) in shared_ccx.stats().llvm_insns.borrow().iter() {
-            println!("{:7u} {}", *v, *k);
+            println!("{:7} {}", *v, *k);
         }
     }
 

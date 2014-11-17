@@ -497,8 +497,8 @@ fn format(val: Param, op: FormatOp, flags: Flags) -> Result<Vec<u8> ,String> {
     let mut s = match val {
         Number(d) => {
             let s = match (op, flags.sign) {
-                (FormatDigit, true)  => format!("{:+d}", d).into_bytes(),
-                (FormatDigit, false) => format!("{:d}", d).into_bytes(),
+                (FormatDigit, true)  => format!("{:+}", d).into_bytes(),
+                (FormatDigit, false) => format!("{}", d).into_bytes(),
                 (FormatOctal, _)     => format!("{:o}", d).into_bytes(),
                 (FormatHex, _)       => format!("{:x}", d).into_bytes(),
                 (FormatHEX, _)       => format!("{:X}", d).into_bytes(),

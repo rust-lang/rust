@@ -221,7 +221,7 @@ pub fn render_to<W:Writer>(output: &mut W) {
 impl<'a> dot::Labeller<'a, Nd<'a>, Ed<'a>> for Graph {
     fn graph_id(&'a self) -> dot::Id<'a> { dot::Id::new("example3").unwrap() }
     fn node_id(&'a self, n: &Nd<'a>) -> dot::Id<'a> {
-        dot::Id::new(format!("N{:u}", n.val0())).unwrap()
+        dot::Id::new(format!("N{}", n.val0())).unwrap()
     }
     fn node_label<'a>(&'a self, n: &Nd<'a>) -> dot::LabelText<'a> {
         let &(i, _) = n;
@@ -635,7 +635,7 @@ mod tests {
     }
 
     fn id_name<'a>(n: &Node) -> Id<'a> {
-        Id::new(format!("N{:u}", *n)).unwrap()
+        Id::new(format!("N{}", *n)).unwrap()
     }
 
     impl<'a> Labeller<'a, Node, &'a Edge> for LabelledGraph {

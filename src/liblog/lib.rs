@@ -241,13 +241,6 @@ impl fmt::Show for LogLevel {
     }
 }
 
-impl fmt::Signed for LogLevel {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        let LogLevel(level) = *self;
-        write!(fmt, "{}", level)
-    }
-}
-
 impl Logger for DefaultLogger {
     fn log(&mut self, record: &LogRecord) {
         match writeln!(&mut self.handle,
