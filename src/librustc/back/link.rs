@@ -728,7 +728,9 @@ fn link_staticlib(sess: &Session, obj_filename: &Path, out_filename: &Path) {
     if sess.target.target.options.morestack {
         ab.add_native_library("morestack").unwrap();
     }
-    ab.add_native_library("compiler-rt").unwrap();
+    if !sess.target.target.options.no_compiler_rt {
+        ab.add_native_library("compiler-rt").unwrap();
+    }
 
     let crates = sess.cstore.get_used_crates(cstore::RequireStatic);
     let mut all_native_libs = vec![];
