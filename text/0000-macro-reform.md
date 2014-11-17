@@ -4,7 +4,7 @@
 
 # Summary
 
-Various enhancements to `macro_rules!` ahead of its standardization in 1.0.
+Various enhancements to macros ahead of their standardization in 1.0.
 
 **Note**: This is not the final Rust macro system design for all time.  Rather,
 it addresses the largest usability problems within the limited time frame for
@@ -23,26 +23,95 @@ edges](https://github.com/rust-lang/rfcs/issues/440).  A few of the big ones:
 - You can't control which macros are imported from a crate
 - You need the feature-gated `#[phase(plugin)]` to import macros
 - It's confusing that macro definition is itself a macro invocation, with a side effect
-  on the expansion context
+  on the syntax environment
 
 These issues in particular are things we have a chance of addressing for 1.0.
 This RFC contains plans to do so.
 
-# Detailed design
+# Semantic changes
 
-Skip ahead to
+These are the substantial changes to the macro system.  The examples also use
+the improved syntax, described later.
 
-* [`macro` items](#macro-items)
-* [`$crate`](#crate)
-* [Crate scope for macros](#crate-scope-for-macros)
-* [Item macro sugar](#item-macro-sugar)
-* [Macro re-export](#macro-re-export)
-* [`#[plugin]` attribute](#plugin-attribute)
-* [Unspecify order of procedural macro side effects](#unspecify-order-of-procedural-macro-side-effects)
+## Crate scope for macros
 
-## `macro` items
+In this document, the "syntax environment" refers to the set of syntax
+extensions that can be invoked at a given position in the crate.  The names in
+the syntax environment are simple unqualified identifiers such as `panic` and
+`vec`.  Informally we may write `vec!` to distinguish from an ordinary item.
+However, the exclamation point is really part of the invocation syntax, not the
+name, and some syntax extensions are invoked with no exclamation point, for
+example item decorators like `deriving`.
 
-Introduce a new keyword `macro`.  Use it for a new kind of item, a macro definition:
+The first proposed change is that macros imported from another crate will not
+automatically end up in the syntax environment, as they do today.  Instead, you
+can bring an imported macro into the syntax environment with a new view item,
+`use macro`:
+
+```rust
+use macro std::vec;
+use macro std::panic as fail;
+use macro core::*;
+```
+
+The syntax environment still consists of unqualified names.  There's no way to
+invoke a macro through a qualified name. This obviates the need to change the
+parsing of expressions, patterns, etc.
+
+The `macro` keyword is important because it signals that this is something
+different from the usual name resolution.  `use macro` is a memorable and
+searchable name for the feature.
+
+The `use macro` view item only affects the syntax environment of the block or
+module where it appears, and only from the point of appearance onward.  Unlike
+a normal `use` item, this includes child modules (in the same file or others).
+
+Many macros expand using other "private macros" as an implementation detail.
+For example, librustc's `declare_lint!` uses `lint_initializer!`.  The client
+should not know about this macro, although it still needs to be exported for
+cross-crate use.  For this reason we allow `use macro` within a macro
+definition.
+
+```rust
+/// Not to be imported directly.
+extern macro lint_initializer { ... }
+
+/// Declare a lint.
+extern macro declare_lint {
+    // See below for $crate
+    use macro $crate::lint_initializer;
+
+    ($name:ident, $level:ident, $desc:expr) => (
+        static $name: &'static $crate::lint::Lint
+            = &lint_initializer!($name, $level, $desc);
+    )
+}
+```
+
+The macro `lint_initializer!` will be visible only during further expansion of
+the result of invoking `declare_lint!`.
+
+Procedural macros need their own way to manipulate the syntax environment, but
+that's an unstable internal API, so it's outside the scope of this RFC.
+
+## `$crate`
+
+We add a special metavar `$crate` which expands to `::foo` when a macro was
+imported from crate `foo`, and to nothing when it was defined in-crate.
+`$crate::bar::baz` will be an absolute path either way.
+
+This feature eliminates the need for the "curious inner-module" and also
+enables macro re-export (see below).  It is [implemented and
+tested](https://github.com/kmcallister/rust/commits/macro-reexport) but needs a
+rebase.
+
+# New syntax
+
+We also clean up macro syntax in a way that complements the semantic changes above.
+
+## `macro_rules!` becomes `macro`
+
+The new macro definition syntax uses the `macro` keyword introduced above:
 
 ```rust
 // first example from the Macros Guide
@@ -56,158 +125,68 @@ macro early_return {
 }
 ```
 
+This is an ordinary item, like `fn` or `struct`, not a macro invocation.  It
+defines a new macro in the syntax environment of the enclosing block or module.
+
+The new macro can be used immediately. There is no way to `use macro` a macro
+defined in the same crate, and no need to do so.
+
+If qualified by `pub`, the macro escapes the syntax environment for the
+enclosing block/module and becomes available throughout the rest of the crate
+(according to depth-first search).  This is like putting `#[macro_escape]` on
+the module and all its ancestors, but applies *only* to the macro with `pub`.
+
 `macro_rules!` already allows `{ }` for the macro body, but the convention is
 `( )` for some reason.  In accepting this RFC we would change to a `{ }`
 convention for consistency with the rest of the language.
 
-There are two scope qualifiers for `macro`:
+## Macro export and re-export
 
-* `pub` — this macro "escapes" up the module hierarchy to the crate root, so it
-  can be used anywhere in this crate after its definition (according to a
-  depth-first traversal).  This is like putting `#[macro_escape]` on the module
-  and all its ancestors, but applies *only* to the macro with `pub`.
+A `macro` item qualified by `extern` becomes available to other crates.  That
+is, it can be the target of `use macro`.  Or put another way, `extern macro`
+works the way `#[macro_export] macro_rules!` does today.  Adding `extern` has
+no effect on the syntax environment for the current crate.
 
-* `extern` — this macro can be imported by other crates, i.e. the same meaning
-  as `#[macro_export]` today
+`pub` and `extern` may be used together on the same `macro` definition, since
+their effects are independent.
 
-These can be used together.
+We can also re-export macros that were imported from another crate.  This is
+accomplished with `extern use macro`.
 
-The default (as today) is that the macro is only visible within the lexical
-scope where it is defined.
-
-The `Item` AST node changes as follows:
+For example, libcollections defines a `vec!` macro, which would now look like:
 
 ```rust
-pub enum Item_ {
-    // ...
-
-    /// A macro definition.
-    ItemDefineMacro(Vec<TokenTree>),
-
-    /// A macro invocation.
-    ItemUseMacro(Mac),  // was called ItemMac
+extern macro vec {
+    ($($e:expr),*) => ({
+        let mut _temp = $crate::vec::Vec::new();
+        $(_temp.push($e);)*
+        _temp
+    })
 }
 ```
 
-While it's unfortunate that AST types can't represent a `macro` item as
-anything richer than a token tree, this is not a regression from the status quo
-with `macro_rules!`, which parses as an `ItemMac`.
-
-This also provides flexibility to make backwards-compatible changes.  One can
-imagine
+Currently, libstd duplicates this macro in its own `macros.rs`.  Now it could
+do
 
 ```rust
-#[procedural] macro match_token {
-    fn expand(cx: &mut ExtCtxt, span: Span, toks: &[TokenTree])
-            -> Box<MacResult+'static> {
-        // ...
-    }
-}
+extern use macro collections::vec;
 ```
 
-or
+as long as the module `std::vec` is interface-compatible with
+`collections::vec`.
 
-```rust
-macro atom {
-    ($name:tt) => fn expand(...) {
-        // ...
-    }
-}
-```
+(Actually the current libstd `vec!` is completely different for efficiency, but
+it's just an example.)
 
-though working out the details is far outside the scope of this RFC.
-
-We are free to change the AST and parsing after 1.0 as long as the old syntax
-still works.  So we could have a separate enum variant for procedural macros
-parsed as function decls.
-
-## `$crate`
-
-Add a special metavar `$crate` which expands to `::foo` when the macro was
-imported from crate `foo`, and to nothing when it was defined in-crate.
-`$crate::bar::baz` will be an absolute path either way.
-
-This feature eliminates the need for the "curious inner-module" and also
-enables macro re-export (see below).  It is [implemented and
-tested](https://github.com/kmcallister/rust/commits/macro-reexport) but needs a
-rebase.
-
-Add a lint to warn in cases where an `extern` macro has paths that are not
-absolute-with-crate or `$crate`-relative.  This will have some (hopefully rare)
-false positives, and is not fully fleshed out yet.
-
-## Crate scope for macros
-
-Instead of a single global namespace for macro definitions, we now have one
-namespace per crate.  We introduce a new view item, `use macro`:
-
-```rust
-use macro std::vec;
-use macro std::panic as fail;
-```
-
-There's no way to invoke a macro with a qualified name; this obviates the need
-to change the parsing of expressions, patterns, etc.
-
-The `macro` keyword is important because it signals that this is something
-different from the usual name resolution.  `use macro` is a memorable and
-searchable name for the feature.
-
-`use macro` can be qualified with `pub` to get the same "escape" behavior as
-`pub macro`.  `use macro` also allows globs.  For example:
-
-```rust
-#![no_std]
-extern crate core;
-pub use macro core::*;
-```
-
-Many macros expand using other "private macros" as an implementation detail.
-For example, librustc's `declare_lint!` uses `lint_initializer!`.  The client
-should not know about this macro, although it still needs to be exported for
-cross-crate use.  For this reason we allow `use macro` within a macro
-definition, and allow `$crate` in that context.
-
-```rust
-/// Not to be imported directly.
-extern macro lint_initializer { ... }
-
-/// Declare a lint.
-extern macro declare_lint {
-    use macro $crate::lint_initializer;
-
-    ($name:ident, $level:ident, $desc:expr) => (
-        static $name: &'static $crate::lint::Lint
-            = &lint_initializer!($name, $level, $desc);
-    )
-}
-```
-
-The macro `lint_initializer!` will be visible only during further expansion of
-the result of invoking `declare_lint!`.
-
-Procedural macros need their own way to manipulate the expansion context, but
-that's an unstable internal API, so it's outside the scope of this RFC.
-
-In the long run,
-
-```rust
-use macro std::vec;
-```
-
-may end up as a deprecated synonym for
-
-```rust
-use std::vec!;
-```
-
-but maintaining this synonym does not seem like a large burden.
+Because macros are exported in crate metadata as strings, macro re-export "just
+works" as soon as `$crate` is available.  It's implemented as part of the
+`$crate` branch mentioned above.
 
 ## Item macro sugar
 
-An item defines one name in the current module, and can have "adjective"
-qualifiers such as `pub`, `extern`, etc.  We extend macro invocation in item
-position to reflect this form.  The new invocation syntax is
+In Rust's syntax, an item defines one name in the current module, and can have
+"adjective" qualifiers such as `pub`, `extern`, etc.  We extend macro
+invocation in item position to reflect this form.  The new invocation syntax is
 
 ```rust
 <quals...> foo! <ident> {
@@ -285,49 +264,26 @@ pub lazy_static! LOG {
 }
 ```
 
-## Macro re-export
-
-With `$crate` we can easily re-export macros that were imported from another
-crate.  This is accomplished with `extern use macro`.
-
-For example, libcollections defines a `vec!` macro, which would now look like:
-
-```rust
-extern macro vec {
-    ($($e:expr),*) => ({
-        let mut _temp = $crate::vec::Vec::new();
-        $(_temp.push($e);)*
-        _temp
-    })
-}
-```
-
-Currently, libstd duplicates this macro in its own `macros.rs`.  Now it could
-do
-
-```rust
-extern use macro collections::vec;
-```
-
-as long as the module `std::vec` is interface-compatible with
-`collections::vec`.
-
-(Actually the current libstd `vec!` is completely different for efficiency, but
-it's just an example.)
-
 ## `#[plugin]` attribute
 
-Since macros are now crate-scoped, we can load macros from every `extern crate`
-without a special attribute.  (Probably we should exclude `extern crate`s that
-aren't at the crate root, because there's no way `$crate` paths will be
-correct.)
+Since macros no longer automatically pollute the syntax environment, we can
+load them from every `extern crate`.  (Probably we should exclude
+`extern crate`s that aren't at the crate root, because there's no way `$crate`
+paths will be correct.)
 
 `#[phase(plugin)]` becomes simply `#[plugin]` and is still feature-gated.  It
 only controls whether to search for and run a plugin registrar function.  The
 plugin itself will decide whether it's to be linked at runtime, by calling a
 `Registry` method.
 
-`#[plugin]` takes an optional "arguments list" of the form
+# Other improvements
+
+These are somewhat related to the above, but could be spun off into separate
+RFCs.
+
+## Arguments to `#[plugin]`
+
+`#[plugin]` will take an optional "arguments list" of the form
 
 ```rust
 #[plugin(foo="bar", ... any metas ...)]
@@ -338,7 +294,14 @@ rustc itself will not interpret these attribute [meta
 items](http://doc.rust-lang.org/syntax/ast/enum.MetaItem_.html), but will make
 them available to the plugin through a `Registry` method.
 
+This facilitates plugin configuration.  The alternative in many cases is to use
+interacting side effects between procedural macros, which are harder to reason
+about.
+
 ## Unspecify order of procedural macro side effects
+
+This is basically an internal-only change, but I mention it in this RFC (for
+now) because it was discussed alongside the rest of this.
 
 We clarify that the ordering of expansion, hence side effects, for separate
 (i.e. non-nested) procedural macro invocations is unspecified.  This does not
@@ -355,6 +318,88 @@ The main reason to consider this now in an RFC is to make sure that built-in
 procedural macros exposed to stable code can comply.  Reserving the right to
 change expansion order allows us to pursue more sophisticated approaches to the
 name resolution problem after 1.0.
+
+# Miscellaneous remarks
+
+`macro` is no longer a macro invocation, but we don't attempt to parse its
+contents any more than we currently parse `macro_rules!`.  The item AST type
+changes to
+
+```rust
+pub enum Item_ {
+    // ...
+
+    /// A macro definition.
+    ItemDefineMacro(Vec<TokenTree>),
+
+    /// A macro invocation.
+    ItemUseMacro(Mac),  // was called ItemMac
+}
+```
+
+The current `macro_rules!`, which parses as an `ItemMac`.
+
+Leaving the body as an uninterpreted token tree also provides flexibility to
+make backwards-compatible changes.  One can imagine
+
+```rust
+#[procedural] macro match_token {
+    fn expand(cx: &mut ExtCtxt, span: Span, toks: &[TokenTree])
+            -> Box<MacResult+'static> {
+        // ...
+    }
+}
+```
+
+or
+
+```rust
+macro atom {
+    ($name:tt) => fn expand(...) {
+        // ...
+    }
+}
+```
+
+though working out the details is far outside the scope of this RFC.
+
+We are free to change the AST and parsing after 1.0 as long as the old syntax
+still works.  So we could have a separate enum variant for procedural macros
+parsed as function decls.
+
+In a future where macros are scoped the same way as other items,
+
+```rust
+use macro std::vec;
+```
+
+would become a deprecated synonym for
+
+```rust
+use std::vec!;
+```
+
+Maintaining this synonym does not seem like a large burden.
+
+We can add a lint to warn about cases where an `extern` macro has paths that
+are not absolute-with-crate or `$crate`-relative.  This will have some
+(hopefully rare) false positives, and is not fully fleshed out yet.
+
+# Implementation and transition
+
+I will coordinate implementation of this RFC, and I expect to write most of the
+code myself.
+
+Some of the syntax cleanups could be deferred until after 1.0.  However the
+semantic changes are enough that many users will re-examine and perhaps edit a
+large fraction of their macro definitions.  My thinking is that the cleaned-up
+syntax should be available when this happens rather than requiring a separate
+pass a few months later.  Also I would really like the first Rust release to
+put its best foot forward with macros, not just in terms of semantics but
+with a polished and pleasant user experience.
+
+To ease the transition, we can keep the old `macro_rules!` syntax as a
+deprecated synonym, to be removed before 1.0.
 
 # Drawbacks
 
@@ -397,6 +442,12 @@ reform.  Two ways this could work out:
 Should we forbid `$crate` in non-`extern` macros?  It seems useless, however I
 think we should allow it anyway, to encourage the habit of writing `$crate::`
 for any references to the local crate.
+
+Should we allow `pub use macro`, which would escape the enclosing block/module
+the way `pub macro` does?
+
+Should we require that `extern use macro` can only appear in the crate root?
+It doesn't make a lot of sense to put it elsewhere.
 
 # Acknowledgements
 
