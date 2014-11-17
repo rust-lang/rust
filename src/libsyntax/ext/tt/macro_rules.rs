@@ -11,7 +11,7 @@
 use ast::{Ident, TtDelimited, TtSequence, TtToken};
 use ast;
 use codemap::{Span, DUMMY_SP};
-use ext::base::{ExtCtxt, MacResult, MacroDef};
+use ext::base::{ExtCtxt, MacDef, MacResult, MacroDef};
 use ext::base::{NormalTT, TTMacroExpander};
 use ext::tt::macro_parser::{Success, Error, Failure};
 use ext::tt::macro_parser::{NamedMatch, MatchedSeq, MatchedNonterminal};
@@ -129,14 +129,6 @@ impl TTMacroExpander for MacroRulesMacroExpander {
     }
 }
 
-struct MacroRulesDefiner {
-    def: Option<MacroDef>
-}
-impl MacResult for MacroRulesDefiner {
-    fn make_def(&mut self) -> Option<MacroDef> {
-        Some(self.def.take().expect("empty MacroRulesDefiner"))
-    }
-}
 
 /// Given `lhses` and `rhses`, this is the new macro we create
 fn generic_extension<'cx>(cx: &'cx ExtCtxt,
@@ -279,10 +271,10 @@ pub fn add_new_extension<'cx>(cx: &'cx mut ExtCtxt,
         rhses: rhses,
     };
 
-    box MacroRulesDefiner {
-        def: Some(MacroDef {
+    box MacDef::new(
+        MacroDef {
             name: token::get_ident(name).to_string(),
             ext: NormalTT(exp, Some(sp))
-        })
-    } as Box<MacResult+'cx>
+        }
+    ) as Box<MacResult+'cx>
 }
