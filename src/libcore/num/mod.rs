@@ -196,7 +196,7 @@ pub trait Int
     /// ```
     fn swap_bytes(self) -> Self;
 
-    /// Convert a integer from big endian to the target's endianness.
+    /// Convert an integer from big endian to the target's endianness.
     ///
     /// On big endian this is a no-op. On little endian the bytes are swapped.
     ///
@@ -218,7 +218,7 @@ pub trait Int
         if cfg!(target_endian = "big") { x } else { x.swap_bytes() }
     }
 
-    /// Convert a integer from little endian to the target's endianness.
+    /// Convert an integer from little endian to the target's endianness.
     ///
     /// On little endian this is a no-op. On big endian the bytes are swapped.
     ///
