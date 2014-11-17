@@ -41,7 +41,7 @@ impl<Rq: Request, Rs: Response> Ingot<Rq, Rs> for HelloWorld {
     fn enter(&mut self, _req: &mut Rq, res: &mut Rs, alloy: &mut Alloy) -> Status {
         let send_file = alloy.find::<SendFile>().unwrap();
         send_file(res);
-        Continue
+        Status::Continue
     }
 }
 

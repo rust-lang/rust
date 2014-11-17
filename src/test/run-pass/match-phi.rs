@@ -17,9 +17,9 @@ fn foo(it: |int|) { it(10); }
 
 pub fn main() {
     let mut x = true;
-    match a {
-      a => { x = true; foo(|_i| { } ) }
-      b => { x = false; }
-      c => { x = false; }
+    match thing::a {
+      thing::a => { x = true; foo(|_i| { } ) }
+      thing::b => { x = false; }
+      thing::c => { x = false; }
     }
 }

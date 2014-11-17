@@ -18,6 +18,9 @@
 //! contains the rust task itself in order to juggle around ownership of the
 //! values.
 
+pub use self::TaskType::*;
+pub use self::Home::*;
+
 use std::any::Any;
 use std::mem;
 use std::raw;

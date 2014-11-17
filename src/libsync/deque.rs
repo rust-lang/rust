@@ -50,6 +50,8 @@
 // FIXME: all atomic operations in this module use a SeqCst ordering. That is
 //      probably overkill
 
+pub use self::Stolen::*;
+
 use core::prelude::*;
 
 use alloc::arc::Arc;

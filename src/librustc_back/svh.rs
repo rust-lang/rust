@@ -130,6 +130,9 @@ impl fmt::Show for Svh {
 // declaration should be irrelevant to the ABI.
 
 mod svh_visitor {
+    pub use self::SawExprComponent::*;
+    pub use self::SawStmtComponent::*;
+    use self::SawAbiComponent::*;
     use syntax::ast;
     use syntax::ast::*;
     use syntax::codemap::Span;

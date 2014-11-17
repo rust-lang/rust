@@ -43,6 +43,9 @@
 
 #![allow(unused_variables)]
 
+use self::Regular::{Case1, Case2};
+use self::Univariant::TheOnlyCase;
+
 struct Struct {
     x: u32,
     y: i32,

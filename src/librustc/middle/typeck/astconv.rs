@@ -48,7 +48,6 @@
  * case but `&a` in the second.  Basically, defaults that appear inside
  * an rptr (`&r.T`) use the region `r` that appears in the rptr.
  */
-
 use middle::const_eval;
 use middle::def;
 use middle::resolve_lifetime as rl;

@@ -16,6 +16,7 @@
 //! containing data.
 
 use core::prelude::*;
+use self::ReacquireOrderLock::*;
 
 use core::atomic;
 use core::finally::Finally;
@@ -619,6 +620,8 @@ impl<'a> Drop for RWLockReadGuard<'a> {
 
 #[cfg(test)]
 mod tests {
+    pub use self::RWLockMode::*;
+
     use std::prelude::*;
 
     use Arc;

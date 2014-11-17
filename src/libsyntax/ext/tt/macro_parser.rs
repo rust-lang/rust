@@ -76,6 +76,9 @@
 //! Remaining input: ``
 //! eof: [a $( a )* a b ·]
 
+pub use self::NamedMatch::*;
+pub use self::ParseResult::*;
+use self::TokenTreeOrTokenTreeVec::*;
 
 use ast;
 use ast::{TokenTree, Ident};

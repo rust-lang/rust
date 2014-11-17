@@ -15,15 +15,15 @@ enum Enum<'a> {
 
 fn foo() -> int {
     let mut n = 42;
-    let mut x = A(&mut n);
+    let mut x = Enum::A(&mut n);
     match x {
-        A(_) if { x = B(false); false } => 1,
+        Enum::A(_) if { x = Enum::B(false); false } => 1,
         //~^ ERROR cannot assign in a pattern guard
-        A(_) if { let y = &mut x; *y = B(false); false } => 1,
+        Enum::A(_) if { let y = &mut x; *y = Enum::B(false); false } => 1,
         //~^ ERROR cannot mutably borrow in a pattern guard
         //~^^ ERROR cannot assign in a pattern guard
-        A(p) => *p,
-        B(_) => 2,
+        Enum::A(p) => *p,
+        Enum::B(_) => 2,
     }
 }
 

@@ -33,8 +33,7 @@ fn foo<T>() {}
 fn main() {
     fpriv(); //~ ERROR: unresolved
     epriv(); //~ ERROR: unresolved
-    A1; //~ ERROR: unresolved
-    B1;
+    B; //~ ERROR: unresolved
     C; //~ ERROR: unresolved
     import(); //~ ERROR: unresolved
 

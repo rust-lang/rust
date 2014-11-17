@@ -27,6 +27,25 @@
 
 extern crate libc;
 
+pub use self::OtherAttribute::*;
+pub use self::SpecialAttribute::*;
+pub use self::AttributeSet::*;
+pub use self::IntPredicate::*;
+pub use self::RealPredicate::*;
+pub use self::TypeKind::*;
+pub use self::AtomicBinOp::*;
+pub use self::AtomicOrdering::*;
+pub use self::FileType::*;
+pub use self::MetadataType::*;
+pub use self::AsmDialect::*;
+pub use self::CodeGenOptLevel::*;
+pub use self::RelocMode::*;
+pub use self::CodeGenModel::*;
+pub use self::DiagnosticKind::*;
+pub use self::CallConv::*;
+pub use self::Visibility::*;
+pub use self::DiagnosticSeverity::*;
+
 use std::c_str::ToCStr;
 use std::cell::RefCell;
 use std::{raw, mem};
@@ -432,6 +451,7 @@ pub type DiagnosticHandler = unsafe extern "C" fn(DiagnosticInfoRef, *mut c_void
 pub type InlineAsmDiagHandler = unsafe extern "C" fn(SMDiagnosticRef, *const c_void, c_uint);
 
 pub mod debuginfo {
+    pub use self::DIDescriptorFlags::*;
     use super::{ValueRef};
 
     pub enum DIBuilder_opaque {}

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+pub use self::OrderingOp::*;
+
 use ast;
 use ast::{MetaItem, Item, Expr};
 use codemap::Span;

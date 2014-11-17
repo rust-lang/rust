@@ -10,6 +10,8 @@
 
 //! This module is used to store stuff from Rust's AST in a more convenient
 //! manner (and with prettier names) before cleaning.
+pub use self::StructType::*;
+pub use self::TypeBound::*;
 
 use syntax;
 use syntax::codemap::Span;

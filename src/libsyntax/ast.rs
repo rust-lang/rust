@@ -10,6 +10,55 @@
 
 // The Rust abstract syntax tree.
 
+pub use self::AsmDialect::*;
+pub use self::AttrStyle::*;
+pub use self::BindingMode::*;
+pub use self::BinOp::*;
+pub use self::BlockCheckMode::*;
+pub use self::CaptureClause::*;
+pub use self::Decl_::*;
+pub use self::ExplicitSelf_::*;
+pub use self::Expr_::*;
+pub use self::FloatTy::*;
+pub use self::FnStyle::*;
+pub use self::FunctionRetTy::*;
+pub use self::ForeignItem_::*;
+pub use self::ImplItem::*;
+pub use self::InlinedItem::*;
+pub use self::IntTy::*;
+pub use self::Item_::*;
+pub use self::KleeneOp::*;
+pub use self::Lit_::*;
+pub use self::LitIntType::*;
+pub use self::LocalSource::*;
+pub use self::Mac_::*;
+pub use self::MatchSource::*;
+pub use self::MetaItem_::*;
+pub use self::Method_::*;
+pub use self::Mutability::*;
+pub use self::Onceness::*;
+pub use self::Pat_::*;
+pub use self::PathListItem_::*;
+pub use self::PatWildKind::*;
+pub use self::PrimTy::*;
+pub use self::Sign::*;
+pub use self::Stmt_::*;
+pub use self::StrStyle::*;
+pub use self::StructFieldKind::*;
+pub use self::TokenTree::*;
+pub use self::TraitItem::*;
+pub use self::Ty_::*;
+pub use self::TyParamBound::*;
+pub use self::UintTy::*;
+pub use self::UnboxedClosureKind::*;
+pub use self::UnOp::*;
+pub use self::UnsafeSource::*;
+pub use self::VariantKind::*;
+pub use self::ViewItem_::*;
+pub use self::ViewPath_::*;
+pub use self::Visibility::*;
+pub use self::PathParameters::*;
+
 use codemap::{Span, Spanned, DUMMY_SP, ExpnId};
 use abi::Abi;
 use ast_util;

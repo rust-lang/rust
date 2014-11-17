@@ -14,6 +14,12 @@
  * `ExprUseVisitor` determines how expressions are being used.
  */
 
+pub use self::MutateMode::*;
+pub use self::LoanCause::*;
+pub use self::ConsumeMode::*;
+pub use self::MoveReason::*;
+use self::OverloadedCallType::*;
+
 use middle::mem_categorization as mc;
 use middle::def;
 use middle::mem_categorization::Typer;

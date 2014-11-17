@@ -23,6 +23,7 @@
 // Rules Enforced Elsewhere:
 // - It's not possible to take the address of a static item with unsafe interior. This is enforced
 // by borrowck::gather_loans
+use self::Mode::*;
 
 use middle::ty;
 use middle::def;

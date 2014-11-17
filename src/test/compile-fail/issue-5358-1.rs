@@ -12,8 +12,8 @@ enum Either<T, U> { Left(T), Right(U) }
 struct S(Either<uint, uint>);
 
 fn main() {
-    match S(Left(5)) {
-        Right(_) => {}  //~ ERROR mismatched types: expected `S`, found `Either
+    match S(Either::Left(5)) {
+        Either::Right(_) => {}  //~ ERROR mismatched types: expected `S`, found `Either
         _ => {}
     }
 }

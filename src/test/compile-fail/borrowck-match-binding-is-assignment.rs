@@ -25,8 +25,8 @@ pub fn main() {
         }
     }
 
-    match Foo(1) {
-        Foo(x) => {
+    match E::Foo(1) {
+        E::Foo(x) => {
             x += 1; //~ ERROR re-assignment of immutable variable `x`
         }
     }

@@ -30,6 +30,9 @@
 
 #![macro_escape]
 
+pub use self::Level::*;
+pub use self::LintSource::*;
+
 use std::hash;
 use std::ascii::AsciiExt;
 use syntax::codemap::Span;

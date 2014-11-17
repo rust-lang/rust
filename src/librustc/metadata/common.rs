@@ -10,6 +10,8 @@
 
 #![allow(non_camel_case_types, non_upper_case_globals)]
 
+pub use self::astencode_tag::*;
+
 use std::mem;
 use back::svh::Svh;
 

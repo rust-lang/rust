@@ -20,14 +20,14 @@ enum ES<T> {
 
 
 pub fn main() {
-    let (es11, es12, es21, es22) = (ES1 {
+    let (es11, es12, es21, es22) = (ES::ES1 {
         x: 1i
-    }, ES1 {
+    }, ES::ES1 {
         x: 2i
-    }, ES2 {
+    }, ES::ES2 {
         x: 1i,
         y: 1i
-    }, ES2 {
+    }, ES::ES2 {
         x: 1i,
         y: 2i
     });

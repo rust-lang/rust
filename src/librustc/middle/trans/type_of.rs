@@ -10,6 +10,8 @@
 
 #![allow(non_camel_case_types)]
 
+pub use self::named_ty::*;
+
 use middle::subst;
 use middle::trans::adt;
 use middle::trans::common::*;

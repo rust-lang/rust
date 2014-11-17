@@ -12,6 +12,12 @@
 
 #![allow(non_camel_case_types)]
 
+pub use self::LoanPath::*;
+pub use self::LoanPathElem::*;
+pub use self::bckerr_code::*;
+pub use self::AliasableViolationKind::*;
+pub use self::MovedValueUseKind::*;
+
 use middle::cfg;
 use middle::dataflow::DataFlowContext;
 use middle::dataflow::BitwiseOperator;

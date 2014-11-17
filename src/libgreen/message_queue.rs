@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+pub use self::PopResult::*;
+
 use alloc::arc::Arc;
 use std::sync::mpsc_queue as mpsc;
 use std::kinds::marker;

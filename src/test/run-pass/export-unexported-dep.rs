@@ -22,9 +22,9 @@ mod foo {
         fn ne(&self, other: &t) -> bool { !(*self).eq(other) }
     }
 
-    pub fn f() -> t { return t1; }
+    pub fn f() -> t { return t::t1; }
 
-    pub fn g(v: t) { assert!((v == t1)); }
+    pub fn g(v: t) { assert!((v == t::t1)); }
 }
 
 pub fn main() { foo::g(foo::f()); }

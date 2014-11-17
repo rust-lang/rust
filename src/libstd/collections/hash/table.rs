@@ -10,6 +10,8 @@
 //
 // ignore-lexer-test FIXME #15883
 
+pub use self::BucketState::*;
+
 use clone::Clone;
 use cmp;
 use hash::{Hash, Hasher};

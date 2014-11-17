@@ -14,6 +14,7 @@
 
 use std::io;
 use std::fmt;
+use square::{bot, wall, rock, lambda, closed_lift, open_lift, earth, empty};
 
 enum square {
     bot,

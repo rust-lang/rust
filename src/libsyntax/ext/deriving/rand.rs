@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use ast;
-use ast::{MetaItem, Item, Expr, Ident};
+use ast::{MetaItem, Item, Expr};
 use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::build::{AstBuilder};
@@ -72,7 +72,8 @@ fn rand_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) 
 
     return match *substr.fields {
         StaticStruct(_, ref summary) => {
-            rand_thing(cx, trait_span, substr.type_ident, summary, rand_call)
+            let path = cx.path_ident(trait_span, substr.type_ident);
+            rand_thing(cx, trait_span, path, summary, rand_call)
         }
         StaticEnum(_, ref variants) => {
             if variants.is_empty() {
@@ -115,7 +116,8 @@ fn rand_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) 
                 let i_expr = cx.expr_uint(v_span, i);
                 let pat = cx.pat_lit(v_span, i_expr);
 
-                let thing = rand_thing(cx, v_span, ident, summary, |cx, sp| rand_call(cx, sp));
+                let path = cx.path(v_span, vec![substr.type_ident, ident]);
+                let thing = rand_thing(cx, v_span, path, summary, |cx, sp| rand_call(cx, sp));
                 cx.arm(v_span, vec!( pat ), thing)
             }).collect::<Vec<ast::Arm> >();
 
@@ -132,17 +134,18 @@ fn rand_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) 
 
     fn rand_thing(cx: &mut ExtCtxt,
                   trait_span: Span,
-                  ctor_ident: Ident,
+                  ctor_path: ast::Path,
                   summary: &StaticFields,
                   rand_call: |&mut ExtCtxt, Span| -> P<Expr>)
                   -> P<Expr> {
+        let path = cx.expr_path(ctor_path.clone());
         match *summary {
             Unnamed(ref fields) => {
                 if fields.is_empty() {
-                    cx.expr_ident(trait_span, ctor_ident)
+                    path
                 } else {
                     let exprs = fields.iter().map(|span| rand_call(cx, *span)).collect();
-                    cx.expr_call_ident(trait_span, ctor_ident, exprs)
+                    cx.expr_call(trait_span, path, exprs)
                 }
             }
             Named(ref fields) => {
@@ -150,7 +153,7 @@ fn rand_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) 
                     let e = rand_call(cx, span);
                     cx.field_imm(span, ident, e)
                 }).collect();
-                cx.expr_struct_ident(trait_span, ctor_ident, rand_fields)
+                cx.expr_struct(trait_span, ctor_path, rand_fields)
             }
         }
     }

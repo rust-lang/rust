@@ -15,9 +15,9 @@ fn main() {
     struct Tau { t: uint }
     enum E { B(R, Tau) }
 
-    let e = B(REB(()), Tau { t: 3 });
+    let e = E::B(R::REB(()), Tau { t: 3 });
     let u = match e {
-        B(
+        E::B(
           Tau{t: x},
           //~^ ERROR mismatched types: expected `main::R`, found `main::Tau`
           //        (expected enum main::R, found struct main::Tau)

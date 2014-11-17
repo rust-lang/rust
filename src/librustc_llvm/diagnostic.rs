@@ -10,6 +10,9 @@
 
 //! LLVM diagnostic reports.
 
+pub use self::OptimizationDiagnosticKind::*;
+pub use self::Diagnostic::*;
+
 use libc::c_char;
 
 use {ValueRef, TwineRef, DebugLocRef, DiagnosticInfoRef};

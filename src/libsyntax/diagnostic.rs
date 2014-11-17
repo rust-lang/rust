@@ -8,6 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+pub use self::Level::*;
+pub use self::RenderSpan::*;
+pub use self::ColorConfig::*;
+use self::Destination::*;
+
 use codemap::{Pos, Span};
 use codemap;
 use diagnostics;

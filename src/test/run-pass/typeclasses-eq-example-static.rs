@@ -11,6 +11,8 @@
 
 // Example from lkuper's intern talk, August 2012 -- now with static
 // methods!
+use Color::{cyan, magenta, yellow, black};
+use ColorTree::{leaf, branch};
 
 trait Equal {
     fn isEq(a: &Self, b: &Self) -> bool;

@@ -13,6 +13,11 @@
  * drop glue. See discussion in `doc.rs` for a high-level summary.
  */
 
+pub use self::ScopeId::*;
+pub use self::CleanupScopeKind::*;
+pub use self::EarlyExitLabel::*;
+pub use self::Heap::*;
+
 use llvm::{BasicBlockRef, ValueRef};
 use middle::trans::base;
 use middle::trans::build;

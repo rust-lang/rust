@@ -66,7 +66,7 @@ mod bar {
     }
 
     fn test() {
-        self::Pub;
+        self::Enum::Pub;
         unsafe {
             epriv();
             epub();
@@ -121,7 +121,7 @@ mod foo {
                                 //~^ NOTE: trait `B` is private
         ::lol();
 
-        ::bar::Pub;
+        ::bar::Enum::Pub;
 
         unsafe {
             ::bar::epriv(); //~ ERROR: function `epriv` is private

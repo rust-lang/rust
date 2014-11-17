@@ -16,6 +16,8 @@
 
 #![allow(non_camel_case_types)]
 
+pub use self::DefIdSource::*;
+
 use middle::subst;
 use middle::subst::VecPerParamSpace;
 use middle::ty;

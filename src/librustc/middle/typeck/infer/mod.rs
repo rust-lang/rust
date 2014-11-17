@@ -12,6 +12,11 @@
 
 #![allow(non_camel_case_types)]
 
+pub use self::TypeOrigin::*;
+pub use self::ValuePairs::*;
+pub use self::SubregionOrigin::*;
+pub use self::RegionVariableOrigin::*;
+pub use self::fixup_err::*;
 pub use middle::ty::IntVarValue;
 pub use self::resolve::resolve_and_force_all_but_regions;
 pub use self::resolve::{force_all, not_regions};

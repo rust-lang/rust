@@ -45,6 +45,9 @@
 
 #![allow(unsigned_negation)]
 
+pub use self::PointerField::*;
+pub use self::Repr::*;
+
 use std::num::Int;
 use std::rc::Rc;
 

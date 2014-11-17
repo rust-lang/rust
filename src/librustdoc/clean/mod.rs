@@ -11,6 +11,22 @@
 //! This module contains the "cleaned" pieces of the AST, and the functions
 //! that clean them.
 
+pub use self::ImplMethod::*;
+pub use self::Type::*;
+pub use self::PrimitiveType::*;
+pub use self::TypeKind::*;
+pub use self::StructField::*;
+pub use self::VariantKind::*;
+pub use self::Mutability::*;
+pub use self::ViewItemInner::*;
+pub use self::ViewPath::*;
+pub use self::ItemEnum::*;
+pub use self::Attribute::*;
+pub use self::TyParamBound::*;
+pub use self::SelfTy::*;
+pub use self::FunctionRetTy::*;
+pub use self::TraitMethod::*;
+
 use syntax;
 use syntax::ast;
 use syntax::ast_util;
@@ -35,6 +51,8 @@ use rustc::middle::stability;
 
 use std::rc::Rc;
 use std::u32;
+use std::str::Str as StrTrait; // Conflicts with Str variant
+use std::char::Char as CharTrait; // Conflicts with Char variant
 
 use core::DocContext;
 use doctree;

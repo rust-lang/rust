@@ -66,6 +66,10 @@
 
 #![feature(struct_variant)]
 
+use self::CStyleEnum::{CStyleEnumVar1, CStyleEnumVar2, CStyleEnumVar3};
+use self::MixedEnum::{MixedEnumCStyleVar, MixedEnumTupleVar, MixedEnumStructVar};
+use self::NestedEnum::{NestedVariant1, NestedVariant2};
+
 struct RegularStruct {
     the_first_field: int,
     the_second_field: f64,

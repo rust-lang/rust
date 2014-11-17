@@ -10,6 +10,7 @@
 
 //! Enforces the Rust effect system. Currently there is just one effect,
 /// `unsafe`.
+use self::UnsafeContext::*;
 
 use middle::def;
 use middle::ty;

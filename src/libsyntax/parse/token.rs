@@ -8,6 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+pub use self::BinOpToken::*;
+pub use self::Nonterminal::*;
+pub use self::DelimToken::*;
+pub use self::IdentStyle::*;
+pub use self::Token::*;
+
 use ast;
 use ext::mtwt;
 use ptr::P;
@@ -418,6 +424,7 @@ macro_rules! declare_special_idents_and_keywords {(
      * the language and may not appear as identifiers.
      */
     pub mod keywords {
+        pub use self::Keyword::*;
         use ast;
 
         pub enum Keyword {

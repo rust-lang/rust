@@ -22,15 +22,15 @@ doing nothing otherwise:
 ~~~~
 # enum T { SpecialA(uint), SpecialB(uint) }
 # fn f() -> uint {
-# let input_1 = SpecialA(0);
-# let input_2 = SpecialA(0);
+# let input_1 = T::SpecialA(0);
+# let input_2 = T::SpecialA(0);
 match input_1 {
-    SpecialA(x) => { return x; }
+    T::SpecialA(x) => { return x; }
     _ => {}
 }
 // ...
 match input_2 {
-    SpecialB(x) => { return x; }
+    T::SpecialB(x) => { return x; }
     _ => {}
 }
 # return 0u;
@@ -49,10 +49,10 @@ the pattern in the above code:
 # #![feature(macro_rules)]
 # enum T { SpecialA(uint), SpecialB(uint) }
 # fn f() -> uint {
-# let input_1 = SpecialA(0);
-# let input_2 = SpecialA(0);
+# let input_1 = T::SpecialA(0);
+# let input_2 = T::SpecialA(0);
 macro_rules! early_return(
-    ($inp:expr $sp:ident) => ( // invoke it like `(input_5 SpecialE)`
+    ($inp:expr $sp:path) => ( // invoke it like `(input_5 SpecialE)`
         match $inp {
             $sp(x) => { return x; }
             _ => {}
@@ -60,9 +60,9 @@ macro_rules! early_return(
     );
 )
 // ...
-early_return!(input_1 SpecialA);
+early_return!(input_1 T::SpecialA);
 // ...
-early_return!(input_2 SpecialB);
+early_return!(input_2 T::SpecialB);
 # return 0;
 # }
 # fn main() {}
@@ -169,10 +169,10 @@ instead of `*` to mean "at least one".
 # #![feature(macro_rules)]
 # enum T { SpecialA(uint),SpecialB(uint),SpecialC(uint),SpecialD(uint)}
 # fn f() -> uint {
-# let input_1 = SpecialA(0);
-# let input_2 = SpecialA(0);
+# let input_1 = T::SpecialA(0);
+# let input_2 = T::SpecialA(0);
 macro_rules! early_return(
-    ($inp:expr, [ $($sp:ident)|+ ]) => (
+    ($inp:expr, [ $($sp:path)|+ ]) => (
         match $inp {
             $(
                 $sp(x) => { return x; }
@@ -182,9 +182,9 @@ macro_rules! early_return(
     );
 )
 // ...
-early_return!(input_1, [SpecialA|SpecialC|SpecialD]);
+early_return!(input_1, [T::SpecialA|T::SpecialC|T::SpecialD]);
 // ...
-early_return!(input_2, [SpecialB]);
+early_return!(input_2, [T::SpecialB]);
 # return 0;
 # }
 # fn main() {}
@@ -234,9 +234,9 @@ Now consider code like the following:
 # enum T3 { Good2(uint), Bad2}
 # fn f(x: T1) -> uint {
 match x {
-    Good1(g1, val) => {
+    T1::Good1(g1, val) => {
         match g1.body {
-            Good2(result) => {
+            T3::Good2(result) => {
                 // complicated stuff goes here
                 return result + val;
             },
@@ -281,9 +281,9 @@ macro_rules! biased_match (
 # struct T2 { body: T3 }
 # enum T3 { Good2(uint), Bad2}
 # fn f(x: T1) -> uint {
-biased_match!((x)       ~ (Good1(g1, val)) else { return 0 };
+biased_match!((x)       ~ (T1::Good1(g1, val)) else { return 0 };
               binds g1, val )
-biased_match!((g1.body) ~ (Good2(result) )
+biased_match!((g1.body) ~ (T3::Good2(result) )
                   else { panic!("Didn't get good_2") };
               binds result )
 // complicated stuff goes here
@@ -396,8 +396,8 @@ macro_rules! biased_match (
 # enum T3 { Good2(uint), Bad2}
 # fn f(x: T1) -> uint {
 biased_match!(
-    (x)       ~ (Good1(g1, val)) else { return 0 };
-    (g1.body) ~ (Good2(result) ) else { panic!("Didn't get Good2") };
+    (x)       ~ (T1::Good1(g1, val)) else { return 0 };
+    (g1.body) ~ (T3::Good2(result) ) else { panic!("Didn't get Good2") };
     binds val, result )
 // complicated stuff goes here
 return result + val;

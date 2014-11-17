@@ -8,6 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+pub use self::Invocation::*;
+use self::ArgumentType::*;
+use self::Position::*;
+
 use ast;
 use codemap::{Span, respan};
 use ext::base::*;

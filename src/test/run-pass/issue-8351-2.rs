@@ -16,10 +16,10 @@ enum E {
 }
 
 pub fn main() {
-    let e = Foo{f: 0, b: false};
+    let e = E::Foo{f: 0, b: false};
     match e {
-        Foo{f: 1, b: true} => panic!(),
-        Foo{b: false, f: 0} => (),
+        E::Foo{f: 1, b: true} => panic!(),
+        E::Foo{b: false, f: 0} => (),
         _ => panic!(),
     }
 }

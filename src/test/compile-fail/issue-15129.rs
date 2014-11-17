@@ -19,9 +19,9 @@ pub enum V {
 }
 
 fn main() {
-    match (T1(()), V2(true)) {
+    match (T::T1(()), V::V2(true)) {
     //~^ ERROR non-exhaustive patterns: `(T1(()), V2(_))` not covered
-        (T1(()), V1(i)) => (),
-        (T2(()), V2(b)) => ()
+        (T::T1(()), V::V1(i)) => (),
+        (T::T2(()), V::V2(b)) => ()
     }
 }

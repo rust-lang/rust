@@ -12,6 +12,8 @@
 
 //! Code that is useful in various trans modules.
 
+pub use self::ExprOrMethodCall::*;
+
 use driver::session::Session;
 use llvm;
 use llvm::{ValueRef, BasicBlockRef, BuilderRef, ContextRef};

@@ -12,6 +12,8 @@
 
 #![allow(unused_variables)]
 
+pub use self::FormatError::*;
+
 use any;
 use cell::{Cell, Ref, RefMut};
 use iter::{Iterator, range};

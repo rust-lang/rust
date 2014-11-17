@@ -194,6 +194,15 @@ fn main() {
 
 */
 
+pub use self::JsonEvent::*;
+pub use self::StackElement::*;
+pub use self::Json::*;
+pub use self::ErrorCode::*;
+pub use self::ParserError::*;
+pub use self::DecoderError::*;
+use self::ParserState::*;
+use self::InternalStackElement::*;
+
 use std;
 use std::collections::{HashMap, TreeMap};
 use std::{char, f64, fmt, io, num, str};
@@ -2408,6 +2417,8 @@ impl FromStr for Json {
 #[cfg(test)]
 mod tests {
     extern crate test;
+    use self::Animal::*;
+    use self::DecodeEnum::*;
     use self::test::Bencher;
     use {Encodable, Decodable};
     use super::{List, Encoder, Decoder, Error, Boolean, I64, U64, F64, String, Null,

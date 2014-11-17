@@ -20,12 +20,12 @@ impl X {
 }
 
 fn main() {
-    let mut x = X(Right(main));
+    let mut x = X(Either::Right(main));
     (&mut x).with(
         |opt| { //~ ERROR cannot borrow `x` as mutable more than once at a time
             match opt {
-                &Right(ref f) => {
-                    x = X(Left((0,0)));
+                &Either::Right(ref f) => {
+                    x = X(Either::Left((0,0)));
                     (*f)()
                 },
                 _ => panic!()
