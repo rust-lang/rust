@@ -90,14 +90,14 @@ pub mod rt {
     */
 
     // FIXME: Move this trait to pprust and get rid of *_to_str?
-    pub trait ToSource {
+    pub trait ToSource for Sized? {
         // Takes a thing and generates a string containing rust code for it.
         fn to_source(&self) -> String;
     }
 
     // FIXME (Issue #16472): This should go away after ToToken impls
     // are revised to go directly to token-trees.
-    trait ToSourceWithHygiene : ToSource {
+    trait ToSourceWithHygiene for Sized? : ToSource {
         // Takes a thing and generates a string containing rust code
         // for it, encoding Idents as special byte sequences to
         // maintain hygiene across serialization and deserialization.
@@ -150,15 +150,15 @@ pub mod rt {
 
     macro_rules! impl_to_source_slice(
         ($t:ty, $sep:expr) => (
-            impl<'a> ToSource for &'a [$t] {
+            impl ToSource for [$t] {
                 fn to_source(&self) -> String {
-                    slice_to_source($sep, *self)
+                    slice_to_source($sep, self)
                 }
             }
 
-            impl<'a> ToSourceWithHygiene for &'a [$t] {
+            impl ToSourceWithHygiene for [$t] {
                 fn to_source_with_hygiene(&self) -> String {
-                    slice_to_source_with_hygiene($sep, *self)
+                    slice_to_source_with_hygiene($sep, self)
                 }
             }
         )
@@ -200,14 +200,14 @@ pub mod rt {
         }
     }
 
-    impl<'a> ToSource for &'a str {
+    impl ToSource for str {
         fn to_source(&self) -> String {
             let lit = dummy_spanned(ast::LitStr(
-                    token::intern_and_get_ident(*self), ast::CookedStr));
+                    token::intern_and_get_ident(self), ast::CookedStr));
             pprust::lit_to_string(&lit)
         }
     }
-    impl<'a> ToSourceWithHygiene for &'a str {
+    impl ToSourceWithHygiene for str {
         fn to_source_with_hygiene(&self) -> String {
             self.to_source()
         }
