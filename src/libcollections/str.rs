@@ -54,7 +54,7 @@
 pub use self::MaybeOwned::*;
 use self::RecompositionState::*;
 use self::DecompositionType::*;
-
+use core::borrow::BorrowFrom;
 use core::default::Default;
 use core::fmt;
 use core::cmp;
@@ -602,6 +602,11 @@ impl<'a> fmt::Show for MaybeOwned<'a> {
             Owned(ref s) => s.fmt(f)
         }
     }
+}
+
+#[unstable = "trait is unstable"]
+impl BorrowFrom<String> for str {
+    fn borrow_from(owned: &String) -> &str { owned[] }
 }
 
 /// Unsafe string operations.

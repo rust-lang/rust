@@ -89,6 +89,7 @@
 
 use self::Direction::*;
 use alloc::boxed::Box;
+use core::borrow::{BorrowFrom, BorrowFromMut};
 use core::cmp;
 use core::kinds::Sized;
 use core::mem::size_of;
@@ -645,6 +646,16 @@ impl<T> SliceAllocPrelude<T> for [T] {
         }
         cmp::min(self.len(), end-start)
     }
+}
+
+#[unstable = "trait is unstable"]
+impl<T> BorrowFrom<Vec<T>> for [T] {
+    fn borrow_from(owned: &Vec<T>) -> &[T] { owned[] }
+}
+
+#[unstable = "trait is unstable"]
+impl<T> BorrowFromMut<Vec<T>> for [T] {
+    fn borrow_from_mut(owned: &mut Vec<T>) -> &mut [T] { owned[mut] }
 }
 
 /// Unsafe operations

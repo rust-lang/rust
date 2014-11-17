@@ -10,6 +10,7 @@
 
 use core::prelude::*;
 
+use core::borrow::BorrowFrom;
 use core::default::Default;
 use core::fmt;
 use core::fmt::Show;
@@ -396,6 +397,10 @@ impl<T: Ord> TreeSet<T> {
 
     /// Returns `true` if the set contains a value.
     ///
+    /// The value may be any borrowed form of the set's value type,
+    /// but the ordering on the borrowed form *must* match the
+    /// ordering on the value type.
+    ///
     /// # Example
     ///
     /// ```
@@ -407,7 +412,9 @@ impl<T: Ord> TreeSet<T> {
     /// ```
     #[inline]
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn contains(&self, value: &T) -> bool {
+    pub fn contains<Sized? Q>(&self, value: &Q) -> bool
+        where Q: Ord + BorrowFrom<T>
+    {
         self.map.contains_key(value)
     }
 
@@ -519,6 +526,10 @@ impl<T: Ord> TreeSet<T> {
     /// Removes a value from the set. Returns `true` if the value was
     /// present in the set.
     ///
+    /// The value may be any borrowed form of the set's value type,
+    /// but the ordering on the borrowed form *must* match the
+    /// ordering on the value type.
+    ///
     /// # Example
     ///
     /// ```
@@ -532,7 +543,11 @@ impl<T: Ord> TreeSet<T> {
     /// ```
     #[inline]
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn remove(&mut self, value: &T) -> bool { self.map.remove(value).is_some() }
+    pub fn remove<Sized? Q>(&mut self, value: &Q) -> bool
+        where Q: Ord + BorrowFrom<T>
+    {
+        self.map.remove(value).is_some()
+    }
 }
 
 /// A lazy forward iterator over a set.
