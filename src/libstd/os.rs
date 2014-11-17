@@ -77,7 +77,7 @@ const BUF_BYTES : uint = 2048u;
 /// # Failure
 ///
 /// Fails if the current working directory value is invalid:
-/// Possibles cases:
+/// Possible cases:
 ///
 /// * Current directory does not exist.
 /// * There are insufficient permissions to access the current directory.
