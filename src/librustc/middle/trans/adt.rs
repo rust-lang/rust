@@ -635,7 +635,7 @@ pub fn trans_get_discr(bcx: Block, r: &Repr, scrutinee: ValueRef, cast_to: Optio
             signed = ity.is_signed();
         }
         General(ity, ref cases, _) => {
-            let ptr = GEPi(bcx, scrutinee, [0, 0]);
+            let ptr = GEPi(bcx, scrutinee, &[0, 0]);
             val = load_discr(bcx, ity, ptr, 0, (cases.len() - 1) as Disr);
             signed = ity.is_signed();
         }
@@ -663,8 +663,8 @@ pub fn trans_get_discr(bcx: Block, r: &Repr, scrutinee: ValueRef, cast_to: Optio
 fn struct_wrapped_nullable_bitdiscr(bcx: Block, nndiscr: Disr, ptrfield: PointerField,
                                     scrutinee: ValueRef) -> ValueRef {
     let llptrptr = match ptrfield {
-        ThinPointer(field) => GEPi(bcx, scrutinee, [0, field]),
-        FatPointer(field) => GEPi(bcx, scrutinee, [0, field, slice_elt_base])
+        ThinPointer(field) => GEPi(bcx, scrutinee, &[0, field]),
+        FatPointer(field) => GEPi(bcx, scrutinee, &[0, field, slice_elt_base])
     };
     let llptr = Load(bcx, llptrptr);
     let cmp = if nndiscr == 0 { IntEQ } else { IntNE };
@@ -739,13 +739,13 @@ pub fn trans_set_discr(bcx: Block, r: &Repr, val: ValueRef, discr: Disr) {
                 Store(bcx, C_u8(bcx.ccx(), 1), ptr);
             }
             Store(bcx, C_integral(ll_inttype(bcx.ccx(), ity), discr as u64, true),
-                  GEPi(bcx, val, [0, 0]))
+                  GEPi(bcx, val, &[0, 0]))
         }
         Univariant(ref st, dtor) => {
             assert_eq!(discr, 0);
             if dtor {
                 Store(bcx, C_u8(bcx.ccx(), 1),
-                    GEPi(bcx, val, [0, st.fields.len() - 1]));
+                    GEPi(bcx, val, &[0, st.fields.len() - 1]));
             }
         }
         RawNullablePointer { nndiscr, nnty, ..} => {
@@ -758,10 +758,10 @@ pub fn trans_set_discr(bcx: Block, r: &Repr, val: ValueRef, discr: Disr) {
             if discr != nndiscr {
                 let (llptrptr, llptrty) = match ptrfield {
                     ThinPointer(field) =>
-                        (GEPi(bcx, val, [0, field]),
+                        (GEPi(bcx, val, &[0, field]),
                          type_of::type_of(bcx.ccx(), nonnull.fields[field])),
                     FatPointer(field) => {
-                        let v = GEPi(bcx, val, [0, field, slice_elt_base]);
+                        let v = GEPi(bcx, val, &[0, field, slice_elt_base]);
                         (v, val_ty(v).element_type())
                     }
                 };
@@ -853,7 +853,7 @@ pub fn struct_field_ptr(bcx: Block, st: &Struct, val: ValueRef,
         val
     };
 
-    GEPi(bcx, val, [0, ix])
+    GEPi(bcx, val, &[0, ix])
 }
 
 pub fn fold_variants<'blk, 'tcx>(
@@ -902,7 +902,7 @@ pub fn trans_drop_flag_ptr<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>, r: &Repr, val
     let ptr_ty = ty::mk_imm_ptr(bcx.tcx(), ty::mk_bool());
     match *r {
         Univariant(ref st, true) => {
-            let flag_ptr = GEPi(bcx, val, [0, st.fields.len() - 1]);
+            let flag_ptr = GEPi(bcx, val, &[0, st.fields.len() - 1]);
             datum::immediate_rvalue_bcx(bcx, flag_ptr, ptr_ty).to_expr_datumblock()
         }
         General(_, _, true) => {
@@ -961,7 +961,7 @@ pub fn trans_const(ccx: &CrateContext, r: &Repr, discr: Disr,
             let mut f = vec![lldiscr];
             f.push_all(vals);
             let mut contents = build_const_struct(ccx, case, f.as_slice());
-            contents.push_all([padding(ccx, max_sz - case.size)]);
+            contents.push_all(&[padding(ccx, max_sz - case.size)]);
             C_struct(ccx, contents.as_slice(), false)
         }
         Univariant(ref st, _dro) => {
@@ -1079,8 +1079,8 @@ pub fn const_get_discrim(ccx: &CrateContext, r: &Repr, val: ValueRef)
         }
         General(ity, _, _) => {
             match ity {
-                attr::SignedInt(..) => const_to_int(const_get_elt(ccx, val, [0])) as Disr,
-                attr::UnsignedInt(..) => const_to_uint(const_get_elt(ccx, val, [0])) as Disr
+                attr::SignedInt(..) => const_to_int(const_get_elt(ccx, val, &[0])) as Disr,
+                attr::UnsignedInt(..) => const_to_uint(const_get_elt(ccx, val, &[0])) as Disr
             }
         }
         Univariant(..) => 0,
@@ -1138,8 +1138,8 @@ fn const_struct_field(ccx: &CrateContext, val: ValueRef, ix: uint, sub_idx: Opti
     loop {
         loop {
             field = match sub_idx {
-                Some(si) => const_get_elt(ccx, val, [real_ix, si as u32]),
-                None => const_get_elt(ccx, val, [real_ix])
+                Some(si) => const_get_elt(ccx, val, &[real_ix, si as u32]),
+                None => const_get_elt(ccx, val, &[real_ix])
             };
             if !is_undef(field) {
                 break;

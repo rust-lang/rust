@@ -14,7 +14,7 @@ use ext::base::*;
 use ext::base;
 use ext::build::AstBuilder;
 use fmt_macros as parse;
-use parse::token::InternedString;
+use parse::token::{InternedString, special_idents};
 use parse::token;
 use ptr::P;
 
@@ -476,12 +476,11 @@ impl<'a, 'b> Context<'a, 'b> {
                          pieces: Vec<P<ast::Expr>>)
                          -> P<ast::Stmt> {
         let fmtsp = piece_ty.span;
-        let pieces_len = ecx.expr_uint(fmtsp, pieces.len());
         let fmt = ecx.expr_vec(fmtsp, pieces);
-        let ty = ast::TyFixedLengthVec(
-            piece_ty,
-            pieces_len
-        );
+        let fmt = ecx.expr_addr_of(fmtsp, fmt);
+        let ty = ast::TyVec(piece_ty);
+        let ty = ast::TyRptr(Some(ecx.lifetime(fmtsp, special_idents::static_lifetime.name)),
+                             ast::MutTy{ mutbl: ast::MutImmutable, ty: ecx.ty(fmtsp, ty) });
         let ty = ecx.ty(fmtsp, ty);
         let st = ast::ItemStatic(ty, ast::MutImmutable, fmt);
         let item = ecx.item(fmtsp, name, Context::static_attrs(ecx, fmtsp), st);

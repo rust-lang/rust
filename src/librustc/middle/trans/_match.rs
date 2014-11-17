@@ -643,8 +643,8 @@ fn bind_subslice_pat(bcx: Block,
                                 ty::mt {ty: vt.unit_ty, mutbl: ast::MutImmutable});
     let scratch = rvalue_scratch_datum(bcx, slice_ty, "");
     Store(bcx, slice_begin,
-          GEPi(bcx, scratch.val, [0u, abi::slice_elt_base]));
-    Store(bcx, slice_len, GEPi(bcx, scratch.val, [0u, abi::slice_elt_len]));
+          GEPi(bcx, scratch.val, &[0u, abi::slice_elt_base]));
+    Store(bcx, slice_len, GEPi(bcx, scratch.val, &[0u, abi::slice_elt_len]));
     scratch.val
 }
 
@@ -658,9 +658,9 @@ fn extract_vec_elems<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let vec_datum = match_datum(val, left_ty);
     let (base, len) = vec_datum.get_vec_base_and_len(bcx);
     let mut elems = vec![];
-    elems.extend(range(0, before).map(|i| GEPi(bcx, base, [i])));
+    elems.extend(range(0, before).map(|i| GEPi(bcx, base, &[i])));
     elems.extend(range(0, after).rev().map(|i| {
-        InBoundsGEP(bcx, base, [
+        InBoundsGEP(bcx, base, &[
             Sub(bcx, len, C_uint(bcx.ccx(), i + 1))
         ])
     }));
@@ -796,7 +796,7 @@ fn compare_values<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                            format!("comparison of `{}`",
                                    cx.ty_to_string(rhs_t)).as_slice(),
                            StrEqFnLangItem);
-        callee::trans_lang_call(cx, did, [lhs, rhs], None)
+        callee::trans_lang_call(cx, did, &[lhs, rhs], None)
     }
 
     let _icx = push_ctxt("compare_values");
@@ -1390,7 +1390,7 @@ fn trans_match_inner<'blk, 'tcx>(scope_cx: Block<'blk, 'tcx>,
         && arm.pats.last().unwrap().node == ast::PatWild(ast::PatWildSingle)
     });
 
-    compile_submatch(bcx, matches.as_slice(), [discr_datum.val], &chk, has_default);
+    compile_submatch(bcx, matches.as_slice(), &[discr_datum.val], &chk, has_default);
 
     let mut arm_cxs = Vec::new();
     for arm_data in arm_datas.iter() {

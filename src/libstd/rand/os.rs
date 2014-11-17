@@ -343,7 +343,7 @@ mod test {
         r.next_u64();
 
         let mut v = [0u8, .. 1000];
-        r.fill_bytes(v);
+        r.fill_bytes(&mut v);
     }
 
     #[test]
@@ -368,7 +368,7 @@ mod test {
                     task::deschedule();
                     r.next_u64();
                     task::deschedule();
-                    r.fill_bytes(v);
+                    r.fill_bytes(&mut v);
                     task::deschedule();
                 }
             })

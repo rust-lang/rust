@@ -177,10 +177,10 @@ fn test_encode_utf8() {
         assert_eq!(buf[..n], expect);
     }
 
-    check('x', [0x78]);
-    check('\u00e9', [0xc3, 0xa9]);
-    check('\ua66e', [0xea, 0x99, 0xae]);
-    check('\U0001f4a9', [0xf0, 0x9f, 0x92, 0xa9]);
+    check('x', &[0x78]);
+    check('\u00e9', &[0xc3, 0xa9]);
+    check('\ua66e', &[0xea, 0x99, 0xae]);
+    check('\U0001f4a9', &[0xf0, 0x9f, 0x92, 0xa9]);
 }
 
 #[test]
@@ -191,10 +191,10 @@ fn test_encode_utf16() {
         assert_eq!(buf[..n], expect);
     }
 
-    check('x', [0x0078]);
-    check('\u00e9', [0x00e9]);
-    check('\ua66e', [0xa66e]);
-    check('\U0001f4a9', [0xd83d, 0xdca9]);
+    check('x', &[0x0078]);
+    check('\u00e9', &[0x00e9]);
+    check('\ua66e', &[0xa66e]);
+    check('\U0001f4a9', &[0xd83d, 0xdca9]);
 }
 
 #[test]

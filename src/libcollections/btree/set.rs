@@ -467,14 +467,14 @@ mod test {
             check(a, b, expected, |x, y, f| x.intersection(y).all(f))
         }
 
-        check_intersection([], [], []);
-        check_intersection([1, 2, 3], [], []);
-        check_intersection([], [1, 2, 3], []);
-        check_intersection([2], [1, 2, 3], [2]);
-        check_intersection([1, 2, 3], [2], [2]);
-        check_intersection([11, 1, 3, 77, 103, 5, -5],
-                           [2, 11, 77, -9, -42, 5, 3],
-                           [3, 5, 11, 77]);
+        check_intersection(&[], &[], &[]);
+        check_intersection(&[1, 2, 3], &[], &[]);
+        check_intersection(&[], &[1, 2, 3], &[]);
+        check_intersection(&[2], &[1, 2, 3], &[2]);
+        check_intersection(&[1, 2, 3], &[2], &[2]);
+        check_intersection(&[11, 1, 3, 77, 103, 5, -5],
+                           &[2, 11, 77, -9, -42, 5, 3],
+                           &[3, 5, 11, 77]);
     }
 
     #[test]
@@ -483,15 +483,15 @@ mod test {
             check(a, b, expected, |x, y, f| x.difference(y).all(f))
         }
 
-        check_difference([], [], []);
-        check_difference([1, 12], [], [1, 12]);
-        check_difference([], [1, 2, 3, 9], []);
-        check_difference([1, 3, 5, 9, 11],
-                         [3, 9],
-                         [1, 5, 11]);
-        check_difference([-5, 11, 22, 33, 40, 42],
-                         [-12, -5, 14, 23, 34, 38, 39, 50],
-                         [11, 22, 33, 40, 42]);
+        check_difference(&[], &[], &[]);
+        check_difference(&[1, 12], &[], &[1, 12]);
+        check_difference(&[], &[1, 2, 3, 9], &[]);
+        check_difference(&[1, 3, 5, 9, 11],
+                         &[3, 9],
+                         &[1, 5, 11]);
+        check_difference(&[-5, 11, 22, 33, 40, 42],
+                         &[-12, -5, 14, 23, 34, 38, 39, 50],
+                         &[11, 22, 33, 40, 42]);
     }
 
     #[test]
@@ -501,12 +501,12 @@ mod test {
             check(a, b, expected, |x, y, f| x.symmetric_difference(y).all(f))
         }
 
-        check_symmetric_difference([], [], []);
-        check_symmetric_difference([1, 2, 3], [2], [1, 3]);
-        check_symmetric_difference([2], [1, 2, 3], [1, 3]);
-        check_symmetric_difference([1, 3, 5, 9, 11],
-                                   [-2, 3, 9, 14, 22],
-                                   [-2, 1, 5, 11, 14, 22]);
+        check_symmetric_difference(&[], &[], &[]);
+        check_symmetric_difference(&[1, 2, 3], &[2], &[1, 3]);
+        check_symmetric_difference(&[2], &[1, 2, 3], &[1, 3]);
+        check_symmetric_difference(&[1, 3, 5, 9, 11],
+                                   &[-2, 3, 9, 14, 22],
+                                   &[-2, 1, 5, 11, 14, 22]);
     }
 
     #[test]
@@ -516,12 +516,12 @@ mod test {
             check(a, b, expected, |x, y, f| x.union(y).all(f))
         }
 
-        check_union([], [], []);
-        check_union([1, 2, 3], [2], [1, 2, 3]);
-        check_union([2], [1, 2, 3], [1, 2, 3]);
-        check_union([1, 3, 5, 9, 11, 16, 19, 24],
-                    [-2, 1, 5, 9, 13, 19],
-                    [-2, 1, 3, 5, 9, 11, 13, 16, 19, 24]);
+        check_union(&[], &[], &[]);
+        check_union(&[1, 2, 3], &[2], &[1, 2, 3]);
+        check_union(&[2], &[1, 2, 3], &[1, 2, 3]);
+        check_union(&[1, 3, 5, 9, 11, 16, 19, 24],
+                    &[-2, 1, 5, 9, 13, 19],
+                    &[-2, 1, 3, 5, 9, 11, 13, 16, 19, 24]);
     }
 
     #[test]

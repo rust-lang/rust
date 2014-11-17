@@ -345,7 +345,7 @@ fn parse_str(st: &mut PState, term: char) -> String {
     let mut result = String::new();
     while peek(st) != term {
         unsafe {
-            result.as_mut_vec().push_all([next_byte(st)])
+            result.as_mut_vec().push_all(&[next_byte(st)])
         }
     }
     next(st);

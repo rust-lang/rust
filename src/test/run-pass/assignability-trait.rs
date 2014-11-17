@@ -53,5 +53,5 @@ pub fn main() {
     // Call a method
     z.iterate(|y| { assert!(z[*y as uint] == *y); true });
     // Call a parameterized function
-    assert_eq!(length::<int, &[int]>(z), z.len());
+    assert_eq!(length::<int, &[int]>(&z), z.len());
 }

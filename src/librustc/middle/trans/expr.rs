@@ -166,11 +166,11 @@ pub fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 }
 
 pub fn get_len(bcx: Block, fat_ptr: ValueRef) -> ValueRef {
-    GEPi(bcx, fat_ptr, [0u, abi::slice_elt_len])
+    GEPi(bcx, fat_ptr, &[0u, abi::slice_elt_len])
 }
 
 pub fn get_dataptr(bcx: Block, fat_ptr: ValueRef) -> ValueRef {
-    GEPi(bcx, fat_ptr, [0u, abi::slice_elt_base])
+    GEPi(bcx, fat_ptr, &[0u, abi::slice_elt_base])
 }
 
 fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
@@ -356,7 +356,7 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                        val,
                                        type_of::type_of(bcx.ccx(), unsized_ty).ptr_to()),
             &ty::UnsizeLength(..) =>
-                |bcx, val| GEPi(bcx, val, [0u, 0u]),
+                |bcx, val| GEPi(bcx, val, &[0u, 0u]),
             &ty::UnsizeVtable(..) =>
                 |_bcx, val| PointerCast(bcx, val, Type::i8p(bcx.ccx()))
         };
@@ -814,7 +814,7 @@ fn trans_index<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let expect = ccx.get_intrinsic(&("llvm.expect.i1"));
             let expected = Call(bcx,
                                 expect,
-                                [bounds_check, C_bool(ccx, false)],
+                                &[bounds_check, C_bool(ccx, false)],
                                 None);
             bcx = with_cond(bcx, expected, |bcx| {
                 controlflow::trans_fail_bounds_check(bcx,
@@ -822,7 +822,7 @@ fn trans_index<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                                      ix_val,
                                                      len)
             });
-            let elt = InBoundsGEP(bcx, base, [ix_val]);
+            let elt = InBoundsGEP(bcx, base, &[ix_val]);
             let elt = PointerCast(bcx, elt, vt.llunit_ty.ptr_to());
             Datum::new(elt, vt.unit_ty, LvalueExpr)
         }
@@ -1758,8 +1758,8 @@ fn trans_lazy_binop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 
     Br(past_rhs, join.llbb);
-    let phi = Phi(join, Type::i1(bcx.ccx()), [lhs, rhs],
-                  [past_lhs.llbb, past_rhs.llbb]);
+    let phi = Phi(join, Type::i1(bcx.ccx()), &[lhs, rhs],
+                  &[past_lhs.llbb, past_rhs.llbb]);
 
     return immediate_rvalue_bcx(join, phi, binop_ty).to_expr_datumblock();
 }

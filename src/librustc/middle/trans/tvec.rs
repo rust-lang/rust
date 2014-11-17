@@ -47,7 +47,7 @@ pub fn pointer_add_byte(bcx: Block, ptr: ValueRef, bytes: ValueRef) -> ValueRef 
     let _icx = push_ctxt("tvec::pointer_add_byte");
     let old_ty = val_ty(ptr);
     let bptr = PointerCast(bcx, ptr, Type::i8p(bcx.ccx()));
-    return PointerCast(bcx, InBoundsGEP(bcx, bptr, [bytes]), old_ty);
+    return PointerCast(bcx, InBoundsGEP(bcx, bptr, &[bytes]), old_ty);
 }
 
 pub fn make_drop_glue_unboxed<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
@@ -128,7 +128,7 @@ pub fn trans_fixed_vstore<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         SaveIn(lldest) => {
             // lldest will have type *[T x N], but we want the type *T,
             // so use GEP to convert:
-            let lldest = GEPi(bcx, lldest, [0, 0]);
+            let lldest = GEPi(bcx, lldest, &[0, 0]);
             write_content(bcx, &vt, expr, expr, SaveIn(lldest))
         }
     };
@@ -231,8 +231,8 @@ pub fn trans_lit_str<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 let llbytes = C_uint(bcx.ccx(), bytes);
                 let llcstr = C_cstr(bcx.ccx(), str_lit, false);
                 let llcstr = llvm::LLVMConstPointerCast(llcstr, Type::i8p(bcx.ccx()).to_ref());
-                Store(bcx, llcstr, GEPi(bcx, lldest, [0u, abi::slice_elt_base]));
-                Store(bcx, llbytes, GEPi(bcx, lldest, [0u, abi::slice_elt_len]));
+                Store(bcx, llcstr, GEPi(bcx, lldest, &[0u, abi::slice_elt_base]));
+                Store(bcx, llbytes, GEPi(bcx, lldest, &[0u, abi::slice_elt_len]));
                 bcx
             }
         }
@@ -290,7 +290,7 @@ pub fn write_content<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 SaveIn(lldest) => {
                     let temp_scope = fcx.push_custom_cleanup_scope();
                     for (i, element) in elements.iter().enumerate() {
-                        let lleltptr = GEPi(bcx, lldest, [i]);
+                        let lleltptr = GEPi(bcx, lldest, &[i]);
                         debug!("writing index {} with lleltptr={}",
                                i, bcx.val_to_string(lleltptr));
                         bcx = expr::trans_into(bcx, &**element,
@@ -397,8 +397,8 @@ pub fn get_fixed_base_and_len(bcx: Block,
 fn get_slice_base_and_len(bcx: Block,
                           llval: ValueRef)
                           -> (ValueRef, ValueRef) {
-    let base = Load(bcx, GEPi(bcx, llval, [0u, abi::slice_elt_base]));
-    let len = Load(bcx, GEPi(bcx, llval, [0u, abi::slice_elt_len]));
+    let base = Load(bcx, GEPi(bcx, llval, &[0u, abi::slice_elt_base]));
+    let len = Load(bcx, GEPi(bcx, llval, &[0u, abi::slice_elt_len]));
     (base, len)
 }
 
@@ -427,7 +427,7 @@ pub fn get_base_and_len(bcx: Block,
         ty::ty_uniq(ty) | ty::ty_rptr(_, ty::mt{ty, ..}) => match ty::get(ty).sty {
             ty::ty_vec(_, None) | ty::ty_str => get_slice_base_and_len(bcx, llval),
             ty::ty_vec(_, Some(n)) => {
-                let base = GEPi(bcx, Load(bcx, llval), [0u, 0u]);
+                let base = GEPi(bcx, Load(bcx, llval), &[0u, 0u]);
                 (base, C_uint(ccx, n))
             }
             _ => ccx.sess().bug("unexpected type in get_base_and_len"),
@@ -477,7 +477,7 @@ pub fn iter_vec_loop<'a, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         let lleltptr = if vt.llunit_alloc_size == 0 {
             data_ptr
         } else {
-            InBoundsGEP(body_bcx, data_ptr, [i])
+            InBoundsGEP(body_bcx, data_ptr, &[i])
         };
         let body_bcx = f(body_bcx, lleltptr, vt.unit_ty);
 
@@ -521,7 +521,7 @@ pub fn iter_vec_raw<'a, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         let header_bcx = fcx.new_temp_block("iter_vec_loop_header");
         Br(bcx, header_bcx.llbb);
         let data_ptr =
-            Phi(header_bcx, val_ty(data_ptr), [data_ptr], [bcx.llbb]);
+            Phi(header_bcx, val_ty(data_ptr), &[data_ptr], &[bcx.llbb]);
         let not_yet_at_end =
             ICmp(header_bcx, llvm::IntULT, data_ptr, data_end_ptr);
         let body_bcx = fcx.new_temp_block("iter_vec_loop_body");
@@ -529,7 +529,7 @@ pub fn iter_vec_raw<'a, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         CondBr(header_bcx, not_yet_at_end, body_bcx.llbb, next_bcx.llbb);
         let body_bcx = f(body_bcx, data_ptr, vt.unit_ty);
         AddIncomingToPhi(data_ptr, InBoundsGEP(body_bcx, data_ptr,
-                                               [C_int(bcx.ccx(), 1i)]),
+                                               &[C_int(bcx.ccx(), 1i)]),
                          body_bcx.llbb);
         Br(body_bcx, header_bcx.llbb);
         next_bcx
