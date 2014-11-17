@@ -207,7 +207,7 @@ pub fn store_environment<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                      bv.to_string(ccx)).as_slice());
         }
 
-        let bound_data = GEPi(bcx, llbox, [0u, abi::box_field_body, i]);
+        let bound_data = GEPi(bcx, llbox, &[0u, abi::box_field_body, i]);
 
         match bv.action {
             ast::CaptureByValue => {
@@ -275,7 +275,7 @@ fn load_environment<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     // Populate the upvars from the environment
     let mut i = 0u;
     for freevar in freevars.iter() {
-        let mut upvarptr = GEPi(bcx, llcdata, [0u, i]);
+        let mut upvarptr = GEPi(bcx, llcdata, &[0u, i]);
         match store {
             ty::RegionTraitStore(..) => { upvarptr = Load(bcx, upvarptr); }
             ty::UniqTraitStore => {}
@@ -329,7 +329,7 @@ fn load_unboxed_closure_environment<'blk, 'tcx>(
     };
 
     for (i, freevar) in freevars.iter().enumerate() {
-        let mut upvar_ptr = GEPi(bcx, llenv, [0, i]);
+        let mut upvar_ptr = GEPi(bcx, llenv, &[0, i]);
         if freevar_mode == ast::CaptureByRef {
             upvar_ptr = Load(bcx, upvar_ptr);
         }
@@ -347,9 +347,9 @@ fn load_unboxed_closure_environment<'blk, 'tcx>(
 }
 
 fn fill_fn_pair(bcx: Block, pair: ValueRef, llfn: ValueRef, llenvptr: ValueRef) {
-    Store(bcx, llfn, GEPi(bcx, pair, [0u, abi::fn_field_code]));
+    Store(bcx, llfn, GEPi(bcx, pair, &[0u, abi::fn_field_code]));
     let llenvptr = PointerCast(bcx, llenvptr, Type::i8p(bcx.ccx()));
-    Store(bcx, llenvptr, GEPi(bcx, pair, [0u, abi::fn_field_box]));
+    Store(bcx, llenvptr, GEPi(bcx, pair, &[0u, abi::fn_field_box]));
 }
 
 pub fn trans_expr_fn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
@@ -407,7 +407,7 @@ pub fn trans_expr_fn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                   llfn,
                   bcx.fcx.param_substs,
                   id,
-                  [],
+                  &[],
                   ty::ty_fn_ret(fty),
                   ty::ty_fn_abi(fty),
                   true,
@@ -504,7 +504,7 @@ pub fn trans_unboxed_closure<'blk, 'tcx>(
                   llfn,
                   bcx.fcx.param_substs,
                   id,
-                  [],
+                  &[],
                   ty::ty_fn_ret(function_type),
                   ty::ty_fn_abi(function_type),
                   true,

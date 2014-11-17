@@ -207,7 +207,7 @@ pub fn trans_intrinsic_call<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>, node: ast::N
     // These are the only intrinsic functions that diverge.
     if name.get() == "abort" {
         let llfn = ccx.get_intrinsic(&("llvm.trap"));
-        Call(bcx, llfn, [], None);
+        Call(bcx, llfn, &[], None);
         Unreachable(bcx);
         return Result::new(bcx, C_undef(Type::nil(ccx).ptr_to()));
     } else if name.get() == "unreachable" {
@@ -242,7 +242,7 @@ pub fn trans_intrinsic_call<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>, node: ast::N
         }
         (_, "breakpoint") => {
             let llfn = ccx.get_intrinsic(&("llvm.debugtrap"));
-            Call(bcx, llfn, [], None)
+            Call(bcx, llfn, &[], None)
         }
         (_, "size_of") => {
             let tp_ty = *substs.types.get(FnSpace, 0);
@@ -291,7 +291,7 @@ pub fn trans_intrinsic_call<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>, node: ast::N
                 &ccx.link_meta().crate_hash);
             // NB: This needs to be kept in lockstep with the TypeId struct in
             //     the intrinsic module
-            C_named_struct(llret_ty, [C_u64(ccx, hash)])
+            C_named_struct(llret_ty, &[C_u64(ccx, hash)])
         }
         (_, "init") => {
             let tp_ty = *substs.types.get(FnSpace, 0);
@@ -317,7 +317,7 @@ pub fn trans_intrinsic_call<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>, node: ast::N
         (_, "offset") => {
             let ptr = llargs[0];
             let offset = llargs[1];
-            InBoundsGEP(bcx, ptr, [offset])
+            InBoundsGEP(bcx, ptr, &[offset])
         }
 
         (_, "copy_nonoverlapping_memory") => {
@@ -578,8 +578,8 @@ fn copy_intrinsic(bcx: Block, allow_overlap: bool, volatile: bool,
     let src_ptr = PointerCast(bcx, src, Type::i8p(ccx));
     let llfn = ccx.get_intrinsic(&name);
 
-    Call(bcx, llfn, [dst_ptr, src_ptr, Mul(bcx, size, count), align,
-                     C_bool(ccx, volatile)], None)
+    Call(bcx, llfn, &[dst_ptr, src_ptr, Mul(bcx, size, count), align,
+                      C_bool(ccx, volatile)], None)
 }
 
 fn memset_intrinsic(bcx: Block, volatile: bool, tp_ty: ty::t,
@@ -597,14 +597,14 @@ fn memset_intrinsic(bcx: Block, volatile: bool, tp_ty: ty::t,
     let dst_ptr = PointerCast(bcx, dst, Type::i8p(ccx));
     let llfn = ccx.get_intrinsic(&name);
 
-    Call(bcx, llfn, [dst_ptr, val, Mul(bcx, size, count), align,
-                     C_bool(ccx, volatile)], None)
+    Call(bcx, llfn, &[dst_ptr, val, Mul(bcx, size, count), align,
+                      C_bool(ccx, volatile)], None)
 }
 
 fn count_zeros_intrinsic(bcx: Block, name: &'static str, val: ValueRef) -> ValueRef {
     let y = C_bool(bcx.ccx(), false);
     let llfn = bcx.ccx().get_intrinsic(&name);
-    Call(bcx, llfn, [val, y], None)
+    Call(bcx, llfn, &[val, y], None)
 }
 
 fn with_overflow_intrinsic(bcx: Block, name: &'static str, t: ty::t,
@@ -612,7 +612,7 @@ fn with_overflow_intrinsic(bcx: Block, name: &'static str, t: ty::t,
     let llfn = bcx.ccx().get_intrinsic(&name);
 
     // Convert `i1` to a `bool`, and write it to the out parameter
-    let val = Call(bcx, llfn, [a, b], None);
+    let val = Call(bcx, llfn, &[a, b], None);
     let result = ExtractValue(bcx, val, 0);
     let overflow = ZExt(bcx, ExtractValue(bcx, val, 1), Type::bool(bcx.ccx()));
     let ret = C_undef(type_of::type_of(bcx.ccx(), t));

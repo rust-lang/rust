@@ -142,7 +142,7 @@ pub trait Rng {
     /// use std::rand::{task_rng, Rng};
     ///
     /// let mut v = [0u8, .. 13579];
-    /// task_rng().fill_bytes(v);
+    /// task_rng().fill_bytes(&mut v);
     /// println!("{}", v.as_slice());
     /// ```
     fn fill_bytes(&mut self, dest: &mut [u8]) {
@@ -268,7 +268,7 @@ pub trait Rng {
     ///
     /// let choices = [1i, 2, 4, 8, 16, 32];
     /// let mut rng = task_rng();
-    /// println!("{}", rng.choose(choices));
+    /// println!("{}", rng.choose(&choices));
     /// assert_eq!(rng.choose(choices[..0]), None);
     /// ```
     fn choose<'a, T>(&mut self, values: &'a [T]) -> Option<&'a T> {
@@ -288,9 +288,9 @@ pub trait Rng {
     ///
     /// let mut rng = task_rng();
     /// let mut y = [1i, 2, 3];
-    /// rng.shuffle(y);
+    /// rng.shuffle(&mut y);
     /// println!("{}", y.as_slice());
-    /// rng.shuffle(y);
+    /// rng.shuffle(&mut y);
     /// println!("{}", y.as_slice());
     /// ```
     fn shuffle<T>(&mut self, values: &mut [T]) {
@@ -347,7 +347,7 @@ pub trait SeedableRng<Seed>: Rng {
     /// let seed: &[_] = &[1, 2, 3, 4];
     /// let mut rng: StdRng = SeedableRng::from_seed(seed);
     /// println!("{}", rng.gen::<f64>());
-    /// rng.reseed([5, 6, 7, 8]);
+    /// rng.reseed(&[5, 6, 7, 8]);
     /// println!("{}", rng.gen::<f64>());
     /// ```
     fn reseed(&mut self, Seed);

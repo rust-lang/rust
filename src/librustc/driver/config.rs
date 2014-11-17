@@ -886,11 +886,11 @@ mod test {
     #[test]
     fn test_switch_implies_cfg_test() {
         let matches =
-            &match getopts(["--test".to_string()], optgroups().as_slice()) {
+            &match getopts(&["--test".to_string()], optgroups().as_slice()) {
               Ok(m) => m,
               Err(f) => panic!("test_switch_implies_cfg_test: {}", f)
             };
-        let registry = diagnostics::registry::Registry::new([]);
+        let registry = diagnostics::registry::Registry::new(&[]);
         let sessopts = build_session_options(matches);
         let sess = build_session(sessopts, None, registry);
         let cfg = build_configuration(&sess);
@@ -902,14 +902,14 @@ mod test {
     #[test]
     fn test_switch_implies_cfg_test_unless_cfg_test() {
         let matches =
-            &match getopts(["--test".to_string(), "--cfg=test".to_string()],
+            &match getopts(&["--test".to_string(), "--cfg=test".to_string()],
                            optgroups().as_slice()) {
               Ok(m) => m,
               Err(f) => {
                 panic!("test_switch_implies_cfg_test_unless_cfg_test: {}", f)
               }
             };
-        let registry = diagnostics::registry::Registry::new([]);
+        let registry = diagnostics::registry::Registry::new(&[]);
         let sessopts = build_session_options(matches);
         let sess = build_session(sessopts, None, registry);
         let cfg = build_configuration(&sess);

@@ -359,7 +359,7 @@ pub fn read<T>(fd: sock_t,
             // With a timeout, first we wait for the socket to become
             // readable using select(), specifying the relevant timeout for
             // our previously set deadline.
-            try!(await([fd], deadline, Readable));
+            try!(await(&[fd], deadline, Readable));
 
             // At this point, we're still within the timeout, and we've
             // determined that the socket is readable (as returned by
@@ -411,7 +411,7 @@ pub fn write<T>(fd: sock_t,
         while written < buf.len() && (write_everything || written == 0) {
             // As with read(), first wait for the socket to be ready for
             // the I/O operation.
-            match await([fd], deadline, Writable) {
+            match await(&[fd], deadline, Writable) {
                 Err(ref e) if e.kind == io::EndOfFile && written > 0 => {
                     assert!(deadline.is_some());
                     return Err(short_write(written, "short write"))

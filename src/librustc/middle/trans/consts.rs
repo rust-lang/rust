@@ -204,7 +204,7 @@ pub fn const_expr(cx: &CrateContext, e: &ast::Expr) -> (ValueRef, ty::t) {
                                                                    def,
                                                                    llconst,
                                                                    true);
-                    llconst = C_struct(cx, [wrapper, C_null(Type::i8p(cx))], false)
+                    llconst = C_struct(cx, &[wrapper, C_null(Type::i8p(cx))], false)
                 }
                 ty::AdjustAddEnv(store) => {
                     cx.sess()
@@ -264,7 +264,7 @@ pub fn const_expr(cx: &CrateContext, e: &ast::Expr) -> (ValueRef, ty::t) {
                                             let llptr = const_ptrcast(cx, llconst, llunitty);
                                             assert_eq!(abi::slice_elt_base, 0);
                                             assert_eq!(abi::slice_elt_len, 1);
-                                            llconst = C_struct(cx, [
+                                            llconst = C_struct(cx, &[
                                                 llptr,
                                                 C_uint(cx, len)
                                             ], false);
@@ -444,8 +444,8 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr) -> ValueRef {
                   ty::ty_vec(_, Some(u)) => (bv, C_uint(cx, u)),
                   ty::ty_open(ty) => match ty::get(ty).sty {
                       ty::ty_vec(_, None) | ty::ty_str => {
-                          let e1 = const_get_elt(cx, bv, [0]);
-                          (const_deref_ptr(cx, e1), const_get_elt(cx, bv, [1]))
+                          let e1 = const_get_elt(cx, bv, &[0]);
+                          (const_deref_ptr(cx, e1), const_get_elt(cx, bv, &[1]))
                       },
                       _ => cx.sess().span_bug(base.span,
                                               format!("index-expr base must be a vector \
@@ -484,7 +484,7 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr) -> ValueRef {
                   cx.sess().span_err(e.span,
                                      "const index-expr is out of bounds");
               }
-              const_get_elt(cx, arr, [iv as c_uint])
+              const_get_elt(cx, arr, &[iv as c_uint])
           }
           ast::ExprCast(ref base, _) => {
             let ety = ty::expr_ty(cx.tcx(), e);
@@ -646,7 +646,7 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr) -> ValueRef {
                     let vinfo = ty::enum_variant_with_id(cx.tcx(),
                                                          enum_did,
                                                          variant_did);
-                    adt::trans_const(cx, &*repr, vinfo.disr_val, [])
+                    adt::trans_const(cx, &*repr, vinfo.disr_val, &[])
                 }
                 Some(def::DefStruct(_)) => {
                     let ety = ty::expr_ty(cx.tcx(), e);

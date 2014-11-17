@@ -748,10 +748,10 @@ impl<'a> vtable_decoder_helpers for reader::Decoder<'a> {
                           tcx: &ty::ctxt, cdata: &cstore::crate_metadata)
         -> typeck::vtable_origin {
         self.read_enum("vtable_origin", |this| {
-            this.read_enum_variant(["vtable_static",
-                                    "vtable_param",
-                                    "vtable_error",
-                                    "vtable_unboxed_closure"],
+            this.read_enum_variant(&["vtable_static",
+                                     "vtable_param",
+                                     "vtable_error",
+                                     "vtable_unboxed_closure"],
                                    |this, i| {
                 Ok(match i {
                   0 => {
@@ -1402,8 +1402,8 @@ impl<'a> rbml_decoder_decoder_helpers for reader::Decoder<'a> {
                           -> typeck::MethodOrigin
     {
         self.read_enum("MethodOrigin", |this| {
-            let variants = ["MethodStatic", "MethodStaticUnboxedClosure",
-                            "MethodTypeParam", "MethodTraitObject"];
+            let variants = &["MethodStatic", "MethodStaticUnboxedClosure",
+                             "MethodTypeParam", "MethodTraitObject"];
             this.read_enum_variant(variants, |this, i| {
                 Ok(match i {
                     0 => {
@@ -1577,7 +1577,7 @@ impl<'a> rbml_decoder_decoder_helpers for reader::Decoder<'a> {
     fn read_auto_adjustment(&mut self, dcx: &DecodeContext) -> ty::AutoAdjustment {
         self.read_enum("AutoAdjustment", |this| {
             let variants = ["AutoAddEnv", "AutoDerefRef"];
-            this.read_enum_variant(variants, |this, i| {
+            this.read_enum_variant(&variants, |this, i| {
                 Ok(match i {
                     0 => {
                         let store: ty::TraitStore =
@@ -1623,7 +1623,7 @@ impl<'a> rbml_decoder_decoder_helpers for reader::Decoder<'a> {
                             "AutoUnsize",
                             "AutoUnsizeUniq",
                             "AutoUnsafe"];
-            this.read_enum_variant(variants, |this, i| {
+            this.read_enum_variant(&variants, |this, i| {
                 Ok(match i {
                     0 => {
                         let r: ty::Region =
@@ -1677,7 +1677,7 @@ impl<'a> rbml_decoder_decoder_helpers for reader::Decoder<'a> {
 
     fn read_unsize_kind(&mut self, dcx: &DecodeContext) -> ty::UnsizeKind {
         self.read_enum("UnsizeKind", |this| {
-            let variants = ["UnsizeLength", "UnsizeStruct", "UnsizeVtable"];
+            let variants = &["UnsizeLength", "UnsizeStruct", "UnsizeVtable"];
             this.read_enum_variant(variants, |this, i| {
                 Ok(match i {
                     0 => {
@@ -1727,7 +1727,7 @@ impl<'a> rbml_decoder_decoder_helpers for reader::Decoder<'a> {
                 dcx.tcx,
                 |s, a| this.convert_def_id(dcx, s, a)))
         }).unwrap();
-        let variants = [
+        let variants = &[
             "FnUnboxedClosureKind",
             "FnMutUnboxedClosureKind",
             "FnOnceUnboxedClosureKind"

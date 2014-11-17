@@ -376,7 +376,7 @@ mod tests {
 
         writer.write(b"test").ok().unwrap();
         let mut buf = [0u8, ..4];
-        match reader.read(buf) {
+        match reader.read(&mut buf) {
             Ok(4) => {
                 assert_eq!(buf[0], 't' as u8);
                 assert_eq!(buf[1], 'e' as u8);
@@ -386,7 +386,7 @@ mod tests {
             r => panic!("invalid read: {}", r),
         }
 
-        assert!(writer.read(buf).is_err());
-        assert!(reader.write(buf).is_err());
+        assert!(writer.read(&mut buf).is_err());
+        assert!(reader.write(&buf).is_err());
     }
 }

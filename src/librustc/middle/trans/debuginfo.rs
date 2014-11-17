@@ -985,7 +985,7 @@ pub fn create_match_binding_metadata(bcx: Block,
         },
         TrByMove => IndirectVariable {
             alloca: binding.llmatch,
-            address_operations: aops
+            address_operations: &aops
         },
         TrByRef => DirectVariable {
             alloca: binding.llmatch
@@ -1368,7 +1368,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
                               param_substs: &param_substs,
                               error_reporting_span: Span) -> DIArray {
         if cx.sess().opts.debuginfo == LimitedDebugInfo {
-            return create_DIArray(DIB(cx), []);
+            return create_DIArray(DIB(cx), &[]);
         }
 
         let mut signature = Vec::with_capacity(fn_decl.inputs.len() + 1);
@@ -1409,7 +1409,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
         let has_self_type = self_type.is_some();
 
         if !generics.is_type_parameterized() && !has_self_type {
-            return create_DIArray(DIB(cx), []);
+            return create_DIArray(DIB(cx), &[]);
         }
 
         name_to_append_suffix_to.push('<');
@@ -2645,7 +2645,7 @@ fn create_struct_stub(cx: &CrateContext,
                 // LLVMDIBuilderCreateStructType() wants an empty array. A null
                 // pointer will lead to hard to trace and debug LLVM assertions
                 // later on in llvm/lib/IR/Value.cpp.
-                let empty_array = create_DIArray(DIB(cx), []);
+                let empty_array = create_DIArray(DIB(cx), &[]);
 
                 llvm::LLVMDIBuilderCreateStructType(
                     DIB(cx),
@@ -2688,7 +2688,7 @@ fn fixed_vec_metadata(cx: &CrateContext,
             len as i64)
     };
 
-    let subscripts = create_DIArray(DIB(cx), [subrange]);
+    let subscripts = create_DIArray(DIB(cx), &[subrange]);
     let metadata = unsafe {
         llvm::LLVMDIBuilderCreateArrayType(
             DIB(cx),
@@ -2749,7 +2749,7 @@ fn vec_slice_metadata(cx: &CrateContext,
                                            slice_llvm_type,
                                            slice_type_name.as_slice(),
                                            unique_type_id,
-                                           member_descriptions,
+                                           &member_descriptions,
                                            UNKNOWN_SCOPE_METADATA,
                                            file_metadata,
                                            span);
@@ -2835,7 +2835,7 @@ fn trait_pointer_metadata(cx: &CrateContext,
                             trait_llvm_type,
                             trait_type_name.as_slice(),
                             unique_type_id,
-                            [],
+                            &[],
                             containing_scope,
                             UNKNOWN_FILE_METADATA,
                             codemap::DUMMY_SP)

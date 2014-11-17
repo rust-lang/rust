@@ -107,7 +107,7 @@ impl Process {
                 } else if pid > 0 {
                     drop(output);
                     let mut bytes = [0, ..4];
-                    return match input.read(bytes) {
+                    return match input.read(&mut bytes) {
                         Ok(4) => {
                             let errno = (bytes[0] as i32 << 24) |
                                         (bytes[1] as i32 << 16) |
@@ -160,7 +160,7 @@ impl Process {
                         (errno >>  8) as u8,
                         (errno >>  0) as u8,
                     ];
-                    assert!(output.write(bytes).is_ok());
+                    assert!(output.write(&bytes).is_ok());
                     unsafe { libc::_exit(1) }
                 }
 

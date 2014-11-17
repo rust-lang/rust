@@ -1442,7 +1442,7 @@ pub fn compute_opt_region_bound(tcx: &ty::ctxt,
     let derived_region_bounds =
         ty::required_region_bounds(
             tcx,
-            [],
+            &[],
             builtin_bounds,
             trait_bounds);
 

@@ -195,12 +195,12 @@ pub fn sizing_type_of(cx: &CrateContext, t: ty::t) -> Type {
             if ty::type_is_sized(cx.tcx(), ty) {
                 Type::i8p(cx)
             } else {
-                Type::struct_(cx, [Type::i8p(cx), Type::i8p(cx)], false)
+                Type::struct_(cx, &[Type::i8p(cx), Type::i8p(cx)], false)
             }
         }
 
         ty::ty_bare_fn(..) => Type::i8p(cx),
-        ty::ty_closure(..) => Type::struct_(cx, [Type::i8p(cx), Type::i8p(cx)], false),
+        ty::ty_closure(..) => Type::struct_(cx, &[Type::i8p(cx), Type::i8p(cx)], false),
 
         ty::ty_vec(ty, Some(size)) => {
             let llty = sizing_type_of(cx, ty);
@@ -231,7 +231,7 @@ pub fn sizing_type_of(cx: &CrateContext, t: ty::t) -> Type {
         }
 
         ty::ty_open(_) => {
-            Type::struct_(cx, [Type::i8p(cx), Type::i8p(cx)], false)
+            Type::struct_(cx, &[Type::i8p(cx), Type::i8p(cx)], false)
         }
 
         ty::ty_infer(..) | ty::ty_param(..) | ty::ty_err(..) => {
@@ -337,7 +337,7 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
               ty::ty_trait(..) => Type::opaque_trait(cx),
               _ if !ty::type_is_sized(cx.tcx(), ty) => {
                   let p_ty = type_of(cx, ty).ptr_to();
-                  Type::struct_(cx, [p_ty, type_of_unsize_info(cx, ty)], false)
+                  Type::struct_(cx, &[p_ty, type_of_unsize_info(cx, ty)], false)
               }
               _ => type_of(cx, ty).ptr_to(),
           }
@@ -364,7 +364,7 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
       }
       ty::ty_closure(_) => {
           let fn_ty = type_of_fn_from_ty(cx, t).ptr_to();
-          Type::struct_(cx, [fn_ty, Type::i8p(cx)], false)
+          Type::struct_(cx, &[fn_ty, Type::i8p(cx)], false)
       }
       ty::ty_tup(ref tys) if tys.is_empty() => Type::nil(cx),
       ty::ty_tup(..) => {
@@ -391,15 +391,15 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
       ty::ty_open(t) => match ty::get(t).sty {
           ty::ty_struct(..) => {
               let p_ty = type_of(cx, t).ptr_to();
-              Type::struct_(cx, [p_ty, type_of_unsize_info(cx, t)], false)
+              Type::struct_(cx, &[p_ty, type_of_unsize_info(cx, t)], false)
           }
           ty::ty_vec(ty, None) => {
               let p_ty = type_of(cx, ty).ptr_to();
-              Type::struct_(cx, [p_ty, type_of_unsize_info(cx, t)], false)
+              Type::struct_(cx, &[p_ty, type_of_unsize_info(cx, t)], false)
           }
           ty::ty_str => {
               let p_ty = Type::i8p(cx);
-              Type::struct_(cx, [p_ty, type_of_unsize_info(cx, t)], false)
+              Type::struct_(cx, &[p_ty, type_of_unsize_info(cx, t)], false)
           }
           ty::ty_trait(..) => Type::opaque_trait(cx),
           _ => cx.sess().bug(format!("ty_open with sized type: {}",
@@ -472,5 +472,5 @@ pub fn llvm_type_name(cx: &CrateContext,
 
 pub fn type_of_dtor(ccx: &CrateContext, self_ty: ty::t) -> Type {
     let self_ty = type_of(ccx, self_ty).ptr_to();
-    Type::func([self_ty], &Type::void(ccx))
+    Type::func(&[self_ty], &Type::void(ccx))
 }

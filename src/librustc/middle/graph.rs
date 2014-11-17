@@ -419,31 +419,31 @@ mod test {
     fn each_adjacent_from_a() {
         let graph = create_graph();
         test_adjacent_edges(&graph, NodeIndex(0), "A",
-                            [],
-                            [("AB", "B")]);
+                            &[],
+                            &[("AB", "B")]);
     }
 
     #[test]
     fn each_adjacent_from_b() {
         let graph = create_graph();
         test_adjacent_edges(&graph, NodeIndex(1), "B",
-                            [("FB", "F"), ("AB", "A"),],
-                            [("BD", "D"), ("BC", "C"),]);
+                            &[("FB", "F"), ("AB", "A"),],
+                            &[("BD", "D"), ("BC", "C"),]);
     }
 
     #[test]
     fn each_adjacent_from_c() {
         let graph = create_graph();
         test_adjacent_edges(&graph, NodeIndex(2), "C",
-                            [("EC", "E"), ("BC", "B")],
-                            []);
+                            &[("EC", "E"), ("BC", "B")],
+                            &[]);
     }
 
     #[test]
     fn each_adjacent_from_d() {
         let graph = create_graph();
         test_adjacent_edges(&graph, NodeIndex(3), "D",
-                            [("BD", "B")],
-                            [("DE", "E")]);
+                            &[("BD", "B")],
+                            &[("DE", "E")]);
     }
 }

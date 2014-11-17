@@ -189,7 +189,7 @@ pub fn trans_if<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let else_bcx_in = bcx.fcx.new_id_block("else-block", elexpr.id);
             let else_bcx_out = expr::trans_into(else_bcx_in, &*elexpr, dest);
             next_bcx = bcx.fcx.join_blocks(if_id,
-                                           [then_bcx_out, else_bcx_out]);
+                                           &[then_bcx_out, else_bcx_out]);
             CondBr(bcx, cond_val, then_bcx_in.llbb, else_bcx_in.llbb);
         }
 
@@ -324,7 +324,7 @@ pub fn trans_for<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                              None,
                                              arg_cleanup_scope)
                                      },
-                                     callee::ArgVals([lliterator]),
+                                     callee::ArgVals(&[lliterator]),
                                      Some(expr::SaveIn(lloption)));
         bcx
     }));
