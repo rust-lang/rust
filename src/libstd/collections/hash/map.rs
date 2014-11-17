@@ -23,7 +23,7 @@ use hash::{Hash, Hasher, RandomSipHasher};
 use iter::{mod, Iterator, IteratorExt, FromIterator, Extend};
 use kinds::Sized;
 use mem::{mod, replace};
-use num::UnsignedInt;
+use num::{Int, UnsignedInt};
 use ops::{Deref, Index, IndexMut};
 use option::{Some, None, Option};
 use result::{Result, Ok, Err};
@@ -41,45 +41,53 @@ use super::table::{
     SafeHash
 };
 
-// FIXME(conventions): update capacity management to match other collections (no auto-shrink)
-
 const INITIAL_LOG2_CAP: uint = 5;
 pub const INITIAL_CAPACITY: uint = 1 << INITIAL_LOG2_CAP; // 2^5
 
 /// The default behavior of HashMap implements a load factor of 90.9%.
-/// This behavior is characterized by the following conditions:
+/// This behavior is characterized by the following condition:
 ///
-/// - if size > 0.909 * capacity: grow
-/// - if size < 0.25 * capacity: shrink (if this won't bring capacity lower
-///   than the minimum)
+/// - if size > 0.909 * capacity: grow the map
 #[deriving(Clone)]
-struct DefaultResizePolicy {
-    /// Doubled minimal capacity. The capacity must never drop below
-    /// the minimum capacity. (The check happens before the capacity
-    /// is potentially halved.)
-    minimum_capacity2: uint
-}
+struct DefaultResizePolicy;
 
 impl DefaultResizePolicy {
-    fn new(new_capacity: uint) -> DefaultResizePolicy {
-        DefaultResizePolicy {
-            minimum_capacity2: new_capacity << 1
-        }
+    fn new() -> DefaultResizePolicy {
+        DefaultResizePolicy
     }
 
     #[inline]
-    fn capacity_range(&self, new_size: uint) -> (uint, uint) {
-        // Here, we are rephrasing the logic by specifying the ranges:
+    fn min_capacity(&self, usable_size: uint) -> uint {
+        // Here, we are rephrasing the logic by specifying the lower limit
+        // on capacity:
         //
-        // - if `size * 1.1 < cap < size * 4`: don't resize
-        // - if `cap < minimum_capacity * 2`: don't shrink
-        // - otherwise, resize accordingly
-        ((new_size * 11) / 10, max(new_size << 2, self.minimum_capacity2))
+        // - if `cap < size * 1.1`: grow the map
+        usable_size * 11 / 10
     }
 
+    /// An inverse of `min_capacity`, approximately.
     #[inline]
-    fn reserve(&mut self, new_capacity: uint) {
-        self.minimum_capacity2 = new_capacity << 1;
+    fn usable_capacity(&self, cap: uint) -> uint {
+        // As the number of entries approaches usable capacity,
+        // min_capacity(size) must be smaller than the internal capacity,
+        // so that the map is not resized:
+        // `min_capacity(usable_capacity(x)) <= x`.
+        // The lef-hand side can only be smaller due to flooring by integer
+        // division.
+        //
+        // This doesn't have to be checked for overflow since allocation size
+        // in bytes will overflow earlier than multiplication by 10.
+        cap * 10 / 11
+    }
+}
+
+#[test]
+fn test_resize_policy() {
+    use prelude::*;
+    let rp = DefaultResizePolicy;
+    for n in range(0u, 1000) {
+        assert!(rp.min_capacity(rp.usable_capacity(n)) <= n);
+        assert!(rp.usable_capacity(rp.min_capacity(n)) <= n);
     }
 }
 
@@ -282,7 +290,6 @@ pub struct HashMap<K, V, H = RandomSipHasher> {
 
     table: RawTable<K, V>,
 
-    // We keep this at the end since it might as well have tail padding.
     resize_policy: DefaultResizePolicy,
 }
 
@@ -529,7 +536,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     pub fn with_hasher(hasher: H) -> HashMap<K, V, H> {
         HashMap {
             hasher:        hasher,
-            resize_policy: DefaultResizePolicy::new(INITIAL_CAPACITY),
+            resize_policy: DefaultResizePolicy::new(),
             table:         RawTable::new(0),
         }
     }
@@ -554,17 +561,32 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// ```
     #[inline]
     pub fn with_capacity_and_hasher(capacity: uint, hasher: H) -> HashMap<K, V, H> {
-        let cap = max(INITIAL_CAPACITY, capacity).next_power_of_two();
+        let resize_policy = DefaultResizePolicy::new();
+        let min_cap = max(INITIAL_CAPACITY, resize_policy.min_capacity(capacity));
+        let internal_cap = min_cap.checked_next_power_of_two().expect("capacity overflow");
+        assert!(internal_cap >= capacity, "capacity overflow");
         HashMap {
             hasher:        hasher,
-            resize_policy: DefaultResizePolicy::new(cap),
-            table:         RawTable::new(cap),
+            resize_policy: resize_policy,
+            table:         RawTable::new(internal_cap),
         }
     }
 
-    /// The hashtable will never try to shrink below this size. You can use
-    /// this function to reduce reallocations if your hashtable frequently
-    /// grows and shrinks by large amounts.
+    /// Returns the number of elements the map can hold without reallocating.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::HashMap;
+    /// let map: HashMap<int, int> = HashMap::with_capacity(100);
+    /// assert!(map.capacity() >= 100);
+    /// ```
+    #[inline]
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    pub fn capacity(&self) -> uint {
+        self.resize_policy.usable_capacity(self.table.capacity())
+    }
+
     ///
     /// This function has no effect on the operational semantics of the
     /// hashtable, only on performance.
@@ -578,8 +600,6 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// ```
     pub fn reserve(&mut self, new_minimum_capacity: uint) {
         let cap = max(INITIAL_CAPACITY, new_minimum_capacity).next_power_of_two();
-
-        self.resize_policy.reserve(cap);
 
         if self.table.capacity() < cap {
             self.resize(cap);
@@ -601,94 +621,106 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
             return;
         }
 
-        if new_capacity < old_table.capacity() {
-            // Shrink the table. Naive algorithm for resizing:
-            for (h, k, v) in old_table.into_iter() {
-                self.insert_hashed_nocheck(h, k, v);
-            }
-        } else {
-            // Grow the table.
-            // Specialization of the other branch.
-            let mut bucket = Bucket::first(&mut old_table);
+        // Grow the table.
+        // Specialization of the other branch.
+        let mut bucket = Bucket::first(&mut old_table);
 
-            // "So a few of the first shall be last: for many be called,
-            // but few chosen."
-            //
-            // We'll most likely encounter a few buckets at the beginning that
-            // have their initial buckets near the end of the table. They were
-            // placed at the beginning as the probe wrapped around the table
-            // during insertion. We must skip forward to a bucket that won't
-            // get reinserted too early and won't unfairly steal others spot.
-            // This eliminates the need for robin hood.
-            loop {
-                bucket = match bucket.peek() {
-                    Full(full) => {
-                        if full.distance() == 0 {
-                            // This bucket occupies its ideal spot.
-                            // It indicates the start of another "cluster".
-                            bucket = full.into_bucket();
-                            break;
-                        }
-                        // Leaving this bucket in the last cluster for later.
-                        full.into_bucket()
+        // "So a few of the first shall be last: for many be called,
+        // but few chosen."
+        //
+        // We'll most likely encounter a few buckets at the beginning that
+        // have their initial buckets near the end of the table. They were
+        // placed at the beginning as the probe wrapped around the table
+        // during insertion. We must skip forward to a bucket that won't
+        // get reinserted too early and won't unfairly steal others spot.
+        // This eliminates the need for robin hood.
+        loop {
+            bucket = match bucket.peek() {
+                Full(full) => {
+                    if full.distance() == 0 {
+                        // This bucket occupies its ideal spot.
+                        // It indicates the start of another "cluster".
+                        bucket = full.into_bucket();
+                        break;
                     }
-                    Empty(b) => {
-                        // Encountered a hole between clusters.
-                        b.into_bucket()
-                    }
-                };
-                bucket.next();
-            }
+                    // Leaving this bucket in the last cluster for later.
+                    full.into_bucket()
+                }
+                Empty(b) => {
+                    // Encountered a hole between clusters.
+                    b.into_bucket()
+                }
+            };
+            bucket.next();
+        }
 
-            // This is how the buckets might be laid out in memory:
-            // ($ marks an initialized bucket)
-            //  ________________
-            // |$$$_$$$$$$_$$$$$|
-            //
-            // But we've skipped the entire initial cluster of buckets
-            // and will continue iteration in this order:
-            //  ________________
-            //     |$$$$$$_$$$$$
-            //                  ^ wrap around once end is reached
-            //  ________________
-            //  $$$_____________|
-            //    ^ exit once table.size == 0
-            loop {
-                bucket = match bucket.peek() {
-                    Full(bucket) => {
-                        let h = bucket.hash();
-                        let (b, k, v) = bucket.take();
-                        self.insert_hashed_ordered(h, k, v);
-                        {
-                            let t = b.table(); // FIXME "lifetime too short".
-                            if t.size() == 0 { break }
-                        };
-                        b.into_bucket()
-                    }
-                    Empty(b) => b.into_bucket()
-                };
-                bucket.next();
-            }
+        // This is how the buckets might be laid out in memory:
+        // ($ marks an initialized bucket)
+        //  ________________
+        // |$$$_$$$$$$_$$$$$|
+        //
+        // But we've skipped the entire initial cluster of buckets
+        // and will continue iteration in this order:
+        //  ________________
+        //     |$$$$$$_$$$$$
+        //                  ^ wrap around once end is reached
+        //  ________________
+        //  $$$_____________|
+        //    ^ exit once table.size == 0
+        loop {
+            bucket = match bucket.peek() {
+                Full(bucket) => {
+                    let h = bucket.hash();
+                    let (b, k, v) = bucket.take();
+                    self.insert_hashed_ordered(h, k, v);
+                    {
+                        let t = b.table(); // FIXME "lifetime too short".
+                        if t.size() == 0 { break }
+                    };
+                    b.into_bucket()
+                }
+                Empty(b) => b.into_bucket()
+            };
+            bucket.next();
         }
 
         assert_eq!(self.table.size(), old_size);
     }
 
-    /// Performs any necessary resize operations, such that there's space for
-    /// new_size elements.
-    fn make_some_room(&mut self, new_size: uint) {
-        let (grow_at, shrink_at) = self.resize_policy.capacity_range(new_size);
-        let cap = self.table.capacity();
+    /// Shrinks the capacity of the map as much as possible. It will drop
+    /// down as much as possible while maintaining the internal rules
+    /// and possibly leaving some space in accordance with the resize policy.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::HashMap;
+    ///
+    /// let mut map: HashMap<int, int> = HashMap::with_capacity(100);
+    /// map.insert(1, 2);
+    /// map.insert(3, 4);
+    /// assert!(map.capacity() >= 100);
+    /// map.shrink_to_fit();
+    /// assert!(map.capacity() >= 2);
+    /// ```
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    pub fn shrink_to_fit(&mut self) {
+        let min_capacity = self.resize_policy.min_capacity(self.len());
+        let min_capacity = max(min_capacity.next_power_of_two(), INITIAL_CAPACITY);
 
         // An invalid value shouldn't make us run out of space.
-        debug_assert!(grow_at >= new_size);
+        debug_assert!(self.len() <= min_capacity);
 
-        if cap <= grow_at {
-            let new_capacity = max(cap << 1, INITIAL_CAPACITY);
-            self.resize(new_capacity);
-        } else if shrink_at <= cap {
-            let new_capacity = cap >> 1;
-            self.resize(new_capacity);
+        if self.table.capacity() != min_capacity {
+            let old_table = replace(&mut self.table, RawTable::new(min_capacity));
+            let old_size = old_table.size();
+
+            // Shrink the table. Naive algorithm for resizing:
+            for (h, k, v) in old_table.into_iter() {
+                self.insert_hashed_nocheck(h, k, v);
+            }
+
+            debug_assert_eq!(self.table.size(), old_size);
         }
     }
 
@@ -775,8 +807,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
             return None
         }
 
-        let potential_new_size = self.table.size() - 1;
-        self.make_some_room(potential_new_size);
+        self.reserve(1);
 
         match self.search_equiv_mut(k) {
             Some(bucket) => {
@@ -907,12 +938,8 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
 
     /// Gets the given key's corresponding entry in the map for in-place manipulation
     pub fn entry<'a>(&'a mut self, key: K) -> Entry<'a, K, V> {
-        // Gotta resize now, and we don't know which direction, so try both?
-        let size = self.table.size();
-        self.make_some_room(size + 1);
-        if size > 0 {
-            self.make_some_room(size - 1);
-        }
+        // Gotta resize now.
+        self.reserve(1);
 
         let hash = self.make_hash(&key);
         search_entry_hashed(&mut self.table, hash, key)
@@ -964,10 +991,6 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn clear(&mut self) {
-        // Prevent reallocations from happening from now on. Makes it possible
-        // for the map to be reused but has a downside: reserves permanently.
-        self.resize_policy.reserve(self.table.size());
-
         let cap = self.table.capacity();
         let mut buckets = Bucket::first(&mut self.table);
 
@@ -1100,8 +1123,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn insert(&mut self, k: K, v: V) -> Option<V> {
         let hash = self.make_hash(&k);
-        let potential_new_size = self.table.size() + 1;
-        self.make_some_room(potential_new_size);
+        self.reserve(1);
 
         let mut retval = None;
         self.insert_or_replace_with(hash, k, v, |_, val_ref, val| {
@@ -1140,9 +1162,6 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
         if self.table.size() == 0 {
             return None
         }
-
-        let potential_new_size = self.table.size() - 1;
-        self.make_some_room(potential_new_size);
 
         self.search_mut(k).map(|bucket| {
             let (_k, val) = pop_internal(bucket);
@@ -1894,7 +1913,7 @@ mod test_map {
     }
 
     #[test]
-    fn test_resize_policy() {
+    fn test_behavior_resize_policy() {
         let mut m = HashMap::new();
 
         assert_eq!(m.len(), 0);
@@ -1905,7 +1924,7 @@ mod test_map {
         m.remove(&0);
         assert!(m.is_empty());
         let initial_cap = m.table.capacity();
-        m.reserve(initial_cap * 2);
+        m.reserve(initial_cap);
         let cap = m.table.capacity();
 
         assert_eq!(cap, initial_cap * 2);
@@ -1935,15 +1954,55 @@ mod test_map {
             assert_eq!(m.table.capacity(), new_cap);
         }
         // A little more than one quarter full.
-        // Shrinking starts as we remove more elements:
+        m.shrink_to_fit();
+        assert_eq!(m.table.capacity(), cap);
+        // again, a little more than half full
         for _ in range(0, cap / 2 - 1) {
             i -= 1;
             m.remove(&i);
         }
+        m.shrink_to_fit();
 
         assert_eq!(m.len(), i);
         assert!(!m.is_empty());
-        assert_eq!(m.table.capacity(), cap);
+        assert_eq!(m.table.capacity(), initial_cap);
+    }
+
+    #[test]
+    fn test_reserve_shrink_to_fit() {
+        let mut m = HashMap::new();
+        m.insert(0u, 0u);
+        m.remove(&0);
+        assert!(m.capacity() >= m.len());
+        for i in range(0, 128) {
+            m.insert(i, i);
+        }
+        m.reserve(256);
+
+        let usable_cap = m.capacity();
+        for i in range(128, 128+256) {
+            m.insert(i, i);
+            assert_eq!(m.capacity(), usable_cap);
+        }
+
+        for i in range(100, 128+256) {
+            assert_eq!(m.remove(&i), Some(i));
+        }
+        m.shrink_to_fit();
+
+        assert_eq!(m.len(), 100);
+        assert!(!m.is_empty());
+        assert!(m.capacity() >= m.len());
+
+        for i in range(0, 100) {
+            assert_eq!(m.remove(&i), Some(i));
+        }
+        m.shrink_to_fit();
+        m.insert(0, 0);
+
+        assert_eq!(m.len(), 1);
+        assert!(m.capacity() >= m.len());
+        assert_eq!(m.remove(&0), Some(0));
     }
 
     #[test]
