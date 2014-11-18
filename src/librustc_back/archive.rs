@@ -229,7 +229,7 @@ impl<'a> ArchiveBuilder<'a> {
     pub fn build(self) -> Archive<'a> {
         // Get an absolute path to the destination, so `ar` will work even
         // though we run it from `self.work_dir`.
-        let abs_dst = os::getcwd().join(&self.archive.dst);
+        let abs_dst = os::getcwd().unwrap().join(&self.archive.dst);
         assert!(!abs_dst.is_relative());
         let mut args = vec![&abs_dst];
         let mut total_len = abs_dst.as_vec().len();
@@ -286,7 +286,7 @@ impl<'a> ArchiveBuilder<'a> {
         // First, extract the contents of the archive to a temporary directory.
         // We don't unpack directly into `self.work_dir` due to the possibility
         // of filename collisions.
-        let archive = os::make_absolute(archive);
+        let archive = os::make_absolute(archive).unwrap();
         run_ar(self.archive.handler, &self.archive.maybe_ar_prog,
                "x", Some(loc.path()), &[&archive]);
 

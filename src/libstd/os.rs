@@ -38,7 +38,7 @@ pub use self::MapError::*;
 use clone::Clone;
 use error::{FromError, Error};
 use fmt;
-use io::IoResult;
+use io::{IoResult, IoError};
 use iter::Iterator;
 use libc::{c_void, c_int};
 use libc;
@@ -76,15 +76,16 @@ pub fn num_cpus() -> uint {
 pub const TMPBUF_SZ : uint = 1000u;
 const BUF_BYTES : uint = 2048u;
 
-/// Returns the current working directory as a Path.
+/// Returns the current working directory as a `Path`.
 ///
-/// # Failure
+/// # Errors
 ///
-/// Fails if the current working directory value is invalid:
+/// Returns an `Err` if the current working directory value is invalid.
 /// Possible cases:
 ///
 /// * Current directory does not exist.
 /// * There are insufficient permissions to access the current directory.
+/// * The internal buffer is not large enough to hold the path.
 ///
 /// # Example
 ///
@@ -92,32 +93,34 @@ const BUF_BYTES : uint = 2048u;
 /// use std::os;
 ///
 /// // We assume that we are in a valid directory like "/home".
-/// let current_working_directory = os::getcwd();
+/// let current_working_directory = os::getcwd().unwrap();
 /// println!("The current directory is {}", current_working_directory.display());
 /// // /home
 /// ```
 #[cfg(unix)]
-pub fn getcwd() -> Path {
+pub fn getcwd() -> IoResult<Path> {
     use c_str::CString;
 
     let mut buf = [0 as c_char, ..BUF_BYTES];
     unsafe {
         if libc::getcwd(buf.as_mut_ptr(), buf.len() as libc::size_t).is_null() {
-            panic!()
+            Err(IoError::last_error())
+        } else {
+            Ok(Path::new(CString::new(buf.as_ptr(), false)))
         }
-        Path::new(CString::new(buf.as_ptr(), false))
     }
 }
 
-/// Returns the current working directory as a Path.
+/// Returns the current working directory as a `Path`.
 ///
-/// # Failure
+/// # Errors
 ///
-/// Fails if the current working directory value is invalid.
-/// Possibles cases:
+/// Returns an `Err` if the current working directory value is invalid.
+/// Possible cases:
 ///
 /// * Current directory does not exist.
 /// * There are insufficient permissions to access the current directory.
+/// * The internal buffer is not large enough to hold the path.
 ///
 /// # Example
 ///
@@ -125,23 +128,31 @@ pub fn getcwd() -> Path {
 /// use std::os;
 ///
 /// // We assume that we are in a valid directory like "C:\\Windows".
-/// let current_working_directory = os::getcwd();
+/// let current_working_directory = os::getcwd().unwrap();
 /// println!("The current directory is {}", current_working_directory.display());
 /// // C:\\Windows
 /// ```
 #[cfg(windows)]
-pub fn getcwd() -> Path {
+pub fn getcwd() -> IoResult<Path> {
     use libc::DWORD;
     use libc::GetCurrentDirectoryW;
+    use io::OtherIoError;
 
     let mut buf = [0 as u16, ..BUF_BYTES];
     unsafe {
         if libc::GetCurrentDirectoryW(buf.len() as DWORD, buf.as_mut_ptr()) == 0 as DWORD {
-            panic!();
+            return Err(IoError::last_error());
         }
     }
-    Path::new(String::from_utf16(::str::truncate_utf16_at_nul(&buf))
-              .expect("GetCurrentDirectoryW returned invalid UTF-16"))
+
+    match String::from_utf16(::str::truncate_utf16_at_nul(&buf)) {
+        Some(ref cwd) => Ok(Path::new(cwd)),
+        None => Err(IoError {
+            kind: OtherIoError,
+            desc: "GetCurrentDirectoryW returned invalid UTF-16",
+            detail: None,
+        }),
+    }
 }
 
 #[cfg(windows)]
@@ -411,7 +422,9 @@ pub fn setenv<T: BytesContainer>(n: &str, v: T) {
             with_env_lock(|| {
                 n.with_c_str(|nbuf| {
                     v.with_c_str(|vbuf| {
-                        libc::funcs::posix01::unistd::setenv(nbuf, vbuf, 1);
+                        if libc::funcs::posix01::unistd::setenv(nbuf, vbuf, 1) != 0 {
+                            panic!(IoError::last_error());
+                        }
                     })
                 })
             })
@@ -427,7 +440,9 @@ pub fn setenv<T: BytesContainer>(n: &str, v: T) {
 
         unsafe {
             with_env_lock(|| {
-                libc::SetEnvironmentVariableW(n.as_ptr(), v.as_ptr());
+                if libc::SetEnvironmentVariableW(n.as_ptr(), v.as_ptr()) == 0 {
+                    panic!(IoError::last_error());
+                }
             })
         }
     }
@@ -442,7 +457,9 @@ pub fn unsetenv(n: &str) {
         unsafe {
             with_env_lock(|| {
                 n.with_c_str(|nbuf| {
-                    libc::funcs::posix01::unistd::unsetenv(nbuf);
+                    if libc::funcs::posix01::unistd::unsetenv(nbuf) != 0 {
+                        panic!(IoError::last_error());
+                    }
                 })
             })
         }
@@ -454,11 +471,14 @@ pub fn unsetenv(n: &str) {
         n.push(0);
         unsafe {
             with_env_lock(|| {
-                libc::SetEnvironmentVariableW(n.as_ptr(), ptr::null());
+                if libc::SetEnvironmentVariableW(n.as_ptr(), ptr::null()) == 0 {
+                    panic!(IoError::last_error());
+                }
             })
         }
     }
-    _unsetenv(n);
+
+    _unsetenv(n)
 }
 
 /// Parses input according to platform conventions for the `PATH`
@@ -829,20 +849,21 @@ pub fn tmpdir() -> Path {
 ///
 /// // Assume we're in a path like /home/someuser
 /// let rel_path = Path::new("..");
-/// let abs_path = os::make_absolute(&rel_path);
+/// let abs_path = os::make_absolute(&rel_path).unwrap();
 /// println!("The absolute path is {}", abs_path.display());
 /// // Prints "The absolute path is /home"
 /// ```
 // NB: this is here rather than in path because it is a form of environment
 // querying; what it does depends on the process working directory, not just
 // the input paths.
-pub fn make_absolute(p: &Path) -> Path {
+pub fn make_absolute(p: &Path) -> IoResult<Path> {
     if p.is_absolute() {
-        p.clone()
+        Ok(p.clone())
     } else {
-        let mut ret = getcwd();
-        ret.push(p);
-        ret
+        getcwd().map(|mut cwd| {
+            cwd.push(p);
+            cwd
+        })
     }
 }
 
@@ -855,32 +876,33 @@ pub fn make_absolute(p: &Path) -> Path {
 /// use std::path::Path;
 ///
 /// let root = Path::new("/");
-/// assert!(os::change_dir(&root));
+/// assert!(os::change_dir(&root).is_ok());
 /// println!("Successfully changed working directory to {}!", root.display());
 /// ```
-pub fn change_dir(p: &Path) -> bool {
+pub fn change_dir(p: &Path) -> IoResult<()> {
     return chdir(p);
 
     #[cfg(windows)]
-    fn chdir(p: &Path) -> bool {
-        let p = match p.as_str() {
-            Some(s) => {
-                let mut p = s.utf16_units().collect::<Vec<u16>>();
-                p.push(0);
-                p
-            }
-            None => return false,
-        };
+    fn chdir(p: &Path) -> IoResult<()> {
+        let mut p = p.as_str().unwrap().utf16_units().collect::<Vec<u16>>();
+        p.push(0);
+
         unsafe {
-            libc::SetCurrentDirectoryW(p.as_ptr()) != (0 as libc::BOOL)
+            match libc::SetCurrentDirectoryW(p.as_ptr()) != (0 as libc::BOOL) {
+                true => Ok(()),
+                false => Err(IoError::last_error()),
+            }
         }
     }
 
     #[cfg(unix)]
-    fn chdir(p: &Path) -> bool {
+    fn chdir(p: &Path) -> IoResult<()> {
         p.with_c_str(|buf| {
             unsafe {
-                libc::chdir(buf) == (0 as c_int)
+                match libc::chdir(buf) == (0 as c_int) {
+                    true => Ok(()),
+                    false => Err(IoError::last_error()),
+                }
             }
         })
     }
@@ -1881,11 +1903,11 @@ mod tests {
     fn test() {
         assert!((!Path::new("test-path").is_absolute()));
 
-        let cwd = getcwd();
+        let cwd = getcwd().unwrap();
         debug!("Current working directory: {}", cwd.display());
 
-        debug!("{}", make_absolute(&Path::new("test-path")).display());
-        debug!("{}", make_absolute(&Path::new("/usr/bin")).display());
+        debug!("{}", make_absolute(&Path::new("test-path")).unwrap().display());
+        debug!("{}", make_absolute(&Path::new("/usr/bin")).unwrap().display());
     }
 
     #[test]

@@ -123,7 +123,7 @@ fn test_rm_tempdir_close() {
 // to depend on std
 fn recursive_mkdir_rel() {
     let path = Path::new("frob");
-    let cwd = os::getcwd();
+    let cwd = os::getcwd().unwrap();
     println!("recursive_mkdir_rel: Making: {} in cwd {} [{}]", path.display(),
            cwd.display(), path.exists());
     fs::mkdir_recursive(&path, io::USER_RWX);
@@ -141,7 +141,7 @@ fn recursive_mkdir_dot() {
 
 fn recursive_mkdir_rel_2() {
     let path = Path::new("./frob/baz");
-    let cwd = os::getcwd();
+    let cwd = os::getcwd().unwrap();
     println!("recursive_mkdir_rel_2: Making: {} in cwd {} [{}]", path.display(),
            cwd.display(), path.exists());
     fs::mkdir_recursive(&path, io::USER_RWX);
@@ -190,7 +190,7 @@ pub fn dont_double_panic() {
 
 fn in_tmpdir(f: ||) {
     let tmpdir = TempDir::new("test").ok().expect("can't make tmpdir");
-    assert!(os::change_dir(tmpdir.path()));
+    assert!(os::change_dir(tmpdir.path()).is_ok());
 
     f();
 }
