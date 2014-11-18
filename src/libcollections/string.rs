@@ -549,7 +549,7 @@ impl String {
     ///
     /// # Warning
     ///
-    /// This is a O(n) operation as it requires copying every element in the
+    /// This is an O(n) operation as it requires copying every element in the
     /// buffer.
     ///
     /// # Panics
@@ -586,7 +586,7 @@ impl String {
     ///
     /// # Warning
     ///
-    /// This is a O(n) operation as it requires copying every element in the
+    /// This is an O(n) operation as it requires copying every element in the
     /// buffer.
     ///
     /// # Panics

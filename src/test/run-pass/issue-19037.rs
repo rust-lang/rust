@@ -8,18 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::collections::HashMap;
+struct Str([u8]);
 
-pub struct Registry {
-    descriptions: HashMap<&'static str, &'static str>
+#[deriving(Clone)]
+struct CharSplits<'a, Sep> {
+    string: &'a Str,
+    sep: Sep,
+    allow_trailing_empty: bool,
+    only_ascii: bool,
+    finished: bool,
 }
 
-impl Registry {
-    pub fn new(descriptions: &[(&'static str, &'static str)]) -> Registry {
-        Registry { descriptions: descriptions.iter().map(|&tuple| tuple).collect() }
-    }
-
-    pub fn find_description(&self, code: &str) -> Option<&'static str> {
-        self.descriptions.get(code).map(|desc| *desc)
-    }
+fn clone(s: &Str) -> &Str {
+    Clone::clone(&s)
 }
+
+fn main() {}

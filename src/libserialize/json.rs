@@ -901,7 +901,7 @@ impl Json {
     /// Otherwise, returns None.
     pub fn find<'a>(&'a self, key: &str) -> Option<&'a Json>{
         match self {
-            &Object(ref map) => map.find_with(|s| key.cmp(s.as_slice())),
+            &Object(ref map) => map.get(key),
             _ => None
         }
     }
@@ -926,7 +926,7 @@ impl Json {
     pub fn search<'a>(&'a self, key: &str) -> Option<&'a Json> {
         match self {
             &Object(ref map) => {
-                match map.find_with(|s| key.cmp(s.as_slice())) {
+                match map.get(key) {
                     Some(json_value) => Some(json_value),
                     None => {
                         for (_, v) in map.iter() {
