@@ -90,7 +90,7 @@ impl<'a> dot::GraphWalk<'a, Nd, Ed> for Edges {
     fn target(&self, e: &Ed) -> Nd { let &(_,t) = e; t }
 }
 
-# pub fn main() { use std::io::MemWriter; render_to(&mut MemWriter::new()) }
+# pub fn main() { render_to(&mut Vec::new()) }
 ```
 
 ```no_run
@@ -182,7 +182,7 @@ impl<'a> dot::GraphWalk<'a, Nd, Ed<'a>> for Graph {
     fn target(&self, e: &Ed) -> Nd { let & &(_,t) = e; t }
 }
 
-# pub fn main() { use std::io::MemWriter; render_to(&mut MemWriter::new()) }
+# pub fn main() { render_to(&mut Vec::new()) }
 ```
 
 ```no_run
@@ -246,7 +246,7 @@ impl<'a> dot::GraphWalk<'a, Nd<'a>, Ed<'a>> for Graph {
     fn target(&self, e: &Ed<'a>) -> Nd<'a> { let &(_,t) = e; t }
 }
 
-# pub fn main() { use std::io::MemWriter; render_to(&mut MemWriter::new()) }
+# pub fn main() { render_to(&mut Vec::new()) }
 ```
 
 ```no_run
@@ -274,7 +274,7 @@ pub fn main() {
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/nightly/")]
-#![feature(globs)]
+#![feature(globs, slicing_syntax)]
 
 pub use self::LabelText::*;
 
@@ -553,7 +553,7 @@ mod tests {
     use self::NodeLabels::*;
     use super::{Id, LabelText, LabelStr, EscStr, Labeller};
     use super::{Nodes, Edges, GraphWalk, render};
-    use std::io::{MemWriter, BufReader, IoResult};
+    use std::io::{BufReader, IoResult};
     use std::str;
 
     /// each node is an index in a vector in the graph.
@@ -702,9 +702,9 @@ mod tests {
     }
 
     fn test_input(g: LabelledGraph) -> IoResult<String> {
-        let mut writer = MemWriter::new();
+        let mut writer = Vec::new();
         render(&g, &mut writer).unwrap();
-        let mut r = BufReader::new(writer.get_ref());
+        let mut r = BufReader::new(writer[]);
         r.read_to_string()
     }
 
@@ -809,7 +809,7 @@ r#"digraph hasse_diagram {
             "branch2",
             "afterward"));
 
-        let mut writer = MemWriter::new();
+        let mut writer = Vec::new();
 
         let g = LabelledGraphWithEscStrs::new(
             "syntax_tree", labels,
@@ -817,7 +817,7 @@ r#"digraph hasse_diagram {
                  edge(1, 3, ";"),    edge(2, 3, ";"   )));
 
         render(&g, &mut writer).unwrap();
-        let mut r = BufReader::new(writer.get_ref());
+        let mut r = BufReader::new(writer[]);
         let r = r.read_to_string();
 
         assert_eq!(r.unwrap().as_slice(),

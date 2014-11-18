@@ -171,7 +171,7 @@ pub fn u64_from_be_bytes(data: &[u8], start: uint, size: uint) -> u64 {
 mod test {
     use prelude::*;
     use io;
-    use io::{MemReader, MemWriter, BytesReader};
+    use io::{MemReader, BytesReader};
 
     struct InitialZeroByteReader {
         count: int,
@@ -397,12 +397,12 @@ mod test {
     fn test_read_write_le_mem() {
         let uints = [0, 1, 2, 42, 10_123, 100_123_456, ::u64::MAX];
 
-        let mut writer = MemWriter::new();
+        let mut writer = Vec::new();
         for i in uints.iter() {
             writer.write_le_u64(*i).unwrap();
         }
 
-        let mut reader = MemReader::new(writer.unwrap());
+        let mut reader = MemReader::new(writer);
         for i in uints.iter() {
             assert!(reader.read_le_u64().unwrap() == *i);
         }
@@ -413,12 +413,12 @@ mod test {
     fn test_read_write_be() {
         let uints = [0, 1, 2, 42, 10_123, 100_123_456, ::u64::MAX];
 
-        let mut writer = MemWriter::new();
+        let mut writer = Vec::new();
         for i in uints.iter() {
             writer.write_be_u64(*i).unwrap();
         }
 
-        let mut reader = MemReader::new(writer.unwrap());
+        let mut reader = MemReader::new(writer);
         for i in uints.iter() {
             assert!(reader.read_be_u64().unwrap() == *i);
         }
@@ -428,12 +428,12 @@ mod test {
     fn test_read_be_int_n() {
         let ints = [::i32::MIN, -123456, -42, -5, 0, 1, ::i32::MAX];
 
-        let mut writer = MemWriter::new();
+        let mut writer = Vec::new();
         for i in ints.iter() {
             writer.write_be_i32(*i).unwrap();
         }
 
-        let mut reader = MemReader::new(writer.unwrap());
+        let mut reader = MemReader::new(writer);
         for i in ints.iter() {
             // this tests that the sign extension is working
             // (comparing the values as i32 would not test this)
@@ -446,10 +446,10 @@ mod test {
         //big-endian floating-point 8.1250
         let buf = vec![0x41, 0x02, 0x00, 0x00];
 
-        let mut writer = MemWriter::new();
+        let mut writer = Vec::new();
         writer.write(buf.as_slice()).unwrap();
 
-        let mut reader = MemReader::new(writer.unwrap());
+        let mut reader = MemReader::new(writer);
         let f = reader.read_be_f32().unwrap();
         assert!(f == 8.1250);
     }
@@ -458,11 +458,11 @@ mod test {
     fn test_read_write_f32() {
         let f:f32 = 8.1250;
 
-        let mut writer = MemWriter::new();
+        let mut writer = Vec::new();
         writer.write_be_f32(f).unwrap();
         writer.write_le_f32(f).unwrap();
 
-        let mut reader = MemReader::new(writer.unwrap());
+        let mut reader = MemReader::new(writer);
         assert!(reader.read_be_f32().unwrap() == 8.1250);
         assert!(reader.read_le_f32().unwrap() == 8.1250);
     }

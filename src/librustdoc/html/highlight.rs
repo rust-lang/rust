@@ -28,13 +28,13 @@ pub fn highlight(src: &str, class: Option<&str>, id: Option<&str>) -> String {
                                       src.to_string(),
                                       "<stdin>".to_string());
 
-    let mut out = io::MemWriter::new();
+    let mut out = Vec::new();
     doit(&sess,
          lexer::StringReader::new(&sess.span_diagnostic, fm),
          class,
          id,
          &mut out).unwrap();
-    String::from_utf8_lossy(out.unwrap().as_slice()).into_string()
+    String::from_utf8_lossy(out[]).into_string()
 }
 
 /// Exhausts the `lexer` writing the output into `out`.
