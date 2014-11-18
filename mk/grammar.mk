@@ -11,8 +11,8 @@
 BG = $(CFG_BUILD_DIR)/grammar/
 SG = $(S)src/grammar/
 B = $(CFG_BUILD_DIR)/$(CFG_BUILD)/stage2/
-L = $(B)lib/rustlib/$(CFG_BUILD)/lib
-LD = $(CFG_BUILD)/stage2/lib/rustlib/$(CFG_BUILD)/lib/
+L = $(B)$(CFG_LIBDIR_RELATIVE)/rustlib/$(CFG_BUILD)/lib
+LD = $(CFG_BUILD)/stage2/$(CFG_LIBDIR_RELATIVE)/rustlib/$(CFG_BUILD)/lib/
 RUSTC = $(STAGE2_T_$(CFG_BUILD)_H_$(CFG_BUILD))
 
 # Run the reference lexer against libsyntax and compare the tokens and spans.
