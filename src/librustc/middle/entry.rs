@@ -9,8 +9,7 @@
 // except according to those terms.
 
 
-use driver::config;
-use driver::session::Session;
+use session::{config, Session};
 use syntax::ast::{Name, NodeId, Item, ItemFn};
 use syntax::ast_map;
 use syntax::attr;

@@ -67,7 +67,6 @@ pub mod region_inference;
 pub mod resolve;
 mod skolemize;
 pub mod sub;
-pub mod test;
 pub mod type_variable;
 pub mod unify;
 
@@ -995,6 +994,16 @@ pub fn fold_regions_in_sig(tcx: &ty::ctxt,
 impl TypeTrace {
     pub fn span(&self) -> Span {
         self.origin.span()
+    }
+
+    pub fn dummy() -> TypeTrace {
+        TypeTrace {
+            origin: Misc(codemap::DUMMY_SP),
+            values: Types(ty::expected_found {
+                expected: ty::mk_err(),
+                found: ty::mk_err(),
+            })
+        }
     }
 }
 

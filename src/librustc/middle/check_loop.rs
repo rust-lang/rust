@@ -9,7 +9,7 @@
 // except according to those terms.
 use self::Context::*;
 
-use driver::session::Session;
+use session::Session;
 
 use syntax::ast;
 use syntax::codemap::Span;
