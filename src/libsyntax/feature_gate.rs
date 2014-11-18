@@ -141,8 +141,8 @@ impl<'a> Context<'a> {
 }
 
 impl<'a, 'v> Visitor<'v> for Context<'a> {
-    fn visit_ident(&mut self, sp: Span, id: ast::Ident) {
-        if !token::get_ident(id).get().is_ascii() {
+    fn visit_name(&mut self, sp: Span, name: ast::Name) {
+        if !token::get_name(name).get().is_ascii() {
             self.gate_feature("non_ascii_idents", sp,
                               "non-ascii idents are not fully supported.");
         }
