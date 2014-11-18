@@ -214,7 +214,7 @@
 
 use back::archive::{METADATA_FILENAME};
 use back::svh::Svh;
-use driver::session::Session;
+use session::Session;
 use llvm;
 use llvm::{False, ObjectFile, mk_section_iter};
 use llvm::archive_ro::ArchiveRO;
