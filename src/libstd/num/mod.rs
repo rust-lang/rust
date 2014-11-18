@@ -757,7 +757,7 @@ mod tests {
         }
         macro_rules! assert_pow(
             (($num:expr, $exp:expr) => $expected:expr) => {{
-                let result = pow($num, $exp);
+                let result = $num.pow($exp);
                 assert_eq!(result, $expected);
                 assert_eq!(result, naive_pow($num, $exp));
             }}
@@ -775,12 +775,12 @@ mod tests {
 mod bench {
     extern crate test;
     use self::test::Bencher;
-    use num;
+    use num::Int;
     use prelude::*;
 
     #[bench]
     fn bench_pow_function(b: &mut Bencher) {
         let v = Vec::from_fn(1024u, |n| n);
-        b.iter(|| {v.iter().fold(0u, |old, new| num::pow(old, *new));});
+        b.iter(|| {v.iter().fold(0u, |old, new| old.pow(*new));});
     }
 }
