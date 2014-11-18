@@ -655,17 +655,17 @@ impl<'a> StringReader<'a> {
                 }
                 'u' | 'i' => {
                     self.scan_int_suffix();
-                    return token::LitInteger(self.name_from(start_bpos));
+                    return token::Literal(token::Integer(self.name_from(start_bpos)));
                 },
                 'f' => {
                     let last_pos = self.last_pos;
                     self.scan_float_suffix();
                     self.check_float_base(start_bpos, last_pos, base);
-                    return token::LitFloat(self.name_from(start_bpos));
+                    return token::Literal(token::Float(self.name_from(start_bpos)));
                 }
                 _ => {
                     // just a 0
-                    return token::LitInteger(self.name_from(start_bpos));
+                    return token::Literal(token::Integer(self.name_from(start_bpos)));
                 }
             }
         } else if c.is_digit_radix(10) {
@@ -678,7 +678,7 @@ impl<'a> StringReader<'a> {
             self.err_span_(start_bpos, self.last_pos, "no valid digits found for number");
             // eat any suffix
             self.scan_int_suffix();
-            return token::LitInteger(token::intern("0"));
+            return token::Literal(token::Integer(token::intern("0")));
         }
 
         // might be a float, but don't be greedy if this is actually an
@@ -696,13 +696,13 @@ impl<'a> StringReader<'a> {
             }
             let last_pos = self.last_pos;
             self.check_float_base(start_bpos, last_pos, base);
-            return token::LitFloat(self.name_from(start_bpos));
+            return token::Literal(token::Float(self.name_from(start_bpos)));
         } else if self.curr_is('f') {
             // or it might be an integer literal suffixed as a float
             self.scan_float_suffix();
             let last_pos = self.last_pos;
             self.check_float_base(start_bpos, last_pos, base);
-            return token::LitFloat(self.name_from(start_bpos));
+            return token::Literal(token::Float(self.name_from(start_bpos)));
         } else {
             // it might be a float if it has an exponent
             if self.curr_is('e') || self.curr_is('E') {
@@ -710,11 +710,11 @@ impl<'a> StringReader<'a> {
                 self.scan_float_suffix();
                 let last_pos = self.last_pos;
                 self.check_float_base(start_bpos, last_pos, base);
-                return token::LitFloat(self.name_from(start_bpos));
+                return token::Literal(token::Float(self.name_from(start_bpos)));
             }
             // but we certainly have an integer!
             self.scan_int_suffix();
-            return token::LitInteger(self.name_from(start_bpos));
+            return token::Literal(token::Integer(self.name_from(start_bpos)));
         }
     }
 
@@ -1126,7 +1126,7 @@ impl<'a> StringReader<'a> {
             }
             let id = if valid { self.name_from(start) } else { token::intern("0") };
             self.bump(); // advance curr past token
-            return token::LitChar(id);
+            return token::Literal(token::Char(id));
           }
           'b' => {
             self.bump();
@@ -1157,7 +1157,7 @@ impl<'a> StringReader<'a> {
             let id = if valid { self.name_from(start_bpos + BytePos(1)) }
                      else { token::intern("??") };
             self.bump();
-            return token::LitStr(id);
+            return token::Literal(token::Str_(id));
           }
           'r' => {
             let start_bpos = self.last_pos;
@@ -1224,7 +1224,7 @@ impl<'a> StringReader<'a> {
             } else {
                 token::intern("??")
             };
-            return token::LitStrRaw(id, hash_count);
+            return token::Literal(token::StrRaw(id, hash_count));
           }
           '-' => {
             if self.nextch_is('>') {
@@ -1314,7 +1314,7 @@ impl<'a> StringReader<'a> {
 
         let id = if valid { self.name_from(start) } else { token::intern("??") };
         self.bump(); // advance curr past token
-        return token::LitByte(id);
+        return token::Literal(token::Byte(id));
     }
 
     fn scan_byte_string(&mut self) -> token::Token {
@@ -1336,7 +1336,7 @@ impl<'a> StringReader<'a> {
         }
         let id = if valid { self.name_from(start) } else { token::intern("??") };
         self.bump();
-        return token::LitBinary(id);
+        return token::Literal(token::Binary(id));
     }
 
     fn scan_raw_byte_string(&mut self) -> token::Token {
@@ -1387,8 +1387,9 @@ impl<'a> StringReader<'a> {
             self.bump();
         }
         self.bump();
-        return token::LitBinaryRaw(self.name_from_to(content_start_bpos, content_end_bpos),
-                                     hash_count);
+        return token::Literal(token::BinaryRaw(self.name_from_to(content_start_bpos,
+                                                                 content_end_bpos),
+                                               hash_count));
     }
 }
 
@@ -1535,17 +1536,17 @@ mod test {
 
     #[test] fn character_a() {
         assert_eq!(setup(&mk_sh(), "'a'".to_string()).next_token().tok,
-                   token::LitChar(token::intern("a")));
+                   token::Literal(token::Char(token::intern("a"))));
     }
 
     #[test] fn character_space() {
         assert_eq!(setup(&mk_sh(), "' '".to_string()).next_token().tok,
-                   token::LitChar(token::intern(" ")));
+                   token::Literal(token::Char(token::intern(" "))));
     }
 
     #[test] fn character_escaped() {
         assert_eq!(setup(&mk_sh(), "'\\n'".to_string()).next_token().tok,
-                   token::LitChar(token::intern("\\n")));
+                   token::Literal(token::Char(token::intern("\\n"))));
     }
 
     #[test] fn lifetime_name() {
@@ -1557,7 +1558,7 @@ mod test {
         assert_eq!(setup(&mk_sh(),
                          "r###\"\"#a\\b\x00c\"\"###".to_string()).next_token()
                                                                  .tok,
-                   token::LitStrRaw(token::intern("\"#a\\b\x00c\""), 3));
+                   token::Literal(token::StrRaw(token::intern("\"#a\\b\x00c\""), 3)));
     }
 
     #[test] fn line_doc_comments() {
@@ -1573,7 +1574,7 @@ mod test {
             token::Comment => { },
             _ => panic!("expected a comment!")
         }
-        assert_eq!(lexer.next_token().tok, token::LitChar(token::intern("a")));
+        assert_eq!(lexer.next_token().tok, token::Literal(token::Char(token::intern("a"))));
     }
 
 }

@@ -12,6 +12,7 @@ pub use self::BinOpToken::*;
 pub use self::Nonterminal::*;
 pub use self::DelimToken::*;
 pub use self::IdentStyle::*;
+pub use self::Lit::*;
 pub use self::Token::*;
 
 use ast;
@@ -59,6 +60,18 @@ pub enum IdentStyle {
     Plain,
 }
 
+#[deriving(Clone, Encodable, Decodable, PartialEq, Eq, Hash, Show)]
+pub enum Lit {
+    Byte(ast::Name),
+    Char(ast::Name),
+    Integer(ast::Name),
+    Float(ast::Name),
+    Str_(ast::Name),
+    StrRaw(ast::Name, uint), /* raw str delimited by n hash symbols */
+    Binary(ast::Name),
+    BinaryRaw(ast::Name, uint), /* raw binary str delimited by n hash symbols */
+}
+
 #[allow(non_camel_case_types)]
 #[deriving(Clone, Encodable, Decodable, PartialEq, Eq, Hash, Show)]
 pub enum Token {
@@ -98,14 +111,7 @@ pub enum Token {
     CloseDelim(DelimToken),
 
     /* Literals */
-    LitByte(ast::Name),
-    LitChar(ast::Name),
-    LitInteger(ast::Name),
-    LitFloat(ast::Name),
-    LitStr(ast::Name),
-    LitStrRaw(ast::Name, uint), /* raw str delimited by n hash symbols */
-    LitBinary(ast::Name),
-    LitBinaryRaw(ast::Name, uint), /* raw binary str delimited by n hash symbols */
+    Literal(Lit),
 
     /* Name components */
     Ident(ast::Ident, IdentStyle),
@@ -145,14 +151,7 @@ impl Token {
             Ident(_, _)                 => true,
             Underscore                  => true,
             Tilde                       => true,
-            LitByte(_)                  => true,
-            LitChar(_)                  => true,
-            LitInteger(_)               => true,
-            LitFloat(_)                 => true,
-            LitStr(_)                   => true,
-            LitStrRaw(_, _)             => true,
-            LitBinary(_)                => true,
-            LitBinaryRaw(_, _)          => true,
+            Literal(_)                  => true,
             Pound                       => true,
             At                          => true,
             Not                         => true,
@@ -173,15 +172,8 @@ impl Token {
     /// Returns `true` if the token is any literal
     pub fn is_lit(&self) -> bool {
         match *self {
-            LitByte(_)          => true,
-            LitChar(_)          => true,
-            LitInteger(_)       => true,
-            LitFloat(_)         => true,
-            LitStr(_)           => true,
-            LitStrRaw(_, _)     => true,
-            LitBinary(_)        => true,
-            LitBinaryRaw(_, _)  => true,
-            _                   => false,
+            Literal(_) => true,
+            _          => false,
         }
     }
 
