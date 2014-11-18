@@ -93,8 +93,8 @@ fn main() {
     let long_lived_tree = bottom_up_tree(&long_lived_arena, 0, max_depth);
 
     let mut messages = range_step(min_depth, max_depth + 1, 2).map(|depth| {
-            use std::num::pow;
-            let iterations = pow(2i, (max_depth - depth + min_depth) as uint);
+            use std::num::Int;
+            let iterations = 2i.pow((max_depth - depth + min_depth) as uint);
             Future::spawn(proc() {
                 let mut chk = 0;
                 for i in range(1, iterations + 1) {
