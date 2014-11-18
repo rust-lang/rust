@@ -55,8 +55,11 @@ pub enum FnKind<'a> {
 /// new default implementation gets introduced.)
 pub trait Visitor<'v> {
 
-    fn visit_ident(&mut self, _sp: Span, _ident: Ident) {
-        /*! Visit the idents */
+    fn visit_name(&mut self, _span: Span, _name: Name) {
+        // Nothing to do.
+    }
+    fn visit_ident(&mut self, span: Span, ident: Ident) {
+        self.visit_name(span, ident.name);
     }
     fn visit_mod(&mut self, m: &'v Mod, _s: Span, _n: NodeId) { walk_mod(self, m) }
     fn visit_view_item(&mut self, i: &'v ViewItem) { walk_view_item(self, i) }
@@ -102,11 +105,11 @@ pub trait Visitor<'v> {
             None => ()
         }
     }
-    fn visit_lifetime_ref(&mut self, _lifetime: &'v Lifetime) {
-        /*! Visits a reference to a lifetime */
+    fn visit_lifetime_ref(&mut self, lifetime: &'v Lifetime) {
+        self.visit_name(lifetime.span, lifetime.name)
     }
-    fn visit_lifetime_decl(&mut self, _lifetime: &'v LifetimeDef) {
-        /*! Visits a declaration of a lifetime */
+    fn visit_lifetime_def(&mut self, lifetime: &'v LifetimeDef) {
+        walk_lifetime_def(self, lifetime)
     }
     fn visit_explicit_self(&mut self, es: &'v ExplicitSelf) {
         walk_explicit_self(self, es)
@@ -205,6 +208,14 @@ pub fn walk_local<'v, V: Visitor<'v>>(visitor: &mut V, local: &'v Local) {
     visitor.visit_pat(&*local.pat);
     visitor.visit_ty(&*local.ty);
     walk_expr_opt(visitor, &local.init);
+}
+
+pub fn walk_lifetime_def<'v, V: Visitor<'v>>(visitor: &mut V,
+                                              lifetime_def: &'v LifetimeDef) {
+    visitor.visit_lifetime_ref(&lifetime_def.lifetime);
+    for bound in lifetime_def.bounds.iter() {
+        visitor.visit_lifetime_ref(bound);
+    }
 }
 
 pub fn walk_explicit_self<'v, V: Visitor<'v>>(visitor: &mut V,
@@ -424,7 +435,7 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty) {
 pub fn walk_lifetime_decls_helper<'v, V: Visitor<'v>>(visitor: &mut V,
                                                       lifetimes: &'v Vec<LifetimeDef>) {
     for l in lifetimes.iter() {
-        visitor.visit_lifetime_decl(l);
+        visitor.visit_lifetime_def(l);
     }
 }
 
@@ -555,6 +566,7 @@ pub fn walk_ty_param_bound<'v, V: Visitor<'v>>(visitor: &mut V,
 
 pub fn walk_generics<'v, V: Visitor<'v>>(visitor: &mut V, generics: &'v Generics) {
     for type_parameter in generics.ty_params.iter() {
+        visitor.visit_ident(type_parameter.span, type_parameter.ident);
         walk_ty_param_bounds_helper(visitor, &type_parameter.bounds);
         match type_parameter.default {
             Some(ref ty) => visitor.visit_ty(&**ty),
