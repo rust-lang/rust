@@ -45,7 +45,7 @@ fn main() {
                 }
             };
             stream.read_byte();
-            stream.write([2]);
+            stream.write(&[2]);
         }
     });
     let addr = rx.recv();
@@ -57,9 +57,9 @@ fn main() {
             match TcpStream::connect(addr) {
                 Ok(stream) => {
                     let mut stream = stream;
-                    stream.write([1]);
+                    stream.write(&[1]);
                     let mut buf = [0];
-                    stream.read(buf);
+                    stream.read(&mut buf);
                 },
                 Err(e) => debug!("{}", e)
             }
