@@ -10,13 +10,13 @@
 
 
 ifdef CFG_PERF_TOOL
-rustc-perf$(X): $(CFG_BUILD)/stage2/bin/rustc$(X_$(CFG_BUILD))
+rustc-perf$(X): $(CFG_BUILD)/stage2/$(CFG_BINDIR_RELATIVE)/rustc$(X_$(CFG_BUILD))
 	@$(call E, perf compile: $@)
 	$(PERF_STAGE2_T_$(CFG_BUILD)_H_$(CFG_BUILD)) \
 		 -o $@ $(COMPILER_CRATE) >rustc-perf.err 2>&1
 	$(Q)rm -f $(LIBRUSTC_GLOB)
 else
-rustc-perf$(X): $(CFG_BUILD)/stage2/bin/rustc$(X_$(CFG_BUILD))
+rustc-perf$(X): $(CFG_BUILD)/stage2/$(CFG_BINDIR_RELATIVE)/rustc$(X_$(CFG_BUILD))
 	$(Q)touch $@
 endif
 

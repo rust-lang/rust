@@ -333,7 +333,7 @@ define SREQ
 
 # Destinations of artifacts for the host compiler
 HROOT$(1)_H_$(3) = $(3)/stage$(1)
-HBIN$(1)_H_$(3) = $$(HROOT$(1)_H_$(3))/bin
+HBIN$(1)_H_$(3) = $$(HROOT$(1)_H_$(3))/$$(CFG_BINDIR_RELATIVE)
 HLIB$(1)_H_$(3) = $$(HROOT$(1)_H_$(3))/$$(CFG_LIBDIR_RELATIVE)
 
 # Destinations of artifacts for target architectures
