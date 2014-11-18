@@ -140,7 +140,7 @@ pub fn getcwd() -> Path {
             panic!();
         }
     }
-    Path::new(String::from_utf16(::str::truncate_utf16_at_nul(buf))
+    Path::new(String::from_utf16(::str::truncate_utf16_at_nul(&buf))
               .expect("GetCurrentDirectoryW returned invalid UTF-16"))
 }
 
@@ -2065,12 +2065,12 @@ mod tests {
             join_paths(input).unwrap().as_slice() == output.as_bytes()
         }
 
-        assert!(test_eq([], ""));
-        assert!(test_eq([r"c:\windows", r"c:\"],
+        assert!(test_eq(&[], ""));
+        assert!(test_eq(&[r"c:\windows", r"c:\"],
                         r"c:\windows;c:\"));
-        assert!(test_eq(["", r"c:\windows", "", "", r"c:\", ""],
+        assert!(test_eq(&["", r"c:\windows", "", "", r"c:\", ""],
                         r";c:\windows;;;c:\;"));
-        assert!(test_eq([r"c:\te;st", r"c:\"],
+        assert!(test_eq(&[r"c:\te;st", r"c:\"],
                         r#""c:\te;st";c:\"#));
         assert!(join_paths(&[r#"c:\te"st"#]).is_err());
     }

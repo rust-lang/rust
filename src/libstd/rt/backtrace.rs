@@ -999,7 +999,7 @@ mod imp {
                     None => try!(w.write(bytes[..bytes.len()-1])),
                 }
             }
-            try!(w.write(['\n' as u8]));
+            try!(w.write(&['\n' as u8]));
         }
 
         Ok(())
