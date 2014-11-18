@@ -374,7 +374,7 @@ mod test {
     use prelude::*;
     use super::*;
     use super::super::{IoResult, EndOfFile};
-    use super::super::mem::{MemReader, MemWriter, BufReader};
+    use super::super::mem::{MemReader, BufReader};
     use self::test::Bencher;
     use str::StrPrelude;
 
@@ -447,57 +447,57 @@ mod test {
 
     #[test]
     fn test_buffered_writer() {
-        let inner = MemWriter::new();
+        let inner = Vec::new();
         let mut writer = BufferedWriter::with_capacity(2, inner);
 
         writer.write(&[0, 1]).unwrap();
         let b: &[_] = &[];
-        assert_eq!(writer.get_ref().get_ref(), b);
+        assert_eq!(writer.get_ref()[], b);
 
         writer.write(&[2]).unwrap();
         let b: &[_] = &[0, 1];
-        assert_eq!(writer.get_ref().get_ref(), b);
+        assert_eq!(writer.get_ref()[], b);
 
         writer.write(&[3]).unwrap();
-        assert_eq!(writer.get_ref().get_ref(), b);
+        assert_eq!(writer.get_ref()[], b);
 
         writer.flush().unwrap();
         let a: &[_] = &[0, 1, 2, 3];
-        assert_eq!(a, writer.get_ref().get_ref());
+        assert_eq!(a, writer.get_ref()[]);
 
         writer.write(&[4]).unwrap();
         writer.write(&[5]).unwrap();
-        assert_eq!(a, writer.get_ref().get_ref());
+        assert_eq!(a, writer.get_ref()[]);
 
         writer.write(&[6]).unwrap();
         let a: &[_] = &[0, 1, 2, 3, 4, 5];
         assert_eq!(a,
-                   writer.get_ref().get_ref());
+                   writer.get_ref()[]);
 
         writer.write(&[7, 8]).unwrap();
         let a: &[_] = &[0, 1, 2, 3, 4, 5, 6];
         assert_eq!(a,
-                   writer.get_ref().get_ref());
+                   writer.get_ref()[]);
 
         writer.write(&[9, 10, 11]).unwrap();
         let a: &[_] = &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
         assert_eq!(a,
-                   writer.get_ref().get_ref());
+                   writer.get_ref()[]);
 
         writer.flush().unwrap();
         assert_eq!(a,
-                   writer.get_ref().get_ref());
+                   writer.get_ref()[]);
     }
 
     #[test]
     fn test_buffered_writer_inner_flushes() {
-        let mut w = BufferedWriter::with_capacity(3, MemWriter::new());
+        let mut w = BufferedWriter::with_capacity(3, Vec::new());
         w.write(&[0, 1]).unwrap();
         let a: &[_] = &[];
-        assert_eq!(a, w.get_ref().get_ref());
+        assert_eq!(a, w.get_ref()[]);
         let w = w.unwrap();
         let a: &[_] = &[0, 1];
-        assert_eq!(a, w.get_ref());
+        assert_eq!(a, w[]);
     }
 
     // This is just here to make sure that we don't infinite loop in the
@@ -536,24 +536,24 @@ mod test {
 
     #[test]
     fn test_line_buffer() {
-        let mut writer = LineBufferedWriter::new(MemWriter::new());
+        let mut writer = LineBufferedWriter::new(Vec::new());
         writer.write(&[0]).unwrap();
         let b: &[_] = &[];
-        assert_eq!(writer.get_ref().get_ref(), b);
+        assert_eq!(writer.get_ref()[], b);
         writer.write(&[1]).unwrap();
-        assert_eq!(writer.get_ref().get_ref(), b);
+        assert_eq!(writer.get_ref()[], b);
         writer.flush().unwrap();
         let b: &[_] = &[0, 1];
-        assert_eq!(writer.get_ref().get_ref(), b);
+        assert_eq!(writer.get_ref()[], b);
         writer.write(&[0, b'\n', 1, b'\n', 2]).unwrap();
         let b: &[_] = &[0, 1, 0, b'\n', 1, b'\n'];
-        assert_eq!(writer.get_ref().get_ref(), b);
+        assert_eq!(writer.get_ref()[], b);
         writer.flush().unwrap();
         let b: &[_] = &[0, 1, 0, b'\n', 1, b'\n', 2];
-        assert_eq!(writer.get_ref().get_ref(), b);
+        assert_eq!(writer.get_ref()[], b);
         writer.write(&[3, b'\n']).unwrap();
         let b: &[_] = &[0, 1, 0, b'\n', 1, b'\n', 2, 3, b'\n'];
-        assert_eq!(writer.get_ref().get_ref(), b);
+        assert_eq!(writer.get_ref()[], b);
     }
 
     #[test]

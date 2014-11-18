@@ -10,7 +10,7 @@
 
 // no-pretty-expanded
 
-#![allow(unused_must_use, dead_code)]
+#![allow(unused_must_use, dead_code, deprecated)]
 #![feature(macro_rules)]
 
 use std::io::MemWriter;

@@ -1027,10 +1027,9 @@ mod tests {
     #[test]
     fn test_boxplot_nonpositive() {
         fn t(s: &Summary<f64>, expected: String) {
-            use std::io::MemWriter;
-            let mut m = MemWriter::new();
+            let mut m = Vec::new();
             write_boxplot(&mut m as &mut io::Writer, s, 30).unwrap();
-            let out = String::from_utf8(m.unwrap()).unwrap();
+            let out = String::from_utf8(m).unwrap();
             assert_eq!(out, expected);
         }
 

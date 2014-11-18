@@ -14,7 +14,6 @@
 extern crate serialize;
 
 use std::cell::{Cell, RefCell};
-use std::io::MemWriter;
 use serialize::{Encodable, Decodable};
 use serialize::json;
 

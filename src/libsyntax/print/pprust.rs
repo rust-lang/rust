@@ -33,7 +33,7 @@ use print::pp;
 use ptr::P;
 
 use std::ascii;
-use std::io::{IoResult, MemWriter};
+use std::io::IoResult;
 use std::io;
 use std::mem;
 
@@ -169,17 +169,17 @@ impl<'a> State<'a> {
 
 pub fn to_string(f: |&mut State| -> IoResult<()>) -> String {
     use std::raw::TraitObject;
-    let mut s = rust_printer(box MemWriter::new());
+    let mut s = rust_printer(box Vec::new());
     f(&mut s).unwrap();
     eof(&mut s.s).unwrap();
     let wr = unsafe {
         // FIXME(pcwalton): A nasty function to extract the string from an `io::Writer`
-        // that we "know" to be a `MemWriter` that works around the lack of checked
+        // that we "know" to be a `Vec<u8>` that works around the lack of checked
         // downcasts.
         let obj: &TraitObject = mem::transmute(&s.s.out);
-        mem::transmute::<*mut (), &MemWriter>(obj.data)
+        mem::transmute::<*mut (), &Vec<u8>>(obj.data)
     };
-    String::from_utf8(wr.get_ref().to_vec()).unwrap()
+    String::from_utf8(wr.clone()).unwrap()
 }
 
 pub fn binop_to_string(op: BinOpToken) -> &'static str {
