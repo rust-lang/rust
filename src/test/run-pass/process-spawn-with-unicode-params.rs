@@ -26,7 +26,7 @@ use std::path::Path;
 
 fn main() {
     let my_args = os::args();
-    let my_cwd  = os::getcwd();
+    let my_cwd  = os::getcwd().unwrap();
     let my_env  = os::env();
     let my_path = Path::new(os::self_exe_name().unwrap());
     let my_dir  = my_path.dir_path();

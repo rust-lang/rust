@@ -102,9 +102,9 @@ fn get_rpath_relative_to_output(config: &mut RPathConfig,
         "$ORIGIN"
     };
 
-    let mut lib = (config.realpath)(&os::make_absolute(lib)).unwrap();
+    let mut lib = (config.realpath)(&os::make_absolute(lib).unwrap()).unwrap();
     lib.pop();
-    let mut output = (config.realpath)(&os::make_absolute(&config.out_filename)).unwrap();
+    let mut output = (config.realpath)(&os::make_absolute(&config.out_filename).unwrap()).unwrap();
     output.pop();
     let relative = lib.path_relative_from(&output);
     let relative = relative.expect("could not create rpath relative to output");
@@ -116,7 +116,7 @@ fn get_rpath_relative_to_output(config: &mut RPathConfig,
 
 fn get_install_prefix_rpath(config: RPathConfig) -> String {
     let path = (config.get_install_prefix_lib_path)();
-    let path = os::make_absolute(&path);
+    let path = os::make_absolute(&path).unwrap();
     // FIXME (#9639): This needs to handle non-utf8 paths
     path.as_str().expect("non-utf8 component in rpath").to_string()
 }
