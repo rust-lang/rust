@@ -59,8 +59,12 @@ endef
 # $(4) - the host triple (same as $(3))
 define CP_HOST_STAGE_N
 
-ifneq ($(CFG_LIBDIR_RELATIVE),bin)
 $$(HLIB$(2)_H_$(4))/:
+	@mkdir -p $$@
+
+# Avoid redefinition warnings if libdir==bindir
+ifneq ($(HBIN$(2)_H_$(4)),$(HLIB$(2)_H_$(4)))
+$$(HBIN$(2)_H_$(4))/:
 	@mkdir -p $$@
 endif
 
