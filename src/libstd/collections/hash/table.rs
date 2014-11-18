@@ -718,7 +718,7 @@ impl<'a, K, V> Iterator<RawBucket<K, V>> for RawBuckets<'a, K, V> {
 }
 
 /// An iterator that moves out buckets in reverse order. It leaves the table
-/// in an an inconsistent state and should only be used for dropping
+/// in an inconsistent state and should only be used for dropping
 /// the table's remaining entries. It's used in the implementation of Drop.
 struct RevMoveBuckets<'a, K, V> {
     raw: RawBucket<K, V>,

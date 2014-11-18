@@ -88,7 +88,7 @@ pub fn align_of_val<T>(_val: &T) -> uint {
 
 /// Create a value initialized to zero.
 ///
-/// This function is similar to allocating space for a a local variable and
+/// This function is similar to allocating space for a local variable and
 /// zeroing it out (an unsafe operation).
 ///
 /// Care must be taken when using this function, if the type `T` has a

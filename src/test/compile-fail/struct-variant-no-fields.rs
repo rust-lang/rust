@@ -8,18 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::collections::HashMap;
-
-pub struct Registry {
-    descriptions: HashMap<&'static str, &'static str>
-}
-
-impl Registry {
-    pub fn new(descriptions: &[(&'static str, &'static str)]) -> Registry {
-        Registry { descriptions: descriptions.iter().map(|&tuple| tuple).collect() }
-    }
-
-    pub fn find_description(&self, code: &str) -> Option<&'static str> {
-        self.descriptions.get(code).map(|desc| *desc)
-    }
+enum Foo {
+    Bar {} //~ ERROR unit-like struct variant should be written without braces, as `Bar,`
 }

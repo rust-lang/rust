@@ -50,10 +50,10 @@ fn replace_newline_with_backslash_l(s: String) -> String {
 }
 
 impl<'a, 'ast> dot::Labeller<'a, Node<'a>, Edge<'a>> for LabelledCFG<'a, 'ast> {
-    fn graph_id(&'a self) -> dot::Id<'a> { dot::Id::new(self.name.as_slice()) }
+    fn graph_id(&'a self) -> dot::Id<'a> { dot::Id::new(self.name.as_slice()).unwrap() }
 
     fn node_id(&'a self, &(i,_): &Node<'a>) -> dot::Id<'a> {
-        dot::Id::new(format!("N{:u}", i.node_id()))
+        dot::Id::new(format!("N{:u}", i.node_id())).unwrap()
     }
 
     fn node_label(&'a self, &(i, n): &Node<'a>) -> dot::LabelText<'a> {

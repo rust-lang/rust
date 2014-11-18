@@ -8,18 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::collections::HashMap;
+#![feature(linkage)]
 
-pub struct Registry {
-    descriptions: HashMap<&'static str, &'static str>
+#[no_mangle]
+#[linkage = "external"]
+static BAZ: i32 = 21;
+
+extern {
+    fn what() -> i32;
 }
 
-impl Registry {
-    pub fn new(descriptions: &[(&'static str, &'static str)]) -> Registry {
-        Registry { descriptions: descriptions.iter().map(|&tuple| tuple).collect() }
-    }
-
-    pub fn find_description(&self, code: &str) -> Option<&'static str> {
-        self.descriptions.get(code).map(|desc| *desc)
+fn main() {
+    unsafe {
+        assert_eq!(what(), BAZ);
     }
 }

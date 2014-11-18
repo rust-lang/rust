@@ -78,7 +78,7 @@ impl<T: Writer+Send> Terminal<T> for TerminfoTerminal<T> {
         if self.num_colors > color {
             let s = expand(self.ti
                                .strings
-                               .find_equiv("setaf")
+                               .get("setaf")
                                .unwrap()
                                .as_slice(),
                            &[Number(color as int)], &mut Variables::new());
@@ -95,7 +95,7 @@ impl<T: Writer+Send> Terminal<T> for TerminfoTerminal<T> {
         if self.num_colors > color {
             let s = expand(self.ti
                                .strings
-                               .find_equiv("setab")
+                               .get("setab")
                                .unwrap()
                                .as_slice(),
                            &[Number(color as int)], &mut Variables::new());
@@ -113,7 +113,7 @@ impl<T: Writer+Send> Terminal<T> for TerminfoTerminal<T> {
             attr::BackgroundColor(c) => self.bg(c),
             _ => {
                 let cap = cap_for_attr(attr);
-                let parm = self.ti.strings.find_equiv(cap);
+                let parm = self.ti.strings.get(cap);
                 if parm.is_some() {
                     let s = expand(parm.unwrap().as_slice(),
                                    &[],
@@ -135,19 +135,19 @@ impl<T: Writer+Send> Terminal<T> for TerminfoTerminal<T> {
             }
             _ => {
                 let cap = cap_for_attr(attr);
-                self.ti.strings.find_equiv(cap).is_some()
+                self.ti.strings.get(cap).is_some()
             }
         }
     }
 
     fn reset(&mut self) -> IoResult<()> {
-        let mut cap = self.ti.strings.find_equiv("sgr0");
+        let mut cap = self.ti.strings.get("sgr0");
         if cap.is_none() {
             // are there any terminals that have color/attrs and not sgr0?
             // Try falling back to sgr, then op
-            cap = self.ti.strings.find_equiv("sgr");
+            cap = self.ti.strings.get("sgr");
             if cap.is_none() {
-                cap = self.ti.strings.find_equiv("op");
+                cap = self.ti.strings.get("op");
             }
         }
         let s = cap.map_or(Err("can't find terminfo capability `sgr0`".to_string()), |op| {
@@ -202,9 +202,9 @@ impl<T: Writer+Send> TerminfoTerminal<T> {
         }
 
         let inf = ti.unwrap();
-        let nc = if inf.strings.find_equiv("setaf").is_some()
-                 && inf.strings.find_equiv("setab").is_some() {
-                     inf.numbers.find_equiv("colors").map_or(0, |&n| n)
+        let nc = if inf.strings.get("setaf").is_some()
+                 && inf.strings.get("setab").is_some() {
+                     inf.numbers.get("colors").map_or(0, |&n| n)
                  } else { 0 };
 
         return Some(box TerminfoTerminal {out: out,

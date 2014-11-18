@@ -381,16 +381,8 @@ pub fn copy(from: &Path, to: &Path) -> IoResult<()> {
 
     let mut reader = try!(File::open(from));
     let mut writer = try!(File::create(to));
-    let mut buf = [0, ..io::DEFAULT_BUF_SIZE];
 
-    loop {
-        let amt = match reader.read(&mut buf) {
-            Ok(n) => n,
-            Err(ref e) if e.kind == io::EndOfFile => { break }
-            Err(e) => return update_err(Err(e), from, to)
-        };
-        try!(writer.write(buf[..amt]));
-    }
+    try!(update_err(super::util::copy(&mut reader, &mut writer), from, to));
 
     chmod(to, try!(update_err(from.stat(), from, to)).perm)
 }

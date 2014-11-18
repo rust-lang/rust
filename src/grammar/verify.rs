@@ -178,7 +178,7 @@ fn parse_antlr_token(s: &str, tokens: &HashMap<String, Token>) -> TokenAndSpan {
     let toknum = m.name("toknum");
     let content = m.name("content");
 
-    let proto_tok = tokens.find_equiv(&toknum).expect(format!("didn't find token {} in the map",
+    let proto_tok = tokens.get(&toknum).expect(format!("didn't find token {} in the map",
                                                               toknum).as_slice());
 
     let nm = parse::token::intern(content);
