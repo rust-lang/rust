@@ -14,7 +14,7 @@
 
 use metadata::common as c;
 use metadata::cstore as cstore;
-use driver::session::Session;
+use session::Session;
 use metadata::decoder;
 use middle::def;
 use metadata::encoder as e;

@@ -16,7 +16,7 @@
 pub use self::InlinedItemRef::*;
 
 use back::svh::Svh;
-use driver::config;
+use session::config;
 use metadata::common::*;
 use metadata::cstore;
 use metadata::decoder;

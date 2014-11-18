@@ -38,8 +38,8 @@ use syntax::parse::token::InternedString;
 use syntax::parse::token;
 use syntax::ptr::P;
 
-use rustc::back::link;
-use rustc::driver::driver;
+use rustc_trans::back::link;
+use rustc_trans::driver::driver;
 use rustc::metadata::cstore;
 use rustc::metadata::csearch;
 use rustc::metadata::decoder;

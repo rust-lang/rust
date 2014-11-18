@@ -20,7 +20,7 @@
 pub use self::DefRegion::*;
 use self::ScopeChain::*;
 
-use driver::session::Session;
+use session::Session;
 use middle::subst;
 use std::fmt;
 use syntax::ast;

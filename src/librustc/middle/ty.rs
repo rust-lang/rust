@@ -37,7 +37,7 @@ pub use self::sty::*;
 pub use self::IntVarValue::*;
 
 use back::svh::Svh;
-use driver::session::Session;
+use session::Session;
 use lint;
 use metadata::csearch;
 use middle::const_eval;

@@ -11,7 +11,7 @@
 // This compiler pass detects static items that refer to themselves
 // recursively.
 
-use driver::session::Session;
+use session::Session;
 use middle::resolve;
 use middle::def::{DefStatic, DefConst};
 

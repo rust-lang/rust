@@ -1,0 +1,38 @@
+// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// file at the top-level directory of this distribution and at
+// http://rust-lang.org/COPYRIGHT.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+
+use trans::context::CrateContext;
+use trans::type_::Type;
+use llvm::ValueRef;
+
+pub trait LlvmRepr for Sized? {
+    fn llrepr(&self, ccx: &CrateContext) -> String;
+}
+
+impl<T:LlvmRepr> LlvmRepr for [T] {
+    fn llrepr(&self, ccx: &CrateContext) -> String {
+        let reprs: Vec<String> = self.iter().map(|t| t.llrepr(ccx)).collect();
+        format!("[{}]", reprs.connect(","))
+    }
+}
+
+impl LlvmRepr for Type {
+    fn llrepr(&self, ccx: &CrateContext) -> String {
+        ccx.tn().type_to_string(*self)
+    }
+}
+
+impl LlvmRepr for ValueRef {
+    fn llrepr(&self, ccx: &CrateContext) -> String {
+        ccx.tn().val_to_string(*self)
+    }
+}
+
+

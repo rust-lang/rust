@@ -10,8 +10,8 @@
 
 //! Validity checking for weak lang items
 
-use driver::config;
-use driver::session::Session;
+use session::config;
+use session::Session;
 use metadata::csearch;
 use middle::lang_items;
 
