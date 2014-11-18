@@ -542,6 +542,13 @@ fn mk_delim(cx: &ExtCtxt, sp: Span, delim: token::DelimToken) -> P<ast::Expr> {
 
 #[allow(non_upper_case_globals)]
 fn mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> P<ast::Expr> {
+    macro_rules! mk_lit {
+        ($name: expr, $($args: expr),*) => {{
+            let inner = cx.expr_call(sp, mk_token_path(cx, sp, $name), vec![$($args),*]);
+
+            cx.expr_call(sp, mk_token_path(cx, sp, "Literal"), vec![inner])
+        }}
+    }
     match *tok {
         token::BinOp(binop) => {
             return cx.expr_call(sp, mk_token_path(cx, sp, "BinOp"), vec!(mk_binop(cx, sp, binop)));
@@ -560,38 +567,32 @@ fn mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> P<ast::Expr> {
                                 vec![mk_delim(cx, sp, delim)]);
         }
 
-        token::LitByte(i) => {
+        token::Literal(token::Byte(i)) => {
             let e_byte = mk_name(cx, sp, i.ident());
-
-            return cx.expr_call(sp, mk_token_path(cx, sp, "LitByte"), vec!(e_byte));
+            return mk_lit!("Byte", e_byte);
         }
 
-        token::LitChar(i) => {
+        token::Literal(token::Char(i)) => {
             let e_char = mk_name(cx, sp, i.ident());
-
-            return cx.expr_call(sp, mk_token_path(cx, sp, "LitChar"), vec!(e_char));
+            return mk_lit!("Char", e_char);
         }
 
-        token::LitInteger(i) => {
+        token::Literal(token::Integer(i)) => {
             let e_int = mk_name(cx, sp, i.ident());
-            return cx.expr_call(sp, mk_token_path(cx, sp, "LitInteger"), vec!(e_int));
+            return mk_lit!("Integer", e_int);
         }
 
-        token::LitFloat(fident) => {
+        token::Literal(token::Float(fident)) => {
             let e_fident = mk_name(cx, sp, fident.ident());
-            return cx.expr_call(sp, mk_token_path(cx, sp, "LitFloat"), vec!(e_fident));
+            return mk_lit!("Float", e_fident);
         }
 
-        token::LitStr(ident) => {
-            return cx.expr_call(sp,
-                                mk_token_path(cx, sp, "LitStr"),
-                                vec!(mk_name(cx, sp, ident.ident())));
+        token::Literal(token::Str_(ident)) => {
+            return mk_lit!("Str_", mk_name(cx, sp, ident.ident()))
         }
 
-        token::LitStrRaw(ident, n) => {
-            return cx.expr_call(sp,
-                                mk_token_path(cx, sp, "LitStrRaw"),
-                                vec!(mk_name(cx, sp, ident.ident()), cx.expr_uint(sp, n)));
+        token::Literal(token::StrRaw(ident, n)) => {
+            return mk_lit!("StrRaw", mk_name(cx, sp, ident.ident()), cx.expr_uint(sp, n))
         }
 
         token::Ident(ident, style) => {

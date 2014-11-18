@@ -129,11 +129,12 @@ fn doit(sess: &parse::ParseSess, mut lexer: lexer::StringReader,
             }
 
             // text literals
-            token::LitByte(..) | token::LitBinary(..) | token::LitBinaryRaw(..) |
-                token::LitChar(..) | token::LitStr(..) | token::LitStrRaw(..) => "string",
+            token::Literal(token::Byte(..)) | token::Literal(token::Char(..)) |
+                token::Literal(token::Binary(..)) | token::Literal(token::BinaryRaw(..)) |
+                token::Literal(token::Str_(..)) | token::Literal(token::StrRaw(..)) => "string",
 
             // number literals
-            token::LitInteger(..) | token::LitFloat(..) => "number",
+            token::Literal(token::Integer(..)) | token::Literal(token::Float(..)) => "number",
 
             // keywords are also included in the identifier set
             token::Ident(ident, _is_mod_sep) => {

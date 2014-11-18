@@ -1640,23 +1640,23 @@ impl<'a> Parser<'a> {
     /// Matches token_lit = LIT_INTEGER | ...
     pub fn lit_from_token(&mut self, tok: &token::Token) -> Lit_ {
         match *tok {
-            token::LitByte(i) => LitByte(parse::byte_lit(i.as_str()).val0()),
-            token::LitChar(i) => LitChar(parse::char_lit(i.as_str()).val0()),
-            token::LitInteger(s) => parse::integer_lit(s.as_str(),
+            token::Literal(token::Byte(i)) => LitByte(parse::byte_lit(i.as_str()).val0()),
+            token::Literal(token::Char(i)) => LitChar(parse::char_lit(i.as_str()).val0()),
+            token::Literal(token::Integer(s)) => parse::integer_lit(s.as_str(),
                                                         &self.sess.span_diagnostic,
                                                        self.last_span),
-            token::LitFloat(s) => parse::float_lit(s.as_str()),
-            token::LitStr(s) => {
+            token::Literal(token::Float(s)) => parse::float_lit(s.as_str()),
+            token::Literal(token::Str_(s)) => {
                 LitStr(token::intern_and_get_ident(parse::str_lit(s.as_str()).as_slice()),
                        ast::CookedStr)
             }
-            token::LitStrRaw(s, n) => {
+            token::Literal(token::StrRaw(s, n)) => {
                 LitStr(token::intern_and_get_ident(parse::raw_str_lit(s.as_str()).as_slice()),
                        ast::RawStr(n))
             }
-            token::LitBinary(i) =>
+            token::Literal(token::Binary(i)) =>
                 LitBinary(parse::binary_lit(i.as_str())),
-            token::LitBinaryRaw(i, _) =>
+            token::Literal(token::BinaryRaw(i, _)) =>
                 LitBinary(Rc::new(i.as_str().as_bytes().iter().map(|&x| x).collect())),
             _ => { self.unexpected_last(tok); }
         }
@@ -2424,7 +2424,7 @@ impl<'a> Parser<'a> {
                         }
                     }
                   }
-                  token::LitInteger(n) => {
+                  token::Literal(token::Integer(n)) => {
                     let index = n.as_str();
                     let dot = self.last_span.hi;
                     hi = self.span.hi;
@@ -2449,7 +2449,7 @@ impl<'a> Parser<'a> {
                         }
                     }
                   }
-                  token::LitFloat(n) => {
+                  token::Literal(token::Float(n)) => {
                     self.bump();
                     let last_span = self.last_span;
                     let fstr = n.as_str();
@@ -5085,7 +5085,7 @@ impl<'a> Parser<'a> {
                 self.expect(&token::Semi);
                 (path, the_ident)
             },
-            token::LitStr(..) | token::LitStrRaw(..) => {
+            token::Literal(token::Str_(..)) | token::Literal(token::StrRaw(..)) => {
                 let path = self.parse_str();
                 self.expect_keyword(keywords::As);
                 let the_ident = self.parse_ident();
@@ -5267,7 +5267,7 @@ impl<'a> Parser<'a> {
     /// the `extern` keyword, if one is found.
     fn parse_opt_abi(&mut self) -> Option<abi::Abi> {
         match self.token {
-            token::LitStr(s) | token::LitStrRaw(s, _) => {
+            token::Literal(token::Str_(s)) | token::Literal(token::StrRaw(s, _)) => {
                 self.bump();
                 let the_string = s.as_str();
                 match abi::lookup(the_string) {
@@ -5904,8 +5904,8 @@ impl<'a> Parser<'a> {
     pub fn parse_optional_str(&mut self)
                               -> Option<(InternedString, ast::StrStyle)> {
         let (s, style) = match self.token {
-            token::LitStr(s) => (self.id_to_interned_str(s.ident()), ast::CookedStr),
-            token::LitStrRaw(s, n) => {
+            token::Literal(token::Str_(s)) => (self.id_to_interned_str(s.ident()), ast::CookedStr),
+            token::Literal(token::StrRaw(s, n)) => {
                 (self.id_to_interned_str(s.ident()), ast::RawStr(n))
             }
             _ => return None
