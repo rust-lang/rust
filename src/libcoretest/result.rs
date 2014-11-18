@@ -8,24 +8,36 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::error::FromError;
 use core::iter::range;
+
+#[deriving(PartialEq, Show)]
+struct Error(&'static str);
+impl FromError<&'static str> for Error {
+    fn from_error(msg: &'static str) -> Error {
+        Error(msg)
+    }
+}
 
 pub fn op1() -> Result<int, &'static str> { Ok(666) }
 pub fn op2() -> Result<int, &'static str> { Err("sadface") }
+pub fn op3(n: int) -> Result<int, Error> { Ok(n * 2) }
+pub fn op4(_: int) -> Result<int, Error> { Err(Error("oh well :(")) }
 
 #[test]
 pub fn test_and() {
-    assert_eq!(op1().and(Ok(667i)).unwrap(), 667);
+    assert_eq!(op1().and(Ok::<int, &'static str>(667i)).unwrap(), 667);
     assert_eq!(op1().and(Err::<(), &'static str>("bad")).unwrap_err(),
                "bad");
 
-    assert_eq!(op2().and(Ok(667i)).unwrap_err(), "sadface");
-    assert_eq!(op2().and(Err::<(),&'static str>("bad")).unwrap_err(),
+    assert_eq!(op2().and(Ok::<int, &'static str>(667i)).unwrap_err(), "sadface");
+    assert_eq!(op2().and(Err::<(), &'static str>("bad")).unwrap_err(),
                "sadface");
 }
 
 #[test]
 pub fn test_and_then() {
+
     assert_eq!(op1().and_then(|i| Ok::<int, &'static str>(i + 1)).unwrap(), 667);
     assert_eq!(op1().and_then(|_| Err::<int, &'static str>("bad")).unwrap_err(),
                "bad");
@@ -34,6 +46,11 @@ pub fn test_and_then() {
                "sadface");
     assert_eq!(op2().and_then(|_| Err::<int, &'static str>("bad")).unwrap_err(),
                "sadface");
+
+    assert_eq!(op1().and_then(op3).unwrap(), 666 * 2);
+    assert_eq!(op2().and_then(op3).unwrap_err(), Error("sadface"));
+    assert_eq!(op1().and_then(op4).unwrap_err(), Error("oh well :("));
+    assert_eq!(op2().and_then(op4).unwrap_err(), Error("sadface"));
 }
 
 #[test]

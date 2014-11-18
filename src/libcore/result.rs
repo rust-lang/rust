@@ -278,6 +278,7 @@
 
 pub use self::Result::*;
 
+use error::FromError;
 use std::fmt::Show;
 use slice;
 use slice::AsSlice;
@@ -633,10 +634,10 @@ impl<T, E> Result<T, E> {
     /// ```
     #[inline]
     #[stable]
-    pub fn and<U>(self, res: Result<U, E>) -> Result<U, E> {
+    pub fn and<U, F: FromError<E> = E>(self, res: Result<U, F>) -> Result<U, F> {
         match self {
             Ok(_) => res,
-            Err(e) => Err(e),
+            Err(e) => Err(FromError::from_error(e)),
         }
     }
 
@@ -657,10 +658,10 @@ impl<T, E> Result<T, E> {
     /// ```
     #[inline]
     #[unstable = "waiting for unboxed closures"]
-    pub fn and_then<U>(self, op: |T| -> Result<U, E>) -> Result<U, E> {
+    pub fn and_then<U, F: FromError<E> = E>(self, op: |T| -> Result<U, F>) -> Result<U, F> {
         match self {
             Ok(t) => op(t),
-            Err(e) => Err(e),
+            Err(e) => Err(FromError::from_error(e)),
         }
     }
 
