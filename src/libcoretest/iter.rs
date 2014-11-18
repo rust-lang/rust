@@ -441,6 +441,23 @@ fn test_rev() {
 }
 
 #[test]
+fn test_cloned() {
+    let xs = [2u8, 4, 6, 8];
+
+    let mut it = xs.iter().cloned();
+    assert_eq!(it.len(), 4);
+    assert_eq!(it.next(), Some(2));
+    assert_eq!(it.len(), 3);
+    assert_eq!(it.next(), Some(4));
+    assert_eq!(it.len(), 2);
+    assert_eq!(it.next_back(), Some(8));
+    assert_eq!(it.len(), 1);
+    assert_eq!(it.next_back(), Some(6));
+    assert_eq!(it.len(), 0);
+    assert_eq!(it.next_back(), None);
+}
+
+#[test]
 fn test_double_ended_map() {
     let xs = [1i, 2, 3, 4, 5, 6];
     let mut it = xs.iter().map(|&x| x * -1);
