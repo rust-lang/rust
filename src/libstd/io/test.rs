@@ -75,7 +75,7 @@ fn base_port() -> u16 {
     ];
 
     // FIXME (#9639): This needs to handle non-utf8 paths
-    let path = os::getcwd();
+    let path = os::getcwd().unwrap();
     let path_s = path.as_str().unwrap();
 
     let mut final_base = base;

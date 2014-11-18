@@ -219,7 +219,7 @@ pub fn rust_path() -> Vec<Path> {
         }
         None => Vec::new()
     };
-    let mut cwd = os::getcwd();
+    let mut cwd = os::getcwd().unwrap();
     // now add in default entries
     let cwd_dot_rust = cwd.join(".rust");
     if !env_rust_path.contains(&cwd_dot_rust) {

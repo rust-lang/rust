@@ -134,7 +134,7 @@ impl<'a> PluginLoader<'a> {
     // Dynamically link a registrar function into the compiler process.
     fn dylink_registrar(&mut self, vi: &ast::ViewItem, path: Path, symbol: String) {
         // Make sure the path contains a / or the linker will search for it.
-        let path = os::make_absolute(&path);
+        let path = os::make_absolute(&path).unwrap();
 
         let lib = match DynamicLibrary::open(Some(&path)) {
             Ok(lib) => lib,
