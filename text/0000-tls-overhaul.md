@@ -238,7 +238,6 @@ macro_rules! tls(
 )
 
 pub struct Key<T: 'static> { /* ... */ }
-pub struct Ref<T: 'static> { /* ... */ }
 
 impl<T: 'static> Key<T> {
     /// Access this TLS variable, lazily initializing it if necessary.
@@ -249,10 +248,8 @@ impl<T: 'static> Key<T> {
     ///
     /// This function can return `None` for the same reasons of static TLS
     /// returning `None` (destructors are running or may have run).
-    pub fn get(&'static self) -> Option<Ref<T>> { /* ... */ }
+    pub fn with<R>(&'static self, f: |Option<&T>| -> R) -> R { /* ... */ }
 }
-
-impl<T: 'static> Deref<T> for Ref<T> { /* ... */ }
 ```
 
 ### Destructors
@@ -279,9 +276,14 @@ some of the minor downsides.
 
 ### Variations
 
-Like the scoped TLS varations, the primary way this API could be altered would
-be to return `Ref<T>` instead of an `Option` from `get`, while then providing a
-function to test whether a value is being destroyed.
+Like the scoped TLS variation, this key has a `with` function instead of the
+normally expected `get` function (returning a reference). One possible
+alternative would be to yield `&T` instead of `Option<&T>` and `panic!` if the
+variable has been destroyed. Another possible alternative is to have a `get`
+function returning a `Ref<T>`. Currently this is unsafe, however, as there is no
+way to ensure that `Ref<T>` does not satisfy `'static`. If the returned
+reference satisfies `'static`, then it's possible for TLS values to reference
+each other after one has been destroyed, causing a use-after-free.
 
 # Drawbacks
 
