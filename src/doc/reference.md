@@ -2513,11 +2513,6 @@ The currently implemented features of the reference compiler are:
                closure as `once` is unlikely to be supported going forward. So
                they are hidden behind this feature until they are to be removed.
 
-* `overloaded_calls` - Allow implementing the `Fn*` family of traits on user
-                       types, allowing overloading the call operator (`()`).
-                       This feature may still undergo changes before being
-                       stabilized.
-
 * `phase` - Usage of the `#[phase]` attribute allows loading compiler plugins
             for custom lints or syntax extensions. The implementation is
             considered unwholesome and in need of overhaul, and it is not clear
@@ -2560,11 +2555,8 @@ The currently implemented features of the reference compiler are:
 * `trace_macros` - Allows use of the `trace_macros` macro, which is a nasty
                    hack that will certainly be removed.
 
-* `unboxed_closure_sugar` - Allows using `|Foo| -> Bar` as a trait bound
-                            meaning one of the `Fn` traits. Still
-                            experimental.
-
-* `unboxed_closures` - A work in progress feature with many known bugs.
+* `unboxed_closures` - Rust's new closure design, which is currently a work in
+                       progress feature with many known bugs.
 
 * `unsafe_destructor` - Allows use of the `#[unsafe_destructor]` attribute,
                         which is considered wildly unsafe and will be

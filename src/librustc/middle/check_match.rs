@@ -139,8 +139,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for MatchCheckCtxt<'a, 'tcx> {
         check_local(self, l);
     }
     fn visit_fn(&mut self, fk: FnKind<'v>, fd: &'v FnDecl,
-                b: &'v Block, s: Span, _: NodeId) {
-        check_fn(self, fk, fd, b, s);
+                b: &'v Block, s: Span, n: NodeId) {
+        check_fn(self, fk, fd, b, s, n);
     }
 }
 
@@ -920,7 +920,8 @@ fn check_fn(cx: &mut MatchCheckCtxt,
             kind: FnKind,
             decl: &FnDecl,
             body: &Block,
-            sp: Span) {
+            sp: Span,
+            _: NodeId) {
     visit::walk_fn(cx, kind, decl, body, sp);
     for input in decl.inputs.iter() {
         is_refutable(cx, &*input.pat, |pat| {

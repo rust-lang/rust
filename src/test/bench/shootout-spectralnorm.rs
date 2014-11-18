@@ -41,7 +41,7 @@
 // no-pretty-expanded FIXME #15189
 
 #![allow(non_snake_case)]
-#![feature(unboxed_closures, overloaded_calls)]
+#![feature(unboxed_closures)]
 
 use std::iter::AdditiveIterator;
 use std::mem;

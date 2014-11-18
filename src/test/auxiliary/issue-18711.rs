@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(unboxed_closures, overloaded_calls)]
+#![feature(unboxed_closures)]
 #![crate_type = "rlib"]
 
 pub fn inner<F>(f: F) -> F {

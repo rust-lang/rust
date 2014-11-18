@@ -137,4 +137,9 @@ impl<'f, 'tcx> Combine<'tcx> for Equate<'f, 'tcx> {
         try!(self.sub().fn_sigs(a, b));
         self.sub().fn_sigs(b, a)
     }
+
+    fn trait_refs(&self, a: &ty::TraitRef, b: &ty::TraitRef) -> cres<ty::TraitRef> {
+        try!(self.sub().trait_refs(a, b));
+        self.sub().trait_refs(b, a)
+    }
 }

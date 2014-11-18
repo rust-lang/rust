@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(lang_items, overloaded_calls, unboxed_closures)]
+#![feature(lang_items, unboxed_closures)]
 
 fn a<F:Fn(int, int) -> int>(f: F) -> int {
     f(1, 2)

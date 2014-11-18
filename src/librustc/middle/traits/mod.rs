@@ -281,33 +281,28 @@ pub fn overlapping_impls(infcx: &InferCtxt,
     coherence::impl_can_satisfy(infcx, impl2_def_id, impl1_def_id)
 }
 
-pub fn impl_obligations(tcx: &ty::ctxt,
-                        cause: ObligationCause,
-                        impl_def_id: ast::DefId,
-                        impl_substs: &subst::Substs)
-                        -> subst::VecPerParamSpace<Obligation>
-{
-    let impl_generics = ty::lookup_item_type(tcx, impl_def_id).generics;
-    obligations_for_generics(tcx, cause, &impl_generics, impl_substs)
-}
-
 pub fn obligations_for_generics(tcx: &ty::ctxt,
                                 cause: ObligationCause,
-                                generics: &ty::Generics,
-                                substs: &subst::Substs)
+                                generic_bounds: &ty::GenericBounds,
+                                type_substs: &subst::VecPerParamSpace<ty::t>)
                                 -> subst::VecPerParamSpace<Obligation>
 {
     /*!
-     * Given generics for an impl like:
+     * Given generic bounds from an impl like:
      *
      *    impl<A:Foo, B:Bar+Qux> ...
      *
-     * and a substs vector like `<A=A0, B=B0>`, yields a result like
+     * along with the bindings for the types `A` and `B` (e.g.,
+     * `<A=A0, B=B0>`), yields a result like
      *
      *    [[Foo for A0, Bar for B0, Qux for B0], [], []]
+     *
+     * Expects that `generic_bounds` have already been fully
+     * substituted, late-bound regions liberated and so forth,
+     * so that they are in the same namespace as `type_substs`.
      */
 
-    util::obligations_for_generics(tcx, cause, 0, generics, substs)
+    util::obligations_for_generics(tcx, cause, 0, generic_bounds, type_substs)
 }
 
 pub fn obligation_for_builtin_bound(tcx: &ty::ctxt,
