@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(unboxed_closures)]
+
 trait Trait {}
 
 fn f<F:Trait(int) -> int>(x: F) {}

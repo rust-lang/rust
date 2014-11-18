@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(overloaded_calls, unboxed_closures)]
+#![feature(unboxed_closures)]
 
 // Test by-ref capture of environment in unboxed closure types
 

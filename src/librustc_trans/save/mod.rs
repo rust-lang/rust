@@ -1095,7 +1095,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                 fd: &'v ast::FnDecl,
                 b: &'v ast::Block,
                 s: Span,
-                _: NodeId) {
+                _: ast::NodeId) {
         if generated_code(s) {
             return;
         }

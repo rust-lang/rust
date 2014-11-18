@@ -137,8 +137,11 @@ pub fn trans_method_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }) => {
             let trait_ref =
                 Rc::new(trait_ref.subst(bcx.tcx(),
-                                        &bcx.fcx.param_substs.substs));
+                                        bcx.fcx.param_substs.substs()));
             let span = bcx.tcx().map.span(method_call.expr_id);
+            debug!("method_call={} trait_ref={}",
+                   method_call,
+                   trait_ref.repr(bcx.tcx()));
             let origin = fulfill_obligation(bcx.ccx(),
                                             span,
                                             (*trait_ref).clone());
@@ -609,9 +612,6 @@ pub fn get_vtable(bcx: Block,
                             fn_style: closure_info.closure_type.fn_style,
                             abi: Rust,
                             sig: ty::FnSig {
-                                binder_id: closure_info.closure_type
-                                                       .sig
-                                                       .binder_id,
                                 inputs: new_inputs,
                                 output: new_output,
                                 variadic: false,

@@ -214,12 +214,11 @@ pub fn get_enum_variant_types(ccx: &CrateCtxt,
     for variant in variants.iter() {
         // Nullary enum constructors get turned into constants; n-ary enum
         // constructors get turned into functions.
-        let scope = variant.node.id;
         let result_ty = match variant.node.kind {
             ast::TupleVariantKind(ref args) if args.len() > 0 => {
                 let rs = ExplicitRscope;
                 let input_tys: Vec<_> = args.iter().map(|va| ccx.to_ty(&rs, &*va.ty)).collect();
-                ty::mk_ctor_fn(tcx, scope, input_tys.as_slice(), enum_ty)
+                ty::mk_ctor_fn(tcx, input_tys.as_slice(), enum_ty)
             }
 
             ast::TupleVariantKind(_) => {
@@ -403,7 +402,6 @@ fn collect_trait_methods(ccx: &CrateCtxt,
             let trait_self_ty = ty::mk_self_type(tmcx.tcx(),
                                                  local_def(trait_id));
             astconv::ty_of_method(&tmcx,
-                                  *m_id,
                                   *m_fn_style,
                                   trait_self_ty,
                                   m_explicit_self,
@@ -588,7 +586,6 @@ fn convert_methods<'a,I>(ccx: &CrateCtxt,
                     method_generics: &m_ty_generics,
                 };
                 astconv::ty_of_method(&imcx,
-                                      m.id,
                                       m.pe_fn_style(),
                                       untransformed_rcvr_ty,
                                       m.pe_explicit_self(),
@@ -603,7 +600,6 @@ fn convert_methods<'a,I>(ccx: &CrateCtxt,
                     method_generics: &m_ty_generics,
                 };
                 astconv::ty_of_method(&tmcx,
-                                      m.id,
                                       m.pe_fn_style(),
                                       untransformed_rcvr_ty,
                                       m.pe_explicit_self(),
@@ -1116,10 +1112,12 @@ pub fn convert(ccx: &CrateCtxt, it: &ast::Item) {
             for impl_item in impl_items.iter() {
                 match *impl_item {
                     ast::MethodImplItem(ref method) => {
+                        let body_id = method.pe_body().id;
                         check_method_self_type(ccx,
-                                               &BindingRscope::new(method.id),
+                                               &BindingRscope::new(),
                                                selfty,
-                                               method.pe_explicit_self());
+                                               method.pe_explicit_self(),
+                                               body_id);
                         methods.push(&**method);
                     }
                     ast::TypeImplItem(ref typedef) => {
@@ -1174,17 +1172,19 @@ pub fn convert(ccx: &CrateCtxt, it: &ast::Item) {
                                              local_def(it.id));
                 match *trait_method {
                     ast::RequiredMethod(ref type_method) => {
-                        let rscope = BindingRscope::new(type_method.id);
+                        let rscope = BindingRscope::new();
                         check_method_self_type(ccx,
                                                &rscope,
                                                self_type,
-                                               &type_method.explicit_self)
+                                               &type_method.explicit_self,
+                                               it.id)
                     }
                     ast::ProvidedMethod(ref method) => {
                         check_method_self_type(ccx,
-                                               &BindingRscope::new(method.id),
+                                               &BindingRscope::new(),
                                                self_type,
-                                               method.pe_explicit_self())
+                                               method.pe_explicit_self(),
+                                               it.id)
                     }
                     ast::TypeTraitItem(ref associated_type) => {
                         convert_associated_type(ccx,
@@ -1294,7 +1294,6 @@ pub fn convert_struct(ccx: &CrateCtxt,
                         |field| (*tcx.tcache.borrow())[
                             local_def(field.node.id)].ty).collect();
                 let ctor_fn_ty = ty::mk_ctor_fn(tcx,
-                                                ctor_id,
                                                 inputs.as_slice(),
                                                 selfty);
                 write_ty_to_tcx(tcx, ctor_id, ctor_fn_ty);
@@ -1465,11 +1464,7 @@ pub fn ty_of_item(ccx: &CrateCtxt, it: &ast::Item)
                     ccx: ccx,
                     generics: &ty_generics,
                 };
-                astconv::ty_of_bare_fn(&fcx,
-                                       it.id,
-                                       fn_style,
-                                       abi,
-                                       &**decl)
+                astconv::ty_of_bare_fn(&fcx, fn_style, abi, &**decl)
             };
             let pty = Polytype {
                 generics: ty_generics,
@@ -2015,12 +2010,12 @@ fn conv_param_bounds<'tcx,AC>(this: &AC,
         astconv::partition_bounds(this.tcx(), span, all_bounds.as_slice());
     let trait_bounds: Vec<Rc<ty::TraitRef>> =
         trait_bounds.into_iter()
-        .map(|b| {
-            astconv::instantiate_trait_ref(this,
-                                           &ExplicitRscope,
-                                           b,
-                                           Some(param_ty.to_ty(this.tcx())),
-                                           Some(param_ty.to_ty(this.tcx())))
+        .map(|bound| {
+            astconv::instantiate_poly_trait_ref(this,
+                                                &ExplicitRscope,
+                                                bound,
+                                                Some(param_ty.to_ty(this.tcx())),
+                                                Some(param_ty.to_ty(this.tcx())))
         })
         .collect();
     let region_bounds: Vec<ty::Region> =
@@ -2091,7 +2086,7 @@ pub fn ty_of_foreign_fn_decl(ccx: &CrateCtxt,
             ast_generics,
             ty::Generics::empty(),
             DontCreateTypeParametersForAssociatedTypes);
-    let rb = BindingRscope::new(def_id.node);
+    let rb = BindingRscope::new();
     let input_tys = decl.inputs
                         .iter()
                         .map(|a| ty_of_arg(ccx, &rb, a, None))
@@ -2109,8 +2104,7 @@ pub fn ty_of_foreign_fn_decl(ccx: &CrateCtxt,
         ty::BareFnTy {
             abi: abi,
             fn_style: ast::UnsafeFn,
-            sig: ty::FnSig {binder_id: def_id.node,
-                            inputs: input_tys,
+            sig: ty::FnSig {inputs: input_tys,
                             output: output,
                             variadic: decl.variadic}
         });
@@ -2142,10 +2136,12 @@ pub fn mk_item_substs(ccx: &CrateCtxt,
 /// Verifies that the explicit self type of a method matches the impl or
 /// trait.
 fn check_method_self_type<RS:RegionScope>(
-                          crate_context: &CrateCtxt,
-                          rs: &RS,
-                          required_type: ty::t,
-                          explicit_self: &ast::ExplicitSelf) {
+    crate_context: &CrateCtxt,
+    rs: &RS,
+    required_type: ty::t,
+    explicit_self: &ast::ExplicitSelf,
+    body_id: ast::NodeId)
+{
     match explicit_self.node {
         ast::SelfExplicit(ref ast_type, _) => {
             let typ = crate_context.to_ty(rs, &**ast_type);
@@ -2154,13 +2150,44 @@ fn check_method_self_type<RS:RegionScope>(
                 ty::ty_uniq(typ) => typ,
                 _ => typ,
             };
+
+            // "Required type" comes from the trait definition. It may
+            // contain late-bound regions from the method, but not the
+            // trait (since traits only have early-bound region
+            // parameters).
+            assert!(!ty::type_escapes_depth(required_type, 1));
+            let required_type_free =
+                ty::liberate_late_bound_regions(
+                    crate_context.tcx,
+                    body_id,
+                    &ty::bind(required_type)).value;
+
+            // The "base type" comes from the impl. It may have late-bound
+            // regions from the impl or the method.
+            let base_type_free = // liberate impl regions:
+                ty::liberate_late_bound_regions(
+                    crate_context.tcx,
+                    body_id,
+                    &ty::bind(ty::bind(base_type))).value.value;
+            let base_type_free = // liberate method regions:
+                ty::liberate_late_bound_regions(
+                    crate_context.tcx,
+                    body_id,
+                    &ty::bind(base_type_free)).value;
+
+            debug!("required_type={} required_type_free={} \
+                    base_type={} base_type_free={}",
+                   required_type.repr(crate_context.tcx),
+                   required_type_free.repr(crate_context.tcx),
+                   base_type.repr(crate_context.tcx),
+                   base_type_free.repr(crate_context.tcx));
             let infcx = infer::new_infer_ctxt(crate_context.tcx);
             drop(typeck::require_same_types(crate_context.tcx,
                                             Some(&infcx),
                                             false,
                                             explicit_self.span,
-                                            base_type,
-                                            required_type,
+                                            base_type_free,
+                                            required_type_free,
                                             || {
                 format!("mismatched self type: expected `{}`",
                         ppaux::ty_to_string(crate_context.tcx, required_type))

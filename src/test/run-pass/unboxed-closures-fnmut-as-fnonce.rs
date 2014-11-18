@@ -11,8 +11,8 @@
 // Checks that the Fn trait hierarchy rules permit
 // FnMut or FnOnce to be used where FnMut is implemented.
 
-#![feature(unboxed_closure_sugar)]
-#![feature(overloaded_calls)]
+#![feature(unboxed_closures)]
+#![feature(unboxed_closures)]
 
 use std::ops::{FnMut,FnOnce};
 

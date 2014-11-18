@@ -58,8 +58,6 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("quote", Active),
     ("linkage", Active),
     ("struct_inherit", Removed),
-    ("overloaded_calls", Active),
-    ("unboxed_closure_sugar", Active),
 
     ("quad_precision_float", Removed),
 
@@ -102,7 +100,7 @@ enum Status {
 /// A set of features to be used by later passes.
 pub struct Features {
     pub default_type_params: bool,
-    pub overloaded_calls: bool,
+    pub unboxed_closures: bool,
     pub rustc_diagnostic_macros: bool,
     pub import_shadowing: bool,
     pub visible_private_types: bool,
@@ -113,7 +111,7 @@ impl Features {
     pub fn new() -> Features {
         Features {
             default_type_params: false,
-            overloaded_calls: false,
+            unboxed_closures: false,
             rustc_diagnostic_macros: false,
             import_shadowing: false,
             visible_private_types: false,
@@ -381,7 +379,7 @@ impl<'a, 'v> Visitor<'v> for Context<'a> {
                 fn_decl: &'v ast::FnDecl,
                 block: &'v ast::Block,
                 span: Span,
-                _: NodeId) {
+                _node_id: NodeId) {
         match fn_kind {
             visit::FkItemFn(_, _, _, abi) if abi == RustIntrinsic => {
                 self.gate_feature("intrinsics",
@@ -391,6 +389,19 @@ impl<'a, 'v> Visitor<'v> for Context<'a> {
             _ => {}
         }
         visit::walk_fn(self, fn_kind, fn_decl, block, span);
+    }
+
+    fn visit_path_parameters(&mut self, path_span: Span, parameters: &'v ast::PathParameters) {
+        match *parameters {
+            ast::ParenthesizedParameters(..) => {
+                self.gate_feature("unboxed_closures",
+                                  path_span,
+                                  "parenthetical parameter notation is subject to change");
+            }
+            ast::AngleBracketedParameters(..) => { }
+        }
+
+        visit::walk_path_parameters(self, path_span, parameters)
     }
 }
 
@@ -446,7 +457,7 @@ pub fn check_crate(span_handler: &SpanHandler, krate: &ast::Crate) -> (Features,
 
     (Features {
         default_type_params: cx.has_feature("default_type_params"),
-        overloaded_calls: cx.has_feature("overloaded_calls"),
+        unboxed_closures: cx.has_feature("unboxed_closures"),
         rustc_diagnostic_macros: cx.has_feature("rustc_diagnostic_macros"),
         import_shadowing: cx.has_feature("import_shadowing"),
         visible_private_types: cx.has_feature("visible_private_types"),

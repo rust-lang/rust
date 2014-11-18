@@ -8,7 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Zero;
+#![feature(unboxed_closures)]
+
+trait Zero { fn dummy(&self); }
 
 fn foo(_: Zero()) //~ ERROR wrong number of type arguments
 {}

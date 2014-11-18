@@ -17,6 +17,7 @@ use middle::subst;
 use middle::subst::Subst;
 use middle::traits;
 use middle::ty;
+use middle::ty_fold::HigherRankedFoldable;
 use middle::typeck::check;
 use middle::typeck::check::{FnCtxt, NoPreference};
 use middle::typeck::{MethodObject};
@@ -257,29 +258,28 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         ty::populate_implementations_for_type_if_necessary(self.tcx(), def_id);
 
         for impl_infos in self.tcx().inherent_impls.borrow().get(&def_id).iter() {
-            for &impl_did in impl_infos.iter() {
-                self.assemble_inherent_impl_probe(impl_did);
+            for &impl_def_id in impl_infos.iter() {
+                self.assemble_inherent_impl_probe(impl_def_id);
             }
         }
     }
 
-    fn assemble_inherent_impl_probe(&mut self, impl_did: ast::DefId) {
-        if !self.impl_dups.insert(impl_did) {
+    fn assemble_inherent_impl_probe(&mut self, impl_def_id: ast::DefId) {
+        if !self.impl_dups.insert(impl_def_id) {
             return; // already visited
         }
 
-        let method = match impl_method(self.tcx(), impl_did, self.method_name) {
+        let method = match impl_method(self.tcx(), impl_def_id, self.method_name) {
             Some(m) => m,
             None => { return; } // No method with correct name on this impl
         };
 
         if !self.has_applicable_self(&*method) {
             // No receiver declared. Not a candidate.
-            return self.record_static_candidate(ImplSource(impl_did));
+            return self.record_static_candidate(ImplSource(impl_def_id));
         }
 
-        let impl_pty = check::impl_self_ty(self.fcx, self.span, impl_did);
-        let impl_substs = impl_pty.substs;
+        let impl_substs = self.impl_substs(impl_def_id);
 
         // Determine the receiver type that the method itself expects.
         let xform_self_ty =
@@ -288,7 +288,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         self.inherent_candidates.push(Candidate {
             xform_self_ty: xform_self_ty,
             method_ty: method,
-            kind: InherentImplCandidate(impl_did, impl_substs)
+            kind: InherentImplCandidate(impl_def_id, impl_substs)
         });
     }
 
@@ -496,8 +496,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                 continue;
             }
 
-            let impl_pty = check::impl_self_ty(self.fcx, self.span, impl_def_id);
-            let impl_substs = impl_pty.substs;
+            let impl_substs = self.impl_substs(impl_def_id);
 
             debug!("impl_substs={}", impl_substs.repr(self.tcx()));
 
@@ -675,7 +674,9 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                            mk_autoref_ty: |ast::Mutability, ty::Region| -> ty::t)
                            -> Option<PickResult>
     {
-        let region = self.infcx().next_region_var(infer::Autoref(self.span));
+        // In general, during probing we erase regions. See
+        // `impl_self_ty()` for an explanation.
+        let region = ty::ReStatic;
 
         // Search through mutabilities in order to find one where pick works:
         [ast::MutImmutable, ast::MutMutable]
@@ -746,6 +747,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                probe.repr(self.tcx()));
 
         self.infcx().probe(|| {
+            // First check that the self type can be related.
             match self.make_sub_ty(self_ty, probe.xform_self_ty) {
                 Ok(()) => { }
                 Err(_) => {
@@ -754,23 +756,34 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                 }
             }
 
+            // If so, impls may carry other conditions (e.g., where
+            // clauses) that must be considered. Make sure that those
+            // match as well (or at least may match, sometimes we
+            // don't have enough information to fully evaluate).
             match probe.kind {
                 InherentImplCandidate(impl_def_id, ref substs) |
                 ExtensionImplCandidate(impl_def_id, _, ref substs, _) => {
                     // Check whether the impl imposes obligations we have to worry about.
+                    let impl_generics = ty::lookup_item_type(self.tcx(), impl_def_id).generics;
+                    let impl_bounds = impl_generics.to_bounds(self.tcx(), substs);
+
+                    // Erase any late-bound regions bound in the impl
+                    // which appear in the bounds.
+                    let impl_bounds = self.erase_late_bound_regions(&ty::bind(impl_bounds)).value;
+
+                    // Convert the bounds into obligations.
                     let obligations =
-                        traits::impl_obligations(
+                        traits::obligations_for_generics(
                             self.tcx(),
                             traits::ObligationCause::misc(self.span),
-                            impl_def_id,
-                            substs);
-
+                            &impl_bounds,
+                            &substs.types);
                     debug!("impl_obligations={}", obligations.repr(self.tcx()));
 
+                    // Evaluate those obligations to see if they might possibly hold.
                     let mut selcx = traits::SelectionContext::new(self.infcx(),
                                                                   &self.fcx.inh.param_env,
                                                                   self.fcx);
-
                     obligations.all(|o| selcx.evaluate_obligation(o))
                 }
 
@@ -883,20 +896,78 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                 self.infcx().next_ty_vars(
                     method.generics.types.len(subst::FnSpace));
 
+            // In general, during probe we erase regions. See
+            // `impl_self_ty()` for an explanation.
             let method_regions =
-                self.infcx().region_vars_for_defs(
-                    self.span,
-                    method.generics.regions.get_slice(subst::FnSpace));
+                method.generics.regions.get_slice(subst::FnSpace)
+                .iter()
+                .map(|_| ty::ReStatic)
+                .collect();
 
             placeholder = (*substs).clone().with_method(method_types, method_regions);
             substs = &placeholder;
         }
 
+        // Replace early-bound regions and types.
         let xform_self_ty = method.fty.sig.inputs[0].subst(self.tcx(), substs);
-        self.infcx().replace_late_bound_regions_with_fresh_var(method.fty.sig.binder_id,
-                                                               self.span,
-                                                               infer::FnCall,
-                                                               &xform_self_ty).0
+
+        // Replace late-bound regions bound in the impl or
+        // where-clause (2 levels of binding).
+        let xform_self_ty =
+            self.erase_late_bound_regions(&ty::bind(ty::bind(xform_self_ty))).value.value;
+
+        // Replace late-bound regions bound in the method (1 level of binding).
+        self.erase_late_bound_regions(&ty::bind(xform_self_ty)).value
+    }
+
+    fn impl_substs(&self,
+                   impl_def_id: ast::DefId)
+                   -> subst::Substs
+    {
+        let impl_pty = ty::lookup_item_type(self.tcx(), impl_def_id);
+
+        let type_vars =
+            impl_pty.generics.types.map(
+                |_| self.infcx().next_ty_var());
+
+        let region_placeholders =
+            impl_pty.generics.regions.map(
+                |_| ty::ReStatic); // see erase_late_bound_regions() for an expl of why 'static
+
+        subst::Substs::new(type_vars, region_placeholders)
+    }
+
+    fn erase_late_bound_regions<T>(&self, value: &T) -> T
+        where T : HigherRankedFoldable
+    {
+        /*!
+         * Replace late-bound-regions bound by `value` with `'static`
+         * using `ty::erase_late_bound_regions`.
+         *
+         * This is only a reasonable thing to do during the *probe*
+         * phase, not the *confirm* phase, of method matching. It is
+         * reasonable during the probe phase because we don't consider
+         * region relationships at all. Therefore, we can just replace
+         * all the region variables with 'static rather than creating
+         * fresh region variables. This is nice for two reasons:
+         *
+         * 1. Because the numbers of the region variables would
+         *    otherwise be fairly unique to this particular method
+         *    call, it winds up creating fewer types overall, which
+         *    helps for memory usage. (Admittedly, this is a rather
+         *    small effect, though measureable.)
+         *
+         * 2. It makes it easier to deal with higher-ranked trait
+         *    bounds, because we can replace any late-bound regions
+         *    with 'static. Otherwise, if we were going to replace
+         *    late-bound regions with actual region variables as is
+         *    proper, we'd have to ensure that the same region got
+         *    replaced with the same variable, which requires a bit
+         *    more coordination and/or tracking the substitution and
+         *    so forth.
+         */
+
+        ty::erase_late_bound_regions(self.tcx(), value)
     }
 }
 

@@ -650,14 +650,12 @@ impl<'a, 'tcx> ErrorReporting for InferCtxt<'a, 'tcx> {
                     sup,
                     "");
             }
-            infer::RelateParamBound(span, param_ty, ty) => {
+            infer::RelateParamBound(span, ty) => {
                 self.tcx.sess.span_err(
                     span,
-                    format!("the type `{}` (provided as the value of \
-                             the parameter `{}`) does not fulfill the \
+                    format!("the type `{}` does not fulfill the \
                              required lifetime",
-                            self.ty_to_string(ty),
-                            param_ty.user_string(self.tcx)).as_slice());
+                            self.ty_to_string(ty)).as_slice());
                 note_and_explain_region(self.tcx,
                                         "type must outlive ",
                                         sub,
@@ -1460,8 +1458,8 @@ impl<'a, 'tcx> ErrorReportingHelpers for InferCtxt<'a, 'tcx> {
                 format!(" for {}in function call",
                         bound_region_to_string(self.tcx, "lifetime parameter ", true, br))
             }
-            infer::LateBoundRegion(_, br, infer::FnType) => {
-                format!(" for {}in function type",
+            infer::LateBoundRegion(_, br, infer::HigherRankedType) => {
+                format!(" for {}in generic type",
                         bound_region_to_string(self.tcx, "lifetime parameter ", true, br))
             }
             infer::EarlyBoundRegion(_, name) => {
@@ -1651,13 +1649,11 @@ impl<'a, 'tcx> ErrorReportingHelpers for InferCtxt<'a, 'tcx> {
                              does not outlive the data it points at",
                             self.ty_to_string(ty)).as_slice());
             }
-            infer::RelateParamBound(span, param_ty, t) => {
+            infer::RelateParamBound(span, t) => {
                 self.tcx.sess.span_note(
                     span,
-                    format!("...so that the parameter `{}`, \
-                             when instantiated with `{}`, \
-                             will meet its declared lifetime bounds.",
-                            param_ty.user_string(self.tcx),
+                    format!("...so that the type `{}` \
+                             will meet the declared lifetime bounds.",
                             self.ty_to_string(t)).as_slice());
             }
             infer::RelateDefaultParamBound(span, t) => {

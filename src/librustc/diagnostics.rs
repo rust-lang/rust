@@ -144,5 +144,6 @@ register_diagnostics!(
     E0165,
     E0166,
     E0167,
-    E0168
+    E0168,
+    E0169
 )

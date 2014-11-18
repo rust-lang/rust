@@ -65,8 +65,8 @@ pub type LoanDataFlow<'a, 'tcx> = DataFlowContext<'a, 'tcx, LoanDataFlowOperator
 
 impl<'a, 'tcx, 'v> Visitor<'v> for BorrowckCtxt<'a, 'tcx> {
     fn visit_fn(&mut self, fk: FnKind<'v>, fd: &'v FnDecl,
-                b: &'v Block, s: Span, n: NodeId) {
-        borrowck_fn(self, fk, fd, b, s, n);
+                b: &'v Block, s: Span, id: ast::NodeId) {
+        borrowck_fn(self, fk, fd, b, s, id);
     }
 
     fn visit_item(&mut self, item: &ast::Item) {

@@ -59,6 +59,7 @@ use syntax::codemap::Span;
 
 pub trait Combine<'tcx> {
     fn infcx<'a>(&'a self) -> &'a InferCtxt<'a, 'tcx>;
+    fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx> { self.infcx().tcx }
     fn tag(&self) -> String;
     fn a_is_expected(&self) -> bool;
     fn trace(&self) -> TypeTrace;
@@ -296,26 +297,14 @@ pub trait Combine<'tcx> {
                 Err(ty::terr_trait_stores_differ(vk, expected_found(self, a, b)))
             }
         }
-
     }
 
     fn trait_refs(&self,
                   a: &ty::TraitRef,
                   b: &ty::TraitRef)
-                  -> cres<ty::TraitRef> {
-        // Different traits cannot be related
-
-        // - NOTE in the future, expand out subtraits!
-
-        if a.def_id != b.def_id {
-            Err(ty::terr_traits(
-                                expected_found(self, a.def_id, b.def_id)))
-        } else {
-            let substs = try!(self.substs(a.def_id, &a.substs, &b.substs));
-            Ok(ty::TraitRef { def_id: a.def_id,
-                              substs: substs })
-        }
-    }
+                  -> cres<ty::TraitRef>;
+    // this must be overridden to do correctly, so as to account for higher-ranked
+    // behavior
 }
 
 #[deriving(Clone)]
@@ -332,48 +321,6 @@ pub fn expected_found<'tcx, C: Combine<'tcx>, T>(
     } else {
         ty::expected_found {expected: b, found: a}
     }
-}
-
-pub fn super_fn_sigs<'tcx, C: Combine<'tcx>>(this: &C,
-                                             a: &ty::FnSig,
-                                             b: &ty::FnSig)
-                                             -> cres<ty::FnSig> {
-
-    fn argvecs<'tcx, C: Combine<'tcx>>(this: &C,
-                                       a_args: &[ty::t],
-                                       b_args: &[ty::t])
-                                       -> cres<Vec<ty::t>> {
-        if a_args.len() == b_args.len() {
-            a_args.iter().zip(b_args.iter())
-                  .map(|(a, b)| this.args(*a, *b)).collect()
-        } else {
-            Err(ty::terr_arg_count)
-        }
-    }
-
-    if a.variadic != b.variadic {
-        return Err(ty::terr_variadic_mismatch(expected_found(this, a.variadic, b.variadic)));
-    }
-
-    let inputs = try!(argvecs(this,
-                                a.inputs.as_slice(),
-                                b.inputs.as_slice()));
-
-    let output = try!(match (a.output, b.output) {
-        (ty::FnConverging(a_ty), ty::FnConverging(b_ty)) =>
-            Ok(ty::FnConverging(try!(this.tys(a_ty, b_ty)))),
-        (ty::FnDiverging, ty::FnDiverging) =>
-            Ok(ty::FnDiverging),
-        (a, b) =>
-            Err(ty::terr_convergence_mismatch(
-                expected_found(this, a != ty::FnDiverging, b != ty::FnDiverging)
-            )),
-    });
-
-    Ok(FnSig {binder_id: a.binder_id,
-              inputs: inputs,
-              output: output,
-              variadic: a.variadic})
 }
 
 pub fn super_tys<'tcx, C: Combine<'tcx>>(this: &C, a: ty::t, b: ty::t) -> cres<ty::t> {

@@ -191,10 +191,21 @@ pub type ExternMap = FnvHashMap<String, ValueRef>;
 // Here `self_ty` is the real type of the self parameter to this method. It
 // will only be set in the case of default methods.
 pub struct param_substs {
-    pub substs: subst::Substs,
+    substs: subst::Substs,
 }
 
 impl param_substs {
+    pub fn new(substs: subst::Substs) -> param_substs {
+        assert!(substs.types.all(|t| !ty::type_needs_infer(*t)));
+        assert!(substs.types.all(|t| !ty::type_has_params(*t)));
+        assert!(substs.types.all(|t| !ty::type_has_escaping_regions(*t)));
+        param_substs { substs: substs.erase_regions() }
+    }
+
+    pub fn substs(&self) -> &subst::Substs {
+        &self.substs
+    }
+
     pub fn empty() -> param_substs {
         param_substs {
             substs: subst::Substs::trans_empty(),
@@ -821,6 +832,8 @@ pub fn fulfill_obligation(ccx: &CrateContext,
         }
         None => { }
     }
+
+    debug!("trans fulfill_obligation: trait_ref={}", trait_ref.repr(ccx.tcx()));
 
     ty::populate_implementations_for_trait_if_necessary(tcx, trait_ref.def_id);
     let infcx = infer::new_infer_ctxt(tcx);

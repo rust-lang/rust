@@ -5038,10 +5038,10 @@ impl<'a> Resolver<'a> {
                 visit::walk_ty(self, ty);
             }
 
-            TyPolyTraitRef(ref poly_trait_ref) => {
-                self.resolve_poly_trait_reference(
+            TyPolyTraitRef(ref bounds) => {
+                self.resolve_type_parameter_bounds(
                     ty.id,
-                    &**poly_trait_ref,
+                    bounds,
                     TraitObject);
                 visit::walk_ty(self, ty);
             }
