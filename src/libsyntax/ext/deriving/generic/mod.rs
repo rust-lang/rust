@@ -335,7 +335,7 @@ pub fn combine_substructure<'a>(f: CombineSubstructureFunc<'a>)
 impl<'a> TraitDef<'a> {
     pub fn expand(&self,
                   cx: &mut ExtCtxt,
-                  _mitem: &ast::MetaItem,
+                  mitem: &ast::MetaItem,
                   item: &ast::Item,
                   push: |P<ast::Item>|) {
         let newitem = match item.node {
@@ -351,7 +351,10 @@ impl<'a> TraitDef<'a> {
                                      item.ident,
                                      generics)
             }
-            _ => return
+            _ => {
+                cx.span_err(mitem.span, "`deriving` may only be applied to structs and enums");
+                return;
+            }
         };
         // Keep the lint attributes of the previous item to control how the
         // generated implementations are linted
