@@ -730,10 +730,11 @@ mod test {
     use attr::AttrMetaMethods;
     use parse::parser::Parser;
     use parse::token::{str_to_ident};
+    use print::pprust::view_item_to_string;
     use ptr::P;
     use util::parser_testing::{string_to_tts, string_to_parser};
     use util::parser_testing::{string_to_expr, string_to_item};
-    use util::parser_testing::string_to_stmt;
+    use util::parser_testing::{string_to_stmt, string_to_view_item};
 
     // produce a codemap::span
     fn sp(a: u32, b: u32) -> Span {
@@ -1081,6 +1082,30 @@ mod test {
                                     })),
                             vis: ast::Inherited,
                             span: sp(0,21)})));
+    }
+
+    #[test] fn parse_use() {
+        let use_s = "use foo::bar::baz;";
+        let vitem = string_to_view_item(use_s.to_string());
+        let vitem_s = view_item_to_string(&vitem);
+        assert_eq!(vitem_s.as_slice(), use_s);
+
+        let use_s = "use foo::bar as baz;";
+        let vitem = string_to_view_item(use_s.to_string());
+        let vitem_s = view_item_to_string(&vitem);
+        assert_eq!(vitem_s.as_slice(), use_s);
+    }
+
+    #[test] fn parse_extern_crate() {
+        let ex_s = "extern crate foo;";
+        let vitem = string_to_view_item(ex_s.to_string());
+        let vitem_s = view_item_to_string(&vitem);
+        assert_eq!(vitem_s.as_slice(), ex_s);
+
+        let ex_s = "extern crate \"foo\" as bar;";
+        let vitem = string_to_view_item(ex_s.to_string());
+        let vitem_s = view_item_to_string(&vitem);
+        assert_eq!(vitem_s.as_slice(), ex_s);
     }
 
     fn get_spans_of_pat_idents(src: &str) -> Vec<Span> {
