@@ -340,6 +340,7 @@ need_cmd date
 need_cmd tr
 need_cmd sed
 need_cmd file
+need_cmd realpath
 
 msg "inspecting environment"
 
@@ -562,6 +563,11 @@ then
     echo
     exit 0
 fi
+
+# Determine libdir and bindir relative to prefix
+step_msg "calculating relative paths to prefix = ${CFG_PREFIX}"
+CFG_BINDIR_RELATIVE=$(realpath -m --relative-to="${CFG_PREFIX}" "${CFG_BINDIR}")
+CFG_LIBDIR_RELATIVE=$(realpath -m --relative-to="${CFG_PREFIX}" "${CFG_LIBDIR}")
 
 # Validate Options
 step_msg "validating $CFG_SELF args"

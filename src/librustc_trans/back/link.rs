@@ -1015,11 +1015,10 @@ fn link_args(cmd: &mut Command,
     // where extern libraries might live, based on the
     // addl_lib_search_paths
     if sess.opts.cg.rpath {
-        let sysroot = sess.sysroot();
         let target_triple = sess.opts.target_triple.as_slice();
         let get_install_prefix_lib_path = || {
             let install_prefix = option_env!("CFG_PREFIX").expect("CFG_PREFIX");
-            let tlib = filesearch::relative_target_lib_path(sysroot, target_triple);
+            let tlib = filesearch::relative_target_lib_path(target_triple);
             let mut path = Path::new(install_prefix);
             path.push(&tlib);
 
