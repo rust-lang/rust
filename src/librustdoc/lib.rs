@@ -28,7 +28,7 @@ extern crate "test" as testing;
 #[phase(plugin, link)] extern crate log;
 
 use std::io;
-use std::io::{File, MemWriter};
+use std::io::File;
 use std::collections::HashMap;
 use std::collections::hash_map::{Occupied, Vacant};
 use serialize::{json, Decodable, Encodable};
@@ -467,12 +467,12 @@ fn json_output(krate: clean::Crate, res: Vec<plugins::PluginJson> ,
     // FIXME #8335: yuck, Rust -> str -> JSON round trip! No way to .encode
     // straight to the Rust JSON representation.
     let crate_json_str = {
-        let mut w = MemWriter::new();
+        let mut w = Vec::new();
         {
             let mut encoder = json::Encoder::new(&mut w as &mut io::Writer);
             krate.encode(&mut encoder).unwrap();
         }
-        String::from_utf8(w.unwrap()).unwrap()
+        String::from_utf8(w).unwrap()
     };
     let crate_json = match json::from_str(crate_json_str.as_slice()) {
         Ok(j) => j,

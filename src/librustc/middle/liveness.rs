@@ -122,7 +122,6 @@ use util::nodemap::NodeMap;
 use std::fmt;
 use std::io;
 use std::rc::Rc;
-use std::str;
 use std::uint;
 use syntax::ast;
 use syntax::ast::*;
@@ -742,7 +741,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
     #[allow(unused_must_use)]
     fn ln_str(&self, ln: LiveNode) -> String {
-        let mut wr = io::MemWriter::new();
+        let mut wr = Vec::new();
         {
             let wr = &mut wr as &mut io::Writer;
             write!(wr, "[ln({}) of kind {} reads", ln.get(), self.ir.lnk(ln));
@@ -751,7 +750,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             self.write_vars(wr, ln, |idx| self.users[idx].writer);
             write!(wr, "  precedes {}]", self.successors[ln.get()].to_string());
         }
-        str::from_utf8(wr.unwrap().as_slice()).unwrap().to_string()
+        String::from_utf8(wr).unwrap()
     }
 
     fn init_empty(&mut self, ln: LiveNode, succ_ln: LiveNode) {

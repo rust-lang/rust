@@ -253,9 +253,8 @@ macro_rules! format(
 ///
 /// ```
 /// # #![allow(unused_must_use)]
-/// use std::io::MemWriter;
 ///
-/// let mut w = MemWriter::new();
+/// let mut w = Vec::new();
 /// write!(&mut w, "test");
 /// write!(&mut w, "formatted {}", "arguments");
 /// ```

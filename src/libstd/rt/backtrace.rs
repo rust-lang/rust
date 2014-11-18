@@ -1009,12 +1009,10 @@ mod imp {
 #[cfg(test)]
 mod test {
     use prelude::*;
-    use io::MemWriter;
-
     macro_rules! t( ($a:expr, $b:expr) => ({
-        let mut m = MemWriter::new();
+        let mut m = Vec::new();
         super::demangle(&mut m, $a).unwrap();
-        assert_eq!(String::from_utf8(m.unwrap()).unwrap(), $b.to_string());
+        assert_eq!(String::from_utf8(m).unwrap(), $b.to_string());
     }) )
 
     #[test]
