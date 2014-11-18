@@ -489,17 +489,29 @@ impl tr for ty::Region {
             ty::ReEarlyBound(id, space, index, ident) => {
                 ty::ReEarlyBound(dcx.tr_id(id), space, index, ident)
             }
-            ty::ReScope(id) => {
-                ty::ReScope(dcx.tr_id(id))
+            ty::ReScope(scope) => {
+                ty::ReScope(scope.tr(dcx))
             }
             ty::ReEmpty | ty::ReStatic | ty::ReInfer(..) => {
                 *self
             }
             ty::ReFree(ref fr) => {
-                ty::ReFree(ty::FreeRegion {scope_id: dcx.tr_id(fr.scope_id),
-                                            bound_region: fr.bound_region.tr(dcx)})
+                ty::ReFree(fr.tr(dcx))
             }
         }
+    }
+}
+
+impl tr for ty::FreeRegion {
+    fn tr(&self, dcx: &DecodeContext) -> ty::FreeRegion {
+        ty::FreeRegion { scope: self.scope.tr(dcx),
+                         bound_region: self.bound_region.tr(dcx) }
+    }
+}
+
+impl tr for region::CodeExtent {
+    fn tr(&self, dcx: &DecodeContext) -> region::CodeExtent {
+        self.map_id(|id| dcx.tr_id(id))
     }
 }
 

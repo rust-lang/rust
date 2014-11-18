@@ -90,6 +90,7 @@ use middle::mem_categorization::McResult;
 use middle::mem_categorization;
 use middle::pat_util::pat_id_map;
 use middle::pat_util;
+use middle::region::CodeExtent;
 use middle::subst;
 use middle::subst::{Subst, Substs, VecPerParamSpace, ParamSpace};
 use middle::traits;
@@ -308,7 +309,7 @@ impl<'a, 'tcx> mem_categorization::Typer<'tcx> for FnCtxt<'a, 'tcx> {
     fn is_method_call(&self, id: ast::NodeId) -> bool {
         self.inh.method_map.borrow().contains_key(&typeck::MethodCall::expr(id))
     }
-    fn temporary_scope(&self, rvalue_id: ast::NodeId) -> Option<ast::NodeId> {
+    fn temporary_scope(&self, rvalue_id: ast::NodeId) -> Option<CodeExtent> {
         self.tcx().temporary_scope(rvalue_id)
     }
     fn upvar_borrow(&self, upvar_id: ty::UpvarId) -> ty::UpvarBorrow {
@@ -529,7 +530,7 @@ fn check_fn<'a, 'tcx>(ccx: &'a CrateCtxt<'a, 'tcx>,
 
     // First, we have to replace any bound regions in the fn type with free ones.
     // The free region references will be bound the node_id of the body block.
-    let fn_sig = liberate_late_bound_regions(tcx, body.id, fn_sig);
+    let fn_sig = liberate_late_bound_regions(tcx, CodeExtent::from_node_id(body.id), fn_sig);
 
     let arg_tys = fn_sig.inputs.as_slice();
     let ret_ty = fn_sig.output;
@@ -742,7 +743,8 @@ fn check_method_body<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     debug!("fty (raw): {}", fty.repr(ccx.tcx));
 
     let body_id = method.pe_body().id;
-    let fty = liberate_late_bound_regions(ccx.tcx, body_id, &ty::bind(fty)).value;
+    let fty = liberate_late_bound_regions(
+        ccx.tcx, CodeExtent::from_node_id(body_id), &ty::bind(fty)).value;
     debug!("fty (liberated): {}", fty.repr(ccx.tcx));
 
     check_bare_fn(ccx,
@@ -937,6 +939,8 @@ fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
     debug!("compare_impl_method(impl_trait_ref={})",
            impl_trait_ref.repr(tcx));
 
+    let impl_m_body_scope = CodeExtent::from_node_id(impl_m_body_id);
+
     // The impl's trait ref may bind late-bound regions from the impl.
     // Liberate them and assign them the scope of the method body.
     //
@@ -954,7 +958,7 @@ fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
     //     Foo<&'A T>
     //
     // where `'A` is the `ReFree` version of `'a`.
-    let impl_trait_ref = liberate_late_bound_regions(tcx, impl_m_body_id, impl_trait_ref);
+    let impl_trait_ref = liberate_late_bound_regions(tcx, impl_m_body_scope, impl_trait_ref);
 
     debug!("impl_trait_ref (liberated) = {}",
            impl_trait_ref.repr(tcx));
@@ -1097,7 +1101,7 @@ fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
     if !check_region_bounds_on_impl_method(tcx,
                                            impl_m_span,
                                            impl_m,
-                                           impl_m_body_id,
+                                           impl_m_body_scope,
                                            &trait_m.generics,
                                            &impl_m.generics,
                                            &trait_to_skol_substs,
@@ -1139,7 +1143,7 @@ fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
         .map(|impl_param_def|
              liberate_late_bound_regions(
                  tcx,
-                 impl_m_body_id,
+                 impl_m_body_scope,
                  &ty::bind(ty::bind(impl_param_def.bounds.clone()))).value.value);
     for (i, (trait_param_bounds, impl_param_bounds)) in
         trait_bounds.zip(impl_bounds).enumerate()
@@ -1205,7 +1209,8 @@ fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
     // that we must liberate the late-bound regions from the impl.
     let impl_fty = ty::mk_bare_fn(tcx, impl_m.fty.clone());
     let impl_fty = impl_fty.subst(tcx, &impl_to_skol_substs);
-    let impl_fty = liberate_late_bound_regions(tcx, impl_m_body_id, &ty::bind(impl_fty)).value;
+    let impl_fty = liberate_late_bound_regions(
+        tcx, impl_m_body_scope, &ty::bind(impl_fty)).value;
     let trait_fty = ty::mk_bare_fn(tcx, trait_m.fty.clone());
     let trait_fty = trait_fty.subst(tcx, &trait_to_skol_substs);
 
@@ -1240,7 +1245,7 @@ fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
     fn check_region_bounds_on_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
                                                 span: Span,
                                                 impl_m: &ty::Method<'tcx>,
-                                                impl_m_body_id: ast::NodeId,
+                                                impl_m_body_scope: CodeExtent,
                                                 trait_generics: &ty::Generics<'tcx>,
                                                 impl_generics: &ty::Generics<'tcx>,
                                                 trait_to_skol_substs: &Substs<'tcx>,
@@ -1331,9 +1336,7 @@ fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
             // impl, and the method.
             let impl_bounds =
                 ty::liberate_late_bound_regions(
-                    tcx,
-                    impl_m_body_id,
-                    &ty::bind(ty::bind(impl_bounds))).value.value;
+                    tcx, impl_m_body_scope, &ty::bind(ty::bind(impl_bounds))).value.value;
 
             debug!("check_region_bounds_on_impl_method: \
                    trait_param={} \
@@ -1881,7 +1884,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let mut bounds_checker = wf::BoundsChecker::new(self,
                                                         ast_t.span,
-                                                        self.body_id,
+                                                        CodeExtent::from_node_id(self.body_id),
                                                         None);
         bounds_checker.check_ty(t);
 
@@ -2055,7 +2058,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                            expr: &ast::Expr)
     {
         for &ty in substs.types.iter() {
-            let default_bound = ty::ReScope(expr.id);
+            let default_bound = ty::ReScope(CodeExtent::from_node_id(expr.id));
             let origin = infer::RelateDefaultParamBound(expr.span, ty);
             self.register_region_obligation(origin, ty, default_bound);
         }

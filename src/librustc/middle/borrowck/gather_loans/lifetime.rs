@@ -16,6 +16,7 @@
 use middle::borrowck::*;
 use middle::expr_use_visitor as euv;
 use middle::mem_categorization as mc;
+use middle::region;
 use middle::ty;
 use util::ppaux::Repr;
 use syntax::ast;
@@ -24,17 +25,20 @@ use syntax::codemap::Span;
 type R = Result<(),()>;
 
 pub fn guarantee_lifetime<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
-                                    item_scope_id: ast::NodeId,
+                                    item_scope: region::CodeExtent,
                                     span: Span,
                                     cause: euv::LoanCause,
                                     cmt: mc::cmt<'tcx>,
                                     loan_region: ty::Region,
                                     _: ty::BorrowKind)
                                     -> Result<(),()> {
+    //! Reports error if `loan_region` is larger than S
+    //! where S is `item_scope` if `cmt` is an upvar,
+    //! and is scope of `cmt` otherwise.
     debug!("guarantee_lifetime(cmt={}, loan_region={})",
            cmt.repr(bccx.tcx), loan_region.repr(bccx.tcx));
     let ctxt = GuaranteeLifetimeContext {bccx: bccx,
-                                         item_scope_id: item_scope_id,
+                                         item_scope: item_scope,
                                          span: span,
                                          cause: cause,
                                          loan_region: loan_region,
@@ -48,8 +52,8 @@ pub fn guarantee_lifetime<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
 struct GuaranteeLifetimeContext<'a, 'tcx: 'a> {
     bccx: &'a BorrowckCtxt<'a, 'tcx>,
 
-    // the node id of the function body for the enclosing item
-    item_scope_id: ast::NodeId,
+    // the scope of the function body for the enclosing item
+    item_scope: region::CodeExtent,
 
     span: Span,
     cause: euv::LoanCause,
@@ -60,7 +64,9 @@ struct GuaranteeLifetimeContext<'a, 'tcx: 'a> {
 impl<'a, 'tcx> GuaranteeLifetimeContext<'a, 'tcx> {
 
     fn check(&self, cmt: &mc::cmt<'tcx>, discr_scope: Option<ast::NodeId>) -> R {
-        //! Main routine. Walks down `cmt` until we find the "guarantor".
+        //! Main routine. Walks down `cmt` until we find the
+        //! "guarantor".  Reports an error if `self.loan_region` is
+        //! larger than scope of `cmt`.
         debug!("guarantee_lifetime.check(cmt={}, loan_region={})",
                cmt.repr(self.bccx.tcx),
                self.loan_region.repr(self.bccx.tcx));
@@ -88,7 +94,7 @@ impl<'a, 'tcx> GuaranteeLifetimeContext<'a, 'tcx> {
     }
 
     fn check_scope(&self, max_scope: ty::Region) -> R {
-        //! Reports an error if `loan_region` is larger than `valid_scope`
+        //! Reports an error if `loan_region` is larger than `max_scope`
 
         if !self.bccx.is_subregion_of(self.loan_region, max_scope) {
             Err(self.report_error(err_out_of_scope(max_scope, self.loan_region)))
@@ -109,7 +115,7 @@ impl<'a, 'tcx> GuaranteeLifetimeContext<'a, 'tcx> {
                 temp_scope
             }
             mc::cat_upvar(..) => {
-                ty::ReScope(self.item_scope_id)
+                ty::ReScope(self.item_scope)
             }
             mc::cat_static_item => {
                 ty::ReStatic

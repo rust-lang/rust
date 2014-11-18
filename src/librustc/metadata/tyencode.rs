@@ -15,6 +15,7 @@
 
 use std::cell::RefCell;
 
+use middle::region;
 use middle::subst;
 use middle::subst::VecPerParamSpace;
 use middle::ty::ParamTy;
@@ -143,12 +144,16 @@ pub fn enc_region(w: &mut SeekableMemWriter, cx: &ctxt, r: ty::Region) {
                      token::get_name(name));
         }
         ty::ReFree(ref fr) => {
-            mywrite!(w, "f[{}|", fr.scope_id);
+            mywrite!(w, "f[");
+            enc_scope(w, cx, fr.scope);
+            mywrite!(w, "|");
             enc_bound_region(w, cx, fr.bound_region);
             mywrite!(w, "]");
         }
-        ty::ReScope(nid) => {
-            mywrite!(w, "s{}|", nid);
+        ty::ReScope(scope) => {
+            mywrite!(w, "s");
+            enc_scope(w, cx, scope);
+            mywrite!(w, "|");
         }
         ty::ReStatic => {
             mywrite!(w, "t");
@@ -160,6 +165,12 @@ pub fn enc_region(w: &mut SeekableMemWriter, cx: &ctxt, r: ty::Region) {
             // these should not crop up after typeck
             cx.diag.handler().bug("cannot encode region variables");
         }
+    }
+}
+
+fn enc_scope(w: &mut SeekableMemWriter, _cx: &ctxt, scope: region::CodeExtent) {
+    match scope {
+        region::CodeExtent::Misc(node_id) => mywrite!(w, "M{}", node_id)
     }
 }
 

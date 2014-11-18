@@ -113,9 +113,9 @@ pub fn ast_region_to_region(tcx: &ty::ctxt, lifetime: &ast::Lifetime)
             ty::ReEarlyBound(id, space, index, lifetime.name)
         }
 
-        Some(&rl::DefFreeRegion(scope_id, id)) => {
+        Some(&rl::DefFreeRegion(scope, id)) => {
             ty::ReFree(ty::FreeRegion {
-                    scope_id: scope_id,
+                    scope: scope,
                     bound_region: ty::BrNamed(ast_util::local_def(id),
                                               lifetime.name)
                 })
