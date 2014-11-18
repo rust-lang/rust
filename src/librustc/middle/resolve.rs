@@ -36,7 +36,7 @@ use self::ModuleKind::*;
 use self::TraitReferenceType::*;
 use self::FallbackChecks::*;
 
-use driver::session::Session;
+use session::Session;
 use lint;
 use metadata::csearch;
 use metadata::decoder::{DefLike, DlDef, DlField, DlImpl};

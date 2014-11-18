@@ -15,11 +15,11 @@
 // makes all other generics or inline functions that it references
 // reachable as well.
 
-use driver::config;
 use middle::def;
 use middle::ty;
 use middle::typeck;
 use middle::privacy;
+use session::config;
 use util::nodemap::NodeSet;
 
 use std::collections::HashSet;

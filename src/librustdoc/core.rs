@@ -9,10 +9,11 @@
 // except according to those terms.
 pub use self::MaybeTyped::*;
 
-use rustc::driver::{config, driver, session};
+use rustc_trans::driver::driver;
+use rustc::session::{mod, config};
 use rustc::middle::{privacy, ty};
 use rustc::lint;
-use rustc::back::link;
+use rustc_trans::back::link;
 
 use syntax::{ast, ast_map, codemap, diagnostic};
 
@@ -93,7 +94,7 @@ pub fn run_core(libs: Vec<Path>, cfgs: Vec<String>, externs: Externs,
         crate_types: vec!(config::CrateTypeRlib),
         lint_opts: vec!((warning_lint, lint::Allow)),
         externs: externs,
-        target_triple: triple.unwrap_or(driver::host_triple().to_string()),
+        target_triple: triple.unwrap_or(config::host_triple().to_string()),
         cfg: config::parse_cfgspecs(cfgs),
         ..config::basic_options().clone()
     };

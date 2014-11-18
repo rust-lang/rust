@@ -21,7 +21,7 @@ Most of the documentation on regions can be found in
 */
 
 
-use driver::session::Session;
+use session::Session;
 use middle::ty::{FreeRegion};
 use middle::ty;
 use util::nodemap::{FnvHashMap, NodeMap, NodeSet};
