@@ -623,6 +623,7 @@ impl LintPass for UnusedAttributes {
             "link",
             "link_name",
             "link_section",
+            "linkage",
             "no_builtins",
             "no_mangle",
             "no_split_stack",

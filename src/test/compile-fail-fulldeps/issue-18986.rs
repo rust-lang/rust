@@ -8,18 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::collections::HashMap;
+// aux-build:use_from_trait_xc.rs
 
-pub struct Registry {
-    descriptions: HashMap<&'static str, &'static str>
-}
+extern crate use_from_trait_xc;
+pub use use_from_trait_xc::Trait;
 
-impl Registry {
-    pub fn new(descriptions: &[(&'static str, &'static str)]) -> Registry {
-        Registry { descriptions: descriptions.iter().map(|&tuple| tuple).collect() }
-    }
-
-    pub fn find_description(&self, code: &str) -> Option<&'static str> {
-        self.descriptions.get(code).map(|desc| *desc)
+fn main() {
+    match () {
+        Trait { x: 42u } => () //~ ERROR use of trait `Trait` in a struct pattern
     }
 }

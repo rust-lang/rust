@@ -141,6 +141,7 @@ extern crate rustrt;
 
 pub use core::any;
 pub use core::bool;
+pub use core::borrow;
 pub use core::cell;
 pub use core::clone;
 #[cfg(not(test))] pub use core::cmp;

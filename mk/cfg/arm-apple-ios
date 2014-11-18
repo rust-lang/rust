@@ -13,7 +13,7 @@ CFG_LIB_NAME_arm-apple-ios = lib$(1).a
 CFG_LIB_GLOB_arm-apple-ios = lib$(1)-*.a
 CFG_STATIC_LIB_NAME_arm-apple-ios=lib$(1).a
 CFG_LIB_DSYM_GLOB_arm-apple-ios = lib$(1)-*.a.dSYM
-CFG_CFLAGS_arm-apple-ios := -arch armv7 -mfpu=vfp3 $(CFG_IOS_FLAGS)
+CFG_JEMALLOC_CFLAGS_arm-apple-ios := -arch armv7 -mfpu=vfp3 $(CFG_IOS_FLAGS)
 CFG_GCCISH_CFLAGS_arm-apple-ios := -Wall -Werror -g -fPIC $(CFG_IOS_FLAGS) -mfpu=vfp3 -arch armv7
 CFG_GCCISH_CXXFLAGS_arm-apple-ios := -fno-rtti $(CFG_IOS_FLAGS) -I$(CFG_IOS_SDK)/usr/include/c++/4.2.1
 CFG_GCCISH_LINK_FLAGS_arm-apple-ios := -lpthread -syslibroot $(CFG_IOS_SDK) -Wl,-no_compact_unwind

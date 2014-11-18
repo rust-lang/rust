@@ -304,8 +304,8 @@ r##"foo #"# bar"##;                // foo #"# bar
 #### Byte and byte string literals
 
 ```{.ebnf .gram}
-byte_lit : 'b' '\x27' byte_body '\x27' ;
-byte_string_lit : 'b' '"' string_body * '"' | 'b' 'r' raw_byte_string ;
+byte_lit : "b\x27" byte_body '\x27' ;
+byte_string_lit : "b\x22" string_body * '\x22' | "br" raw_byte_string ;
 
 byte_body : ascii_non_single_quote
           | '\x5c' [ '\x27' | common_escape ] ;
@@ -381,10 +381,10 @@ num_suffix : int_suffix | float_suffix ;
 
 int_suffix : 'u' int_suffix_size ?
            | 'i' int_suffix_size ? ;
-int_suffix_size : [ '8' | '1' '6' | '3' '2' | '6' '4' ] ;
+int_suffix_size : [ '8' | "16" | "32" | "64" ] ;
 
 float_suffix : [ exponent | '.' dec_lit exponent ? ] ? float_suffix_ty ? ;
-float_suffix_ty : 'f' [ '3' '2' | '6' '4' ] ;
+float_suffix_ty : 'f' [ "32" | "64" ] ;
 exponent : ['E' | 'e'] ['-' | '+' ] ? dec_lit ;
 dec_lit : [ dec_digit | '_' ] + ;
 ```
@@ -1862,7 +1862,7 @@ the namespace hierarchy as it normally would.
 ## Attributes
 
 ```{.ebnf .gram}
-attribute : '#' '!' ? '[' meta_item ']' ;
+attribute : "#!" ? '[' meta_item ']' ;
 meta_item : ident [ '=' literal
                   | '(' meta_seq ')' ] ? ;
 meta_seq : meta_item [ ',' meta_seq ] ? ;

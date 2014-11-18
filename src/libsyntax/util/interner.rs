@@ -14,9 +14,9 @@
 
 use ast::Name;
 
+use std::borrow::BorrowFrom;
 use std::collections::HashMap;
 use std::cell::RefCell;
-use std::cmp::Equiv;
 use std::fmt;
 use std::hash::Hash;
 use std::rc::Rc;
@@ -75,9 +75,10 @@ impl<T: Eq + Hash + Clone + 'static> Interner<T> {
         (*vect).len()
     }
 
-    pub fn find_equiv<Sized? Q: Hash + Equiv<T>>(&self, val: &Q) -> Option<Name> {
+    pub fn find<Sized? Q>(&self, val: &Q) -> Option<Name>
+    where Q: BorrowFrom<T> + Eq + Hash {
         let map = self.map.borrow();
-        match (*map).find_equiv(val) {
+        match (*map).get(val) {
             Some(v) => Some(*v),
             None => None,
         }
@@ -117,6 +118,12 @@ impl fmt::Show for RcStr {
     }
 }
 
+impl BorrowFrom<RcStr> for str {
+    fn borrow_from(owned: &RcStr) -> &str {
+        owned.string.as_slice()
+    }
+}
+
 impl RcStr {
     pub fn new(string: &str) -> RcStr {
         RcStr {
@@ -149,7 +156,7 @@ impl StrInterner {
 
     pub fn intern(&self, val: &str) -> Name {
         let mut map = self.map.borrow_mut();
-        match map.find_equiv(val) {
+        match map.get(val) {
             Some(&idx) => return idx,
             None => (),
         }
@@ -195,8 +202,9 @@ impl StrInterner {
         self.vect.borrow().len()
     }
 
-    pub fn find_equiv<Sized? Q:Hash + Equiv<RcStr>>(&self, val: &Q) -> Option<Name> {
-        match (*self.map.borrow()).find_equiv(val) {
+    pub fn find<Sized? Q>(&self, val: &Q) -> Option<Name>
+    where Q: BorrowFrom<RcStr> + Eq + Hash {
+        match (*self.map.borrow()).get(val) {
             Some(v) => Some(*v),
             None => None,
         }

@@ -10,10 +10,10 @@
 
 
 use back::{link};
-use llvm::{ValueRef, CallConv, Linkage, get_param};
+use llvm::{ValueRef, CallConv, get_param};
 use llvm;
 use middle::weak_lang_items;
-use middle::trans::base::push_ctxt;
+use middle::trans::base::{llvm_linkage_by_name, push_ctxt};
 use middle::trans::base;
 use middle::trans::build::*;
 use middle::trans::cabi;
@@ -98,31 +98,6 @@ pub fn llvm_calling_convention(ccx: &CrateContext,
         // These API constants ought to be more specific...
         Cdecl => llvm::CCallConv,
         Aapcs => llvm::CCallConv,
-    }
-}
-
-pub fn llvm_linkage_by_name(name: &str) -> Option<Linkage> {
-    // Use the names from src/llvm/docs/LangRef.rst here. Most types are only
-    // applicable to variable declarations and may not really make sense for
-    // Rust code in the first place but whitelist them anyway and trust that
-    // the user knows what s/he's doing. Who knows, unanticipated use cases
-    // may pop up in the future.
-    //
-    // ghost, dllimport, dllexport and linkonce_odr_autohide are not supported
-    // and don't have to be, LLVM treats them as no-ops.
-    match name {
-        "appending" => Some(llvm::AppendingLinkage),
-        "available_externally" => Some(llvm::AvailableExternallyLinkage),
-        "common" => Some(llvm::CommonLinkage),
-        "extern_weak" => Some(llvm::ExternalWeakLinkage),
-        "external" => Some(llvm::ExternalLinkage),
-        "internal" => Some(llvm::InternalLinkage),
-        "linkonce" => Some(llvm::LinkOnceAnyLinkage),
-        "linkonce_odr" => Some(llvm::LinkOnceODRLinkage),
-        "private" => Some(llvm::PrivateLinkage),
-        "weak" => Some(llvm::WeakAnyLinkage),
-        "weak_odr" => Some(llvm::WeakODRLinkage),
-        _ => None,
     }
 }
 

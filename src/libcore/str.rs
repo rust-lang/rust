@@ -1811,21 +1811,21 @@ pub trait StrPrelude for Sized? {
     /// it. This does not allocate a new string; instead, it returns a
     /// slice that point one character beyond the character that was
     /// shifted. If the string does not contain any characters,
-    /// a tuple of None and an empty string is returned instead.
+    /// None is returned instead.
     ///
     /// # Example
     ///
     /// ```rust
     /// let s = "Löwe 老虎 Léopard";
-    /// let (c, s1) = s.slice_shift_char();
-    /// assert_eq!(c, Some('L'));
+    /// let (c, s1) = s.slice_shift_char().unwrap();
+    /// assert_eq!(c, 'L');
     /// assert_eq!(s1, "öwe 老虎 Léopard");
     ///
-    /// let (c, s2) = s1.slice_shift_char();
-    /// assert_eq!(c, Some('ö'));
+    /// let (c, s2) = s1.slice_shift_char().unwrap();
+    /// assert_eq!(c, 'ö');
     /// assert_eq!(s2, "we 老虎 Léopard");
     /// ```
-    fn slice_shift_char<'a>(&'a self) -> (Option<char>, &'a str);
+    fn slice_shift_char<'a>(&'a self) -> Option<(char, &'a str)>;
 
     /// Returns the byte offset of an inner slice relative to an enclosing outer slice.
     ///
@@ -2197,13 +2197,13 @@ impl StrPrelude for str {
     }
 
     #[inline]
-    fn slice_shift_char(&self) -> (Option<char>, &str) {
+    fn slice_shift_char(&self) -> Option<(char, &str)> {
         if self.is_empty() {
-            return (None, self);
+            None
         } else {
             let CharRange {ch, next} = self.char_range_at(0u);
             let next_s = unsafe { raw::slice_bytes(self, next, self.len()) };
-            return (Some(ch), next_s);
+            Some((ch, next_s))
         }
     }
 
