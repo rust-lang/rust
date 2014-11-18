@@ -21,6 +21,7 @@ use llvm::{True, False, Bool};
 use middle::def;
 use middle::lang_items::LangItem;
 use middle::mem_categorization as mc;
+use middle::region;
 use middle::subst;
 use middle::subst::{Subst, Substs};
 use trans::base;
@@ -490,7 +491,7 @@ impl<'blk, 'tcx> mc::Typer<'tcx> for BlockS<'blk, 'tcx> {
         self.tcx().method_map.borrow().contains_key(&typeck::MethodCall::expr(id))
     }
 
-    fn temporary_scope(&self, rvalue_id: ast::NodeId) -> Option<ast::NodeId> {
+    fn temporary_scope(&self, rvalue_id: ast::NodeId) -> Option<region::CodeExtent> {
         self.tcx().region_maps.temporary_scope(rvalue_id)
     }
 

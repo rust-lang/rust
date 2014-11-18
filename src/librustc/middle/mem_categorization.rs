@@ -74,6 +74,7 @@ pub use self::deref_kind::*;
 pub use self::categorization::*;
 
 use middle::def;
+use middle::region;
 use middle::ty::{mod, Ty};
 use middle::typeck;
 use util::nodemap::{DefIdMap, NodeMap};
@@ -289,7 +290,7 @@ pub trait Typer<'tcx> {
     fn node_method_ty(&self, method_call: typeck::MethodCall) -> Option<Ty<'tcx>>;
     fn adjustments<'a>(&'a self) -> &'a RefCell<NodeMap<ty::AutoAdjustment<'tcx>>>;
     fn is_method_call(&self, id: ast::NodeId) -> bool;
-    fn temporary_scope(&self, rvalue_id: ast::NodeId) -> Option<ast::NodeId>;
+    fn temporary_scope(&self, rvalue_id: ast::NodeId) -> Option<region::CodeExtent>;
     fn upvar_borrow(&self, upvar_id: ty::UpvarId) -> ty::UpvarBorrow;
     fn capture_mode(&self, closure_expr_id: ast::NodeId)
                     -> ast::CaptureClause;
@@ -702,7 +703,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
 
             // Region of environment pointer
             let env_region = ty::ReFree(ty::FreeRegion {
-                scope_id: fn_body_id,
+                scope: region::CodeExtent::from_node_id(fn_body_id),
                 bound_region: ty::BrEnv
             });
 

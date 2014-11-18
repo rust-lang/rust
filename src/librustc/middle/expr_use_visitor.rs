@@ -23,6 +23,7 @@ use self::OverloadedCallType::*;
 use middle::mem_categorization as mc;
 use middle::def;
 use middle::mem_categorization::Typer;
+use middle::region;
 use middle::pat_util;
 use middle::ty::{mod, Ty};
 use middle::typeck::{MethodCall, MethodObject, MethodTraitObject};
@@ -245,10 +246,11 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
         for arg in decl.inputs.iter() {
             let arg_ty = return_if_err!(self.typer.node_ty(arg.pat.id));
 
+            let fn_body_scope = region::CodeExtent::from_node_id(body.id);
             let arg_cmt = self.mc.cat_rvalue(
                 arg.id,
                 arg.pat.span,
-                ty::ReScope(body.id), // Args live only as long as the fn body.
+                ty::ReScope(fn_body_scope), // Args live only as long as the fn body.
                 arg_ty);
 
             self.walk_pat(arg_cmt, &*arg.pat);
@@ -443,9 +445,10 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                 // Fetch the type of the value that the iteration yields to
                 // produce the pattern's categorized mutable type.
                 let pattern_type = return_if_err!(self.typer.node_ty(pat.id));
+                let blk_scope = region::CodeExtent::from_node_id(blk.id);
                 let pat_cmt = self.mc.cat_rvalue(pat.id,
                                                  pat.span,
-                                                 ty::ReScope(blk.id),
+                                                 ty::ReScope(blk_scope),
                                                  pattern_type);
                 self.walk_pat(pat_cmt, &**pat);
 
@@ -519,6 +522,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
         let callee_ty = ty::expr_ty_adjusted(self.tcx(), callee);
         debug!("walk_callee: callee={} callee_ty={}",
                callee.repr(self.tcx()), callee_ty.repr(self.tcx()));
+        let call_scope = region::CodeExtent::from_node_id(call.id);
         match callee_ty.sty {
             ty::ty_bare_fn(..) => {
                 self.consume_expr(callee);
@@ -527,7 +531,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                 match f.onceness {
                     ast::Many => {
                         self.borrow_expr(callee,
-                                         ty::ReScope(call.id),
+                                         ty::ReScope(call_scope),
                                          ty::UniqueImmBorrow,
                                          ClosureInvocation);
                     }
@@ -557,13 +561,13 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                 match overloaded_call_type {
                     FnMutOverloadedCall => {
                         self.borrow_expr(callee,
-                                         ty::ReScope(call.id),
+                                         ty::ReScope(call_scope),
                                          ty::MutBorrow,
                                          ClosureInvocation);
                     }
                     FnOverloadedCall => {
                         self.borrow_expr(callee,
-                                         ty::ReScope(call.id),
+                                         ty::ReScope(call_scope),
                                          ty::ImmBorrow,
                                          ClosureInvocation);
                     }
@@ -814,7 +818,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
         // methods are implicitly autoref'd which sadly does not use
         // adjustments, so we must hardcode the borrow here.
 
-        let r = ty::ReScope(expr.id);
+        let r = ty::ReScope(region::CodeExtent::from_node_id(expr.id));
         let bk = ty::ImmBorrow;
 
         for &arg in rhs.iter() {

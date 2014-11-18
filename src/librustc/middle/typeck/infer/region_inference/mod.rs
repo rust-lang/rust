@@ -18,6 +18,7 @@ pub use self::RegionResolutionError::*;
 pub use self::VarValue::*;
 use self::Classification::*;
 
+use middle::region;
 use middle::ty;
 use middle::ty::{BoundRegion, FreeRegion, Region, RegionVid};
 use middle::ty::{ReEmpty, ReStatic, ReInfer, ReFree, ReEarlyBound};
@@ -747,11 +748,11 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
             // A "free" region can be interpreted as "some region
             // at least as big as the block fr.scope_id".  So, we can
             // reasonably compare free regions and scopes:
-            match self.tcx.region_maps.nearest_common_ancestor(fr.scope_id, s_id) {
+            match self.tcx.region_maps.nearest_common_ancestor(fr.scope, s_id) {
               // if the free region's scope `fr.scope_id` is bigger than
               // the scope region `s_id`, then the LUB is the free
               // region itself:
-              Some(r_id) if r_id == fr.scope_id => f,
+              Some(r_id) if r_id == fr.scope => f,
 
               // otherwise, we don't know what the free region is,
               // so we must conservatively say the LUB is static:
@@ -856,8 +857,8 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                 // than the scope `s_id`, then we can say that the GLB
                 // is the scope `s_id`.  Otherwise, as we do not know
                 // big the free region is precisely, the GLB is undefined.
-                match self.tcx.region_maps.nearest_common_ancestor(fr.scope_id, s_id) {
-                    Some(r_id) if r_id == fr.scope_id => Ok(s),
+                match self.tcx.region_maps.nearest_common_ancestor(fr.scope, s_id) {
+                    Some(r_id) if r_id == fr.scope => Ok(s),
                     _ => Err(ty::terr_regions_no_overlap(b, a))
                 }
             }
@@ -909,7 +910,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                 Ok(ty::ReFree(*b))
             } else {
                 this.intersect_scopes(ty::ReFree(*a), ty::ReFree(*b),
-                                      a.scope_id, b.scope_id)
+                                      a.scope, b.scope)
             }
         }
     }
@@ -917,8 +918,8 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
     fn intersect_scopes(&self,
                         region_a: ty::Region,
                         region_b: ty::Region,
-                        scope_a: ast::NodeId,
-                        scope_b: ast::NodeId) -> cres<'tcx, Region>
+                        scope_a: region::CodeExtent,
+                        scope_b: region::CodeExtent) -> cres<'tcx, Region>
     {
         // We want to generate the intersection of two
         // scopes or two free regions.  So, if one of
