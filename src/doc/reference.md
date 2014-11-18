@@ -1147,7 +1147,7 @@ with only boxes.
 
 This is a list of behavior which is forbidden in all Rust code. Type checking
 provides the guarantee that these issues are never caused by safe code. An
-`unsafe` block or function is responsible for never invoking this behaviour or
+`unsafe` block or function is responsible for invoking this behaviour or
 exposing an API making it possible for it to occur in safe code.
 
 * Data races
