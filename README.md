@@ -48,6 +48,7 @@ the direction the language is evolving in.
 * [0356-no-module-prefixes.md](text/0356-no-module-prefixes.md)
 * [0378-expr-macros.md](text/0378-expr-macros.md)
 * [0385-module-system-cleanup.md](text/0385-module-system-cleanup.md)
+* [0430-finalizing-naming-conventions](text/0430-finalizing-naming-conventions.md)
 * [0463-future-proof-literal-suffixes.md](text/0463-future-proof-literal-suffixes.md)
 
 ## Table of Contents
