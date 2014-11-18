@@ -3441,7 +3441,7 @@ use to avoid conflicts is simply to name variants with upper-case letters, and
 local variables with lower-case letters.
 
 Multiple match patterns may be joined with the `|` operator. A range of values
-may be specified with `..`. For example:
+may be specified with `...`. For example:
 
 ```
 # let x = 2i;
