@@ -315,7 +315,9 @@ export CFG_BUILD
 export CFG_LLVM_ROOT
 export CFG_PREFIX
 export CFG_LIBDIR
+export CFG_BINDIR
 export CFG_LIBDIR_RELATIVE
+export CFG_BINDIR_RELATIVE
 export CFG_DISABLE_INJECT_STD_VERSION
 
 ######################################################################

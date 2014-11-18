@@ -285,6 +285,8 @@ then
     CFG_LIBDIR_RELATIVE=bin
 fi
 
+CFG_BINDIR_RELATIVE=bin
+
 if [ "$CFG_OSTYPE" = "pc-mingw32" ] || [ "$CFG_OSTYPE" = "w64-mingw32" ]
 then
     CFG_LD_PATH_VAR=PATH
@@ -304,6 +306,7 @@ valopt prefix "/usr/local" "set installation prefix"
 # NB This isn't quite the same definition as in `configure`.
 # just using 'lib' instead of CFG_LIBDIR_RELATIVE
 valopt libdir "${CFG_PREFIX}/${CFG_LIBDIR_RELATIVE}" "install libraries"
+valopt bindir "${CFG_PREFIX}/${CFG_BINDIR_RELATIVE}" "install binaries"
 valopt mandir "${CFG_PREFIX}/share/man" "install man pages in PATH"
 
 if [ $HELP -eq 1 ]
@@ -424,6 +427,7 @@ need_ok "failed to create installed manifest"
 
 # Now install, iterate through the new manifest and copy files
 while read p; do
+    is_bin=false
 
     # Decide the destination of the file
     FILE_INSTALL_PATH="${CFG_PREFIX}/$p"
@@ -432,6 +436,13 @@ while read p; do
     then
         pp=`echo $p | sed 's/^lib\///'`
         FILE_INSTALL_PATH="${CFG_LIBDIR}/$pp"
+    fi
+
+    if echo "$p" | grep "^bin/" > /dev/null
+    then
+        is_bin=true
+        pp=`echo $p | sed 's/^bin\///'`
+        FILE_INSTALL_PATH="${CFG_BINDIR}/$pp"
     fi
 
     if echo "$p" | grep "^share/man/" > /dev/null
@@ -451,7 +462,7 @@ while read p; do
 
     # Install the file
     msg "${FILE_INSTALL_PATH}"
-    if echo "$p" | grep "^bin/" > /dev/null
+    if $is_bin
     then
         install -m755 "${CFG_SRC_DIR}/$p" "${FILE_INSTALL_PATH}"
     else
