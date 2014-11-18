@@ -153,6 +153,7 @@ use result::{Result, Ok, Err};
 use slice;
 use slice::AsSlice;
 use clone::Clone;
+use ops::Deref;
 
 // Note that this is not a lang item per se, but it has a hidden dependency on
 // `Iterator`, which is one. The compiler assumes that the `next` method of
@@ -694,11 +695,12 @@ impl<T> Option<T> {
     }
 }
 
-impl<'a, T: Clone> Option<&'a T> {
-    /// Maps an Option<&T> to an Option<T> by cloning the contents of the Option<&T>.
+impl<'a, T: Clone, D: Deref<T>> Option<D> {
+    /// Maps an Option<D> to an Option<T> by dereffing and cloning the contents of the Option.
+    /// Useful for converting an Option<&T> to an Option<T>.
     #[unstable = "recently added as part of collections reform"]
     pub fn cloned(self) -> Option<T> {
-        self.map(|t| t.clone())
+        self.map(|t| t.deref().clone())
     }
 }
 
