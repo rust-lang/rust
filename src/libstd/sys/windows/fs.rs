@@ -263,7 +263,7 @@ pub fn readdir(p: &Path) -> IoResult<Vec<Path>> {
             let mut more_files = 1 as libc::BOOL;
             while more_files != 0 {
                 {
-                    let filename = str::truncate_utf16_at_nul(wfd.cFileName);
+                    let filename = str::truncate_utf16_at_nul(&wfd.cFileName);
                     match String::from_utf16(filename) {
                         Some(filename) => paths.push(Path::new(filename)),
                         None => {

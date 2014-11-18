@@ -395,7 +395,7 @@ impl UnixStream {
         loop {
             // Process a timeout if one is pending
             let wait_succeeded = await(self.handle(), self.read_deadline,
-                                       [overlapped.hEvent]);
+                                       &[overlapped.hEvent]);
 
             let ret = unsafe {
                 libc::GetOverlappedResult(self.handle(),
@@ -459,7 +459,7 @@ impl UnixStream {
                 }
                 // Process a timeout if one is pending
                 let wait_succeeded = await(self.handle(), self.write_deadline,
-                                           [overlapped.hEvent]);
+                                           &[overlapped.hEvent]);
                 let ret = unsafe {
                     libc::GetOverlappedResult(self.handle(),
                                               &mut overlapped,
@@ -660,8 +660,8 @@ impl UnixAcceptor {
             if err == libc::ERROR_IO_PENDING as libc::DWORD {
                 // Process a timeout if one is pending
                 let wait_succeeded = await(handle, self.deadline,
-                                           [self.inner.abort.handle(),
-                                            overlapped.hEvent]);
+                                           &[self.inner.abort.handle(),
+                                             overlapped.hEvent]);
 
                 // This will block until the overlapped I/O is completed. The
                 // timeout was previously handled, so this will either block in

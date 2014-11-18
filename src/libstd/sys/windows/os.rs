@@ -76,7 +76,7 @@ pub fn error_string(errnum: i32) -> String {
             return format!("OS Error {} (FormatMessageW() returned error {})", errnum, fm_err);
         }
 
-        let msg = String::from_utf16(::str::truncate_utf16_at_nul(buf));
+        let msg = String::from_utf16(::str::truncate_utf16_at_nul(&buf));
         match msg {
             Some(msg) => format!("OS Error {}: {}", errnum, msg),
             None => format!("OS Error {} (FormatMessageW() returned invalid UTF-16)", errnum),
