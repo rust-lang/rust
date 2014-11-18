@@ -25,7 +25,7 @@ macro_rules! indirect_line( () => ( line!() ) )
 
 pub fn main() {
     assert_eq!(line!(), 27);
-    //assert!((col!() == 11));
+    //assert!((column!() == 11));
     assert_eq!(indirect_line!(), 29);
     assert!((file!().ends_with("syntax-extension-source-utils.rs")));
     assert_eq!(stringify!((2*3) + 5).to_string(), "( 2 * 3 ) + 5".to_string());
