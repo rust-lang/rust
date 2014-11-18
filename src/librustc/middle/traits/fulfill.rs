@@ -55,6 +55,7 @@ impl FulfillmentContext {
                                obligation: Obligation)
     {
         debug!("register_obligation({})", obligation.repr(tcx));
+        assert!(!obligation.trait_ref.has_escaping_regions());
         self.trait_obligations.push(obligation);
     }
 

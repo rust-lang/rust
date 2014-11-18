@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #![allow(dead_code)]
-#![feature(unboxed_closures, unboxed_closure_sugar)]
+#![feature(unboxed_closures)]
 
 // compile-flags:-g
 

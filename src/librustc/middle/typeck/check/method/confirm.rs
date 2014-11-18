@@ -20,6 +20,7 @@ use middle::typeck::{MethodCall, MethodCallee, MethodObject, MethodOrigin,
                      MethodParam, MethodStatic, MethodTraitObject, MethodTypeParam};
 use middle::typeck::infer;
 use middle::typeck::infer::InferCtxt;
+use middle::ty_fold::HigherRankedFoldable;
 use syntax::ast;
 use syntax::codemap::Span;
 use std::rc::Rc;
@@ -31,6 +32,27 @@ struct ConfirmContext<'a, 'tcx:'a> {
     span: Span,
     self_expr: &'a ast::Expr,
 }
+
+struct InstantiatedMethodSig {
+    /// Function signature of the method being invoked. The 0th
+    /// argument is the receiver.
+    method_sig: ty::FnSig,
+
+    /// Substitutions for all types/early-bound-regions declared on
+    /// the method.
+    all_substs: subst::Substs,
+
+    /// Substitution to use when adding obligations from the method
+    /// bounds. Normally equal to `all_substs` except for object
+    /// receivers. See FIXME in instantiate_method_sig() for
+    /// explanation.
+    method_bounds_substs: subst::Substs,
+
+    /// Generic bounds on the method's parameters which must be added
+    /// as pending obligations.
+    method_bounds: ty::GenericBounds,
+}
+
 
 pub fn confirm(fcx: &FnCtxt,
                span: Span,
@@ -79,14 +101,16 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
         debug!("all_substs={}", all_substs.repr(self.tcx()));
 
         // Create the final signature for the method, replacing late-bound regions.
-        let method_sig = self.instantiate_method_sig(&pick, &all_substs);
+        let InstantiatedMethodSig {
+            method_sig, all_substs, method_bounds_substs, method_bounds
+        } = self.instantiate_method_sig(&pick, all_substs);
         let method_self_ty = method_sig.inputs[0];
 
         // Unify the (adjusted) self type with what the method expects.
         self.unify_receivers(self_ty, method_self_ty);
 
         // Add any trait/regions obligations specified on the method's type parameters.
-        self.add_obligations(&pick, &all_substs);
+        self.add_obligations(&pick, &method_bounds_substs, &method_bounds);
 
         // Create the final `MethodCallee`.
         let fty = ty::mk_bare_fn(self.tcx(), ty::BareFnTy {
@@ -176,6 +200,10 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
          * where all type and region parameters are instantiated with
          * fresh variables. This substitution does not include any
          * parameters declared on the method itself.
+         *
+         * Note that this substitution may include late-bound regions
+         * from the impl level. If so, these are instantiated later in
+         * the `instantiate_method_sig` routine.
          */
 
         match pick.kind {
@@ -354,20 +382,34 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
 
     fn instantiate_method_sig(&mut self,
                               pick: &probe::Pick,
-                              all_substs: &subst::Substs)
-                              -> ty::FnSig
+                              all_substs: subst::Substs)
+                              -> InstantiatedMethodSig
     {
-        let ref bare_fn_ty = pick.method_ty.fty;
-        let fn_sig = bare_fn_ty.sig.subst(self.tcx(), all_substs);
-        self.infcx().replace_late_bound_regions_with_fresh_var(fn_sig.binder_id,
-                                                               self.span,
-                                                               infer::FnCall,
-                                                               &fn_sig).0
-    }
+        // If this method comes from an impl (as opposed to a trait),
+        // it may have late-bound regions from the impl that appear in
+        // the substitutions, method signature, and
+        // bounds. Instantiate those at this point. (If it comes from
+        // a trait, this step has no effect, as there are no
+        // late-bound regions to instantiate.)
+        //
+        // The binder level here corresponds to the impl.
+        let (all_substs, (method_sig, method_generics)) =
+            self.replace_late_bound_regions_with_fresh_var(
+                &ty::bind((all_substs,
+                           (pick.method_ty.fty.sig.clone(),
+                            pick.method_ty.generics.clone())))).value;
 
-    fn add_obligations(&mut self,
-                       pick: &probe::Pick,
-                       all_substs: &subst::Substs) {
+        debug!("late-bound lifetimes from impl instantiated, \
+                all_substs={} method_sig={} method_generics={}",
+               all_substs.repr(self.tcx()),
+               method_sig.repr(self.tcx()),
+               method_generics.repr(self.tcx()));
+
+        // Instantiate the bounds on the method with the
+        // type/early-bound-regions substitutions performed.  The only
+        // late-bound-regions that can appear in bounds are from the
+        // impl, and those were already instantiated above.
+        //
         // FIXME(DST). Super hack. For a method on a trait object
         // `Trait`, the generic signature requires that
         // `Self:Trait`. Since, for an object, we bind `Self` to the
@@ -381,22 +423,52 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
         // obligations.  This causes us to generate the obligation
         // `err:Trait`, and the error type is considered to implement
         // all traits, so we're all good. Hack hack hack.
-        match pick.kind {
+        let method_bounds_substs = match pick.kind {
             probe::ObjectPick(..) => {
                 let mut temp_substs = all_substs.clone();
                 temp_substs.types.get_mut_slice(subst::SelfSpace)[0] = ty::mk_err();
-                self.fcx.add_obligations_for_parameters(
-                    traits::ObligationCause::misc(self.span),
-                    &temp_substs,
-                    &pick.method_ty.generics);
+                temp_substs
             }
             _ => {
-                self.fcx.add_obligations_for_parameters(
-                    traits::ObligationCause::misc(self.span),
-                    all_substs,
-                    &pick.method_ty.generics);
+                all_substs.clone()
             }
+        };
+        let method_bounds =
+            method_generics.to_bounds(self.tcx(), &method_bounds_substs);
+
+        debug!("method_bounds after subst = {}",
+               method_bounds.repr(self.tcx()));
+
+        // Substitute the type/early-bound-regions into the method
+        // signature. In addition, the method signature may bind
+        // late-bound regions, so instantiate those.
+        let method_sig = method_sig.subst(self.tcx(), &all_substs);
+        let method_sig = self.replace_late_bound_regions_with_fresh_var(&method_sig);
+
+        debug!("late-bound lifetimes from method instantiated, method_sig={}",
+               method_sig.repr(self.tcx()));
+
+        InstantiatedMethodSig {
+            method_sig: method_sig,
+            all_substs: all_substs,
+            method_bounds_substs: method_bounds_substs,
+            method_bounds: method_bounds,
         }
+    }
+
+    fn add_obligations(&mut self,
+                       pick: &probe::Pick,
+                       method_bounds_substs: &subst::Substs,
+                       method_bounds: &ty::GenericBounds) {
+        debug!("add_obligations: pick={} method_bounds_substs={} method_bounds={}",
+               pick.repr(self.tcx()),
+               method_bounds_substs.repr(self.tcx()),
+               method_bounds.repr(self.tcx()));
+
+        self.fcx.add_obligations_for_parameters(
+            traits::ObligationCause::misc(self.span),
+            method_bounds_substs,
+            method_bounds);
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -590,6 +662,13 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
             format!("cannot upcast `{}` to `{}`",
                     source_trait_ref.repr(self.tcx()),
                     target_trait_def_id.repr(self.tcx()))[]);
+    }
+
+    fn replace_late_bound_regions_with_fresh_var<T>(&self, value: &T) -> T
+        where T : HigherRankedFoldable
+    {
+        self.infcx().replace_late_bound_regions_with_fresh_var(
+            self.span, infer::FnCall, value).0
     }
 }
 

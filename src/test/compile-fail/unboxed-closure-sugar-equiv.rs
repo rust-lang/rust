@@ -13,15 +13,16 @@
 // angle brackets. This test covers only simple types and in
 // particular doesn't test bound regions.
 
+#![feature(unboxed_closures)]
 #![allow(dead_code)]
 
-struct Foo<T,U> {
-    t: T, u: U
+trait Foo<T,U> {
+    fn dummy(&self, t: T, u: U);
 }
 
-trait Eq<X> { }
-impl<X> Eq<X> for X { }
-fn eq<A,B:Eq<A>>() { }
+trait Eq<Sized? X> for Sized? { }
+impl<Sized? X> Eq<X> for X { }
+fn eq<Sized? A,Sized? B:Eq<A>>() { }
 
 fn test<'a,'b>() {
     // No errors expected:
@@ -30,6 +31,22 @@ fn test<'a,'b>() {
     eq::< Foo<(int,uint),()>,           Foo(int,uint)                 >();
     eq::< Foo<(int,uint),uint>,         Foo(int,uint) -> uint         >();
     eq::< Foo<(&'a int,&'b uint),uint>, Foo(&'a int,&'b uint) -> uint >();
+
+    // Test that anonymous regions in `()` form are equivalent
+    // to fresh bound regions, and that we can intermingle
+    // named and anonymous as we choose:
+    eq::< for<'a,'b> Foo<(&'a int,&'b uint),uint>,
+          for<'a,'b> Foo(&'a int,&'b uint) -> uint            >();
+    eq::< for<'a,'b> Foo<(&'a int,&'b uint),uint>,
+          for<'a> Foo(&'a int,&uint) -> uint                  >();
+    eq::< for<'a,'b> Foo<(&'a int,&'b uint),uint>,
+          for<'b> Foo(&int,&'b uint) -> uint                  >();
+    eq::< for<'a,'b> Foo<(&'a int,&'b uint),uint>,
+          Foo(&int,&uint) -> uint                             >();
+
+    // FIXME(#18992) Test lifetime elision in `()` form:
+    // eq::< for<'a,'b> Foo<(&'a int,), &'a int>,
+    //      Foo(&int) -> &int                                   >();
 
     // Errors expected:
     eq::< Foo<(),()>,                   Foo(char)                     >();

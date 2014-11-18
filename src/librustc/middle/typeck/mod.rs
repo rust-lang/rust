@@ -383,7 +383,6 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
                 fn_style: ast::NormalFn,
                 abi: abi::Rust,
                 sig: ty::FnSig {
-                    binder_id: main_id,
                     inputs: Vec::new(),
                     output: ty::FnConverging(ty::mk_nil(tcx)),
                     variadic: false
@@ -432,7 +431,6 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
                 fn_style: ast::NormalFn,
                 abi: abi::Rust,
                 sig: ty::FnSig {
-                    binder_id: start_id,
                     inputs: vec!(
                         ty::mk_int(),
                         ty::mk_imm_ptr(tcx, ty::mk_imm_ptr(tcx, ty::mk_u8()))

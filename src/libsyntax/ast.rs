@@ -1154,7 +1154,7 @@ pub enum Ty_ {
     /// Type parameters are stored in the Path itself
     TyPath(Path, Option<TyParamBounds>, NodeId), // for #7264; see above
     /// A type like `for<'a> Foo<&'a Bar>`
-    TyPolyTraitRef(P<PolyTraitRef>),
+    TyPolyTraitRef(TyParamBounds),
     /// A "qualified path", e.g. `<Vec<T> as SomeTrait>::SomeType`
     TyQPath(P<QPath>),
     /// No-op; kept solely so that we can pretty-print faithfully

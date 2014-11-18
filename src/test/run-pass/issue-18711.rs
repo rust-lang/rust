@@ -11,7 +11,7 @@
 // Test that we don't panic on a RefCell borrow conflict in certain
 // code paths involving unboxed closures.
 
-#![feature(unboxed_closures, overloaded_calls)]
+#![feature(unboxed_closures)]
 
 // aux-build:issue-18711.rs
 extern crate "issue-18711" as issue;

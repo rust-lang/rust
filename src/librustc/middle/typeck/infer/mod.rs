@@ -31,10 +31,9 @@ pub use self::skolemize::TypeSkolemizer;
 use middle::subst;
 use middle::subst::Substs;
 use middle::ty::{TyVid, IntVid, FloatVid, RegionVid};
+use middle::ty::replace_late_bound_regions;
 use middle::ty;
-use middle::ty_fold;
-use middle::ty_fold::{TypeFolder, TypeFoldable};
-use middle::typeck::check::regionmanip::replace_late_bound_regions;
+use middle::ty_fold::{HigherRankedFoldable, TypeFolder, TypeFoldable};
 use std::cell::{RefCell};
 use std::rc::Rc;
 use syntax::ast;
@@ -61,6 +60,7 @@ pub mod doc;
 pub mod equate;
 pub mod error_reporting;
 pub mod glb;
+pub mod higher_ranked;
 pub mod lattice;
 pub mod lub;
 pub mod region_inference;
@@ -184,9 +184,9 @@ pub enum SubregionOrigin {
     // type of the variable outlives the lifetime bound.
     RelateProcBound(Span, ast::NodeId, ty::t),
 
-    // The given type parameter was instantiated with the given type,
+    // Some type parameter was instantiated with the given type,
     // and that type must outlive some region.
-    RelateParamBound(Span, ty::ParamTy, ty::t),
+    RelateParamBound(Span, ty::t),
 
     // The given region parameter was instantiated with a region
     // that must outlive some other region.
@@ -233,8 +233,8 @@ pub enum LateBoundRegionConversionTime {
     /// when a fn is called
     FnCall,
 
-    /// when two fn types are compared
-    FnType,
+    /// when two higher-ranked types are compared
+    HigherRankedType,
 }
 
 /// Reasons to create a region inference variable
@@ -796,8 +796,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         subst::Substs::new_trait(type_parameters, regions, assoc_type_parameters, self_ty)
     }
 
-    pub fn fresh_bound_region(&self, binder_id: ast::NodeId) -> ty::Region {
-        self.region_vars.new_bound(binder_id)
+    pub fn fresh_bound_region(&self, debruijn: ty::DebruijnIndex) -> ty::Region {
+        self.region_vars.new_bound(debruijn)
     }
 
     pub fn resolve_regions_and_report_errors(&self) {
@@ -815,8 +815,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         format!("({})", tstrs.connect(", "))
     }
 
-    pub fn trait_ref_to_string(&self, t: &ty::TraitRef) -> String {
-        let t = self.resolve_type_vars_in_trait_ref_if_possible(t);
+    pub fn trait_ref_to_string(&self, t: &Rc<ty::TraitRef>) -> String {
+        let t = self.resolve_type_vars_in_trait_ref_if_possible(&**t);
         trait_ref_to_string(self.tcx, &t)
     }
 
@@ -967,28 +967,17 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
     pub fn replace_late_bound_regions_with_fresh_var<T>(
         &self,
-        binder_id: ast::NodeId,
         span: Span,
         lbrct: LateBoundRegionConversionTime,
         value: &T)
         -> (T, FnvHashMap<ty::BoundRegion,ty::Region>)
-        where T : TypeFoldable + Repr
+        where T : HigherRankedFoldable
     {
-        let (map, value) =
-            replace_late_bound_regions(
-                self.tcx,
-                binder_id,
-                value,
-                |br| self.next_region_var(LateBoundRegion(span, br, lbrct)));
-        (value, map)
+        ty::replace_late_bound_regions(
+            self.tcx,
+            value,
+            |br, _| self.next_region_var(LateBoundRegion(span, br, lbrct)))
     }
-}
-
-pub fn fold_regions_in_sig(tcx: &ty::ctxt,
-                           fn_sig: &ty::FnSig,
-                           fldr: |r: ty::Region| -> ty::Region)
-                           -> ty::FnSig {
-    ty_fold::RegionFolder::regions(tcx, fldr).fold_sig(fn_sig)
 }
 
 impl TypeTrace {
@@ -1073,7 +1062,7 @@ impl SubregionOrigin {
             IndexSlice(a) => a,
             RelateObjectBound(a) => a,
             RelateProcBound(a, _, _) => a,
-            RelateParamBound(a, _, _) => a,
+            RelateParamBound(a, _) => a,
             RelateRegionParamBound(a) => a,
             RelateDefaultParamBound(a, _) => a,
             Reborrow(a) => a,
@@ -1123,11 +1112,10 @@ impl Repr for SubregionOrigin {
                         b,
                         c.repr(tcx))
             }
-            RelateParamBound(a, b, c) => {
-                format!("RelateParamBound({},{},{})",
+            RelateParamBound(a, b) => {
+                format!("RelateParamBound({},{})",
                         a.repr(tcx),
-                        b.repr(tcx),
-                        c.repr(tcx))
+                        b.repr(tcx))
             }
             RelateRegionParamBound(a) => {
                 format!("RelateRegionParamBound({})",

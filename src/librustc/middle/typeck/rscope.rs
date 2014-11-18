@@ -10,9 +10,9 @@
 
 
 use middle::ty;
+use middle::ty_fold;
 
 use std::cell::Cell;
-use syntax::ast;
 use syntax::codemap::Span;
 
 /// Defines strategies for handling regions that are omitted.  For
@@ -104,14 +104,12 @@ impl RegionScope for SpecificRscope {
 /// A scope in which we generate anonymous, late-bound regions for
 /// omitted regions. This occurs in function signatures.
 pub struct BindingRscope {
-    binder_id: ast::NodeId,
     anon_bindings: Cell<uint>,
 }
 
 impl BindingRscope {
-    pub fn new(binder_id: ast::NodeId) -> BindingRscope {
+    pub fn new() -> BindingRscope {
         BindingRscope {
-            binder_id: binder_id,
             anon_bindings: Cell::new(0),
         }
     }
@@ -119,7 +117,7 @@ impl BindingRscope {
     fn next_region(&self) -> ty::Region {
         let idx = self.anon_bindings.get();
         self.anon_bindings.set(idx + 1);
-        ty::ReLateBound(self.binder_id, ty::BrAnon(idx))
+        ty::ReLateBound(ty::DebruijnIndex::new(1), ty::BrAnon(idx))
     }
 }
 
@@ -138,3 +136,40 @@ impl RegionScope for BindingRscope {
     }
 }
 
+/// A scope which simply shifts the Debruijn index of other scopes
+/// to account for binding levels.
+pub struct ShiftedRscope<'r> {
+    base_scope: &'r RegionScope+'r
+}
+
+impl<'r> ShiftedRscope<'r> {
+    pub fn new(base_scope: &'r RegionScope+'r) -> ShiftedRscope<'r> {
+        ShiftedRscope { base_scope: base_scope }
+    }
+}
+
+impl<'r> RegionScope for ShiftedRscope<'r> {
+    fn default_region_bound(&self, span: Span) -> Option<ty::Region>
+    {
+        self.base_scope.default_region_bound(span)
+            .map(|r| ty_fold::shift_region(r, 1))
+    }
+
+    fn anon_regions(&self,
+                    span: Span,
+                    count: uint)
+                    -> Result<Vec<ty::Region>, Option<Vec<(String, uint)>>>
+    {
+        match self.base_scope.anon_regions(span, count) {
+            Ok(mut v) => {
+                for r in v.iter_mut() {
+                    *r = ty_fold::shift_region(*r, 1);
+                }
+                Ok(v)
+            }
+            Err(errs) => {
+                Err(errs)
+            }
+        }
+    }
+}

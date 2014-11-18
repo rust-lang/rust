@@ -287,8 +287,9 @@ fn trans_struct_drop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                              val, *ty);
         }
 
-        let dtor_ty = ty::mk_ctor_fn(variant_cx.tcx(), ast::DUMMY_NODE_ID,
-                                     &[get_drop_glue_type(bcx.ccx(), t)], ty::mk_nil(bcx.tcx()));
+        let dtor_ty = ty::mk_ctor_fn(bcx.tcx(),
+                                     &[get_drop_glue_type(bcx.ccx(), t)],
+                                     ty::mk_nil(bcx.tcx()));
         let (_, variant_cx) = invoke(variant_cx, dtor_addr, args, dtor_ty, None, false);
 
         variant_cx.fcx.pop_and_trans_custom_cleanup_scope(variant_cx, field_scope);

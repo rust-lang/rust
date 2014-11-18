@@ -8,9 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct One<A>;
+#![feature(unboxed_closures)]
 
-fn foo(_: One()) //~ ERROR wrong number of type arguments
+trait One<A> { fn foo(&self) -> A; }
+
+fn foo(_: &One()) //~ ERROR wrong number of type arguments
 {}
 
 fn main() { }

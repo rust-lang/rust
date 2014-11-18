@@ -53,7 +53,7 @@ use middle::subst::{mod, Subst, Substs, VecPerParamSpace};
 use middle::traits;
 use middle::ty;
 use middle::typeck;
-use middle::ty_fold::{mod, TypeFoldable,TypeFolder};
+use middle::ty_fold::{mod, TypeFoldable, TypeFolder, HigherRankedFoldable};
 use middle;
 use util::ppaux::{note_and_explain_region, bound_region_ptr_to_string};
 use util::ppaux::{trait_store_to_string, ty_to_string};
@@ -609,13 +609,14 @@ pub struct ctxt<'tcx> {
 // recursing over the type itself.
 bitflags! {
     flags TypeFlags: u32 {
-        const NO_TYPE_FLAGS = 0b0,
-        const HAS_PARAMS    = 0b1,
-        const HAS_SELF      = 0b10,
-        const HAS_TY_INFER  = 0b100,
-        const HAS_RE_INFER  = 0b1000,
-        const HAS_REGIONS   = 0b10000,
-        const HAS_TY_ERR    = 0b100000,
+        const NO_TYPE_FLAGS       = 0b0,
+        const HAS_PARAMS          = 0b1,
+        const HAS_SELF            = 0b10,
+        const HAS_TY_INFER        = 0b100,
+        const HAS_RE_INFER        = 0b1000,
+        const HAS_RE_LATE_BOUND   = 0b10000,
+        const HAS_REGIONS         = 0b100000,
+        const HAS_TY_ERR          = 0b1000000,
         const NEEDS_SUBST   = HAS_PARAMS.bits | HAS_SELF.bits | HAS_REGIONS.bits,
     }
 }
@@ -626,6 +627,9 @@ pub type t_box = &'static t_box_;
 pub struct t_box_ {
     pub sty: sty,
     pub flags: TypeFlags,
+
+    // the maximal depth of any bound regions appearing in this type.
+    region_depth: uint,
 }
 
 impl fmt::Show for TypeFlags {
@@ -670,6 +674,50 @@ pub fn type_needs_infer(t: t) -> bool {
     tbox_has_flag(get(t), HAS_TY_INFER | HAS_RE_INFER)
 }
 
+pub fn type_has_late_bound_regions(ty: t) -> bool {
+    get(ty).flags.intersects(HAS_RE_LATE_BOUND)
+}
+
+pub fn type_has_escaping_regions(t: t) -> bool {
+    /*!
+     * An "escaping region" is a bound region whose binder is not part of `t`.
+     *
+     * So, for example, consider a type like the following, which has two
+     * binders:
+     *
+     *    for<'a> fn(x: for<'b> fn(&'a int, &'b int))
+     *    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ outer scope
+     *                  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~  inner scope
+     *
+     * This type has *bound regions* (`'a`, `'b`), but it does not
+     * have escaping regions, because the binders of both `'a` and
+     * `'b` are part of the type itself. However, if we consider the
+     * *inner fn type*, that type has an escaping region: `'a`.
+     *
+     * Note that what I'm calling an "escaping region" is often just
+     * called a "free region". However, we already use the term "free
+     * region". It refers to the regions that we use to represent
+     * bound regions on a fn definition while we are typechecking its
+     * body.
+     *
+     * To clarify, conceptually there is no particular difference
+     * between an "escaping" region and a "free" region. However,
+     * there is a big difference in practice. Basically, when
+     * "entering" a binding level, one is generally required to do
+     * some sort of processing to a bound region, such as replacing it
+     * with a fresh/skolemized region, or making an entry in the
+     * environment to represent the scope to which it is attached,
+     * etc. An escaping region represents a bound region for which
+     * this processing has not yet been done.
+     */
+
+    type_escapes_depth(t, 0)
+}
+
+pub fn type_escapes_depth(t: t, depth: uint) -> bool {
+    get(t).region_depth > depth
+}
+
 #[deriving(Clone, PartialEq, Eq, Hash, Show)]
 pub struct BareFnTy {
     pub fn_style: ast::FnStyle,
@@ -706,17 +754,16 @@ impl FnOutput {
  * Signature of a function type, which I have arbitrarily
  * decided to use to refer to the input/output types.
  *
- * - `binder_id` is the node id where this fn type appeared;
- *   it is used to identify all the bound regions appearing
- *   in the input/output types that are bound by this fn type
- *   (vs some enclosing or enclosed fn type)
  * - `inputs` is the list of arguments and their modes.
  * - `output` is the return type.
  * - `variadic` indicates whether this is a varidic function. (only true for foreign fns)
+ *
+ * Note that a `FnSig` introduces a level of region binding, to
+ * account for late-bound parameters that appear in the types of the
+ * fn's arguments or the fn's return type.
  */
 #[deriving(Clone, PartialEq, Eq, Hash)]
 pub struct FnSig {
-    pub binder_id: ast::NodeId,
     pub inputs: Vec<t>,
     pub output: FnOutput,
     pub variadic: bool
@@ -727,6 +774,54 @@ pub struct ParamTy {
     pub space: subst::ParamSpace,
     pub idx: uint,
     pub def_id: DefId
+}
+
+/**
+ * A [De Bruijn index][dbi] is a standard means of representing
+ * regions (and perhaps later types) in a higher-ranked setting. In
+ * particular, imagine a type like this:
+ *
+ *     for<'a> fn(for<'b> fn(&'b int, &'a int), &'a char)
+ *     ^          ^            |        |         |
+ *     |          |            |        |         |
+ *     |          +------------+ 1      |         |
+ *     |                                |         |
+ *     +--------------------------------+ 2       |
+ *     |                                          |
+ *     +------------------------------------------+ 1
+ *
+ * In this type, there are two binders (the outer fn and the inner
+ * fn). We need to be able to determine, for any given region, which
+ * fn type it is bound by, the inner or the outer one. There are
+ * various ways you can do this, but a De Bruijn index is one of the
+ * more convenient and has some nice properties. The basic idea is to
+ * count the number of binders, inside out. Some examples should help
+ * clarify what I mean.
+ *
+ * Let's start with the reference type `&'b int` that is the first
+ * argument to the inner function. This region `'b` is assigned a De
+ * Bruijn index of 1, meaning "the innermost binder" (in this case, a
+ * fn). The region `'a` that appears in the second argument type (`&'a
+ * int`) would then be assigned a De Bruijn index of 2, meaning "the
+ * second-innermost binder". (These indices are written on the arrays
+ * in the diagram).
+ *
+ * What is interesting is that De Bruijn index attached to a particular
+ * variable will vary depending on where it appears. For example,
+ * the final type `&'a char` also refers to the region `'a` declared on
+ * the outermost fn. But this time, this reference is not nested within
+ * any other binders (i.e., it is not an argument to the inner fn, but
+ * rather the outer one). Therefore, in this case, it is assigned a
+ * De Bruijn index of 1, because the innermost binder in that location
+ * is the outer fn.
+ *
+ * [dbi]: http://en.wikipedia.org/wiki/De_Bruijn_index
+ */
+#[deriving(Clone, PartialEq, Eq, Hash, Encodable, Decodable, Show)]
+pub struct DebruijnIndex {
+    // We maintain the invariant that this is never 0. So 1 indicates
+    // the innermost binder. To ensure this, create with `DebruijnIndex::new`.
+    pub depth: uint,
 }
 
 /// Representation of regions:
@@ -741,9 +836,8 @@ pub enum Region {
                  ast::Name),
 
     // Region bound in a function scope, which will be substituted when the
-    // function is called. The first argument must be the `binder_id` of
-    // some enclosing function signature.
-    ReLateBound(/* binder_id */ ast::NodeId, BoundRegion),
+    // function is called.
+    ReLateBound(DebruijnIndex, BoundRegion),
 
     /// When checking a function body, the types of all arguments and so forth
     /// that refer to bound region parameters are modified to refer to free
@@ -885,10 +979,17 @@ pub type UpvarBorrowMap = FnvHashMap<UpvarId, UpvarBorrow>;
 
 impl Region {
     pub fn is_bound(&self) -> bool {
-        match self {
-            &ty::ReEarlyBound(..) => true,
-            &ty::ReLateBound(..) => true,
+        match *self {
+            ty::ReEarlyBound(..) => true,
+            ty::ReLateBound(..) => true,
             _ => false
+        }
+    }
+
+    pub fn escapes_depth(&self, depth: uint) -> bool {
+        match *self {
+            ty::ReLateBound(debruijn, _) => debruijn.depth > depth,
+            _ => false,
         }
     }
 }
@@ -928,6 +1029,7 @@ mod primitives {
             pub static $name: t_box_ = t_box_ {
                 sty: $sty,
                 flags: super::NO_TYPE_FLAGS,
+                region_depth: 0,
             };
         )
     )
@@ -950,6 +1052,7 @@ mod primitives {
     pub static TY_ERR: t_box_ = t_box_ {
         sty: super::ty_err,
         flags: super::HAS_TY_ERR,
+        region_depth: 0,
     };
 }
 
@@ -1002,10 +1105,44 @@ pub struct TyTrait {
     pub bounds: ExistentialBounds
 }
 
+/**
+ * A complete reference to a trait. These take numerous guises in syntax,
+ * but perhaps the most recognizable form is in a where clause:
+ *
+ *     T : Foo<U>
+ *
+ * This would be represented by a trait-reference where the def-id is the
+ * def-id for the trait `Foo` and the substs defines `T` as parameter 0 in the
+ * `SelfSpace` and `U` as parameter 0 in the `TypeSpace`.
+ *
+ * Trait references also appear in object types like `Foo<U>`, but in
+ * that case the `Self` parameter is absent from the substitutions.
+ *
+ * Note that a `TraitRef` introduces a level of region binding, to
+ * account for higher-ranked trait bounds like `T : for<'a> Foo<&'a
+ * U>` or higher-ranked object types.
+ */
 #[deriving(Clone, PartialEq, Eq, Hash, Show)]
 pub struct TraitRef {
     pub def_id: DefId,
     pub substs: Substs,
+}
+
+/**
+ * Binder serves as a synthetic binder for lifetimes. It is used when
+ * we wish to replace the escaping higher-ranked lifetimes in a type
+ * or something else that is not itself a binder (this is because the
+ * `replace_late_bound_regions` function replaces all lifetimes bound
+ * by the binder supplied to it; but a type is not a binder, so you
+ * must introduce an artificial one).
+ */
+#[deriving(Clone, PartialEq, Eq, Hash, Show)]
+pub struct Binder<T> {
+    pub value: T
+}
+
+pub fn bind<T>(value: T) -> Binder<T> {
+    Binder { value: value }
 }
 
 #[deriving(Clone, PartialEq)]
@@ -1272,6 +1409,52 @@ impl Generics {
     pub fn has_region_params(&self, space: subst::ParamSpace) -> bool {
         !self.regions.is_empty_in(space)
     }
+
+    pub fn to_bounds(&self, tcx: &ty::ctxt, substs: &Substs) -> GenericBounds {
+        GenericBounds {
+            types: self.types.map(|d| d.bounds.subst(tcx, substs)),
+            regions: self.regions.map(|d| d.bounds.subst(tcx, substs)),
+        }
+    }
+}
+
+/**
+ * Represents the bounds declared on a particular set of type
+ * parameters.  Should eventually be generalized into a flag list of
+ * where clauses.  You can obtain a `GenericBounds` list from a
+ * `Generics` by using the `to_bounds` method. Note that this method
+ * reflects an important semantic invariant of `GenericBounds`: while
+ * the bounds in a `Generics` are expressed in terms of the bound type
+ * parameters of the impl/trait/whatever, a `GenericBounds` instance
+ * represented a set of bounds for some particular instantiation,
+ * meaning that the generic parameters have been substituted with
+ * their values.
+ *
+ * Example:
+ *
+ *     struct Foo<T,U:Bar<T>> { ... }
+ *
+ * Here, the `Generics` for `Foo` would contain a list of bounds like
+ * `[[], [U:Bar<T>]]`.  Now if there were some particular reference
+ * like `Foo<int,uint>`, then the `GenericBounds` would be `[[],
+ * [uint:Bar<int>]]`.
+ */
+#[deriving(Clone, Show)]
+pub struct GenericBounds {
+    pub types: VecPerParamSpace<ParamBounds>,
+    pub regions: VecPerParamSpace<Vec<Region>>,
+}
+
+impl GenericBounds {
+    pub fn empty() -> GenericBounds {
+        GenericBounds { types: VecPerParamSpace::empty(),
+                        regions: VecPerParamSpace::empty() }
+    }
+
+    pub fn has_escaping_regions(&self) -> bool {
+        self.types.any(|pb| pb.trait_bounds.iter().any(|tr| tr.has_escaping_regions())) ||
+            self.regions.any(|rs| rs.iter().any(|r| r.escapes_depth(0)))
+    }
 }
 
 impl TraitRef {
@@ -1289,6 +1472,14 @@ impl TraitRef {
         // trait-reference, but it should eventually exclude
         // associated types.
         self.substs.types.as_slice()
+    }
+
+    pub fn has_escaping_regions(&self) -> bool {
+        self.substs.has_regions_escaping_depth(1)
+    }
+
+    pub fn has_bound_regions(&self) -> bool {
+        self.substs.has_regions_escaping_depth(0)
     }
 }
 
@@ -1597,99 +1788,12 @@ pub fn mk_t(cx: &ctxt, st: sty) -> t {
         _ => ()
     }
 
-    let mut flags = NO_TYPE_FLAGS;
-    fn rflags(r: Region) -> TypeFlags {
-        HAS_REGIONS | {
-            match r {
-              ty::ReInfer(_) => HAS_RE_INFER,
-              _ => NO_TYPE_FLAGS,
-            }
-        }
-    }
-    fn sflags(substs: &Substs) -> TypeFlags {
-        let mut f = NO_TYPE_FLAGS;
-        let mut i = substs.types.iter();
-        for tt in i {
-            f = f | get(*tt).flags;
-        }
-        match substs.regions {
-            subst::ErasedRegions => {}
-            subst::NonerasedRegions(ref regions) => {
-                for r in regions.iter() {
-                    f = f | rflags(*r)
-                }
-            }
-        }
-        return f;
-    }
-    fn flags_for_bounds(bounds: &ExistentialBounds) -> TypeFlags {
-        rflags(bounds.region_bound)
-    }
-    match &st {
-      &ty_bool | &ty_char | &ty_int(_) | &ty_float(_) | &ty_uint(_) |
-      &ty_str => {}
-      // You might think that we could just return ty_err for
-      // any type containing ty_err as a component, and get
-      // rid of the HAS_TY_ERR flag -- likewise for ty_bot (with
-      // the exception of function types that return bot).
-      // But doing so caused sporadic memory corruption, and
-      // neither I (tjc) nor nmatsakis could figure out why,
-      // so we're doing it this way.
-      &ty_err => flags = flags | HAS_TY_ERR,
-      &ty_param(ref p) => {
-          if p.space == subst::SelfSpace {
-              flags = flags | HAS_SELF;
-          } else {
-              flags = flags | HAS_PARAMS;
-          }
-      }
-      &ty_unboxed_closure(_, ref region, ref substs) => {
-          flags = flags | rflags(*region);
-          flags = flags | sflags(substs);
-      }
-      &ty_infer(_) => flags = flags | HAS_TY_INFER,
-      &ty_enum(_, ref substs) | &ty_struct(_, ref substs) => {
-          flags = flags | sflags(substs);
-      }
-      &ty_trait(box TyTrait { ref principal, ref bounds }) => {
-          flags = flags | sflags(&principal.substs);
-          flags = flags | flags_for_bounds(bounds);
-      }
-      &ty_uniq(tt) | &ty_vec(tt, _) | &ty_open(tt) => {
-        flags = flags | get(tt).flags
-      }
-      &ty_ptr(ref m) => {
-        flags = flags | get(m.ty).flags;
-      }
-      &ty_rptr(r, ref m) => {
-        flags = flags | rflags(r);
-        flags = flags | get(m.ty).flags;
-      }
-      &ty_tup(ref ts) => for tt in ts.iter() { flags = flags | get(*tt).flags; },
-      &ty_bare_fn(ref f) => {
-        for a in f.sig.inputs.iter() { flags = flags | get(*a).flags; }
-        if let ty::FnConverging(output) = f.sig.output {
-            flags = flags | get(output).flags;
-        }
-      }
-      &ty_closure(ref f) => {
-        match f.store {
-            RegionTraitStore(r, _) => {
-                flags = flags | rflags(r);
-            }
-            _ => {}
-        }
-        for a in f.sig.inputs.iter() { flags = flags | get(*a).flags; }
-        if let ty::FnConverging(output) = f.sig.output {
-            flags = flags | get(output).flags;
-        }
-        flags = flags | flags_for_bounds(&f.bounds);
-      }
-    }
+    let flags = FlagComputation::for_sty(&st);
 
     let t = cx.type_arena.alloc(t_box_ {
         sty: st,
-        flags: flags,
+        flags: flags.flags,
+        region_depth: flags.depth,
     });
 
     let sty_ptr = &t.sty as *const sty;
@@ -1702,6 +1806,188 @@ pub fn mk_t(cx: &ctxt, st: sty) -> t {
 
     unsafe {
         mem::transmute::<*const sty, t>(sty_ptr)
+    }
+}
+
+struct FlagComputation {
+    flags: TypeFlags,
+
+    // maximum depth of any bound region that we have seen thus far
+    depth: uint,
+}
+
+impl FlagComputation {
+    fn new() -> FlagComputation {
+        FlagComputation { flags: NO_TYPE_FLAGS, depth: 0 }
+    }
+
+    fn for_sty(st: &sty) -> FlagComputation {
+        let mut result = FlagComputation::new();
+        result.add_sty(st);
+        result
+    }
+
+    fn add_flags(&mut self, flags: TypeFlags) {
+        self.flags = self.flags | flags;
+    }
+
+    fn add_depth(&mut self, depth: uint) {
+        if depth > self.depth {
+            self.depth = depth;
+        }
+    }
+
+    fn add_bound_computation(&mut self, computation: &FlagComputation) {
+        /*!
+         * Adds the flags/depth from a set of types that appear within
+         * the current type, but within a region binder.
+         */
+
+        self.add_flags(computation.flags);
+
+        // The types that contributed to `computation` occured within
+        // a region binder, so subtract one from the region depth
+        // within when adding the depth to `self`.
+        let depth = computation.depth;
+        if depth > 0 {
+            self.add_depth(depth - 1);
+        }
+    }
+
+    fn add_sty(&mut self, st: &sty) {
+        match st {
+            &ty_bool |
+            &ty_char |
+            &ty_int(_) |
+            &ty_float(_) |
+            &ty_uint(_) |
+            &ty_str => {
+            }
+
+            // You might think that we could just return ty_err for
+            // any type containing ty_err as a component, and get
+            // rid of the HAS_TY_ERR flag -- likewise for ty_bot (with
+            // the exception of function types that return bot).
+            // But doing so caused sporadic memory corruption, and
+            // neither I (tjc) nor nmatsakis could figure out why,
+            // so we're doing it this way.
+            &ty_err => {
+                self.add_flags(HAS_TY_ERR)
+            }
+
+            &ty_param(ref p) => {
+                if p.space == subst::SelfSpace {
+                    self.add_flags(HAS_SELF);
+                } else {
+                    self.add_flags(HAS_PARAMS);
+                }
+            }
+
+            &ty_unboxed_closure(_, ref region, ref substs) => {
+                self.add_region(*region);
+                self.add_substs(substs);
+            }
+
+            &ty_infer(_) => {
+                self.add_flags(HAS_TY_INFER)
+            }
+
+            &ty_enum(_, ref substs) | &ty_struct(_, ref substs) => {
+                self.add_substs(substs);
+            }
+
+            &ty_trait(box TyTrait { ref principal, ref bounds }) => {
+                let mut computation = FlagComputation::new();
+                computation.add_substs(&principal.substs);
+                self.add_bound_computation(&computation);
+
+                self.add_bounds(bounds);
+            }
+
+            &ty_uniq(tt) | &ty_vec(tt, _) | &ty_open(tt) => {
+                self.add_ty(tt)
+            }
+
+            &ty_ptr(ref m) => {
+                self.add_ty(m.ty);
+            }
+
+            &ty_rptr(r, ref m) => {
+                self.add_region(r);
+                self.add_ty(m.ty);
+            }
+
+            &ty_tup(ref ts) => {
+                self.add_tys(ts[]);
+            }
+
+            &ty_bare_fn(ref f) => {
+                self.add_fn_sig(&f.sig);
+            }
+
+            &ty_closure(ref f) => {
+                match f.store {
+                    RegionTraitStore(r, _) => {
+                        self.add_region(r);
+                    }
+                    _ => {}
+                }
+                self.add_fn_sig(&f.sig);
+                self.add_bounds(&f.bounds);
+            }
+        }
+    }
+
+    fn add_ty(&mut self, t: t) {
+        let t_box = get(t);
+        self.add_flags(t_box.flags);
+        self.add_depth(t_box.region_depth);
+    }
+
+    fn add_tys(&mut self, tys: &[t]) {
+        for &ty in tys.iter() {
+            self.add_ty(ty);
+        }
+    }
+
+    fn add_fn_sig(&mut self, fn_sig: &FnSig) {
+        let mut computation = FlagComputation::new();
+
+        computation.add_tys(fn_sig.inputs[]);
+
+        if let ty::FnConverging(output) = fn_sig.output {
+            computation.add_ty(output);
+        }
+
+        self.add_bound_computation(&computation);
+    }
+
+    fn add_region(&mut self, r: Region) {
+        self.add_flags(HAS_REGIONS);
+        match r {
+            ty::ReInfer(_) => { self.add_flags(HAS_RE_INFER); }
+            ty::ReLateBound(debruijn, _) => {
+                self.add_flags(HAS_RE_LATE_BOUND);
+                self.add_depth(debruijn.depth);
+            }
+            _ => { }
+        }
+    }
+
+    fn add_substs(&mut self, substs: &Substs) {
+        self.add_tys(substs.types.as_slice());
+        match substs.regions {
+            subst::ErasedRegions => {}
+            subst::NonerasedRegions(ref regions) => {
+                for &r in regions.iter() {
+                    self.add_region(r);
+                }
+            }
+        }
+    }
+
+    fn add_bounds(&mut self, bounds: &ExistentialBounds) {
+        self.add_region(bounds.region_bound);
     }
 }
 
@@ -1855,7 +2141,6 @@ pub fn mk_bare_fn(cx: &ctxt, fty: BareFnTy) -> t {
 }
 
 pub fn mk_ctor_fn(cx: &ctxt,
-                  binder_id: ast::NodeId,
                   input_tys: &[ty::t],
                   output: ty::t) -> t {
     let input_args = input_tys.iter().map(|t| *t).collect();
@@ -1864,7 +2149,6 @@ pub fn mk_ctor_fn(cx: &ctxt,
                    fn_style: ast::NormalFn,
                    abi: abi::Rust,
                    sig: FnSig {
-                    binder_id: binder_id,
                     inputs: input_args,
                     output: ty::FnConverging(output),
                     variadic: false
@@ -4498,9 +4782,99 @@ pub fn bounds_for_trait_ref(tcx: &ctxt,
                             -> ty::ParamBounds
 {
     let trait_def = lookup_trait_def(tcx, trait_ref.def_id);
+
     debug!("bounds_for_trait_ref(trait_def={}, trait_ref={})",
            trait_def.repr(tcx), trait_ref.repr(tcx));
-    trait_def.bounds.subst(tcx, &trait_ref.substs)
+
+    // The interaction between HRTB and supertraits is not entirely
+    // obvious. Let me walk you (and myself) through an example.
+    //
+    // Let's start with an easy case. Consider two traits:
+    //
+    //     trait Foo<'a> : Bar<'a,'a> { }
+    //     trait Bar<'b,'c> { }
+    //
+    // Now, if we have a trait reference `for<'x> T : Foo<'x>`, then
+    // we can deduce that `for<'x> T : Bar<'x,'x>`. Basically, if we
+    // knew that `Foo<'x>` (for any 'x) then we also know that
+    // `Bar<'x,'x>` (for any 'x). This more-or-less falls out from
+    // normal substitution.
+    //
+    // In terms of why this is sound, the idea is that whenever there
+    // is an impl of `T:Foo<'a>`, it must show that `T:Bar<'a,'a>`
+    // holds.  So if there is an impl of `T:Foo<'a>` that applies to
+    // all `'a`, then we must know that `T:Bar<'a,'a>` holds for all
+    // `'a`.
+    //
+    // Another example to be careful of is this:
+    //
+    //     trait Foo1<'a> : for<'b> Bar1<'a,'b> { }
+    //     trait Bar1<'b,'c> { }
+    //
+    // Here, if we have `for<'x> T : Foo1<'x>`, then what do we know?
+    // The answer is that we know `for<'x,'b> T : Bar1<'x,'b>`. The
+    // reason is similar to the previous example: any impl of
+    // `T:Foo1<'x>` must show that `for<'b> T : Bar1<'x, 'b>`.  So
+    // basically we would want to collapse the bound lifetimes from
+    // the input (`trait_ref`) and the supertraits.
+    //
+    // To achieve this in practice is fairly straightforward. Let's
+    // consider the more complicated scenario:
+    //
+    // - We start out with `for<'x> T : Foo1<'x>`. In this case, `'x`
+    //   has a De Bruijn index of 1. We want to produce `for<'x,'b> T : Bar1<'x,'b>`,
+    //   where both `'x` and `'b` would have a DB index of 1.
+    //   The substitution from the input trait-ref is therefore going to be
+    //   `'a => 'x` (where `'x` has a DB index of 1).
+    // - The super-trait-ref is `for<'b> Bar1<'a,'b>`, where `'a` is an
+    //   early-bound parameter and `'b' is a late-bound parameter with a
+    //   DB index of 1.
+    // - If we replace `'a` with `'x` from the input, it too will have
+    //   a DB index of 1, and thus we'll have `for<'x,'b> Bar1<'x,'b>`
+    //   just as we wanted.
+    //
+    // There is only one catch. If we just apply the substitution `'a
+    // => 'x` to `for<'b> Bar1<'a,'b>`, the substitution code will
+    // adjust the DB index because we substituting into a binder (it
+    // tries to be so smart...) resulting in `for<'x> for<'b>
+    // Bar1<'x,'b>` (we have no syntax for this, so use your
+    // imagination). Basically the 'x will have DB index of 2 and 'b
+    // will have DB index of 1. Not quite what we want. So we apply
+    // the substitution to the *contents* of the trait reference,
+    // rather than the trait reference itself (put another way, the
+    // substitution code expects equal binding levels in the values
+    // from the substitution and the value being substituted into, and
+    // this trick achieves that).
+
+    // Carefully avoid the binder introduced by each trait-ref by
+    // substituting over the substs, not the trait-refs themselves,
+    // thus achieving the "collapse" described in the big comment
+    // above.
+    let trait_bounds: Vec<_> =
+        trait_def.bounds.trait_bounds
+        .iter()
+        .map(|bound_trait_ref| {
+            ty::TraitRef::new(bound_trait_ref.def_id,
+                              bound_trait_ref.substs.subst(tcx, &trait_ref.substs))
+        })
+        .map(|bound_trait_ref| Rc::new(bound_trait_ref))
+        .collect();
+
+    debug!("bounds_for_trait_ref: trait_bounds={}",
+           trait_bounds.repr(tcx));
+
+    // The region bounds and builtin bounds do not currently introduce
+    // binders so we can just substitute in a straightforward way here.
+    let region_bounds =
+        trait_def.bounds.region_bounds.subst(tcx, &trait_ref.substs);
+    let builtin_bounds =
+        trait_def.bounds.builtin_bounds.subst(tcx, &trait_ref.substs);
+
+    ty::ParamBounds {
+        trait_bounds: trait_bounds,
+        region_bounds: region_bounds,
+        builtin_bounds: builtin_bounds,
+    }
 }
 
 /// Iterate over attributes of a definition.
@@ -4783,13 +5157,12 @@ pub fn normalize_ty(cx: &ctxt, t: t) -> t {
                             types: substs.types.fold_with(self) }
         }
 
-        fn fold_sig(&mut self,
-                    sig: &ty::FnSig)
-                    -> ty::FnSig {
+        fn fold_fn_sig(&mut self,
+                       sig: &ty::FnSig)
+                       -> ty::FnSig {
             // The binder-id is only relevant to bound regions, which
             // are erased at trans time.
             ty::FnSig {
-                binder_id: ast::DUMMY_NODE_ID,
                 inputs: sig.inputs.fold_with(self),
                 output: sig.output.fold_with(self),
                 variadic: sig.variadic,
@@ -5305,11 +5678,13 @@ pub fn construct_parameter_environment(
     // Compute the bounds on Self and the type parameters.
     //
 
-    let mut bounds = VecPerParamSpace::empty();
-    for &space in subst::ParamSpace::all().iter() {
-        push_bounds_from_defs(tcx, &mut bounds, space, &free_substs,
-                              generics.types.get_slice(space));
-    }
+    let bounds = generics.to_bounds(tcx, &free_substs);
+    let bounds = liberate_late_bound_regions(tcx, free_id, &bind(bounds)).value;
+    let obligations = traits::obligations_for_generics(tcx,
+                                                       traits::ObligationCause::misc(span),
+                                                       &bounds,
+                                                       &free_substs.types);
+    let type_bounds = bounds.types.subst(tcx, &free_substs);
 
     //
     // Compute region bounds. For now, these relations are stored in a
@@ -5318,24 +5693,20 @@ pub fn construct_parameter_environment(
     //
 
     for &space in subst::ParamSpace::all().iter() {
-        record_region_bounds_from_defs(tcx, space, &free_substs,
-                                       generics.regions.get_slice(space));
+        record_region_bounds(tcx, space, &free_substs, bounds.regions.get_slice(space));
     }
 
 
-    debug!("construct_parameter_environment: free_id={} \
-           free_subst={} \
-           bounds={}",
+    debug!("construct_parameter_environment: free_id={} free_subst={} \
+           obligations={} type_bounds={}",
            free_id,
            free_substs.repr(tcx),
-           bounds.repr(tcx));
-
-    let obligations = traits::obligations_for_generics(tcx, traits::ObligationCause::misc(span),
-                                                       generics, &free_substs);
+           obligations.repr(tcx),
+           type_bounds.repr(tcx));
 
     return ty::ParameterEnvironment {
         free_substs: free_substs,
-        bounds: bounds,
+        bounds: bounds.types,
         implicit_region_bound: ty::ReScope(free_id),
         caller_obligations: obligations,
         selection_cache: traits::SelectionCache::new(),
@@ -5366,28 +5737,16 @@ pub fn construct_parameter_environment(
         }
     }
 
-    fn push_bounds_from_defs(tcx: &ty::ctxt,
-                             bounds: &mut subst::VecPerParamSpace<ParamBounds>,
-                             space: subst::ParamSpace,
-                             free_substs: &subst::Substs,
-                             defs: &[TypeParameterDef]) {
-        for def in defs.iter() {
-            let b = def.bounds.subst(tcx, free_substs);
-            bounds.push(space, b);
-        }
-    }
-
-    fn record_region_bounds_from_defs(tcx: &ty::ctxt,
-                                      space: subst::ParamSpace,
-                                      free_substs: &subst::Substs,
-                                      defs: &[RegionParameterDef]) {
-        for (subst_region, def) in
+    fn record_region_bounds(tcx: &ty::ctxt,
+                            space: subst::ParamSpace,
+                            free_substs: &Substs,
+                            bound_sets: &[Vec<ty::Region>]) {
+        for (subst_region, bound_set) in
             free_substs.regions().get_slice(space).iter().zip(
-                defs.iter())
+                bound_sets.iter())
         {
             // For each region parameter 'subst...
-            let bounds = def.bounds.subst(tcx, free_substs);
-            for bound_region in bounds.iter() {
+            for bound_region in bound_set.iter() {
                 // Which is declared with a bound like 'subst:'bound...
                 match (subst_region, bound_region) {
                     (&ty::ReFree(subst_fr), &ty::ReFree(bound_fr)) => {
@@ -5398,7 +5757,7 @@ pub fn construct_parameter_environment(
                     _ => {
                         // All named regions are instantiated with free regions.
                         tcx.sess.bug(
-                            format!("push_region_bounds_from_defs: \
+                            format!("record_region_bounds: \
                                      non free region: {} / {}",
                                     subst_region.repr(tcx),
                                     bound_region.repr(tcx)).as_slice());
@@ -5587,5 +5946,88 @@ impl AutoAdjustment {
 impl AutoDerefRef {
     pub fn is_identity(&self) -> bool {
         self.autoderefs == 0 && self.autoref.is_none()
+    }
+}
+
+pub fn liberate_late_bound_regions<HR>(
+    tcx: &ty::ctxt,
+    scope_id: ast::NodeId,
+    value: &HR)
+    -> HR
+    where HR : HigherRankedFoldable
+{
+    /*!
+     * Replace any late-bound regions bound in `value` with free variants
+     * attached to scope-id `scope_id`.
+     */
+
+    replace_late_bound_regions(
+        tcx, value,
+        |br, _| ty::ReFree(ty::FreeRegion{scope_id: scope_id, bound_region: br})).0
+}
+
+pub fn erase_late_bound_regions<HR>(
+    tcx: &ty::ctxt,
+    value: &HR)
+    -> HR
+    where HR : HigherRankedFoldable
+{
+    /*!
+     * Replace any late-bound regions bound in `value` with `'static`.
+     * Useful in trans but also method lookup and a few other places
+     * where precise region relationships are not required.
+     */
+
+    replace_late_bound_regions(tcx, value, |_, _| ty::ReStatic).0
+}
+
+pub fn replace_late_bound_regions<HR>(
+    tcx: &ty::ctxt,
+    value: &HR,
+    mapf: |BoundRegion, DebruijnIndex| -> ty::Region)
+    -> (HR, FnvHashMap<ty::BoundRegion,ty::Region>)
+    where HR : HigherRankedFoldable
+{
+    /*!
+     * Replaces the late-bound-regions in `value` that are bound by `value`.
+     */
+
+    debug!("replace_late_bound_regions({})", value.repr(tcx));
+
+    let mut map = FnvHashMap::new();
+    let value = {
+        let mut f = ty_fold::RegionFolder::new(tcx, |region, current_depth| {
+            debug!("region={}", region.repr(tcx));
+            match region {
+                ty::ReLateBound(debruijn, br) if debruijn.depth == current_depth => {
+                    * match map.entry(br) {
+                        Vacant(entry) => entry.set(mapf(br, debruijn)),
+                        Occupied(entry) => entry.into_mut(),
+                    }
+                }
+                _ => {
+                    region
+                }
+            }
+        });
+
+        // Note: use `fold_contents` not `fold_with`. If we used
+        // `fold_with`, it would consider the late-bound regions bound
+        // by `value` to be bound, but we want to consider them as
+        // `free`.
+        value.fold_contents(&mut f)
+    };
+    debug!("resulting map: {} value: {}", map, value.repr(tcx));
+    (value, map)
+}
+
+impl DebruijnIndex {
+    pub fn new(depth: uint) -> DebruijnIndex {
+        assert!(depth > 0);
+        DebruijnIndex { depth: depth }
+    }
+
+    pub fn shifted(&self, amount: uint) -> DebruijnIndex {
+        DebruijnIndex { depth: self.depth + amount }
     }
 }

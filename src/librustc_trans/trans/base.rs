@@ -519,8 +519,9 @@ pub fn get_res_dtor(ccx: &CrateContext,
         let name = csearch::get_symbol(&ccx.sess().cstore, did);
         let class_ty = ty::lookup_item_type(tcx, parent_id).ty.subst(tcx, substs);
         let llty = type_of_dtor(ccx, class_ty);
-        let dtor_ty = ty::mk_ctor_fn(ccx.tcx(), ast::DUMMY_NODE_ID,
-                                     &[glue::get_drop_glue_type(ccx, t)], ty::mk_nil(ccx.tcx()));
+        let dtor_ty = ty::mk_ctor_fn(ccx.tcx(),
+                                     &[glue::get_drop_glue_type(ccx, t)],
+                                     ty::mk_nil(ccx.tcx()));
         get_extern_fn(ccx,
                       &mut *ccx.externs().borrow_mut(),
                       name.as_slice(),

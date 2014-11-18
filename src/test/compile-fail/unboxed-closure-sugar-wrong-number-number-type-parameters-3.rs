@@ -8,9 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Three<A,B,C>;
+#![feature(unboxed_closures)]
 
-fn foo(_: Three()) //~ ERROR wrong number of type arguments
+trait Three<A,B,C> { fn dummy(&self) -> (A,B,C); }
+
+fn foo(_: &Three()) //~ ERROR wrong number of type arguments
 {}
 
 fn main() { }

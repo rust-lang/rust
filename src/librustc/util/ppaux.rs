@@ -252,8 +252,7 @@ pub fn vec_map_to_string<T>(ts: &[T], f: |t: &T| -> String) -> String {
 }
 
 pub fn fn_sig_to_string(cx: &ctxt, typ: &ty::FnSig) -> String {
-    format!("fn{}{} -> {}", typ.binder_id, typ.inputs.repr(cx),
-            typ.output.repr(cx))
+    format!("fn{} -> {}", typ.inputs.repr(cx), typ.output.repr(cx))
 }
 
 pub fn trait_ref_to_string(cx: &ctxt, trait_ref: &ty::TraitRef) -> String {
@@ -262,11 +261,11 @@ pub fn trait_ref_to_string(cx: &ctxt, trait_ref: &ty::TraitRef) -> String {
 
 pub fn ty_to_string(cx: &ctxt, typ: t) -> String {
     fn bare_fn_to_string(cx: &ctxt,
-                      fn_style: ast::FnStyle,
-                      abi: abi::Abi,
-                      ident: Option<ast::Ident>,
-                      sig: &ty::FnSig)
-                      -> String {
+                         fn_style: ast::FnStyle,
+                         abi: abi::Abi,
+                         ident: Option<ast::Ident>,
+                         sig: &ty::FnSig)
+                         -> String {
         let mut s = String::new();
         match fn_style {
             ast::NormalFn => {}
@@ -732,6 +731,9 @@ impl Repr for ty::ParamBounds {
 
 impl Repr for ty::TraitRef {
     fn repr(&self, tcx: &ctxt) -> String {
+        // when printing out the debug representation, we don't need
+        // to enumerate the `for<...>` etc because the debruijn index
+        // tells you everything you need to know.
         let base = ty::item_path_str(tcx, self.def_id);
         let trait_def = ty::lookup_trait_def(tcx, self.def_id);
         format!("<{} : {}>",
@@ -917,6 +919,14 @@ impl Repr for ty::Polytype {
 impl Repr for ty::Generics {
     fn repr(&self, tcx: &ctxt) -> String {
         format!("Generics(types: {}, regions: {})",
+                self.types.repr(tcx),
+                self.regions.repr(tcx))
+    }
+}
+
+impl Repr for ty::GenericBounds {
+    fn repr(&self, tcx: &ctxt) -> String {
+        format!("GenericBounds(types: {}, regions: {})",
                 self.types.repr(tcx),
                 self.regions.repr(tcx))
     }
@@ -1140,9 +1150,41 @@ impl UserString for ty::BuiltinBounds {
 
 impl UserString for ty::TraitRef {
     fn user_string(&self, tcx: &ctxt) -> String {
-        let base = ty::item_path_str(tcx, self.def_id);
+        // Replace any anonymous late-bound regions with named
+        // variants, using gensym'd identifiers, so that we can
+        // clearly differentiate between named and unnamed regions in
+        // the output. We'll probably want to tweak this over time to
+        // decide just how much information to give.
+        let mut names = Vec::new();
+        let (trait_ref, _) = ty::replace_late_bound_regions(tcx, self, |br, debruijn| {
+            ty::ReLateBound(debruijn, match br {
+                ty::BrNamed(_, name) => {
+                    names.push(token::get_name(name));
+                    br
+                }
+                ty::BrAnon(_) |
+                ty::BrFresh(_) |
+                ty::BrEnv => {
+                    let name = token::gensym("r");
+                    names.push(token::get_name(name));
+                    ty::BrNamed(ast_util::local_def(ast::DUMMY_NODE_ID), name)
+                }
+            })
+        });
+        let names: Vec<_> = names.iter().map(|s| s.get()).collect();
+
+        // Let the base string be either `SomeTrait` for `for<'a,'b> SomeTrait`,
+        // depending on whether there are bound regions.
+        let path_str = ty::item_path_str(tcx, self.def_id);
+        let base =
+            if names.is_empty() {
+                path_str
+            } else {
+                format!("for<{}> {}", names.connect(","), path_str)
+            };
+
         let trait_def = ty::lookup_trait_def(tcx, self.def_id);
-        parameterized(tcx, base.as_slice(), &self.substs, &trait_def.generics)
+        parameterized(tcx, base.as_slice(), &trait_ref.substs, &trait_def.generics)
     }
 }
 
@@ -1301,3 +1343,8 @@ impl<A:Repr,B:Repr> Repr for (A,B) {
     }
 }
 
+impl<T:Repr> Repr for ty::Binder<T> {
+    fn repr(&self, tcx: &ctxt) -> String {
+        format!("Binder({})", self.value.repr(tcx))
+    }
+}

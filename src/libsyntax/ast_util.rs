@@ -494,10 +494,10 @@ impl<'a, 'v, O: IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> {
         }
 
         visit::walk_fn(self,
-                        function_kind,
-                        function_declaration,
-                        block,
-                        span);
+                       function_kind,
+                       function_declaration,
+                       block,
+                       span);
 
         if !self.pass_through_items {
             match function_kind {
