@@ -78,7 +78,7 @@ type parameter).
 
 pub use self::LvaluePreference::*;
 pub use self::DerefArgs::*;
-use self::Expectation::*;
+pub use self::Expectation::*;
 use self::IsBinopAssignment::*;
 use self::TupleArgumentsFlag::*;
 
@@ -97,7 +97,7 @@ use middle::ty::{FnSig, VariantInfo};
 use middle::ty::{Polytype};
 use middle::ty::{Disr, ParamTy, ParameterEnvironment};
 use middle::ty::{mod, Ty};
-use middle::ty::{replace_late_bound_regions, liberate_late_bound_regions};
+use middle::ty::liberate_late_bound_regions;
 use middle::ty_fold::TypeFolder;
 use middle::typeck::astconv::AstConv;
 use middle::typeck::astconv::{ast_region_to_region, ast_ty_to_ty};
@@ -4165,7 +4165,8 @@ fn check_expr_with_unifier<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                          expr,
                                          kind,
                                          &**decl,
-                                         &**body);
+                                         &**body,
+                                         expected);
       }
       ast::ExprProc(ref decl, ref body) => {
           closure::check_expr_fn(fcx,

@@ -13,10 +13,11 @@
  */
 
 use super::check_fn;
-use super::Expectation;
+use super::{Expectation, ExpectCastableToType, ExpectHasType, NoExpectation};
 use super::FnCtxt;
 
-use middle::ty;
+use middle::subst;
+use middle::ty::{mod, Ty};
 use middle::typeck::astconv;
 use middle::typeck::infer;
 use middle::typeck::rscope::RegionScope;
@@ -25,12 +26,39 @@ use syntax::ast;
 use syntax::ast_util;
 use util::ppaux::Repr;
 
-pub fn check_unboxed_closure(fcx: &FnCtxt,
-                             expr: &ast::Expr,
-                             kind: ast::UnboxedClosureKind,
-                             decl: &ast::FnDecl,
-                             body: &ast::Block) {
+pub fn check_unboxed_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
+                                      expr: &ast::Expr,
+                                      kind: ast::UnboxedClosureKind,
+                                      decl: &ast::FnDecl,
+                                      body: &ast::Block,
+                                      expected: Expectation<'tcx>) {
     let expr_def_id = ast_util::local_def(expr.id);
+
+    let expected_sig_and_kind = match expected.resolve(fcx) {
+        NoExpectation => None,
+        ExpectCastableToType(t) | ExpectHasType(t) => {
+            deduce_unboxed_closure_expectations_from_expected_type(fcx, t)
+        }
+    };
+
+    let (expected_sig, expected_kind) = match expected_sig_and_kind {
+        None => (None, None),
+        Some((sig, kind)) => {
+            // Avoid accidental capture of bound regions by renaming
+            // them to fresh names, basically.
+            let sig =
+                ty::replace_late_bound_regions(
+                    fcx.tcx(),
+                    &sig,
+                    |_, debruijn| fcx.inh.infcx.fresh_bound_region(debruijn)).0;
+            (Some(sig), Some(kind))
+        }
+    };
+
+    debug!("check_unboxed_closure expected={} expected_sig={} expected_kind={}",
+           expected.repr(fcx.tcx()),
+           expected_sig.repr(fcx.tcx()),
+           expected_kind);
 
     let mut fn_ty = astconv::ty_of_closure(
         fcx,
@@ -46,7 +74,7 @@ pub fn check_unboxed_closure(fcx: &FnCtxt,
 
         decl,
         abi::RustCall,
-        None);
+        expected_sig);
 
     let region = match fcx.infcx().anon_regions(expr.span, 1) {
         Err(_) => {
@@ -97,6 +125,95 @@ pub fn check_unboxed_closure(fcx: &FnCtxt,
         .borrow_mut()
         .insert(expr_def_id, unboxed_closure);
 }
+
+fn deduce_unboxed_closure_expectations_from_expected_type<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
+                                                                   expected_ty: Ty<'tcx>)
+                                                                   -> Option<(ty::FnSig<'tcx>,
+                                                                              ty::UnboxedClosureKind)>
+{
+    match expected_ty.sty {
+        ty::ty_trait(ref object_type) => {
+            deduce_unboxed_closure_expectations_from_trait_ref(fcx, &object_type.principal)
+        }
+        ty::ty_infer(ty::TyVar(vid)) => {
+            deduce_unboxed_closure_expectations_from_obligations(fcx, vid)
+        }
+        _ => {
+            None
+        }
+    }
+}
+
+fn deduce_unboxed_closure_expectations_from_trait_ref<'a,'tcx>(
+    fcx: &FnCtxt<'a,'tcx>,
+    trait_ref: &ty::TraitRef<'tcx>)
+    -> Option<(ty::FnSig<'tcx>, ty::UnboxedClosureKind)>
+{
+    let tcx = fcx.tcx();
+
+    debug!("deduce_unboxed_closure_expectations_from_object_type({})",
+           trait_ref.repr(tcx));
+
+    let def_id_kinds = [
+        (tcx.lang_items.fn_trait(), ty::FnUnboxedClosureKind),
+        (tcx.lang_items.fn_mut_trait(), ty::FnMutUnboxedClosureKind),
+        (tcx.lang_items.fn_once_trait(), ty::FnOnceUnboxedClosureKind),
+    ];
+
+    for &(def_id, kind) in def_id_kinds.iter() {
+        if Some(trait_ref.def_id) == def_id {
+            debug!("found object type {}", kind);
+
+            let arg_param_ty = *trait_ref.substs.types.get(subst::TypeSpace, 0);
+            let arg_param_ty = fcx.infcx().resolve_type_vars_if_possible(arg_param_ty);
+            debug!("arg_param_ty {}", arg_param_ty.repr(tcx));
+
+            let input_tys = match arg_param_ty.sty {
+                ty::ty_tup(ref tys) => { (*tys).clone() }
+                _ => { continue; }
+            };
+            debug!("input_tys {}", input_tys.repr(tcx));
+
+            let ret_param_ty = *trait_ref.substs.types.get(subst::TypeSpace, 1);
+            let ret_param_ty = fcx.infcx().resolve_type_vars_if_possible(ret_param_ty);
+            debug!("ret_param_ty {}", ret_param_ty.repr(tcx));
+
+            let fn_sig = ty::FnSig {
+                inputs: input_tys,
+                output: ty::FnConverging(ret_param_ty),
+                variadic: false
+            };
+            debug!("fn_sig {}", fn_sig.repr(tcx));
+
+            return Some((fn_sig, kind));
+        }
+    }
+
+    None
+}
+
+fn deduce_unboxed_closure_expectations_from_obligations<'a,'tcx>(
+    fcx: &FnCtxt<'a,'tcx>,
+    expected_vid: ty::TyVid)
+    -> Option<(ty::FnSig<'tcx>, ty::UnboxedClosureKind)>
+{
+    // Here `expected_ty` is known to be a type inference variable.
+    for obligation in fcx.inh.fulfillment_cx.borrow().pending_trait_obligations().iter() {
+        let obligation_self_ty = fcx.infcx().shallow_resolve(obligation.self_ty());
+        match obligation_self_ty.sty {
+            ty::ty_infer(ty::TyVar(v)) if expected_vid == v => { }
+            _ => { continue; }
+        }
+
+        match deduce_unboxed_closure_expectations_from_trait_ref(fcx, &*obligation.trait_ref) {
+            Some(e) => { return Some(e); }
+            None => { }
+        }
+    }
+
+    None
+}
+
 
 pub fn check_expr_fn<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
                               expr: &ast::Expr,
