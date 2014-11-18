@@ -37,7 +37,7 @@ use syntax::{ast, ast_util};
 use syntax::owned_slice::OwnedSlice;
 
 /// Produces a string suitable for debugging output.
-pub trait Repr {
+pub trait Repr for Sized? {
     fn repr(&self, tcx: &ctxt) -> String;
 }
 
@@ -578,9 +578,9 @@ impl Repr for () {
     }
 }
 
-impl<'a,T:Repr> Repr for &'a T {
+impl<'a, Sized? T:Repr> Repr for &'a T {
     fn repr(&self, tcx: &ctxt) -> String {
-        (&**self).repr(tcx)
+        Repr::repr(*self, tcx)
     }
 }
 
@@ -600,9 +600,9 @@ fn repr_vec<T:Repr>(tcx: &ctxt, v: &[T]) -> String {
     vec_map_to_string(v, |t| t.repr(tcx))
 }
 
-impl<'a, T:Repr> Repr for &'a [T] {
+impl<T:Repr> Repr for [T] {
     fn repr(&self, tcx: &ctxt) -> String {
-        repr_vec(tcx, *self)
+        repr_vec(tcx, self)
     }
 }
 
