@@ -285,8 +285,6 @@ function to test whether a value is being destroyed.
 
 # Drawbacks
 
-* Leaking TLS keys on Windows is certainly not ideal (see the description
-  above).
 * There is no variant of TLS for statically initialized data. Currently the
   `std::tls` module requires dynamic initialization, which means a slight
   penalty is paid on each access (a check to see if it's already initialized).
