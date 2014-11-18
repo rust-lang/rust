@@ -540,7 +540,7 @@ fn subst_ty_renumber_bound() {
      * level of binding. This requires adjusting the Debruijn index.
      */
 
-    test_env(EMPTY_SOURCE_STR, errors([]), |env| {
+    test_env(EMPTY_SOURCE_STR, errors(&[]), |env| {
         // Situation:
         // Theta = [A -> &'a foo]
 
@@ -549,7 +549,7 @@ fn subst_ty_renumber_bound() {
         // t_source = fn(A)
         let t_source = {
             let t_param = env.t_param(subst::TypeSpace, 0);
-            env.t_fn([t_param], env.t_nil())
+            env.t_fn(&[t_param], env.t_nil())
         };
 
         let substs = subst::Substs::new_type(vec![t_rptr_bound1], vec![]);
@@ -558,7 +558,7 @@ fn subst_ty_renumber_bound() {
         // t_expected = fn(&'a int)
         let t_expected = {
             let t_ptr_bound2 = env.t_rptr_late_bound_with_debruijn(1, ty::DebruijnIndex::new(2));
-            env.t_fn([t_ptr_bound2], env.t_nil())
+            env.t_fn(&[t_ptr_bound2], env.t_nil())
         };
 
         debug!("subst_bound: t_source={} substs={} t_substituted={} t_expected={}",
@@ -578,7 +578,7 @@ fn subst_ty_renumber_some_bounds() {
      * level of binding. This requires adjusting the Debruijn index.
      */
 
-    test_env(EMPTY_SOURCE_STR, errors([]), |env| {
+    test_env(EMPTY_SOURCE_STR, errors(&[]), |env| {
         // Situation:
         // Theta = [A -> &'a foo]
 
@@ -587,7 +587,7 @@ fn subst_ty_renumber_some_bounds() {
         // t_source = (A, fn(A))
         let t_source = {
             let t_param = env.t_param(subst::TypeSpace, 0);
-            env.t_pair(t_param, env.t_fn([t_param], env.t_nil()))
+            env.t_pair(t_param, env.t_fn(&[t_param], env.t_nil()))
         };
 
         let substs = subst::Substs::new_type(vec![t_rptr_bound1], vec![]);
@@ -598,7 +598,7 @@ fn subst_ty_renumber_some_bounds() {
         // but not that the Debruijn index is different in the different cases.
         let t_expected = {
             let t_rptr_bound2 = env.t_rptr_late_bound_with_debruijn(1, ty::DebruijnIndex::new(2));
-            env.t_pair(t_rptr_bound1, env.t_fn([t_rptr_bound2], env.t_nil()))
+            env.t_pair(t_rptr_bound1, env.t_fn(&[t_rptr_bound2], env.t_nil()))
         };
 
         debug!("subst_bound: t_source={} substs={} t_substituted={} t_expected={}",
@@ -618,7 +618,7 @@ fn escaping() {
      * regions or not.
      */
 
-    test_env(EMPTY_SOURCE_STR, errors([]), |env| {
+    test_env(EMPTY_SOURCE_STR, errors(&[]), |env| {
         // Situation:
         // Theta = [A -> &'a foo]
 
@@ -636,19 +636,19 @@ fn escaping() {
         // t_fn = fn(A)
         let t_param = env.t_param(subst::TypeSpace, 0);
         assert!(!ty::type_has_escaping_regions(t_param));
-        let t_fn = env.t_fn([t_param], env.t_nil());
+        let t_fn = env.t_fn(&[t_param], env.t_nil());
         assert!(!ty::type_has_escaping_regions(t_fn));
 
         // t_fn = |&int|+'a
-        let t_fn = env.t_closure([t_rptr_bound1], env.t_nil(), env.re_free(0, 1));
+        let t_fn = env.t_closure(&[t_rptr_bound1], env.t_nil(), env.re_free(0, 1));
         assert!(!ty::type_has_escaping_regions(t_fn));
 
         // t_fn = |&int|+'a (where &int has depth 2)
-        let t_fn = env.t_closure([t_rptr_bound2], env.t_nil(), env.re_free(0, 1));
+        let t_fn = env.t_closure(&[t_rptr_bound2], env.t_nil(), env.re_free(0, 1));
         assert!(ty::type_has_escaping_regions(t_fn));
 
         // t_fn = |&int|+&int
-        let t_fn = env.t_closure([t_rptr_bound1], env.t_nil(),
+        let t_fn = env.t_closure(&[t_rptr_bound1], env.t_nil(),
                                  env.re_late_bound_with_debruijn(1, ty::DebruijnIndex::new(1)));
         assert!(ty::type_has_escaping_regions(t_fn));
     })
@@ -661,13 +661,13 @@ fn subst_region_renumber_region() {
      * for an early-bound region is a late-bound region.
      */
 
-    test_env(EMPTY_SOURCE_STR, errors([]), |env| {
+    test_env(EMPTY_SOURCE_STR, errors(&[]), |env| {
         let re_bound1 = env.re_late_bound_with_debruijn(1, ty::DebruijnIndex::new(1));
 
         // type t_source<'a> = fn(&'a int)
         let t_source = {
             let re_early = env.re_early_bound(subst::TypeSpace, 0, "'a");
-            env.t_fn([env.t_rptr(re_early)], env.t_nil())
+            env.t_fn(&[env.t_rptr(re_early)], env.t_nil())
         };
 
         let substs = subst::Substs::new_type(vec![], vec![re_bound1]);
@@ -678,7 +678,7 @@ fn subst_region_renumber_region() {
         // but not that the Debruijn index is different in the different cases.
         let t_expected = {
             let t_rptr_bound2 = env.t_rptr_late_bound_with_debruijn(1, ty::DebruijnIndex::new(2));
-            env.t_fn([t_rptr_bound2], env.t_nil())
+            env.t_fn(&[t_rptr_bound2], env.t_nil())
         };
 
         debug!("subst_bound: t_source={} substs={} t_substituted={} t_expected={}",
