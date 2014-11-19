@@ -8,11 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
-    enum Foo {
-        FooB { x: i32, y: i32 }
-    }
+use Foo::FooB;
 
+enum Foo {
+    FooB { x: i32, y: i32 }
+}
+
+fn main() {
     let f = FooB { x: 3, y: 4 };
     match f {
         FooB(a, b) => println!("{} {}", a, b),
