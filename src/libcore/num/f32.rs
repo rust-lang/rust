@@ -429,12 +429,12 @@ impl Float for f32 {
 
     /// Converts to degrees, assuming the number is in radians.
     #[inline]
-    fn to_degrees(self) -> f32 { self * (180.0f32 / Float::pi()) }
+    fn to_degrees(self) -> f32 { self * (180.0f32 / consts::PI) }
 
     /// Converts to radians, assuming the number is in degrees.
     #[inline]
     fn to_radians(self) -> f32 {
-        let value: f32 = Float::pi();
+        let value: f32 = consts::PI;
         self * (value / 180.0f32)
     }
 }

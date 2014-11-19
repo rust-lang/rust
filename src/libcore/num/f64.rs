@@ -437,12 +437,12 @@ impl Float for f64 {
 
     /// Converts to degrees, assuming the number is in radians.
     #[inline]
-    fn to_degrees(self) -> f64 { self * (180.0f64 / Float::pi()) }
+    fn to_degrees(self) -> f64 { self * (180.0f64 / consts::PI) }
 
     /// Converts to radians, assuming the number is in degrees.
     #[inline]
     fn to_radians(self) -> f64 {
-        let value: f64 = Float::pi();
+        let value: f64 = consts::PI;
         self * (value / 180.0)
     }
 }
