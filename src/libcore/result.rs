@@ -227,52 +227,6 @@
 //! ```
 //!
 //! `try!` is imported by the prelude, and is available everywhere.
-//!
-//! # `Result` and `Option`
-//!
-//! The `Result` and [`Option`](../option/index.html) types are
-//! similar and complementary: they are often employed to indicate a
-//! lack of a return value; and they are trivially converted between
-//! each other, so `Result`s are often handled by first converting to
-//! `Option` with the [`ok`](type.Result.html#method.ok) and
-//! [`err`](type.Result.html#method.ok) methods.
-//!
-//! Whereas `Option` only indicates the lack of a value, `Result` is
-//! specifically for error reporting, and carries with it an error
-//! value.  Sometimes `Option` is used for indicating errors, but this
-//! is only for simple cases and is generally discouraged. Even when
-//! there is no useful error value to return, prefer `Result<T, ()>`.
-//!
-//! Converting to an `Option` with `ok()` to handle an error:
-//!
-//! ```
-//! use std::io::Timer;
-//! let mut t = Timer::new().ok().expect("failed to create timer!");
-//! ```
-//!
-//! # `Result` vs. `panic!`
-//!
-//! `Result` is for recoverable errors; `panic!` is for unrecoverable
-//! errors. Callers should always be able to avoid panics if they
-//! take the proper precautions, for example, calling `is_some()`
-//! on an `Option` type before calling `unwrap`.
-//!
-//! The suitability of `panic!` as an error handling mechanism is
-//! limited by Rust's lack of any way to "catch" and resume execution
-//! from a thrown exception. Therefore using panics for error
-//! handling requires encapsulating code that may panic in a task.
-//! Calling the `panic!` macro, or invoking `panic!` indirectly should be
-//! avoided as an error reporting strategy. Panics is only for
-//! unrecoverable errors and a panicking task is typically the sign of
-//! a bug.
-//!
-//! A module that instead returns `Results` is alerting the caller
-//! that failure is possible, and providing precise control over how
-//! it is handled.
-//!
-//! Furthermore, panics may not be recoverable at all, depending on
-//! the context. The caller of `panic!` should assume that execution
-//! will not resume after the panic, that a panic is catastrophic.
 
 #![stable]
 
