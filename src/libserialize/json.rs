@@ -956,12 +956,12 @@ impl Json {
         }
     }
 
-    /// Returns true if the Json value is a Array. Returns false otherwise.
+    /// Returns true if the Json value is an Array. Returns false otherwise.
     pub fn is_array<'a>(&'a self) -> bool {
         self.as_array().is_some()
     }
 
-    /// If the Json value is a Array, returns the associated vector.
+    /// If the Json value is an Array, returns the associated vector.
     /// Returns None otherwise.
     pub fn as_array<'a>(&'a self) -> Option<&'a JsonArray> {
         match self {
@@ -1109,9 +1109,9 @@ pub enum JsonEvent {
 
 #[deriving(PartialEq, Show)]
 enum ParserState {
-    // Parse a value in a array, true means first element.
+    // Parse a value in an array, true means first element.
     ParseArray(bool),
-    // Parse ',' or ']' after an element in a array.
+    // Parse ',' or ']' after an element in an array.
     ParseArrayComma,
     // Parse a key:value in an object, true means first element.
     ParseObject(bool),
