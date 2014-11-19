@@ -79,7 +79,7 @@ pub fn lookup<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                         method_name: ast::Name,
                         self_ty: Ty<'tcx>,
                         supplied_method_types: Vec<Ty<'tcx>>,
-                        call_expr_id: ast::NodeId,
+                        call_expr: &ast::Expr,
                         self_expr: &ast::Expr)
                         -> Result<MethodCallee<'tcx>, MethodError>
 {
@@ -100,14 +100,14 @@ pub fn lookup<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
      * - `self_expr`:             the self expression (`foo`)
      */
 
-    debug!("lookup(method_name={}, self_ty={}, call_expr_id={}, self_expr={})",
+    debug!("lookup(method_name={}, self_ty={}, call_expr={}, self_expr={})",
            method_name.repr(fcx.tcx()),
            self_ty.repr(fcx.tcx()),
-           call_expr_id,
+           call_expr.repr(fcx.tcx()),
            self_expr.repr(fcx.tcx()));
 
-    let pick = try!(probe::probe(fcx, span, method_name, self_ty, call_expr_id));
-    Ok(confirm::confirm(fcx, span, self_expr, self_ty, pick, supplied_method_types))
+    let pick = try!(probe::probe(fcx, span, method_name, self_ty, call_expr.id));
+    Ok(confirm::confirm(fcx, span, self_expr, call_expr, self_ty, pick, supplied_method_types))
 }
 
 pub fn lookup_in_trait<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
