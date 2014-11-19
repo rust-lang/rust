@@ -181,7 +181,7 @@ mod svh_visitor {
         SawStructDef(token::InternedString),
 
         SawLifetimeRef(token::InternedString),
-        SawLifetimeDecl(token::InternedString),
+        SawLifetimeDef(token::InternedString),
 
         SawMod,
         SawViewItem,
@@ -414,8 +414,8 @@ mod svh_visitor {
             SawLifetimeRef(content(l.name)).hash(self.st);
         }
 
-        fn visit_lifetime_decl(&mut self, l: &LifetimeDef) {
-            SawLifetimeDecl(content(l.lifetime.name)).hash(self.st);
+        fn visit_lifetime_def(&mut self, l: &LifetimeDef) {
+            SawLifetimeDef(content(l.lifetime.name)).hash(self.st);
         }
 
         // We do recursively walk the bodies of functions/methods

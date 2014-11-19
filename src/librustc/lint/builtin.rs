@@ -994,7 +994,7 @@ impl LintPass for NonSnakeCase {
         self.check_snake_case(cx, "trait method", t.ident, t.span);
     }
 
-    fn check_lifetime_decl(&mut self, cx: &Context, t: &ast::LifetimeDef) {
+    fn check_lifetime_def(&mut self, cx: &Context, t: &ast::LifetimeDef) {
         self.check_snake_case(cx, "lifetime", t.lifetime.name.ident(), t.lifetime.span);
     }
 

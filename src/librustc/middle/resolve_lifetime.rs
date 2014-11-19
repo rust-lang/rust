@@ -226,7 +226,7 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
         self.with(LateScope(&trait_ref.bound_lifetimes, self.scope), |this| {
             this.check_lifetime_defs(&trait_ref.bound_lifetimes);
             for lifetime in trait_ref.bound_lifetimes.iter() {
-                this.visit_lifetime_decl(lifetime);
+                this.visit_lifetime_def(lifetime);
             }
             this.visit_trait_ref(&trait_ref.trait_ref)
         })

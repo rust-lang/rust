@@ -725,8 +725,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Context<'a, 'tcx> {
         run_lints!(self, check_lifetime_ref, lt);
     }
 
-    fn visit_lifetime_decl(&mut self, lt: &ast::LifetimeDef) {
-        run_lints!(self, check_lifetime_decl, lt);
+    fn visit_lifetime_def(&mut self, lt: &ast::LifetimeDef) {
+        run_lints!(self, check_lifetime_def, lt);
     }
 
     fn visit_explicit_self(&mut self, es: &ast::ExplicitSelf) {
