@@ -25,10 +25,10 @@ use ast::{DeclLocal, DefaultBlock, UnDeref, BiDiv, EMPTY_CTXT, EnumDef, Explicit
 use ast::{Expr, Expr_, ExprAddrOf, ExprMatch, ExprAgain};
 use ast::{ExprAssign, ExprAssignOp, ExprBinary, ExprBlock, ExprBox};
 use ast::{ExprBreak, ExprCall, ExprCast};
-use ast::{ExprField, ExprTupField, ExprFnBlock, ExprIf, ExprIfLet, ExprIndex, ExprSlice};
+use ast::{ExprField, ExprTupField, ExprClosure, ExprIf, ExprIfLet, ExprIndex, ExprSlice};
 use ast::{ExprLit, ExprLoop, ExprMac};
 use ast::{ExprMethodCall, ExprParen, ExprPath, ExprProc};
-use ast::{ExprRepeat, ExprRet, ExprStruct, ExprTup, ExprUnary, ExprUnboxedFn};
+use ast::{ExprRepeat, ExprRet, ExprStruct, ExprTup, ExprUnary};
 use ast::{ExprVec, ExprWhile, ExprWhileLet, ExprForLoop, Field, FnDecl};
 use ast::{Once, Many};
 use ast::{FnUnboxedClosureKind, FnMutUnboxedClosureKind};
@@ -2950,7 +2950,8 @@ impl<'a> Parser<'a> {
 
     // `|args| expr`
     pub fn parse_lambda_expr(&mut self, capture_clause: CaptureClause)
-                             -> P<Expr> {
+                             -> P<Expr>
+    {
         let lo = self.span.lo;
         let (decl, optional_unboxed_closure_kind) =
             self.parse_fn_block_decl();
@@ -2964,21 +2965,10 @@ impl<'a> Parser<'a> {
             rules: DefaultBlock,
         });
 
-        match optional_unboxed_closure_kind {
-            Some(unboxed_closure_kind) => {
-                self.mk_expr(lo,
-                             fakeblock.span.hi,
-                             ExprUnboxedFn(capture_clause,
-                                           unboxed_closure_kind,
-                                           decl,
-                                           fakeblock))
-            }
-            None => {
-                self.mk_expr(lo,
-                             fakeblock.span.hi,
-                             ExprFnBlock(capture_clause, decl, fakeblock))
-            }
-        }
+        self.mk_expr(
+            lo,
+            fakeblock.span.hi,
+            ExprClosure(capture_clause, optional_unboxed_closure_kind, decl, fakeblock))
     }
 
     pub fn parse_else_expr(&mut self) -> P<Expr> {

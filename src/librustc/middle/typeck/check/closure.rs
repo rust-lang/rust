@@ -26,12 +26,38 @@ use syntax::ast;
 use syntax::ast_util;
 use util::ppaux::Repr;
 
-pub fn check_unboxed_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
-                                      expr: &ast::Expr,
-                                      kind: ast::UnboxedClosureKind,
-                                      decl: &ast::FnDecl,
-                                      body: &ast::Block,
-                                      expected: Expectation<'tcx>) {
+pub fn check_expr_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
+                                   expr: &ast::Expr,
+                                   opt_kind: Option<ast::UnboxedClosureKind>,
+                                   decl: &ast::FnDecl,
+                                   body: &ast::Block,
+                                   expected: Expectation<'tcx>) {
+    match opt_kind {
+        None => { // old-school boxed closure
+            let region = astconv::opt_ast_region_to_region(fcx,
+                                                           fcx.infcx(),
+                                                           expr.span,
+                                                           &None);
+            check_boxed_closure(fcx,
+                                expr,
+                                ty::RegionTraitStore(region, ast::MutMutable),
+                                decl,
+                                body,
+                                expected);
+        }
+
+        Some(kind) => {
+            check_unboxed_closure(fcx, expr, kind, decl, body, expected)
+        }
+    }
+}
+
+fn check_unboxed_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
+                                  expr: &ast::Expr,
+                                  kind: ast::UnboxedClosureKind,
+                                  decl: &ast::FnDecl,
+                                  body: &ast::Block,
+                                  expected: Expectation<'tcx>) {
     let expr_def_id = ast_util::local_def(expr.id);
 
     let expected_sig_and_kind = match expected.resolve(fcx) {
@@ -215,12 +241,12 @@ fn deduce_unboxed_closure_expectations_from_obligations<'a,'tcx>(
 }
 
 
-pub fn check_expr_fn<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
-                              expr: &ast::Expr,
-                              store: ty::TraitStore,
-                              decl: &ast::FnDecl,
-                              body: &ast::Block,
-                              expected: Expectation<'tcx>) {
+pub fn check_boxed_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
+                                    expr: &ast::Expr,
+                                    store: ty::TraitStore,
+                                    decl: &ast::FnDecl,
+                                    body: &ast::Block,
+                                    expected: Expectation<'tcx>) {
     let tcx = fcx.ccx.tcx;
 
     // Find the expected input/output types (if any). Substitute

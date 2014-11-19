@@ -2823,9 +2823,7 @@ fn check_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         };
         for (i, arg) in args.iter().take(t).enumerate() {
             let is_block = match arg.node {
-                ast::ExprFnBlock(..) |
-                ast::ExprProc(..) |
-                ast::ExprUnboxedFn(..) => true,
+                ast::ExprClosure(..) | ast::ExprProc(..) => true,
                 _ => false
             };
 
@@ -4148,33 +4146,16 @@ fn check_expr_with_unifier<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
       ast::ExprMatch(ref discrim, ref arms, _) => {
         _match::check_match(fcx, expr, &**discrim, arms.as_slice());
       }
-      ast::ExprFnBlock(_, ref decl, ref body) => {
-        let region = astconv::opt_ast_region_to_region(fcx,
-                                                       fcx.infcx(),
-                                                       expr.span,
-                                                       &None);
-        closure::check_expr_fn(fcx,
-                               expr,
-                               ty::RegionTraitStore(region, ast::MutMutable),
-                               &**decl,
-                               &**body,
-                               expected);
-      }
-      ast::ExprUnboxedFn(_, kind, ref decl, ref body) => {
-          closure::check_unboxed_closure(fcx,
-                                         expr,
-                                         kind,
-                                         &**decl,
-                                         &**body,
-                                         expected);
+      ast::ExprClosure(_, opt_kind, ref decl, ref body) => {
+          closure::check_expr_closure(fcx, expr, opt_kind, &**decl, &**body, expected);
       }
       ast::ExprProc(ref decl, ref body) => {
-          closure::check_expr_fn(fcx,
-                                 expr,
-                                 ty::UniqTraitStore,
-                                 &**decl,
-                                 &**body,
-                                 expected);
+          closure::check_boxed_closure(fcx,
+                                       expr,
+                                       ty::UniqTraitStore,
+                                       &**decl,
+                                       &**body,
+                                       expected);
       }
       ast::ExprBlock(ref b) => {
         check_block_with_expected(fcx, &**b, expected);

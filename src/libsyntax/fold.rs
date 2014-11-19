@@ -1316,18 +1316,13 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span}: Expr, folder: &mut T) ->
                         arms.move_map(|x| folder.fold_arm(x)),
                         source)
             }
-            ExprFnBlock(capture_clause, decl, body) => {
-                ExprFnBlock(capture_clause,
-                            folder.fold_fn_decl(decl),
-                            folder.fold_block(body))
-            }
             ExprProc(decl, body) => {
                 ExprProc(folder.fold_fn_decl(decl),
                          folder.fold_block(body))
             }
-            ExprUnboxedFn(capture_clause, kind, decl, body) => {
-                ExprUnboxedFn(capture_clause,
-                            kind,
+            ExprClosure(capture_clause, opt_kind, decl, body) => {
+                ExprClosure(capture_clause,
+                            opt_kind,
                             folder.fold_fn_decl(decl),
                             folder.fold_block(body))
             }

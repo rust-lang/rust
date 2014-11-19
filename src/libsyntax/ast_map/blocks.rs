@@ -37,7 +37,7 @@ use visit;
 ///
 /// More specifically, it is one of either:
 ///   - A function item,
-///   - A closure expr (i.e. an ExprFnBlock or ExprProc), or
+///   - A closure expr (i.e. an ExprClosure or ExprProc), or
 ///   - The default implementation for a trait method.
 ///
 /// To construct one, use the `Code::from_node` function.
@@ -71,7 +71,7 @@ impl MaybeFnLike for ast::TraitItem {
 impl MaybeFnLike for ast::Expr {
     fn is_fn_like(&self) -> bool {
         match self.node {
-            ast::ExprFnBlock(..) | ast::ExprProc(..) => true,
+            ast::ExprClosure(..) | ast::ExprProc(..) => true,
             _ => false,
         }
     }
@@ -215,7 +215,7 @@ impl<'a> FnLikeNode<'a> {
                 }
             }
             ast_map::NodeExpr(e) => match e.node {
-                ast::ExprFnBlock(_, ref decl, ref block) =>
+                ast::ExprClosure(_, _, ref decl, ref block) =>
                     closure(ClosureParts::new(&**decl, &**block, e.id, e.span)),
                 ast::ExprProc(ref decl, ref block) =>
                     closure(ClosureParts::new(&**decl, &**block, e.id, e.span)),
