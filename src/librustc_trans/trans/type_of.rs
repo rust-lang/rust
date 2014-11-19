@@ -34,7 +34,7 @@ fn ensure_array_fits_in_address_space<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                                 scapegoat: Ty<'tcx>) {
     let esz = machine::llsize_of_alloc(ccx, llet);
     match esz.checked_mul(size) {
-        Some(n) if n < ccx.max_obj_size() => {}
+        Some(n) if n < ccx.obj_size_bound() => {}
         _ => { ccx.report_overbig_object(scapegoat) }
     }
 }
