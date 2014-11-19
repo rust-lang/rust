@@ -250,7 +250,7 @@ impl Target {
             } );
             ($key_name:ident, list) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
-                obj.find(name[]).map(|o| o.as_list()
+                obj.find(name[]).map(|o| o.as_array()
                     .map(|v| base.options.$key_name = v.iter()
                         .map(|a| a.as_string().unwrap().to_string()).collect()
                         )
