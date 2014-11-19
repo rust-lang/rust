@@ -203,27 +203,6 @@ This facilitates plugin configuration.  The alternative in many cases is to use
 interacting side effects between procedural macros, which are harder to reason
 about.
 
-## Unspecify order of procedural macro side effects
-
-This is basically an internal-only change, but I mention it in this RFC (for
-now) because it was discussed alongside the rest of this.
-
-We clarify that the ordering of expansion, hence side effects, for separate
-(i.e. non-nested) procedural macro invocations is unspecified.  This does not
-affect the stable language, because procedural macros are not part of it, and
-expansion of pattern-based macros cannot have side effects.
-
-Interacting side effects between procedural macros is messy in general.  It's
-much better for a macro to approximate a pure function of its input, plus an
-"environment" that does not change during macro expansion.  I claim that this
-is usually possible (see
-[discussion](https://github.com/rust-lang/rfcs/pull/453#issuecomment-62813856)).
-
-The main reason to consider this now in an RFC is to make sure that built-in
-procedural macros exposed to stable code can comply.  Reserving the right to
-change expansion order allows us to pursue more sophisticated approaches to the
-name resolution problem after 1.0.
-
 # Miscellaneous remarks
 
 In a future where macros are scoped the same way as other items,
