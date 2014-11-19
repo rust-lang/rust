@@ -31,6 +31,28 @@ This RFC contains plans to do so.
 These are the substantial changes to the macro system.  The examples also use
 the improved syntax, described later.
 
+## `$crate`
+
+The first change is to disallow importing macros from an `extern crate` that is
+not at the crate root.  In that case, if
+
+```rust
+extern crate "bar" as foo;
+```
+
+imports macros, then it's also introducing ordinary paths of the form
+`::foo::...`.  We call `foo` the *crate ident* of the `extern crate`.
+
+We introduce a special macro metavar `$crate` which expands to `::foo` when a
+macro was imported through crate ident `foo`, and to nothing when it was
+defined in the crate where it is being expanded.  `$crate::bar::baz` will be an
+absolute path either way.
+
+This feature eliminates the need for the "curious inner-module" and also
+enables macro re-export (see below).  It is [implemented and
+tested](https://github.com/kmcallister/rust/commits/macro-reexport) but needs a
+rebase.
+
 ## Crate scope for macros
 
 In this document, the "syntax environment" refers to the set of syntax
@@ -41,10 +63,10 @@ However, the exclamation point is really part of the invocation syntax, not the
 name, and some syntax extensions are invoked with no exclamation point, for
 example item decorators like `deriving`.
 
-The first proposed change is that macros imported from another crate will not
-automatically end up in the syntax environment, as they do today.  Instead, you
-can bring an imported macro into the syntax environment with a new view item,
-`use macro`:
+Imported macros will not automatically end up in the syntax environment.
+Instead, you can bring an imported macro into the syntax environment by
+providing the crate ident and a macro name (or wildcard) in a `use macro` view
+item:
 
 ```rust
 use macro std::vec;
@@ -52,13 +74,16 @@ use macro std::panic as fail;
 use macro core::*;
 ```
 
+These paths must have exactly two components: the crate ident, and a macro name
+or `*`.
+
 The syntax environment still consists of unqualified names.  There's no way to
 invoke a macro through a qualified name. This obviates the need to change the
 parsing of expressions, patterns, etc.
 
-The `macro` keyword is important because it signals that this is something
-different from the usual name resolution.  `use macro` is a memorable and
-searchable name for the feature.
+`macro` is a new keyword.  This is an important part of the proposal, because
+it signals that we're deviating from usual name resolution.  `use macro` is a
+memorable and searchable name for the feature.
 
 The `use macro` view item only affects the syntax environment of the block or
 module where it appears, and only from the point of appearance onward.  Unlike
@@ -76,7 +101,6 @@ extern macro_rules! lint_initializer { ... }
 
 /// Declare a lint.
 extern macro_rules! declare_lint {
-    // See below for $crate
     use macro $crate::lint_initializer;
 
     ($name:ident, $level:ident, $desc:expr) => (
@@ -91,17 +115,6 @@ the result of invoking `declare_lint!`.
 
 Procedural macros need their own way to manipulate the syntax environment, but
 that's an unstable internal API, so it's outside the scope of this RFC.
-
-## `$crate`
-
-We add a special metavar `$crate` which expands to `::foo` when a macro was
-imported from crate `foo`, and to nothing when it was defined in-crate.
-`$crate::bar::baz` will be an absolute path either way.
-
-This feature eliminates the need for the "curious inner-module" and also
-enables macro re-export (see below).  It is [implemented and
-tested](https://github.com/kmcallister/rust/commits/macro-reexport) but needs a
-rebase.
 
 # New syntax
 
