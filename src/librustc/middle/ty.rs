@@ -3396,14 +3396,6 @@ pub fn deref<'tcx>(ty: Ty<'tcx>, explicit: bool) -> Option<mt<'tcx>> {
     }
 }
 
-pub fn deref_or_dont<'tcx>(ty: Ty<'tcx>) -> Ty<'tcx> {
-    match ty.sty {
-        ty_uniq(ty) => ty,
-        ty_rptr(_, mt) | ty_ptr(mt) => mt.ty,
-        _ => ty
-    }
-}
-
 pub fn close_type<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
     match ty.sty {
         ty_open(ty) => mk_rptr(cx, ReStatic, mt {ty: ty, mutbl:ast::MutImmutable}),
@@ -5987,5 +5979,61 @@ impl DebruijnIndex {
 
     pub fn shifted(&self, amount: uint) -> DebruijnIndex {
         DebruijnIndex { depth: self.depth + amount }
+    }
+}
+
+impl<'tcx> Repr<'tcx> for AutoAdjustment<'tcx> {
+    fn repr(&self, tcx: &ctxt<'tcx>) -> String {
+        match *self {
+            AdjustAddEnv(ref trait_store) => {
+                format!("AdjustAddEnv({})", trait_store)
+            }
+            AdjustDerefRef(ref data) => {
+                data.repr(tcx)
+            }
+        }
+    }
+}
+
+impl<'tcx> Repr<'tcx> for UnsizeKind<'tcx> {
+    fn repr(&self, tcx: &ctxt<'tcx>) -> String {
+        match *self {
+            UnsizeLength(n) => format!("UnsizeLength({})", n),
+            UnsizeStruct(ref k, n) => format!("UnsizeStruct({},{})", k.repr(tcx), n),
+            UnsizeVtable(ref a, ref b) => format!("UnsizeVtable({},{})", a.repr(tcx), b.repr(tcx)),
+        }
+    }
+}
+
+impl<'tcx> Repr<'tcx> for AutoDerefRef<'tcx> {
+    fn repr(&self, tcx: &ctxt<'tcx>) -> String {
+        format!("AutoDerefRef({}, {})", self.autoderefs, self.autoref.repr(tcx))
+    }
+}
+
+impl<'tcx> Repr<'tcx> for AutoRef<'tcx> {
+    fn repr(&self, tcx: &ctxt<'tcx>) -> String {
+        match *self {
+            AutoPtr(a, b, ref c) => {
+                format!("AutoPtr({},{},{})", a.repr(tcx), b, c.repr(tcx))
+            }
+            AutoUnsize(ref a) => {
+                format!("AutoUnsize({})", a.repr(tcx))
+            }
+            AutoUnsizeUniq(ref a) => {
+                format!("AutoUnsizeUniq({})", a.repr(tcx))
+            }
+            AutoUnsafe(ref a, ref b) => {
+                format!("AutoUnsafe({},{})", a, b.repr(tcx))
+            }
+        }
+    }
+}
+
+impl<'tcx> Repr<'tcx> for TyTrait<'tcx> {
+    fn repr(&self, tcx: &ctxt<'tcx>) -> String {
+        format!("TyTrait({},{})",
+                self.principal.repr(tcx),
+                self.bounds.repr(tcx))
     }
 }
