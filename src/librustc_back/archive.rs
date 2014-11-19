@@ -286,7 +286,7 @@ impl<'a> ArchiveBuilder<'a> {
         // First, extract the contents of the archive to a temporary directory.
         // We don't unpack directly into `self.work_dir` due to the possibility
         // of filename collisions.
-        let archive = os::make_absolute(archive).unwrap();
+        let archive = os::abspath(archive).unwrap();
         run_ar(self.archive.handler, &self.archive.maybe_ar_prog,
                "x", Some(loc.path()), &[&archive]);
 
