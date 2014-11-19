@@ -53,7 +53,7 @@ impl LintPass for TypePass {
           .map(|t| match_ty_unwrap(&**t, &["std", "vec", "Vec"]))
           .map(|_| {
             span_note_and_lint(cx, CLIPPY_BOX_VEC, ty.span,
-                              "Detected Box<Vec<T>>. Did you mean to use Vec<T>?",
+                              "You seem to be trying to use Box<Vec<T>>. Did you mean to use Vec<T>?",
                               "Vec<T> is already on the heap, Box<Vec<T>> makes an extra allocation");
           });
     }
