@@ -4039,19 +4039,19 @@ initialized; this is enforced by the compiler.
 
 ### Boxes
 
-An  _box_ is a reference to a heap allocation holding another value, which is
+A _box_ is a reference to a heap allocation holding another value, which is
 constructed by the prefix operator `box`. When the standard library is in use,
-the type of an box is `std::owned::Box<T>`.
+the type of a box is `std::owned::Box<T>`.
 
-An example of an box type and value:
+An example of a box type and value:
 
 ```
 let x: Box<int> = box 10;
 ```
 
-Box values exist in 1:1 correspondence with their heap allocation, copying an
+Box values exist in 1:1 correspondence with their heap allocation, copying a
 box value makes a shallow copy of the pointer. Rust will consider a shallow
-copy of an box to move ownership of the value. After a value has been moved,
+copy of a box to move ownership of the value. After a value has been moved,
 the source location cannot be used unless it is reinitialized.
 
 ```
