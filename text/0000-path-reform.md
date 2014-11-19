@@ -14,7 +14,7 @@ the current design.
 # Motivation
 
 The design of a path abstraction is surprisingly hard. Paths work radically
-differently on different platform, so providing a cross-platform abstraction is
+differently on different platforms, so providing a cross-platform abstraction is
 challenging. On some platforms, paths are not required to be in Unicode, posing
 ergonomic and semantic difficulties for a Rust API. These difficulties are
 compounded if one also tries to provide efficient path manipulation that does
@@ -105,6 +105,12 @@ non-native paths, which can sometimes be useful for interoperation. The new
 design should retain this functionality.
 
 # Detailed design
+
+Note: this design is influenced by the
+[Boost filesystem library](www.boost.org/doc/libs/1_57_0/libs/filesystem/doc/reference.html)
+and [Scheme48](http://s48.org/1.8/manual/manual-Z-H-6.html#node_sec_5.15) and
+[Racket's](http://plt.eecs.northwestern.edu/snapshots/current/doc/reference/windowspaths.html#%28part._windowspathrep%29)
+approach to encoding issues on windows.
 
 ## Overview
 
@@ -205,7 +211,7 @@ impl<'a> Iterator<&'a Path> for Iter<'a> { .. }
 pub const SEP: char = ..
 pub const ALT_SEPS: &'static [char] = ..
 
-pub fn is_sep(c: char) -> bool { .. }
+pub fn is_separator(c: char) -> bool { .. }
 ```
 
 There is plenty of overlap with today's API, and the methods being retained here
@@ -225,8 +231,16 @@ comment:
   paths directly in terms of byte sequences, because each platform extends
   beyond Unicode in its own way. In particular, Unix platforms accept arbitrary
   u8 sequences, while Windows accepts arbitrary *u16* sequences (both modulo
-  disallowing interior 0s). So the only way to safely interpret a sequence of
-  bytes across platforms is as UTF-8.
+  disallowing interior 0s). The u16 sequences provided by Windows do not have a
+  canonical encoding as bytes; this RFC proposed to use
+  [WTF-8](http://simonsapin.github.io/wtf-8/) (see below), but does not reveal
+  that choice.
+
+* **What about interior nulls?** Currently various Rust system APIs will panic
+  when given strings containing interior null values because, while these are
+  valid UTF-8, it is not possible to send them as-is to C APIs that expect
+  null-terminated strings. The API here follows the same approach, panicking if
+  given a path with an interior null.
 
 * **Why do `file_name` and `extension` operations work with `Path` rather than
   some other type?** In particular, it may seem strange to view an extension as
@@ -251,10 +265,15 @@ comment:
   below). **NOTE* this normalization does *not* include removing `..`, for the
   reasons explained at the beginning of the RFC.
 
+* **What does the iterator yield?** Unlike today's `components`, the `iter`
+  method here will begin with `root_path` if there is one. Thus, `a/b/c` will
+  yield `a`, `b` and `c`, while `/a/b/c` will yield `/`, `a`, `b` and `c`.
+
 ## Important semantic rules
 
 The path API is designed to satisfy several semantic rules described below.
-**Note that `==` here is *lazily* normalizing**.
+**Note that `==` here is *lazily* normalizing**, treating `./b` as `b` and
+`a//b` as `a/b`; see the next section for more details.
 
 Suppose `p` is some `&Path` and `dot == Path::new(".")`:
 
@@ -372,13 +391,14 @@ This is acceptable because the platform supports arbitrary byte sequences
 ### Windows
 
 On Windows, the additional APIs allow you to convert to/from UCS-2 (roughly,
-arbitrary `u16` sequences interpreted as UTF-16 when applicable). They also
-provide the remaining Windows-specific path decomposition functionality that
-today's path module supports.
+arbitrary `u16` sequences interpreted as UTF-16 when applicable); because the
+name "UCS-2" does not have a clear meaning, these APIs use `u16_slice` and will
+be carefully documented. They also provide the remaining Windows-specific path
+decomposition functionality that today's path module supports.
 
 ```rust
 pub trait WindowsPathBufExt {
-    fn from_ucs2(path: &[u16]) -> Self;
+    fn from_u16_slice(path: &[u16]) -> Self;
     fn make_non_verbatim(&mut self) -> bool;
 }
 
@@ -387,7 +407,7 @@ pub trait WindowsPathExt {
     fn is_vol_relative(&self) -> bool;
     fn is_verbatim(&self) -> bool;
     fn prefix(&self) -> PathPrefix;
-    fn to_ucs2(&self) -> Vec<u16>;
+    fn to_u16_slice(&self) -> Vec<u16>;
 }
 
 enum PathPrefix<'a> {
