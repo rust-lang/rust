@@ -434,9 +434,8 @@ pub fn visibility_qualified(vis: ast::Visibility, s: &str) -> String {
 fn needs_parentheses(expr: &ast::Expr) -> bool {
     match expr.node {
         ast::ExprAssign(..) | ast::ExprBinary(..) |
-        ast::ExprFnBlock(..) | ast::ExprProc(..) |
-        ast::ExprUnboxedFn(..) | ast::ExprAssignOp(..) |
-        ast::ExprCast(..) => true,
+        ast::ExprClosure(..) | ast::ExprProc(..) |
+        ast::ExprAssignOp(..) | ast::ExprCast(..) => true,
         _ => false,
     }
 }
@@ -1652,49 +1651,11 @@ impl<'a> State<'a> {
                 }
                 try!(self.bclose_(expr.span, indent_unit));
             }
-            ast::ExprFnBlock(capture_clause, ref decl, ref body) => {
+            ast::ExprClosure(capture_clause, opt_kind, ref decl, ref body) => {
                 try!(self.print_capture_clause(capture_clause));
 
-                // in do/for blocks we don't want to show an empty
-                // argument list, but at this point we don't know which
-                // we are inside.
-                //
-                // if !decl.inputs.is_empty() {
-                try!(self.print_fn_block_args(&**decl, None));
+                try!(self.print_fn_block_args(&**decl, opt_kind));
                 try!(space(&mut self.s));
-                // }
-
-                if !body.stmts.is_empty() || !body.expr.is_some() {
-                    try!(self.print_block_unclosed(&**body));
-                } else {
-                    // we extract the block, so as not to create another set of boxes
-                    match body.expr.as_ref().unwrap().node {
-                        ast::ExprBlock(ref blk) => {
-                            try!(self.print_block_unclosed(&**blk));
-                        }
-                        _ => {
-                            // this is a bare expression
-                            try!(self.print_expr(&**body.expr.as_ref().unwrap()));
-                            try!(self.end()); // need to close a box
-                        }
-                    }
-                }
-                // a box will be closed by print_expr, but we didn't want an overall
-                // wrapper so we closed the corresponding opening. so create an
-                // empty box to satisfy the close.
-                try!(self.ibox(0));
-            }
-            ast::ExprUnboxedFn(capture_clause, kind, ref decl, ref body) => {
-                try!(self.print_capture_clause(capture_clause));
-
-                // in do/for blocks we don't want to show an empty
-                // argument list, but at this point we don't know which
-                // we are inside.
-                //
-                // if !decl.inputs.is_empty() {
-                try!(self.print_fn_block_args(&**decl, Some(kind)));
-                try!(space(&mut self.s));
-                // }
 
                 if !body.stmts.is_empty() || !body.expr.is_some() {
                     try!(self.print_block_unclosed(&**body));

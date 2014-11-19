@@ -207,10 +207,11 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
             fld.cx.expr(span, ast::ExprForLoop(pat, head, body, opt_ident))
         }
 
-        ast::ExprFnBlock(capture_clause, fn_decl, block) => {
+        ast::ExprClosure(capture_clause, opt_kind, fn_decl, block) => {
             let (rewritten_fn_decl, rewritten_block)
                 = expand_and_rename_fn_decl_and_block(fn_decl, block, fld);
-            let new_node = ast::ExprFnBlock(capture_clause,
+            let new_node = ast::ExprClosure(capture_clause,
+                                            opt_kind,
                                             rewritten_fn_decl,
                                             rewritten_block);
             P(ast::Expr{id:id, node: new_node, span: fld.new_span(span)})
@@ -1555,7 +1556,7 @@ mod test {
             0)
     }
 
-    // closure arg hygiene (ExprFnBlock)
+    // closure arg hygiene (ExprClosure)
     // expands to fn f(){(|x_1 : int| {(x_2 + x_1)})(3);}
     #[test] fn closure_arg_hygiene(){
         run_renaming_test(

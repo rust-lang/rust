@@ -288,9 +288,12 @@ pub fn closure_to_block(closure_id: ast::NodeId,
     match tcx.map.get(closure_id) {
         ast_map::NodeExpr(expr) => match expr.node {
             ast::ExprProc(_, ref block) |
-            ast::ExprFnBlock(_, _, ref block) |
-            ast::ExprUnboxedFn(_, _, _, ref block) => { block.id }
-            _ => panic!("encountered non-closure id: {}", closure_id)
+            ast::ExprClosure(_, _, _, ref block) => {
+                block.id
+            }
+            _ => {
+                panic!("encountered non-closure id: {}", closure_id)
+            }
         },
         _ => panic!("encountered non-expr id: {}", closure_id)
     }
