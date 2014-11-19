@@ -81,8 +81,7 @@ impl<'a> fmt::Show for Matrix<'a> {
             try!(write!(f, "+"));
             for (column, pat_str) in row.into_iter().enumerate() {
                 try!(write!(f, " "));
-                f.width = Some(column_widths[column]);
-                try!(f.pad(pat_str.as_slice()));
+                try!(write!(f, "{:1$}", pat_str, column_widths[column]));
                 try!(write!(f, " +"));
             }
             try!(write!(f, "\n"));

@@ -59,7 +59,7 @@ fn main() {
     } else {
         from_str(args[1].as_slice()).unwrap()
     });
-    println!("{:.9f}", answer);
+    println!("{:.9}", answer);
 }
 
 fn spectralnorm(n: uint) -> f64 {

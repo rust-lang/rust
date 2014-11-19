@@ -1034,7 +1034,7 @@ pub trait Writer {
                     Ok(()) => Ok(()),
                     Err(e) => {
                         self.error = Err(e);
-                        Err(fmt::WriteError)
+                        Err(fmt::Error)
                     }
                 }
             }
@@ -1081,13 +1081,13 @@ pub trait Writer {
     /// Write the result of passing n through `int::to_str_bytes`.
     #[inline]
     fn write_int(&mut self, n: int) -> IoResult<()> {
-        write!(self, "{:d}", n)
+        write!(self, "{}", n)
     }
 
     /// Write the result of passing n through `uint::to_str_bytes`.
     #[inline]
     fn write_uint(&mut self, n: uint) -> IoResult<()> {
-        write!(self, "{:u}", n)
+        write!(self, "{}", n)
     }
 
     /// Write a little-endian uint (number of bytes depends on system).
@@ -1896,10 +1896,8 @@ impl Default for FilePermission {
 }
 
 impl fmt::Show for FilePermission {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.fill = '0';
-        formatter.width = Some(4);
-        (&self.bits as &fmt::Octal).fmt(formatter)
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:04o}", self.bits)
     }
 }
 

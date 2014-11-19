@@ -355,8 +355,8 @@ impl UserIdentifiedItem {
     fn to_one_node_id(self, user_option: &str, sess: &Session, map: &ast_map::Map) -> ast::NodeId {
         let fail_because = |is_wrong_because| -> ast::NodeId {
             let message =
-                format!("{:s} needs NodeId (int) or unique \
-                         path suffix (b::c::d); got {:s}, which {:s}",
+                format!("{} needs NodeId (int) or unique \
+                         path suffix (b::c::d); got {}, which {}",
                         user_option,
                         self.reconstructed_input(),
                         is_wrong_because);

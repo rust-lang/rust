@@ -36,7 +36,7 @@ be indexed by the direction (see the type `Direction`).
 
 #![allow(dead_code)] // still WIP
 
-use std::fmt::{Formatter, FormatError, Show};
+use std::fmt::{Formatter, Error, Show};
 use std::uint;
 
 pub struct Graph<N,E> {
@@ -57,7 +57,7 @@ pub struct Edge<E> {
 }
 
 impl<E: Show> Show for Edge<E> {
-    fn fmt(&self, f: &mut Formatter) -> Result<(), FormatError> {
+    fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
         write!(f, "Edge {{ next_edge: [{}, {}], source: {}, target: {}, data: {} }}",
                self.next_edge[0], self.next_edge[1], self.source,
                self.target, self.data)

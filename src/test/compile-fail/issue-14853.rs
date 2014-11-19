@@ -10,17 +10,18 @@
 
 use std::fmt::Show;
 
+trait Str {}
+
 trait Something {
-    fn yay<T: Show>(_: Option<Self>, thing: &[T]) -> String {
-    }
+    fn yay<T: Show>(_: Option<Self>, thing: &[T]);
 }
 
 struct X { data: u32 }
 
 impl Something for X {
-    fn yay<T: Str>(_:Option<X>, thing: &[T]) -> String {
-//~^ ERROR in method `yay`, type parameter 0 requires bound `core::str::Str`, which is not required
-        format!("{:s}", thing[0])
+    fn yay<T: Str>(_:Option<X>, thing: &[T]) {
+//~^ ERROR in method `yay`, type parameter 0 requires bound `Str`, which is not required
+
     }
 }
 
