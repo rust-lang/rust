@@ -10,7 +10,6 @@
 
 #![allow(dead_assignment)]
 #![allow(unused_variable)]
-#![feature(struct_variant)]
 
 enum Animal {
     Dog (String, f64),

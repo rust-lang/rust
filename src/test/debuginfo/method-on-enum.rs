@@ -113,8 +113,6 @@
 // lldb-check:[...]$14 = -10
 // lldb-command:continue
 
-#![feature(struct_variant)]
-
 enum Enum {
     Variant1 { x: u16, y: u16 },
     Variant2 (u32)

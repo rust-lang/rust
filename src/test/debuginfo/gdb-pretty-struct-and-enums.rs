@@ -64,8 +64,6 @@
 // gdb-command: print nested_variant2
 // gdb-check:$14 = NestedVariant2 = {abc = NestedStruct = {regular_struct = RegularStruct = {the_first_field = 117, the_second_field = 118.5, the_third_field = false, the_fourth_field = "NestedStructString10"}, tuple_struct = TupleStruct = {119.5, 120}, empty_struct = EmptyStruct, c_style_enum = CStyleEnumVar3, mixed_enum = MixedEnumStructVar = {field1 = 121.5, field2 = -122}}}
 
-#![feature(struct_variant)]
-
 use self::CStyleEnum::{CStyleEnumVar1, CStyleEnumVar2, CStyleEnumVar3};
 use self::MixedEnum::{MixedEnumCStyleVar, MixedEnumTupleVar, MixedEnumStructVar};
 use self::NestedEnum::{NestedVariant1, NestedVariant2};
