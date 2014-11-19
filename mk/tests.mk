@@ -199,7 +199,7 @@ check-docs: cleantestlibs cleantmptestlogs check-stage2-docs
 
 # Some less critical tests that are not prone to breakage.
 # Not run as part of the normal test suite, but tested by bors on checkin.
-check-secondary: check-build-compiletest check-lexer check-pretty
+check-secondary: check-build-compiletest check-build-lexer-verifier check-lexer check-pretty
 
 # check + check-secondary.
 #

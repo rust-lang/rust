@@ -236,18 +236,28 @@ pub fn token_to_string(tok: &Token) -> String {
         token::Question             => "?".into_string(),
 
         /* Literals */
-        token::LitByte(b)           => format!("b'{}'", b.as_str()),
-        token::LitChar(c)           => format!("'{}'", c.as_str()),
-        token::LitFloat(c)          => c.as_str().into_string(),
-        token::LitInteger(c)        => c.as_str().into_string(),
-        token::LitStr(s)            => format!("\"{}\"", s.as_str()),
-        token::LitStrRaw(s, n)      => format!("r{delim}\"{string}\"{delim}",
-                                               delim="#".repeat(n),
-                                               string=s.as_str()),
-        token::LitBinary(v)         => format!("b\"{}\"", v.as_str()),
-        token::LitBinaryRaw(s, n)   => format!("br{delim}\"{string}\"{delim}",
-                                               delim="#".repeat(n),
-                                               string=s.as_str()),
+        token::Literal(lit, suf) => {
+            let mut out = match lit {
+                token::Byte(b)           => format!("b'{}'", b.as_str()),
+                token::Char(c)           => format!("'{}'", c.as_str()),
+                token::Float(c)          => c.as_str().into_string(),
+                token::Integer(c)        => c.as_str().into_string(),
+                token::Str_(s)           => format!("\"{}\"", s.as_str()),
+                token::StrRaw(s, n)      => format!("r{delim}\"{string}\"{delim}",
+                                                    delim="#".repeat(n),
+                                                    string=s.as_str()),
+                token::Binary(v)         => format!("b\"{}\"", v.as_str()),
+                token::BinaryRaw(s, n)   => format!("br{delim}\"{string}\"{delim}",
+                                                    delim="#".repeat(n),
+                                                    string=s.as_str()),
+            };
+
+            if let Some(s) = suf {
+                out.push_str(s.as_str())
+            }
+
+            out
+        }
 
         /* Name components */
         token::Ident(s, _)          => token::get_ident(s).get().into_string(),
