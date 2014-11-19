@@ -52,17 +52,17 @@ pub enum Constraint {
 
 // Something we have to verify after region inference is done, but
 // which does not directly influence the inference process
-pub enum Verify {
+pub enum Verify<'tcx> {
     // VerifyRegSubReg(a, b): Verify that `a <= b`. Neither `a` nor
     // `b` are inference variables.
-    VerifyRegSubReg(SubregionOrigin, Region, Region),
+    VerifyRegSubReg(SubregionOrigin<'tcx>, Region, Region),
 
     // VerifyParamBound(T, _, R, RS): The parameter type `T` must
     // outlive the region `R`. `T` is known to outlive `RS`. Therefore
     // verify that `R <= RS[i]` for some `i`. Inference variables may
     // be involved (but this verification step doesn't influence
     // inference).
-    VerifyParamBound(ty::ParamTy, SubregionOrigin, Region, Vec<Region>),
+    VerifyParamBound(ty::ParamTy, SubregionOrigin<'tcx>, Region, Vec<Region>),
 }
 
 #[deriving(PartialEq, Eq, Hash)]
@@ -89,43 +89,43 @@ pub enum CombineMapType {
 }
 
 #[deriving(Clone, Show)]
-pub enum RegionResolutionError {
+pub enum RegionResolutionError<'tcx> {
     /// `ConcreteFailure(o, a, b)`:
     ///
     /// `o` requires that `a <= b`, but this does not hold
-    ConcreteFailure(SubregionOrigin, Region, Region),
+    ConcreteFailure(SubregionOrigin<'tcx>, Region, Region),
 
     /// `ParamBoundFailure(p, s, a, bs)
     ///
     /// The parameter type `p` must be known to outlive the lifetime
     /// `a`, but it is only known to outlive `bs` (and none of the
     /// regions in `bs` outlive `a`).
-    ParamBoundFailure(SubregionOrigin, ty::ParamTy, Region, Vec<Region>),
+    ParamBoundFailure(SubregionOrigin<'tcx>, ty::ParamTy, Region, Vec<Region>),
 
     /// `SubSupConflict(v, sub_origin, sub_r, sup_origin, sup_r)`:
     ///
     /// Could not infer a value for `v` because `sub_r <= v` (due to
     /// `sub_origin`) but `v <= sup_r` (due to `sup_origin`) and
     /// `sub_r <= sup_r` does not hold.
-    SubSupConflict(RegionVariableOrigin,
-                   SubregionOrigin, Region,
-                   SubregionOrigin, Region),
+    SubSupConflict(RegionVariableOrigin<'tcx>,
+                   SubregionOrigin<'tcx>, Region,
+                   SubregionOrigin<'tcx>, Region),
 
     /// `SupSupConflict(v, origin1, r1, origin2, r2)`:
     ///
     /// Could not infer a value for `v` because `v <= r1` (due to
     /// `origin1`) and `v <= r2` (due to `origin2`) and
     /// `r1` and `r2` have no intersection.
-    SupSupConflict(RegionVariableOrigin,
-                   SubregionOrigin, Region,
-                   SubregionOrigin, Region),
+    SupSupConflict(RegionVariableOrigin<'tcx>,
+                   SubregionOrigin<'tcx>, Region,
+                   SubregionOrigin<'tcx>, Region),
 
     /// For subsets of `ConcreteFailure` and `SubSupConflict`, we can derive
     /// more specific errors message by suggesting to the user where they
     /// should put a lifetime. In those cases we process and put those errors
     /// into `ProcessedErrors` before we do any reporting.
-    ProcessedErrors(Vec<RegionVariableOrigin>,
-                    Vec<(TypeTrace, ty::type_err)>,
+    ProcessedErrors(Vec<RegionVariableOrigin<'tcx>>,
+                    Vec<(TypeTrace<'tcx>, ty::type_err<'tcx>)>,
                     Vec<SameRegions>),
 }
 
@@ -160,19 +160,19 @@ pub type CombineMap = FnvHashMap<TwoRegions, RegionVid>;
 
 pub struct RegionVarBindings<'a, 'tcx: 'a> {
     tcx: &'a ty::ctxt<'tcx>,
-    var_origins: RefCell<Vec<RegionVariableOrigin>>,
+    var_origins: RefCell<Vec<RegionVariableOrigin<'tcx>>>,
 
     // Constraints of the form `A <= B` introduced by the region
     // checker.  Here at least one of `A` and `B` must be a region
     // variable.
-    constraints: RefCell<FnvHashMap<Constraint, SubregionOrigin>>,
+    constraints: RefCell<FnvHashMap<Constraint, SubregionOrigin<'tcx>>>,
 
     // A "verify" is something that we need to verify after inference is
     // done, but which does not directly affect inference in any way.
     //
     // An example is a `A <= B` where neither `A` nor `B` are
     // inference variables.
-    verifys: RefCell<Vec<Verify>>,
+    verifys: RefCell<Vec<Verify<'tcx>>>,
 
     // A "given" is a relationship that is known to hold. In particular,
     // we often know from closure fn signatures that a particular free
@@ -314,7 +314,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         self.var_origins.borrow().len()
     }
 
-    pub fn new_region_var(&self, origin: RegionVariableOrigin) -> RegionVid {
+    pub fn new_region_var(&self, origin: RegionVariableOrigin<'tcx>) -> RegionVid {
         let id = self.num_vars();
         self.var_origins.borrow_mut().push(origin.clone());
         let vid = RegionVid { index: id };
@@ -367,7 +367,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
 
     fn add_constraint(&self,
                       constraint: Constraint,
-                      origin: SubregionOrigin) {
+                      origin: SubregionOrigin<'tcx>) {
         // cannot add constraints once regions are resolved
         assert!(self.values_are_none());
 
@@ -382,7 +382,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
     }
 
     fn add_verify(&self,
-                  verify: Verify) {
+                  verify: Verify<'tcx>) {
         // cannot add verifys once regions are resolved
         assert!(self.values_are_none());
 
@@ -414,7 +414,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
     }
 
     pub fn make_eqregion(&self,
-                         origin: SubregionOrigin,
+                         origin: SubregionOrigin<'tcx>,
                          sub: Region,
                          sup: Region) {
         if sub != sup {
@@ -426,7 +426,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
     }
 
     pub fn make_subregion(&self,
-                          origin: SubregionOrigin,
+                          origin: SubregionOrigin<'tcx>,
                           sub: Region,
                           sup: Region) {
         // cannot add constraints once regions are resolved
@@ -474,7 +474,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
     }
 
     pub fn verify_param_bound(&self,
-                              origin: SubregionOrigin,
+                              origin: SubregionOrigin<'tcx>,
                               param_ty: ty::ParamTy,
                               sub: Region,
                               sups: Vec<Region>) {
@@ -482,7 +482,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
     }
 
     pub fn lub_regions(&self,
-                       origin: SubregionOrigin,
+                       origin: SubregionOrigin<'tcx>,
                        a: Region,
                        b: Region)
                        -> Region {
@@ -507,7 +507,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
     }
 
     pub fn glb_regions(&self,
-                       origin: SubregionOrigin,
+                       origin: SubregionOrigin<'tcx>,
                        a: Region,
                        b: Region)
                        -> Region {
@@ -560,8 +560,8 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                         t: CombineMapType,
                         a: Region,
                         b: Region,
-                        origin: SubregionOrigin,
-                        relate: |this: &RegionVarBindings,
+                        origin: SubregionOrigin<'tcx>,
+                        relate: |this: &RegionVarBindings<'a, 'tcx>,
                                  old_r: Region,
                                  new_r: Region|)
                         -> Region {
@@ -700,7 +700,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
     constraints, assuming such values can be found; if they cannot,
     errors are reported.
     */
-    pub fn resolve_regions(&self) -> Vec<RegionResolutionError> {
+    pub fn resolve_regions(&self) -> Vec<RegionResolutionError<'tcx>> {
         debug!("RegionVarBindings: resolve_regions()");
         let mut errors = vec!();
         let v = self.infer_variable_values(&mut errors);
@@ -815,7 +815,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
     fn glb_concrete_regions(&self,
                             a: Region,
                             b: Region)
-                         -> cres<Region> {
+                         -> cres<'tcx, Region> {
         debug!("glb_concrete_regions({}, {})", a, b);
         match (a, b) {
             (ReLateBound(..), _) |
@@ -885,7 +885,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
 
     fn glb_free_regions(&self,
                         a: &FreeRegion,
-                        b: &FreeRegion) -> cres<ty::Region>
+                        b: &FreeRegion) -> cres<'tcx, ty::Region>
     {
         /*!
          * Computes a region that is enclosed by both free region arguments,
@@ -899,9 +899,9 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
             Equal => Ok(ty::ReFree(*a))
         };
 
-        fn helper(this: &RegionVarBindings,
-                  a: &FreeRegion,
-                  b: &FreeRegion) -> cres<ty::Region>
+        fn helper<'a, 'tcx>(this: &RegionVarBindings<'a, 'tcx>,
+                            a: &FreeRegion,
+                            b: &FreeRegion) -> cres<'tcx, ty::Region>
         {
             if this.tcx.region_maps.sub_free_region(*a, *b) {
                 Ok(ty::ReFree(*a))
@@ -918,7 +918,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                         region_a: ty::Region,
                         region_b: ty::Region,
                         scope_a: ast::NodeId,
-                        scope_b: ast::NodeId) -> cres<Region>
+                        scope_b: ast::NodeId) -> cres<'tcx, Region>
     {
         // We want to generate the intersection of two
         // scopes or two free regions.  So, if one of
@@ -946,16 +946,16 @@ struct VarData {
     value: VarValue,
 }
 
-struct RegionAndOrigin {
+struct RegionAndOrigin<'tcx> {
     region: Region,
-    origin: SubregionOrigin,
+    origin: SubregionOrigin<'tcx>,
 }
 
 type RegionGraph = graph::Graph<(), Constraint>;
 
 impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
     fn infer_variable_values(&self,
-                             errors: &mut Vec<RegionResolutionError>)
+                             errors: &mut Vec<RegionResolutionError<'tcx>>)
                              -> Vec<VarValue>
     {
         let mut var_data = self.construct_var_data();
@@ -1188,7 +1188,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
 
     fn collect_concrete_region_errors(&self,
                                       values: &Vec<VarValue>,
-                                      errors: &mut Vec<RegionResolutionError>)
+                                      errors: &mut Vec<RegionResolutionError<'tcx>>)
     {
         let mut reg_reg_dups = FnvHashSet::new();
         for verify in self.verifys.borrow().iter() {
@@ -1230,7 +1230,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
     fn extract_values_and_collect_conflicts(
         &self,
         var_data: &[VarData],
-        errors: &mut Vec<RegionResolutionError>)
+        errors: &mut Vec<RegionResolutionError<'tcx>>)
         -> Vec<VarValue>
     {
         debug!("extract_values_and_collect_conflicts()");
@@ -1353,7 +1353,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         var_data: &[VarData],
         dup_vec: &mut [uint],
         node_idx: RegionVid,
-        errors: &mut Vec<RegionResolutionError>)
+        errors: &mut Vec<RegionResolutionError<'tcx>>)
     {
         // Errors in expanding nodes result from a lower-bound that is
         // not contained by an upper-bound.
@@ -1414,7 +1414,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         var_data: &[VarData],
         dup_vec: &mut [uint],
         node_idx: RegionVid,
-        errors: &mut Vec<RegionResolutionError>)
+        errors: &mut Vec<RegionResolutionError<'tcx>>)
     {
         // Errors in contracting nodes result from two upper-bounds
         // that have no intersection.
@@ -1458,11 +1458,11 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                                 orig_node_idx: RegionVid,
                                 dir: Direction,
                                 dup_vec: &mut [uint])
-                                -> (Vec<RegionAndOrigin> , bool) {
-        struct WalkState {
+                                -> (Vec<RegionAndOrigin<'tcx>>, bool) {
+        struct WalkState<'tcx> {
             set: FnvHashSet<RegionVid>,
-            stack: Vec<RegionVid> ,
-            result: Vec<RegionAndOrigin> ,
+            stack: Vec<RegionVid>,
+            result: Vec<RegionAndOrigin<'tcx>>,
             dup_found: bool
         }
         let mut state = WalkState {
@@ -1505,8 +1505,8 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         let WalkState {result, dup_found, ..} = state;
         return (result, dup_found);
 
-        fn process_edges(this: &RegionVarBindings,
-                         state: &mut WalkState,
+        fn process_edges<'a, 'tcx>(this: &RegionVarBindings<'a, 'tcx>,
+                         state: &mut WalkState<'tcx>,
                          graph: &RegionGraph,
                          source_vid: RegionVid,
                          dir: Direction) {
@@ -1559,7 +1559,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
 
 }
 
-impl Repr for Constraint {
+impl<'tcx> Repr<'tcx> for Constraint {
     fn repr(&self, tcx: &ty::ctxt) -> String {
         match *self {
             ConstrainVarSubVar(a, b) => {
@@ -1575,8 +1575,8 @@ impl Repr for Constraint {
     }
 }
 
-impl Repr for Verify {
-    fn repr(&self, tcx: &ty::ctxt) -> String {
+impl<'tcx> Repr<'tcx> for Verify<'tcx> {
+    fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
         match *self {
             VerifyRegSubReg(_, ref a, ref b) => {
                 format!("VerifyRegSubReg({}, {})", a.repr(tcx), b.repr(tcx))
@@ -1604,7 +1604,7 @@ fn lookup(values: &Vec<VarValue>, rid: ty::RegionVid) -> ty::Region {
     }
 }
 
-impl Repr for VarValue {
+impl<'tcx> Repr<'tcx> for VarValue {
     fn repr(&self, tcx: &ty::ctxt) -> String {
         match *self {
             NoValue => format!("NoValue"),
@@ -1614,8 +1614,8 @@ impl Repr for VarValue {
     }
 }
 
-impl Repr for RegionAndOrigin {
-    fn repr(&self, tcx: &ty::ctxt) -> String {
+impl<'tcx> Repr<'tcx> for RegionAndOrigin<'tcx> {
+    fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
         format!("RegionAndOrigin({},{})",
                 self.region.repr(tcx),
                 self.origin.repr(tcx))

@@ -17,7 +17,7 @@ use trans::adt;
 use trans::common::*;
 use trans::foreign;
 use trans::machine;
-use middle::ty;
+use middle::ty::{mod, Ty};
 use util::ppaux;
 use util::ppaux::Repr;
 
@@ -28,10 +28,10 @@ use syntax::abi;
 use syntax::ast;
 
 // LLVM doesn't like objects that are too big. Issue #17913
-fn ensure_array_fits_in_address_space(ccx: &CrateContext,
-                                      llet: Type,
-                                      size: machine::llsize,
-                                      scapegoat: ty::t) {
+fn ensure_array_fits_in_address_space<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                                                llet: Type,
+                                                size: machine::llsize,
+                                                scapegoat: Ty<'tcx>) {
     let esz = machine::llsize_of_alloc(ccx, llet);
     match esz.checked_mul(size) {
         Some(n) if n < ccx.max_obj_size() => {}
@@ -39,15 +39,18 @@ fn ensure_array_fits_in_address_space(ccx: &CrateContext,
     }
 }
 
-pub fn arg_is_indirect(ccx: &CrateContext, arg_ty: ty::t) -> bool {
+pub fn arg_is_indirect<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                                 arg_ty: Ty<'tcx>) -> bool {
     !type_is_immediate(ccx, arg_ty)
 }
 
-pub fn return_uses_outptr(ccx: &CrateContext, ty: ty::t) -> bool {
+pub fn return_uses_outptr<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                                    ty: Ty<'tcx>) -> bool {
     !type_is_immediate(ccx, ty)
 }
 
-pub fn type_of_explicit_arg(ccx: &CrateContext, arg_ty: ty::t) -> Type {
+pub fn type_of_explicit_arg<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                                      arg_ty: Ty<'tcx>) -> Type {
     let llty = arg_type_of(ccx, arg_ty);
     if arg_is_indirect(ccx, arg_ty) {
         llty.ptr_to()
@@ -59,10 +62,10 @@ pub fn type_of_explicit_arg(ccx: &CrateContext, arg_ty: ty::t) -> Type {
 /// Yields the types of the "real" arguments for this function. For most
 /// functions, these are simply the types of the arguments. For functions with
 /// the `RustCall` ABI, however, this untuples the arguments of the function.
-pub fn untuple_arguments_if_necessary(ccx: &CrateContext,
-                                      inputs: &[ty::t],
-                                      abi: abi::Abi)
-                                      -> Vec<ty::t> {
+pub fn untuple_arguments_if_necessary<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                                                inputs: &[Ty<'tcx>],
+                                                abi: abi::Abi)
+                                                -> Vec<Ty<'tcx>> {
     if abi != abi::RustCall {
         return inputs.iter().map(|x| (*x).clone()).collect()
     }
@@ -78,7 +81,7 @@ pub fn untuple_arguments_if_necessary(ccx: &CrateContext,
         }
     }
 
-    match ty::get(inputs[inputs.len() - 1]).sty {
+    match inputs[inputs.len() - 1].sty {
         ty::ty_tup(ref tupled_arguments) => {
             debug!("untuple_arguments_if_necessary(): untupling arguments");
             for &tupled_argument in tupled_arguments.iter() {
@@ -94,12 +97,12 @@ pub fn untuple_arguments_if_necessary(ccx: &CrateContext,
     result
 }
 
-pub fn type_of_rust_fn(cx: &CrateContext,
-                       llenvironment_type: Option<Type>,
-                       inputs: &[ty::t],
-                       output: ty::FnOutput,
-                       abi: abi::Abi)
-                       -> Type {
+pub fn type_of_rust_fn<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
+                                 llenvironment_type: Option<Type>,
+                                 inputs: &[Ty<'tcx>],
+                                 output: ty::FnOutput<'tcx>,
+                                 abi: abi::Abi)
+                                 -> Type {
     let mut atys: Vec<Type> = Vec::new();
 
     // First, munge the inputs, if this has the `rust-call` ABI.
@@ -138,8 +141,8 @@ pub fn type_of_rust_fn(cx: &CrateContext,
 }
 
 // Given a function type and a count of ty params, construct an llvm type
-pub fn type_of_fn_from_ty(cx: &CrateContext, fty: ty::t) -> Type {
-    match ty::get(fty).sty {
+pub fn type_of_fn_from_ty<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, fty: Ty<'tcx>) -> Type {
+    match fty.sty {
         ty::ty_closure(ref f) => {
             type_of_rust_fn(cx,
                             Some(Type::i8p(cx)),
@@ -175,13 +178,13 @@ pub fn type_of_fn_from_ty(cx: &CrateContext, fty: ty::t) -> Type {
 //     type behind pointers. This can help prevent infinite loops for
 //     recursive types. For example, enum types rely on this behavior.
 
-pub fn sizing_type_of(cx: &CrateContext, t: ty::t) -> Type {
+pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
     match cx.llsizingtypes().borrow().get(&t).cloned() {
         Some(t) => return t,
         None => ()
     }
 
-    let llsizingty = match ty::get(t).sty {
+    let llsizingty = match t.sty {
         _ if !ty::lltype_is_sized(cx.tcx(), t) => {
             cx.sess().bug(format!("trying to take the sizing type of {}, an unsized type",
                                   ppaux::ty_to_string(cx.tcx(), t)).as_slice())
@@ -247,7 +250,7 @@ pub fn sizing_type_of(cx: &CrateContext, t: ty::t) -> Type {
     llsizingty
 }
 
-pub fn arg_type_of(cx: &CrateContext, t: ty::t) -> Type {
+pub fn arg_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
     if ty::type_is_bool(t) {
         Type::i1(cx)
     } else {
@@ -256,8 +259,8 @@ pub fn arg_type_of(cx: &CrateContext, t: ty::t) -> Type {
 }
 
 // NB: If you update this, be sure to update `sizing_type_of()` as well.
-pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
-    fn type_of_unsize_info(cx: &CrateContext, t: ty::t) -> Type {
+pub fn type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
+    fn type_of_unsize_info<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
         // It is possible to end up here with a sized type. This happens with a
         // struct which might be unsized, but is monomorphised to a sized type.
         // In this case we'll fake a fat pointer with no unsize info (we use 0).
@@ -266,7 +269,7 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
             return Type::i8p(cx);
         }
 
-        match ty::get(ty::unsized_part_of_type(cx.tcx(), t)).sty {
+        match ty::unsized_part_of_type(cx.tcx(), t).sty {
             ty::ty_str | ty::ty_vec(..) => Type::uint_from_ty(cx, ast::TyU),
             ty::ty_trait(_) => Type::vtable_ptr(cx),
             _ => panic!("Unexpected type returned from unsized_part_of_type : {}",
@@ -280,7 +283,7 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
         None => ()
     }
 
-    debug!("type_of {} {}", t.repr(cx.tcx()), ty::get(t).sty);
+    debug!("type_of {} {}", t.repr(cx.tcx()), t.sty);
 
     // Replace any typedef'd types with their equivalent non-typedef
     // type. This ensures that all LLVM nominal types that contain
@@ -301,7 +304,7 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
         return llty;
     }
 
-    let mut llty = match ty::get(t).sty {
+    let mut llty = match t.sty {
       ty::ty_bool => Type::bool(cx),
       ty::ty_char => Type::char(cx),
       ty::ty_int(t) => Type::int_from_ty(cx, t),
@@ -330,7 +333,7 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
       }
 
       ty::ty_uniq(ty) | ty::ty_rptr(_, ty::mt{ty, ..}) | ty::ty_ptr(ty::mt{ty, ..}) => {
-          match ty::get(ty).sty {
+          match ty.sty {
               ty::ty_str => {
                   // This means we get a nicer name in the output (str is always
                   // unsized).
@@ -390,7 +393,7 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
           }
       }
 
-      ty::ty_open(t) => match ty::get(t).sty {
+      ty::ty_open(t) => match t.sty {
           ty::ty_struct(..) => {
               let p_ty = type_of(cx, t).ptr_to();
               Type::struct_(cx, &[p_ty, type_of_unsize_info(cx, t)], false)
@@ -421,7 +424,7 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
     cx.lltypes().borrow_mut().insert(t, llty);
 
     // If this was an enum or struct, fill in the type now.
-    match ty::get(t).sty {
+    match t.sty {
         ty::ty_enum(..) | ty::ty_struct(..) | ty::ty_unboxed_closure(..)
                 if !ty::type_is_simd(cx.tcx(), t) => {
             let repr = adt::represent_type(cx, t);
@@ -433,7 +436,8 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
     return llty;
 }
 
-pub fn align_of(cx: &CrateContext, t: ty::t) -> machine::llalign {
+pub fn align_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>)
+                          -> machine::llalign {
     let llty = sizing_type_of(cx, t);
     machine::llalign_of_min(cx, llty)
 }
@@ -445,11 +449,11 @@ pub enum named_ty {
     an_unboxed_closure,
 }
 
-pub fn llvm_type_name(cx: &CrateContext,
-                      what: named_ty,
-                      did: ast::DefId,
-                      tps: &[ty::t])
-                      -> String
+pub fn llvm_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
+                                what: named_ty,
+                                did: ast::DefId,
+                                tps: &[Ty<'tcx>])
+                                -> String
 {
     let name = match what {
         a_struct => "struct",
@@ -472,7 +476,7 @@ pub fn llvm_type_name(cx: &CrateContext,
     }
 }
 
-pub fn type_of_dtor(ccx: &CrateContext, self_ty: ty::t) -> Type {
+pub fn type_of_dtor<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, self_ty: Ty<'tcx>) -> Type {
     let self_ty = type_of(ccx, self_ty).ptr_to();
     Type::func(&[self_ty], &Type::void(ccx))
 }

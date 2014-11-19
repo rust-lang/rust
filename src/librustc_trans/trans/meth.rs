@@ -30,7 +30,7 @@ use trans::glue;
 use trans::machine;
 use trans::type_::Type;
 use trans::type_of::*;
-use middle::ty;
+use middle::ty::{mod, Ty};
 use middle::typeck;
 use middle::typeck::MethodCall;
 use util::ppaux::Repr;
@@ -87,7 +87,7 @@ pub fn trans_impl(ccx: &CrateContext,
                                  method.pe_fn_decl(),
                                  method.pe_body(),
                                  llfn,
-                                 &param_substs::empty(),
+                                 &Substs::trans_empty(),
                                  method.id,
                                  &[]);
                         update_linkage(ccx,
@@ -136,8 +136,7 @@ pub fn trans_method_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             method_num
         }) => {
             let trait_ref =
-                Rc::new(trait_ref.subst(bcx.tcx(),
-                                        bcx.fcx.param_substs.substs()));
+                Rc::new(trait_ref.subst(bcx.tcx(), bcx.fcx.param_substs));
             let span = bcx.tcx().map.span(method_call.expr_id);
             debug!("method_call={} trait_ref={}",
                    method_call,
@@ -328,7 +327,7 @@ fn trans_monomorphized_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                           method_call: MethodCall,
                                           trait_id: ast::DefId,
                                           n_method: uint,
-                                          vtable: traits::Vtable<()>)
+                                          vtable: traits::Vtable<'tcx, ()>)
                                           -> Callee<'blk, 'tcx> {
     let _icx = push_ctxt("meth::trans_monomorphized_callee");
     match vtable {
@@ -378,10 +377,10 @@ fn trans_monomorphized_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 }
 
-fn combine_impl_and_methods_tps(bcx: Block,
-                                node: ExprOrMethodCall,
-                                rcvr_substs: subst::Substs)
-                                -> subst::Substs
+fn combine_impl_and_methods_tps<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                                            node: ExprOrMethodCall,
+                                            rcvr_substs: subst::Substs<'tcx>)
+                                            -> subst::Substs<'tcx>
 {
     /*!
      * Creates a concatenated set of substitutions which includes
@@ -424,7 +423,7 @@ fn combine_impl_and_methods_tps(bcx: Block,
 }
 
 fn trans_trait_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                  method_ty: ty::t,
+                                  method_ty: Ty<'tcx>,
                                   n_method: uint,
                                   self_expr: &ast::Expr,
                                   arg_cleanup_scope: cleanup::ScopeId)
@@ -468,7 +467,7 @@ fn trans_trait_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 }
 
 pub fn trans_trait_callee_from_llval<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                                 callee_ty: ty::t,
+                                                 callee_ty: Ty<'tcx>,
                                                  n_method: uint,
                                                  llpair: ValueRef)
                                                  -> Callee<'blk, 'tcx> {
@@ -489,7 +488,7 @@ pub fn trans_trait_callee_from_llval<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     // Load the function from the vtable and cast it to the expected type.
     debug!("(translating trait callee) loading method");
     // Replace the self type (&Self or Box<Self>) with an opaque pointer.
-    let llcallee_ty = match ty::get(callee_ty).sty {
+    let llcallee_ty = match callee_ty.sty {
         ty::ty_bare_fn(ref f) if f.abi == Rust || f.abi == RustCall => {
             type_of_rust_fn(ccx,
                             Some(Type::i8p(ccx)),
@@ -526,10 +525,10 @@ pub fn trans_trait_callee_from_llval<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 /// `trait_ref` would map `T:Trait`, but `box_ty` would be
 /// `Foo<T>`. This `box_ty` is primarily used to encode the destructor.
 /// This will hopefully change now that DST is underway.
-pub fn get_vtable(bcx: Block,
-                  box_ty: ty::t,
-                  trait_ref: Rc<ty::TraitRef>)
-                  -> ValueRef
+pub fn get_vtable<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                              box_ty: Ty<'tcx>,
+                              trait_ref: Rc<ty::TraitRef<'tcx>>)
+                              -> ValueRef
 {
     debug!("get_vtable(box_ty={}, trait_ref={})",
            box_ty.repr(bcx.tcx()),
@@ -586,12 +585,10 @@ pub fn get_vtable(bcx: Block,
                                                  unboxed closure");
                     if closure_info.kind == ty::FnOnceUnboxedClosureKind {
                         // Untuple the arguments and create an unboxing shim.
-                        let (new_inputs, new_output) = match ty::get(self_ty).sty {
+                        let (new_inputs, new_output) = match self_ty.sty {
                             ty::ty_unboxed_closure(_, _, ref substs) => {
                                 let mut new_inputs = vec![self_ty.clone()];
-                                match ty::get(closure_info.closure_type
-                                              .sig
-                                              .inputs[0]).sty {
+                                match closure_info.closure_type.sig.inputs[0].sty {
                                     ty::ty_tup(ref elements) => {
                                         for element in elements.iter() {
                                             new_inputs.push(element.subst(bcx.tcx(), substs));
@@ -677,10 +674,10 @@ pub fn make_vtable<I: Iterator<ValueRef>>(ccx: &CrateContext,
     }
 }
 
-fn emit_vtable_methods(bcx: Block,
-                       impl_id: ast::DefId,
-                       substs: subst::Substs)
-                       -> Vec<ValueRef> {
+fn emit_vtable_methods<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                                   impl_id: ast::DefId,
+                                   substs: subst::Substs<'tcx>)
+                                   -> Vec<ValueRef> {
     let ccx = bcx.ccx();
     let tcx = ccx.tcx();
 
@@ -735,9 +732,9 @@ fn emit_vtable_methods(bcx: Block,
 }
 
 pub fn trans_trait_cast<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                    datum: Datum<Expr>,
+                                    datum: Datum<'tcx, Expr>,
                                     id: ast::NodeId,
-                                    trait_ref: Rc<ty::TraitRef>,
+                                    trait_ref: Rc<ty::TraitRef<'tcx>>,
                                     dest: expr::Dest)
                                     -> Block<'blk, 'tcx> {
     /*!

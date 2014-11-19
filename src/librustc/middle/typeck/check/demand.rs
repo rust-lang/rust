@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-use middle::ty;
+use middle::ty::{mod, Ty};
 use middle::typeck::check::FnCtxt;
 use middle::typeck::infer;
 use middle::typeck::infer::resolve_type;
@@ -23,22 +23,24 @@ use util::ppaux::Repr;
 
 // Requires that the two types unify, and prints an error message if they
 // don't.
-pub fn suptype(fcx: &FnCtxt, sp: Span, expected: ty::t, actual: ty::t) {
+pub fn suptype<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>, sp: Span,
+                         expected: Ty<'tcx>, actual: Ty<'tcx>) {
     suptype_with_fn(fcx, sp, false, expected, actual,
         |sp, e, a, s| { fcx.report_mismatched_types(sp, e, a, s) })
 }
 
-pub fn subtype(fcx: &FnCtxt, sp: Span, expected: ty::t, actual: ty::t) {
+pub fn subtype<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>, sp: Span,
+                         expected: Ty<'tcx>, actual: Ty<'tcx>) {
     suptype_with_fn(fcx, sp, true, actual, expected,
         |sp, a, e, s| { fcx.report_mismatched_types(sp, e, a, s) })
 }
 
-pub fn suptype_with_fn(fcx: &FnCtxt,
-                       sp: Span,
-                       b_is_expected: bool,
-                       ty_a: ty::t,
-                       ty_b: ty::t,
-                       handle_err: |Span, ty::t, ty::t, &ty::type_err|) {
+pub fn suptype_with_fn<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
+                                 sp: Span,
+                                 b_is_expected: bool,
+                                 ty_a: Ty<'tcx>,
+                                 ty_b: Ty<'tcx>,
+                                 handle_err: |Span, Ty<'tcx>, Ty<'tcx>, &ty::type_err<'tcx>|) {
     // n.b.: order of actual, expected is reversed
     match infer::mk_subty(fcx.infcx(), b_is_expected, infer::Misc(sp),
                           ty_b, ty_a) {
@@ -49,7 +51,8 @@ pub fn suptype_with_fn(fcx: &FnCtxt,
     }
 }
 
-pub fn eqtype(fcx: &FnCtxt, sp: Span, expected: ty::t, actual: ty::t) {
+pub fn eqtype<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>, sp: Span,
+                        expected: Ty<'tcx>, actual: Ty<'tcx>) {
     match infer::mk_eqty(fcx.infcx(), false, infer::Misc(sp), actual, expected) {
         Ok(()) => { /* ok */ }
         Err(ref err) => {
@@ -59,7 +62,8 @@ pub fn eqtype(fcx: &FnCtxt, sp: Span, expected: ty::t, actual: ty::t) {
 }
 
 // Checks that the type `actual` can be coerced to `expected`.
-pub fn coerce(fcx: &FnCtxt, sp: Span, expected: ty::t, expr: &ast::Expr) {
+pub fn coerce<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>, sp: Span,
+                        expected: Ty<'tcx>, expr: &ast::Expr) {
     let expr_ty = fcx.expr_ty(expr);
     debug!("demand::coerce(expected = {}, expr_ty = {})",
            expected.repr(fcx.ccx.tcx),

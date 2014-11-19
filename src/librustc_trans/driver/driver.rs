@@ -358,7 +358,7 @@ pub struct CrateAnalysis<'tcx> {
 /// structures carrying the results of the analysis.
 pub fn phase_3_run_analysis_passes<'tcx>(sess: Session,
                                          ast_map: ast_map::Map<'tcx>,
-                                         type_arena: &'tcx TypedArena<ty::t_box_>,
+                                         type_arena: &'tcx TypedArena<ty::TyS<'tcx>>,
                                          name: String) -> CrateAnalysis<'tcx> {
     let time_passes = sess.time_passes();
     let krate = ast_map.krate();

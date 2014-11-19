@@ -22,7 +22,7 @@ use metadata::common::LinkMeta;
 use metadata::{encoder, cstore, filesearch, csearch, creader};
 use trans::context::CrateContext;
 use trans::common::gensym_name;
-use middle::ty;
+use middle::ty::{mod, Ty};
 use util::common::time;
 use util::ppaux;
 use util::sha2::{Digest, Sha256};
@@ -196,11 +196,11 @@ fn truncated_hash_result(symbol_hasher: &mut Sha256) -> String {
 
 
 // This calculates STH for a symbol, as defined above
-fn symbol_hash(tcx: &ty::ctxt,
-               symbol_hasher: &mut Sha256,
-               t: ty::t,
-               link_meta: &LinkMeta)
-               -> String {
+fn symbol_hash<'tcx>(tcx: &ty::ctxt<'tcx>,
+                     symbol_hasher: &mut Sha256,
+                     t: Ty<'tcx>,
+                     link_meta: &LinkMeta)
+                     -> String {
     // NB: do *not* use abbrevs here as we want the symbol names
     // to be independent of one another in the crate.
 
@@ -219,7 +219,7 @@ fn symbol_hash(tcx: &ty::ctxt,
     hash
 }
 
-fn get_symbol_hash(ccx: &CrateContext, t: ty::t) -> String {
+fn get_symbol_hash<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> String {
     match ccx.type_hashcodes().borrow().get(&t) {
         Some(h) => return h.to_string(),
         None => {}
@@ -320,8 +320,8 @@ pub fn exported_name(path: PathElems, hash: &str) -> String {
     mangle(path, Some(hash))
 }
 
-pub fn mangle_exported_name(ccx: &CrateContext, path: PathElems,
-                            t: ty::t, id: ast::NodeId) -> String {
+pub fn mangle_exported_name<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, path: PathElems,
+                                      t: Ty<'tcx>, id: ast::NodeId) -> String {
     let mut hash = get_symbol_hash(ccx, t);
 
     // Paths can be completely identical for different nodes,
@@ -345,9 +345,9 @@ pub fn mangle_exported_name(ccx: &CrateContext, path: PathElems,
     exported_name(path, hash.as_slice())
 }
 
-pub fn mangle_internal_name_by_type_and_seq(ccx: &CrateContext,
-                                            t: ty::t,
-                                            name: &str) -> String {
+pub fn mangle_internal_name_by_type_and_seq<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                                                      t: Ty<'tcx>,
+                                                      name: &str) -> String {
     let s = ppaux::ty_to_string(ccx.tcx(), t);
     let path = [PathName(token::intern(s.as_slice())),
                 gensym_name(name)];

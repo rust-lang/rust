@@ -25,10 +25,10 @@ use util::ppaux::Repr;
 
 use std::rc::Rc;
 
-struct GatherMoveInfo {
+struct GatherMoveInfo<'tcx> {
     id: ast::NodeId,
     kind: MoveKind,
-    cmt: mc::cmt,
+    cmt: mc::cmt<'tcx>,
     span_path_opt: Option<MoveSpanAndPath>
 }
 
@@ -41,12 +41,12 @@ pub fn gather_decl(bccx: &BorrowckCtxt,
     move_data.add_move(bccx.tcx, loan_path, decl_id, Declared);
 }
 
-pub fn gather_move_from_expr(bccx: &BorrowckCtxt,
-                             move_data: &MoveData,
-                             move_error_collector: &MoveErrorCollector,
-                             move_expr_id: ast::NodeId,
-                             cmt: mc::cmt,
-                             move_reason: euv::MoveReason) {
+pub fn gather_move_from_expr<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
+                                       move_data: &MoveData,
+                                       move_error_collector: &MoveErrorCollector<'tcx>,
+                                       move_expr_id: ast::NodeId,
+                                       cmt: mc::cmt<'tcx>,
+                                       move_reason: euv::MoveReason) {
     let kind = match move_reason {
         euv::DirectRefMove | euv::PatBindingMove => MoveExpr,
         euv::CaptureMove => Captured
@@ -60,11 +60,11 @@ pub fn gather_move_from_expr(bccx: &BorrowckCtxt,
     gather_move(bccx, move_data, move_error_collector, move_info);
 }
 
-pub fn gather_move_from_pat(bccx: &BorrowckCtxt,
-                            move_data: &MoveData,
-                            move_error_collector: &MoveErrorCollector,
-                            move_pat: &ast::Pat,
-                            cmt: mc::cmt) {
+pub fn gather_move_from_pat<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
+                                      move_data: &MoveData,
+                                      move_error_collector: &MoveErrorCollector<'tcx>,
+                                      move_pat: &ast::Pat,
+                                      cmt: mc::cmt<'tcx>) {
     let pat_span_path_opt = match move_pat.node {
         ast::PatIdent(_, ref path1, _) => {
             Some(MoveSpanAndPath{span: move_pat.span,
@@ -81,10 +81,10 @@ pub fn gather_move_from_pat(bccx: &BorrowckCtxt,
     gather_move(bccx, move_data, move_error_collector, move_info);
 }
 
-fn gather_move(bccx: &BorrowckCtxt,
-               move_data: &MoveData,
-               move_error_collector: &MoveErrorCollector,
-               move_info: GatherMoveInfo) {
+fn gather_move<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
+                         move_data: &MoveData,
+                         move_error_collector: &MoveErrorCollector<'tcx>,
+                         move_info: GatherMoveInfo<'tcx>) {
     debug!("gather_move(move_id={}, cmt={})",
            move_info.id, move_info.cmt.repr(bccx.tcx));
 
@@ -127,8 +127,9 @@ pub fn gather_assignment(bccx: &BorrowckCtxt,
                              mode);
 }
 
-fn check_and_get_illegal_move_origin(bccx: &BorrowckCtxt,
-                                     cmt: &mc::cmt) -> Option<mc::cmt> {
+fn check_and_get_illegal_move_origin<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
+                                               cmt: &mc::cmt<'tcx>)
+                                               -> Option<mc::cmt<'tcx>> {
     match cmt.cat {
         mc::cat_deref(_, _, mc::BorrowedPtr(..)) |
         mc::cat_deref(_, _, mc::Implicit(..)) |
@@ -145,7 +146,7 @@ fn check_and_get_illegal_move_origin(bccx: &BorrowckCtxt,
 
         mc::cat_downcast(ref b) |
         mc::cat_interior(ref b, _) => {
-            match ty::get(b.ty).sty {
+            match b.ty.sty {
                 ty::ty_struct(did, _) | ty::ty_enum(did, _) => {
                     if ty::has_dtor(bccx.tcx, did) {
                         Some(cmt.clone())
