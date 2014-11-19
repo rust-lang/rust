@@ -1502,17 +1502,17 @@ impl<'a> Parser<'a> {
         } else if self.eat_keyword(keywords::Proc) {
             self.parse_proc_type(Vec::new())
         } else if self.token == token::Lt {
-            // QUALIFIED PATH
+            // QUALIFIED PATH `<TYPE as TRAIT_REF>::item`
             self.bump();
-            let for_type = self.parse_ty(true);
+            let self_type = self.parse_ty(true);
             self.expect_keyword(keywords::As);
-            let trait_name = self.parse_path(LifetimeAndTypesWithoutColons);
+            let trait_ref = self.parse_trait_ref();
             self.expect(&token::Gt);
             self.expect(&token::ModSep);
             let item_name = self.parse_ident();
             TyQPath(P(QPath {
-                for_type: for_type,
-                trait_name: trait_name.path,
+                self_type: self_type,
+                trait_ref: P(trait_ref),
                 item_name: item_name,
             }))
         } else if self.token == token::ModSep ||

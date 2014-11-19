@@ -744,10 +744,10 @@ impl<'a> State<'a> {
             }
             ast::TyQPath(ref qpath) => {
                 try!(word(&mut self.s, "<"));
-                try!(self.print_type(&*qpath.for_type));
+                try!(self.print_type(&*qpath.self_type));
                 try!(space(&mut self.s));
                 try!(self.word_space("as"));
-                try!(self.print_path(&qpath.trait_name, false));
+                try!(self.print_trait_ref(&*qpath.trait_ref));
                 try!(word(&mut self.s, ">"));
                 try!(word(&mut self.s, "::"));
                 try!(self.print_ident(qpath.item_name));
