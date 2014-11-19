@@ -1,0 +1,5 @@
+[package]
+
+name = "rust-clippy"
+version = "0.0.1"
+authors = ["Manish Goregaokar <manishsmail@gmail.com>"]
