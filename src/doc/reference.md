@@ -3557,17 +3557,14 @@ The machine types are the following:
 
 #### Machine-dependent integer types
 
-The Rust type `uint` [^rustuint] is an
-unsigned integer type with target-machine-dependent size. Its size, in
-bits, is equal to the number of bits required to hold any memory address on
-the target machine.
+The `uint` type is an unsigned integer type with the same number of bits as the
+platform's pointer type. It can represent every memory address in the process.
 
-The Rust type `int` [^rustint]  is a two's complement signed integer type with
-target-machine-dependent size. Its size, in bits, is equal to the size of the
-rust type `uint` on the same target machine.
-
-[^rustuint]: A Rust `uint` is analogous to a C99 `uintptr_t`.
-[^rustint]: A Rust `int` is analogous to a C99 `intptr_t`.
+The `int` type is a signed integer type with the same number of bits as the
+platform's pointer type. The theoretical upper bound on object and array size
+is the maximum `int` value. This ensures that `int` can be used to calculate
+differences between pointers into an object or array and can address every byte
+within an object along with one byte past the end.
 
 ### Textual types
 
