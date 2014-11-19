@@ -705,8 +705,23 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         &self.local.trait_cache
     }
 
-    pub fn max_obj_size(&self) -> u64 {
-        1<<31 /* FIXME #18069: select based on architecture */
+    /// Return exclusive upper bound on object size.
+    ///
+    /// The theoretical maximum object size is defined as the maximum positive `int` value. This
+    /// ensures that the `offset` semantics remain well-defined by allowing it to correctly index
+    /// every address within an object along with one byte past the end, along with allowing `int`
+    /// to store the difference between any two pointers into an object.
+    ///
+    /// The upper bound on 64-bit currently needs to be lower because LLVM uses a 64-bit integer to
+    /// represent object size in bits. It would need to be 1 << 61 to account for this, but is
+    /// currently conservatively bounded to 1 << 47 as that is enough to cover the current usable
+    /// address space on 64-bit ARMv8 and x86_64.
+    pub fn obj_size_bound(&self) -> u64 {
+        match self.sess().target.target.target_word_size[] {
+            "32" => 1 << 31,
+            "64" => 1 << 47,
+            _ => unreachable!() // error handled by config::build_target_config
+        }
     }
 
     pub fn report_overbig_object(&self, obj: Ty<'tcx>) -> ! {

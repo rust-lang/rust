@@ -8,16 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: Option
-
-// FIXME: work properly with higher limits
+use std::mem::size_of;
 
 #[cfg(target_word_size = "32")]
-fn main() {
-    let big: Option<[u32, ..(1<<29)-1]> = None;
+pub fn main() {
+    assert_eq!(size_of::<[u8, ..(1 << 31) - 1]>(), (1 << 31) - 1);
 }
 
 #[cfg(target_word_size = "64")]
-fn main() {
-    let big: Option<[u32, ..(1<<45)-1]> = None;
+pub fn main() {
+    assert_eq!(size_of::<[u8, ..(1 << 47) - 1]>(), (1 << 47) - 1);
 }
