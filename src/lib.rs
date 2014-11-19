@@ -1,5 +1,6 @@
-#![feature(globs, phase, plugin_registrar)] 
+#![feature(globs, phase, plugin_registrar, if_let)] 
 
+#![allow(unused_imports)]
 
 #[phase(plugin,link)]
 extern crate syntax;
@@ -12,10 +13,10 @@ use rustc::plugin::Registry;
 use rustc::lint::LintPassObject;
 
 pub mod types;
+pub mod misc;
 
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry) {
-    //reg.register_syntax_extension(intern("jstraceable"), base::ItemDecorator(box expand_jstraceable));
-    //reg.register_macro("factorial", expand)
     reg.register_lint_pass(box types::TypePass as LintPassObject);
+    reg.register_lint_pass(box misc::MiscPass as LintPassObject);
 }
