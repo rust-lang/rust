@@ -159,6 +159,8 @@ $ ./main # or main.exe on Windows
 Hello, world!
 ```
 
+You can also run these examples on [play.rust-lang.org](http://play.rust-lang.org/) by clicking on the arrow that appears in the upper right of the example when you mouse over the code.
+
 Success! Let's go over what just happened in detail.
 
 ```{rust}
