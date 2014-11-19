@@ -27,7 +27,7 @@
 ######################################################################
 DOCS := index intro tutorial guide guide-ffi guide-macros guide-lifetimes \
 	guide-tasks guide-container guide-pointers guide-testing \
-	guide-plugin guide-crates complement-bugreport \
+	guide-plugin guide-crates complement-bugreport guide-error-handling \
 	complement-lang-faq complement-design-faq complement-project-faq \
     rustdoc guide-unsafe guide-strings reference
 
