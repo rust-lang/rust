@@ -29,8 +29,13 @@ fn main() {
     'a'suffix; //~ ERROR char literal with a suffix is illegal
     b'a'suffix; //~ ERROR byte literal with a suffix is illegal
 
-    1234suffix;
-    0b101suffix;
-    1.0suffix;
-    1.0e10suffix;
+    1234u1024; //~ ERROR illegal width `1024` for integer literal
+    1234i1024; //~ ERROR illegal width `1024` for integer literal
+    1234f1024; //~ ERROR illegal width `1024` for float literal
+    1234.5f1024; //~ ERROR illegal width `1024` for float literal
+
+    1234suffix; //~ ERROR illegal suffix `suffix` for numeric literal
+    0b101suffix; //~ ERROR illegal suffix `suffix` for numeric literal
+    1.0suffix; //~ ERROR illegal suffix `suffix` for numeric literal
+    1.0e10suffix; //~ ERROR illegal suffix `suffix` for numeric literal
 }
