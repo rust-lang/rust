@@ -42,7 +42,7 @@ use cmp::{PartialEq, PartialOrd, Eq, Ord, Ordering, Less, Equal, Greater, Equiv}
 use cmp;
 use default::Default;
 use iter::*;
-use num::{Int, div_rem};
+use num::Int;
 use ops;
 use option::{None, Option, Some};
 use ptr;
@@ -1384,7 +1384,8 @@ impl<'a, T> Iterator<&'a [T]> for Chunks<'a, T> {
         if self.v.len() == 0 {
             (0, Some(0))
         } else {
-            let (n, rem) = div_rem(self.v.len(), self.size);
+            let n = self.v.len() / self.size;
+            let rem = self.v.len() % self.size;
             let n = if rem > 0 { n+1 } else { n };
             (n, Some(n))
         }
@@ -1457,7 +1458,8 @@ impl<'a, T> Iterator<&'a mut [T]> for MutChunks<'a, T> {
         if self.v.len() == 0 {
             (0, Some(0))
         } else {
-            let (n, rem) = div_rem(self.v.len(), self.chunk_size);
+            let n = self.v.len() / self.chunk_size;
+            let rem = self.v.len() % self.chunk_size;
             let n = if rem > 0 { n + 1 } else { n };
             (n, Some(n))
         }
