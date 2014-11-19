@@ -175,22 +175,22 @@ impl<Sized? P> Path where P: AsPath {
     pub fn is_relative(&self) -> bool;
     pub fn is_ancestor_of(&self, other: &P) -> bool;
 
-    pub fn path_relative_from(&self, base: &P) -> Option<Path>;
+    pub fn path_relative_from(&self, base: &P) -> Option<PathBuf>;
     pub fn starts_with(&self, base: &P) -> bool;
     pub fn ends_with(&self, child: &P) -> bool;
 
     // The "root" part of the path, if absolute
-    pub fn root_path(&self) -> Option<&path>;
+    pub fn root_path(&self) -> Option<&Path>;
 
     // The "non-root" part of the path
-    pub fn relative_path(&self) -> &path;
+    pub fn relative_path(&self) -> &Path;
 
     // The "directory" portion of the path
-    pub fn dir_path(&self) -> &path;
+    pub fn dir_path(&self) -> &Path;
 
-    pub fn file_name(&self) -> Option<&path>;
-    pub fn file_stem(&self) -> Option<&path>;
-    pub fn extension(&self) -> Option<&path>;
+    pub fn file_name(&self) -> Option<&Path>;
+    pub fn file_stem(&self) -> Option<&Path>;
+    pub fn extension(&self) -> Option<&Path>;
 
     pub fn join(&self, path: &P) -> PathBuf;
 
