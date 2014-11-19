@@ -194,8 +194,10 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }
         Some(adj) => { adj }
     };
-    debug!("unadjusted datum for expr {}: {}",
-           expr.id, datum.to_string(bcx.ccx()));
+    debug!("unadjusted datum for expr {}: {}, adjustment={}",
+           expr.repr(bcx.tcx()),
+           datum.to_string(bcx.ccx()),
+           adjustment.repr(bcx.tcx()));
     match adjustment {
         AdjustAddEnv(..) => {
             datum = unpack_datum!(bcx, add_env(bcx, expr, datum));
@@ -265,9 +267,10 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             &AutoPtr(_, _, ref a) | &AutoUnsafe(_, ref a) => {
                 debug!("  AutoPtr");
                 match a {
-                    &Some(box ref a) => datum = unpack_datum!(bcx,
-                                                              apply_autoref(a, bcx, expr, datum)),
-                    _ => {}
+                    &Some(box ref a) => {
+                        datum = unpack_datum!(bcx, apply_autoref(a, bcx, expr, datum));
+                    }
+                    &None => {}
                 }
                 unpack_datum!(bcx, ref_ptr(bcx, expr, datum))
             }
@@ -293,6 +296,10 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                            expr: &ast::Expr,
                            datum: Datum<'tcx, Expr>)
                            -> DatumBlock<'blk, 'tcx, Expr> {
+        debug!("ref_ptr(expr={}, datum={})",
+               expr.repr(bcx.tcx()),
+               datum.to_string(bcx.ccx()));
+
         if !ty::type_is_sized(bcx.tcx(), datum.ty) {
             debug!("Taking address of unsized type {}",
                    bcx.ty_to_string(datum.ty));
@@ -307,18 +314,20 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     // Retrieve the information we are losing (making dynamic) in an unsizing
     // adjustment.
     // When making a dtor, we need to do different things depending on the
-    // ownership of the object.. mk_ty is a function for turning unsized_type
+    // ownership of the object.. mk_ty is a function for turning `unadjusted_ty`
     // into a type to be destructed. If we want to end up with a Box pointer,
     // then mk_ty should make a Box pointer (T -> Box<T>), if we want a
     // borrowed reference then it should be T -> &T.
     fn unsized_info<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                 kind: &ty::UnsizeKind<'tcx>,
                                 id: ast::NodeId,
-                                unsized_ty: Ty<'tcx>,
+                                unadjusted_ty: Ty<'tcx>,
                                 mk_ty: |Ty<'tcx>| -> Ty<'tcx>) -> ValueRef {
+        debug!("unsized_info(kind={}, id={}, unadjusted_ty={})",
+               kind, id, unadjusted_ty.repr(bcx.tcx()));
         match kind {
             &ty::UnsizeLength(len) => C_uint(bcx.ccx(), len),
-            &ty::UnsizeStruct(box ref k, tp_index) => match unsized_ty.sty {
+            &ty::UnsizeStruct(box ref k, tp_index) => match unadjusted_ty.sty {
                 ty::ty_struct(_, ref substs) => {
                     let ty_substs = substs.types.get_slice(subst::TypeSpace);
                     // The dtor for a field treats it like a value, so mk_ty
@@ -326,15 +335,15 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                     unsized_info(bcx, k, id, ty_substs[tp_index], |t| t)
                 }
                 _ => bcx.sess().bug(format!("UnsizeStruct with bad sty: {}",
-                                          bcx.ty_to_string(unsized_ty)).as_slice())
+                                          bcx.ty_to_string(unadjusted_ty)).as_slice())
             },
             &ty::UnsizeVtable(ty::TyTrait { ref principal, .. }, _) => {
-                let substs = principal.substs.with_self_ty(unsized_ty).erase_regions();
+                let substs = principal.substs.with_self_ty(unadjusted_ty).erase_regions();
                 let trait_ref =
                     Rc::new(ty::TraitRef { def_id: principal.def_id,
                                            substs: substs });
                 let trait_ref = trait_ref.subst(bcx.tcx(), bcx.fcx.param_substs);
-                let box_ty = mk_ty(unsized_ty);
+                let box_ty = mk_ty(unadjusted_ty);
                 PointerCast(bcx,
                             meth::get_vtable(bcx, box_ty, trait_ref),
                             Type::vtable_ptr(bcx.ccx()))
@@ -350,7 +359,9 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         let tcx = bcx.tcx();
         let datum_ty = datum.ty;
         let unsized_ty = ty::unsize_ty(tcx, datum_ty, k, expr.span);
+        debug!("unsized_ty={}", unsized_ty.repr(bcx.tcx()));
         let dest_ty = ty::mk_open(tcx, unsized_ty);
+        debug!("dest_ty={}", unsized_ty.repr(bcx.tcx()));
         // Closures for extracting and manipulating the data and payload parts of
         // the fat pointer.
         let base = match k {
@@ -366,7 +377,7 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         let info = |bcx, _val| unsized_info(bcx,
                                             k,
                                             expr.id,
-                                            ty::deref_or_dont(datum_ty),
+                                            datum_ty,
                                             |t| ty::mk_rptr(tcx,
                                                             ty::ReStatic,
                                                             ty::mt{
