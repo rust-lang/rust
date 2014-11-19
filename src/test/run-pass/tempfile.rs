@@ -12,7 +12,7 @@
 
 // These tests are here to exercise the functionality of the `tempfile` module.
 // One might expect these tests to be located in that module, but sadly they
-// cannot. The tests need to invoke `os::change_dir` which cannot be done in the
+// cannot. The tests need to invoke `os::chdir` which cannot be done in the
 // normal test infrastructure. If the tests change the current working
 // directory, then *all* tests which require relative paths suddenly break b/c
 // they're in a different location than before. Hence, these tests are all run
@@ -190,7 +190,7 @@ pub fn dont_double_panic() {
 
 fn in_tmpdir(f: ||) {
     let tmpdir = TempDir::new("test").ok().expect("can't make tmpdir");
-    assert!(os::change_dir(tmpdir.path()).is_ok());
+    assert!(os::chdir(tmpdir.path()).is_ok());
 
     f();
 }

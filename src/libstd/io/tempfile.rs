@@ -112,6 +112,6 @@ impl Drop for TempDir {
     }
 }
 
-// the tests for this module need to change the path using change_dir,
+// the tests for this module need to change the path using chdir,
 // and this doesn't play nicely with other tests so these unit tests are located
 // in src/test/run-pass/tempfile.rs

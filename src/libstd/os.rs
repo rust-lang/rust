@@ -876,14 +876,14 @@ pub fn abspath(p: &Path) -> IoResult<Path> {
 /// use std::path::Path;
 ///
 /// let root = Path::new("/");
-/// assert!(os::change_dir(&root).is_ok());
+/// assert!(os::chdir(&root).is_ok());
 /// println!("Successfully changed working directory to {}!", root.display());
 /// ```
-pub fn change_dir(p: &Path) -> IoResult<()> {
-    return chdir(p);
+pub fn chdir(p: &Path) -> IoResult<()> {
+    return _chdir(p);
 
     #[cfg(windows)]
-    fn chdir(p: &Path) -> IoResult<()> {
+    fn _chdir(p: &Path) -> IoResult<()> {
         let mut p = p.as_str().unwrap().utf16_units().collect::<Vec<u16>>();
         p.push(0);
 
@@ -896,7 +896,7 @@ pub fn change_dir(p: &Path) -> IoResult<()> {
     }
 
     #[cfg(unix)]
-    fn chdir(p: &Path) -> IoResult<()> {
+    fn _chdir(p: &Path) -> IoResult<()> {
         p.with_c_str(|buf| {
             unsafe {
                 match libc::chdir(buf) == (0 as c_int) {
