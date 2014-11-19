@@ -17,7 +17,6 @@ use self::Candidate::*;
 use self::BuiltinBoundConditions::*;
 use self::EvaluationResult::*;
 
-use super::{ErrorReported};
 use super::{Obligation, ObligationCause};
 use super::{SelectionError, Unimplemented, Overflow,
             OutputTypeParameterMismatch};
@@ -38,6 +37,7 @@ use std::cell::RefCell;
 use std::collections::hash_map::HashMap;
 use std::rc::Rc;
 use syntax::ast;
+use util::common::ErrorReported;
 use util::ppaux::Repr;
 
 pub struct SelectionContext<'cx, 'tcx:'cx> {
