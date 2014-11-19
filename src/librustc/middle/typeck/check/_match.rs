@@ -379,7 +379,8 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>, pat: &ast::Pat,
 
     let real_path_ty = fcx.node_ty(pat.id);
     let (arg_tys, kind_name) = match real_path_ty.sty {
-        ty::ty_enum(enum_def_id, ref expected_substs) => {
+        ty::ty_enum(enum_def_id, ref expected_substs)
+            if def == def::DefVariant(enum_def_id, def.def_id(), false) => {
             let variant = ty::enum_variant_with_id(tcx, enum_def_id, def.def_id());
             (variant.args.iter().map(|t| t.subst(tcx, expected_substs)).collect::<Vec<_>>(),
                 "variant")
@@ -392,7 +393,7 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>, pat: &ast::Pat,
         _ => {
             let name = pprust::path_to_string(path);
             span_err!(tcx.sess, pat.span, E0164,
-                "`{}` does not name a variant or a tuple struct", name);
+                "`{}` does not name a non-struct variant or a tuple struct", name);
             fcx.write_error(pat.id);
 
             if let Some(ref subpats) = *subpats {
