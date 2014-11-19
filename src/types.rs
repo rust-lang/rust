@@ -6,13 +6,13 @@ use syntax::ast::*;
 use rustc::lint::{Context, LintPass, LintArray, Lint, Level};
 use syntax::codemap::Span;
 
-
+/// Handles all the linting of funky types
 pub struct TypePass;
 
 declare_lint!(CLIPPY_BOX_VEC, Warn,
               "Warn on usage of Box<Vec<T>>")
 
-
+/// Matches a type with a provided string, and returns its type parameters if successful
 pub fn match_ty_unwrap<'a>(ty: &'a Ty, segments: &[&str]) -> Option<&'a [P<Ty>]> {
     match ty.node {
         TyPath(Path {segments: ref seg, ..}, _, _) => {
@@ -35,13 +35,14 @@ pub fn match_ty_unwrap<'a>(ty: &'a Ty, segments: &[&str]) -> Option<&'a [P<Ty>]>
     }
 }
 
-
-fn span_note_and_lint(cx: &Context, lint: &'static Lint, span: Span, msg: &str, note: &str) {
+/// Lets me span a note only if the lint is shown
+pub fn span_note_and_lint(cx: &Context, lint: &'static Lint, span: Span, msg: &str, note: &str) {
     cx.span_lint(lint, span, msg);
     if cx.current_level(lint) != Level::Allow {
         cx.sess().span_note(span, note);
     }
 }
+
 impl LintPass for TypePass {
     fn get_lints(&self) -> LintArray {
         lint_array!(CLIPPY_BOX_VEC)
