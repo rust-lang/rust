@@ -376,12 +376,12 @@ pub trait WindowsPathExt {
 }
 
 enum PathPrefix<'a> {
-    VerbatimPrefix(&'a Path),
-    VerbatimUNCPrefix(&'a Path, &'a Path),
-    VerbatimDiskPrefix(&'a Path),
-    DeviceNSPrefix(&'a Path),
-    UNCPrefix(&'a Path, &'a Path),
-    DiskPrefix(&'a Path),
+    Verbatim(&'a Path),
+    VerbatimUNC(&'a Path, &'a Path),
+    VerbatimDisk(&'a Path),
+    DeviceNS(&'a Path),
+    UNC(&'a Path, &'a Path),
+    Disk(&'a Path),
 }
 ```
 
