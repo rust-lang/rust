@@ -32,59 +32,62 @@ pub fn check_expr_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
                                    decl: &ast::FnDecl,
                                    body: &ast::Block,
                                    expected: Expectation<'tcx>) {
+    debug!("check_expr_closure(expr={},expected={})",
+           expr.repr(fcx.tcx()),
+           expected.repr(fcx.tcx()));
+
     match opt_kind {
-        None => { // old-school boxed closure
-            let region = astconv::opt_ast_region_to_region(fcx,
-                                                           fcx.infcx(),
-                                                           expr.span,
-                                                           &None);
-            check_boxed_closure(fcx,
-                                expr,
-                                ty::RegionTraitStore(region, ast::MutMutable),
-                                decl,
-                                body,
-                                expected);
+        None => {
+            // If users didn't specify what sort of closure they want,
+            // examine the expected type. For now, if we see explicit
+            // evidence than an unboxed closure is desired, we'll use
+            // that, otherwise we'll fall back to boxed closures.
+            match deduce_unboxed_closure_expectations_from_expectation(fcx, expected) {
+                None => { // doesn't look like an unboxed closure
+                    let region = astconv::opt_ast_region_to_region(fcx,
+                                                                   fcx.infcx(),
+                                                                   expr.span,
+                                                                   &None);
+                    check_boxed_closure(fcx,
+                                        expr,
+                                        ty::RegionTraitStore(region, ast::MutMutable),
+                                        decl,
+                                        body,
+                                        expected);
+                }
+                Some((sig, kind)) => {
+                    check_unboxed_closure(fcx, expr, kind, decl, body, Some(sig));
+                }
+            }
         }
 
         Some(kind) => {
-            check_unboxed_closure(fcx, expr, kind, decl, body, expected)
+            let kind = match kind {
+                ast::FnUnboxedClosureKind => ty::FnUnboxedClosureKind,
+                ast::FnMutUnboxedClosureKind => ty::FnMutUnboxedClosureKind,
+                ast::FnOnceUnboxedClosureKind => ty::FnOnceUnboxedClosureKind,
+            };
+
+            let expected_sig =
+                deduce_unboxed_closure_expectations_from_expectation(fcx, expected)
+                .map(|t| t.0);
+
+            check_unboxed_closure(fcx, expr, kind, decl, body, expected_sig);
         }
     }
 }
 
 fn check_unboxed_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
                                   expr: &ast::Expr,
-                                  kind: ast::UnboxedClosureKind,
+                                  kind: ty::UnboxedClosureKind,
                                   decl: &ast::FnDecl,
                                   body: &ast::Block,
-                                  expected: Expectation<'tcx>) {
+                                  expected_sig: Option<ty::FnSig<'tcx>>) {
     let expr_def_id = ast_util::local_def(expr.id);
 
-    let expected_sig_and_kind = match expected.resolve(fcx) {
-        NoExpectation => None,
-        ExpectCastableToType(t) | ExpectHasType(t) => {
-            deduce_unboxed_closure_expectations_from_expected_type(fcx, t)
-        }
-    };
-
-    let (expected_sig, expected_kind) = match expected_sig_and_kind {
-        None => (None, None),
-        Some((sig, kind)) => {
-            // Avoid accidental capture of bound regions by renaming
-            // them to fresh names, basically.
-            let sig =
-                ty::replace_late_bound_regions(
-                    fcx.tcx(),
-                    &sig,
-                    |_, debruijn| fcx.inh.infcx.fresh_bound_region(debruijn)).0;
-            (Some(sig), Some(kind))
-        }
-    };
-
-    debug!("check_unboxed_closure expected={} expected_sig={} expected_kind={}",
-           expected.repr(fcx.tcx()),
-           expected_sig.repr(fcx.tcx()),
-           expected_kind);
+    debug!("check_unboxed_closure kind={} expected_sig={}",
+           kind,
+           expected_sig.repr(fcx.tcx()));
 
     let mut fn_ty = astconv::ty_of_closure(
         fcx,
@@ -130,12 +133,6 @@ fn check_unboxed_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
     // the `unboxed_closures` table.
     fn_ty.sig.inputs = vec![ty::mk_tup(fcx.tcx(), fn_ty.sig.inputs)];
 
-    let kind = match kind {
-        ast::FnUnboxedClosureKind => ty::FnUnboxedClosureKind,
-        ast::FnMutUnboxedClosureKind => ty::FnMutUnboxedClosureKind,
-        ast::FnOnceUnboxedClosureKind => ty::FnOnceUnboxedClosureKind,
-    };
-
     debug!("unboxed_closure for {} --> sig={} kind={}",
            expr_def_id.repr(fcx.tcx()),
            fn_ty.sig.repr(fcx.tcx()),
@@ -152,10 +149,23 @@ fn check_unboxed_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
         .insert(expr_def_id, unboxed_closure);
 }
 
-fn deduce_unboxed_closure_expectations_from_expected_type<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
-                                                                   expected_ty: Ty<'tcx>)
-                                                                   -> Option<(ty::FnSig<'tcx>,
-                                                                              ty::UnboxedClosureKind)>
+fn deduce_unboxed_closure_expectations_from_expectation<'a,'tcx>(
+    fcx: &FnCtxt<'a,'tcx>,
+    expected: Expectation<'tcx>)
+    -> Option<(ty::FnSig<'tcx>,ty::UnboxedClosureKind)>
+{
+    match expected.resolve(fcx) {
+        NoExpectation => None,
+        ExpectCastableToType(t) | ExpectHasType(t) => {
+            deduce_unboxed_closure_expectations_from_expected_type(fcx, t)
+        }
+    }
+}
+
+fn deduce_unboxed_closure_expectations_from_expected_type<'a,'tcx>(
+    fcx: &FnCtxt<'a,'tcx>,
+    expected_ty: Ty<'tcx>)
+    -> Option<(ty::FnSig<'tcx>,ty::UnboxedClosureKind)>
 {
     match expected_ty.sty {
         ty::ty_trait(ref object_type) => {
