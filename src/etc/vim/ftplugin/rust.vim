@@ -35,9 +35,10 @@ silent! setlocal formatoptions+=j
 " otherwise it's better than nothing.
 setlocal smartindent nocindent
 
-setlocal tabstop=4 shiftwidth=4 softtabstop=4 expandtab
-
-setlocal textwidth=99
+if !exists("g:rust_recommended_style") || g:rust_recommended_style == 1
+	setlocal tabstop=4 shiftwidth=4 softtabstop=4 expandtab
+	setlocal textwidth=99
+endif
 
 " This includeexpr isn't perfect, but it's a good start
 setlocal includeexpr=substitute(v:fname,'::','/','g')
