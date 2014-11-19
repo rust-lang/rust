@@ -15,7 +15,7 @@ use self::ResolveReason::*;
 
 use middle::def;
 use middle::pat_util;
-use middle::ty;
+use middle::ty::{mod, Ty};
 use middle::ty_fold::{TypeFolder,TypeFoldable};
 use middle::typeck::astconv::AstConv;
 use middle::typeck::check::FnCtxt;
@@ -340,7 +340,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         }
     }
 
-    fn resolve<T:ResolveIn>(&self, t: &T, reason: ResolveReason) -> T {
+    fn resolve<T:ResolveIn<'tcx>>(&self, t: &T, reason: ResolveReason) -> T {
         t.resolve_in(&mut Resolver::new(self.fcx, reason))
     }
 }
@@ -379,12 +379,12 @@ impl ResolveReason {
 ///////////////////////////////////////////////////////////////////////////
 // Convenience methods for resolving different kinds of things.
 
-trait ResolveIn {
-    fn resolve_in(&self, resolver: &mut Resolver) -> Self;
+trait ResolveIn<'tcx> {
+    fn resolve_in<'a>(&self, resolver: &mut Resolver<'a, 'tcx>) -> Self;
 }
 
-impl<T:TypeFoldable> ResolveIn for T {
-    fn resolve_in(&self, resolver: &mut Resolver) -> T {
+impl<'tcx, T: TypeFoldable<'tcx>> ResolveIn<'tcx> for T {
+    fn resolve_in<'a>(&self, resolver: &mut Resolver<'a, 'tcx>) -> T {
         self.fold_with(resolver)
     }
 }
@@ -465,7 +465,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Resolver<'cx, 'tcx> {
         self.tcx
     }
 
-    fn fold_ty(&mut self, t: ty::t) -> ty::t {
+    fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
         if !ty::type_needs_infer(t) {
             return t;
         }

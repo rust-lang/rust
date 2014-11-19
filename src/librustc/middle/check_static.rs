@@ -53,7 +53,7 @@ struct CheckStaticVisitor<'a, 'tcx: 'a> {
     checker: &'a mut GlobalChecker,
 }
 
-struct GlobalVisitor<'a, 'b, 't: 'b>(euv::ExprUseVisitor<'a, 'b, ty::ctxt<'t>>);
+struct GlobalVisitor<'a, 'b, 'tcx: 'b>(euv::ExprUseVisitor<'a, 'b, 'tcx, ty::ctxt<'tcx>>);
 struct GlobalChecker {
     static_consumptions: NodeSet,
     const_borrows: NodeSet,
@@ -162,7 +162,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckStaticVisitor<'a, 'tcx> {
 
         let node_ty = ty::node_id_to_type(self.tcx, e.id);
 
-        match ty::get(node_ty).sty {
+        match node_ty.sty {
             ty::ty_struct(did, _) |
             ty::ty_enum(did, _) if ty::has_dtor(self.tcx, did) => {
                 self.tcx.sess.span_err(e.span,
@@ -256,7 +256,7 @@ impl<'a, 'b, 't, 'v> Visitor<'v> for GlobalVisitor<'a, 'b, 't> {
     }
 }
 
-impl euv::Delegate for GlobalChecker {
+impl<'tcx> euv::Delegate<'tcx> for GlobalChecker {
     fn consume(&mut self,
                consume_id: ast::NodeId,
                _consume_span: Span,

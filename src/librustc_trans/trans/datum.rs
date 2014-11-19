@@ -25,7 +25,7 @@ use trans::cleanup::CleanupMethods;
 use trans::expr;
 use trans::tvec;
 use trans::type_of;
-use middle::ty;
+use middle::ty::{mod, Ty};
 use util::ppaux::{ty_to_string};
 
 use std::fmt;
@@ -38,13 +38,13 @@ use syntax::ast;
  * the section on datums in `doc.rs` for more details.
  */
 #[deriving(Clone)]
-pub struct Datum<K> {
+pub struct Datum<'tcx, K> {
     /// The llvm value.  This is either a pointer to the Rust value or
     /// the value itself, depending on `kind` below.
     pub val: ValueRef,
 
     /// The rust type of the value.
-    pub ty: ty::t,
+    pub ty: Ty<'tcx>,
 
     /// Indicates whether this is by-ref or by-value.
     pub kind: K,
@@ -52,7 +52,7 @@ pub struct Datum<K> {
 
 pub struct DatumBlock<'blk, 'tcx: 'blk, K> {
     pub bcx: Block<'blk, 'tcx>,
-    pub datum: Datum<K>,
+    pub datum: Datum<'tcx, K>,
 }
 
 #[deriving(Show)]
@@ -95,20 +95,20 @@ pub enum RvalueMode {
     ByValue,
 }
 
-pub fn immediate_rvalue(val: ValueRef, ty: ty::t) -> Datum<Rvalue> {
+pub fn immediate_rvalue<'tcx>(val: ValueRef, ty: Ty<'tcx>) -> Datum<'tcx, Rvalue> {
     return Datum::new(val, ty, Rvalue::new(ByValue));
 }
 
 pub fn immediate_rvalue_bcx<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                         val: ValueRef,
-                                        ty: ty::t)
+                                        ty: Ty<'tcx>)
                                         -> DatumBlock<'blk, 'tcx, Rvalue> {
     return DatumBlock::new(bcx, immediate_rvalue(val, ty))
 }
 
 
 pub fn lvalue_scratch_datum<'blk, 'tcx, A>(bcx: Block<'blk, 'tcx>,
-                                           ty: ty::t,
+                                           ty: Ty<'tcx>,
                                            name: &str,
                                            zero: bool,
                                            scope: cleanup::ScopeId,
@@ -140,10 +140,10 @@ pub fn lvalue_scratch_datum<'blk, 'tcx, A>(bcx: Block<'blk, 'tcx>,
     DatumBlock::new(bcx, Datum::new(scratch, ty, Lvalue))
 }
 
-pub fn rvalue_scratch_datum(bcx: Block,
-                            ty: ty::t,
-                            name: &str)
-                            -> Datum<Rvalue> {
+pub fn rvalue_scratch_datum<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                                        ty: Ty<'tcx>,
+                                        name: &str)
+                                        -> Datum<'tcx, Rvalue> {
     /*!
      * Allocates temporary space on the stack using alloca() and
      * returns a by-ref Datum pointing to it.  If `zero` is true, the
@@ -159,7 +159,8 @@ pub fn rvalue_scratch_datum(bcx: Block,
     Datum::new(scratch, ty, Rvalue::new(ByRef))
 }
 
-pub fn appropriate_rvalue_mode(ccx: &CrateContext, ty: ty::t) -> RvalueMode {
+pub fn appropriate_rvalue_mode<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                                         ty: Ty<'tcx>) -> RvalueMode {
     /*!
      * Indicates the "appropriate" mode for this value,
      * which is either by ref or by value, depending
@@ -173,11 +174,11 @@ pub fn appropriate_rvalue_mode(ccx: &CrateContext, ty: ty::t) -> RvalueMode {
     }
 }
 
-fn add_rvalue_clean(mode: RvalueMode,
-                    fcx: &FunctionContext,
-                    scope: cleanup::ScopeId,
-                    val: ValueRef,
-                    ty: ty::t) {
+fn add_rvalue_clean<'a, 'tcx>(mode: RvalueMode,
+                              fcx: &FunctionContext<'a, 'tcx>,
+                              scope: cleanup::ScopeId,
+                              val: ValueRef,
+                              ty: Ty<'tcx>) {
     match mode {
         ByValue => { fcx.schedule_drop_immediate(scope, val, ty); }
         ByRef => {
@@ -196,7 +197,7 @@ pub trait KindOps {
     fn post_store<'blk, 'tcx>(&self,
                               bcx: Block<'blk, 'tcx>,
                               val: ValueRef,
-                              ty: ty::t)
+                              ty: Ty<'tcx>)
                               -> Block<'blk, 'tcx>;
 
     /**
@@ -216,7 +217,7 @@ impl KindOps for Rvalue {
     fn post_store<'blk, 'tcx>(&self,
                               bcx: Block<'blk, 'tcx>,
                               _val: ValueRef,
-                              _ty: ty::t)
+                              _ty: Ty<'tcx>)
                               -> Block<'blk, 'tcx> {
         // No cleanup is scheduled for an rvalue, so we don't have
         // to do anything after a move to cancel or duplicate it.
@@ -236,7 +237,7 @@ impl KindOps for Lvalue {
     fn post_store<'blk, 'tcx>(&self,
                               bcx: Block<'blk, 'tcx>,
                               val: ValueRef,
-                              ty: ty::t)
+                              ty: Ty<'tcx>)
                               -> Block<'blk, 'tcx> {
         /*!
          * If an lvalue is moved, we must zero out the memory in which
@@ -266,7 +267,7 @@ impl KindOps for Expr {
     fn post_store<'blk, 'tcx>(&self,
                               bcx: Block<'blk, 'tcx>,
                               val: ValueRef,
-                              ty: ty::t)
+                              ty: Ty<'tcx>)
                               -> Block<'blk, 'tcx> {
         match *self {
             LvalueExpr => Lvalue.post_store(bcx, val, ty),
@@ -286,11 +287,11 @@ impl KindOps for Expr {
     }
 }
 
-impl Datum<Rvalue> {
-    pub fn add_clean(self,
-                     fcx: &FunctionContext,
-                     scope: cleanup::ScopeId)
-                     -> ValueRef {
+impl<'tcx> Datum<'tcx, Rvalue> {
+    pub fn add_clean<'a>(self,
+                         fcx: &FunctionContext<'a, 'tcx>,
+                         scope: cleanup::ScopeId)
+                         -> ValueRef {
         /*!
          * Schedules a cleanup for this datum in the given scope.
          * That means that this datum is no longer an rvalue datum;
@@ -302,11 +303,11 @@ impl Datum<Rvalue> {
         self.val
     }
 
-    pub fn to_lvalue_datum_in_scope<'blk, 'tcx>(self,
-                                                bcx: Block<'blk, 'tcx>,
-                                                name: &str,
-                                                scope: cleanup::ScopeId)
-                                                -> DatumBlock<'blk, 'tcx, Lvalue> {
+    pub fn to_lvalue_datum_in_scope<'blk>(self,
+                                          bcx: Block<'blk, 'tcx>,
+                                          name: &str,
+                                          scope: cleanup::ScopeId)
+                                          -> DatumBlock<'blk, 'tcx, Lvalue> {
         /*!
          * Returns an lvalue datum (that is, a by ref datum with
          * cleanup scheduled). If `self` is not already an lvalue,
@@ -328,8 +329,8 @@ impl Datum<Rvalue> {
         }
     }
 
-    pub fn to_ref_datum<'blk, 'tcx>(self, bcx: Block<'blk, 'tcx>)
-                                    -> DatumBlock<'blk, 'tcx, Rvalue> {
+    pub fn to_ref_datum<'blk>(self, bcx: Block<'blk, 'tcx>)
+                              -> DatumBlock<'blk, 'tcx, Rvalue> {
         let mut bcx = bcx;
         match self.kind.mode {
             ByRef => DatumBlock::new(bcx, self),
@@ -341,9 +342,8 @@ impl Datum<Rvalue> {
         }
     }
 
-    pub fn to_appropriate_datum<'blk, 'tcx>(self,
-                                            bcx: Block<'blk, 'tcx>)
-                                            -> DatumBlock<'blk, 'tcx, Rvalue> {
+    pub fn to_appropriate_datum<'blk>(self, bcx: Block<'blk, 'tcx>)
+                                      -> DatumBlock<'blk, 'tcx, Rvalue> {
         match self.appropriate_rvalue_mode(bcx.ccx()) {
             ByRef => {
                 self.to_ref_datum(bcx)
@@ -369,10 +369,10 @@ impl Datum<Rvalue> {
  * here since we can `match self.kind` rather than having to implement
  * generic methods in `KindOps`.)
  */
-impl Datum<Expr> {
+impl<'tcx> Datum<'tcx, Expr> {
     fn match_kind<R>(self,
-                     if_lvalue: |Datum<Lvalue>| -> R,
-                     if_rvalue: |Datum<Rvalue>| -> R)
+                     if_lvalue: |Datum<'tcx, Lvalue>| -> R,
+                     if_rvalue: |Datum<'tcx, Rvalue>| -> R)
                      -> R {
         let Datum { val, ty, kind } = self;
         match kind {
@@ -382,7 +382,7 @@ impl Datum<Expr> {
     }
 
     #[allow(dead_code)] // potentially useful
-    pub fn assert_lvalue(self, bcx: Block) -> Datum<Lvalue> {
+    pub fn assert_lvalue(self, bcx: Block) -> Datum<'tcx, Lvalue> {
         /*!
          * Asserts that this datum *is* an lvalue and returns it.
          */
@@ -392,7 +392,7 @@ impl Datum<Expr> {
             |_| bcx.sess().bug("assert_lvalue given rvalue"))
     }
 
-    pub fn assert_rvalue(self, bcx: Block) -> Datum<Rvalue> {
+    pub fn assert_rvalue(self, bcx: Block) -> Datum<'tcx, Rvalue> {
         /*!
          * Asserts that this datum *is* an lvalue and returns it.
          */
@@ -402,11 +402,11 @@ impl Datum<Expr> {
             |r| r)
     }
 
-    pub fn store_to_dest<'blk, 'tcx>(self,
-                                     bcx: Block<'blk, 'tcx>,
-                                     dest: expr::Dest,
-                                     expr_id: ast::NodeId)
-                                     -> Block<'blk, 'tcx> {
+    pub fn store_to_dest<'blk>(self,
+                               bcx: Block<'blk, 'tcx>,
+                               dest: expr::Dest,
+                               expr_id: ast::NodeId)
+                               -> Block<'blk, 'tcx> {
         match dest {
             expr::Ignore => {
                 self.add_clean_if_rvalue(bcx, expr_id);
@@ -418,9 +418,9 @@ impl Datum<Expr> {
         }
     }
 
-    pub fn add_clean_if_rvalue<'blk, 'tcx>(self,
-                                           bcx: Block<'blk, 'tcx>,
-                                           expr_id: ast::NodeId) {
+    pub fn add_clean_if_rvalue<'blk>(self,
+                                     bcx: Block<'blk, 'tcx>,
+                                     expr_id: ast::NodeId) {
         /*!
          * Arranges cleanup for `self` if it is an rvalue. Use when
          * you are done working with a value that may need drop.
@@ -434,11 +434,11 @@ impl Datum<Expr> {
             })
     }
 
-    pub fn clean<'blk, 'tcx>(self,
-                             bcx: Block<'blk, 'tcx>,
-                             name: &'static str,
-                             expr_id: ast::NodeId)
-                             -> Block<'blk, 'tcx> {
+    pub fn clean<'blk>(self,
+                       bcx: Block<'blk, 'tcx>,
+                       name: &'static str,
+                       expr_id: ast::NodeId)
+                       -> Block<'blk, 'tcx> {
         /*!
          * Ensures that `self` will get cleaned up, if it is not an lvalue
          * already.
@@ -447,11 +447,11 @@ impl Datum<Expr> {
         self.to_lvalue_datum(bcx, name, expr_id).bcx
     }
 
-    pub fn to_lvalue_datum<'blk, 'tcx>(self,
-                                       bcx: Block<'blk, 'tcx>,
-                                       name: &str,
-                                       expr_id: ast::NodeId)
-                                       -> DatumBlock<'blk, 'tcx, Lvalue> {
+    pub fn to_lvalue_datum<'blk>(self,
+                                 bcx: Block<'blk, 'tcx>,
+                                 name: &str,
+                                 expr_id: ast::NodeId)
+                                 -> DatumBlock<'blk, 'tcx, Lvalue> {
         debug!("to_lvalue_datum self: {}", self.to_string(bcx.ccx()));
 
         assert!(ty::lltype_is_sized(bcx.tcx(), self.ty),
@@ -464,10 +464,10 @@ impl Datum<Expr> {
             })
     }
 
-    pub fn to_rvalue_datum<'blk, 'tcx>(self,
-                                       bcx: Block<'blk, 'tcx>,
-                                       name: &'static str)
-                                       -> DatumBlock<'blk, 'tcx, Rvalue> {
+    pub fn to_rvalue_datum<'blk>(self,
+                                 bcx: Block<'blk, 'tcx>,
+                                 name: &'static str)
+                                 -> DatumBlock<'blk, 'tcx, Rvalue> {
         /*!
          * Ensures that we have an rvalue datum (that is, a datum with
          * no cleanup scheduled).
@@ -500,7 +500,7 @@ impl Datum<Expr> {
  * such as extracting the field from a struct or a particular element
  * from an array.
  */
-impl Datum<Lvalue> {
+impl<'tcx> Datum<'tcx, Lvalue> {
     pub fn to_llref(self) -> ValueRef {
         /*!
          * Converts a datum into a by-ref value. The datum type must
@@ -515,10 +515,10 @@ impl Datum<Lvalue> {
     // datum may also be unsized _without the size information_. It is the
     // callers responsibility to package the result in some way to make a valid
     // datum in that case (e.g., by making a fat pointer or opened pair).
-    pub fn get_element(&self, bcx: Block, ty: ty::t,
-                       gep: |ValueRef| -> ValueRef)
-                       -> Datum<Lvalue> {
-        let val = match ty::get(self.ty).sty {
+    pub fn get_element<'blk>(&self, bcx: Block<'blk, 'tcx>, ty: Ty<'tcx>,
+                             gep: |ValueRef| -> ValueRef)
+                             -> Datum<'tcx, Lvalue> {
+        let val = match self.ty.sty {
             _ if ty::type_is_sized(bcx.tcx(), self.ty) => gep(self.val),
             ty::ty_open(_) => {
                 let base = Load(bcx, expr::get_dataptr(bcx, self.val));
@@ -545,20 +545,20 @@ impl Datum<Lvalue> {
 /**
  * Generic methods applicable to any sort of datum.
  */
-impl<K: KindOps + fmt::Show> Datum<K> {
-    pub fn new(val: ValueRef, ty: ty::t, kind: K) -> Datum<K> {
+impl<'tcx, K: KindOps + fmt::Show> Datum<'tcx, K> {
+    pub fn new(val: ValueRef, ty: Ty<'tcx>, kind: K) -> Datum<'tcx, K> {
         Datum { val: val, ty: ty, kind: kind }
     }
 
-    pub fn to_expr_datum(self) -> Datum<Expr> {
+    pub fn to_expr_datum(self) -> Datum<'tcx, Expr> {
         let Datum { val, ty, kind } = self;
         Datum { val: val, ty: ty, kind: kind.to_expr_kind() }
     }
 
-    pub fn store_to<'blk, 'tcx>(self,
-                                bcx: Block<'blk, 'tcx>,
-                                dst: ValueRef)
-                                -> Block<'blk, 'tcx> {
+    pub fn store_to<'blk>(self,
+                          bcx: Block<'blk, 'tcx>,
+                          dst: ValueRef)
+                          -> Block<'blk, 'tcx> {
         /*!
          * Moves or copies this value into a new home, as appropriate
          * depending on the type of the datum. This method consumes
@@ -572,10 +572,10 @@ impl<K: KindOps + fmt::Show> Datum<K> {
         self.kind.post_store(bcx, self.val, self.ty)
     }
 
-    fn shallow_copy_raw<'blk, 'tcx>(&self,
-                                    bcx: Block<'blk, 'tcx>,
-                                    dst: ValueRef)
-                                    -> Block<'blk, 'tcx> {
+    fn shallow_copy_raw<'blk>(&self,
+                              bcx: Block<'blk, 'tcx>,
+                              dst: ValueRef)
+                              -> Block<'blk, 'tcx> {
         /*!
          * Helper function that performs a shallow copy of this value
          * into `dst`, which should be a pointer to a memory location
@@ -604,10 +604,10 @@ impl<K: KindOps + fmt::Show> Datum<K> {
         return bcx;
     }
 
-    pub fn shallow_copy<'blk, 'tcx>(&self,
-                                    bcx: Block<'blk, 'tcx>,
-                                    dst: ValueRef)
-                                    -> Block<'blk, 'tcx> {
+    pub fn shallow_copy<'blk>(&self,
+                              bcx: Block<'blk, 'tcx>,
+                              dst: ValueRef)
+                              -> Block<'blk, 'tcx> {
         /*!
          * Copies the value into a new location. This function always
          * preserves the existing datum as a valid value. Therefore,
@@ -620,20 +620,21 @@ impl<K: KindOps + fmt::Show> Datum<K> {
     }
 
     #[allow(dead_code)] // useful for debugging
-    pub fn to_string(&self, ccx: &CrateContext) -> String {
+    pub fn to_string<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> String {
         format!("Datum({}, {}, {})",
                 ccx.tn().val_to_string(self.val),
                 ty_to_string(ccx.tcx(), self.ty),
                 self.kind)
     }
 
-    pub fn appropriate_rvalue_mode(&self, ccx: &CrateContext) -> RvalueMode {
+    pub fn appropriate_rvalue_mode<'a>(&self, ccx: &CrateContext<'a, 'tcx>)
+                                       -> RvalueMode {
         /*! See the `appropriate_rvalue_mode()` function */
 
         appropriate_rvalue_mode(ccx, self.ty)
     }
 
-    pub fn to_llscalarish(self, bcx: Block) -> ValueRef {
+    pub fn to_llscalarish<'blk>(self, bcx: Block<'blk, 'tcx>) -> ValueRef {
         /*!
          * Converts `self` into a by-value `ValueRef`. Consumes this
          * datum (i.e., absolves you of responsibility to cleanup the
@@ -652,14 +653,15 @@ impl<K: KindOps + fmt::Show> Datum<K> {
         }
     }
 
-    pub fn to_llbool(self, bcx: Block) -> ValueRef {
+    pub fn to_llbool<'blk>(self, bcx: Block<'blk, 'tcx>) -> ValueRef {
         assert!(ty::type_is_bool(self.ty))
         self.to_llscalarish(bcx)
     }
 }
 
 impl<'blk, 'tcx, K> DatumBlock<'blk, 'tcx, K> {
-    pub fn new(bcx: Block<'blk, 'tcx>, datum: Datum<K>) -> DatumBlock<'blk, 'tcx, K> {
+    pub fn new(bcx: Block<'blk, 'tcx>, datum: Datum<'tcx, K>)
+               -> DatumBlock<'blk, 'tcx, K> {
         DatumBlock { bcx: bcx, datum: datum }
     }
 }

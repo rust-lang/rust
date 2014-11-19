@@ -20,7 +20,7 @@ use trans::base::{trans_fn, decl_internal_rust_fn};
 use trans::base;
 use trans::common::*;
 use trans::foreign;
-use middle::ty;
+use middle::ty::{mod, Ty};
 use util::ppaux::Repr;
 
 use syntax::abi;
@@ -30,20 +30,20 @@ use syntax::ast_util::{local_def, PostExpansionMethod};
 use syntax::attr;
 use std::hash::{sip, Hash};
 
-pub fn monomorphic_fn(ccx: &CrateContext,
-                      fn_id: ast::DefId,
-                      real_substs: &subst::Substs,
-                      ref_id: Option<ast::NodeId>)
+pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                                fn_id: ast::DefId,
+                                psubsts: &subst::Substs<'tcx>,
+                                ref_id: Option<ast::NodeId>)
     -> (ValueRef, bool) {
     debug!("monomorphic_fn(\
             fn_id={}, \
             real_substs={}, \
             ref_id={})",
            fn_id.repr(ccx.tcx()),
-           real_substs.repr(ccx.tcx()),
+           psubsts.repr(ccx.tcx()),
            ref_id);
 
-    assert!(real_substs.types.all(|t| {
+    assert!(psubsts.types.all(|t| {
         !ty::type_needs_infer(*t) && !ty::type_has_params(*t)
     }));
 
@@ -51,7 +51,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
 
     let hash_id = MonoId {
         def: fn_id,
-        params: real_substs.types.clone()
+        params: psubsts.types.clone()
     };
 
     match ccx.monomorphized().borrow().get(&hash_id) {
@@ -62,9 +62,6 @@ pub fn monomorphic_fn(ccx: &CrateContext,
         }
         None => ()
     }
-
-    debug!("creating param_substs with real_substs={}", real_substs.repr(ccx.tcx()));
-    let psubsts = param_substs::new((*real_substs).clone());
 
     debug!("monomorphic_fn(\
             fn_id={}, \
@@ -98,7 +95,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
     }
 
     debug!("monomorphic_fn about to subst into {}", llitem_ty.repr(ccx.tcx()));
-    let mono_ty = llitem_ty.subst(ccx.tcx(), real_substs);
+    let mono_ty = llitem_ty.subst(ccx.tcx(), psubsts);
 
     ccx.stats().n_monos.set(ccx.stats().n_monos.get() + 1);
 
@@ -178,10 +175,10 @@ pub fn monomorphic_fn(ccx: &CrateContext,
                   if needs_body {
                       if abi != abi::Rust {
                           foreign::trans_rust_fn_with_foreign_abi(
-                              ccx, &**decl, &**body, &[], d, &psubsts, fn_id.node,
+                              ccx, &**decl, &**body, &[], d, psubsts, fn_id.node,
                               Some(hash.as_slice()));
                       } else {
-                          trans_fn(ccx, &**decl, &**body, d, &psubsts, fn_id.node, &[]);
+                          trans_fn(ccx, &**decl, &**body, d, psubsts, fn_id.node, &[]);
                       }
                   }
 
@@ -205,7 +202,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
                                        &*v,
                                        args.as_slice(),
                                        this_tv.disr_val,
-                                       &psubsts,
+                                       psubsts,
                                        d);
                 }
                 ast::StructVariantKind(_) =>
@@ -223,7 +220,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
                                  mth.pe_fn_decl(),
                                  mth.pe_body(),
                                  d,
-                                 &psubsts,
+                                 psubsts,
                                  mth.id,
                                  &[]);
                     }
@@ -241,7 +238,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
                     let needs_body = setup_lldecl(d, mth.attrs.as_slice());
                     if needs_body {
                         trans_fn(ccx, mth.pe_fn_decl(), mth.pe_body(), d,
-                                 &psubsts, mth.id, &[]);
+                                 psubsts, mth.id, &[]);
                     }
                     d
                 }
@@ -258,7 +255,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
                                      struct_def.fields.as_slice(),
                                      struct_def.ctor_id.expect("ast-mapped tuple struct \
                                                                 didn't have a ctor id"),
-                                     &psubsts,
+                                     psubsts,
                                      d);
             d
         }
@@ -284,7 +281,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
 }
 
 #[deriving(PartialEq, Eq, Hash, Show)]
-pub struct MonoId {
+pub struct MonoId<'tcx> {
     pub def: ast::DefId,
-    pub params: subst::VecPerParamSpace<ty::t>
+    pub params: subst::VecPerParamSpace<Ty<'tcx>>
 }

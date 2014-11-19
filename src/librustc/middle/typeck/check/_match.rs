@@ -11,7 +11,7 @@
 use middle::def;
 use middle::pat_util::{PatIdMap, pat_id_map, pat_is_binding, pat_is_const};
 use middle::subst::{Subst, Substs};
-use middle::ty;
+use middle::ty::{mod, Ty};
 use middle::typeck::check::{check_expr, check_expr_has_type, demand, FnCtxt};
 use middle::typeck::check::{instantiate_path, structurally_resolved_type, valid_range_bounds};
 use middle::typeck::infer::{mod, resolve};
@@ -27,7 +27,8 @@ use syntax::parse::token;
 use syntax::print::pprust;
 use syntax::ptr::P;
 
-pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
+pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
+                           pat: &ast::Pat, expected: Ty<'tcx>) {
     let fcx = pcx.fcx;
     let tcx = pcx.fcx.ccx.tcx;
 
@@ -164,7 +165,7 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
         ast::PatVec(ref before, ref slice, ref after) => {
             let expected_ty = structurally_resolved_type(fcx, pat.span, expected);
             let inner_ty = fcx.infcx().next_ty_var();
-            let pat_ty = match ty::get(expected_ty).sty {
+            let pat_ty = match expected_ty.sty {
                 ty::ty_vec(_, Some(size)) => ty::mk_vec(tcx, inner_ty, Some({
                     let min_len = before.len() + after.len();
                     match *slice {
@@ -207,15 +208,16 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
     }
 }
 
-pub fn check_dereferencable(pcx: &pat_ctxt, span: Span, expected: ty::t,
-                            inner: &ast::Pat) -> bool {
+pub fn check_dereferencable<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
+                                      span: Span, expected: Ty<'tcx>,
+                                      inner: &ast::Pat) -> bool {
     let fcx = pcx.fcx;
     let tcx = pcx.fcx.ccx.tcx;
     match infer::resolve_type(
         fcx.infcx(), Some(span),
         expected, resolve::try_resolve_tvar_shallow) {
         Ok(t) if pat_is_binding(&tcx.def_map, inner) => {
-            ty::deref(t, true).map_or(true, |mt| match ty::get(mt.ty).sty {
+            ty::deref(t, true).map_or(true, |mt| match mt.ty.sty {
                 ty::ty_trait(_) => {
                     // This is "x = SomeTrait" being reduced from
                     // "let &x = &SomeTrait" or "let box x = Box<SomeTrait>", an error.
@@ -290,9 +292,9 @@ pub struct pat_ctxt<'a, 'tcx: 'a> {
     pub map: PatIdMap,
 }
 
-pub fn check_pat_struct(pcx: &pat_ctxt, pat: &ast::Pat,
-                        path: &ast::Path, fields: &[Spanned<ast::FieldPat>],
-                        etc: bool, expected: ty::t) {
+pub fn check_pat_struct<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>, pat: &ast::Pat,
+                                  path: &ast::Path, fields: &[Spanned<ast::FieldPat>],
+                                  etc: bool, expected: Ty<'tcx>) {
     let fcx = pcx.fcx;
     let tcx = pcx.fcx.ccx.tcx;
 
@@ -311,7 +313,7 @@ pub fn check_pat_struct(pcx: &pat_ctxt, pat: &ast::Pat,
         },
         _ => {
             let def_type = ty::lookup_item_type(tcx, def.def_id());
-            match ty::get(def_type.ty).sty {
+            match def_type.ty.sty {
                 ty::ty_struct(struct_def_id, _) =>
                     (struct_def_id, struct_def_id),
                 ty::ty_enum(enum_def_id, _)
@@ -349,9 +351,9 @@ pub fn check_pat_struct(pcx: &pat_ctxt, pat: &ast::Pat,
                             variant_def_id, etc);
 }
 
-pub fn check_pat_enum(pcx: &pat_ctxt, pat: &ast::Pat,
-                      path: &ast::Path, subpats: &Option<Vec<P<ast::Pat>>>,
-                      expected: ty::t) {
+pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>, pat: &ast::Pat,
+                                path: &ast::Path, subpats: &Option<Vec<P<ast::Pat>>>,
+                                expected: Ty<'tcx>) {
 
     // Typecheck the path.
     let fcx = pcx.fcx;
@@ -376,7 +378,7 @@ pub fn check_pat_enum(pcx: &pat_ctxt, pat: &ast::Pat,
     demand::eqtype(fcx, pat.span, expected, pat_ty);
 
     let real_path_ty = fcx.node_ty(pat.id);
-    let (arg_tys, kind_name) = match ty::get(real_path_ty).sty {
+    let (arg_tys, kind_name) = match real_path_ty.sty {
         ty::ty_enum(enum_def_id, ref expected_substs) => {
             let variant = ty::enum_variant_with_id(tcx, enum_def_id, def.def_id());
             (variant.args.iter().map(|t| t.subst(tcx, expected_substs)).collect::<Vec<_>>(),
@@ -434,12 +436,12 @@ pub fn check_pat_enum(pcx: &pat_ctxt, pat: &ast::Pat,
 /// `struct_fields` describes the type of each field of the struct.
 /// `struct_id` is the ID of the struct.
 /// `etc` is true if the pattern said '...' and false otherwise.
-pub fn check_struct_pat_fields(pcx: &pat_ctxt,
-                               span: Span,
-                               fields: &[Spanned<ast::FieldPat>],
-                               struct_fields: &[ty::field],
-                               struct_id: ast::DefId,
-                               etc: bool) {
+pub fn check_struct_pat_fields<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
+                                         span: Span,
+                                         fields: &[Spanned<ast::FieldPat>],
+                                         struct_fields: &[ty::field<'tcx>],
+                                         struct_id: ast::DefId,
+                                         etc: bool) {
     let tcx = pcx.fcx.ccx.tcx;
 
     // Index the struct fields' types.

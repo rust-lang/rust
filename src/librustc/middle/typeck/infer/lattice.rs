@@ -32,21 +32,21 @@
  */
 
 use middle::ty::{TyVar};
-use middle::ty;
+use middle::ty::{mod, Ty};
 use middle::typeck::infer::*;
 use middle::typeck::infer::combine::*;
 use middle::typeck::infer::glb::Glb;
 use middle::typeck::infer::lub::Lub;
 use util::ppaux::Repr;
 
-pub trait LatticeDir {
+pub trait LatticeDir<'tcx> {
     // Relates the type `v` to `a` and `b` such that `v` represents
     // the LUB/GLB of `a` and `b` as appropriate.
-    fn relate_bound<'a>(&'a self, v: ty::t, a: ty::t, b: ty::t) -> cres<()>;
+    fn relate_bound(&self, v: Ty<'tcx>, a: Ty<'tcx>, b: Ty<'tcx>) -> cres<'tcx, ()>;
 }
 
-impl<'a, 'tcx> LatticeDir for Lub<'a, 'tcx> {
-    fn relate_bound<'a>(&'a self, v: ty::t, a: ty::t, b: ty::t) -> cres<()> {
+impl<'a, 'tcx> LatticeDir<'tcx> for Lub<'a, 'tcx> {
+    fn relate_bound(&self, v: Ty<'tcx>, a: Ty<'tcx>, b: Ty<'tcx>) -> cres<'tcx, ()> {
         let sub = self.sub();
         try!(sub.tys(a, v));
         try!(sub.tys(b, v));
@@ -54,8 +54,8 @@ impl<'a, 'tcx> LatticeDir for Lub<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> LatticeDir for Glb<'a, 'tcx> {
-    fn relate_bound<'a>(&'a self, v: ty::t, a: ty::t, b: ty::t) -> cres<()> {
+impl<'a, 'tcx> LatticeDir<'tcx> for Glb<'a, 'tcx> {
+    fn relate_bound(&self, v: Ty<'tcx>, a: Ty<'tcx>, b: Ty<'tcx>) -> cres<'tcx, ()> {
         let sub = self.sub();
         try!(sub.tys(v, a));
         try!(sub.tys(v, b));
@@ -63,10 +63,10 @@ impl<'a, 'tcx> LatticeDir for Glb<'a, 'tcx> {
     }
 }
 
-pub fn super_lattice_tys<'tcx, L:LatticeDir+Combine<'tcx>>(this: &L,
-                                                           a: ty::t,
-                                                           b: ty::t)
-                                                           -> cres<ty::t>
+pub fn super_lattice_tys<'tcx, L:LatticeDir<'tcx>+Combine<'tcx>>(this: &L,
+                                                                 a: Ty<'tcx>,
+                                                                 b: Ty<'tcx>)
+                                                                 -> cres<'tcx, Ty<'tcx>>
 {
     debug!("{}.lattice_tys({}, {})",
            this.tag(),
@@ -80,7 +80,7 @@ pub fn super_lattice_tys<'tcx, L:LatticeDir+Combine<'tcx>>(this: &L,
     let infcx = this.infcx();
     let a = infcx.type_variables.borrow().replace_if_possible(a);
     let b = infcx.type_variables.borrow().replace_if_possible(b);
-    match (&ty::get(a).sty, &ty::get(b).sty) {
+    match (&a.sty, &b.sty) {
         (&ty::ty_infer(TyVar(..)), &ty::ty_infer(TyVar(..)))
             if infcx.type_var_diverges(a) && infcx.type_var_diverges(b) => {
             let v = infcx.next_diverging_ty_var();

@@ -11,6 +11,7 @@
 use llvm::{AvailableExternallyLinkage, InternalLinkage, SetLinkage};
 use metadata::csearch;
 use middle::astencode;
+use middle::subst::Substs;
 use trans::base::{push_ctxt, trans_item, get_item_val, trans_fn};
 use trans::common::*;
 use middle::ty;
@@ -164,7 +165,7 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
                                  &*mth.pe_fn_decl(),
                                  &*mth.pe_body(),
                                  llfn,
-                                 &param_substs::empty(),
+                                 &Substs::trans_empty(),
                                  mth.id,
                                  &[]);
                         // Use InternalLinkage so LLVM can optimize more

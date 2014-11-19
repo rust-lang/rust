@@ -172,9 +172,9 @@ to always map crate and node IDs back to the original crate context.
 
 As a side-effect these unique type IDs also help to solve a problem arising from
 lifetime parameters. Since lifetime parameters are completely omitted in
-debuginfo, more than one `ty::t` instance may map to the same debuginfo type
+debuginfo, more than one `Ty` instance may map to the same debuginfo type
 metadata, that is, some struct `Struct<'a>` may have N instantiations with
-different concrete substitutions for `'a`, and thus there will be N `ty::t`
+different concrete substitutions for `'a`, and thus there will be N `Ty`
 instances for the type `Struct<'a>` even though it is not generic otherwise.
 Unfortunately this means that we cannot use `ty::type_id()` as cheap identifier
 for type metadata---we have done this in the past, but it led to unnecessary
@@ -196,7 +196,7 @@ use llvm;
 use llvm::{ModuleRef, ContextRef, ValueRef};
 use llvm::debuginfo::*;
 use metadata::csearch;
-use middle::subst::{mod, Subst};
+use middle::subst::{mod, Subst, Substs};
 use trans::adt;
 use trans::common::*;
 use trans::machine;
@@ -204,7 +204,7 @@ use trans::_match::{BindingInfo, TrByCopy, TrByMove, TrByRef};
 use trans::type_of;
 use trans::type_::Type;
 use trans;
-use middle::ty;
+use middle::ty::{mod, Ty};
 use middle::pat_util;
 use session::config::{mod, FullDebugInfo, LimitedDebugInfo, NoDebugInfo};
 use util::nodemap::{DefIdMap, NodeMap, FnvHashMap, FnvHashSet};
@@ -258,22 +258,22 @@ struct UniqueTypeId(ast::Name);
 
 // The TypeMap is where the CrateDebugContext holds the type metadata nodes
 // created so far. The metadata nodes are indexed by UniqueTypeId, and, for
-// faster lookup, also by ty::t. The TypeMap is responsible for creating
+// faster lookup, also by Ty. The TypeMap is responsible for creating
 // UniqueTypeIds.
-struct TypeMap {
+struct TypeMap<'tcx> {
     // The UniqueTypeIds created so far
     unique_id_interner: Interner<Rc<String>>,
     // A map from UniqueTypeId to debuginfo metadata for that type. This is a 1:1 mapping.
     unique_id_to_metadata: FnvHashMap<UniqueTypeId, DIType>,
     // A map from types to debuginfo metadata. This is a N:1 mapping.
-    type_to_metadata: FnvHashMap<ty::t, DIType>,
+    type_to_metadata: FnvHashMap<Ty<'tcx>, DIType>,
     // A map from types to UniqueTypeId. This is a N:1 mapping.
-    type_to_unique_id: FnvHashMap<ty::t, UniqueTypeId>
+    type_to_unique_id: FnvHashMap<Ty<'tcx>, UniqueTypeId>
 }
 
-impl TypeMap {
+impl<'tcx> TypeMap<'tcx> {
 
-    fn new() -> TypeMap {
+    fn new() -> TypeMap<'tcx> {
         TypeMap {
             unique_id_interner: Interner::new(),
             type_to_metadata: FnvHashMap::new(),
@@ -282,14 +282,14 @@ impl TypeMap {
         }
     }
 
-    // Adds a ty::t to metadata mapping to the TypeMap. The method will fail if
+    // Adds a Ty to metadata mapping to the TypeMap. The method will fail if
     // the mapping already exists.
-    fn register_type_with_metadata(&mut self,
-                                   cx: &CrateContext,
-                                   type_: ty::t,
-                                   metadata: DIType) {
+    fn register_type_with_metadata<'a>(&mut self,
+                                       cx: &CrateContext<'a, 'tcx>,
+                                       type_: Ty<'tcx>,
+                                       metadata: DIType) {
         if self.type_to_metadata.insert(type_, metadata).is_some() {
-            cx.sess().bug(format!("Type metadata for ty::t '{}' is already in the TypeMap!",
+            cx.sess().bug(format!("Type metadata for Ty '{}' is already in the TypeMap!",
                                    ppaux::ty_to_string(cx.tcx(), type_)).as_slice());
         }
     }
@@ -307,7 +307,7 @@ impl TypeMap {
         }
     }
 
-    fn find_metadata_for_type(&self, type_: ty::t) -> Option<DIType> {
+    fn find_metadata_for_type(&self, type_: Ty<'tcx>) -> Option<DIType> {
         self.type_to_metadata.get(&type_).cloned()
     }
 
@@ -325,7 +325,8 @@ impl TypeMap {
     // Get the UniqueTypeId for the given type. If the UniqueTypeId for the given
     // type has been requested before, this is just a table lookup. Otherwise an
     // ID will be generated and stored for later lookup.
-    fn get_unique_type_id_of_type(&mut self, cx: &CrateContext, type_: ty::t) -> UniqueTypeId {
+    fn get_unique_type_id_of_type<'a>(&mut self, cx: &CrateContext<'a, 'tcx>,
+                                      type_: Ty<'tcx>) -> UniqueTypeId {
 
         // basic type           -> {:name of the type:}
         // tuple                -> {tuple_(:param-uid:)*}
@@ -356,7 +357,7 @@ impl TypeMap {
         let mut unique_type_id = String::with_capacity(256);
         unique_type_id.push('{');
 
-        match ty::get(type_).sty {
+        match type_.sty {
             ty::ty_bool     |
             ty::ty_char     |
             ty::ty_str      |
@@ -484,7 +485,7 @@ impl TypeMap {
             _ => {
                 cx.sess().bug(format!("get_unique_type_id_of_type() - unexpected type: {}, {}",
                                       ppaux::ty_to_string(cx.tcx(), type_).as_slice(),
-                                      ty::get(type_).sty).as_slice())
+                                      type_.sty).as_slice())
             }
         };
 
@@ -498,11 +499,11 @@ impl TypeMap {
 
         return UniqueTypeId(key);
 
-        fn from_def_id_and_substs(type_map: &mut TypeMap,
-                                  cx: &CrateContext,
-                                  def_id: ast::DefId,
-                                  substs: &subst::Substs,
-                                  output: &mut String) {
+        fn from_def_id_and_substs<'a, 'tcx>(type_map: &mut TypeMap<'tcx>,
+                                            cx: &CrateContext<'a, 'tcx>,
+                                            def_id: ast::DefId,
+                                            substs: &subst::Substs<'tcx>,
+                                            output: &mut String) {
             // First, find out the 'real' def_id of the type. Items inlined from
             // other crates have to be mapped back to their source.
             let source_def_id = if def_id.krate == ast::LOCAL_CRATE {
@@ -549,10 +550,10 @@ impl TypeMap {
         }
     }
 
-    fn get_unique_type_id_of_closure_type(&mut self,
-                                          cx: &CrateContext,
-                                          closure_ty: ty::ClosureTy,
-                                          unique_type_id: &mut String) {
+    fn get_unique_type_id_of_closure_type<'a>(&mut self,
+                                              cx: &CrateContext<'a, 'tcx>,
+                                              closure_ty: ty::ClosureTy<'tcx>,
+                                              unique_type_id: &mut String) {
         let ty::ClosureTy { fn_style,
                             onceness,
                             store,
@@ -619,11 +620,11 @@ impl TypeMap {
     // Get the UniqueTypeId for an enum variant. Enum variants are not really
     // types of their own, so they need special handling. We still need a
     // UniqueTypeId for them, since to debuginfo they *are* real types.
-    fn get_unique_type_id_of_enum_variant(&mut self,
-                                          cx: &CrateContext,
-                                          enum_type: ty::t,
-                                          variant_name: &str)
-                                       -> UniqueTypeId {
+    fn get_unique_type_id_of_enum_variant<'a>(&mut self,
+                                              cx: &CrateContext<'a, 'tcx>,
+                                              enum_type: Ty<'tcx>,
+                                              variant_name: &str)
+                                              -> UniqueTypeId {
         let enum_type_id = self.get_unique_type_id_of_type(cx, enum_type);
         let enum_variant_type_id = format!("{}::{}",
                                            self.get_unique_type_id_as_string(enum_type_id)
@@ -649,14 +650,14 @@ macro_rules! return_if_metadata_created_in_meantime(
 
 
 /// A context object for maintaining all state needed by the debuginfo module.
-pub struct CrateDebugContext {
+pub struct CrateDebugContext<'tcx> {
     llcontext: ContextRef,
     builder: DIBuilderRef,
     current_debug_location: Cell<DebugLocation>,
     created_files: RefCell<FnvHashMap<String, DIFile>>,
     created_enum_disr_types: RefCell<DefIdMap<DIType>>,
 
-    type_map: RefCell<TypeMap>,
+    type_map: RefCell<TypeMap<'tcx>>,
     namespace_map: RefCell<FnvHashMap<Vec<ast::Name>, Rc<NamespaceTreeNode>>>,
 
     // This collection is used to assert that composite types (structs, enums,
@@ -664,8 +665,8 @@ pub struct CrateDebugContext {
     composite_types_completed: RefCell<FnvHashSet<DIType>>,
 }
 
-impl CrateDebugContext {
-    pub fn new(llmod: ModuleRef) -> CrateDebugContext {
+impl<'tcx> CrateDebugContext<'tcx> {
+    pub fn new(llmod: ModuleRef) -> CrateDebugContext<'tcx> {
         debug!("CrateDebugContext::new");
         let builder = unsafe { llvm::LLVMDIBuilderCreate(llmod) };
         // DIBuilder inherits context from the module, so we'd better use the same one
@@ -884,13 +885,13 @@ pub fn create_local_var_metadata(bcx: Block, local: &ast::Local) {
 /// Creates debug information for a variable captured in a closure.
 ///
 /// Adds the created metadata nodes directly to the crate's IR.
-pub fn create_captured_var_metadata(bcx: Block,
-                                    node_id: ast::NodeId,
-                                    env_data_type: ty::t,
-                                    env_pointer: ValueRef,
-                                    env_index: uint,
-                                    closure_store: ty::TraitStore,
-                                    span: Span) {
+pub fn create_captured_var_metadata<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                                                node_id: ast::NodeId,
+                                                env_data_type: Ty<'tcx>,
+                                                env_pointer: ValueRef,
+                                                env_index: uint,
+                                                closure_store: ty::TraitStore,
+                                                span: Span) {
     if fn_should_be_ignored(bcx.fcx) {
         return;
     }
@@ -971,9 +972,9 @@ pub fn create_captured_var_metadata(bcx: Block,
 /// match-statement arm.
 ///
 /// Adds the created metadata nodes directly to the crate's IR.
-pub fn create_match_binding_metadata(bcx: Block,
-                                     variable_ident: ast::Ident,
-                                     binding: BindingInfo) {
+pub fn create_match_binding_metadata<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                                                 variable_ident: ast::Ident,
+                                                 binding: BindingInfo<'tcx>) {
     if fn_should_be_ignored(bcx.fcx) {
         return;
     }
@@ -1168,10 +1169,10 @@ pub fn start_emitting_source_locations(fcx: &FunctionContext) {
 /// for debug info creation. The function may also return another variant of the
 /// FunctionDebugContext enum which indicates why no debuginfo should be created
 /// for the function.
-pub fn create_function_debug_context(cx: &CrateContext,
-                                     fn_ast_id: ast::NodeId,
-                                     param_substs: &param_substs,
-                                     llfn: ValueRef) -> FunctionDebugContext {
+pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
+                                               fn_ast_id: ast::NodeId,
+                                               param_substs: &Substs<'tcx>,
+                                               llfn: ValueRef) -> FunctionDebugContext {
     if cx.sess().opts.debuginfo == NoDebugInfo {
         return FunctionDebugContext { repr: DebugInfoDisabled };
     }
@@ -1369,11 +1370,11 @@ pub fn create_function_debug_context(cx: &CrateContext,
 
     return FunctionDebugContext { repr: DebugInfo(fn_debug_context) };
 
-    fn get_function_signature(cx: &CrateContext,
-                              fn_ast_id: ast::NodeId,
-                              fn_decl: &ast::FnDecl,
-                              param_substs: &param_substs,
-                              error_reporting_span: Span) -> DIArray {
+    fn get_function_signature<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
+                                        fn_ast_id: ast::NodeId,
+                                        fn_decl: &ast::FnDecl,
+                                        param_substs: &Substs<'tcx>,
+                                        error_reporting_span: Span) -> DIArray {
         if cx.sess().opts.debuginfo == LimitedDebugInfo {
             return create_DIArray(DIB(cx), &[]);
         }
@@ -1388,7 +1389,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
                 assert_type_for_node_id(cx, fn_ast_id, error_reporting_span);
 
                 let return_type = ty::node_id_to_type(cx.tcx(), fn_ast_id);
-                let return_type = return_type.substp(cx.tcx(), param_substs);
+                let return_type = return_type.subst(cx.tcx(), param_substs);
                 signature.push(type_metadata(cx, return_type, codemap::DUMMY_SP));
             }
         }
@@ -1397,20 +1398,20 @@ pub fn create_function_debug_context(cx: &CrateContext,
         for arg in fn_decl.inputs.iter() {
             assert_type_for_node_id(cx, arg.pat.id, arg.pat.span);
             let arg_type = ty::node_id_to_type(cx.tcx(), arg.pat.id);
-            let arg_type = arg_type.substp(cx.tcx(), param_substs);
+            let arg_type = arg_type.subst(cx.tcx(), param_substs);
             signature.push(type_metadata(cx, arg_type, codemap::DUMMY_SP));
         }
 
         return create_DIArray(DIB(cx), signature.as_slice());
     }
 
-    fn get_template_parameters(cx: &CrateContext,
-                               generics: &ast::Generics,
-                               param_substs: &param_substs,
-                               file_metadata: DIFile,
-                               name_to_append_suffix_to: &mut String)
-                               -> DIArray {
-        let self_type = param_substs.substs().self_ty();
+    fn get_template_parameters<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
+                                         generics: &ast::Generics,
+                                         param_substs: &Substs<'tcx>,
+                                         file_metadata: DIFile,
+                                         name_to_append_suffix_to: &mut String)
+                                         -> DIArray {
+        let self_type = param_substs.self_ty();
 
         // Only true for static default methods:
         let has_self_type = self_type.is_some();
@@ -1467,7 +1468,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
         }
 
         // Handle other generic parameters
-        let actual_types = param_substs.substs().types.get_slice(subst::FnSpace);
+        let actual_types = param_substs.types.get_slice(subst::FnSpace);
         for (index, &ast::TyParam{ ident, .. }) in generics.ty_params.iter().enumerate() {
             let actual_type = actual_types[index];
             // Add actual type name to <...> clause of function name
@@ -1590,13 +1591,13 @@ fn compile_unit_metadata(cx: &CrateContext) {
     }
 }
 
-fn declare_local(bcx: Block,
-                 variable_ident: ast::Ident,
-                 variable_type: ty::t,
-                 scope_metadata: DIScope,
-                 variable_access: VariableAccess,
-                 variable_kind: VariableKind,
-                 span: Span) {
+fn declare_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                             variable_ident: ast::Ident,
+                             variable_type: Ty<'tcx>,
+                             scope_metadata: DIScope,
+                             variable_access: VariableAccess,
+                             variable_kind: VariableKind,
+                             span: Span) {
     let cx: &CrateContext = bcx.ccx();
 
     let filename = span_start(cx, span).file.name.clone();
@@ -1739,11 +1740,12 @@ fn diverging_type_metadata(cx: &CrateContext) -> DIType {
     })
 }
 
-fn basic_type_metadata(cx: &CrateContext, t: ty::t) -> DIType {
+fn basic_type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
+                                 t: Ty<'tcx>) -> DIType {
 
-    debug!("basic_type_metadata: {}", ty::get(t));
+    debug!("basic_type_metadata: {}", t);
 
-    let (name, encoding) = match ty::get(t).sty {
+    let (name, encoding) = match t.sty {
         ty::ty_tup(ref elements) if elements.is_empty() =>
             ("()".to_string(), DW_ATE_unsigned),
         ty::ty_bool => ("bool".to_string(), DW_ATE_boolean),
@@ -1785,10 +1787,10 @@ fn basic_type_metadata(cx: &CrateContext, t: ty::t) -> DIType {
     return ty_metadata;
 }
 
-fn pointer_type_metadata(cx: &CrateContext,
-                         pointer_type: ty::t,
-                         pointee_type_metadata: DIType)
-                      -> DIType {
+fn pointer_type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
+                                   pointer_type: Ty<'tcx>,
+                                   pointee_type_metadata: DIType)
+                                   -> DIType {
     let pointer_llvm_type = type_of::type_of(cx, pointer_type);
     let (pointer_size, pointer_align) = size_and_align_of(cx, pointer_llvm_type);
     let name = compute_debuginfo_type_name(cx, pointer_type, false);
@@ -1829,15 +1831,16 @@ struct MemberDescription {
 // for some record-like type. MemberDescriptionFactories are used to defer the
 // creation of type member descriptions in order to break cycles arising from
 // recursive type definitions.
-enum MemberDescriptionFactory {
-    StructMDF(StructMemberDescriptionFactory),
-    TupleMDF(TupleMemberDescriptionFactory),
-    EnumMDF(EnumMemberDescriptionFactory),
-    VariantMDF(VariantMemberDescriptionFactory)
+enum MemberDescriptionFactory<'tcx> {
+    StructMDF(StructMemberDescriptionFactory<'tcx>),
+    TupleMDF(TupleMemberDescriptionFactory<'tcx>),
+    EnumMDF(EnumMemberDescriptionFactory<'tcx>),
+    VariantMDF(VariantMemberDescriptionFactory<'tcx>)
 }
 
-impl MemberDescriptionFactory {
-    fn create_member_descriptions(&self, cx: &CrateContext) -> Vec<MemberDescription> {
+impl<'tcx> MemberDescriptionFactory<'tcx> {
+    fn create_member_descriptions<'a>(&self, cx: &CrateContext<'a, 'tcx>)
+                                      -> Vec<MemberDescription> {
         match *self {
             StructMDF(ref this) => {
                 this.create_member_descriptions(cx)
@@ -1859,25 +1862,25 @@ impl MemberDescriptionFactory {
 // with FinalMetadata) or it is not yet finished, but contains all information
 // needed to generate the missing parts of the description. See the documentation
 // section on Recursive Types at the top of this file for more information.
-enum RecursiveTypeDescription {
+enum RecursiveTypeDescription<'tcx> {
     UnfinishedMetadata {
-        unfinished_type: ty::t,
+        unfinished_type: Ty<'tcx>,
         unique_type_id: UniqueTypeId,
         metadata_stub: DICompositeType,
         llvm_type: Type,
-        member_description_factory: MemberDescriptionFactory,
+        member_description_factory: MemberDescriptionFactory<'tcx>,
     },
     FinalMetadata(DICompositeType)
 }
 
-fn create_and_register_recursive_type_forward_declaration(
-    cx: &CrateContext,
-    unfinished_type: ty::t,
+fn create_and_register_recursive_type_forward_declaration<'a, 'tcx>(
+    cx: &CrateContext<'a, 'tcx>,
+    unfinished_type: Ty<'tcx>,
     unique_type_id: UniqueTypeId,
     metadata_stub: DICompositeType,
     llvm_type: Type,
-    member_description_factory: MemberDescriptionFactory)
- -> RecursiveTypeDescription {
+    member_description_factory: MemberDescriptionFactory<'tcx>)
+ -> RecursiveTypeDescription<'tcx> {
 
     // Insert the stub into the TypeMap in order to allow for recursive references
     let mut type_map = debug_context(cx).type_map.borrow_mut();
@@ -1893,10 +1896,10 @@ fn create_and_register_recursive_type_forward_declaration(
     }
 }
 
-impl RecursiveTypeDescription {
+impl<'tcx> RecursiveTypeDescription<'tcx> {
     // Finishes up the description of the type in question (mostly by providing
     // descriptions of the fields of the given type) and returns the final type metadata.
-    fn finalize(&self, cx: &CrateContext) -> MetadataCreationResult {
+    fn finalize<'a>(&self, cx: &CrateContext<'a, 'tcx>) -> MetadataCreationResult {
         match *self {
             FinalMetadata(metadata) => MetadataCreationResult::new(metadata, false),
             UnfinishedMetadata {
@@ -1944,14 +1947,15 @@ impl RecursiveTypeDescription {
 //=-----------------------------------------------------------------------------
 
 // Creates MemberDescriptions for the fields of a struct
-struct StructMemberDescriptionFactory {
-    fields: Vec<ty::field>,
+struct StructMemberDescriptionFactory<'tcx> {
+    fields: Vec<ty::field<'tcx>>,
     is_simd: bool,
     span: Span,
 }
 
-impl StructMemberDescriptionFactory {
-    fn create_member_descriptions(&self, cx: &CrateContext) -> Vec<MemberDescription> {
+impl<'tcx> StructMemberDescriptionFactory<'tcx> {
+    fn create_member_descriptions<'a>(&self, cx: &CrateContext<'a, 'tcx>)
+                                      -> Vec<MemberDescription> {
         if self.fields.len() == 0 {
             return Vec::new();
         }
@@ -1988,13 +1992,13 @@ impl StructMemberDescriptionFactory {
 }
 
 
-fn prepare_struct_metadata(cx: &CrateContext,
-                           struct_type: ty::t,
-                           def_id: ast::DefId,
-                           substs: &subst::Substs,
-                           unique_type_id: UniqueTypeId,
-                           span: Span)
-                        -> RecursiveTypeDescription {
+fn prepare_struct_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
+                                     struct_type: Ty<'tcx>,
+                                     def_id: ast::DefId,
+                                     substs: &subst::Substs<'tcx>,
+                                     unique_type_id: UniqueTypeId,
+                                     span: Span)
+                                     -> RecursiveTypeDescription<'tcx> {
     let struct_name = compute_debuginfo_type_name(cx, struct_type, false);
     let struct_llvm_type = type_of::type_of(cx, struct_type);
 
@@ -2028,14 +2032,14 @@ fn prepare_struct_metadata(cx: &CrateContext,
 //=-----------------------------------------------------------------------------
 
 // Creates MemberDescriptions for the fields of a tuple
-struct TupleMemberDescriptionFactory {
-    component_types: Vec<ty::t> ,
+struct TupleMemberDescriptionFactory<'tcx> {
+    component_types: Vec<Ty<'tcx>>,
     span: Span,
 }
 
-impl TupleMemberDescriptionFactory {
-    fn create_member_descriptions(&self, cx: &CrateContext)
-                                  -> Vec<MemberDescription> {
+impl<'tcx> TupleMemberDescriptionFactory<'tcx> {
+    fn create_member_descriptions<'a>(&self, cx: &CrateContext<'a, 'tcx>)
+                                      -> Vec<MemberDescription> {
         self.component_types.iter().map(|&component_type| {
             MemberDescription {
                 name: "".to_string(),
@@ -2048,12 +2052,12 @@ impl TupleMemberDescriptionFactory {
     }
 }
 
-fn prepare_tuple_metadata(cx: &CrateContext,
-                          tuple_type: ty::t,
-                          component_types: &[ty::t],
-                          unique_type_id: UniqueTypeId,
-                          span: Span)
-                       -> RecursiveTypeDescription {
+fn prepare_tuple_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
+                                    tuple_type: Ty<'tcx>,
+                                    component_types: &[Ty<'tcx>],
+                                    unique_type_id: UniqueTypeId,
+                                    span: Span)
+                                    -> RecursiveTypeDescription<'tcx> {
     let tuple_name = compute_debuginfo_type_name(cx, tuple_type, false);
     let tuple_llvm_type = type_of::type_of(cx, tuple_type);
 
@@ -2084,18 +2088,19 @@ fn prepare_tuple_metadata(cx: &CrateContext,
 // the members of this union; so for every variant of the given enum, this factory
 // will produce one MemberDescription (all with no name and a fixed offset of
 // zero bytes).
-struct EnumMemberDescriptionFactory {
-    enum_type: ty::t,
-    type_rep: Rc<adt::Repr>,
-    variants: Rc<Vec<Rc<ty::VariantInfo>>>,
+struct EnumMemberDescriptionFactory<'tcx> {
+    enum_type: Ty<'tcx>,
+    type_rep: Rc<adt::Repr<'tcx>>,
+    variants: Rc<Vec<Rc<ty::VariantInfo<'tcx>>>>,
     discriminant_type_metadata: Option<DIType>,
     containing_scope: DIScope,
     file_metadata: DIFile,
     span: Span,
 }
 
-impl EnumMemberDescriptionFactory {
-    fn create_member_descriptions(&self, cx: &CrateContext) -> Vec<MemberDescription> {
+impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
+    fn create_member_descriptions<'a>(&self, cx: &CrateContext<'a, 'tcx>)
+                                      -> Vec<MemberDescription> {
         match *self.type_rep {
             adt::General(_, ref struct_defs, _) => {
                 let discriminant_info = RegularDiscriminant(self.discriminant_type_metadata
@@ -2286,14 +2291,15 @@ impl EnumMemberDescriptionFactory {
 }
 
 // Creates MemberDescriptions for the fields of a single enum variant.
-struct VariantMemberDescriptionFactory {
-    args: Vec<(String, ty::t)> ,
+struct VariantMemberDescriptionFactory<'tcx> {
+    args: Vec<(String, Ty<'tcx>)>,
     discriminant_type_metadata: Option<DIType>,
     span: Span,
 }
 
-impl VariantMemberDescriptionFactory {
-    fn create_member_descriptions(&self, cx: &CrateContext) -> Vec<MemberDescription> {
+impl<'tcx> VariantMemberDescriptionFactory<'tcx> {
+    fn create_member_descriptions<'a>(&self, cx: &CrateContext<'a, 'tcx>)
+                                      -> Vec<MemberDescription> {
         self.args.iter().enumerate().map(|(i, &(ref name, ty))| {
             MemberDescription {
                 name: name.to_string(),
@@ -2319,14 +2325,14 @@ enum EnumDiscriminantInfo {
 // of the variant, and (3) a MemberDescriptionFactory for producing the
 // descriptions of the fields of the variant. This is a rudimentary version of a
 // full RecursiveTypeDescription.
-fn describe_enum_variant(cx: &CrateContext,
-                         enum_type: ty::t,
-                         struct_def: &adt::Struct,
-                         variant_info: &ty::VariantInfo,
-                         discriminant_info: EnumDiscriminantInfo,
-                         containing_scope: DIScope,
-                         span: Span)
-                      -> (DICompositeType, Type, MemberDescriptionFactory) {
+fn describe_enum_variant<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
+                                   enum_type: Ty<'tcx>,
+                                   struct_def: &adt::Struct<'tcx>,
+                                   variant_info: &ty::VariantInfo<'tcx>,
+                                   discriminant_info: EnumDiscriminantInfo,
+                                   containing_scope: DIScope,
+                                   span: Span)
+                                   -> (DICompositeType, Type, MemberDescriptionFactory<'tcx>) {
     let variant_llvm_type =
         Type::struct_(cx, struct_def.fields
                                     .iter()
@@ -2369,7 +2375,7 @@ fn describe_enum_variant(cx: &CrateContext,
     };
 
     // Build an array of (field name, field type) pairs to be captured in the factory closure.
-    let args: Vec<(String, ty::t)> = arg_names.iter()
+    let args: Vec<(String, Ty)> = arg_names.iter()
         .zip(struct_def.fields.iter())
         .map(|(s, &t)| (s.to_string(), t))
         .collect();
@@ -2389,12 +2395,12 @@ fn describe_enum_variant(cx: &CrateContext,
     (metadata_stub, variant_llvm_type, member_description_factory)
 }
 
-fn prepare_enum_metadata(cx: &CrateContext,
-                         enum_type: ty::t,
-                         enum_def_id: ast::DefId,
-                         unique_type_id: UniqueTypeId,
-                         span: Span)
-                      -> RecursiveTypeDescription {
+fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
+                                   enum_type: Ty<'tcx>,
+                                   enum_def_id: ast::DefId,
+                                   unique_type_id: UniqueTypeId,
+                                   span: Span)
+                                   -> RecursiveTypeDescription<'tcx> {
     let enum_name = compute_debuginfo_type_name(cx, enum_type, false);
 
     let (containing_scope, definition_span) = get_namespace_and_span_for_item(cx, enum_def_id);
@@ -2675,12 +2681,12 @@ fn create_struct_stub(cx: &CrateContext,
     return metadata_stub;
 }
 
-fn fixed_vec_metadata(cx: &CrateContext,
-                      unique_type_id: UniqueTypeId,
-                      element_type: ty::t,
-                      len: uint,
-                      span: Span)
-                   -> MetadataCreationResult {
+fn fixed_vec_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
+                                unique_type_id: UniqueTypeId,
+                                element_type: Ty<'tcx>,
+                                len: uint,
+                                span: Span)
+                                -> MetadataCreationResult {
     let element_type_metadata = type_metadata(cx, element_type, span);
 
     return_if_metadata_created_in_meantime!(cx, unique_type_id);
@@ -2708,12 +2714,12 @@ fn fixed_vec_metadata(cx: &CrateContext,
     return MetadataCreationResult::new(metadata, false);
 }
 
-fn vec_slice_metadata(cx: &CrateContext,
-                      vec_type: ty::t,
-                      element_type: ty::t,
-                      unique_type_id: UniqueTypeId,
-                      span: Span)
-                   -> MetadataCreationResult {
+fn vec_slice_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
+                                vec_type: Ty<'tcx>,
+                                element_type: Ty<'tcx>,
+                                unique_type_id: UniqueTypeId,
+                                span: Span)
+                                -> MetadataCreationResult {
     let data_ptr_type = ty::mk_ptr(cx.tcx(), ty::mt {
         ty: element_type,
         mutbl: ast::MutImmutable
@@ -2762,26 +2768,26 @@ fn vec_slice_metadata(cx: &CrateContext,
                                            span);
     return MetadataCreationResult::new(metadata, false);
 
-    fn slice_layout_is_correct(cx: &CrateContext,
-                               member_llvm_types: &[Type],
-                               element_type: ty::t)
-                            -> bool {
+    fn slice_layout_is_correct<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
+                                         member_llvm_types: &[Type],
+                                         element_type: Ty<'tcx>)
+                                         -> bool {
         member_llvm_types.len() == 2 &&
         member_llvm_types[0] == type_of::type_of(cx, element_type).ptr_to() &&
         member_llvm_types[1] == cx.int_type()
     }
 }
 
-fn subroutine_type_metadata(cx: &CrateContext,
-                            unique_type_id: UniqueTypeId,
-                            signature: &ty::FnSig,
-                            span: Span)
-                         -> MetadataCreationResult {
+fn subroutine_type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
+                                      unique_type_id: UniqueTypeId,
+                                      signature: &ty::FnSig<'tcx>,
+                                      span: Span)
+                                      -> MetadataCreationResult {
     let mut signature_metadata: Vec<DIType> = Vec::with_capacity(signature.inputs.len() + 1);
 
     // return type
     signature_metadata.push(match signature.output {
-        ty::FnConverging(ret_ty) => match ty::get(ret_ty).sty {
+        ty::FnConverging(ret_ty) => match ret_ty.sty {
             ty::ty_tup(ref tys) if tys.is_empty() => ptr::null_mut(),
             _ => type_metadata(cx, ret_ty, span)
         },
@@ -2811,16 +2817,16 @@ fn subroutine_type_metadata(cx: &CrateContext,
 // trait_type should be the actual trait (e.g., Trait). Where the trait is part
 // of a DST struct, there is no trait_object_type and the results of this
 // function will be a little bit weird.
-fn trait_pointer_metadata(cx: &CrateContext,
-                          trait_type: ty::t,
-                          trait_object_type: Option<ty::t>,
-                          unique_type_id: UniqueTypeId)
-                       -> DIType {
+fn trait_pointer_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
+                                    trait_type: Ty<'tcx>,
+                                    trait_object_type: Option<Ty<'tcx>>,
+                                    unique_type_id: UniqueTypeId)
+                                    -> DIType {
     // The implementation provided here is a stub. It makes sure that the trait
     // type is assigned the correct name, size, namespace, and source location.
     // But it does not describe the trait's methods.
 
-    let def_id = match ty::get(trait_type).sty {
+    let def_id = match trait_type.sty {
         ty::ty_trait(box ty::TyTrait { ref principal, .. }) => principal.def_id,
         _ => {
             let pp_type_name = ppaux::ty_to_string(cx.tcx(), trait_type);
@@ -2848,10 +2854,10 @@ fn trait_pointer_metadata(cx: &CrateContext,
                             codemap::DUMMY_SP)
 }
 
-fn type_metadata(cx: &CrateContext,
-                 t: ty::t,
-                 usage_site_span: Span)
-              -> DIType {
+fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
+                           t: Ty<'tcx>,
+                           usage_site_span: Span)
+                           -> DIType {
     // Get the unique type id of this type.
     let unique_type_id = {
         let mut type_map = debug_context(cx).type_map.borrow_mut();
@@ -2862,7 +2868,7 @@ fn type_metadata(cx: &CrateContext,
                 return metadata;
             },
             None => {
-                // The ty::t is not in the TypeMap but maybe we have already seen
+                // The Ty is not in the TypeMap but maybe we have already seen
                 // an equivalent type (e.g. only differing in region arguments).
                 // In order to find out, generate the unique type id and look
                 // that up.
@@ -2870,7 +2876,7 @@ fn type_metadata(cx: &CrateContext,
                 match type_map.find_metadata_for_unique_id(unique_type_id) {
                     Some(metadata) => {
                         // There is already an equivalent type in the TypeMap.
-                        // Register this ty::t as an alias in the cache and
+                        // Register this Ty as an alias in the cache and
                         // return the cached metadata.
                         type_map.register_type_with_metadata(cx, t, metadata);
                         return metadata;
@@ -2885,9 +2891,9 @@ fn type_metadata(cx: &CrateContext,
         }
     };
 
-    debug!("type_metadata: {}", ty::get(t));
+    debug!("type_metadata: {}", t);
 
-    let sty = &ty::get(t).sty;
+    let sty = &t.sty;
     let MetadataCreationResult { metadata, already_stored_in_typemap } = match *sty {
         ty::ty_bool     |
         ty::ty_char     |
@@ -2914,7 +2920,7 @@ fn type_metadata(cx: &CrateContext,
             false)
         }
         ty::ty_uniq(ty) | ty::ty_ptr(ty::mt{ty, ..}) | ty::ty_rptr(_, ty::mt{ty, ..}) => {
-            match ty::get(ty).sty {
+            match ty.sty {
                 ty::ty_vec(typ, None) => {
                     vec_slice_metadata(cx, t, typ, unique_type_id, usage_site_span)
                 }
@@ -2986,7 +2992,7 @@ fn type_metadata(cx: &CrateContext,
                     let error_message = format!("Expected type metadata for unique \
                                                  type id '{}' to already be in \
                                                  the debuginfo::TypeMap but it \
-                                                 was not. (ty::t = {})",
+                                                 was not. (Ty = {})",
                                                 unique_type_id_str.as_slice(),
                                                 ppaux::ty_to_string(cx.tcx(), t));
                     cx.sess().span_bug(usage_site_span, error_message.as_slice());
@@ -2998,10 +3004,10 @@ fn type_metadata(cx: &CrateContext,
                     if metadata != metadata_for_uid {
                         let unique_type_id_str =
                             type_map.get_unique_type_id_as_string(unique_type_id);
-                        let error_message = format!("Mismatch between ty::t and \
+                        let error_message = format!("Mismatch between Ty and \
                                                      UniqueTypeId maps in \
                                                      debuginfo::TypeMap. \
-                                                     UniqueTypeId={}, ty::t={}",
+                                                     UniqueTypeId={}, Ty={}",
                             unique_type_id_str.as_slice(),
                             ppaux::ty_to_string(cx.tcx(), t));
                         cx.sess().span_bug(usage_site_span, error_message.as_slice());
@@ -3111,8 +3117,9 @@ fn bytes_to_bits(bytes: u64) -> u64 {
 }
 
 #[inline]
-fn debug_context<'a>(cx: &'a CrateContext) -> &'a CrateDebugContext {
-    let debug_context: &'a CrateDebugContext = cx.dbg_cx().as_ref().unwrap();
+fn debug_context<'a, 'tcx>(cx: &'a CrateContext<'a, 'tcx>)
+                           -> &'a CrateDebugContext<'tcx> {
+    let debug_context: &'a CrateDebugContext<'tcx> = cx.dbg_cx().as_ref().unwrap();
     debug_context
 }
 
@@ -3666,10 +3673,10 @@ fn populate_scope_map(cx: &CrateContext,
 // any caching, i.e. calling the function twice with the same type will also do
 // the work twice. The `qualified` parameter only affects the first level of the
 // type name, further levels (i.e. type parameters) are always fully qualified.
-fn compute_debuginfo_type_name(cx: &CrateContext,
-                               t: ty::t,
-                               qualified: bool)
-                            -> String {
+fn compute_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
+                                         t: Ty<'tcx>,
+                                         qualified: bool)
+                                         -> String {
     let mut result = String::with_capacity(64);
     push_debuginfo_type_name(cx, t, qualified, &mut result);
     result
@@ -3677,11 +3684,11 @@ fn compute_debuginfo_type_name(cx: &CrateContext,
 
 // Pushes the name of the type as it should be stored in debuginfo on the
 // `output` String. See also compute_debuginfo_type_name().
-fn push_debuginfo_type_name(cx: &CrateContext,
-                            t: ty::t,
-                            qualified: bool,
-                            output: &mut String) {
-    match ty::get(t).sty {
+fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
+                                      t: Ty<'tcx>,
+                                      qualified: bool,
+                                      output: &mut String) {
+    match t.sty {
         ty::ty_bool              => output.push_str("bool"),
         ty::ty_char              => output.push_str("char"),
         ty::ty_str               => output.push_str("str"),
@@ -3907,9 +3914,9 @@ fn push_debuginfo_type_name(cx: &CrateContext,
     // reconstructed for items from non-local crates. For local crates, this
     // would be possible but with inlining and LTO we have to use the least
     // common denominator - otherwise we would run into conflicts.
-    fn push_type_params(cx: &CrateContext,
-                        substs: &subst::Substs,
-                        output: &mut String) {
+    fn push_type_params<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
+                                  substs: &subst::Substs<'tcx>,
+                                  output: &mut String) {
         if substs.types.is_empty() {
             return;
         }

@@ -86,11 +86,11 @@ struct CheckLoanCtxt<'a, 'tcx: 'a> {
     all_loans: &'a [Loan],
 }
 
-impl<'a, 'tcx> euv::Delegate for CheckLoanCtxt<'a, 'tcx> {
+impl<'a, 'tcx> euv::Delegate<'tcx> for CheckLoanCtxt<'a, 'tcx> {
     fn consume(&mut self,
                consume_id: ast::NodeId,
                consume_span: Span,
-               cmt: mc::cmt,
+               cmt: mc::cmt<'tcx>,
                mode: euv::ConsumeMode) {
         debug!("consume(consume_id={}, cmt={}, mode={})",
                consume_id, cmt.repr(self.tcx()), mode);
@@ -100,7 +100,7 @@ impl<'a, 'tcx> euv::Delegate for CheckLoanCtxt<'a, 'tcx> {
 
     fn consume_pat(&mut self,
                    consume_pat: &ast::Pat,
-                   cmt: mc::cmt,
+                   cmt: mc::cmt<'tcx>,
                    mode: euv::ConsumeMode) {
         debug!("consume_pat(consume_pat={}, cmt={}, mode={})",
                consume_pat.repr(self.tcx()),
@@ -113,7 +113,7 @@ impl<'a, 'tcx> euv::Delegate for CheckLoanCtxt<'a, 'tcx> {
     fn borrow(&mut self,
               borrow_id: ast::NodeId,
               borrow_span: Span,
-              cmt: mc::cmt,
+              cmt: mc::cmt<'tcx>,
               loan_region: ty::Region,
               bk: ty::BorrowKind,
               loan_cause: euv::LoanCause)
@@ -140,7 +140,7 @@ impl<'a, 'tcx> euv::Delegate for CheckLoanCtxt<'a, 'tcx> {
     fn mutate(&mut self,
               assignment_id: ast::NodeId,
               assignment_span: Span,
-              assignee_cmt: mc::cmt,
+              assignee_cmt: mc::cmt<'tcx>,
               mode: euv::MutateMode)
     {
         debug!("mutate(assignment_id={}, assignee_cmt={})",
@@ -737,7 +737,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
     fn check_assignment(&self,
                         assignment_id: ast::NodeId,
                         assignment_span: Span,
-                        assignee_cmt: mc::cmt,
+                        assignee_cmt: mc::cmt<'tcx>,
                         mode: euv::MutateMode) {
         debug!("check_assignment(assignee_cmt={})", assignee_cmt.repr(self.tcx()));
 
@@ -820,8 +820,8 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
         }
         return;
 
-        fn mark_variable_as_used_mut(this: &CheckLoanCtxt,
-                                     mut cmt: mc::cmt) {
+        fn mark_variable_as_used_mut<'a, 'tcx>(this: &CheckLoanCtxt<'a, 'tcx>,
+                                               mut cmt: mc::cmt<'tcx>) {
             //! If the mutability of the `cmt` being written is inherited
             //! from a local variable, liveness will
             //! not have been able to detect that this variable's mutability
@@ -868,9 +868,9 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
             }
         }
 
-        fn check_for_aliasable_mutable_writes(this: &CheckLoanCtxt,
-                                              span: Span,
-                                              cmt: mc::cmt) -> bool {
+        fn check_for_aliasable_mutable_writes<'a, 'tcx>(this: &CheckLoanCtxt<'a, 'tcx>,
+                                                        span: Span,
+                                                        cmt: mc::cmt<'tcx>) -> bool {
             //! Safety checks related to writes to aliasable, mutable locations
 
             let guarantor = cmt.guarantor();
@@ -889,10 +889,10 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
             return true; // no errors reported
         }
 
-        fn check_for_aliasability_violation(this: &CheckLoanCtxt,
-                                            span: Span,
-                                            cmt: mc::cmt)
-                                            -> bool {
+        fn check_for_aliasability_violation<'a, 'tcx>(this: &CheckLoanCtxt<'a, 'tcx>,
+                                                      span: Span,
+                                                      cmt: mc::cmt<'tcx>)
+                                                      -> bool {
             match cmt.freely_aliasable(this.tcx()) {
                 None => {
                     return true;

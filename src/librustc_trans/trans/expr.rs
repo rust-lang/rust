@@ -68,7 +68,7 @@ use trans::type_of;
 use middle::ty::{struct_fields, tup_fields};
 use middle::ty::{AdjustDerefRef, AdjustAddEnv, AutoUnsafe};
 use middle::ty::{AutoPtr};
-use middle::ty;
+use middle::ty::{mod, Ty};
 use middle::typeck;
 use middle::typeck::MethodCall;
 use util::common::indenter;
@@ -179,7 +179,7 @@ pub fn get_dataptr(bcx: Block, fat_ptr: ValueRef) -> ValueRef {
 
 fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                  expr: &ast::Expr,
-                                 datum: Datum<Expr>)
+                                 datum: Datum<'tcx, Expr>)
                                  -> DatumBlock<'blk, 'tcx, Expr> {
     /*!
      * Helper for trans that apply adjustments from `expr` to `datum`,
@@ -212,7 +212,7 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 // also be just in case we need to unsize. But if there are no nested
                 // adjustments then it should be a no-op).
                 Some(ty::AutoPtr(_, _, None)) if adj.autoderefs == 1 => {
-                    match ty::get(datum.ty).sty {
+                    match datum.ty.sty {
                         // Don't skip a conversion from Box<T> to &T, etc.
                         ty::ty_rptr(..) => {
                             let method_call = MethodCall::autoderef(expr.id, adj.autoderefs-1);
@@ -253,10 +253,10 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     debug!("after adjustments, datum={}", datum.to_string(bcx.ccx()));
     return DatumBlock::new(bcx, datum);
 
-    fn apply_autoref<'blk, 'tcx>(autoref: &ty::AutoRef,
+    fn apply_autoref<'blk, 'tcx>(autoref: &ty::AutoRef<'tcx>,
                                  bcx: Block<'blk, 'tcx>,
                                  expr: &ast::Expr,
-                                 datum: Datum<Expr>)
+                                 datum: Datum<'tcx, Expr>)
                                  -> DatumBlock<'blk, 'tcx, Expr> {
         let mut bcx = bcx;
         let mut datum = datum;
@@ -291,7 +291,7 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     fn ref_ptr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                            expr: &ast::Expr,
-                           datum: Datum<Expr>)
+                           datum: Datum<'tcx, Expr>)
                            -> DatumBlock<'blk, 'tcx, Expr> {
         if !ty::type_is_sized(bcx.tcx(), datum.ty) {
             debug!("Taking address of unsized type {}",
@@ -312,13 +312,13 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     // then mk_ty should make a Box pointer (T -> Box<T>), if we want a
     // borrowed reference then it should be T -> &T.
     fn unsized_info<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                kind: &ty::UnsizeKind,
+                                kind: &ty::UnsizeKind<'tcx>,
                                 id: ast::NodeId,
-                                unsized_ty: ty::t,
-                                mk_ty: |ty::t| -> ty::t) -> ValueRef {
+                                unsized_ty: Ty<'tcx>,
+                                mk_ty: |Ty<'tcx>| -> Ty<'tcx>) -> ValueRef {
         match kind {
             &ty::UnsizeLength(len) => C_uint(bcx.ccx(), len),
-            &ty::UnsizeStruct(box ref k, tp_index) => match ty::get(unsized_ty).sty {
+            &ty::UnsizeStruct(box ref k, tp_index) => match unsized_ty.sty {
                 ty::ty_struct(_, ref substs) => {
                     let ty_substs = substs.types.get_slice(subst::TypeSpace);
                     // The dtor for a field treats it like a value, so mk_ty
@@ -333,8 +333,7 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 let trait_ref =
                     Rc::new(ty::TraitRef { def_id: principal.def_id,
                                            substs: substs });
-                let trait_ref =
-                    trait_ref.subst(bcx.tcx(), bcx.fcx.param_substs.substs());
+                let trait_ref = trait_ref.subst(bcx.tcx(), bcx.fcx.param_substs);
                 let box_ty = mk_ty(unsized_ty);
                 PointerCast(bcx,
                             meth::get_vtable(bcx, box_ty, trait_ref),
@@ -345,8 +344,8 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     fn unsize_expr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                expr: &ast::Expr,
-                               datum: Datum<Expr>,
-                               k: &ty::UnsizeKind)
+                               datum: Datum<'tcx, Expr>,
+                               k: &ty::UnsizeKind<'tcx>)
                                -> DatumBlock<'blk, 'tcx, Expr> {
         let tcx = bcx.tcx();
         let datum_ty = datum.ty;
@@ -379,7 +378,7 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     fn ref_fat_ptr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                expr: &ast::Expr,
-                               datum: Datum<Expr>)
+                               datum: Datum<'tcx, Expr>)
                                -> DatumBlock<'blk, 'tcx, Expr> {
         let tcx = bcx.tcx();
         let dest_ty = ty::close_type(tcx, datum.ty);
@@ -390,8 +389,8 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     fn into_fat_ptr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                 expr: &ast::Expr,
-                                datum: Datum<Expr>,
-                                dest_ty: ty::t,
+                                datum: Datum<'tcx, Expr>,
+                                dest_ty: Ty<'tcx>,
                                 base: |Block<'blk, 'tcx>, ValueRef| -> ValueRef,
                                 info: |Block<'blk, 'tcx>, ValueRef| -> ValueRef)
                                 -> DatumBlock<'blk, 'tcx, Expr> {
@@ -412,7 +411,7 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     fn unsize_unique_vec<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                      expr: &ast::Expr,
-                                     datum: Datum<Expr>,
+                                     datum: Datum<'tcx, Expr>,
                                      len: uint)
                                      -> DatumBlock<'blk, 'tcx, Expr> {
         let mut bcx = bcx;
@@ -440,14 +439,14 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     fn unsize_unique_expr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                       expr: &ast::Expr,
-                                      datum: Datum<Expr>,
-                                      k: &ty::UnsizeKind)
+                                      datum: Datum<'tcx, Expr>,
+                                      k: &ty::UnsizeKind<'tcx>)
                                       -> DatumBlock<'blk, 'tcx, Expr> {
         let mut bcx = bcx;
         let tcx = bcx.tcx();
 
         let datum_ty = datum.ty;
-        let unboxed_ty = match ty::get(datum_ty).sty {
+        let unboxed_ty = match datum_ty.sty {
             ty::ty_uniq(t) => t,
             _ => bcx.sess().bug(format!("Expected ty_uniq, found {}",
                                         bcx.ty_to_string(datum_ty)).as_slice())
@@ -475,7 +474,7 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     fn add_env<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                            expr: &ast::Expr,
-                           datum: Datum<Expr>)
+                           datum: Datum<'tcx, Expr>)
                            -> DatumBlock<'blk, 'tcx, Expr> {
         // This is not the most efficient thing possible; since closures
         // are two words it'd be better if this were compiled in
@@ -566,7 +565,7 @@ fn trans_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }
     };
 
-    fn nil<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ty: ty::t)
+    fn nil<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ty: Ty<'tcx>)
                        -> DatumBlock<'blk, 'tcx, Expr> {
         let llval = C_undef(type_of::type_of(bcx.ccx(), ty));
         let datum = immediate_rvalue(llval, ty);
@@ -629,7 +628,7 @@ fn trans_datum_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             // Special case for `Box<T>`
             let box_ty = expr_ty(bcx, expr);
             let contents_ty = expr_ty(bcx, &**contents);
-            match ty::get(box_ty).sty {
+            match box_ty.sty {
                 ty::ty_uniq(..) => {
                     trans_uniq_expr(bcx, box_ty, &**contents, contents_ty)
                 }
@@ -678,7 +677,7 @@ fn trans_datum_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
 fn trans_field<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                            base: &ast::Expr,
-                           get_idx: |&'blk ty::ctxt<'tcx>, &[ty::field]| -> uint)
+                           get_idx: |&'blk ty::ctxt<'tcx>, &[ty::field<'tcx>]| -> uint)
                            -> DatumBlock<'blk, 'tcx, Expr> {
     let mut bcx = bcx;
     let _icx = push_ctxt("trans_rec_field");
@@ -858,7 +857,7 @@ fn trans_def<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let const_ty = expr_ty(bcx, ref_expr);
 
             fn get_val<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, did: ast::DefId,
-                                   const_ty: ty::t) -> ValueRef {
+                                   const_ty: Ty<'tcx>) -> ValueRef {
                 // For external constants, we don't inline.
                 if did.krate == ast::LOCAL_CRATE {
                     // Case 1.
@@ -1121,8 +1120,7 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                              .get(&expr.id)
                                              .map(|t| (*t).clone())
                                              .unwrap();
-                let trait_ref =
-                    trait_ref.subst(bcx.tcx(), bcx.fcx.param_substs.substs());
+                let trait_ref = trait_ref.subst(bcx.tcx(), bcx.fcx.param_substs);
                 let datum = unpack_datum!(bcx, trans(bcx, &**val));
                 meth::trans_trait_cast(bcx, datum, expr.id,
                                        trait_ref, dest)
@@ -1175,7 +1173,7 @@ fn trans_def_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }
         def::DefStruct(_) => {
             let ty = expr_ty(bcx, ref_expr);
-            match ty::get(ty).sty {
+            match ty.sty {
                 ty::ty_struct(did, _) if ty::has_dtor(bcx.tcx(), did) => {
                     let repr = adt::represent_type(bcx.ccx(), ty);
                     adt::trans_set_discr(bcx, &*repr, lldest, 0);
@@ -1224,7 +1222,7 @@ fn trans_def_fn_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
 pub fn trans_local_var<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                    def: def::Def)
-                                   -> Datum<Lvalue> {
+                                   -> Datum<'tcx, Lvalue> {
     /*!
      * Translates a reference to a local variable or argument.
      * This always results in an lvalue datum.
@@ -1266,11 +1264,11 @@ pub fn trans_local_var<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 }
 
-pub fn with_field_tys<R>(tcx: &ty::ctxt,
-                         ty: ty::t,
-                         node_id_opt: Option<ast::NodeId>,
-                         op: |ty::Disr, (&[ty::field])| -> R)
-                         -> R {
+pub fn with_field_tys<'tcx, R>(tcx: &ty::ctxt<'tcx>,
+                               ty: Ty<'tcx>,
+                               node_id_opt: Option<ast::NodeId>,
+                               op: |ty::Disr, (&[ty::field<'tcx>])| -> R)
+                               -> R {
     /*!
      * Helper for enumerating the field types of structs, enums, or records.
      * The optional node ID here is the node ID of the path identifying the enum
@@ -1278,7 +1276,7 @@ pub fn with_field_tys<R>(tcx: &ty::ctxt,
      * is and `node_id_opt` is none, this function panics).
      */
 
-    match ty::get(ty).sty {
+    match ty.sty {
         ty::ty_struct(did, ref substs) => {
             op(0, struct_fields(tcx, did, substs).as_slice())
         }
@@ -1389,11 +1387,11 @@ fn trans_struct<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
  * Note that `fields` may be empty; the base expression must always be
  * evaluated for side-effects.
  */
-pub struct StructBaseInfo<'a> {
+pub struct StructBaseInfo<'a, 'tcx> {
     /// The base expression; will be evaluated after all explicit fields.
     expr: &'a ast::Expr,
     /// The indices of fields to copy paired with their types.
-    fields: Vec<(uint, ty::t)>
+    fields: Vec<(uint, Ty<'tcx>)>
 }
 
 /**
@@ -1406,14 +1404,14 @@ pub struct StructBaseInfo<'a> {
  * - `optbase` contains information on the base struct (if any) from
  * which remaining fields are copied; see comments on `StructBaseInfo`.
  */
-pub fn trans_adt<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
-                             ty: ty::t,
-                             discr: ty::Disr,
-                             fields: &[(uint, &ast::Expr)],
-                             optbase: Option<StructBaseInfo>,
-                             dest: Dest,
-                             source_location: Option<NodeInfo>)
-                          -> Block<'blk, 'tcx> {
+pub fn trans_adt<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
+                                 ty: Ty<'tcx>,
+                                 discr: ty::Disr,
+                                 fields: &[(uint, &ast::Expr)],
+                                 optbase: Option<StructBaseInfo<'a, 'tcx>>,
+                                 dest: Dest,
+                                 source_location: Option<NodeInfo>)
+                                 -> Block<'blk, 'tcx> {
     let _icx = push_ctxt("trans_adt");
     let fcx = bcx.fcx;
     let repr = adt::represent_type(bcx.ccx(), ty);
@@ -1572,9 +1570,9 @@ fn trans_unary<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 }
 
 fn trans_uniq_expr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                               box_ty: ty::t,
+                               box_ty: Ty<'tcx>,
                                contents: &ast::Expr,
-                               contents_ty: ty::t)
+                               contents_ty: Ty<'tcx>)
                                -> DatumBlock<'blk, 'tcx, Expr> {
     let _icx = push_ctxt("trans_uniq_expr");
     let fcx = bcx.fcx;
@@ -1607,7 +1605,7 @@ fn trans_addr_of<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let _icx = push_ctxt("trans_addr_of");
     let mut bcx = bcx;
     let sub_datum = unpack_datum!(bcx, trans_to_lvalue(bcx, subexpr, "addr_of"));
-    match ty::get(sub_datum.ty).sty {
+    match sub_datum.ty.sty {
         ty::ty_open(_) => {
             // Opened DST value, close to a fat pointer
             debug!("Closing fat pointer {}", bcx.ty_to_string(sub_datum.ty));
@@ -1635,11 +1633,11 @@ fn trans_addr_of<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 // and the other not.
 fn trans_eager_binop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                  binop_expr: &ast::Expr,
-                                 binop_ty: ty::t,
+                                 binop_ty: Ty<'tcx>,
                                  op: ast::BinOp,
-                                 lhs_t: ty::t,
+                                 lhs_t: Ty<'tcx>,
                                  lhs: ValueRef,
-                                 rhs_t: ty::t,
+                                 rhs_t: Ty<'tcx>,
                                  rhs: ValueRef)
                                  -> DatumBlock<'blk, 'tcx, Expr> {
     let _icx = push_ctxt("trans_eager_binop");
@@ -1813,8 +1811,8 @@ fn trans_binary<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 fn trans_overloaded_op<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                    expr: &ast::Expr,
                                    method_call: MethodCall,
-                                   lhs: Datum<Expr>,
-                                   rhs: Vec<(Datum<Expr>, ast::NodeId)>,
+                                   lhs: Datum<'tcx, Expr>,
+                                   rhs: Vec<(Datum<'tcx, Expr>, ast::NodeId)>,
                                    dest: Option<Dest>)
                                    -> Result<'blk, 'tcx> {
     let method_ty = (*bcx.tcx().method_map.borrow())[method_call].ty;
@@ -1907,8 +1905,8 @@ pub enum cast_kind {
     cast_other,
 }
 
-pub fn cast_type_kind(tcx: &ty::ctxt, t: ty::t) -> cast_kind {
-    match ty::get(t).sty {
+pub fn cast_type_kind<'tcx>(tcx: &ty::ctxt<'tcx>, t: Ty<'tcx>) -> cast_kind {
+    match t.sty {
         ty::ty_char        => cast_integral,
         ty::ty_float(..)   => cast_float,
         ty::ty_rptr(_, mt) | ty::ty_ptr(mt) => {
@@ -1927,7 +1925,7 @@ pub fn cast_type_kind(tcx: &ty::ctxt, t: ty::t) -> cast_kind {
     }
 }
 
-fn cast_is_noop(t_in: ty::t, t_out: ty::t) -> bool {
+fn cast_is_noop<'tcx>(t_in: Ty<'tcx>, t_out: Ty<'tcx>) -> bool {
     match (ty::deref(t_in, true), ty::deref(t_out, true)) {
         (Some(ty::mt{ ty: t_in, .. }), Some(ty::mt{ ty: t_out, .. })) => {
             t_in == t_out
@@ -2061,7 +2059,7 @@ fn trans_assign_op<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 }
 
 fn auto_ref<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                        datum: Datum<Expr>,
+                        datum: Datum<'tcx, Expr>,
                         expr: &ast::Expr)
                         -> DatumBlock<'blk, 'tcx, Expr> {
     let mut bcx = bcx;
@@ -2086,7 +2084,7 @@ fn auto_ref<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
 fn deref_multiple<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                               expr: &ast::Expr,
-                              datum: Datum<Expr>,
+                              datum: Datum<'tcx, Expr>,
                               times: uint)
                               -> DatumBlock<'blk, 'tcx, Expr> {
     let mut bcx = bcx;
@@ -2100,7 +2098,7 @@ fn deref_multiple<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
 fn deref_once<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                           expr: &ast::Expr,
-                          datum: Datum<Expr>,
+                          datum: Datum<'tcx, Expr>,
                           method_call: MethodCall)
                           -> DatumBlock<'blk, 'tcx, Expr> {
     let ccx = bcx.ccx();
@@ -2141,7 +2139,7 @@ fn deref_once<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }
     };
 
-    let r = match ty::get(datum.ty).sty {
+    let r = match datum.ty.sty {
         ty::ty_uniq(content_ty) => {
             if ty::type_is_sized(bcx.tcx(), content_ty) {
                 deref_owned_pointer(bcx, expr, datum, content_ty)
@@ -2195,8 +2193,8 @@ fn deref_once<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     fn deref_owned_pointer<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                        expr: &ast::Expr,
-                                       datum: Datum<Expr>,
-                                       content_ty: ty::t)
+                                       datum: Datum<'tcx, Expr>,
+                                       content_ty: Ty<'tcx>)
                                        -> DatumBlock<'blk, 'tcx, Expr> {
         /*!
          * We microoptimize derefs of owned pointers a bit here.
