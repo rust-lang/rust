@@ -10,8 +10,6 @@
 
 // no-pretty-expanded FIXME #15189
 
-#![feature(struct_variant)]
-
 #[deriving(PartialEq, Eq, PartialOrd, Ord)]
 enum ES<T> {
     ES1 { x: T },

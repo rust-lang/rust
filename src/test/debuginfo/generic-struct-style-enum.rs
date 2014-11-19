@@ -29,8 +29,6 @@
 // gdb-command:print univariant
 // gdb-check:$4 = {{a = -1}}
 
-#![feature(struct_variant)]
-
 use self::Regular::{Case1, Case2, Case3};
 use self::Univariant::TheOnlyCase;
 
