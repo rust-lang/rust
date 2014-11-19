@@ -10,7 +10,7 @@
 
 
 use middle::ty::{BuiltinBounds};
-use middle::ty;
+use middle::ty::{mod, Ty};
 use middle::ty::TyVar;
 use middle::typeck::infer::combine::*;
 use middle::typeck::infer::{cres, CresCompare};
@@ -40,19 +40,19 @@ impl<'f, 'tcx> Combine<'tcx> for Sub<'f, 'tcx> {
     fn infcx<'a>(&'a self) -> &'a InferCtxt<'a, 'tcx> { self.fields.infcx }
     fn tag(&self) -> String { "sub".to_string() }
     fn a_is_expected(&self) -> bool { self.fields.a_is_expected }
-    fn trace(&self) -> TypeTrace { self.fields.trace.clone() }
+    fn trace(&self) -> TypeTrace<'tcx> { self.fields.trace.clone() }
 
     fn equate<'a>(&'a self) -> Equate<'a, 'tcx> { Equate(self.fields.clone()) }
     fn sub<'a>(&'a self) -> Sub<'a, 'tcx> { Sub(self.fields.clone()) }
     fn lub<'a>(&'a self) -> Lub<'a, 'tcx> { Lub(self.fields.clone()) }
     fn glb<'a>(&'a self) -> Glb<'a, 'tcx> { Glb(self.fields.clone()) }
 
-    fn contratys(&self, a: ty::t, b: ty::t) -> cres<ty::t> {
+    fn contratys(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> cres<'tcx, Ty<'tcx>> {
         Sub(self.fields.switch_expected()).tys(b, a)
     }
 
     fn contraregions(&self, a: ty::Region, b: ty::Region)
-                     -> cres<ty::Region> {
+                     -> cres<'tcx, ty::Region> {
                          let opp = CombineFields {
                              a_is_expected: !self.fields.a_is_expected,
                              ..self.fields.clone()
@@ -60,7 +60,7 @@ impl<'f, 'tcx> Combine<'tcx> for Sub<'f, 'tcx> {
                          Sub(opp).regions(b, a)
                      }
 
-    fn regions(&self, a: ty::Region, b: ty::Region) -> cres<ty::Region> {
+    fn regions(&self, a: ty::Region, b: ty::Region) -> cres<'tcx, ty::Region> {
         debug!("{}.regions({}, {})",
                self.tag(),
                a.repr(self.tcx()),
@@ -69,7 +69,7 @@ impl<'f, 'tcx> Combine<'tcx> for Sub<'f, 'tcx> {
         Ok(a)
     }
 
-    fn mts(&self, a: &ty::mt, b: &ty::mt) -> cres<ty::mt> {
+    fn mts(&self, a: &ty::mt<'tcx>, b: &ty::mt<'tcx>) -> cres<'tcx, ty::mt<'tcx>> {
         debug!("mts({} <: {})",
                a.repr(self.tcx()),
                b.repr(self.tcx()));
@@ -93,20 +93,20 @@ impl<'f, 'tcx> Combine<'tcx> for Sub<'f, 'tcx> {
         Ok(*a) // return is meaningless in sub, just return *a
     }
 
-    fn fn_styles(&self, a: FnStyle, b: FnStyle) -> cres<FnStyle> {
+    fn fn_styles(&self, a: FnStyle, b: FnStyle) -> cres<'tcx, FnStyle> {
         self.lub().fn_styles(a, b).compare(b, || {
             ty::terr_fn_style_mismatch(expected_found(self, a, b))
         })
     }
 
-    fn oncenesses(&self, a: Onceness, b: Onceness) -> cres<Onceness> {
+    fn oncenesses(&self, a: Onceness, b: Onceness) -> cres<'tcx, Onceness> {
         self.lub().oncenesses(a, b).compare(b, || {
             ty::terr_onceness_mismatch(expected_found(self, a, b))
         })
     }
 
     fn builtin_bounds(&self, a: BuiltinBounds, b: BuiltinBounds)
-                      -> cres<BuiltinBounds> {
+                      -> cres<'tcx, BuiltinBounds> {
         // More bounds is a subtype of fewer bounds.
         //
         // e.g., fn:Copy() <: fn(), because the former is a function
@@ -119,7 +119,7 @@ impl<'f, 'tcx> Combine<'tcx> for Sub<'f, 'tcx> {
         }
     }
 
-    fn tys(&self, a: ty::t, b: ty::t) -> cres<ty::t> {
+    fn tys(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> cres<'tcx, Ty<'tcx>> {
         debug!("{}.tys({}, {})", self.tag(),
                a.repr(self.tcx()), b.repr(self.tcx()));
         if a == b { return Ok(a); }
@@ -127,7 +127,7 @@ impl<'f, 'tcx> Combine<'tcx> for Sub<'f, 'tcx> {
         let infcx = self.fields.infcx;
         let a = infcx.type_variables.borrow().replace_if_possible(a);
         let b = infcx.type_variables.borrow().replace_if_possible(b);
-        match (&ty::get(a).sty, &ty::get(b).sty) {
+        match (&a.sty, &b.sty) {
             (&ty::ty_infer(TyVar(a_id)), &ty::ty_infer(TyVar(b_id))) => {
                 infcx.type_variables
                     .borrow_mut()
@@ -155,11 +155,13 @@ impl<'f, 'tcx> Combine<'tcx> for Sub<'f, 'tcx> {
         }
     }
 
-    fn fn_sigs(&self, a: &ty::FnSig, b: &ty::FnSig) -> cres<ty::FnSig> {
+    fn fn_sigs(&self, a: &ty::FnSig<'tcx>, b: &ty::FnSig<'tcx>)
+               -> cres<'tcx, ty::FnSig<'tcx>> {
         self.higher_ranked_sub(a, b)
     }
 
-    fn trait_refs(&self, a: &ty::TraitRef, b: &ty::TraitRef) -> cres<ty::TraitRef> {
+    fn trait_refs(&self, a: &ty::TraitRef<'tcx>, b: &ty::TraitRef<'tcx>)
+                  -> cres<'tcx, ty::TraitRef<'tcx>> {
         self.higher_ranked_sub(a, b)
     }
 }

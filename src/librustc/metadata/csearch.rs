@@ -123,8 +123,8 @@ pub fn get_enum_variant_defs(cstore: &cstore::CStore, enum_id: ast::DefId)
     decoder::get_enum_variant_defs(&*cstore.intr, &*cdata, enum_id.node)
 }
 
-pub fn get_enum_variants(tcx: &ty::ctxt, def: ast::DefId)
-                      -> Vec<Rc<ty::VariantInfo>> {
+pub fn get_enum_variants<'tcx>(tcx: &ty::ctxt<'tcx>, def: ast::DefId)
+                               -> Vec<Rc<ty::VariantInfo<'tcx>>> {
     let cstore = &tcx.sess.cstore;
     let cdata = cstore.get_crate_data(def.krate);
     decoder::get_enum_variants(cstore.intr.clone(), &*cdata, def.node, tcx)
@@ -137,8 +137,8 @@ pub fn get_impl_items(cstore: &cstore::CStore, impl_def_id: ast::DefId)
     decoder::get_impl_items(&*cdata, impl_def_id.node)
 }
 
-pub fn get_impl_or_trait_item(tcx: &ty::ctxt, def: ast::DefId)
-                              -> ty::ImplOrTraitItem {
+pub fn get_impl_or_trait_item<'tcx>(tcx: &ty::ctxt<'tcx>, def: ast::DefId)
+                                    -> ty::ImplOrTraitItem<'tcx> {
     let cdata = tcx.sess.cstore.get_crate_data(def.krate);
     decoder::get_impl_or_trait_item(tcx.sess.cstore.intr.clone(),
                                     &*cdata,
@@ -166,15 +166,17 @@ pub fn get_item_variances(cstore: &cstore::CStore,
     decoder::get_item_variances(&*cdata, def.node)
 }
 
-pub fn get_provided_trait_methods(tcx: &ty::ctxt,
-                                  def: ast::DefId)
-                               -> Vec<Rc<ty::Method>> {
+pub fn get_provided_trait_methods<'tcx>(tcx: &ty::ctxt<'tcx>,
+                                        def: ast::DefId)
+                                        -> Vec<Rc<ty::Method<'tcx>>> {
     let cstore = &tcx.sess.cstore;
     let cdata = cstore.get_crate_data(def.krate);
     decoder::get_provided_trait_methods(cstore.intr.clone(), &*cdata, def.node, tcx)
 }
 
-pub fn get_supertraits(tcx: &ty::ctxt, def: ast::DefId) -> Vec<Rc<ty::TraitRef>> {
+pub fn get_supertraits<'tcx>(tcx: &ty::ctxt<'tcx>,
+                             def: ast::DefId)
+                             -> Vec<Rc<ty::TraitRef<'tcx>>> {
     let cstore = &tcx.sess.cstore;
     let cdata = cstore.get_crate_data(def.krate);
     decoder::get_supertraits(&*cdata, def.node, tcx)
@@ -213,22 +215,22 @@ pub fn get_struct_field_attrs(cstore: &cstore::CStore, def: ast::DefId) -> HashM
     decoder::get_struct_field_attrs(&*cdata)
 }
 
-pub fn get_type(tcx: &ty::ctxt,
-                def: ast::DefId)
-             -> ty::Polytype {
+pub fn get_type<'tcx>(tcx: &ty::ctxt<'tcx>,
+                      def: ast::DefId)
+                      -> ty::Polytype<'tcx> {
     let cstore = &tcx.sess.cstore;
     let cdata = cstore.get_crate_data(def.krate);
     decoder::get_type(&*cdata, def.node, tcx)
 }
 
-pub fn get_trait_def(tcx: &ty::ctxt, def: ast::DefId) -> ty::TraitDef {
+pub fn get_trait_def<'tcx>(tcx: &ty::ctxt<'tcx>, def: ast::DefId) -> ty::TraitDef<'tcx> {
     let cstore = &tcx.sess.cstore;
     let cdata = cstore.get_crate_data(def.krate);
     decoder::get_trait_def(&*cdata, def.node, tcx)
 }
 
-pub fn get_field_type(tcx: &ty::ctxt, class_id: ast::DefId,
-                      def: ast::DefId) -> ty::Polytype {
+pub fn get_field_type<'tcx>(tcx: &ty::ctxt<'tcx>, class_id: ast::DefId,
+                            def: ast::DefId) -> ty::Polytype<'tcx> {
     let cstore = &tcx.sess.cstore;
     let cdata = cstore.get_crate_data(class_id.krate);
     let all_items = reader::get_doc(rbml::Doc::new(cdata.data()), tag_items);
@@ -255,17 +257,18 @@ pub fn get_field_type(tcx: &ty::ctxt, class_id: ast::DefId,
 
 // Given a def_id for an impl, return the trait it implements,
 // if there is one.
-pub fn get_impl_trait(tcx: &ty::ctxt,
-                      def: ast::DefId) -> Option<Rc<ty::TraitRef>> {
+pub fn get_impl_trait<'tcx>(tcx: &ty::ctxt<'tcx>,
+                            def: ast::DefId)
+                            -> Option<Rc<ty::TraitRef<'tcx>>> {
     let cstore = &tcx.sess.cstore;
     let cdata = cstore.get_crate_data(def.krate);
     decoder::get_impl_trait(&*cdata, def.node, tcx)
 }
 
 // Given a def_id for an impl, return information about its vtables
-pub fn get_impl_vtables(tcx: &ty::ctxt,
-                        def: ast::DefId)
-                        -> typeck::vtable_res {
+pub fn get_impl_vtables<'tcx>(tcx: &ty::ctxt<'tcx>,
+                              def: ast::DefId)
+                              -> typeck::vtable_res<'tcx> {
     let cstore = &tcx.sess.cstore;
     let cdata = cstore.get_crate_data(def.krate);
     decoder::get_impl_vtables(&*cdata, def.node, tcx)

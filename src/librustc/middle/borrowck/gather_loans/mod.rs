@@ -60,16 +60,16 @@ pub fn gather_loans_in_fn(bccx: &BorrowckCtxt,
 struct GatherLoanCtxt<'a, 'tcx: 'a> {
     bccx: &'a BorrowckCtxt<'a, 'tcx>,
     move_data: move_data::MoveData,
-    move_error_collector: move_error::MoveErrorCollector,
+    move_error_collector: move_error::MoveErrorCollector<'tcx>,
     all_loans: Vec<Loan>,
     item_ub: ast::NodeId,
 }
 
-impl<'a, 'tcx> euv::Delegate for GatherLoanCtxt<'a, 'tcx> {
+impl<'a, 'tcx> euv::Delegate<'tcx> for GatherLoanCtxt<'a, 'tcx> {
     fn consume(&mut self,
                consume_id: ast::NodeId,
                _consume_span: Span,
-               cmt: mc::cmt,
+               cmt: mc::cmt<'tcx>,
                mode: euv::ConsumeMode) {
         debug!("consume(consume_id={}, cmt={}, mode={})",
                consume_id, cmt.repr(self.tcx()), mode);
@@ -86,7 +86,7 @@ impl<'a, 'tcx> euv::Delegate for GatherLoanCtxt<'a, 'tcx> {
 
     fn consume_pat(&mut self,
                    consume_pat: &ast::Pat,
-                   cmt: mc::cmt,
+                   cmt: mc::cmt<'tcx>,
                    mode: euv::ConsumeMode) {
         debug!("consume_pat(consume_pat={}, cmt={}, mode={})",
                consume_pat.repr(self.tcx()),
@@ -106,7 +106,7 @@ impl<'a, 'tcx> euv::Delegate for GatherLoanCtxt<'a, 'tcx> {
     fn borrow(&mut self,
               borrow_id: ast::NodeId,
               borrow_span: Span,
-              cmt: mc::cmt,
+              cmt: mc::cmt<'tcx>,
               loan_region: ty::Region,
               bk: ty::BorrowKind,
               loan_cause: euv::LoanCause)
@@ -127,7 +127,7 @@ impl<'a, 'tcx> euv::Delegate for GatherLoanCtxt<'a, 'tcx> {
     fn mutate(&mut self,
               assignment_id: ast::NodeId,
               assignment_span: Span,
-              assignee_cmt: mc::cmt,
+              assignee_cmt: mc::cmt<'tcx>,
               mode: euv::MutateMode)
     {
         debug!("mutate(assignment_id={}, assignee_cmt={})",
@@ -153,12 +153,12 @@ impl<'a, 'tcx> euv::Delegate for GatherLoanCtxt<'a, 'tcx> {
 }
 
 /// Implements the A-* rules in doc.rs.
-fn check_aliasability(bccx: &BorrowckCtxt,
-                      borrow_span: Span,
-                      loan_cause: euv::LoanCause,
-                      cmt: mc::cmt,
-                      req_kind: ty::BorrowKind)
-                      -> Result<(),()> {
+fn check_aliasability<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
+                                borrow_span: Span,
+                                loan_cause: euv::LoanCause,
+                                cmt: mc::cmt<'tcx>,
+                                req_kind: ty::BorrowKind)
+                                -> Result<(),()> {
 
     match (cmt.freely_aliasable(bccx.tcx), req_kind) {
         (None, _) => {
@@ -206,7 +206,7 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
     fn guarantee_valid(&mut self,
                        borrow_id: ast::NodeId,
                        borrow_span: Span,
-                       cmt: mc::cmt,
+                       cmt: mc::cmt<'tcx>,
                        req_kind: ty::BorrowKind,
                        loan_region: ty::Region,
                        cause: euv::LoanCause) {
@@ -349,12 +349,12 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
             //    }
         // }
 
-        fn check_mutability(bccx: &BorrowckCtxt,
-                            borrow_span: Span,
-                            cause: euv::LoanCause,
-                            cmt: mc::cmt,
-                            req_kind: ty::BorrowKind)
-                            -> Result<(),()> {
+        fn check_mutability<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
+                                      borrow_span: Span,
+                                      cause: euv::LoanCause,
+                                      cmt: mc::cmt<'tcx>,
+                                      req_kind: ty::BorrowKind)
+                                      -> Result<(),()> {
             //! Implements the M-* rules in doc.rs.
 
             match req_kind {

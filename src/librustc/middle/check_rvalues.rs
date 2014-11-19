@@ -45,11 +45,11 @@ impl<'a, 'tcx, 'v> visit::Visitor<'v> for RvalueContext<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> euv::Delegate for RvalueContext<'a, 'tcx> {
+impl<'a, 'tcx> euv::Delegate<'tcx> for RvalueContext<'a, 'tcx> {
     fn consume(&mut self,
                _: ast::NodeId,
                span: Span,
-               cmt: mc::cmt,
+               cmt: mc::cmt<'tcx>,
                _: euv::ConsumeMode) {
         debug!("consume; cmt: {}; type: {}", *cmt, ty_to_string(self.tcx, cmt.ty));
         if !ty::type_is_sized(self.tcx, cmt.ty) {

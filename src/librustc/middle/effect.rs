@@ -13,7 +13,7 @@
 use self::UnsafeContext::*;
 
 use middle::def;
-use middle::ty;
+use middle::ty::{mod, Ty};
 use middle::typeck::MethodCall;
 use util::ppaux;
 
@@ -30,8 +30,8 @@ enum UnsafeContext {
     UnsafeBlock(ast::NodeId),
 }
 
-fn type_is_unsafe_function(ty: ty::t) -> bool {
-    match ty::get(ty).sty {
+fn type_is_unsafe_function(ty: Ty) -> bool {
+    match ty.sty {
         ty::ty_bare_fn(ref f) => f.fn_style == ast::UnsafeFn,
         ty::ty_closure(ref f) => f.fn_style == ast::UnsafeFn,
         _ => false,
@@ -70,8 +70,8 @@ impl<'a, 'tcx> EffectCheckVisitor<'a, 'tcx> {
         };
         debug!("effect: checking index with base type {}",
                 ppaux::ty_to_string(self.tcx, base_type));
-        match ty::get(base_type).sty {
-            ty::ty_uniq(ty) | ty::ty_rptr(_, ty::mt{ty, ..}) => match ty::get(ty).sty {
+        match base_type.sty {
+            ty::ty_uniq(ty) | ty::ty_rptr(_, ty::mt{ty, ..}) => match ty.sty {
                 ty::ty_str => {
                     span_err!(self.tcx.sess, e.span, E0134,
                               "modification of string types is not allowed");
@@ -166,7 +166,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EffectCheckVisitor<'a, 'tcx> {
                 let base_type = ty::node_id_to_type(self.tcx, base.id);
                 debug!("effect: unary case, base type is {}",
                         ppaux::ty_to_string(self.tcx, base_type));
-                match ty::get(base_type).sty {
+                match base_type.sty {
                     ty::ty_ptr(_) => {
                         self.require_unsafe(expr.span,
                                             "dereference of unsafe pointer")

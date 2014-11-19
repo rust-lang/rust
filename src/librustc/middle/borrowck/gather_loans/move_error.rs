@@ -18,35 +18,35 @@ use syntax::codemap;
 use syntax::print::pprust;
 use util::ppaux::UserString;
 
-pub struct MoveErrorCollector {
-    errors: RefCell<Vec<MoveError>>
+pub struct MoveErrorCollector<'tcx> {
+    errors: RefCell<Vec<MoveError<'tcx>>>
 }
 
-impl MoveErrorCollector {
-    pub fn new() -> MoveErrorCollector {
+impl<'tcx> MoveErrorCollector<'tcx> {
+    pub fn new() -> MoveErrorCollector<'tcx> {
         MoveErrorCollector {
             errors: RefCell::new(Vec::new())
         }
     }
 
-    pub fn add_error(&self, error: MoveError) {
+    pub fn add_error(&self, error: MoveError<'tcx>) {
         self.errors.borrow_mut().push(error);
     }
 
-    pub fn report_potential_errors(&self, bccx: &BorrowckCtxt) {
+    pub fn report_potential_errors<'a>(&self, bccx: &BorrowckCtxt<'a, 'tcx>) {
         report_move_errors(bccx, self.errors.borrow().deref())
     }
 }
 
-pub struct MoveError {
-    move_from: mc::cmt,
+pub struct MoveError<'tcx> {
+    move_from: mc::cmt<'tcx>,
     move_to: Option<MoveSpanAndPath>
 }
 
-impl MoveError {
-    pub fn with_move_info(move_from: mc::cmt,
+impl<'tcx> MoveError<'tcx> {
+    pub fn with_move_info(move_from: mc::cmt<'tcx>,
                           move_to: Option<MoveSpanAndPath>)
-                          -> MoveError {
+                          -> MoveError<'tcx> {
         MoveError {
             move_from: move_from,
             move_to: move_to,
@@ -60,12 +60,13 @@ pub struct MoveSpanAndPath {
     pub ident: ast::Ident
 }
 
-pub struct GroupedMoveErrors {
-    move_from: mc::cmt,
+pub struct GroupedMoveErrors<'tcx> {
+    move_from: mc::cmt<'tcx>,
     move_to_places: Vec<MoveSpanAndPath>
 }
 
-fn report_move_errors(bccx: &BorrowckCtxt, errors: &Vec<MoveError>) {
+fn report_move_errors<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
+                                errors: &Vec<MoveError<'tcx>>) {
     let grouped_errors = group_errors_with_same_origin(errors);
     for error in grouped_errors.iter() {
         report_cannot_move_out_of(bccx, error.move_from.clone());
@@ -78,16 +79,16 @@ fn report_move_errors(bccx: &BorrowckCtxt, errors: &Vec<MoveError>) {
     }
 }
 
-fn group_errors_with_same_origin(errors: &Vec<MoveError>)
-                                 -> Vec<GroupedMoveErrors> {
+fn group_errors_with_same_origin<'tcx>(errors: &Vec<MoveError<'tcx>>)
+                                       -> Vec<GroupedMoveErrors<'tcx>> {
     let mut grouped_errors = Vec::new();
     for error in errors.iter() {
         append_to_grouped_errors(&mut grouped_errors, error)
     }
     return grouped_errors;
 
-    fn append_to_grouped_errors(grouped_errors: &mut Vec<GroupedMoveErrors>,
-                                error: &MoveError) {
+    fn append_to_grouped_errors<'tcx>(grouped_errors: &mut Vec<GroupedMoveErrors<'tcx>>,
+                                      error: &MoveError<'tcx>) {
         let move_from_id = error.move_from.id;
         debug!("append_to_grouped_errors(move_from_id={})", move_from_id);
         let move_to = if error.move_to.is_some() {
@@ -110,7 +111,8 @@ fn group_errors_with_same_origin(errors: &Vec<MoveError>)
     }
 }
 
-fn report_cannot_move_out_of(bccx: &BorrowckCtxt, move_from: mc::cmt) {
+fn report_cannot_move_out_of<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
+                                       move_from: mc::cmt<'tcx>) {
     match move_from.cat {
         mc::cat_deref(_, _, mc::BorrowedPtr(..)) |
         mc::cat_deref(_, _, mc::Implicit(..)) |
@@ -124,7 +126,7 @@ fn report_cannot_move_out_of(bccx: &BorrowckCtxt, move_from: mc::cmt) {
 
         mc::cat_downcast(ref b) |
         mc::cat_interior(ref b, _) => {
-            match ty::get(b.ty).sty {
+            match b.ty.sty {
                 ty::ty_struct(did, _)
                 | ty::ty_enum(did, _) if ty::has_dtor(bccx.tcx, did) => {
                     bccx.span_err(
