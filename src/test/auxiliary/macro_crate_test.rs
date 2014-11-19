@@ -24,9 +24,9 @@ use syntax::ptr::P;
 use rustc::plugin::Registry;
 
 #[macro_export]
-macro_rules! exported_macro (() => (2i))
+macro_rules! exported_macro (() => (2i));
 
-macro_rules! unexported_macro (() => (3i))
+macro_rules! unexported_macro (() => (3i));
 
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry) {

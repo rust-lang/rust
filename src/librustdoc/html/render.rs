@@ -232,8 +232,8 @@ struct IndexItem {
 
 // TLS keys used to carry information around during rendering.
 
-local_data_key!(pub cache_key: Arc<Cache>)
-local_data_key!(pub current_location_key: Vec<String> )
+local_data_key!(pub cache_key: Arc<Cache>);
+local_data_key!(pub current_location_key: Vec<String>);
 
 /// Generates the documentation for `crate` into the directory `dst`
 pub fn run(mut krate: clean::Crate, external_html: &ExternalHtml, dst: Path) -> io::IoResult<()> {

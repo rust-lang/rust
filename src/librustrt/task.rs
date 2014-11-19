@@ -297,7 +297,7 @@ impl Task {
         // was recursively run via the `run` method invoking this method. In
         // this case, we just make sure the world is as we thought, and return.
         if task.is_destroyed() {
-            rtassert!(result.is_ok())
+            rtassert!(result.is_ok());
             return task
         }
 
@@ -552,10 +552,10 @@ mod test {
 
     #[test]
     fn tls() {
-        local_data_key!(key: String)
+        local_data_key!(key: String);
         key.replace(Some("data".to_string()));
         assert_eq!(key.get().unwrap().as_slice(), "data");
-        local_data_key!(key2: String)
+        local_data_key!(key2: String);
         key2.replace(Some("data".to_string()));
         assert_eq!(key2.get().unwrap().as_slice(), "data");
     }

@@ -619,7 +619,7 @@ impl<'a, T> Pointer for &'a mut T {
     }
 }
 
-macro_rules! floating(($ty:ident) => {
+macro_rules! floating { ($ty:ident) => {
     impl Float for $ty {
         fn fmt(&self, fmt: &mut Formatter) -> Result {
             use num::Float;
@@ -682,24 +682,24 @@ macro_rules! floating(($ty:ident) => {
             })
         }
     }
-})
-floating!(f32)
-floating!(f64)
+} }
+floating! { f32 }
+floating! { f64 }
 
 // Implementation of Show for various core types
 
-macro_rules! delegate(($ty:ty to $other:ident) => {
+macro_rules! delegate { ($ty:ty to $other:ident) => {
     impl Show for $ty {
         fn fmt(&self, f: &mut Formatter) -> Result {
             $other::fmt(self, f)
         }
     }
-})
-delegate!(str to String)
-delegate!(bool to Bool)
-delegate!(char to Char)
-delegate!(f32 to Float)
-delegate!(f64 to Float)
+} }
+delegate! { str to String }
+delegate! { bool to Bool }
+delegate! { char to Char }
+delegate! { f32 to Float }
+delegate! { f64 to Float }
 
 impl<T> Show for *const T {
     fn fmt(&self, f: &mut Formatter) -> Result { Pointer::fmt(self, f) }
@@ -709,9 +709,11 @@ impl<T> Show for *mut T {
     fn fmt(&self, f: &mut Formatter) -> Result { Pointer::fmt(self, f) }
 }
 
-macro_rules! peel(($name:ident, $($other:ident,)*) => (tuple!($($other,)*)))
+macro_rules! peel {
+    ($name:ident, $($other:ident,)*) => (tuple! { $($other,)* })
+}
 
-macro_rules! tuple (
+macro_rules! tuple {
     () => ();
     ( $($name:ident,)+ ) => (
         impl<$($name:Show),*> Show for ($($name,)*) {
@@ -733,9 +735,9 @@ macro_rules! tuple (
                 write!(f, ")")
             }
         }
-        peel!($($name,)*)
+        peel! { $($name,)* }
     )
-)
+}
 
 tuple! { T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, }
 

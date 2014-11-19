@@ -39,14 +39,14 @@ use syntax::visit;
 use syntax::visit::{Visitor, FnKind};
 use syntax::ast::{FnDecl, Block, NodeId};
 
-macro_rules! if_ok(
+macro_rules! if_ok {
     ($inp: expr) => (
         match $inp {
             Ok(v) => { v }
             Err(e) => { return Err(e); }
         }
     )
-)
+}
 
 pub mod doc;
 

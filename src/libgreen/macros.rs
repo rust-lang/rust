@@ -23,7 +23,7 @@ macro_rules! rterrln (
     ($($arg:tt)*) => ( {
         format_args!(::macros::dumb_println, $($arg)*)
     } )
-)
+);
 
 // Some basic logging. Enabled by passing `--cfg rtdebug` to the libstd build.
 macro_rules! rtdebug (
@@ -32,7 +32,7 @@ macro_rules! rtdebug (
             rterrln!($($arg)*)
         }
     })
-)
+);
 
 macro_rules! rtassert (
     ( $arg:expr ) => ( {
@@ -42,14 +42,14 @@ macro_rules! rtassert (
             }
         }
     } )
-)
+);
 
 
 macro_rules! rtabort (
     ($($arg:tt)*) => ( {
         ::macros::abort(format!($($arg)*).as_slice());
     } )
-)
+);
 
 pub fn dumb_println(args: &fmt::Arguments) {
     use std::rt;

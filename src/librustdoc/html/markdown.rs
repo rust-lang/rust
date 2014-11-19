@@ -147,10 +147,10 @@ fn stripped_filtered_line<'a>(s: &'a str) -> Option<&'a str> {
     }
 }
 
-local_data_key!(used_header_map: RefCell<HashMap<String, uint>>)
-local_data_key!(test_idx: Cell<uint>)
+local_data_key!(used_header_map: RefCell<HashMap<String, uint>>);
+local_data_key!(test_idx: Cell<uint>);
 // None == render an example, but there's no crate name
-local_data_key!(pub playground_krate: Option<String>)
+local_data_key!(pub playground_krate: Option<String>);
 
 pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
     extern fn block(ob: *mut hoedown_buffer, orig_text: *const hoedown_buffer,

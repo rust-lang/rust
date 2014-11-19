@@ -87,7 +87,7 @@ fn src<T>(fd: libc::c_int, _readable: bool, f: |StdSource| -> T) -> T {
     }
 }
 
-local_data_key!(local_stdout: Box<Writer + Send>)
+local_data_key! { local_stdout: Box<Writer + Send> }
 
 /// Creates a new non-blocking handle to the stdin of the current process.
 ///

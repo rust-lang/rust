@@ -169,7 +169,7 @@ pub mod compat {
     ///
     /// Note that arguments unused by the fallback implementation should not be called `_` as
     /// they are used to be passed to the real function if available.
-    macro_rules! compat_fn(
+    macro_rules! compat_fn {
         ($module:ident::$symbol:ident($($argname:ident: $argtype:ty),*)
                                       -> $rettype:ty $fallback:block) => (
             #[inline(always)]
@@ -195,7 +195,7 @@ pub mod compat {
         ($module:ident::$symbol:ident($($argname:ident: $argtype:ty),*) $fallback:block) => (
             compat_fn!($module::$symbol($($argname: $argtype),*) -> () $fallback)
         )
-    )
+    }
 
     /// Compatibility layer for functions in `kernel32.dll`
     ///
@@ -211,20 +211,20 @@ pub mod compat {
             fn SetLastError(dwErrCode: DWORD);
         }
 
-        compat_fn!(kernel32::CreateSymbolicLinkW(_lpSymlinkFileName: LPCWSTR,
+        compat_fn! { kernel32::CreateSymbolicLinkW(_lpSymlinkFileName: LPCWSTR,
                                                  _lpTargetFileName: LPCWSTR,
                                                  _dwFlags: DWORD) -> BOOLEAN {
             unsafe { SetLastError(ERROR_CALL_NOT_IMPLEMENTED as DWORD); }
             0
-        })
+        } }
 
-        compat_fn!(kernel32::GetFinalPathNameByHandleW(_hFile: HANDLE,
+        compat_fn! { kernel32::GetFinalPathNameByHandleW(_hFile: HANDLE,
                                                        _lpszFilePath: LPCWSTR,
                                                        _cchFilePath: DWORD,
                                                        _dwFlags: DWORD) -> DWORD {
             unsafe { SetLastError(ERROR_CALL_NOT_IMPLEMENTED as DWORD); }
             0
-        })
+        } }
     }
 }
 

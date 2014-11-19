@@ -105,7 +105,7 @@ pub fn apply_renames(renames: &RenameList, ctxt: SyntaxContext) -> SyntaxContext
 
 /// Fetch the SCTable from TLS, create one if it doesn't yet exist.
 pub fn with_sctable<T>(op: |&SCTable| -> T) -> T {
-    local_data_key!(sctable_key: Rc<SCTable>)
+    local_data_key!(sctable_key: Rc<SCTable>);
 
     match sctable_key.get() {
         Some(ts) => op(&**ts),
@@ -165,7 +165,7 @@ type ResolveTable = HashMap<(Name,SyntaxContext),Name>;
 // okay, I admit, putting this in TLS is not so nice:
 // fetch the SCTable from TLS, create one if it doesn't yet exist.
 fn with_resolve_table_mut<T>(op: |&mut ResolveTable| -> T) -> T {
-    local_data_key!(resolve_table_key: Rc<RefCell<ResolveTable>>)
+    local_data_key!(resolve_table_key: Rc<RefCell<ResolveTable>>);
 
     match resolve_table_key.get() {
         Some(ts) => op(&mut *ts.borrow_mut()),

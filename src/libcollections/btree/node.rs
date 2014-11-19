@@ -455,7 +455,7 @@ impl<K, V> Node<K, V> {
     /// Take all the values from right, separated by the given key and value
     fn absorb(&mut self, key: K, val: V, right: Node<K, V>) {
         // Just as a sanity check, make sure we can fit this guy in
-        debug_assert!(self.len() + right.len() <= self.capacity())
+        debug_assert!(self.len() + right.len() <= self.capacity());
 
         self.keys.push(key);
         self.vals.push(val);

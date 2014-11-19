@@ -28,7 +28,7 @@ use ptr::P;
 use std::collections::HashSet;
 use std::collections::BitvSet;
 
-local_data_key!(used_attrs: BitvSet)
+local_data_key! { used_attrs: BitvSet }
 
 pub fn mark_used(attr: &Attribute) {
     let mut used = used_attrs.replace(None).unwrap_or_else(|| BitvSet::new());
@@ -167,7 +167,7 @@ pub fn mk_word_item(name: InternedString) -> P<MetaItem> {
     P(dummy_spanned(MetaWord(name)))
 }
 
-local_data_key!(next_attr_id: uint)
+local_data_key! { next_attr_id: uint }
 
 pub fn mk_attr_id() -> AttrId {
     let id = next_attr_id.replace(None).unwrap_or(0);

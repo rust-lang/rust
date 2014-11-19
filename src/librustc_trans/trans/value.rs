@@ -16,14 +16,14 @@ use libc::c_uint;
 
 pub struct Value(pub ValueRef);
 
-macro_rules! opt_val ( ($e:expr) => (
+macro_rules! opt_val { ($e:expr) => (
     unsafe {
         match $e {
             p if p.is_not_null() => Some(Value(p)),
             _ => None
         }
     }
-))
+) }
 
 /**
  * Wrapper for LLVM ValueRef

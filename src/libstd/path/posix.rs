@@ -445,7 +445,7 @@ mod tests {
     use str;
     use str::StrPrelude;
 
-    macro_rules! t(
+    macro_rules! t {
         (s: $path:expr, $exp:expr) => (
             {
                 let path = $path;
@@ -458,7 +458,7 @@ mod tests {
                 assert!(path.as_vec() == $exp);
             }
         )
-    )
+    }
 
     #[test]
     fn test_paths() {
@@ -531,14 +531,14 @@ mod tests {
 
     #[test]
     fn test_display_str() {
-        macro_rules! t(
+        macro_rules! t {
             ($path:expr, $disp:ident, $exp:expr) => (
                 {
                     let path = Path::new($path);
                     assert!(path.$disp().to_string().as_slice() == $exp);
                 }
             )
-        )
+        }
         t!("foo", display, "foo");
         t!(b"foo\x80", display, "foo\uFFFD");
         t!(b"foo\xFFbar", display, "foo\uFFFDbar");
@@ -561,7 +561,7 @@ mod tests {
                     assert!(mo.as_slice() == $exp);
                 }
             )
-        )
+        );
 
         t!("foo", "foo");
         t!(b"foo\x80", "foo\uFFFD");
@@ -583,7 +583,7 @@ mod tests {
                     assert!(f.as_slice() == $expf);
                 }
             )
-        )
+        );
 
         t!(b"foo", "foo", "foo");
         t!(b"foo/bar", "foo/bar", "bar");
@@ -621,7 +621,7 @@ mod tests {
                     }
                 }
             );
-        )
+        );
 
         t!(v: b"a/b/c", filename, Some(b"c"));
         t!(v: b"a/b/c\xFF", filename, Some(b"c\xFF"));
@@ -696,7 +696,7 @@ mod tests {
                     assert!(p1 == p2.join(join));
                 }
             )
-        )
+        );
 
         t!(s: "a/b/c", "..");
         t!(s: "/a/b/c", "d");
@@ -715,7 +715,7 @@ mod tests {
                     assert!(p.as_str() == Some($exp));
                 }
             )
-        )
+        );
 
         t!(s: "a/b/c", "d", "a/b/c/d");
         t!(s: "/a/b/c", "d", "/a/b/c/d");
@@ -742,7 +742,7 @@ mod tests {
                     assert!(p.as_vec() == $exp);
                 }
             )
-        )
+        );
 
         t!(s: "a/b/c", ["d", "e"], "a/b/c/d/e");
         t!(s: "a/b/c", ["d", "/e"], "/e");
@@ -772,7 +772,7 @@ mod tests {
                     assert!(result == $right);
                 }
             )
-        )
+        );
 
         t!(b: b"a/b/c", b"a/b", true);
         t!(b: b"a", b".", true);
@@ -820,7 +820,7 @@ mod tests {
                     assert!(res.as_str() == Some($exp));
                 }
             )
-        )
+        );
 
         t!(s: "a/b/c", "..", "a/b");
         t!(s: "/a/b/c", "d", "/a/b/c/d");
@@ -847,7 +847,7 @@ mod tests {
                     assert!(res.as_vec() == $exp);
                 }
             )
-        )
+        );
 
         t!(s: "a/b/c", ["d", "e"], "a/b/c/d/e");
         t!(s: "a/b/c", ["..", "d"], "a/b/d");
@@ -931,7 +931,7 @@ mod tests {
                     assert!(p1 == p2.$with(arg));
                 }
             )
-        )
+        );
 
         t!(v: b"a/b/c", set_filename, with_filename, b"d");
         t!(v: b"/", set_filename, with_filename, b"foo");
@@ -989,7 +989,7 @@ mod tests {
                     }
                 }
             )
-        )
+        );
 
         let no: Option<&'static str> = None;
         t!(v: Path::new(b"a/b/c"), Some(b"c"), b"a/b", Some(b"c"), no);
@@ -1037,7 +1037,7 @@ mod tests {
                     assert_eq!(path.is_relative(), $rel);
                 }
             )
-        )
+        );
         t!(s: "a/b/c", false, true);
         t!(s: "/a/b/c", true, false);
         t!(s: "a", false, true);
@@ -1058,7 +1058,7 @@ mod tests {
                     assert_eq!(path.is_ancestor_of(&dest), $exp);
                 }
             )
-        )
+        );
 
         t!(s: "a/b/c", "a/b/c/d", true);
         t!(s: "a/b/c", "a/b/c", true);
@@ -1099,7 +1099,7 @@ mod tests {
                     assert_eq!(path.ends_with_path(&child), $exp);
                 }
             )
-        )
+        );
 
         t!(s: "a/b/c", "c", true);
         t!(s: "a/b/c", "d", false);
@@ -1132,7 +1132,7 @@ mod tests {
                     assert_eq!(res.as_ref().and_then(|x| x.as_str()), $exp);
                 }
             )
-        )
+        );
 
         t!(s: "a/b/c", "a/b", Some("c"));
         t!(s: "a/b/c", "a/b/d", Some("../c"));
@@ -1194,7 +1194,7 @@ mod tests {
                     assert_eq!(comps, exp)
                 }
             )
-        )
+        );
 
         t!(b: b"a/b/c", [b"a", b"b", b"c"]);
         t!(b: b"/\xFF/a/\x80", [b"\xFF", b"a", b"\x80"]);
@@ -1226,7 +1226,7 @@ mod tests {
                     assert_eq!(comps, exp);
                 }
             )
-        )
+        );
 
         t!(b: b"a/b/c", [Some("a"), Some("b"), Some("c")]);
         t!(b: b"/\xFF/a/\x80", [None, Some("a"), None]);

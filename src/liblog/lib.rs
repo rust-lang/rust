@@ -213,7 +213,7 @@ pub const WARN: u32 = 2;
 /// Error log level
 pub const ERROR: u32 = 1;
 
-local_data_key!(local_logger: Box<Logger + Send>)
+local_data_key! { local_logger: Box<Logger + Send> }
 
 /// A trait used to represent an interface to a task-local logger. Each task
 /// can have its own custom logger which can respond to logging messages

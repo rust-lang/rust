@@ -18,8 +18,12 @@ use ext::build::AstBuilder;
 use parse::token;
 use ptr::P;
 
-local_data_key!(registered_diagnostics: RefCell<HashMap<Name, Option<Name>>>)
-local_data_key!(used_diagnostics: RefCell<HashMap<Name, Span>>)
+local_data_key! {
+    registered_diagnostics: RefCell<HashMap<Name, Option<Name>>>
+}
+local_data_key! {
+    used_diagnostics: RefCell<HashMap<Name, Span>>
+}
 
 fn with_registered_diagnostics<T>(f: |&mut HashMap<Name, Option<Name>>| -> T) -> T {
     match registered_diagnostics.get() {

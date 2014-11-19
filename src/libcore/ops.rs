@@ -117,16 +117,16 @@ pub trait Add<RHS,Result> {
     fn add(&self, rhs: &RHS) -> Result;
 }
 
-macro_rules! add_impl(
+macro_rules! add_impl {
     ($($t:ty)*) => ($(
         impl Add<$t, $t> for $t {
             #[inline]
             fn add(&self, other: &$t) -> $t { (*self) + (*other) }
         }
     )*)
-)
+}
 
-add_impl!(uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64)
+add_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64 }
 
 /**
  *
@@ -158,16 +158,16 @@ pub trait Sub<RHS,Result> {
     fn sub(&self, rhs: &RHS) -> Result;
 }
 
-macro_rules! sub_impl(
+macro_rules! sub_impl {
     ($($t:ty)*) => ($(
         impl Sub<$t, $t> for $t {
             #[inline]
             fn sub(&self, other: &$t) -> $t { (*self) - (*other) }
         }
     )*)
-)
+}
 
-sub_impl!(uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64)
+sub_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64 }
 
 /**
  *
@@ -199,16 +199,16 @@ pub trait Mul<RHS,Result> {
     fn mul(&self, rhs: &RHS) -> Result;
 }
 
-macro_rules! mul_impl(
+macro_rules! mul_impl {
     ($($t:ty)*) => ($(
         impl Mul<$t, $t> for $t {
             #[inline]
             fn mul(&self, other: &$t) -> $t { (*self) * (*other) }
         }
     )*)
-)
+}
 
-mul_impl!(uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64)
+mul_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64 }
 
 /**
  *
@@ -240,16 +240,16 @@ pub trait Div<RHS,Result> {
     fn div(&self, rhs: &RHS) -> Result;
 }
 
-macro_rules! div_impl(
+macro_rules! div_impl {
     ($($t:ty)*) => ($(
         impl Div<$t, $t> for $t {
             #[inline]
             fn div(&self, other: &$t) -> $t { (*self) / (*other) }
         }
     )*)
-)
+}
 
-div_impl!(uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64)
+div_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64 }
 
 /**
  *
@@ -281,16 +281,16 @@ pub trait Rem<RHS,Result> {
     fn rem(&self, rhs: &RHS) -> Result;
 }
 
-macro_rules! rem_impl(
+macro_rules! rem_impl {
     ($($t:ty)*) => ($(
         impl Rem<$t, $t> for $t {
             #[inline]
             fn rem(&self, other: &$t) -> $t { (*self) % (*other) }
         }
     )*)
-)
+}
 
-macro_rules! rem_float_impl(
+macro_rules! rem_float_impl {
     ($t:ty, $fmod:ident) => {
         impl Rem<$t, $t> for $t {
             #[inline]
@@ -300,11 +300,11 @@ macro_rules! rem_float_impl(
             }
         }
     }
-)
+}
 
-rem_impl!(uint u8 u16 u32 u64 int i8 i16 i32 i64)
-rem_float_impl!(f32, fmodf)
-rem_float_impl!(f64, fmod)
+rem_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 }
+rem_float_impl! { f32, fmodf }
+rem_float_impl! { f64, fmod }
 
 /**
  *
@@ -336,31 +336,31 @@ pub trait Neg<Result> {
     fn neg(&self) -> Result;
 }
 
-macro_rules! neg_impl(
+macro_rules! neg_impl {
     ($($t:ty)*) => ($(
         impl Neg<$t> for $t {
             #[inline]
             fn neg(&self) -> $t { -*self }
         }
     )*)
-)
+}
 
-macro_rules! neg_uint_impl(
+macro_rules! neg_uint_impl {
     ($t:ty, $t_signed:ty) => {
         impl Neg<$t> for $t {
             #[inline]
             fn neg(&self) -> $t { -(*self as $t_signed) as $t }
         }
     }
-)
+}
 
-neg_impl!(int i8 i16 i32 i64 f32 f64)
+neg_impl! { int i8 i16 i32 i64 f32 f64 }
 
-neg_uint_impl!(uint, int)
-neg_uint_impl!(u8, i8)
-neg_uint_impl!(u16, i16)
-neg_uint_impl!(u32, i32)
-neg_uint_impl!(u64, i64)
+neg_uint_impl! { uint, int }
+neg_uint_impl! { u8, i8 }
+neg_uint_impl! { u16, i16 }
+neg_uint_impl! { u32, i32 }
+neg_uint_impl! { u64, i64 }
 
 
 /**
@@ -394,16 +394,16 @@ pub trait Not<Result> {
 }
 
 
-macro_rules! not_impl(
+macro_rules! not_impl {
     ($($t:ty)*) => ($(
         impl Not<$t> for $t {
             #[inline]
             fn not(&self) -> $t { !*self }
         }
     )*)
-)
+}
 
-not_impl!(bool uint u8 u16 u32 u64 int i8 i16 i32 i64)
+not_impl! { bool uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 
 /**
  *
@@ -435,16 +435,16 @@ pub trait BitAnd<RHS,Result> {
     fn bitand(&self, rhs: &RHS) -> Result;
 }
 
-macro_rules! bitand_impl(
+macro_rules! bitand_impl {
     ($($t:ty)*) => ($(
         impl BitAnd<$t, $t> for $t {
             #[inline]
             fn bitand(&self, rhs: &$t) -> $t { (*self) & (*rhs) }
         }
     )*)
-)
+}
 
-bitand_impl!(bool uint u8 u16 u32 u64 int i8 i16 i32 i64)
+bitand_impl! { bool uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 
 /**
  *
@@ -476,16 +476,16 @@ pub trait BitOr<RHS,Result> {
     fn bitor(&self, rhs: &RHS) -> Result;
 }
 
-macro_rules! bitor_impl(
+macro_rules! bitor_impl {
     ($($t:ty)*) => ($(
         impl BitOr<$t,$t> for $t {
             #[inline]
             fn bitor(&self, rhs: &$t) -> $t { (*self) | (*rhs) }
         }
     )*)
-)
+}
 
-bitor_impl!(bool uint u8 u16 u32 u64 int i8 i16 i32 i64)
+bitor_impl! { bool uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 
 /**
  *
@@ -517,16 +517,16 @@ pub trait BitXor<RHS,Result> {
     fn bitxor(&self, rhs: &RHS) -> Result;
 }
 
-macro_rules! bitxor_impl(
+macro_rules! bitxor_impl {
     ($($t:ty)*) => ($(
         impl BitXor<$t, $t> for $t {
             #[inline]
             fn bitxor(&self, other: &$t) -> $t { (*self) ^ (*other) }
         }
     )*)
-)
+}
 
-bitxor_impl!(bool uint u8 u16 u32 u64 int i8 i16 i32 i64)
+bitxor_impl! { bool uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 
 /**
  *
@@ -558,7 +558,7 @@ pub trait Shl<RHS,Result> {
     fn shl(&self, rhs: &RHS) -> Result;
 }
 
-macro_rules! shl_impl(
+macro_rules! shl_impl {
     ($($t:ty)*) => ($(
         impl Shl<uint, $t> for $t {
             #[inline]
@@ -567,9 +567,9 @@ macro_rules! shl_impl(
             }
         }
     )*)
-)
+}
 
-shl_impl!(uint u8 u16 u32 u64 int i8 i16 i32 i64)
+shl_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 
 /**
  *
@@ -601,16 +601,16 @@ pub trait Shr<RHS,Result> {
     fn shr(&self, rhs: &RHS) -> Result;
 }
 
-macro_rules! shr_impl(
+macro_rules! shr_impl {
     ($($t:ty)*) => ($(
         impl Shr<uint, $t> for $t {
             #[inline]
             fn shr(&self, other: &uint) -> $t { (*self) >> (*other) }
         }
     )*)
-)
+}
 
-shr_impl!(uint u8 u16 u32 u64 int i8 i16 i32 i64)
+shr_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 
 /**
  *
@@ -910,7 +910,7 @@ impl<Result,A0> Fn<(A0,),Result> for extern "Rust" fn(A0) -> Result {
     }
 }
 
-macro_rules! def_fn(
+macro_rules! def_fn {
     ($($args:ident)*) => (
         impl<Result$(,$args)*>
         Fn<($($args,)*),Result>
@@ -922,20 +922,20 @@ macro_rules! def_fn(
             }
         }
     )
-)
+}
 
-def_fn!(A0 A1)
-def_fn!(A0 A1 A2)
-def_fn!(A0 A1 A2 A3)
-def_fn!(A0 A1 A2 A3 A4)
-def_fn!(A0 A1 A2 A3 A4 A5)
-def_fn!(A0 A1 A2 A3 A4 A5 A6)
-def_fn!(A0 A1 A2 A3 A4 A5 A6 A7)
-def_fn!(A0 A1 A2 A3 A4 A5 A6 A7 A8)
-def_fn!(A0 A1 A2 A3 A4 A5 A6 A7 A8 A9)
-def_fn!(A0 A1 A2 A3 A4 A5 A6 A7 A8 A9 A10)
-def_fn!(A0 A1 A2 A3 A4 A5 A6 A7 A8 A9 A10 A11)
-def_fn!(A0 A1 A2 A3 A4 A5 A6 A7 A8 A9 A10 A11 A12)
-def_fn!(A0 A1 A2 A3 A4 A5 A6 A7 A8 A9 A10 A11 A12 A13)
-def_fn!(A0 A1 A2 A3 A4 A5 A6 A7 A8 A9 A10 A11 A12 A13 A14)
-def_fn!(A0 A1 A2 A3 A4 A5 A6 A7 A8 A9 A10 A11 A12 A13 A14 A15)
+def_fn! { A0 A1 }
+def_fn! { A0 A1 A2 }
+def_fn! { A0 A1 A2 A3 }
+def_fn! { A0 A1 A2 A3 A4 }
+def_fn! { A0 A1 A2 A3 A4 A5 }
+def_fn! { A0 A1 A2 A3 A4 A5 A6 }
+def_fn! { A0 A1 A2 A3 A4 A5 A6 A7 }
+def_fn! { A0 A1 A2 A3 A4 A5 A6 A7 A8 }
+def_fn! { A0 A1 A2 A3 A4 A5 A6 A7 A8 A9 }
+def_fn! { A0 A1 A2 A3 A4 A5 A6 A7 A8 A9 A10 }
+def_fn! { A0 A1 A2 A3 A4 A5 A6 A7 A8 A9 A10 A11 }
+def_fn! { A0 A1 A2 A3 A4 A5 A6 A7 A8 A9 A10 A11 A12 }
+def_fn! { A0 A1 A2 A3 A4 A5 A6 A7 A8 A9 A10 A11 A12 A13 }
+def_fn! { A0 A1 A2 A3 A4 A5 A6 A7 A8 A9 A10 A11 A12 A13 A14 }
+def_fn! { A0 A1 A2 A3 A4 A5 A6 A7 A8 A9 A10 A11 A12 A13 A14 A15 }

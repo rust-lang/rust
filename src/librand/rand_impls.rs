@@ -232,8 +232,8 @@ mod tests {
     #[test]
     fn floating_point_edge_cases() {
         // the test for exact equality is correct here.
-        assert!(ConstantRng(0xffff_ffff).gen::<f32>() != 1.0)
-        assert!(ConstantRng(0xffff_ffff_ffff_ffff).gen::<f64>() != 1.0)
+        assert!(ConstantRng(0xffff_ffff).gen::<f32>() != 1.0);
+        assert!(ConstantRng(0xffff_ffff_ffff_ffff).gen::<f64>() != 1.0);
     }
 
     #[test]

@@ -84,7 +84,7 @@ static DEFAULT_PASSES: &'static [&'static str] = &[
     "unindent-comments",
 ];
 
-local_data_key!(pub analysiskey: core::CrateAnalysis)
+local_data_key!(pub analysiskey: core::CrateAnalysis);
 
 type Output = (clean::Crate, Vec<plugins::PluginJson> );
 

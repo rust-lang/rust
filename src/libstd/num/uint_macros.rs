@@ -13,7 +13,7 @@
 #![doc(hidden)]
 #![allow(unsigned_negation)]
 
-macro_rules! uint_module (($T:ty) => (
+macro_rules! uint_module { ($T:ty) => (
 
 // String conversion functions and impl num -> str
 
@@ -139,4 +139,4 @@ mod tests {
     }
 }
 
-))
+) }

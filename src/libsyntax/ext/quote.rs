@@ -104,7 +104,7 @@ pub mod rt {
         fn to_source_with_hygiene(&self) -> String;
     }
 
-    macro_rules! impl_to_source(
+    macro_rules! impl_to_source {
         (P<$t:ty>, $pp:ident) => (
             impl ToSource for P<$t> {
                 fn to_source(&self) -> String {
@@ -129,7 +129,7 @@ pub mod rt {
                 }
             }
         );
-    )
+    }
 
     fn slice_to_source<'a, T: ToSource>(sep: &'static str, xs: &'a [T]) -> String {
         xs.iter()
@@ -148,7 +148,7 @@ pub mod rt {
             .to_string()
     }
 
-    macro_rules! impl_to_source_slice(
+    macro_rules! impl_to_source_slice {
         ($t:ty, $sep:expr) => (
             impl ToSource for [$t] {
                 fn to_source(&self) -> String {
@@ -162,7 +162,7 @@ pub mod rt {
                 }
             }
         )
-    )
+    }
 
     impl ToSource for ast::Ident {
         fn to_source(&self) -> String {
@@ -176,18 +176,18 @@ pub mod rt {
         }
     }
 
-    impl_to_source!(ast::Ty, ty_to_string)
-    impl_to_source!(ast::Block, block_to_string)
-    impl_to_source!(ast::Arg, arg_to_string)
-    impl_to_source!(Generics, generics_to_string)
-    impl_to_source!(P<ast::Item>, item_to_string)
-    impl_to_source!(P<ast::Method>, method_to_string)
-    impl_to_source!(P<ast::Stmt>, stmt_to_string)
-    impl_to_source!(P<ast::Expr>, expr_to_string)
-    impl_to_source!(P<ast::Pat>, pat_to_string)
-    impl_to_source!(ast::Arm, arm_to_string)
-    impl_to_source_slice!(ast::Ty, ", ")
-    impl_to_source_slice!(P<ast::Item>, "\n\n")
+    impl_to_source! { ast::Ty, ty_to_string }
+    impl_to_source! { ast::Block, block_to_string }
+    impl_to_source! { ast::Arg, arg_to_string }
+    impl_to_source! { Generics, generics_to_string }
+    impl_to_source! { P<ast::Item>, item_to_string }
+    impl_to_source! { P<ast::Method>, method_to_string }
+    impl_to_source! { P<ast::Stmt>, stmt_to_string }
+    impl_to_source! { P<ast::Expr>, expr_to_string }
+    impl_to_source! { P<ast::Pat>, pat_to_string }
+    impl_to_source! { ast::Arm, arm_to_string }
+    impl_to_source_slice! { ast::Ty, ", " }
+    impl_to_source_slice! { P<ast::Item>, "\n\n" }
 
     impl ToSource for ast::Attribute_ {
         fn to_source(&self) -> String {
@@ -248,7 +248,7 @@ pub mod rt {
         }
     }
 
-    macro_rules! impl_to_source_int(
+    macro_rules! impl_to_source_int {
         (signed, $t:ty, $tag:ident) => (
             impl ToSource for $t {
                 fn to_source(&self) -> String {
@@ -276,23 +276,23 @@ pub mod rt {
                 }
             }
         );
-    )
+    }
 
-    impl_to_source_int!(signed, int, TyI)
-    impl_to_source_int!(signed, i8,  TyI8)
-    impl_to_source_int!(signed, i16, TyI16)
-    impl_to_source_int!(signed, i32, TyI32)
-    impl_to_source_int!(signed, i64, TyI64)
+    impl_to_source_int! { signed, int, TyI }
+    impl_to_source_int! { signed, i8,  TyI8 }
+    impl_to_source_int! { signed, i16, TyI16 }
+    impl_to_source_int! { signed, i32, TyI32 }
+    impl_to_source_int! { signed, i64, TyI64 }
 
-    impl_to_source_int!(unsigned, uint, TyU)
-    impl_to_source_int!(unsigned, u8,   TyU8)
-    impl_to_source_int!(unsigned, u16,  TyU16)
-    impl_to_source_int!(unsigned, u32,  TyU32)
-    impl_to_source_int!(unsigned, u64,  TyU64)
+    impl_to_source_int! { unsigned, uint, TyU }
+    impl_to_source_int! { unsigned, u8,   TyU8 }
+    impl_to_source_int! { unsigned, u16,  TyU16 }
+    impl_to_source_int! { unsigned, u32,  TyU32 }
+    impl_to_source_int! { unsigned, u64,  TyU64 }
 
     // Alas ... we write these out instead. All redundant.
 
-    macro_rules! impl_to_tokens(
+    macro_rules! impl_to_tokens {
         ($t:ty) => (
             impl ToTokens for $t {
                 fn to_tokens(&self, cx: &ExtCtxt) -> Vec<TokenTree> {
@@ -300,9 +300,9 @@ pub mod rt {
                 }
             }
         )
-    )
+    }
 
-    macro_rules! impl_to_tokens_lifetime(
+    macro_rules! impl_to_tokens_lifetime {
         ($t:ty) => (
             impl<'a> ToTokens for $t {
                 fn to_tokens(&self, cx: &ExtCtxt) -> Vec<TokenTree> {
@@ -310,36 +310,36 @@ pub mod rt {
                 }
             }
         )
-    )
+    }
 
-    impl_to_tokens!(ast::Ident)
-    impl_to_tokens!(P<ast::Item>)
-    impl_to_tokens!(P<ast::Pat>)
-    impl_to_tokens!(ast::Arm)
-    impl_to_tokens!(P<ast::Method>)
-    impl_to_tokens_lifetime!(&'a [P<ast::Item>])
-    impl_to_tokens!(ast::Ty)
-    impl_to_tokens_lifetime!(&'a [ast::Ty])
-    impl_to_tokens!(Generics)
-    impl_to_tokens!(P<ast::Stmt>)
-    impl_to_tokens!(P<ast::Expr>)
-    impl_to_tokens!(ast::Block)
-    impl_to_tokens!(ast::Arg)
-    impl_to_tokens!(ast::Attribute_)
-    impl_to_tokens_lifetime!(&'a str)
-    impl_to_tokens!(())
-    impl_to_tokens!(char)
-    impl_to_tokens!(bool)
-    impl_to_tokens!(int)
-    impl_to_tokens!(i8)
-    impl_to_tokens!(i16)
-    impl_to_tokens!(i32)
-    impl_to_tokens!(i64)
-    impl_to_tokens!(uint)
-    impl_to_tokens!(u8)
-    impl_to_tokens!(u16)
-    impl_to_tokens!(u32)
-    impl_to_tokens!(u64)
+    impl_to_tokens! { ast::Ident }
+    impl_to_tokens! { P<ast::Item> }
+    impl_to_tokens! { P<ast::Pat> }
+    impl_to_tokens! { ast::Arm }
+    impl_to_tokens! { P<ast::Method> }
+    impl_to_tokens_lifetime! { &'a [P<ast::Item>] }
+    impl_to_tokens! { ast::Ty }
+    impl_to_tokens_lifetime! { &'a [ast::Ty] }
+    impl_to_tokens! { Generics }
+    impl_to_tokens! { P<ast::Stmt> }
+    impl_to_tokens! { P<ast::Expr> }
+    impl_to_tokens! { ast::Block }
+    impl_to_tokens! { ast::Arg }
+    impl_to_tokens! { ast::Attribute_ }
+    impl_to_tokens_lifetime! { &'a str }
+    impl_to_tokens! { () }
+    impl_to_tokens! { char }
+    impl_to_tokens! { bool }
+    impl_to_tokens! { int }
+    impl_to_tokens! { i8 }
+    impl_to_tokens! { i16 }
+    impl_to_tokens! { i32 }
+    impl_to_tokens! { i64 }
+    impl_to_tokens! { uint }
+    impl_to_tokens! { u8 }
+    impl_to_tokens! { u16 }
+    impl_to_tokens! { u32 }
+    impl_to_tokens! { u64 }
 
     pub trait ExtParseUtils {
         fn parse_item(&self, s: String) -> P<ast::Item>;

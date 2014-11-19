@@ -13,5 +13,5 @@
 #![unstable]
 #![doc(primitive = "u32")]
 
-uint_module!(u32, i32, 32)
+uint_module! { u32, i32, 32 }
 

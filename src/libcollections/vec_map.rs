@@ -580,8 +580,8 @@ pub struct Entries<'a, T:'a> {
     iter: slice::Items<'a, Option<T>>
 }
 
-iterator!(impl Entries -> (uint, &'a T), as_ref, unwrap)
-double_ended_iterator!(impl Entries -> (uint, &'a T), as_ref, unwrap)
+iterator! { impl Entries -> (uint, &'a T), as_ref, unwrap }
+double_ended_iterator! { impl Entries -> (uint, &'a T), as_ref, unwrap }
 
 /// Forward iterator over the key-value pairs of a map, with the
 /// values being mutable.
@@ -591,8 +591,10 @@ pub struct MutEntries<'a, T:'a> {
     iter: slice::MutItems<'a, Option<T>>
 }
 
-iterator!(impl MutEntries -> (uint, &'a mut T), as_mut, unwrap)
-double_ended_iterator!(impl MutEntries -> (uint, &'a mut T), as_mut, unwrap)
+iterator! { impl MutEntries -> (uint, &'a mut T), as_mut, unwrap }
+double_ended_iterator! {
+    impl MutEntries -> (uint, &'a mut T), as_mut, unwrap
+}
 
 /// Forward iterator over the keys of a map
 pub type Keys<'a, T> =

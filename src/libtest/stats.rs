@@ -459,14 +459,14 @@ mod tests {
     use std::io;
     use std::f64;
 
-    macro_rules! assert_approx_eq(
+    macro_rules! assert_approx_eq {
         ($a:expr, $b:expr) => ({
             use std::num::Float;
             let (a, b) = (&$a, &$b);
             assert!((*a - *b).abs() < 1.0e-6,
                     "{} is not approximately equal to {}", *a, *b);
         })
-    )
+    }
 
     fn check(samples: &[f64], summ: &Summary<f64>) {
 

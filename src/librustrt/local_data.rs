@@ -23,8 +23,8 @@ named and annotated. This name is then passed to the functions in this module to
 modify/read the slot specified by the key.
 
 ```rust
-local_data_key!(key_int: int)
-local_data_key!(key_vector: Vec<int>)
+local_data_key!(key_int: int);
+local_data_key!(key_vector: Vec<int>);
 
 key_int.replace(Some(3));
 assert_eq!(*key_int.get().unwrap(), 3);
@@ -173,7 +173,7 @@ impl<T: 'static> KeyValue<T> {
     /// # Example
     ///
     /// ```
-    /// local_data_key!(foo: int)
+    /// local_data_key!(foo: int);
     ///
     /// assert_eq!(foo.replace(Some(10)), None);
     /// assert_eq!(foo.replace(Some(4)), Some(10));
@@ -254,7 +254,7 @@ impl<T: 'static> KeyValue<T> {
     /// # Example
     ///
     /// ```
-    /// local_data_key!(key: int)
+    /// local_data_key!(key: int);
     ///
     /// assert!(key.get().is_none());
     ///

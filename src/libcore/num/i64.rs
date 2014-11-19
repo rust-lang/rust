@@ -13,5 +13,5 @@
 #![unstable]
 #![doc(primitive = "i64")]
 
-int_module!(i64, 64)
+int_module! { i64, 64 }
 

@@ -1829,7 +1829,7 @@ mod tests {
                 assert_eq!(format!("{}", x), x_str);
                 assert_eq!(format!("{}", x.as_slice()), x_str);
             })
-        )
+        );
         let empty: Vec<int> = vec![];
         test_show_vec!(empty, "[]".to_string());
         test_show_vec!(vec![1i], "[1]".to_string());

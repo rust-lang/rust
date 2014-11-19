@@ -8,7 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(macro_rules)]
+
+macro_rules! foo ( () => ( x ) );
+
 fn main() {
-    foo!() //~ HELP try parenthesizing this macro invocation
-    .bar //~ ERROR expected statement
+    let foo!() = 2;
+    x + 1; //~ ERROR unresolved name `x`
 }

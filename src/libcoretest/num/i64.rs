@@ -8,4 +8,4 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-int_module!(i64, i64)
+int_module!(i64, i64);

@@ -522,15 +522,15 @@ fn test_double_ended_chain() {
     let xs = [1i, 2, 3, 4, 5];
     let ys = [7i, 9, 11];
     let mut it = xs.iter().chain(ys.iter()).rev();
-    assert_eq!(it.next().unwrap(), &11)
-    assert_eq!(it.next().unwrap(), &9)
-    assert_eq!(it.next_back().unwrap(), &1)
-    assert_eq!(it.next_back().unwrap(), &2)
-    assert_eq!(it.next_back().unwrap(), &3)
-    assert_eq!(it.next_back().unwrap(), &4)
-    assert_eq!(it.next_back().unwrap(), &5)
-    assert_eq!(it.next_back().unwrap(), &7)
-    assert_eq!(it.next_back(), None)
+    assert_eq!(it.next().unwrap(), &11);
+    assert_eq!(it.next().unwrap(), &9);
+    assert_eq!(it.next_back().unwrap(), &1);
+    assert_eq!(it.next_back().unwrap(), &2);
+    assert_eq!(it.next_back().unwrap(), &3);
+    assert_eq!(it.next_back().unwrap(), &4);
+    assert_eq!(it.next_back().unwrap(), &5);
+    assert_eq!(it.next_back().unwrap(), &7);
+    assert_eq!(it.next_back(), None);
 }
 
 #[test]
@@ -800,7 +800,7 @@ fn test_min_max() {
 #[test]
 fn test_min_max_result() {
     let r: MinMaxResult<int> = NoElements;
-    assert_eq!(r.into_option(), None)
+    assert_eq!(r.into_option(), None);
 
     let r = OneElement(1i);
     assert_eq!(r.into_option(), Some((1,1)));

@@ -1024,7 +1024,7 @@ mod primitives {
 
     use syntax::ast;
 
-    macro_rules! def_prim_ty(
+    macro_rules! def_prim_ty {
         ($name:ident, $sty:expr) => (
             pub static $name: t_box_ = t_box_ {
                 sty: $sty,
@@ -1032,22 +1032,22 @@ mod primitives {
                 region_depth: 0,
             };
         )
-    )
+    }
 
-    def_prim_ty!(TY_BOOL,   super::ty_bool)
-    def_prim_ty!(TY_CHAR,   super::ty_char)
-    def_prim_ty!(TY_INT,    super::ty_int(ast::TyI))
-    def_prim_ty!(TY_I8,     super::ty_int(ast::TyI8))
-    def_prim_ty!(TY_I16,    super::ty_int(ast::TyI16))
-    def_prim_ty!(TY_I32,    super::ty_int(ast::TyI32))
-    def_prim_ty!(TY_I64,    super::ty_int(ast::TyI64))
-    def_prim_ty!(TY_UINT,   super::ty_uint(ast::TyU))
-    def_prim_ty!(TY_U8,     super::ty_uint(ast::TyU8))
-    def_prim_ty!(TY_U16,    super::ty_uint(ast::TyU16))
-    def_prim_ty!(TY_U32,    super::ty_uint(ast::TyU32))
-    def_prim_ty!(TY_U64,    super::ty_uint(ast::TyU64))
-    def_prim_ty!(TY_F32,    super::ty_float(ast::TyF32))
-    def_prim_ty!(TY_F64,    super::ty_float(ast::TyF64))
+    def_prim_ty! { TY_BOOL,   super::ty_bool }
+    def_prim_ty! { TY_CHAR,   super::ty_char }
+    def_prim_ty! { TY_INT,    super::ty_int(ast::TyI) }
+    def_prim_ty! { TY_I8,     super::ty_int(ast::TyI8) }
+    def_prim_ty! { TY_I16,    super::ty_int(ast::TyI16) }
+    def_prim_ty! { TY_I32,    super::ty_int(ast::TyI32) }
+    def_prim_ty! { TY_I64,    super::ty_int(ast::TyI64) }
+    def_prim_ty! { TY_UINT,   super::ty_uint(ast::TyU) }
+    def_prim_ty! { TY_U8,     super::ty_uint(ast::TyU8) }
+    def_prim_ty! { TY_U16,    super::ty_uint(ast::TyU16) }
+    def_prim_ty! { TY_U32,    super::ty_uint(ast::TyU32) }
+    def_prim_ty! { TY_U64,    super::ty_uint(ast::TyU64) }
+    def_prim_ty! { TY_F32,    super::ty_float(ast::TyF32) }
+    def_prim_ty! { TY_F64,    super::ty_float(ast::TyF64) }
 
     pub static TY_ERR: t_box_ = t_box_ {
         sty: super::ty_err,
@@ -2512,7 +2512,7 @@ pub struct TypeContents {
     pub bits: u64
 }
 
-macro_rules! def_type_content_sets(
+macro_rules! def_type_content_sets {
     (mod $mname:ident { $($name:ident = $bits:expr),+ }) => {
         #[allow(non_snake_case)]
         mod $mname {
@@ -2523,9 +2523,9 @@ macro_rules! def_type_content_sets(
              )+
         }
     }
-)
+}
 
-def_type_content_sets!(
+def_type_content_sets! {
     mod TC {
         None                                = 0b0000_0000__0000_0000__0000,
 
@@ -2576,7 +2576,7 @@ def_type_content_sets!(
         // All bits
         All                                 = 0b1111_1111__1111_1111__1111
     }
-)
+}
 
 impl TypeContents {
     pub fn when(&self, cond: bool) -> TypeContents {
@@ -2886,7 +2886,7 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
 
             ty_open(t) => {
                 let result = tc_ty(cx, t, cache);
-                assert!(!result.is_sized(cx))
+                assert!(!result.is_sized(cx));
                 result.unsafe_pointer() | TC::Nonsized
             }
 
@@ -3391,7 +3391,7 @@ pub fn unsized_part_of_type(cx: &ctxt, ty: t) -> t {
             let unsized_fields: Vec<_> = struct_fields(cx, def_id, substs).iter()
                 .map(|f| f.mt.ty).filter(|ty| !type_is_sized(cx, *ty)).collect();
             // Exactly one of the fields must be unsized.
-            assert!(unsized_fields.len() == 1)
+            assert!(unsized_fields.len() == 1);
 
             unsized_part_of_type(cx, unsized_fields[0])
         }
@@ -5579,7 +5579,7 @@ pub fn hash_crate_independent(tcx: &ctxt, t: t, svh: &Svh) -> u64 {
                 match c.store {
                     UniqTraitStore => byte!(0),
                     RegionTraitStore(r, m) => {
-                        byte!(1)
+                        byte!(1);
                         region(&mut state, r);
                         assert_eq!(m, ast::MutMutable);
                     }

@@ -23,14 +23,14 @@ use prelude::*;
 use io::{mod, IoResult, IoError};
 use sys_common::mkerr_libc;
 
-macro_rules! helper_init( (static $name:ident: Helper<$m:ty>) => (
+macro_rules! helper_init { (static $name:ident: Helper<$m:ty>) => (
     static $name: Helper<$m> = Helper {
         lock: ::rt::mutex::NATIVE_MUTEX_INIT,
         chan: ::cell::UnsafeCell { value: 0 as *mut Sender<$m> },
         signal: ::cell::UnsafeCell { value: 0 },
         initialized: ::cell::UnsafeCell { value: false },
     };
-) )
+) }
 
 pub mod c;
 pub mod fs;

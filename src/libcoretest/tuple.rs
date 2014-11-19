@@ -25,7 +25,7 @@ fn test_getters() {
             *$x.$mutN() += $incr;
             assert_eq!(*$x.$refN(), $result);
         })
-    )
+    );
     let mut x = (0u8, 1u16, 2u32, 3u64, 4u, 5i8, 6i16, 7i32, 8i64, 9i, 10f32, 11f64);
     test_getter!(x, val0,  ref0,  mut0,  0,    1,   1);
     test_getter!(x, val1,  ref1,  mut1,  1,    1,   2);
