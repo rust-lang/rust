@@ -26,21 +26,21 @@ use std::io::File;
 
 use syntax::parse;
 use syntax::parse::lexer;
-use rustc::driver::{session, config};
+use rustc::session::{mod, config};
 
 use syntax::ast;
 use syntax::ast::Name;
 use syntax::parse::token;
 use syntax::parse::lexer::TokenAndSpan;
 
-fn parse_token_list(file: &str) -> HashMap<String, Token> {
-    fn id() -> Token {
+fn parse_token_list(file: &str) -> HashMap<String, token::Token> {
+    fn id() -> token::Token {
         token::Ident(ast::Ident { name: Name(0), ctxt: 0, }, token::Plain)
     }
 
     let mut res = HashMap::new();
 
-    res.insert("-1".to_string(), EOF);
+    res.insert("-1".to_string(), token::Eof);
 
     for line in file.split('\n') {
         let eq = match line.trim().rfind('=') {
@@ -60,8 +60,8 @@ fn parse_token_list(file: &str) -> HashMap<String, Token> {
             "INT_SUFFIX"        => id(),
             "SHL"               => token::BinOp(token::Shl),
             "LBRACE"            => token::OpenDelim(token::Brace),
-            "RARROW"            => token::Rarrow,
-            "LIT_STR"           => token::LitStr(Name(0)),
+            "RARROW"            => token::RArrow,
+            "LIT_STR"           => token::Literal(token::Str_(Name(0))),
             "DOTDOT"            => token::DotDot,
             "MOD_SEP"           => token::ModSep,
             "DOTDOTDOT"         => token::DotDotDot,
@@ -71,17 +71,17 @@ fn parse_token_list(file: &str) -> HashMap<String, Token> {
             "ANDAND"            => token::AndAnd,
             "AT"                => token::At,
             "LBRACKET"          => token::OpenDelim(token::Bracket),
-            "LIT_STR_RAW"       => token::LitStrRaw(Name(0), 0),
+            "LIT_STR_RAW"       => token::Literal(token::StrRaw(Name(0), 0)),
             "RPAREN"            => token::CloseDelim(token::Paren),
             "SLASH"             => token::BinOp(token::Slash),
             "COMMA"             => token::Comma,
             "LIFETIME"          => token::Lifetime(ast::Ident { name: Name(0), ctxt: 0 }),
             "CARET"             => token::BinOp(token::Caret),
             "TILDE"             => token::Tilde,
-            "IDENT"             => token::Id(),
+            "IDENT"             => id(),
             "PLUS"              => token::BinOp(token::Plus),
-            "LIT_CHAR"          => token::LitChar(Name(0)),
-            "LIT_BYTE"          => token::LitByte(Name(0)),
+            "LIT_CHAR"          => token::Literal(token::Char(Name(0))),
+            "LIT_BYTE"          => token::Literal(token::Byte(Name(0))),
             "EQ"                => token::Eq,
             "RBRACKET"          => token::CloseDelim(token::Bracket),
             "COMMENT"           => token::Comment,
@@ -95,9 +95,9 @@ fn parse_token_list(file: &str) -> HashMap<String, Token> {
             "BINOP"             => token::BinOp(token::Plus),
             "POUND"             => token::Pound,
             "OROR"              => token::OrOr,
-            "LIT_INTEGER"       => token::LitInteger(Name(0)),
+            "LIT_INTEGER"       => token::Literal(token::Integer(Name(0))),
             "BINOPEQ"           => token::BinOpEq(token::Plus),
-            "LIT_FLOAT"         => token::LitFloat(Name(0)),
+            "LIT_FLOAT"         => token::Literal(token::Float(Name(0))),
             "WHITESPACE"        => token::Whitespace,
             "UNDERSCORE"        => token::Underscore,
             "MINUS"             => token::BinOp(token::Minus),
@@ -107,8 +107,8 @@ fn parse_token_list(file: &str) -> HashMap<String, Token> {
             "OR"                => token::BinOp(token::Or),
             "GT"                => token::Gt,
             "LE"                => token::Le,
-            "LIT_BINARY"        => token::LitBinary(Name(0)),
-            "LIT_BINARY_RAW"    => token::LitBinaryRaw(Name(0), 0),
+            "LIT_BINARY"        => token::Literal(token::Binary(Name(0))),
+            "LIT_BINARY_RAW"    => token::Literal(token::BinaryRaw(Name(0), 0)),
             _                   => continue,
         };
 
@@ -119,7 +119,7 @@ fn parse_token_list(file: &str) -> HashMap<String, Token> {
     res
 }
 
-fn str_to_binop(s: &str) -> BinOpToken {
+fn str_to_binop(s: &str) -> token::BinOpToken {
     match s {
         "+"     => token::Plus,
         "/"     => token::Slash,
@@ -167,7 +167,7 @@ fn count(lit: &str) -> uint {
     lit.chars().take_while(|c| *c == '#').count()
 }
 
-fn parse_antlr_token(s: &str, tokens: &HashMap<String, Token>) -> TokenAndSpan {
+fn parse_antlr_token(s: &str, tokens: &HashMap<String, token::Token>) -> TokenAndSpan {
     let re = regex!(
       r"\[@(?P<seq>\d+),(?P<start>\d+):(?P<end>\d+)='(?P<content>.+?)',<(?P<toknum>-?\d+)>,\d+:\d+]"
     );
@@ -178,7 +178,7 @@ fn parse_antlr_token(s: &str, tokens: &HashMap<String, Token>) -> TokenAndSpan {
     let toknum = m.name("toknum");
     let content = m.name("content");
 
-    let proto_tok = tokens.get(&toknum).expect(format!("didn't find token {} in the map",
+    let proto_tok = tokens.get(toknum).expect(format!("didn't find token {} in the map",
                                                               toknum).as_slice());
 
     let nm = parse::token::intern(content);
@@ -189,22 +189,25 @@ fn parse_antlr_token(s: &str, tokens: &HashMap<String, Token>) -> TokenAndSpan {
         token::BinOp(..)           => token::BinOp(str_to_binop(content)),
         token::BinOpEq(..)         => token::BinOpEq(str_to_binop(content.slice_to(
                                                                     content.len() - 1))),
-        token::LitStr(..)          => token::LitStr(fix(content)),
-        token::LitStrRaw(..)       => token::LitStrRaw(fix(content), count(content)),
-        token::LitChar(..)         => token::LitChar(fixchar(content)),
-        token::LitByte(..)         => token::LitByte(fixchar(content)),
+        token::Literal(token::Str_(..))      => token::Literal(token::Str_(fix(content))),
+        token::Literal(token::StrRaw(..))    => token::Literal(token::StrRaw(fix(content),
+                                                                             count(content))),
+        token::Literal(token::Char(..))      => token::Literal(token::Char(fixchar(content))),
+        token::Literal(token::Byte(..))      => token::Literal(token::Byte(fixchar(content))),
         token::DocComment(..)      => token::DocComment(nm),
-        token::LitInteger(..)      => token::LitInteger(nm),
-        token::LitFloat(..)        => token::LitFloat(nm),
-        token::LitBinary(..)       => token::LitBinary(nm),
-        token::LitBinaryRaw(..)    => token::LitBinaryRaw(fix(content), count(content)),
+        token::Literal(token::Integer(..))   => token::Literal(token::Integer(nm)),
+        token::Literal(token::Float(..))     => token::Literal(token::Float(nm)),
+        token::Literal(token::Binary(..))    => token::Literal(token::Binary(nm)),
+        token::Literal(token::BinaryRaw(..)) => token::Literal(token::BinaryRaw(fix(content),
+                                                                                count(content))),
         token::Ident(..)           => token::Ident(ast::Ident { name: nm, ctxt: 0 },
                                                    token::ModName),
         token::Lifetime(..)        => token::Lifetime(ast::Ident { name: nm, ctxt: 0 }),
         ref t => t.clone()
     };
 
-    let offset = if real_tok == EOF {
+    let offset = if real_tok == token::Eof
+ {
         1
     } else {
         0
@@ -222,7 +225,7 @@ fn parse_antlr_token(s: &str, tokens: &HashMap<String, Token>) -> TokenAndSpan {
     }
 }
 
-fn tok_cmp(a: &Token, b: &Token) -> bool {
+fn tok_cmp(a: &token::Token, b: &token::Token) -> bool {
     match a {
         &token::Ident(id, _) => match b {
                 &token::Ident(id2, _) => id == id2,
@@ -240,17 +243,17 @@ fn main() {
 
     let args = std::os::args();
 
-    let mut token_file = File::open(&Path::new(args.get(2).as_slice()));
+    let mut token_file = File::open(&Path::new(args[2].as_slice()));
     let token_map = parse_token_list(token_file.read_to_string().unwrap().as_slice());
 
     let mut stdin = std::io::stdin();
     let mut antlr_tokens = stdin.lines().map(|l| parse_antlr_token(l.unwrap().as_slice().trim(),
                                                                    &token_map));
 
-    let code = File::open(&Path::new(args.get(1).as_slice())).unwrap().read_to_string().unwrap();
+    let code = File::open(&Path::new(args[1].as_slice())).unwrap().read_to_string().unwrap();
     let options = config::basic_options();
     let session = session::build_session(options, None,
-                                         syntax::diagnostics::registry::Registry::new([]));
+                                         syntax::diagnostics::registry::Registry::new(&[]));
     let filemap = parse::string_to_filemap(&session.parse_sess,
                                            code,
                                            String::from_str("<n/a>"));
@@ -258,7 +261,7 @@ fn main() {
 
     for antlr_tok in antlr_tokens {
         let rustc_tok = next(&mut lexer);
-        if rustc_tok.tok == EOF && antlr_tok.tok == EOF {
+        if rustc_tok.tok == token::Eof && antlr_tok.tok == token::Eof {
             continue
         }
 
@@ -284,19 +287,19 @@ fn main() {
         )
 
         matches!(
-            LitByte(..),
-            LitChar(..),
-            LitInteger(..),
-            LitFloat(..),
-            LitStr(..),
-            LitStrRaw(..),
-            LitBinary(..),
-            LitBinaryRaw(..),
-            Ident(..),
-            Lifetime(..),
-            Interpolated(..),
-            DocComment(..),
-            Shebang(..)
+            token::Literal(token::Byte(..)),
+            token::Literal(token::Char(..)),
+            token::Literal(token::Integer(..)),
+            token::Literal(token::Float(..)),
+            token::Literal(token::Str_(..)),
+            token::Literal(token::StrRaw(..)),
+            token::Literal(token::Binary(..)),
+            token::Literal(token::BinaryRaw(..)),
+            token::Ident(..),
+            token::Lifetime(..),
+            token::Interpolated(..),
+            token::DocComment(..),
+            token::Shebang(..)
         );
     }
 }
