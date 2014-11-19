@@ -165,7 +165,7 @@ impl<Sized? P> Path where P: AsPath {
     pub fn new(path: &str) -> &Path;
 
     pub fn as_str(&self) -> Option<&str>
-    pub fn as_str_lossy(&self) -> Cow<String, str>; // Cow will replace MaybeOwned
+    pub fn to_str_lossy(&self) -> Cow<String, str>; // Cow will replace MaybeOwned
     pub fn to_owned(&self) -> PathBuf;
 
     // iterate over the components of a path
