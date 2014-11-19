@@ -75,12 +75,6 @@ impl fmt::Show for ItemType {
     }
 }
 
-impl fmt::Unsigned for ItemType {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        (*self as uint).fmt(f)
-    }
-}
-
 pub fn shortty(item: &clean::Item) -> ItemType {
     match item.inner {
         clean::ModuleItem(..)          => Module,

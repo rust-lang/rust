@@ -131,7 +131,7 @@ fn new_sctable_internal() -> SCTable {
 pub fn display_sctable(table: &SCTable) {
     error!("SC table:");
     for (idx,val) in table.table.borrow().iter().enumerate() {
-        error!("{:4u} : {}",idx,val);
+        error!("{:4} : {}",idx,val);
     }
 }
 

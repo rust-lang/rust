@@ -67,7 +67,7 @@ pub enum CleanupScopeKind<'blk, 'tcx: 'blk> {
 }
 
 impl<'blk, 'tcx: 'blk> fmt::Show for CleanupScopeKind<'blk, 'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::FormatError> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             CustomScopeKind => write!(f, "CustomScopeKind"),
             AstScopeKind(nid) => write!(f, "AstScopeKind({})", nid),

@@ -95,7 +95,7 @@ impl Ident {
     }
 
     pub fn encode_with_hygiene(&self) -> String {
-        format!("\x00name_{:u},ctxt_{:u}\x00",
+        format!("\x00name_{},ctxt_{}\x00",
                 self.name.uint(),
                 self.ctxt)
     }
