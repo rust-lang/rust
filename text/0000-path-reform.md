@@ -221,6 +221,13 @@ comment:
   than creating now ones. As we'll see below, there are *platform-specific* ways
   to crate non-Unicode paths.)
 
+* **Why no `Path::as_bytes` method?** There is no cross-platform way to expose
+  paths directly in terms of byte sequences, because each platform extends
+  beyond Unicode in its own way. In particular, Unix platforms accept arbitrary
+  u8 sequences, while Windows accepts arbitrary *u16* sequences (both modulo
+  disallowing interior 0s). So the only way to safely interpret a sequence of
+  bytes across platforms is as UTF-8.
+
 * **Why do `file_name` and `extension` operations work with `Path` rather than
   some other type?** In particular, it may seem strange to view an extension as
   a path. But doing so allows us to not reveal platform differences about the
@@ -236,6 +243,13 @@ comment:
 * **How does `Path::new` work?** The ability to directly get a `&Path` from an
   `&str` (i.e., with no allocation or other work) is a key part of the
   representation choices, which are described below.
+
+* **Where is the `normalize` method?** Since the path type no longer internally
+  normalizes, it may be useful to explicitly request normalization. This can be
+  done by writing `let normalized: PathBuf = p.iter().collect()` for a path `p`,
+  because the iterator performs some on-the-fly normalization (see
+  below). **NOTE* this normalization does *not* include removing `..`, for the
+  reasons explained at the beginning of the RFC.
 
 ## Important semantic rules
 
@@ -332,7 +346,8 @@ extended functionality directly on `std::path::Path`? In this case, you will be
 able to import the appropriate extension trait via `os::unix` or `os::windows`,
 depending on your platform. This is part of a new, general strategy for
 explicitly "opting-in" to platform-specific features by importing from
-`os::some_platform`.
+`os::some_platform` (where the `some_platform` submodule is available only on
+that platform.)
 
 ### Unix
 
