@@ -194,27 +194,19 @@ only controls whether to search for and run a plugin registrar function.  The
 plugin itself will decide whether it's to be linked at runtime, by calling a
 `Registry` method.
 
-# Other improvements
-
-These are somewhat related to the above, but could be spun off into separate
-RFCs.
-
-## Arguments to `#[plugin]`
-
-`#[plugin]` will take an optional "arguments list" of the form
+`#[plugin]` can optionally take any [meta
+items](http://doc.rust-lang.org/syntax/ast/enum.MetaItem_.html) as "arguments",
+e.g.
 
 ```rust
-#[plugin(foo="bar", ... any metas ...)]
+#[plugin(foo, bar=3, baz(quux))]
 extern crate myplugin;
 ```
 
-rustc itself will not interpret these attribute [meta
-items](http://doc.rust-lang.org/syntax/ast/enum.MetaItem_.html), but will make
-them available to the plugin through a `Registry` method.
-
-This facilitates plugin configuration.  The alternative in many cases is to use
-interacting side effects between procedural macros, which are harder to reason
-about.
+rustc itself will not interpret these arguments, but will make them available
+to the plugin through a `Registry` method.  This facilitates plugin
+configuration.  The alternative in many cases is to use interacting side
+effects between procedural macros, which are harder to reason about.
 
 # Miscellaneous remarks
 
