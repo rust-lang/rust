@@ -128,13 +128,17 @@ fn doit(sess: &parse::ParseSess, mut lexer: lexer::StringReader,
                 }
             }
 
-            // text literals
-            token::Literal(token::Byte(..)) | token::Literal(token::Char(..)) |
-                token::Literal(token::Binary(..)) | token::Literal(token::BinaryRaw(..)) |
-                token::Literal(token::Str_(..)) | token::Literal(token::StrRaw(..)) => "string",
+            token::Literal(lit, _suf) => {
+                match lit {
+                    // text literals
+                    token::Byte(..) | token::Char(..) |
+                        token::Binary(..) | token::BinaryRaw(..) |
+                        token::Str_(..) | token::StrRaw(..) => "string",
 
-            // number literals
-            token::Literal(token::Integer(..)) | token::Literal(token::Float(..)) => "number",
+                    // number literals
+                    token::Integer(..) | token::Float(..) => "number",
+                }
+            }
 
             // keywords are also included in the identifier set
             token::Ident(ident, _is_mod_sep) => {

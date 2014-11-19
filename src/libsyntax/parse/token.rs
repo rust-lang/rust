@@ -72,6 +72,19 @@ pub enum Lit {
     BinaryRaw(ast::Name, uint), /* raw binary str delimited by n hash symbols */
 }
 
+impl Lit {
+    pub fn short_name(&self) -> &'static str {
+        match *self {
+            Byte(_) => "byte",
+            Char(_) => "char",
+            Integer(_) => "integer",
+            Float(_) => "float",
+            Str_(_) | StrRaw(..) => "str",
+            Binary(_) | BinaryRaw(..) => "binary str"
+        }
+    }
+}
+
 #[allow(non_camel_case_types)]
 #[deriving(Clone, Encodable, Decodable, PartialEq, Eq, Hash, Show)]
 pub enum Token {
@@ -111,7 +124,7 @@ pub enum Token {
     CloseDelim(DelimToken),
 
     /* Literals */
-    Literal(Lit),
+    Literal(Lit, Option<ast::Name>),
 
     /* Name components */
     Ident(ast::Ident, IdentStyle),
@@ -151,7 +164,7 @@ impl Token {
             Ident(_, _)                 => true,
             Underscore                  => true,
             Tilde                       => true,
-            Literal(_)                  => true,
+            Literal(_, _)               => true,
             Pound                       => true,
             At                          => true,
             Not                         => true,
@@ -172,7 +185,7 @@ impl Token {
     /// Returns `true` if the token is any literal
     pub fn is_lit(&self) -> bool {
         match *self {
-            Literal(_) => true,
+            Literal(_, _) => true,
             _          => false,
         }
     }

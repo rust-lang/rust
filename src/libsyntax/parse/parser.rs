@@ -646,6 +646,20 @@ impl<'a> Parser<'a> {
         }
     }
 
+    pub fn expect_no_suffix(&mut self, sp: Span, kind: &str, suffix: Option<ast::Name>) {
+        match suffix {
+            None => {/* everything ok */}
+            Some(suf) => {
+                let text = suf.as_str();
+                if text.is_empty() {
+                    self.span_bug(sp, "found empty non-None literal suffix")
+                }
+                self.span_err(sp, &*format!("a {} with a suffix is illegal", kind));
+            }
+        }
+    }
+
+
     /// Attempt to consume a `<`. If `<<` is seen, replace it with a single
     /// `<` and continue. If a `<` is not seen, return false.
     ///
@@ -967,6 +981,9 @@ impl<'a> Parser<'a> {
     }
     pub fn span_err(&mut self, sp: Span, m: &str) {
         self.sess.span_diagnostic.span_err(sp, m)
+    }
+    pub fn span_bug(&mut self, sp: Span, m: &str) -> ! {
+        self.sess.span_diagnostic.span_bug(sp, m)
     }
     pub fn abort_if_errors(&mut self) {
         self.sess.span_diagnostic.handler().abort_if_errors();
@@ -1640,24 +1657,40 @@ impl<'a> Parser<'a> {
     /// Matches token_lit = LIT_INTEGER | ...
     pub fn lit_from_token(&mut self, tok: &token::Token) -> Lit_ {
         match *tok {
-            token::Literal(token::Byte(i)) => LitByte(parse::byte_lit(i.as_str()).val0()),
-            token::Literal(token::Char(i)) => LitChar(parse::char_lit(i.as_str()).val0()),
-            token::Literal(token::Integer(s)) => parse::integer_lit(s.as_str(),
-                                                        &self.sess.span_diagnostic,
-                                                       self.last_span),
-            token::Literal(token::Float(s)) => parse::float_lit(s.as_str()),
-            token::Literal(token::Str_(s)) => {
-                LitStr(token::intern_and_get_ident(parse::str_lit(s.as_str()).as_slice()),
-                       ast::CookedStr)
+            token::Literal(lit, suf) => {
+                let (suffix_illegal, out) = match lit {
+                    token::Byte(i) => (true, LitByte(parse::byte_lit(i.as_str()).val0())),
+                    token::Char(i) => (true, LitChar(parse::char_lit(i.as_str()).val0())),
+                    token::Integer(s) => (false, parse::integer_lit(s.as_str(),
+                                                            &self.sess.span_diagnostic,
+                                                            self.last_span)),
+                    token::Float(s) => (false, parse::float_lit(s.as_str())),
+                    token::Str_(s) => {
+                        (true,
+                         LitStr(token::intern_and_get_ident(parse::str_lit(s.as_str()).as_slice()),
+                                ast::CookedStr))
+                    }
+                    token::StrRaw(s, n) => {
+                        (true,
+                         LitStr(
+                            token::intern_and_get_ident(
+                                parse::raw_str_lit(s.as_str()).as_slice()),
+                            ast::RawStr(n)))
+                    }
+                    token::Binary(i) =>
+                        (true, LitBinary(parse::binary_lit(i.as_str()))),
+                    token::BinaryRaw(i, _) =>
+                        (true,
+                         LitBinary(Rc::new(i.as_str().as_bytes().iter().map(|&x| x).collect()))),
+                };
+
+                if suffix_illegal {
+                    let sp = self.last_span;
+                    self.expect_no_suffix(sp, &*format!("{} literal", lit.short_name()), suf)
+                }
+
+                out
             }
-            token::Literal(token::StrRaw(s, n)) => {
-                LitStr(token::intern_and_get_ident(parse::raw_str_lit(s.as_str()).as_slice()),
-                       ast::RawStr(n))
-            }
-            token::Literal(token::Binary(i)) =>
-                LitBinary(parse::binary_lit(i.as_str())),
-            token::Literal(token::BinaryRaw(i, _)) =>
-                LitBinary(Rc::new(i.as_str().as_bytes().iter().map(|&x| x).collect())),
             _ => { self.unexpected_last(tok); }
         }
     }
@@ -2424,7 +2457,10 @@ impl<'a> Parser<'a> {
                         }
                     }
                   }
-                  token::Literal(token::Integer(n)) => {
+                  token::Literal(token::Integer(n), suf) => {
+                    let sp = self.span;
+                    self.expect_no_suffix(sp, "tuple index", suf);
+
                     let index = n.as_str();
                     let dot = self.last_span.hi;
                     hi = self.span.hi;
@@ -2449,7 +2485,7 @@ impl<'a> Parser<'a> {
                         }
                     }
                   }
-                  token::Literal(token::Float(n)) => {
+                  token::Literal(token::Float(n), _suf) => {
                     self.bump();
                     let last_span = self.last_span;
                     let fstr = n.as_str();
@@ -5085,12 +5121,17 @@ impl<'a> Parser<'a> {
                 self.expect(&token::Semi);
                 (path, the_ident)
             },
-            token::Literal(token::Str_(..)) | token::Literal(token::StrRaw(..)) => {
-                let path = self.parse_str();
+            token::Literal(token::Str_(..), suf) | token::Literal(token::StrRaw(..), suf) => {
+                let sp = self.span;
+                self.expect_no_suffix(sp, "extern crate name", suf);
+                // forgo the internal suffix check of `parse_str` to
+                // avoid repeats (this unwrap will always succeed due
+                // to the restriction of the `match`)
+                let (s, style, _) = self.parse_optional_str().unwrap();
                 self.expect_keyword(keywords::As);
                 let the_ident = self.parse_ident();
                 self.expect(&token::Semi);
-                (Some(path), the_ident)
+                (Some((s, style)), the_ident)
             },
             _ => {
                 let span = self.span;
@@ -5267,7 +5308,9 @@ impl<'a> Parser<'a> {
     /// the `extern` keyword, if one is found.
     fn parse_opt_abi(&mut self) -> Option<abi::Abi> {
         match self.token {
-            token::Literal(token::Str_(s)) | token::Literal(token::StrRaw(s, _)) => {
+            token::Literal(token::Str_(s), suf) | token::Literal(token::StrRaw(s, _), suf) => {
+                let sp = self.span;
+                self.expect_no_suffix(sp, "ABI spec", suf);
                 self.bump();
                 let the_string = s.as_str();
                 match abi::lookup(the_string) {
@@ -5902,21 +5945,27 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse_optional_str(&mut self)
-                              -> Option<(InternedString, ast::StrStyle)> {
-        let (s, style) = match self.token {
-            token::Literal(token::Str_(s)) => (self.id_to_interned_str(s.ident()), ast::CookedStr),
-            token::Literal(token::StrRaw(s, n)) => {
-                (self.id_to_interned_str(s.ident()), ast::RawStr(n))
+                              -> Option<(InternedString, ast::StrStyle, Option<ast::Name>)> {
+        let ret = match self.token {
+            token::Literal(token::Str_(s), suf) => {
+                (self.id_to_interned_str(s.ident()), ast::CookedStr, suf)
+            }
+            token::Literal(token::StrRaw(s, n), suf) => {
+                (self.id_to_interned_str(s.ident()), ast::RawStr(n), suf)
             }
             _ => return None
         };
         self.bump();
-        Some((s, style))
+        Some(ret)
     }
 
     pub fn parse_str(&mut self) -> (InternedString, StrStyle) {
         match self.parse_optional_str() {
-            Some(s) => { s }
+            Some((s, style, suf)) => {
+                let sp = self.last_span;
+                self.expect_no_suffix(sp, "str literal", suf);
+                (s, style)
+            }
             _ =>  self.fatal("expected string literal")
         }
     }
