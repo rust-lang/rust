@@ -1678,10 +1678,10 @@ impl<'a> Iterator<uint> for TwoBitPositions<'a> {
 mod tests {
     use std::prelude::*;
     use std::iter::range_step;
-    use std::u32;
     use std::rand;
     use std::rand::Rng;
-    use test::Bencher;
+    use std::u32;
+    use test::{Bencher, black_box};
 
     use super::{Bitv, BitvSet, from_fn, from_bytes};
     use bitv;
@@ -2676,8 +2676,8 @@ mod tests {
             for _ in range(0u, 100) {
                 bitv |= 1 << ((r.next_u32() as uint) % u32::BITS);
             }
-            &bitv
-        })
+            black_box(&bitv)
+        });
     }
 
     #[bench]
@@ -2688,8 +2688,8 @@ mod tests {
             for _ in range(0u, 100) {
                 bitv.set((r.next_u32() as uint) % BENCH_BITS, true);
             }
-            &bitv
-        })
+            black_box(&bitv)
+        });
     }
 
     #[bench]
@@ -2700,8 +2700,8 @@ mod tests {
             for _ in range(0u, 100) {
                 bitv.set((r.next_u32() as uint) % BENCH_BITS, r.gen());
             }
-            &bitv
-        })
+            black_box(&bitv);
+        });
     }
 
     #[bench]
@@ -2712,8 +2712,8 @@ mod tests {
             for _ in range(0u, 100) {
                 bitv.set((r.next_u32() as uint) % u32::BITS, true);
             }
-            &bitv
-        })
+            black_box(&bitv);
+        });
     }
 
     #[bench]
@@ -2724,8 +2724,8 @@ mod tests {
             for _ in range(0u, 100) {
                 bitv.insert((r.next_u32() as uint) % u32::BITS);
             }
-            &bitv
-        })
+            black_box(&bitv);
+        });
     }
 
     #[bench]
@@ -2736,8 +2736,8 @@ mod tests {
             for _ in range(0u, 100) {
                 bitv.insert((r.next_u32() as uint) % BENCH_BITS);
             }
-            &bitv
-        })
+            black_box(&bitv);
+        });
     }
 
     #[bench]
