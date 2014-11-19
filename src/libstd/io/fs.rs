@@ -71,6 +71,9 @@ use vec::Vec;
 use sys::fs as fs_imp;
 use sys_common;
 
+pub use sys_common::AsFileDesc;
+pub use sys::fs::{fd_t, FileDesc};
+
 /// Unconstrained file access type that exposes read and write operations
 ///
 /// Can be constructed via `File::open()`, `File::create()`, and
