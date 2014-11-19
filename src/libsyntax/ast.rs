@@ -838,7 +838,7 @@ impl TokenTree {
                     tts: vec![TtToken(sp, token::Ident(token::str_to_ident("doc"),
                                                        token::Plain)),
                               TtToken(sp, token::Eq),
-                              TtToken(sp, token::Literal(token::Str_(name)))],
+                              TtToken(sp, token::Literal(token::Str_(name), None))],
                     close_span: sp,
                 }))
             }

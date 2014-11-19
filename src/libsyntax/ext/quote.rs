@@ -543,10 +543,13 @@ fn mk_delim(cx: &ExtCtxt, sp: Span, delim: token::DelimToken) -> P<ast::Expr> {
 #[allow(non_upper_case_globals)]
 fn mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> P<ast::Expr> {
     macro_rules! mk_lit {
-        ($name: expr, $($args: expr),*) => {{
+        ($name: expr, $suffix: expr, $($args: expr),*) => {{
             let inner = cx.expr_call(sp, mk_token_path(cx, sp, $name), vec![$($args),*]);
-
-            cx.expr_call(sp, mk_token_path(cx, sp, "Literal"), vec![inner])
+            let suffix = match $suffix {
+                Some(name) => cx.expr_some(sp, mk_name(cx, sp, ast::Ident::new(name))),
+                None => cx.expr_none(sp)
+            };
+            cx.expr_call(sp, mk_token_path(cx, sp, "Literal"), vec![inner, suffix])
         }}
     }
     match *tok {
@@ -567,32 +570,32 @@ fn mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> P<ast::Expr> {
                                 vec![mk_delim(cx, sp, delim)]);
         }
 
-        token::Literal(token::Byte(i)) => {
+        token::Literal(token::Byte(i), suf) => {
             let e_byte = mk_name(cx, sp, i.ident());
-            return mk_lit!("Byte", e_byte);
+            return mk_lit!("Byte", suf, e_byte);
         }
 
-        token::Literal(token::Char(i)) => {
+        token::Literal(token::Char(i), suf) => {
             let e_char = mk_name(cx, sp, i.ident());
-            return mk_lit!("Char", e_char);
+            return mk_lit!("Char", suf, e_char);
         }
 
-        token::Literal(token::Integer(i)) => {
+        token::Literal(token::Integer(i), suf) => {
             let e_int = mk_name(cx, sp, i.ident());
-            return mk_lit!("Integer", e_int);
+            return mk_lit!("Integer", suf, e_int);
         }
 
-        token::Literal(token::Float(fident)) => {
+        token::Literal(token::Float(fident), suf) => {
             let e_fident = mk_name(cx, sp, fident.ident());
-            return mk_lit!("Float", e_fident);
+            return mk_lit!("Float", suf, e_fident);
         }
 
-        token::Literal(token::Str_(ident)) => {
-            return mk_lit!("Str_", mk_name(cx, sp, ident.ident()))
+        token::Literal(token::Str_(ident), suf) => {
+            return mk_lit!("Str_", suf, mk_name(cx, sp, ident.ident()))
         }
 
-        token::Literal(token::StrRaw(ident, n)) => {
-            return mk_lit!("StrRaw", mk_name(cx, sp, ident.ident()), cx.expr_uint(sp, n))
+        token::Literal(token::StrRaw(ident, n), suf) => {
+            return mk_lit!("StrRaw", suf, mk_name(cx, sp, ident.ident()), cx.expr_uint(sp, n))
         }
 
         token::Ident(ident, style) => {
