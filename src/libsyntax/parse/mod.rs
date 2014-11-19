@@ -511,27 +511,40 @@ pub fn raw_str_lit(lit: &str) -> String {
     res
 }
 
-pub fn float_lit(s: &str) -> ast::Lit_ {
-    debug!("float_lit: {}", s);
+// check if `s` looks like i32 or u1234 etc.
+fn looks_like_width_suffix(first_chars: &[char], s: &str) -> bool {
+    s.len() > 1 &&
+        first_chars.contains(&s.char_at(0)) &&
+        s.slice_from(1).chars().all(|c| '0' <= c && c <= '9')
+}
+
+fn filtered_float_lit(data: token::InternedString, suffix: Option<&str>,
+                      sd: &SpanHandler, sp: Span) -> ast::Lit_ {
+    debug!("filtered_float_lit: {}, {}", data, suffix);
+    match suffix {
+        Some("f32") => ast::LitFloat(data, ast::TyF32),
+        Some("f64") => ast::LitFloat(data, ast::TyF64),
+        Some(suf) => {
+            if suf.len() >= 2 && looks_like_width_suffix(&['f'], suf) {
+                // if it looks like a width, lets try to be helpful.
+                sd.span_err(sp, &*format!("illegal width `{}` for float literal, \
+                                          valid widths are 32 and 64", suf.slice_from(1)));
+            } else {
+                sd.span_err(sp, &*format!("illegal suffix `{}` for float literal, \
+                                          valid suffixes are `f32` and `f64`", suf));
+            }
+
+            ast::LitFloatUnsuffixed(data)
+        }
+        None => ast::LitFloatUnsuffixed(data)
+    }
+}
+pub fn float_lit(s: &str, suffix: Option<&str>, sd: &SpanHandler, sp: Span) -> ast::Lit_ {
+    debug!("float_lit: {}, {}", s, suffix);
     // FIXME #2252: bounds checking float literals is defered until trans
-    let s2 = s.chars().filter(|&c| c != '_').collect::<String>();
-    let s = s2.as_slice();
-
-    let mut ty = None;
-
-    if s.ends_with("f32") {
-        ty = Some(ast::TyF32);
-    } else if s.ends_with("f64") {
-        ty = Some(ast::TyF64);
-    }
-
-
-    match ty {
-        Some(t) => {
-            ast::LitFloat(token::intern_and_get_ident(s.slice_to(s.len() - t.suffix_len())), t)
-        },
-        None => ast::LitFloatUnsuffixed(token::intern_and_get_ident(s))
-    }
+    let s = s.chars().filter(|&c| c != '_').collect::<String>();
+    let data = token::intern_and_get_ident(&*s);
+    filtered_float_lit(data, suffix, sd, sp)
 }
 
 /// Parse a string representing a byte literal into its final form. Similar to `char_lit`
@@ -626,24 +639,19 @@ pub fn binary_lit(lit: &str) -> Rc<Vec<u8>> {
     Rc::new(res)
 }
 
-pub fn integer_lit(s: &str, sd: &SpanHandler, sp: Span) -> ast::Lit_ {
+pub fn integer_lit(s: &str, suffix: Option<&str>, sd: &SpanHandler, sp: Span) -> ast::Lit_ {
     // s can only be ascii, byte indexing is fine
 
     let s2 = s.chars().filter(|&c| c != '_').collect::<String>();
     let mut s = s2.as_slice();
 
-    debug!("parse_integer_lit: {}", s);
-
-    if s.len() == 1 {
-        let n = (s.char_at(0)).to_digit(10).unwrap();
-        return ast::LitInt(n as u64, ast::UnsuffixedIntLit(ast::Sign::new(n)));
-    }
+    debug!("integer_lit: {}, {}", s, suffix);
 
     let mut base = 10;
     let orig = s;
     let mut ty = ast::UnsuffixedIntLit(ast::Plus);
 
-    if s.char_at(0) == '0' {
+    if s.char_at(0) == '0' && s.len() > 1 {
         match s.char_at(1) {
             'x' => base = 16,
             'o' => base = 8,
@@ -652,57 +660,56 @@ pub fn integer_lit(s: &str, sd: &SpanHandler, sp: Span) -> ast::Lit_ {
         }
     }
 
+    // 1f64 and 2f32 etc. are valid float literals.
+    match suffix {
+        Some(suf) if looks_like_width_suffix(&['f'], suf) => {
+            match base {
+                16u => sd.span_err(sp, "hexadecimal float literal is not supported"),
+                8u => sd.span_err(sp, "octal float literal is not supported"),
+                2u => sd.span_err(sp, "binary float literal is not supported"),
+                _ => ()
+            }
+            let ident = token::intern_and_get_ident(&*s);
+            return filtered_float_lit(ident, suffix, sd, sp)
+        }
+        _ => {}
+    }
+
     if base != 10 {
         s = s.slice_from(2);
     }
 
-    let last = s.len() - 1;
-    match s.char_at(last) {
-        'i' => ty = ast::SignedIntLit(ast::TyI, ast::Plus),
-        'u' => ty = ast::UnsignedIntLit(ast::TyU),
-        '8' => {
-            if s.len() > 2 {
-                match s.char_at(last - 1) {
-                    'i' => ty = ast::SignedIntLit(ast::TyI8, ast::Plus),
-                    'u' => ty = ast::UnsignedIntLit(ast::TyU8),
-                    _ => { }
+    if let Some(suf) = suffix {
+        if suf.is_empty() { sd.span_bug(sp, "found empty literal suffix in Some")}
+        ty = match suf {
+            "i"   => ast::SignedIntLit(ast::TyI, ast::Plus),
+            "i8"  => ast::SignedIntLit(ast::TyI8, ast::Plus),
+            "i16" => ast::SignedIntLit(ast::TyI16, ast::Plus),
+            "i32" => ast::SignedIntLit(ast::TyI32, ast::Plus),
+            "i64" => ast::SignedIntLit(ast::TyI64, ast::Plus),
+            "u"   => ast::UnsignedIntLit(ast::TyU),
+            "u8"  => ast::UnsignedIntLit(ast::TyU8),
+            "u16" => ast::UnsignedIntLit(ast::TyU16),
+            "u32" => ast::UnsignedIntLit(ast::TyU32),
+            "u64" => ast::UnsignedIntLit(ast::TyU64),
+            _ => {
+                // i<digits> and u<digits> look like widths, so lets
+                // give an error message along those lines
+                if looks_like_width_suffix(&['i', 'u'], suf) {
+                    sd.span_err(sp, &*format!("illegal width `{}` for integer literal; \
+                                              valid widths are 8, 16, 32 and 64",
+                                              suf.slice_from(1)));
+                } else {
+                    sd.span_err(sp, &*format!("illegal suffix `{}` for numeric literal", suf));
                 }
+
+                ty
             }
-        },
-        '6' => {
-            if s.len() > 3 && s.char_at(last - 1) == '1' {
-                match s.char_at(last - 2) {
-                    'i' => ty = ast::SignedIntLit(ast::TyI16, ast::Plus),
-                    'u' => ty = ast::UnsignedIntLit(ast::TyU16),
-                    _ => { }
-                }
-            }
-        },
-        '2' => {
-            if s.len() > 3 && s.char_at(last - 1) == '3' {
-                match s.char_at(last - 2) {
-                    'i' => ty = ast::SignedIntLit(ast::TyI32, ast::Plus),
-                    'u' => ty = ast::UnsignedIntLit(ast::TyU32),
-                    _ => { }
-                }
-            }
-        },
-        '4' => {
-            if s.len() > 3 && s.char_at(last - 1) == '6' {
-                match s.char_at(last - 2) {
-                    'i' => ty = ast::SignedIntLit(ast::TyI64, ast::Plus),
-                    'u' => ty = ast::UnsignedIntLit(ast::TyU64),
-                    _ => { }
-                }
-            }
-        },
-        _ => { }
+        }
     }
 
-    debug!("The suffix is {}, base {}, the new string is {}, the original \
-           string was {}", ty, base, s, orig);
-
-    s = s.slice_to(s.len() - ty.suffix_len());
+    debug!("integer_lit: the type is {}, base {}, the new string is {}, the original \
+           string was {}, the original suffix was {}", ty, base, s, orig, suffix);
 
     let res: u64 = match ::std::num::from_str_radix(s, base) {
         Some(r) => r,

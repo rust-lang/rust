@@ -672,16 +672,6 @@ impl<'a> StringReader<'a> {
                 '0'...'9' | '_' | '.' => {
                     num_digits = self.scan_digits(10) + 1;
                 }
-                'u' | 'i' => {
-                    self.scan_int_suffix();
-                    return token::Integer(self.name_from(start_bpos));
-                },
-                'f' => {
-                    let last_pos = self.last_pos;
-                    self.scan_float_suffix();
-                    self.check_float_base(start_bpos, last_pos, base);
-                    return token::Float(self.name_from(start_bpos));
-                }
                 _ => {
                     // just a 0
                     return token::Integer(self.name_from(start_bpos));
@@ -695,8 +685,6 @@ impl<'a> StringReader<'a> {
 
         if num_digits == 0 {
             self.err_span_(start_bpos, self.last_pos, "no valid digits found for number");
-            // eat any suffix
-            self.scan_int_suffix();
             return token::Integer(token::intern("0"));
         }
 
@@ -711,14 +699,7 @@ impl<'a> StringReader<'a> {
             if self.curr.unwrap_or('\0').is_digit_radix(10) {
                 self.scan_digits(10);
                 self.scan_float_exponent();
-                self.scan_float_suffix();
             }
-            let last_pos = self.last_pos;
-            self.check_float_base(start_bpos, last_pos, base);
-            return token::Float(self.name_from(start_bpos));
-        } else if self.curr_is('f') {
-            // or it might be an integer literal suffixed as a float
-            self.scan_float_suffix();
             let last_pos = self.last_pos;
             self.check_float_base(start_bpos, last_pos, base);
             return token::Float(self.name_from(start_bpos));
@@ -726,13 +707,11 @@ impl<'a> StringReader<'a> {
             // it might be a float if it has an exponent
             if self.curr_is('e') || self.curr_is('E') {
                 self.scan_float_exponent();
-                self.scan_float_suffix();
                 let last_pos = self.last_pos;
                 self.check_float_base(start_bpos, last_pos, base);
                 return token::Float(self.name_from(start_bpos));
             }
             // but we certainly have an integer!
-            self.scan_int_suffix();
             return token::Integer(self.name_from(start_bpos));
         }
     }
@@ -869,55 +848,6 @@ impl<'a> StringReader<'a> {
         true
     }
 
-    /// Scan over an int literal suffix.
-    fn scan_int_suffix(&mut self) {
-        match self.curr {
-            Some('i') | Some('u') => {
-                self.bump();
-
-                if self.curr_is('8') {
-                    self.bump();
-                } else if self.curr_is('1') {
-                    if !self.nextch_is('6') {
-                        self.err_span_(self.last_pos, self.pos,
-                                      "illegal int suffix");
-                    } else {
-                        self.bump(); self.bump();
-                    }
-                } else if self.curr_is('3') {
-                    if !self.nextch_is('2') {
-                        self.err_span_(self.last_pos, self.pos,
-                                      "illegal int suffix");
-                    } else {
-                        self.bump(); self.bump();
-                    }
-                } else if self.curr_is('6') {
-                    if !self.nextch_is('4') {
-                        self.err_span_(self.last_pos, self.pos,
-                                      "illegal int suffix");
-                    } else {
-                        self.bump(); self.bump();
-                    }
-                }
-            },
-            _ => { }
-        }
-    }
-
-    /// Scan over a float literal suffix
-    fn scan_float_suffix(&mut self) {
-        if self.curr_is('f') {
-            if (self.nextch_is('3') && self.nextnextch_is('2'))
-            || (self.nextch_is('6') && self.nextnextch_is('4')) {
-                self.bump();
-                self.bump();
-                self.bump();
-            } else {
-                self.err_span_(self.last_pos, self.pos, "illegal float suffix");
-            }
-        }
-    }
-
     /// Scan over a float exponent.
     fn scan_float_exponent(&mut self) {
         if self.curr_is('e') || self.curr_is('E') {
@@ -988,6 +918,7 @@ impl<'a> StringReader<'a> {
         if is_dec_digit(c) {
             let num = self.scan_number(c.unwrap());
             let suffix = self.scan_optional_raw_name();
+            debug!("next_token_inner: scanned number {}, {}", num, suffix);
             return token::Literal(num, suffix)
         }
 
@@ -1609,6 +1540,9 @@ mod test {
         test!("1.0", Float, "1.0");
         test!("1.0e10", Float, "1.0e10");
 
+        assert_eq!(setup(&mk_sh(), "2u".to_string()).next_token().tok,
+                   token::Literal(token::Integer(token::intern("2")),
+                                  Some(token::intern("u"))));
         assert_eq!(setup(&mk_sh(), "r###\"raw\"###suffix".to_string()).next_token().tok,
                    token::Literal(token::StrRaw(token::intern("raw"), 3),
                                   Some(token::intern("suffix"))));

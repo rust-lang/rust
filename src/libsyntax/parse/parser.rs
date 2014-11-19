@@ -652,9 +652,9 @@ impl<'a> Parser<'a> {
             Some(suf) => {
                 let text = suf.as_str();
                 if text.is_empty() {
-                    self.span_bug(sp, "found empty non-None literal suffix")
+                    self.span_bug(sp, "found empty literal suffix in Some")
                 }
-                self.span_err(sp, &*format!("a {} with a suffix is illegal", kind));
+                self.span_err(sp, &*format!("{} with a suffix is illegal", kind));
             }
         }
     }
@@ -1661,10 +1661,23 @@ impl<'a> Parser<'a> {
                 let (suffix_illegal, out) = match lit {
                     token::Byte(i) => (true, LitByte(parse::byte_lit(i.as_str()).val0())),
                     token::Char(i) => (true, LitChar(parse::char_lit(i.as_str()).val0())),
-                    token::Integer(s) => (false, parse::integer_lit(s.as_str(),
-                                                            &self.sess.span_diagnostic,
-                                                            self.last_span)),
-                    token::Float(s) => (false, parse::float_lit(s.as_str())),
+
+                    // there are some valid suffixes for integer and
+                    // float literals, so all the handling is done
+                    // internally.
+                    token::Integer(s) => {
+                        (false, parse::integer_lit(s.as_str(),
+                                                   suf.as_ref().map(|s| s.as_str()),
+                                                   &self.sess.span_diagnostic,
+                                                   self.last_span))
+                    }
+                    token::Float(s) => {
+                        (false, parse::float_lit(s.as_str(),
+                                                 suf.as_ref().map(|s| s.as_str()),
+                                                  &self.sess.span_diagnostic,
+                                                 self.last_span))
+                    }
+
                     token::Str_(s) => {
                         (true,
                          LitStr(token::intern_and_get_ident(parse::str_lit(s.as_str()).as_slice()),
