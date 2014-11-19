@@ -84,6 +84,8 @@ While we know that we've covered all possible cases, Rust can't tell. It
 doesn't know that probability is between 0.0 and 1.0. So we add another case:
 
 ```rust
+use Event::NewRelease;
+
 enum Event {
     NewRelease,
 }
@@ -106,7 +108,7 @@ fn descriptive_probability(event: Event) -> &'static str {
 }
 
 fn main() {
-    std::io::println(descriptive_probability(NewRelease));
+    println!("{}", descriptive_probability(NewRelease));
 }
 ```
 
@@ -151,15 +153,14 @@ enum Version { Version1, Version2 }
 #[deriving(Show)]
 enum ParseError { InvalidHeaderLength, InvalidVersion }
 
-
 fn parse_version(header: &[u8]) -> Result<Version, ParseError> {
     if header.len() < 1 {
-        return Err(InvalidHeaderLength);
+        return Err(ParseError::InvalidHeaderLength);
     }
     match header[0] {
-        1 => Ok(Version1),
-        2 => Ok(Version2),
-        _ => Err(InvalidVersion)
+        1 => Ok(Version::Version1),
+        2 => Ok(Version::Version2),
+        _ => Err(ParseError::InvalidVersion)
     }
 }
 

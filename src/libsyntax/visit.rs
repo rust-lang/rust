@@ -212,7 +212,7 @@ pub fn walk_local<'v, V: Visitor<'v>>(visitor: &mut V, local: &'v Local) {
 
 pub fn walk_lifetime_def<'v, V: Visitor<'v>>(visitor: &mut V,
                                               lifetime_def: &'v LifetimeDef) {
-    visitor.visit_lifetime_ref(&lifetime_def.lifetime);
+    visitor.visit_name(lifetime_def.lifetime.span, lifetime_def.lifetime.name);
     for bound in lifetime_def.bounds.iter() {
         visitor.visit_lifetime_ref(bound);
     }

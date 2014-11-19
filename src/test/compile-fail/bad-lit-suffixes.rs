@@ -36,6 +36,6 @@ fn main() {
 
     1234suffix; //~ ERROR illegal suffix `suffix` for numeric literal
     0b101suffix; //~ ERROR illegal suffix `suffix` for numeric literal
-    1.0suffix; //~ ERROR illegal suffix `suffix` for numeric literal
-    1.0e10suffix; //~ ERROR illegal suffix `suffix` for numeric literal
+    1.0suffix; //~ ERROR illegal suffix `suffix` for float literal
+    1.0e10suffix; //~ ERROR illegal suffix `suffix` for float literal
 }
