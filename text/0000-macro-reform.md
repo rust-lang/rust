@@ -22,8 +22,6 @@ edges](https://github.com/rust-lang/rfcs/issues/440).  A few of the big ones:
 - There's no namespacing at all
 - You can't control which macros are imported from a crate
 - You need the feature-gated `#[phase(plugin)]` to import macros
-- It's confusing that macro definition is itself a macro invocation, with a side effect
-  on the syntax environment
 
 These issues in particular are things we have a chance of addressing for 1.0.
 This RFC contains plans to do so.
@@ -74,10 +72,10 @@ definition.
 
 ```rust
 /// Not to be imported directly.
-extern macro lint_initializer { ... }
+extern macro_rules! lint_initializer { ... }
 
 /// Declare a lint.
-extern macro declare_lint {
+extern macro_rules! declare_lint {
     // See below for $crate
     use macro $crate::lint_initializer;
 
@@ -109,45 +107,34 @@ rebase.
 
 We also clean up macro syntax in a way that complements the semantic changes above.
 
-## `macro_rules!` becomes `macro`
-
-The new macro definition syntax uses the `macro` keyword introduced above:
-
-```rust
-// first example from the Macros Guide
-macro early_return {
-    ($inp:expr $sp:ident) => (
-        match $inp {
-            $sp(x) => { return x; }
-            _ => {}
-        }
-    )
-}
-```
-
-This is an ordinary item, like `fn` or `struct`, not a macro invocation.  It
-defines a new macro in the syntax environment of the enclosing block or module.
-
-The new macro can be used immediately. There is no way to `use macro` a macro
-defined in the same crate, and no need to do so.
-
-If qualified by `pub`, the macro escapes the syntax environment for the
-enclosing block/module and becomes available throughout the rest of the crate
-(according to depth-first search).  This is like putting `#[macro_escape]` on
-the module and all its ancestors, but applies *only* to the macro with `pub`.
+## Macro definition syntax
 
 `macro_rules!` already allows `{ }` for the macro body, but the convention is
 `( )` for some reason.  In accepting this RFC we would change to a `{ }`
 convention for consistency with the rest of the language.
 
+The new macro can be used immediately. There is no way to `use macro` a macro
+defined in the same crate, and no need to do so.
+
+A macro with a `pub` qualifier, i.e.
+
+```rust
+pub macro_rules! foo { ... }
+```
+
+escapes the syntax environment for the enclosing block/module and becomes
+available throughout the rest of the crate (according to depth-first search).
+This is like putting `#[macro_escape]` on the module and all its ancestors, but
+applies *only* to the macro with `pub`.
+
 ## Macro export and re-export
 
-A `macro` item qualified by `extern` becomes available to other crates.  That
-is, it can be the target of `use macro`.  Or put another way, `extern macro`
-works the way `#[macro_export] macro_rules!` does today.  Adding `extern` has
-no effect on the syntax environment for the current crate.
+A macro definition qualified by `extern` becomes available to other crates.
+That is, it can be the target of `use macro`.  Or put another way,
+`extern macro_rules!` works the way `#[macro_export] macro_rules!` does today.
+Adding `extern` has no effect on the syntax environment for the current crate.
 
-`pub` and `extern` may be used together on the same `macro` definition, since
+`pub` and `extern` may be used together on the same macro definition, since
 their effects are independent.
 
 We can also re-export macros that were imported from another crate.  This is
@@ -156,7 +143,7 @@ accomplished with `extern use macro`.
 For example, libcollections defines a `vec!` macro, which would now look like:
 
 ```rust
-extern macro vec {
+extern macro_rules! vec {
     ($($e:expr),*) => ({
         let mut _temp = $crate::vec::Vec::new();
         $(_temp.push($e);)*
@@ -220,9 +207,9 @@ Item macro sugar is an integral part of macro reform because it's needed to
 make `pub` and `extern` work with macro-defining macros.  For example
 
 ```rust
-macro mega_macro {
+macro_rules! mega_macro {
     ($($qual:ident)* : $name:ident $body:tt) => (
-        $($qual)* macro $name {
+        $($qual)* macro_rules! $name {
             // ...
         }
     )
@@ -237,7 +224,7 @@ pub extern mega_macro! foo {
 }
 ```
 
-Here `mega_macro!` takes the place of the built-in `macro` keyword.
+Here `mega_macro!` takes the place of the built-in `macro_rules!`.
 
 The applications go beyond macro-defining macros.  For example, [this macro in
 rustc](https://github.com/rust-lang/rust/blob/221fc1e3cdcc208e1bb7debcc2de27d47c847747/src/librustc/lint/mod.rs#L83-L95)
@@ -321,50 +308,6 @@ name resolution problem after 1.0.
 
 # Miscellaneous remarks
 
-`macro` is no longer a macro invocation, but we don't attempt to parse its
-contents any more than we currently parse `macro_rules!`.  The item AST type
-changes to
-
-```rust
-pub enum Item_ {
-    // ...
-
-    /// A macro definition.
-    ItemDefineMacro(Vec<TokenTree>),
-
-    /// A macro invocation.
-    ItemUseMacro(Mac),  // was called ItemMac
-}
-```
-
-Leaving the body as an uninterpreted token tree also provides flexibility to
-make backwards-compatible changes.  One can imagine
-
-```rust
-#[procedural] macro match_token {
-    fn expand(cx: &mut ExtCtxt, span: Span, toks: &[TokenTree])
-            -> Box<MacResult+'static> {
-        // ...
-    }
-}
-```
-
-or
-
-```rust
-macro atom {
-    ($name:tt) => fn expand(...) {
-        // ...
-    }
-}
-```
-
-though working out the details is far outside the scope of this RFC.
-
-We are free to change the AST and parsing after 1.0 as long as the old syntax
-still works.  So we could have a separate enum variant for procedural macros
-parsed as function decls.
-
 In a future where macros are scoped the same way as other items,
 
 ```rust
@@ -396,8 +339,8 @@ pass a few months later.  Also I would really like the first Rust release to
 put its best foot forward with macros, not just in terms of semantics but
 with a polished and pleasant user experience.
 
-To ease the transition, we can keep the old `macro_rules!` syntax as a
-deprecated synonym, to be removed before 1.0.
+To ease the transition, we can keep the old syntax as a deprecated synonym, to
+be removed before 1.0.
 
 # Drawbacks
 
@@ -442,7 +385,7 @@ think we should allow it anyway, to encourage the habit of writing `$crate::`
 for any references to the local crate.
 
 Should we allow `pub use macro`, which would escape the enclosing block/module
-the way `pub macro` does?
+the way `pub macro_rules!` does?
 
 Should we require that `extern use macro` can only appear in the crate root?
 It doesn't make a lot of sense to put it elsewhere.
