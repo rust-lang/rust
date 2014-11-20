@@ -1249,7 +1249,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                     }
                     ty_queue.push(&*mut_ty.ty);
                 }
-                ast::TyPath(ref path, ref bounds, id) => {
+                ast::TyPath(ref path, id) => {
                     let a_def = match self.tcx.def_map.borrow().get(&id) {
                         None => {
                             self.tcx
@@ -1296,7 +1296,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                             let new_path = self.rebuild_path(rebuild_info, lifetime);
                             let to = ast::Ty {
                                 id: cur_ty.id,
-                                node: ast::TyPath(new_path, bounds.clone(), id),
+                                node: ast::TyPath(new_path, id),
                                 span: cur_ty.span
                             };
                             new_ty = self.rebuild_ty(new_ty, P(to));

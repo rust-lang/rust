@@ -1230,10 +1230,9 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_name(rbml_w, item.ident.name);
         encode_attributes(rbml_w, item.attrs.as_slice());
         match ty.node {
-            ast::TyPath(ref path, ref bounds, _) if path.segments
+            ast::TyPath(ref path, _) if path.segments
                                                         .len() == 1 => {
                 let ident = path.segments.last().unwrap().identifier;
-                assert!(bounds.is_none());
                 encode_impl_type_basename(rbml_w, ident);
             }
             _ => {}

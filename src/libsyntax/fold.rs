@@ -433,11 +433,13 @@ pub fn noop_fold_ty<T: Folder>(t: P<Ty>, fld: &mut T) -> P<Ty> {
             }
             TyTup(tys) => TyTup(tys.move_map(|ty| fld.fold_ty(ty))),
             TyParen(ty) => TyParen(fld.fold_ty(ty)),
-            TyPath(path, bounds, id) => {
+            TyPath(path, id) => {
                 let id = fld.new_id(id);
-                TyPath(fld.fold_path(path),
-                        fld.fold_opt_bounds(bounds),
-                        id)
+                TyPath(fld.fold_path(path), id)
+            }
+            TyObjectSum(ty, bounds) => {
+                TyObjectSum(fld.fold_ty(ty),
+                            fld.fold_bounds(bounds))
             }
             TyQPath(qpath) => {
                 TyQPath(fld.fold_qpath(qpath))

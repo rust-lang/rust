@@ -651,7 +651,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                     typ: &ast::Ty,
                     impl_items: &Vec<ast::ImplItem>) {
         match typ.node {
-            ast::TyPath(ref path, _, id) => {
+            ast::TyPath(ref path, id) => {
                 match self.lookup_type_ref(id) {
                     Some(id) => {
                         let sub_span = self.span.sub_span_for_type_name(path.span);
@@ -1256,7 +1256,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
         }
 
         match t.node {
-            ast::TyPath(ref path, _, id) => {
+            ast::TyPath(ref path, id) => {
                 match self.lookup_type_ref(id) {
                     Some(id) => {
                         let sub_span = self.span.sub_span_for_type_name(t.span);

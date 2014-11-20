@@ -421,7 +421,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 impl<'a, 'tcx, 'v> Visitor<'v> for ImproperCTypesVisitor<'a, 'tcx> {
     fn visit_ty(&mut self, ty: &ast::Ty) {
         match ty.node {
-            ast::TyPath(_, _, id) => self.check_def(ty.span, ty.id, id),
+            ast::TyPath(_, id) => self.check_def(ty.span, ty.id, id),
             _ => (),
         }
         visit::walk_ty(self, ty);
