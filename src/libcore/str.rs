@@ -1836,7 +1836,6 @@ pub trait StrPrelude for Sized? {
     /// ```rust
     /// let string = "a\nb\nc";
     /// let lines: Vec<&str> = string.lines().collect();
-    /// let lines = lines.as_slice();
     ///
     /// assert!(string.subslice_offset(lines[0]) == 0); // &"a"
     /// assert!(string.subslice_offset(lines[1]) == 2); // &"b"
