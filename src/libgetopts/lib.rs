@@ -860,7 +860,7 @@ enum LengthLimit {
 /// Note: Function was moved here from `std::str` because this module is the only place that
 /// uses it, and because it was too specific for a general string function.
 ///
-/// #Failure:
+/// #Panics:
 ///
 /// Fails during iteration if the string contains a non-whitespace
 /// sequence longer than the limit.
