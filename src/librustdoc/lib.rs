@@ -16,7 +16,8 @@
 #![crate_type = "rlib"]
 
 #![allow(unknown_features)]
-#![feature(globs, struct_variant, macro_rules, phase, slicing_syntax, tuple_indexing)]
+#![feature(globs, macro_rules, phase, slicing_syntax, tuple_indexing)]
+#![feature(if_let)]
 
 extern crate arena;
 extern crate getopts;
