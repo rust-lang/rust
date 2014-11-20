@@ -63,7 +63,7 @@ use syntax::ast::{PolyTraitRef, PrimTy, Public, SelfExplicit, SelfStatic};
 use syntax::ast::{RegionTyParamBound, StmtDecl, StructField};
 use syntax::ast::{StructVariantKind, TraitRef, TraitTyParamBound};
 use syntax::ast::{TupleVariantKind, Ty, TyBool, TyChar, TyClosure, TyF32};
-use syntax::ast::{TyF64, TyFloat, TyI, TyI8, TyI16, TyI32, TyI64, TyInt};
+use syntax::ast::{TyF64, TyFloat, TyI, TyI8, TyI16, TyI32, TyI64, TyInt, TyObjectSum};
 use syntax::ast::{TyParam, TyParamBound, TyPath, TyPtr, TyPolyTraitRef, TyProc, TyQPath};
 use syntax::ast::{TyRptr, TyStr, TyU, TyU8, TyU16, TyU32, TyU64, TyUint};
 use syntax::ast::{TypeImplItem, UnnamedField};
@@ -4742,7 +4742,7 @@ impl<'a> Resolver<'a> {
                 // type, the result will be that the type name resolves to a module but not
                 // a type (shadowing any imported modules or types with this name), leading
                 // to weird user-visible bugs. So we ward this off here. See #15060.
-                TyPath(ref path, _, path_id) => {
+                TyPath(ref path, path_id) => {
                     match self.def_map.borrow().get(&path_id) {
                         // FIXME: should we catch other options and give more precise errors?
                         Some(&DefMod(_)) => {
@@ -4908,7 +4908,7 @@ impl<'a> Resolver<'a> {
             // Like path expressions, the interpretation of path types depends
             // on whether the path has multiple elements in it or not.
 
-            TyPath(ref path, ref bounds, path_id) => {
+            TyPath(ref path, path_id) => {
                 // This is a path in the type namespace. Walk through scopes
                 // looking for it.
                 let mut result_def = None;
@@ -4978,11 +4978,12 @@ impl<'a> Resolver<'a> {
                         self.resolve_error(ty.span, msg.as_slice());
                     }
                 }
+            }
 
-                bounds.as_ref().map(|bound_vec| {
-                    self.resolve_type_parameter_bounds(ty.id, bound_vec,
+            TyObjectSum(ref ty, ref bound_vec) => {
+                self.resolve_type(&**ty);
+                self.resolve_type_parameter_bounds(ty.id, bound_vec,
                                                        TraitBoundingTypeParameter);
-                });
             }
 
             TyQPath(ref qpath) => {
@@ -5619,7 +5620,7 @@ impl<'a> Resolver<'a> {
         fn extract_path_and_node_id(t: &Ty, allow: FallbackChecks)
                                                     -> Option<(Path, NodeId, FallbackChecks)> {
             match t.node {
-                TyPath(ref path, _, node_id) => Some((path.clone(), node_id, allow)),
+                TyPath(ref path, node_id) => Some((path.clone(), node_id, allow)),
                 TyPtr(ref mut_ty) => extract_path_and_node_id(&*mut_ty.ty, OnlyTraitAndStatics),
                 TyRptr(_, ref mut_ty) => extract_path_and_node_id(&*mut_ty.ty, allow),
                 // This doesn't handle the remaining `Ty` variants as they are not
