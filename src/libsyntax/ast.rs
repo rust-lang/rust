@@ -1151,7 +1151,9 @@ pub enum Ty_ {
     /// A path (`module::module::...::Type`) or primitive
     ///
     /// Type parameters are stored in the Path itself
-    TyPath(Path, Option<TyParamBounds>, NodeId), // for #7264; see above
+    TyPath(Path, NodeId),
+    /// Something like `A+B`. Note that `B` must always be a path.
+    TyObjectSum(P<Ty>, TyParamBounds),
     /// A type like `for<'a> Foo<&'a Bar>`
     TyPolyTraitRef(TyParamBounds),
     /// A "qualified path", e.g. `<Vec<T> as SomeTrait>::SomeType`

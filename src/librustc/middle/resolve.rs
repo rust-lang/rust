@@ -1396,29 +1396,53 @@ impl<'a> Resolver<'a> {
                 // methods within to a new module, if the type was defined
                 // within this module.
 
-                // Create the module and add all methods.
-                match ty.node {
-                    TyPath(ref path, _, _) if path.segments.len() == 1 => {
+                let mod_name = match ty.node {
+                    TyPath(ref path, _) if path.segments.len() == 1 => {
                         // FIXME(18446) we should distinguish between the name of
                         // a trait and the name of an impl of that trait.
-                        let mod_name = path.segments.last().unwrap().identifier.name;
+                        Some(path.segments.last().unwrap().identifier.name)
+                    }
+                    TyObjectSum(ref lhs_ty, _) => {
+                        match lhs_ty.node {
+                            TyPath(ref path, _) if path.segments.len() == 1 => {
+                                Some(path.segments.last().unwrap().identifier.name)
+                            }
+                            _ => {
+                                None
+                            }
+                        }
+                    }
+                    _ => {
+                        None
+                    }
+                };
 
+                match mod_name {
+                    None => {
+                        self.resolve_error(ty.span,
+                                           "inherent implementations may \
+                                            only be implemented in the same \
+                                            module as the type they are \
+                                            implemented for")
+                    }
+                    Some(mod_name) => {
+                        // Create the module and add all methods.
                         let parent_opt = parent.module().children.borrow()
-                                               .get(&mod_name).cloned();
+                            .get(&mod_name).cloned();
                         let new_parent = match parent_opt {
                             // It already exists
                             Some(ref child) if child.get_module_if_available()
-                                                .is_some() &&
-                                           (child.get_module().kind.get() == ImplModuleKind ||
-                                            child.get_module().kind.get() == TraitModuleKind) => {
-                                ModuleReducedGraphParent(child.get_module())
-                            }
+                                .is_some() &&
+                                (child.get_module().kind.get() == ImplModuleKind ||
+                                 child.get_module().kind.get() == TraitModuleKind) => {
+                                    ModuleReducedGraphParent(child.get_module())
+                                }
                             Some(ref child) if child.get_module_if_available()
-                                                .is_some() &&
-                                           child.get_module().kind.get() ==
-                                                EnumModuleKind => {
-                                ModuleReducedGraphParent(child.get_module())
-                            }
+                                .is_some() &&
+                                child.get_module().kind.get() ==
+                                EnumModuleKind => {
+                                    ModuleReducedGraphParent(child.get_module())
+                                }
                             // Create the module
                             _ => {
                                 let name_bindings =
@@ -1433,7 +1457,7 @@ impl<'a> Resolver<'a> {
                                 let ns = TypeNS;
                                 let is_public =
                                     !name_bindings.defined_in_namespace(ns) ||
-                                     name_bindings.defined_in_public_namespace(ns);
+                                    name_bindings.defined_in_public_namespace(ns);
 
                                 name_bindings.define_module(parent_link,
                                                             Some(def_id),
@@ -1459,21 +1483,21 @@ impl<'a> Resolver<'a> {
                                                        ForbidDuplicateValues,
                                                        method.span);
                                     let def = match method.pe_explicit_self()
-                                                          .node {
-                                        SelfStatic => {
-                                            // Static methods become
-                                            // `DefStaticMethod`s.
-                                            DefStaticMethod(local_def(method.id),
-                                                            FromImpl(local_def(item.id)))
-                                        }
-                                        _ => {
-                                            // Non-static methods become
-                                            // `DefMethod`s.
-                                            DefMethod(local_def(method.id),
-                                                      None,
-                                                      FromImpl(local_def(item.id)))
-                                        }
-                                    };
+                                        .node {
+                                            SelfStatic => {
+                                                // Static methods become
+                                                // `DefStaticMethod`s.
+                                                DefStaticMethod(local_def(method.id),
+                                                                FromImpl(local_def(item.id)))
+                                            }
+                                            _ => {
+                                                // Non-static methods become
+                                                // `DefMethod`s.
+                                                DefMethod(local_def(method.id),
+                                                          None,
+                                                          FromImpl(local_def(item.id)))
+                                            }
+                                        };
 
                                     // NB: not IMPORTABLE
                                     let modifiers = if method.pe_vis() == ast::Public {
@@ -1496,7 +1520,7 @@ impl<'a> Resolver<'a> {
                                             ForbidDuplicateTypesAndModules,
                                             typedef.span);
                                     let def = DefAssociatedTy(local_def(
-                                            typedef.id));
+                                        typedef.id));
                                     // NB: not IMPORTABLE
                                     let modifiers = if typedef.vis == ast::Public {
                                         PUBLIC
@@ -1510,13 +1534,6 @@ impl<'a> Resolver<'a> {
                                 }
                             }
                         }
-                    }
-                    _ => {
-                        self.resolve_error(ty.span,
-                                           "inherent implementations may \
-                                            only be implemented in the same \
-                                            module as the type they are \
-                                            implemented for")
                     }
                 }
 
