@@ -1232,9 +1232,8 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         }
         ast_map::NodeExpr(ref expr) => {
             match expr.node {
-                ast::ExprFnBlock(_, ref fn_decl, ref top_level_block) |
                 ast::ExprProc(ref fn_decl, ref top_level_block) |
-                ast::ExprUnboxedFn(_, _, ref fn_decl, ref top_level_block) => {
+                ast::ExprClosure(_, _, ref fn_decl, ref top_level_block) => {
                     let name = format!("fn{}", token::gensym("fn"));
                     let name = token::str_to_ident(name.as_slice());
                     (name, &**fn_decl,
@@ -1310,7 +1309,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                                       file_metadata,
                                                       &mut function_name);
 
-    // There is no ast_map::Path for ast::ExprFnBlock-type functions. For now,
+    // There is no ast_map::Path for ast::ExprClosure-type functions. For now,
     // just don't put them into a namespace. In the future this could be improved
     // somehow (storing a path in the ast_map, or construct a path using the
     // enclosing function).
@@ -3578,9 +3577,8 @@ fn populate_scope_map(cx: &CrateContext,
                 })
             }
 
-            ast::ExprFnBlock(_, ref decl, ref block) |
             ast::ExprProc(ref decl, ref block) |
-            ast::ExprUnboxedFn(_, _, ref decl, ref block) => {
+            ast::ExprClosure(_, _, ref decl, ref block) => {
                 with_new_scope(cx,
                                block.span,
                                scope_stack,

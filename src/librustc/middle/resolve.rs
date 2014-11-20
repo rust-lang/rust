@@ -50,8 +50,8 @@ use util::nodemap::{NodeMap, NodeSet, DefIdSet, FnvHashMap};
 
 use syntax::ast::{Arm, BindByRef, BindByValue, BindingMode, Block, Crate, CrateNum};
 use syntax::ast::{DeclItem, DefId, Expr, ExprAgain, ExprBreak, ExprField};
-use syntax::ast::{ExprFnBlock, ExprForLoop, ExprLoop, ExprWhile, ExprMethodCall};
-use syntax::ast::{ExprPath, ExprProc, ExprStruct, ExprUnboxedFn, FnDecl};
+use syntax::ast::{ExprClosure, ExprForLoop, ExprLoop, ExprWhile, ExprMethodCall};
+use syntax::ast::{ExprPath, ExprProc, ExprStruct, FnDecl};
 use syntax::ast::{ForeignItem, ForeignItemFn, ForeignItemStatic, Generics};
 use syntax::ast::{Ident, ImplItem, Item, ItemEnum, ItemFn, ItemForeignMod};
 use syntax::ast::{ItemImpl, ItemMac, ItemMod, ItemStatic, ItemStruct};
@@ -5848,20 +5848,15 @@ impl<'a> Resolver<'a> {
                 visit::walk_expr(self, expr);
             }
 
-            ExprFnBlock(capture_clause, ref fn_decl, ref block) => {
+            ExprClosure(capture_clause, _, ref fn_decl, ref block) => {
                 self.capture_mode_map.insert(expr.id, capture_clause);
                 self.resolve_function(ClosureRibKind(expr.id, ast::DUMMY_NODE_ID),
                                       Some(&**fn_decl), NoTypeParameters,
                                       &**block);
             }
+
             ExprProc(ref fn_decl, ref block) => {
                 self.capture_mode_map.insert(expr.id, ast::CaptureByValue);
-                self.resolve_function(ClosureRibKind(expr.id, block.id),
-                                      Some(&**fn_decl), NoTypeParameters,
-                                      &**block);
-            }
-            ExprUnboxedFn(capture_clause, _, ref fn_decl, ref block) => {
-                self.capture_mode_map.insert(expr.id, capture_clause);
                 self.resolve_function(ClosureRibKind(expr.id, block.id),
                                       Some(&**fn_decl), NoTypeParameters,
                                       &**block);
