@@ -14,43 +14,56 @@
 // FIXME: MIN_VALUE and MAX_VALUE literals are parsed as -inf and inf #14353
 #![allow(overflowing_literals)]
 
+#![stable]
+
 use intrinsics;
 use mem;
 use num::{Float, FPNormal, FPCategory, FPZero, FPSubnormal, FPInfinite, FPNaN};
 use num::from_str_radix;
 use option::Option;
 
+#[stable]
 pub const RADIX: uint = 2u;
 
+#[stable]
 pub const MANTISSA_DIGITS: uint = 24u;
+#[stable]
 pub const DIGITS: uint = 6u;
 
+#[stable]
 pub const EPSILON: f32 = 1.19209290e-07_f32;
 
 /// Smallest finite f32 value
+#[stable]
 pub const MIN_VALUE: f32 = -3.40282347e+38_f32;
 /// Smallest positive, normalized f32 value
+#[stable]
 pub const MIN_POS_VALUE: f32 = 1.17549435e-38_f32;
 /// Largest finite f32 value
+#[stable]
 pub const MAX_VALUE: f32 = 3.40282347e+38_f32;
 
+#[stable]
 pub const MIN_EXP: int = -125;
+#[stable]
 pub const MAX_EXP: int = 128;
 
+#[stable]
 pub const MIN_10_EXP: int = -37;
+#[stable]
 pub const MAX_10_EXP: int = 38;
 
+#[stable]
 pub const NAN: f32 = 0.0_f32/0.0_f32;
+#[stable]
 pub const INFINITY: f32 = 1.0_f32/0.0_f32;
+#[stable]
 pub const NEG_INFINITY: f32 = -1.0_f32/0.0_f32;
 
 /// Various useful constants.
+#[unstable = "naming scheme needs to be revisited"]
 pub mod consts {
     // FIXME: replace with mathematical constants from cmath.
-
-    // FIXME(#5527): These constants should be deprecated once associated
-    // constants are implemented in favour of referencing the respective members
-    // of `Float`.
 
     /// Archimedes' constant
     pub const PI: f32 = 3.14159265358979323846264338327950288_f32;
@@ -104,6 +117,7 @@ pub mod consts {
     pub const LN_10: f32 = 2.30258509299404568401799145468436421_f32;
 }
 
+#[unstable = "trait is unstable"]
 impl Float for f32 {
     #[inline]
     fn nan() -> f32 { NAN }
@@ -415,12 +429,12 @@ impl Float for f32 {
 
     /// Converts to degrees, assuming the number is in radians.
     #[inline]
-    fn to_degrees(self) -> f32 { self * (180.0f32 / Float::pi()) }
+    fn to_degrees(self) -> f32 { self * (180.0f32 / consts::PI) }
 
     /// Converts to radians, assuming the number is in degrees.
     #[inline]
     fn to_radians(self) -> f32 {
-        let value: f32 = Float::pi();
+        let value: f32 = consts::PI;
         self * (value / 180.0f32)
     }
 }

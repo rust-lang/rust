@@ -14,6 +14,8 @@
 // FIXME: MIN_VALUE and MAX_VALUE literals are parsed as -inf and inf #14353
 #![allow(overflowing_literals)]
 
+#![stable]
+
 use intrinsics;
 use mem;
 use num::{Float, FPNormal, FPCategory, FPZero, FPSubnormal, FPInfinite, FPNaN};
@@ -24,33 +26,46 @@ use option::Option;
 // constants are implemented in favour of referencing the respective
 // members of `Bounded` and `Float`.
 
+#[stable]
 pub const RADIX: uint = 2u;
 
+#[stable]
 pub const MANTISSA_DIGITS: uint = 53u;
+#[stable]
 pub const DIGITS: uint = 15u;
 
+#[stable]
 pub const EPSILON: f64 = 2.2204460492503131e-16_f64;
 
 /// Smallest finite f64 value
+#[stable]
 pub const MIN_VALUE: f64 = -1.7976931348623157e+308_f64;
 /// Smallest positive, normalized f64 value
+#[stable]
 pub const MIN_POS_VALUE: f64 = 2.2250738585072014e-308_f64;
 /// Largest finite f64 value
+#[stable]
 pub const MAX_VALUE: f64 = 1.7976931348623157e+308_f64;
 
+#[stable]
 pub const MIN_EXP: int = -1021;
+#[stable]
 pub const MAX_EXP: int = 1024;
 
+#[stable]
 pub const MIN_10_EXP: int = -307;
+#[stable]
 pub const MAX_10_EXP: int = 308;
 
+#[stable]
 pub const NAN: f64 = 0.0_f64/0.0_f64;
-
+#[stable]
 pub const INFINITY: f64 = 1.0_f64/0.0_f64;
-
+#[stable]
 pub const NEG_INFINITY: f64 = -1.0_f64/0.0_f64;
 
 /// Various useful constants.
+#[unstable = "naming scheme needs to be revisited"]
 pub mod consts {
     // FIXME: replace with mathematical constants from cmath.
 
@@ -110,6 +125,7 @@ pub mod consts {
     pub const LN_10: f64 = 2.30258509299404568401799145468436421_f64;
 }
 
+#[unstable = "trait is unstable"]
 impl Float for f64 {
     #[inline]
     fn nan() -> f64 { NAN }
@@ -421,12 +437,12 @@ impl Float for f64 {
 
     /// Converts to degrees, assuming the number is in radians.
     #[inline]
-    fn to_degrees(self) -> f64 { self * (180.0f64 / Float::pi()) }
+    fn to_degrees(self) -> f64 { self * (180.0f64 / consts::PI) }
 
     /// Converts to radians, assuming the number is in degrees.
     #[inline]
     fn to_radians(self) -> f64 {
-        let value: f64 = Float::pi();
+        let value: f64 = consts::PI;
         self * (value / 180.0)
     }
 }

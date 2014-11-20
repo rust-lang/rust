@@ -10,7 +10,7 @@
 
 //! Operations and constants for unsigned 64-bits integer (`u64` type)
 
-#![unstable]
+#![stable]
 #![doc(primitive = "u64")]
 
 pub use core::u64::{BITS, BYTES, MIN, MAX};

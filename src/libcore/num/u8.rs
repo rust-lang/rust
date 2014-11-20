@@ -10,8 +10,7 @@
 
 //! Operations and constants for unsigned 8-bits integers (`u8` type)
 
-#![unstable]
+#![stable]
 #![doc(primitive = "u8")]
 
 uint_module!(u8, i8, 8)
-

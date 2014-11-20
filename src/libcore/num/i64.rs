@@ -10,8 +10,7 @@
 
 //! Operations and constants for signed 64-bits integers (`i64` type)
 
-#![unstable]
+#![stable]
 #![doc(primitive = "i64")]
 
 int_module!(i64, 64)
-

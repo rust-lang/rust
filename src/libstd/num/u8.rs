@@ -10,7 +10,7 @@
 
 //! Operations and constants for unsigned 8-bits integers (`u8` type)
 
-#![unstable]
+#![stable]
 #![doc(primitive = "u8")]
 
 pub use core::u8::{BITS, BYTES, MIN, MAX};
