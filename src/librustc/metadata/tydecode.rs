@@ -18,6 +18,7 @@
 
 pub use self::DefIdSource::*;
 
+use middle::region;
 use middle::subst;
 use middle::subst::VecPerParamSpace;
 use middle::ty::{mod, Ty};
@@ -315,17 +316,17 @@ fn parse_region(st: &mut PState, conv: conv_did) -> ty::Region {
       }
       'f' => {
         assert_eq!(next(st), '[');
-        let id = parse_uint(st) as ast::NodeId;
+        let scope = parse_scope(st);
         assert_eq!(next(st), '|');
         let br = parse_bound_region(st, |x,y| conv(x,y));
         assert_eq!(next(st), ']');
-        ty::ReFree(ty::FreeRegion {scope_id: id,
+        ty::ReFree(ty::FreeRegion { scope: scope,
                                     bound_region: br})
       }
       's' => {
-        let id = parse_uint(st) as ast::NodeId;
+        let scope = parse_scope(st);
         assert_eq!(next(st), '|');
-        ty::ReScope(id)
+        ty::ReScope(scope)
       }
       't' => {
         ty::ReStatic
@@ -334,6 +335,16 @@ fn parse_region(st: &mut PState, conv: conv_did) -> ty::Region {
         ty::ReStatic
       }
       _ => panic!("parse_region: bad input")
+    }
+}
+
+fn parse_scope(st: &mut PState) -> region::CodeExtent {
+    match next(st) {
+        'M' => {
+            let node_id = parse_uint(st) as ast::NodeId;
+            region::CodeExtent::Misc(node_id)
+        }
+        _ => panic!("parse_scope: bad input")
     }
 }
 

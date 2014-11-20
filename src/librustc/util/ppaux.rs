@@ -84,8 +84,8 @@ fn item_scope_tag(item: &ast::Item) -> &'static str {
 pub fn explain_region_and_span(cx: &ctxt, region: ty::Region)
                             -> (String, Option<Span>) {
     return match region {
-      ReScope(node_id) => {
-        match cx.map.find(node_id) {
+      ReScope(scope) => {
+        match cx.map.find(scope.node_id()) {
           Some(ast_map::NodeBlock(ref blk)) => {
             explain_span(cx, "block", blk.span)
           }
@@ -112,7 +112,7 @@ pub fn explain_region_and_span(cx: &ctxt, region: ty::Region)
           }
           Some(_) | None => {
             // this really should not happen
-            (format!("unknown scope: {}.  Please report a bug.", node_id), None)
+            (format!("unknown scope: {}.  Please report a bug.", scope), None)
           }
         }
       }
@@ -129,7 +129,7 @@ pub fn explain_region_and_span(cx: &ctxt, region: ty::Region)
           }
         };
 
-        match cx.map.find(fr.scope_id) {
+        match cx.map.find(fr.scope.node_id()) {
           Some(ast_map::NodeBlock(ref blk)) => {
               let (msg, opt_span) = explain_span(cx, "block", blk.span);
               (format!("{} {}", prefix, msg), opt_span)
@@ -141,7 +141,7 @@ pub fn explain_region_and_span(cx: &ctxt, region: ty::Region)
           }
           Some(_) | None => {
               // this really should not happen
-              (format!("{} node {}", prefix, fr.scope_id), None)
+              (format!("{} unknown free region bounded by scope {}", prefix, fr.scope), None)
           }
         }
       }
@@ -879,7 +879,7 @@ impl<'tcx> UserString<'tcx> for ty::Region {
 impl<'tcx> Repr<'tcx> for ty::FreeRegion {
     fn repr(&self, tcx: &ctxt) -> String {
         format!("ReFree({}, {})",
-                self.scope_id,
+                self.scope.node_id(),
                 self.bound_region.repr(tcx))
     }
 }
