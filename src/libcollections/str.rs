@@ -42,9 +42,9 @@
 //! # Representation
 //!
 //! Rust's string type, `str`, is a sequence of Unicode scalar values encoded as a
-//! stream of UTF-8 bytes. All strings are guaranteed to be validly encoded UTF-8
-//! sequences. Additionally, strings are not null-terminated and can thus contain
-//! null bytes.
+//! stream of UTF-8 bytes. All [strings](../../reference.html#literals) are
+//! guaranteed to be validly encoded UTF-8 sequences. Additionally, strings are
+//! not null-terminated and can thus contain null bytes.
 //!
 //! The actual representation of strings have direct mappings to slices: `&str`
 //! is the same as `&[u8]`.
