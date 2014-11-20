@@ -66,7 +66,7 @@ pub enum Inst {
     Jump(InstIdx),
 
     // Jumps to the instruction at the first index given. If that leads to
-    // a failing state, then the instruction at the second index given is
+    // a panic state, then the instruction at the second index given is
     // tried.
     Split(InstIdx, InstIdx),
 }

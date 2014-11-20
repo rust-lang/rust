@@ -766,7 +766,7 @@ impl NameBindings {
     }
 
     /**
-     * Returns the module node. Fails if this node does not have a module
+     * Returns the module node. Panics if this node does not have a module
      * definition.
      */
     fn get_module(&self) -> Rc<Module> {
@@ -1109,8 +1109,10 @@ impl<'a> Resolver<'a> {
      * corresponding to the innermost block ID and returns the name bindings
      * as well as the newly-created parent.
      *
-     * If this node does not have a module definition and we are not inside
-     * a block, fails.
+     * # Panics
+     *
+     * Panics if this node does not have a module definition and we are not inside
+     * a block.
      */
     fn add_child(&self,
                  name: Name,
@@ -2795,7 +2797,7 @@ impl<'a> Resolver<'a> {
         return Success(());
     }
 
-    // Resolves a glob import. Note that this function cannot fail; it either
+    // Resolves a glob import. Note that this function cannot panic; it either
     // succeeds or bails out (as importing * from an empty module or a module
     // that exports nothing is valid).
     fn resolve_glob_import(&mut self,
