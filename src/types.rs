@@ -11,6 +11,8 @@ pub struct TypePass;
 
 declare_lint!(CLIPPY_BOX_VEC, Warn,
               "Warn on usage of Box<Vec<T>>")
+declare_lint!(CLIPPY_DLIST, Warn,
+              "Warn on usage of DList")
 
 /// Matches a type with a provided string, and returns its type parameters if successful
 pub fn match_ty_unwrap<'a>(ty: &'a Ty, segments: &[&str]) -> Option<&'a [P<Ty>]> {
@@ -45,10 +47,15 @@ pub fn span_note_and_lint(cx: &Context, lint: &'static Lint, span: Span, msg: &s
 
 impl LintPass for TypePass {
     fn get_lints(&self) -> LintArray {
-        lint_array!(CLIPPY_BOX_VEC)
+        lint_array!(CLIPPY_BOX_VEC, CLIPPY_DLIST)
     }
 
     fn check_ty(&mut self, cx: &Context, ty: &ast::Ty) {
+        {
+            // In case stuff gets moved around
+            use std::boxed::Box;
+            use std::vec::Vec;
+        }
         match_ty_unwrap(ty, &["std", "boxed", "Box"]).and_then(|t| t.head())
           .map(|t| match_ty_unwrap(&**t, &["std", "vec", "Vec"]))
           .map(|_| {
@@ -56,5 +63,22 @@ impl LintPass for TypePass {
                               "You seem to be trying to use Box<Vec<T>>. Did you mean to use Vec<T>?",
                               "Vec<T> is already on the heap, Box<Vec<T>> makes an extra allocation");
           });
+        {
+            // In case stuff gets moved around
+            use collections::dlist::DList as DL1;
+            use std::collections::dlist::DList as DL2;
+            use std::collections::DList as DL3;
+        }
+        let dlists = [vec!["std","collections","dlist","DList"],
+                      vec!["std","collections","DList"],
+                      vec!["collections","dlist","DList"]];
+        for path in dlists.iter() {
+            if match_ty_unwrap(ty, path.as_slice()).is_some() {
+                span_note_and_lint(cx, CLIPPY_DLIST, ty.span,
+                                   "You seem to be trying to use a DList. Perhaps you meant some other data structure?",
+                                   "A RingBuf might work.");
+                return;
+            }
+        }
     }
 }

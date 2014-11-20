@@ -7,7 +7,8 @@ extern crate syntax;
 #[phase(plugin, link)]
 extern crate rustc;
 
-
+// Only for the compile time checking of paths
+extern crate collections;
 
 use rustc::plugin::Registry;
 use rustc::lint::LintPassObject;
