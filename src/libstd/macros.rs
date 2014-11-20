@@ -557,17 +557,17 @@ pub mod builtin {
     /// A macro which expands to the column number on which it was invoked.
     ///
     /// The expanded expression has type `uint`, and the returned column is not
-    /// the invocation of the `col!()` macro itself, but rather the first macro
-    /// invocation leading up to the invocation of the `col!()` macro.
+    /// the invocation of the `column!()` macro itself, but rather the first macro
+    /// invocation leading up to the invocation of the `column!()` macro.
     ///
     /// # Example
     ///
     /// ```
-    /// let current_col = col!();
+    /// let current_col = column!();
     /// println!("defined on column: {}", current_col);
     /// ```
     #[macro_export]
-    macro_rules! col( () => ({ /* compiler built-in */ }) )
+    macro_rules! column( () => ({ /* compiler built-in */ }) )
 
     /// A macro which expands to the file name from which it was invoked.
     ///

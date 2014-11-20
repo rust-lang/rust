@@ -413,9 +413,9 @@ fn initial_syntax_expander_table(ecfg: &expand::ExpansionConfig) -> SyntaxEnv {
     syntax_expanders.insert(intern("line"),
                             builtin_normal_expander(
                                     ext::source_util::expand_line));
-    syntax_expanders.insert(intern("col"),
+    syntax_expanders.insert(intern("column"),
                             builtin_normal_expander(
-                                    ext::source_util::expand_col));
+                                    ext::source_util::expand_column));
     syntax_expanders.insert(intern("file"),
                             builtin_normal_expander(
                                     ext::source_util::expand_file));
