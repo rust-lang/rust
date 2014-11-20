@@ -43,7 +43,7 @@ use util::ppaux::Repr;
 pub struct SelectionContext<'cx, 'tcx:'cx> {
     infcx: &'cx InferCtxt<'cx, 'tcx>,
     param_env: &'cx ty::ParameterEnvironment<'tcx>,
-    typer: &'cx Typer<'tcx>+'cx,
+    typer: &'cx (Typer<'tcx>+'cx),
 
     /// Skolemizer used specifically for skolemizing entries on the
     /// obligation stack. This ensures that all entries on the stack

@@ -139,11 +139,11 @@ impl RegionScope for BindingRscope {
 /// A scope which simply shifts the Debruijn index of other scopes
 /// to account for binding levels.
 pub struct ShiftedRscope<'r> {
-    base_scope: &'r RegionScope+'r
+    base_scope: &'r (RegionScope+'r)
 }
 
 impl<'r> ShiftedRscope<'r> {
-    pub fn new(base_scope: &'r RegionScope+'r) -> ShiftedRscope<'r> {
+    pub fn new(base_scope: &'r (RegionScope+'r)) -> ShiftedRscope<'r> {
         ShiftedRscope { base_scope: base_scope }
     }
 }
