@@ -21,6 +21,7 @@ use middle::typeck::infer;
 use std::rc::Rc;
 use syntax::ast;
 use syntax::codemap::Span;
+use util::common::ErrorReported;
 use util::ppaux::{UserString, Repr, ty_to_string};
 
 pub fn check_object_cast<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
@@ -238,6 +239,20 @@ pub fn register_object_cast_obligations<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                                   referent_ty: Ty<'tcx>)
                                                   -> Rc<ty::TraitRef<'tcx>>
 {
+    // We can only make objects from sized types.
+    let sized_obligation =
+        traits::obligation_for_builtin_bound(
+            fcx.tcx(),
+            traits::ObligationCause::new(span, traits::ObjectSized),
+            referent_ty,
+            ty::BoundSized);
+    match sized_obligation {
+        Ok(sized_obligation) => {
+            fcx.register_obligation(sized_obligation);
+        }
+        Err(ErrorReported) => { }
+    }
+
     // This is just for better error reporting. Kinda goofy. The object type stuff
     // needs some refactoring so there is a more convenient type to pass around.
     let object_trait_ty =
@@ -542,6 +557,10 @@ fn note_obligation_cause<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             span_note!(tcx.sess, obligation.cause.span,
                        "only the last field of a struct or enum variant \
                        may have a dynamically sized type")
+        }
+        traits::ObjectSized => {
+            span_note!(tcx.sess, obligation.cause.span,
+                       "only sized types can be made into objects");
         }
     }
 }

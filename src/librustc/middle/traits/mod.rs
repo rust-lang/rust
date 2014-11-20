@@ -94,6 +94,9 @@ pub enum ObligationCauseCode<'tcx> {
 
     // Types of fields (other than the last) in a struct must be sized.
     FieldSized,
+
+    // Only Sized types can be made into objects
+    ObjectSized,
 }
 
 pub type Obligations<'tcx> = subst::VecPerParamSpace<Obligation<'tcx>>;
