@@ -216,7 +216,10 @@ pub trait OwnedAsciiCast {
     /// Check if convertible to ascii
     fn is_ascii(&self) -> bool;
 
-    /// Take ownership and cast to an ascii vector. Fail on non-ASCII input.
+    /// Take ownership and cast to an ascii vector.
+    /// # Panics
+    ///
+    /// Panic on non-ASCII input.
     #[inline]
     fn into_ascii(self) -> Vec<Ascii> {
         assert!(self.is_ascii());

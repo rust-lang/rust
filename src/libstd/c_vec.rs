@@ -64,7 +64,7 @@ impl<T> Drop for CVec<T> {
 impl<T> CVec<T> {
     /// Create a `CVec` from a raw pointer to a buffer with a given length.
     ///
-    /// Fails if the given pointer is null. The returned vector will not attempt
+    /// Panics if the given pointer is null. The returned vector will not attempt
     /// to deallocate the vector when dropped.
     ///
     /// # Arguments
@@ -83,7 +83,7 @@ impl<T> CVec<T> {
     /// Create a `CVec` from a foreign buffer, with a given length,
     /// and a function to run upon destruction.
     ///
-    /// Fails if the given pointer is null.
+    /// Panics if the given pointer is null.
     ///
     /// # Arguments
     ///
