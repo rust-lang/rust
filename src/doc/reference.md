@@ -1114,13 +1114,13 @@ Rust:
 ##### Unsafe functions
 
 Unsafe functions are functions that are not safe in all contexts and/or for all
-possible inputs. Such a function must be prefixed with the keyword `unsafe`.
+possible inputs. Such a function must be prefixed with the keyword `unsafe` and
+can only be called from an `unsafe` block or another `unsafe` function.
 
 ##### Unsafe blocks
 
-A block of code can also be prefixed with the `unsafe` keyword, to permit
-calling `unsafe` functions or dereferencing raw pointers within a safe
-function.
+A block of code can be prefixed with the `unsafe` keyword, to permit calling
+`unsafe` functions or dereferencing raw pointers within a safe function.
 
 When a programmer has sufficient conviction that a sequence of potentially
 unsafe operations is actually safe, they can encapsulate that sequence (taken
@@ -1140,12 +1140,11 @@ represented with reference-counted pointers in safe code. By using `unsafe`
 blocks to represent the reverse links as raw pointers, it can be implemented
 with only boxes.
 
-##### Behavior considered unsafe
+##### Behavior considered undefined
 
-This is a list of behavior which is forbidden in all Rust code. Type checking
-provides the guarantee that these issues are never caused by safe code. An
-`unsafe` block or function is responsible for never invoking this behaviour or
-exposing an API making it possible for it to occur in safe code.
+The following is a list of behavior which is forbidden in all Rust code,
+including within `unsafe` blocks and `unsafe` functions. Type checking provides
+the guarantee that these issues are never caused by safe code.
 
 * Data races
 * Dereferencing a null/dangling raw pointer
