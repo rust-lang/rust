@@ -13,7 +13,7 @@
 //! These are implemented for the primitive numeric types in `std::{u8, u16,
 //! u32, u64, uint, i8, i16, i32, i64, int, f32, f64}`.
 
-#![experimental]
+#![stable]
 #![allow(missing_docs)]
 
 #[cfg(test)] use cmp::PartialEq;
@@ -33,9 +33,11 @@ pub use core::num::{FromStrRadix, from_str_radix};
 pub use core::num::{FPCategory, FPNaN, FPInfinite, FPZero, FPSubnormal};
 pub use core::num::{FPNormal, Float};
 
+#[experimental = "may be removed or relocated"]
 pub mod strconv;
 
 /// Mathematical operations on primitive floating point numbers.
+#[unstable = "may be altered to inline the Float trait"]
 pub trait FloatMath: Float {
     /// Constructs a floating point number created by multiplying `x` by 2
     /// raised to the power of `exp`.
