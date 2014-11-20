@@ -46,6 +46,7 @@ use middle::dependency_format;
 use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem};
 use middle::lang_items::{FnOnceTraitLangItem, TyDescStructLangItem};
 use middle::mem_categorization as mc;
+use middle::region;
 use middle::resolve;
 use middle::resolve_lifetime;
 use middle::stability;
@@ -837,7 +838,7 @@ pub enum Region {
     ReFree(FreeRegion),
 
     /// A concrete region naming some expression within the current function.
-    ReScope(NodeId),
+    ReScope(region::CodeExtent),
 
     /// Static data that has an "infinite" lifetime. Top in the region lattice.
     ReStatic,
@@ -987,8 +988,10 @@ impl Region {
 }
 
 #[deriving(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, Encodable, Decodable, Show)]
+/// A "free" region `fr` can be interpreted as "some region
+/// at least as big as the scope `fr.scope`".
 pub struct FreeRegion {
-    pub scope_id: NodeId,
+    pub scope: region::CodeExtent,
     pub bound_region: BoundRegion
 }
 
@@ -3564,7 +3567,7 @@ pub fn ty_region(tcx: &ctxt,
 pub fn free_region_from_def(free_id: ast::NodeId, def: &RegionParameterDef)
     -> ty::Region
 {
-    ty::ReFree(ty::FreeRegion { scope_id: free_id,
+    ty::ReFree(ty::FreeRegion { scope: region::CodeExtent::from_node_id(free_id),
                                 bound_region: ty::BrNamed(def.def_id,
                                                           def.name) })
 }
@@ -5628,12 +5631,14 @@ pub fn construct_parameter_environment<'tcx>(
         regions: subst::NonerasedRegions(regions)
     };
 
+    let free_id_scope = region::CodeExtent::from_node_id(free_id);
+
     //
     // Compute the bounds on Self and the type parameters.
     //
 
     let bounds = generics.to_bounds(tcx, &free_substs);
-    let bounds = liberate_late_bound_regions(tcx, free_id, &bind(bounds)).value;
+    let bounds = liberate_late_bound_regions(tcx, free_id_scope, &bind(bounds)).value;
     let obligations = traits::obligations_for_generics(tcx,
                                                        traits::ObligationCause::misc(span),
                                                        &bounds,
@@ -5661,7 +5666,7 @@ pub fn construct_parameter_environment<'tcx>(
     return ty::ParameterEnvironment {
         free_substs: free_substs,
         bounds: bounds.types,
-        implicit_region_bound: ty::ReScope(free_id),
+        implicit_region_bound: ty::ReScope(free_id_scope),
         caller_obligations: obligations,
         selection_cache: traits::SelectionCache::new(),
     };
@@ -5780,7 +5785,7 @@ impl<'tcx> mc::Typer<'tcx> for ty::ctxt<'tcx> {
         self.method_map.borrow().contains_key(&typeck::MethodCall::expr(id))
     }
 
-    fn temporary_scope(&self, rvalue_id: ast::NodeId) -> Option<ast::NodeId> {
+    fn temporary_scope(&self, rvalue_id: ast::NodeId) -> Option<region::CodeExtent> {
         self.region_maps.temporary_scope(rvalue_id)
     }
 
@@ -5905,7 +5910,7 @@ impl<'tcx> AutoDerefRef<'tcx> {
 
 pub fn liberate_late_bound_regions<'tcx, HR>(
     tcx: &ty::ctxt<'tcx>,
-    scope_id: ast::NodeId,
+    scope: region::CodeExtent,
     value: &HR)
     -> HR
     where HR : HigherRankedFoldable<'tcx>
@@ -5917,7 +5922,7 @@ pub fn liberate_late_bound_regions<'tcx, HR>(
 
     replace_late_bound_regions(
         tcx, value,
-        |br, _| ty::ReFree(ty::FreeRegion{scope_id: scope_id, bound_region: br})).0
+        |br, _| ty::ReFree(ty::FreeRegion{scope: scope, bound_region: br})).0
 }
 
 pub fn erase_late_bound_regions<'tcx, HR>(

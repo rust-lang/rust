@@ -18,7 +18,7 @@ use driver::diagnostic;
 use driver::diagnostic::Emitter;
 use driver::driver;
 use middle::lang_items;
-use middle::region;
+use middle::region::{mod, CodeExtent};
 use middle::resolve;
 use middle::resolve_lifetime;
 use middle::stability;
@@ -149,7 +149,9 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
     pub fn create_region_hierarchy(&self, rh: &RH) {
         for child_rh in rh.sub.iter() {
             self.create_region_hierarchy(child_rh);
-            self.infcx.tcx.region_maps.record_encl_scope(child_rh.id, rh.id);
+            self.infcx.tcx.region_maps.record_encl_scope(
+                CodeExtent::from_node_id(child_rh.id),
+                CodeExtent::from_node_id(rh.id));
         }
     }
 
@@ -321,12 +323,12 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
     }
 
     pub fn t_rptr_scope(&self, id: ast::NodeId) -> Ty<'tcx> {
-        ty::mk_imm_rptr(self.infcx.tcx, ty::ReScope(id), ty::mk_int())
+        ty::mk_imm_rptr(self.infcx.tcx, ty::ReScope(CodeExtent::from_node_id(id)), ty::mk_int())
     }
 
     pub fn re_free(&self, nid: ast::NodeId, id: uint) -> ty::Region {
-        ty::ReFree(ty::FreeRegion {scope_id: nid,
-                                   bound_region: ty::BrAnon(id)})
+        ty::ReFree(ty::FreeRegion { scope: CodeExtent::from_node_id(nid),
+                                    bound_region: ty::BrAnon(id)})
     }
 
     pub fn t_rptr_free(&self, nid: ast::NodeId, id: uint) -> Ty<'tcx> {

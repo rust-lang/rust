@@ -35,6 +35,7 @@ use self::CreateTypeParametersForAssociatedTypesFlag::*;
 use metadata::csearch;
 use middle::def;
 use middle::lang_items::SizedTraitLangItem;
+use middle::region;
 use middle::resolve_lifetime;
 use middle::subst;
 use middle::subst::{Substs};
@@ -2161,6 +2162,8 @@ fn check_method_self_type<'a, 'tcx, RS:RegionScope>(
                 _ => typ,
             };
 
+            let body_scope = region::CodeExtent::from_node_id(body_id);
+
             // "Required type" comes from the trait definition. It may
             // contain late-bound regions from the method, but not the
             // trait (since traits only have early-bound region
@@ -2168,22 +2171,16 @@ fn check_method_self_type<'a, 'tcx, RS:RegionScope>(
             assert!(!ty::type_escapes_depth(required_type, 1));
             let required_type_free =
                 ty::liberate_late_bound_regions(
-                    crate_context.tcx,
-                    body_id,
-                    &ty::bind(required_type)).value;
+                    crate_context.tcx, body_scope, &ty::bind(required_type)).value;
 
             // The "base type" comes from the impl. It may have late-bound
             // regions from the impl or the method.
             let base_type_free = // liberate impl regions:
                 ty::liberate_late_bound_regions(
-                    crate_context.tcx,
-                    body_id,
-                    &ty::bind(ty::bind(base_type))).value.value;
+                    crate_context.tcx, body_scope, &ty::bind(ty::bind(base_type))).value.value;
             let base_type_free = // liberate method regions:
                 ty::liberate_late_bound_regions(
-                    crate_context.tcx,
-                    body_id,
-                    &ty::bind(base_type_free)).value;
+                    crate_context.tcx, body_scope, &ty::bind(base_type_free)).value;
 
             debug!("required_type={} required_type_free={} \
                     base_type={} base_type_free={}",

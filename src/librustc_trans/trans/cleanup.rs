@@ -26,6 +26,7 @@ use trans::common;
 use trans::common::{Block, FunctionContext, ExprId, NodeInfo};
 use trans::debuginfo;
 use trans::glue;
+use middle::region;
 use trans::type_::Type;
 use middle::ty::{mod, Ty};
 use std::fmt;
@@ -137,7 +138,8 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
             assert_eq!(self.ccx
                            .tcx()
                            .region_maps
-                           .opt_encl_scope(debug_loc.id),
+                           .opt_encl_scope(region::CodeExtent::from_node_id(debug_loc.id))
+                           .map(|s|s.node_id()),
                        top_scope);
         }
 
@@ -1096,7 +1098,7 @@ pub fn temporary_scope(tcx: &ty::ctxt,
                        -> ScopeId {
     match tcx.region_maps.temporary_scope(id) {
         Some(scope) => {
-            let r = AstScope(scope);
+            let r = AstScope(scope.node_id());
             debug!("temporary_scope({}) = {}", id, r);
             r
         }
@@ -1110,7 +1112,7 @@ pub fn temporary_scope(tcx: &ty::ctxt,
 pub fn var_scope(tcx: &ty::ctxt,
                  id: ast::NodeId)
                  -> ScopeId {
-    let r = AstScope(tcx.region_maps.var_scope(id));
+    let r = AstScope(tcx.region_maps.var_scope(id).node_id());
     debug!("var_scope({}) = {}", id, r);
     r
 }
