@@ -899,7 +899,7 @@ fn run_work_multithreaded(sess: &Session,
 
     let mut panicked = false;
     for future in futures.into_iter() {
-        match future.unwrap() {
+        match future.into_inner() {
             Ok(()) => {},
             Err(_) => {
                 panicked = true;

@@ -827,5 +827,5 @@ pub fn check_crate(tcx: &ty::ctxt,
     }
 
     tcx.sess.abort_if_errors();
-    *tcx.node_lint_levels.borrow_mut() = cx.node_levels.unwrap();
+    *tcx.node_lint_levels.borrow_mut() = cx.node_levels.into_inner();
 }
