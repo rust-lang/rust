@@ -1248,7 +1248,7 @@ pub struct MoveItems<T> {
 impl<T> MoveItems<T> {
     #[inline]
     /// Drops all items that have not yet been moved and returns the empty vector.
-    pub fn unwrap(mut self) -> Vec<T> {
+    pub fn into_inner(mut self) -> Vec<T> {
         unsafe {
             for _x in self { }
             let MoveItems { allocation, cap, ptr: _ptr, end: _end } = self;
@@ -1256,6 +1256,10 @@ impl<T> MoveItems<T> {
             Vec { ptr: allocation, cap: cap, len: 0 }
         }
     }
+
+    /// Deprecated, use into_inner() instead
+    #[deprecated = "renamed to into_inner()"]
+    pub fn unwrap(self) -> Vec<T> { self.into_inner() }
 }
 
 impl<T> Iterator<T> for MoveItems<T> {
