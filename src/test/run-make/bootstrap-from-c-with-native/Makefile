@@ -6,7 +6,7 @@ TARGET_RPATH_DIR:=$(TARGET_RPATH_DIR):$(TMPDIR)
 
 all:
 	$(RUSTC) lib.rs
-	$(CC) main.c -o $(call RUN_BINFILE,main) $(call RPATH_LINK_SEARCH,$(HOST_LIB_DIR)) -lboot
+	$(CC) main.c -o $(call RUN_BINFILE,main) $(call RPATH_LINK_SEARCH,$(HOST_LIB_DIR)) -lboot $(EXTRACFLAGS)
 	$(call RUN,main)
 	$(call REMOVE_DYLIBS,boot)
 	$(call FAIL,main)
