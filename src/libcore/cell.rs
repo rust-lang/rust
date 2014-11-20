@@ -258,6 +258,9 @@ impl<T> RefCell<T> {
     /// Consumes the `RefCell`, returning the wrapped value.
     #[unstable = "may be renamed, depending on global conventions"]
     pub fn unwrap(self) -> T {
+        // Since this function takes `self` (the `RefCell`) by value, the
+        // compiler statically verifies that it is not currently borrowed.
+        // Therefore the following assertion is just a `debug_assert!`.
         debug_assert!(self.borrow.get() == UNUSED);
         unsafe{self.value.unwrap()}
     }
