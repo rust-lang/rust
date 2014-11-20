@@ -20,6 +20,7 @@ use core::cmp::max;
 use core::default::Default;
 use core::fmt;
 use core::kinds::marker::{ContravariantLifetime, InvariantType};
+use core::kinds::Sized;
 use core::mem;
 use core::num::{Int, UnsignedInt};
 use core::ops;
@@ -516,7 +517,7 @@ impl<T: PartialOrd> PartialOrd for Vec<T> {
 impl<T: Eq> Eq for Vec<T> {}
 
 #[experimental]
-impl<T: PartialEq, V: AsSlice<T>> Equiv<V> for Vec<T> {
+impl<T: PartialEq, Sized? V: AsSlice<T>> Equiv<V> for Vec<T> {
     #[inline]
     fn equiv(&self, other: &V) -> bool { self.as_slice() == other.as_slice() }
 }
@@ -1181,7 +1182,7 @@ impl<T> AsSlice<T> for Vec<T> {
     }
 }
 
-impl<T: Clone, V: AsSlice<T>> Add<V, Vec<T>> for Vec<T> {
+impl<T: Clone, Sized? V: AsSlice<T>> Add<V, Vec<T>> for Vec<T> {
     #[inline]
     fn add(&self, rhs: &V) -> Vec<T> {
         let mut res = Vec::with_capacity(self.len() + rhs.as_slice().len());
