@@ -16,6 +16,7 @@ use cmp::{PartialEq, Eq, PartialOrd, Ord, Ordering};
 use hash;
 use io::Writer;
 use iter::{DoubleEndedIterator, AdditiveIterator, Extend, Iterator, Map};
+use kinds::Sized;
 use option::{Option, None, Some};
 use str::{FromStr, Str};
 use str;
@@ -342,7 +343,7 @@ impl Path {
 
     /// Returns a normalized byte vector representation of a path, by removing all empty
     /// components, and unnecessary . and .. components.
-    fn normalize<V: AsSlice<u8>>(v: V) -> Vec<u8> {
+    fn normalize<Sized? V: AsSlice<u8>>(v: &V) -> Vec<u8> {
         // borrowck is being very picky
         let val = {
             let is_abs = !v.as_slice().is_empty() && v.as_slice()[0] == SEP_BYTE;
