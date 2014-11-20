@@ -117,6 +117,16 @@ impl<T> Arc<T> {
         // these contents.
         unsafe { &*self._ptr }
     }
+
+    /// Get the number of weak references to this value.
+    #[inline]
+    #[experimental]
+    pub fn weak_count(&self) -> uint { self.inner().weak.load(atomic::SeqCst) - 1 }
+
+    /// Get the number of strong references to this value.
+    #[inline]
+    #[experimental]
+    pub fn strong_count(&self) -> uint { self.inner().strong.load(atomic::SeqCst) }
 }
 
 #[unstable = "waiting on stability of Clone"]
@@ -247,6 +257,29 @@ impl<T: Sync + Send> Weak<T> {
         // See comments above for why this is "safe"
         unsafe { &*self._ptr }
     }
+
+    // Why is there no `weak_count()`?
+    //
+    // It is not possible to determine the number of weak references with only a weak reference
+    // accurately in a wait-free manner. This is because we have a data-race with the last strong
+    // reference's `drop` method. If that operation pauses between decrementing the strong
+    // reference count to 0 and removing the implicit weak reference that the strong references
+    // share then we will incorrectly think there is one more weak reference then there really is.
+    //
+    // We cannot get around this without making parts of this object no longer wait-free, since we
+    // would either need to use locks to get mutual exclusion with `drop` or make it so that the
+    // weak and strong reference counts can be modified atomically together. The first option
+    // destroys wait-freedom by adding a lock and the second (in addition to being annoying to
+    // implement) would make many operations (at least `downgrade` and both `clone`s) go from being
+    // wait-free to merely lock-free, as we would need to do a manual CAS loop to get around other
+    // threads modifying the other value in each of these cases.
+
+    /// Get the number of strong references to this value.
+    ///
+    /// If this function returns 0 then the value has been freed.
+    #[inline]
+    #[experimental]
+    pub fn strong_count(&self) -> uint { self.inner().strong.load(atomic::SeqCst) }
 }
 
 #[experimental = "Weak pointers may not belong in this module."]
@@ -463,6 +496,47 @@ mod tests {
         drop(arc);
         assert!(canary.load(atomic::Acquire) == 1);
         drop(arc_weak);
+    }
+
+    #[test]
+    fn test_strong_count() {
+        let a = Arc::new(0u32);
+        assert!(a.strong_count() == 1);
+        let w = a.downgrade();
+        assert!(a.strong_count() == 1);
+        let b = w.upgrade().expect("");
+        assert!(b.strong_count() == 2);
+        assert!(a.strong_count() == 2);
+        drop(w);
+        drop(a);
+        assert!(b.strong_count() == 1);
+        let c = b.clone();
+        assert!(b.strong_count() == 2);
+        assert!(c.strong_count() == 2);
+    }
+
+    #[test]
+    fn test_weak_count() {
+        let a = Arc::new(0u32);
+        assert!(a.strong_count() == 1);
+        assert!(a.weak_count() == 0);
+        let w = a.downgrade();
+        assert!(a.strong_count() == 1);
+        assert!(w.strong_count() == 1);
+        assert!(a.weak_count() == 1);
+        drop(w);
+        assert!(a.strong_count() == 1);
+        assert!(a.weak_count() == 0);
+        let c = a.clone();
+        assert!(a.strong_count() == 2);
+        assert!(a.weak_count() == 0);
+        let d = c.downgrade();
+        assert!(c.weak_count() == 1);
+        assert!(c.strong_count() == 2);
+
+        drop(a);
+        drop(c);
+        drop(d);
     }
 
     #[test]
