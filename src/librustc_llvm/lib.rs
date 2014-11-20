@@ -2148,7 +2148,7 @@ pub unsafe extern "C" fn rust_llvm_string_write_impl(sr: RustStringRef,
 pub fn build_string(f: |RustStringRef|) -> Option<String> {
     let mut buf = RefCell::new(Vec::new());
     f(&mut buf as RustStringRepr as RustStringRef);
-    String::from_utf8(buf.unwrap()).ok()
+    String::from_utf8(buf.into_inner()).ok()
 }
 
 pub unsafe fn twine_to_string(tr: TwineRef) -> String {
