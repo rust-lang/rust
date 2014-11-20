@@ -84,7 +84,7 @@ h2 {
 h3 {
     font-size: 1.3em;
 }
-h1, h2, h3:not(.impl):not(.method), h4:not(.method) {
+h1, h2, h3:not(.impl):not(.method):not(.type), h4:not(.method):not(.type) {
     color: black;
     font-weight: 500;
     margin: 20px 0 15px 0;
@@ -94,15 +94,15 @@ h1.fqn {
     border-bottom: 1px dashed #D5D5D5;
     margin-top: 0;
 }
-h2, h3:not(.impl):not(.method), h4:not(.method) {
+h2, h3:not(.impl):not(.method):not(.type), h4:not(.method):not(.type) {
     border-bottom: 1px solid #DDDDDD;
 }
-h3.impl, h3.method, h4.method {
+h3.impl, h3.method, h4.method, h3.type, h4.type {
     font-weight: 600;
     margin-top: 10px;
     margin-bottom: 10px;
 }
-h3.impl, h3.method {
+h3.impl, h3.method, h3.type {
     margin-top: 15px;
 }
 h1, h2, h3, h4, section.sidebar, a.source, .search-input, .content table :not(code)>a, .collapse-toggle {
@@ -235,6 +235,7 @@ nav.sub {
 .content .highlighted.fn { background-color: #c6afb3; }
 .content .highlighted.method { background-color: #c6afb3; }
 .content .highlighted.tymethod { background-color: #c6afb3; }
+.content .highlighted.type { background-color: #c6afb3; }
 .content .highlighted.ffi { background-color: #c6afb3; }
 
 .docblock.short.nowrap {
@@ -307,7 +308,7 @@ nav.sub {
 }
 .content .methods .docblock { margin-left: 40px; }
 
-.content .impl-methods .docblock { margin-left: 40px; }
+.content .impl-items .docblock { margin-left: 40px; }
 
 nav {
     border-bottom: 1px solid #e0e0e0;
@@ -442,7 +443,7 @@ h1 .stability {
     padding: 4px 10px;
 }
 
-.impl-methods .stability, .methods .stability {
+.impl-items .stability, .methods .stability {
     margin-right: 20px;
 }
 
