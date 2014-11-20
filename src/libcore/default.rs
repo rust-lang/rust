@@ -133,6 +133,12 @@ pub trait Default {
     fn default() -> Self;
 }
 
+/// A utility function that just calls `Default::default`.
+#[inline]
+pub fn default<T: Default>() -> T {
+    Default::default()
+}
+
 macro_rules! default_impl(
     ($t:ty, $v:expr) => {
         impl Default for $t {
