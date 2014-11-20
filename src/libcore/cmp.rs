@@ -61,13 +61,13 @@ use option::{Option, Some, None};
 /// `Eq`.
 #[lang="eq"]
 #[unstable = "Definition may change slightly after trait reform"]
-pub trait PartialEq for Sized? {
+pub trait PartialEq<Sized? Rhs = Self> for Sized? {
     /// This method tests for `self` and `other` values to be equal, and is used by `==`.
-    fn eq(&self, other: &Self) -> bool;
+    fn eq(&self, other: &Rhs) -> bool;
 
     /// This method tests for `!=`.
     #[inline]
-    fn ne(&self, other: &Self) -> bool { !self.eq(other) }
+    fn ne(&self, other: &Rhs) -> bool { !self.eq(other) }
 }
 
 /// Trait for equality comparisons which are [equivalence relations](
@@ -80,7 +80,7 @@ pub trait PartialEq for Sized? {
 /// - symmetric: `a == b` implies `b == a`; and
 /// - transitive: `a == b` and `b == c` implies `a == c`.
 #[unstable = "Definition may change slightly after trait reform"]
-pub trait Eq for Sized?: PartialEq {
+pub trait Eq<Sized? Rhs = Self> for Sized?: PartialEq<Rhs> {
     // FIXME #13101: this method is used solely by #[deriving] to
     // assert that every component of a type implements #[deriving]
     // itself, the current deriving infrastructure means doing this
@@ -150,7 +150,7 @@ impl Ordering {
 /// - transitive, `a < b` and `b < c` implies `a < c`. The same must hold for
 ///   both `==` and `>`.
 #[unstable = "Definition may change slightly after trait reform"]
-pub trait Ord for Sized?: Eq + PartialOrd {
+pub trait Ord<Sized? Rhs = Self> for Sized?: Eq<Rhs> + PartialOrd<Rhs> {
     /// This method returns an ordering between `self` and `other` values.
     ///
     /// By convention, `self.cmp(&other)` returns the ordering matching
@@ -161,7 +161,7 @@ pub trait Ord for Sized?: Eq + PartialOrd {
     /// assert_eq!(10u.cmp(&5),  Greater);  // because 10 > 5
     /// assert_eq!( 5u.cmp(&5),  Equal);    // because 5 == 5
     /// ```
-    fn cmp(&self, other: &Self) -> Ordering;
+    fn cmp(&self, other: &Rhs) -> Ordering;
 }
 
 #[unstable = "Trait is unstable."]
@@ -194,14 +194,14 @@ impl PartialOrd for Ordering {
 /// 5.11).
 #[lang="ord"]
 #[unstable = "Definition may change slightly after trait reform"]
-pub trait PartialOrd for Sized?: PartialEq {
+pub trait PartialOrd<Sized? Rhs = Self> for Sized?: PartialEq<Rhs> {
     /// This method returns an ordering between `self` and `other` values
     /// if one exists.
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering>;
+    fn partial_cmp(&self, other: &Rhs) -> Option<Ordering>;
 
     /// This method tests less than (for `self` and `other`) and is used by the `<` operator.
     #[inline]
-    fn lt(&self, other: &Self) -> bool {
+    fn lt(&self, other: &Rhs) -> bool {
         match self.partial_cmp(other) {
             Some(Less) => true,
             _ => false,
@@ -210,7 +210,7 @@ pub trait PartialOrd for Sized?: PartialEq {
 
     /// This method tests less than or equal to (`<=`).
     #[inline]
-    fn le(&self, other: &Self) -> bool {
+    fn le(&self, other: &Rhs) -> bool {
         match self.partial_cmp(other) {
             Some(Less) | Some(Equal) => true,
             _ => false,
@@ -219,7 +219,7 @@ pub trait PartialOrd for Sized?: PartialEq {
 
     /// This method tests greater than (`>`).
     #[inline]
-    fn gt(&self, other: &Self) -> bool {
+    fn gt(&self, other: &Rhs) -> bool {
         match self.partial_cmp(other) {
             Some(Greater) => true,
             _ => false,
@@ -228,7 +228,7 @@ pub trait PartialOrd for Sized?: PartialEq {
 
     /// This method tests greater than or equal to (`>=`).
     #[inline]
-    fn ge(&self, other: &Self) -> bool {
+    fn ge(&self, other: &Rhs) -> bool {
         match self.partial_cmp(other) {
             Some(Greater) | Some(Equal) => true,
             _ => false,
