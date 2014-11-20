@@ -458,7 +458,7 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
         }
         visit::walk_expr(ir, expr);
       }
-      ast::ExprFnBlock(..) | ast::ExprProc(..) | ast::ExprUnboxedFn(..) => {
+      ast::ExprClosure(..) | ast::ExprProc(..) => {
         // Interesting control flow (for loops can contain labeled
         // breaks or continues)
         ir.add_live_node_for_node(expr.id, ExprNode(expr.span));
@@ -975,10 +975,9 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
               self.propagate_through_expr(&**e, succ)
           }
 
-          ast::ExprFnBlock(_, _, ref blk) |
-          ast::ExprProc(_, ref blk) |
-          ast::ExprUnboxedFn(_, _, _, ref blk) => {
-              debug!("{} is an ExprFnBlock, ExprProc, or ExprUnboxedFn",
+          ast::ExprClosure(_, _, _, ref blk) |
+          ast::ExprProc(_, ref blk) => {
+              debug!("{} is an ExprClosure or ExprProc",
                      expr_to_string(expr));
 
               /*
@@ -1495,7 +1494,7 @@ fn check_expr(this: &mut Liveness, expr: &Expr) {
       ast::ExprBreak(..) | ast::ExprAgain(..) | ast::ExprLit(_) |
       ast::ExprBlock(..) | ast::ExprMac(..) | ast::ExprAddrOf(..) |
       ast::ExprStruct(..) | ast::ExprRepeat(..) | ast::ExprParen(..) |
-      ast::ExprFnBlock(..) | ast::ExprProc(..) | ast::ExprUnboxedFn(..) |
+      ast::ExprClosure(..) | ast::ExprProc(..) |
       ast::ExprPath(..) | ast::ExprBox(..) | ast::ExprSlice(..) => {
         visit::walk_expr(this, expr);
       }

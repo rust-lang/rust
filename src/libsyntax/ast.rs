@@ -667,9 +667,8 @@ pub enum Expr_ {
     // FIXME #6993: change to Option<Name> ... or not, if these are hygienic.
     ExprLoop(P<Block>, Option<Ident>),
     ExprMatch(P<Expr>, Vec<Arm>, MatchSource),
-    ExprFnBlock(CaptureClause, P<FnDecl>, P<Block>),
+    ExprClosure(CaptureClause, Option<UnboxedClosureKind>, P<FnDecl>, P<Block>),
     ExprProc(P<FnDecl>, P<Block>),
-    ExprUnboxedFn(CaptureClause, UnboxedClosureKind, P<FnDecl>, P<Block>),
     ExprBlock(P<Block>),
 
     ExprAssign(P<Expr>, P<Expr>),

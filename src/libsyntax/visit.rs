@@ -815,14 +815,7 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
                 visitor.visit_arm(arm)
             }
         }
-        ExprFnBlock(_, ref function_declaration, ref body) => {
-            visitor.visit_fn(FkFnBlock,
-                             &**function_declaration,
-                             &**body,
-                             expression.span,
-                             expression.id)
-        }
-        ExprUnboxedFn(_, _, ref function_declaration, ref body) => {
+        ExprClosure(_, _, ref function_declaration, ref body) => {
             visitor.visit_fn(FkFnBlock,
                              &**function_declaration,
                              &**body,

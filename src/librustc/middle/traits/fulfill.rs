@@ -109,6 +109,10 @@ impl<'tcx> FulfillmentContext<'tcx> {
         self.select(&mut selcx, false)
     }
 
+    pub fn pending_trait_obligations(&self) -> &[Obligation<'tcx>] {
+        self.trait_obligations[]
+    }
+
     fn select<'a>(&mut self,
                   selcx: &mut SelectionContext<'a, 'tcx>,
                   only_new_obligations: bool)
