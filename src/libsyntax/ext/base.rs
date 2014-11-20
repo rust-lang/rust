@@ -361,9 +361,6 @@ fn initial_syntax_expander_table(ecfg: &expand::ExpansionConfig) -> SyntaxEnv {
     syntax_expanders.insert(intern("format_args"),
                             builtin_normal_expander(
                                 ext::format::expand_format_args));
-    syntax_expanders.insert(intern("format_args_method"),
-                            builtin_normal_expander(
-                                ext::format::expand_format_args_method));
     syntax_expanders.insert(intern("env"),
                             builtin_normal_expander(
                                     ext::env::expand_env));

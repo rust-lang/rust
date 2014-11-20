@@ -212,12 +212,12 @@ mod imp {
     impl Rng for OsRng {
         fn next_u32(&mut self) -> u32 {
             let mut v = [0u8, .. 4];
-            self.fill_bytes(v);
+            self.fill_bytes(&mut v);
             unsafe { mem::transmute(v) }
         }
         fn next_u64(&mut self) -> u64 {
             let mut v = [0u8, .. 8];
-            self.fill_bytes(v);
+            self.fill_bytes(&mut v);
             unsafe { mem::transmute(v) }
         }
         fn fill_bytes(&mut self, v: &mut [u8]) {

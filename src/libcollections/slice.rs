@@ -2084,7 +2084,7 @@ mod bench {
     use std::rand::{weak_rng, Rng};
     use std::mem;
     use std::ptr;
-    use test::Bencher;
+    use test::{Bencher, black_box};
 
     use vec::Vec;
 
@@ -2140,8 +2140,8 @@ mod bench {
         let mut vec: Vec<uint> = vec![];
         b.iter(|| {
             vec.push(0);
-            &vec
-        })
+            black_box(&vec);
+        });
     }
 
     #[bench]

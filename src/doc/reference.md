@@ -216,8 +216,14 @@ rather than referring to it by name or some other evaluation rule. A literal is
 a form of constant expression, so is evaluated (primarily) at compile time.
 
 ```{.ebnf .gram}
-literal : string_lit | char_lit | byte_string_lit | byte_lit | num_lit ;
+lit_suffix : ident;
+literal : [ string_lit | char_lit | byte_string_lit | byte_lit | num_lit ] lit_suffix ?;
 ```
+
+The optional suffix is only used for certain numeric literals, but is
+reserved for future extension, that is, the above gives the lexical
+grammar, but a Rust parser will reject everything but the 12 special
+cases mentioned in [Number literals](#number-literals) below.
 
 #### Character and string literals
 
@@ -371,27 +377,20 @@ b"\\x52"; br"\x52";                  // \x52
 #### Number literals
 
 ```{.ebnf .gram}
-num_lit : nonzero_dec [ dec_digit | '_' ] * num_suffix ?
-        | '0' [       [ dec_digit | '_' ] * num_suffix ?
-              | 'b'   [ '1' | '0' | '_' ] + int_suffix ?
-              | 'o'   [ oct_digit | '_' ] + int_suffix ?
-              | 'x'   [ hex_digit | '_' ] + int_suffix ? ] ;
+num_lit : nonzero_dec [ dec_digit | '_' ] * float_suffix ?
+        | '0' [       [ dec_digit | '_' ] * float_suffix ?
+              | 'b'   [ '1' | '0' | '_' ] +
+              | 'o'   [ oct_digit | '_' ] +
+              | 'x'   [ hex_digit | '_' ] +  ] ;
 
-num_suffix : int_suffix | float_suffix ;
+float_suffix : [ exponent | '.' dec_lit exponent ? ] ? ;
 
-int_suffix : 'u' int_suffix_size ?
-           | 'i' int_suffix_size ? ;
-int_suffix_size : [ '8' | "16" | "32" | "64" ] ;
-
-float_suffix : [ exponent | '.' dec_lit exponent ? ] ? float_suffix_ty ? ;
-float_suffix_ty : 'f' [ "32" | "64" ] ;
 exponent : ['E' | 'e'] ['-' | '+' ] ? dec_lit ;
 dec_lit : [ dec_digit | '_' ] + ;
 ```
 
 A _number literal_ is either an _integer literal_ or a _floating-point
-literal_. The grammar for recognizing the two kinds of literals is mixed, as
-they are differentiated by suffixes.
+literal_. The grammar for recognizing the two kinds of literals is mixed.
 
 ##### Integer literals
 
@@ -406,9 +405,9 @@ An _integer literal_ has one of four forms:
 * A _binary literal_ starts with the character sequence `U+0030` `U+0062`
   (`0b`) and continues as any mixture of binary digits and underscores.
 
-An integer literal may be followed (immediately, without any spaces) by an
-_integer suffix_, which changes the type of the literal. There are two kinds of
-integer literal suffix:
+Like any literal, an integer literal may be followed (immediately,
+without any spaces) by an _integer suffix_, which forcibly sets the
+type of the literal. There are 10 valid values for an integer suffix:
 
 * The `i` and `u` suffixes give the literal type `int` or `uint`,
   respectively.
@@ -443,11 +442,9 @@ A _floating-point literal_ has one of two forms:
 * A single _decimal literal_ followed by an _exponent_.
 
 By default, a floating-point literal has a generic type, and, like integer
-literals, the type must be uniquely determined from the context. A
-floating-point literal may be followed (immediately, without any spaces) by a
-_floating-point suffix_, which changes the type of the literal. There are two
-floating-point suffixes: `f32`, and `f64` (the 32-bit and 64-bit floating point
-types).
+literals, the type must be uniquely determined from the context. There are two valid
+_floating-point suffixes_, `f32` and `f64` (the 32-bit and 64-bit floating point
+types), which explicitly determine the type of the literal.
 
 Examples of floating-point literals of various forms:
 
@@ -3433,7 +3430,7 @@ use to avoid conflicts is simply to name variants with upper-case letters, and
 local variables with lower-case letters.
 
 Multiple match patterns may be joined with the `|` operator. A range of values
-may be specified with `..`. For example:
+may be specified with `...`. For example:
 
 ```
 # let x = 2i;
@@ -4042,19 +4039,19 @@ initialized; this is enforced by the compiler.
 
 ### Boxes
 
-An  _box_ is a reference to a heap allocation holding another value, which is
+A _box_ is a reference to a heap allocation holding another value, which is
 constructed by the prefix operator `box`. When the standard library is in use,
-the type of an box is `std::owned::Box<T>`.
+the type of a box is `std::owned::Box<T>`.
 
-An example of an box type and value:
+An example of a box type and value:
 
 ```
 let x: Box<int> = box 10;
 ```
 
-Box values exist in 1:1 correspondence with their heap allocation, copying an
+Box values exist in 1:1 correspondence with their heap allocation, copying a
 box value makes a shallow copy of the pointer. Rust will consider a shallow
-copy of an box to move ownership of the value. After a value has been moved,
+copy of a box to move ownership of the value. After a value has been moved,
 the source location cannot be used unless it is reinitialized.
 
 ```

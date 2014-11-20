@@ -7,25 +7,18 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+//
+// ignore-lexer-test FIXME #15679
 
-use std::fmt::Show;
+fn foo<
+    'β, //~ ERROR non-ascii idents are not fully supported.
+    γ  //~ ERROR non-ascii idents are not fully supported.
+>() {}
 
-trait Str {}
-
-trait Something {
-    fn yay<T: Show>(_: Option<Self>, thing: &[T]);
+struct X {
+    δ: uint //~ ERROR non-ascii idents are not fully supported.
 }
 
-struct X { data: u32 }
-
-impl Something for X {
-    fn yay<T: Str>(_:Option<X>, thing: &[T]) {
-//~^ ERROR in method `yay`, type parameter 0 requires bound `Str`, which is not required
-
-    }
-}
-
-fn main() {
-    let arr = &["one", "two", "three"];
-    println!("{}", Something::yay(None::<X>, arr));
+pub fn main() {
+    let α = 0.00001f64; //~ ERROR non-ascii idents are not fully supported.
 }

@@ -2050,6 +2050,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
+    pub fn add_default_region_param_bounds(&self,
+                                           substs: &Substs<'tcx>,
+                                           expr: &ast::Expr)
+    {
+        for &ty in substs.types.iter() {
+            let default_bound = ty::ReScope(expr.id);
+            let origin = infer::RelateDefaultParamBound(expr.span, ty);
+            self.register_region_obligation(origin, ty, default_bound);
+        }
+    }
+
     pub fn add_obligations_for_parameters(&self,
                                           cause: traits::ObligationCause<'tcx>,
                                           substs: &Substs<'tcx>,
@@ -3180,7 +3191,7 @@ fn check_expr_with_unifier<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                          method_name.node.name,
                                          expr_t,
                                          tps,
-                                         expr.id,
+                                         expr,
                                          rcvr) {
             Ok(method) => {
                 let method_ty = method.ty;
@@ -4693,11 +4704,7 @@ fn constrain_path_type_parameters(fcx: &FnCtxt,
                                   expr: &ast::Expr)
 {
     fcx.opt_node_ty_substs(expr.id, |item_substs| {
-        for &ty in item_substs.substs.types.iter() {
-            let default_bound = ty::ReScope(expr.id);
-            let origin = infer::RelateDefaultParamBound(expr.span, ty);
-            fcx.register_region_obligation(origin, ty, default_bound);
-        }
+        fcx.add_default_region_param_bounds(&item_substs.substs, expr);
     });
 }
 

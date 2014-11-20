@@ -368,7 +368,7 @@ unsafe extern "C" fn diagnostic_handler(info: DiagnosticInfoRef, user: *mut c_vo
 
             if enabled {
                 let loc = llvm::debug_loc_to_string(llcx, opt.debug_loc);
-                cgcx.handler.note(format!("optimization {:s} for {:s} at {:s}: {:s}",
+                cgcx.handler.note(format!("optimization {} for {} at {}: {}",
                                           opt.kind.describe(),
                                           pass_name,
                                           if loc.is_empty() { "[unknown]" } else { loc.as_slice() },
