@@ -30,7 +30,7 @@ use str::{CharRange, CowString, FromStr, StrAllocating, Owned};
 use vec::{DerefVec, Vec, as_vec};
 
 /// A growable string stored as a UTF-8 encoded buffer.
-#[deriving(Clone, PartialEq, PartialOrd, Eq, Ord)]
+#[deriving(Clone, PartialOrd, Eq, Ord)]
 #[stable]
 pub struct String {
     vec: Vec<u8>,
@@ -738,6 +738,20 @@ impl Extend<char> for String {
     }
 }
 
+impl<Rhs> PartialEq<Rhs> for String where Rhs: Deref<str> {
+    #[inline]
+    fn eq(&self, other: &Rhs) -> bool { PartialEq::eq(&**self, &**other) }
+    #[inline]
+    fn ne(&self, other: &Rhs) -> bool { PartialEq::ne(&**self, &**other) }
+}
+
+impl<'a> PartialEq<String> for &'a str {
+    #[inline]
+    fn eq(&self, other: &String) -> bool { PartialEq::eq(*self, &**other) }
+    #[inline]
+    fn ne(&self, other: &String) -> bool { PartialEq::ne(*self, &**other) }
+}
+
 #[experimental = "waiting on Str stabilization"]
 impl Str for String {
     #[inline]
@@ -779,7 +793,8 @@ impl<H: hash::Writer> hash::Hash<H> for String {
     }
 }
 
-#[experimental = "waiting on Equiv stabilization"]
+#[allow(deprecated)]
+#[deprecated = "Use overloaded `core::cmp::PartialEq`"]
 impl<'a, S: Str> Equiv<S> for String {
     #[inline]
     fn equiv(&self, other: &S) -> bool {

@@ -944,7 +944,7 @@ mod test {
         let sessopts = build_session_options(matches);
         let sess = build_session(sessopts, None, registry);
         let cfg = build_configuration(&sess);
-        let mut test_items = cfg.iter().filter(|m| m.name().equiv(&("test")));
+        let mut test_items = cfg.iter().filter(|m| m.name() == "test");
         assert!(test_items.next().is_some());
         assert!(test_items.next().is_none());
     }
