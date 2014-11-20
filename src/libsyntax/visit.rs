@@ -404,14 +404,12 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty) {
             walk_fn_ret_ty(visitor, &function_declaration.decl.output);
             walk_lifetime_decls_helper(visitor, &function_declaration.lifetimes);
         }
-        TyPath(ref path, ref opt_bounds, id) => {
+        TyPath(ref path, id) => {
             visitor.visit_path(path, id);
-            match *opt_bounds {
-                Some(ref bounds) => {
-                    walk_ty_param_bounds_helper(visitor, bounds);
-                }
-                None => { }
-            }
+        }
+        TyObjectSum(ref ty, ref bounds) => {
+            visitor.visit_ty(&**ty);
+            walk_ty_param_bounds_helper(visitor, bounds);
         }
         TyQPath(ref qpath) => {
             visitor.visit_ty(&*qpath.self_type);

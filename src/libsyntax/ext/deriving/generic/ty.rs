@@ -70,7 +70,7 @@ impl<'a> Path<'a> {
                  self_ty: Ident,
                  self_generics: &Generics)
                  -> P<ast::Ty> {
-        cx.ty_path(self.to_path(cx, span, self_ty, self_generics), None)
+        cx.ty_path(self.to_path(cx, span, self_ty, self_generics))
     }
     pub fn to_path(&self,
                    cx: &ExtCtxt,
@@ -152,7 +152,7 @@ impl<'a> Ty<'a> {
             }
             Literal(ref p) => { p.to_ty(cx, span, self_ty, self_generics) }
             Self  => {
-                cx.ty_path(self.to_path(cx, span, self_ty, self_generics), None)
+                cx.ty_path(self.to_path(cx, span, self_ty, self_generics))
             }
             Tuple(ref fields) => {
                 let ty = ast::TyTup(fields.iter()
