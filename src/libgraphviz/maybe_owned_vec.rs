@@ -89,7 +89,7 @@ impl<'a, T: Ord> Ord for MaybeOwnedVector<'a, T> {
     }
 }
 
-impl<'a, T: PartialEq, V: AsSlice<T>> Equiv<V> for MaybeOwnedVector<'a, T> {
+impl<'a, T: PartialEq, Sized? V: AsSlice<T>> Equiv<V> for MaybeOwnedVector<'a, T> {
     fn equiv(&self, other: &V) -> bool {
         self.as_slice() == other.as_slice()
     }
