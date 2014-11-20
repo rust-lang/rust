@@ -315,23 +315,6 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                 get_method_index(tcx, &*new_trait_ref,
                                  trait_ref.clone(), method_num);
 
-            // FIXME Hacky. By-value `self` methods in objects ought to be
-            // just a special case of passing ownership of a DST value
-            // as a parameter. *But* we currently hack them in and tie them to
-            // the particulars of the `Box` type. So basically for a `fn foo(self,...)`
-            // method invoked on an object, we don't want the receiver type to be
-            // `TheTrait`, but rather `Box<TheTrait>`. Yuck.
-            let mut m = m;
-            match m.explicit_self {
-                ty::ByValueExplicitSelfCategory => {
-                    let mut n = (*m).clone();
-                    let self_ty = n.fty.sig.inputs[0];
-                    n.fty.sig.inputs[0] = ty::mk_uniq(tcx, self_ty);
-                    m = Rc::new(n);
-                }
-                _ => { }
-            }
-
             let xform_self_ty =
                 this.xform_self_ty(&m, &new_trait_ref.substs);
 
