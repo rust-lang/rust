@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use middle::region;
 use middle::subst;
 use middle::subst::{Subst};
 use middle::traits;
@@ -118,8 +119,10 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
 
         self.with_fcx(item, |this, fcx| {
             let variants = lookup_fields(fcx);
-            let mut bounds_checker = BoundsChecker::new(fcx, item.span,
-                                                        item.id, Some(&mut this.cache));
+            let mut bounds_checker = BoundsChecker::new(fcx,
+                                                        item.span,
+                                                        region::CodeExtent::from_node_id(item.id),
+                                                        Some(&mut this.cache));
             for variant in variants.iter() {
                 for field in variant.fields.iter() {
                     // Regions are checked below.
@@ -154,8 +157,10 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                        item: &ast::Item)
     {
         self.with_fcx(item, |this, fcx| {
-            let mut bounds_checker = BoundsChecker::new(fcx, item.span,
-                                                        item.id, Some(&mut this.cache));
+            let mut bounds_checker = BoundsChecker::new(fcx,
+                                                        item.span,
+                                                        region::CodeExtent::from_node_id(item.id),
+                                                        Some(&mut this.cache));
             let polytype = ty::lookup_item_type(fcx.tcx(), local_def(item.id));
             let item_ty = polytype.ty.subst(fcx.tcx(), &fcx.inh.param_env.free_substs);
             bounds_checker.check_traits_in_ty(item_ty);
@@ -166,8 +171,12 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                   item: &ast::Item)
     {
         self.with_fcx(item, |this, fcx| {
-            let mut bounds_checker = BoundsChecker::new(fcx, item.span,
-                                                        item.id, Some(&mut this.cache));
+            let item_scope = region::CodeExtent::from_node_id(item.id);
+
+            let mut bounds_checker = BoundsChecker::new(fcx,
+                                                        item.span,
+                                                        item_scope,
+                                                        Some(&mut this.cache));
 
             // Find the impl self type as seen from the "inside" --
             // that is, with all type parameters converted from bound
@@ -175,7 +184,8 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
             // liberated.
             let self_ty = ty::node_id_to_type(fcx.tcx(), item.id);
             let self_ty = self_ty.subst(fcx.tcx(), &fcx.inh.param_env.free_substs);
-            let self_ty = liberate_late_bound_regions(fcx.tcx(), item.id, &ty::bind(self_ty)).value;
+            let self_ty = liberate_late_bound_regions(
+                fcx.tcx(), item_scope, &ty::bind(self_ty)).value;
 
             bounds_checker.check_traits_in_ty(self_ty);
 
@@ -186,7 +196,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                 Some(t) => { t }
             };
             let trait_ref = (*trait_ref).subst(fcx.tcx(), &fcx.inh.param_env.free_substs);
-            let trait_ref = liberate_late_bound_regions(fcx.tcx(), item.id, &trait_ref);
+            let trait_ref = liberate_late_bound_regions(fcx.tcx(), item_scope, &trait_ref);
 
             // There are special rules that apply to drop.
             if
@@ -257,7 +267,7 @@ impl<'ccx, 'tcx, 'v> Visitor<'v> for CheckTypeWellFormedVisitor<'ccx, 'tcx> {
 pub struct BoundsChecker<'cx,'tcx:'cx> {
     fcx: &'cx FnCtxt<'cx,'tcx>,
     span: Span,
-    scope_id: ast::NodeId,
+    scope: region::CodeExtent,
     binding_count: uint,
     cache: Option<&'cx mut HashSet<Ty<'tcx>>>,
 }
@@ -265,10 +275,10 @@ pub struct BoundsChecker<'cx,'tcx:'cx> {
 impl<'cx,'tcx> BoundsChecker<'cx,'tcx> {
     pub fn new(fcx: &'cx FnCtxt<'cx,'tcx>,
                span: Span,
-               scope_id: ast::NodeId,
+               scope: region::CodeExtent,
                cache: Option<&'cx mut HashSet<Ty<'tcx>>>)
                -> BoundsChecker<'cx,'tcx> {
-        BoundsChecker { fcx: fcx, span: span, scope_id: scope_id,
+        BoundsChecker { fcx: fcx, span: span, scope: scope,
                         cache: cache, binding_count: 0 }
     }
 
@@ -383,7 +393,7 @@ impl<'cx,'tcx> TypeFolder<'tcx> for BoundsChecker<'cx,'tcx> {
             ty::ty_closure(box ty::ClosureTy{sig: ref fn_sig, ..}) => {
                 self.binding_count += 1;
 
-                let fn_sig = liberate_late_bound_regions(self.fcx.tcx(), self.scope_id, fn_sig);
+                let fn_sig = liberate_late_bound_regions(self.fcx.tcx(), self.scope, fn_sig);
 
                 debug!("late-bound regions replaced: {}",
                        fn_sig.repr(self.tcx()));

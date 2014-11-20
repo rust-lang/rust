@@ -22,6 +22,7 @@ use self::ScopeChain::*;
 
 use session::Session;
 use middle::def;
+use middle::region;
 use middle::resolve::DefMap;
 use middle::subst;
 use middle::ty;
@@ -43,7 +44,7 @@ pub enum DefRegion {
                         /* lifetime decl */ ast::NodeId),
     DefLateBoundRegion(ty::DebruijnIndex,
                        /* lifetime decl */ ast::NodeId),
-    DefFreeRegion(/* block scope */ ast::NodeId,
+    DefFreeRegion(/* block scope */ region::CodeExtent,
                   /* lifetime decl */ ast::NodeId),
 }
 
@@ -67,7 +68,7 @@ enum ScopeChain<'a> {
     LateScope(&'a Vec<ast::LifetimeDef>, Scope<'a>),
     /// lifetimes introduced by items within a code block are scoped
     /// to that block.
-    BlockScope(ast::NodeId, Scope<'a>),
+    BlockScope(region::CodeExtent, Scope<'a>),
     RootScope
 }
 
@@ -195,7 +196,8 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
     }
 
     fn visit_block(&mut self, b: &ast::Block) {
-        self.with(BlockScope(b.id, self.scope), |this| visit::walk_block(this, b));
+        self.with(BlockScope(region::CodeExtent::from_node_id(b.id), self.scope),
+                  |this| visit::walk_block(this, b));
     }
 
     fn visit_lifetime_ref(&mut self, lifetime_ref: &ast::Lifetime) {
@@ -307,8 +309,8 @@ impl<'a> LifetimeContext<'a> {
         let mut scope = self.scope;
         loop {
             match *scope {
-                BlockScope(id, s) => {
-                    return self.resolve_free_lifetime_ref(id, lifetime_ref, s);
+                BlockScope(blk_scope, s) => {
+                    return self.resolve_free_lifetime_ref(blk_scope, lifetime_ref, s);
                 }
 
                 RootScope => {
@@ -350,19 +352,19 @@ impl<'a> LifetimeContext<'a> {
     }
 
     fn resolve_free_lifetime_ref(&mut self,
-                                 scope_id: ast::NodeId,
+                                 scope_data: region::CodeExtent,
                                  lifetime_ref: &ast::Lifetime,
                                  scope: Scope) {
         // Walk up the scope chain, tracking the outermost free scope,
         // until we encounter a scope that contains the named lifetime
         // or we run out of scopes.
-        let mut scope_id = scope_id;
+        let mut scope_data = scope_data;
         let mut scope = scope;
         let mut search_result = None;
         loop {
             match *scope {
-                BlockScope(id, s) => {
-                    scope_id = id;
+                BlockScope(blk_scope_data, s) => {
+                    scope_data = blk_scope_data;
                     scope = s;
                 }
 
@@ -383,7 +385,7 @@ impl<'a> LifetimeContext<'a> {
 
         match search_result {
             Some((_depth, decl_id)) => {
-                let def = DefFreeRegion(scope_id, decl_id);
+                let def = DefFreeRegion(scope_data, decl_id);
                 self.insert_lifetime(lifetime_ref, def);
             }
 

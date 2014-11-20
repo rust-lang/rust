@@ -24,6 +24,7 @@ use middle::dataflow::BitwiseOperator;
 use middle::dataflow::DataFlowOperator;
 use middle::expr_use_visitor as euv;
 use middle::mem_categorization as mc;
+use middle::region;
 use middle::ty::{mod, Ty};
 use util::ppaux::{note_and_explain_region, Repr, UserString};
 
@@ -169,8 +170,8 @@ fn build_borrowck_dataflow_data<'a, 'tcx>(this: &mut BorrowckCtxt<'a, 'tcx>,
                              id_range,
                              all_loans.len());
     for (loan_idx, loan) in all_loans.iter().enumerate() {
-        loan_dfcx.add_gen(loan.gen_scope, loan_idx);
-        loan_dfcx.add_kill(loan.kill_scope, loan_idx);
+        loan_dfcx.add_gen(loan.gen_scope.node_id(), loan_idx);
+        loan_dfcx.add_kill(loan.kill_scope.node_id(), loan_idx);
     }
     loan_dfcx.add_kills_from_flow_exits(cfg);
     loan_dfcx.propagate(cfg, body);
@@ -258,8 +259,19 @@ pub struct Loan {
     loan_path: Rc<LoanPath>,
     kind: ty::BorrowKind,
     restricted_paths: Vec<Rc<LoanPath>>,
-    gen_scope: ast::NodeId,
-    kill_scope: ast::NodeId,
+
+    /// gen_scope indicates where loan is introduced. Typically the
+    /// loan is introduced at the point of the borrow, but in some
+    /// cases, notably method arguments, the loan may be introduced
+    /// only later, once it comes into scope.  See also
+    /// `GatherLoanCtxt::compute_gen_scope`.
+    gen_scope: region::CodeExtent,
+
+    /// kill_scope indicates when the loan goes out of scope.  This is
+    /// either when the lifetime expires or when the local variable
+    /// which roots the loan-path goes out of scope, whichever happens
+    /// faster. See also `GatherLoanCtxt::compute_kill_scope`.
+    kill_scope: region::CodeExtent,
     span: Span,
     cause: euv::LoanCause,
 }
@@ -300,11 +312,13 @@ pub fn closure_to_block(closure_id: ast::NodeId,
 }
 
 impl LoanPath {
-    pub fn kill_scope(&self, tcx: &ty::ctxt) -> ast::NodeId {
+    pub fn kill_scope(&self, tcx: &ty::ctxt) -> region::CodeExtent {
         match *self {
             LpVar(local_id) => tcx.region_maps.var_scope(local_id),
-            LpUpvar(upvar_id) =>
-                closure_to_block(upvar_id.closure_expr_id, tcx),
+            LpUpvar(upvar_id) => {
+                let block_id = closure_to_block(upvar_id.closure_expr_id, tcx);
+                region::CodeExtent::from_node_id(block_id)
+            }
             LpExtend(ref base, _, _) => base.kill_scope(tcx),
         }
     }
@@ -904,8 +918,8 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
 
 fn is_statement_scope(tcx: &ty::ctxt, region: ty::Region) -> bool {
      match region {
-         ty::ReScope(node_id) => {
-             match tcx.map.find(node_id) {
+         ty::ReScope(scope) => {
+             match tcx.map.find(scope.node_id()) {
                  Some(ast_map::NodeStmt(_)) => true,
                  _ => false
              }

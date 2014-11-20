@@ -301,11 +301,11 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
             debug!("free_regions_from_same_fn(sub={}, sup={})", sub, sup);
             let (scope_id, fr1, fr2) = match (sub, sup) {
                 (ReFree(fr1), ReFree(fr2)) => {
-                    if fr1.scope_id != fr2.scope_id {
+                    if fr1.scope != fr2.scope {
                         return None
                     }
-                    assert!(fr1.scope_id == fr2.scope_id);
-                    (fr1.scope_id, fr1, fr2)
+                    assert!(fr1.scope == fr2.scope);
+                    (fr1.scope.node_id(), fr1, fr2)
                 },
                 _ => return None
             };
