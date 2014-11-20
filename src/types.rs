@@ -75,7 +75,7 @@ impl LintPass for TypePass {
         for path in dlists.iter() {
             if match_ty_unwrap(ty, path.as_slice()).is_some() {
                 span_note_and_lint(cx, CLIPPY_DLIST, ty.span,
-                                   "You seem to be trying to use a DList. Perhaps you meant some other data structure?",
+                                   "I see you're using a DList! Perhaps you meant some other data structure?",
                                    "A RingBuf might work.");
                 return;
             }
