@@ -65,7 +65,7 @@ pub const MAX: Duration = Duration {
 impl Duration {
     /// Makes a new `Duration` with given number of weeks.
     /// Equivalent to `Duration::seconds(weeks * 7 * 24 * 60 * 60), with overflow checks.
-    /// Fails when the duration is out of bounds.
+    /// Panics when the duration is out of bounds.
     #[inline]
     pub fn weeks(weeks: i64) -> Duration {
         let secs = weeks.checked_mul(SECS_PER_WEEK).expect("Duration::weeks out of bounds");
@@ -74,7 +74,7 @@ impl Duration {
 
     /// Makes a new `Duration` with given number of days.
     /// Equivalent to `Duration::seconds(days * 24 * 60 * 60)` with overflow checks.
-    /// Fails when the duration is out of bounds.
+    /// Panics when the duration is out of bounds.
     #[inline]
     pub fn days(days: i64) -> Duration {
         let secs = days.checked_mul(SECS_PER_DAY).expect("Duration::days out of bounds");
@@ -83,7 +83,7 @@ impl Duration {
 
     /// Makes a new `Duration` with given number of hours.
     /// Equivalent to `Duration::seconds(hours * 60 * 60)` with overflow checks.
-    /// Fails when the duration is out of bounds.
+    /// Panics when the duration is out of bounds.
     #[inline]
     pub fn hours(hours: i64) -> Duration {
         let secs = hours.checked_mul(SECS_PER_HOUR).expect("Duration::hours ouf of bounds");
@@ -92,7 +92,7 @@ impl Duration {
 
     /// Makes a new `Duration` with given number of minutes.
     /// Equivalent to `Duration::seconds(minutes * 60)` with overflow checks.
-    /// Fails when the duration is out of bounds.
+    /// Panics when the duration is out of bounds.
     #[inline]
     pub fn minutes(minutes: i64) -> Duration {
         let secs = minutes.checked_mul(SECS_PER_MINUTE).expect("Duration::minutes out of bounds");
@@ -100,7 +100,7 @@ impl Duration {
     }
 
     /// Makes a new `Duration` with given number of seconds.
-    /// Fails when the duration is more than `i64::MAX` milliseconds
+    /// Panics when the duration is more than `i64::MAX` milliseconds
     /// or less than `i64::MIN` milliseconds.
     #[inline]
     pub fn seconds(seconds: i64) -> Duration {

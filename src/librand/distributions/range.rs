@@ -55,7 +55,7 @@ pub struct Range<X> {
 
 impl<X: SampleRange + PartialOrd> Range<X> {
     /// Create a new `Range` instance that samples uniformly from
-    /// `[low, high)`. Fails if `low >= high`.
+    /// `[low, high)`. Panics if `low >= high`.
     pub fn new(low: X, high: X) -> Range<X> {
         assert!(low < high, "Range::new called with `low >= high`");
         SampleRange::construct_range(low, high)

@@ -303,7 +303,7 @@ impl<T> Option<T> {
     ///
     /// # Panics
     ///
-    /// Fails if the value is a `None` with a custom panic message provided by
+    /// Panics if the value is a `None` with a custom panic message provided by
     /// `msg`.
     ///
     /// # Example
@@ -315,7 +315,7 @@ impl<T> Option<T> {
     ///
     /// ```{.should_fail}
     /// let x: Option<&str> = None;
-    /// x.expect("the world is ending"); // fails with `world is ending`
+    /// x.expect("the world is ending"); // panics with `world is ending`
     /// ```
     #[inline]
     #[unstable = "waiting for conventions"]

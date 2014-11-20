@@ -204,14 +204,17 @@ pub trait Rng {
         Generator { rng: self }
     }
 
-    /// Generate a random value in the range [`low`, `high`). Fails if
-    /// `low >= high`.
+    /// Generate a random value in the range [`low`, `high`).
     ///
     /// This is a convenience wrapper around
     /// `distributions::Range`. If this function will be called
     /// repeatedly with the same arguments, one should use `Range`, as
     /// that will amortize the computations that allow for perfect
     /// uniformity, as they only happen on initialization.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `low >= high`.
     ///
     /// # Example
     ///

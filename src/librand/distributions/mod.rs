@@ -113,7 +113,7 @@ pub struct WeightedChoice<'a, T:'a> {
 impl<'a, T: Clone> WeightedChoice<'a, T> {
     /// Create a new `WeightedChoice`.
     ///
-    /// Fails if:
+    /// Panics if:
     /// - `v` is empty
     /// - the total weight is 0
     /// - the total weight is larger than a `uint` can contain.
