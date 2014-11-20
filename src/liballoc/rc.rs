@@ -211,6 +211,16 @@ impl<T> Rc<T> {
             _noshare: marker::NoSync
         }
     }
+
+    /// Get the number of weak references to this value.
+    #[inline]
+    #[experimental]
+    pub fn weak_count(&self) -> uint { self.weak() - 1 }
+
+    /// Get the number of strong references to this value.
+    #[inline]
+    #[experimental]
+    pub fn strong_count(&self) -> uint { self.strong() }
 }
 
 /// Returns true if the `Rc` currently has unique ownership.
@@ -220,8 +230,7 @@ impl<T> Rc<T> {
 #[inline]
 #[experimental]
 pub fn is_unique<T>(rc: &Rc<T>) -> bool {
-    // note that we hold both a strong and a weak reference
-    rc.strong() == 1 && rc.weak() == 1
+    rc.weak_count() == 0 && rc.strong_count() == 1
 }
 
 /// Unwraps the contained value if the `Rc` has unique ownership.
@@ -424,6 +433,20 @@ impl<T> Weak<T> {
             Some(Rc { _ptr: self._ptr, _nosend: marker::NoSend, _noshare: marker::NoSync })
         }
     }
+
+    /// Get the number of weak references to this value.
+    #[inline]
+    #[experimental]
+    pub fn weak_count(&self) -> uint {
+        if self.strong() != 0 { self.weak() - 1 } else { self.weak() }
+    }
+
+    /// Get the number of strong references to this value.
+    ///
+    /// If this function returns 0 then the value has been freed.
+    #[inline]
+    #[experimental]
+    pub fn strong_count(&self) -> uint { self.strong() }
 }
 
 #[unsafe_destructor]
@@ -564,6 +587,40 @@ mod tests {
         assert!(!super::is_unique(&x));
         drop(w);
         assert!(super::is_unique(&x));
+    }
+
+    #[test]
+    fn test_strong_count() {
+        let a = Rc::new(0u32);
+        assert!(a.strong_count() == 1);
+        let w = a.downgrade();
+        assert!(a.strong_count() == 1);
+        let b = w.upgrade().expect("upgrade of live rc failed");
+        assert!(b.strong_count() == 2);
+        assert!(a.strong_count() == 2);
+        drop(w);
+        drop(a);
+        assert!(b.strong_count() == 1);
+        let c = b.clone();
+        assert!(b.strong_count() == 2);
+        assert!(c.strong_count() == 2);
+    }
+
+    #[test]
+    fn test_weak_count() {
+        let a = Rc::new(0u32);
+        assert!(a.strong_count() == 1);
+        assert!(a.weak_count() == 0);
+        let w = a.downgrade();
+        assert!(a.strong_count() == 1);
+        assert!(w.weak_count() == 1);
+        drop(w);
+        assert!(a.strong_count() == 1);
+        assert!(a.weak_count() == 0);
+        let c = a.clone();
+        assert!(a.strong_count() == 2);
+        assert!(a.weak_count() == 0);
+        assert!(c.downgrade().weak_count() == 1);
     }
 
     #[test]
