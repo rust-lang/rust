@@ -61,7 +61,7 @@ pub struct State<'a> {
     literals: Option<Vec<comments::Literal> >,
     cur_cmnt_and_lit: CurrentCommentAndLiteral,
     boxes: Vec<pp::Breaks>,
-    ann: &'a PpAnn+'a,
+    ann: &'a (PpAnn+'a),
     encode_idents_with_hygiene: bool,
 }
 
