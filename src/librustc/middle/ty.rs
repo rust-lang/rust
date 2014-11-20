@@ -3919,9 +3919,8 @@ pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
         ast::ExprTup(..) |
         ast::ExprIf(..) |
         ast::ExprMatch(..) |
-        ast::ExprFnBlock(..) |
+        ast::ExprClosure(..) |
         ast::ExprProc(..) |
-        ast::ExprUnboxedFn(..) |
         ast::ExprBlock(..) |
         ast::ExprRepeat(..) |
         ast::ExprVec(..) => {

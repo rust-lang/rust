@@ -309,7 +309,7 @@ impl<'a, 'v> Visitor<'v> for Context<'a> {
 
     fn visit_expr(&mut self, e: &ast::Expr) {
         match e.node {
-            ast::ExprUnboxedFn(..) => {
+            ast::ExprClosure(_, Some(_), _, _) => {
                 self.gate_feature("unboxed_closures",
                                   e.span,
                                   "unboxed closures are a work-in-progress \

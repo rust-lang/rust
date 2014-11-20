@@ -1345,7 +1345,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                                             "Expected struct type, but not ty_struct"),
                 }
             },
-            ast::ExprFnBlock(_, ref decl, ref body) => {
+            ast::ExprClosure(_, _, ref decl, ref body) => {
                 if generated_code(body.span) {
                     return
                 }
