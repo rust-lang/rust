@@ -59,6 +59,7 @@ a guide that can help you out:
 * [References and Lifetimes](guide-lifetimes.html)
 * [Crates and modules](guide-crates.html)
 * [Tasks and Communication](guide-tasks.html)
+* [Error Handling](guide-error-handling.html)
 * [Foreign Function Interface](guide-ffi.html)
 * [Writing Unsafe and Low-Level Code](guide-unsafe.html)
 * [Macros](guide-macros.html)

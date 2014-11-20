@@ -535,7 +535,7 @@ impl<'a, 'v, O: IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> {
         self.operation.visit_id(lifetime.id);
     }
 
-    fn visit_lifetime_decl(&mut self, def: &'v LifetimeDef) {
+    fn visit_lifetime_def(&mut self, def: &'v LifetimeDef) {
         self.visit_lifetime_ref(&def.lifetime);
     }
 }

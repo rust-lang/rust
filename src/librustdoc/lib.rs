@@ -168,11 +168,11 @@ pub fn main_args(args: &[String]) -> int {
     if matches.opt_strs("passes").as_slice() == &["list".to_string()] {
         println!("Available passes for running rustdoc:");
         for &(name, _, description) in PASSES.iter() {
-            println!("{:>20s} - {}", name, description);
+            println!("{:>20} - {}", name, description);
         }
         println!("{}", "\nDefault passes for rustdoc:"); // FIXME: #9970
         for &name in DEFAULT_PASSES.iter() {
-            println!("{:>20s}", name);
+            println!("{:>20}", name);
         }
         return 0;
     }

@@ -108,7 +108,10 @@ macro_rules! try(
 /// Writing a formatted string into a writer
 #[macro_export]
 macro_rules! write(
-    ($dst:expr, $($arg:tt)*) => (format_args_method!($dst, write_fmt, $($arg)*))
+    ($dst:expr, $($arg:tt)*) => ({
+        let dst = &mut *$dst;
+        format_args!(|args| { dst.write_fmt(args) }, $($arg)*)
+    })
 )
 
 /// Writing a formatted string plus a newline into a writer
@@ -117,16 +120,6 @@ macro_rules! writeln(
     ($dst:expr, $fmt:expr $($arg:tt)*) => (
         write!($dst, concat!($fmt, "\n") $($arg)*)
     )
-)
-
-/// Write some formatted data into a stream.
-///
-/// Identical to the macro in `std::macros`
-#[macro_export]
-macro_rules! write(
-    ($dst:expr, $($arg:tt)*) => ({
-        format_args_method!($dst, write_fmt, $($arg)*)
-    })
 )
 
 #[macro_export]

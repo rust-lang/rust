@@ -63,7 +63,7 @@ fn sort_and_fmt(mm: &HashMap<Vec<u8> , uint>, total: uint) -> String {
 
    let mut buffer = String::new();
    for &(ref k, v) in pairs_sorted.iter() {
-       buffer.push_str(format!("{} {:0.3f}\n",
+       buffer.push_str(format!("{} {:0.3}\n",
                                k.as_slice()
                                .to_ascii()
                                .to_uppercase()

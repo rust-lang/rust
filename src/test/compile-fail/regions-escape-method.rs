@@ -8,10 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Regression test for issue #1448 and #1386
+// Test a method call where the parameter `B` would (illegally) be
+// inferred to a region bound in the method argument. If this program
+// were accepted, then the closure passed to `s.f` could escape its
+// argument.
 
-fn foo(a: uint) -> uint { a }
+struct S;
+
+impl S {
+    fn f<B>(&self, _: |&i32| -> B) {
+    }
+}
 
 fn main() {
-    println!("{}", foo(10i)); //~ ERROR mismatched types
+    let s = S;
+    s.f(|p| p) //~ ERROR cannot infer
 }

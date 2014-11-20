@@ -266,7 +266,7 @@ fn print_frequencies(frequencies: &Table, frame: uint) {
     }
 
     for &(count, key) in vector.iter().rev() {
-        println!("{} {:.3f}",
+        println!("{} {:.3}",
                  key.unpack(frame).as_slice(),
                  (count as f32 * 100.0) / (total_count as f32));
     }

@@ -866,7 +866,7 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
         self.insert(lifetime.id, NodeLifetime(lifetime));
     }
 
-    fn visit_lifetime_decl(&mut self, def: &'ast LifetimeDef) {
+    fn visit_lifetime_def(&mut self, def: &'ast LifetimeDef) {
         self.visit_lifetime_ref(&def.lifetime);
     }
 }

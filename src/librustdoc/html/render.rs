@@ -437,8 +437,8 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> io::IoResult<String> 
         if i > 0 {
             try!(write!(&mut w, ","));
         }
-        try!(write!(&mut w, r#"[{:u},"{}","{}",{}"#,
-                    item.ty, item.name, path,
+        try!(write!(&mut w, r#"[{},"{}","{}",{}"#,
+                    item.ty as uint, item.name, path,
                     item.desc.to_json().to_string()));
         match item.parent {
             Some(nodeid) => {
@@ -457,8 +457,8 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> io::IoResult<String> 
         if i > 0 {
             try!(write!(&mut w, ","));
         }
-        try!(write!(&mut w, r#"[{:u},"{}"]"#,
-                    short, *fqp.last().unwrap()));
+        try!(write!(&mut w, r#"[{},"{}"]"#,
+                    short as uint, *fqp.last().unwrap()));
     }
 
     try!(write!(&mut w, "]}};"));
@@ -2192,7 +2192,7 @@ impl<'a> fmt::Show for Source<'a> {
         }
         try!(write!(fmt, "<pre class='line-numbers'>"));
         for i in range(1, lines + 1) {
-            try!(write!(fmt, "<span id='{0:u}'>{0:1$u}</span>\n", i, cols));
+            try!(write!(fmt, "<span id='{0}'>{0:1$}</span>\n", i, cols));
         }
         try!(write!(fmt, "</pre>"));
         try!(write!(fmt, "{}", highlight::highlight(s.as_slice(), None, None)));

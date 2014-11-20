@@ -687,14 +687,14 @@ impl<T: Writer> ConsoleTestState<T> {
                     improved += 1;
                     try!(self.write_plain(format!(": {}", *k).as_slice()));
                     try!(self.write_improved());
-                    try!(self.write_plain(format!(" by {:.2f}%\n",
+                    try!(self.write_plain(format!(" by {:.2}%\n",
                                                   pct as f64).as_slice()));
                 }
                 Regression(pct) => {
                     regressed += 1;
                     try!(self.write_plain(format!(": {}", *k).as_slice()));
                     try!(self.write_regressed());
-                    try!(self.write_plain(format!(" by {:.2f}%\n",
+                    try!(self.write_plain(format!(" by {:.2}%\n",
                                                   pct as f64).as_slice()));
                 }
             }
