@@ -20,6 +20,10 @@ use syntax::ast;
 use syntax::visit;
 use syntax::visit::Visitor;
 
+// An error has already been reported to the user, so no need to continue checking.
+#[deriving(Clone,Show)]
+pub struct ErrorReported;
+
 pub fn time<T, U>(do_it: bool, what: &str, u: U, f: |U| -> T) -> T {
     local_data_key!(depth: uint);
     if !do_it { return f(u); }

@@ -207,7 +207,6 @@ fn ast_path_substs_for_ty<'tcx,AC,RS>(
     decl_def_id: ast::DefId,
     decl_generics: &ty::Generics<'tcx>,
     self_ty: Option<Ty<'tcx>>,
-    associated_ty: Option<Ty<'tcx>>,
     path: &ast::Path)
     -> Substs<'tcx>
     where AC: AstConv<'tcx>, RS: RegionScope
@@ -243,7 +242,7 @@ fn ast_path_substs_for_ty<'tcx,AC,RS>(
     };
 
     create_substs_for_ast_path(this, rscope, path.span, decl_def_id,
-                               decl_generics, self_ty, types, regions, associated_ty)
+                               decl_generics, self_ty, types, regions)
 }
 
 fn create_substs_for_ast_path<'tcx,AC,RS>(
@@ -254,8 +253,7 @@ fn create_substs_for_ast_path<'tcx,AC,RS>(
     decl_generics: &ty::Generics<'tcx>,
     self_ty: Option<Ty<'tcx>>,
     types: Vec<Ty<'tcx>>,
-    regions: Vec<ty::Region>,
-    associated_ty: Option<Ty<'tcx>>)
+    regions: Vec<ty::Region>)
     -> Substs<'tcx>
     where AC: AstConv<'tcx>, RS: RegionScope
 {
@@ -366,9 +364,9 @@ fn create_substs_for_ast_path<'tcx,AC,RS>(
         substs.types.push(
             AssocSpace,
             this.associated_type_binding(span,
-                                         associated_ty,
+                                         self_ty,
                                          decl_def_id,
-                                         param.def_id))
+                                         param.def_id));
     }
 
     return substs;
@@ -417,19 +415,17 @@ pub fn instantiate_poly_trait_ref<'tcx,AC,RS>(
     this: &AC,
     rscope: &RS,
     ast_trait_ref: &ast::PolyTraitRef,
-    self_ty: Option<Ty<'tcx>>,
-    associated_type: Option<Ty<'tcx>>)
+    self_ty: Option<Ty<'tcx>>)
     -> Rc<ty::TraitRef<'tcx>>
     where AC: AstConv<'tcx>, RS: RegionScope
 {
-    instantiate_trait_ref(this, rscope, &ast_trait_ref.trait_ref, self_ty, associated_type)
+    instantiate_trait_ref(this, rscope, &ast_trait_ref.trait_ref, self_ty)
 }
 
 pub fn instantiate_trait_ref<'tcx,AC,RS>(this: &AC,
                                          rscope: &RS,
                                          ast_trait_ref: &ast::TraitRef,
-                                         self_ty: Option<Ty<'tcx>>,
-                                         associated_type: Option<Ty<'tcx>>)
+                                         self_ty: Option<Ty<'tcx>>)
                                          -> Rc<ty::TraitRef<'tcx>>
                                          where AC: AstConv<'tcx>,
                                                RS: RegionScope
@@ -444,8 +440,8 @@ pub fn instantiate_trait_ref<'tcx,AC,RS>(this: &AC,
                          ast_trait_ref.path.span,
                          ast_trait_ref.ref_id) {
         def::DefTrait(trait_def_id) => {
-            let trait_ref = Rc::new(ast_path_to_trait_ref(this, rscope, trait_def_id, self_ty,
-                                                          associated_type, &ast_trait_ref.path));
+            let trait_ref = Rc::new(ast_path_to_trait_ref(this, rscope, trait_def_id,
+                                                          self_ty, &ast_trait_ref.path));
             this.tcx().trait_refs.borrow_mut().insert(ast_trait_ref.ref_id,
                                                       trait_ref.clone());
             trait_ref
@@ -463,7 +459,6 @@ fn ast_path_to_trait_ref<'tcx,AC,RS>(
     rscope: &RS,
     trait_def_id: ast::DefId,
     self_ty: Option<Ty<'tcx>>,
-    associated_type: Option<Ty<'tcx>>,
     path: &ast::Path)
     -> ty::TraitRef<'tcx>
     where AC: AstConv<'tcx>, RS: RegionScope
@@ -493,8 +488,7 @@ fn ast_path_to_trait_ref<'tcx,AC,RS>(
                                             &trait_def.generics,
                                             self_ty,
                                             types,
-                                            regions,
-                                            associated_type);
+                                            regions);
 
     ty::TraitRef::new(trait_def_id, substs)
 }
@@ -516,7 +510,6 @@ pub fn ast_path_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                                         rscope,
                                         did,
                                         &generics,
-                                        None,
                                         None,
                                         path);
     let ty = decl_ty.subst(tcx, &substs);
@@ -558,7 +551,7 @@ pub fn ast_path_to_ty_relaxed<'tcx,AC,RS>(
         Substs::new(VecPerParamSpace::params_from_type(type_params),
                     VecPerParamSpace::params_from_type(region_params))
     } else {
-        ast_path_substs_for_ty(this, rscope, did, &generics, None, None, path)
+        ast_path_substs_for_ty(this, rscope, did, &generics, None, path)
     };
 
     let ty = decl_ty.subst(tcx, &substs);
@@ -726,7 +719,6 @@ fn mk_pointer<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                                                        rscope,
                                                        trait_def_id,
                                                        None,
-                                                       None,
                                                        path);
                     let empty_vec = [];
                     let bounds = match *opt_bounds { None => empty_vec.as_slice(),
@@ -750,61 +742,37 @@ fn mk_pointer<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
     constr(ast_ty_to_ty(this, rscope, a_seq_ty))
 }
 
-fn associated_ty_to_ty<'tcx,AC,RS>(this: &AC,
-                                   rscope: &RS,
-                                   trait_path: &ast::Path,
-                                   for_ast_type: &ast::Ty,
-                                   trait_type_id: ast::DefId,
-                                   span: Span)
-                                   -> Ty<'tcx>
-                                   where AC: AstConv<'tcx>, RS: RegionScope
+fn qpath_to_ty<'tcx,AC,RS>(this: &AC,
+                           rscope: &RS,
+                           ast_ty: &ast::Ty, // the TyQPath
+                           qpath: &ast::QPath)
+                           -> Ty<'tcx>
+    where AC: AstConv<'tcx>, RS: RegionScope
 {
-    debug!("associated_ty_to_ty(trait_path={}, for_ast_type={}, trait_type_id={})",
-           trait_path.repr(this.tcx()),
-           for_ast_type.repr(this.tcx()),
-           trait_type_id.repr(this.tcx()));
+    debug!("qpath_to_ty(ast_ty={})",
+           ast_ty.repr(this.tcx()));
 
-    // Find the trait that this associated type belongs to.
-    let trait_did = match ty::impl_or_trait_item(this.tcx(),
-                                                 trait_type_id).container() {
-        ty::ImplContainer(_) => {
-            this.tcx().sess.span_bug(span,
-                                     "associated_ty_to_ty(): impl associated \
-                                      types shouldn't go through this \
-                                      function")
-        }
-        ty::TraitContainer(trait_id) => trait_id,
-    };
+    let self_type = ast_ty_to_ty(this, rscope, &*qpath.self_type);
 
-    let for_type = ast_ty_to_ty(this, rscope, for_ast_type);
-    if !this.associated_types_of_trait_are_valid(for_type, trait_did) {
-        this.tcx().sess.span_err(span,
-                                 "this associated type is not \
-                                  allowed in this context");
-        return ty::mk_err()
-    }
+    debug!("qpath_to_ty: self_type={}", self_type.repr(this.tcx()));
 
-    let trait_ref = ast_path_to_trait_ref(this,
+    let trait_ref = instantiate_trait_ref(this,
                                           rscope,
-                                          trait_did,
-                                          None,
-                                          Some(for_type),
-                                          trait_path);
+                                          &*qpath.trait_ref,
+                                          Some(self_type));
 
-    debug!("associated_ty_to_ty(trait_ref={})",
-           trait_ref.repr(this.tcx()));
+    debug!("qpath_to_ty: trait_ref={}", trait_ref.repr(this.tcx()));
 
-    let trait_def = this.get_trait_def(trait_did);
-    for type_parameter in trait_def.generics.types.iter() {
-        if type_parameter.def_id == trait_type_id {
-            debug!("associated_ty_to_ty(type_parameter={} substs={})",
-                   type_parameter.repr(this.tcx()),
-                   trait_ref.substs.repr(this.tcx()));
-            return *trait_ref.substs.types.get(type_parameter.space,
-                                               type_parameter.index)
+    let trait_def = this.get_trait_def(trait_ref.def_id);
+
+    for ty_param_def in trait_def.generics.types.get_slice(AssocSpace).iter() {
+        if ty_param_def.name == qpath.item_name.name {
+            debug!("qpath_to_ty: corresponding ty_param_def={}", ty_param_def);
+            return trait_ref.substs.type_for_def(ty_param_def);
         }
     }
-    this.tcx().sess.span_bug(span,
+
+    this.tcx().sess.span_bug(ast_ty.span,
                              "this associated type didn't get added \
                               as a parameter for some reason")
 }
@@ -931,7 +899,6 @@ pub fn ast_ty_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                                                            rscope,
                                                            trait_def_id,
                                                            None,
-                                                           None,
                                                            path);
                         let empty_bounds: &[ast::TyParamBound] = &[];
                         let ast_bounds = match *bounds {
@@ -996,26 +963,7 @@ pub fn ast_ty_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                 }
             }
             ast::TyQPath(ref qpath) => {
-                match tcx.def_map.borrow().get(&ast_ty.id) {
-                    None => {
-                        tcx.sess.span_bug(ast_ty.span,
-                                          "unbound qualified path")
-                    }
-                    Some(&def::DefAssociatedTy(trait_type_id)) => {
-                        associated_ty_to_ty(this,
-                                            rscope,
-                                            &qpath.trait_name,
-                                            &*qpath.for_type,
-                                            trait_type_id,
-                                            ast_ty.span)
-                    }
-                    Some(_) => {
-                        tcx.sess.span_err(ast_ty.span,
-                                          "this qualified path does not name \
-                                           an associated type");
-                        ty::mk_err()
-                    }
-                }
+                qpath_to_ty(this, rscope, ast_ty, &**qpath)
             }
             ast::TyFixedLengthVec(ref ty, ref e) => {
                 match const_eval::eval_const_expr_partial(tcx, &**e) {
@@ -1411,7 +1359,7 @@ fn conv_ty_poly_trait_ref<'tcx, AC, RS>(
 
     let main_trait_bound = match partitioned_bounds.trait_bounds.remove(0) {
         Some(trait_bound) => {
-            Some(instantiate_poly_trait_ref(this, rscope, trait_bound, None, None))
+            Some(instantiate_poly_trait_ref(this, rscope, trait_bound, None))
         }
         None => {
             this.tcx().sess.span_err(

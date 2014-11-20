@@ -155,7 +155,7 @@ pub trait LintPass {
     fn check_variant_post(&mut self, _: &Context, _: &ast::Variant, _: &ast::Generics) { }
     fn check_opt_lifetime_ref(&mut self, _: &Context, _: Span, _: &Option<ast::Lifetime>) { }
     fn check_lifetime_ref(&mut self, _: &Context, _: &ast::Lifetime) { }
-    fn check_lifetime_decl(&mut self, _: &Context, _: &ast::LifetimeDef) { }
+    fn check_lifetime_def(&mut self, _: &Context, _: &ast::LifetimeDef) { }
     fn check_explicit_self(&mut self, _: &Context, _: &ast::ExplicitSelf) { }
     fn check_mac(&mut self, _: &Context, _: &ast::Mac) { }
     fn check_path(&mut self, _: &Context, _: &ast::Path, _: ast::NodeId) { }

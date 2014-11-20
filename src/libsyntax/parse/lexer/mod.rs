@@ -369,6 +369,25 @@ impl<'a> StringReader<'a> {
         self.nextnextch() == Some(c)
     }
 
+    /// Eats <XID_start><XID_continue>*, if possible.
+    fn scan_optional_raw_name(&mut self) -> Option<ast::Name> {
+        if !ident_start(self.curr) {
+            return None
+        }
+        let start = self.last_pos;
+        while ident_continue(self.curr) {
+            self.bump();
+        }
+
+        self.with_str_from(start, |string| {
+            if string == "_" {
+                None
+            } else {
+                Some(token::intern(string))
+            }
+        })
+    }
+
     /// PRECONDITION: self.curr is not whitespace
     /// Eats any kind of comment.
     fn scan_comment(&mut self) -> Option<TokenAndSpan> {
@@ -638,7 +657,7 @@ impl<'a> StringReader<'a> {
     }
 
     /// Lex a LIT_INTEGER or a LIT_FLOAT
-    fn scan_number(&mut self, c: char) -> token::Token {
+    fn scan_number(&mut self, c: char) -> token::Lit {
         let mut num_digits;
         let mut base = 10;
         let start_bpos = self.last_pos;
@@ -653,19 +672,9 @@ impl<'a> StringReader<'a> {
                 '0'...'9' | '_' | '.' => {
                     num_digits = self.scan_digits(10) + 1;
                 }
-                'u' | 'i' => {
-                    self.scan_int_suffix();
-                    return token::LitInteger(self.name_from(start_bpos));
-                },
-                'f' => {
-                    let last_pos = self.last_pos;
-                    self.scan_float_suffix();
-                    self.check_float_base(start_bpos, last_pos, base);
-                    return token::LitFloat(self.name_from(start_bpos));
-                }
                 _ => {
                     // just a 0
-                    return token::LitInteger(self.name_from(start_bpos));
+                    return token::Integer(self.name_from(start_bpos));
                 }
             }
         } else if c.is_digit_radix(10) {
@@ -676,9 +685,7 @@ impl<'a> StringReader<'a> {
 
         if num_digits == 0 {
             self.err_span_(start_bpos, self.last_pos, "no valid digits found for number");
-            // eat any suffix
-            self.scan_int_suffix();
-            return token::LitInteger(token::intern("0"));
+            return token::Integer(token::intern("0"));
         }
 
         // might be a float, but don't be greedy if this is actually an
@@ -692,29 +699,20 @@ impl<'a> StringReader<'a> {
             if self.curr.unwrap_or('\0').is_digit_radix(10) {
                 self.scan_digits(10);
                 self.scan_float_exponent();
-                self.scan_float_suffix();
             }
             let last_pos = self.last_pos;
             self.check_float_base(start_bpos, last_pos, base);
-            return token::LitFloat(self.name_from(start_bpos));
-        } else if self.curr_is('f') {
-            // or it might be an integer literal suffixed as a float
-            self.scan_float_suffix();
-            let last_pos = self.last_pos;
-            self.check_float_base(start_bpos, last_pos, base);
-            return token::LitFloat(self.name_from(start_bpos));
+            return token::Float(self.name_from(start_bpos));
         } else {
             // it might be a float if it has an exponent
             if self.curr_is('e') || self.curr_is('E') {
                 self.scan_float_exponent();
-                self.scan_float_suffix();
                 let last_pos = self.last_pos;
                 self.check_float_base(start_bpos, last_pos, base);
-                return token::LitFloat(self.name_from(start_bpos));
+                return token::Float(self.name_from(start_bpos));
             }
             // but we certainly have an integer!
-            self.scan_int_suffix();
-            return token::LitInteger(self.name_from(start_bpos));
+            return token::Integer(self.name_from(start_bpos));
         }
     }
 
@@ -850,55 +848,6 @@ impl<'a> StringReader<'a> {
         true
     }
 
-    /// Scan over an int literal suffix.
-    fn scan_int_suffix(&mut self) {
-        match self.curr {
-            Some('i') | Some('u') => {
-                self.bump();
-
-                if self.curr_is('8') {
-                    self.bump();
-                } else if self.curr_is('1') {
-                    if !self.nextch_is('6') {
-                        self.err_span_(self.last_pos, self.pos,
-                                      "illegal int suffix");
-                    } else {
-                        self.bump(); self.bump();
-                    }
-                } else if self.curr_is('3') {
-                    if !self.nextch_is('2') {
-                        self.err_span_(self.last_pos, self.pos,
-                                      "illegal int suffix");
-                    } else {
-                        self.bump(); self.bump();
-                    }
-                } else if self.curr_is('6') {
-                    if !self.nextch_is('4') {
-                        self.err_span_(self.last_pos, self.pos,
-                                      "illegal int suffix");
-                    } else {
-                        self.bump(); self.bump();
-                    }
-                }
-            },
-            _ => { }
-        }
-    }
-
-    /// Scan over a float literal suffix
-    fn scan_float_suffix(&mut self) {
-        if self.curr_is('f') {
-            if (self.nextch_is('3') && self.nextnextch_is('2'))
-            || (self.nextch_is('6') && self.nextnextch_is('4')) {
-                self.bump();
-                self.bump();
-                self.bump();
-            } else {
-                self.err_span_(self.last_pos, self.pos, "illegal float suffix");
-            }
-        }
-    }
-
     /// Scan over a float exponent.
     fn scan_float_exponent(&mut self) {
         if self.curr_is('e') || self.curr_is('E') {
@@ -967,7 +916,10 @@ impl<'a> StringReader<'a> {
         }
 
         if is_dec_digit(c) {
-            return self.scan_number(c.unwrap());
+            let num = self.scan_number(c.unwrap());
+            let suffix = self.scan_optional_raw_name();
+            debug!("next_token_inner: scanned number {}, {}", num, suffix);
+            return token::Literal(num, suffix)
         }
 
         if self.read_embedded_ident {
@@ -1126,17 +1078,19 @@ impl<'a> StringReader<'a> {
             }
             let id = if valid { self.name_from(start) } else { token::intern("0") };
             self.bump(); // advance curr past token
-            return token::LitChar(id);
+            let suffix = self.scan_optional_raw_name();
+            return token::Literal(token::Char(id), suffix);
           }
           'b' => {
             self.bump();
-            return match self.curr {
+            let lit = match self.curr {
                 Some('\'') => self.scan_byte(),
                 Some('"') => self.scan_byte_string(),
                 Some('r') => self.scan_raw_byte_string(),
                 _ => unreachable!()  // Should have been a token::Ident above.
             };
-
+            let suffix = self.scan_optional_raw_name();
+            return token::Literal(lit, suffix);
           }
           '"' => {
             let start_bpos = self.last_pos;
@@ -1157,7 +1111,8 @@ impl<'a> StringReader<'a> {
             let id = if valid { self.name_from(start_bpos + BytePos(1)) }
                      else { token::intern("??") };
             self.bump();
-            return token::LitStr(id);
+            let suffix = self.scan_optional_raw_name();
+            return token::Literal(token::Str_(id), suffix);
           }
           'r' => {
             let start_bpos = self.last_pos;
@@ -1224,7 +1179,8 @@ impl<'a> StringReader<'a> {
             } else {
                 token::intern("??")
             };
-            return token::LitStrRaw(id, hash_count);
+            let suffix = self.scan_optional_raw_name();
+            return token::Literal(token::StrRaw(id, hash_count), suffix);
           }
           '-' => {
             if self.nextch_is('>') {
@@ -1293,7 +1249,7 @@ impl<'a> StringReader<'a> {
      || (self.curr_is('#') && self.nextch_is('!') && !self.nextnextch_is('['))
     }
 
-    fn scan_byte(&mut self) -> token::Token {
+    fn scan_byte(&mut self) -> token::Lit {
         self.bump();
         let start = self.last_pos;
 
@@ -1314,10 +1270,10 @@ impl<'a> StringReader<'a> {
 
         let id = if valid { self.name_from(start) } else { token::intern("??") };
         self.bump(); // advance curr past token
-        return token::LitByte(id);
+        return token::Byte(id);
     }
 
-    fn scan_byte_string(&mut self) -> token::Token {
+    fn scan_byte_string(&mut self) -> token::Lit {
         self.bump();
         let start = self.last_pos;
         let mut valid = true;
@@ -1336,10 +1292,10 @@ impl<'a> StringReader<'a> {
         }
         let id = if valid { self.name_from(start) } else { token::intern("??") };
         self.bump();
-        return token::LitBinary(id);
+        return token::Binary(id);
     }
 
-    fn scan_raw_byte_string(&mut self) -> token::Token {
+    fn scan_raw_byte_string(&mut self) -> token::Lit {
         let start_bpos = self.last_pos;
         self.bump();
         let mut hash_count = 0u;
@@ -1387,8 +1343,9 @@ impl<'a> StringReader<'a> {
             self.bump();
         }
         self.bump();
-        return token::LitBinaryRaw(self.name_from_to(content_start_bpos, content_end_bpos),
-                                     hash_count);
+        return token::BinaryRaw(self.name_from_to(content_start_bpos,
+                                                  content_end_bpos),
+                                hash_count);
     }
 }
 
@@ -1535,17 +1492,17 @@ mod test {
 
     #[test] fn character_a() {
         assert_eq!(setup(&mk_sh(), "'a'".to_string()).next_token().tok,
-                   token::LitChar(token::intern("a")));
+                   token::Literal(token::Char(token::intern("a")), None));
     }
 
     #[test] fn character_space() {
         assert_eq!(setup(&mk_sh(), "' '".to_string()).next_token().tok,
-                   token::LitChar(token::intern(" ")));
+                   token::Literal(token::Char(token::intern(" ")), None));
     }
 
     #[test] fn character_escaped() {
         assert_eq!(setup(&mk_sh(), "'\\n'".to_string()).next_token().tok,
-                   token::LitChar(token::intern("\\n")));
+                   token::Literal(token::Char(token::intern("\\n")), None));
     }
 
     #[test] fn lifetime_name() {
@@ -1557,7 +1514,41 @@ mod test {
         assert_eq!(setup(&mk_sh(),
                          "r###\"\"#a\\b\x00c\"\"###".to_string()).next_token()
                                                                  .tok,
-                   token::LitStrRaw(token::intern("\"#a\\b\x00c\""), 3));
+                   token::Literal(token::StrRaw(token::intern("\"#a\\b\x00c\""), 3), None));
+    }
+
+    #[test] fn literal_suffixes() {
+        macro_rules! test {
+            ($input: expr, $tok_type: ident, $tok_contents: expr) => {{
+                assert_eq!(setup(&mk_sh(), format!("{}suffix", $input)).next_token().tok,
+                           token::Literal(token::$tok_type(token::intern($tok_contents)),
+                                          Some(token::intern("suffix"))));
+                // with a whitespace separator:
+                assert_eq!(setup(&mk_sh(), format!("{} suffix", $input)).next_token().tok,
+                           token::Literal(token::$tok_type(token::intern($tok_contents)),
+                                          None));
+            }}
+        }
+
+        test!("'a'", Char, "a");
+        test!("b'a'", Byte, "a");
+        test!("\"a\"", Str_, "a");
+        test!("b\"a\"", Binary, "a");
+        test!("1234", Integer, "1234");
+        test!("0b101", Integer, "0b101");
+        test!("0xABC", Integer, "0xABC");
+        test!("1.0", Float, "1.0");
+        test!("1.0e10", Float, "1.0e10");
+
+        assert_eq!(setup(&mk_sh(), "2u".to_string()).next_token().tok,
+                   token::Literal(token::Integer(token::intern("2")),
+                                  Some(token::intern("u"))));
+        assert_eq!(setup(&mk_sh(), "r###\"raw\"###suffix".to_string()).next_token().tok,
+                   token::Literal(token::StrRaw(token::intern("raw"), 3),
+                                  Some(token::intern("suffix"))));
+        assert_eq!(setup(&mk_sh(), "br###\"raw\"###suffix".to_string()).next_token().tok,
+                   token::Literal(token::BinaryRaw(token::intern("raw"), 3),
+                                  Some(token::intern("suffix"))));
     }
 
     #[test] fn line_doc_comments() {
@@ -1573,7 +1564,7 @@ mod test {
             token::Comment => { },
             _ => panic!("expected a comment!")
         }
-        assert_eq!(lexer.next_token().tok, token::LitChar(token::intern("a")));
+        assert_eq!(lexer.next_token().tok, token::Literal(token::Char(token::intern("a")), None));
     }
 
 }

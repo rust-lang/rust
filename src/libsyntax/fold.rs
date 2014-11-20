@@ -142,6 +142,10 @@ pub trait Folder {
         noop_fold_ty(t, self)
     }
 
+    fn fold_qpath(&mut self, t: P<QPath>) -> P<QPath> {
+        noop_fold_qpath(t, self)
+    }
+
     fn fold_mod(&mut self, m: Mod) -> Mod {
         noop_fold_mod(m, self)
     }
@@ -435,12 +439,8 @@ pub fn noop_fold_ty<T: Folder>(t: P<Ty>, fld: &mut T) -> P<Ty> {
                         fld.fold_opt_bounds(bounds),
                         id)
             }
-            TyQPath(ref qpath) => {
-                TyQPath(P(QPath {
-                    for_type: fld.fold_ty(qpath.for_type.clone()),
-                    trait_name: fld.fold_path(qpath.trait_name.clone()),
-                    item_name: fld.fold_ident(qpath.item_name.clone()),
-                }))
+            TyQPath(qpath) => {
+                TyQPath(fld.fold_qpath(qpath))
             }
             TyFixedLengthVec(ty, e) => {
                 TyFixedLengthVec(fld.fold_ty(ty), fld.fold_expr(e))
@@ -453,6 +453,16 @@ pub fn noop_fold_ty<T: Folder>(t: P<Ty>, fld: &mut T) -> P<Ty> {
             }
         },
         span: fld.new_span(span)
+    })
+}
+
+pub fn noop_fold_qpath<T: Folder>(qpath: P<QPath>, fld: &mut T) -> P<QPath> {
+    qpath.map(|qpath| {
+        QPath {
+            self_type: fld.fold_ty(qpath.self_type),
+            trait_ref: qpath.trait_ref.map(|tr| fld.fold_trait_ref(tr)),
+            item_name: fld.fold_ident(qpath.item_name),
+        }
     })
 }
 

@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,10 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Regression test for issue #1448 and #1386
+use Foo::FooB;
 
-fn foo(a: uint) -> uint { a }
+enum Foo {
+    FooB { x: i32, y: i32 }
+}
 
 fn main() {
-    println!("{}", foo(10i)); //~ ERROR mismatched types
+    let f = FooB { x: 3, y: 4 };
+    match f {
+        FooB(a, b) => println!("{} {}", a, b),
+//~^ ERROR `FooB` does not name a non-struct variant or a tuple struct
+    }
 }

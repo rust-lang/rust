@@ -18,28 +18,28 @@ use intrinsics;
 use std::kinds::marker;
 use cell::UnsafeCell;
 
-/// An atomic boolean type.
+/// A boolean type which can be safely shared between threads.
 #[stable]
 pub struct AtomicBool {
     v: UnsafeCell<uint>,
     nocopy: marker::NoCopy
 }
 
-/// A signed atomic integer type, supporting basic atomic arithmetic operations
+/// A signed integer type which can be safely shared between threads.
 #[stable]
 pub struct AtomicInt {
     v: UnsafeCell<int>,
     nocopy: marker::NoCopy
 }
 
-/// An unsigned atomic integer type, supporting basic atomic arithmetic operations
+/// An unsigned integer type which can be safely shared between threads.
 #[stable]
 pub struct AtomicUint {
     v: UnsafeCell<uint>,
     nocopy: marker::NoCopy
 }
 
-/// An unsafe atomic pointer. Only supports basic atomic operations
+/// A raw pointer type which can be safely shared between threads.
 #[stable]
 pub struct AtomicPtr<T> {
     p: UnsafeCell<uint>,
@@ -54,43 +54,42 @@ pub struct AtomicPtr<T> {
 /// to be moved either before or after the atomic operation; on the other end
 /// "relaxed" atomics allow all reorderings.
 ///
-/// Rust's memory orderings are the same as in C++[1].
-///
-/// 1: http://gcc.gnu.org/wiki/Atomic/GCCMM/AtomicSync
+/// Rust's memory orderings are [the same as
+/// C++'s](http://gcc.gnu.org/wiki/Atomic/GCCMM/AtomicSync).
 #[stable]
 pub enum Ordering {
-    /// No ordering constraints, only atomic operations
+    /// No ordering constraints, only atomic operations.
     #[stable]
     Relaxed,
     /// When coupled with a store, all previous writes become visible
     /// to another thread that performs a load with `Acquire` ordering
-    /// on the same value
+    /// on the same value.
     #[stable]
     Release,
     /// When coupled with a load, all subsequent loads will see data
     /// written before a store with `Release` ordering on the same value
-    /// in another thread
+    /// in another thread.
     #[stable]
     Acquire,
     /// When coupled with a load, uses `Acquire` ordering, and with a store
-    /// `Release` ordering
+    /// `Release` ordering.
     #[stable]
     AcqRel,
     /// Like `AcqRel` with the additional guarantee that all threads see all
     /// sequentially consistent operations in the same order.
     #[stable]
-    SeqCst
+    SeqCst,
 }
 
-/// An `AtomicBool` initialized to `false`
+/// An `AtomicBool` initialized to `false`.
 #[unstable = "may be renamed, pending conventions for static initalizers"]
 pub const INIT_ATOMIC_BOOL: AtomicBool =
         AtomicBool { v: UnsafeCell { value: 0 }, nocopy: marker::NoCopy };
-/// An `AtomicInt` initialized to `0`
+/// An `AtomicInt` initialized to `0`.
 #[unstable = "may be renamed, pending conventions for static initalizers"]
 pub const INIT_ATOMIC_INT: AtomicInt =
         AtomicInt { v: UnsafeCell { value: 0 }, nocopy: marker::NoCopy };
-/// An `AtomicUint` initialized to `0`
+/// An `AtomicUint` initialized to `0`.
 #[unstable = "may be renamed, pending conventions for static initalizers"]
 pub const INIT_ATOMIC_UINT: AtomicUint =
         AtomicUint { v: UnsafeCell { value: 0, }, nocopy: marker::NoCopy };
@@ -99,7 +98,16 @@ pub const INIT_ATOMIC_UINT: AtomicUint =
 const UINT_TRUE: uint = -1;
 
 impl AtomicBool {
-    /// Create a new `AtomicBool`
+    /// Creates a new `AtomicBool`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::atomic::AtomicBool;
+    ///
+    /// let atomic_true  = AtomicBool::new(true);
+    /// let atomic_false = AtomicBool::new(false);
+    /// ```
     #[inline]
     #[stable]
     pub fn new(v: bool) -> AtomicBool {
@@ -107,18 +115,42 @@ impl AtomicBool {
         AtomicBool { v: UnsafeCell::new(val), nocopy: marker::NoCopy }
     }
 
-    /// Load the value
+    /// Loads a value from the bool.
+    ///
+    /// `load` takes an `Ordering` argument which describes the memory ordering of this operation.
     ///
     /// # Panics
     ///
     /// Panics if `order` is `Release` or `AcqRel`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::atomic::{AtomicBool, Ordering};
+    ///
+    /// let some_bool = AtomicBool::new(true);
+    ///
+    /// let value = some_bool.load(Ordering::Relaxed);
+    /// ```
     #[inline]
     #[stable]
     pub fn load(&self, order: Ordering) -> bool {
         unsafe { atomic_load(self.v.get() as *const uint, order) > 0 }
     }
 
-    /// Store the value
+    /// Stores a value into the bool.
+    ///
+    /// `store` takes an `Ordering` argument which describes the memory ordering of this operation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::atomic::{AtomicBool, Ordering};
+    ///
+    /// let some_bool = AtomicBool::new(true);
+    ///
+    /// some_bool.store(false, Ordering::Relaxed);
+    /// ```
     ///
     /// # Panics
     ///
@@ -131,7 +163,19 @@ impl AtomicBool {
         unsafe { atomic_store(self.v.get(), val, order); }
     }
 
-    /// Store a value, returning the old value
+    /// Stores a value into the bool, returning the old value.
+    ///
+    /// `swap` takes an `Ordering` argument which describes the memory ordering of this operation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::atomic::{AtomicBool, Ordering};
+    ///
+    /// let some_bool = AtomicBool::new(true);
+    ///
+    /// let value = some_bool.swap(false, Ordering::Relaxed);
+    /// ```
     #[inline]
     #[stable]
     pub fn swap(&self, val: bool, order: Ordering) -> bool {
@@ -140,48 +184,21 @@ impl AtomicBool {
         unsafe { atomic_swap(self.v.get(), val, order) > 0 }
     }
 
-    /// If the current value is the same as expected, store a new value
+    /// Stores a value into the bool if the current value is the same as the expected value.
     ///
-    /// Compare the current value with `old`; if they are the same then
-    /// replace the current value with `new`. Return the previous value.
     /// If the return value is equal to `old` then the value was updated.
+    ///
+    /// `swap` also takes an `Ordering` argument which describes the memory ordering of this
+    /// operation.
     ///
     /// # Examples
     ///
-    /// ```rust
-    /// use std::sync::Arc;
-    /// use std::sync::atomic::{AtomicBool, SeqCst};
-    /// use std::task::deschedule;
+    /// ```
+    /// use std::sync::atomic::{AtomicBool, Ordering};
     ///
-    /// fn main() {
-    ///     let spinlock = Arc::new(AtomicBool::new(false));
-    ///     let spinlock_clone = spinlock.clone();
+    /// let some_bool = AtomicBool::new(true);
     ///
-    ///     spawn(proc() {
-    ///         with_lock(&spinlock, || println!("task 1 in lock"));
-    ///     });
-    ///
-    ///     spawn(proc() {
-    ///         with_lock(&spinlock_clone, || println!("task 2 in lock"));
-    ///     });
-    /// }
-    ///
-    /// fn with_lock(spinlock: &Arc<AtomicBool>, f: || -> ()) {
-    ///     // CAS loop until we are able to replace `false` with `true`
-    ///     while spinlock.compare_and_swap(false, true, SeqCst) != false {
-    ///         // Since tasks may not be preemptive (if they are green threads)
-    ///         // yield to the scheduler to let the other task run. Low level
-    ///         // concurrent code needs to take into account Rust's two threading
-    ///         // models.
-    ///         deschedule();
-    ///     }
-    ///
-    ///     // Now we have the spinlock
-    ///     f();
-    ///
-    ///     // Release the lock
-    ///     spinlock.store(false, SeqCst);
-    /// }
+    /// let value = some_bool.store(false, Ordering::Relaxed);
     /// ```
     #[inline]
     #[stable]
@@ -192,10 +209,11 @@ impl AtomicBool {
         unsafe { atomic_compare_and_swap(self.v.get(), old, new, order) > 0 }
     }
 
-    /// A logical "and" operation
+    /// Logical "and" with a boolean value.
     ///
-    /// Performs a logical "and" operation on the current value and the
-    /// argument `val`, and sets the new value to the result.
+    /// Performs a logical "and" operation on the current value and the argument `val`, and sets
+    /// the new value to the result.
+    ///
     /// Returns the previous value.
     ///
     /// # Examples
@@ -223,10 +241,11 @@ impl AtomicBool {
         unsafe { atomic_and(self.v.get(), val, order) > 0 }
     }
 
-    /// A logical "nand" operation
+    /// Logical "nand" with a boolean value.
     ///
-    /// Performs a logical "nand" operation on the current value and the
-    /// argument `val`, and sets the new value to the result.
+    /// Performs a logical "nand" operation on the current value and the argument `val`, and sets
+    /// the new value to the result.
+    ///
     /// Returns the previous value.
     ///
     /// # Examples
@@ -255,10 +274,11 @@ impl AtomicBool {
         unsafe { atomic_nand(self.v.get(), val, order) > 0 }
     }
 
-    /// A logical "or" operation
+    /// Logical "or" with a boolean value.
     ///
-    /// Performs a logical "or" operation on the current value and the
-    /// argument `val`, and sets the new value to the result.
+    /// Performs a logical "or" operation on the current value and the argument `val`, and sets the
+    /// new value to the result.
+    ///
     /// Returns the previous value.
     ///
     /// # Examples
@@ -286,10 +306,11 @@ impl AtomicBool {
         unsafe { atomic_or(self.v.get(), val, order) > 0 }
     }
 
-    /// A logical "xor" operation
+    /// Logical "xor" with a boolean value.
     ///
-    /// Performs a logical "xor" operation on the current value and the
-    /// argument `val`, and sets the new value to the result.
+    /// Performs a logical "xor" operation on the current value and the argument `val`, and sets
+    /// the new value to the result.
+    ///
     /// Returns the previous value.
     ///
     /// # Examples
@@ -319,25 +340,57 @@ impl AtomicBool {
 }
 
 impl AtomicInt {
-    /// Create a new `AtomicInt`
+    /// Creates a new `AtomicInt`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::atomic::AtomicInt;
+    ///
+    /// let atomic_forty_two  = AtomicInt::new(42);
+    /// ```
     #[inline]
     #[stable]
     pub fn new(v: int) -> AtomicInt {
         AtomicInt {v: UnsafeCell::new(v), nocopy: marker::NoCopy}
     }
 
-    /// Load the value
+    /// Loads a value from the int.
+    ///
+    /// `load` takes an `Ordering` argument which describes the memory ordering of this operation.
     ///
     /// # Panics
     ///
     /// Panics if `order` is `Release` or `AcqRel`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::atomic::{AtomicInt, Ordering};
+    ///
+    /// let some_int = AtomicInt::new(5);
+    ///
+    /// let value = some_int.load(Ordering::Relaxed);
+    /// ```
     #[inline]
     #[stable]
     pub fn load(&self, order: Ordering) -> int {
         unsafe { atomic_load(self.v.get() as *const int, order) }
     }
 
-    /// Store the value
+    /// Stores a value into the int.
+    ///
+    /// `store` takes an `Ordering` argument which describes the memory ordering of this operation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::atomic::{AtomicInt, Ordering};
+    ///
+    /// let some_int = AtomicInt::new(5);
+    ///
+    /// some_int.store(10, Ordering::Relaxed);
+    /// ```
     ///
     /// # Panics
     ///
@@ -348,25 +401,48 @@ impl AtomicInt {
         unsafe { atomic_store(self.v.get(), val, order); }
     }
 
-    /// Store a value, returning the old value
+    /// Stores a value into the int, returning the old value.
+    ///
+    /// `swap` takes an `Ordering` argument which describes the memory ordering of this operation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::atomic::{AtomicInt, Ordering};
+    ///
+    /// let some_int = AtomicInt::new(5);
+    ///
+    /// let value = some_int.swap(10, Ordering::Relaxed);
+    /// ```
     #[inline]
     #[stable]
     pub fn swap(&self, val: int, order: Ordering) -> int {
         unsafe { atomic_swap(self.v.get(), val, order) }
     }
 
-    /// If the current value is the same as expected, store a new value
+    /// Stores a value into the int if the current value is the same as the expected value.
     ///
-    /// Compare the current value with `old`; if they are the same then
-    /// replace the current value with `new`. Return the previous value.
     /// If the return value is equal to `old` then the value was updated.
+    ///
+    /// `compare_and_swap` also takes an `Ordering` argument which describes the memory ordering of
+    /// this operation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::atomic::{AtomicInt, Ordering};
+    ///
+    /// let some_int = AtomicInt::new(5);
+    ///
+    /// let value = some_int.compare_and_swap(5, 10, Ordering::Relaxed);
+    /// ```
     #[inline]
     #[stable]
     pub fn compare_and_swap(&self, old: int, new: int, order: Ordering) -> int {
         unsafe { atomic_compare_and_swap(self.v.get(), old, new, order) }
     }
 
-    /// Add to the current value, returning the previous
+    /// Add an int to the current value, returning the previous value.
     ///
     /// # Examples
     ///
@@ -383,7 +459,7 @@ impl AtomicInt {
         unsafe { atomic_add(self.v.get(), val, order) }
     }
 
-    /// Subtract from the current value, returning the previous
+    /// Subtract an int from the current value, returning the previous value.
     ///
     /// # Examples
     ///
@@ -400,7 +476,7 @@ impl AtomicInt {
         unsafe { atomic_sub(self.v.get(), val, order) }
     }
 
-    /// Bitwise and with the current value, returning the previous
+    /// Bitwise and with the current int, returning the previous value.
     ///
     /// # Examples
     ///
@@ -416,7 +492,7 @@ impl AtomicInt {
         unsafe { atomic_and(self.v.get(), val, order) }
     }
 
-    /// Bitwise or with the current value, returning the previous
+    /// Bitwise or with the current int, returning the previous value.
     ///
     /// # Examples
     ///
@@ -432,7 +508,7 @@ impl AtomicInt {
         unsafe { atomic_or(self.v.get(), val, order) }
     }
 
-    /// Bitwise xor with the current value, returning the previous
+    /// Bitwise xor with the current int, returning the previous value.
     ///
     /// # Examples
     ///
@@ -450,25 +526,57 @@ impl AtomicInt {
 }
 
 impl AtomicUint {
-    /// Create a new `AtomicUint`
+    /// Creates a new `AtomicUint`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::atomic::AtomicUint;
+    ///
+    /// let atomic_forty_two = AtomicUint::new(42u);
+    /// ```
     #[inline]
     #[stable]
     pub fn new(v: uint) -> AtomicUint {
         AtomicUint { v: UnsafeCell::new(v), nocopy: marker::NoCopy }
     }
 
-    /// Load the value
+    /// Loads a value from the uint.
+    ///
+    /// `load` takes an `Ordering` argument which describes the memory ordering of this operation.
     ///
     /// # Panics
     ///
     /// Panics if `order` is `Release` or `AcqRel`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::atomic::{AtomicUint, Ordering};
+    ///
+    /// let some_uint = AtomicUint::new(5);
+    ///
+    /// let value = some_uint.load(Ordering::Relaxed);
+    /// ```
     #[inline]
     #[stable]
     pub fn load(&self, order: Ordering) -> uint {
         unsafe { atomic_load(self.v.get() as *const uint, order) }
     }
 
-    /// Store the value
+    /// Stores a value into the uint.
+    ///
+    /// `store` takes an `Ordering` argument which describes the memory ordering of this operation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::atomic::{AtomicUint, Ordering};
+    ///
+    /// let some_uint = AtomicUint::new(5);
+    ///
+    /// some_uint.store(10, Ordering::Relaxed);
+    /// ```
     ///
     /// # Panics
     ///
@@ -479,25 +587,48 @@ impl AtomicUint {
         unsafe { atomic_store(self.v.get(), val, order); }
     }
 
-    /// Store a value, returning the old value
+    /// Stores a value into the uint, returning the old value.
+    ///
+    /// `swap` takes an `Ordering` argument which describes the memory ordering of this operation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::atomic::{AtomicUint, Ordering};
+    ///
+    /// let some_uint = AtomicUint::new(5);
+    ///
+    /// let value = some_uint.swap(10, Ordering::Relaxed);
+    /// ```
     #[inline]
     #[stable]
     pub fn swap(&self, val: uint, order: Ordering) -> uint {
         unsafe { atomic_swap(self.v.get(), val, order) }
     }
 
-    /// If the current value is the same as expected, store a new value
+    /// Stores a value into the uint if the current value is the same as the expected value.
     ///
-    /// Compare the current value with `old`; if they are the same then
-    /// replace the current value with `new`. Return the previous value.
     /// If the return value is equal to `old` then the value was updated.
+    ///
+    /// `compare_and_swap` also takes an `Ordering` argument which describes the memory ordering of
+    /// this operation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::atomic::{AtomicUint, Ordering};
+    ///
+    /// let some_uint = AtomicUint::new(5);
+    ///
+    /// let value = some_uint.compare_and_swap(5, 10, Ordering::Relaxed);
+    /// ```
     #[inline]
     #[stable]
     pub fn compare_and_swap(&self, old: uint, new: uint, order: Ordering) -> uint {
         unsafe { atomic_compare_and_swap(self.v.get(), old, new, order) }
     }
 
-    /// Add to the current value, returning the previous
+    /// Add to the current uint, returning the previous value.
     ///
     /// # Examples
     ///
@@ -514,7 +645,7 @@ impl AtomicUint {
         unsafe { atomic_add(self.v.get(), val, order) }
     }
 
-    /// Subtract from the current value, returning the previous
+    /// Subtract from the current uint, returning the previous value.
     ///
     /// # Examples
     ///
@@ -531,7 +662,7 @@ impl AtomicUint {
         unsafe { atomic_sub(self.v.get(), val, order) }
     }
 
-    /// Bitwise and with the current value, returning the previous
+    /// Bitwise and with the current uint, returning the previous value.
     ///
     /// # Examples
     ///
@@ -547,7 +678,7 @@ impl AtomicUint {
         unsafe { atomic_and(self.v.get(), val, order) }
     }
 
-    /// Bitwise or with the current value, returning the previous
+    /// Bitwise or with the current uint, returning the previous value.
     ///
     /// # Examples
     ///
@@ -563,7 +694,7 @@ impl AtomicUint {
         unsafe { atomic_or(self.v.get(), val, order) }
     }
 
-    /// Bitwise xor with the current value, returning the previous
+    /// Bitwise xor with the current uint, returning the previous value.
     ///
     /// # Examples
     ///
@@ -581,18 +712,40 @@ impl AtomicUint {
 }
 
 impl<T> AtomicPtr<T> {
-    /// Create a new `AtomicPtr`
+    /// Creates a new `AtomicPtr`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::atomic::AtomicPtr;
+    ///
+    /// let ptr = &mut 5i;
+    /// let atomic_ptr  = AtomicPtr::new(ptr);
+    /// ```
     #[inline]
     #[stable]
     pub fn new(p: *mut T) -> AtomicPtr<T> {
         AtomicPtr { p: UnsafeCell::new(p as uint), nocopy: marker::NoCopy }
     }
 
-    /// Load the value
+    /// Loads a value from the pointer.
+    ///
+    /// `load` takes an `Ordering` argument which describes the memory ordering of this operation.
     ///
     /// # Panics
     ///
     /// Panics if `order` is `Release` or `AcqRel`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::atomic::{AtomicPtr, Ordering};
+    ///
+    /// let ptr = &mut 5i;
+    /// let some_ptr  = AtomicPtr::new(ptr);
+    ///
+    /// let value = some_ptr.load(Ordering::Relaxed);
+    /// ```
     #[inline]
     #[stable]
     pub fn load(&self, order: Ordering) -> *mut T {
@@ -601,7 +754,22 @@ impl<T> AtomicPtr<T> {
         }
     }
 
-    /// Store the value
+    /// Stores a value into the pointer.
+    ///
+    /// `store` takes an `Ordering` argument which describes the memory ordering of this operation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::atomic::{AtomicPtr, Ordering};
+    ///
+    /// let ptr = &mut 5i;
+    /// let some_ptr  = AtomicPtr::new(ptr);
+    ///
+    /// let other_ptr = &mut 10i;
+    ///
+    /// some_ptr.store(other_ptr, Ordering::Relaxed);
+    /// ```
     ///
     /// # Panics
     ///
@@ -612,18 +780,48 @@ impl<T> AtomicPtr<T> {
         unsafe { atomic_store(self.p.get(), ptr as uint, order); }
     }
 
-    /// Store a value, returning the old value
+    /// Stores a value into the pointer, returning the old value.
+    ///
+    /// `swap` takes an `Ordering` argument which describes the memory ordering of this operation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::atomic::{AtomicPtr, Ordering};
+    ///
+    /// let ptr = &mut 5i;
+    /// let some_ptr  = AtomicPtr::new(ptr);
+    ///
+    /// let other_ptr = &mut 10i;
+    ///
+    /// let value = some_ptr.swap(other_ptr, Ordering::Relaxed);
+    /// ```
     #[inline]
     #[stable]
     pub fn swap(&self, ptr: *mut T, order: Ordering) -> *mut T {
         unsafe { atomic_swap(self.p.get(), ptr as uint, order) as *mut T }
     }
 
-    /// If the current value is the same as expected, store a new value
+    /// Stores a value into the pointer if the current value is the same as the expected value.
     ///
-    /// Compare the current value with `old`; if they are the same then
-    /// replace the current value with `new`. Return the previous value.
     /// If the return value is equal to `old` then the value was updated.
+    ///
+    /// `compare_and_swap` also takes an `Ordering` argument which describes the memory ordering of
+    /// this operation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::atomic::{AtomicPtr, Ordering};
+    ///
+    /// let ptr = &mut 5i;
+    /// let some_ptr  = AtomicPtr::new(ptr);
+    ///
+    /// let other_ptr   = &mut 10i;
+    /// let another_ptr = &mut 10i;
+    ///
+    /// let value = some_ptr.compare_and_swap(other_ptr, another_ptr, Ordering::Relaxed);
+    /// ```
     #[inline]
     #[stable]
     pub fn compare_and_swap(&self, old: *mut T, new: *mut T, order: Ordering) -> *mut T {
@@ -777,7 +975,7 @@ unsafe fn atomic_xor<T>(dst: *mut T, val: T, order: Ordering) -> T {
 ///
 /// # Panics
 ///
-/// Panics if `order` is `Relaxed`
+/// Panics if `order` is `Relaxed`.
 #[inline]
 #[stable]
 pub fn fence(order: Ordering) {

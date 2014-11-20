@@ -87,7 +87,7 @@ pub fn expand_register_diagnostic<'cx>(ecx: &'cx mut ExtCtxt,
         },
         [ast::TtToken(_, token::Ident(ref code, _)),
          ast::TtToken(_, token::Comma),
-         ast::TtToken(_, token::LitStrRaw(description, _))] => {
+         ast::TtToken(_, token::Literal(token::StrRaw(description, _), None))] => {
             (code, Some(description))
         }
         _ => unreachable!()

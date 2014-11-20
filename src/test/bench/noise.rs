@@ -115,7 +115,7 @@ fn main() {
     for y in range(0u, 256) {
         for x in range(0u, 256) {
             let idx = (pixels[y*256+x] / 0.2) as uint;
-            print!("{:c}", symbols[idx]);
+            print!("{}", symbols[idx]);
         }
         print!("\n");
     }

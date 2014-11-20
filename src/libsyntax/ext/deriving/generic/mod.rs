@@ -335,7 +335,7 @@ pub fn combine_substructure<'a>(f: CombineSubstructureFunc<'a>)
 impl<'a> TraitDef<'a> {
     pub fn expand(&self,
                   cx: &mut ExtCtxt,
-                  _mitem: &ast::MetaItem,
+                  mitem: &ast::MetaItem,
                   item: &ast::Item,
                   push: |P<ast::Item>|) {
         let newitem = match item.node {
@@ -351,7 +351,10 @@ impl<'a> TraitDef<'a> {
                                      item.ident,
                                      generics)
             }
-            _ => return
+            _ => {
+                cx.span_err(mitem.span, "`deriving` may only be applied to structs and enums");
+                return;
+            }
         };
         // Keep the lint attributes of the previous item to control how the
         // generated implementations are linted
@@ -887,7 +890,7 @@ impl<'a> MethodDef<'a> {
         // a series of let statements mapping each self_arg to a uint
         // corresponding to its variant index.
         let vi_idents: Vec<ast::Ident> = self_arg_names.iter()
-            .map(|name| { let vi_suffix = format!("{:s}_vi", name.as_slice());
+            .map(|name| { let vi_suffix = format!("{}_vi", name.as_slice());
                           cx.ident_of(vi_suffix.as_slice()) })
             .collect::<Vec<ast::Ident>>();
 

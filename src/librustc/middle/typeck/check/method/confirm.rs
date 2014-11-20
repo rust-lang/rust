@@ -31,6 +31,7 @@ struct ConfirmContext<'a, 'tcx:'a> {
     fcx: &'a FnCtxt<'a, 'tcx>,
     span: Span,
     self_expr: &'a ast::Expr,
+    call_expr: &'a ast::Expr,
 }
 
 struct InstantiatedMethodSig<'tcx> {
@@ -56,6 +57,7 @@ struct InstantiatedMethodSig<'tcx> {
 pub fn confirm<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                          span: Span,
                          self_expr: &ast::Expr,
+                         call_expr: &ast::Expr,
                          unadjusted_self_ty: Ty<'tcx>,
                          pick: probe::Pick<'tcx>,
                          supplied_method_types: Vec<Ty<'tcx>>)
@@ -66,17 +68,18 @@ pub fn confirm<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
            pick.repr(fcx.tcx()),
            supplied_method_types.repr(fcx.tcx()));
 
-    let mut confirm_cx = ConfirmContext::new(fcx, span, self_expr);
+    let mut confirm_cx = ConfirmContext::new(fcx, span, self_expr, call_expr);
     confirm_cx.confirm(unadjusted_self_ty, pick, supplied_method_types)
 }
 
 impl<'a,'tcx> ConfirmContext<'a,'tcx> {
     fn new(fcx: &'a FnCtxt<'a, 'tcx>,
            span: Span,
-           self_expr: &'a ast::Expr)
+           self_expr: &'a ast::Expr,
+           call_expr: &'a ast::Expr)
            -> ConfirmContext<'a, 'tcx>
     {
-        ConfirmContext { fcx: fcx, span: span, self_expr: self_expr }
+        ConfirmContext { fcx: fcx, span: span, self_expr: self_expr, call_expr: call_expr }
     }
 
     fn confirm(&mut self,
@@ -469,6 +472,10 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
             traits::ObligationCause::misc(self.span),
             method_bounds_substs,
             method_bounds);
+
+        self.fcx.add_default_region_param_bounds(
+            method_bounds_substs,
+            self.call_expr);
     }
 
     ///////////////////////////////////////////////////////////////////////////

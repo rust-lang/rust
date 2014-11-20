@@ -602,8 +602,8 @@ impl<'a> fmt::Show for TmFmt<'a> {
 
             match ch {
                 'G' => write!(fmt, "{}", year),
-                'g' => write!(fmt, "{:02d}", (year % 100 + 100) % 100),
-                'V' => write!(fmt, "{:02d}", days / 7 + 1),
+                'g' => write!(fmt, "{:02}", (year % 100 + 100) % 100),
+                'V' => write!(fmt, "{:02}", days / 7 + 1),
                 _ => Ok(())
             }
         }
@@ -663,7 +663,7 @@ impl<'a> fmt::Show for TmFmt<'a> {
                 11 => "Dec",
                 _  => return die()
               },
-              'C' => return write!(fmt, "{:02d}", (tm.tm_year as int + 1900) / 100),
+              'C' => return write!(fmt, "{:02}", (tm.tm_year as int + 1900) / 100),
               'c' => {
                     try!(parse_type(fmt, 'a', tm));
                     try!(' '.fmt(fmt));
@@ -682,9 +682,9 @@ impl<'a> fmt::Show for TmFmt<'a> {
                     try!('/'.fmt(fmt));
                     return parse_type(fmt, 'y', tm);
               }
-              'd' => return write!(fmt, "{:02d}", tm.tm_mday),
-              'e' => return write!(fmt, "{:2d}", tm.tm_mday),
-              'f' => return write!(fmt, "{:09d}", tm.tm_nsec),
+              'd' => return write!(fmt, "{:02}", tm.tm_mday),
+              'e' => return write!(fmt, "{:2}", tm.tm_mday),
+              'f' => return write!(fmt, "{:09}", tm.tm_nsec),
               'F' => {
                     try!(parse_type(fmt, 'Y', tm));
                     try!('-'.fmt(fmt));
@@ -694,23 +694,23 @@ impl<'a> fmt::Show for TmFmt<'a> {
               }
               'G' => return iso_week(fmt, 'G', tm),
               'g' => return iso_week(fmt, 'g', tm),
-              'H' => return write!(fmt, "{:02d}", tm.tm_hour),
+              'H' => return write!(fmt, "{:02}", tm.tm_hour),
               'I' => {
                 let mut h = tm.tm_hour;
                 if h == 0 { h = 12 }
                 if h > 12 { h -= 12 }
-                return write!(fmt, "{:02d}", h)
+                return write!(fmt, "{:02}", h)
               }
-              'j' => return write!(fmt, "{:03d}", tm.tm_yday + 1),
-              'k' => return write!(fmt, "{:2d}", tm.tm_hour),
+              'j' => return write!(fmt, "{:03}", tm.tm_yday + 1),
+              'k' => return write!(fmt, "{:2}", tm.tm_hour),
               'l' => {
                 let mut h = tm.tm_hour;
                 if h == 0 { h = 12 }
                 if h > 12 { h -= 12 }
-                return write!(fmt, "{:2d}", h)
+                return write!(fmt, "{:2}", h)
               }
-              'M' => return write!(fmt, "{:02d}", tm.tm_min),
-              'm' => return write!(fmt, "{:02d}", tm.tm_mon + 1),
+              'M' => return write!(fmt, "{:02}", tm.tm_min),
+              'm' => return write!(fmt, "{:02}", tm.tm_mon + 1),
               'n' => "\n",
               'P' => if (tm.tm_hour as int) < 12 { "am" } else { "pm" },
               'p' => if (tm.tm_hour as int) < 12 { "AM" } else { "PM" },
@@ -728,7 +728,7 @@ impl<'a> fmt::Show for TmFmt<'a> {
                     try!(' '.fmt(fmt));
                     return parse_type(fmt, 'p', tm);
               }
-              'S' => return write!(fmt, "{:02d}", tm.tm_sec),
+              'S' => return write!(fmt, "{:02}", tm.tm_sec),
               's' => return write!(fmt, "{}", tm.to_timespec().sec),
               'T' | 'X' => {
                     try!(parse_type(fmt, 'H', tm));
@@ -738,7 +738,7 @@ impl<'a> fmt::Show for TmFmt<'a> {
                     return parse_type(fmt, 'S', tm);
               }
               't' => "\t",
-              'U' => return write!(fmt, "{:02d}", (tm.tm_yday - tm.tm_wday + 7) / 7),
+              'U' => return write!(fmt, "{:02}", (tm.tm_yday - tm.tm_wday + 7) / 7),
               'u' => {
                 let i = tm.tm_wday as int;
                 return (if i == 0 { 7 } else { i }).fmt(fmt);
@@ -752,19 +752,19 @@ impl<'a> fmt::Show for TmFmt<'a> {
                   return parse_type(fmt, 'Y', tm);
               }
               'W' => {
-                  return write!(fmt, "{:02d}",
+                  return write!(fmt, "{:02}",
                                  (tm.tm_yday - (tm.tm_wday - 1 + 7) % 7 + 7) / 7)
               }
               'w' => return (tm.tm_wday as int).fmt(fmt),
               'Y' => return (tm.tm_year as int + 1900).fmt(fmt),
-              'y' => return write!(fmt, "{:02d}", (tm.tm_year as int + 1900) % 100),
+              'y' => return write!(fmt, "{:02}", (tm.tm_year as int + 1900) % 100),
               'Z' => if tm.tm_gmtoff == 0_i32 { "GMT"} else { "" }, // FIXME (#2350): support locale
               'z' => {
                 let sign = if tm.tm_gmtoff > 0_i32 { '+' } else { '-' };
                 let mut m = tm.tm_gmtoff.abs() / 60_i32;
                 let h = m / 60_i32;
                 m -= h * 60_i32;
-                return write!(fmt, "{}{:02d}{:02d}", sign, h, m);
+                return write!(fmt, "{}{:02}{:02}", sign, h, m);
               }
               '+' => return tm.rfc3339().fmt(fmt),
               '%' => "%",
@@ -806,7 +806,7 @@ impl<'a> fmt::Show for TmFmt<'a> {
                     let mut m = self.tm.tm_gmtoff.abs() / 60_i32;
                     let h = m / 60_i32;
                     m -= h * 60_i32;
-                    write!(fmt, "{}{}{:02d}:{:02d}", s, sign, h as int, m as int)
+                    write!(fmt, "{}{}{:02}:{:02}", s, sign, h as int, m as int)
                 }
             }
         }

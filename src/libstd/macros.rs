@@ -240,6 +240,7 @@ macro_rules! unimplemented(
 /// format!("x = {}, y = {y}", 10i, y = 30i);
 /// ```
 #[macro_export]
+#[stable]
 macro_rules! format(
     ($($arg:tt)*) => (
         format_args!(::std::fmt::format, $($arg)*)
@@ -259,15 +260,18 @@ macro_rules! format(
 /// write!(&mut w, "formatted {}", "arguments");
 /// ```
 #[macro_export]
+#[stable]
 macro_rules! write(
     ($dst:expr, $($arg:tt)*) => ({
-        format_args_method!($dst, write_fmt, $($arg)*)
+        let dst = &mut *$dst;
+        format_args!(|args| { dst.write_fmt(args) }, $($arg)*)
     })
 )
 
 /// Equivalent to the `write!` macro, except that a newline is appended after
 /// the message is written.
 #[macro_export]
+#[stable]
 macro_rules! writeln(
     ($dst:expr, $fmt:expr $($arg:tt)*) => (
         write!($dst, concat!($fmt, "\n") $($arg)*)
@@ -277,6 +281,7 @@ macro_rules! writeln(
 /// Equivalent to the `println!` macro except that a newline is not printed at
 /// the end of the message.
 #[macro_export]
+#[stable]
 macro_rules! print(
     ($($arg:tt)*) => (format_args!(::std::io::stdio::print_args, $($arg)*))
 )
@@ -294,6 +299,7 @@ macro_rules! print(
 /// println!("format {} arguments", "some");
 /// ```
 #[macro_export]
+#[stable]
 macro_rules! println(
     ($($arg:tt)*) => (format_args!(::std::io::stdio::println_args, $($arg)*))
 )
