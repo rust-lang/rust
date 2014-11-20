@@ -717,20 +717,20 @@ impl<T> Vec<T> {
     /// # Example
     ///
     /// ```
-    /// let mut vec = vec![1i, 2, 3, 4];
+    /// let mut vec = vec![1i, 2, 3];
     /// vec.truncate(2);
+    /// assert_eq!(vec, vec![1, 2]);
+    /// vec.truncate(1000);
     /// assert_eq!(vec, vec![1, 2]);
     /// ```
     #[unstable = "matches collection reform specification; waiting on panic semantics"]
     pub fn truncate(&mut self, len: uint) {
-        unsafe {
-            // drop any extra elements
-            while len < self.len {
-                // decrement len before the read(), so a panic on Drop doesn't
-                // re-drop the just-failed value.
-                self.len -= 1;
-                ptr::read(self.as_slice().unsafe_get(self.len));
-            }
+        // drop any extra elements
+        while len < self.len {
+            // decrement len before the read(), so a panic on Drop doesn't
+            // re-drop the just-failed value.
+            self.len -= 1;
+            unsafe { ptr::read(self.as_slice().unsafe_get(self.len)); }
         }
     }
 
