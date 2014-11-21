@@ -24,13 +24,13 @@ use core::iter::{Filter, AdditiveIterator, Iterator, DoubleEndedIterator};
 use core::kinds::Sized;
 use core::option::{Option, None, Some};
 use core::str::{CharSplits, StrPrelude};
-use u_char;
 use u_char::UnicodeChar;
 use tables::grapheme::GraphemeCat;
 
 /// An iterator over the words of a string, separated by a sequence of whitespace
+/// FIXME: This should be opaque
 pub type Words<'a> =
-    Filter<'a, &'a str, CharSplits<'a, extern "Rust" fn(char) -> bool>>;
+    Filter<'a, &'a str, CharSplits<'a, |char|:'a -> bool>>;
 
 /// Methods for Unicode string slices
 pub trait UnicodeStrPrelude for Sized? {
@@ -143,14 +143,15 @@ impl UnicodeStrPrelude for str {
 
     #[inline]
     fn words(&self) -> Words {
-        self.split(u_char::is_whitespace).filter(|s| !s.is_empty())
+        let f = |c: char| c.is_whitespace();
+        self.split(f).filter(|s| !s.is_empty())
     }
 
     #[inline]
-    fn is_whitespace(&self) -> bool { self.chars().all(u_char::is_whitespace) }
+    fn is_whitespace(&self) -> bool { self.chars().all(|c| c.is_whitespace()) }
 
     #[inline]
-    fn is_alphanumeric(&self) -> bool { self.chars().all(u_char::is_alphanumeric) }
+    fn is_alphanumeric(&self) -> bool { self.chars().all(|c| c.is_alphanumeric()) }
 
     #[inline]
     fn width(&self, is_cjk: bool) -> uint {
@@ -164,12 +165,12 @@ impl UnicodeStrPrelude for str {
 
     #[inline]
     fn trim_left(&self) -> &str {
-        self.trim_left_chars(u_char::is_whitespace)
+        self.trim_left_chars(|c: char| c.is_whitespace())
     }
 
     #[inline]
     fn trim_right(&self) -> &str {
-        self.trim_right_chars(u_char::is_whitespace)
+        self.trim_right_chars(|c: char| c.is_whitespace())
     }
 }
 

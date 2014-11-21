@@ -17,7 +17,7 @@
 
 use mem::transmute;
 use option::{None, Option, Some};
-use iter::range_step;
+use iter::{range_step, Iterator, RangeStep};
 use slice::SlicePrelude;
 
 // UTF-8 ranges and tags for encoding characters
@@ -63,10 +63,12 @@ static MAX_THREE_B: u32 =  0x10000u32;
 */
 
 /// The highest valid code point
+#[stable]
 pub const MAX: char = '\U0010ffff';
 
 /// Converts from `u32` to a `char`
 #[inline]
+#[unstable = "pending decisions about costructors for primitives"]
 pub fn from_u32(i: u32) -> Option<char> {
     // catch out-of-bounds and surrogates
     if (i > MAX as u32) || (i >= 0xD800 && i <= 0xDFFF) {
@@ -96,11 +98,9 @@ pub fn from_u32(i: u32) -> Option<char> {
 /// This just wraps `to_digit()`.
 ///
 #[inline]
+#[deprecated = "use the Char::is_digit method"]
 pub fn is_digit_radix(c: char, radix: uint) -> bool {
-    match to_digit(c, radix) {
-        Some(_) => true,
-        None    => false,
-    }
+    c.is_digit(radix)
 }
 
 ///
@@ -118,18 +118,9 @@ pub fn is_digit_radix(c: char, radix: uint) -> bool {
 /// Panics if given a `radix` outside the range `[0..36]`.
 ///
 #[inline]
+#[deprecated = "use the Char::to_digit method"]
 pub fn to_digit(c: char, radix: uint) -> Option<uint> {
-    if radix > 36 {
-        panic!("to_digit: radix is too high (maximum 36)");
-    }
-    let val = match c {
-      '0' ... '9' => c as uint - ('0' as uint),
-      'a' ... 'z' => c as uint + 10u - ('a' as uint),
-      'A' ... 'Z' => c as uint + 10u - ('A' as uint),
-      _ => return None,
-    };
-    if val < radix { Some(val) }
-    else { None }
+    c.to_digit(radix)
 }
 
 ///
@@ -145,6 +136,7 @@ pub fn to_digit(c: char, radix: uint) -> Option<uint> {
 /// Panics if given an `radix` > 36.
 ///
 #[inline]
+#[unstable = "pending decisions about costructors for primitives"]
 pub fn from_digit(num: uint, radix: uint) -> Option<char> {
     if radix > 36 {
         panic!("from_digit: radix is to high (maximum 36)");
@@ -171,23 +163,10 @@ pub fn from_digit(num: uint, radix: uint) -> Option<char> {
 /// - chars in [0x100,0xffff] get 4-digit escapes: `\\uNNNN`
 /// - chars above 0x10000 get 8-digit escapes: `\\UNNNNNNNN`
 ///
+#[deprecated = "use the Char::escape_unicode method"]
 pub fn escape_unicode(c: char, f: |char|) {
-    // avoid calling str::to_str_radix because we don't really need to allocate
-    // here.
-    f('\\');
-    let pad = match () {
-        _ if c <= '\x7f'    => { f('x'); 2 }
-        _ if c <= '\uffff'  => { f('u'); 4 }
-        _                   => { f('U'); 8 }
-    };
-    for offset in range_step::<i32>(4 * (pad - 1), -1, -4) {
-        let offset = offset as uint;
-        unsafe {
-            match ((c as i32) >> offset) & 0xf {
-                i @ 0 ... 9 => { f(transmute('0' as i32 + i)); }
-                i => { f(transmute('a' as i32 + (i - 10))); }
-            }
-        }
+    for char in c.escape_unicode() {
+        f(char);
     }
 }
 
@@ -203,32 +182,22 @@ pub fn escape_unicode(c: char, f: |char|) {
 /// - Any other chars in the range [0x20,0x7e] are not escaped.
 /// - Any other chars are given hex Unicode escapes; see `escape_unicode`.
 ///
+#[deprecated = "use the Char::escape_default method"]
 pub fn escape_default(c: char, f: |char|) {
-    match c {
-        '\t' => { f('\\'); f('t'); }
-        '\r' => { f('\\'); f('r'); }
-        '\n' => { f('\\'); f('n'); }
-        '\\' => { f('\\'); f('\\'); }
-        '\'' => { f('\\'); f('\''); }
-        '"'  => { f('\\'); f('"'); }
-        '\x20' ... '\x7e' => { f(c); }
-        _ => c.escape_unicode(f),
+    for c in c.escape_default() {
+        f(c);
     }
 }
 
 /// Returns the amount of bytes this `char` would need if encoded in UTF-8
 #[inline]
+#[deprecated = "use the Char::len_utf8 method"]
 pub fn len_utf8_bytes(c: char) -> uint {
-    let code = c as u32;
-    match () {
-        _ if code < MAX_ONE_B   => 1u,
-        _ if code < MAX_TWO_B   => 2u,
-        _ if code < MAX_THREE_B => 3u,
-        _  => 4u,
-    }
+    c.len_utf8()
 }
 
 /// Basic `char` manipulations.
+#[experimental = "trait organization may change"]
 pub trait Char {
     /// Checks if a `char` parses as a numeric digit in the given radix.
     ///
@@ -243,7 +212,24 @@ pub trait Char {
     /// # Panics
     ///
     /// Panics if given a radix > 36.
-    fn is_digit_radix(&self, radix: uint) -> bool;
+    #[deprecated = "use is_digit"]
+    fn is_digit_radix(self, radix: uint) -> bool;
+
+    /// Checks if a `char` parses as a numeric digit in the given radix.
+    ///
+    /// Compared to `is_digit()`, this function only recognizes the characters
+    /// `0-9`, `a-z` and `A-Z`.
+    ///
+    /// # Return value
+    ///
+    /// Returns `true` if `c` is a valid digit under `radix`, and `false`
+    /// otherwise.
+    ///
+    /// # Panics
+    ///
+    /// Panics if given a radix > 36.
+    #[unstable = "pending error conventions"]
+    fn is_digit(self, radix: uint) -> bool;
 
     /// Converts a character to the corresponding digit.
     ///
@@ -256,7 +242,8 @@ pub trait Char {
     /// # Panics
     ///
     /// Panics if given a radix outside the range [0..36].
-    fn to_digit(&self, radix: uint) -> Option<uint>;
+    #[unstable = "pending error conventions, trait organization"]
+    fn to_digit(self, radix: uint) -> Option<uint>;
 
     /// Converts a number to the character representing it.
     ///
@@ -268,19 +255,26 @@ pub trait Char {
     /// # Panics
     ///
     /// Panics if given a radix > 36.
+    #[deprecated = "use the char::from_digit free function"]
     fn from_digit(num: uint, radix: uint) -> Option<Self>;
 
-    /// Returns the hexadecimal Unicode escape of a character.
+    /// Converts from `u32` to a `char`
+    #[deprecated = "use the char::from_u32 free function"]
+    fn from_u32(i: u32) -> Option<char>;
+
+    /// Returns an iterator that yields the hexadecimal Unicode escape
+    /// of a character, as `char`s.
     ///
     /// The rules are as follows:
     ///
     /// * Characters in [0,0xff] get 2-digit escapes: `\\xNN`
     /// * Characters in [0x100,0xffff] get 4-digit escapes: `\\uNNNN`.
     /// * Characters above 0x10000 get 8-digit escapes: `\\UNNNNNNNN`.
-    fn escape_unicode(&self, f: |char|);
+    #[unstable = "pending error conventions, trait organization"]
+    fn escape_unicode(self) -> UnicodeEscapedChars;
 
-    /// Returns a 'default' ASCII and C++11-like literal escape of a
-    /// character.
+    /// Returns an iterator that yields the 'default' ASCII and
+    /// C++11-like literal escape of a character, as `char`s.
     ///
     /// The default is chosen with a bias toward producing literals that are
     /// legal in a variety of languages, including C++11 and similar C-family
@@ -291,17 +285,30 @@ pub trait Char {
     ///   escaped.
     /// * Any other chars in the range [0x20,0x7e] are not escaped.
     /// * Any other chars are given hex Unicode escapes; see `escape_unicode`.
-    fn escape_default(&self, f: |char|);
+    #[unstable = "pending error conventions, trait organization"]
+    fn escape_default(self) -> DefaultEscapedChars;
 
     /// Returns the amount of bytes this character would need if encoded in
     /// UTF-8.
-    fn len_utf8_bytes(&self) -> uint;
+    #[deprecated = "use len_utf8"]
+    fn len_utf8_bytes(self) -> uint;
+
+    /// Returns the amount of bytes this character would need if encoded in
+    /// UTF-8.
+    #[unstable = "pending trait organization"]
+    fn len_utf8(self) -> uint;
+
+    /// Returns the amount of bytes this character would need if encoded in
+    /// UTF-16.
+    #[unstable = "pending trait organization"]
+    fn len_utf16(self) -> uint;
 
     /// Encodes this character as UTF-8 into the provided byte buffer,
     /// and then returns the number of bytes written.
     ///
     /// If the buffer is not large enough, nothing will be written into it
     /// and a `None` will be returned.
+    #[unstable = "pending trait organization"]
     fn encode_utf8(&self, dst: &mut [u8]) -> Option<uint>;
 
     /// Encodes this character as UTF-16 into the provided `u16` buffer,
@@ -309,24 +316,90 @@ pub trait Char {
     ///
     /// If the buffer is not large enough, nothing will be written into it
     /// and a `None` will be returned.
+    #[unstable = "pending trait organization"]
     fn encode_utf16(&self, dst: &mut [u16]) -> Option<uint>;
 }
 
+#[experimental = "trait is experimental"]
 impl Char for char {
-    fn is_digit_radix(&self, radix: uint) -> bool { is_digit_radix(*self, radix) }
+    #[deprecated = "use is_digit"]
+    fn is_digit_radix(self, radix: uint) -> bool { self.is_digit(radix) }
 
-    fn to_digit(&self, radix: uint) -> Option<uint> { to_digit(*self, radix) }
+    #[unstable = "pending trait organization"]
+    fn is_digit(self, radix: uint) -> bool {
+        match self.to_digit(radix) {
+            Some(_) => true,
+            None    => false,
+        }
+    }
 
+    #[unstable = "pending trait organization"]
+    fn to_digit(self, radix: uint) -> Option<uint> {
+        if radix > 36 {
+            panic!("to_digit: radix is too high (maximum 36)");
+        }
+        let val = match self {
+          '0' ... '9' => self as uint - ('0' as uint),
+          'a' ... 'z' => self as uint + 10u - ('a' as uint),
+          'A' ... 'Z' => self as uint + 10u - ('A' as uint),
+          _ => return None,
+        };
+        if val < radix { Some(val) }
+        else { None }
+    }
+
+    #[deprecated = "use the char::from_digit free function"]
     fn from_digit(num: uint, radix: uint) -> Option<char> { from_digit(num, radix) }
 
-    fn escape_unicode(&self, f: |char|) { escape_unicode(*self, f) }
+    #[inline]
+    #[deprecated = "use the char::from_u32 free function"]
+    fn from_u32(i: u32) -> Option<char> { from_u32(i) }
 
-    fn escape_default(&self, f: |char|) { escape_default(*self, f) }
+    #[unstable = "pending error conventions, trait organization"]
+    fn escape_unicode(self) -> UnicodeEscapedChars {
+        UnicodeEscapedChars { c: self, state: UnicodeEscapedCharsState::Backslash }
+    }
+
+    #[unstable = "pending error conventions, trait organization"]
+    fn escape_default(self) -> DefaultEscapedChars {
+        let init_state = match self {
+            '\t' => DefaultEscapedCharsState::Backslash('t'),
+            '\r' => DefaultEscapedCharsState::Backslash('r'),
+            '\n' => DefaultEscapedCharsState::Backslash('n'),
+            '\\' => DefaultEscapedCharsState::Backslash('\\'),
+            '\'' => DefaultEscapedCharsState::Backslash('\''),
+            '"'  => DefaultEscapedCharsState::Backslash('"'),
+            '\x20' ... '\x7e' => DefaultEscapedCharsState::Char(self),
+            _ => DefaultEscapedCharsState::Unicode(self.escape_unicode())
+        };
+        DefaultEscapedChars { state: init_state }
+    }
 
     #[inline]
-    fn len_utf8_bytes(&self) -> uint { len_utf8_bytes(*self) }
+    #[deprecated = "use len_utf8"]
+    fn len_utf8_bytes(self) -> uint { self.len_utf8() }
 
     #[inline]
+    #[unstable = "pending trait organization"]
+    fn len_utf8(self) -> uint {
+        let code = self as u32;
+        match () {
+            _ if code < MAX_ONE_B   => 1u,
+            _ if code < MAX_TWO_B   => 2u,
+            _ if code < MAX_THREE_B => 3u,
+            _  => 4u,
+        }
+    }
+
+    #[inline]
+    #[unstable = "pending trait organization"]
+    fn len_utf16(self) -> uint {
+        let ch = self as u32;
+        if (ch & 0xFFFF_u32) == ch { 1 } else { 2 }
+    }
+
+    #[inline]
+    #[unstable = "pending error conventions, trait organization"]
     fn encode_utf8<'a>(&self, dst: &'a mut [u8]) -> Option<uint> {
         // Marked #[inline] to allow llvm optimizing it away
         let code = *self as u32;
@@ -354,6 +427,7 @@ impl Char for char {
     }
 
     #[inline]
+    #[unstable = "pending error conventions, trait organization"]
     fn encode_utf16(&self, dst: &mut [u16]) -> Option<uint> {
         // Marked #[inline] to allow llvm optimizing it away
         let mut ch = *self as u32;
@@ -369,6 +443,78 @@ impl Char for char {
             Some(2)
         } else {
             None
+        }
+    }
+}
+
+/// An iterator over the characters that represent a `char`, as escaped by
+/// Rust's unicode escaping rules.
+pub struct UnicodeEscapedChars {
+    c: char,
+    state: UnicodeEscapedCharsState
+}
+
+enum UnicodeEscapedCharsState {
+    Backslash,
+    Type,
+    Value(RangeStep<i32>),
+}
+
+impl Iterator<char> for UnicodeEscapedChars {
+    fn next(&mut self) -> Option<char> {
+        match self.state {
+            UnicodeEscapedCharsState::Backslash => {
+                self.state = UnicodeEscapedCharsState::Type;
+                Some('\\')
+            }
+            UnicodeEscapedCharsState::Type => {
+                let (typechar, pad) = if self.c <= '\x7f' { ('x', 2) }
+                                      else if self.c <= '\uffff' { ('u', 4) }
+                                      else { ('U', 8) };
+                self.state = UnicodeEscapedCharsState::Value(range_step(4 * (pad - 1), -1, -4i32));
+                Some(typechar)
+            }
+            UnicodeEscapedCharsState::Value(ref mut range_step) => match range_step.next() {
+                Some(offset) => {
+                    let offset = offset as uint;
+                    let v = match ((self.c as i32) >> offset) & 0xf {
+                        i @ 0 ... 9 => '0' as i32 + i,
+                        i => 'a' as i32 + (i - 10)
+                    };
+                    Some(unsafe { transmute(v) })
+                }
+                None => None
+            }
+        }
+    }
+}
+
+/// An iterator over the characters that represent a `char`, escaped
+/// for maximum portability.
+pub struct DefaultEscapedChars {
+    state: DefaultEscapedCharsState
+}
+
+enum DefaultEscapedCharsState {
+    Backslash(char),
+    Char(char),
+    Done,
+    Unicode(UnicodeEscapedChars),
+}
+
+impl Iterator<char> for DefaultEscapedChars {
+    fn next(&mut self) -> Option<char> {
+        match self.state {
+            DefaultEscapedCharsState::Backslash(c) => {
+                self.state = DefaultEscapedCharsState::Char(c);
+                Some('\\')
+            }
+            DefaultEscapedCharsState::Char(c) => {
+                self.state = DefaultEscapedCharsState::Done;
+                Some(c)
+            }
+            DefaultEscapedCharsState::Done => None,
+            DefaultEscapedCharsState::Unicode(ref mut iter) => iter.next()
         }
     }
 }

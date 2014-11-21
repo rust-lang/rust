@@ -630,7 +630,9 @@ pub trait StrAllocating: Str {
         let me = self.as_slice();
         let mut out = String::with_capacity(me.len());
         for c in me.chars() {
-            c.escape_default(|c| out.push(c));
+            for c in c.escape_default() {
+                out.push(c);
+            }
         }
         out
     }
@@ -640,7 +642,9 @@ pub trait StrAllocating: Str {
         let me = self.as_slice();
         let mut out = String::with_capacity(me.len());
         for c in me.chars() {
-            c.escape_unicode(|c| out.push(c));
+            for c in c.escape_unicode() {
+                out.push(c);
+            }
         }
         out
     }
@@ -1189,7 +1193,7 @@ mod tests {
         assert_eq!("11foo1bar11".trim_left_chars('1'), "foo1bar11");
         let chars: &[char] = &['1', '2'];
         assert_eq!("12foo1bar12".trim_left_chars(chars), "foo1bar12");
-        assert_eq!("123foo1bar123".trim_left_chars(|c: char| c.is_digit()), "foo1bar123");
+        assert_eq!("123foo1bar123".trim_left_chars(|c: char| c.is_numeric()), "foo1bar123");
     }
 
     #[test]
@@ -1204,7 +1208,7 @@ mod tests {
         assert_eq!("11foo1bar11".trim_right_chars('1'), "11foo1bar");
         let chars: &[char] = &['1', '2'];
         assert_eq!("12foo1bar12".trim_right_chars(chars), "12foo1bar");
-        assert_eq!("123foo1bar123".trim_right_chars(|c: char| c.is_digit()), "123foo1bar");
+        assert_eq!("123foo1bar123".trim_right_chars(|c: char| c.is_numeric()), "123foo1bar");
     }
 
     #[test]
@@ -1219,7 +1223,7 @@ mod tests {
         assert_eq!("11foo1bar11".trim_chars('1'), "foo1bar");
         let chars: &[char] = &['1', '2'];
         assert_eq!("12foo1bar12".trim_chars(chars), "foo1bar");
-        assert_eq!("123foo1bar123".trim_chars(|c: char| c.is_digit()), "foo1bar");
+        assert_eq!("123foo1bar123".trim_chars(|c: char| c.is_numeric()), "foo1bar");
     }
 
     #[test]
