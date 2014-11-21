@@ -15,7 +15,6 @@
 
 #[phase(plugin, link)]
 extern crate log;
-extern crate native;
 
 use log::{set_logger, Logger, LogRecord};
 use std::fmt;
@@ -28,13 +27,6 @@ impl Logger for MyWriter {
         let MyWriter(ref mut inner) = *self;
         write!(inner, "{}", record.args);
     }
-}
-
-#[start]
-fn start(argc: int, argv: *const *const u8) -> int {
-    native::start(argc, argv, proc() {
-        main();
-    })
 }
 
 fn main() {

@@ -8,23 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-extern crate green;
-
 static mut DROP: int = 0i;
 static mut DROP_S: int = 0i;
 static mut DROP_T: int = 0i;
-
-#[start]
-fn start(argc: int, argv: *const *const u8) -> int {
-    let ret = green::start(argc, argv, green::basic::event_loop, main);
-    unsafe {
-        assert_eq!(2, DROP);
-        assert_eq!(1, DROP_S);
-        assert_eq!(1, DROP_T);
-    }
-    ret
-}
 
 struct S;
 impl Drop for S {
@@ -48,7 +34,7 @@ impl Drop for T {
 }
 fn g(ref _t: T) {}
 
-fn main() {
+fn do_test() {
     let s = S;
     f(s);
     unsafe {
@@ -58,4 +44,13 @@ fn main() {
     let t = T { i: 1 };
     g(t);
     unsafe { assert_eq!(1, DROP_T); }
+}
+
+fn main() {
+    do_test();
+    unsafe {
+        assert_eq!(2, DROP);
+        assert_eq!(1, DROP_S);
+        assert_eq!(1, DROP_T);
+    }
 }

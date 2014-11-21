@@ -16,7 +16,7 @@ use libc::{mod, c_char, c_int};
 use mem;
 use num::Int;
 use ptr::{mod, null, null_mut};
-use rt::mutex;
+use rustrt::mutex;
 use io::net::ip::{SocketAddr, IpAddr, Ipv4Addr, Ipv6Addr};
 use io::net::addrinfo;
 use io::{IoResult, IoError};

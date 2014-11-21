@@ -38,7 +38,6 @@ extern crate collections;
 extern crate rustrt;
 
 #[cfg(test)] extern crate test;
-#[cfg(test)] extern crate native;
 #[cfg(test)] #[phase(plugin, link)] extern crate std;
 
 pub use alloc::arc::{Arc, Weak};
@@ -54,7 +53,6 @@ pub mod atomic;
 
 // Concurrent data structures
 
-mod mpsc_intrusive;
 pub mod spsc_queue;
 pub mod mpsc_queue;
 pub mod mpmc_bounded_queue;

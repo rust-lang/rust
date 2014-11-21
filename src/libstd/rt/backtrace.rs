@@ -238,7 +238,7 @@ mod imp {
     use mem;
     use option::{Some, None, Option};
     use result::{Ok, Err};
-    use rt::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
+    use rustrt::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
 
     /// As always - iOS on arm uses SjLj exceptions and
     /// _Unwind_Backtrace is even not available there. Still,
@@ -667,7 +667,7 @@ mod imp {
     use option::{Some, None};
     use path::Path;
     use result::{Ok, Err};
-    use rt::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
+    use rustrt::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
     use slice::SlicePrelude;
     use str::StrPrelude;
     use dynamic_lib::DynamicLibrary;

@@ -26,7 +26,7 @@ use sync::{Once, ONCE_INIT};
 
 macro_rules! helper_init( (static $name:ident: Helper<$m:ty>) => (
     static $name: Helper<$m> = Helper {
-        lock: ::rt::mutex::NATIVE_MUTEX_INIT,
+        lock: ::rustrt::mutex::NATIVE_MUTEX_INIT,
         chan: ::cell::UnsafeCell { value: 0 as *mut Sender<$m> },
         signal: ::cell::UnsafeCell { value: 0 },
         initialized: ::cell::UnsafeCell { value: false },

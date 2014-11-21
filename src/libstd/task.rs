@@ -11,11 +11,7 @@
 //! Task creation
 //!
 //! An executing Rust program consists of a collection of tasks, each
-//! with their own stack and local state. A Rust task is typically
-//! backed by an operating system thread, making tasks 'just threads',
-//! but may also be implemented via other strategies as well
-//! (e.g. Rust comes with the [`green`](../../green/index.html)
-//! scheduling crate for creating tasks backed by green threads).
+//! with their own stack and local state.
 //!
 //! Tasks generally have their memory *isolated* from each other by
 //! virtue of Rust's owned types (which of course may only be owned by
@@ -36,59 +32,12 @@
 //! the main task panics the application will exit with a non-zero
 //! exit code.
 //!
-//! # Basic task scheduling
-//!
-//! By default, every task is created with the same "flavor" as the calling task.
-//! This flavor refers to the scheduling mode, with two possibilities currently
-//! being 1:1 and M:N modes. Green (M:N) tasks are cooperatively scheduled and
-//! native (1:1) tasks are scheduled by the OS kernel.
-//!
 //! ## Example
 //!
 //! ```rust
 //! spawn(proc() {
 //!     println!("Hello, World!");
 //! })
-//! ```
-//!
-//! # Advanced task scheduling
-//!
-//! Task spawning can also be configured to use a particular scheduler, to
-//! redirect the new task's output, or to yield a `future` representing the
-//! task's final result. The configuration is established using the
-//! `TaskBuilder` API:
-//!
-//! ## Example
-//!
-//! ```rust
-//! extern crate green;
-//! extern crate native;
-//!
-//! use std::task::TaskBuilder;
-//! use green::{SchedPool, PoolConfig, GreenTaskBuilder};
-//! use native::NativeTaskBuilder;
-//!
-//! # fn main() {
-//! // Create a green scheduler pool with the default configuration
-//! let mut pool = SchedPool::new(PoolConfig::new());
-//!
-//! // Spawn a task in the green pool
-//! let mut fut_green = TaskBuilder::new().green(&mut pool).try_future(proc() {
-//!     /* ... */
-//! });
-//!
-//! // Spawn a native task
-//! let mut fut_native = TaskBuilder::new().native().try_future(proc() {
-//!     /* ... */
-//! });
-//!
-//! // Wait for both tasks to finish, recording their outcome
-//! let res_green  = fut_green.unwrap();
-//! let res_native = fut_native.unwrap();
-//!
-//! // Shut down the green scheduler pool
-//! pool.shutdown();
-//! # }
 //! ```
 
 #![unstable = "The task spawning model will be changed as part of runtime reform, and the module \
@@ -101,32 +50,12 @@ use kinds::{Send, marker};
 use option::{None, Some, Option};
 use boxed::Box;
 use result::Result;
-use rt::local::Local;
-use rt::task;
-use rt::task::Task;
+use rustrt::local::Local;
+use rustrt::task;
+use rustrt::task::Task;
 use str::{Str, SendStr, IntoMaybeOwned};
 use string::{String, ToString};
 use sync::Future;
-
-/// A means of spawning a task
-pub trait Spawner {
-    /// Spawn a task, given low-level task options.
-    fn spawn(self, opts: task::TaskOpts, f: proc():Send);
-}
-
-/// The default task spawner, which spawns siblings to the current task.
-pub struct SiblingSpawner;
-
-impl Spawner for SiblingSpawner {
-    fn spawn(self, opts: task::TaskOpts, f: proc():Send) {
-        // bind tb to provide type annotation
-        let tb: Option<Box<Task>> = Local::try_take();
-        match tb {
-            Some(t) => t.spawn_sibling(opts, f),
-            None => panic!("need a local task to spawn a sibling task"),
-        };
-    }
-}
 
 /// The task builder type.
 ///
@@ -139,7 +68,7 @@ impl Spawner for SiblingSpawner {
 // when you try to reuse the builder to spawn a new task. We'll just
 // sidestep that whole issue by making builders uncopyable and making
 // the run function move them in.
-pub struct TaskBuilder<S = SiblingSpawner> {
+pub struct TaskBuilder {
     // A name for the task-to-be, for identification in panic messages
     name: Option<SendStr>,
     // The size of the stack for the spawned task
@@ -148,88 +77,60 @@ pub struct TaskBuilder<S = SiblingSpawner> {
     stdout: Option<Box<Writer + Send>>,
     // Task-local stderr
     stderr: Option<Box<Writer + Send>>,
-    // The mechanics of actually spawning the task (i.e.: green or native)
-    spawner: S,
     // Optionally wrap the eventual task body
     gen_body: Option<proc(v: proc():Send):Send -> proc():Send>,
     nocopy: marker::NoCopy,
 }
 
-impl TaskBuilder<SiblingSpawner> {
+impl TaskBuilder {
     /// Generate the base configuration for spawning a task, off of which more
     /// configuration methods can be chained.
-    pub fn new() -> TaskBuilder<SiblingSpawner> {
+    pub fn new() -> TaskBuilder {
         TaskBuilder {
             name: None,
             stack_size: None,
             stdout: None,
             stderr: None,
-            spawner: SiblingSpawner,
             gen_body: None,
             nocopy: marker::NoCopy,
         }
     }
 }
 
-impl<S: Spawner> TaskBuilder<S> {
+impl TaskBuilder {
     /// Name the task-to-be. Currently the name is used for identification
     /// only in panic messages.
     #[unstable = "IntoMaybeOwned will probably change."]
-    pub fn named<T: IntoMaybeOwned<'static>>(mut self, name: T) -> TaskBuilder<S> {
+    pub fn named<T: IntoMaybeOwned<'static>>(mut self, name: T) -> TaskBuilder {
         self.name = Some(name.into_maybe_owned());
         self
     }
 
     /// Set the size of the stack for the new task.
-    pub fn stack_size(mut self, size: uint) -> TaskBuilder<S> {
+    pub fn stack_size(mut self, size: uint) -> TaskBuilder {
         self.stack_size = Some(size);
         self
     }
 
     /// Redirect task-local stdout.
     #[experimental = "May not want to make stdio overridable here."]
-    pub fn stdout(mut self, stdout: Box<Writer + Send>) -> TaskBuilder<S> {
+    pub fn stdout(mut self, stdout: Box<Writer + Send>) -> TaskBuilder {
         self.stdout = Some(stdout);
         self
     }
 
     /// Redirect task-local stderr.
     #[experimental = "May not want to make stdio overridable here."]
-    pub fn stderr(mut self, stderr: Box<Writer + Send>) -> TaskBuilder<S> {
+    pub fn stderr(mut self, stderr: Box<Writer + Send>) -> TaskBuilder {
         self.stderr = Some(stderr);
         self
-    }
-
-    /// Set the spawning mechanism for the task.
-    ///
-    /// The `TaskBuilder` API configures a task to be spawned, but defers to the
-    /// "spawner" to actually create and spawn the task. The `spawner` method
-    /// should not be called directly by `TaskBuiler` clients. It is intended
-    /// for use by downstream crates (like `native` and `green`) that implement
-    /// tasks. These downstream crates then add extension methods to the
-    /// builder, like `.native()` and `.green(pool)`, that actually set the
-    /// spawner.
-    pub fn spawner<T: Spawner>(self, spawner: T) -> TaskBuilder<T> {
-        // repackage the entire TaskBuilder since its type is changing.
-        let TaskBuilder {
-            name, stack_size, stdout, stderr, spawner: _, gen_body, nocopy
-        } = self;
-        TaskBuilder {
-            name: name,
-            stack_size: stack_size,
-            stdout: stdout,
-            stderr: stderr,
-            spawner: spawner,
-            gen_body: gen_body,
-            nocopy: nocopy,
-        }
     }
 
     // Where spawning actually happens (whether yielding a future or not)
     fn spawn_internal(self, f: proc():Send,
                       on_exit: Option<proc(Result<(), Box<Any + Send>>):Send>) {
         let TaskBuilder {
-            name, stack_size, stdout, stderr, spawner, mut gen_body, nocopy: _
+            name, stack_size, stdout, stderr, mut gen_body, nocopy: _
         } = self;
         let f = match gen_body.take() {
             Some(gen) => gen(f),
@@ -241,13 +142,13 @@ impl<S: Spawner> TaskBuilder<S> {
             stack_size: stack_size,
         };
         if stdout.is_some() || stderr.is_some() {
-            spawner.spawn(opts, proc() {
+            Task::spawn(opts, proc() {
                 let _ = stdout.map(stdio::set_stdout);
                 let _ = stderr.map(stdio::set_stderr);
                 f();
             })
         } else {
-            spawner.spawn(opts, f)
+            Task::spawn(opts, f)
         }
     }
 
@@ -336,7 +237,7 @@ pub fn try_future<T:Send>(f: proc():Send -> T) -> Future<Result<T, Box<Any + Sen
 /// Read the name of the current task.
 #[stable]
 pub fn name() -> Option<String> {
-    use rt::task::Task;
+    use rustrt::task::Task;
 
     let task = Local::borrow(None::<Task>);
     match task.name {
@@ -348,18 +249,15 @@ pub fn name() -> Option<String> {
 /// Yield control to the task scheduler.
 #[unstable = "Name will change."]
 pub fn deschedule() {
-    use rt::local::Local;
-
-    // FIXME(#7544): Optimize this, since we know we won't block.
-    let task: Box<Task> = Local::take();
-    task.yield_now();
+    use rustrt::task::Task;
+    Task::yield_now();
 }
 
 /// True if the running task is currently panicking (e.g. will return `true` inside a
 /// destructor that is run while unwinding the stack after a call to `panic!()`).
 #[unstable = "May move to a different module."]
 pub fn failing() -> bool {
-    use rt::task::Task;
+    use rustrt::task::Task;
     Local::borrow(None::<Task>).unwinder.unwinding()
 }
 

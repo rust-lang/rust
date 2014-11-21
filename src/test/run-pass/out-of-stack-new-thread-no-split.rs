@@ -36,9 +36,12 @@ fn main() {
     let args = os::args();
     let args = args.as_slice();
     if args.len() > 1 && args[1].as_slice() == "recurse" {
+        let (tx, rx) = channel();
         spawn(proc() {
             recurse();
+            tx.send(());
         });
+        rx.recv();
     } else {
         let recurse = Command::new(args[0].as_slice()).arg("recurse").output().unwrap();
         assert!(!recurse.status.success());

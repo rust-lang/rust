@@ -30,7 +30,6 @@ extern crate collections;
 
 #[cfg(test)] extern crate "rustrt" as realrustrt;
 #[cfg(test)] extern crate test;
-#[cfg(test)] extern crate native;
 
 #[cfg(test)] #[phase(plugin, link)] extern crate std;
 
@@ -38,11 +37,6 @@ pub use self::util::{Stdio, Stdout, Stderr};
 pub use self::unwind::{begin_unwind, begin_unwind_fmt};
 
 use core::prelude::*;
-
-use alloc::boxed::Box;
-use core::any::Any;
-
-use task::{Task, BlockedTask, TaskOpts};
 
 mod macros;
 
@@ -60,45 +54,10 @@ pub mod exclusive;
 pub mod local;
 pub mod local_data;
 pub mod mutex;
-pub mod rtio;
 pub mod stack;
 pub mod task;
 pub mod thread;
 pub mod unwind;
-
-/// The interface to the current runtime.
-///
-/// This trait is used as the abstraction between 1:1 and M:N scheduling. The
-/// two independent crates, libnative and libgreen, both have objects which
-/// implement this trait. The goal of this trait is to encompass all the
-/// fundamental differences in functionality between the 1:1 and M:N runtime
-/// modes.
-pub trait Runtime {
-    // Necessary scheduling functions, used for channels and blocking I/O
-    // (sometimes).
-    fn yield_now(self: Box<Self>, cur_task: Box<Task>);
-    fn maybe_yield(self: Box<Self>, cur_task: Box<Task>);
-    fn deschedule(self: Box<Self>,
-                  times: uint,
-                  cur_task: Box<Task>,
-                  f: |BlockedTask| -> Result<(), BlockedTask>);
-    fn reawaken(self: Box<Self>, to_wake: Box<Task>);
-
-    // Miscellaneous calls which are very different depending on what context
-    // you're in.
-    fn spawn_sibling(self: Box<Self>,
-                     cur_task: Box<Task>,
-                     opts: TaskOpts,
-                     f: proc():Send);
-    /// The (low, high) edges of the current stack.
-    fn stack_bounds(&self) -> (uint, uint); // (lo, hi)
-    /// The last writable byte of the stack next to the guard page
-    fn stack_guard(&self) -> Option<uint>;
-    fn can_block(&self) -> bool;
-
-    // FIXME: This is a serious code smell and this should not exist at all.
-    fn wrap(self: Box<Self>) -> Box<Any+'static>;
-}
 
 /// The default error code of the rust runtime if the main task panics instead
 /// of exiting cleanly.

@@ -53,14 +53,14 @@ impl Local<local_ptr::Borrowed<Task>> for Task {
 #[cfg(test)]
 mod test {
     use std::prelude::*;
-    use std::rt::thread::Thread;
+    use thread::Thread;
     use super::*;
     use task::Task;
 
     #[test]
     fn thread_local_task_smoke_test() {
         Thread::start(proc() {
-            let task = box Task::new();
+            let task = box Task::new(None, None);
             Local::put(task);
             let task: Box<Task> = Local::take();
             cleanup_task(task);
@@ -70,11 +70,11 @@ mod test {
     #[test]
     fn thread_local_task_two_instances() {
         Thread::start(proc() {
-            let task = box Task::new();
+            let task = box Task::new(None, None);
             Local::put(task);
             let task: Box<Task> = Local::take();
             cleanup_task(task);
-            let task = box Task::new();
+            let task = box Task::new(None, None);
             Local::put(task);
             let task: Box<Task> = Local::take();
             cleanup_task(task);
@@ -84,7 +84,7 @@ mod test {
     #[test]
     fn borrow_smoke_test() {
         Thread::start(proc() {
-            let task = box Task::new();
+            let task = box Task::new(None, None);
             Local::put(task);
 
             unsafe {
@@ -98,7 +98,7 @@ mod test {
     #[test]
     fn borrow_with_return() {
         Thread::start(proc() {
-            let task = box Task::new();
+            let task = box Task::new(None, None);
             Local::put(task);
 
             {
@@ -113,7 +113,7 @@ mod test {
     #[test]
     fn try_take() {
         Thread::start(proc() {
-            let task = box Task::new();
+            let task = box Task::new(None, None);
             Local::put(task);
 
             let t: Box<Task> = Local::try_take().unwrap();

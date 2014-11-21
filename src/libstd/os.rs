@@ -208,7 +208,7 @@ Accessing environment variables is not generally threadsafe.
 Serialize access through a global lock.
 */
 fn with_env_lock<T>(f: || -> T) -> T {
-    use rt::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
+    use rustrt::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
 
     static LOCK: StaticNativeMutex = NATIVE_MUTEX_INIT;
 
@@ -1039,9 +1039,9 @@ fn real_args_as_bytes() -> Vec<Vec<u8>> {
           target_os = "freebsd",
           target_os = "dragonfly"))]
 fn real_args_as_bytes() -> Vec<Vec<u8>> {
-    use rt;
+    use rustrt;
 
-    match rt::args::clone() {
+    match rustrt::args::clone() {
         Some(args) => args,
         None => panic!("process arguments not initialized")
     }

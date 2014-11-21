@@ -37,7 +37,7 @@
 #
 #   DEPS_<crate>
 #	These lists are the dependencies of the <crate> that is to be built.
-#	Rust dependencies are listed bare (i.e. std, green) and native
+#	Rust dependencies are listed bare (i.e. std) and native
 #	dependencies have a "native:" prefix (i.e. native:hoedown). All deps
 #	will be built before the crate itself is built.
 #
@@ -49,7 +49,7 @@
 # automatically generated for all stage/host/target combinations.
 ################################################################################
 
-TARGET_CRATES := libc std green native flate arena term \
+TARGET_CRATES := libc std flate arena term \
                  serialize sync getopts collections test time rand \
                  log regex graphviz core rbml alloc rustrt \
                  unicode
@@ -66,8 +66,6 @@ DEPS_rustrt := alloc core libc collections native:rustrt_native
 DEPS_std := core libc rand alloc collections rustrt sync unicode \
 	native:rust_builtin native:backtrace
 DEPS_graphviz := std
-DEPS_green := std native:context_switch
-DEPS_native := std
 DEPS_syntax := std term serialize log fmt_macros arena libc
 DEPS_rustc_trans := rustc rustc_back rustc_llvm libc
 DEPS_rustc := syntax flate arena serialize getopts rbml \
@@ -95,9 +93,9 @@ DEPS_regex := std
 DEPS_regex_macros = rustc syntax std regex
 DEPS_fmt_macros = std
 
-TOOL_DEPS_compiletest := test getopts native
-TOOL_DEPS_rustdoc := rustdoc native
-TOOL_DEPS_rustc := rustc_trans native
+TOOL_DEPS_compiletest := test getopts
+TOOL_DEPS_rustdoc := rustdoc
+TOOL_DEPS_rustc := rustc_trans
 TOOL_SOURCE_compiletest := $(S)src/compiletest/compiletest.rs
 TOOL_SOURCE_rustdoc := $(S)src/driver/driver.rs
 TOOL_SOURCE_rustc := $(S)src/driver/driver.rs
