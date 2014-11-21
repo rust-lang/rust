@@ -24,7 +24,7 @@ use hash::Hash;
 use sys::{mod, retry, c, wouldblock, set_nonblocking, ms_to_timeval};
 use sys::fs::FileDesc;
 use sys_common::helper_thread::Helper;
-use sys_common::{AsFileDesc, mkerr_libc, timeout};
+use sys_common::{AsInner, mkerr_libc, timeout};
 
 pub use sys_common::ProcessConfig;
 
@@ -56,7 +56,7 @@ impl Process {
     pub fn spawn<K, V, C, P>(cfg: &C, in_fd: Option<P>,
                               out_fd: Option<P>, err_fd: Option<P>)
                               -> IoResult<Process>
-        where C: ProcessConfig<K, V>, P: AsFileDesc,
+        where C: ProcessConfig<K, V>, P: AsInner<FileDesc>,
               K: BytesContainer + Eq + Hash, V: BytesContainer
     {
         use libc::funcs::posix88::unistd::{fork, dup2, close, chdir, execvp};
@@ -183,7 +183,7 @@ impl Process {
                             libc::open(devnull.as_ptr(), flags, 0)
                         }
                         Some(obj) => {
-                            let fd = obj.as_fd().fd();
+                            let fd = obj.as_inner().fd();
                             // Leak the memory and the file descriptor. We're in the
                             // child now an all our resources are going to be
                             // cleaned up very soon

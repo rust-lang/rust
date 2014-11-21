@@ -26,7 +26,7 @@ use sys::fs;
 use sys::{mod, retry, c, wouldblock, set_nonblocking, ms_to_timeval, timer};
 use sys::fs::FileDesc;
 use sys_common::helper_thread::Helper;
-use sys_common::{AsFileDesc, mkerr_libc, timeout};
+use sys_common::{AsInner, mkerr_libc, timeout};
 
 use io::fs::PathExtensions;
 use string::String;
@@ -105,7 +105,7 @@ impl Process {
     pub fn spawn<K, V, C, P>(cfg: &C, in_fd: Option<P>,
                               out_fd: Option<P>, err_fd: Option<P>)
                               -> IoResult<Process>
-        where C: ProcessConfig<K, V>, P: AsFileDesc,
+        where C: ProcessConfig<K, V>, P: AsInner<FileDesc>,
               K: BytesContainer + Eq + Hash, V: BytesContainer
     {
         use libc::types::os::arch::extra::{DWORD, HANDLE, STARTUPINFO};
@@ -195,7 +195,7 @@ impl Process {
                         }
                     }
                     Some(ref fd) => {
-                        let orig = get_osfhandle(fd.as_fd().fd()) as HANDLE;
+                        let orig = get_osfhandle(fd.as_inner().fd()) as HANDLE;
                         if orig == INVALID_HANDLE_VALUE {
                             return Err(super::last_error())
                         }
