@@ -1647,7 +1647,10 @@ impl<T> Vec<T> {
             // Create a `Vec` from our `PartialVecZeroSized` and make sure the
             // destructor of the latter will not run. None of this can panic.
             let mut result = Vec::new();
-            unsafe { result.set_len(pv.num_u); }
+            unsafe {
+                result.set_len(pv.num_u);
+                mem::forget(pv);
+            }
             result
         }
     }
