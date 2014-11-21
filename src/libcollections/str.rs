@@ -54,7 +54,7 @@
 pub use self::MaybeOwned::*;
 use self::RecompositionState::*;
 use self::DecompositionType::*;
-use core::borrow::{BorrowFrom, ToOwned};
+use core::borrow::{BorrowFrom, Cow, ToOwned};
 use core::default::Default;
 use core::fmt;
 use core::cmp;
@@ -67,7 +67,7 @@ use core::prelude::{range};
 
 use hash;
 use ring_buf::RingBuf;
-use string::{String, ToString};
+use string::String;
 use unicode;
 use vec::Vec;
 
@@ -425,6 +425,7 @@ Section: MaybeOwned
 /// A string type that can hold either a `String` or a `&str`.
 /// This can be useful as an optimization when an allocation is sometimes
 /// needed but not always.
+#[deprecated = "use std::str::CowString"]
 pub enum MaybeOwned<'a> {
     /// A borrowed string.
     Slice(&'a str),
@@ -432,15 +433,16 @@ pub enum MaybeOwned<'a> {
     Owned(String)
 }
 
-/// A specialization of `MaybeOwned` to be sendable.
-pub type SendStr = MaybeOwned<'static>;
+/// A specialization of `CowString` to be sendable.
+pub type SendStr = CowString<'static>;
 
+#[deprecated = "use std::str::CowString"]
 impl<'a> MaybeOwned<'a> {
     /// Returns `true` if this `MaybeOwned` wraps an owned string.
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ``` ignore
     /// let string = String::from_str("orange");
     /// let maybe_owned_string = string.into_maybe_owned();
     /// assert_eq!(true, maybe_owned_string.is_owned());
@@ -457,7 +459,7 @@ impl<'a> MaybeOwned<'a> {
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ``` ignore
     /// let string = "orange";
     /// let maybe_owned_string = string.as_slice().into_maybe_owned();
     /// assert_eq!(true, maybe_owned_string.is_slice());
@@ -475,46 +477,56 @@ impl<'a> MaybeOwned<'a> {
     pub fn len(&self) -> uint { self.as_slice().len() }
 
     /// Returns true if the string contains no bytes
+    #[allow(deprecated)]
     #[inline]
     pub fn is_empty(&self) -> bool { self.len() == 0 }
 }
 
+#[deprecated = "use std::borrow::IntoCow"]
 /// Trait for moving into a `MaybeOwned`.
 pub trait IntoMaybeOwned<'a> {
     /// Moves `self` into a `MaybeOwned`.
     fn into_maybe_owned(self) -> MaybeOwned<'a>;
 }
 
+#[deprecated = "use std::borrow::IntoCow"]
+#[allow(deprecated)]
 impl<'a> IntoMaybeOwned<'a> for String {
     /// # Example
     ///
-    /// ```rust
+    /// ``` ignore
     /// let owned_string = String::from_str("orange");
     /// let maybe_owned_string = owned_string.into_maybe_owned();
     /// assert_eq!(true, maybe_owned_string.is_owned());
     /// ```
+    #[allow(deprecated)]
     #[inline]
     fn into_maybe_owned(self) -> MaybeOwned<'a> {
         Owned(self)
     }
 }
 
+#[deprecated = "use std::borrow::IntoCow"]
+#[allow(deprecated)]
 impl<'a> IntoMaybeOwned<'a> for &'a str {
     /// # Example
     ///
-    /// ```rust
+    /// ``` ignore
     /// let string = "orange";
     /// let maybe_owned_str = string.as_slice().into_maybe_owned();
     /// assert_eq!(false, maybe_owned_str.is_owned());
     /// ```
+    #[allow(deprecated)]
     #[inline]
     fn into_maybe_owned(self) -> MaybeOwned<'a> { Slice(self) }
 }
 
+#[allow(deprecated)]
+#[deprecated = "use std::borrow::IntoCow"]
 impl<'a> IntoMaybeOwned<'a> for MaybeOwned<'a> {
     /// # Example
     ///
-    /// ```rust
+    /// ``` ignore
     /// let str = "orange";
     /// let maybe_owned_str = str.as_slice().into_maybe_owned();
     /// let maybe_maybe_owned_str = maybe_owned_str.into_maybe_owned();
@@ -524,6 +536,7 @@ impl<'a> IntoMaybeOwned<'a> for MaybeOwned<'a> {
     fn into_maybe_owned(self) -> MaybeOwned<'a> { self }
 }
 
+#[deprecated = "use std::str::CowString"]
 impl<'a> PartialEq for MaybeOwned<'a> {
     #[inline]
     fn eq(&self, other: &MaybeOwned) -> bool {
@@ -531,8 +544,10 @@ impl<'a> PartialEq for MaybeOwned<'a> {
     }
 }
 
+#[deprecated = "use std::str::CowString"]
 impl<'a> Eq for MaybeOwned<'a> {}
 
+#[deprecated = "use std::str::CowString"]
 impl<'a> PartialOrd for MaybeOwned<'a> {
     #[inline]
     fn partial_cmp(&self, other: &MaybeOwned) -> Option<Ordering> {
@@ -540,6 +555,7 @@ impl<'a> PartialOrd for MaybeOwned<'a> {
     }
 }
 
+#[deprecated = "use std::str::CowString"]
 impl<'a> Ord for MaybeOwned<'a> {
     #[inline]
     fn cmp(&self, other: &MaybeOwned) -> Ordering {
@@ -547,6 +563,7 @@ impl<'a> Ord for MaybeOwned<'a> {
     }
 }
 
+#[deprecated = "use std::str::CowString"]
 impl<'a, S: Str> Equiv<S> for MaybeOwned<'a> {
     #[inline]
     fn equiv(&self, other: &S) -> bool {
@@ -554,7 +571,9 @@ impl<'a, S: Str> Equiv<S> for MaybeOwned<'a> {
     }
 }
 
+#[deprecated = "use std::str::CowString"]
 impl<'a> Str for MaybeOwned<'a> {
+    #[allow(deprecated)]
     #[inline]
     fn as_slice<'b>(&'b self) -> &'b str {
         match *self {
@@ -564,7 +583,9 @@ impl<'a> Str for MaybeOwned<'a> {
     }
 }
 
+#[deprecated = "use std::str::CowString"]
 impl<'a> StrAllocating for MaybeOwned<'a> {
+    #[allow(deprecated)]
     #[inline]
     fn into_string(self) -> String {
         match self {
@@ -574,7 +595,9 @@ impl<'a> StrAllocating for MaybeOwned<'a> {
     }
 }
 
+#[deprecated = "use std::str::CowString"]
 impl<'a> Clone for MaybeOwned<'a> {
+    #[allow(deprecated)]
     #[inline]
     fn clone(&self) -> MaybeOwned<'a> {
         match *self {
@@ -584,11 +607,14 @@ impl<'a> Clone for MaybeOwned<'a> {
     }
 }
 
+#[deprecated = "use std::str::CowString"]
 impl<'a> Default for MaybeOwned<'a> {
+    #[allow(deprecated)]
     #[inline]
     fn default() -> MaybeOwned<'a> { Slice("") }
 }
 
+#[deprecated = "use std::str::CowString"]
 impl<'a, H: hash::Writer> hash::Hash<H> for MaybeOwned<'a> {
     #[inline]
     fn hash(&self, hasher: &mut H) {
@@ -596,6 +622,7 @@ impl<'a, H: hash::Writer> hash::Hash<H> for MaybeOwned<'a> {
     }
 }
 
+#[deprecated = "use std::str::CowString"]
 impl<'a> fmt::Show for MaybeOwned<'a> {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -613,7 +640,7 @@ impl BorrowFrom<String> for str {
 
 #[unstable = "trait is unstable"]
 impl ToOwned<String> for str {
-    fn to_owned(&self) -> String { self.to_string() }
+    fn to_owned(&self) -> String { self.into_string() }
 }
 
 /// Unsafe string operations.
@@ -621,6 +648,13 @@ pub mod raw {
     pub use core::str::raw::{from_utf8, c_str_to_static_slice, slice_bytes};
     pub use core::str::raw::{slice_unchecked};
 }
+
+/*
+Section: CowString
+*/
+
+/// A clone-on-write string
+pub type CowString<'a> = Cow<'a, String, str>;
 
 /*
 Section: Trait implementations
