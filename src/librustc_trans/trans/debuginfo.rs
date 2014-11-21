@@ -1545,7 +1545,7 @@ fn compile_unit_metadata(cx: &CrateContext) {
                     Some(ref p) if p.is_relative() => {
                             // prepend "./" if necessary
                             let dotdot = b"..";
-                            let prefix = &[dotdot[0], ::std::path::SEP_BYTE];
+                            let prefix = [dotdot[0], ::std::path::SEP_BYTE];
                             let mut path_bytes = p.as_vec().to_vec();
 
                             if path_bytes.slice_to(2) != prefix &&

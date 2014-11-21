@@ -1010,10 +1010,12 @@ mod tests {
     #[test]
     fn test_from_utf8_lossy() {
         let xs = b"hello";
-        assert_eq!(String::from_utf8_lossy(xs), "hello".into_cow());
+        let ys: str::CowString = "hello".into_cow();
+        assert_eq!(String::from_utf8_lossy(xs), ys);
 
         let xs = "ศไทย中华Việt Nam".as_bytes();
-        assert_eq!(String::from_utf8_lossy(xs), "ศไทย中华Việt Nam".into_cow());
+        let ys: str::CowString = "ศไทย中华Việt Nam".into_cow();
+        assert_eq!(String::from_utf8_lossy(xs), ys);
 
         let xs = b"Hello\xC2 There\xFF Goodbye";
         assert_eq!(String::from_utf8_lossy(xs),
