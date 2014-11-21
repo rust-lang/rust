@@ -28,7 +28,7 @@ Data types that can be encoded are JavaScript types (see the `Json` enum for mor
 * `Boolean`: equivalent to rust's `bool`
 * `Number`: equivalent to rust's `f64`
 * `String`: equivalent to rust's `String`
-* `List`: equivalent to rust's `Vec<T>`, but also allowing objects of different types in the same
+* `Array`: equivalent to rust's `Vec<T>`, but also allowing objects of different types in the same
 array
 * `Object`: equivalent to rust's `Treemap<String, json::Json>`
 * `Null`
@@ -223,12 +223,12 @@ pub enum Json {
     F64(f64),
     String(string::String),
     Boolean(bool),
-    List(JsonList),
+    Array(JsonArray),
     Object(JsonObject),
     Null,
 }
 
-pub type JsonList = Vec<Json>;
+pub type JsonArray = Vec<Json>;
 pub type JsonObject = TreeMap<string::String, Json>;
 
 /// The errors that can arise while parsing a JSON stream.
@@ -237,7 +237,7 @@ pub enum ErrorCode {
     InvalidSyntax,
     InvalidNumber,
     EOFWhileParsingObject,
-    EOFWhileParsingList,
+    EOFWhileParsingArray,
     EOFWhileParsingValue,
     EOFWhileParsingString,
     KeyMustBeAString,
@@ -278,7 +278,7 @@ pub fn error_str(error: ErrorCode) -> &'static str {
         InvalidSyntax => "invalid syntax",
         InvalidNumber => "invalid number",
         EOFWhileParsingObject => "EOF While parsing object",
-        EOFWhileParsingList => "EOF While parsing list",
+        EOFWhileParsingArray => "EOF While parsing array",
         EOFWhileParsingValue => "EOF While parsing value",
         EOFWhileParsingString => "EOF While parsing string",
         KeyMustBeAString => "key must be a string",
@@ -868,7 +868,7 @@ impl<E: ::Encoder<S>, S> Encodable<E, S> for Json {
             F64(v) => v.encode(e),
             String(ref v) => v.encode(e),
             Boolean(v) => v.encode(e),
-            List(ref v) => v.encode(e),
+            Array(ref v) => v.encode(e),
             Object(ref v) => v.encode(e),
             Null => e.emit_nil(),
         }
@@ -956,16 +956,16 @@ impl Json {
         }
     }
 
-    /// Returns true if the Json value is a List. Returns false otherwise.
-    pub fn is_list<'a>(&'a self) -> bool {
-        self.as_list().is_some()
+    /// Returns true if the Json value is an Array. Returns false otherwise.
+    pub fn is_array<'a>(&'a self) -> bool {
+        self.as_array().is_some()
     }
 
-    /// If the Json value is a List, returns the associated vector.
+    /// If the Json value is an Array, returns the associated vector.
     /// Returns None otherwise.
-    pub fn as_list<'a>(&'a self) -> Option<&'a JsonList> {
+    pub fn as_array<'a>(&'a self) -> Option<&'a JsonArray> {
         match self {
-            &List(ref list) => Some(&*list),
+            &Array(ref array) => Some(&*array),
             _ => None
         }
     }
@@ -1085,8 +1085,8 @@ impl<'a> ops::Index<&'a str, Json>  for Json {
 impl ops::Index<uint, Json> for Json {
     fn index<'a>(&'a self, idx: &uint) -> &'a Json {
         match self {
-            &List(ref v) => v.index(idx),
-            _ => panic!("can only index Json with uint if it is a list")
+            &Array(ref v) => v.index(idx),
+            _ => panic!("can only index Json with uint if it is an array")
         }
     }
 }
@@ -1096,8 +1096,8 @@ impl ops::Index<uint, Json> for Json {
 pub enum JsonEvent {
     ObjectStart,
     ObjectEnd,
-    ListStart,
-    ListEnd,
+    ArrayStart,
+    ArrayEnd,
     BooleanValue(bool),
     I64Value(i64),
     U64Value(u64),
@@ -1109,10 +1109,10 @@ pub enum JsonEvent {
 
 #[deriving(PartialEq, Show)]
 enum ParserState {
-    // Parse a value in a list, true means first element.
+    // Parse a value in an array, true means first element.
     ParseArray(bool),
-    // Parse ',' or ']' after an element in a list.
-    ParseListComma,
+    // Parse ',' or ']' after an element in an array.
+    ParseArrayComma,
     // Parse a key:value in an object, true means first element.
     ParseObject(bool),
     // Parse ',' or ']' after an element in an object.
@@ -1601,7 +1601,7 @@ impl<T: Iterator<char>> Parser<T> {
     fn parse(&mut self) -> JsonEvent {
         loop {
             // The only paths where the loop can spin a new iteration
-            // are in the cases ParseListComma and ParseObjectComma if ','
+            // are in the cases ParseArrayComma and ParseObjectComma if ','
             // is parsed. In these cases the state is set to (respectively)
             // ParseArray(false) and ParseObject(false), which always return,
             // so there is no risk of getting stuck in an infinite loop.
@@ -1613,10 +1613,10 @@ impl<T: Iterator<char>> Parser<T> {
                     return self.parse_start();
                 }
                 ParseArray(first) => {
-                    return self.parse_list(first);
+                    return self.parse_array(first);
                 }
-                ParseListComma => {
-                    match self.parse_list_comma_or_end() {
+                ParseArrayComma => {
+                    match self.parse_array_comma_or_end() {
                         Some(evt) => { return evt; }
                         None => {}
                     }
@@ -1644,14 +1644,14 @@ impl<T: Iterator<char>> Parser<T> {
         let val = self.parse_value();
         self.state = match val {
             Error(_) => { ParseFinished }
-            ListStart => { ParseArray(true) }
+            ArrayStart => { ParseArray(true) }
             ObjectStart => { ParseObject(true) }
             _ => { ParseBeforeFinish }
         };
         return val;
     }
 
-    fn parse_list(&mut self, first: bool) -> JsonEvent {
+    fn parse_array(&mut self, first: bool) -> JsonEvent {
         if self.ch_is(']') {
             if !first {
                 return self.error_event(InvalidSyntax);
@@ -1660,13 +1660,13 @@ impl<T: Iterator<char>> Parser<T> {
                 self.state = ParseBeforeFinish;
             } else {
                 self.state = if self.stack.last_is_index() {
-                    ParseListComma
+                    ParseArrayComma
                 } else {
                     ParseObjectComma
                 }
             }
             self.bump();
-            return ListEnd;
+            return ArrayEnd;
         }
         if first {
             self.stack.push_index(0);
@@ -1676,14 +1676,14 @@ impl<T: Iterator<char>> Parser<T> {
 
         self.state = match val {
             Error(_) => { ParseFinished }
-            ListStart => { ParseArray(true) }
+            ArrayStart => { ParseArray(true) }
             ObjectStart => { ParseObject(true) }
-            _ => { ParseListComma }
+            _ => { ParseArrayComma }
         };
         return val;
     }
 
-    fn parse_list_comma_or_end(&mut self) -> Option<JsonEvent> {
+    fn parse_array_comma_or_end(&mut self) -> Option<JsonEvent> {
         if self.ch_is(',') {
             self.stack.bump_index();
             self.state = ParseArray(false);
@@ -1695,15 +1695,15 @@ impl<T: Iterator<char>> Parser<T> {
                 self.state = ParseBeforeFinish;
             } else {
                 self.state = if self.stack.last_is_index() {
-                    ParseListComma
+                    ParseArrayComma
                 } else {
                     ParseObjectComma
                 }
             }
             self.bump();
-            return Some(ListEnd);
+            return Some(ArrayEnd);
         } else if self.eof() {
-            return Some(self.error_event(EOFWhileParsingList));
+            return Some(self.error_event(EOFWhileParsingArray));
         } else {
             return Some(self.error_event(InvalidSyntax));
         }
@@ -1722,7 +1722,7 @@ impl<T: Iterator<char>> Parser<T> {
                 self.state = ParseBeforeFinish;
             } else {
                 self.state = if self.stack.last_is_index() {
-                    ParseListComma
+                    ParseArrayComma
                 } else {
                     ParseObjectComma
                 }
@@ -1757,7 +1757,7 @@ impl<T: Iterator<char>> Parser<T> {
 
         self.state = match val {
             Error(_) => { ParseFinished }
-            ListStart => { ParseArray(true) }
+            ArrayStart => { ParseArray(true) }
             ObjectStart => { ParseObject(true) }
             _ => { ParseObjectComma }
         };
@@ -1770,7 +1770,7 @@ impl<T: Iterator<char>> Parser<T> {
                 self.state = ParseBeforeFinish;
             } else {
                 self.state = if self.stack.last_is_index() {
-                    ParseListComma
+                    ParseArrayComma
                 } else {
                     ParseObjectComma
                 }
@@ -1797,7 +1797,7 @@ impl<T: Iterator<char>> Parser<T> {
             },
             '[' => {
                 self.bump();
-                ListStart
+                ArrayStart
             }
             '{' => {
                 self.bump();
@@ -1864,21 +1864,21 @@ impl<T: Iterator<char>> Builder<T> {
                 Ok(String(temp))
             }
             Some(Error(e)) => { Err(e) }
-            Some(ListStart) => { self.build_list() }
+            Some(ArrayStart) => { self.build_array() }
             Some(ObjectStart) => { self.build_object() }
             Some(ObjectEnd) => { self.parser.error(InvalidSyntax) }
-            Some(ListEnd) => { self.parser.error(InvalidSyntax) }
+            Some(ArrayEnd) => { self.parser.error(InvalidSyntax) }
             None => { self.parser.error(EOFWhileParsingValue) }
         }
     }
 
-    fn build_list(&mut self) -> Result<Json, BuilderError> {
+    fn build_array(&mut self) -> Result<Json, BuilderError> {
         self.bump();
         let mut values = Vec::new();
 
         loop {
-            if self.token == Some(ListEnd) {
-                return Ok(List(values.into_iter().collect()));
+            if self.token == Some(ArrayEnd) {
+                return Ok(Array(values.into_iter().collect()));
             }
             match self.build_value() {
                 Ok(v) => values.push(v),
@@ -2093,13 +2093,13 @@ impl ::Decoder<DecoderError> for Decoder {
                     }
                 };
                 match o.remove(&"fields".to_string()) {
-                    Some(List(l)) => {
+                    Some(Array(l)) => {
                         for field in l.into_iter().rev() {
                             self.stack.push(field);
                         }
                     },
                     Some(val) => {
-                        return Err(ExpectedError("List".to_string(), format!("{}", val)))
+                        return Err(ExpectedError("Array".to_string(), format!("{}", val)))
                     }
                     None => {
                         return Err(MissingFieldError("fields".to_string()))
@@ -2229,9 +2229,9 @@ impl ::Decoder<DecoderError> for Decoder {
 
     fn read_seq<T>(&mut self, f: |&mut Decoder, uint| -> DecodeResult<T>) -> DecodeResult<T> {
         debug!("read_seq()");
-        let list = try!(expect!(self.pop(), List));
-        let len = list.len();
-        for v in list.into_iter().rev() {
+        let array = try!(expect!(self.pop(), Array));
+        let len = array.len();
+        for v in array.into_iter().rev() {
             self.stack.push(v);
         }
         f(self, len)
@@ -2343,7 +2343,7 @@ macro_rules! tuple_impl {
             #[allow(non_snake_case)]
             fn to_json(&self) -> Json {
                 match *self {
-                    ($(ref $tyvar),*,) => List(vec![$($tyvar.to_json()),*])
+                    ($(ref $tyvar),*,) => Array(vec![$($tyvar.to_json()),*])
                 }
             }
         }
@@ -2364,11 +2364,11 @@ tuple_impl!{A, B, C, D, E, F, G, H, I, J, K}
 tuple_impl!{A, B, C, D, E, F, G, H, I, J, K, L}
 
 impl<A: ToJson> ToJson for [A] {
-    fn to_json(&self) -> Json { List(self.iter().map(|elt| elt.to_json()).collect()) }
+    fn to_json(&self) -> Json { Array(self.iter().map(|elt| elt.to_json()).collect()) }
 }
 
 impl<A: ToJson> ToJson for Vec<A> {
-    fn to_json(&self) -> Json { List(self.iter().map(|elt| elt.to_json()).collect()) }
+    fn to_json(&self) -> Json { Array(self.iter().map(|elt| elt.to_json()).collect()) }
 }
 
 impl<A: ToJson> ToJson for TreeMap<string::String, A> {
@@ -2420,13 +2420,13 @@ mod tests {
     use self::DecodeEnum::*;
     use self::test::Bencher;
     use {Encodable, Decodable};
-    use super::{List, Encoder, Decoder, Error, Boolean, I64, U64, F64, String, Null,
+    use super::{Array, Encoder, Decoder, Error, Boolean, I64, U64, F64, String, Null,
                 PrettyEncoder, Object, Json, from_str, ParseError, ExpectedError,
                 MissingFieldError, UnknownVariantError, DecodeResult, DecoderError,
                 JsonEvent, Parser, StackElement,
-                ObjectStart, ObjectEnd, ListStart, ListEnd, BooleanValue, U64Value,
+                ObjectStart, ObjectEnd, ArrayStart, ArrayEnd, BooleanValue, U64Value,
                 F64Value, StringValue, NullValue, SyntaxError, Key, Index, Stack,
-                InvalidSyntax, InvalidNumber, EOFWhileParsingObject, EOFWhileParsingList,
+                InvalidSyntax, InvalidNumber, EOFWhileParsingObject, EOFWhileParsingArray,
                 EOFWhileParsingValue, EOFWhileParsingString, KeyMustBeAString, ExpectedColon,
                 TrailingCharacters, TrailingComma};
     use std::{i64, u64, f32, f64, io};
@@ -2558,28 +2558,28 @@ mod tests {
     }
 
     #[test]
-    fn test_write_list() {
-        assert_eq!(List(vec![]).to_string().into_string(), "[]".to_string());
-        assert_eq!(List(vec![]).to_pretty_str().into_string(), "[]".to_string());
+    fn test_write_array() {
+        assert_eq!(Array(vec![]).to_string().into_string(), "[]".to_string());
+        assert_eq!(Array(vec![]).to_pretty_str().into_string(), "[]".to_string());
 
-        assert_eq!(List(vec![Boolean(true)]).to_string().into_string(), "[true]".to_string());
+        assert_eq!(Array(vec![Boolean(true)]).to_string().into_string(), "[true]".to_string());
         assert_eq!(
-            List(vec![Boolean(true)]).to_pretty_str().into_string(),
+            Array(vec![Boolean(true)]).to_pretty_str().into_string(),
             "\
             [\n  \
                 true\n\
             ]".to_string()
         );
 
-        let long_test_list = List(vec![
+        let long_test_array = Array(vec![
             Boolean(false),
             Null,
-            List(vec![String("foo\nbar".to_string()), F64(3.5)])]);
+            Array(vec![String("foo\nbar".to_string()), F64(3.5)])]);
 
-        assert_eq!(long_test_list.to_string().into_string(),
+        assert_eq!(long_test_array.to_string().into_string(),
             "[false,null,[\"foo\\nbar\",3.5]]".to_string());
         assert_eq!(
-            long_test_list.to_pretty_str().into_string(),
+            long_test_array.to_pretty_str().into_string(),
             "\
             [\n  \
                 false,\n  \
@@ -2612,7 +2612,7 @@ mod tests {
         );
 
         let complex_obj = mk_object(&[
-                ("b".to_string(), List(vec![
+                ("b".to_string(), Array(vec![
                     mk_object(&[("c".to_string(), String("\x0c\r".to_string()))]),
                     mk_object(&[("d".to_string(), String("".to_string()))])
                 ]))
@@ -2644,7 +2644,7 @@ mod tests {
 
         let a = mk_object(&[
             ("a".to_string(), Boolean(true)),
-            ("b".to_string(), List(vec![
+            ("b".to_string(), Array(vec![
                 mk_object(&[("c".to_string(), String("\x0c\r".to_string()))]),
                 mk_object(&[("d".to_string(), String("".to_string()))])
             ]))
@@ -2878,28 +2878,28 @@ mod tests {
     }
 
     #[test]
-    fn test_read_list() {
+    fn test_read_array() {
         assert_eq!(from_str("["),     Err(SyntaxError(EOFWhileParsingValue, 1, 2)));
-        assert_eq!(from_str("[1"),    Err(SyntaxError(EOFWhileParsingList,  1, 3)));
+        assert_eq!(from_str("[1"),    Err(SyntaxError(EOFWhileParsingArray, 1, 3)));
         assert_eq!(from_str("[1,"),   Err(SyntaxError(EOFWhileParsingValue, 1, 4)));
         assert_eq!(from_str("[1,]"),  Err(SyntaxError(InvalidSyntax,        1, 4)));
         assert_eq!(from_str("[6 7]"), Err(SyntaxError(InvalidSyntax,        1, 4)));
 
-        assert_eq!(from_str("[]"), Ok(List(vec![])));
-        assert_eq!(from_str("[ ]"), Ok(List(vec![])));
-        assert_eq!(from_str("[true]"), Ok(List(vec![Boolean(true)])));
-        assert_eq!(from_str("[ false ]"), Ok(List(vec![Boolean(false)])));
-        assert_eq!(from_str("[null]"), Ok(List(vec![Null])));
+        assert_eq!(from_str("[]"), Ok(Array(vec![])));
+        assert_eq!(from_str("[ ]"), Ok(Array(vec![])));
+        assert_eq!(from_str("[true]"), Ok(Array(vec![Boolean(true)])));
+        assert_eq!(from_str("[ false ]"), Ok(Array(vec![Boolean(false)])));
+        assert_eq!(from_str("[null]"), Ok(Array(vec![Null])));
         assert_eq!(from_str("[3, 1]"),
-                     Ok(List(vec![U64(3), U64(1)])));
+                     Ok(Array(vec![U64(3), U64(1)])));
         assert_eq!(from_str("\n[3, 2]\n"),
-                     Ok(List(vec![U64(3), U64(2)])));
+                     Ok(Array(vec![U64(3), U64(2)])));
         assert_eq!(from_str("[2, [4, 1]]"),
-               Ok(List(vec![U64(2), List(vec![U64(4), U64(1)])])));
+               Ok(Array(vec![U64(2), Array(vec![U64(4), U64(1)])])));
     }
 
     #[test]
-    fn test_decode_list() {
+    fn test_decode_array() {
         let v: Vec<()> = super::decode("[]").unwrap();
         assert_eq!(v, vec![]);
 
@@ -2967,7 +2967,7 @@ mod tests {
                       "{\"a\" : 1.0 ,\"b\": [ true ]}").unwrap(),
                   mk_object(&[
                       ("a".to_string(), F64(1.0)),
-                      ("b".to_string(), List(vec![Boolean(true)]))
+                      ("b".to_string(), Array(vec![Boolean(true)]))
                   ]));
         assert_eq!(from_str(
                       "{\
@@ -2980,7 +2980,7 @@ mod tests {
                       }").unwrap(),
                   mk_object(&[
                       ("a".to_string(), F64(1.0)),
-                      ("b".to_string(), List(vec![
+                      ("b".to_string(), Array(vec![
                           Boolean(true),
                           String("foo\nbar".to_string()),
                           mk_object(&[
@@ -3097,7 +3097,7 @@ mod tests {
         check_err::<DecodeStruct>("{\"x\": 1, \"y\": true, \"z\": {}, \"w\": []}",
                                   ExpectedError("String".to_string(), "{}".to_string()));
         check_err::<DecodeStruct>("{\"x\": 1, \"y\": true, \"z\": \"\", \"w\": null}",
-                                  ExpectedError("List".to_string(), "null".to_string()));
+                                  ExpectedError("Array".to_string(), "null".to_string()));
         check_err::<DecodeStruct>("{\"x\": 1, \"y\": true, \"z\": \"\"}",
                                   MissingFieldError("w".to_string()));
     }
@@ -3110,7 +3110,7 @@ mod tests {
         check_err::<DecodeEnum>("{\"variant\": \"A\"}",
                                 MissingFieldError("fields".to_string()));
         check_err::<DecodeEnum>("{\"variant\": \"A\", \"fields\": null}",
-                                ExpectedError("List".to_string(), "null".to_string()));
+                                ExpectedError("Array".to_string(), "null".to_string()));
         check_err::<DecodeEnum>("{\"variant\": \"C\", \"fields\": []}",
                                 UnknownVariantError("C".to_string()));
     }
@@ -3139,10 +3139,10 @@ mod tests {
     #[test]
     fn test_index(){
         let json_value = from_str("{\"animals\":[\"dog\",\"cat\",\"mouse\"]}").unwrap();
-        let ref list = json_value["animals"];
-        assert_eq!(list[0].as_string().unwrap(), "dog");
-        assert_eq!(list[1].as_string().unwrap(), "cat");
-        assert_eq!(list[2].as_string().unwrap(), "mouse");
+        let ref array = json_value["animals"];
+        assert_eq!(array[0].as_string().unwrap(), "dog");
+        assert_eq!(array[1].as_string().unwrap(), "cat");
+        assert_eq!(array[2].as_string().unwrap(), "mouse");
     }
 
     #[test]
@@ -3159,17 +3159,17 @@ mod tests {
     }
 
     #[test]
-    fn test_is_list(){
+    fn test_is_array(){
         let json_value = from_str("[1, 2, 3]").unwrap();
-        assert!(json_value.is_list());
+        assert!(json_value.is_array());
     }
 
     #[test]
-    fn test_as_list(){
+    fn test_as_array(){
         let json_value = from_str("[1, 2, 3]").unwrap();
-        let json_list = json_value.as_list();
+        let json_array = json_value.as_array();
         let expected_length = 3;
-        assert!(json_list.is_some() && json_list.unwrap().len() == expected_length);
+        assert!(json_array.is_some() && json_array.unwrap().len() == expected_length);
     }
 
     #[test]
@@ -3328,7 +3328,7 @@ mod tests {
         tree.insert("hello".into_string(), String("guten tag".into_string()));
         tree.insert("goodbye".into_string(), String("sayonara".into_string()));
 
-        let json = List(
+        let json = Array(
             // The following layout below should look a lot like
             // the pretty-printed JSON (indent * x)
             vec!
@@ -3336,7 +3336,7 @@ mod tests {
                 String("greetings".into_string()), // 1x
                 Object(tree), // 1x + 2x + 2x + 1x
             ) // 0x
-            // End JSON list (7 lines)
+            // End JSON array (7 lines)
         );
 
         // Helper function for counting indents
@@ -3425,19 +3425,19 @@ mod tests {
             vec![
                 (ObjectStart,             vec![]),
                   (StringValue("bar".to_string()),   vec![Key("foo")]),
-                  (ListStart,             vec![Key("array")]),
+                  (ArrayStart,            vec![Key("array")]),
                     (U64Value(0),         vec![Key("array"), Index(0)]),
                     (U64Value(1),         vec![Key("array"), Index(1)]),
                     (U64Value(2),         vec![Key("array"), Index(2)]),
                     (U64Value(3),         vec![Key("array"), Index(3)]),
                     (U64Value(4),         vec![Key("array"), Index(4)]),
                     (U64Value(5),         vec![Key("array"), Index(5)]),
-                  (ListEnd,               vec![Key("array")]),
-                  (ListStart,             vec![Key("idents")]),
+                  (ArrayEnd,              vec![Key("array")]),
+                  (ArrayStart,            vec![Key("idents")]),
                     (NullValue,           vec![Key("idents"), Index(0)]),
                     (BooleanValue(true),  vec![Key("idents"), Index(1)]),
                     (BooleanValue(false), vec![Key("idents"), Index(2)]),
-                  (ListEnd,               vec![Key("idents")]),
+                  (ArrayEnd,              vec![Key("idents")]),
                 (ObjectEnd,               vec![]),
             ]
         );
@@ -3495,9 +3495,9 @@ mod tests {
             vec![
                 (ObjectStart,           vec![]),
                   (F64Value(1.0),       vec![Key("a")]),
-                  (ListStart,           vec![Key("b")]),
+                  (ArrayStart,          vec![Key("b")]),
                     (BooleanValue(true),vec![Key("b"), Index(0)]),
-                  (ListEnd,             vec![Key("b")]),
+                  (ArrayEnd,            vec![Key("b")]),
                 (ObjectEnd,             vec![]),
             ]
         );
@@ -3513,7 +3513,7 @@ mod tests {
             vec![
                 (ObjectStart,                   vec![]),
                   (F64Value(1.0),               vec![Key("a")]),
-                  (ListStart,                   vec![Key("b")]),
+                  (ArrayStart,                  vec![Key("b")]),
                     (BooleanValue(true),        vec![Key("b"), Index(0)]),
                     (StringValue("foo\nbar".to_string()),  vec![Key("b"), Index(1)]),
                     (ObjectStart,               vec![Key("b"), Index(2)]),
@@ -3521,87 +3521,87 @@ mod tests {
                         (NullValue,             vec![Key("b"), Index(2), Key("c"), Key("d")]),
                       (ObjectEnd,               vec![Key("b"), Index(2), Key("c")]),
                     (ObjectEnd,                 vec![Key("b"), Index(2)]),
-                  (ListEnd,                     vec![Key("b")]),
+                  (ArrayEnd,                    vec![Key("b")]),
                 (ObjectEnd,                     vec![]),
             ]
         );
     }
     #[test]
     #[cfg_attr(target_word_size = "32", ignore)] // FIXME(#14064)
-    fn test_read_list_streaming() {
+    fn test_read_array_streaming() {
         assert_stream_equal(
             "[]",
             vec![
-                (ListStart, vec![]),
-                (ListEnd,   vec![]),
+                (ArrayStart, vec![]),
+                (ArrayEnd,   vec![]),
             ]
         );
         assert_stream_equal(
             "[ ]",
             vec![
-                (ListStart, vec![]),
-                (ListEnd,   vec![]),
+                (ArrayStart, vec![]),
+                (ArrayEnd,   vec![]),
             ]
         );
         assert_stream_equal(
             "[true]",
             vec![
-                (ListStart,              vec![]),
+                (ArrayStart,             vec![]),
                     (BooleanValue(true), vec![Index(0)]),
-                (ListEnd,                vec![]),
+                (ArrayEnd,               vec![]),
             ]
         );
         assert_stream_equal(
             "[ false ]",
             vec![
-                (ListStart,               vec![]),
+                (ArrayStart,              vec![]),
                     (BooleanValue(false), vec![Index(0)]),
-                (ListEnd,                 vec![]),
+                (ArrayEnd,                vec![]),
             ]
         );
         assert_stream_equal(
             "[null]",
             vec![
-                (ListStart,     vec![]),
+                (ArrayStart,    vec![]),
                     (NullValue, vec![Index(0)]),
-                (ListEnd,       vec![]),
+                (ArrayEnd,      vec![]),
             ]
         );
         assert_stream_equal(
             "[3, 1]",
             vec![
-                (ListStart,     vec![]),
+                (ArrayStart,      vec![]),
                     (U64Value(3), vec![Index(0)]),
                     (U64Value(1), vec![Index(1)]),
-                (ListEnd,       vec![]),
+                (ArrayEnd,        vec![]),
             ]
         );
         assert_stream_equal(
             "\n[3, 2]\n",
             vec![
-                (ListStart,     vec![]),
+                (ArrayStart,      vec![]),
                     (U64Value(3), vec![Index(0)]),
                     (U64Value(2), vec![Index(1)]),
-                (ListEnd,       vec![]),
+                (ArrayEnd,        vec![]),
             ]
         );
         assert_stream_equal(
             "[2, [4, 1]]",
             vec![
-                (ListStart,            vec![]),
+                (ArrayStart,           vec![]),
                     (U64Value(2),      vec![Index(0)]),
-                    (ListStart,        vec![Index(1)]),
+                    (ArrayStart,       vec![Index(1)]),
                         (U64Value(4),  vec![Index(1), Index(0)]),
                         (U64Value(1),  vec![Index(1), Index(1)]),
-                    (ListEnd,          vec![Index(1)]),
-                (ListEnd,              vec![]),
+                    (ArrayEnd,         vec![Index(1)]),
+                (ArrayEnd,             vec![]),
             ]
         );
 
         assert_eq!(last_event("["), Error(SyntaxError(EOFWhileParsingValue, 1,  2)));
 
         assert_eq!(from_str("["),     Err(SyntaxError(EOFWhileParsingValue, 1, 2)));
-        assert_eq!(from_str("[1"),    Err(SyntaxError(EOFWhileParsingList,  1, 3)));
+        assert_eq!(from_str("[1"),    Err(SyntaxError(EOFWhileParsingArray, 1, 3)));
         assert_eq!(from_str("[1,"),   Err(SyntaxError(EOFWhileParsingValue, 1, 4)));
         assert_eq!(from_str("[1,]"),  Err(SyntaxError(InvalidSyntax,        1, 4)));
         assert_eq!(from_str("[6 7]"), Err(SyntaxError(InvalidSyntax,        1, 4)));
@@ -3693,8 +3693,8 @@ mod tests {
         use std::collections::{HashMap,TreeMap};
         use super::ToJson;
 
-        let list2 = List(vec!(U64(1), U64(2)));
-        let list3 = List(vec!(U64(1), U64(2), U64(3)));
+        let array2 = Array(vec!(U64(1), U64(2)));
+        let array3 = Array(vec!(U64(1), U64(2), U64(3)));
         let object = {
             let mut tree_map = TreeMap::new();
             tree_map.insert("a".to_string(), U64(1));
@@ -3702,7 +3702,7 @@ mod tests {
             Object(tree_map)
         };
 
-        assert_eq!(list2.to_json(), list2);
+        assert_eq!(array2.to_json(), array2);
         assert_eq!(object.to_json(), object);
         assert_eq!(3_i.to_json(), I64(3));
         assert_eq!(4_i8.to_json(), I64(4));
@@ -3723,12 +3723,12 @@ mod tests {
         assert_eq!(false.to_json(), Boolean(false));
         assert_eq!("abc".to_json(), String("abc".into_string()));
         assert_eq!("abc".into_string().to_json(), String("abc".into_string()));
-        assert_eq!((1u, 2u).to_json(), list2);
-        assert_eq!((1u, 2u, 3u).to_json(), list3);
-        assert_eq!([1u, 2].to_json(), list2);
-        assert_eq!((&[1u, 2, 3]).to_json(), list3);
-        assert_eq!((vec![1u, 2]).to_json(), list2);
-        assert_eq!(vec!(1u, 2, 3).to_json(), list3);
+        assert_eq!((1u, 2u).to_json(), array2);
+        assert_eq!((1u, 2u, 3u).to_json(), array3);
+        assert_eq!([1u, 2].to_json(), array2);
+        assert_eq!((&[1u, 2, 3]).to_json(), array3);
+        assert_eq!((vec![1u, 2]).to_json(), array2);
+        assert_eq!(vec!(1u, 2, 3).to_json(), array3);
         let mut tree_map = TreeMap::new();
         tree_map.insert("a".to_string(), 1u);
         tree_map.insert("b".to_string(), 2);
