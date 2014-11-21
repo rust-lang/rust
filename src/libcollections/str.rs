@@ -54,7 +54,7 @@
 pub use self::MaybeOwned::*;
 use self::RecompositionState::*;
 use self::DecompositionType::*;
-use core::borrow::BorrowFrom;
+use core::borrow::{BorrowFrom, ToOwned};
 use core::default::Default;
 use core::fmt;
 use core::cmp;
@@ -67,7 +67,7 @@ use core::prelude::{range};
 
 use hash;
 use ring_buf::RingBuf;
-use string::String;
+use string::{String, ToString};
 use unicode;
 use vec::Vec;
 
@@ -609,6 +609,11 @@ impl<'a> fmt::Show for MaybeOwned<'a> {
 #[unstable = "trait is unstable"]
 impl BorrowFrom<String> for str {
     fn borrow_from(owned: &String) -> &str { owned[] }
+}
+
+#[unstable = "trait is unstable"]
+impl ToOwned<String> for str {
+    fn to_owned(&self) -> String { self.to_string() }
 }
 
 /// Unsafe string operations.
