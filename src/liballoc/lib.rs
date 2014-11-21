@@ -115,6 +115,8 @@ pub fn oom() -> ! {
 //                reference to this symbol will cause this library's object file
 //                to get linked in to libstd successfully (the linker won't
 //                optimize it out).
+// NOTE: remove after snapshot
+#[cfg(stage0)]
 #[doc(hidden)]
 pub fn fixme_14344_be_sure_to_link_to_collections() {}
 

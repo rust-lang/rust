@@ -1197,54 +1197,62 @@ fn add_upstream_rust_crates(cmd: &mut Command, sess: &Session,
         //
         // If we're not doing LTO, then our job is simply to just link
         // against the archive.
-        if sess.lto() {
-            let name = cratepath.filename_str().unwrap();
-            let name = name.slice(3, name.len() - 5); // chop off lib/.rlib
-            time(sess.time_passes(),
-                 format!("altering {}.rlib", name).as_slice(),
-                 (), |()| {
-                let dst = tmpdir.join(cratepath.filename().unwrap());
-                match fs::copy(&cratepath, &dst) {
-                    Ok(..) => {}
-                    Err(e) => {
-                        sess.err(format!("failed to copy {} to {}: {}",
-                                         cratepath.display(),
-                                         dst.display(),
-                                         e).as_slice());
-                        sess.abort_if_errors();
-                    }
+        let name = cratepath.filename_str().unwrap();
+        let name = name.slice(3, name.len() - 5); // chop off lib/.rlib
+        time(sess.time_passes(),
+             format!("altering {}.rlib", name).as_slice(),
+             (), |()| {
+
+            let dst = tmpdir.join(cratepath.filename().unwrap());
+            match fs::copy(&cratepath, &dst) {
+                Ok(..) => {}
+                Err(e) => {
+                    sess.err(format!("failed to copy {} to {}: {}",
+                                     cratepath.display(),
+                                     dst.display(),
+                                     e).as_slice());
+                    sess.abort_if_errors();
                 }
-                // Fix up permissions of the copy, as fs::copy() preserves
-                // permissions, but the original file may have been installed
-                // by a package manager and may be read-only.
-                match fs::chmod(&dst, io::USER_READ | io::USER_WRITE) {
-                    Ok(..) => {}
-                    Err(e) => {
-                        sess.err(format!("failed to chmod {} when preparing \
-                                          for LTO: {}", dst.display(),
-                                         e).as_slice());
-                        sess.abort_if_errors();
-                    }
+            }
+            // Fix up permissions of the copy, as fs::copy() preserves
+            // permissions, but the original file may have been installed
+            // by a package manager and may be read-only.
+            match fs::chmod(&dst, io::USER_READ | io::USER_WRITE) {
+                Ok(..) => {}
+                Err(e) => {
+                    sess.err(format!("failed to chmod {} when preparing \
+                                      for LTO: {}", dst.display(),
+                                     e).as_slice());
+                    sess.abort_if_errors();
                 }
-                let handler = &sess.diagnostic().handler;
-                let config = ArchiveConfig {
-                    handler: handler,
-                    dst: dst.clone(),
-                    lib_search_paths: archive_search_paths(sess),
-                    slib_prefix: sess.target.target.options.staticlib_prefix.clone(),
-                    slib_suffix: sess.target.target.options.staticlib_suffix.clone(),
-                    maybe_ar_prog: sess.opts.cg.ar.clone()
-                };
-                let mut archive = Archive::open(config);
+            }
+            let handler = &sess.diagnostic().handler;
+            let config = ArchiveConfig {
+                handler: handler,
+                dst: dst.clone(),
+                lib_search_paths: archive_search_paths(sess),
+                slib_prefix: sess.target.target.options.staticlib_prefix.clone(),
+                slib_suffix: sess.target.target.options.staticlib_suffix.clone(),
+                maybe_ar_prog: sess.opts.cg.ar.clone()
+            };
+            let mut archive = Archive::open(config);
+
+            if sess.lto() {
                 archive.remove_file(format!("{}.o", name).as_slice());
                 let files = archive.files();
                 if files.iter().any(|s| s.as_slice().ends_with(".o")) {
                     cmd.arg(dst);
                 }
-            });
-        } else {
-            cmd.arg(cratepath);
-        }
+            } else {
+                let files = archive.files();
+                for file in files.iter() {
+                    if !file.ends_with(".o") {
+                        archive.remove_file(file[]);
+                    }
+                }
+                cmd.args(&[b"-Wl,--whole-archive", dst.as_vec(), b"-Wl,--no-whole-archive"]);
+            }
+        });
     }
 
     // Same thing as above, but for dynamic crates instead of static crates.

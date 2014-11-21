@@ -4989,7 +4989,7 @@ pub mod funcs {
     }
 }
 
+// NOTE: remove after snapshot
+#[cfg(stage0)]
 #[doc(hidden)]
 pub fn issue_14344_workaround() {} // FIXME #14344 force linkage to happen correctly
-
-#[test] fn work_on_windows() { } // FIXME #10872 needed for a happy windows
