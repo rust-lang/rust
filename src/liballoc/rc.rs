@@ -211,17 +211,17 @@ impl<T> Rc<T> {
             _noshare: marker::NoSync
         }
     }
-
-    /// Get the number of weak references to this value.
-    #[inline]
-    #[experimental]
-    pub fn weak_count(&self) -> uint { self.weak() - 1 }
-
-    /// Get the number of strong references to this value.
-    #[inline]
-    #[experimental]
-    pub fn strong_count(&self) -> uint { self.strong() }
 }
+
+/// Get the number of weak references to this value.
+#[inline]
+#[experimental]
+pub fn weak_count<T>(this: &Rc<T>) -> uint { this.weak() - 1 }
+
+/// Get the number of strong references to this value.
+#[inline]
+#[experimental]
+pub fn strong_count<T>(this: &Rc<T>) -> uint { this.strong() }
 
 /// Returns true if the `Rc` currently has unique ownership.
 ///
@@ -230,7 +230,7 @@ impl<T> Rc<T> {
 #[inline]
 #[experimental]
 pub fn is_unique<T>(rc: &Rc<T>) -> bool {
-    rc.weak_count() == 0 && rc.strong_count() == 1
+    weak_count(rc) == 0 && strong_count(rc) == 1
 }
 
 /// Unwraps the contained value if the `Rc` has unique ownership.
@@ -433,20 +433,6 @@ impl<T> Weak<T> {
             Some(Rc { _ptr: self._ptr, _nosend: marker::NoSend, _noshare: marker::NoSync })
         }
     }
-
-    /// Get the number of weak references to this value.
-    #[inline]
-    #[experimental]
-    pub fn weak_count(&self) -> uint {
-        if self.strong() != 0 { self.weak() - 1 } else { self.weak() }
-    }
-
-    /// Get the number of strong references to this value.
-    ///
-    /// If this function returns 0 then the value has been freed.
-    #[inline]
-    #[experimental]
-    pub fn strong_count(&self) -> uint { self.strong() }
 }
 
 #[unsafe_destructor]
@@ -512,7 +498,7 @@ impl<T> RcBoxPtr<T> for Weak<T> {
 #[cfg(test)]
 #[allow(experimental)]
 mod tests {
-    use super::{Rc, Weak};
+    use super::{Rc, Weak, weak_count, strong_count};
     use std::cell::RefCell;
     use std::option::{Option, Some, None};
     use std::result::{Err, Ok};
@@ -592,35 +578,35 @@ mod tests {
     #[test]
     fn test_strong_count() {
         let a = Rc::new(0u32);
-        assert!(a.strong_count() == 1);
+        assert!(strong_count(&a) == 1);
         let w = a.downgrade();
-        assert!(a.strong_count() == 1);
+        assert!(strong_count(&a) == 1);
         let b = w.upgrade().expect("upgrade of live rc failed");
-        assert!(b.strong_count() == 2);
-        assert!(a.strong_count() == 2);
+        assert!(strong_count(&b) == 2);
+        assert!(strong_count(&a) == 2);
         drop(w);
         drop(a);
-        assert!(b.strong_count() == 1);
+        assert!(strong_count(&b) == 1);
         let c = b.clone();
-        assert!(b.strong_count() == 2);
-        assert!(c.strong_count() == 2);
+        assert!(strong_count(&b) == 2);
+        assert!(strong_count(&c) == 2);
     }
 
     #[test]
     fn test_weak_count() {
         let a = Rc::new(0u32);
-        assert!(a.strong_count() == 1);
-        assert!(a.weak_count() == 0);
+        assert!(strong_count(&a) == 1);
+        assert!(weak_count(&a) == 0);
         let w = a.downgrade();
-        assert!(a.strong_count() == 1);
-        assert!(w.weak_count() == 1);
+        assert!(strong_count(&a) == 1);
+        assert!(weak_count(&a) == 1);
         drop(w);
-        assert!(a.strong_count() == 1);
-        assert!(a.weak_count() == 0);
+        assert!(strong_count(&a) == 1);
+        assert!(weak_count(&a) == 0);
         let c = a.clone();
-        assert!(a.strong_count() == 2);
-        assert!(a.weak_count() == 0);
-        assert!(c.downgrade().weak_count() == 1);
+        assert!(strong_count(&a) == 2);
+        assert!(weak_count(&a) == 0);
+        drop(c);
     }
 
     #[test]
