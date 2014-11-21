@@ -28,6 +28,7 @@
 #![allow(non_camel_case_types)]
 
 use libc;
+use std::ascii::AsciiExt;
 use std::cell::{RefCell, Cell};
 use std::fmt;
 use std::slice;
@@ -226,12 +227,8 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
         };
 
         // Transform the contents of the header into a hyphenated string
-        let id = s.as_slice().words().map(|s| {
-            match s.to_ascii_opt() {
-                Some(s) => s.to_lowercase().into_string(),
-                None => s.to_string()
-            }
-        }).collect::<Vec<String>>().connect("-");
+        let id = s.as_slice().words().map(|s| s.to_ascii_lower())
+            .collect::<Vec<String>>().connect("-");
 
         // This is a terrible hack working around how hoedown gives us rendered
         // html for text rather than the raw text.
