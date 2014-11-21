@@ -243,3 +243,5 @@ def is_vec_slice(val):
 
   type_name = extract_type_name(ty.GetName()).replace("&'static", "&").replace(" ", "")
   return type_name.startswith("&[") and type_name.endswith("]")
+
+# vi: sw=2:ts=2
