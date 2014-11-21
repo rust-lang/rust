@@ -67,6 +67,7 @@ use core::prelude::*;
 
 use alloc::boxed::Box;
 use alloc::rc::Rc;
+use core::borrow::{Cow, ToOwned};
 use core::intrinsics::TypeId;
 use core::mem;
 use core::num::Int;
@@ -281,6 +282,13 @@ impl<S: Writer, T: Hash<S>, U: Hash<S>> Hash<S> for Result<T, U> {
             Ok(ref t) => { 1u.hash(state); t.hash(state); }
             Err(ref t) => { 2u.hash(state); t.hash(state); }
         }
+    }
+}
+
+impl<'a, T, Sized? B, S> Hash<S> for Cow<'a, T, B> where B: Hash<S> + ToOwned<T> {
+    #[inline]
+    fn hash(&self, state: &mut S) {
+        Hash::hash(&**self, state)
     }
 }
 

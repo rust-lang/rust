@@ -26,7 +26,6 @@ use middle::dataflow::{DataFlowOperator, DataFlowContext, EntryOrExit};
 use middle::dataflow;
 
 use std::rc::Rc;
-use std::str;
 
 #[deriving(Show)]
 pub enum Variant {
@@ -137,8 +136,8 @@ impl<'a, 'tcx> dot::Labeller<'a, Node<'a>, Edge<'a>> for DataflowLabeller<'a, 't
         let suffix = self.dataflow_for(dataflow::Exit, n);
         let inner_label = self.inner.node_label(n);
         inner_label
-            .prefix_line(dot::LabelStr(str::Owned(prefix)))
-            .suffix_line(dot::LabelStr(str::Owned(suffix)))
+            .prefix_line(dot::LabelStr(prefix.into_cow()))
+            .suffix_line(dot::LabelStr(suffix.into_cow()))
     }
     fn edge_label(&'a self, e: &Edge<'a>) -> dot::LabelText<'a> { self.inner.edge_label(e) }
 }

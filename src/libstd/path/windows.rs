@@ -1326,10 +1326,10 @@ mod tests {
         assert_eq!(path.filename_display().to_string(), "".to_string());
 
         let path = Path::new("foo");
-        let mo = path.display().as_maybe_owned();
+        let mo = path.display().as_cow();
         assert_eq!(mo.as_slice(), "foo");
         let path = Path::new(b"\\");
-        let mo = path.filename_display().as_maybe_owned();
+        let mo = path.filename_display().as_cow();
         assert_eq!(mo.as_slice(), "");
     }
 
