@@ -762,11 +762,33 @@ impl<'a> Iterator<&'a str> for StrSplits<'a> {
 /// Use with the `std::iter` module.
 #[deriving(Clone)]
 pub struct Utf16CodeUnits<'a> {
-    chars: Chars<'a>,
-    extra: u16
+    encoder: Utf16Encoder<Chars<'a>>
 }
 
 impl<'a> Iterator<u16> for Utf16CodeUnits<'a> {
+    #[inline]
+    fn next(&mut self) -> Option<u16> { self.encoder.next() }
+
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) { self.encoder.size_hint() }
+}
+
+
+/// Iterator adaptor for encoding `char`s to UTF-16.
+#[deriving(Clone)]
+pub struct Utf16Encoder<I> {
+    chars: I,
+    extra: u16
+}
+
+impl<I> Utf16Encoder<I> {
+    /// Create an UTF-16 encoder from any `char` iterator.
+    pub fn new(chars: I) -> Utf16Encoder<I> where I: Iterator<char> {
+        Utf16Encoder { chars: chars, extra: 0 }
+    }
+}
+
+impl<I> Iterator<u16> for Utf16Encoder<I> where I: Iterator<char> {
     #[inline]
     fn next(&mut self) -> Option<u16> {
         if self.extra != 0 {
@@ -2225,7 +2247,7 @@ impl StrPrelude for str {
 
     #[inline]
     fn utf16_units(&self) -> Utf16CodeUnits {
-        Utf16CodeUnits{ chars: self.chars(), extra: 0}
+        Utf16CodeUnits { encoder: Utf16Encoder::new(self.chars()) }
     }
 
     #[inline]
