@@ -21,7 +21,7 @@ use mem;
 use option::{Option, Some, None};
 use slice::{SlicePrelude, AsSlice};
 use str::{Str, StrPrelude};
-use string::{mod, String, IntoString};
+use string::{String, IntoString};
 use vec::Vec;
 
 /// Datatype to hold one ascii character. It wraps a `u8`, with the highest bit always zero.
@@ -331,9 +331,7 @@ impl AsciiStr for [Ascii] {
 impl IntoString for Vec<Ascii> {
     #[inline]
     fn into_string(self) -> String {
-        unsafe {
-            string::raw::from_utf8(self.into_bytes())
-        }
+        unsafe { String::from_utf8_unchecked(self.into_bytes()) }
     }
 }
 
@@ -394,13 +392,13 @@ impl AsciiExt<String> for str {
     #[inline]
     fn to_ascii_upper(&self) -> String {
         // Vec<u8>::to_ascii_upper() preserves the UTF-8 invariant.
-        unsafe { string::raw::from_utf8(self.as_bytes().to_ascii_upper()) }
+        unsafe { String::from_utf8_unchecked(self.as_bytes().to_ascii_upper()) }
     }
 
     #[inline]
     fn to_ascii_lower(&self) -> String {
         // Vec<u8>::to_ascii_lower() preserves the UTF-8 invariant.
-        unsafe { string::raw::from_utf8(self.as_bytes().to_ascii_lower()) }
+        unsafe { String::from_utf8_unchecked(self.as_bytes().to_ascii_lower()) }
     }
 
     #[inline]
@@ -413,13 +411,13 @@ impl OwnedAsciiExt for String {
     #[inline]
     fn into_ascii_upper(self) -> String {
         // Vec<u8>::into_ascii_upper() preserves the UTF-8 invariant.
-        unsafe { string::raw::from_utf8(self.into_bytes().into_ascii_upper()) }
+        unsafe { String::from_utf8_unchecked(self.into_bytes().into_ascii_upper()) }
     }
 
     #[inline]
     fn into_ascii_lower(self) -> String {
         // Vec<u8>::into_ascii_lower() preserves the UTF-8 invariant.
-        unsafe { string::raw::from_utf8(self.into_bytes().into_ascii_lower()) }
+        unsafe { String::from_utf8_unchecked(self.into_bytes().into_ascii_lower()) }
     }
 }
 
