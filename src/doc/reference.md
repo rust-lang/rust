@@ -225,6 +225,52 @@ reserved for future extension, that is, the above gives the lexical
 grammar, but a Rust parser will reject everything but the 12 special
 cases mentioned in [Number literals](#number-literals) below.
 
+#### Examples
+
+##### Characters and strings
+
+|   | Example | Number of `#` pairs allowed | Available characters | Escapes | Equivalent to |
+|---|---------|-----------------------------|----------------------|---------|---------------|
+| [Character](#character-literals) | `'H'` | `N/A` | All unicode | `\'` & [Byte escapes](#byte-escapes) & [Unicode escapes](#unicode-escapes) | `N/A` |
+| [String](#string-literals) | `"hello"` | `N/A` | All unicode | `\"` & [Byte escapes](#byte-escapes) & [Unicode escapes](#unicode-escapes) | `N/A` |
+| [Raw](#raw-string-literals) | `r##"hello"##`  | `0...` | All unicode | `N/A` | `N/A` |
+| [Byte](#byte-literals) | `b'H'` | `N/A` | All ASCII | `\'` & [Byte escapes](#byte-escapes) | `u8` |
+| [Byte string](#byte-string-literals) | `b"hello"` | `N/A`  | All ASCII | `\"` & [Byte escapes](#byte-escapes) | `&'static [u8]` |
+| [Raw byte string](#raw-byte-string-literals) | `br##"hello"##` | `0...` | All ASCII | `N/A` | `&'static [u8]` (unsure...not stated) |
+
+##### Byte escapes
+
+|   | Name |
+|---|------|
+| `\x7F` | 8-bit character code (exactly 2 digits) |
+| `\n` | Newline |
+| `\r` | Carriage return |
+| `\t` | Tab |
+| `\\` | Backslash |
+
+##### Unicode escapes
+|   | Name |
+|---|------|
+| `\u7FFF` | 16-bit character code (exactly 4 digits) |
+| `\U7EEEFFFF` | 32-bit character code (exactly 8 digits) |
+
+##### Numbers
+
+| [Number literals](#number-literals)`*` | Example | Exponentiation | Suffixes |
+|----------------------------------------|---------|----------------|----------|
+| Decimal integer | `98_222i` | `N/A` | Integer suffixes |
+| Hex integer | `0xffi` | `N/A` | Integer suffixes |
+| Octal integer | `0o77i` | `N/A` | Integer suffixes |
+| Binary integer | `0b1111_0000i` | `N/A` | Integer suffixes |
+| Floating-point | `123.0E+77f64` | `Optional` | Floating-point suffixes |
+
+`*` All number literals allow `_` as a visual separator: `1_234.0E+18f64`
+
+##### Suffixes
+| Integer | Floating-point |
+|---------|----------------|
+| `i` (`int`), `u` (`uint`), `u8`, `i8`, `u16`, `i16`, `u32`, `i32`, `u64`, `i64` | `f32`, `f64` |
+
 #### Character and string literals
 
 ```{.ebnf .gram}
@@ -253,14 +299,20 @@ nonzero_dec: '1' | '2' | '3' | '4'
            | '5' | '6' | '7' | '8' | '9' ;
 ```
 
+##### Character literals
+
 A _character literal_ is a single Unicode character enclosed within two
 `U+0027` (single-quote) characters, with the exception of `U+0027` itself,
 which must be _escaped_ by a preceding U+005C character (`\`).
+
+##### String literals
 
 A _string literal_ is a sequence of any Unicode characters enclosed within two
 `U+0022` (double-quote) characters, with the exception of `U+0022` itself,
 which must be _escaped_ by a preceding `U+005C` character (`\`), or a _raw
 string literal_.
+
+##### Character escapes
 
 Some additional _escapes_ are available in either character or non-raw string
 literals. An escape starts with a `U+005C` (`\`) and continues with one of the
@@ -280,6 +332,8 @@ following forms:
   `U+000D` (CR) or `U+0009` (HT) respectively.
 * The _backslash escape_ is the character `U+005C` (`\`) which must be
   escaped in order to denote *itself*.
+
+##### Raw string literals
 
 Raw string literals do not process any escapes. They start with the character
 `U+0072` (`r`), followed by zero or more of the character `U+0023` (`#`) and a
@@ -322,11 +376,15 @@ raw_byte_string : '"' raw_byte_string_body '"' | '#' raw_byte_string '#' ;
 
 ```
 
+##### Byte literals
+
 A _byte literal_ is a single ASCII character (in the `U+0000` to `U+007F`
 range) enclosed within two `U+0027` (single-quote) characters, with the
 exception of `U+0027` itself, which must be _escaped_ by a preceding U+005C
 character (`\`), or a single _escape_. It is equivalent to a `u8` unsigned
 8-bit integer _number literal_.
+
+##### Byte string literals
 
 A _byte string literal_ is a sequence of ASCII characters and _escapes_
 enclosed within two `U+0022` (double-quote) characters, with the exception of
@@ -346,6 +404,8 @@ following forms:
   `0x0D` (ASCII CR) or `0x09` (ASCII HT) respectively.
 * The _backslash escape_ is the character `U+005C` (`\`) which must be
   escaped in order to denote its ASCII encoding `0x5C`.
+
+##### Raw byte string literals
 
 Raw byte string literals do not process any escapes. They start with the
 character `U+0062` (`b`), followed by `U+0072` (`r`), followed by zero or more
