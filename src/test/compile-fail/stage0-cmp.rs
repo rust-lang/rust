@@ -30,7 +30,6 @@ pub trait PartialEq for Sized? {
     fn eq(&self, other: &Self) -> bool;
 }
 
-#[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
 #[unstable = "Trait is unstable."]
 impl<'a, Sized? T: PartialEq> PartialEq for &'a T {
     #[inline]
