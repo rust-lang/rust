@@ -71,39 +71,33 @@ def print_struct_val_starting_from(field_start_index, val, internal_dict):
   t = val.GetType()
   has_field_names = type_has_field_names(t)
   type_name = extract_type_name(t.GetName())
-  output = ""
-
-  if not type_name.startswith("("):
-    # this is a tuple, so don't print the type name
-    output += type_name
 
   if has_field_names:
-    output += " { \n"
+      template = "%(type_name)s {\n%(body)s\n}"
+      separator = ", \n"
   else:
-    output += "("
+      template = "%(type_name)s(%(body)s)"
+      separator = ", "
+
+  if type_name.startswith("("):
+    # this is a tuple, so don't print the type name
+    type_name = ""
 
   num_children = val.num_children
 
-  for child_index in range(field_start_index, num_children):
+  def render_child(child_index):
+    this = ""
     if has_field_names:
       field_name = t.GetFieldAtIndex(child_index).GetName()
-      output += field_name + ": "
+      this += field_name + ": "
 
     field_val = val.GetChildAtIndex(child_index)
-    output += print_val(field_val, internal_dict)
+    return this + print_val(field_val, internal_dict)
 
-    if child_index != num_children - 1:
-      output += ", "
+  body = separator.join([render_child(idx) for idx in range(field_start_index, num_children)])
 
-    if has_field_names:
-      output += "\n"
-
-  if has_field_names:
-    output += "}"
-  else:
-    output += ")"
-
-  return output
+  return template % {"type_name": type_name,
+                     "body": body}
 
 
 def print_enum_val(val, internal_dict):
