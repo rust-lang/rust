@@ -53,6 +53,15 @@ g:rust_conceal_pub~
 	    let g:rust_conceal_pub = 1
 <
 
+                                                     *g:rust_recommended_style*
+g:rust_recommended_style~
+        Set this option to enable vim indentation and textwidth settings to
+        conform to style conventions of the rust standard library (i.e. use 4
+        spaces for indents and sets 'textwidth' to 99). This option is enabled
+	by default. To disable it: >
+	    let g:rust_recommended_style = 0
+<
+
                                                                  *g:rust_fold*
 g:rust_fold~
 	Set this option to turn on |folding|: >
