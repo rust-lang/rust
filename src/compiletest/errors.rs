@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::ascii::AsciiExt;
 use std::io::{BufferedReader, File};
 use regex::Regex;
 
@@ -31,7 +32,7 @@ pub fn load_errors(re: &Regex, testfile: &Path) -> Vec<ExpectedError> {
 fn parse_expected(line_num: uint, line: &str, re: &Regex) -> Option<ExpectedError> {
     re.captures(line).and_then(|caps| {
         let adjusts = caps.name("adjusts").len();
-        let kind = caps.name("kind").to_ascii().to_lowercase().into_string();
+        let kind = caps.name("kind").to_ascii_lower();
         let msg = caps.name("msg").trim().to_string();
 
         debug!("line={} kind={} msg={}", line_num, kind, msg);
