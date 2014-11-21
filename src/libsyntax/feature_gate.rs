@@ -172,12 +172,12 @@ impl<'a, 'v> Visitor<'v> for Context<'a> {
 
     fn visit_item(&mut self, i: &ast::Item) {
         for attr in i.attrs.iter() {
-            if attr.name().equiv(&("thread_local")) {
+            if attr.name() == "thread_local" {
                 self.gate_feature("thread_local", i.span,
                                   "`#[thread_local]` is an experimental feature, and does not \
                                   currently handle destructors. There is no corresponding \
                                   `#[task_local]` mapping to the task model");
-            } else if attr.name().equiv(&("linkage")) {
+            } else if attr.name() == "linkage" {
                 self.gate_feature("linkage", i.span,
                                   "the `linkage` attribute is experimental \
                                    and not portable across platforms")
@@ -429,7 +429,7 @@ pub fn check_crate(span_handler: &SpanHandler, krate: &ast::Crate) -> (Features,
                         }
                     };
                     match KNOWN_FEATURES.iter()
-                                        .find(|& &(n, _)| name.equiv(&n)) {
+                                        .find(|& &(n, _)| name == n) {
                         Some(&(name, Active)) => { cx.features.push(name); }
                         Some(&(_, Removed)) => {
                             span_handler.span_err(mi.span, "feature has been removed");

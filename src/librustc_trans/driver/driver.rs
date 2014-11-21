@@ -679,19 +679,19 @@ pub fn collect_crate_types(session: &Session,
     let attr_types: Vec<config::CrateType> = attrs.iter().filter_map(|a| {
         if a.check_name("crate_type") {
             match a.value_str() {
-                Some(ref n) if n.equiv(&("rlib")) => {
+                Some(ref n) if *n == "rlib" => {
                     Some(config::CrateTypeRlib)
                 }
-                Some(ref n) if n.equiv(&("dylib")) => {
+                Some(ref n) if *n == "dylib" => {
                     Some(config::CrateTypeDylib)
                 }
-                Some(ref n) if n.equiv(&("lib")) => {
+                Some(ref n) if *n == "lib" => {
                     Some(config::default_lib_output())
                 }
-                Some(ref n) if n.equiv(&("staticlib")) => {
+                Some(ref n) if *n == "staticlib" => {
                     Some(config::CrateTypeStaticlib)
                 }
-                Some(ref n) if n.equiv(&("bin")) => Some(config::CrateTypeExecutable),
+                Some(ref n) if *n == "bin" => Some(config::CrateTypeExecutable),
                 Some(_) => {
                     session.add_lint(lint::builtin::UNKNOWN_CRATE_TYPES,
                                      ast::CRATE_NODE_ID,
