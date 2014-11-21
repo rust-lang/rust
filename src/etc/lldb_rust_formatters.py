@@ -43,8 +43,6 @@ def print_struct_val(val, internal_dict):
     return print_struct_val_starting_from(0, val, internal_dict)
 
 def print_vec_slice_val(val, internal_dict):
-  output = "&["
-
   length = val.GetChildAtIndex(1).GetValueAsUnsigned()
 
   data_ptr_val = val.GetChildAtIndex(0)
@@ -56,16 +54,12 @@ def print_vec_slice_val(val, internal_dict):
 
   start_address = data_ptr_val.GetValueAsUnsigned()
 
-  for i in range(length):
+  def render_element(i):
     address = start_address + i * element_type_size
-    element_val = val.CreateValueFromAddress( val.GetName() + ("[%s]" % i), address, element_type )
-    output += print_val(element_val, internal_dict)
+    element_val = val.CreateValueFromAddress( val.GetName() + ("[%s]" % i), address, element_type)
+    return print_val(element_val, internal_dict)
 
-    if i != length - 1:
-      output += ", "
-
-  output += "]"
-  return output
+  return "&[%s]" % (', '.join([render_element(i) for i in range(length)]))
 
 def print_struct_val_starting_from(field_start_index, val, internal_dict):
   '''
