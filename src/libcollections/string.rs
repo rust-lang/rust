@@ -30,7 +30,7 @@ use str::{CharRange, CowString, FromStr, StrAllocating, Owned};
 use vec::{DerefVec, Vec, as_vec};
 
 /// A growable string stored as a UTF-8 encoded buffer.
-#[deriving(Clone, PartialEq, PartialOrd, Eq, Ord)]
+#[deriving(Clone, PartialOrd, Eq, Ord)]
 #[stable]
 pub struct String {
     vec: Vec<u8>,
@@ -736,6 +736,49 @@ impl Extend<char> for String {
             self.push(ch)
         }
     }
+}
+
+impl PartialEq for String {
+    #[inline]
+    fn eq(&self, other: &String) -> bool { PartialEq::eq(&**self, &**other) }
+    #[inline]
+    fn ne(&self, other: &String) -> bool { PartialEq::ne(&**self, &**other) }
+}
+
+macro_rules! impl_eq {
+    ($lhs:ty, $rhs: ty) => {
+        impl<'a> PartialEq<$rhs> for $lhs {
+            #[inline]
+            fn eq(&self, other: &$rhs) -> bool { PartialEq::eq(&**self, &**other) }
+            #[inline]
+            fn ne(&self, other: &$rhs) -> bool { PartialEq::ne(&**self, &**other) }
+        }
+
+        impl<'a> PartialEq<$lhs> for $rhs {
+            #[inline]
+            fn eq(&self, other: &$lhs) -> bool { PartialEq::eq(&**self, &**other) }
+            #[inline]
+            fn ne(&self, other: &$lhs) -> bool { PartialEq::ne(&**self, &**other) }
+        }
+
+    }
+}
+
+impl_eq!(String, &'a str)
+impl_eq!(CowString<'a>, String)
+
+impl<'a, 'b> PartialEq<&'b str> for CowString<'a> {
+    #[inline]
+    fn eq(&self, other: &&'b str) -> bool { PartialEq::eq(&**self, &**other) }
+    #[inline]
+    fn ne(&self, other: &&'b str) -> bool { PartialEq::ne(&**self, &**other) }
+}
+
+impl<'a, 'b> PartialEq<CowString<'a>> for &'b str {
+    #[inline]
+    fn eq(&self, other: &CowString<'a>) -> bool { PartialEq::eq(&**self, &**other) }
+    #[inline]
+    fn ne(&self, other: &CowString<'a>) -> bool { PartialEq::ne(&**self, &**other) }
 }
 
 #[experimental = "waiting on Str stabilization"]
