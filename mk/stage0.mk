@@ -22,7 +22,7 @@ ifdef CFG_ENABLE_LOCAL_RUST
 else
 	$(Q)$(CFG_PYTHON) $(S)src/etc/get-snapshot.py $(CFG_BUILD) $(SNAPSHOT_FILE)
 endif
-	$(Q)touch $@
+	$(Q)if [ -e "$@" ]; then touch "$@"; else echo "ERROR: snapshot $@ not found"; exit 1; fi
 
 # For other targets, let the host build the target:
 

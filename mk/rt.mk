@@ -75,7 +75,7 @@ $$(RT_OUTPUT_DIR_$(1))/%.o: $(S)src/rt/%.ll $$(MKFILE_DEPS) \
 	@mkdir -p $$(@D)
 	@$$(call E, compile: $$@)
 	$$(Q)$$(LLC_$$(CFG_BUILD)) $$(CFG_LLC_FLAGS_$(1)) \
-	    -filetype=obj -mtriple=$(1) -relocation-model=pic -o $$@ $$<
+	    -filetype=obj -mtriple=$$(CFG_LLVM_TARGET_$(1)) -relocation-model=pic -o $$@ $$<
 
 $$(RT_OUTPUT_DIR_$(1))/%.o: $(S)src/rt/%.c $$(MKFILE_DEPS)
 	@mkdir -p $$(@D)
