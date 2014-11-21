@@ -340,6 +340,7 @@ need_cmd date
 need_cmd tr
 need_cmd sed
 need_cmd file
+need_cmd realpath
 
 msg "inspecting environment"
 
@@ -554,11 +555,19 @@ fi
 
 valopt libdir "${CFG_PREFIX}/${CFG_LIBDIR_RELATIVE}" "install libraries"
 
+CFG_BINDIR_RELATIVE=bin
+valopt bindir "${CFG_PREFIX}/${CFG_BINDIR_RELATIVE}" "install binaries"
+
 if [ $HELP -eq 1 ]
 then
     echo
     exit 0
 fi
+
+# Determine libdir and bindir relative to prefix
+step_msg "calculating relative paths to prefix = ${CFG_PREFIX}"
+CFG_BINDIR_RELATIVE=$(realpath -m --relative-to="${CFG_PREFIX}" "${CFG_BINDIR}")
+CFG_LIBDIR_RELATIVE=$(realpath -m --relative-to="${CFG_PREFIX}" "${CFG_LIBDIR}")
 
 # Validate Options
 step_msg "validating $CFG_SELF args"
@@ -1313,6 +1322,7 @@ putvar CFG_PREFIX
 putvar CFG_HOST
 putvar CFG_TARGET
 putvar CFG_LIBDIR_RELATIVE
+putvar CFG_BINDIR_RELATIVE
 putvar CFG_DISABLE_MANAGE_SUBMODULES
 putvar CFG_ANDROID_CROSS_PATH
 putvar CFG_MANDIR

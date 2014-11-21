@@ -315,7 +315,9 @@ export CFG_BUILD
 export CFG_LLVM_ROOT
 export CFG_PREFIX
 export CFG_LIBDIR
+export CFG_BINDIR
 export CFG_LIBDIR_RELATIVE
+export CFG_BINDIR_RELATIVE
 export CFG_DISABLE_INJECT_STD_VERSION
 
 ######################################################################
@@ -331,8 +333,18 @@ define SREQ
 
 # Destinations of artifacts for the host compiler
 HROOT$(1)_H_$(3) = $(3)/stage$(1)
+
+ifeq ($(1)-$(3),0-$$(CFG_BUILD))
+# stage0 relative paths are fixed. This is done because we don't have control
+# over where the bootstrap (snapshot or local) rustc looks to locate it's
+# libdir. At the moment, this assumes the relative paths (from sysroot aka
+# prefix) are 'lib' and 'bin'.
 HBIN$(1)_H_$(3) = $$(HROOT$(1)_H_$(3))/bin
+HLIB$(1)_H_$(3) = $$(HROOT$(1)_H_$(3))/lib
+else
+HBIN$(1)_H_$(3) = $$(HROOT$(1)_H_$(3))/$$(CFG_BINDIR_RELATIVE)
 HLIB$(1)_H_$(3) = $$(HROOT$(1)_H_$(3))/$$(CFG_LIBDIR_RELATIVE)
+endif
 
 # Destinations of artifacts for target architectures
 TROOT$(1)_T_$(2)_H_$(3) = $$(HLIB$(1)_H_$(3))/rustlib/$(2)
