@@ -73,6 +73,10 @@ impl BorrowFrom<&'static str> for str {
     fn borrow_from<'a>(owned: &'a &'static str) -> &'a str { &**owned }
 }
 
+impl<T> BorrowFrom<&'static [T]> for [T] {
+    fn borrow_from<'a>(owned: &'a &'static [T]) -> &'a [T] { &**owned }
+}
+
 /// A generalization of Clone to borrowed data.
 pub trait ToOwned<Owned> for Sized?: BorrowFrom<Owned> {
     /// Create owned data from borrowed data, usually by copying.
