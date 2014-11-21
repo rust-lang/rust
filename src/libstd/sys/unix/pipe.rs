@@ -20,7 +20,7 @@ use prelude::*;
 use sys::{mod, timer, retry, c, set_nonblocking, wouldblock};
 use sys::fs::{fd_t, FileDesc};
 use sys_common::net::*;
-use sys_common::{eof, mkerr_libc};
+use sys_common::{AsFileDesc, eof, mkerr_libc};
 
 fn unix_socket(ty: libc::c_int) -> IoResult<fd_t> {
     match unsafe { libc::socket(libc::AF_UNIX, ty, 0) } {
@@ -56,7 +56,7 @@ fn addr_to_sockaddr_un(addr: &CString,
 }
 
 struct Inner {
-    fd: fd_t,
+    fd: FileDesc,
 
     // Unused on Linux, where this lock is not necessary.
     #[allow(dead_code)]
@@ -65,12 +65,8 @@ struct Inner {
 
 impl Inner {
     fn new(fd: fd_t) -> Inner {
-        Inner { fd: fd, lock: unsafe { mutex::NativeMutex::new() } }
+        Inner { fd: FileDesc::new(fd, true), lock: unsafe { mutex::NativeMutex::new() } }
     }
-}
-
-impl Drop for Inner {
-    fn drop(&mut self) { unsafe { let _ = libc::close(self.fd); } }
 }
 
 fn connect(addr: &CString, ty: libc::c_int,
@@ -82,13 +78,13 @@ fn connect(addr: &CString, ty: libc::c_int,
 
     match timeout {
         None => {
-            match retry(|| unsafe { libc::connect(inner.fd, addrp, len) }) {
+            match retry(|| unsafe { libc::connect(inner.fd.fd(), addrp, len) }) {
                 -1 => Err(super::last_error()),
                 _  => Ok(inner)
             }
         }
         Some(timeout_ms) => {
-            try!(connect_timeout(inner.fd, addrp, len, timeout_ms));
+            try!(connect_timeout(inner.fd.fd(), addrp, len, timeout_ms));
             Ok(inner)
         }
     }
@@ -100,7 +96,7 @@ fn bind(addr: &CString, ty: libc::c_int) -> IoResult<Inner> {
     let inner = Inner::new(try!(unix_socket(ty)));
     let addrp = &storage as *const _ as *const libc::sockaddr;
     match unsafe {
-        libc::bind(inner.fd, addrp, len)
+        libc::bind(inner.fd.fd(), addrp, len)
     } {
         -1 => Err(super::last_error()),
         _  => Ok(inner)
@@ -133,7 +129,7 @@ impl UnixStream {
         }
     }
 
-    fn fd(&self) -> fd_t { self.inner.fd }
+    fn fd(&self) -> fd_t { self.inner.fd.fd() }
 
     #[cfg(target_os = "linux")]
     fn lock_nonblocking(&self) {}
@@ -200,6 +196,12 @@ impl UnixStream {
     }
 }
 
+impl AsFileDesc for UnixStream {
+    fn as_fd(&self) -> &FileDesc {
+        &self.inner.fd
+    }
+}
+
 impl Clone for UnixStream {
     fn clone(&self) -> UnixStream {
         UnixStream::new(self.inner.clone())
@@ -222,7 +224,7 @@ impl UnixListener {
         })
     }
 
-    fn fd(&self) -> fd_t { self.inner.fd }
+    fn fd(&self) -> fd_t { self.inner.fd.fd() }
 
     pub fn listen(self) -> IoResult<UnixAcceptor> {
         match unsafe { libc::listen(self.fd(), 128) } {

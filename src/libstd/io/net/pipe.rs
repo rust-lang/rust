@@ -29,6 +29,9 @@ use prelude::*;
 use io::{Listener, Acceptor, IoResult, TimedOut, standard_error};
 use time::Duration;
 
+#[cfg(unix)]
+use io::fs::{AsFileDesc, FileDesc};
+
 use sys::pipe::UnixStream as UnixStreamImp;
 use sys::pipe::UnixListener as UnixListenerImp;
 use sys::pipe::UnixAcceptor as UnixAcceptorImp;
@@ -124,6 +127,13 @@ impl UnixStream {
     #[experimental = "the timeout argument may change in type and value"]
     pub fn set_write_timeout(&mut self, timeout_ms: Option<u64>) {
         self.inner.set_write_timeout(timeout_ms)
+    }
+}
+
+#[cfg(unix)]
+impl AsFileDesc for UnixStream {
+    fn as_fd(&self) -> &FileDesc {
+        self.inner.as_fd()
     }
 }
 
