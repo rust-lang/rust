@@ -735,7 +735,7 @@ impl UnixAcceptor {
     }
 
     pub fn handle(&self) -> libc::HANDLE {
-        self.event.ref0
+        self.listener.handle()
     }
 }
 
