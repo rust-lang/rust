@@ -117,7 +117,6 @@
 
 #![reexport_test_harness_main = "test_main"]
 
-#[cfg(test)] extern crate green;
 #[cfg(test)] #[phase(plugin, link)] extern crate log;
 
 extern crate alloc;
@@ -163,7 +162,6 @@ pub use core::result;
 pub use core::option;
 
 pub use alloc::boxed;
-
 pub use alloc::rc;
 
 pub use core_collections::slice;
@@ -248,8 +246,6 @@ pub mod fmt;
 
 #[path = "sys/common/mod.rs"] mod sys_common;
 
-// FIXME #7809: This shouldn't be pub, and it should be reexported under 'unstable'
-// but name resolution doesn't work without it being pub.
 pub mod rt;
 mod failure;
 

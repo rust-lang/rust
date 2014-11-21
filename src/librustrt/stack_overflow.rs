@@ -65,14 +65,7 @@ pub unsafe fn report() {
 #[cfg(any(windows, target_os = "linux", target_os = "macos"))]
 unsafe fn get_task_guard_page() -> Option<uint> {
     let task: Option<*mut Task> = Local::try_unsafe_borrow();
-
-    task.map(|task| {
-        let runtime = (*task).take_runtime();
-        let guard = runtime.stack_guard();
-        (*task).put_runtime(runtime);
-
-        guard.unwrap_or(0)
-    })
+    task.map(|task| (&*task).stack_guard().unwrap_or(0))
 }
 
 #[cfg(windows)]

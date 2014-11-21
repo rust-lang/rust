@@ -33,7 +33,7 @@
 //! # Example
 //!
 //! ```rust
-//! use std::rt::mutex::{NativeMutex, StaticNativeMutex, NATIVE_MUTEX_INIT};
+//! use rustrt::mutex::{NativeMutex, StaticNativeMutex, NATIVE_MUTEX_INIT};
 //!
 //! // Use a statically initialized mutex
 //! static LOCK: StaticNativeMutex = NATIVE_MUTEX_INIT;
@@ -108,7 +108,7 @@ impl StaticNativeMutex {
     /// # Example
     ///
     /// ```rust
-    /// use std::rt::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
+    /// use rustrt::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
     /// static LOCK: StaticNativeMutex = NATIVE_MUTEX_INIT;
     /// unsafe {
     ///     let _guard = LOCK.lock();
@@ -225,7 +225,7 @@ impl NativeMutex {
     /// # Example
     ///
     /// ```rust
-    /// use std::rt::mutex::NativeMutex;
+    /// use rustrt::mutex::NativeMutex;
     /// unsafe {
     ///     let mut lock = NativeMutex::new();
     ///
@@ -653,7 +653,7 @@ mod test {
 
     use std::mem::drop;
     use super::{StaticNativeMutex, NATIVE_MUTEX_INIT};
-    use std::rt::thread::Thread;
+    use thread::Thread;
 
     #[test]
     fn smoke_lock() {

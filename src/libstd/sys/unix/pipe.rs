@@ -12,7 +12,7 @@ use alloc::arc::Arc;
 use libc;
 use c_str::CString;
 use mem;
-use rt::mutex;
+use rustrt::mutex;
 use sync::atomic;
 use io::{mod, IoResult, IoError};
 use prelude::*;

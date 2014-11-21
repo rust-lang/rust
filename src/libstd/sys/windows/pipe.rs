@@ -90,7 +90,7 @@ use c_str::CString;
 use mem;
 use ptr;
 use sync::atomic;
-use rt::mutex;
+use rustrt::mutex;
 use io::{mod, IoError, IoResult};
 use prelude::*;
 

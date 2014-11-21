@@ -42,7 +42,6 @@
 //! ```
 //! use std::sync::Arc;
 //! use std::sync::atomic::{AtomicUint, SeqCst};
-//! use std::task::deschedule;
 //!
 //! fn main() {
 //!     let spinlock = Arc::new(AtomicUint::new(1));
@@ -53,13 +52,7 @@
 //!     });
 //!
 //!     // Wait for the other task to release the lock
-//!     while spinlock.load(SeqCst) != 0 {
-//!         // Since tasks may not be preemptive (if they are green threads)
-//!         // yield to the scheduler to let the other task run. Low level
-//!         // concurrent code needs to take into account Rust's two threading
-//!         // models.
-//!         deschedule();
-//!     }
+//!     while spinlock.load(SeqCst) != 0 {}
 //! }
 //! ```
 //!

@@ -45,7 +45,7 @@ impl PipeStream {
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ```{rust,no_run}
     /// # #![allow(unused_must_use)]
     /// extern crate libc;
     ///
