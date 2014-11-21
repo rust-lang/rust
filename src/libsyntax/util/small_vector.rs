@@ -224,10 +224,10 @@ mod test {
         assert_eq!(Vec::new(), v);
 
         let v = SmallVector::one(1i);
-        assert_eq!(vec!(1i), v.into_iter().collect());
+        assert_eq!(vec!(1i), v.into_iter().collect::<Vec<_>>());
 
         let v = SmallVector::many(vec!(1i, 2i, 3i));
-        assert_eq!(vec!(1i, 2i, 3i), v.into_iter().collect());
+        assert_eq!(vec!(1i, 2i, 3i), v.into_iter().collect::<Vec<_>>());
     }
 
     #[test]

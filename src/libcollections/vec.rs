@@ -1868,13 +1868,13 @@ mod tests {
         let mut values = vec![1u8,2,3,4,5];
         {
             let slice = values.slice_from_mut(2);
-            assert!(slice == &mut [3, 4, 5]);
+            assert!(slice == [3, 4, 5]);
             for p in slice.iter_mut() {
                 *p += 2;
             }
         }
 
-        assert!(values.as_slice() == &[1, 2, 5, 6, 7]);
+        assert!(values.as_slice() == [1, 2, 5, 6, 7]);
     }
 
     #[test]
@@ -1882,13 +1882,13 @@ mod tests {
         let mut values = vec![1u8,2,3,4,5];
         {
             let slice = values.slice_to_mut(2);
-            assert!(slice == &mut [1, 2]);
+            assert!(slice == [1, 2]);
             for p in slice.iter_mut() {
                 *p += 1;
             }
         }
 
-        assert!(values.as_slice() == &[2, 3, 3, 4, 5]);
+        assert!(values.as_slice() == [2, 3, 3, 4, 5]);
     }
 
     #[test]
