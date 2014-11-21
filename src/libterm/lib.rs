@@ -115,7 +115,7 @@ pub fn stdout() -> Option<Box<Terminal<WriterWrapper> + Send>> {
 #[cfg(not(windows))]
 /// Return a Terminal wrapping stderr, or None if a terminal couldn't be
 /// opened.
-pub fn stderr() -> Option<Box<Terminal<WriterWrapper> + Send> + Send> {
+pub fn stderr() -> Option<Box<Terminal<WriterWrapper> + Send>> {
     TerminfoTerminal::new(WriterWrapper {
         wrapped: box std::io::stderr() as Box<Writer + Send>,
     })
