@@ -1135,6 +1135,11 @@ pub enum Type {
         mutability: Mutability,
         type_: Box<Type>,
     },
+    QPath {
+        name: String,
+        self_type: Box<Type>,
+        trait_: Box<Type>
+    },
     // region, raw, other boxes, mutable
 }
 
@@ -1260,6 +1265,7 @@ impl Clean<Type> for ast::Ty {
             TyProc(ref c) => Proc(box c.clean(cx)),
             TyBareFn(ref barefn) => BareFunction(box barefn.clean(cx)),
             TyParen(ref ty) => ty.clean(cx),
+            TyQPath(ref qp) => qp.clean(cx),
             ref x => panic!("Unimplemented type {}", x),
         }
     }
@@ -1358,6 +1364,16 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
             ty::ty_infer(..) => panic!("ty_infer"),
             ty::ty_open(..) => panic!("ty_open"),
             ty::ty_err => panic!("ty_err"),
+        }
+    }
+}
+
+impl Clean<Type> for ast::QPath {
+    fn clean(&self, cx: &DocContext) -> Type {
+        Type::QPath {
+            name: self.item_name.clean(cx),
+            self_type: box self.self_type.clean(cx),
+            trait_: box self.trait_ref.clean(cx)
         }
     }
 }
