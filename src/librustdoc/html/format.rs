@@ -485,6 +485,9 @@ impl fmt::Show for clean::Type {
                     }
                 }
             }
+            clean::QPath { ref name, ref self_type, ref trait_ } => {
+                write!(f, "&lt;{} as {}&gt;::{}", self_type, trait_, name)
+            }
             clean::Unique(..) => {
                 panic!("should have been cleaned")
             }
