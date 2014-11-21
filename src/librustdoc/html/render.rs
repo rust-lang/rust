@@ -59,7 +59,7 @@ use clean;
 use doctree;
 use fold::DocFolder;
 use html::format::{VisSpace, Method, FnStyleSpace, MutableSpace, Stability};
-use html::format::{ConciseStability, WhereClause};
+use html::format::{ConciseStability, TyParamBounds, WhereClause};
 use html::highlight;
 use html::item_type::{ItemType, shortty};
 use html::item_type;
@@ -1705,27 +1705,23 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                   t.generics,
                   bounds,
                   WhereClause(&t.generics)));
-    let required = t.items.iter()
-                          .filter(|m| {
-                              match **m {
-                                  clean::RequiredMethod(_) => true,
-                                  _ => false,
-                              }
-                          })
-                          .collect::<Vec<&clean::TraitMethod>>();
-    let provided = t.items.iter()
-                          .filter(|m| {
-                              match **m {
-                                  clean::ProvidedMethod(_) => true,
-                                  _ => false,
-                              }
-                          })
-                          .collect::<Vec<&clean::TraitMethod>>();
+
+    let types = t.items.iter().filter(|m| m.is_type()).collect::<Vec<_>>();
+    let required = t.items.iter().filter(|m| m.is_req()).collect::<Vec<_>>();
+    let provided = t.items.iter().filter(|m| m.is_def()).collect::<Vec<_>>();
 
     if t.items.len() == 0 {
         try!(write!(w, "{{ }}"));
     } else {
         try!(write!(w, "{{\n"));
+        for t in types.iter() {
+            try!(write!(w, "    "));
+            try!(render_method(w, t.item()));
+            try!(write!(w, ";\n"));
+        }
+        if types.len() > 0 && required.len() > 0 {
+            try!(w.write("\n".as_bytes()));
+        }
         for m in required.iter() {
             try!(write!(w, "    "));
             try!(render_method(w, m.item()));
@@ -1756,6 +1752,17 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         try!(write!(w, "</code></h3>"));
         try!(document(w, m.item()));
         Ok(())
+    }
+
+    if types.len() > 0 {
+        try!(write!(w, "
+            <h2 id='associated-types'>Associated Types</h2>
+            <div class='methods'>
+        "));
+        for t in types.iter() {
+            try!(trait_item(w, *t));
+        }
+        try!(write!(w, "</div>"));
     }
 
     // Output the documentation for each function individually
@@ -1812,7 +1819,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
 }
 
 fn render_method(w: &mut fmt::Formatter, meth: &clean::Item) -> fmt::Result {
-    fn fun(w: &mut fmt::Formatter, it: &clean::Item, fn_style: ast::FnStyle,
+    fn method(w: &mut fmt::Formatter, it: &clean::Item, fn_style: ast::FnStyle,
            g: &clean::Generics, selfty: &clean::SelfTy,
            d: &clean::FnDecl) -> fmt::Result {
         write!(w, "{}fn <a href='#{ty}.{name}' class='fnname'>{name}</a>\
@@ -1827,14 +1834,28 @@ fn render_method(w: &mut fmt::Formatter, meth: &clean::Item) -> fmt::Result {
                decl = Method(selfty, d),
                where_clause = WhereClause(g))
     }
+    fn assoc_type(w: &mut fmt::Formatter, it: &clean::Item,
+                  typ: &clean::TyParam) -> fmt::Result {
+        try!(write!(w, "type {}", it.name.as_ref().unwrap()));
+        if typ.bounds.len() > 0 {
+            try!(write!(w, ": {}", TyParamBounds(&*typ.bounds)))
+        }
+        if let Some(ref default) = typ.default {
+            try!(write!(w, " = {}", default));
+        }
+        Ok(())
+    }
     match meth.inner {
         clean::TyMethodItem(ref m) => {
-            fun(w, meth, m.fn_style, &m.generics, &m.self_, &m.decl)
+            method(w, meth, m.fn_style, &m.generics, &m.self_, &m.decl)
         }
         clean::MethodItem(ref m) => {
-            fun(w, meth, m.fn_style, &m.generics, &m.self_, &m.decl)
+            method(w, meth, m.fn_style, &m.generics, &m.self_, &m.decl)
         }
-        _ => unreachable!()
+        clean::AssociatedTypeItem(ref typ) => {
+            assoc_type(w, meth, typ)
+        }
+        _ => panic!("render_method called on non-method")
     }
 }
 
@@ -2091,11 +2112,26 @@ fn render_impl(w: &mut fmt::Formatter, i: &Impl) -> fmt::Result {
 
     fn doctraititem(w: &mut fmt::Formatter, item: &clean::Item, dox: bool)
                     -> fmt::Result {
-        try!(write!(w, "<h4 id='method.{}' class='method'>{}<code>",
-                    *item.name.as_ref().unwrap(),
-                    ConciseStability(&item.stability)));
-        try!(render_method(w, item));
-        try!(write!(w, "</code></h4>\n"));
+        match item.inner {
+            clean::MethodItem(..) => {
+                try!(write!(w, "<h4 id='method.{}' class='{}'>{}<code>",
+                            *item.name.as_ref().unwrap(),
+                            shortty(item),
+                            ConciseStability(&item.stability)));
+                try!(render_method(w, item));
+                try!(write!(w, "</code></h4>\n"));
+            }
+            clean::TypedefItem(ref tydef) => {
+                let name = item.name.as_ref().unwrap();
+                try!(write!(w, "<h4 id='assoc_type.{}' class='{}'>{}<code>",
+                            *name,
+                            shortty(item),
+                            ConciseStability(&item.stability)));
+                try!(write!(w, "type {} = {}", name, tydef.type_));
+                try!(write!(w, "</code></h4>\n"));
+            }
+            _ => panic!("unknown trait item with name {}", item.name)
+        }
         match item.doc_value() {
             Some(s) if dox => {
                 try!(write!(w, "<div class='docblock'>{}</div>", Markdown(s)));
@@ -2105,7 +2141,7 @@ fn render_impl(w: &mut fmt::Formatter, i: &Impl) -> fmt::Result {
         }
     }
 
-    try!(write!(w, "<div class='impl-methods'>"));
+    try!(write!(w, "<div class='impl-items'>"));
     for trait_item in i.impl_.items.iter() {
         try!(doctraititem(w, trait_item, true));
     }
@@ -2127,6 +2163,8 @@ fn render_impl(w: &mut fmt::Formatter, i: &Impl) -> fmt::Result {
 
     // If we've implemented a trait, then also emit documentation for all
     // default methods which weren't overridden in the implementation block.
+    // FIXME: this also needs to be done for associated types, whenever defaults
+    // for them work.
     match i.impl_.trait_ {
         Some(clean::ResolvedPath { did, .. }) => {
             try!({
