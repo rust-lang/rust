@@ -59,7 +59,7 @@ fn add_interfaces(store: int, managed_ip: String, device: HashMap<String, json::
 -> Vec<(String, object)> {
     match device["interfaces".to_string()]
     {
-        json::List(ref interfaces) =>
+        json::Array(ref interfaces) =>
         {
           interfaces.iter().map(|interface| {
                 add_interface(store, managed_ip.clone(), (*interface).clone())
