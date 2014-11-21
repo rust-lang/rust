@@ -257,11 +257,16 @@ fn find_libdir(sysroot: &Path) -> String {
     // to lib64/lib32. This would be more foolproof by basing the sysroot off
     // of the directory where librustc is located, rather than where the rustc
     // binary is.
+    //If --libdir is set during configuration to the value other than
+    // "lib" (i.e. non-default), this value is used (see issue #16552).
 
-    if sysroot.join(primary_libdir_name()).join(rustlibdir()).exists() {
-        return primary_libdir_name();
-    } else {
-        return secondary_libdir_name();
+    match option_env!("CFG_LIBDIR_RELATIVE") {
+        Some(libdir) if libdir != "lib" => return libdir.to_string(),
+        _ => if sysroot.join(primary_libdir_name()).join(rustlibdir()).exists() {
+            return primary_libdir_name();
+        } else {
+            return secondary_libdir_name();
+        }
     }
 
     #[cfg(target_word_size = "64")]

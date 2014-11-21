@@ -332,7 +332,15 @@ define SREQ
 # Destinations of artifacts for the host compiler
 HROOT$(1)_H_$(3) = $(3)/stage$(1)
 HBIN$(1)_H_$(3) = $$(HROOT$(1)_H_$(3))/bin
+ifeq ($$(CFG_WINDOWSY_$(3)),1)
 HLIB$(1)_H_$(3) = $$(HROOT$(1)_H_$(3))/$$(CFG_LIBDIR_RELATIVE)
+else
+ifeq ($(1),0)
+HLIB$(1)_H_$(3) = $$(HROOT$(1)_H_$(3))/lib
+else
+HLIB$(1)_H_$(3) = $$(HROOT$(1)_H_$(3))/$$(CFG_LIBDIR_RELATIVE)
+endif
+endif
 
 # Destinations of artifacts for target architectures
 TROOT$(1)_T_$(2)_H_$(3) = $$(HLIB$(1)_H_$(3))/rustlib/$(2)

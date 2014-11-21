@@ -550,9 +550,19 @@ CFG_LIBDIR_RELATIVE=lib
 if [ "$CFG_OSTYPE" = "pc-windows-gnu" ]
 then
     CFG_LIBDIR_RELATIVE=bin
-fi
+    CFG_LIBDIR="${CFG_PREFIX}/${CFG_LIBDIR_RELATIVE}"
+else
+    valopt libdir "${CFG_PREFIX}/${CFG_LIBDIR_RELATIVE}" "install libraries (ignored on windows platform)"
 
-valopt libdir "${CFG_PREFIX}/${CFG_LIBDIR_RELATIVE}" "install libraries"
+    case "$CFG_LIBDIR" in
+	"$CFG_PREFIX"/*) CAT_INC=2;;
+	"$CFG_PREFIX"*)  CAT_INC=1;;
+	*)
+            err "libdir must begin with the prefix. Use --prefix to set it accordingly.";;
+    esac
+
+    CFG_LIBDIR_RELATIVE=`echo ${CFG_LIBDIR} | cut -c$((${#CFG_PREFIX}+${CAT_INC}))-`
+fi
 
 if [ $HELP -eq 1 ]
 then
@@ -989,6 +999,15 @@ for h in $CFG_HOST
 do
     for t in $CFG_TARGET
     do
+        # host lib dir stage0
+        make_dir $h/stage0/lib
+
+        # target bin dir stage0
+        make_dir $h/stage0/lib/rustlib/$t/bin
+
+        # target lib dir stage0
+        make_dir $h/stage0/lib/rustlib/$t/lib
+
         for i in 0 1 2 3
         do
             # host bin dir
