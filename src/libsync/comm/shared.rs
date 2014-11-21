@@ -279,17 +279,6 @@ impl<T: Send> Packet<T> {
             // because the remote sender should finish their enqueue
             // operation "very quickly".
             //
-            // Note that this yield loop does *not* attempt to do a green
-            // yield (regardless of the context), but *always* performs an
-            // OS-thread yield. The reasoning for this is that the pusher in
-            // question which is causing the inconsistent state is
-            // guaranteed to *not* be a blocked task (green tasks can't get
-            // pre-empted), so it must be on a different OS thread. Also,
-            // `try_recv` is normally a "guaranteed no rescheduling" context
-            // in a green-thread situation. By yielding control of the
-            // thread, we will hopefully allow time for the remote task on
-            // the other OS thread to make progress.
-            //
             // Avoiding this yield loop would require a different queue
             // abstraction which provides the guarantee that after M
             // pushes have succeeded, at least M pops will succeed. The

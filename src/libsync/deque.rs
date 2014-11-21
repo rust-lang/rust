@@ -414,7 +414,7 @@ mod tests {
     use super::{Data, BufferPool, Abort, Empty, Worker, Stealer};
 
     use std::mem;
-    use std::rt::thread::Thread;
+    use rustrt::thread::Thread;
     use std::rand;
     use std::rand::Rng;
     use atomic::{AtomicBool, INIT_ATOMIC_BOOL, SeqCst,

@@ -8,12 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate native;
+extern crate rustrt;
 
 use std::io::process::{Command, ProcessOutput};
 use std::os;
 use std::str;
-use std::rt::unwind::try;
+use std::rt;
+
+use rustrt::unwind::try;
 
 local_data_key!(foo: int)
 
@@ -36,7 +38,7 @@ fn start(argc: int, argv: *const *const u8) -> int {
         return 0
     }
 
-    native::start(argc, argv, main)
+    rt::start(argc, argv, main)
 }
 
 fn main() {

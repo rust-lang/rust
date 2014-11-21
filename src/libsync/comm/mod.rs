@@ -65,10 +65,6 @@
 //! the `try_send` method on a `SyncSender`, but no other operations are
 //! guaranteed to be safe.
 //!
-//! Additionally, channels can interoperate between runtimes. If one task in a
-//! program is running on libnative and another is running on libgreen, they can
-//! still communicate with one another using channels.
-//!
 //! # Example
 //!
 //! Simple usage:
@@ -328,13 +324,10 @@ pub use self::TrySendError::*;
 use self::Flavor::*;
 
 use alloc::arc::Arc;
-use alloc::boxed::Box;
-use core::cell::Cell;
 use core::kinds::marker;
 use core::mem;
 use core::cell::UnsafeCell;
-use rustrt::local::Local;
-use rustrt::task::{Task, BlockedTask};
+use rustrt::task::BlockedTask;
 
 pub use comm::select::{Select, Handle};
 
@@ -343,23 +336,16 @@ macro_rules! test (
         mod $name {
             #![allow(unused_imports)]
 
+            extern crate rustrt;
+
             use std::prelude::*;
 
-            use native;
             use comm::*;
             use super::*;
             use super::super::*;
             use std::task;
 
-            fn f() $b
-
-            $(#[$a])* #[test] fn uv() { f() }
-            $(#[$a])* #[test] fn native() {
-                use native;
-                let (tx, rx) = channel();
-                spawn(proc() { tx.send(f()) });
-                rx.recv();
-            }
+            $(#[$a])* #[test] fn f() { $b }
         }
     )
 )
@@ -370,16 +356,11 @@ mod shared;
 mod stream;
 mod sync;
 
-// Use a power of 2 to allow LLVM to optimize to something that's not a
-// division, this is hit pretty regularly.
-static RESCHED_FREQ: int = 256;
-
 /// The receiving-half of Rust's channel type. This half can only be owned by
 /// one task
 #[unstable]
 pub struct Receiver<T> {
     inner: UnsafeCell<Flavor<T>>,
-    receives: Cell<uint>,
     // can't share in an arc
     _marker: marker::NoSync,
 }
@@ -397,7 +378,6 @@ pub struct Messages<'a, T:'a> {
 #[unstable]
 pub struct Sender<T> {
     inner: UnsafeCell<Flavor<T>>,
-    sends: Cell<uint>,
     // can't share in an arc
     _marker: marker::NoSync,
 }
@@ -544,7 +524,6 @@ impl<T: Send> Sender<T> {
     fn new(inner: Flavor<T>) -> Sender<T> {
         Sender {
             inner: UnsafeCell::new(inner),
-            sends: Cell::new(0),
             _marker: marker::NoSync,
         }
     }
@@ -608,21 +587,6 @@ impl<T: Send> Sender<T> {
     /// ```
     #[unstable = "this function may be renamed to send() in the future"]
     pub fn send_opt(&self, t: T) -> Result<(), T> {
-        // In order to prevent starvation of other tasks in situations where
-        // a task sends repeatedly without ever receiving, we occasionally
-        // yield instead of doing a send immediately.
-        //
-        // Don't unconditionally attempt to yield because the TLS overhead can
-        // be a bit much, and also use `try_take` instead of `take` because
-        // there's no reason that this send shouldn't be usable off the
-        // runtime.
-        let cnt = self.sends.get() + 1;
-        self.sends.set(cnt);
-        if cnt % (RESCHED_FREQ as uint) == 0 {
-            let task: Option<Box<Task>> = Local::try_take();
-            task.map(|t| t.maybe_yield());
-        }
-
         let (new_inner, ret) = match *unsafe { self.inner() } {
             Oneshot(ref p) => {
                 unsafe {
@@ -809,7 +773,7 @@ impl<T: Send> Drop for SyncSender<T> {
 
 impl<T: Send> Receiver<T> {
     fn new(inner: Flavor<T>) -> Receiver<T> {
-        Receiver { inner: UnsafeCell::new(inner), receives: Cell::new(0), _marker: marker::NoSync }
+        Receiver { inner: UnsafeCell::new(inner), _marker: marker::NoSync }
     }
 
     /// Blocks waiting for a value on this receiver
@@ -854,17 +818,6 @@ impl<T: Send> Receiver<T> {
     /// This function cannot panic.
     #[unstable = "the return type of this function may be altered"]
     pub fn try_recv(&self) -> Result<T, TryRecvError> {
-        // If a thread is spinning in try_recv, we should take the opportunity
-        // to reschedule things occasionally. See notes above in scheduling on
-        // sends for why this doesn't always hit TLS, and also for why this uses
-        // `try_take` instead of `take`.
-        let cnt = self.receives.get() + 1;
-        self.receives.set(cnt);
-        if cnt % (RESCHED_FREQ as uint) == 0 {
-            let task: Option<Box<Task>> = Local::try_take();
-            task.map(|t| t.maybe_yield());
-        }
-
         loop {
             let new_port = match *unsafe { self.inner() } {
                 Oneshot(ref p) => {
@@ -1561,7 +1514,7 @@ mod test {
     })
 
     test!(fn sends_off_the_runtime() {
-        use std::rt::thread::Thread;
+        use rustrt::thread::Thread;
 
         let (tx, rx) = channel();
         let t = Thread::start(proc() {
@@ -1576,7 +1529,7 @@ mod test {
     })
 
     test!(fn try_recvs_off_the_runtime() {
-        use std::rt::thread::Thread;
+        use rustrt::thread::Thread;
 
         let (tx, rx) = channel();
         let (cdone, pdone) = channel();
@@ -2026,7 +1979,7 @@ mod sync_tests {
     })
 
     test!(fn try_recvs_off_the_runtime() {
-        use std::rt::thread::Thread;
+        use rustrt::thread::Thread;
 
         let (tx, rx) = sync_channel::<()>(0);
         let (cdone, pdone) = channel();
