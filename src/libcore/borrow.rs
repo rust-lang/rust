@@ -69,8 +69,16 @@ impl<Sized? T> BorrowFromMut<T> for T {
     fn borrow_from_mut(owned: &mut T) -> &mut T { owned }
 }
 
-impl BorrowFrom<&'static str> for str {
-    fn borrow_from<'a>(owned: &'a &'static str) -> &'a str { &**owned }
+impl<'a, Sized? T> BorrowFrom<&'a T> for T {
+    fn borrow_from<'b>(owned: &'b &'a T) -> &'b T { &**owned }
+}
+
+impl<'a, Sized? T> BorrowFrom<&'a mut T> for T {
+    fn borrow_from<'b>(owned: &'b &'a mut T) -> &'b T { &**owned }
+}
+
+impl<'a, Sized? T> BorrowFromMut<&'a mut T> for T {
+    fn borrow_from_mut<'b>(owned: &'b mut &'a mut T) -> &'b mut T { &mut **owned }
 }
 
 /// A generalization of Clone to borrowed data.
