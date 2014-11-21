@@ -4177,7 +4177,9 @@ pub fn type_err_to_str<'tcx>(cx: &ctxt<'tcx>, err: &type_err<'tcx>) -> String {
             if expected_str == found_str {
                 format!("expected {}, found a different {}", expected_str, found_str)
             } else {
-                format!("expected {}, found {}", expected_str, found_str)
+                format!("expected `{}`,\n    found `{}`", expected_str, found_str)
+            // `expected` will be preceded by either a space or a `(` so the following
+            // line needs 4 spaces to align both `{}` sets: issue 18946
             }
         }
         terr_traits(values) => {
