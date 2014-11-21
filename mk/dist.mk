@@ -58,6 +58,7 @@ PKG_FILES := \
       rt                                       \
       rustllvm                                 \
       snapshots.txt                            \
+      rust-installer                           \
       test)                                    \
     $(PKG_GITMODULES)                          \
     $(filter-out config.stamp, \
@@ -209,33 +210,40 @@ distcheck-osx: dist-osx
 # Unix binary installer tarballs
 ######################################################################
 
+NON_INSTALLED_PREFIXES=COPYRIGHT,LICENSE-APACHE,LICENSE-MIT,README.md,doc
+
 define DEF_INSTALLER
 
 $$(eval $$(call DEF_PREPARE,dir-$(1)))
 
 dist-install-dir-$(1): PREPARE_HOST=$(1)
 dist-install-dir-$(1): PREPARE_TARGETS=$(2)
-dist-install-dir-$(1): PREPARE_DEST_DIR=tmp/dist/$$(PKG_NAME)-$(1)
+dist-install-dir-$(1): PREPARE_DEST_DIR=tmp/dist/$$(PKG_NAME)-$(1)-image
 dist-install-dir-$(1): PREPARE_DIR_CMD=$(DEFAULT_PREPARE_DIR_CMD)
 dist-install-dir-$(1): PREPARE_BIN_CMD=$(DEFAULT_PREPARE_BIN_CMD)
 dist-install-dir-$(1): PREPARE_LIB_CMD=$(DEFAULT_PREPARE_LIB_CMD)
 dist-install-dir-$(1): PREPARE_MAN_CMD=$(DEFAULT_PREPARE_MAN_CMD)
 dist-install-dir-$(1): PREPARE_CLEAN=true
 dist-install-dir-$(1): prepare-base-dir-$(1) docs compiler-docs
-	$$(Q)(cd $$(PREPARE_DEST_DIR)/ && find . -type f | sed 's/^\.\///') \
-      > tmp/dist/manifest-$(1).in
-	$$(Q)mv tmp/dist/manifest-$(1).in $$(PREPARE_DEST_DIR)/$$(CFG_LIBDIR_RELATIVE)/rustlib/manifest.in
-# Add remaining non-installed files
 	$$(Q)$$(PREPARE_MAN_CMD) $$(S)COPYRIGHT $$(PREPARE_DEST_DIR)
 	$$(Q)$$(PREPARE_MAN_CMD) $$(S)LICENSE-APACHE $$(PREPARE_DEST_DIR)
 	$$(Q)$$(PREPARE_MAN_CMD) $$(S)LICENSE-MIT $$(PREPARE_DEST_DIR)
 	$$(Q)$$(PREPARE_MAN_CMD) $$(S)README.md $$(PREPARE_DEST_DIR)
 	$$(Q)cp -r doc $$(PREPARE_DEST_DIR)
-	$$(Q)$$(PREPARE_BIN_CMD) $$(S)src/etc/install.sh $$(PREPARE_DEST_DIR)
 
 dist/$$(PKG_NAME)-$(1).tar.gz: dist-install-dir-$(1)
 	@$(call E, build: $$@)
-	$$(Q)tar -czf dist/$$(PKG_NAME)-$(1).tar.gz -C tmp/dist $$(PKG_NAME)-$(1)
+	$$(Q)$$(S)src/rust-installer/gen-installer.sh \
+		--product-name=Rust \
+		--verify-bin=rustc \
+		--rel-manifest-dir=rustlib \
+		--success-message=Rust-is-ready-to-roll. \
+		--image-dir=tmp/dist/$$(PKG_NAME)-$(1)-image \
+		--work-dir=tmp/dist \
+		--output-dir=dist \
+		--non-installed-prefixes=$$(NON_INSTALLED_PREFIXES) \
+		--package-name=$$(PKG_NAME)-$(1)
+	$$(Q)rm -R tmp/dist/$$(PKG_NAME)-$(1)-image
 
 endef
 
