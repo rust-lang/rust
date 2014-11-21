@@ -357,7 +357,7 @@ else
 HSREQ$(1)_H_$(3) = \
 	$$(HBIN$(1)_H_$(3))/rustc$$(X_$(3)) \
 	$$(MKFILE_DEPS) \
-	install-debugger-scripts$(1)_H_$(3)
+	tmp/install-debugger-scripts$(1)_H_$(3).done
 endif
 
 # Prerequisites for using the stageN compiler to build target artifacts
@@ -372,7 +372,7 @@ SREQ$(1)_T_$(2)_H_$(3) = \
 	$$(TSREQ$(1)_T_$(2)_H_$(3)) \
 	$$(foreach dep,$$(TARGET_CRATES), \
 	    $$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$$(dep)) \
-	install-debugger-scripts$(1)_T_$(2)_H_$(3)
+	tmp/install-debugger-scripts$(1)_T_$(2)_H_$(3).done
 
 # Prerequisites for a working stageN compiler and complete set of target
 # libraries

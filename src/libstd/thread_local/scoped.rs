@@ -190,7 +190,7 @@ impl<T> Key<T> {
     }
 }
 
-#[cfg(any(windows, target_os = "android", target_os = "ios"))]
+#[cfg(not(any(windows, target_os = "android", target_os = "ios")))]
 mod imp {
     use std::cell::UnsafeCell;
 
@@ -207,7 +207,7 @@ mod imp {
     }
 }
 
-#[cfg(not(any(windows, target_os = "android", target_os = "ios")))]
+#[cfg(any(windows, target_os = "android", target_os = "ios"))]
 mod imp {
     use kinds::marker;
     use sys_common::thread_local::StaticKey as OsStaticKey;

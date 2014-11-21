@@ -199,7 +199,7 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
                 let mut s = String::new();
                 let krate = PLAYGROUND_KRATE.with(|c| c.borrow().clone());
                 let id = krate.as_ref().map(|krate| {
-                    let i = TEST_IDX.with(|slot| {
+                    let idx = TEST_IDX.with(|slot| {
                         let r = slot.get();
                         slot.set(r + 1);
                         r
@@ -212,8 +212,8 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
                     let test = test::maketest(test.as_slice(), krate, false, false);
                     s.push_str(format!("<span id='rust-example-raw-{}' \
                                          class='rusttest'>{}</span>",
-                                       i, Escape(test.as_slice())).as_slice());
-                    format!("rust-example-rendered-{}", i)
+                                       idx, Escape(test.as_slice())).as_slice());
+                    format!("rust-example-rendered-{}", idx)
                 });
                 let id = id.as_ref().map(|i| i.as_slice());
                 s.push_str(highlight::highlight(text.as_slice(), None, id)

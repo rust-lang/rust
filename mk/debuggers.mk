@@ -26,12 +26,12 @@ DEBUGGER_SCRIPTS_ALL=$(DEBUGGER_RUSTLIB_ETC_SCRIPTS_ABS) $(DEBUGGER_BIN_SCRIPTS_
 # $(2) - the host triple
 define DEF_INSTALL_DEBUGGER_SCRIPTS_HOST
 
-install-debugger-scripts$(1)_H_$(2): $(DEBUGGER_SCRIPTS_ALL)
+tmp/install-debugger-scripts$(1)_H_$(2).done: $$(DEBUGGER_SCRIPTS_ALL)
 	$(Q)mkdir -p $$(HBIN$(1)_H_$(2))
 	$(Q)mkdir -p $$(HLIB$(1)_H_$(2))/rustlib/etc
 	$(Q)install $(DEBUGGER_BIN_SCRIPTS_ABS) $$(HBIN$(1)_H_$(2))
 	$(Q)install $(DEBUGGER_RUSTLIB_ETC_SCRIPTS_ABS) $$(HLIB$(1)_H_$(2))/rustlib/etc
-
+	$(Q)touch $$@
 endef
 
 # Expand host make-targets for all stages
@@ -44,12 +44,12 @@ $(foreach stage,$(STAGES), \
 # $(3) is the host triple
 define DEF_INSTALL_DEBUGGER_SCRIPTS_TARGET
 
-install-debugger-scripts$(1)_T_$(2)_H_$(3): $(DEBUGGER_SCRIPTS_ALL)
+tmp/install-debugger-scripts$(1)_T_$(2)_H_$(3).done: $$(DEBUGGER_SCRIPTS_ALL)
 	$(Q)mkdir -p $$(TBIN$(1)_T_$(2)_H_$(3))
 	$(Q)mkdir -p $$(TLIB$(1)_T_$(2)_H_$(3))/rustlib/etc
 	$(Q)install $(DEBUGGER_BIN_SCRIPTS_ABS) $$(TBIN$(1)_T_$(2)_H_$(3))
 	$(Q)install $(DEBUGGER_RUSTLIB_ETC_SCRIPTS_ABS) $$(TLIB$(1)_T_$(2)_H_$(3))/rustlib/etc
-
+	$(Q)touch $$@
 endef
 
 # Expand target make-targets for all stages

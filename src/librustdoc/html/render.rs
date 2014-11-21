@@ -2113,14 +2113,6 @@ fn render_impl(w: &mut fmt::Formatter, i: &Impl) -> fmt::Result {
     fn doctraititem(w: &mut fmt::Formatter, item: &clean::Item, dox: bool)
                     -> fmt::Result {
         match item.inner {
-            clean::MethodItem(..) => {
-                try!(write!(w, "<h4 id='method.{}' class='{}'>{}<code>",
-                            *item.name.as_ref().unwrap(),
-                            shortty(item),
-                            ConciseStability(&item.stability)));
-                try!(render_method(w, item));
-                try!(write!(w, "</code></h4>\n"));
-            }
             clean::TypedefItem(ref tydef) => {
                 let name = item.name.as_ref().unwrap();
                 try!(write!(w, "<h4 id='assoc_type.{}' class='{}'>{}<code>",
@@ -2130,7 +2122,14 @@ fn render_impl(w: &mut fmt::Formatter, i: &Impl) -> fmt::Result {
                 try!(write!(w, "type {} = {}", name, tydef.type_));
                 try!(write!(w, "</code></h4>\n"));
             }
-            _ => panic!("unknown trait item with name {}", item.name)
+            _ => {
+                try!(write!(w, "<h4 id='method.{}' class='{}'>{}<code>",
+                            *item.name.as_ref().unwrap(),
+                            shortty(item),
+                            ConciseStability(&item.stability)));
+                try!(render_method(w, item));
+                try!(write!(w, "</code></h4>\n"));
+            }
         }
         match item.doc_value() {
             Some(s) if dox => {

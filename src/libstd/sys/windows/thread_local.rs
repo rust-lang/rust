@@ -185,7 +185,7 @@ unsafe fn unregister_dtor(key: Key) -> bool {
 // that if we start linking with msvc?
 
 #[link_section = ".CRT$XLB"]
-#[linkage = "extern"]
+#[linkage = "external"]
 #[allow(warnings)]
 pub static p_thread_callback: unsafe extern "system" fn(LPVOID, DWORD,
                                                         LPVOID) =
