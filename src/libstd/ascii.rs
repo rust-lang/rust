@@ -13,6 +13,7 @@
 //! Operations on ASCII strings and characters
 
 #![unstable = "unsure about placement and naming"]
+#![allow(deprecated)]
 
 use core::kinds::Sized;
 use fmt;
@@ -36,6 +37,7 @@ impl Ascii {
         self.chr
     }
 
+    /// Deprecated: use `as_byte` isntead.
     #[deprecated = "use as_byte"]
     pub fn to_byte(self) -> u8 {
         self.as_byte()
@@ -46,6 +48,12 @@ impl Ascii {
     #[unstable = "recently renamed"]
     pub fn as_char(&self) -> char {
         self.chr as char
+    }
+
+    /// Deprecated: use `as_char` isntead.
+    #[deprecated = "use as_char"]
+    pub fn to_char(self) -> char {
+        self.as_char()
     }
 
     /// Convert to lowercase.
