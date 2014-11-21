@@ -196,9 +196,12 @@ impl<'a, T, Sized? B> Ord for Cow<'a, T, B> where B: Ord + ToOwned<T> {
     }
 }
 
-impl<'a, T, Sized? B> PartialEq for Cow<'a, T, B> where B: PartialEq + ToOwned<T> {
+impl<'a, 'b, T, U, Sized? B, Sized? C> PartialEq<Cow<'b, U, C>> for Cow<'a, T, B> where
+    B: PartialEq<C> + ToOwned<T>,
+    C: ToOwned<U>,
+{
     #[inline]
-    fn eq(&self, other: &Cow<'a, T, B>) -> bool {
+    fn eq(&self, other: &Cow<'b, U, C>) -> bool {
         PartialEq::eq(&**self, &**other)
     }
 }

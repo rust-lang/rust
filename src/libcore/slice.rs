@@ -1802,12 +1802,12 @@ pub mod bytes {
 //
 
 #[unstable = "waiting for DST"]
-impl<T: PartialEq> PartialEq for [T] {
-    fn eq(&self, other: &[T]) -> bool {
+impl<A, B> PartialEq<[B]> for [A] where A: PartialEq<B> {
+    fn eq(&self, other: &[B]) -> bool {
         self.len() == other.len() &&
             order::eq(self.iter(), other.iter())
     }
-    fn ne(&self, other: &[T]) -> bool {
+    fn ne(&self, other: &[B]) -> bool {
         self.len() != other.len() ||
             order::ne(self.iter(), other.iter())
     }

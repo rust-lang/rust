@@ -2473,7 +2473,11 @@ pub mod order {
     }
 
     /// Compare `a` and `b` for equality (Using partial equality, `PartialEq`)
-    pub fn eq<A: PartialEq, T: Iterator<A>, S: Iterator<A>>(mut a: T, mut b: S) -> bool {
+    pub fn eq<A, B, L, R>(mut a: L, mut b: R) -> bool where
+        A: PartialEq<B>,
+        L: Iterator<A>,
+        R: Iterator<B>,
+    {
         loop {
             match (a.next(), b.next()) {
                 (None, None) => return true,
@@ -2484,7 +2488,11 @@ pub mod order {
     }
 
     /// Compare `a` and `b` for nonequality (Using partial equality, `PartialEq`)
-    pub fn ne<A: PartialEq, T: Iterator<A>, S: Iterator<A>>(mut a: T, mut b: S) -> bool {
+    pub fn ne<A, B, L, R>(mut a: L, mut b: R) -> bool where
+        A: PartialEq<B>,
+        L: Iterator<A>,
+        R: Iterator<B>,
+    {
         loop {
             match (a.next(), b.next()) {
                 (None, None) => return false,

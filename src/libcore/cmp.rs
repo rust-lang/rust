@@ -400,11 +400,11 @@ mod impls {
     // & pointers
 
     #[unstable = "Trait is unstable."]
-    impl<'a, Sized? T: PartialEq> PartialEq for &'a T {
+    impl<'a, 'b, Sized? A, Sized? B> PartialEq<&'b B> for &'a A where A: PartialEq<B> {
         #[inline]
-        fn eq(&self, other: & &'a T) -> bool { PartialEq::eq(*self, *other) }
+        fn eq(&self, other: & &'b B) -> bool { PartialEq::eq(*self, *other) }
         #[inline]
-        fn ne(&self, other: & &'a T) -> bool { PartialEq::ne(*self, *other) }
+        fn ne(&self, other: & &'b B) -> bool { PartialEq::ne(*self, *other) }
     }
     #[unstable = "Trait is unstable."]
     impl<'a, Sized? T: PartialOrd> PartialOrd for &'a T {
@@ -432,11 +432,11 @@ mod impls {
     // &mut pointers
 
     #[unstable = "Trait is unstable."]
-    impl<'a, Sized? T: PartialEq> PartialEq for &'a mut T {
+    impl<'a, 'b, Sized? A, Sized? B> PartialEq<&'b mut B> for &'a mut A where A: PartialEq<B> {
         #[inline]
-        fn eq(&self, other: &&'a mut T) -> bool { PartialEq::eq(*self, *other) }
+        fn eq(&self, other: &&'b mut B) -> bool { PartialEq::eq(*self, *other) }
         #[inline]
-        fn ne(&self, other: &&'a mut T) -> bool { PartialEq::ne(*self, *other) }
+        fn ne(&self, other: &&'b mut B) -> bool { PartialEq::ne(*self, *other) }
     }
     #[unstable = "Trait is unstable."]
     impl<'a, Sized? T: PartialOrd> PartialOrd for &'a mut T {
@@ -460,4 +460,18 @@ mod impls {
     }
     #[unstable = "Trait is unstable."]
     impl<'a, Sized? T: Eq> Eq for &'a mut T {}
+
+    impl<'a, 'b, Sized? A, Sized? B> PartialEq<&'b mut B> for &'a A where A: PartialEq<B> {
+        #[inline]
+        fn eq(&self, other: &&'b mut B) -> bool { PartialEq::eq(*self, *other) }
+        #[inline]
+        fn ne(&self, other: &&'b mut B) -> bool { PartialEq::ne(*self, *other) }
+    }
+
+    impl<'a, 'b, Sized? A, Sized? B> PartialEq<&'b B> for &'a mut A where A: PartialEq<B> {
+        #[inline]
+        fn eq(&self, other: &&'b B) -> bool { PartialEq::eq(*self, *other) }
+        #[inline]
+        fn ne(&self, other: &&'b B) -> bool { PartialEq::ne(*self, *other) }
+    }
 }

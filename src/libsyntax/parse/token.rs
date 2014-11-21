@@ -629,6 +629,28 @@ impl<'a> Equiv<&'a str> for InternedString {
     }
 }
 
+impl<'a> PartialEq<&'a str> for InternedString {
+    #[inline(always)]
+    fn eq(&self, other: & &'a str) -> bool {
+        PartialEq::eq(self.string.as_slice(), *other)
+    }
+    #[inline(always)]
+    fn ne(&self, other: & &'a str) -> bool {
+        PartialEq::ne(self.string.as_slice(), *other)
+    }
+}
+
+impl<'a> PartialEq<InternedString > for &'a str {
+    #[inline(always)]
+    fn eq(&self, other: &InternedString) -> bool {
+        PartialEq::eq(*self, other.string.as_slice())
+    }
+    #[inline(always)]
+    fn ne(&self, other: &InternedString) -> bool {
+        PartialEq::ne(*self, other.string.as_slice())
+    }
+}
+
 impl<D:Decoder<E>, E> Decodable<D, E> for InternedString {
     fn decode(d: &mut D) -> Result<InternedString, E> {
         Ok(get_name(get_ident_interner().intern(
