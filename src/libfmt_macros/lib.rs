@@ -26,7 +26,6 @@ pub use self::Alignment::*;
 pub use self::Flag::*;
 pub use self::Count::*;
 
-use std::char;
 use std::str;
 use std::string;
 
@@ -221,7 +220,7 @@ impl<'a> Parser<'a> {
     fn ws(&mut self) {
         loop {
             match self.cur.clone().next() {
-                Some((_, c)) if char::is_whitespace(c) => { self.cur.next(); }
+                Some((_, c)) if c.is_whitespace() => { self.cur.next(); }
                 Some(..) | None => { return }
             }
         }
@@ -261,7 +260,7 @@ impl<'a> Parser<'a> {
             Some(i) => { ArgumentIs(i) }
             None => {
                 match self.cur.clone().next() {
-                    Some((_, c)) if char::is_alphabetic(c) => {
+                    Some((_, c)) if c.is_alphabetic() => {
                         ArgumentNamed(self.word())
                     }
                     _ => ArgumentNext
@@ -384,7 +383,7 @@ impl<'a> Parser<'a> {
     /// characters.
     fn word(&mut self) -> &'a str {
         let start = match self.cur.clone().next() {
-            Some((pos, c)) if char::is_XID_start(c) => {
+            Some((pos, c)) if c.is_xid_start() => {
                 self.cur.next();
                 pos
             }
@@ -393,7 +392,7 @@ impl<'a> Parser<'a> {
         let mut end;
         loop {
             match self.cur.clone().next() {
-                Some((_, c)) if char::is_XID_continue(c) => {
+                Some((_, c)) if c.is_xid_continue() => {
                     self.cur.next();
                 }
                 Some((pos, _)) => { end = pos; break }
@@ -411,7 +410,7 @@ impl<'a> Parser<'a> {
         loop {
             match self.cur.clone().next() {
                 Some((_, c)) => {
-                    match char::to_digit(c, 10) {
+                    match c.to_digit(10) {
                         Some(i) => {
                             cur = cur * 10 + i;
                             found = true;
