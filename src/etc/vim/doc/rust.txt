@@ -88,6 +88,13 @@ g:ftplugin_rust_source_path~
 	    let g:ftplugin_rust_source_path = $HOME.'/dev/rust'
 <
 
+                                                       *g:cargo_manifest_name*
+g:cargo_manifest_name~
+	Set this option to the name of the manifest file for your projects. If
+	not specified it defaults to 'Cargo.toml' : >
+	    let g:cargo_manifest_name = 'Cargo.toml'
+<
+
 ==============================================================================
 COMMANDS                                                       *rust-commands*
 
