@@ -37,10 +37,10 @@
 //! data lazily when mutation or ownership is required. The type is designed to
 //! work with general borrowed data via the `BorrowFrom` trait.
 //!
-//! `Cow` implements both `Deref` and `DerefMut`, which means that you can call
-//! methods directly on the data it encloses. The first time a mutable reference
-//! is required, the data will be cloned (via `to_owned`) if it is not
-//! already owned.
+//! `Cow` implements both `Deref`, which means that you can call
+//! non-mutating methods directly on the data it encloses. If mutation
+//! is desired, `to_mut` will obtain a mutable references to an owned
+//! value, cloning if necessary.
 
 #![unstable = "recently added as part of collections reform"]
 
@@ -69,8 +69,16 @@ impl<Sized? T> BorrowFromMut<T> for T {
     fn borrow_from_mut(owned: &mut T) -> &mut T { owned }
 }
 
-impl BorrowFrom<&'static str> for str {
-    fn borrow_from<'a>(owned: &'a &'static str) -> &'a str { &**owned }
+impl<'a, Sized? T> BorrowFrom<&'a T> for T {
+    fn borrow_from<'b>(owned: &'b &'a T) -> &'b T { &**owned }
+}
+
+impl<'a, Sized? T> BorrowFrom<&'a mut T> for T {
+    fn borrow_from<'b>(owned: &'b &'a mut T) -> &'b T { &**owned }
+}
+
+impl<'a, Sized? T> BorrowFromMut<&'a mut T> for T {
+    fn borrow_from_mut<'b>(owned: &'b mut &'a mut T) -> &'b mut T { &mut **owned }
 }
 
 /// A generalization of Clone to borrowed data.
@@ -84,7 +92,23 @@ impl<T> ToOwned<T> for T where T: Clone {
 }
 
 /// A clone-on-write smart pointer.
-pub enum Cow<'a, T, B: 'a> where B: ToOwned<T> {
+///
+/// # Example
+///
+/// ```rust
+/// use std::borrow::Cow;
+///
+/// fn abs_all(input: &mut Cow<Vec<int>, [int]>) {
+///     for i in range(0, input.len()) {
+///         let v = input[i];
+///         if v < 0 {
+///             // clones into a vector the first time (if not already owned)
+///             input.to_mut()[i] = -v;
+///         }
+///     }
+/// }
+/// ```
+pub enum Cow<'a, T, Sized? B: 'a> where B: ToOwned<T> {
     /// Borrowed data.
     Borrowed(&'a B),
 
@@ -92,7 +116,7 @@ pub enum Cow<'a, T, B: 'a> where B: ToOwned<T> {
     Owned(T)
 }
 
-impl<'a, T, B> Cow<'a, T, B> where B: ToOwned<T> {
+impl<'a, T, Sized? B> Cow<'a, T, B> where B: ToOwned<T> {
     /// Acquire a mutable reference to the owned form of the data.
     ///
     /// Copies the data if it is not already owned.
@@ -117,7 +141,7 @@ impl<'a, T, B> Cow<'a, T, B> where B: ToOwned<T> {
     }
 }
 
-impl<'a, T, B> Deref<B> for Cow<'a, T, B> where B: ToOwned<T>  {
+impl<'a, T, Sized? B> Deref<B> for Cow<'a, T, B> where B: ToOwned<T>  {
     fn deref(&self) -> &B {
         match *self {
             Borrowed(borrowed) => borrowed,

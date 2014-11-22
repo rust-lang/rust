@@ -18,31 +18,23 @@ use ext::build::AstBuilder;
 use parse::token;
 use ptr::P;
 
-local_data_key!(registered_diagnostics: RefCell<HashMap<Name, Option<Name>>>)
-local_data_key!(used_diagnostics: RefCell<HashMap<Name, Span>>)
+thread_local!(static REGISTERED_DIAGNOSTICS: RefCell<HashMap<Name, Option<Name>>> = {
+    RefCell::new(HashMap::new())
+})
+thread_local!(static USED_DIAGNOSTICS: RefCell<HashMap<Name, Span>> = {
+    RefCell::new(HashMap::new())
+})
 
 fn with_registered_diagnostics<T>(f: |&mut HashMap<Name, Option<Name>>| -> T) -> T {
-    match registered_diagnostics.get() {
-        Some(cell) => f(cell.borrow_mut().deref_mut()),
-        None => {
-            let mut map = HashMap::new();
-            let value = f(&mut map);
-            registered_diagnostics.replace(Some(RefCell::new(map)));
-            value
-        }
-    }
+    REGISTERED_DIAGNOSTICS.with(|slot| {
+        f(&mut *slot.borrow_mut())
+    })
 }
 
 fn with_used_diagnostics<T>(f: |&mut HashMap<Name, Span>| -> T) -> T {
-    match used_diagnostics.get() {
-        Some(cell) => f(cell.borrow_mut().deref_mut()),
-        None => {
-            let mut map = HashMap::new();
-            let value = f(&mut map);
-            used_diagnostics.replace(Some(RefCell::new(map)));
-            value
-        }
-    }
+    USED_DIAGNOSTICS.with(|slot| {
+        f(&mut *slot.borrow_mut())
+    })
 }
 
 pub fn expand_diagnostic_used<'cx>(ecx: &'cx mut ExtCtxt,

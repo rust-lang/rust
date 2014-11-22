@@ -19,18 +19,19 @@
 pub use self::Utf16Item::*;
 pub use self::Searcher::{Naive, TwoWay, TwoWayLong};
 
-use mem;
-use char;
 use char::Char;
+use char;
 use cmp::{Eq, mod};
 use default::Default;
-use iter::{Map, Iterator};
-use iter::{DoubleEndedIterator, ExactSize};
 use iter::range;
+use iter::{DoubleEndedIterator, ExactSize};
+use iter::{Map, Iterator};
 use kinds::Sized;
+use mem;
 use num::Int;
 use option::{Option, None, Some};
-use raw::Repr;
+use ptr::RawPtr;
+use raw::{Repr, Slice};
 use slice::{mod, SlicePrelude};
 use uint;
 
@@ -82,8 +83,39 @@ Section: Creating a string
 /// Returns None if the slice is not utf-8.
 pub fn from_utf8<'a>(v: &'a [u8]) -> Option<&'a str> {
     if is_utf8(v) {
-        Some(unsafe { raw::from_utf8(v) })
-    } else { None }
+        Some(unsafe { from_utf8_unchecked(v) })
+    } else {
+        None
+    }
+}
+
+/// Converts a slice of bytes to a string slice without checking
+/// that the string contains valid UTF-8.
+pub unsafe fn from_utf8_unchecked<'a>(v: &'a [u8]) -> &'a str {
+    mem::transmute(v)
+}
+
+/// Constructs a static string slice from a given raw pointer.
+///
+/// This function will read memory starting at `s` until it finds a 0, and then
+/// transmute the memory up to that point as a string slice, returning the
+/// corresponding `&'static str` value.
+///
+/// This function is unsafe because the caller must ensure the C string itself
+/// has the static lifetime and that the memory `s` is valid up to and including
+/// the first null byte.
+///
+/// # Panics
+///
+/// This function will panic if the string pointed to by `s` is not valid UTF-8.
+pub unsafe fn from_c_str(s: *const i8) -> &'static str {
+    let s = s as *const u8;
+    let mut len = 0u;
+    while *s.offset(len as int) != 0 {
+        len += 1u;
+    }
+    let v: &'static [u8] = ::mem::transmute(Slice { data: s, len: len });
+    from_utf8(v).expect("from_c_str passed invalid utf-8 data")
 }
 
 /// Something that can be used to compare against a character
@@ -352,8 +384,8 @@ impl<'a, Sep: CharEq> Iterator<&'a str> for CharSplits<'a, Sep> {
         }
         match next_split {
             Some((a, b)) => unsafe {
-                let elt = raw::slice_unchecked(self.string, 0, a);
-                self.string = raw::slice_unchecked(self.string, b, self.string.len());
+                let elt = self.string.slice_unchecked(0, a);
+                self.string = self.string.slice_unchecked(b, self.string.len());
                 Some(elt)
             },
             None => self.get_end(),
@@ -394,8 +426,8 @@ for CharSplits<'a, Sep> {
         }
         match next_split {
             Some((a, b)) => unsafe {
-                let elt = raw::slice_unchecked(self.string, b, len);
-                self.string = raw::slice_unchecked(self.string, 0, a);
+                let elt = self.string.slice_unchecked(b, len);
+                self.string = self.string.slice_unchecked(0, a);
                 Some(elt)
             },
             None => { self.finished = true; Some(self.string) }
@@ -1112,8 +1144,8 @@ const CONT_MASK: u8 = 0b0011_1111u8;
 const TAG_CONT_U8: u8 = 0b1000_0000u8;
 
 /// Unsafe operations
+#[deprecated]
 pub mod raw {
-    use mem;
     use ptr::RawPtr;
     use raw::Slice;
     use slice::SlicePrelude;
@@ -1121,13 +1153,15 @@ pub mod raw {
 
     /// Converts a slice of bytes to a string slice without checking
     /// that the string contains valid UTF-8.
+    #[deprecated = "renamed to str::from_utf8_unchecked"]
     pub unsafe fn from_utf8<'a>(v: &'a [u8]) -> &'a str {
-        mem::transmute(v)
+        super::from_utf8_unchecked(v)
     }
 
     /// Form a slice from a C string. Unsafe because the caller must ensure the
     /// C string has the static lifetime, or else the return value may be
     /// invalidated later.
+    #[deprecated = "renamed to str::from_c_str"]
     pub unsafe fn c_str_to_static_slice(s: *const i8) -> &'static str {
         let s = s as *const u8;
         let mut curr = s;
@@ -1150,10 +1184,11 @@ pub mod raw {
     /// If begin is greater than end.
     /// If end is greater than the length of the string.
     #[inline]
+    #[deprecated = "call the slice_unchecked method instead"]
     pub unsafe fn slice_bytes<'a>(s: &'a str, begin: uint, end: uint) -> &'a str {
         assert!(begin <= end);
         assert!(end <= s.len());
-        slice_unchecked(s, begin, end)
+        s.slice_unchecked(begin, end)
     }
 
     /// Takes a bytewise (not UTF-8) slice from a string.
@@ -1162,11 +1197,9 @@ pub mod raw {
     ///
     /// Caller must check slice boundaries!
     #[inline]
+    #[deprecated = "this has moved to a method on `str` directly"]
     pub unsafe fn slice_unchecked<'a>(s: &'a str, begin: uint, end: uint) -> &'a str {
-        mem::transmute(Slice {
-                data: s.as_ptr().offset(begin as int),
-                len: end - begin,
-            })
+        s.slice_unchecked(begin, end)
     }
 }
 
@@ -1566,6 +1599,14 @@ pub trait StrPrelude for Sized? {
     /// ```
     fn slice_chars<'a>(&'a self, begin: uint, end: uint) -> &'a str;
 
+    /// Takes a bytewise (not UTF-8) slice from a string.
+    ///
+    /// Returns the substring from [`begin`..`end`).
+    ///
+    /// Caller must check both UTF-8 character boundaries and the boundaries of
+    /// the entire slice as well.
+    unsafe fn slice_unchecked<'a>(&'a self, begin: uint, end: uint) -> &'a str;
+
     /// Returns true if `needle` is a prefix of the string.
     ///
     /// # Example
@@ -1858,7 +1899,6 @@ pub trait StrPrelude for Sized? {
     /// ```rust
     /// let string = "a\nb\nc";
     /// let lines: Vec<&str> = string.lines().collect();
-    /// let lines = lines.as_slice();
     ///
     /// assert!(string.subslice_offset(lines[0]) == 0); // &"a"
     /// assert!(string.subslice_offset(lines[1]) == 2); // &"b"
@@ -2013,7 +2053,7 @@ impl StrPrelude for str {
         if begin <= end &&
            self.is_char_boundary(begin) &&
            self.is_char_boundary(end) {
-            unsafe { raw::slice_unchecked(self, begin, end) }
+            unsafe { self.slice_unchecked(begin, end) }
         } else {
             slice_error_fail(self, begin, end)
         }
@@ -2023,7 +2063,7 @@ impl StrPrelude for str {
     fn slice_from(&self, begin: uint) -> &str {
         // is_char_boundary checks that the index is in [0, .len()]
         if self.is_char_boundary(begin) {
-            unsafe { raw::slice_unchecked(self, begin, self.len()) }
+            unsafe { self.slice_unchecked(begin, self.len()) }
         } else {
             slice_error_fail(self, begin, self.len())
         }
@@ -2033,7 +2073,7 @@ impl StrPrelude for str {
     fn slice_to(&self, end: uint) -> &str {
         // is_char_boundary checks that the index is in [0, .len()]
         if self.is_char_boundary(end) {
-            unsafe { raw::slice_unchecked(self, 0, end) }
+            unsafe { self.slice_unchecked(0, end) }
         } else {
             slice_error_fail(self, 0, end)
         }
@@ -2058,8 +2098,16 @@ impl StrPrelude for str {
         match (begin_byte, end_byte) {
             (None, _) => panic!("slice_chars: `begin` is beyond end of string"),
             (_, None) => panic!("slice_chars: `end` is beyond end of string"),
-            (Some(a), Some(b)) => unsafe { raw::slice_bytes(self, a, b) }
+            (Some(a), Some(b)) => unsafe { self.slice_unchecked(a, b) }
         }
+    }
+
+    #[inline]
+    unsafe fn slice_unchecked(&self, begin: uint, end: uint) -> &str {
+        mem::transmute(Slice {
+            data: self.as_ptr().offset(begin as int),
+            len: end - begin,
+        })
     }
 
     #[inline]
@@ -2078,13 +2126,13 @@ impl StrPrelude for str {
     fn trim_chars<C: CharEq>(&self, mut to_trim: C) -> &str {
         let cur = match self.find(|c: char| !to_trim.matches(c)) {
             None => "",
-            Some(i) => unsafe { raw::slice_bytes(self, i, self.len()) }
+            Some(i) => unsafe { self.slice_unchecked(i, self.len()) }
         };
         match cur.rfind(|c: char| !to_trim.matches(c)) {
             None => "",
             Some(i) => {
                 let right = cur.char_range_at(i).next;
-                unsafe { raw::slice_bytes(cur, 0, right) }
+                unsafe { cur.slice_unchecked(0, right) }
             }
         }
     }
@@ -2093,7 +2141,7 @@ impl StrPrelude for str {
     fn trim_left_chars<C: CharEq>(&self, mut to_trim: C) -> &str {
         match self.find(|c: char| !to_trim.matches(c)) {
             None => "",
-            Some(first) => unsafe { raw::slice_bytes(self, first, self.len()) }
+            Some(first) => unsafe { self.slice_unchecked(first, self.len()) }
         }
     }
 
@@ -2103,7 +2151,7 @@ impl StrPrelude for str {
             None => "",
             Some(last) => {
                 let next = self.char_range_at(last).next;
-                unsafe { raw::slice_bytes(self, 0u, next) }
+                unsafe { self.slice_unchecked(0u, next) }
             }
         }
     }
@@ -2224,7 +2272,7 @@ impl StrPrelude for str {
             None
         } else {
             let CharRange {ch, next} = self.char_range_at(0u);
-            let next_s = unsafe { raw::slice_bytes(self, next, self.len()) };
+            let next_s = unsafe { self.slice_unchecked(next, self.len()) };
             Some((ch, next_s))
         }
     }

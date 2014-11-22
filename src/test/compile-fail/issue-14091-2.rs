@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,19 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-local_data_key!(foo: int)
+// error-pattern: cannot apply unary operator `!` to type `BytePos`
 
-mod bar {
-    local_data_key!(pub baz: f64)
-}
+// Very
 
-pub fn main() {
-    assert!(foo.get().is_none());
-    assert!(bar::baz.get().is_none());
+// sensitive
+pub struct BytePos(pub u32);
 
-    foo.replace(Some(3));
-    bar::baz.replace(Some(-10.0));
+// to particular
 
-    assert_eq!(*foo.get().unwrap(), 3);
-    assert_eq!(*bar::baz.get().unwrap(), -10.0);
+// line numberings / offsets
+
+fn main() {
+    let x = BytePos(1);
+
+    assert!(x, x);
 }

@@ -28,11 +28,11 @@
 #![allow(non_camel_case_types)]
 
 use libc;
+use std::ascii::AsciiExt;
 use std::cell::{RefCell, Cell};
 use std::fmt;
 use std::slice;
 use std::str;
-use std::string;
 use std::collections::HashMap;
 
 use html::toc::TocBuilder;
@@ -147,10 +147,14 @@ fn stripped_filtered_line<'a>(s: &'a str) -> Option<&'a str> {
     }
 }
 
-local_data_key!(used_header_map: RefCell<HashMap<String, uint>>)
-local_data_key!(test_idx: Cell<uint>)
-// None == render an example, but there's no crate name
-local_data_key!(pub playground_krate: Option<String>)
+thread_local!(static USED_HEADER_MAP: RefCell<HashMap<String, uint>> = {
+    RefCell::new(HashMap::new())
+})
+thread_local!(static TEST_IDX: Cell<uint> = Cell::new(0))
+
+thread_local!(pub static PLAYGROUND_KRATE: RefCell<Option<Option<String>>> = {
+    RefCell::new(None)
+})
 
 pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
     extern fn block(ob: *mut hoedown_buffer, orig_text: *const hoedown_buffer,
@@ -160,53 +164,62 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
 
             let opaque = opaque as *mut hoedown_html_renderer_state;
             let my_opaque: &MyOpaque = &*((*opaque).opaque as *const MyOpaque);
-            slice::raw::buf_as_slice((*orig_text).data, (*orig_text).size as uint,
-                                     |text| {
-                let origtext = str::from_utf8(text).unwrap();
-                debug!("docblock: ==============\n{}\n=======", text);
-                let rendered = if lang.is_null() {
-                    false
+            let text = slice::from_raw_buf(&(*orig_text).data,
+                                           (*orig_text).size as uint);
+            let origtext = str::from_utf8(text).unwrap();
+            debug!("docblock: ==============\n{}\n=======", text);
+            let rendered = if lang.is_null() {
+                false
+            } else {
+                let rlang = slice::from_raw_buf(&(*lang).data,
+                                                (*lang).size as uint);
+                let rlang = str::from_utf8(rlang).unwrap();
+                if LangString::parse(rlang).notrust {
+                    (my_opaque.dfltblk)(ob, orig_text, lang,
+                                        opaque as *mut libc::c_void);
+                    true
                 } else {
-                    slice::raw::buf_as_slice((*lang).data,
-                                           (*lang).size as uint, |rlang| {
-                        let rlang = str::from_utf8(rlang).unwrap();
-                        if LangString::parse(rlang).notrust {
-                            (my_opaque.dfltblk)(ob, orig_text, lang,
-                                                opaque as *mut libc::c_void);
-                            true
-                        } else {
-                            false
-                        }
-                    })
+                    let rlang = slice::from_raw_buf(&(*lang).data,
+                                                    (*lang).size as uint);
+                    let rlang = str::from_utf8(rlang).unwrap();
+                    if LangString::parse(rlang).notrust {
+                        (my_opaque.dfltblk)(ob, orig_text, lang,
+                                            opaque as *mut libc::c_void);
+                        true
+                    } else {
+                        false
+                    }
                 };
 
                 let mut lines = origtext.lines().filter(|l| {
                     stripped_filtered_line(*l).is_none()
                 });
                 let text = lines.collect::<Vec<&str>>().connect("\n");
-                if !rendered {
-                    let mut s = String::new();
-                    let id = playground_krate.get().map(|krate| {
-                        let idx = test_idx.get().unwrap();
-                        let i = idx.get();
-                        idx.set(i + 1);
-
-                        let test = origtext.lines().map(|l| {
-                            stripped_filtered_line(l).unwrap_or(l)
-                        }).collect::<Vec<&str>>().connect("\n");
-                        let krate = krate.as_ref().map(|s| s.as_slice());
-                        let test = test::maketest(test.as_slice(), krate, false, false);
-                        s.push_str(format!("<span id='rust-example-raw-{}' \
-                                             class='rusttest'>{}</span>",
-                                           i, Escape(test.as_slice())).as_slice());
-                        format!("rust-example-rendered-{}", i)
+                if rendered { return }
+                let mut s = String::new();
+                let krate = PLAYGROUND_KRATE.with(|c| c.borrow().clone());
+                let id = krate.as_ref().map(|krate| {
+                    let idx = TEST_IDX.with(|slot| {
+                        let r = slot.get();
+                        slot.set(r + 1);
+                        r
                     });
-                    let id = id.as_ref().map(|a| a.as_slice());
-                    s.push_str(highlight::highlight(text.as_slice(), None, id)
-                                         .as_slice());
-                    let output = s.to_c_str();
-                    hoedown_buffer_puts(ob, output.as_ptr());
-                }
+
+                    let test = origtext.lines().map(|l| {
+                        stripped_filtered_line(l).unwrap_or(l)
+                    }).collect::<Vec<&str>>().connect("\n");
+                    let krate = krate.as_ref().map(|s| s.as_slice());
+                    let test = test::maketest(test.as_slice(), krate, false, false);
+                    s.push_str(format!("<span id='rust-example-raw-{}' \
+                                         class='rusttest'>{}</span>",
+                                       idx, Escape(test.as_slice())).as_slice());
+                    format!("rust-example-rendered-{}", idx)
+                });
+                let id = id.as_ref().map(|i| i.as_slice());
+                s.push_str(highlight::highlight(text.as_slice(), None, id)
+                                     .as_slice());
+                let output = s.to_c_str();
+                hoedown_buffer_puts(ob, output.as_ptr());
             })
         }
     }
@@ -221,32 +234,30 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
             "".to_string()
         } else {
             unsafe {
-                string::raw::from_buf_len((*text).data, (*text).size as uint)
+                String::from_raw_buf_len((*text).data, (*text).size as uint)
             }
         };
 
         // Transform the contents of the header into a hyphenated string
-        let id = s.as_slice().words().map(|s| {
-            match s.to_ascii_opt() {
-                Some(s) => s.to_lowercase().into_string(),
-                None => s.to_string()
-            }
-        }).collect::<Vec<String>>().connect("-");
+        let id = s.as_slice().words().map(|s| s.to_ascii_lower())
+            .collect::<Vec<String>>().connect("-");
 
         // This is a terrible hack working around how hoedown gives us rendered
         // html for text rather than the raw text.
-        let id = id.replace("<code>", "").replace("</code>", "").to_string();
 
         let opaque = opaque as *mut hoedown_html_renderer_state;
         let opaque = unsafe { &mut *((*opaque).opaque as *mut MyOpaque) };
 
         // Make sure our hyphenated ID is unique for this page
-        let map = used_header_map.get().unwrap();
-        let id = match map.borrow_mut().get_mut(&id) {
-            None => id,
-            Some(a) => { *a += 1; format!("{}-{}", id, *a - 1) }
-        };
-        map.borrow_mut().insert(id.clone(), 1);
+        let id = USED_HEADER_MAP.with(|map| {
+            let id = id.replace("<code>", "").replace("</code>", "").to_string();
+            let id = match map.borrow_mut().get_mut(&id) {
+                None => id,
+                Some(a) => { *a += 1; format!("{}-{}", id, *a - 1) }
+            };
+            map.borrow_mut().insert(id.clone(), 1);
+            id
+        });
 
         let sec = match opaque.toc_builder {
             Some(ref mut builder) => {
@@ -268,9 +279,7 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
         text.with_c_str(|p| unsafe { hoedown_buffer_puts(ob, p) });
     }
 
-    if used_header_map.get().is_none() {
-        reset_headers();
-    }
+    reset_headers();
 
     unsafe {
         let ob = hoedown_buffer_new(DEF_OUNIT);
@@ -296,9 +305,8 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
         };
 
         if ret.is_ok() {
-            ret = slice::raw::buf_as_slice((*ob).data, (*ob).size as uint, |buf| {
-                w.write(buf)
-            });
+            let buf = slice::from_raw_buf(&(*ob).data, (*ob).size as uint);
+            ret = w.write(buf);
         }
         hoedown_buffer_free(ob);
         ret
@@ -315,25 +323,23 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
             let block_info = if lang.is_null() {
                 LangString::all_false()
             } else {
-                slice::raw::buf_as_slice((*lang).data,
-                                       (*lang).size as uint, |lang| {
-                    let s = str::from_utf8(lang).unwrap();
-                    LangString::parse(s)
-                })
+                let lang = slice::from_raw_buf(&(*lang).data,
+                                               (*lang).size as uint);
+                let s = str::from_utf8(lang).unwrap();
+                LangString::parse(s)
             };
             if block_info.notrust { return }
-            slice::raw::buf_as_slice((*text).data, (*text).size as uint, |text| {
-                let opaque = opaque as *mut hoedown_html_renderer_state;
-                let tests = &mut *((*opaque).opaque as *mut ::test::Collector);
-                let text = str::from_utf8(text).unwrap();
-                let mut lines = text.lines().map(|l| {
-                    stripped_filtered_line(l).unwrap_or(l)
-                });
-                let text = lines.collect::<Vec<&str>>().connect("\n");
-                tests.add_test(text.to_string(),
-                               block_info.should_fail, block_info.no_run,
-                               block_info.ignore, block_info.test_harness);
-            })
+            let text = slice::from_raw_buf(&(*text).data, (*text).size as uint);
+            let opaque = opaque as *mut hoedown_html_renderer_state;
+            let tests = &mut *((*opaque).opaque as *mut ::test::Collector);
+            let text = str::from_utf8(text).unwrap();
+            let mut lines = text.lines().map(|l| {
+                stripped_filtered_line(l).unwrap_or(l)
+            });
+            let text = lines.collect::<Vec<&str>>().connect("\n");
+            tests.add_test(text.to_string(),
+                           block_info.should_fail, block_info.no_run,
+                           block_info.ignore, block_info.test_harness);
         }
     }
 
@@ -346,10 +352,9 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
             if text.is_null() {
                 tests.register_header("", level as u32);
             } else {
-                slice::raw::buf_as_slice((*text).data, (*text).size as uint, |text| {
-                    let text = str::from_utf8(text).unwrap();
-                    tests.register_header(text, level as u32);
-                })
+                let text = slice::from_raw_buf(&(*text).data, (*text).size as uint);
+                let text = str::from_utf8(text).unwrap();
+                tests.register_header(text, level as u32);
             }
         }
     }
@@ -428,8 +433,8 @@ impl LangString {
 /// used at the beginning of rendering an entire HTML page to reset from the
 /// previous state (if any).
 pub fn reset_headers() {
-    used_header_map.replace(Some(RefCell::new(HashMap::new())));
-    test_idx.replace(Some(Cell::new(0)));
+    USED_HEADER_MAP.with(|s| s.borrow_mut().clear());
+    TEST_IDX.with(|s| s.set(0));
 }
 
 impl<'a> fmt::Show for Markdown<'a> {

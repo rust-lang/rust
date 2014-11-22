@@ -8,26 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::task;
+// error-pattern: expected `bool`, found `_` (expected bool, found integral variable)
 
-static mut DROPS: uint = 0;
-
-struct Foo;
-impl Drop for Foo {
-    fn drop(&mut self) {
-        unsafe { DROPS += 1; }
-        panic!()
-    }
-}
-
-fn main() {
-    let _ = task::try(proc() {
-        local_data_key!(foo: Foo);
-        foo.replace(Some(Foo));
-    });
-
-    unsafe {
-        assert_eq!(DROPS, 1);
-    }
-}
-
+fn main(){assert!(1,1);}

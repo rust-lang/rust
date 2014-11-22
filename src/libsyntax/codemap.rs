@@ -293,15 +293,17 @@ impl FileMap {
 
     /// get a line from the list of pre-computed line-beginnings
     ///
-    pub fn get_line(&self, line: int) -> String {
+    pub fn get_line(&self, line_number: uint) -> Option<String> {
         let lines = self.lines.borrow();
-        let begin: BytePos = (*lines)[line as uint] - self.start_pos;
-        let begin = begin.to_uint();
-        let slice = self.src.as_slice().slice_from(begin);
-        match slice.find('\n') {
-            Some(e) => slice.slice_to(e).to_string(),
-            None => slice.to_string()
-        }
+        lines.get(line_number).map(|&line| {
+            let begin: BytePos = line - self.start_pos;
+            let begin = begin.to_uint();
+            let slice = self.src.as_slice().slice_from(begin);
+            match slice.find('\n') {
+                Some(e) => slice.slice_to(e),
+                None => slice
+            }.to_string()
+        })
     }
 
     pub fn record_multibyte_char(&self, pos: BytePos, bytes: uint) {
@@ -578,10 +580,10 @@ mod test {
         let fm = cm.new_filemap("blork.rs".to_string(),
                                 "first line.\nsecond line".to_string());
         fm.next_line(BytePos(0));
-        assert_eq!(&fm.get_line(0),&"first line.".to_string());
+        assert_eq!(fm.get_line(0), Some("first line.".to_string()));
         // TESTING BROKEN BEHAVIOR:
         fm.next_line(BytePos(10));
-        assert_eq!(&fm.get_line(1), &".".to_string());
+        assert_eq!(fm.get_line(1), Some(".".to_string()));
     }
 
     #[test]

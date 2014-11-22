@@ -54,7 +54,7 @@
 pub use self::MaybeOwned::*;
 use self::RecompositionState::*;
 use self::DecompositionType::*;
-use core::borrow::BorrowFrom;
+use core::borrow::{BorrowFrom, ToOwned};
 use core::default::Default;
 use core::fmt;
 use core::cmp;
@@ -67,7 +67,7 @@ use core::prelude::{range};
 
 use hash;
 use ring_buf::RingBuf;
-use string::String;
+use string::{String, ToString};
 use unicode;
 use vec::Vec;
 
@@ -80,6 +80,7 @@ pub use core::str::{Utf16Item, ScalarValue, LoneSurrogate, utf16_items};
 pub use core::str::{truncate_utf16_at_nul, utf8_char_width, CharRange};
 pub use core::str::{FromStr, from_str};
 pub use core::str::{Str, StrPrelude};
+pub use core::str::{from_utf8_unchecked, from_c_str};
 pub use unicode::str::{UnicodeStrPrelude, Words, Graphemes, GraphemeIndices};
 
 // FIXME(conventions): ensure bit/char conventions are followed by str's API
@@ -393,11 +394,11 @@ pub fn replace(s: &str, from: &str, to: &str) -> String {
     let mut result = String::new();
     let mut last_end = 0;
     for (start, end) in s.match_indices(from) {
-        result.push_str(unsafe{raw::slice_bytes(s, last_end, start)});
+        result.push_str(unsafe { s.slice_unchecked(last_end, start) });
         result.push_str(to);
         last_end = end;
     }
-    result.push_str(unsafe{raw::slice_bytes(s, last_end, s.len())});
+    result.push_str(unsafe { s.slice_unchecked(last_end, s.len()) });
     result
 }
 
@@ -610,6 +611,11 @@ impl BorrowFrom<String> for str {
     fn borrow_from(owned: &String) -> &str { owned[] }
 }
 
+#[unstable = "trait is unstable"]
+impl ToOwned<String> for str {
+    fn to_owned(&self) -> String { self.to_string() }
+}
+
 /// Unsafe string operations.
 pub mod raw {
     pub use core::str::raw::{from_utf8, c_str_to_static_slice, slice_bytes};
@@ -674,16 +680,7 @@ pub trait StrAllocating: Str {
     /// assert_eq!(s.replace("cookie monster", "little lamb"), s);
     /// ```
     fn replace(&self, from: &str, to: &str) -> String {
-        let me = self.as_slice();
-        let mut result = String::new();
-        let mut last_end = 0;
-        for (start, end) in me.match_indices(from) {
-            result.push_str(unsafe{raw::slice_bytes(me, last_end, start)});
-            result.push_str(to);
-            last_end = end;
-        }
-        result.push_str(unsafe{raw::slice_bytes(me, last_end, me.len())});
-        result
+        replace(self.as_slice(), from, to)
     }
 
     /// Given a string, makes a new string with repeated copies of it.

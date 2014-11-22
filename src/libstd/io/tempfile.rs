@@ -73,10 +73,14 @@ impl TempDir {
     /// Unwrap the wrapped `std::path::Path` from the `TempDir` wrapper.
     /// This discards the wrapper so that the automatic deletion of the
     /// temporary directory is prevented.
-    pub fn unwrap(self) -> Path {
+    pub fn into_inner(self) -> Path {
         let mut tmpdir = self;
         tmpdir.path.take().unwrap()
     }
+
+    /// Deprecated, use into_inner() instead
+    #[deprecated = "renamed to into_inner()"]
+    pub fn unwrap(self) -> Path { self.into_inner() }
 
     /// Access the wrapped `std::path::Path` to the temporary directory.
     pub fn path<'a>(&'a self) -> &'a Path {

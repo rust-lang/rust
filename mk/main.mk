@@ -190,11 +190,14 @@ endif
 # Target-and-rule "utility variables"
 ######################################################################
 
-define DEF_X
+define DEF_FOR_TARGET
 X_$(1) := $(CFG_EXE_SUFFIX_$(1))
+ifndef CFG_LLVM_TARGET_$(1)
+CFG_LLVM_TARGET_$(1) := $(1)
+endif
 endef
 $(foreach target,$(CFG_TARGET), \
-  $(eval $(call DEF_X,$(target))))
+  $(eval $(call DEF_FOR_TARGET,$(target))))
 
 # "Source" files we generate in builddir along the way.
 GENERATED :=
@@ -353,7 +356,8 @@ HSREQ$(1)_H_$(3) = $$(HBIN$(1)_H_$(3))/rustc$$(X_$(3))
 else
 HSREQ$(1)_H_$(3) = \
 	$$(HBIN$(1)_H_$(3))/rustc$$(X_$(3)) \
-	$$(MKFILE_DEPS)
+	$$(MKFILE_DEPS) \
+	tmp/install-debugger-scripts$(1)_H_$(3).done
 endif
 
 # Prerequisites for using the stageN compiler to build target artifacts
@@ -367,7 +371,8 @@ TSREQ$(1)_T_$(2)_H_$(3) = \
 SREQ$(1)_T_$(2)_H_$(3) = \
 	$$(TSREQ$(1)_T_$(2)_H_$(3)) \
 	$$(foreach dep,$$(TARGET_CRATES), \
-	    $$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$$(dep))
+	    $$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$$(dep)) \
+	tmp/install-debugger-scripts$(1)_T_$(2)_H_$(3).done
 
 # Prerequisites for a working stageN compiler and complete set of target
 # libraries

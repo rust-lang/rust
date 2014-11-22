@@ -297,6 +297,52 @@ impl String {
         chs.iter().map(|c| *c).collect()
     }
 
+    /// Creates a new `String` from a length, capacity, and pointer.
+    ///
+    /// This is unsafe because:
+    /// * We call `Vec::from_raw_parts` to get a `Vec<u8>`;
+    /// * We assume that the `Vec` contains valid UTF-8.
+    #[inline]
+    #[unstable = "function just moved from string::raw"]
+    pub unsafe fn from_raw_parts(buf: *mut u8, length: uint, capacity: uint) -> String {
+        String {
+            vec: Vec::from_raw_parts(buf, length, capacity),
+        }
+    }
+
+    /// Creates a `String` from a null-terminated `*const u8` buffer.
+    ///
+    /// This function is unsafe because we dereference memory until we find the
+    /// NUL character, which is not guaranteed to be present. Additionally, the
+    /// slice is not checked to see whether it contains valid UTF-8
+    #[unstable = "just renamed from `mod raw`"]
+    pub unsafe fn from_raw_buf(buf: *const u8) -> String {
+        String::from_str(str::from_c_str(buf as *const i8))
+    }
+
+    /// Creates a `String` from a `*const u8` buffer of the given length.
+    ///
+    /// This function is unsafe because it blindly assumes the validity of the
+    /// pointer `buf` for `len` bytes of memory. This function will copy the
+    /// memory from `buf` into a new allocation (owned by the returned
+    /// `String`).
+    ///
+    /// This function is also unsafe because it does not validate that the
+    /// buffer is valid UTF-8 encoded data.
+    #[unstable = "just renamed from `mod raw`"]
+    pub unsafe fn from_raw_buf_len(buf: *const u8, len: uint) -> String {
+        String::from_utf8_unchecked(Vec::from_raw_buf(buf, len))
+    }
+
+    /// Converts a vector of bytes to a new `String` without checking if
+    /// it contains valid UTF-8. This is unsafe because it assumes that
+    /// the UTF-8-ness of the vector has already been validated.
+    #[inline]
+    #[unstable = "awaiting stabilization"]
+    pub unsafe fn from_utf8_unchecked(bytes: Vec<u8>) -> String {
+        String { vec: bytes }
+    }
+
     /// Return the underlying byte buffer, encoded as UTF-8.
     ///
     /// # Example
@@ -823,12 +869,8 @@ impl<T: fmt::Show> ToString for T {
 }
 
 /// Unsafe operations
-#[unstable = "waiting on raw module conventions"]
+#[deprecated]
 pub mod raw {
-    use core::mem;
-    use core::ptr::RawPtr;
-    use core::raw::Slice;
-
     use super::String;
     use vec::Vec;
 
@@ -838,24 +880,20 @@ pub mod raw {
     /// * We call `Vec::from_raw_parts` to get a `Vec<u8>`;
     /// * We assume that the `Vec` contains valid UTF-8.
     #[inline]
+    #[deprecated = "renamed to String::from_raw_parts"]
     pub unsafe fn from_parts(buf: *mut u8, length: uint, capacity: uint) -> String {
-        String {
-            vec: Vec::from_raw_parts(buf, length, capacity),
-        }
+        String::from_raw_parts(buf, length, capacity)
     }
 
     /// Creates a `String` from a `*const u8` buffer of the given length.
     ///
     /// This function is unsafe because of two reasons:
+    ///
     /// * A raw pointer is dereferenced and transmuted to `&[u8]`;
     /// * The slice is not checked to see whether it contains valid UTF-8.
+    #[deprecated = "renamed to String::from_raw_buf_len"]
     pub unsafe fn from_buf_len(buf: *const u8, len: uint) -> String {
-        use slice::CloneSliceAllocPrelude;
-        let slice: &[u8] = mem::transmute(Slice {
-            data: buf,
-            len: len,
-        });
-        self::from_utf8(slice.to_vec())
+        String::from_raw_buf_len(buf, len)
     }
 
     /// Creates a `String` from a null-terminated `*const u8` buffer.
@@ -863,20 +901,18 @@ pub mod raw {
     /// This function is unsafe because we dereference memory until we find the NUL character,
     /// which is not guaranteed to be present. Additionally, the slice is not checked to see
     /// whether it contains valid UTF-8
+    #[deprecated = "renamed to String::from_raw_buf"]
     pub unsafe fn from_buf(buf: *const u8) -> String {
-        let mut len = 0;
-        while *buf.offset(len) != 0 {
-            len += 1;
-        }
-        self::from_buf_len(buf, len as uint)
+        String::from_raw_buf(buf)
     }
 
     /// Converts a vector of bytes to a new `String` without checking if
     /// it contains valid UTF-8. This is unsafe because it assumes that
     /// the UTF-8-ness of the vector has already been validated.
     #[inline]
+    #[deprecated = "renamed to String::from_utf8_unchecked"]
     pub unsafe fn from_utf8(bytes: Vec<u8>) -> String {
-        String { vec: bytes }
+        String::from_utf8_unchecked(bytes)
     }
 }
 

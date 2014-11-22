@@ -89,7 +89,7 @@
 
 use self::Direction::*;
 use alloc::boxed::Box;
-use core::borrow::{BorrowFrom, BorrowFromMut};
+use core::borrow::{BorrowFrom, BorrowFromMut, ToOwned};
 use core::cmp;
 use core::kinds::Sized;
 use core::mem::size_of;
@@ -106,7 +106,7 @@ pub use core::slice::{OrdSlicePrelude, SlicePrelude, Items, MutItems};
 pub use core::slice::{ImmutableIntSlice, MutableIntSlice};
 pub use core::slice::{MutSplits, MutChunks, Splits};
 pub use core::slice::{bytes, mut_ref_slice, ref_slice, CloneSlicePrelude};
-pub use core::slice::{Found, NotFound};
+pub use core::slice::{Found, NotFound, from_raw_buf, from_raw_mut_buf};
 
 // Functional utilities
 
@@ -656,6 +656,11 @@ impl<T> BorrowFrom<Vec<T>> for [T] {
 #[unstable = "trait is unstable"]
 impl<T> BorrowFromMut<Vec<T>> for [T] {
     fn borrow_from_mut(owned: &mut Vec<T>) -> &mut [T] { owned[mut] }
+}
+
+#[unstable = "trait is unstable"]
+impl<T: Clone> ToOwned<Vec<T>> for [T] {
+    fn to_owned(&self) -> Vec<T> { self.to_vec() }
 }
 
 /// Unsafe operations

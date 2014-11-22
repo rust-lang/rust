@@ -235,10 +235,25 @@ impl<T> Vec<T> {
     ///     }
     /// }
     /// ```
-    #[experimental]
+    #[unstable = "needs finalization"]
     pub unsafe fn from_raw_parts(ptr: *mut T, length: uint,
                                  capacity: uint) -> Vec<T> {
         Vec { ptr: ptr, len: length, cap: capacity }
+    }
+
+    /// Creates a vector by copying the elements from a raw pointer.
+    ///
+    /// This function will copy `elts` contiguous elements starting at `ptr`
+    /// into a new allocation owned by the returned `Vec`. The elements of the
+    /// buffer are copied into the vector without cloning, as if `ptr::read()`
+    /// were called on them.
+    #[inline]
+    #[unstable = "just renamed from raw::from_buf"]
+    pub unsafe fn from_raw_buf(ptr: *const T, elts: uint) -> Vec<T> {
+        let mut dst = Vec::with_capacity(elts);
+        dst.set_len(elts);
+        ptr::copy_nonoverlapping_memory(dst.as_mut_ptr(), ptr, elts);
+        dst
     }
 
     /// Consumes the `Vec`, partitioning it based on a predicate.
@@ -1233,7 +1248,7 @@ pub struct MoveItems<T> {
 impl<T> MoveItems<T> {
     #[inline]
     /// Drops all items that have not yet been moved and returns the empty vector.
-    pub fn unwrap(mut self) -> Vec<T> {
+    pub fn into_inner(mut self) -> Vec<T> {
         unsafe {
             for _x in self { }
             let MoveItems { allocation, cap, ptr: _ptr, end: _end } = self;
@@ -1241,6 +1256,10 @@ impl<T> MoveItems<T> {
             Vec { ptr: allocation, cap: cap, len: 0 }
         }
     }
+
+    /// Deprecated, use into_inner() instead
+    #[deprecated = "renamed to into_inner()"]
+    pub fn unwrap(self) -> Vec<T> { self.into_inner() }
 }
 
 impl<T> Iterator<T> for MoveItems<T> {
@@ -1367,23 +1386,18 @@ pub fn as_vec<'a, T>(x: &'a [T]) -> DerefVec<'a, T> {
 }
 
 /// Unsafe vector operations.
-#[unstable]
+#[deprecated]
 pub mod raw {
     use super::Vec;
-    use core::ptr;
-    use core::slice::SlicePrelude;
 
     /// Constructs a vector from an unsafe pointer to a buffer.
     ///
     /// The elements of the buffer are copied into the vector without cloning,
     /// as if `ptr::read()` were called on them.
     #[inline]
-    #[unstable]
+    #[deprecated = "renamed to Vec::from_raw_buf"]
     pub unsafe fn from_buf<T>(ptr: *const T, elts: uint) -> Vec<T> {
-        let mut dst = Vec::with_capacity(elts);
-        dst.set_len(elts);
-        ptr::copy_nonoverlapping_memory(dst.as_mut_ptr(), ptr, elts);
-        dst
+        Vec::from_raw_buf(ptr, elts)
     }
 }
 
