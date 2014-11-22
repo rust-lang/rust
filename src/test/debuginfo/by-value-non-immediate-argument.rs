@@ -71,8 +71,6 @@
 // lldb-check:[...]$6 = Case1 { x: 0, y: 8970181431921507452 }
 // lldb-command:continue
 
-#![feature(struct_variant)]
-
 #[deriving(Clone)]
 struct Struct {
     a: int,
