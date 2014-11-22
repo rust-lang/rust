@@ -1876,6 +1876,8 @@ mod tests {
     use os;
     use rand::Rng;
     use rand;
+    use io::{USER_DIR, IoError, OtherIoError};
+    use io::fs;
 
     #[test]
     pub fn last_os_error() {
@@ -2197,4 +2199,33 @@ mod tests {
     }
 
     // More recursive_mkdir tests are in extra::tempfile
+
+    #[test]
+    fn test_dir_api_at_once() {
+        let orig_cwd = os::getcwd().unwrap();
+        let my_tempdir = Path::new("tmp/test_dir_api_at_once");
+
+        fs::rmdir_recursive(&my_tempdir).is_ok(); // ignore the result
+        fs::mkdir(&Path::new("tmp"), USER_DIR).is_ok(); // doing "mkdir -p"; ignore the result
+        assert!(fs::mkdir(&my_tempdir, USER_DIR).is_ok());
+        assert!(os::change_dir(&my_tempdir).is_ok());
+
+        let p = Path::new(format!("test{:0248}dir", 0i)); // 255 bytes
+        let iores = range(0_i32, 10).fold(Ok(orig_cwd.clone().join(my_tempdir)), |r, _| {
+            r.and_then(|ref mut cwd| {
+                try!(fs::mkdir(&p, USER_DIR));
+                let cwd = cwd.join(p.clone());
+                try!(os::change_dir(&p));
+                let actual = os::getcwd().unwrap();
+                if actual == cwd {
+                    Ok(cwd)
+                } else {
+                    let d = format!("[{}] != getcwd() ({})", cwd.display(), actual.display());
+                    Err(IoError { kind: OtherIoError, desc: "cwd is wrong", detail: Some(d) })
+                }
+            })
+        });
+        assert!(os::change_dir(&orig_cwd).is_ok());
+        iores.unwrap();
+    }
 }
