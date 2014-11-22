@@ -31,8 +31,6 @@
 // gdb-check:$5 = 5
 // gdb-command:continue
 
-#![feature(struct_variant)]
-
 struct Struct {
     x: int
 }
