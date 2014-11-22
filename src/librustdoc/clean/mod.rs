@@ -1923,7 +1923,7 @@ impl Clean<ViewItemInner> for ast::ViewItem_ {
 
 #[deriving(Clone, Encodable, Decodable)]
 pub enum ViewPath {
-    // use str = source;
+    // use source as str;
     SimpleImport(String, ImportSource),
     // use source::*;
     GlobImport(ImportSource),
