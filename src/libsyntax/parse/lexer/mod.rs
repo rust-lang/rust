@@ -193,7 +193,7 @@ impl<'a> StringReader<'a> {
     fn fatal_span_char(&self, from_pos: BytePos, to_pos: BytePos, m: &str, c: char) -> ! {
         let mut m = m.to_string();
         m.push_str(": ");
-        char::escape_default(c, |c| m.push(c));
+        for c in c.escape_default() { m.push(c) }
         self.fatal_span_(from_pos, to_pos, m.as_slice());
     }
 
@@ -202,7 +202,7 @@ impl<'a> StringReader<'a> {
     fn err_span_char(&self, from_pos: BytePos, to_pos: BytePos, m: &str, c: char) {
         let mut m = m.to_string();
         m.push_str(": ");
-        char::escape_default(c, |c| m.push(c));
+        for c in c.escape_default() { m.push(c) }
         self.err_span_(from_pos, to_pos, m.as_slice());
     }
 
@@ -645,7 +645,7 @@ impl<'a> StringReader<'a> {
         loop {
             let c = self.curr;
             if c == Some('_') { debug!("skipping a _"); self.bump(); continue; }
-            match c.and_then(|cc| char::to_digit(cc, radix)) {
+            match c.and_then(|cc| cc.to_digit(radix)) {
                 Some(_) => {
                     debug!("{} in scan_digits", c);
                     len += 1;
@@ -677,7 +677,7 @@ impl<'a> StringReader<'a> {
                     return token::Integer(self.name_from(start_bpos));
                 }
             }
-        } else if c.is_digit_radix(10) {
+        } else if c.is_digit(10) {
             num_digits = self.scan_digits(10) + 1;
         } else {
             num_digits = 0;
@@ -692,11 +692,11 @@ impl<'a> StringReader<'a> {
         // integer literal followed by field/method access or a range pattern
         // (`0..2` and `12.foo()`)
         if self.curr_is('.') && !self.nextch_is('.') && !self.nextch().unwrap_or('\0')
-                                                             .is_XID_start() {
+                                                             .is_xid_start() {
             // might have stuff after the ., and if it does, it needs to start
             // with a number
             self.bump();
-            if self.curr.unwrap_or('\0').is_digit_radix(10) {
+            if self.curr.unwrap_or('\0').is_digit(10) {
                 self.scan_digits(10);
                 self.scan_float_exponent();
             }
@@ -1385,7 +1385,7 @@ fn ident_start(c: Option<char>) -> bool {
     (c >= 'a' && c <= 'z')
         || (c >= 'A' && c <= 'Z')
         || c == '_'
-        || (c > '\x7f' && char::is_XID_start(c))
+        || (c > '\x7f' && c.is_xid_start())
 }
 
 fn ident_continue(c: Option<char>) -> bool {
@@ -1395,7 +1395,7 @@ fn ident_continue(c: Option<char>) -> bool {
         || (c >= 'A' && c <= 'Z')
         || (c >= '0' && c <= '9')
         || c == '_'
-        || (c > '\x7f' && char::is_XID_continue(c))
+        || (c > '\x7f' && c.is_xid_continue())
 }
 
 #[cfg(test)]

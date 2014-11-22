@@ -29,7 +29,7 @@ This API is completely unstable and subject to change.
       html_root_url = "http://doc.rust-lang.org/nightly/")]
 
 #![feature(default_type_params, globs, if_let, import_shadowing, macro_rules, phase, quote)]
-#![feature(slicing_syntax, struct_variant, tuple_indexing, unsafe_destructor)]
+#![feature(slicing_syntax, tuple_indexing, unsafe_destructor)]
 #![feature(rustc_diagnostic_macros)]
 
 extern crate arena;

@@ -71,7 +71,7 @@ fn demangle(writer: &mut Writer, s: &str) -> IoResult<()> {
         while valid {
             let mut i = 0;
             for c in chars {
-                if c.is_digit() {
+                if c.is_numeric() {
                     i = i * 10 + c as uint - '0' as uint;
                 } else {
                     break
@@ -101,7 +101,7 @@ fn demangle(writer: &mut Writer, s: &str) -> IoResult<()> {
                 first = false;
             }
             let mut rest = s;
-            while rest.char_at(0).is_digit() {
+            while rest.char_at(0).is_numeric() {
                 rest = rest.slice_from(1);
             }
             let i: uint = from_str(s.slice_to(s.len() - rest.len())).unwrap();

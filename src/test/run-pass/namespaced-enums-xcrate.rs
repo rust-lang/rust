@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // aux-build:namespaced_enums.rs
-#![feature(struct_variant)]
 
 extern crate namespaced_enums;
 
