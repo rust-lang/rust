@@ -49,8 +49,7 @@ use ast::{PolyTraitRef};
 use ast::{QPath, RequiredMethod};
 use ast::{Return, BiShl, BiShr, Stmt, StmtDecl};
 use ast::{StmtExpr, StmtSemi, StmtMac, StructDef, StructField};
-use ast::{StructVariantKind, BiSub};
-use ast::StrStyle;
+use ast::{StructVariantKind, BiSub, StrStyle};
 use ast::{SelfExplicit, SelfRegion, SelfStatic, SelfValue};
 use ast::{Delimited, SequenceRepetition, TokenTree, TraitItem, TraitRef};
 use ast::{TtDelimited, TtSequence, TtToken};
@@ -65,10 +64,8 @@ use ast::{UnsafeFn, ViewItem, ViewItem_, ViewItemExternCrate, ViewItemUse};
 use ast::{ViewPath, ViewPathGlob, ViewPathList, ViewPathSimple};
 use ast::{Visibility, WhereClause, WherePredicate};
 use ast;
-use ast_util::{as_prec, ident_to_path, operator_prec};
-use ast_util;
-use codemap::{Span, BytePos, Spanned, spanned, mk_sp};
-use codemap;
+use ast_util::{mod, as_prec, ident_to_path, operator_prec};
+use codemap::{mod, Span, BytePos, Spanned, spanned, mk_sp};
 use diagnostic;
 use ext::tt::macro_parser;
 use parse;
@@ -2472,24 +2469,19 @@ impl<'a> Parser<'a> {
                   }
                   token::Literal(token::Integer(n), suf) => {
                     let sp = self.span;
+
+                    // A tuple index may not have a suffix
                     self.expect_no_suffix(sp, "tuple index", suf);
 
-                    let index = n.as_str();
                     let dot = self.last_span.hi;
                     hi = self.span.hi;
                     self.bump();
-                    let (_, tys) = if self.eat(&token::ModSep) {
-                        self.expect_lt();
-                        self.parse_generic_values_after_lt()
-                    } else {
-                        (Vec::new(), Vec::new())
-                    };
 
-                    let num = from_str::<uint>(index);
-                    match num {
+                    let index = from_str::<uint>(n.as_str());
+                    match index {
                         Some(n) => {
                             let id = spanned(dot, hi, n);
-                            let field = self.mk_tup_field(e, id, tys);
+                            let field = self.mk_tup_field(e, id, Vec::new());
                             e = self.mk_expr(lo, hi, field);
                         }
                         None => {
