@@ -392,7 +392,7 @@ PACKAGE_NAME=rust-nightly
 PACKAGE_NAME_AND_TRIPLE="${PACKAGE_NAME}-${HOST_TRIPLE}"
 TARBALL_NAME="${PACKAGE_NAME_AND_TRIPLE}.tar.gz"
 REMOTE_TARBALL="https://static.rust-lang.org/dist/${TARBALL_NAME}"
-TMP_DIR="./rustup-tmp-install"
+TMP_DIR=`mktemp -d 2>/dev/null || mktemp -d -t 'mytmpdir'`
 LOCAL_TARBALL="${TMP_DIR}/${TARBALL_NAME}"
 LOCAL_INSTALL_DIR="${TMP_DIR}/${PACKAGE_NAME_AND_TRIPLE}"
 LOCAL_INSTALL_SCRIPT="${LOCAL_INSTALL_DIR}/install.sh"
@@ -404,12 +404,6 @@ CARGO_REMOTE_TARBALL="https://static.rust-lang.org/cargo-dist/${CARGO_TARBALL_NA
 CARGO_LOCAL_TARBALL="${TMP_DIR}/${CARGO_TARBALL_NAME}"
 CARGO_LOCAL_INSTALL_DIR="${TMP_DIR}/${CARGO_PACKAGE_NAME_AND_TRIPLE}"
 CARGO_LOCAL_INSTALL_SCRIPT="${CARGO_LOCAL_INSTALL_DIR}/install.sh"
-
-rm -Rf "${TMP_DIR}"
-need_ok "failed to remove temporary installation directory"
-
-mkdir -p "${TMP_DIR}"
-need_ok "failed to create create temporary installation directory"
 
 msg "downloading rust installer"
 "${CFG_CURL}" "${REMOTE_TARBALL}" > "${LOCAL_TARBALL}"
