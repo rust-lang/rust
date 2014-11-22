@@ -153,8 +153,8 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
         assert_eq!(Some(id), self.top_ast_scope());
 
         // Just copy the debuginfo source location from the enclosing scope
-        let debug_loc = self.scopes
-                            .borrow()
+        let debug_loc = (*self.scopes
+                            .borrow())
                             .last()
                             .unwrap()
                             .debug_loc;
@@ -167,8 +167,8 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
         debug!("push_custom_cleanup_scope(): {}", index);
 
         // Just copy the debuginfo source location from the enclosing scope
-        let debug_loc = self.scopes
-                            .borrow()
+        let debug_loc = (*self.scopes
+                            .borrow())
                             .last()
                             .map(|opt_scope| opt_scope.debug_loc)
                             .unwrap_or(None);
@@ -258,7 +258,7 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
          * Returns the id of the top-most loop scope
          */
 
-        for scope in self.scopes.borrow().iter().rev() {
+        for scope in (*self.scopes.borrow()).iter().rev() {
             match scope.kind {
                 LoopScopeKind(id, _) => {
                     return id;
@@ -444,7 +444,7 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
         debug!("schedule_clean_in_ast_scope(cleanup_scope={})",
                cleanup_scope);
 
-        for scope in self.scopes.borrow_mut().iter_mut().rev() {
+        for scope in (*self.scopes.borrow_mut()).iter_mut().rev() {
             if scope.kind.is_ast_with_id(cleanup_scope) {
                 scope.cleanups.push(cleanup);
                 scope.clear_cached_exits();
@@ -485,7 +485,7 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
          * execute on panic.
          */
 
-        self.scopes.borrow().iter().rev().any(|s| s.needs_invoke())
+        (*self.scopes.borrow()).iter().rev().any(|s| s.needs_invoke())
     }
 
     fn get_landing_pad(&'blk self) -> BasicBlockRef {
@@ -531,7 +531,7 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
         /*!
          * Returns the id of the current top-most AST scope, if any.
          */
-        for scope in self.scopes.borrow().iter().rev() {
+        for scope in (*self.scopes.borrow()).iter().rev() {
             match scope.kind {
                 CustomScopeKind | LoopScopeKind(..) => {}
                 AstScopeKind(i) => {
@@ -543,7 +543,7 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
     }
 
     fn top_nonempty_cleanup_scope(&self) -> Option<uint> {
-        self.scopes.borrow().iter().rev().position(|s| !s.cleanups.is_empty())
+        (*self.scopes.borrow()).iter().rev().position(|s| !s.cleanups.is_empty())
     }
 
     fn is_valid_to_pop_custom_scope(&self, custom_scope: CustomScopeIndex) -> bool {
@@ -588,7 +588,7 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
     }
 
     fn top_scope<R>(&self, f: |&CleanupScope<'blk, 'tcx>| -> R) -> R {
-        f(self.scopes.borrow().last().unwrap())
+        f((*self.scopes.borrow()).last().unwrap())
     }
 
     fn trans_cleanups_to_exit_scope(&'blk self,
@@ -775,7 +775,7 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
         // Check if a landing pad block exists; if not, create one.
         {
             let mut scopes = self.scopes.borrow_mut();
-            let last_scope = scopes.last_mut().unwrap();
+            let last_scope = (*scopes).last_mut().unwrap();
             match last_scope.cached_landing_pad {
                 Some(llbb) => { return llbb; }
                 None => {
@@ -805,7 +805,7 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
             Some(def_id) => callee::trans_fn_ref(pad_bcx, def_id, ExprId(0)),
             None => {
                 let mut personality = self.ccx.eh_personality().borrow_mut();
-                match *personality {
+                match **personality {
                     Some(llpersonality) => llpersonality,
                     None => {
                         let fty = Type::variadic_func(&[], &Type::i32(self.ccx));
@@ -813,7 +813,7 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
                                                     "rust_eh_personality",
                                                     fty,
                                                     ty::mk_i32());
-                        *personality = Some(f);
+                        **personality = Some(f);
                         f
                     }
                 }

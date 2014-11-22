@@ -4354,7 +4354,7 @@ pub fn impl_or_trait_item<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
                                 -> ImplOrTraitItem<'tcx> {
     lookup_locally_or_in_crate_store("impl_or_trait_items",
                                      id,
-                                     &mut *cx.impl_or_trait_items
+                                     &mut **cx.impl_or_trait_items
                                              .borrow_mut(),
                                      || {
         csearch::get_impl_or_trait_item(cx, id)
@@ -4417,7 +4417,7 @@ pub fn trait_item_def_ids(cx: &ctxt, id: ast::DefId)
                           -> Rc<Vec<ImplOrTraitItemId>> {
     lookup_locally_or_in_crate_store("trait_item_def_ids",
                                      id,
-                                     &mut *cx.trait_item_def_ids.borrow_mut(),
+                                     &mut **cx.trait_item_def_ids.borrow_mut(),
                                      || {
         Rc::new(csearch::get_trait_item_def_ids(&cx.sess.cstore, id))
     })
@@ -4717,7 +4717,7 @@ pub fn lookup_item_type<'tcx>(cx: &ctxt<'tcx>,
                               did: ast::DefId)
                               -> Polytype<'tcx> {
     lookup_locally_or_in_crate_store(
-        "tcache", did, &mut *cx.tcache.borrow_mut(),
+        "tcache", did, &mut **cx.tcache.borrow_mut(),
         || csearch::get_type(cx, did))
 }
 
@@ -5249,7 +5249,7 @@ pub fn get_tydesc_ty<'tcx>(tcx: &ctxt<'tcx>) -> Result<Ty<'tcx>, String> {
 
 pub fn item_variances(tcx: &ctxt, item_id: ast::DefId) -> Rc<ItemVariances> {
     lookup_locally_or_in_crate_store(
-        "item_variance_map", item_id, &mut *tcx.item_variance_map.borrow_mut(),
+        "item_variance_map", item_id, &mut **tcx.item_variance_map.borrow_mut(),
         || Rc::new(csearch::get_item_variances(&tcx.sess.cstore, item_id)))
 }
 

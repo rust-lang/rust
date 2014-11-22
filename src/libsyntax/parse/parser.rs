@@ -4985,11 +4985,11 @@ impl<'a> Parser<'a> {
                               name: String,
                               id_sp: Span) -> (ast::Item_, Vec<ast::Attribute> ) {
         let mut included_mod_stack = self.sess.included_mod_stack.borrow_mut();
-        match included_mod_stack.iter().position(|p| *p == path) {
+        match (*included_mod_stack).iter().position(|p| *p == path) {
             Some(i) => {
                 let mut err = String::from_str("circular modules: ");
                 let len = included_mod_stack.len();
-                for p in included_mod_stack.slice(i, len).iter() {
+                for p in (*included_mod_stack).slice(i, len).iter() {
                     err.push_str(p.display().as_maybe_owned().as_slice());
                     err.push_str(" -> ");
                 }

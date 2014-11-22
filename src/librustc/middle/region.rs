@@ -256,7 +256,7 @@ impl RegionMaps {
          * (that is, the user can give two different names to the same lifetime).
          */
 
-        can_reach(&*self.free_region_map.borrow(), sub, sup)
+        can_reach(&**self.free_region_map.borrow(), sub, sup)
     }
 
     pub fn is_subregion_of(&self,

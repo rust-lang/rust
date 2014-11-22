@@ -90,9 +90,9 @@ pub fn get_simple_intrinsic(ccx: &CrateContext, item: &ast::ForeignItem) -> Opti
 /// Performs late verification that intrinsics are used correctly. At present,
 /// the only intrinsic that needs such verification is `transmute`.
 pub fn check_intrinsics(ccx: &CrateContext) {
-    for transmute_restriction in ccx.tcx()
+    for transmute_restriction in (*ccx.tcx()
                                     .transmute_restrictions
-                                    .borrow()
+                                    .borrow())
                                     .iter() {
         let llfromtype = type_of::sizing_type_of(ccx,
                                                  transmute_restriction.from);

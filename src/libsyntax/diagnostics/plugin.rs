@@ -23,7 +23,7 @@ local_data_key!(used_diagnostics: RefCell<HashMap<Name, Span>>)
 
 fn with_registered_diagnostics<T>(f: |&mut HashMap<Name, Option<Name>>| -> T) -> T {
     match registered_diagnostics.get() {
-        Some(cell) => f(cell.borrow_mut().deref_mut()),
+        Some(cell) => f(&mut **cell.borrow_mut()),
         None => {
             let mut map = HashMap::new();
             let value = f(&mut map);
@@ -35,7 +35,7 @@ fn with_registered_diagnostics<T>(f: |&mut HashMap<Name, Option<Name>>| -> T) ->
 
 fn with_used_diagnostics<T>(f: |&mut HashMap<Name, Span>| -> T) -> T {
     match used_diagnostics.get() {
-        Some(cell) => f(cell.borrow_mut().deref_mut()),
+        Some(cell) => f(&mut **cell.borrow_mut()),
         None => {
             let mut map = HashMap::new();
             let value = f(&mut map);

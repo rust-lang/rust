@@ -191,7 +191,7 @@ pub fn register_foreign_item_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let llfn_ty = lltype_for_fn_from_foreign_types(ccx, &tys);
 
     let llfn = base::get_extern_fn(ccx,
-                                   &mut *ccx.externs().borrow_mut(),
+                                   &mut **ccx.externs().borrow_mut(),
                                    name,
                                    cc,
                                    llfn_ty,

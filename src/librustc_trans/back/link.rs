@@ -208,7 +208,7 @@ fn symbol_hash<'tcx>(tcx: &ty::ctxt<'tcx>,
     symbol_hasher.input_str(link_meta.crate_name.as_slice());
     symbol_hasher.input_str("-");
     symbol_hasher.input_str(link_meta.crate_hash.as_str());
-    for meta in tcx.sess.crate_metadata.borrow().iter() {
+    for meta in (*tcx.sess.crate_metadata.borrow()).iter() {
         symbol_hasher.input_str(meta.as_slice());
     }
     symbol_hasher.input_str("-");
@@ -226,7 +226,7 @@ fn get_symbol_hash<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Strin
     }
 
     let mut symbol_hasher = ccx.symbol_hasher().borrow_mut();
-    let hash = symbol_hash(ccx.tcx(), &mut *symbol_hasher, t, ccx.link_meta());
+    let hash = symbol_hash(ccx.tcx(), &mut **symbol_hasher, t, ccx.link_meta());
     ccx.type_hashcodes().borrow_mut().insert(t, hash.clone());
     hash
 }
@@ -384,7 +384,7 @@ pub fn link_binary(sess: &Session,
                    outputs: &OutputFilenames,
                    crate_name: &str) -> Vec<Path> {
     let mut out_filenames = Vec::new();
-    for &crate_type in sess.crate_types.borrow().iter() {
+    for &crate_type in (*sess.crate_types.borrow()).iter() {
         if invalid_output_for_target(sess, crate_type) {
             sess.bug(format!("invalid output type `{}` for target os `{}`",
                              crate_type, sess.opts.target_triple).as_slice());
@@ -548,7 +548,7 @@ fn link_rlib<'a>(sess: &'a Session,
     let mut ab = ArchiveBuilder::create(config);
     ab.add_file(obj_filename).unwrap();
 
-    for &(ref l, kind) in sess.cstore.get_used_libraries().borrow().iter() {
+    for &(ref l, kind) in (*sess.cstore.get_used_libraries().borrow()).iter() {
         match kind {
             cstore::NativeStatic => {
                 ab.add_native_library(l.as_slice()).unwrap();
@@ -1055,7 +1055,7 @@ fn link_args(cmd: &mut Command,
 // in the current crate. Upstream crates with native library dependencies
 // may have their native library pulled in above.
 fn add_local_native_libraries(cmd: &mut Command, sess: &Session) {
-    for path in sess.opts.addl_lib_search_paths.borrow().iter() {
+    for path in (*sess.opts.addl_lib_search_paths.borrow()).iter() {
         cmd.arg("-L").arg(path);
     }
 

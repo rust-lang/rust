@@ -1946,7 +1946,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn item_substs<'a>(&'a self) -> Ref<'a, NodeMap<ty::ItemSubsts<'tcx>>> {
+    pub fn item_substs<'a>(&'a self) -> Ref<'a, &'a NodeMap<ty::ItemSubsts<'tcx>>> {
         self.inh.item_substs.borrow()
     }
 
@@ -4866,7 +4866,7 @@ fn check_block_with_expected<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     let prev = {
         let mut fcx_ps = fcx.ps.borrow_mut();
         let fn_style_state = fcx_ps.recurse(blk);
-        replace(&mut *fcx_ps, fn_style_state)
+        replace(&mut **fcx_ps, fn_style_state)
     };
 
     let mut warned = false;
@@ -4937,7 +4937,7 @@ fn check_block_with_expected<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         }
     };
 
-    *fcx.ps.borrow_mut() = prev;
+    **fcx.ps.borrow_mut() = prev;
 }
 
 /// Checks a constant appearing in a type. At the moment this is just the

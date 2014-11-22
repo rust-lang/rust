@@ -491,7 +491,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             Some(impls) => impls,
         };
 
-        for &impl_def_id in impl_def_ids.borrow().iter() {
+        for &impl_def_id in (*impl_def_ids.borrow()).iter() {
             debug!("assemble_extension_candidates_for_trait_impl: trait_def_id={} impl_def_id={}",
                    trait_def_id.repr(self.tcx()),
                    impl_def_id.repr(self.tcx()));

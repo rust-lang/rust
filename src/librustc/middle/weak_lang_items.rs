@@ -65,7 +65,7 @@ pub fn link_name(attrs: &[ast::Attribute]) -> Option<InternedString> {
 fn verify(sess: &Session, items: &lang_items::LanguageItems) {
     // We only need to check for the presence of weak lang items if we're
     // emitting something that's not an rlib.
-    let needs_check = sess.crate_types.borrow().iter().any(|kind| {
+    let needs_check = (*sess.crate_types.borrow()).iter().any(|kind| {
         match *kind {
             config::CrateTypeDylib |
             config::CrateTypeExecutable |

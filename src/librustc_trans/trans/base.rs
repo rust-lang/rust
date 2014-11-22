@@ -530,7 +530,7 @@ pub fn get_res_dtor<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                      &[glue::get_drop_glue_type(ccx, t)],
                                      ty::mk_nil(ccx.tcx()));
         get_extern_fn(ccx,
-                      &mut *ccx.externs().borrow_mut(),
+                      &mut **ccx.externs().borrow_mut(),
                       name.as_slice(),
                       llvm::CCallConv,
                       llty,
@@ -2586,7 +2586,7 @@ pub fn register_fn_llvmty(ccx: &CrateContext,
 }
 
 pub fn is_entry_fn(sess: &Session, node_id: ast::NodeId) -> bool {
-    match *sess.entry_fn.borrow() {
+    match **sess.entry_fn.borrow() {
         Some((entry_id, _)) => node_id == entry_id,
         None => false
     }
@@ -2948,7 +2948,7 @@ pub fn crate_ctxt_to_encode_parms<'a, 'tcx>(cx: &'a SharedCrateContext<'tcx>,
 pub fn write_metadata(cx: &SharedCrateContext, krate: &ast::Crate) -> Vec<u8> {
     use flate;
 
-    let any_library = cx.sess().crate_types.borrow().iter().any(|ty| {
+    let any_library = (*cx.sess().crate_types.borrow()).iter().any(|ty| {
         *ty != config::CrateTypeExecutable
     });
     if !any_library {
@@ -3133,10 +3133,10 @@ pub fn trans_crate<'tcx>(analysis: CrateAnalysis<'tcx>)
         println!("n_inlines: {}", stats.n_inlines.get());
         println!("n_closures: {}", stats.n_closures.get());
         println!("fn stats:");
-        stats.fn_stats.borrow_mut().sort_by(|&(_, insns_a), &(_, insns_b)| {
+        (*stats.fn_stats.borrow_mut()).sort_by(|&(_, insns_a), &(_, insns_b)| {
             insns_b.cmp(&insns_a)
         });
-        for tuple in stats.fn_stats.borrow().iter() {
+        for tuple in (*stats.fn_stats.borrow()).iter() {
             match *tuple {
                 (ref name, insns) => {
                     println!("{} insns, {}", insns, *name);
@@ -3145,7 +3145,7 @@ pub fn trans_crate<'tcx>(analysis: CrateAnalysis<'tcx>)
         }
     }
     if shared_ccx.sess().count_llvm_insns() {
-        for (k, v) in shared_ccx.stats().llvm_insns.borrow().iter() {
+        for (k, v) in (*shared_ccx.stats().llvm_insns.borrow()).iter() {
             println!("{:7} {}", *v, *k);
         }
     }

@@ -417,7 +417,7 @@ impl<'a, 'tcx> Context<'a, 'tcx> {
            krate: &'a ast::Crate,
            exported_items: &'a ExportedItems) -> Context<'a, 'tcx> {
         // We want to own the lint store, so move it out of the session.
-        let lint_store = mem::replace(&mut *tcx.sess.lint_store.borrow_mut(),
+        let lint_store = mem::replace(&mut **tcx.sess.lint_store.borrow_mut(),
                                       LintStore::new());
 
         Context {
@@ -827,5 +827,5 @@ pub fn check_crate(tcx: &ty::ctxt,
     }
 
     tcx.sess.abort_if_errors();
-    *tcx.node_lint_levels.borrow_mut() = cx.node_levels.unwrap();
+    **tcx.node_lint_levels.borrow_mut() = cx.node_levels.unwrap();
 }

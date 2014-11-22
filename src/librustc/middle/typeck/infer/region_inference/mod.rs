@@ -533,7 +533,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
     }
 
     pub fn resolve_var(&self, rid: RegionVid) -> ty::Region {
-        match *self.values.borrow() {
+        match **self.values.borrow() {
             None => {
                 self.tcx.sess.span_bug(
                     (*self.var_origins.borrow())[rid.index].span(),
@@ -586,7 +586,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
     pub fn vars_created_since_mark(&self, mark: RegionMark)
                                    -> Vec<RegionVid>
     {
-        self.undo_log.borrow()
+        (*self.undo_log.borrow())
             .slice_from(mark.length)
             .iter()
             .filter_map(|&elt| match elt {
@@ -619,7 +619,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
             debug!("result_index={}, r={}", result_index, r);
 
             for undo_entry in
-                self.undo_log.borrow().slice_from(mark.length).iter()
+                (*self.undo_log.borrow()).slice_from(mark.length).iter()
             {
                 match undo_entry {
                     &AddConstraint(ConstrainVarSubVar(a, b)) => {
@@ -704,7 +704,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         debug!("RegionVarBindings: resolve_regions()");
         let mut errors = vec!();
         let v = self.infer_variable_values(&mut errors);
-        *self.values.borrow_mut() = Some(v);
+        **self.values.borrow_mut() = Some(v);
         errors
     }
 
@@ -1191,7 +1191,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                                       errors: &mut Vec<RegionResolutionError<'tcx>>)
     {
         let mut reg_reg_dups = FnvHashSet::new();
-        for verify in self.verifys.borrow().iter() {
+        for verify in (*self.verifys.borrow()).iter() {
             match *verify {
                 VerifyRegSubReg(ref origin, sub, sup) => {
                     if self.is_subregion_of(sub, sup) {

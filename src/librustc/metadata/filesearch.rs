@@ -43,7 +43,7 @@ impl<'a> FileSearch<'a> {
 
         debug!("filesearch: searching additional lib search paths [{}]",
                self.addl_lib_search_paths.borrow().len());
-        for path in self.addl_lib_search_paths.borrow().iter() {
+        for path in (*self.addl_lib_search_paths.borrow()).iter() {
             match f(path) {
                 FileMatches => found = true,
                 FileDoesntMatch => ()

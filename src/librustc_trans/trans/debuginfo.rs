@@ -1366,7 +1366,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                        &*top_level_block,
                        fn_metadata,
                        fn_ast_id,
-                       &mut *fn_debug_context.scope_map.borrow_mut());
+                       &mut **fn_debug_context.scope_map.borrow_mut());
 
     return FunctionDebugContext { repr: DebugInfo(fn_debug_context) };
 

@@ -155,12 +155,12 @@ pub fn run_core(libs: Vec<Path>, cfgs: Vec<String>, externs: Externs,
     };
 
     let external_paths = ctxt.external_paths.borrow_mut().take();
-    *analysis.external_paths.borrow_mut() = external_paths;
+    **analysis.external_paths.borrow_mut() = external_paths;
     let map = ctxt.external_traits.borrow_mut().take();
-    *analysis.external_traits.borrow_mut() = map;
+    **analysis.external_traits.borrow_mut() = map;
     let map = ctxt.external_typarams.borrow_mut().take();
-    *analysis.external_typarams.borrow_mut() = map;
+    **analysis.external_typarams.borrow_mut() = map;
     let map = ctxt.inlined.borrow_mut().take();
-    *analysis.inlined.borrow_mut() = map;
+    **analysis.inlined.borrow_mut() = map;
     (krate, analysis)
 }

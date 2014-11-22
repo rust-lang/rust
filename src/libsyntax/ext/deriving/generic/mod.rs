@@ -575,8 +575,7 @@ impl<'a> MethodDef<'a> {
             nonself_args: nonself_args,
             fields: fields
         };
-        let mut f = self.combine_substructure.borrow_mut();
-        let f: &mut CombineSubstructureFunc = &mut *f;
+        let f: &mut CombineSubstructureFunc = &mut **self.combine_substructure.borrow_mut();;
         (*f)(cx, trait_.span, &substructure)
     }
 

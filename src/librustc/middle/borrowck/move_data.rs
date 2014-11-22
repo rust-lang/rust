@@ -417,22 +417,22 @@ impl MoveData {
          * killed by scoping. See `doc.rs` for more details.
          */
 
-        for (i, the_move) in self.moves.borrow().iter().enumerate() {
+        for (i, the_move) in (*self.moves.borrow()).iter().enumerate() {
             dfcx_moves.add_gen(the_move.id, i);
         }
 
-        for (i, assignment) in self.var_assignments.borrow().iter().enumerate() {
+        for (i, assignment) in (*self.var_assignments.borrow()).iter().enumerate() {
             dfcx_assign.add_gen(assignment.id, i);
             self.kill_moves(assignment.path, assignment.id, dfcx_moves);
         }
 
-        for assignment in self.path_assignments.borrow().iter() {
+        for assignment in (*self.path_assignments.borrow()).iter() {
             self.kill_moves(assignment.path, assignment.id, dfcx_moves);
         }
 
         // Kill all moves related to a variable `x` when it goes out
         // of scope:
-        for path in self.paths.borrow().iter() {
+        for path in (*self.paths.borrow()).iter() {
             match *path.loan_path {
                 LpVar(id) => {
                     let kill_id = tcx.region_maps.var_scope(id);
@@ -450,7 +450,7 @@ impl MoveData {
 
         // Kill all assignments when the variable goes out of scope:
         for (assignment_index, assignment) in
-                self.var_assignments.borrow().iter().enumerate() {
+                (*self.var_assignments.borrow()).iter().enumerate() {
             match *self.path_loan_path(assignment.path) {
                 LpVar(id) => {
                     let kill_id = tcx.region_maps.var_scope(id);

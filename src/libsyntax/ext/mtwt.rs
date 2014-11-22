@@ -68,8 +68,8 @@ pub fn apply_mark(m: Mrk, ctxt: SyntaxContext) -> SyntaxContext {
 /// Extend a syntax context with a given mark and sctable (explicit memoization)
 fn apply_mark_internal(m: Mrk, ctxt: SyntaxContext, table: &SCTable) -> SyntaxContext {
     let key = (ctxt, m);
-    * match table.mark_memo.borrow_mut().entry(key) {
-        Vacant(entry) => entry.set(idx_push(&mut *table.table.borrow_mut(), Mark(m, ctxt))),
+    *match table.mark_memo.borrow_mut().entry(key) {
+        Vacant(entry) => entry.set(idx_push(&mut **table.table.borrow_mut(), Mark(m, ctxt))),
         Occupied(entry) => entry.into_mut(),
     }
 }
@@ -87,8 +87,8 @@ fn apply_rename_internal(id: Ident,
                        table: &SCTable) -> SyntaxContext {
     let key = (ctxt, id, to);
 
-    * match table.rename_memo.borrow_mut().entry(key) {
-        Vacant(entry) => entry.set(idx_push(&mut *table.table.borrow_mut(), Rename(id, to, ctxt))),
+    *match table.rename_memo.borrow_mut().entry(key) {
+        Vacant(entry) => entry.set(idx_push(&mut **table.table.borrow_mut(), Rename(id, to, ctxt))),
         Occupied(entry) => entry.into_mut(),
     }
 }
@@ -130,7 +130,7 @@ fn new_sctable_internal() -> SCTable {
 /// Print out an SCTable for debugging
 pub fn display_sctable(table: &SCTable) {
     error!("SC table:");
-    for (idx,val) in table.table.borrow().iter().enumerate() {
+    for (idx,val) in (*table.table.borrow()).iter().enumerate() {
         error!("{:4} : {}",idx,val);
     }
 }
@@ -138,9 +138,9 @@ pub fn display_sctable(table: &SCTable) {
 /// Clear the tables from TLD to reclaim memory.
 pub fn clear_tables() {
     with_sctable(|table| {
-        *table.table.borrow_mut() = Vec::new();
-        *table.mark_memo.borrow_mut() = HashMap::new();
-        *table.rename_memo.borrow_mut() = HashMap::new();
+        **table.table.borrow_mut() = Vec::new();
+        **table.mark_memo.borrow_mut() = HashMap::new();
+        **table.rename_memo.borrow_mut() = HashMap::new();
     });
     with_resolve_table_mut(|table| *table = HashMap::new());
 }
@@ -168,11 +168,11 @@ fn with_resolve_table_mut<T>(op: |&mut ResolveTable| -> T) -> T {
     local_data_key!(resolve_table_key: Rc<RefCell<ResolveTable>>)
 
     match resolve_table_key.get() {
-        Some(ts) => op(&mut *ts.borrow_mut()),
+        Some(ts) => op(&mut **ts.borrow_mut()),
         None => {
             let ts = Rc::new(RefCell::new(HashMap::new()));
             resolve_table_key.replace(Some(ts.clone()));
-            op(&mut *ts.borrow_mut())
+            op(*ts.borrow_mut().deref_mut())
         }
     }
 }

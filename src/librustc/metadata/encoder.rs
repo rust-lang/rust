@@ -961,9 +961,7 @@ fn encode_repr_attrs(rbml_w: &mut Encoder,
 fn encode_inlined_item(ecx: &EncodeContext,
                        rbml_w: &mut Encoder,
                        ii: InlinedItemRef) {
-    let mut eii = ecx.encode_inlined_item.borrow_mut();
-    let eii: &mut EncodeInlinedItem = &mut *eii;
-    (*eii)(ecx, rbml_w, ii)
+    (*&mut **ecx.encode_inlined_item.borrow_mut())(ecx, rbml_w, ii)
 }
 
 const FN_FAMILY: char = 'f';
@@ -1001,7 +999,7 @@ fn encode_extension_implementations(ecx: &EncodeContext,
     match ecx.tcx.trait_impls.borrow().get(&trait_def_id) {
         None => {}
         Some(implementations) => {
-            for &impl_def_id in implementations.borrow().iter() {
+            for &impl_def_id in (*implementations.borrow()).iter() {
                 rbml_w.start_tag(tag_items_data_item_extension_impl);
                 encode_def_id(rbml_w, impl_def_id);
                 rbml_w.end_tag();
@@ -1759,8 +1757,8 @@ fn encode_lang_items(ecx: &EncodeContext, rbml_w: &mut Encoder) {
 fn encode_native_libraries(ecx: &EncodeContext, rbml_w: &mut Encoder) {
     rbml_w.start_tag(tag_native_libraries);
 
-    for &(ref lib, kind) in ecx.tcx.sess.cstore.get_used_libraries()
-                               .borrow().iter() {
+    for &(ref lib, kind) in (*ecx.tcx.sess.cstore.get_used_libraries()
+                               .borrow()).iter() {
         match kind {
             cstore::NativeStatic => {} // these libraries are not propagated
             cstore::NativeFramework | cstore::NativeUnknown => {

@@ -180,7 +180,7 @@ fn create_target_machine(sess: &Session) -> TargetMachineRef {
     let no_fp_elim = (sess.opts.debuginfo != NoDebugInfo) ||
                      !sess.target.target.options.eliminate_frame_pointer;
 
-    let any_library = sess.crate_types.borrow().iter().any(|ty| {
+    let any_library = (*sess.crate_types.borrow()).iter().any(|ty| {
         *ty != config::CrateTypeExecutable
     });
 
@@ -568,7 +568,7 @@ pub fn run_passes(sess: &Session,
     // Whenever an rlib is created, the bitcode is inserted into the
     // archive in order to allow LTO against it.
     let needs_crate_bitcode =
-            sess.crate_types.borrow().contains(&config::CrateTypeRlib) &&
+            (*sess.crate_types.borrow()).contains(&config::CrateTypeRlib) &&
             sess.opts.output_types.contains(&config::OutputTypeExe);
     if needs_crate_bitcode {
         modules_config.emit_bc = true;

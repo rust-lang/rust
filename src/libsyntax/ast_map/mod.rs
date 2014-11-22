@@ -963,7 +963,7 @@ pub fn map_decoded_item<'ast, F: FoldOps>(map: &Map<'ast>,
     });
 
     let mut collector = NodeCollector {
-        map: mem::replace(&mut *map.map.borrow_mut(), vec![]),
+        map: mem::replace(*map.map.borrow_mut().deref_mut(), vec![]),
         parent: fld.new_id(DUMMY_NODE_ID)
     };
     let ii_parent_id = collector.parent;
@@ -996,7 +996,7 @@ pub fn map_decoded_item<'ast, F: FoldOps>(map: &Map<'ast>,
             collector.insert(i.id, NodeForeignItem(&**i));
         }
     }
-    *map.map.borrow_mut() = collector.map;
+    **map.map.borrow_mut() = collector.map;
     &ii_parent.ii
 }
 

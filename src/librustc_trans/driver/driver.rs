@@ -178,9 +178,9 @@ pub fn phase_2_configure_and_expand(sess: &Session,
                                     -> Option<ast::Crate> {
     let time_passes = sess.time_passes();
 
-    *sess.crate_types.borrow_mut() =
+    **sess.crate_types.borrow_mut() =
         collect_crate_types(sess, krate.attrs.as_slice());
-    *sess.crate_metadata.borrow_mut() =
+    **sess.crate_metadata.borrow_mut() =
         collect_crate_metadata(sess, krate.attrs.as_slice());
 
     time(time_passes, "gated feature checking", (), |_| {
@@ -195,10 +195,10 @@ pub fn phase_2_configure_and_expand(sess: &Session,
         }
 
         sess.abort_if_errors();
-        *sess.features.borrow_mut() = features;
+        **sess.features.borrow_mut() = features;
     });
 
-    let any_exe = sess.crate_types.borrow().iter().any(|ty| {
+    let any_exe = (*sess.crate_types.borrow()).iter().any(|ty| {
         *ty == config::CrateTypeExecutable
     });
 
@@ -255,7 +255,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
 
     // Lint plugins are registered; now we can process command line flags.
     if sess.opts.describe_lints {
-        super::describe_lints(&*sess.lint_store.borrow(), true);
+        super::describe_lints(&**sess.lint_store.borrow(), true);
         return None;
     }
     sess.lint_store.borrow_mut().process_command_line(sess);
@@ -622,7 +622,7 @@ fn write_out_deps(sess: &Session,
         let file = outputs.path(*output_type);
         match *output_type {
             config::OutputTypeExe => {
-                for output in sess.crate_types.borrow().iter() {
+                for output in (*sess.crate_types.borrow()).iter() {
                     let p = link::filename_for_input(sess, *output,
                                                      id, &file);
                     out_filenames.push(p);
@@ -653,7 +653,7 @@ fn write_out_deps(sess: &Session,
     let result = (|| -> io::IoResult<()> {
         // Build a list of files used to compile the output and
         // write Makefile-compatible dependency rules
-        let files: Vec<String> = sess.codemap().files.borrow()
+        let files: Vec<String> = (*sess.codemap().files.borrow())
                                    .iter().filter(|fmap| fmap.is_real_file())
                                    .map(|fmap| escape_dep_filename(fmap.name.as_slice()))
                                    .collect();

@@ -47,7 +47,7 @@ impl<'a, 'ast, 'v> Visitor<'v> for EntryContext<'a, 'ast> {
 }
 
 pub fn find_entry_point(session: &Session, ast_map: &ast_map::Map) {
-    let any_exe = session.crate_types.borrow().iter().any(|ty| {
+    let any_exe = (*session.crate_types.borrow()).iter().any(|ty| {
         *ty == config::CrateTypeExecutable
     });
     if !any_exe {
@@ -122,13 +122,13 @@ fn find_item(item: &Item, ctxt: &mut EntryContext) {
 
 fn configure_main(this: &mut EntryContext) {
     if this.start_fn.is_some() {
-        *this.session.entry_fn.borrow_mut() = this.start_fn;
+        **this.session.entry_fn.borrow_mut() = this.start_fn;
         this.session.entry_type.set(Some(config::EntryStart));
     } else if this.attr_main_fn.is_some() {
-        *this.session.entry_fn.borrow_mut() = this.attr_main_fn;
+        **this.session.entry_fn.borrow_mut() = this.attr_main_fn;
         this.session.entry_type.set(Some(config::EntryMain));
     } else if this.main_fn.is_some() {
-        *this.session.entry_fn.borrow_mut() = this.main_fn;
+        **this.session.entry_fn.borrow_mut() = this.main_fn;
         this.session.entry_type.set(Some(config::EntryMain));
     } else {
         // No main function

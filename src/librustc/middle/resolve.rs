@@ -662,7 +662,7 @@ impl NameBindings {
         let type_def = self.type_def.borrow().clone();
         match type_def {
             None => {
-                *self.type_def.borrow_mut() = Some(TypeNsDef {
+                **self.type_def.borrow_mut() = Some(TypeNsDef {
                     modifiers: modifiers,
                     module_def: Some(module_),
                     type_def: None,
@@ -670,7 +670,7 @@ impl NameBindings {
                 });
             }
             Some(type_def) => {
-                *self.type_def.borrow_mut() = Some(TypeNsDef {
+                **self.type_def.borrow_mut() = Some(TypeNsDef {
                     modifiers: modifiers,
                     module_def: Some(module_),
                     type_span: Some(sp),
@@ -694,7 +694,7 @@ impl NameBindings {
             None => {
                 let module = Module::new(parent_link, def_id, kind,
                                          external, is_public);
-                *self.type_def.borrow_mut() = Some(TypeNsDef {
+                **self.type_def.borrow_mut() = Some(TypeNsDef {
                     modifiers: modifiers,
                     module_def: Some(Rc::new(module)),
                     type_def: None,
@@ -709,7 +709,7 @@ impl NameBindings {
                                                  kind,
                                                  external,
                                                  is_public);
-                        *self.type_def.borrow_mut() = Some(TypeNsDef {
+                        **self.type_def.borrow_mut() = Some(TypeNsDef {
                             modifiers: modifiers,
                             module_def: Some(Rc::new(module)),
                             type_def: type_def.type_def,
@@ -729,7 +729,7 @@ impl NameBindings {
         let type_def = self.type_def.borrow().clone();
         match type_def {
             None => {
-                *self.type_def.borrow_mut() = Some(TypeNsDef {
+                **self.type_def.borrow_mut() = Some(TypeNsDef {
                     module_def: None,
                     type_def: Some(def),
                     type_span: Some(sp),
@@ -737,7 +737,7 @@ impl NameBindings {
                 });
             }
             Some(type_def) => {
-                *self.type_def.borrow_mut() = Some(TypeNsDef {
+                **self.type_def.borrow_mut() = Some(TypeNsDef {
                     type_def: Some(def),
                     type_span: Some(sp),
                     module_def: type_def.module_def,
@@ -750,7 +750,7 @@ impl NameBindings {
     /// Records a value definition.
     fn define_value(&self, def: Def, sp: Span, modifiers: DefModifiers) {
         debug!("defining value for def {} with modifiers {}", def, modifiers);
-        *self.value_def.borrow_mut() = Some(ValueNsDef {
+        **self.value_def.borrow_mut() = Some(ValueNsDef {
             def: def,
             value_span: Some(sp),
             modifiers: modifiers,
@@ -759,7 +759,7 @@ impl NameBindings {
 
     /// Returns the module node if applicable.
     fn get_module_if_available(&self) -> Option<Rc<Module>> {
-        match *self.type_def.borrow() {
+        match **self.type_def.borrow() {
             Some(ref type_def) => type_def.module_def.clone(),
             None => None
         }
@@ -792,10 +792,10 @@ impl NameBindings {
 
     fn defined_in_namespace_with(&self, namespace: Namespace, modifiers: DefModifiers) -> bool {
         match namespace {
-            TypeNS => match *self.type_def.borrow() {
+            TypeNS => match **self.type_def.borrow() {
                 Some(ref def) => def.modifiers.contains(modifiers), None => false
             },
-            ValueNS => match *self.value_def.borrow() {
+            ValueNS => match **self.value_def.borrow() {
                 Some(ref def) => def.modifiers.contains(modifiers), None => false
             }
         }
@@ -804,7 +804,7 @@ impl NameBindings {
     fn def_for_namespace(&self, namespace: Namespace) -> Option<Def> {
         match namespace {
             TypeNS => {
-                match *self.type_def.borrow() {
+                match **self.type_def.borrow() {
                     None => None,
                     Some(ref type_def) => {
                         match type_def.type_def {
@@ -825,7 +825,7 @@ impl NameBindings {
                 }
             }
             ValueNS => {
-                match *self.value_def.borrow() {
+                match **self.value_def.borrow() {
                     None => None,
                     Some(value_def) => Some(value_def.def)
                 }
@@ -837,13 +837,13 @@ impl NameBindings {
         if self.defined_in_namespace(namespace) {
             match namespace {
                 TypeNS  => {
-                    match *self.type_def.borrow() {
+                    match **self.type_def.borrow() {
                         None => None,
                         Some(ref type_def) => type_def.type_span
                     }
                 }
                 ValueNS => {
-                    match *self.value_def.borrow() {
+                    match **self.value_def.borrow() {
                         None => None,
                         Some(ref value_def) => value_def.value_span
                     }
@@ -1925,7 +1925,7 @@ impl<'a> Resolver<'a> {
             debug!("(building reduced graph for external \
                     crate) building value (fn/static) {}", final_ident);
             // impl methods have already been defined with the correct importability modifier
-            let mut modifiers = match *child_name_bindings.value_def.borrow() {
+            let mut modifiers = match **child_name_bindings.value_def.borrow() {
                 Some(ref def) => (modifiers & !IMPORTABLE) | (def.modifiers & IMPORTABLE),
                 None => modifiers
             };
@@ -2213,7 +2213,7 @@ impl<'a> Resolver<'a> {
             SingleImport(target, _) => {
                 debug!("(building import directive) building import \
                         directive: {}::{}",
-                       self.names_to_string(module_.imports.borrow().last().unwrap()
+                       self.names_to_string((*module_.imports.borrow()).last().unwrap()
                                                  .module_path.as_slice()),
                        token::get_name(target));
 
@@ -2292,7 +2292,7 @@ impl<'a> Resolver<'a> {
         self.current_module = orig_module;
 
         self.populate_module_if_necessary(&module_);
-        for (_, child_node) in module_.children.borrow().iter() {
+        for (_, child_node) in (*module_.children.borrow()).iter() {
             match child_node.get_module_if_available() {
                 None => {
                     // Nothing to do.
@@ -2303,7 +2303,7 @@ impl<'a> Resolver<'a> {
             }
         }
 
-        for (_, child_module) in module_.anonymous_children.borrow().iter() {
+        for (_, child_module) in (*module_.anonymous_children.borrow()).iter() {
             self.resolve_imports_for_module_subtree(child_module.clone());
         }
     }
@@ -2880,8 +2880,8 @@ impl<'a> Resolver<'a> {
         // Add all children from the containing module.
         self.populate_module_if_necessary(&containing_module);
 
-        for (&name, name_bindings) in containing_module.children
-                                                       .borrow().iter() {
+        for (&name, name_bindings) in (*containing_module.children
+                                                       .borrow()).iter() {
             self.merge_import_resolution(module_,
                                          containing_module.clone(),
                                          import_directive,
@@ -2891,8 +2891,8 @@ impl<'a> Resolver<'a> {
         }
 
         // Add external module children from the containing module.
-        for (&name, module) in containing_module.external_module_children
-                                                .borrow().iter() {
+        for (&name, module) in (*containing_module.external_module_children
+                                                .borrow()).iter() {
             let name_bindings =
                 Rc::new(Resolver::create_name_bindings_from_module(module.clone()));
             self.merge_import_resolution(module_,
@@ -3041,7 +3041,7 @@ impl<'a> Resolver<'a> {
 
         match import_resolution.value_target {
             Some(ref target) if !target.shadowable => {
-                match *name_bindings.value_def.borrow() {
+                match **name_bindings.value_def.borrow() {
                     Some(ref value) => {
                         let msg = format!("import `{}` conflicts with value \
                                            in this module",
@@ -3064,7 +3064,7 @@ impl<'a> Resolver<'a> {
 
         match import_resolution.type_target {
             Some(ref target) if !target.shadowable => {
-                match *name_bindings.type_def.borrow() {
+                match **name_bindings.type_def.borrow() {
                     Some(ref ty) => {
                         match ty.module_def {
                             None => {
@@ -3245,7 +3245,7 @@ impl<'a> Resolver<'a> {
                 Success((target, used_proxy)) => {
                     // Check to see whether there are type bindings, and, if
                     // so, whether there is a module within.
-                    match *target.bindings.type_def.borrow() {
+                    match **target.bindings.type_def.borrow() {
                         Some(ref type_def) => {
                             match type_def.module_def {
                                 None => {
@@ -3548,7 +3548,7 @@ impl<'a> Resolver<'a> {
         match resolve_result {
             Success((target, _)) => {
                 let bindings = &*target.bindings;
-                match *bindings.type_def.borrow() {
+                match **bindings.type_def.borrow() {
                     Some(ref type_def) => {
                         match type_def.module_def {
                             None => {
@@ -3786,7 +3786,7 @@ impl<'a> Resolver<'a> {
         // Descend into children and anonymous children.
         self.populate_module_if_necessary(&module_);
 
-        for (_, child_node) in module_.children.borrow().iter() {
+        for (_, child_node) in (*module_.children.borrow()).iter() {
             match child_node.get_module_if_available() {
                 None => {
                     // Continue.
@@ -3797,7 +3797,7 @@ impl<'a> Resolver<'a> {
             }
         }
 
-        for (_, module_) in module_.anonymous_children.borrow().iter() {
+        for (_, module_) in (*module_.anonymous_children.borrow()).iter() {
             self.report_unresolved_imports(module_.clone());
         }
     }
@@ -3846,7 +3846,7 @@ impl<'a> Resolver<'a> {
         self.record_exports_for_module(&*module_);
         self.populate_module_if_necessary(&module_);
 
-        for (_, child_name_bindings) in module_.children.borrow().iter() {
+        for (_, child_name_bindings) in (*module_.children.borrow()).iter() {
             match child_name_bindings.get_module_if_available() {
                 None => {
                     // Nothing to do.
@@ -3857,7 +3857,7 @@ impl<'a> Resolver<'a> {
             }
         }
 
-        for (_, child_module) in module_.anonymous_children.borrow().iter() {
+        for (_, child_module) in (*module_.anonymous_children.borrow()).iter() {
             self.record_exports_for_module_subtree(child_module.clone());
         }
     }
@@ -3900,7 +3900,7 @@ impl<'a> Resolver<'a> {
     fn add_exports_for_module(&mut self,
                               exports2: &mut Vec<Export2> ,
                               module_: &Module) {
-        for (name, importresolution) in module_.import_resolutions.borrow().iter() {
+        for (name, importresolution) in (*module_.import_resolutions.borrow()).iter() {
             if !importresolution.is_public {
                 continue
             }
@@ -5193,7 +5193,7 @@ impl<'a> Resolver<'a> {
                          finding {} at {}",
                         token::get_name(name),
                         target.bindings.value_def.borrow());
-                match *target.bindings.value_def.borrow() {
+                match **target.bindings.value_def.borrow() {
                     None => {
                         panic!("resolved name in the value namespace to a \
                               set of name bindings with no def?!");
@@ -5623,7 +5623,7 @@ impl<'a> Resolver<'a> {
                 match this.primitive_type_table.primitive_types.get(last_name) {
                     Some(_) => None,
                     None => {
-                        match this.current_module.children.borrow().get(last_name) {
+                        match (*this.current_module.children.borrow()).get(last_name) {
                             Some(child) => child.get_module_if_available(),
                             None => None
                         }
@@ -6014,7 +6014,7 @@ impl<'a> Resolver<'a> {
             self.populate_module_if_necessary(&search_module);
 
             {
-                for (_, child_names) in search_module.children.borrow().iter() {
+                for (_, child_names) in (*search_module.children.borrow()).iter() {
                     let def = match child_names.def_for_namespace(TypeNS) {
                         Some(def) => def,
                         None => continue
@@ -6030,7 +6030,7 @@ impl<'a> Resolver<'a> {
             }
 
             // Look for imports.
-            for (_, import) in search_module.import_resolutions.borrow().iter() {
+            for (_, import) in (*search_module.import_resolutions.borrow()).iter() {
                 let target = match import.target_for_namespace(TypeNS) {
                     None => continue,
                     Some(target) => target,
@@ -6254,7 +6254,7 @@ impl<'a> Resolver<'a> {
 
         debug!("Children:");
         self.populate_module_if_necessary(&module_);
-        for (&name, _) in module_.children.borrow().iter() {
+        for (&name, _) in (*module_.children.borrow()).iter() {
             debug!("* {}", token::get_name(name));
         }
 

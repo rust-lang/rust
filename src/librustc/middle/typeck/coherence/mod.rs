@@ -432,7 +432,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
             Some(found_impls) => found_impls
         };
 
-        for &impl_did in trait_impls.borrow().iter() {
+        for &impl_did in (*trait_impls.borrow()).iter() {
             let items = &(*impl_items)[impl_did];
             if items.len() < 1 {
                 // We'll error out later. For now, just don't ICE.

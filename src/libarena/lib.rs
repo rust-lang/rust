@@ -59,7 +59,7 @@ impl Chunk {
     }
 
     unsafe fn as_ptr(&self) -> *const u8 {
-        self.data.borrow().as_ptr()
+        (*self.data.borrow()).as_ptr()
     }
 }
 
@@ -120,8 +120,9 @@ fn chunk(size: uint, is_copy: bool) -> Chunk {
 impl Drop for Arena {
     fn drop(&mut self) {
         unsafe {
-            destroy_chunk(&*self.head.borrow());
-            for chunk in self.chunks.borrow().iter() {
+            destroy_chunk(&**self.head.borrow());
+            let chunks = self.chunks.borrow();
+            for chunk in chunks.iter() {
                 if !chunk.is_copy.get() {
                     destroy_chunk(chunk);
                 }
@@ -186,7 +187,7 @@ impl Arena {
         let new_min_chunk_size = cmp::max(n_bytes, self.chunk_size());
         self.chunks.borrow_mut().push(self.copy_head.borrow().clone());
 
-        *self.copy_head.borrow_mut() =
+        **self.copy_head.borrow_mut() =
             chunk((new_min_chunk_size + 1u).next_power_of_two(), true);
 
         return self.alloc_copy_inner(n_bytes, align);
@@ -227,7 +228,7 @@ impl Arena {
         let new_min_chunk_size = cmp::max(n_bytes, self.chunk_size());
         self.chunks.borrow_mut().push(self.head.borrow().clone());
 
-        *self.head.borrow_mut() =
+        **self.head.borrow_mut() =
             chunk((new_min_chunk_size + 1u).next_power_of_two(), false);
 
         return self.alloc_noncopy_inner(n_bytes, align);
@@ -480,12 +481,12 @@ impl<T> TypedArena<T> {
     #[inline(never)]
     fn grow(&self) {
         unsafe {
-            let chunk = *self.first.borrow_mut();
+            let chunk = **self.first.borrow_mut();
             let new_capacity = (*chunk).capacity.checked_mul(2).unwrap();
             let chunk = TypedArenaChunk::<T>::new(chunk, new_capacity);
             self.ptr.set((*chunk).start() as *const T);
             self.end.set((*chunk).end() as *const T);
-            *self.first.borrow_mut() = chunk
+            **self.first.borrow_mut() = chunk
         }
     }
 }
@@ -500,7 +501,7 @@ impl<T> Drop for TypedArena<T> {
             let diff = (end - start) / mem::size_of::<T>();
 
             // Pass that to the `destroy` method.
-            (**self.first.borrow_mut()).destroy(diff)
+            (***self.first.borrow_mut()).destroy(diff)
         }
     }
 }

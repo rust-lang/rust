@@ -128,14 +128,14 @@ impl CStore {
 
     pub fn add_used_crate_source(&self, src: CrateSource) {
         let mut used_crate_sources = self.used_crate_sources.borrow_mut();
-        if !used_crate_sources.contains(&src) {
-            used_crate_sources.push(src);
+        if !(*used_crate_sources).contains(&src) {
+            (*used_crate_sources).push(src);
         }
     }
 
     pub fn get_used_crate_source(&self, cnum: ast::CrateNum)
                                      -> Option<CrateSource> {
-        self.used_crate_sources.borrow_mut()
+        (*self.used_crate_sources.borrow_mut())
             .iter().find(|source| source.cnum == cnum)
             .map(|source| source.clone())
     }
@@ -174,7 +174,7 @@ impl CStore {
         }
         ordering.as_mut_slice().reverse();
         let ordering = ordering.as_slice();
-        let mut libs = self.used_crate_sources.borrow()
+        let mut libs = (*self.used_crate_sources.borrow())
             .iter()
             .map(|src| (src.cnum, match prefer {
                 RequireDynamic => src.dylib.clone(),

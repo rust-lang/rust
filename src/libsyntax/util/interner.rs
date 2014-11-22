@@ -85,8 +85,8 @@ impl<T: Eq + Hash + Clone + 'static> Interner<T> {
     }
 
     pub fn clear(&self) {
-        *self.map.borrow_mut() = HashMap::new();
-        *self.vect.borrow_mut() = Vec::new();
+        **self.map.borrow_mut() = HashMap::new();
+        **self.vect.borrow_mut() = Vec::new();
     }
 }
 
@@ -211,8 +211,8 @@ impl StrInterner {
     }
 
     pub fn clear(&self) {
-        *self.map.borrow_mut() = HashMap::new();
-        *self.vect.borrow_mut() = Vec::new();
+        **self.map.borrow_mut() = HashMap::new();
+        **self.vect.borrow_mut() = Vec::new();
     }
 }
 

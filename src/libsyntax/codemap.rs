@@ -333,7 +333,7 @@ impl CodeMap {
     }
 
     pub fn new_filemap(&self, filename: FileName, src: String) -> Rc<FileMap> {
-        let mut files = self.files.borrow_mut();
+        let mut files = &mut **self.files.borrow_mut();
         let start_pos = match files.last() {
             None => 0,
             Some(last) => last.start_pos.to_uint() + last.src.len(),
@@ -438,7 +438,7 @@ impl CodeMap {
     }
 
     pub fn get_filemap(&self, filename: &str) -> Rc<FileMap> {
-        for fm in self.files.borrow().iter() {
+        for fm in (*self.files.borrow()).iter() {
             if filename == fm.name.as_slice() {
                 return fm.clone();
             }
@@ -462,7 +462,7 @@ impl CodeMap {
         // The number of extra bytes due to multibyte chars in the FileMap
         let mut total_extra_bytes = 0;
 
-        for mbc in map.multibyte_chars.borrow().iter() {
+        for mbc in (*map.multibyte_chars.borrow()).iter() {
             debug!("{}-byte char at {}", mbc.bytes, mbc.pos);
             if mbc.pos < bpos {
                 // every character is at least one byte, so we only
