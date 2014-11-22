@@ -106,35 +106,31 @@ named parameters that are unused by the format string.
 
 ### Argument types
 
-Each argument's type is dictated by the format string. It is a requirement that
-every argument is only ever referred to by one type. For example, this is an
-invalid format string:
+Each argument's type is dictated by the format string. It is a requirement that every argument is
+only ever referred to by one type. For example, this is an invalid format string:
 
 ```text
-{0:d} {0:s}
+{0:x} {0:o}
 ```
 
-This is invalid because the first argument is both referred to as an integer as
-well as a string.
+This is invalid because the first argument is both referred to as a hexidecimal as well as an
+octal.
 
-Because formatting is done via traits, there is no requirement that the
-`d` format actually takes an `int`, but rather it simply requires a type which
-ascribes to the `Signed` formatting trait. There are various parameters which do
-require a particular type, however. Namely if the syntax `{:.*s}` is used, then
-the number of characters to print from the string precedes the actual string and
-must have the type `uint`. Although a `uint` can be printed with `{:u}`, it is
-illegal to reference an argument as such. For example, this is another invalid
+There are various parameters which do require a particular type, however. Namely if the syntax
+`{:.*}` is used, then the number of characters to print precedes the actual object being formatted,
+and the number of characters must have the type `uint`. Although a `uint` can be printed with
+`{}`, it is illegal to reference an argument as such. For example this is another invalid
 format string:
 
 ```text
-{:.*s} {0:u}
+{:.*} {0}
 ```
 
 ### Formatting traits
 
 When requesting that an argument be formatted with a particular type, you are
 actually requesting that an argument ascribes to a particular trait. This allows
-multiple actual types to be formatted via `{:d}` (like `i8` as well as `int`).
+multiple actual types to be formatted via `{:x}` (like `i8` as well as `int`).
 The current mapping of types to traits is:
 
 * *nothing* ⇒ `Show`
@@ -157,12 +153,12 @@ When implementing a format trait for your own type, you will have to implement a
 method of the signature:
 
 ```rust
-# use std;
-# mod fmt { pub type Result = (); }
-# struct T;
-# trait SomeName<T> {
-fn fmt(&self, f: &mut std::fmt::Formatter) -> fmt::Result;
-# }
+# use std::fmt;
+# struct Foo; // our custom type
+# impl fmt::Show for Foo {
+fn fmt(&self, f: &mut std::fmt::Formatter) -> fmt::Result {
+# write!(f, "testing, testing")
+# } }
 ```
 
 Your type will be passed as `self` by-reference, and then the function should
@@ -236,7 +232,6 @@ print!       // the format string is printed to the standard output
 println!     // same as print but appends a newline
 format_args! // described below.
 ```
-
 
 #### `write!`
 
