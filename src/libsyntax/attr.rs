@@ -47,8 +47,8 @@ pub trait AttrMetaMethods {
         name == self.name().get()
     }
 
-    /// Retrieve the name of the meta item, e.g. foo in #[foo],
-    /// #[foo="bar"] and #[foo(bar)]
+    /// Retrieve the name of the meta item, e.g. `foo` in `#[foo]`,
+    /// `#[foo="bar"]` and `#[foo(bar)]`
     fn name(&self) -> InternedString;
 
     /// Gets the string value if self is a MetaNameValue variant
