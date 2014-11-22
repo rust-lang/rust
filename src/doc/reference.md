@@ -1334,7 +1334,12 @@ specific type; the type-specified aspects of a value include:
 For example, the type `(u8, u8)` defines the set of immutable values that are
 composite pairs, each containing two unsigned 8-bit integers accessed by
 pattern-matching and laid out in memory with the `x` component preceding the
-`y` component.
+`y` component:
+
+```
+type Point = (u8, u8);
+let p: Point = (41, 68);
+```
 
 ### Structures
 
