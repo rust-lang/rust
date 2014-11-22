@@ -893,7 +893,10 @@ CFG_PREFIX=${CFG_PREFIX%/}
 CFG_MANDIR=${CFG_MANDIR%/}
 CFG_HOST="$(echo $CFG_HOST | tr ',' ' ')"
 CFG_TARGET="$(echo $CFG_TARGET | tr ',' ' ')"
-CFG_SUPPORTED_TARGET="$(ls ${CFG_SRC_DIR}mk/cfg)"
+CFG_SUPPORTED_TARGET=""
+for target_file in ${CFG_SRC_DIR}mk/cfg/*.mk; do
+  CFG_SUPPORTED_TARGET="${CFG_SUPPORTED_TARGET} $(basename "$target_file" .mk)"
+done
 
 # copy host-triples to target-triples so that hosts are a subset of targets
 V_TEMP=""
