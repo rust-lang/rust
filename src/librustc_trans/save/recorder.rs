@@ -74,6 +74,7 @@ pub enum Row {
     Impl,
     Module,
     UseAlias,
+    UseGlob,
     ExternCrate,
     Inheritance,
     MethodCall,
@@ -125,6 +126,7 @@ impl<'a> FmtStrs<'a> {
             UseAlias => ("use_alias",
                          vec!("id","refid","refidcrate","name","scopeid"),
                          true, true),
+            UseGlob => ("use_glob", vec!("id","value","scopeid"), true, true),
             ExternCrate => ("extern_crate",
                             vec!("id","name","location","crate","scopeid"),
                             true, true),
@@ -478,6 +480,18 @@ impl<'a> FmtStrs<'a> {
                               span,
                               sub_span,
                               svec!(id, mod_node, mod_crate, name, parent));
+    }
+
+    pub fn use_glob_str(&mut self,
+                        span: Span,
+                        sub_span: Option<Span>,
+                        id: NodeId,
+                        values: &str,
+                        parent: NodeId) {
+        self.check_and_record(UseGlob,
+                              span,
+                              sub_span,
+                              svec!(id, values, parent));
     }
 
     pub fn extern_crate_str(&mut self,

@@ -82,6 +82,7 @@ use syntax::ast::{Variant, ViewItem, ViewItemExternCrate};
 use syntax::ast::{ViewItemUse, ViewPathGlob, ViewPathList, ViewPathSimple};
 use syntax::ast::{Visibility};
 use syntax::ast;
+use syntax::ast_map;
 use syntax::ast_util::{mod, PostExpansionMethod, local_def, walk_pat};
 use syntax::attr::AttrMetaMethods;
 use syntax::ext::mtwt;
@@ -108,6 +109,10 @@ struct BindingInfo {
 
 // Map from the name in a pattern to its binding mode.
 type BindingMap = HashMap<Name, BindingInfo>;
+
+// Map from the NodeId of a glob import to a list of items which are actually
+// imported.
+pub type GlobMap = HashMap<NodeId, HashSet<Name>>;
 
 #[deriving(Copy, PartialEq)]
 enum PatternBindingMode {
@@ -168,7 +173,7 @@ enum NameDefinition {
     ImportNameDefinition(Def, LastPrivate) //< The name identifies an import.
 }
 
-impl<'a, 'v> Visitor<'v> for Resolver<'a> {
+impl<'a, 'v, 'tcx> Visitor<'v> for Resolver<'a, 'tcx> {
     fn visit_item(&mut self, item: &Item) {
         self.resolve_item(item);
     }
@@ -340,6 +345,16 @@ impl Rib {
     }
 }
 
+/// Whether an import can be shadowed by another import.
+#[deriving(Show,PartialEq,Clone)]
+enum Shadowable {
+    Always,
+    /// Means that the recorded import obeys the glob shadowing rules, i.e., can
+    /// only be shadowed by another glob import.
+    Glob,
+    Never
+}
+
 /// One import directive.
 struct ImportDirective {
     module_path: Vec<Name>,
@@ -347,7 +362,7 @@ struct ImportDirective {
     span: Span,
     id: NodeId,
     is_public: bool, // see note in ImportResolution about how to use this
-    shadowable: bool,
+    shadowable: Shadowable,
 }
 
 impl ImportDirective {
@@ -356,7 +371,7 @@ impl ImportDirective {
            span: Span,
            id: NodeId,
            is_public: bool,
-           shadowable: bool)
+           shadowable: Shadowable)
            -> ImportDirective {
         ImportDirective {
             module_path: module_path,
@@ -374,13 +389,13 @@ impl ImportDirective {
 struct Target {
     target_module: Rc<Module>,
     bindings: Rc<NameBindings>,
-    shadowable: bool,
+    shadowable: Shadowable,
 }
 
 impl Target {
     fn new(target_module: Rc<Module>,
            bindings: Rc<NameBindings>,
-           shadowable: bool)
+           shadowable: Shadowable)
            -> Target {
         Target {
             target_module: target_module,
@@ -441,6 +456,15 @@ impl ImportResolution {
             TypeNS  => self.type_id,
             ValueNS => self.value_id,
         }
+    }
+
+    fn shadowable(&self, namespace: Namespace) -> Shadowable {
+        let target = self.target_for_namespace(namespace);
+        if target.is_none() {
+            return Shadowable::Always;
+        }
+
+        target.unwrap().shadowable
     }
 }
 
@@ -842,8 +866,10 @@ fn namespace_error_to_string(ns: NamespaceError) -> &'static str {
 }
 
 /// The main resolver class.
-struct Resolver<'a> {
+struct Resolver<'a, 'tcx:'a> {
     session: &'a Session,
+
+    ast_map: &'a ast_map::Map<'tcx>,
 
     graph_root: NameBindings,
 
@@ -895,16 +921,21 @@ struct Resolver<'a> {
     // so as to avoid printing duplicate errors
     emit_errors: bool,
 
+    make_glob_map: bool,
+    // Maps imports to the names of items actually imported (this actually maps
+    // all imports, but only glob imports are actually interesting).
+    glob_map: GlobMap,
+
     used_imports: HashSet<(NodeId, Namespace)>,
     used_crates: HashSet<CrateNum>,
 }
 
-struct BuildReducedGraphVisitor<'a, 'b:'a> {
-    resolver: &'a mut Resolver<'b>,
+struct BuildReducedGraphVisitor<'a, 'b:'a, 'tcx:'b> {
+    resolver: &'a mut Resolver<'b, 'tcx>,
     parent: ReducedGraphParent
 }
 
-impl<'a, 'b, 'v> Visitor<'v> for BuildReducedGraphVisitor<'a, 'b> {
+impl<'a, 'b, 'v, 'tcx> Visitor<'v> for BuildReducedGraphVisitor<'a, 'b, 'tcx> {
 
     fn visit_item(&mut self, item: &Item) {
         let p = self.resolver.build_reduced_graph_for_item(item, self.parent.clone());
@@ -939,6 +970,20 @@ impl<'a, 'b, 'v> Visitor<'v> for BuildReducedGraphVisitor<'a, 'b> {
 
 }
 
+<<<<<<< HEAD:src/librustc_resolve/lib.rs
+=======
+struct UnusedImportCheckVisitor<'a, 'b:'a, 'tcx:'b> {
+    resolver: &'a mut Resolver<'b, 'tcx>
+}
+
+impl<'a, 'b, 'v, 'tcx> Visitor<'v> for UnusedImportCheckVisitor<'a, 'b, 'tcx> {
+    fn visit_view_item(&mut self, vi: &ViewItem) {
+        self.resolver.check_for_item_unused_imports(vi);
+        visit::walk_view_item(self, vi);
+    }
+}
+
+>>>>>>> save-analysis: emit names of items that a glob import actually imports.:src/librustc/middle/resolve.rs
 #[deriving(PartialEq)]
 enum FallbackChecks {
     Everything,
@@ -946,8 +991,11 @@ enum FallbackChecks {
 }
 
 
-impl<'a> Resolver<'a> {
-    fn new(session: &'a Session, crate_span: Span) -> Resolver<'a> {
+impl<'a, 'tcx> Resolver<'a, 'tcx> {
+    fn new(session: &'a Session,
+           ast_map: &'a ast_map::Map<'tcx>,
+           crate_span: Span,
+           make_glob_map: MakeGlobMap) -> Resolver<'a, 'tcx> {
         let graph_root = NameBindings::new();
 
         graph_root.define_module(NoParentLink,
@@ -961,6 +1009,8 @@ impl<'a> Resolver<'a> {
 
         Resolver {
             session: session,
+
+            ast_map: ast_map,
 
             // The outermost module has def ID 0; this is not reflected in the
             // AST.
@@ -997,6 +1047,8 @@ impl<'a> Resolver<'a> {
             last_private: NodeMap::new(),
 
             emit_errors: true,
+            make_glob_map: make_glob_map == MakeGlobMap::Yes,
+            glob_map: HashMap::new(),
         }
     }
 
@@ -1610,6 +1662,11 @@ impl<'a> Resolver<'a> {
                                  attr.name() == token::get_name(
                                     special_idents::prelude_import.name)
                              });
+                let shadowable = if shadowable {
+                    Shadowable::Always
+                } else {
+                    Shadowable::Never
+                };
 
                 match view_path.node {
                     ViewPathSimple(binding, ref full_path, id) => {
@@ -1680,7 +1737,11 @@ impl<'a> Resolver<'a> {
                                                     view_path.span,
                                                     id,
                                                     is_public,
-                                                    shadowable);
+                                                    if shadowable == Shadowable::Never {
+                                                        Shadowable::Glob
+                                                    } else {
+                                                        shadowable
+                                                    });
                     }
                 }
             }
@@ -2131,7 +2192,7 @@ impl<'a> Resolver<'a> {
                               span: Span,
                               id: NodeId,
                               is_public: bool,
-                              shadowable: bool) {
+                              shadowable: Shadowable) {
         module_.imports.borrow_mut().push(ImportDirective::new(module_path,
                                                                subclass,
                                                                span,
@@ -2326,6 +2387,29 @@ impl<'a> Resolver<'a> {
         }
     }
 
+    #[inline]
+    fn record_import_use(&mut self, import_id: NodeId, name: Name) {
+        if !self.make_glob_map {
+            return;
+        }
+        if self.glob_map.contains_key(&import_id) {
+            self.glob_map[import_id].insert(name);
+            return;
+        }
+
+        let mut new_set = HashSet::new();
+        new_set.insert(name);
+        self.glob_map.insert(import_id, new_set);
+    }
+
+    fn get_trait_name(&self, did: DefId) -> Name {
+        if did.krate == LOCAL_CRATE {
+            self.ast_map.expect_item(did.node).ident.name
+        } else {
+            csearch::get_trait_name(&self.session.cstore, did)
+        }
+    }
+
     /// Attempts to resolve the given import. The return value indicates
     /// failure if we're certain the name does not exist, indeterminate if we
     /// don't know whether the name exists at the moment due to other
@@ -2338,8 +2422,7 @@ impl<'a> Resolver<'a> {
         let mut resolution_result = Failed(None);
         let module_path = &import_directive.module_path;
 
-        debug!("(resolving import for module) resolving import `{}::...` in \
-                `{}`",
+        debug!("(resolving import for module) resolving import `{}::...` in `{}`",
                self.names_to_string(module_path[]),
                self.module_to_string(&*module_));
 
@@ -2526,7 +2609,8 @@ impl<'a> Resolver<'a> {
 
                         fn get_binding(this: &mut Resolver,
                                        import_resolution: &ImportResolution,
-                                       namespace: Namespace)
+                                       namespace: Namespace,
+                                       source: &Name)
                                     -> NamespaceResult {
 
                             // Import resolutions must be declared with "pub"
@@ -2550,6 +2634,7 @@ impl<'a> Resolver<'a> {
                                     let id = import_resolution.id(namespace);
                                     // track used imports and extern crates as well
                                     this.used_imports.insert((id, namespace));
+                                    this.record_import_use(id, *source);
                                     match target_module.def_id.get() {
                                         Some(DefId{krate: kid, ..}) => {
                                             this.used_crates.insert(kid);
@@ -2564,13 +2649,17 @@ impl<'a> Resolver<'a> {
                         // The name is an import which has been fully
                         // resolved. We can, therefore, just follow it.
                         if value_result.is_unknown() {
-                            value_result = get_binding(self, import_resolution,
-                                                       ValueNS);
+                            value_result = get_binding(self,
+                                                       import_resolution,
+                                                       ValueNS,
+                                                       &source);
                             value_used_reexport = import_resolution.is_public;
                         }
                         if type_result.is_unknown() {
-                            type_result = get_binding(self, import_resolution,
-                                                      TypeNS);
+                            type_result = get_binding(self,
+                                                      import_resolution,
+                                                      TypeNS,
+                                                      &source);
                             type_used_reexport = import_resolution.is_public;
                         }
 
@@ -2752,7 +2841,7 @@ impl<'a> Resolver<'a> {
         return Success(());
     }
 
-    // Resolves a glob import. Note that this function cannot panic; it either
+    // Resolves a glob import. Note that this function cannot fail; it either
     // succeeds or bails out (as importing * from an empty module or a module
     // that exports nothing is valid).
     fn resolve_glob_import(&mut self,
@@ -2883,7 +2972,9 @@ impl<'a> Resolver<'a> {
 
         let mut import_resolutions = module_.import_resolutions.borrow_mut();
         let dest_import_resolution = match import_resolutions.entry(name) {
-            Occupied(entry) => entry.into_mut(),
+            Occupied(entry) => {
+                entry.into_mut()
+            }
             Vacant(entry) => {
                 // Create a new import resolution from this child.
                 entry.set(ImportResolution::new(id, is_public))
@@ -2899,19 +2990,33 @@ impl<'a> Resolver<'a> {
         // Merge the child item into the import resolution.
         if name_bindings.defined_in_namespace_with(ValueNS, IMPORTABLE | PUBLIC) {
             debug!("(resolving glob import) ... for value target");
-            dest_import_resolution.value_target =
-                Some(Target::new(containing_module.clone(),
-                                 name_bindings.clone(),
-                                 import_directive.shadowable));
-            dest_import_resolution.value_id = id;
+            if dest_import_resolution.shadowable(ValueNS) == Shadowable::Never {
+                let msg = format!("a value named `{}` has already been imported \
+                                   in this module",
+                                  token::get_name(name).get());
+                self.session.span_err(import_directive.span, msg.as_slice());
+            } else {
+                dest_import_resolution.value_target =
+                    Some(Target::new(containing_module.clone(),
+                                     name_bindings.clone(),
+                                     import_directive.shadowable));
+                dest_import_resolution.value_id = id;
+            }
         }
         if name_bindings.defined_in_namespace_with(TypeNS, IMPORTABLE | PUBLIC) {
             debug!("(resolving glob import) ... for type target");
-            dest_import_resolution.type_target =
-                Some(Target::new(containing_module,
-                                 name_bindings.clone(),
-                                 import_directive.shadowable));
-            dest_import_resolution.type_id = id;
+            if dest_import_resolution.shadowable(TypeNS) == Shadowable::Never {
+                let msg = format!("a type named `{}` has already been imported \
+                                   in this module",
+                                  token::get_name(name).get());
+                self.session.span_err(import_directive.span, msg.as_slice());
+            } else {
+                dest_import_resolution.type_target =
+                    Some(Target::new(containing_module,
+                                     name_bindings.clone(),
+                                     import_directive.shadowable));
+                dest_import_resolution.type_id = id;
+            }
         }
         dest_import_resolution.is_public = is_public;
 
@@ -2933,7 +3038,7 @@ impl<'a> Resolver<'a> {
         }
 
         match *target {
-            Some(ref target) if !target.shadowable => {
+            Some(ref target) if target.shadowable != Shadowable::Always => {
                 let msg = format!("a {} named `{}` has already been imported \
                                    in this module",
                                   match namespace {
@@ -2976,7 +3081,7 @@ impl<'a> Resolver<'a> {
                  .borrow()
                  .contains_key(&name) {
             match import_resolution.type_target {
-                Some(ref target) if !target.shadowable => {
+                Some(ref target) if target.shadowable != Shadowable::Always => {
                     let msg = format!("import `{0}` conflicts with imported \
                                        crate in this module \
                                        (maybe you meant `use {0}::*`?)",
@@ -2998,7 +3103,7 @@ impl<'a> Resolver<'a> {
         };
 
         match import_resolution.value_target {
-            Some(ref target) if !target.shadowable => {
+            Some(ref target) if target.shadowable != Shadowable::Always => {
                 if let Some(ref value) = *name_bindings.value_def.borrow() {
                     let msg = format!("import `{}` conflicts with value \
                                        in this module",
@@ -3014,7 +3119,7 @@ impl<'a> Resolver<'a> {
         }
 
         match import_resolution.type_target {
-            Some(ref target) if !target.shadowable => {
+            Some(ref target) if target.shadowable != Shadowable::Always => {
                 if let Some(ref ty) = *name_bindings.type_def.borrow() {
                     match ty.module_def {
                         None => {
@@ -3347,7 +3452,7 @@ impl<'a> Resolver<'a> {
                 debug!("top name bindings succeeded");
                 return Success((Target::new(module_.clone(),
                                             name_bindings.clone(),
-                                            false),
+                                            Shadowable::Never),
                                false));
             }
             Some(_) | None => { /* Not found; continue. */ }
@@ -3369,9 +3474,11 @@ impl<'a> Resolver<'a> {
                     debug!("(resolving item in lexical scope) using \
                             import resolution");
                     // track used imports and extern crates as well
-                    self.used_imports.insert((import_resolution.id(namespace), namespace));
+                    let id = import_resolution.id(namespace);
+                    self.used_imports.insert((id, namespace));
+                    self.record_import_use(id, name);
                     if let Some(DefId{krate: kid, ..}) = target.target_module.def_id.get() {
-                        self.used_crates.insert(kid);
+                         self.used_crates.insert(kid);
                     }
                     return Success((target, false));
                 }
@@ -3384,7 +3491,9 @@ impl<'a> Resolver<'a> {
                 let name_bindings =
                     Rc::new(Resolver::create_name_bindings_from_module(module));
                 debug!("lower name bindings succeeded");
-                return Success((Target::new(module_, name_bindings, false),
+                return Success((Target::new(module_,
+                                            name_bindings,
+                                            Shadowable::Never),
                                 false));
             }
         }
@@ -3608,7 +3717,7 @@ impl<'a> Resolver<'a> {
                 debug!("(resolving name in module) found node as child");
                 return Success((Target::new(module_.clone(),
                                             name_bindings.clone(),
-                                            false),
+                                            Shadowable::Never),
                                false));
             }
             Some(_) | None => {
@@ -3645,7 +3754,9 @@ impl<'a> Resolver<'a> {
                         debug!("(resolving name in module) resolved to \
                                 import");
                         // track used imports and extern crates as well
-                        self.used_imports.insert((import_resolution.id(namespace), namespace));
+                        let id = import_resolution.id(namespace);
+                        self.used_imports.insert((id, namespace));
+                        self.record_import_use(id, name);
                         if let Some(DefId{krate: kid, ..}) = target.target_module.def_id.get() {
                             self.used_crates.insert(kid);
                         }
@@ -3661,7 +3772,9 @@ impl<'a> Resolver<'a> {
             if let Some(module) = module_.external_module_children.borrow().get(&name).cloned() {
                 let name_bindings =
                     Rc::new(Resolver::create_name_bindings_from_module(module));
-                return Success((Target::new(module_, name_bindings, false),
+                return Success((Target::new(module_,
+                                            name_bindings,
+                                            Shadowable::Never),
                                 false));
             }
         }
@@ -5171,6 +5284,7 @@ impl<'a> Resolver<'a> {
                             let id = import_resolution.id(namespace);
                             // track imports and extern crates as well
                             self.used_imports.insert((id, namespace));
+                            self.record_import_use(id, name);
                             match target.target_module.def_id.get() {
                                 Some(DefId{krate: kid, ..}) => {
                                     self.used_crates.insert(kid);
@@ -5859,7 +5973,10 @@ impl<'a> Resolver<'a> {
                 };
                 if self.trait_item_map.contains_key(&(name, did)) {
                     add_trait_info(&mut found_traits, did, name);
-                    self.used_imports.insert((import.type_id, TypeNS));
+                    let id = import.type_id;
+                    self.used_imports.insert((id, TypeNS));
+                    let trait_name = self.get_trait_name(did);
+                    self.record_import_use(id, trait_name);
                     if let Some(DefId{krate: kid, ..}) = target.target_module.def_id.get() {
                         self.used_crates.insert(kid);
                     }
@@ -5993,14 +6110,23 @@ pub struct CrateMap {
     pub trait_map: TraitMap,
     pub external_exports: ExternalExports,
     pub last_private_map: LastPrivateMap,
+    pub glob_map: Option<GlobMap>
+}
+
+#[deriving(PartialEq)]
+pub enum MakeGlobMap {
+    Yes,
+    No
 }
 
 /// Entry point to crate resolution.
-pub fn resolve_crate(session: &Session,
-                     _: &LanguageItems,
-                     krate: &Crate)
-                  -> CrateMap {
-    let mut resolver = Resolver::new(session, krate.span);
+pub fn resolve_crate<'a, 'tcx>(session: &'a Session,
+                               ast_map: &'a ast_map::Map<'tcx>,
+                               _: &LanguageItems,
+                               krate: &Crate,
+                               make_glob_map: MakeGlobMap)
+                               -> CrateMap {
+    let mut resolver = Resolver::new(session, ast_map, krate.span, make_glob_map);
 
     resolver.build_reduced_graph(krate);
     session.abort_if_errors();
@@ -6024,5 +6150,10 @@ pub fn resolve_crate(session: &Session,
         trait_map: resolver.trait_map,
         external_exports: resolver.external_exports,
         last_private_map: resolver.last_private,
+        glob_map: if resolver.make_glob_map {
+                        Some(resolver.glob_map)
+                    } else {
+                        None
+                    },
     }
 }

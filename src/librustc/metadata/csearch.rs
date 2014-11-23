@@ -146,6 +146,13 @@ pub fn get_impl_or_trait_item<'tcx>(tcx: &ty::ctxt<'tcx>, def: ast::DefId)
                                     tcx)
 }
 
+pub fn get_trait_name(cstore: &cstore::CStore, def: ast::DefId) -> ast::Name {
+    let cdata = cstore.get_crate_data(def.krate);
+    decoder::get_trait_name(cstore.intr.clone(),
+                            &*cdata,
+                            def.node)
+}
+
 pub fn get_trait_item_name_and_kind(cstore: &cstore::CStore, def: ast::DefId)
                                     -> (ast::Name, def::TraitItemKind) {
     let cdata = cstore.get_crate_data(def.krate);
