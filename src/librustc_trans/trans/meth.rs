@@ -481,7 +481,7 @@ pub fn trans_trait_callee_from_llval<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     // Load the data pointer from the object.
     debug!("(translating trait callee) loading second index from pair");
-    let llboxptr = GEPi(bcx, llpair, &[0u, abi::trt_field_box]);
+    let llboxptr = GEPi(bcx, llpair, &[0u, abi::FAT_PTR_ADDR]);
     let llbox = Load(bcx, llboxptr);
     let llself = PointerCast(bcx, llbox, Type::i8p(ccx));
 
@@ -503,7 +503,7 @@ pub fn trans_trait_callee_from_llval<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let llvtable = Load(bcx,
                         PointerCast(bcx,
                                     GEPi(bcx, llpair,
-                                         &[0u, abi::trt_field_vtable]),
+                                         &[0u, abi::FAT_PTR_EXTRA]),
                                     Type::vtable(ccx).ptr_to().ptr_to()));
     let mptr = Load(bcx, GEPi(bcx, llvtable, &[0u, n_method + VTABLE_OFFSET]));
     let mptr = PointerCast(bcx, mptr, llcallee_ty.ptr_to());
@@ -761,13 +761,13 @@ pub fn trans_trait_cast<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let llbox_ty = type_of(bcx.ccx(), datum_ty);
 
     // Store the pointer into the first half of pair.
-    let llboxdest = GEPi(bcx, lldest, &[0u, abi::trt_field_box]);
+    let llboxdest = GEPi(bcx, lldest, &[0u, abi::FAT_PTR_ADDR]);
     let llboxdest = PointerCast(bcx, llboxdest, llbox_ty.ptr_to());
     bcx = datum.store_to(bcx, llboxdest);
 
     // Store the vtable into the second half of pair.
     let vtable = get_vtable(bcx, datum_ty, trait_ref);
-    let llvtabledest = GEPi(bcx, lldest, &[0u, abi::trt_field_vtable]);
+    let llvtabledest = GEPi(bcx, lldest, &[0u, abi::FAT_PTR_EXTRA]);
     let llvtabledest = PointerCast(bcx, llvtabledest, val_ty(vtable).ptr_to());
     Store(bcx, vtable, llvtabledest);
 

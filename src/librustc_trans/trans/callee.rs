@@ -724,9 +724,9 @@ pub fn trans_call_inner<'a, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             // Closures are represented as (llfn, llclosure) pair:
             // load the requisite values out.
             let pair = d.to_llref();
-            let llfn = GEPi(bcx, pair, &[0u, abi::fn_field_code]);
+            let llfn = GEPi(bcx, pair, &[0u, abi::FAT_PTR_ADDR]);
             let llfn = Load(bcx, llfn);
-            let llenv = GEPi(bcx, pair, &[0u, abi::fn_field_box]);
+            let llenv = GEPi(bcx, pair, &[0u, abi::FAT_PTR_EXTRA]);
             let llenv = Load(bcx, llenv);
             (llfn, Some(llenv), None)
         }
