@@ -190,11 +190,14 @@ endif
 # Target-and-rule "utility variables"
 ######################################################################
 
-define DEF_X
+define DEF_FOR_TARGET
 X_$(1) := $(CFG_EXE_SUFFIX_$(1))
+ifndef CFG_LLVM_TARGET_$(1)
+CFG_LLVM_TARGET_$(1) := $(1)
+endif
 endef
 $(foreach target,$(CFG_TARGET), \
-  $(eval $(call DEF_X,$(target))))
+  $(eval $(call DEF_FOR_TARGET,$(target))))
 
 # "Source" files we generate in builddir along the way.
 GENERATED :=

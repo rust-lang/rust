@@ -838,17 +838,11 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
             visitor.visit_expr(&**right_expression);
             visitor.visit_expr(&**left_expression)
         }
-        ExprField(ref subexpression, _, ref types) => {
+        ExprField(ref subexpression, _) => {
             visitor.visit_expr(&**subexpression);
-            for typ in types.iter() {
-                visitor.visit_ty(&**typ)
-            }
         }
-        ExprTupField(ref subexpression, _, ref types) => {
+        ExprTupField(ref subexpression, _) => {
             visitor.visit_expr(&**subexpression);
-            for typ in types.iter() {
-                visitor.visit_ty(&**typ)
-            }
         }
         ExprIndex(ref main_expression, ref index_expression) => {
             visitor.visit_expr(&**main_expression);

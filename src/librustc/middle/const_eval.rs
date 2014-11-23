@@ -15,19 +15,16 @@ pub use self::const_val::*;
 pub use self::constness::*;
 
 use metadata::csearch;
-use middle::astencode;
-use middle::def;
+use middle::{astencode, def};
 use middle::pat_util::def_to_path;
 use middle::ty::{mod, Ty};
-use middle::typeck::astconv;
-use middle::typeck::check;
-use util::nodemap::{DefIdMap};
+use middle::typeck::{astconv, check};
+use util::nodemap::DefIdMap;
 
 use syntax::ast::{mod, Expr};
 use syntax::parse::token::InternedString;
 use syntax::ptr::P;
-use syntax::visit::Visitor;
-use syntax::visit;
+use syntax::visit::{mod, Visitor};
 use syntax::{ast_map, ast_util, codemap};
 
 use std::rc::Rc;
@@ -234,9 +231,9 @@ impl<'a, 'tcx> ConstEvalVisitor<'a, 'tcx> {
                 }
             }
 
-            ast::ExprField(ref base, _, _) => self.classify(&**base),
+            ast::ExprField(ref base, _) => self.classify(&**base),
 
-            ast::ExprTupField(ref base, _, _) => self.classify(&**base),
+            ast::ExprTupField(ref base, _) => self.classify(&**base),
 
             ast::ExprIndex(ref base, ref idx) =>
                 join(self.classify(&**base), self.classify(&**idx)),

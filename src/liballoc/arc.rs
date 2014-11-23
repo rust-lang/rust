@@ -119,6 +119,16 @@ impl<T> Arc<T> {
     }
 }
 
+/// Get the number of weak references to this value.
+#[inline]
+#[experimental]
+pub fn weak_count<T>(this: &Arc<T>) -> uint { this.inner().weak.load(atomic::SeqCst) - 1 }
+
+/// Get the number of strong references to this value.
+#[inline]
+#[experimental]
+pub fn strong_count<T>(this: &Arc<T>) -> uint { this.inner().strong.load(atomic::SeqCst) }
+
 #[unstable = "waiting on stability of Clone"]
 impl<T> Clone for Arc<T> {
     /// Duplicate an atomically reference counted wrapper.
@@ -321,7 +331,7 @@ mod tests {
     use std::sync::atomic;
     use std::task;
     use std::vec::Vec;
-    use super::{Arc, Weak};
+    use super::{Arc, Weak, weak_count, strong_count};
     use std::sync::Mutex;
 
     struct Canary(*mut atomic::AtomicUint);
@@ -463,6 +473,49 @@ mod tests {
         drop(arc);
         assert!(canary.load(atomic::Acquire) == 1);
         drop(arc_weak);
+    }
+
+    #[test]
+    fn test_strong_count() {
+        let a = Arc::new(0u32);
+        assert!(strong_count(&a) == 1);
+        let w = a.downgrade();
+        assert!(strong_count(&a) == 1);
+        let b = w.upgrade().expect("");
+        assert!(strong_count(&b) == 2);
+        assert!(strong_count(&a) == 2);
+        drop(w);
+        drop(a);
+        assert!(strong_count(&b) == 1);
+        let c = b.clone();
+        assert!(strong_count(&b) == 2);
+        assert!(strong_count(&c) == 2);
+    }
+
+    #[test]
+    fn test_weak_count() {
+        let a = Arc::new(0u32);
+        assert!(strong_count(&a) == 1);
+        assert!(weak_count(&a) == 0);
+        let w = a.downgrade();
+        assert!(strong_count(&a) == 1);
+        assert!(weak_count(&a) == 1);
+        let x = w.clone();
+        assert!(weak_count(&a) == 2);
+        drop(w);
+        drop(x);
+        assert!(strong_count(&a) == 1);
+        assert!(weak_count(&a) == 0);
+        let c = a.clone();
+        assert!(strong_count(&a) == 2);
+        assert!(weak_count(&a) == 0);
+        let d = c.downgrade();
+        assert!(weak_count(&c) == 1);
+        assert!(strong_count(&c) == 2);
+
+        drop(a);
+        drop(c);
+        drop(d);
     }
 
     #[test]
