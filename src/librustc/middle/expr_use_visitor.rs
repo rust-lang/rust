@@ -20,11 +20,9 @@ pub use self::ConsumeMode::*;
 pub use self::MoveReason::*;
 use self::OverloadedCallType::*;
 
+use middle::{def, region, pat_util};
 use middle::mem_categorization as mc;
-use middle::def;
 use middle::mem_categorization::Typer;
-use middle::region;
-use middle::pat_util;
 use middle::ty::{mod, Ty};
 use middle::typeck::{MethodCall, MethodObject, MethodTraitObject};
 use middle::typeck::{MethodOrigin, MethodParam, MethodTypeParam};
@@ -331,11 +329,11 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                 }
             }
 
-            ast::ExprField(ref base, _, _) => {         // base.f
+            ast::ExprField(ref base, _) => {         // base.f
                 self.select_from_expr(&**base);
             }
 
-            ast::ExprTupField(ref base, _, _) => {         // base.<n>
+            ast::ExprTupField(ref base, _) => {         // base.<n>
                 self.select_from_expr(&**base);
             }
 

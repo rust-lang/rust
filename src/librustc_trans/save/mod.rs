@@ -30,34 +30,26 @@
 use driver::driver::CrateAnalysis;
 use session::Session;
 
-use middle::def;
+use middle::{def, typeck};
 use middle::ty::{mod, Ty};
-use middle::typeck;
 
 use std::cell::Cell;
-use std::io;
-use std::io::File;
-use std::io::fs;
+use std::io::{mod, File, fs};
 use std::os;
 
-use syntax::ast;
-use syntax::ast_util;
-use syntax::ast_util::PostExpansionMethod;
-use syntax::ast::{NodeId,DefId};
+use syntax::ast_util::{mod, PostExpansionMethod};
+use syntax::ast::{mod, NodeId, DefId};
 use syntax::ast_map::NodeItem;
 use syntax::attr;
 use syntax::codemap::*;
-use syntax::parse::token;
-use syntax::parse::token::{get_ident,keywords};
+use syntax::parse::token::{mod, get_ident, keywords};
 use syntax::owned_slice::OwnedSlice;
-use syntax::visit;
-use syntax::visit::Visitor;
+use syntax::visit::{mod, Visitor};
 use syntax::print::pprust::{path_to_string,ty_to_string};
 use syntax::ptr::P;
 
 use self::span_utils::SpanUtils;
-use self::recorder::Recorder;
-use self::recorder::FmtStrs;
+use self::recorder::{Recorder, FmtStrs};
 
 use util::ppaux;
 
@@ -1293,7 +1285,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
             ast::ExprStruct(ref path, ref fields, ref base) =>
                 self.process_struct_lit(ex, path, fields, base),
             ast::ExprMethodCall(_, _, ref args) => self.process_method_call(ex, args),
-            ast::ExprField(ref sub_ex, ident, _) => {
+            ast::ExprField(ref sub_ex, ident) => {
                 if generated_code(sub_ex.span) {
                     return
                 }
@@ -1319,7 +1311,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                                             "Expected struct type, but not ty_struct"),
                 }
             },
-            ast::ExprTupField(ref sub_ex, idx, _) => {
+            ast::ExprTupField(ref sub_ex, idx) => {
                 if generated_code(sub_ex.span) {
                     return
                 }

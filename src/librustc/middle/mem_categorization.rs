@@ -477,7 +477,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
             Ok(self.cat_deref(expr, base_cmt, 0, false))
           }
 
-          ast::ExprField(ref base, f_name, _) => {
+          ast::ExprField(ref base, f_name) => {
             let base_cmt = if_ok!(self.cat_expr(&**base));
             debug!("cat_expr(cat_field): id={} expr={} base={}",
                    expr.id,
@@ -486,7 +486,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
             Ok(self.cat_field(expr, base_cmt, f_name.node.name, expr_ty))
           }
 
-          ast::ExprTupField(ref base, idx, _) => {
+          ast::ExprTupField(ref base, idx) => {
             let base_cmt = if_ok!(self.cat_expr(&**base));
             Ok(self.cat_tup_field(expr, base_cmt, idx.node, expr_ty))
           }
