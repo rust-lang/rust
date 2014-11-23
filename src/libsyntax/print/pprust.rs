@@ -1734,29 +1734,15 @@ impl<'a> State<'a> {
                 try!(self.word_space("="));
                 try!(self.print_expr(&**rhs));
             }
-            ast::ExprField(ref expr, id, ref tys) => {
+            ast::ExprField(ref expr, id) => {
                 try!(self.print_expr(&**expr));
                 try!(word(&mut self.s, "."));
                 try!(self.print_ident(id.node));
-                if tys.len() > 0u {
-                    try!(word(&mut self.s, "::<"));
-                    try!(self.commasep(
-                        Inconsistent, tys.as_slice(),
-                        |s, ty| s.print_type(&**ty)));
-                    try!(word(&mut self.s, ">"));
-                }
             }
-            ast::ExprTupField(ref expr, id, ref tys) => {
+            ast::ExprTupField(ref expr, id) => {
                 try!(self.print_expr(&**expr));
                 try!(word(&mut self.s, "."));
                 try!(self.print_uint(id.node));
-                if tys.len() > 0u {
-                    try!(word(&mut self.s, "::<"));
-                    try!(self.commasep(
-                        Inconsistent, tys.as_slice(),
-                        |s, ty| s.print_type(&**ty)));
-                    try!(word(&mut self.s, ">"));
-                }
             }
             ast::ExprIndex(ref expr, ref index) => {
                 try!(self.print_expr(&**expr));

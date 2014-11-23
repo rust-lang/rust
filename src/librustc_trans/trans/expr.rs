@@ -38,47 +38,26 @@ pub use self::Dest::*;
 use self::lazy_binop_ty::*;
 
 use back::abi;
-use llvm;
-use llvm::{ValueRef};
+use llvm::{mod, ValueRef};
 use middle::def;
 use middle::mem_categorization::Typer;
-use middle::subst;
-use middle::subst::Subst;
-use trans::_match;
-use trans::adt;
-use trans::asm;
+use middle::subst::{mod, Subst};
+use trans::{_match, adt, asm, base, callee, closure, consts, controlflow};
+use trans::{debuginfo, glue, machine, meth, inline, tvec, type_of};
 use trans::base::*;
-use trans::base;
 use trans::build::*;
-use trans::callee;
-use trans::cleanup;
-use trans::cleanup::CleanupMethods;
-use trans::closure;
+use trans::cleanup::{mod, CleanupMethods};
 use trans::common::*;
-use trans::consts;
-use trans::controlflow;
 use trans::datum::*;
-use trans::debuginfo;
-use trans::glue;
-use trans::machine;
-use trans::meth;
-use trans::inline;
-use trans::tvec;
-use trans::type_of;
-use middle::ty::{struct_fields, tup_fields};
-use middle::ty::{AdjustDerefRef, AdjustAddEnv, AutoUnsafe};
-use middle::ty::{AutoPtr};
-use middle::ty::{mod, Ty};
-use middle::typeck;
-use middle::typeck::MethodCall;
+use middle::ty::{mod, struct_fields, tup_fields};
+use middle::ty::{AdjustDerefRef, AdjustAddEnv, AutoUnsafe, AutoPtr, Ty};
+use middle::typeck::{mod, MethodCall};
 use util::common::indenter;
 use util::ppaux::Repr;
 use trans::machine::{llsize_of, llsize_of_alloc};
 use trans::type_::Type;
 
-use syntax::ast;
-use syntax::ast_util;
-use syntax::codemap;
+use syntax::{ast, ast_util, codemap};
 use syntax::print::pprust::{expr_to_string};
 use syntax::ptr::P;
 use std::rc::Rc;
@@ -599,10 +578,10 @@ fn trans_datum_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         ast::ExprPath(_) => {
             trans_def(bcx, expr, bcx.def(expr.id))
         }
-        ast::ExprField(ref base, ident, _) => {
+        ast::ExprField(ref base, ident) => {
             trans_rec_field(bcx, &**base, ident.node)
         }
-        ast::ExprTupField(ref base, idx, _) => {
+        ast::ExprTupField(ref base, idx) => {
             trans_rec_tup_field(bcx, &**base, idx.node)
         }
         ast::ExprIndex(ref base, ref idx) => {

@@ -71,17 +71,13 @@ use syntax::ast::{Variant, ViewItem, ViewItemExternCrate};
 use syntax::ast::{ViewItemUse, ViewPathGlob, ViewPathList, ViewPathSimple};
 use syntax::ast::{Visibility};
 use syntax::ast;
-use syntax::ast_util::{PostExpansionMethod, local_def, walk_pat};
-use syntax::ast_util;
+use syntax::ast_util::{mod, PostExpansionMethod, local_def, walk_pat};
 use syntax::attr::AttrMetaMethods;
 use syntax::ext::mtwt;
-use syntax::parse::token::special_names;
-use syntax::parse::token::special_idents;
-use syntax::parse::token;
+use syntax::parse::token::{mod, special_names, special_idents};
 use syntax::codemap::{Span, DUMMY_SP, Pos};
 use syntax::owned_slice::OwnedSlice;
-use syntax::visit;
-use syntax::visit::Visitor;
+use syntax::visit::{mod, Visitor};
 
 use std::collections::{HashMap, HashSet};
 use std::collections::hash_map::{Occupied, Vacant};
@@ -5959,7 +5955,7 @@ impl<'a> Resolver<'a> {
 
     fn record_candidate_traits_for_expr_if_necessary(&mut self, expr: &Expr) {
         match expr.node {
-            ExprField(_, ident, _) => {
+            ExprField(_, ident) => {
                 // FIXME(#6890): Even though you can't treat a method like a
                 // field, we need to add any trait methods we find that match
                 // the field name so that we can do some nice error reporting

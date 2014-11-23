@@ -113,24 +113,19 @@ use self::VarKind::*;
 
 use middle::def::*;
 use middle::mem_categorization::Typer;
-use middle::pat_util;
-use middle::typeck;
-use middle::ty;
+use middle::{pat_util, typeck, ty};
 use lint;
 use util::nodemap::NodeMap;
 
-use std::fmt;
-use std::io;
+use std::{fmt, io, uint};
 use std::rc::Rc;
-use std::uint;
 use syntax::ast::{mod, NodeId, Expr};
 use syntax::codemap::{BytePos, original_sp, Span};
-use syntax::parse::token::special_idents;
-use syntax::parse::token;
+use syntax::parse::token::{mod, special_idents};
 use syntax::print::pprust::{expr_to_string, block_to_string};
 use syntax::ptr::P;
-use syntax::{visit, ast_util};
-use syntax::visit::{Visitor, FnKind};
+use syntax::ast_util;
+use syntax::visit::{mod, Visitor, FnKind};
 
 /// For use with `propagate_through_loop`.
 enum LoopKind<'a> {
@@ -967,11 +962,11 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
               self.access_path(expr, succ, ACC_READ | ACC_USE)
           }
 
-          ast::ExprField(ref e, _, _) => {
+          ast::ExprField(ref e, _) => {
               self.propagate_through_expr(&**e, succ)
           }
 
-          ast::ExprTupField(ref e, _, _) => {
+          ast::ExprTupField(ref e, _) => {
               self.propagate_through_expr(&**e, succ)
           }
 
@@ -1295,8 +1290,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
         match expr.node {
             ast::ExprPath(_) => succ,
-            ast::ExprField(ref e, _, _) => self.propagate_through_expr(&**e, succ),
-            ast::ExprTupField(ref e, _, _) => self.propagate_through_expr(&**e, succ),
+            ast::ExprField(ref e, _) => self.propagate_through_expr(&**e, succ),
+            ast::ExprTupField(ref e, _) => self.propagate_through_expr(&**e, succ),
             _ => self.propagate_through_expr(expr, succ)
         }
     }

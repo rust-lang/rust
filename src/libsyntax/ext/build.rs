@@ -577,7 +577,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         };
 
         let id = Spanned { node: ident, span: field_span };
-        self.expr(sp, ast::ExprField(expr, id, Vec::new()))
+        self.expr(sp, ast::ExprField(expr, id))
     }
     fn expr_tup_field_access(&self, sp: Span, expr: P<ast::Expr>, idx: uint) -> P<ast::Expr> {
         let field_span = Span {
@@ -587,7 +587,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         };
 
         let id = Spanned { node: idx, span: field_span };
-        self.expr(sp, ast::ExprTupField(expr, id, Vec::new()))
+        self.expr(sp, ast::ExprTupField(expr, id))
     }
     fn expr_addr_of(&self, sp: Span, e: P<ast::Expr>) -> P<ast::Expr> {
         self.expr(sp, ast::ExprAddrOf(ast::MutImmutable, e))
