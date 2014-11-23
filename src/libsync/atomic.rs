@@ -96,7 +96,7 @@
 
 use alloc::boxed::Box;
 use core::mem;
-use core::prelude::{Drop, None, Option, Some};
+use core::prelude::{Send, Drop, None, Option, Some};
 
 pub use core::atomic::{AtomicBool, AtomicInt, AtomicUint, AtomicPtr};
 pub use core::atomic::{Ordering, Relaxed, Release, Acquire, AcqRel, SeqCst};
@@ -114,7 +114,7 @@ pub struct AtomicOption<T> {
     p: AtomicUint,
 }
 
-impl<T> AtomicOption<T> {
+impl<T: Send> AtomicOption<T> {
     /// Create a new `AtomicOption`
     pub fn new(p: Box<T>) -> AtomicOption<T> {
         unsafe { AtomicOption { p: AtomicUint::new(mem::transmute(p)) } }
@@ -170,7 +170,7 @@ impl<T> AtomicOption<T> {
 }
 
 #[unsafe_destructor]
-impl<T> Drop for AtomicOption<T> {
+impl<T: Send> Drop for AtomicOption<T> {
     fn drop(&mut self) {
         let _ = self.take(SeqCst);
     }
