@@ -208,7 +208,7 @@ pub fn store_environment<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                      bv.to_string(ccx)).as_slice());
         }
 
-        let bound_data = GEPi(bcx, llbox, &[0u, abi::box_field_body, i]);
+        let bound_data = GEPi(bcx, llbox, &[0u, abi::BOX_FIELD_BODY, i]);
 
         match bv.action {
             ast::CaptureByValue => {
@@ -339,9 +339,9 @@ fn load_unboxed_closure_environment<'blk, 'tcx>(
 }
 
 fn fill_fn_pair(bcx: Block, pair: ValueRef, llfn: ValueRef, llenvptr: ValueRef) {
-    Store(bcx, llfn, GEPi(bcx, pair, &[0u, abi::fn_field_code]));
+    Store(bcx, llfn, GEPi(bcx, pair, &[0u, abi::FAT_PTR_ADDR]));
     let llenvptr = PointerCast(bcx, llenvptr, Type::i8p(bcx.ccx()));
-    Store(bcx, llenvptr, GEPi(bcx, pair, &[0u, abi::fn_field_box]));
+    Store(bcx, llenvptr, GEPi(bcx, pair, &[0u, abi::FAT_PTR_EXTRA]));
 }
 
 #[deriving(PartialEq)]

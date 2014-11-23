@@ -264,8 +264,8 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, e: &ast::Expr)
                                         ty::ty_vec(unit_ty, Some(len)) => {
                                             let llunitty = type_of::type_of(cx, unit_ty);
                                             let llptr = const_ptrcast(cx, llconst, llunitty);
-                                            assert_eq!(abi::slice_elt_base, 0);
-                                            assert_eq!(abi::slice_elt_len, 1);
+                                            assert_eq!(abi::FAT_PTR_ADDR, 0);
+                                            assert_eq!(abi::FAT_PTR_EXTRA, 1);
                                             llconst = C_struct(cx, &[
                                                 llptr,
                                                 C_uint(cx, len)
