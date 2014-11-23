@@ -179,7 +179,7 @@ pub trait Octal for Sized? {
     fn fmt(&self, &mut Formatter) -> Result;
 }
 
-/// Format trait for the `t` character
+/// Format trait for the `b` character
 #[unstable = "I/O and core have yet to be reconciled"]
 pub trait Binary for Sized? {
     /// Formats the value using the given formatter.

@@ -8,10 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[cfg(rustdoc)]
-extern crate "rustdoc" as this;
+#![feature(tuple_indexing)]
 
-#[cfg(rustc)]
-extern crate "rustc_trans" as this;
-
-fn main() { this::main() }
+fn main() {
+    let t = (42i, 42i);
+    t.0::<int>; //~ ERROR expected one of `;`, `}`, found `::`
+}

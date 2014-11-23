@@ -1110,7 +1110,7 @@ extern "system" {
 ///
 /// The first element is traditionally the path to the executable, but it can be
 /// set to arbitrary text, and it may not even exist, so this property should not
-//  be relied upon for security purposes.
+/// be relied upon for security purposes.
 ///
 /// The arguments are interpreted as utf-8, with invalid bytes replaced with \uFFFD.
 /// See `String::from_utf8_lossy` for details.
