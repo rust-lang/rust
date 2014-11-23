@@ -17,17 +17,41 @@
 
 #![experimental]
 
-#[stable]
-pub use core_sync::atomic;
+pub use self::one::{Once, ONCE_INIT};
 
-pub use core_sync::{deque, mpmc_bounded_queue, mpsc_queue, spsc_queue};
-pub use core_sync::{Arc, Weak, Mutex, MutexGuard, Condvar, Barrier};
-pub use core_sync::{RWLock, RWLockReadGuard, RWLockWriteGuard};
-pub use core_sync::{Semaphore, SemaphoreGuard};
-pub use core_sync::one::{Once, ONCE_INIT};
+pub use alloc::arc::{Arc, Weak};
+pub use self::lock::{Mutex, MutexGuard, Condvar, Barrier,
+                     RWLock, RWLockReadGuard, RWLockWriteGuard};
+
+// The mutex/rwlock in this module are not meant for reexport
+pub use self::raw::{Semaphore, SemaphoreGuard};
 
 pub use self::future::Future;
 pub use self::task_pool::TaskPool;
+
+// Core building blocks for all primitives in this crate
+
+#[stable]
+pub mod atomic;
+
+// Concurrent data structures
+
+pub mod spsc_queue;
+pub mod mpsc_queue;
+pub mod mpmc_bounded_queue;
+pub mod deque;
+
+// Low-level concurrency primitives
+
+mod raw;
+mod mutex;
+mod one;
+
+// Higher level primitives based on those above
+
+mod lock;
+
+// Task management
 
 mod future;
 mod task_pool;

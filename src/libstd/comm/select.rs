@@ -325,9 +325,9 @@ impl Iterator<*mut Handle<'static, ()>> for Packets {
 #[cfg(test)]
 #[allow(unused_imports)]
 mod test {
-    use std::prelude::*;
+    use prelude::*;
 
-    use super::super::*;
+    use super::*;
 
     // Don't use the libstd version so we can pull in the right Select structure
     // (std::comm points at the wrong one)

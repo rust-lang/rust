@@ -39,14 +39,14 @@ pub use self::Failure::*;
 use self::Blocker::*;
 
 use alloc::boxed::Box;
-use collections::Vec;
+use vec::Vec;
 use core::mem;
 use core::cell::UnsafeCell;
 use rustrt::local::Local;
 use rustrt::mutex::{NativeMutex, LockGuard};
 use rustrt::task::{Task, BlockedTask};
 
-use atomic;
+use sync::atomic;
 
 pub struct Packet<T> {
     /// Only field outside of the mutex. Just done for kicks, but mainly because

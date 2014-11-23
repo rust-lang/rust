@@ -124,7 +124,6 @@ extern crate unicode;
 extern crate core;
 extern crate "collections" as core_collections;
 extern crate "rand" as core_rand;
-extern crate "sync" as core_sync;
 extern crate libc;
 extern crate rustrt;
 
@@ -172,8 +171,6 @@ pub use core_collections::vec;
 pub use rustrt::c_str;
 
 pub use unicode::char;
-
-pub use core_sync::comm;
 
 /* Exported macros */
 
@@ -236,6 +233,7 @@ pub mod hash;
 
 pub mod task;
 pub mod sync;
+pub mod comm;
 
 #[cfg(unix)]
 #[path = "sys/unix/mod.rs"] mod sys;

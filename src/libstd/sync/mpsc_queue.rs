@@ -48,7 +48,7 @@ use alloc::boxed::Box;
 use core::mem;
 use core::cell::UnsafeCell;
 
-use atomic::{AtomicPtr, Release, Acquire, AcqRel, Relaxed};
+use sync::atomic::{AtomicPtr, Release, Acquire, AcqRel, Relaxed};
 
 /// A result of the `pop` function.
 pub enum PopResult<T> {
@@ -159,7 +159,7 @@ impl<T: Send> Drop for Queue<T> {
 
 #[cfg(test)]
 mod tests {
-    use std::prelude::*;
+    use prelude::*;
 
     use alloc::arc::Arc;
 

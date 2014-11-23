@@ -18,7 +18,7 @@ use core::prelude::*;
 use core::int;
 use core::atomic;
 
-use mutex::{StaticMutex, MUTEX_INIT};
+use super::mutex::{StaticMutex, MUTEX_INIT};
 
 /// A synchronization primitive which can be used to run a one-time global
 /// initialization. Useful for one-time initialization for FFI or related
@@ -27,8 +27,8 @@ use mutex::{StaticMutex, MUTEX_INIT};
 ///
 /// # Example
 ///
-/// ```rust
-/// use sync::one::{Once, ONCE_INIT};
+/// ```rust,ignore
+/// use std::sync::one::{Once, ONCE_INIT};
 ///
 /// static START: Once = ONCE_INIT;
 ///
@@ -120,8 +120,8 @@ impl Once {
 
 #[cfg(test)]
 mod test {
-    use std::prelude::*;
-    use std::task;
+    use prelude::*;
+    use task;
     use super::{ONCE_INIT, Once};
 
     #[test]
