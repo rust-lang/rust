@@ -3144,8 +3144,8 @@ pub fn add_three_times_four(x: int) -> int {
 }
 ```
 
-We're calling this file `lib.rs` because it has the same name as our project,
-and so it's named this, by convention.
+We're calling this file `lib.rs`, because Cargo uses that filename as the crate
+root by convention.
 
 We'll then need to use this crate in our `src/main.rs`:
 
