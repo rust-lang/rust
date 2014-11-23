@@ -568,13 +568,15 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
             Some(node_id) => node_id,
             None => -1,
         };
+        let val = self.span.snippet(item.span);
         let sub_span = self.span.sub_span_after_keyword(item.span, keywords::Struct);
         self.fmt.struct_str(item.span,
                             sub_span,
                             item.id,
                             ctor_id,
                             qualname.as_slice(),
-                            self.cur_scope);
+                            self.cur_scope,
+                            val.as_slice());
 
         // fields
         for field in def.fields.iter() {
@@ -590,12 +592,14 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                     enum_definition: &ast::EnumDef,
                     ty_params: &ast::Generics) {
         let enum_name = self.analysis.ty_cx.map.path_to_string(item.id);
+        let val = self.span.snippet(item.span);
         match self.span.sub_span_after_keyword(item.span, keywords::Enum) {
             Some(sub_span) => self.fmt.enum_str(item.span,
                                                 Some(sub_span),
                                                 item.id,
                                                 enum_name.as_slice(),
-                                                self.cur_scope),
+                                                self.cur_scope,
+                                                val.as_slice()),
             None => self.sess.span_bug(item.span,
                                        format!("Could not find subspan for enum {}",
                                                enum_name).as_slice()),
@@ -700,13 +704,14 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                      trait_refs: &OwnedSlice<ast::TyParamBound>,
                      methods: &Vec<ast::TraitItem>) {
         let qualname = self.analysis.ty_cx.map.path_to_string(item.id);
-
+        let val = self.span.snippet(item.span);
         let sub_span = self.span.sub_span_after_keyword(item.span, keywords::Trait);
         self.fmt.trait_str(item.span,
                            sub_span,
                            item.id,
                            qualname.as_slice(),
-                           self.cur_scope);
+                           self.cur_scope,
+                           val.as_slice());
 
         // super-traits
         for super_bound in trait_refs.iter() {

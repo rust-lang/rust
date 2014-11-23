@@ -106,7 +106,7 @@ impl<'a> FmtStrs<'a> {
             Variable => ("variable",
                          vec!("id","name","qualname","value","type","scopeid"),
                          true, true),
-            Enum => ("enum", vec!("id","qualname","scopeid"), true, true),
+            Enum => ("enum", vec!("id","qualname","scopeid","value"), true, true),
             Variant => ("variant",
                         vec!("id","name","qualname","type","value","scopeid"),
                         true, true),
@@ -117,8 +117,8 @@ impl<'a> FmtStrs<'a> {
                          vec!("id","qualname","declid","declidcrate","scopeid"),
                          true, true),
             MethodDecl => ("method_decl", vec!("id","qualname","scopeid"), true, true),
-            Struct => ("struct", vec!("id","ctor_id","qualname","scopeid"), true, true),
-            Trait => ("trait", vec!("id","qualname","scopeid"), true, true),
+            Struct => ("struct", vec!("id","ctor_id","qualname","scopeid","value"), true, true),
+            Trait => ("trait", vec!("id","qualname","scopeid","value"), true, true),
             Impl => ("impl", vec!("id","refid","refidcrate","scopeid"), true, true),
             Module => ("module", vec!("id","qualname","scopeid","def_file"), true, false),
             UseAlias => ("use_alias",
@@ -161,6 +161,7 @@ impl<'a> FmtStrs<'a> {
         }
 
         let values = values.iter().map(|s| {
+            // Never take more than 1020 chars
             if s.len() > 1020 {
                 s.as_slice().slice_to(1020)
             } else {
@@ -327,11 +328,12 @@ impl<'a> FmtStrs<'a> {
                     sub_span: Option<Span>,
                     id: NodeId,
                     name: &str,
-                    scope_id: NodeId) {
+                    scope_id: NodeId,
+                    value: &str) {
         self.check_and_record(Enum,
                               span,
                               sub_span,
-                              svec!(id, name, scope_id));
+                              svec!(id, name, scope_id, value));
     }
 
     pub fn tuple_variant_str(&mut self,
@@ -411,11 +413,12 @@ impl<'a> FmtStrs<'a> {
                       id: NodeId,
                       ctor_id: NodeId,
                       name: &str,
-                      scope_id: NodeId) {
+                      scope_id: NodeId,
+                      value: &str) {
         self.check_and_record(Struct,
                               span,
                               sub_span,
-                              svec!(id, ctor_id, name, scope_id));
+                              svec!(id, ctor_id, name, scope_id, value));
     }
 
     pub fn trait_str(&mut self,
@@ -423,11 +426,12 @@ impl<'a> FmtStrs<'a> {
                      sub_span: Option<Span>,
                      id: NodeId,
                      name: &str,
-                     scope_id: NodeId) {
+                     scope_id: NodeId,
+                     value: &str) {
         self.check_and_record(Trait,
                               span,
                               sub_span,
-                              svec!(id, name, scope_id));
+                              svec!(id, name, scope_id, value));
     }
 
     pub fn impl_str(&mut self,
