@@ -107,10 +107,14 @@ impl<'a> FmtStrs<'a> {
                          vec!("id","name","qualname","value","type","scopeid"),
                          true, true),
             Enum => ("enum", vec!("id","qualname","scopeid"), true, true),
-            Variant => ("variant", vec!("id","name","qualname","value","scopeid"), true, true),
+            Variant => ("variant",
+                        vec!("id","name","qualname","type","value","scopeid"),
+                        true, true),
             VariantStruct => ("variant_struct",
-                              vec!("id","ctor_id","qualname","value","scopeid"), true, true),
-            Function => ("function", vec!("id","qualname","declid","declidcrate","scopeid"),
+                              vec!("id","ctor_id","qualname","type","value","scopeid"),
+                              true, true),
+            Function => ("function",
+                         vec!("id","qualname","declid","declidcrate","scopeid"),
                          true, true),
             MethodDecl => ("method_decl", vec!("id","qualname","scopeid"), true, true),
             Struct => ("struct", vec!("id","ctor_id","qualname","scopeid"), true, true),
@@ -128,7 +132,7 @@ impl<'a> FmtStrs<'a> {
                             true, false),
             MethodCall => ("method_call",
                            vec!("refid","refidcrate","declid","declidcrate","scopeid"),
-                            true, true),
+                           true, true),
             Typedef => ("typedef", vec!("id","qualname","value"), true, true),
             ExternalCrate => ("external_crate", vec!("name","crate","file_name"), false, false),
             Crate => ("crate", vec!("name"), true, false),
@@ -140,7 +144,7 @@ impl<'a> FmtStrs<'a> {
                         true, true),
             StructRef => ("struct_ref",
                           vec!("refid","refidcrate","qualname","scopeid"),
-                           true, true),
+                          true, true),
             FnRef => ("fn_ref", vec!("refid","refidcrate","qualname","scopeid"), true, true)
         }
     }
@@ -336,12 +340,13 @@ impl<'a> FmtStrs<'a> {
                              id: NodeId,
                              name: &str,
                              qualname: &str,
+                             typ: &str,
                              val: &str,
                              scope_id: NodeId) {
         self.check_and_record(Variant,
                               span,
                               sub_span,
-                              svec!(id, name, qualname, val, scope_id));
+                              svec!(id, name, qualname, typ, val, scope_id));
     }
 
     pub fn struct_variant_str(&mut self,
@@ -350,12 +355,13 @@ impl<'a> FmtStrs<'a> {
                               id: NodeId,
                               ctor_id: NodeId,
                               name: &str,
+                              typ: &str,
                               val: &str,
                               scope_id: NodeId) {
         self.check_and_record(VariantStruct,
                               span,
                               sub_span,
-                              svec!(id, ctor_id, name, val, scope_id));
+                              svec!(id, ctor_id, name, typ, val, scope_id));
     }
 
     pub fn fn_str(&mut self,
