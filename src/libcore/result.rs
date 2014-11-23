@@ -57,7 +57,7 @@
 //!
 //! Pattern matching on `Result`s is clear and straightforward for
 //! simple cases, but `Result` comes with some convenience methods
-//! that make working it more succinct.
+//! that make working with it more succinct.
 //!
 //! ```
 //! let good_result: Result<int, int> = Ok(10);
