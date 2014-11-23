@@ -91,7 +91,7 @@
 //! fn main() {
 //!     let object = TestStruct {
 //!         data_int: 1,
-//!         data_str: "toto".to_string(),
+//!         data_str: "homura".to_string(),
 //!         data_vector: vec![2,3,4,5],
 //!     };
 //!
@@ -178,7 +178,7 @@
 //!     // Serialize using `ToJson`
 //!     let input_data = TestStruct {
 //!         data_int: 1,
-//!         data_str: "toto".to_string(),
+//!         data_str: "madoka".to_string(),
 //!         data_vector: vec![2,3,4,5],
 //!     };
 //!     let json_obj: Json = input_data.to_json();
@@ -443,7 +443,9 @@ impl<'a> ::Encoder<io::IoError> for Encoder<'a> {
     fn emit_f64(&mut self, v: f64) -> EncodeResult {
         write!(self.writer, "{}", fmt_number_or_null(v))
     }
-    fn emit_f32(&mut self, v: f32) -> EncodeResult { self.emit_f64(v as f64) }
+    fn emit_f32(&mut self, v: f32) -> EncodeResult {
+        self.emit_f64(v as f64)
+    }
 
     fn emit_char(&mut self, v: char) -> EncodeResult {
         escape_char(self.writer, v)
@@ -452,7 +454,9 @@ impl<'a> ::Encoder<io::IoError> for Encoder<'a> {
         escape_str(self.writer, v)
     }
 
-    fn emit_enum(&mut self, _name: &str, f: |&mut Encoder<'a>| -> EncodeResult) -> EncodeResult {
+    fn emit_enum(&mut self,
+                 _name: &str,
+                 f: |&mut Encoder<'a>| -> EncodeResult) -> EncodeResult {
         f(self)
     }
 
@@ -663,7 +667,7 @@ impl<'a> ::Encoder<io::IoError> for PrettyEncoder<'a> {
 
     fn emit_enum_variant(&mut self,
                          name: &str,
-                         _: uint,
+                         _id: uint,
                          cnt: uint,
                          f: |&mut PrettyEncoder<'a>| -> EncodeResult) -> EncodeResult {
         if cnt == 0 {
@@ -1962,30 +1966,22 @@ macro_rules! read_primitive {
     ($name:ident, $ty:ty) => {
         fn $name(&mut self) -> DecodeResult<$ty> {
             match self.pop() {
-                Json::I64(f) => {
-                    match num::cast(f) {
-                        Some(f) => Ok(f),
-                        None => Err(ExpectedError("Number".to_string(), format!("{}", f))),
-                    }
-                }
-                Json::U64(f) => {
-                    match num::cast(f) {
-                        Some(f) => Ok(f),
-                        None => Err(ExpectedError("Number".to_string(), format!("{}", f))),
-                    }
-                }
-                Json::F64(f) => {
-                    Err(ExpectedError("Integer".to_string(), format!("{}", f)))
-                }
-                Json::String(s) => {
-                    // re: #12967.. a type w/ numeric keys (ie HashMap<uint, V> etc)
-                    // is going to have a string here, as per JSON spec.
-                    match std::str::from_str(s.as_slice()) {
-                        Some(f) => Ok(f),
-                        None => Err(ExpectedError("Number".to_string(), s)),
-                    }
+                Json::I64(f) => match num::cast(f) {
+                    Some(f) => Ok(f),
+                    None => Err(ExpectedError("Number".to_string(), format!("{}", f))),
                 },
-                value => Err(ExpectedError("Number".to_string(), format!("{}", value)))
+                Json::U64(f) => match num::cast(f) {
+                    Some(f) => Ok(f),
+                    None => Err(ExpectedError("Number".to_string(), format!("{}", f))),
+                },
+                Json::F64(f) => Err(ExpectedError("Integer".to_string(), format!("{}", f))),
+                // re: #12967.. a type w/ numeric keys (ie HashMap<uint, V> etc)
+                // is going to have a string here, as per JSON spec.
+                Json::String(s) => match std::str::from_str(s.as_slice()) {
+                    Some(f) => Ok(f),
+                    None => Err(ExpectedError("Number".to_string(), s)),
+                },
+                value => Err(ExpectedError("Number".to_string(), format!("{}", value))),
             }
         }
     }
@@ -2484,20 +2480,20 @@ mod tests {
 
     #[test]
     fn test_write_null() {
-        assert_eq!(Null.to_string().into_string(), "null");
-        assert_eq!(Null.to_pretty_str().into_string(), "null");
+        assert_eq!(Null.to_string(), "null");
+        assert_eq!(Null.to_pretty_str(), "null");
     }
 
     #[test]
     fn test_write_i64() {
-        assert_eq!(U64(0).to_string().into_string(), "0");
-        assert_eq!(U64(0).to_pretty_str().into_string(), "0");
+        assert_eq!(U64(0).to_string(), "0");
+        assert_eq!(U64(0).to_pretty_str(), "0");
 
-        assert_eq!(U64(1234).to_string().into_string(), "1234");
-        assert_eq!(U64(1234).to_pretty_str().into_string(), "1234");
+        assert_eq!(U64(1234).to_string(), "1234");
+        assert_eq!(U64(1234).to_pretty_str(), "1234");
 
-        assert_eq!(I64(-5678).to_string().into_string(), "-5678");
-        assert_eq!(I64(-5678).to_pretty_str().into_string(), "-5678");
+        assert_eq!(I64(-5678).to_string(), "-5678");
+        assert_eq!(I64(-5678).to_pretty_str(), "-5678");
 
         assert_eq!(U64(7650007200025252000).to_string(), "7650007200025252000");
         assert_eq!(U64(7650007200025252000).to_pretty_str(), "7650007200025252000");
@@ -2505,54 +2501,54 @@ mod tests {
 
     #[test]
     fn test_write_f64() {
-        assert_eq!(F64(3.0).to_string().into_string(), "3.0");
-        assert_eq!(F64(3.0).to_pretty_str().into_string(), "3.0");
+        assert_eq!(F64(3.0).to_string(), "3.0");
+        assert_eq!(F64(3.0).to_pretty_str(), "3.0");
 
-        assert_eq!(F64(3.1).to_string().into_string(), "3.1");
-        assert_eq!(F64(3.1).to_pretty_str().into_string(), "3.1");
+        assert_eq!(F64(3.1).to_string(), "3.1");
+        assert_eq!(F64(3.1).to_pretty_str(), "3.1");
 
-        assert_eq!(F64(-1.5).to_string().into_string(), "-1.5");
-        assert_eq!(F64(-1.5).to_pretty_str().into_string(), "-1.5");
+        assert_eq!(F64(-1.5).to_string(), "-1.5");
+        assert_eq!(F64(-1.5).to_pretty_str(), "-1.5");
 
-        assert_eq!(F64(0.5).to_string().into_string(), "0.5");
-        assert_eq!(F64(0.5).to_pretty_str().into_string(), "0.5");
+        assert_eq!(F64(0.5).to_string(), "0.5");
+        assert_eq!(F64(0.5).to_pretty_str(), "0.5");
 
-        assert_eq!(F64(f64::NAN).to_string().into_string(), "null");
-        assert_eq!(F64(f64::NAN).to_pretty_str().into_string(), "null");
+        assert_eq!(F64(f64::NAN).to_string(), "null");
+        assert_eq!(F64(f64::NAN).to_pretty_str(), "null");
 
-        assert_eq!(F64(f64::INFINITY).to_string().into_string(), "null");
-        assert_eq!(F64(f64::INFINITY).to_pretty_str().into_string(), "null");
+        assert_eq!(F64(f64::INFINITY).to_string(), "null");
+        assert_eq!(F64(f64::INFINITY).to_pretty_str(), "null");
 
-        assert_eq!(F64(f64::NEG_INFINITY).to_string().into_string(), "null");
-        assert_eq!(F64(f64::NEG_INFINITY).to_pretty_str().into_string(), "null");
+        assert_eq!(F64(f64::NEG_INFINITY).to_string(), "null");
+        assert_eq!(F64(f64::NEG_INFINITY).to_pretty_str(), "null");
     }
 
     #[test]
     fn test_write_str() {
-        assert_eq!(String("".to_string()).to_string().into_string(), "\"\"");
-        assert_eq!(String("".to_string()).to_pretty_str().into_string(), "\"\"");
+        assert_eq!(String("".to_string()).to_string(), "\"\"");
+        assert_eq!(String("".to_string()).to_pretty_str(), "\"\"");
 
-        assert_eq!(String("foo".to_string()).to_string().into_string(), "\"foo\"");
-        assert_eq!(String("foo".to_string()).to_pretty_str().into_string(), "\"foo\"");
+        assert_eq!(String("homura".to_string()).to_string(), "\"homura\"");
+        assert_eq!(String("madoka".to_string()).to_pretty_str(), "\"madoka\"");
     }
 
     #[test]
     fn test_write_bool() {
-        assert_eq!(Boolean(true).to_string().into_string(), "true");
-        assert_eq!(Boolean(true).to_pretty_str().into_string(), "true");
+        assert_eq!(Boolean(true).to_string(), "true");
+        assert_eq!(Boolean(true).to_pretty_str(), "true");
 
-        assert_eq!(Boolean(false).to_string().into_string(), "false");
-        assert_eq!(Boolean(false).to_pretty_str().into_string(), "false");
+        assert_eq!(Boolean(false).to_string(), "false");
+        assert_eq!(Boolean(false).to_pretty_str(), "false");
     }
 
     #[test]
     fn test_write_array() {
-        assert_eq!(Array(vec![]).to_string().into_string(), "[]");
-        assert_eq!(Array(vec![]).to_pretty_str().into_string(), "[]");
+        assert_eq!(Array(vec![]).to_string(), "[]");
+        assert_eq!(Array(vec![]).to_pretty_str(), "[]");
 
-        assert_eq!(Array(vec![Boolean(true)]).to_string().into_string(), "[true]");
+        assert_eq!(Array(vec![Boolean(true)]).to_string(), "[true]");
         assert_eq!(
-            Array(vec![Boolean(true)]).to_pretty_str().into_string(),
+            Array(vec![Boolean(true)]).to_pretty_str(),
             "\
             [\n  \
                 true\n\
@@ -2564,10 +2560,10 @@ mod tests {
             Null,
             Array(vec![String("foo\nbar".to_string()), F64(3.5)])]);
 
-        assert_eq!(long_test_array.to_string().into_string(),
+        assert_eq!(long_test_array.to_string(),
             "[false,null,[\"foo\\nbar\",3.5]]");
         assert_eq!(
-            long_test_array.to_pretty_str().into_string(),
+            long_test_array.to_pretty_str(),
             "\
             [\n  \
                 false,\n  \
@@ -2582,13 +2578,13 @@ mod tests {
 
     #[test]
     fn test_write_object() {
-        assert_eq!(mk_object(&[]).to_string().into_string(), "{}");
-        assert_eq!(mk_object(&[]).to_pretty_str().into_string(), "{}");
+        assert_eq!(mk_object(&[]).to_string(), "{}");
+        assert_eq!(mk_object(&[]).to_pretty_str(), "{}");
 
         assert_eq!(
             mk_object(&[
                 ("a".to_string(), Boolean(true))
-            ]).to_string().into_string(),
+            ]).to_string(),
             "{\"a\":true}"
         );
         assert_eq!(
@@ -2607,7 +2603,7 @@ mod tests {
             ]);
 
         assert_eq!(
-            complex_obj.to_string().into_string(),
+            complex_obj.to_string(),
             "{\
                 \"b\":[\
                     {\"c\":\"\\f\\r\"},\
@@ -2616,7 +2612,7 @@ mod tests {
             }"
         );
         assert_eq!(
-            complex_obj.to_pretty_str().into_string(),
+            complex_obj.to_pretty_str(),
             "\
             {\n  \
                 \"b\": [\n    \
