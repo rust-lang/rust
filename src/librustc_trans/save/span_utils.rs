@@ -280,6 +280,19 @@ impl<'a> SpanUtils<'a> {
         }
     }
 
+    pub fn sub_span_of_token(&self, span: Span, tok: Token) -> Option<Span> {
+        let mut toks = self.retokenise_span(span);
+        loop {
+            let next = toks.real_token();
+            if next.tok == token::Eof {
+                return None;
+            }
+            if next.tok == tok {
+                return self.make_sub_span(span, Some(next.sp));
+            }
+        }
+    }
+
     pub fn sub_span_after_keyword(&self,
                               span: Span,
                               keyword: keywords::Keyword) -> Option<Span> {

@@ -105,6 +105,7 @@ pub struct CrateAnalysis<'tcx> {
     pub ty_cx: ty::ctxt<'tcx>,
     pub reachable: NodeSet,
     pub name: String,
+    pub glob_map: Option<middle::resolve::GlobMap>,
 }
 
 #[deriving(Copy, PartialEq, Eq, Hash)]

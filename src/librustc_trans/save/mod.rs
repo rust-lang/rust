@@ -1197,7 +1197,28 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                                                self.cur_scope);
                         self.write_sub_paths_truncated(path);
                     }
-                    ast::ViewPathGlob(ref path, _) => {
+                    ast::ViewPathGlob(ref path, id) => {
+                        // Make a comma-separated list of names of imported modules.
+                        let mut name_string = String::new();
+                        let glob_map = &self.analysis.glob_map;
+                        let glob_map = glob_map.as_ref().unwrap();
+                        if glob_map.contains_key(&id) {
+                            let names = glob_map.index(&id);
+                            for n in names.iter() {
+                                if name_string.len() > 0 {
+                                    name_string.push_str(", ");
+                                }
+                                name_string.push_str(n.as_str());
+                            }
+                        }
+
+                        let sub_span = self.span.sub_span_of_token(path.span,
+                                                                   token::BinOp(token::Star));
+                        self.fmt.use_glob_str(path.span,
+                                              sub_span,
+                                              id,
+                                              name_string.as_slice(),
+                                              self.cur_scope);
                         self.write_sub_paths(path);
                     }
                     ast::ViewPathList(ref path, ref list, _) => {
@@ -1482,6 +1503,7 @@ pub fn process_crate(sess: &Session,
         return;
     }
 
+    assert!(analysis.glob_map.is_some());
     let cratename = match attr::find_crate_name(krate.attrs[]) {
         Some(name) => name.get().to_string(),
         None => {
