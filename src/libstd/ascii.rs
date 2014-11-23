@@ -12,7 +12,8 @@
 
 //! Operations on ASCII strings and characters
 
-#![experimental]
+#![unstable = "unsure about placement and naming"]
+#![allow(deprecated)]
 
 use core::kinds::Sized;
 use fmt;
@@ -31,30 +32,47 @@ pub struct Ascii { chr: u8 }
 impl Ascii {
     /// Converts an ascii character into a `u8`.
     #[inline]
-    pub fn to_byte(self) -> u8 {
+    #[unstable = "recently renamed"]
+    pub fn as_byte(&self) -> u8 {
         self.chr
+    }
+
+    /// Deprecated: use `as_byte` isntead.
+    #[deprecated = "use as_byte"]
+    pub fn to_byte(self) -> u8 {
+        self.as_byte()
     }
 
     /// Converts an ascii character into a `char`.
     #[inline]
-    pub fn to_char(self) -> char {
+    #[unstable = "recently renamed"]
+    pub fn as_char(&self) -> char {
         self.chr as char
+    }
+
+    /// Deprecated: use `as_char` isntead.
+    #[deprecated = "use as_char"]
+    pub fn to_char(self) -> char {
+        self.as_char()
     }
 
     /// Convert to lowercase.
     #[inline]
-    pub fn to_lowercase(self) -> Ascii {
+    #[stable]
+    pub fn to_lowercase(&self) -> Ascii {
         Ascii{chr: ASCII_LOWER_MAP[self.chr as uint]}
     }
 
     /// Convert to uppercase.
     #[inline]
-    pub fn to_uppercase(self) -> Ascii {
+    #[stable]
+    pub fn to_uppercase(&self) -> Ascii {
         Ascii{chr: ASCII_UPPER_MAP[self.chr as uint]}
     }
 
     /// Compares two ascii characters of equality, ignoring case.
     #[inline]
+    #[deprecated = "normalize with to_lowercase"]
     pub fn eq_ignore_case(self, other: Ascii) -> bool {
         ASCII_LOWER_MAP[self.chr as uint] == ASCII_LOWER_MAP[other.chr as uint]
     }
@@ -63,66 +81,77 @@ impl Ascii {
 
     /// Check if the character is a letter (a-z, A-Z)
     #[inline]
+    #[stable]
     pub fn is_alphabetic(&self) -> bool {
         (self.chr >= 0x41 && self.chr <= 0x5A) || (self.chr >= 0x61 && self.chr <= 0x7A)
     }
 
     /// Check if the character is a number (0-9)
     #[inline]
+    #[unstable = "may be renamed"]
     pub fn is_digit(&self) -> bool {
         self.chr >= 0x30 && self.chr <= 0x39
     }
 
     /// Check if the character is a letter or number
     #[inline]
+    #[stable]
     pub fn is_alphanumeric(&self) -> bool {
         self.is_alphabetic() || self.is_digit()
     }
 
     /// Check if the character is a space or horizontal tab
     #[inline]
+    #[experimental = "likely to be removed"]
     pub fn is_blank(&self) -> bool {
         self.chr == b' ' || self.chr == b'\t'
     }
 
     /// Check if the character is a control character
     #[inline]
+    #[stable]
     pub fn is_control(&self) -> bool {
         self.chr < 0x20 || self.chr == 0x7F
     }
 
     /// Checks if the character is printable (except space)
     #[inline]
+    #[experimental = "unsure about naming, or whether this is needed"]
     pub fn is_graph(&self) -> bool {
         (self.chr - 0x21) < 0x5E
     }
 
     /// Checks if the character is printable (including space)
     #[inline]
+    #[unstable = "unsure about naming"]
     pub fn is_print(&self) -> bool {
         (self.chr - 0x20) < 0x5F
     }
 
-    /// Checks if the character is lowercase
+    /// Checks if the character is alphabetic and lowercase
     #[inline]
+    #[stable]
     pub fn is_lowercase(&self) -> bool {
         (self.chr - b'a') < 26
     }
 
-    /// Checks if the character is uppercase
+    /// Checks if the character is alphabetic and uppercase
     #[inline]
+    #[stable]
     pub fn is_uppercase(&self) -> bool {
         (self.chr - b'A') < 26
     }
 
     /// Checks if the character is punctuation
     #[inline]
+    #[stable]
     pub fn is_punctuation(&self) -> bool {
         self.is_graph() && !self.is_alphanumeric()
     }
 
     /// Checks if the character is a valid hex digit
     #[inline]
+    #[stable]
     pub fn is_hex(&self) -> bool {
         self.is_digit() || ((self.chr | 32u8) - b'a') < 6
     }
@@ -135,6 +164,7 @@ impl<'a> fmt::Show for Ascii {
 }
 
 /// Trait for converting into an ascii type.
+#[experimental = "may be replaced by generic conversion traits"]
 pub trait AsciiCast<T> {
     /// Convert to an ascii type, panic on non-ASCII input.
     #[inline]
@@ -160,6 +190,7 @@ pub trait AsciiCast<T> {
     fn is_ascii(&self) -> bool;
 }
 
+#[experimental = "may be replaced by generic conversion traits"]
 impl<'a> AsciiCast<&'a[Ascii]> for &'a [u8] {
     #[inline]
     unsafe fn to_ascii_nocheck(&self) -> &'a[Ascii] {
@@ -175,6 +206,7 @@ impl<'a> AsciiCast<&'a[Ascii]> for &'a [u8] {
     }
 }
 
+#[experimental = "may be replaced by generic conversion traits"]
 impl<'a> AsciiCast<&'a [Ascii]> for &'a str {
     #[inline]
     unsafe fn to_ascii_nocheck(&self) -> &'a [Ascii] {
@@ -187,6 +219,7 @@ impl<'a> AsciiCast<&'a [Ascii]> for &'a str {
     }
 }
 
+#[experimental = "may be replaced by generic conversion traits"]
 impl AsciiCast<Ascii> for u8 {
     #[inline]
     unsafe fn to_ascii_nocheck(&self) -> Ascii {
@@ -199,6 +232,7 @@ impl AsciiCast<Ascii> for u8 {
     }
 }
 
+#[experimental = "may be replaced by generic conversion traits"]
 impl AsciiCast<Ascii> for char {
     #[inline]
     unsafe fn to_ascii_nocheck(&self) -> Ascii {
@@ -212,6 +246,7 @@ impl AsciiCast<Ascii> for char {
 }
 
 /// Trait for copyless casting to an ascii vector.
+#[experimental = "may be replaced by generic conversion traits"]
 pub trait OwnedAsciiCast {
     /// Check if convertible to ascii
     fn is_ascii(&self) -> bool;
@@ -241,6 +276,7 @@ pub trait OwnedAsciiCast {
     unsafe fn into_ascii_nocheck(self) -> Vec<Ascii>;
 }
 
+#[experimental = "may be replaced by generic conversion traits"]
 impl OwnedAsciiCast for String {
     #[inline]
     fn is_ascii(&self) -> bool {
@@ -253,6 +289,7 @@ impl OwnedAsciiCast for String {
     }
 }
 
+#[experimental = "may be replaced by generic conversion traits"]
 impl OwnedAsciiCast for Vec<u8> {
     #[inline]
     fn is_ascii(&self) -> bool {
@@ -274,6 +311,7 @@ impl OwnedAsciiCast for Vec<u8> {
 
 /// Trait for converting an ascii type to a string. Needed to convert
 /// `&[Ascii]` to `&str`.
+#[experimental = "may be replaced by generic conversion traits"]
 pub trait AsciiStr for Sized? {
     /// Convert to a string.
     fn as_str_ascii<'a>(&'a self) -> &'a str;
@@ -283,6 +321,7 @@ pub trait AsciiStr for Sized? {
     fn to_lower(&self) -> Vec<Ascii>;
 
     /// Convert to vector representing a lower cased ascii string.
+    #[deprecated = "use iterators instead"]
     fn to_lowercase(&self) -> Vec<Ascii>;
 
     /// Deprecated: use `to_uppercase`
@@ -290,12 +329,15 @@ pub trait AsciiStr for Sized? {
     fn to_upper(&self) -> Vec<Ascii>;
 
     /// Convert to vector representing a upper cased ascii string.
+    #[deprecated = "use iterators instead"]
     fn to_uppercase(&self) -> Vec<Ascii>;
 
     /// Compares two Ascii strings ignoring case.
+    #[deprecated = "use iterators instead"]
     fn eq_ignore_case(&self, other: &[Ascii]) -> bool;
 }
 
+#[experimental = "may be replaced by generic conversion traits"]
 impl AsciiStr for [Ascii] {
     #[inline]
     fn as_str_ascii<'a>(&'a self) -> &'a str {
@@ -336,11 +378,13 @@ impl IntoString for Vec<Ascii> {
 }
 
 /// Trait to convert to an owned byte vector by consuming self
+#[experimental = "may be replaced by generic conversion traits"]
 pub trait IntoBytes {
     /// Converts to an owned byte vector by consuming self
     fn into_bytes(self) -> Vec<u8>;
 }
 
+#[experimental = "may be replaced by generic conversion traits"]
 impl IntoBytes for Vec<Ascii> {
     fn into_bytes(self) -> Vec<u8> {
         unsafe {
@@ -358,6 +402,7 @@ impl IntoBytes for Vec<Ascii> {
 
 
 /// Extension methods for ASCII-subset only operations on owned strings
+#[experimental = "would prefer to do this in a more general way"]
 pub trait OwnedAsciiExt {
     /// Convert the string to ASCII upper case:
     /// ASCII letters 'a' to 'z' are mapped to 'A' to 'Z',
@@ -371,6 +416,7 @@ pub trait OwnedAsciiExt {
 }
 
 /// Extension methods for ASCII-subset only operations on string slices
+#[experimental = "would prefer to do this in a more general way"]
 pub trait AsciiExt<T> for Sized? {
     /// Makes a copy of the string in ASCII upper case:
     /// ASCII letters 'a' to 'z' are mapped to 'A' to 'Z',
@@ -388,6 +434,7 @@ pub trait AsciiExt<T> for Sized? {
     fn eq_ignore_ascii_case(&self, other: &Self) -> bool;
 }
 
+#[experimental = "would prefer to do this in a more general way"]
 impl AsciiExt<String> for str {
     #[inline]
     fn to_ascii_upper(&self) -> String {
@@ -407,6 +454,7 @@ impl AsciiExt<String> for str {
     }
 }
 
+#[experimental = "would prefer to do this in a more general way"]
 impl OwnedAsciiExt for String {
     #[inline]
     fn into_ascii_upper(self) -> String {
@@ -421,6 +469,7 @@ impl OwnedAsciiExt for String {
     }
 }
 
+#[experimental = "would prefer to do this in a more general way"]
 impl AsciiExt<Vec<u8>> for [u8] {
     #[inline]
     fn to_ascii_upper(&self) -> Vec<u8> {
@@ -443,6 +492,7 @@ impl AsciiExt<Vec<u8>> for [u8] {
     }
 }
 
+#[experimental = "would prefer to do this in a more general way"]
 impl OwnedAsciiExt for Vec<u8> {
     #[inline]
     fn into_ascii_upper(mut self) -> Vec<u8> {
@@ -472,6 +522,7 @@ impl OwnedAsciiExt for Vec<u8> {
 /// - Any other chars in the range [0x20,0x7e] are not escaped.
 /// - Any other chars are given hex escapes.
 /// - Unicode escapes are never generated by this function.
+#[unstable = "needs to be updated to use an iterator"]
 pub fn escape_default(c: u8, f: |u8|) {
     match c {
         b'\t' => { f(b'\\'); f(b't'); }
@@ -494,7 +545,7 @@ pub fn escape_default(c: u8, f: |u8|) {
     }
 }
 
-pub static ASCII_LOWER_MAP: [u8, ..256] = [
+static ASCII_LOWER_MAP: [u8, ..256] = [
     0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
     0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
     0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
@@ -533,7 +584,7 @@ pub static ASCII_LOWER_MAP: [u8, ..256] = [
     0xf8, 0xf9, 0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff,
 ];
 
-pub static ASCII_UPPER_MAP: [u8, ..256] = [
+static ASCII_UPPER_MAP: [u8, ..256] = [
     0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
     0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
     0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
