@@ -215,6 +215,42 @@ pub struct UnixStream {
     write_deadline: u64,
 }
 
+pub struct UnixReadStream {
+    thing : UnixStream
+}
+
+pub struct UnixWriteStream {
+    thing : UnixStream
+}
+
+impl UnixReadStream {
+    pub fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
+        self.thing.read(buf)
+    }
+
+    pub fn close_read(self) -> IoResult<()> {
+        self.thing.close_read().map(|_| ())
+    }
+
+    pub fn set_read_timeout(&mut self, timeout: Option<u64>) {
+        self.thing.set_read_timeout(timeout)
+    }
+}
+
+impl UnixWriteStream {
+    pub fn write(&mut self, buf: &[u8]) -> IoResult<()> {
+        self.thing.write(buf)
+    }
+
+    pub fn close_write(self) -> IoResult<()> {
+        self.thing.close_read().map(|_| ())
+    }
+
+    pub fn set_write_timeout(&mut self, timeout: Option<u64>) {
+        self.thing.set_write_timeout(timeout)
+    }
+}
+
 impl UnixStream {
     fn try_connect(p: *const u16) -> Option<libc::HANDLE> {
         // Note that most of this is lifted from the libuv implementation.
@@ -496,7 +532,7 @@ impl UnixStream {
         Ok(())
     }
 
-    pub fn close_read(&mut self) -> IoResult<()> {
+    pub fn close_read(self) -> IoResult<UnixWriteStream> {
         // On windows, there's no actual shutdown() method for pipes, so we're
         // forced to emulate the behavior manually at the application level. To
         // do this, we need to both cancel any pending requests, as well as
@@ -516,14 +552,14 @@ impl UnixStream {
         // no thread will erroneously sit in a read forever.
         let _guard = unsafe { self.inner.lock.lock() };
         self.inner.read_closed.store(true, atomic::SeqCst);
-        self.cancel_io()
+        self.cancel_io().map(|()| UnixWriteStream { thing: self.clone() })
     }
 
-    pub fn close_write(&mut self) -> IoResult<()> {
+    pub fn close_write(self) -> IoResult<UnixReadStream> {
         // see comments in close_read() for why this lock is necessary
         let _guard = unsafe { self.inner.lock.lock() };
         self.inner.write_closed.store(true, atomic::SeqCst);
-        self.cancel_io()
+        self.cancel_io().map(|()| UnixReadStream { thing: self.clone() })
     }
 
     pub fn set_timeout(&mut self, timeout: Option<u64>) {
@@ -548,6 +584,18 @@ impl Clone for UnixStream {
             read_deadline: 0,
             write_deadline: 0,
         }
+    }
+}
+
+impl Clone for UnixReadStream {
+    fn clone(&self) -> UnixReadStream {
+        UnixReadStream {thing: self.thing.clone() }
+    }
+}
+
+impl Clone for UnixWriteStream {
+    fn clone(&self) -> UnixWriteStream {
+        UnixWriteStream {thing: self.thing.clone() }
     }
 }
 

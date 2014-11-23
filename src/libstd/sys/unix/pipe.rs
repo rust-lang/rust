@@ -117,6 +117,42 @@ pub struct UnixStream {
     write_deadline: u64,
 }
 
+pub struct UnixReadStream {
+    thing : UnixStream
+}
+
+pub struct UnixWriteStream {
+    thing : UnixStream
+}
+
+impl UnixReadStream {
+    pub fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
+        self.thing.read(buf)
+    }
+
+    pub fn close_read(self) -> IoResult<()> {
+        self.thing.close_read().map(|_| ())
+    }
+
+    pub fn set_read_timeout(&mut self, timeout: Option<u64>) {
+        self.thing.set_read_timeout(timeout)
+    }
+}
+
+impl UnixWriteStream {
+    pub fn write(&mut self, buf: &[u8]) -> IoResult<()> {
+        self.thing.write(buf)
+    }
+
+    pub fn close_write(self) -> IoResult<()> {
+        self.thing.close_read().map(|_| ())
+    }
+
+    pub fn set_write_timeout(&mut self, timeout: Option<u64>) {
+        self.thing.set_write_timeout(timeout)
+    }
+}
+
 impl UnixStream {
     pub fn connect(addr: &CString,
                    timeout: Option<u64>) -> IoResult<UnixStream> {
@@ -177,12 +213,14 @@ impl UnixStream {
         }
     }
 
-    pub fn close_write(&mut self) -> IoResult<()> {
-        mkerr_libc(unsafe { libc::shutdown(self.fd(), libc::SHUT_WR) })
+    pub fn close_read(self) -> IoResult<UnixWriteStream> {
+        mkerr_libc(unsafe { libc::shutdown(self.fd(), libc::SHUT_RD) })
+            .map(|()| UnixWriteStream {thing: self.clone()})
     }
 
-    pub fn close_read(&mut self) -> IoResult<()> {
-        mkerr_libc(unsafe { libc::shutdown(self.fd(), libc::SHUT_RD) })
+    pub fn close_write(self) -> IoResult<UnixReadStream> {
+        mkerr_libc(unsafe { libc::shutdown(self.fd(), libc::SHUT_WR) })
+            .map(|()| UnixReadStream {thing: self.clone()})
     }
 
     pub fn set_timeout(&mut self, timeout: Option<u64>) {
@@ -203,6 +241,18 @@ impl UnixStream {
 impl Clone for UnixStream {
     fn clone(&self) -> UnixStream {
         UnixStream::new(self.inner.clone())
+    }
+}
+
+impl Clone for UnixReadStream {
+    fn clone(&self) -> UnixReadStream {
+        UnixReadStream {thing: self.thing.clone() }
+    }
+}
+
+impl Clone for UnixWriteStream {
+    fn clone(&self) -> UnixWriteStream {
+        UnixWriteStream {thing: self.thing.clone() }
     }
 }
 

@@ -30,6 +30,8 @@ use io::{Listener, Acceptor, IoResult, TimedOut, standard_error};
 use time::Duration;
 
 use sys::pipe::UnixStream as UnixStreamImp;
+use sys::pipe::UnixReadStream as UnixReadStreamImp;
+use sys::pipe::UnixWriteStream as UnixWriteStreamImp;
 use sys::pipe::UnixListener as UnixListenerImp;
 use sys::pipe::UnixAcceptor as UnixAcceptorImp;
 
@@ -38,8 +40,87 @@ pub struct UnixStream {
     inner: UnixStreamImp,
 }
 
-impl UnixStream {
+/// A stream which can read from a named pipe.
+pub struct UnixReadStream {
+    inner: UnixReadStreamImp,
+}
 
+/// A stream which can write to a named pipe.
+pub struct UnixWriteStream {
+    inner: UnixWriteStreamImp,
+}
+
+pub trait ReadStream<T> : Reader {
+    /// Closes the reading part of this connection.
+    ///
+    /// This method will close the reading portion of this connection, causing
+    /// all pending and future reads to immediately return with an error.
+    ///
+    /// Note that this method affects all cloned handles associated with this
+    /// stream, not just this one handle.
+    fn close_read(self) -> IoResult<T>;
+
+    /// Sets the read timeout for this socket.
+    ///
+    /// For more information, see `TcpStream::set_timeout`
+    #[experimental = "the timeout argument may change in type and value"]
+    fn set_read_timeout(&mut self, timeout_ms: Option<u64>);
+}
+
+pub trait WriteStream<T> : Writer {
+    /// Closes the writing part of this connection.
+    ///
+    /// This method will close the writing portion of this connection, causing
+    /// all pending and future writes to immediately return with an error.
+    ///
+    /// Note that this method affects all cloned handles associated with this
+    /// stream, not just this one handle.
+    fn close_write(self) -> IoResult<T>;
+
+    /// Sets the write timeout for this socket.
+    ///
+    /// For more information, see `TcpStream::set_timeout`
+    #[experimental = "the timeout argument may change in type and value"]
+    fn set_write_timeout(&mut self, timeout_ms: Option<u64>);
+}
+
+impl ReadStream<()> for UnixReadStream {
+    fn close_read(self) -> IoResult<()> {
+        self.inner.close_read()
+    }
+    fn set_read_timeout(&mut self, timeout_ms: Option<u64>) {
+        self.inner.set_read_timeout(timeout_ms)
+    }
+}
+
+impl WriteStream<()> for UnixWriteStream {
+    fn close_write(self) -> IoResult<()> {
+        self.inner.close_write()
+    }
+    fn set_write_timeout(&mut self, timeout_ms: Option<u64>) {
+        self.inner.set_write_timeout(timeout_ms)
+    }
+}
+
+impl ReadStream<UnixWriteStream> for UnixStream {
+    fn close_read(self) -> IoResult<UnixWriteStream> {
+        self.inner.close_read().map(|v| UnixWriteStream { inner : v })
+    }
+    fn set_read_timeout(&mut self, timeout_ms: Option<u64>) {
+        self.inner.set_read_timeout(timeout_ms)
+    }
+}
+
+impl WriteStream<UnixReadStream> for UnixStream {
+    fn close_write(self) -> IoResult<UnixReadStream> {
+        self.inner.close_write().map(|v| UnixReadStream { inner : v })
+    }
+    fn set_write_timeout(&mut self, timeout_ms: Option<u64>) {
+        self.inner.set_write_timeout(timeout_ms)
+    }
+}
+
+impl UnixStream {
     /// Connect to a pipe named by `path`. This will attempt to open a
     /// connection to the underlying socket.
     ///
@@ -79,51 +160,12 @@ impl UnixStream {
             .map(|inner| UnixStream { inner: inner })
     }
 
-
-    /// Closes the reading half of this connection.
-    ///
-    /// This method will close the reading portion of this connection, causing
-    /// all pending and future reads to immediately return with an error.
-    ///
-    /// Note that this method affects all cloned handles associated with this
-    /// stream, not just this one handle.
-    pub fn close_read(&mut self) -> IoResult<()> {
-        self.inner.close_read()
-    }
-
-    /// Closes the writing half of this connection.
-    ///
-    /// This method will close the writing portion of this connection, causing
-    /// all pending and future writes to immediately return with an error.
-    ///
-    /// Note that this method affects all cloned handles associated with this
-    /// stream, not just this one handle.
-    pub fn close_write(&mut self) -> IoResult<()> {
-        self.inner.close_write()
-    }
-
     /// Sets the read/write timeout for this socket.
     ///
     /// For more information, see `TcpStream::set_timeout`
     #[experimental = "the timeout argument may change in type and value"]
     pub fn set_timeout(&mut self, timeout_ms: Option<u64>) {
         self.inner.set_timeout(timeout_ms)
-    }
-
-    /// Sets the read timeout for this socket.
-    ///
-    /// For more information, see `TcpStream::set_timeout`
-    #[experimental = "the timeout argument may change in type and value"]
-    pub fn set_read_timeout(&mut self, timeout_ms: Option<u64>) {
-        self.inner.set_read_timeout(timeout_ms)
-    }
-
-    /// Sets the write timeout for this socket.
-    ///
-    /// For more information, see `TcpStream::set_timeout`
-    #[experimental = "the timeout argument may change in type and value"]
-    pub fn set_write_timeout(&mut self, timeout_ms: Option<u64>) {
-        self.inner.set_write_timeout(timeout_ms)
     }
 }
 
@@ -140,6 +182,30 @@ impl Reader for UnixStream {
 }
 
 impl Writer for UnixStream {
+    fn write(&mut self, buf: &[u8]) -> IoResult<()> {
+        self.inner.write(buf)
+    }
+}
+
+impl Clone for UnixReadStream {
+    fn clone(&self) -> UnixReadStream {
+        UnixReadStream { inner: self.inner.clone() }
+    }
+}
+
+impl Reader for UnixReadStream {
+    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
+        self.inner.read(buf)
+    }
+}
+
+impl Clone for UnixWriteStream {
+    fn clone(&self) -> UnixWriteStream {
+        UnixWriteStream { inner: self.inner.clone() }
+    }
+}
+
+impl Writer for UnixWriteStream {
     fn write(&mut self, buf: &[u8]) -> IoResult<()> {
         self.inner.write(buf)
     }
@@ -583,29 +649,21 @@ mod tests {
         });
 
         let mut b = [0];
-        let mut s = UnixStream::connect(&addr).unwrap();
+        let s = UnixStream::connect(&addr).unwrap();
         let mut s2 = s.clone();
 
-        // closing should prevent reads/writes
-        s.close_write().unwrap();
-        assert!(s.write(&[0]).is_err());
-        s.close_read().unwrap();
-        assert!(s.read(&mut b).is_err());
+        let s_read : UnixReadStream = s.close_write().unwrap();
+        let mut s3 = s_read.clone();
+        let _ : () = s_read.close_read().unwrap();
 
         // closing should affect previous handles
         assert!(s2.write(&[0]).is_err());
         assert!(s2.read(&mut b).is_err());
-
-        // closing should affect new handles
-        let mut s3 = s.clone();
-        assert!(s3.write(&[0]).is_err());
         assert!(s3.read(&mut b).is_err());
 
         // make sure these don't die
-        let _ = s2.close_read();
-        let _ = s2.close_write();
-        let _ = s3.close_read();
-        let _ = s3.close_write();
+        let _ : () = s2.close_read().unwrap().close_write().unwrap();
+        let _ : () = s3.close_read().unwrap();
     }
 
     #[test]
@@ -619,7 +677,7 @@ mod tests {
             let _ = rx.recv_opt();
         });
 
-        let mut s = UnixStream::connect(&addr).unwrap();
+        let s = UnixStream::connect(&addr).unwrap();
         let s2 = s.clone();
         let (tx, rx) = channel();
         spawn(proc() {
