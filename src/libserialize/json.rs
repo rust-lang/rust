@@ -1978,10 +1978,7 @@ macro_rules! read_primitive {
                     }
                 }
                 Json::F64(f) => {
-                    match num::cast(f) {
-                        Some(f) => Ok(f),
-                        None => Err(ExpectedError("Number".to_string(), format!("{}", f))),
-                    }
+                    Err(ExpectedError("Integer".to_string(), format!("{}", f)))
                 }
                 Json::String(s) => {
                     // re: #12967.. a type w/ numeric keys (ie HashMap<uint, V> etc)
@@ -2834,6 +2831,9 @@ mod tests {
 
         let v: i64 = super::decode("9223372036854775807").unwrap();
         assert_eq!(v, i64::MAX);
+
+        let res: DecodeResult<i64> = super::decode("765.25252");
+        assert_eq!(res, Err(ExpectedError("Integer".into_string(), "765.25252".into_string())));
     }
 
     #[test]
