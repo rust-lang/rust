@@ -548,7 +548,9 @@ pub trait Iterator<A> {
         false
     }
 
-    /// Return the first element satisfying the specified predicate
+    /// Returns the first element satisfying the specified predicate.
+    ///
+    /// Does not consume the iterator past the first found element.
     #[inline]
     fn find(&mut self, predicate: |&A| -> bool) -> Option<A> {
         for x in *self {
