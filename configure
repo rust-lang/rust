@@ -711,11 +711,6 @@ then
     fi
     step_msg "using rustc at: ${CFG_LOCAL_RUST_ROOT} with version: $LRV"
     putvar CFG_LOCAL_RUST_ROOT
-else
-    if [ ! -z "$CFG_LOCAL_RUST_ROOT" ]
-    then
-       warn "Use of --local-rust-root without --enable-local-rust"
-    fi
 fi
 
 # Force freebsd to build with clang; gcc doesn't like us there
