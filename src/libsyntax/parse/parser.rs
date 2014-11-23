@@ -71,14 +71,11 @@ use ext::tt::macro_parser;
 use parse;
 use parse::attr::ParserAttr;
 use parse::classify;
-use parse::common::{SeqSep, seq_sep_none};
-use parse::common::{seq_sep_trailing_allowed};
-use parse::lexer::Reader;
-use parse::lexer::TokenAndSpan;
+use parse::common::{SeqSep, seq_sep_none, seq_sep_trailing_allowed};
+use parse::lexer::{Reader, TokenAndSpan};
 use parse::obsolete::*;
-use parse::token::{MatchNt, SubstNt, InternedString};
+use parse::token::{mod, MatchNt, SubstNt, InternedString};
 use parse::token::{keywords, special_idents};
-use parse::token;
 use parse::{new_sub_parser_from_file, ParseSess};
 use print::pprust;
 use ptr::P;
@@ -86,7 +83,6 @@ use owned_slice::OwnedSlice;
 
 use std::collections::HashSet;
 use std::io::fs::PathExtensions;
-use std::mem::replace;
 use std::mem;
 use std::num::Float;
 use std::rc::Rc;
@@ -912,7 +908,7 @@ impl<'a> Parser<'a> {
                 tok: token::Underscore,
                 sp: self.span,
             };
-            replace(&mut self.buffer[buffer_start], placeholder)
+            mem::replace(&mut self.buffer[buffer_start], placeholder)
         };
         self.span = next.sp;
         self.token = next.tok;
@@ -921,7 +917,7 @@ impl<'a> Parser<'a> {
 
     /// Advance the parser by one token and return the bumped token.
     pub fn bump_and_get(&mut self) -> token::Token {
-        let old_token = replace(&mut self.token, token::Underscore);
+        let old_token = mem::replace(&mut self.token, token::Underscore);
         self.bump();
         old_token
     }
@@ -2100,14 +2096,12 @@ impl<'a> Parser<'a> {
         ExprSlice(expr, start, end, mutbl)
     }
 
-    pub fn mk_field(&mut self, expr: P<Expr>, ident: ast::SpannedIdent,
-                    tys: Vec<P<Ty>>) -> ast::Expr_ {
-        ExprField(expr, ident, tys)
+    pub fn mk_field(&mut self, expr: P<Expr>, ident: ast::SpannedIdent) -> ast::Expr_ {
+        ExprField(expr, ident)
     }
 
-    pub fn mk_tup_field(&mut self, expr: P<Expr>, idx: codemap::Spanned<uint>,
-                    tys: Vec<P<Ty>>) -> ast::Expr_ {
-        ExprTupField(expr, idx, tys)
+    pub fn mk_tup_field(&mut self, expr: P<Expr>, idx: codemap::Spanned<uint>) -> ast::Expr_ {
+        ExprTupField(expr, idx)
     }
 
     pub fn mk_assign_op(&mut self, binop: ast::BinOp,
@@ -2462,7 +2456,7 @@ impl<'a> Parser<'a> {
                             }
 
                             let id = spanned(dot, hi, i);
-                            let field = self.mk_field(e, id, tys);
+                            let field = self.mk_field(e, id);
                             e = self.mk_expr(lo, hi, field);
                         }
                     }
@@ -2481,7 +2475,7 @@ impl<'a> Parser<'a> {
                     match index {
                         Some(n) => {
                             let id = spanned(dot, hi, n);
-                            let field = self.mk_tup_field(e, id, Vec::new());
+                            let field = self.mk_tup_field(e, id);
                             e = self.mk_expr(lo, hi, field);
                         }
                         None => {

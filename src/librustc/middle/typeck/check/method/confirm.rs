@@ -10,16 +10,13 @@
 
 use super::probe;
 
-use middle::subst;
-use middle::subst::Subst;
+use middle::subst::{mod, Subst};
 use middle::traits;
 use middle::ty::{mod, Ty};
-use middle::typeck::check;
-use middle::typeck::check::{FnCtxt, NoPreference, PreferMutLvalue};
+use middle::typeck::check::{mod, FnCtxt, NoPreference, PreferMutLvalue};
 use middle::typeck::{MethodCall, MethodCallee, MethodObject, MethodOrigin,
                      MethodParam, MethodStatic, MethodTraitObject, MethodTypeParam};
-use middle::typeck::infer;
-use middle::typeck::infer::InferCtxt;
+use middle::typeck::infer::{mod, InferCtxt};
 use middle::ty_fold::HigherRankedFoldable;
 use syntax::ast;
 use syntax::codemap::Span;
@@ -510,8 +507,8 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
             let last = exprs[exprs.len() - 1];
             match last.node {
                 ast::ExprParen(ref expr) |
-                ast::ExprField(ref expr, _, _) |
-                ast::ExprTupField(ref expr, _, _) |
+                ast::ExprField(ref expr, _) |
+                ast::ExprTupField(ref expr, _) |
                 ast::ExprSlice(ref expr, _, _, _) |
                 ast::ExprIndex(ref expr, _) |
                 ast::ExprUnary(ast::UnDeref, ref expr) => exprs.push(&**expr),
