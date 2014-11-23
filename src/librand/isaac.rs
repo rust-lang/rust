@@ -12,7 +12,7 @@
 
 use core::prelude::*;
 use core::iter::{range_step, Repeat};
-use core::slice::raw;
+use core::slice;
 
 use {Rng, SeedableRng, Rand};
 
@@ -234,12 +234,10 @@ impl Rand for IsaacRng {
     fn rand<R: Rng>(other: &mut R) -> IsaacRng {
         let mut ret = EMPTY;
         unsafe {
-            let ptr = ret.rsl.as_mut_ptr();
+            let ptr = ret.rsl.as_mut_ptr() as *mut u8;
 
-            raw::mut_buf_as_slice(ptr as *mut u8,
-                                  (RAND_SIZE*4) as uint, |slice| {
-                other.fill_bytes(slice);
-            })
+            let slice = slice::from_raw_mut_buf(&ptr, (RAND_SIZE * 4) as uint);
+            other.fill_bytes(slice);
         }
         ret.cnt = 0;
         ret.a = 0;
@@ -469,12 +467,10 @@ impl Rand for Isaac64Rng {
     fn rand<R: Rng>(other: &mut R) -> Isaac64Rng {
         let mut ret = EMPTY_64;
         unsafe {
-            let ptr = ret.rsl.as_mut_ptr();
+            let ptr = ret.rsl.as_mut_ptr() as *mut u8;
 
-            raw::mut_buf_as_slice(ptr as *mut u8,
-                                  (RAND_SIZE_64*8) as uint, |slice| {
-                other.fill_bytes(slice);
-            })
+            let slice = slice::from_raw_mut_buf(&ptr, (RAND_SIZE_64 * 8) as uint);
+            other.fill_bytes(slice);
         }
         ret.cnt = 0;
         ret.a = 0;

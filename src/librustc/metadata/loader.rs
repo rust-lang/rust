@@ -234,7 +234,6 @@ use std::io::fs::PathExtensions;
 use std::io;
 use std::ptr;
 use std::slice;
-use std::string;
 use std::time::Duration;
 
 use flate;
@@ -741,21 +740,19 @@ fn get_metadata_section_imp(is_osx: bool, filename: &Path) -> Result<MetadataBlo
         while llvm::LLVMIsSectionIteratorAtEnd(of.llof, si.llsi) == False {
             let mut name_buf = ptr::null();
             let name_len = llvm::LLVMRustGetSectionName(si.llsi, &mut name_buf);
-            let name = string::raw::from_buf_len(name_buf as *const u8,
-                                              name_len as uint);
+            let name = String::from_raw_buf_len(name_buf as *const u8,
+                                                name_len as uint);
             debug!("get_metadata_section: name {}", name);
             if read_meta_section_name(is_osx).as_slice() == name.as_slice() {
                 let cbuf = llvm::LLVMGetSectionContents(si.llsi);
                 let csz = llvm::LLVMGetSectionSize(si.llsi) as uint;
-                let mut found =
-                    Err(format!("metadata not found: '{}'", filename.display()));
                 let cvbuf: *const u8 = cbuf as *const u8;
                 let vlen = encoder::metadata_encoding_version.len();
                 debug!("checking {} bytes of metadata-version stamp",
                        vlen);
                 let minsz = cmp::min(vlen, csz);
-                let version_ok = slice::raw::buf_as_slice(cvbuf, minsz,
-                    |buf0| buf0 == encoder::metadata_encoding_version);
+                let buf0 = slice::from_raw_buf(&cvbuf, minsz);
+                let version_ok = buf0 == encoder::metadata_encoding_version;
                 if !version_ok {
                     return Err((format!("incompatible metadata version found: '{}'",
                                         filename.display())));
@@ -764,19 +761,10 @@ fn get_metadata_section_imp(is_osx: bool, filename: &Path) -> Result<MetadataBlo
                 let cvbuf1 = cvbuf.offset(vlen as int);
                 debug!("inflating {} bytes of compressed metadata",
                        csz - vlen);
-                slice::raw::buf_as_slice(cvbuf1, csz-vlen, |bytes| {
-                    match flate::inflate_bytes(bytes) {
-                        Some(inflated) => found = Ok(MetadataVec(inflated)),
-                        None => {
-                            found =
-                                Err(format!("failed to decompress \
-                                             metadata for: '{}'",
-                                            filename.display()))
-                        }
-                    }
-                });
-                if found.is_ok() {
-                    return found;
+                let bytes = slice::from_raw_buf(&cvbuf1, csz-vlen);
+                match flate::inflate_bytes(bytes) {
+                    Some(inflated) => return Ok(MetadataVec(inflated)),
+                    None => {}
                 }
             }
             llvm::LLVMMoveToNextSection(si.llsi);

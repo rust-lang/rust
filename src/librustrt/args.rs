@@ -47,10 +47,9 @@ mod imp {
     use core::prelude::*;
 
     use alloc::boxed::Box;
-    use collections::slice::CloneSliceAllocPrelude;
     use collections::vec::Vec;
+    use collections::string::String;
     use core::mem;
-    use core::slice;
 
     use mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
 
@@ -103,12 +102,7 @@ mod imp {
 
     unsafe fn load_argc_and_argv(argc: int, argv: *const *const u8) -> Vec<Vec<u8>> {
         Vec::from_fn(argc as uint, |i| {
-            let base = *argv.offset(i as int);
-            let mut len = 0;
-            while *base.offset(len) != 0 { len += 1; }
-            slice::raw::buf_as_slice(base, len as uint, |slice| {
-                slice.to_vec()
-            })
+            String::from_raw_buf(*argv.offset(i as int)).into_bytes()
         })
     }
 
