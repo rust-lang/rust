@@ -2638,11 +2638,6 @@ impl ops::Sub<TypeContents,TypeContents> for TypeContents {
 }
 
 impl fmt::Show for TypeContents {
-    #[cfg(stage0)]
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "TypeContents({:t})", self.bits)
-    }
-    #[cfg(not(stage0))]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "TypeContents({:b})", self.bits)
     }
