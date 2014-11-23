@@ -13,7 +13,7 @@
 fn main() {
     match true {
         true if true => (),
-        false => unsafe { },
+        false if false => unsafe { },
         true => { }
         false => (),
     }
