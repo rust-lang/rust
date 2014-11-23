@@ -338,12 +338,11 @@ macro_rules! test (
 
             extern crate rustrt;
 
-            use std::prelude::*;
+            use prelude::*;
 
             use comm::*;
             use super::*;
-            use super::super::*;
-            use std::task;
+            use task;
 
             $(#[$a])* #[test] fn f() { $b }
         }
@@ -1019,9 +1018,9 @@ impl<T: Send> Drop for Receiver<T> {
 
 #[cfg(test)]
 mod test {
-    use std::prelude::*;
+    use prelude::*;
 
-    use std::os;
+    use os;
     use super::*;
 
     pub fn stress_factor() -> uint {
@@ -1554,8 +1553,8 @@ mod test {
 
 #[cfg(test)]
 mod sync_tests {
-    use std::prelude::*;
-    use std::os;
+    use prelude::*;
+    use os;
 
     pub fn stress_factor() -> uint {
         match os::getenv("RUST_TEST_STRESS") {

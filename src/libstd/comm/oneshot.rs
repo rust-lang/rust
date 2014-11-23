@@ -44,7 +44,7 @@ use core::mem;
 use rustrt::local::Local;
 use rustrt::task::{Task, BlockedTask};
 
-use atomic;
+use sync::atomic;
 use comm::Receiver;
 
 // Various states you can find a port in.
