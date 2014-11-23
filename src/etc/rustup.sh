@@ -405,72 +405,76 @@ CARGO_LOCAL_TARBALL="${TMP_DIR}/${CARGO_TARBALL_NAME}"
 CARGO_LOCAL_INSTALL_DIR="${TMP_DIR}/${CARGO_PACKAGE_NAME_AND_TRIPLE}"
 CARGO_LOCAL_INSTALL_SCRIPT="${CARGO_LOCAL_INSTALL_DIR}/install.sh"
 
-rm -Rf "${TMP_DIR}"
-need_ok "failed to remove temporary installation directory"
+start_script() {
+    rm -Rf "${TMP_DIR}"
+    need_ok "failed to remove temporary installation directory"
 
-mkdir -p "${TMP_DIR}"
-need_ok "failed to create create temporary installation directory"
+    mkdir -p "${TMP_DIR}"
+    need_ok "failed to create create temporary installation directory"
 
-msg "downloading rust installer"
-"${CFG_CURL}" "${REMOTE_TARBALL}" > "${LOCAL_TARBALL}"
-if [ $? -ne 0 ]
-then
-        rm -Rf "${TMP_DIR}"
-        err "failed to download installer"
-fi
-
-if [ -z "${CFG_DISABLE_CARGO}" ]; then
-    msg "downloading cargo installer"
-    "${CFG_CURL}" "${CARGO_REMOTE_TARBALL}" > "${CARGO_LOCAL_TARBALL}"
+    msg "downloading rust installer"
+    "${CFG_CURL}" "${REMOTE_TARBALL}" > "${LOCAL_TARBALL}"
     if [ $? -ne 0 ]
     then
             rm -Rf "${TMP_DIR}"
-            err "failed to download cargo installer"
+            err "failed to download installer"
     fi
-fi
+
+    if [ -z "${CFG_DISABLE_CARGO}" ]; then
+        msg "downloading cargo installer"
+        "${CFG_CURL}" "${CARGO_REMOTE_TARBALL}" > "${CARGO_LOCAL_TARBALL}"
+        if [ $? -ne 0 ]
+        then
+                rm -Rf "${TMP_DIR}"
+                err "failed to download cargo installer"
+        fi
+    fi
 
 
-(cd "${TMP_DIR}" && tar xzf "${TARBALL_NAME}")
-if [ $? -ne 0 ]
-then
-        rm -Rf "${TMP_DIR}"
-        err "failed to unpack installer"
-fi
-
-MAYBE_UNINSTALL=
-if [ -n "${CFG_UNINSTALL}" ]
-then
-        MAYBE_UNINSTALL="--uninstall"
-fi
-
-MAYBE_PREFIX=
-if [ -n "${CFG_PREFIX}" ]
-then
-        MAYBE_PREFIX="--prefix=${CFG_PREFIX}"
-fi
-
-sh "${LOCAL_INSTALL_SCRIPT}" "${MAYBE_UNINSTALL}" "${MAYBE_PREFIX}"
-if [ $? -ne 0 ]
-then
-        rm -Rf "${TMP_DIR}"
-        err "failed to install Rust"
-fi
-
-if [ -z "${CFG_DISABLE_CARGO}" ]; then
-    (cd "${TMP_DIR}" && tar xzf "${CARGO_TARBALL_NAME}")
+    (cd "${TMP_DIR}" && tar xzf "${TARBALL_NAME}")
     if [ $? -ne 0 ]
     then
             rm -Rf "${TMP_DIR}"
-            err "failed to unpack cargo installer"
+            err "failed to unpack installer"
     fi
 
-    sh "${CARGO_LOCAL_INSTALL_SCRIPT}" "${MAYBE_UNINSTALL}" "${MAYBE_PREFIX}"
+    MAYBE_UNINSTALL=
+    if [ -n "${CFG_UNINSTALL}" ]
+    then
+            MAYBE_UNINSTALL="--uninstall"
+    fi
+
+    MAYBE_PREFIX=
+    if [ -n "${CFG_PREFIX}" ]
+    then
+            MAYBE_PREFIX="--prefix=${CFG_PREFIX}"
+    fi
+
+    sh "${LOCAL_INSTALL_SCRIPT}" "${MAYBE_UNINSTALL}" "${MAYBE_PREFIX}"
     if [ $? -ne 0 ]
     then
             rm -Rf "${TMP_DIR}"
-            err "failed to install Cargo"
+            err "failed to install Rust"
     fi
-fi
 
-rm -Rf "${TMP_DIR}"
-need_ok "couldn't rm temporary installation directory"
+    if [ -z "${CFG_DISABLE_CARGO}" ]; then
+        (cd "${TMP_DIR}" && tar xzf "${CARGO_TARBALL_NAME}")
+        if [ $? -ne 0 ]
+        then
+                rm -Rf "${TMP_DIR}"
+                err "failed to unpack cargo installer"
+        fi
+
+        sh "${CARGO_LOCAL_INSTALL_SCRIPT}" "${MAYBE_UNINSTALL}" "${MAYBE_PREFIX}"
+        if [ $? -ne 0 ]
+        then
+                rm -Rf "${TMP_DIR}"
+                err "failed to install Cargo"
+        fi
+    fi
+
+    rm -Rf "${TMP_DIR}"
+    need_ok "couldn't rm temporary installation directory"
+}
+
+start_script
