@@ -419,17 +419,17 @@ impl<'a> Encoder<'a> {
 impl<'a> ::Encoder<io::IoError> for Encoder<'a> {
     fn emit_nil(&mut self) -> EncodeResult { write!(self.writer, "null") }
 
-    fn emit_uint(&mut self, v: uint) -> EncodeResult { self.emit_f64(v as f64) }
-    fn emit_u64(&mut self, v: u64) -> EncodeResult { self.emit_f64(v as f64) }
-    fn emit_u32(&mut self, v: u32) -> EncodeResult { self.emit_f64(v as f64) }
-    fn emit_u16(&mut self, v: u16) -> EncodeResult { self.emit_f64(v as f64) }
-    fn emit_u8(&mut self, v: u8) -> EncodeResult  { self.emit_f64(v as f64) }
+    fn emit_uint(&mut self, v: uint) -> EncodeResult { write!(self.writer, "{}", v) }
+    fn emit_u64(&mut self, v: u64) -> EncodeResult { write!(self.writer, "{}", v) }
+    fn emit_u32(&mut self, v: u32) -> EncodeResult { write!(self.writer, "{}", v) }
+    fn emit_u16(&mut self, v: u16) -> EncodeResult { write!(self.writer, "{}", v) }
+    fn emit_u8(&mut self, v: u8) -> EncodeResult { write!(self.writer, "{}", v) }
 
-    fn emit_int(&mut self, v: int) -> EncodeResult { self.emit_f64(v as f64) }
-    fn emit_i64(&mut self, v: i64) -> EncodeResult { self.emit_f64(v as f64) }
-    fn emit_i32(&mut self, v: i32) -> EncodeResult { self.emit_f64(v as f64) }
-    fn emit_i16(&mut self, v: i16) -> EncodeResult { self.emit_f64(v as f64) }
-    fn emit_i8(&mut self, v: i8) -> EncodeResult  { self.emit_f64(v as f64) }
+    fn emit_int(&mut self, v: int) -> EncodeResult { write!(self.writer, "{}", v) }
+    fn emit_i64(&mut self, v: i64) -> EncodeResult { write!(self.writer, "{}", v) }
+    fn emit_i32(&mut self, v: i32) -> EncodeResult { write!(self.writer, "{}", v) }
+    fn emit_i16(&mut self, v: i16) -> EncodeResult { write!(self.writer, "{}", v) }
+    fn emit_i8(&mut self, v: i8) -> EncodeResult { write!(self.writer, "{}", v) }
 
     fn emit_bool(&mut self, v: bool) -> EncodeResult {
         if v {
@@ -620,17 +620,17 @@ impl<'a> PrettyEncoder<'a> {
 impl<'a> ::Encoder<io::IoError> for PrettyEncoder<'a> {
     fn emit_nil(&mut self) -> EncodeResult { write!(self.writer, "null") }
 
-    fn emit_uint(&mut self, v: uint) -> EncodeResult { self.emit_f64(v as f64) }
-    fn emit_u64(&mut self, v: u64) -> EncodeResult { self.emit_f64(v as f64) }
-    fn emit_u32(&mut self, v: u32) -> EncodeResult { self.emit_f64(v as f64) }
-    fn emit_u16(&mut self, v: u16) -> EncodeResult { self.emit_f64(v as f64) }
-    fn emit_u8(&mut self, v: u8) -> EncodeResult { self.emit_f64(v as f64) }
+    fn emit_uint(&mut self, v: uint) -> EncodeResult { write!(self.writer, "{}", v) }
+    fn emit_u64(&mut self, v: u64) -> EncodeResult { write!(self.writer, "{}", v) }
+    fn emit_u32(&mut self, v: u32) -> EncodeResult { write!(self.writer, "{}", v) }
+    fn emit_u16(&mut self, v: u16) -> EncodeResult { write!(self.writer, "{}", v) }
+    fn emit_u8(&mut self, v: u8) -> EncodeResult { write!(self.writer, "{}", v) }
 
-    fn emit_int(&mut self, v: int) -> EncodeResult { self.emit_f64(v as f64) }
-    fn emit_i64(&mut self, v: i64) -> EncodeResult { self.emit_f64(v as f64) }
-    fn emit_i32(&mut self, v: i32) -> EncodeResult { self.emit_f64(v as f64) }
-    fn emit_i16(&mut self, v: i16) -> EncodeResult { self.emit_f64(v as f64) }
-    fn emit_i8(&mut self, v: i8) -> EncodeResult { self.emit_f64(v as f64) }
+    fn emit_int(&mut self, v: int) -> EncodeResult { write!(self.writer, "{}", v) }
+    fn emit_i64(&mut self, v: i64) -> EncodeResult { write!(self.writer, "{}", v) }
+    fn emit_i32(&mut self, v: i32) -> EncodeResult { write!(self.writer, "{}", v) }
+    fn emit_i16(&mut self, v: i16) -> EncodeResult { write!(self.writer, "{}", v) }
+    fn emit_i8(&mut self, v: i8) -> EncodeResult { write!(self.writer, "{}", v) }
 
     fn emit_bool(&mut self, v: bool) -> EncodeResult {
         if v {
@@ -2500,6 +2500,9 @@ mod tests {
 
         assert_eq!(I64(-5678).to_string().into_string(), "-5678");
         assert_eq!(I64(-5678).to_pretty_str().into_string(), "-5678");
+
+        assert_eq!(U64(7650007200025252000).to_string(), "7650007200025252000");
+        assert_eq!(U64(7650007200025252000).to_pretty_str(), "7650007200025252000");
     }
 
     #[test]
