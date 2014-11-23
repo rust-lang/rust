@@ -15,7 +15,6 @@ use core::clone::Clone;
 use core::cmp::{PartialEq, PartialOrd, Eq, Ord, Ordering};
 use core::default::Default;
 use core::fmt;
-use core::intrinsics;
 use core::kinds::Sized;
 use core::mem;
 use core::option::Option;
@@ -104,17 +103,14 @@ pub trait BoxAny {
 }
 
 #[stable]
-impl BoxAny for Box<Any+'static> {
+impl BoxAny for Box<Any> {
     #[inline]
-    fn downcast<T: 'static>(self) -> Result<Box<T>, Box<Any+'static>> {
+    fn downcast<T: 'static>(self) -> Result<Box<T>, Box<Any>> {
         if self.is::<T>() {
             unsafe {
                 // Get the raw representation of the trait object
                 let to: TraitObject =
-                    *mem::transmute::<&Box<Any>, &TraitObject>(&self);
-
-                // Prevent destructor on self being run
-                intrinsics::forget(self);
+                    mem::transmute::<Box<Any>, TraitObject>(self);
 
                 // Extract the data pointer
                 Ok(mem::transmute(to.data))
