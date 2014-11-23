@@ -68,15 +68,15 @@
 //!     // dist[node] = current shortest distance from `start` to `node`
 //!     let mut dist = Vec::from_elem(adj_list.len(), uint::MAX);
 //!
-//!     let mut pq = BinaryHeap::new();
+//!     let mut heap = BinaryHeap::new();
 //!
 //!     // We're at `start`, with a zero cost
 //!     dist[start] = 0u;
-//!     pq.push(State { cost: 0u, position: start });
+//!     heap.push(State { cost: 0u, position: start });
 //!
 //!     // Examine the frontier with lower cost nodes first (min-heap)
 //!     loop {
-//!         let State { cost, position } = match pq.pop() {
+//!         let State { cost, position } = match heap.pop() {
 //!             None => break, // empty
 //!             Some(s) => s
 //!         };
@@ -94,7 +94,7 @@
 //!
 //!             // If so, add it to the frontier and continue
 //!             if next.cost < dist[next.position] {
-//!                 pq.push(next);
+//!                 heap.push(next);
 //!                 // Relaxation, we have now found a better way
 //!                 dist[next.position] = next.cost;
 //!             }
@@ -184,7 +184,7 @@ impl<T: Ord> BinaryHeap<T> {
     ///
     /// ```
     /// use std::collections::BinaryHeap;
-    /// let pq: BinaryHeap<uint> = BinaryHeap::new();
+    /// let heap: BinaryHeap<uint> = BinaryHeap::new();
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn new() -> BinaryHeap<T> { BinaryHeap{data: vec!(),} }
@@ -198,7 +198,7 @@ impl<T: Ord> BinaryHeap<T> {
     ///
     /// ```
     /// use std::collections::BinaryHeap;
-    /// let pq: BinaryHeap<uint> = BinaryHeap::with_capacity(10u);
+    /// let heap: BinaryHeap<uint> = BinaryHeap::with_capacity(10u);
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn with_capacity(capacity: uint) -> BinaryHeap<T> {
@@ -212,7 +212,7 @@ impl<T: Ord> BinaryHeap<T> {
     ///
     /// ```
     /// use std::collections::BinaryHeap;
-    /// let pq = BinaryHeap::from_vec(vec![9i, 1, 2, 7, 3, 2]);
+    /// let heap = BinaryHeap::from_vec(vec![9i, 1, 2, 7, 3, 2]);
     /// ```
     pub fn from_vec(xs: Vec<T>) -> BinaryHeap<T> {
         let mut q = BinaryHeap{data: xs,};
@@ -231,10 +231,10 @@ impl<T: Ord> BinaryHeap<T> {
     ///
     /// ```
     /// use std::collections::BinaryHeap;
-    /// let pq = BinaryHeap::from_vec(vec![1i, 2, 3, 4]);
+    /// let heap = BinaryHeap::from_vec(vec![1i, 2, 3, 4]);
     ///
     /// // Print 1, 2, 3, 4 in arbitrary order
-    /// for x in pq.iter() {
+    /// for x in heap.iter() {
     ///     println!("{}", x);
     /// }
     /// ```
@@ -250,13 +250,13 @@ impl<T: Ord> BinaryHeap<T> {
     /// ```
     /// use std::collections::BinaryHeap;
     ///
-    /// let mut pq = BinaryHeap::new();
-    /// assert_eq!(pq.top(), None);
+    /// let mut heap = BinaryHeap::new();
+    /// assert_eq!(heap.top(), None);
     ///
-    /// pq.push(1i);
-    /// pq.push(5i);
-    /// pq.push(2i);
-    /// assert_eq!(pq.top(), Some(&5i));
+    /// heap.push(1i);
+    /// heap.push(5i);
+    /// heap.push(2i);
+    /// assert_eq!(heap.top(), Some(&5i));
     ///
     /// ```
     pub fn top<'a>(&'a self) -> Option<&'a T> {
@@ -270,8 +270,8 @@ impl<T: Ord> BinaryHeap<T> {
     /// ```
     /// use std::collections::BinaryHeap;
     ///
-    /// let pq: BinaryHeap<uint> = BinaryHeap::with_capacity(100u);
-    /// assert!(pq.capacity() >= 100u);
+    /// let heap: BinaryHeap<uint> = BinaryHeap::with_capacity(100u);
+    /// assert!(heap.capacity() >= 100u);
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn capacity(&self) -> uint { self.data.capacity() }
@@ -292,9 +292,9 @@ impl<T: Ord> BinaryHeap<T> {
     /// ```
     /// use std::collections::BinaryHeap;
     ///
-    /// let mut pq: BinaryHeap<uint> = BinaryHeap::new();
-    /// pq.reserve_exact(100u);
-    /// assert!(pq.capacity() >= 100u);
+    /// let mut heap: BinaryHeap<uint> = BinaryHeap::new();
+    /// heap.reserve_exact(100u);
+    /// assert!(heap.capacity() >= 100u);
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn reserve_exact(&mut self, additional: uint) { self.data.reserve_exact(additional) }
@@ -311,9 +311,9 @@ impl<T: Ord> BinaryHeap<T> {
     /// ```
     /// use std::collections::BinaryHeap;
     ///
-    /// let mut pq: BinaryHeap<uint> = BinaryHeap::new();
-    /// pq.reserve(100u);
-    /// assert!(pq.capacity() >= 100u);
+    /// let mut heap: BinaryHeap<uint> = BinaryHeap::new();
+    /// heap.reserve(100u);
+    /// assert!(heap.capacity() >= 100u);
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn reserve(&mut self, additional: uint) {
@@ -334,11 +334,11 @@ impl<T: Ord> BinaryHeap<T> {
     /// ```
     /// use std::collections::BinaryHeap;
     ///
-    /// let mut pq = BinaryHeap::from_vec(vec![1i, 3]);
+    /// let mut heap = BinaryHeap::from_vec(vec![1i, 3]);
     ///
-    /// assert_eq!(pq.pop(), Some(3i));
-    /// assert_eq!(pq.pop(), Some(1i));
-    /// assert_eq!(pq.pop(), None);
+    /// assert_eq!(heap.pop(), Some(3i));
+    /// assert_eq!(heap.pop(), Some(1i));
+    /// assert_eq!(heap.pop(), None);
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn pop(&mut self) -> Option<T> {
@@ -361,13 +361,13 @@ impl<T: Ord> BinaryHeap<T> {
     /// ```
     /// use std::collections::BinaryHeap;
     ///
-    /// let mut pq = BinaryHeap::new();
-    /// pq.push(3i);
-    /// pq.push(5i);
-    /// pq.push(1i);
+    /// let mut heap = BinaryHeap::new();
+    /// heap.push(3i);
+    /// heap.push(5i);
+    /// heap.push(1i);
     ///
-    /// assert_eq!(pq.len(), 3);
-    /// assert_eq!(pq.top(), Some(&5i));
+    /// assert_eq!(heap.len(), 3);
+    /// assert_eq!(heap.top(), Some(&5i));
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn push(&mut self, item: T) {
@@ -384,14 +384,14 @@ impl<T: Ord> BinaryHeap<T> {
     /// ```
     /// use std::collections::BinaryHeap;
     ///
-    /// let mut pq = BinaryHeap::new();
-    /// pq.push(1i);
-    /// pq.push(5i);
+    /// let mut heap = BinaryHeap::new();
+    /// heap.push(1i);
+    /// heap.push(5i);
     ///
-    /// assert_eq!(pq.push_pop(3i), 5);
-    /// assert_eq!(pq.push_pop(9i), 9);
-    /// assert_eq!(pq.len(), 2);
-    /// assert_eq!(pq.top(), Some(&3i));
+    /// assert_eq!(heap.push_pop(3i), 5);
+    /// assert_eq!(heap.push_pop(9i), 9);
+    /// assert_eq!(heap.len(), 2);
+    /// assert_eq!(heap.top(), Some(&3i));
     /// ```
     pub fn push_pop(&mut self, mut item: T) -> T {
         if !self.is_empty() && *self.top().unwrap() > item {
@@ -410,12 +410,12 @@ impl<T: Ord> BinaryHeap<T> {
     /// ```
     /// use std::collections::BinaryHeap;
     ///
-    /// let mut pq = BinaryHeap::new();
+    /// let mut heap = BinaryHeap::new();
     ///
-    /// assert_eq!(pq.replace(1i), None);
-    /// assert_eq!(pq.replace(3i), Some(1i));
-    /// assert_eq!(pq.len(), 1);
-    /// assert_eq!(pq.top(), Some(&3i));
+    /// assert_eq!(heap.replace(1i), None);
+    /// assert_eq!(heap.replace(3i), Some(1i));
+    /// assert_eq!(heap.len(), 1);
+    /// assert_eq!(heap.top(), Some(&3i));
     /// ```
     pub fn replace(&mut self, mut item: T) -> Option<T> {
         if !self.is_empty() {
@@ -436,8 +436,8 @@ impl<T: Ord> BinaryHeap<T> {
     /// ```
     /// use std::collections::BinaryHeap;
     ///
-    /// let pq = BinaryHeap::from_vec(vec![1i, 2, 3, 4, 5, 6, 7]);
-    /// let vec = pq.into_vec();
+    /// let heap = BinaryHeap::from_vec(vec![1i, 2, 3, 4, 5, 6, 7]);
+    /// let vec = heap.into_vec();
     ///
     /// // Will print in some order
     /// for x in vec.iter() {
@@ -454,11 +454,11 @@ impl<T: Ord> BinaryHeap<T> {
     /// ```
     /// use std::collections::BinaryHeap;
     ///
-    /// let mut pq = BinaryHeap::from_vec(vec![1i, 2, 4, 5, 7]);
-    /// pq.push(6);
-    /// pq.push(3);
+    /// let mut heap = BinaryHeap::from_vec(vec![1i, 2, 4, 5, 7]);
+    /// heap.push(6);
+    /// heap.push(3);
     ///
-    /// let vec = pq.into_sorted_vec();
+    /// let vec = heap.into_sorted_vec();
     /// assert_eq!(vec, vec![1i, 2, 3, 4, 5, 6, 7]);
     /// ```
     pub fn into_sorted_vec(self) -> Vec<T> {
@@ -578,9 +578,9 @@ mod tests {
     fn test_iterator() {
         let data = vec!(5i, 9, 3);
         let iterout = [9i, 5, 3];
-        let pq = BinaryHeap::from_vec(data);
+        let heap = BinaryHeap::from_vec(data);
         let mut i = 0;
-        for el in pq.iter() {
+        for el in heap.iter() {
             assert_eq!(*el, iterout[i]);
             i += 1;
         }
