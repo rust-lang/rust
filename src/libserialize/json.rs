@@ -1166,7 +1166,7 @@ impl Stack {
     /// at the top.
     pub fn get<'l>(&'l self, idx: uint) -> StackElement<'l> {
         match self.stack[idx] {
-            InternalIndex(i) => { Index(i) }
+            InternalIndex(i) => Index(i),
             InternalKey(start, size) => {
                 Key(str::from_utf8(
                     self.str_buffer[start as uint .. start as uint + size as uint]).unwrap())
@@ -1643,10 +1643,10 @@ impl<T: Iterator<char>> Parser<T> {
     fn parse_start(&mut self) -> JsonEvent {
         let val = self.parse_value();
         self.state = match val {
-            Error(_) => { ParseFinished }
-            ArrayStart => { ParseArray(true) }
-            ObjectStart => { ParseObject(true) }
-            _ => { ParseBeforeFinish }
+            Error(_) => ParseFinished,
+            ArrayStart => ParseArray(true),
+            ObjectStart => ParseObject(true),
+            _ => ParseBeforeFinish,
         };
         return val;
     }
@@ -1654,33 +1654,31 @@ impl<T: Iterator<char>> Parser<T> {
     fn parse_array(&mut self, first: bool) -> JsonEvent {
         if self.ch_is(']') {
             if !first {
-                return self.error_event(InvalidSyntax);
-            }
-            if self.stack.is_empty() {
-                self.state = ParseBeforeFinish;
+                self.error_event(InvalidSyntax)
             } else {
-                self.state = if self.stack.last_is_index() {
+                self.state = if self.stack.is_empty() {
+                    ParseBeforeFinish
+                } else if self.stack.last_is_index() {
                     ParseArrayComma
                 } else {
                     ParseObjectComma
-                }
+                };
+                self.bump();
+                ArrayEnd
             }
-            self.bump();
-            return ArrayEnd;
+        } else {
+            if first {
+                self.stack.push_index(0);
+            }
+            let val = self.parse_value();
+            self.state = match val {
+                Error(_) => ParseFinished,
+                ArrayStart => ParseArray(true),
+                ObjectStart => ParseObject(true),
+                _ => ParseArrayComma,
+            };
+            val
         }
-        if first {
-            self.stack.push_index(0);
-        }
-
-        let val = self.parse_value();
-
-        self.state = match val {
-            Error(_) => { ParseFinished }
-            ArrayStart => { ParseArray(true) }
-            ObjectStart => { ParseObject(true) }
-            _ => { ParseArrayComma }
-        };
-        return val;
     }
 
     fn parse_array_comma_or_end(&mut self) -> Option<JsonEvent> {
@@ -1688,24 +1686,22 @@ impl<T: Iterator<char>> Parser<T> {
             self.stack.bump_index();
             self.state = ParseArray(false);
             self.bump();
-            return None;
+            None
         } else if self.ch_is(']') {
             self.stack.pop();
-            if self.stack.is_empty() {
-                self.state = ParseBeforeFinish;
+            self.state = if self.stack.is_empty() {
+                ParseBeforeFinish
+            } else if self.stack.last_is_index() {
+                ParseArrayComma
             } else {
-                self.state = if self.stack.last_is_index() {
-                    ParseArrayComma
-                } else {
-                    ParseObjectComma
-                }
-            }
+                ParseObjectComma
+            };
             self.bump();
-            return Some(ArrayEnd);
+            Some(ArrayEnd)
         } else if self.eof() {
-            return Some(self.error_event(EOFWhileParsingArray));
+            Some(self.error_event(EOFWhileParsingArray))
         } else {
-            return Some(self.error_event(InvalidSyntax));
+            Some(self.error_event(InvalidSyntax))
         }
     }
 
@@ -1718,15 +1714,13 @@ impl<T: Iterator<char>> Parser<T> {
                     self.stack.pop();
                 }
             }
-            if self.stack.is_empty() {
-                self.state = ParseBeforeFinish;
+            self.state = if self.stack.is_empty() {
+                ParseBeforeFinish
+            } else if self.stack.last_is_index() {
+                ParseArrayComma
             } else {
-                self.state = if self.stack.last_is_index() {
-                    ParseArrayComma
-                } else {
-                    ParseObjectComma
-                }
-            }
+                ParseObjectComma
+            };
             self.bump();
             return ObjectEnd;
         }
@@ -1737,7 +1731,7 @@ impl<T: Iterator<char>> Parser<T> {
             return self.error_event(KeyMustBeAString);
         }
         let s = match self.parse_str() {
-            Ok(s) => { s }
+            Ok(s) => s,
             Err(e) => {
                 self.state = ParseFinished;
                 return Error(e);
@@ -1756,25 +1750,23 @@ impl<T: Iterator<char>> Parser<T> {
         let val = self.parse_value();
 
         self.state = match val {
-            Error(_) => { ParseFinished }
-            ArrayStart => { ParseArray(true) }
-            ObjectStart => { ParseObject(true) }
-            _ => { ParseObjectComma }
+            Error(_) => ParseFinished,
+            ArrayStart => ParseArray(true),
+            ObjectStart => ParseObject(true),
+            _ => ParseObjectComma,
         };
         return val;
     }
 
     fn parse_object_end(&mut self) -> JsonEvent {
         if self.ch_is('}') {
-            if self.stack.is_empty() {
-                self.state = ParseBeforeFinish;
+            self.state = if self.stack.is_empty() {
+                ParseBeforeFinish
+            } else if self.stack.last_is_index() {
+                ParseArrayComma
             } else {
-                self.state = if self.stack.last_is_index() {
-                    ParseArrayComma
-                } else {
-                    ParseObjectComma
-                }
-            }
+                ParseObjectComma
+            };
             self.bump();
             ObjectEnd
         } else if self.eof() {
@@ -1852,23 +1844,23 @@ impl<T: Iterator<char>> Builder<T> {
     }
 
     fn build_value(&mut self) -> Result<Json, BuilderError> {
-        return match self.token {
-            Some(NullValue) => { Ok(Null) }
-            Some(I64Value(n)) => { Ok(I64(n)) }
-            Some(U64Value(n)) => { Ok(U64(n)) }
-            Some(F64Value(n)) => { Ok(F64(n)) }
-            Some(BooleanValue(b)) => { Ok(Boolean(b)) }
+        match self.token {
+            Some(NullValue) => Ok(Null),
+            Some(I64Value(n)) => Ok(I64(n)),
+            Some(U64Value(n)) => Ok(U64(n)),
+            Some(F64Value(n)) => Ok(F64(n)),
+            Some(BooleanValue(b)) => Ok(Boolean(b)),
             Some(StringValue(ref mut s)) => {
                 let mut temp = string::String::new();
                 swap(s, &mut temp);
                 Ok(String(temp))
             }
-            Some(Error(e)) => { Err(e) }
-            Some(ArrayStart) => { self.build_array() }
-            Some(ObjectStart) => { self.build_object() }
-            Some(ObjectEnd) => { self.parser.error(InvalidSyntax) }
-            Some(ArrayEnd) => { self.parser.error(InvalidSyntax) }
-            None => { self.parser.error(EOFWhileParsingValue) }
+            Some(Error(e)) => Err(e),
+            Some(ArrayStart) => self.build_array(),
+            Some(ObjectStart) => self.build_object(),
+            Some(ObjectEnd) => self.parser.error(InvalidSyntax),
+            Some(ArrayEnd) => self.parser.error(InvalidSyntax),
+            None => self.parser.error(EOFWhileParsingValue),
         }
     }
 
