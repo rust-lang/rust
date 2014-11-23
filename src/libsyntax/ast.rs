@@ -673,8 +673,8 @@ pub enum Expr_ {
 
     ExprAssign(P<Expr>, P<Expr>),
     ExprAssignOp(BinOp, P<Expr>, P<Expr>),
-    ExprField(P<Expr>, SpannedIdent, Vec<P<Ty>>),
-    ExprTupField(P<Expr>, Spanned<uint>, Vec<P<Ty>>),
+    ExprField(P<Expr>, SpannedIdent),
+    ExprTupField(P<Expr>, Spanned<uint>),
     ExprIndex(P<Expr>, P<Expr>),
     ExprSlice(P<Expr>, Option<P<Expr>>, Option<P<Expr>>, Mutability),
 
