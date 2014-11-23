@@ -466,20 +466,22 @@ pub trait Reader {
     // Only method which need to get implemented for this trait
 
     /// Read bytes, up to the length of `buf` and place them in `buf`.
-    /// Returns the number of bytes read. The number of bytes read may
-    /// be less than the number requested, even 0. Returns `Err` on EOF.
     ///
-    /// # Error
+    /// # Return value
     ///
-    /// If an error occurs during this I/O operation, then it is returned as
-    /// `Err(IoError)`. Note that end-of-file is considered an error, and can be
-    /// inspected for in the error's `kind` field. Also note that reading 0
-    /// bytes is not considered an error in all circumstances
+    /// If the length of `buf` is 0, the return value is unspecified.
+    ///
+    /// Otherwise, on success, the number of bytes read is returned. The number of bytes
+    /// read may be less than the number requested, but not 0.
+    ///
+    /// If an error occurs during the I/O operation, then it is returned as
+    /// `Err(IoError)`. Note that end-of-file is considered an error, and can be inspected
+    /// for in the error's `kind` field.
     ///
     /// # Implementation Note
     ///
-    /// When implementing this method on a new Reader, you are strongly encouraged
-    /// not to return 0 if you can avoid it.
+    /// If you've reached EOF, return `Err(EndOfFile)`. If no data is available and you
+    /// don't want to block, return `Err(ResourceUnavailable)`.
     fn read(&mut self, buf: &mut [u8]) -> IoResult<uint>;
 
     // Convenient helper methods based on the above methods
