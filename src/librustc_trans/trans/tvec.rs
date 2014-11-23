@@ -231,8 +231,8 @@ pub fn trans_lit_str<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 let llbytes = C_uint(bcx.ccx(), bytes);
                 let llcstr = C_cstr(bcx.ccx(), str_lit, false);
                 let llcstr = llvm::LLVMConstPointerCast(llcstr, Type::i8p(bcx.ccx()).to_ref());
-                Store(bcx, llcstr, GEPi(bcx, lldest, &[0u, abi::slice_elt_base]));
-                Store(bcx, llbytes, GEPi(bcx, lldest, &[0u, abi::slice_elt_len]));
+                Store(bcx, llcstr, GEPi(bcx, lldest, &[0u, abi::FAT_PTR_ADDR]));
+                Store(bcx, llbytes, GEPi(bcx, lldest, &[0u, abi::FAT_PTR_EXTRA]));
                 bcx
             }
         }
@@ -401,8 +401,8 @@ pub fn get_fixed_base_and_len(bcx: Block,
 fn get_slice_base_and_len(bcx: Block,
                           llval: ValueRef)
                           -> (ValueRef, ValueRef) {
-    let base = Load(bcx, GEPi(bcx, llval, &[0u, abi::slice_elt_base]));
-    let len = Load(bcx, GEPi(bcx, llval, &[0u, abi::slice_elt_len]));
+    let base = Load(bcx, GEPi(bcx, llval, &[0u, abi::FAT_PTR_ADDR]));
+    let len = Load(bcx, GEPi(bcx, llval, &[0u, abi::FAT_PTR_EXTRA]));
     (base, len)
 }
 
