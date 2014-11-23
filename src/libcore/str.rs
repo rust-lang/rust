@@ -1277,14 +1277,19 @@ pub mod traits {
 }
 
 /// Any string that can be represented as a slice
-pub trait Str {
+pub trait Str for Sized? {
     /// Work with `self` as a slice.
     fn as_slice<'a>(&'a self) -> &'a str;
 }
 
-impl<'a> Str for &'a str {
+impl Str for str {
     #[inline]
-    fn as_slice<'a>(&'a self) -> &'a str { *self }
+    fn as_slice<'a>(&'a self) -> &'a str { self }
+}
+
+impl<'a, Sized? S> Str for &'a S where S: Str {
+    #[inline]
+    fn as_slice(&self) -> &str { Str::as_slice(*self) }
 }
 
 /// Methods for string slices
