@@ -589,21 +589,21 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                     item: &ast::Item,
                     enum_definition: &ast::EnumDef,
                     ty_params: &ast::Generics) {
-        let qualname = self.analysis.ty_cx.map.path_to_string(item.id);
+        let enum_name = self.analysis.ty_cx.map.path_to_string(item.id);
         match self.span.sub_span_after_keyword(item.span, keywords::Enum) {
             Some(sub_span) => self.fmt.enum_str(item.span,
                                                 Some(sub_span),
                                                 item.id,
-                                                qualname.as_slice(),
+                                                enum_name.as_slice(),
                                                 self.cur_scope),
             None => self.sess.span_bug(item.span,
                                        format!("Could not find subspan for enum {}",
-                                               qualname).as_slice()),
+                                               enum_name).as_slice()),
         }
         for variant in enum_definition.variants.iter() {
             let name = get_ident(variant.node.name);
             let name = name.get();
-            let mut qualname = qualname.clone();
+            let mut qualname = enum_name.clone();
             qualname.push_str("::");
             qualname.push_str(name);
             let val = self.span.snippet(variant.span);
@@ -615,6 +615,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                                                variant.node.id,
                                                name,
                                                qualname.as_slice(),
+                                               enum_name.as_slice(),
                                                val.as_slice(),
                                                item.id);
                     for arg in args.iter() {
@@ -632,18 +633,19 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                         variant.node.id,
                         ctor_id,
                         qualname.as_slice(),
+                        enum_name.as_slice(),
                         val.as_slice(),
                         item.id);
 
                     for field in struct_def.fields.iter() {
-                        self.process_struct_field_def(field, qualname.as_slice(), variant.node.id);
+                        self.process_struct_field_def(field, enum_name.as_slice(), variant.node.id);
                         self.visit_ty(&*field.node.ty);
                     }
                 }
             }
         }
 
-        self.process_generic_params(ty_params, item.span, qualname.as_slice(), item.id);
+        self.process_generic_params(ty_params, item.span, enum_name.as_slice(), item.id);
     }
 
     fn process_impl(&mut self,
