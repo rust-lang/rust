@@ -386,7 +386,8 @@ fn spaces(wr: &mut io::Writer, mut n: uint) -> Result<(), io::IoError> {
 fn fmt_number_or_null(v: f64) -> string::String {
     match v.classify() {
         FPNaN | FPInfinite => string::String::from_str("null"),
-        _ => f64::to_str_digits(v, 6u)
+        _ if v.fract() != 0f64 => f64::to_str_digits(v, 6u),
+        _ => f64::to_str_digits(v, 6u) + ".0",
     }
 }
 
@@ -2504,8 +2505,8 @@ mod tests {
 
     #[test]
     fn test_write_f64() {
-        assert_eq!(F64(3.0).to_string().into_string(), "3");
-        assert_eq!(F64(3.0).to_pretty_str().into_string(), "3");
+        assert_eq!(F64(3.0).to_string().into_string(), "3.0");
+        assert_eq!(F64(3.0).to_pretty_str().into_string(), "3.0");
 
         assert_eq!(F64(3.1).to_string().into_string(), "3.1");
         assert_eq!(F64(3.1).to_pretty_str().into_string(), "3.1");
