@@ -98,7 +98,7 @@ pub fn error_string(errno: i32) -> String {
             panic!("strerror_r failure");
         }
 
-        ::string::raw::from_buf(p as *const u8)
+        String::from_raw_buf(p as *const u8)
     }
 }
 

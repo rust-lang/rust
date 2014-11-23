@@ -248,7 +248,7 @@ pub fn env_as_bytes() -> Vec<(Vec<u8>,Vec<u8>)> {
     unsafe {
         #[cfg(windows)]
         unsafe fn get_env_pairs() -> Vec<Vec<u8>> {
-            use slice::raw;
+            use slice;
 
             use libc::funcs::extra::kernel32::{
                 GetEnvironmentStringsW,
@@ -281,9 +281,9 @@ pub fn env_as_bytes() -> Vec<(Vec<u8>,Vec<u8>)> {
                 while *(p as *const _).offset(len) != 0 {
                     len += 1;
                 }
-                raw::buf_as_slice(p, len as uint, |s| {
-                    result.push(String::from_utf16_lossy(s).into_bytes());
-                });
+                let p = p as *const u16;
+                let s = slice::from_raw_buf(&p, len as uint);
+                result.push(String::from_utf16_lossy(s).into_bytes());
                 i += len as int + 1;
             }
             FreeEnvironmentStringsW(ch);
@@ -1071,9 +1071,9 @@ fn real_args() -> Vec<String> {
         while *ptr.offset(len as int) != 0 { len += 1; }
 
         // Push it onto the list.
-        let opt_s = slice::raw::buf_as_slice(ptr as *const _, len, |buf| {
-            String::from_utf16(::str::truncate_utf16_at_nul(buf))
-        });
+        let ptr = ptr as *const u16;
+        let buf = slice::from_raw_buf(&ptr, len);
+        let opt_s = String::from_utf16(::str::truncate_utf16_at_nul(buf));
         opt_s.expect("CommandLineToArgvW returned invalid UTF-16")
     });
 

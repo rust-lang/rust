@@ -1559,15 +1559,55 @@ pub fn mut_ref_slice<'a, A>(s: &'a mut A) -> &'a mut [A] {
     }
 }
 
+/// Forms a slice from a pointer and a length.
+///
+/// The pointer given is actually a reference to the base of the slice. This
+/// reference is used to give a concrete lifetime to tie the returned slice to.
+/// Typically this should indicate that the slice is valid for as long as the
+/// pointer itself is valid.
+///
+/// The `len` argument is the number of **elements**, not the number of bytes.
+///
+/// This function is unsafe as there is no guarantee that the given pointer is
+/// valid for `len` elements, nor whether the lifetime provided is a suitable
+/// lifetime for the returned slice.
+///
+/// # Example
+///
+/// ```rust
+/// use std::slice;
+///
+/// // manifest a slice out of thin air!
+/// let ptr = 0x1234 as *const uint;
+/// let amt = 10;
+/// unsafe {
+///     let slice = slice::from_raw_buf(&ptr, amt);
+/// }
+/// ```
+#[inline]
+#[unstable = "just renamed from `mod raw`"]
+pub unsafe fn from_raw_buf<'a, T>(p: &'a *const T, len: uint) -> &'a [T] {
+    transmute(RawSlice { data: *p, len: len })
+}
 
-
+/// Performs the same functionality as `from_raw_buf`, except that a mutable
+/// slice is returned.
+///
+/// This function is unsafe for the same reasons as `from_raw_buf`, as well as
+/// not being able to provide a non-aliasing guarantee of the returned mutable
+/// slice.
+#[inline]
+#[unstable = "just renamed from `mod raw`"]
+pub unsafe fn from_raw_mut_buf<'a, T>(p: &'a *mut T, len: uint) -> &'a mut [T] {
+    transmute(RawSlice { data: *p as *const T, len: len })
+}
 
 //
 // Submodules
 //
 
 /// Unsafe operations
-#[experimental = "needs review"]
+#[deprecated]
 pub mod raw {
     use mem::transmute;
     use ptr::RawPtr;
@@ -1579,6 +1619,7 @@ pub mod raw {
      * not bytes).
      */
     #[inline]
+    #[deprecated = "renamed to slice::from_raw_buf"]
     pub unsafe fn buf_as_slice<T,U>(p: *const T, len: uint, f: |v: &[T]| -> U)
                                -> U {
         f(transmute(Slice {
@@ -1592,6 +1633,7 @@ pub mod raw {
      * not bytes).
      */
     #[inline]
+    #[deprecated = "renamed to slice::from_raw_mut_buf"]
     pub unsafe fn mut_buf_as_slice<T,
                                    U>(
                                    p: *mut T,
@@ -1610,6 +1652,7 @@ pub mod raw {
      * if the slice is empty. O(1).
      */
      #[inline]
+    #[deprecated = "inspect `Slice::{data, len}` manually (increment data by 1)"]
     pub unsafe fn shift_ptr<T>(slice: &mut Slice<T>) -> Option<*const T> {
         if slice.len == 0 { return None; }
         let head: *const T = slice.data;
@@ -1623,7 +1666,8 @@ pub mod raw {
      * slice so it no longer contains that element. Returns None
      * if the slice is empty. O(1).
      */
-     #[inline]
+    #[inline]
+    #[deprecated = "inspect `Slice::{data, len}` manually (decrement len by 1)"]
     pub unsafe fn pop_ptr<T>(slice: &mut Slice<T>) -> Option<*const T> {
         if slice.len == 0 { return None; }
         let tail: *const T = slice.data.offset((slice.len - 1) as int);
