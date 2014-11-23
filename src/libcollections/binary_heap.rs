@@ -160,9 +160,7 @@ use core::mem::{zeroed, replace, swap};
 use core::ptr;
 
 use slice;
-use vec::Vec;
-
-// FIXME(conventions): implement into_iter
+use vec::{mod, Vec};
 
 /// A priority queue implemented with a binary heap.
 ///
@@ -241,6 +239,27 @@ impl<T: Ord> BinaryHeap<T> {
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn iter<'a>(&'a self) -> Items<'a, T> {
         Items { iter: self.data.iter() }
+    }
+
+    /// Creates a consuming iterator, that is, one that moves each value out of
+    /// the binary heap in arbitrary order.  The binary heap cannot be used
+    /// after calling this.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::BinaryHeap;
+    /// let pq = BinaryHeap::from_vec(vec![1i, 2, 3, 4]);
+    ///
+    /// // Print 1, 2, 3, 4 in arbitrary order
+    /// for x in pq.into_iter() {
+    ///     // x has type int, not &int
+    ///     println!("{}", x);
+    /// }
+    /// ```
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    pub fn into_iter(self) -> MoveItems<T> {
+        MoveItems { iter: self.data.into_iter() }
     }
 
     /// Returns the greatest item in a queue, or `None` if it is empty.
@@ -548,6 +567,26 @@ impl<'a, T> Iterator<&'a T> for Items<'a, T> {
     fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
 }
 
+/// An iterator that moves out of a `BinaryHeap`.
+pub struct MoveItems<T> {
+    iter: vec::MoveItems<T>,
+}
+
+impl<T> Iterator<T> for MoveItems<T> {
+    #[inline]
+    fn next(&mut self) -> Option<T> { self.iter.next() }
+
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
+}
+
+impl<T> DoubleEndedIterator<T> for MoveItems<T> {
+    #[inline]
+    fn next_back(&mut self) -> Option<T> { self.iter.next_back() }
+}
+
+impl<T> ExactSize<T> for MoveItems<T> {}
+
 impl<T: Ord> FromIterator<T> for BinaryHeap<T> {
     fn from_iter<Iter: Iterator<T>>(mut iter: Iter) -> BinaryHeap<T> {
         let vec: Vec<T> = iter.collect();
@@ -584,6 +623,43 @@ mod tests {
             assert_eq!(*el, iterout[i]);
             i += 1;
         }
+    }
+
+    #[test]
+    fn test_move_iter() {
+        let data = vec!(5i, 9, 3);
+        let iterout = vec!(9i, 5, 3);
+        let pq = BinaryHeap::from_vec(data);
+
+        let v: Vec<int> = pq.into_iter().collect();
+        assert_eq!(v, iterout);
+    }
+
+    #[test]
+    fn test_move_iter_size_hint() {
+        let data = vec!(5i, 9);
+        let pq = BinaryHeap::from_vec(data);
+
+        let mut it = pq.into_iter();
+
+        assert_eq!(it.size_hint(), (2, Some(2)));
+        assert_eq!(it.next(), Some(9i));
+
+        assert_eq!(it.size_hint(), (1, Some(1)));
+        assert_eq!(it.next(), Some(5i));
+
+        assert_eq!(it.size_hint(), (0, Some(0)));
+        assert_eq!(it.next(), None);
+    }
+
+    #[test]
+    fn test_move_iter_reverse() {
+        let data = vec!(5i, 9, 3);
+        let iterout = vec!(3i, 5, 9);
+        let pq = BinaryHeap::from_vec(data);
+
+        let v: Vec<int> = pq.into_iter().rev().collect();
+        assert_eq!(v, iterout);
     }
 
     #[test]
