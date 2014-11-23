@@ -34,8 +34,6 @@ static MINIMUM_CAPACITY: uint = 2u;
 
 // FIXME(conventions): implement shrink_to_fit. Awkward with the current design, but it should
 // be scrapped anyway. Defer to rewrite?
-// FIXME(conventions): implement into_iter
-
 
 /// `RingBuf` is a circular buffer that implements `Deque`.
 pub struct RingBuf<T> {
@@ -394,6 +392,14 @@ impl<T> RingBuf<T> {
         }
     }
 
+    /// Consumes the list into an iterator yielding elements by value.
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    pub fn into_iter(self) -> MoveItems<T> {
+        MoveItems {
+            inner: self,
+        }
+    }
+
     /// Returns the number of elements in the `RingBuf`.
     ///
     /// # Example
@@ -737,11 +743,9 @@ impl<'a, T> Iterator<&'a mut T> for MutItems<'a, T> {
         }
         let tail = self.tail;
         self.tail = wrap_index(self.tail + 1, self.cap);
-        if mem::size_of::<T>() != 0 {
-            unsafe { Some(&mut *self.ptr.offset(tail as int)) }
-        } else {
-            // use a non-zero pointer
-            Some(unsafe { mem::transmute(1u) })
+
+        unsafe {
+            Some(&mut *self.ptr.offset(tail as int))
         }
     }
 
@@ -759,11 +763,42 @@ impl<'a, T> DoubleEndedIterator<&'a mut T> for MutItems<'a, T> {
             return None;
         }
         self.head = wrap_index(self.head - 1, self.cap);
-        unsafe { Some(&mut *self.ptr.offset(self.head as int)) }
+
+        unsafe {
+            Some(&mut *self.ptr.offset(self.head as int))
+        }
     }
 }
 
 impl<'a, T> ExactSize<&'a mut T> for MutItems<'a, T> {}
+
+// A by-value RingBuf iterator
+pub struct MoveItems<T> {
+    inner: RingBuf<T>,
+}
+
+impl<T> Iterator<T> for MoveItems<T> {
+    #[inline]
+    fn next(&mut self) -> Option<T> {
+        self.inner.pop_front()
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        let len = self.inner.len();
+        (len, Some(len))
+    }
+}
+
+impl<T> DoubleEndedIterator<T> for MoveItems<T> {
+    #[inline]
+    fn next_back(&mut self) -> Option<T> {
+        self.inner.pop_back()
+    }
+}
+
+
+impl<T> ExactSize<T> for MoveItems<T> {}
 
 impl<A: PartialEq> PartialEq for RingBuf<A> {
     fn eq(&self, other: &RingBuf<A>) -> bool {
@@ -1311,6 +1346,65 @@ mod tests {
             assert_eq!(*it.next().unwrap(), 1);
             assert_eq!(*it.next().unwrap(), 2);
             assert!(it.next().is_none());
+        }
+    }
+
+    #[test]
+    fn test_into_iter() {
+
+        // Empty iter
+        {
+            let d: RingBuf<int> = RingBuf::new();
+            let mut iter = d.into_iter();
+
+            assert_eq!(iter.size_hint(), (0, Some(0)));
+            assert_eq!(iter.next(), None);
+            assert_eq!(iter.size_hint(), (0, Some(0)));
+        }
+
+        // simple iter
+        {
+            let mut d = RingBuf::new();
+            for i in range(0i, 5) {
+                d.push_back(i);
+            }
+
+            let b = vec![0,1,2,3,4];
+            assert_eq!(d.into_iter().collect::<Vec<int>>(), b);
+        }
+
+        // wrapped iter
+        {
+            let mut d = RingBuf::new();
+            for i in range(0i, 5) {
+                d.push_back(i);
+            }
+            for i in range(6, 9) {
+                d.push_front(i);
+            }
+
+            let b = vec![8,7,6,0,1,2,3,4];
+            assert_eq!(d.into_iter().collect::<Vec<int>>(), b);
+        }
+
+        // partially used
+        {
+            let mut d = RingBuf::new();
+            for i in range(0i, 5) {
+                d.push_back(i);
+            }
+            for i in range(6, 9) {
+                d.push_front(i);
+            }
+
+            let mut it = d.into_iter();
+            assert_eq!(it.size_hint(), (8, Some(8)));
+            assert_eq!(it.next(), Some(8));
+            assert_eq!(it.size_hint(), (7, Some(7)));
+            assert_eq!(it.next_back(), Some(4));
+            assert_eq!(it.size_hint(), (6, Some(6)));
+            assert_eq!(it.next(), Some(7));
+            assert_eq!(it.size_hint(), (5, Some(5)));
         }
     }
 
