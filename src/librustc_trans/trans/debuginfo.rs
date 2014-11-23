@@ -197,13 +197,10 @@ use llvm::{ModuleRef, ContextRef, ValueRef};
 use llvm::debuginfo::*;
 use metadata::csearch;
 use middle::subst::{mod, Subst, Substs};
-use trans::adt;
+use trans::{mod, adt, machine, type_of};
 use trans::common::*;
-use trans::machine;
 use trans::_match::{BindingInfo, TrByCopy, TrByMove, TrByRef};
-use trans::type_of;
 use trans::type_::Type;
-use trans;
 use middle::ty::{mod, Ty};
 use middle::pat_util;
 use session::config::{mod, FullDebugInfo, LimitedDebugInfo, NoDebugInfo};
@@ -219,8 +216,7 @@ use syntax::util::interner::Interner;
 use syntax::codemap::{Span, Pos};
 use syntax::{ast, codemap, ast_util, ast_map};
 use syntax::ast_util::PostExpansionMethod;
-use syntax::parse::token;
-use syntax::parse::token::special_idents;
+use syntax::parse::token::{mod, special_idents};
 
 static DW_LANG_RUST: c_uint = 0x9000;
 
@@ -3456,8 +3452,8 @@ fn populate_scope_map(cx: &CrateContext,
 
             ast::ExprCast(ref sub_exp, _)     |
             ast::ExprAddrOf(_, ref sub_exp)  |
-            ast::ExprField(ref sub_exp, _, _) |
-            ast::ExprTupField(ref sub_exp, _, _) |
+            ast::ExprField(ref sub_exp, _) |
+            ast::ExprTupField(ref sub_exp, _) |
             ast::ExprParen(ref sub_exp) =>
                 walk_expr(cx, &**sub_exp, scope_stack, scope_map),
 

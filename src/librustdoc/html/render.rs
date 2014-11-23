@@ -1428,6 +1428,8 @@ impl<'a> fmt::Show for Item<'a> {
             clean::TypedefItem(ref t) => item_typedef(fmt, self.item, t),
             clean::MacroItem(ref m) => item_macro(fmt, self.item, m),
             clean::PrimitiveItem(ref p) => item_primitive(fmt, self.item, p),
+            clean::StaticItem(ref i) => item_static(fmt, self.item, i),
+            clean::ConstantItem(ref c) => item_constant(fmt, self.item, c),
             _ => Ok(())
         }
     }
@@ -1451,13 +1453,6 @@ fn full_path(cx: &Context, item: &clean::Item) -> String {
     s.push_str("::");
     s.push_str(item.name.as_ref().unwrap().as_slice());
     return s
-}
-
-fn blank<'a>(s: Option<&'a str>) -> &'a str {
-    match s {
-        Some(s) => s,
-        None => ""
-    }
 }
 
 fn shorter<'a>(s: Option<&'a str>) -> &'a str {
@@ -1570,66 +1565,18 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
                         id = short, name = name));
         }
 
-        struct Initializer<'a>(&'a str, Item<'a>);
-        impl<'a> fmt::Show for Initializer<'a> {
-            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                let Initializer(s, item) = *self;
-                if s.len() == 0 { return Ok(()); }
-                try!(write!(f, "<code> = </code>"));
-                if s.contains("\n") {
-                    match item.href() {
-                        Some(url) => {
-                            write!(f, "<a href='{}'>[definition]</a>",
-                                   url)
-                        }
-                        None => Ok(()),
-                    }
-                } else {
-                    write!(f, "<code>{}</code>", s.as_slice())
-                }
-            }
-        }
-
         match myitem.inner {
-            clean::StaticItem(ref s) | clean::ForeignStaticItem(ref s) => {
-                try!(write!(w, "
-                    <tr>
-                        <td>{}<code>{}static {}{}: {}</code>{}</td>
-                        <td class='docblock'>{}&nbsp;</td>
-                    </tr>
-                ",
-                ConciseStability(&myitem.stability),
-                VisSpace(myitem.visibility),
-                MutableSpace(s.mutability),
-                *myitem.name.as_ref().unwrap(),
-                s.type_,
-                Initializer(s.expr.as_slice(), Item { cx: cx, item: myitem }),
-                Markdown(blank(myitem.doc_value()))));
-            }
-            clean::ConstantItem(ref s) => {
-                try!(write!(w, "
-                    <tr>
-                        <td>{}<code>{}const {}: {}</code>{}</td>
-                        <td class='docblock'>{}&nbsp;</td>
-                    </tr>
-                ",
-                ConciseStability(&myitem.stability),
-                VisSpace(myitem.visibility),
-                *myitem.name.as_ref().unwrap(),
-                s.type_,
-                Initializer(s.expr.as_slice(), Item { cx: cx, item: myitem }),
-                Markdown(blank(myitem.doc_value()))));
-            }
-
             clean::ViewItemItem(ref item) => {
                 match item.inner {
                     clean::ExternCrate(ref name, ref src, _) => {
-                        try!(write!(w, "<tr><td><code>extern crate {}",
-                                      name.as_slice()));
                         match *src {
-                            Some(ref src) => try!(write!(w, " = \"{}\"",
-                                                           src.as_slice())),
-                            None => {}
+                            Some(ref src) =>
+                                try!(write!(w, "<tr><td><code>extern crate \"{}\" as {}",
+                                            src.as_slice(),
+                                            name.as_slice())),
+                            None =>
+                                try!(write!(w, "<tr><td><code>extern crate {}",
+                                            name.as_slice())),
                         }
                         try!(write!(w, ";</code></td></tr>"));
                     }
@@ -1663,6 +1610,39 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
     }
 
     write!(w, "</table>")
+}
+
+struct Initializer<'a>(&'a str);
+impl<'a> fmt::Show for Initializer<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let Initializer(s) = *self;
+        if s.len() == 0 { return Ok(()); }
+        try!(write!(f, "<code> = </code>"));
+        write!(f, "<code>{}</code>", s.as_slice())
+    }
+}
+
+fn item_constant(w: &mut fmt::Formatter, it: &clean::Item,
+                 c: &clean::Constant) -> fmt::Result {
+    try!(write!(w, "<pre class='rust const'>{vis}const \
+                    {name}: {typ}{init}</pre>",
+           vis = VisSpace(it.visibility),
+           name = it.name.as_ref().unwrap().as_slice(),
+           typ = c.type_,
+           init = Initializer(c.expr.as_slice())));
+    document(w, it)
+}
+
+fn item_static(w: &mut fmt::Formatter, it: &clean::Item,
+               s: &clean::Static) -> fmt::Result {
+    try!(write!(w, "<pre class='rust static'>{vis}static {mutability}\
+                    {name}: {typ}{init}</pre>",
+           vis = VisSpace(it.visibility),
+           mutability = MutableSpace(s.mutability),
+           name = it.name.as_ref().unwrap().as_slice(),
+           typ = s.type_,
+           init = Initializer(s.expr.as_slice())));
+    document(w, it)
 }
 
 fn item_function(w: &mut fmt::Formatter, it: &clean::Item,

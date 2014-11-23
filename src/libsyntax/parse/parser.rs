@@ -49,8 +49,7 @@ use ast::{PolyTraitRef};
 use ast::{QPath, RequiredMethod};
 use ast::{Return, BiShl, BiShr, Stmt, StmtDecl};
 use ast::{StmtExpr, StmtSemi, StmtMac, StructDef, StructField};
-use ast::{StructVariantKind, BiSub};
-use ast::StrStyle;
+use ast::{StructVariantKind, BiSub, StrStyle};
 use ast::{SelfExplicit, SelfRegion, SelfStatic, SelfValue};
 use ast::{Delimited, SequenceRepetition, TokenTree, TraitItem, TraitRef};
 use ast::{TtDelimited, TtSequence, TtToken};
@@ -65,23 +64,18 @@ use ast::{UnsafeFn, ViewItem, ViewItem_, ViewItemExternCrate, ViewItemUse};
 use ast::{ViewPath, ViewPathGlob, ViewPathList, ViewPathSimple};
 use ast::{Visibility, WhereClause, WherePredicate};
 use ast;
-use ast_util::{as_prec, ident_to_path, operator_prec};
-use ast_util;
-use codemap::{Span, BytePos, Spanned, spanned, mk_sp};
-use codemap;
+use ast_util::{mod, as_prec, ident_to_path, operator_prec};
+use codemap::{mod, Span, BytePos, Spanned, spanned, mk_sp};
 use diagnostic;
 use ext::tt::macro_parser;
 use parse;
 use parse::attr::ParserAttr;
 use parse::classify;
-use parse::common::{SeqSep, seq_sep_none};
-use parse::common::{seq_sep_trailing_allowed};
-use parse::lexer::Reader;
-use parse::lexer::TokenAndSpan;
+use parse::common::{SeqSep, seq_sep_none, seq_sep_trailing_allowed};
+use parse::lexer::{Reader, TokenAndSpan};
 use parse::obsolete::*;
-use parse::token::{MatchNt, SubstNt, InternedString};
+use parse::token::{mod, MatchNt, SubstNt, InternedString};
 use parse::token::{keywords, special_idents};
-use parse::token;
 use parse::{new_sub_parser_from_file, ParseSess};
 use print::pprust;
 use ptr::P;
@@ -89,7 +83,6 @@ use owned_slice::OwnedSlice;
 
 use std::collections::HashSet;
 use std::io::fs::PathExtensions;
-use std::mem::replace;
 use std::mem;
 use std::num::Float;
 use std::rc::Rc;
@@ -915,7 +908,7 @@ impl<'a> Parser<'a> {
                 tok: token::Underscore,
                 sp: self.span,
             };
-            replace(&mut self.buffer[buffer_start], placeholder)
+            mem::replace(&mut self.buffer[buffer_start], placeholder)
         };
         self.span = next.sp;
         self.token = next.tok;
@@ -924,7 +917,7 @@ impl<'a> Parser<'a> {
 
     /// Advance the parser by one token and return the bumped token.
     pub fn bump_and_get(&mut self) -> token::Token {
-        let old_token = replace(&mut self.token, token::Underscore);
+        let old_token = mem::replace(&mut self.token, token::Underscore);
         self.bump();
         old_token
     }
@@ -2103,14 +2096,12 @@ impl<'a> Parser<'a> {
         ExprSlice(expr, start, end, mutbl)
     }
 
-    pub fn mk_field(&mut self, expr: P<Expr>, ident: ast::SpannedIdent,
-                    tys: Vec<P<Ty>>) -> ast::Expr_ {
-        ExprField(expr, ident, tys)
+    pub fn mk_field(&mut self, expr: P<Expr>, ident: ast::SpannedIdent) -> ast::Expr_ {
+        ExprField(expr, ident)
     }
 
-    pub fn mk_tup_field(&mut self, expr: P<Expr>, idx: codemap::Spanned<uint>,
-                    tys: Vec<P<Ty>>) -> ast::Expr_ {
-        ExprTupField(expr, idx, tys)
+    pub fn mk_tup_field(&mut self, expr: P<Expr>, idx: codemap::Spanned<uint>) -> ast::Expr_ {
+        ExprTupField(expr, idx)
     }
 
     pub fn mk_assign_op(&mut self, binop: ast::BinOp,
@@ -2465,31 +2456,26 @@ impl<'a> Parser<'a> {
                             }
 
                             let id = spanned(dot, hi, i);
-                            let field = self.mk_field(e, id, tys);
+                            let field = self.mk_field(e, id);
                             e = self.mk_expr(lo, hi, field);
                         }
                     }
                   }
                   token::Literal(token::Integer(n), suf) => {
                     let sp = self.span;
+
+                    // A tuple index may not have a suffix
                     self.expect_no_suffix(sp, "tuple index", suf);
 
-                    let index = n.as_str();
                     let dot = self.last_span.hi;
                     hi = self.span.hi;
                     self.bump();
-                    let (_, tys) = if self.eat(&token::ModSep) {
-                        self.expect_lt();
-                        self.parse_generic_values_after_lt()
-                    } else {
-                        (Vec::new(), Vec::new())
-                    };
 
-                    let num = from_str::<uint>(index);
-                    match num {
+                    let index = from_str::<uint>(n.as_str());
+                    match index {
                         Some(n) => {
                             let id = spanned(dot, hi, n);
-                            let field = self.mk_tup_field(e, id, tys);
+                            let field = self.mk_tup_field(e, id);
                             e = self.mk_expr(lo, hi, field);
                         }
                         None => {

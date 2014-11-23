@@ -546,22 +546,26 @@ CFG_TARGET=$(to_llvm_triple $CFG_TARGET)
 # there's no rpath. This is where the build system itself puts libraries;
 # --libdir is used to configure the installation directory.
 # FIXME: This needs to parameterized over target triples. Do it in platform.mk
-CFG_LIBDIR_RELATIVE=lib
 if [ "$CFG_OSTYPE" = "pc-windows-gnu" ]
 then
     CFG_LIBDIR_RELATIVE=bin
-    CFG_LIBDIR="${CFG_PREFIX}/${CFG_LIBDIR_RELATIVE}"
 else
-    valopt libdir "${CFG_PREFIX}/${CFG_LIBDIR_RELATIVE}" "install libraries (ignored on windows platform)"
+    CFG_LIBDIR_RELATIVE=lib
+fi
 
-    case "$CFG_LIBDIR" in
-	"$CFG_PREFIX"/*) CAT_INC=2;;
-	"$CFG_PREFIX"*)  CAT_INC=1;;
-	*)
-            err "libdir must begin with the prefix. Use --prefix to set it accordingly.";;
-    esac
+valopt libdir "${CFG_PREFIX}/${CFG_LIBDIR_RELATIVE}" "install libraries (do not set it on windows platform)"
 
-    CFG_LIBDIR_RELATIVE=`echo ${CFG_LIBDIR} | cut -c$((${#CFG_PREFIX}+${CAT_INC}))-`
+case "$CFG_LIBDIR" in
+    "$CFG_PREFIX"/*) CAT_INC=2;;
+    "$CFG_PREFIX"*)  CAT_INC=1;;
+    *)
+        err "libdir must begin with the prefix. Use --prefix to set it accordingly.";;
+esac
+
+CFG_LIBDIR_RELATIVE=`echo ${CFG_LIBDIR} | cut -c$((${#CFG_PREFIX}+${CAT_INC}))-`
+
+if [ "$CFG_OSTYPE" = "pc-windows-gnu" ] && [ "$CFG_LIBDIR_RELATIVE" != "bin" ]; then
+    err "libdir on windows should be set to 'bin'"
 fi
 
 if [ $HELP -eq 1 ]
@@ -711,11 +715,6 @@ then
     fi
     step_msg "using rustc at: ${CFG_LOCAL_RUST_ROOT} with version: $LRV"
     putvar CFG_LOCAL_RUST_ROOT
-else
-    if [ ! -z "$CFG_LOCAL_RUST_ROOT" ]
-    then
-       warn "Use of --local-rust-root without --enable-local-rust"
-    fi
 fi
 
 # Force freebsd to build with clang; gcc doesn't like us there

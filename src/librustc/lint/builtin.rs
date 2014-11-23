@@ -37,22 +37,18 @@ use util::ppaux::{ty_to_string};
 use util::nodemap::{FnvHashMap, NodeSet};
 use lint::{Context, LintPass, LintArray};
 
-use std::cmp;
+use std::{cmp, slice};
 use std::collections::hash_map::{Occupied, Vacant};
 use std::num::SignedInt;
-use std::slice;
 use std::{i8, i16, i32, i64, u8, u16, u32, u64, f32, f64};
-use syntax::abi;
-use syntax::ast_map;
-use syntax::ast_util::is_shift_binop;
-use syntax::attr::AttrMetaMethods;
-use syntax::attr;
+use syntax::{abi, ast, ast_map};
+use syntax::ast_util::{mod, is_shift_binop};
+use syntax::attr::{mod, AttrMetaMethods};
 use syntax::codemap::{Span, DUMMY_SP};
 use syntax::parse::token;
-use syntax::{ast, ast_util, visit};
 use syntax::ast::{TyI, TyU, TyI8, TyU8, TyI16, TyU16, TyI32, TyU32, TyI64, TyU64};
 use syntax::ptr::P;
-use syntax::visit::Visitor;
+use syntax::visit::{mod, Visitor};
 
 declare_lint!(WHILE_TRUE, Warn,
               "suggest using `loop { }` instead of `while true { }`")
@@ -1112,8 +1108,8 @@ impl UnusedParens {
                 }
                 ast::ExprUnary(_, ref x) |
                 ast::ExprCast(ref x, _) |
-                ast::ExprField(ref x, _, _) |
-                ast::ExprTupField(ref x, _, _) |
+                ast::ExprField(ref x, _) |
+                ast::ExprTupField(ref x, _) |
                 ast::ExprIndex(ref x, _) => {
                     // &X { y: 1 }, X { y: 1 }.y
                     contains_exterior_struct_lit(&**x)

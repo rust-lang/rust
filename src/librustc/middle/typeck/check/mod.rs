@@ -83,62 +83,41 @@ use self::IsBinopAssignment::*;
 use self::TupleArgumentsFlag::*;
 
 use session::Session;
-use middle::const_eval;
-use middle::def;
+use middle::{const_eval, def, traits};
 use middle::lang_items::IteratorItem;
-use middle::mem_categorization::McResult;
-use middle::mem_categorization;
-use middle::pat_util::pat_id_map;
-use middle::pat_util;
+use middle::mem_categorization::{mod, McResult};
+use middle::pat_util::{mod, pat_id_map};
 use middle::region::CodeExtent;
-use middle::subst;
-use middle::subst::{Subst, Substs, VecPerParamSpace, ParamSpace};
-use middle::traits;
-use middle::ty::{FnSig, VariantInfo};
-use middle::ty::{Polytype};
+use middle::subst::{mod, Subst, Substs, VecPerParamSpace, ParamSpace};
+use middle::ty::{FnSig, VariantInfo, Polytype};
 use middle::ty::{Disr, ParamTy, ParameterEnvironment};
 use middle::ty::{mod, Ty};
 use middle::ty::liberate_late_bound_regions;
 use middle::ty_fold::TypeFolder;
-use middle::typeck::astconv::AstConv;
-use middle::typeck::astconv::{ast_region_to_region, ast_ty_to_ty};
-use middle::typeck::astconv;
+use middle::typeck::astconv::{mod, ast_region_to_region, ast_ty_to_ty, AstConv};
 use middle::typeck::check::_match::pat_ctxt;
-use middle::typeck::CrateCtxt;
-use middle::typeck::infer;
 use middle::typeck::rscope::RegionScope;
-use middle::typeck::{lookup_def_ccx};
-use middle::typeck::no_params;
-use middle::typeck::{require_same_types};
-use middle::typeck::{MethodCall, MethodCallee, MethodMap, ObjectCastMap};
-use middle::typeck::{TypeAndSubsts};
-use middle::typeck;
+use middle::typeck::{mod, CrateCtxt, infer, lookup_def_ccx, no_params, require_same_types};
+use middle::typeck::{MethodCall, MethodCallee, MethodMap, ObjectCastMap, TypeAndSubsts};
 use middle::lang_items::TypeIdLangItem;
 use lint;
 use util::common::{block_query, indenter, loop_query};
-use util::ppaux;
-use util::ppaux::{UserString, Repr};
+use util::ppaux::{mod, UserString, Repr};
 use util::nodemap::{DefIdMap, FnvHashMap, NodeMap};
 
 use std::cell::{Cell, Ref, RefCell};
 use std::collections::hash_map::{Occupied, Vacant};
 use std::mem::replace;
 use std::rc::Rc;
-use syntax::abi;
-use syntax::ast::{ProvidedMethod, RequiredMethod, TypeTraitItem};
-use syntax::ast;
-use syntax::ast_util::{local_def, PostExpansionMethod};
-use syntax::ast_util;
-use syntax::attr;
-use syntax::codemap::Span;
-use syntax::codemap;
+use syntax::{mod, abi, attr};
+use syntax::ast::{mod, ProvidedMethod, RequiredMethod, TypeTraitItem};
+use syntax::ast_util::{mod, local_def, PostExpansionMethod};
+use syntax::codemap::{mod, Span};
 use syntax::owned_slice::OwnedSlice;
 use syntax::parse::token;
 use syntax::print::pprust;
 use syntax::ptr::P;
-use syntax::visit;
-use syntax::visit::Visitor;
-use syntax;
+use syntax::visit::{mod, Visitor};
 
 pub mod _match;
 pub mod vtable;
@@ -4405,10 +4384,10 @@ fn check_expr_with_unifier<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
         fcx.require_expr_have_sized_type(expr, traits::StructInitializerSized);
       }
-      ast::ExprField(ref base, ref field, _) => {
+      ast::ExprField(ref base, ref field) => {
         check_field(fcx, expr, lvalue_pref, &**base, field);
       }
-      ast::ExprTupField(ref base, idx, _) => {
+      ast::ExprTupField(ref base, idx) => {
         check_tup_field(fcx, expr, lvalue_pref, &**base, idx);
       }
       ast::ExprIndex(ref base, ref idx) => {

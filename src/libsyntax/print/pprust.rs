@@ -11,31 +11,25 @@
 pub use self::AnnNode::*;
 
 use abi;
-use ast::{FnUnboxedClosureKind, FnMutUnboxedClosureKind};
+use ast::{mod, FnUnboxedClosureKind, FnMutUnboxedClosureKind};
 use ast::{FnOnceUnboxedClosureKind};
 use ast::{MethodImplItem, RegionTyParamBound, TraitTyParamBound};
 use ast::{RequiredMethod, ProvidedMethod, TypeImplItem, TypeTraitItem};
 use ast::{UnboxedClosureKind};
-use ast;
 use ast_util;
 use owned_slice::OwnedSlice;
 use attr::{AttrMetaMethods, AttributeMethods};
-use codemap::{CodeMap, BytePos};
-use codemap;
+use codemap::{mod, CodeMap, BytePos};
 use diagnostic;
-use parse::token::{BinOpToken, Token};
-use parse::token;
+use parse::token::{mod, BinOpToken, Token};
 use parse::lexer::comments;
 use parse;
-use print::pp::{break_offset, word, space, zerobreak, hardbreak};
+use print::pp::{mod, break_offset, word, space, zerobreak, hardbreak};
 use print::pp::{Breaks, Consistent, Inconsistent, eof};
-use print::pp;
 use ptr::P;
 
-use std::ascii;
-use std::io::IoResult;
-use std::io;
-use std::mem;
+use std::{ascii, mem};
+use std::io::{mod, IoResult};
 
 pub enum AnnNode<'a> {
     NodeIdent(&'a ast::Ident),
@@ -1734,29 +1728,15 @@ impl<'a> State<'a> {
                 try!(self.word_space("="));
                 try!(self.print_expr(&**rhs));
             }
-            ast::ExprField(ref expr, id, ref tys) => {
+            ast::ExprField(ref expr, id) => {
                 try!(self.print_expr(&**expr));
                 try!(word(&mut self.s, "."));
                 try!(self.print_ident(id.node));
-                if tys.len() > 0u {
-                    try!(word(&mut self.s, "::<"));
-                    try!(self.commasep(
-                        Inconsistent, tys.as_slice(),
-                        |s, ty| s.print_type(&**ty)));
-                    try!(word(&mut self.s, ">"));
-                }
             }
-            ast::ExprTupField(ref expr, id, ref tys) => {
+            ast::ExprTupField(ref expr, id) => {
                 try!(self.print_expr(&**expr));
                 try!(word(&mut self.s, "."));
                 try!(self.print_uint(id.node));
-                if tys.len() > 0u {
-                    try!(word(&mut self.s, "::<"));
-                    try!(self.commasep(
-                        Inconsistent, tys.as_slice(),
-                        |s, ty| s.print_type(&**ty)));
-                    try!(word(&mut self.s, ">"));
-                }
             }
             ast::ExprIndex(ref expr, ref index) => {
                 try!(self.print_expr(&**expr));
@@ -2164,21 +2144,22 @@ impl<'a> State<'a> {
             try!(self.print_pat(&**p));
         }
         try!(space(&mut self.s));
-        match arm.guard {
-            Some(ref e) => {
-                try!(self.word_space("if"));
-                try!(self.print_expr(&**e));
-                try!(space(&mut self.s));
-            }
-            None => ()
+        if let Some(ref e) = arm.guard {
+            try!(self.word_space("if"));
+            try!(self.print_expr(&**e));
+            try!(space(&mut self.s));
         }
         try!(self.word_space("=>"));
 
         match arm.body.node {
             ast::ExprBlock(ref blk) => {
                 // the block will close the pattern's ibox
-                try!(self.print_block_unclosed_indent(&**blk,
-                                                      indent_unit));
+                try!(self.print_block_unclosed_indent(&**blk, indent_unit));
+
+                // If it is a user-provided unsafe block, print a comma after it
+                if let ast::UnsafeBlock(ast::UserProvided) = blk.rules {
+                    try!(word(&mut self.s, ","));
+                }
             }
             _ => {
                 try!(self.end()); // close the ibox for the pattern
