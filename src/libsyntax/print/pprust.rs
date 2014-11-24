@@ -2458,7 +2458,7 @@ impl<'a> State<'a> {
                 s.print_lifetime_def(lifetime)
             } else {
                 let idx = idx - generics.lifetimes.len();
-                let param = generics.ty_params.get(idx);
+                let param = &generics.ty_params[idx];
                 s.print_ty_param(param)
             }
         }));
