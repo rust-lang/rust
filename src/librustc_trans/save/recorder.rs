@@ -171,7 +171,7 @@ impl<'a> FmtStrs<'a> {
 
         let pairs = fields.iter().zip(values);
         let mut strs = pairs.map(|(f, v)| format!(",{},\"{}\"", f, escape(
-            if *f == "qualname" {
+            if *f == "qualname" && v.len() > 0 {
                 let mut n = self.krate.clone();
                 n.push_str("::");
                 n.push_str(v);
