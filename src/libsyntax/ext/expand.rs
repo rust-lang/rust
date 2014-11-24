@@ -412,12 +412,19 @@ pub fn expand_item(it: P<ast::Item>, fld: &mut MacroExpander)
     let mut new_items = match it.node {
         ast::ItemMac(..) => expand_item_mac(it, fld),
         ast::ItemMod(_) | ast::ItemForeignMod(_) => {
-            fld.cx.mod_push(it.ident);
+            let valid_ident =
+                it.ident.name != parse::token::special_idents::invalid.name;
+
+            if valid_ident {
+                fld.cx.mod_push(it.ident);
+            }
             let macro_escape = contains_macro_escape(new_attrs.as_slice());
             let result = with_exts_frame!(fld.cx.syntax_env,
                                           macro_escape,
                                           noop_fold_item(it, fld));
-            fld.cx.mod_pop();
+            if valid_ident {
+                fld.cx.mod_pop();
+            }
             result
         },
         _ => {
