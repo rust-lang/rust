@@ -17,8 +17,6 @@ use std::rt;
 
 use rustrt::unwind::try;
 
-local_data_key!(foo: int)
-
 #[start]
 fn start(argc: int, argv: *const *const u8) -> int {
     if argc > 1 {
@@ -30,8 +28,6 @@ fn start(argc: int, argv: *const *const u8) -> int {
                 4 => assert!(try(|| panic!()).is_err()),
                 5 => assert!(try(|| spawn(proc() {})).is_err()),
                 6 => assert!(Command::new("test").spawn().is_err()),
-                7 => assert!(foo.get().is_none()),
-                8 => assert!(try(|| { foo.replace(Some(3)); }).is_err()),
                 _ => panic!()
             }
         }
@@ -56,10 +52,6 @@ fn main() {
     let x: &[u8] = &[5u8];
     pass(Command::new(me).arg(x).output().unwrap());
     let x: &[u8] = &[6u8];
-    pass(Command::new(me).arg(x).output().unwrap());
-    let x: &[u8] = &[7u8];
-    pass(Command::new(me).arg(x).output().unwrap());
-    let x: &[u8] = &[8u8];
     pass(Command::new(me).arg(x).output().unwrap());
 }
 

@@ -28,12 +28,14 @@ extern crate syntax;
 extern crate "test" as testing;
 #[phase(plugin, link)] extern crate log;
 
-use std::io;
-use std::io::File;
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::collections::hash_map::{Occupied, Vacant};
-use serialize::{json, Decodable, Encodable};
+use std::io::File;
+use std::io;
+use std::rc::Rc;
 use externalfiles::ExternalHtml;
+use serialize::{json, Decodable, Encodable};
 
 // reexported from `clean` so it can be easily updated with the mod itself
 pub use clean::SCHEMA_VERSION;
@@ -84,7 +86,9 @@ static DEFAULT_PASSES: &'static [&'static str] = &[
     "unindent-comments",
 ];
 
-local_data_key!(pub analysiskey: core::CrateAnalysis)
+thread_local!(pub static ANALYSISKEY: Rc<RefCell<Option<core::CrateAnalysis>>> = {
+    Rc::new(RefCell::new(None))
+})
 
 struct Output {
     krate: clean::Crate,
@@ -338,7 +342,10 @@ fn rust_input(cratefile: &str, externs: core::Externs, matches: &getopts::Matche
         core::run_core(libs, cfgs, externs, &cr, triple)
     }).map_err(|_| "rustc failed").unwrap();
     info!("finished with rustc");
-    analysiskey.replace(Some(analysis));
+    let mut analysis = Some(analysis);
+    ANALYSISKEY.with(|s| {
+        *s.borrow_mut() = analysis.take();
+    });
 
     match matches.opt_str("crate-name") {
         Some(name) => krate.name = name,
