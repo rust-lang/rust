@@ -26,7 +26,7 @@ use stability_summary::ModuleSummary;
 use html::item_type;
 use html::item_type::ItemType;
 use html::render;
-use html::render::{cache_key, current_location_key};
+use html::render::{cache, CURRENT_LOCATION_KEY};
 
 /// Helper to render an optional visibility with a space after it (if the
 /// visibility is preset)
@@ -236,9 +236,9 @@ fn path(w: &mut fmt::Formatter, path: &clean::Path, print_all: bool,
         generics.push_str("&gt;");
     }
 
-    let loc = current_location_key.get().unwrap();
-    let cache = cache_key.get().unwrap();
-    let abs_root = root(&**cache, loc.as_slice());
+    let loc = CURRENT_LOCATION_KEY.with(|l| l.borrow().clone());
+    let cache = cache();
+    let abs_root = root(&*cache, loc.as_slice());
     let rel_root = match path.segments[0].name.as_slice() {
         "self" => Some("./".to_string()),
         _ => None,
@@ -271,7 +271,7 @@ fn path(w: &mut fmt::Formatter, path: &clean::Path, print_all: bool,
         }
     }
 
-    match info(&**cache) {
+    match info(&*cache) {
         // This is a documented path, link to it!
         Some((ref fqp, shortty)) if abs_root.is_some() => {
             let mut url = String::from_str(abs_root.unwrap().as_slice());
@@ -308,12 +308,12 @@ fn path(w: &mut fmt::Formatter, path: &clean::Path, print_all: bool,
 fn primitive_link(f: &mut fmt::Formatter,
                   prim: clean::PrimitiveType,
                   name: &str) -> fmt::Result {
-    let m = cache_key.get().unwrap();
+    let m = cache();
     let mut needs_termination = false;
     match m.primitive_locations.get(&prim) {
         Some(&ast::LOCAL_CRATE) => {
-            let loc = current_location_key.get().unwrap();
-            let len = if loc.len() == 0 {0} else {loc.len() - 1};
+            let len = CURRENT_LOCATION_KEY.with(|s| s.borrow().len());
+            let len = if len == 0 {0} else {len - 1};
             try!(write!(f, "<a href='{}primitive.{}.html'>",
                         "../".repeat(len),
                         prim.to_url_str()));
@@ -327,8 +327,8 @@ fn primitive_link(f: &mut fmt::Formatter,
             let loc = match m.extern_locations[cnum] {
                 render::Remote(ref s) => Some(s.to_string()),
                 render::Local => {
-                    let loc = current_location_key.get().unwrap();
-                    Some("../".repeat(loc.len()))
+                    let len = CURRENT_LOCATION_KEY.with(|s| s.borrow().len());
+                    Some("../".repeat(len))
                 }
                 render::Unknown => None,
             };
@@ -371,12 +371,10 @@ impl fmt::Show for clean::Type {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             clean::TyParamBinder(id) => {
-                let m = cache_key.get().unwrap();
-                f.write(m.typarams[ast_util::local_def(id)].as_bytes())
+                f.write(cache().typarams[ast_util::local_def(id)].as_bytes())
             }
             clean::Generic(did) => {
-                let m = cache_key.get().unwrap();
-                f.write(m.typarams[did].as_bytes())
+                f.write(cache().typarams[did].as_bytes())
             }
             clean::ResolvedPath{ did, ref typarams, ref path } => {
                 try!(resolved_path(f, did, path, false));

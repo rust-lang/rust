@@ -12,10 +12,11 @@
 
 use alloc::boxed::Box;
 use any::{Any, AnyRefExt};
+use cell::RefCell;
 use fmt;
 use io::{Writer, IoResult};
 use kinds::Send;
-use option::{Some, None};
+use option::{Some, None, Option};
 use result::Ok;
 use rt::backtrace;
 use rustrt::{Stderr, Stdio};
@@ -25,7 +26,9 @@ use str::Str;
 use string::String;
 
 // Defined in this module instead of io::stdio so that the unwinding
-local_data_key!(pub local_stderr: Box<Writer + Send>)
+thread_local!(pub static LOCAL_STDERR: RefCell<Option<Box<Writer + Send>>> = {
+    RefCell::new(None)
+})
 
 impl Writer for Stdio {
     fn write(&mut self, bytes: &[u8]) -> IoResult<()> {
@@ -74,7 +77,8 @@ pub fn on_fail(obj: &Any + Send, file: &'static str, line: uint) {
     {
         let n = name.as_ref().map(|n| n.as_slice()).unwrap_or("<unnamed>");
 
-        match local_stderr.replace(None) {
+        let prev = LOCAL_STDERR.with(|s| s.borrow_mut().take());
+        match prev {
             Some(mut stderr) => {
                 // FIXME: what to do when the task printing panics?
                 let _ = writeln!(stderr,
@@ -83,7 +87,10 @@ pub fn on_fail(obj: &Any + Send, file: &'static str, line: uint) {
                 if backtrace::log_enabled() {
                     let _ = backtrace::write(&mut *stderr);
                 }
-                local_stderr.replace(Some(stderr));
+                let mut s = Some(stderr);
+                LOCAL_STDERR.with(|slot| {
+                    *slot.borrow_mut() = s.take();
+                });
             }
             None => {
                 let _ = writeln!(&mut err, "task '{}' panicked at '{}', {}:{}",

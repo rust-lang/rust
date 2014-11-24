@@ -34,8 +34,10 @@
 //! both occur before the crate is rendered.
 pub use self::ExternalLocation::*;
 
-use std::collections::{HashMap, HashSet};
+use std::cell::RefCell;
 use std::collections::hash_map::{Occupied, Vacant};
+use std::collections::{HashMap, HashSet};
+use std::default::Default;
 use std::fmt;
 use std::io::fs::PathExtensions;
 use std::io::{fs, File, BufferedWriter, BufferedReader};
@@ -141,6 +143,7 @@ pub struct Impl {
 /// to be a fairly large and expensive structure to clone. Instead this adheres
 /// to `Send` so it may be stored in a `Arc` instance and shared among the various
 /// rendering tasks.
+#[deriving(Default)]
 pub struct Cache {
     /// Mapping of typaram ids to the name of the type parameter. This is used
     /// when pretty-printing a type (so pretty printing doesn't have to
@@ -235,8 +238,9 @@ struct IndexItem {
 
 // TLS keys used to carry information around during rendering.
 
-local_data_key!(pub cache_key: Arc<Cache>)
-local_data_key!(pub current_location_key: Vec<String> )
+thread_local!(static CACHE_KEY: RefCell<Arc<Cache>> = Default::default())
+thread_local!(pub static CURRENT_LOCATION_KEY: RefCell<Vec<String>> =
+                    RefCell::new(Vec::new()))
 
 /// Generates the documentation for `crate` into the directory `dst`
 pub fn run(mut krate: clean::Crate,
@@ -280,10 +284,12 @@ pub fn run(mut krate: clean::Crate,
                     clean::NameValue(ref x, ref s)
                             if "html_playground_url" == x.as_slice() => {
                         cx.layout.playground_url = s.to_string();
-                        let name = krate.name.clone();
-                        if markdown::playground_krate.get().is_none() {
-                            markdown::playground_krate.replace(Some(Some(name)));
-                        }
+                        markdown::PLAYGROUND_KRATE.with(|slot| {
+                            if slot.borrow().is_none() {
+                                let name = krate.name.clone();
+                                *slot.borrow_mut() = Some(Some(name));
+                            }
+                        });
                     }
                     clean::Word(ref x)
                             if "html_no_source" == x.as_slice() => {
@@ -297,7 +303,8 @@ pub fn run(mut krate: clean::Crate,
     }
 
     // Crawl the crate to build various caches used for the output
-    let analysis = ::analysiskey.get();
+    let analysis = ::ANALYSISKEY.with(|a| a.clone());
+    let analysis = analysis.borrow();
     let public_items = analysis.as_ref().map(|a| a.public_items.clone());
     let public_items = public_items.unwrap_or(NodeSet::new());
     let paths: HashMap<ast::DefId, (Vec<String>, ItemType)> =
@@ -370,8 +377,8 @@ pub fn run(mut krate: clean::Crate,
     // Freeze the cache now that the index has been built. Put an Arc into TLS
     // for future parallelization opportunities
     let cache = Arc::new(cache);
-    cache_key.replace(Some(cache.clone()));
-    current_location_key.replace(Some(Vec::new()));
+    CACHE_KEY.with(|v| *v.borrow_mut() = cache.clone());
+    CURRENT_LOCATION_KEY.with(|s| s.borrow_mut().clear());
 
     try!(write_shared(&cx, &krate, &*cache, index));
     let krate = try!(render_sources(&mut cx, krate));
@@ -1134,7 +1141,9 @@ impl Context {
             info!("Rendering an item to {}", w.path().display());
             // A little unfortunate that this is done like this, but it sure
             // does make formatting *a lot* nicer.
-            current_location_key.replace(Some(cx.current.clone()));
+            CURRENT_LOCATION_KEY.with(|slot| {
+                *slot.borrow_mut() = cx.current.clone();
+            });
 
             let mut title = cx.current.connect("::");
             if pushname {
@@ -1177,7 +1186,7 @@ impl Context {
                                     &Item{ cx: cx, item: it }));
             } else {
                 let mut url = "../".repeat(cx.current.len());
-                match cache_key.get().unwrap().paths.get(&it.def_id) {
+                match cache().paths.get(&it.def_id) {
                     Some(&(ref names, _)) => {
                         for name in names[..names.len() - 1].iter() {
                             url.push_str(name.as_slice());
@@ -1324,7 +1333,7 @@ impl<'a> Item<'a> {
         // If we don't know where the external documentation for this crate is
         // located, then we return `None`.
         } else {
-            let cache = cache_key.get().unwrap();
+            let cache = cache();
             let path = &cache.external_paths[self.item.def_id];
             let root = match cache.extern_locations[self.item.def_id.krate] {
                 Remote(ref s) => s.to_string(),
@@ -1751,7 +1760,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         try!(write!(w, "</div>"));
     }
 
-    let cache = cache_key.get().unwrap();
+    let cache = cache();
     try!(write!(w, "
         <h2 id='implementors'>Implementors</h2>
         <ul class='item-list' id='implementors-list'>
@@ -2013,7 +2022,7 @@ fn render_struct(w: &mut fmt::Formatter, it: &clean::Item,
 }
 
 fn render_methods(w: &mut fmt::Formatter, it: &clean::Item) -> fmt::Result {
-    match cache_key.get().unwrap().impls.get(&it.def_id) {
+    match cache().impls.get(&it.def_id) {
         Some(v) => {
             let (non_trait, traits) = v.partitioned(|i| i.impl_.trait_.is_none());
             if non_trait.len() > 0 {
@@ -2101,7 +2110,7 @@ fn render_impl(w: &mut fmt::Formatter, i: &Impl) -> fmt::Result {
     match i.impl_.trait_ {
         Some(clean::ResolvedPath { did, .. }) => {
             try!({
-                match cache_key.get().unwrap().traits.get(&did) {
+                match cache().traits.get(&did) {
                     Some(t) => try!(render_default_methods(w, t, &i.impl_)),
                     None => {}
                 }
@@ -2219,4 +2228,8 @@ fn get_basic_keywords() -> &'static str {
 
 fn make_item_keywords(it: &clean::Item) -> String {
     format!("{}, {}", get_basic_keywords(), it.name.as_ref().unwrap())
+}
+
+pub fn cache() -> Arc<Cache> {
+    CACHE_KEY.with(|c| c.borrow().clone())
 }
