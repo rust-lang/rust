@@ -137,7 +137,7 @@ pub trait IteratorExt<A>: Iterator<A> {
     ///
     /// ```rust
     /// let a = [0i];
-    /// let b = [1i];
+    /// let b = [1i, 2i];
     /// let mut it = a.iter().zip(b.iter());
     /// let (x0, x1) = (0i, 1i);
     /// assert_eq!(it.next().unwrap(), (&x0, &x1));
@@ -147,6 +147,27 @@ pub trait IteratorExt<A>: Iterator<A> {
     #[stable]
     fn zip<B, U: Iterator<B>>(self, other: U) -> Zip<Self, U> {
         Zip{a: self, b: other}
+    }
+
+    /// Creates an iterator which iterates over both this and the specified
+    /// iterators simultaneously, yielding pairs of two optional elements.
+    /// When both iterators return None, all further invocations of next() will
+    /// return None.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let a = [0i];
+    /// let b = [1i, 2i];
+    /// let mut it = a.iter().zip(b.iter());
+    /// let (x0, x1, x2) = (0i, 1i, 2i);
+    /// assert_eq!(it.next().unwrap(), (Some(&x0), Some(&x1)));
+    /// assert_eq!(it.next().unwrap(), (None, Some(&x2)));
+    /// assert!(it.next().is_none());
+    /// ```
+    #[inline]
+    fn zip_longest<B, U: Iterator<B>>(self, other: U) -> ZipLongest<Self, U> {
+        ZipLongest{a: self, b: other}
     }
 
     /// Creates a new iterator which will apply the specified function to each
@@ -780,6 +801,9 @@ impl<'a, A, B, T: ExactSizeIterator<A>> ExactSizeIterator<B> for Map<'a, A, B, T
 #[unstable = "trait is unstable"]
 impl<A, B, T, U> ExactSizeIterator<(A, B)> for Zip<T, U>
     where T: ExactSizeIterator<A>, U: ExactSizeIterator<B> {}
+#[unstable = "trait is unstable"]
+impl<A, B, T, U> ExactSizeIterator<(Option<A>, Option<B>)> for ZipLongest<T, U>
+    where T: ExactSizeIterator<A>, U: ExactSizeIterator<B> {}
 
 /// An double-ended iterator with the direction inverted
 #[deriving(Clone)]
@@ -1364,6 +1388,71 @@ RandomAccessIterator<(A, B)> for Zip<T, U> {
                 None => None,
                 Some(y) => Some((x, y))
             }
+        }
+    }
+}
+
+/// An iterator which iterates two other iterators simultaneously
+#[deriving(Clone)]
+#[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
+pub struct ZipLongest<T, U> {
+    a: T,
+    b: U
+}
+
+impl<A, B, T: Iterator<A>, U: Iterator<B>> Iterator<(Option<A>, Option<B>)> for ZipLongest<T, U> {
+    #[inline]
+    fn next(&mut self) -> Option<(Option<A>, Option<B>)> {
+        match (self.a.next(), self.b.next()) {
+            (None, None) => None,
+            pair_of_options => Some(pair_of_options),
+        }
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        let (a_lower, a_upper) = self.a.size_hint();
+        let (b_lower, b_upper) = self.b.size_hint();
+
+        let lower = cmp::max(a_lower, b_lower);
+
+        let upper = match (a_upper, b_upper) {
+            (Some(x), Some(y)) => Some(cmp::max(x,y)),
+            _ => None
+        };
+
+        (lower, upper)
+    }
+}
+
+impl<A, B, T: ExactSize<A>, U: ExactSize<B>> DoubleEndedIterator<(Option<A>, Option<B>)>
+for ZipLongest<T, U> {
+    #[inline]
+    fn next_back(&mut self) -> Option<(Option<A>, Option<B>)> {
+        use cmp::{Equal, Greater, Less};
+        match self.a.len().cmp(&self.b.len()) {
+            Equal => match (self.a.next_back(), self.b.next_back()) {
+                (None, None) => None,
+                pair_of_options => Some(pair_of_options),
+            },
+            Greater => self.a.next_back().map(|x| (Some(x), None)),
+            Less => self.b.next_back().map(|y| (None, Some(y))),
+        }
+    }
+}
+
+impl<A, B, T: RandomAccessIterator<A>, U: RandomAccessIterator<B>>
+RandomAccessIterator<(Option<A>, Option<B>)> for ZipLongest<T, U> {
+    #[inline]
+    fn indexable(&self) -> uint {
+        cmp::max(self.a.indexable(), self.b.indexable())
+    }
+
+    #[inline]
+    fn idx(&mut self, index: uint) -> Option<(Option<A>, Option<B>)> {
+        match (self.a.idx(index), self.b.idx(index)) {
+            (None, None) => None,
+            pair_of_options => Some(pair_of_options),
         }
     }
 }
