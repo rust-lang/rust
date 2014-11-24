@@ -11,7 +11,7 @@
 #![allow(dead_code)]
 
 #[cfg(unix)] use libc::c_int;
-#[cfg(unix)] use core::ptr::null;
+#[cfg(unix)] use ptr::null;
 #[cfg(windows)] use libc::types::os::arch::extra::{DWORD, LPVOID, BOOL};
 
 #[cfg(unix)]
@@ -93,12 +93,12 @@ extern "system" {
 
 #[cfg(test)]
 mod test {
-    use std::prelude::*;
+    use prelude::*;
     use super::*;
 
     #[test]
     fn tls_smoke_test() {
-        use std::mem::transmute;
+        use mem::transmute;
         unsafe {
             let mut key = 0;
             let value = box 20i;

@@ -8,15 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate rustrt;
-
 use std::io::process::{Command, ProcessOutput};
 use std::os;
 use std::str;
 use std::rt;
 use std::thunk::Thunk;
 
-use rustrt::unwind::try;
+use std::rt::unwind::try;
 
 #[start]
 fn start(argc: int, argv: *const *const u8) -> int {

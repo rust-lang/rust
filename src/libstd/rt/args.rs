@@ -20,7 +20,7 @@
 //! FIXME #7756: Would be nice for this to not exist.
 
 use core::prelude::*;
-use collections::vec::Vec;
+use vec::Vec;
 
 /// One-time global initialization.
 pub unsafe fn init(argc: int, argv: *const *const u8) { imp::init(argc, argv) }
@@ -46,12 +46,12 @@ pub fn clone() -> Option<Vec<Vec<u8>>> { imp::clone() }
 mod imp {
     use core::prelude::*;
 
-    use alloc::boxed::Box;
-    use collections::vec::Vec;
-    use collections::string::String;
-    use core::mem;
+    use boxed::Box;
+    use vec::Vec;
+    use string::String;
+    use mem;
 
-    use mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
+    use rt::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
 
     static mut GLOBAL_ARGS_PTR: uint = 0;
     static LOCK: StaticNativeMutex = NATIVE_MUTEX_INIT;
@@ -145,7 +145,7 @@ mod imp {
           target_os = "windows"))]
 mod imp {
     use core::prelude::*;
-    use collections::vec::Vec;
+    use vec::Vec;
 
     pub unsafe fn init(_argc: int, _argv: *const *const u8) {
     }

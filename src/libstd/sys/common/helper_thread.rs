@@ -24,9 +24,8 @@ use prelude::*;
 
 use cell::UnsafeCell;
 use mem;
-use rustrt::bookkeeping;
-use rustrt;
 use sync::{StaticMutex, StaticCondvar};
+use rt::{mod, bookkeeping};
 use sys::helper_signal;
 
 use task;
@@ -91,7 +90,7 @@ impl<M: Send> Helper<M> {
                     self.cond.notify_one()
                 });
 
-                rustrt::at_exit(move|:| { self.shutdown() });
+                rt::at_exit(move|:| { self.shutdown() });
                 *self.initialized.get() = true;
             }
         }

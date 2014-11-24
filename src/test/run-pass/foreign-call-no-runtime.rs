@@ -9,10 +9,9 @@
 // except according to those terms.
 
 extern crate libc;
-extern crate rustrt;
 
 use std::mem;
-use rustrt::thread::Thread;
+use std::rt::thread::Thread;
 
 #[link(name = "rust_test_helpers")]
 extern {

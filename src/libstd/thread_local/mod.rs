@@ -446,7 +446,7 @@ mod tests {
     use prelude::*;
 
     use cell::UnsafeCell;
-    use rustrt::thread::Thread;
+    use rt::thread::Thread;
 
     struct Foo(Sender<()>);
 

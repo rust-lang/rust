@@ -53,9 +53,9 @@ use kinds::Send;
 use option::Option;
 use option::Option::{None, Some};
 use result::Result;
-use rustrt::local::Local;
-use rustrt::task::Task;
-use rustrt::task;
+use rt::local::Local;
+use rt::task;
+use rt::task::Task;
 use str::SendStr;
 use string::{String, ToString};
 use thunk::{Thunk};
@@ -252,7 +252,7 @@ pub fn try_future<T,F>(f: F) -> Future<Result<T, Box<Any + Send>>>
 /// Read the name of the current task.
 #[stable]
 pub fn name() -> Option<String> {
-    use rustrt::task::Task;
+    use rt::task::Task;
 
     let task = Local::borrow(None::<Task>);
     match task.name {
@@ -264,7 +264,7 @@ pub fn name() -> Option<String> {
 /// Yield control to the task scheduler.
 #[unstable = "Name will change."]
 pub fn deschedule() {
-    use rustrt::task::Task;
+    use rt::task::Task;
     Task::yield_now();
 }
 
@@ -272,7 +272,7 @@ pub fn deschedule() {
 /// destructor that is run while unwinding the stack after a call to `panic!()`).
 #[unstable = "May move to a different module."]
 pub fn failing() -> bool {
-    use rustrt::task::Task;
+    use rt::task::Task;
     Local::borrow(None::<Task>).unwinder.unwinding()
 }
 

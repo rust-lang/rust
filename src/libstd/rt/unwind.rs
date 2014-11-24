@@ -59,23 +59,23 @@
 
 use core::prelude::*;
 
-use alloc::boxed::Box;
-use collections::string::String;
-use collections::str::StrAllocating;
-use collections::vec::Vec;
-use core::any::Any;
-use core::atomic;
-use core::cmp;
-use core::fmt;
-use core::intrinsics;
-use core::mem;
-use core::raw::Closure;
+use boxed::Box;
+use string::String;
+use str::StrAllocating;
+use vec::Vec;
+use any::Any;
+use sync::atomic;
+use cmp;
+use fmt;
+use intrinsics;
+use mem;
+use raw::Closure;
 use libc::c_void;
 
-use local::Local;
-use task::Task;
+use rt::local::Local;
+use rt::task::Task;
 
-use libunwind as uw;
+use rt::libunwind as uw;
 
 #[allow(missing_copy_implementations)]
 pub struct Unwinder {
@@ -241,7 +241,7 @@ fn rust_exception_class() -> uw::_Unwind_Exception_Class {
           not(test)))]
 #[doc(hidden)]
 pub mod eabi {
-    use libunwind as uw;
+    use rt::libunwind as uw;
     use libc::c_int;
 
     extern "C" {
@@ -294,7 +294,7 @@ pub mod eabi {
 #[cfg(all(target_os = "ios", target_arch = "arm", not(test)))]
 #[doc(hidden)]
 pub mod eabi {
-    use libunwind as uw;
+    use rt::libunwind as uw;
     use libc::c_int;
 
     extern "C" {
@@ -349,7 +349,7 @@ pub mod eabi {
 #[cfg(all(target_arch = "arm", not(target_os = "ios"), not(test)))]
 #[doc(hidden)]
 pub mod eabi {
-    use libunwind as uw;
+    use rt::libunwind as uw;
     use libc::c_int;
 
     extern "C" {
@@ -400,8 +400,7 @@ pub mod eabi {
 #[allow(non_camel_case_types, non_snake_case)]
 pub mod eabi {
     pub use self::EXCEPTION_DISPOSITION::*;
-    use core::prelude::*;
-    use libunwind as uw;
+    use rt::libunwind as uw;
     use libc::{c_void, c_int};
 
     #[repr(C)]
@@ -513,7 +512,7 @@ pub extern fn rust_begin_unwind(msg: &fmt::Arguments,
 /// the actual formatting into this shared place.
 #[inline(never)] #[cold]
 pub fn begin_unwind_fmt(msg: &fmt::Arguments, file_line: &(&'static str, uint)) -> ! {
-    use core::fmt::FormatWriter;
+    use fmt::FormatWriter;
 
     // We do two allocations here, unfortunately. But (a) they're
     // required with the current scheme, and (b) we don't handle

@@ -14,13 +14,13 @@
 
 use core::prelude::*;
 
-use alloc::boxed::Box;
-use collections::vec::Vec;
-use core::atomic;
-use core::mem;
-use thunk::{Thunk};
+use boxed::Box;
+use vec::Vec;
+use sync::atomic;
+use mem;
+use thunk::Thunk;
 
-use exclusive::Exclusive;
+use rt::exclusive::Exclusive;
 
 type Queue = Exclusive<Vec<Thunk>>;
 

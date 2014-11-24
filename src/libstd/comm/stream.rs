@@ -27,9 +27,9 @@ use core::prelude::*;
 use alloc::boxed::Box;
 use core::cmp;
 use core::int;
-use rustrt::local::Local;
-use rustrt::task::{Task, BlockedTask};
-use rustrt::thread::Thread;
+use rt::local::Local;
+use rt::task::{Task, BlockedTask};
+use rt::thread::Thread;
 
 use sync::atomic;
 use comm::spsc_queue as spsc;

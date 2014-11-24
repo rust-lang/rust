@@ -42,9 +42,8 @@ use option::Option::{Some, None};
 use ops::{Deref, DerefMut, FnOnce};
 use result::Result::{Ok, Err};
 use rt;
-use rustrt;
-use rustrt::local::Local;
-use rustrt::task::Task;
+use rt::local::Local;
+use rt::task::Task;
 use slice::SliceExt;
 use str::StrPrelude;
 use string::String;
@@ -345,7 +344,7 @@ fn with_task_stdout<F>(f: F) where
         });
         result
     } else {
-        let mut io = rustrt::Stdout;
+        let mut io = rt::util::Stdout;
         f(&mut io as &mut Writer)
     };
     match result {
