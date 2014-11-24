@@ -1724,6 +1724,40 @@ impl LintPass for Stability {
     }
 }
 
+declare_lint!(pub ENUM_FUNCTION_CASTS, Warn,
+              "casting a non-C-like enum constructor as a function pointer")
+
+pub struct EnumFunctionCasts;
+
+impl LintPass for EnumFunctionCasts {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(ENUM_FUNCTION_CASTS)
+    }
+
+    fn check_expr(&mut self, cx: &Context, e: &ast::Expr) {
+        let (src_span, src_id) = match e.node {
+            ast::ExprCast(ref src, _) => match src.node {
+                ast::ExprPath(..) => (src.span, src.id),
+                _ => return,
+            },
+            _ => return,
+        };
+
+        match cx.tcx.def_map.borrow()[src_id] {
+            def::DefVariant(enum_id, _, _) => {
+                if !ty::enum_is_c_like(cx.tcx, enum_id) {
+                    // If this is a C-like variant in a non-C-like enum,
+                    // typeck will have already rejected it.
+                    cx.span_lint(ENUM_FUNCTION_CASTS, src_span,
+                                 "casting non-C-like enum constructor \
+                                  as a function pointer");
+                }
+            },
+            _ => (),
+        }
+    }
+}
+
 declare_lint!(pub UNUSED_IMPORTS, Warn,
               "imports that are never used")
 
