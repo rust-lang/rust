@@ -40,7 +40,6 @@ use core::prelude::*;
 use alloc::boxed::Box;
 use core::mem;
 use core::cell::UnsafeCell;
-use alloc::arc::Arc;
 
 use sync::atomic::{AtomicPtr, Relaxed, AtomicUint, Acquire, Release};
 
@@ -74,39 +73,6 @@ pub struct Queue<T> {
     cache_subtractions: AtomicUint,
 }
 
-/// A safe abstraction for the consumer in a single-producer single-consumer
-/// queue.
-pub struct Consumer<T> {
-    inner: Arc<Queue<T>>
-}
-
-impl<T: Send> Consumer<T> {
-    /// Attempts to pop the value from the head of the queue, returning `None`
-    /// if the queue is empty.
-    pub fn pop(&mut self) -> Option<T> {
-        self.inner.pop()
-    }
-
-    /// Attempts to peek at the head of the queue, returning `None` if the queue
-    /// is empty.
-    pub fn peek<'a>(&'a mut self) -> Option<&'a mut T> {
-        self.inner.peek()
-    }
-}
-
-/// A safe abstraction for the producer in a single-producer single-consumer
-/// queue.
-pub struct Producer<T> {
-    inner: Arc<Queue<T>>
-}
-
-impl<T: Send> Producer<T> {
-    /// Pushes a new value onto the queue.
-    pub fn push(&mut self, t: T) {
-        self.inner.push(t)
-    }
-}
-
 impl<T: Send> Node<T> {
     fn new() -> *mut Node<T> {
         unsafe {
@@ -116,30 +82,6 @@ impl<T: Send> Node<T> {
             })
         }
     }
-}
-
-/// Creates a new queue with a consumer-producer pair.
-///
-/// The producer returned is connected to the consumer to push all data to
-/// the consumer.
-///
-/// # Arguments
-///
-///   * `bound` - This queue implementation is implemented with a linked
-///               list, and this means that a push is always a malloc. In
-///               order to amortize this cost, an internal cache of nodes is
-///               maintained to prevent a malloc from always being
-///               necessary. This bound is the limit on the size of the
-///               cache (if desired). If the value is 0, then the cache has
-///               no bound. Otherwise, the cache will never grow larger than
-///               `bound` (although the queue itself could be much larger.
-pub fn queue<T: Send>(bound: uint) -> (Consumer<T>, Producer<T>) {
-    let q = unsafe { Queue::new(bound) };
-    let arc = Arc::new(q);
-    let consumer = Consumer { inner: arc.clone() };
-    let producer = Producer { inner: arc };
-
-    (consumer, producer)
 }
 
 impl<T: Send> Queue<T> {
@@ -296,78 +238,88 @@ impl<T: Send> Drop for Queue<T> {
 mod test {
     use prelude::*;
 
-    use super::{queue};
+    use sync::Arc;
+    use super::Queue;
 
     #[test]
     fn smoke() {
-        let (mut consumer, mut producer) = queue(0);
-        producer.push(1i);
-        producer.push(2);
-        assert_eq!(consumer.pop(), Some(1i));
-        assert_eq!(consumer.pop(), Some(2));
-        assert_eq!(consumer.pop(), None);
-        producer.push(3);
-        producer.push(4);
-        assert_eq!(consumer.pop(), Some(3));
-        assert_eq!(consumer.pop(), Some(4));
-        assert_eq!(consumer.pop(), None);
+        unsafe {
+            let queue = Queue::new(0);
+            queue.push(1i);
+            queue.push(2);
+            assert_eq!(queue.pop(), Some(1i));
+            assert_eq!(queue.pop(), Some(2));
+            assert_eq!(queue.pop(), None);
+            queue.push(3);
+            queue.push(4);
+            assert_eq!(queue.pop(), Some(3));
+            assert_eq!(queue.pop(), Some(4));
+            assert_eq!(queue.pop(), None);
+        }
     }
 
     #[test]
     fn peek() {
-        let (mut consumer, mut producer) = queue(0);
-        producer.push(vec![1i]);
+        unsafe {
+            let queue = Queue::new(0);
+            queue.push(vec![1i]);
 
-        // Ensure the borrowchecker works
-        match consumer.peek() {
-            Some(vec) => match vec.as_slice() {
-                // Note that `pop` is not allowed here due to borrow
-                [1] => {}
-                _ => return
-            },
-            None => unreachable!()
+            // Ensure the borrowchecker works
+            match queue.peek() {
+                Some(vec) => match vec.as_slice() {
+                    // Note that `pop` is not allowed here due to borrow
+                    [1] => {}
+                    _ => return
+                },
+                None => unreachable!()
+            }
+
+            queue.pop();
         }
-
-        consumer.pop();
     }
 
     #[test]
     fn drop_full() {
-        let (_, mut producer) = queue(0);
-        producer.push(box 1i);
-        producer.push(box 2i);
+        unsafe {
+            let q = Queue::new(0);
+            q.push(box 1i);
+            q.push(box 2i);
+        }
     }
 
     #[test]
     fn smoke_bound() {
-        let (mut consumer, mut producer) = queue(1);
-        producer.push(1i);
-        producer.push(2);
-        assert_eq!(consumer.pop(), Some(1));
-        assert_eq!(consumer.pop(), Some(2));
-        assert_eq!(consumer.pop(), None);
-        producer.push(3);
-        producer.push(4);
-        assert_eq!(consumer.pop(), Some(3));
-        assert_eq!(consumer.pop(), Some(4));
-        assert_eq!(consumer.pop(), None);
+        unsafe {
+            let q = Queue::new(0);
+            q.push(1i);
+            q.push(2);
+            assert_eq!(q.pop(), Some(1));
+            assert_eq!(q.pop(), Some(2));
+            assert_eq!(q.pop(), None);
+            q.push(3);
+            q.push(4);
+            assert_eq!(q.pop(), Some(3));
+            assert_eq!(q.pop(), Some(4));
+            assert_eq!(q.pop(), None);
+        }
     }
 
     #[test]
     fn stress() {
-        stress_bound(0);
-        stress_bound(1);
+        unsafe {
+            stress_bound(0);
+            stress_bound(1);
+        }
 
-        fn stress_bound(bound: uint) {
-            let (consumer, mut producer) = queue(bound);
+        unsafe fn stress_bound(bound: uint) {
+            let q = Arc::new(Queue::new(bound));
 
             let (tx, rx) = channel();
+            let q2 = q.clone();
             spawn(proc() {
-                // Move the consumer to a local mutable slot
-                let mut consumer = consumer;
                 for _ in range(0u, 100000) {
                     loop {
-                        match consumer.pop() {
+                        match q2.pop() {
                             Some(1i) => break,
                             Some(_) => panic!(),
                             None => {}
@@ -377,7 +329,7 @@ mod test {
                 tx.send(());
             });
             for _ in range(0i, 100000) {
-                producer.push(1);
+                q.push(1);
             }
             rx.recv();
         }

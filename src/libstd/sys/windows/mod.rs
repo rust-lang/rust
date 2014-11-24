@@ -35,11 +35,15 @@ macro_rules! helper_init( (static $name:ident: Helper<$m:ty>) => (
 
 pub mod c;
 pub mod ext;
+pub mod condvar;
 pub mod fs;
 pub mod helper_signal;
+pub mod mutex;
 pub mod os;
 pub mod pipe;
 pub mod process;
+pub mod rwlock;
+pub mod sync;
 pub mod tcp;
 pub mod thread_local;
 pub mod timer;
