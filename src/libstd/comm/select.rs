@@ -59,8 +59,8 @@ use core::cell::Cell;
 use core::kinds::marker;
 use core::mem;
 use core::uint;
-use rustrt::local::Local;
-use rustrt::task::{Task, BlockedTask};
+use rt::local::Local;
+use rt::task::{Task, BlockedTask};
 
 use comm::Receiver;
 

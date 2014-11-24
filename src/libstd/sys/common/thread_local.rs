@@ -58,7 +58,8 @@
 
 use prelude::*;
 
-use rustrt::exclusive::Exclusive;
+use rt::exclusive::Exclusive;
+use rt;
 use sync::atomic::{mod, AtomicUint};
 use sync::{Once, ONCE_INIT};
 
@@ -283,4 +284,3 @@ mod tests {
         }
     }
 }
-

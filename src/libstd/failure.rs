@@ -20,9 +20,9 @@ use option::Option;
 use option::Option::{Some, None};
 use result::Result::Ok;
 use rt::backtrace;
-use rustrt::{Stderr, Stdio};
-use rustrt::local::Local;
-use rustrt::task::Task;
+use rt::util::{Stderr, Stdio};
+use rt::local::Local;
+use rt::task::Task;
 use str::Str;
 use string::String;
 

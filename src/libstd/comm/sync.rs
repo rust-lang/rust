@@ -42,9 +42,9 @@ use alloc::boxed::Box;
 use vec::Vec;
 use core::mem;
 use core::cell::UnsafeCell;
-use rustrt::local::Local;
-use rustrt::mutex::{NativeMutex, LockGuard};
-use rustrt::task::{Task, BlockedTask};
+use rt::local::Local;
+use rt::mutex::{NativeMutex, LockGuard};
+use rt::task::{Task, BlockedTask};
 
 use sync::atomic;
 

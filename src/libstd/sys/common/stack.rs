@@ -55,7 +55,7 @@ pub const RED_ZONE: uint = 20 * 1024;
 #[cfg(not(test))] // in testing, use the original libstd's version
 #[lang = "stack_exhausted"]
 extern fn stack_exhausted() {
-    use core::intrinsics;
+    use intrinsics;
 
     unsafe {
         // We're calling this function because the stack just ran out. We need
@@ -100,7 +100,7 @@ extern fn stack_exhausted() {
         //  #9854 - unwinding on windows through __morestack has never worked
         //  #2361 - possible implementation of not using landing pads
 
-        ::stack_overflow::report();
+        ::rt::util::report_overflow();
 
         intrinsics::abort();
     }

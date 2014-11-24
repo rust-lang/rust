@@ -19,8 +19,8 @@
 
 use core::prelude::*;
 
-use core::mem;
-use alloc::boxed::Box;
+use mem;
+use boxed::Box;
 
 #[cfg(any(windows, // mingw-w32 doesn't like thread_local things
           target_os = "android", // see #10686
@@ -86,11 +86,11 @@ pub unsafe fn borrow<T>() -> Borrowed<T> {
 pub mod compiled {
     use core::prelude::*;
 
-    use alloc::boxed::Box;
-    use core::mem;
+    use boxed::Box;
+    use mem;
 
     #[cfg(test)]
-    pub use realrustrt::shouldnt_be_public::RT_TLS_PTR;
+    pub use realstd::rt::shouldnt_be_public::RT_TLS_PTR;
 
     #[cfg(not(test))]
     #[thread_local]
@@ -237,10 +237,10 @@ pub mod compiled {
 pub mod native {
     use core::prelude::*;
 
-    use alloc::boxed::Box;
-    use core::mem;
-    use core::ptr;
-    use thread_local_storage as tls;
+    use boxed::Box;
+    use mem;
+    use ptr;
+    use rt::thread_local_storage as tls;
 
     static mut RT_TLS_KEY: tls::Key = -1;
 
@@ -396,9 +396,9 @@ pub mod native {
 
     #[inline] #[cfg(test)]
     pub fn maybe_tls_key() -> Option<tls::Key> {
-        use realrustrt;
+        use rt;
         unsafe {
-            mem::transmute(realrustrt::shouldnt_be_public::maybe_tls_key())
+            mem::transmute(::realstd::rt::shouldnt_be_public::maybe_tls_key())
         }
     }
 }

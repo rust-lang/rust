@@ -41,8 +41,8 @@ use core::prelude::*;
 
 use alloc::boxed::Box;
 use core::mem;
-use rustrt::local::Local;
-use rustrt::task::{Task, BlockedTask};
+use rt::local::Local;
+use rt::task::{Task, BlockedTask};
 
 use sync::atomic;
 use comm::Receiver;

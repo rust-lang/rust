@@ -327,7 +327,7 @@ use alloc::arc::Arc;
 use core::kinds::marker;
 use core::mem;
 use core::cell::UnsafeCell;
-use rustrt::task::BlockedTask;
+use rt::task::BlockedTask;
 
 pub use comm::select::{Select, Handle};
 
@@ -336,9 +336,8 @@ macro_rules! test {
         mod $name {
             #![allow(unused_imports)]
 
-            extern crate rustrt;
-
             use prelude::*;
+            use rt;
 
             use comm::*;
             use super::*;
@@ -1519,7 +1518,7 @@ mod test {
     } }
 
     test! { fn sends_off_the_runtime() {
-        use rustrt::thread::Thread;
+        use rt::thread::Thread;
 
         let (tx, rx) = channel();
         let t = Thread::start(move|| {
@@ -1534,7 +1533,7 @@ mod test {
     } }
 
     test! { fn try_recvs_off_the_runtime() {
-        use rustrt::thread::Thread;
+        use rt::thread::Thread;
 
         let (tx, rx) = channel();
         let (cdone, pdone) = channel();
@@ -1984,7 +1983,7 @@ mod sync_tests {
     } }
 
     test! { fn try_recvs_off_the_runtime() {
-        use rustrt::thread::Thread;
+        use rt::thread::Thread;
 
         let (tx, rx) = sync_channel::<()>(0);
         let (cdone, pdone) = channel();

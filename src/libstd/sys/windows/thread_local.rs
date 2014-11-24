@@ -13,8 +13,8 @@ use prelude::*;
 use libc::types::os::arch::extra::{DWORD, LPVOID, BOOL};
 
 use mem;
-use rustrt;
-use rustrt::exclusive::Exclusive;
+use rt;
+use rt::exclusive::Exclusive;
 use sync::{ONCE_INIT, Once};
 
 pub type Key = DWORD;
@@ -131,7 +131,7 @@ fn init_dtors() {
         DTORS = mem::transmute(dtors);
     }
 
-    rustrt::at_exit(move|| unsafe {
+    rt::at_exit(move|| unsafe {
         mem::transmute::<_, Box<Exclusive<Vec<(Key, Dtor)>>>>(DTORS);
         DTORS = 0 as *mut _;
     });

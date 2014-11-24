@@ -18,10 +18,10 @@
 //! each respective runtime to make sure that they call increment() and
 //! decrement() manually.
 
-use core::atomic;
-use core::ops::Drop;
+use sync::atomic;
+use ops::Drop;
 
-use mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
+use rt::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
 
 static TASK_COUNT: atomic::AtomicUint = atomic::INIT_ATOMIC_UINT;
 static TASK_LOCK: StaticNativeMutex = NATIVE_MUTEX_INIT;

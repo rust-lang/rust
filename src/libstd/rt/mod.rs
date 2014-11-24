@@ -50,23 +50,43 @@
 
 use borrow::IntoCow;
 use failure;
-use rustrt;
 use os;
 use thunk::Thunk;
+use kinds::Send;
+use sys_common;
 
 // Reexport some of our utilities which are expected by other crates.
 pub use self::util::{default_sched_threads, min_stack, running_on_valgrind};
+pub use self::unwind::{begin_unwind, begin_unwind_fmt};
 
-// Reexport functionality from librustrt and other crates underneath the
-// standard library which work together to create the entire runtime.
+// Reexport some functionality from liballoc.
 pub use alloc::heap;
-pub use rustrt::{begin_unwind, begin_unwind_fmt, at_exit};
 
 // Simple backtrace functionality (to print on panic)
 pub mod backtrace;
 
-// Just stuff
-mod util;
+// Internals
+mod macros;
+
+// These should be refactored/moved/made private over time
+pub mod mutex;
+pub mod thread;
+pub mod exclusive;
+pub mod util;
+pub mod bookkeeping;
+pub mod local;
+pub mod task;
+pub mod unwind;
+
+mod args;
+mod at_exit_imp;
+mod libunwind;
+mod local_ptr;
+mod thread_local_storage;
+
+/// The default error code of the rust runtime if the main task panics instead
+/// of exiting cleanly.
+pub const DEFAULT_ERROR_CODE: int = 101;
 
 /// One-time runtime initialization.
 ///
@@ -75,8 +95,15 @@ mod util;
 /// metadata, and storing the process arguments.
 #[allow(experimental)]
 pub fn init(argc: int, argv: *const *const u8) {
-    rustrt::init(argc, argv);
-    unsafe { rustrt::unwind::register(failure::on_fail); }
+    // FIXME: Derefing these pointers is not safe.
+    // Need to propagate the unsafety to `start`.
+    unsafe {
+        args::init(argc, argv);
+        local_ptr::init();
+        at_exit_imp::init();
+        thread::init();
+        unwind::register(failure::on_fail);
+    }
 }
 
 #[cfg(any(windows, android))]
@@ -106,7 +133,8 @@ fn lang_start(main: *const u8, argc: int, argv: *const *const u8) -> int {
 pub fn start(argc: int, argv: *const *const u8, main: Thunk) -> int {
     use prelude::*;
     use rt;
-    use rustrt::task::Task;
+    use rt::task::Task;
+    use str;
 
     let something_around_the_top_of_the_stack = 1;
     let addr = &something_around_the_top_of_the_stack as *const int;
@@ -139,18 +167,35 @@ pub fn start(argc: int, argv: *const *const u8, main: Thunk) -> int {
     let mut exit_code = None;
     let mut main = Some(main);
     let mut task = box Task::new(Some((my_stack_bottom, my_stack_top)),
-                                 Some(rustrt::thread::main_guard_page()));
-    task.name = Some("<main>".into_cow());
+                                 Some(rt::thread::main_guard_page()));
+    task.name = Some(str::Slice("<main>"));
     drop(task.run(|| {
         unsafe {
-            rustrt::stack::record_os_managed_stack_bounds(my_stack_bottom, my_stack_top);
+            sys_common::stack::record_os_managed_stack_bounds(my_stack_bottom, my_stack_top);
         }
         (main.take().unwrap()).invoke(());
         exit_code = Some(os::get_exit_status());
     }).destroy());
-    unsafe { rt::cleanup(); }
+    unsafe { cleanup(); }
     // If the exit code wasn't set, then the task block must have panicked.
-    return exit_code.unwrap_or(rustrt::DEFAULT_ERROR_CODE);
+    return exit_code.unwrap_or(rt::DEFAULT_ERROR_CODE);
+}
+
+/// Enqueues a procedure to run when the runtime is cleaned up
+///
+/// The procedure passed to this function will be executed as part of the
+/// runtime cleanup phase. For normal rust programs, this means that it will run
+/// after all other tasks have exited.
+///
+/// The procedure is *not* executed with a local `Task` available to it, so
+/// primitives like logging, I/O, channels, spawning, etc, are *not* available.
+/// This is meant for "bare bones" usage to clean up runtime details, this is
+/// not meant as a general-purpose "let's clean everything up" function.
+///
+/// It is forbidden for procedures to register more `at_exit` handlers when they
+/// are running, and doing so will lead to a process abort.
+pub fn at_exit(f: proc():Send) {
+    at_exit_imp::push(f);
 }
 
 /// One-time runtime cleanup.
@@ -163,5 +208,18 @@ pub fn start(argc: int, argv: *const *const u8, main: Thunk) -> int {
 /// Invoking cleanup while portions of the runtime are still in use may cause
 /// undefined behavior.
 pub unsafe fn cleanup() {
-    rustrt::cleanup();
+    bookkeeping::wait_for_other_tasks();
+    args::cleanup();
+    thread::cleanup();
+    local_ptr::cleanup();
+    at_exit_imp::run();
+}
+
+// FIXME: these probably shouldn't be public...
+#[doc(hidden)]
+pub mod shouldnt_be_public {
+    #[cfg(not(test))]
+    pub use super::local_ptr::native::maybe_tls_key;
+    #[cfg(all(not(windows), not(target_os = "android"), not(target_os = "ios")))]
+    pub use super::local_ptr::compiled::RT_TLS_PTR;
 }

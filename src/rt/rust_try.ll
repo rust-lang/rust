@@ -12,7 +12,7 @@
 ; When f(...) returns normally, the return value is null.
 ; When f(...) throws, the return value is a pointer to the caught exception object.
 
-; See also: librustrt/unwind.rs
+; See also: libstd/rt/unwind.rs
 
 define i8* @rust_try(void (i8*,i8*)* %f, i8* %fptr, i8* %env) {
 

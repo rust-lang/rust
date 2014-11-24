@@ -10,9 +10,9 @@
 
 use core::prelude::*;
 
-use alloc::boxed::Box;
-use local_ptr;
-use task::Task;
+use boxed::Box;
+use rt::local_ptr;
+use rt::task::Task;
 
 /// Encapsulates some task-local data.
 pub trait Local<Borrowed> {
@@ -52,10 +52,10 @@ impl Local<local_ptr::Borrowed<Task>> for Task {
 
 #[cfg(test)]
 mod test {
-    use std::prelude::*;
-    use thread::Thread;
+    use prelude::*;
     use super::*;
-    use task::Task;
+    use super::super::thread::Thread;
+    use super::super::task::Task;
 
     #[test]
     fn thread_local_task_smoke_test() {

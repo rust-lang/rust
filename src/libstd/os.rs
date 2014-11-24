@@ -1042,9 +1042,9 @@ fn real_args_as_bytes() -> Vec<Vec<u8>> {
           target_os = "freebsd",
           target_os = "dragonfly"))]
 fn real_args_as_bytes() -> Vec<Vec<u8>> {
-    use rustrt;
+    use rt;
 
-    match rustrt::args::clone() {
+    match rt::args::clone() {
         Some(args) => args,
         None => panic!("process arguments not initialized")
     }
