@@ -293,7 +293,6 @@ impl<'a> SpanUtils<'a> {
                 if ts.tok == token::Eof {
                     return None
                 } else {
-                    println!("found keyword: {} at {}", ts, ts.sp);
                     return self.make_sub_span(span, Some(ts.sp));
                 }
             }
