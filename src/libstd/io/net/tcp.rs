@@ -34,18 +34,22 @@ use sys::tcp::TcpAcceptor as TcpAcceptorImp;
 /// A structure which represents a TCP stream between a local socket and a
 /// remote socket.
 ///
+/// The socket will be closed when the value is dropped.
+///
 /// # Example
 ///
 /// ```no_run
-/// # #![allow(unused_must_use)]
 /// use std::io::TcpStream;
 ///
-/// let mut stream = TcpStream::connect("127.0.0.1:34254");
+/// {
+///     let mut stream = TcpStream::connect("127.0.0.1:34254");
 ///
-/// stream.write(&[1]);
-/// let mut buf = [0];
-/// stream.read(&mut buf);
-/// drop(stream); // close the connection
+///     // ignore the Result
+///     let _ = stream.write(&[1]);
+///
+///     let mut buf = [0];
+///     let _ = stream.read(&mut buf); // ignore here too
+/// } // the stream is closed here
 /// ```
 pub struct TcpStream {
     inner: TcpStreamImp,
