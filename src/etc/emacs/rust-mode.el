@@ -31,9 +31,6 @@
     (modify-syntax-entry ?\" "\"" table)
     (modify-syntax-entry ?\\ "\\" table)
 
-    ;; _ is a word-char
-    (modify-syntax-entry ?_ "w" table)
-
     ;; Comments
     (modify-syntax-entry ?/  ". 124b" table)
     (modify-syntax-entry ?*  ". 23"   table)
@@ -397,7 +394,7 @@ This is written mainly to be used as `beginning-of-defun-function' for Rust.
 Don't move to the beginning of the line. `beginning-of-defun',
 which calls this, does that afterwards."
   (interactive "p")
-  (re-search-backward (concat "^\\(" rust-top-item-beg-re "\\)\\b")
+  (re-search-backward (concat "^\\(" rust-top-item-beg-re "\\)\\_>")
                       nil 'move (or arg 1)))
 
 (defun rust-end-of-defun ()
