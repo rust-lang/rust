@@ -464,7 +464,9 @@ pub struct TyParam {
     pub name: String,
     pub did: ast::DefId,
     pub bounds: Vec<TyParamBound>,
-    pub default: Option<Type>
+    pub default: Option<Type>,
+    /// An optional default bound on the parameter which is unbound, like `Sized?`
+    pub default_unbound: Option<Type>
 }
 
 impl Clean<TyParam> for ast::TyParam {
@@ -473,7 +475,8 @@ impl Clean<TyParam> for ast::TyParam {
             name: self.ident.clean(cx),
             did: ast::DefId { krate: ast::LOCAL_CRATE, node: self.id },
             bounds: self.bounds.clean(cx),
-            default: self.default.clean(cx)
+            default: self.default.clean(cx),
+            default_unbound: self.unbound.clean(cx)
         }
     }
 }
@@ -482,11 +485,13 @@ impl<'tcx> Clean<TyParam> for ty::TypeParameterDef<'tcx> {
     fn clean(&self, cx: &DocContext) -> TyParam {
         cx.external_typarams.borrow_mut().as_mut().unwrap()
           .insert(self.def_id, self.name.clean(cx));
+        let (bounds, default_unbound) = self.bounds.clean(cx);
         TyParam {
             name: self.name.clean(cx),
             did: self.def_id,
-            bounds: self.bounds.clean(cx),
-            default: self.default.clean(cx)
+            bounds: bounds,
+            default: self.default.clean(cx),
+            default_unbound: default_unbound
         }
     }
 }
@@ -588,12 +593,16 @@ impl<'tcx> Clean<TyParamBound> for ty::TraitRef<'tcx> {
     }
 }
 
-impl<'tcx> Clean<Vec<TyParamBound>> for ty::ParamBounds<'tcx> {
-    fn clean(&self, cx: &DocContext) -> Vec<TyParamBound> {
+// Returns (bounds, default_unbound)
+impl<'tcx> Clean<(Vec<TyParamBound>, Option<Type>)> for ty::ParamBounds<'tcx> {
+    fn clean(&self, cx: &DocContext) -> (Vec<TyParamBound>, Option<Type>) {
         let mut v = Vec::new();
+        let mut has_sized_bound = false;
         for b in self.builtin_bounds.iter() {
             if b != ty::BoundSized {
                 v.push(b.clean(cx));
+            } else {
+                has_sized_bound = true;
             }
         }
         for t in self.trait_bounds.iter() {
@@ -602,7 +611,15 @@ impl<'tcx> Clean<Vec<TyParamBound>> for ty::ParamBounds<'tcx> {
         for r in self.region_bounds.iter().filter_map(|r| r.clean(cx)) {
             v.push(RegionBound(r));
         }
-        return v;
+        if has_sized_bound {
+            (v, None)
+        } else {
+            let ty = match ty::BoundSized.clean(cx) {
+                TraitBound(ty) => ty,
+                _ => unreachable!()
+            };
+            (v, Some(ty))
+        }
     }
 }
 
@@ -950,6 +967,8 @@ pub struct Trait {
     pub items: Vec<TraitMethod>,
     pub generics: Generics,
     pub bounds: Vec<TyParamBound>,
+    /// An optional default bound not required for `Self`, like `Sized?`
+    pub default_unbound: Option<Type>
 }
 
 impl Clean<Item> for doctree::Trait {
@@ -965,6 +984,7 @@ impl Clean<Item> for doctree::Trait {
                 items: self.items.clean(cx),
                 generics: self.generics.clean(cx),
                 bounds: self.bounds.clean(cx),
+                default_unbound: self.default_unbound.clean(cx)
             }),
         }
     }
@@ -2258,7 +2278,8 @@ impl Clean<Item> for ty::AssociatedType {
                     node: ast::DUMMY_NODE_ID
                 },
                 bounds: vec![],
-                default: None
+                default: None,
+                default_unbound: None
             }),
             visibility: None,
             def_id: self.def_id,
