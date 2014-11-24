@@ -224,7 +224,6 @@ responding to errors that may occur while attempting to read the numbers.
 pub use self::SeekStyle::*;
 pub use self::FileMode::*;
 pub use self::FileAccess::*;
-pub use self::FileType::*;
 pub use self::IoErrorKind::*;
 
 use char::Char;
@@ -1698,22 +1697,22 @@ pub enum FileAccess {
 #[deriving(PartialEq, Show, Hash, Clone)]
 pub enum FileType {
     /// This is a normal file, corresponding to `S_IFREG`
-    TypeFile,
+    RegularFile,
 
     /// This file is a directory, corresponding to `S_IFDIR`
-    TypeDirectory,
+    Directory,
 
     /// This file is a named pipe, corresponding to `S_IFIFO`
-    TypeNamedPipe,
+    NamedPipe,
 
     /// This file is a block device, corresponding to `S_IFBLK`
-    TypeBlockSpecial,
+    BlockSpecial,
 
     /// This file is a symbolic link to another file, corresponding to `S_IFLNK`
-    TypeSymlink,
+    Symlink,
 
     /// The type of this file is not recognized as one of the other categories
-    TypeUnknown,
+    Unknown,
 }
 
 /// A structure used to describe metadata information about a file. This
