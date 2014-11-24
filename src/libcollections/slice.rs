@@ -107,6 +107,7 @@ pub use core::slice::{ImmutableIntSlice, MutableIntSlice};
 pub use core::slice::{MutSplits, MutChunks, Splits};
 pub use core::slice::{bytes, mut_ref_slice, ref_slice, CloneSlicePrelude};
 pub use core::slice::{Found, NotFound, from_raw_buf, from_raw_mut_buf};
+pub use core::slice::{ImmutablePrimitiveSlice, MutablePrimitiveSlice};
 
 // Functional utilities
 

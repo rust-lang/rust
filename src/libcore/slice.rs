@@ -43,6 +43,7 @@ use cmp;
 use default::Default;
 use iter::*;
 use num::Int;
+use num::Primitive;
 use ops;
 use option::{None, Option, Some};
 use ptr;
@@ -1832,3 +1833,52 @@ impl_int_slice!(u16,  i16)
 impl_int_slice!(u32,  i32)
 impl_int_slice!(u64,  i64)
 impl_int_slice!(uint, int)
+
+#[experimental]
+/// Extension methods for working with immutable slices of primitive types.
+pub trait ImmutablePrimitiveSlice for Sized? {
+    /// Convert this slice to a slice of bytes.
+    ///
+    /// For structures with padding, care needs to be taken to avoid
+    /// inter-field and trailing padding, as the contents of structure
+    /// padding are unspecified.
+    fn as_bytes<'a>(&'a self) -> &'a [u8];
+}
+
+/// This conservatively uses `Primitive` instead of `Copy` because a `Copy` type
+/// could conceivably have uninitialized private fields that would be unsafe to
+/// read.
+impl<T: Primitive> ImmutablePrimitiveSlice for [T] {
+    fn as_bytes<'a>(&'a self) -> &'a [u8] {
+        unsafe {
+            // This cannot overflow, because otherwise the slice would
+            // not be able to fit in the address space.
+            transmute(RawSlice{
+                data: self.as_ptr(),
+                len: size_of::<T>() * self.len()
+            })
+        }
+    }
+}
+
+#[experimental]
+/// Extension methods for working with mutable slices of primitive types.
+pub trait MutablePrimitiveSlice for Sized? {
+    /// Convert this slice to a mutable slice of bytes.
+    fn as_mut_bytes<'a>(&'a mut self) -> &'a mut [u8];
+}
+
+/// This uses `Primitive` instead of `Copy` because otherwise one would be
+/// able to write invalid enum discriminants or bools, which is unsafe.
+impl<T: Primitive> MutablePrimitiveSlice for [T] {
+    fn as_mut_bytes<'a>(&'a mut self) -> &'a mut [u8] {
+        unsafe {
+            // This cannot overflow, because otherwise the slice would
+            // not be able to fit in the address space.
+            transmute(RawSlice{
+                data: self.as_ptr(),
+                len: size_of::<T>() * self.len()
+            })
+        }
+    }
+}
