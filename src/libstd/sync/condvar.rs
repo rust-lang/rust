@@ -143,8 +143,14 @@ impl Condvar {
     ///
     /// Like `wait`, the lock specified will be re-acquired when this function
     /// returns, regardless of whether the timeout elapsed or not.
-    pub fn wait_timeout<T: AsMutexGuard>(&self, mutex_guard: &T,
-                                         dur: Duration) -> bool {
+    // Note that this method is *not* public, and this is quite intentional
+    // because we're not quite sure about the semantics of relative vs absolute
+    // durations or how the timing guarantees play into what the system APIs
+    // provide. There are also additional concerns about the unix-specific
+    // implementation which may need to be addressed.
+    #[allow(dead_code)]
+    fn wait_timeout<T: AsMutexGuard>(&self, mutex_guard: &T,
+                                     dur: Duration) -> bool {
         unsafe {
             let me: &'static Condvar = &*(self as *const _);
             me.inner.wait_timeout(mutex_guard, dur)
@@ -195,8 +201,9 @@ impl StaticCondvar {
     /// specified duration.
     ///
     /// See `Condvar::wait_timeout`.
-    pub fn wait_timeout<T: AsMutexGuard>(&'static self, mutex_guard: &T,
-                                         dur: Duration) -> bool {
+    #[allow(dead_code)] // may want to stabilize this later, see wait_timeout above
+    fn wait_timeout<T: AsMutexGuard>(&'static self, mutex_guard: &T,
+                                     dur: Duration) -> bool {
         unsafe {
             let lock = mutex_guard.as_mutex_guard();
             let sys = mutex::guard_lock(lock);

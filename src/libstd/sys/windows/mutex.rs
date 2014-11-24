@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use prelude::*;
+
 use sync::atomic;
 use alloc::{mod, heap};
 
@@ -21,8 +23,8 @@ pub struct Mutex { inner: atomic::AtomicUint }
 pub const MUTEX_INIT: Mutex = Mutex { inner: atomic::INIT_ATOMIC_UINT };
 
 #[inline]
-pub unsafe fn raw(m: &super::Mutex) -> ffi::LPCRITICAL_SECTION {
-    m.0.get()
+pub unsafe fn raw(m: &Mutex) -> ffi::LPCRITICAL_SECTION {
+    m.get()
 }
 
 impl Mutex {
