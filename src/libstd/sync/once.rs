@@ -13,12 +13,10 @@
 //! This primitive is meant to be used to run one-time initialization. An
 //! example use case would be for initializing an FFI library.
 
-use core::prelude::*;
-
-use core::int;
-use core::atomic;
-
-use super::mutex::{StaticMutex, MUTEX_INIT};
+use int;
+use mem::drop;
+use sync::atomic;
+use sync::{StaticMutex, MUTEX_INIT};
 
 /// A synchronization primitive which can be used to run a one-time global
 /// initialization. Useful for one-time initialization for FFI or related
@@ -27,8 +25,8 @@ use super::mutex::{StaticMutex, MUTEX_INIT};
 ///
 /// # Example
 ///
-/// ```rust,ignore
-/// use std::sync::one::{Once, ONCE_INIT};
+/// ```rust
+/// use std::sync::{Once, ONCE_INIT};
 ///
 /// static START: Once = ONCE_INIT;
 ///
@@ -59,7 +57,7 @@ impl Once {
     ///
     /// When this function returns, it is guaranteed that some initialization
     /// has run and completed (it may not be the closure specified).
-    pub fn doit(&self, f: ||) {
+    pub fn doit(&'static self, f: ||) {
         // Optimize common path: load is much cheaper than fetch_add.
         if self.cnt.load(atomic::SeqCst) < 0 {
             return
@@ -121,6 +119,7 @@ impl Once {
 #[cfg(test)]
 mod test {
     use prelude::*;
+
     use task;
     use super::{ONCE_INIT, Once};
 
