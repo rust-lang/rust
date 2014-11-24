@@ -25,10 +25,12 @@ use sys_common::mkerr_libc;
 
 macro_rules! helper_init( (static $name:ident: Helper<$m:ty>) => (
     static $name: Helper<$m> = Helper {
-        lock: ::rustrt::mutex::NATIVE_MUTEX_INIT,
+        lock: ::sync::MUTEX_INIT,
+        cond: ::sync::CONDVAR_INIT,
         chan: ::cell::UnsafeCell { value: 0 as *mut Sender<$m> },
         signal: ::cell::UnsafeCell { value: 0 },
         initialized: ::cell::UnsafeCell { value: false },
+        shutdown: ::cell::UnsafeCell { value: false },
     };
 ) )
 

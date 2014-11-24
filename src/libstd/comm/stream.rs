@@ -32,7 +32,7 @@ use rustrt::task::{Task, BlockedTask};
 use rustrt::thread::Thread;
 
 use sync::atomic;
-use sync::spsc_queue as spsc;
+use comm::spsc_queue as spsc;
 use comm::Receiver;
 
 const DISCONNECTED: int = int::MIN;

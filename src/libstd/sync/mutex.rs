@@ -45,7 +45,7 @@ use sys_common::mutex as sys;
 /// let data = Arc::new(Mutex::new(0));
 ///
 /// let (tx, rx) = channel();
-/// for _ in range(0, 10) {
+/// for _ in range(0u, 10) {
 ///     let (data, tx) = (data.clone(), tx.clone());
 ///     spawn(proc() {
 ///         // The shared static can only be accessed once the lock is held.
