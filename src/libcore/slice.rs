@@ -34,8 +34,6 @@
 // * The `raw` and `bytes` submodules.
 // * Boilerplate trait implementations.
 
-pub use self::BinarySearchResult::*;
-
 use mem::transmute;
 use clone::Clone;
 use cmp::{PartialEq, PartialOrd, Eq, Ord, Ordering, Less, Equal, Greater, Equiv};
@@ -219,7 +217,7 @@ pub trait SlicePrelude<T> for Sized? {
     /// found; the fourth could match any position in `[1,4]`.
     ///
     /// ```rust
-    /// use std::slice::{Found, NotFound};
+    /// use std::slice::BinarySearchResult::{Found, NotFound};
     /// let s = [0i, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55];
     /// let s = s.as_slice();
     ///
@@ -548,7 +546,7 @@ impl<T> SlicePrelude<T> for [T] {
         while lim != 0 {
             let ix = base + (lim >> 1);
             match f(&self[ix]) {
-                Equal => return Found(ix),
+                Equal => return BinarySearchResult::Found(ix),
                 Less => {
                     base = ix + 1;
                     lim -= 1;
@@ -557,7 +555,7 @@ impl<T> SlicePrelude<T> for [T] {
             }
             lim >>= 1;
         }
-        return NotFound(base);
+        return BinarySearchResult::NotFound(base);
     }
 
     #[inline]
@@ -838,7 +836,7 @@ pub trait OrdSlicePrelude<T: Ord> for Sized? {
     /// found; the fourth could match any position in `[1,4]`.
     ///
     /// ```rust
-    /// use std::slice::{Found, NotFound};
+    /// use std::slice::BinarySearchResult::{Found, NotFound};
     /// let s = [0i, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55];
     /// let s = s.as_slice();
     ///
@@ -1517,8 +1515,8 @@ impl BinarySearchResult {
     /// Similar to `Result::ok`.
     pub fn found(&self) -> Option<uint> {
         match *self {
-            Found(i) => Some(i),
-            NotFound(_) => None
+            BinarySearchResult::Found(i) => Some(i),
+            BinarySearchResult::NotFound(_) => None
         }
     }
 
@@ -1526,8 +1524,8 @@ impl BinarySearchResult {
     /// Similar to `Result::err`.
     pub fn not_found(&self) -> Option<uint> {
         match *self {
-            Found(_) => None,
-            NotFound(i) => Some(i)
+            BinarySearchResult::Found(_) => None,
+            BinarySearchResult::NotFound(i) => Some(i)
         }
     }
 }
