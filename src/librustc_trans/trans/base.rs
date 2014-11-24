@@ -100,17 +100,20 @@ use syntax::visit::Visitor;
 use syntax::visit;
 use syntax::{ast, ast_util, ast_map};
 
-local_data_key!(task_local_insn_key: RefCell<Vec<&'static str>>)
+thread_local!(static TASK_LOCAL_INSN_KEY: RefCell<Option<Vec<&'static str>>> = {
+    RefCell::new(None)
+})
 
 pub fn with_insn_ctxt(blk: |&[&'static str]|) {
-    match task_local_insn_key.get() {
-        Some(ctx) => blk(ctx.borrow().as_slice()),
-        None => ()
-    }
+    TASK_LOCAL_INSN_KEY.with(|slot| {
+        slot.borrow().as_ref().map(|s| blk(s.as_slice()));
+    })
 }
 
 pub fn init_insn_ctxt() {
-    task_local_insn_key.replace(Some(RefCell::new(Vec::new())));
+    TASK_LOCAL_INSN_KEY.with(|slot| {
+        *slot.borrow_mut() = Some(Vec::new());
+    });
 }
 
 pub struct _InsnCtxt {
@@ -120,19 +123,23 @@ pub struct _InsnCtxt {
 #[unsafe_destructor]
 impl Drop for _InsnCtxt {
     fn drop(&mut self) {
-        match task_local_insn_key.get() {
-            Some(ctx) => { ctx.borrow_mut().pop(); }
-            None => {}
-        }
+        TASK_LOCAL_INSN_KEY.with(|slot| {
+            match slot.borrow_mut().as_mut() {
+                Some(ctx) => { ctx.pop(); }
+                None => {}
+            }
+        })
     }
 }
 
 pub fn push_ctxt(s: &'static str) -> _InsnCtxt {
     debug!("new InsnCtxt: {}", s);
-    match task_local_insn_key.get() {
-        Some(ctx) => ctx.borrow_mut().push(s),
-        None => {}
-    }
+    TASK_LOCAL_INSN_KEY.with(|slot| {
+        match slot.borrow_mut().as_mut() {
+            Some(ctx) => ctx.push(s),
+            None => {}
+        }
+    });
     _InsnCtxt { _cannot_construct_outside_of_this_module: () }
 }
 

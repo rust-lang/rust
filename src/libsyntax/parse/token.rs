@@ -560,15 +560,10 @@ pub type IdentInterner = StrInterner;
 // fresh one.
 // FIXME(eddyb) #8726 This should probably use a task-local reference.
 pub fn get_ident_interner() -> Rc<IdentInterner> {
-    local_data_key!(key: Rc<::parse::token::IdentInterner>)
-    match key.get() {
-        Some(interner) => interner.clone(),
-        None => {
-            let interner = Rc::new(mk_fresh_ident_interner());
-            key.replace(Some(interner.clone()));
-            interner
-        }
-    }
+    thread_local!(static KEY: Rc<::parse::token::IdentInterner> = {
+        Rc::new(mk_fresh_ident_interner())
+    })
+    KEY.with(|k| k.clone())
 }
 
 /// Represents a string stored in the task-local interner. Because the

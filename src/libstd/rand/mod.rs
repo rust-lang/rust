@@ -226,7 +226,6 @@ use clone::Clone;
 use io::IoResult;
 use iter::Iterator;
 use mem;
-use option::{Some, None};
 use rc::Rc;
 use result::{Ok, Err};
 use vec::Vec;
@@ -337,24 +336,18 @@ pub struct TaskRng {
 /// explicitly select an RNG, e.g. `IsaacRng` or `Isaac64Rng`.
 pub fn task_rng() -> TaskRng {
     // used to make space in TLS for a random number generator
-    local_data_key!(TASK_RNG_KEY: Rc<RefCell<TaskRngInner>>)
+    thread_local!(static TASK_RNG_KEY: Rc<RefCell<TaskRngInner>> = {
+        let r = match StdRng::new() {
+            Ok(r) => r,
+            Err(e) => panic!("could not initialize task_rng: {}", e)
+        };
+        let rng = reseeding::ReseedingRng::new(r,
+                                               TASK_RNG_RESEED_THRESHOLD,
+                                               TaskRngReseeder);
+        Rc::new(RefCell::new(rng))
+    })
 
-    match TASK_RNG_KEY.get() {
-        None => {
-            let r = match StdRng::new() {
-                Ok(r) => r,
-                Err(e) => panic!("could not initialize task_rng: {}", e)
-            };
-            let rng = reseeding::ReseedingRng::new(r,
-                                                   TASK_RNG_RESEED_THRESHOLD,
-                                                   TaskRngReseeder);
-            let rng = Rc::new(RefCell::new(rng));
-            TASK_RNG_KEY.replace(Some(rng.clone()));
-
-            TaskRng { rng: rng }
-        }
-        Some(rng) => TaskRng { rng: rng.clone() }
-    }
+    TaskRng { rng: TASK_RNG_KEY.with(|t| t.clone()) }
 }
 
 impl Rng for TaskRng {

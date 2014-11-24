@@ -101,7 +101,9 @@ pub fn strip_hidden(krate: clean::Crate) -> plugins::PluginResult {
 pub fn strip_private(mut krate: clean::Crate) -> plugins::PluginResult {
     // This stripper collects all *retained* nodes.
     let mut retained = HashSet::new();
-    let analysis = super::analysiskey.get().unwrap();
+    let analysis = super::ANALYSISKEY.with(|a| a.clone());
+    let analysis = analysis.borrow();
+    let analysis = analysis.as_ref().unwrap();
     let exported_items = analysis.exported_items.clone();
 
     // strip all private items

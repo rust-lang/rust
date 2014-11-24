@@ -1471,7 +1471,7 @@ mod test_map {
         assert_eq!(*m.get(&2).unwrap(), 4);
     }
 
-    local_data_key!(drop_vector: RefCell<Vec<int>>)
+    thread_local!(static DROP_VECTOR: RefCell<Vec<int>> = RefCell::new(Vec::new()))
 
     #[deriving(Hash, PartialEq, Eq)]
     struct Dropable {
@@ -1480,8 +1480,9 @@ mod test_map {
 
     impl Dropable {
         fn new(k: uint) -> Dropable {
-            let v = drop_vector.get().unwrap();
-            v.borrow_mut().as_mut_slice()[k] += 1;
+            DROP_VECTOR.with(|slot| {
+                slot.borrow_mut()[k] += 1;
+            });
 
             Dropable { k: k }
         }
@@ -1489,8 +1490,9 @@ mod test_map {
 
     impl Drop for Dropable {
         fn drop(&mut self) {
-            let v = drop_vector.get().unwrap();
-            v.borrow_mut().as_mut_slice()[self.k] -= 1;
+            DROP_VECTOR.with(|slot| {
+                slot.borrow_mut()[self.k] -= 1;
+            });
         }
     }
 
@@ -1502,16 +1504,18 @@ mod test_map {
 
     #[test]
     fn test_drops() {
-        drop_vector.replace(Some(RefCell::new(Vec::from_elem(200, 0i))));
+        DROP_VECTOR.with(|slot| {
+            *slot.borrow_mut() = Vec::from_elem(200, 0i);
+        });
 
         {
             let mut m = HashMap::new();
 
-            let v = drop_vector.get().unwrap();
-            for i in range(0u, 200) {
-                assert_eq!(v.borrow().as_slice()[i], 0);
-            }
-            drop(v);
+            DROP_VECTOR.with(|v| {
+                for i in range(0u, 200) {
+                    assert_eq!(v.borrow().as_slice()[i], 0);
+                }
+            });
 
             for i in range(0u, 100) {
                 let d1 = Dropable::new(i);
@@ -1519,11 +1523,11 @@ mod test_map {
                 m.insert(d1, d2);
             }
 
-            let v = drop_vector.get().unwrap();
-            for i in range(0u, 200) {
-                assert_eq!(v.borrow().as_slice()[i], 1);
-            }
-            drop(v);
+            DROP_VECTOR.with(|v| {
+                for i in range(0u, 200) {
+                    assert_eq!(v.borrow().as_slice()[i], 1);
+                }
+            });
 
             for i in range(0u, 50) {
                 let k = Dropable::new(i);
@@ -1531,41 +1535,46 @@ mod test_map {
 
                 assert!(v.is_some());
 
-                let v = drop_vector.get().unwrap();
-                assert_eq!(v.borrow().as_slice()[i], 1);
-                assert_eq!(v.borrow().as_slice()[i+100], 1);
+                DROP_VECTOR.with(|v| {
+                    assert_eq!(v.borrow().as_slice()[i], 1);
+                    assert_eq!(v.borrow().as_slice()[i+100], 1);
+                });
             }
 
-            let v = drop_vector.get().unwrap();
-            for i in range(0u, 50) {
+            DROP_VECTOR.with(|v| {
+                for i in range(0u, 50) {
+                    assert_eq!(v.borrow().as_slice()[i], 0);
+                    assert_eq!(v.borrow().as_slice()[i+100], 0);
+                }
+
+                for i in range(50u, 100) {
+                    assert_eq!(v.borrow().as_slice()[i], 1);
+                    assert_eq!(v.borrow().as_slice()[i+100], 1);
+                }
+            });
+        }
+
+        DROP_VECTOR.with(|v| {
+            for i in range(0u, 200) {
                 assert_eq!(v.borrow().as_slice()[i], 0);
-                assert_eq!(v.borrow().as_slice()[i+100], 0);
             }
-
-            for i in range(50u, 100) {
-                assert_eq!(v.borrow().as_slice()[i], 1);
-                assert_eq!(v.borrow().as_slice()[i+100], 1);
-            }
-        }
-
-        let v = drop_vector.get().unwrap();
-        for i in range(0u, 200) {
-            assert_eq!(v.borrow().as_slice()[i], 0);
-        }
+        });
     }
 
     #[test]
     fn test_move_iter_drops() {
-        drop_vector.replace(Some(RefCell::new(Vec::from_elem(200, 0i))));
+        DROP_VECTOR.with(|v| {
+            *v.borrow_mut() = Vec::from_elem(200, 0i);
+        });
 
         let hm = {
             let mut hm = HashMap::new();
 
-            let v = drop_vector.get().unwrap();
-            for i in range(0u, 200) {
-                assert_eq!(v.borrow().as_slice()[i], 0);
-            }
-            drop(v);
+            DROP_VECTOR.with(|v| {
+                for i in range(0u, 200) {
+                    assert_eq!(v.borrow().as_slice()[i], 0);
+                }
+            });
 
             for i in range(0u, 100) {
                 let d1 = Dropable::new(i);
@@ -1573,11 +1582,11 @@ mod test_map {
                 hm.insert(d1, d2);
             }
 
-            let v = drop_vector.get().unwrap();
-            for i in range(0u, 200) {
-                assert_eq!(v.borrow().as_slice()[i], 1);
-            }
-            drop(v);
+            DROP_VECTOR.with(|v| {
+                for i in range(0u, 200) {
+                    assert_eq!(v.borrow().as_slice()[i], 1);
+                }
+            });
 
             hm
         };
@@ -1588,31 +1597,33 @@ mod test_map {
         {
             let mut half = hm.into_iter().take(50);
 
-            let v = drop_vector.get().unwrap();
-            for i in range(0u, 200) {
-                assert_eq!(v.borrow().as_slice()[i], 1);
-            }
-            drop(v);
+            DROP_VECTOR.with(|v| {
+                for i in range(0u, 200) {
+                    assert_eq!(v.borrow().as_slice()[i], 1);
+                }
+            });
 
             for _ in half {}
 
-            let v = drop_vector.get().unwrap();
-            let nk = range(0u, 100).filter(|&i| {
-                v.borrow().as_slice()[i] == 1
-            }).count();
+            DROP_VECTOR.with(|v| {
+                let nk = range(0u, 100).filter(|&i| {
+                    v.borrow().as_slice()[i] == 1
+                }).count();
 
-            let nv = range(0u, 100).filter(|&i| {
-                v.borrow().as_slice()[i+100] == 1
-            }).count();
+                let nv = range(0u, 100).filter(|&i| {
+                    v.borrow().as_slice()[i+100] == 1
+                }).count();
 
-            assert_eq!(nk, 50);
-            assert_eq!(nv, 50);
+                assert_eq!(nk, 50);
+                assert_eq!(nv, 50);
+            });
         };
 
-        let v = drop_vector.get().unwrap();
-        for i in range(0u, 200) {
-            assert_eq!(v.borrow().as_slice()[i], 0);
-        }
+        DROP_VECTOR.with(|v| {
+            for i in range(0u, 200) {
+                assert_eq!(v.borrow().as_slice()[i], 0);
+            }
+        });
     }
 
     #[test]

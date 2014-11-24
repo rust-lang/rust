@@ -171,7 +171,7 @@
 
 extern crate regex;
 
-use regex::Regex;
+use std::cell::RefCell;
 use std::fmt;
 use std::io::LineBufferedWriter;
 use std::io;
@@ -180,6 +180,8 @@ use std::os;
 use std::rt;
 use std::slice;
 use std::sync::{Once, ONCE_INIT};
+
+use regex::Regex;
 
 use directive::LOG_LEVEL_NAMES;
 
@@ -213,7 +215,9 @@ pub const WARN: u32 = 2;
 /// Error log level
 pub const ERROR: u32 = 1;
 
-local_data_key!(local_logger: Box<Logger + Send>)
+thread_local!(static LOCAL_LOGGER: RefCell<Option<Box<Logger + Send>>> = {
+    RefCell::new(None)
+})
 
 /// A trait used to represent an interface to a task-local logger. Each task
 /// can have its own custom logger which can respond to logging messages
@@ -283,7 +287,9 @@ pub fn log(level: u32, loc: &'static LogLocation, args: &fmt::Arguments) {
     // Completely remove the local logger from TLS in case anyone attempts to
     // frob the slot while we're doing the logging. This will destroy any logger
     // set during logging.
-    let mut logger = local_logger.replace(None).unwrap_or_else(|| {
+    let mut logger = LOCAL_LOGGER.with(|s| {
+        s.borrow_mut().take()
+    }).unwrap_or_else(|| {
         box DefaultLogger { handle: io::stderr() } as Box<Logger + Send>
     });
     logger.log(&LogRecord {
@@ -293,7 +299,7 @@ pub fn log(level: u32, loc: &'static LogLocation, args: &fmt::Arguments) {
         module_path: loc.module_path,
         line: loc.line,
     });
-    local_logger.replace(Some(logger));
+    set_logger(logger);
 }
 
 /// Getter for the global log level. This is a function so that it can be called
@@ -305,7 +311,10 @@ pub fn log_level() -> u32 { unsafe { LOG_LEVEL } }
 /// Replaces the task-local logger with the specified logger, returning the old
 /// logger.
 pub fn set_logger(logger: Box<Logger + Send>) -> Option<Box<Logger + Send>> {
-    local_logger.replace(Some(logger))
+    let mut l = Some(logger);
+    LOCAL_LOGGER.with(|slot| {
+        mem::replace(&mut *slot.borrow_mut(), l.take())
+    })
 }
 
 /// A LogRecord is created by the logging macros, and passed as the only
