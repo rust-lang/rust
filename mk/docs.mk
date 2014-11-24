@@ -247,26 +247,6 @@ $(foreach lang,$(L10N_LANGS),$(eval $(call DEF_L10N_DOC,$(lang),guide)))
 
 
 ######################################################################
-# LLnextgen (grammar analysis from refman)
-######################################################################
-
-ifeq ($(CFG_LLNEXTGEN),)
-  $(info cfg: no llnextgen found, omitting grammar-verification)
-else
-.PHONY: verify-grammar
-
-doc/rust.g: $(D)/rust.md $(S)src/etc/extract_grammar.py
-	@$(call E, extract_grammar: $@)
-	$(Q)$(CFG_PYTHON) $(S)src/etc/extract_grammar.py $< >$@
-
-verify-grammar: doc/rust.g
-	@$(call E, LLnextgen: $<)
-	$(Q)$(CFG_LLNEXTGEN) --generate-lexer-wrapper=no $< >$@
-	$(Q)rm -f doc/rust.c doc/rust.h
-endif
-
-
-######################################################################
 # Rustdoc (libstd/extra)
 ######################################################################
 
