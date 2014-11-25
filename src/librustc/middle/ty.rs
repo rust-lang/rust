@@ -1184,7 +1184,9 @@ pub enum Region {
     /// region parameters.
     ReFree(FreeRegion),
 
-    /// A concrete region naming some expression within the current function.
+    /// A concrete region naming some statically determined extent
+    /// (e.g. an expression or sequence of statements) within the
+    /// current function.
     ReScope(region::CodeExtent),
 
     /// Static data that has an "infinite" lifetime. Top in the region lattice.
@@ -4233,12 +4235,15 @@ pub fn ty_region(tcx: &ctxt,
     }
 }
 
-pub fn free_region_from_def(free_id: ast::NodeId, def: &RegionParameterDef)
+pub fn free_region_from_def(outlives_extent: region::CodeExtent, def: &RegionParameterDef)
     -> ty::Region
 {
-    ty::ReFree(ty::FreeRegion { scope: region::CodeExtent::from_node_id(free_id),
-                                bound_region: ty::BrNamed(def.def_id,
-                                                          def.name) })
+    let ret =
+        ty::ReFree(ty::FreeRegion { scope: outlives_extent,
+                                    bound_region: ty::BrNamed(def.def_id,
+                                                              def.name) });
+    debug!("free_region_from_def returns {:?}", ret);
+    ret
 }
 
 // Returns the type of a pattern as a monotype. Like @expr_ty, this function
@@ -6354,23 +6359,23 @@ pub fn construct_parameter_environment<'a,'tcx>(
     let mut types = VecPerParamSpace::empty();
     push_types_from_defs(tcx, &mut types, generics.types.as_slice());
 
+    let free_id_outlive = region::CodeExtent::DestructionScope(free_id);
+
     // map bound 'a => free 'a
     let mut regions = VecPerParamSpace::empty();
-    push_region_params(&mut regions, free_id, generics.regions.as_slice());
+    push_region_params(&mut regions, free_id_outlive, generics.regions.as_slice());
 
     let free_substs = Substs {
         types: types,
         regions: subst::NonerasedRegions(regions)
     };
 
-    let free_id_scope = region::CodeExtent::from_node_id(free_id);
-
     //
     // Compute the bounds on Self and the type parameters.
     //
 
     let bounds = generics.to_bounds(tcx, &free_substs);
-    let bounds = liberate_late_bound_regions(tcx, free_id_scope, &ty::Binder(bounds));
+    let bounds = liberate_late_bound_regions(tcx, free_id_outlive, &ty::Binder(bounds));
 
     //
     // Compute region bounds. For now, these relations are stored in a
@@ -6388,17 +6393,17 @@ pub fn construct_parameter_environment<'a,'tcx>(
     return ty::ParameterEnvironment {
         tcx: tcx,
         free_substs: free_substs,
-        implicit_region_bound: ty::ReScope(free_id_scope),
+        implicit_region_bound: ty::ReScope(free_id_outlive),
         caller_bounds: bounds,
         selection_cache: traits::SelectionCache::new(),
     };
 
     fn push_region_params(regions: &mut VecPerParamSpace<ty::Region>,
-                          free_id: ast::NodeId,
+                          all_outlive_extent: region::CodeExtent,
                           region_params: &[RegionParameterDef])
     {
         for r in region_params.iter() {
-            regions.push(r.space, ty::free_region_from_def(free_id, r));
+            regions.push(r.space, ty::free_region_from_def(all_outlive_extent, r));
         }
     }
 
@@ -6679,14 +6684,14 @@ impl<'tcx> AutoDerefRef<'tcx> {
 /// `scope_id`.
 pub fn liberate_late_bound_regions<'tcx, T>(
     tcx: &ty::ctxt<'tcx>,
-    scope: region::CodeExtent,
+    all_outlive_scope: region::CodeExtent,
     value: &Binder<T>)
     -> T
     where T : TypeFoldable<'tcx> + Repr<'tcx>
 {
     replace_late_bound_regions(
         tcx, value,
-        |br| ty::ReFree(ty::FreeRegion{scope: scope, bound_region: br})).0
+        |br| ty::ReFree(ty::FreeRegion{scope: all_outlive_scope, bound_region: br})).0
 }
 
 pub fn count_late_bound_regions<'tcx, T>(

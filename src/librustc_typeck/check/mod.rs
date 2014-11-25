@@ -90,7 +90,7 @@ use middle::lang_items::IteratorItem;
 use middle::mem_categorization as mc;
 use middle::mem_categorization::McResult;
 use middle::pat_util::{self, pat_id_map};
-use middle::region::CodeExtent;
+use middle::region::{self, CodeExtent};
 use middle::subst::{self, Subst, Substs, VecPerParamSpace, ParamSpace, TypeSpace};
 use middle::traits;
 use middle::ty::{FnSig, VariantInfo, TypeScheme};
@@ -478,7 +478,9 @@ fn check_bare_fn<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             let fn_sig =
                 fn_ty.sig.subst(ccx.tcx, &inh.param_env.free_substs);
             let fn_sig =
-                liberate_late_bound_regions(ccx.tcx, CodeExtent::from_node_id(body.id), &fn_sig);
+                liberate_late_bound_regions(ccx.tcx,
+                                            CodeExtent::DestructionScope(body.id),
+                                            &fn_sig);
             let fn_sig =
                 inh.normalize_associated_types_in(&inh.param_env, body.span, body.id, &fn_sig);
 

@@ -1535,7 +1535,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         let fn_ret =
             ty::liberate_late_bound_regions(
                 self.ir.tcx,
-                CodeExtent::from_node_id(body.id),
+                CodeExtent::DestructionScope(body.id),
                 &self.fn_ret(id));
 
         match fn_ret {

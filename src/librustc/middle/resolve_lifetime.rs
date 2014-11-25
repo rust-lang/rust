@@ -20,7 +20,7 @@ use self::ScopeChain::*;
 
 use session::Session;
 use middle::def::{self, DefMap};
-use middle::region;
+use middle::region::{self, CodeExtent};
 use middle::subst;
 use middle::ty;
 use std::fmt;
@@ -354,6 +354,10 @@ impl<'a> LifetimeContext<'a> {
                                  scope_data: region::CodeExtent,
                                  lifetime_ref: &ast::Lifetime,
                                  scope: Scope) {
+        debug!("resolve_free_lifetime_ref \
+                scope_data: {:?} lifetime_ref: {:?} scope: {:?}",
+               scope_data, lifetime_ref, scope);
+
         // Walk up the scope chain, tracking the outermost free scope,
         // until we encounter a scope that contains the named lifetime
         // or we run out of scopes.
@@ -361,6 +365,9 @@ impl<'a> LifetimeContext<'a> {
         let mut scope = scope;
         let mut search_result = None;
         loop {
+            debug!("resolve_free_lifetime_ref \
+                    scope_data: {:?} scope: {:?} search_result: {:?}",
+                   scope_data, scope, search_result);
             match *scope {
                 BlockScope(blk_scope_data, s) => {
                     scope_data = blk_scope_data;
@@ -381,6 +388,14 @@ impl<'a> LifetimeContext<'a> {
                 }
             }
         }
+
+        // The free region in fact outlives not just the outermost
+        // scope, but also its corresponding DestructionScope.
+        let scope_data = if let CodeExtent::Misc(node_id) = scope_data {
+            CodeExtent::DestructionScope(node_id)
+        } else {
+            self.sess.bug("unexpected extent in resolve_free_lifetime_ref");
+        };
 
         match search_result {
             Some((_depth, lifetime)) => {

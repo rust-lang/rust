@@ -10,6 +10,7 @@
 
 
 use middle::def;
+use middle::region;
 use middle::subst::{VecPerParamSpace,Subst};
 use middle::subst;
 use middle::ty::{BoundRegion, BrAnon, BrNamed};
@@ -902,8 +903,21 @@ impl<'tcx> UserString<'tcx> for ty::Region {
 impl<'tcx> Repr<'tcx> for ty::FreeRegion {
     fn repr(&self, tcx: &ctxt) -> String {
         format!("ReFree({}, {})",
-                self.scope.node_id(),
+                self.scope.repr(tcx),
                 self.bound_region.repr(tcx))
+    }
+}
+
+impl<'tcx> Repr<'tcx> for region::CodeExtent {
+    fn repr(&self, _tcx: &ctxt) -> String {
+        match *self {
+            region::CodeExtent::Misc(node_id) =>
+                format!("Misc({})", node_id),
+            region::CodeExtent::DestructionScope(node_id) =>
+                format!("DestructionScope({})", node_id),
+            region::CodeExtent::Remainder(rem) =>
+                format!("Remainder({}, {})", rem.block, rem.first_statement_index),
+        }
     }
 }
 
