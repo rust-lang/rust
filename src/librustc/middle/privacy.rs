@@ -19,8 +19,8 @@ use std::mem::replace;
 use metadata::csearch;
 use middle::{def, resolve};
 use middle::ty::{mod, Ty};
-use middle::typeck::{MethodCall, MethodMap, MethodOrigin, MethodParam, MethodTypeParam};
-use middle::typeck::{MethodStatic, MethodStaticUnboxedClosure, MethodObject, MethodTraitObject};
+use middle::ty::{MethodCall, MethodMap, MethodOrigin, MethodParam, MethodTypeParam};
+use middle::ty::{MethodStatic, MethodStaticUnboxedClosure, MethodObject, MethodTraitObject};
 use util::nodemap::{NodeMap, NodeSet};
 
 use syntax::{ast, ast_map};

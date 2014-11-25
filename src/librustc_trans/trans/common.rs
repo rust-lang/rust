@@ -36,7 +36,6 @@ use middle::traits;
 use middle::ty::{mod, Ty};
 use middle::ty_fold;
 use middle::ty_fold::TypeFoldable;
-use middle::typeck;
 use middle::typeck::infer;
 use util::ppaux::Repr;
 use util::nodemap::{DefIdMap, FnvHashMap, NodeMap};
@@ -468,7 +467,7 @@ impl<'blk, 'tcx> mc::Typer<'tcx> for BlockS<'blk, 'tcx> {
         Ok(node_id_type(self, id))
     }
 
-    fn node_method_ty(&self, method_call: typeck::MethodCall) -> Option<Ty<'tcx>> {
+    fn node_method_ty(&self, method_call: ty::MethodCall) -> Option<Ty<'tcx>> {
         self.tcx()
             .method_map
             .borrow()
@@ -481,7 +480,7 @@ impl<'blk, 'tcx> mc::Typer<'tcx> for BlockS<'blk, 'tcx> {
     }
 
     fn is_method_call(&self, id: ast::NodeId) -> bool {
-        self.tcx().method_map.borrow().contains_key(&typeck::MethodCall::expr(id))
+        self.tcx().method_map.borrow().contains_key(&ty::MethodCall::expr(id))
     }
 
     fn temporary_scope(&self, rvalue_id: ast::NodeId) -> Option<region::CodeExtent> {
@@ -870,7 +869,7 @@ pub enum ExprOrMethodCall {
     ExprId(ast::NodeId),
 
     // Type parameters for a method call like `a.foo::<int>()`
-    MethodCall(typeck::MethodCall)
+    MethodCall(ty::MethodCall)
 }
 
 pub fn node_id_substs<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,

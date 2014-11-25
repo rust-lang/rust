@@ -13,9 +13,9 @@ use super::probe;
 use middle::subst::{mod, Subst};
 use middle::traits;
 use middle::ty::{mod, Ty};
+use middle::ty::{MethodCall, MethodCallee, MethodObject, MethodOrigin,
+                 MethodParam, MethodStatic, MethodTraitObject, MethodTypeParam};
 use middle::typeck::check::{mod, FnCtxt, NoPreference, PreferMutLvalue};
-use middle::typeck::{MethodCall, MethodCallee, MethodObject, MethodOrigin,
-                     MethodParam, MethodStatic, MethodTraitObject, MethodTypeParam};
 use middle::typeck::infer::{mod, InferCtxt};
 use middle::ty_fold::HigherRankedFoldable;
 use syntax::ast;
