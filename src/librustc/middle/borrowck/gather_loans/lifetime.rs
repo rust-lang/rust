@@ -85,7 +85,7 @@ impl<'a, 'tcx> GuaranteeLifetimeContext<'a, 'tcx> {
                 Ok(())
             }
 
-            mc::cat_downcast(ref base) |
+            mc::cat_downcast(ref base, _) |
             mc::cat_deref(ref base, _, mc::OwnedPtr) |     // L-Deref-Send
             mc::cat_interior(ref base, _) => {             // L-Field
                 self.check(base, discr_scope)
@@ -130,7 +130,7 @@ impl<'a, 'tcx> GuaranteeLifetimeContext<'a, 'tcx> {
             mc::cat_deref(_, _, mc::Implicit(_, r)) => {
                 r
             }
-            mc::cat_downcast(ref cmt) |
+            mc::cat_downcast(ref cmt, _) |
             mc::cat_deref(ref cmt, _, mc::OwnedPtr) |
             mc::cat_interior(ref cmt, _) => {
                 self.scope(cmt)

@@ -90,6 +90,12 @@ impl Session {
     pub fn warn(&self, msg: &str) {
         self.diagnostic().handler().warn(msg)
     }
+    pub fn opt_span_warn(&self, opt_sp: Option<Span>, msg: &str) {
+        match opt_sp {
+            Some(sp) => self.span_warn(sp, msg),
+            None => self.warn(msg),
+        }
+    }
     pub fn span_note(&self, sp: Span, msg: &str) {
         self.diagnostic().span_note(sp, msg)
     }
@@ -107,6 +113,12 @@ impl Session {
     }
     pub fn help(&self, msg: &str) {
         self.diagnostic().handler().note(msg)
+    }
+    pub fn opt_span_bug(&self, opt_sp: Option<Span>, msg: &str) -> ! {
+        match opt_sp {
+            Some(sp) => self.span_bug(sp, msg),
+            None => self.bug(msg),
+        }
     }
     pub fn span_bug(&self, sp: Span, msg: &str) -> ! {
         self.diagnostic().span_bug(sp, msg)

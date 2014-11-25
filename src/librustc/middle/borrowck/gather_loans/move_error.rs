@@ -124,7 +124,7 @@ fn report_cannot_move_out_of<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                         bccx.cmt_to_string(&*move_from)).as_slice());
         }
 
-        mc::cat_downcast(ref b) |
+        mc::cat_downcast(ref b, _) |
         mc::cat_interior(ref b, _) => {
             match b.ty.sty {
                 ty::ty_struct(did, _)
