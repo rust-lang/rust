@@ -30,7 +30,7 @@ use metadata::csearch;
 use middle::def::*;
 use middle::ty::{mod, Ty};
 use middle::typeck::astconv::ast_ty_to_ty;
-use middle::typeck::{mod, infer};
+use middle::typeck::infer;
 use middle::{def, pat_util, stability};
 use middle::const_eval::{eval_const_expr_partial, const_int, const_uint};
 use util::ppaux::{ty_to_string};
@@ -1589,22 +1589,22 @@ impl LintPass for Stability {
             }
             ast::ExprMethodCall(i, _, _) => {
                 span = i.span;
-                let method_call = typeck::MethodCall::expr(e.id);
+                let method_call = ty::MethodCall::expr(e.id);
                 match cx.tcx.method_map.borrow().get(&method_call) {
                     Some(method) => {
                         match method.origin {
-                            typeck::MethodStatic(def_id) => {
+                            ty::MethodStatic(def_id) => {
                                 def_id
                             }
-                            typeck::MethodStaticUnboxedClosure(def_id) => {
+                            ty::MethodStaticUnboxedClosure(def_id) => {
                                 def_id
                             }
-                            typeck::MethodTypeParam(typeck::MethodParam {
+                            ty::MethodTypeParam(ty::MethodParam {
                                 ref trait_ref,
                                 method_num: index,
                                 ..
                             }) |
-                            typeck::MethodTraitObject(typeck::MethodObject {
+                            ty::MethodTraitObject(ty::MethodObject {
                                 ref trait_ref,
                                 method_num: index,
                                 ..

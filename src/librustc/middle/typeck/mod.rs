@@ -61,10 +61,6 @@ independently:
 
 #![allow(non_camel_case_types)]
 
-pub use self::ExprAdjustment::*;
-pub use self::vtable_origin::*;
-pub use self::MethodOrigin::*;
-
 use middle::def;
 use middle::resolve;
 use middle::subst;
@@ -74,10 +70,7 @@ use session::config;
 use util::common::time;
 use util::ppaux::Repr;
 use util::ppaux;
-use util::nodemap::{NodeMap, FnvHashMap};
 
-use std::cell::RefCell;
-use std::rc::Rc;
 use syntax::codemap::Span;
 use syntax::print::pprust::*;
 use syntax::{ast, ast_map, abi};
@@ -90,191 +83,10 @@ pub mod collect;
 pub mod coherence;
 pub mod variance;
 
-#[deriving(Clone, Encodable, Decodable, PartialEq, PartialOrd, Show)]
-pub struct param_index {
-    pub space: subst::ParamSpace,
-    pub index: uint
-}
-
-#[deriving(Clone, Show)]
-pub enum MethodOrigin<'tcx> {
-    // fully statically resolved method
-    MethodStatic(ast::DefId),
-
-    // fully statically resolved unboxed closure invocation
-    MethodStaticUnboxedClosure(ast::DefId),
-
-    // method invoked on a type parameter with a bounded trait
-    MethodTypeParam(MethodParam<'tcx>),
-
-    // method invoked on a trait instance
-    MethodTraitObject(MethodObject<'tcx>),
-
-}
-
-// details for a method invoked with a receiver whose type is a type parameter
-// with a bounded trait.
-#[deriving(Clone, Show)]
-pub struct MethodParam<'tcx> {
-    // the precise trait reference that occurs as a bound -- this may
-    // be a supertrait of what the user actually typed.
-    pub trait_ref: Rc<ty::TraitRef<'tcx>>,
-
-    // index of uint in the list of methods for the trait
-    pub method_num: uint,
-}
-
-// details for a method invoked with a receiver whose type is an object
-#[deriving(Clone, Show)]
-pub struct MethodObject<'tcx> {
-    // the (super)trait containing the method to be invoked
-    pub trait_ref: Rc<ty::TraitRef<'tcx>>,
-
-    // the actual base trait id of the object
-    pub object_trait_id: ast::DefId,
-
-    // index of the method to be invoked amongst the trait's methods
-    pub method_num: uint,
-
-    // index into the actual runtime vtable.
-    // the vtable is formed by concatenating together the method lists of
-    // the base object trait and all supertraits;  this is the index into
-    // that vtable
-    pub real_index: uint,
-}
-
-#[deriving(Clone)]
-pub struct MethodCallee<'tcx> {
-    pub origin: MethodOrigin<'tcx>,
-    pub ty: Ty<'tcx>,
-    pub substs: subst::Substs<'tcx>
-}
-
-/// With method calls, we store some extra information in
-/// side tables (i.e method_map). We use
-/// MethodCall as a key to index into these tables instead of
-/// just directly using the expression's NodeId. The reason
-/// for this being that we may apply adjustments (coercions)
-/// with the resulting expression also needing to use the
-/// side tables. The problem with this is that we don't
-/// assign a separate NodeId to this new expression
-/// and so it would clash with the base expression if both
-/// needed to add to the side tables. Thus to disambiguate
-/// we also keep track of whether there's an adjustment in
-/// our key.
-#[deriving(Clone, PartialEq, Eq, Hash, Show)]
-pub struct MethodCall {
-    pub expr_id: ast::NodeId,
-    pub adjustment: ExprAdjustment
-}
-
-#[deriving(Clone, PartialEq, Eq, Hash, Show, Encodable, Decodable)]
-pub enum ExprAdjustment {
-    NoAdjustment,
-    AutoDeref(uint),
-    AutoObject
-}
-
 pub struct TypeAndSubsts<'tcx> {
     pub substs: subst::Substs<'tcx>,
     pub ty: Ty<'tcx>,
 }
-
-impl MethodCall {
-    pub fn expr(id: ast::NodeId) -> MethodCall {
-        MethodCall {
-            expr_id: id,
-            adjustment: NoAdjustment
-        }
-    }
-
-    pub fn autoobject(id: ast::NodeId) -> MethodCall {
-        MethodCall {
-            expr_id: id,
-            adjustment: AutoObject
-        }
-    }
-
-    pub fn autoderef(expr_id: ast::NodeId, autoderef: uint) -> MethodCall {
-        MethodCall {
-            expr_id: expr_id,
-            adjustment: AutoDeref(1 + autoderef)
-        }
-    }
-}
-
-// maps from an expression id that corresponds to a method call to the details
-// of the method to be invoked
-pub type MethodMap<'tcx> = RefCell<FnvHashMap<MethodCall, MethodCallee<'tcx>>>;
-
-pub type vtable_param_res<'tcx> = Vec<vtable_origin<'tcx>>;
-
-// Resolutions for bounds of all parameters, left to right, for a given path.
-pub type vtable_res<'tcx> = VecPerParamSpace<vtable_param_res<'tcx>>;
-
-#[deriving(Clone)]
-pub enum vtable_origin<'tcx> {
-    /*
-      Statically known vtable. def_id gives the impl item
-      from whence comes the vtable, and tys are the type substs.
-      vtable_res is the vtable itself.
-     */
-    vtable_static(ast::DefId, subst::Substs<'tcx>, vtable_res<'tcx>),
-
-    /*
-      Dynamic vtable, comes from a parameter that has a bound on it:
-      fn foo<T:quux,baz,bar>(a: T) -- a's vtable would have a
-      vtable_param origin
-
-      The first argument is the param index (identifying T in the example),
-      and the second is the bound number (identifying baz)
-     */
-    vtable_param(param_index, uint),
-
-    /*
-      Vtable automatically generated for an unboxed closure. The def ID is the
-      ID of the closure expression.
-     */
-    vtable_unboxed_closure(ast::DefId),
-
-    /*
-      Asked to determine the vtable for ty_err. This is the value used
-      for the vtables of `Self` in a virtual call like `foo.bar()`
-      where `foo` is of object type. The same value is also used when
-      type errors occur.
-     */
-    vtable_error,
-}
-
-impl<'tcx> Repr<'tcx> for vtable_origin<'tcx> {
-    fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
-        match *self {
-            vtable_static(def_id, ref tys, ref vtable_res) => {
-                format!("vtable_static({}:{}, {}, {})",
-                        def_id,
-                        ty::item_path_str(tcx, def_id),
-                        tys.repr(tcx),
-                        vtable_res.repr(tcx))
-            }
-
-            vtable_param(x, y) => {
-                format!("vtable_param({}, {})", x, y)
-            }
-
-            vtable_unboxed_closure(def_id) => {
-                format!("vtable_unboxed_closure({})", def_id)
-            }
-
-            vtable_error => {
-                format!("vtable_error")
-            }
-        }
-    }
-}
-
-// For every explicit cast into an object type, maps from the cast
-// expr to the associated trait ref.
-pub type ObjectCastMap<'tcx> = RefCell<NodeMap<Rc<ty::TraitRef<'tcx>>>>;
 
 pub struct CrateCtxt<'a, 'tcx: 'a> {
     // A mapping from method call sites to traits that have that method.

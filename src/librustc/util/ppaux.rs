@@ -23,7 +23,6 @@ use middle::ty::{ty_param, ty_ptr, ty_rptr, ty_tup, ty_open};
 use middle::ty::{ty_unboxed_closure};
 use middle::ty::{ty_uniq, ty_trait, ty_int, ty_uint, ty_infer};
 use middle::ty;
-use middle::typeck;
 use middle::typeck::check::regionmanip;
 
 use std::rc::Rc;
@@ -1018,7 +1017,7 @@ impl<'tcx> Repr<'tcx> for ty::FnOutput<'tcx> {
     }
 }
 
-impl<'tcx> Repr<'tcx> for typeck::MethodCallee<'tcx> {
+impl<'tcx> Repr<'tcx> for ty::MethodCallee<'tcx> {
     fn repr(&self, tcx: &ctxt<'tcx>) -> String {
         format!("MethodCallee {{origin: {}, ty: {}, {}}}",
                 self.origin.repr(tcx),
@@ -1027,26 +1026,26 @@ impl<'tcx> Repr<'tcx> for typeck::MethodCallee<'tcx> {
     }
 }
 
-impl<'tcx> Repr<'tcx> for typeck::MethodOrigin<'tcx> {
+impl<'tcx> Repr<'tcx> for ty::MethodOrigin<'tcx> {
     fn repr(&self, tcx: &ctxt<'tcx>) -> String {
         match self {
-            &typeck::MethodStatic(def_id) => {
+            &ty::MethodStatic(def_id) => {
                 format!("MethodStatic({})", def_id.repr(tcx))
             }
-            &typeck::MethodStaticUnboxedClosure(def_id) => {
+            &ty::MethodStaticUnboxedClosure(def_id) => {
                 format!("MethodStaticUnboxedClosure({})", def_id.repr(tcx))
             }
-            &typeck::MethodTypeParam(ref p) => {
+            &ty::MethodTypeParam(ref p) => {
                 p.repr(tcx)
             }
-            &typeck::MethodTraitObject(ref p) => {
+            &ty::MethodTraitObject(ref p) => {
                 p.repr(tcx)
             }
         }
     }
 }
 
-impl<'tcx> Repr<'tcx> for typeck::MethodParam<'tcx> {
+impl<'tcx> Repr<'tcx> for ty::MethodParam<'tcx> {
     fn repr(&self, tcx: &ctxt<'tcx>) -> String {
         format!("MethodParam({},{})",
                 self.trait_ref.repr(tcx),
@@ -1054,7 +1053,7 @@ impl<'tcx> Repr<'tcx> for typeck::MethodParam<'tcx> {
     }
 }
 
-impl<'tcx> Repr<'tcx> for typeck::MethodObject<'tcx> {
+impl<'tcx> Repr<'tcx> for ty::MethodObject<'tcx> {
     fn repr(&self, tcx: &ctxt<'tcx>) -> String {
         format!("MethodObject({},{},{})",
                 self.trait_ref.repr(tcx),
@@ -1292,7 +1291,6 @@ impl<'tcx> Repr<'tcx> for ty::ExplicitSelfCategory {
         explicit_self_category_to_str(self).to_string()
     }
 }
-
 
 impl<'tcx> Repr<'tcx> for regionmanip::WfConstraint<'tcx> {
     fn repr(&self, tcx: &ctxt) -> String {

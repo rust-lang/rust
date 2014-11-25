@@ -21,8 +21,6 @@ use middle::typeck::check::{impl_self_ty};
 use middle::typeck::check::vtable;
 use middle::typeck::check::vtable::select_new_fcx_obligations;
 use middle::typeck::infer;
-use middle::typeck::{MethodCallee};
-use middle::typeck::{MethodParam, MethodTypeParam};
 use util::ppaux::{Repr, UserString};
 
 use std::rc::Rc;

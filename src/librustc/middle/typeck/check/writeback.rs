@@ -15,14 +15,13 @@ use self::ResolveReason::*;
 
 use middle::def;
 use middle::pat_util;
-use middle::ty::{mod, Ty};
+use middle::ty::{mod, Ty, MethodCall, MethodCallee};
 use middle::ty_fold::{TypeFolder,TypeFoldable};
 use middle::typeck::astconv::AstConv;
 use middle::typeck::check::FnCtxt;
 use middle::typeck::infer::{force_all, resolve_all, resolve_region};
 use middle::typeck::infer::resolve_type;
 use middle::typeck::infer;
-use middle::typeck::{MethodCall, MethodCallee};
 use middle::typeck::write_substs_to_tcx;
 use middle::typeck::write_ty_to_tcx;
 use util::ppaux::Repr;
