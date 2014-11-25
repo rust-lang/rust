@@ -10,8 +10,8 @@
 
 use prelude::v1::*;
 
+use ffi::CString;
 use libc;
-use c_str::CString;
 use mem;
 use sync::{Arc, Mutex};
 use sync::atomic::{AtomicBool, Ordering};
@@ -48,7 +48,7 @@ fn addr_to_sockaddr_un(addr: &CString,
     }
     s.sun_family = libc::AF_UNIX as libc::sa_family_t;
     for (slot, value) in s.sun_path.iter_mut().zip(addr.iter()) {
-        *slot = value;
+        *slot = *value;
     }
 
     // count the null terminator

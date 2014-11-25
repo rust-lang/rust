@@ -62,7 +62,7 @@
 #![experimental]
 
 use core::kinds::Sized;
-use c_str::CString;
+use ffi::CString;
 use clone::Clone;
 use fmt;
 use iter::IteratorExt;
@@ -892,7 +892,7 @@ impl BytesContainer for Vec<u8> {
 impl BytesContainer for CString {
     #[inline]
     fn container_as_bytes<'a>(&'a self) -> &'a [u8] {
-        self.as_bytes_no_nul()
+        self.as_bytes()
     }
 }
 
@@ -912,22 +912,4 @@ impl<'a, Sized? T: BytesContainer> BytesContainer for &'a T {
 #[inline(always)]
 fn contains_nul<T: BytesContainer>(v: &T) -> bool {
     v.container_as_bytes().iter().any(|&x| x == 0)
-}
-
-#[cfg(test)]
-mod tests {
-    use prelude::v1::*;
-    use c_str::ToCStr;
-    use path::{WindowsPath, PosixPath};
-
-    #[test]
-    fn test_cstring() {
-        let input = "/foo/bar/baz";
-        let path: PosixPath = PosixPath::new(input.to_c_str());
-        assert_eq!(path.as_vec(), input.as_bytes());
-
-        let input = r"\foo\bar\baz";
-        let path: WindowsPath = WindowsPath::new(input.to_c_str());
-        assert_eq!(path.as_str().unwrap(), input);
-    }
 }

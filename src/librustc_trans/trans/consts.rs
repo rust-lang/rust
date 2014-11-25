@@ -24,7 +24,6 @@ use middle::subst::Substs;
 use middle::ty::{self, Ty};
 use util::ppaux::{Repr, ty_to_string};
 
-use std::c_str::ToCStr;
 use std::iter::repeat;
 use libc::c_uint;
 use syntax::{ast, ast_util};
@@ -103,9 +102,8 @@ fn const_vec(cx: &CrateContext, e: &ast::Expr,
 
 pub fn const_addr_of(cx: &CrateContext, cv: ValueRef, mutbl: ast::Mutability) -> ValueRef {
     unsafe {
-        let gv = "const".with_c_str(|name| {
-            llvm::LLVMAddGlobal(cx.llmod(), val_ty(cv).to_ref(), name)
-        });
+        let gv = llvm::LLVMAddGlobal(cx.llmod(), val_ty(cv).to_ref(),
+                                     "const\0".as_ptr() as *const _);
         llvm::LLVMSetInitializer(gv, cv);
         llvm::LLVMSetGlobalConstant(gv,
                                     if mutbl == ast::MutImmutable {True} else {False});
