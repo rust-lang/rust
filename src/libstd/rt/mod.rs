@@ -75,13 +75,15 @@ pub mod mutex;
 pub mod thread;
 pub mod exclusive;
 pub mod util;
+<<<<<<< HEAD
+=======
+pub mod task;
+>>>>>>> Remove rt::{local, local_data, thread_local_storage}
 pub mod unwind;
 
 mod args;
 mod at_exit_imp;
 mod libunwind;
-mod local_ptr;
-mod thread_local_storage;
 
 /// The default error code of the rust runtime if the main task panics instead
 /// of exiting cleanly.
@@ -98,8 +100,7 @@ pub fn init(argc: int, argv: *const *const u8) {
     // Need to propagate the unsafety to `start`.
     unsafe {
         args::init(argc, argv);
-        sys::thread::guard::init();
-        sys::stack_overflow::init();
+        thread::init();
         unwind::register(failure::on_fail);
     }
 }
@@ -203,7 +204,7 @@ pub fn at_exit(f: proc():Send) {
 /// undefined behavior.
 pub unsafe fn cleanup() {
     args::cleanup();
-    sys::stack_overflow::cleanup();
+    thread::cleanup();
 }
 
 // FIXME: these probably shouldn't be public...
