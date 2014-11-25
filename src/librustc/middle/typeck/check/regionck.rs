@@ -666,6 +666,8 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
 
         // If necessary, constrain destructors in the unadjusted form of this
         // expression.
+        debug!("visit_expr constrain destructors \
+                unadjusted expr.id: {}", expr.id);
         let head_cmt = {
             let mc = mc::MemCategorizationContext::new(rcx);
             ignore_err!(mc.cat_expr_unadjusted(expr))
@@ -677,6 +679,8 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
 
     // If necessary, constrain destructors in this expression. This will be
     // the adjusted form if there is an adjustment.
+    debug!("visit_expr constrain destructors \
+            potentially adjusted expr.id: {}", expr.id);
     let head_cmt = {
         let mc = mc::MemCategorizationContext::new(rcx);
         ignore_err!(mc.cat_expr(expr))
