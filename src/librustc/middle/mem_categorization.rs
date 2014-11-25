@@ -414,6 +414,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
     }
 
     pub fn cat_expr(&self, expr: &ast::Expr) -> McResult<cmt<'tcx>> {
+        debug!("cat_expr expr.id: {}", expr.id);
         match self.typer.adjustments().borrow().get(&expr.id) {
             None => {
                 // No adjustments.
@@ -457,6 +458,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                                expr: &ast::Expr,
                                autoderefs: uint)
                                -> McResult<cmt<'tcx>> {
+        debug!("cat_expr_autoderefd: autoderefs={}", autoderefs);
         let mut cmt = if_ok!(self.cat_expr_unadjusted(expr));
         debug!("cat_expr_autoderefd: autoderefs={}, cmt={}",
                autoderefs,
@@ -468,7 +470,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
     }
 
     pub fn cat_expr_unadjusted(&self, expr: &ast::Expr) -> McResult<cmt<'tcx>> {
-        debug!("cat_expr: id={} expr={}", expr.id, expr.repr(self.tcx()));
+        debug!("cat_expr_unadjusted: id={} expr={}", expr.id, expr.repr(self.tcx()));
 
         let expr_ty = if_ok!(self.expr_ty(expr));
         match expr.node {
