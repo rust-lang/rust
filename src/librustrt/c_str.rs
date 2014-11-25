@@ -254,10 +254,14 @@ impl CString {
     ///
     /// Prefer `.as_ptr()` when just retrieving a pointer to the
     /// string data, as that does not relinquish ownership.
-    pub unsafe fn unwrap(mut self) -> *const libc::c_char {
+    pub unsafe fn into_inner(mut self) -> *const libc::c_char {
         self.owns_buffer_ = false;
         self.buf
     }
+
+    /// Deprecated, use into_inner() instead
+    #[deprecated = "renamed to into_inner()"]
+    pub unsafe fn unwrap(self) -> *const libc::c_char { self.into_inner() }
 
     /// Return the number of bytes in the CString (not including the NUL
     /// terminator).

@@ -83,7 +83,11 @@ impl<R: Reader> BufferedReader<R> {
     /// Unwraps this `BufferedReader`, returning the underlying reader.
     ///
     /// Note that any leftover data in the internal buffer is lost.
-    pub fn unwrap(self) -> R { self.inner }
+    pub fn into_inner(self) -> R { self.inner }
+
+    /// Deprecated, use into_inner() instead
+    #[deprecated = "renamed to into_inner()"]
+    pub fn unwrap(self) -> R { self.into_inner() }
 }
 
 impl<R: Reader> Buffer for BufferedReader<R> {
@@ -180,11 +184,15 @@ impl<W: Writer> BufferedWriter<W> {
     /// Unwraps this `BufferedWriter`, returning the underlying writer.
     ///
     /// The buffer is flushed before returning the writer.
-    pub fn unwrap(mut self) -> W {
+    pub fn into_inner(mut self) -> W {
         // FIXME(#12628): is panicking the right thing to do if flushing panicks?
         self.flush_buf().unwrap();
         self.inner.take().unwrap()
     }
+
+    /// Deprecated, use into_inner() instead
+    #[deprecated = "renamed to into_inner()"]
+    pub fn unwrap(self) -> W { self.into_inner() }
 }
 
 impl<W: Writer> Writer for BufferedWriter<W> {
@@ -244,7 +252,11 @@ impl<W: Writer> LineBufferedWriter<W> {
     /// Unwraps this `LineBufferedWriter`, returning the underlying writer.
     ///
     /// The internal buffer is flushed before returning the writer.
-    pub fn unwrap(self) -> W { self.inner.unwrap() }
+    pub fn into_inner(self) -> W { self.inner.into_inner() }
+
+    /// Deprecated, use into_inner() instead
+    #[deprecated = "renamed to into_inner()"]
+    pub fn unwrap(self) -> W { self.into_inner() }
 }
 
 impl<W: Writer> Writer for LineBufferedWriter<W> {
@@ -341,10 +353,14 @@ impl<S: Stream> BufferedStream<S> {
     ///
     /// The internal buffer is flushed before returning the stream. Any leftover
     /// data in the read buffer is lost.
-    pub fn unwrap(self) -> S {
+    pub fn into_inner(self) -> S {
         let InternalBufferedWriter(w) = self.inner.inner;
-        w.unwrap()
+        w.into_inner()
     }
+
+    /// Deprecated, use into_inner() instead
+    #[deprecated = "renamed to into_inner()"]
+    pub fn unwrap(self) -> S { self.into_inner() }
 }
 
 impl<S: Stream> Buffer for BufferedStream<S> {
