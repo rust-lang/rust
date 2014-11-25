@@ -285,6 +285,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                    assignment_expr: &ast::Expr,
                    expr: &ast::Expr,
                    mode: MutateMode) {
+        debug!("mutate_expr(expr={})", expr.repr(self.tcx()));
         let cmt = return_if_err!(self.mc.cat_expr(expr));
         self.delegate.mutate(assignment_expr.id, assignment_expr.span, cmt, mode);
         self.walk_expr(expr);
@@ -601,6 +602,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
     }
 
     fn walk_local(&mut self, local: &ast::Local) {
+        debug!("walk_local(local.id={})", local.id);
         match local.init {
             None => {
                 let delegate = &mut self.delegate;
@@ -643,6 +645,8 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                         _expr: &ast::Expr,
                         fields: &Vec<ast::Field>,
                         opt_with: &Option<P<ast::Expr>>) {
+        debug!("walk_struct_expr(_expr.id={})", _expr.id);
+
         // Consume the expressions supplying values for each field.
         for field in fields.iter() {
             self.consume_expr(&*field.expr);
