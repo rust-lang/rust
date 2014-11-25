@@ -760,7 +760,10 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
 
         // Region of environment pointer
         let env_region = ty::ReFree(ty::FreeRegion {
-            scope: region::CodeExtent::from_node_id(fn_body_id),
+            // The environment of a closure is guaranteed to
+            // outlive any bindings introduced in the body of the
+            // closure itself.
+            scope: region::DestructionScopeData::new(fn_body_id),
             bound_region: ty::BrEnv
         });
 

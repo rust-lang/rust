@@ -27,10 +27,65 @@ use syntax::{ast, visit};
 use syntax::ast::{Block, Item, FnDecl, NodeId, Arm, Pat, Stmt, Expr, Local};
 use syntax::ast_util::{stmt_id};
 use syntax::ast_map;
+use syntax::ptr::P;
 use syntax::visit::{Visitor, FnKind};
 
 /// CodeExtent represents a statically-describable extent that can be
 /// used to bound the lifetime/region for values.
+///
+/// `Misc(node_id)`: Any AST node that has any extent at all has the
+/// `Misc(node_id)` extent. Other variants represent special cases not
+/// immediately derivable from the abstract syntax tree structure.
+///
+/// `DestructionScope(node_id)` represents the extent of destructors
+/// implicitly-attached to `node_id` that run immediately after the
+/// expression for `node_id` itself. Not every AST node carries a
+/// `DestructionScope`, but those that are `terminating_scopes` do;
+/// see discussion with `RegionMaps`.
+///
+/// `Remainder(BlockRemainder { block, statement_index })` represents
+/// the extent of user code running immediately after the initializer
+/// expression for the indexed statement, until the end of the block.
+///
+/// So: the following code can be broken down into the extents beneath:
+/// ```
+/// let a = f().g( 'b: { let x = d(); let y = d(); x.h(y)  }   ) ;
+/// ```
+///
+///                                                              +-+ (D12.)
+///                                                        +-+       (D11.)
+///                                              +---------+         (R10.)
+///                                              +-+                  (D9.)
+///                                   +----------+                    (M8.)
+///                                 +----------------------+          (R7.)
+///                                 +-+                               (D6.)
+///                      +----------+                                 (M5.)
+///                    +-----------------------------------+          (M4.)
+///         +--------------------------------------------------+      (M3.)
+///         +--+                                                      (M2.)
+/// +-----------------------------------------------------------+     (M1.)
+///
+///  (M1.): Misc extent of the whole `let a = ...;` statement.
+///  (M2.): Misc extent of the `f()` expression.
+///  (M3.): Misc extent of the `f().g(..)` expression.
+///  (M4.): Misc extent of the block labelled `'b:`.
+///  (M5.): Misc extent of the `let x = d();` statement
+///  (D6.): DestructionScope for temporaries created during M5.
+///  (R7.): Remainder extent for block `'b:`, stmt 0 (let x = ...).
+///  (M8.): Misc Extent of the `let y = d();` statement.
+///  (D9.): DestructionScope for temporaries created during M8.
+/// (R10.): Remainder extent for block `'b:`, stmt 1 (let y = ...).
+/// (D11.): DestructionScope for temporaries and bindings from block `'b:`.
+/// (D12.): DestructionScope for temporaries created during M1 (e.g. f()).
+///
+/// Note that while the above picture shows the destruction scopes
+/// as following their corresponding misc extents, in the internal
+/// data structures of the compiler the destruction scopes are
+/// represented as enclosing parents. This is sound because we use the
+/// enclosing parent relationship just to ensure that referenced
+/// values live long enough; phrased another way, the starting point
+/// of each range is not really the important thing in the above
+/// picture, but rather the ending point.
 ///
 /// FIXME (pnkfelix): This currently derives `PartialOrd` and `Ord` to
 /// placate the same deriving in `ty::FreeRegion`, but we may want to
@@ -40,7 +95,24 @@ use syntax::visit::{Visitor, FnKind};
            RustcDecodable, Debug, Copy)]
 pub enum CodeExtent {
     Misc(ast::NodeId),
-    Remainder(BlockRemainder),
+    DestructionScope(ast::NodeId), // extent of destructors for temporaries of node-id
+    Remainder(BlockRemainder)
+}
+
+/// extent of destructors for temporaries of node-id
+#[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, RustcEncodable,
+           RustcDecodable, Debug, Copy)]
+pub struct DestructionScopeData {
+    pub node_id: ast::NodeId
+}
+
+impl DestructionScopeData {
+    pub fn new(node_id: ast::NodeId) -> DestructionScopeData {
+        DestructionScopeData { node_id: node_id }
+    }
+    pub fn to_code_extent(&self) -> CodeExtent {
+        CodeExtent::DestructionScope(self.node_id)
+    }
 }
 
 /// Represents a subscope of `block` for a binding that is introduced
@@ -82,6 +154,7 @@ impl CodeExtent {
         match *self {
             CodeExtent::Misc(node_id) => node_id,
             CodeExtent::Remainder(br) => br.block,
+            CodeExtent::DestructionScope(node_id) => node_id,
         }
     }
 
@@ -95,6 +168,8 @@ impl CodeExtent {
             CodeExtent::Remainder(br) =>
                 CodeExtent::Remainder(BlockRemainder {
                     block: f_id(br.block), first_statement_index: br.first_statement_index }),
+            CodeExtent::DestructionScope(node_id) =>
+                CodeExtent::DestructionScope(f_id(node_id)),
         }
     }
 
@@ -105,7 +180,8 @@ impl CodeExtent {
         match ast_map.find(self.node_id()) {
             Some(ast_map::NodeBlock(ref blk)) => {
                 match *self {
-                    CodeExtent::Misc(_) => Some(blk.span),
+                    CodeExtent::Misc(_) |
+                    CodeExtent::DestructionScope(_) => Some(blk.span),
 
                     CodeExtent::Remainder(r) => {
                         assert_eq!(r.block, blk.id);
@@ -455,7 +531,7 @@ impl RegionMaps {
                 }
 
                 (ty::ReScope(sub_scope), ty::ReFree(ref fr)) => {
-                    self.is_subscope_of(sub_scope, fr.scope)
+                    self.is_subscope_of(sub_scope, fr.scope.to_code_extent())
                 }
 
                 (ty::ReFree(sub_fr), ty::ReFree(super_fr)) => {
@@ -567,7 +643,18 @@ fn resolve_block(visitor: &mut RegionResolutionVisitor, blk: &ast::Block) {
     let prev_cx = visitor.cx;
 
     let blk_scope = CodeExtent::Misc(blk.id);
-    record_superlifetime(visitor, blk_scope, blk.span);
+    // If block was previously marked as a terminating scope during
+    // the recursive visit of its parent node in the AST, then we need
+    // to account for the destruction scope representing the extent of
+    // the destructors that run immediately after the the block itself
+    // completes.
+    if visitor.region_maps.terminating_scopes.borrow().contains(&blk_scope) {
+        let dtor_scope = CodeExtent::DestructionScope(blk.id);
+        record_superlifetime(visitor, dtor_scope, blk.span);
+        visitor.region_maps.record_encl_scope(blk_scope, dtor_scope);
+    } else {
+        record_superlifetime(visitor, blk_scope, blk.span);
+    }
 
     // We treat the tail expression in the block (if any) somewhat
     // differently from the statements. The issue has to do with
@@ -675,7 +762,9 @@ fn resolve_stmt(visitor: &mut RegionResolutionVisitor, stmt: &ast::Stmt) {
     // statement plus its destructors, and thus the extent for which
     // regions referenced by the destructors need to survive.
     visitor.region_maps.mark_as_terminating_scope(stmt_scope);
-    record_superlifetime(visitor, stmt_scope, stmt.span);
+    let dtor_scope = CodeExtent::DestructionScope(stmt_id);
+    visitor.region_maps.record_encl_scope(stmt_scope, dtor_scope);
+    record_superlifetime(visitor, dtor_scope, stmt.span);
 
     let prev_parent = visitor.cx.parent;
     visitor.cx.parent = InnermostEnclosingExpr::Some(stmt_id);
@@ -687,15 +776,30 @@ fn resolve_expr(visitor: &mut RegionResolutionVisitor, expr: &ast::Expr) {
     debug!("resolve_expr(expr.id={:?})", expr.id);
 
     let expr_scope = CodeExtent::Misc(expr.id);
-    record_superlifetime(visitor, expr_scope, expr.span);
+    // If expr was previously marked as a terminating scope during the
+    // recursive visit of its parent node in the AST, then we need to
+    // account for the destruction scope representing the extent of
+    // the destructors that run immediately after the the expression
+    // itself completes.
+    if visitor.region_maps.terminating_scopes.borrow().contains(&expr_scope) {
+        let dtor_scope = CodeExtent::DestructionScope(expr.id);
+        record_superlifetime(visitor, dtor_scope, expr.span);
+        visitor.region_maps.record_encl_scope(expr_scope, dtor_scope);
+    } else {
+        record_superlifetime(visitor, expr_scope, expr.span);
+    }
 
     let prev_cx = visitor.cx;
     visitor.cx.parent = InnermostEnclosingExpr::Some(expr.id);
 
     {
         let region_maps = &mut visitor.region_maps;
-        let terminating = |id| {
-            let scope = CodeExtent::from_node_id(id);
+        let terminating = |e: &P<ast::Expr>| {
+            let scope = CodeExtent::from_node_id(e.id);
+            region_maps.mark_as_terminating_scope(scope)
+        };
+        let terminating_block = |b: &P<ast::Block>| {
+            let scope = CodeExtent::from_node_id(b.id);
             region_maps.mark_as_terminating_scope(scope)
         };
         match expr.node {
@@ -707,26 +811,26 @@ fn resolve_expr(visitor: &mut RegionResolutionVisitor, expr: &ast::Expr) {
             ast::ExprBinary(codemap::Spanned { node: ast::BiOr, .. }, _, ref r) => {
                 // For shortcircuiting operators, mark the RHS as a terminating
                 // scope since it only executes conditionally.
-                terminating(r.id);
+                terminating(r);
             }
 
             ast::ExprIf(_, ref then, Some(ref otherwise)) => {
-                terminating(then.id);
-                terminating(otherwise.id);
+                terminating_block(then);
+                terminating(otherwise);
             }
 
             ast::ExprIf(ref expr, ref then, None) => {
-                terminating(expr.id);
-                terminating(then.id);
+                terminating(expr);
+                terminating_block(then);
             }
 
             ast::ExprLoop(ref body, _) => {
-                terminating(body.id);
+                terminating_block(body);
             }
 
             ast::ExprWhile(ref expr, ref body, _) => {
-                terminating(expr.id);
-                terminating(body.id);
+                terminating(expr);
+                terminating_block(body);
             }
 
             ast::ExprMatch(..) => {
@@ -1021,6 +1125,9 @@ fn resolve_fn(visitor: &mut RegionResolutionVisitor,
 
     let body_scope = CodeExtent::from_node_id(body.id);
     visitor.region_maps.mark_as_terminating_scope(body_scope);
+    let dtor_scope = CodeExtent::DestructionScope(body.id);
+    visitor.region_maps.record_encl_scope(body_scope, dtor_scope);
+    record_superlifetime(visitor, dtor_scope, body.span);
 
     let outer_cx = visitor.cx;
 

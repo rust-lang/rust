@@ -304,7 +304,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                         return None
                     }
                     assert!(fr1.scope == fr2.scope);
-                    (fr1.scope.node_id(), fr1, fr2)
+                    (fr1.scope.node_id, fr1, fr2)
                 },
                 _ => return None
             };
