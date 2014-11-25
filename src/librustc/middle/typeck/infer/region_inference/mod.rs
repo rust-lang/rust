@@ -1146,6 +1146,8 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                       a_region: Region,
                       b_region: Region)
                    -> bool {
+            debug!("check_node a_region: {} b_region: {}",
+                   a_region.repr(this.tcx), b_region.repr(this.tcx));
             if !this.is_subregion_of(a_region, b_region) {
                 debug!("Setting {} to ErrorValue: {} not subregion of {}",
                        a_vid,
@@ -1192,7 +1194,8 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                                       errors: &mut Vec<RegionResolutionError<'tcx>>)
     {
         let mut reg_reg_dups = FnvHashSet::new();
-        for verify in self.verifys.borrow().iter() {
+        for (i, verify) in self.verifys.borrow().iter().enumerate() {
+            debug!("collect_concrete_region_errors i: {}", i);
             match *verify {
                 VerifyRegSubReg(ref origin, sub, sup) => {
                     if self.is_subregion_of(sub, sup) {
@@ -1385,8 +1388,9 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         lower_bounds.sort_by(|a, b| { free_regions_first(a, b) });
         upper_bounds.sort_by(|a, b| { free_regions_first(a, b) });
 
-        for lower_bound in lower_bounds.iter() {
-            for upper_bound in upper_bounds.iter() {
+        for (i, lower_bound) in lower_bounds.iter().enumerate() {
+            for (j, upper_bound) in upper_bounds.iter().enumerate() {
+                debug!("collect_error_for_expanding_node {}", (i,j));
                 if !self.is_subregion_of(lower_bound.region,
                                          upper_bound.region) {
                     errors.push(SubSupConflict(

@@ -105,6 +105,8 @@ impl<'a, 'tcx> RestrictionsContext<'a, 'tcx> {
             }
 
             mc::cat_deref(cmt_base, _, pk) => {
+                debug!("restrict cat_deref (cmt={}) pk: {}",
+                       cmt.repr(self.bccx.tcx), pk);
                 match pk {
                     mc::OwnedPtr => {
                         // R-Deref-Send-Pointer
