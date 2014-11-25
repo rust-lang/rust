@@ -2,7 +2,7 @@
 
 # I think I found a bug in the compiler!
 
-If you see this message: `error: internal compiler error: unexpected failure`,
+If you see this message: `error: internal compiler error: unexpected panic`,
 then you have definitely found a bug in the compiler. It's also possible that
 your code is not well-typed, but if you saw this message, it's still a bug in
 error reporting.
