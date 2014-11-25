@@ -14,8 +14,8 @@ use std::kinds::marker;
 
 use middle::ty::{expected_found, IntVarValue};
 use middle::ty::{mod, Ty};
-use middle::typeck::infer::{uok, ures};
-use middle::typeck::infer::InferCtxt;
+use middle::infer::{uok, ures};
+use middle::infer::InferCtxt;
 use std::cell::RefCell;
 use std::fmt::Show;
 use syntax::ast;

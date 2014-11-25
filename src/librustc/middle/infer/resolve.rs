@@ -48,12 +48,13 @@
 
 #![allow(non_upper_case_globals)]
 
+use super::{fixup_err, fres, InferCtxt};
+use super::{unresolved_int_ty,unresolved_float_ty,unresolved_ty};
+
 use middle::ty::{FloatVar, FloatVid, IntVar, IntVid, RegionVid, TyVar, TyVid};
 use middle::ty::{IntType, UintType};
 use middle::ty::{mod, Ty};
 use middle::ty_fold;
-use middle::typeck::infer::{fixup_err, fres, InferCtxt};
-use middle::typeck::infer::{unresolved_int_ty,unresolved_float_ty,unresolved_ty};
 use syntax::codemap::Span;
 use util::ppaux::{Repr, ty_to_string};
 

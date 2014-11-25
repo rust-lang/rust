@@ -8,19 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use super::combine::*;
+use super::{cres, CresCompare};
+use super::equate::Equate;
+use super::glb::Glb;
+use super::higher_ranked::HigherRankedRelations;
+use super::InferCtxt;
+use super::lub::Lub;
+use super::{TypeTrace, Subtype};
+use super::type_variable::{SubtypeOf, SupertypeOf};
 
 use middle::ty::{BuiltinBounds};
 use middle::ty::{mod, Ty};
 use middle::ty::TyVar;
-use middle::typeck::infer::combine::*;
-use middle::typeck::infer::{cres, CresCompare};
-use middle::typeck::infer::equate::Equate;
-use middle::typeck::infer::glb::Glb;
-use middle::typeck::infer::higher_ranked::HigherRankedRelations;
-use middle::typeck::infer::InferCtxt;
-use middle::typeck::infer::lub::Lub;
-use middle::typeck::infer::{TypeTrace, Subtype};
-use middle::typeck::infer::type_variable::{SubtypeOf, SupertypeOf};
 use util::ppaux::{Repr};
 
 use syntax::ast::{Onceness, FnStyle, MutImmutable, MutMutable};

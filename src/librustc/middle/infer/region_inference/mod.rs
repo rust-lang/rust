@@ -18,14 +18,14 @@ pub use self::RegionResolutionError::*;
 pub use self::VarValue::*;
 use self::Classification::*;
 
+use super::cres;
+use super::{RegionVariableOrigin, SubregionOrigin, TypeTrace, MiscVariable};
+
 use middle::region;
 use middle::ty;
 use middle::ty::{BoundRegion, FreeRegion, Region, RegionVid};
 use middle::ty::{ReEmpty, ReStatic, ReInfer, ReFree, ReEarlyBound};
 use middle::ty::{ReLateBound, ReScope, ReVar, ReSkolemized, BrFresh};
-use middle::typeck::infer::cres;
-use middle::typeck::infer::{RegionVariableOrigin, SubregionOrigin, TypeTrace};
-use middle::typeck::infer;
 use middle::graph;
 use middle::graph::{Direction, NodeIndex};
 use util::common::indenter;
@@ -573,7 +573,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
             }
             None => {}
         }
-        let c = self.new_region_var(infer::MiscVariable(origin.span()));
+        let c = self.new_region_var(MiscVariable(origin.span()));
         self.combine_map(t).borrow_mut().insert(vars, c);
         if self.in_snapshot() {
             self.undo_log.borrow_mut().push(AddCombination(t, vars));

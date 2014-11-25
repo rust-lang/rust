@@ -11,10 +11,11 @@
 //! Helper routines for higher-ranked things. See the `doc` module at
 //! the end of the file for details.
 
+use super::{combine, cres, InferCtxt, HigherRankedType};
+use super::combine::Combine;
+use super::region_inference::{RegionMark};
+
 use middle::ty::{mod, Ty, replace_late_bound_regions};
-use middle::typeck::infer::{mod, combine, cres, InferCtxt};
-use middle::typeck::infer::combine::Combine;
-use middle::typeck::infer::region_inference::{RegionMark};
 use middle::ty_fold::{mod, HigherRankedFoldable, TypeFoldable};
 use syntax::codemap::Span;
 use util::nodemap::FnvHashMap;
@@ -62,7 +63,7 @@ impl<'tcx,C> HigherRankedRelations<'tcx> for C
         let (a_prime, _) =
             self.infcx().replace_late_bound_regions_with_fresh_var(
                 self.trace().origin.span(),
-                infer::HigherRankedType,
+                HigherRankedType,
                 a);
 
         // Second, we instantiate each bound region in the supertype with a
@@ -131,10 +132,10 @@ impl<'tcx,C> HigherRankedRelations<'tcx> for C
         let span = self.trace().origin.span();
         let (a_with_fresh, a_map) =
             self.infcx().replace_late_bound_regions_with_fresh_var(
-                span, infer::HigherRankedType, a);
+                span, HigherRankedType, a);
         let (b_with_fresh, _) =
             self.infcx().replace_late_bound_regions_with_fresh_var(
-                span, infer::HigherRankedType, b);
+                span, HigherRankedType, b);
 
         // Collect constraints.
         let result0 =
@@ -221,10 +222,10 @@ impl<'tcx,C> HigherRankedRelations<'tcx> for C
         // Instantiate each bound region with a fresh region variable.
         let (a_with_fresh, a_map) =
             self.infcx().replace_late_bound_regions_with_fresh_var(
-                self.trace().origin.span(), infer::HigherRankedType, a);
+                self.trace().origin.span(), HigherRankedType, a);
         let (b_with_fresh, b_map) =
             self.infcx().replace_late_bound_regions_with_fresh_var(
-                self.trace().origin.span(), infer::HigherRankedType, b);
+                self.trace().origin.span(), HigherRankedType, b);
         let a_vars = var_ids(self, &a_map);
         let b_vars = var_ids(self, &b_map);
 

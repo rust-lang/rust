@@ -57,24 +57,25 @@
 
 use self::FreshOrKept::*;
 
+use super::InferCtxt;
+use super::TypeTrace;
+use super::SubregionOrigin;
+use super::RegionVariableOrigin;
+use super::ValuePairs;
+use super::region_inference::RegionResolutionError;
+use super::region_inference::ConcreteFailure;
+use super::region_inference::SubSupConflict;
+use super::region_inference::SupSupConflict;
+use super::region_inference::ParamBoundFailure;
+use super::region_inference::ProcessedErrors;
+use super::region_inference::SameRegions;
+
 use std::collections::HashSet;
 use middle::def;
+use middle::infer;
 use middle::subst;
 use middle::ty::{mod, Ty};
 use middle::ty::{Region, ReFree};
-use middle::typeck::infer;
-use middle::typeck::infer::InferCtxt;
-use middle::typeck::infer::TypeTrace;
-use middle::typeck::infer::SubregionOrigin;
-use middle::typeck::infer::RegionVariableOrigin;
-use middle::typeck::infer::ValuePairs;
-use middle::typeck::infer::region_inference::RegionResolutionError;
-use middle::typeck::infer::region_inference::ConcreteFailure;
-use middle::typeck::infer::region_inference::SubSupConflict;
-use middle::typeck::infer::region_inference::SupSupConflict;
-use middle::typeck::infer::region_inference::ParamBoundFailure;
-use middle::typeck::infer::region_inference::ProcessedErrors;
-use middle::typeck::infer::region_inference::SameRegions;
 use std::cell::{Cell, RefCell};
 use std::char::from_u32;
 use std::rc::Rc;

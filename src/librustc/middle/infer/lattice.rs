@@ -29,12 +29,13 @@
 //! over a `LatticeValue`, which is a value defined with respect to
 //! a lattice.
 
+use super::*;
+use super::combine::*;
+use super::glb::Glb;
+use super::lub::Lub;
+
 use middle::ty::{TyVar};
 use middle::ty::{mod, Ty};
-use middle::typeck::infer::*;
-use middle::typeck::infer::combine::*;
-use middle::typeck::infer::glb::Glb;
-use middle::typeck::infer::lub::Lub;
 use util::ppaux::Repr;
 
 pub trait LatticeDir<'tcx> {

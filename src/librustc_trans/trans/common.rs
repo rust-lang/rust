@@ -19,6 +19,7 @@ use llvm;
 use llvm::{ValueRef, BasicBlockRef, BuilderRef, ContextRef};
 use llvm::{True, False, Bool};
 use middle::def;
+use middle::infer;
 use middle::lang_items::LangItem;
 use middle::mem_categorization as mc;
 use middle::region;
@@ -36,7 +37,6 @@ use middle::traits;
 use middle::ty::{mod, Ty};
 use middle::ty_fold;
 use middle::ty_fold::TypeFoldable;
-use middle::typeck::infer;
 use util::ppaux::Repr;
 use util::nodemap::{DefIdMap, FnvHashMap, NodeMap};
 

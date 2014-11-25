@@ -60,14 +60,15 @@
 //! sort of a minor point so I've opted to leave it for later---after all
 //! we may want to adjust precisely when coercions occur.
 
+use super::{CoerceResult, resolve_type, Coercion};
+use super::combine::{CombineFields, Combine};
+use super::sub::Sub;
+use super::resolve::try_resolve_tvar_shallow;
+
 use middle::subst;
 use middle::ty::{AutoPtr, AutoDerefRef, AdjustDerefRef, AutoUnsize, AutoUnsafe};
 use middle::ty::{mt};
 use middle::ty::{mod, Ty};
-use middle::typeck::infer::{CoerceResult, resolve_type, Coercion};
-use middle::typeck::infer::combine::{CombineFields, Combine};
-use middle::typeck::infer::sub::Sub;
-use middle::typeck::infer::resolve::try_resolve_tvar_shallow;
 use util::ppaux;
 use util::ppaux::Repr;
 

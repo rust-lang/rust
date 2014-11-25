@@ -16,7 +16,8 @@ use middle::ty::{mod, Ty};
 use middle::ty::{MethodCall, MethodCallee, MethodObject, MethodOrigin,
                  MethodParam, MethodStatic, MethodTraitObject, MethodTypeParam};
 use middle::typeck::check::{mod, FnCtxt, NoPreference, PreferMutLvalue};
-use middle::typeck::infer::{mod, InferCtxt};
+use middle::infer;
+use middle::infer::InferCtxt;
 use middle::ty_fold::HigherRankedFoldable;
 use syntax::ast;
 use syntax::codemap::Span;
