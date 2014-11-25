@@ -113,6 +113,10 @@ pub fn explain_region_and_span(cx: &ctxt, region: ty::Region)
         };
         let scope_decorated_tag = match scope {
             region::CodeExtent::Misc(_) => tag,
+            region::CodeExtent::DestructionScope(_) => {
+                new_string = format!("destruction scope surrounding {}", tag);
+                new_string.as_slice()
+            }
             region::CodeExtent::Remainder(r) => {
                 new_string = format!("block suffix following statement {}",
                                      r.first_statement_index);
@@ -135,7 +139,7 @@ pub fn explain_region_and_span(cx: &ctxt, region: ty::Region)
           }
         };
 
-        match cx.map.find(fr.scope.node_id()) {
+        match cx.map.find(fr.scope.node_id) {
           Some(ast_map::NodeBlock(ref blk)) => {
               let (msg, opt_span) = explain_span(cx, "block", blk.span);
               (format!("{} {}", prefix, msg), opt_span)
@@ -921,7 +925,7 @@ impl<'tcx> UserString<'tcx> for ty::Region {
 impl<'tcx> Repr<'tcx> for ty::FreeRegion {
     fn repr(&self, tcx: &ctxt) -> String {
         format!("ReFree({}, {})",
-                self.scope.node_id(),
+                self.scope.repr(tcx),
                 self.bound_region.repr(tcx))
     }
 }
@@ -931,8 +935,19 @@ impl<'tcx> Repr<'tcx> for region::CodeExtent {
         match *self {
             region::CodeExtent::Misc(node_id) =>
                 format!("Misc({})", node_id),
+            region::CodeExtent::DestructionScope(node_id) =>
+                format!("DestructionScope({})", node_id),
             region::CodeExtent::Remainder(rem) =>
                 format!("Remainder({}, {})", rem.block, rem.first_statement_index),
+        }
+    }
+}
+
+impl<'tcx> Repr<'tcx> for region::DestructionScopeData {
+    fn repr(&self, _tcx: &ctxt) -> String {
+        match *self {
+            region::DestructionScopeData{ node_id } =>
+                format!("DestructionScopeData {{ node_id: {} }}", node_id),
         }
     }
 }

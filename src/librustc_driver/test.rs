@@ -15,7 +15,7 @@ use diagnostic::Emitter;
 use driver;
 use rustc_resolve as resolve;
 use rustc_typeck::middle::lang_items;
-use rustc_typeck::middle::region::{self, CodeExtent};
+use rustc_typeck::middle::region::{self, CodeExtent, DestructionScopeData};
 use rustc_typeck::middle::resolve_lifetime;
 use rustc_typeck::middle::stability;
 use rustc_typeck::middle::subst;
@@ -325,7 +325,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
     }
 
     pub fn re_free(&self, nid: ast::NodeId, id: u32) -> ty::Region {
-        ty::ReFree(ty::FreeRegion { scope: CodeExtent::from_node_id(nid),
+        ty::ReFree(ty::FreeRegion { scope: DestructionScopeData::new(nid),
                                     bound_region: ty::BrAnon(id)})
     }
 

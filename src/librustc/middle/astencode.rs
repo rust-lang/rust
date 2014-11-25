@@ -499,6 +499,12 @@ impl tr for region::CodeExtent {
     }
 }
 
+impl tr for region::DestructionScopeData {
+    fn tr(&self, dcx: &DecodeContext) -> region::DestructionScopeData {
+        region::DestructionScopeData { node_id: dcx.tr_id(self.node_id) }
+    }
+}
+
 impl tr for ty::BoundRegion {
     fn tr(&self, dcx: &DecodeContext) -> ty::BoundRegion {
         match *self {
