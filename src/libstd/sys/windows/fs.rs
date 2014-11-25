@@ -131,7 +131,7 @@ impl FileDesc {
         return ret;
     }
 
-    pub fn fstat(&mut self) -> IoResult<io::FileStat> {
+    pub fn fstat(&self) -> IoResult<io::FileStat> {
         let mut stat: libc::stat = unsafe { mem::zeroed() };
         match unsafe { libc::fstat(self.fd(), &mut stat) } {
             0 => Ok(mkstat(&stat)),
