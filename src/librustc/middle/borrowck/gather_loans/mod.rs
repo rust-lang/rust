@@ -474,6 +474,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for StaticInitializerCtxt<'a, 'tcx> {
     fn visit_expr(&mut self, ex: &Expr) {
         match ex.node {
             ast::ExprAddrOf(mutbl, ref base) => {
+                debug!("StaticInitializerCtxt visit_expr ex: {}",
+                       ex.repr(self.bccx.tcx));
                 let base_cmt = self.bccx.cat_expr(&**base);
                 let borrow_kind = ty::BorrowKind::from_mutbl(mutbl);
                 // Check that we don't allow borrows of unsafe static items.
