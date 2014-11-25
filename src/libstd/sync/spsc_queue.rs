@@ -42,7 +42,7 @@ use core::mem;
 use core::cell::UnsafeCell;
 use alloc::arc::Arc;
 
-use atomic::{AtomicPtr, Relaxed, AtomicUint, Acquire, Release};
+use sync::atomic::{AtomicPtr, Relaxed, AtomicUint, Acquire, Release};
 
 // Node within the linked list queue of messages to send
 struct Node<T> {
@@ -294,7 +294,7 @@ impl<T: Send> Drop for Queue<T> {
 
 #[cfg(test)]
 mod test {
-    use std::prelude::*;
+    use prelude::*;
 
     use super::{queue};
 

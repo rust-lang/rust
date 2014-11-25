@@ -15,6 +15,10 @@
 //! `sync` crate which wrap values directly and provide safer abstractions for
 //! containing data.
 
+// A side-effect of merging libsync into libstd; will go away once
+// libsync rewrite lands
+#![allow(dead_code)]
+
 use core::prelude::*;
 use self::ReacquireOrderLock::*;
 
@@ -23,9 +27,9 @@ use core::finally::Finally;
 use core::kinds::marker;
 use core::mem;
 use core::cell::UnsafeCell;
-use collections::Vec;
+use vec::Vec;
 
-use mutex;
+use super::mutex;
 use comm::{Receiver, Sender, channel};
 
 /****************************************************************************
@@ -518,8 +522,8 @@ impl RWLock {
     ///
     /// # Example
     ///
-    /// ```rust
-    /// use sync::raw::RWLock;
+    /// ```{rust,ignore}
+    /// use std::sync::raw::RWLock;
     ///
     /// let lock = RWLock::new();
     /// let write = lock.write();
@@ -622,14 +626,13 @@ impl<'a> Drop for RWLockReadGuard<'a> {
 mod tests {
     pub use self::RWLockMode::*;
 
-    use std::prelude::*;
-
-    use Arc;
+    use sync::Arc;
+    use prelude::*;
     use super::{Semaphore, Mutex, RWLock, Condvar};
 
-    use std::mem;
-    use std::result;
-    use std::task;
+    use mem;
+    use result;
+    use task;
 
     /************************************************************************
      * Semaphore tests
@@ -837,7 +840,7 @@ mod tests {
     }
     #[test]
     fn test_mutex_killed_simple() {
-        use std::any::Any;
+        use any::Any;
 
         // Mutex must get automatically unlocked if panicked/killed within.
         let m = Arc::new(Mutex::new());
@@ -1077,7 +1080,7 @@ mod tests {
     }
     #[cfg(test)]
     fn rwlock_kill_helper(mode1: RWLockMode, mode2: RWLockMode) {
-        use std::any::Any;
+        use any::Any;
 
         // Mutex must get automatically unlocked if panicked/killed within.
         let x = Arc::new(RWLock::new());

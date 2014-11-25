@@ -50,7 +50,7 @@
 ################################################################################
 
 TARGET_CRATES := libc std flate arena term \
-                 serialize sync getopts collections test time rand \
+                 serialize getopts collections test time rand \
                  log regex graphviz core rbml alloc rustrt \
                  unicode
 HOST_CRATES := syntax rustc rustc_trans rustdoc regex_macros fmt_macros \
@@ -63,7 +63,7 @@ DEPS_libc := core
 DEPS_unicode := core
 DEPS_alloc := core libc native:jemalloc
 DEPS_rustrt := alloc core libc collections native:rustrt_native
-DEPS_std := core libc rand alloc collections rustrt sync unicode \
+DEPS_std := core libc rand alloc collections rustrt unicode \
 	native:rust_builtin native:backtrace
 DEPS_graphviz := std
 DEPS_syntax := std term serialize log fmt_macros arena libc
@@ -81,7 +81,6 @@ DEPS_glob := std
 DEPS_serialize := std log
 DEPS_rbml := std log serialize
 DEPS_term := std log
-DEPS_sync := core alloc rustrt collections
 DEPS_getopts := std
 DEPS_collections := core alloc unicode
 DEPS_num := std

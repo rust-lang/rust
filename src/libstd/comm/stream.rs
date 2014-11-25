@@ -31,9 +31,9 @@ use rustrt::local::Local;
 use rustrt::task::{Task, BlockedTask};
 use rustrt::thread::Thread;
 
-use atomic;
+use sync::atomic;
+use sync::spsc_queue as spsc;
 use comm::Receiver;
-use spsc_queue as spsc;
 
 const DISCONNECTED: int = int::MIN;
 #[cfg(test)]
