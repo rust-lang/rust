@@ -100,7 +100,6 @@ pub fn init(argc: int, argv: *const *const u8) {
     unsafe {
         args::init(argc, argv);
         local_ptr::init();
-        at_exit_imp::init();
         thread::init();
         unwind::register(failure::on_fail);
     }
@@ -212,7 +211,6 @@ pub unsafe fn cleanup() {
     args::cleanup();
     thread::cleanup();
     local_ptr::cleanup();
-    at_exit_imp::run();
 }
 
 // FIXME: these probably shouldn't be public...
