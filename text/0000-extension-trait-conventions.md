@@ -106,6 +106,12 @@ should follow a similar convention, putting together the type/trait
 name and the qualifications, together with the `Ext` suffix:
 `IteratorAddExt`.
 
+### What about `Prelude`?
+
+A [previous convention](https://github.com/rust-lang/rfcs/pull/344)
+used a `Prelude` suffix for extension traits that were also part of
+the `std` prelude; this new convention deprecates that one.
+
 ## Future proofing
 
 In the future, the need for many of these extension traits may
@@ -132,8 +138,11 @@ especially painful when dealing with object safety. However, this is
 more to do with the language as it stands today than with the
 conventions in this RFC.
 
-In the long run, one way to mitigate these problems would be to add a
-general "prelude" facility for external libraries that makes it
-possible to globally import a small set of names from the crate. Some
-early investigations of such a feature are already under way, but are
-outside the scope of this RFC.
+Libraries are already starting to export their own `prelude` module
+containing extension traits among other things, which by convention is
+glob imported.
+
+In the long run, we should add a general "prelude" facility for
+external libraries that makes it possible to *globally* import a small
+set of names from the crate. Some early investigations of such a
+feature are already under way, but are outside the scope of this RFC.
