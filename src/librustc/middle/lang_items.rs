@@ -114,6 +114,22 @@ impl LanguageItems {
         }
     }
 
+    pub fn fn_trait_kind(&self, id: ast::DefId) -> Option<ty::UnboxedClosureKind> {
+        let def_id_kinds = [
+            (self.fn_trait(), ty::FnUnboxedClosureKind),
+            (self.fn_mut_trait(), ty::FnMutUnboxedClosureKind),
+            (self.fn_once_trait(), ty::FnOnceUnboxedClosureKind),
+            ];
+
+        for &(opt_def_id, kind) in def_id_kinds.iter() {
+            if Some(id) == opt_def_id {
+                return Some(kind);
+            }
+        }
+
+        None
+    }
+
     $(
         #[allow(dead_code)]
         pub fn $method(&self) -> Option<ast::DefId> {
