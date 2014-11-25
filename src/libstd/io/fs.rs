@@ -237,7 +237,7 @@ impl File {
     }
 
     /// Queries information about the underlying file.
-    pub fn stat(&mut self) -> IoResult<FileStat> {
+    pub fn stat(&self) -> IoResult<FileStat> {
         self.fd.fstat()
             .update_err("couldn't fstat file", |e|
                 format!("{}; path={}", e, self.path.display()))
