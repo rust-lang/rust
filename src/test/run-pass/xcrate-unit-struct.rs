@@ -12,10 +12,10 @@
 extern crate xcrate_unit_struct;
 
 const s1: xcrate_unit_struct::Struct = xcrate_unit_struct::Struct;
-static s2: xcrate_unit_struct::Unit = xcrate_unit_struct::UnitVariant;
+static s2: xcrate_unit_struct::Unit = xcrate_unit_struct::Unit::UnitVariant;
 static s3: xcrate_unit_struct::Unit =
-                xcrate_unit_struct::Argument(xcrate_unit_struct::Struct);
-static s4: xcrate_unit_struct::Unit = xcrate_unit_struct::Argument(s1);
+                xcrate_unit_struct::Unit::Argument(xcrate_unit_struct::Struct);
+static s4: xcrate_unit_struct::Unit = xcrate_unit_struct::Unit::Argument(s1);
 static s5: xcrate_unit_struct::TupleStruct = xcrate_unit_struct::TupleStruct(20, "foo");
 
 fn f1(_: xcrate_unit_struct::Struct) {}
@@ -24,8 +24,8 @@ fn f3(_: xcrate_unit_struct::TupleStruct) {}
 
 pub fn main() {
     f1(xcrate_unit_struct::Struct);
-    f2(xcrate_unit_struct::UnitVariant);
-    f2(xcrate_unit_struct::Argument(xcrate_unit_struct::Struct));
+    f2(xcrate_unit_struct::Unit::UnitVariant);
+    f2(xcrate_unit_struct::Unit::Argument(xcrate_unit_struct::Struct));
     f3(xcrate_unit_struct::TupleStruct(10, "bar"));
 
     f1(s1);
