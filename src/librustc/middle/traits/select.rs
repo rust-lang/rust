@@ -1327,7 +1327,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
             }
 
-            ty::ty_trait(box ty::TyTrait { bounds, .. }) => {
+            ty::ty_trait(box ty::TyTrait { ref principal, bounds }) => {
                 match bound {
                     ty::BoundSized => {
                         Err(Unimplemented)
@@ -1336,6 +1336,23 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         if bounds.builtin_bounds.contains(&bound) {
                             Ok(If(Vec::new()))
                         } else {
+                            // Recursively check all supertraits to find out if any further
+                            // bounds are required and thus we must fulfill.
+                            // We have to create a temp trait ref here since TyTraits don't
+                            // have actual self type info (which is required for the
+                            // supertraits iterator).
+                            let tmp_tr = Rc::new(ty::TraitRef {
+                                def_id: principal.def_id,
+                                substs: principal.substs.with_self_ty(ty::mk_err())
+                            });
+                            for tr in util::supertraits(self.tcx(), tmp_tr) {
+                                let td = ty::lookup_trait_def(self.tcx(), tr.def_id);
+
+                                if td.bounds.builtin_bounds.contains(&bound) {
+                                    return Ok(If(Vec::new()))
+                                }
+                            }
+
                             Err(Unimplemented)
                         }
                     }
