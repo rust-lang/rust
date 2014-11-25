@@ -64,6 +64,6 @@ pub fn panic_fmt(fmt: &fmt::Arguments, file_line: &(&'static str, uint)) -> ! {
                         line: uint) -> !;
 
     }
-    let (file, line) = *file_line;
+    let (file, line) : (&'static str, uint) = *file_line;
     unsafe { panic_impl(fmt, file, line) }
 }
