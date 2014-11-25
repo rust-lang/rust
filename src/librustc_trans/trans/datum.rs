@@ -31,12 +31,10 @@ use util::ppaux::{ty_to_string};
 use std::fmt;
 use syntax::ast;
 
-/**
- * A `Datum` encapsulates the result of evaluating an expression.  It
- * describes where the value is stored, what Rust type the value has,
- * whether it is addressed by reference, and so forth. Please refer
- * the section on datums in `doc.rs` for more details.
- */
+/// A `Datum` encapsulates the result of evaluating an expression.  It
+/// describes where the value is stored, what Rust type the value has,
+/// whether it is addressed by reference, and so forth. Please refer
+/// the section on datums in `doc.rs` for more details.
 #[deriving(Clone)]
 pub struct Datum<'tcx, K> {
     /// The llvm value.  This is either a pointer to the Rust value or
@@ -190,25 +188,19 @@ fn add_rvalue_clean<'a, 'tcx>(mode: RvalueMode,
 
 pub trait KindOps {
 
-    /**
-     * Take appropriate action after the value in `datum` has been
-     * stored to a new location.
-     */
+    /// Take appropriate action after the value in `datum` has been
+    /// stored to a new location.
     fn post_store<'blk, 'tcx>(&self,
                               bcx: Block<'blk, 'tcx>,
                               val: ValueRef,
                               ty: Ty<'tcx>)
                               -> Block<'blk, 'tcx>;
 
-    /**
-     * True if this mode is a reference mode, meaning that the datum's
-     * val field is a pointer to the actual value
-     */
+    /// True if this mode is a reference mode, meaning that the datum's
+    /// val field is a pointer to the actual value
     fn is_by_ref(&self) -> bool;
 
-    /**
-     * Converts to an Expr kind
-     */
+    /// Converts to an Expr kind
     fn to_expr_kind(self) -> Expr;
 
 }
@@ -361,14 +353,12 @@ impl<'tcx> Datum<'tcx, Rvalue> {
     }
 }
 
-/**
- * Methods suitable for "expr" datums that could be either lvalues or
- * rvalues. These include coercions into lvalues/rvalues but also a number
- * of more general operations. (Some of those operations could be moved to
- * the more general `impl<K> Datum<K>`, but it's convenient to have them
- * here since we can `match self.kind` rather than having to implement
- * generic methods in `KindOps`.)
- */
+/// Methods suitable for "expr" datums that could be either lvalues or
+/// rvalues. These include coercions into lvalues/rvalues but also a number
+/// of more general operations. (Some of those operations could be moved to
+/// the more general `impl<K> Datum<K>`, but it's convenient to have them
+/// here since we can `match self.kind` rather than having to implement
+/// generic methods in `KindOps`.)
 impl<'tcx> Datum<'tcx, Expr> {
     fn match_kind<R>(self,
                      if_lvalue: |Datum<'tcx, Lvalue>| -> R,
@@ -494,12 +484,10 @@ impl<'tcx> Datum<'tcx, Expr> {
 
 }
 
-/**
- * Methods suitable only for lvalues. These include the various
- * operations to extract components out of compound data structures,
- * such as extracting the field from a struct or a particular element
- * from an array.
- */
+/// Methods suitable only for lvalues. These include the various
+/// operations to extract components out of compound data structures,
+/// such as extracting the field from a struct or a particular element
+/// from an array.
 impl<'tcx> Datum<'tcx, Lvalue> {
     pub fn to_llref(self) -> ValueRef {
         /*!
@@ -542,9 +530,7 @@ impl<'tcx> Datum<'tcx, Lvalue> {
     }
 }
 
-/**
- * Generic methods applicable to any sort of datum.
- */
+/// Generic methods applicable to any sort of datum.
 impl<'tcx, K: KindOps + fmt::Show> Datum<'tcx, K> {
     pub fn new(val: ValueRef, ty: Ty<'tcx>, kind: K) -> Datum<'tcx, K> {
         Datum { val: val, ty: ty, kind: kind }

@@ -266,24 +266,22 @@ pub struct MemCategorizationContext<'t,TYPER:'t> {
 
 pub type McResult<T> = Result<T, ()>;
 
-/**
- * The `Typer` trait provides the interface for the mem-categorization
- * module to the results of the type check. It can be used to query
- * the type assigned to an expression node, to inquire after adjustments,
- * and so on.
- *
- * This interface is needed because mem-categorization is used from
- * two places: `regionck` and `borrowck`. `regionck` executes before
- * type inference is complete, and hence derives types and so on from
- * intermediate tables.  This also implies that type errors can occur,
- * and hence `node_ty()` and friends return a `Result` type -- any
- * error will propagate back up through the mem-categorization
- * routines.
- *
- * In the borrow checker, in contrast, type checking is complete and we
- * know that no errors have occurred, so we simply consult the tcx and we
- * can be sure that only `Ok` results will occur.
- */
+/// The `Typer` trait provides the interface for the mem-categorization
+/// module to the results of the type check. It can be used to query
+/// the type assigned to an expression node, to inquire after adjustments,
+/// and so on.
+///
+/// This interface is needed because mem-categorization is used from
+/// two places: `regionck` and `borrowck`. `regionck` executes before
+/// type inference is complete, and hence derives types and so on from
+/// intermediate tables.  This also implies that type errors can occur,
+/// and hence `node_ty()` and friends return a `Result` type -- any
+/// error will propagate back up through the mem-categorization
+/// routines.
+///
+/// In the borrow checker, in contrast, type checking is complete and we
+/// know that no errors have occurred, so we simply consult the tcx and we
+/// can be sure that only `Ok` results will occur.
 pub trait Typer<'tcx> {
     fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx>;
     fn node_ty(&self, id: ast::NodeId) -> McResult<Ty<'tcx>>;

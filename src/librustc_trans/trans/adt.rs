@@ -79,46 +79,38 @@ type Hint = attr::ReprAttr;
 pub enum Repr<'tcx> {
     /// C-like enums; basically an int.
     CEnum(IntType, Disr, Disr), // discriminant range (signedness based on the IntType)
-    /**
-     * Single-case variants, and structs/tuples/records.
-     *
-     * Structs with destructors need a dynamic destroyedness flag to
-     * avoid running the destructor too many times; this is included
-     * in the `Struct` if present.
-     */
+    /// Single-case variants, and structs/tuples/records.
+    ///
+    /// Structs with destructors need a dynamic destroyedness flag to
+    /// avoid running the destructor too many times; this is included
+    /// in the `Struct` if present.
     Univariant(Struct<'tcx>, bool),
-    /**
-     * General-case enums: for each case there is a struct, and they
-     * all start with a field for the discriminant.
-     *
-     * Types with destructors need a dynamic destroyedness flag to
-     * avoid running the destructor too many times; the last argument
-     * indicates whether such a flag is present.
-     */
+    /// General-case enums: for each case there is a struct, and they
+    /// all start with a field for the discriminant.
+    ///
+    /// Types with destructors need a dynamic destroyedness flag to
+    /// avoid running the destructor too many times; the last argument
+    /// indicates whether such a flag is present.
     General(IntType, Vec<Struct<'tcx>>, bool),
-    /**
-     * Two cases distinguished by a nullable pointer: the case with discriminant
-     * `nndiscr` must have single field which is known to be nonnull due to its type.
-     * The other case is known to be zero sized. Hence we represent the enum
-     * as simply a nullable pointer: if not null it indicates the `nndiscr` variant,
-     * otherwise it indicates the other case.
-     */
+    /// Two cases distinguished by a nullable pointer: the case with discriminant
+    /// `nndiscr` must have single field which is known to be nonnull due to its type.
+    /// The other case is known to be zero sized. Hence we represent the enum
+    /// as simply a nullable pointer: if not null it indicates the `nndiscr` variant,
+    /// otherwise it indicates the other case.
     RawNullablePointer {
         nndiscr: Disr,
         nnty: Ty<'tcx>,
         nullfields: Vec<Ty<'tcx>>
     },
-    /**
-     * Two cases distinguished by a nullable pointer: the case with discriminant
-     * `nndiscr` is represented by the struct `nonnull`, where the `ptrfield`th
-     * field is known to be nonnull due to its type; if that field is null, then
-     * it represents the other case, which is inhabited by at most one value
-     * (and all other fields are undefined/unused).
-     *
-     * For example, `std::option::Option` instantiated at a safe pointer type
-     * is represented such that `None` is a null pointer and `Some` is the
-     * identity function.
-     */
+    /// Two cases distinguished by a nullable pointer: the case with discriminant
+    /// `nndiscr` is represented by the struct `nonnull`, where the `ptrfield`th
+    /// field is known to be nonnull due to its type; if that field is null, then
+    /// it represents the other case, which is inhabited by at most one value
+    /// (and all other fields are undefined/unused).
+    ///
+    /// For example, `std::option::Option` instantiated at a safe pointer type
+    /// is represented such that `None` is a null pointer and `Some` is the
+    /// identity function.
     StructWrappedNullablePointer {
         nonnull: Struct<'tcx>,
         nndiscr: Disr,
@@ -139,11 +131,9 @@ pub struct Struct<'tcx> {
     pub fields: Vec<Ty<'tcx>>
 }
 
-/**
- * Convenience for `represent_type`.  There should probably be more or
- * these, for places in trans where the `Ty` isn't directly
- * available.
- */
+/// Convenience for `represent_type`.  There should probably be more or
+/// these, for places in trans where the `Ty` isn't directly
+/// available.
 pub fn represent_node<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                   node: ast::NodeId) -> Rc<Repr<'tcx>> {
     represent_type(bcx.ccx(), node_id_type(bcx, node))
@@ -514,16 +504,14 @@ fn ensure_enum_fits_in_address_space<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 }
 
 
-/**
- * LLVM-level types are a little complicated.
- *
- * C-like enums need to be actual ints, not wrapped in a struct,
- * because that changes the ABI on some platforms (see issue #10308).
- *
- * For nominal types, in some cases, we need to use LLVM named structs
- * and fill in the actual contents in a second pass to prevent
- * unbounded recursion; see also the comments in `trans::type_of`.
- */
+/// LLVM-level types are a little complicated.
+///
+/// C-like enums need to be actual ints, not wrapped in a struct,
+/// because that changes the ABI on some platforms (see issue #10308).
+///
+/// For nominal types, in some cases, we need to use LLVM named structs
+/// and fill in the actual contents in a second pass to prevent
+/// unbounded recursion; see also the comments in `trans::type_of`.
 pub fn type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, r: &Repr<'tcx>) -> Type {
     generic_type_of(cx, r, None, false, false)
 }
@@ -620,12 +608,10 @@ fn struct_llfields<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, st: &Struct<'tcx>,
     }
 }
 
-/**
- * Obtain a representation of the discriminant sufficient to translate
- * destructuring; this may or may not involve the actual discriminant.
- *
- * This should ideally be less tightly tied to `_match`.
- */
+/// Obtain a representation of the discriminant sufficient to translate
+/// destructuring; this may or may not involve the actual discriminant.
+///
+/// This should ideally be less tightly tied to `_match`.
 pub fn trans_switch<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                 r: &Repr<'tcx>, scrutinee: ValueRef)
                                 -> (_match::BranchKind, Option<ValueRef>) {
@@ -713,12 +699,10 @@ fn load_discr(bcx: Block, ity: IntType, ptr: ValueRef, min: Disr, max: Disr)
     }
 }
 
-/**
- * Yield information about how to dispatch a case of the
- * discriminant-like value returned by `trans_switch`.
- *
- * This should ideally be less tightly tied to `_match`.
- */
+/// Yield information about how to dispatch a case of the
+/// discriminant-like value returned by `trans_switch`.
+///
+/// This should ideally be less tightly tied to `_match`.
 pub fn trans_case<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr, discr: Disr)
                               -> _match::OptResult<'blk, 'tcx> {
     match *r {
@@ -741,10 +725,8 @@ pub fn trans_case<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr, discr: Disr)
     }
 }
 
-/**
- * Set the discriminant for a new value of the given case of the given
- * representation.
- */
+/// Set the discriminant for a new value of the given case of the given
+/// representation.
 pub fn trans_set_discr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr<'tcx>,
                                    val: ValueRef, discr: Disr) {
     match *r {
@@ -799,10 +781,8 @@ fn assert_discr_in_range(ity: IntType, min: Disr, max: Disr, discr: Disr) {
     }
 }
 
-/**
- * The number of fields in a given case; for use when obtaining this
- * information from the type or definition is less convenient.
- */
+/// The number of fields in a given case; for use when obtaining this
+/// information from the type or definition is less convenient.
 pub fn num_args(r: &Repr, discr: Disr) -> uint {
     match *r {
         CEnum(..) => 0,
@@ -946,27 +926,25 @@ pub fn trans_drop_flag_ptr<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>, r: &Repr<'tcx
     }
 }
 
-/**
- * Construct a constant value, suitable for initializing a
- * GlobalVariable, given a case and constant values for its fields.
- * Note that this may have a different LLVM type (and different
- * alignment!) from the representation's `type_of`, so it needs a
- * pointer cast before use.
- *
- * The LLVM type system does not directly support unions, and only
- * pointers can be bitcast, so a constant (and, by extension, the
- * GlobalVariable initialized by it) will have a type that can vary
- * depending on which case of an enum it is.
- *
- * To understand the alignment situation, consider `enum E { V64(u64),
- * V32(u32, u32) }` on Windows.  The type has 8-byte alignment to
- * accommodate the u64, but `V32(x, y)` would have LLVM type `{i32,
- * i32, i32}`, which is 4-byte aligned.
- *
- * Currently the returned value has the same size as the type, but
- * this could be changed in the future to avoid allocating unnecessary
- * space after values of shorter-than-maximum cases.
- */
+/// Construct a constant value, suitable for initializing a
+/// GlobalVariable, given a case and constant values for its fields.
+/// Note that this may have a different LLVM type (and different
+/// alignment!) from the representation's `type_of`, so it needs a
+/// pointer cast before use.
+///
+/// The LLVM type system does not directly support unions, and only
+/// pointers can be bitcast, so a constant (and, by extension, the
+/// GlobalVariable initialized by it) will have a type that can vary
+/// depending on which case of an enum it is.
+///
+/// To understand the alignment situation, consider `enum E { V64(u64),
+/// V32(u32, u32) }` on Windows.  The type has 8-byte alignment to
+/// accommodate the u64, but `V32(x, y)` would have LLVM type `{i32,
+/// i32, i32}`, which is 4-byte aligned.
+///
+/// Currently the returned value has the same size as the type, but
+/// this could be changed in the future to avoid allocating unnecessary
+/// space after values of shorter-than-maximum cases.
 pub fn trans_const<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, r: &Repr<'tcx>, discr: Disr,
                              vals: &[ValueRef]) -> ValueRef {
     match *r {
@@ -1019,9 +997,7 @@ pub fn trans_const<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, r: &Repr<'tcx>, discr
     }
 }
 
-/**
- * Compute struct field offsets relative to struct begin.
- */
+/// Compute struct field offsets relative to struct begin.
 fn compute_struct_field_offsets<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                           st: &Struct<'tcx>) -> Vec<u64> {
     let mut offsets = vec!();
@@ -1040,16 +1016,14 @@ fn compute_struct_field_offsets<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     offsets
 }
 
-/**
- * Building structs is a little complicated, because we might need to
- * insert padding if a field's value is less aligned than its type.
- *
- * Continuing the example from `trans_const`, a value of type `(u32,
- * E)` should have the `E` at offset 8, but if that field's
- * initializer is 4-byte aligned then simply translating the tuple as
- * a two-element struct will locate it at offset 4, and accesses to it
- * will read the wrong memory.
- */
+/// Building structs is a little complicated, because we might need to
+/// insert padding if a field's value is less aligned than its type.
+///
+/// Continuing the example from `trans_const`, a value of type `(u32,
+/// E)` should have the `E` at offset 8, but if that field's
+/// initializer is 4-byte aligned then simply translating the tuple as
+/// a two-element struct will locate it at offset 4, and accesses to it
+/// will read the wrong memory.
 fn build_const_struct<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                 st: &Struct<'tcx>, vals: &[ValueRef])
                                 -> Vec<ValueRef> {
@@ -1130,13 +1104,11 @@ pub fn const_get_discrim(ccx: &CrateContext, r: &Repr, val: ValueRef)
     }
 }
 
-/**
- * Extract a field of a constant value, as appropriate for its
- * representation.
- *
- * (Not to be confused with `common::const_get_elt`, which operates on
- * raw LLVM-level structs and arrays.)
- */
+/// Extract a field of a constant value, as appropriate for its
+/// representation.
+///
+/// (Not to be confused with `common::const_get_elt`, which operates on
+/// raw LLVM-level structs and arrays.)
 pub fn const_get_field(ccx: &CrateContext, r: &Repr, val: ValueRef,
                        _discr: Disr, ix: uint) -> ValueRef {
     match *r {

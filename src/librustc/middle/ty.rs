@@ -743,18 +743,16 @@ impl<'tcx> FnOutput<'tcx> {
     }
 }
 
-/**
- * Signature of a function type, which I have arbitrarily
- * decided to use to refer to the input/output types.
- *
- * - `inputs` is the list of arguments and their modes.
- * - `output` is the return type.
- * - `variadic` indicates whether this is a varidic function. (only true for foreign fns)
- *
- * Note that a `FnSig` introduces a level of region binding, to
- * account for late-bound parameters that appear in the types of the
- * fn's arguments or the fn's return type.
- */
+/// Signature of a function type, which I have arbitrarily
+/// decided to use to refer to the input/output types.
+///
+/// - `inputs` is the list of arguments and their modes.
+/// - `output` is the return type.
+/// - `variadic` indicates whether this is a varidic function. (only true for foreign fns)
+///
+/// Note that a `FnSig` introduces a level of region binding, to
+/// account for late-bound parameters that appear in the types of the
+/// fn's arguments or the fn's return type.
 #[deriving(Clone, PartialEq, Eq, Hash)]
 pub struct FnSig<'tcx> {
     pub inputs: Vec<Ty<'tcx>>,
@@ -769,47 +767,45 @@ pub struct ParamTy {
     pub def_id: DefId
 }
 
-/**
- * A [De Bruijn index][dbi] is a standard means of representing
- * regions (and perhaps later types) in a higher-ranked setting. In
- * particular, imagine a type like this:
- *
- *     for<'a> fn(for<'b> fn(&'b int, &'a int), &'a char)
- *     ^          ^            |        |         |
- *     |          |            |        |         |
- *     |          +------------+ 1      |         |
- *     |                                |         |
- *     +--------------------------------+ 2       |
- *     |                                          |
- *     +------------------------------------------+ 1
- *
- * In this type, there are two binders (the outer fn and the inner
- * fn). We need to be able to determine, for any given region, which
- * fn type it is bound by, the inner or the outer one. There are
- * various ways you can do this, but a De Bruijn index is one of the
- * more convenient and has some nice properties. The basic idea is to
- * count the number of binders, inside out. Some examples should help
- * clarify what I mean.
- *
- * Let's start with the reference type `&'b int` that is the first
- * argument to the inner function. This region `'b` is assigned a De
- * Bruijn index of 1, meaning "the innermost binder" (in this case, a
- * fn). The region `'a` that appears in the second argument type (`&'a
- * int`) would then be assigned a De Bruijn index of 2, meaning "the
- * second-innermost binder". (These indices are written on the arrays
- * in the diagram).
- *
- * What is interesting is that De Bruijn index attached to a particular
- * variable will vary depending on where it appears. For example,
- * the final type `&'a char` also refers to the region `'a` declared on
- * the outermost fn. But this time, this reference is not nested within
- * any other binders (i.e., it is not an argument to the inner fn, but
- * rather the outer one). Therefore, in this case, it is assigned a
- * De Bruijn index of 1, because the innermost binder in that location
- * is the outer fn.
- *
- * [dbi]: http://en.wikipedia.org/wiki/De_Bruijn_index
- */
+/// A [De Bruijn index][dbi] is a standard means of representing
+/// regions (and perhaps later types) in a higher-ranked setting. In
+/// particular, imagine a type like this:
+///
+///     for<'a> fn(for<'b> fn(&'b int, &'a int), &'a char)
+///     ^          ^            |        |         |
+///     |          |            |        |         |
+///     |          +------------+ 1      |         |
+///     |                                |         |
+///     +--------------------------------+ 2       |
+///     |                                          |
+///     +------------------------------------------+ 1
+///
+/// In this type, there are two binders (the outer fn and the inner
+/// fn). We need to be able to determine, for any given region, which
+/// fn type it is bound by, the inner or the outer one. There are
+/// various ways you can do this, but a De Bruijn index is one of the
+/// more convenient and has some nice properties. The basic idea is to
+/// count the number of binders, inside out. Some examples should help
+/// clarify what I mean.
+///
+/// Let's start with the reference type `&'b int` that is the first
+/// argument to the inner function. This region `'b` is assigned a De
+/// Bruijn index of 1, meaning "the innermost binder" (in this case, a
+/// fn). The region `'a` that appears in the second argument type (`&'a
+/// int`) would then be assigned a De Bruijn index of 2, meaning "the
+/// second-innermost binder". (These indices are written on the arrays
+/// in the diagram).
+///
+/// What is interesting is that De Bruijn index attached to a particular
+/// variable will vary depending on where it appears. For example,
+/// the final type `&'a char` also refers to the region `'a` declared on
+/// the outermost fn. But this time, this reference is not nested within
+/// any other binders (i.e., it is not an argument to the inner fn, but
+/// rather the outer one). Therefore, in this case, it is assigned a
+/// De Bruijn index of 1, because the innermost binder in that location
+/// is the outer fn.
+///
+/// [dbi]: http://en.wikipedia.org/wiki/De_Bruijn_index
 #[deriving(Clone, PartialEq, Eq, Hash, Encodable, Decodable, Show)]
 pub struct DebruijnIndex {
     // We maintain the invariant that this is never 0. So 1 indicates
@@ -856,11 +852,9 @@ pub enum Region {
     ReEmpty,
 }
 
-/**
- * Upvars do not get their own node-id. Instead, we use the pair of
- * the original var id (that is, the root variable that is referenced
- * by the upvar) and the id of the closure expression.
- */
+/// Upvars do not get their own node-id. Instead, we use the pair of
+/// the original var id (that is, the root variable that is referenced
+/// by the upvar) and the id of the closure expression.
 #[deriving(Clone, PartialEq, Eq, Hash, Show)]
 pub struct UpvarId {
     pub var_id: ast::NodeId,
@@ -913,55 +907,53 @@ pub enum BorrowKind {
     MutBorrow
 }
 
-/**
- * Information describing the borrowing of an upvar. This is computed
- * during `typeck`, specifically by `regionck`. The general idea is
- * that the compiler analyses treat closures like:
- *
- *     let closure: &'e fn() = || {
- *        x = 1;   // upvar x is assigned to
- *        use(y);  // upvar y is read
- *        foo(&z); // upvar z is borrowed immutably
- *     };
- *
- * as if they were "desugared" to something loosely like:
- *
- *     struct Vars<'x,'y,'z> { x: &'x mut int,
- *                             y: &'y const int,
- *                             z: &'z int }
- *     let closure: &'e fn() = {
- *         fn f(env: &Vars) {
- *             *env.x = 1;
- *             use(*env.y);
- *             foo(env.z);
- *         }
- *         let env: &'e mut Vars<'x,'y,'z> = &mut Vars { x: &'x mut x,
- *                                                       y: &'y const y,
- *                                                       z: &'z z };
- *         (env, f)
- *     };
- *
- * This is basically what happens at runtime. The closure is basically
- * an existentially quantified version of the `(env, f)` pair.
- *
- * This data structure indicates the region and mutability of a single
- * one of the `x...z` borrows.
- *
- * It may not be obvious why each borrowed variable gets its own
- * lifetime (in the desugared version of the example, these are indicated
- * by the lifetime parameters `'x`, `'y`, and `'z` in the `Vars` definition).
- * Each such lifetime must encompass the lifetime `'e` of the closure itself,
- * but need not be identical to it. The reason that this makes sense:
- *
- * - Callers are only permitted to invoke the closure, and hence to
- *   use the pointers, within the lifetime `'e`, so clearly `'e` must
- *   be a sublifetime of `'x...'z`.
- * - The closure creator knows which upvars were borrowed by the closure
- *   and thus `x...z` will be reserved for `'x...'z` respectively.
- * - Through mutation, the borrowed upvars can actually escape
- *   the closure, so sometimes it is necessary for them to be larger
- *   than the closure lifetime itself.
- */
+/// Information describing the borrowing of an upvar. This is computed
+/// during `typeck`, specifically by `regionck`. The general idea is
+/// that the compiler analyses treat closures like:
+///
+///     let closure: &'e fn() = || {
+///        x = 1;   // upvar x is assigned to
+///        use(y);  // upvar y is read
+///        foo(&z); // upvar z is borrowed immutably
+///     };
+///
+/// as if they were "desugared" to something loosely like:
+///
+///     struct Vars<'x,'y,'z> { x: &'x mut int,
+///                             y: &'y const int,
+///                             z: &'z int }
+///     let closure: &'e fn() = {
+///         fn f(env: &Vars) {
+///             *env.x = 1;
+///             use(*env.y);
+///             foo(env.z);
+///         }
+///         let env: &'e mut Vars<'x,'y,'z> = &mut Vars { x: &'x mut x,
+///                                                       y: &'y const y,
+///                                                       z: &'z z };
+///         (env, f)
+///     };
+///
+/// This is basically what happens at runtime. The closure is basically
+/// an existentially quantified version of the `(env, f)` pair.
+///
+/// This data structure indicates the region and mutability of a single
+/// one of the `x...z` borrows.
+///
+/// It may not be obvious why each borrowed variable gets its own
+/// lifetime (in the desugared version of the example, these are indicated
+/// by the lifetime parameters `'x`, `'y`, and `'z` in the `Vars` definition).
+/// Each such lifetime must encompass the lifetime `'e` of the closure itself,
+/// but need not be identical to it. The reason that this makes sense:
+///
+/// - Callers are only permitted to invoke the closure, and hence to
+///   use the pointers, within the lifetime `'e`, so clearly `'e` must
+///   be a sublifetime of `'x...'z`.
+/// - The closure creator knows which upvars were borrowed by the closure
+///   and thus `x...z` will be reserved for `'x...'z` respectively.
+/// - Through mutation, the borrowed upvars can actually escape
+///   the closure, so sometimes it is necessary for them to be larger
+///   than the closure lifetime itself.
 #[deriving(PartialEq, Clone, Encodable, Decodable, Show)]
 pub struct UpvarBorrow {
     pub kind: BorrowKind,
@@ -1111,37 +1103,33 @@ pub struct TyTrait<'tcx> {
     pub bounds: ExistentialBounds
 }
 
-/**
- * A complete reference to a trait. These take numerous guises in syntax,
- * but perhaps the most recognizable form is in a where clause:
- *
- *     T : Foo<U>
- *
- * This would be represented by a trait-reference where the def-id is the
- * def-id for the trait `Foo` and the substs defines `T` as parameter 0 in the
- * `SelfSpace` and `U` as parameter 0 in the `TypeSpace`.
- *
- * Trait references also appear in object types like `Foo<U>`, but in
- * that case the `Self` parameter is absent from the substitutions.
- *
- * Note that a `TraitRef` introduces a level of region binding, to
- * account for higher-ranked trait bounds like `T : for<'a> Foo<&'a
- * U>` or higher-ranked object types.
- */
+/// A complete reference to a trait. These take numerous guises in syntax,
+/// but perhaps the most recognizable form is in a where clause:
+///
+///     T : Foo<U>
+///
+/// This would be represented by a trait-reference where the def-id is the
+/// def-id for the trait `Foo` and the substs defines `T` as parameter 0 in the
+/// `SelfSpace` and `U` as parameter 0 in the `TypeSpace`.
+///
+/// Trait references also appear in object types like `Foo<U>`, but in
+/// that case the `Self` parameter is absent from the substitutions.
+///
+/// Note that a `TraitRef` introduces a level of region binding, to
+/// account for higher-ranked trait bounds like `T : for<'a> Foo<&'a
+/// U>` or higher-ranked object types.
 #[deriving(Clone, PartialEq, Eq, Hash, Show)]
 pub struct TraitRef<'tcx> {
     pub def_id: DefId,
     pub substs: Substs<'tcx>,
 }
 
-/**
- * Binder serves as a synthetic binder for lifetimes. It is used when
- * we wish to replace the escaping higher-ranked lifetimes in a type
- * or something else that is not itself a binder (this is because the
- * `replace_late_bound_regions` function replaces all lifetimes bound
- * by the binder supplied to it; but a type is not a binder, so you
- * must introduce an artificial one).
- */
+/// Binder serves as a synthetic binder for lifetimes. It is used when
+/// we wish to replace the escaping higher-ranked lifetimes in a type
+/// or something else that is not itself a binder (this is because the
+/// `replace_late_bound_regions` function replaces all lifetimes bound
+/// by the binder supplied to it; but a type is not a binder, so you
+/// must introduce an artificial one).
 #[deriving(Clone, PartialEq, Eq, Hash, Show)]
 pub struct Binder<T> {
     pub value: T
@@ -1425,27 +1413,25 @@ impl<'tcx> Generics<'tcx> {
     }
 }
 
-/**
- * Represents the bounds declared on a particular set of type
- * parameters.  Should eventually be generalized into a flag list of
- * where clauses.  You can obtain a `GenericBounds` list from a
- * `Generics` by using the `to_bounds` method. Note that this method
- * reflects an important semantic invariant of `GenericBounds`: while
- * the bounds in a `Generics` are expressed in terms of the bound type
- * parameters of the impl/trait/whatever, a `GenericBounds` instance
- * represented a set of bounds for some particular instantiation,
- * meaning that the generic parameters have been substituted with
- * their values.
- *
- * Example:
- *
- *     struct Foo<T,U:Bar<T>> { ... }
- *
- * Here, the `Generics` for `Foo` would contain a list of bounds like
- * `[[], [U:Bar<T>]]`.  Now if there were some particular reference
- * like `Foo<int,uint>`, then the `GenericBounds` would be `[[],
- * [uint:Bar<int>]]`.
- */
+/// Represents the bounds declared on a particular set of type
+/// parameters.  Should eventually be generalized into a flag list of
+/// where clauses.  You can obtain a `GenericBounds` list from a
+/// `Generics` by using the `to_bounds` method. Note that this method
+/// reflects an important semantic invariant of `GenericBounds`: while
+/// the bounds in a `Generics` are expressed in terms of the bound type
+/// parameters of the impl/trait/whatever, a `GenericBounds` instance
+/// represented a set of bounds for some particular instantiation,
+/// meaning that the generic parameters have been substituted with
+/// their values.
+///
+/// Example:
+///
+///     struct Foo<T,U:Bar<T>> { ... }
+///
+/// Here, the `Generics` for `Foo` would contain a list of bounds like
+/// `[[], [U:Bar<T>]]`.  Now if there were some particular reference
+/// like `Foo<int,uint>`, then the `GenericBounds` would be `[[],
+/// [uint:Bar<int>]]`.
 #[deriving(Clone, Show)]
 pub struct GenericBounds<'tcx> {
     pub types: VecPerParamSpace<ParamBounds<'tcx>>,
@@ -2455,18 +2441,16 @@ pub fn type_needs_unwind_cleanup<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
     }
 }
 
-/**
- * Type contents is how the type checker reasons about kinds.
- * They track what kinds of things are found within a type.  You can
- * think of them as kind of an "anti-kind".  They track the kinds of values
- * and thinks that are contained in types.  Having a larger contents for
- * a type tends to rule that type *out* from various kinds.  For example,
- * a type that contains a reference is not sendable.
- *
- * The reason we compute type contents and not kinds is that it is
- * easier for me (nmatsakis) to think about what is contained within
- * a type than to think about what is *not* contained within a type.
- */
+/// Type contents is how the type checker reasons about kinds.
+/// They track what kinds of things are found within a type.  You can
+/// think of them as kind of an "anti-kind".  They track the kinds of values
+/// and thinks that are contained in types.  Having a larger contents for
+/// a type tends to rule that type *out* from various kinds.  For example,
+/// a type that contains a reference is not sendable.
+///
+/// The reason we compute type contents and not kinds is that it is
+/// easier for me (nmatsakis) to think about what is contained within
+/// a type than to think about what is *not* contained within a type.
 #[deriving(Clone)]
 pub struct TypeContents {
     pub bits: u64

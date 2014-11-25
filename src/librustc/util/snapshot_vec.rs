@@ -177,10 +177,8 @@ impl<T,U,D:SnapshotVecDelegate<T,U>> SnapshotVec<T,U,D> {
         assert!(self.undo_log.len() == snapshot.length);
     }
 
-    /**
-     * Commits all changes since the last snapshot. Of course, they
-     * can still be undone if there is a snapshot further out.
-     */
+    /// Commits all changes since the last snapshot. Of course, they
+    /// can still be undone if there is a snapshot further out.
     pub fn commit(&mut self, snapshot: Snapshot) {
         debug!("commit({})", snapshot.length);
 

@@ -102,32 +102,30 @@ pub enum MethodMatchedData {
     CoerciveMethodMatch(/* impl we matched */ ast::DefId)
 }
 
-/**
- * The selection process begins by considering all impls, where
- * clauses, and so forth that might resolve an obligation.  Sometimes
- * we'll be able to say definitively that (e.g.) an impl does not
- * apply to the obligation: perhaps it is defined for `uint` but the
- * obligation is for `int`. In that case, we drop the impl out of the
- * list.  But the other cases are considered *candidates*.
- *
- * Candidates can either be definitive or ambiguous. An ambiguous
- * candidate is one that might match or might not, depending on how
- * type variables wind up being resolved. This only occurs during inference.
- *
- * For selection to suceed, there must be exactly one non-ambiguous
- * candidate.  Usually, it is not possible to have more than one
- * definitive candidate, due to the coherence rules. However, there is
- * one case where it could occur: if there is a blanket impl for a
- * trait (that is, an impl applied to all T), and a type parameter
- * with a where clause. In that case, we can have a candidate from the
- * where clause and a second candidate from the impl. This is not a
- * problem because coherence guarantees us that the impl which would
- * be used to satisfy the where clause is the same one that we see
- * now. To resolve this issue, therefore, we ignore impls if we find a
- * matching where clause. Part of the reason for this is that where
- * clauses can give additional information (like, the types of output
- * parameters) that would have to be inferred from the impl.
- */
+/// The selection process begins by considering all impls, where
+/// clauses, and so forth that might resolve an obligation.  Sometimes
+/// we'll be able to say definitively that (e.g.) an impl does not
+/// apply to the obligation: perhaps it is defined for `uint` but the
+/// obligation is for `int`. In that case, we drop the impl out of the
+/// list.  But the other cases are considered *candidates*.
+///
+/// Candidates can either be definitive or ambiguous. An ambiguous
+/// candidate is one that might match or might not, depending on how
+/// type variables wind up being resolved. This only occurs during inference.
+///
+/// For selection to suceed, there must be exactly one non-ambiguous
+/// candidate.  Usually, it is not possible to have more than one
+/// definitive candidate, due to the coherence rules. However, there is
+/// one case where it could occur: if there is a blanket impl for a
+/// trait (that is, an impl applied to all T), and a type parameter
+/// with a where clause. In that case, we can have a candidate from the
+/// where clause and a second candidate from the impl. This is not a
+/// problem because coherence guarantees us that the impl which would
+/// be used to satisfy the where clause is the same one that we see
+/// now. To resolve this issue, therefore, we ignore impls if we find a
+/// matching where clause. Part of the reason for this is that where
+/// clauses can give additional information (like, the types of output
+/// parameters) that would have to be inferred from the impl.
 #[deriving(PartialEq,Eq,Show,Clone)]
 enum Candidate<'tcx> {
     BuiltinCandidate(ty::BuiltinBound),
