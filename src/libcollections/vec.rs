@@ -165,6 +165,7 @@ impl<T> Vec<T> {
             let size = capacity.checked_mul(mem::size_of::<T>())
                                .expect("capacity overflow");
             let ptr = unsafe { allocate(size, mem::min_align_of::<T>()) };
+            if ptr.is_null() { ::alloc::oom() }
             Vec { ptr: ptr as *mut T, len: 0, cap: capacity }
         }
     }
