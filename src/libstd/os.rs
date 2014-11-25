@@ -702,11 +702,7 @@ fn real_args_as_bytes() -> Vec<Vec<u8>> {
           target_os = "dragonfly"))]
 fn real_args_as_bytes() -> Vec<Vec<u8>> {
     use rt;
-
-    match rt::args::clone() {
-        Some(args) => args,
-        None => panic!("process arguments not initialized")
-    }
+    rt::args::clone().unwrap_or_else(|| vec![])
 }
 
 #[cfg(not(windows))]

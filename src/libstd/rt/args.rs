@@ -62,37 +62,33 @@ mod imp {
     }
 
     pub unsafe fn cleanup() {
-        rtassert!(take().is_some());
+        take();
         LOCK.destroy();
     }
 
     pub fn take() -> Option<Vec<Vec<u8>>> {
-        with_lock(|| unsafe {
+        let guard = LOCK.lock();
+        unsafe {
             let ptr = get_global_ptr();
             let val = mem::replace(&mut *ptr, None);
             val.as_ref().map(|s: &Box<Vec<Vec<u8>>>| (**s).clone())
-        })
+        }
     }
 
     pub fn put(args: Vec<Vec<u8>>) {
-        with_lock(|| unsafe {
+        let guard = LOCK.lock();
+        unsafe {
             let ptr = get_global_ptr();
             rtassert!((*ptr).is_none());
             (*ptr) = Some(box args.clone());
-        })
+        }
     }
 
     pub fn clone() -> Option<Vec<Vec<u8>>> {
-        with_lock(|| unsafe {
+        let guard = LOCK.lock();
+        unsafe {
             let ptr = get_global_ptr();
             (*ptr).as_ref().map(|s: &Box<Vec<Vec<u8>>>| (**s).clone())
-        })
-    }
-
-    fn with_lock<T, F>(f: F) -> T where F: FnOnce() -> T {
-        unsafe {
-            let _guard = LOCK.lock();
-            f()
         }
     }
 
