@@ -374,19 +374,6 @@ impl<'a, 'v> Visitor<'v> for Context<'a> {
         }
         visit::walk_fn(self, fn_kind, fn_decl, block, span);
     }
-
-    fn visit_path_parameters(&mut self, path_span: Span, parameters: &'v ast::PathParameters) {
-        match *parameters {
-            ast::ParenthesizedParameters(..) => {
-                self.gate_feature("unboxed_closures",
-                                  path_span,
-                                  "parenthetical parameter notation is subject to change");
-            }
-            ast::AngleBracketedParameters(..) => { }
-        }
-
-        visit::walk_path_parameters(self, path_span, parameters)
-    }
 }
 
 pub fn check_crate(span_handler: &SpanHandler, krate: &ast::Crate) -> (Features, Vec<Span>) {

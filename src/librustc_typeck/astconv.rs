@@ -235,7 +235,7 @@ fn ast_path_substs_for_ty<'tcx,AC,RS>(
             convert_angle_bracketed_parameters(this, rscope, data)
         }
         ast::ParenthesizedParameters(ref data) => {
-            span_err!(tcx.sess, path.span, E0169,
+            span_err!(tcx.sess, path.span, E0173,
                       "parenthesized parameters may only be used with a trait");
             (Vec::new(), convert_parenthesized_parameters(this, data), Vec::new())
         }
@@ -581,6 +581,19 @@ fn ast_path_to_trait_ref<'tcx,AC,RS>(
             convert_angle_bracketed_parameters(this, &shifted_rscope, data)
         }
         ast::ParenthesizedParameters(ref data) => {
+            // For now, require that parenthetical notation be used
+            // only with `Fn()` etc.
+            if !this.tcx().sess.features.borrow().unboxed_closures &&
+                this.tcx().lang_items.fn_trait_kind(trait_def_id).is_none()
+            {
+                this.tcx().sess.span_err(path.span,
+                                         "parenthetical notation is only stable when \
+                                         used with the `Fn` family of traits");
+                span_help!(this.tcx().sess, path.span,
+                           "add `#![feature(unboxed_closures)]` to \
+                            the crate attributes to enable");
+            }
+
             (Vec::new(), convert_parenthesized_parameters(this, data), Vec::new())
         }
     };
