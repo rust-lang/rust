@@ -25,7 +25,7 @@ use prelude::*;
 use cell::UnsafeCell;
 use mem;
 use sync::{StaticMutex, StaticCondvar};
-use rt::{mod, bookkeeping};
+use rt;
 use sys::helper_signal;
 
 use task;
@@ -83,7 +83,6 @@ impl<M: Send> Helper<M> {
 
                 let t = f();
                 task::spawn(move |:| {
-                    bookkeeping::decrement();
                     helper(receive, rx, t);
                     let _g = self.lock.lock();
                     *self.shutdown.get() = true;

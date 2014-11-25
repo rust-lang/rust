@@ -29,7 +29,6 @@ use str::SendStr;
 use thunk::Thunk;
 
 use rt;
-use rt::bookkeeping;
 use rt::mutex::NativeMutex;
 use rt::local::Local;
 use rt::thread::{mod, Thread};
@@ -132,11 +131,6 @@ impl Task {
 
         let stack = stack_size.unwrap_or(rt::min_stack());
 
-        // Note that this increment must happen *before* the spawn in order to
-        // guarantee that if this task exits it will always end up waiting for
-        // the spawned task to exit.
-        let token = bookkeeping::increment();
-
         // Spawning a new OS thread guarantees that __morestack will never get
         // triggered, but we must manually set up the actual stack bounds once
         // this function starts executing. This raises the lower limit by a bit
@@ -156,7 +150,6 @@ impl Task {
 
             let mut f = Some(f);
             drop(task.run(|| { f.take().unwrap().invoke(()) }).destroy());
-            drop(token);
         })
     }
 

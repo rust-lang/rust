@@ -73,7 +73,6 @@ pub mod mutex;
 pub mod thread;
 pub mod exclusive;
 pub mod util;
-pub mod bookkeeping;
 pub mod local;
 pub mod task;
 pub mod unwind;
@@ -207,7 +206,6 @@ pub fn at_exit(f: proc():Send) {
 /// Invoking cleanup while portions of the runtime are still in use may cause
 /// undefined behavior.
 pub unsafe fn cleanup() {
-    bookkeeping::wait_for_other_tasks();
     args::cleanup();
     thread::cleanup();
     local_ptr::cleanup();
