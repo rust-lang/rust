@@ -378,8 +378,14 @@ of your time with Rust.
 The first thing we'll learn about are 'variable bindings.' They look like this:
 
 ```{rust}
-let x = 5i;
+fn main() {
+    let x = 5i;
+}
 ```
+
+Putting `fn main() {` in each example is a bit tedious, so we'll leave that out
+in the future. If you're following along, make sure to edit your `main()`
+function, rather than leaving it off. Otherwise, you'll get an error.
 
 In many languages, this is called a 'variable.' But Rust's variable bindings
 have a few tricks up their sleeves. Rust has a very powerful feature called
