@@ -80,17 +80,15 @@ impl Variables {
     }
 }
 
-/**
-  Expand a parameterized capability
-
-  # Arguments
-  * `cap`    - string to expand
-  * `params` - vector of params for %p1 etc
-  * `vars`   - Variables struct for %Pa etc
-
-  To be compatible with ncurses, `vars` should be the same between calls to `expand` for
-  multiple capabilities for the same terminal.
-  */
+/// Expand a parameterized capability
+///
+/// # Arguments
+/// * `cap`    - string to expand
+/// * `params` - vector of params for %p1 etc
+/// * `vars`   - Variables struct for %Pa etc
+///
+/// To be compatible with ncurses, `vars` should be the same between calls to `expand` for
+/// multiple capabilities for the same terminal.
 pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
     -> Result<Vec<u8> , String> {
     let mut state = Nothing;

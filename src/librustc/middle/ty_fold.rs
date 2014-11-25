@@ -701,9 +701,7 @@ pub fn super_fold_obligation<'tcx, T:TypeFolder<'tcx>>(this: &mut T,
 ///////////////////////////////////////////////////////////////////////////
 // Higher-ranked things
 
-/**
- * Designates a "binder" for late-bound regions.
- */
+/// Designates a "binder" for late-bound regions.
 pub trait HigherRankedFoldable<'tcx>: Repr<'tcx> {
     /// Folds the contents of `self`, ignoring the region binder created
     /// by `self`.

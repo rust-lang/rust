@@ -54,36 +54,36 @@ pub enum SignFormat {
 
 static DIGIT_E_RADIX: uint = ('e' as uint) - ('a' as uint) + 11u;
 
-/**
- * Converts a number to its string representation as a byte vector.
- * This is meant to be a common base implementation for all numeric string
- * conversion functions like `to_string()` or `to_str_radix()`.
- *
- * # Arguments
- * - `num`           - The number to convert. Accepts any number that
- *                     implements the numeric traits.
- * - `radix`         - Base to use. Accepts only the values 2-36. If the exponential notation
- *                     is used, then this base is only used for the significand. The exponent
- *                     itself always printed using a base of 10.
- * - `negative_zero` - Whether to treat the special value `-0` as
- *                     `-0` or as `+0`.
- * - `sign`          - How to emit the sign. See `SignFormat`.
- * - `digits`        - The amount of digits to use for emitting the fractional
- *                     part, if any. See `SignificantDigits`.
- * - `exp_format`   - Whether or not to use the exponential (scientific) notation.
- *                    See `ExponentFormat`.
- * - `exp_capital`   - Whether or not to use a capital letter for the exponent sign, if
- *                     exponential notation is desired.
- * - `f`             - A closure to invoke with the bytes representing the
- *                     float.
- *
- * # Panics
- * - Panics if `radix` < 2 or `radix` > 36.
- * - Panics if `radix` > 14 and `exp_format` is `ExpDec` due to conflict
- *   between digit and exponent sign `'e'`.
- * - Panics if `radix` > 25 and `exp_format` is `ExpBin` due to conflict
- *   between digit and exponent sign `'p'`.
- */
+/// Converts a number to its string representation as a byte vector.
+/// This is meant to be a common base implementation for all numeric string
+/// conversion functions like `to_string()` or `to_str_radix()`.
+///
+/// # Arguments
+///
+/// - `num`           - The number to convert. Accepts any number that
+///                     implements the numeric traits.
+/// - `radix`         - Base to use. Accepts only the values 2-36. If the exponential notation
+///                     is used, then this base is only used for the significand. The exponent
+///                     itself always printed using a base of 10.
+/// - `negative_zero` - Whether to treat the special value `-0` as
+///                     `-0` or as `+0`.
+/// - `sign`          - How to emit the sign. See `SignFormat`.
+/// - `digits`        - The amount of digits to use for emitting the fractional
+///                     part, if any. See `SignificantDigits`.
+/// - `exp_format`   - Whether or not to use the exponential (scientific) notation.
+///                    See `ExponentFormat`.
+/// - `exp_capital`   - Whether or not to use a capital letter for the exponent sign, if
+///                     exponential notation is desired.
+/// - `f`             - A closure to invoke with the bytes representing the
+///                     float.
+///
+/// # Panics
+///
+/// - Panics if `radix` < 2 or `radix` > 36.
+/// - Panics if `radix` > 14 and `exp_format` is `ExpDec` due to conflict
+///   between digit and exponent sign `'e'`.
+/// - Panics if `radix` > 25 and `exp_format` is `ExpBin` due to conflict
+///   between digit and exponent sign `'p'`.
 pub fn float_to_str_bytes_common<T: Float, U>(
     num: T,
     radix: uint,
