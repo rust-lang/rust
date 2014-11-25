@@ -95,7 +95,7 @@ pub fn shortty(item: &clean::Item) -> ItemType {
         clean::ForeignStaticItem(..)   => ForeignStatic,
         clean::MacroItem(..)           => Macro,
         clean::PrimitiveItem(..)       => Primitive,
-        clean::AssociatedTypeItem      => AssociatedType,
+        clean::AssociatedTypeItem(..)  => AssociatedType,
     }
 }
 

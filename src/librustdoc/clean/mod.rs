@@ -336,7 +336,7 @@ pub enum ItemEnum {
     ForeignStaticItem(Static),
     MacroItem(Macro),
     PrimitiveItem(PrimitiveType),
-    AssociatedTypeItem,
+    AssociatedTypeItem(TyParam),
 }
 
 #[deriving(Clone, Encodable, Decodable)]
@@ -982,6 +982,8 @@ impl Clean<Type> for ast::PolyTraitRef {
     }
 }
 
+/// An item belonging to a trait, whether a method or associated. Could be named
+/// TraitItem except that's already taken by an exported enum variant.
 #[deriving(Clone, Encodable, Decodable)]
 pub enum TraitMethod {
     RequiredMethod(Item),
@@ -999,6 +1001,12 @@ impl TraitMethod {
     pub fn is_def(&self) -> bool {
         match self {
             &ProvidedMethod(..) => true,
+            _ => false,
+        }
+    }
+    pub fn is_type(&self) -> bool {
+        match self {
+            &TypeTraitItem(..) => true,
             _ => false,
         }
     }
@@ -1127,6 +1135,11 @@ pub enum Type {
         mutability: Mutability,
         type_: Box<Type>,
     },
+    QPath {
+        name: String,
+        self_type: Box<Type>,
+        trait_: Box<Type>
+    },
     // region, raw, other boxes, mutable
 }
 
@@ -1252,6 +1265,7 @@ impl Clean<Type> for ast::Ty {
             TyProc(ref c) => Proc(box c.clean(cx)),
             TyBareFn(ref barefn) => BareFunction(box barefn.clean(cx)),
             TyParen(ref ty) => ty.clean(cx),
+            TyQPath(ref qp) => qp.clean(cx),
             ref x => panic!("Unimplemented type {}", x),
         }
     }
@@ -1350,6 +1364,16 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
             ty::ty_infer(..) => panic!("ty_infer"),
             ty::ty_open(..) => panic!("ty_open"),
             ty::ty_err => panic!("ty_err"),
+        }
+    }
+}
+
+impl Clean<Type> for ast::QPath {
+    fn clean(&self, cx: &DocContext) -> Type {
+        Type::QPath {
+            name: self.item_name.clean(cx),
+            self_type: box self.self_type.clean(cx),
+            trait_: box self.trait_ref.clean(cx)
         }
     }
 }
@@ -2211,7 +2235,7 @@ impl Clean<Item> for ast::AssociatedType {
             source: self.ty_param.span.clean(cx),
             name: Some(self.ty_param.ident.clean(cx)),
             attrs: self.attrs.clean(cx),
-            inner: AssociatedTypeItem,
+            inner: AssociatedTypeItem(self.ty_param.clean(cx)),
             visibility: None,
             def_id: ast_util::local_def(self.ty_param.id),
             stability: None,
@@ -2225,7 +2249,17 @@ impl Clean<Item> for ty::AssociatedType {
             source: DUMMY_SP.clean(cx),
             name: Some(self.name.clean(cx)),
             attrs: Vec::new(),
-            inner: AssociatedTypeItem,
+            // FIXME(#18048): this is wrong, but cross-crate associated types are broken
+            // anyway, for the time being.
+            inner: AssociatedTypeItem(TyParam {
+                name: self.name.clean(cx),
+                did: ast::DefId {
+                    krate: 0,
+                    node: ast::DUMMY_NODE_ID
+                },
+                bounds: vec![],
+                default: None
+            }),
             visibility: None,
             def_id: self.def_id,
             stability: None,
