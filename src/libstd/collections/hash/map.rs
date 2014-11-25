@@ -1376,7 +1376,7 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
 
     /// Takes the value out of the entry, and returns it
     pub fn take(self) -> V {
-        let (_, _, v) = self.elem.take();
+        let (_, v) = pop_internal(self.elem);
         v
     }
 }
@@ -1433,6 +1433,7 @@ mod test_map {
     use hash;
     use iter::{Iterator,range_inclusive,range_step_inclusive};
     use cell::RefCell;
+    use rand::{weak_rng, Rng};
 
     struct KindaIntLike(int);
 
@@ -2061,5 +2062,38 @@ mod test_map {
         }
         assert_eq!(map.get(&10).unwrap(), &1000);
         assert_eq!(map.len(), 6);
+    }
+
+    #[test]
+    fn test_entry_take_doesnt_corrupt() {
+        // Test for #19292
+        fn check(m: &HashMap<int, ()>) {
+            for k in m.keys() {
+                assert!(m.contains_key(k),
+                        "{} is in keys() but not in the map?", k);
+            }
+        }
+
+        let mut m = HashMap::new();
+        let mut rng = weak_rng();
+
+        // Populate the map with some items.
+        for _ in range(0u, 50) {
+            let x = rng.gen_range(-10, 10);
+            m.insert(x, ());
+        }
+
+        for i in range(0u, 1000) {
+            let x = rng.gen_range(-10, 10);
+            match m.entry(x) {
+                Vacant(_) => {},
+                Occupied(e) => {
+                    println!("{}: remove {}", i, x);
+                    e.take();
+                },
+            }
+
+            check(&m);
+        }
     }
 }
