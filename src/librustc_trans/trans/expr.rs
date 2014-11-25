@@ -41,7 +41,6 @@ use middle::def;
 use middle::mem_categorization::Typer;
 use middle::subst::{mod, Subst};
 use trans::{_match, adt, asm, base, callee, closure, consts, controlflow};
-use trans::{debuginfo, glue, machine, meth, inline, tvec, type_of};
 use trans::base::*;
 use trans::build::*;
 use trans::cleanup::{mod, CleanupMethods};

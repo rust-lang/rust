@@ -30,7 +30,7 @@
 use driver::driver::CrateAnalysis;
 use session::Session;
 
-use middle::{def, typeck};
+use middle::def;
 use middle::ty::{mod, Ty};
 
 use std::cell::Cell;

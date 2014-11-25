@@ -79,6 +79,7 @@ pub mod middle {
     pub mod fast_reject;
     pub mod graph;
     pub mod intrinsicck;
+    pub mod infer;
     pub mod lang_items;
     pub mod liveness;
     pub mod mem_categorization;

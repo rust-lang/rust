@@ -11,14 +11,14 @@
 use middle::ty::{BuiltinBounds};
 use middle::ty::{mod, Ty};
 use middle::ty::TyVar;
-use middle::typeck::infer::combine::*;
-use middle::typeck::infer::{cres};
-use middle::typeck::infer::glb::Glb;
-use middle::typeck::infer::InferCtxt;
-use middle::typeck::infer::lub::Lub;
-use middle::typeck::infer::sub::Sub;
-use middle::typeck::infer::{TypeTrace, Subtype};
-use middle::typeck::infer::type_variable::{EqTo};
+use middle::infer::combine::*;
+use middle::infer::{cres};
+use middle::infer::glb::Glb;
+use middle::infer::InferCtxt;
+use middle::infer::lub::Lub;
+use middle::infer::sub::Sub;
+use middle::infer::{TypeTrace, Subtype};
+use middle::infer::type_variable::{EqTo};
 use util::ppaux::{Repr};
 
 use syntax::ast::{Onceness, FnStyle};

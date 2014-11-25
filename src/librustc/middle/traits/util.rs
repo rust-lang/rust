@@ -11,7 +11,7 @@
 
 use middle::subst;
 use middle::subst::{ParamSpace, Substs, VecPerParamSpace};
-use middle::typeck::infer::InferCtxt;
+use middle::infer::InferCtxt;
 use middle::ty::{mod, Ty};
 use std::collections::HashSet;
 use std::fmt;

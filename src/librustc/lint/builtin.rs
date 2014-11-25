@@ -28,9 +28,9 @@ use self::MethodContext::*;
 
 use metadata::csearch;
 use middle::def::*;
+use middle::infer;
 use middle::ty::{mod, Ty};
 use middle::typeck::astconv::ast_ty_to_ty;
-use middle::typeck::infer;
 use middle::{def, pat_util, stability};
 use middle::const_eval::{eval_const_expr_partial, const_int, const_uint};
 use util::ppaux::{ty_to_string};

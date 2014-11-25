@@ -8,17 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use super::combine::*;
+use super::lattice::*;
+use super::equate::Equate;
+use super::higher_ranked::HigherRankedRelations;
+use super::lub::Lub;
+use super::sub::Sub;
+use super::{cres, InferCtxt};
+use super::{TypeTrace, Subtype};
 
 use middle::ty::{BuiltinBounds};
 use middle::ty::{mod, Ty};
-use middle::typeck::infer::combine::*;
-use middle::typeck::infer::lattice::*;
-use middle::typeck::infer::equate::Equate;
-use middle::typeck::infer::higher_ranked::HigherRankedRelations;
-use middle::typeck::infer::lub::Lub;
-use middle::typeck::infer::sub::Sub;
-use middle::typeck::infer::{cres, InferCtxt};
-use middle::typeck::infer::{TypeTrace, Subtype};
 use syntax::ast::{Many, Once, MutImmutable, MutMutable};
 use syntax::ast::{NormalFn, UnsafeFn};
 use syntax::ast::{Onceness, FnStyle};

@@ -14,10 +14,10 @@ use super::check_fn;
 use super::{Expectation, ExpectCastableToType, ExpectHasType, NoExpectation};
 use super::FnCtxt;
 
+use middle::infer;
 use middle::subst;
 use middle::ty::{mod, Ty};
 use middle::typeck::astconv;
-use middle::typeck::infer;
 use middle::typeck::rscope::RegionScope;
 use syntax::abi;
 use syntax::ast;

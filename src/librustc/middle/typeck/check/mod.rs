@@ -84,6 +84,7 @@ use self::TupleArgumentsFlag::*;
 
 use session::Session;
 use middle::{const_eval, def, traits};
+use middle::infer;
 use middle::lang_items::IteratorItem;
 use middle::mem_categorization::{mod, McResult};
 use middle::pat_util::{mod, pat_id_map};
@@ -98,7 +99,7 @@ use middle::ty_fold::TypeFolder;
 use middle::typeck::astconv::{mod, ast_region_to_region, ast_ty_to_ty, AstConv};
 use middle::typeck::check::_match::pat_ctxt;
 use middle::typeck::rscope::RegionScope;
-use middle::typeck::{CrateCtxt, infer, lookup_def_ccx, no_params, require_same_types};
+use middle::typeck::{CrateCtxt, lookup_def_ccx, no_params, require_same_types};
 use middle::typeck::TypeAndSubsts;
 use middle::lang_items::TypeIdLangItem;
 use lint;
