@@ -808,7 +808,7 @@ pub fn trans_call_inner<'a, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         // Invoke the actual rust fn and update bcx/llresult.
         let (llret, b) = base::invoke(bcx,
                                       llfn,
-                                      llargs,
+                                      llargs[],
                                       callee_ty,
                                       call_info,
                                       dest.is_none());
