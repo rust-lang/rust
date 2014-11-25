@@ -59,9 +59,7 @@
 use prelude::*;
 
 use kinds::marker;
-use mem;
 use rustrt::exclusive::Exclusive;
-use rustrt;
 use sync::atomic::{mod, AtomicUint};
 use sync::{Once, ONCE_INIT};
 
@@ -174,7 +172,7 @@ impl StaticKey {
     pub unsafe fn destroy(&self) {
         match self.inner.key.swap(0, atomic::SeqCst) {
             0 => {}
-            n => { unregister_key(n as imp::Key); imp::destroy(n as imp::Key) }
+            n => { imp::destroy(n as imp::Key) }
         }
     }
 
@@ -191,10 +189,7 @@ impl StaticKey {
         assert!(key != 0);
         match self.inner.key.compare_and_swap(0, key as uint, atomic::SeqCst) {
             // The CAS succeeded, so we've created the actual key
-            0 => {
-                register_key(key);
-                key as uint
-            }
+            0 => key as uint,
             // If someone beat us to the punch, use their key instead
             n => { imp::destroy(key); n }
         }
@@ -235,34 +230,6 @@ impl Drop for Key {
     fn drop(&mut self) {
         unsafe { imp::destroy(self.key) }
     }
-}
-
-fn init_keys() {
-    let keys = box Exclusive::new(Vec::<imp::Key>::new());
-    unsafe {
-        KEYS = mem::transmute(keys);
-    }
-
-    rustrt::at_exit(proc() unsafe {
-        let keys: Box<Exclusive<Vec<imp::Key>>> = mem::transmute(KEYS);
-        KEYS = 0 as *mut _;
-        let keys = keys.lock();
-        for key in keys.iter() {
-            imp::destroy(*key);
-        }
-    });
-}
-
-fn register_key(key: imp::Key) {
-    INIT_KEYS.doit(init_keys);
-    let mut keys = unsafe { (*KEYS).lock() };
-    keys.push(key);
-}
-
-fn unregister_key(key: imp::Key) {
-    INIT_KEYS.doit(init_keys);
-    let mut keys = unsafe { (*KEYS).lock() };
-    keys.retain(|k| *k != key);
 }
 
 #[cfg(test)]
