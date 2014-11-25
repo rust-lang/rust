@@ -1289,12 +1289,15 @@ fn check_safety_of_destructor_if_necessary<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
                                                      typ: ty::Ty<'tcx>,
                                                      span: Span,
                                                      scope: CodeExtent) {
+    debug!("check_safety_of_destructor_if_necessary typ: {} scope: {}",
+           typ.repr(rcx.tcx()), scope);
     iterate_over_potentially_unsafe_regions_in_type(
         rcx,
         typ,
         span,
         scope,
-        false)
+        false,
+        0)
 }
 
 fn check_safety_of_rvalue_destructor_if_necessary<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
@@ -2101,11 +2104,17 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'tcx>(
         typ: ty::Ty<'tcx>,
         span: Span,
         scope: CodeExtent,
-        reachable_by_destructor: bool) {
+        reachable_by_destructor: bool,
+        depth: uint) {
     ty::maybe_walk_ty(typ, |typ| {
         // Avoid recursing forever.
         if !rcx.breadcrumbs.contains(&typ) {
             rcx.breadcrumbs.push(typ);
+
+            debug!("iterate_over_potentially_unsafe_regions_in_type \
+                    {}typ: {} scope: {} reachable_by_destructor: {}",
+                   String::from_char(depth, ' '),
+                   typ.repr(rcx.tcx()), scope, reachable_by_destructor);
 
             let keep_going = match typ.sty {
                 ty::ty_struct(structure_id, ref substitutions) => {
@@ -2127,7 +2136,7 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'tcx>(
                             field_type,
                             span,
                             scope,
-                            reachable_by_destructor)
+                            reachable_by_destructor, depth+1)
                     }
 
                     false
@@ -2147,7 +2156,7 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'tcx>(
                                 *argument_type,
                                 span,
                                 scope,
-                                reachable_by_destructor)
+                                reachable_by_destructor, depth+1)
                         }
                     }
 
