@@ -27,7 +27,7 @@ use core::num::{Int, UnsignedInt};
 use std::hash::{Writer, Hash};
 use std::cmp;
 
-use alloc::heap;
+use alloc::faux;
 
 static INITIAL_CAPACITY: uint = 8u; // 2^3
 static MINIMUM_CAPACITY: uint = 2u;
@@ -62,11 +62,7 @@ impl<T> Drop for RingBuf<T> {
     fn drop(&mut self) {
         self.clear();
         unsafe {
-            if mem::size_of::<T>() != 0 {
-                heap::deallocate(self.ptr as *mut u8,
-                                 self.cap * mem::size_of::<T>(),
-                                 mem::min_align_of::<T>())
-            }
+            faux::dealloc_array(self.ptr, self.cap);
         }
     }
 }
@@ -116,18 +112,7 @@ impl<T> RingBuf<T> {
     pub fn with_capacity(n: uint) -> RingBuf<T> {
         // +1 since the ringbuffer always leaves one space empty
         let cap = cmp::max(n + 1, MINIMUM_CAPACITY).next_power_of_two();
-        let size = cap.checked_mul(mem::size_of::<T>())
-                      .expect("capacity overflow");
-
-        let ptr = if mem::size_of::<T>() != 0 {
-            unsafe {
-                let ptr = heap::allocate(size, mem::min_align_of::<T>())  as *mut T;;
-                if ptr.is_null() { ::alloc::oom() }
-                ptr
-            }
-        } else {
-            heap::EMPTY as *mut T
-        };
+        let ptr = unsafe { faux::alloc_array(cap) };
 
         RingBuf {
             tail: 0,
@@ -283,17 +268,8 @@ impl<T> RingBuf<T> {
             let count = (new_len + 1).next_power_of_two();
             assert!(count >= new_len + 1);
 
-            if mem::size_of::<T>() != 0 {
-                let old = self.cap * mem::size_of::<T>();
-                let new = count.checked_mul(mem::size_of::<T>())
-                               .expect("capacity overflow");
-                unsafe {
-                    self.ptr = heap::reallocate(self.ptr as *mut u8,
-                                                old,
-                                                new,
-                                                mem::min_align_of::<T>()) as *mut T;
-                    if self.ptr.is_null() { ::alloc::oom() }
-                }
+            unsafe {
+                self.ptr = faux::realloc_array(self.ptr, self.cap, count);
             }
 
             // Move the shortest contiguous section of the ring buffer

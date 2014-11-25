@@ -114,7 +114,7 @@ pub unsafe fn dealloc<T>(ptr: *mut T) {
     if size == 0 {
         // Do nothing
     } else {
-        deallocate(ptr as *mut u8, size, min_align_of::<T>());
+        heap::deallocate(ptr as *mut u8, size, min_align_of::<T>());
     }
 }
 
@@ -131,6 +131,6 @@ pub unsafe fn dealloc_array<T>(ptr: *mut T, len: uint) {
     } else {
         // No need to check size * len, must have been checked when the ptr was made, or
         // else UB anyway.
-        deallocate(ptr as *mut u8, size * len, min_align_of::<T>());
+        heap::deallocate(ptr as *mut u8, size * len, min_align_of::<T>());
     }
 }
