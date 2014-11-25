@@ -43,7 +43,16 @@ use syntax::visit::{Visitor, FnKind};
 /// generated via deriving here.
 #[deriving(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, Encodable, Decodable, Show)]
 pub enum CodeExtent {
-    Misc(ast::NodeId)
+    Misc(ast::NodeId),
+    Remainder(BlockRemainder)
+}
+
+/// Represents a subscope of `block` that starts at
+/// `block.stmts[first_statement_index]` (inclusive).
+#[deriving(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, Encodable, Decodable, Show)]
+pub struct BlockRemainder {
+    pub block: ast::NodeId,
+    pub first_statement_index: uint,
 }
 
 impl CodeExtent {
@@ -60,6 +69,7 @@ impl CodeExtent {
     pub fn node_id(&self) -> ast::NodeId {
         match *self {
             CodeExtent::Misc(node_id) => node_id,
+            CodeExtent::Remainder(br) => br.block,
         }
     }
 
@@ -68,6 +78,8 @@ impl CodeExtent {
     pub fn map_id(&self, f_id: |ast::NodeId| -> ast::NodeId) -> CodeExtent {
         match *self {
             CodeExtent::Misc(node_id) => CodeExtent::Misc(f_id(node_id)),
+            CodeExtent::Remainder(br) =>
+                CodeExtent::Remainder(BlockRemainder { block: f_id(br.block), ..br }),
         }
     }
 }

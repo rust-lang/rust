@@ -837,7 +837,9 @@ pub enum Region {
     /// region parameters.
     ReFree(FreeRegion),
 
-    /// A concrete region naming some expression within the current function.
+    /// A concrete region naming some statically determined extent
+    /// (e.g. an expression or sequence of statements) within the
+    /// current function.
     ReScope(region::CodeExtent),
 
     /// Static data that has an "infinite" lifetime. Top in the region lattice.
