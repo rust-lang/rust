@@ -1104,12 +1104,57 @@ macro_rules! iterator {
     }
 }
 
+macro_rules! make_slice {
+    ($t: ty -> $result: ty: $start: expr, $end: expr) => {{
+        let diff = $end as uint - $start as uint;
+        let len = if mem::size_of::<T>() == 0 {
+            diff
+        } else {
+            diff / mem::size_of::<$t>()
+        };
+        unsafe {
+            transmute::<_, $result>(RawSlice { data: $start as *const T, len: len })
+        }
+    }}
+}
+
+
 /// Immutable slice iterator
 #[experimental = "needs review"]
 pub struct Items<'a, T: 'a> {
     ptr: *const T,
     end: *const T,
     marker: marker::ContravariantLifetime<'a>
+}
+
+#[experimental]
+impl<'a, T> ops::Slice<uint, [T]> for Items<'a, T> {
+    fn as_slice_(&self) -> &[T] {
+        self.as_slice()
+    }
+    fn slice_from_or_fail<'b>(&'b self, from: &uint) -> &'b [T] {
+        use ops::Slice;
+        self.as_slice().slice_from_or_fail(from)
+    }
+    fn slice_to_or_fail<'b>(&'b self, to: &uint) -> &'b [T] {
+        use ops::Slice;
+        self.as_slice().slice_to_or_fail(to)
+    }
+    fn slice_or_fail<'b>(&'b self, from: &uint, to: &uint) -> &'b [T] {
+        use ops::Slice;
+        self.as_slice().slice_or_fail(from, to)
+    }
+}
+
+impl<'a, T> Items<'a, T> {
+    /// View the underlying data as a subslice of the original data.
+    ///
+    /// This has the same lifetime as the original slice, and so the
+    /// iterator can continue to be used while this exists.
+    #[experimental]
+    pub fn as_slice(&self) -> &'a [T] {
+        make_slice!(T -> &'a [T]: self.ptr, self.end)
+    }
 }
 
 iterator!{struct Items -> *const T, &'a T}
@@ -1154,6 +1199,57 @@ pub struct MutItems<'a, T: 'a> {
     end: *mut T,
     marker: marker::ContravariantLifetime<'a>,
     marker2: marker::NoCopy
+}
+
+#[experimental]
+impl<'a, T> ops::Slice<uint, [T]> for MutItems<'a, T> {
+    fn as_slice_<'b>(&'b self) -> &'b [T] {
+        make_slice!(T -> &'b [T]: self.ptr, self.end)
+    }
+    fn slice_from_or_fail<'b>(&'b self, from: &uint) -> &'b [T] {
+        use ops::Slice;
+        self.as_slice_().slice_from_or_fail(from)
+    }
+    fn slice_to_or_fail<'b>(&'b self, to: &uint) -> &'b [T] {
+        use ops::Slice;
+        self.as_slice_().slice_to_or_fail(to)
+    }
+    fn slice_or_fail<'b>(&'b self, from: &uint, to: &uint) -> &'b [T] {
+        use ops::Slice;
+        self.as_slice_().slice_or_fail(from, to)
+    }
+}
+
+#[experimental]
+impl<'a, T> ops::SliceMut<uint, [T]> for MutItems<'a, T> {
+    fn as_mut_slice_<'b>(&'b mut self) -> &'b mut [T] {
+        make_slice!(T -> &'b mut [T]: self.ptr, self.end)
+    }
+    fn slice_from_or_fail_mut<'b>(&'b mut self, from: &uint) -> &'b mut [T] {
+        use ops::SliceMut;
+        self.as_mut_slice_().slice_from_or_fail_mut(from)
+    }
+    fn slice_to_or_fail_mut<'b>(&'b mut self, to: &uint) -> &'b mut [T] {
+        use ops::SliceMut;
+        self.as_mut_slice_().slice_to_or_fail_mut(to)
+    }
+    fn slice_or_fail_mut<'b>(&'b mut self, from: &uint, to: &uint) -> &'b mut [T] {
+        use ops::SliceMut;
+        self.as_mut_slice_().slice_or_fail_mut(from, to)
+    }
+}
+
+impl<'a, T> MutItems<'a, T> {
+    /// View the underlying data as a subslice of the original data.
+    ///
+    /// To avoid creating `&mut` references that alias, this is forced
+    /// to consume the iterator. Consider using the `Slice` and
+    /// `SliceMut` implementations for obtaining slices with more
+    /// restricted lifetimes that do not consume the iterator.
+    #[experimental]
+    pub fn into_slice(self) -> &'a mut [T] {
+        make_slice!(T -> &'a mut [T]: self.ptr, self.end)
+    }
 }
 
 iterator!{struct MutItems -> *mut T, &'a mut T}
