@@ -20,7 +20,7 @@ use middle::typeck::check::{FnCtxt};
 use middle::typeck::check::{impl_self_ty};
 use middle::typeck::check::vtable;
 use middle::typeck::check::vtable::select_new_fcx_obligations;
-use middle::typeck::infer;
+use middle::infer;
 use util::ppaux::{Repr, UserString};
 
 use std::rc::Rc;

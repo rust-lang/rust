@@ -46,7 +46,7 @@ use middle::ty_fold::TypeFolder;
 use middle::typeck::astconv::{AstConv, ty_of_arg};
 use middle::typeck::astconv::{ast_ty_to_ty, ast_region_to_region};
 use middle::typeck::astconv;
-use middle::typeck::infer;
+use middle::infer;
 use middle::typeck::rscope::*;
 use middle::typeck::{CrateCtxt, lookup_def_tcx, no_params, write_ty_to_tcx};
 use middle::typeck;

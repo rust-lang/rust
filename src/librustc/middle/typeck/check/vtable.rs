@@ -17,7 +17,7 @@ use middle::traits::{ObligationCause};
 use middle::ty::{mod, Ty};
 use middle::typeck::check::{FnCtxt,
                             structurally_resolved_type};
-use middle::typeck::infer;
+use middle::infer;
 use std::rc::Rc;
 use syntax::ast;
 use syntax::codemap::Span;

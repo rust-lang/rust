@@ -32,6 +32,14 @@
 // is also useful to track which value is the "expected" value in
 // terms of error reporting.
 
+use super::equate::Equate;
+use super::glb::Glb;
+use super::lub::Lub;
+use super::sub::Sub;
+use super::unify::InferCtxtMethodsForSimplyUnifiableTypes;
+use super::{InferCtxt, cres};
+use super::{MiscVariable, TypeTrace};
+use super::type_variable::{RelationDir, EqTo, SubtypeOf, SupertypeOf};
 
 use middle::subst;
 use middle::subst::{ErasedRegions, NonerasedRegions, Substs};
@@ -40,15 +48,6 @@ use middle::ty::{IntType, UintType};
 use middle::ty::{BuiltinBounds};
 use middle::ty::{mod, Ty};
 use middle::ty_fold;
-use middle::typeck::infer::equate::Equate;
-use middle::typeck::infer::glb::Glb;
-use middle::typeck::infer::lub::Lub;
-use middle::typeck::infer::sub::Sub;
-use middle::typeck::infer::unify::InferCtxtMethodsForSimplyUnifiableTypes;
-use middle::typeck::infer::{InferCtxt, cres};
-use middle::typeck::infer::{MiscVariable, TypeTrace};
-use middle::typeck::infer::type_variable::{RelationDir, EqTo,
-                                           SubtypeOf, SupertypeOf};
 use middle::ty_fold::{TypeFoldable};
 use util::ppaux::Repr;
 

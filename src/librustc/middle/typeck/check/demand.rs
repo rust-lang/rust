@@ -11,9 +11,9 @@
 
 use middle::ty::{mod, Ty};
 use middle::typeck::check::FnCtxt;
-use middle::typeck::infer;
-use middle::typeck::infer::resolve_type;
-use middle::typeck::infer::resolve::try_resolve_tvar_shallow;
+use middle::infer;
+use middle::infer::resolve_type;
+use middle::infer::resolve::try_resolve_tvar_shallow;
 
 use std::result::{Err, Ok};
 use std::result;

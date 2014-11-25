@@ -13,8 +13,7 @@
 
 use middle::traits;
 use middle::ty;
-use middle::typeck::infer::{new_infer_ctxt};
-use middle::typeck::infer;
+use middle::infer::{mod, new_infer_ctxt};
 use syntax::ast::{DefId};
 use syntax::ast::{LOCAL_CRATE};
 use syntax::ast;

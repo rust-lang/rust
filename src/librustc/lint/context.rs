@@ -25,11 +25,11 @@
 //! for all lint attributes.
 use self::TargetLint::*;
 
+use middle::infer;
 use middle::privacy::ExportedItems;
 use middle::subst;
 use middle::ty::{mod, Ty};
 use middle::typeck::astconv::AstConv;
-use middle::typeck::infer;
 use session::{early_error, Session};
 use lint::{Level, LevelSource, Lint, LintId, LintArray, LintPass, LintPassObject};
 use lint::{Default, CommandLine, Node, Allow, Warn, Deny, Forbid};

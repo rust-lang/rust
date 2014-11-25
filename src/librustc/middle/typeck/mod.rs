@@ -63,6 +63,7 @@ independently:
 
 use middle::def;
 use middle::resolve;
+use middle::infer;
 use middle::subst;
 use middle::subst::VecPerParamSpace;
 use middle::ty::{mod, Ty};
@@ -78,7 +79,6 @@ use syntax::{ast, ast_map, abi};
 pub mod check;
 pub mod rscope;
 pub mod astconv;
-pub mod infer;
 pub mod collect;
 pub mod coherence;
 pub mod variance;

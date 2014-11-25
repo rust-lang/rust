@@ -10,7 +10,7 @@
 
 use middle::mem_categorization::Typer;
 use middle::ty;
-use middle::typeck::infer::InferCtxt;
+use middle::infer::InferCtxt;
 use util::ppaux::Repr;
 
 use super::CodeAmbiguity;
