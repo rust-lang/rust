@@ -19,7 +19,7 @@ use libc::{self, uintptr_t};
 use os;
 use slice;
 use str;
-use sync::atomic::{mod, Ordering};
+use sync::atomic::{self, Ordering};
 
 /// Dynamically inquire about whether we're running under V.
 /// You should usually not use this unless your test definitely
