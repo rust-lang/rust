@@ -800,7 +800,7 @@ But what about early returns? Rust does have a keyword for that, `return`:
 
 ```{rust}
 fn foo(x: int) -> int {
-    if x < 5 { return x; }
+    if x < 5 { return x }
 
     x + 1
 }
@@ -811,7 +811,7 @@ style:
 
 ```{rust}
 fn foo(x: int) -> int {
-    if x < 5 { return x; }
+    if x < 5 { return x }
 
     return x + 1;
 }
