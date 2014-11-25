@@ -138,10 +138,14 @@ impl<T> CVec<T> {
     /// Note that if you want to access the underlying pointer without
     /// cancelling the destructor, you can simply call `transmute` on the return
     /// value of `get(0)`.
-    pub unsafe fn unwrap(mut self) -> *mut T {
+    pub unsafe fn into_inner(mut self) -> *mut T {
         self.dtor = None;
         self.base
     }
+
+    /// Deprecated, use into_inner() instead
+    #[deprecated = "renamed to into_inner()"]
+    pub unsafe fn unwrap(self) -> *mut T { self.into_inner() }
 
     /// Returns the number of items in this vector.
     pub fn len(&self) -> uint { self.len }

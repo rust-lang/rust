@@ -1059,7 +1059,7 @@ pub fn run_test(opts: &TestOpts,
             let result_future = task.try_future(testfn);
 
             let stdout = reader.read_to_end().unwrap().into_iter().collect();
-            let task_result = result_future.unwrap();
+            let task_result = result_future.into_inner();
             let test_result = calc_result(&desc, task_result.is_ok());
             monitor_ch.send((desc.clone(), test_result, stdout));
         })

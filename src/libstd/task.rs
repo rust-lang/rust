@@ -197,7 +197,7 @@ impl TaskBuilder {
     /// completes or panics. Equivalent to `.try_future(f).unwrap()`.
     #[unstable = "Error type may change."]
     pub fn try<T:Send>(self, f: proc():Send -> T) -> Result<T, Box<Any + Send>> {
-        self.try_future(f).unwrap()
+        self.try_future(f).into_inner()
     }
 }
 

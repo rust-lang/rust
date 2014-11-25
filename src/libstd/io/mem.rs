@@ -62,7 +62,7 @@ impl Writer for Vec<u8> {
 /// let mut w = MemWriter::new();
 /// w.write(&[0, 1, 2]);
 ///
-/// assert_eq!(w.unwrap(), vec!(0, 1, 2));
+/// assert_eq!(w.into_inner(), vec!(0, 1, 2));
 /// ```
 #[deprecated = "use the Vec<u8> Writer implementation directly"]
 #[deriving(Clone)]
@@ -95,7 +95,11 @@ impl MemWriter {
 
     /// Unwraps this `MemWriter`, returning the underlying buffer
     #[inline]
-    pub fn unwrap(self) -> Vec<u8> { self.buf }
+    pub fn into_inner(self) -> Vec<u8> { self.buf }
+
+    /// Deprecated, use into_inner() instead
+    #[deprecated = "renamed to into_inner()"]
+    pub fn unwrap(self) -> Vec<u8> { self.into_inner() }
 }
 
 impl Writer for MemWriter {
@@ -150,7 +154,11 @@ impl MemReader {
 
     /// Unwraps this `MemReader`, returning the underlying buffer
     #[inline]
-    pub fn unwrap(self) -> Vec<u8> { self.buf }
+    pub fn into_inner(self) -> Vec<u8> { self.buf }
+
+    /// Deprecated, use into_inner() instead
+    #[deprecated = "renamed to into_inner()"]
+    pub fn unwrap(self) -> Vec<u8> { self.into_inner() }
 }
 
 impl Reader for MemReader {
