@@ -227,9 +227,9 @@ pub mod time;
 pub mod collections;
 pub mod hash;
 
-/* Tasks and communication */
+/* Threads and communication */
 
-pub mod task;
+pub mod thread;
 pub mod sync;
 pub mod comm;
 

@@ -53,7 +53,9 @@ use failure;
 use os;
 use thunk::Thunk;
 use kinds::Send;
+use thread::Thread;
 use sys_common;
+use sys_common::thread::{mod, NewThread};
 
 // Reexport some of our utilities which are expected by other crates.
 pub use self::util::{default_sched_threads, min_stack, running_on_valgrind};
@@ -73,8 +75,6 @@ pub mod mutex;
 pub mod thread;
 pub mod exclusive;
 pub mod util;
-pub mod local;
-pub mod task;
 pub mod unwind;
 
 mod args;
@@ -98,8 +98,8 @@ pub fn init(argc: int, argv: *const *const u8) {
     // Need to propagate the unsafety to `start`.
     unsafe {
         args::init(argc, argv);
-        local_ptr::init();
-        thread::init();
+        sys::thread::guard::init();
+        sys::stack_overflow::init();
         unwind::register(failure::on_fail);
     }
 }
@@ -125,9 +125,6 @@ fn lang_start(main: *const u8, argc: int, argv: *const *const u8) -> int {
 /// This procedure is guaranteed to run on the thread calling this function, but
 /// the stack bounds for this rust task will *not* be set. Care must be taken
 /// for this function to not overflow its stack.
-///
-/// This function will only return once *all* native threads in the system have
-/// exited.
 pub fn start(argc: int, argv: *const *const u8, main: Thunk) -> int {
     use prelude::*;
     use rt;
@@ -143,11 +140,9 @@ pub fn start(argc: int, argv: *const *const u8, main: Thunk) -> int {
     // frames above our current position.
     let my_stack_bottom = my_stack_top + 20000 - OS_DEFAULT_STACK_ESTIMATE;
 
-    // When using libgreen, one of the first things that we do is to turn off
-    // the SIGPIPE signal (set it to ignore). By default, some platforms will
-    // send a *signal* when a EPIPE error would otherwise be delivered. This
-    // runtime doesn't install a SIGPIPE handler, causing it to kill the
-    // program, which isn't exactly what we want!
+    // By default, some platforms will send a *signal* when a EPIPE error would
+    // otherwise be delivered. This runtime doesn't install a SIGPIPE handler,
+    // causing it to kill the program, which isn't exactly what we want!
     //
     // Hence, we set SIGPIPE to ignore when the program starts up in order to
     // prevent this problem.
@@ -163,17 +158,18 @@ pub fn start(argc: int, argv: *const *const u8, main: Thunk) -> int {
 
     init(argc, argv);
     let mut exit_code = None;
-    let mut main = Some(main);
-    let mut task = box Task::new(Some((my_stack_bottom, my_stack_top)),
-                                 Some(rt::thread::main_guard_page()));
-    task.name = Some(str::Slice("<main>"));
-    drop(task.run(|| {
+
+    let thread: std::Thread = NewThread::new(Some("<main>".into_string()));
+    thread_info::set((my_stack_bottom, my_stack_top),
+                     unsafe { sys::thread::guard::main() },
+                     thread);
+    unwind::try(|| {
         unsafe {
             sys_common::stack::record_os_managed_stack_bounds(my_stack_bottom, my_stack_top);
         }
         (main.take().unwrap()).invoke(());
         exit_code = Some(os::get_exit_status());
-    }).destroy());
+    });
     unsafe { cleanup(); }
     // If the exit code wasn't set, then the task block must have panicked.
     return exit_code.unwrap_or(rt::DEFAULT_ERROR_CODE);
@@ -207,8 +203,7 @@ pub fn at_exit(f: proc():Send) {
 /// undefined behavior.
 pub unsafe fn cleanup() {
     args::cleanup();
-    thread::cleanup();
-    local_ptr::cleanup();
+    sys::stack_overflow::cleanup();
 }
 
 // FIXME: these probably shouldn't be public...
