@@ -85,6 +85,7 @@ pub use boxed as owned;
 // Heaps provided for low-level allocation strategies
 
 pub mod heap;
+pub mod faux;
 
 // Primitive types using the heaps above
 
