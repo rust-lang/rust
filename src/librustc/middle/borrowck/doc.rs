@@ -27,6 +27,7 @@ These docs are long. Search for the section you are interested in.
 - Formal model
 - Borrowing and loans
 - Moves and initialization
+- Drop flags and structural fragments
 - Future work
 
 # Overview
@@ -1018,6 +1019,175 @@ attempt to move out of a borrowed pointer etc. Then we do the dataflow
 walk back over, identify all uses, assignments, and captures, and
 check that they are legal given the set of dataflow bits we have
 computed for that program point.
+
+# Drop flags and structural fragments
+
+In addition to the job of enforcing memory safety, the borrow checker
+code is also responsible for identifying the *structural fragments* of
+data in the function, to support out-of-band dynamic drop flags
+allocated on the stack. (For background, see [RFC PR #320].)
+
+[RFC PR #320]: https://github.com/rust-lang/rfcs/pull/320
+
+Semantically, each piece of data that has a destructor may need a
+boolean flag to indicate whether or not its destructor has been run
+yet. However, in many cases there is no need to actually maintain such
+a flag: It can be apparent from the code itself that a given path is
+always initialized (or always deinitialized) when control reaches the
+end of its owner's scope, and thus we can unconditionally emit (or
+not) the destructor invocation for that path.
+
+A simple example of this is the following:
+
+```rust
+struct D { p: int }
+impl D { fn new(x: int) -> D { ... }
+impl Drop for D { ... }
+
+fn foo(a: D, b: D, t: || -> bool) {
+    let c: D;
+    let d: D;
+    if t() { c = b; }
+}
+```
+
+At the end of the body of `foo`, the compiler knows that `a` is
+initialized, introducing a drop obligation (deallocating the boxed
+integer) for the end of `a`'s scope that is run unconditionally.
+Likewise the compiler knows that `d` is not initialized, and thus it
+leave out the drop code for `d`.
+
+The compiler cannot statically know the drop-state of `b` nor `c` at
+the end of their scope, since that depends on the value of
+`t`. Therefore, we need to insert boolean flags to track whether we
+need to drop `b` and `c`.
+
+However, the matter is not as simple as just mapping local variables
+to their corresponding drop flags when necessary. In particular, in
+addition to being able to move data out of local variables, Rust
+allows one to move values in and out of structured data.
+
+Consider the following:
+
+```rust
+struct S { x: D, y: D, z: D }
+
+fn foo(a: S, mut b: S, t: || -> bool) {
+    let mut c: S;
+    let d: S;
+    let e: S = a.clone();
+    if t() {
+        c = b;
+        b.x = e.y;
+    }
+    if t() { c.y = D::new(4); }
+}
+```
+
+As before, the drop obligations of `a` and `d` can be statically
+determined, and again the state of `b` and `c` depend on dynamic
+state. But additionally, the dynamic drop obligations introduced by
+`b` and `c` are not just per-local boolean flags. For example, if the
+first call to `t` returns `false` and the second call `true`, then at
+the end of their scope, `b` will be completely initialized, but only
+`c.y` in `c` will be initialized.  If both calls to `t` return `true`,
+then at the end of their scope, `c` will be completely initialized,
+but only `b.x` will be initialized in `b`, and only `e.x` and `e.z`
+will be initialized in `e`.
+
+Note that we need to cover the `z` field in each case in some way,
+since it may (or may not) need to be dropped, even though `z` is never
+directly mentioned in the body of the `foo` function. We call a path
+like `b.z` a *fragment sibling* of `b.x`, since the field `z` comes
+from the same structure `S` that declared the field `x` in `b.x`.
+
+In general we need to maintain boolean flags that match the
+`S`-structure of both `b` and `c`.  In addition, we need to consult
+such a flag when doing an assignment (such as `c.y = D::new(4);`
+above), in order to know whether or not there is a previous value that
+needs to be dropped before we do the assignment.
+
+So for any given function, we need to determine what flags are needed
+to track its drop obligations. Our strategy for determining the set of
+flags is to represent the fragmentation of the structure explicitly:
+by starting initially from the paths that are explicitly mentioned in
+moves and assignments (such as `b.x` and `c.y` above), and then
+traversing the structure of the path's type to identify leftover
+*unmoved fragments*: assigning into `c.y` means that `c.x` and `c.z`
+are leftover unmoved fragments. Each fragment represents a drop
+obligation that may need to be tracked. Paths that are only moved or
+assigned in their entirety (like `a` and `d`) are treated as a single
+drop obligation.
+
+The fragment construction process works by piggy-backing on the
+existing `move_data` module. We already have callbacks that visit each
+direct move and assignment; these form the basis for the sets of
+moved_leaf_paths and assigned_leaf_paths. From these leaves, we can
+walk up their parent chain to identify all of their parent paths.
+We need to identify the parents because of cases like the following:
+
+```rust
+struct Pair<X,Y>{ x: X, y: Y }
+fn foo(dd_d_d: Pair<Pair<Pair<D, D>, D>, D>) {
+    other_function(dd_d_d.x.y);
+}
+```
+
+In this code, the move of the path `dd_d.x.y` leaves behind not only
+the fragment drop-obligation `dd_d.x.x` but also `dd_d.y` as well.
+
+Once we have identified the directly-referenced leaves and their
+parents, we compute the left-over fragments, in the function
+`fragments::add_fragment_siblings`. As of this writing this works by
+looking at each directly-moved or assigned path P, and blindly
+gathering all sibling fields of P (as well as siblings for the parents
+of P, etc). After accumulating all such siblings, we filter out the
+entries added as siblings of P that turned out to be
+directly-referenced paths (or parents of directly referenced paths)
+themselves, thus leaving the never-referenced "left-overs" as the only
+thing left from the gathering step.
+
+## Array structural fragments
+
+A special case of the structural fragments discussed above are
+the elements of an array that has been passed by value, such as
+the following:
+
+```rust
+fn foo(a: [D, ..10], i: uint) -> D {
+    a[i]
+}
+```
+
+The above code moves a single element out of the input array `a`.
+The remainder of the array still needs to be dropped; i.e., it
+is a structural fragment. Note that after performing such a move,
+it is not legal to read from the array `a`. There are a number of
+ways to deal with this, but the important thing to note is that
+the semantics needs to distinguish in some manner between a
+fragment that is the *entire* array versus a fragment that represents
+all-but-one element of the array.  A place where that distinction
+would arise is the following:
+
+```rust
+fn foo(a: [D, ..10], b: [D, ..10], i: uint, t: bool) -> D {
+    if t {
+        a[i]
+    } else {
+        b[i]
+    }
+
+    // When control exits, we will need either to drop all of `a`
+    // and all-but-one of `b`, or to drop all of `b` and all-but-one
+    // of `a`.
+}
+```
+
+There are a number of ways that the trans backend could choose to
+compile this (e.g. a `[bool, ..10]` array for each such moved array;
+or an `Option<uint>` for each moved array).  From the viewpoint of the
+borrow-checker, the important thing is to record what kind of fragment
+is implied by the relevant moves.
 
 # Future work
 

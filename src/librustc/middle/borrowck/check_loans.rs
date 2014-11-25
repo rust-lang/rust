@@ -19,6 +19,8 @@
 use self::UseError::*;
 
 use middle::borrowck::*;
+use middle::borrowck::LoanPathElem::*;
+use middle::borrowck::LoanPathKind::*;
 use middle::expr_use_visitor as euv;
 use middle::mem_categorization as mc;
 use middle::region;
@@ -33,49 +35,51 @@ use std::rc::Rc;
 // be less precise in its handling of Box while still allowing moves out of a
 // Box. They should be removed when OwnedPtr is removed from LoanPath.
 
-fn owned_ptr_base_path<'a>(loan_path: &'a LoanPath) -> &'a LoanPath {
+fn owned_ptr_base_path<'a, 'tcx>(loan_path: &'a LoanPath<'tcx>) -> &'a LoanPath<'tcx> {
     //! Returns the base of the leftmost dereference of an OwnedPtr in
     //! `loan_path`. If there is no dereference of an OwnedPtr in `loan_path`,
     //! then it just returns `loan_path` itself.
 
-    return match owned_ptr_base_path_helper(loan_path) {
+    return match helper(loan_path) {
         Some(new_loan_path) => new_loan_path,
         None => loan_path.clone()
     };
 
-    fn owned_ptr_base_path_helper<'a>(loan_path: &'a LoanPath) -> Option<&'a LoanPath> {
-        match *loan_path {
+    fn helper<'a, 'tcx>(loan_path: &'a LoanPath<'tcx>) -> Option<&'a LoanPath<'tcx>> {
+        match loan_path.kind {
             LpVar(_) | LpUpvar(_) => None,
             LpExtend(ref lp_base, _, LpDeref(mc::OwnedPtr)) => {
-                match owned_ptr_base_path_helper(&**lp_base) {
+                match helper(&**lp_base) {
                     v @ Some(_) => v,
                     None => Some(&**lp_base)
                 }
             }
-            LpExtend(ref lp_base, _, _) => owned_ptr_base_path_helper(&**lp_base)
+            LpDowncast(ref lp_base, _) |
+            LpExtend(ref lp_base, _, _) => helper(&**lp_base)
         }
     }
 }
 
-fn owned_ptr_base_path_rc(loan_path: &Rc<LoanPath>) -> Rc<LoanPath> {
+fn owned_ptr_base_path_rc<'tcx>(loan_path: &Rc<LoanPath<'tcx>>) -> Rc<LoanPath<'tcx>> {
     //! The equivalent of `owned_ptr_base_path` for an &Rc<LoanPath> rather than
     //! a &LoanPath.
 
-    return match owned_ptr_base_path_helper(loan_path) {
+    return match helper(loan_path) {
         Some(new_loan_path) => new_loan_path,
         None => loan_path.clone()
     };
 
-    fn owned_ptr_base_path_helper(loan_path: &Rc<LoanPath>) -> Option<Rc<LoanPath>> {
-        match **loan_path {
+    fn helper<'tcx>(loan_path: &Rc<LoanPath<'tcx>>) -> Option<Rc<LoanPath<'tcx>>> {
+        match loan_path.kind {
             LpVar(_) | LpUpvar(_) => None,
             LpExtend(ref lp_base, _, LpDeref(mc::OwnedPtr)) => {
-                match owned_ptr_base_path_helper(lp_base) {
+                match helper(lp_base) {
                     v @ Some(_) => v,
                     None => Some(lp_base.clone())
                 }
             }
-            LpExtend(ref lp_base, _, _) => owned_ptr_base_path_helper(lp_base)
+            LpDowncast(ref lp_base, _) |
+            LpExtend(ref lp_base, _, _) => helper(lp_base)
         }
     }
 }
@@ -84,7 +88,7 @@ struct CheckLoanCtxt<'a, 'tcx: 'a> {
     bccx: &'a BorrowckCtxt<'a, 'tcx>,
     dfcx_loans: &'a LoanDataFlow<'a, 'tcx>,
     move_data: move_data::FlowedMoveData<'a, 'tcx>,
-    all_loans: &'a [Loan],
+    all_loans: &'a [Loan<'tcx>],
 }
 
 impl<'a, 'tcx> euv::Delegate<'tcx> for CheckLoanCtxt<'a, 'tcx> {
@@ -98,6 +102,11 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for CheckLoanCtxt<'a, 'tcx> {
 
         self.consume_common(consume_id, consume_span, cmt, mode);
     }
+
+    fn matched_pat(&mut self,
+                   _matched_pat: &ast::Pat,
+                   _cmt: mc::cmt,
+                   _mode: euv::MatchMode) { }
 
     fn consume_pat(&mut self,
                    consume_pat: &ast::Pat,
@@ -183,7 +192,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for CheckLoanCtxt<'a, 'tcx> {
 pub fn check_loans<'a, 'b, 'c, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                      dfcx_loans: &LoanDataFlow<'b, 'tcx>,
                                      move_data: move_data::FlowedMoveData<'c, 'tcx>,
-                                     all_loans: &[Loan],
+                                     all_loans: &[Loan<'tcx>],
                                      decl: &ast::FnDecl,
                                      body: &ast::Block) {
     debug!("check_loans(body id={})", body.id);
@@ -202,9 +211,9 @@ pub fn check_loans<'a, 'b, 'c, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
 }
 
 #[deriving(PartialEq)]
-enum UseError {
+enum UseError<'tcx> {
     UseOk,
-    UseWhileBorrowed(/*loan*/Rc<LoanPath>, /*loan*/Span)
+    UseWhileBorrowed(/*loan*/Rc<LoanPath<'tcx>>, /*loan*/Span)
 }
 
 fn compatible_borrow_kinds(borrow_kind1: ty::BorrowKind,
@@ -216,7 +225,7 @@ fn compatible_borrow_kinds(borrow_kind1: ty::BorrowKind,
 impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
     pub fn tcx(&self) -> &'a ty::ctxt<'tcx> { self.bccx.tcx }
 
-    pub fn each_issued_loan(&self, scope: region::CodeExtent, op: |&Loan| -> bool)
+    pub fn each_issued_loan(&self, scope: region::CodeExtent, op: |&Loan<'tcx>| -> bool)
                             -> bool {
         //! Iterates over each loan that has been issued
         //! on entrance to `scope`, regardless of whether it is
@@ -232,7 +241,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
 
     pub fn each_in_scope_loan(&self,
                               scope: region::CodeExtent,
-                              op: |&Loan| -> bool)
+                              op: |&Loan<'tcx>| -> bool)
                               -> bool {
         //! Like `each_issued_loan()`, but only considers loans that are
         //! currently in scope.
@@ -249,8 +258,8 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
 
     fn each_in_scope_loan_affecting_path(&self,
                                          scope: region::CodeExtent,
-                                         loan_path: &LoanPath,
-                                         op: |&Loan| -> bool)
+                                         loan_path: &LoanPath<'tcx>,
+                                         op: |&Loan<'tcx>| -> bool)
                                          -> bool {
         //! Iterates through all of the in-scope loans affecting `loan_path`,
         //! calling `op`, and ceasing iteration if `false` is returned.
@@ -294,10 +303,11 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
 
         let mut loan_path = loan_path;
         loop {
-            match *loan_path {
+            match loan_path.kind {
                 LpVar(_) | LpUpvar(_) => {
                     break;
                 }
+                LpDowncast(ref lp_base, _) |
                 LpExtend(ref lp_base, _, _) => {
                     loan_path = &**lp_base;
                 }
@@ -363,8 +373,8 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
     }
 
     pub fn report_error_if_loans_conflict(&self,
-                                          old_loan: &Loan,
-                                          new_loan: &Loan) {
+                                          old_loan: &Loan<'tcx>,
+                                          new_loan: &Loan<'tcx>) {
         //! Checks whether `old_loan` and `new_loan` can safely be issued
         //! simultaneously.
 
@@ -383,10 +393,10 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
     }
 
     pub fn report_error_if_loan_conflicts_with_restriction(&self,
-                                                           loan1: &Loan,
-                                                           loan2: &Loan,
-                                                           old_loan: &Loan,
-                                                           new_loan: &Loan)
+                                                           loan1: &Loan<'tcx>,
+                                                           loan2: &Loan<'tcx>,
+                                                           old_loan: &Loan<'tcx>,
+                                                           new_loan: &Loan<'tcx>)
                                                            -> bool {
         //! Checks whether the restrictions introduced by `loan1` would
         //! prohibit `loan2`. Returns false if an error is reported.
@@ -549,7 +559,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
         true
     }
 
-    fn is_local_variable_or_arg(&self, cmt: mc::cmt) -> bool {
+    fn is_local_variable_or_arg(&self, cmt: mc::cmt<'tcx>) -> bool {
         match cmt.cat {
           mc::cat_local(_) => true,
           _ => false
@@ -559,7 +569,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
     fn consume_common(&self,
                       id: ast::NodeId,
                       span: Span,
-                      cmt: mc::cmt,
+                      cmt: mc::cmt<'tcx>,
                       mode: euv::ConsumeMode) {
         match opt_loan_path(&cmt) {
             Some(lp) => {
@@ -600,7 +610,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
     fn check_for_copy_of_frozen_path(&self,
                                      id: ast::NodeId,
                                      span: Span,
-                                     copy_path: &LoanPath) {
+                                     copy_path: &LoanPath<'tcx>) {
         match self.analyze_restrictions_on_use(id, copy_path, ty::ImmBorrow) {
             UseOk => { }
             UseWhileBorrowed(loan_path, loan_span) => {
@@ -621,7 +631,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
     fn check_for_move_of_borrowed_path(&self,
                                        id: ast::NodeId,
                                        span: Span,
-                                       move_path: &LoanPath,
+                                       move_path: &LoanPath<'tcx>,
                                        move_kind: move_data::MoveKind) {
         // We want to detect if there are any loans at all, so we search for
         // any loans incompatible with MutBorrrow, since all other kinds of
@@ -652,9 +662,9 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
 
     pub fn analyze_restrictions_on_use(&self,
                                        expr_id: ast::NodeId,
-                                       use_path: &LoanPath,
+                                       use_path: &LoanPath<'tcx>,
                                        borrow_kind: ty::BorrowKind)
-                                       -> UseError {
+                                       -> UseError<'tcx> {
         debug!("analyze_restrictions_on_use(expr_id={}, use_path={})",
                self.tcx().map.node_to_string(expr_id),
                use_path.repr(self.tcx()));
@@ -678,7 +688,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                               id: ast::NodeId,
                               span: Span,
                               use_kind: MovedValueUseKind,
-                              lp: &Rc<LoanPath>) {
+                              lp: &Rc<LoanPath<'tcx>>) {
         /*!
          * Reports an error if `expr` (which should be a path)
          * is using a moved/uninitialized value
@@ -702,7 +712,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                                        id: ast::NodeId,
                                        span: Span,
                                        use_kind: MovedValueUseKind,
-                                       lp: &Rc<LoanPath>)
+                                       lp: &Rc<LoanPath<'tcx>>)
     {
         /*!
          * Reports an error if assigning to `lp` will use a
@@ -722,9 +732,14 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
          *     (*p).x = 22; // not ok, p is uninitialized, can't deref
          */
 
-        match **lp {
+        match lp.kind {
             LpVar(_) | LpUpvar(_) => {
                 // assigning to `x` does not require that `x` is initialized
+            }
+            LpDowncast(ref lp_base, _) => {
+                // assigning to `(P->Variant).f` is ok if assigning to `P` is ok
+                self.check_if_assigned_path_is_moved(id, span,
+                                                     use_kind, lp_base);
             }
             LpExtend(ref lp_base, _, LpInterior(_)) => {
                 // assigning to `P.f` is ok if assigning to `P` is ok
@@ -864,7 +879,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                         cmt = b;
                     }
 
-                    mc::cat_downcast(b) |
+                    mc::cat_downcast(b, _) |
                     mc::cat_interior(b, _) => {
                         assert_eq!(cmt.mutbl, mc::McInherited);
                         cmt = b;
@@ -915,11 +930,11 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
             }
         }
 
-        fn check_for_assignment_to_borrowed_path(
-            this: &CheckLoanCtxt,
+        fn check_for_assignment_to_borrowed_path<'a, 'tcx>(
+            this: &CheckLoanCtxt<'a, 'tcx>,
             assignment_id: ast::NodeId,
             assignment_span: Span,
-            assignee_cmt: mc::cmt)
+            assignee_cmt: mc::cmt<'tcx>)
         {
             //! Check for assignments that violate the terms of an
             //! outstanding loan.
@@ -939,7 +954,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
 
     pub fn report_illegal_mutation(&self,
                                    span: Span,
-                                   loan_path: &LoanPath,
+                                   loan_path: &LoanPath<'tcx>,
                                    loan: &Loan) {
         self.bccx.span_err(
             span,

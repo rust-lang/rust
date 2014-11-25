@@ -208,6 +208,7 @@ debugging_opts!(
         AST_JSON_NOEXPAND,
         LS,
         SAVE_ANALYSIS,
+        PRINT_MOVE_FRAGMENTS,
         FLOWGRAPH_PRINT_LOANS,
         FLOWGRAPH_PRINT_MOVES,
         FLOWGRAPH_PRINT_ASSIGNS,
@@ -246,6 +247,8 @@ pub fn debugging_opts_map() -> Vec<(&'static str, &'static str, u64)> {
      ("ls", "List the symbols defined by a library crate", LS),
      ("save-analysis", "Write syntax and type analysis information \
                         in addition to normal output", SAVE_ANALYSIS),
+     ("print-move-fragments", "Print out move-fragment data for every fn",
+      PRINT_MOVE_FRAGMENTS),
      ("flowgraph-print-loans", "Include loan analysis data in \
                        --pretty flowgraph output", FLOWGRAPH_PRINT_LOANS),
      ("flowgraph-print-moves", "Include move analysis data in \

@@ -551,7 +551,11 @@ impl<'ast> Map<'ast> {
     }
 
     pub fn node_to_string(&self, id: NodeId) -> String {
-        node_id_to_string(self, id)
+        node_id_to_string(self, id, true)
+    }
+
+    pub fn node_to_user_string(&self, id: NodeId) -> String {
+        node_id_to_string(self, id, false)
     }
 }
 
@@ -1028,7 +1032,10 @@ impl<'a> NodePrinter for pprust::State<'a> {
     }
 }
 
-fn node_id_to_string(map: &Map, id: NodeId) -> String {
+fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
+    let id_str = format!(" (id={})", id);
+    let id_str = if include_id { id_str.as_slice() } else { "" };
+
     match map.find(id) {
         Some(NodeItem(item)) => {
             let path_str = map.path_to_str_with_ident(id, item.ident);
@@ -1045,30 +1052,30 @@ fn node_id_to_string(map: &Map, id: NodeId) -> String {
                 ItemImpl(..) => "impl",
                 ItemMac(..) => "macro"
             };
-            format!("{} {} (id={})", item_str, path_str, id)
+            format!("{} {}{}", item_str, path_str, id_str)
         }
         Some(NodeForeignItem(item)) => {
             let path_str = map.path_to_str_with_ident(id, item.ident);
-            format!("foreign item {} (id={})", path_str, id)
+            format!("foreign item {}{}", path_str, id_str)
         }
         Some(NodeImplItem(ref ii)) => {
             match **ii {
                 MethodImplItem(ref m) => {
                     match m.node {
                         MethDecl(ident, _, _, _, _, _, _, _) =>
-                            format!("method {} in {} (id={})",
+                            format!("method {} in {}{}",
                                     token::get_ident(ident),
-                                    map.path_to_string(id), id),
+                                    map.path_to_string(id), id_str),
                         MethMac(ref mac) =>
-                            format!("method macro {} (id={})",
-                                    pprust::mac_to_string(mac), id)
+                            format!("method macro {}{}",
+                                    pprust::mac_to_string(mac), id_str)
                     }
                 }
                 TypeImplItem(ref t) => {
-                    format!("typedef {} in {} (id={})",
+                    format!("typedef {} in {}{}",
                             token::get_ident(t.ident),
                             map.path_to_string(id),
-                            id)
+                            id_str)
                 }
             }
         }
@@ -1076,51 +1083,51 @@ fn node_id_to_string(map: &Map, id: NodeId) -> String {
             match **tm {
                 RequiredMethod(_) | ProvidedMethod(_) => {
                     let m = ast_util::trait_item_to_ty_method(&**tm);
-                    format!("method {} in {} (id={})",
+                    format!("method {} in {}{}",
                             token::get_ident(m.ident),
                             map.path_to_string(id),
-                            id)
+                            id_str)
                 }
                 TypeTraitItem(ref t) => {
-                    format!("type item {} in {} (id={})",
+                    format!("type item {} in {}{}",
                             token::get_ident(t.ty_param.ident),
                             map.path_to_string(id),
-                            id)
+                            id_str)
                 }
             }
         }
         Some(NodeVariant(ref variant)) => {
-            format!("variant {} in {} (id={})",
+            format!("variant {} in {}{}",
                     token::get_ident(variant.node.name),
-                    map.path_to_string(id), id)
+                    map.path_to_string(id), id_str)
         }
         Some(NodeExpr(ref expr)) => {
-            format!("expr {} (id={})", pprust::expr_to_string(&**expr), id)
+            format!("expr {}{}", pprust::expr_to_string(&**expr), id_str)
         }
         Some(NodeStmt(ref stmt)) => {
-            format!("stmt {} (id={})", pprust::stmt_to_string(&**stmt), id)
+            format!("stmt {}{}", pprust::stmt_to_string(&**stmt), id_str)
         }
         Some(NodeArg(ref pat)) => {
-            format!("arg {} (id={})", pprust::pat_to_string(&**pat), id)
+            format!("arg {}{}", pprust::pat_to_string(&**pat), id_str)
         }
         Some(NodeLocal(ref pat)) => {
-            format!("local {} (id={})", pprust::pat_to_string(&**pat), id)
+            format!("local {}{}", pprust::pat_to_string(&**pat), id_str)
         }
         Some(NodePat(ref pat)) => {
-            format!("pat {} (id={})", pprust::pat_to_string(&**pat), id)
+            format!("pat {}{}", pprust::pat_to_string(&**pat), id_str)
         }
         Some(NodeBlock(ref block)) => {
-            format!("block {} (id={})", pprust::block_to_string(&**block), id)
+            format!("block {}{}", pprust::block_to_string(&**block), id_str)
         }
         Some(NodeStructCtor(_)) => {
-            format!("struct_ctor {} (id={})", map.path_to_string(id), id)
+            format!("struct_ctor {}{}", map.path_to_string(id), id_str)
         }
         Some(NodeLifetime(ref l)) => {
-            format!("lifetime {} (id={})",
-                    pprust::lifetime_to_string(&**l), id)
+            format!("lifetime {}{}",
+                    pprust::lifetime_to_string(&**l), id_str)
         }
         None => {
-            format!("unknown node (id={})", id)
+            format!("unknown node{}", id_str)
         }
     }
 }
