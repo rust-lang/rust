@@ -20,9 +20,8 @@ use trans::expr;
 use trans::type_of;
 use trans::type_::Type;
 
-use std::c_str::ToCStr;
-use std::string::String;
 use syntax::ast;
+use std::ffi::CString;
 use libc::{c_uint, c_char};
 
 // Take an inline assembly expression and splat it out via LLVM
@@ -121,18 +120,16 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
         ast::AsmIntel => llvm::AD_Intel
     };
 
-    let r = ia.asm.get().with_c_str(|a| {
-        constraints.with_c_str(|c| {
-            InlineAsmCall(bcx,
-                          a,
-                          c,
-                          inputs[],
+    let asm = CString::from_slice(ia.asm.get().as_bytes());
+    let constraints = CString::from_slice(constraints.as_bytes());
+    let r = InlineAsmCall(bcx,
+                          asm.as_ptr(),
+                          constraints.as_ptr(),
+                          inputs.as_slice(),
                           output_type,
                           ia.volatile,
                           ia.alignstack,
-                          dialect)
-        })
-    });
+                          dialect);
 
     // Again, based on how many outputs we have
     if num_outputs == 1 {

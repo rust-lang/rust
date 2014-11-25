@@ -320,30 +320,6 @@ impl String {
         }
     }
 
-    /// Creates a `String` from a null-terminated `*const u8` buffer.
-    ///
-    /// This function is unsafe because we dereference memory until we find the
-    /// NUL character, which is not guaranteed to be present. Additionally, the
-    /// slice is not checked to see whether it contains valid UTF-8
-    #[unstable = "just renamed from `mod raw`"]
-    pub unsafe fn from_raw_buf(buf: *const u8) -> String {
-        String::from_str(str::from_c_str(buf as *const i8))
-    }
-
-    /// Creates a `String` from a `*const u8` buffer of the given length.
-    ///
-    /// This function is unsafe because it blindly assumes the validity of the
-    /// pointer `buf` for `len` bytes of memory. This function will copy the
-    /// memory from `buf` into a new allocation (owned by the returned
-    /// `String`).
-    ///
-    /// This function is also unsafe because it does not validate that the
-    /// buffer is valid UTF-8 encoded data.
-    #[unstable = "just renamed from `mod raw`"]
-    pub unsafe fn from_raw_buf_len(buf: *const u8, len: uint) -> String {
-        String::from_utf8_unchecked(Vec::from_raw_buf(buf, len))
-    }
-
     /// Converts a vector of bytes to a new `String` without checking if
     /// it contains valid UTF-8. This is unsafe because it assumes that
     /// the UTF-8-ness of the vector has already been validated.

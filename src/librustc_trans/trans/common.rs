@@ -44,7 +44,7 @@ use util::nodemap::{FnvHashMap, NodeMap};
 
 use arena::TypedArena;
 use libc::{c_uint, c_char};
-use std::c_str::ToCStr;
+use std::ffi::CString;
 use std::cell::{Cell, RefCell};
 use std::vec::Vec;
 use syntax::ast::Ident;
@@ -401,9 +401,8 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
         if self.llreturn.get().is_none() {
 
             self.llreturn.set(Some(unsafe {
-                "return".with_c_str(|buf| {
-                    llvm::LLVMAppendBasicBlockInContext(self.ccx.llcx(), self.llfn, buf)
-                })
+                llvm::LLVMAppendBasicBlockInContext(self.ccx.llcx(), self.llfn,
+                                                    "return\0".as_ptr() as *const _)
             }))
         }
 
@@ -429,11 +428,10 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
                      opt_node_id: Option<ast::NodeId>)
                      -> Block<'a, 'tcx> {
         unsafe {
-            let llbb = name.with_c_str(|buf| {
-                    llvm::LLVMAppendBasicBlockInContext(self.ccx.llcx(),
-                                                        self.llfn,
-                                                        buf)
-                });
+            let name = CString::from_slice(name.as_bytes());
+            let llbb = llvm::LLVMAppendBasicBlockInContext(self.ccx.llcx(),
+                                                           self.llfn,
+                                                           name.as_ptr());
             BlockS::new(llbb, is_lpad, opt_node_id, self)
         }
     }
@@ -708,7 +706,8 @@ pub fn C_integral(t: Type, u: u64, sign_extend: bool) -> ValueRef {
 
 pub fn C_floating(s: &str, t: Type) -> ValueRef {
     unsafe {
-        s.with_c_str(|buf| llvm::LLVMConstRealOfString(t.to_ref(), buf))
+        let s = CString::from_slice(s.as_bytes());
+        llvm::LLVMConstRealOfString(t.to_ref(), s.as_ptr())
     }
 }
 
@@ -789,9 +788,8 @@ pub fn C_cstr(cx: &CrateContext, s: InternedString, null_terminated: bool) -> Va
                                                 !null_terminated as Bool);
 
         let gsym = token::gensym("str");
-        let g = format!("str{}", gsym.uint()).with_c_str(|buf| {
-            llvm::LLVMAddGlobal(cx.llmod(), val_ty(sc).to_ref(), buf)
-        });
+        let buf = CString::from_vec(format!("str{}", gsym.uint()).into_bytes());
+        let g = llvm::LLVMAddGlobal(cx.llmod(), val_ty(sc).to_ref(), buf.as_ptr());
         llvm::LLVMSetInitializer(g, sc);
         llvm::LLVMSetGlobalConstant(g, True);
         llvm::SetLinkage(g, llvm::InternalLinkage);
@@ -815,9 +813,10 @@ pub fn C_binary_slice(cx: &CrateContext, data: &[u8]) -> ValueRef {
         let lldata = C_bytes(cx, data);
 
         let gsym = token::gensym("binary");
-        let g = format!("binary{}", gsym.uint()).with_c_str(|buf| {
-            llvm::LLVMAddGlobal(cx.llmod(), val_ty(lldata).to_ref(), buf)
-        });
+        let name = format!("binary{}", gsym.uint());
+        let name = CString::from_vec(name.into_bytes());
+        let g = llvm::LLVMAddGlobal(cx.llmod(), val_ty(lldata).to_ref(),
+                                    name.as_ptr());
         llvm::LLVMSetInitializer(g, lldata);
         llvm::LLVMSetGlobalConstant(g, True);
         llvm::SetLinkage(g, llvm::InternalLinkage);

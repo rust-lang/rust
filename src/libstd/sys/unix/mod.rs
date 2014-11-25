@@ -15,12 +15,14 @@
 #![allow(unused_unsafe)]
 #![allow(unused_mut)]
 
-extern crate libc;
-
-use num;
-use num::{Int, SignedInt};
 use prelude::v1::*;
+
+use ffi;
 use io::{self, IoResult, IoError};
+use libc;
+use num::{Int, SignedInt};
+use num;
+use str;
 use sys_common::mkerr_libc;
 
 macro_rules! helper_init { (static $name:ident: Helper<$m:ty>) => (
@@ -78,11 +80,10 @@ extern "system" {
 }
 
 pub fn last_gai_error(s: libc::c_int) -> IoError {
-    use c_str::CString;
 
     let mut err = decode_error(s);
     err.detail = Some(unsafe {
-        CString::new(gai_strerror(s), false).as_str().unwrap().to_string()
+        str::from_utf8(ffi::c_str_to_bytes(&gai_strerror(s))).unwrap().to_string()
     });
     err
 }

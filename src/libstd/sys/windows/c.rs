@@ -133,7 +133,7 @@ pub mod compat {
     use intrinsics::{atomic_store_relaxed, transmute};
     use libc::types::os::arch::extra::{LPCWSTR, HMODULE, LPCSTR, LPVOID};
     use prelude::v1::*;
-    use c_str::ToCStr;
+    use ffi::CString;
 
     extern "system" {
         fn GetModuleHandleW(lpModuleName: LPCWSTR) -> HMODULE;
@@ -147,14 +147,13 @@ pub mod compat {
     unsafe fn store_func(ptr: *mut uint, module: &str, symbol: &str, fallback: uint) {
         let mut module: Vec<u16> = module.utf16_units().collect();
         module.push(0);
-        symbol.with_c_str(|symbol| {
-            let handle = GetModuleHandleW(module.as_ptr());
-            let func: uint = transmute(GetProcAddress(handle, symbol));
-            atomic_store_relaxed(ptr, if func == 0 {
-                fallback
-            } else {
-                func
-            })
+        let symbol = CString::from_slice(symbol.as_bytes());
+        let handle = GetModuleHandleW(module.as_ptr());
+        let func: uint = transmute(GetProcAddress(handle, symbol.as_ptr()));
+        atomic_store_relaxed(ptr, if func == 0 {
+            fallback
+        } else {
+            func
         })
     }
 
