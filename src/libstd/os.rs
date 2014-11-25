@@ -43,7 +43,6 @@ use boxed::Box;
 use ops::{Drop, FnOnce};
 use option::Option;
 use option::Option::{Some, None};
-use os;
 use path::{Path, GenericPath, BytesContainer};
 use sys;
 use ptr::RawPtr;
