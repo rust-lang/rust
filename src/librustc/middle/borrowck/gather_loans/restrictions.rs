@@ -15,6 +15,8 @@
 pub use self::RestrictionResult::*;
 
 use middle::borrowck::*;
+use middle::borrowck::LoanPathElem::*;
+use middle::borrowck::LoanPathKind::*;
 use middle::expr_use_visitor as euv;
 use middle::mem_categorization as mc;
 use middle::ty;
@@ -24,9 +26,9 @@ use util::ppaux::Repr;
 use std::rc::Rc;
 
 #[deriving(Show)]
-pub enum RestrictionResult {
+pub enum RestrictionResult<'tcx> {
     Safe,
-    SafeIf(Rc<LoanPath>, Vec<Rc<LoanPath>>)
+    SafeIf(Rc<LoanPath<'tcx>>, Vec<Rc<LoanPath<'tcx>>>)
 }
 
 pub fn compute_restrictions<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
@@ -34,7 +36,7 @@ pub fn compute_restrictions<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                       cause: euv::LoanCause,
                                       cmt: mc::cmt<'tcx>,
                                       loan_region: ty::Region)
-                                      -> RestrictionResult {
+                                      -> RestrictionResult<'tcx> {
     let ctxt = RestrictionsContext {
         bccx: bccx,
         span: span,
@@ -57,8 +59,10 @@ struct RestrictionsContext<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx> RestrictionsContext<'a, 'tcx> {
     fn restrict(&self,
-                cmt: mc::cmt<'tcx>) -> RestrictionResult {
+                cmt: mc::cmt<'tcx>) -> RestrictionResult<'tcx> {
         debug!("restrict(cmt={})", cmt.repr(self.bccx.tcx));
+
+        let new_lp = |v: LoanPathKind<'tcx>| Rc::new(LoanPath::new(v, cmt.ty));
 
         match cmt.cat.clone() {
             mc::cat_rvalue(..) => {
@@ -72,17 +76,17 @@ impl<'a, 'tcx> RestrictionsContext<'a, 'tcx> {
 
             mc::cat_local(local_id) => {
                 // R-Variable, locally declared
-                let lp = Rc::new(LpVar(local_id));
+                let lp = new_lp(LpVar(local_id));
                 SafeIf(lp.clone(), vec![lp])
             }
 
             mc::cat_upvar(mc::Upvar { id, .. }) => {
                 // R-Variable, captured into closure
-                let lp = Rc::new(LpUpvar(id));
+                let lp = new_lp(LpUpvar(id));
                 SafeIf(lp.clone(), vec![lp])
             }
 
-            mc::cat_downcast(cmt_base) => {
+            mc::cat_downcast(cmt_base, _) => {
                 // When we borrow the interior of an enum, we have to
                 // ensure the enum itself is not mutated, because that
                 // could cause the type of the memory to change.
@@ -96,9 +100,8 @@ impl<'a, 'tcx> RestrictionsContext<'a, 'tcx> {
                 // the memory, so no additional restrictions are
                 // needed.
                 let result = self.restrict(cmt_base);
-                self.extend(result, cmt.mutbl, LpInterior(i))
+                self.extend(result, &cmt, LpInterior(i))
             }
-
 
             mc::cat_static_item(..) => {
                 Safe
@@ -116,7 +119,7 @@ impl<'a, 'tcx> RestrictionsContext<'a, 'tcx> {
                         // Eventually we should make these non-special and
                         // just rely on Deref<T> implementation.
                         let result = self.restrict(cmt_base);
-                        self.extend(result, cmt.mutbl, LpDeref(pk))
+                        self.extend(result, &cmt, LpDeref(pk))
                     }
                     mc::Implicit(bk, lt) | mc::BorrowedPtr(bk, lt) => {
                         // R-Deref-[Mut-]Borrowed
@@ -140,7 +143,7 @@ impl<'a, 'tcx> RestrictionsContext<'a, 'tcx> {
                                 // references lifetime ends (by a newly-unfrozen
                                 // borrow).
                                 let result = self.restrict(cmt_base);
-                                self.extend(result, cmt.mutbl, LpDeref(pk))
+                                self.extend(result, &cmt, LpDeref(pk))
                             }
                         }
                     }
@@ -152,13 +155,14 @@ impl<'a, 'tcx> RestrictionsContext<'a, 'tcx> {
     }
 
     fn extend(&self,
-              result: RestrictionResult,
-              mc: mc::MutabilityCategory,
-              elem: LoanPathElem) -> RestrictionResult {
+              result: RestrictionResult<'tcx>,
+              cmt: &mc::cmt<'tcx>,
+              elem: LoanPathElem) -> RestrictionResult<'tcx> {
         match result {
             Safe => Safe,
             SafeIf(base_lp, mut base_vec) => {
-                let lp = Rc::new(LpExtend(base_lp, mc, elem));
+                let v = LpExtend(base_lp, cmt.mutbl, elem);
+                let lp = Rc::new(LoanPath::new(v, cmt.ty));
                 base_vec.push(lp.clone());
                 SafeIf(lp, base_vec)
             }

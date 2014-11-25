@@ -270,7 +270,7 @@ impl<'tcx> euv::Delegate<'tcx> for GlobalChecker {
                     break
                 }
                 mc::cat_deref(ref cmt, _, _) |
-                mc::cat_downcast(ref cmt) |
+                mc::cat_downcast(ref cmt, _) |
                 mc::cat_interior(ref cmt, _) => cur = cmt,
 
                 mc::cat_rvalue(..) |
@@ -325,6 +325,12 @@ impl<'tcx> euv::Delegate<'tcx> for GlobalChecker {
               _assignment_span: Span,
               _assignee_cmt: mc::cmt,
               _mode: euv::MutateMode) {}
+
+    fn matched_pat(&mut self,
+                   _: &ast::Pat,
+                   _: mc::cmt,
+                   _: euv::MatchMode) {}
+
     fn consume_pat(&mut self,
                    _consume_pat: &ast::Pat,
                    _cmt: mc::cmt,

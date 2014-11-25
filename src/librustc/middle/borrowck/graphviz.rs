@@ -80,7 +80,7 @@ impl<'a, 'tcx> DataflowLabeller<'a, 'tcx> {
                                      e: EntryOrExit,
                                      cfgidx: CFGIndex,
                                      dfcx: &DataFlowContext<'a, 'tcx, O>,
-                                     to_lp: |uint| -> Rc<LoanPath>) -> String {
+                                     to_lp: |uint| -> Rc<LoanPath<'tcx>>) -> String {
         let mut saw_some = false;
         let mut set = "{".to_string();
         dfcx.each_bit_for_node(e, cfgidx, |index| {
