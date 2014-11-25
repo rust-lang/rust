@@ -325,15 +325,14 @@ pub enum TransBindingMode {
     TrByRef,
 }
 
-/**
- * Information about a pattern binding:
- * - `llmatch` is a pointer to a stack slot.  The stack slot contains a
- *   pointer into the value being matched.  Hence, llmatch has type `T**`
- *   where `T` is the value being matched.
- * - `trmode` is the trans binding mode
- * - `id` is the node id of the binding
- * - `ty` is the Rust type of the binding */
- #[deriving(Clone)]
+/// Information about a pattern binding:
+/// - `llmatch` is a pointer to a stack slot.  The stack slot contains a
+///   pointer into the value being matched.  Hence, llmatch has type `T**`
+///   where `T` is the value being matched.
+/// - `trmode` is the trans binding mode
+/// - `id` is the node id of the binding
+/// - `ty` is the Rust type of the binding
+#[deriving(Clone)]
 pub struct BindingInfo<'tcx> {
     pub llmatch: ValueRef,
     pub trmode: TransBindingMode,
@@ -350,12 +349,10 @@ struct ArmData<'p, 'blk, 'tcx: 'blk> {
     bindings_map: BindingsMap<'tcx>
 }
 
-/**
- * Info about Match.
- * If all `pats` are matched then arm `data` will be executed.
- * As we proceed `bound_ptrs` are filled with pointers to values to be bound,
- * these pointers are stored in llmatch variables just before executing `data` arm.
- */
+/// Info about Match.
+/// If all `pats` are matched then arm `data` will be executed.
+/// As we proceed `bound_ptrs` are filled with pointers to values to be bound,
+/// these pointers are stored in llmatch variables just before executing `data` arm.
 struct Match<'a, 'p: 'a, 'blk: 'a, 'tcx: 'blk> {
     pats: Vec<&'p ast::Pat>,
     data: &'a ArmData<'p, 'blk, 'tcx>,
