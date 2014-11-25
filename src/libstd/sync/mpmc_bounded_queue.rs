@@ -33,11 +33,11 @@
 use core::prelude::*;
 
 use alloc::arc::Arc;
-use collections::Vec;
+use vec::Vec;
 use core::num::UnsignedInt;
 use core::cell::UnsafeCell;
 
-use atomic::{AtomicUint,Relaxed,Release,Acquire};
+use sync::atomic::{AtomicUint,Relaxed,Release,Acquire};
 
 struct Node<T> {
     sequence: AtomicUint,
@@ -165,7 +165,7 @@ impl<T: Send> Clone for Queue<T> {
 
 #[cfg(test)]
 mod tests {
-    use std::prelude::*;
+    use prelude::*;
     use super::Queue;
 
     #[test]
