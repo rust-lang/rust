@@ -49,8 +49,8 @@ use trans::monomorphize;
 use trans::type_::Type;
 use trans::type_of;
 use middle::ty::{mod, Ty};
+use middle::ty::MethodCall;
 use middle::typeck::coherence::make_substs_for_receiver_types;
-use middle::typeck::MethodCall;
 use util::ppaux::Repr;
 use util::ppaux::ty_to_string;
 

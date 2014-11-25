@@ -912,10 +912,10 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                            ex: &ast::Expr,
                            args: &Vec<P<ast::Expr>>) {
         let method_map = self.analysis.ty_cx.method_map.borrow();
-        let method_callee = &(*method_map)[typeck::MethodCall::expr(ex.id)];
+        let method_callee = &(*method_map)[ty::MethodCall::expr(ex.id)];
         let (def_id, decl_id) = match method_callee.origin {
-            typeck::MethodStatic(def_id) |
-            typeck::MethodStaticUnboxedClosure(def_id) => {
+            ty::MethodStatic(def_id) |
+            ty::MethodStaticUnboxedClosure(def_id) => {
                 // method invoked on an object with a concrete type (not a static method)
                 let decl_id =
                     match ty::trait_item_of_item(&self.analysis.ty_cx,
@@ -936,14 +936,14 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                 };
                 (Some(def_id), decl_id)
             }
-            typeck::MethodTypeParam(ref mp) => {
+            ty::MethodTypeParam(ref mp) => {
                 // method invoked on a type parameter
                 let trait_item = ty::trait_item(&self.analysis.ty_cx,
                                                 mp.trait_ref.def_id,
                                                 mp.method_num);
                 (None, Some(trait_item.def_id()))
             }
-            typeck::MethodTraitObject(ref mo) => {
+            ty::MethodTraitObject(ref mo) => {
                 // method invoked on a trait instance
                 let trait_item = ty::trait_item(&self.analysis.ty_cx,
                                                 mo.trait_ref.def_id,

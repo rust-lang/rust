@@ -93,12 +93,13 @@ use middle::ty::{FnSig, VariantInfo, Polytype};
 use middle::ty::{Disr, ParamTy, ParameterEnvironment};
 use middle::ty::{mod, Ty};
 use middle::ty::liberate_late_bound_regions;
+use middle::ty::{MethodCall, MethodCallee, MethodMap, ObjectCastMap};
 use middle::ty_fold::TypeFolder;
 use middle::typeck::astconv::{mod, ast_region_to_region, ast_ty_to_ty, AstConv};
 use middle::typeck::check::_match::pat_ctxt;
 use middle::typeck::rscope::RegionScope;
-use middle::typeck::{mod, CrateCtxt, infer, lookup_def_ccx, no_params, require_same_types};
-use middle::typeck::{MethodCall, MethodCallee, MethodMap, ObjectCastMap, TypeAndSubsts};
+use middle::typeck::{CrateCtxt, infer, lookup_def_ccx, no_params, require_same_types};
+use middle::typeck::TypeAndSubsts;
 use middle::lang_items::TypeIdLangItem;
 use lint;
 use util::common::{block_query, indenter, loop_query};
@@ -279,7 +280,7 @@ impl<'a, 'tcx> mem_categorization::Typer<'tcx> for FnCtxt<'a, 'tcx> {
     fn node_ty(&self, id: ast::NodeId) -> McResult<Ty<'tcx>> {
         Ok(self.node_ty(id))
     }
-    fn node_method_ty(&self, method_call: typeck::MethodCall)
+    fn node_method_ty(&self, method_call: ty::MethodCall)
                       -> Option<Ty<'tcx>> {
         self.inh.method_map.borrow().get(&method_call).map(|m| m.ty)
     }
@@ -287,7 +288,7 @@ impl<'a, 'tcx> mem_categorization::Typer<'tcx> for FnCtxt<'a, 'tcx> {
         &self.inh.adjustments
     }
     fn is_method_call(&self, id: ast::NodeId) -> bool {
-        self.inh.method_map.borrow().contains_key(&typeck::MethodCall::expr(id))
+        self.inh.method_map.borrow().contains_key(&ty::MethodCall::expr(id))
     }
     fn temporary_scope(&self, rvalue_id: ast::NodeId) -> Option<CodeExtent> {
         self.tcx().temporary_scope(rvalue_id)
@@ -3260,7 +3261,7 @@ fn check_expr_with_unifier<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             Some(method) => {
                 let method_ty = method.ty;
                 // HACK(eddyb) Fully qualified path to work around a resolve bug.
-                let method_call = ::middle::typeck::MethodCall::expr(op_ex.id);
+                let method_call = ::middle::ty::MethodCall::expr(op_ex.id);
                 fcx.inh.method_map.borrow_mut().insert(method_call, method);
                 match check_method_argument_types(fcx,
                                             op_ex.span,
