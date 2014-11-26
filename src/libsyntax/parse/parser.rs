@@ -1963,11 +1963,9 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// Parses `lifetime_defs = [ lifetime_defs { ',' lifetime_defs } ]` where `lifetime_def  =
+    /// lifetime [':' lifetimes]`
     pub fn parse_lifetime_defs(&mut self) -> Vec<ast::LifetimeDef> {
-        /*!
-         * Parses `lifetime_defs = [ lifetime_defs { ',' lifetime_defs } ]`
-         * where `lifetime_def  = lifetime [':' lifetimes]`
-         */
 
         let mut res = Vec::new();
         loop {
@@ -2003,16 +2001,13 @@ impl<'a> Parser<'a> {
         }
     }
 
-    // matches lifetimes = ( lifetime ) | ( lifetime , lifetimes )
-    // actually, it matches the empty one too, but putting that in there
-    // messes up the grammar....
+    /// matches lifetimes = ( lifetime ) | ( lifetime , lifetimes ) actually, it matches the empty
+    /// one too, but putting that in there messes up the grammar....
+    ///
+    /// Parses zero or more comma separated lifetimes. Expects each lifetime to be followed by
+    /// either a comma or `>`.  Used when parsing type parameter lists, where we expect something
+    /// like `<'a, 'b, T>`.
     pub fn parse_lifetimes(&mut self, sep: token::Token) -> Vec<ast::Lifetime> {
-        /*!
-         * Parses zero or more comma separated lifetimes.
-         * Expects each lifetime to be followed by either
-         * a comma or `>`.  Used when parsing type parameter
-         * lists, where we expect something like `<'a, 'b, T>`.
-         */
 
         let mut res = Vec::new();
         loop {

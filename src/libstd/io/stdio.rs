@@ -8,24 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*! Non-blocking access to stdin, stdout, and stderr.
-
-This module provides bindings to the local event loop's TTY interface, using it
-to offer synchronous but non-blocking versions of stdio. These handles can be
-inspected for information about terminal dimensions or for related information
-about the stream or terminal to which it is attached.
-
-# Example
-
-```rust
-# #![allow(unused_must_use)]
-use std::io;
-
-let mut out = io::stdout();
-out.write(b"Hello, world!");
-```
-
-*/
+//! Non-blocking access to stdin, stdout, and stderr.
+//!
+//! This module provides bindings to the local event loop's TTY interface, using it
+//! to offer synchronous but non-blocking versions of stdio. These handles can be
+//! inspected for information about terminal dimensions or for related information
+//! about the stream or terminal to which it is attached.
+//!
+//! # Example
+//!
+//! ```rust
+//! # #![allow(unused_must_use)]
+//! use std::io;
+//!
+//! let mut out = io::stdout();
+//! out.write(b"Hello, world!");
+//! ```
 
 use self::StdSource::*;
 

@@ -671,39 +671,29 @@ pub fn type_has_late_bound_regions(ty: Ty) -> bool {
     ty.flags.intersects(HAS_RE_LATE_BOUND)
 }
 
+/// An "escaping region" is a bound region whose binder is not part of `t`.
+///
+/// So, for example, consider a type like the following, which has two binders:
+///
+///    for<'a> fn(x: for<'b> fn(&'a int, &'b int))
+///    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ outer scope
+///                  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~  inner scope
+///
+/// This type has *bound regions* (`'a`, `'b`), but it does not have escaping regions, because the
+/// binders of both `'a` and `'b` are part of the type itself. However, if we consider the *inner
+/// fn type*, that type has an escaping region: `'a`.
+///
+/// Note that what I'm calling an "escaping region" is often just called a "free region". However,
+/// we already use the term "free region". It refers to the regions that we use to represent bound
+/// regions on a fn definition while we are typechecking its body.
+///
+/// To clarify, conceptually there is no particular difference between an "escaping" region and a
+/// "free" region. However, there is a big difference in practice. Basically, when "entering" a
+/// binding level, one is generally required to do some sort of processing to a bound region, such
+/// as replacing it with a fresh/skolemized region, or making an entry in the environment to
+/// represent the scope to which it is attached, etc. An escaping region represents a bound region
+/// for which this processing has not yet been done.
 pub fn type_has_escaping_regions(ty: Ty) -> bool {
-    /*!
-     * An "escaping region" is a bound region whose binder is not part of `t`.
-     *
-     * So, for example, consider a type like the following, which has two
-     * binders:
-     *
-     *    for<'a> fn(x: for<'b> fn(&'a int, &'b int))
-     *    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ outer scope
-     *                  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~  inner scope
-     *
-     * This type has *bound regions* (`'a`, `'b`), but it does not
-     * have escaping regions, because the binders of both `'a` and
-     * `'b` are part of the type itself. However, if we consider the
-     * *inner fn type*, that type has an escaping region: `'a`.
-     *
-     * Note that what I'm calling an "escaping region" is often just
-     * called a "free region". However, we already use the term "free
-     * region". It refers to the regions that we use to represent
-     * bound regions on a fn definition while we are typechecking its
-     * body.
-     *
-     * To clarify, conceptually there is no particular difference
-     * between an "escaping" region and a "free" region. However,
-     * there is a big difference in practice. Basically, when
-     * "entering" a binding level, one is generally required to do
-     * some sort of processing to a bound region, such as replacing it
-     * with a fresh/skolemized region, or making an entry in the
-     * environment to represent the scope to which it is attached,
-     * etc. An escaping region represents a bound region for which
-     * this processing has not yet been done.
-     */
-
     type_escapes_depth(ty, 0)
 }
 
@@ -1248,11 +1238,8 @@ pub fn all_builtin_bounds() -> BuiltinBounds {
     set
 }
 
+/// An existential bound that does not implement any traits.
 pub fn region_existential_bound(r: ty::Region) -> ExistentialBounds {
-    /*!
-     * An existential bound that does not implement any traits.
-     */
-
     ty::ExistentialBounds { region_bound: r,
                             builtin_bounds: empty_builtin_bounds() }
 }
@@ -1834,12 +1821,9 @@ impl FlagComputation {
         }
     }
 
+    /// Adds the flags/depth from a set of types that appear within the current type, but within a
+    /// region binder.
     fn add_bound_computation(&mut self, computation: &FlagComputation) {
-        /*!
-         * Adds the flags/depth from a set of types that appear within
-         * the current type, but within a region binder.
-         */
-
         self.add_flags(computation.flags);
 
         // The types that contributed to `computation` occured within
@@ -2575,38 +2559,26 @@ impl TypeContents {
         self.intersects(TC::NeedsDrop)
     }
 
+    /// Includes only those bits that still apply when indirected through a `Box` pointer
     pub fn owned_pointer(&self) -> TypeContents {
-        /*!
-         * Includes only those bits that still apply
-         * when indirected through a `Box` pointer
-         */
         TC::OwnsOwned | (
             *self & (TC::OwnsAll | TC::ReachesAll))
     }
 
+    /// Includes only those bits that still apply when indirected through a reference (`&`)
     pub fn reference(&self, bits: TypeContents) -> TypeContents {
-        /*!
-         * Includes only those bits that still apply
-         * when indirected through a reference (`&`)
-         */
         bits | (
             *self & TC::ReachesAll)
     }
 
+    /// Includes only those bits that still apply when indirected through a managed pointer (`@`)
     pub fn managed_pointer(&self) -> TypeContents {
-        /*!
-         * Includes only those bits that still apply
-         * when indirected through a managed pointer (`@`)
-         */
         TC::Managed | (
             *self & TC::ReachesAll)
     }
 
+    /// Includes only those bits that still apply when indirected through an unsafe pointer (`*`)
     pub fn unsafe_pointer(&self) -> TypeContents {
-        /*!
-         * Includes only those bits that still apply
-         * when indirected through an unsafe pointer (`*`)
-         */
         *self & TC::ReachesAll
     }
 
@@ -2883,14 +2855,10 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
         }
     }
 
+    /// Type contents due to containing a reference with the region `region` and borrow kind `bk`
     fn borrowed_contents(region: ty::Region,
                          mutbl: ast::Mutability)
                          -> TypeContents {
-        /*!
-         * Type contents due to containing a reference
-         * with the region `region` and borrow kind `bk`
-         */
-
         let b = match mutbl {
             ast::MutMutable => TC::ReachesMutable | TC::OwnsAffine,
             ast::MutImmutable => TC::None,
@@ -3648,20 +3616,16 @@ pub fn expr_ty_opt<'tcx>(cx: &ctxt<'tcx>, expr: &ast::Expr) -> Option<Ty<'tcx>> 
     return node_id_to_type_opt(cx, expr.id);
 }
 
+/// Returns the type of `expr`, considering any `AutoAdjustment`
+/// entry recorded for that expression.
+///
+/// It would almost certainly be better to store the adjusted ty in with
+/// the `AutoAdjustment`, but I opted not to do this because it would
+/// require serializing and deserializing the type and, although that's not
+/// hard to do, I just hate that code so much I didn't want to touch it
+/// unless it was to fix it properly, which seemed a distraction from the
+/// task at hand! -nmatsakis
 pub fn expr_ty_adjusted<'tcx>(cx: &ctxt<'tcx>, expr: &ast::Expr) -> Ty<'tcx> {
-    /*!
-     *
-     * Returns the type of `expr`, considering any `AutoAdjustment`
-     * entry recorded for that expression.
-     *
-     * It would almost certainly be better to store the adjusted ty in with
-     * the `AutoAdjustment`, but I opted not to do this because it would
-     * require serializing and deserializing the type and, although that's not
-     * hard to do, I just hate that code so much I didn't want to touch it
-     * unless it was to fix it properly, which seemed a distraction from the
-     * task at hand! -nmatsakis
-     */
-
     adjust_ty(cx, expr.span, expr.id, expr_ty(cx, expr),
               cx.adjustments.borrow().get(&expr.id),
               |method_call| cx.method_map.borrow().get(&method_call).map(|method| method.ty))
@@ -3707,6 +3671,7 @@ pub fn local_var_name_str(cx: &ctxt, id: NodeId) -> InternedString {
     }
 }
 
+/// See `expr_ty_adjusted`
 pub fn adjust_ty<'tcx>(cx: &ctxt<'tcx>,
                        span: Span,
                        expr_id: ast::NodeId,
@@ -3714,7 +3679,6 @@ pub fn adjust_ty<'tcx>(cx: &ctxt<'tcx>,
                        adjustment: Option<&AutoAdjustment<'tcx>>,
                        method_type: |typeck::MethodCall| -> Option<Ty<'tcx>>)
                        -> Ty<'tcx> {
-    /*! See `expr_ty_adjusted` */
 
     match unadjusted_ty.sty {
         ty_err => return unadjusted_ty,
@@ -4128,16 +4092,11 @@ pub fn ty_sort_string<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> String {
     }
 }
 
+/// Explains the source of a type err in a short, human readable way. This is meant to be placed
+/// in parentheses after some larger message. You should also invoke `note_and_explain_type_err()`
+/// afterwards to present additional details, particularly when it comes to lifetime-related
+/// errors.
 pub fn type_err_to_str<'tcx>(cx: &ctxt<'tcx>, err: &type_err<'tcx>) -> String {
-    /*!
-     *
-     * Explains the source of a type err in a short,
-     * human readable way.  This is meant to be placed in
-     * parentheses after some larger message.  You should
-     * also invoke `note_and_explain_type_err()` afterwards
-     * to present additional details, particularly when
-     * it comes to lifetime-related errors. */
-
     fn tstore_to_closure(s: &TraitStore) -> String {
         match s {
             &UniqTraitStore => "proc".to_string(),
@@ -4352,21 +4311,16 @@ pub fn provided_trait_methods<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
     }
 }
 
+/// Helper for looking things up in the various maps that are populated during typeck::collect
+/// (e.g., `cx.impl_or_trait_items`, `cx.tcache`, etc).  All of these share the pattern that if the
+/// id is local, it should have been loaded into the map by the `typeck::collect` phase.  If the
+/// def-id is external, then we have to go consult the crate loading code (and cache the result for
+/// the future).
 fn lookup_locally_or_in_crate_store<V:Clone>(
                                     descr: &str,
                                     def_id: ast::DefId,
                                     map: &mut DefIdMap<V>,
                                     load_external: || -> V) -> V {
-    /*!
-     * Helper for looking things up in the various maps
-     * that are populated during typeck::collect (e.g.,
-     * `cx.impl_or_trait_items`, `cx.tcache`, etc).  All of these share
-     * the pattern that if the id is local, it should have
-     * been loaded into the map by the `typeck::collect` phase.
-     * If the def-id is external, then we have to go consult
-     * the crate loading code (and cache the result for the future).
-     */
-
     match map.get(&def_id).cloned() {
         Some(v) => { return v; }
         None => { }
@@ -5238,19 +5192,16 @@ pub fn each_bound_trait_and_supertraits<'tcx>(tcx: &ctxt<'tcx>,
     return true;
 }
 
+/// Given a type which must meet the builtin bounds and trait bounds, returns a set of lifetimes
+/// which the type must outlive.
+///
+/// Requires that trait definitions have been processed.
 pub fn required_region_bounds<'tcx>(tcx: &ctxt<'tcx>,
                                     region_bounds: &[ty::Region],
                                     builtin_bounds: BuiltinBounds,
                                     trait_bounds: &[Rc<TraitRef<'tcx>>])
                                     -> Vec<ty::Region>
 {
-    /*!
-     * Given a type which must meet the builtin bounds and trait
-     * bounds, returns a set of lifetimes which the type must outlive.
-     *
-     * Requires that trait definitions have been processed.
-     */
-
     let mut all_bounds = Vec::new();
 
     debug!("required_region_bounds(builtin_bounds={}, trait_bounds={})",
@@ -5636,13 +5587,9 @@ impl Variance {
     }
 }
 
+/// Construct a parameter environment suitable for static contexts or other contexts where there
+/// are no free type/lifetime parameters in scope.
 pub fn empty_parameter_environment<'tcx>() -> ParameterEnvironment<'tcx> {
-    /*!
-     * Construct a parameter environment suitable for static contexts
-     * or other contexts where there are no free type/lifetime
-     * parameters in scope.
-     */
-
     ty::ParameterEnvironment { free_substs: Substs::empty(),
                                bounds: VecPerParamSpace::empty(),
                                caller_obligations: VecPerParamSpace::empty(),
@@ -5650,6 +5597,7 @@ pub fn empty_parameter_environment<'tcx>() -> ParameterEnvironment<'tcx> {
                                selection_cache: traits::SelectionCache::new(), }
 }
 
+/// See `ParameterEnvironment` struct def'n for details
 pub fn construct_parameter_environment<'tcx>(
     tcx: &ctxt<'tcx>,
     span: Span,
@@ -5657,7 +5605,6 @@ pub fn construct_parameter_environment<'tcx>(
     free_id: ast::NodeId)
     -> ParameterEnvironment<'tcx>
 {
-    /*! See `ParameterEnvironment` struct def'n for details */
 
     //
     // Construct the free substs.
@@ -5786,15 +5733,11 @@ impl BorrowKind {
         }
     }
 
+    /// Returns a mutability `m` such that an `&m T` pointer could be used to obtain this borrow
+    /// kind. Because borrow kinds are richer than mutabilities, we sometimes have to pick a
+    /// mutability that is stronger than necessary so that it at least *would permit* the borrow in
+    /// question.
     pub fn to_mutbl_lossy(self) -> ast::Mutability {
-        /*!
-         * Returns a mutability `m` such that an `&m T` pointer could
-         * be used to obtain this borrow kind. Because borrow kinds
-         * are richer than mutabilities, we sometimes have to pick a
-         * mutability that is stronger than necessary so that it at
-         * least *would permit* the borrow in question.
-         */
-
         match self {
             MutBorrow => ast::MutMutable,
             ImmBorrow => ast::MutImmutable,
@@ -5959,6 +5902,8 @@ impl<'tcx> AutoDerefRef<'tcx> {
     }
 }
 
+/// Replace any late-bound regions bound in `value` with free variants attached to scope-id
+/// `scope_id`.
 pub fn liberate_late_bound_regions<'tcx, HR>(
     tcx: &ty::ctxt<'tcx>,
     scope: region::CodeExtent,
@@ -5966,31 +5911,23 @@ pub fn liberate_late_bound_regions<'tcx, HR>(
     -> HR
     where HR : HigherRankedFoldable<'tcx>
 {
-    /*!
-     * Replace any late-bound regions bound in `value` with free variants
-     * attached to scope-id `scope_id`.
-     */
-
     replace_late_bound_regions(
         tcx, value,
         |br, _| ty::ReFree(ty::FreeRegion{scope: scope, bound_region: br})).0
 }
 
+/// Replace any late-bound regions bound in `value` with `'static`. Useful in trans but also
+/// method lookup and a few other places where precise region relationships are not required.
 pub fn erase_late_bound_regions<'tcx, HR>(
     tcx: &ty::ctxt<'tcx>,
     value: &HR)
     -> HR
     where HR : HigherRankedFoldable<'tcx>
 {
-    /*!
-     * Replace any late-bound regions bound in `value` with `'static`.
-     * Useful in trans but also method lookup and a few other places
-     * where precise region relationships are not required.
-     */
-
     replace_late_bound_regions(tcx, value, |_, _| ty::ReStatic).0
 }
 
+/// Replaces the late-bound-regions in `value` that are bound by `value`.
 pub fn replace_late_bound_regions<'tcx, HR>(
     tcx: &ty::ctxt<'tcx>,
     value: &HR,
@@ -5998,10 +5935,6 @@ pub fn replace_late_bound_regions<'tcx, HR>(
     -> (HR, FnvHashMap<ty::BoundRegion,ty::Region>)
     where HR : HigherRankedFoldable<'tcx>
 {
-    /*!
-     * Replaces the late-bound-regions in `value` that are bound by `value`.
-     */
-
     debug!("replace_late_bound_regions({})", value.repr(tcx));
 
     let mut map = FnvHashMap::new();

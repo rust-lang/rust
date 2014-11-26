@@ -10,47 +10,45 @@
 //
 // ignore-lexer-test FIXME #15679
 
-/*! Synchronous File I/O
-
-This module provides a set of functions and traits for working
-with regular files & directories on a filesystem.
-
-At the top-level of the module are a set of freestanding functions, associated
-with various filesystem operations. They all operate on `Path` objects.
-
-All operations in this module, including those as part of `File` et al
-block the task during execution. In the event of failure, all functions/methods
-will return an `IoResult` type with an `Err` value.
-
-Also included in this module is an implementation block on the `Path` object
-defined in `std::path::Path`. The impl adds useful methods about inspecting the
-metadata of a file. This includes getting the `stat` information, reading off
-particular bits of it, etc.
-
-# Example
-
-```rust
-# #![allow(unused_must_use)]
-use std::io::fs::PathExtensions;
-use std::io::{File, fs};
-
-let path = Path::new("foo.txt");
-
-// create the file, whether it exists or not
-let mut file = File::create(&path);
-file.write(b"foobar");
-# drop(file);
-
-// open the file in read-only mode
-let mut file = File::open(&path);
-file.read_to_end();
-
-println!("{}", path.stat().unwrap().size);
-# drop(file);
-fs::unlink(&path);
-```
-
-*/
+//! Synchronous File I/O
+//!
+//! This module provides a set of functions and traits for working
+//! with regular files & directories on a filesystem.
+//!
+//! At the top-level of the module are a set of freestanding functions, associated
+//! with various filesystem operations. They all operate on `Path` objects.
+//!
+//! All operations in this module, including those as part of `File` et al
+//! block the task during execution. In the event of failure, all functions/methods
+//! will return an `IoResult` type with an `Err` value.
+//!
+//! Also included in this module is an implementation block on the `Path` object
+//! defined in `std::path::Path`. The impl adds useful methods about inspecting the
+//! metadata of a file. This includes getting the `stat` information, reading off
+//! particular bits of it, etc.
+//!
+//! # Example
+//!
+//! ```rust
+//! # #![allow(unused_must_use)]
+//! use std::io::fs::PathExtensions;
+//! use std::io::{File, fs};
+//!
+//! let path = Path::new("foo.txt");
+//!
+//! // create the file, whether it exists or not
+//! let mut file = File::create(&path);
+//! file.write(b"foobar");
+//! # drop(file);
+//!
+//! // open the file in read-only mode
+//! let mut file = File::open(&path);
+//! file.read_to_end();
+//!
+//! println!("{}", path.stat().unwrap().size);
+//! # drop(file);
+//! fs::unlink(&path);
+//! ```
 
 use clone::Clone;
 use io::standard_error;

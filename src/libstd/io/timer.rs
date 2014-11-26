@@ -8,14 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
-
-Synchronous Timers
-
-This module exposes the functionality to create timers, block the current task,
-and create receivers which will receive notifications after a period of time.
-
-*/
+//! Synchronous Timers
+//!
+//! This module exposes the functionality to create timers, block the current task,
+//! and create receivers which will receive notifications after a period of time.
 
 // FIXME: These functions take Durations but only pass ms to the backend impls.
 

@@ -95,26 +95,19 @@ pub fn type_is_immediate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -
     }
 }
 
+/// Identify types which have size zero at runtime.
 pub fn type_is_zero_size<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
-    /*!
-     * Identify types which have size zero at runtime.
-     */
-
     use trans::machine::llsize_of_alloc;
     use trans::type_of::sizing_type_of;
     let llty = sizing_type_of(ccx, ty);
     llsize_of_alloc(ccx, llty) == 0
 }
 
+/// Identifies types which we declare to be equivalent to `void` in C for the purpose of function
+/// return types. These are `()`, bot, and uninhabited enums. Note that all such types are also
+/// zero-size, but not all zero-size types use a `void` return type (in order to aid with C ABI
+/// compatibility).
 pub fn return_type_is_void(ccx: &CrateContext, ty: Ty) -> bool {
-    /*!
-     * Identifies types which we declare to be equivalent to `void`
-     * in C for the purpose of function return types. These are
-     * `()`, bot, and uninhabited enums. Note that all such types
-     * are also zero-size, but not all zero-size types use a `void`
-     * return type (in order to aid with C ABI compatibility).
-     */
-
     ty::type_is_nil(ty) || ty::type_is_empty(ccx.tcx(), ty)
 }
 
@@ -768,19 +761,14 @@ pub fn expr_ty_adjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ex: &ast::Expr) -> T
     monomorphize_type(bcx, ty::expr_ty_adjusted(bcx.tcx(), ex))
 }
 
+/// Attempts to resolve an obligation. The result is a shallow vtable resolution -- meaning that we
+/// do not (necessarily) resolve all nested obligations on the impl. Note that type check should
+/// guarantee to us that all nested obligations *could be* resolved if we wanted to.
 pub fn fulfill_obligation<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                     span: Span,
                                     trait_ref: Rc<ty::TraitRef<'tcx>>)
                                     -> traits::Vtable<'tcx, ()>
 {
-    /*!
-     * Attempts to resolve an obligation. The result is a shallow
-     * vtable resolution -- meaning that we do not (necessarily) resolve
-     * all nested obligations on the impl. Note that type check should
-     * guarantee to us that all nested obligations *could be* resolved
-     * if we wanted to.
-     */
-
     let tcx = ccx.tcx();
 
     // Remove any references to regions; this helps improve caching.

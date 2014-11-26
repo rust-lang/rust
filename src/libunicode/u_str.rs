@@ -10,12 +10,10 @@
 //
 // ignore-lexer-test FIXME #15679
 
-/*!
- * Unicode-intensive string manipulations.
- *
- * This module provides functionality to `str` that requires the Unicode
- * methods provided by the UnicodeChar trait.
- */
+//! Unicode-intensive string manipulations.
+//!
+//! This module provides functionality to `str` that requires the Unicode methods provided by the
+//! UnicodeChar trait.
 
 use self::GraphemeState::*;
 use core::cmp;

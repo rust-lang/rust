@@ -168,17 +168,14 @@ pub fn check_object_safety<'tcx>(tcx: &ty::ctxt<'tcx>,
         }
     }
 
-    // Returns a vec of error messages. If hte vec is empty - no errors!
+    /// Returns a vec of error messages. If hte vec is empty - no errors!
+    ///
+    /// There are some limitations to calling functions through an object, because (a) the self
+    /// type is not known (that's the whole point of a trait instance, after all, to obscure the
+    /// self type) and (b) the call must go through a vtable and hence cannot be monomorphized.
     fn check_object_safety_of_method<'tcx>(tcx: &ty::ctxt<'tcx>,
                                            method: &ty::Method<'tcx>)
                                            -> Vec<String> {
-        /*!
-         * There are some limitations to calling functions through an
-         * object, because (a) the self type is not known
-         * (that's the whole point of a trait instance, after all, to
-         * obscure the self type) and (b) the call must go through a
-         * vtable and hence cannot be monomorphized.
-         */
         let mut msgs = Vec::new();
 
         let method_name = method.name.repr(tcx);
@@ -455,8 +452,8 @@ pub fn maybe_report_ambiguity<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     }
 }
 
+/// Select as many obligations as we can at present.
 pub fn select_fcx_obligations_where_possible(fcx: &FnCtxt) {
-    /*! Select as many obligations as we can at present. */
 
     match
         fcx.inh.fulfillment_cx
@@ -468,14 +465,10 @@ pub fn select_fcx_obligations_where_possible(fcx: &FnCtxt) {
     }
 }
 
+/// Try to select any fcx obligation that we haven't tried yet, in an effort to improve inference.
+/// You could just call `select_fcx_obligations_where_possible` except that it leads to repeated
+/// work.
 pub fn select_new_fcx_obligations(fcx: &FnCtxt) {
-    /*!
-     * Try to select any fcx obligation that we haven't tried yet,
-     * in an effort to improve inference. You could just call
-     * `select_fcx_obligations_where_possible` except that it leads
-     * to repeated work.
-     */
-
     match
         fcx.inh.fulfillment_cx
         .borrow_mut()

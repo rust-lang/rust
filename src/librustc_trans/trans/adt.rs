@@ -8,40 +8,38 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
- * # Representation of Algebraic Data Types
- *
- * This module determines how to represent enums, structs, and tuples
- * based on their monomorphized types; it is responsible both for
- * choosing a representation and translating basic operations on
- * values of those types.  (Note: exporting the representations for
- * debuggers is handled in debuginfo.rs, not here.)
- *
- * Note that the interface treats everything as a general case of an
- * enum, so structs/tuples/etc. have one pseudo-variant with
- * discriminant 0; i.e., as if they were a univariant enum.
- *
- * Having everything in one place will enable improvements to data
- * structure representation; possibilities include:
- *
- * - User-specified alignment (e.g., cacheline-aligning parts of
- *   concurrently accessed data structures); LLVM can't represent this
- *   directly, so we'd have to insert padding fields in any structure
- *   that might contain one and adjust GEP indices accordingly.  See
- *   issue #4578.
- *
- * - Store nested enums' discriminants in the same word.  Rather, if
- *   some variants start with enums, and those enums representations
- *   have unused alignment padding between discriminant and body, the
- *   outer enum's discriminant can be stored there and those variants
- *   can start at offset 0.  Kind of fancy, and might need work to
- *   make copies of the inner enum type cooperate, but it could help
- *   with `Option` or `Result` wrapped around another enum.
- *
- * - Tagged pointers would be neat, but given that any type can be
- *   used unboxed and any field can have pointers (including mutable)
- *   taken to it, implementing them for Rust seems difficult.
- */
+//! # Representation of Algebraic Data Types
+//!
+//! This module determines how to represent enums, structs, and tuples
+//! based on their monomorphized types; it is responsible both for
+//! choosing a representation and translating basic operations on
+//! values of those types.  (Note: exporting the representations for
+//! debuggers is handled in debuginfo.rs, not here.)
+//!
+//! Note that the interface treats everything as a general case of an
+//! enum, so structs/tuples/etc. have one pseudo-variant with
+//! discriminant 0; i.e., as if they were a univariant enum.
+//!
+//! Having everything in one place will enable improvements to data
+//! structure representation; possibilities include:
+//!
+//! - User-specified alignment (e.g., cacheline-aligning parts of
+//!   concurrently accessed data structures); LLVM can't represent this
+//!   directly, so we'd have to insert padding fields in any structure
+//!   that might contain one and adjust GEP indices accordingly.  See
+//!   issue #4578.
+//!
+//! - Store nested enums' discriminants in the same word.  Rather, if
+//!   some variants start with enums, and those enums representations
+//!   have unused alignment padding between discriminant and body, the
+//!   outer enum's discriminant can be stored there and those variants
+//!   can start at offset 0.  Kind of fancy, and might need work to
+//!   make copies of the inner enum type cooperate, but it could help
+//!   with `Option` or `Result` wrapped around another enum.
+//!
+//! - Tagged pointers would be neat, but given that any type can be
+//!   used unboxed and any field can have pointers (including mutable)
+//!   taken to it, implementing them for Rust seems difficult.
 
 #![allow(unsigned_negation)]
 
