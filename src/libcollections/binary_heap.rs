@@ -572,7 +572,7 @@ impl<'a, T> DoubleEndedIterator<&'a T> for Items<'a, T> {
     fn next_back(&mut self) -> Option<(&'a T)> { self.iter.next_back() }
 }
 
-impl<'a, T> ExactSize<&'a T> for Items<'a, T> {}
+impl<'a, T> ExactSizeIterator<&'a T> for Items<'a, T> {}
 
 /// An iterator that moves out of a `BinaryHeap`.
 pub struct MoveItems<T> {
