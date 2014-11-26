@@ -551,14 +551,14 @@ mod tests {
             ($path:expr, $exp:expr) => (
                 {
                     let path = Path::new($path);
-                    let mo = path.display().as_maybe_owned();
+                    let mo = path.display().as_cow();
                     assert!(mo.as_slice() == $exp);
                 }
             );
             ($path:expr, $exp:expr, filename) => (
                 {
                     let path = Path::new($path);
-                    let mo = path.filename_display().as_maybe_owned();
+                    let mo = path.filename_display().as_cow();
                     assert!(mo.as_slice() == $exp);
                 }
             )
