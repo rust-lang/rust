@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![deprecated = "use std::vec::CowVec"]
+
 pub use self::MaybeOwnedVector::*;
 
 use std::default::Default;
@@ -46,12 +48,16 @@ pub trait IntoMaybeOwnedVector<'a,T> {
     fn into_maybe_owned(self) -> MaybeOwnedVector<'a,T>;
 }
 
+#[allow(deprecated)]
 impl<'a,T:'a> IntoMaybeOwnedVector<'a,T> for Vec<T> {
+    #[allow(deprecated)]
     #[inline]
     fn into_maybe_owned(self) -> MaybeOwnedVector<'a,T> { Growable(self) }
 }
 
+#[allow(deprecated)]
 impl<'a,T> IntoMaybeOwnedVector<'a,T> for &'a [T] {
+    #[allow(deprecated)]
     #[inline]
     fn into_maybe_owned(self) -> MaybeOwnedVector<'a,T> { Borrowed(self) }
 }
@@ -66,6 +72,7 @@ impl<'a,T> MaybeOwnedVector<'a,T> {
 
     pub fn len(&self) -> uint { self.as_slice().len() }
 
+    #[allow(deprecated)]
     pub fn is_empty(&self) -> bool { self.len() == 0 }
 }
 
@@ -114,6 +121,7 @@ impl<'b,T> AsSlice<T> for MaybeOwnedVector<'b,T> {
 }
 
 impl<'a,T> FromIterator<T> for MaybeOwnedVector<'a,T> {
+    #[allow(deprecated)]
     fn from_iter<I:Iterator<T>>(iterator: I) -> MaybeOwnedVector<'a,T> {
         // If we are building from scratch, might as well build the
         // most flexible variant.
@@ -143,6 +151,7 @@ impl<'a,T:Clone> CloneSliceAllocPrelude<T> for MaybeOwnedVector<'a,T> {
 }
 
 impl<'a, T: Clone> Clone for MaybeOwnedVector<'a, T> {
+    #[allow(deprecated)]
     fn clone(&self) -> MaybeOwnedVector<'a, T> {
         match *self {
             Growable(ref v) => Growable(v.clone()),
@@ -152,6 +161,7 @@ impl<'a, T: Clone> Clone for MaybeOwnedVector<'a, T> {
 }
 
 impl<'a, T> Default for MaybeOwnedVector<'a, T> {
+    #[allow(deprecated)]
     fn default() -> MaybeOwnedVector<'a, T> {
         Growable(Vec::new())
     }

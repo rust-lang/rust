@@ -12,7 +12,7 @@
 
 fn main() {
     let r: Result<int,_> =
-        ::std::task::TaskBuilder::new().named("send name".into_maybe_owned())
+        ::std::task::TaskBuilder::new().named("send name".into_cow())
                                        .try(proc() {
             panic!("test");
             3i

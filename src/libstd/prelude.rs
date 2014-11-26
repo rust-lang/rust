@@ -58,6 +58,7 @@
 
 #[doc(no_inline)] pub use ascii::{Ascii, AsciiCast, OwnedAsciiCast, AsciiStr};
 #[doc(no_inline)] pub use ascii::IntoBytes;
+#[doc(no_inline)] pub use borrow::IntoCow;
 #[doc(no_inline)] pub use c_str::ToCStr;
 #[doc(no_inline)] pub use char::{Char, UnicodeChar};
 #[doc(no_inline)] pub use clone::Clone;
@@ -78,7 +79,7 @@
 #[doc(no_inline)] pub use result::Result::{Ok, Err};
 #[doc(no_inline)] pub use io::{Buffer, Writer, Reader, Seek, BufferPrelude};
 #[doc(no_inline)] pub use str::{Str, StrVector, StrPrelude};
-#[doc(no_inline)] pub use str::{IntoMaybeOwned, StrAllocating, UnicodeStrPrelude};
+#[doc(no_inline)] pub use str::{StrAllocating, UnicodeStrPrelude};
 #[doc(no_inline)] pub use tuple::{Tuple1, Tuple2, Tuple3, Tuple4};
 #[doc(no_inline)] pub use tuple::{Tuple5, Tuple6, Tuple7, Tuple8};
 #[doc(no_inline)] pub use tuple::{Tuple9, Tuple10, Tuple11, Tuple12};
