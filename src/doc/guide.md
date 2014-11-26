@@ -4013,6 +4013,19 @@ match origin {
 }
 ```
 
+If you want to match against a slice or array, you can use `[]`:
+
+```{rust}
+fn main() {
+    let v = vec!["match_this", "1"];
+
+    match v.as_slice() {
+        ["match_this", second] => println!("The second element is {}", second),
+        _ => {},
+    }
+}
+```
+
 Whew! That's a lot of different ways to match things, and they can all be
 mixed and matched, depending on what you're doing:
 
@@ -5271,7 +5284,7 @@ immediately.
 
 ## Success and failure
 
-Tasks don't always succeed, they can also panic. A task that wishes to panic 
+Tasks don't always succeed, they can also panic. A task that wishes to panic
 can call the `panic!` macro, passing a message:
 
 ```{rust}
