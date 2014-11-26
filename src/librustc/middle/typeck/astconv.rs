@@ -8,46 +8,44 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
- * Conversion from AST representation of types to the ty.rs
- * representation.  The main routine here is `ast_ty_to_ty()`: each use
- * is parameterized by an instance of `AstConv` and a `RegionScope`.
- *
- * The parameterization of `ast_ty_to_ty()` is because it behaves
- * somewhat differently during the collect and check phases,
- * particularly with respect to looking up the types of top-level
- * items.  In the collect phase, the crate context is used as the
- * `AstConv` instance; in this phase, the `get_item_ty()` function
- * triggers a recursive call to `ty_of_item()`  (note that
- * `ast_ty_to_ty()` will detect recursive types and report an error).
- * In the check phase, when the FnCtxt is used as the `AstConv`,
- * `get_item_ty()` just looks up the item type in `tcx.tcache`.
- *
- * The `RegionScope` trait controls what happens when the user does
- * not specify a region in some location where a region is required
- * (e.g., if the user writes `&Foo` as a type rather than `&'a Foo`).
- * See the `rscope` module for more details.
- *
- * Unlike the `AstConv` trait, the region scope can change as we descend
- * the type.  This is to accommodate the fact that (a) fn types are binding
- * scopes and (b) the default region may change.  To understand case (a),
- * consider something like:
- *
- *   type foo = { x: &a.int, y: |&a.int| }
- *
- * The type of `x` is an error because there is no region `a` in scope.
- * In the type of `y`, however, region `a` is considered a bound region
- * as it does not already appear in scope.
- *
- * Case (b) says that if you have a type:
- *   type foo<'a> = ...;
- *   type bar = fn(&foo, &a.foo)
- * The fully expanded version of type bar is:
- *   type bar = fn(&'foo &, &a.foo<'a>)
- * Note that the self region for the `foo` defaulted to `&` in the first
- * case but `&a` in the second.  Basically, defaults that appear inside
- * an rptr (`&r.T`) use the region `r` that appears in the rptr.
- */
+//! Conversion from AST representation of types to the ty.rs
+//! representation.  The main routine here is `ast_ty_to_ty()`: each use
+//! is parameterized by an instance of `AstConv` and a `RegionScope`.
+//!
+//! The parameterization of `ast_ty_to_ty()` is because it behaves
+//! somewhat differently during the collect and check phases,
+//! particularly with respect to looking up the types of top-level
+//! items.  In the collect phase, the crate context is used as the
+//! `AstConv` instance; in this phase, the `get_item_ty()` function
+//! triggers a recursive call to `ty_of_item()`  (note that
+//! `ast_ty_to_ty()` will detect recursive types and report an error).
+//! In the check phase, when the FnCtxt is used as the `AstConv`,
+//! `get_item_ty()` just looks up the item type in `tcx.tcache`.
+//!
+//! The `RegionScope` trait controls what happens when the user does
+//! not specify a region in some location where a region is required
+//! (e.g., if the user writes `&Foo` as a type rather than `&'a Foo`).
+//! See the `rscope` module for more details.
+//!
+//! Unlike the `AstConv` trait, the region scope can change as we descend
+//! the type.  This is to accommodate the fact that (a) fn types are binding
+//! scopes and (b) the default region may change.  To understand case (a),
+//! consider something like:
+//!
+//!   type foo = { x: &a.int, y: |&a.int| }
+//!
+//! The type of `x` is an error because there is no region `a` in scope.
+//! In the type of `y`, however, region `a` is considered a bound region
+//! as it does not already appear in scope.
+//!
+//! Case (b) says that if you have a type:
+//!   type foo<'a> = ...;
+//!   type bar = fn(&foo, &a.foo)
+//! The fully expanded version of type bar is:
+//!   type bar = fn(&'foo &, &a.foo<'a>)
+//! Note that the self region for the `foo` defaulted to `&` in the first
+//! case but `&a` in the second.  Basically, defaults that appear inside
+//! an rptr (`&r.T`) use the region `r` that appears in the rptr.
 use middle::const_eval;
 use middle::def;
 use middle::resolve_lifetime as rl;
@@ -201,6 +199,8 @@ pub fn opt_ast_region_to_region<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
     r
 }
 
+/// Given a path `path` that refers to an item `I` with the declared generics `decl_generics`,
+/// returns an appropriate set of substitutions for this particular reference to `I`.
 fn ast_path_substs_for_ty<'tcx,AC,RS>(
     this: &AC,
     rscope: &RS,
@@ -211,12 +211,6 @@ fn ast_path_substs_for_ty<'tcx,AC,RS>(
     -> Substs<'tcx>
     where AC: AstConv<'tcx>, RS: RegionScope
 {
-    /*!
-     * Given a path `path` that refers to an item `I` with the
-     * declared generics `decl_generics`, returns an appropriate
-     * set of substitutions for this particular reference to `I`.
-     */
-
     let tcx = this.tcx();
 
     // ast_path_substs() is only called to convert paths that are
@@ -422,6 +416,9 @@ pub fn instantiate_poly_trait_ref<'tcx,AC,RS>(
     instantiate_trait_ref(this, rscope, &ast_trait_ref.trait_ref, self_ty)
 }
 
+/// Instantiates the path for the given trait reference, assuming that it's bound to a valid trait
+/// type. Returns the def_id for the defining trait. Fails if the type is a type other than a trait
+/// type.
 pub fn instantiate_trait_ref<'tcx,AC,RS>(this: &AC,
                                          rscope: &RS,
                                          ast_trait_ref: &ast::TraitRef,
@@ -430,12 +427,6 @@ pub fn instantiate_trait_ref<'tcx,AC,RS>(this: &AC,
                                          where AC: AstConv<'tcx>,
                                                RS: RegionScope
 {
-    /*!
-     * Instantiates the path for the given trait reference, assuming that
-     * it's bound to a valid trait type. Returns the def_id for the defining
-     * trait. Fails if the type is a type other than a trait type.
-     */
-
     match lookup_def_tcx(this.tcx(),
                          ast_trait_ref.path.span,
                          ast_trait_ref.ref_id) {
@@ -1318,6 +1309,10 @@ pub fn ty_of_closure<'tcx, AC: AstConv<'tcx>>(
     }
 }
 
+/// Given an existential type like `Foo+'a+Bar`, this routine converts the `'a` and `Bar` intos an
+/// `ExistentialBounds` struct. The `main_trait_refs` argument specifies the `Foo` -- it is absent
+/// for closures. Eventually this should all be normalized, I think, so that there is no "main
+/// trait ref" and instead we just have a flat list of bounds as the existential type.
 pub fn conv_existential_bounds<'tcx, AC: AstConv<'tcx>, RS:RegionScope>(
     this: &AC,
     rscope: &RS,
@@ -1326,16 +1321,6 @@ pub fn conv_existential_bounds<'tcx, AC: AstConv<'tcx>, RS:RegionScope>(
     ast_bounds: &[ast::TyParamBound])
     -> ty::ExistentialBounds
 {
-    /*!
-     * Given an existential type like `Foo+'a+Bar`, this routine
-     * converts the `'a` and `Bar` intos an `ExistentialBounds`
-     * struct. The `main_trait_refs` argument specifies the `Foo` --
-     * it is absent for closures. Eventually this should all be
-     * normalized, I think, so that there is no "main trait ref" and
-     * instead we just have a flat list of bounds as the existential
-     * type.
-     */
-
     let ast_bound_refs: Vec<&ast::TyParamBound> =
         ast_bounds.iter().collect();
 
@@ -1432,6 +1417,10 @@ pub fn conv_existential_bounds_from_partitioned_bounds<'tcx, AC, RS>(
     }
 }
 
+/// Given the bounds on a type parameter / existential type, determines what single region bound
+/// (if any) we can use to summarize this type. The basic idea is that we will use the bound the
+/// user provided, if they provided one, and otherwise search the supertypes of trait bounds for
+/// region bounds. It may be that we can derive no bound at all, in which case we return `None`.
 pub fn compute_opt_region_bound<'tcx>(tcx: &ty::ctxt<'tcx>,
                                       span: Span,
                                       builtin_bounds: ty::BuiltinBounds,
@@ -1439,16 +1428,6 @@ pub fn compute_opt_region_bound<'tcx>(tcx: &ty::ctxt<'tcx>,
                                       trait_bounds: &[Rc<ty::TraitRef<'tcx>>])
                                       -> Option<ty::Region>
 {
-    /*!
-     * Given the bounds on a type parameter / existential type,
-     * determines what single region bound (if any) we can use to
-     * summarize this type. The basic idea is that we will use the
-     * bound the user provided, if they provided one, and otherwise
-     * search the supertypes of trait bounds for region bounds. It may
-     * be that we can derive no bound at all, in which case we return
-     * `None`.
-     */
-
     if region_bounds.len() > 1 {
         tcx.sess.span_err(
             region_bounds[1].span,
@@ -1495,6 +1474,9 @@ pub fn compute_opt_region_bound<'tcx>(tcx: &ty::ctxt<'tcx>,
     return Some(r);
 }
 
+/// A version of `compute_opt_region_bound` for use where some region bound is required
+/// (existential types, basically). Reports an error if no region bound can be derived and we are
+/// in an `rscope` that does not provide a default.
 fn compute_region_bound<'tcx, AC: AstConv<'tcx>, RS:RegionScope>(
     this: &AC,
     rscope: &RS,
@@ -1504,13 +1486,6 @@ fn compute_region_bound<'tcx, AC: AstConv<'tcx>, RS:RegionScope>(
     trait_bounds: &[Rc<ty::TraitRef<'tcx>>])
     -> ty::Region
 {
-    /*!
-     * A version of `compute_opt_region_bound` for use where some
-     * region bound is required (existential types,
-     * basically). Reports an error if no region bound can be derived
-     * and we are in an `rscope` that does not provide a default.
-     */
-
     match compute_opt_region_bound(this.tcx(), span, builtin_bounds,
                                    region_bounds, trait_bounds) {
         Some(r) => r,
@@ -1534,17 +1509,13 @@ pub struct PartitionedBounds<'a> {
     pub region_bounds: Vec<&'a ast::Lifetime>,
 }
 
+/// Divides a list of bounds from the AST into three groups: builtin bounds (Copy, Sized etc),
+/// general trait bounds, and region bounds.
 pub fn partition_bounds<'a>(tcx: &ty::ctxt,
                             _span: Span,
                             ast_bounds: &'a [&ast::TyParamBound])
                             -> PartitionedBounds<'a>
 {
-    /*!
-     * Divides a list of bounds from the AST into three groups:
-     * builtin bounds (Copy, Sized etc), general trait bounds,
-     * and region bounds.
-     */
-
     let mut builtin_bounds = ty::empty_builtin_bounds();
     let mut region_bounds = Vec::new();
     let mut trait_bounds = Vec::new();

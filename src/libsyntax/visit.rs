@@ -92,14 +92,12 @@ pub trait Visitor<'v> {
     }
     fn visit_struct_field(&mut self, s: &'v StructField) { walk_struct_field(self, s) }
     fn visit_variant(&mut self, v: &'v Variant, g: &'v Generics) { walk_variant(self, v, g) }
+
+    /// Visits an optional reference to a lifetime. The `span` is the span of some surrounding
+    /// reference should opt_lifetime be None.
     fn visit_opt_lifetime_ref(&mut self,
                               _span: Span,
                               opt_lifetime: &'v Option<Lifetime>) {
-        /*!
-         * Visits an optional reference to a lifetime. The `span` is
-         * the span of some surrounding reference should opt_lifetime
-         * be None.
-         */
         match *opt_lifetime {
             Some(ref l) => self.visit_lifetime_ref(l),
             None => ()

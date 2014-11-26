@@ -8,115 +8,111 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
-
-The region check is a final pass that runs over the AST after we have
-inferred the type constraints but before we have actually finalized
-the types.  Its purpose is to embed a variety of region constraints.
-Inserting these constraints as a separate pass is good because (1) it
-localizes the code that has to do with region inference and (2) often
-we cannot know what constraints are needed until the basic types have
-been inferred.
-
-### Interaction with the borrow checker
-
-In general, the job of the borrowck module (which runs later) is to
-check that all soundness criteria are met, given a particular set of
-regions. The job of *this* module is to anticipate the needs of the
-borrow checker and infer regions that will satisfy its requirements.
-It is generally true that the inference doesn't need to be sound,
-meaning that if there is a bug and we inferred bad regions, the borrow
-checker should catch it. This is not entirely true though; for
-example, the borrow checker doesn't check subtyping, and it doesn't
-check that region pointers are always live when they are used. It
-might be worthwhile to fix this so that borrowck serves as a kind of
-verification step -- that would add confidence in the overall
-correctness of the compiler, at the cost of duplicating some type
-checks and effort.
-
-### Inferring the duration of borrows, automatic and otherwise
-
-Whenever we introduce a borrowed pointer, for example as the result of
-a borrow expression `let x = &data`, the lifetime of the pointer `x`
-is always specified as a region inference variable. `regionck` has the
-job of adding constraints such that this inference variable is as
-narrow as possible while still accommodating all uses (that is, every
-dereference of the resulting pointer must be within the lifetime).
-
-#### Reborrows
-
-Generally speaking, `regionck` does NOT try to ensure that the data
-`data` will outlive the pointer `x`. That is the job of borrowck.  The
-one exception is when "re-borrowing" the contents of another borrowed
-pointer. For example, imagine you have a borrowed pointer `b` with
-lifetime L1 and you have an expression `&*b`. The result of this
-expression will be another borrowed pointer with lifetime L2 (which is
-an inference variable). The borrow checker is going to enforce the
-constraint that L2 < L1, because otherwise you are re-borrowing data
-for a lifetime larger than the original loan.  However, without the
-routines in this module, the region inferencer would not know of this
-dependency and thus it might infer the lifetime of L2 to be greater
-than L1 (issue #3148).
-
-There are a number of troublesome scenarios in the tests
-`region-dependent-*.rs`, but here is one example:
-
-    struct Foo { i: int }
-    struct Bar { foo: Foo  }
-    fn get_i(x: &'a Bar) -> &'a int {
-       let foo = &x.foo; // Lifetime L1
-       &foo.i            // Lifetime L2
-    }
-
-Note that this comes up either with `&` expressions, `ref`
-bindings, and `autorefs`, which are the three ways to introduce
-a borrow.
-
-The key point here is that when you are borrowing a value that
-is "guaranteed" by a borrowed pointer, you must link the
-lifetime of that borrowed pointer (L1, here) to the lifetime of
-the borrow itself (L2).  What do I mean by "guaranteed" by a
-borrowed pointer? I mean any data that is reached by first
-dereferencing a borrowed pointer and then either traversing
-interior offsets or owned pointers.  We say that the guarantor
-of such data it the region of the borrowed pointer that was
-traversed.  This is essentially the same as the ownership
-relation, except that a borrowed pointer never owns its
-contents.
-
-### Inferring borrow kinds for upvars
-
-Whenever there is a closure expression, we need to determine how each
-upvar is used. We do this by initially assigning each upvar an
-immutable "borrow kind" (see `ty::BorrowKind` for details) and then
-"escalating" the kind as needed. The borrow kind proceeds according to
-the following lattice:
-
-    ty::ImmBorrow -> ty::UniqueImmBorrow -> ty::MutBorrow
-
-So, for example, if we see an assignment `x = 5` to an upvar `x`, we
-will promote its borrow kind to mutable borrow. If we see an `&mut x`
-we'll do the same. Naturally, this applies not just to the upvar, but
-to everything owned by `x`, so the result is the same for something
-like `x.f = 5` and so on (presuming `x` is not a borrowed pointer to a
-struct). These adjustments are performed in
-`adjust_upvar_borrow_kind()` (you can trace backwards through the code
-from there).
-
-The fact that we are inferring borrow kinds as we go results in a
-semi-hacky interaction with mem-categorization. In particular,
-mem-categorization will query the current borrow kind as it
-categorizes, and we'll return the *current* value, but this may get
-adjusted later. Therefore, in this module, we generally ignore the
-borrow kind (and derived mutabilities) that are returned from
-mem-categorization, since they may be inaccurate. (Another option
-would be to use a unification scheme, where instead of returning a
-concrete borrow kind like `ty::ImmBorrow`, we return a
-`ty::InferBorrow(upvar_id)` or something like that, but this would
-then mean that all later passes would have to check for these figments
-and report an error, and it just seems like more mess in the end.)
-
-*/
+//! The region check is a final pass that runs over the AST after we have
+//! inferred the type constraints but before we have actually finalized
+//! the types.  Its purpose is to embed a variety of region constraints.
+//! Inserting these constraints as a separate pass is good because (1) it
+//! localizes the code that has to do with region inference and (2) often
+//! we cannot know what constraints are needed until the basic types have
+//! been inferred.
+//!
+//! ### Interaction with the borrow checker
+//!
+//! In general, the job of the borrowck module (which runs later) is to
+//! check that all soundness criteria are met, given a particular set of
+//! regions. The job of *this* module is to anticipate the needs of the
+//! borrow checker and infer regions that will satisfy its requirements.
+//! It is generally true that the inference doesn't need to be sound,
+//! meaning that if there is a bug and we inferred bad regions, the borrow
+//! checker should catch it. This is not entirely true though; for
+//! example, the borrow checker doesn't check subtyping, and it doesn't
+//! check that region pointers are always live when they are used. It
+//! might be worthwhile to fix this so that borrowck serves as a kind of
+//! verification step -- that would add confidence in the overall
+//! correctness of the compiler, at the cost of duplicating some type
+//! checks and effort.
+//!
+//! ### Inferring the duration of borrows, automatic and otherwise
+//!
+//! Whenever we introduce a borrowed pointer, for example as the result of
+//! a borrow expression `let x = &data`, the lifetime of the pointer `x`
+//! is always specified as a region inference variable. `regionck` has the
+//! job of adding constraints such that this inference variable is as
+//! narrow as possible while still accommodating all uses (that is, every
+//! dereference of the resulting pointer must be within the lifetime).
+//!
+//! #### Reborrows
+//!
+//! Generally speaking, `regionck` does NOT try to ensure that the data
+//! `data` will outlive the pointer `x`. That is the job of borrowck.  The
+//! one exception is when "re-borrowing" the contents of another borrowed
+//! pointer. For example, imagine you have a borrowed pointer `b` with
+//! lifetime L1 and you have an expression `&*b`. The result of this
+//! expression will be another borrowed pointer with lifetime L2 (which is
+//! an inference variable). The borrow checker is going to enforce the
+//! constraint that L2 < L1, because otherwise you are re-borrowing data
+//! for a lifetime larger than the original loan.  However, without the
+//! routines in this module, the region inferencer would not know of this
+//! dependency and thus it might infer the lifetime of L2 to be greater
+//! than L1 (issue #3148).
+//!
+//! There are a number of troublesome scenarios in the tests
+//! `region-dependent-*.rs`, but here is one example:
+//!
+//!     struct Foo { i: int }
+//!     struct Bar { foo: Foo  }
+//!     fn get_i(x: &'a Bar) -> &'a int {
+//!        let foo = &x.foo; // Lifetime L1
+//!        &foo.i            // Lifetime L2
+//!     }
+//!
+//! Note that this comes up either with `&` expressions, `ref`
+//! bindings, and `autorefs`, which are the three ways to introduce
+//! a borrow.
+//!
+//! The key point here is that when you are borrowing a value that
+//! is "guaranteed" by a borrowed pointer, you must link the
+//! lifetime of that borrowed pointer (L1, here) to the lifetime of
+//! the borrow itself (L2).  What do I mean by "guaranteed" by a
+//! borrowed pointer? I mean any data that is reached by first
+//! dereferencing a borrowed pointer and then either traversing
+//! interior offsets or owned pointers.  We say that the guarantor
+//! of such data it the region of the borrowed pointer that was
+//! traversed.  This is essentially the same as the ownership
+//! relation, except that a borrowed pointer never owns its
+//! contents.
+//!
+//! ### Inferring borrow kinds for upvars
+//!
+//! Whenever there is a closure expression, we need to determine how each
+//! upvar is used. We do this by initially assigning each upvar an
+//! immutable "borrow kind" (see `ty::BorrowKind` for details) and then
+//! "escalating" the kind as needed. The borrow kind proceeds according to
+//! the following lattice:
+//!
+//!     ty::ImmBorrow -> ty::UniqueImmBorrow -> ty::MutBorrow
+//!
+//! So, for example, if we see an assignment `x = 5` to an upvar `x`, we
+//! will promote its borrow kind to mutable borrow. If we see an `&mut x`
+//! we'll do the same. Naturally, this applies not just to the upvar, but
+//! to everything owned by `x`, so the result is the same for something
+//! like `x.f = 5` and so on (presuming `x` is not a borrowed pointer to a
+//! struct). These adjustments are performed in
+//! `adjust_upvar_borrow_kind()` (you can trace backwards through the code
+//! from there).
+//!
+//! The fact that we are inferring borrow kinds as we go results in a
+//! semi-hacky interaction with mem-categorization. In particular,
+//! mem-categorization will query the current borrow kind as it
+//! categorizes, and we'll return the *current* value, but this may get
+//! adjusted later. Therefore, in this module, we generally ignore the
+//! borrow kind (and derived mutabilities) that are returned from
+//! mem-categorization, since they may be inaccurate. (Another option
+//! would be to use a unification scheme, where instead of returning a
+//! concrete borrow kind like `ty::ImmBorrow`, we return a
+//! `ty::InferBorrow(upvar_id)` or something like that, but this would
+//! then mean that all later passes would have to check for these figments
+//! and report an error, and it just seems like more mess in the end.)
 
 use middle::def;
 use middle::mem_categorization as mc;
@@ -177,15 +173,11 @@ pub fn regionck_fn(fcx: &FnCtxt, id: ast::NodeId, blk: &ast::Block) {
     fcx.infcx().resolve_regions_and_report_errors();
 }
 
+/// Checks that the types in `component_tys` are well-formed. This will add constraints into the
+/// region graph. Does *not* run `resolve_regions_and_report_errors` and so forth.
 pub fn regionck_ensure_component_tys_wf<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                                   span: Span,
                                                   component_tys: &[Ty<'tcx>]) {
-    /*!
-     * Checks that the types in `component_tys` are well-formed.
-     * This will add constraints into the region graph.
-     * Does *not* run `resolve_regions_and_report_errors` and so forth.
-     */
-
     let mut rcx = Rcx::new(fcx, 0);
     for &component_ty in component_tys.iter() {
         // Check that each type outlives the empty region. Since the
@@ -239,12 +231,8 @@ pub struct Rcx<'a, 'tcx: 'a> {
     maybe_links: MaybeLinkMap<'tcx>
 }
 
+/// Returns the validity region of `def` -- that is, how long is `def` valid?
 fn region_of_def(fcx: &FnCtxt, def: def::Def) -> ty::Region {
-    /*!
-     * Returns the validity region of `def` -- that is, how long
-     * is `def` valid?
-     */
-
     let tcx = fcx.tcx();
     match def {
         def::DefLocal(node_id) => {
@@ -283,35 +271,30 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
         old_scope
     }
 
+    /// Try to resolve the type for the given node, returning t_err if an error results.  Note that
+    /// we never care about the details of the error, the same error will be detected and reported
+    /// in the writeback phase.
+    ///
+    /// Note one important point: we do not attempt to resolve *region variables* here.  This is
+    /// because regionck is essentially adding constraints to those region variables and so may yet
+    /// influence how they are resolved.
+    ///
+    /// Consider this silly example:
+    ///
+    /// ```
+    /// fn borrow(x: &int) -> &int {x}
+    /// fn foo(x: @int) -> int {  // block: B
+    ///     let b = borrow(x);    // region: <R0>
+    ///     *b
+    /// }
+    /// ```
+    ///
+    /// Here, the region of `b` will be `<R0>`.  `<R0>` is constrainted to be some subregion of the
+    /// block B and some superregion of the call.  If we forced it now, we'd choose the smaller
+    /// region (the call).  But that would make the *b illegal.  Since we don't resolve, the type
+    /// of b will be `&<R0>.int` and then `*b` will require that `<R0>` be bigger than the let and
+    /// the `*b` expression, so we will effectively resolve `<R0>` to be the block B.
     pub fn resolve_type(&self, unresolved_ty: Ty<'tcx>) -> Ty<'tcx> {
-        /*!
-         * Try to resolve the type for the given node, returning
-         * t_err if an error results.  Note that we never care
-         * about the details of the error, the same error will be
-         * detected and reported in the writeback phase.
-         *
-         * Note one important point: we do not attempt to resolve
-         * *region variables* here.  This is because regionck is
-         * essentially adding constraints to those region variables
-         * and so may yet influence how they are resolved.
-         *
-         * Consider this silly example:
-         *
-         *     fn borrow(x: &int) -> &int {x}
-         *     fn foo(x: @int) -> int {  // block: B
-         *         let b = borrow(x);    // region: <R0>
-         *         *b
-         *     }
-         *
-         * Here, the region of `b` will be `<R0>`.  `<R0>` is
-         * constrainted to be some subregion of the block B and some
-         * superregion of the call.  If we forced it now, we'd choose
-         * the smaller region (the call).  But that would make the *b
-         * illegal.  Since we don't resolve, the type of b will be
-         * `&<R0>.int` and then `*b` will require that `<R0>` be
-         * bigger than the let and the `*b` expression, so we will
-         * effectively resolve `<R0>` to be the block B.
-         */
         match resolve_type(self.fcx.infcx(), None, unresolved_ty,
                            resolve_and_force_all_but_regions) {
             Ok(t) => t,
@@ -384,25 +367,19 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
         }
     }
 
+    /// This method populates the region map's `free_region_map`. It walks over the transformed
+    /// argument and return types for each function just before we check the body of that function,
+    /// looking for types where you have a borrowed pointer to other borrowed data (e.g., `&'a &'b
+    /// [uint]`.  We do not allow references to outlive the things they point at, so we can assume
+    /// that `'a <= 'b`. This holds for both the argument and return types, basically because, on
+    /// the caller side, the caller is responsible for checking that the type of every expression
+    /// (including the actual values for the arguments, as well as the return type of the fn call)
+    /// is well-formed.
+    ///
+    /// Tests: `src/test/compile-fail/regions-free-region-ordering-*.rs`
     fn relate_free_regions(&mut self,
                            fn_sig_tys: &[Ty<'tcx>],
                            body_id: ast::NodeId) {
-        /*!
-         * This method populates the region map's `free_region_map`.
-         * It walks over the transformed argument and return types for
-         * each function just before we check the body of that
-         * function, looking for types where you have a borrowed
-         * pointer to other borrowed data (e.g., `&'a &'b [uint]`.  We
-         * do not allow references to outlive the things they point
-         * at, so we can assume that `'a <= 'b`. This holds for both
-         * the argument and return types, basically because, on the caller
-         * side, the caller is responsible for checking that the type of
-         * every expression (including the actual values for the arguments,
-         * as well as the return type of the fn call) is well-formed.
-         *
-         * Tests: `src/test/compile-fail/regions-free-region-ordering-*.rs`
-         */
-
         debug!("relate_free_regions >>");
         let tcx = self.tcx();
 
@@ -921,19 +898,15 @@ fn check_expr_fn_block(rcx: &mut Rcx,
         _ => {}
     }
 
+    /// Make sure that the type of all free variables referenced inside a closure/proc outlive the
+    /// closure/proc's lifetime bound. This is just a special case of the usual rules about closed
+    /// over values outliving the object's lifetime bound.
     fn ensure_free_variable_types_outlive_closure_bound(
         rcx: &mut Rcx,
         bounds: ty::ExistentialBounds,
         expr: &ast::Expr,
         freevars: &[ty::Freevar])
     {
-        /*!
-         * Make sure that the type of all free variables referenced
-         * inside a closure/proc outlive the closure/proc's lifetime
-         * bound. This is just a special case of the usual rules about
-         * closed over values outliving the object's lifetime bound.
-         */
-
         let tcx = rcx.fcx.ccx.tcx;
 
         debug!("ensure_free_variable_types_outlive_closure_bound({}, {})",
@@ -984,18 +957,14 @@ fn check_expr_fn_block(rcx: &mut Rcx,
         }
     }
 
+    /// Make sure that all free variables referenced inside the closure outlive the closure's
+    /// lifetime bound. Also, create an entry in the upvar_borrows map with a region.
     fn constrain_free_variables_in_by_ref_closure(
         rcx: &mut Rcx,
         region_bound: ty::Region,
         expr: &ast::Expr,
         freevars: &[ty::Freevar])
     {
-        /*!
-         * Make sure that all free variables referenced inside the
-         * closure outlive the closure's lifetime bound. Also, create
-         * an entry in the upvar_borrows map with a region.
-         */
-
         let tcx = rcx.fcx.ccx.tcx;
         let infcx = rcx.fcx.infcx();
         debug!("constrain_free_variables({}, {})",
@@ -1183,15 +1152,12 @@ fn constrain_call<'a, I: Iterator<&'a ast::Expr>>(rcx: &mut Rcx,
     }
 }
 
+/// Invoked on any auto-dereference that occurs. Checks that if this is a region pointer being
+/// dereferenced, the lifetime of the pointer includes the deref expr.
 fn constrain_autoderefs<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
                                   deref_expr: &ast::Expr,
                                   derefs: uint,
                                   mut derefd_ty: Ty<'tcx>) {
-    /*!
-     * Invoked on any auto-dereference that occurs.  Checks that if
-     * this is a region pointer being dereferenced, the lifetime of
-     * the pointer includes the deref expr.
-     */
     let r_deref_expr = ty::ReScope(CodeExtent::from_node_id(deref_expr.id));
     for i in range(0u, derefs) {
         debug!("constrain_autoderefs(deref_expr=?, derefd_ty={}, derefs={}/{}",
@@ -1259,16 +1225,12 @@ pub fn mk_subregion_due_to_dereference(rcx: &mut Rcx,
 }
 
 
+/// Invoked on any index expression that occurs. Checks that if this is a slice being indexed, the
+/// lifetime of the pointer includes the deref expr.
 fn constrain_index<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
                              index_expr: &ast::Expr,
                              indexed_ty: Ty<'tcx>)
 {
-    /*!
-     * Invoked on any index expression that occurs.  Checks that if
-     * this is a slice being indexed, the lifetime of the pointer
-     * includes the deref expr.
-     */
-
     debug!("constrain_index(index_expr=?, indexed_ty={}",
            rcx.fcx.infcx().ty_to_string(indexed_ty));
 
@@ -1286,18 +1248,14 @@ fn constrain_index<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
     }
 }
 
+/// Guarantees that any lifetimes which appear in the type of the node `id` (after applying
+/// adjustments) are valid for at least `minimum_lifetime`
 fn type_of_node_must_outlive<'a, 'tcx>(
     rcx: &mut Rcx<'a, 'tcx>,
     origin: infer::SubregionOrigin<'tcx>,
     id: ast::NodeId,
     minimum_lifetime: ty::Region)
 {
-    /*!
-     * Guarantees that any lifetimes which appear in the type of
-     * the node `id` (after applying adjustments) are valid for at
-     * least `minimum_lifetime`
-     */
-
     let tcx = rcx.fcx.tcx();
 
     // Try to resolve the type.  If we encounter an error, then typeck
@@ -1314,14 +1272,10 @@ fn type_of_node_must_outlive<'a, 'tcx>(
     type_must_outlive(rcx, origin, ty, minimum_lifetime);
 }
 
+/// Computes the guarantor for an expression `&base` and then ensures that the lifetime of the
+/// resulting pointer is linked to the lifetime of its guarantor (if any).
 fn link_addr_of(rcx: &mut Rcx, expr: &ast::Expr,
                mutability: ast::Mutability, base: &ast::Expr) {
-    /*!
-     * Computes the guarantor for an expression `&base` and then
-     * ensures that the lifetime of the resulting pointer is linked
-     * to the lifetime of its guarantor (if any).
-     */
-
     debug!("link_addr_of(base=?)");
 
     let cmt = {
@@ -1331,13 +1285,10 @@ fn link_addr_of(rcx: &mut Rcx, expr: &ast::Expr,
     link_region_from_node_type(rcx, expr.span, expr.id, mutability, cmt);
 }
 
+/// Computes the guarantors for any ref bindings in a `let` and
+/// then ensures that the lifetime of the resulting pointer is
+/// linked to the lifetime of the initialization expression.
 fn link_local(rcx: &Rcx, local: &ast::Local) {
-    /*!
-     * Computes the guarantors for any ref bindings in a `let` and
-     * then ensures that the lifetime of the resulting pointer is
-     * linked to the lifetime of the initialization expression.
-     */
-
     debug!("regionck::for_local()");
     let init_expr = match local.init {
         None => { return; }
@@ -1348,12 +1299,10 @@ fn link_local(rcx: &Rcx, local: &ast::Local) {
     link_pattern(rcx, mc, discr_cmt, &*local.pat);
 }
 
+/// Computes the guarantors for any ref bindings in a match and
+/// then ensures that the lifetime of the resulting pointer is
+/// linked to the lifetime of its guarantor (if any).
 fn link_match(rcx: &Rcx, discr: &ast::Expr, arms: &[ast::Arm]) {
-    /*!
-     * Computes the guarantors for any ref bindings in a match and
-     * then ensures that the lifetime of the resulting pointer is
-     * linked to the lifetime of its guarantor (if any).
-     */
 
     debug!("regionck::for_match()");
     let mc = mc::MemCategorizationContext::new(rcx);
@@ -1366,15 +1315,12 @@ fn link_match(rcx: &Rcx, discr: &ast::Expr, arms: &[ast::Arm]) {
     }
 }
 
+/// Link lifetimes of any ref bindings in `root_pat` to the pointers found in the discriminant, if
+/// needed.
 fn link_pattern<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
                           mc: mc::MemCategorizationContext<Rcx<'a, 'tcx>>,
                           discr_cmt: mc::cmt<'tcx>,
                           root_pat: &ast::Pat) {
-    /*!
-     * Link lifetimes of any ref bindings in `root_pat` to
-     * the pointers found in the discriminant, if needed.
-     */
-
     let _ = mc.cat_pattern(discr_cmt, root_pat, |mc, sub_cmt, sub_pat| {
             match sub_pat.node {
                 // `ref x` pattern
@@ -1400,14 +1346,12 @@ fn link_pattern<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
         });
 }
 
+/// Link lifetime of borrowed pointer resulting from autoref to lifetimes in the value being
+/// autoref'd.
 fn link_autoref(rcx: &Rcx,
                 expr: &ast::Expr,
                 autoderefs: uint,
                 autoref: &ty::AutoRef) {
-    /*!
-     * Link lifetime of borrowed pointer resulting from autoref
-     * to lifetimes in the value being autoref'd.
-     */
 
     debug!("link_autoref(autoref={})", autoref);
     let mc = mc::MemCategorizationContext::new(rcx);
@@ -1424,15 +1368,11 @@ fn link_autoref(rcx: &Rcx,
     }
 }
 
+/// Computes the guarantor for cases where the `expr` is being passed by implicit reference and
+/// must outlive `callee_scope`.
 fn link_by_ref(rcx: &Rcx,
                expr: &ast::Expr,
                callee_scope: CodeExtent) {
-    /*!
-     * Computes the guarantor for cases where the `expr` is
-     * being passed by implicit reference and must outlive
-     * `callee_scope`.
-     */
-
     let tcx = rcx.tcx();
     debug!("link_by_ref(expr={}, callee_scope={})",
            expr.repr(tcx), callee_scope);
@@ -1442,17 +1382,13 @@ fn link_by_ref(rcx: &Rcx,
     link_region(rcx, expr.span, borrow_region, ty::ImmBorrow, expr_cmt);
 }
 
+/// Like `link_region()`, except that the region is extracted from the type of `id`, which must be
+/// some reference (`&T`, `&str`, etc).
 fn link_region_from_node_type<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
                                         span: Span,
                                         id: ast::NodeId,
                                         mutbl: ast::Mutability,
                                         cmt_borrowed: mc::cmt<'tcx>) {
-    /*!
-     * Like `link_region()`, except that the region is
-     * extracted from the type of `id`, which must be some
-     * reference (`&T`, `&str`, etc).
-     */
-
     let rptr_ty = rcx.resolve_node_type(id);
     if !ty::type_is_error(rptr_ty) {
         let tcx = rcx.fcx.ccx.tcx;
@@ -1463,19 +1399,14 @@ fn link_region_from_node_type<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
     }
 }
 
+/// Informs the inference engine that `borrow_cmt` is being borrowed with kind `borrow_kind` and
+/// lifetime `borrow_region`. In order to ensure borrowck is satisfied, this may create constraints
+/// between regions, as explained in `link_reborrowed_region()`.
 fn link_region<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
                          span: Span,
                          borrow_region: ty::Region,
                          borrow_kind: ty::BorrowKind,
                          borrow_cmt: mc::cmt<'tcx>) {
-    /*!
-     * Informs the inference engine that `borrow_cmt` is being
-     * borrowed with kind `borrow_kind` and lifetime `borrow_region`.
-     * In order to ensure borrowck is satisfied, this may create
-     * constraints between regions, as explained in
-     * `link_reborrowed_region()`.
-     */
-
     let mut borrow_cmt = borrow_cmt;
     let mut borrow_kind = borrow_kind;
 
@@ -1525,6 +1456,46 @@ fn link_region<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
     }
 }
 
+/// This is the most complicated case: the path being borrowed is
+/// itself the referent of a borrowed pointer. Let me give an
+/// example fragment of code to make clear(er) the situation:
+///
+///    let r: &'a mut T = ...;  // the original reference "r" has lifetime 'a
+///    ...
+///    &'z *r                   // the reborrow has lifetime 'z
+///
+/// Now, in this case, our primary job is to add the inference
+/// constraint that `'z <= 'a`. Given this setup, let's clarify the
+/// parameters in (roughly) terms of the example:
+///
+///     A borrow of: `& 'z bk * r` where `r` has type `& 'a bk T`
+///     borrow_region   ^~                 ref_region    ^~
+///     borrow_kind        ^~               ref_kind        ^~
+///     ref_cmt                 ^
+///
+/// Here `bk` stands for some borrow-kind (e.g., `mut`, `uniq`, etc).
+///
+/// Unfortunately, there are some complications beyond the simple
+/// scenario I just painted:
+///
+/// 1. The reference `r` might in fact be a "by-ref" upvar. In that
+///    case, we have two jobs. First, we are inferring whether this reference
+///    should be an `&T`, `&mut T`, or `&uniq T` reference, and we must
+///    adjust that based on this borrow (e.g., if this is an `&mut` borrow,
+///    then `r` must be an `&mut` reference). Second, whenever we link
+///    two regions (here, `'z <= 'a`), we supply a *cause*, and in this
+///    case we adjust the cause to indicate that the reference being
+///    "reborrowed" is itself an upvar. This provides a nicer error message
+///    should something go wrong.
+///
+/// 2. There may in fact be more levels of reborrowing. In the
+///    example, I said the borrow was like `&'z *r`, but it might
+///    in fact be a borrow like `&'z **q` where `q` has type `&'a
+///    &'b mut T`. In that case, we want to ensure that `'z <= 'a`
+///    and `'z <= 'b`. This is explained more below.
+///
+/// The return value of this function indicates whether we need to
+/// recurse and process `ref_cmt` (see case 2 above).
 fn link_reborrowed_region<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
                                     span: Span,
                                     borrow_region: ty::Region,
@@ -1535,49 +1506,6 @@ fn link_reborrowed_region<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
                                     note: mc::Note)
                                     -> Option<(mc::cmt<'tcx>, ty::BorrowKind)>
 {
-    /*!
-     * This is the most complicated case: the path being borrowed is
-     * itself the referent of a borrowed pointer. Let me give an
-     * example fragment of code to make clear(er) the situation:
-     *
-     *    let r: &'a mut T = ...;  // the original reference "r" has lifetime 'a
-     *    ...
-     *    &'z *r                   // the reborrow has lifetime 'z
-     *
-     * Now, in this case, our primary job is to add the inference
-     * constraint that `'z <= 'a`. Given this setup, let's clarify the
-     * parameters in (roughly) terms of the example:
-     *
-     *     A borrow of: `& 'z bk * r` where `r` has type `& 'a bk T`
-     *     borrow_region   ^~                 ref_region    ^~
-     *     borrow_kind        ^~               ref_kind        ^~
-     *     ref_cmt                 ^
-     *
-     * Here `bk` stands for some borrow-kind (e.g., `mut`, `uniq`, etc).
-     *
-     * Unfortunately, there are some complications beyond the simple
-     * scenario I just painted:
-     *
-     * 1. The reference `r` might in fact be a "by-ref" upvar. In that
-     *    case, we have two jobs. First, we are inferring whether this reference
-     *    should be an `&T`, `&mut T`, or `&uniq T` reference, and we must
-     *    adjust that based on this borrow (e.g., if this is an `&mut` borrow,
-     *    then `r` must be an `&mut` reference). Second, whenever we link
-     *    two regions (here, `'z <= 'a`), we supply a *cause*, and in this
-     *    case we adjust the cause to indicate that the reference being
-     *    "reborrowed" is itself an upvar. This provides a nicer error message
-     *    should something go wrong.
-     *
-     * 2. There may in fact be more levels of reborrowing. In the
-     *    example, I said the borrow was like `&'z *r`, but it might
-     *    in fact be a borrow like `&'z **q` where `q` has type `&'a
-     *    &'b mut T`. In that case, we want to ensure that `'z <= 'a`
-     *    and `'z <= 'b`. This is explained more below.
-     *
-     * The return value of this function indicates whether we need to
-     * recurse and process `ref_cmt` (see case 2 above).
-     */
-
     // Possible upvar ID we may need later to create an entry in the
     // maybe link map.
 
@@ -1715,27 +1643,19 @@ fn link_reborrowed_region<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
     }
 }
 
+/// Adjusts the inferred borrow_kind as needed to account for upvars that are assigned to in an
+/// assignment expression.
 fn adjust_borrow_kind_for_assignment_lhs(rcx: &Rcx,
                                          lhs: &ast::Expr) {
-    /*!
-     * Adjusts the inferred borrow_kind as needed to account
-     * for upvars that are assigned to in an assignment
-     * expression.
-     */
-
     let mc = mc::MemCategorizationContext::new(rcx);
     let cmt = ignore_err!(mc.cat_expr(lhs));
     adjust_upvar_borrow_kind_for_mut(rcx, cmt);
 }
 
+/// Indicates that `cmt` is being directly mutated (e.g., assigned to). If cmt contains any by-ref
+/// upvars, this implies that those upvars must be borrowed using an `&mut` borow.
 fn adjust_upvar_borrow_kind_for_mut<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
                                               cmt: mc::cmt<'tcx>) {
-    /*!
-     * Indicates that `cmt` is being directly mutated (e.g., assigned
-     * to).  If cmt contains any by-ref upvars, this implies that
-     * those upvars must be borrowed using an `&mut` borow.
-     */
-
     let mut cmt = cmt;
     loop {
         debug!("adjust_upvar_borrow_kind_for_mut(cmt={})",
@@ -1834,16 +1754,12 @@ fn adjust_upvar_borrow_kind_for_unique<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>, cmt: mc::c
     }
 }
 
+/// Indicates that the borrow_kind of `outer_upvar_id` must permit a reborrowing with the
+/// borrow_kind of `inner_upvar_id`. This occurs in nested closures, see comment above at the call
+/// to this function.
 fn link_upvar_borrow_kind_for_nested_closures(rcx: &mut Rcx,
                                               inner_upvar_id: ty::UpvarId,
                                               outer_upvar_id: ty::UpvarId) {
-    /*!
-     * Indicates that the borrow_kind of `outer_upvar_id` must
-     * permit a reborrowing with the borrow_kind of `inner_upvar_id`.
-     * This occurs in nested closures, see comment above at the call to
-     * this function.
-     */
-
     debug!("link_upvar_borrow_kind: inner_upvar_id={} outer_upvar_id={}",
            inner_upvar_id, outer_upvar_id);
 
@@ -1867,18 +1783,14 @@ fn adjust_upvar_borrow_kind_for_loan(rcx: &Rcx,
     adjust_upvar_borrow_kind(rcx, upvar_id, upvar_borrow, kind)
 }
 
+/// We infer the borrow_kind with which to borrow upvars in a stack closure. The borrow_kind
+/// basically follows a lattice of `imm < unique-imm < mut`, moving from left to right as needed
+/// (but never right to left). Here the argument `mutbl` is the borrow_kind that is required by
+/// some particular use.
 fn adjust_upvar_borrow_kind(rcx: &Rcx,
                             upvar_id: ty::UpvarId,
                             upvar_borrow: &mut ty::UpvarBorrow,
                             kind: ty::BorrowKind) {
-    /*!
-     * We infer the borrow_kind with which to borrow upvars in a stack
-     * closure. The borrow_kind basically follows a lattice of
-     * `imm < unique-imm < mut`, moving from left to right as needed (but never
-     * right to left). Here the argument `mutbl` is the borrow_kind that
-     * is required by some particular use.
-     */
-
     debug!("adjust_upvar_borrow_kind: id={} kind=({} -> {})",
            upvar_id, upvar_borrow.kind, kind);
 
@@ -1911,15 +1823,12 @@ fn adjust_upvar_borrow_kind(rcx: &Rcx,
     }
 }
 
+/// Ensures that all borrowed data reachable via `ty` outlives `region`.
 fn type_must_outlive<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
                                origin: infer::SubregionOrigin<'tcx>,
                                ty: Ty<'tcx>,
                                region: ty::Region)
 {
-    /*!
-     * Ensures that all borrowed data reachable via `ty` outlives `region`.
-     */
-
     debug!("type_must_outlive(ty={}, region={})",
            ty.repr(rcx.tcx()),
            region.repr(rcx.tcx()));

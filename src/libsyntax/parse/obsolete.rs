@@ -8,14 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
-Support for parsing unsupported, old syntaxes, for the
-purpose of reporting errors. Parsing of these syntaxes
-is tested by compile-test/obsolete-syntax.rs.
-
-Obsolete syntax that becomes too hard to parse can be
-removed.
-*/
+//! Support for parsing unsupported, old syntaxes, for the purpose of reporting errors. Parsing of
+//! these syntaxes is tested by compile-test/obsolete-syntax.rs.
+//!
+//! Obsolete syntax that becomes too hard to parse can be removed.
 
 pub use self::ObsoleteSyntax::*;
 

@@ -8,10 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
-A mini version of ast::Ty, which is easier to use, and features an
-explicit `Self` type to use when specifying impls to be derived.
-*/
+//! A mini version of ast::Ty, which is easier to use, and features an explicit `Self` type to use
+//! when specifying impls to be derived.
 
 pub use self::PtrTy::*;
 pub use self::Ty::*;

@@ -807,33 +807,26 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         })
     }
 
+    /// Sometimes we get in a situation where we have multiple probes that are all impls of the
+    /// same trait, but we don't know which impl to use. In this case, since in all cases the
+    /// external interface of the method can be determined from the trait, it's ok not to decide.
+    /// We can basically just collapse all of the probes for various impls into one where-clause
+    /// probe. This will result in a pending obligation so when more type-info is available we can
+    /// make the final decision.
+    ///
+    /// Example (`src/test/run-pass/method-two-trait-defer-resolution-1.rs`):
+    ///
+    /// ```
+    /// trait Foo { ... }
+    /// impl Foo for Vec<int> { ... }
+    /// impl Foo for Vec<uint> { ... }
+    /// ```
+    ///
+    /// Now imagine the receiver is `Vec<_>`. It doesn't really matter at this time which impl we
+    /// use, so it's ok to just commit to "using the method from the trait Foo".
     fn collapse_candidates_to_trait_pick(&self,
                                          probes: &[&Candidate<'tcx>])
                                          -> Option<Pick<'tcx>> {
-        /*!
-         * Sometimes we get in a situation where we have multiple
-         * probes that are all impls of the same trait, but we don't
-         * know which impl to use. In this case, since in all cases
-         * the external interface of the method can be determined from
-         * the trait, it's ok not to decide.  We can basically just
-         * collapse all of the probes for various impls into one
-         * where-clause probe. This will result in a pending
-         * obligation so when more type-info is available we can make
-         * the final decision.
-         *
-         * Example (`src/test/run-pass/method-two-trait-defer-resolution-1.rs`):
-         *
-         * ```
-         * trait Foo { ... }
-         * impl Foo for Vec<int> { ... }
-         * impl Foo for Vec<uint> { ... }
-         * ```
-         *
-         * Now imagine the receiver is `Vec<_>`. It doesn't really
-         * matter at this time which impl we use, so it's ok to just
-         * commit to "using the method from the trait Foo".
-         */
-
         // Do all probes correspond to the same trait?
         let trait_data = match probes[0].to_trait_data() {
             Some(data) => data,
@@ -952,36 +945,27 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         subst::Substs::new(type_vars, region_placeholders)
     }
 
+    /// Replace late-bound-regions bound by `value` with `'static` using
+    /// `ty::erase_late_bound_regions`.
+    ///
+    /// This is only a reasonable thing to do during the *probe* phase, not the *confirm* phase, of
+    /// method matching. It is reasonable during the probe phase because we don't consider region
+    /// relationships at all. Therefore, we can just replace all the region variables with 'static
+    /// rather than creating fresh region variables. This is nice for two reasons:
+    ///
+    /// 1. Because the numbers of the region variables would otherwise be fairly unique to this
+    ///    particular method call, it winds up creating fewer types overall, which helps for memory
+    ///    usage. (Admittedly, this is a rather small effect, though measureable.)
+    ///
+    /// 2. It makes it easier to deal with higher-ranked trait bounds, because we can replace any
+    ///    late-bound regions with 'static. Otherwise, if we were going to replace late-bound
+    ///    regions with actual region variables as is proper, we'd have to ensure that the same
+    ///    region got replaced with the same variable, which requires a bit more coordination
+    ///    and/or tracking the substitution and
+    ///    so forth.
     fn erase_late_bound_regions<T>(&self, value: &T) -> T
         where T : HigherRankedFoldable<'tcx>
     {
-        /*!
-         * Replace late-bound-regions bound by `value` with `'static`
-         * using `ty::erase_late_bound_regions`.
-         *
-         * This is only a reasonable thing to do during the *probe*
-         * phase, not the *confirm* phase, of method matching. It is
-         * reasonable during the probe phase because we don't consider
-         * region relationships at all. Therefore, we can just replace
-         * all the region variables with 'static rather than creating
-         * fresh region variables. This is nice for two reasons:
-         *
-         * 1. Because the numbers of the region variables would
-         *    otherwise be fairly unique to this particular method
-         *    call, it winds up creating fewer types overall, which
-         *    helps for memory usage. (Admittedly, this is a rather
-         *    small effect, though measureable.)
-         *
-         * 2. It makes it easier to deal with higher-ranked trait
-         *    bounds, because we can replace any late-bound regions
-         *    with 'static. Otherwise, if we were going to replace
-         *    late-bound regions with actual region variables as is
-         *    proper, we'd have to ensure that the same region got
-         *    replaced with the same variable, which requires a bit
-         *    more coordination and/or tracking the substitution and
-         *    so forth.
-         */
-
         ty::erase_late_bound_regions(self.tcx(), value)
     }
 }
@@ -1000,16 +984,13 @@ fn impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
         .and_then(|item| item.as_opt_method())
 }
 
+/// Find method with name `method_name` defined in `trait_def_id` and return it, along with its
+/// index (or `None`, if no such method).
 fn trait_method<'tcx>(tcx: &ty::ctxt<'tcx>,
                       trait_def_id: ast::DefId,
                       method_name: ast::Name)
                       -> Option<(uint, Rc<ty::Method<'tcx>>)>
 {
-    /*!
-     * Find method with name `method_name` defined in `trait_def_id` and return it,
-     * along with its index (or `None`, if no such method).
-     */
-
     let trait_items = ty::trait_items(tcx, trait_def_id);
     trait_items
         .iter()
