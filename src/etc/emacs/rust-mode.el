@@ -174,7 +174,7 @@
     "if" "impl" "in"
     "let" "loop"
     "match" "mod" "move" "mut"
-    "priv" "proc" "pub"
+    "priv" "pub"
     "ref" "return"
     "self" "static" "struct" "super"
     "true" "trait" "type"
