@@ -235,7 +235,7 @@ pub use self::Result::*;
 use std::fmt::Show;
 use slice;
 use slice::AsSlice;
-use iter::{Iterator, DoubleEndedIterator, FromIterator, ExactSize};
+use iter::{Iterator, IteratorExt, DoubleEndedIterator, FromIterator, ExactSizeIterator};
 use option::{None, Option, Some};
 
 /// `Result` is a type that represents either success (`Ok`) or failure (`Err`).
@@ -831,7 +831,7 @@ impl<A> DoubleEndedIterator<A> for Item<A> {
     }
 }
 
-impl<A> ExactSize<A> for Item<A> {}
+impl<A> ExactSizeIterator<A> for Item<A> {}
 
 /////////////////////////////////////////////////////////////////////////////
 // FromIterator

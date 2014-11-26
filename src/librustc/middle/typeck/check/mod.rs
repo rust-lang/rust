@@ -4177,7 +4177,7 @@ fn check_expr_with_unifier<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
       }
       ast::ExprMethodCall(ident, ref tps, ref args) => {
         check_method_call(fcx, expr, ident, args.as_slice(), tps.as_slice(), lvalue_pref);
-        let mut arg_tys = args.iter().map(|a| fcx.expr_ty(&**a));
+        let arg_tys = args.iter().map(|a| fcx.expr_ty(&**a));
         let  args_err = arg_tys.fold(false,
              |rest_err, a| {
               rest_err || ty::type_is_error(a)});

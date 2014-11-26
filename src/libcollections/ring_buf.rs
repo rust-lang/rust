@@ -695,8 +695,7 @@ impl<'a, T> DoubleEndedIterator<&'a T> for Items<'a, T> {
     }
 }
 
-
-impl<'a, T> ExactSize<&'a T> for Items<'a, T> {}
+impl<'a, T> ExactSizeIterator<&'a T> for Items<'a, T> {}
 
 impl<'a, T> RandomAccessIterator<&'a T> for Items<'a, T> {
     #[inline]
@@ -763,7 +762,7 @@ impl<'a, T> DoubleEndedIterator<&'a mut T> for MutItems<'a, T> {
     }
 }
 
-impl<'a, T> ExactSize<&'a mut T> for MutItems<'a, T> {}
+impl<'a, T> ExactSizeIterator<&'a mut T> for MutItems<'a, T> {}
 
 impl<A: PartialEq> PartialEq for RingBuf<A> {
     fn eq(&self, other: &RingBuf<A>) -> bool {
@@ -1322,7 +1321,7 @@ mod tests {
         let u: Vec<int> = deq.iter().map(|&x| x).collect();
         assert_eq!(u, v);
 
-        let mut seq = iter::count(0u, 2).take(256);
+        let seq = iter::count(0u, 2).take(256);
         let deq: RingBuf<uint> = seq.collect();
         for (i, &x) in deq.iter().enumerate() {
             assert_eq!(2*i, x);

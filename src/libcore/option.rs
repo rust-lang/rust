@@ -147,7 +147,7 @@ pub use self::Option::*;
 
 use cmp::{Eq, Ord};
 use default::Default;
-use iter::{Iterator, DoubleEndedIterator, FromIterator, ExactSize};
+use iter::{Iterator, IteratorExt, DoubleEndedIterator, FromIterator, ExactSizeIterator};
 use mem;
 use result::{Result, Ok, Err};
 use slice;
@@ -797,7 +797,7 @@ impl<A> DoubleEndedIterator<A> for Item<A> {
     }
 }
 
-impl<A> ExactSize<A> for Item<A> {}
+impl<A> ExactSizeIterator<A> for Item<A> {}
 
 /////////////////////////////////////////////////////////////////////////////
 // FromIterator

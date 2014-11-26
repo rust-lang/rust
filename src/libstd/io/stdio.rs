@@ -35,7 +35,6 @@ use failure::LOCAL_STDERR;
 use fmt;
 use io::{Reader, Writer, IoResult, IoError, OtherIoError,
          standard_error, EndOfFile, LineBufferedWriter, BufferedReader};
-use iter::Iterator;
 use kinds::Send;
 use libc;
 use mem;

@@ -132,7 +132,7 @@ pub fn simple_identifier<'a>(pat: &'a ast::Pat) -> Option<&'a ast::Ident> {
 }
 
 pub fn def_to_path(tcx: &ty::ctxt, id: ast::DefId) -> ast::Path {
-    ty::with_path(tcx, id, |mut path| ast::Path {
+    ty::with_path(tcx, id, |path| ast::Path {
         global: false,
         segments: path.last().map(|elem| ast::PathSegment {
             identifier: ast::Ident::new(elem.name()),

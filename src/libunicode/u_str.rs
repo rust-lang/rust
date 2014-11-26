@@ -20,7 +20,8 @@
 use self::GraphemeState::*;
 use core::cmp;
 use core::slice::SlicePrelude;
-use core::iter::{Filter, AdditiveIterator, Iterator, DoubleEndedIterator};
+use core::iter::{Filter, AdditiveIterator, Iterator, IteratorExt};
+use core::iter::{DoubleEndedIterator, DoubleEndedIteratorExt};
 use core::kinds::Sized;
 use core::option::{Option, None, Some};
 use core::str::{CharSplits, StrPrelude};

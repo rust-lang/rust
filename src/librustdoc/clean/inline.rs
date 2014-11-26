@@ -151,7 +151,7 @@ pub fn build_external_trait(cx: &DocContext, tcx: &ty::ctxt,
     let def = ty::lookup_trait_def(tcx, did);
     let trait_items = ty::trait_items(tcx, did).clean(cx);
     let provided = ty::provided_trait_methods(tcx, did);
-    let mut items = trait_items.into_iter().map(|trait_item| {
+    let items = trait_items.into_iter().map(|trait_item| {
         if provided.iter().any(|a| a.def_id == trait_item.def_id) {
             clean::ProvidedMethod(trait_item)
         } else {

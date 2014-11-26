@@ -39,7 +39,7 @@ use clone::Clone;
 use error::{FromError, Error};
 use fmt;
 use io::{IoResult, IoError};
-use iter::Iterator;
+use iter::{Iterator, IteratorExt};
 use libc::{c_void, c_int};
 use libc;
 use boxed::Box;

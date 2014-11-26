@@ -1160,7 +1160,7 @@ impl<'a, T> Items<'a, T> {
 iterator!{struct Items -> *const T, &'a T}
 
 #[experimental = "needs review"]
-impl<'a, T> ExactSize<&'a T> for Items<'a, T> {}
+impl<'a, T> ExactSizeIterator<&'a T> for Items<'a, T> {}
 
 #[experimental = "needs review"]
 impl<'a, T> Clone for Items<'a, T> {
@@ -1255,7 +1255,7 @@ impl<'a, T> MutItems<'a, T> {
 iterator!{struct MutItems -> *mut T, &'a mut T}
 
 #[experimental = "needs review"]
-impl<'a, T> ExactSize<&'a mut T> for MutItems<'a, T> {}
+impl<'a, T> ExactSizeIterator<&'a mut T> for MutItems<'a, T> {}
 
 /// An abstraction over the splitting iterators, so that splitn, splitn_mut etc
 /// can be implemented once.
