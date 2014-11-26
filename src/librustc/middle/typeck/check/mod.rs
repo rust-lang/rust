@@ -361,6 +361,17 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckItemTypesVisitor<'a, 'tcx> {
         check_item(self.ccx, i);
         visit::walk_item(self, i);
     }
+
+    fn visit_ty(&mut self, t: &ast::Ty) {
+        match t.node {
+            ast::TyFixedLengthVec(_, ref expr) => {
+                check_const_in_type(self.ccx, &**expr, ty::mk_uint());
+            }
+            _ => {}
+        }
+
+        visit::walk_ty(self, t);
+    }
 }
 
 pub fn check_item_types(ccx: &CrateCtxt) {
@@ -4672,25 +4683,18 @@ fn check_block_with_expected<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 /// Checks a constant appearing in a type. At the moment this is just the
 /// length expression in a fixed-length vector, but someday it might be
 /// extended to type-level numeric literals.
-pub fn check_const_in_type<'tcx>(tcx: &ty::ctxt<'tcx>,
-                                 expr: &ast::Expr,
-                                 expected_type: Ty<'tcx>) {
-    // Synthesize a crate context. The trait map is not needed here (though I
-    // imagine it will be if we have associated statics --pcwalton), so we
-    // leave it blank.
-    let ccx = CrateCtxt {
-        trait_map: NodeMap::new(),
-        tcx: tcx,
-    };
-    let inh = static_inherited_fields(&ccx);
-    let fcx = blank_fn_ctxt(&ccx, &inh, ty::FnConverging(expected_type), expr.id);
+fn check_const_in_type<'a,'tcx>(ccx: &'a CrateCtxt<'a,'tcx>,
+                                expr: &ast::Expr,
+                                expected_type: Ty<'tcx>) {
+    let inh = static_inherited_fields(ccx);
+    let fcx = blank_fn_ctxt(ccx, &inh, ty::FnConverging(expected_type), expr.id);
     check_const_with_ty(&fcx, expr.span, expr, expected_type);
 }
 
-pub fn check_const(ccx: &CrateCtxt,
-                   sp: Span,
-                   e: &ast::Expr,
-                   id: ast::NodeId) {
+fn check_const(ccx: &CrateCtxt,
+               sp: Span,
+               e: &ast::Expr,
+               id: ast::NodeId) {
     let inh = static_inherited_fields(ccx);
     let rty = ty::node_id_to_type(ccx.tcx, id);
     let fcx = blank_fn_ctxt(ccx, &inh, ty::FnConverging(rty), e.id);
@@ -4698,10 +4702,10 @@ pub fn check_const(ccx: &CrateCtxt,
     check_const_with_ty(&fcx, sp, e, declty);
 }
 
-pub fn check_const_with_ty<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
-                                     _: Span,
-                                     e: &ast::Expr,
-                                     declty: Ty<'tcx>) {
+fn check_const_with_ty<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
+                                 _: Span,
+                                 e: &ast::Expr,
+                                 declty: Ty<'tcx>) {
     // Gather locals in statics (because of block expressions).
     // This is technically unnecessary because locals in static items are forbidden,
     // but prevents type checking from blowing up before const checking can properly
