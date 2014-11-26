@@ -23,9 +23,9 @@ use char::Char;
 use char;
 use cmp::{Eq, mod};
 use default::Default;
+use iter::{Map, Iterator, IteratorExt, DoubleEndedIterator};
+use iter::{DoubleEndedIteratorExt, ExactSizeIterator};
 use iter::range;
-use iter::{DoubleEndedIterator, ExactSize};
-use iter::{Map, Iterator};
 use kinds::Sized;
 use mem;
 use num::Int;
@@ -1210,7 +1210,7 @@ Section: Trait implementations
 #[allow(missing_docs)]
 pub mod traits {
     use cmp::{Ord, Ordering, Less, Equal, Greater, PartialEq, PartialOrd, Equiv, Eq};
-    use iter::Iterator;
+    use iter::IteratorExt;
     use option::{Option, Some};
     use ops;
     use str::{Str, StrPrelude, eq_slice};

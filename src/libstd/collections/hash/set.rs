@@ -17,7 +17,7 @@ use default::Default;
 use fmt::Show;
 use fmt;
 use hash::{Hash, Hasher, RandomSipHasher};
-use iter::{Iterator, FromIterator, FilterMap, Chain, Repeat, Zip, Extend};
+use iter::{Iterator, IteratorExt, FromIterator, FilterMap, Chain, Repeat, Zip, Extend, repeat};
 use iter;
 use option::{Some, None};
 use result::{Ok, Err};
@@ -262,7 +262,7 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn difference<'a>(&'a self, other: &'a HashSet<T, H>) -> SetAlgebraItems<'a, T, H> {
-        Repeat::new(other).zip(self.iter())
+        repeat(other).zip(self.iter())
             .filter_map(|(other, elt)| {
                 if !other.contains(elt) { Some(elt) } else { None }
             })
@@ -314,7 +314,7 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn intersection<'a>(&'a self, other: &'a HashSet<T, H>)
         -> SetAlgebraItems<'a, T, H> {
-        Repeat::new(other).zip(self.iter())
+        repeat(other).zip(self.iter())
             .filter_map(|(other, elt)| {
                 if other.contains(elt) { Some(elt) } else { None }
             })

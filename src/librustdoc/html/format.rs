@@ -422,7 +422,7 @@ impl fmt::Show for clean::Type {
                        bounds = if decl.bounds.len() == 0 {
                            "".to_string()
                        } else {
-                           let mut m = decl.bounds
+                           let m = decl.bounds
                                            .iter()
                                            .map(|s| s.to_string());
                            format!(

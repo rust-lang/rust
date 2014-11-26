@@ -61,7 +61,7 @@ use core::cmp;
 use core::iter::AdditiveIterator;
 use core::kinds::Sized;
 use core::prelude::{Char, Clone, Eq, Equiv};
-use core::prelude::{Iterator, SlicePrelude, None, Option, Ord, Ordering};
+use core::prelude::{Iterator, IteratorExt, SlicePrelude, None, Option, Ord, Ordering};
 use core::prelude::{PartialEq, PartialOrd, Result, AsSlice, Some, Tuple2};
 use core::prelude::{range};
 
@@ -828,7 +828,7 @@ mod tests {
     use std::cmp::{Equal, Greater, Less, Ord, PartialOrd, Equiv};
     use std::option::{Some, None};
     use std::ptr::RawPtr;
-    use std::iter::{Iterator, DoubleEndedIterator};
+    use std::iter::{Iterator, IteratorExt, DoubleEndedIteratorExt};
 
     use super::*;
     use std::slice::{AsSlice, SlicePrelude};
@@ -2177,12 +2177,15 @@ mod tests {
         let gr_inds = s.grapheme_indices(true).rev().collect::<Vec<(uint, &str)>>();
         let b: &[_] = &[(11, "\r\n"), (6, "ö̲"), (3, "é"), (0u, "a̐")];
         assert_eq!(gr_inds.as_slice(), b);
-        let mut gr_inds = s.grapheme_indices(true);
-        let e1 = gr_inds.size_hint();
-        assert_eq!(e1, (1, Some(13)));
-        let c = gr_inds.count();
-        assert_eq!(c, 4);
-        let e2 = gr_inds.size_hint();
+        let mut gr_inds_iter = s.grapheme_indices(true);
+        {
+            let gr_inds = gr_inds_iter.by_ref();
+            let e1 = gr_inds.size_hint();
+            assert_eq!(e1, (1, Some(13)));
+            let c = gr_inds.count();
+            assert_eq!(c, 4);
+        }
+        let e2 = gr_inds_iter.size_hint();
         assert_eq!(e2, (0, Some(0)));
 
         // make sure the reverse iterator does the right thing with "\n" at beginning of string
@@ -2319,7 +2322,7 @@ mod bench {
     use test::Bencher;
     use test::black_box;
     use super::*;
-    use std::iter::{Iterator, DoubleEndedIterator};
+    use std::iter::{IteratorExt, DoubleEndedIteratorExt};
     use std::str::StrPrelude;
     use std::slice::SlicePrelude;
 

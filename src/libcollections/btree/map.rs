@@ -863,7 +863,7 @@ impl<K, V, E, T: Traverse<E> + DoubleEndedIterator<TraversalItem<K, V, E>>>
     // Note that the design of these iterators permits an *arbitrary* initial pair of min and max,
     // making these arbitrary sub-range iterators. However the logic to construct these paths
     // efficiently is fairly involved, so this is a FIXME. The sub-range iterators also wouldn't be
-    // able to accurately predict size, so those iterators can't implement ExactSize.
+    // able to accurately predict size, so those iterators can't implement ExactSizeIterator.
     fn next(&mut self) -> Option<(K, V)> {
         loop {
             // We want the smallest element, so try to get the top of the left stack
@@ -963,7 +963,7 @@ impl<'a, K, V> Iterator<(&'a K, &'a V)> for Entries<'a, K, V> {
 impl<'a, K, V> DoubleEndedIterator<(&'a K, &'a V)> for Entries<'a, K, V> {
     fn next_back(&mut self) -> Option<(&'a K, &'a V)> { self.inner.next_back() }
 }
-impl<'a, K, V> ExactSize<(&'a K, &'a V)> for Entries<'a, K, V> {}
+impl<'a, K, V> ExactSizeIterator<(&'a K, &'a V)> for Entries<'a, K, V> {}
 
 
 impl<'a, K, V> Iterator<(&'a K, &'a mut V)> for MutEntries<'a, K, V> {
@@ -973,7 +973,7 @@ impl<'a, K, V> Iterator<(&'a K, &'a mut V)> for MutEntries<'a, K, V> {
 impl<'a, K, V> DoubleEndedIterator<(&'a K, &'a mut V)> for MutEntries<'a, K, V> {
     fn next_back(&mut self) -> Option<(&'a K, &'a mut V)> { self.inner.next_back() }
 }
-impl<'a, K, V> ExactSize<(&'a K, &'a mut V)> for MutEntries<'a, K, V> {}
+impl<'a, K, V> ExactSizeIterator<(&'a K, &'a mut V)> for MutEntries<'a, K, V> {}
 
 
 impl<K, V> Iterator<(K, V)> for MoveEntries<K, V> {
@@ -983,7 +983,7 @@ impl<K, V> Iterator<(K, V)> for MoveEntries<K, V> {
 impl<K, V> DoubleEndedIterator<(K, V)> for MoveEntries<K, V> {
     fn next_back(&mut self) -> Option<(K, V)> { self.inner.next_back() }
 }
-impl<K, V> ExactSize<(K, V)> for MoveEntries<K, V> {}
+impl<K, V> ExactSizeIterator<(K, V)> for MoveEntries<K, V> {}
 
 
 

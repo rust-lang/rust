@@ -3106,7 +3106,7 @@ pub fn is_type_representable<'tcx>(cx: &ctxt<'tcx>, sp: Span, ty: Ty<'tcx>)
     // Iterate until something non-representable is found
     fn find_nonrepresentable<'tcx, It: Iterator<Ty<'tcx>>>(cx: &ctxt<'tcx>, sp: Span,
                                                            seen: &mut Vec<Ty<'tcx>>,
-                                                           mut iter: It)
+                                                           iter: It)
                                                            -> Representability {
         iter.fold(Representable,
                   |r, ty| cmp::max(r, is_type_structurally_recursive(cx, sp, seen, ty)))
@@ -3164,7 +3164,7 @@ pub fn is_type_representable<'tcx>(cx: &ctxt<'tcx>, sp: Span, ty: Ty<'tcx>)
                 let types_a = substs_a.types.get_slice(subst::TypeSpace);
                 let types_b = substs_b.types.get_slice(subst::TypeSpace);
 
-                let mut pairs = types_a.iter().zip(types_b.iter());
+                let pairs = types_a.iter().zip(types_b.iter());
 
                 pairs.all(|(&a, &b)| same_type(a, b))
             }
