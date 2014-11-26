@@ -75,10 +75,14 @@ impl<R: Reader> BufferedReader<R> {
     }
 
     /// Gets a reference to the underlying reader.
+    pub fn get_ref<'a>(&self) -> &R { &self.inner }
+
+    /// Gets a mutable reference to the underlying reader.
     ///
-    /// This type does not expose the ability to get a mutable reference to the
-    /// underlying reader because that could possibly corrupt the buffer.
-    pub fn get_ref<'a>(&'a self) -> &'a R { &self.inner }
+    /// ## Warning
+    ///
+    /// It is inadvisable to directly read from the underlying reader.
+    pub fn get_mut(&mut self) -> &mut R { &mut self.inner }
 
     /// Unwraps this `BufferedReader`, returning the underlying reader.
     ///
@@ -176,10 +180,14 @@ impl<W: Writer> BufferedWriter<W> {
     }
 
     /// Gets a reference to the underlying writer.
+    pub fn get_ref(&self) -> &W { self.inner.as_ref().unwrap() }
+
+    /// Gets a mutable reference to the underlying write.
     ///
-    /// This type does not expose the ability to get a mutable reference to the
-    /// underlying reader because that could possibly corrupt the buffer.
-    pub fn get_ref<'a>(&'a self) -> &'a W { self.inner.as_ref().unwrap() }
+    /// ## Warning
+    ///
+    /// It is inadvisable to directly read from the underlying writer.
+    pub fn get_mut(&mut self) -> &mut W { self.inner.as_mut().unwrap() }
 
     /// Unwraps this `BufferedWriter`, returning the underlying writer.
     ///
@@ -341,12 +349,20 @@ impl<S: Stream> BufferedStream<S> {
     }
 
     /// Gets a reference to the underlying stream.
-    ///
-    /// This type does not expose the ability to get a mutable reference to the
-    /// underlying reader because that could possibly corrupt the buffer.
-    pub fn get_ref<'a>(&'a self) -> &'a S {
+    pub fn get_ref(&self) -> &S {
         let InternalBufferedWriter(ref w) = self.inner.inner;
         w.get_ref()
+    }
+
+    /// Gets a mutable reference to the underlying stream.
+    ///
+    /// ## Warning
+    ///
+    /// It is inadvisable to read directly from or write directly to the
+    /// underlying stream.
+    pub fn get_mut(&mut self) -> &mut S {
+        let InternalBufferedWriter(ref mut w) = self.inner.inner;
+        w.get_mut()
     }
 
     /// Unwraps this `BufferedStream`, returning the underlying stream.
