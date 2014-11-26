@@ -114,16 +114,16 @@
 //! then mean that all later passes would have to check for these figments
 //! and report an error, and it just seems like more mess in the end.)
 
+use astconv::AstConv;
+use check::FnCtxt;
+use check::regionmanip;
+use check::vtable;
 use middle::def;
 use middle::mem_categorization as mc;
 use middle::region::CodeExtent;
 use middle::traits;
 use middle::ty::{ReScope};
 use middle::ty::{mod, Ty, MethodCall};
-use typeck::astconv::AstConv;
-use typeck::check::FnCtxt;
-use typeck::check::regionmanip;
-use typeck::check::vtable;
 use middle::infer::resolve_and_force_all_but_regions;
 use middle::infer::resolve_type;
 use middle::infer;

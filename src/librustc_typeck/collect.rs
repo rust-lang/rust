@@ -32,6 +32,9 @@ as `ty_param()` instances.
 use self::ConvertMethodContext::*;
 use self::CreateTypeParametersForAssociatedTypesFlag::*;
 
+use astconv::{AstConv, ty_of_arg};
+use astconv::{ast_ty_to_ty, ast_region_to_region};
+use astconv;
 use metadata::csearch;
 use middle::def;
 use middle::lang_items::SizedTraitLangItem;
@@ -43,13 +46,9 @@ use middle::ty::{ImplContainer, ImplOrTraitItemContainer, TraitContainer};
 use middle::ty::{Polytype};
 use middle::ty::{mod, Ty};
 use middle::ty_fold::TypeFolder;
-use typeck::astconv::{AstConv, ty_of_arg};
-use typeck::astconv::{ast_ty_to_ty, ast_region_to_region};
-use typeck::astconv;
 use middle::infer;
-use typeck::rscope::*;
-use typeck::{CrateCtxt, lookup_def_tcx, no_params, write_ty_to_tcx};
-use typeck;
+use rscope::*;
+use {CrateCtxt, lookup_def_tcx, no_params, write_ty_to_tcx};
 use util::nodemap::{FnvHashMap, FnvHashSet};
 use util::ppaux;
 use util::ppaux::{Repr,UserString};
@@ -2159,13 +2158,13 @@ fn check_method_self_type<'a, 'tcx, RS:RegionScope>(
                base_type.repr(crate_context.tcx),
                base_type_free.repr(crate_context.tcx));
         let infcx = infer::new_infer_ctxt(crate_context.tcx);
-        drop(typeck::require_same_types(crate_context.tcx,
-                                        Some(&infcx),
-                                        false,
-                                        explicit_self.span,
-                                        base_type_free,
-                                        required_type_free,
-                                        || {
+        drop(::require_same_types(crate_context.tcx,
+                                  Some(&infcx),
+                                  false,
+                                  explicit_self.span,
+                                  base_type_free,
+                                  required_type_free,
+                                  || {
                 format!("mismatched self type: expected `{}`",
                         ppaux::ty_to_string(crate_context.tcx, required_type))
         }));

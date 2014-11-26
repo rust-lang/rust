@@ -31,7 +31,7 @@ can be broken down into several distinct phases:
 
   In the process of checking, various constraints will be placed on
   these type variables through the subtyping relationships requested
-  through the `demand` module.  The `typeck::infer` module is in charge
+  through the `demand` module.  The `infer` module is in charge
   of resolving those constraints.
 
 - regionck: after main is complete, the regionck pass goes over all
@@ -82,7 +82,8 @@ pub use self::Expectation::*;
 use self::IsBinopAssignment::*;
 use self::TupleArgumentsFlag::*;
 
-use session::Session;
+use astconv::{mod, ast_region_to_region, ast_ty_to_ty, AstConv};
+use check::_match::pat_ctxt;
 use middle::{const_eval, def, traits};
 use middle::infer;
 use middle::lang_items::IteratorItem;
@@ -96,11 +97,10 @@ use middle::ty::{mod, Ty};
 use middle::ty::liberate_late_bound_regions;
 use middle::ty::{MethodCall, MethodCallee, MethodMap, ObjectCastMap};
 use middle::ty_fold::TypeFolder;
-use typeck::astconv::{mod, ast_region_to_region, ast_ty_to_ty, AstConv};
-use typeck::check::_match::pat_ctxt;
-use typeck::rscope::RegionScope;
-use typeck::{CrateCtxt, lookup_def_ccx, no_params, require_same_types};
-use typeck::TypeAndSubsts;
+use rscope::RegionScope;
+use session::Session;
+use {CrateCtxt, lookup_def_ccx, no_params, require_same_types};
+use TypeAndSubsts;
 use middle::lang_items::TypeIdLangItem;
 use lint;
 use util::common::{block_query, indenter, loop_query};

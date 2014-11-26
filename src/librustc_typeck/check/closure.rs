@@ -14,11 +14,11 @@ use super::check_fn;
 use super::{Expectation, ExpectCastableToType, ExpectHasType, NoExpectation};
 use super::FnCtxt;
 
+use astconv;
 use middle::infer;
 use middle::subst;
 use middle::ty::{mod, Ty};
-use typeck::astconv;
-use typeck::rscope::RegionScope;
+use rscope::RegionScope;
 use syntax::abi;
 use syntax::ast;
 use syntax::ast_util;

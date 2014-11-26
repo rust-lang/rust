@@ -10,12 +10,12 @@
 
 use super::probe;
 
+use check::{mod, FnCtxt, NoPreference, PreferMutLvalue};
 use middle::subst::{mod, Subst};
 use middle::traits;
 use middle::ty::{mod, Ty};
 use middle::ty::{MethodCall, MethodCallee, MethodObject, MethodOrigin,
                  MethodParam, MethodStatic, MethodTraitObject, MethodTypeParam};
-use typeck::check::{mod, FnCtxt, NoPreference, PreferMutLvalue};
 use middle::infer;
 use middle::infer::InferCtxt;
 use middle::ty_fold::HigherRankedFoldable;

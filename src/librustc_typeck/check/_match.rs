@@ -9,13 +9,13 @@
 // except according to those terms.
 
 use middle::def;
+use middle::infer::{mod, resolve};
 use middle::pat_util::{PatIdMap, pat_id_map, pat_is_binding, pat_is_const};
 use middle::subst::{Subst, Substs};
 use middle::ty::{mod, Ty};
-use typeck::check::{check_expr, check_expr_has_type, demand, FnCtxt};
-use typeck::check::{instantiate_path, structurally_resolved_type, valid_range_bounds};
-use middle::infer::{mod, resolve};
-use typeck::require_same_types;
+use check::{check_expr, check_expr_has_type, demand, FnCtxt};
+use check::{instantiate_path, structurally_resolved_type, valid_range_bounds};
+use require_same_types;
 use util::nodemap::FnvHashMap;
 
 use std::cmp;

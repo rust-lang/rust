@@ -32,6 +32,7 @@ extern crate getopts;
 extern crate graphviz;
 extern crate libc;
 extern crate rustc;
+extern crate rustc_typeck;
 extern crate rustc_back;
 #[phase(plugin, link)] extern crate log;
 #[phase(plugin, link)] extern crate syntax;

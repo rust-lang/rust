@@ -98,9 +98,6 @@ pub mod middle {
     pub mod weak_lang_items;
 }
 
-#[path="middle/typeck/mod.rs"]
-pub mod typeck;
-
 pub mod metadata;
 
 pub mod session;
