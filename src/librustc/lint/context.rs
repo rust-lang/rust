@@ -25,18 +25,14 @@
 //! for all lint attributes.
 use self::TargetLint::*;
 
-use middle::infer;
 use middle::privacy::ExportedItems;
-use middle::subst;
 use middle::ty::{mod, Ty};
-use middle::typeck::astconv::AstConv;
 use session::{early_error, Session};
 use lint::{Level, LevelSource, Lint, LintId, LintArray, LintPass, LintPassObject};
 use lint::{Default, CommandLine, Node, Allow, Warn, Deny, Forbid};
 use lint::builtin;
 use util::nodemap::FnvHashMap;
 
-use std::rc::Rc;
 use std::cell::RefCell;
 use std::tuple::Tuple2;
 use std::mem;
@@ -538,42 +534,6 @@ impl<'a, 'tcx> Context<'a, 'tcx> {
             visited_outermost: false,
         };
         f(&mut v);
-    }
-}
-
-impl<'a, 'tcx> AstConv<'tcx> for Context<'a, 'tcx>{
-    fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx> { self.tcx }
-
-    fn get_item_ty(&self, id: ast::DefId) -> ty::Polytype<'tcx> {
-        ty::lookup_item_type(self.tcx, id)
-    }
-
-    fn get_trait_def(&self, id: ast::DefId) -> Rc<ty::TraitDef<'tcx>> {
-        ty::lookup_trait_def(self.tcx, id)
-    }
-
-    fn ty_infer(&self, _span: Span) -> Ty<'tcx> {
-        infer::new_infer_ctxt(self.tcx).next_ty_var()
-    }
-
-    fn associated_types_of_trait_are_valid(&self, _: Ty<'tcx>, _: ast::DefId)
-                                           -> bool {
-        // FIXME(pcwalton): This is wrong.
-        true
-    }
-
-    fn associated_type_binding(&self,
-                               _: Span,
-                               _: Option<Ty<'tcx>>,
-                               trait_id: ast::DefId,
-                               associated_type_id: ast::DefId)
-                               -> Ty<'tcx> {
-        // FIXME(pcwalton): This is wrong.
-        let trait_def = self.get_trait_def(trait_id);
-        let index = ty::associated_type_parameter_index(self.tcx,
-                                                        &*trait_def,
-                                                        associated_type_id);
-        ty::mk_param(self.tcx, subst::TypeSpace, index, associated_type_id)
     }
 }
 
