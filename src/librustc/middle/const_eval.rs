@@ -17,8 +17,8 @@ pub use self::constness::*;
 use metadata::csearch;
 use middle::{astencode, def};
 use middle::pat_util::def_to_path;
-use middle::ty::{mod, Ty};
-use middle::typeck::{astconv, check};
+use middle::ty::{mod};
+use middle::astconv_util::{ast_ty_to_prim_ty};
 use util::nodemap::DefIdMap;
 
 use syntax::ast::{mod, Expr};
@@ -277,14 +277,6 @@ impl<'a, 'tcx> ConstEvalVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx, 'v> Visitor<'v> for ConstEvalVisitor<'a, 'tcx> {
-    fn visit_ty(&mut self, t: &ast::Ty) {
-        if let ast::TyFixedLengthVec(_, ref expr) = t.node {
-            check::check_const_in_type(self.tcx, &**expr, ty::mk_uint());
-        }
-
-        visit::walk_ty(self, t);
-    }
-
     fn visit_expr_post(&mut self, e: &Expr) {
         self.classify(e);
     }
@@ -504,7 +496,7 @@ pub fn eval_const_expr_partial(tcx: &ty::ctxt, e: &Expr) -> Result<const_val, St
         // populated in the ctxt, which was causing things to blow up
         // (#5900). Fall back to doing a limited lookup to get past it.
         let ety = ty::expr_ty_opt(tcx, e)
-                .or_else(|| astconv::ast_ty_to_prim_ty(tcx, &**target_ty))
+                .or_else(|| ast_ty_to_prim_ty(tcx, &**target_ty))
                 .unwrap_or_else(|| {
                     tcx.sess.span_fatal(target_ty.span,
                                         "target type not found for const cast")
