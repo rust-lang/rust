@@ -45,6 +45,7 @@ pub use self::DiagnosticKind::*;
 pub use self::CallConv::*;
 pub use self::Visibility::*;
 pub use self::DiagnosticSeverity::*;
+pub use self::Linkage::*;
 
 use std::c_str::ToCStr;
 use std::cell::RefCell;

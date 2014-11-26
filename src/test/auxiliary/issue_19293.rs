@@ -1,4 +1,4 @@
-// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,14 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:xc_private_method_lib.rs
-
-extern crate xc_private_method_lib;
-
-fn main() {
-    let _ = xc_private_method_lib::Struct{ x: 10 }.meth_struct();
-    //~^ ERROR method `meth_struct` is private
-
-    let _ = xc_private_method_lib::Enum::Variant1(20).meth_enum();
-    //~^ ERROR method `meth_enum` is private
+pub struct Foo (pub int);
+pub enum MyEnum {
+    Foo(Foo),
 }
