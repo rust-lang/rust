@@ -202,6 +202,10 @@ impl<'a> fold::DocFolder for Stripper<'a> {
             // implementations of traits are always public.
             clean::ImplItem(ref imp) if imp.trait_.is_some() => true,
 
+            // Struct variant fields have inherited visibility
+            clean::VariantItem(clean::Variant {
+                kind: clean::StructVariant(..)
+            }) => true,
             _ => false,
         };
 
