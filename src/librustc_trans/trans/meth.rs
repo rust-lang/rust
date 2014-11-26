@@ -477,7 +477,7 @@ pub fn trans_trait_callee_from_llval<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     debug!("(translating trait callee) loading method");
     // Replace the self type (&Self or Box<Self>) with an opaque pointer.
     let llcallee_ty = match callee_ty.sty {
-        ty::ty_bare_fn(ref f) if f.abi == Rust || f.abi == RustCall => {
+        ty::ty_bare_fn(_, ref f) if f.abi == Rust || f.abi == RustCall => {
             type_of_rust_fn(ccx,
                             Some(Type::i8p(ccx)),
                             f.sig.0.inputs.slice_from(1),

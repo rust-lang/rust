@@ -408,7 +408,7 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
         ty_closure(ref f) => {
             closure_to_string(cx, &**f)
         }
-        ty_bare_fn(ref f) => {
+        ty_bare_fn(_, ref f) => {
             bare_fn_to_string(cx, f.unsafety, f.abi, None, &f.sig)
         }
         ty_infer(infer_ty) => infer_ty_to_string(cx, infer_ty),

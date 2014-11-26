@@ -364,7 +364,7 @@ pub fn type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
 
       ty::ty_str => Type::i8(cx),
 
-      ty::ty_bare_fn(_) => {
+      ty::ty_bare_fn(..) => {
           type_of_fn_from_ty(cx, t).ptr_to()
       }
       ty::ty_closure(_) => {

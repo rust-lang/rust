@@ -355,7 +355,7 @@ impl<'cx,'tcx> TypeFolder<'tcx> for BoundsChecker<'cx,'tcx> {
 
                 self.fold_substs(substs);
             }
-            ty::ty_bare_fn(ty::BareFnTy{sig: ref fn_sig, ..}) |
+            ty::ty_bare_fn(_, ty::BareFnTy{sig: ref fn_sig, ..}) |
             ty::ty_closure(box ty::ClosureTy{sig: ref fn_sig, ..}) => {
                 self.binding_count += 1;
 
