@@ -8,10 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
- * Overlap: No two impls for the same trait are implemented for the
- * same type.
- */
+//! Overlap: No two impls for the same trait are implemented for the
+//! same type.
 
 use middle::traits;
 use middle::ty;

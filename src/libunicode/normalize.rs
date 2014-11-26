@@ -8,10 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
-  Functions for computing canonical and compatible decompositions
-  for Unicode characters.
-  */
+//! Functions for computing canonical and compatible decompositions for Unicode characters.
 
 use core::cmp::{Equal, Less, Greater};
 use core::option::{Option, Some, None};

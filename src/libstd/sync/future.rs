@@ -8,21 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
- * A type representing values that may be computed concurrently and
- * operations for working with them.
- *
- * # Example
- *
- * ```rust
- * use std::sync::Future;
- * # fn fib(n: uint) -> uint {42};
- * # fn make_a_sandwich() {};
- * let mut delayed_fib = Future::spawn(proc() { fib(5000) });
- * make_a_sandwich();
- * println!("fib(5000) = {}", delayed_fib.get())
- * ```
- */
+//! A type representing values that may be computed concurrently and operations for working with
+//! them.
+//!
+//! # Example
+//!
+//! ```rust
+//! use std::sync::Future;
+//! # fn fib(n: uint) -> uint {42};
+//! # fn make_a_sandwich() {};
+//! let mut delayed_fib = Future::spawn(proc() { fib(5000) });
+//! make_a_sandwich();
+//! println!("fib(5000) = {}", delayed_fib.get())
+//! ```
 
 #![allow(missing_docs)]
 

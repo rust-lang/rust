@@ -642,21 +642,16 @@ impl<'f, 'tcx> CombineFields<'f, 'tcx> {
         Ok(())
     }
 
+    /// Attempts to generalize `ty` for the type variable `for_vid`.  This checks for cycle -- that
+    /// is, whether the type `ty` references `for_vid`. If `make_region_vars` is true, it will also
+    /// replace all regions with fresh variables. Returns `ty_err` in the case of a cycle, `Ok`
+    /// otherwise.
     fn generalize(&self,
                   ty: Ty<'tcx>,
                   for_vid: ty::TyVid,
                   make_region_vars: bool)
                   -> cres<'tcx, Ty<'tcx>>
     {
-        /*!
-         * Attempts to generalize `ty` for the type variable
-         * `for_vid`.  This checks for cycle -- that is, whether the
-         * type `ty` references `for_vid`. If `make_region_vars` is
-         * true, it will also replace all regions with fresh
-         * variables. Returns `ty_err` in the case of a cycle, `Ok`
-         * otherwise.
-         */
-
         let mut generalize = Generalizer { infcx: self.infcx,
                                            span: self.trace.origin.span(),
                                            for_vid: for_vid,
