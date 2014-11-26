@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*! See `doc.rs` for high-level documentation */
+//! See `doc.rs` for high-level documentation
 
 use super::SelectionContext;
 use super::Obligation;

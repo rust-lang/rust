@@ -8,17 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
-Primitive traits representing basic 'kinds' of types
-
-Rust types can be classified in various useful ways according to
-intrinsic properties of the type. These classifications, often called
-'kinds', are represented as traits.
-
-They cannot be implemented by user code, but are instead implemented
-by the compiler automatically for the types to which they apply.
-
-*/
+//! Primitive traits representing basic 'kinds' of types
+//!
+//! Rust types can be classified in various useful ways according to
+//! intrinsic properties of the type. These classifications, often called
+//! 'kinds', are represented as traits.
+//!
+//! They cannot be implemented by user code, but are instead implemented
+//! by the compiler automatically for the types to which they apply.
 
 /// Types able to be transferred across task boundaries.
 #[lang="send"]

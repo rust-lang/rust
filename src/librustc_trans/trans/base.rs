@@ -1050,14 +1050,11 @@ pub fn load_if_immediate<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
     return v;
 }
 
+/// Helper for loading values from memory. Does the necessary conversion if the in-memory type
+/// differs from the type used for SSA values. Also handles various special cases where the type
+/// gives us better information about what we are loading.
 pub fn load_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                            ptr: ValueRef, t: Ty<'tcx>) -> ValueRef {
-    /*!
-     * Helper for loading values from memory. Does the necessary conversion if
-     * the in-memory type differs from the type used for SSA values. Also
-     * handles various special cases where the type gives us better information
-     * about what we are loading.
-     */
     if type_is_zero_size(cx.ccx(), t) {
         C_undef(type_of::type_of(cx.ccx(), t))
     } else if ty::type_is_bool(t) {
@@ -1071,11 +1068,9 @@ pub fn load_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
     }
 }
 
+/// Helper for storing values in memory. Does the necessary conversion if the in-memory type
+/// differs from the type used for SSA values.
 pub fn store_ty(cx: Block, v: ValueRef, dst: ValueRef, t: Ty) {
-    /*!
-     * Helper for storing values in memory. Does the necessary conversion if
-     * the in-memory type differs from the type used for SSA values.
-     */
     if ty::type_is_bool(t) {
         Store(cx, ZExt(cx, v, Type::i8(cx.ccx())), dst);
     } else {

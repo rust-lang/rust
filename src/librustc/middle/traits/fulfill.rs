@@ -79,20 +79,16 @@ impl<'tcx> FulfillmentContext<'tcx> {
         }
     }
 
+    /// Attempts to select obligations that were registered since the call to a selection routine.
+    /// This is used by the type checker to eagerly attempt to resolve obligations in hopes of
+    /// gaining type information. It'd be equally valid to use `select_where_possible` but it
+    /// results in `O(n^2)` performance (#18208).
     pub fn select_new_obligations<'a>(&mut self,
                                       infcx: &InferCtxt<'a,'tcx>,
                                       param_env: &ty::ParameterEnvironment<'tcx>,
                                       typer: &Typer<'tcx>)
                                       -> Result<(),Vec<FulfillmentError<'tcx>>>
     {
-        /*!
-         * Attempts to select obligations that were registered since
-         * the call to a selection routine. This is used by the type checker
-         * to eagerly attempt to resolve obligations in hopes of gaining
-         * type information. It'd be equally valid to use `select_where_possible`
-         * but it results in `O(n^2)` performance (#18208).
-         */
-
         let mut selcx = SelectionContext::new(infcx, param_env, typer);
         self.select(&mut selcx, true)
     }
@@ -111,16 +107,13 @@ impl<'tcx> FulfillmentContext<'tcx> {
         self.trait_obligations[]
     }
 
+    /// Attempts to select obligations using `selcx`. If `only_new_obligations` is true, then it
+    /// only attempts to select obligations that haven't been seen before.
     fn select<'a>(&mut self,
                   selcx: &mut SelectionContext<'a, 'tcx>,
                   only_new_obligations: bool)
                   -> Result<(),Vec<FulfillmentError<'tcx>>>
     {
-        /*!
-         * Attempts to select obligations using `selcx`. If
-         * `only_new_obligations` is true, then it only attempts to
-         * select obligations that haven't been seen before.
-         */
         debug!("select({} obligations, only_new_obligations={}) start",
                self.trait_obligations.len(),
                only_new_obligations);

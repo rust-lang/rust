@@ -276,11 +276,9 @@ impl PathParameters {
         }
     }
 
+    /// Returns the types that the user wrote. Note that these do not necessarily map to the type
+    /// parameters in the parenthesized case.
     pub fn types(&self) -> Vec<&P<Ty>> {
-        /*!
-         * Returns the types that the user wrote. Note that these do not
-         * necessarily map to the type parameters in the parenthesized case.
-         */
         match *self {
             AngleBracketedParameters(ref data) => {
                 data.types.iter().collect()

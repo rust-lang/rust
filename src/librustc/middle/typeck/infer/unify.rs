@@ -134,13 +134,9 @@ impl<'tcx, V:PartialEq+Clone+Repr<'tcx>, K:UnifyKey<'tcx, V>> UnificationTable<K
         k
     }
 
+    /// Find the root node for `vid`. This uses the standard union-find algorithm with path
+    /// compression: http://en.wikipedia.org/wiki/Disjoint-set_data_structure
     pub fn get(&mut self, tcx: &ty::ctxt, vid: K) -> Node<K,V> {
-        /*!
-         * Find the root node for `vid`. This uses the standard
-         * union-find algorithm with path compression:
-         * http://en.wikipedia.org/wiki/Disjoint-set_data_structure
-         */
-
         let index = vid.index();
         let value = (*self.values.get(index)).clone();
         match value {
@@ -165,16 +161,13 @@ impl<'tcx, V:PartialEq+Clone+Repr<'tcx>, K:UnifyKey<'tcx, V>> UnificationTable<K
         }
     }
 
+    /// Sets the value for `vid` to `new_value`. `vid` MUST be a root node! Also, we must be in the
+    /// middle of a snapshot.
     pub fn set(&mut self,
                tcx: &ty::ctxt<'tcx>,
                key: K,
                new_value: VarValue<K,V>)
     {
-        /*!
-         * Sets the value for `vid` to `new_value`. `vid` MUST be a
-         * root node! Also, we must be in the middle of a snapshot.
-         */
-
         assert!(self.is_root(&key));
 
         debug!("Updating variable {} to {}",
@@ -184,19 +177,15 @@ impl<'tcx, V:PartialEq+Clone+Repr<'tcx>, K:UnifyKey<'tcx, V>> UnificationTable<K
         self.values.set(key.index(), new_value);
     }
 
+    /// Either redirects node_a to node_b or vice versa, depending on the relative rank. Returns
+    /// the new root and rank. You should then update the value of the new root to something
+    /// suitable.
     pub fn unify(&mut self,
                  tcx: &ty::ctxt<'tcx>,
                  node_a: &Node<K,V>,
                  node_b: &Node<K,V>)
                  -> (K, uint)
     {
-        /*!
-         * Either redirects node_a to node_b or vice versa, depending
-         * on the relative rank. Returns the new root and rank.  You
-         * should then update the value of the new root to something
-         * suitable.
-         */
-
         debug!("unify(node_a(id={}, rank={}), node_b(id={}, rank={}))",
                node_a.key.repr(tcx),
                node_a.rank,
@@ -270,19 +259,15 @@ pub trait InferCtxtMethodsForSimplyUnifiableTypes<'tcx, V:SimplyUnifiable<'tcx>,
 impl<'a,'tcx,V:SimplyUnifiable<'tcx>,K:UnifyKey<'tcx, Option<V>>>
     InferCtxtMethodsForSimplyUnifiableTypes<'tcx, V, K> for InferCtxt<'a, 'tcx>
 {
+    /// Unifies two simple keys. Because simple keys do not have any subtyping relationships, if
+    /// both keys have already been associated with a value, then those two values must be the
+    /// same.
     fn simple_vars(&self,
                    a_is_expected: bool,
                    a_id: K,
                    b_id: K)
                    -> ures<'tcx>
     {
-        /*!
-         * Unifies two simple keys.  Because simple keys do
-         * not have any subtyping relationships, if both keys
-         * have already been associated with a value, then those two
-         * values must be the same.
-         */
-
         let tcx = self.tcx;
         let table = UnifyKey::unification_table(self);
         let node_a = table.borrow_mut().get(tcx, a_id);
@@ -316,19 +301,14 @@ impl<'a,'tcx,V:SimplyUnifiable<'tcx>,K:UnifyKey<'tcx, Option<V>>>
         return Ok(())
     }
 
+    /// Sets the value of the key `a_id` to `b`. Because simple keys do not have any subtyping
+    /// relationships, if `a_id` already has a value, it must be the same as `b`.
     fn simple_var_t(&self,
                     a_is_expected: bool,
                     a_id: K,
                     b: V)
                     -> ures<'tcx>
     {
-        /*!
-         * Sets the value of the key `a_id` to `b`.  Because
-         * simple keys do not have any subtyping relationships,
-         * if `a_id` already has a value, it must be the same as
-         * `b`.
-         */
-
         let tcx = self.tcx;
         let table = UnifyKey::unification_table(self);
         let node_a = table.borrow_mut().get(tcx, a_id);

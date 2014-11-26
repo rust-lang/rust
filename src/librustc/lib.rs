@@ -8,15 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
-
-The Rust compiler.
-
-# Note
-
-This API is completely unstable and subject to change.
-
-*/
+//! The Rust compiler.
+//!
+//! # Note
+//!
+//! This API is completely unstable and subject to change.
 
 #![crate_name = "rustc"]
 #![experimental]

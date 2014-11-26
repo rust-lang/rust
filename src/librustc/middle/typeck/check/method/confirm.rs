@@ -189,22 +189,17 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
     ///////////////////////////////////////////////////////////////////////////
     //
 
+    /// Returns a set of substitutions for the method *receiver* where all type and region
+    /// parameters are instantiated with fresh variables. This substitution does not include any
+    /// parameters declared on the method itself.
+    ///
+    /// Note that this substitution may include late-bound regions from the impl level. If so,
+    /// these are instantiated later in the `instantiate_method_sig` routine.
     fn fresh_receiver_substs(&mut self,
                              self_ty: Ty<'tcx>,
                              pick: &probe::Pick<'tcx>)
                              -> (subst::Substs<'tcx>, MethodOrigin<'tcx>)
     {
-        /*!
-         * Returns a set of substitutions for the method *receiver*
-         * where all type and region parameters are instantiated with
-         * fresh variables. This substitution does not include any
-         * parameters declared on the method itself.
-         *
-         * Note that this substitution may include late-bound regions
-         * from the impl level. If so, these are instantiated later in
-         * the `instantiate_method_sig` routine.
-         */
-
         match pick.kind {
             probe::InherentImplPick(impl_def_id) => {
                 assert!(ty::impl_trait_ref(self.tcx(), impl_def_id).is_none(),
@@ -478,14 +473,11 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
     ///////////////////////////////////////////////////////////////////////////
     // RECONCILIATION
 
+    /// When we select a method with an `&mut self` receiver, we have to go convert any
+    /// auto-derefs, indices, etc from `Deref` and `Index` into `DerefMut` and `IndexMut`
+    /// respectively.
     fn fixup_derefs_on_method_receiver_if_necessary(&self,
                                                     method_callee: &MethodCallee) {
-        /*!
-         * When we select a method with an `&mut self` receiver, we have to go
-         * convert any auto-derefs, indices, etc from `Deref` and `Index` into
-         * `DerefMut` and `IndexMut` respectively.
-         */
-
         let sig = match method_callee.ty.sty {
             ty::ty_bare_fn(ref f) => f.sig.clone(),
             ty::ty_closure(ref f) => f.sig.clone(),

@@ -8,9 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
- * Code for type-checking closure expressions.
- */
+//! Code for type-checking closure expressions.
 
 use super::check_fn;
 use super::{Expectation, ExpectCastableToType, ExpectHasType, NoExpectation};

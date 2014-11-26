@@ -9,12 +9,10 @@
 // except according to those terms.
 
 
-/*!
- * A module for propagating forward dataflow information. The analysis
- * assumes that the items to be propagated can be represented as bits
- * and thus uses bitvectors. Your job is simply to specify the so-called
- * GEN and KILL bits for each expression.
- */
+//! A module for propagating forward dataflow information. The analysis
+//! assumes that the items to be propagated can be represented as bits
+//! and thus uses bitvectors. Your job is simply to specify the so-called
+//! GEN and KILL bits for each expression.
 
 pub use self::EntryOrExit::*;
 
