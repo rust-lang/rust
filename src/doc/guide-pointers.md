@@ -445,10 +445,31 @@ fn succ(x: &int) -> int { *x + 1 }
 to
 
 ```{rust}
+use std::rc::Rc;
+
 fn box_succ(x: Box<int>) -> int { *x + 1 }
 
-fn rc_succ(x: std::rc::Rc<int>) -> int { *x + 1 }
+fn rc_succ(x: Rc<int>) -> int { *x + 1 }
 ```
+
+Note that the caller of your function will have to modify their calls slightly:
+
+```{rust}
+use std::rc::Rc;
+
+fn succ(x: &int) -> int { *x + 1 }
+
+let ref_x = &5i;
+let box_x = box 5i;
+let rc_x  = Rc::new(5i);
+
+succ(ref_x);
+succ(&*box_x);
+succ(&*rc_x);
+```
+
+The initial `*` dereferences the pointer, and then `&` takes a reference to
+those contents.
 
 # Boxes
 
