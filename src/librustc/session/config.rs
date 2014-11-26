@@ -948,4 +948,38 @@ mod test {
         assert!(test_items.next().is_some());
         assert!(test_items.next().is_none());
     }
+
+    #[test]
+    fn test_can_print_warnings() {
+        {
+            let matches = getopts(&[
+                "-Awarnings".to_string()
+            ], optgroups().as_slice()).unwrap();
+            let registry = diagnostics::registry::Registry::new(&[]);
+            let sessopts = build_session_options(&matches);
+            let sess = build_session(sessopts, None, registry);
+            assert!(!sess.can_print_warnings);
+        }
+
+        {
+            let matches = getopts(&[
+                "-Awarnings".to_string(),
+                "-Dwarnings".to_string()
+            ], optgroups().as_slice()).unwrap();
+            let registry = diagnostics::registry::Registry::new(&[]);
+            let sessopts = build_session_options(&matches);
+            let sess = build_session(sessopts, None, registry);
+            assert!(sess.can_print_warnings);
+        }
+
+        {
+            let matches = getopts(&[
+                "-Adead_code".to_string()
+            ], optgroups().as_slice()).unwrap();
+            let registry = diagnostics::registry::Registry::new(&[]);
+            let sessopts = build_session_options(&matches);
+            let sess = build_session(sessopts, None, registry);
+            assert!(sess.can_print_warnings);
+        }
+    }
 }
