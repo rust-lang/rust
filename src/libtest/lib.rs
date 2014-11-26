@@ -643,9 +643,7 @@ impl<T: Writer> ConsoleTestState<T> {
                 fail_out.push_str(format!("---- {} stdout ----\n\t",
                                           f.name.as_slice()).as_slice());
                 let output = String::from_utf8_lossy(stdout.as_slice());
-                fail_out.push_str(output.as_slice()
-                                        .replace("\n", "\n\t")
-                                        .as_slice());
+                fail_out.push_str(output.as_slice());
                 fail_out.push_str("\n");
             }
         }
