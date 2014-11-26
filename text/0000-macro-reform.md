@@ -53,7 +53,11 @@ enables macro re-export (see below).  It is [implemented and
 tested](https://github.com/kmcallister/rust/commits/macro-reexport) but needs a
 rebase.
 
-## Crate scope for macros
+We can add a lint to warn about cases where an exported macro has paths that
+are not absolute-with-crate or `$crate`-relative.  This will have some
+(hopefully rare) false positives.
+
+## Macro scope
 
 In this document, the "syntax environment" refers to the set of syntax
 extensions that can be invoked at a given position in the crate.  The names in
@@ -63,46 +67,38 @@ However, the exclamation point is really part of the invocation syntax, not the
 name, and some syntax extensions are invoked with no exclamation point, for
 example item decorators like `deriving`.
 
-Imported macros will not automatically end up in the syntax environment.
-Instead, you can bring an imported macro into the syntax environment by
-providing the crate ident and a macro name (or wildcard) in a `use macro` view
-item:
+We introduce an attribute `use_macros` to specify which macros from an external
+crate should be imported to the syntax environment:
 
 ```rust
-use macro std::vec;
-use macro std::panic as fail;
-use macro core::*;
+#[use_macros(vec, panic="fail")]
+extern crate std;
+
+#[use_macros(*)]
+extern crate core;
 ```
 
-These paths must have exactly two components: the crate ident, and a macro name
-or `*`.
+Macros imported this way can be used anywhere in the module after the
+`extern crate` item, including in child modules.  Since a macro-importing
+`extern crate` must appear at the crate root, and view items come before
+other items, this effectively means imported macros will be visible for
+the entire crate.
 
-The syntax environment still consists of unqualified names.  There's no way to
-invoke a macro through a qualified name. This obviates the need to change the
-parsing of expressions, patterns, etc.
-
-`macro` is a new keyword.  This is an important part of the proposal, because
-it signals that we're deviating from usual name resolution.  `use macro` is a
-memorable and searchable name for the feature.
-
-The `use macro` view item only affects the syntax environment of the block or
-module where it appears, and only from the point of appearance onward.  Unlike
-a normal `use` item, this includes child modules (in the same file or others).
-
-Many macros expand using other "private macros" as an implementation detail.
+Many macros expand using other "helper macros" as an implementation detail.
 For example, librustc's `declare_lint!` uses `lint_initializer!`.  The client
 should not know about this macro, although it still needs to be exported for
-cross-crate use.  For this reason we allow `use macro` within a macro
+cross-crate use.  For this reason we allow `#[use_macros]` on a macro
 definition.
 
 ```rust
 /// Not to be imported directly.
-extern macro_rules! lint_initializer { ... }
+#[export]
+macro_rules! lint_initializer { ... }
 
 /// Declare a lint.
-extern macro_rules! declare_lint {
-    use macro $crate::lint_initializer;
-
+#[export]
+#[use_macros(lint_initializer)]
+macro_rules! declare_lint {
     ($name:ident, $level:ident, $desc:expr) => (
         static $name: &'static $crate::lint::Lint
             = &lint_initializer!($name, $level, $desc);
@@ -110,8 +106,9 @@ extern macro_rules! declare_lint {
 }
 ```
 
-The macro `lint_initializer!` will be visible only during further expansion of
-the result of invoking `declare_lint!`.
+The macro `lint_initializer!`, imported from the same crate as `declare_lint!`,
+will be visible only during further expansion of the result of invoking
+`declare_lint!`.
 
 Procedural macros need their own way to manipulate the syntax environment, but
 that's an unstable internal API, so it's outside the scope of this RFC.
@@ -120,43 +117,40 @@ that's an unstable internal API, so it's outside the scope of this RFC.
 
 We also clean up macro syntax in a way that complements the semantic changes above.
 
-## Macro definition syntax
+## `#[use_macros(...)] mod`
 
-`macro_rules!` already allows `{ }` for the macro body, but the convention is
-`( )` for some reason.  In accepting this RFC we would change to a `{ }`
-convention for consistency with the rest of the language.
-
-The new macro can be used immediately. There is no way to `use macro` a macro
-defined in the same crate, and no need to do so.
-
-A macro with a `pub` qualifier, i.e.
+The `use_macros` attribute can be applied to a `mod` item as well.  The
+specified macros will "escape" the module and become visible throughout the
+rest of the enclosing module, including any child modules.  A crate might start
+with
 
 ```rust
-pub macro_rules! foo { ... }
+#[use_macros(*)]
+mod macros;
 ```
 
-escapes the syntax environment for the enclosing block/module and becomes
-available throughout the rest of the crate (according to depth-first search).
-This is like putting `#[macro_escape]` on the module and all its ancestors, but
-applies *only* to the macro with `pub`.
+to define some macros for use by the whole crate, without putting those
+definitions in `lib.rs`.
+
+Note that `#[use_macros(*)]` is equivalent to the current `#[macro_escape]`.
+However, the new convention is to use an outer attribute, in the file whose
+syntax environment is affected, rather than an inner attribute in the file
+defining the macros.
 
 ## Macro export and re-export
 
-A macro definition qualified by `extern` becomes available to other crates.
-That is, it can be the target of `use macro`.  Or put another way,
-`extern macro_rules!` works the way `#[macro_export] macro_rules!` does today.
-Adding `extern` has no effect on the syntax environment for the current crate.
+A macro definition qualified by `#[export]` becomes available to other crates.
+That is, it can be the target of `#[use_macros]`.  Or put another way,
+`#[export] macro_rules!` works the way `#[macro_export] macro_rules!` does
+today.  Adding `#[export]` has no effect on the syntax environment for the
+current crate.
 
-`pub` and `extern` may be used together on the same macro definition, since
-their effects are independent.
-
-We can also re-export macros that were imported from another crate.  This is
-accomplished with `extern use macro`.
-
-For example, libcollections defines a `vec!` macro, which would now look like:
+We can also re-export macros that were imported from another crate.  For
+example, libcollections defines a `vec!` macro, which would now look like:
 
 ```rust
-extern macro_rules! vec {
+#[export]
+macro_rules! vec {
     ($($e:expr),*) => ({
         let mut _temp = $crate::vec::Vec::new();
         $(_temp.push($e);)*
@@ -169,7 +163,8 @@ Currently, libstd duplicates this macro in its own `macros.rs`.  Now it could
 do
 
 ```rust
-extern use macro collections::vec;
+#[reexport_macros(vec)]
+extern crate collections;
 ```
 
 as long as the module `std::vec` is interface-compatible with
@@ -183,11 +178,6 @@ works" as soon as `$crate` is available.  It's implemented as part of the
 `$crate` branch mentioned above.
 
 ## `#[plugin]` attribute
-
-Since macros no longer automatically pollute the syntax environment, we can
-load them from every `extern crate`.  (Probably we should exclude
-`extern crate`s that aren't at the crate root, because there's no way `$crate`
-paths will be correct.)
 
 `#[phase(plugin)]` becomes simply `#[plugin]` and is still feature-gated.  It
 only controls whether to search for and run a plugin registrar function.  The
@@ -208,38 +198,22 @@ to the plugin through a `Registry` method.  This facilitates plugin
 configuration.  The alternative in many cases is to use interacting side
 effects between procedural macros, which are harder to reason about.
 
-# Miscellaneous remarks
+## Syntax convention
 
-In a future where macros are scoped the same way as other items,
+`macro_rules!` already allows `{ }` for the macro body, but the convention is
+`( )` for some reason.  In accepting this RFC we would change to a `{ }`
+convention for consistency with the rest of the language.
 
-```rust
-use macro std::vec;
-```
+## Reserve `macro` as a keyword
 
-would become a deprecated synonym for
-
-```rust
-use std::vec!;
-```
-
-Maintaining this synonym does not seem like a large burden.
-
-We can add a lint to warn about cases where an `extern` macro has paths that
-are not absolute-with-crate or `$crate`-relative.  This will have some
-(hopefully rare) false positives, and is not fully fleshed out yet.
+A lot of the syntax alternatives discussed for this RFC involved a `macro`
+keyword.  The consensus is that macros are too unfinished to merit using the
+keyword now.  However, we should reserve it for a future macro system.
 
 # Implementation and transition
 
 I will coordinate implementation of this RFC, and I expect to write most of the
 code myself.
-
-Some of the syntax cleanups could be deferred until after 1.0.  However the
-semantic changes are enough that many users will re-examine and perhaps edit a
-large fraction of their macro definitions.  My thinking is that the cleaned-up
-syntax should be available when this happens rather than requiring a separate
-pass a few months later.  Also I would really like the first Rust release to
-put its best foot forward with macros, not just in terms of semantics but
-with a polished and pleasant user experience.
 
 To ease the transition, we can keep the old syntax as a deprecated synonym, to
 be removed before 1.0.
@@ -282,15 +256,9 @@ reform.  Two ways this could work out:
 
 # Unresolved questions
 
-Should we forbid `$crate` in non-`extern` macros?  It seems useless, however I
-think we should allow it anyway, to encourage the habit of writing `$crate::`
-for any references to the local crate.
-
-Should we allow `pub use macro`, which would escape the enclosing block/module
-the way `pub macro_rules!` does?
-
-Should we require that `extern use macro` can only appear in the crate root?
-It doesn't make a lot of sense to put it elsewhere.
+Should we forbid `$crate` in non-`#[export]`ed macros?  It seems useless,
+however I think we should allow it anyway, to encourage the habit of writing
+`$crate::` for any references to the local crate.
 
 # Acknowledgements
 
