@@ -69,8 +69,14 @@ def print_struct_val_starting_from(field_start_index, val, internal_dict):
   assert val.GetType().GetTypeClass() == lldb.eTypeClassStruct
 
   t = val.GetType()
-  has_field_names = type_has_field_names(t)
   type_name = extract_type_name(t.GetName())
+  num_children = val.num_children
+
+  if (num_children - field_start_index) == 0:
+    # The only field of this struct is the enum discriminant
+    return type_name
+
+  has_field_names = type_has_field_names(t)
 
   if has_field_names:
       template = "%(type_name)s {\n%(body)s\n}"
@@ -82,8 +88,6 @@ def print_struct_val_starting_from(field_start_index, val, internal_dict):
   if type_name.startswith("("):
     # this is a tuple, so don't print the type name
     type_name = ""
-
-  num_children = val.num_children
 
   def render_child(child_index):
     this = ""
@@ -104,7 +108,6 @@ def print_enum_val(val, internal_dict):
   '''Prints an enum value with Rust syntax'''
 
   assert val.GetType().GetTypeClass() == lldb.eTypeClassUnion
-
 
   if val.num_children == 1:
     # This is either an enum with just one variant, or it is an Option-like enum
