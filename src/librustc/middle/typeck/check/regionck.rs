@@ -129,6 +129,7 @@ use middle::typeck::astconv::AstConv;
 use middle::typeck::check::FnCtxt;
 use middle::typeck::check::regionmanip;
 use middle::typeck::check::vtable;
+use middle::typeck::check::dropck;
 use middle::typeck::infer::resolve_and_force_all_but_regions;
 use middle::typeck::infer::resolve_type;
 use middle::typeck::infer;
@@ -278,14 +279,43 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
               maybe_links: RefCell::new(FnvHashMap::new()) }
     }
 
+    pub fn traverse_type_if_unseen(&mut self,
+                                   typ: ty::Ty<'tcx>,
+                                   keep_going: |&mut Rcx<'a, 'tcx>| -> bool) -> bool {
+        let rcx = self;
+
+        // Avoid recursing forever.
+        if !rcx.breadcrumbs.contains(&typ) {
+            rcx.breadcrumbs.push(typ);
+            let keep_going = keep_going(rcx);
+            let top_t = rcx.breadcrumbs.pop();
+            assert_eq!(top_t, Some(typ));
+            keep_going
+        } else {
+            false
+        }
+    }
+
     pub fn tcx(&self) -> &'a ty::ctxt<'tcx> {
         self.fcx.ccx.tcx
+    }
+
+    pub fn mk_subr(&self,
+                   origin: infer::SubregionOrigin<'tcx>,
+                   sub: ty::Region,
+                   sup: ty::Region) {
+        self.fcx.mk_subr(origin, sub, sup)
     }
 
     pub fn set_repeating_scope(&mut self, scope: ast::NodeId) -> ast::NodeId {
         let old_scope = self.repeating_scope;
         self.repeating_scope = scope;
         old_scope
+    }
+
+    pub fn try_resolve_type(&self, unresolved_ty: Ty<'tcx>) -> fres<Ty<'tcx>> {
+        resolve_type(self.fcx.infcx(), None, unresolved_ty,
+                     resolve_and_force_all_but_regions)
     }
 
     pub fn resolve_type(&self, unresolved_ty: Ty<'tcx>) -> Ty<'tcx> {
@@ -317,8 +347,7 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
          * bigger than the let and the `*b` expression, so we will
          * effectively resolve `<R0>` to be the block B.
          */
-        match resolve_type(self.fcx.infcx(), None, unresolved_ty,
-                           resolve_and_force_all_but_regions) {
+        self.try_resolve_type(unresolved_ty) {
             Ok(t) => t,
             Err(_) => ty::mk_err()
         }
@@ -585,7 +614,7 @@ fn constrain_bindings_in_pat(pat: &ast::Pat, rcx: &mut Rcx) {
 
         let var_scope = tcx.region_maps.var_scope(id);
         let typ = rcx.resolve_node_type(id);
-        check_safety_of_destructor_if_necessary(rcx, typ, span, var_scope);
+        dropck::check_safety_of_destructor_if_necessary(rcx, typ, span, var_scope);
     })
 }
 
@@ -1285,21 +1314,6 @@ pub fn mk_subregion_due_to_dereference(rcx: &mut Rcx,
                     minimum_lifetime, maximum_lifetime)
 }
 
-fn check_safety_of_destructor_if_necessary<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
-                                                     typ: ty::Ty<'tcx>,
-                                                     span: Span,
-                                                     scope: CodeExtent) {
-    debug!("check_safety_of_destructor_if_necessary typ: {} scope: {}",
-           typ.repr(rcx.tcx()), scope);
-    iterate_over_potentially_unsafe_regions_in_type(
-        rcx,
-        typ,
-        span,
-        scope,
-        false,
-        0)
-}
-
 fn check_safety_of_rvalue_destructor_if_necessary<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
                                                             cmt: mc::cmt<'tcx>,
                                                             span: Span) {
@@ -1308,10 +1322,10 @@ fn check_safety_of_rvalue_destructor_if_necessary<'a, 'tcx>(rcx: &mut Rcx<'a, 't
             match region {
                 ty::ReScope(rvalue_scope) => {
                     let typ = rcx.resolve_type(cmt.ty);
-                    check_safety_of_destructor_if_necessary(rcx,
-                                                            typ,
-                                                            span,
-                                                            rvalue_scope);
+                    dropck::check_safety_of_destructor_if_necessary(rcx,
+                                                                    typ,
+                                                                    span,
+                                                                    rvalue_scope);
                 }
                 ty::ReStatic => {}
                 region => {
@@ -2075,167 +2089,3 @@ fn param_must_outlive<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
                               region,
                               param_bounds);
 }
-
-fn constrain_region_for_destructor_safety(rcx: &mut Rcx,
-                                          region: ty::Region,
-                                          inner_scope: CodeExtent,
-                                          span: Span) {
-    // Ignore bound regions.
-    match region {
-        ty::ReEarlyBound(..) | ty::ReLateBound(..) => return,
-        ty::ReFunction | ty::ReFree(_) | ty::ReScope(_) | ty::ReStatic |
-        ty::ReInfer(_) | ty::ReEmpty => {}
-    }
-
-    // Get the parent scope.
-    let parent_inner_region =
-        match rcx.fcx.tcx().region_maps.opt_encl_scope(inner_scope) {
-            Some(parent_inner_scope) => ty::ReScope(parent_inner_scope),
-            None => ty::ReFunction,
-        };
-
-    rcx.fcx.mk_subr(infer::SafeDestructor(span),
-                    parent_inner_region,
-                    region);
-}
-
-fn iterate_over_potentially_unsafe_regions_in_type<'a, 'tcx>(
-        rcx: &mut Rcx<'a, 'tcx>,
-        typ: ty::Ty<'tcx>,
-        span: Span,
-        scope: CodeExtent,
-        reachable_by_destructor: bool,
-        depth: uint) {
-    ty::maybe_walk_ty(typ, |typ| {
-        // Avoid recursing forever.
-        if !rcx.breadcrumbs.contains(&typ) {
-            rcx.breadcrumbs.push(typ);
-
-            debug!("iterate_over_potentially_unsafe_regions_in_type \
-                    {}typ: {} scope: {} reachable_by_destructor: {}",
-                   String::from_char(depth, ' '),
-                   typ.repr(rcx.tcx()), scope, reachable_by_destructor);
-
-            let keep_going = match typ.sty {
-                ty::ty_struct(structure_id, ref substitutions) => {
-                    let reachable_by_destructor =
-                        reachable_by_destructor ||
-                        ty::has_dtor(rcx.fcx.tcx(), structure_id);
-
-                    let fields =
-                        ty::lookup_struct_fields(rcx.fcx.tcx(),
-                                                 structure_id);
-                    for field in fields.iter() {
-                        let field_type =
-                            ty::lookup_field_type(rcx.fcx.tcx(),
-                                                  structure_id,
-                                                  field.id,
-                                                  substitutions);
-                        iterate_over_potentially_unsafe_regions_in_type(
-                            rcx,
-                            field_type,
-                            span,
-                            scope,
-                            reachable_by_destructor, depth+1)
-                    }
-
-                    false
-                }
-                ty::ty_enum(enumeration_id, ref substitutions) => {
-                    let reachable_by_destructor = reachable_by_destructor ||
-                        ty::has_dtor(rcx.fcx.tcx(), enumeration_id);
-
-                    let all_variant_info =
-                        ty::substd_enum_variants(rcx.fcx.tcx(),
-                                                 enumeration_id,
-                                                 substitutions);
-                    for variant_info in all_variant_info.iter() {
-                        for argument_type in variant_info.args.iter() {
-                            iterate_over_potentially_unsafe_regions_in_type(
-                                rcx,
-                                *argument_type,
-                                span,
-                                scope,
-                                reachable_by_destructor, depth+1)
-                        }
-                    }
-
-                    false
-                }
-                ty::ty_rptr(region, _) => {
-                    if reachable_by_destructor {
-                        constrain_region_for_destructor_safety(rcx,
-                                                               region,
-                                                               scope,
-                                                               span)
-                    }
-                    // Don't recurse, since references do not own their
-                    // contents.
-                    false
-                }
-                ty::ty_unboxed_closure(..) => {
-                    true
-                }
-                ty::ty_closure(ref closure_type) => {
-                    match closure_type.store {
-                        ty::RegionTraitStore(region, _) => {
-                            if reachable_by_destructor {
-                                constrain_region_for_destructor_safety(rcx,
-                                                                       region,
-                                                                       scope,
-                                                                       span)
-                            }
-                        }
-                        ty::UniqTraitStore => {}
-                    }
-                    // Don't recurse, since closures don't own the types
-                    // appearing in their signature.
-                    false
-                }
-                ty::ty_trait(ref trait_type) => {
-                    if reachable_by_destructor {
-                        match trait_type.principal.substs.regions {
-                            subst::NonerasedRegions(ref regions) => {
-                                for region in regions.iter() {
-                                    constrain_region_for_destructor_safety(
-                                        rcx,
-                                        *region,
-                                        scope,
-                                        span)
-                                }
-                            }
-                            subst::ErasedRegions => {}
-                        }
-
-                        // FIXME (pnkfelix): Added by pnkfelix, but
-                        // need to double-check that this additional
-                        // constraint is necessary.
-                        constrain_region_for_destructor_safety(
-                            rcx,
-                            trait_type.bounds.region_bound,
-                            scope,
-                            span)
-                    }
-                    true
-                }
-                ty::ty_ptr(_) | ty::ty_bare_fn(_) => {
-                    // Don't recurse, since pointers, boxes, and bare
-                    // functions don't own instances of the types appearing
-                    // within them.
-                    false
-                }
-                ty::ty_bool | ty::ty_char | ty::ty_int(_) | ty::ty_uint(_) |
-                ty::ty_float(_) | ty::ty_uniq(_) | ty::ty_str |
-                ty::ty_vec(..) | ty::ty_tup(_) | ty::ty_param(_) |
-                ty::ty_infer(_) | ty::ty_open(_) | ty::ty_err => true,
-            };
-
-            let top_t = rcx.breadcrumbs.pop();
-            assert_eq!(top_t, Some(typ));
-            keep_going
-        } else {
-            false
-        }
-    });
-}
-

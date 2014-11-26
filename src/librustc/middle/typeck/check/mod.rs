@@ -119,6 +119,7 @@ use syntax::print::pprust;
 use syntax::ptr::P;
 use syntax::visit::{mod, Visitor};
 
+pub mod dropck;
 pub mod _match;
 pub mod vtable;
 pub mod writeback;
