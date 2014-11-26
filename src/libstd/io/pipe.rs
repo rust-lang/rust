@@ -86,8 +86,8 @@ impl PipeStream {
     }
 }
 
-impl sys_common::AsFileDesc for PipeStream {
-    fn as_fd(&self) -> &sys::fs::FileDesc {
+impl sys_common::AsInner<sys::fs::FileDesc> for PipeStream {
+    fn as_inner(&self) -> &sys::fs::FileDesc {
         &*self.inner
     }
 }

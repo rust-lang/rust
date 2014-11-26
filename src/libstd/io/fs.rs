@@ -88,8 +88,8 @@ pub struct File {
     last_nread: int,
 }
 
-impl sys_common::AsFileDesc for File {
-    fn as_fd(&self) -> &fs_imp::FileDesc {
+impl sys_common::AsInner<fs_imp::FileDesc> for File {
+    fn as_inner(&self) -> &fs_imp::FileDesc {
         &self.fd
     }
 }

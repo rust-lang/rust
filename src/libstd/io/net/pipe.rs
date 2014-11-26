@@ -33,6 +33,8 @@ use sys::pipe::UnixStream as UnixStreamImp;
 use sys::pipe::UnixListener as UnixListenerImp;
 use sys::pipe::UnixAcceptor as UnixAcceptorImp;
 
+use sys_common;
+
 /// A stream which communicates over a named pipe.
 pub struct UnixStream {
     inner: UnixStreamImp,
@@ -145,6 +147,12 @@ impl Writer for UnixStream {
     }
 }
 
+impl sys_common::AsInner<UnixStreamImp> for UnixStream {
+    fn as_inner(&self) -> &UnixStreamImp {
+        &self.inner
+    }
+}
+
 /// A value that can listen for incoming named pipe connection requests.
 pub struct UnixListener {
     /// The internal, opaque runtime Unix listener.
@@ -183,6 +191,12 @@ impl Listener<UnixStream, UnixAcceptor> for UnixListener {
     fn listen(self) -> IoResult<UnixAcceptor> {
         self.inner.listen()
             .map(|inner| UnixAcceptor { inner: inner })
+    }
+}
+
+impl sys_common::AsInner<UnixListenerImp> for UnixListener {
+    fn as_inner(&self) -> &UnixListenerImp {
+        &self.inner
     }
 }
 
@@ -244,6 +258,12 @@ impl Clone for UnixAcceptor {
     /// on to wake up any other task blocked in `accept`.
     fn clone(&self) -> UnixAcceptor {
         UnixAcceptor { inner: self.inner.clone() }
+    }
+}
+
+impl sys_common::AsInner<UnixAcceptorImp> for UnixAcceptor {
+    fn as_inner(&self) -> &UnixAcceptorImp {
+        &self.inner
     }
 }
 
