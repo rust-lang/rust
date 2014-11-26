@@ -17,7 +17,7 @@
 
 use core::kinds::Sized;
 use fmt;
-use iter::Iterator;
+use iter::IteratorExt;
 use mem;
 use option::{Option, Some, None};
 use slice::{SlicePrelude, AsSlice};

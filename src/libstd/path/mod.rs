@@ -71,7 +71,7 @@ use core::kinds::Sized;
 use c_str::CString;
 use clone::Clone;
 use fmt;
-use iter::Iterator;
+use iter::IteratorExt;
 use option::{Option, None, Some};
 use str;
 use str::{CowString, MaybeOwned, Str, StrPrelude};

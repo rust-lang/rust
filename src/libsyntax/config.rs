@@ -131,7 +131,7 @@ fn fold_item_underscore(cx: &mut Context, item: ast::Item_) -> ast::Item_ {
             ast::ItemStruct(fold_struct(cx, def), generics)
         }
         ast::ItemEnum(def, generics) => {
-            let mut variants = def.variants.into_iter().filter_map(|v| {
+            let variants = def.variants.into_iter().filter_map(|v| {
                 if !(cx.in_cfg)(v.node.attrs.as_slice()) {
                     None
                 } else {
@@ -273,4 +273,3 @@ fn in_cfg(diagnostic: &SpanHandler, cfg: &[P<ast::MetaItem>], attrs: &[ast::Attr
         attr::cfg_matches(diagnostic, cfg, &*mis[0])
     })
 }
-

@@ -11,8 +11,8 @@
 //! The ISAAC random number generator.
 
 use core::prelude::*;
-use core::iter::{range_step, Repeat};
 use core::slice;
+use core::iter::{range_step, repeat};
 
 use {Rng, SeedableRng, Rand};
 
@@ -205,7 +205,7 @@ impl<'a> SeedableRng<&'a [u32]> for IsaacRng {
     fn reseed(&mut self, seed: &'a [u32]) {
         // make the seed into [seed[0], seed[1], ..., seed[seed.len()
         // - 1], 0, 0, ...], to fill rng.rsl.
-        let seed_iter = seed.iter().map(|&x| x).chain(Repeat::new(0u32));
+        let seed_iter = seed.iter().map(|&x| x).chain(repeat(0u32));
 
         for (rsl_elem, seed_elem) in self.rsl.iter_mut().zip(seed_iter) {
             *rsl_elem = seed_elem;
@@ -438,7 +438,7 @@ impl<'a> SeedableRng<&'a [u64]> for Isaac64Rng {
     fn reseed(&mut self, seed: &'a [u64]) {
         // make the seed into [seed[0], seed[1], ..., seed[seed.len()
         // - 1], 0, 0, ...], to fill rng.rsl.
-        let seed_iter = seed.iter().map(|&x| x).chain(Repeat::new(0u64));
+        let seed_iter = seed.iter().map(|&x| x).chain(repeat(0u64));
 
         for (rsl_elem, seed_elem) in self.rsl.iter_mut().zip(seed_iter) {
             *rsl_elem = seed_elem;

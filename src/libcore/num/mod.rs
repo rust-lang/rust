@@ -25,7 +25,7 @@ use clone::Clone;
 use cmp::{PartialEq, Eq};
 use cmp::{PartialOrd, Ord};
 use intrinsics;
-use iter::Iterator;
+use iter::IteratorExt;
 use kinds::Copy;
 use mem::size_of;
 use ops::{Add, Sub, Mul, Div, Rem, Neg};

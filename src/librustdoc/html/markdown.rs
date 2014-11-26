@@ -183,7 +183,7 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
                 }
             };
 
-            let mut lines = origtext.lines().filter(|l| {
+            let lines = origtext.lines().filter(|l| {
                 stripped_filtered_line(*l).is_none()
             });
             let text = lines.collect::<Vec<&str>>().connect("\n");
@@ -325,7 +325,7 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
             let opaque = opaque as *mut hoedown_html_renderer_state;
             let tests = &mut *((*opaque).opaque as *mut ::test::Collector);
             let text = str::from_utf8(text).unwrap();
-            let mut lines = text.lines().map(|l| {
+            let lines = text.lines().map(|l| {
                 stripped_filtered_line(l).unwrap_or(l)
             });
             let text = lines.collect::<Vec<&str>>().connect("\n");
