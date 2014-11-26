@@ -620,6 +620,25 @@ impl<K, V> RawTable<K, V> {
         }
     }
 
+    fn one_past_last_bucket_raw(&self) -> RawBucket<K, V> {
+        let hashes_size = self.capacity * size_of::<u64>();
+        let keys_size = self.capacity * size_of::<K>();
+        let vals_size = self.capacity * size_of::<V>();
+
+        let buffer = self.hashes as *mut u8;
+        let (keys_offset, vals_offset) = calculate_offsets(hashes_size,
+                                                           keys_size, min_align_of::<K>(),
+                                                           min_align_of::<V>());
+
+        unsafe {
+            RawBucket {
+                hash: self.hashes.offset(hashes_size as int),
+                key:  buffer.offset(keys_offset as int + keys_size as int) as *mut K,
+                val:  buffer.offset(vals_offset as int + vals_size as int) as *mut V
+            }
+        }
+    }
+
     /// Creates a new raw table from a given capacity. All buckets are
     /// initially empty.
     #[allow(experimental)]
@@ -644,11 +663,8 @@ impl<K, V> RawTable<K, V> {
 
     fn raw_buckets(&self) -> RawBuckets<K, V> {
         RawBuckets {
-            raw: self.first_bucket_raw(),
-            hashes_start: self.hashes,
-            hashes_end: unsafe {
-                self.hashes.offset(self.capacity as int)
-            },
+            start: self.first_bucket_raw(),
+            end:   self.one_past_last_bucket_raw(),
             marker: marker::ContravariantLifetime,
         }
     }
@@ -668,13 +684,12 @@ impl<K, V> RawTable<K, V> {
     }
 
     pub fn into_iter(self) -> MoveEntries<K, V> {
-        let RawBuckets { raw, hashes_start, hashes_end, .. } = self.raw_buckets();
+        let RawBuckets { start, end, .. } = self.raw_buckets();
         // Replace the marker regardless of lifetime bounds on parameters.
         MoveEntries {
             iter: RawBuckets {
-                raw: raw,
-                hashes_start: hashes_start,
-                hashes_end: hashes_end,
+                start:  start,
+                end:    end,
                 marker: marker::ContravariantLifetime,
             },
             table: self,
@@ -704,7 +719,7 @@ struct RawBuckets<'a, K, V> {
 
 impl<'a, K, V> Iterator<RawBucket<K, V>> for RawBuckets<'a, K, V> {
     fn next(&mut self) -> Option<RawBucket<K, V>> {
-        while self.raw.hash != self.end.hash {
+        while self.start.hash != self.end.hash {
             unsafe {
                 // We are swapping out the pointer to a bucket and replacing
                 // it with the pointer to the next one.
@@ -738,7 +753,7 @@ impl<'a, K, V> DoubleEndedIterator<RawBucket<K, V>> for RawBuckets<'a, K, V> {
 /// in an inconsistent state and should only be used for dropping
 /// the table's remaining entries. It's used in the implementation of Drop.
 struct RevMoveBuckets<'a, K, V> {
-    start: RawBucket<K, V>,
+    raw: RawBucket<K, V>,
     hashes_end: *mut u64,
     elems_left: uint,
     marker: marker::ContravariantLifetime<'a>,
