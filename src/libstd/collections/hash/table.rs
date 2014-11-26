@@ -697,19 +697,18 @@ impl<K, V> RawTable<K, V> {
 /// A raw iterator. The basis for some other iterators in this module. Although
 /// this interface is safe, it's not used outside this module.
 struct RawBuckets<'a, K, V> {
-    raw: RawBucket<K, V>,
-    hashes_start: *mut u64, // points to the hash before the first hash.
-    hashes_end:   *mut u64,
+    start: RawBucket<K, V>,
+    end:   RawBucket<K, V>, // points one after the end.
     marker: marker::ContravariantLifetime<'a>,
 }
 
 impl<'a, K, V> Iterator<RawBucket<K, V>> for RawBuckets<'a, K, V> {
     fn next(&mut self) -> Option<RawBucket<K, V>> {
-        while self.raw.hash != self.hashes_end {
+        while self.raw.hash != self.end.hash {
             unsafe {
                 // We are swapping out the pointer to a bucket and replacing
                 // it with the pointer to the next one.
-                let prev = ptr::replace(&mut self.raw, self.raw.offset(1));
+                let prev = ptr::replace(&mut self.start, self.start.offset(1));
                 if *prev.hash != EMPTY_BUCKET {
                     return Some(prev);
                 }
@@ -722,9 +721,9 @@ impl<'a, K, V> Iterator<RawBucket<K, V>> for RawBuckets<'a, K, V> {
 
 impl<'a, K, V> DoubleEndedIterator<RawBucket<K, V>> for RawBuckets<'a, K, V> {
     fn next_back(&mut self) -> Option<RawBucket<K, V>> {
-        while self.raw.hash != self.hashes_start {
+        while self.start.hash != self.end.hash {
             unsafe {
-                let next = ptr::replace(&mut self.raw, self.raw.offset(-1));
+                let next = ptr::replace(&mut self.end, self.end.offset(-1));
                 if *next.hash != EMPTY_BUCKET {
                     return Some(next);
                 }
@@ -739,7 +738,7 @@ impl<'a, K, V> DoubleEndedIterator<RawBucket<K, V>> for RawBuckets<'a, K, V> {
 /// in an inconsistent state and should only be used for dropping
 /// the table's remaining entries. It's used in the implementation of Drop.
 struct RevMoveBuckets<'a, K, V> {
-    raw: RawBucket<K, V>,
+    start: RawBucket<K, V>,
     hashes_end: *mut u64,
     elems_left: uint,
     marker: marker::ContravariantLifetime<'a>,
