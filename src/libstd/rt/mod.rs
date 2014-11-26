@@ -52,6 +52,7 @@ use borrow::IntoCow;
 use failure;
 use rustrt;
 use os;
+use thunk::Thunk;
 
 // Reexport some of our utilities which are expected by other crates.
 pub use self::util::{default_sched_threads, min_stack, running_on_valgrind};
@@ -87,10 +88,10 @@ static OS_DEFAULT_STACK_ESTIMATE: uint = 2 * (1 << 20);
 #[lang = "start"]
 fn lang_start(main: *const u8, argc: int, argv: *const *const u8) -> int {
     use mem;
-    start(argc, argv, proc() {
+    start(argc, argv, Thunk::new(move|| {
         let main: extern "Rust" fn() = unsafe { mem::transmute(main) };
         main();
-    })
+    }))
 }
 
 /// Executes the given procedure after initializing the runtime with the given
@@ -102,7 +103,7 @@ fn lang_start(main: *const u8, argc: int, argv: *const *const u8) -> int {
 ///
 /// This function will only return once *all* native threads in the system have
 /// exited.
-pub fn start(argc: int, argv: *const *const u8, main: proc()) -> int {
+pub fn start(argc: int, argv: *const *const u8, main: Thunk) -> int {
     use prelude::*;
     use rt;
     use rustrt::task::Task;
@@ -144,7 +145,7 @@ pub fn start(argc: int, argv: *const *const u8, main: proc()) -> int {
         unsafe {
             rustrt::stack::record_os_managed_stack_bounds(my_stack_bottom, my_stack_top);
         }
-        (main.take().unwrap())();
+        (main.take().unwrap()).invoke(());
         exit_code = Some(os::get_exit_status());
     }).destroy());
     unsafe { rt::cleanup(); }

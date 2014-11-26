@@ -17,7 +17,7 @@
 //! use std::sync::Future;
 //! # fn fib(n: uint) -> uint {42};
 //! # fn make_a_sandwich() {};
-//! let mut delayed_fib = Future::spawn(proc() { fib(5000) });
+//! let mut delayed_fib = Future::spawn(move|| { fib(5000) });
 //! make_a_sandwich();
 //! println!("fib(5000) = {}", delayed_fib.get())
 //! ```
@@ -30,6 +30,7 @@ use core::mem::replace;
 use self::FutureState::*;
 use comm::{Receiver, channel};
 use task::spawn;
+use thunk::{Thunk};
 
 /// A type encapsulating the result of a computation which may not be complete
 pub struct Future<A> {
@@ -37,7 +38,7 @@ pub struct Future<A> {
 }
 
 enum FutureState<A> {
-    Pending(proc():Send -> A),
+    Pending(Thunk<(),A>),
     Evaluating,
     Forced(A)
 }
@@ -78,7 +79,7 @@ impl<A> Future<A> {
                 match replace(&mut self.state, Evaluating) {
                     Forced(_) | Evaluating => panic!("Logic error."),
                     Pending(f) => {
-                        self.state = Forced(f());
+                        self.state = Forced(f.invoke(()));
                         self.get_ref()
                     }
                 }
@@ -97,7 +98,9 @@ impl<A> Future<A> {
         Future {state: Forced(val)}
     }
 
-    pub fn from_fn(f: proc():Send -> A) -> Future<A> {
+    pub fn from_fn<F>(f: F) -> Future<A>
+        where F : FnOnce() -> A, F : Send
+    {
         /*!
          * Create a future from a function.
          *
@@ -106,7 +109,7 @@ impl<A> Future<A> {
          * function. It is not spawned into another task.
          */
 
-        Future {state: Pending(f)}
+        Future {state: Pending(Thunk::new(f))}
     }
 }
 
@@ -119,12 +122,14 @@ impl<A:Send> Future<A> {
          * waiting for the result to be received on the port.
          */
 
-        Future::from_fn(proc() {
+        Future::from_fn(move|:| {
             rx.recv()
         })
     }
 
-    pub fn spawn(blk: proc():Send -> A) -> Future<A> {
+    pub fn spawn<F>(blk: F) -> Future<A>
+        where F : FnOnce() -> A, F : Send
+    {
         /*!
          * Create a future from a unique closure.
          *
@@ -134,7 +139,7 @@ impl<A:Send> Future<A> {
 
         let (tx, rx) = channel();
 
-        spawn(proc() {
+        spawn(move |:| {
             // Don't panic if the other end has hung up
             let _ = tx.send_opt(blk());
         });
@@ -166,7 +171,7 @@ mod test {
 
     #[test]
     fn test_from_fn() {
-        let mut f = Future::from_fn(proc() "brail".to_string());
+        let mut f = Future::from_fn(move|| "brail".to_string());
         assert_eq!(f.get(), "brail");
     }
 
@@ -190,14 +195,14 @@ mod test {
 
     #[test]
     fn test_spawn() {
-        let mut f = Future::spawn(proc() "bale".to_string());
+        let mut f = Future::spawn(move|| "bale".to_string());
         assert_eq!(f.get(), "bale");
     }
 
     #[test]
     #[should_fail]
     fn test_future_panic() {
-        let mut f = Future::spawn(proc() panic!());
+        let mut f = Future::spawn(move|| panic!());
         let _x: String = f.get();
     }
 
@@ -205,8 +210,8 @@ mod test {
     fn test_sendable_future() {
         let expected = "schlorf";
         let (tx, rx) = channel();
-        let f = Future::spawn(proc() { expected });
-        task::spawn(proc() {
+        let f = Future::spawn(move|| { expected });
+        task::spawn(move|| {
             let mut f = f;
             tx.send(f.get());
         });

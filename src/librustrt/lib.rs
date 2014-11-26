@@ -46,6 +46,7 @@ mod thread_local_storage;
 mod util;
 mod libunwind;
 mod stack_overflow;
+pub mod thunk;
 
 pub mod args;
 pub mod bookkeeping;
@@ -95,8 +96,8 @@ pub fn init(argc: int, argv: *const *const u8) {
 ///
 /// It is forbidden for procedures to register more `at_exit` handlers when they
 /// are running, and doing so will lead to a process abort.
-pub fn at_exit(f: proc():Send) {
-    at_exit_imp::push(f);
+pub fn at_exit<F:FnOnce()+Send>(f: F) {
+    at_exit_imp::push(thunk::Thunk::new(f));
 }
 
 /// One-time runtime cleanup.

@@ -72,7 +72,7 @@ pub struct TaskPool {
     //
     // This is the only such Sender, so when it is dropped all subtasks will
     // quit.
-    jobs: Sender<proc(): Send>
+    jobs: Sender<Thunk>
 }
 
 impl TaskPool {
@@ -84,7 +84,7 @@ impl TaskPool {
     pub fn new(tasks: uint) -> TaskPool {
         assert!(tasks >= 1);
 
-        let (tx, rx) = channel::<proc(): Send>();
+        let (tx, rx) = channel::<Thunk>();
         let rx = Arc::new(Mutex::new(rx));
 
         // Taskpool tasks.
@@ -96,13 +96,15 @@ impl TaskPool {
     }
 
     /// Executes the function `job` on a task in the pool.
-    pub fn execute(&self, job: proc():Send) {
-        self.jobs.send(job);
+    pub fn execute<F>(&self, job: F)
+        where F : FnOnce(), F : Send
+    {
+        self.jobs.send(Thunk::new(job));
     }
 }
 
-fn spawn_in_pool(jobs: Arc<Mutex<Receiver<proc(): Send>>>) {
-    spawn(proc() {
+fn spawn_in_pool(jobs: Arc<Mutex<Receiver<Thunk>>>) {
+    spawn(move |:| {
         // Will spawn a new task on panic unless it is cancelled.
         let sentinel = Sentinel::new(&jobs);
 
@@ -115,7 +117,7 @@ fn spawn_in_pool(jobs: Arc<Mutex<Receiver<proc(): Send>>>) {
             };
 
             match message {
-                Ok(job) => job(),
+                Ok(job) => job.invoke(()),
 
                 // The Taskpool was dropped.
                 Err(..) => break
