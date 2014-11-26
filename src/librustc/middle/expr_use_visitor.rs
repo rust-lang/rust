@@ -613,8 +613,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                 self.consume_expr(&**count);
             }
 
-            ast::ExprClosure(..) |
-            ast::ExprProc(..) => {
+            ast::ExprClosure(..) => {
                 self.walk_captures(expr)
             }
 

@@ -250,12 +250,12 @@ fn deduce_unboxed_closure_expectations_from_obligations<'a,'tcx>(
 }
 
 
-pub fn check_boxed_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
-                                    expr: &ast::Expr,
-                                    store: ty::TraitStore,
-                                    decl: &ast::FnDecl,
-                                    body: &ast::Block,
-                                    expected: Expectation<'tcx>) {
+fn check_boxed_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
+                                expr: &ast::Expr,
+                                store: ty::TraitStore,
+                                decl: &ast::FnDecl,
+                                body: &ast::Block,
+                                expected: Expectation<'tcx>) {
     let tcx = fcx.ccx.tcx;
 
     // Find the expected input/output types (if any). Substitute
@@ -293,18 +293,10 @@ pub fn check_boxed_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
             }
             _ => {
                 // Not an error! Means we're inferring the closure type
-                let (bounds, onceness) = match expr.node {
-                    ast::ExprProc(..) => {
-                        let mut bounds = ty::region_existential_bound(ty::ReStatic);
-                        bounds.builtin_bounds.insert(ty::BoundSend); // FIXME
-                        (bounds, ast::Once)
-                    }
-                    _ => {
-                        let region = fcx.infcx().next_region_var(
-                            infer::AddrOfRegion(expr.span));
-                        (ty::region_existential_bound(region), ast::Many)
-                    }
-                };
+                let region = fcx.infcx().next_region_var(
+                    infer::AddrOfRegion(expr.span));
+                let bounds = ty::region_existential_bound(region);
+                let onceness = ast::Many;
                 (None, onceness, bounds)
             }
         }

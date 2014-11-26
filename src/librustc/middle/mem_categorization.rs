@@ -555,8 +555,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
 
           ast::ExprAddrOf(..) | ast::ExprCall(..) |
           ast::ExprAssign(..) | ast::ExprAssignOp(..) |
-          ast::ExprClosure(..) | ast::ExprProc(..) |
-          ast::ExprRet(..) |
+          ast::ExprClosure(..) | ast::ExprRet(..) |
           ast::ExprUnary(..) | ast::ExprSlice(..) |
           ast::ExprMethodCall(..) | ast::ExprCast(..) |
           ast::ExprVec(..) | ast::ExprTup(..) | ast::ExprIf(..) |
@@ -728,7 +727,6 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                 };
 
                 match fn_expr.node {
-                    ast::ExprProc(_, ref body) |
                     ast::ExprClosure(_, _, _, ref body) => body.id,
                     _ => unreachable!()
                 }

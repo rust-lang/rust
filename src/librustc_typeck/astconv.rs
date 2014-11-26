@@ -945,26 +945,6 @@ pub fn ast_ty_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                                             None);
                 ty::mk_closure(tcx, fn_decl)
             }
-            ast::TyProc(ref f) => {
-                // Use corresponding trait store to figure out default bounds
-                // if none were specified.
-                let bounds = conv_existential_bounds(this,
-                                                     rscope,
-                                                     ast_ty.span,
-                                                     None,
-                                                     f.bounds.as_slice());
-
-                let fn_decl = ty_of_closure(this,
-                                            f.fn_style,
-                                            f.onceness,
-                                            bounds,
-                                            ty::UniqTraitStore,
-                                            &*f.decl,
-                                            abi::Rust,
-                                            None);
-
-                ty::mk_closure(tcx, fn_decl)
-            }
             ast::TyPolyTraitRef(ref bounds) => {
                 conv_ty_poly_trait_ref(this, rscope, ast_ty.span, bounds.as_slice())
             }
@@ -1071,7 +1051,7 @@ pub fn ast_ty_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
             }
             ast::TyInfer => {
                 // TyInfer also appears as the type of arguments or return
-                // values in a ExprClosure or ExprProc, or as
+                // values in a ExprClosure, or as
                 // the type of local variables. Both of these cases are
                 // handled specially and will not descend into this routine.
                 this.ty_infer(ast_ty.span)
