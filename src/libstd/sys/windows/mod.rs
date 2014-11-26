@@ -34,6 +34,7 @@ macro_rules! helper_init( (static $name:ident: Helper<$m:ty>) => (
 ) )
 
 pub mod c;
+pub mod ext;
 pub mod fs;
 pub mod helper_signal;
 pub mod os;

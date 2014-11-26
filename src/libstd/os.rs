@@ -62,6 +62,11 @@ use vec::Vec;
 #[cfg(unix)] use c_str::ToCStr;
 #[cfg(unix)] use libc::c_char;
 
+#[cfg(unix)]
+pub use sys::ext as unix;
+#[cfg(windows)]
+pub use sys::ext as windows;
+
 /// Get the number of cores available
 pub fn num_cpus() -> uint {
     unsafe {

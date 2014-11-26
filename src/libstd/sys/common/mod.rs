@@ -13,7 +13,7 @@
 
 use io::{mod, IoError, IoResult};
 use prelude::*;
-use sys::{last_error, retry, fs};
+use sys::{last_error, retry};
 use c_str::CString;
 use num::Int;
 use path::BytesContainer;
@@ -84,10 +84,9 @@ pub fn keep_going(data: &[u8], f: |*const u8, uint| -> i64) -> i64 {
     return (origamt - amt) as i64;
 }
 
-// traits for extracting representations from
-
-pub trait AsFileDesc {
-    fn as_fd(&self) -> &fs::FileDesc;
+// A trait for extracting representations from std::io types
+pub trait AsInner<Inner> {
+    fn as_inner(&self) -> &Inner;
 }
 
 pub trait ProcessConfig<K: BytesContainer, V: BytesContainer> {

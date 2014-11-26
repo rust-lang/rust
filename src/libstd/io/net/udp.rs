@@ -21,6 +21,7 @@ use io::{Reader, Writer, IoResult};
 use option::Option;
 use result::{Ok, Err};
 use sys::udp::UdpSocket as UdpSocketImp;
+use sys_common;
 
 /// A User Datagram Protocol socket.
 ///
@@ -181,6 +182,12 @@ impl Clone for UdpSocket {
         UdpSocket {
             inner: self.inner.clone(),
         }
+    }
+}
+
+impl sys_common::AsInner<UdpSocketImp> for UdpSocket {
+    fn as_inner(&self) -> &UdpSocketImp {
+        &self.inner
     }
 }
 
