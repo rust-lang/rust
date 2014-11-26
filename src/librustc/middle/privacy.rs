@@ -243,7 +243,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
             // * Private trait impls for private types can be completely ignored
             ast::ItemImpl(_, _, ref ty, ref impl_items) => {
                 let public_ty = match ty.node {
-                    ast::TyPath(_, _, id) => {
+                    ast::TyPath(_, id) => {
                         match self.tcx.def_map.borrow()[id].clone() {
                             def::DefPrimTy(..) => true,
                             def => {
@@ -311,7 +311,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
 
             ast::ItemTy(ref ty, _) if public_first => {
                 match ty.node {
-                    ast::TyPath(_, _, id) => {
+                    ast::TyPath(_, id) => {
                         match self.tcx.def_map.borrow()[id].clone() {
                             def::DefPrimTy(..) | def::DefTyParam(..) => {},
                             def => {
@@ -616,7 +616,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
                     // was private.
                     ast::ItemImpl(_, _, ref ty, _) => {
                         let id = match ty.node {
-                            ast::TyPath(_, _, id) => id,
+                            ast::TyPath(_, id) => id,
                             _ => return Some((err_span, err_msg, None)),
                         };
                         let def = self.tcx.def_map.borrow()[id].clone();
@@ -1292,7 +1292,7 @@ impl<'a, 'tcx> VisiblePrivateTypesVisitor<'a, 'tcx> {
 impl<'a, 'b, 'tcx, 'v> Visitor<'v> for CheckTypeForPrivatenessVisitor<'a, 'b, 'tcx> {
     fn visit_ty(&mut self, ty: &ast::Ty) {
         match ty.node {
-            ast::TyPath(_, _, path_id) => {
+            ast::TyPath(_, path_id) => {
                 if self.inner.path_is_private_type(path_id) {
                     self.contains_private = true;
                     // found what we're looking for so let's stop
@@ -1493,7 +1493,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
 
     fn visit_ty(&mut self, t: &ast::Ty) {
         match t.node {
-            ast::TyPath(ref p, _, path_id) => {
+            ast::TyPath(ref p, path_id) => {
                 if !self.tcx.sess.features.borrow().visible_private_types &&
                         self.path_is_private_type(path_id) {
                     self.tcx.sess.span_err(p.span,

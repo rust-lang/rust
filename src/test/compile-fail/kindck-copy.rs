@@ -44,15 +44,15 @@ fn test<'a,T,U:Copy>(_: &'a int) {
 
     // borrowed object types are generally ok
     assert_copy::<&'a Dummy>();
-    assert_copy::<&'a Dummy+Copy>();
-    assert_copy::<&'static Dummy+Copy>();
+    assert_copy::<&'a (Dummy+Copy)>();
+    assert_copy::<&'static (Dummy+Copy)>();
 
     // owned object types are not ok
     assert_copy::<Box<Dummy>>(); //~ ERROR `core::kinds::Copy` is not implemented
     assert_copy::<Box<Dummy+Copy>>(); //~ ERROR `core::kinds::Copy` is not implemented
 
     // mutable object types are not ok
-    assert_copy::<&'a mut Dummy+Copy>();  //~ ERROR `core::kinds::Copy` is not implemented
+    assert_copy::<&'a mut (Dummy+Copy)>();  //~ ERROR `core::kinds::Copy` is not implemented
 
     // closures are like an `&mut` object
     assert_copy::<||>(); //~ ERROR `core::kinds::Copy` is not implemented
