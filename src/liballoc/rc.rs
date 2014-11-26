@@ -141,7 +141,9 @@
 
 #![stable]
 
-use core::cell::Cell;
+use arc::Arc;
+use rcbox::{RcBox, DecResult};
+
 use core::clone::Clone;
 use core::cmp::{PartialEq, PartialOrd, Eq, Ord, Ordering};
 use core::default::Default;
@@ -155,12 +157,6 @@ use core::ptr::RawPtr;
 use core::result::{Result, Ok, Err};
 
 use heap::deallocate;
-
-struct RcBox<T> {
-    value: T,
-    strong: Cell<uint>,
-    weak: Cell<uint>
-}
 
 /// An immutable reference-counted pointer type.
 ///
@@ -189,16 +185,7 @@ impl<T> Rc<T> {
     pub fn new(value: T) -> Rc<T> {
         unsafe {
             Rc {
-                // there is an implicit weak pointer owned by all the
-                // strong pointers, which ensures that the weak
-                // destructor never frees the allocation while the
-                // strong destructor is running, even if the weak
-                // pointer is stored inside the strong one.
-                _ptr: transmute(box RcBox {
-                    value: value,
-                    strong: Cell::new(1),
-                    weak: Cell::new(1)
-                }),
+                _ptr: transmute(box RcBox::new(value)),
                 _nosend: marker::NoSend,
                 _noshare: marker::NoSync
             }
@@ -218,24 +205,40 @@ impl<T> Rc<T> {
     /// ```
     #[experimental = "Weak pointers may not belong in this module"]
     pub fn downgrade(&self) -> Weak<T> {
-        self.inc_weak();
+        self.inner().inc_weak_nonatomic();
         Weak {
             _ptr: self._ptr,
             _nosend: marker::NoSend,
             _noshare: marker::NoSync
         }
     }
+
 }
 
 /// Get the number of weak references to this value.
 #[inline]
 #[experimental]
-pub fn weak_count<T>(this: &Rc<T>) -> uint { this.weak() - 1 }
+pub fn weak_count<T>(this: &Rc<T>) -> uint { this.inner().weak_nonatomic() - 1 }
 
 /// Get the number of strong references to this value.
 #[inline]
 #[experimental]
-pub fn strong_count<T>(this: &Rc<T>) -> uint { this.strong() }
+pub fn strong_count<T>(this: &Rc<T>) -> uint { this.inner().strong_nonatomic() }
+
+/// Upgrades a unique `Rc` into an `Arc`. Returns `Err` if the `Rc` is not
+/// unique.
+/// ```
+#[experimental]
+#[inline]
+pub fn into_arc<T>(this: Rc<T>) -> Result<Arc<T>, Rc<T>> {
+    unsafe {
+        if is_unique(&this) {
+            Ok(transmute(this))
+        } else {
+            Err(this)
+        }
+    }
+}
 
 /// Returns true if there are no other `Rc` or `Weak<T>` values that share the same inner value.
 ///
@@ -310,7 +313,7 @@ pub fn try_unwrap<T>(rc: Rc<T>) -> Result<T, Rc<T>> {
 pub fn get_mut<'a, T>(rc: &'a mut Rc<T>) -> Option<&'a mut T> {
     if is_unique(rc) {
         let inner = unsafe { &mut *rc._ptr };
-        Some(&mut inner.value)
+        Some(inner.value_mut())
     } else {
         None
     }
@@ -343,7 +346,7 @@ impl<T: Clone> Rc<T> {
         // the `Rc<T>` itself to be `mut`, so we're returning the only possible
         // reference to the inner value.
         let inner = unsafe { &mut *self._ptr };
-        &mut inner.value
+        inner.value_mut()
     }
 }
 
@@ -351,7 +354,7 @@ impl<T: Clone> Rc<T> {
 impl<T> Deref<T> for Rc<T> {
     #[inline(always)]
     fn deref(&self) -> &T {
-        &self.inner().value
+        self.inner().value()
     }
 }
 
@@ -385,17 +388,10 @@ impl<T> Drop for Rc<T> {
     fn drop(&mut self) {
         unsafe {
             if !self._ptr.is_null() {
-                self.dec_strong();
-                if self.strong() == 0 {
-                    ptr::read(&**self); // destroy the contained object
-
-                    // remove the implicit "strong weak" pointer now
-                    // that we've destroyed the contents.
-                    self.dec_weak();
-
-                    if self.weak() == 0 {
+                if let DecResult::NeedsFree = self.inner().dec_strong_nonatomic() {
+                    if let DecResult::NeedsFree = self.inner().dec_weak_nonatomic() {
                         deallocate(self._ptr as *mut u8, size_of::<RcBox<T>>(),
-                                   min_align_of::<RcBox<T>>())
+                                   min_align_of::<RcBox<T>>());
                     }
                 }
             }
@@ -420,7 +416,7 @@ impl<T> Clone for Rc<T> {
     /// ```
     #[inline]
     fn clone(&self) -> Rc<T> {
-        self.inc_strong();
+        self.inner().inc_strong_nonatomic();
         Rc { _ptr: self._ptr, _nosend: marker::NoSend, _noshare: marker::NoSync }
     }
 }
@@ -627,10 +623,10 @@ impl<T> Weak<T> {
     /// let strong_five: Option<Rc<_>> = weak_five.upgrade();
     /// ```
     pub fn upgrade(&self) -> Option<Rc<T>> {
-        if self.strong() == 0 {
+        if self.inner().strong_nonatomic() == 0 {
             None
         } else {
-            self.inc_strong();
+            self.inner().inc_strong_nonatomic();
             Some(Rc { _ptr: self._ptr, _nosend: marker::NoSend, _noshare: marker::NoSync })
         }
     }
@@ -667,12 +663,11 @@ impl<T> Drop for Weak<T> {
     fn drop(&mut self) {
         unsafe {
             if !self._ptr.is_null() {
-                self.dec_weak();
-                // the weak count starts at 1, and will only go to
-                // zero if all the strong pointers have disappeared.
-                if self.weak() == 0 {
-                    deallocate(self._ptr as *mut u8, size_of::<RcBox<T>>(),
-                               min_align_of::<RcBox<T>>())
+                match self.inner().dec_weak_nonatomic() {
+                    DecResult::StillInUse => {},
+                    DecResult::NeedsFree =>
+                        deallocate(self._ptr as *mut u8, size_of::<RcBox<T>>(),
+                                   min_align_of::<RcBox<T>>()),
                 }
             }
         }
@@ -696,7 +691,7 @@ impl<T> Clone for Weak<T> {
     /// ```
     #[inline]
     fn clone(&self) -> Weak<T> {
-        self.inc_weak();
+        self.inner().inc_weak_nonatomic();
         Weak { _ptr: self._ptr, _nosend: marker::NoSend, _noshare: marker::NoSync }
     }
 }
@@ -704,24 +699,6 @@ impl<T> Clone for Weak<T> {
 #[doc(hidden)]
 trait RcBoxPtr<T> {
     fn inner(&self) -> &RcBox<T>;
-
-    #[inline]
-    fn strong(&self) -> uint { self.inner().strong.get() }
-
-    #[inline]
-    fn inc_strong(&self) { self.inner().strong.set(self.strong() + 1); }
-
-    #[inline]
-    fn dec_strong(&self) { self.inner().strong.set(self.strong() - 1); }
-
-    #[inline]
-    fn weak(&self) -> uint { self.inner().weak.get() }
-
-    #[inline]
-    fn inc_weak(&self) { self.inner().weak.set(self.weak() + 1); }
-
-    #[inline]
-    fn dec_weak(&self) { self.inner().weak.set(self.weak() - 1); }
 }
 
 impl<T> RcBoxPtr<T> for Rc<T> {
@@ -737,12 +714,24 @@ impl<T> RcBoxPtr<T> for Weak<T> {
 #[cfg(test)]
 #[allow(experimental)]
 mod tests {
-    use super::{Rc, Weak, weak_count, strong_count};
+    use super::{Rc, Weak, weak_count, strong_count, into_arc};
+    use arc::Arc;
     use std::cell::RefCell;
     use std::option::{Option, Some, None};
     use std::result::{Err, Ok};
     use std::mem::drop;
     use std::clone::Clone;
+
+    #[test]
+    fn test_into_arc() {
+        let x: Rc<uint> = Rc::new(3u);
+        let y = x.clone();
+        let new_x = into_arc(x);
+        assert_eq!(new_x, Err(Rc::new(3u)));
+        let x = new_x.unwrap_err();
+        drop(y);
+        assert_eq!(into_arc(x).unwrap(), Arc::new(3u));
+    }
 
     #[test]
     fn test_clone() {
