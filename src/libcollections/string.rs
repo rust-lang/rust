@@ -14,6 +14,7 @@
 
 use core::prelude::*;
 
+use core::borrow::{Cow, IntoCow};
 use core::default::Default;
 use core::fmt;
 use core::mem;
@@ -25,8 +26,7 @@ use core::raw::Slice as RawSlice;
 use hash;
 use slice::CloneSliceAllocPrelude;
 use str;
-use str::{CharRange, FromStr, StrAllocating, MaybeOwned, Owned};
-use str::Slice as MaybeOwnedSlice; // So many `Slice`s...
+use str::{CharRange, CowString, FromStr, StrAllocating, Owned};
 use vec::{DerefVec, Vec, as_vec};
 
 /// A growable string stored as a UTF-8 encoded buffer.
@@ -121,9 +121,9 @@ impl String {
     /// assert_eq!(output.as_slice(), "Hello \uFFFDWorld");
     /// ```
     #[unstable = "return type may change"]
-    pub fn from_utf8_lossy<'a>(v: &'a [u8]) -> MaybeOwned<'a> {
+    pub fn from_utf8_lossy<'a>(v: &'a [u8]) -> CowString<'a> {
         if str::is_utf8(v) {
-            return MaybeOwnedSlice(unsafe { mem::transmute(v) })
+            return Cow::Borrowed(unsafe { mem::transmute(v) })
         }
 
         static TAG_CONT_U8: u8 = 128u8;
@@ -234,7 +234,7 @@ impl String {
                 res.as_mut_vec().push_all(v[subseqidx..total])
             };
         }
-        Owned(res.into_string())
+        Cow::Owned(res.into_string())
     }
 
     /// Decode a UTF-16 encoded vector `v` into a `String`, returning `None`
@@ -868,6 +868,18 @@ impl<T: fmt::Show> ToString for T {
     }
 }
 
+impl IntoCow<'static, String, str> for String {
+    fn into_cow(self) -> CowString<'static> {
+        Cow::Owned(self)
+    }
+}
+
+impl<'a> IntoCow<'a, String, str> for &'a str {
+    fn into_cow(self) -> CowString<'a> {
+        Cow::Borrowed(self)
+    }
+}
+
 /// Unsafe operations
 #[deprecated]
 pub mod raw {
@@ -921,11 +933,11 @@ mod tests {
     use std::prelude::*;
     use test::Bencher;
 
+    use slice::CloneSliceAllocPrelude;
+    use str::{Str, StrPrelude};
     use str;
-    use str::{Str, StrPrelude, Owned};
     use super::{as_string, String, ToString};
     use vec::Vec;
-    use slice::CloneSliceAllocPrelude;
 
     #[test]
     fn test_as_string() {
@@ -955,39 +967,39 @@ mod tests {
     #[test]
     fn test_from_utf8_lossy() {
         let xs = b"hello";
-        assert_eq!(String::from_utf8_lossy(xs), str::Slice("hello"));
+        assert_eq!(String::from_utf8_lossy(xs), "hello".into_cow());
 
         let xs = "ศไทย中华Việt Nam".as_bytes();
-        assert_eq!(String::from_utf8_lossy(xs), str::Slice("ศไทย中华Việt Nam"));
+        assert_eq!(String::from_utf8_lossy(xs), "ศไทย中华Việt Nam".into_cow());
 
         let xs = b"Hello\xC2 There\xFF Goodbye";
         assert_eq!(String::from_utf8_lossy(xs),
-                   Owned(String::from_str("Hello\uFFFD There\uFFFD Goodbye")));
+                   String::from_str("Hello\uFFFD There\uFFFD Goodbye").into_cow());
 
         let xs = b"Hello\xC0\x80 There\xE6\x83 Goodbye";
         assert_eq!(String::from_utf8_lossy(xs),
-                   Owned(String::from_str("Hello\uFFFD\uFFFD There\uFFFD Goodbye")));
+                   String::from_str("Hello\uFFFD\uFFFD There\uFFFD Goodbye").into_cow());
 
         let xs = b"\xF5foo\xF5\x80bar";
         assert_eq!(String::from_utf8_lossy(xs),
-                   Owned(String::from_str("\uFFFDfoo\uFFFD\uFFFDbar")));
+                   String::from_str("\uFFFDfoo\uFFFD\uFFFDbar").into_cow());
 
         let xs = b"\xF1foo\xF1\x80bar\xF1\x80\x80baz";
         assert_eq!(String::from_utf8_lossy(xs),
-                   Owned(String::from_str("\uFFFDfoo\uFFFDbar\uFFFDbaz")));
+                   String::from_str("\uFFFDfoo\uFFFDbar\uFFFDbaz").into_cow());
 
         let xs = b"\xF4foo\xF4\x80bar\xF4\xBFbaz";
         assert_eq!(String::from_utf8_lossy(xs),
-                   Owned(String::from_str("\uFFFDfoo\uFFFDbar\uFFFD\uFFFDbaz")));
+                   String::from_str("\uFFFDfoo\uFFFDbar\uFFFD\uFFFDbaz").into_cow());
 
         let xs = b"\xF0\x80\x80\x80foo\xF0\x90\x80\x80bar";
-        assert_eq!(String::from_utf8_lossy(xs), Owned(String::from_str("\uFFFD\uFFFD\uFFFD\uFFFD\
-                                               foo\U00010000bar")));
+        assert_eq!(String::from_utf8_lossy(xs), String::from_str("\uFFFD\uFFFD\uFFFD\uFFFD\
+                                               foo\U00010000bar").into_cow());
 
         // surrogates
         let xs = b"\xED\xA0\x80foo\xED\xBF\xBFbar";
-        assert_eq!(String::from_utf8_lossy(xs), Owned(String::from_str("\uFFFD\uFFFD\uFFFDfoo\
-                                               \uFFFD\uFFFD\uFFFDbar")));
+        assert_eq!(String::from_utf8_lossy(xs), String::from_str("\uFFFD\uFFFD\uFFFDfoo\
+                                               \uFFFD\uFFFD\uFFFDbar").into_cow());
     }
 
     #[test]

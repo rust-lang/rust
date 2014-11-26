@@ -16,6 +16,7 @@ use core::prelude::*;
 
 use alloc::boxed::Box;
 use alloc::heap::{EMPTY, allocate, reallocate, deallocate};
+use core::borrow::{Cow, IntoCow};
 use core::cmp::max;
 use core::default::Default;
 use core::fmt;
@@ -105,6 +106,27 @@ pub struct Vec<T> {
     ptr: *mut T,
     len: uint,
     cap: uint,
+}
+
+/// A clone-on-write vector
+pub type CowVec<'a, T> = Cow<'a, Vec<T>, [T]>;
+
+impl<'a, T> FromIterator<T> for CowVec<'a, T> where T: Clone {
+    fn from_iter<I: Iterator<T>>(it: I) -> CowVec<'a, T> {
+        Cow::Owned(FromIterator::from_iter(it))
+    }
+}
+
+impl<'a, T: 'a> IntoCow<'a, Vec<T>, [T]> for Vec<T> where T: Clone {
+    fn into_cow(self) -> CowVec<'a, T> {
+        Cow::Owned(self)
+    }
+}
+
+impl<'a, T> IntoCow<'a, Vec<T>, [T]> for &'a [T] where T: Clone {
+    fn into_cow(self) -> CowVec<'a, T> {
+        Cow::Borrowed(self)
+    }
 }
 
 impl<T> Vec<T> {

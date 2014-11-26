@@ -56,6 +56,7 @@ Several modules in `core` are clients of `rt`:
 
 #![allow(dead_code)]
 
+use borrow::IntoCow;
 use failure;
 use rustrt;
 use os;
@@ -113,7 +114,6 @@ pub fn start(argc: int, argv: *const *const u8, main: proc()) -> int {
     use prelude::*;
     use rt;
     use rustrt::task::Task;
-    use str;
 
     let something_around_the_top_of_the_stack = 1;
     let addr = &something_around_the_top_of_the_stack as *const int;
@@ -147,7 +147,7 @@ pub fn start(argc: int, argv: *const *const u8, main: proc()) -> int {
     let mut main = Some(main);
     let mut task = box Task::new(Some((my_stack_bottom, my_stack_top)),
                                  Some(rustrt::thread::main_guard_page()));
-    task.name = Some(str::Slice("<main>"));
+    task.name = Some("<main>".into_cow());
     drop(task.run(|| {
         unsafe {
             rustrt::stack::record_os_managed_stack_bounds(my_stack_bottom, my_stack_top);

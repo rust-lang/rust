@@ -74,7 +74,7 @@ use fmt;
 use iter::Iterator;
 use option::{Option, None, Some};
 use str;
-use str::{MaybeOwned, Str, StrPrelude};
+use str::{CowString, MaybeOwned, Str, StrPrelude};
 use string::String;
 use slice::{AsSlice, CloneSliceAllocPrelude};
 use slice::{PartialEqSlicePrelude, SlicePrelude};
@@ -830,7 +830,7 @@ pub struct Display<'a, P:'a> {
 
 impl<'a, P: GenericPath> fmt::Show for Display<'a, P> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.as_maybe_owned().as_slice().fmt(f)
+        self.as_cow().fmt(f)
     }
 }
 
@@ -840,7 +840,7 @@ impl<'a, P: GenericPath> Display<'a, P> {
     /// If the path is not UTF-8, invalid sequences will be replaced with the
     /// Unicode replacement char. This involves allocation.
     #[inline]
-    pub fn as_maybe_owned(&self) -> MaybeOwned<'a> {
+    pub fn as_cow(&self) -> CowString<'a> {
         String::from_utf8_lossy(if self.filename {
             match self.path.filename() {
                 None => {
