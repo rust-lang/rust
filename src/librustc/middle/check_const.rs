@@ -127,7 +127,11 @@ fn check_expr(v: &mut CheckCrateVisitor, e: &ast::Expr) -> bool {
         ast::ExprCast(ref from, _) => {
             let toty = ty::expr_ty(v.tcx, e);
             let fromty = ty::expr_ty(v.tcx, &**from);
-            if !ty::type_is_numeric(toty) && !ty::type_is_unsafe_ptr(toty) {
+            let is_legal_cast =
+                ty::type_is_numeric(toty) ||
+                ty::type_is_unsafe_ptr(toty) ||
+                (ty::type_is_bare_fn(toty) && ty::type_is_bare_fn_item(fromty));
+            if !is_legal_cast {
                 span_err!(v.tcx.sess, e.span, E0012,
                           "can not cast to `{}` in a constant expression",
                           ppaux::ty_to_string(v.tcx, toty));

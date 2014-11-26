@@ -113,7 +113,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
         self.add_obligations(&pick, &method_bounds_substs, &method_bounds);
 
         // Create the final `MethodCallee`.
-        let fty = ty::mk_bare_fn(self.tcx(), ty::BareFnTy {
+        let fty = ty::mk_bare_fn(self.tcx(), None, ty::BareFnTy {
             sig: ty::Binder(method_sig),
             unsafety: pick.method_ty.fty.unsafety,
             abi: pick.method_ty.fty.abi.clone(),

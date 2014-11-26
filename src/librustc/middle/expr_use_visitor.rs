@@ -824,10 +824,12 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
             None => { }
             Some(adjustment) => {
                 match *adjustment {
-                    ty::AdjustAddEnv(..) => {
-                        // Creating a closure consumes the input and stores it
-                        // into the resulting rvalue.
-                        debug!("walk_adjustment(AutoAddEnv)");
+                    ty::AdjustAddEnv(..) |
+                    ty::AdjustReifyFnPointer(..) => {
+                        // Creating a closure/fn-pointer consumes the
+                        // input and stores it into the resulting
+                        // rvalue.
+                        debug!("walk_adjustment(AutoAddEnv|AdjustReifyFnPointer)");
                         let cmt_unadjusted =
                             return_if_err!(self.mc.cat_expr_unadjusted(expr));
                         self.delegate_consume(expr.id, expr.span, cmt_unadjusted);

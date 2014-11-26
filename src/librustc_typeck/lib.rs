@@ -102,6 +102,7 @@ use util::ppaux;
 use syntax::codemap::Span;
 use syntax::print::pprust::*;
 use syntax::{ast, ast_map, abi};
+use syntax::ast_util::local_def;
 
 #[cfg(stage0)]
 mod diagnostics;
@@ -224,7 +225,7 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
                 }
                 _ => ()
             }
-            let se_ty = ty::mk_bare_fn(tcx, ty::BareFnTy {
+            let se_ty = ty::mk_bare_fn(tcx, Some(local_def(main_id)), ty::BareFnTy {
                 unsafety: ast::Unsafety::Normal,
                 abi: abi::Rust,
                 sig: ty::Binder(ty::FnSig {
@@ -272,7 +273,7 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
                 _ => ()
             }
 
-            let se_ty = ty::mk_bare_fn(tcx, ty::BareFnTy {
+            let se_ty = ty::mk_bare_fn(tcx, Some(local_def(start_id)), ty::BareFnTy {
                 unsafety: ast::Unsafety::Normal,
                 abi: abi::Rust,
                 sig: ty::Binder(ty::FnSig {

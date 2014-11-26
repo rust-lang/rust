@@ -1132,9 +1132,9 @@ fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
     }
 
     // Compute skolemized form of impl and trait method tys.
-    let impl_fty = ty::mk_bare_fn(tcx, impl_m.fty.clone());
+    let impl_fty = ty::mk_bare_fn(tcx, None, impl_m.fty.clone());
     let impl_fty = impl_fty.subst(tcx, &impl_to_skol_substs);
-    let trait_fty = ty::mk_bare_fn(tcx, trait_m.fty.clone());
+    let trait_fty = ty::mk_bare_fn(tcx, None, trait_m.fty.clone());
     let trait_fty = trait_fty.subst(tcx, &trait_to_skol_substs);
 
     // Check the impl method type IM is a subtype of the trait method
@@ -1389,6 +1389,8 @@ fn check_cast(fcx: &FnCtxt,
         }, t_e, None);
     }
 
+    let t_e_is_bare_fn_item = ty::type_is_bare_fn_item(t_e);
+
     let t_1_is_scalar = ty::type_is_scalar(t_1);
     let t_1_is_char = ty::type_is_char(t_1);
     let t_1_is_bare_fn = ty::type_is_bare_fn(t_1);
@@ -1396,7 +1398,9 @@ fn check_cast(fcx: &FnCtxt,
 
     // casts to scalars other than `char` and `bare fn` are trivial
     let t_1_is_trivial = t_1_is_scalar && !t_1_is_char && !t_1_is_bare_fn;
-    if ty::type_is_c_like_enum(fcx.tcx(), t_e) && t_1_is_trivial {
+    if t_e_is_bare_fn_item && t_1_is_bare_fn {
+        demand::coerce(fcx, e.span, t_1, &*e);
+    } else if ty::type_is_c_like_enum(fcx.tcx(), t_e) && t_1_is_trivial {
         if t_1_is_float || ty::type_is_unsafe_ptr(t_1) {
             fcx.type_error_message(span, |actual| {
                 format!("illegal cast; cast through an \
@@ -1634,7 +1638,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                        span: Span,
                                        adj: &ty::AutoAdjustment<'tcx>) {
         match *adj {
-            ty::AdjustAddEnv(..) => { }
+            ty::AdjustAddEnv(..) |
+            ty::AdjustReifyFnPointer(..) => {
+            }
             ty::AdjustDerefRef(ref d_r) => {
                 match d_r.autoref {
                     Some(ref a_r) => {
@@ -5627,7 +5633,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
         };
         (n_tps, inputs, ty::FnConverging(output))
     };
-    let fty = ty::mk_bare_fn(tcx, ty::BareFnTy {
+    let fty = ty::mk_bare_fn(tcx, None, ty::BareFnTy {
         unsafety: ast::Unsafety::Unsafe,
         abi: abi::RustIntrinsic,
         sig: ty::Binder(FnSig {
