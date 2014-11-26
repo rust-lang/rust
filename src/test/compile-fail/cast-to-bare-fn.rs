@@ -13,7 +13,7 @@ fn foo(_x: int) { }
 fn main() {
     let v: u64 = 5;
     let x = foo as extern "C" fn() -> int;
-    //~^ ERROR non-scalar cast
+    //~^ ERROR mismatched types
     let y = v as extern "Rust" fn(int) -> (int, int);
     //~^ ERROR non-scalar cast
     y(x());

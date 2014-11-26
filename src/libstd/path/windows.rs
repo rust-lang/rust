@@ -829,8 +829,12 @@ impl Path {
         let s = if self.has_nonsemantic_trailing_slash() {
                     self.repr.slice_to(self.repr.len()-1)
                 } else { self.repr.as_slice() };
-        let idx = s.rfind(if !prefix_is_verbatim(self.prefix) { is_sep }
-                          else { is_sep_verbatim });
+        let sep_test: fn(char) -> bool = if !prefix_is_verbatim(self.prefix) {
+            is_sep
+        } else {
+            is_sep_verbatim
+        };
+        let idx = s.rfind(sep_test);
         let prefixlen = self.prefix_len();
         self.sepidx = idx.and_then(|x| if x < prefixlen { None } else { Some(x) });
     }
@@ -1048,7 +1052,11 @@ fn parse_prefix<'a>(mut path: &'a str) -> Option<PathPrefix> {
 
 // None result means the string didn't need normalizing
 fn normalize_helper<'a>(s: &'a str, prefix: Option<PathPrefix>) -> (bool, Option<Vec<&'a str>>) {
-    let f = if !prefix_is_verbatim(prefix) { is_sep } else { is_sep_verbatim };
+    let f: fn(char) -> bool = if !prefix_is_verbatim(prefix) {
+        is_sep
+    } else {
+        is_sep_verbatim
+    };
     let is_abs = s.len() > prefix_len(prefix) && f(s.char_at(prefix_len(prefix)));
     let s_ = s.slice_from(prefix_len(prefix));
     let s_ = if is_abs { s_.slice_from(1) } else { s_ };

@@ -9,8 +9,10 @@
 // except according to those terms.
 
 struct StateMachineIter<'a> {
-    statefn: &'a fn(&mut StateMachineIter<'a>) -> Option<&'static str>
+    statefn: &'a StateMachineFunc<'a>
 }
+
+type StateMachineFunc<'a> = fn(&mut StateMachineIter<'a>) -> Option<&'static str>;
 
 impl<'a> Iterator<&'static str> for StateMachineIter<'a> {
     fn next(&mut self) -> Option<&'static str> {
@@ -19,19 +21,19 @@ impl<'a> Iterator<&'static str> for StateMachineIter<'a> {
 }
 
 fn state1(self_: &mut StateMachineIter) -> Option<&'static str> {
-    self_.statefn = &state2;
+    self_.statefn = &(state2 as StateMachineFunc);
     //~^ ERROR borrowed value does not live long enough
     return Some("state1");
 }
 
 fn state2(self_: &mut StateMachineIter) -> Option<(&'static str)> {
-    self_.statefn = &state3;
+    self_.statefn = &(state3 as StateMachineFunc);
     //~^ ERROR borrowed value does not live long enough
     return Some("state2");
 }
 
 fn state3(self_: &mut StateMachineIter) -> Option<(&'static str)> {
-    self_.statefn = &finished;
+    self_.statefn = &(finished as StateMachineFunc);
     //~^ ERROR borrowed value does not live long enough
     return Some("state3");
 }
@@ -42,7 +44,7 @@ fn finished(_: &mut StateMachineIter) -> Option<(&'static str)> {
 
 fn state_iter() -> StateMachineIter<'static> {
     StateMachineIter {
-        statefn: &state1 //~ ERROR borrowed value does not live long enough
+        statefn: &(state1 as StateMachineFunc) //~ ERROR borrowed value does not live long enough
     }
 }
 
