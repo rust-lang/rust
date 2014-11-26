@@ -235,7 +235,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
             // impl, plus its own.
             let new_polytype = ty::Polytype {
                 generics: new_method_ty.generics.clone(),
-                ty: ty::mk_bare_fn(tcx, new_method_ty.fty.clone())
+                ty: ty::mk_bare_fn(tcx, Some(new_did), new_method_ty.fty.clone())
             };
             debug!("new_polytype={}", new_polytype.repr(tcx));
 

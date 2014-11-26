@@ -18,10 +18,9 @@ pub use self::AutorefArg::*;
 pub use self::CalleeData::*;
 pub use self::CallArgs::*;
 
-use arena::TypedArena;
-use back::{abi,link};
+use back::abi;
 use session;
-use llvm::{ValueRef, get_param};
+use llvm::{ValueRef};
 use llvm;
 use metadata::csearch;
 use middle::def;

@@ -542,6 +542,7 @@ pub fn get_res_dtor<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         let class_ty = ty::lookup_item_type(tcx, parent_id).ty.subst(tcx, substs);
         let llty = type_of_dtor(ccx, class_ty);
         let dtor_ty = ty::mk_ctor_fn(ccx.tcx(),
+                                     did,
                                      &[glue::get_drop_glue_type(ccx, t)],
                                      ty::mk_nil(ccx.tcx()));
         get_extern_fn(ccx,
