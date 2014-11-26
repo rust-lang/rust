@@ -8,18 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
-
-This file actually contains two passes related to regions.  The first
-pass builds up the `scope_map`, which describes the parent links in
-the region hierarchy.  The second pass infers which types must be
-region parameterized.
-
-Most of the documentation on regions can be found in
-`middle/typeck/infer/region_inference.rs`
-
-*/
-
+//! This file actually contains two passes related to regions.  The first
+//! pass builds up the `scope_map`, which describes the parent links in
+//! the region hierarchy.  The second pass infers which types must be
+//! region parameterized.
+//!
+//! Most of the documentation on regions can be found in
+//! `middle/typeck/infer/region_inference.rs`
 
 use session::Session;
 use middle::ty::{mod, Ty, FreeRegion};
@@ -169,14 +164,10 @@ impl RegionMaps {
         self.rvalue_scopes.borrow_mut().insert(var, lifetime);
     }
 
+    /// Records that a scope is a TERMINATING SCOPE. Whenever we create automatic temporaries --
+    /// e.g. by an expression like `a().f` -- they will be freed within the innermost terminating
+    /// scope.
     pub fn mark_as_terminating_scope(&self, scope_id: CodeExtent) {
-        /*!
-         * Records that a scope is a TERMINATING SCOPE. Whenever we
-         * create automatic temporaries -- e.g. by an
-         * expression like `a().f` -- they will be freed within
-         * the innermost terminating scope.
-         */
-
         debug!("record_terminating_scope(scope_id={})", scope_id);
         self.terminating_scopes.borrow_mut().insert(scope_id);
     }
@@ -195,10 +186,8 @@ impl RegionMaps {
         }
     }
 
+    /// Returns the lifetime of the local variable `var_id`
     pub fn var_scope(&self, var_id: ast::NodeId) -> CodeExtent {
-        /*!
-         * Returns the lifetime of the local variable `var_id`
-         */
         match self.var_map.borrow().get(&var_id) {
             Some(&r) => r,
             None => { panic!("no enclosing scope for id {}", var_id); }
@@ -255,15 +244,12 @@ impl RegionMaps {
         self.is_subscope_of(scope2, scope1)
     }
 
+    /// Returns true if `subscope` is equal to or is lexically nested inside `superscope` and false
+    /// otherwise.
     pub fn is_subscope_of(&self,
                           subscope: CodeExtent,
                           superscope: CodeExtent)
                           -> bool {
-        /*!
-         * Returns true if `subscope` is equal to or is lexically
-         * nested inside `superscope` and false otherwise.
-         */
-
         let mut s = subscope;
         while superscope != s {
             match self.scope_map.borrow().get(&s) {
@@ -283,27 +269,20 @@ impl RegionMaps {
         return true;
     }
 
+    /// Determines whether two free regions have a subregion relationship
+    /// by walking the graph encoded in `free_region_map`.  Note that
+    /// it is possible that `sub != sup` and `sub <= sup` and `sup <= sub`
+    /// (that is, the user can give two different names to the same lifetime).
     pub fn sub_free_region(&self, sub: FreeRegion, sup: FreeRegion) -> bool {
-        /*!
-         * Determines whether two free regions have a subregion relationship
-         * by walking the graph encoded in `free_region_map`.  Note that
-         * it is possible that `sub != sup` and `sub <= sup` and `sup <= sub`
-         * (that is, the user can give two different names to the same lifetime).
-         */
-
         can_reach(&*self.free_region_map.borrow(), sub, sup)
     }
 
+    /// Determines whether one region is a subregion of another.  This is intended to run *after
+    /// inference* and sadly the logic is somewhat duplicated with the code in infer.rs.
     pub fn is_subregion_of(&self,
                            sub_region: ty::Region,
                            super_region: ty::Region)
                            -> bool {
-        /*!
-         * Determines whether one region is a subregion of another.  This is
-         * intended to run *after inference* and sadly the logic is somewhat
-         * duplicated with the code in infer.rs.
-         */
-
         debug!("is_subregion_of(sub_region={}, super_region={})",
                sub_region, super_region);
 
@@ -343,16 +322,12 @@ impl RegionMaps {
         }
     }
 
+    /// Finds the nearest common ancestor (if any) of two scopes.  That is, finds the smallest
+    /// scope which is greater than or equal to both `scope_a` and `scope_b`.
     pub fn nearest_common_ancestor(&self,
                                    scope_a: CodeExtent,
                                    scope_b: CodeExtent)
                                    -> Option<CodeExtent> {
-        /*!
-         * Finds the nearest common ancestor (if any) of two scopes.  That
-         * is, finds the smallest scope which is greater than or equal to
-         * both `scope_a` and `scope_b`.
-         */
-
         if scope_a == scope_b { return Some(scope_a); }
 
         let a_ancestors = ancestors_of(self, scope_a);
@@ -679,18 +654,15 @@ fn resolve_local(visitor: &mut RegionResolutionVisitor, local: &ast::Local) {
 
     visit::walk_local(visitor, local);
 
+    /// True if `pat` match the `P&` nonterminal:
+    ///
+    ///     P& = ref X
+    ///        | StructName { ..., P&, ... }
+    ///        | VariantName(..., P&, ...)
+    ///        | [ ..., P&, ... ]
+    ///        | ( ..., P&, ... )
+    ///        | box P&
     fn is_binding_pat(pat: &ast::Pat) -> bool {
-        /*!
-         * True if `pat` match the `P&` nonterminal:
-         *
-         *     P& = ref X
-         *        | StructName { ..., P&, ... }
-         *        | VariantName(..., P&, ...)
-         *        | [ ..., P&, ... ]
-         *        | ( ..., P&, ... )
-         *        | box P&
-         */
-
         match pat.node {
             ast::PatIdent(ast::BindByRef(_), _, _) => true,
 
@@ -717,35 +689,27 @@ fn resolve_local(visitor: &mut RegionResolutionVisitor, local: &ast::Local) {
         }
     }
 
+    /// True if `ty` is a borrowed pointer type like `&int` or `&[...]`.
     fn is_borrowed_ty(ty: &ast::Ty) -> bool {
-        /*!
-         * True if `ty` is a borrowed pointer type
-         * like `&int` or `&[...]`.
-         */
-
         match ty.node {
             ast::TyRptr(..) => true,
             _ => false
         }
     }
 
+    /// If `expr` matches the `E&` grammar, then records an extended rvalue scope as appropriate:
+    ///
+    ///     E& = & ET
+    ///        | StructName { ..., f: E&, ... }
+    ///        | [ ..., E&, ... ]
+    ///        | ( ..., E&, ... )
+    ///        | {...; E&}
+    ///        | box E&
+    ///        | E& as ...
+    ///        | ( E& )
     fn record_rvalue_scope_if_borrow_expr(visitor: &mut RegionResolutionVisitor,
                                           expr: &ast::Expr,
                                           blk_id: CodeExtent) {
-        /*!
-         * If `expr` matches the `E&` grammar, then records an extended
-         * rvalue scope as appropriate:
-         *
-         *     E& = & ET
-         *        | StructName { ..., f: E&, ... }
-         *        | [ ..., E&, ... ]
-         *        | ( ..., E&, ... )
-         *        | {...; E&}
-         *        | box E&
-         *        | E& as ...
-         *        | ( E& )
-         */
-
         match expr.node {
             ast::ExprAddrOf(_, ref subexpr) => {
                 record_rvalue_scope_if_borrow_expr(visitor, &**subexpr, blk_id);
@@ -785,29 +749,24 @@ fn resolve_local(visitor: &mut RegionResolutionVisitor, local: &ast::Local) {
         }
     }
 
+    /// Applied to an expression `expr` if `expr` -- or something owned or partially owned by
+    /// `expr` -- is going to be indirectly referenced by a variable in a let statement. In that
+    /// case, the "temporary lifetime" or `expr` is extended to be the block enclosing the `let`
+    /// statement.
+    ///
+    /// More formally, if `expr` matches the grammar `ET`, record the rvalue scope of the matching
+    /// `<rvalue>` as `blk_id`:
+    ///
+    ///     ET = *ET
+    ///        | ET[...]
+    ///        | ET.f
+    ///        | (ET)
+    ///        | <rvalue>
+    ///
+    /// Note: ET is intended to match "rvalues or lvalues based on rvalues".
     fn record_rvalue_scope<'a>(visitor: &mut RegionResolutionVisitor,
                                expr: &'a ast::Expr,
                                blk_scope: CodeExtent) {
-        /*!
-         * Applied to an expression `expr` if `expr` -- or something
-         * owned or partially owned by `expr` -- is going to be
-         * indirectly referenced by a variable in a let statement. In
-         * that case, the "temporary lifetime" or `expr` is extended
-         * to be the block enclosing the `let` statement.
-         *
-         * More formally, if `expr` matches the grammar `ET`, record
-         * the rvalue scope of the matching `<rvalue>` as `blk_id`:
-         *
-         *     ET = *ET
-         *        | ET[...]
-         *        | ET.f
-         *        | (ET)
-         *        | <rvalue>
-         *
-         * Note: ET is intended to match "rvalues or
-         * lvalues based on rvalues".
-         */
-
         let mut expr = expr;
         loop {
             // Note: give all the expressions matching `ET` with the

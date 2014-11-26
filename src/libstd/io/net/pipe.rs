@@ -8,19 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
-
-Named pipes
-
-This module contains the ability to communicate over named pipes with
-synchronous I/O. On windows, this corresponds to talking over a Named Pipe,
-while on Unix it corresponds to UNIX domain sockets.
-
-These pipes are similar to TCP in the sense that you can have both a stream to a
-server and a server itself. The server provided accepts other `UnixStream`
-instances as clients.
-
-*/
+//! Named pipes
+//!
+//! This module contains the ability to communicate over named pipes with
+//! synchronous I/O. On windows, this corresponds to talking over a Named Pipe,
+//! while on Unix it corresponds to UNIX domain sockets.
+//!
+//! These pipes are similar to TCP in the sense that you can have both a stream to a
+//! server and a server itself. The server provided accepts other `UnixStream`
+//! instances as clients.
 
 #![allow(missing_docs)]
 

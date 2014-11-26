@@ -8,27 +8,25 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
-The Finally trait provides a method, `finally` on
-stack closures that emulates Java-style try/finally blocks.
-
-Using the `finally` method is sometimes convenient, but the type rules
-prohibit any shared, mutable state between the "try" case and the
-"finally" case. For advanced cases, the `try_finally` function can
-also be used. See that function for more details.
-
-# Example
-
-```
-use std::finally::Finally;
-
-(|| {
-    // ...
-}).finally(|| {
-    // this code is always run
-})
-```
-*/
+//! The Finally trait provides a method, `finally` on
+//! stack closures that emulates Java-style try/finally blocks.
+//!
+//! Using the `finally` method is sometimes convenient, but the type rules
+//! prohibit any shared, mutable state between the "try" case and the
+//! "finally" case. For advanced cases, the `try_finally` function can
+//! also be used. See that function for more details.
+//!
+//! # Example
+//!
+//! ```
+//! use std::finally::Finally;
+//!
+//! (|| {
+//!     // ...
+//! }).finally(|| {
+//!     // this code is always run
+//! })
+//! ```
 
 #![experimental]
 

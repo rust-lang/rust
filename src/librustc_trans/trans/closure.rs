@@ -386,6 +386,15 @@ impl<'a, 'tcx> ClosureEnv<'a, 'tcx> {
     }
 }
 
+/// Translates the body of a closure expression.
+///
+/// - `store`
+/// - `decl`
+/// - `body`
+/// - `id`: The id of the closure expression.
+/// - `cap_clause`: information about captured variables, if any.
+/// - `dest`: where to write the closure value, which must be a
+///   (fn ptr, env) pair
 pub fn trans_expr_fn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                  store: ty::TraitStore,
                                  decl: &ast::FnDecl,
@@ -393,19 +402,6 @@ pub fn trans_expr_fn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                  id: ast::NodeId,
                                  dest: expr::Dest)
                                  -> Block<'blk, 'tcx> {
-    /*!
-     *
-     * Translates the body of a closure expression.
-     *
-     * - `store`
-     * - `decl`
-     * - `body`
-     * - `id`: The id of the closure expression.
-     * - `cap_clause`: information about captured variables, if any.
-     * - `dest`: where to write the closure value, which must be a
-         (fn ptr, env) pair
-     */
-
     let _icx = push_ctxt("closure::trans_expr_fn");
 
     let dest_addr = match dest {

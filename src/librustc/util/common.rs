@@ -122,24 +122,20 @@ pub fn block_query(b: &ast::Block, p: |&ast::Expr| -> bool) -> bool {
     return v.flag;
 }
 
-// K: Eq + Hash<S>, V, S, H: Hasher<S>
+/// K: Eq + Hash<S>, V, S, H: Hasher<S>
+///
+/// Determines whether there exists a path from `source` to `destination`.  The graph is defined by
+/// the `edges_map`, which maps from a node `S` to a list of its adjacent nodes `T`.
+///
+/// Efficiency note: This is implemented in an inefficient way because it is typically invoked on
+/// very small graphs. If the graphs become larger, a more efficient graph representation and
+/// algorithm would probably be advised.
 pub fn can_reach<S,H:Hasher<S>,T:Eq+Clone+Hash<S>>(
     edges_map: &HashMap<T,Vec<T>,H>,
     source: T,
     destination: T)
     -> bool
 {
-    /*!
-     * Determines whether there exists a path from `source` to
-     * `destination`.  The graph is defined by the `edges_map`, which
-     * maps from a node `S` to a list of its adjacent nodes `T`.
-     *
-     * Efficiency note: This is implemented in an inefficient way
-     * because it is typically invoked on very small graphs. If the graphs
-     * become larger, a more efficient graph representation and algorithm
-     * would probably be advised.
-     */
-
     if source == destination {
         return true;
     }

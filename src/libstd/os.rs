@@ -8,23 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
- * Higher-level interfaces to libc::* functions and operating system services.
- *
- * In general these take and return rust types, use rust idioms (enums,
- * closures, vectors) rather than C idioms, and do more extensive safety
- * checks.
- *
- * This module is not meant to only contain 1:1 mappings to libc entries; any
- * os-interface code that is reasonably useful and broadly applicable can go
- * here. Including utility routines that merely build on other os code.
- *
- * We assume the general case is that users do not care, and do not want to
- * be made to care, which operating system they are on. While they may want
- * to special case various special cases -- and so we will not _hide_ the
- * facts of which OS the user is on -- they should be given the opportunity
- * to write OS-ignorant code by default.
- */
+//! Higher-level interfaces to libc::* functions and operating system services.
+//!
+//! In general these take and return rust types, use rust idioms (enums, closures, vectors) rather
+//! than C idioms, and do more extensive safety checks.
+//!
+//! This module is not meant to only contain 1:1 mappings to libc entries; any os-interface code
+//! that is reasonably useful and broadly applicable can go here. Including utility routines that
+//! merely build on other os code.
+//!
+//! We assume the general case is that users do not care, and do not want to be made to care, which
+//! operating system they are on. While they may want to special case various special cases -- and
+//! so we will not _hide_ the facts of which OS the user is on -- they should be given the
+//! opportunity to write OS-ignorant code by default.
 
 #![experimental]
 
