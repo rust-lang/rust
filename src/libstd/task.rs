@@ -35,7 +35,7 @@
 //! ## Example
 //!
 //! ```rust
-//! spawn(proc() {
+//! spawn(move|| {
 //!     println!("Hello, World!");
 //! })
 //! ```
@@ -47,6 +47,7 @@ use any::Any;
 use borrow::IntoCow;
 use boxed::Box;
 use comm::channel;
+use core::ops::FnOnce;
 use io::{Writer, stdio};
 use kinds::{Send, marker};
 use option::Option;
@@ -57,6 +58,7 @@ use rustrt::task::Task;
 use rustrt::task;
 use str::SendStr;
 use string::{String, ToString};
+use thunk::{Thunk};
 use sync::Future;
 
 /// The task builder type.
@@ -80,7 +82,7 @@ pub struct TaskBuilder {
     // Task-local stderr
     stderr: Option<Box<Writer + Send>>,
     // Optionally wrap the eventual task body
-    gen_body: Option<proc(v: proc():Send):Send -> proc():Send>,
+    gen_body: Option<Thunk<Thunk, Thunk>>,
     nocopy: marker::NoCopy,
 }
 
@@ -129,41 +131,46 @@ impl TaskBuilder {
     }
 
     // Where spawning actually happens (whether yielding a future or not)
-    fn spawn_internal(self, f: proc():Send,
-                      on_exit: Option<proc(Result<(), Box<Any + Send>>):Send>) {
+    fn spawn_internal(
+        self,
+        f: Thunk,
+        on_exit: Option<Thunk<task::Result>>)
+    {
         let TaskBuilder {
             name, stack_size, stdout, stderr, mut gen_body, nocopy: _
         } = self;
+
         let f = match gen_body.take() {
-            Some(gen) => gen(f),
+            Some(gen) => gen.invoke(f),
             None => f
         };
+
         let opts = task::TaskOpts {
             on_exit: on_exit,
             name: name,
             stack_size: stack_size,
         };
         if stdout.is_some() || stderr.is_some() {
-            Task::spawn(opts, proc() {
+            Task::spawn(opts, move|:| {
                 let _ = stdout.map(stdio::set_stdout);
                 let _ = stderr.map(stdio::set_stderr);
-                f();
-            })
+                f.invoke(());
+            });
         } else {
-            Task::spawn(opts, f)
+            Task::spawn(opts, move|:| f.invoke(()))
         }
     }
 
     /// Creates and executes a new child task.
     ///
     /// Sets up a new task with its own call stack and schedules it to run
-    /// the provided proc. The task has the properties and behavior
+    /// the provided function. The task has the properties and behavior
     /// specified by the `TaskBuilder`.
-    pub fn spawn(self, f: proc():Send) {
-        self.spawn_internal(f, None)
+    pub fn spawn<F:FnOnce()+Send>(self, f: F) {
+        self.spawn_internal(Thunk::new(f), None)
     }
 
-    /// Execute a proc in a newly-spawned task and return a future representing
+    /// Execute a function in a newly-spawned task and return a future representing
     /// the task's result. The task has the properties and behavior
     /// specified by the `TaskBuilder`.
     ///
@@ -178,20 +185,22 @@ impl TaskBuilder {
     /// `result::Result::Err` containing the argument to `panic!(...)` as an
     /// `Any` trait object.
     #[experimental = "Futures are experimental."]
-    pub fn try_future<T:Send>(self, f: proc():Send -> T)
-                              -> Future<Result<T, Box<Any + Send>>> {
-        // currently, the on_exit proc provided by librustrt only works for unit
+    pub fn try_future<T:Send,F:FnOnce()->(T)+Send>(self, f: F)
+                                                   -> Future<Result<T, Box<Any + Send>>> {
+        // currently, the on_exit fn provided by librustrt only works for unit
         // results, so we use an additional side-channel to communicate the
         // result.
 
         let (tx_done, rx_done) = channel(); // signal that task has exited
         let (tx_retv, rx_retv) = channel(); // return value from task
 
-        let on_exit = proc(res) { let _ = tx_done.send_opt(res); };
-        self.spawn_internal(proc() { let _ = tx_retv.send_opt(f()); },
+        let on_exit: Thunk<task::Result> = Thunk::with_arg(move |: res: task::Result| {
+            let _ = tx_done.send_opt(res);
+        });
+        self.spawn_internal(Thunk::new(move |:| { let _ = tx_retv.send_opt(f()); }),
                             Some(on_exit));
 
-        Future::from_fn(proc() {
+        Future::from_fn(move|:| {
             rx_done.recv().map(|_| rx_retv.recv())
         })
     }
@@ -199,7 +208,9 @@ impl TaskBuilder {
     /// Execute a function in a newly-spawnedtask and block until the task
     /// completes or panics. Equivalent to `.try_future(f).unwrap()`.
     #[unstable = "Error type may change."]
-    pub fn try<T:Send>(self, f: proc():Send -> T) -> Result<T, Box<Any + Send>> {
+    pub fn try<T,F>(self, f: F) -> Result<T, Box<Any + Send>>
+        where F : FnOnce() -> T, F : Send, T : Send
+    {
         self.try_future(f).into_inner()
     }
 }
@@ -212,7 +223,7 @@ impl TaskBuilder {
 /// the provided unique closure.
 ///
 /// This function is equivalent to `TaskBuilder::new().spawn(f)`.
-pub fn spawn(f: proc(): Send) {
+pub fn spawn<F:FnOnce()+Send>(f: F) {
     TaskBuilder::new().spawn(f)
 }
 
@@ -221,7 +232,9 @@ pub fn spawn(f: proc(): Send) {
 ///
 /// This is equivalent to `TaskBuilder::new().try`.
 #[unstable = "Error type may change."]
-pub fn try<T: Send>(f: proc(): Send -> T) -> Result<T, Box<Any + Send>> {
+pub fn try<T,F>(f: F) -> Result<T, Box<Any + Send>>
+    where T : Send, F : FnOnce() -> T, F : Send
+{
     TaskBuilder::new().try(f)
 }
 
@@ -230,10 +243,11 @@ pub fn try<T: Send>(f: proc(): Send -> T) -> Result<T, Box<Any + Send>> {
 ///
 /// This is equivalent to `TaskBuilder::new().try_future`.
 #[experimental = "Futures are experimental."]
-pub fn try_future<T:Send>(f: proc():Send -> T) -> Future<Result<T, Box<Any + Send>>> {
+pub fn try_future<T,F>(f: F) -> Future<Result<T, Box<Any + Send>>>
+    where T:Send, F:FnOnce()->T, F:Send
+{
     TaskBuilder::new().try_future(f)
 }
-
 
 /* Lifecycle functions */
 
@@ -274,6 +288,8 @@ mod test {
     use result;
     use std::io::{ChanReader, ChanWriter};
     use string::String;
+    use thunk::Thunk;
+    use prelude::*;
     use super::*;
 
     // !!! These tests are dangerous. If something is buggy, they will hang, !!!
@@ -281,28 +297,28 @@ mod test {
 
     #[test]
     fn test_unnamed_task() {
-        try(proc() {
+        try(move|| {
             assert!(name().is_none());
         }).map_err(|_| ()).unwrap();
     }
 
     #[test]
     fn test_owned_named_task() {
-        TaskBuilder::new().named("ada lovelace".to_string()).try(proc() {
+        TaskBuilder::new().named("ada lovelace".to_string()).try(move|| {
             assert!(name().unwrap() == "ada lovelace");
         }).map_err(|_| ()).unwrap();
     }
 
     #[test]
     fn test_static_named_task() {
-        TaskBuilder::new().named("ada lovelace").try(proc() {
+        TaskBuilder::new().named("ada lovelace").try(move|| {
             assert!(name().unwrap() == "ada lovelace");
         }).map_err(|_| ()).unwrap();
     }
 
     #[test]
     fn test_send_named_task() {
-        TaskBuilder::new().named("ada lovelace".into_cow()).try(proc() {
+        TaskBuilder::new().named("ada lovelace".into_cow()).try(move|| {
             assert!(name().unwrap() == "ada lovelace");
         }).map_err(|_| ()).unwrap();
     }
@@ -310,7 +326,7 @@ mod test {
     #[test]
     fn test_run_basic() {
         let (tx, rx) = channel();
-        TaskBuilder::new().spawn(proc() {
+        TaskBuilder::new().spawn(move|| {
             tx.send(());
         });
         rx.recv();
@@ -318,10 +334,10 @@ mod test {
 
     #[test]
     fn test_try_future() {
-        let result = TaskBuilder::new().try_future(proc() {});
+        let result = TaskBuilder::new().try_future(move|| {});
         assert!(result.unwrap().is_ok());
 
-        let result = TaskBuilder::new().try_future(proc() -> () {
+        let result = TaskBuilder::new().try_future(move|| -> () {
             panic!();
         });
         assert!(result.unwrap().is_err());
@@ -329,7 +345,7 @@ mod test {
 
     #[test]
     fn test_try_success() {
-        match try(proc() {
+        match try(move|| {
             "Success!".to_string()
         }).as_ref().map(|s| s.as_slice()) {
             result::Result::Ok("Success!") => (),
@@ -339,7 +355,7 @@ mod test {
 
     #[test]
     fn test_try_panic() {
-        match try(proc() {
+        match try(move|| {
             panic!()
         }) {
             result::Result::Err(_) => (),
@@ -355,7 +371,7 @@ mod test {
 
         fn f(i: int, tx: Sender<()>) {
             let tx = tx.clone();
-            spawn(proc() {
+            spawn(move|| {
                 if i == 0 {
                     tx.send(());
                 } else {
@@ -372,8 +388,8 @@ mod test {
     fn test_spawn_sched_childs_on_default_sched() {
         let (tx, rx) = channel();
 
-        spawn(proc() {
-            spawn(proc() {
+        spawn(move|| {
+            spawn(move|| {
                 tx.send(());
             });
         });
@@ -382,17 +398,17 @@ mod test {
     }
 
     fn avoid_copying_the_body<F>(spawnfn: F) where
-        F: FnOnce(proc():Send),
+        F: FnOnce(Thunk),
     {
         let (tx, rx) = channel::<uint>();
 
         let x = box 1;
         let x_in_parent = (&*x) as *const int as uint;
 
-        spawnfn(proc() {
+        spawnfn(Thunk::new(move|| {
             let x_in_child = (&*x) as *const int as uint;
             tx.send(x_in_child);
-        });
+        }));
 
         let x_in_child = rx.recv();
         assert_eq!(x_in_parent, x_in_child);
@@ -400,25 +416,21 @@ mod test {
 
     #[test]
     fn test_avoid_copying_the_body_spawn() {
-        avoid_copying_the_body(spawn);
+        avoid_copying_the_body(|t| spawn(move|| t.invoke(())));
     }
 
     #[test]
     fn test_avoid_copying_the_body_task_spawn() {
         avoid_copying_the_body(|f| {
             let builder = TaskBuilder::new();
-            builder.spawn(proc() {
-                f();
-            });
+            builder.spawn(move|| f.invoke(()));
         })
     }
 
     #[test]
     fn test_avoid_copying_the_body_try() {
         avoid_copying_the_body(|f| {
-            let _ = try(proc() {
-                f()
-            });
+            let _ = try(move|| f.invoke(()));
         })
     }
 
@@ -429,24 +441,24 @@ mod test {
         // (well, it would if the constant were 8000+ - I lowered it to be more
         // valgrind-friendly. try this at home, instead..!)
         static GENERATIONS: uint = 16;
-        fn child_no(x: uint) -> proc(): Send {
-            return proc() {
+        fn child_no(x: uint) -> Thunk {
+            return Thunk::new(move|| {
                 if x < GENERATIONS {
-                    TaskBuilder::new().spawn(child_no(x+1));
+                    TaskBuilder::new().spawn(move|| child_no(x+1).invoke(()));
                 }
-            }
+            });
         }
-        TaskBuilder::new().spawn(child_no(0));
+        TaskBuilder::new().spawn(|| child_no(0).invoke(()));
     }
 
     #[test]
     fn test_simple_newsched_spawn() {
-        spawn(proc()())
+        spawn(move|| ())
     }
 
     #[test]
     fn test_try_panic_message_static_str() {
-        match try(proc() {
+        match try(move|| {
             panic!("static string");
         }) {
             Err(e) => {
@@ -460,7 +472,7 @@ mod test {
 
     #[test]
     fn test_try_panic_message_owned_str() {
-        match try(proc() {
+        match try(move|| {
             panic!("owned string".to_string());
         }) {
             Err(e) => {
@@ -474,7 +486,7 @@ mod test {
 
     #[test]
     fn test_try_panic_message_any() {
-        match try(proc() {
+        match try(move|| {
             panic!(box 413u16 as Box<Any + Send>);
         }) {
             Err(e) => {
@@ -492,7 +504,7 @@ mod test {
     fn test_try_panic_message_unit_struct() {
         struct Juju;
 
-        match try(proc() {
+        match try(move|| {
             panic!(Juju)
         }) {
             Err(ref e) if e.is::<Juju>() => {}
@@ -507,7 +519,7 @@ mod test {
         let stdout = ChanWriter::new(tx);
 
         let r = TaskBuilder::new().stdout(box stdout as Box<Writer + Send>)
-                                  .try(proc() {
+                                  .try(move|| {
                 print!("Hello, world!");
             });
         assert!(r.is_ok());
@@ -527,7 +539,7 @@ fn task_abort_no_kill_runtime() {
     use mem;
 
     let tb = TaskBuilder::new();
-    let rx = tb.try_future(proc() {});
+    let rx = tb.try_future(move|| {});
     mem::drop(rx);
     timer::sleep(Duration::milliseconds(1000));
 }

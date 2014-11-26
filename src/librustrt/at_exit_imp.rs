@@ -18,10 +18,11 @@ use alloc::boxed::Box;
 use collections::vec::Vec;
 use core::atomic;
 use core::mem;
+use thunk::{Thunk};
 
 use exclusive::Exclusive;
 
-type Queue = Exclusive<Vec<proc():Send>>;
+type Queue = Exclusive<Vec<Thunk>>;
 
 static QUEUE: atomic::AtomicUint = atomic::INIT_ATOMIC_UINT;
 static RUNNING: atomic::AtomicBool = atomic::INIT_ATOMIC_BOOL;
@@ -34,7 +35,7 @@ pub fn init() {
     }
 }
 
-pub fn push(f: proc():Send) {
+pub fn push(f: Thunk) {
     unsafe {
         // Note that the check against 0 for the queue pointer is not atomic at
         // all with respect to `run`, meaning that this could theoretically be a
@@ -59,6 +60,6 @@ pub fn run() {
     };
 
     for to_run in cur.into_iter() {
-        to_run();
+        to_run.invoke(());
     }
 }

@@ -531,8 +531,11 @@ impl Process {
     }
 }
 
-fn with_argv<T>(prog: &CString, args: &[CString],
-                cb: proc(*const *const libc::c_char) -> T) -> T {
+fn with_argv<T,F>(prog: &CString, args: &[CString],
+                  cb: F)
+                  -> T
+    where F : FnOnce(*const *const libc::c_char) -> T
+{
     let mut ptrs: Vec<*const libc::c_char> = Vec::with_capacity(args.len()+1);
 
     // Convert the CStrings into an array of pointers. Note: the
@@ -549,9 +552,12 @@ fn with_argv<T>(prog: &CString, args: &[CString],
     cb(ptrs.as_ptr())
 }
 
-fn with_envp<K, V, T>(env: Option<&collections::HashMap<K, V>>,
-                      cb: proc(*const c_void) -> T) -> T
-    where K: BytesContainer + Eq + Hash, V: BytesContainer
+fn with_envp<K,V,T,F>(env: Option<&collections::HashMap<K, V>>,
+                      cb: F)
+                      -> T
+    where F : FnOnce(*const c_void) -> T,
+          K : BytesContainer + Eq + Hash,
+          V : BytesContainer
 {
     // On posixy systems we can pass a char** for envp, which is a
     // null-terminated array of "k=v\0" strings. Since we must create
