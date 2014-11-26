@@ -180,6 +180,9 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         AdjustAddEnv(def_id, _) => {
             datum = unpack_datum!(bcx, add_env(bcx, def_id, expr, datum));
         }
+        AdjustReifyFnPointer(_def_id) => {
+            // FIXME(#19925) once fn item types are
+            // zero-sized, we'll need to do something here
         }
         AdjustDerefRef(ref adj) => {
             let (autoderefs, use_autoref) = match adj.autoref {
