@@ -113,8 +113,7 @@ for custom mappings.
 
 ```rust
 extern crate serialize;
-use serialize::json::ToJson;
-use serialize::json;
+use serialize::json::{mod, ToJson, Json};
 
 // A custom data structure
 struct ComplexNum {
@@ -125,7 +124,7 @@ struct ComplexNum {
 // JSON value representation
 impl ToJson for ComplexNum {
     fn to_json(&self) -> json::Json {
-        json::String(format!("{}+{}i", self.a, self.b))
+        Json::String(format!("{}+{}i", self.a, self.b))
     }
 }
 
@@ -154,8 +153,7 @@ fn main() {
 ```rust
 extern crate serialize;
 use std::collections::TreeMap;
-use serialize::json::ToJson;
-use serialize::json;
+use serialize::json::{mod, ToJson, Json};
 
 // Only generate `Decodable` trait implementation
 #[deriving(Decodable)]
@@ -173,7 +171,7 @@ impl ToJson for TestStruct {
         d.insert("data_int".to_string(), self.data_int.to_json());
         d.insert("data_str".to_string(), self.data_str.to_json());
         d.insert("data_vector".to_string(), self.data_vector.to_json());
-        json::Object(d)
+        Json::Object(d)
     }
 }
 
@@ -184,7 +182,7 @@ fn main() {
         data_str: "toto".to_string(),
         data_vector: vec![2,3,4,5],
     };
-    let json_obj: json::Json = input_data.to_json();
+    let json_obj: Json = input_data.to_json();
     let json_str: String = json_obj.to_string();
 
     // Deserialize like before

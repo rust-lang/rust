@@ -205,11 +205,12 @@ macro_rules! debug_assert_eq(
 ///
 /// ```rust
 /// fn foo(x: Option<int>) {
-///    match x {
-///     Some(n) if n >= 0 => println!("Some(Non-negative)"),
-///     Some(n) if n <  0 => println!("Some(Negative)"),
-///     Some(_)           => unreachable!(), // compile error if commented out
-///     None              => println!("None")
+///     match x {
+///         Some(n) if n >= 0 => println!("Some(Non-negative)"),
+///         Some(n) if n <  0 => println!("Some(Negative)"),
+///         Some(_)           => unreachable!(), // compile error if commented out
+///         None              => println!("None")
+///     }
 /// }
 /// ```
 ///

@@ -13,10 +13,15 @@
 // Test that `F : Fn(int) -> int + Send` is interpreted as two
 // distinct bounds on `F`.
 
-fn foo<F>(f: F)
+fn foo1<F>(f: F)
     where F : FnOnce(int) -> int + Send
 {
     bar(f);
+}
+
+fn foo2<F>(f: F)
+    where F : FnOnce(int) -> int + Send
+{
     baz(f);
 }
 

@@ -35,7 +35,8 @@ use std::io::File;
 use std::io;
 use std::rc::Rc;
 use externalfiles::ExternalHtml;
-use serialize::{json, Decodable, Encodable};
+use serialize::{Decodable, Encodable};
+use serialize::json::{mod, Json};
 
 // reexported from `clean` so it can be easily updated with the mod itself
 pub use clean::SCHEMA_VERSION;
@@ -425,11 +426,11 @@ fn json_input(input: &str) -> Result<Output, String> {
     };
     match json::from_reader(&mut input) {
         Err(s) => Err(s.to_string()),
-        Ok(json::Object(obj)) => {
+        Ok(Json::Object(obj)) => {
             let mut obj = obj;
             // Make sure the schema is what we expect
             match obj.remove(&"schema".to_string()) {
-                Some(json::String(version)) => {
+                Some(Json::String(version)) => {
                     if version.as_slice() != SCHEMA_VERSION {
                         return Err(format!(
                                 "sorry, but I only understand version {}",
@@ -468,7 +469,7 @@ fn json_output(krate: clean::Crate, res: Vec<plugins::PluginJson> ,
     //   "plugins": { output of plugins ... }
     // }
     let mut json = std::collections::TreeMap::new();
-    json.insert("schema".to_string(), json::String(SCHEMA_VERSION.to_string()));
+    json.insert("schema".to_string(), Json::String(SCHEMA_VERSION.to_string()));
     let plugins_json = res.into_iter()
                           .filter_map(|opt| {
                               match opt {
@@ -495,8 +496,8 @@ fn json_output(krate: clean::Crate, res: Vec<plugins::PluginJson> ,
     };
 
     json.insert("crate".to_string(), crate_json);
-    json.insert("plugins".to_string(), json::Object(plugins_json));
+    json.insert("plugins".to_string(), Json::Object(plugins_json));
 
     let mut file = try!(File::create(&dst));
-    json::Object(json).to_writer(&mut file)
+    Json::Object(json).to_writer(&mut file)
 }
