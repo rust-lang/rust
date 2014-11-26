@@ -15,8 +15,8 @@ use std::os;
 /// Returns an absolute path in the filesystem that `path` points to. The
 /// returned path does not contain any symlinks in its hierarchy.
 pub fn realpath(original: &Path) -> io::IoResult<Path> {
-    static MAX_LINKS_FOLLOWED: uint = 256;
-    let original = os::make_absolute(original).unwrap();
+    const MAX_LINKS_FOLLOWED: uint = 256;
+    let original = try!(os::make_absolute(original));
 
     // Right now lstat on windows doesn't work quite well
     if cfg!(windows) {

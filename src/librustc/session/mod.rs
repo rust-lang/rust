@@ -238,12 +238,13 @@ pub fn build_session_(sopts: config::Options,
         None => Some(filesearch::get_or_default_sysroot())
     };
 
+    let cwd = os::getcwd().unwrap();
     // Make the path absolute, if necessary
     let local_crate_source_file = local_crate_source_file.map(|path|
         if path.is_absolute() {
             path.clone()
         } else {
-            os::getcwd().unwrap().join(&path)
+            cwd.clone().join(&path)
         }
     );
 
@@ -258,7 +259,7 @@ pub fn build_session_(sopts: config::Options,
         plugin_registrar_fn: Cell::new(None),
         default_sysroot: default_sysroot,
         local_crate_source_file: local_crate_source_file,
-        working_dir: os::getcwd().unwrap(),
+        working_dir: cwd,
         lint_store: RefCell::new(lint::LintStore::new()),
         lints: RefCell::new(NodeMap::new()),
         crate_types: RefCell::new(Vec::new()),

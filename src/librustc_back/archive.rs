@@ -281,12 +281,12 @@ impl<'a> ArchiveBuilder<'a> {
 
     fn add_archive(&mut self, archive: &Path, name: &str,
                    skip: |&str| -> bool) -> io::IoResult<()> {
-        let loc = TempDir::new("rsar").unwrap();
+        let loc = try!(TempDir::new("rsar"));
 
         // First, extract the contents of the archive to a temporary directory.
         // We don't unpack directly into `self.work_dir` due to the possibility
         // of filename collisions.
-        let archive = os::make_absolute(archive).unwrap();
+        let archive = try!(os::make_absolute(archive));
         run_ar(self.archive.handler, &self.archive.maybe_ar_prog,
                "x", Some(loc.path()), &[&archive]);
 
