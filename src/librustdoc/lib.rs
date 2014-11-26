@@ -10,8 +10,6 @@
 
 #![crate_name = "rustdoc"]
 #![experimental]
-#![desc = "rustdoc, the Rust documentation extractor"]
-#![license = "MIT/ASL2"]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
 

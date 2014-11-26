@@ -777,13 +777,8 @@ metadata that influences the behavior of the compiler.
 
 ```{.rust}
 # #![allow(unused_attribute)]
-// Crate ID
-#![crate_id = "projx#2.5"]
-
-// Additional metadata attributes
-#![desc = "Project X"]
-#![license = "BSD"]
-#![comment = "This is a comment on Project X."]
+// Crate name
+#![crate_name = "projx"]
 
 // Specify the output type
 #![crate_type = "lib"]
@@ -1961,7 +1956,7 @@ An example of attributes:
 
 ```{.rust}
 // General metadata applied to the enclosing module or crate.
-#![license = "BSD"]
+#![crate_type = "lib"]
 
 // A function marked as a unit test
 #[test]
