@@ -15,7 +15,7 @@ pub use self::BucketState::*;
 use clone::Clone;
 use cmp;
 use hash::{Hash, Hasher};
-use iter::{Iterator, count};
+use iter::{Iterator, DoubleEndedIterator, ExactSize, count};
 use kinds::{Sized, marker};
 use mem::{min_align_of, size_of};
 use mem;
@@ -645,6 +645,7 @@ impl<K, V> RawTable<K, V> {
     fn raw_buckets(&self) -> RawBuckets<K, V> {
         RawBuckets {
             raw: self.first_bucket_raw(),
+            hashes_start: self.hashes,
             hashes_end: unsafe {
                 self.hashes.offset(self.capacity as int)
             },
@@ -667,11 +668,12 @@ impl<K, V> RawTable<K, V> {
     }
 
     pub fn into_iter(self) -> MoveEntries<K, V> {
-        let RawBuckets { raw, hashes_end, .. } = self.raw_buckets();
+        let RawBuckets { raw, hashes_start, hashes_end, .. } = self.raw_buckets();
         // Replace the marker regardless of lifetime bounds on parameters.
         MoveEntries {
             iter: RawBuckets {
                 raw: raw,
+                hashes_start: hashes_start,
                 hashes_end: hashes_end,
                 marker: marker::ContravariantLifetime,
             },
@@ -696,7 +698,8 @@ impl<K, V> RawTable<K, V> {
 /// this interface is safe, it's not used outside this module.
 struct RawBuckets<'a, K, V> {
     raw: RawBucket<K, V>,
-    hashes_end: *mut u64,
+    hashes_start: *mut u64, // points to the hash before the first hash.
+    hashes_end:   *mut u64,
     marker: marker::ContravariantLifetime<'a>,
 }
 
@@ -709,6 +712,21 @@ impl<'a, K, V> Iterator<RawBucket<K, V>> for RawBuckets<'a, K, V> {
                 let prev = ptr::replace(&mut self.raw, self.raw.offset(1));
                 if *prev.hash != EMPTY_BUCKET {
                     return Some(prev);
+                }
+            }
+        }
+
+        None
+    }
+}
+
+impl<'a, K, V> DoubleEndedIterator<RawBucket<K, V>> for RawBuckets<'a, K, V> {
+    fn next_back(&mut self) -> Option<RawBucket<K, V>> {
+        while self.raw.hash != self.hashes_start {
+            unsafe {
+                let next = ptr::replace(&mut self.raw, self.raw.offset(-1));
+                if *next.hash != EMPTY_BUCKET {
+                    return Some(next);
                 }
             }
         }
@@ -785,6 +803,20 @@ impl<'a, K, V> Iterator<(&'a K, &'a V)> for Entries<'a, K, V> {
     }
 }
 
+impl<'a, K, V> DoubleEndedIterator<(&'a K, &'a V)> for Entries<'a, K, V> {
+    fn next_back(&mut self) -> Option<(&'a K, &'a V)> {
+        self.iter.next_back().map(|bucket| {
+            self.elems_left += 1;
+            unsafe {
+                (&*bucket.key,
+                &*bucket.val)
+            }
+        })
+    }
+}
+
+impl<'a, K, V> ExactSize<(&'a K, &'a V)> for Entries<'a, K, V> {}
+
 impl<'a, K, V> Iterator<(&'a K, &'a mut V)> for MutEntries<'a, K, V> {
     fn next(&mut self) -> Option<(&'a K, &'a mut V)> {
         self.iter.next().map(|bucket| {
@@ -800,6 +832,20 @@ impl<'a, K, V> Iterator<(&'a K, &'a mut V)> for MutEntries<'a, K, V> {
         (self.elems_left, Some(self.elems_left))
     }
 }
+
+impl<'a, K, V> DoubleEndedIterator<(&'a K, &'a mut V)> for MutEntries<'a, K, V> {
+    fn next_back(&mut self) -> Option<(&'a K, &'a mut V)> {
+        self.iter.next().map(|bucket| {
+            self.elems_left += 1;
+            unsafe {
+                (&*bucket.key,
+                 &mut *bucket.val)
+            }
+        })
+    }
+}
+
+impl<'a, K, V> ExactSize<(&'a K, &'a mut V)> for MutEntries<'a, K, V> {}
 
 impl<K, V> Iterator<(SafeHash, K, V)> for MoveEntries<K, V> {
     fn next(&mut self) -> Option<(SafeHash, K, V)> {
@@ -822,6 +868,25 @@ impl<K, V> Iterator<(SafeHash, K, V)> for MoveEntries<K, V> {
         (size, Some(size))
     }
 }
+
+impl<K, V> DoubleEndedIterator<(SafeHash, K, V)> for MoveEntries<K, V> {
+    fn next_back(&mut self) -> Option<(SafeHash, K, V)> {
+        self.iter.next().map(|bucket| {
+            self.table.size += 1;
+            unsafe {
+                (
+                    SafeHash {
+                        hash: *bucket.hash,
+                    },
+                    ptr::read(bucket.key as *const K),
+                    ptr::read(bucket.val as *const V)
+                )
+            }
+        })
+    }
+}
+
+impl<K, V> ExactSize<(SafeHash, K, V)> for MoveEntries<K, V> {}
 
 impl<K: Clone, V: Clone> Clone for RawTable<K, V> {
     fn clone(&self) -> RawTable<K, V> {

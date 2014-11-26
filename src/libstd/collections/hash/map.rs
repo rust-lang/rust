@@ -20,7 +20,7 @@ use cmp::{max, Eq, Equiv, PartialEq};
 use default::Default;
 use fmt::{mod, Show};
 use hash::{Hash, Hasher, RandomSipHasher};
-use iter::{mod, Iterator, FromIterator, Extend};
+use iter::{mod, Iterator, DoubleEndedIterator, ExactSize, FromIterator, Extend};
 use kinds::Sized;
 use mem::{mod, replace};
 use num::UnsignedInt;
@@ -1325,6 +1325,15 @@ impl<'a, K, V> Iterator<(&'a K, &'a V)> for Entries<'a, K, V> {
     }
 }
 
+impl<'a, K, V> DoubleEndedIterator<(&'a K, &'a V)> for Entries<'a, K, V> {
+    #[inline]
+    fn next_back(&mut self) -> Option<(&'a K, &'a V)> {
+        self.inner.next_back()
+    }
+}
+
+impl<'a, K, V> ExactSize<(&'a K, &'a V)> for Entries<'a, K, V> {}
+
 impl<'a, K, V> Iterator<(&'a K, &'a mut V)> for MutEntries<'a, K, V> {
     #[inline]
     fn next(&mut self) -> Option<(&'a K, &'a mut V)> {
@@ -1336,6 +1345,15 @@ impl<'a, K, V> Iterator<(&'a K, &'a mut V)> for MutEntries<'a, K, V> {
     }
 }
 
+impl<'a, K, V> DoubleEndedIterator<(&'a K, &'a mut V)> for MutEntries<'a, K, V> {
+    #[inline]
+    fn next_back(&mut self) -> Option<(&'a K, &'a mut V)> {
+        self.inner.next_back()
+    }
+}
+
+impl<'a, K, V> ExactSize<(&'a K, &'a mut V)> for MutEntries<'a, K, V> {}
+
 impl<K, V> Iterator<(K, V)> for MoveEntries<K, V> {
     #[inline]
     fn next(&mut self) -> Option<(K, V)> {
@@ -1346,6 +1364,15 @@ impl<K, V> Iterator<(K, V)> for MoveEntries<K, V> {
         self.inner.size_hint()
     }
 }
+
+impl<K, V> DoubleEndedIterator<(K, V)> for MoveEntries<K, V> {
+    #[inline]
+    fn next_back(&mut self) -> Option<(K, V)> {
+        self.inner.next_back()
+    }
+}
+
+impl<K, V> ExactSize<(K, V)> for MoveEntries<K, V> {}
 
 impl<'a, K, V> OccupiedEntry<'a, K, V> {
     /// Gets a reference to the value in the entry
