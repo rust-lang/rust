@@ -96,11 +96,11 @@ use middle::ty::{mod, Ty};
 use middle::ty::liberate_late_bound_regions;
 use middle::ty::{MethodCall, MethodCallee, MethodMap, ObjectCastMap};
 use middle::ty_fold::TypeFolder;
-use middle::typeck::astconv::{mod, ast_region_to_region, ast_ty_to_ty, AstConv};
-use middle::typeck::check::_match::pat_ctxt;
-use middle::typeck::rscope::RegionScope;
-use middle::typeck::{CrateCtxt, lookup_def_ccx, no_params, require_same_types};
-use middle::typeck::TypeAndSubsts;
+use typeck::astconv::{mod, ast_region_to_region, ast_ty_to_ty, AstConv};
+use typeck::check::_match::pat_ctxt;
+use typeck::rscope::RegionScope;
+use typeck::{CrateCtxt, lookup_def_ccx, no_params, require_same_types};
+use typeck::TypeAndSubsts;
 use middle::lang_items::TypeIdLangItem;
 use lint;
 use util::common::{block_query, indenter, loop_query};
@@ -1873,13 +1873,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    /// Fetch type of `expr` after applying adjustments that have been recorded in the fcx.
-    pub fn expr_ty_adjusted(&self, expr: &ast::Expr) -> Ty<'tcx> {
-        let adjustments = self.inh.adjustments.borrow();
-        let adjustment = adjustments.get(&expr.id);
-        self.adjust_expr_ty(expr, adjustment)
-    }
-
     /// Apply `adjustment` to the type of `expr`
     pub fn adjust_expr_ty(&self,
                           expr: &ast::Expr,
@@ -1930,16 +1923,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     sup: Ty<'tcx>)
                     -> Result<(), ty::type_err<'tcx>> {
         infer::mk_subty(self.infcx(), a_is_expected, origin, sub, sup)
-    }
-
-    pub fn can_mk_subty(&self, sub: Ty<'tcx>, sup: Ty<'tcx>)
-                        -> Result<(), ty::type_err<'tcx>> {
-        infer::can_mk_subty(self.infcx(), sub, sup)
-    }
-
-    pub fn can_mk_eqty(&self, sub: Ty<'tcx>, sup: Ty<'tcx>)
-                       -> Result<(), ty::type_err<'tcx>> {
-        infer::can_mk_eqty(self.infcx(), sub, sup)
     }
 
     pub fn mk_assignty(&self,

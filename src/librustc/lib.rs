@@ -95,9 +95,11 @@ pub mod middle {
     pub mod traits;
     pub mod ty;
     pub mod ty_fold;
-    pub mod typeck;
     pub mod weak_lang_items;
 }
+
+#[path="middle/typeck/mod.rs"]
+pub mod typeck;
 
 pub mod metadata;
 

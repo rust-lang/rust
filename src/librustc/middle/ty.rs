@@ -6192,3 +6192,29 @@ impl<'tcx> Repr<'tcx> for vtable_origin<'tcx> {
         }
     }
 }
+
+pub fn make_substs_for_receiver_types<'tcx>(tcx: &ty::ctxt<'tcx>,
+                                            trait_ref: &ty::TraitRef<'tcx>,
+                                            method: &ty::Method<'tcx>)
+                                            -> subst::Substs<'tcx>
+{
+    /*!
+     * Substitutes the values for the receiver's type parameters
+     * that are found in method, leaving the method's type parameters
+     * intact.
+     */
+
+    let meth_tps: Vec<Ty> =
+        method.generics.types.get_slice(subst::FnSpace)
+              .iter()
+              .map(|def| ty::mk_param_from_def(tcx, def))
+              .collect();
+    let meth_regions: Vec<ty::Region> =
+        method.generics.regions.get_slice(subst::FnSpace)
+              .iter()
+              .map(|def| ty::ReEarlyBound(def.def_id.node, def.space,
+                                          def.index, def.name))
+              .collect();
+    trait_ref.substs.clone().with_method(meth_tps, meth_regions)
+}
+

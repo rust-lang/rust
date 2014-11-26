@@ -12,10 +12,10 @@ use middle::def;
 use middle::pat_util::{PatIdMap, pat_id_map, pat_is_binding, pat_is_const};
 use middle::subst::{Subst, Substs};
 use middle::ty::{mod, Ty};
-use middle::typeck::check::{check_expr, check_expr_has_type, demand, FnCtxt};
-use middle::typeck::check::{instantiate_path, structurally_resolved_type, valid_range_bounds};
+use typeck::check::{check_expr, check_expr_has_type, demand, FnCtxt};
+use typeck::check::{instantiate_path, structurally_resolved_type, valid_range_bounds};
 use middle::infer::{mod, resolve};
-use middle::typeck::require_same_types;
+use typeck::require_same_types;
 use util::nodemap::FnvHashMap;
 
 use std::cmp;

@@ -10,7 +10,7 @@
 
 
 use middle::ty::{mod, Ty};
-use middle::typeck::check::FnCtxt;
+use typeck::check::FnCtxt;
 use middle::infer;
 use middle::infer::resolve_type;
 use middle::infer::resolve::try_resolve_tvar_shallow;
@@ -27,12 +27,6 @@ pub fn suptype<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>, sp: Span,
                          expected: Ty<'tcx>, actual: Ty<'tcx>) {
     suptype_with_fn(fcx, sp, false, expected, actual,
         |sp, e, a, s| { fcx.report_mismatched_types(sp, e, a, s) })
-}
-
-pub fn subtype<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>, sp: Span,
-                         expected: Ty<'tcx>, actual: Ty<'tcx>) {
-    suptype_with_fn(fcx, sp, true, actual, expected,
-        |sp, a, e, s| { fcx.report_mismatched_types(sp, e, a, s) })
 }
 
 pub fn suptype_with_fn<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
