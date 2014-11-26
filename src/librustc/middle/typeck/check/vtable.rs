@@ -15,7 +15,7 @@ use middle::traits::{Obligation, obligation_for_builtin_bound};
 use middle::traits::{FulfillmentError, CodeSelectionError, CodeAmbiguity};
 use middle::traits::{ObligationCause};
 use middle::ty::{mod, Ty};
-use middle::typeck::check::{FnCtxt,
+use typeck::check::{FnCtxt,
                             structurally_resolved_type};
 use middle::infer;
 use std::rc::Rc;

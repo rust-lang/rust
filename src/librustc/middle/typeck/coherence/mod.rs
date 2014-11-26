@@ -19,7 +19,6 @@
 use metadata::csearch::{each_impl, get_impl_trait};
 use metadata::csearch;
 use middle::subst;
-use middle::subst::{Substs};
 use middle::ty::{ImplContainer, ImplOrTraitItemId, MethodTraitItemId};
 use middle::ty::{TypeTraitItemId, lookup_item_type};
 use middle::ty::{Ty, ty_bool, ty_char, ty_enum, ty_err};
@@ -31,7 +30,7 @@ use middle::ty::{ty_closure};
 use middle::ty::type_is_ty_var;
 use middle::subst::Subst;
 use middle::ty;
-use middle::typeck::CrateCtxt;
+use typeck::CrateCtxt;
 use middle::infer::combine::Combine;
 use middle::infer::InferCtxt;
 use middle::infer::{new_infer_ctxt, resolve_ivar, resolve_type};
@@ -477,27 +476,6 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
     }
 }
 
-/// Substitutes the values for the receiver's type parameters that are found in method, leaving the
-/// method's type parameters intact.
-pub fn make_substs_for_receiver_types<'tcx>(tcx: &ty::ctxt<'tcx>,
-                                            trait_ref: &ty::TraitRef<'tcx>,
-                                            method: &ty::Method<'tcx>)
-                                            -> subst::Substs<'tcx>
-{
-    let meth_tps: Vec<Ty> =
-        method.generics.types.get_slice(subst::FnSpace)
-              .iter()
-              .map(|def| ty::mk_param_from_def(tcx, def))
-              .collect();
-    let meth_regions: Vec<ty::Region> =
-        method.generics.regions.get_slice(subst::FnSpace)
-              .iter()
-              .map(|def| ty::ReEarlyBound(def.def_id.node, def.space,
-                                          def.index, def.name))
-              .collect();
-    trait_ref.substs.clone().with_method(meth_tps, meth_regions)
-}
-
 fn subst_receiver_types_in_method_ty<'tcx>(tcx: &ty::ctxt<'tcx>,
                                            impl_id: ast::DefId,
                                            impl_poly_type: &ty::Polytype<'tcx>,
@@ -507,7 +485,7 @@ fn subst_receiver_types_in_method_ty<'tcx>(tcx: &ty::ctxt<'tcx>,
                                            provided_source: Option<ast::DefId>)
                                            -> ty::Method<'tcx>
 {
-    let combined_substs = make_substs_for_receiver_types(tcx, trait_ref, method);
+    let combined_substs = ty::make_substs_for_receiver_types(tcx, trait_ref, method);
 
     debug!("subst_receiver_types_in_method_ty: combined_substs={}",
            combined_substs.repr(tcx));

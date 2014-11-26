@@ -15,9 +15,9 @@ use middle::traits;
 use middle::ty::{mod, Ty};
 use middle::ty::liberate_late_bound_regions;
 use middle::ty_fold::{TypeFolder, TypeFoldable};
-use middle::typeck::astconv::AstConv;
-use middle::typeck::check::{FnCtxt, Inherited, blank_fn_ctxt, vtable, regionck};
-use middle::typeck::CrateCtxt;
+use typeck::astconv::AstConv;
+use typeck::check::{FnCtxt, Inherited, blank_fn_ctxt, vtable, regionck};
+use typeck::CrateCtxt;
 use util::ppaux::Repr;
 
 use std::collections::HashSet;
