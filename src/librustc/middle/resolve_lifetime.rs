@@ -162,7 +162,7 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
                     visit::walk_ty(this, ty);
                 });
             }
-            ast::TyPath(ref path, ref opt_bounds, id) => {
+            ast::TyPath(ref path, id) => {
                 // if this path references a trait, then this will resolve to
                 // a trait ref, which introduces a binding scope.
                 match self.def_map.borrow().get(&id) {
@@ -170,13 +170,6 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
                         self.with(LateScope(&Vec::new(), self.scope), |this| {
                             this.visit_path(path, id);
                         });
-
-                        match *opt_bounds {
-                            Some(ref bounds) => {
-                                visit::walk_ty_param_bounds_helper(self, bounds);
-                            }
-                            None => { }
-                        }
                     }
                     _ => {
                         visit::walk_ty(self, ty);

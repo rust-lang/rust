@@ -10,20 +10,26 @@
 
 #![feature(unboxed_closures)]
 
-trait Foo {}
+// Test that we suggest the correct parentheses
 
-struct Bar;
-
-impl<'a> std::ops::Fn<(&'a (Foo+'a),), ()> for Bar {
-    extern "rust-call" fn call(&self, _: (&'a Foo,)) {}
+trait Bar {
+    fn dummy(&self) { }
 }
 
-struct Baz;
+struct Foo<'a> {
+    a: &'a Bar+'a,
+        //~^ ERROR E0171
+        //~^^ NOTE perhaps you meant `&'a (Bar + 'a)`?
 
-impl Foo for Baz {}
+    b: &'a mut Bar+'a,
+        //~^ ERROR E0171
+        //~^^ NOTE perhaps you meant `&'a mut (Bar + 'a)`?
 
-fn main() {
-    let bar = Bar;
-    let baz = &Baz;
-    bar(baz);
+    c: Box<Bar+'a>, // OK, no paren needed in this context
+
+    d: fn() -> Bar+'a,
+        //~^ ERROR E0171
+        //~^^ NOTE perhaps you forgot parentheses
 }
+
+fn main() { }
