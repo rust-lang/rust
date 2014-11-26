@@ -35,9 +35,7 @@ macro_rules! ty (
     ($e:expr) => ( Type::from_ref(unsafe { $e }))
 )
 
-/**
- * Wrapper for LLVM TypeRef
- */
+/// Wrapper for LLVM TypeRef
 impl Type {
     #[inline(always)]
     pub fn from_ref(r: TypeRef) -> Type {

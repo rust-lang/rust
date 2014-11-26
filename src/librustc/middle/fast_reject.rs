@@ -13,7 +13,7 @@ use syntax::ast;
 
 use self::SimplifiedType::*;
 
-/** See `simplify_type */
+/// See `simplify_type
 #[deriving(Clone, PartialEq, Eq, Hash)]
 pub enum SimplifiedType {
     BoolSimplifiedType,

@@ -24,22 +24,19 @@ use syntax::codemap::{Span, DUMMY_SP};
 
 ///////////////////////////////////////////////////////////////////////////
 
-/**
- * A substitution mapping type/region parameters to new values. We
- * identify each in-scope parameter by an *index* and a *parameter
- * space* (which indices where the parameter is defined; see
- * `ParamSpace`).
- */
+/// A substitution mapping type/region parameters to new values. We
+/// identify each in-scope parameter by an *index* and a *parameter
+/// space* (which indices where the parameter is defined; see
+/// `ParamSpace`).
 #[deriving(Clone, PartialEq, Eq, Hash, Show)]
 pub struct Substs<'tcx> {
     pub types: VecPerParamSpace<Ty<'tcx>>,
     pub regions: RegionSubsts,
 }
 
-/**
- * Represents the values to use when substituting lifetime parameters.
- * If the value is `ErasedRegions`, then this subst is occurring during
- * trans, and all region parameters will be replaced with `ty::ReStatic`. */
+/// Represents the values to use when substituting lifetime parameters.
+/// If the value is `ErasedRegions`, then this subst is occurring during
+/// trans, and all region parameters will be replaced with `ty::ReStatic`.
 #[deriving(Clone, PartialEq, Eq, Hash, Show)]
 pub enum RegionSubsts {
     ErasedRegions,
@@ -226,11 +223,9 @@ impl ParamSpace {
     }
 }
 
-/**
- * Vector of things sorted by param space. Used to keep
- * the set of things declared on the type, self, or method
- * distinct.
- */
+/// Vector of things sorted by param space. Used to keep
+/// the set of things declared on the type, self, or method
+/// distinct.
 #[deriving(PartialEq, Eq, Clone, Hash, Encodable, Decodable)]
 pub struct VecPerParamSpace<T> {
     // This was originally represented as a tuple with one Vec<T> for
@@ -250,10 +245,8 @@ pub struct VecPerParamSpace<T> {
     content: Vec<T>,
 }
 
-/**
- * The `split` function converts one `VecPerParamSpace` into this
- * `SeparateVecsPerParamSpace` structure.
- */
+/// The `split` function converts one `VecPerParamSpace` into this
+/// `SeparateVecsPerParamSpace` structure.
 pub struct SeparateVecsPerParamSpace<T> {
     pub types: Vec<T>,
     pub selfs: Vec<T>,

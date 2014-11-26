@@ -83,12 +83,10 @@ impl Sub<CharPos,CharPos> for CharPos {
     }
 }
 
-/**
-Spans represent a region of code, used for error reporting. Positions in spans
-are *absolute* positions from the beginning of the codemap, not positions
-relative to FileMaps. Methods on the CodeMap can be used to relate spans back
-to the original source.
-*/
+/// Spans represent a region of code, used for error reporting. Positions in spans
+/// are *absolute* positions from the beginning of the codemap, not positions
+/// relative to FileMaps. Methods on the CodeMap can be used to relate spans back
+/// to the original source.
 #[deriving(Clone, Show, Hash)]
 pub struct Span {
     pub lo: BytePos,

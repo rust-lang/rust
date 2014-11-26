@@ -72,46 +72,44 @@ impl CodeExtent {
     }
 }
 
-/**
 The region maps encode information about region relationships.
 
-- `scope_map` maps from a scope id to the enclosing scope id; this is
-  usually corresponding to the lexical nesting, though in the case of
-  closures the parent scope is the innermost conditional expression or repeating
-  block
-
-- `var_map` maps from a variable or binding id to the block in which
-  that variable is declared.
-
-- `free_region_map` maps from a free region `a` to a list of free
-  regions `bs` such that `a <= b for all b in bs`
-  - the free region map is populated during type check as we check
-    each function. See the function `relate_free_regions` for
-    more information.
-
-- `rvalue_scopes` includes entries for those expressions whose cleanup
-  scope is larger than the default. The map goes from the expression
-  id to the cleanup scope id. For rvalues not present in this table,
-  the appropriate cleanup scope is the innermost enclosing statement,
-  conditional expression, or repeating block (see `terminating_scopes`).
-
-- `terminating_scopes` is a set containing the ids of each statement,
-  or conditional/repeating expression. These scopes are calling "terminating
-  scopes" because, when attempting to find the scope of a temporary, by
-  default we search up the enclosing scopes until we encounter the
-  terminating scope. A conditional/repeating
-  expression is one which is not guaranteed to execute exactly once
-  upon entering the parent scope. This could be because the expression
-  only executes conditionally, such as the expression `b` in `a && b`,
-  or because the expression may execute many times, such as a loop
-  body. The reason that we distinguish such expressions is that, upon
-  exiting the parent scope, we cannot statically know how many times
-  the expression executed, and thus if the expression creates
-  temporaries we cannot know statically how many such temporaries we
-  would have to cleanup. Therefore we ensure that the temporaries never
-  outlast the conditional/repeating expression, preventing the need
-  for dynamic checks and/or arbitrary amounts of stack space.
-*/
+/// - `scope_map` maps from a scope id to the enclosing scope id; this is
+///   usually corresponding to the lexical nesting, though in the case of
+///   closures the parent scope is the innermost conditional expression or repeating
+///   block
+///
+/// - `var_map` maps from a variable or binding id to the block in which
+///   that variable is declared.
+///
+/// - `free_region_map` maps from a free region `a` to a list of free
+///   regions `bs` such that `a <= b for all b in bs`
+///   - the free region map is populated during type check as we check
+///     each function. See the function `relate_free_regions` for
+///     more information.
+///
+/// - `rvalue_scopes` includes entries for those expressions whose cleanup
+///   scope is larger than the default. The map goes from the expression
+///   id to the cleanup scope id. For rvalues not present in this table,
+///   the appropriate cleanup scope is the innermost enclosing statement,
+///   conditional expression, or repeating block (see `terminating_scopes`).
+///
+/// - `terminating_scopes` is a set containing the ids of each statement,
+///   or conditional/repeating expression. These scopes are calling "terminating
+///   scopes" because, when attempting to find the scope of a temporary, by
+///   default we search up the enclosing scopes until we encounter the
+///   terminating scope. A conditional/repeating
+///   expression is one which is not guaranteed to execute exactly once
+///   upon entering the parent scope. This could be because the expression
+///   only executes conditionally, such as the expression `b` in `a && b`,
+///   or because the expression may execute many times, such as a loop
+///   body. The reason that we distinguish such expressions is that, upon
+///   exiting the parent scope, we cannot statically know how many times
+///   the expression executed, and thus if the expression creates
+///   temporaries we cannot know statically how many such temporaries we
+///   would have to cleanup. Therefore we ensure that the temporaries never
+///   outlast the conditional/repeating expression, preventing the need
+///   for dynamic checks and/or arbitrary amounts of stack space.
 pub struct RegionMaps {
     scope_map: RefCell<FnvHashMap<CodeExtent, CodeExtent>>,
     var_map: RefCell<NodeMap<CodeExtent>>,
