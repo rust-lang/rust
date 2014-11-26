@@ -678,24 +678,40 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
         // expression.
         debug!("visit_expr constrain destructors \
                 unadjusted expr.id: {}", expr.id);
-        let head_cmt = {
+        let cmt_result = {
             let mc = mc::MemCategorizationContext::new(rcx);
-            ignore_err!(mc.cat_expr_unadjusted(expr))
+            mc.cat_expr_unadjusted(expr)
         };
-        check_safety_of_rvalue_destructor_if_necessary(rcx,
-                                                       head_cmt,
-                                                       expr.span);
+        match cmt_result {
+            Ok(head_cmt) => {
+                check_safety_of_rvalue_destructor_if_necessary(rcx,
+                                                               head_cmt,
+                                                               expr.span);
+            }
+            Err(..) => {
+                rcx.fcx.tcx().sess.span_note(expr.span,
+                                             "cat_expr_unadjusted Errd during dtor check");
+            }
+        }
     }
 
     // If necessary, constrain destructors in this expression. This will be
     // the adjusted form if there is an adjustment.
     debug!("visit_expr constrain destructors \
             potentially adjusted expr.id: {}", expr.id);
-    let head_cmt = {
+    let cmt_result = {
         let mc = mc::MemCategorizationContext::new(rcx);
-        ignore_err!(mc.cat_expr(expr))
+        mc.cat_expr(expr)
     };
-    check_safety_of_rvalue_destructor_if_necessary(rcx, head_cmt, expr.span);
+    match cmt_result {
+        Ok(head_cmt) => {
+            check_safety_of_rvalue_destructor_if_necessary(rcx, head_cmt, expr.span);
+        }
+        Err(..) => {
+            rcx.fcx.tcx().sess.span_note(expr.span,
+                                         "cat_expr Errd during dtor check");
+        }
+    }
 
     match expr.node {
         ast::ExprCall(ref callee, ref args) => {
