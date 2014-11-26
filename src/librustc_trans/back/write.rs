@@ -842,18 +842,31 @@ pub fn run_passes(sess: &Session,
     //if sess.time_llvm_passes() { llvm::LLVMRustPrintPassTimings(); }
 }
 
-type WorkItem = proc(&CodegenContext):Send;
+struct WorkItem {
+    mtrans: ModuleTranslation,
+    config: ModuleConfig,
+    output_names: OutputFilenames,
+    name_extra: String
+}
 
 fn build_work_item(sess: &Session,
                    mtrans: ModuleTranslation,
                    config: ModuleConfig,
                    output_names: OutputFilenames,
-                   name_extra: String) -> WorkItem {
+                   name_extra: String)
+                   -> WorkItem
+{
     let mut config = config;
     config.tm = create_target_machine(sess);
+    WorkItem { mtrans: mtrans, config: config, output_names: output_names,
+               name_extra: name_extra }
+}
 
-    proc(cgcx) unsafe {
-        optimize_and_codegen(cgcx, mtrans, config, name_extra, output_names);
+fn execute_work_item(cgcx: &CodegenContext,
+                     work_item: WorkItem) {
+    unsafe {
+        optimize_and_codegen(cgcx, work_item.mtrans, work_item.config,
+                             work_item.name_extra, work_item.output_names);
     }
 }
 
@@ -866,7 +879,7 @@ fn run_work_singlethreaded(sess: &Session,
     // Since we're running single-threaded, we can pass the session to
     // the proc, allowing `optimize_and_codegen` to perform LTO.
     for work in Unfold::new((), |_| work_items.pop()) {
-        work(&cgcx);
+        execute_work_item(&cgcx, work);
     }
 }
 
@@ -883,7 +896,7 @@ fn run_work_multithreaded(sess: &Session,
         let diag_emitter = diag_emitter.clone();
         let remark = sess.opts.cg.remark.clone();
 
-        let future = TaskBuilder::new().named(format!("codegen-{}", i)).try_future(proc() {
+        let future = TaskBuilder::new().named(format!("codegen-{}", i)).try_future(move |:| {
             let diag_handler = mk_handler(box diag_emitter);
 
             // Must construct cgcx inside the proc because it has non-Send
@@ -899,7 +912,7 @@ fn run_work_multithreaded(sess: &Session,
                 let maybe_work = work_items_arc.lock().pop();
                 match maybe_work {
                     Some(work) => {
-                        work(&cgcx);
+                        execute_work_item(&cgcx, work);
 
                         // Make sure to fail the worker so the main thread can
                         // tell that there were errors.
