@@ -399,7 +399,7 @@ fn check_bare_fn<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     let fty = fty.subst(ccx.tcx, &param_env.free_substs);
 
     match fty.sty {
-        ty::ty_bare_fn(ref fn_ty) => {
+        ty::ty_bare_fn(_, ref fn_ty) => {
             let inh = Inherited::new(ccx.tcx, param_env);
             let fcx = check_fn(ccx, fn_ty.unsafety, id, &fn_ty.sig,
                                decl, id, body, &inh);
@@ -2049,7 +2049,7 @@ fn try_overloaded_call<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     // Bail out if the callee is a bare function or a closure. We check those
     // manually.
     match structurally_resolved_type(fcx, callee.span, callee_type).sty {
-        ty::ty_bare_fn(_) | ty::ty_closure(_) => return false,
+        ty::ty_bare_fn(..) | ty::ty_closure(_) => return false,
         _ => {}
     }
 
@@ -2499,7 +2499,7 @@ fn check_method_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         ty::FnConverging(ty::mk_err())
     } else {
         match method_fn_ty.sty {
-            ty::ty_bare_fn(ref fty) => {
+            ty::ty_bare_fn(_, ref fty) => {
                 // HACK(eddyb) ignore self in the definition (see above).
                 check_argument_types(fcx,
                                      sp,
@@ -2927,7 +2927,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         });
 
         let fn_sig = match fn_ty.sty {
-            ty::ty_bare_fn(ty::BareFnTy {ref sig, ..}) |
+            ty::ty_bare_fn(_, ty::BareFnTy {ref sig, ..}) |
             ty::ty_closure(box ty::ClosureTy {ref sig, ..}) => sig,
             _ => {
                 fcx.type_error_message(call_expr.span, |actual| {
