@@ -42,18 +42,19 @@ pub fn supertraits<'cx, 'tcx>(tcx: &'cx ty::ctxt<'tcx>,
                               trait_ref: Rc<ty::TraitRef<'tcx>>)
                               -> Supertraits<'cx, 'tcx>
 {
-    /// Returns an iterator over the trait reference `T` and all of its supertrait references. May
-    /// contain duplicates. In general the ordering is not defined.
-    ///
-    /// Example:
-    ///
-    /// ```
-    /// trait Foo { ... }
-    /// trait Bar : Foo { ... }
-    /// trait Baz : Bar+Foo { ... }
-    /// ```
-    ///
-    /// `supertraits(Baz)` yields `[Baz, Bar, Foo, Foo]` in some order.
+    //! Returns an iterator over the trait reference `T` and all of its supertrait references. May
+    //! contain duplicates. In general the ordering is not defined.
+    //!
+    //! Example:
+    //!
+    //! ```
+    //! trait Foo { ... }
+    //! trait Bar : Foo { ... }
+    //! trait Baz : Bar+Foo { ... }
+    //! ```
+    //!
+    //! `supertraits(Baz)` yields `[Baz, Bar, Foo, Foo]` in some order.
+
     transitive_bounds(tcx, &[trait_ref])
 }
 

@@ -703,7 +703,7 @@ fn ast_ty_to_trait_ref<'tcx,AC,RS>(this: &AC,
                                                     path));
                 }
                 _ => {
-                    span_err!(this.tcx().sess, ty.span, E0170, "expected a reference to a trait");
+                    span_err!(this.tcx().sess, ty.span, E0172, "expected a reference to a trait");
                     Err(ErrorReported)
                 }
             }

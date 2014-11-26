@@ -1252,8 +1252,6 @@ fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
                                                 -> bool
     {
 
-        */
-
         let trait_params = trait_generics.regions.get_slice(subst::FnSpace);
         let impl_params = impl_generics.regions.get_slice(subst::FnSpace);
 

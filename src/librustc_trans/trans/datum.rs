@@ -552,7 +552,7 @@ impl<'tcx, K: KindOps + fmt::Show> Datum<'tcx, K> {
                 self.kind)
     }
 
-    //! See the `appropriate_rvalue_mode()` function
+    /// See the `appropriate_rvalue_mode()` function
     pub fn appropriate_rvalue_mode<'a>(&self, ccx: &CrateContext<'a, 'tcx>)
                                        -> RvalueMode {
         appropriate_rvalue_mode(ccx, self.ty)

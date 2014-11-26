@@ -797,7 +797,7 @@ impl<T> DoubleEndedIterator<T> for MoveItems<T> {
 }
 
 
-impl<T> ExactSize<T> for MoveItems<T> {}
+impl<T> ExactSizeIterator<T> for MoveItems<T> {}
 
 impl<A: PartialEq> PartialEq for RingBuf<A> {
     fn eq(&self, other: &RingBuf<A>) -> bool {
