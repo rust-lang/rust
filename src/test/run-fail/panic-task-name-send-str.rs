@@ -13,7 +13,7 @@
 fn main() {
     let r: Result<int,_> =
         ::std::task::TaskBuilder::new().named("send name".into_cow())
-                                       .try(proc() {
+                                       .try(move|| {
             panic!("test");
             3i
         });

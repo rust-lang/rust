@@ -15,17 +15,8 @@
 
 fn foo<T>() {}
 
-trait Bar1 {}
-impl Bar1 for proc():'static {}
-
-trait Bar2 {}
-impl Bar2 for proc():Send {}
-
 trait Bar3 {}
 impl<'b> Bar3 for <'a>|&'a int|: 'b + Send -> &'a int {}
-
-trait Bar4 {}
-impl Bar4 for proc<'a>(&'a int):'static -> &'a int {}
 
 struct Foo<'a> {
     a: ||: 'a,
@@ -33,17 +24,14 @@ struct Foo<'a> {
     c: <'b>||: 'a,
     d: ||: 'a + Sync,
     e: <'b>|int|: 'a + Sync -> &'b f32,
-    f: proc():'static,
-    g: proc():'static+Sync,
-    h: proc<'b>(int):'static+Sync -> &'b f32,
 }
 
 fn f<'a>(a: &'a int, f: <'b>|&'b int| -> &'b int) -> &'a int {
     f(a)
 }
 
-fn g<'a>(a: &'a int, f: proc<'b>(&'b int) -> &'b int) -> &'a int {
-    f(a)
+fn g<'a>(a: &'a int) -> &'a int {
+    a
 }
 
 struct A;
@@ -60,11 +48,6 @@ fn bar<'b>() {
     foo::<||:'b + Sync>();
     foo::<||:Sync>();
     foo::< <'a>|int, f32, &'a int|:'b + Sync -> &'a int>();
-    foo::<proc()>();
-    foo::<proc() -> ()>();
-    foo::<proc():'static>();
-    foo::<proc():Sync>();
-    foo::<proc<'a>(int, f32, &'a int):'static + Sync -> &'a int>();
 
     foo::<<'a>||>();
 
@@ -84,7 +67,6 @@ fn bar<'b>() {
 
     // issue #13490
     let _ = || -> ! loop {};
-    let _ = proc() -> ! loop {};
 
     // issue #17021
     let c = box |&:| {};

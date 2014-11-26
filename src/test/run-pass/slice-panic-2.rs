@@ -32,6 +32,6 @@ fn foo() {
 }
 
 fn main() {
-    let _ = task::try(proc() foo());
+    let _ = task::try(move|| foo());
     unsafe { assert!(DTOR_COUNT == 2); }
 }

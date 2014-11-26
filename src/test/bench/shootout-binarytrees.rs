@@ -95,7 +95,7 @@ fn main() {
     let mut messages = range_step(min_depth, max_depth + 1, 2).map(|depth| {
             use std::num::Int;
             let iterations = 2i.pow((max_depth - depth + min_depth) as uint);
-            Future::spawn(proc() {
+            Future::spawn(move|| {
                 let mut chk = 0;
                 for i in range(1, iterations + 1) {
                     let arena = TypedArena::new();

@@ -403,7 +403,7 @@ mod test {
         let (_tx2, rx2) = channel::<int>();
         let (tx3, rx3) = channel::<int>();
 
-        spawn(proc() {
+        spawn(move|| {
             for _ in range(0u, 20) { task::deschedule(); }
             tx1.send(1);
             rx3.recv();
@@ -426,7 +426,7 @@ mod test {
         let (tx2, rx2) = channel::<int>();
         let (tx3, rx3) = channel::<()>();
 
-        spawn(proc() {
+        spawn(move|| {
             for _ in range(0u, 20) { task::deschedule(); }
             tx1.send(1);
             tx2.send(2);
@@ -452,7 +452,7 @@ mod test {
         let (tx2, rx2) = channel::<int>();
         let (tx3, rx3) = channel::<()>();
 
-        spawn(proc() {
+        spawn(move|| {
             for i in range(0, AMT) {
                 if i % 2 == 0 {
                     tx1.send(i);
@@ -477,7 +477,7 @@ mod test {
         let (_tx2, rx2) = channel::<int>();
         let (tx3, rx3) = channel::<()>();
 
-        spawn(proc() {
+        spawn(move|| {
             rx3.recv();
             tx1.clone();
             assert_eq!(rx3.try_recv(), Err(Empty));
@@ -498,7 +498,7 @@ mod test {
         let (_tx2, rx2) = channel::<int>();
         let (tx3, rx3) = channel::<()>();
 
-        spawn(proc() {
+        spawn(move|| {
             rx3.recv();
             tx1.clone();
             assert_eq!(rx3.try_recv(), Err(Empty));
@@ -518,7 +518,7 @@ mod test {
         let (tx1, rx1) = channel::<()>();
         let (tx2, rx2) = channel::<()>();
         let (tx3, rx3) = channel::<()>();
-        spawn(proc() {
+        spawn(move|| {
             let s = Select::new();
             let mut h1 = s.handle(&rx1);
             let mut h2 = s.handle(&rx2);
@@ -624,7 +624,7 @@ mod test {
     test!(fn oneshot_data_waiting() {
         let (tx1, rx1) = channel();
         let (tx2, rx2) = channel();
-        spawn(proc() {
+        spawn(move|| {
             select! {
                 () = rx1.recv() => {}
             }
@@ -643,7 +643,7 @@ mod test {
         tx1.send(());
         rx1.recv();
         rx1.recv();
-        spawn(proc() {
+        spawn(move|| {
             select! {
                 () = rx1.recv() => {}
             }
@@ -661,7 +661,7 @@ mod test {
         drop(tx1.clone());
         tx1.send(());
         rx1.recv();
-        spawn(proc() {
+        spawn(move|| {
             select! {
                 () = rx1.recv() => {}
             }
@@ -683,7 +683,7 @@ mod test {
 
     test!(fn sync2() {
         let (tx, rx) = sync_channel::<int>(0);
-        spawn(proc() {
+        spawn(move|| {
             for _ in range(0u, 100) { task::deschedule() }
             tx.send(1);
         });
@@ -695,8 +695,8 @@ mod test {
     test!(fn sync3() {
         let (tx1, rx1) = sync_channel::<int>(0);
         let (tx2, rx2): (Sender<int>, Receiver<int>) = channel();
-        spawn(proc() { tx1.send(1); });
-        spawn(proc() { tx2.send(2); });
+        spawn(move|| { tx1.send(1); });
+        spawn(move|| { tx2.send(2); });
         select! {
             n = rx1.recv() => {
                 assert_eq!(n, 1);

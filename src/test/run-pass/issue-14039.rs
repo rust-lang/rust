@@ -10,8 +10,8 @@
 
 fn main() {
     if true {
-        proc(_) {}
+        (move|&mut: _| {}) as Box<FnMut()>
     } else {
-        proc(_: &mut ()) {}
+        (move|&mut: _: &mut ()| {}) as Box<FnMut()>
     };
 }

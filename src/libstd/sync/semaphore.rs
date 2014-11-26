@@ -127,7 +127,7 @@ mod tests {
     fn test_sem_as_mutex() {
         let s = Arc::new(Semaphore::new(1));
         let s2 = s.clone();
-        spawn(proc() {
+        spawn(move|| {
             let _g = s2.access();
         });
         let _g = s.access();
@@ -139,7 +139,7 @@ mod tests {
         let (tx, rx) = channel();
         let s = Arc::new(Semaphore::new(0));
         let s2 = s.clone();
-        spawn(proc() {
+        spawn(move|| {
             s2.acquire();
             tx.send(());
         });
@@ -150,7 +150,7 @@ mod tests {
         let (tx, rx) = channel();
         let s = Arc::new(Semaphore::new(0));
         let s2 = s.clone();
-        spawn(proc() {
+        spawn(move|| {
             s2.release();
             let _ = rx.recv();
         });
@@ -166,7 +166,7 @@ mod tests {
         let s2 = s.clone();
         let (tx1, rx1) = channel();
         let (tx2, rx2) = channel();
-        spawn(proc() {
+        spawn(move|| {
             let _g = s2.access();
             let _ = rx2.recv();
             tx1.send(());
@@ -183,7 +183,7 @@ mod tests {
         let (tx, rx) = channel();
         {
             let _g = s.access();
-            spawn(proc() {
+            spawn(move|| {
                 tx.send(());
                 drop(s2.access());
                 tx.send(());

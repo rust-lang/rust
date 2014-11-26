@@ -36,7 +36,7 @@ fn main() {
 fn run(repeat: int, depth: int) {
     for _ in range(0, repeat) {
         let dur = Duration::span(|| {
-            task::try(proc() {
+            task::try(move|| {
                 recurse_or_panic(depth, None)
             });
         });

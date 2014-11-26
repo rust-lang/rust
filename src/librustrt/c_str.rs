@@ -639,7 +639,7 @@ mod tests {
 
     #[test]
     fn test_to_c_str_fail() {
-        assert!(task::try(proc() { "he\x00llo".to_c_str() }).is_err());
+        assert!(task::try(move|| { "he\x00llo".to_c_str() }).is_err());
     }
 
     #[test]

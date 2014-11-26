@@ -11,9 +11,12 @@
 
 // check that the &int here does not cause us to think that `foo`
 // contains region pointers
-struct foo(proc(x: &int):'static);
+struct foo(Box<FnMut(&int)+'static>);
 
-fn take_foo(x: foo<'static>) {} //~ ERROR wrong number of lifetime parameters
+fn take_foo<T:'static>(x: T) {}
 
-fn main() {
+fn have_foo(f: foo) {
+    take_foo(f);
 }
+
+fn main() {}

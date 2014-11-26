@@ -13,14 +13,10 @@ use std::rc::Rc;
 
 fn foo(_x: Rc<uint>) {}
 
-fn bar() {
+fn bar<F:FnOnce() + Send>(_: F) { }
+
+fn main() {
     let x = Rc::new(3u);
-    let _: proc():Send = proc() foo(x); //~ ERROR `core::kinds::Send` is not implemented
+    bar(move|| foo(x)); //~ ERROR `core::kinds::Send` is not implemented
 }
 
-fn bar2() {
-    let x = Rc::new(3u);
-    let _: proc() = proc() foo(x);
-}
-
-fn main() { }

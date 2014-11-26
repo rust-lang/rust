@@ -136,7 +136,7 @@ mod callee;
 /// closures defined within the function.  For example:
 ///
 ///     fn foo() {
-///         bar(proc() { ... })
+///         bar(move|| { ... })
 ///     }
 ///
 /// Here, the function `foo()` and the closure passed to

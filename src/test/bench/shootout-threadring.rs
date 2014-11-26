@@ -43,10 +43,10 @@ fn start(n_tasks: int, token: int) {
     tx.send(token);
     for i in range(2, n_tasks + 1) {
         let (tx, next_rx) = channel();
-        spawn(proc() roundtrip(i, tx, rx));
+        spawn(move|| roundtrip(i, tx, rx));
         rx = next_rx;
     }
-    spawn(proc() roundtrip(1, tx, rx));
+    spawn(move|| roundtrip(1, tx, rx));
 }
 
 fn roundtrip(id: int, tx: Sender<int>, rx: Receiver<int>) {

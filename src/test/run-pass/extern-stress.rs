@@ -42,7 +42,7 @@ fn count(n: libc::uintptr_t) -> libc::uintptr_t {
 
 pub fn main() {
     for _ in range(0u, 100) {
-        task::spawn(proc() {
+        task::spawn(move|| {
             assert_eq!(count(5), 16);
         });
     }

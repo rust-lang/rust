@@ -24,7 +24,7 @@ fn test05_start(tx : &Sender<int>) {
 
 fn test05() {
     let (tx, rx) = channel();
-    task::spawn(proc() { test05_start(&tx) });
+    task::spawn(move|| { test05_start(&tx) });
     let mut value: int = rx.recv();
     println!("{}", value);
     value = rx.recv();

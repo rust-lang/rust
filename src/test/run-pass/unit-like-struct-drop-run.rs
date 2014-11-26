@@ -22,7 +22,7 @@ impl Drop for Foo {
 }
 
 pub fn main() {
-    let x = task::try(proc() {
+    let x = task::try(move|| {
         let _b = Foo;
     });
 

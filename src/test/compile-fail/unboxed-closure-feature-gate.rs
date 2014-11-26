@@ -8,15 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn borrowed_proc<'a>(x: &'a int) -> Box<FnMut()->(int) + 'a> {
-    // This is legal, because the region bound on `proc`
-    // states that it captures `x`.
-    box move|| { *x }
+// Check that parenthetical notation is feature-gated except with the
+// `Fn` traits.
+
+trait Foo<A,R> {
 }
 
-fn static_proc(x: &int) -> Box<FnMut()->(int) + 'static> {
-    // This is illegal, because the region bound on `proc` is 'static.
-    box move|| { *x } //~ ERROR cannot infer
-}
+fn main() {
+    let x: Box<Foo(int)>;
+    //~^ ERROR parenthetical notation is only stable when used with the `Fn` family
 
-fn main() { }
+    // No errors with these:
+    let x: Box<Fn(int)>;
+    let x: Box<FnMut(int)>;
+    let x: Box<FnOnce(int)>;
+}

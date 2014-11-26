@@ -680,7 +680,7 @@ mod test {
         static LK: StaticNativeMutex = NATIVE_MUTEX_INIT;
         unsafe {
             let guard = LK.lock();
-            let t = Thread::start(proc() {
+            let t = Thread::start(move|| {
                 let guard = LK.lock();
                 guard.signal();
             });
@@ -705,7 +705,7 @@ mod test {
         static LK: StaticNativeMutex = NATIVE_MUTEX_INIT;
         unsafe {
             LK.lock_noguard();
-            let t = Thread::start(proc() {
+            let t = Thread::start(move|| {
                 LK.lock_noguard();
                 LK.signal_noguard();
                 LK.unlock_noguard();

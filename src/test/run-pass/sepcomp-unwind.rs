@@ -34,5 +34,5 @@ mod b {
 }
 
 fn main() {
-    std::task::try(proc() { ::b::g() }).unwrap_err();
+    std::task::try(move|| { ::b::g() }).unwrap_err();
 }

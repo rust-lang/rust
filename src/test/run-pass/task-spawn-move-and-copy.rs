@@ -16,7 +16,7 @@ pub fn main() {
     let x = box 1;
     let x_in_parent = &(*x) as *const int as uint;
 
-    task::spawn(proc() {
+    task::spawn(move || {
         let x_in_child = &(*x) as *const int as uint;
         tx.send(x_in_child);
     });

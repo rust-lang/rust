@@ -10,7 +10,7 @@
 
 fn main() {
     let (tx, rx) = channel();
-    spawn(proc() {
+    spawn(move|| {
         loop {
             let tx = tx;
             //~^ ERROR: use of moved value: `tx`

@@ -693,7 +693,7 @@ impl Process {
         fn read(stream: Option<io::PipeStream>) -> Receiver<IoResult<Vec<u8>>> {
             let (tx, rx) = channel();
             match stream {
-                Some(stream) => spawn(proc() {
+                Some(stream) => spawn(move |:| {
                     let mut stream = stream;
                     tx.send(stream.read_to_end())
                 }),
@@ -1155,14 +1155,14 @@ mod tests {
     fn wait_timeout2() {
         let (tx, rx) = channel();
         let tx2 = tx.clone();
-        spawn(proc() {
+        spawn(move|| {
             let mut p = sleeper();
             p.set_timeout(Some(10));
             assert_eq!(p.wait().err().unwrap().kind, TimedOut);
             p.signal_kill().unwrap();
             tx.send(());
         });
-        spawn(proc() {
+        spawn(move|| {
             let mut p = sleeper();
             p.set_timeout(Some(10));
             assert_eq!(p.wait().err().unwrap().kind, TimedOut);
