@@ -25,9 +25,7 @@ macro_rules! opt_val ( ($e:expr) => (
     }
 ))
 
-/**
- * Wrapper for LLVM ValueRef
- */
+/// Wrapper for LLVM ValueRef
 impl Value {
     /// Returns the native ValueRef
     pub fn get(&self) -> ValueRef {
@@ -127,9 +125,7 @@ impl Value {
 
 pub struct Use(UseRef);
 
-/**
- * Wrapper for LLVM UseRef
- */
+/// Wrapper for LLVM UseRef
 impl Use {
     pub fn get(&self) -> UseRef {
         let Use(v) = *self; v

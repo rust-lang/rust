@@ -694,13 +694,11 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         }
     }
 
-    /**
-    This function performs the actual region resolution.  It must be
-    called after all constraints have been added.  It performs a
-    fixed-point iteration to find region values which satisfy all
-    constraints, assuming such values can be found; if they cannot,
-    errors are reported.
-    */
+    /// This function performs the actual region resolution.  It must be
+    /// called after all constraints have been added.  It performs a
+    /// fixed-point iteration to find region values which satisfy all
+    /// constraints, assuming such values can be found; if they cannot,
+    /// errors are reported.
     pub fn resolve_regions(&self) -> Vec<RegionResolutionError<'tcx>> {
         debug!("RegionVarBindings: resolve_regions()");
         let mut errors = vec!();

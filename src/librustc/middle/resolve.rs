@@ -761,10 +761,8 @@ impl NameBindings {
         }
     }
 
-    /**
-     * Returns the module node. Panics if this node does not have a module
-     * definition.
-     */
+    /// Returns the module node. Panics if this node does not have a module
+    /// definition.
     fn get_module(&self) -> Rc<Module> {
         match self.get_module_if_available() {
             None => {
@@ -1098,18 +1096,16 @@ impl<'a> Resolver<'a> {
         visit::walk_crate(&mut visitor, krate);
     }
 
-    /**
-     * Adds a new child item to the module definition of the parent node and
-     * returns its corresponding name bindings as well as the current parent.
-     * Or, if we're inside a block, creates (or reuses) an anonymous module
-     * corresponding to the innermost block ID and returns the name bindings
-     * as well as the newly-created parent.
-     *
-     * # Panics
-     *
-     * Panics if this node does not have a module definition and we are not inside
-     * a block.
-     */
+    /// Adds a new child item to the module definition of the parent node and
+    /// returns its corresponding name bindings as well as the current parent.
+    /// Or, if we're inside a block, creates (or reuses) an anonymous module
+    /// corresponding to the innermost block ID and returns the name bindings
+    /// as well as the newly-created parent.
+    ///
+    /// # Panics
+    ///
+    /// Panics if this node does not have a module definition and we are not inside
+    /// a block.
     fn add_child(&self,
                  name: Name,
                  reduced_graph_parent: ReducedGraphParent,

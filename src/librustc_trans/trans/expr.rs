@@ -1377,14 +1377,12 @@ fn trans_struct<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     })
 }
 
-/**
- * Information that `trans_adt` needs in order to fill in the fields
- * of a struct copied from a base struct (e.g., from an expression
- * like `Foo { a: b, ..base }`.
- *
- * Note that `fields` may be empty; the base expression must always be
- * evaluated for side-effects.
- */
+/// Information that `trans_adt` needs in order to fill in the fields
+/// of a struct copied from a base struct (e.g., from an expression
+/// like `Foo { a: b, ..base }`.
+///
+/// Note that `fields` may be empty; the base expression must always be
+/// evaluated for side-effects.
 pub struct StructBaseInfo<'a, 'tcx> {
     /// The base expression; will be evaluated after all explicit fields.
     expr: &'a ast::Expr,
@@ -1392,16 +1390,14 @@ pub struct StructBaseInfo<'a, 'tcx> {
     fields: Vec<(uint, Ty<'tcx>)>
 }
 
-/**
- * Constructs an ADT instance:
- *
- * - `fields` should be a list of field indices paired with the
- * expression to store into that field.  The initializers will be
- * evaluated in the order specified by `fields`.
- *
- * - `optbase` contains information on the base struct (if any) from
- * which remaining fields are copied; see comments on `StructBaseInfo`.
- */
+/// Constructs an ADT instance:
+///
+/// - `fields` should be a list of field indices paired with the
+/// expression to store into that field.  The initializers will be
+/// evaluated in the order specified by `fields`.
+///
+/// - `optbase` contains information on the base struct (if any) from
+/// which remaining fields are copied; see comments on `StructBaseInfo`.
 pub fn trans_adt<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                  ty: Ty<'tcx>,
                                  discr: ty::Disr,

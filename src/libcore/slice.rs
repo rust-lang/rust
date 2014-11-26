@@ -1632,9 +1632,7 @@ impl BinarySearchResult {
 // Free functions
 //
 
-/**
- * Converts a pointer to A into a slice of length 1 (without copying).
- */
+/// Converts a pointer to A into a slice of length 1 (without copying).
 #[unstable = "waiting for DST"]
 pub fn ref_slice<'a, A>(s: &'a A) -> &'a [A] {
     unsafe {
@@ -1642,9 +1640,7 @@ pub fn ref_slice<'a, A>(s: &'a A) -> &'a [A] {
     }
 }
 
-/**
- * Converts a pointer to A into a slice of length 1 (without copying).
- */
+/// Converts a pointer to A into a slice of length 1 (without copying).
 #[unstable = "waiting for DST"]
 pub fn mut_ref_slice<'a, A>(s: &'a mut A) -> &'a mut [A] {
     unsafe {
@@ -1708,10 +1704,8 @@ pub mod raw {
     use raw::Slice;
     use option::{None, Option, Some};
 
-    /**
-     * Form a slice from a pointer and length (as a number of units,
-     * not bytes).
-     */
+    /// Form a slice from a pointer and length (as a number of units,
+    /// not bytes).
     #[inline]
     #[deprecated = "renamed to slice::from_raw_buf"]
     pub unsafe fn buf_as_slice<T,U>(p: *const T, len: uint, f: |v: &[T]| -> U)
@@ -1722,10 +1716,8 @@ pub mod raw {
         }))
     }
 
-    /**
-     * Form a slice from a pointer and length (as a number of units,
-     * not bytes).
-     */
+    /// Form a slice from a pointer and length (as a number of units,
+    /// not bytes).
     #[inline]
     #[deprecated = "renamed to slice::from_raw_mut_buf"]
     pub unsafe fn mut_buf_as_slice<T,
@@ -1740,12 +1732,10 @@ pub mod raw {
         }))
     }
 
-    /**
-     * Returns a pointer to first element in slice and adjusts
-     * slice so it no longer contains that element. Returns None
-     * if the slice is empty. O(1).
-     */
-     #[inline]
+    /// Returns a pointer to first element in slice and adjusts
+    /// slice so it no longer contains that element. Returns None
+    /// if the slice is empty. O(1).
+    #[inline]
     #[deprecated = "inspect `Slice::{data, len}` manually (increment data by 1)"]
     pub unsafe fn shift_ptr<T>(slice: &mut Slice<T>) -> Option<*const T> {
         if slice.len == 0 { return None; }
@@ -1755,11 +1745,9 @@ pub mod raw {
         Some(head)
     }
 
-    /**
-     * Returns a pointer to last element in slice and adjusts
-     * slice so it no longer contains that element. Returns None
-     * if the slice is empty. O(1).
-     */
+    /// Returns a pointer to last element in slice and adjusts
+    /// slice so it no longer contains that element. Returns None
+    /// if the slice is empty. O(1).
     #[inline]
     #[deprecated = "inspect `Slice::{data, len}` manually (decrement len by 1)"]
     pub unsafe fn pop_ptr<T>(slice: &mut Slice<T>) -> Option<*const T> {

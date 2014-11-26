@@ -897,19 +897,17 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     }
 }
 
-/**
- * Checks that a method from an impl conforms to the signature of
- * the same method as declared in the trait.
- *
- * # Parameters
- *
- * - impl_generics: the generics declared on the impl itself (not the method!)
- * - impl_m: type of the method we are checking
- * - impl_m_span: span to use for reporting errors
- * - impl_m_body_id: id of the method body
- * - trait_m: the method in the trait
- * - trait_to_impl_substs: the substitutions used on the type of the trait
- */
+/// Checks that a method from an impl conforms to the signature of
+/// the same method as declared in the trait.
+///
+/// # Parameters
+///
+/// - impl_generics: the generics declared on the impl itself (not the method!)
+/// - impl_m: type of the method we are checking
+/// - impl_m_span: span to use for reporting errors
+/// - impl_m_body_id: id of the method body
+/// - trait_m: the method in the trait
+/// - trait_to_impl_substs: the substitutions used on the type of the trait
 fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
                              impl_m: &ty::Method<'tcx>,
                              impl_m_span: Span,

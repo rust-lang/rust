@@ -219,18 +219,16 @@ pub fn infer_variance(tcx: &ty::ctxt) {
     tcx.variance_computed.set(true);
 }
 
-/**************************************************************************
- * Representing terms
- *
- * Terms are structured as a straightforward tree. Rather than rely on
- * GC, we allocate terms out of a bounded arena (the lifetime of this
- * arena is the lifetime 'a that is threaded around).
- *
- * We assign a unique index to each type/region parameter whose variance
- * is to be inferred. We refer to such variables as "inferreds". An
- * `InferredIndex` is a newtype'd int representing the index of such
- * a variable.
- */
+// Representing terms
+//
+// Terms are structured as a straightforward tree. Rather than rely on
+// GC, we allocate terms out of a bounded arena (the lifetime of this
+// arena is the lifetime 'a that is threaded around).
+//
+// We assign a unique index to each type/region parameter whose variance
+// is to be inferred. We refer to such variables as "inferreds". An
+// `InferredIndex` is a newtype'd int representing the index of such
+// a variable.
 
 type VarianceTermPtr<'a> = &'a VarianceTerm<'a>;
 
@@ -253,9 +251,7 @@ impl<'a> fmt::Show for VarianceTerm<'a> {
     }
 }
 
-/**************************************************************************
- * The first pass over the crate simply builds up the set of inferreds.
- */
+// The first pass over the crate simply builds up the set of inferreds.
 
 struct TermsContext<'a, 'tcx: 'a> {
     tcx: &'a ty::ctxt<'tcx>,
@@ -399,12 +395,10 @@ impl<'a, 'tcx, 'v> Visitor<'v> for TermsContext<'a, 'tcx> {
     }
 }
 
-/**************************************************************************
- * Constraint construction and representation
- *
- * The second pass over the AST determines the set of constraints.
- * We walk the set of items and, for each member, generate new constraints.
- */
+// Constraint construction and representation
+//
+// The second pass over the AST determines the set of constraints.
+// We walk the set of items and, for each member, generate new constraints.
 
 struct ConstraintContext<'a, 'tcx: 'a> {
     terms_cx: TermsContext<'a, 'tcx>,
@@ -944,14 +938,12 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
     }
 }
 
-/**************************************************************************
- * Constraint solving
- *
- * The final phase iterates over the constraints, refining the variance
- * for each inferred until a fixed point is reached. This will be the
- * optimal solution to the constraints. The final variance for each
- * inferred is then written into the `variance_map` in the tcx.
- */
+// Constraint solving
+//
+// The final phase iterates over the constraints, refining the variance
+// for each inferred until a fixed point is reached. This will be the
+// optimal solution to the constraints. The final variance for each
+// inferred is then written into the `variance_map` in the tcx.
 
 struct SolveContext<'a, 'tcx: 'a> {
     terms_cx: TermsContext<'a, 'tcx>,
@@ -1086,9 +1078,7 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
     }
 }
 
-/**************************************************************************
- * Miscellany transformations on variance
- */
+// Miscellany transformations on variance
 
 trait Xform {
     fn xform(self, v: Self) -> Self;

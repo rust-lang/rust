@@ -33,13 +33,11 @@ use string::String;
 
 pub use sys_common::ProcessConfig;
 
-/**
- * A value representing a child process.
- *
- * The lifetime of this value is linked to the lifetime of the actual
- * process - the Process destructor calls self.finish() which waits
- * for the process to terminate.
- */
+/// A value representing a child process.
+///
+/// The lifetime of this value is linked to the lifetime of the actual
+/// process - the Process destructor calls self.finish() which waits
+/// for the process to terminate.
 pub struct Process {
     /// The unique id of the process (this should never be negative).
     pid: pid_t,
@@ -263,16 +261,14 @@ impl Process {
         }
     }
 
-    /**
-     * Waits for a process to exit and returns the exit code, failing
-     * if there is no process with the specified id.
-     *
-     * Note that this is private to avoid race conditions on unix where if
-     * a user calls waitpid(some_process.get_id()) then some_process.finish()
-     * and some_process.destroy() and some_process.finalize() will then either
-     * operate on a none-existent process or, even worse, on a newer process
-     * with the same id.
-     */
+    /// Waits for a process to exit and returns the exit code, failing
+    /// if there is no process with the specified id.
+    ///
+    /// Note that this is private to avoid race conditions on unix where if
+    /// a user calls waitpid(some_process.get_id()) then some_process.finish()
+    /// and some_process.destroy() and some_process.finalize() will then either
+    /// operate on a none-existent process or, even worse, on a newer process
+    /// with the same id.
     pub fn wait(&self, deadline: u64) -> IoResult<ProcessExit> {
         use libc::types::os::arch::extra::DWORD;
         use libc::consts::os::extra::{

@@ -46,12 +46,10 @@ use syntax::codemap::DUMMY_SP;
 // drop_glue pointer, size, align.
 static VTABLE_OFFSET: uint = 3;
 
-/**
-The main "translation" pass for methods.  Generates code
-for non-monomorphized methods only.  Other methods will
-be generated once they are invoked with specific type parameters,
-see `trans::base::lval_static_fn()` or `trans::base::monomorphic_fn()`.
-*/
+/// The main "translation" pass for methods.  Generates code
+/// for non-monomorphized methods only.  Other methods will
+/// be generated once they are invoked with specific type parameters,
+/// see `trans::base::lval_static_fn()` or `trans::base::monomorphic_fn()`.
 pub fn trans_impl(ccx: &CrateContext,
                   name: ast::Ident,
                   impl_items: &[ast::ImplItem],
