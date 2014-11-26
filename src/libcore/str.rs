@@ -30,6 +30,7 @@ use iter::range;
 use kinds::Sized;
 use mem;
 use num::Int;
+use ops::FnMut;
 use option::Option;
 use option::Option::{None, Some};
 use ops::{Fn, FnMut};

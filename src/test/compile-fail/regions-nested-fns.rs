@@ -12,10 +12,10 @@ fn ignore<T>(t: T) {}
 
 fn nested<'x>(x: &'x int) {
     let y = 3;
-    let mut ay = &y; //~ ERROR cannot infer
+    let mut ay = &y;
 
     ignore::< for<'z>|&'z int|>(|z| {
-        ay = x;
+        ay = x; //~ ERROR cannot infer
         ay = &y;
         ay = z;
     });

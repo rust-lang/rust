@@ -50,20 +50,20 @@ pub fn bar() {
 
 
              ((::std::fmt::format as
-                  fn(&core::fmt::Arguments<'_>) -> collections::string::String)((&((::std::fmt::Arguments::new
-                                                                                       as
-                                                                                       fn(&[&str], &[core::fmt::Argument<'_>]) -> core::fmt::Arguments<'_>)((__STATIC_FMTSTR
-                                                                                                                                                                as
-                                                                                                                                                                &'static [&'static str]),
-                                                                                                                                                            (&([]
-                                                                                                                                                                  as
-                                                                                                                                                                  [core::fmt::Argument<'_>; 0])
-                                                                                                                                                                as
-                                                                                                                                                                &[core::fmt::Argument<'_>; 0]))
-                                                                                      as
-                                                                                      core::fmt::Arguments<'_>)
-                                                                                    as
-                                                                                    &core::fmt::Arguments<'_>))
+                  fn(&core::fmt::Arguments<'_>) -> collections::string::String {std::fmt::format})((&((::std::fmt::Arguments::new
+                                                                                                          as
+                                                                                                          fn(&[&str], &[core::fmt::Argument<'_>]) -> core::fmt::Arguments<'_> {core::fmt::Arguments<'a>::new})((__STATIC_FMTSTR
+                                                                                                                                                                                                                   as
+                                                                                                                                                                                                                   &'static [&'static str]),
+                                                                                                                                                                                                               (&([]
+                                                                                                                                                                                                                     as
+                                                                                                                                                                                                                     [core::fmt::Argument<'_>; 0])
+                                                                                                                                                                                                                   as
+                                                                                                                                                                                                                   &[core::fmt::Argument<'_>; 0]))
+                                                                                                         as
+                                                                                                         core::fmt::Arguments<'_>)
+                                                                                                       as
+                                                                                                       &core::fmt::Arguments<'_>))
                  as collections::string::String)
          }
      } as collections::string::String);
@@ -78,7 +78,8 @@ pub fn id<T>(x: T) -> T { (x as T) }
 pub fn use_id() {
     let _ =
         ((id::<[int; (3u as uint)]> as
-             fn([int; 3]) -> [int; 3])(([(1 as int), (2 as int), (3 as int)]
-                                           as [int; 3])) as [int; 3]);
+             fn([int; 3]) -> [int; 3] {id})(([(1 as int), (2 as int),
+                                              (3 as int)] as [int; 3])) as
+            [int; 3]);
 }
 fn main() { }

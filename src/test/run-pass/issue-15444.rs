@@ -25,5 +25,6 @@ fn thing(a: int, b: int) -> int {
 }
 
 fn main() {
+    let thing: fn(int, int) -> int = thing; // coerce to fn type
     bar(&thing);
 }
