@@ -5606,7 +5606,7 @@ pub fn check_bounds_are_used<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         if !*b {
             span_err!(ccx.tcx.sess, span, E0091,
                 "type parameter `{}` is unused",
-                token::get_ident(tps.get(i).ident));
+                token::get_ident(tps[i].ident));
         }
     }
 }
