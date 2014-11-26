@@ -62,7 +62,7 @@ the easiest way to keep people updated while Rust is in its alpha state.
 
 Oh, we should also mention the officially supported platforms:
 
-* Windows (7, 8, Server 2008 R2), x86 only
+* Windows (7, 8, Server 2008 R2)
 * Linux (2.6.18 or later, various distributions), x86 and x86-64
 * OSX 10.7 (Lion) or greater, x86 and x86-64
 
