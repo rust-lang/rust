@@ -18,12 +18,13 @@ use lint;
 use llvm::{ContextRef, ModuleRef};
 use metadata::common::LinkMeta;
 use metadata::creader;
-use middle::{stability, ty, typeck, reachable};
+use middle::{stability, ty, reachable};
 use middle::dependency_format;
 use middle;
 use plugin::load::Plugins;
 use plugin::registry::Registry;
 use plugin;
+use rustc::typeck;
 use trans;
 
 use util::common::time;

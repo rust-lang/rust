@@ -54,11 +54,10 @@ use middle::resolve_lifetime as rl;
 use middle::subst::{FnSpace, TypeSpace, AssocSpace, SelfSpace, Subst, Substs};
 use middle::subst::{VecPerParamSpace};
 use middle::ty::{mod, Ty};
-use middle::typeck::lookup_def_tcx;
-use middle::typeck::rscope::{UnelidableRscope, RegionScope, SpecificRscope,
-                             ShiftedRscope, BindingRscope};
-use middle::typeck::rscope;
-use middle::typeck::TypeAndSubsts;
+use typeck::lookup_def_tcx;
+use typeck::rscope::{mod, UnelidableRscope, RegionScope, SpecificRscope,
+                     ShiftedRscope, BindingRscope};
+use typeck::TypeAndSubsts;
 use util::common::ErrorReported;
 use util::nodemap::DefIdMap;
 use util::ppaux::{mod, Repr, UserString};

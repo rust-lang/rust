@@ -76,32 +76,32 @@ use syntax::codemap::Span;
 use syntax::print::pprust::*;
 use syntax::{ast, ast_map, abi};
 
-pub mod check;
-pub mod rscope;
-pub mod astconv;
-pub mod collect;
-pub mod coherence;
-pub mod variance;
+mod check;
+mod rscope;
+mod astconv;
+mod collect;
+mod coherence;
+mod variance;
 
-pub struct TypeAndSubsts<'tcx> {
+struct TypeAndSubsts<'tcx> {
     pub substs: subst::Substs<'tcx>,
     pub ty: Ty<'tcx>,
 }
 
-pub struct CrateCtxt<'a, 'tcx: 'a> {
+struct CrateCtxt<'a, 'tcx: 'a> {
     // A mapping from method call sites to traits that have that method.
     trait_map: resolve::TraitMap,
     tcx: &'a ty::ctxt<'tcx>
 }
 
 // Functions that write types into the node type table
-pub fn write_ty_to_tcx<'tcx>(tcx: &ty::ctxt<'tcx>, node_id: ast::NodeId, ty: Ty<'tcx>) {
+fn write_ty_to_tcx<'tcx>(tcx: &ty::ctxt<'tcx>, node_id: ast::NodeId, ty: Ty<'tcx>) {
     debug!("write_ty_to_tcx({}, {})", node_id, ppaux::ty_to_string(tcx, ty));
     assert!(!ty::type_needs_infer(ty));
     tcx.node_types.borrow_mut().insert(node_id, ty);
 }
 
-pub fn write_substs_to_tcx<'tcx>(tcx: &ty::ctxt<'tcx>,
+fn write_substs_to_tcx<'tcx>(tcx: &ty::ctxt<'tcx>,
                                  node_id: ast::NodeId,
                                  item_substs: ty::ItemSubsts<'tcx>) {
     if !item_substs.is_noop() {
@@ -114,7 +114,7 @@ pub fn write_substs_to_tcx<'tcx>(tcx: &ty::ctxt<'tcx>,
         tcx.item_substs.borrow_mut().insert(node_id, item_substs);
     }
 }
-pub fn lookup_def_tcx(tcx:&ty::ctxt, sp: Span, id: ast::NodeId) -> def::Def {
+fn lookup_def_tcx(tcx:&ty::ctxt, sp: Span, id: ast::NodeId) -> def::Def {
     match tcx.def_map.borrow().get(&id) {
         Some(x) => x.clone(),
         _ => {
@@ -123,12 +123,12 @@ pub fn lookup_def_tcx(tcx:&ty::ctxt, sp: Span, id: ast::NodeId) -> def::Def {
     }
 }
 
-pub fn lookup_def_ccx(ccx: &CrateCtxt, sp: Span, id: ast::NodeId)
+fn lookup_def_ccx(ccx: &CrateCtxt, sp: Span, id: ast::NodeId)
                    -> def::Def {
     lookup_def_tcx(ccx.tcx, sp, id)
 }
 
-pub fn no_params<'tcx>(t: Ty<'tcx>) -> ty::Polytype<'tcx> {
+fn no_params<'tcx>(t: Ty<'tcx>) -> ty::Polytype<'tcx> {
     ty::Polytype {
         generics: ty::Generics {types: VecPerParamSpace::empty(),
                                 regions: VecPerParamSpace::empty()},
@@ -136,7 +136,7 @@ pub fn no_params<'tcx>(t: Ty<'tcx>) -> ty::Polytype<'tcx> {
     }
 }
 
-pub fn require_same_types<'a, 'tcx>(tcx: &ty::ctxt<'tcx>,
+fn require_same_types<'a, 'tcx>(tcx: &ty::ctxt<'tcx>,
                                     maybe_infcx: Option<&infer::InferCtxt<'a, 'tcx>>,
                                     t1_is_expected: bool,
                                     span: Span,

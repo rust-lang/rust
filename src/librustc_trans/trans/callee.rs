@@ -50,7 +50,6 @@ use trans::type_::Type;
 use trans::type_of;
 use middle::ty::{mod, Ty};
 use middle::ty::MethodCall;
-use middle::typeck::coherence::make_substs_for_receiver_types;
 use util::ppaux::Repr;
 use util::ppaux::ty_to_string;
 
@@ -573,7 +572,7 @@ pub fn trans_fn_ref_with_substs<'blk, 'tcx>(
 
                     // Compute the first substitution
                     let first_subst =
-                        make_substs_for_receiver_types(tcx, &*trait_ref, &*method)
+                        ty::make_substs_for_receiver_types(tcx, &*trait_ref, &*method)
                         .erase_regions();
 
                     // And compose them

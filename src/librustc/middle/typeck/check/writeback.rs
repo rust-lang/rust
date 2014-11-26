@@ -17,13 +17,13 @@ use middle::def;
 use middle::pat_util;
 use middle::ty::{mod, Ty, MethodCall, MethodCallee};
 use middle::ty_fold::{TypeFolder,TypeFoldable};
-use middle::typeck::astconv::AstConv;
-use middle::typeck::check::FnCtxt;
+use typeck::astconv::AstConv;
+use typeck::check::FnCtxt;
 use middle::infer::{force_all, resolve_all, resolve_region};
 use middle::infer::resolve_type;
 use middle::infer;
-use middle::typeck::write_substs_to_tcx;
-use middle::typeck::write_ty_to_tcx;
+use typeck::write_substs_to_tcx;
+use typeck::write_ty_to_tcx;
 use util::ppaux::Repr;
 
 use std::cell::Cell;
