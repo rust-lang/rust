@@ -25,11 +25,11 @@ fn bsearch_table<T>(c: char, r: &'static [(char, &'static [T])]) -> Option<&'sta
         else if val < c { Less }
         else { Greater }
     }) {
-        slice::Found(idx) => {
+        slice::BinarySearchResult::Found(idx) => {
             let (_, result) = r[idx];
             Some(result)
         }
-        slice::NotFound(_) => None
+        slice::BinarySearchResult::NotFound(_) => None
     }
 }
 
@@ -88,11 +88,11 @@ pub fn compose(a: char, b: char) -> Option<char> {
                     else if val < b { Less }
                     else { Greater }
                 }) {
-                    slice::Found(idx) => {
+                    slice::BinarySearchResult::Found(idx) => {
                         let (_, result) = candidates[idx];
                         Some(result)
                     }
-                    slice::NotFound(_) => None
+                    slice::BinarySearchResult::NotFound(_) => None
                 }
             }
         }

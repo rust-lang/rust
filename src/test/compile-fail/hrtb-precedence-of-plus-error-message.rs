@@ -30,6 +30,7 @@ struct Foo<'a> {
     d: fn() -> Bar+'a,
         //~^ ERROR E0171
         //~^^ NOTE perhaps you forgot parentheses
+        //~^^^ WARN deprecated syntax
 }
 
 fn main() { }

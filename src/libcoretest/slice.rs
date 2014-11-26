@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::slice::{Found, NotFound};
+use std::slice::BinarySearchResult::{Found, NotFound};
 
 #[test]
 fn binary_search_not_found() {

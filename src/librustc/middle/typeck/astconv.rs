@@ -741,7 +741,7 @@ fn ast_ty_to_trait_ref<'tcx,AC,RS>(this: &AC,
 
                 _ => {
                     span_note!(this.tcx().sess, ty.span,
-                               "perhaps you forget parentheses? (per RFC 248)");
+                               "perhaps you forgot parentheses? (per RFC 248)");
                 }
             }
             Err(ErrorReported)

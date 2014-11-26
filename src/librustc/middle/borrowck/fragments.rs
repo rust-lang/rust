@@ -277,8 +277,8 @@ pub fn fixup_fragment_sets<'tcx>(this: &MoveData<'tcx>, tcx: &ty::ctxt<'tcx>) {
 
     fn non_member(elem: MovePathIndex, set: &[MovePathIndex]) -> bool {
         match set.binary_search_elem(&elem) {
-            slice::Found(_) => false,
-            slice::NotFound(_) => true,
+            slice::BinarySearchResult::Found(_) => false,
+            slice::BinarySearchResult::NotFound(_) => true,
         }
     }
 }
