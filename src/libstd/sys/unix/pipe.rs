@@ -133,7 +133,7 @@ impl UnixStream {
         }
     }
 
-    fn fd(&self) -> fd_t { self.inner.fd }
+    pub fn fd(&self) -> fd_t { self.inner.fd }
 
     #[cfg(target_os = "linux")]
     fn lock_nonblocking(&self) {}
@@ -222,7 +222,7 @@ impl UnixListener {
         })
     }
 
-    fn fd(&self) -> fd_t { self.inner.fd }
+    pub fn fd(&self) -> fd_t { self.inner.fd }
 
     pub fn listen(self) -> IoResult<UnixAcceptor> {
         match unsafe { libc::listen(self.fd(), 128) } {
@@ -260,7 +260,7 @@ struct AcceptorInner {
 }
 
 impl UnixAcceptor {
-    fn fd(&self) -> fd_t { self.inner.listener.fd() }
+    pub fn fd(&self) -> fd_t { self.inner.listener.fd() }
 
     pub fn accept(&mut self) -> IoResult<UnixStream> {
         let deadline = if self.deadline == 0 {None} else {Some(self.deadline)};

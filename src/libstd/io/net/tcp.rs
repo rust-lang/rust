@@ -31,6 +31,8 @@ use sys::tcp::TcpStream as TcpStreamImp;
 use sys::tcp::TcpListener as TcpListenerImp;
 use sys::tcp::TcpAcceptor as TcpAcceptorImp;
 
+use sys_common;
+
 /// A structure which represents a TCP stream between a local socket and a
 /// remote socket.
 ///
@@ -260,6 +262,12 @@ impl Writer for TcpStream {
     }
 }
 
+impl sys_common::AsInner<TcpStreamImp> for TcpStream {
+    fn as_inner(&self) -> &TcpStreamImp {
+        &self.inner
+    }
+}
+
 /// A structure representing a socket server. This listener is used to create a
 /// `TcpAcceptor` which can be used to accept sockets on a local port.
 ///
@@ -326,6 +334,12 @@ impl TcpListener {
 impl Listener<TcpStream, TcpAcceptor> for TcpListener {
     fn listen(self) -> IoResult<TcpAcceptor> {
         self.inner.listen(128).map(|a| TcpAcceptor { inner: a })
+    }
+}
+
+impl sys_common::AsInner<TcpListenerImp> for TcpListener {
+    fn as_inner(&self) -> &TcpListenerImp {
+        &self.inner
     }
 }
 
@@ -453,6 +467,12 @@ impl Clone for TcpAcceptor {
     /// on to wake up any other task blocked in `accept`.
     fn clone(&self) -> TcpAcceptor {
         TcpAcceptor { inner: self.inner.clone() }
+    }
+}
+
+impl sys_common::AsInner<TcpAcceptorImp> for TcpAcceptor {
+    fn as_inner(&self) -> &TcpAcceptorImp {
+        &self.inner
     }
 }
 
