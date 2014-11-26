@@ -1165,12 +1165,19 @@ pub enum Type {
         mutability: Mutability,
         type_: Box<Type>,
     },
+
+    // <Type as Trait>::Name
     QPath {
         name: String,
         self_type: Box<Type>,
         trait_: Box<Type>
     },
-    // region, raw, other boxes, mutable
+
+    // _
+    Infer,
+
+    // for<'a> Foo(&'a)
+    PolyTraitRef(Vec<TyParamBound>),
 }
 
 #[deriving(Clone, Encodable, Decodable, PartialEq, Eq, Hash)]
@@ -1307,11 +1314,18 @@ impl Clean<Type> for ast::Ty {
                 }
             }
             TyClosure(ref c) => Closure(box c.clean(cx)),
-            TyProc(ref c) => Proc(box c.clean(cx)),
             TyBareFn(ref barefn) => BareFunction(box barefn.clean(cx)),
             TyParen(ref ty) => ty.clean(cx),
             TyQPath(ref qp) => qp.clean(cx),
-            ref x => panic!("Unimplemented type {}", x),
+            TyPolyTraitRef(ref bounds) => {
+                PolyTraitRef(bounds.clean(cx))
+            },
+            TyInfer(..) => {
+                Infer
+            },
+            TyTypeof(..) => {
+                panic!("Unimplemented type {}", self.node)
+            },
         }
     }
 }
