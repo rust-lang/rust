@@ -94,8 +94,8 @@ impl Process {
             mem::transmute::<&ProcessConfig<K,V>,&'static ProcessConfig<K,V>>(cfg)
         };
 
-        with_envp(cfg.env(), proc(envp) {
-            with_argv(cfg.program(), cfg.args(), proc(argv) unsafe {
+        with_envp(cfg.env(), move|: envp: *const c_void| {
+            with_argv(cfg.program(), cfg.args(), move|: argv: *const *const libc::c_char| unsafe {
                 let (input, mut output) = try!(sys::os::pipe());
 
                 // We may use this in the child, so perform allocations before the

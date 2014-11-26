@@ -21,7 +21,7 @@ fn calc(children: uint, parent_wait_chan: &Sender<Sender<Sender<int>>>) {
 
     let wait_ports: Vec<Reciever<Sender<Sender<int>>>> = vec::from_fn(children, |_| {
         let (wait_port, wait_chan) = stream::<Sender<Sender<int>>>();
-        task::spawn(proc() {
+        task::spawn(move|| {
             calc(children / 2, &wait_chan);
         });
         wait_port
@@ -58,7 +58,7 @@ fn main() {
 
     let children = from_str::<uint>(args[1]).unwrap();
     let (wait_port, wait_chan) = stream();
-    task::spawn(proc() {
+    task::spawn(move|| {
         calc(children, &wait_chan);
     });
 

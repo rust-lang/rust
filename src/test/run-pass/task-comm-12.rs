@@ -16,7 +16,7 @@ fn start(_task_number: int) { println!("Started / Finished task."); }
 
 fn test00() {
     let i: int = 0;
-    let mut result = task::try_future(proc() {
+    let mut result = task::try_future(move|| {
         start(i)
     });
 

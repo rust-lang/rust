@@ -11,20 +11,23 @@
 
 // rustc --test ignores2.rs && ./ignores2
 
+#![feature(unboxed_closures)]
+
 use std::path::{Path};
 use std::path;
 use std::result;
+use std::thunk::Thunk;
 
-type rsrc_loader = proc(path: &Path):'static -> result::Result<String, String>;
+type rsrc_loader = Box<FnMut(&Path) -> (result::Result<String, String>) + 'static>;
 
 fn tester()
 {
-    let loader: rsrc_loader = proc(_path) {
+    let mut loader: rsrc_loader = box move|_path| {
         result::Result::Ok("more blah".to_string())
     };
 
     let path = path::Path::new("blah");
-    assert!(loader(&path).is_ok());
+    assert!(loader.call_mut((&path,)).is_ok());
 }
 
 pub fn main() {}

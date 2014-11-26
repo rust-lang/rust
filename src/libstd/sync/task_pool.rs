@@ -12,17 +12,18 @@
 
 use core::prelude::*;
 
-use task::spawn;
+use task::{spawn};
 use comm::{channel, Sender, Receiver};
 use sync::{Arc, Mutex};
+use thunk::Thunk;
 
 struct Sentinel<'a> {
-    jobs: &'a Arc<Mutex<Receiver<proc(): Send>>>,
+    jobs: &'a Arc<Mutex<Receiver<Thunk>>>,
     active: bool
 }
 
 impl<'a> Sentinel<'a> {
-    fn new(jobs: &Arc<Mutex<Receiver<proc(): Send>>>) -> Sentinel {
+    fn new(jobs: &Arc<Mutex<Receiver<Thunk>>>) -> Sentinel {
         Sentinel {
             jobs: jobs,
             active: true
@@ -60,7 +61,7 @@ impl<'a> Drop for Sentinel<'a> {
 /// let (tx, rx) = channel();
 /// for _ in range(0, 8u) {
 ///     let tx = tx.clone();
-///     pool.execute(proc() {
+///     pool.execute(move|| {
 ///         tx.send(1u);
 ///     });
 /// }
@@ -146,7 +147,7 @@ mod test {
         let (tx, rx) = channel();
         for _ in range(0, TEST_TASKS) {
             let tx = tx.clone();
-            pool.execute(proc() {
+            pool.execute(move|| {
                 tx.send(1u);
             });
         }
@@ -168,14 +169,14 @@ mod test {
 
         // Panic all the existing tasks.
         for _ in range(0, TEST_TASKS) {
-            pool.execute(proc() { panic!() });
+            pool.execute(move|| -> () { panic!() });
         }
 
         // Ensure new tasks were spawned to compensate.
         let (tx, rx) = channel();
         for _ in range(0, TEST_TASKS) {
             let tx = tx.clone();
-            pool.execute(proc() {
+            pool.execute(move|| {
                 tx.send(1u);
             });
         }
@@ -193,7 +194,7 @@ mod test {
         // Panic all the existing tasks in a bit.
         for _ in range(0, TEST_TASKS) {
             let waiter = waiter.clone();
-            pool.execute(proc() {
+            pool.execute(move|| {
                 waiter.wait();
                 panic!();
             });

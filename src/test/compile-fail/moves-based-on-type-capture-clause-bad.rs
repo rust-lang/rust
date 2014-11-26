@@ -12,7 +12,7 @@ use std::task;
 
 fn main() {
     let x = "Hello world!".to_string();
-    task::spawn(proc() {
+    task::spawn(move|| {
         println!("{}", x);
     });
     println!("{}", x); //~ ERROR use of moved value

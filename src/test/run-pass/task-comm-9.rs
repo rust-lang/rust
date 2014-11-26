@@ -23,7 +23,7 @@ fn test00() {
     let (tx, rx) = channel();
     let number_of_messages: int = 10;
 
-    let result = task::try_future(proc() {
+    let result = task::try_future(move|| {
         test00_start(&tx, number_of_messages);
     });
 

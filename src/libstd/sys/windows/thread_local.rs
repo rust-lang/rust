@@ -131,7 +131,7 @@ fn init_dtors() {
         DTORS = mem::transmute(dtors);
     }
 
-    rustrt::at_exit(proc() unsafe {
+    rustrt::at_exit(move|| unsafe {
         mem::transmute::<_, Box<Exclusive<Vec<(Key, Dtor)>>>>(DTORS);
         DTORS = 0 as *mut _;
     });

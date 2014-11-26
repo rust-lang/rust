@@ -37,19 +37,20 @@
 
 use kinds::Send;
 use mem;
-use ops::Drop;
+use ops::{Drop, FnOnce};
 use option::Option;
 use option::Option::{Some, None};
 use ptr::RawPtr;
 use ptr;
 use raw;
 use slice::AsSlice;
+use thunk::{Thunk};
 
 /// The type representing a foreign chunk of memory
 pub struct CVec<T> {
     base: *mut T,
     len: uint,
-    dtor: Option<proc():Send>,
+    dtor: Option<Thunk>,
 }
 
 #[unsafe_destructor]
@@ -57,7 +58,7 @@ impl<T> Drop for CVec<T> {
     fn drop(&mut self) {
         match self.dtor.take() {
             None => (),
-            Some(f) => f()
+            Some(f) => f.invoke(())
         }
     }
 }
@@ -90,15 +91,20 @@ impl<T> CVec<T> {
     ///
     /// * base - A foreign pointer to a buffer
     /// * len - The number of elements in the buffer
-    /// * dtor - A proc to run when the value is destructed, useful
+    /// * dtor - A fn to run when the value is destructed, useful
     ///          for freeing the buffer, etc.
-    pub unsafe fn new_with_dtor(base: *mut T, len: uint,
-                                dtor: proc():Send) -> CVec<T> {
+    pub unsafe fn new_with_dtor<F>(base: *mut T,
+                                   len: uint,
+                                   dtor: F)
+                                   -> CVec<T>
+        where F : FnOnce(), F : Send
+    {
         assert!(base != ptr::null_mut());
+        let dtor: Thunk = Thunk::new(dtor);
         CVec {
             base: base,
             len: len,
-            dtor: Some(dtor),
+            dtor: Some(dtor)
         }
     }
 
@@ -177,8 +183,9 @@ mod tests {
             let mem = libc::malloc(n as libc::size_t);
             if mem.is_null() { ::alloc::oom() }
 
-            CVec::new_with_dtor(mem as *mut u8, n,
-                proc() { libc::free(mem as *mut libc::c_void); })
+            CVec::new_with_dtor(mem as *mut u8,
+                                n,
+                                move|| { libc::free(mem as *mut libc::c_void); })
         }
     }
 
@@ -218,8 +225,9 @@ mod tests {
     #[test]
     fn test_unwrap() {
         unsafe {
-            let cv = CVec::new_with_dtor(1 as *mut int, 0,
-                proc() { panic!("Don't run this destructor!") });
+            let cv = CVec::new_with_dtor(1 as *mut int,
+                                         0,
+                                         move|:| panic!("Don't run this destructor!"));
             let p = cv.unwrap();
             assert_eq!(p, 1 as *mut int);
         }

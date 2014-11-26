@@ -37,7 +37,7 @@ fn main() {
     let args = args.as_slice();
     if args.len() > 1 && args[1].as_slice() == "recurse" {
         let (tx, rx) = channel();
-        spawn(proc() {
+        spawn(move|| {
             recurse();
             tx.send(());
         });

@@ -59,7 +59,7 @@ mod test {
 
     #[test]
     fn thread_local_task_smoke_test() {
-        Thread::start(proc() {
+        Thread::start(move|| {
             let task = box Task::new(None, None);
             Local::put(task);
             let task: Box<Task> = Local::take();
@@ -69,7 +69,7 @@ mod test {
 
     #[test]
     fn thread_local_task_two_instances() {
-        Thread::start(proc() {
+        Thread::start(move|| {
             let task = box Task::new(None, None);
             Local::put(task);
             let task: Box<Task> = Local::take();
@@ -83,7 +83,7 @@ mod test {
 
     #[test]
     fn borrow_smoke_test() {
-        Thread::start(proc() {
+        Thread::start(move|| {
             let task = box Task::new(None, None);
             Local::put(task);
 
@@ -97,7 +97,7 @@ mod test {
 
     #[test]
     fn borrow_with_return() {
-        Thread::start(proc() {
+        Thread::start(move|| {
             let task = box Task::new(None, None);
             Local::put(task);
 
@@ -112,7 +112,7 @@ mod test {
 
     #[test]
     fn try_take() {
-        Thread::start(proc() {
+        Thread::start(move|| {
             let task = box Task::new(None, None);
             Local::put(task);
 

@@ -15,5 +15,5 @@ use std::task;
 fn child2(_s: String) { }
 
 pub fn main() {
-    let _x = task::spawn(proc() child2("hi".to_string()));
+    let _x = task::spawn(move|| child2("hi".to_string()));
 }

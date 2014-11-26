@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-type Noncopyable = proc():'static;
+type Noncopyable = Box<int>;
 
 struct Foo {
     copied: int,

@@ -10,10 +10,10 @@
 
 fn main() {
     let x = 1i;
-    proc() { x = 2; };
-    //~^ ERROR: cannot assign to immutable captured outer variable in a proc `x`
+    move|:| { x = 2; };
+    //~^ ERROR: cannot assign to immutable captured outer variable
 
     let s = std::io::stdin();
-    proc() { s.read_to_end(); };
-    //~^ ERROR: cannot borrow immutable captured outer variable in a proc `s` as mutable
+    move|:| { s.read_to_end(); };
+    //~^ ERROR: cannot borrow immutable captured outer variable
 }

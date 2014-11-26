@@ -10,7 +10,9 @@
 
 extern crate libc;
 
-fn foo(_: proc()) {}
+use std::thunk::Thunk;
+
+fn foo(_: Thunk) {}
 
 fn main() {
     foo(loop {

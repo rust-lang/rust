@@ -8,15 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(unboxed_closures)]
+
 use std::comm;
 
-fn foo(blk: proc()) {
+fn foo<F:FnOnce()+Send>(blk: F) {
     blk();
 }
 
 pub fn main() {
     let (tx, rx) = channel();
-    foo(proc() {
+    foo(move || {
         tx.send(());
     });
     rx.recv();

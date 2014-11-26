@@ -21,7 +21,7 @@ use sync::{Mutex, Condvar};
 ///     let c = barrier.clone();
 ///     // The same messages will be printed together.
 ///     // You will NOT see any interleaving.
-///     spawn(proc() {
+///     spawn(move|| {
 ///         println!("before wait");
 ///         c.wait();
 ///         println!("after wait");
@@ -94,7 +94,7 @@ mod tests {
         for _ in range(0u, 9) {
             let c = barrier.clone();
             let tx = tx.clone();
-            spawn(proc() {
+            spawn(move|| {
                 c.wait();
                 tx.send(true);
             });

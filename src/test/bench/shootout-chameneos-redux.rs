@@ -188,7 +188,7 @@ fn rendezvous(nn: uint, set: Vec<Color>) {
             let to_rendezvous = to_rendezvous.clone();
             let to_rendezvous_log = to_rendezvous_log.clone();
             let (to_creature, from_rendezvous) = channel();
-            spawn(proc() {
+            spawn(move|| {
                 creature(ii,
                          col,
                          from_rendezvous,

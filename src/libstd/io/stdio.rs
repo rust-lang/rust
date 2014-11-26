@@ -528,7 +528,7 @@ mod tests {
 
         let (tx, rx) = channel();
         let (mut r, w) = (ChanReader::new(rx), ChanWriter::new(tx));
-        spawn(proc() {
+        spawn(move|| {
             set_stdout(box w);
             println!("hello!");
         });
@@ -542,7 +542,7 @@ mod tests {
 
         let (tx, rx) = channel();
         let (mut r, w) = (ChanReader::new(rx), ChanWriter::new(tx));
-        spawn(proc() {
+        spawn(move|| {
             ::realstd::io::stdio::set_stderr(box w);
             panic!("my special message");
         });

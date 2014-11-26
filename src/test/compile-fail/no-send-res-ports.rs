@@ -35,9 +35,9 @@ fn main() {
 
     let x = foo(Port(Rc::new(())));
 
-    task::spawn(proc() {
-        let y = x;
+    task::spawn(move|| {
         //~^ ERROR `core::kinds::Send` is not implemented
+        let y = x;
         println!("{}", y);
     });
 }

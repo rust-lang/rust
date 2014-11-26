@@ -82,7 +82,7 @@ fn mandelbrot<W: io::Writer>(w: uint, mut out: W) -> io::IoResult<()> {
     let mut precalc_i = Vec::with_capacity(h);
 
     let precalc_futures = Vec::from_fn(WORKERS, |i| {
-        Future::spawn(proc () {
+        Future::spawn(move|| {
             let mut rs = Vec::with_capacity(w / WORKERS);
             let mut is = Vec::with_capacity(w / WORKERS);
 
@@ -123,7 +123,7 @@ fn mandelbrot<W: io::Writer>(w: uint, mut out: W) -> io::IoResult<()> {
         let vec_init_r = arc_init_r.clone();
         let vec_init_i = arc_init_i.clone();
 
-        Future::spawn(proc () {
+        Future::spawn(move|| {
             let mut res: Vec<u8> = Vec::with_capacity((chunk_size * w) / 8);
             let init_r_slice = vec_init_r.as_slice();
 

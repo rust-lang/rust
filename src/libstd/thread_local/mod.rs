@@ -77,7 +77,7 @@ pub mod scoped;
 /// });
 ///
 /// // each thread starts out with the initial value of 1
-/// spawn(proc() {
+/// spawn(move|| {
 ///     FOO.with(|f| {
 ///         assert_eq!(*f.borrow(), 1);
 ///         *f.borrow_mut() = 3;
@@ -471,7 +471,7 @@ mod tests {
             *f.get() = 2;
         });
         let (tx, rx) = channel();
-        spawn(proc() {
+        spawn(move|| {
             FOO.with(|f| unsafe {
                 assert_eq!(*f.get(), 1);
             });
@@ -491,7 +491,7 @@ mod tests {
         })
 
         let (tx, rx) = channel();
-        spawn(proc() unsafe {
+        spawn(move|| unsafe {
             let mut tx = Some(tx);
             FOO.with(|f| {
                 *f.get() = Some(Foo(tx.take().unwrap()));
@@ -539,7 +539,7 @@ mod tests {
             }
         }
 
-        Thread::start(proc() {
+        Thread::start(move|| {
             drop(S1);
         }).join();
     }
@@ -557,7 +557,7 @@ mod tests {
             }
         }
 
-        Thread::start(proc() unsafe {
+        Thread::start(move|| unsafe {
             K1.with(|s| *s.get() = Some(S1));
         }).join();
     }
@@ -584,7 +584,7 @@ mod tests {
         }
 
         let (tx, rx) = channel();
-        spawn(proc() unsafe {
+        spawn(move|| unsafe {
             let mut tx = Some(tx);
             K1.with(|s| *s.get() = Some(S1(tx.take().unwrap())));
         });

@@ -8,8 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: mismatched types
-
 use std::task;
 
-fn main() { task::spawn(|| -> int { 10 }); }
+fn main() {
+    // We get an error because return type is `->int` and not `->()`.
+    task::spawn(|| -> int { 10 });
+    //~^ ERROR type mismatch
+}

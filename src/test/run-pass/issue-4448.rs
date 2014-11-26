@@ -13,7 +13,7 @@ use std::task;
 pub fn main() {
     let (tx, rx) = channel::<&'static str>();
 
-    task::spawn(proc() {
+    task::spawn(move|| {
         assert_eq!(rx.recv(), "hello, world");
     });
 

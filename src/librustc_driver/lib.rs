@@ -71,7 +71,7 @@ pub mod driver;
 pub mod pretty;
 
 pub fn run(args: Vec<String>) -> int {
-    monitor(proc() run_compiler(args.as_slice()));
+    monitor(move |:| run_compiler(args.as_slice()));
     0
 }
 
@@ -471,7 +471,7 @@ pub fn list_metadata(sess: &Session, path: &Path,
 ///
 /// The diagnostic emitter yielded to the procedure should be used for reporting
 /// errors of the compiler.
-pub fn monitor(f: proc():Send) {
+pub fn monitor<F:FnOnce()+Send>(f: F) {
     static STACK_SIZE: uint = 32000000; // 32MB
 
     let (tx, rx) = channel();

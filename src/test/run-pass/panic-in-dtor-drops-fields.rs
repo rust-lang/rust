@@ -33,7 +33,7 @@ impl Drop for B {
 }
 
 pub fn main() {
-    let ret = task::try(proc() {
+    let ret = task::try(move|| {
         let _a = A { b: B { foo: 3 } };
     });
     assert!(ret.is_err());

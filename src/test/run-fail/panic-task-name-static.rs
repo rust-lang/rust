@@ -12,7 +12,7 @@
 
 fn main() {
     let r: Result<int,_> =
-        ::std::task::TaskBuilder::new().named("static name").try(proc() {
+        ::std::task::TaskBuilder::new().named("static name").try(move|| {
             panic!("test");
         });
     assert!(r.is_ok());

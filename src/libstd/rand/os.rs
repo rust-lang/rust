@@ -355,7 +355,7 @@ mod test {
         for _ in range(0u, 20) {
             let (tx, rx) = channel();
             txs.push(tx);
-            task::spawn(proc() {
+            task::spawn(move|| {
                 // wait until all the tasks are ready to go.
                 rx.recv();
 

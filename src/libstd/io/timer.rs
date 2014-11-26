@@ -357,7 +357,7 @@ mod test {
         let mut timer = Timer::new().unwrap();
         let timer_rx = timer.periodic(Duration::milliseconds(1000));
 
-        spawn(proc() {
+        spawn(move|| {
             let _ = timer_rx.recv_opt();
         });
 
@@ -371,7 +371,7 @@ mod test {
         let mut timer = Timer::new().unwrap();
         let timer_rx = timer.periodic(Duration::milliseconds(1000));
 
-        spawn(proc() {
+        spawn(move|| {
             let _ = timer_rx.recv_opt();
         });
 
@@ -384,7 +384,7 @@ mod test {
         let mut timer = Timer::new().unwrap();
         let timer_rx = timer.periodic(Duration::milliseconds(1000));
 
-        spawn(proc() {
+        spawn(move|| {
             let _ = timer_rx.recv_opt();
         });
 
