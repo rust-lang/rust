@@ -1396,8 +1396,7 @@ fn has_nested_returns(tcx: &ty::ctxt, id: ast::NodeId) -> bool {
         }
         Some(ast_map::NodeExpr(e)) => {
             match e.node {
-                ast::ExprClosure(_, _, _, ref blk) |
-                ast::ExprProc(_, ref blk) => {
+                ast::ExprClosure(_, _, _, ref blk) => {
                     let mut explicit = CheckForNestedReturnsVisitor::explicit();
                     let mut implicit = CheckForNestedReturnsVisitor::implicit();
                     visit::walk_expr(&mut explicit, e);

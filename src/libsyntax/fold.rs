@@ -425,17 +425,6 @@ pub fn noop_fold_ty<T: Folder>(t: P<Ty>, fld: &mut T) -> P<Ty> {
                     }
                 }))
             }
-            TyProc(f) => {
-                TyProc(f.map(|ClosureTy {fn_style, onceness, bounds, decl, lifetimes}| {
-                    ClosureTy {
-                        fn_style: fn_style,
-                        onceness: onceness,
-                        bounds: fld.fold_bounds(bounds),
-                        decl: fld.fold_fn_decl(decl),
-                        lifetimes: fld.fold_lifetime_defs(lifetimes)
-                    }
-                }))
-            }
             TyBareFn(f) => {
                 TyBareFn(f.map(|BareFnTy {lifetimes, fn_style, abi, decl}| BareFnTy {
                     lifetimes: fld.fold_lifetime_defs(lifetimes),
@@ -1359,10 +1348,6 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span}: Expr, folder: &mut T) ->
                 ExprMatch(folder.fold_expr(expr),
                         arms.move_map(|x| folder.fold_arm(x)),
                         source)
-            }
-            ExprProc(decl, body) => {
-                ExprProc(folder.fold_fn_decl(decl),
-                         folder.fold_block(body))
             }
             ExprClosure(capture_clause, opt_kind, decl, body) => {
                 ExprClosure(capture_clause,

@@ -389,14 +389,6 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty) {
             walk_ty_param_bounds_helper(visitor, &function_declaration.bounds);
             walk_lifetime_decls_helper(visitor, &function_declaration.lifetimes);
         }
-        TyProc(ref function_declaration) => {
-            for argument in function_declaration.decl.inputs.iter() {
-                visitor.visit_ty(&*argument.ty)
-            }
-            walk_fn_ret_ty(visitor, &function_declaration.decl.output);
-            walk_ty_param_bounds_helper(visitor, &function_declaration.bounds);
-            walk_lifetime_decls_helper(visitor, &function_declaration.lifetimes);
-        }
         TyBareFn(ref function_declaration) => {
             for argument in function_declaration.decl.inputs.iter() {
                 visitor.visit_ty(&*argument.ty)
@@ -825,13 +817,6 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
             }
         }
         ExprClosure(_, _, ref function_declaration, ref body) => {
-            visitor.visit_fn(FkFnBlock,
-                             &**function_declaration,
-                             &**body,
-                             expression.span,
-                             expression.id)
-        }
-        ExprProc(ref function_declaration, ref body) => {
             visitor.visit_fn(FkFnBlock,
                              &**function_declaration,
                              &**body,

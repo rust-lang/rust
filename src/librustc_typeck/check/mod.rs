@@ -2122,14 +2122,6 @@ fn try_overloaded_call<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         fcx.inh.method_map.borrow_mut().insert(method_call, method_callee);
         write_call(fcx, call_expression, output_type);
 
-        if !fcx.tcx().sess.features.borrow().unboxed_closures {
-            span_err!(fcx.tcx().sess, call_expression.span, E0056,
-                "overloaded calls are experimental");
-            span_help!(fcx.tcx().sess, call_expression.span,
-                "add `#![feature(unboxed_closures)]` to \
-                the crate attributes to enable");
-        }
-
         return true
     }
 
@@ -2666,7 +2658,7 @@ fn check_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         };
         for (i, arg) in args.iter().take(t).enumerate() {
             let is_block = match arg.node {
-                ast::ExprClosure(..) | ast::ExprProc(..) => true,
+                ast::ExprClosure(..) => true,
                 _ => false
             };
 
@@ -3996,14 +3988,6 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
       }
       ast::ExprClosure(_, opt_kind, ref decl, ref body) => {
           closure::check_expr_closure(fcx, expr, opt_kind, &**decl, &**body, expected);
-      }
-      ast::ExprProc(ref decl, ref body) => {
-          closure::check_boxed_closure(fcx,
-                                       expr,
-                                       ty::UniqTraitStore,
-                                       &**decl,
-                                       &**body,
-                                       expected);
       }
       ast::ExprBlock(ref b) => {
         check_block_with_expected(fcx, &**b, expected);

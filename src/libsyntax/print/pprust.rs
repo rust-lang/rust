@@ -450,7 +450,7 @@ pub fn visibility_qualified(vis: ast::Visibility, s: &str) -> String {
 fn needs_parentheses(expr: &ast::Expr) -> bool {
     match expr.node {
         ast::ExprAssign(..) | ast::ExprBinary(..) |
-        ast::ExprClosure(..) | ast::ExprProc(..) |
+        ast::ExprClosure(..) |
         ast::ExprAssignOp(..) | ast::ExprCast(..) => true,
         _ => false,
     }
@@ -726,25 +726,6 @@ impl<'a> State<'a> {
                 };
                 try!(self.print_ty_fn(None,
                                       Some('&'),
-                                      f.fn_style,
-                                      f.onceness,
-                                      &*f.decl,
-                                      None,
-                                      &f.bounds,
-                                      Some(&generics),
-                                      None));
-            }
-            ast::TyProc(ref f) => {
-                let generics = ast::Generics {
-                    lifetimes: f.lifetimes.clone(),
-                    ty_params: OwnedSlice::empty(),
-                    where_clause: ast::WhereClause {
-                        id: ast::DUMMY_NODE_ID,
-                        predicates: Vec::new(),
-                    },
-                };
-                try!(self.print_ty_fn(None,
-                                      Some('~'),
                                       f.fn_style,
                                       f.onceness,
                                       &*f.decl,
@@ -1696,33 +1677,6 @@ impl<'a> State<'a> {
                 // empty box to satisfy the close.
                 try!(self.ibox(0));
             }
-            ast::ExprProc(ref decl, ref body) => {
-                // in do/for blocks we don't want to show an empty
-                // argument list, but at this point we don't know which
-                // we are inside.
-                //
-                // if !decl.inputs.is_empty() {
-                try!(self.print_proc_args(&**decl));
-                try!(space(&mut self.s));
-                // }
-                assert!(body.stmts.is_empty());
-                assert!(body.expr.is_some());
-                // we extract the block, so as not to create another set of boxes
-                match body.expr.as_ref().unwrap().node {
-                    ast::ExprBlock(ref blk) => {
-                        try!(self.print_block_unclosed(&**blk));
-                    }
-                    _ => {
-                        // this is a bare expression
-                        try!(self.print_expr(body.expr.as_ref().map(|e| &**e).unwrap()));
-                        try!(self.end()); // need to close a box
-                    }
-                }
-                // a box will be closed by print_expr, but we didn't want an overall
-                // wrapper so we closed the corresponding opening. so create an
-                // empty box to satisfy the close.
-                try!(self.ibox(0));
-            }
             ast::ExprBlock(ref blk) => {
                 // containing cbox, will be closed by print-block at }
                 try!(self.cbox(indent_unit));
@@ -2010,6 +1964,7 @@ impl<'a> State<'a> {
                 match data.output {
                     None => { }
                     Some(ref ty) => {
+                        try!(self.space_if_not_bol());
                         try!(self.word_space("->"));
                         try!(self.print_type(&**ty));
                     }
