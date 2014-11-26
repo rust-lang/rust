@@ -30,7 +30,7 @@ use middle::ty::{ty_closure};
 use middle::ty::type_is_ty_var;
 use middle::subst::Subst;
 use middle::ty;
-use typeck::CrateCtxt;
+use CrateCtxt;
 use middle::infer::combine::Combine;
 use middle::infer::InferCtxt;
 use middle::infer::{new_infer_ctxt, resolve_ivar, resolve_type};

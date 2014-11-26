@@ -54,10 +54,9 @@ use middle::resolve_lifetime as rl;
 use middle::subst::{FnSpace, TypeSpace, AssocSpace, SelfSpace, Subst, Substs};
 use middle::subst::{VecPerParamSpace};
 use middle::ty::{mod, Ty};
-use typeck::lookup_def_tcx;
-use typeck::rscope::{mod, UnelidableRscope, RegionScope, SpecificRscope,
-                     ShiftedRscope, BindingRscope};
-use typeck::TypeAndSubsts;
+use rscope::{mod, UnelidableRscope, RegionScope, SpecificRscope,
+             ShiftedRscope, BindingRscope};
+use TypeAndSubsts;
 use util::common::ErrorReported;
 use util::nodemap::DefIdMap;
 use util::ppaux::{mod, Repr, UserString};
@@ -429,9 +428,9 @@ pub fn instantiate_trait_ref<'tcx,AC,RS>(this: &AC,
                                          where AC: AstConv<'tcx>,
                                                RS: RegionScope
 {
-    match lookup_def_tcx(this.tcx(),
-                         ast_trait_ref.path.span,
-                         ast_trait_ref.ref_id) {
+    match ::lookup_def_tcx(this.tcx(),
+                           ast_trait_ref.path.span,
+                           ast_trait_ref.ref_id) {
         def::DefTrait(trait_def_id) => {
             let trait_ref = Rc::new(ast_path_to_trait_ref(this, rscope, trait_def_id,
                                                           self_ty, &ast_trait_ref.path));
@@ -1477,7 +1476,7 @@ pub fn partition_bounds<'a>(tcx: &ty::ctxt,
     for &ast_bound in ast_bounds.iter() {
         match *ast_bound {
             ast::TraitTyParamBound(ref b) => {
-                match lookup_def_tcx(tcx, b.trait_ref.path.span, b.trait_ref.ref_id) {
+                match ::lookup_def_tcx(tcx, b.trait_ref.path.span, b.trait_ref.ref_id) {
                     def::DefTrait(trait_did) => {
                         match trait_def_ids.get(&trait_did) {
                             // Already seen this trait. We forbid

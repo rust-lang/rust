@@ -20,7 +20,7 @@ use middle;
 use plugin::load::Plugins;
 use plugin::registry::Registry;
 use plugin;
-use rustc::typeck;
+use rustc_typeck as typeck;
 use trans;
 
 use util::common::time;

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use check::{FnCtxt, structurally_resolved_type};
 use middle::subst::{SelfSpace, FnSpace};
 use middle::traits;
 use middle::traits::{SelectionError, OutputTypeParameterMismatch, Overflow, Unimplemented};
@@ -15,8 +16,6 @@ use middle::traits::{Obligation, obligation_for_builtin_bound};
 use middle::traits::{FulfillmentError, CodeSelectionError, CodeAmbiguity};
 use middle::traits::{ObligationCause};
 use middle::ty::{mod, Ty};
-use typeck::check::{FnCtxt,
-                            structurally_resolved_type};
 use middle::infer;
 use std::rc::Rc;
 use syntax::ast;

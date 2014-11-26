@@ -10,16 +10,16 @@
 
 //! Method lookup: the secret sauce of Rust. See `doc.rs`.
 
+use astconv::AstConv;
+use check::{FnCtxt};
+use check::{impl_self_ty};
+use check::vtable;
+use check::vtable::select_new_fcx_obligations;
 use middle::subst;
 use middle::subst::{Subst};
 use middle::traits;
 use middle::ty::*;
 use middle::ty;
-use typeck::astconv::AstConv;
-use typeck::check::{FnCtxt};
-use typeck::check::{impl_self_ty};
-use typeck::check::vtable;
-use typeck::check::vtable::select_new_fcx_obligations;
 use middle::infer;
 use util::ppaux::{Repr, UserString};
 

@@ -9,8 +9,8 @@
 // except according to those terms.
 
 
+use check::FnCtxt;
 use middle::ty::{mod, Ty};
-use typeck::check::FnCtxt;
 use middle::infer;
 use middle::infer::resolve_type;
 use middle::infer::resolve::try_resolve_tvar_shallow;
