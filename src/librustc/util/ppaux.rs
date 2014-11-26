@@ -23,7 +23,6 @@ use middle::ty::{ty_param, ty_ptr, ty_rptr, ty_tup, ty_open};
 use middle::ty::{ty_unboxed_closure};
 use middle::ty::{ty_uniq, ty_trait, ty_int, ty_uint, ty_infer};
 use middle::ty;
-use middle::typeck::check::regionmanip;
 
 use std::rc::Rc;
 use syntax::abi;
@@ -1289,24 +1288,6 @@ impl<'tcx> Repr<'tcx> for ast::FloatTy {
 impl<'tcx> Repr<'tcx> for ty::ExplicitSelfCategory {
     fn repr(&self, _: &ctxt) -> String {
         explicit_self_category_to_str(self).to_string()
-    }
-}
-
-impl<'tcx> Repr<'tcx> for regionmanip::WfConstraint<'tcx> {
-    fn repr(&self, tcx: &ctxt) -> String {
-        match *self {
-            regionmanip::RegionSubRegionConstraint(_, r_a, r_b) => {
-                format!("RegionSubRegionConstraint({}, {})",
-                        r_a.repr(tcx),
-                        r_b.repr(tcx))
-            }
-
-            regionmanip::RegionSubParamConstraint(_, r, p) => {
-                format!("RegionSubParamConstraint({}, {})",
-                        r.repr(tcx),
-                        p.repr(tcx))
-            }
-        }
     }
 }
 

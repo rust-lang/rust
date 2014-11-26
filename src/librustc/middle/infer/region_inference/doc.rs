@@ -371,4 +371,4 @@
 //! ### Skolemization
 //!
 //! For a discussion on skolemization and higher-ranked subtyping, please
-//! see the module `middle::typeck::infer::higher_ranked::doc`.
+//! see the module `middle::infer::higher_ranked::doc`.

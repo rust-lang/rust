@@ -380,3 +380,22 @@ impl<'a, 'tcx> Wf<'a, 'tcx> {
         }
     }
 }
+
+impl<'tcx> Repr<'tcx> for WfConstraint<'tcx> {
+    fn repr(&self, tcx: &ty::ctxt) -> String {
+        match *self {
+            RegionSubRegionConstraint(_, r_a, r_b) => {
+                format!("RegionSubRegionConstraint({}, {})",
+                        r_a.repr(tcx),
+                        r_b.repr(tcx))
+            }
+
+            RegionSubParamConstraint(_, r, p) => {
+                format!("RegionSubParamConstraint({}, {})",
+                        r.repr(tcx),
+                        p.repr(tcx))
+            }
+        }
+    }
+}
+
