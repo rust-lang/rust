@@ -13,15 +13,15 @@
 //! Utilities for formatting and printing strings
 //!
 //! This module contains the runtime support for the `format!` syntax extension.
-//! This macro is implemented in the compiler to emit calls to this module in order
-//! to format arguments at runtime into strings and streams.
+//! This macro is implemented in the compiler to emit calls to this module in
+//! order to format arguments at runtime into strings and streams.
 //!
-//! The functions contained in this module should not normally be used in everyday
-//! use cases of `format!`. The assumptions made by these functions are unsafe for
-//! all inputs, and the compiler performs a large amount of validation on the
-//! arguments to `format!` in order to ensure safety at runtime. While it is
-//! possible to call these functions directly, it is not recommended to do so in the
-//! general case.
+//! The functions contained in this module should not normally be used in
+//! everyday use cases of `format!`. The assumptions made by these functions are
+//! unsafe for all inputs, and the compiler performs a large amount of
+//! validation on the arguments to `format!` in order to ensure safety at
+//! runtime. While it is possible to call these functions directly, it is not
+//! recommended to do so in the general case.
 //!
 //! ## Usage
 //!
@@ -46,9 +46,9 @@
 //!
 //! From these, you can see that the first argument is a format string. It is
 //! required by the compiler for this to be a string literal; it cannot be a
-//! variable passed in (in order to perform validity checking). The compiler will
-//! then parse the format string and determine if the list of arguments provided is
-//! suitable to pass to this format string.
+//! variable passed in (in order to perform validity checking). The compiler
+//! will then parse the format string and determine if the list of arguments
+//! provided is suitable to pass to this format string.
 //!
 //! ### Positional parameters
 //!
@@ -60,16 +60,16 @@
 //!
 //! Things can get a little tricky once you start intermingling the two types of
 //! positional specifiers. The "next argument" specifier can be thought of as an
-//! iterator over the argument. Each time a "next argument" specifier is seen, the
-//! iterator advances. This leads to behavior like this:
+//! iterator over the argument. Each time a "next argument" specifier is seen,
+//! the iterator advances. This leads to behavior like this:
 //!
 //! ```rust
 //! format!("{1} {} {0} {}", 1i, 2i); // => "2 1 1 2"
 //! ```
 //!
-//! The internal iterator over the argument has not been advanced by the time the
-//! first `{}` is seen, so it prints the first argument. Then upon reaching the
-//! second `{}`, the iterator has advanced forward to the second argument.
+//! The internal iterator over the argument has not been advanced by the time
+//! the first `{}` is seen, so it prints the first argument. Then upon reaching
+//! the second `{}`, the iterator has advanced forward to the second argument.
 //! Essentially, parameters which explicitly name their argument do not affect
 //! parameters which do not name an argument in terms of positional specifiers.
 //!
@@ -98,27 +98,30 @@
 //! # }
 //! ```
 //!
-//! It is illegal to put positional parameters (those without names) after arguments
-//! which have names. Like with positional parameters, it is illegal to provide
-//! named parameters that are unused by the format string.
+//! It is illegal to put positional parameters (those without names) after
+//! arguments which have names. Like with positional parameters, it is illegal
+//! to provide named parameters that are unused by the format string.
 //!
 //! ### Argument types
 //!
-//! Each argument's type is dictated by the format string. It is a requirement that every argument is
-//! only ever referred to by one type. For example, this is an invalid format string:
+//! Each argument's type is dictated by the format string. It is a requirement
+//! that every argument is only ever referred to by one type. For example, this
+//! is an invalid format string:
 //!
 //! ```text
 //! {0:x} {0:o}
 //! ```
 //!
-//! This is invalid because the first argument is both referred to as a hexidecimal as well as an
+//! This is invalid because the first argument is both referred to as a
+//! hexidecimal as well as an
 //! octal.
 //!
-//! There are various parameters which do require a particular type, however. Namely if the syntax
-//! `{:.*}` is used, then the number of characters to print precedes the actual object being formatted,
-//! and the number of characters must have the type `uint`. Although a `uint` can be printed with
-//! `{}`, it is illegal to reference an argument as such. For example this is another invalid
-//! format string:
+//! There are various parameters which do require a particular type, however.
+//! Namely if the syntax `{:.*}` is used, then the number of characters to print
+//! precedes the actual object being formatted, and the number of characters
+//! must have the type `uint`. Although a `uint` can be printed with `{}`, it is
+//! illegal to reference an argument as such. For example this is another
+//! invalid format string:
 //!
 //! ```text
 //! {:.*} {0}
@@ -126,10 +129,10 @@
 //!
 //! ### Formatting traits
 //!
-//! When requesting that an argument be formatted with a particular type, you are
-//! actually requesting that an argument ascribes to a particular trait. This allows
-//! multiple actual types to be formatted via `{:x}` (like `i8` as well as `int`).
-//! The current mapping of types to traits is:
+//! When requesting that an argument be formatted with a particular type, you
+//! are actually requesting that an argument ascribes to a particular trait.
+//! This allows multiple actual types to be formatted via `{:x}` (like `i8` as
+//! well as `int`).  The current mapping of types to traits is:
 //!
 //! * *nothing* ⇒ `Show`
 //! * `o` ⇒ `Octal`
@@ -141,14 +144,14 @@
 //! * `E` ⇒ `UpperExp`
 //!
 //! What this means is that any type of argument which implements the
-//! `std::fmt::Binary` trait can then be formatted with `{:b}`. Implementations are
-//! provided for these traits for a number of primitive types by the standard
-//! library as well. If no format is specified (as in `{}` or `{:6}`), then the
-//! format trait used is the `Show` trait. This is one of the more commonly
-//! implemented traits when formatting a custom type.
+//! `std::fmt::Binary` trait can then be formatted with `{:b}`. Implementations
+//! are provided for these traits for a number of primitive types by the
+//! standard library as well. If no format is specified (as in `{}` or `{:6}`),
+//! then the format trait used is the `Show` trait. This is one of the more
+//! commonly implemented traits when formatting a custom type.
 //!
-//! When implementing a format trait for your own type, you will have to implement a
-//! method of the signature:
+//! When implementing a format trait for your own type, you will have to
+//! implement a method of the signature:
 //!
 //! ```rust
 //! # use std::fmt;
@@ -159,17 +162,17 @@
 //! # } }
 //! ```
 //!
-//! Your type will be passed as `self` by-reference, and then the function should
-//! emit output into the `f.buf` stream. It is up to each format trait
-//! implementation to correctly adhere to the requested formatting parameters. The
-//! values of these parameters will be listed in the fields of the `Formatter`
-//! struct. In order to help with this, the `Formatter` struct also provides some
-//! helper methods.
+//! Your type will be passed as `self` by-reference, and then the function
+//! should emit output into the `f.buf` stream. It is up to each format trait
+//! implementation to correctly adhere to the requested formatting parameters.
+//! The values of these parameters will be listed in the fields of the
+//! `Formatter` struct. In order to help with this, the `Formatter` struct also
+//! provides some helper methods.
 //!
 //! Additionally, the return value of this function is `fmt::Result` which is a
 //! typedef to `Result<(), IoError>` (also known as `IoResult<()>`). Formatting
-//! implementations should ensure that they return errors from `write!` correctly
-//! (propagating errors upward).
+//! implementations should ensure that they return errors from `write!`
+//! correctly (propagating errors upward).
 //!
 //! An example of implementing the formatting traits would look
 //! like:
@@ -193,8 +196,8 @@
 //!     }
 //! }
 //!
-//! // Different traits allow different forms of output of a type. The meaning of
-//! // this format is to print the magnitude of a vector.
+//! // Different traits allow different forms of output of a type. The meaning
+//! // of this format is to print the magnitude of a vector.
 //! impl fmt::Binary for Vector2D {
 //!     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 //!         let magnitude = (self.x * self.x + self.y * self.y) as f64;
@@ -219,8 +222,8 @@
 //!
 //! ### Related macros
 //!
-//! There are a number of related macros in the `format!` family. The ones that are
-//! currently implemented are:
+//! There are a number of related macros in the `format!` family. The ones that
+//! are currently implemented are:
 //!
 //! ```ignore
 //! format!      // described above
@@ -233,10 +236,11 @@
 //!
 //! #### `write!`
 //!
-//! This and `writeln` are two macros which are used to emit the format string to a
-//! specified stream. This is used to prevent intermediate allocations of format
-//! strings and instead directly write the output. Under the hood, this function is
-//! actually invoking the `write` function defined in this module. Example usage is:
+//! This and `writeln` are two macros which are used to emit the format string
+//! to a specified stream. This is used to prevent intermediate allocations of
+//! format strings and instead directly write the output. Under the hood, this
+//! function is actually invoking the `write` function defined in this module.
+//! Example usage is:
 //!
 //! ```rust
 //! # #![allow(unused_must_use)]
@@ -248,9 +252,9 @@
 //!
 //! #### `print!`
 //!
-//! This and `println` emit their output to stdout. Similarly to the `write!` macro,
-//! the goal of these macros is to avoid intermediate allocations when printing
-//! output. Example usage is:
+//! This and `println` emit their output to stdout. Similarly to the `write!`
+//! macro, the goal of these macros is to avoid intermediate allocations when
+//! printing output. Example usage is:
 //!
 //! ```rust
 //! print!("Hello {}!", "world");
@@ -274,7 +278,8 @@
 //! format_args!(fmt::format, "this returns {}", "String");
 //!
 //! let some_writer: &mut io::Writer = &mut io::stdout();
-//! format_args!(|args| { write!(some_writer, "{}", args) }, "print with a {}", "closure");
+//! format_args!(|args| { write!(some_writer, "{}", args) },
+//!              "print with a {}", "closure");
 //!
 //! fn my_fmt_fn(args: &fmt::Arguments) {
 //!     write!(&mut io::stdout(), "{}", args);
@@ -283,28 +288,28 @@
 //! # }
 //! ```
 //!
-//! The first argument of the `format_args!` macro is a function (or closure) which
-//! takes one argument of type `&fmt::Arguments`. This structure can then be
-//! passed to the `write` and `format` functions inside this module in order to
-//! process the format string. The goal of this macro is to even further prevent
-//! intermediate allocations when dealing formatting strings.
+//! The first argument of the `format_args!` macro is a function (or closure)
+//! which takes one argument of type `&fmt::Arguments`. This structure can then
+//! be passed to the `write` and `format` functions inside this module in order
+//! to process the format string. The goal of this macro is to even further
+//! prevent intermediate allocations when dealing formatting strings.
 //!
-//! For example, a logging library could use the standard formatting syntax, but it
-//! would internally pass around this structure until it has been determined where
-//! output should go to.
+//! For example, a logging library could use the standard formatting syntax, but
+//! it would internally pass around this structure until it has been determined
+//! where output should go to.
 //!
-//! It is unsafe to programmatically create an instance of `fmt::Arguments` because
-//! the operations performed when executing a format string require the compile-time
-//! checks provided by the compiler. The `format_args!` macro is the only method of
-//! safely creating these structures, but they can be unsafely created with the
-//! constructor provided.
+//! It is unsafe to programmatically create an instance of `fmt::Arguments`
+//! because the operations performed when executing a format string require the
+//! compile-time checks provided by the compiler. The `format_args!` macro is
+//! the only method of safely creating these structures, but they can be
+//! unsafely created with the constructor provided.
 //!
 //! ## Syntax
 //!
-//! The syntax for the formatting language used is drawn from other languages, so it
-//! should not be too alien. Arguments are formatted with python-like syntax,
-//! meaning that arguments are surrounded by `{}` instead of the C-like `%`. The
-//! actual grammar for the formatting syntax is:
+//! The syntax for the formatting language used is drawn from other languages,
+//! so it should not be too alien. Arguments are formatted with python-like
+//! syntax, meaning that arguments are surrounded by `{}` instead of the C-like
+//! `%`. The actual grammar for the formatting syntax is:
 //!
 //! ```text
 //! format_string := <text> [ format <text> ] *
@@ -333,8 +338,9 @@
 //!
 //! The fill character is provided normally in conjunction with the `width`
 //! parameter. This indicates that if the value being formatted is smaller than
-//! `width` some extra characters will be printed around it. The extra characters
-//! are specified by `fill`, and the alignment can be one of two options:
+//! `width` some extra characters will be printed around it. The extra
+//! characters are specified by `fill`, and the alignment can be one of two
+//! options:
 //!
 //! * `<` - the argument is left-aligned in `width` columns
 //! * `^` - the argument is center-aligned in `width` columns
@@ -344,33 +350,36 @@
 //!
 //! These can all be interpreted as flags for a particular formatter.
 //!
-//! * '+' - This is intended for numeric types and indicates that the sign should
-//!         always be printed. Positive signs are never printed by default, and the
-//!         negative sign is only printed by default for the `Signed` trait. This
-//!         flag indicates that the correct sign (+ or -) should always be printed.
+//! * '+' - This is intended for numeric types and indicates that the sign
+//!         should always be printed. Positive signs are never printed by
+//!         default, and the negative sign is only printed by default for the
+//!         `Signed` trait. This flag indicates that the correct sign (+ or -)
+//!         should always be printed.
 //! * '-' - Currently not used
-//! * '#' - This flag is indicates that the "alternate" form of printing should be
-//!         used. By default, this only applies to the integer formatting traits and
-//!         performs like:
+//! * '#' - This flag is indicates that the "alternate" form of printing should
+//!         be used. By default, this only applies to the integer formatting
+//!         traits and performs like:
 //!     * `x` - precedes the argument with a "0x"
 //!     * `X` - precedes the argument with a "0x"
 //!     * `t` - precedes the argument with a "0b"
 //!     * `o` - precedes the argument with a "0o"
 //! * '0' - This is used to indicate for integer formats that the padding should
 //!         both be done with a `0` character as well as be sign-aware. A format
-//!         like `{:08d}` would yield `00000001` for the integer `1`, while the same
-//!         format would yield `-0000001` for the integer `-1`. Notice that the
-//!         negative version has one fewer zero than the positive version.
+//!         like `{:08d}` would yield `00000001` for the integer `1`, while the
+//!         same format would yield `-0000001` for the integer `-1`. Notice that
+//!         the negative version has one fewer zero than the positive version.
 //!
 //! ### Width
 //!
-//! This is a parameter for the "minimum width" that the format should take up. If
-//! the value's string does not fill up this many characters, then the padding
-//! specified by fill/alignment will be used to take up the required space.
+//! This is a parameter for the "minimum width" that the format should take up.
+//! If the value's string does not fill up this many characters, then the
+//! padding specified by fill/alignment will be used to take up the required
+//! space.
 //!
 //! The default fill/alignment for non-numerics is a space and left-aligned. The
-//! defaults for numeric formatters is also a space but with right-alignment. If the
-//! '0' flag is specified for numerics, then the implicit fill character is '0'.
+//! defaults for numeric formatters is also a space but with right-alignment. If
+//! the '0' flag is specified for numerics, then the implicit fill character is
+//! '0'.
 //!
 //! The value for the width can also be provided as a `uint` in the list of
 //! parameters by using the `2$` syntax indicating that the second argument is a
@@ -379,19 +388,19 @@
 //! ### Precision
 //!
 //! For non-numeric types, this can be considered a "maximum width". If the
-//! resulting string is longer than this width, then it is truncated down to this
-//! many characters and only those are emitted.
+//! resulting string is longer than this width, then it is truncated down to
+//! this many characters and only those are emitted.
 //!
 //! For integral types, this has no meaning currently.
 //!
-//! For floating-point types, this indicates how many digits after the decimal point
-//! should be printed.
+//! For floating-point types, this indicates how many digits after the decimal
+//! point should be printed.
 //!
 //! ## Escaping
 //!
-//! The literal characters `{` and `}` may be included in a string by preceding them
-//! with the same character. For example, the `{` character is escaped with `{{` and
-//! the `}` character is escaped with `}}`.
+//! The literal characters `{` and `}` may be included in a string by preceding
+//! them with the same character. For example, the `{` character is escaped with
+//! `{{` and the `}` character is escaped with `}}`.
 
 #![experimental]
 
