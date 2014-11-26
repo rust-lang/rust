@@ -28,9 +28,7 @@ use self::MethodContext::*;
 
 use metadata::csearch;
 use middle::def::*;
-use middle::infer;
 use middle::ty::{mod, Ty};
-use middle::typeck::astconv::ast_ty_to_ty;
 use middle::{def, pat_util, stability};
 use middle::const_eval::{eval_const_expr_partial, const_int, const_uint};
 use util::ppaux::{ty_to_string};
@@ -84,7 +82,7 @@ impl LintPass for UnusedCasts {
 
     fn check_expr(&mut self, cx: &Context, e: &ast::Expr) {
         if let ast::ExprCast(ref expr, ref ty) = e.node {
-            let t_t = ast_ty_to_ty(cx, &infer::new_infer_ctxt(cx.tcx), &**ty);
+            let t_t = ty::expr_ty(cx.tcx, e);
             if ty::expr_ty(cx.tcx, &**expr) == t_t {
                 cx.span_lint(UNUSED_TYPECASTS, ty.span, "unnecessary type cast");
             }
