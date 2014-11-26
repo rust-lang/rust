@@ -59,6 +59,7 @@ pub mod back {
 }
 
 pub mod middle {
+    pub mod astconv_util;
     pub mod astencode;
     pub mod borrowck;
     pub mod cfg;
