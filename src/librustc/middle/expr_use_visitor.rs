@@ -295,7 +295,7 @@ impl OverloadedCallType {
 pub struct ExprUseVisitor<'d,'t,'tcx,TYPER:'t> {
     typer: &'t TYPER,
     mc: mc::MemCategorizationContext<'t,TYPER>,
-    delegate: &'d mut Delegate<'tcx>+'d,
+    delegate: &'d mut (Delegate<'tcx>+'d),
 }
 
 // If the TYPER results in an error, it's because the type check

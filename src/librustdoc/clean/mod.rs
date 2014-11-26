@@ -992,7 +992,7 @@ impl Clean<Item> for doctree::Trait {
 
 impl Clean<Type> for ast::TraitRef {
     fn clean(&self, cx: &DocContext) -> Type {
-        resolve_type(cx, self.path.clean(cx), None, self.ref_id)
+        resolve_type(cx, self.path.clean(cx), self.ref_id)
     }
 }
 
@@ -1278,8 +1278,19 @@ impl Clean<Type> for ast::Ty {
             TyFixedLengthVec(ref ty, ref e) => FixedVector(box ty.clean(cx),
                                                            e.span.to_src(cx)),
             TyTup(ref tys) => Tuple(tys.clean(cx)),
-            TyPath(ref p, ref tpbs, id) => {
-                resolve_type(cx, p.clean(cx), tpbs.clean(cx), id)
+            TyPath(ref p, id) => {
+                resolve_type(cx, p.clean(cx), id)
+            }
+            TyObjectSum(ref lhs, ref bounds) => {
+                let lhs_ty = lhs.clean(cx);
+                match lhs_ty {
+                    ResolvedPath { path, typarams: None, did } => {
+                        ResolvedPath { path: path, typarams: Some(bounds.clean(cx)), did: did}
+                    }
+                    _ => {
+                        lhs_ty // shouldn't happen
+                    }
+                }
             }
             TyClosure(ref c) => Closure(box c.clean(cx)),
             TyProc(ref c) => Proc(box c.clean(cx)),
@@ -2130,8 +2141,8 @@ fn name_from_pat(p: &ast::Pat) -> String {
 }
 
 /// Given a Type, resolve it using the def_map
-fn resolve_type(cx: &DocContext, path: Path,
-                tpbs: Option<Vec<TyParamBound>>,
+fn resolve_type(cx: &DocContext,
+                path: Path,
                 id: ast::NodeId) -> Type {
     let tcx = match cx.tcx_opt() {
         Some(tcx) => tcx,
@@ -2168,7 +2179,7 @@ fn resolve_type(cx: &DocContext, path: Path,
         _ => {}
     };
     let did = register_def(&*cx, def);
-    ResolvedPath { path: path, typarams: tpbs, did: did }
+    ResolvedPath { path: path, typarams: None, did: did }
 }
 
 fn register_def(cx: &DocContext, def: def::Def) -> ast::DefId {

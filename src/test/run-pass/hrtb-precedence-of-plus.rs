@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,9 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(unboxed_closures)]
 
-struct Foo;
+// Test that `Fn(int) -> int + 'static` parses as `(Fn(int) -> int) +
+// 'static` and not `Fn(int) -> (int + 'static)`. The latter would
+// cause a compilation error. Issue #18772.
 
-fn foo(_x: Box<Foo + Send>) { } //~ ERROR expected a reference to a trait
+fn adder(y: int) -> Box<Fn(int) -> int + 'static> {
+    box move |&: x| y + x
+}
 
-fn main() { }
+fn main() {}

@@ -86,7 +86,7 @@ struct Exception {
     cause: Option<Box<Any + Send>>,
 }
 
-pub type Callback = fn(msg: &Any + Send, file: &'static str, line: uint);
+pub type Callback = fn(msg: &(Any + Send), file: &'static str, line: uint);
 
 // Variables used for invoking callbacks when a task starts to unwind.
 //

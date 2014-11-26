@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,9 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(unboxed_closures)]
 
-struct Foo;
+// Test that `F : Fn(int) -> int + Send` is interpreted as two
+// distinct bounds on `F`.
 
-fn foo(_x: Box<Foo + Send>) { } //~ ERROR expected a reference to a trait
+fn foo<F>(f: F)
+    where F : FnOnce(int) -> int + Send
+{
+    bar(f);
+    baz(f);
+}
 
-fn main() { }
+fn bar<F:Send>(f: F) { }
+
+fn baz<F:FnOnce(int) -> int>(f: F) { }
+
+fn main() {}
