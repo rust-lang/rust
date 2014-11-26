@@ -3997,6 +3997,22 @@ match origin {
 }
 ```
 
+You can do this kind of match on any member, not just the first:
+
+```{rust}
+# #![allow(non_shorthand_field_patterns)]
+struct Point {
+    x: int,
+    y: int,
+}
+
+let origin = Point { x: 0i, y: 0i };
+
+match origin {
+    Point { y: y, .. } => println!("y is {}", y),
+}
+```
+
 Whew! That's a lot of different ways to match things, and they can all be
 mixed and matched, depending on what you're doing:
 
