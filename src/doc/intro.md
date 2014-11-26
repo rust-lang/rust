@@ -391,26 +391,29 @@ Here's an example of a concurrent Rust program:
 ```{rust}
 fn main() {
     for _ in range(0u, 10u) {
-        spawn(proc() {
+        spawn(move || {
             println!("Hello, world!");
         });
     }
 }
 ```
 
-This program creates ten threads, who all print `Hello, world!`. The `spawn`
-function takes one argument, a `proc`. 'proc' is short for 'procedure,' and is
-a form of closure. This closure is executed in a new thread, created by `spawn`
-itself.
+This program creates ten threads, who all print `Hello, world!`. The
+`spawn` function takes one argument, a closure, indicated by the
+double bars `||`. (The `move` keyword indicates that the closure takes
+ownership of any data it uses; we'll have more on the significance of
+this shortly.) This closure is executed in a new thread created by
+`spawn`.
 
-One common form of problem in concurrent programs is a 'data race.' This occurs
-when two different threads attempt to access the same location in memory in a
-non-synchronized way, where at least one of them is a write. If one thread is
-attempting to read, and one thread is attempting to write, you cannot be sure
-that your data will not be corrupted. Note the first half of that requirement:
-two threads that attempt to access the same location in memory. Rust's
-ownership model can track which pointers own which memory locations, which
-solves this problem.
+One common form of problem in concurrent programs is a 'data race.'
+This occurs when two different threads attempt to access the same
+location in memory in a non-synchronized way, where at least one of
+them is a write. If one thread is attempting to read, and one thread
+is attempting to write, you cannot be sure that your data will not be
+corrupted. Note the first half of that requirement: two threads that
+attempt to access the same location in memory. Rust's ownership model
+can track which pointers own which memory locations, which solves this
+problem.
 
 Let's see an example. This Rust code will not compile:
 
@@ -419,7 +422,7 @@ fn main() {
     let mut numbers = vec![1i, 2i, 3i];
 
     for i in range(0u, 3u) {
-        spawn(proc() {
+        spawn(move || {
             for j in range(0, 3) { numbers[j] += 1 }
         });
     }
@@ -432,8 +435,8 @@ It gives us this error:
 6:71 error: capture of moved value: `numbers`
     for j in range(0, 3) { numbers[j] += 1 }
                ^~~~~~~
-7:50 note: `numbers` moved into closure environment here because it has type `proc():Send`, which is non-copyable (perhaps you meant to use clone()?)
-    spawn(proc() {
+7:50 note: `numbers` moved into closure environment here
+    spawn(move || {
         for j in range(0, 3) { numbers[j] += 1 }
     });
 6:79 error: cannot assign to immutable dereference (dereference is implicit, due to indexing)
@@ -441,11 +444,16 @@ It gives us this error:
                            ^~~~~~~~~~~~~~~
 ```
 
-It mentions that "numbers moved into closure environment". Because we referred
-to `numbers` inside of our `proc`, and we create three `proc`s, we would have
-three references. Rust detects this and gives us the error: we claim that
-`numbers` has ownership, but our code tries to make three owners. This may
-cause a safety problem, so Rust disallows it.
+It mentions that "numbers moved into closure environment". Because we
+declared the closure as a moving closure, and it referred to
+`numbers`, the closure will try to take ownership of the vector. But
+the closure itself is created in a loop, and hence we will actually
+create three closures, one for every iteration of the loop. This means
+that all three of those closures would try to own `numbers`, which is
+impossible -- `numbers` must have just one owner. Rust detects this
+and gives us the error: we claim that `numbers` has ownership, but our
+code tries to make three owners. This may cause a safety problem, so
+Rust disallows it.
 
 What to do here? Rust has two types that helps us: `Arc<T>` and `Mutex<T>`.
 "Arc" stands for "atomically reference counted." In other words, an Arc will
@@ -468,7 +476,7 @@ fn main() {
 
     for i in range(0u, 3u) {
         let number = numbers.clone();
-        spawn(proc() {
+        spawn(move || {
             let mut array = number.lock();
 
             (*array)[i] += 1;
@@ -528,7 +536,7 @@ fn main() {
     let vec = vec![1i, 2, 3];
 
     for i in range(1u, 3) {
-        spawn(proc() {
+        spawn(move || {
             println!("{}", vec[i]);
         });
     }

@@ -30,7 +30,7 @@ fn print_message() { println!("I am running in a different task!"); }
 spawn(print_message);
 
 // Alternatively, use a `move ||` expression instead of a named function.
-// `||` expressions evaluate to an unnamed closures. The `move` keyword
+// `||` expressions evaluate to an unnamed closure. The `move` keyword
 // indicates that the closure should take ownership of any variables it
 // touches.
 spawn(move || println!("I am also running in a different task!"));
@@ -44,7 +44,7 @@ details to the standard library.
 The `spawn` function has the type signature: `fn
 spawn<F:FnOnce()+Send>(f: F)`.  This indicates that it takes as
 argument a closure (of type `F`) that it will run exactly once. This
-closure is limited to capturing `Send`-able data form its environment
+closure is limited to capturing `Send`-able data from its environment
 (that is, data which is deeply owned). Limiting the closure to `Send`
 ensures that `spawn` can safely move the entire closure and all its
 associated state into an entirely different task for execution.
