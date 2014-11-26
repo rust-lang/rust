@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use astconv::AstConv;
+use check::{FnCtxt, Inherited, blank_fn_ctxt, vtable, regionck};
+use CrateCtxt;
 use middle::region;
 use middle::subst;
 use middle::subst::{Subst};
@@ -15,9 +18,6 @@ use middle::traits;
 use middle::ty::{mod, Ty};
 use middle::ty::liberate_late_bound_regions;
 use middle::ty_fold::{TypeFolder, TypeFoldable};
-use typeck::astconv::AstConv;
-use typeck::check::{FnCtxt, Inherited, blank_fn_ctxt, vtable, regionck};
-use typeck::CrateCtxt;
 use util::ppaux::Repr;
 
 use std::collections::HashSet;

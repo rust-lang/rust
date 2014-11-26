@@ -12,6 +12,8 @@ use super::{MethodError,Ambiguity,NoMatch};
 use super::MethodIndex;
 use super::{CandidateSource,ImplSource,TraitSource};
 
+use check;
+use check::{FnCtxt, NoPreference};
 use middle::fast_reject;
 use middle::subst;
 use middle::subst::Subst;
@@ -19,8 +21,6 @@ use middle::traits;
 use middle::ty::{mod, Ty};
 use middle::ty::{MethodObject};
 use middle::ty_fold::HigherRankedFoldable;
-use typeck::check;
-use typeck::check::{FnCtxt, NoPreference};
 use middle::infer;
 use middle::infer::InferCtxt;
 use syntax::ast;
