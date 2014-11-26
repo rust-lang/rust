@@ -54,7 +54,7 @@ fs::unlink(&path);
 
 use clone::Clone;
 use io::standard_error;
-use io::{FilePermission, Write, Open, FileAccess, FileMode};
+use io::{FilePermission, Write, Open, FileAccess, FileMode, FileType};
 use io::{IoResult, IoError, FileStat, SeekStyle, Seek, Writer, Reader};
 use io::{Read, Truncate, ReadWrite, Append};
 use io::UpdateIoError;
@@ -592,7 +592,7 @@ pub fn mkdir_recursive(path: &Path, mode: FilePermission) -> IoResult<()> {
         match result {
             Err(mkdir_err) => {
                 // already exists ?
-                if try!(stat(&curpath)).kind != io::TypeDirectory {
+                if try!(stat(&curpath)).kind != FileType::Directory {
                     return Err(mkdir_err);
                 }
             }
@@ -638,7 +638,7 @@ pub fn rmdir_recursive(path: &Path) -> IoResult<()> {
                 false => try!(update_err(lstat(&child), path))
             };
 
-            if child_type.kind == io::TypeDirectory {
+            if child_type.kind == FileType::Directory {
                 rm_stack.push(child);
                 has_child_dir = true;
             } else {
@@ -772,13 +772,13 @@ impl PathExtensions for path::Path {
     }
     fn is_file(&self) -> bool {
         match self.stat() {
-            Ok(s) => s.kind == io::TypeFile,
+            Ok(s) => s.kind == FileType::RegularFile,
             Err(..) => false
         }
     }
     fn is_dir(&self) -> bool {
         match self.stat() {
-            Ok(s) => s.kind == io::TypeDirectory,
+            Ok(s) => s.kind == FileType::Directory,
             Err(..) => false
         }
     }
@@ -806,7 +806,7 @@ fn access_string(access: FileAccess) -> &'static str {
 #[allow(unused_mut)]
 mod test {
     use prelude::*;
-    use io::{SeekSet, SeekCur, SeekEnd, Read, Open, ReadWrite};
+    use io::{SeekSet, SeekCur, SeekEnd, Read, Open, ReadWrite, FileType};
     use io;
     use str;
     use io::fs::*;
@@ -1028,12 +1028,12 @@ mod test {
             fs.write(msg.as_bytes()).unwrap();
 
             let fstat_res = check!(fs.stat());
-            assert_eq!(fstat_res.kind, io::TypeFile);
+            assert_eq!(fstat_res.kind, FileType::RegularFile);
         }
         let stat_res_fn = check!(stat(filename));
-        assert_eq!(stat_res_fn.kind, io::TypeFile);
+        assert_eq!(stat_res_fn.kind, FileType::RegularFile);
         let stat_res_meth = check!(filename.stat());
-        assert_eq!(stat_res_meth.kind, io::TypeFile);
+        assert_eq!(stat_res_meth.kind, FileType::RegularFile);
         check!(unlink(filename));
     }
 
@@ -1043,9 +1043,9 @@ mod test {
         let filename = &tmpdir.join("file_stat_correct_on_is_dir");
         check!(mkdir(filename, io::USER_RWX));
         let stat_res_fn = check!(stat(filename));
-        assert!(stat_res_fn.kind == io::TypeDirectory);
+        assert!(stat_res_fn.kind == FileType::Directory);
         let stat_res_meth = check!(filename.stat());
-        assert!(stat_res_meth.kind == io::TypeDirectory);
+        assert!(stat_res_meth.kind == FileType::Directory);
         check!(rmdir(filename));
     }
 
@@ -1315,8 +1315,8 @@ mod test {
         check!(File::create(&input).write("foobar".as_bytes()));
         check!(symlink(&input, &out));
         if cfg!(not(windows)) {
-            assert_eq!(check!(lstat(&out)).kind, io::TypeSymlink);
-            assert_eq!(check!(out.lstat()).kind, io::TypeSymlink);
+            assert_eq!(check!(lstat(&out)).kind, FileType::Symlink);
+            assert_eq!(check!(out.lstat()).kind, FileType::Symlink);
         }
         assert_eq!(check!(stat(&out)).size, check!(stat(&input)).size);
         assert_eq!(check!(File::open(&out).read_to_end()),
@@ -1350,8 +1350,8 @@ mod test {
         check!(File::create(&input).write("foobar".as_bytes()));
         check!(link(&input, &out));
         if cfg!(not(windows)) {
-            assert_eq!(check!(lstat(&out)).kind, io::TypeFile);
-            assert_eq!(check!(out.lstat()).kind, io::TypeFile);
+            assert_eq!(check!(lstat(&out)).kind, FileType::RegularFile);
+            assert_eq!(check!(out.lstat()).kind, FileType::RegularFile);
             assert_eq!(check!(stat(&out)).unstable.nlink, 2);
             assert_eq!(check!(out.stat()).unstable.nlink, 2);
         }
