@@ -624,7 +624,6 @@ probe CFG_LD               ld
 probe CFG_VALGRIND         valgrind
 probe CFG_PERF             perf
 probe CFG_ISCC             iscc
-probe CFG_LLNEXTGEN        LLnextgen
 probe CFG_JAVAC            javac
 probe CFG_ANTLR4           antlr4
 probe CFG_GRUN             grun
