@@ -150,7 +150,9 @@ pub fn type_of_fn_from_ty<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, fty: Ty<'tcx>) 
                             f.sig.0.output,
                             f.abi)
         }
-        ty::ty_bare_fn(ref f) => {
+        ty::ty_bare_fn(_, ref f) => {
+            // FIXME(#19925) once fn item types are
+            // zero-sized, we'll need to do something here
             if f.abi == abi::Rust || f.abi == abi::RustCall {
                 type_of_rust_fn(cx,
                                 None,

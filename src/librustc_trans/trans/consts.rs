@@ -204,6 +204,10 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, e: &ast::Expr)
                                 format!("unexpected static function: {}",
                                         store).as_slice())
                 }
+                ty::AdjustReifyFnPointer(_def_id) => {
+                    // FIXME(#19925) once fn item types are
+                    // zero-sized, we'll need to do something here
+                }
                 ty::AdjustDerefRef(ref adj) => {
                     let mut ty = ety;
                     // Save the last autoderef in case we can avoid it.
