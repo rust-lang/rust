@@ -764,7 +764,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
             }
         }
     };
-    output_types.as_mut_slice().sort();
+    output_types.sort();
     output_types.dedup();
     if output_types.len() == 0 {
         output_types.push(OutputTypeExe);
