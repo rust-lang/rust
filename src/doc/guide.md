@@ -133,7 +133,8 @@ the documentation for your shell for more details.
 
 Let's make a new source file next. I'm going to use the syntax `editor
 filename` to represent editing a file in these examples, but you should use
-whatever method you want. We'll call our file `main.rs`:
+whatever method you want (if you are new to *NIX try out emacs or vim investing
+time in them really is useful). We'll call our file `main.rs`:
 
 ```{bash}
 $ editor main.rs
@@ -172,11 +173,11 @@ fn main() {
 These lines define a **function** in Rust. The `main` function is special:
 it's the beginning of every Rust program. The first line says "I'm declaring a
 function named `main`, which takes no arguments and returns nothing." If there
-were arguments, they would go inside the parentheses (`(` and `)`), and because
-we aren't returning anything from this function, we've dropped that notation
-entirely.  We'll get to it later.
+were arguments, they would go inside the parentheses after the function name.
+Since we aren't returning anything from this function, we've dropped that notation
+entirely. We'll get to it later.
 
-You'll also note that the function is wrapped in curly braces (`{` and `}`).
+You'll also note that the function is wrapped in curly braces.
 Rust requires these around all function bodies. It is also considered good
 style to put the opening curly brace on the same line as the function
 declaration, with one space in between.
@@ -194,7 +195,8 @@ with the tab key. We provide some [sample configurations for various
 editors](https://github.com/rust-lang/rust/tree/master/src/etc).
 
 The second point is the `println!()` part. This is calling a Rust **macro**,
-which is how metaprogramming is done in Rust. If it were a function instead, it
+which is how [metaprogramming](http://en.wikipedia.org/wiki/Metaprogramming)
+(programs that write programs) is done in Rust.  If it were a function instead, it
 would look like this: `println()`. For our purposes, we don't need to worry
 about this difference. Just know that sometimes, you'll see a `!`, and that
 means that you're calling a macro instead of a normal function. Rust implements
@@ -250,7 +252,7 @@ This prints out our `Hello, world!` text to our terminal.
 If you come from a dynamically typed language like Ruby, Python, or JavaScript,
 you may not be used to these two steps being separate. Rust is an
 **ahead-of-time compiled language**, which means that you can compile a
-program, give it to someone else, and they don't need to have Rust installed.
+program, give it to someone else, and they don't need to have a `Rust` compiler.
 If you give someone a `.rb` or `.py` or `.js` file, they need to have
 Ruby/Python/JavaScript installed, but you just need one command to both compile
 and run your program. Everything is a tradeoff in language design, and Rust has
@@ -440,10 +442,10 @@ something you may not have cared to mutate. If bindings were mutable by
 default, the compiler would not be able to tell you this. If you _did_ intend
 mutation, then the solution is quite easy: add `mut`.
 
-There are other good reasons to avoid mutable state when possible, but they're
-out of the scope of this guide. In general, you can often avoid explicit
-mutation, and so it is preferable in Rust. That said, sometimes, mutation is
-what you need, so it's not verboten.
+There are other good reasons to avoid mutable state when possible (mostly
+parallelism, concurrency and code generation) , but we won't go into the details
+in this guide. In general, you can often avoid explicit mutation, and so it is
+preferable in Rust. That said, sometimes, mutation is what you need, so it's not verboten.
 
 Let's get back to bindings. Rust variable bindings have one more aspect that
 differs from other languages: bindings are required to be initialized with a
@@ -662,7 +664,7 @@ Note the semicolons after the 10 and 15. Rust will give us the following error:
 error: mismatched types: expected `int` but found `()` (expected int but found ())
 ```
 
-We expected an integer, but we got `()`. `()` is pronounced 'unit', and is a
+We expected an integer, but we got `()`. `()` is pronounced 'unit,' and is a
 special type in Rust's type system. In Rust, `()` is _not_ a valid value for a
 variable of type `int`. It's only a valid value for variables of the type `()`,
 which aren't very useful. Remember how we said statements don't return a value?
@@ -683,8 +685,8 @@ fn main() {
 ```
 
 This is the simplest possible function declaration. As we mentioned before,
-`fn` says 'this is a function,' followed by the name, some parenthesis because
-this function takes no arguments, and then some curly braces to indicate the
+`fn` says 'this is a function,' followed by the name, nothing in the parentheses
+because this function takes no arguments, and then some curly braces to indicate the
 body. Here's a function named `foo`:
 
 ```{rust}
@@ -712,7 +714,7 @@ fn print_number(x: int) {
 }
 ```
 
-As you can see, function arguments work very similar to `let` declarations:
+As you can see, function arguments declarations work very similar to `let` declarations:
 you add a type to the argument name, after a colon.
 
 Here's a complete program that adds two numbers together and prints them:
@@ -752,7 +754,19 @@ types explicitly is a best-practice. We agree that forcing functions to declare
 types while allowing for inference inside of function bodies is a wonderful
 sweet spot between full inference and no inference.
 
-What about returning a value? Here's a function that adds one to an integer:
+What about returning a value?
+Rust functions return exactly one value, the type of which is declared after an arrow
+(`->`) in the function declaration. Here is the declaration of a function that
+returns an `int`:
+
+```{rust, ignore}
+fn returns_int() -> int {
+//...
+}
+```
+
+Rust function usually return their last expression as return value.
+Here's a function that adds one to an integer:
 
 ```{rust}
 fn add_one(x: int) -> int {
@@ -760,9 +774,7 @@ fn add_one(x: int) -> int {
 }
 ```
 
-Rust functions return exactly one value, and you declare the type after an
-'arrow', which is a dash (`-`) followed by a greater-than sign (`>`).
-
+As you can see the last line evaluates to an `int`, which is the return type of the function.
 You'll note the lack of a semicolon here. If we added it in:
 
 ```{ignore}
@@ -824,8 +836,8 @@ that we haven't learned about yet, so let's just leave it at that for now.
 # Comments
 
 Now that we have some functions, it's a good idea to learn about comments.
-Comments are notes that you leave to other programmers to help explain things
-about your code. The compiler mostly ignores them.
+Comments are notes that you leave to other programmers (and your future self)
+to help explain things about your code. The compiler mostly ignores them.
 
 Rust has two kinds of comments that you should care about: **line comment**s
 and **doc comment**s.
@@ -884,7 +896,7 @@ Tuples are an ordered list of a fixed size. Like this:
 let x = (1i, "hello");
 ```
 
-The parenthesis and commas form this two-length tuple. Here's the same code, but
+The parentheses and commas form this two-length tuple. Here's the same code, but
 with the type annotated:
 
 ```rust
@@ -1068,7 +1080,7 @@ destructuring `let`.
 
 ## Enums
 
-Finally, Rust has a "sum type", an **enum**. Enums are an incredibly useful
+Finally, Rust has a 'sum type,' an **enum**. Enums are an incredibly useful
 feature of Rust, and are used throughout the standard library. This is an enum
 that is provided by the Rust standard library:
 
@@ -1285,6 +1297,8 @@ It can also allow us to treat errors or unexpected computations, for example, a
 function that is not guaranteed to be able to compute a result (an `int` here),
 could return an `OptionalInt`, and we would handle that value with a `match`.
 As you can see, `enum` and `match` used together are quite useful!
+They are also the only way to get the values contained in an
+`enum`.
 
 `match` is also an expression, which means we can use it on the right
 hand side of a `let` binding or directly where an expression is
@@ -1544,8 +1558,8 @@ always initialized.
 let a = [0i, ..20];  // Shorthand for array of 20 elements all initialized to 0
 ```
 
-Arrays have type `[T,..N]`. We'll talk about this `T` notation later, when we
-cover generics.
+An array of `N` elements of type `T` has type `[T,..N]`. We'll talk about this `T`
+notation later, when we cover generics.
 
 You can get the number of elements in an array `a` with `a.len()`, and use
 `a.iter()` to iterate over them with a for loop. This code will print each
@@ -1593,6 +1607,7 @@ arrays. In addition, (mutable) vectors can grow automatically:
 
 ```{rust}
 let mut nums = vec![1i, 2, 3];
+println!("The length of nums is {}", nums.len());   // Prints 3
 nums.push(4);
 println!("The length of nums is now {}", nums.len());   // Prints 4
 ```
@@ -1647,7 +1662,7 @@ std::io::stdin();
 ```
 
 This calls a function, `stdin()`, that lives inside the `std::io` module. As
-you can imagine, everything in `std` is provided by Rust, the 'standard
+you can imagine, everything in `std` is provided by Rust's 'standard
 library.' We'll talk more about the module system later.
 
 Since writing the fully qualified name all the time is annoying, we can use
@@ -1741,7 +1756,7 @@ doesn't work, so we're okay with that. In most cases, we would want to handle
 the error case explicitly. `expect()` allows us to give an error message if
 this crash happens.
 
-We will cover the exact details of how all of this works later in the Guide.
+We will cover the exact details of how all of this works in another Guide.
 For now, this gives you enough of a basic understanding to work with.
 
 Back to the code we were working on! Here's a refresher:
@@ -1933,7 +1948,7 @@ explained.  We then added in a `let` expression to create a variable binding
 named `secret_number`, and we printed out its result.
 
 Also, you may wonder why we are using `%` on the result of `rand::random()`.
-This operator is called 'modulo', and it returns the remainder of a division.
+This operator is called 'modulo,' and it returns the remainder of a division.
 By taking the modulo of the result of `rand::random()`, we're limiting the
 values to be between 0 and 99. Then, we add one to the result, making it from 1
 to 100. Using modulo can give you a very, very small bias in the result, but
@@ -2780,7 +2795,7 @@ mod hello {
 }
 ```
 
-Usage of the `pub` keyword is sometimes called 'exporting', because
+Usage of the `pub` keyword is sometimes called 'exporting,' because
 we're making the function available for other modules. This will work:
 
 ```{notrust,ignore}
@@ -2792,6 +2807,8 @@ Hello, world!
 
 Nice! There are more things we can do with modules, including moving them into
 their own files. This is enough detail for now.
+
+More can be found in the [Crates and Modules Guide](http://doc.rust-lang.org/guide-crates.html).
 
 # Testing
 
@@ -3526,7 +3543,7 @@ difficult.
 Rust chooses a different path, and that path is called **ownership**. Any
 binding that creates a resource is the **owner** of that resource.
 
-Being an owner affords you some privileges:
+Being an owner grants you some privileges:
 
 1. You control when that resource is deallocated.
 2. You may lend that resource, immutably, to as many borrowers as you'd like.
@@ -4113,13 +4130,19 @@ binding name and two parentheses, just like we would for a named function.
 Let's compare syntax. The two are pretty close:
 
 ```{rust}
-let add_one = |x: int| -> int { 1i + x };
+let add_one = |x|             { 1i + x };
 fn  add_one   (x: int) -> int { 1i + x }
 ```
 
 As you may have noticed, closures infer their argument and return types, so you
 don't need to declare one. This is different from named functions, which
 default to returning unit (`()`).
+
+Nevertheless, we can still declare argument and return types as follows:
+
+```{rust}
+let add_one = |x: int| -> int { 1i + x };
+```
 
 There's one big difference between a closure and named functions, and it's in
 the name: a closure "closes over its environment." What does that mean? It means
@@ -4192,7 +4215,7 @@ fn twice(x: int, f: |int| -> int) -> int {
 }
 
 fn main() {
-    let square = |x: int| { x * x };
+    let square = |x: int| -> int { x * x };
 
     twice(5i, square); // evaluates to 50
 }
@@ -4201,7 +4224,7 @@ fn main() {
 Let's break the example down, starting with `main`:
 
 ```{rust}
-let square = |x: int| { x * x };
+let square = |x: int| -> int { x * x };
 ```
 
 We've seen this before. We make a closure that takes an integer, and returns
@@ -4268,7 +4291,7 @@ fn twice(x: int, f: |int| -> int) -> int {
 }
 
 fn main() {
-    twice(5i, |x: int| { x * x }); // evaluates to 50
+    twice(5i, |x: int| -> int { x * x }); // evaluates to 50
 }
 ```
 
@@ -4452,7 +4475,7 @@ Another important consumer is `fold`. Here's what it looks like:
 
 ```{rust}
 let sum = range(1i, 4i)
-              .fold(0i, |sum, x| sum + x);
+              .fold(0i, |acc, x| acc + x);
 ```
 
 `fold()` is a consumer that looks like this:
@@ -4520,8 +4543,8 @@ Now, `collect()` will require that `range()` give it some numbers, and so
 it will do the work of generating the sequence.
 
 `range` is one of two basic iterators that you'll see. The other is `iter()`,
-which you've used before. `iter()` can turn a vector into a simple iterator
-that gives you each element in turn:
+which you've used before. `iter()` can turn an iterable structure, such as a
+vector or a list, into a simple iterator that gives you each element in turn:
 
 ```{rust}
 let nums = [1i, 2i, 3i];
@@ -4724,9 +4747,9 @@ enum Result<H, N> {
 if we wanted to. Convention says that the first generic parameter should be
 `T`, for 'type,' and that we use `E` for 'error.' Rust doesn't care, however.
 
-The `Result<T, E>` type is intended to
-be used to return the result of a computation, and to have the ability to
-return an error if it didn't work out. Here's an example:
+The `Result<T, E>` type is intended to be used to return the result of a computation,
+and to have the ability to return an error if it didn't work out, just as we saw
+in the enum chapter. Here's an example:
 
 ```{rust}
 let x: Result<f64, String> = Ok(2.3f64);
@@ -5249,7 +5272,7 @@ immediately.
 
 ## Success and failure
 
-Tasks don't always succeed, they can also panic. A task that wishes to panic 
+Tasks don't always succeed, they can also panic. A task that wishes to panic
 can call the `panic!` macro, passing a message:
 
 ```{rust}
@@ -5286,7 +5309,7 @@ allow you to provide abstractions over syntax. Do you wish Rust had the ability
 to do something that it can't currently do? You may be able to write a macro
 to extend Rust's capabilities.
 
-You've already used one macro extensively: `println!`. When we invoke
+You've already used two macros extensively: `println!` and `vec!`. When we invoke
 a Rust macro, we need to use the exclamation mark (`!`). There are two reasons
 why this is so: the first is that it makes it clear when you're using a
 macro. The second is that macros allow for flexible syntax, and so Rust must
@@ -5366,8 +5389,7 @@ this by hand to get a type-checked `println`.
 
 For more on macros, please consult [the Macros Guide](guide-macros.html).
 Macros are a very advanced and still slightly experimental feature, but they don't
-require a deep understanding to be called, since they look just like functions. The
-Guide can help you if you want to write your own.
+require a deep understanding to be called, since they look just like functions.
 
 # Unsafe
 
