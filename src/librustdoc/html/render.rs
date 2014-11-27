@@ -277,15 +277,15 @@ pub fn run(mut krate: clean::Crate,
             for attr in attrs.iter() {
                 match *attr {
                     clean::NameValue(ref x, ref s)
-                            if "html_favicon_url" == x.as_slice() => {
+                            if "html_favicon_url" == *x => {
                         cx.layout.favicon = s.to_string();
                     }
                     clean::NameValue(ref x, ref s)
-                            if "html_logo_url" == x.as_slice() => {
+                            if "html_logo_url" == *x => {
                         cx.layout.logo = s.to_string();
                     }
                     clean::NameValue(ref x, ref s)
-                            if "html_playground_url" == x.as_slice() => {
+                            if "html_playground_url" == *x => {
                         cx.layout.playground_url = s.to_string();
                         markdown::PLAYGROUND_KRATE.with(|slot| {
                             if slot.borrow().is_none() {
@@ -295,7 +295,7 @@ pub fn run(mut krate: clean::Crate,
                         });
                     }
                     clean::Word(ref x)
-                            if "html_no_source" == x.as_slice() => {
+                            if "html_no_source" == *x => {
                         cx.include_sources = false;
                     }
                     _ => {}
@@ -434,7 +434,7 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> io::IoResult<String> 
     for (i, item) in cache.search_index.iter().enumerate() {
         // Omit the path if it is same to that of the prior item.
         let path;
-        if lastpath.as_slice() == item.path.as_slice() {
+        if lastpath == item.path {
             path = "";
         } else {
             lastpath = item.path.to_string();
@@ -513,10 +513,10 @@ fn write_shared(cx: &Context,
         if path.exists() {
             for line in BufferedReader::new(File::open(path)).lines() {
                 let line = try!(line);
-                if !line.as_slice().starts_with(key) {
+                if !line.starts_with(key) {
                     continue
                 }
-                if line.as_slice().starts_with(
+                if line.starts_with(
                         format!("{}['{}']", key, krate).as_slice()) {
                     continue
                 }
@@ -670,12 +670,12 @@ fn extern_location(e: &clean::ExternalCrate, dst: &Path) -> ExternalLocation {
     // external crate
     for attr in e.attrs.iter() {
         match *attr {
-            clean::List(ref x, ref list) if "doc" == x.as_slice() => {
+            clean::List(ref x, ref list) if "doc" == *x => {
                 for attr in list.iter() {
                     match *attr {
                         clean::NameValue(ref x, ref s)
-                                if "html_root_url" == x.as_slice() => {
-                            if s.as_slice().ends_with("/") {
+                                if "html_root_url" == *x => {
+                            if s.ends_with("/") {
                                 return Remote(s.to_string());
                             }
                             return Remote(format!("{}/", s));
@@ -964,7 +964,7 @@ impl DocFolder for Cache {
                         let dox = match attrs.into_iter().find(|a| {
                             match *a {
                                 clean::NameValue(ref x, _)
-                                        if "doc" == x.as_slice() => {
+                                        if "doc" == *x => {
                                     true
                                 }
                                 _ => false
