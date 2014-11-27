@@ -11,8 +11,8 @@
 pub use syntax::diagnostic;
 
 use back::link;
-use driver::driver::{Input, FileInput, StrInput};
 use session::{config, Session, build_session};
+use session::config::Input;
 use lint::Lint;
 use lint;
 use metadata;
@@ -89,9 +89,9 @@ fn run_compiler(args: &[String]) {
             if ifile == "-" {
                 let contents = io::stdin().read_to_end().unwrap();
                 let src = String::from_utf8(contents).unwrap();
-                (StrInput(src), None)
+                (Input::Str(src), None)
             } else {
-                (FileInput(Path::new(ifile)), Some(Path::new(ifile)))
+                (Input::File(Path::new(ifile)), Some(Path::new(ifile)))
             }
         }
         _ => early_error("multiple input filenames provided")
@@ -116,11 +116,11 @@ fn run_compiler(args: &[String]) {
     let r = matches.opt_strs("Z");
     if r.contains(&("ls".to_string())) {
         match input {
-            FileInput(ref ifile) => {
+            Input::File(ref ifile) => {
                 let mut stdout = io::stdout();
                 list_metadata(&sess, &(*ifile), &mut stdout).unwrap();
             }
-            StrInput(_) => {
+            Input::Str(_) => {
                 early_error("can not list metadata for stdin");
             }
         }
@@ -411,12 +411,12 @@ fn print_crate_info(sess: &Session,
 fn parse_crate_attrs(sess: &Session, input: &Input) ->
                      Vec<ast::Attribute> {
     let result = match *input {
-        FileInput(ref ifile) => {
+        Input::File(ref ifile) => {
             parse::parse_crate_attrs_from_file(ifile,
                                                Vec::new(),
                                                &sess.parse_sess)
         }
-        StrInput(ref src) => {
+        Input::Str(ref src) => {
             parse::parse_crate_attrs_from_source_str(
                 driver::anon_src().to_string(),
                 src.to_string(),

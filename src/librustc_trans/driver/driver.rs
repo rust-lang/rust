@@ -8,15 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub use self::Input::*;
-
 use back::link;
 use back::write;
 use session::Session;
-use session::config;
+use session::config::{mod, Input, OutputFilenames};
 use lint;
-use llvm::{ContextRef, ModuleRef};
-use metadata::common::LinkMeta;
 use metadata::creader;
 use middle::{stability, ty, reachable};
 use middle::dependency_format;
@@ -28,7 +24,6 @@ use rustc::typeck;
 use trans;
 
 use util::common::time;
-use util::nodemap::{NodeSet};
 
 use serialize::{json, Encodable};
 
@@ -114,36 +109,19 @@ pub fn anon_src() -> String {
 pub fn source_name(input: &Input) -> String {
     match *input {
         // FIXME (#9639): This needs to handle non-utf8 paths
-        FileInput(ref ifile) => ifile.as_str().unwrap().to_string(),
-        StrInput(_) => anon_src()
+        Input::File(ref ifile) => ifile.as_str().unwrap().to_string(),
+        Input::Str(_) => anon_src()
     }
 }
-
-pub enum Input {
-    /// Load source from file
-    FileInput(Path),
-    /// The string is the source
-    StrInput(String)
-}
-
-impl Input {
-    fn filestem(&self) -> String {
-        match *self {
-            FileInput(ref ifile) => ifile.filestem_str().unwrap().to_string(),
-            StrInput(_) => "rust_out".to_string(),
-        }
-    }
-}
-
 
 pub fn phase_1_parse_input(sess: &Session, cfg: ast::CrateConfig, input: &Input)
     -> ast::Crate {
     let krate = time(sess.time_passes(), "parsing", (), |_| {
         match *input {
-            FileInput(ref file) => {
+            Input::File(ref file) => {
                 parse::parse_crate_from_file(&(*file), cfg.clone(), &sess.parse_sess)
             }
-            StrInput(ref src) => {
+            Input::Str(ref src) => {
                 parse::parse_crate_from_source_str(anon_src().to_string(),
                                                    src.to_string(),
                                                    cfg.clone(),
@@ -343,23 +321,13 @@ pub fn assign_node_ids_and_map<'ast>(sess: &Session,
     map
 }
 
-pub struct CrateAnalysis<'tcx> {
-    pub exp_map2: middle::resolve::ExportMap2,
-    pub exported_items: middle::privacy::ExportedItems,
-    pub public_items: middle::privacy::PublicItems,
-    pub ty_cx: ty::ctxt<'tcx>,
-    pub reachable: NodeSet,
-    pub name: String,
-}
-
-
 /// Run the resolution, typechecking, region checking and other
 /// miscellaneous analysis passes on the crate. Return various
 /// structures carrying the results of the analysis.
 pub fn phase_3_run_analysis_passes<'tcx>(sess: Session,
                                          ast_map: ast_map::Map<'tcx>,
                                          type_arena: &'tcx TypedArena<ty::TyS<'tcx>>,
-                                         name: String) -> CrateAnalysis<'tcx> {
+                                         name: String) -> ty::CrateAnalysis<'tcx> {
     let time_passes = sess.time_passes();
     let krate = ast_map.krate();
 
@@ -474,7 +442,7 @@ pub fn phase_3_run_analysis_passes<'tcx>(sess: Session,
     time(time_passes, "lint checking", (), |_|
          lint::check_crate(&ty_cx, &exported_items));
 
-    CrateAnalysis {
+    ty::CrateAnalysis {
         exp_map2: exp_map2,
         ty_cx: ty_cx,
         exported_items: exported_items,
@@ -486,7 +454,7 @@ pub fn phase_3_run_analysis_passes<'tcx>(sess: Session,
 
 pub fn phase_save_analysis(sess: &Session,
                            krate: &ast::Crate,
-                           analysis: &CrateAnalysis,
+                           analysis: &ty::CrateAnalysis,
                            odir: &Option<Path>) {
     if (sess.opts.debugging_opts & config::SAVE_ANALYSIS) == 0 {
         return;
@@ -495,25 +463,10 @@ pub fn phase_save_analysis(sess: &Session,
          save::process_crate(sess, krate, analysis, odir));
 }
 
-pub struct ModuleTranslation {
-    pub llcx: ContextRef,
-    pub llmod: ModuleRef,
-}
-
-pub struct CrateTranslation {
-    pub modules: Vec<ModuleTranslation>,
-    pub metadata_module: ModuleTranslation,
-    pub link: LinkMeta,
-    pub metadata: Vec<u8>,
-    pub reachable: Vec<String>,
-    pub crate_formats: dependency_format::Dependencies,
-    pub no_builtins: bool,
-}
-
 /// Run the translation phase to LLVM, after which the AST and analysis can
 /// be discarded.
-pub fn phase_4_translate_to_llvm<'tcx>(analysis: CrateAnalysis<'tcx>)
-                                       -> (ty::ctxt<'tcx>, CrateTranslation) {
+pub fn phase_4_translate_to_llvm<'tcx>(analysis: ty::CrateAnalysis<'tcx>)
+                                       -> (ty::ctxt<'tcx>, trans::CrateTranslation) {
     let time_passes = analysis.ty_cx.sess.time_passes();
 
     time(time_passes, "resolving dependency formats", (), |_|
@@ -521,13 +474,13 @@ pub fn phase_4_translate_to_llvm<'tcx>(analysis: CrateAnalysis<'tcx>)
 
     // Option dance to work around the lack of stack once closures.
     time(time_passes, "translation", analysis, |analysis|
-         trans::base::trans_crate(analysis))
+         trans::trans_crate(analysis))
 }
 
 /// Run LLVM itself, producing a bitcode file, assembly file or object file
 /// as a side effect.
 pub fn phase_5_run_llvm_passes(sess: &Session,
-                               trans: &CrateTranslation,
+                               trans: &trans::CrateTranslation,
                                outputs: &OutputFilenames) {
     if sess.opts.cg.no_integrated_as {
         let output_type = config::OutputTypeAssembly;
@@ -555,7 +508,7 @@ pub fn phase_5_run_llvm_passes(sess: &Session,
 /// Run the linker on any artifacts that resulted from the LLVM run.
 /// This should produce either a finished executable or library.
 pub fn phase_6_link_output(sess: &Session,
-                           trans: &CrateTranslation,
+                           trans: &trans::CrateTranslation,
                            outputs: &OutputFilenames) {
     let old_path = os::getenv("PATH").unwrap_or_else(||String::new());
     let mut new_path = sess.host_filesearch().get_tools_search_paths();
@@ -640,8 +593,8 @@ fn write_out_deps(sess: &Session,
         // Use default filename: crate source filename with extension replaced
         // by ".d"
         (true, None) => match *input {
-            FileInput(..) => outputs.with_extension("d"),
-            StrInput(..) => {
+            Input::File(..) => outputs.with_extension("d"),
+            Input::Str(..) => {
                 sess.warn("can not write --dep-info without a filename \
                            when compiling stdin.");
                 return
@@ -750,43 +703,6 @@ pub fn collect_crate_types(session: &Session,
 pub fn collect_crate_metadata(session: &Session,
                               _attrs: &[ast::Attribute]) -> Vec<String> {
     session.opts.cg.metadata.clone()
-}
-
-#[deriving(Clone)]
-pub struct OutputFilenames {
-    pub out_directory: Path,
-    pub out_filestem: String,
-    pub single_output_file: Option<Path>,
-    extra: String,
-}
-
-impl OutputFilenames {
-    pub fn path(&self, flavor: config::OutputType) -> Path {
-        match self.single_output_file {
-            Some(ref path) => return path.clone(),
-            None => {}
-        }
-        self.temp_path(flavor)
-    }
-
-    pub fn temp_path(&self, flavor: config::OutputType) -> Path {
-        let base = self.out_directory.join(self.filestem());
-        match flavor {
-            config::OutputTypeBitcode => base.with_extension("bc"),
-            config::OutputTypeAssembly => base.with_extension("s"),
-            config::OutputTypeLlvmAssembly => base.with_extension("ll"),
-            config::OutputTypeObject => base.with_extension("o"),
-            config::OutputTypeExe => base,
-        }
-    }
-
-    pub fn with_extension(&self, extension: &str) -> Path {
-        self.out_directory.join(self.filestem()).with_extension(extension)
-    }
-
-    fn filestem(&self) -> String {
-        format!("{}{}", self.out_filestem, self.extra)
-    }
 }
 
 pub fn build_output_filenames(input: &Input,

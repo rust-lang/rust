@@ -352,13 +352,6 @@ impl<'tcx> Datum<'tcx, Expr> {
             |_| bcx.sess().bug("assert_lvalue given rvalue"))
     }
 
-    /// Asserts that this datum *is* an lvalue and returns it.
-    pub fn assert_rvalue(self, bcx: Block) -> Datum<'tcx, Rvalue> {
-        self.match_kind(
-            |_| bcx.sess().bug("assert_rvalue given lvalue"),
-            |r| r)
-    }
-
     pub fn store_to_dest<'blk>(self,
                                bcx: Block<'blk, 'tcx>,
                                dest: expr::Dest,

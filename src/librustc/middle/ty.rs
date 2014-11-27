@@ -92,6 +92,17 @@ pub const INITIAL_DISCRIMINANT_VALUE: Disr = 0;
 
 // Data types
 
+/// The complete set of all analyses described in this module. This is
+/// produced by the driver and fed to trans and later passes.
+pub struct CrateAnalysis<'tcx> {
+    pub exp_map2: middle::resolve::ExportMap2,
+    pub exported_items: middle::privacy::ExportedItems,
+    pub public_items: middle::privacy::PublicItems,
+    pub ty_cx: ty::ctxt<'tcx>,
+    pub reachable: NodeSet,
+    pub name: String,
+}
+
 #[deriving(PartialEq, Eq, Hash)]
 pub struct field<'tcx> {
     pub name: ast::Name,
