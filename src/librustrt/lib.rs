@@ -9,7 +9,6 @@
 // except according to those terms.
 
 #![crate_name = "rustrt"]
-#![license = "MIT/ASL2"]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
