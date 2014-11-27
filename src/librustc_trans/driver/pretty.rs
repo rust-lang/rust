@@ -17,8 +17,9 @@ use self::NodesMatchingUII::*;
 
 use back::link;
 
-use session::{config, Session};
-use driver::driver::{mod, CrateAnalysis};
+use session::Session;
+use session::config::{mod, Input};
+use driver::driver::{mod};
 
 use middle::ty;
 use middle::borrowck::{mod, FnPartsWithCFG};
@@ -242,7 +243,7 @@ impl<'ast> pprust::PpAnn for HygieneAnnotation<'ast> {
 
 
 struct TypedAnnotation<'tcx> {
-    analysis: CrateAnalysis<'tcx>,
+    analysis: ty::CrateAnalysis<'tcx>,
 }
 
 impl<'tcx> PrinterSupport<'tcx> for TypedAnnotation<'tcx> {
@@ -409,7 +410,7 @@ fn needs_expansion(ppm: &PpMode) -> bool {
 
 pub fn pretty_print_input(sess: Session,
                           cfg: ast::CrateConfig,
-                          input: &driver::Input,
+                          input: &Input,
                           ppm: PpMode,
                           opt_uii: Option<UserIdentifiedItem>,
                           ofile: Option<Path>) {
@@ -536,7 +537,7 @@ pub fn pretty_print_input(sess: Session,
 }
 
 fn print_flowgraph<W:io::Writer>(variants: Vec<borrowck_dot::Variant>,
-                                 analysis: CrateAnalysis,
+                                 analysis: ty::CrateAnalysis,
                                  code: blocks::Code,
                                  mut out: W) -> io::IoResult<()> {
     let ty_cx = &analysis.ty_cx;

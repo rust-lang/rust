@@ -346,10 +346,6 @@ impl<'tcx> SharedCrateContext<'tcx> {
         &self.link_meta
     }
 
-    pub fn symbol_hasher<'a>(&'a self) -> &'a RefCell<Sha256> {
-        &self.symbol_hasher
-    }
-
     pub fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx> {
         &self.tcx
     }

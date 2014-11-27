@@ -13,15 +13,13 @@ use super::archive;
 use super::rpath;
 use super::rpath::RPathConfig;
 use super::svh::Svh;
-use driver::driver::{CrateTranslation, OutputFilenames, Input, FileInput};
 use session::config;
 use session::config::NoDebugInfo;
-use session::config::{OutputTypeBitcode, OutputTypeExe, OutputTypeObject};
+use session::config::{OutputFilenames, Input, OutputTypeBitcode, OutputTypeExe, OutputTypeObject};
 use session::Session;
 use metadata::common::LinkMeta;
 use metadata::{encoder, cstore, filesearch, csearch, creader};
-use trans::context::CrateContext;
-use trans::common::gensym_name;
+use trans::{CrateContext, CrateTranslation, gensym_name};
 use middle::ty::{mod, Ty};
 use util::common::time;
 use util::ppaux;
@@ -156,7 +154,7 @@ pub fn find_crate_name(sess: Option<&Session>,
     if let Some((attr, s)) = attr_crate_name {
         return validate(s.get().to_string(), Some(attr.span));
     }
-    if let FileInput(ref path) = *input {
+    if let Input::File(ref path) = *input {
         if let Some(s) = path.filestem_str() {
             return validate(s.to_string(), None);
         }

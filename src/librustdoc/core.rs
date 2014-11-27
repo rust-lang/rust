@@ -83,7 +83,7 @@ pub fn run_core(libs: Vec<Path>, cfgs: Vec<String>, externs: Externs,
 
     // Parse, resolve, and typecheck the given crate.
 
-    let input = driver::FileInput(cpath.clone());
+    let input = config::Input::File(cpath.clone());
 
     let warning_lint = lint::builtin::WARNINGS.name_lower();
 
@@ -122,7 +122,7 @@ pub fn run_core(libs: Vec<Path>, cfgs: Vec<String>, externs: Externs,
     let ast_map = driver::assign_node_ids_and_map(&sess, &mut forest);
 
     let type_arena = TypedArena::new();
-    let driver::CrateAnalysis {
+    let ty::CrateAnalysis {
         exported_items, public_items, ty_cx, ..
     } = driver::phase_3_run_analysis_passes(sess, ast_map, &type_arena, name);
 

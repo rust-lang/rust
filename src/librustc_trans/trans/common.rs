@@ -272,11 +272,6 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
         }
     }
 
-    pub fn out_arg_pos(&self) -> uint {
-        assert!(self.caller_expects_out_pointer);
-        0u
-    }
-
     pub fn env_arg_pos(&self) -> uint {
         if self.caller_expects_out_pointer {
             1u
