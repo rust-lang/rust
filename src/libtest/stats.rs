@@ -250,7 +250,7 @@ impl<T: FloatMath + FromPrimitive> Stats<T> for [T] {
         // This constant is derived by smarter statistics brains than me, but it is
         // consistent with how R and other packages treat the MAD.
         let number = FromPrimitive::from_f64(1.4826).unwrap();
-        abs_devs.as_slice().median() * number
+        abs_devs.median() * number
     }
 
     fn median_abs_dev_pct(&self) -> T {

@@ -471,7 +471,7 @@ pub fn opt_shard(maybestr: Option<String>) -> Option<(uint,uint)> {
     match maybestr {
         None => None,
         Some(s) => {
-            let mut it = s.as_slice().split('.');
+            let mut it = s.split('.');
             match (it.next().and_then(from_str::<uint>), it.next().and_then(from_str::<uint>),
                    it.next()) {
                 (Some(a), Some(b), None) => {
@@ -934,8 +934,8 @@ fn should_sort_failures_before_printing_them() {
         Pretty(_) => unreachable!()
     };
 
-    let apos = s.as_slice().find_str("a").unwrap();
-    let bpos = s.as_slice().find_str("b").unwrap();
+    let apos = s.find_str("a").unwrap();
+    let bpos = s.find_str("b").unwrap();
     assert!(apos < bpos);
 }
 
