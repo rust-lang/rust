@@ -106,6 +106,8 @@ pub mod btree_set {
 #[cfg(test)] mod bench;
 
 // FIXME(#14344) this shouldn't be necessary
+// NOTE: remove after snapshot
+#[cfg(stage0)]
 #[doc(hidden)]
 pub fn fixme_14344_be_sure_to_link_to_collections() {}
 

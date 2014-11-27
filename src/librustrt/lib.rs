@@ -76,10 +76,18 @@ pub fn init(argc: int, argv: *const *const u8) {
         thread::init();
     }
 
-    // FIXME(#14344) this shouldn't be necessary
-    collections::fixme_14344_be_sure_to_link_to_collections();
-    alloc::fixme_14344_be_sure_to_link_to_collections();
-    libc::issue_14344_workaround();
+    fixme_14344();
+
+    // NOTE: remove after snapshot
+    #[cfg(stage0)]
+    fn fixme_14344() {
+        // FIXME(#14344) this shouldn't be necessary
+        collections::fixme_14344_be_sure_to_link_to_collections();
+        alloc::fixme_14344_be_sure_to_link_to_collections();
+        libc::issue_14344_workaround();
+    }
+    #[cfg(not(stage0))]
+    fn fixme_14344() {}
 }
 
 /// Enqueues a procedure to run when the runtime is cleaned up
