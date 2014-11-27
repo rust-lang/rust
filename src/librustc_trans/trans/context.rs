@@ -222,14 +222,12 @@ unsafe fn create_context_and_module(sess: &Session, mod_name: &str) -> (ContextR
     sess.target
         .target
         .data_layout
-        .as_slice()
         .with_c_str(|buf| {
         llvm::LLVMSetDataLayout(llmod, buf);
     });
     sess.target
         .target
         .llvm_target
-        .as_slice()
         .with_c_str(|buf| {
         llvm::LLVMRustSetNormalizedTarget(llmod, buf);
     });
