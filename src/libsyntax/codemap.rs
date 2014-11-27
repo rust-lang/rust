@@ -290,7 +290,7 @@ impl FileMap {
         lines.get(line_number).map(|&line| {
             let begin: BytePos = line - self.start_pos;
             let begin = begin.to_uint();
-            let slice = self.src.as_slice().slice_from(begin);
+            let slice = self.src.slice_from(begin);
             match slice.find('\n') {
                 Some(e) => slice.slice_to(e),
                 None => slice
@@ -308,8 +308,8 @@ impl FileMap {
     }
 
     pub fn is_real_file(&self) -> bool {
-        !(self.name.as_slice().starts_with("<") &&
-          self.name.as_slice().ends_with(">"))
+        !(self.name.starts_with("<") &&
+          self.name.ends_with(">"))
     }
 }
 
@@ -336,8 +336,8 @@ impl CodeMap {
         // Remove utf-8 BOM if any.
         // FIXME #12884: no efficient/safe way to remove from the start of a string
         // and reuse the allocation.
-        let mut src = if src.as_slice().starts_with("\ufeff") {
-            String::from_str(src.as_slice().slice_from(3))
+        let mut src = if src.starts_with("\ufeff") {
+            String::from_str(src.slice_from(3))
         } else {
             String::from_str(src.as_slice())
         };
@@ -346,7 +346,7 @@ impl CodeMap {
         // This is a workaround to prevent CodeMap.lookup_filemap_idx from accidentally
         // overflowing into the next filemap in case the last byte of span is also the last
         // byte of filemap, which leads to incorrect results from CodeMap.span_to_*.
-        if src.len() > 0 && !src.as_slice().ends_with("\n") {
+        if src.len() > 0 && !src.ends_with("\n") {
             src.push('\n');
         }
 
@@ -426,14 +426,14 @@ impl CodeMap {
         if begin.fm.start_pos != end.fm.start_pos {
             None
         } else {
-            Some(begin.fm.src.as_slice().slice(begin.pos.to_uint(),
-                                               end.pos.to_uint()).to_string())
+            Some(begin.fm.src.slice(begin.pos.to_uint(),
+                                    end.pos.to_uint()).to_string())
         }
     }
 
     pub fn get_filemap(&self, filename: &str) -> Rc<FileMap> {
         for fm in self.files.borrow().iter() {
-            if filename == fm.name.as_slice() {
+            if filename == fm.name {
                 return fm.clone();
             }
         }

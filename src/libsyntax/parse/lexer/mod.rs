@@ -265,7 +265,7 @@ impl<'a> StringReader<'a> {
     /// Calls `f` with a string slice of the source text spanning from `start`
     /// up to but excluding `end`.
     fn with_str_from_to<T>(&self, start: BytePos, end: BytePos, f: |s: &str| -> T) -> T {
-        f(self.filemap.src.as_slice().slice(
+        f(self.filemap.src.slice(
                 self.byte_offset(start).to_uint(),
                 self.byte_offset(end).to_uint()))
     }
@@ -321,7 +321,6 @@ impl<'a> StringReader<'a> {
             let last_char = self.curr.unwrap();
             let next = self.filemap
                           .src
-                          .as_slice()
                           .char_range_at(current_byte_offset);
             let byte_offset_diff = next.next - current_byte_offset;
             self.pos = self.pos + Pos::from_uint(byte_offset_diff);
@@ -343,7 +342,7 @@ impl<'a> StringReader<'a> {
     pub fn nextch(&self) -> Option<char> {
         let offset = self.byte_offset(self.pos).to_uint();
         if offset < self.filemap.src.len() {
-            Some(self.filemap.src.as_slice().char_at(offset))
+            Some(self.filemap.src.char_at(offset))
         } else {
             None
         }
