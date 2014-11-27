@@ -252,7 +252,7 @@ mod imp {
     #[cfg(all(target_os = "ios", target_arch = "arm"))]
     #[inline(never)]
     pub fn write(w: &mut Writer) -> IoResult<()> {
-        use iter::{Iterator, range};
+        use iter::{IteratorExt, range};
         use result;
         use slice::{SlicePrelude};
 
