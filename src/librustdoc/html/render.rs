@@ -1261,7 +1261,7 @@ impl Context {
         }
 
         for (_, items) in map.iter_mut() {
-            items.as_mut_slice().sort();
+            items.sort();
         }
         return map;
     }
