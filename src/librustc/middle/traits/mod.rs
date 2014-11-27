@@ -8,9 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
- * Trait Resolution. See doc.rs.
- */
+//! Trait Resolution. See doc.rs.
 
 pub use self::SelectionError::*;
 pub use self::FulfillmentErrorCode::*;
@@ -226,6 +224,10 @@ pub struct VtableParamData<'tcx> {
     pub bound: Rc<ty::TraitRef<'tcx>>,
 }
 
+/// Matches the self type of the inherent impl `impl_def_id`
+/// against `self_ty` and returns the resulting resolution.  This
+/// routine may modify the surrounding type context (for example,
+/// it may unify variables).
 pub fn select_inherent_impl<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
                                      param_env: &ty::ParameterEnvironment<'tcx>,
                                      typer: &Typer<'tcx>,
@@ -235,13 +237,6 @@ pub fn select_inherent_impl<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
                                      -> SelectionResult<'tcx,
                                             VtableImplData<'tcx, Obligation<'tcx>>>
 {
-    /*!
-     * Matches the self type of the inherent impl `impl_def_id`
-     * against `self_ty` and returns the resulting resolution.  This
-     * routine may modify the surrounding type context (for example,
-     * it may unify variables).
-     */
-
     // This routine is only suitable for inherent impls. This is
     // because it does not attempt to unify the output type parameters
     // from the trait ref against the values from the obligation.
@@ -256,53 +251,41 @@ pub fn select_inherent_impl<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
     selcx.select_inherent_impl(impl_def_id, cause, self_ty)
 }
 
+/// True if neither the trait nor self type is local. Note that `impl_def_id` must refer to an impl
+/// of a trait, not an inherent impl.
 pub fn is_orphan_impl(tcx: &ty::ctxt,
                       impl_def_id: ast::DefId)
                       -> bool
 {
-    /*!
-     * True if neither the trait nor self type is local. Note that
-     * `impl_def_id` must refer to an impl of a trait, not an inherent
-     * impl.
-     */
-
     !coherence::impl_is_local(tcx, impl_def_id)
 }
 
+/// True if there exist types that satisfy both of the two given impls.
 pub fn overlapping_impls(infcx: &InferCtxt,
                          impl1_def_id: ast::DefId,
                          impl2_def_id: ast::DefId)
                          -> bool
 {
-    /*!
-     * True if there exist types that satisfy both of the two given impls.
-     */
-
     coherence::impl_can_satisfy(infcx, impl1_def_id, impl2_def_id) &&
     coherence::impl_can_satisfy(infcx, impl2_def_id, impl1_def_id)
 }
 
+/// Given generic bounds from an impl like:
+///
+///    impl<A:Foo, B:Bar+Qux> ...
+///
+/// along with the bindings for the types `A` and `B` (e.g., `<A=A0, B=B0>`), yields a result like
+///
+///    [[Foo for A0, Bar for B0, Qux for B0], [], []]
+///
+/// Expects that `generic_bounds` have already been fully substituted, late-bound regions liberated
+/// and so forth, so that they are in the same namespace as `type_substs`.
 pub fn obligations_for_generics<'tcx>(tcx: &ty::ctxt<'tcx>,
                                       cause: ObligationCause<'tcx>,
                                       generic_bounds: &ty::GenericBounds<'tcx>,
                                       type_substs: &subst::VecPerParamSpace<Ty<'tcx>>)
                                       -> subst::VecPerParamSpace<Obligation<'tcx>>
 {
-    /*!
-     * Given generic bounds from an impl like:
-     *
-     *    impl<A:Foo, B:Bar+Qux> ...
-     *
-     * along with the bindings for the types `A` and `B` (e.g.,
-     * `<A=A0, B=B0>`), yields a result like
-     *
-     *    [[Foo for A0, Bar for B0, Qux for B0], [], []]
-     *
-     * Expects that `generic_bounds` have already been fully
-     * substituted, late-bound regions liberated and so forth,
-     * so that they are in the same namespace as `type_substs`.
-     */
-
     util::obligations_for_generics(tcx, cause, 0, generic_bounds, type_substs)
 }
 

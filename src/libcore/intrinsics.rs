@@ -8,38 +8,36 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*! rustc compiler intrinsics.
-
-The corresponding definitions are in librustc/middle/trans/foreign.rs.
-
-# Volatiles
-
-The volatile intrinsics provide operations intended to act on I/O
-memory, which are guaranteed to not be reordered by the compiler
-across other volatile intrinsics. See the LLVM documentation on
-[[volatile]].
-
-[volatile]: http://llvm.org/docs/LangRef.html#volatile-memory-accesses
-
-# Atomics
-
-The atomic intrinsics provide common atomic operations on machine
-words, with multiple possible memory orderings. They obey the same
-semantics as C++11. See the LLVM documentation on [[atomics]].
-
-[atomics]: http://llvm.org/docs/Atomics.html
-
-A quick refresher on memory ordering:
-
-* Acquire - a barrier for acquiring a lock. Subsequent reads and writes
-  take place after the barrier.
-* Release - a barrier for releasing a lock. Preceding reads and writes
-  take place before the barrier.
-* Sequentially consistent - sequentially consistent operations are
-  guaranteed to happen in order. This is the standard mode for working
-  with atomic types and is equivalent to Java's `volatile`.
-
-*/
+//! rustc compiler intrinsics.
+//!
+//! The corresponding definitions are in librustc/middle/trans/foreign.rs.
+//!
+//! # Volatiles
+//!
+//! The volatile intrinsics provide operations intended to act on I/O
+//! memory, which are guaranteed to not be reordered by the compiler
+//! across other volatile intrinsics. See the LLVM documentation on
+//! [[volatile]].
+//!
+//! [volatile]: http://llvm.org/docs/LangRef.html#volatile-memory-accesses
+//!
+//! # Atomics
+//!
+//! The atomic intrinsics provide common atomic operations on machine
+//! words, with multiple possible memory orderings. They obey the same
+//! semantics as C++11. See the LLVM documentation on [[atomics]].
+//!
+//! [atomics]: http://llvm.org/docs/Atomics.html
+//!
+//! A quick refresher on memory ordering:
+//!
+//! * Acquire - a barrier for acquiring a lock. Subsequent reads and writes
+//!   take place after the barrier.
+//! * Release - a barrier for releasing a lock. Preceding reads and writes
+//!   take place before the barrier.
+//! * Sequentially consistent - sequentially consistent operations are
+//!   guaranteed to happen in order. This is the standard mode for working
+//!   with atomic types and is equivalent to Java's `volatile`.
 
 #![experimental]
 #![allow(missing_docs)]

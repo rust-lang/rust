@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*! Method lookup: the secret sauce of Rust. See `doc.rs`. */
+//! Method lookup: the secret sauce of Rust. See `doc.rs`.
 
 use middle::subst;
 use middle::subst::{Subst};
@@ -56,6 +56,7 @@ pub enum CandidateSource {
 
 type MethodIndex = uint; // just for doc purposes
 
+/// Determines whether the type `self_ty` supports a method name `method_name` or not.
 pub fn exists<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                         span: Span,
                         method_name: ast::Name,
@@ -63,10 +64,6 @@ pub fn exists<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                         call_expr_id: ast::NodeId)
                         -> bool
 {
-    /*!
-     * Determines whether the type `self_ty` supports a method name `method_name` or not.
-     */
-
     match probe::probe(fcx, span, method_name, self_ty, call_expr_id) {
         Ok(_) => true,
         Err(NoMatch(_)) => false,
@@ -74,6 +71,20 @@ pub fn exists<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     }
 }
 
+/// Performs method lookup. If lookup is successful, it will return the callee and store an
+/// appropriate adjustment for the self-expr. In some cases it may report an error (e.g., invoking
+/// the `drop` method).
+///
+/// # Arguments
+///
+/// Given a method call like `foo.bar::<T1,...Tn>(...)`:
+///
+/// * `fcx`:                   the surrounding `FnCtxt` (!)
+/// * `span`:                  the span for the method call
+/// * `method_name`:           the name of the method being called (`bar`)
+/// * `self_ty`:               the (unadjusted) type of the self expression (`foo`)
+/// * `supplied_method_types`: the explicit method type parameters, if any (`T1..Tn`)
+/// * `self_expr`:             the self expression (`foo`)
 pub fn lookup<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                         span: Span,
                         method_name: ast::Name,
@@ -83,23 +94,6 @@ pub fn lookup<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                         self_expr: &ast::Expr)
                         -> Result<MethodCallee<'tcx>, MethodError>
 {
-    /*!
-     * Performs method lookup. If lookup is successful, it will return the callee
-     * and store an appropriate adjustment for the self-expr. In some cases it may
-     * report an error (e.g., invoking the `drop` method).
-     *
-     * # Arguments
-     *
-     * Given a method call like `foo.bar::<T1,...Tn>(...)`:
-     *
-     * - `fcx`:                   the surrounding `FnCtxt` (!)
-     * - `span`:                  the span for the method call
-     * - `method_name`:           the name of the method being called (`bar`)
-     * - `self_ty`:               the (unadjusted) type of the self expression (`foo`)
-     * - `supplied_method_types`: the explicit method type parameters, if any (`T1..Tn`)
-     * - `self_expr`:             the self expression (`foo`)
-     */
-
     debug!("lookup(method_name={}, self_ty={}, call_expr={}, self_expr={})",
            method_name.repr(fcx.tcx()),
            self_ty.repr(fcx.tcx()),
@@ -124,6 +118,15 @@ pub fn lookup_in_trait<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
                              self_ty, opt_input_types)
 }
 
+/// `lookup_in_trait_adjusted` is used for overloaded operators. It does a very narrow slice of
+/// what the normal probe/confirm path does. In particular, it doesn't really do any probing: it
+/// simply constructs an obligation for a particular trait with the given self-type and checks
+/// whether that trait is implemented.
+///
+/// FIXME(#18741) -- It seems likely that we can consolidate some of this code with the other
+/// method-lookup code. In particular, autoderef on index is basically identical to autoderef with
+/// normal probes, except that the test also looks for built-in indexing. Also, the second half of
+/// this method is basically the same as confirmation.
 pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
                                           span: Span,
                                           self_expr: Option<&'a ast::Expr>,
@@ -134,21 +137,6 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
                                           opt_input_types: Option<Vec<Ty<'tcx>>>)
                                           -> Option<MethodCallee<'tcx>>
 {
-    /*!
-     * `lookup_in_trait_adjusted` is used for overloaded operators. It
-     * does a very narrow slice of what the normal probe/confirm path
-     * does. In particular, it doesn't really do any probing: it
-     * simply constructs an obligation for a particular trait with the
-     * given self-type and checks whether that trait is implemented.
-     *
-     * FIXME(#18741) -- It seems likely that we can consolidate some of this
-     * code with the other method-lookup code. In particular,
-     * autoderef on index is basically identical to autoderef with
-     * normal probes, except that the test also looks for built-in
-     * indexing. Also, the second half of this method is basically
-     * the same as confirmation.
-     */
-
     debug!("lookup_in_trait_adjusted(self_ty={}, self_expr={}, m_name={}, trait_def_id={})",
            self_ty.repr(fcx.tcx()),
            self_expr.repr(fcx.tcx()),
@@ -408,16 +396,13 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     }
 }
 
+/// Find method with name `method_name` defined in `trait_def_id` and return it, along with its
+/// index (or `None`, if no such method).
 fn trait_method<'tcx>(tcx: &ty::ctxt<'tcx>,
                       trait_def_id: ast::DefId,
                       method_name: ast::Name)
                       -> Option<(uint, Rc<ty::Method<'tcx>>)>
 {
-    /*!
-     * Find method with name `method_name` defined in `trait_def_id` and return it,
-     * along with its index (or `None`, if no such method).
-     */
-
     let trait_items = ty::trait_items(tcx, trait_def_id);
     trait_items
         .iter()

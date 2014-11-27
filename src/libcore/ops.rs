@@ -8,52 +8,48 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
- *
- * Overloadable operators
- *
- * Implementing these traits allows you to get an effect similar to
- * overloading operators.
- *
- * The values for the right hand side of an operator are automatically
- * borrowed, so `a + b` is sugar for `a.add(&b)`.
- *
- * All of these traits are imported by the prelude, so they are available in
- * every Rust program.
- *
- * # Example
- *
- * This example creates a `Point` struct that implements `Add` and `Sub`, and then
- * demonstrates adding and subtracting two `Point`s.
- *
- * ```rust
- * #[deriving(Show)]
- * struct Point {
- *     x: int,
- *     y: int
- * }
- *
- * impl Add<Point, Point> for Point {
- *     fn add(&self, other: &Point) -> Point {
- *         Point {x: self.x + other.x, y: self.y + other.y}
- *     }
- * }
- *
- * impl Sub<Point, Point> for Point {
- *     fn sub(&self, other: &Point) -> Point {
- *         Point {x: self.x - other.x, y: self.y - other.y}
- *     }
- * }
- * fn main() {
- *     println!("{}", Point {x: 1, y: 0} + Point {x: 2, y: 3});
- *     println!("{}", Point {x: 1, y: 0} - Point {x: 2, y: 3});
- * }
- * ```
- *
- * See the documentation for each trait for a minimum implementation that prints
- * something to the screen.
- *
- */
+//! Overloadable operators
+//!
+//! Implementing these traits allows you to get an effect similar to
+//! overloading operators.
+//!
+//! The values for the right hand side of an operator are automatically
+//! borrowed, so `a + b` is sugar for `a.add(&b)`.
+//!
+//! All of these traits are imported by the prelude, so they are available in
+//! every Rust program.
+//!
+//! # Example
+//!
+//! This example creates a `Point` struct that implements `Add` and `Sub`, and then
+//! demonstrates adding and subtracting two `Point`s.
+//!
+//! ```rust
+//! #[deriving(Show)]
+//! struct Point {
+//!     x: int,
+//!     y: int
+//! }
+//!
+//! impl Add<Point, Point> for Point {
+//!     fn add(&self, other: &Point) -> Point {
+//!         Point {x: self.x + other.x, y: self.y + other.y}
+//!     }
+//! }
+//!
+//! impl Sub<Point, Point> for Point {
+//!     fn sub(&self, other: &Point) -> Point {
+//!         Point {x: self.x - other.x, y: self.y - other.y}
+//!     }
+//! }
+//! fn main() {
+//!     println!("{}", Point {x: 1, y: 0} + Point {x: 2, y: 3});
+//!     println!("{}", Point {x: 1, y: 0} - Point {x: 2, y: 3});
+//! }
+//! ```
+//!
+//! See the documentation for each trait for a minimum implementation that prints
+//! something to the screen.
 
 use kinds::Sized;
 

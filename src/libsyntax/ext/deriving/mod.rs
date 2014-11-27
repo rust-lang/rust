@@ -8,15 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
-The compiler code necessary to implement the `#[deriving]` extensions.
-
-
-FIXME (#2810): hygiene. Search for "__" strings (in other files too).
-We also assume "extra" is the standard library, and "std" is the core
-library.
-
-*/
+//! The compiler code necessary to implement the `#[deriving]` extensions.
+//!
+//! FIXME (#2810): hygiene. Search for "__" strings (in other files too). We also assume "extra" is
+//! the standard library, and "std" is the core library.
 
 use ast::{Item, MetaItem, MetaList, MetaNameValue, MetaWord};
 use ext::base::ExtCtxt;

@@ -8,11 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
-
-# Standalone Tests for the Inference Module
-
-*/
+//! # Standalone Tests for the Inference Module
 
 use driver::diagnostic;
 use driver::diagnostic::Emitter;
@@ -537,12 +533,10 @@ fn glb_bound_static() {
     })
 }
 
+/// Test substituting a bound region into a function, which introduces another level of binding.
+/// This requires adjusting the Debruijn index.
 #[test]
 fn subst_ty_renumber_bound() {
-    /*!
-     * Test substituting a bound region into a function, which introduces another
-     * level of binding. This requires adjusting the Debruijn index.
-     */
 
     test_env(EMPTY_SOURCE_STR, errors(&[]), |env| {
         // Situation:
@@ -575,13 +569,10 @@ fn subst_ty_renumber_bound() {
     })
 }
 
+/// Test substituting a bound region into a function, which introduces another level of binding.
+/// This requires adjusting the Debruijn index.
 #[test]
 fn subst_ty_renumber_some_bounds() {
-    /*!
-     * Test substituting a bound region into a function, which introduces another
-     * level of binding. This requires adjusting the Debruijn index.
-     */
-
     test_env(EMPTY_SOURCE_STR, errors(&[]), |env| {
         // Situation:
         // Theta = [A -> &'a foo]
@@ -615,12 +606,9 @@ fn subst_ty_renumber_some_bounds() {
     })
 }
 
+/// Test that we correctly compute whether a type has escaping regions or not.
 #[test]
 fn escaping() {
-    /*!
-     * Test that we correctly compute whether a type has escaping
-     * regions or not.
-     */
 
     test_env(EMPTY_SOURCE_STR, errors(&[]), |env| {
         // Situation:
@@ -658,12 +646,10 @@ fn escaping() {
     })
 }
 
+/// Test applying a substitution where the value being substituted for an early-bound region is a
+/// late-bound region.
 #[test]
 fn subst_region_renumber_region() {
-    /*!
-     * Test applying a substitution where the value being substituted
-     * for an early-bound region is a late-bound region.
-     */
 
     test_env(EMPTY_SOURCE_STR, errors(&[]), |env| {
         let re_bound1 = env.re_late_bound_with_debruijn(1, ty::DebruijnIndex::new(1));
