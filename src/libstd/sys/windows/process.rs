@@ -223,7 +223,7 @@ impl Process {
 
             with_envp(cfg.env(), |envp| {
                 with_dirp(cfg.cwd(), |dirp| {
-                    let mut cmd_str: Vec<u16> = cmd_str.as_slice().utf16_units().collect();
+                    let mut cmd_str: Vec<u16> = cmd_str.utf16_units().collect();
                     cmd_str.push(0);
                     let created = CreateProcessW(ptr::null(),
                                                  cmd_str.as_mut_ptr(),
@@ -433,7 +433,7 @@ fn with_envp<K, V, T>(env: Option<&collections::HashMap<K, V>>,
                 let kv = format!("{}={}",
                                  pair.ref0().container_as_str().unwrap(),
                                  pair.ref1().container_as_str().unwrap());
-                blk.extend(kv.as_slice().utf16_units());
+                blk.extend(kv.utf16_units());
                 blk.push(0);
             }
 

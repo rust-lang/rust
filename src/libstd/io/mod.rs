@@ -238,8 +238,8 @@ use os;
 use boxed::Box;
 use result::{Ok, Err, Result};
 use sys;
-use slice::{AsSlice, SlicePrelude};
-use str::{Str, StrPrelude};
+use slice::SlicePrelude;
+use str::StrPrelude;
 use str;
 use string::String;
 use uint;
@@ -316,7 +316,7 @@ impl IoError {
     pub fn from_errno(errno: uint, detail: bool) -> IoError {
         let mut err = sys::decode_error(errno as i32);
         if detail && err.kind == OtherIoError {
-            err.detail = Some(os::error_string(errno).as_slice().chars()
+            err.detail = Some(os::error_string(errno).chars()
                                  .map(|c| c.to_lowercase()).collect())
         }
         err

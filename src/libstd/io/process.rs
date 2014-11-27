@@ -236,8 +236,8 @@ impl Command {
                 // if the env is currently just inheriting from the parent's,
                 // materialize the parent's env into a hashtable.
                 self.env = Some(os::env_as_bytes().into_iter()
-                                   .map(|(k, v)| (EnvKey(k.as_slice().to_c_str()),
-                                                  v.as_slice().to_c_str()))
+                                   .map(|(k, v)| (EnvKey(k.to_c_str()),
+                                                  v.to_c_str()))
                                    .collect());
                 self.env.as_mut().unwrap()
             }
@@ -973,7 +973,7 @@ mod tests {
 
         let output = String::from_utf8(prog.wait_with_output().unwrap().output).unwrap();
         let parent_dir = os::getcwd().unwrap();
-        let child_dir = Path::new(output.as_slice().trim());
+        let child_dir = Path::new(output.trim());
 
         let parent_stat = parent_dir.stat().unwrap();
         let child_stat = child_dir.stat().unwrap();
@@ -991,7 +991,7 @@ mod tests {
         let prog = pwd_cmd().cwd(&parent_dir).spawn().unwrap();
 
         let output = String::from_utf8(prog.wait_with_output().unwrap().output).unwrap();
-        let child_dir = Path::new(output.as_slice().trim());
+        let child_dir = Path::new(output.trim());
 
         let parent_stat = parent_dir.stat().unwrap();
         let child_stat = child_dir.stat().unwrap();
@@ -1031,8 +1031,7 @@ mod tests {
         for &(ref k, ref v) in r.iter() {
             // don't check windows magical empty-named variables
             assert!(k.is_empty() ||
-                    output.as_slice()
-                          .contains(format!("{}={}", *k, *v).as_slice()),
+                    output.contains(format!("{}={}", *k, *v).as_slice()),
                     "output doesn't contain `{}={}`\n{}",
                     k, v, output);
         }
@@ -1050,12 +1049,10 @@ mod tests {
         for &(ref k, ref v) in r.iter() {
             // don't check android RANDOM variables
             if *k != "RANDOM".to_string() {
-                assert!(output.as_slice()
-                              .contains(format!("{}={}",
+                assert!(output..contains(format!("{}={}",
                                                 *k,
                                                 *v).as_slice()) ||
-                        output.as_slice()
-                              .contains(format!("{}=\'{}\'",
+                        output..contains(format!("{}=\'{}\'",
                                                 *k,
                                                 *v).as_slice()));
             }
@@ -1084,7 +1081,7 @@ mod tests {
         let result = prog.wait_with_output().unwrap();
         let output = String::from_utf8_lossy(result.output.as_slice()).into_string();
 
-        assert!(output.as_slice().contains("RUN_TEST_NEW_ENV=123"),
+        assert!(output.contains("RUN_TEST_NEW_ENV=123"),
                 "didn't find RUN_TEST_NEW_ENV inside of:\n\n{}", output);
     }
 
@@ -1094,7 +1091,7 @@ mod tests {
         let result = prog.wait_with_output().unwrap();
         let output = String::from_utf8_lossy(result.output.as_slice()).into_string();
 
-        assert!(output.as_slice().contains("RUN_TEST_NEW_ENV=123"),
+        assert!(output.contains("RUN_TEST_NEW_ENV=123"),
                 "didn't find RUN_TEST_NEW_ENV inside of:\n\n{}", output);
     }
 

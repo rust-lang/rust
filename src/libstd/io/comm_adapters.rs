@@ -176,28 +176,28 @@ mod test {
 
         assert_eq!(Ok(3), reader.read(&mut buf));
         let a: &[u8] = &[1,2,3];
-        assert_eq!(a, buf.as_slice());
+        assert_eq!(a, buf);
 
         assert_eq!(Ok(3), reader.read(&mut buf));
         let a: &[u8] = &[4,5,6];
-        assert_eq!(a, buf.as_slice());
+        assert_eq!(a, buf);
 
         assert_eq!(Ok(2), reader.read(&mut buf));
         let a: &[u8] = &[7,8,6];
-        assert_eq!(a, buf.as_slice());
+        assert_eq!(a, buf);
 
         match reader.read(buf.as_mut_slice()) {
             Ok(..) => panic!(),
             Err(e) => assert_eq!(e.kind, io::EndOfFile),
         }
-        assert_eq!(a, buf.as_slice());
+        assert_eq!(a, buf);
 
         // Ensure it continues to panic in the same way.
         match reader.read(buf.as_mut_slice()) {
             Ok(..) => panic!(),
             Err(e) => assert_eq!(e.kind, io::EndOfFile),
         }
-        assert_eq!(a, buf.as_slice());
+        assert_eq!(a, buf);
     }
 
     #[test]
