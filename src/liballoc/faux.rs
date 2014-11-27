@@ -36,16 +36,17 @@ pub unsafe fn alloc<T>() -> *mut T {
 /// Allocates and returns a ptr to memory to store a `len` elements of type T. Handles zero-sized
 /// types automatically by returning the EMPTY ptr.
 ///
+/// A `len` of 0 is Undefined Behaviour.
+///
 /// # Panics
 ///
-/// Panics if the given `len` is 0, or is size_of<T> * len overflows.
+/// Panics if size_of<T> * len overflows.
 ///
 /// # Aborts
 ///
 /// Aborts on OOM
 #[inline]
 pub unsafe fn alloc_array<T>(len: uint) -> *mut T {
-    assert!(len != 0, "Cannot allocate an array of length 0");
     let size = size_of::<T>();
     if size == 0 {
         EMPTY as *mut T
@@ -61,16 +62,17 @@ pub unsafe fn alloc_array<T>(len: uint) -> *mut T {
 /// types automatically by returning the given ptr. `old_len` must be then `len` provided to the
 /// call to `alloc_array` or `realloc_array` that created `ptr`.
 ///
+/// A len of `0` is Undefined Behaviour.
+///
 /// # Panics
 ///
-/// Panics if given `len` is 0, or is size_of<T> * len overflows.
+/// Panics if size_of<T> * len overflows.
 ///
 /// # Aborts
 ///
 /// Aborts on OOM
 #[inline]
 pub unsafe fn realloc_array<T>(ptr: *mut T, old_len: uint, len: uint) -> *mut T {
-    assert!(len != 0, "Cannot allocate an array of length 0");
     let size = size_of::<T>();
     if size == 0 {
         ptr
@@ -90,12 +92,13 @@ pub unsafe fn realloc_array<T>(ptr: *mut T, old_len: uint, len: uint) -> *mut T 
 /// `old_len` must be the `len` provided to the call to `alloc_array` or `realloc_array`
 /// that created `ptr`. Handles zero-sized types by always returning Ok(()).
 ///
+/// A `len` of 0 is Undefined Behaviour.
+///
 /// # Panics
 ///
-/// Panics if given `len` is 0, or is size_of<T> * len overflows.
+/// Panics if size_of<T> * len overflows.
 #[inline]
 pub unsafe fn realloc_array_inplace<T>(ptr: *mut T, old_len: uint, len: uint) -> Result<(), ()> {
-    assert!(len != 0, "Cannot allocate an array of length 0");
     let size = size_of::<T>();
     let align = min_align_of::<T>();
     if size == 0 {
