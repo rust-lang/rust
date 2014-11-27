@@ -1747,8 +1747,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.register_unsize_obligations(span, &**u)
             }
             ty::UnsizeVtable(ref ty_trait, self_ty) => {
-                vtable::check_object_safety(self.tcx(), ty_trait, span);
-
+                vtable::check_object_safety(self.tcx(), &ty_trait.principal, span);
                 // If the type is `Foo+'a`, ensures that the type
                 // being cast to `Foo+'a` implements `Foo`:
                 vtable::register_object_cast_obligations(self,
