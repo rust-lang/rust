@@ -298,7 +298,6 @@ mod tests {
     #[test]
     fn test_to_base64_line_break() {
         assert!(![0u8, ..1000].to_base64(Config {line_length: None, ..STANDARD})
-                              .as_slice()
                               .contains("\r\n"));
         assert_eq!("foobar".as_bytes().to_base64(Config {line_length: Some(4),
                                                          ..STANDARD}),
@@ -319,26 +318,26 @@ mod tests {
 
     #[test]
     fn test_from_base64_basic() {
-        assert_eq!("".from_base64().unwrap().as_slice(), "".as_bytes());
-        assert_eq!("Zg==".from_base64().unwrap().as_slice(), "f".as_bytes());
-        assert_eq!("Zm8=".from_base64().unwrap().as_slice(), "fo".as_bytes());
-        assert_eq!("Zm9v".from_base64().unwrap().as_slice(), "foo".as_bytes());
-        assert_eq!("Zm9vYg==".from_base64().unwrap().as_slice(), "foob".as_bytes());
-        assert_eq!("Zm9vYmE=".from_base64().unwrap().as_slice(), "fooba".as_bytes());
-        assert_eq!("Zm9vYmFy".from_base64().unwrap().as_slice(), "foobar".as_bytes());
+        assert_eq!("".from_base64().unwrap(), b"");
+        assert_eq!("Zg==".from_base64().unwrap(), b"f");
+        assert_eq!("Zm8=".from_base64().unwrap(), b"fo");
+        assert_eq!("Zm9v".from_base64().unwrap(), b"foo");
+        assert_eq!("Zm9vYg==".from_base64().unwrap(), b"foob");
+        assert_eq!("Zm9vYmE=".from_base64().unwrap(), b"fooba");
+        assert_eq!("Zm9vYmFy".from_base64().unwrap(), b"foobar");
     }
 
     #[test]
     fn test_from_base64_bytes() {
-        assert_eq!(b"Zm9vYmFy".from_base64().unwrap().as_slice(), "foobar".as_bytes());
+        assert_eq!(b"Zm9vYmFy".from_base64().unwrap(), b"foobar");
     }
 
     #[test]
     fn test_from_base64_newlines() {
-        assert_eq!("Zm9v\r\nYmFy".from_base64().unwrap().as_slice(),
-                   "foobar".as_bytes());
-        assert_eq!("Zm9vYg==\r\n".from_base64().unwrap().as_slice(),
-                   "foob".as_bytes());
+        assert_eq!("Zm9v\r\nYmFy".from_base64().unwrap(),
+                   b"foobar");
+        assert_eq!("Zm9vYg==\r\n".from_base64().unwrap(),
+                   b"foob");
     }
 
     #[test]
@@ -364,13 +363,10 @@ mod tests {
         for _ in range(0u, 1000) {
             let times = task_rng().gen_range(1u, 100);
             let v = Vec::from_fn(times, |_| random::<u8>());
-            assert_eq!(v.as_slice()
-                        .to_base64(STANDARD)
-                        .as_slice()
+            assert_eq!(v.to_base64(STANDARD)
                         .from_base64()
-                        .unwrap()
-                        .as_slice(),
-                       v.as_slice());
+                        .unwrap(),
+                       v);
         }
     }
 
@@ -390,7 +386,7 @@ mod tests {
                  ウヰノオクヤマ ケフコエテ アサキユメミシ ヱヒモセスン";
         let sb = s.as_bytes().to_base64(STANDARD);
         b.iter(|| {
-            sb.as_slice().from_base64().unwrap();
+            sb.from_base64().unwrap();
         });
         b.bytes = sb.len() as u64;
     }

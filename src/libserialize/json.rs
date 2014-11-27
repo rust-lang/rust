@@ -2039,7 +2039,7 @@ impl ::Decoder<DecoderError> for Decoder {
     fn read_char(&mut self) -> DecodeResult<char> {
         let s = try!(self.read_str());
         {
-            let mut it = s.as_slice().chars();
+            let mut it = s.chars();
             match (it.next(), it.next()) {
                 // exactly one character
                 (Some(c), None) => return Ok(c),
@@ -2860,7 +2860,7 @@ mod tests {
 
         for &(i, o) in s.iter() {
             let v: string::String = super::decode(i).unwrap();
-            assert_eq!(v.as_slice(), o);
+            assert_eq!(v, o);
         }
     }
 
@@ -3778,7 +3778,7 @@ mod tests {
     fn bench_streaming_large(b: &mut Bencher) {
         let src = big_json();
         b.iter( || {
-            let mut parser = Parser::new(src.as_slice().chars());
+            let mut parser = Parser::new(src.chars());
             loop {
                 match parser.next() {
                     None => return,
