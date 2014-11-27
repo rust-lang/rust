@@ -1816,7 +1816,7 @@ pub fn trans_closure<'a, 'b, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     // cleanup scope for the incoming arguments
     let fn_cleanup_debug_loc =
-        debuginfo::get_cleanup_debug_loc_for_ast_node(fn_ast_id, body.span, true);
+        debuginfo::get_cleanup_debug_loc_for_ast_node(ccx, fn_ast_id, body.span, true);
     let arg_scope = fcx.push_custom_cleanup_scope_with_debug_loc(fn_cleanup_debug_loc);
 
     let block_ty = node_id_type(bcx, body.id);
