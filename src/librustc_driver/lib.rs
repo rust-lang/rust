@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,46 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! The Rust compiler.
+//!
+//! # Note
+//!
+//! This API is completely unstable and subject to change.
+
+#![crate_name = "rustc_driver"]
+#![experimental]
+#![crate_type = "dylib"]
+#![crate_type = "rlib"]
+#![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
+      html_favicon_url = "http://www.rust-lang.org/favicon.ico",
+      html_root_url = "http://doc.rust-lang.org/nightly/")]
+
+#![feature(default_type_params, globs, if_let, import_shadowing, macro_rules, phase, quote)]
+#![feature(slicing_syntax, unsafe_destructor)]
+#![feature(rustc_diagnostic_macros)]
+
+extern crate arena;
+extern crate flate;
+extern crate getopts;
+extern crate graphviz;
+extern crate libc;
+extern crate rustc;
+extern crate rustc_typeck;
+extern crate rustc_back;
+extern crate rustc_trans;
+#[phase(plugin, link)] extern crate log;
+#[phase(plugin, link)] extern crate syntax;
+extern crate serialize;
+extern crate "rustc_llvm" as llvm;
+
 pub use syntax::diagnostic;
 
-use back::link;
-use session::{config, Session, build_session};
-use session::config::Input;
-use lint::Lint;
-use lint;
-use metadata;
-
+use rustc_trans::back::link;
+use rustc::session::{config, Session, build_session};
+use rustc::session::config::Input;
+use rustc::lint::Lint;
+use rustc::lint;
+use rustc::metadata;
 use rustc::DIAGNOSTICS;
 
 use std::any::AnyRefExt;
@@ -24,14 +55,15 @@ use std::io;
 use std::os;
 use std::task::TaskBuilder;
 
-use session::early_error;
+use rustc::session::early_error;
 
 use syntax::ast;
 use syntax::parse;
 use syntax::diagnostic::Emitter;
 use syntax::diagnostics;
 
-use getopts;
+#[cfg(test)]
+pub mod test;
 
 pub mod driver;
 pub mod pretty;
@@ -505,5 +537,11 @@ pub fn monitor(f: proc():Send) {
             panic!();
         }
     }
+}
+
+pub fn main() {
+    let args = std::os::args();
+    let result = run(args);
+    std::os::set_exit_status(result);
 }
 

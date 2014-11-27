@@ -21,6 +21,7 @@ extern crate getopts;
 extern crate libc;
 extern crate rustc;
 extern crate rustc_trans;
+extern crate rustc_driver;
 extern crate serialize;
 extern crate syntax;
 extern crate "test" as testing;
@@ -163,7 +164,7 @@ pub fn main_args(args: &[String]) -> int {
         usage(args[0].as_slice());
         return 0;
     } else if matches.opt_present("version") {
-        match rustc_trans::driver::version("rustdoc", &matches) {
+        match rustc_driver::version("rustdoc", &matches) {
             Some(err) => {
                 println!("{}", err);
                 return 1

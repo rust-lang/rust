@@ -19,7 +19,7 @@ use std::string::String;
 use std::collections::{HashSet, HashMap};
 use testing;
 use rustc::session::{mod, config};
-use rustc_trans::driver::driver;
+use rustc_driver::driver;
 use syntax::ast;
 use syntax::codemap::{CodeMap, dummy_spanned};
 use syntax::diagnostic;
