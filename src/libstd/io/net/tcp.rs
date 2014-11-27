@@ -19,7 +19,6 @@
 
 use clone::Clone;
 use io::IoResult;
-use iter::Iterator;
 use result::Err;
 use io::net::ip::{SocketAddr, ToSocketAddr};
 use io::{Reader, Writer, Listener, Acceptor};
@@ -31,21 +30,27 @@ use sys::tcp::TcpStream as TcpStreamImp;
 use sys::tcp::TcpListener as TcpListenerImp;
 use sys::tcp::TcpAcceptor as TcpAcceptorImp;
 
+use sys_common;
+
 /// A structure which represents a TCP stream between a local socket and a
 /// remote socket.
+///
+/// The socket will be closed when the value is dropped.
 ///
 /// # Example
 ///
 /// ```no_run
-/// # #![allow(unused_must_use)]
 /// use std::io::TcpStream;
 ///
-/// let mut stream = TcpStream::connect("127.0.0.1:34254");
+/// {
+///     let mut stream = TcpStream::connect("127.0.0.1:34254");
 ///
-/// stream.write(&[1]);
-/// let mut buf = [0];
-/// stream.read(&mut buf);
-/// drop(stream); // close the connection
+///     // ignore the Result
+///     let _ = stream.write(&[1]);
+///
+///     let mut buf = [0];
+///     let _ = stream.read(&mut buf); // ignore here too
+/// } // the stream is closed here
 /// ```
 pub struct TcpStream {
     inner: TcpStreamImp,
@@ -256,6 +261,12 @@ impl Writer for TcpStream {
     }
 }
 
+impl sys_common::AsInner<TcpStreamImp> for TcpStream {
+    fn as_inner(&self) -> &TcpStreamImp {
+        &self.inner
+    }
+}
+
 /// A structure representing a socket server. This listener is used to create a
 /// `TcpAcceptor` which can be used to accept sockets on a local port.
 ///
@@ -322,6 +333,12 @@ impl TcpListener {
 impl Listener<TcpStream, TcpAcceptor> for TcpListener {
     fn listen(self) -> IoResult<TcpAcceptor> {
         self.inner.listen(128).map(|a| TcpAcceptor { inner: a })
+    }
+}
+
+impl sys_common::AsInner<TcpListenerImp> for TcpListener {
+    fn as_inner(&self) -> &TcpListenerImp {
+        &self.inner
     }
 }
 
@@ -449,6 +466,12 @@ impl Clone for TcpAcceptor {
     /// on to wake up any other task blocked in `accept`.
     fn clone(&self) -> TcpAcceptor {
         TcpAcceptor { inner: self.inner.clone() }
+    }
+}
+
+impl sys_common::AsInner<TcpAcceptorImp> for TcpAcceptor {
+    fn as_inner(&self) -> &TcpAcceptorImp {
+        &self.inner
     }
 }
 

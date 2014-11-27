@@ -57,13 +57,13 @@ use core::prelude::*;
 use alloc::arc::Arc;
 use alloc::heap::{allocate, deallocate};
 use alloc::boxed::Box;
-use collections::Vec;
+use vec::Vec;
 use core::kinds::marker;
 use core::mem::{forget, min_align_of, size_of, transmute};
 use core::ptr;
 use rustrt::exclusive::Exclusive;
 
-use atomic::{AtomicInt, AtomicPtr, SeqCst};
+use sync::atomic::{AtomicInt, AtomicPtr, SeqCst};
 
 // Once the queue is less than 1/K full, then it will be downsized. Note that
 // the deque requires that this number be less than 2.
@@ -410,16 +410,16 @@ impl<T: Send> Drop for Buffer<T> {
 
 #[cfg(test)]
 mod tests {
-    use std::prelude::*;
+    use prelude::*;
     use super::{Data, BufferPool, Abort, Empty, Worker, Stealer};
 
-    use std::mem;
+    use mem;
     use rustrt::thread::Thread;
-    use std::rand;
-    use std::rand::Rng;
-    use atomic::{AtomicBool, INIT_ATOMIC_BOOL, SeqCst,
-                  AtomicUint, INIT_ATOMIC_UINT};
-    use std::vec;
+    use rand;
+    use rand::Rng;
+    use sync::atomic::{AtomicBool, INIT_ATOMIC_BOOL, SeqCst,
+                       AtomicUint, INIT_ATOMIC_UINT};
+    use vec;
 
     #[test]
     fn smoke() {

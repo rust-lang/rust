@@ -145,7 +145,7 @@ impl<T: PartialEq> PartialEq for OwnedSlice<T> {
 impl<T: Eq> Eq for OwnedSlice<T> {}
 
 impl<T> FromIterator<T> for OwnedSlice<T> {
-    fn from_iter<I: Iterator<T>>(mut iter: I) -> OwnedSlice<T> {
+    fn from_iter<I: Iterator<T>>(iter: I) -> OwnedSlice<T> {
         OwnedSlice::from_vec(iter.collect())
     }
 }

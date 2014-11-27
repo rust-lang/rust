@@ -30,8 +30,8 @@ use rustrt::mutex::NativeMutex;
 use rustrt::task::{Task, BlockedTask};
 use rustrt::thread::Thread;
 
-use atomic;
-use mpsc_queue as mpsc;
+use sync::atomic;
+use sync::mpsc_queue as mpsc;
 
 const DISCONNECTED: int = int::MIN;
 const FUDGE: int = 1024;

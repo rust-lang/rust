@@ -39,7 +39,7 @@ use clone::Clone;
 use error::{FromError, Error};
 use fmt;
 use io::{IoResult, IoError};
-use iter::Iterator;
+use iter::{Iterator, IteratorExt};
 use libc::{c_void, c_int};
 use libc;
 use boxed::Box;
@@ -61,6 +61,11 @@ use vec::Vec;
 
 #[cfg(unix)] use c_str::ToCStr;
 #[cfg(unix)] use libc::c_char;
+
+#[cfg(unix)]
+pub use sys::ext as unix;
+#[cfg(windows)]
+pub use sys::ext as windows;
 
 /// Get the number of cores available
 pub fn num_cpus() -> uint {
@@ -1110,7 +1115,7 @@ extern "system" {
 ///
 /// The first element is traditionally the path to the executable, but it can be
 /// set to arbitrary text, and it may not even exist, so this property should not
-//  be relied upon for security purposes.
+/// be relied upon for security purposes.
 ///
 /// The arguments are interpreted as utf-8, with invalid bytes replaced with \uFFFD.
 /// See `String::from_utf8_lossy` for details.

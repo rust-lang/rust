@@ -33,15 +33,17 @@ macro_rules! helper_init( (static $name:ident: Helper<$m:ty>) => (
 ) )
 
 pub mod c;
+pub mod ext;
 pub mod fs;
-pub mod os;
-pub mod tcp;
-pub mod udp;
-pub mod pipe;
 pub mod helper_signal;
+pub mod os;
+pub mod pipe;
 pub mod process;
+pub mod tcp;
 pub mod timer;
+pub mod thread_local;
 pub mod tty;
+pub mod udp;
 
 pub mod addrinfo {
     pub use sys_common::net::get_host_addresses;

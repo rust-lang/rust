@@ -18,6 +18,7 @@ use middle::def::*;
 use middle::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor, Init};
 use middle::expr_use_visitor::{JustWrite, LoanCause, MutateMode};
 use middle::expr_use_visitor::{WriteAndRead};
+use middle::expr_use_visitor as euv;
 use middle::mem_categorization::cmt;
 use middle::pat_util::*;
 use middle::ty::*;
@@ -92,7 +93,7 @@ impl<'a> fmt::Show for Matrix<'a> {
 }
 
 impl<'a> FromIterator<Vec<&'a Pat>> for Matrix<'a> {
-    fn from_iter<T: Iterator<Vec<&'a Pat>>>(mut iterator: T) -> Matrix<'a> {
+    fn from_iter<T: Iterator<Vec<&'a Pat>>>(iterator: T) -> Matrix<'a> {
         Matrix(iterator.collect())
     }
 }
@@ -152,19 +153,14 @@ fn check_expr(cx: &mut MatchCheckCtxt, ex: &ast::Expr) {
     visit::walk_expr(cx, ex);
     match ex.node {
         ast::ExprMatch(ref scrut, ref arms, source) => {
-            // First, check legality of move bindings.
             for arm in arms.iter() {
+                // First, check legality of move bindings.
                 check_legality_of_move_bindings(cx,
                                                 arm.guard.is_some(),
                                                 arm.pats.as_slice());
-                for pat in arm.pats.iter() {
-                    check_legality_of_bindings_in_at_patterns(cx, &**pat);
-                }
-            }
 
-            // Second, if there is a guard on each arm, make sure it isn't
-            // assigning or borrowing anything mutably.
-            for arm in arms.iter() {
+                // Second, if there is a guard on each arm, make sure it isn't
+                // assigning or borrowing anything mutably.
                 match arm.guard {
                     Some(ref guard) => check_for_mutation_in_guard(cx, &**guard),
                     None => {}
@@ -178,13 +174,23 @@ fn check_expr(cx: &mut MatchCheckCtxt, ex: &ast::Expr) {
                 }).collect(), arm.guard.as_ref().map(|e| &**e))
             }).collect::<Vec<(Vec<P<Pat>>, Option<&ast::Expr>)>>();
 
+            // Bail out early if inlining failed.
             if static_inliner.failed {
                 return;
             }
 
-            // Third, check if there are any references to NaN that we should warn about.
-            for &(ref pats, _) in inlined_arms.iter() {
-                check_for_static_nan(cx, pats.as_slice());
+            for pat in inlined_arms
+                .iter()
+                .flat_map(|&(ref pats, _)| pats.iter()) {
+                // Third, check legality of move bindings.
+                check_legality_of_bindings_in_at_patterns(cx, &**pat);
+
+                // Fourth, check if there are any references to NaN that we should warn about.
+                check_for_static_nan(cx, &**pat);
+
+                // Fifth, check if for any of the patterns that match an enumerated type
+                // are bindings with the same name as one of the variants of said type.
+                check_for_bindings_named_the_same_as_variants(cx, &**pat);
             }
 
             // Fourth, check for unreachable arms.
@@ -238,21 +244,49 @@ fn is_expr_const_nan(tcx: &ty::ctxt, expr: &ast::Expr) -> bool {
     }
 }
 
-// Check that we do not match against a static NaN (#6804)
-fn check_for_static_nan(cx: &MatchCheckCtxt, pats: &[P<Pat>]) {
-    for pat in pats.iter() {
-        walk_pat(&**pat, |p| {
-            match p.node {
-                ast::PatLit(ref expr) if is_expr_const_nan(cx.tcx, &**expr) => {
-                    span_warn!(cx.tcx.sess, p.span, E0003,
-                        "unmatchable NaN in pattern, \
-                            use the is_nan method in a guard instead");
+fn check_for_bindings_named_the_same_as_variants(cx: &MatchCheckCtxt, pat: &Pat) {
+    walk_pat(pat, |p| {
+        match p.node {
+            ast::PatIdent(ast::BindByValue(ast::MutImmutable), ident, None) => {
+                let pat_ty = ty::pat_ty(cx.tcx, p);
+                if let ty::ty_enum(def_id, _) = pat_ty.sty {
+                    let def = cx.tcx.def_map.borrow().get(&p.id).cloned();
+                    if let Some(DefLocal(_)) = def {
+                        if ty::enum_variants(cx.tcx, def_id).iter().any(|variant|
+                            token::get_name(variant.name) == token::get_name(ident.node.name)
+                                && variant.args.len() == 0
+                        ) {
+                            span_warn!(cx.tcx.sess, p.span, E0170,
+                                "pattern binding `{}` is named the same as one \
+                                 of the variants of the type `{}`",
+                                token::get_ident(ident.node).get(), ty_to_string(cx.tcx, pat_ty));
+                            span_help!(cx.tcx.sess, p.span,
+                                "if you meant to match on a variant, \
+                                 consider making the path in the pattern qualified: `{}::{}`",
+                                ty_to_string(cx.tcx, pat_ty), token::get_ident(ident.node).get());
+                        }
+                    }
                 }
-                _ => ()
             }
-            true
-        });
-    }
+            _ => ()
+        }
+        true
+    });
+}
+
+// Check that we do not match against a static NaN (#6804)
+fn check_for_static_nan(cx: &MatchCheckCtxt, pat: &Pat) {
+    walk_pat(pat, |p| {
+        match p.node {
+            ast::PatLit(ref expr) if is_expr_const_nan(cx.tcx, &**expr) => {
+                span_warn!(cx.tcx.sess, p.span, E0003,
+                    "unmatchable NaN in pattern, \
+                        use the is_nan method in a guard instead");
+            }
+            _ => ()
+        }
+        true
+    });
 }
 
 // Check for unreachable patterns
@@ -413,8 +447,7 @@ fn construct_witness(cx: &MatchCheckCtxt, ctor: &Constructor,
                 &Variant(vid) =>
                     (vid, ty::enum_variant_with_id(cx.tcx, cid, vid).arg_names.is_some()),
                 _ =>
-                    (cid, ty::lookup_struct_fields(cx.tcx, cid).iter()
-                        .any(|field| field.name != token::special_idents::unnamed_field.name))
+                    (cid, !ty::is_tuple_struct(cx.tcx, cid))
             };
             if is_structure {
                 let fields = ty::lookup_struct_fields(cx.tcx, vid);
@@ -1024,6 +1057,7 @@ struct MutationChecker<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> Delegate<'tcx> for MutationChecker<'a, 'tcx> {
+    fn matched_pat(&mut self, _: &Pat, _: cmt, _: euv::MatchMode) {}
     fn consume(&mut self, _: NodeId, _: Span, _: cmt, _: ConsumeMode) {}
     fn consume_pat(&mut self, _: &Pat, _: cmt, _: ConsumeMode) {}
     fn borrow(&mut self,
@@ -1089,4 +1123,3 @@ impl<'a, 'b, 'tcx, 'v> Visitor<'v> for AtBindingPatternVisitor<'a, 'b, 'tcx> {
         }
     }
 }
-

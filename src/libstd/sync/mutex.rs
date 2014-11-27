@@ -28,8 +28,8 @@ pub const BLOCKED: uint = 1 << 1;
 ///
 /// # Example
 ///
-/// ```rust
-/// use sync::mutex::Mutex;
+/// ```rust,ignore
+/// use std::sync::mutex::Mutex;
 ///
 /// let m = Mutex::new();
 /// let guard = m.lock();
@@ -57,8 +57,8 @@ pub struct Mutex {
 ///
 /// # Example
 ///
-/// ```rust
-/// use sync::mutex::{StaticMutex, MUTEX_INIT};
+/// ```rust,ignore
+/// use std::sync::mutex::{StaticMutex, MUTEX_INIT};
 ///
 /// static LOCK: StaticMutex = MUTEX_INIT;
 ///
@@ -156,7 +156,7 @@ impl Drop for Mutex {
 
 #[cfg(test)]
 mod test {
-    use std::prelude::*;
+    use prelude::*;
     use super::{Mutex, StaticMutex, MUTEX_INIT};
 
     #[test]

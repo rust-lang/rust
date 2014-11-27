@@ -8,26 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::task;
-
-static mut DROPS: uint = 0;
-
-struct Foo;
-impl Drop for Foo {
-    fn drop(&mut self) {
-        unsafe { DROPS += 1; }
-        panic!()
-    }
-}
+use std::sync::atomic::AtomicOption;
 
 fn main() {
-    let _ = task::try(proc() {
-        local_data_key!(foo: Foo);
-        foo.replace(Some(Foo));
-    });
-
-    unsafe {
-        assert_eq!(DROPS, 1);
-    }
+    let x = 0u;
+    AtomicOption::new(box &x);  //~ ERROR `x` does not live long enough
 }
-

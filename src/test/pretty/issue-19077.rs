@@ -7,10 +7,14 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-
-// Testing that we can't store a reference in task-local storage
-
-local_data_key!(key: Box<&int>)
-//~^ ERROR missing lifetime specifier
-
-fn main() {}
+//
+// Testing that unsafe blocks in match arms are followed by a comma
+// pp-exact
+fn main() {
+    match true {
+        true if true => (),
+        false if false => unsafe { },
+        true => { }
+        false => (),
+    }
+}

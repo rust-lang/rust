@@ -2638,11 +2638,6 @@ impl ops::Sub<TypeContents,TypeContents> for TypeContents {
 }
 
 impl fmt::Show for TypeContents {
-    #[cfg(stage0)]
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "TypeContents({:t})", self.bits)
-    }
-    #[cfg(not(stage0))]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "TypeContents({:b})", self.bits)
     }
@@ -3111,7 +3106,7 @@ pub fn is_type_representable<'tcx>(cx: &ctxt<'tcx>, sp: Span, ty: Ty<'tcx>)
     // Iterate until something non-representable is found
     fn find_nonrepresentable<'tcx, It: Iterator<Ty<'tcx>>>(cx: &ctxt<'tcx>, sp: Span,
                                                            seen: &mut Vec<Ty<'tcx>>,
-                                                           mut iter: It)
+                                                           iter: It)
                                                            -> Representability {
         iter.fold(Representable,
                   |r, ty| cmp::max(r, is_type_structurally_recursive(cx, sp, seen, ty)))
@@ -3169,7 +3164,7 @@ pub fn is_type_representable<'tcx>(cx: &ctxt<'tcx>, sp: Span, ty: Ty<'tcx>)
                 let types_a = substs_a.types.get_slice(subst::TypeSpace);
                 let types_b = substs_b.types.get_slice(subst::TypeSpace);
 
-                let mut pairs = types_a.iter().zip(types_b.iter());
+                let pairs = types_a.iter().zip(types_b.iter());
 
                 pairs.all(|(&a, &b)| same_type(a, b))
             }
@@ -3443,6 +3438,62 @@ pub fn array_element_ty<'tcx>(ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
     match ty.sty {
         ty_vec(ty, _) => Some(ty),
         ty_str => Some(mk_u8()),
+        _ => None
+    }
+}
+
+/// Returns the type of element at index `i` in tuple or tuple-like type `t`.
+/// For an enum `t`, `variant` is None only if `t` is a univariant enum.
+pub fn positional_element_ty<'tcx>(cx: &ctxt<'tcx>,
+                                   ty: Ty<'tcx>,
+                                   i: uint,
+                                   variant: Option<ast::DefId>) -> Option<Ty<'tcx>> {
+
+    match (&ty.sty, variant) {
+        (&ty_tup(ref v), None) => v.as_slice().get(i).map(|&t| t),
+
+
+        (&ty_struct(def_id, ref substs), None) => lookup_struct_fields(cx, def_id)
+            .as_slice().get(i)
+            .map(|&t|lookup_item_type(cx, t.id).ty.subst(cx, substs)),
+
+        (&ty_enum(def_id, ref substs), Some(variant_def_id)) => {
+            let variant_info = enum_variant_with_id(cx, def_id, variant_def_id);
+            variant_info.args.as_slice().get(i).map(|t|t.subst(cx, substs))
+        }
+
+        (&ty_enum(def_id, ref substs), None) => {
+            assert!(enum_is_univariant(cx, def_id));
+            let enum_variants = enum_variants(cx, def_id);
+            let variant_info = &(*enum_variants)[0];
+            variant_info.args.as_slice().get(i).map(|t|t.subst(cx, substs))
+        }
+
+        _ => None
+    }
+}
+
+/// Returns the type of element at field `n` in struct or struct-like type `t`.
+/// For an enum `t`, `variant` must be some def id.
+pub fn named_element_ty<'tcx>(cx: &ctxt<'tcx>,
+                              ty: Ty<'tcx>,
+                              n: ast::Name,
+                              variant: Option<ast::DefId>) -> Option<Ty<'tcx>> {
+
+    match (&ty.sty, variant) {
+        (&ty_struct(def_id, ref substs), None) => {
+            let r = lookup_struct_fields(cx, def_id);
+            r.iter().find(|f| f.name == n)
+                .map(|&f| lookup_field_type(cx, def_id, f.id, substs))
+        }
+        (&ty_enum(def_id, ref substs), Some(variant_def_id)) => {
+            let variant_info = enum_variant_with_id(cx, def_id, variant_def_id);
+            variant_info.arg_names.as_ref()
+                .expect("must have struct enum variant if accessing a named fields")
+                .iter().zip(variant_info.args.iter())
+                .find(|&(ident, _)| ident.name == n)
+                .map(|(_ident, arg_t)| arg_t.subst(cx, substs))
+        }
         _ => None
     }
 }

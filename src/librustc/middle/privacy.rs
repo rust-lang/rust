@@ -17,20 +17,17 @@ use self::FieldName::*;
 use std::mem::replace;
 
 use metadata::csearch;
-use middle::def;
-use middle::resolve;
+use middle::{def, resolve};
 use middle::ty::{mod, Ty};
 use middle::typeck::{MethodCall, MethodMap, MethodOrigin, MethodParam, MethodTypeParam};
 use middle::typeck::{MethodStatic, MethodStaticUnboxedClosure, MethodObject, MethodTraitObject};
 use util::nodemap::{NodeMap, NodeSet};
 
-use syntax::ast;
-use syntax::ast_map;
+use syntax::{ast, ast_map};
 use syntax::ast_util::{is_local, local_def, PostExpansionMethod};
 use syntax::codemap::Span;
 use syntax::parse::token;
-use syntax::visit;
-use syntax::visit::Visitor;
+use syntax::visit::{mod, Visitor};
 
 type Context<'a, 'tcx> = (&'a MethodMap<'tcx>, &'a resolve::ExportMap2);
 
@@ -836,20 +833,14 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
 
     fn visit_expr(&mut self, expr: &ast::Expr) {
         match expr.node {
-            ast::ExprField(ref base, ident, _) => {
-                match ty::expr_ty_adjusted(self.tcx, &**base).sty {
-                    ty::ty_struct(id, _) => {
-                        self.check_field(expr.span, id, NamedField(ident.node));
-                    }
-                    _ => {}
+            ast::ExprField(ref base, ident) => {
+                if let ty::ty_struct(id, _) = ty::expr_ty_adjusted(self.tcx, &**base).sty {
+                    self.check_field(expr.span, id, NamedField(ident.node));
                 }
             }
-            ast::ExprTupField(ref base, idx, _) => {
-                match ty::expr_ty_adjusted(self.tcx, &**base).sty {
-                    ty::ty_struct(id, _) => {
-                        self.check_field(expr.span, id, UnnamedField(idx.node));
-                    }
-                    _ => {}
+            ast::ExprTupField(ref base, idx) => {
+                if let ty::ty_struct(id, _) = ty::expr_ty_adjusted(self.tcx, &**base).sty {
+                    self.check_field(expr.span, id, UnnamedField(idx.node));
                 }
             }
             ast::ExprMethodCall(ident, _, _) => {

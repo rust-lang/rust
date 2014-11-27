@@ -16,6 +16,7 @@ use core::prelude::*;
 
 use alloc::boxed::Box;
 use alloc::heap::{EMPTY, allocate, reallocate, deallocate};
+use core::borrow::{Cow, IntoCow};
 use core::cmp::max;
 use core::default::Default;
 use core::fmt;
@@ -105,6 +106,27 @@ pub struct Vec<T> {
     ptr: *mut T,
     len: uint,
     cap: uint,
+}
+
+/// A clone-on-write vector
+pub type CowVec<'a, T> = Cow<'a, Vec<T>, [T]>;
+
+impl<'a, T> FromIterator<T> for CowVec<'a, T> where T: Clone {
+    fn from_iter<I: Iterator<T>>(it: I) -> CowVec<'a, T> {
+        Cow::Owned(FromIterator::from_iter(it))
+    }
+}
+
+impl<'a, T: 'a> IntoCow<'a, Vec<T>, [T]> for Vec<T> where T: Clone {
+    fn into_cow(self) -> CowVec<'a, T> {
+        Cow::Owned(self)
+    }
+}
+
+impl<'a, T> IntoCow<'a, Vec<T>, [T]> for &'a [T] where T: Clone {
+    fn into_cow(self) -> CowVec<'a, T> {
+        Cow::Borrowed(self)
+    }
 }
 
 impl<T> Vec<T> {
@@ -1248,7 +1270,7 @@ pub struct MoveItems<T> {
 impl<T> MoveItems<T> {
     #[inline]
     /// Drops all items that have not yet been moved and returns the empty vector.
-    pub fn unwrap(mut self) -> Vec<T> {
+    pub fn into_inner(mut self) -> Vec<T> {
         unsafe {
             for _x in self { }
             let MoveItems { allocation, cap, ptr: _ptr, end: _end } = self;
@@ -1256,6 +1278,10 @@ impl<T> MoveItems<T> {
             Vec { ptr: allocation, cap: cap, len: 0 }
         }
     }
+
+    /// Deprecated, use into_inner() instead
+    #[deprecated = "renamed to into_inner()"]
+    pub fn unwrap(self) -> Vec<T> { self.into_inner() }
 }
 
 impl<T> Iterator<T> for MoveItems<T> {
@@ -1315,7 +1341,7 @@ impl<T> DoubleEndedIterator<T> for MoveItems<T> {
     }
 }
 
-impl<T> ExactSize<T> for MoveItems<T> {}
+impl<T> ExactSizeIterator<T> for MoveItems<T> {}
 
 #[unsafe_destructor]
 impl<T> Drop for MoveItems<T> {

@@ -58,16 +58,16 @@ impl<'a, 'ast> dot::Labeller<'a, Node<'a>, Edge<'a>> for LabelledCFG<'a, 'ast> {
 
     fn node_label(&'a self, &(i, n): &Node<'a>) -> dot::LabelText<'a> {
         if i == self.cfg.entry {
-            dot::LabelStr("entry".into_maybe_owned())
+            dot::LabelStr("entry".into_cow())
         } else if i == self.cfg.exit {
-            dot::LabelStr("exit".into_maybe_owned())
+            dot::LabelStr("exit".into_cow())
         } else if n.data.id == ast::DUMMY_NODE_ID {
-            dot::LabelStr("(dummy_node)".into_maybe_owned())
+            dot::LabelStr("(dummy_node)".into_cow())
         } else {
             let s = self.ast_map.node_to_string(n.data.id);
             // left-aligns the lines
             let s = replace_newline_with_backslash_l(s);
-            dot::EscStr(s.into_maybe_owned())
+            dot::EscStr(s.into_cow())
         }
     }
 
@@ -86,7 +86,7 @@ impl<'a, 'ast> dot::Labeller<'a, Node<'a>, Edge<'a>> for LabelledCFG<'a, 'ast> {
             label.push_str(format!("exiting scope_{} {}", i,
                                    s.as_slice()).as_slice());
         }
-        dot::EscStr(label.into_maybe_owned())
+        dot::EscStr(label.into_cow())
     }
 }
 
@@ -94,7 +94,7 @@ impl<'a> dot::GraphWalk<'a, Node<'a>, Edge<'a>> for &'a cfg::CFG {
     fn nodes(&'a self) -> dot::Nodes<'a, Node<'a>> {
         let mut v = Vec::new();
         self.graph.each_node(|i, nd| { v.push((i, nd)); true });
-        dot::maybe_owned_vec::Growable(v)
+        v.into_cow()
     }
     fn edges(&'a self) -> dot::Edges<'a, Edge<'a>> {
         self.graph.all_edges().iter().collect()

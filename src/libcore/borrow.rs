@@ -45,8 +45,11 @@
 #![unstable = "recently added as part of collections reform"]
 
 use clone::Clone;
+use cmp::{Eq, Ord, Ordering, PartialEq, PartialOrd};
+use fmt;
 use kinds::Sized;
 use ops::Deref;
+use option::Option;
 use self::Cow::*;
 
 /// A trait for borrowing data.
@@ -79,6 +82,24 @@ impl<'a, Sized? T> BorrowFrom<&'a mut T> for T {
 
 impl<'a, Sized? T> BorrowFromMut<&'a mut T> for T {
     fn borrow_from_mut<'b>(owned: &'b mut &'a mut T) -> &'b mut T { &mut **owned }
+}
+
+impl<'a, T, Sized? B> BorrowFrom<Cow<'a, T, B>> for B where B: ToOwned<T> {
+    fn borrow_from<'b>(owned: &'b Cow<'a, T, B>) -> &'b B {
+        &**owned
+    }
+}
+
+/// Trait for moving into a `Cow`
+pub trait IntoCow<'a, T, Sized? B> {
+    /// Moves `self` into `Cow`
+    fn into_cow(self) -> Cow<'a, T, B>;
+}
+
+impl<'a, T, Sized? B> IntoCow<'a, T, B> for Cow<'a, T, B> where B: ToOwned<T> {
+    fn into_cow(self) -> Cow<'a, T, B> {
+        self
+    }
 }
 
 /// A generalization of Clone to borrowed data.
@@ -139,6 +160,22 @@ impl<'a, T, Sized? B> Cow<'a, T, B> where B: ToOwned<T> {
             Owned(owned) => owned
         }
     }
+
+    /// Returns true if this `Cow` wraps a borrowed value
+    pub fn is_borrowed(&self) -> bool {
+        match *self {
+            Borrowed(_) => true,
+            _ => false,
+        }
+    }
+
+    /// Returns true if this `Cow` wraps an owned value
+    pub fn is_owned(&self) -> bool {
+        match *self {
+            Owned(_) => true,
+            _ => false,
+        }
+    }
 }
 
 impl<'a, T, Sized? B> Deref<B> for Cow<'a, T, B> where B: ToOwned<T>  {
@@ -146,6 +183,38 @@ impl<'a, T, Sized? B> Deref<B> for Cow<'a, T, B> where B: ToOwned<T>  {
         match *self {
             Borrowed(borrowed) => borrowed,
             Owned(ref owned) => BorrowFrom::borrow_from(owned)
+        }
+    }
+}
+
+impl<'a, T, Sized? B> Eq for Cow<'a, T, B> where B: Eq + ToOwned<T> {}
+
+impl<'a, T, Sized? B> Ord for Cow<'a, T, B> where B: Ord + ToOwned<T> {
+    #[inline]
+    fn cmp(&self, other: &Cow<'a, T, B>) -> Ordering {
+        Ord::cmp(&**self, &**other)
+    }
+}
+
+impl<'a, T, Sized? B> PartialEq for Cow<'a, T, B> where B: PartialEq + ToOwned<T> {
+    #[inline]
+    fn eq(&self, other: &Cow<'a, T, B>) -> bool {
+        PartialEq::eq(&**self, &**other)
+    }
+}
+
+impl<'a, T, Sized? B> PartialOrd for Cow<'a, T, B> where B: PartialOrd + ToOwned<T> {
+    #[inline]
+    fn partial_cmp(&self, other: &Cow<'a, T, B>) -> Option<Ordering> {
+        PartialOrd::partial_cmp(&**self, &**other)
+    }
+}
+
+impl<'a, T, Sized? B> fmt::Show for Cow<'a, T, B> where B: fmt::Show + ToOwned<T>, T: fmt::Show {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            Borrowed(ref b) => fmt::Show::fmt(b, f),
+            Owned(ref o) => fmt::Show::fmt(o, f),
         }
     }
 }

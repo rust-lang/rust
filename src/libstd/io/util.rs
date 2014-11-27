@@ -28,7 +28,11 @@ impl<R: Reader> LimitReader<R> {
     }
 
     /// Consumes the `LimitReader`, returning the underlying `Reader`.
-    pub fn unwrap(self) -> R { self.inner }
+    pub fn into_inner(self) -> R { self.inner }
+
+    /// Deprecated, use into_inner() instead
+    #[deprecated = "renamed to into_inner"]
+    pub fn unwrap(self) -> R { self.into_inner() }
 
     /// Returns the number of bytes that can be read before the `LimitReader`
     /// will return EOF.
@@ -207,10 +211,14 @@ impl<R: Reader, W: Writer> TeeReader<R, W> {
 
     /// Consumes the `TeeReader`, returning the underlying `Reader` and
     /// `Writer`.
-    pub fn unwrap(self) -> (R, W) {
+    pub fn into_inner(self) -> (R, W) {
         let TeeReader { reader, writer } = self;
         (reader, writer)
     }
+
+    /// Deprecated, use into_inner() instead
+    #[deprecated = "renamed to into_inner"]
+    pub fn unwrap(self) -> (R, W) { self.into_inner() }
 }
 
 impl<R: Reader, W: Writer> Reader for TeeReader<R, W> {

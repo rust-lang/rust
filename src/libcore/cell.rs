@@ -256,14 +256,18 @@ impl<T> RefCell<T> {
     }
 
     /// Consumes the `RefCell`, returning the wrapped value.
-    #[unstable = "may be renamed, depending on global conventions"]
-    pub fn unwrap(self) -> T {
+    #[unstable = "recently renamed per RFC 430"]
+    pub fn into_inner(self) -> T {
         // Since this function takes `self` (the `RefCell`) by value, the
         // compiler statically verifies that it is not currently borrowed.
         // Therefore the following assertion is just a `debug_assert!`.
         debug_assert!(self.borrow.get() == UNUSED);
-        unsafe{self.value.unwrap()}
+        unsafe { self.value.into_inner() }
     }
+
+    /// Deprecated, use into_inner() instead
+    #[deprecated = "renamed to into_inner()"]
+    pub fn unwrap(self) -> T { self.into_inner() }
 
     /// Attempts to immutably borrow the wrapped value.
     ///
@@ -518,5 +522,9 @@ impl<T> UnsafeCell<T> {
     #[inline]
     #[unstable = "conventions around the name `unwrap` are still under \
                   development"]
-    pub unsafe fn unwrap(self) -> T { self.value }
+    pub unsafe fn into_inner(self) -> T { self.value }
+
+    /// Deprecated, use into_inner() instead
+    #[deprecated = "renamed to into_inner()"]
+    pub unsafe fn unwrap(self) -> T { self.into_inner() }
 }

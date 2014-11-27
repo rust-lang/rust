@@ -13,7 +13,7 @@ pub use self::Regex::*;
 
 use std::collections::HashMap;
 use std::fmt;
-use std::str::{MaybeOwned, Owned, Slice};
+use std::str::CowString;
 
 use compile::Program;
 use parse;
@@ -565,25 +565,25 @@ pub trait Replacer {
     ///
     /// The `'a` lifetime refers to the lifetime of a borrowed string when
     /// a new owned string isn't needed (e.g., for `NoExpand`).
-    fn reg_replace<'a>(&'a mut self, caps: &Captures) -> MaybeOwned<'a>;
+    fn reg_replace<'a>(&'a mut self, caps: &Captures) -> CowString<'a>;
 }
 
 impl<'t> Replacer for NoExpand<'t> {
-    fn reg_replace<'a>(&'a mut self, _: &Captures) -> MaybeOwned<'a> {
+    fn reg_replace<'a>(&'a mut self, _: &Captures) -> CowString<'a> {
         let NoExpand(s) = *self;
-        Slice(s)
+        s.into_cow()
     }
 }
 
 impl<'t> Replacer for &'t str {
-    fn reg_replace<'a>(&'a mut self, caps: &Captures) -> MaybeOwned<'a> {
-        Owned(caps.expand(*self))
+    fn reg_replace<'a>(&'a mut self, caps: &Captures) -> CowString<'a> {
+        caps.expand(*self).into_cow()
     }
 }
 
 impl<'t> Replacer for |&Captures|: 't -> String {
-    fn reg_replace<'a>(&'a mut self, caps: &Captures) -> MaybeOwned<'a> {
-        Owned((*self)(caps))
+    fn reg_replace<'a>(&'a mut self, caps: &Captures) -> CowString<'a> {
+        (*self)(caps).into_cow()
     }
 }
 

@@ -23,9 +23,9 @@ use char::Char;
 use char;
 use cmp::{Eq, mod};
 use default::Default;
+use iter::{Map, Iterator, IteratorExt, DoubleEndedIterator};
+use iter::{DoubleEndedIteratorExt, ExactSizeIterator};
 use iter::range;
-use iter::{DoubleEndedIterator, ExactSize};
-use iter::{Map, Iterator};
 use kinds::Sized;
 use mem;
 use num::Int;
@@ -1210,7 +1210,7 @@ Section: Trait implementations
 #[allow(missing_docs)]
 pub mod traits {
     use cmp::{Ord, Ordering, Less, Equal, Greater, PartialEq, PartialOrd, Equiv, Eq};
-    use iter::Iterator;
+    use iter::IteratorExt;
     use option::{Option, Some};
     use ops;
     use str::{Str, StrPrelude, eq_slice};
@@ -1277,14 +1277,19 @@ pub mod traits {
 }
 
 /// Any string that can be represented as a slice
-pub trait Str {
+pub trait Str for Sized? {
     /// Work with `self` as a slice.
     fn as_slice<'a>(&'a self) -> &'a str;
 }
 
-impl<'a> Str for &'a str {
+impl Str for str {
     #[inline]
-    fn as_slice<'a>(&'a self) -> &'a str { *self }
+    fn as_slice<'a>(&'a self) -> &'a str { self }
+}
+
+impl<'a, Sized? S> Str for &'a S where S: Str {
+    #[inline]
+    fn as_slice(&self) -> &str { Str::as_slice(*self) }
 }
 
 /// Methods for string slices

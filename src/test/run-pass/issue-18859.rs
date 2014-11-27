@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,19 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-local_data_key!(foo: int)
-
-mod bar {
-    local_data_key!(pub baz: f64)
+mod foo {
+    pub mod bar {
+        pub mod baz {
+            pub fn name() -> &'static str {
+                module_path!()
+            }
+        }
+    }
 }
 
-pub fn main() {
-    assert!(foo.get().is_none());
-    assert!(bar::baz.get().is_none());
-
-    foo.replace(Some(3));
-    bar::baz.replace(Some(-10.0));
-
-    assert_eq!(*foo.get().unwrap(), 3);
-    assert_eq!(*bar::baz.get().unwrap(), -10.0);
+fn main() {
+    assert_eq!(module_path!(), "issue-18859");
+    assert_eq!(foo::bar::baz::name(), "issue-18859::foo::bar::baz");
 }

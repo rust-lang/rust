@@ -34,8 +34,10 @@
 //! both occur before the crate is rendered.
 pub use self::ExternalLocation::*;
 
-use std::collections::{HashMap, HashSet};
+use std::cell::RefCell;
 use std::collections::hash_map::{Occupied, Vacant};
+use std::collections::{HashMap, HashSet};
+use std::default::Default;
 use std::fmt;
 use std::io::fs::PathExtensions;
 use std::io::{fs, File, BufferedWriter, BufferedReader};
@@ -57,7 +59,7 @@ use clean;
 use doctree;
 use fold::DocFolder;
 use html::format::{VisSpace, Method, FnStyleSpace, MutableSpace, Stability};
-use html::format::{ConciseStability, WhereClause};
+use html::format::{ConciseStability, TyParamBounds, WhereClause};
 use html::highlight;
 use html::item_type::{ItemType, shortty};
 use html::item_type;
@@ -141,6 +143,7 @@ pub struct Impl {
 /// to be a fairly large and expensive structure to clone. Instead this adheres
 /// to `Send` so it may be stored in a `Arc` instance and shared among the various
 /// rendering tasks.
+#[deriving(Default)]
 pub struct Cache {
     /// Mapping of typaram ids to the name of the type parameter. This is used
     /// when pretty-printing a type (so pretty printing doesn't have to
@@ -235,8 +238,9 @@ struct IndexItem {
 
 // TLS keys used to carry information around during rendering.
 
-local_data_key!(pub cache_key: Arc<Cache>)
-local_data_key!(pub current_location_key: Vec<String> )
+thread_local!(static CACHE_KEY: RefCell<Arc<Cache>> = Default::default())
+thread_local!(pub static CURRENT_LOCATION_KEY: RefCell<Vec<String>> =
+                    RefCell::new(Vec::new()))
 
 /// Generates the documentation for `crate` into the directory `dst`
 pub fn run(mut krate: clean::Crate,
@@ -280,10 +284,12 @@ pub fn run(mut krate: clean::Crate,
                     clean::NameValue(ref x, ref s)
                             if "html_playground_url" == x.as_slice() => {
                         cx.layout.playground_url = s.to_string();
-                        let name = krate.name.clone();
-                        if markdown::playground_krate.get().is_none() {
-                            markdown::playground_krate.replace(Some(Some(name)));
-                        }
+                        markdown::PLAYGROUND_KRATE.with(|slot| {
+                            if slot.borrow().is_none() {
+                                let name = krate.name.clone();
+                                *slot.borrow_mut() = Some(Some(name));
+                            }
+                        });
                     }
                     clean::Word(ref x)
                             if "html_no_source" == x.as_slice() => {
@@ -297,7 +303,8 @@ pub fn run(mut krate: clean::Crate,
     }
 
     // Crawl the crate to build various caches used for the output
-    let analysis = ::analysiskey.get();
+    let analysis = ::ANALYSISKEY.with(|a| a.clone());
+    let analysis = analysis.borrow();
     let public_items = analysis.as_ref().map(|a| a.public_items.clone());
     let public_items = public_items.unwrap_or(NodeSet::new());
     let paths: HashMap<ast::DefId, (Vec<String>, ItemType)> =
@@ -370,8 +377,8 @@ pub fn run(mut krate: clean::Crate,
     // Freeze the cache now that the index has been built. Put an Arc into TLS
     // for future parallelization opportunities
     let cache = Arc::new(cache);
-    cache_key.replace(Some(cache.clone()));
-    current_location_key.replace(Some(Vec::new()));
+    CACHE_KEY.with(|v| *v.borrow_mut() = cache.clone());
+    CURRENT_LOCATION_KEY.with(|s| s.borrow_mut().clear());
 
     try!(write_shared(&cx, &krate, &*cache, index));
     let krate = try!(render_sources(&mut cx, krate));
@@ -1134,7 +1141,9 @@ impl Context {
             info!("Rendering an item to {}", w.path().display());
             // A little unfortunate that this is done like this, but it sure
             // does make formatting *a lot* nicer.
-            current_location_key.replace(Some(cx.current.clone()));
+            CURRENT_LOCATION_KEY.with(|slot| {
+                *slot.borrow_mut() = cx.current.clone();
+            });
 
             let mut title = cx.current.connect("::");
             if pushname {
@@ -1177,7 +1186,7 @@ impl Context {
                                     &Item{ cx: cx, item: it }));
             } else {
                 let mut url = "../".repeat(cx.current.len());
-                match cache_key.get().unwrap().paths.get(&it.def_id) {
+                match cache().paths.get(&it.def_id) {
                     Some(&(ref names, _)) => {
                         for name in names[..names.len() - 1].iter() {
                             url.push_str(name.as_slice());
@@ -1324,7 +1333,7 @@ impl<'a> Item<'a> {
         // If we don't know where the external documentation for this crate is
         // located, then we return `None`.
         } else {
-            let cache = cache_key.get().unwrap();
+            let cache = cache();
             let path = &cache.external_paths[self.item.def_id];
             let root = match cache.extern_locations[self.item.def_id.krate] {
                 Remote(ref s) => s.to_string(),
@@ -1428,6 +1437,8 @@ impl<'a> fmt::Show for Item<'a> {
             clean::TypedefItem(ref t) => item_typedef(fmt, self.item, t),
             clean::MacroItem(ref m) => item_macro(fmt, self.item, m),
             clean::PrimitiveItem(ref p) => item_primitive(fmt, self.item, p),
+            clean::StaticItem(ref i) => item_static(fmt, self.item, i),
+            clean::ConstantItem(ref c) => item_constant(fmt, self.item, c),
             _ => Ok(())
         }
     }
@@ -1451,13 +1462,6 @@ fn full_path(cx: &Context, item: &clean::Item) -> String {
     s.push_str("::");
     s.push_str(item.name.as_ref().unwrap().as_slice());
     return s
-}
-
-fn blank<'a>(s: Option<&'a str>) -> &'a str {
-    match s {
-        Some(s) => s,
-        None => ""
-    }
 }
 
 fn shorter<'a>(s: Option<&'a str>) -> &'a str {
@@ -1570,66 +1574,18 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
                         id = short, name = name));
         }
 
-        struct Initializer<'a>(&'a str, Item<'a>);
-        impl<'a> fmt::Show for Initializer<'a> {
-            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                let Initializer(s, item) = *self;
-                if s.len() == 0 { return Ok(()); }
-                try!(write!(f, "<code> = </code>"));
-                if s.contains("\n") {
-                    match item.href() {
-                        Some(url) => {
-                            write!(f, "<a href='{}'>[definition]</a>",
-                                   url)
-                        }
-                        None => Ok(()),
-                    }
-                } else {
-                    write!(f, "<code>{}</code>", s.as_slice())
-                }
-            }
-        }
-
         match myitem.inner {
-            clean::StaticItem(ref s) | clean::ForeignStaticItem(ref s) => {
-                try!(write!(w, "
-                    <tr>
-                        <td>{}<code>{}static {}{}: {}</code>{}</td>
-                        <td class='docblock'>{}&nbsp;</td>
-                    </tr>
-                ",
-                ConciseStability(&myitem.stability),
-                VisSpace(myitem.visibility),
-                MutableSpace(s.mutability),
-                *myitem.name.as_ref().unwrap(),
-                s.type_,
-                Initializer(s.expr.as_slice(), Item { cx: cx, item: myitem }),
-                Markdown(blank(myitem.doc_value()))));
-            }
-            clean::ConstantItem(ref s) => {
-                try!(write!(w, "
-                    <tr>
-                        <td>{}<code>{}const {}: {}</code>{}</td>
-                        <td class='docblock'>{}&nbsp;</td>
-                    </tr>
-                ",
-                ConciseStability(&myitem.stability),
-                VisSpace(myitem.visibility),
-                *myitem.name.as_ref().unwrap(),
-                s.type_,
-                Initializer(s.expr.as_slice(), Item { cx: cx, item: myitem }),
-                Markdown(blank(myitem.doc_value()))));
-            }
-
             clean::ViewItemItem(ref item) => {
                 match item.inner {
                     clean::ExternCrate(ref name, ref src, _) => {
-                        try!(write!(w, "<tr><td><code>extern crate {}",
-                                      name.as_slice()));
                         match *src {
-                            Some(ref src) => try!(write!(w, " = \"{}\"",
-                                                           src.as_slice())),
-                            None => {}
+                            Some(ref src) =>
+                                try!(write!(w, "<tr><td><code>extern crate \"{}\" as {}",
+                                            src.as_slice(),
+                                            name.as_slice())),
+                            None =>
+                                try!(write!(w, "<tr><td><code>extern crate {}",
+                                            name.as_slice())),
                         }
                         try!(write!(w, ";</code></td></tr>"));
                     }
@@ -1665,6 +1621,39 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
     write!(w, "</table>")
 }
 
+struct Initializer<'a>(&'a str);
+impl<'a> fmt::Show for Initializer<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let Initializer(s) = *self;
+        if s.len() == 0 { return Ok(()); }
+        try!(write!(f, "<code> = </code>"));
+        write!(f, "<code>{}</code>", s.as_slice())
+    }
+}
+
+fn item_constant(w: &mut fmt::Formatter, it: &clean::Item,
+                 c: &clean::Constant) -> fmt::Result {
+    try!(write!(w, "<pre class='rust const'>{vis}const \
+                    {name}: {typ}{init}</pre>",
+           vis = VisSpace(it.visibility),
+           name = it.name.as_ref().unwrap().as_slice(),
+           typ = c.type_,
+           init = Initializer(c.expr.as_slice())));
+    document(w, it)
+}
+
+fn item_static(w: &mut fmt::Formatter, it: &clean::Item,
+               s: &clean::Static) -> fmt::Result {
+    try!(write!(w, "<pre class='rust static'>{vis}static {mutability}\
+                    {name}: {typ}{init}</pre>",
+           vis = VisSpace(it.visibility),
+           mutability = MutableSpace(s.mutability),
+           name = it.name.as_ref().unwrap().as_slice(),
+           typ = s.type_,
+           init = Initializer(s.expr.as_slice())));
+    document(w, it)
+}
+
 fn item_function(w: &mut fmt::Formatter, it: &clean::Item,
                  f: &clean::Function) -> fmt::Result {
     try!(write!(w, "<pre class='rust fn'>{vis}{fn_style}fn \
@@ -1696,27 +1685,23 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                   t.generics,
                   bounds,
                   WhereClause(&t.generics)));
-    let required = t.items.iter()
-                          .filter(|m| {
-                              match **m {
-                                  clean::RequiredMethod(_) => true,
-                                  _ => false,
-                              }
-                          })
-                          .collect::<Vec<&clean::TraitMethod>>();
-    let provided = t.items.iter()
-                          .filter(|m| {
-                              match **m {
-                                  clean::ProvidedMethod(_) => true,
-                                  _ => false,
-                              }
-                          })
-                          .collect::<Vec<&clean::TraitMethod>>();
+
+    let types = t.items.iter().filter(|m| m.is_type()).collect::<Vec<_>>();
+    let required = t.items.iter().filter(|m| m.is_req()).collect::<Vec<_>>();
+    let provided = t.items.iter().filter(|m| m.is_def()).collect::<Vec<_>>();
 
     if t.items.len() == 0 {
         try!(write!(w, "{{ }}"));
     } else {
         try!(write!(w, "{{\n"));
+        for t in types.iter() {
+            try!(write!(w, "    "));
+            try!(render_method(w, t.item()));
+            try!(write!(w, ";\n"));
+        }
+        if types.len() > 0 && required.len() > 0 {
+            try!(w.write("\n".as_bytes()));
+        }
         for m in required.iter() {
             try!(write!(w, "    "));
             try!(render_method(w, m.item()));
@@ -1749,6 +1734,17 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         Ok(())
     }
 
+    if types.len() > 0 {
+        try!(write!(w, "
+            <h2 id='associated-types'>Associated Types</h2>
+            <div class='methods'>
+        "));
+        for t in types.iter() {
+            try!(trait_item(w, *t));
+        }
+        try!(write!(w, "</div>"));
+    }
+
     // Output the documentation for each function individually
     if required.len() > 0 {
         try!(write!(w, "
@@ -1771,7 +1767,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         try!(write!(w, "</div>"));
     }
 
-    let cache = cache_key.get().unwrap();
+    let cache = cache();
     try!(write!(w, "
         <h2 id='implementors'>Implementors</h2>
         <ul class='item-list' id='implementors-list'>
@@ -1803,7 +1799,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
 }
 
 fn render_method(w: &mut fmt::Formatter, meth: &clean::Item) -> fmt::Result {
-    fn fun(w: &mut fmt::Formatter, it: &clean::Item, fn_style: ast::FnStyle,
+    fn method(w: &mut fmt::Formatter, it: &clean::Item, fn_style: ast::FnStyle,
            g: &clean::Generics, selfty: &clean::SelfTy,
            d: &clean::FnDecl) -> fmt::Result {
         write!(w, "{}fn <a href='#{ty}.{name}' class='fnname'>{name}</a>\
@@ -1818,14 +1814,28 @@ fn render_method(w: &mut fmt::Formatter, meth: &clean::Item) -> fmt::Result {
                decl = Method(selfty, d),
                where_clause = WhereClause(g))
     }
+    fn assoc_type(w: &mut fmt::Formatter, it: &clean::Item,
+                  typ: &clean::TyParam) -> fmt::Result {
+        try!(write!(w, "type {}", it.name.as_ref().unwrap()));
+        if typ.bounds.len() > 0 {
+            try!(write!(w, ": {}", TyParamBounds(&*typ.bounds)))
+        }
+        if let Some(ref default) = typ.default {
+            try!(write!(w, " = {}", default));
+        }
+        Ok(())
+    }
     match meth.inner {
         clean::TyMethodItem(ref m) => {
-            fun(w, meth, m.fn_style, &m.generics, &m.self_, &m.decl)
+            method(w, meth, m.fn_style, &m.generics, &m.self_, &m.decl)
         }
         clean::MethodItem(ref m) => {
-            fun(w, meth, m.fn_style, &m.generics, &m.self_, &m.decl)
+            method(w, meth, m.fn_style, &m.generics, &m.self_, &m.decl)
         }
-        _ => unreachable!()
+        clean::AssociatedTypeItem(ref typ) => {
+            assoc_type(w, meth, typ)
+        }
+        _ => panic!("render_method called on non-method")
     }
 }
 
@@ -2033,7 +2043,7 @@ fn render_struct(w: &mut fmt::Formatter, it: &clean::Item,
 }
 
 fn render_methods(w: &mut fmt::Formatter, it: &clean::Item) -> fmt::Result {
-    match cache_key.get().unwrap().impls.get(&it.def_id) {
+    match cache().impls.get(&it.def_id) {
         Some(v) => {
             let (non_trait, traits) = v.partitioned(|i| i.impl_.trait_.is_none());
             if non_trait.len() > 0 {
@@ -2082,11 +2092,26 @@ fn render_impl(w: &mut fmt::Formatter, i: &Impl) -> fmt::Result {
 
     fn doctraititem(w: &mut fmt::Formatter, item: &clean::Item, dox: bool)
                     -> fmt::Result {
-        try!(write!(w, "<h4 id='method.{}' class='method'>{}<code>",
-                    *item.name.as_ref().unwrap(),
-                    ConciseStability(&item.stability)));
-        try!(render_method(w, item));
-        try!(write!(w, "</code></h4>\n"));
+        match item.inner {
+            clean::MethodItem(..) | clean::TyMethodItem(..) => {
+                try!(write!(w, "<h4 id='method.{}' class='{}'>{}<code>",
+                            *item.name.as_ref().unwrap(),
+                            shortty(item),
+                            ConciseStability(&item.stability)));
+                try!(render_method(w, item));
+                try!(write!(w, "</code></h4>\n"));
+            }
+            clean::TypedefItem(ref tydef) => {
+                let name = item.name.as_ref().unwrap();
+                try!(write!(w, "<h4 id='assoc_type.{}' class='{}'>{}<code>",
+                            *name,
+                            shortty(item),
+                            ConciseStability(&item.stability)));
+                try!(write!(w, "type {} = {}", name, tydef.type_));
+                try!(write!(w, "</code></h4>\n"));
+            }
+            _ => panic!("can't make docs for trait item with name {}", item.name)
+        }
         match item.doc_value() {
             Some(s) if dox => {
                 try!(write!(w, "<div class='docblock'>{}</div>", Markdown(s)));
@@ -2096,7 +2121,7 @@ fn render_impl(w: &mut fmt::Formatter, i: &Impl) -> fmt::Result {
         }
     }
 
-    try!(write!(w, "<div class='impl-methods'>"));
+    try!(write!(w, "<div class='impl-items'>"));
     for trait_item in i.impl_.items.iter() {
         try!(doctraititem(w, trait_item, true));
     }
@@ -2118,10 +2143,12 @@ fn render_impl(w: &mut fmt::Formatter, i: &Impl) -> fmt::Result {
 
     // If we've implemented a trait, then also emit documentation for all
     // default methods which weren't overridden in the implementation block.
+    // FIXME: this also needs to be done for associated types, whenever defaults
+    // for them work.
     match i.impl_.trait_ {
         Some(clean::ResolvedPath { did, .. }) => {
             try!({
-                match cache_key.get().unwrap().traits.get(&did) {
+                match cache().traits.get(&did) {
                     Some(t) => try!(render_default_methods(w, t, &i.impl_)),
                     None => {}
                 }
@@ -2239,4 +2266,8 @@ fn get_basic_keywords() -> &'static str {
 
 fn make_item_keywords(it: &clean::Item) -> String {
     format!("{}, {}", get_basic_keywords(), it.name.as_ref().unwrap())
+}
+
+pub fn cache() -> Arc<Cache> {
+    CACHE_KEY.with(|c| c.borrow().clone())
 }

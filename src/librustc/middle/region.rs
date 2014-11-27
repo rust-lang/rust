@@ -22,8 +22,7 @@ Most of the documentation on regions can be found in
 
 
 use session::Session;
-use middle::ty::{FreeRegion};
-use middle::ty::{mod, Ty};
+use middle::ty::{mod, Ty, FreeRegion};
 use util::nodemap::{FnvHashMap, FnvHashSet, NodeMap};
 use util::common::can_reach;
 
@@ -33,7 +32,6 @@ use syntax::codemap::Span;
 use syntax::{ast, visit};
 use syntax::ast::{Block, Item, FnDecl, NodeId, Arm, Pat, Stmt, Expr, Local};
 use syntax::ast_util::{stmt_id};
-use syntax::ptr::P;
 use syntax::visit::{Visitor, FnKind};
 
 /// CodeExtent represents a statically-describable extent that can be
@@ -824,11 +822,10 @@ fn resolve_local(visitor: &mut RegionResolutionVisitor, local: &ast::Local) {
             match expr.node {
                 ast::ExprAddrOf(_, ref subexpr) |
                 ast::ExprUnary(ast::UnDeref, ref subexpr) |
-                ast::ExprField(ref subexpr, _, _) |
-                ast::ExprTupField(ref subexpr, _, _) |
+                ast::ExprField(ref subexpr, _) |
+                ast::ExprTupField(ref subexpr, _) |
                 ast::ExprIndex(ref subexpr, _) |
                 ast::ExprParen(ref subexpr) => {
-                    let subexpr: &'a P<Expr> = subexpr; // FIXME(#11586)
                     expr = &**subexpr;
                 }
                 _ => {

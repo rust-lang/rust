@@ -154,7 +154,6 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                                           pats: I,
                                           pred: CFGIndex) -> CFGIndex {
         //! Handles case where all of the patterns must match.
-        let mut pats = pats;
         pats.fold(pred, |pred, pat| self.pat(&**pat, pred))
     }
 
@@ -475,8 +474,8 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
             ast::ExprCast(ref e, _) |
             ast::ExprUnary(_, ref e) |
             ast::ExprParen(ref e) |
-            ast::ExprField(ref e, _, _) |
-            ast::ExprTupField(ref e, _, _) => {
+            ast::ExprField(ref e, _) |
+            ast::ExprTupField(ref e, _) => {
                 self.straightline(expr, pred, Some(&**e).into_iter())
             }
 
@@ -527,7 +526,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
     }
 
     fn exprs<'a, I: Iterator<&'a ast::Expr>>(&mut self,
-                                             mut exprs: I,
+                                             exprs: I,
                                              pred: CFGIndex) -> CFGIndex {
         //! Constructs graph for `exprs` evaluated in order
         exprs.fold(pred, |p, e| self.expr(e, p))

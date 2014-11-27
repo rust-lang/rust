@@ -44,16 +44,17 @@
                will likely be renamed from `task` to `thread`."]
 
 use any::Any;
+use borrow::IntoCow;
+use boxed::Box;
 use comm::channel;
 use io::{Writer, stdio};
 use kinds::{Send, marker};
 use option::{None, Some, Option};
-use boxed::Box;
 use result::Result;
 use rustrt::local::Local;
-use rustrt::task;
 use rustrt::task::Task;
-use str::{Str, SendStr, IntoMaybeOwned};
+use rustrt::task;
+use str::{Str, SendStr};
 use string::{String, ToString};
 use sync::Future;
 
@@ -101,8 +102,8 @@ impl TaskBuilder {
     /// Name the task-to-be. Currently the name is used for identification
     /// only in panic messages.
     #[unstable = "IntoMaybeOwned will probably change."]
-    pub fn named<T: IntoMaybeOwned<'static>>(mut self, name: T) -> TaskBuilder {
-        self.name = Some(name.into_maybe_owned());
+    pub fn named<T: IntoCow<'static, String, str>>(mut self, name: T) -> TaskBuilder {
+        self.name = Some(name.into_cow());
         self
     }
 
@@ -197,7 +198,7 @@ impl TaskBuilder {
     /// completes or panics. Equivalent to `.try_future(f).unwrap()`.
     #[unstable = "Error type may change."]
     pub fn try<T:Send>(self, f: proc():Send -> T) -> Result<T, Box<Any + Send>> {
-        self.try_future(f).unwrap()
+        self.try_future(f).into_inner()
     }
 }
 
@@ -264,12 +265,13 @@ pub fn failing() -> bool {
 #[cfg(test)]
 mod test {
     use any::{Any, AnyRefExt};
+    use borrow::IntoCow;
     use boxed::BoxAny;
-    use result;
-    use result::{Ok, Err};
-    use string::String;
-    use std::io::{ChanReader, ChanWriter};
     use prelude::*;
+    use result::{Ok, Err};
+    use result;
+    use std::io::{ChanReader, ChanWriter};
+    use string::String;
     use super::*;
 
     // !!! These tests are dangerous. If something is buggy, they will hang, !!!
@@ -298,7 +300,7 @@ mod test {
 
     #[test]
     fn test_send_named_task() {
-        TaskBuilder::new().named("ada lovelace".into_maybe_owned()).try(proc() {
+        TaskBuilder::new().named("ada lovelace".into_cow()).try(proc() {
             assert!(name().unwrap() == "ada lovelace".to_string());
         }).map_err(|_| ()).unwrap();
     }

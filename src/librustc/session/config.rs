@@ -208,16 +208,18 @@ debugging_opts!(
         AST_JSON_NOEXPAND,
         LS,
         SAVE_ANALYSIS,
+        PRINT_MOVE_FRAGMENTS,
         FLOWGRAPH_PRINT_LOANS,
         FLOWGRAPH_PRINT_MOVES,
         FLOWGRAPH_PRINT_ASSIGNS,
-        FLOWGRAPH_PRINT_ALL
+        FLOWGRAPH_PRINT_ALL,
+        PRINT_SYSROOT
     ]
     0
 )
 
 pub fn debugging_opts_map() -> Vec<(&'static str, &'static str, u64)> {
-    vec!(("verbose", "in general, enable more debug printouts", VERBOSE),
+    vec![("verbose", "in general, enable more debug printouts", VERBOSE),
      ("time-passes", "measure time of each rustc pass", TIME_PASSES),
      ("count-llvm-insns", "count where LLVM \
                            instrs originate", COUNT_LLVM_INSNS),
@@ -246,6 +248,8 @@ pub fn debugging_opts_map() -> Vec<(&'static str, &'static str, u64)> {
      ("ls", "List the symbols defined by a library crate", LS),
      ("save-analysis", "Write syntax and type analysis information \
                         in addition to normal output", SAVE_ANALYSIS),
+     ("print-move-fragments", "Print out move-fragment data for every fn",
+      PRINT_MOVE_FRAGMENTS),
      ("flowgraph-print-loans", "Include loan analysis data in \
                        --pretty flowgraph output", FLOWGRAPH_PRINT_LOANS),
      ("flowgraph-print-moves", "Include move analysis data in \
@@ -253,7 +257,9 @@ pub fn debugging_opts_map() -> Vec<(&'static str, &'static str, u64)> {
      ("flowgraph-print-assigns", "Include assignment analysis data in \
                        --pretty flowgraph output", FLOWGRAPH_PRINT_ASSIGNS),
      ("flowgraph-print-all", "Include all dataflow analysis data in \
-                       --pretty flowgraph output", FLOWGRAPH_PRINT_ALL))
+                       --pretty flowgraph output", FLOWGRAPH_PRINT_ALL),
+     ("print-sysroot", "Print the sysroot as used by this rustc invocation",
+      PRINT_SYSROOT)]
 }
 
 #[deriving(Clone)]
@@ -941,5 +947,39 @@ mod test {
         let mut test_items = cfg.iter().filter(|m| m.name().equiv(&("test")));
         assert!(test_items.next().is_some());
         assert!(test_items.next().is_none());
+    }
+
+    #[test]
+    fn test_can_print_warnings() {
+        {
+            let matches = getopts(&[
+                "-Awarnings".to_string()
+            ], optgroups().as_slice()).unwrap();
+            let registry = diagnostics::registry::Registry::new(&[]);
+            let sessopts = build_session_options(&matches);
+            let sess = build_session(sessopts, None, registry);
+            assert!(!sess.can_print_warnings);
+        }
+
+        {
+            let matches = getopts(&[
+                "-Awarnings".to_string(),
+                "-Dwarnings".to_string()
+            ], optgroups().as_slice()).unwrap();
+            let registry = diagnostics::registry::Registry::new(&[]);
+            let sessopts = build_session_options(&matches);
+            let sess = build_session(sessopts, None, registry);
+            assert!(sess.can_print_warnings);
+        }
+
+        {
+            let matches = getopts(&[
+                "-Adead_code".to_string()
+            ], optgroups().as_slice()).unwrap();
+            let registry = diagnostics::registry::Registry::new(&[]);
+            let sessopts = build_session_options(&matches);
+            let sess = build_session(sessopts, None, registry);
+            assert!(sess.can_print_warnings);
+        }
     }
 }

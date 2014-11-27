@@ -272,13 +272,13 @@ impl<'a> StringReader<'a> {
 
     /// Converts CRLF to LF in the given string, raising an error on bare CR.
     fn translate_crlf<'a>(&self, start: BytePos,
-                          s: &'a str, errmsg: &'a str) -> str::MaybeOwned<'a> {
+                          s: &'a str, errmsg: &'a str) -> str::CowString<'a> {
         let mut i = 0u;
         while i < s.len() {
             let str::CharRange { ch, next } = s.char_range_at(i);
             if ch == '\r' {
                 if next < s.len() && s.char_at(next) == '\n' {
-                    return translate_crlf_(self, start, s, errmsg, i).into_maybe_owned();
+                    return translate_crlf_(self, start, s, errmsg, i).into_cow();
                 }
                 let pos = start + BytePos(i as u32);
                 let end_pos = start + BytePos(next as u32);
@@ -286,7 +286,7 @@ impl<'a> StringReader<'a> {
             }
             i = next;
         }
-        return s.into_maybe_owned();
+        return s.into_cow();
 
         fn translate_crlf_(rdr: &StringReader, start: BytePos,
                         s: &str, errmsg: &str, mut i: uint) -> String {
@@ -550,7 +550,7 @@ impl<'a> StringReader<'a> {
                 let string = if has_cr {
                     self.translate_crlf(start_bpos, string,
                                         "bare CR not allowed in block doc-comment")
-                } else { string.into_maybe_owned() };
+                } else { string.into_cow() };
                 token::DocComment(token::intern(string.as_slice()))
             } else {
                 token::Comment

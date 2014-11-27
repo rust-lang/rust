@@ -365,7 +365,7 @@ impl UnixStream {
         }
     }
 
-    fn handle(&self) -> libc::HANDLE { self.inner.handle }
+    pub fn handle(&self) -> libc::HANDLE { self.inner.handle }
 
     fn read_closed(&self) -> bool {
         self.inner.read_closed.load(atomic::SeqCst)
@@ -633,6 +633,10 @@ impl UnixListener {
             }),
         })
     }
+
+    pub fn handle(&self) -> libc::HANDLE {
+        self.handle
+    }
 }
 
 impl Drop for UnixListener {
@@ -776,6 +780,10 @@ impl UnixAcceptor {
         } else {
             Ok(())
         }
+    }
+
+    pub fn handle(&self) -> libc::HANDLE {
+        self.listener.handle()
     }
 }
 

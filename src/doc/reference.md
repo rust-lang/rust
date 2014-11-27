@@ -1689,7 +1689,20 @@ methods in such an implementation can only be used as direct calls on the
 values of the type that the implementation targets. In such an implementation,
 the trait type and `for` after `impl` are omitted. Such implementations are
 limited to nominal types (enums, structs), and the implementation must appear
-in the same module or a sub-module as the `self` type.
+in the same module or a sub-module as the `self` type:
+
+```
+struct Point {x: int, y: int}
+
+impl Point {
+    fn log(&self) {
+        println!("Point is at ({}, {})", self.x, self.y);
+    }
+}
+
+let my_point = Point {x: 10, y:11};
+my_point.log();
+```
 
 When a trait _is_ specified in an `impl`, all methods declared as part of the
 trait must be implemented, with matching types and type parameter counts.

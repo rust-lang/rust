@@ -30,34 +30,26 @@
 use driver::driver::CrateAnalysis;
 use session::Session;
 
-use middle::def;
+use middle::{def, typeck};
 use middle::ty::{mod, Ty};
-use middle::typeck;
 
 use std::cell::Cell;
-use std::io;
-use std::io::File;
-use std::io::fs;
+use std::io::{mod, File, fs};
 use std::os;
 
-use syntax::ast;
-use syntax::ast_util;
-use syntax::ast_util::PostExpansionMethod;
-use syntax::ast::{NodeId,DefId};
+use syntax::ast_util::{mod, PostExpansionMethod};
+use syntax::ast::{mod, NodeId, DefId};
 use syntax::ast_map::NodeItem;
 use syntax::attr;
 use syntax::codemap::*;
-use syntax::parse::token;
-use syntax::parse::token::{get_ident,keywords};
+use syntax::parse::token::{mod, get_ident, keywords};
 use syntax::owned_slice::OwnedSlice;
-use syntax::visit;
-use syntax::visit::Visitor;
+use syntax::visit::{mod, Visitor};
 use syntax::print::pprust::{path_to_string,ty_to_string};
 use syntax::ptr::P;
 
 use self::span_utils::SpanUtils;
-use self::recorder::Recorder;
-use self::recorder::FmtStrs;
+use self::recorder::{Recorder, FmtStrs};
 
 use util::ppaux;
 
@@ -568,13 +560,15 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
             Some(node_id) => node_id,
             None => -1,
         };
+        let val = self.span.snippet(item.span);
         let sub_span = self.span.sub_span_after_keyword(item.span, keywords::Struct);
         self.fmt.struct_str(item.span,
                             sub_span,
                             item.id,
                             ctor_id,
                             qualname.as_slice(),
-                            self.cur_scope);
+                            self.cur_scope,
+                            val.as_slice());
 
         // fields
         for field in def.fields.iter() {
@@ -589,21 +583,23 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                     item: &ast::Item,
                     enum_definition: &ast::EnumDef,
                     ty_params: &ast::Generics) {
-        let qualname = self.analysis.ty_cx.map.path_to_string(item.id);
+        let enum_name = self.analysis.ty_cx.map.path_to_string(item.id);
+        let val = self.span.snippet(item.span);
         match self.span.sub_span_after_keyword(item.span, keywords::Enum) {
             Some(sub_span) => self.fmt.enum_str(item.span,
                                                 Some(sub_span),
                                                 item.id,
-                                                qualname.as_slice(),
-                                                self.cur_scope),
+                                                enum_name.as_slice(),
+                                                self.cur_scope,
+                                                val.as_slice()),
             None => self.sess.span_bug(item.span,
                                        format!("Could not find subspan for enum {}",
-                                               qualname).as_slice()),
+                                               enum_name).as_slice()),
         }
         for variant in enum_definition.variants.iter() {
             let name = get_ident(variant.node.name);
             let name = name.get();
-            let mut qualname = qualname.clone();
+            let mut qualname = enum_name.clone();
             qualname.push_str("::");
             qualname.push_str(name);
             let val = self.span.snippet(variant.span);
@@ -615,6 +611,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                                                variant.node.id,
                                                name,
                                                qualname.as_slice(),
+                                               enum_name.as_slice(),
                                                val.as_slice(),
                                                item.id);
                     for arg in args.iter() {
@@ -632,18 +629,19 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                         variant.node.id,
                         ctor_id,
                         qualname.as_slice(),
+                        enum_name.as_slice(),
                         val.as_slice(),
                         item.id);
 
                     for field in struct_def.fields.iter() {
-                        self.process_struct_field_def(field, qualname.as_slice(), variant.node.id);
+                        self.process_struct_field_def(field, enum_name.as_slice(), variant.node.id);
                         self.visit_ty(&*field.node.ty);
                     }
                 }
             }
         }
 
-        self.process_generic_params(ty_params, item.span, qualname.as_slice(), item.id);
+        self.process_generic_params(ty_params, item.span, enum_name.as_slice(), item.id);
     }
 
     fn process_impl(&mut self,
@@ -698,13 +696,14 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                      trait_refs: &OwnedSlice<ast::TyParamBound>,
                      methods: &Vec<ast::TraitItem>) {
         let qualname = self.analysis.ty_cx.map.path_to_string(item.id);
-
+        let val = self.span.snippet(item.span);
         let sub_span = self.span.sub_span_after_keyword(item.span, keywords::Trait);
         self.fmt.trait_str(item.span,
                            sub_span,
                            item.id,
                            qualname.as_slice(),
-                           self.cur_scope);
+                           self.cur_scope,
+                           val.as_slice());
 
         // super-traits
         for super_bound in trait_refs.iter() {
@@ -1293,7 +1292,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
             ast::ExprStruct(ref path, ref fields, ref base) =>
                 self.process_struct_lit(ex, path, fields, base),
             ast::ExprMethodCall(_, _, ref args) => self.process_method_call(ex, args),
-            ast::ExprField(ref sub_ex, ident, _) => {
+            ast::ExprField(ref sub_ex, ident) => {
                 if generated_code(sub_ex.span) {
                     return
                 }
@@ -1319,7 +1318,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                                             "Expected struct type, but not ty_struct"),
                 }
             },
-            ast::ExprTupField(ref sub_ex, idx, _) => {
+            ast::ExprTupField(ref sub_ex, idx) => {
                 if generated_code(sub_ex.span) {
                     return
                 }

@@ -54,20 +54,20 @@
 pub use self::MaybeOwned::*;
 use self::RecompositionState::*;
 use self::DecompositionType::*;
-use core::borrow::{BorrowFrom, ToOwned};
+use core::borrow::{BorrowFrom, Cow, ToOwned};
 use core::default::Default;
 use core::fmt;
 use core::cmp;
 use core::iter::AdditiveIterator;
 use core::kinds::Sized;
 use core::prelude::{Char, Clone, Eq, Equiv};
-use core::prelude::{Iterator, SlicePrelude, None, Option, Ord, Ordering};
+use core::prelude::{Iterator, IteratorExt, SlicePrelude, None, Option, Ord, Ordering};
 use core::prelude::{PartialEq, PartialOrd, Result, AsSlice, Some, Tuple2};
 use core::prelude::{range};
 
 use hash;
 use ring_buf::RingBuf;
-use string::{String, ToString};
+use string::String;
 use unicode;
 use vec::Vec;
 
@@ -163,7 +163,7 @@ impl<S: Str> StrVector for [S] {
     }
 }
 
-impl<S: Str> StrVector for Vec<S> {
+impl<S: Str, T: AsSlice<S>> StrVector for T {
     #[inline]
     fn concat(&self) -> String {
         self.as_slice().concat()
@@ -425,6 +425,7 @@ Section: MaybeOwned
 /// A string type that can hold either a `String` or a `&str`.
 /// This can be useful as an optimization when an allocation is sometimes
 /// needed but not always.
+#[deprecated = "use std::str::CowString"]
 pub enum MaybeOwned<'a> {
     /// A borrowed string.
     Slice(&'a str),
@@ -432,15 +433,16 @@ pub enum MaybeOwned<'a> {
     Owned(String)
 }
 
-/// A specialization of `MaybeOwned` to be sendable.
-pub type SendStr = MaybeOwned<'static>;
+/// A specialization of `CowString` to be sendable.
+pub type SendStr = CowString<'static>;
 
+#[deprecated = "use std::str::CowString"]
 impl<'a> MaybeOwned<'a> {
     /// Returns `true` if this `MaybeOwned` wraps an owned string.
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ``` ignore
     /// let string = String::from_str("orange");
     /// let maybe_owned_string = string.into_maybe_owned();
     /// assert_eq!(true, maybe_owned_string.is_owned());
@@ -457,7 +459,7 @@ impl<'a> MaybeOwned<'a> {
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ``` ignore
     /// let string = "orange";
     /// let maybe_owned_string = string.as_slice().into_maybe_owned();
     /// assert_eq!(true, maybe_owned_string.is_slice());
@@ -475,46 +477,56 @@ impl<'a> MaybeOwned<'a> {
     pub fn len(&self) -> uint { self.as_slice().len() }
 
     /// Returns true if the string contains no bytes
+    #[allow(deprecated)]
     #[inline]
     pub fn is_empty(&self) -> bool { self.len() == 0 }
 }
 
+#[deprecated = "use std::borrow::IntoCow"]
 /// Trait for moving into a `MaybeOwned`.
 pub trait IntoMaybeOwned<'a> {
     /// Moves `self` into a `MaybeOwned`.
     fn into_maybe_owned(self) -> MaybeOwned<'a>;
 }
 
+#[deprecated = "use std::borrow::IntoCow"]
+#[allow(deprecated)]
 impl<'a> IntoMaybeOwned<'a> for String {
     /// # Example
     ///
-    /// ```rust
+    /// ``` ignore
     /// let owned_string = String::from_str("orange");
     /// let maybe_owned_string = owned_string.into_maybe_owned();
     /// assert_eq!(true, maybe_owned_string.is_owned());
     /// ```
+    #[allow(deprecated)]
     #[inline]
     fn into_maybe_owned(self) -> MaybeOwned<'a> {
         Owned(self)
     }
 }
 
+#[deprecated = "use std::borrow::IntoCow"]
+#[allow(deprecated)]
 impl<'a> IntoMaybeOwned<'a> for &'a str {
     /// # Example
     ///
-    /// ```rust
+    /// ``` ignore
     /// let string = "orange";
     /// let maybe_owned_str = string.as_slice().into_maybe_owned();
     /// assert_eq!(false, maybe_owned_str.is_owned());
     /// ```
+    #[allow(deprecated)]
     #[inline]
     fn into_maybe_owned(self) -> MaybeOwned<'a> { Slice(self) }
 }
 
+#[allow(deprecated)]
+#[deprecated = "use std::borrow::IntoCow"]
 impl<'a> IntoMaybeOwned<'a> for MaybeOwned<'a> {
     /// # Example
     ///
-    /// ```rust
+    /// ``` ignore
     /// let str = "orange";
     /// let maybe_owned_str = str.as_slice().into_maybe_owned();
     /// let maybe_maybe_owned_str = maybe_owned_str.into_maybe_owned();
@@ -524,6 +536,7 @@ impl<'a> IntoMaybeOwned<'a> for MaybeOwned<'a> {
     fn into_maybe_owned(self) -> MaybeOwned<'a> { self }
 }
 
+#[deprecated = "use std::str::CowString"]
 impl<'a> PartialEq for MaybeOwned<'a> {
     #[inline]
     fn eq(&self, other: &MaybeOwned) -> bool {
@@ -531,8 +544,10 @@ impl<'a> PartialEq for MaybeOwned<'a> {
     }
 }
 
+#[deprecated = "use std::str::CowString"]
 impl<'a> Eq for MaybeOwned<'a> {}
 
+#[deprecated = "use std::str::CowString"]
 impl<'a> PartialOrd for MaybeOwned<'a> {
     #[inline]
     fn partial_cmp(&self, other: &MaybeOwned) -> Option<Ordering> {
@@ -540,6 +555,7 @@ impl<'a> PartialOrd for MaybeOwned<'a> {
     }
 }
 
+#[deprecated = "use std::str::CowString"]
 impl<'a> Ord for MaybeOwned<'a> {
     #[inline]
     fn cmp(&self, other: &MaybeOwned) -> Ordering {
@@ -547,6 +563,7 @@ impl<'a> Ord for MaybeOwned<'a> {
     }
 }
 
+#[deprecated = "use std::str::CowString"]
 impl<'a, S: Str> Equiv<S> for MaybeOwned<'a> {
     #[inline]
     fn equiv(&self, other: &S) -> bool {
@@ -554,7 +571,9 @@ impl<'a, S: Str> Equiv<S> for MaybeOwned<'a> {
     }
 }
 
+#[deprecated = "use std::str::CowString"]
 impl<'a> Str for MaybeOwned<'a> {
+    #[allow(deprecated)]
     #[inline]
     fn as_slice<'b>(&'b self) -> &'b str {
         match *self {
@@ -564,7 +583,9 @@ impl<'a> Str for MaybeOwned<'a> {
     }
 }
 
+#[deprecated = "use std::str::CowString"]
 impl<'a> StrAllocating for MaybeOwned<'a> {
+    #[allow(deprecated)]
     #[inline]
     fn into_string(self) -> String {
         match self {
@@ -574,7 +595,9 @@ impl<'a> StrAllocating for MaybeOwned<'a> {
     }
 }
 
+#[deprecated = "use std::str::CowString"]
 impl<'a> Clone for MaybeOwned<'a> {
+    #[allow(deprecated)]
     #[inline]
     fn clone(&self) -> MaybeOwned<'a> {
         match *self {
@@ -584,11 +607,14 @@ impl<'a> Clone for MaybeOwned<'a> {
     }
 }
 
+#[deprecated = "use std::str::CowString"]
 impl<'a> Default for MaybeOwned<'a> {
+    #[allow(deprecated)]
     #[inline]
     fn default() -> MaybeOwned<'a> { Slice("") }
 }
 
+#[deprecated = "use std::str::CowString"]
 impl<'a, H: hash::Writer> hash::Hash<H> for MaybeOwned<'a> {
     #[inline]
     fn hash(&self, hasher: &mut H) {
@@ -596,6 +622,7 @@ impl<'a, H: hash::Writer> hash::Hash<H> for MaybeOwned<'a> {
     }
 }
 
+#[deprecated = "use std::str::CowString"]
 impl<'a> fmt::Show for MaybeOwned<'a> {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -613,7 +640,7 @@ impl BorrowFrom<String> for str {
 
 #[unstable = "trait is unstable"]
 impl ToOwned<String> for str {
-    fn to_owned(&self) -> String { self.to_string() }
+    fn to_owned(&self) -> String { self.into_string() }
 }
 
 /// Unsafe string operations.
@@ -621,6 +648,13 @@ pub mod raw {
     pub use core::str::raw::{from_utf8, c_str_to_static_slice, slice_bytes};
     pub use core::str::raw::{slice_unchecked};
 }
+
+/*
+Section: CowString
+*/
+
+/// A clone-on-write string
+pub type CowString<'a> = Cow<'a, String, str>;
 
 /*
 Section: Trait implementations
@@ -794,7 +828,7 @@ mod tests {
     use std::cmp::{Equal, Greater, Less, Ord, PartialOrd, Equiv};
     use std::option::{Some, None};
     use std::ptr::RawPtr;
-    use std::iter::{Iterator, DoubleEndedIterator};
+    use std::iter::{Iterator, IteratorExt, DoubleEndedIteratorExt};
 
     use super::*;
     use std::slice::{AsSlice, SlicePrelude};
@@ -929,54 +963,93 @@ mod tests {
         assert_eq!("ะเทศไท", "ประเทศไทย中华Việt Nam".slice_chars(2, 8));
     }
 
-    #[test]
-    fn test_concat() {
-        fn t(v: &[String], s: &str) {
-            assert_eq!(v.concat().as_slice(), s);
+    struct S {
+        x: [String, .. 2]
+    }
+
+    impl AsSlice<String> for S {
+        fn as_slice<'a> (&'a self) -> &'a [String] {
+            &self.x
         }
-        t(&[String::from_str("you"), String::from_str("know"),
-            String::from_str("I'm"),
-            String::from_str("no"), String::from_str("good")],
-          "youknowI'mnogood");
-        let v: &[String] = &[];
-        t(v, "");
-        t(&[String::from_str("hi")], "hi");
+    }
+
+    fn s(x: &str) -> String { x.into_string() }
+
+    macro_rules! test_concat {
+        ($expected: expr, $string: expr) => {
+            {
+                let s = $string.concat();
+                assert_eq!($expected, s.as_slice());
+            }
+        }
     }
 
     #[test]
-    fn test_connect() {
-        fn t(v: &[String], sep: &str, s: &str) {
-            assert_eq!(v.connect(sep).as_slice(), s);
+    fn test_concat_for_different_types() {
+        test_concat!("ab", ["a", "b"]);
+        test_concat!("ab", [s("a"), s("b")]);
+        test_concat!("ab", vec!["a", "b"]);
+        test_concat!("ab", vec!["a", "b"].as_slice());
+        test_concat!("ab", vec![s("a"), s("b")]);
+
+        let mut v0 = ["a", "b"];
+        let mut v1 = [s("a"), s("b")];
+        unsafe {
+            use std::c_vec::CVec;
+
+            test_concat!("ab", CVec::new(v0.as_mut_ptr(), v0.len()));
+            test_concat!("ab", CVec::new(v1.as_mut_ptr(), v1.len()));
         }
-        t(&[String::from_str("you"), String::from_str("know"),
-            String::from_str("I'm"),
-            String::from_str("no"), String::from_str("good")],
-          " ", "you know I'm no good");
-        let v: &[String] = &[];
-        t(v, " ", "");
-        t(&[String::from_str("hi")], " ", "hi");
+
+        test_concat!("ab", S { x: [s("a"), s("b")] });
     }
 
     #[test]
-    fn test_concat_slices() {
-        fn t(v: &[&str], s: &str) {
-            assert_eq!(v.concat().as_slice(), s);
+    fn test_concat_for_different_lengths() {
+        let empty: &[&str] = &[];
+        test_concat!("", empty);
+        test_concat!("a", ["a"]);
+        test_concat!("ab", ["a", "b"]);
+        test_concat!("abc", ["", "a", "bc"]);
+    }
+
+    macro_rules! test_connect {
+        ($expected: expr, $string: expr, $delim: expr) => {
+            {
+                let s = $string.connect($delim);
+                assert_eq!($expected, s.as_slice());
+            }
         }
-        t(&["you", "know", "I'm", "no", "good"], "youknowI'mnogood");
-        let v: &[&str] = &[];
-        t(v, "");
-        t(&["hi"], "hi");
     }
 
     #[test]
-    fn test_connect_slices() {
-        fn t(v: &[&str], sep: &str, s: &str) {
-            assert_eq!(v.connect(sep).as_slice(), s);
+    fn test_connect_for_different_types() {
+        test_connect!("a-b", ["a", "b"], "-");
+        let hyphen = "-".into_string();
+        test_connect!("a-b", [s("a"), s("b")], hyphen.as_slice());
+        test_connect!("a-b", vec!["a", "b"], hyphen.as_slice());
+        test_connect!("a-b", vec!["a", "b"].as_slice(), "-");
+        test_connect!("a-b", vec![s("a"), s("b")], "-");
+
+        let mut v0 = ["a", "b"];
+        let mut v1 = [s("a"), s("b")];
+        unsafe {
+            use std::c_vec::CVec;
+
+            test_connect!("a-b", CVec::new(v0.as_mut_ptr(), v0.len()), "-");
+            test_connect!("a-b", CVec::new(v1.as_mut_ptr(), v1.len()), hyphen.as_slice());
         }
-        t(&["you", "know", "I'm", "no", "good"],
-          " ", "you know I'm no good");
-        t(&[], " ", "");
-        t(&["hi"], " ", "hi");
+
+        test_connect!("a-b", S { x: [s("a"), s("b")] }, "-");
+    }
+
+    #[test]
+    fn test_connect_for_different_lengths() {
+        let empty: &[&str] = &[];
+        test_connect!("", empty, "-");
+        test_connect!("a", ["a"], "-");
+        test_connect!("a-b", ["a", "b"], "-");
+        test_connect!("-a-bc", ["", "a", "bc"], "-");
     }
 
     #[test]
@@ -2104,12 +2177,15 @@ mod tests {
         let gr_inds = s.grapheme_indices(true).rev().collect::<Vec<(uint, &str)>>();
         let b: &[_] = &[(11, "\r\n"), (6, "ö̲"), (3, "é"), (0u, "a̐")];
         assert_eq!(gr_inds.as_slice(), b);
-        let mut gr_inds = s.grapheme_indices(true);
-        let e1 = gr_inds.size_hint();
-        assert_eq!(e1, (1, Some(13)));
-        let c = gr_inds.count();
-        assert_eq!(c, 4);
-        let e2 = gr_inds.size_hint();
+        let mut gr_inds_iter = s.grapheme_indices(true);
+        {
+            let gr_inds = gr_inds_iter.by_ref();
+            let e1 = gr_inds.size_hint();
+            assert_eq!(e1, (1, Some(13)));
+            let c = gr_inds.count();
+            assert_eq!(c, 4);
+        }
+        let e2 = gr_inds_iter.size_hint();
         assert_eq!(e2, (0, Some(0)));
 
         // make sure the reverse iterator does the right thing with "\n" at beginning of string
@@ -2246,7 +2322,7 @@ mod bench {
     use test::Bencher;
     use test::black_box;
     use super::*;
-    use std::iter::{Iterator, DoubleEndedIterator};
+    use std::iter::{IteratorExt, DoubleEndedIteratorExt};
     use std::str::StrPrelude;
     use std::slice::SlicePrelude;
 

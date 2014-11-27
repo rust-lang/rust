@@ -213,6 +213,16 @@ impl<T> Rc<T> {
     }
 }
 
+/// Get the number of weak references to this value.
+#[inline]
+#[experimental]
+pub fn weak_count<T>(this: &Rc<T>) -> uint { this.weak() - 1 }
+
+/// Get the number of strong references to this value.
+#[inline]
+#[experimental]
+pub fn strong_count<T>(this: &Rc<T>) -> uint { this.strong() }
+
 /// Returns true if the `Rc` currently has unique ownership.
 ///
 /// Unique ownership means that there are no other `Rc` or `Weak` values
@@ -220,8 +230,7 @@ impl<T> Rc<T> {
 #[inline]
 #[experimental]
 pub fn is_unique<T>(rc: &Rc<T>) -> bool {
-    // note that we hold both a strong and a weak reference
-    rc.strong() == 1 && rc.weak() == 1
+    weak_count(rc) == 0 && strong_count(rc) == 1
 }
 
 /// Unwraps the contained value if the `Rc` has unique ownership.
@@ -489,7 +498,7 @@ impl<T> RcBoxPtr<T> for Weak<T> {
 #[cfg(test)]
 #[allow(experimental)]
 mod tests {
-    use super::{Rc, Weak};
+    use super::{Rc, Weak, weak_count, strong_count};
     use std::cell::RefCell;
     use std::option::{Option, Some, None};
     use std::result::{Err, Ok};
@@ -564,6 +573,40 @@ mod tests {
         assert!(!super::is_unique(&x));
         drop(w);
         assert!(super::is_unique(&x));
+    }
+
+    #[test]
+    fn test_strong_count() {
+        let a = Rc::new(0u32);
+        assert!(strong_count(&a) == 1);
+        let w = a.downgrade();
+        assert!(strong_count(&a) == 1);
+        let b = w.upgrade().expect("upgrade of live rc failed");
+        assert!(strong_count(&b) == 2);
+        assert!(strong_count(&a) == 2);
+        drop(w);
+        drop(a);
+        assert!(strong_count(&b) == 1);
+        let c = b.clone();
+        assert!(strong_count(&b) == 2);
+        assert!(strong_count(&c) == 2);
+    }
+
+    #[test]
+    fn test_weak_count() {
+        let a = Rc::new(0u32);
+        assert!(strong_count(&a) == 1);
+        assert!(weak_count(&a) == 0);
+        let w = a.downgrade();
+        assert!(strong_count(&a) == 1);
+        assert!(weak_count(&a) == 1);
+        drop(w);
+        assert!(strong_count(&a) == 1);
+        assert!(weak_count(&a) == 0);
+        let c = a.clone();
+        assert!(strong_count(&a) == 2);
+        assert!(weak_count(&a) == 0);
+        drop(c);
     }
 
     #[test]

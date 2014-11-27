@@ -304,28 +304,6 @@ macro_rules! println(
     ($($arg:tt)*) => (format_args!(::std::io::stdio::println_args, $($arg)*))
 )
 
-/// Declare a task-local key with a specific type.
-///
-/// # Example
-///
-/// ```
-/// local_data_key!(my_integer: int)
-///
-/// my_integer.replace(Some(2));
-/// println!("{}", my_integer.get().map(|a| *a));
-/// ```
-#[macro_export]
-macro_rules! local_data_key(
-    ($name:ident: $ty:ty) => (
-        #[allow(non_upper_case_globals)]
-        static $name: ::std::local_data::Key<$ty> = &::std::local_data::KeyValueKey;
-    );
-    (pub $name:ident: $ty:ty) => (
-        #[allow(non_upper_case_globals)]
-        pub static $name: ::std::local_data::Key<$ty> = &::std::local_data::KeyValueKey;
-    );
-)
-
 /// Helper macro for unwrapping `Result` values while returning early with an
 /// error if the value of the expression is `Err`. For more information, see
 /// `std::io`.
