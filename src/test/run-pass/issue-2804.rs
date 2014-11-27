@@ -13,7 +13,7 @@ extern crate collections;
 extern crate serialize;
 
 use std::collections::HashMap;
-use serialize::json;
+use serialize::json::{mod, Json};
 use std::option;
 
 enum object {
@@ -21,10 +21,10 @@ enum object {
     int_value(i64),
 }
 
-fn lookup(table: json::JsonObject, key: String, default: String) -> String
+fn lookup(table: json::Object, key: String, default: String) -> String
 {
     match table.find(&key.to_string()) {
-        option::Some(&json::String(ref s)) => {
+        option::Some(&Json::String(ref s)) => {
             s.to_string()
         }
         option::Some(value) => {
@@ -40,7 +40,7 @@ fn lookup(table: json::JsonObject, key: String, default: String) -> String
 fn add_interface(_store: int, managed_ip: String, data: json::Json) -> (String, object)
 {
     match &data {
-        &json::Object(ref interface) => {
+        &Json::Object(ref interface) => {
             let name = lookup(interface.clone(),
                               "ifDescr".to_string(),
                               "".to_string());
@@ -59,7 +59,7 @@ fn add_interfaces(store: int, managed_ip: String, device: HashMap<String, json::
 -> Vec<(String, object)> {
     match device["interfaces".to_string()]
     {
-        json::Array(ref interfaces) =>
+        Json::Array(ref interfaces) =>
         {
           interfaces.iter().map(|interface| {
                 add_interface(store, managed_ip.clone(), (*interface).clone())

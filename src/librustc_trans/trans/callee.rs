@@ -8,13 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
- * Handles translation of callees as well as other call-related
- * things.  Callees are a superset of normal rust values and sometimes
- * have different representations.  In particular, top-level fn items
- * and methods are represented as just a fn ptr and not a full
- * closure.
- */
+//! Handles translation of callees as well as other call-related
+//! things.  Callees are a superset of normal rust values and sometimes
+//! have different representations.  In particular, top-level fn items
+//! and methods are represented as just a fn ptr and not a full
+//! closure.
 
 pub use self::AutorefArg::*;
 pub use self::CalleeData::*;
@@ -220,13 +218,9 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
     }
 }
 
+/// Translates a reference (with id `ref_id`) to the fn/method with id `def_id` into a function
+/// pointer. This may require monomorphization or inlining.
 pub fn trans_fn_ref(bcx: Block, def_id: ast::DefId, node: ExprOrMethodCall) -> ValueRef {
-    /*!
-     * Translates a reference (with id `ref_id`) to the fn/method
-     * with id `def_id` into a function pointer.  This may require
-     * monomorphization or inlining.
-     */
-
     let _icx = push_ctxt("trans_fn_ref");
 
     let substs = node_id_substs(bcx, node);
@@ -398,6 +392,17 @@ pub fn trans_unboxing_shim<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     llfn
 }
 
+/// Translates a reference to a fn/method item, monomorphizing and
+/// inlining as it goes.
+///
+/// # Parameters
+///
+/// - `bcx`: the current block where the reference to the fn occurs
+/// - `def_id`: def id of the fn or method item being referenced
+/// - `node`: node id of the reference to the fn/method, if applicable.
+///   This parameter may be zero; but, if so, the resulting value may not
+///   have the right type, so it must be cast before being used.
+/// - `substs`: values for each of the fn/method's parameters
 pub fn trans_fn_ref_with_substs<'blk, 'tcx>(
     bcx: Block<'blk, 'tcx>,      //
     def_id: ast::DefId,          // def id of fn
@@ -405,20 +410,6 @@ pub fn trans_fn_ref_with_substs<'blk, 'tcx>(
     substs: subst::Substs<'tcx>) // vtables for the call
     -> ValueRef
 {
-    /*!
-     * Translates a reference to a fn/method item, monomorphizing and
-     * inlining as it goes.
-     *
-     * # Parameters
-     *
-     * - `bcx`: the current block where the reference to the fn occurs
-     * - `def_id`: def id of the fn or method item being referenced
-     * - `node`: node id of the reference to the fn/method, if applicable.
-     *   This parameter may be zero; but, if so, the resulting value may not
-     *   have the right type, so it must be cast before being used.
-     * - `substs`: values for each of the fn/method's parameters
-     */
-
     let _icx = push_ctxt("trans_fn_ref_with_substs");
     let ccx = bcx.ccx();
     let tcx = bcx.tcx();
@@ -668,6 +659,16 @@ pub fn trans_lang_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                              dest)
 }
 
+/// This behemoth of a function translates function calls. Unfortunately, in order to generate more
+/// efficient LLVM output at -O0, it has quite a complex signature (refactoring this into two
+/// functions seems like a good idea).
+///
+/// In particular, for lang items, it is invoked with a dest of None, and in that case the return
+/// value contains the result of the fn. The lang item must not return a structural type or else
+/// all heck breaks loose.
+///
+/// For non-lang items, `dest` is always Some, and hence the result is written into memory
+/// somewhere. Nonetheless we return the actual return value of the function.
 pub fn trans_call_inner<'a, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                         call_info: Option<NodeInfo>,
                                         callee_ty: Ty<'tcx>,
@@ -677,22 +678,6 @@ pub fn trans_call_inner<'a, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                         args: CallArgs<'a, 'tcx>,
                                         dest: Option<expr::Dest>)
                                         -> Result<'blk, 'tcx> {
-    /*!
-     * This behemoth of a function translates function calls.
-     * Unfortunately, in order to generate more efficient LLVM
-     * output at -O0, it has quite a complex signature (refactoring
-     * this into two functions seems like a good idea).
-     *
-     * In particular, for lang items, it is invoked with a dest of
-     * None, and in that case the return value contains the result of
-     * the fn. The lang item must not return a structural type or else
-     * all heck breaks loose.
-     *
-     * For non-lang items, `dest` is always Some, and hence the result
-     * is written into memory somewhere. Nonetheless we return the
-     * actual return value of the function.
-     */
-
     // Introduce a temporary cleanup scope that will contain cleanups
     // for the arguments while they are being evaluated. The purpose
     // this cleanup is to ensure that, should a panic occur while

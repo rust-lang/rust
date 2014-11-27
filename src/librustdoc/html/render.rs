@@ -1670,7 +1670,13 @@ fn item_function(w: &mut fmt::Formatter, it: &clean::Item,
 fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
               t: &clean::Trait) -> fmt::Result {
     let mut bounds = String::new();
+    if let Some(ref ty) = t.default_unbound {
+        bounds.push_str(format!(" for {}?", ty).as_slice());
+    }
     if t.bounds.len() > 0 {
+        if bounds.len() > 0 {
+            bounds.push(' ');
+        }
         bounds.push_str(": ");
         for (i, p) in t.bounds.iter().enumerate() {
             if i > 0 { bounds.push_str(" + "); }

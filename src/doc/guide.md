@@ -62,7 +62,7 @@ the easiest way to keep people updated while Rust is in its alpha state.
 
 Oh, we should also mention the officially supported platforms:
 
-* Windows (7, 8, Server 2008 R2), x86 only
+* Windows (7, 8, Server 2008 R2)
 * Linux (2.6.18 or later, various distributions), x86 and x86-64
 * OSX 10.7 (Lion) or greater, x86 and x86-64
 
@@ -378,8 +378,14 @@ of your time with Rust.
 The first thing we'll learn about are 'variable bindings.' They look like this:
 
 ```{rust}
-let x = 5i;
+fn main() {
+    let x = 5i;
+}
 ```
+
+Putting `fn main() {` in each example is a bit tedious, so we'll leave that out
+in the future. If you're following along, make sure to edit your `main()`
+function, rather than leaving it off. Otherwise, you'll get an error.
 
 In many languages, this is called a 'variable.' But Rust's variable bindings
 have a few tricks up their sleeves. Rust has a very powerful feature called
@@ -683,7 +689,7 @@ fn main() {
 ```
 
 This is the simplest possible function declaration. As we mentioned before,
-`fn` says 'this is a function,' followed by the name, some parenthesis because
+`fn` says 'this is a function,' followed by the name, some parentheses because
 this function takes no arguments, and then some curly braces to indicate the
 body. Here's a function named `foo`:
 
@@ -884,7 +890,7 @@ Tuples are an ordered list of a fixed size. Like this:
 let x = (1i, "hello");
 ```
 
-The parenthesis and commas form this two-length tuple. Here's the same code, but
+The parentheses and commas form this two-length tuple. Here's the same code, but
 with the type annotated:
 
 ```rust
@@ -908,9 +914,9 @@ let (x, y, z) = (1i, 2i, 3i);
 println!("x is {}", x);
 ```
 
-Remember before when I said the left hand side of a `let` statement was more
+Remember before when I said the left-hand side of a `let` statement was more
 powerful than just assigning a binding? Here we are. We can put a pattern on
-the left hand side of the `let`, and if it matches up to the right hand side,
+the left-hand side of the `let`, and if it matches up to the right-hand side,
 we can assign multiple bindings at once. In this case, `let` 'destructures,'
 or 'breaks up,' the tuple, and assigns the bits to three bindings.
 
@@ -1453,9 +1459,9 @@ focus. Any time you have a data structure of variable size, things can get
 tricky, and strings are a re-sizable data structure. That said, Rust's strings
 also work differently than in some other systems languages, such as C.
 
-Let's dig into the details. A **string** is a sequence of unicode scalar values
+Let's dig into the details. A **string** is a sequence of Unicode scalar values
 encoded as a stream of UTF-8 bytes. All strings are guaranteed to be
-validly-encoded UTF-8 sequences. Additionally, strings are not null-terminated
+validly encoded UTF-8 sequences. Additionally, strings are not null-terminated
 and can contain null bytes.
 
 Rust has two main types of strings: `&str` and `String`.
@@ -3933,7 +3939,7 @@ match x {
 }
 ```
 
-Here, the `val` inside the `match` has type `int`. In other words, the left hand
+Here, the `val` inside the `match` has type `int`. In other words, the left-hand
 side of the pattern destructures the value. If we have `&5i`, then in `&val`, `val`
 would be `5i`.
 
@@ -3988,6 +3994,35 @@ let origin = Point { x: 0i, y: 0i };
 
 match origin {
     Point { x: x, .. } => println!("x is {}", x),
+}
+```
+
+You can do this kind of match on any member, not just the first:
+
+```{rust}
+# #![allow(non_shorthand_field_patterns)]
+struct Point {
+    x: int,
+    y: int,
+}
+
+let origin = Point { x: 0i, y: 0i };
+
+match origin {
+    Point { y: y, .. } => println!("y is {}", y),
+}
+```
+
+If you want to match against a slice or array, you can use `[]`:
+
+```{rust}
+fn main() {
+    let v = vec!["match_this", "1"];
+
+    match v.as_slice() {
+        ["match_this", second] => println!("The second element is {}", second),
+        _ => {},
+    }
 }
 ```
 
@@ -4681,7 +4716,7 @@ let x: Option<int> = Some(5i);
 
 In the type declaration, we say `Option<int>`. Note how similar this looks to
 `Option<T>`. So, in this particular `Option`, `T` has the value of `int`. On
-the right hand side of the binding, we do make a `Some(T)`, where `T` is `5i`.
+the right-hand side of the binding, we do make a `Some(T)`, where `T` is `5i`.
 Since that's an `int`, the two sides match, and Rust is happy. If they didn't
 match, we'd get an error:
 
@@ -5249,7 +5284,7 @@ immediately.
 
 ## Success and failure
 
-Tasks don't always succeed, they can also panic. A task that wishes to panic 
+Tasks don't always succeed, they can also panic. A task that wishes to panic
 can call the `panic!` macro, passing a message:
 
 ```{rust}

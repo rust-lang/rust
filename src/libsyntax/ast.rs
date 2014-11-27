@@ -276,11 +276,9 @@ impl PathParameters {
         }
     }
 
+    /// Returns the types that the user wrote. Note that these do not necessarily map to the type
+    /// parameters in the parenthesized case.
     pub fn types(&self) -> Vec<&P<Ty>> {
-        /*!
-         * Returns the types that the user wrote. Note that these do not
-         * necessarily map to the type parameters in the parenthesized case.
-         */
         match *self {
             AngleBracketedParameters(ref data) => {
                 data.types.iter().collect()
@@ -1151,7 +1149,9 @@ pub enum Ty_ {
     /// A path (`module::module::...::Type`) or primitive
     ///
     /// Type parameters are stored in the Path itself
-    TyPath(Path, Option<TyParamBounds>, NodeId), // for #7264; see above
+    TyPath(Path, NodeId),
+    /// Something like `A+B`. Note that `B` must always be a path.
+    TyObjectSum(P<Ty>, TyParamBounds),
     /// A type like `for<'a> Foo<&'a Bar>`
     TyPolyTraitRef(TyParamBounds),
     /// A "qualified path", e.g. `<Vec<T> as SomeTrait>::SomeType`

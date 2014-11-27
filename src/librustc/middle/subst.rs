@@ -24,22 +24,19 @@ use syntax::codemap::{Span, DUMMY_SP};
 
 ///////////////////////////////////////////////////////////////////////////
 
-/**
- * A substitution mapping type/region parameters to new values. We
- * identify each in-scope parameter by an *index* and a *parameter
- * space* (which indices where the parameter is defined; see
- * `ParamSpace`).
- */
+/// A substitution mapping type/region parameters to new values. We
+/// identify each in-scope parameter by an *index* and a *parameter
+/// space* (which indices where the parameter is defined; see
+/// `ParamSpace`).
 #[deriving(Clone, PartialEq, Eq, Hash, Show)]
 pub struct Substs<'tcx> {
     pub types: VecPerParamSpace<Ty<'tcx>>,
     pub regions: RegionSubsts,
 }
 
-/**
- * Represents the values to use when substituting lifetime parameters.
- * If the value is `ErasedRegions`, then this subst is occurring during
- * trans, and all region parameters will be replaced with `ty::ReStatic`. */
+/// Represents the values to use when substituting lifetime parameters.
+/// If the value is `ErasedRegions`, then this subst is occurring during
+/// trans, and all region parameters will be replaced with `ty::ReStatic`.
 #[deriving(Clone, PartialEq, Eq, Hash, Show)]
 pub enum RegionSubsts {
     ErasedRegions,
@@ -131,26 +128,18 @@ pub fn self_ty(&self) -> Option<Ty<'tcx>> {
         Substs { types: types, regions: ErasedRegions }
     }
 
+    /// Since ErasedRegions are only to be used in trans, most of the compiler can use this method
+    /// to easily access the set of region substitutions.
     pub fn regions<'a>(&'a self) -> &'a VecPerParamSpace<ty::Region> {
-        /*!
-         * Since ErasedRegions are only to be used in trans, most of
-         * the compiler can use this method to easily access the set
-         * of region substitutions.
-         */
-
         match self.regions {
             ErasedRegions => panic!("Erased regions only expected in trans"),
             NonerasedRegions(ref r) => r
         }
     }
 
+    /// Since ErasedRegions are only to be used in trans, most of the compiler can use this method
+    /// to easily access the set of region substitutions.
     pub fn mut_regions<'a>(&'a mut self) -> &'a mut VecPerParamSpace<ty::Region> {
-        /*!
-         * Since ErasedRegions are only to be used in trans, most of
-         * the compiler can use this method to easily access the set
-         * of region substitutions.
-         */
-
         match self.regions {
             ErasedRegions => panic!("Erased regions only expected in trans"),
             NonerasedRegions(ref mut r) => r
@@ -226,11 +215,9 @@ impl ParamSpace {
     }
 }
 
-/**
- * Vector of things sorted by param space. Used to keep
- * the set of things declared on the type, self, or method
- * distinct.
- */
+/// Vector of things sorted by param space. Used to keep
+/// the set of things declared on the type, self, or method
+/// distinct.
 #[deriving(PartialEq, Eq, Clone, Hash, Encodable, Decodable)]
 pub struct VecPerParamSpace<T> {
     // This was originally represented as a tuple with one Vec<T> for
@@ -250,10 +237,8 @@ pub struct VecPerParamSpace<T> {
     content: Vec<T>,
 }
 
-/**
- * The `split` function converts one `VecPerParamSpace` into this
- * `SeparateVecsPerParamSpace` structure.
- */
+/// The `split` function converts one `VecPerParamSpace` into this
+/// `SeparateVecsPerParamSpace` structure.
 pub struct SeparateVecsPerParamSpace<T> {
     pub types: Vec<T>,
     pub selfs: Vec<T>,
@@ -688,59 +673,49 @@ impl<'a,'tcx> SubstFolder<'a,'tcx> {
         self.shift_regions_through_binders(ty)
     }
 
+    /// It is sometimes necessary to adjust the debruijn indices during substitution. This occurs
+    /// when we are substituting a type with escaping regions into a context where we have passed
+    /// through region binders. That's quite a mouthful. Let's see an example:
+    ///
+    /// ```
+    /// type Func<A> = fn(A);
+    /// type MetaFunc = for<'a> fn(Func<&'a int>)
+    /// ```
+    ///
+    /// The type `MetaFunc`, when fully expanded, will be
+    ///
+    ///     for<'a> fn(fn(&'a int))
+    ///             ^~ ^~ ^~~
+    ///             |  |  |
+    ///             |  |  DebruijnIndex of 2
+    ///             Binders
+    ///
+    /// Here the `'a` lifetime is bound in the outer function, but appears as an argument of the
+    /// inner one. Therefore, that appearance will have a DebruijnIndex of 2, because we must skip
+    /// over the inner binder (remember that we count Debruijn indices from 1). However, in the
+    /// definition of `MetaFunc`, the binder is not visible, so the type `&'a int` will have a
+    /// debruijn index of 1. It's only during the substitution that we can see we must increase the
+    /// depth by 1 to account for the binder that we passed through.
+    ///
+    /// As a second example, consider this twist:
+    ///
+    /// ```
+    /// type FuncTuple<A> = (A,fn(A));
+    /// type MetaFuncTuple = for<'a> fn(FuncTuple<&'a int>)
+    /// ```
+    ///
+    /// Here the final type will be:
+    ///
+    ///     for<'a> fn((&'a int, fn(&'a int)))
+    ///                 ^~~         ^~~
+    ///                 |           |
+    ///          DebruijnIndex of 1 |
+    ///                      DebruijnIndex of 2
+    ///
+    /// As indicated in the diagram, here the same type `&'a int` is substituted once, but in the
+    /// first case we do not increase the Debruijn index and in the second case we do. The reason
+    /// is that only in the second case have we passed through a fn binder.
     fn shift_regions_through_binders(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        /*!
-         * It is sometimes necessary to adjust the debruijn indices
-         * during substitution. This occurs when we are substituting a
-         * type with escaping regions into a context where we have
-         * passed through region binders. That's quite a
-         * mouthful. Let's see an example:
-         *
-         * ```
-         * type Func<A> = fn(A);
-         * type MetaFunc = for<'a> fn(Func<&'a int>)
-         * ```
-         *
-         * The type `MetaFunc`, when fully expanded, will be
-         *
-         *     for<'a> fn(fn(&'a int))
-         *             ^~ ^~ ^~~
-         *             |  |  |
-         *             |  |  DebruijnIndex of 2
-         *             Binders
-         *
-         * Here the `'a` lifetime is bound in the outer function, but
-         * appears as an argument of the inner one. Therefore, that
-         * appearance will have a DebruijnIndex of 2, because we must
-         * skip over the inner binder (remember that we count Debruijn
-         * indices from 1). However, in the definition of `MetaFunc`,
-         * the binder is not visible, so the type `&'a int` will have
-         * a debruijn index of 1. It's only during the substitution
-         * that we can see we must increase the depth by 1 to account
-         * for the binder that we passed through.
-         *
-         * As a second example, consider this twist:
-         *
-         * ```
-         * type FuncTuple<A> = (A,fn(A));
-         * type MetaFuncTuple = for<'a> fn(FuncTuple<&'a int>)
-         * ```
-         *
-         * Here the final type will be:
-         *
-         *     for<'a> fn((&'a int, fn(&'a int)))
-         *                 ^~~         ^~~
-         *                 |           |
-         *          DebruijnIndex of 1 |
-         *                      DebruijnIndex of 2
-         *
-         * As indicated in the diagram, here the same type `&'a int`
-         * is substituted once, but in the first case we do not
-         * increase the Debruijn index and in the second case we
-         * do. The reason is that only in the second case have we
-         * passed through a fn binder.
-         */
-
         debug!("shift_regions(ty={}, region_binders_passed={}, type_has_escaping_regions={})",
                ty.repr(self.tcx()), self.region_binders_passed, ty::type_has_escaping_regions(ty));
 

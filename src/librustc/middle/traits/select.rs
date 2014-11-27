@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*! See `doc.rs` for high-level documentation */
+//! See `doc.rs` for high-level documentation
 #![allow(dead_code)] // FIXME -- just temporarily
 
 pub use self::MethodMatchResult::*;
@@ -43,7 +43,7 @@ use util::ppaux::Repr;
 pub struct SelectionContext<'cx, 'tcx:'cx> {
     infcx: &'cx InferCtxt<'cx, 'tcx>,
     param_env: &'cx ty::ParameterEnvironment<'tcx>,
-    typer: &'cx Typer<'tcx>+'cx,
+    typer: &'cx (Typer<'tcx>+'cx),
 
     /// Skolemizer used specifically for skolemizing entries on the
     /// obligation stack. This ensures that all entries on the stack
@@ -102,32 +102,30 @@ pub enum MethodMatchedData {
     CoerciveMethodMatch(/* impl we matched */ ast::DefId)
 }
 
-/**
- * The selection process begins by considering all impls, where
- * clauses, and so forth that might resolve an obligation.  Sometimes
- * we'll be able to say definitively that (e.g.) an impl does not
- * apply to the obligation: perhaps it is defined for `uint` but the
- * obligation is for `int`. In that case, we drop the impl out of the
- * list.  But the other cases are considered *candidates*.
- *
- * Candidates can either be definitive or ambiguous. An ambiguous
- * candidate is one that might match or might not, depending on how
- * type variables wind up being resolved. This only occurs during inference.
- *
- * For selection to suceed, there must be exactly one non-ambiguous
- * candidate.  Usually, it is not possible to have more than one
- * definitive candidate, due to the coherence rules. However, there is
- * one case where it could occur: if there is a blanket impl for a
- * trait (that is, an impl applied to all T), and a type parameter
- * with a where clause. In that case, we can have a candidate from the
- * where clause and a second candidate from the impl. This is not a
- * problem because coherence guarantees us that the impl which would
- * be used to satisfy the where clause is the same one that we see
- * now. To resolve this issue, therefore, we ignore impls if we find a
- * matching where clause. Part of the reason for this is that where
- * clauses can give additional information (like, the types of output
- * parameters) that would have to be inferred from the impl.
- */
+/// The selection process begins by considering all impls, where
+/// clauses, and so forth that might resolve an obligation.  Sometimes
+/// we'll be able to say definitively that (e.g.) an impl does not
+/// apply to the obligation: perhaps it is defined for `uint` but the
+/// obligation is for `int`. In that case, we drop the impl out of the
+/// list.  But the other cases are considered *candidates*.
+///
+/// Candidates can either be definitive or ambiguous. An ambiguous
+/// candidate is one that might match or might not, depending on how
+/// type variables wind up being resolved. This only occurs during inference.
+///
+/// For selection to suceed, there must be exactly one non-ambiguous
+/// candidate.  Usually, it is not possible to have more than one
+/// definitive candidate, due to the coherence rules. However, there is
+/// one case where it could occur: if there is a blanket impl for a
+/// trait (that is, an impl applied to all T), and a type parameter
+/// with a where clause. In that case, we can have a candidate from the
+/// where clause and a second candidate from the impl. This is not a
+/// problem because coherence guarantees us that the impl which would
+/// be used to satisfy the where clause is the same one that we see
+/// now. To resolve this issue, therefore, we ignore impls if we find a
+/// matching where clause. Part of the reason for this is that where
+/// clauses can give additional information (like, the types of output
+/// parameters) that would have to be inferred from the impl.
 #[deriving(PartialEq,Eq,Show,Clone)]
 enum Candidate<'tcx> {
     BuiltinCandidate(ty::BuiltinBound),
@@ -201,15 +199,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     //    is `Vec<Foo>:Iterable<Bar>`, but the impl specifies
     //    `impl<T> Iterable<T> for Vec<T>`, than an error would result.
 
+    /// Evaluates whether the obligation can be satisfied. Returns an indication of whether the
+    /// obligation can be satisfied and, if so, by what means. Never affects surrounding typing
+    /// environment.
     pub fn select(&mut self, obligation: &Obligation<'tcx>)
                   -> SelectionResult<'tcx, Selection<'tcx>> {
-        /*!
-         * Evaluates whether the obligation can be satisfied. Returns
-         * an indication of whether the obligation can be satisfied
-         * and, if so, by what means. Never affects surrounding typing
-         * environment.
-         */
-
         debug!("select({})", obligation.repr(self.tcx()));
         assert!(!obligation.trait_ref.has_escaping_regions());
 
@@ -253,15 +247,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     // The result is "true" if the obligation *may* hold and "false" if
     // we can be sure it does not.
 
+    /// Evaluates whether the obligation `obligation` can be satisfied (by any means).
     pub fn evaluate_obligation(&mut self,
                                obligation: &Obligation<'tcx>)
                                -> bool
     {
-        /*!
-         * Evaluates whether the obligation `obligation` can be
-         * satisfied (by any means).
-         */
-
         debug!("evaluate_obligation({})",
                obligation.repr(self.tcx()));
         assert!(!obligation.trait_ref.has_escaping_regions());
@@ -387,17 +377,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
     }
 
+    /// Evaluates whether the impl with id `impl_def_id` could be applied to the self type
+    /// `obligation_self_ty`. This can be used either for trait or inherent impls.
     pub fn evaluate_impl(&mut self,
                          impl_def_id: ast::DefId,
                          obligation: &Obligation<'tcx>)
                          -> bool
     {
-        /*!
-         * Evaluates whether the impl with id `impl_def_id` could be
-         * applied to the self type `obligation_self_ty`. This can be
-         * used either for trait or inherent impls.
-         */
-
         debug!("evaluate_impl(impl_def_id={}, obligation={})",
                impl_def_id.repr(self.tcx()),
                obligation.repr(self.tcx()));
@@ -435,23 +421,20 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     // the body of `evaluate_method_obligation()` for more details on
     // the algorithm.
 
+    /// Determine whether a trait-method is applicable to a receiver of
+    /// type `rcvr_ty`. *Does not affect the inference state.*
+    ///
+    /// - `rcvr_ty` -- type of the receiver
+    /// - `xform_self_ty` -- transformed self type declared on the method, with `Self`
+    ///   to a fresh type variable
+    /// - `obligation` -- a reference to the trait where the method is declared, with
+    ///   the input types on the trait replaced with fresh type variables
     pub fn evaluate_method_obligation(&mut self,
                                       rcvr_ty: Ty<'tcx>,
                                       xform_self_ty: Ty<'tcx>,
                                       obligation: &Obligation<'tcx>)
                                       -> MethodMatchResult
     {
-        /*!
-         * Determine whether a trait-method is applicable to a receiver of
-         * type `rcvr_ty`. *Does not affect the inference state.*
-         *
-         * - `rcvr_ty` -- type of the receiver
-         * - `xform_self_ty` -- transformed self type declared on the method, with `Self`
-         *   to a fresh type variable
-         * - `obligation` -- a reference to the trait where the method is declared, with
-         *   the input types on the trait replaced with fresh type variables
-         */
-
         // Here is the situation. We have a trait method declared (say) like so:
         //
         //     trait TheTrait {
@@ -563,19 +546,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
     }
 
+    /// Given the successful result of a method match, this function "confirms" the result, which
+    /// basically repeats the various matching operations, but outside of any snapshot so that
+    /// their effects are committed into the inference state.
     pub fn confirm_method_match(&mut self,
                                 rcvr_ty: Ty<'tcx>,
                                 xform_self_ty: Ty<'tcx>,
                                 obligation: &Obligation<'tcx>,
                                 data: MethodMatchedData)
     {
-        /*!
-         * Given the successful result of a method match, this
-         * function "confirms" the result, which basically repeats the
-         * various matching operations, but outside of any snapshot so
-         * that their effects are committed into the inference state.
-         */
-
         let is_ok = match data {
             PreciseMethodMatch => {
                 self.match_method_precise(rcvr_ty, xform_self_ty, obligation).is_ok()
@@ -597,17 +576,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
     }
 
+    /// Implements the *precise method match* procedure described in
+    /// `evaluate_method_obligation()`.
     fn match_method_precise(&mut self,
                             rcvr_ty: Ty<'tcx>,
                             xform_self_ty: Ty<'tcx>,
                             obligation: &Obligation<'tcx>)
                             -> Result<(),()>
     {
-        /*!
-         * Implements the *precise method match* procedure described in
-         * `evaluate_method_obligation()`.
-         */
-
         self.infcx.commit_if_ok(|| {
             match self.infcx.sub_types(false, infer::RelateSelfType(obligation.cause.span),
                                        rcvr_ty, xform_self_ty) {
@@ -623,18 +599,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         })
     }
 
+    /// Assembles a list of potentially applicable impls using the *coercive match* procedure
+    /// described in `evaluate_method_obligation()`.
     fn assemble_method_candidates_from_impls(&mut self,
                                              rcvr_ty: Ty<'tcx>,
                                              xform_self_ty: Ty<'tcx>,
                                              obligation: &Obligation<'tcx>)
                                              -> Vec<ast::DefId>
     {
-        /*!
-         * Assembles a list of potentially applicable impls using the
-         * *coercive match* procedure described in
-         * `evaluate_method_obligation()`.
-         */
-
         let mut candidates = Vec::new();
 
         let all_impls = self.all_impls(obligation.trait_ref.def_id);
@@ -650,6 +622,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         candidates
     }
 
+    /// Applies the *coercive match* procedure described in `evaluate_method_obligation()` to a
+    /// particular impl.
     fn match_method_coerce(&mut self,
                            impl_def_id: ast::DefId,
                            rcvr_ty: Ty<'tcx>,
@@ -657,11 +631,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                            obligation: &Obligation<'tcx>)
                            -> Result<Substs<'tcx>, ()>
     {
-        /*!
-         * Applies the *coercive match* procedure described in
-         * `evaluate_method_obligation()` to a particular impl.
-         */
-
         // This is almost always expected to succeed. It
         // causes the impl's self-type etc to be unified with
         // the type variable that is shared between
@@ -683,6 +652,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         Ok(substs)
     }
 
+    /// A version of `winnow_impl` applicable to coerice method matching.  This is basically the
+    /// same as `winnow_impl` but it uses the method matching procedure and is specific to impls.
     fn winnow_method_impl(&mut self,
                           impl_def_id: ast::DefId,
                           rcvr_ty: Ty<'tcx>,
@@ -690,13 +661,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                           obligation: &Obligation<'tcx>)
                           -> bool
     {
-        /*!
-         * A version of `winnow_impl` applicable to coerice method
-         * matching.  This is basically the same as `winnow_impl` but
-         * it uses the method matching procedure and is specific to
-         * impls.
-         */
-
         debug!("winnow_method_impl: impl_def_id={} rcvr_ty={} xform_self_ty={} obligation={}",
                impl_def_id.repr(self.tcx()),
                rcvr_ty.repr(self.tcx()),
@@ -962,19 +926,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         Ok(candidates)
     }
 
+    /// Given an obligation like `<SomeTrait for T>`, search the obligations that the caller
+    /// supplied to find out whether it is listed among them.
+    ///
+    /// Never affects inference environment.
     fn assemble_candidates_from_caller_bounds(&mut self,
                                               obligation: &Obligation<'tcx>,
                                               candidates: &mut CandidateSet<'tcx>)
                                               -> Result<(),SelectionError<'tcx>>
     {
-        /*!
-         * Given an obligation like `<SomeTrait for T>`, search the obligations
-         * that the caller supplied to find out whether it is listed among
-         * them.
-         *
-         * Never affects inference environment.
-         */
-
         debug!("assemble_candidates_from_caller_bounds({})",
                obligation.repr(self.tcx()));
 
@@ -1002,22 +962,17 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         Ok(())
     }
 
+    /// Check for the artificial impl that the compiler will create for an obligation like `X :
+    /// FnMut<..>` where `X` is an unboxed closure type.
+    ///
+    /// Note: the type parameters on an unboxed closure candidate are modeled as *output* type
+    /// parameters and hence do not affect whether this trait is a match or not. They will be
+    /// unified during the confirmation step.
     fn assemble_unboxed_candidates(&mut self,
                                    obligation: &Obligation<'tcx>,
                                    candidates: &mut CandidateSet<'tcx>)
                                    -> Result<(),SelectionError<'tcx>>
     {
-        /*!
-         * Check for the artificial impl that the compiler will create
-         * for an obligation like `X : FnMut<..>` where `X` is an
-         * unboxed closure type.
-         *
-         * Note: the type parameters on an unboxed closure candidate
-         * are modeled as *output* type parameters and hence do not
-         * affect whether this trait is a match or not. They will be
-         * unified during the confirmation step.
-         */
-
         let tcx = self.tcx();
         let kind = if Some(obligation.trait_ref.def_id) == tcx.lang_items.fn_trait() {
             ty::FnUnboxedClosureKind
@@ -1060,15 +1015,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         Ok(())
     }
 
+    /// Search for impls that might apply to `obligation`.
     fn assemble_candidates_from_impls(&mut self,
                                       obligation: &Obligation<'tcx>,
                                       candidates: &mut CandidateSet<'tcx>)
                                       -> Result<(), SelectionError<'tcx>>
     {
-        /*!
-         * Search for impls that might apply to `obligation`.
-         */
-
         let all_impls = self.all_impls(obligation.trait_ref.def_id);
         for &impl_def_id in all_impls.iter() {
             self.infcx.probe(|| {
@@ -1092,17 +1044,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     // attempt to evaluate recursive bounds to see if they are
     // satisfied.
 
+    /// Further evaluate `candidate` to decide whether all type parameters match and whether nested
+    /// obligations are met. Returns true if `candidate` remains viable after this further
+    /// scrutiny.
     fn winnow_candidate<'o>(&mut self,
                             stack: &ObligationStack<'o, 'tcx>,
                             candidate: &Candidate<'tcx>)
                             -> EvaluationResult
     {
-        /*!
-         * Further evaluate `candidate` to decide whether all type parameters match
-         * and whether nested obligations are met. Returns true if `candidate` remains
-         * viable after this further scrutiny.
-         */
-
         debug!("winnow_candidate: candidate={}", candidate.repr(self.tcx()));
         self.infcx.probe(|| {
             let candidate = (*candidate).clone();
@@ -1129,37 +1078,35 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         result
     }
 
+    /// Returns true if `candidate_i` should be dropped in favor of `candidate_j`.
+    ///
+    /// This is generally true if either:
+    /// - candidate i and candidate j are equivalent; or,
+    /// - candidate i is a conrete impl and candidate j is a where clause bound,
+    ///   and the concrete impl is applicable to the types in the where clause bound.
+    ///
+    /// The last case refers to cases where there are blanket impls (often conditional
+    /// blanket impls) as well as a where clause. This can come down to one of two cases:
+    ///
+    /// - The impl is truly unconditional (it has no where clauses
+    ///   of its own), in which case the where clause is
+    ///   unnecessary, because coherence requires that we would
+    ///   pick that particular impl anyhow (at least so long as we
+    ///   don't have specialization).
+    ///
+    /// - The impl is conditional, in which case we may not have winnowed it out
+    ///   because we don't know if the conditions apply, but the where clause is basically
+    ///   telling us taht there is some impl, though not necessarily the one we see.
+    ///
+    /// In both cases we prefer to take the where clause, which is
+    /// essentially harmless.  See issue #18453 for more details of
+    /// a case where doing the opposite caused us harm.
     fn candidate_should_be_dropped_in_favor_of<'o>(&mut self,
                                                    stack: &ObligationStack<'o, 'tcx>,
                                                    candidate_i: &Candidate<'tcx>,
                                                    candidate_j: &Candidate<'tcx>)
                                                    -> bool
     {
-        /*!
-         * Returns true if `candidate_i` should be dropped in favor of `candidate_j`.
-         * This is generally true if either:
-         * - candidate i and candidate j are equivalent; or,
-         * - candidate i is a conrete impl and candidate j is a where clause bound,
-         *   and the concrete impl is applicable to the types in the where clause bound.
-         *
-         * The last case refers to cases where there are blanket impls (often conditional
-         * blanket impls) as well as a where clause. This can come down to one of two cases:
-         *
-         * - The impl is truly unconditional (it has no where clauses
-         *   of its own), in which case the where clause is
-         *   unnecessary, because coherence requires that we would
-         *   pick that particular impl anyhow (at least so long as we
-         *   don't have specialization).
-         *
-         * - The impl is conditional, in which case we may not have winnowed it out
-         *   because we don't know if the conditions apply, but the where clause is basically
-         *   telling us taht there is some impl, though not necessarily the one we see.
-         *
-         * In both cases we prefer to take the where clause, which is
-         * essentially harmless.  See issue #18453 for more details of
-         * a case where doing the opposite caused us harm.
-         */
-
         match (candidate_i, candidate_j) {
             (&ImplCandidate(impl_def_id), &ParamCandidate(ref vt)) => {
                 debug!("Considering whether to drop param {} in favor of impl {}",
@@ -1848,26 +1795,23 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
     }
 
+    /// Determines whether the self type declared against
+    /// `impl_def_id` matches `obligation_self_ty`. If successful,
+    /// returns the substitutions used to make them match. See
+    /// `match_impl()`. For example, if `impl_def_id` is declared
+    /// as:
+    ///
+    ///    impl<T:Copy> Foo for ~T { ... }
+    ///
+    /// and `obligation_self_ty` is `int`, we'd back an `Err(_)`
+    /// result. But if `obligation_self_ty` were `~int`, we'd get
+    /// back `Ok(T=int)`.
     fn match_inherent_impl(&mut self,
                            impl_def_id: ast::DefId,
                            obligation_cause: ObligationCause,
                            obligation_self_ty: Ty<'tcx>)
                            -> Result<Substs<'tcx>,()>
     {
-        /*!
-         * Determines whether the self type declared against
-         * `impl_def_id` matches `obligation_self_ty`. If successful,
-         * returns the substitutions used to make them match. See
-         * `match_impl()`.  For example, if `impl_def_id` is declared
-         * as:
-         *
-         *    impl<T:Copy> Foo for ~T { ... }
-         *
-         * and `obligation_self_ty` is `int`, we'd back an `Err(_)`
-         * result. But if `obligation_self_ty` were `~int`, we'd get
-         * back `Ok(T=int)`.
-         */
-
         // Create fresh type variables for each type parameter declared
         // on the impl etc.
         let impl_substs = util::fresh_substs_for_impl(self.infcx,
@@ -1928,6 +1872,19 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     // the output type parameters from the obligation with those found
     // on the impl/bound, which may yield type errors.
 
+    /// Relates the output type parameters from an impl to the
+    /// trait.  This may lead to type errors. The confirmation step
+    /// is separated from the main match procedure because these
+    /// type errors do not cause us to select another impl.
+    ///
+    /// As an example, consider matching the obligation
+    /// `Iterator<char> for Elems<int>` using the following impl:
+    ///
+    ///    impl<T> Iterator<T> for Elems<T> { ... }
+    ///
+    /// The match phase will succeed with substitution `T=int`.
+    /// The confirm step will then try to unify `int` and `char`
+    /// and yield an error.
     fn confirm_impl_vtable(&mut self,
                            impl_def_id: ast::DefId,
                            obligation_cause: ObligationCause<'tcx>,
@@ -1935,22 +1892,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                            substs: &Substs<'tcx>)
                            -> Result<(), SelectionError<'tcx>>
     {
-        /*!
-         * Relates the output type parameters from an impl to the
-         * trait.  This may lead to type errors. The confirmation step
-         * is separated from the main match procedure because these
-         * type errors do not cause us to select another impl.
-         *
-         * As an example, consider matching the obligation
-         * `Iterator<char> for Elems<int>` using the following impl:
-         *
-         *    impl<T> Iterator<T> for Elems<T> { ... }
-         *
-         * The match phase will succeed with substitution `T=int`.
-         * The confirm step will then try to unify `int` and `char`
-         * and yield an error.
-         */
-
         let impl_trait_ref = ty::impl_trait_ref(self.tcx(),
                                                 impl_def_id).unwrap();
         let impl_trait_ref = impl_trait_ref.subst(self.tcx(),
@@ -1958,38 +1899,30 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         self.confirm(obligation_cause, obligation_trait_ref, impl_trait_ref)
     }
 
+    /// After we have determined which impl applies, and with what substitutions, there is one last
+    /// step. We have to go back and relate the "output" type parameters from the obligation to the
+    /// types that are specified in the impl.
+    ///
+    /// For example, imagine we have:
+    ///
+    ///     impl<T> Iterator<T> for Vec<T> { ... }
+    ///
+    /// and our obligation is `Iterator<Foo> for Vec<int>` (note the mismatch in the obligation
+    /// types). Up until this step, no error would be reported: the self type is `Vec<int>`, and
+    /// that matches `Vec<T>` with the substitution `T=int`. At this stage, we could then go and
+    /// check that the type parameters to the `Iterator` trait match. (In terms of the parameters,
+    /// the `expected_trait_ref` here would be `Iterator<int> for Vec<int>`, and the
+    /// `obligation_trait_ref` would be `Iterator<Foo> for Vec<int>`.
+    ///
+    /// Note that this checking occurs *after* the impl has selected, because these output type
+    /// parameters should not affect the selection of the impl. Therefore, if there is a mismatch,
+    /// we report an error to the user.
     fn confirm(&mut self,
                obligation_cause: ObligationCause,
                obligation_trait_ref: Rc<ty::TraitRef<'tcx>>,
                expected_trait_ref: Rc<ty::TraitRef<'tcx>>)
                -> Result<(), SelectionError<'tcx>>
     {
-        /*!
-         * After we have determined which impl applies, and with what
-         * substitutions, there is one last step. We have to go back
-         * and relate the "output" type parameters from the obligation
-         * to the types that are specified in the impl.
-         *
-         * For example, imagine we have:
-         *
-         *     impl<T> Iterator<T> for Vec<T> { ... }
-         *
-         * and our obligation is `Iterator<Foo> for Vec<int>` (note
-         * the mismatch in the obligation types). Up until this step,
-         * no error would be reported: the self type is `Vec<int>`,
-         * and that matches `Vec<T>` with the substitution `T=int`.
-         * At this stage, we could then go and check that the type
-         * parameters to the `Iterator` trait match.
-         * (In terms of the parameters, the `expected_trait_ref`
-         * here would be `Iterator<int> for Vec<int>`, and the
-         * `obligation_trait_ref` would be `Iterator<Foo> for Vec<int>`.
-         *
-         * Note that this checking occurs *after* the impl has
-         * selected, because these output type parameters should not
-         * affect the selection of the impl. Therefore, if there is a
-         * mismatch, we report an error to the user.
-         */
-
         let origin = infer::RelateOutputImplTypes(obligation_cause.span);
 
         let obligation_trait_ref = obligation_trait_ref.clone();
@@ -2019,11 +1952,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
     }
 
+    /// Returns set of all impls for a given trait.
     fn all_impls(&self, trait_def_id: ast::DefId) -> Vec<ast::DefId> {
-        /*!
-         * Returns set of all impls for a given trait.
-         */
-
         ty::populate_implementations_for_trait_if_necessary(self.tcx(),
                                                             trait_def_id);
         match self.tcx().trait_impls.borrow().get(&trait_def_id) {

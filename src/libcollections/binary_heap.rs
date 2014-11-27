@@ -567,6 +567,13 @@ impl<'a, T> Iterator<&'a T> for Items<'a, T> {
     fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
 }
 
+impl<'a, T> DoubleEndedIterator<&'a T> for Items<'a, T> {
+    #[inline]
+    fn next_back(&mut self) -> Option<(&'a T)> { self.iter.next_back() }
+}
+
+impl<'a, T> ExactSizeIterator<&'a T> for Items<'a, T> {}
+
 /// An iterator that moves out of a `BinaryHeap`.
 pub struct MoveItems<T> {
     iter: vec::MoveItems<T>,
@@ -623,6 +630,16 @@ mod tests {
             assert_eq!(*el, iterout[i]);
             i += 1;
         }
+    }
+
+    #[test]
+    fn test_iterator_reverse() {
+        let data = vec!(5i, 9, 3);
+        let iterout = vec!(3i, 5, 9);
+        let pq = BinaryHeap::from_vec(data);
+
+        let v: Vec<int> = pq.iter().rev().map(|&x| x).collect();
+        assert_eq!(v, iterout);
     }
 
     #[test]

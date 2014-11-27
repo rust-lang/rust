@@ -477,17 +477,13 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
     }
 }
 
+/// Substitutes the values for the receiver's type parameters that are found in method, leaving the
+/// method's type parameters intact.
 pub fn make_substs_for_receiver_types<'tcx>(tcx: &ty::ctxt<'tcx>,
                                             trait_ref: &ty::TraitRef<'tcx>,
                                             method: &ty::Method<'tcx>)
                                             -> subst::Substs<'tcx>
 {
-    /*!
-     * Substitutes the values for the receiver's type parameters
-     * that are found in method, leaving the method's type parameters
-     * intact.
-     */
-
     let meth_tps: Vec<Ty> =
         method.generics.types.get_slice(subst::FnSpace)
               .iter()

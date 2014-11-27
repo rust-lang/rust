@@ -159,11 +159,12 @@ pub fn build_external_trait(cx: &DocContext, tcx: &ty::ctxt,
         }
     });
     let trait_def = ty::lookup_trait_def(tcx, did);
-    let bounds = trait_def.bounds.clean(cx);
+    let (bounds, default_unbound) = trait_def.bounds.clean(cx);
     clean::Trait {
         generics: (&def.generics, subst::TypeSpace).clean(cx),
         items: items.collect(),
         bounds: bounds,
+        default_unbound: default_unbound
     }
 }
 

@@ -17,9 +17,7 @@ pub struct BasicBlock(pub BasicBlockRef);
 
 pub type Preds<'a> = Map<'a, Value, BasicBlock, Filter<'a, Value, Users>>;
 
-/**
- * Wrapper for LLVM BasicBlockRef
- */
+/// Wrapper for LLVM BasicBlockRef
 impl BasicBlock {
     pub fn get(&self) -> BasicBlockRef {
         let BasicBlock(v) = *self; v

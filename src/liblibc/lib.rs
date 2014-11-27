@@ -19,59 +19,57 @@
        html_root_url = "http://doc.rust-lang.org/nightly/",
        html_playground_url = "http://play.rust-lang.org/")]
 
-/*!
-* Bindings for the C standard library and other platform libraries
-*
-* **NOTE:** These are *architecture and libc* specific. On Linux, these
-* bindings are only correct for glibc.
-*
-* This module contains bindings to the C standard library, organized into
-* modules by their defining standard.  Additionally, it contains some assorted
-* platform-specific definitions.  For convenience, most functions and types
-* are reexported, so `use libc::*` will import the available C bindings as
-* appropriate for the target platform. The exact set of functions available
-* are platform specific.
-*
-* *Note:* Because these definitions are platform-specific, some may not appear
-* in the generated documentation.
-*
-* We consider the following specs reasonably normative with respect to
-* interoperating with the C standard library (libc/msvcrt):
-*
-* * ISO 9899:1990 ('C95', 'ANSI C', 'Standard C'), NA1, 1995.
-* * ISO 9899:1999 ('C99' or 'C9x').
-* * ISO 9945:1988 / IEEE 1003.1-1988 ('POSIX.1').
-* * ISO 9945:2001 / IEEE 1003.1-2001 ('POSIX:2001', 'SUSv3').
-* * ISO 9945:2008 / IEEE 1003.1-2008 ('POSIX:2008', 'SUSv4').
-*
-* Note that any reference to the 1996 revision of POSIX, or any revs between
-* 1990 (when '88 was approved at ISO) and 2001 (when the next actual
-* revision-revision happened), are merely additions of other chapters (1b and
-* 1c) outside the core interfaces.
-*
-* Despite having several names each, these are *reasonably* coherent
-* point-in-time, list-of-definition sorts of specs. You can get each under a
-* variety of names but will wind up with the same definition in each case.
-*
-* See standards(7) in linux-manpages for more details.
-*
-* Our interface to these libraries is complicated by the non-universality of
-* conformance to any of them. About the only thing universally supported is
-* the first (C95), beyond that definitions quickly become absent on various
-* platforms.
-*
-* We therefore wind up dividing our module-space up (mostly for the sake of
-* sanity while editing, filling-in-details and eliminating duplication) into
-* definitions common-to-all (held in modules named c95, c99, posix88, posix01
-* and posix08) and definitions that appear only on *some* platforms (named
-* 'extra'). This would be things like significant OSX foundation kit, or Windows
-* library kernel32.dll, or various fancy glibc, Linux or BSD extensions.
-*
-* In addition to the per-platform 'extra' modules, we define a module of
-* 'common BSD' libc routines that never quite made it into POSIX but show up
-* in multiple derived systems. This is the 4.4BSD r2 / 1995 release, the final
-* one from Berkeley after the lawsuits died down and the CSRG dissolved.
-*/
+//! Bindings for the C standard library and other platform libraries
+//!
+//! **NOTE:** These are *architecture and libc* specific. On Linux, these
+//! bindings are only correct for glibc.
+//!
+//! This module contains bindings to the C standard library, organized into
+//! modules by their defining standard.  Additionally, it contains some assorted
+//! platform-specific definitions.  For convenience, most functions and types
+//! are reexported, so `use libc::*` will import the available C bindings as
+//! appropriate for the target platform. The exact set of functions available
+//! are platform specific.
+//!
+//! *Note:* Because these definitions are platform-specific, some may not appear
+//! in the generated documentation.
+//!
+//! We consider the following specs reasonably normative with respect to
+//! interoperating with the C standard library (libc/msvcrt):
+//!
+//! * ISO 9899:1990 ('C95', 'ANSI C', 'Standard C'), NA1, 1995.
+//! * ISO 9899:1999 ('C99' or 'C9x').
+//! * ISO 9945:1988 / IEEE 1003.1-1988 ('POSIX.1').
+//! * ISO 9945:2001 / IEEE 1003.1-2001 ('POSIX:2001', 'SUSv3').
+//! * ISO 9945:2008 / IEEE 1003.1-2008 ('POSIX:2008', 'SUSv4').
+//!
+//! Note that any reference to the 1996 revision of POSIX, or any revs between
+//! 1990 (when '88 was approved at ISO) and 2001 (when the next actual
+//! revision-revision happened), are merely additions of other chapters (1b and
+//! 1c) outside the core interfaces.
+//!
+//! Despite having several names each, these are *reasonably* coherent
+//! point-in-time, list-of-definition sorts of specs. You can get each under a
+//! variety of names but will wind up with the same definition in each case.
+//!
+//! See standards(7) in linux-manpages for more details.
+//!
+//! Our interface to these libraries is complicated by the non-universality of
+//! conformance to any of them. About the only thing universally supported is
+//! the first (C95), beyond that definitions quickly become absent on various
+//! platforms.
+//!
+//! We therefore wind up dividing our module-space up (mostly for the sake of
+//! sanity while editing, filling-in-details and eliminating duplication) into
+//! definitions common-to-all (held in modules named c95, c99, posix88, posix01
+//! and posix08) and definitions that appear only on *some* platforms (named
+//! 'extra'). This would be things like significant OSX foundation kit, or Windows
+//! library kernel32.dll, or various fancy glibc, Linux or BSD extensions.
+//!
+//! In addition to the per-platform 'extra' modules, we define a module of
+//! 'common BSD' libc routines that never quite made it into POSIX but show up
+//! in multiple derived systems. This is the 4.4BSD r2 / 1995 release, the final
+//! one from Berkeley after the lawsuits died down and the CSRG dissolved.
 
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
@@ -329,20 +327,18 @@ pub mod types {
     // Standard types that are opaque or common, so are not per-target.
     pub mod common {
         pub mod c95 {
-            /**
-            Type used to construct void pointers for use with C.
-
-            This type is only useful as a pointer target. Do not use it as a
-            return type for FFI functions which have the `void` return type in
-            C. Use the unit type `()` or omit the return type instead.
-
-            For LLVM to recognize the void pointer type and by extension
-            functions like malloc(), we need to have it represented as i8* in
-            LLVM bitcode. The enum used here ensures this and prevents misuse
-            of the "raw" type by only having private variants.. We need two
-            variants, because the compiler complains about the repr attribute
-            otherwise.
-            */
+            /// Type used to construct void pointers for use with C.
+            ///
+            /// This type is only useful as a pointer target. Do not use it as a
+            /// return type for FFI functions which have the `void` return type in
+            /// C. Use the unit type `()` or omit the return type instead.
+            ///
+            /// For LLVM to recognize the void pointer type and by extension
+            /// functions like malloc(), we need to have it represented as i8* in
+            /// LLVM bitcode. The enum used here ensures this and prevents misuse
+            /// of the "raw" type by only having private variants.. We need two
+            /// variants, because the compiler complains about the repr attribute
+            /// otherwise.
             #[repr(u8)]
             pub enum c_void {
                 __variant1,
