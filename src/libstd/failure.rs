@@ -40,7 +40,7 @@ impl Writer for Stdio {
     }
 }
 
-pub fn on_fail(obj: &Any + Send, file: &'static str, line: uint) {
+pub fn on_fail(obj: &(Any+Send), file: &'static str, line: uint) {
     let msg = match obj.downcast_ref::<&'static str>() {
         Some(s) => *s,
         None => match obj.downcast_ref::<String>() {

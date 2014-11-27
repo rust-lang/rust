@@ -225,6 +225,9 @@ fn check_aliasability<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
 impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
     pub fn tcx(&self) -> &'a ty::ctxt<'tcx> { self.bccx.tcx }
 
+    /// Guarantees that `addr_of(cmt)` will be valid for the duration of `static_scope_r`, or
+    /// reports an error.  This may entail taking out loans, which will be added to the
+    /// `req_loan_map`.
     fn guarantee_valid(&mut self,
                        borrow_id: ast::NodeId,
                        borrow_span: Span,
@@ -232,12 +235,6 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
                        req_kind: ty::BorrowKind,
                        loan_region: ty::Region,
                        cause: euv::LoanCause) {
-        /*!
-         * Guarantees that `addr_of(cmt)` will be valid for the duration of
-         * `static_scope_r`, or reports an error.  This may entail taking
-         * out loans, which will be added to the `req_loan_map`.
-         */
-
         debug!("guarantee_valid(borrow_id={}, cmt={}, \
                 req_mutbl={}, loan_region={})",
                borrow_id,

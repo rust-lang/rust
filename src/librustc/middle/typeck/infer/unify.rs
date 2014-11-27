@@ -22,85 +22,68 @@ use syntax::ast;
 use util::ppaux::Repr;
 use util::snapshot_vec as sv;
 
-/**
- * This trait is implemented by any type that can serve as a type
- * variable. We call such variables *unification keys*. For example,
- * this trait is implemented by `IntVid`, which represents integral
- * variables.
- *
- * Each key type has an associated value type `V`. For example, for
- * `IntVid`, this is `Option<IntVarValue>`, representing some
- * (possibly not yet known) sort of integer.
- *
- * Implementations of this trait are at the end of this file.
- */
+/// This trait is implemented by any type that can serve as a type
+/// variable. We call such variables *unification keys*. For example,
+/// this trait is implemented by `IntVid`, which represents integral
+/// variables.
+///
+/// Each key type has an associated value type `V`. For example, for
+/// `IntVid`, this is `Option<IntVarValue>`, representing some
+/// (possibly not yet known) sort of integer.
+///
+/// Implementations of this trait are at the end of this file.
 pub trait UnifyKey<'tcx, V> : Clone + Show + PartialEq + Repr<'tcx> {
     fn index(&self) -> uint;
 
     fn from_index(u: uint) -> Self;
 
-    /**
-     * Given an inference context, returns the unification table
-     * appropriate to this key type.
-     */
+    // Given an inference context, returns the unification table
+    // appropriate to this key type.
     fn unification_table<'v>(infcx: &'v InferCtxt)
                              -> &'v RefCell<UnificationTable<Self,V>>;
 
     fn tag(k: Option<Self>) -> &'static str;
 }
 
-/**
- * Trait for valid types that a type variable can be set to. Note that
- * this is typically not the end type that the value will take on, but
- * rather an `Option` wrapper (where `None` represents a variable
- * whose value is not yet set).
- *
- * Implementations of this trait are at the end of this file.
- */
+/// Trait for valid types that a type variable can be set to. Note that
+/// this is typically not the end type that the value will take on, but
+/// rather an `Option` wrapper (where `None` represents a variable
+/// whose value is not yet set).
+///
+/// Implementations of this trait are at the end of this file.
 pub trait UnifyValue<'tcx> : Clone + Repr<'tcx> + PartialEq {
 }
 
-/**
- * Value of a unification key. We implement Tarjan's union-find
- * algorithm: when two keys are unified, one of them is converted
- * into a "redirect" pointing at the other. These redirects form a
- * DAG: the roots of the DAG (nodes that are not redirected) are each
- * associated with a value of type `V` and a rank. The rank is used
- * to keep the DAG relatively balanced, which helps keep the running
- * time of the algorithm under control. For more information, see
- * <http://en.wikipedia.org/wiki/Disjoint-set_data_structure>.
- */
+/// Value of a unification key. We implement Tarjan's union-find
+/// algorithm: when two keys are unified, one of them is converted
+/// into a "redirect" pointing at the other. These redirects form a
+/// DAG: the roots of the DAG (nodes that are not redirected) are each
+/// associated with a value of type `V` and a rank. The rank is used
+/// to keep the DAG relatively balanced, which helps keep the running
+/// time of the algorithm under control. For more information, see
+/// <http://en.wikipedia.org/wiki/Disjoint-set_data_structure>.
 #[deriving(PartialEq,Clone)]
 pub enum VarValue<K,V> {
     Redirect(K),
     Root(V, uint),
 }
 
-/**
- * Table of unification keys and their values.
- */
+/// Table of unification keys and their values.
 pub struct UnificationTable<K,V> {
-    /**
-     * Indicates the current value of each key.
-     */
-
+    /// Indicates the current value of each key.
     values: sv::SnapshotVec<VarValue<K,V>,(),Delegate>,
 }
 
-/**
- * At any time, users may snapshot a unification table.  The changes
- * made during the snapshot may either be *committed* or *rolled back*.
- */
+/// At any time, users may snapshot a unification table.  The changes
+/// made during the snapshot may either be *committed* or *rolled back*.
 pub struct Snapshot<K> {
     // Link snapshot to the key type `K` of the table.
     marker: marker::CovariantType<K>,
     snapshot: sv::Snapshot,
 }
 
-/**
- * Internal type used to represent the result of a `get()` operation.
- * Conveys the current root and value of the key.
- */
+/// Internal type used to represent the result of a `get()` operation.
+/// Conveys the current root and value of the key.
 pub struct Node<K,V> {
     pub key: K,
     pub value: V,
@@ -121,28 +104,22 @@ impl<'tcx, V:PartialEq+Clone+Repr<'tcx>, K:UnifyKey<'tcx, V>> UnificationTable<K
         }
     }
 
-    /**
-     * Starts a new snapshot. Each snapshot must be either
-     * rolled back or committed in a "LIFO" (stack) order.
-     */
+    /// Starts a new snapshot. Each snapshot must be either
+    /// rolled back or committed in a "LIFO" (stack) order.
     pub fn snapshot(&mut self) -> Snapshot<K> {
         Snapshot { marker: marker::CovariantType::<K>,
                    snapshot: self.values.start_snapshot() }
     }
 
-    /**
-     * Reverses all changes since the last snapshot. Also
-     * removes any keys that have been created since then.
-     */
+    /// Reverses all changes since the last snapshot. Also
+    /// removes any keys that have been created since then.
     pub fn rollback_to(&mut self, snapshot: Snapshot<K>) {
         debug!("{}: rollback_to()", UnifyKey::tag(None::<K>));
         self.values.rollback_to(snapshot.snapshot);
     }
 
-    /**
-     * Commits all changes since the last snapshot. Of course, they
-     * can still be undone if there is a snapshot further out.
-     */
+    /// Commits all changes since the last snapshot. Of course, they
+    /// can still be undone if there is a snapshot further out.
     pub fn commit(&mut self, snapshot: Snapshot<K>) {
         debug!("{}: commit()", UnifyKey::tag(None::<K>));
         self.values.commit(snapshot.snapshot);
@@ -157,13 +134,9 @@ impl<'tcx, V:PartialEq+Clone+Repr<'tcx>, K:UnifyKey<'tcx, V>> UnificationTable<K
         k
     }
 
+    /// Find the root node for `vid`. This uses the standard union-find algorithm with path
+    /// compression: http://en.wikipedia.org/wiki/Disjoint-set_data_structure
     pub fn get(&mut self, tcx: &ty::ctxt, vid: K) -> Node<K,V> {
-        /*!
-         * Find the root node for `vid`. This uses the standard
-         * union-find algorithm with path compression:
-         * http://en.wikipedia.org/wiki/Disjoint-set_data_structure
-         */
-
         let index = vid.index();
         let value = (*self.values.get(index)).clone();
         match value {
@@ -188,16 +161,13 @@ impl<'tcx, V:PartialEq+Clone+Repr<'tcx>, K:UnifyKey<'tcx, V>> UnificationTable<K
         }
     }
 
+    /// Sets the value for `vid` to `new_value`. `vid` MUST be a root node! Also, we must be in the
+    /// middle of a snapshot.
     pub fn set(&mut self,
                tcx: &ty::ctxt<'tcx>,
                key: K,
                new_value: VarValue<K,V>)
     {
-        /*!
-         * Sets the value for `vid` to `new_value`. `vid` MUST be a
-         * root node! Also, we must be in the middle of a snapshot.
-         */
-
         assert!(self.is_root(&key));
 
         debug!("Updating variable {} to {}",
@@ -207,19 +177,15 @@ impl<'tcx, V:PartialEq+Clone+Repr<'tcx>, K:UnifyKey<'tcx, V>> UnificationTable<K
         self.values.set(key.index(), new_value);
     }
 
+    /// Either redirects node_a to node_b or vice versa, depending on the relative rank. Returns
+    /// the new root and rank. You should then update the value of the new root to something
+    /// suitable.
     pub fn unify(&mut self,
                  tcx: &ty::ctxt<'tcx>,
                  node_a: &Node<K,V>,
                  node_b: &Node<K,V>)
                  -> (K, uint)
     {
-        /*!
-         * Either redirects node_a to node_b or vice versa, depending
-         * on the relative rank. Returns the new root and rank.  You
-         * should then update the value of the new root to something
-         * suitable.
-         */
-
         debug!("unify(node_a(id={}, rank={}), node_b(id={}, rank={}))",
                node_a.key.repr(tcx),
                node_a.rank,
@@ -255,10 +221,8 @@ impl<K,V> sv::SnapshotVecDelegate<VarValue<K,V>,()> for Delegate {
 // Code to handle simple keys like ints, floats---anything that
 // doesn't have a subtyping relationship we need to worry about.
 
-/**
- * Indicates a type that does not have any kind of subtyping
- * relationship.
- */
+/// Indicates a type that does not have any kind of subtyping
+/// relationship.
 pub trait SimplyUnifiable<'tcx> : Clone + PartialEq + Repr<'tcx> {
     fn to_type(&self) -> Ty<'tcx>;
     fn to_type_err(expected_found<Self>) -> ty::type_err<'tcx>;
@@ -295,19 +259,15 @@ pub trait InferCtxtMethodsForSimplyUnifiableTypes<'tcx, V:SimplyUnifiable<'tcx>,
 impl<'a,'tcx,V:SimplyUnifiable<'tcx>,K:UnifyKey<'tcx, Option<V>>>
     InferCtxtMethodsForSimplyUnifiableTypes<'tcx, V, K> for InferCtxt<'a, 'tcx>
 {
+    /// Unifies two simple keys. Because simple keys do not have any subtyping relationships, if
+    /// both keys have already been associated with a value, then those two values must be the
+    /// same.
     fn simple_vars(&self,
                    a_is_expected: bool,
                    a_id: K,
                    b_id: K)
                    -> ures<'tcx>
     {
-        /*!
-         * Unifies two simple keys.  Because simple keys do
-         * not have any subtyping relationships, if both keys
-         * have already been associated with a value, then those two
-         * values must be the same.
-         */
-
         let tcx = self.tcx;
         let table = UnifyKey::unification_table(self);
         let node_a = table.borrow_mut().get(tcx, a_id);
@@ -341,19 +301,14 @@ impl<'a,'tcx,V:SimplyUnifiable<'tcx>,K:UnifyKey<'tcx, Option<V>>>
         return Ok(())
     }
 
+    /// Sets the value of the key `a_id` to `b`. Because simple keys do not have any subtyping
+    /// relationships, if `a_id` already has a value, it must be the same as `b`.
     fn simple_var_t(&self,
                     a_is_expected: bool,
                     a_id: K,
                     b: V)
                     -> ures<'tcx>
     {
-        /*!
-         * Sets the value of the key `a_id` to `b`.  Because
-         * simple keys do not have any subtyping relationships,
-         * if `a_id` already has a value, it must be the same as
-         * `b`.
-         */
-
         let tcx = self.tcx;
         let table = UnifyKey::unification_table(self);
         let node_a = table.borrow_mut().get(tcx, a_id);

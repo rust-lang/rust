@@ -8,56 +8,53 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
+//! Error Reporting Code for the inference engine
+//!
+//! Because of the way inference, and in particular region inference,
+//! works, it often happens that errors are not detected until far after
+//! the relevant line of code has been type-checked. Therefore, there is
+//! an elaborate system to track why a particular constraint in the
+//! inference graph arose so that we can explain to the user what gave
+//! rise to a particular error.
+//!
+//! The basis of the system are the "origin" types. An "origin" is the
+//! reason that a constraint or inference variable arose. There are
+//! different "origin" enums for different kinds of constraints/variables
+//! (e.g., `TypeOrigin`, `RegionVariableOrigin`). An origin always has
+//! a span, but also more information so that we can generate a meaningful
+//! error message.
+//!
+//! Having a catalogue of all the different reasons an error can arise is
+//! also useful for other reasons, like cross-referencing FAQs etc, though
+//! we are not really taking advantage of this yet.
+//!
+//! # Region Inference
+//!
+//! Region inference is particularly tricky because it always succeeds "in
+//! the moment" and simply registers a constraint. Then, at the end, we
+//! can compute the full graph and report errors, so we need to be able to
+//! store and later report what gave rise to the conflicting constraints.
+//!
+//! # Subtype Trace
+//!
+//! Determing whether `T1 <: T2` often involves a number of subtypes and
+//! subconstraints along the way. A "TypeTrace" is an extended version
+//! of an origin that traces the types and other values that were being
+//! compared. It is not necessarily comprehensive (in fact, at the time of
+//! this writing it only tracks the root values being compared) but I'd
+//! like to extend it to include significant "waypoints". For example, if
+//! you are comparing `(T1, T2) <: (T3, T4)`, and the problem is that `T2
+//! <: T4` fails, I'd like the trace to include enough information to say
+//! "in the 2nd element of the tuple". Similarly, failures when comparing
+//! arguments or return types in fn types should be able to cite the
+//! specific position, etc.
+//!
+//! # Reality vs plan
+//!
+//! Of course, there is still a LOT of code in typeck that has yet to be
+//! ported to this system, and which relies on string concatenation at the
+//! time of error detection.
 
-Error Reporting Code for the inference engine
-
-Because of the way inference, and in particular region inference,
-works, it often happens that errors are not detected until far after
-the relevant line of code has been type-checked. Therefore, there is
-an elaborate system to track why a particular constraint in the
-inference graph arose so that we can explain to the user what gave
-rise to a particular error.
-
-The basis of the system are the "origin" types. An "origin" is the
-reason that a constraint or inference variable arose. There are
-different "origin" enums for different kinds of constraints/variables
-(e.g., `TypeOrigin`, `RegionVariableOrigin`). An origin always has
-a span, but also more information so that we can generate a meaningful
-error message.
-
-Having a catalogue of all the different reasons an error can arise is
-also useful for other reasons, like cross-referencing FAQs etc, though
-we are not really taking advantage of this yet.
-
-# Region Inference
-
-Region inference is particularly tricky because it always succeeds "in
-the moment" and simply registers a constraint. Then, at the end, we
-can compute the full graph and report errors, so we need to be able to
-store and later report what gave rise to the conflicting constraints.
-
-# Subtype Trace
-
-Determing whether `T1 <: T2` often involves a number of subtypes and
-subconstraints along the way. A "TypeTrace" is an extended version
-of an origin that traces the types and other values that were being
-compared. It is not necessarily comprehensive (in fact, at the time of
-this writing it only tracks the root values being compared) but I'd
-like to extend it to include significant "waypoints". For example, if
-you are comparing `(T1, T2) <: (T3, T4)`, and the problem is that `T2
-<: T4` fails, I'd like the trace to include enough information to say
-"in the 2nd element of the tuple". Similarly, failures when comparing
-arguments or return types in fn types should be able to cite the
-specific position, etc.
-
-# Reality vs plan
-
-Of course, there is still a LOT of code in typeck that has yet to be
-ported to this system, and which relies on string concatenation at the
-time of error detection.
-
-*/
 use self::FreshOrKept::*;
 
 use std::collections::HashSet;
@@ -391,11 +388,9 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
         ty::note_and_explain_type_err(self.tcx, terr);
     }
 
+    /// Returns a string of the form "expected `{}`, found `{}`", or None if this is a derived
+    /// error.
     fn values_str(&self, values: &ValuePairs<'tcx>) -> Option<String> {
-        /*!
-         * Returns a string of the form "expected `{}`, found `{}`",
-         * or None if this is a derived error.
-         */
         match *values {
             infer::Types(ref exp_found) => self.expected_found_str(exp_found),
             infer::TraitRefs(ref exp_found) => self.expected_found_str(exp_found)
@@ -1249,7 +1244,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                     }
                     ty_queue.push(&*mut_ty.ty);
                 }
-                ast::TyPath(ref path, ref bounds, id) => {
+                ast::TyPath(ref path, id) => {
                     let a_def = match self.tcx.def_map.borrow().get(&id) {
                         None => {
                             self.tcx
@@ -1296,7 +1291,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                             let new_path = self.rebuild_path(rebuild_info, lifetime);
                             let to = ast::Ty {
                                 id: cur_ty.id,
-                                node: ast::TyPath(new_path, bounds.clone(), id),
+                                node: ast::TyPath(new_path, id),
                                 span: cur_ty.span
                             };
                             new_ty = self.rebuild_ty(new_ty, P(to));

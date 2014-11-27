@@ -29,9 +29,7 @@ use rustrt::task::Task;
 
 use super::raw;
 
-/****************************************************************************
- * Poisoning helpers
- ****************************************************************************/
+// Poisoning helpers
 
 struct PoisonOnFail<'a> {
     flag: &'a mut bool,
@@ -67,9 +65,7 @@ impl<'a> Drop for PoisonOnFail<'a> {
     }
 }
 
-/****************************************************************************
- * Condvar
- ****************************************************************************/
+// Condvar
 
 enum Inner<'a> {
     InnerMutex(raw::MutexGuard<'a>),
@@ -146,10 +142,6 @@ impl<'a> Condvar<'a> {
         self.inner.cond().broadcast_on(condvar_id)
     }
 }
-
-/****************************************************************************
- * Mutex
- ****************************************************************************/
 
 /// A wrapper type which provides synchronized access to the underlying data, of
 /// type `T`. A mutex always provides exclusive access, and concurrent requests
@@ -248,10 +240,6 @@ impl<'a, T: Send> Deref<T> for MutexGuard<'a, T> {
 impl<'a, T: Send> DerefMut<T> for MutexGuard<'a, T> {
     fn deref_mut<'a>(&'a mut self) -> &'a mut T { &mut *self._data }
 }
-
-/****************************************************************************
- * R/W lock protected lock
- ****************************************************************************/
 
 /// A dual-mode reader-writer lock. The data can be accessed mutably or
 /// immutably, and immutably-accessing tasks may run concurrently.
@@ -387,10 +375,6 @@ impl<'a, T: Send + Sync> DerefMut<T> for RWLockWriteGuard<'a, T> {
     fn deref_mut<'a>(&'a mut self) -> &'a mut T { &mut *self._data }
 }
 
-/****************************************************************************
- * Barrier
- ****************************************************************************/
-
 /// A barrier enables multiple tasks to synchronize the beginning
 /// of some computation.
 ///
@@ -451,10 +435,6 @@ impl Barrier {
         }
     }
 }
-
-/****************************************************************************
- * Tests
- ****************************************************************************/
 
 #[cfg(test)]
 mod tests {
@@ -795,9 +775,6 @@ mod tests {
         }
     }
 
-    /************************************************************************
-     * Barrier tests
-     ************************************************************************/
     #[test]
     fn test_barrier() {
         let barrier = Arc::new(Barrier::new(10));

@@ -445,10 +445,31 @@ fn succ(x: &int) -> int { *x + 1 }
 to
 
 ```{rust}
+use std::rc::Rc;
+
 fn box_succ(x: Box<int>) -> int { *x + 1 }
 
-fn rc_succ(x: std::rc::Rc<int>) -> int { *x + 1 }
+fn rc_succ(x: Rc<int>) -> int { *x + 1 }
 ```
+
+Note that the caller of your function will have to modify their calls slightly:
+
+```{rust}
+use std::rc::Rc;
+
+fn succ(x: &int) -> int { *x + 1 }
+
+let ref_x = &5i;
+let box_x = box 5i;
+let rc_x  = Rc::new(5i);
+
+succ(ref_x);
+succ(&*box_x);
+succ(&*rc_x);
+```
+
+The initial `*` dereferences the pointer, and then `&` takes a reference to
+those contents.
 
 # Boxes
 
@@ -572,7 +593,7 @@ fn add_one(x: &mut int) -> int {
 fn main() {
     let x = box 5i;
 
-    println!("{}", add_one(&*x)); // error: cannot borrow immutable dereference 
+    println!("{}", add_one(&*x)); // error: cannot borrow immutable dereference
                                   // of `&`-pointer as mutable
 }
 ```
@@ -700,9 +721,9 @@ This gives you flexibility without sacrificing performance.
 
 You may think that this gives us terrible performance: return a value and then
 immediately box it up ?! Isn't that the worst of both worlds? Rust is smarter
-than that. There is no copy in this code. main allocates enough room for the
-`box , passes a pointer to that memory into foo as x, and then foo writes the
-value straight into that pointer. This writes the return value directly into
+than that. There is no copy in this code. `main` allocates enough room for the
+`box`, passes a pointer to that memory into `foo` as `x`, and then `foo` writes
+the value straight into that pointer. This writes the return value directly into
 the allocated box.
 
 This is important enough that it bears repeating: pointers are not for

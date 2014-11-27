@@ -87,6 +87,7 @@
 #[doc(no_inline)] pub use slice::{SlicePrelude, AsSlice, CloneSlicePrelude};
 #[doc(no_inline)] pub use slice::{VectorVector, PartialEqSlicePrelude, OrdSlicePrelude};
 #[doc(no_inline)] pub use slice::{CloneSliceAllocPrelude, OrdSliceAllocPrelude, SliceAllocPrelude};
+#[doc(no_inline)] pub use slice::{BoxedSlicePrelude};
 #[doc(no_inline)] pub use string::{IntoString, String, ToString};
 #[doc(no_inline)] pub use vec::Vec;
 

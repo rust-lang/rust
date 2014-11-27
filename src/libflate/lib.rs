@@ -8,15 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
-
-Simple [DEFLATE][def]-based compression. This is a wrapper around the
-[`miniz`][mz] library, which is a one-file pure-C implementation of zlib.
-
-[def]: https://en.wikipedia.org/wiki/DEFLATE
-[mz]: https://code.google.com/p/miniz/
-
-*/
+//! Simple [DEFLATE][def]-based compression. This is a wrapper around the
+//! [`miniz`][mz] library, which is a one-file pure-C implementation of zlib.
+//!
+//! [def]: https://en.wikipedia.org/wiki/DEFLATE
+//! [mz]: https://code.google.com/p/miniz/
 
 #![crate_name = "flate"]
 #![experimental]

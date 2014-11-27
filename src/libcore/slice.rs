@@ -34,8 +34,6 @@
 // * The `raw` and `bytes` submodules.
 // * Boilerplate trait implementations.
 
-pub use self::BinarySearchResult::*;
-
 use mem::transmute;
 use clone::Clone;
 use cmp::{PartialEq, PartialOrd, Eq, Ord, Ordering, Less, Equal, Greater, Equiv};
@@ -219,7 +217,7 @@ pub trait SlicePrelude<T> for Sized? {
     /// found; the fourth could match any position in `[1,4]`.
     ///
     /// ```rust
-    /// use std::slice::{Found, NotFound};
+    /// use std::slice::BinarySearchResult::{Found, NotFound};
     /// let s = [0i, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55];
     /// let s = s.as_slice();
     ///
@@ -548,7 +546,7 @@ impl<T> SlicePrelude<T> for [T] {
         while lim != 0 {
             let ix = base + (lim >> 1);
             match f(&self[ix]) {
-                Equal => return Found(ix),
+                Equal => return BinarySearchResult::Found(ix),
                 Less => {
                     base = ix + 1;
                     lim -= 1;
@@ -557,7 +555,7 @@ impl<T> SlicePrelude<T> for [T] {
             }
             lim >>= 1;
         }
-        return NotFound(base);
+        return BinarySearchResult::NotFound(base);
     }
 
     #[inline]
@@ -838,7 +836,7 @@ pub trait OrdSlicePrelude<T: Ord> for Sized? {
     /// found; the fourth could match any position in `[1,4]`.
     ///
     /// ```rust
-    /// use std::slice::{Found, NotFound};
+    /// use std::slice::BinarySearchResult::{Found, NotFound};
     /// let s = [0i, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55];
     /// let s = s.as_slice();
     ///
@@ -1613,8 +1611,8 @@ impl BinarySearchResult {
     /// Similar to `Result::ok`.
     pub fn found(&self) -> Option<uint> {
         match *self {
-            Found(i) => Some(i),
-            NotFound(_) => None
+            BinarySearchResult::Found(i) => Some(i),
+            BinarySearchResult::NotFound(_) => None
         }
     }
 
@@ -1622,8 +1620,8 @@ impl BinarySearchResult {
     /// Similar to `Result::err`.
     pub fn not_found(&self) -> Option<uint> {
         match *self {
-            Found(_) => None,
-            NotFound(i) => Some(i)
+            BinarySearchResult::Found(_) => None,
+            BinarySearchResult::NotFound(i) => Some(i)
         }
     }
 }
@@ -1634,9 +1632,7 @@ impl BinarySearchResult {
 // Free functions
 //
 
-/**
- * Converts a pointer to A into a slice of length 1 (without copying).
- */
+/// Converts a pointer to A into a slice of length 1 (without copying).
 #[unstable = "waiting for DST"]
 pub fn ref_slice<'a, A>(s: &'a A) -> &'a [A] {
     unsafe {
@@ -1644,9 +1640,7 @@ pub fn ref_slice<'a, A>(s: &'a A) -> &'a [A] {
     }
 }
 
-/**
- * Converts a pointer to A into a slice of length 1 (without copying).
- */
+/// Converts a pointer to A into a slice of length 1 (without copying).
 #[unstable = "waiting for DST"]
 pub fn mut_ref_slice<'a, A>(s: &'a mut A) -> &'a mut [A] {
     unsafe {
@@ -1710,10 +1704,8 @@ pub mod raw {
     use raw::Slice;
     use option::{None, Option, Some};
 
-    /**
-     * Form a slice from a pointer and length (as a number of units,
-     * not bytes).
-     */
+    /// Form a slice from a pointer and length (as a number of units,
+    /// not bytes).
     #[inline]
     #[deprecated = "renamed to slice::from_raw_buf"]
     pub unsafe fn buf_as_slice<T,U>(p: *const T, len: uint, f: |v: &[T]| -> U)
@@ -1724,10 +1716,8 @@ pub mod raw {
         }))
     }
 
-    /**
-     * Form a slice from a pointer and length (as a number of units,
-     * not bytes).
-     */
+    /// Form a slice from a pointer and length (as a number of units,
+    /// not bytes).
     #[inline]
     #[deprecated = "renamed to slice::from_raw_mut_buf"]
     pub unsafe fn mut_buf_as_slice<T,
@@ -1742,12 +1732,10 @@ pub mod raw {
         }))
     }
 
-    /**
-     * Returns a pointer to first element in slice and adjusts
-     * slice so it no longer contains that element. Returns None
-     * if the slice is empty. O(1).
-     */
-     #[inline]
+    /// Returns a pointer to first element in slice and adjusts
+    /// slice so it no longer contains that element. Returns None
+    /// if the slice is empty. O(1).
+    #[inline]
     #[deprecated = "inspect `Slice::{data, len}` manually (increment data by 1)"]
     pub unsafe fn shift_ptr<T>(slice: &mut Slice<T>) -> Option<*const T> {
         if slice.len == 0 { return None; }
@@ -1757,11 +1745,9 @@ pub mod raw {
         Some(head)
     }
 
-    /**
-     * Returns a pointer to last element in slice and adjusts
-     * slice so it no longer contains that element. Returns None
-     * if the slice is empty. O(1).
-     */
+    /// Returns a pointer to last element in slice and adjusts
+    /// slice so it no longer contains that element. Returns None
+    /// if the slice is empty. O(1).
     #[inline]
     #[deprecated = "inspect `Slice::{data, len}` manually (decrement len by 1)"]
     pub unsafe fn pop_ptr<T>(slice: &mut Slice<T>) -> Option<*const T> {

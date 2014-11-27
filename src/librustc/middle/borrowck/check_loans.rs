@@ -684,16 +684,13 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
         return ret;
     }
 
+    /// Reports an error if `expr` (which should be a path)
+    /// is using a moved/uninitialized value
     fn check_if_path_is_moved(&self,
                               id: ast::NodeId,
                               span: Span,
                               use_kind: MovedValueUseKind,
                               lp: &Rc<LoanPath<'tcx>>) {
-        /*!
-         * Reports an error if `expr` (which should be a path)
-         * is using a moved/uninitialized value
-         */
-
         debug!("check_if_path_is_moved(id={}, use_kind={}, lp={})",
                id, use_kind, lp.repr(self.bccx.tcx));
         let base_lp = owned_ptr_base_path_rc(lp);
@@ -708,30 +705,29 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
         });
     }
 
+    /// Reports an error if assigning to `lp` will use a
+    /// moved/uninitialized value. Mainly this is concerned with
+    /// detecting derefs of uninitialized pointers.
+    ///
+    /// For example:
+    ///
+    /// ```
+    /// let a: int;
+    /// a = 10; // ok, even though a is uninitialized
+    ///
+    /// struct Point { x: uint, y: uint }
+    /// let p: Point;
+    /// p.x = 22; // ok, even though `p` is uninitialized
+    ///
+    /// let p: ~Point;
+    /// (*p).x = 22; // not ok, p is uninitialized, can't deref
+    /// ```
     fn check_if_assigned_path_is_moved(&self,
                                        id: ast::NodeId,
                                        span: Span,
                                        use_kind: MovedValueUseKind,
                                        lp: &Rc<LoanPath<'tcx>>)
     {
-        /*!
-         * Reports an error if assigning to `lp` will use a
-         * moved/uninitialized value. Mainly this is concerned with
-         * detecting derefs of uninitialized pointers.
-         *
-         * For example:
-         *
-         *     let a: int;
-         *     a = 10; // ok, even though a is uninitialized
-         *
-         *     struct Point { x: uint, y: uint }
-         *     let p: Point;
-         *     p.x = 22; // ok, even though `p` is uninitialized
-         *
-         *     let p: ~Point;
-         *     (*p).x = 22; // not ok, p is uninitialized, can't deref
-         */
-
         match lp.kind {
             LpVar(_) | LpUpvar(_) => {
                 // assigning to `x` does not require that `x` is initialized

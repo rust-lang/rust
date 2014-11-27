@@ -421,13 +421,11 @@ macro_rules! declare_special_idents_and_keywords {(
         )*
     }
 
-    /**
-     * All the valid words that have meaning in the Rust language.
-     *
-     * Rust keywords are either 'strict' or 'reserved'.  Strict keywords may not
-     * appear as identifiers at all. Reserved keywords are not used anywhere in
-     * the language and may not appear as identifiers.
-     */
+    /// All the valid words that have meaning in the Rust language.
+    ///
+    /// Rust keywords are either 'strict' or 'reserved'.  Strict keywords may not
+    /// appear as identifiers at all. Reserved keywords are not used anywhere in
+    /// the language and may not appear as identifiers.
     pub mod keywords {
         pub use self::Keyword::*;
         use ast;

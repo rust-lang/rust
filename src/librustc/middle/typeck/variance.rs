@@ -8,189 +8,186 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
+//! This file infers the variance of type and lifetime parameters. The
+//! algorithm is taken from Section 4 of the paper "Taming the Wildcards:
+//! Combining Definition- and Use-Site Variance" published in PLDI'11 and
+//! written by Altidor et al., and hereafter referred to as The Paper.
+//!
+//! This inference is explicitly designed *not* to consider the uses of
+//! types within code. To determine the variance of type parameters
+//! defined on type `X`, we only consider the definition of the type `X`
+//! and the definitions of any types it references.
+//!
+//! We only infer variance for type parameters found on *types*: structs,
+//! enums, and traits. We do not infer variance for type parameters found
+//! on fns or impls. This is because those things are not type definitions
+//! and variance doesn't really make sense in that context.
+//!
+//! It is worth covering what variance means in each case. For structs and
+//! enums, I think it is fairly straightforward. The variance of the type
+//! or lifetime parameters defines whether `T<A>` is a subtype of `T<B>`
+//! (resp. `T<'a>` and `T<'b>`) based on the relationship of `A` and `B`
+//! (resp. `'a` and `'b`). (FIXME #3598 -- we do not currently make use of
+//! the variances we compute for type parameters.)
+//!
+//! ### Variance on traits
+//!
+//! The meaning of variance for trait parameters is more subtle and worth
+//! expanding upon. There are in fact two uses of the variance values we
+//! compute.
+//!
+//! #### Trait variance and object types
+//!
+//! The first is for object types. Just as with structs and enums, we can
+//! decide the subtyping relationship between two object types `&Trait<A>`
+//! and `&Trait<B>` based on the relationship of `A` and `B`. Note that
+//! for object types we ignore the `Self` type parameter -- it is unknown,
+//! and the nature of dynamic dispatch ensures that we will always call a
+//! function that is expected the appropriate `Self` type. However, we
+//! must be careful with the other type parameters, or else we could end
+//! up calling a function that is expecting one type but provided another.
+//!
+//! To see what I mean, consider a trait like so:
+//!
+//!     trait ConvertTo<A> {
+//!         fn convertTo(&self) -> A;
+//!     }
+//!
+//! Intuitively, If we had one object `O=&ConvertTo<Object>` and another
+//! `S=&ConvertTo<String>`, then `S <: O` because `String <: Object`
+//! (presuming Java-like "string" and "object" types, my go to examples
+//! for subtyping). The actual algorithm would be to compare the
+//! (explicit) type parameters pairwise respecting their variance: here,
+//! the type parameter A is covariant (it appears only in a return
+//! position), and hence we require that `String <: Object`.
+//!
+//! You'll note though that we did not consider the binding for the
+//! (implicit) `Self` type parameter: in fact, it is unknown, so that's
+//! good. The reason we can ignore that parameter is precisely because we
+//! don't need to know its value until a call occurs, and at that time (as
+//! you said) the dynamic nature of virtual dispatch means the code we run
+//! will be correct for whatever value `Self` happens to be bound to for
+//! the particular object whose method we called. `Self` is thus different
+//! from `A`, because the caller requires that `A` be known in order to
+//! know the return type of the method `convertTo()`. (As an aside, we
+//! have rules preventing methods where `Self` appears outside of the
+//! receiver position from being called via an object.)
+//!
+//! #### Trait variance and vtable resolution
+//!
+//! But traits aren't only used with objects. They're also used when
+//! deciding whether a given impl satisfies a given trait bound. To set the
+//! scene here, imagine I had a function:
+//!
+//!     fn convertAll<A,T:ConvertTo<A>>(v: &[T]) {
+//!         ...
+//!     }
+//!
+//! Now imagine that I have an implementation of `ConvertTo` for `Object`:
+//!
+//!     impl ConvertTo<int> for Object { ... }
+//!
+//! And I want to call `convertAll` on an array of strings. Suppose
+//! further that for whatever reason I specifically supply the value of
+//! `String` for the type parameter `T`:
+//!
+//!     let mut vector = ~["string", ...];
+//!     convertAll::<int, String>(v);
+//!
+//! Is this legal? To put another way, can we apply the `impl` for
+//! `Object` to the type `String`? The answer is yes, but to see why
+//! we have to expand out what will happen:
+//!
+//! - `convertAll` will create a pointer to one of the entries in the
+//!   vector, which will have type `&String`
+//! - It will then call the impl of `convertTo()` that is intended
+//!   for use with objects. This has the type:
+//!
+//!       fn(self: &Object) -> int
+//!
+//!   It is ok to provide a value for `self` of type `&String` because
+//!   `&String <: &Object`.
+//!
+//! OK, so intuitively we want this to be legal, so let's bring this back
+//! to variance and see whether we are computing the correct result. We
+//! must first figure out how to phrase the question "is an impl for
+//! `Object,int` usable where an impl for `String,int` is expected?"
+//!
+//! Maybe it's helpful to think of a dictionary-passing implementation of
+//! type classes. In that case, `convertAll()` takes an implicit parameter
+//! representing the impl. In short, we *have* an impl of type:
+//!
+//!     V_O = ConvertTo<int> for Object
+//!
+//! and the function prototype expects an impl of type:
+//!
+//!     V_S = ConvertTo<int> for String
+//!
+//! As with any argument, this is legal if the type of the value given
+//! (`V_O`) is a subtype of the type expected (`V_S`). So is `V_O <: V_S`?
+//! The answer will depend on the variance of the various parameters. In
+//! this case, because the `Self` parameter is contravariant and `A` is
+//! covariant, it means that:
+//!
+//!     V_O <: V_S iff
+//!         int <: int
+//!         String <: Object
+//!
+//! These conditions are satisfied and so we are happy.
+//!
+//! ### The algorithm
+//!
+//! The basic idea is quite straightforward. We iterate over the types
+//! defined and, for each use of a type parameter X, accumulate a
+//! constraint indicating that the variance of X must be valid for the
+//! variance of that use site. We then iteratively refine the variance of
+//! X until all constraints are met. There is *always* a sol'n, because at
+//! the limit we can declare all type parameters to be invariant and all
+//! constraints will be satisfied.
+//!
+//! As a simple example, consider:
+//!
+//!     enum Option<A> { Some(A), None }
+//!     enum OptionalFn<B> { Some(|B|), None }
+//!     enum OptionalMap<C> { Some(|C| -> C), None }
+//!
+//! Here, we will generate the constraints:
+//!
+//!     1. V(A) <= +
+//!     2. V(B) <= -
+//!     3. V(C) <= +
+//!     4. V(C) <= -
+//!
+//! These indicate that (1) the variance of A must be at most covariant;
+//! (2) the variance of B must be at most contravariant; and (3, 4) the
+//! variance of C must be at most covariant *and* contravariant. All of these
+//! results are based on a variance lattice defined as follows:
+//!
+//!       *      Top (bivariant)
+//!    -     +
+//!       o      Bottom (invariant)
+//!
+//! Based on this lattice, the solution V(A)=+, V(B)=-, V(C)=o is the
+//! optimal solution. Note that there is always a naive solution which
+//! just declares all variables to be invariant.
+//!
+//! You may be wondering why fixed-point iteration is required. The reason
+//! is that the variance of a use site may itself be a function of the
+//! variance of other type parameters. In full generality, our constraints
+//! take the form:
+//!
+//!     V(X) <= Term
+//!     Term := + | - | * | o | V(X) | Term x Term
+//!
+//! Here the notation V(X) indicates the variance of a type/region
+//! parameter `X` with respect to its defining class. `Term x Term`
+//! represents the "variance transform" as defined in the paper:
+//!
+//!   If the variance of a type variable `X` in type expression `E` is `V2`
+//!   and the definition-site variance of the [corresponding] type parameter
+//!   of a class `C` is `V1`, then the variance of `X` in the type expression
+//!   `C<E>` is `V3 = V1.xform(V2)`.
 
-This file infers the variance of type and lifetime parameters. The
-algorithm is taken from Section 4 of the paper "Taming the Wildcards:
-Combining Definition- and Use-Site Variance" published in PLDI'11 and
-written by Altidor et al., and hereafter referred to as The Paper.
-
-This inference is explicitly designed *not* to consider the uses of
-types within code. To determine the variance of type parameters
-defined on type `X`, we only consider the definition of the type `X`
-and the definitions of any types it references.
-
-We only infer variance for type parameters found on *types*: structs,
-enums, and traits. We do not infer variance for type parameters found
-on fns or impls. This is because those things are not type definitions
-and variance doesn't really make sense in that context.
-
-It is worth covering what variance means in each case. For structs and
-enums, I think it is fairly straightforward. The variance of the type
-or lifetime parameters defines whether `T<A>` is a subtype of `T<B>`
-(resp. `T<'a>` and `T<'b>`) based on the relationship of `A` and `B`
-(resp. `'a` and `'b`). (FIXME #3598 -- we do not currently make use of
-the variances we compute for type parameters.)
-
-### Variance on traits
-
-The meaning of variance for trait parameters is more subtle and worth
-expanding upon. There are in fact two uses of the variance values we
-compute.
-
-#### Trait variance and object types
-
-The first is for object types. Just as with structs and enums, we can
-decide the subtyping relationship between two object types `&Trait<A>`
-and `&Trait<B>` based on the relationship of `A` and `B`. Note that
-for object types we ignore the `Self` type parameter -- it is unknown,
-and the nature of dynamic dispatch ensures that we will always call a
-function that is expected the appropriate `Self` type. However, we
-must be careful with the other type parameters, or else we could end
-up calling a function that is expecting one type but provided another.
-
-To see what I mean, consider a trait like so:
-
-    trait ConvertTo<A> {
-        fn convertTo(&self) -> A;
-    }
-
-Intuitively, If we had one object `O=&ConvertTo<Object>` and another
-`S=&ConvertTo<String>`, then `S <: O` because `String <: Object`
-(presuming Java-like "string" and "object" types, my go to examples
-for subtyping). The actual algorithm would be to compare the
-(explicit) type parameters pairwise respecting their variance: here,
-the type parameter A is covariant (it appears only in a return
-position), and hence we require that `String <: Object`.
-
-You'll note though that we did not consider the binding for the
-(implicit) `Self` type parameter: in fact, it is unknown, so that's
-good. The reason we can ignore that parameter is precisely because we
-don't need to know its value until a call occurs, and at that time (as
-you said) the dynamic nature of virtual dispatch means the code we run
-will be correct for whatever value `Self` happens to be bound to for
-the particular object whose method we called. `Self` is thus different
-from `A`, because the caller requires that `A` be known in order to
-know the return type of the method `convertTo()`. (As an aside, we
-have rules preventing methods where `Self` appears outside of the
-receiver position from being called via an object.)
-
-#### Trait variance and vtable resolution
-
-But traits aren't only used with objects. They're also used when
-deciding whether a given impl satisfies a given trait bound. To set the
-scene here, imagine I had a function:
-
-    fn convertAll<A,T:ConvertTo<A>>(v: &[T]) {
-        ...
-    }
-
-Now imagine that I have an implementation of `ConvertTo` for `Object`:
-
-    impl ConvertTo<int> for Object { ... }
-
-And I want to call `convertAll` on an array of strings. Suppose
-further that for whatever reason I specifically supply the value of
-`String` for the type parameter `T`:
-
-    let mut vector = ~["string", ...];
-    convertAll::<int, String>(v);
-
-Is this legal? To put another way, can we apply the `impl` for
-`Object` to the type `String`? The answer is yes, but to see why
-we have to expand out what will happen:
-
-- `convertAll` will create a pointer to one of the entries in the
-  vector, which will have type `&String`
-- It will then call the impl of `convertTo()` that is intended
-  for use with objects. This has the type:
-
-      fn(self: &Object) -> int
-
-  It is ok to provide a value for `self` of type `&String` because
-  `&String <: &Object`.
-
-OK, so intuitively we want this to be legal, so let's bring this back
-to variance and see whether we are computing the correct result. We
-must first figure out how to phrase the question "is an impl for
-`Object,int` usable where an impl for `String,int` is expected?"
-
-Maybe it's helpful to think of a dictionary-passing implementation of
-type classes. In that case, `convertAll()` takes an implicit parameter
-representing the impl. In short, we *have* an impl of type:
-
-    V_O = ConvertTo<int> for Object
-
-and the function prototype expects an impl of type:
-
-    V_S = ConvertTo<int> for String
-
-As with any argument, this is legal if the type of the value given
-(`V_O`) is a subtype of the type expected (`V_S`). So is `V_O <: V_S`?
-The answer will depend on the variance of the various parameters. In
-this case, because the `Self` parameter is contravariant and `A` is
-covariant, it means that:
-
-    V_O <: V_S iff
-        int <: int
-        String <: Object
-
-These conditions are satisfied and so we are happy.
-
-### The algorithm
-
-The basic idea is quite straightforward. We iterate over the types
-defined and, for each use of a type parameter X, accumulate a
-constraint indicating that the variance of X must be valid for the
-variance of that use site. We then iteratively refine the variance of
-X until all constraints are met. There is *always* a sol'n, because at
-the limit we can declare all type parameters to be invariant and all
-constraints will be satisfied.
-
-As a simple example, consider:
-
-    enum Option<A> { Some(A), None }
-    enum OptionalFn<B> { Some(|B|), None }
-    enum OptionalMap<C> { Some(|C| -> C), None }
-
-Here, we will generate the constraints:
-
-    1. V(A) <= +
-    2. V(B) <= -
-    3. V(C) <= +
-    4. V(C) <= -
-
-These indicate that (1) the variance of A must be at most covariant;
-(2) the variance of B must be at most contravariant; and (3, 4) the
-variance of C must be at most covariant *and* contravariant. All of these
-results are based on a variance lattice defined as follows:
-
-      *      Top (bivariant)
-   -     +
-      o      Bottom (invariant)
-
-Based on this lattice, the solution V(A)=+, V(B)=-, V(C)=o is the
-optimal solution. Note that there is always a naive solution which
-just declares all variables to be invariant.
-
-You may be wondering why fixed-point iteration is required. The reason
-is that the variance of a use site may itself be a function of the
-variance of other type parameters. In full generality, our constraints
-take the form:
-
-    V(X) <= Term
-    Term := + | - | * | o | V(X) | Term x Term
-
-Here the notation V(X) indicates the variance of a type/region
-parameter `X` with respect to its defining class. `Term x Term`
-represents the "variance transform" as defined in the paper:
-
-  If the variance of a type variable `X` in type expression `E` is `V2`
-  and the definition-site variance of the [corresponding] type parameter
-  of a class `C` is `V1`, then the variance of `X` in the type expression
-  `C<E>` is `V3 = V1.xform(V2)`.
-
-*/
 use self::VarianceTerm::*;
 use self::ParamKind::*;
 
@@ -219,18 +216,16 @@ pub fn infer_variance(tcx: &ty::ctxt) {
     tcx.variance_computed.set(true);
 }
 
-/**************************************************************************
- * Representing terms
- *
- * Terms are structured as a straightforward tree. Rather than rely on
- * GC, we allocate terms out of a bounded arena (the lifetime of this
- * arena is the lifetime 'a that is threaded around).
- *
- * We assign a unique index to each type/region parameter whose variance
- * is to be inferred. We refer to such variables as "inferreds". An
- * `InferredIndex` is a newtype'd int representing the index of such
- * a variable.
- */
+// Representing terms
+//
+// Terms are structured as a straightforward tree. Rather than rely on
+// GC, we allocate terms out of a bounded arena (the lifetime of this
+// arena is the lifetime 'a that is threaded around).
+//
+// We assign a unique index to each type/region parameter whose variance
+// is to be inferred. We refer to such variables as "inferreds". An
+// `InferredIndex` is a newtype'd int representing the index of such
+// a variable.
 
 type VarianceTermPtr<'a> = &'a VarianceTerm<'a>;
 
@@ -253,9 +248,7 @@ impl<'a> fmt::Show for VarianceTerm<'a> {
     }
 }
 
-/**************************************************************************
- * The first pass over the crate simply builds up the set of inferreds.
- */
+// The first pass over the crate simply builds up the set of inferreds.
 
 struct TermsContext<'a, 'tcx: 'a> {
     tcx: &'a ty::ctxt<'tcx>,
@@ -399,12 +392,10 @@ impl<'a, 'tcx, 'v> Visitor<'v> for TermsContext<'a, 'tcx> {
     }
 }
 
-/**************************************************************************
- * Constraint construction and representation
- *
- * The second pass over the AST determines the set of constraints.
- * We walk the set of items and, for each member, generate new constraints.
- */
+// Constraint construction and representation
+//
+// The second pass over the AST determines the set of constraints.
+// We walk the set of items and, for each member, generate new constraints.
 
 struct ConstraintContext<'a, 'tcx: 'a> {
     terms_cx: TermsContext<'a, 'tcx>,
@@ -632,6 +623,8 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
         return result;
     }
 
+    /// Returns a variance term representing the declared variance of the type/region parameter
+    /// with the given id.
     fn declared_variance(&self,
                          param_def_id: ast::DefId,
                          item_def_id: ast::DefId,
@@ -639,11 +632,6 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                          space: ParamSpace,
                          index: uint)
                          -> VarianceTermPtr<'a> {
-        /*!
-         * Returns a variance term representing the declared variance of
-         * the type/region parameter with the given id.
-         */
-
         assert_eq!(param_def_id.krate, item_def_id.krate);
 
         if self.invariant_lang_items[kind as uint] == Some(item_def_id) {
@@ -944,14 +932,12 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
     }
 }
 
-/**************************************************************************
- * Constraint solving
- *
- * The final phase iterates over the constraints, refining the variance
- * for each inferred until a fixed point is reached. This will be the
- * optimal solution to the constraints. The final variance for each
- * inferred is then written into the `variance_map` in the tcx.
- */
+// Constraint solving
+//
+// The final phase iterates over the constraints, refining the variance
+// for each inferred until a fixed point is reached. This will be the
+// optimal solution to the constraints. The final variance for each
+// inferred is then written into the `variance_map` in the tcx.
 
 struct SolveContext<'a, 'tcx: 'a> {
     terms_cx: TermsContext<'a, 'tcx>,
@@ -1086,9 +1072,7 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
     }
 }
 
-/**************************************************************************
- * Miscellany transformations on variance
- */
+// Miscellany transformations on variance
 
 trait Xform {
     fn xform(self, v: Self) -> Self;

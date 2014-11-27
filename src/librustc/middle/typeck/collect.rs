@@ -1944,6 +1944,9 @@ fn get_or_create_type_parameter_def<'tcx,AC>(this: &AC,
     def
 }
 
+/// Translate the AST's notion of ty param bounds (which are an enum consisting of a newtyped Ty or
+/// a region) to ty's notion of ty param bounds, which can either be user-defined traits, or the
+/// built-in trait (formerly known as kind): Send.
 fn compute_bounds<'tcx,AC>(this: &AC,
                            name_of_bounded_thing: ast::Name,
                            param_ty: ty::ParamTy,
@@ -1953,13 +1956,6 @@ fn compute_bounds<'tcx,AC>(this: &AC,
                            where_clause: &ast::WhereClause)
                            -> ty::ParamBounds<'tcx>
                            where AC: AstConv<'tcx> {
-    /*!
-     * Translate the AST's notion of ty param bounds (which are an
-     * enum consisting of a newtyped Ty or a region) to ty's
-     * notion of ty param bounds, which can either be user-defined
-     * traits, or the built-in trait (formerly known as kind): Send.
-     */
-
     let mut param_bounds = conv_param_bounds(this,
                                              span,
                                              param_ty,
@@ -2040,16 +2036,13 @@ fn conv_param_bounds<'tcx,AC>(this: &AC,
     }
 }
 
+/// Merges the bounds declared on a type parameter with those found from where clauses into a
+/// single list.
 fn merge_param_bounds<'a>(tcx: &ty::ctxt,
                           param_ty: ty::ParamTy,
                           ast_bounds: &'a [ast::TyParamBound],
                           where_clause: &'a ast::WhereClause)
                           -> Vec<&'a ast::TyParamBound> {
-    /*!
-     * Merges the bounds declared on a type parameter with those
-     * found from where clauses into a single list.
-     */
-
     let mut result = Vec::new();
 
     for ast_bound in ast_bounds.iter() {

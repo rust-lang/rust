@@ -13,7 +13,7 @@ use syntax::ast;
 
 use self::SimplifiedType::*;
 
-/** See `simplify_type */
+/// See `simplify_type
 #[deriving(Clone, PartialEq, Eq, Hash)]
 pub enum SimplifiedType {
     BoolSimplifiedType,
@@ -33,26 +33,20 @@ pub enum SimplifiedType {
     ParameterSimplifiedType,
 }
 
+/// Tries to simplify a type by dropping type parameters, deref'ing away any reference types, etc.
+/// The idea is to get something simple that we can use to quickly decide if two types could unify
+/// during method lookup.
+///
+/// If `can_simplify_params` is false, then we will fail to simplify type parameters entirely. This
+/// is useful when those type parameters would be instantiated with fresh type variables, since
+/// then we can't say much about whether two types would unify. Put another way,
+/// `can_simplify_params` should be true if type parameters appear free in `ty` and `false` if they
+/// are to be considered bound.
 pub fn simplify_type(tcx: &ty::ctxt,
                      ty: Ty,
                      can_simplify_params: bool)
                      -> Option<SimplifiedType>
 {
-    /*!
-     * Tries to simplify a type by dropping type parameters, deref'ing
-     * away any reference types, etc. The idea is to get something
-     * simple that we can use to quickly decide if two types could
-     * unify during method lookup.
-     *
-     * If `can_simplify_params` is false, then we will fail to
-     * simplify type parameters entirely. This is useful when those
-     * type parameters would be instantiated with fresh type
-     * variables, since then we can't say much about whether two types
-     * would unify. Put another way, `can_simplify_params` should be
-     * true if type parameters appear free in `ty` and `false` if they
-     * are to be considered bound.
-     */
-
     match ty.sty {
         ty::ty_bool => Some(BoolSimplifiedType),
         ty::ty_char => Some(CharSimplifiedType),

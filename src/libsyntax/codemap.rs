@@ -10,18 +10,12 @@
 //
 // ignore-lexer-test FIXME #15679
 
-/*!
-
-The CodeMap tracks all the source code used within a single crate, mapping
-from integer byte positions to the original source code location. Each bit of
-source parsed during crate parsing (typically files, in-memory strings, or
-various bits of macro expansion) cover a continuous range of bytes in the
-CodeMap and are represented by FileMaps. Byte positions are stored in `spans`
-and used pervasively in the compiler. They are absolute positions within the
-CodeMap, which upon request can be converted to line and column information,
-source code snippets, etc.
-
-*/
+//! The CodeMap tracks all the source code used within a single crate, mapping from integer byte
+//! positions to the original source code location. Each bit of source parsed during crate parsing
+//! (typically files, in-memory strings, or various bits of macro expansion) cover a continuous
+//! range of bytes in the CodeMap and are represented by FileMaps. Byte positions are stored in
+//! `spans` and used pervasively in the compiler. They are absolute positions within the CodeMap,
+//! which upon request can be converted to line and column information, source code snippets, etc.
 
 pub use self::MacroFormat::*;
 
@@ -83,12 +77,10 @@ impl Sub<CharPos,CharPos> for CharPos {
     }
 }
 
-/**
-Spans represent a region of code, used for error reporting. Positions in spans
-are *absolute* positions from the beginning of the codemap, not positions
-relative to FileMaps. Methods on the CodeMap can be used to relate spans back
-to the original source.
-*/
+/// Spans represent a region of code, used for error reporting. Positions in spans
+/// are *absolute* positions from the beginning of the codemap, not positions
+/// relative to FileMaps. Methods on the CodeMap can be used to relate spans back
+/// to the original source.
 #[deriving(Clone, Show, Hash)]
 pub struct Span {
     pub lo: BytePos,
