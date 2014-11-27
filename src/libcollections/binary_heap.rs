@@ -485,7 +485,7 @@ impl<T: Ord> BinaryHeap<T> {
         let mut end = q.len();
         while end > 1 {
             end -= 1;
-            q.data.as_mut_slice().swap(0, end);
+            q.data.swap(0, end);
             q.siftdown_range(0, end)
         }
         q.into_vec()

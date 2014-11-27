@@ -211,7 +211,7 @@ impl<T> Vec<T> {
             let mut xs = Vec::with_capacity(length);
             while xs.len < length {
                 let len = xs.len;
-                ptr::write(xs.as_mut_slice().unsafe_mut(len), op(len));
+                ptr::write(xs.unsafe_mut(len), op(len));
                 xs.len += 1;
             }
             xs
@@ -328,7 +328,7 @@ impl<T: Clone> Vec<T> {
             let mut xs = Vec::with_capacity(length);
             while xs.len < length {
                 let len = xs.len;
-                ptr::write(xs.as_mut_slice().unsafe_mut(len),
+                ptr::write(xs.unsafe_mut(len),
                            value.clone());
                 xs.len += 1;
             }
@@ -361,7 +361,7 @@ impl<T: Clone> Vec<T> {
             // during the loop can prevent this optimisation.
             unsafe {
                 ptr::write(
-                    self.as_mut_slice().unsafe_mut(len),
+                    self.unsafe_mut(len),
                     other.unsafe_get(i).clone());
                 self.set_len(len + 1);
             }
@@ -896,7 +896,7 @@ impl<T> Vec<T> {
     pub fn swap_remove(&mut self, index: uint) -> Option<T> {
         let length = self.len();
         if length > 0 && index < length - 1 {
-            self.as_mut_slice().swap(index, length - 1);
+            self.swap(index, length - 1);
         } else if index >= length {
             return None
         }
@@ -1231,7 +1231,7 @@ impl<T: PartialEq> Vec<T> {
             if ln < 1 { return; }
 
             // Avoid bounds checks by using unsafe pointers.
-            let p = self.as_mut_slice().as_mut_ptr();
+            let p = self.as_mut_ptr();
             let mut r = 1;
             let mut w = 1;
 
@@ -1293,7 +1293,7 @@ impl<T> Drop for Vec<T> {
         // zeroed (when moving out, because of #[unsafe_no_drop_flag]).
         if self.cap != 0 {
             unsafe {
-                for x in self.as_mut_slice().iter() {
+                for x in self.iter() {
                     ptr::read(x);
                 }
                 dealloc(self.ptr, self.cap)
