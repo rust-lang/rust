@@ -1065,7 +1065,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 // the same bindings, and we also consider the first pattern to be
                 // the "authoritative" set of ids
                 let arm_succ =
-                    self.define_bindings_in_arm_pats(arm.pats.as_slice().head().map(|p| &**p),
+                    self.define_bindings_in_arm_pats(arm.pats.head().map(|p| &**p),
                                                      guard_succ);
                 self.merge_from_succ(ln, arm_succ, first_merge);
                 first_merge = false;
@@ -1431,7 +1431,7 @@ fn check_arm(this: &mut Liveness, arm: &ast::Arm) {
     // only consider the first pattern; any later patterns must have
     // the same bindings, and we also consider the first pattern to be
     // the "authoritative" set of ids
-    this.arm_pats_bindings(arm.pats.as_slice().head().map(|p| &**p), |this, ln, var, sp, id| {
+    this.arm_pats_bindings(arm.pats.head().map(|p| &**p), |this, ln, var, sp, id| {
         this.warn_about_unused(sp, id, ln, var);
     });
     visit::walk_arm(this, arm);

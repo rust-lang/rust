@@ -902,7 +902,7 @@ impl NonSnakeCase {
                 let mut buf = String::new();
                 if s.is_empty() { continue; }
                 for ch in s.chars() {
-                    if !buf.is_empty() && buf.as_slice() != "'"
+                    if !buf.is_empty() && buf != "'"
                                        && ch.is_uppercase()
                                        && !last_upper {
                         words.push(buf);

@@ -277,7 +277,7 @@ fn visit_item(e: &Env, i: &ast::Item) {
 
 fn register_native_lib(sess: &Session, span: Option<Span>, name: String,
                        kind: cstore::NativeLibaryKind) {
-    if name.as_slice().is_empty() {
+    if name.is_empty() {
         match span {
             Some(span) => {
                 sess.span_err(span, "#[link(name = \"\")] given with \
@@ -304,7 +304,7 @@ fn existing_match(e: &Env, name: &str,
                   hash: Option<&Svh>) -> Option<ast::CrateNum> {
     let mut ret = None;
     e.sess.cstore.iter_crate_data(|cnum, data| {
-        if data.name.as_slice() != name { return }
+        if data.name != name { return }
 
         match hash {
             Some(hash) if *hash == data.hash() => { ret = Some(cnum); return }

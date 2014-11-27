@@ -257,7 +257,7 @@ pub fn build_session_(sopts: config::Options,
 
     let can_print_warnings = sopts.lint_opts
         .iter()
-        .filter(|&&(ref key, _)| key.as_slice() == "warnings")
+        .filter(|&&(ref key, _)| *key == "warnings")
         .map(|&(_, ref level)| *level != lint::Allow)
         .last()
         .unwrap_or(true);
