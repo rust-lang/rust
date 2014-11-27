@@ -852,6 +852,12 @@ pub trait Reader {
     fn read_i8(&mut self) -> IoResult<i8> {
         self.read_byte().map(|i| i as i8)
     }
+
+    /// Skip `n` bytes of input.
+    fn skip_exact(&mut self, n: uint) -> IoResult<()> {
+        try!(self.read_exact(n));
+        Ok(())
+    }
 }
 
 /// A reader which can be converted to a RefReader.
@@ -909,10 +915,21 @@ impl<'a> Reader for Box<Reader+'a> {
         let reader: &mut Reader = &mut **self;
         reader.read(buf)
     }
+
+    fn skip_exact(&mut self, n: uint) -> IoResult<()> {
+        let reader: &mut Reader = &mut **self;
+        reader.skip_exact(n)
+    }
 }
 
 impl<'a> Reader for &'a mut Reader+'a {
-    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> { (*self).read(buf) }
+    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
+        (*self).read(buf)
+    }
+
+    fn skip_exact(&mut self, n: uint) -> IoResult<()> {
+        (*self).skip_exact(n)
+    }
 }
 
 /// Returns a slice of `v` between `start` and `end`.
@@ -969,7 +986,13 @@ pub struct RefReader<'a, R:'a> {
 }
 
 impl<'a, R: Reader> Reader for RefReader<'a, R> {
-    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> { self.inner.read(buf) }
+    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
+        self.inner.read(buf)
+    }
+
+    fn skip_exact(&mut self, n: uint) -> IoResult<()> {
+        self.inner.skip_exact(n)
+    }
 }
 
 impl<'a, R: Buffer> Buffer for RefReader<'a, R> {

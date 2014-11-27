@@ -119,6 +119,18 @@ impl<R: Reader> Reader for BufferedReader<R> {
         self.pos += nread;
         Ok(nread)
     }
+
+    fn skip_exact(&mut self, n: uint) -> IoResult<()> {
+        if self.pos + n <= self.cap {
+            self.pos += n;
+        }
+        else {
+            let skip = n - (self.cap - self.pos);
+            self.pos = self.cap;
+            try!(self.inner.skip_exact(skip));
+        }
+        Ok(())
+    }
 }
 
 /// Wraps a Writer and buffers output to it
@@ -371,6 +383,10 @@ impl<S: Stream> Buffer for BufferedStream<S> {
 impl<S: Stream> Reader for BufferedStream<S> {
     fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
         self.inner.read(buf)
+    }
+
+    fn skip_exact(&mut self, n: uint) -> IoResult<()> {
+        self.inner.skip_exact(n)
     }
 }
 
