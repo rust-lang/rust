@@ -2844,7 +2844,7 @@ impl<'a> State<'a> {
             comments::BlankLine => {
                 // We need to do at least one, possibly two hardbreaks.
                 let is_semi = match self.s.last_token() {
-                    pp::String(s, _) => ";" == s.as_slice(),
+                    pp::String(s, _) => ";" == s,
                     _ => false
                 };
                 if is_semi || self.is_begin() || self.is_end() {

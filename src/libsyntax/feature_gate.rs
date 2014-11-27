@@ -132,7 +132,7 @@ impl<'a> Context<'a> {
     }
 
     fn has_feature(&self, feature: &str) -> bool {
-        self.features.iter().any(|n| n.as_slice() == feature)
+        self.features.iter().any(|&n| n == feature)
     }
 }
 
