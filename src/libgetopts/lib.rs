@@ -92,11 +92,10 @@
 
 #[cfg(test)] #[phase(plugin, link)] extern crate log;
 
-pub use self::Name::*;
-pub use self::HasArg::*;
-pub use self::Occur::*;
-pub use self::Fail_::*;
-pub use self::FailType::*;
+use self::Name::*;
+use self::HasArg::*;
+use self::Occur::*;
+use self::Fail::*;
 use self::Optval::*;
 
 use std::fmt;
@@ -191,7 +190,7 @@ pub struct Matches {
 /// expected format. Use the `Show` implementation to output detailed
 /// information.
 #[deriving(Clone, PartialEq, Eq)]
-pub enum Fail_ {
+pub enum Fail {
     /// The option requires an argument but none was passed.
     ArgumentMissing(String),
     /// The passed option is not declared among the possible options.
@@ -204,19 +203,8 @@ pub enum Fail_ {
     UnexpectedArgument(String),
 }
 
-/// The type of failure that occurred.
-#[deriving(PartialEq, Eq)]
-#[allow(missing_docs)]
-pub enum FailType {
-    ArgumentMissing_,
-    UnrecognizedOption_,
-    OptionMissing_,
-    OptionDuplicated_,
-    UnexpectedArgument_,
-}
-
 /// The result of parsing a command line with a set of options.
-pub type Result = result::Result<Matches, Fail_>;
+pub type Result = result::Result<Matches, Fail>;
 
 impl Name {
     fn from_str(nm: &str) -> Name {
@@ -264,7 +252,7 @@ impl OptGroup {
             (1,_) => Opt {
                 name: Long((long_name)),
                 hasarg: hasarg,
-                occur:  occur,
+                occur: occur,
                 aliases: vec!(
                     Opt {
                         name: Short(short_name.as_slice().char_at(0)),
@@ -366,11 +354,12 @@ impl Matches {
     pub fn opt_default(&self, nm: &str, def: &str) -> Option<String> {
         let vals = self.opt_vals(nm);
         if vals.is_empty() {
-            return None;
-        }
-        match vals[0] {
-            Val(ref s) => Some((*s).clone()),
-            _ => Some(def.to_string())
+            None
+        } else {
+            match vals[0] {
+                Val(ref s) => Some((*s).clone()),
+                _ => Some(def.to_string())
+            }
         }
     }
 
@@ -534,15 +523,15 @@ pub fn opt(short_name: &str,
     }
 }
 
-impl Fail_ {
-    /// Convert a `Fail_` enum into an error string.
+impl Fail {
+    /// Convert a `Fail` enum into an error string.
     #[deprecated="use `Show` (`{}` format specifier)"]
     pub fn to_err_msg(self) -> String {
         self.to_string()
     }
 }
 
-impl fmt::Show for Fail_ {
+impl fmt::Show for Fail {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             ArgumentMissing(ref nm) => {
@@ -570,7 +559,7 @@ impl fmt::Show for Fail_ {
 /// `opt_str`, etc. to interrogate results.
 /// # Panics
 ///
-/// Returns `Err(Fail_)` on failure: use the `Show` implementation of `Fail_` to display
+/// Returns `Err(Fail)` on failure: use the `Show` implementation of `Fail` to display
 /// information about it.
 pub fn getopts(args: &[String], optgrps: &[OptGroup]) -> Result {
     let opts: Vec<Opt> = optgrps.iter().map(|x| x.long_to_short()).collect();
@@ -681,21 +670,15 @@ pub fn getopts(args: &[String], optgrps: &[OptGroup]) -> Result {
         }
         i += 1;
     }
-    i = 0u;
-    while i < n_opts {
+    for i in range(0u, n_opts) {
         let n = vals[i].len();
         let occ = opts[i].occur;
-        if occ == Req {
-            if n == 0 {
-                return Err(OptionMissing(opts[i].name.to_string()));
-            }
+        if occ == Req && n == 0 {
+            return Err(OptionMissing(opts[i].name.to_string()));
         }
-        if occ != Multi {
-            if n > 1 {
-                return Err(OptionDuplicated(opts[i].name.to_string()));
-            }
+        if occ != Multi && n > 1 {
+            return Err(OptionDuplicated(opts[i].name.to_string()));
         }
-        i += 1;
     }
     Ok(Matches {
         opts: opts,
@@ -966,19 +949,10 @@ fn test_split_within() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use super::Fail::*;
 
     use std::result::{Err, Ok};
     use std::result;
-
-    fn check_fail_type(f: Fail_, ft: FailType) {
-        match f {
-          ArgumentMissing(_) => assert!(ft == ArgumentMissing_),
-          UnrecognizedOption(_) => assert!(ft == UnrecognizedOption_),
-          OptionMissing(_) => assert!(ft == OptionMissing_),
-          OptionDuplicated(_) => assert!(ft == OptionDuplicated_),
-          UnexpectedArgument(_) => assert!(ft == UnexpectedArgument_)
-        }
-    }
 
     // Tests for reqopt
     #[test]
@@ -1013,7 +987,7 @@ mod tests {
         let opts = vec!(reqopt("t", "test", "testing", "TEST"));
         let rs = getopts(args.as_slice(), opts.as_slice());
         match rs {
-          Err(f) => check_fail_type(f, OptionMissing_),
+          Err(OptionMissing(_)) => {},
           _ => panic!()
         }
     }
@@ -1024,12 +998,12 @@ mod tests {
         let opts = vec!(reqopt("t", "test", "testing", "TEST"));
         let rs = getopts(long_args.as_slice(), opts.as_slice());
         match rs {
-          Err(f) => check_fail_type(f, ArgumentMissing_),
+          Err(ArgumentMissing(_)) => {},
           _ => panic!()
         }
         let short_args = vec!("-t".to_string());
         match getopts(short_args.as_slice(), opts.as_slice()) {
-          Err(f) => check_fail_type(f, ArgumentMissing_),
+          Err(ArgumentMissing(_)) => {},
           _ => panic!()
         }
     }
@@ -1040,7 +1014,7 @@ mod tests {
         let opts = vec!(reqopt("t", "test", "testing", "TEST"));
         let rs = getopts(args.as_slice(), opts.as_slice());
         match rs {
-          Err(f) => check_fail_type(f, OptionDuplicated_),
+          Err(OptionDuplicated(_)) => {},
           _ => panic!()
         }
     }
@@ -1092,12 +1066,12 @@ mod tests {
         let opts = vec!(optopt("t", "test", "testing", "TEST"));
         let rs = getopts(long_args.as_slice(), opts.as_slice());
         match rs {
-          Err(f) => check_fail_type(f, ArgumentMissing_),
+          Err(ArgumentMissing(_)) => {},
           _ => panic!()
         }
         let short_args = vec!("-t".to_string());
         match getopts(short_args.as_slice(), opts.as_slice()) {
-          Err(f) => check_fail_type(f, ArgumentMissing_),
+          Err(ArgumentMissing(_)) => {},
           _ => panic!()
         }
     }
@@ -1108,7 +1082,7 @@ mod tests {
         let opts = vec!(optopt("t", "test", "testing", "TEST"));
         let rs = getopts(args.as_slice(), opts.as_slice());
         match rs {
-          Err(f) => check_fail_type(f, OptionDuplicated_),
+          Err(OptionDuplicated(_)) => {},
           _ => panic!()
         }
     }
@@ -1156,9 +1130,7 @@ mod tests {
         let opts = vec!(optflag("t", "test", "testing"));
         let rs = getopts(args.as_slice(), opts.as_slice());
         match rs {
-          Err(f) => {
-            check_fail_type(f, UnexpectedArgument_);
-          }
+          Err(UnexpectedArgument(_)) => {},
           _ => panic!()
         }
     }
@@ -1169,7 +1141,7 @@ mod tests {
         let opts = vec!(optflag("t", "test", "testing"));
         let rs = getopts(args.as_slice(), opts.as_slice());
         match rs {
-          Err(f) => check_fail_type(f, OptionDuplicated_),
+          Err(OptionDuplicated(_)) => {},
           _ => panic!()
         }
     }
@@ -1317,12 +1289,12 @@ mod tests {
         let opts = vec!(optmulti("t", "test", "testing", "TEST"));
         let rs = getopts(long_args.as_slice(), opts.as_slice());
         match rs {
-          Err(f) => check_fail_type(f, ArgumentMissing_),
+          Err(ArgumentMissing(_)) => {},
           _ => panic!()
         }
         let short_args = vec!("-t".to_string());
         match getopts(short_args.as_slice(), opts.as_slice()) {
-          Err(f) => check_fail_type(f, ArgumentMissing_),
+          Err(ArgumentMissing(_)) => {},
           _ => panic!()
         }
     }
@@ -1352,12 +1324,12 @@ mod tests {
         let opts = vec!(optmulti("t", "test", "testing", "TEST"));
         let rs = getopts(long_args.as_slice(), opts.as_slice());
         match rs {
-          Err(f) => check_fail_type(f, UnrecognizedOption_),
+          Err(UnrecognizedOption(_)) => {},
           _ => panic!()
         }
         let short_args = vec!("-u".to_string());
         match getopts(short_args.as_slice(), opts.as_slice()) {
-          Err(f) => check_fail_type(f, UnrecognizedOption_),
+          Err(UnrecognizedOption(_)) => {},
           _ => panic!()
         }
     }
@@ -1493,14 +1465,14 @@ mod tests {
     #[test]
     fn test_long_to_short() {
         let mut short = Opt {
-            name: Long("banana".to_string()),
-            hasarg: Yes,
-            occur: Req,
+            name: Name::Long("banana".to_string()),
+            hasarg: HasArg::Yes,
+            occur: Occur::Req,
             aliases: Vec::new(),
         };
-        short.aliases = vec!(Opt { name: Short('b'),
-                                hasarg: Yes,
-                                occur: Req,
+        short.aliases = vec!(Opt { name: Name::Short('b'),
+                                hasarg: HasArg::Yes,
+                                occur: Occur::Req,
                                 aliases: Vec::new() });
         let verbose = reqopt("b", "banana", "some bananas", "VAL");
 
