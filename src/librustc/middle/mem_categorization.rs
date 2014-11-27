@@ -8,57 +8,55 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
- * # Categorization
- *
- * The job of the categorization module is to analyze an expression to
- * determine what kind of memory is used in evaluating it (for example,
- * where dereferences occur and what kind of pointer is dereferenced;
- * whether the memory is mutable; etc)
- *
- * Categorization effectively transforms all of our expressions into
- * expressions of the following forms (the actual enum has many more
- * possibilities, naturally, but they are all variants of these base
- * forms):
- *
- *     E = rvalue    // some computed rvalue
- *       | x         // address of a local variable or argument
- *       | *E        // deref of a ptr
- *       | E.comp    // access to an interior component
- *
- * Imagine a routine ToAddr(Expr) that evaluates an expression and returns an
- * address where the result is to be found.  If Expr is an lvalue, then this
- * is the address of the lvalue.  If Expr is an rvalue, this is the address of
- * some temporary spot in memory where the result is stored.
- *
- * Now, cat_expr() classifies the expression Expr and the address A=ToAddr(Expr)
- * as follows:
- *
- * - cat: what kind of expression was this?  This is a subset of the
- *   full expression forms which only includes those that we care about
- *   for the purpose of the analysis.
- * - mutbl: mutability of the address A
- * - ty: the type of data found at the address A
- *
- * The resulting categorization tree differs somewhat from the expressions
- * themselves.  For example, auto-derefs are explicit.  Also, an index a[b] is
- * decomposed into two operations: a dereference to reach the array data and
- * then an index to jump forward to the relevant item.
- *
- * ## By-reference upvars
- *
- * One part of the translation which may be non-obvious is that we translate
- * closure upvars into the dereference of a borrowed pointer; this more closely
- * resembles the runtime translation. So, for example, if we had:
- *
- *     let mut x = 3;
- *     let y = 5;
- *     let inc = || x += y;
- *
- * Then when we categorize `x` (*within* the closure) we would yield a
- * result of `*x'`, effectively, where `x'` is a `cat_upvar` reference
- * tied to `x`. The type of `x'` will be a borrowed pointer.
- */
+//! # Categorization
+//!
+//! The job of the categorization module is to analyze an expression to
+//! determine what kind of memory is used in evaluating it (for example,
+//! where dereferences occur and what kind of pointer is dereferenced;
+//! whether the memory is mutable; etc)
+//!
+//! Categorization effectively transforms all of our expressions into
+//! expressions of the following forms (the actual enum has many more
+//! possibilities, naturally, but they are all variants of these base
+//! forms):
+//!
+//!     E = rvalue    // some computed rvalue
+//!       | x         // address of a local variable or argument
+//!       | *E        // deref of a ptr
+//!       | E.comp    // access to an interior component
+//!
+//! Imagine a routine ToAddr(Expr) that evaluates an expression and returns an
+//! address where the result is to be found.  If Expr is an lvalue, then this
+//! is the address of the lvalue.  If Expr is an rvalue, this is the address of
+//! some temporary spot in memory where the result is stored.
+//!
+//! Now, cat_expr() classifies the expression Expr and the address A=ToAddr(Expr)
+//! as follows:
+//!
+//! - cat: what kind of expression was this?  This is a subset of the
+//!   full expression forms which only includes those that we care about
+//!   for the purpose of the analysis.
+//! - mutbl: mutability of the address A
+//! - ty: the type of data found at the address A
+//!
+//! The resulting categorization tree differs somewhat from the expressions
+//! themselves.  For example, auto-derefs are explicit.  Also, an index a[b] is
+//! decomposed into two operations: a dereference to reach the array data and
+//! then an index to jump forward to the relevant item.
+//!
+//! ## By-reference upvars
+//!
+//! One part of the translation which may be non-obvious is that we translate
+//! closure upvars into the dereference of a borrowed pointer; this more closely
+//! resembles the runtime translation. So, for example, if we had:
+//!
+//!     let mut x = 3;
+//!     let y = 5;
+//!     let inc = || x += y;
+//!
+//! Then when we categorize `x` (*within* the closure) we would yield a
+//! result of `*x'`, effectively, where `x'` is a `cat_upvar` reference
+//! tied to `x`. The type of `x'` will be a borrowed pointer.
 
 #![allow(non_camel_case_types)]
 
@@ -266,24 +264,22 @@ pub struct MemCategorizationContext<'t,TYPER:'t> {
 
 pub type McResult<T> = Result<T, ()>;
 
-/**
- * The `Typer` trait provides the interface for the mem-categorization
- * module to the results of the type check. It can be used to query
- * the type assigned to an expression node, to inquire after adjustments,
- * and so on.
- *
- * This interface is needed because mem-categorization is used from
- * two places: `regionck` and `borrowck`. `regionck` executes before
- * type inference is complete, and hence derives types and so on from
- * intermediate tables.  This also implies that type errors can occur,
- * and hence `node_ty()` and friends return a `Result` type -- any
- * error will propagate back up through the mem-categorization
- * routines.
- *
- * In the borrow checker, in contrast, type checking is complete and we
- * know that no errors have occurred, so we simply consult the tcx and we
- * can be sure that only `Ok` results will occur.
- */
+/// The `Typer` trait provides the interface for the mem-categorization
+/// module to the results of the type check. It can be used to query
+/// the type assigned to an expression node, to inquire after adjustments,
+/// and so on.
+///
+/// This interface is needed because mem-categorization is used from
+/// two places: `regionck` and `borrowck`. `regionck` executes before
+/// type inference is complete, and hence derives types and so on from
+/// intermediate tables.  This also implies that type errors can occur,
+/// and hence `node_ty()` and friends return a `Result` type -- any
+/// error will propagate back up through the mem-categorization
+/// routines.
+///
+/// In the borrow checker, in contrast, type checking is complete and we
+/// know that no errors have occurred, so we simply consult the tcx and we
+/// can be sure that only `Ok` results will occur.
 pub trait Typer<'tcx> {
     fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx>;
     fn node_ty(&self, id: ast::NodeId) -> McResult<Ty<'tcx>>;
@@ -1058,20 +1054,17 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
         }
     }
 
+    /// Given a pattern P like: `[_, ..Q, _]`, where `vec_cmt` is the cmt for `P`, `slice_pat` is
+    /// the pattern `Q`, returns:
+    ///
+    /// * a cmt for `Q`
+    /// * the mutability and region of the slice `Q`
+    ///
+    /// These last two bits of info happen to be things that borrowck needs.
     pub fn cat_slice_pattern(&self,
                              vec_cmt: cmt<'tcx>,
                              slice_pat: &ast::Pat)
                              -> McResult<(cmt<'tcx>, ast::Mutability, ty::Region)> {
-        /*!
-         * Given a pattern P like: `[_, ..Q, _]`, where `vec_cmt` is
-         * the cmt for `P`, `slice_pat` is the pattern `Q`, returns:
-         * - a cmt for `Q`
-         * - the mutability and region of the slice `Q`
-         *
-         * These last two bits of info happen to be things that
-         * borrowck needs.
-         */
-
         let slice_ty = if_ok!(self.node_ty(slice_pat.id));
         let (slice_mutbl, slice_r) = vec_slice_info(self.tcx(),
                                                     slice_pat,
@@ -1079,17 +1072,13 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
         let cmt_slice = self.cat_index(slice_pat, self.deref_vec(slice_pat, vec_cmt));
         return Ok((cmt_slice, slice_mutbl, slice_r));
 
+        /// In a pattern like [a, b, ..c], normally `c` has slice type, but if you have [a, b,
+        /// ..ref c], then the type of `ref c` will be `&&[]`, so to extract the slice details we
+        /// have to recurse through rptrs.
         fn vec_slice_info(tcx: &ty::ctxt,
                           pat: &ast::Pat,
                           slice_ty: Ty)
                           -> (ast::Mutability, ty::Region) {
-            /*!
-             * In a pattern like [a, b, ..c], normally `c` has slice type,
-             * but if you have [a, b, ..ref c], then the type of `ref c`
-             * will be `&&[]`, so to extract the slice details we have
-             * to recurse through rptrs.
-             */
-
             match slice_ty.sty {
                 ty::ty_rptr(r, ref mt) => match mt.ty.sty {
                     ty::ty_vec(_, None) => (mt.mutbl, r),
@@ -1428,13 +1417,9 @@ impl<'tcx> cmt_<'tcx> {
         }
     }
 
+    /// Returns `Some(_)` if this lvalue represents a freely aliasable pointer type.
     pub fn freely_aliasable(&self, ctxt: &ty::ctxt<'tcx>)
                             -> Option<AliasableReason> {
-        /*!
-         * Returns `Some(_)` if this lvalue represents a freely aliasable
-         * pointer type.
-         */
-
         // Maybe non-obvious: copied upvars can only be considered
         // non-aliasable in once closures, since any other kind can be
         // aliased and eventually recused.

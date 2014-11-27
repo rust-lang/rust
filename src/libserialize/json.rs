@@ -14,192 +14,186 @@
 #![forbid(non_camel_case_types)]
 #![allow(missing_docs)]
 
-/*!
-JSON parsing and serialization
+//! JSON parsing and serialization
+//!
+//! # What is JSON?
+//!
+//! JSON (JavaScript Object Notation) is a way to write data in Javascript.
+//! Like XML, it allows to encode structured data in a text format that can be easily read by humans
+//! Its simple syntax and native compatibility with JavaScript have made it a widely used format.
+//!
+//! Data types that can be encoded are JavaScript types (see the `Json` enum for more details):
+//!
+//! * `Boolean`: equivalent to rust's `bool`
+//! * `Number`: equivalent to rust's `f64`
+//! * `String`: equivalent to rust's `String`
+//! * `Array`: equivalent to rust's `Vec<T>`, but also allowing objects of different types in the
+//!   same array
+//! * `Object`: equivalent to rust's `Treemap<String, json::Json>`
+//! * `Null`
+//!
+//! An object is a series of string keys mapping to values, in `"key": value` format.
+//! Arrays are enclosed in square brackets ([ ... ]) and objects in curly brackets ({ ... }).
+//! A simple JSON document encoding a person, his/her age, address and phone numbers could look like
+//!
+//! ```ignore
+//! {
+//!     "FirstName": "John",
+//!     "LastName": "Doe",
+//!     "Age": 43,
+//!     "Address": {
+//!         "Street": "Downing Street 10",
+//!         "City": "London",
+//!         "Country": "Great Britain"
+//!     },
+//!     "PhoneNumbers": [
+//!         "+44 1234567",
+//!         "+44 2345678"
+//!     ]
+//! }
+//! ```
+//!
+//! # Rust Type-based Encoding and Decoding
+//!
+//! Rust provides a mechanism for low boilerplate encoding & decoding of values to and from JSON via
+//! the serialization API.
+//! To be able to encode a piece of data, it must implement the `serialize::Encodable` trait.
+//! To be able to decode a piece of data, it must implement the `serialize::Decodable` trait.
+//! The Rust compiler provides an annotation to automatically generate the code for these traits:
+//! `#[deriving(Decodable, Encodable)]`
+//!
+//! The JSON API provides an enum `json::Json` and a trait `ToJson` to encode objects.
+//! The `ToJson` trait provides a `to_json` method to convert an object into a `json::Json` value.
+//! A `json::Json` value can be encoded as a string or buffer using the functions described above.
+//! You can also use the `json::Encoder` object, which implements the `Encoder` trait.
+//!
+//! When using `ToJson` the `Encodable` trait implementation is not mandatory.
+//!
+//! # Examples of use
+//!
+//! ## Using Autoserialization
+//!
+//! Create a struct called `TestStruct` and serialize and deserialize it to and from JSON using the
+//! serialization API, using the derived serialization code.
+//!
+//! ```rust
+//! extern crate serialize;
+//! use serialize::json;
+//!
+//! // Automatically generate `Decodable` and `Encodable` trait implementations
+//! #[deriving(Decodable, Encodable)]
+//! pub struct TestStruct  {
+//!     data_int: u8,
+//!     data_str: String,
+//!     data_vector: Vec<u8>,
+//! }
+//!
+//! fn main() {
+//!     let object = TestStruct {
+//!         data_int: 1,
+//!         data_str: "toto".to_string(),
+//!         data_vector: vec![2,3,4,5],
+//!     };
+//!
+//!     // Serialize using `json::encode`
+//!     let encoded = json::encode(&object);
+//!
+//!     // Deserialize using `json::decode`
+//!     let decoded: TestStruct = json::decode(encoded.as_slice()).unwrap();
+//! }
+//! ```
+//!
+//! ## Using the `ToJson` trait
+//!
+//! The examples above use the `ToJson` trait to generate the JSON string, which is required
+//! for custom mappings.
+//!
+//! ### Simple example of `ToJson` usage
+//!
+//! ```rust
+//! extern crate serialize;
+//! use serialize::json::{mod, ToJson, Json};
+//!
+//! // A custom data structure
+//! struct ComplexNum {
+//!     a: f64,
+//!     b: f64,
+//! }
+//!
+//! // JSON value representation
+//! impl ToJson for ComplexNum {
+//!     fn to_json(&self) -> Json {
+//!         Json::String(format!("{}+{}i", self.a, self.b))
+//!     }
+//! }
+//!
+//! // Only generate `Encodable` trait implementation
+//! #[deriving(Encodable)]
+//! pub struct ComplexNumRecord {
+//!     uid: u8,
+//!     dsc: String,
+//!     val: Json,
+//! }
+//!
+//! fn main() {
+//!     let num = ComplexNum { a: 0.0001, b: 12.539 };
+//!     let data: String = json::encode(&ComplexNumRecord{
+//!         uid: 1,
+//!         dsc: "test".to_string(),
+//!         val: num.to_json(),
+//!     });
+//!     println!("data: {}", data);
+//!     // data: {"uid":1,"dsc":"test","val":"0.0001+12.539j"};
+//! }
+//! ```
+//!
+//! ### Verbose example of `ToJson` usage
+//!
+//! ```rust
+//! extern crate serialize;
+//! use std::collections::TreeMap;
+//! use serialize::json::{mod, Json, ToJson};
+//!
+//! // Only generate `Decodable` trait implementation
+//! #[deriving(Decodable)]
+//! pub struct TestStruct {
+//!     data_int: u8,
+//!     data_str: String,
+//!     data_vector: Vec<u8>,
+//! }
+//!
+//! // Specify encoding method manually
+//! impl ToJson for TestStruct {
+//!     fn to_json(&self) -> Json {
+//!         let mut d = TreeMap::new();
+//!         // All standard types implement `to_json()`, so use it
+//!         d.insert("data_int".to_string(), self.data_int.to_json());
+//!         d.insert("data_str".to_string(), self.data_str.to_json());
+//!         d.insert("data_vector".to_string(), self.data_vector.to_json());
+//!         Json::Object(d)
+//!     }
+//! }
+//!
+//! fn main() {
+//!     // Serialize using `ToJson`
+//!     let input_data = TestStruct {
+//!         data_int: 1,
+//!         data_str: "toto".to_string(),
+//!         data_vector: vec![2,3,4,5],
+//!     };
+//!     let json_obj: Json = input_data.to_json();
+//!     let json_str: String = json_obj.to_string();
+//!
+//!     // Deserialize like before
+//!     let decoded: TestStruct = json::decode(json_str.as_slice()).unwrap();
+//! }
+//! ```
 
-# What is JSON?
-
-JSON (JavaScript Object Notation) is a way to write data in Javascript.
-Like XML, it allows to encode structured data in a text format that can be easily read by humans.
-Its simple syntax and native compatibility with JavaScript have made it a widely used format.
-
-Data types that can be encoded are JavaScript types (see the `Json` enum for more details):
-
-* `Boolean`: equivalent to rust's `bool`
-* `Number`: equivalent to rust's `f64`
-* `String`: equivalent to rust's `String`
-* `Array`: equivalent to rust's `Vec<T>`, but also allowing objects of different types in the same
-array
-* `Object`: equivalent to rust's `Treemap<String, json::Json>`
-* `Null`
-
-An object is a series of string keys mapping to values, in `"key": value` format.
-Arrays are enclosed in square brackets ([ ... ]) and objects in curly brackets ({ ... }).
-A simple JSON document encoding a person, his/her age, address and phone numbers could look like:
-
-```ignore
-{
-    "FirstName": "John",
-    "LastName": "Doe",
-    "Age": 43,
-    "Address": {
-        "Street": "Downing Street 10",
-        "City": "London",
-        "Country": "Great Britain"
-    },
-    "PhoneNumbers": [
-        "+44 1234567",
-        "+44 2345678"
-    ]
-}
-```
-
-# Rust Type-based Encoding and Decoding
-
-Rust provides a mechanism for low boilerplate encoding & decoding of values to and from JSON via
-the serialization API.
-To be able to encode a piece of data, it must implement the `serialize::Encodable` trait.
-To be able to decode a piece of data, it must implement the `serialize::Decodable` trait.
-The Rust compiler provides an annotation to automatically generate the code for these traits:
-`#[deriving(Decodable, Encodable)]`
-
-The JSON API provides an enum `json::Json` and a trait `ToJson` to encode objects.
-The `ToJson` trait provides a `to_json` method to convert an object into a `json::Json` value.
-A `json::Json` value can be encoded as a string or buffer using the functions described above.
-You can also use the `json::Encoder` object, which implements the `Encoder` trait.
-
-When using `ToJson` the `Encodable` trait implementation is not mandatory.
-
-# Examples of use
-
-## Using Autoserialization
-
-Create a struct called `TestStruct` and serialize and deserialize it to and from JSON using the
-serialization API, using the derived serialization code.
-
-```rust
-extern crate serialize;
-use serialize::json;
-
-// Automatically generate `Decodable` and `Encodable` trait implementations
-#[deriving(Decodable, Encodable)]
-pub struct TestStruct  {
-    data_int: u8,
-    data_str: String,
-    data_vector: Vec<u8>,
-}
-
-fn main() {
-    let object = TestStruct {
-        data_int: 1,
-        data_str: "toto".to_string(),
-        data_vector: vec![2,3,4,5],
-    };
-
-    // Serialize using `json::encode`
-    let encoded = json::encode(&object);
-
-    // Deserialize using `json::decode`
-    let decoded: TestStruct = json::decode(encoded.as_slice()).unwrap();
-}
-```
-
-## Using the `ToJson` trait
-
-The examples above use the `ToJson` trait to generate the JSON string, which is required
-for custom mappings.
-
-### Simple example of `ToJson` usage
-
-```rust
-extern crate serialize;
-use serialize::json::ToJson;
-use serialize::json;
-
-// A custom data structure
-struct ComplexNum {
-    a: f64,
-    b: f64,
-}
-
-// JSON value representation
-impl ToJson for ComplexNum {
-    fn to_json(&self) -> json::Json {
-        json::String(format!("{}+{}i", self.a, self.b))
-    }
-}
-
-// Only generate `Encodable` trait implementation
-#[deriving(Encodable)]
-pub struct ComplexNumRecord {
-    uid: u8,
-    dsc: String,
-    val: json::Json,
-}
-
-fn main() {
-    let num = ComplexNum { a: 0.0001, b: 12.539 };
-    let data: String = json::encode(&ComplexNumRecord{
-        uid: 1,
-        dsc: "test".to_string(),
-        val: num.to_json(),
-    });
-    println!("data: {}", data);
-    // data: {"uid":1,"dsc":"test","val":"0.0001+12.539j"};
-}
-```
-
-### Verbose example of `ToJson` usage
-
-```rust
-extern crate serialize;
-use std::collections::TreeMap;
-use serialize::json::ToJson;
-use serialize::json;
-
-// Only generate `Decodable` trait implementation
-#[deriving(Decodable)]
-pub struct TestStruct {
-    data_int: u8,
-    data_str: String,
-    data_vector: Vec<u8>,
-}
-
-// Specify encoding method manually
-impl ToJson for TestStruct {
-    fn to_json(&self) -> json::Json {
-        let mut d = TreeMap::new();
-        // All standard types implement `to_json()`, so use it
-        d.insert("data_int".to_string(), self.data_int.to_json());
-        d.insert("data_str".to_string(), self.data_str.to_json());
-        d.insert("data_vector".to_string(), self.data_vector.to_json());
-        json::Object(d)
-    }
-}
-
-fn main() {
-    // Serialize using `ToJson`
-    let input_data = TestStruct {
-        data_int: 1,
-        data_str: "toto".to_string(),
-        data_vector: vec![2,3,4,5],
-    };
-    let json_obj: json::Json = input_data.to_json();
-    let json_str: String = json_obj.to_string();
-
-    // Deserialize like before
-    let decoded: TestStruct = json::decode(json_str.as_slice()).unwrap();
-}
-```
-
-*/
-
-pub use self::JsonEvent::*;
-pub use self::StackElement::*;
-pub use self::Json::*;
-pub use self::ErrorCode::*;
-pub use self::ParserError::*;
-pub use self::DecoderError::*;
+use self::JsonEvent::*;
+use self::StackElement::*;
+use self::ErrorCode::*;
+use self::ParserError::*;
+use self::DecoderError::*;
 use self::ParserState::*;
 use self::InternalStackElement::*;
 
@@ -223,13 +217,13 @@ pub enum Json {
     F64(f64),
     String(string::String),
     Boolean(bool),
-    Array(JsonArray),
-    Object(JsonObject),
+    Array(self::Array),
+    Object(self::Object),
     Null,
 }
 
-pub type JsonArray = Vec<Json>;
-pub type JsonObject = TreeMap<string::String, Json>;
+pub type Array = Vec<Json>;
+pub type Object = TreeMap<string::String, Json>;
 
 /// The errors that can arise while parsing a JSON stream.
 #[deriving(Clone, PartialEq)]
@@ -274,7 +268,7 @@ pub enum DecoderError {
 
 /// Returns a readable error string for a given error code.
 pub fn error_str(error: ErrorCode) -> &'static str {
-    return match error {
+    match error {
         InvalidSyntax => "invalid syntax",
         InvalidNumber => "invalid number",
         EOFWhileParsingObject => "EOF While parsing object",
@@ -398,7 +392,7 @@ fn fmt_number_or_null(v: f64) -> string::String {
 
 /// A structure for implementing serialization to JSON.
 pub struct Encoder<'a> {
-    writer: &'a mut io::Writer+'a,
+    writer: &'a mut (io::Writer+'a),
 }
 
 impl<'a> Encoder<'a> {
@@ -602,7 +596,7 @@ impl<'a> ::Encoder<io::IoError> for Encoder<'a> {
 /// Another encoder for JSON, but prints out human-readable JSON instead of
 /// compact data
 pub struct PrettyEncoder<'a> {
-    writer: &'a mut io::Writer+'a,
+    writer: &'a mut (io::Writer+'a),
     curr_indent: uint,
     indent: uint,
 }
@@ -863,14 +857,14 @@ impl<'a> ::Encoder<io::IoError> for PrettyEncoder<'a> {
 impl<E: ::Encoder<S>, S> Encodable<E, S> for Json {
     fn encode(&self, e: &mut E) -> Result<(), S> {
         match *self {
-            I64(v) => v.encode(e),
-            U64(v) => v.encode(e),
-            F64(v) => v.encode(e),
-            String(ref v) => v.encode(e),
-            Boolean(v) => v.encode(e),
-            Array(ref v) => v.encode(e),
-            Object(ref v) => v.encode(e),
-            Null => e.emit_nil(),
+            Json::I64(v) => v.encode(e),
+            Json::U64(v) => v.encode(e),
+            Json::F64(v) => v.encode(e),
+            Json::String(ref v) => v.encode(e),
+            Json::Boolean(v) => v.encode(e),
+            Json::Array(ref v) => v.encode(e),
+            Json::Object(ref v) => v.encode(e),
+            Json::Null => e.emit_nil(),
         }
     }
 }
@@ -900,7 +894,7 @@ impl Json {
     /// Otherwise, returns None.
     pub fn find<'a>(&'a self, key: &str) -> Option<&'a Json>{
         match self {
-            &Object(ref map) => map.get(key),
+            &Json::Object(ref map) => map.get(key),
             _ => None
         }
     }
@@ -924,7 +918,7 @@ impl Json {
     /// or the Json value is not an Object, returns None.
     pub fn search<'a>(&'a self, key: &str) -> Option<&'a Json> {
         match self {
-            &Object(ref map) => {
+            &Json::Object(ref map) => {
                 match map.get(key) {
                     Some(json_value) => Some(json_value),
                     None => {
@@ -949,9 +943,9 @@ impl Json {
 
     /// If the Json value is an Object, returns the associated TreeMap.
     /// Returns None otherwise.
-    pub fn as_object<'a>(&'a self) -> Option<&'a JsonObject> {
+    pub fn as_object<'a>(&'a self) -> Option<&'a Object> {
         match self {
-            &Object(ref map) => Some(map),
+            &Json::Object(ref map) => Some(map),
             _ => None
         }
     }
@@ -963,9 +957,9 @@ impl Json {
 
     /// If the Json value is an Array, returns the associated vector.
     /// Returns None otherwise.
-    pub fn as_array<'a>(&'a self) -> Option<&'a JsonArray> {
+    pub fn as_array<'a>(&'a self) -> Option<&'a Array> {
         match self {
-            &Array(ref array) => Some(&*array),
+            &Json::Array(ref array) => Some(&*array),
             _ => None
         }
     }
@@ -979,7 +973,7 @@ impl Json {
     /// Returns None otherwise.
     pub fn as_string<'a>(&'a self) -> Option<&'a str> {
         match *self {
-            String(ref s) => Some(s.as_slice()),
+            Json::String(ref s) => Some(s.as_slice()),
             _ => None
         }
     }
@@ -987,7 +981,7 @@ impl Json {
     /// Returns true if the Json value is a Number. Returns false otherwise.
     pub fn is_number(&self) -> bool {
         match *self {
-            I64(_) | U64(_) | F64(_) => true,
+            Json::I64(_) | Json::U64(_) | Json::F64(_) => true,
             _ => false,
         }
     }
@@ -995,7 +989,7 @@ impl Json {
     /// Returns true if the Json value is a i64. Returns false otherwise.
     pub fn is_i64(&self) -> bool {
         match *self {
-            I64(_) => true,
+            Json::I64(_) => true,
             _ => false,
         }
     }
@@ -1003,7 +997,7 @@ impl Json {
     /// Returns true if the Json value is a u64. Returns false otherwise.
     pub fn is_u64(&self) -> bool {
         match *self {
-            U64(_) => true,
+            Json::U64(_) => true,
             _ => false,
         }
     }
@@ -1011,7 +1005,7 @@ impl Json {
     /// Returns true if the Json value is a f64. Returns false otherwise.
     pub fn is_f64(&self) -> bool {
         match *self {
-            F64(_) => true,
+            Json::F64(_) => true,
             _ => false,
         }
     }
@@ -1020,8 +1014,8 @@ impl Json {
     /// Returns None otherwise.
     pub fn as_i64(&self) -> Option<i64> {
         match *self {
-            I64(n) => Some(n),
-            U64(n) => num::cast(n),
+            Json::I64(n) => Some(n),
+            Json::U64(n) => num::cast(n),
             _ => None
         }
     }
@@ -1030,8 +1024,8 @@ impl Json {
     /// Returns None otherwise.
     pub fn as_u64(&self) -> Option<u64> {
         match *self {
-            I64(n) => num::cast(n),
-            U64(n) => Some(n),
+            Json::I64(n) => num::cast(n),
+            Json::U64(n) => Some(n),
             _ => None
         }
     }
@@ -1040,9 +1034,9 @@ impl Json {
     /// Returns None otherwise.
     pub fn as_f64(&self) -> Option<f64> {
         match *self {
-            I64(n) => num::cast(n),
-            U64(n) => num::cast(n),
-            F64(n) => Some(n),
+            Json::I64(n) => num::cast(n),
+            Json::U64(n) => num::cast(n),
+            Json::F64(n) => Some(n),
             _ => None
         }
     }
@@ -1056,7 +1050,7 @@ impl Json {
     /// Returns None otherwise.
     pub fn as_boolean(&self) -> Option<bool> {
         match self {
-            &Boolean(b) => Some(b),
+            &Json::Boolean(b) => Some(b),
             _ => None
         }
     }
@@ -1070,7 +1064,7 @@ impl Json {
     /// Returns None otherwise.
     pub fn as_null(&self) -> Option<()> {
         match self {
-            &Null => Some(()),
+            &Json::Null => Some(()),
             _ => None
         }
     }
@@ -1085,7 +1079,7 @@ impl<'a> ops::Index<&'a str, Json>  for Json {
 impl ops::Index<uint, Json> for Json {
     fn index<'a>(&'a self, idx: &uint) -> &'a Json {
         match self {
-            &Array(ref v) => v.index(idx),
+            &Json::Array(ref v) => v.index(idx),
             _ => panic!("can only index Json with uint if it is an array")
         }
     }
@@ -1844,16 +1838,16 @@ impl<T: Iterator<char>> Builder<T> {
     }
 
     fn build_value(&mut self) -> Result<Json, BuilderError> {
-        match self.token {
-            Some(NullValue) => Ok(Null),
-            Some(I64Value(n)) => Ok(I64(n)),
-            Some(U64Value(n)) => Ok(U64(n)),
-            Some(F64Value(n)) => Ok(F64(n)),
-            Some(BooleanValue(b)) => Ok(Boolean(b)),
+        return match self.token {
+            Some(NullValue) => Ok(Json::Null),
+            Some(I64Value(n)) => Ok(Json::I64(n)),
+            Some(U64Value(n)) => Ok(Json::U64(n)),
+            Some(F64Value(n)) => Ok(Json::F64(n)),
+            Some(BooleanValue(b)) => Ok(Json::Boolean(b)),
             Some(StringValue(ref mut s)) => {
                 let mut temp = string::String::new();
                 swap(s, &mut temp);
-                Ok(String(temp))
+                Ok(Json::String(temp))
             }
             Some(Error(e)) => Err(e),
             Some(ArrayStart) => self.build_array(),
@@ -1870,7 +1864,7 @@ impl<T: Iterator<char>> Builder<T> {
 
         loop {
             if self.token == Some(ArrayEnd) {
-                return Ok(Array(values.into_iter().collect()));
+                return Ok(Json::Array(values.into_iter().collect()));
             }
             match self.build_value() {
                 Ok(v) => values.push(v),
@@ -1887,7 +1881,7 @@ impl<T: Iterator<char>> Builder<T> {
 
         loop {
             match self.token {
-                Some(ObjectEnd) => { return Ok(Object(values)); }
+                Some(ObjectEnd) => { return Ok(Json::Object(values)); }
                 Some(Error(e)) => { return Err(e); }
                 None => { break; }
                 _ => {}
@@ -1947,14 +1941,14 @@ impl Decoder {
 macro_rules! expect(
     ($e:expr, Null) => ({
         match $e {
-            Null => Ok(()),
+            Json::Null => Ok(()),
             other => Err(ExpectedError("Null".to_string(),
                                        format!("{}", other)))
         }
     });
     ($e:expr, $t:ident) => ({
         match $e {
-            $t(v) => Ok(v),
+            Json::$t(v) => Ok(v),
             other => {
                 Err(ExpectedError(stringify!($t).to_string(),
                                   format!("{}", other)))
@@ -1967,25 +1961,25 @@ macro_rules! read_primitive {
     ($name:ident, $ty:ty) => {
         fn $name(&mut self) -> DecodeResult<$ty> {
             match self.pop() {
-                I64(f) => {
+                Json::I64(f) => {
                     match num::cast(f) {
                         Some(f) => Ok(f),
                         None => Err(ExpectedError("Number".to_string(), format!("{}", f))),
                     }
                 }
-                U64(f) => {
+                Json::U64(f) => {
                     match num::cast(f) {
                         Some(f) => Ok(f),
                         None => Err(ExpectedError("Number".to_string(), format!("{}", f))),
                     }
                 }
-                F64(f) => {
+                Json::F64(f) => {
                     match num::cast(f) {
                         Some(f) => Ok(f),
                         None => Err(ExpectedError("Number".to_string(), format!("{}", f))),
                     }
                 }
-                String(s) => {
+                Json::String(s) => {
                     // re: #12967.. a type w/ numeric keys (ie HashMap<uint, V> etc)
                     // is going to have a string here, as per JSON spec.
                     match std::str::from_str(s.as_slice()) {
@@ -2021,10 +2015,10 @@ impl ::Decoder<DecoderError> for Decoder {
     fn read_f64(&mut self) -> DecodeResult<f64> {
         debug!("read_f64");
         match self.pop() {
-            I64(f) => Ok(f as f64),
-            U64(f) => Ok(f as f64),
-            F64(f) => Ok(f),
-            String(s) => {
+            Json::I64(f) => Ok(f as f64),
+            Json::U64(f) => Ok(f as f64),
+            Json::F64(f) => Ok(f),
+            Json::String(s) => {
                 // re: #12967.. a type w/ numeric keys (ie HashMap<uint, V> etc)
                 // is going to have a string here, as per JSON spec.
                 match std::str::from_str(s.as_slice()) {
@@ -2032,7 +2026,7 @@ impl ::Decoder<DecoderError> for Decoder {
                     None => Err(ExpectedError("Number".to_string(), s)),
                 }
             },
-            Null => Ok(f64::NAN),
+            Json::Null => Ok(f64::NAN),
             value => Err(ExpectedError("Number".to_string(), format!("{}", value)))
         }
     }
@@ -2073,10 +2067,10 @@ impl ::Decoder<DecoderError> for Decoder {
                             -> DecodeResult<T> {
         debug!("read_enum_variant(names={})", names);
         let name = match self.pop() {
-            String(s) => s,
-            Object(mut o) => {
+            Json::String(s) => s,
+            Json::Object(mut o) => {
                 let n = match o.remove(&"variant".to_string()) {
-                    Some(String(s)) => s,
+                    Some(Json::String(s)) => s,
                     Some(val) => {
                         return Err(ExpectedError("String".to_string(), format!("{}", val)))
                     }
@@ -2085,7 +2079,7 @@ impl ::Decoder<DecoderError> for Decoder {
                     }
                 };
                 match o.remove(&"fields".to_string()) {
-                    Some(Array(l)) => {
+                    Some(Json::Array(l)) => {
                         for field in l.into_iter().rev() {
                             self.stack.push(field);
                         }
@@ -2158,7 +2152,7 @@ impl ::Decoder<DecoderError> for Decoder {
             None => {
                 // Add a Null and try to parse it as an Option<_>
                 // to get None as a default value.
-                self.stack.push(Null);
+                self.stack.push(Json::Null);
                 match f(self) {
                     Ok(x) => x,
                     Err(_) => return Err(MissingFieldError(name.to_string())),
@@ -2169,7 +2163,7 @@ impl ::Decoder<DecoderError> for Decoder {
                 try!(f(self))
             }
         };
-        self.stack.push(Object(obj));
+        self.stack.push(Json::Object(obj));
         Ok(value)
     }
 
@@ -2214,7 +2208,7 @@ impl ::Decoder<DecoderError> for Decoder {
     fn read_option<T>(&mut self, f: |&mut Decoder, bool| -> DecodeResult<T>) -> DecodeResult<T> {
         debug!("read_option()");
         match self.pop() {
-            Null => f(self, false),
+            Json::Null => f(self, false),
             value => { self.stack.push(value); f(self, true) }
         }
     }
@@ -2242,7 +2236,7 @@ impl ::Decoder<DecoderError> for Decoder {
         let len = obj.len();
         for (key, value) in obj.into_iter() {
             self.stack.push(value);
-            self.stack.push(String(key));
+            self.stack.push(Json::String(key));
         }
         f(self, len)
     }
@@ -2273,7 +2267,7 @@ pub trait ToJson for Sized? {
 macro_rules! to_json_impl_i64(
     ($($t:ty), +) => (
         $(impl ToJson for $t {
-            fn to_json(&self) -> Json { I64(*self as i64) }
+            fn to_json(&self) -> Json { Json::I64(*self as i64) }
         })+
     )
 )
@@ -2283,7 +2277,7 @@ to_json_impl_i64!(int, i8, i16, i32, i64)
 macro_rules! to_json_impl_u64(
     ($($t:ty), +) => (
         $(impl ToJson for $t {
-            fn to_json(&self) -> Json { U64(*self as u64) }
+            fn to_json(&self) -> Json { Json::U64(*self as u64) }
         })+
     )
 )
@@ -2301,26 +2295,26 @@ impl ToJson for f32 {
 impl ToJson for f64 {
     fn to_json(&self) -> Json {
         match self.classify() {
-            FPNaN | FPInfinite => Null,
-            _                  => F64(*self)
+            FPNaN | FPInfinite => Json::Null,
+            _                  => Json::F64(*self)
         }
     }
 }
 
 impl ToJson for () {
-    fn to_json(&self) -> Json { Null }
+    fn to_json(&self) -> Json { Json::Null }
 }
 
 impl ToJson for bool {
-    fn to_json(&self) -> Json { Boolean(*self) }
+    fn to_json(&self) -> Json { Json::Boolean(*self) }
 }
 
 impl ToJson for str {
-    fn to_json(&self) -> Json { String(self.into_string()) }
+    fn to_json(&self) -> Json { Json::String(self.into_string()) }
 }
 
 impl ToJson for string::String {
-    fn to_json(&self) -> Json { String((*self).clone()) }
+    fn to_json(&self) -> Json { Json::String((*self).clone()) }
 }
 
 macro_rules! tuple_impl {
@@ -2335,7 +2329,7 @@ macro_rules! tuple_impl {
             #[allow(non_snake_case)]
             fn to_json(&self) -> Json {
                 match *self {
-                    ($(ref $tyvar),*,) => Array(vec![$($tyvar.to_json()),*])
+                    ($(ref $tyvar),*,) => Json::Array(vec![$($tyvar.to_json()),*])
                 }
             }
         }
@@ -2356,11 +2350,11 @@ tuple_impl!{A, B, C, D, E, F, G, H, I, J, K}
 tuple_impl!{A, B, C, D, E, F, G, H, I, J, K, L}
 
 impl<A: ToJson> ToJson for [A] {
-    fn to_json(&self) -> Json { Array(self.iter().map(|elt| elt.to_json()).collect()) }
+    fn to_json(&self) -> Json { Json::Array(self.iter().map(|elt| elt.to_json()).collect()) }
 }
 
 impl<A: ToJson> ToJson for Vec<A> {
-    fn to_json(&self) -> Json { Array(self.iter().map(|elt| elt.to_json()).collect()) }
+    fn to_json(&self) -> Json { Json::Array(self.iter().map(|elt| elt.to_json()).collect()) }
 }
 
 impl<A: ToJson> ToJson for TreeMap<string::String, A> {
@@ -2369,7 +2363,7 @@ impl<A: ToJson> ToJson for TreeMap<string::String, A> {
         for (key, value) in self.iter() {
             d.insert((*key).clone(), value.to_json());
         }
-        Object(d)
+        Json::Object(d)
     }
 }
 
@@ -2379,14 +2373,14 @@ impl<A: ToJson> ToJson for HashMap<string::String, A> {
         for (key, value) in self.iter() {
             d.insert((*key).clone(), value.to_json());
         }
-        Object(d)
+        Json::Object(d)
     }
 }
 
 impl<A:ToJson> ToJson for Option<A> {
     fn to_json(&self) -> Json {
         match *self {
-            None => Null,
+            None => Json::Null,
             Some(ref value) => value.to_json()
         }
     }
@@ -2412,15 +2406,16 @@ mod tests {
     use self::DecodeEnum::*;
     use self::test::Bencher;
     use {Encodable, Decodable};
-    use super::{Array, Encoder, Decoder, Error, Boolean, I64, U64, F64, String, Null,
-                PrettyEncoder, Object, Json, from_str, ParseError, ExpectedError,
-                MissingFieldError, UnknownVariantError, DecodeResult, DecoderError,
-                JsonEvent, Parser, StackElement,
-                ObjectStart, ObjectEnd, ArrayStart, ArrayEnd, BooleanValue, U64Value,
-                F64Value, StringValue, NullValue, SyntaxError, Key, Index, Stack,
-                InvalidSyntax, InvalidNumber, EOFWhileParsingObject, EOFWhileParsingArray,
-                EOFWhileParsingValue, EOFWhileParsingString, KeyMustBeAString, ExpectedColon,
-                TrailingCharacters, TrailingComma};
+    use super::Json::*;
+    use super::ErrorCode::*;
+    use super::ParserError::*;
+    use super::DecoderError::*;
+    use super::JsonEvent::*;
+    use super::ParserState::*;
+    use super::StackElement::*;
+    use super::InternalStackElement::*;
+    use super::{PrettyEncoder, Json, from_str, DecodeResult, DecoderError, JsonEvent, Parser,
+                StackElement, Stack, Encoder, Decoder};
     use std::{i64, u64, f32, f64, io};
     use std::collections::TreeMap;
     use std::num::Float;

@@ -8,10 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
- * Helper routines for higher-ranked things. See the `doc` module at
- * the end of the file for details.
- */
+//! Helper routines for higher-ranked things. See the `doc` module at
+//! the end of the file for details.
 
 use middle::ty::{mod, Ty, replace_late_bound_regions};
 use middle::typeck::infer::{mod, combine, cres, InferCtxt};

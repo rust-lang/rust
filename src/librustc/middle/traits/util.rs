@@ -42,21 +42,18 @@ pub fn supertraits<'cx, 'tcx>(tcx: &'cx ty::ctxt<'tcx>,
                               trait_ref: Rc<ty::TraitRef<'tcx>>)
                               -> Supertraits<'cx, 'tcx>
 {
-    /*!
-     * Returns an iterator over the trait reference `T` and all of its
-     * supertrait references. May contain duplicates. In general
-     * the ordering is not defined.
-     *
-     * Example:
-     *
-     * ```
-     * trait Foo { ... }
-     * trait Bar : Foo { ... }
-     * trait Baz : Bar+Foo { ... }
-     * ```
-     *
-     * `supertraits(Baz)` yields `[Baz, Bar, Foo, Foo]` in some order.
-     */
+    //! Returns an iterator over the trait reference `T` and all of its supertrait references. May
+    //! contain duplicates. In general the ordering is not defined.
+    //!
+    //! Example:
+    //!
+    //! ```
+    //! trait Foo { ... }
+    //! trait Bar : Foo { ... }
+    //! trait Baz : Bar+Foo { ... }
+    //! ```
+    //!
+    //! `supertraits(Baz)` yields `[Baz, Bar, Foo, Foo]` in some order.
 
     transitive_bounds(tcx, &[trait_ref])
 }
@@ -97,12 +94,8 @@ impl<'cx, 'tcx> Supertraits<'cx, 'tcx> {
         self.stack.push(entry);
     }
 
+    /// Returns the path taken through the trait supertraits to reach the current point.
     pub fn indices(&self) -> Vec<uint> {
-        /*!
-         * Returns the path taken through the trait supertraits to
-         * reach the current point.
-         */
-
         self.stack.iter().map(|e| e.position).collect()
     }
 }
@@ -171,6 +164,7 @@ impl<'tcx> fmt::Show for VtableParamData<'tcx> {
     }
 }
 
+/// See `super::obligations_for_generics`
 pub fn obligations_for_generics<'tcx>(tcx: &ty::ctxt<'tcx>,
                                       cause: ObligationCause<'tcx>,
                                       recursion_depth: uint,
@@ -178,7 +172,6 @@ pub fn obligations_for_generics<'tcx>(tcx: &ty::ctxt<'tcx>,
                                       type_substs: &VecPerParamSpace<Ty<'tcx>>)
                                       -> VecPerParamSpace<Obligation<'tcx>>
 {
-    /*! See `super::obligations_for_generics` */
 
     debug!("obligations_for_generics(generic_bounds={}, type_substs={})",
            generic_bounds.repr(tcx), type_substs.repr(tcx));
@@ -272,20 +265,15 @@ pub fn obligation_for_builtin_bound<'tcx>(
     }
 }
 
+/// Starting from a caller obligation `caller_bound` (which has coordinates `space`/`i` in the list
+/// of caller obligations), search through the trait and supertraits to find one where `test(d)` is
+/// true, where `d` is the def-id of the trait/supertrait. If any is found, return `Some(p)` where
+/// `p` is the path to that trait/supertrait. Else `None`.
 pub fn search_trait_and_supertraits_from_bound<'tcx>(tcx: &ty::ctxt<'tcx>,
                                                      caller_bound: Rc<ty::TraitRef<'tcx>>,
                                                      test: |ast::DefId| -> bool)
                                                      -> Option<VtableParamData<'tcx>>
 {
-    /*!
-     * Starting from a caller obligation `caller_bound` (which has
-     * coordinates `space`/`i` in the list of caller obligations),
-     * search through the trait and supertraits to find one where
-     * `test(d)` is true, where `d` is the def-id of the
-     * trait/supertrait.  If any is found, return `Some(p)` where `p`
-     * is the path to that trait/supertrait. Else `None`.
-     */
-
     for bound in transitive_bounds(tcx, &[caller_bound]) {
         if test(bound.def_id) {
             let vtable_param = VtableParamData { bound: bound };

@@ -72,12 +72,10 @@ impl<'tcx> TypeVariableTable<'tcx> {
         self.values.get(vid.index).diverging
     }
 
+    /// Records that `a <: b`, `a :> b`, or `a == b`, depending on `dir`.
+    ///
+    /// Precondition: neither `a` nor `b` are known.
     pub fn relate_vars(&mut self, a: ty::TyVid, dir: RelationDir, b: ty::TyVid) {
-        /*!
-         * Records that `a <: b`, `a :> b`, or `a == b`, depending on `dir`.
-         *
-         * Precondition: neither `a` nor `b` are known.
-         */
 
         if a != b {
             self.relations(a).push((dir, b));
@@ -86,19 +84,15 @@ impl<'tcx> TypeVariableTable<'tcx> {
         }
     }
 
+    /// Instantiates `vid` with the type `ty` and then pushes an entry onto `stack` for each of the
+    /// relations of `vid` to other variables. The relations will have the form `(ty, dir, vid1)`
+    /// where `vid1` is some other variable id.
     pub fn instantiate_and_push(
         &mut self,
         vid: ty::TyVid,
         ty: Ty<'tcx>,
         stack: &mut Vec<(Ty<'tcx>, RelationDir, ty::TyVid)>)
     {
-        /*!
-         * Instantiates `vid` with the type `ty` and then pushes an
-         * entry onto `stack` for each of the relations of `vid` to
-         * other variables. The relations will have the form `(ty,
-         * dir, vid1)` where `vid1` is some other variable id.
-         */
-
         let old_value = {
             let value_ptr = &mut self.values.get_mut(vid.index).value;
             mem::replace(value_ptr, Known(ty))

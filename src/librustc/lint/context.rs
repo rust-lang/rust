@@ -464,11 +464,9 @@ impl<'a, 'tcx> Context<'a, 'tcx> {
         self.lookup_and_emit(lint, Some(span), msg);
     }
 
-    /**
-     * Merge the lints specified by any lint attributes into the
-     * current lint context, call the provided function, then reset the
-     * lints in effect to their previous state.
-     */
+    /// Merge the lints specified by any lint attributes into the
+    /// current lint context, call the provided function, then reset the
+    /// lints in effect to their previous state.
     fn with_lint_attrs(&mut self,
                        attrs: &[ast::Attribute],
                        f: |&mut Context|) {

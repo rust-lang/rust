@@ -38,24 +38,18 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
         CheckTypeWellFormedVisitor { ccx: ccx, cache: HashSet::new() }
     }
 
+    /// Checks that the field types (in a struct def'n) or argument types (in an enum def'n) are
+    /// well-formed, meaning that they do not require any constraints not declared in the struct
+    /// definition itself. For example, this definition would be illegal:
+    ///
+    ///     struct Ref<'a, T> { x: &'a T }
+    ///
+    /// because the type did not declare that `T:'a`.
+    ///
+    /// We do this check as a pre-pass before checking fn bodies because if these constraints are
+    /// not included it frequently leads to confusing errors in fn bodies. So it's better to check
+    /// the types first.
     fn check_item_well_formed(&mut self, item: &ast::Item) {
-        /*!
-         * Checks that the field types (in a struct def'n) or
-         * argument types (in an enum def'n) are well-formed,
-         * meaning that they do not require any constraints not
-         * declared in the struct definition itself.
-         * For example, this definition would be illegal:
-         *
-         *     struct Ref<'a, T> { x: &'a T }
-         *
-         * because the type did not declare that `T:'a`.
-         *
-         * We do this check as a pre-pass before checking fn bodies
-         * because if these constraints are not included it frequently
-         * leads to confusing errors in fn bodies. So it's better to check
-         * the types first.
-         */
-
         let ccx = self.ccx;
         debug!("check_item_well_formed(it.id={}, it.ident={})",
                item.id,
@@ -107,16 +101,12 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
         regionck::regionck_item(&fcx, item);
     }
 
+    /// In a type definition, we check that to ensure that the types of the fields are well-formed.
     fn check_type_defn(&mut self,
                        item: &ast::Item,
                        lookup_fields: for<'fcx> |&FnCtxt<'fcx, 'tcx>|
                                                  -> Vec<AdtVariant<'tcx>>)
     {
-        /*!
-         * In a type definition, we check that to ensure that the types of the fields are
-         * well-formed.
-         */
-
         self.with_fcx(item, |this, fcx| {
             let variants = lookup_fields(fcx);
             let mut bounds_checker = BoundsChecker::new(fcx,
@@ -282,22 +272,16 @@ impl<'cx,'tcx> BoundsChecker<'cx,'tcx> {
                         cache: cache, binding_count: 0 }
     }
 
+    /// Given a trait ref like `A : Trait<B>`, where `Trait` is defined as (say):
+    ///
+    ///     trait Trait<B:OtherTrait> : Copy { ... }
+    ///
+    /// This routine will check that `B : OtherTrait` and `A : Trait<B>`. It will also recursively
+    /// check that the types `A` and `B` are well-formed.
+    ///
+    /// Note that it does not (currently, at least) check that `A : Copy` (that check is delegated
+    /// to the point where impl `A : Trait<B>` is implemented).
     pub fn check_trait_ref(&mut self, trait_ref: &ty::TraitRef<'tcx>) {
-        /*!
-         * Given a trait ref like `A : Trait<B>`, where `Trait` is
-         * defined as (say):
-         *
-         *     trait Trait<B:OtherTrait> : Copy { ... }
-         *
-         * This routine will check that `B : OtherTrait` and `A :
-         * Trait<B>`. It will also recursively check that the types
-         * `A` and `B` are well-formed.
-         *
-         * Note that it does not (currently, at least)
-         * check that `A : Copy` (that check is delegated to the point
-         * where impl `A : Trait<B>` is implemented).
-         */
-
         let trait_def = ty::lookup_trait_def(self.fcx.tcx(), trait_ref.def_id);
 
         let bounds = trait_def.generics.to_bounds(self.tcx(), &trait_ref.substs);

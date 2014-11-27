@@ -8,10 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
- * Orphan checker: every impl either implements a trait defined in this
- * crate or pertains to a type defined in this crate.
- */
+//! Orphan checker: every impl either implements a trait defined in this
+//! crate or pertains to a type defined in this crate.
 
 use middle::traits;
 use middle::ty;

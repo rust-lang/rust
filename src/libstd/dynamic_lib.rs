@@ -8,13 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
-
-Dynamic library facilities.
-
-A simple wrapper over the platform's dynamic library facilities
-
-*/
+//! Dynamic library facilities.
+//!
+//! A simple wrapper over the platform's dynamic library facilities
 
 #![experimental]
 #![allow(missing_docs)]

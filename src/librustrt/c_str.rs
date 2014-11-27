@@ -8,68 +8,64 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
-
-C-string manipulation and management
-
-This modules provides the basic methods for creating and manipulating
-null-terminated strings for use with FFI calls (back to C). Most C APIs require
-that the string being passed to them is null-terminated, and by default rust's
-string types are *not* null terminated.
-
-The other problem with translating Rust strings to C strings is that Rust
-strings can validly contain a null-byte in the middle of the string (0 is a
-valid Unicode codepoint). This means that not all Rust strings can actually be
-translated to C strings.
-
-# Creation of a C string
-
-A C string is managed through the `CString` type defined in this module. It
-"owns" the internal buffer of characters and will automatically deallocate the
-buffer when the string is dropped. The `ToCStr` trait is implemented for `&str`
-and `&[u8]`, but the conversions can fail due to some of the limitations
-explained above.
-
-This also means that currently whenever a C string is created, an allocation
-must be performed to place the data elsewhere (the lifetime of the C string is
-not tied to the lifetime of the original string/data buffer). If C strings are
-heavily used in applications, then caching may be advisable to prevent
-unnecessary amounts of allocations.
-
-Be carefull to remember that the memory is managed by C allocator API and not
-by Rust allocator API.
-That means that the CString pointers should be freed with C allocator API
-if you intend to do that on your own, as the behaviour if you free them with
-Rust's allocator API is not well defined
-
-An example of creating and using a C string would be:
-
-```rust
-extern crate libc;
-
-extern {
-    fn puts(s: *const libc::c_char);
-}
-
-fn main() {
-    let my_string = "Hello, world!";
-
-    // Allocate the C string with an explicit local that owns the string. The
-    // `c_buffer` pointer will be deallocated when `my_c_string` goes out of scope.
-    let my_c_string = my_string.to_c_str();
-    unsafe {
-        puts(my_c_string.as_ptr());
-    }
-
-    // Don't save/return the pointer to the C string, the `c_buffer` will be
-    // deallocated when this block returns!
-    my_string.with_c_str(|c_buffer| {
-        unsafe { puts(c_buffer); }
-    });
-}
-```
-
-*/
+//! C-string manipulation and management
+//!
+//! This modules provides the basic methods for creating and manipulating
+//! null-terminated strings for use with FFI calls (back to C). Most C APIs require
+//! that the string being passed to them is null-terminated, and by default rust's
+//! string types are *not* null terminated.
+//!
+//! The other problem with translating Rust strings to C strings is that Rust
+//! strings can validly contain a null-byte in the middle of the string (0 is a
+//! valid Unicode codepoint). This means that not all Rust strings can actually be
+//! translated to C strings.
+//!
+//! # Creation of a C string
+//!
+//! A C string is managed through the `CString` type defined in this module. It
+//! "owns" the internal buffer of characters and will automatically deallocate the
+//! buffer when the string is dropped. The `ToCStr` trait is implemented for `&str`
+//! and `&[u8]`, but the conversions can fail due to some of the limitations
+//! explained above.
+//!
+//! This also means that currently whenever a C string is created, an allocation
+//! must be performed to place the data elsewhere (the lifetime of the C string is
+//! not tied to the lifetime of the original string/data buffer). If C strings are
+//! heavily used in applications, then caching may be advisable to prevent
+//! unnecessary amounts of allocations.
+//!
+//! Be carefull to remember that the memory is managed by C allocator API and not
+//! by Rust allocator API.
+//! That means that the CString pointers should be freed with C allocator API
+//! if you intend to do that on your own, as the behaviour if you free them with
+//! Rust's allocator API is not well defined
+//!
+//! An example of creating and using a C string would be:
+//!
+//! ```rust
+//! extern crate libc;
+//!
+//! extern {
+//!     fn puts(s: *const libc::c_char);
+//! }
+//!
+//! fn main() {
+//!     let my_string = "Hello, world!";
+//!
+//!     // Allocate the C string with an explicit local that owns the string. The
+//!     // `c_buffer` pointer will be deallocated when `my_c_string` goes out of scope.
+//!     let my_c_string = my_string.to_c_str();
+//!     unsafe {
+//!         puts(my_c_string.as_ptr());
+//!     }
+//!
+//!     // Don't save/return the pointer to the C string, the `c_buffer` will be
+//!     // deallocated when this block returns!
+//!     my_string.with_c_str(|c_buffer| {
+//!         unsafe { puts(c_buffer); }
+//!     });
+//! }
+//! ```
 
 use collections::string::String;
 use collections::hash;
