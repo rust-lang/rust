@@ -623,6 +623,7 @@ impl fmt::Show for InternedString {
     }
 }
 
+#[allow(deprecated)]
 impl<'a> Equiv<&'a str> for InternedString {
     fn equiv(&self, other: & &'a str) -> bool {
         (*other) == self.string.as_slice()

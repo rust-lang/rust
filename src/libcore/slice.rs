@@ -1816,13 +1816,15 @@ impl<A, B> PartialEq<[B]> for [A] where A: PartialEq<B> {
 #[unstable = "waiting for DST"]
 impl<T: Eq> Eq for [T] {}
 
-#[unstable = "waiting for DST"]
+#[allow(deprecated)]
+#[deprecated = "Use overloaded `core::cmp::PartialEq`"]
 impl<T: PartialEq, Sized? V: AsSlice<T>> Equiv<V> for [T] {
     #[inline]
     fn equiv(&self, other: &V) -> bool { self.as_slice() == other.as_slice() }
 }
 
-#[unstable = "waiting for DST"]
+#[allow(deprecated)]
+#[deprecated = "Use overloaded `core::cmp::PartialEq`"]
 impl<'a,T:PartialEq, Sized? V: AsSlice<T>> Equiv<V> for &'a mut [T] {
     #[inline]
     fn equiv(&self, other: &V) -> bool { self.as_slice() == other.as_slice() }

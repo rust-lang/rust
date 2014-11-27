@@ -425,12 +425,14 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
         table::make_hash(&self.hasher, x)
     }
 
+    #[allow(deprecated)]
     fn search_equiv<'a, Sized? Q: Hash<S> + Equiv<K>>(&'a self, q: &Q)
                     -> Option<FullBucketImm<'a, K, V>> {
         let hash = self.make_hash(q);
         search_hashed(&self.table, &hash, |k| q.equiv(k)).into_option()
     }
 
+    #[allow(deprecated)]
     fn search_equiv_mut<'a, Sized? Q: Hash<S> + Equiv<K>>(&'a mut self, q: &Q)
                     -> Option<FullBucketMut<'a, K, V>> {
         let hash = self.make_hash(q);
