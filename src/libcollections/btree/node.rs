@@ -158,13 +158,13 @@ impl <K, V> Node<K, V> {
     /// Swap the given key-value pair with the key-value pair stored in the node's index,
     /// without checking bounds.
     pub unsafe fn unsafe_swap(&mut self, index: uint, key: &mut K, val: &mut V) {
-        mem::swap(self.keys.as_mut_slice().unsafe_mut(index), key);
-        mem::swap(self.vals.as_mut_slice().unsafe_mut(index), val);
+        mem::swap(self.keys.unsafe_mut(index), key);
+        mem::swap(self.vals.unsafe_mut(index), val);
     }
 
     /// Get the node's key mutably without any bounds checks.
     pub unsafe fn unsafe_key_mut(&mut self, index: uint) -> &mut K {
-        self.keys.as_mut_slice().unsafe_mut(index)
+        self.keys.unsafe_mut(index)
     }
 
     /// Get the node's value at the given index
@@ -189,12 +189,12 @@ impl <K, V> Node<K, V> {
 
     /// Get the node's edge mutably at the given index
     pub fn edge_mut(&mut self, index: uint) -> Option<&mut Node<K,V>> {
-        self.edges.as_mut_slice().get_mut(index)
+        self.edges.get_mut(index)
     }
 
     /// Get the node's edge mutably without any bounds checks.
     pub unsafe fn unsafe_edge_mut(&mut self, index: uint) -> &mut Node<K,V> {
-        self.edges.as_mut_slice().unsafe_mut(index)
+        self.edges.unsafe_mut(index)
     }
 
     /// Pop an edge off the end of the node
@@ -292,8 +292,8 @@ impl <K, V> Node<K, V> {
     pub fn iter_mut<'a>(&'a mut self) -> MutTraversal<'a, K, V> {
         let is_leaf = self.is_leaf();
         MutTraversal {
-            elems: self.keys.iter().zip(self.vals.as_mut_slice().iter_mut()),
-            edges: self.edges.as_mut_slice().iter_mut(),
+            elems: self.keys.iter().zip(self.vals.iter_mut()),
+            edges: self.edges.iter_mut(),
             head_is_edge: true,
             tail_is_edge: true,
             has_edges: !is_leaf,
@@ -478,7 +478,7 @@ fn split<T>(left: &mut Vec<T>) -> Vec<T> {
     let mut right = Vec::with_capacity(left.capacity());
     unsafe {
         let left_ptr = left.unsafe_get(left_len) as *const _;
-        let right_ptr = right.as_mut_slice().as_mut_ptr();
+        let right_ptr = right.as_mut_ptr();
         ptr::copy_nonoverlapping_memory(right_ptr, left_ptr, right_len);
         left.set_len(left_len);
         right.set_len(right_len);

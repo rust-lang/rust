@@ -201,7 +201,7 @@ impl Iterator<(uint, uint)> for ElementSwaps {
         match max {
             Some((i, sd)) => {
                 let j = new_pos(i, sd.dir);
-                self.sdir.as_mut_slice().swap(i, j);
+                self.sdir.swap(i, j);
 
                 // Swap the direction of each larger SizeDirection
                 for x in self.sdir.iter_mut() {
@@ -256,7 +256,7 @@ impl<T: Clone> Iterator<Vec<T>> for Permutations<T> {
             Some((0,0)) => Some(self.v.clone()),
             Some((a, b)) => {
                 let elt = self.v.clone();
-                self.v.as_mut_slice().swap(a, b);
+                self.v.swap(a, b);
                 Some(elt)
             }
         }
@@ -779,11 +779,11 @@ mod tests {
     #[test]
     fn test_head_mut() {
         let mut a = vec![];
-        assert_eq!(a.as_mut_slice().head_mut(), None);
+        assert_eq!(a.head_mut(), None);
         a = vec![11i];
-        assert_eq!(*a.as_mut_slice().head_mut().unwrap(), 11);
+        assert_eq!(*a.head_mut().unwrap(), 11);
         a = vec![11i, 12];
-        assert_eq!(*a.as_mut_slice().head_mut().unwrap(), 11);
+        assert_eq!(*a.head_mut().unwrap(), 11);
     }
 
     #[test]
@@ -800,10 +800,10 @@ mod tests {
     fn test_tail_mut() {
         let mut a = vec![11i];
         let b: &mut [int] = &mut [];
-        assert!(a.as_mut_slice().tail_mut() == b);
+        assert!(a.tail_mut() == b);
         a = vec![11i, 12];
         let b: &mut [int] = &mut [12];
-        assert!(a.as_mut_slice().tail_mut() == b);
+        assert!(a.tail_mut() == b);
     }
 
     #[test]
@@ -817,7 +817,7 @@ mod tests {
     #[should_fail]
     fn test_tail_mut_empty() {
         let mut a: Vec<int> = vec![];
-        a.as_mut_slice().tail_mut();
+        a.tail_mut();
     }
 
     #[test]
@@ -834,10 +834,10 @@ mod tests {
     fn test_init_mut() {
         let mut a = vec![11i];
         let b: &mut [int] = &mut [];
-        assert!(a.as_mut_slice().init_mut() == b);
+        assert!(a.init_mut() == b);
         a = vec![11i, 12];
         let b: &mut [int] = &mut [11];
-        assert!(a.as_mut_slice().init_mut() == b);
+        assert!(a.init_mut() == b);
     }
 
     #[test]
@@ -851,7 +851,7 @@ mod tests {
     #[should_fail]
     fn test_init_mut_empty() {
         let mut a: Vec<int> = vec![];
-        a.as_mut_slice().init_mut();
+        a.init_mut();
     }
 
     #[test]
@@ -867,11 +867,11 @@ mod tests {
     #[test]
     fn test_last_mut() {
         let mut a = vec![];
-        assert_eq!(a.as_mut_slice().last_mut(), None);
+        assert_eq!(a.last_mut(), None);
         a = vec![11i];
-        assert_eq!(*a.as_mut_slice().last_mut().unwrap(), 11);
+        assert_eq!(*a.last_mut().unwrap(), 11);
         a = vec![11i, 12];
-        assert_eq!(*a.as_mut_slice().last_mut().unwrap(), 12);
+        assert_eq!(*a.last_mut().unwrap(), 12);
     }
 
     #[test]
@@ -1299,13 +1299,13 @@ mod tests {
                                       .collect::<Vec<uint>>();
                 let mut v1 = v.clone();
 
-                v.as_mut_slice().sort();
+                v.sort();
                 assert!(v.as_slice().windows(2).all(|w| w[0] <= w[1]));
 
-                v1.as_mut_slice().sort_by(|a, b| a.cmp(b));
+                v1.sort_by(|a, b| a.cmp(b));
                 assert!(v1.as_slice().windows(2).all(|w| w[0] <= w[1]));
 
-                v1.as_mut_slice().sort_by(|a, b| b.cmp(a));
+                v1.sort_by(|a, b| b.cmp(a));
                 assert!(v1.as_slice().windows(2).all(|w| w[0] >= w[1]));
             }
         }
