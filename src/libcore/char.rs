@@ -81,7 +81,7 @@ pub fn from_u32(i: u32) -> Option<char> {
 ///
 /// Checks if a `char` parses as a numeric digit in the given radix
 ///
-/// Compared to `is_digit()`, this function only recognizes the
+/// Compared to `is_numeric()`, this function only recognizes the
 /// characters `0-9`, `a-z` and `A-Z`.
 ///
 /// # Return value
@@ -201,7 +201,7 @@ pub fn len_utf8_bytes(c: char) -> uint {
 pub trait Char {
     /// Checks if a `char` parses as a numeric digit in the given radix.
     ///
-    /// Compared to `is_digit()`, this function only recognizes the characters
+    /// Compared to `is_numeric()`, this function only recognizes the characters
     /// `0-9`, `a-z` and `A-Z`.
     ///
     /// # Return value
@@ -217,7 +217,7 @@ pub trait Char {
 
     /// Checks if a `char` parses as a numeric digit in the given radix.
     ///
-    /// Compared to `is_digit()`, this function only recognizes the characters
+    /// Compared to `is_numeric()`, this function only recognizes the characters
     /// `0-9`, `a-z` and `A-Z`.
     ///
     /// # Return value
