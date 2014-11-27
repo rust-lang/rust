@@ -55,7 +55,7 @@ pub fn trans_stmt<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
 
     let id = ast_util::stmt_id(s);
     let cleanup_debug_loc =
-        debuginfo::get_cleanup_debug_loc_for_ast_node(id, s.span, false);
+        debuginfo::get_cleanup_debug_loc_for_ast_node(bcx.ccx(), id, s.span, false);
     fcx.push_ast_cleanup_scope(cleanup_debug_loc);
 
     match s.node {
@@ -103,7 +103,7 @@ pub fn trans_block<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let mut bcx = bcx;
 
     let cleanup_debug_loc =
-        debuginfo::get_cleanup_debug_loc_for_ast_node(b.id, b.span, true);
+        debuginfo::get_cleanup_debug_loc_for_ast_node(bcx.ccx(), b.id, b.span, true);
     fcx.push_ast_cleanup_scope(cleanup_debug_loc);
 
     for s in b.stmts.iter() {
