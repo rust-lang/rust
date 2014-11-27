@@ -609,7 +609,8 @@ impl<T: PartialOrd> PartialOrd for Vec<T> {
 #[unstable = "waiting on Eq stability"]
 impl<T: Eq> Eq for Vec<T> {}
 
-#[experimental]
+#[allow(deprecated)]
+#[deprecated = "Use overloaded `core::cmp::PartialEq`"]
 impl<T: PartialEq, Sized? V: AsSlice<T>> Equiv<V> for Vec<T> {
     #[inline]
     fn equiv(&self, other: &V) -> bool { self.as_slice() == other.as_slice() }

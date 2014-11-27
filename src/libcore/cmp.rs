@@ -240,7 +240,7 @@ pub trait PartialOrd<Sized? Rhs = Self> for Sized?: PartialEq<Rhs> {
 /// of different types. The most common use case for this relation is
 /// container types; e.g. it is often desirable to be able to use `&str`
 /// values to look up entries in a container with `String` keys.
-#[experimental = "Better solutions may be discovered."]
+#[deprecated = "Use overloaded core::cmp::PartialEq"]
 pub trait Equiv<Sized? T> for Sized? {
     /// Implement this function to decide equivalent values.
     fn equiv(&self, other: &T) -> bool;

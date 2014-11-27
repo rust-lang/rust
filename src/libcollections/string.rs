@@ -822,7 +822,8 @@ impl<H: hash::Writer> hash::Hash<H> for String {
     }
 }
 
-#[experimental = "waiting on Equiv stabilization"]
+#[allow(deprecated)]
+#[deprecated = "Use overloaded `core::cmp::PartialEq`"]
 impl<'a, S: Str> Equiv<S> for String {
     #[inline]
     fn equiv(&self, other: &S) -> bool {
