@@ -16,7 +16,6 @@
 
 #![crate_name = "fmt_macros"]
 #![experimental]
-#![license = "MIT/ASL2"]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 #![feature(macro_rules, globs, import_shadowing)]

@@ -635,11 +635,6 @@ impl LintPass for UnusedAttributes {
             // used in resolve
             "prelude_import",
 
-            // not used anywhere (!?) but apparently we want to keep them around
-            "comment",
-            "desc",
-            "license",
-
             // FIXME: #14407 these are only looked at on-demand so we can't
             // guarantee they'll have already been checked
             "deprecated",
@@ -658,10 +653,6 @@ impl LintPass for UnusedAttributes {
             "no_start",
             "no_main",
             "no_std",
-            "desc",
-            "comment",
-            "license",
-            "copyright",
             "no_builtins",
         ];
 
