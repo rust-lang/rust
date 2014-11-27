@@ -36,7 +36,9 @@ pub unsafe fn alloc<T>() -> *mut T {
 /// Allocates and returns a ptr to memory to store a `len` elements of type T. Handles zero-sized
 /// types automatically by returning the EMPTY ptr.
 ///
-/// A `len` of 0 is Undefined Behaviour.
+/// # Undefined Behaviour
+///
+/// * `len` must not be 0.
 ///
 /// # Panics
 ///
@@ -62,7 +64,9 @@ pub unsafe fn alloc_array<T>(len: uint) -> *mut T {
 /// types automatically by returning the given ptr. `old_len` must be then `len` provided to the
 /// call to `alloc_array` or `realloc_array` that created `ptr`.
 ///
-/// A len of `0` is Undefined Behaviour.
+/// # Undefined Behaviour
+///
+/// * `len` must not be 0.
 ///
 /// # Panics
 ///
@@ -88,17 +92,22 @@ pub unsafe fn realloc_array<T>(ptr: *mut T, old_len: uint, len: uint) -> *mut T 
 
 }
 
-/// Tries to resize the allocation referenced by `ptr` to fit `len` elements of type T.
-/// `old_len` must be the `len` provided to the call to `alloc_array` or `realloc_array`
-/// that created `ptr`. Handles zero-sized types by always returning Ok(()).
+/// Tries to resize the allocation referenced by `ptr` in-place to fit `len` elements of type T.
+/// If successful, yields Ok. If unsuccessful, yields Err, and the allocation is unchanged.
+/// Handles zero-sized types by always returning Ok(()).
 ///
-/// A `len` of 0 is Undefined Behaviour.
+/// # Undefined Behaviour
+///
+/// * `old_len` must be the `len` provided to the last successful allocator call that created or
+/// changed `ptr`.
+/// * `len` must not be 0.
 ///
 /// # Panics
 ///
 /// Panics if size_of<T> * len overflows.
 #[inline]
 pub unsafe fn realloc_array_inplace<T>(ptr: *mut T, old_len: uint, len: uint) -> Result<(), ()> {
+    // FIXME: just remove this in favour of only shrink/grow?
     let size = size_of::<T>();
     let align = min_align_of::<T>();
     if size == 0 {
@@ -117,10 +126,82 @@ pub unsafe fn realloc_array_inplace<T>(ptr: *mut T, old_len: uint, len: uint) ->
     }
 }
 
+/// Tries to grow the allocation referenced by `ptr` in-place to fit `len` elements of type T.
+/// If successful, yields Ok. If unsuccessful, yields Err, and the allocation is unchanged.
+/// Handles zero-sized types by always returning Ok(()).
+///
+/// # Undefined Behaviour
+///
+/// * `old_len` must be the `len` provided to the last successful allocator call that created or
+/// changed `ptr`.
+/// * `len` must not be 0.
+/// * `len` must not be smaller than `old_len`.
+///
+/// # Panics
+///
+/// Panics if size_of<T> * len overflows.
+#[inline]
+pub unsafe fn try_grow_inplace<T>(ptr: *mut T, old_len: uint, len: uint) -> Result<(), ()> {
+    let size = size_of::<T>();
+    let align = min_align_of::<T>();
+    if size == 0 {
+        Ok(())
+    } else {
+        let desired_size = size.checked_mul(len).expect("capacity overflow");
+        // No need to check size * old_len, must have been checked when the ptr was made, or
+        // else UB anyway.
+        let result_size = heap::reallocate_inplace(ptr as *mut u8, size * old_len,
+                                                    desired_size, align);
+        if result_size >= desired_size {
+            Ok(())
+        } else {
+            Err(())
+        }
+    }
+}
+
+/// Tries to shrink the allocation referenced by `ptr` in-place to fit `len` elements of type T.
+/// If successful, yields Ok. If unsuccessful, yields Err, and the allocation is unchanged.
+/// Handles zero-sized types by always returning Ok(()).
+///
+/// # Undefined Behaviour
+///
+/// * `old_len` must be the `len` provided to the last successful allocator call that created or
+/// changed `ptr`.
+/// * `len` must not be 0.
+/// * `len` must not be larger than `old_len`.
+///
+/// # Panics
+///
+/// Panics if size_of<T> * len overflows.
+#[inline]
+pub unsafe fn try_shrink_inplace<T>(ptr: *mut T, old_len: uint, len: uint) -> Result<(), ()> {
+    let size = size_of::<T>();
+    let align = min_align_of::<T>();
+    if size == 0 {
+        Ok(())
+    } else {
+        // No need to check either mul, size * len <= size * old_len, and size * old_len must have
+        // been checked when the ptr was made, or else UB anyway.
+        let desired_size = size * len;
+        let result_size = heap::reallocate_inplace(ptr as *mut u8, size * old_len,
+                                                    desired_size, align);
+        if result_size == usable_size(desired_size, align) {
+            Ok(())
+        } else {
+            Err(())
+        }
+    }
+}
+
+
 /// Deallocates the memory referenced by `ptr`, assuming it was allocated with `alloc`.
 /// Handles zero-sized types automatically by doing nothing.
 ///
-/// The `ptr` parameter must not be null, or previously deallocated.
+/// # Undefined Behaviour
+///
+/// * The `ptr` must have been allocated by this API's `alloc` method.
+/// * The `ptr` must not have been previously deallocated.
 #[inline]
 pub unsafe fn dealloc<T>(ptr: *mut T) {
     let size = size_of::<T>();
@@ -134,8 +215,12 @@ pub unsafe fn dealloc<T>(ptr: *mut T) {
 /// Deallocates the memory referenced by `ptr`, assuming it was allocated with `alloc_array` or
 /// `realloc_array`. Handles zero-sized types automatically by doing nothing.
 ///
-/// The `ptr` parameter must not be null, or previously deallocated. Then `len` must be the last
-/// value of `len` given to the function that allocated the `ptr`.
+/// # Undefined Behaviour
+///
+/// * The `ptr` must have been allocated by this API's `alloc_array` or `realloc_array` methods.
+/// * The `ptr` must not have been previously deallocated.
+/// * `len` must be the `len` provided to the last successful allocator call that created or
+/// changed `ptr`.
 #[inline]
 pub unsafe fn dealloc_array<T>(ptr: *mut T, len: uint) {
     let size = size_of::<T>();
