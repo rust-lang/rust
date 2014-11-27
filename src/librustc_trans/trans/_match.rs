@@ -8,183 +8,179 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
- *
- * # Compilation of match statements
- *
- * I will endeavor to explain the code as best I can.  I have only a loose
- * understanding of some parts of it.
- *
- * ## Matching
- *
- * The basic state of the code is maintained in an array `m` of `Match`
- * objects.  Each `Match` describes some list of patterns, all of which must
- * match against the current list of values.  If those patterns match, then
- * the arm listed in the match is the correct arm.  A given arm may have
- * multiple corresponding match entries, one for each alternative that
- * remains.  As we proceed these sets of matches are adjusted by the various
- * `enter_XXX()` functions, each of which adjusts the set of options given
- * some information about the value which has been matched.
- *
- * So, initially, there is one value and N matches, each of which have one
- * constituent pattern.  N here is usually the number of arms but may be
- * greater, if some arms have multiple alternatives.  For example, here:
- *
- *     enum Foo { A, B(int), C(uint, uint) }
- *     match foo {
- *         A => ...,
- *         B(x) => ...,
- *         C(1u, 2) => ...,
- *         C(_) => ...
- *     }
- *
- * The value would be `foo`.  There would be four matches, each of which
- * contains one pattern (and, in one case, a guard).  We could collect the
- * various options and then compile the code for the case where `foo` is an
- * `A`, a `B`, and a `C`.  When we generate the code for `C`, we would (1)
- * drop the two matches that do not match a `C` and (2) expand the other two
- * into two patterns each.  In the first case, the two patterns would be `1u`
- * and `2`, and the in the second case the _ pattern would be expanded into
- * `_` and `_`.  The two values are of course the arguments to `C`.
- *
- * Here is a quick guide to the various functions:
- *
- * - `compile_submatch()`: The main workhouse.  It takes a list of values and
- *   a list of matches and finds the various possibilities that could occur.
- *
- * - `enter_XXX()`: modifies the list of matches based on some information
- *   about the value that has been matched.  For example,
- *   `enter_rec_or_struct()` adjusts the values given that a record or struct
- *   has been matched.  This is an infallible pattern, so *all* of the matches
- *   must be either wildcards or record/struct patterns.  `enter_opt()`
- *   handles the fallible cases, and it is correspondingly more complex.
- *
- * ## Bindings
- *
- * We store information about the bound variables for each arm as part of the
- * per-arm `ArmData` struct.  There is a mapping from identifiers to
- * `BindingInfo` structs.  These structs contain the mode/id/type of the
- * binding, but they also contain an LLVM value which points at an alloca
- * called `llmatch`. For by value bindings that are Copy, we also create
- * an extra alloca that we copy the matched value to so that any changes
- * we do to our copy is not reflected in the original and vice-versa.
- * We don't do this if it's a move since the original value can't be used
- * and thus allowing us to cheat in not creating an extra alloca.
- *
- * The `llmatch` binding always stores a pointer into the value being matched
- * which points at the data for the binding.  If the value being matched has
- * type `T`, then, `llmatch` will point at an alloca of type `T*` (and hence
- * `llmatch` has type `T**`).  So, if you have a pattern like:
- *
- *    let a: A = ...;
- *    let b: B = ...;
- *    match (a, b) { (ref c, d) => { ... } }
- *
- * For `c` and `d`, we would generate allocas of type `C*` and `D*`
- * respectively.  These are called the `llmatch`.  As we match, when we come
- * up against an identifier, we store the current pointer into the
- * corresponding alloca.
- *
- * Once a pattern is completely matched, and assuming that there is no guard
- * pattern, we will branch to a block that leads to the body itself.  For any
- * by-value bindings, this block will first load the ptr from `llmatch` (the
- * one of type `D*`) and then load a second time to get the actual value (the
- * one of type `D`). For by ref bindings, the value of the local variable is
- * simply the first alloca.
- *
- * So, for the example above, we would generate a setup kind of like this:
- *
- *        +-------+
- *        | Entry |
- *        +-------+
- *            |
- *        +--------------------------------------------+
- *        | llmatch_c = (addr of first half of tuple)  |
- *        | llmatch_d = (addr of second half of tuple) |
- *        +--------------------------------------------+
- *            |
- *        +--------------------------------------+
- *        | *llbinding_d = **llmatch_d           |
- *        +--------------------------------------+
- *
- * If there is a guard, the situation is slightly different, because we must
- * execute the guard code.  Moreover, we need to do so once for each of the
- * alternatives that lead to the arm, because if the guard fails, they may
- * have different points from which to continue the search. Therefore, in that
- * case, we generate code that looks more like:
- *
- *        +-------+
- *        | Entry |
- *        +-------+
- *            |
- *        +-------------------------------------------+
- *        | llmatch_c = (addr of first half of tuple) |
- *        | llmatch_d = (addr of first half of tuple) |
- *        +-------------------------------------------+
- *            |
- *        +-------------------------------------------------+
- *        | *llbinding_d = **llmatch_d                      |
- *        | check condition                                 |
- *        | if false { goto next case }                     |
- *        | if true { goto body }                           |
- *        +-------------------------------------------------+
- *
- * The handling for the cleanups is a bit... sensitive.  Basically, the body
- * is the one that invokes `add_clean()` for each binding.  During the guard
- * evaluation, we add temporary cleanups and revoke them after the guard is
- * evaluated (it could fail, after all). Note that guards and moves are
- * just plain incompatible.
- *
- * Some relevant helper functions that manage bindings:
- * - `create_bindings_map()`
- * - `insert_lllocals()`
- *
- *
- * ## Notes on vector pattern matching.
- *
- * Vector pattern matching is surprisingly tricky. The problem is that
- * the structure of the vector isn't fully known, and slice matches
- * can be done on subparts of it.
- *
- * The way that vector pattern matches are dealt with, then, is as
- * follows. First, we make the actual condition associated with a
- * vector pattern simply a vector length comparison. So the pattern
- * [1, .. x] gets the condition "vec len >= 1", and the pattern
- * [.. x] gets the condition "vec len >= 0". The problem here is that
- * having the condition "vec len >= 1" hold clearly does not mean that
- * only a pattern that has exactly that condition will match. This
- * means that it may well be the case that a condition holds, but none
- * of the patterns matching that condition match; to deal with this,
- * when doing vector length matches, we have match failures proceed to
- * the next condition to check.
- *
- * There are a couple more subtleties to deal with. While the "actual"
- * condition associated with vector length tests is simply a test on
- * the vector length, the actual vec_len Opt entry contains more
- * information used to restrict which matches are associated with it.
- * So that all matches in a submatch are matching against the same
- * values from inside the vector, they are split up by how many
- * elements they match at the front and at the back of the vector. In
- * order to make sure that arms are properly checked in order, even
- * with the overmatching conditions, each vec_len Opt entry is
- * associated with a range of matches.
- * Consider the following:
- *
- *   match &[1, 2, 3] {
- *       [1, 1, .. _] => 0,
- *       [1, 2, 2, .. _] => 1,
- *       [1, 2, 3, .. _] => 2,
- *       [1, 2, .. _] => 3,
- *       _ => 4
- *   }
- * The proper arm to match is arm 2, but arms 0 and 3 both have the
- * condition "len >= 2". If arm 3 was lumped in with arm 0, then the
- * wrong branch would be taken. Instead, vec_len Opts are associated
- * with a contiguous range of matches that have the same "shape".
- * This is sort of ugly and requires a bunch of special handling of
- * vec_len options.
- *
- */
+//! # Compilation of match statements
+//!
+//! I will endeavor to explain the code as best I can.  I have only a loose
+//! understanding of some parts of it.
+//!
+//! ## Matching
+//!
+//! The basic state of the code is maintained in an array `m` of `Match`
+//! objects.  Each `Match` describes some list of patterns, all of which must
+//! match against the current list of values.  If those patterns match, then
+//! the arm listed in the match is the correct arm.  A given arm may have
+//! multiple corresponding match entries, one for each alternative that
+//! remains.  As we proceed these sets of matches are adjusted by the various
+//! `enter_XXX()` functions, each of which adjusts the set of options given
+//! some information about the value which has been matched.
+//!
+//! So, initially, there is one value and N matches, each of which have one
+//! constituent pattern.  N here is usually the number of arms but may be
+//! greater, if some arms have multiple alternatives.  For example, here:
+//!
+//!     enum Foo { A, B(int), C(uint, uint) }
+//!     match foo {
+//!         A => ...,
+//!         B(x) => ...,
+//!         C(1u, 2) => ...,
+//!         C(_) => ...
+//!     }
+//!
+//! The value would be `foo`.  There would be four matches, each of which
+//! contains one pattern (and, in one case, a guard).  We could collect the
+//! various options and then compile the code for the case where `foo` is an
+//! `A`, a `B`, and a `C`.  When we generate the code for `C`, we would (1)
+//! drop the two matches that do not match a `C` and (2) expand the other two
+//! into two patterns each.  In the first case, the two patterns would be `1u`
+//! and `2`, and the in the second case the _ pattern would be expanded into
+//! `_` and `_`.  The two values are of course the arguments to `C`.
+//!
+//! Here is a quick guide to the various functions:
+//!
+//! - `compile_submatch()`: The main workhouse.  It takes a list of values and
+//!   a list of matches and finds the various possibilities that could occur.
+//!
+//! - `enter_XXX()`: modifies the list of matches based on some information
+//!   about the value that has been matched.  For example,
+//!   `enter_rec_or_struct()` adjusts the values given that a record or struct
+//!   has been matched.  This is an infallible pattern, so *all* of the matches
+//!   must be either wildcards or record/struct patterns.  `enter_opt()`
+//!   handles the fallible cases, and it is correspondingly more complex.
+//!
+//! ## Bindings
+//!
+//! We store information about the bound variables for each arm as part of the
+//! per-arm `ArmData` struct.  There is a mapping from identifiers to
+//! `BindingInfo` structs.  These structs contain the mode/id/type of the
+//! binding, but they also contain an LLVM value which points at an alloca
+//! called `llmatch`. For by value bindings that are Copy, we also create
+//! an extra alloca that we copy the matched value to so that any changes
+//! we do to our copy is not reflected in the original and vice-versa.
+//! We don't do this if it's a move since the original value can't be used
+//! and thus allowing us to cheat in not creating an extra alloca.
+//!
+//! The `llmatch` binding always stores a pointer into the value being matched
+//! which points at the data for the binding.  If the value being matched has
+//! type `T`, then, `llmatch` will point at an alloca of type `T*` (and hence
+//! `llmatch` has type `T**`).  So, if you have a pattern like:
+//!
+//!    let a: A = ...;
+//!    let b: B = ...;
+//!    match (a, b) { (ref c, d) => { ... } }
+//!
+//! For `c` and `d`, we would generate allocas of type `C*` and `D*`
+//! respectively.  These are called the `llmatch`.  As we match, when we come
+//! up against an identifier, we store the current pointer into the
+//! corresponding alloca.
+//!
+//! Once a pattern is completely matched, and assuming that there is no guard
+//! pattern, we will branch to a block that leads to the body itself.  For any
+//! by-value bindings, this block will first load the ptr from `llmatch` (the
+//! one of type `D*`) and then load a second time to get the actual value (the
+//! one of type `D`). For by ref bindings, the value of the local variable is
+//! simply the first alloca.
+//!
+//! So, for the example above, we would generate a setup kind of like this:
+//!
+//!        +-------+
+//!        | Entry |
+//!        +-------+
+//!            |
+//!        +--------------------------------------------+
+//!        | llmatch_c = (addr of first half of tuple)  |
+//!        | llmatch_d = (addr of second half of tuple) |
+//!        +--------------------------------------------+
+//!            |
+//!        +--------------------------------------+
+//!        | *llbinding_d = **llmatch_d           |
+//!        +--------------------------------------+
+//!
+//! If there is a guard, the situation is slightly different, because we must
+//! execute the guard code.  Moreover, we need to do so once for each of the
+//! alternatives that lead to the arm, because if the guard fails, they may
+//! have different points from which to continue the search. Therefore, in that
+//! case, we generate code that looks more like:
+//!
+//!        +-------+
+//!        | Entry |
+//!        +-------+
+//!            |
+//!        +-------------------------------------------+
+//!        | llmatch_c = (addr of first half of tuple) |
+//!        | llmatch_d = (addr of first half of tuple) |
+//!        +-------------------------------------------+
+//!            |
+//!        +-------------------------------------------------+
+//!        | *llbinding_d = **llmatch_d                      |
+//!        | check condition                                 |
+//!        | if false { goto next case }                     |
+//!        | if true { goto body }                           |
+//!        +-------------------------------------------------+
+//!
+//! The handling for the cleanups is a bit... sensitive.  Basically, the body
+//! is the one that invokes `add_clean()` for each binding.  During the guard
+//! evaluation, we add temporary cleanups and revoke them after the guard is
+//! evaluated (it could fail, after all). Note that guards and moves are
+//! just plain incompatible.
+//!
+//! Some relevant helper functions that manage bindings:
+//! - `create_bindings_map()`
+//! - `insert_lllocals()`
+//!
+//!
+//! ## Notes on vector pattern matching.
+//!
+//! Vector pattern matching is surprisingly tricky. The problem is that
+//! the structure of the vector isn't fully known, and slice matches
+//! can be done on subparts of it.
+//!
+//! The way that vector pattern matches are dealt with, then, is as
+//! follows. First, we make the actual condition associated with a
+//! vector pattern simply a vector length comparison. So the pattern
+//! [1, .. x] gets the condition "vec len >= 1", and the pattern
+//! [.. x] gets the condition "vec len >= 0". The problem here is that
+//! having the condition "vec len >= 1" hold clearly does not mean that
+//! only a pattern that has exactly that condition will match. This
+//! means that it may well be the case that a condition holds, but none
+//! of the patterns matching that condition match; to deal with this,
+//! when doing vector length matches, we have match failures proceed to
+//! the next condition to check.
+//!
+//! There are a couple more subtleties to deal with. While the "actual"
+//! condition associated with vector length tests is simply a test on
+//! the vector length, the actual vec_len Opt entry contains more
+//! information used to restrict which matches are associated with it.
+//! So that all matches in a submatch are matching against the same
+//! values from inside the vector, they are split up by how many
+//! elements they match at the front and at the back of the vector. In
+//! order to make sure that arms are properly checked in order, even
+//! with the overmatching conditions, each vec_len Opt entry is
+//! associated with a range of matches.
+//! Consider the following:
+//!
+//!   match &[1, 2, 3] {
+//!       [1, 1, .. _] => 0,
+//!       [1, 2, 2, .. _] => 1,
+//!       [1, 2, 3, .. _] => 2,
+//!       [1, 2, .. _] => 3,
+//!       _ => 4
+//!   }
+//! The proper arm to match is arm 2, but arms 0 and 3 both have the
+//! condition "len >= 2". If arm 3 was lumped in with arm 0, then the
+//! wrong branch would be taken. Instead, vec_len Opts are associated
+//! with a contiguous range of matches that have the same "shape".
+//! This is sort of ugly and requires a bunch of special handling of
+//! vec_len options.
 
 pub use self::BranchKind::*;
 pub use self::OptResult::*;
@@ -325,15 +321,14 @@ pub enum TransBindingMode {
     TrByRef,
 }
 
-/**
- * Information about a pattern binding:
- * - `llmatch` is a pointer to a stack slot.  The stack slot contains a
- *   pointer into the value being matched.  Hence, llmatch has type `T**`
- *   where `T` is the value being matched.
- * - `trmode` is the trans binding mode
- * - `id` is the node id of the binding
- * - `ty` is the Rust type of the binding */
- #[deriving(Clone)]
+/// Information about a pattern binding:
+/// - `llmatch` is a pointer to a stack slot.  The stack slot contains a
+///   pointer into the value being matched.  Hence, llmatch has type `T**`
+///   where `T` is the value being matched.
+/// - `trmode` is the trans binding mode
+/// - `id` is the node id of the binding
+/// - `ty` is the Rust type of the binding
+#[deriving(Clone)]
 pub struct BindingInfo<'tcx> {
     pub llmatch: ValueRef,
     pub trmode: TransBindingMode,
@@ -350,12 +345,10 @@ struct ArmData<'p, 'blk, 'tcx: 'blk> {
     bindings_map: BindingsMap<'tcx>
 }
 
-/**
- * Info about Match.
- * If all `pats` are matched then arm `data` will be executed.
- * As we proceed `bound_ptrs` are filled with pointers to values to be bound,
- * these pointers are stored in llmatch variables just before executing `data` arm.
- */
+/// Info about Match.
+/// If all `pats` are matched then arm `data` will be executed.
+/// As we proceed `bound_ptrs` are filled with pointers to values to be bound,
+/// these pointers are stored in llmatch variables just before executing `data` arm.
 struct Match<'a, 'p: 'a, 'blk: 'a, 'tcx: 'blk> {
     pats: Vec<&'p ast::Pat>,
     data: &'a ArmData<'p, 'blk, 'tcx>,
@@ -620,12 +613,9 @@ fn extract_variant_args<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     ExtractedBlock { vals: args, bcx: bcx }
 }
 
+/// Helper for converting from the ValueRef that we pass around in the match code, which is always
+/// an lvalue, into a Datum. Eventually we should just pass around a Datum and be done with it.
 fn match_datum<'tcx>(val: ValueRef, left_ty: Ty<'tcx>) -> Datum<'tcx, Lvalue> {
-    /*!
-     * Helper for converting from the ValueRef that we pass around in
-     * the match code, which is always an lvalue, into a Datum. Eventually
-     * we should just pass around a Datum and be done with it.
-     */
     Datum::new(val, left_ty, Lvalue)
 }
 
@@ -831,15 +821,11 @@ fn compare_values<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
     }
 }
 
+/// For each binding in `data.bindings_map`, adds an appropriate entry into the `fcx.lllocals` map
 fn insert_lllocals<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                bindings_map: &BindingsMap<'tcx>,
                                cs: Option<cleanup::ScopeId>)
                                -> Block<'blk, 'tcx> {
-    /*!
-     * For each binding in `data.bindings_map`, adds an appropriate entry into
-     * the `fcx.lllocals` map
-     */
-
     for (&ident, &binding_info) in bindings_map.iter() {
         let llval = match binding_info.trmode {
             // By value mut binding for a copy type: load from the ptr
@@ -1416,13 +1402,11 @@ fn trans_match_inner<'blk, 'tcx>(scope_cx: Block<'blk, 'tcx>,
     return bcx;
 }
 
+/// Generates code for a local variable declaration like `let <pat>;` or `let <pat> =
+/// <opt_init_expr>`.
 pub fn store_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                local: &ast::Local)
                                -> Block<'blk, 'tcx> {
-    /*!
-     * Generates code for a local variable declaration like
-     * `let <pat>;` or `let <pat> = <opt_init_expr>`.
-     */
     let _icx = push_ctxt("match::store_local");
     let mut bcx = bcx;
     let tcx = bcx.tcx();
@@ -1482,24 +1466,21 @@ pub fn store_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 }
 
+/// Generates code for argument patterns like `fn foo(<pat>: T)`.
+/// Creates entries in the `lllocals` map for each of the bindings
+/// in `pat`.
+///
+/// # Arguments
+///
+/// - `pat` is the argument pattern
+/// - `llval` is a pointer to the argument value (in other words,
+///   if the argument type is `T`, then `llval` is a `T*`). In some
+///   cases, this code may zero out the memory `llval` points at.
 pub fn store_arg<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                              pat: &ast::Pat,
                              arg: Datum<'tcx, Rvalue>,
                              arg_scope: cleanup::ScopeId)
                              -> Block<'blk, 'tcx> {
-    /*!
-     * Generates code for argument patterns like `fn foo(<pat>: T)`.
-     * Creates entries in the `lllocals` map for each of the bindings
-     * in `pat`.
-     *
-     * # Arguments
-     *
-     * - `pat` is the argument pattern
-     * - `llval` is a pointer to the argument value (in other words,
-     *   if the argument type is `T`, then `llval` is a `T*`). In some
-     *   cases, this code may zero out the memory `llval` points at.
-     */
-
     let _icx = push_ctxt("match::store_arg");
 
     match simple_identifier(&*pat) {
@@ -1583,26 +1564,23 @@ fn mk_binding_alloca<'blk, 'tcx, A>(bcx: Block<'blk, 'tcx>,
     bcx
 }
 
+/// A simple version of the pattern matching code that only handles
+/// irrefutable patterns. This is used in let/argument patterns,
+/// not in match statements. Unifying this code with the code above
+/// sounds nice, but in practice it produces very inefficient code,
+/// since the match code is so much more general. In most cases,
+/// LLVM is able to optimize the code, but it causes longer compile
+/// times and makes the generated code nigh impossible to read.
+///
+/// # Arguments
+/// - bcx: starting basic block context
+/// - pat: the irrefutable pattern being matched.
+/// - val: the value being matched -- must be an lvalue (by ref, with cleanup)
 fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                     pat: &ast::Pat,
                                     val: ValueRef,
                                     cleanup_scope: cleanup::ScopeId)
                                     -> Block<'blk, 'tcx> {
-    /*!
-     * A simple version of the pattern matching code that only handles
-     * irrefutable patterns. This is used in let/argument patterns,
-     * not in match statements. Unifying this code with the code above
-     * sounds nice, but in practice it produces very inefficient code,
-     * since the match code is so much more general. In most cases,
-     * LLVM is able to optimize the code, but it causes longer compile
-     * times and makes the generated code nigh impossible to read.
-     *
-     * # Arguments
-     * - bcx: starting basic block context
-     * - pat: the irrefutable pattern being matched.
-     * - val: the value being matched -- must be an lvalue (by ref, with cleanup)
-     */
-
     debug!("bind_irrefutable_pat(bcx={}, pat={})",
            bcx.to_str(),
            pat.repr(bcx.tcx()));

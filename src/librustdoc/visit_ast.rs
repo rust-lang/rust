@@ -322,7 +322,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 };
                 om.constants.push(s);
             },
-            ast::ItemTrait(ref gen, _, ref b, ref items) => {
+            ast::ItemTrait(ref gen, ref def_ub, ref b, ref items) => {
                 let t = Trait {
                     name: name,
                     items: items.clone(),
@@ -333,6 +333,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     whence: item.span,
                     vis: item.vis,
                     stab: self.stability(item.id),
+                    default_unbound: def_ub.clone()
                 };
                 om.traits.push(t);
             },

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*! See doc.rs */
+//! See doc.rs
 
 pub use self::Constraint::*;
 pub use self::Verify::*;
@@ -597,15 +597,10 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
             .collect()
     }
 
+    /// Computes all regions that have been related to `r0` in any way since the mark `mark` was
+    /// made---`r0` itself will be the first entry. This is used when checking whether skolemized
+    /// regions are being improperly related to other regions.
     pub fn tainted(&self, mark: RegionMark, r0: Region) -> Vec<Region> {
-        /*!
-         * Computes all regions that have been related to `r0` in any
-         * way since the mark `mark` was made---`r0` itself will be
-         * the first entry. This is used when checking whether
-         * skolemized regions are being improperly related to other
-         * regions.
-         */
-
         debug!("tainted(mark={}, r0={})", mark, r0.repr(self.tcx));
         let _indenter = indenter();
 
@@ -694,13 +689,11 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         }
     }
 
-    /**
-    This function performs the actual region resolution.  It must be
-    called after all constraints have been added.  It performs a
-    fixed-point iteration to find region values which satisfy all
-    constraints, assuming such values can be found; if they cannot,
-    errors are reported.
-    */
+    /// This function performs the actual region resolution.  It must be
+    /// called after all constraints have been added.  It performs a
+    /// fixed-point iteration to find region values which satisfy all
+    /// constraints, assuming such values can be found; if they cannot,
+    /// errors are reported.
     pub fn resolve_regions(&self) -> Vec<RegionResolutionError<'tcx>> {
         debug!("RegionVarBindings: resolve_regions()");
         let mut errors = vec!();
@@ -783,16 +776,12 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         }
     }
 
+    /// Computes a region that encloses both free region arguments. Guarantee that if the same two
+    /// regions are given as argument, in any order, a consistent result is returned.
     fn lub_free_regions(&self,
                         a: &FreeRegion,
                         b: &FreeRegion) -> ty::Region
     {
-        /*!
-         * Computes a region that encloses both free region arguments.
-         * Guarantee that if the same two regions are given as argument,
-         * in any order, a consistent result is returned.
-         */
-
         return match a.cmp(b) {
             Less => helper(self, a, b),
             Greater => helper(self, b, a),
@@ -884,16 +873,13 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         }
     }
 
+    /// Computes a region that is enclosed by both free region arguments, if any. Guarantees that
+    /// if the same two regions are given as argument, in any order, a consistent result is
+    /// returned.
     fn glb_free_regions(&self,
                         a: &FreeRegion,
                         b: &FreeRegion) -> cres<'tcx, ty::Region>
     {
-        /*!
-         * Computes a region that is enclosed by both free region arguments,
-         * if any. Guarantees that if the same two regions are given as argument,
-         * in any order, a consistent result is returned.
-         */
-
         return match a.cmp(b) {
             Less => helper(self, a, b),
             Greater => helper(self, b, a),

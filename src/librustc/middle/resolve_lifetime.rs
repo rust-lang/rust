@@ -8,14 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
- * Name resolution for lifetimes.
- *
- * Name resolution for lifetimes follows MUCH simpler rules than the
- * full resolve. For example, lifetime names are never exported or
- * used between functions, and they operate in a purely top-down
- * way. Therefore we break lifetime name resolution into a separate pass.
- */
+//! Name resolution for lifetimes.
+//!
+//! Name resolution for lifetimes follows MUCH simpler rules than the
+//! full resolve. For example, lifetime names are never exported or
+//! used between functions, and they operate in a purely top-down
+//! way. Therefore we break lifetime name resolution into a separate pass.
 
 pub use self::DefRegion::*;
 use self::ScopeChain::*;
@@ -162,7 +160,7 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
                     visit::walk_ty(this, ty);
                 });
             }
-            ast::TyPath(ref path, ref opt_bounds, id) => {
+            ast::TyPath(ref path, id) => {
                 // if this path references a trait, then this will resolve to
                 // a trait ref, which introduces a binding scope.
                 match self.def_map.borrow().get(&id) {
@@ -170,13 +168,6 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
                         self.with(LateScope(&Vec::new(), self.scope), |this| {
                             this.visit_path(path, id);
                         });
-
-                        match *opt_bounds {
-                            Some(ref bounds) => {
-                                visit::walk_ty_param_bounds_helper(self, bounds);
-                            }
-                            None => { }
-                        }
                     }
                     _ => {
                         visit::walk_ty(self, ty);
@@ -254,34 +245,27 @@ impl<'a> LifetimeContext<'a> {
     }
 
     /// Visits self by adding a scope and handling recursive walk over the contents with `walk`.
+    ///
+    /// Handles visiting fns and methods. These are a bit complicated because we must distinguish
+    /// early- vs late-bound lifetime parameters. We do this by checking which lifetimes appear
+    /// within type bounds; those are early bound lifetimes, and the rest are late bound.
+    ///
+    /// For example:
+    ///
+    ///    fn foo<'a,'b,'c,T:Trait<'b>>(...)
+    ///
+    /// Here `'a` and `'c` are late bound but `'b` is early bound. Note that early- and late-bound
+    /// lifetimes may be interspersed together.
+    ///
+    /// If early bound lifetimes are present, we separate them into their own list (and likewise
+    /// for late bound). They will be numbered sequentially, starting from the lowest index that is
+    /// already in scope (for a fn item, that will be 0, but for a method it might not be). Late
+    /// bound lifetimes are resolved by name and associated with a binder id (`binder_id`), so the
+    /// ordering is not important there.
     fn visit_early_late(&mut self,
                         early_space: subst::ParamSpace,
                         generics: &ast::Generics,
                         walk: |&mut LifetimeContext|) {
-        /*!
-         * Handles visiting fns and methods. These are a bit
-         * complicated because we must distinguish early- vs late-bound
-         * lifetime parameters. We do this by checking which lifetimes
-         * appear within type bounds; those are early bound lifetimes,
-         * and the rest are late bound.
-         *
-         * For example:
-         *
-         *    fn foo<'a,'b,'c,T:Trait<'b>>(...)
-         *
-         * Here `'a` and `'c` are late bound but `'b` is early
-         * bound. Note that early- and late-bound lifetimes may be
-         * interspersed together.
-         *
-         * If early bound lifetimes are present, we separate them into
-         * their own list (and likewise for late bound). They will be
-         * numbered sequentially, starting from the lowest index that
-         * is already in scope (for a fn item, that will be 0, but for
-         * a method it might not be). Late bound lifetimes are
-         * resolved by name and associated with a binder id (`binder_id`), so
-         * the ordering is not important there.
-         */
-
         let referenced_idents = early_bound_lifetime_names(generics);
 
         debug!("visit_early_late: referenced_idents={}",
@@ -479,13 +463,9 @@ pub fn early_bound_lifetimes<'a>(generics: &'a ast::Generics) -> Vec<ast::Lifeti
         .collect()
 }
 
+/// Given a set of generic declarations, returns a list of names containing all early bound
+/// lifetime names for those generics. (In fact, this list may also contain other names.)
 fn early_bound_lifetime_names(generics: &ast::Generics) -> Vec<ast::Name> {
-    /*!
-     * Given a set of generic declarations, returns a list of names
-     * containing all early bound lifetime names for those
-     * generics. (In fact, this list may also contain other names.)
-     */
-
     // Create two lists, dividing the lifetimes into early/late bound.
     // Initially, all of them are considered late, but we will move
     // things from late into early as we go if we find references to

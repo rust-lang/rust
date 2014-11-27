@@ -196,53 +196,38 @@ fn reserve_id_range(sess: &Session,
 }
 
 impl<'a, 'b, 'tcx> DecodeContext<'a, 'b, 'tcx> {
+    /// Translates an internal id, meaning a node id that is known to refer to some part of the
+    /// item currently being inlined, such as a local variable or argument.  All naked node-ids
+    /// that appear in types have this property, since if something might refer to an external item
+    /// we would use a def-id to allow for the possibility that the item resides in another crate.
     pub fn tr_id(&self, id: ast::NodeId) -> ast::NodeId {
-        /*!
-         * Translates an internal id, meaning a node id that is known
-         * to refer to some part of the item currently being inlined,
-         * such as a local variable or argument.  All naked node-ids
-         * that appear in types have this property, since if something
-         * might refer to an external item we would use a def-id to
-         * allow for the possibility that the item resides in another
-         * crate.
-         */
-
         // from_id_range should be non-empty
         assert!(!self.from_id_range.empty());
         (id - self.from_id_range.min + self.to_id_range.min)
     }
+
+    /// Translates an EXTERNAL def-id, converting the crate number from the one used in the encoded
+    /// data to the current crate numbers..  By external, I mean that it be translated to a
+    /// reference to the item in its original crate, as opposed to being translated to a reference
+    /// to the inlined version of the item.  This is typically, but not always, what you want,
+    /// because most def-ids refer to external things like types or other fns that may or may not
+    /// be inlined.  Note that even when the inlined function is referencing itself recursively, we
+    /// would want `tr_def_id` for that reference--- conceptually the function calls the original,
+    /// non-inlined version, and trans deals with linking that recursive call to the inlined copy.
+    ///
+    /// However, there are a *few* cases where def-ids are used but we know that the thing being
+    /// referenced is in fact *internal* to the item being inlined.  In those cases, you should use
+    /// `tr_intern_def_id()` below.
     pub fn tr_def_id(&self, did: ast::DefId) -> ast::DefId {
-        /*!
-         * Translates an EXTERNAL def-id, converting the crate number
-         * from the one used in the encoded data to the current crate
-         * numbers..  By external, I mean that it be translated to a
-         * reference to the item in its original crate, as opposed to
-         * being translated to a reference to the inlined version of
-         * the item.  This is typically, but not always, what you
-         * want, because most def-ids refer to external things like
-         * types or other fns that may or may not be inlined.  Note
-         * that even when the inlined function is referencing itself
-         * recursively, we would want `tr_def_id` for that
-         * reference--- conceptually the function calls the original,
-         * non-inlined version, and trans deals with linking that
-         * recursive call to the inlined copy.
-         *
-         * However, there are a *few* cases where def-ids are used but
-         * we know that the thing being referenced is in fact *internal*
-         * to the item being inlined.  In those cases, you should use
-         * `tr_intern_def_id()` below.
-         */
 
         decoder::translate_def_id(self.cdata, did)
     }
-    pub fn tr_intern_def_id(&self, did: ast::DefId) -> ast::DefId {
-        /*!
-         * Translates an INTERNAL def-id, meaning a def-id that is
-         * known to refer to some part of the item currently being
-         * inlined.  In that case, we want to convert the def-id to
-         * refer to the current crate and to the new, inlined node-id.
-         */
 
+    /// Translates an INTERNAL def-id, meaning a def-id that is
+    /// known to refer to some part of the item currently being
+    /// inlined.  In that case, we want to convert the def-id to
+    /// refer to the current crate and to the new, inlined node-id.
+    pub fn tr_intern_def_id(&self, did: ast::DefId) -> ast::DefId {
         assert_eq!(did.krate, ast::LOCAL_CRATE);
         ast::DefId { krate: ast::LOCAL_CRATE, node: self.tr_id(did.node) }
     }
@@ -1780,43 +1765,40 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
         }
     }
 
+    /// Converts a def-id that appears in a type.  The correct
+    /// translation will depend on what kind of def-id this is.
+    /// This is a subtle point: type definitions are not
+    /// inlined into the current crate, so if the def-id names
+    /// a nominal type or type alias, then it should be
+    /// translated to refer to the source crate.
+    ///
+    /// However, *type parameters* are cloned along with the function
+    /// they are attached to.  So we should translate those def-ids
+    /// to refer to the new, cloned copy of the type parameter.
+    /// We only see references to free type parameters in the body of
+    /// an inlined function. In such cases, we need the def-id to
+    /// be a local id so that the TypeContents code is able to lookup
+    /// the relevant info in the ty_param_defs table.
+    ///
+    /// *Region parameters*, unfortunately, are another kettle of fish.
+    /// In such cases, def_id's can appear in types to distinguish
+    /// shadowed bound regions and so forth. It doesn't actually
+    /// matter so much what we do to these, since regions are erased
+    /// at trans time, but it's good to keep them consistent just in
+    /// case. We translate them with `tr_def_id()` which will map
+    /// the crate numbers back to the original source crate.
+    ///
+    /// Unboxed closures are cloned along with the function being
+    /// inlined, and all side tables use interned node IDs, so we
+    /// translate their def IDs accordingly.
+    ///
+    /// It'd be really nice to refactor the type repr to not include
+    /// def-ids so that all these distinctions were unnecessary.
     fn convert_def_id(&mut self,
                       dcx: &DecodeContext,
                       source: tydecode::DefIdSource,
                       did: ast::DefId)
                       -> ast::DefId {
-        /*!
-         * Converts a def-id that appears in a type.  The correct
-         * translation will depend on what kind of def-id this is.
-         * This is a subtle point: type definitions are not
-         * inlined into the current crate, so if the def-id names
-         * a nominal type or type alias, then it should be
-         * translated to refer to the source crate.
-         *
-         * However, *type parameters* are cloned along with the function
-         * they are attached to.  So we should translate those def-ids
-         * to refer to the new, cloned copy of the type parameter.
-         * We only see references to free type parameters in the body of
-         * an inlined function. In such cases, we need the def-id to
-         * be a local id so that the TypeContents code is able to lookup
-         * the relevant info in the ty_param_defs table.
-         *
-         * *Region parameters*, unfortunately, are another kettle of fish.
-         * In such cases, def_id's can appear in types to distinguish
-         * shadowed bound regions and so forth. It doesn't actually
-         * matter so much what we do to these, since regions are erased
-         * at trans time, but it's good to keep them consistent just in
-         * case. We translate them with `tr_def_id()` which will map
-         * the crate numbers back to the original source crate.
-         *
-         * Unboxed closures are cloned along with the function being
-         * inlined, and all side tables use interned node IDs, so we
-         * translate their def IDs accordingly.
-         *
-         * It'd be really nice to refactor the type repr to not include
-         * def-ids so that all these distinctions were unnecessary.
-         */
-
         let r = match source {
             NominalType | TypeWithId | RegionParameter => dcx.tr_def_id(did),
             TypeParameter | UnboxedClosureSource => dcx.tr_intern_def_id(did)

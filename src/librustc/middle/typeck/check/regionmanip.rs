@@ -33,18 +33,14 @@ struct Wf<'a, 'tcx: 'a> {
     out: Vec<WfConstraint<'tcx>>,
 }
 
+/// This routine computes the well-formedness constraints that must hold for the type `ty` to
+/// appear in a context with lifetime `outer_region`
 pub fn region_wf_constraints<'tcx>(
     tcx: &ty::ctxt<'tcx>,
     ty: Ty<'tcx>,
     outer_region: ty::Region)
     -> Vec<WfConstraint<'tcx>>
 {
-    /*!
-     * This routine computes the well-formedness constraints that must
-     * hold for the type `ty` to appear in a context with lifetime
-     * `outer_region`
-     */
-
     let mut stack = Vec::new();
     stack.push((outer_region, None));
     let mut wf = Wf { tcx: tcx,
@@ -168,12 +164,9 @@ impl<'a, 'tcx> Wf<'a, 'tcx> {
         self.stack.pop().unwrap();
     }
 
+    /// Pushes a constraint that `r_b` must outlive the top region on the stack.
     fn push_region_constraint_from_top(&mut self,
                                        r_b: ty::Region) {
-        /*!
-         * Pushes a constraint that `r_b` must outlive the
-         * top region on the stack.
-         */
 
         // Indicates that we have found borrowed content with a lifetime
         // of at least `r_b`. This adds a constraint that `r_b` must
@@ -192,30 +185,26 @@ impl<'a, 'tcx> Wf<'a, 'tcx> {
         self.push_sub_region_constraint(opt_ty, r_a, r_b);
     }
 
+    /// Pushes a constraint that `r_a <= r_b`, due to `opt_ty`
     fn push_sub_region_constraint(&mut self,
                                   opt_ty: Option<Ty<'tcx>>,
                                   r_a: ty::Region,
                                   r_b: ty::Region) {
-        /*! Pushes a constraint that `r_a <= r_b`, due to `opt_ty` */
         self.out.push(RegionSubRegionConstraint(opt_ty, r_a, r_b));
     }
 
+    /// Pushes a constraint that `param_ty` must outlive the top region on the stack.
     fn push_param_constraint_from_top(&mut self,
                                       param_ty: ty::ParamTy) {
-        /*!
-         * Pushes a constraint that `param_ty` must outlive the
-         * top region on the stack.
-         */
-
         let &(region, opt_ty) = self.stack.last().unwrap();
         self.push_param_constraint(region, opt_ty, param_ty);
     }
 
+    /// Pushes a constraint that `region <= param_ty`, due to `opt_ty`
     fn push_param_constraint(&mut self,
                              region: ty::Region,
                              opt_ty: Option<Ty<'tcx>>,
                              param_ty: ty::ParamTy) {
-        /*! Pushes a constraint that `region <= param_ty`, due to `opt_ty` */
         self.out.push(RegionSubParamConstraint(opt_ty, region, param_ty));
     }
 

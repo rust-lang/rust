@@ -8,37 +8,27 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
- * Skolemization is the process of replacing unknown variables with
- * fresh types. The idea is that the type, after skolemization,
- * contains no inference variables but instead contains either a value
- * for each variable or fresh "arbitrary" types wherever a variable
- * would have been.
- *
- * Skolemization is used primarily to get a good type for inserting
- * into a cache. The result summarizes what the type inferencer knows
- * "so far". The primary place it is used right now is in the trait
- * matching algorithm, which needs to be able to cache whether an
- * `impl` self type matches some other type X -- *without* affecting
- * `X`. That means if that if the type `X` is in fact an unbound type
- * variable, we want the match to be regarded as ambiguous, because
- * depending on what type that type variable is ultimately assigned,
- * the match may or may not succeed.
- *
- * Note that you should be careful not to allow the output of
- * skolemization to leak to the user in error messages or in any other
- * form. Skolemization is only really useful as an internal detail.
- *
- * __An important detail concerning regions.__ The skolemizer also
- * replaces *all* regions with 'static. The reason behind this is
- * that, in general, we do not take region relationships into account
- * when making type-overloaded decisions. This is important because of
- * the design of the region inferencer, which is not based on
- * unification but rather on accumulating and then solving a set of
- * constraints. In contrast, the type inferencer assigns a value to
- * each type variable only once, and it does so as soon as it can, so
- * it is reasonable to ask what the type inferencer knows "so far".
- */
+//! Skolemization is the process of replacing unknown variables with fresh types. The idea is that
+//! the type, after skolemization, contains no inference variables but instead contains either a
+//! value for each variable or fresh "arbitrary" types wherever a variable would have been.
+//!
+//! Skolemization is used primarily to get a good type for inserting into a cache. The result
+//! summarizes what the type inferencer knows "so far". The primary place it is used right now is
+//! in the trait matching algorithm, which needs to be able to cache whether an `impl` self type
+//! matches some other type X -- *without* affecting `X`. That means if that if the type `X` is in
+//! fact an unbound type variable, we want the match to be regarded as ambiguous, because depending
+//! on what type that type variable is ultimately assigned, the match may or may not succeed.
+//!
+//! Note that you should be careful not to allow the output of skolemization to leak to the user in
+//! error messages or in any other form. Skolemization is only really useful as an internal detail.
+//!
+//! __An important detail concerning regions.__ The skolemizer also replaces *all* regions with
+//! 'static. The reason behind this is that, in general, we do not take region relationships into
+//! account when making type-overloaded decisions. This is important because of the design of the
+//! region inferencer, which is not based on unification but rather on accumulating and then
+//! solving a set of constraints. In contrast, the type inferencer assigns a value to each type
+//! variable only once, and it does so as soon as it can, so it is reasonable to ask what the type
+//! inferencer knows "so far".
 
 use middle::ty::{mod, Ty};
 use middle::ty_fold;

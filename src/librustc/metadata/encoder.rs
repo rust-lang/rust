@@ -500,20 +500,10 @@ fn encode_reexported_static_methods(ecx: &EncodeContext,
 /// Iterates through "auxiliary node IDs", which are node IDs that describe
 /// top-level items that are sub-items of the given item. Specifically:
 ///
-/// * For enums, iterates through the node IDs of the variants.
-///
 /// * For newtype structs, iterates through the node ID of the constructor.
 fn each_auxiliary_node_id(item: &ast::Item, callback: |NodeId| -> bool) -> bool {
     let mut continue_ = true;
     match item.node {
-        ast::ItemEnum(ref enum_def, _) => {
-            for variant in enum_def.variants.iter() {
-                continue_ = callback(variant.node.id);
-                if !continue_ {
-                    break
-                }
-            }
-        }
         ast::ItemStruct(ref struct_def, _) => {
             // If this is a newtype struct, return the constructor.
             match struct_def.ctor_id {
@@ -1230,10 +1220,9 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_name(rbml_w, item.ident.name);
         encode_attributes(rbml_w, item.attrs.as_slice());
         match ty.node {
-            ast::TyPath(ref path, ref bounds, _) if path.segments
+            ast::TyPath(ref path, _) if path.segments
                                                         .len() == 1 => {
                 let ident = path.segments.last().unwrap().identifier;
-                assert!(bounds.is_none());
                 encode_impl_type_basename(rbml_w, ident);
             }
             _ => {}

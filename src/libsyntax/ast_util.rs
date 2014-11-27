@@ -454,7 +454,7 @@ impl<'a, 'v, O: IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> {
     fn visit_ty(&mut self, typ: &Ty) {
         self.operation.visit_id(typ.id);
         match typ.node {
-            TyPath(_, _, id) => self.operation.visit_id(id),
+            TyPath(_, id) => self.operation.visit_id(id),
             _ => {}
         }
         visit::walk_ty(self, typ)
@@ -569,6 +569,7 @@ pub fn compute_id_range_for_inlined_item(item: &InlinedItem) -> IdRange {
     visitor.result
 }
 
+/// Computes the id range for a single fn body, ignoring nested items.
 pub fn compute_id_range_for_fn_body(fk: visit::FnKind,
                                     decl: &FnDecl,
                                     body: &Block,
@@ -576,11 +577,6 @@ pub fn compute_id_range_for_fn_body(fk: visit::FnKind,
                                     id: NodeId)
                                     -> IdRange
 {
-    /*!
-     * Computes the id range for a single fn body,
-     * ignoring nested items.
-     */
-
     let mut visitor = IdRangeComputingVisitor {
         result: IdRange::max()
     };

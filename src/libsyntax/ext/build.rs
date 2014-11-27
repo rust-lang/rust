@@ -44,7 +44,8 @@ pub trait AstBuilder {
     fn ty_mt(&self, ty: P<ast::Ty>, mutbl: ast::Mutability) -> ast::MutTy;
 
     fn ty(&self, span: Span, ty: ast::Ty_) -> P<ast::Ty>;
-    fn ty_path(&self, ast::Path, Option<OwnedSlice<ast::TyParamBound>>) -> P<ast::Ty>;
+    fn ty_path(&self, ast::Path) -> P<ast::Ty>;
+    fn ty_sum(&self, ast::Path, OwnedSlice<ast::TyParamBound>) -> P<ast::Ty>;
     fn ty_ident(&self, span: Span, idents: ast::Ident) -> P<ast::Ty>;
 
     fn ty_rptr(&self, span: Span,
@@ -344,17 +345,21 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         })
     }
 
-    fn ty_path(&self, path: ast::Path, bounds: Option<OwnedSlice<ast::TyParamBound>>)
-              -> P<ast::Ty> {
+    fn ty_path(&self, path: ast::Path) -> P<ast::Ty> {
+        self.ty(path.span, ast::TyPath(path, ast::DUMMY_NODE_ID))
+    }
+
+    fn ty_sum(&self, path: ast::Path, bounds: OwnedSlice<ast::TyParamBound>) -> P<ast::Ty> {
         self.ty(path.span,
-                ast::TyPath(path, bounds, ast::DUMMY_NODE_ID))
+                ast::TyObjectSum(self.ty_path(path),
+                                 bounds))
     }
 
     // Might need to take bounds as an argument in the future, if you ever want
     // to generate a bounded existential trait type.
     fn ty_ident(&self, span: Span, ident: ast::Ident)
         -> P<ast::Ty> {
-        self.ty_path(self.path_ident(span, ident), None)
+        self.ty_path(self.path_ident(span, ident))
     }
 
     fn ty_rptr(&self,
@@ -386,7 +391,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                               self.ident_of("Option")
                           ),
                           Vec::new(),
-                          vec!( ty )), None)
+                          vec!( ty )))
     }
 
     fn ty_field_imm(&self, span: Span, name: Ident, ty: P<ast::Ty>) -> ast::TypeField {
@@ -425,8 +430,10 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
 
     fn ty_vars_global(&self, ty_params: &OwnedSlice<ast::TyParam>) -> Vec<P<ast::Ty>> {
-        ty_params.iter().map(|p| self.ty_path(
-                self.path_global(DUMMY_SP, vec!(p.ident)), None)).collect()
+        ty_params
+            .iter()
+            .map(|p| self.ty_path(self.path_global(DUMMY_SP, vec!(p.ident))))
+            .collect()
     }
 
     fn trait_ref(&self, path: ast::Path) -> ast::TraitRef {
