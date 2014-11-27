@@ -682,7 +682,7 @@ pub fn collect_crate_types(session: &Session,
         if base.len() == 0 {
             base.push(link::default_output_for_target(session));
         }
-        base.as_mut_slice().sort();
+        base.sort();
         base.dedup();
     }
 
