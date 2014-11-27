@@ -258,7 +258,7 @@ pub fn unindent_comments(krate: clean::Crate) -> plugins::PluginResult {
             for attr in i.attrs.iter() {
                 match attr {
                     &clean::NameValue(ref x, ref s)
-                            if "doc" == x.as_slice() => {
+                            if "doc" == *x => {
                         avec.push(clean::NameValue("doc".to_string(),
                                                    unindent(s.as_slice())))
                     }
@@ -283,7 +283,7 @@ pub fn collapse_docs(krate: clean::Crate) -> plugins::PluginResult {
             for attr in i.attrs.iter() {
                 match *attr {
                     clean::NameValue(ref x, ref s)
-                            if "doc" == x.as_slice() => {
+                            if "doc" == *x => {
                         docstr.push_str(s.as_slice());
                         docstr.push('\n');
                     },
@@ -291,7 +291,7 @@ pub fn collapse_docs(krate: clean::Crate) -> plugins::PluginResult {
                 }
             }
             let mut a: Vec<clean::Attribute> = i.attrs.iter().filter(|&a| match a {
-                &clean::NameValue(ref x, _) if "doc" == x.as_slice() => false,
+                &clean::NameValue(ref x, _) if "doc" == *x => false,
                 _ => true
             }).map(|x| x.clone()).collect();
             if docstr.len() > 0 {
@@ -374,14 +374,14 @@ mod unindent_tests {
     fn should_unindent() {
         let s = "    line1\n    line2".to_string();
         let r = unindent(s.as_slice());
-        assert_eq!(r.as_slice(), "line1\nline2");
+        assert_eq!(r, "line1\nline2");
     }
 
     #[test]
     fn should_unindent_multiple_paragraphs() {
         let s = "    line1\n\n    line2".to_string();
         let r = unindent(s.as_slice());
-        assert_eq!(r.as_slice(), "line1\n\nline2");
+        assert_eq!(r, "line1\n\nline2");
     }
 
     #[test]
@@ -390,7 +390,7 @@ mod unindent_tests {
         // base indentation and should be preserved
         let s = "    line1\n\n        line2".to_string();
         let r = unindent(s.as_slice());
-        assert_eq!(r.as_slice(), "line1\n\n    line2");
+        assert_eq!(r, "line1\n\n    line2");
     }
 
     #[test]
@@ -402,13 +402,13 @@ mod unindent_tests {
         //          and continue here"]
         let s = "line1\n    line2".to_string();
         let r = unindent(s.as_slice());
-        assert_eq!(r.as_slice(), "line1\nline2");
+        assert_eq!(r, "line1\nline2");
     }
 
     #[test]
     fn should_not_ignore_first_line_indent_in_a_single_line_para() {
         let s = "line1\n\n    line2".to_string();
         let r = unindent(s.as_slice());
-        assert_eq!(r.as_slice(), "line1\n\n    line2");
+        assert_eq!(r, "line1\n\n    line2");
     }
 }

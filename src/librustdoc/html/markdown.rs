@@ -231,7 +231,7 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
         };
 
         // Transform the contents of the header into a hyphenated string
-        let id = s.as_slice().words().map(|s| s.to_ascii_lower())
+        let id = s.words().map(|s| s.to_ascii_lower())
             .collect::<Vec<String>>().connect("-");
 
         // This is a terrible hack working around how hoedown gives us rendered
@@ -393,7 +393,7 @@ impl LangString {
         let mut seen_other_tags = false;
         let mut data = LangString::all_false();
 
-        let mut tokens = string.as_slice().split(|c: char|
+        let mut tokens = string.split(|c: char|
             !(c == '_' || c == '-' || c.is_alphanumeric())
         );
 
