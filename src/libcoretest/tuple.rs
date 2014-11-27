@@ -84,9 +84,9 @@ fn test_tuple_cmp() {
 #[test]
 fn test_show() {
     let s = format!("{}", (1i,));
-    assert_eq!(s.as_slice(), "(1,)");
+    assert_eq!(s, "(1,)");
     let s = format!("{}", (1i, true));
-    assert_eq!(s.as_slice(), "(1, true)");
+    assert_eq!(s, "(1, true)");
     let s = format!("{}", (1i, "hi", true));
-    assert_eq!(s.as_slice(), "(1, hi, true)");
+    assert_eq!(s, "(1, hi, true)");
 }

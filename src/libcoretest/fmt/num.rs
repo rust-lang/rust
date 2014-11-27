@@ -16,136 +16,136 @@ fn test_format_int() {
     // Formatting integers should select the right implementation based off
     // the type of the argument. Also, hex/octal/binary should be defined
     // for integers, but they shouldn't emit the negative sign.
-    assert!(format!("{}", 1i).as_slice() == "1");
-    assert!(format!("{}", 1i8).as_slice() == "1");
-    assert!(format!("{}", 1i16).as_slice() == "1");
-    assert!(format!("{}", 1i32).as_slice() == "1");
-    assert!(format!("{}", 1i64).as_slice() == "1");
-    assert!(format!("{}", -1i).as_slice() == "-1");
-    assert!(format!("{}", -1i8).as_slice() == "-1");
-    assert!(format!("{}", -1i16).as_slice() == "-1");
-    assert!(format!("{}", -1i32).as_slice() == "-1");
-    assert!(format!("{}", -1i64).as_slice() == "-1");
-    assert!(format!("{:b}", 1i).as_slice() == "1");
-    assert!(format!("{:b}", 1i8).as_slice() == "1");
-    assert!(format!("{:b}", 1i16).as_slice() == "1");
-    assert!(format!("{:b}", 1i32).as_slice() == "1");
-    assert!(format!("{:b}", 1i64).as_slice() == "1");
-    assert!(format!("{:x}", 1i).as_slice() == "1");
-    assert!(format!("{:x}", 1i8).as_slice() == "1");
-    assert!(format!("{:x}", 1i16).as_slice() == "1");
-    assert!(format!("{:x}", 1i32).as_slice() == "1");
-    assert!(format!("{:x}", 1i64).as_slice() == "1");
-    assert!(format!("{:X}", 1i).as_slice() == "1");
-    assert!(format!("{:X}", 1i8).as_slice() == "1");
-    assert!(format!("{:X}", 1i16).as_slice() == "1");
-    assert!(format!("{:X}", 1i32).as_slice() == "1");
-    assert!(format!("{:X}", 1i64).as_slice() == "1");
-    assert!(format!("{:o}", 1i).as_slice() == "1");
-    assert!(format!("{:o}", 1i8).as_slice() == "1");
-    assert!(format!("{:o}", 1i16).as_slice() == "1");
-    assert!(format!("{:o}", 1i32).as_slice() == "1");
-    assert!(format!("{:o}", 1i64).as_slice() == "1");
+    assert!(format!("{}", 1i) == "1");
+    assert!(format!("{}", 1i8) == "1");
+    assert!(format!("{}", 1i16) == "1");
+    assert!(format!("{}", 1i32) == "1");
+    assert!(format!("{}", 1i64) == "1");
+    assert!(format!("{}", -1i) == "-1");
+    assert!(format!("{}", -1i8) == "-1");
+    assert!(format!("{}", -1i16) == "-1");
+    assert!(format!("{}", -1i32) == "-1");
+    assert!(format!("{}", -1i64) == "-1");
+    assert!(format!("{:b}", 1i) == "1");
+    assert!(format!("{:b}", 1i8) == "1");
+    assert!(format!("{:b}", 1i16) == "1");
+    assert!(format!("{:b}", 1i32) == "1");
+    assert!(format!("{:b}", 1i64) == "1");
+    assert!(format!("{:x}", 1i) == "1");
+    assert!(format!("{:x}", 1i8) == "1");
+    assert!(format!("{:x}", 1i16) == "1");
+    assert!(format!("{:x}", 1i32) == "1");
+    assert!(format!("{:x}", 1i64) == "1");
+    assert!(format!("{:X}", 1i) == "1");
+    assert!(format!("{:X}", 1i8) == "1");
+    assert!(format!("{:X}", 1i16) == "1");
+    assert!(format!("{:X}", 1i32) == "1");
+    assert!(format!("{:X}", 1i64) == "1");
+    assert!(format!("{:o}", 1i) == "1");
+    assert!(format!("{:o}", 1i8) == "1");
+    assert!(format!("{:o}", 1i16) == "1");
+    assert!(format!("{:o}", 1i32) == "1");
+    assert!(format!("{:o}", 1i64) == "1");
 
-    assert!(format!("{}", 1u).as_slice() == "1");
-    assert!(format!("{}", 1u8).as_slice() == "1");
-    assert!(format!("{}", 1u16).as_slice() == "1");
-    assert!(format!("{}", 1u32).as_slice() == "1");
-    assert!(format!("{}", 1u64).as_slice() == "1");
-    assert!(format!("{:b}", 1u).as_slice() == "1");
-    assert!(format!("{:b}", 1u8).as_slice() == "1");
-    assert!(format!("{:b}", 1u16).as_slice() == "1");
-    assert!(format!("{:b}", 1u32).as_slice() == "1");
-    assert!(format!("{:b}", 1u64).as_slice() == "1");
-    assert!(format!("{:x}", 1u).as_slice() == "1");
-    assert!(format!("{:x}", 1u8).as_slice() == "1");
-    assert!(format!("{:x}", 1u16).as_slice() == "1");
-    assert!(format!("{:x}", 1u32).as_slice() == "1");
-    assert!(format!("{:x}", 1u64).as_slice() == "1");
-    assert!(format!("{:X}", 1u).as_slice() == "1");
-    assert!(format!("{:X}", 1u8).as_slice() == "1");
-    assert!(format!("{:X}", 1u16).as_slice() == "1");
-    assert!(format!("{:X}", 1u32).as_slice() == "1");
-    assert!(format!("{:X}", 1u64).as_slice() == "1");
-    assert!(format!("{:o}", 1u).as_slice() == "1");
-    assert!(format!("{:o}", 1u8).as_slice() == "1");
-    assert!(format!("{:o}", 1u16).as_slice() == "1");
-    assert!(format!("{:o}", 1u32).as_slice() == "1");
-    assert!(format!("{:o}", 1u64).as_slice() == "1");
+    assert!(format!("{}", 1u) == "1");
+    assert!(format!("{}", 1u8) == "1");
+    assert!(format!("{}", 1u16) == "1");
+    assert!(format!("{}", 1u32) == "1");
+    assert!(format!("{}", 1u64) == "1");
+    assert!(format!("{:b}", 1u) == "1");
+    assert!(format!("{:b}", 1u8) == "1");
+    assert!(format!("{:b}", 1u16) == "1");
+    assert!(format!("{:b}", 1u32) == "1");
+    assert!(format!("{:b}", 1u64) == "1");
+    assert!(format!("{:x}", 1u) == "1");
+    assert!(format!("{:x}", 1u8) == "1");
+    assert!(format!("{:x}", 1u16) == "1");
+    assert!(format!("{:x}", 1u32) == "1");
+    assert!(format!("{:x}", 1u64) == "1");
+    assert!(format!("{:X}", 1u) == "1");
+    assert!(format!("{:X}", 1u8) == "1");
+    assert!(format!("{:X}", 1u16) == "1");
+    assert!(format!("{:X}", 1u32) == "1");
+    assert!(format!("{:X}", 1u64) == "1");
+    assert!(format!("{:o}", 1u) == "1");
+    assert!(format!("{:o}", 1u8) == "1");
+    assert!(format!("{:o}", 1u16) == "1");
+    assert!(format!("{:o}", 1u32) == "1");
+    assert!(format!("{:o}", 1u64) == "1");
 
     // Test a larger number
-    assert!(format!("{:b}", 55i).as_slice() == "110111");
-    assert!(format!("{:o}", 55i).as_slice() == "67");
-    assert!(format!("{}", 55i).as_slice() == "55");
-    assert!(format!("{:x}", 55i).as_slice() == "37");
-    assert!(format!("{:X}", 55i).as_slice() == "37");
+    assert!(format!("{:b}", 55i) == "110111");
+    assert!(format!("{:o}", 55i) == "67");
+    assert!(format!("{}", 55i) == "55");
+    assert!(format!("{:x}", 55i) == "37");
+    assert!(format!("{:X}", 55i) == "37");
 }
 
 #[test]
 fn test_format_int_zero() {
-    assert!(format!("{}", 0i).as_slice() == "0");
-    assert!(format!("{:b}", 0i).as_slice() == "0");
-    assert!(format!("{:o}", 0i).as_slice() == "0");
-    assert!(format!("{:x}", 0i).as_slice() == "0");
-    assert!(format!("{:X}", 0i).as_slice() == "0");
+    assert!(format!("{}", 0i) == "0");
+    assert!(format!("{:b}", 0i) == "0");
+    assert!(format!("{:o}", 0i) == "0");
+    assert!(format!("{:x}", 0i) == "0");
+    assert!(format!("{:X}", 0i) == "0");
 
-    assert!(format!("{}", 0u).as_slice() == "0");
-    assert!(format!("{:b}", 0u).as_slice() == "0");
-    assert!(format!("{:o}", 0u).as_slice() == "0");
-    assert!(format!("{:x}", 0u).as_slice() == "0");
-    assert!(format!("{:X}", 0u).as_slice() == "0");
+    assert!(format!("{}", 0u) == "0");
+    assert!(format!("{:b}", 0u) == "0");
+    assert!(format!("{:o}", 0u) == "0");
+    assert!(format!("{:x}", 0u) == "0");
+    assert!(format!("{:X}", 0u) == "0");
 }
 
 #[test]
 fn test_format_int_flags() {
-    assert!(format!("{:3}", 1i).as_slice() == "  1");
-    assert!(format!("{:>3}", 1i).as_slice() == "  1");
-    assert!(format!("{:>+3}", 1i).as_slice() == " +1");
-    assert!(format!("{:<3}", 1i).as_slice() == "1  ");
-    assert!(format!("{:#}", 1i).as_slice() == "1");
-    assert!(format!("{:#x}", 10i).as_slice() == "0xa");
-    assert!(format!("{:#X}", 10i).as_slice() == "0xA");
-    assert!(format!("{:#5x}", 10i).as_slice() == "  0xa");
-    assert!(format!("{:#o}", 10i).as_slice() == "0o12");
-    assert!(format!("{:08x}", 10i).as_slice() == "0000000a");
-    assert!(format!("{:8x}", 10i).as_slice() == "       a");
-    assert!(format!("{:<8x}", 10i).as_slice() == "a       ");
-    assert!(format!("{:>8x}", 10i).as_slice() == "       a");
-    assert!(format!("{:#08x}", 10i).as_slice() == "0x00000a");
-    assert!(format!("{:08}", -10i).as_slice() == "-0000010");
-    assert!(format!("{:x}", -1u8).as_slice() == "ff");
-    assert!(format!("{:X}", -1u8).as_slice() == "FF");
-    assert!(format!("{:b}", -1u8).as_slice() == "11111111");
-    assert!(format!("{:o}", -1u8).as_slice() == "377");
-    assert!(format!("{:#x}", -1u8).as_slice() == "0xff");
-    assert!(format!("{:#X}", -1u8).as_slice() == "0xFF");
-    assert!(format!("{:#b}", -1u8).as_slice() == "0b11111111");
-    assert!(format!("{:#o}", -1u8).as_slice() == "0o377");
+    assert!(format!("{:3}", 1i) == "  1");
+    assert!(format!("{:>3}", 1i) == "  1");
+    assert!(format!("{:>+3}", 1i) == " +1");
+    assert!(format!("{:<3}", 1i) == "1  ");
+    assert!(format!("{:#}", 1i) == "1");
+    assert!(format!("{:#x}", 10i) == "0xa");
+    assert!(format!("{:#X}", 10i) == "0xA");
+    assert!(format!("{:#5x}", 10i) == "  0xa");
+    assert!(format!("{:#o}", 10i) == "0o12");
+    assert!(format!("{:08x}", 10i) == "0000000a");
+    assert!(format!("{:8x}", 10i) == "       a");
+    assert!(format!("{:<8x}", 10i) == "a       ");
+    assert!(format!("{:>8x}", 10i) == "       a");
+    assert!(format!("{:#08x}", 10i) == "0x00000a");
+    assert!(format!("{:08}", -10i) == "-0000010");
+    assert!(format!("{:x}", -1u8) == "ff");
+    assert!(format!("{:X}", -1u8) == "FF");
+    assert!(format!("{:b}", -1u8) == "11111111");
+    assert!(format!("{:o}", -1u8) == "377");
+    assert!(format!("{:#x}", -1u8) == "0xff");
+    assert!(format!("{:#X}", -1u8) == "0xFF");
+    assert!(format!("{:#b}", -1u8) == "0b11111111");
+    assert!(format!("{:#o}", -1u8) == "0o377");
 }
 
 #[test]
 fn test_format_int_sign_padding() {
-    assert!(format!("{:+5}", 1i).as_slice() == "   +1");
-    assert!(format!("{:+5}", -1i).as_slice() == "   -1");
-    assert!(format!("{:05}", 1i).as_slice() == "00001");
-    assert!(format!("{:05}", -1i).as_slice() == "-0001");
-    assert!(format!("{:+05}", 1i).as_slice() == "+0001");
-    assert!(format!("{:+05}", -1i).as_slice() == "-0001");
+    assert!(format!("{:+5}", 1i) == "   +1");
+    assert!(format!("{:+5}", -1i) == "   -1");
+    assert!(format!("{:05}", 1i) == "00001");
+    assert!(format!("{:05}", -1i) == "-0001");
+    assert!(format!("{:+05}", 1i) == "+0001");
+    assert!(format!("{:+05}", -1i) == "-0001");
 }
 
 #[test]
 fn test_format_int_twos_complement() {
     use core::{i8, i16, i32, i64};
-    assert!(format!("{}", i8::MIN).as_slice() == "-128");
-    assert!(format!("{}", i16::MIN).as_slice() == "-32768");
-    assert!(format!("{}", i32::MIN).as_slice() == "-2147483648");
-    assert!(format!("{}", i64::MIN).as_slice() == "-9223372036854775808");
+    assert!(format!("{}", i8::MIN) == "-128");
+    assert!(format!("{}", i16::MIN) == "-32768");
+    assert!(format!("{}", i32::MIN) == "-2147483648");
+    assert!(format!("{}", i64::MIN) == "-9223372036854775808");
 }
 
 #[test]
 fn test_format_radix() {
-    assert!(format!("{:04}", radix(3i, 2)).as_slice() == "0011");
-    assert!(format!("{}", radix(55i, 36)).as_slice() == "1j");
+    assert!(format!("{:04}", radix(3i, 2)) == "0011");
+    assert!(format!("{}", radix(55i, 36)) == "1j");
 }
 
 #[test]
