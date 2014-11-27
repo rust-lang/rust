@@ -27,7 +27,6 @@
 //! the format of the output away from extracting it from the compiler.
 //! DxrVisitor walks the AST and processes it.
 
-use driver::driver::CrateAnalysis;
 use session::Session;
 
 use middle::def;
@@ -68,7 +67,7 @@ fn generated_code(span: Span) -> bool {
 
 struct DxrVisitor<'l, 'tcx: 'l> {
     sess: &'l Session,
-    analysis: &'l CrateAnalysis<'tcx>,
+    analysis: &'l ty::CrateAnalysis<'tcx>,
 
     collected_paths: Vec<(NodeId, ast::Path, bool, recorder::Row)>,
     collecting: bool,
@@ -1473,7 +1472,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
 
 pub fn process_crate(sess: &Session,
                      krate: &ast::Crate,
-                     analysis: &CrateAnalysis,
+                     analysis: &ty::CrateAnalysis,
                      odir: &Option<Path>) {
     if generated_code(krate.span) {
         return;

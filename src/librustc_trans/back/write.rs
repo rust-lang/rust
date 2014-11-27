@@ -10,13 +10,13 @@
 
 use back::lto;
 use back::link::{get_cc_prog, remove};
-use driver::driver::{CrateTranslation, ModuleTranslation, OutputFilenames};
-use session::config::{NoDebugInfo, Passes, SomePasses, AllPasses};
+use session::config::{OutputFilenames, NoDebugInfo, Passes, SomePasses, AllPasses};
 use session::Session;
 use session::config;
 use llvm;
 use llvm::{ModuleRef, TargetMachineRef, PassManagerRef, DiagnosticInfoRef, ContextRef};
 use llvm::SMDiagnosticRef;
+use trans::{CrateTranslation, ModuleTranslation};
 use util::common::time;
 use syntax::codemap;
 use syntax::diagnostic;
