@@ -201,7 +201,7 @@ pub fn readdir(p: &Path) -> IoResult<Vec<Path>> {
 
     let size = unsafe { rust_dirent_t_size() };
     let mut buf = Vec::<u8>::with_capacity(size as uint);
-    let ptr = buf.as_mut_slice().as_mut_ptr() as *mut dirent_t;
+    let ptr = buf.as_mut_ptr() as *mut dirent_t;
 
     let p = p.to_c_str();
     let dir_ptr = unsafe {opendir(p.as_ptr())};
