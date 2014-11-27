@@ -15,19 +15,18 @@ pub use self::PpSourceMode::*;
 pub use self::PpMode::*;
 use self::NodesMatchingUII::*;
 
-use back::link;
+use rustc_trans::back::link;
 
-use session::Session;
-use session::config::{mod, Input};
-use driver::driver::{mod};
+use driver;
 
-use middle::ty;
-use middle::borrowck::{mod, FnPartsWithCFG};
-use middle::borrowck::graphviz as borrowck_dot;
-use middle::cfg;
-use middle::cfg::graphviz::LabelledCFG;
-
-use util::ppaux;
+use rustc::middle::ty;
+use rustc::middle::borrowck::{mod, FnPartsWithCFG};
+use rustc::middle::borrowck::graphviz as borrowck_dot;
+use rustc::middle::cfg;
+use rustc::middle::cfg::graphviz::LabelledCFG;
+use rustc::session::Session;
+use rustc::session::config::{mod, Input};
+use rustc::util::ppaux;
 
 use syntax::ast;
 use syntax::ast_map::{mod, blocks, NodePrinter};

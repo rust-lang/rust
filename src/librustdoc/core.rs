@@ -9,7 +9,7 @@
 // except according to those terms.
 pub use self::MaybeTyped::*;
 
-use rustc_trans::driver::driver;
+use rustc_driver::driver;
 use rustc::session::{mod, config};
 use rustc::middle::{privacy, ty};
 use rustc::lint;

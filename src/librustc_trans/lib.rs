@@ -32,7 +32,6 @@ extern crate getopts;
 extern crate graphviz;
 extern crate libc;
 extern crate rustc;
-extern crate rustc_typeck;
 extern crate rustc_back;
 #[phase(plugin, link)] extern crate log;
 #[phase(plugin, link)] extern crate syntax;
@@ -66,17 +65,7 @@ pub mod back {
 
 pub mod trans;
 pub mod save;
-pub mod driver;
 
 pub mod lib {
     pub use llvm;
 }
-
-pub fn main() {
-    let args = std::os::args();
-    let result = driver::run(args);
-    std::os::set_exit_status(result);
-}
-
-#[cfg(test)]
-pub mod test;

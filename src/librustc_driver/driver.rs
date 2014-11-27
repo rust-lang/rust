@@ -8,22 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use back::link;
-use back::write;
-use session::Session;
-use session::config::{mod, Input, OutputFilenames};
-use lint;
-use metadata::creader;
-use middle::{stability, ty, reachable};
-use middle::dependency_format;
-use middle;
-use plugin::load::Plugins;
-use plugin::registry::Registry;
-use plugin;
+use rustc::session::Session;
+use rustc::session::config::{mod, Input, OutputFilenames};
+use rustc::lint;
+use rustc::metadata::creader;
+use rustc::middle::{stability, ty, reachable};
+use rustc::middle::dependency_format;
+use rustc::middle;
+use rustc::plugin::load::Plugins;
+use rustc::plugin::registry::Registry;
+use rustc::plugin;
+use rustc::util::common::time;
+use rustc_trans::back::link;
+use rustc_trans::back::write;
+use rustc_trans::save;
+use rustc_trans::trans;
 use rustc_typeck as typeck;
-use trans;
-
-use util::common::time;
 
 use serialize::{json, Encodable};
 
@@ -31,7 +31,6 @@ use std::io;
 use std::io::fs;
 use std::os;
 use arena::TypedArena;
-use save;
 use syntax::ast;
 use syntax::ast_map;
 use syntax::attr;
