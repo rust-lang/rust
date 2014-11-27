@@ -439,7 +439,7 @@ impl<'a> LabelText<'a> {
     /// Renders text as string suitable for a label in a .dot file.
     pub fn escape(&self) -> String {
         match self {
-            &LabelStr(ref s) => s.as_slice().escape_default(),
+            &LabelStr(ref s) => s.escape_default(),
             &EscStr(ref s) => LabelText::escape_str(s.as_slice()),
         }
     }
@@ -709,7 +709,7 @@ mod tests {
     fn empty_graph() {
         let labels : Trivial = UnlabelledNodes(0);
         let r = test_input(LabelledGraph::new("empty_graph", labels, vec!()));
-        assert_eq!(r.unwrap().as_slice(),
+        assert_eq!(r.unwrap(),
 r#"digraph empty_graph {
 }
 "#);
@@ -719,7 +719,7 @@ r#"digraph empty_graph {
     fn single_node() {
         let labels : Trivial = UnlabelledNodes(1);
         let r = test_input(LabelledGraph::new("single_node", labels, vec!()));
-        assert_eq!(r.unwrap().as_slice(),
+        assert_eq!(r.unwrap(),
 r#"digraph single_node {
     N0[label="N0"];
 }
@@ -731,7 +731,7 @@ r#"digraph single_node {
         let labels : Trivial = UnlabelledNodes(2);
         let result = test_input(LabelledGraph::new("single_edge", labels,
                                                    vec!(edge(0, 1, "E"))));
-        assert_eq!(result.unwrap().as_slice(),
+        assert_eq!(result.unwrap(),
 r#"digraph single_edge {
     N0[label="N0"];
     N1[label="N1"];
@@ -745,7 +745,7 @@ r#"digraph single_edge {
         let labels : Trivial = SomeNodesLabelled(vec![Some("A"), None]);
         let result = test_input(LabelledGraph::new("test_some_labelled", labels,
                                                    vec![edge(0, 1, "A-1")]));
-        assert_eq!(result.unwrap().as_slice(),
+        assert_eq!(result.unwrap(),
 r#"digraph test_some_labelled {
     N0[label="A"];
     N1[label="N1"];
@@ -759,7 +759,7 @@ r#"digraph test_some_labelled {
         let labels : Trivial = UnlabelledNodes(1);
         let r = test_input(LabelledGraph::new("single_cyclic_node", labels,
                                               vec!(edge(0, 0, "E"))));
-        assert_eq!(r.unwrap().as_slice(),
+        assert_eq!(r.unwrap(),
 r#"digraph single_cyclic_node {
     N0[label="N0"];
     N0 -> N0[label="E"];
@@ -774,7 +774,7 @@ r#"digraph single_cyclic_node {
             "hasse_diagram", labels,
             vec!(edge(0, 1, ""), edge(0, 2, ""),
                  edge(1, 3, ""), edge(2, 3, ""))));
-        assert_eq!(r.unwrap().as_slice(),
+        assert_eq!(r.unwrap(),
 r#"digraph hasse_diagram {
     N0[label="{x,y}"];
     N1[label="{x}"];
@@ -812,7 +812,7 @@ r#"digraph hasse_diagram {
         render(&g, &mut writer).unwrap();
         let r = (&mut writer.as_slice()).read_to_string();
 
-        assert_eq!(r.unwrap().as_slice(),
+        assert_eq!(r.unwrap(),
 r#"digraph syntax_tree {
     N0[label="if test {\l    branch1\l} else {\l    branch2\l}\lafterward\l"];
     N1[label="branch1"];
