@@ -244,7 +244,7 @@ impl OptGroup {
                 aliases: Vec::new()
             },
             (1,0) => Opt {
-                name: Short(short_name.as_slice().char_at(0)),
+                name: Short(short_name.char_at(0)),
                 hasarg: hasarg,
                 occur: occur,
                 aliases: Vec::new()
@@ -255,7 +255,7 @@ impl OptGroup {
                 occur: occur,
                 aliases: vec!(
                     Opt {
-                        name: Short(short_name.as_slice().char_at(0)),
+                        name: Short(short_name.char_at(0)),
                         hasarg: hasarg,
                         occur:  occur,
                         aliases: Vec::new()
@@ -576,7 +576,7 @@ pub fn getopts(args: &[String], optgrps: &[OptGroup]) -> Result {
         let curlen = cur.len();
         if !is_arg(cur.as_slice()) {
             free.push(cur);
-        } else if cur.as_slice() == "--" {
+        } else if cur == "--" {
             let mut j = i + 1;
             while j < l { free.push(args[j].clone()); j += 1; }
             break;
@@ -584,7 +584,7 @@ pub fn getopts(args: &[String], optgrps: &[OptGroup]) -> Result {
             let mut names;
             let mut i_arg = None;
             if cur.as_bytes()[1] == b'-' {
-                let tail = cur.as_slice().slice(2, curlen);
+                let tail = cur.slice(2, curlen);
                 let tail_eq: Vec<&str> = tail.split('=').collect();
                 if tail_eq.len() <= 1 {
                     names = vec!(Long(tail.to_string()));
@@ -597,7 +597,7 @@ pub fn getopts(args: &[String], optgrps: &[OptGroup]) -> Result {
                 let mut j = 1;
                 names = Vec::new();
                 while j < curlen {
-                    let range = cur.as_slice().char_range_at(j);
+                    let range = cur.char_range_at(j);
                     let opt = Short(range.ch);
 
                     /* In a series of potential options (eg. -aheJ), if we
@@ -620,8 +620,7 @@ pub fn getopts(args: &[String], optgrps: &[OptGroup]) -> Result {
                     };
 
                     if arg_follows && range.next < curlen {
-                        i_arg = Some(cur.as_slice()
-                                        .slice(range.next, curlen).to_string());
+                        i_arg = Some(cur.slice(range.next, curlen).to_string());
                         break;
                     }
 
@@ -736,7 +735,7 @@ pub fn usage(brief: &str, opts: &[OptGroup]) -> String {
 
         // FIXME: #5516 should be graphemes not codepoints
         // here we just need to indent the start of the description
-        let rowlen = row.as_slice().char_len();
+        let rowlen = row.char_len();
         if rowlen < 24 {
             for _ in range(0, 24 - rowlen) {
                 row.push(' ');
@@ -747,7 +746,7 @@ pub fn usage(brief: &str, opts: &[OptGroup]) -> String {
 
         // Normalize desc to contain words separated by one space character
         let mut desc_normalized_whitespace = String::new();
-        for word in desc.as_slice().words() {
+        for word in desc.words() {
             desc_normalized_whitespace.push_str(word);
             desc_normalized_whitespace.push(' ');
         }
