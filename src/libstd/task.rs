@@ -54,7 +54,7 @@ use result::Result;
 use rustrt::local::Local;
 use rustrt::task::Task;
 use rustrt::task;
-use str::{Str, SendStr};
+use str::SendStr;
 use string::{String, ToString};
 use sync::Future;
 
@@ -242,7 +242,7 @@ pub fn name() -> Option<String> {
 
     let task = Local::borrow(None::<Task>);
     match task.name {
-        Some(ref name) => Some(name.as_slice().to_string()),
+        Some(ref name) => Some(name.to_string()),
         None => None
     }
 }

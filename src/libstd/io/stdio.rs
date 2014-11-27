@@ -542,6 +542,6 @@ mod tests {
             panic!("my special message");
         });
         let s = r.read_to_string().unwrap();
-        assert!(s.as_slice().contains("my special message"));
+        assert!(s.contains("my special message"));
     }
 }

@@ -677,8 +677,8 @@ mod tests {
         assert_eq!(test.to_ascii(), b);
         assert_eq!("( ;".to_ascii(), b);
         let v = vec![40u8, 32u8, 59u8];
-        assert_eq!(v.as_slice().to_ascii(), b);
-        assert_eq!("( ;".to_string().as_slice().to_ascii(), b);
+        assert_eq!(v.to_ascii(), b);
+        assert_eq!("( ;".to_string().to_ascii(), b);
 
         assert_eq!("abCDef&?#".to_ascii().to_lowercase().into_string(), "abcdef&?#".to_string());
         assert_eq!("abCDef&?#".to_ascii().to_uppercase().into_string(), "ABCDEF&?#".to_string());
@@ -780,7 +780,7 @@ mod tests {
         while i <= 500 {
             let upper = if 'a' as u32 <= i && i <= 'z' as u32 { i + 'A' as u32 - 'a' as u32 }
                         else { i };
-            assert_eq!((from_u32(i).unwrap()).to_string().as_slice().to_ascii_upper(),
+            assert_eq!((from_u32(i).unwrap()).to_string().to_ascii_upper(),
                        (from_u32(upper).unwrap()).to_string())
             i += 1;
         }
@@ -796,7 +796,7 @@ mod tests {
         while i <= 500 {
             let lower = if 'A' as u32 <= i && i <= 'Z' as u32 { i + 'a' as u32 - 'A' as u32 }
                         else { i };
-            assert_eq!((from_u32(i).unwrap()).to_string().as_slice().to_ascii_lower(),
+            assert_eq!((from_u32(i).unwrap()).to_string().to_ascii_lower(),
                        (from_u32(lower).unwrap()).to_string())
             i += 1;
         }
@@ -850,7 +850,7 @@ mod tests {
             let c = i;
             let lower = if 'A' as u32 <= c && c <= 'Z' as u32 { c + 'a' as u32 - 'A' as u32 }
                         else { c };
-            assert!((from_u32(i).unwrap()).to_string().as_slice().eq_ignore_ascii_case(
+            assert!((from_u32(i).unwrap()).to_string().eq_ignore_ascii_case(
                     (from_u32(lower).unwrap()).to_string().as_slice()));
             i += 1;
         }
