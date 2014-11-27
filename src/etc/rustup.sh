@@ -229,6 +229,18 @@ validate_opt () {
     done
 }
 
+create_tmp_dir() {
+    local TMP_DIR=./rustup-tmp-install
+
+    rm -Rf "${TMP_DIR}"
+    need_ok "failed to remove temporary installation directory"
+
+    mkdir -p "${TMP_DIR}"
+    need_ok "failed to create create temporary installation directory"
+
+    echo $TMP_DIR
+}
+
 probe_need CFG_CURL  curl
 
 CFG_SRC_DIR="$(cd $(dirname $0) && pwd)/"
@@ -392,7 +404,7 @@ PACKAGE_NAME=rust-nightly
 PACKAGE_NAME_AND_TRIPLE="${PACKAGE_NAME}-${HOST_TRIPLE}"
 TARBALL_NAME="${PACKAGE_NAME_AND_TRIPLE}.tar.gz"
 REMOTE_TARBALL="https://static.rust-lang.org/dist/${TARBALL_NAME}"
-TMP_DIR=`mktemp -d 2>/dev/null || mktemp -d -t 'mytmpdir'`
+TMP_DIR=`mktemp -d 2>/dev/null || mktemp -d -t 'mytmpdir' 2>/dev/null` || TMP_DIR=$(create_tmp_dir)
 LOCAL_TARBALL="${TMP_DIR}/${TARBALL_NAME}"
 LOCAL_INSTALL_DIR="${TMP_DIR}/${PACKAGE_NAME_AND_TRIPLE}"
 LOCAL_INSTALL_SCRIPT="${LOCAL_INSTALL_DIR}/install.sh"
