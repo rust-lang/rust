@@ -288,11 +288,11 @@ mod test {
     #[test]
     fn test_show() {
         let mut e = EnumSet::new();
-        assert_eq!("{}", e.to_string().as_slice());
+        assert_eq!("{}", e.to_string());
         e.insert(A);
-        assert_eq!("{A}", e.to_string().as_slice());
+        assert_eq!("{A}", e.to_string());
         e.insert(C);
-        assert_eq!("{A, C}", e.to_string().as_slice());
+        assert_eq!("{A, C}", e.to_string());
     }
 
     #[test]
