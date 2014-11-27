@@ -37,7 +37,7 @@ pub fn get_dbpath_for_term(term: &str) -> Option<Box<Path>> {
                 dirs_to_search.push(homedir.unwrap().join(".terminfo"))
             }
             match getenv("TERMINFO_DIRS") {
-                Some(dirs) => for i in dirs.as_slice().split(':') {
+                Some(dirs) => for i in dirs.split(':') {
                     if i == "" {
                         dirs_to_search.push(Path::new("/usr/share/terminfo"));
                     } else {
