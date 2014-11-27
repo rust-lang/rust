@@ -169,22 +169,22 @@ impl <K, V> Node<K, V> {
 
     /// Get the node's value at the given index
     pub fn val(&self, index: uint) -> Option<&V> {
-        self.vals.as_slice().get(index)
+        self.vals.get(index)
     }
 
     /// Get the node's value at the given index
     pub fn val_mut(&mut self, index: uint) -> Option<&mut V> {
-        self.vals.as_mut_slice().get_mut(index)
+        self.vals.get_mut(index)
     }
 
     /// Get the node's value mutably without any bounds checks.
     pub unsafe fn unsafe_val_mut(&mut self, index: uint) -> &mut V {
-        self.vals.as_mut_slice().unsafe_mut(index)
+        self.vals.unsafe_mut(index)
     }
 
     /// Get the node's edge at the given index
     pub fn edge(&self, index: uint) -> Option<&Node<K,V>> {
-        self.edges.as_slice().get(index)
+        self.edges.get(index)
     }
 
     /// Get the node's edge mutably at the given index
@@ -281,8 +281,8 @@ impl <K, V> Node<K, V> {
     pub fn iter<'a>(&'a self) -> Traversal<'a, K, V> {
         let is_leaf = self.is_leaf();
         Traversal {
-            elems: self.keys.as_slice().iter().zip(self.vals.as_slice().iter()),
-            edges: self.edges.as_slice().iter(),
+            elems: self.keys.iter().zip(self.vals.iter()),
+            edges: self.edges.iter(),
             head_is_edge: true,
             tail_is_edge: true,
             has_edges: !is_leaf,
@@ -292,7 +292,7 @@ impl <K, V> Node<K, V> {
     pub fn iter_mut<'a>(&'a mut self) -> MutTraversal<'a, K, V> {
         let is_leaf = self.is_leaf();
         MutTraversal {
-            elems: self.keys.as_slice().iter().zip(self.vals.as_mut_slice().iter_mut()),
+            elems: self.keys.iter().zip(self.vals.as_mut_slice().iter_mut()),
             edges: self.edges.as_mut_slice().iter_mut(),
             head_is_edge: true,
             tail_is_edge: true,
@@ -477,7 +477,7 @@ fn split<T>(left: &mut Vec<T>) -> Vec<T> {
     let left_len = len - right_len;
     let mut right = Vec::with_capacity(left.capacity());
     unsafe {
-        let left_ptr = left.as_slice().unsafe_get(left_len) as *const _;
+        let left_ptr = left.unsafe_get(left_len) as *const _;
         let right_ptr = right.as_mut_slice().as_mut_ptr();
         ptr::copy_nonoverlapping_memory(right_ptr, left_ptr, right_len);
         left.set_len(left_len);

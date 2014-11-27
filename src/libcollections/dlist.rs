@@ -926,7 +926,7 @@ mod tests {
         let mut m = list_from(v.as_slice());
         m.prepend(list_from(u.as_slice()));
         check_links(&m);
-        u.extend(v.as_slice().iter().map(|&b| b));
+        u.extend(v.iter().map(|&b| b));
         assert_eq!(u.len(), m.len());
         for elt in u.into_iter() {
             assert_eq!(m.pop_front(), Some(elt))
@@ -1133,7 +1133,7 @@ mod tests {
         spawn(proc() {
             check_links(&n);
             let a: &[_] = &[&1,&2,&3];
-            assert_eq!(a, n.iter().collect::<Vec<&int>>().as_slice());
+            assert_eq!(a, n.iter().collect::<Vec<&int>>());
         });
     }
 
@@ -1224,12 +1224,12 @@ mod tests {
     #[test]
     fn test_show() {
         let list: DList<int> = range(0i, 10).collect();
-        assert!(list.to_string().as_slice() == "[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]");
+        assert!(list.to_string() == "[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]");
 
         let list: DList<&str> = vec!["just", "one", "test", "more"].iter()
                                                                    .map(|&s| s)
                                                                    .collect();
-        assert!(list.to_string().as_slice() == "[just, one, test, more]");
+        assert!(list.to_string() == "[just, one, test, more]");
     }
 
     #[cfg(test)]
