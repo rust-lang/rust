@@ -3873,8 +3873,8 @@ pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
                 }
 
                 def::DefStruct(_) => {
-                    match expr_ty(tcx, expr).sty {
-                        ty_bare_fn(..) => RvalueDatumExpr,
+                    match expr_ty_opt(tcx, expr) {
+                        Some(&TyS {sty: ty_bare_fn(..), ..}) => RvalueDatumExpr,
                         _ => RvalueDpsExpr
                     }
                 }
