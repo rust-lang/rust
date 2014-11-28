@@ -885,7 +885,7 @@ pub fn create_captured_var_metadata<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                                 env_data_type: Ty<'tcx>,
                                                 env_pointer: ValueRef,
                                                 env_index: uint,
-                                                closure_store: ty::TraitStore,
+                                                captured_by_ref: bool,
                                                 span: Span) {
     if fn_should_be_ignored(bcx.fcx) {
         return;
@@ -940,13 +940,10 @@ pub fn create_captured_var_metadata<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
          llvm::LLVMDIBuilderCreateOpDeref(Type::i64(cx).to_ref())]
     };
 
-    let address_op_count = match closure_store {
-        ty::RegionTraitStore(..) => {
-            address_operations.len()
-        }
-        ty::UniqTraitStore => {
-            address_operations.len() - 1
-        }
+    let address_op_count = if captured_by_ref {
+        address_operations.len()
+    } else {
+        address_operations.len() - 1
     };
 
     let variable_access = IndirectVariable {
