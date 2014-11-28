@@ -962,9 +962,9 @@ mod tests {
         match rs {
           Ok(ref m) => {
             assert!(m.opt_present("test"));
-            assert_eq!(m.opt_str("test").unwrap(), "20".to_string());
+            assert_eq!(m.opt_str("test").unwrap(), "20");
             assert!(m.opt_present("t"));
-            assert_eq!(m.opt_str("t").unwrap(), "20".to_string());
+            assert_eq!(m.opt_str("t").unwrap(), "20");
           }
           _ => { panic!("test_reqopt failed (long arg)"); }
         }
@@ -972,9 +972,9 @@ mod tests {
         match getopts(short_args.as_slice(), opts.as_slice()) {
           Ok(ref m) => {
             assert!((m.opt_present("test")));
-            assert_eq!(m.opt_str("test").unwrap(), "20".to_string());
+            assert_eq!(m.opt_str("test").unwrap(), "20");
             assert!((m.opt_present("t")));
-            assert_eq!(m.opt_str("t").unwrap(), "20".to_string());
+            assert_eq!(m.opt_str("t").unwrap(), "20");
           }
           _ => { panic!("test_reqopt failed (short arg)"); }
         }
@@ -1027,9 +1027,9 @@ mod tests {
         match rs {
           Ok(ref m) => {
             assert!(m.opt_present("test"));
-            assert_eq!(m.opt_str("test").unwrap(), "20".to_string());
+            assert_eq!(m.opt_str("test").unwrap(), "20");
             assert!((m.opt_present("t")));
-            assert_eq!(m.opt_str("t").unwrap(), "20".to_string());
+            assert_eq!(m.opt_str("t").unwrap(), "20");
           }
           _ => panic!()
         }
@@ -1037,9 +1037,9 @@ mod tests {
         match getopts(short_args.as_slice(), opts.as_slice()) {
           Ok(ref m) => {
             assert!((m.opt_present("test")));
-            assert_eq!(m.opt_str("test").unwrap(), "20".to_string());
+            assert_eq!(m.opt_str("test").unwrap(), "20");
             assert!((m.opt_present("t")));
-            assert_eq!(m.opt_str("t").unwrap(), "20".to_string());
+            assert_eq!(m.opt_str("t").unwrap(), "20");
           }
           _ => panic!()
         }
@@ -1154,7 +1154,7 @@ mod tests {
           Ok(ref m) => {
             // The next variable after the flag is just a free argument
 
-            assert!(m.free[0] == "20".to_string());
+            assert!(m.free[0] == "20");
           }
           _ => panic!()
         }
@@ -1250,9 +1250,9 @@ mod tests {
         match rs {
           Ok(ref m) => {
             assert!((m.opt_present("test")));
-            assert_eq!(m.opt_str("test").unwrap(), "20".to_string());
+            assert_eq!(m.opt_str("test").unwrap(), "20");
             assert!((m.opt_present("t")));
-            assert_eq!(m.opt_str("t").unwrap(), "20".to_string());
+            assert_eq!(m.opt_str("t").unwrap(), "20");
           }
           _ => panic!()
         }
@@ -1260,9 +1260,9 @@ mod tests {
         match getopts(short_args.as_slice(), opts.as_slice()) {
           Ok(ref m) => {
             assert!((m.opt_present("test")));
-            assert_eq!(m.opt_str("test").unwrap(), "20".to_string());
+            assert_eq!(m.opt_str("test").unwrap(), "20");
             assert!((m.opt_present("t")));
-            assert_eq!(m.opt_str("t").unwrap(), "20".to_string());
+            assert_eq!(m.opt_str("t").unwrap(), "20");
           }
           _ => panic!()
         }
@@ -1306,12 +1306,12 @@ mod tests {
         match rs {
           Ok(ref m) => {
               assert!(m.opt_present("test"));
-              assert_eq!(m.opt_str("test").unwrap(), "20".to_string());
+              assert_eq!(m.opt_str("test").unwrap(), "20");
               assert!(m.opt_present("t"));
-              assert_eq!(m.opt_str("t").unwrap(), "20".to_string());
+              assert_eq!(m.opt_str("t").unwrap(), "20");
               let pair = m.opt_strs("test");
-              assert!(pair[0] == "20".to_string());
-              assert!(pair[1] == "30".to_string());
+              assert!(pair[0] == "20");
+              assert!(pair[1] == "30");
           }
           _ => panic!()
         }
@@ -1363,19 +1363,19 @@ mod tests {
         let rs = getopts(args.as_slice(), opts.as_slice());
         match rs {
           Ok(ref m) => {
-            assert!(m.free[0] == "prog".to_string());
-            assert!(m.free[1] == "free1".to_string());
-            assert_eq!(m.opt_str("s").unwrap(), "20".to_string());
-            assert!(m.free[2] == "free2".to_string());
+            assert!(m.free[0] == "prog");
+            assert!(m.free[1] == "free1");
+            assert_eq!(m.opt_str("s").unwrap(), "20");
+            assert!(m.free[2] == "free2");
             assert!((m.opt_present("flag")));
-            assert_eq!(m.opt_str("long").unwrap(), "30".to_string());
+            assert_eq!(m.opt_str("long").unwrap(), "30");
             assert!((m.opt_present("f")));
             let pair = m.opt_strs("m");
-            assert!(pair[0] == "40".to_string());
-            assert!(pair[1] == "50".to_string());
+            assert!(pair[0] == "40");
+            assert!(pair[1] == "50");
             let pair = m.opt_strs("n");
-            assert!(pair[0] == "-A B".to_string());
-            assert!(pair[1] == "-60 70".to_string());
+            assert!(pair[0] == "-A B");
+            assert!(pair[1] == "-60 70");
             assert!((!m.opt_present("notpresent")));
           }
           _ => panic!()
@@ -1401,11 +1401,11 @@ mod tests {
         assert!(!matches_single.opts_present(&["thing".to_string()]));
         assert!(!matches_single.opts_present(&[]));
 
-        assert_eq!(matches_single.opts_str(&["e".to_string()]).unwrap(), "foo".to_string());
+        assert_eq!(matches_single.opts_str(&["e".to_string()]).unwrap(), "foo");
         assert_eq!(matches_single.opts_str(&["e".to_string(), "encrypt".to_string()]).unwrap(),
-                   "foo".to_string());
+                   "foo");
         assert_eq!(matches_single.opts_str(&["encrypt".to_string(), "e".to_string()]).unwrap(),
-                   "foo".to_string());
+                   "foo");
 
         let args_both = vec!("-e".to_string(), "foo".to_string(), "--encrypt".to_string(),
                              "foo".to_string());
@@ -1422,12 +1422,12 @@ mod tests {
         assert!(!matches_both.opts_present(&["thing".to_string()]));
         assert!(!matches_both.opts_present(&[]));
 
-        assert_eq!(matches_both.opts_str(&["e".to_string()]).unwrap(), "foo".to_string());
-        assert_eq!(matches_both.opts_str(&["encrypt".to_string()]).unwrap(), "foo".to_string());
+        assert_eq!(matches_both.opts_str(&["e".to_string()]).unwrap(), "foo");
+        assert_eq!(matches_both.opts_str(&["encrypt".to_string()]).unwrap(), "foo");
         assert_eq!(matches_both.opts_str(&["e".to_string(), "encrypt".to_string()]).unwrap(),
-                   "foo".to_string());
+                   "foo");
         assert_eq!(matches_both.opts_str(&["encrypt".to_string(), "e".to_string()]).unwrap(),
-                   "foo".to_string());
+                   "foo");
     }
 
     #[test]
@@ -1440,9 +1440,9 @@ mod tests {
           result::Err(_) => panic!()
         };
         assert!(matches.opts_present(&["L".to_string()]));
-        assert_eq!(matches.opts_str(&["L".to_string()]).unwrap(), "foo".to_string());
+        assert_eq!(matches.opts_str(&["L".to_string()]).unwrap(), "foo");
         assert!(matches.opts_present(&["M".to_string()]));
-        assert_eq!(matches.opts_str(&["M".to_string()]).unwrap(), ".".to_string());
+        assert_eq!(matches.opts_str(&["M".to_string()]).unwrap(), ".");
 
     }
 
@@ -1456,7 +1456,7 @@ mod tests {
           result::Err(e) => panic!( "{}", e )
         };
         assert!(matches.opts_present(&["L".to_string()]));
-        assert_eq!(matches.opts_str(&["L".to_string()]).unwrap(), "verbose".to_string());
+        assert_eq!(matches.opts_str(&["L".to_string()]).unwrap(), "verbose");
         assert!(matches.opts_present(&["v".to_string()]));
         assert_eq!(3, matches.opt_count("v"));
     }
@@ -1510,7 +1510,7 @@ Options:
     -k --kiwi           Desc
     -p [VAL]            Desc
     -l VAL              Desc
-".to_string();
+";
 
         let generated_usage = usage("Usage: fruits", optgroups.as_slice());
 
@@ -1537,7 +1537,7 @@ Options:
     -k --kiwi           This is a long description which won't be wrapped..+..
     -a --apple          This is a long description which _will_ be
                         wrapped..+..
-".to_string();
+";
 
         let usage = usage("Usage: fruits", optgroups.as_slice());
 
@@ -1563,7 +1563,7 @@ Options:
     -a --apple          This “description” has some characters that could
                         confuse the line wrapping; an apple costs 0.51€ in
                         some parts of Europe.
-".to_string();
+";
 
         let usage = usage("Usage: fruits", optgroups.as_slice());
 
