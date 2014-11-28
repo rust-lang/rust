@@ -53,6 +53,51 @@ impl Drop for Process {
     }
 }
 
+// Similarly to unix, we don't actually leave holes for the stdio file
+// descriptors, but rather open up /dev/null equivalents. These
+// equivalents are drawn from libuv's windows process spawning.
+fn set_fd(fd: &Option<P>, slot: &mut HANDLE, is_stdin: bool, cur_proc: &HANDLE) -> IoResult<()> {
+    match *fd {
+        None => {
+            let access = if is_stdin {
+                libc::FILE_GENERIC_READ
+            } else {
+                libc::FILE_GENERIC_WRITE | libc::FILE_READ_ATTRIBUTES
+            };
+            let size = mem::size_of::<libc::SECURITY_ATTRIBUTES>();
+            let mut sa = libc::SECURITY_ATTRIBUTES {
+                nLength: size as libc::DWORD,
+                lpSecurityDescriptor: ptr::null_mut(),
+                bInheritHandle: 1,
+            };
+            let mut filename: Vec<u16> = "NUL".utf16_units().collect();
+            filename.push(0);
+            *slot = libc::CreateFileW(filename.as_ptr(),
+                                      access,
+                                      libc::FILE_SHARE_READ |
+                                      libc::FILE_SHARE_WRITE,
+                                      &mut sa,
+                                      libc::OPEN_EXISTING,
+                                      0,
+                                      ptr::null_mut());
+            if *slot == INVALID_HANDLE_VALUE {
+                return Err(super::last_error())
+            }
+        }
+        Some(ref fd) => {
+            let orig = get_osfhandle(fd.as_inner().fd()) as HANDLE;
+            if orig == INVALID_HANDLE_VALUE {
+                return Err(super::last_error())
+            }
+            if DuplicateHandle(cur_proc, orig, cur_proc, slot,
+                               0, TRUE, DUPLICATE_SAME_ACCESS) == FALSE {
+                return Err(super::last_error())
+            }
+        }
+    }
+    Ok(())
+}
+
 impl Process {
     pub fn id(&self) -> pid_t {
         self.pid
@@ -100,10 +145,10 @@ impl Process {
         return ret;
     }
 
-    pub fn spawn<K, V, C, P>(cfg: &C, in_fd: Option<P>,
-                              out_fd: Option<P>, err_fd: Option<P>)
-                              -> IoResult<Process>
-        where C: ProcessConfig<K, V>, P: AsInner<FileDesc>,
+    pub fn spawn<K, V, C, P, Q>(cfg: &C, in_fd: Option<P>,
+                                out_fd: Option<P>, err_fd: Option<P>)
+                                -> IoResult<Process>
+        where C: ProcessConfig<K, V>, P: AsInner<FileDesc>, Q: AsInner<FileDesc>,
               K: BytesContainer + Eq + Hash, V: BytesContainer
     {
         use libc::types::os::arch::extra::{DWORD, HANDLE, STARTUPINFO};
@@ -160,55 +205,9 @@ impl Process {
 
             let cur_proc = GetCurrentProcess();
 
-            // Similarly to unix, we don't actually leave holes for the stdio file
-            // descriptors, but rather open up /dev/null equivalents. These
-            // equivalents are drawn from libuv's windows process spawning.
-            let set_fd = |fd: &Option<P>, slot: &mut HANDLE,
-                          is_stdin: bool| {
-                match *fd {
-                    None => {
-                        let access = if is_stdin {
-                            libc::FILE_GENERIC_READ
-                        } else {
-                            libc::FILE_GENERIC_WRITE | libc::FILE_READ_ATTRIBUTES
-                        };
-                        let size = mem::size_of::<libc::SECURITY_ATTRIBUTES>();
-                        let mut sa = libc::SECURITY_ATTRIBUTES {
-                            nLength: size as libc::DWORD,
-                            lpSecurityDescriptor: ptr::null_mut(),
-                            bInheritHandle: 1,
-                        };
-                        let mut filename: Vec<u16> = "NUL".utf16_units().collect();
-                        filename.push(0);
-                        *slot = libc::CreateFileW(filename.as_ptr(),
-                                                  access,
-                                                  libc::FILE_SHARE_READ |
-                                                      libc::FILE_SHARE_WRITE,
-                                                  &mut sa,
-                                                  libc::OPEN_EXISTING,
-                                                  0,
-                                                  ptr::null_mut());
-                        if *slot == INVALID_HANDLE_VALUE {
-                            return Err(super::last_error())
-                        }
-                    }
-                    Some(ref fd) => {
-                        let orig = get_osfhandle(fd.as_inner().fd()) as HANDLE;
-                        if orig == INVALID_HANDLE_VALUE {
-                            return Err(super::last_error())
-                        }
-                        if DuplicateHandle(cur_proc, orig, cur_proc, slot,
-                                           0, TRUE, DUPLICATE_SAME_ACCESS) == FALSE {
-                            return Err(super::last_error())
-                        }
-                    }
-                }
-                Ok(())
-            };
-
-            try!(set_fd(&in_fd, &mut si.hStdInput, true));
-            try!(set_fd(&out_fd, &mut si.hStdOutput, false));
-            try!(set_fd(&err_fd, &mut si.hStdError, false));
+            try!(set_fd(&in_fd, &mut si.hStdInput, true, &cur_proc));
+            try!(set_fd(&out_fd, &mut si.hStdOutput, false, &cur_proc));
+            try!(set_fd(&err_fd, &mut si.hStdError, false, &cur_proc));
 
             let cmd_str = make_command_line(program.as_ref().unwrap_or(cfg.program()),
                                             cfg.args());

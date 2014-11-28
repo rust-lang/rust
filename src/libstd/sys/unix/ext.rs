@@ -51,7 +51,13 @@ impl AsRawFd for io::fs::File {
     }
 }
 
-impl AsRawFd for io::pipe::PipeStream {
+impl AsRawFd for io::pipe::PipeReader {
+    fn as_raw_fd(&self) -> Fd {
+        self.as_inner().fd()
+    }
+}
+
+impl AsRawFd for io::pipe::PipeWriter {
     fn as_raw_fd(&self) -> Fd {
         self.as_inner().fd()
     }
