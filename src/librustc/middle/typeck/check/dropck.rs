@@ -39,8 +39,8 @@ fn constrain_region_for_destructor_safety(rcx: &mut Rcx,
     // Get the parent scope.
     let parent_inner_region =
         match rcx.tcx().region_maps.opt_encl_scope(inner_scope) {
+            None | Some(region::CodeExtent::Closure(_)) => ty::ReFunction,
             Some(parent_inner_scope) => ty::ReScope(parent_inner_scope),
-            None => ty::ReFunction,
         };
 
     rcx.tcx().sess.span_note(
