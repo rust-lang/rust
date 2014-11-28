@@ -1262,7 +1262,7 @@ mod tests {
                 InvalidFormatSpecifier};
 
     use std::f64;
-    use std::result::{Err, Ok};
+    use std::result::Result::{Err, Ok};
     use std::time::Duration;
     use self::test::Bencher;
 

@@ -24,14 +24,14 @@ enum object {
 fn lookup(table: json::Object, key: String, default: String) -> String
 {
     match table.find(&key.to_string()) {
-        option::Some(&Json::String(ref s)) => {
+        option::Option::Some(&Json::String(ref s)) => {
             s.to_string()
         }
-        option::Some(value) => {
+        option::Option::Some(value) => {
             println!("{} was expected to be a string but is a {}", key, value);
             default
         }
-        option::None => {
+        option::Option::None => {
             default
         }
     }

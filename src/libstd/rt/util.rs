@@ -9,7 +9,8 @@
 // except according to those terms.
 
 use libc::uintptr_t;
-use option::{Some, None, Option};
+use option::Option;
+use option::Option::{Some, None};
 use os;
 use str::{FromStr, from_str, Str};
 use sync::atomic;

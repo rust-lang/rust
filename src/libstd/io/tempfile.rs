@@ -14,10 +14,11 @@ use io::{fs, IoResult};
 use io;
 use libc;
 use ops::Drop;
-use option::{Option, None, Some};
+use option::Option;
+use option::Option::{None, Some};
 use os;
 use path::{Path, GenericPath};
-use result::{Ok, Err};
+use result::Result::{Ok, Err};
 use sync::atomic;
 
 /// A wrapper for a path to temporary directory implementing automatic

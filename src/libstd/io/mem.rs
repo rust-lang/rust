@@ -15,8 +15,8 @@
 #![allow(deprecated)]
 
 use cmp::min;
-use option::None;
-use result::{Err, Ok};
+use option::Option::None;
+use result::Result::{Err, Ok};
 use io;
 use io::{Reader, Writer, Seek, Buffer, IoError, SeekStyle, IoResult};
 use slice::{mod, AsSlice, SlicePrelude};

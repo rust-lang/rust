@@ -70,9 +70,9 @@ pub fn cs_cmp(cx: &mut ExtCtxt, span: Span,
     Builds:
 
     let __test = self_field1.cmp(&other_field2);
-    if other == ::std::cmp::Equal {
+    if other == ::std::cmp::Ordering::Equal {
         let __test = self_field2.cmp(&other_field2);
-        if __test == ::std::cmp::Equal {
+        if __test == ::std::cmp::Ordering::Equal {
             ...
         } else {
             __test
@@ -89,7 +89,7 @@ pub fn cs_cmp(cx: &mut ExtCtxt, span: Span,
         false,
         |cx, span, old, new| {
             // let __test = new;
-            // if __test == ::std::cmp::Equal {
+            // if __test == ::std::cmp::Ordering::Equal {
             //    old
             // } else {
             //    __test

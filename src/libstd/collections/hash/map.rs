@@ -25,8 +25,10 @@ use kinds::Sized;
 use mem::{mod, replace};
 use num::{Int, UnsignedInt};
 use ops::{Deref, Index, IndexMut};
-use option::{Some, None, Option};
-use result::{Result, Ok, Err};
+use option::Option;
+use option::Option::{Some, None};
+use result::Result;
+use result::Result::{Ok, Err};
 
 use super::table;
 use super::table::{

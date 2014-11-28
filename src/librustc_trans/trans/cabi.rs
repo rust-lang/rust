@@ -65,8 +65,8 @@ impl ArgType {
         ArgType {
             kind: Indirect,
             ty: ty,
-            cast: option::None,
-            pad: option::None,
+            cast: option::Option::None,
+            pad: option::Option::None,
             attr: attr
         }
     }

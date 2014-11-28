@@ -14,9 +14,9 @@
 
 use io::{IoResult, Writer};
 use iter::{Iterator, IteratorExt};
-use option::{Some, None};
+use option::Option::{Some, None};
 use os;
-use result::{Ok, Err};
+use result::Result::{Ok, Err};
 use str::{StrPrelude, from_str};
 use sync::atomic;
 use unicode::char::UnicodeChar;
@@ -236,8 +236,9 @@ mod imp {
     use io::{IoResult, Writer};
     use libc;
     use mem;
-    use option::{Some, None, Option};
-    use result::{Ok, Err};
+    use option::Option;
+    use option::Option::{Some, None};
+    use result::Result::{Ok, Err};
     use sync::{StaticMutex, MUTEX_INIT};
 
     /// As always - iOS on arm uses SjLj exceptions and
@@ -664,9 +665,9 @@ mod imp {
     use libc;
     use mem;
     use ops::Drop;
-    use option::{Some, None};
+    use option::Option::{Some, None};
     use path::Path;
-    use result::{Ok, Err};
+    use result::Result::{Ok, Err};
     use sync::{StaticMutex, MUTEX_INIT};
     use slice::SlicePrelude;
     use str::StrPrelude;
