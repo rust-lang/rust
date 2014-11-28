@@ -33,7 +33,9 @@ pub struct PipeImpl<D> {
 struct Readable;
 struct Writable;
 
+/// The reading end of a pipe
 pub type PipeReader = PipeImpl<Readable>;
+/// The writing end of a pipe
 pub type PipeWriter = PipeImpl<Writable>;
 
 pub struct PipePair {
