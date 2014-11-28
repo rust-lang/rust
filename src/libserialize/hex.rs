@@ -158,7 +158,7 @@ mod tests {
 
     #[test]
     pub fn test_to_hex() {
-        assert_eq!("foobar".as_bytes().to_hex(), "666f6f626172".to_string());
+        assert_eq!("foobar".as_bytes().to_hex(), "666f6f626172");
     }
 
     #[test]
