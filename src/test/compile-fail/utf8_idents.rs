@@ -11,14 +11,14 @@
 // ignore-lexer-test FIXME #15679
 
 fn foo<
-    'β, //~ ERROR non-ascii idents are not fully supported.
-    γ  //~ ERROR non-ascii idents are not fully supported.
+    'β, //~ ERROR non-ascii idents are not fully supported
+    γ  //~ ERROR non-ascii idents are not fully supported
 >() {}
 
 struct X {
-    δ: uint //~ ERROR non-ascii idents are not fully supported.
+    δ: uint //~ ERROR non-ascii idents are not fully supported
 }
 
 pub fn main() {
-    let α = 0.00001f64; //~ ERROR non-ascii idents are not fully supported.
+    let α = 0.00001f64; //~ ERROR non-ascii idents are not fully supported
 }

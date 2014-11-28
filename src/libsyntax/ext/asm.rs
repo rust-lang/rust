@@ -64,7 +64,7 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
         match state {
             Asm => {
                 let (s, style) = match expr_to_string(cx, p.parse_expr(),
-                                                   "inline assembly must be a string literal.") {
+                                                   "inline assembly must be a string literal") {
                     Some((s, st)) => (s, st),
                     // let compilation continue
                     None => return DummyResult::expr(sp),

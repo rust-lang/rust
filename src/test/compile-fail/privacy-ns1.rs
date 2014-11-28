@@ -28,7 +28,7 @@ pub mod foo1 {
 fn test_glob1() {
     use foo1::*;
 
-    Bar();  //~ ERROR unresolved name `Bar`.
+    Bar();  //~ ERROR unresolved name `Bar`
 }
 
 // private type, public value
@@ -58,7 +58,7 @@ pub mod foo3 {
 fn test_glob3() {
     use foo3::*;
 
-    Bar();  //~ ERROR unresolved name `Bar`.
+    Bar();  //~ ERROR unresolved name `Bar`
     let _x: Box<Bar>;  //~ ERROR  use of undeclared type name `Bar`
 }
 

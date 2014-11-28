@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use baz::zed::bar;
-//~^ ERROR unresolved import `baz::zed::bar`. Could not find `zed` in `baz`.
+//~^ ERROR unresolved import `baz::zed::bar`. Could not find `zed` in `baz`
 
 
 mod baz {}
