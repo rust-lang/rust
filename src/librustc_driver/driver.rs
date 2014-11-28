@@ -342,9 +342,10 @@ pub fn phase_3_run_analysis_passes<'tcx>(sess: Session,
     let lang_items = time(time_passes, "language item collection", (), |_|
                           middle::lang_items::collect_language_items(krate, &sess));
 
-    let make_glob_map = match save_analysis(&sess) {
-        true => middle::resolve::MakeGlobMap::Yes,
-        false => middle::resolve::MakeGlobMap::No,
+    let make_glob_map = if save_analysis(&sess) {
+        middle::resolve::MakeGlobMap::Yes
+    } else {
+        middle::resolve::MakeGlobMap::No
     };
         def_map,
         freevars,

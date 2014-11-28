@@ -744,9 +744,9 @@ mod tests {
     #![allow(unused_imports)]
 
     use super::*;
-    use prelude::*;
     use io::timer::*;
     use io::*;
+    use prelude::*;
     use io::fs::PathExtensions;
     use time::Duration;
     use str;

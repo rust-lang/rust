@@ -346,7 +346,7 @@ impl Rib {
 }
 
 /// Whether an import can be shadowed by another import.
-#[deriving(Show,PartialEq,Clone)]
+#[deriving(Show,PartialEq,Clone,Copy)]
 enum Shadowable {
     Always,
     /// Means that the recorded import obeys the glob shadowing rules, i.e., can
@@ -6113,7 +6113,7 @@ pub struct CrateMap {
     pub glob_map: Option<GlobMap>
 }
 
-#[deriving(PartialEq)]
+#[deriving(PartialEq,Copy)]
 pub enum MakeGlobMap {
     Yes,
     No

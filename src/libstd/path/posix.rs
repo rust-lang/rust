@@ -447,8 +447,8 @@ static dot_dot_static: &'static [u8] = b"..";
 
 #[cfg(test)]
 mod tests {
-    use prelude::*;
     use super::*;
+    use prelude::*;
     use str;
 
     macro_rules! t {
