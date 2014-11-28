@@ -45,7 +45,8 @@ enum Req {
 // up /dev/null into that file descriptor. Otherwise, the first file
 // descriptor opened up in the child would be numbered as one of the
 // stdio file descriptors, which is likely to wreak havoc.
-unsafe fn setup<T>(src: Option<T>, dst: c_int, devnull:&CString, ) -> bool where T : AsInner<FileDesc> {
+unsafe fn setup<T>(src: Option<T>, dst: c_int, devnull:&CString, ) -> bool
+    where T : AsInner<FileDesc> {
     let src = match src {
         None => {
             let flags = if dst == libc::STDIN_FILENO {

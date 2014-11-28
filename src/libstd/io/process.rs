@@ -398,7 +398,8 @@ impl fmt::Show for Command {
 
 enum Direction{Read,Write}
 
-fn setup_io(way:Direction, io: StdioContainer) -> IoResult<(Option<PipeReader>, Option<PipeWriter>)> {
+fn setup_io(way:Direction, io: StdioContainer)
+            -> IoResult<(Option<PipeReader>, Option<PipeWriter>)> {
     let reader;
     let writer;
     match io {
