@@ -16,6 +16,6 @@ fn my_panic() -> ! { panic!(); }
 fn main() {
     match true { false => { my_panic(); } true => { } }
 
-    println!("{}", x); //~ ERROR unresolved name `x`.
+    println!("{}", x); //~ ERROR unresolved name `x`
     let x: int;
 }

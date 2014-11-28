@@ -10,7 +10,7 @@
 
 // ignore-tidy-linelength
 
-impl<T> Option<T> { //~ERROR inherent implementations are not allowed for types not defined in the current module.
+impl<T> Option<T> { //~ERROR inherent implementations are not allowed for types not defined in the current module
     pub fn foo(&self) { }
 }
 

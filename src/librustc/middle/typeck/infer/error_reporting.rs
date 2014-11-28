@@ -1648,7 +1648,7 @@ impl<'a, 'tcx> ErrorReportingHelpers<'tcx> for InferCtxt<'a, 'tcx> {
                 self.tcx.sess.span_note(
                     span,
                     format!("...so that the type `{}` \
-                             will meet the declared lifetime bounds.",
+                             will meet the declared lifetime bounds",
                             self.ty_to_string(t)).as_slice());
             }
             infer::RelateDefaultParamBound(span, t) => {
@@ -1656,7 +1656,7 @@ impl<'a, 'tcx> ErrorReportingHelpers<'tcx> for InferCtxt<'a, 'tcx> {
                     span,
                     format!("...so that type parameter \
                              instantiated with `{}`, \
-                             will meet its declared lifetime bounds.",
+                             will meet its declared lifetime bounds",
                             self.ty_to_string(t)).as_slice());
             }
             infer::RelateRegionParamBound(span) => {

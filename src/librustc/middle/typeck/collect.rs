@@ -184,7 +184,7 @@ impl<'a, 'tcx> AstConv<'tcx> for CrateCtxt<'a, 'tcx> {
 
     fn ty_infer(&self, span: Span) -> Ty<'tcx> {
         span_err!(self.tcx.sess, span, E0121,
-                  "the type placeholder `_` is not allowed within types on item signatures.");
+                  "the type placeholder `_` is not allowed within types on item signatures");
         ty::mk_err()
     }
 
@@ -1715,7 +1715,7 @@ fn add_unsized_bound<'tcx,AC>(this: &AC,
                                                        the given bound is not \
                                                        a default. \
                                                        Only `Sized?` is \
-                                                       supported.",
+                                                       supported",
                                                       desc).as_slice());
                     ty::try_add_builtin_trait(this.tcx(),
                                               kind_id,
