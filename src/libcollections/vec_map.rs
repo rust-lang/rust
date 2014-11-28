@@ -871,7 +871,7 @@ mod test_map {
 
         let map_str = map.to_string();
         assert!(map_str == "{1: 2, 3: 4}" || map_str == "{3: 4, 1: 2}");
-        assert_eq!(format!("{}", empty), "{}".to_string());
+        assert_eq!(format!("{}", empty), "{}");
     }
 
     #[test]

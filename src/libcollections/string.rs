@@ -1287,24 +1287,24 @@ mod tests {
 
     #[test]
     fn test_simple_types() {
-        assert_eq!(1i.to_string(), "1".to_string());
-        assert_eq!((-1i).to_string(), "-1".to_string());
-        assert_eq!(200u.to_string(), "200".to_string());
-        assert_eq!(2u8.to_string(), "2".to_string());
-        assert_eq!(true.to_string(), "true".to_string());
-        assert_eq!(false.to_string(), "false".to_string());
-        assert_eq!(().to_string(), "()".to_string());
-        assert_eq!(("hi".to_string()).to_string(), "hi".to_string());
+        assert_eq!(1i.to_string(), "1");
+        assert_eq!((-1i).to_string(), "-1");
+        assert_eq!(200u.to_string(), "200");
+        assert_eq!(2u8.to_string(), "2");
+        assert_eq!(true.to_string(), "true");
+        assert_eq!(false.to_string(), "false");
+        assert_eq!(().to_string(), "()");
+        assert_eq!(("hi".to_string()).to_string(), "hi");
     }
 
     #[test]
     fn test_vectors() {
         let x: Vec<int> = vec![];
-        assert_eq!(x.to_string(), "[]".to_string());
-        assert_eq!((vec![1i]).to_string(), "[1]".to_string());
-        assert_eq!((vec![1i, 2, 3]).to_string(), "[1, 2, 3]".to_string());
+        assert_eq!(x.to_string(), "[]");
+        assert_eq!((vec![1i]).to_string(), "[1]");
+        assert_eq!((vec![1i, 2, 3]).to_string(), "[1, 2, 3]");
         assert!((vec![vec![], vec![1i], vec![1i, 1]]).to_string() ==
-               "[[], [1], [1, 1]]".to_string());
+               "[[], [1], [1, 1]]");
     }
 
     #[bench]

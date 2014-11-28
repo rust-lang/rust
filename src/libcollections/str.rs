@@ -1831,7 +1831,7 @@ mod tests {
     fn test_nfd_chars() {
         macro_rules! t {
             ($input: expr, $expected: expr) => {
-                assert_eq!($input.nfd_chars().collect::<String>(), $expected.into_string());
+                assert_eq!($input.nfd_chars().collect::<String>(), $expected);
             }
         }
         t!("abc", "abc");
@@ -1850,7 +1850,7 @@ mod tests {
     fn test_nfkd_chars() {
         macro_rules! t {
             ($input: expr, $expected: expr) => {
-                assert_eq!($input.nfkd_chars().collect::<String>(), $expected.into_string());
+                assert_eq!($input.nfkd_chars().collect::<String>(), $expected);
             }
         }
         t!("abc", "abc");
@@ -1869,7 +1869,7 @@ mod tests {
     fn test_nfc_chars() {
         macro_rules! t {
             ($input: expr, $expected: expr) => {
-                assert_eq!($input.nfc_chars().collect::<String>(), $expected.into_string());
+                assert_eq!($input.nfc_chars().collect::<String>(), $expected);
             }
         }
         t!("abc", "abc");
@@ -1889,7 +1889,7 @@ mod tests {
     fn test_nfkc_chars() {
         macro_rules! t {
             ($input: expr, $expected: expr) => {
-                assert_eq!($input.nfkc_chars().collect::<String>(), $expected.into_string());
+                assert_eq!($input.nfkc_chars().collect::<String>(), $expected);
             }
         }
         t!("abc", "abc");

@@ -1735,8 +1735,8 @@ mod test_treemap {
 
         let map_str = format!("{}", map);
 
-        assert!(map_str == "{1: 2, 3: 4}".to_string());
-        assert_eq!(format!("{}", empty), "{}".to_string());
+        assert!(map_str == "{1: 2, 3: 4}");
+        assert_eq!(format!("{}", empty), "{}");
     }
 
     #[test]

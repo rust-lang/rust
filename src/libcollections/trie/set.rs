@@ -696,8 +696,8 @@ mod test {
 
         let set_str = format!("{}", set);
 
-        assert!(set_str == "{1, 2}".to_string());
-        assert_eq!(format!("{}", empty), "{}".to_string());
+        assert!(set_str == "{1, 2}");
+        assert_eq!(format!("{}", empty), "{}");
     }
 
     #[test]
