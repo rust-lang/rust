@@ -1456,7 +1456,7 @@ impl<'a> Parser<'a> {
                 // clauses (i.e., not when parsing something like
                 // `FnMut() -> T + Send`, where the `+` is legal).
                 if self.token == token::BinOp(token::Plus) {
-                    self.warn("deprecated syntax: `()` are required, see RFC 248 for details");
+                    self.warn("deprecated syntax: `()` are required, see RFC 438 for details");
                 }
 
                 Return(t)
