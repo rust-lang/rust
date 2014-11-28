@@ -706,7 +706,7 @@ impl<T: Writer> ConsoleTestState<T> {
         }
 
         try!(self.write_plain("\nfailures:\n"));
-        failures.as_mut_slice().sort();
+        failures.sort();
         for name in failures.iter() {
             try!(self.write_plain(format!("    {}\n",
                                           name.as_slice()).as_slice()));
