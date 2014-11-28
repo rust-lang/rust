@@ -1221,8 +1221,11 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                         continue;
                     }
 
-                    let sups = sups.iter().map(|&sup| normalize(values, sup))
-                                          .collect();
+                    let sups : Vec<_> = sups.iter().map(|&sup| normalize(values, sup))
+                        .collect();
+                    debug!("ParamBoundFailrue: all sup in sups !(sub <= sup): sub={}, sups={}",
+                           sub.repr(self.tcx),
+                           sups.repr(self.tcx));
                     errors.push(
                         ParamBoundFailure(
                             (*origin).clone(), *param_ty, sub, sups));
@@ -1393,6 +1396,9 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                 debug!("collect_error_for_expanding_node {}", (i,j));
                 if !self.is_subregion_of(lower_bound.region,
                                          upper_bound.region) {
+                    debug!("SubSupConflict: !(sub.region <= sup.region): sub={}, sup={}",
+                           lower_bound.repr(self.tcx),
+                           upper_bound.repr(self.tcx));
                     errors.push(SubSupConflict(
                         (*self.var_origins.borrow())[node_idx.index].clone(),
                         lower_bound.origin.clone(),
@@ -1437,13 +1443,16 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                                                 upper_bound_2.region) {
                   Ok(_) => {}
                   Err(_) => {
-                    errors.push(SupSupConflict(
-                        (*self.var_origins.borrow())[node_idx.index].clone(),
-                        upper_bound_1.origin.clone(),
-                        upper_bound_1.region,
-                        upper_bound_2.origin.clone(),
-                        upper_bound_2.region));
-                    return;
+                      debug!("SubSupConflict: no glb for upper_bound_1: {} upper_bound_2: {}",
+                             upper_bound_1.repr(self.tcx),
+                             upper_bound_2.repr(self.tcx));
+                      errors.push(SupSupConflict(
+                          (*self.var_origins.borrow())[node_idx.index].clone(),
+                          upper_bound_1.origin.clone(),
+                          upper_bound_1.region,
+                          upper_bound_2.origin.clone(),
+                          upper_bound_2.region));
+                      return;
                   }
                 }
             }
