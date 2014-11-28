@@ -12,13 +12,13 @@
 // doesn't die in a ball of fire, but rather it's gracefully handled.
 
 use std::os;
-use std::io::PipeStream;
+use std::io::{Pipe,PipeReader,IoResult};
 use std::io::Command;
 
 fn test() {
     let os::Pipe { reader, writer } = unsafe { os::pipe().unwrap() };
-    let reader = PipeStream::open(reader);
-    let mut writer = PipeStream::open(writer);
+    let reader : IoResult<PipeReader> = Pipe::open(reader);
+    let mut writer = Pipe::open(writer);
     drop(reader);
 
     let _ = writer.write(&[1]);
