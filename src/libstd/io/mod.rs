@@ -2005,14 +2005,14 @@ mod tests {
     fn test_show() {
         use super::*;
 
-        assert_eq!(format!("{}", USER_READ), "0400".to_string());
-        assert_eq!(format!("{}", USER_FILE), "0644".to_string());
-        assert_eq!(format!("{}", USER_EXEC), "0755".to_string());
-        assert_eq!(format!("{}", USER_RWX),  "0700".to_string());
-        assert_eq!(format!("{}", GROUP_RWX), "0070".to_string());
-        assert_eq!(format!("{}", OTHER_RWX), "0007".to_string());
-        assert_eq!(format!("{}", ALL_PERMISSIONS), "0777".to_string());
-        assert_eq!(format!("{}", USER_READ | USER_WRITE | OTHER_WRITE), "0602".to_string());
+        assert_eq!(format!("{}", USER_READ), "0400");
+        assert_eq!(format!("{}", USER_FILE), "0644");
+        assert_eq!(format!("{}", USER_EXEC), "0755");
+        assert_eq!(format!("{}", USER_RWX),  "0700");
+        assert_eq!(format!("{}", GROUP_RWX), "0070");
+        assert_eq!(format!("{}", OTHER_RWX), "0007");
+        assert_eq!(format!("{}", ALL_PERMISSIONS), "0777");
+        assert_eq!(format!("{}", USER_READ | USER_WRITE | OTHER_WRITE), "0602");
     }
 
     fn _ensure_buffer_is_object_safe<T: Buffer>(x: &T) -> &Buffer {

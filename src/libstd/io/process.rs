@@ -810,7 +810,7 @@ mod tests {
     fn stdout_works() {
         let mut cmd = Command::new("echo");
         cmd.arg("foobar").stdout(CreatePipe(false, true));
-        assert_eq!(run_output(cmd), "foobar\n".to_string());
+        assert_eq!(run_output(cmd), "foobar\n");
     }
 
     #[cfg(all(unix, not(target_os="android")))]
@@ -820,7 +820,7 @@ mod tests {
         cmd.arg("-c").arg("pwd")
            .cwd(&Path::new("/"))
            .stdout(CreatePipe(false, true));
-        assert_eq!(run_output(cmd), "/\n".to_string());
+        assert_eq!(run_output(cmd), "/\n");
     }
 
     #[cfg(all(unix, not(target_os="android")))]
@@ -835,7 +835,7 @@ mod tests {
         drop(p.stdin.take());
         let out = read_all(p.stdout.as_mut().unwrap() as &mut Reader);
         assert!(p.wait().unwrap().success());
-        assert_eq!(out, "foobar\n".to_string());
+        assert_eq!(out, "foobar\n");
     }
 
     #[cfg(not(target_os="android"))]
@@ -900,7 +900,7 @@ mod tests {
         let output_str = str::from_utf8(output.as_slice()).unwrap();
 
         assert!(status.success());
-        assert_eq!(output_str.trim().to_string(), "hello".to_string());
+        assert_eq!(output_str.trim().to_string(), "hello");
         // FIXME #7224
         if !running_on_valgrind() {
             assert_eq!(error, Vec::new());
@@ -941,7 +941,7 @@ mod tests {
         let output_str = str::from_utf8(output.as_slice()).unwrap();
 
         assert!(status.success());
-        assert_eq!(output_str.trim().to_string(), "hello".to_string());
+        assert_eq!(output_str.trim().to_string(), "hello");
         // FIXME #7224
         if !running_on_valgrind() {
             assert_eq!(error, Vec::new());

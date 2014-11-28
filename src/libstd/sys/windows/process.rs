@@ -484,24 +484,24 @@ mod tests {
 
         assert_eq!(
             test_wrapper("prog", &["aaa", "bbb", "ccc"]),
-            "prog aaa bbb ccc".to_string()
+            "prog aaa bbb ccc"
         );
 
         assert_eq!(
             test_wrapper("C:\\Program Files\\blah\\blah.exe", &["aaa"]),
-            "\"C:\\Program Files\\blah\\blah.exe\" aaa".to_string()
+            "\"C:\\Program Files\\blah\\blah.exe\" aaa"
         );
         assert_eq!(
             test_wrapper("C:\\Program Files\\test", &["aa\"bb"]),
-            "\"C:\\Program Files\\test\" aa\\\"bb".to_string()
+            "\"C:\\Program Files\\test\" aa\\\"bb"
         );
         assert_eq!(
             test_wrapper("echo", &["a b c"]),
-            "echo \"a b c\"".to_string()
+            "echo \"a b c\""
         );
         assert_eq!(
             test_wrapper("\u03c0\u042f\u97f3\u00e6\u221e", &[]),
-            "\u03c0\u042f\u97f3\u00e6\u221e".to_string()
+            "\u03c0\u042f\u97f3\u00e6\u221e"
         );
     }
 }

@@ -79,28 +79,28 @@ mod tests {
     #[test]
     fn test_uint_to_str_overflow() {
         let mut u8_val: u8 = 255_u8;
-        assert_eq!(u8_val.to_string(), "255".to_string());
+        assert_eq!(u8_val.to_string(), "255");
 
         u8_val += 1 as u8;
-        assert_eq!(u8_val.to_string(), "0".to_string());
+        assert_eq!(u8_val.to_string(), "0");
 
         let mut u16_val: u16 = 65_535_u16;
-        assert_eq!(u16_val.to_string(), "65535".to_string());
+        assert_eq!(u16_val.to_string(), "65535");
 
         u16_val += 1 as u16;
-        assert_eq!(u16_val.to_string(), "0".to_string());
+        assert_eq!(u16_val.to_string(), "0");
 
         let mut u32_val: u32 = 4_294_967_295_u32;
-        assert_eq!(u32_val.to_string(), "4294967295".to_string());
+        assert_eq!(u32_val.to_string(), "4294967295");
 
         u32_val += 1 as u32;
-        assert_eq!(u32_val.to_string(), "0".to_string());
+        assert_eq!(u32_val.to_string(), "0");
 
         let mut u64_val: u64 = 18_446_744_073_709_551_615_u64;
-        assert_eq!(u64_val.to_string(), "18446744073709551615".to_string());
+        assert_eq!(u64_val.to_string(), "18446744073709551615");
 
         u64_val += 1 as u64;
-        assert_eq!(u64_val.to_string(), "0".to_string());
+        assert_eq!(u64_val.to_string(), "0");
     }
 
     #[test]

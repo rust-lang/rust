@@ -680,13 +680,13 @@ mod tests {
         assert_eq!(v.to_ascii(), b);
         assert_eq!("( ;".to_string().to_ascii(), b);
 
-        assert_eq!("abCDef&?#".to_ascii().to_lowercase().into_string(), "abcdef&?#".to_string());
-        assert_eq!("abCDef&?#".to_ascii().to_uppercase().into_string(), "ABCDEF&?#".to_string());
+        assert_eq!("abCDef&?#".to_ascii().to_lowercase().into_string(), "abcdef&?#");
+        assert_eq!("abCDef&?#".to_ascii().to_uppercase().into_string(), "ABCDEF&?#");
 
-        assert_eq!("".to_ascii().to_lowercase().into_string(), "".to_string());
-        assert_eq!("YMCA".to_ascii().to_lowercase().into_string(), "ymca".to_string());
+        assert_eq!("".to_ascii().to_lowercase().into_string(), "");
+        assert_eq!("YMCA".to_ascii().to_lowercase().into_string(), "ymca");
         let mixed = "abcDEFxyz:.;".to_ascii();
-        assert_eq!(mixed.to_uppercase().into_string(), "ABCDEFXYZ:.;".to_string());
+        assert_eq!(mixed.to_uppercase().into_string(), "ABCDEFXYZ:.;");
 
         assert!("aBcDeF&?#".to_ascii().eq_ignore_case("AbCdEf&?#".to_ascii()));
 
@@ -698,12 +698,12 @@ mod tests {
 
     #[test]
     fn test_ascii_vec_ng() {
-        assert_eq!("abCDef&?#".to_ascii().to_lowercase().into_string(), "abcdef&?#".to_string());
-        assert_eq!("abCDef&?#".to_ascii().to_uppercase().into_string(), "ABCDEF&?#".to_string());
-        assert_eq!("".to_ascii().to_lowercase().into_string(), "".to_string());
-        assert_eq!("YMCA".to_ascii().to_lowercase().into_string(), "ymca".to_string());
+        assert_eq!("abCDef&?#".to_ascii().to_lowercase().into_string(), "abcdef&?#");
+        assert_eq!("abCDef&?#".to_ascii().to_uppercase().into_string(), "ABCDEF&?#");
+        assert_eq!("".to_ascii().to_lowercase().into_string(), "");
+        assert_eq!("YMCA".to_ascii().to_lowercase().into_string(), "ymca");
         let mixed = "abcDEFxyz:.;".to_ascii();
-        assert_eq!(mixed.to_uppercase().into_string(), "ABCDEFXYZ:.;".to_string());
+        assert_eq!(mixed.to_uppercase().into_string(), "ABCDEFXYZ:.;");
     }
 
     #[test]
@@ -720,8 +720,8 @@ mod tests {
 
     #[test]
     fn test_ascii_into_string() {
-        assert_eq!(vec2ascii![40, 32, 59].into_string(), "( ;".to_string());
-        assert_eq!(vec2ascii!(40, 32, 59).into_string(), "( ;".to_string());
+        assert_eq!(vec2ascii![40, 32, 59].into_string(), "( ;");
+        assert_eq!(vec2ascii!(40, 32, 59).into_string(), "( ;");
     }
 
     #[test]
@@ -773,8 +773,8 @@ mod tests {
 
     #[test]
     fn test_to_ascii_upper() {
-        assert_eq!("url()URL()uRl()ürl".to_ascii_upper(), "URL()URL()URL()üRL".to_string());
-        assert_eq!("hıKß".to_ascii_upper(), "HıKß".to_string());
+        assert_eq!("url()URL()uRl()ürl".to_ascii_upper(), "URL()URL()URL()üRL");
+        assert_eq!("hıKß".to_ascii_upper(), "HıKß");
 
         let mut i = 0;
         while i <= 500 {
@@ -788,9 +788,9 @@ mod tests {
 
     #[test]
     fn test_to_ascii_lower() {
-        assert_eq!("url()URL()uRl()Ürl".to_ascii_lower(), "url()url()url()Ürl".to_string());
+        assert_eq!("url()URL()uRl()Ürl".to_ascii_lower(), "url()url()url()Ürl");
         // Dotted capital I, Kelvin sign, Sharp S.
-        assert_eq!("HİKß".to_ascii_lower(), "hİKß".to_string());
+        assert_eq!("HİKß".to_ascii_lower(), "hİKß");
 
         let mut i = 0;
         while i <= 500 {
@@ -806,7 +806,7 @@ mod tests {
     fn test_into_ascii_upper() {
         assert_eq!(("url()URL()uRl()ürl".to_string()).into_ascii_upper(),
                    "URL()URL()URL()üRL".to_string());
-        assert_eq!(("hıKß".to_string()).into_ascii_upper(), "HıKß".to_string());
+        assert_eq!(("hıKß".to_string()).into_ascii_upper(), "HıKß");
 
         let mut i = 0;
         while i <= 500 {
@@ -821,9 +821,9 @@ mod tests {
     #[test]
     fn test_into_ascii_lower() {
         assert_eq!(("url()URL()uRl()Ürl".to_string()).into_ascii_lower(),
-                   "url()url()url()Ürl".to_string());
+                   "url()url()url()Ürl");
         // Dotted capital I, Kelvin sign, Sharp S.
-        assert_eq!(("HİKß".to_string()).into_ascii_lower(), "hİKß".to_string());
+        assert_eq!(("HİKß".to_string()).into_ascii_lower(), "hİKß");
 
         let mut i = 0;
         while i <= 500 {
@@ -859,12 +859,12 @@ mod tests {
     #[test]
     fn test_to_string() {
         let s = Ascii{ chr: b't' }.to_string();
-        assert_eq!(s, "t".to_string());
+        assert_eq!(s, "t");
     }
 
     #[test]
     fn test_show() {
         let c = Ascii { chr: b't' };
-        assert_eq!(format!("{}", c), "t".to_string());
+        assert_eq!(format!("{}", c), "t");
     }
 }

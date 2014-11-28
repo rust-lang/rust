@@ -592,7 +592,7 @@ mod test {
         writer.write_line("testing").unwrap();
         writer.write_str("testing").unwrap();
         let mut r = BufReader::new(writer.get_ref());
-        assert_eq!(r.read_to_string().unwrap(), "testingtesting\ntesting".to_string());
+        assert_eq!(r.read_to_string().unwrap(), "testingtesting\ntesting");
     }
 
     #[test]
@@ -602,7 +602,7 @@ mod test {
         writer.write_char('\n').unwrap();
         writer.write_char('ệ').unwrap();
         let mut r = BufReader::new(writer.get_ref());
-        assert_eq!(r.read_to_string().unwrap(), "a\nệ".to_string());
+        assert_eq!(r.read_to_string().unwrap(), "a\nệ");
     }
 
     #[test]
