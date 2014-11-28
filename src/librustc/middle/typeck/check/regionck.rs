@@ -313,11 +313,6 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
         old_scope
     }
 
-    pub fn try_resolve_type(&self, unresolved_ty: Ty<'tcx>) -> fres<Ty<'tcx>> {
-        resolve_type(self.fcx.infcx(), None, unresolved_ty,
-                     resolve_and_force_all_but_regions)
-    }
-
     pub fn resolve_type(&self, unresolved_ty: Ty<'tcx>) -> Ty<'tcx> {
         /*!
          * Try to resolve the type for the given node, returning
@@ -347,7 +342,8 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
          * bigger than the let and the `*b` expression, so we will
          * effectively resolve `<R0>` to be the block B.
          */
-        self.try_resolve_type(unresolved_ty) {
+        match resolve_type(self.fcx.infcx(), None, unresolved_ty,
+                           resolve_and_force_all_but_regions) {
             Ok(t) => t,
             Err(e) => {
                 debug!("Rcx::resolved_type resolve_type err: {}", e);
