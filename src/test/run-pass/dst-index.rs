@@ -25,7 +25,7 @@ impl Index<uint, str> for S {
 struct T;
 
 impl Index<uint, Show + 'static> for T {
-    fn index<'a>(&'a self, idx: &uint) -> &'a Show + 'static {
+    fn index<'a>(&'a self, idx: &uint) -> &'a (Show + 'static) {
         static x: uint = 42;
         &x
     }

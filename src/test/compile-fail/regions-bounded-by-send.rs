@@ -57,12 +57,12 @@ fn box_with_region_not_ok<'a>() {
 // objects with insufficient bounds no ok
 
 fn object_with_random_bound_not_ok<'a>() {
-    assert_send::<&'a Dummy+'a>();
+    assert_send::<&'a (Dummy+'a)>();
     //~^ ERROR not implemented
 }
 
 fn object_with_send_bound_not_ok<'a>() {
-    assert_send::<&'a Dummy+Send>();
+    assert_send::<&'a (Dummy+Send)>();
     //~^ ERROR does not fulfill
 }
 

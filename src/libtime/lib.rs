@@ -16,7 +16,6 @@
 
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
-#![license = "MIT/ASL2"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/nightly/",
@@ -123,10 +122,8 @@ impl Sub<Timespec, Duration> for Timespec {
     }
 }
 
-/**
- * Returns the current time as a `timespec` containing the seconds and
- * nanoseconds since 1970-01-01T00:00:00Z.
- */
+/// Returns the current time as a `timespec` containing the seconds and
+/// nanoseconds since 1970-01-01T00:00:00Z.
 pub fn get_time() -> Timespec {
     unsafe {
         let (sec, nsec) = os_get_time();
@@ -171,10 +168,8 @@ pub fn get_time() -> Timespec {
 }
 
 
-/**
- * Returns the current value of a high-resolution performance counter
- * in nanoseconds since an unspecified epoch.
- */
+/// Returns the current value of a high-resolution performance counter
+/// in nanoseconds since an unspecified epoch.
 pub fn precise_time_ns() -> u64 {
     return os_precise_time_ns();
 
@@ -218,10 +213,8 @@ pub fn precise_time_ns() -> u64 {
 }
 
 
-/**
- * Returns the current value of a high-resolution performance counter
- * in seconds since an unspecified epoch.
- */
+/// Returns the current value of a high-resolution performance counter
+/// in seconds since an unspecified epoch.
 pub fn precise_time_s() -> f64 {
     return (precise_time_ns() as f64) / 1000000000.;
 }
@@ -346,12 +339,10 @@ impl Tm {
         at_utc(self.to_timespec())
     }
 
-    /**
-     * Returns a TmFmt that outputs according to the `asctime` format in ISO
-     * C, in the local timezone.
-     *
-     * Example: "Thu Jan  1 00:00:00 1970"
-     */
+    /// Returns a TmFmt that outputs according to the `asctime` format in ISO
+    /// C, in the local timezone.
+    ///
+    /// Example: "Thu Jan  1 00:00:00 1970"
     pub fn ctime(&self) -> TmFmt {
         TmFmt {
             tm: self,
@@ -359,12 +350,10 @@ impl Tm {
         }
     }
 
-    /**
-     * Returns a TmFmt that outputs according to the `asctime` format in ISO
-     * C.
-     *
-     * Example: "Thu Jan  1 00:00:00 1970"
-     */
+    /// Returns a TmFmt that outputs according to the `asctime` format in ISO
+    /// C.
+    ///
+    /// Example: "Thu Jan  1 00:00:00 1970"
     pub fn asctime(&self) -> TmFmt {
         TmFmt {
             tm: self,
@@ -380,12 +369,10 @@ impl Tm {
         })
     }
 
-    /**
-     * Returns a TmFmt that outputs according to RFC 822.
-     *
-     * local: "Thu, 22 Mar 2012 07:53:18 PST"
-     * utc:   "Thu, 22 Mar 2012 14:53:18 GMT"
-     */
+    /// Returns a TmFmt that outputs according to RFC 822.
+    ///
+    /// local: "Thu, 22 Mar 2012 07:53:18 PST"
+    /// utc:   "Thu, 22 Mar 2012 14:53:18 GMT"
     pub fn rfc822(&self) -> TmFmt {
         if self.tm_gmtoff == 0_i32 {
             TmFmt {
@@ -400,12 +387,10 @@ impl Tm {
         }
     }
 
-    /**
-     * Returns a TmFmt that outputs according to RFC 822 with Zulu time.
-     *
-     * local: "Thu, 22 Mar 2012 07:53:18 -0700"
-     * utc:   "Thu, 22 Mar 2012 14:53:18 -0000"
-     */
+    /// Returns a TmFmt that outputs according to RFC 822 with Zulu time.
+    ///
+    /// local: "Thu, 22 Mar 2012 07:53:18 -0700"
+    /// utc:   "Thu, 22 Mar 2012 14:53:18 -0000"
     pub fn rfc822z(&self) -> TmFmt {
         TmFmt {
             tm: self,
@@ -413,13 +398,11 @@ impl Tm {
         }
     }
 
-    /**
-     * Returns a TmFmt that outputs according to RFC 3339. RFC 3339 is
-     * compatible with ISO 8601.
-     *
-     * local: "2012-02-22T07:53:18-07:00"
-     * utc:   "2012-02-22T14:53:18Z"
-     */
+    /// Returns a TmFmt that outputs according to RFC 3339. RFC 3339 is
+    /// compatible with ISO 8601.
+    ///
+    /// local: "2012-02-22T07:53:18-07:00"
+    /// utc:   "2012-02-22T14:53:18Z"
     pub fn rfc3339<'a>(&'a self) -> TmFmt {
         TmFmt {
             tm: self,

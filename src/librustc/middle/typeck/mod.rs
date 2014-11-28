@@ -150,20 +150,18 @@ pub struct MethodCallee<'tcx> {
     pub substs: subst::Substs<'tcx>
 }
 
-/**
- * With method calls, we store some extra information in
- * side tables (i.e method_map). We use
- * MethodCall as a key to index into these tables instead of
- * just directly using the expression's NodeId. The reason
- * for this being that we may apply adjustments (coercions)
- * with the resulting expression also needing to use the
- * side tables. The problem with this is that we don't
- * assign a separate NodeId to this new expression
- * and so it would clash with the base expression if both
- * needed to add to the side tables. Thus to disambiguate
- * we also keep track of whether there's an adjustment in
- * our key.
- */
+/// With method calls, we store some extra information in
+/// side tables (i.e method_map). We use
+/// MethodCall as a key to index into these tables instead of
+/// just directly using the expression's NodeId. The reason
+/// for this being that we may apply adjustments (coercions)
+/// with the resulting expression also needing to use the
+/// side tables. The problem with this is that we don't
+/// assign a separate NodeId to this new expression
+/// and so it would clash with the base expression if both
+/// needed to add to the side tables. Thus to disambiguate
+/// we also keep track of whether there's an adjustment in
+/// our key.
 #[deriving(Clone, PartialEq, Eq, Hash, Show)]
 pub struct MethodCall {
     pub expr_id: ast::NodeId,

@@ -8,10 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
-The compiler code necessary for `#[deriving(Decodable)]`. See
-encodable.rs for more.
-*/
+//! The compiler code necessary for `#[deriving(Decodable)]`. See encodable.rs for more.
 
 use ast;
 use ast::{MetaItem, Item, Expr, MutMutable};

@@ -8,33 +8,31 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
- * Generalized type folding mechanism. The setup is a bit convoluted
- * but allows for convenient usage. Let T be an instance of some
- * "foldable type" (one which implements `TypeFoldable`) and F be an
- * instance of a "folder" (a type which implements `TypeFolder`). Then
- * the setup is intended to be:
- *
- *     T.fold_with(F) --calls--> F.fold_T(T) --calls--> super_fold_T(F, T)
- *
- * This way, when you define a new folder F, you can override
- * `fold_T()` to customize the behavior, and invoke `super_fold_T()`
- * to get the original behavior. Meanwhile, to actually fold
- * something, you can just write `T.fold_with(F)`, which is
- * convenient. (Note that `fold_with` will also transparently handle
- * things like a `Vec<T>` where T is foldable and so on.)
- *
- * In this ideal setup, the only function that actually *does*
- * anything is `super_fold_T`, which traverses the type `T`. Moreover,
- * `super_fold_T` should only ever call `T.fold_with()`.
- *
- * In some cases, we follow a degenerate pattern where we do not have
- * a `fold_T` nor `super_fold_T` method. Instead, `T.fold_with`
- * traverses the structure directly. This is suboptimal because the
- * behavior cannot be overriden, but it's much less work to implement.
- * If you ever *do* need an override that doesn't exist, it's not hard
- * to convert the degenerate pattern into the proper thing.
- */
+//! Generalized type folding mechanism. The setup is a bit convoluted
+//! but allows for convenient usage. Let T be an instance of some
+//! "foldable type" (one which implements `TypeFoldable`) and F be an
+//! instance of a "folder" (a type which implements `TypeFolder`). Then
+//! the setup is intended to be:
+//!
+//!     T.fold_with(F) --calls--> F.fold_T(T) --calls--> super_fold_T(F, T)
+//!
+//! This way, when you define a new folder F, you can override
+//! `fold_T()` to customize the behavior, and invoke `super_fold_T()`
+//! to get the original behavior. Meanwhile, to actually fold
+//! something, you can just write `T.fold_with(F)`, which is
+//! convenient. (Note that `fold_with` will also transparently handle
+//! things like a `Vec<T>` where T is foldable and so on.)
+//!
+//! In this ideal setup, the only function that actually *does*
+//! anything is `super_fold_T`, which traverses the type `T`. Moreover,
+//! `super_fold_T` should only ever call `T.fold_with()`.
+//!
+//! In some cases, we follow a degenerate pattern where we do not have
+//! a `fold_T` nor `super_fold_T` method. Instead, `T.fold_with`
+//! traverses the structure directly. This is suboptimal because the
+//! behavior cannot be overriden, but it's much less work to implement.
+//! If you ever *do* need an override that doesn't exist, it's not hard
+//! to convert the degenerate pattern into the proper thing.
 
 use middle::subst;
 use middle::subst::VecPerParamSpace;
@@ -701,9 +699,7 @@ pub fn super_fold_obligation<'tcx, T:TypeFolder<'tcx>>(this: &mut T,
 ///////////////////////////////////////////////////////////////////////////
 // Higher-ranked things
 
-/**
- * Designates a "binder" for late-bound regions.
- */
+/// Designates a "binder" for late-bound regions.
 pub trait HigherRankedFoldable<'tcx>: Repr<'tcx> {
     /// Folds the contents of `self`, ignoring the region binder created
     /// by `self`.

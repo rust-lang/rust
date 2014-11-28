@@ -252,7 +252,7 @@ mod imp {
     #[cfg(all(target_os = "ios", target_arch = "arm"))]
     #[inline(never)]
     pub fn write(w: &mut Writer) -> IoResult<()> {
-        use iter::{Iterator, range};
+        use iter::{IteratorExt, range};
         use result;
         use slice::{SlicePrelude};
 
@@ -288,7 +288,7 @@ mod imp {
 
         struct Context<'a> {
             idx: int,
-            writer: &'a mut Writer+'a,
+            writer: &'a mut (Writer+'a),
             last_error: Option<IoError>,
         }
 

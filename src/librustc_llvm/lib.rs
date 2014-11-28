@@ -15,7 +15,6 @@
 
 #![crate_name = "rustc_llvm"]
 #![experimental]
-#![license = "MIT/ASL2"]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
@@ -45,6 +44,7 @@ pub use self::DiagnosticKind::*;
 pub use self::CallConv::*;
 pub use self::Visibility::*;
 pub use self::DiagnosticSeverity::*;
+pub use self::Linkage::*;
 
 use std::c_str::ToCStr;
 use std::cell::RefCell;
@@ -520,24 +520,24 @@ extern {
     pub fn LLVMGetModuleContext(M: ModuleRef) -> ContextRef;
     pub fn LLVMDisposeModule(M: ModuleRef);
 
-    /** Data layout. See Module::getDataLayout. */
+    /// Data layout. See Module::getDataLayout.
     pub fn LLVMGetDataLayout(M: ModuleRef) -> *const c_char;
     pub fn LLVMSetDataLayout(M: ModuleRef, Triple: *const c_char);
 
-    /** Target triple. See Module::getTargetTriple. */
+    /// Target triple. See Module::getTargetTriple.
     pub fn LLVMGetTarget(M: ModuleRef) -> *const c_char;
     pub fn LLVMSetTarget(M: ModuleRef, Triple: *const c_char);
 
-    /** See Module::dump. */
+    /// See Module::dump.
     pub fn LLVMDumpModule(M: ModuleRef);
 
-    /** See Module::setModuleInlineAsm. */
+    /// See Module::setModuleInlineAsm.
     pub fn LLVMSetModuleInlineAsm(M: ModuleRef, Asm: *const c_char);
 
-    /** See llvm::LLVMTypeKind::getTypeID. */
+    /// See llvm::LLVMTypeKind::getTypeID.
     pub fn LLVMGetTypeKind(Ty: TypeRef) -> TypeKind;
 
-    /** See llvm::LLVMType::getContext. */
+    /// See llvm::LLVMType::getContext.
     pub fn LLVMGetTypeContext(Ty: TypeRef) -> ContextRef;
 
     /* Operations on integer types */
@@ -1460,30 +1460,29 @@ extern {
     pub fn LLVMIsATerminatorInst(Inst: ValueRef) -> ValueRef;
     pub fn LLVMIsAStoreInst(Inst: ValueRef) -> ValueRef;
 
-    /** Writes a module to the specified path. Returns 0 on success. */
+    /// Writes a module to the specified path. Returns 0 on success.
     pub fn LLVMWriteBitcodeToFile(M: ModuleRef, Path: *const c_char) -> c_int;
 
-    /** Creates target data from a target layout string. */
+    /// Creates target data from a target layout string.
     pub fn LLVMCreateTargetData(StringRep: *const c_char) -> TargetDataRef;
     /// Adds the target data to the given pass manager. The pass manager
     /// references the target data only weakly.
     pub fn LLVMAddTargetData(TD: TargetDataRef, PM: PassManagerRef);
-    /** Number of bytes clobbered when doing a Store to *T. */
+    /// Number of bytes clobbered when doing a Store to *T.
     pub fn LLVMStoreSizeOfType(TD: TargetDataRef, Ty: TypeRef)
                                -> c_ulonglong;
 
-    /** Number of bytes clobbered when doing a Store to *T. */
+    /// Number of bytes clobbered when doing a Store to *T.
     pub fn LLVMSizeOfTypeInBits(TD: TargetDataRef, Ty: TypeRef)
                                 -> c_ulonglong;
 
-    /** Distance between successive elements in an array of T.
-    Includes ABI padding. */
+    /// Distance between successive elements in an array of T. Includes ABI padding.
     pub fn LLVMABISizeOfType(TD: TargetDataRef, Ty: TypeRef) -> c_ulonglong;
 
-    /** Returns the preferred alignment of a type. */
+    /// Returns the preferred alignment of a type.
     pub fn LLVMPreferredAlignmentOfType(TD: TargetDataRef, Ty: TypeRef)
                                         -> c_uint;
-    /** Returns the minimum alignment of a type. */
+    /// Returns the minimum alignment of a type.
     pub fn LLVMABIAlignmentOfType(TD: TargetDataRef, Ty: TypeRef)
                                   -> c_uint;
 
@@ -1494,41 +1493,39 @@ extern {
                                Element: c_uint)
                                -> c_ulonglong;
 
-    /**
-     * Returns the minimum alignment of a type when part of a call frame.
-     */
+    /// Returns the minimum alignment of a type when part of a call frame.
     pub fn LLVMCallFrameAlignmentOfType(TD: TargetDataRef, Ty: TypeRef)
                                         -> c_uint;
 
-    /** Disposes target data. */
+    /// Disposes target data.
     pub fn LLVMDisposeTargetData(TD: TargetDataRef);
 
-    /** Creates a pass manager. */
+    /// Creates a pass manager.
     pub fn LLVMCreatePassManager() -> PassManagerRef;
 
-    /** Creates a function-by-function pass manager */
+    /// Creates a function-by-function pass manager
     pub fn LLVMCreateFunctionPassManagerForModule(M: ModuleRef)
                                                   -> PassManagerRef;
 
-    /** Disposes a pass manager. */
+    /// Disposes a pass manager.
     pub fn LLVMDisposePassManager(PM: PassManagerRef);
 
-    /** Runs a pass manager on a module. */
+    /// Runs a pass manager on a module.
     pub fn LLVMRunPassManager(PM: PassManagerRef, M: ModuleRef) -> Bool;
 
-    /** Runs the function passes on the provided function. */
+    /// Runs the function passes on the provided function.
     pub fn LLVMRunFunctionPassManager(FPM: PassManagerRef, F: ValueRef)
                                       -> Bool;
 
-    /** Initializes all the function passes scheduled in the manager */
+    /// Initializes all the function passes scheduled in the manager
     pub fn LLVMInitializeFunctionPassManager(FPM: PassManagerRef) -> Bool;
 
-    /** Finalizes all the function passes scheduled in the manager */
+    /// Finalizes all the function passes scheduled in the manager
     pub fn LLVMFinalizeFunctionPassManager(FPM: PassManagerRef) -> Bool;
 
     pub fn LLVMInitializePasses();
 
-    /** Adds a verification pass. */
+    /// Adds a verification pass.
     pub fn LLVMAddVerifierPass(PM: PassManagerRef);
 
     pub fn LLVMAddGlobalOptimizerPass(PM: PassManagerRef);
@@ -1598,38 +1595,38 @@ extern {
         Internalize: Bool,
         RunInliner: Bool);
 
-    /** Destroys a memory buffer. */
+    /// Destroys a memory buffer.
     pub fn LLVMDisposeMemoryBuffer(MemBuf: MemoryBufferRef);
 
 
     /* Stuff that's in rustllvm/ because it's not upstream yet. */
 
-    /** Opens an object file. */
+    /// Opens an object file.
     pub fn LLVMCreateObjectFile(MemBuf: MemoryBufferRef) -> ObjectFileRef;
-    /** Closes an object file. */
+    /// Closes an object file.
     pub fn LLVMDisposeObjectFile(ObjFile: ObjectFileRef);
 
-    /** Enumerates the sections in an object file. */
+    /// Enumerates the sections in an object file.
     pub fn LLVMGetSections(ObjFile: ObjectFileRef) -> SectionIteratorRef;
-    /** Destroys a section iterator. */
+    /// Destroys a section iterator.
     pub fn LLVMDisposeSectionIterator(SI: SectionIteratorRef);
-    /** Returns true if the section iterator is at the end of the section
-    list: */
+    /// Returns true if the section iterator is at the end of the section
+    /// list:
     pub fn LLVMIsSectionIteratorAtEnd(ObjFile: ObjectFileRef,
                                       SI: SectionIteratorRef)
                                       -> Bool;
-    /** Moves the section iterator to point to the next section. */
+    /// Moves the section iterator to point to the next section.
     pub fn LLVMMoveToNextSection(SI: SectionIteratorRef);
-    /** Returns the current section size. */
+    /// Returns the current section size.
     pub fn LLVMGetSectionSize(SI: SectionIteratorRef) -> c_ulonglong;
-    /** Returns the current section contents as a string buffer. */
+    /// Returns the current section contents as a string buffer.
     pub fn LLVMGetSectionContents(SI: SectionIteratorRef) -> *const c_char;
 
-    /** Reads the given file and returns it as a memory buffer. Use
-    LLVMDisposeMemoryBuffer() to get rid of it. */
+    /// Reads the given file and returns it as a memory buffer. Use
+    /// LLVMDisposeMemoryBuffer() to get rid of it.
     pub fn LLVMRustCreateMemoryBufferWithContentsOfFile(Path: *const c_char)
                                                         -> MemoryBufferRef;
-    /** Borrows the contents of the memory buffer (doesn't copy it) */
+    /// Borrows the contents of the memory buffer (doesn't copy it)
     pub fn LLVMCreateMemoryBufferWithMemoryRange(InputData: *const c_char,
                                                  InputDataLength: size_t,
                                                  BufferName: *const c_char,
@@ -1643,8 +1640,7 @@ extern {
     pub fn LLVMIsMultithreaded() -> Bool;
     pub fn LLVMStartMultithreaded() -> Bool;
 
-    /** Returns a string describing the last error caused by an LLVMRust*
-    call. */
+    /// Returns a string describing the last error caused by an LLVMRust* call.
     pub fn LLVMRustGetLastError() -> *const c_char;
 
     /// Print the pass timings since static dtors aren't picking them up.
@@ -1662,10 +1658,10 @@ extern {
                                 Count: c_uint)
                                 -> ValueRef;
 
-    /** Enables LLVM debug output. */
+    /// Enables LLVM debug output.
     pub fn LLVMSetDebug(Enabled: c_int);
 
-    /** Prepares inline assembly. */
+    /// Prepares inline assembly.
     pub fn LLVMInlineAsm(Ty: TypeRef,
                          AsmString: *const c_char,
                          Constraints: *const c_char,
@@ -2214,4 +2210,6 @@ pub unsafe fn static_link_hack_this_sucks() {
 // parts of LLVM that rustllvm depends on aren't thrown away by the linker.
 // Works to the above fix for #15460 to ensure LLVM dependencies that
 // are only used by rustllvm don't get stripped by the linker.
-mod llvmdeps;
+mod llvmdeps {
+    include!(env!("CFG_LLVM_LINKAGE_FILE"))
+}

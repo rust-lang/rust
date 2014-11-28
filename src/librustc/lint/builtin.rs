@@ -421,7 +421,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 impl<'a, 'tcx, 'v> Visitor<'v> for ImproperCTypesVisitor<'a, 'tcx> {
     fn visit_ty(&mut self, ty: &ast::Ty) {
         match ty.node {
-            ast::TyPath(_, _, id) => self.check_def(ty.span, ty.id, id),
+            ast::TyPath(_, id) => self.check_def(ty.span, ty.id, id),
             _ => (),
         }
         visit::walk_ty(self, ty);
@@ -635,11 +635,6 @@ impl LintPass for UnusedAttributes {
             // used in resolve
             "prelude_import",
 
-            // not used anywhere (!?) but apparently we want to keep them around
-            "comment",
-            "desc",
-            "license",
-
             // FIXME: #14407 these are only looked at on-demand so we can't
             // guarantee they'll have already been checked
             "deprecated",
@@ -658,10 +653,6 @@ impl LintPass for UnusedAttributes {
             "no_start",
             "no_main",
             "no_std",
-            "desc",
-            "comment",
-            "license",
-            "copyright",
             "no_builtins",
         ];
 

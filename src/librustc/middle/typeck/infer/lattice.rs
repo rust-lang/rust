@@ -8,28 +8,26 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
- * # Lattice Variables
- *
- * This file contains generic code for operating on inference variables
- * that are characterized by an upper- and lower-bound.  The logic and
- * reasoning is explained in detail in the large comment in `infer.rs`.
- *
- * The code in here is defined quite generically so that it can be
- * applied both to type variables, which represent types being inferred,
- * and fn variables, which represent function types being inferred.
- * It may eventually be applied to their types as well, who knows.
- * In some cases, the functions are also generic with respect to the
- * operation on the lattice (GLB vs LUB).
- *
- * Although all the functions are generic, we generally write the
- * comments in a way that is specific to type variables and the LUB
- * operation.  It's just easier that way.
- *
- * In general all of the functions are defined parametrically
- * over a `LatticeValue`, which is a value defined with respect to
- * a lattice.
- */
+//! # Lattice Variables
+//!
+//! This file contains generic code for operating on inference variables
+//! that are characterized by an upper- and lower-bound.  The logic and
+//! reasoning is explained in detail in the large comment in `infer.rs`.
+//!
+//! The code in here is defined quite generically so that it can be
+//! applied both to type variables, which represent types being inferred,
+//! and fn variables, which represent function types being inferred.
+//! It may eventually be applied to their types as well, who knows.
+//! In some cases, the functions are also generic with respect to the
+//! operation on the lattice (GLB vs LUB).
+//!
+//! Although all the functions are generic, we generally write the
+//! comments in a way that is specific to type variables and the LUB
+//! operation.  It's just easier that way.
+//!
+//! In general all of the functions are defined parametrically
+//! over a `LatticeValue`, which is a value defined with respect to
+//! a lattice.
 
 use middle::ty::{TyVar};
 use middle::ty::{mod, Ty};

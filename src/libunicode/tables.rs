@@ -6249,11 +6249,11 @@ pub mod normalization {
             else if hi < c { Less }
             else { Greater }
         }) {
-            slice::Found(idx) => {
+            slice::BinarySearchResult::Found(idx) => {
                 let (_, _, result) = r[idx];
                 result
             }
-            slice::NotFound(_) => 0
+            slice::BinarySearchResult::NotFound(_) => 0
         }
     }
 
@@ -6392,8 +6392,8 @@ pub mod conversions {
             else if key < c { Less }
             else { Greater }
         }) {
-            slice::Found(i) => Some(i),
-            slice::NotFound(_) => None,
+            slice::BinarySearchResult::Found(i) => Some(i),
+            slice::BinarySearchResult::NotFound(_) => None,
         }
     }
 
@@ -6945,11 +6945,11 @@ pub mod charwidth {
             else if hi < c { Less }
             else { Greater }
         }) {
-            slice::Found(idx) => {
+            slice::BinarySearchResult::Found(idx) => {
                 let (_, _, r_ncjk, r_cjk) = r[idx];
                 if is_cjk { r_cjk } else { r_ncjk }
             }
-            slice::NotFound(_) => 1
+            slice::BinarySearchResult::NotFound(_) => 1
         }
     }
 
@@ -7160,11 +7160,11 @@ pub mod grapheme {
             else if hi < c { Less }
             else { Greater }
         }) {
-            slice::Found(idx) => {
+            slice::BinarySearchResult::Found(idx) => {
                 let (_, _, cat) = r[idx];
                 cat
             }
-            slice::NotFound(_) => GC_Any
+            slice::BinarySearchResult::NotFound(_) => GC_Any
         }
     }
 

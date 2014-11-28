@@ -40,8 +40,6 @@
 
 #![crate_name = "term"]
 #![experimental]
-#![comment = "Simple ANSI color library"]
-#![license = "MIT/ASL2"]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
@@ -115,7 +113,7 @@ pub fn stdout() -> Option<Box<Terminal<WriterWrapper> + Send>> {
 #[cfg(not(windows))]
 /// Return a Terminal wrapping stderr, or None if a terminal couldn't be
 /// opened.
-pub fn stderr() -> Option<Box<Terminal<WriterWrapper> + Send> + Send> {
+pub fn stderr() -> Option<Box<Terminal<WriterWrapper> + Send>> {
     TerminfoTerminal::new(WriterWrapper {
         wrapped: box std::io::stderr() as Box<Writer + Send>,
     })
@@ -124,7 +122,7 @@ pub fn stderr() -> Option<Box<Terminal<WriterWrapper> + Send> + Send> {
 #[cfg(windows)]
 /// Return a Terminal wrapping stderr, or None if a terminal couldn't be
 /// opened.
-pub fn stderr() -> Option<Box<Terminal<WriterWrapper> + Send> + Send> {
+pub fn stderr() -> Option<Box<Terminal<WriterWrapper> + Send>> {
     let ti = TerminfoTerminal::new(WriterWrapper {
         wrapped: box std::io::stderr() as Box<Writer + Send>,
     });

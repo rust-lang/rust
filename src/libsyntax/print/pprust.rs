@@ -61,7 +61,7 @@ pub struct State<'a> {
     literals: Option<Vec<comments::Literal> >,
     cur_cmnt_and_lit: CurrentCommentAndLiteral,
     boxes: Vec<pp::Breaks>,
-    ann: &'a PpAnn+'a,
+    ann: &'a (PpAnn+'a),
     encode_idents_with_hygiene: bool,
 }
 
@@ -291,6 +291,10 @@ macro_rules! thing_to_string_impls {
 
 pub fn ty_to_string(ty: &ast::Ty) -> String {
     $to_string(|s| s.print_type(ty))
+}
+
+pub fn bounds_to_string(bounds: &[ast::TyParamBound]) -> String {
+    $to_string(|s| s.print_bounds("", bounds))
 }
 
 pub fn pat_to_string(pat: &ast::Pat) -> String {
@@ -739,11 +743,15 @@ impl<'a> State<'a> {
                                       Some(&generics),
                                       None));
             }
-            ast::TyPath(ref path, ref bounds, _) => {
-                try!(self.print_bounded_path(path, bounds));
+            ast::TyPath(ref path, _) => {
+                try!(self.print_path(path, false));
+            }
+            ast::TyObjectSum(ref ty, ref bounds) => {
+                try!(self.print_type(&**ty));
+                try!(self.print_bounds("+", bounds.as_slice()));
             }
             ast::TyPolyTraitRef(ref bounds) => {
-                try!(self.print_bounds("", bounds));
+                try!(self.print_bounds("", bounds.as_slice()));
             }
             ast::TyQPath(ref qpath) => {
                 try!(word(&mut self.s, "<"));
@@ -970,7 +978,7 @@ impl<'a> State<'a> {
                     }
                     _ => {}
                 }
-                try!(self.print_bounds(":", bounds));
+                try!(self.print_bounds(":", bounds.as_slice()));
                 try!(self.print_where_clause(generics));
                 try!(word(&mut self.s, " "));
                 try!(self.bopen());
@@ -1908,11 +1916,11 @@ impl<'a> State<'a> {
         self.print_expr(coll)
     }
 
-    fn print_path_(&mut self,
-                   path: &ast::Path,
-                   colons_before_params: bool,
-                   opt_bounds: &Option<OwnedSlice<ast::TyParamBound>>)
-        -> IoResult<()> {
+    fn print_path(&mut self,
+                  path: &ast::Path,
+                  colons_before_params: bool)
+                  -> IoResult<()>
+    {
         try!(self.maybe_print_comment(path.span.lo));
         if path.global {
             try!(word(&mut self.s, "::"));
@@ -1931,10 +1939,7 @@ impl<'a> State<'a> {
             try!(self.print_path_parameters(&segment.parameters, colons_before_params));
         }
 
-        match *opt_bounds {
-            None => Ok(()),
-            Some(ref bounds) => self.print_bounds("+", bounds)
-        }
+        Ok(())
     }
 
     fn print_path_parameters(&mut self,
@@ -1995,17 +2000,6 @@ impl<'a> State<'a> {
         }
 
         Ok(())
-    }
-
-    fn print_path(&mut self, path: &ast::Path,
-                  colons_before_params: bool) -> IoResult<()> {
-        self.print_path_(path, colons_before_params, &None)
-    }
-
-    fn print_bounded_path(&mut self, path: &ast::Path,
-                          bounds: &Option<OwnedSlice<ast::TyParamBound>>)
-        -> IoResult<()> {
-        self.print_path_(path, false, bounds)
     }
 
     pub fn print_pat(&mut self, pat: &ast::Pat) -> IoResult<()> {
@@ -2329,7 +2323,7 @@ impl<'a> State<'a> {
 
     pub fn print_bounds(&mut self,
                         prefix: &str,
-                        bounds: &OwnedSlice<ast::TyParamBound>)
+                        bounds: &[ast::TyParamBound])
                         -> IoResult<()> {
         if !bounds.is_empty() {
             try!(word(&mut self.s, prefix));
@@ -2400,7 +2394,7 @@ impl<'a> State<'a> {
                 s.print_lifetime_def(lifetime)
             } else {
                 let idx = idx - generics.lifetimes.len();
-                let param = generics.ty_params.get(idx);
+                let param = &generics.ty_params[idx];
                 s.print_ty_param(param)
             }
         }));
@@ -2418,7 +2412,7 @@ impl<'a> State<'a> {
             _ => {}
         }
         try!(self.print_ident(param.ident));
-        try!(self.print_bounds(":", &param.bounds));
+        try!(self.print_bounds(":", param.bounds.as_slice()));
         match param.default {
             Some(ref default) => {
                 try!(space(&mut self.s));
@@ -2447,7 +2441,7 @@ impl<'a> State<'a> {
             }
 
             try!(self.print_ident(predicate.ident));
-            try!(self.print_bounds(":", &predicate.bounds));
+            try!(self.print_bounds(":", predicate.bounds.as_slice()));
         }
 
         Ok(())
@@ -2664,7 +2658,7 @@ impl<'a> State<'a> {
             try!(self.pclose());
         }
 
-        try!(self.print_bounds(":", bounds));
+        try!(self.print_bounds(":", bounds.as_slice()));
 
         try!(self.print_fn_output(decl));
 

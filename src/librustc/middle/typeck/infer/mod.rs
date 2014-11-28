@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*! See doc.rs for documentation */
+//! See doc.rs for documentation
 
 #![allow(non_camel_case_types)]
 
@@ -305,6 +305,8 @@ pub fn new_infer_ctxt<'a, 'tcx>(tcx: &'a ty::ctxt<'tcx>)
     }
 }
 
+/// Computes the least upper-bound of `a` and `b`. If this is not possible, reports an error and
+/// returns ty::err.
 pub fn common_supertype<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
                                   origin: TypeOrigin,
                                   a_is_expected: bool,
@@ -312,11 +314,6 @@ pub fn common_supertype<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
                                   b: Ty<'tcx>)
                                   -> Ty<'tcx>
 {
-    /*!
-     * Computes the least upper-bound of `a` and `b`. If this is
-     * not possible, reports an error and returns ty::err.
-     */
-
     debug!("common_supertype({}, {})",
            a.repr(cx.tcx), b.repr(cx.tcx));
 
@@ -754,17 +751,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             .collect()
     }
 
+    /// Given a set of generics defined on a type or impl, returns a substitution mapping each
+    /// type/region parameter to a fresh inference variable.
     pub fn fresh_substs_for_generics(&self,
                                      span: Span,
                                      generics: &ty::Generics<'tcx>)
                                      -> subst::Substs<'tcx>
     {
-        /*!
-         * Given a set of generics defined on a type or impl, returns
-         * a substitution mapping each type/region parameter to a
-         * fresh inference variable.
-         */
-
         let type_params =
             generics.types.map(
                 |_| self.next_ty_var());
@@ -774,18 +767,15 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         subst::Substs::new(type_params, region_params)
     }
 
+    /// Given a set of generics defined on a trait, returns a substitution mapping each output
+    /// type/region parameter to a fresh inference variable, and mapping the self type to
+    /// `self_ty`.
     pub fn fresh_substs_for_trait(&self,
                                   span: Span,
                                   generics: &ty::Generics<'tcx>,
                                   self_ty: Ty<'tcx>)
                                   -> subst::Substs<'tcx>
     {
-        /*!
-         * Given a set of generics defined on a trait, returns a
-         * substitution mapping each output type/region parameter to a
-         * fresh inference variable, and mapping the self type to
-         * `self_ty`.
-         */
 
         assert!(generics.types.len(subst::SelfSpace) == 1);
         assert!(generics.types.len(subst::FnSpace) == 0);

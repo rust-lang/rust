@@ -177,6 +177,7 @@ pub struct Trait {
     pub whence: Span,
     pub vis: ast::Visibility,
     pub stab: Option<attr::Stability>,
+    pub default_unbound: Option<ast::TraitRef> // FIXME(tomjakubowski)
 }
 
 pub struct Impl {

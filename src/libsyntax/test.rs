@@ -482,8 +482,7 @@ fn mk_tests(cx: &TestCtxt) -> P<ast::Item> {
     let ecx = &cx.ext_cx;
     let struct_type = ecx.ty_path(ecx.path(sp, vec![ecx.ident_of("self"),
                                                     ecx.ident_of("test"),
-                                                    ecx.ident_of("TestDescAndFn")]),
-                                  None);
+                                                    ecx.ident_of("TestDescAndFn")]));
     let static_lt = ecx.lifetime(sp, token::special_idents::static_lifetime.name);
     // &'static [self::test::TestDescAndFn]
     let static_type = ecx.ty_rptr(sp,

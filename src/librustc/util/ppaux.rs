@@ -65,12 +65,9 @@ pub fn note_and_explain_region(cx: &ctxt,
     }
 }
 
+/// When a free region is associated with `item`, how should we describe the item in the error
+/// message.
 fn item_scope_tag(item: &ast::Item) -> &'static str {
-    /*!
-     * When a free region is associated with `item`, how should we describe
-     * the item in the error message.
-     */
-
     match item.node {
         ast::ItemImpl(..) => "impl",
         ast::ItemStruct(..) => "struct",

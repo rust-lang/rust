@@ -8,14 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
-
-Synchronous DNS Resolution
-
-Contains the functionality to perform DNS resolution in a style related to
-getaddrinfo()
-
-*/
+//! Synchronous DNS Resolution
+//!
+//! Contains the functionality to perform DNS resolution in a style related to
+//! `getaddrinfo()`
 
 #![allow(missing_docs)]
 

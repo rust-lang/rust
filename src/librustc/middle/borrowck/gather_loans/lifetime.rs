@@ -8,10 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
- * This module implements the check that the lifetime of a borrow
- * does not exceed the lifetime of the value being borrowed.
- */
+//! This module implements the check that the lifetime of a borrow
+//! does not exceed the lifetime of the value being borrowed.
 
 use middle::borrowck::*;
 use middle::expr_use_visitor as euv;

@@ -272,21 +272,24 @@ fn load_environment<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let mut i = 0u;
     for freevar in freevars.iter() {
         let mut upvarptr = GEPi(bcx, llcdata, &[0u, i]);
-        match store {
-            ty::RegionTraitStore(..) => { upvarptr = Load(bcx, upvarptr); }
-            ty::UniqTraitStore => {}
-        }
+        let captured_by_ref = match store {
+            ty::RegionTraitStore(..) => {
+                upvarptr = Load(bcx, upvarptr);
+                true
+            }
+            ty::UniqTraitStore => false
+        };
         let def_id = freevar.def.def_id();
 
         bcx.fcx.llupvars.borrow_mut().insert(def_id.node, upvarptr);
-        for &env_pointer_alloca in env_pointer_alloca.iter() {
+        if let Some(env_pointer_alloca) = env_pointer_alloca {
             debuginfo::create_captured_var_metadata(
                 bcx,
                 def_id.node,
                 cdata_ty,
                 env_pointer_alloca,
                 i,
-                store,
+                captured_by_ref,
                 freevar.span);
         }
 
@@ -320,11 +323,25 @@ fn load_unboxed_closure_environment<'blk, 'tcx>(
         bcx.fcx.llenv.unwrap()
     };
 
+    // Store the pointer to closure data in an alloca for debug info because that's what the
+    // llvm.dbg.declare intrinsic expects
+    let env_pointer_alloca = if bcx.sess().opts.debuginfo == FullDebugInfo {
+        let alloc = alloc_ty(bcx, ty::mk_mut_ptr(bcx.tcx(), self_type), "__debuginfo_env_ptr");
+        Store(bcx, llenv, alloc);
+        Some(alloc)
+    } else {
+        None
+    };
+
     for (i, freevar) in freevars.iter().enumerate() {
         let mut upvar_ptr = GEPi(bcx, llenv, &[0, i]);
-        if freevar_mode == ast::CaptureByRef {
-            upvar_ptr = Load(bcx, upvar_ptr);
-        }
+        let captured_by_ref = match freevar_mode {
+            ast::CaptureByRef => {
+                upvar_ptr = Load(bcx, upvar_ptr);
+                true
+            }
+            ast::CaptureByValue => false
+        };
         let def_id = freevar.def.def_id();
         bcx.fcx.llupvars.borrow_mut().insert(def_id.node, upvar_ptr);
 
@@ -332,6 +349,17 @@ fn load_unboxed_closure_environment<'blk, 'tcx>(
             bcx.fcx.schedule_drop_mem(arg_scope_id,
                                       upvar_ptr,
                                       node_id_type(bcx, def_id.node))
+        }
+
+        if let Some(env_pointer_alloca) = env_pointer_alloca {
+            debuginfo::create_captured_var_metadata(
+                bcx,
+                def_id.node,
+                self_type,
+                env_pointer_alloca,
+                i,
+                captured_by_ref,
+                freevar.span);
         }
     }
 
@@ -386,6 +414,15 @@ impl<'a, 'tcx> ClosureEnv<'a, 'tcx> {
     }
 }
 
+/// Translates the body of a closure expression.
+///
+/// - `store`
+/// - `decl`
+/// - `body`
+/// - `id`: The id of the closure expression.
+/// - `cap_clause`: information about captured variables, if any.
+/// - `dest`: where to write the closure value, which must be a
+///   (fn ptr, env) pair
 pub fn trans_expr_fn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                  store: ty::TraitStore,
                                  decl: &ast::FnDecl,
@@ -393,19 +430,6 @@ pub fn trans_expr_fn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                  id: ast::NodeId,
                                  dest: expr::Dest)
                                  -> Block<'blk, 'tcx> {
-    /*!
-     *
-     * Translates the body of a closure expression.
-     *
-     * - `store`
-     * - `decl`
-     * - `body`
-     * - `id`: The id of the closure expression.
-     * - `cap_clause`: information about captured variables, if any.
-     * - `dest`: where to write the closure value, which must be a
-         (fn ptr, env) pair
-     */
-
     let _icx = push_ctxt("closure::trans_expr_fn");
 
     let dest_addr = match dest {

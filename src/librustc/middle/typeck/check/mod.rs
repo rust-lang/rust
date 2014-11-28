@@ -486,6 +486,12 @@ impl<'a, 'tcx, 'v> Visitor<'v> for GatherLocalsVisitor<'a, 'tcx> {
 
 }
 
+/// Helper used by check_bare_fn and check_expr_fn. Does the grungy work of checking a function
+/// body and returns the function context used for that purpose, since in the case of a fn item
+/// there is still a bit more to do.
+///
+/// * ...
+/// * inherited: other fields inherited from the enclosing fn (if any)
 fn check_fn<'a, 'tcx>(ccx: &'a CrateCtxt<'a, 'tcx>,
                       fn_style: ast::FnStyle,
                       fn_style_id: ast::NodeId,
@@ -495,16 +501,6 @@ fn check_fn<'a, 'tcx>(ccx: &'a CrateCtxt<'a, 'tcx>,
                       body: &ast::Block,
                       inherited: &'a Inherited<'a, 'tcx>)
                       -> FnCtxt<'a, 'tcx> {
-    /*!
-     * Helper used by check_bare_fn and check_expr_fn.  Does the
-     * grungy work of checking a function body and returns the
-     * function context used for that purpose, since in the case of a
-     * fn item there is still a bit more to do.
-     *
-     * - ...
-     * - inherited: other fields inherited from the enclosing fn (if any)
-     */
-
     let tcx = ccx.tcx;
     let err_count_on_creation = tcx.sess.err_count();
 
@@ -701,19 +697,17 @@ pub fn check_item(ccx: &CrateCtxt, it: &ast::Item) {
     }
 }
 
+/// Type checks a method body.
+///
+/// # Parameters
+///
+/// * `item_generics`: generics defined on the impl/trait that contains
+///   the method
+/// * `self_bound`: bound for the `Self` type parameter, if any
+/// * `method`: the method definition
 fn check_method_body<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                item_generics: &ty::Generics<'tcx>,
                                method: &ast::Method) {
-    /*!
-     * Type checks a method body.
-     *
-     * # Parameters
-     * - `item_generics`: generics defined on the impl/trait that contains
-     *   the method
-     * - `self_bound`: bound for the `Self` type parameter, if any
-     * - `method`: the method definition
-     */
-
     debug!("check_method_body(item_generics={}, method.id={})",
             item_generics.repr(ccx.tcx),
             method.id);
@@ -897,19 +891,17 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     }
 }
 
-/**
- * Checks that a method from an impl conforms to the signature of
- * the same method as declared in the trait.
- *
- * # Parameters
- *
- * - impl_generics: the generics declared on the impl itself (not the method!)
- * - impl_m: type of the method we are checking
- * - impl_m_span: span to use for reporting errors
- * - impl_m_body_id: id of the method body
- * - trait_m: the method in the trait
- * - trait_to_impl_substs: the substitutions used on the type of the trait
- */
+/// Checks that a method from an impl conforms to the signature of
+/// the same method as declared in the trait.
+///
+/// # Parameters
+///
+/// - impl_generics: the generics declared on the impl itself (not the method!)
+/// - impl_m: type of the method we are checking
+/// - impl_m_span: span to use for reporting errors
+/// - impl_m_body_id: id of the method body
+/// - trait_m: the method in the trait
+/// - trait_to_impl_substs: the substitutions used on the type of the trait
 fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
                              impl_m: &ty::Method<'tcx>,
                              impl_m_span: Span,
@@ -1222,6 +1214,33 @@ fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
     // parameters.
     infcx.resolve_regions_and_report_errors();
 
+    /// Check that region bounds on impl method are the same as those on the trait. In principle,
+    /// it could be ok for there to be fewer region bounds on the impl method, but this leads to an
+    /// annoying corner case that is painful to handle (described below), so for now we can just
+    /// forbid it.
+    ///
+    /// Example (see `src/test/compile-fail/regions-bound-missing-bound-in-impl.rs`):
+    ///
+    /// ```
+    /// trait Foo<'a> {
+    ///     fn method1<'b>();
+    ///     fn method2<'b:'a>();
+    /// }
+    ///
+    /// impl<'a> Foo<'a> for ... {
+    ///     fn method1<'b:'a>() { .. case 1, definitely bad .. }
+    ///     fn method2<'b>() { .. case 2, could be ok .. }
+    /// }
+    /// ```
+    ///
+    /// The "definitely bad" case is case #1. Here, the impl adds an extra constraint not present
+    /// in the trait.
+    ///
+    /// The "maybe bad" case is case #2. Here, the impl adds an extra constraint not present in the
+    /// trait. We could in principle allow this, but it interacts in a complex way with early/late
+    /// bound resolution of lifetimes. Basically the presence or absence of a lifetime bound
+    /// affects whether the lifetime is early/late bound, and right now the code breaks if the
+    /// trait has an early bound lifetime parameter and the method does not.
     fn check_region_bounds_on_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
                                                 span: Span,
                                                 impl_m: &ty::Method<'tcx>,
@@ -1232,39 +1251,6 @@ fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
                                                 impl_to_skol_substs: &Substs<'tcx>)
                                                 -> bool
     {
-        /*!
-
-        Check that region bounds on impl method are the same as those
-        on the trait. In principle, it could be ok for there to be
-        fewer region bounds on the impl method, but this leads to an
-        annoying corner case that is painful to handle (described
-        below), so for now we can just forbid it.
-
-        Example (see
-        `src/test/compile-fail/regions-bound-missing-bound-in-impl.rs`):
-
-            trait Foo<'a> {
-                fn method1<'b>();
-                fn method2<'b:'a>();
-            }
-
-            impl<'a> Foo<'a> for ... {
-                fn method1<'b:'a>() { .. case 1, definitely bad .. }
-                fn method2<'b>() { .. case 2, could be ok .. }
-            }
-
-        The "definitely bad" case is case #1. Here, the impl adds an
-        extra constraint not present in the trait.
-
-        The "maybe bad" case is case #2. Here, the impl adds an extra
-        constraint not present in the trait. We could in principle
-        allow this, but it interacts in a complex way with early/late
-        bound resolution of lifetimes. Basically the presence or
-        absence of a lifetime bound affects whether the lifetime is
-        early/late bound, and right now the code breaks if the trait
-        has an early bound lifetime parameter and the method does not.
-
-        */
 
         let trait_params = trait_generics.regions.get_slice(subst::FnSpace);
         let impl_params = impl_generics.regions.get_slice(subst::FnSpace);
@@ -1770,23 +1756,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
+    /// Returns the type of `def_id` with all generics replaced by by fresh type/region variables.
+    /// Also returns the substitution from the type parameters on `def_id` to the fresh variables.
+    /// Registers any trait obligations specified on `def_id` at the same time.
+    ///
+    /// Note that function is only intended to be used with types (notably, not impls). This is
+    /// because it doesn't do any instantiation of late-bound regions.
     pub fn instantiate_type(&self,
                             span: Span,
                             def_id: ast::DefId)
                             -> TypeAndSubsts<'tcx>
     {
-        /*!
-         * Returns the type of `def_id` with all generics replaced by
-         * by fresh type/region variables. Also returns the
-         * substitution from the type parameters on `def_id` to the
-         * fresh variables. Registers any trait obligations specified
-         * on `def_id` at the same time.
-         *
-         * Note that function is only intended to be used with types
-         * (notably, not impls). This is because it doesn't do any
-         * instantiation of late-bound regions.
-         */
-
         let polytype =
             ty::lookup_item_type(self.tcx(), def_id);
         let substs =
@@ -1886,26 +1866,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
+    /// Fetch type of `expr` after applying adjustments that have been recorded in the fcx.
     pub fn expr_ty_adjusted(&self, expr: &ast::Expr) -> Ty<'tcx> {
-        /*!
-         * Fetch type of `expr` after applying adjustments that
-         * have been recorded in the fcx.
-         */
-
         let adjustments = self.inh.adjustments.borrow();
         let adjustment = adjustments.get(&expr.id);
         self.adjust_expr_ty(expr, adjustment)
     }
 
+    /// Apply `adjustment` to the type of `expr`
     pub fn adjust_expr_ty(&self,
                           expr: &ast::Expr,
                           adjustment: Option<&ty::AutoAdjustment<'tcx>>)
                           -> Ty<'tcx>
     {
-        /*!
-         * Apply `adjustment` to the type of `expr`
-         */
-
         let raw_ty = self.expr_ty(expr);
         let raw_ty = self.infcx().shallow_resolve(raw_ty);
         ty::adjust_ty(self.tcx(),
@@ -2013,16 +1986,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.infcx().report_mismatched_types(sp, e, a, err)
     }
 
+    /// Registers an obligation for checking later, during regionck, that the type `ty` must
+    /// outlive the region `r`.
     pub fn register_region_obligation(&self,
                                       origin: infer::SubregionOrigin<'tcx>,
                                       ty: Ty<'tcx>,
                                       r: ty::Region)
     {
-        /*!
-         * Registers an obligation for checking later, during
-         * regionck, that the type `ty` must outlive the region `r`.
-         */
-
         let mut region_obligations = self.inh.region_obligations.borrow_mut();
         let region_obligation = RegionObligation { sub_region: r,
                                                    sup_type: ty,
@@ -2045,31 +2015,29 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
+    /// Given a fully substituted set of bounds (`generic_bounds`), and the values with which each
+    /// type/region parameter was instantiated (`substs`), creates and registers suitable
+    /// trait/region obligations.
+    ///
+    /// For example, if there is a function:
+    ///
+    /// ```
+    /// fn foo<'a,T:'a>(...)
+    /// ```
+    ///
+    /// and a reference:
+    ///
+    /// ```
+    /// let f = foo;
+    /// ```
+    ///
+    /// Then we will create a fresh region variable `'$0` and a fresh type variable `$1` for `'a`
+    /// and `T`. This routine will add a region obligation `$1:'$0` and register it locally.
     pub fn add_obligations_for_parameters(&self,
                                           cause: traits::ObligationCause<'tcx>,
                                           substs: &Substs<'tcx>,
                                           generic_bounds: &ty::GenericBounds<'tcx>)
     {
-        /*!
-         * Given a fully substituted set of bounds (`generic_bounds`),
-         * and the values with which each type/region parameter was
-         * instantiated (`substs`), creates and registers suitable
-         * trait/region obligations.
-         *
-         * For example, if there is a function:
-         *
-         *    fn foo<'a,T:'a>(...)
-         *
-         * and a reference:
-         *
-         *    let f = foo;
-         *
-         * Then we will create a fresh region variable `'$0` and a
-         * fresh type variable `$1` for `'a` and `T`. This routine
-         * will add a region obligation `$1:'$0` and register it
-         * locally.
-         */
-
         assert!(!generic_bounds.has_escaping_regions());
 
         debug!("add_obligations_for_parameters(substs={}, generic_bounds={})",
@@ -2160,22 +2128,17 @@ pub enum LvaluePreference {
     NoPreference
 }
 
+/// Executes an autoderef loop for the type `t`. At each step, invokes `should_stop` to decide
+/// whether to terminate the loop. Returns the final type and number of derefs that it performed.
+///
+/// Note: this method does not modify the adjustments table. The caller is responsible for
+/// inserting an AutoAdjustment record into the `fcx` using one of the suitable methods.
 pub fn autoderef<'a, 'tcx, T>(fcx: &FnCtxt<'a, 'tcx>, sp: Span,
                               base_ty: Ty<'tcx>,
                               expr_id: Option<ast::NodeId>,
                               mut lvalue_pref: LvaluePreference,
                               should_stop: |Ty<'tcx>, uint| -> Option<T>)
                               -> (Ty<'tcx>, uint, Option<T>) {
-    /*!
-     * Executes an autoderef loop for the type `t`. At each step, invokes
-     * `should_stop` to decide whether to terminate the loop. Returns
-     * the final type and number of derefs that it performed.
-     *
-     * Note: this method does not modify the adjustments table. The caller is
-     * responsible for inserting an AutoAdjustment record into the `fcx`
-     * using one of the suitable methods.
-     */
-
     let mut t = base_ty;
     for autoderefs in range(0, fcx.tcx().sess.recursion_limit.get()) {
         let resolved_t = structurally_resolved_type(fcx, sp, t);
@@ -2306,19 +2269,14 @@ fn try_overloaded_deref<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     make_overloaded_lvalue_return_type(fcx, method_call, method)
 }
 
+/// For the overloaded lvalue expressions (`*x`, `x[3]`), the trait returns a type of `&T`, but the
+/// actual type we assign to the *expression* is `T`. So this function just peels off the return
+/// type by one layer to yield `T`. It also inserts the `method-callee` into the method map.
 fn make_overloaded_lvalue_return_type<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                                 method_call: Option<MethodCall>,
                                                 method: Option<MethodCallee<'tcx>>)
                                                 -> Option<ty::mt<'tcx>>
 {
-    /*!
-     * For the overloaded lvalue expressions (`*x`, `x[3]`), the trait
-     * returns a type of `&T`, but the actual type we assign to the
-     * *expression* is `T`. So this function just peels off the return
-     * type by one layer to yield `T`. It also inserts the
-     * `method-callee` into the method map.
-     */
-
     match method {
         Some(method) => {
             let ref_ty = ty::ty_fn_ret(method.ty);
@@ -2380,6 +2338,8 @@ fn autoderef_for_index<'a, 'tcx, T>(fcx: &FnCtxt<'a, 'tcx>,
     }
 }
 
+/// Autoderefs `base_expr`, looking for a `Slice` impl. If it finds one, installs the relevant
+/// method info and returns the result type (else None).
 fn try_overloaded_slice<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                   method_call: MethodCall,
                                   expr: &ast::Expr,
@@ -2390,12 +2350,6 @@ fn try_overloaded_slice<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                   mutbl: ast::Mutability)
                                   -> Option<Ty<'tcx>> // return type is result of slice
 {
-    /*!
-     * Autoderefs `base_expr`, looking for a `Slice` impl. If it
-     * finds one, installs the relevant method info and returns the
-     * result type (else None).
-     */
-
     let lvalue_pref = match mutbl {
         ast::MutMutable => PreferMutLvalue,
         ast::MutImmutable => NoPreference
@@ -2436,6 +2390,8 @@ fn try_overloaded_slice<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     })
 }
 
+/// Checks for a `Slice` (or `SliceMut`) impl at the relevant level of autoderef. If it finds one,
+/// installs method info and returns type of method (else None).
 fn try_overloaded_slice_step<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                        method_call: MethodCall,
                                        expr: &ast::Expr,
@@ -2448,12 +2404,6 @@ fn try_overloaded_slice_step<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                        // result type is type of method being called
                                        -> Option<Ty<'tcx>>
 {
-    /*!
-     * Checks for a `Slice` (or `SliceMut`) impl at the relevant level
-     * of autoderef. If it finds one, installs method info and returns
-     * type of method (else None).
-     */
-
     let method = if mutbl == ast::MutMutable {
         // Try `SliceMut` first, if preferred.
         match fcx.tcx().lang_items.slice_mut_trait() {
@@ -2510,6 +2460,10 @@ fn try_overloaded_slice_step<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     })
 }
 
+/// To type-check `base_expr[index_expr]`, we progressively autoderef (and otherwise adjust)
+/// `base_expr`, looking for a type which either supports builtin indexing or overloaded indexing.
+/// This loop implements one step in that search; the autoderef loop is implemented by
+/// `autoderef_for_index`.
 fn try_index_step<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                             method_call: MethodCall,
                             expr: &ast::Expr,
@@ -2519,13 +2473,6 @@ fn try_index_step<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                             lvalue_pref: LvaluePreference)
                             -> Option<(/*index type*/ Ty<'tcx>, /*element type*/ Ty<'tcx>)>
 {
-    /*!
-     * To type-check `base_expr[index_expr]`, we progressively autoderef (and otherwise adjust)
-     * `base_expr`, looking for a type which either supports builtin indexing or overloaded
-     * indexing. This loop implements one step in that search; the autoderef loop is implemented
-     * by `autoderef_for_index`.
-     */
-
     debug!("try_index_step(expr={}, base_expr.id={}, adjusted_ty={}, adjustment={})",
            expr.repr(fcx.tcx()),
            base_expr.repr(fcx.tcx()),
@@ -2712,6 +2659,8 @@ fn check_method_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     }
 }
 
+/// Generic function that factors out common logic from function calls, method calls and overloaded
+/// operators.
 fn check_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                   sp: Span,
                                   fn_inputs: &[Ty<'tcx>],
@@ -2720,12 +2669,6 @@ fn check_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                   deref_args: DerefArgs,
                                   variadic: bool,
                                   tuple_arguments: TupleArgumentsFlag) {
-    /*!
-     *
-     * Generic function that factors out common logic from
-     * function calls, method calls and overloaded operators.
-     */
-
     let tcx = fcx.ccx.tcx;
 
     // Grab the argument types, supplying fresh type variables
@@ -5289,6 +5232,15 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         }
     }
 
+    /// Finds the parameters that the user provided and adds them to `substs`. If too many
+    /// parameters are provided, then reports an error and clears the output vector.
+    ///
+    /// We clear the output vector because that will cause the `adjust_XXX_parameters()` later to
+    /// use inference variables. This seems less likely to lead to derived errors.
+    ///
+    /// Note that we *do not* check for *too few* parameters here. Due to the presence of defaults
+    /// etc that is more complicated. I wanted however to do the reporting of *too many* parameters
+    /// here because we can easily use the precise span of the N+1'th parameter.
     fn push_explicit_parameters_from_segment_to_substs<'a, 'tcx>(
         fcx: &FnCtxt<'a, 'tcx>,
         space: subst::ParamSpace,
@@ -5298,23 +5250,6 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         segment: &ast::PathSegment,
         substs: &mut Substs<'tcx>)
     {
-        /*!
-         * Finds the parameters that the user provided and adds them
-         * to `substs`. If too many parameters are provided, then
-         * reports an error and clears the output vector.
-         *
-         * We clear the output vector because that will cause the
-         * `adjust_XXX_parameters()` later to use inference
-         * variables. This seems less likely to lead to derived
-         * errors.
-         *
-         * Note that we *do not* check for *too few* parameters here.
-         * Due to the presence of defaults etc that is more
-         * complicated. I wanted however to do the reporting of *too
-         * many* parameters here because we can easily use the precise
-         * span of the N+1'th parameter.
-         */
-
         match segment.parameters {
             ast::AngleBracketedParameters(ref data) => {
                 push_explicit_angle_bracketed_parameters_from_segment_to_substs(
@@ -5373,6 +5308,12 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         }
     }
 
+    /// As with
+    /// `push_explicit_angle_bracketed_parameters_from_segment_to_substs`,
+    /// but intended for `Foo(A,B) -> C` form. This expands to
+    /// roughly the same thing as `Foo<(A,B),C>`. One important
+    /// difference has to do with the treatment of anonymous
+    /// regions, which are translated into bound regions (NYI).
     fn push_explicit_parenthesized_parameters_from_segment_to_substs<'a, 'tcx>(
         fcx: &FnCtxt<'a, 'tcx>,
         space: subst::ParamSpace,
@@ -5381,15 +5322,6 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         data: &ast::ParenthesizedParameterData,
         substs: &mut Substs<'tcx>)
     {
-        /*!
-         * As with
-         * `push_explicit_angle_bracketed_parameters_from_segment_to_substs`,
-         * but intended for `Foo(A,B) -> C` form. This expands to
-         * roughly the same thing as `Foo<(A,B),C>`. One important
-         * difference has to do with the treatment of anonymous
-         * regions, which are translated into bound regions (NYI).
-         */
-
         let type_count = type_defs.len(space);
         if type_count < 2 {
             span_err!(fcx.tcx().sess, span, E0167,
@@ -5608,7 +5540,7 @@ pub fn check_bounds_are_used<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         if !*b {
             span_err!(ccx.tcx.sess, span, E0091,
                 "type parameter `{}` is unused",
-                token::get_ident(tps.get(i).ident));
+                token::get_ident(tps[i].ident));
         }
     }
 }

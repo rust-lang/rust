@@ -186,26 +186,42 @@ macro_rules! debug_assert_eq(
     ($($arg:tt)*) => (if cfg!(not(ndebug)) { assert_eq!($($arg)*); })
 )
 
-/// A utility macro for indicating unreachable code. It will panic if
-/// executed. This is occasionally useful to put after loops that never
-/// terminate normally, but instead directly return from a function.
+/// A utility macro for indicating unreachable code.
 ///
-/// # Example
+/// This is useful any time that the compiler can't determine that some code is unreachable. For
+/// example:
 ///
-/// ```{.rust}
-/// struct Item { weight: uint }
+/// * Match arms with guard conditions.
+/// * Loops that dynamically terminate.
+/// * Iterators that dynamically terminate.
 ///
-/// fn choose_weighted_item(v: &[Item]) -> Item {
-///     assert!(!v.is_empty());
-///     let mut so_far = 0u;
-///     for item in v.iter() {
-///         so_far += item.weight;
-///         if so_far > 100 {
-///             return *item;
-///         }
+/// # Panics
+///
+/// This will always panic.
+///
+/// # Examples
+///
+/// Match arms:
+///
+/// ```rust
+/// fn foo(x: Option<int>) {
+///     match x {
+///         Some(n) if n >= 0 => println!("Some(Non-negative)"),
+///         Some(n) if n <  0 => println!("Some(Negative)"),
+///         Some(_)           => unreachable!(), // compile error if commented out
+///         None              => println!("None")
 ///     }
-///     // The above loop always returns, so we must hint to the
-///     // type checker that it isn't possible to get down here
+/// }
+/// ```
+///
+/// Iterators:
+///
+/// ```rust
+/// fn divide_by_three(x: u32) -> u32 { // one of the poorest implementations of x/3
+///     for i in std::iter::count(0_u32, 1) {
+///         if 3*i < i { panic!("u32 overflow"); }
+///         if x < 3*i { return i-1; }
+///     }
 ///     unreachable!();
 /// }
 /// ```

@@ -8,9 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
- * Computes moves.
- */
+//! Computes moves.
 
 use middle::borrowck::*;
 use middle::borrowck::LoanPathKind::*;

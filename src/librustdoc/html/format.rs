@@ -94,6 +94,9 @@ impl fmt::Show for clean::Generics {
                 if i > 0 {
                     try!(f.write(", ".as_bytes()))
                 }
+                if let Some(ref unbound) = tp.default_unbound {
+                    try!(write!(f, "{}? ", unbound));
+                };
                 try!(f.write(tp.name.as_bytes()));
 
                 if tp.bounds.len() > 0 {
