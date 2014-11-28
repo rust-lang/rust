@@ -1560,7 +1560,7 @@ mod tests {
 
         assert_eq!(filtered.len(), 1);
         assert_eq!(filtered[0].desc.name.to_string(),
-                   "1".to_string());
+                   "1");
         assert!(filtered[0].desc.ignore == false);
     }
 
