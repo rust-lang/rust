@@ -2961,9 +2961,9 @@ mod test {
             variadic: false
         };
         let generics = ast_util::empty_generics();
-        assert_eq!(&fun_to_string(&decl, ast::NormalFn, abba_ident,
+        assert_eq!(fun_to_string(&decl, ast::NormalFn, abba_ident,
                                None, &generics),
-                   &"fn abba()".to_string());
+                   "fn abba()");
     }
 
     #[test]
@@ -2981,7 +2981,7 @@ mod test {
         });
 
         let varstr = variant_to_string(&var);
-        assert_eq!(&varstr,&"pub principal_skinner".to_string());
+        assert_eq!(varstr, "pub principal_skinner");
     }
 
     #[test]
