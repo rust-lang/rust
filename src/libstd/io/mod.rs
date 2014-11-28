@@ -521,6 +521,28 @@ pub trait Reader {
         Ok(read)
     }
 
+    /// Tries to fill the buffer. Returns the number of bytes read.
+    ///
+    /// This will continue to call `read` until the buffer has been filled. If `read`
+    /// returns 0 or EOF, the total number of bytes read will be returned.
+    ///
+    /// # Error
+    ///
+    /// If an error different from EOF occurs at any point, that error is returned, and no
+    /// further bytes are read.
+    fn try_fill(&mut self, buf: &mut [u8]) -> IoResult<uint> {
+        let mut read = 0;
+        while read < buf.len() {
+            match self.read(buf[mut read..]) {
+                Ok(0) => break,
+                Err(ref e) if e.kind == EndOfFile => break,
+                Ok(n) => read += n,
+                Err(e) => return Err(e),
+            }
+        }
+        Ok(read)
+    }
+
     /// Reads a single byte. Returns `Err` on EOF.
     fn read_byte(&mut self) -> IoResult<u8> {
         let mut buf = [0];
