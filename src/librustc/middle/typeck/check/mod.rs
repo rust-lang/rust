@@ -393,8 +393,8 @@ fn check_bare_fn<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                decl, id, body, &inh);
 
             vtable::select_all_fcx_obligations_or_error(&fcx);
-            regionck::regionck_fn(&fcx, id, body);
             fcx.default_diverging_type_variables_to_nil();
+            regionck::regionck_fn(&fcx, id, body);
             writeback::resolve_type_vars_in_fn(&fcx, decl, body);
         }
         _ => ccx.tcx.sess.impossible_case(body.span,
