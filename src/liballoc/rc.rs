@@ -719,6 +719,17 @@ impl<T> Clone for Weak<T> {
     }
 }
 
+#[experimental = "Show is experimental."]
+impl<T: fmt::Show> fmt::Show for Weak<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if self.strong() == 0 {
+            write!(f, "NULL")
+        } else {
+            (*self._ptr).fmt(f)
+        }
+    }
+}
+
 #[doc(hidden)]
 trait RcBoxPtr<T> {
     fn inner(&self) -> &RcBox<T>;
