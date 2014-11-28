@@ -656,6 +656,13 @@ Section: CowString
 /// A clone-on-write string
 pub type CowString<'a> = Cow<'a, String, str>;
 
+impl<'a> Str for CowString<'a> {
+    #[inline]
+    fn as_slice<'b>(&'b self) -> &'b str {
+        (**self).as_slice()
+    }
+}
+
 /*
 Section: Trait implementations
 */
