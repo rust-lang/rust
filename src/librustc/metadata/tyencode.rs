@@ -171,6 +171,7 @@ pub fn enc_region(w: &mut SeekableMemWriter, cx: &ctxt, r: ty::Region) {
 fn enc_scope(w: &mut SeekableMemWriter, _cx: &ctxt, scope: region::CodeExtent) {
     match scope {
         region::CodeExtent::Misc(node_id) => mywrite!(w, "M{}", node_id),
+        region::CodeExtent::Closure(node_id) => mywrite!(w, "C{}", node_id),
         region::CodeExtent::Remainder(region::BlockRemainder {
             block: block, first_statement_index: i }) => mywrite!(w, "B{}{}", block, i),
     }
