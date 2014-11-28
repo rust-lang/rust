@@ -20,7 +20,7 @@ use fmt;
 use iter::{range, DoubleEndedIteratorExt};
 use num::{Float, FPNaN, FPInfinite, ToPrimitive};
 use num::cast;
-use result::Ok;
+use result::Result::Ok;
 use slice::{mod, SlicePrelude};
 use str::StrPrelude;
 

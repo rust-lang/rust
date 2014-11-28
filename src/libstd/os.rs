@@ -40,14 +40,16 @@ use libc::{c_void, c_int};
 use libc;
 use boxed::Box;
 use ops::Drop;
-use option::{Some, None, Option};
+use option::Option;
+use option::Option::{Some, None};
 use os;
 use path::{Path, GenericPath, BytesContainer};
 use sys;
 use sys::os as os_imp;
 use ptr::RawPtr;
 use ptr;
-use result::{Err, Ok, Result};
+use result::Result;
+use result::Result::{Err, Ok};
 use slice::{AsSlice, SlicePrelude, PartialEqSlicePrelude};
 use slice::CloneSliceAllocPrelude;
 use str::{Str, StrPrelude, StrAllocating};
@@ -160,7 +162,8 @@ pub fn getcwd() -> IoResult<Path> {
 pub mod windows {
     use libc::types::os::arch::extra::DWORD;
     use libc;
-    use option::{None, Option};
+    use option::Option;
+    use option::Option::None;
     use option;
     use os::TMPBUF_SZ;
     use slice::{SlicePrelude};
@@ -196,7 +199,7 @@ pub mod windows {
                     // set `res` to None and continue.
                     let s = String::from_utf16(sub)
                         .expect("fill_utf16_buf_and_decode: closure created invalid UTF-16");
-                    res = option::Some(s)
+                    res = option::Option::Some(s)
                 }
             }
             return res;
@@ -1797,7 +1800,7 @@ mod tests {
     fn test_setenv() {
         let n = make_rand_name();
         setenv(n.as_slice(), "VALUE");
-        assert_eq!(getenv(n.as_slice()), option::Some("VALUE".to_string()));
+        assert_eq!(getenv(n.as_slice()), option::Option::Some("VALUE".to_string()));
     }
 
     #[test]
@@ -1805,7 +1808,7 @@ mod tests {
         let n = make_rand_name();
         setenv(n.as_slice(), "VALUE");
         unsetenv(n.as_slice());
-        assert_eq!(getenv(n.as_slice()), option::None);
+        assert_eq!(getenv(n.as_slice()), option::Option::None);
     }
 
     #[test]
@@ -1814,9 +1817,9 @@ mod tests {
         let n = make_rand_name();
         setenv(n.as_slice(), "1");
         setenv(n.as_slice(), "2");
-        assert_eq!(getenv(n.as_slice()), option::Some("2".to_string()));
+        assert_eq!(getenv(n.as_slice()), option::Option::Some("2".to_string()));
         setenv(n.as_slice(), "");
-        assert_eq!(getenv(n.as_slice()), option::Some("".to_string()));
+        assert_eq!(getenv(n.as_slice()), option::Option::Some("".to_string()));
     }
 
     // Windows GetEnvironmentVariable requires some extra work to make sure
@@ -1833,7 +1836,7 @@ mod tests {
         let n = make_rand_name();
         setenv(n.as_slice(), s.as_slice());
         debug!("{}", s.clone());
-        assert_eq!(getenv(n.as_slice()), option::Some(s));
+        assert_eq!(getenv(n.as_slice()), option::Option::Some(s));
     }
 
     #[test]
@@ -1870,7 +1873,7 @@ mod tests {
             // MingW seems to set some funky environment variables like
             // "=C:=C:\MinGW\msys\1.0\bin" and "!::=::\" that are returned
             // from env() but not visible from getenv().
-            assert!(v2.is_none() || v2 == option::Some(v));
+            assert!(v2.is_none() || v2 == option::Option::Some(v));
         }
     }
 
@@ -1957,7 +1960,7 @@ mod tests {
 
     #[test]
     fn memory_map_rw() {
-        use result::{Ok, Err};
+        use result::Result::{Ok, Err};
 
         let chunk = match os::MemoryMap::new(16, &[
             os::MapReadable,
@@ -1976,7 +1979,7 @@ mod tests {
 
     #[test]
     fn memory_map_file() {
-        use result::{Ok, Err};
+        use result::Result::{Ok, Err};
         use os::*;
         use libc::*;
         use io::fs;

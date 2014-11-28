@@ -19,8 +19,8 @@ use fmt;
 use hash::{Hash, Hasher, RandomSipHasher};
 use iter::{Iterator, IteratorExt, FromIterator, FilterMap, Chain, Repeat, Zip, Extend, repeat};
 use iter;
-use option::{Some, None};
-use result::{Ok, Err};
+use option::Option::{Some, None};
+use result::Result::{Ok, Err};
 
 use super::map::{HashMap, Entries, MoveEntries, INITIAL_CAPACITY};
 

@@ -227,7 +227,7 @@ use io::IoResult;
 use iter::{Iterator, IteratorExt};
 use mem;
 use rc::Rc;
-use result::{Ok, Err};
+use result::Result::{Ok, Err};
 use vec::Vec;
 
 #[cfg(not(target_word_size="64"))]

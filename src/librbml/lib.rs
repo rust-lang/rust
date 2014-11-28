@@ -120,7 +120,8 @@ pub mod reader {
     use std::io::extensions::u64_from_be_bytes;
     use std::mem::transmute;
     use std::num::Int;
-    use std::option::{None, Option, Some};
+    use std::option::Option;
+    use std::option::Option::{None, Some};
 
     use serialize;
 
@@ -1060,7 +1061,8 @@ mod tests {
 
     use serialize::{Encodable, Decodable};
 
-    use std::option::{None, Option, Some};
+    use std::option::Option;
+    use std::option::Option::{None, Some};
 
     #[test]
     fn test_vuint_at() {

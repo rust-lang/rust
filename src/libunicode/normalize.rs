@@ -10,8 +10,9 @@
 
 //! Functions for computing canonical and compatible decompositions for Unicode characters.
 
-use core::cmp::{Equal, Less, Greater};
-use core::option::{Option, Some, None};
+use core::cmp::Ordering::{Equal, Less, Greater};
+use core::option::Option;
+use core::option::Option::{Some, None};
 use core::slice;
 use core::slice::SlicePrelude;
 use tables::normalization::{canonical_table, compatibility_table, composition_table};

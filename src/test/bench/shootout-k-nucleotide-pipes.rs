@@ -77,8 +77,8 @@ fn sort_and_fmt(mm: &HashMap<Vec<u8> , uint>, total: uint) -> String {
 fn find(mm: &HashMap<Vec<u8> , uint>, key: String) -> uint {
    let key = key.into_ascii().as_slice().to_lowercase().into_string();
    match mm.get(key.as_bytes()) {
-      option::None      => { return 0u; }
-      option::Some(&num) => { return num; }
+      option::Option::None      => { return 0u; }
+      option::Option::Some(&num) => { return num; }
    }
 }
 
@@ -190,8 +190,8 @@ fn main() {
            // start processing if this is the one
            ('>', false) => {
                match line.as_slice().slice_from(1).find_str("THREE") {
-                   option::Some(_) => { proc_mode = true; }
-                   option::None    => { }
+                   option::Option::Some(_) => { proc_mode = true; }
+                   option::Option::None    => { }
                }
            }
 
