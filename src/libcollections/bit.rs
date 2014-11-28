@@ -2660,7 +2660,7 @@ mod tests {
         s.insert(10);
         s.insert(50);
         s.insert(2);
-        assert_eq!("{1, 2, 10, 50}".to_string(), s.to_string());
+        assert_eq!("{1, 2, 10, 50}", s.to_string());
     }
 
     fn rng() -> rand::IsaacRng {
