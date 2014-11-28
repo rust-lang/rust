@@ -72,7 +72,8 @@
 #![stable]
 
 use mem::{transmute};
-use option::{Option, Some, None};
+use option::Option;
+use option::Option::{Some, None};
 use raw::TraitObject;
 use intrinsics::TypeId;
 

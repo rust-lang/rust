@@ -36,8 +36,9 @@ use io::{Reader, Writer, IoResult, IoError, OtherIoError,
 use kinds::Send;
 use libc;
 use mem;
-use option::{Option, Some, None};
-use result::{Ok, Err};
+use option::Option;
+use option::Option::{Some, None};
+use result::Result::{Ok, Err};
 use rustrt;
 use rustrt::local::Local;
 use rustrt::task::Task;

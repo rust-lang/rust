@@ -149,9 +149,9 @@ macro_rules! bitflags {
             #[inline]
             pub fn from_bits(bits: $T) -> ::std::option::Option<$BitFlags> {
                 if (bits & !$BitFlags::all().bits()) != 0 {
-                    ::std::option::None
+                    ::std::option::Option::None
                 } else {
-                    ::std::option::Some($BitFlags { bits: bits })
+                    ::std::option::Option::Some($BitFlags { bits: bits })
                 }
             }
 
@@ -261,7 +261,7 @@ macro_rules! bitflags {
 #[allow(non_upper_case_globals)]
 mod tests {
     use hash;
-    use option::{Some, None};
+    use option::Option::{Some, None};
     use ops::{BitOr, BitAnd, BitXor, Sub, Not};
 
     bitflags! {

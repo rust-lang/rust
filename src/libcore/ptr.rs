@@ -90,9 +90,12 @@
 use mem;
 use clone::Clone;
 use intrinsics;
-use option::{Some, None, Option};
+use option::Option;
+use option::Option::{Some, None};
 
-use cmp::{PartialEq, Eq, PartialOrd, Equiv, Ordering, Less, Equal, Greater};
+use cmp::{PartialEq, Eq, PartialOrd, Equiv};
+use cmp::Ordering;
+use cmp::Ordering::{Less, Equal, Greater};
 
 pub use intrinsics::copy_memory;
 pub use intrinsics::copy_nonoverlapping_memory;

@@ -16,7 +16,8 @@
 #![doc(primitive = "char")]
 
 use mem::transmute;
-use option::{None, Option, Some};
+use option::Option;
+use option::Option::{None, Some};
 use iter::{range_step, Iterator, RangeStep};
 use slice::SlicePrelude;
 

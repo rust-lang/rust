@@ -48,7 +48,8 @@ pub fn test_num<T>(ten: T, two: T) where
 
 #[cfg(test)]
 mod test {
-    use core::option::{Option, Some, None};
+    use core::option::Option;
+    use core::option::Option::{Some, None};
     use core::num::Float;
     use core::num::from_str_radix;
 

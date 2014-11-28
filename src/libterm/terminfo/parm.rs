@@ -576,7 +576,7 @@ fn format(val: Param, op: FormatOp, flags: Flags) -> Result<Vec<u8> ,String> {
 #[cfg(test)]
 mod test {
     use super::{expand,Param,Words,Variables,Number};
-    use std::result::Ok;
+    use std::result::Result::Ok;
 
     #[test]
     fn test_basic_setabf() {
