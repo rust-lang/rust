@@ -145,8 +145,8 @@ mod test {
             "path2".to_string()
         ]);
         assert_eq!(flags,
-                   vec!("-Wl,-rpath,path1".to_string(),
-                        "-Wl,-rpath,path2".to_string()));
+                   ["-Wl,-rpath,path1",
+                    "-Wl,-rpath,path2"]);
     }
 
     #[test]
