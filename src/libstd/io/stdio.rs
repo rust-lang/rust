@@ -527,7 +527,7 @@ mod tests {
             set_stdout(box w);
             println!("hello!");
         });
-        assert_eq!(r.read_to_string().unwrap(), "hello!\n".to_string());
+        assert_eq!(r.read_to_string().unwrap(), "hello!\n");
     }
 
     #[test]
