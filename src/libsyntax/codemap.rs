@@ -614,11 +614,11 @@ mod test {
         let cm = init_code_map();
 
         let fmabp1 = cm.lookup_byte_offset(BytePos(22));
-        assert_eq!(fmabp1.fm.name, "blork.rs".to_string());
+        assert_eq!(fmabp1.fm.name, "blork.rs");
         assert_eq!(fmabp1.pos, BytePos(22));
 
         let fmabp2 = cm.lookup_byte_offset(BytePos(24));
-        assert_eq!(fmabp2.fm.name, "blork2.rs".to_string());
+        assert_eq!(fmabp2.fm.name, "blork2.rs");
         assert_eq!(fmabp2.pos, BytePos(0));
     }
 
@@ -640,12 +640,12 @@ mod test {
         let cm = init_code_map();
 
         let loc1 = cm.lookup_char_pos(BytePos(22));
-        assert_eq!(loc1.file.name, "blork.rs".to_string());
+        assert_eq!(loc1.file.name, "blork.rs");
         assert_eq!(loc1.line, 2);
         assert_eq!(loc1.col, CharPos(10));
 
         let loc2 = cm.lookup_char_pos(BytePos(24));
-        assert_eq!(loc2.file.name, "blork2.rs".to_string());
+        assert_eq!(loc2.file.name, "blork2.rs");
         assert_eq!(loc2.line, 1);
         assert_eq!(loc2.col, CharPos(0));
     }
@@ -701,7 +701,7 @@ mod test {
         let span = Span {lo: BytePos(12), hi: BytePos(23), expn_id: NO_EXPANSION};
         let file_lines = cm.span_to_lines(span);
 
-        assert_eq!(file_lines.file.name, "blork.rs".to_string());
+        assert_eq!(file_lines.file.name, "blork.rs");
         assert_eq!(file_lines.lines.len(), 1);
         assert_eq!(file_lines.lines[0], 1u);
     }
@@ -723,6 +723,6 @@ mod test {
         let span = Span {lo: BytePos(12), hi: BytePos(23), expn_id: NO_EXPANSION};
         let sstr =  cm.span_to_string(span);
 
-        assert_eq!(sstr, "blork.rs:2:1: 2:12".to_string());
+        assert_eq!(sstr, "blork.rs:2:1: 2:12");
     }
 }
