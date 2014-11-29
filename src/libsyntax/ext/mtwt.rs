@@ -136,6 +136,16 @@ pub fn clear_tables() {
     with_resolve_table_mut(|table| *table = HashMap::new());
 }
 
+/// Reset the tables to their initial state
+pub fn reset_tables() {
+    with_sctable(|table| {
+        *table.table.borrow_mut() = vec!(EmptyCtxt, IllegalCtxt);
+        *table.mark_memo.borrow_mut() = HashMap::new();
+        *table.rename_memo.borrow_mut() = HashMap::new();
+    });
+    with_resolve_table_mut(|table| *table = HashMap::new());
+}
+
 /// Add a value to the end of a vec, return its index
 fn idx_push<T>(vec: &mut Vec<T>, val: T) -> u32 {
     vec.push(val);

@@ -214,6 +214,11 @@ impl StrInterner {
         *self.map.borrow_mut() = HashMap::new();
         *self.vect.borrow_mut() = Vec::new();
     }
+
+    pub fn reset(&self, other: StrInterner) {
+        *self.map.borrow_mut() = other.map.into_inner();
+        *self.vect.borrow_mut() = other.vect.into_inner();
+    }
 }
 
 #[cfg(test)]
