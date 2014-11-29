@@ -922,7 +922,7 @@ or 'breaks up,' the tuple, and assigns the bits to three bindings.
 
 This pattern is very powerful, and we'll see it repeated more later.
 
-There also a few things you can do with a tuple as a whole, without
+There are also a few things you can do with a tuple as a whole, without
 destructuring. You can assign one tuple into another, if they have the same
 arity and contained types.
 
