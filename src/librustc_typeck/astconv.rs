@@ -83,13 +83,18 @@ pub trait AstConv<'tcx> {
                                            trait_id: ast::DefId)
                                            -> bool;
 
-    /// Returns the binding of the given associated type for some type.
+    /// Returns the concrete type bound to the given associated type (indicated
+    /// by associated_type_id) in the current context. For example,
+    /// in `trait Foo { type A; }` looking up `A` will give a type variable;
+    /// in `impl Foo for ... { type A = int; ... }` looking up `A` will give `int`.
     fn associated_type_binding(&self,
                                span: Span,
-                               ty: Option<Ty<'tcx>>,
+                               self_ty: Option<Ty<'tcx>>,
+                               // DefId for the declaration of the trait
+                               // in which the associated type is declared.
                                trait_id: ast::DefId,
                                associated_type_id: ast::DefId)
-                               -> Ty<'tcx>;
+                               -> Option<Ty<'tcx>>;
 }
 
 pub fn ast_region_to_region(tcx: &ty::ctxt, lifetime: &ast::Lifetime)
@@ -207,7 +212,6 @@ fn ast_path_substs_for_ty<'tcx,AC,RS>(
     rscope: &RS,
     decl_def_id: ast::DefId,
     decl_generics: &ty::Generics<'tcx>,
-    self_ty: Option<Ty<'tcx>>,
     path: &ast::Path)
     -> Substs<'tcx>
     where AC: AstConv<'tcx>, RS: RegionScope
@@ -225,19 +229,26 @@ fn ast_path_substs_for_ty<'tcx,AC,RS>(
     assert!(decl_generics.regions.all(|d| d.space == TypeSpace));
     assert!(decl_generics.types.all(|d| d.space != FnSpace));
 
-    let (regions, types) = match path.segments.last().unwrap().parameters {
+    let (regions, types, assoc_bindings) = match path.segments.last().unwrap().parameters {
         ast::AngleBracketedParameters(ref data) => {
             convert_angle_bracketed_parameters(this, rscope, data)
         }
         ast::ParenthesizedParameters(ref data) => {
             span_err!(tcx.sess, path.span, E0169,
                       "parenthesized parameters may only be used with a trait");
-            (Vec::new(), convert_parenthesized_parameters(this, data))
+            (Vec::new(), convert_parenthesized_parameters(this, data), Vec::new())
         }
     };
 
-    create_substs_for_ast_path(this, rscope, path.span, decl_def_id,
-                               decl_generics, self_ty, types, regions)
+    create_substs_for_ast_path(this,
+                               rscope,
+                               path.span,
+                               decl_def_id,
+                               decl_generics,
+                               None,
+                               types,
+                               regions,
+                               assoc_bindings)
 }
 
 fn create_substs_for_ast_path<'tcx,AC,RS>(
@@ -248,7 +259,8 @@ fn create_substs_for_ast_path<'tcx,AC,RS>(
     decl_generics: &ty::Generics<'tcx>,
     self_ty: Option<Ty<'tcx>>,
     types: Vec<Ty<'tcx>>,
-    regions: Vec<ty::Region>)
+    regions: Vec<ty::Region>,
+    assoc_bindings: Vec<(ast::Ident, Ty<'tcx>)>)
     -> Substs<'tcx>
     where AC: AstConv<'tcx>, RS: RegionScope
 {
@@ -355,13 +367,49 @@ fn create_substs_for_ast_path<'tcx,AC,RS>(
         }
     }
 
-    for param in decl_generics.types.get_slice(AssocSpace).iter() {
-        substs.types.push(
-            AssocSpace,
-            this.associated_type_binding(span,
-                                         self_ty,
-                                         decl_def_id,
-                                         param.def_id));
+    let mut matched_assoc = 0u;
+    for formal_assoc in decl_generics.types.get_slice(AssocSpace).iter() {
+        let mut found = false;
+        for &(ident, ty) in assoc_bindings.iter() {
+            if formal_assoc.name.ident() == ident {
+                substs.types.push(AssocSpace, ty);
+                matched_assoc += 1;
+                found = true;
+                break;
+            }
+        }
+        if !found {
+            match this.associated_type_binding(span,
+                                               self_ty,
+                                               decl_def_id,
+                                               formal_assoc.def_id) {
+                Some(ty) => {
+                    substs.types.push(AssocSpace, ty);
+                    matched_assoc += 1;
+                }
+                None => {
+                    span_err!(this.tcx().sess, span, E0179,
+                              "missing type for associated type `{}`",
+                              token::get_ident(formal_assoc.name.ident()));
+                }
+            }
+        }
+    }
+
+    if decl_generics.types.get_slice(AssocSpace).len() != matched_assoc {
+        span_err!(tcx.sess, span, E0171,
+                  "wrong number of associated type parameters: expected {}, found {}",
+                  decl_generics.types.get_slice(AssocSpace).len(), matched_assoc);
+    }
+
+    for &(ident, _) in assoc_bindings.iter() {
+        let mut formal_idents = decl_generics.types.get_slice(AssocSpace)
+                                .iter().map(|t| t.name.ident());
+        if !formal_idents.any(|i| i == ident) {
+            span_err!(this.tcx().sess, span, E0177,
+                      "associated type `{}` does not exist",
+                      token::get_ident(ident));
+        }
     }
 
     return substs;
@@ -370,7 +418,9 @@ fn create_substs_for_ast_path<'tcx,AC,RS>(
 fn convert_angle_bracketed_parameters<'tcx, AC, RS>(this: &AC,
                                                     rscope: &RS,
                                                     data: &ast::AngleBracketedParameterData)
-                                                    -> (Vec<ty::Region>, Vec<Ty<'tcx>>)
+                                                    -> (Vec<ty::Region>,
+                                                        Vec<Ty<'tcx>>,
+                                                        Vec<(ast::Ident, Ty<'tcx>)>)
     where AC: AstConv<'tcx>, RS: RegionScope
 {
     let regions: Vec<_> =
@@ -383,7 +433,12 @@ fn convert_angle_bracketed_parameters<'tcx, AC, RS>(this: &AC,
         .map(|t| ast_ty_to_ty(this, rscope, &**t))
         .collect();
 
-    (regions, types)
+    let assoc_bindings: Vec<_> =
+        data.bindings.iter()
+        .map(|b| (b.ident, ast_ty_to_ty(this, rscope, &*b.ty)))
+        .collect();
+
+    (regions, types, assoc_bindings)
 }
 
 /// Returns the appropriate lifetime to use for any output lifetimes
@@ -484,7 +539,8 @@ pub fn instantiate_poly_trait_ref<'tcx,AC,RS>(
 pub fn instantiate_trait_ref<'tcx,AC,RS>(this: &AC,
                                          rscope: &RS,
                                          ast_trait_ref: &ast::TraitRef,
-                                         self_ty: Option<Ty<'tcx>>)
+                                         self_ty: Option<Ty<'tcx>>,
+                                         allow_eq: AllowEqConstraints)
                                          -> Rc<ty::TraitRef<'tcx>>
                                          where AC: AstConv<'tcx>,
                                                RS: RegionScope
@@ -493,8 +549,12 @@ pub fn instantiate_trait_ref<'tcx,AC,RS>(this: &AC,
                            ast_trait_ref.path.span,
                            ast_trait_ref.ref_id) {
         def::DefTrait(trait_def_id) => {
-            let trait_ref = Rc::new(ast_path_to_trait_ref(this, rscope, trait_def_id,
-                                                          self_ty, &ast_trait_ref.path));
+            let trait_ref = Rc::new(ast_path_to_trait_ref(this,
+                                                          rscope,
+                                                          trait_def_id,
+                                                          self_ty,
+                                                          &ast_trait_ref.path,
+                                                          allow_eq));
             this.tcx().trait_refs.borrow_mut().insert(ast_trait_ref.ref_id,
                                                       trait_ref.clone());
             trait_ref
@@ -507,15 +567,23 @@ pub fn instantiate_trait_ref<'tcx,AC,RS>(this: &AC,
     }
 }
 
+#[deriving(PartialEq,Show)]
+pub enum AllowEqConstraints {
+    Allow,
+    DontAllow
+}
+
 fn ast_path_to_trait_ref<'tcx,AC,RS>(
     this: &AC,
     rscope: &RS,
     trait_def_id: ast::DefId,
     self_ty: Option<Ty<'tcx>>,
-    path: &ast::Path)
+    path: &ast::Path,
+    allow_eq: AllowEqConstraints)
     -> ty::TraitRef<'tcx>
     where AC: AstConv<'tcx>, RS: RegionScope
 {
+    debug!("ast_path_to_trait_ref {}", path);
     let trait_def = this.get_trait_def(trait_def_id);
 
     // the trait reference introduces a binding level here, so
@@ -525,14 +593,19 @@ fn ast_path_to_trait_ref<'tcx,AC,RS>(
     // lifetimes. Oh well, not there yet.
     let shifted_rscope = ShiftedRscope::new(rscope);
 
-    let (regions, types) = match path.segments.last().unwrap().parameters {
+    let (regions, types, assoc_bindings) = match path.segments.last().unwrap().parameters {
         ast::AngleBracketedParameters(ref data) => {
             convert_angle_bracketed_parameters(this, &shifted_rscope, data)
         }
         ast::ParenthesizedParameters(ref data) => {
-            (Vec::new(), convert_parenthesized_parameters(this, data))
+            (Vec::new(), convert_parenthesized_parameters(this, data), Vec::new())
         }
     };
+
+    if allow_eq == AllowEqConstraints::DontAllow && assoc_bindings.len() > 0 {
+        span_err!(this.tcx().sess, path.span, E0173,
+                  "equality constraints are not allowed in this position");
+    }
 
     let substs = create_substs_for_ast_path(this,
                                             &shifted_rscope,
@@ -541,7 +614,8 @@ fn ast_path_to_trait_ref<'tcx,AC,RS>(
                                             &trait_def.generics,
                                             self_ty,
                                             types,
-                                            regions);
+                                            regions,
+                                            assoc_bindings);
 
     ty::TraitRef::new(trait_def_id, substs)
 }
@@ -693,7 +767,8 @@ fn ast_ty_to_trait_ref<'tcx,AC,RS>(this: &AC,
                                                     rscope,
                                                     trait_def_id,
                                                     None,
-                                                    path));
+                                                    path,
+                                                    AllowEqConstraints::Allow));
                 }
                 _ => {
                     span_err!(this.tcx().sess, ty.span, E0172, "expected a reference to a trait");
@@ -772,7 +847,8 @@ fn qpath_to_ty<'tcx,AC,RS>(this: &AC,
     let trait_ref = instantiate_trait_ref(this,
                                           rscope,
                                           &*qpath.trait_ref,
-                                          Some(self_type));
+                                          Some(self_type),
+                                          AllowEqConstraints::DontAllow);
 
     debug!("qpath_to_ty: trait_ref={}", trait_ref.repr(this.tcx()));
 
@@ -916,7 +992,8 @@ pub fn ast_ty_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                                                            rscope,
                                                            trait_def_id,
                                                            None,
-                                                           path);
+                                                           path,
+                                                           AllowEqConstraints::Allow);
                         trait_ref_to_object_type(this, rscope, path.span, result, &[])
                     }
                     def::DefTy(did, _) | def::DefStruct(did) => {
@@ -1336,7 +1413,11 @@ fn conv_ty_poly_trait_ref<'tcx, AC, RS>(
 
     let main_trait_bound = match partitioned_bounds.trait_bounds.remove(0) {
         Some(trait_bound) => {
-            Some(instantiate_poly_trait_ref(this, rscope, trait_bound, None))
+            Some(instantiate_trait_ref(this,
+                                       rscope,
+                                       &trait_bound.trait_ref,
+                                       None,
+                                       AllowEqConstraints::Allow))
         }
         None => {
             this.tcx().sess.span_err(

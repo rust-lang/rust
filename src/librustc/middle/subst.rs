@@ -123,6 +123,13 @@ pub fn self_ty(&self) -> Option<Ty<'tcx>> {
         s
     }
 
+    pub fn with_assoc_tys(&self, assoc_tys: Vec<Ty<'tcx>>) -> Substs<'tcx> {
+        assert!(self.types.is_empty_in(AssocSpace));
+        let mut s = (*self).clone();
+        s.types.replace(AssocSpace, assoc_tys);
+        s
+    }
+
     pub fn erase_regions(self) -> Substs<'tcx> {
         let Substs { types, regions: _ } = self;
         Substs { types: types, regions: ErasedRegions }

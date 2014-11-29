@@ -32,7 +32,7 @@ as `ty_param()` instances.
 use self::ConvertMethodContext::*;
 use self::CreateTypeParametersForAssociatedTypesFlag::*;
 
-use astconv::{AstConv, ty_of_arg};
+use astconv::{AstConv, ty_of_arg, AllowEqConstraints};
 use astconv::{ast_ty_to_ty, ast_region_to_region};
 use astconv;
 use metadata::csearch;
@@ -197,10 +197,10 @@ impl<'a, 'tcx> AstConv<'tcx> for CrateCtxt<'a, 'tcx> {
                                _: Option<Ty<'tcx>>,
                                _: ast::DefId,
                                _: ast::DefId)
-                               -> Ty<'tcx> {
+                               -> Option<Ty<'tcx>> {
         self.tcx().sess.span_err(span, "associated types may not be \
                                         referenced here");
-        ty::mk_err()
+        Some(ty::mk_err())
     }
 }
 
@@ -782,7 +782,7 @@ impl<'a,'tcx> AstConv<'tcx> for ImplCtxt<'a,'tcx> {
                         ast::MethodImplItem(_) => {}
                         ast::TypeImplItem(ref typedef) => {
                             if associated_type.name() == typedef.ident.name {
-                                return self.ccx.to_ty(&ExplicitRscope, &*typedef.typ)
+                                return Some(self.ccx.to_ty(&ExplicitRscope, &*typedef.typ))
                             }
                         }
                     }
@@ -943,10 +943,10 @@ impl<'a,'tcx> AstConv<'tcx> for TraitMethodCtxt<'a,'tcx> {
 
     fn associated_type_binding(&self,
                                span: Span,
-                               ty: Option<Ty<'tcx>>,
+                               self_ty: Option<Ty<'tcx>>,
                                trait_id: ast::DefId,
                                associated_type_id: ast::DefId)
-                               -> Ty<'tcx> {
+                               -> Option<Ty<'tcx>> {
         debug!("collect::TraitMethodCtxt::associated_type_binding()");
 
         // If this is one of our own associated types, return it.
@@ -957,10 +957,10 @@ impl<'a,'tcx> AstConv<'tcx> for TraitMethodCtxt<'a,'tcx> {
                     ast::RequiredMethod(_) | ast::ProvidedMethod(_) => {}
                     ast::TypeTraitItem(ref item) => {
                         if local_def(item.ty_param.id) == associated_type_id {
-                            return ty::mk_param(self.tcx(),
-                                                subst::AssocSpace,
-                                                index,
-                                                associated_type_id)
+                            return Some(ty::mk_param(self.tcx(),
+                                                     subst::AssocSpace,
+                                                     index,
+                                                     associated_type_id))
                         }
                         index += 1;
                     }
@@ -1142,8 +1142,11 @@ pub fn convert(ccx: &CrateCtxt, it: &ast::Item) {
                             parent_visibility);
 
             for trait_ref in opt_trait_ref.iter() {
-                astconv::instantiate_trait_ref(&icx, &ExplicitRscope, trait_ref,
-                                               Some(selfty));
+                astconv::instantiate_trait_ref(&icx,
+                                               &ExplicitRscope,
+                                               trait_ref,
+                                               Some(selfty),
+                                               AllowEqConstraints::DontAllow);
             }
         },
         ast::ItemTrait(_, _, _, ref trait_methods) => {
@@ -1838,8 +1841,17 @@ fn ty_generics<'tcx,AC>(this: &AC,
                 let trait_def = ty::lookup_trait_def(this.tcx(), trait_def_id);
                 let associated_type_defs = trait_def.generics.types.get_slice(subst::AssocSpace);
 
+                // Find any assocaited type bindings in the bound.
+                let ref segments = ast_trait_ref.trait_ref.path.segments;
+                let bindings = segments[segments.len() -1].parameters.bindings();
+
                 // Iterate over each associated type `Elem`
                 for associated_type_def in associated_type_defs.iter() {
+                    if bindings.iter().any(|b| associated_type_def.name.ident() == b.ident) {
+                        // Don't add a variable for a bound associated type.
+                        continue;
+                    }
+
                     // Create the fresh type parameter `A`
                     let def = ty::TypeParameterDef {
                         name: associated_type_def.name,
@@ -1998,10 +2010,11 @@ fn conv_param_bounds<'tcx,AC>(this: &AC,
     let trait_bounds: Vec<Rc<ty::TraitRef>> =
         trait_bounds.into_iter()
         .map(|bound| {
-            astconv::instantiate_poly_trait_ref(this,
-                                                &ExplicitRscope,
-                                                bound,
-                                                Some(param_ty.to_ty(this.tcx())))
+            astconv::instantiate_trait_ref(this,
+                                           &ExplicitRscope,
+                                           &bound.trait_ref,
+                                           Some(param_ty.to_ty(this.tcx())),
+                                           AllowEqConstraints::Allow)
         })
         .collect();
     let region_bounds: Vec<ty::Region> =
@@ -2029,18 +2042,23 @@ fn merge_param_bounds<'a>(tcx: &ty::ctxt,
     }
 
     for predicate in where_clause.predicates.iter() {
-        let predicate_param_id =
-            tcx.def_map
-               .borrow()
-               .get(&predicate.id)
-               .expect("compute_bounds(): resolve didn't resolve the type \
-                        parameter identifier in a `where` clause")
-               .def_id();
-        if param_ty.def_id != predicate_param_id {
-            continue
-        }
-        for bound in predicate.bounds.iter() {
-            result.push(bound);
+        match predicate {
+            &ast::BoundPredicate(ref bound_pred) => {
+                let predicate_param_id =
+                    tcx.def_map
+                       .borrow()
+                       .get(&bound_pred.id)
+                       .expect("merge_param_bounds(): resolve didn't resolve the \
+                                type parameter identifier in a `where` clause")
+                       .def_id();
+                if param_ty.def_id != predicate_param_id {
+                    continue
+                }
+                for bound in bound_pred.bounds.iter() {
+                    result.push(bound);
+                }
+            }
+            &ast::EqPredicate(_) => panic!("not implemented")
         }
     }
 

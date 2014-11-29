@@ -573,8 +573,22 @@ pub fn walk_generics<'v, V: Visitor<'v>>(visitor: &mut V, generics: &'v Generics
     }
     walk_lifetime_decls_helper(visitor, &generics.lifetimes);
     for predicate in generics.where_clause.predicates.iter() {
-        visitor.visit_ident(predicate.span, predicate.ident);
-        walk_ty_param_bounds_helper(visitor, &predicate.bounds);
+        match predicate {
+            &ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate{span,
+                                                                          ident,
+                                                                          ref bounds,
+                                                                          ..}) => {
+                visitor.visit_ident(span, ident);
+                walk_ty_param_bounds_helper(visitor, bounds);
+            }
+            &ast::WherePredicate::EqPredicate(ast::WhereEqPredicate{id,
+                                                                    ref path,
+                                                                    ref ty,
+                                                                    ..}) => {
+                visitor.visit_path(path, id);
+                visitor.visit_ty(&**ty);
+            }
+        }
     }
 }
 

@@ -530,6 +530,7 @@ impl<'a, 'b> Context<'a, 'b> {
                     self.fmtsp,
                     true, Context::rtpath(self.ecx, "Argument"),
                     vec![static_lifetime],
+                    vec![],
                     vec![]
                 ));
             lets.push(Context::item_static_array(self.ecx,

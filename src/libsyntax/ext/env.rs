@@ -45,7 +45,8 @@ pub fn expand_option_env<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenT
                                                    Some(cx.lifetime(sp,
                                                         cx.ident_of(
                                                             "'static").name)),
-                                                   ast::MutImmutable))))
+                                                   ast::MutImmutable)),
+                                   Vec::new()))
       }
       Some(s) => {
           cx.expr_call_global(sp,
