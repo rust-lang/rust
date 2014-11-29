@@ -211,9 +211,8 @@ fn push_obligations_for_param_bounds<'tcx>(
                                                       builtin_bound,
                                                       recursion_depth,
                                                       param_ty);
-        match obligation {
-            Ok(ob) => obligations.push(space, ob),
-            _ => {}
+        if let Ok(ob) = obligation {
+            obligations.push(space, ob);
         }
     }
 
@@ -383,4 +382,3 @@ impl<'tcx> Repr<'tcx> for ty::type_err<'tcx> {
         ty::type_err_to_str(tcx, self)
     }
 }
-

@@ -671,11 +671,8 @@ pub fn walk_struct_def<'v, V: Visitor<'v>>(visitor: &mut V,
 
 pub fn walk_struct_field<'v, V: Visitor<'v>>(visitor: &mut V,
                                              struct_field: &'v StructField) {
-    match struct_field.node.kind {
-        NamedField(name, _) => {
-            visitor.visit_ident(struct_field.span, name)
-        }
-        _ => {}
+    if let NamedField(name, _) = struct_field.node.kind {
+        visitor.visit_ident(struct_field.span, name);
     }
 
     visitor.visit_ty(&*struct_field.node.ty);

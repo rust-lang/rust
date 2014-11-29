@@ -84,14 +84,11 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                     fn_id)
         });
 
-    match map_node {
-        ast_map::NodeForeignItem(_) => {
-            if ccx.tcx().map.get_foreign_abi(fn_id.node) != abi::RustIntrinsic {
-                // Foreign externs don't have to be monomorphized.
-                return (get_item_val(ccx, fn_id.node), true);
-            }
+    if let ast_map::NodeForeignItem(_) = map_node {
+        if ccx.tcx().map.get_foreign_abi(fn_id.node) != abi::RustIntrinsic {
+            // Foreign externs don't have to be monomorphized.
+            return (get_item_val(ccx, fn_id.node), true);
         }
-        _ => {}
     }
 
     debug!("monomorphic_fn about to subst into {}", llitem_ty.repr(ccx.tcx()));

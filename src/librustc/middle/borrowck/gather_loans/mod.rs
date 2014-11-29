@@ -97,12 +97,10 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for GatherLoanCtxt<'a, 'tcx> {
                cmt.repr(self.tcx()),
                mode);
 
-        match cmt.cat {
-            mc::cat_downcast(..) =>
-                gather_moves::gather_match_variant(
-                    self.bccx, &self.move_data, &self.move_error_collector,
-                    matched_pat, cmt, mode),
-            _ => {}
+        if let mc::cat_downcast(..) = cmt.cat {
+            gather_moves::gather_match_variant(
+                self.bccx, &self.move_data, &self.move_error_collector,
+                matched_pat, cmt, mode);
         }
     }
 
@@ -489,17 +487,14 @@ struct StaticInitializerCtxt<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx, 'v> Visitor<'v> for StaticInitializerCtxt<'a, 'tcx> {
     fn visit_expr(&mut self, ex: &Expr) {
-        match ex.node {
-            ast::ExprAddrOf(mutbl, ref base) => {
-                let base_cmt = self.bccx.cat_expr(&**base);
-                let borrow_kind = ty::BorrowKind::from_mutbl(mutbl);
-                // Check that we don't allow borrows of unsafe static items.
-                if check_aliasability(self.bccx, ex.span, euv::AddrOf,
-                                      base_cmt, borrow_kind).is_err() {
-                    return; // reported an error, no sense in reporting more.
-                }
+        if let ast::ExprAddrOf(mutbl, ref base) = ex.node {
+            let base_cmt = self.bccx.cat_expr(&**base);
+            let borrow_kind = ty::BorrowKind::from_mutbl(mutbl);
+            // Check that we don't allow borrows of unsafe static items.
+            if check_aliasability(self.bccx, ex.span, euv::AddrOf,
+                                  base_cmt, borrow_kind).is_err() {
+                return; // reported an error, no sense in reporting more.
             }
-            _ => {}
         }
 
         visit::walk_expr(self, ex);

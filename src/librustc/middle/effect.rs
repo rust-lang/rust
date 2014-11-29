@@ -71,12 +71,9 @@ impl<'a, 'tcx> EffectCheckVisitor<'a, 'tcx> {
         debug!("effect: checking index with base type {}",
                 ppaux::ty_to_string(self.tcx, base_type));
         match base_type.sty {
-            ty::ty_uniq(ty) | ty::ty_rptr(_, ty::mt{ty, ..}) => match ty.sty {
-                ty::ty_str => {
-                    span_err!(self.tcx.sess, e.span, E0134,
-                              "modification of string types is not allowed");
-                }
-                _ => {}
+            ty::ty_uniq(ty) | ty::ty_rptr(_, ty::mt{ty, ..}) => if ty::ty_str == ty.sty {
+                span_err!(self.tcx.sess, e.span, E0134,
+                          "modification of string types is not allowed");
             },
             ty::ty_str => {
                 span_err!(self.tcx.sess, e.span, E0135,
@@ -165,13 +162,9 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EffectCheckVisitor<'a, 'tcx> {
             ast::ExprUnary(ast::UnDeref, ref base) => {
                 let base_type = ty::node_id_to_type(self.tcx, base.id);
                 debug!("effect: unary case, base type is {}",
-                        ppaux::ty_to_string(self.tcx, base_type));
-                match base_type.sty {
-                    ty::ty_ptr(_) => {
-                        self.require_unsafe(expr.span,
-                                            "dereference of unsafe pointer")
-                    }
-                    _ => {}
+                       ppaux::ty_to_string(self.tcx, base_type));
+                if let ty::ty_ptr(_) = base_type.sty {
+                    self.require_unsafe(expr.span, "dereference of unsafe pointer")
                 }
             }
             ast::ExprAssign(ref base, _) | ast::ExprAssignOp(_, ref base, _) => {
@@ -181,14 +174,11 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EffectCheckVisitor<'a, 'tcx> {
                 self.check_str_index(&**base);
             }
             ast::ExprInlineAsm(..) => {
-                self.require_unsafe(expr.span, "use of inline assembly")
+                self.require_unsafe(expr.span, "use of inline assembly");
             }
             ast::ExprPath(..) => {
-                match ty::resolve_expr(self.tcx, expr) {
-                    def::DefStatic(_, true) => {
-                        self.require_unsafe(expr.span, "use of mutable static")
-                    }
-                    _ => {}
+                if let def::DefStatic(_, true) = ty::resolve_expr(self.tcx, expr) {
+                    self.require_unsafe(expr.span, "use of mutable static");
                 }
             }
             _ => {}

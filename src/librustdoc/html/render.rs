@@ -805,96 +805,87 @@ impl DocFolder for Cache {
 
         // Propagate a trait methods' documentation to all implementors of the
         // trait
-        match item.inner {
-            clean::TraitItem(ref t) => {
-                self.traits.insert(item.def_id, t.clone());
-            }
-            _ => {}
+        if let clean::TraitItem(ref t) = item.inner {
+            self.traits.insert(item.def_id, t.clone());
         }
 
         // Collect all the implementors of traits.
-        match item.inner {
-            clean::ImplItem(ref i) => {
-                match i.trait_ {
-                    Some(clean::ResolvedPath{ did, .. }) => {
-                        let v = match self.implementors.entry(did) {
-                            Vacant(entry) => entry.set(Vec::with_capacity(1)),
-                            Occupied(entry) => entry.into_mut(),
-                        };
-                        v.push(Implementor {
-                            def_id: item.def_id,
-                            generics: i.generics.clone(),
-                            trait_: i.trait_.as_ref().unwrap().clone(),
-                            for_: i.for_.clone(),
-                            stability: item.stability.clone(),
-                        });
-                    }
-                    Some(..) | None => {}
+        if let clean::ImplItem(ref i) = item.inner {
+            match i.trait_ {
+                Some(clean::ResolvedPath{ did, .. }) => {
+                    let v = match self.implementors.entry(did) {
+                        Vacant(entry) => entry.set(Vec::with_capacity(1)),
+                        Occupied(entry) => entry.into_mut(),
+                    };
+                    v.push(Implementor {
+                        def_id: item.def_id,
+                        generics: i.generics.clone(),
+                        trait_: i.trait_.as_ref().unwrap().clone(),
+                        for_: i.for_.clone(),
+                        stability: item.stability.clone(),
+                    });
                 }
+                Some(..) | None => {}
             }
-            _ => {}
         }
 
         // Index this method for searching later on
-        match item.name {
-            Some(ref s) => {
-                let (parent, is_method) = match item.inner {
-                    clean::TyMethodItem(..) |
-                    clean::StructFieldItem(..) |
-                    clean::VariantItem(..) => {
-                        ((Some(*self.parent_stack.last().unwrap()),
-                          Some(self.stack[..self.stack.len() - 1])),
-                          false)
-                    }
-                    clean::MethodItem(..) => {
-                        if self.parent_stack.len() == 0 {
-                            ((None, None), false)
-                        } else {
-                            let last = self.parent_stack.last().unwrap();
-                            let did = *last;
-                            let path = match self.paths.get(&did) {
-                                Some(&(_, item_type::Trait)) =>
-                                    Some(self.stack[..self.stack.len() - 1]),
-                                // The current stack not necessarily has correlation for
-                                // where the type was defined. On the other hand,
-                                // `paths` always has the right information if present.
-                                Some(&(ref fqp, item_type::Struct)) |
-                                Some(&(ref fqp, item_type::Enum)) =>
-                                    Some(fqp[..fqp.len() - 1]),
-                                Some(..) => Some(self.stack.as_slice()),
-                                None => None
-                            };
-                            ((Some(*last), path), true)
-                        }
-                    }
-                    _ => ((None, Some(self.stack.as_slice())), false)
-                };
-                let hidden_field = match item.inner {
-                    clean::StructFieldItem(clean::HiddenStructField) => true,
-                    _ => false
-                };
-
-                match parent {
-                    (parent, Some(path)) if is_method || (!self.privmod && !hidden_field) => {
-                        self.search_index.push(IndexItem {
-                            ty: shortty(&item),
-                            name: s.to_string(),
-                            path: path.connect("::").to_string(),
-                            desc: shorter(item.doc_value()).to_string(),
-                            parent: parent,
-                        });
-                    }
-                    (Some(parent), None) if is_method || (!self.privmod && !hidden_field)=> {
-                        if ast_util::is_local(parent) {
-                            // We have a parent, but we don't know where they're
-                            // defined yet. Wait for later to index this item.
-                            self.orphan_methods.push((parent.node, item.clone()))
-                        }
-                    }
-                    _ => {}
+        if let Some(ref s) = item.name {
+            let (parent, is_method) = match item.inner {
+                clean::TyMethodItem(..) |
+                clean::StructFieldItem(..) |
+                clean::VariantItem(..) => {
+                    ((Some(*self.parent_stack.last().unwrap()),
+                      Some(self.stack[..self.stack.len() - 1])),
+                     false)
                 }
+                clean::MethodItem(..) => {
+                    if self.parent_stack.len() == 0 {
+                        ((None, None), false)
+                    } else {
+                        let last = self.parent_stack.last().unwrap();
+                        let did = *last;
+                        let path = match self.paths.get(&did) {
+                            Some(&(_, item_type::Trait)) =>
+                                Some(self.stack[..self.stack.len() - 1]),
+                            // The current stack not necessarily has correlation for
+                            // where the type was defined. On the other hand,
+                            // `paths` always has the right information if present.
+                            Some(&(ref fqp, item_type::Struct)) |
+                            Some(&(ref fqp, item_type::Enum)) =>
+                                Some(fqp[..fqp.len() - 1]),
+                            Some(..) => Some(self.stack.as_slice()),
+                            None => None
+                        };
+                        ((Some(*last), path), true)
+                    }
+                }
+                _ => ((None, Some(self.stack.as_slice())), false)
+            };
+            let hidden_field = match item.inner {
+                clean::StructFieldItem(clean::HiddenStructField) => true,
+                _ => false
+            };
+
+            match parent {
+                (parent, Some(path)) if is_method || (!self.privmod && !hidden_field) => {
+                    self.search_index.push(IndexItem {
+                        ty: shortty(&item),
+                        name: s.to_string(),
+                        path: path.connect("::").to_string(),
+                        desc: shorter(item.doc_value()).to_string(),
+                        parent: parent,
+                    });
+                }
+                (Some(parent), None) if is_method || (!self.privmod && !hidden_field)=> {
+                    if ast_util::is_local(parent) {
+                        // We have a parent, but we don't know where they're
+                        // defined yet. Wait for later to index this item.
+                        self.orphan_methods.push((parent.node, item.clone()))
+                    }
+                }
+                _ => {}
             }
-            None => {}
         }
 
         // Keep track of the fully qualified path for this item.
@@ -1013,20 +1004,18 @@ impl DocFolder for Cache {
                             _ => None,
                         };
 
-                        match did {
-                            Some(did) => {
-                                let v = match self.impls.entry(did) {
-                                    Vacant(entry) => entry.set(Vec::with_capacity(1)),
-                                    Occupied(entry) => entry.into_mut(),
-                                };
-                                v.push(Impl {
-                                    impl_: i,
-                                    dox: dox,
-                                    stability: item.stability.clone(),
-                                });
-                            }
-                            None => {}
+                        if let Some(did) = did {
+                            let v = match self.impls.entry(did) {
+                                Vacant(entry) => entry.set(Vec::with_capacity(1)),
+                                Occupied(entry) => entry.into_mut(),
+                            };
+                            v.push(Impl {
+                                impl_: i,
+                                dox: dox,
+                                stability: item.stability.clone(),
+                            });
                         }
+
                         None
                     }
 
@@ -1865,22 +1854,19 @@ fn item_struct(w: &mut fmt::Formatter, it: &clean::Item,
             _ => false,
         }
     }).peekable();
-    match s.struct_type {
-        doctree::Plain => {
-            if fields.peek().is_some() {
-                try!(write!(w, "<h2 class='fields'>Fields</h2>\n<table>"));
-                for field in fields {
-                    try!(write!(w, "<tr><td id='structfield.{name}'>\
-                                      {stab}<code>{name}</code></td><td>",
-                                  stab = ConciseStability(&field.stability),
-                                  name = field.name.as_ref().unwrap().as_slice()));
-                    try!(document(w, field));
-                    try!(write!(w, "</td></tr>"));
-                }
-                try!(write!(w, "</table>"));
+    if let doctree::Plain = s.struct_type {
+        if fields.peek().is_some() {
+            try!(write!(w, "<h2 class='fields'>Fields</h2>\n<table>"));
+            for field in fields {
+                try!(write!(w, "<tr><td id='structfield.{name}'>\
+                                  {stab}<code>{name}</code></td><td>",
+                            stab = ConciseStability(&field.stability),
+                            name = field.name.as_ref().unwrap().as_slice()));
+                try!(document(w, field));
+                try!(write!(w, "</td></tr>"));
             }
+            try!(write!(w, "</table>"));
         }
-        _ => {}
     }
     render_methods(w, it)
 }

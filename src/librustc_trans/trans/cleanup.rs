@@ -236,11 +236,8 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
     /// Returns the id of the top-most loop scope
     fn top_loop_scope(&self) -> ast::NodeId {
         for scope in self.scopes.borrow().iter().rev() {
-            match scope.kind {
-                LoopScopeKind(id, _) => {
-                    return id;
-                }
-                _ => {}
+            if let LoopScopeKind(id, _) = scope.kind {
+                return id;
             }
         }
         self.ccx.sess().bug("no loop scope found");

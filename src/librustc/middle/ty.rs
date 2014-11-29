@@ -1893,11 +1893,8 @@ impl FlagComputation {
             }
 
             &ty_closure(ref f) => {
-                match f.store {
-                    RegionTraitStore(r, _) => {
-                        self.add_region(r);
-                    }
-                    _ => {}
+                if let RegionTraitStore(r, _) = f.store {
+                    self.add_region(r);
                 }
                 self.add_fn_sig(&f.sig);
                 self.add_bounds(&f.bounds);
@@ -3664,9 +3661,8 @@ pub fn adjust_ty<'tcx>(cx: &ctxt<'tcx>,
                        method_type: |typeck::MethodCall| -> Option<Ty<'tcx>>)
                        -> Ty<'tcx> {
 
-    match unadjusted_ty.sty {
-        ty_err => return unadjusted_ty,
-        _ => {}
+    if let ty_err = unadjusted_ty.sty {
+        return unadjusted_ty;
     }
 
     return match adjustment {

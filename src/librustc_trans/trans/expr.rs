@@ -209,14 +209,11 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
             // (You might think there is a more elegant way to do this than a
             // use_autoref bool, but then you remember that the borrow checker exists).
-            match (use_autoref, &adj.autoref) {
-                (true, &Some(ref a)) => {
-                    datum = unpack_datum!(bcx, apply_autoref(a,
-                                                             bcx,
-                                                             expr,
-                                                             datum));
-                }
-                _ => {}
+            if let (true, &Some(ref a)) = (use_autoref, &adj.autoref) {
+                datum = unpack_datum!(bcx, apply_autoref(a,
+                                                         bcx,
+                                                         expr,
+                                                         datum));
             }
         }
     }
