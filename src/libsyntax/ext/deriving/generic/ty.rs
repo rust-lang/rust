@@ -80,7 +80,7 @@ impl<'a> Path<'a> {
         let lt = mk_lifetimes(cx, span, &self.lifetime);
         let tys = self.params.iter().map(|t| t.to_ty(cx, span, self_ty, self_generics)).collect();
 
-        cx.path_all(span, self.global, idents, lt, tys)
+        cx.path_all(span, self.global, idents, lt, tys, Vec::new())
     }
 }
 
@@ -177,7 +177,7 @@ impl<'a> Ty<'a> {
                                                        .collect();
 
                 cx.path_all(span, false, vec!(self_ty), lifetimes,
-                            self_params.into_vec())
+                            self_params.into_vec(), Vec::new())
             }
             Literal(ref p) => {
                 p.to_path(cx, span, self_ty, self_generics)

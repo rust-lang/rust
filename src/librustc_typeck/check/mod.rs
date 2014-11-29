@@ -112,7 +112,7 @@ use std::collections::hash_map::{Occupied, Vacant};
 use std::mem::replace;
 use std::rc::Rc;
 use syntax::{mod, abi, attr};
-use syntax::ast::{mod, ProvidedMethod, RequiredMethod, TypeTraitItem};
+use syntax::ast::{mod, ProvidedMethod, RequiredMethod, TypeTraitItem, DefId};
 use syntax::ast_util::{mod, local_def, PostExpansionMethod};
 use syntax::codemap::{mod, Span};
 use syntax::owned_slice::OwnedSlice;
@@ -1585,9 +1585,9 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
                                _: Option<Ty<'tcx>>,
                                _: ast::DefId,
                                _: ast::DefId)
-                               -> Ty<'tcx> {
+                               -> Option<Ty<'tcx>> {
         self.tcx().sess.span_err(span, "unsupported associated type binding");
-        ty::mk_err()
+        Some(ty::mk_err())
     }
 }
 
@@ -5152,12 +5152,18 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             }
 
             Some(space) => {
+                let trait_def_id = match def {
+                    def::DefTrait(did) => Some(did),
+                    _ => None
+                };
                 push_explicit_parameters_from_segment_to_substs(fcx,
                                                                 space,
                                                                 path.span,
                                                                 type_defs,
                                                                 region_defs,
                                                                 segment,
+                                                                trait_def_id,
+                                                                path.span,
                                                                 &mut substs);
             }
         }
@@ -5244,12 +5250,14 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         type_defs: &VecPerParamSpace<ty::TypeParameterDef<'tcx>>,
         region_defs: &VecPerParamSpace<ty::RegionParameterDef>,
         segment: &ast::PathSegment,
+        trait_def_id: Option<DefId>,
+        path_span: Span,
         substs: &mut Substs<'tcx>)
     {
         match segment.parameters {
             ast::AngleBracketedParameters(ref data) => {
                 push_explicit_angle_bracketed_parameters_from_segment_to_substs(
-                    fcx, space, type_defs, region_defs, data, substs);
+                    fcx, space, type_defs, region_defs, data, trait_def_id, path_span, substs);
             }
 
             ast::ParenthesizedParameters(ref data) => {
@@ -5265,6 +5273,8 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         type_defs: &VecPerParamSpace<ty::TypeParameterDef<'tcx>>,
         region_defs: &VecPerParamSpace<ty::RegionParameterDef>,
         data: &ast::AngleBracketedParameterData,
+        trait_def_id: Option<DefId>,
+        path_span: Span,
         substs: &mut Substs<'tcx>)
     {
         {
@@ -5281,8 +5291,54 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                          found {} parameter(s)",
                          type_count, data.types.len());
                     substs.types.truncate(space, 0);
+                    break;
                 }
             }
+        }
+
+        if let Some(trait_def_id) = trait_def_id {
+            let ref items = fcx.tcx().trait_item_def_ids.borrow()[trait_def_id];
+            let mut assoc_tys = Vec::new();
+            for item in items.iter() {
+                if let &ty::ImplOrTraitItemId::TypeTraitItemId(id) = item {
+                    if let ty::ImplOrTraitItem::TypeTraitItem(ref ty) =
+                      fcx.tcx().impl_or_trait_items.borrow()[id] {
+                        assoc_tys.push(ty.clone());
+                    }
+                }
+            }
+
+            if data.bindings.len() > assoc_tys.len() {
+                span_err!(fcx.tcx().sess, data.bindings[assoc_tys.len()].span, E0174,
+                    "too many type equality constraints provided: \
+                     expected at most {} constraint(s), \
+                     found {} constraint(s)",
+                     assoc_tys.len(), data.types.len());
+                substs.types.truncate(space, 0);
+            } else if data.bindings.len() > 0 {
+                for assoc_ty in assoc_tys.iter() {
+                    let mut matched = false;
+                    for binding in data.bindings.iter() {
+                        if assoc_ty.name.ident() == binding.ident {
+                            let t = fcx.to_ty(&*binding.ty);
+                            substs.types.push(space, t);
+                            matched = true;
+                            break;
+                        }
+                    }
+                    if !matched {
+                        span_err!(fcx.tcx().sess, path_span, E0176,
+                            "missing type equality constraint for associated type: {}",
+                             assoc_ty.name);
+                        substs.types.truncate(space, 0);
+                        break;
+                    }
+                }
+            }
+        } else if data.bindings.len() > 0 {
+            span_err!(fcx.tcx().sess, path_span, E0175,
+                "type equality constraints provided on a non-trait type");
+            substs.types.truncate(space, 0);
         }
 
         {

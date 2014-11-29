@@ -10,7 +10,7 @@
 // except according to those terms.
 
 use middle::subst;
-use middle::subst::{ParamSpace, Substs, VecPerParamSpace};
+use middle::subst::{ParamSpace, Substs, VecPerParamSpace, Subst};
 use middle::infer::InferCtxt;
 use middle::ty::{mod, Ty};
 use std::collections::HashSet;
@@ -149,7 +149,18 @@ pub fn fresh_substs_for_impl<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
 {
     let tcx = infcx.tcx;
     let impl_generics = ty::lookup_item_type(tcx, impl_def_id).generics;
-    infcx.fresh_substs_for_generics(span, &impl_generics)
+    let input_substs = infcx.fresh_substs_for_generics(span, &impl_generics);
+
+    // Add substs for the associated types bound in the impl.
+    let ref items = tcx.impl_items.borrow()[impl_def_id];
+    let mut assoc_tys = Vec::new();
+    for item in items.iter() {
+        if let &ty::ImplOrTraitItemId::TypeTraitItemId(id) = item {
+            assoc_tys.push(tcx.tcache.borrow()[id].ty.subst(tcx, &input_substs));
+        }
+    }
+
+    input_substs.with_assoc_tys(assoc_tys)
 }
 
 impl<'tcx, N> fmt::Show for VtableImplData<'tcx, N> {

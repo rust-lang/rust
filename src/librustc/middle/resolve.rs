@@ -3407,9 +3407,8 @@ impl<'a> Resolver<'a> {
                         // This is not a crate-relative path. We resolve the
                         // first component of the path in the current lexical
                         // scope and then proceed to resolve below that.
-                        match self.resolve_module_in_lexical_scope(
-                                                            module_,
-                                                            module_path[0]) {
+                        match self.resolve_module_in_lexical_scope(module_,
+                                                                   module_path[0]) {
                             Failed(err) => return Failed(err),
                             Indeterminate => {
                                 debug!("(resolving module path for import) \
@@ -4590,25 +4589,42 @@ impl<'a> Resolver<'a> {
 
     fn resolve_where_clause(&mut self, where_clause: &ast::WhereClause) {
         for predicate in where_clause.predicates.iter() {
-            match self.resolve_identifier(predicate.ident,
-                                          TypeNS,
-                                          true,
-                                          predicate.span) {
-                Some((def @ DefTyParam(_, _, _), last_private)) => {
-                    self.record_def(predicate.id, (def, last_private));
-                }
-                _ => {
-                    self.resolve_error(
-                        predicate.span,
-                        format!("undeclared type parameter `{}`",
-                                token::get_ident(
-                                    predicate.ident)).as_slice());
-                }
-            }
+            match predicate {
+                &ast::BoundPredicate(ref bound_pred) => {
+                    match self.resolve_identifier(bound_pred.ident,
+                                                  TypeNS,
+                                                  true,
+                                                  bound_pred.span) {
+                        Some((def @ DefTyParam(..), last_private)) => {
+                            self.record_def(bound_pred.id, (def, last_private));
+                        }
+                        _ => {
+                            self.resolve_error(
+                                bound_pred.span,
+                                format!("undeclared type parameter `{}`",
+                                        token::get_ident(
+                                            bound_pred.ident)).as_slice());
+                        }
+                    }
 
-            for bound in predicate.bounds.iter() {
-                self.resolve_type_parameter_bound(predicate.id, bound,
-                                                  TraitBoundingTypeParameter);
+                    for bound in bound_pred.bounds.iter() {
+                        self.resolve_type_parameter_bound(bound_pred.id, bound,
+                                                          TraitBoundingTypeParameter);
+                    }
+                }
+                &ast::EqPredicate(ref eq_pred) => {
+                    match self.resolve_path(eq_pred.id, &eq_pred.path, TypeNS, true) {
+                        Some((def @ DefTyParam(..), last_private)) => {
+                            self.record_def(eq_pred.id, (def, last_private));
+                        }
+                        _ => {
+                            self.resolve_error(eq_pred.path.span,
+                                               "undeclared associated type");
+                        }
+                    }
+
+                    self.resolve_type(&*eq_pred.ty);
+                }
             }
         }
     }
@@ -5269,15 +5285,19 @@ impl<'a> Resolver<'a> {
                     path: &Path,
                     namespace: Namespace,
                     check_ribs: bool) -> Option<(Def, LastPrivate)> {
-        // First, resolve the types.
+        // First, resolve the types and associated type bindings.
         for ty in path.segments.iter().flat_map(|s| s.parameters.types().into_iter()) {
             self.resolve_type(&**ty);
+        }
+        for binding in path.segments.iter().flat_map(|s| s.parameters.bindings().into_iter()) {
+            self.resolve_type(&*binding.ty);
         }
 
         if path.global {
             return self.resolve_crate_relative_path(path, namespace);
         }
 
+        // Try to find a path to an item in a module.
         let unqualified_def =
                 self.resolve_identifier(path.segments
                                             .last().unwrap()
