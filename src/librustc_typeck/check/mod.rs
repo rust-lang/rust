@@ -5355,6 +5355,7 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                         region_count,
                         data.lifetimes.len());
                     substs.mut_regions().truncate(space, 0);
+                    break;
                 }
             }
         }

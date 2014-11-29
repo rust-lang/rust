@@ -139,7 +139,7 @@ impl<'cx, 'tcx> Iterator<Rc<ty::TraitRef<'tcx>>> for Supertraits<'cx, 'tcx> {
 }
 
 // determine the `self` type, using fresh variables for all variables
-// declared on the impl declaration e.g., `impl<A,B> for ~[(A,B)]`
+// declared on the impl declaration e.g., `impl<A,B> for Box<[(A,B)]>`
 // would return ($0, $1) where $0 and $1 are freshly instantiated type
 // variables.
 pub fn fresh_substs_for_impl<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,

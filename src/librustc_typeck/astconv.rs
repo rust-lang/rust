@@ -522,16 +522,6 @@ fn convert_parenthesized_parameters<'tcx,AC>(this: &AC,
     vec![input_ty, output]
 }
 
-pub fn instantiate_poly_trait_ref<'tcx,AC,RS>(
-    this: &AC,
-    rscope: &RS,
-    ast_trait_ref: &ast::PolyTraitRef,
-    self_ty: Option<Ty<'tcx>>)
-    -> Rc<ty::TraitRef<'tcx>>
-    where AC: AstConv<'tcx>, RS: RegionScope
-{
-    instantiate_trait_ref(this, rscope, &ast_trait_ref.trait_ref, self_ty)
-}
 
 /// Instantiates the path for the given trait reference, assuming that it's bound to a valid trait
 /// type. Returns the def_id for the defining trait. Fails if the type is a type other than a trait
@@ -637,7 +627,6 @@ pub fn ast_path_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                                         rscope,
                                         did,
                                         &generics,
-                                        None,
                                         path);
     let ty = decl_ty.subst(tcx, &substs);
     TypeAndSubsts { substs: substs, ty: ty }
@@ -678,7 +667,7 @@ pub fn ast_path_to_ty_relaxed<'tcx,AC,RS>(
         Substs::new(VecPerParamSpace::params_from_type(type_params),
                     VecPerParamSpace::params_from_type(region_params))
     } else {
-        ast_path_substs_for_ty(this, rscope, did, &generics, None, path)
+        ast_path_substs_for_ty(this, rscope, did, &generics, path)
     };
 
     let ty = decl_ty.subst(tcx, &substs);
@@ -777,7 +766,7 @@ fn ast_ty_to_trait_ref<'tcx,AC,RS>(this: &AC,
             }
         }
         _ => {
-            span_err!(this.tcx().sess, ty.span, E0171,
+            span_err!(this.tcx().sess, ty.span, E0178,
                       "expected a path on the left-hand side of `+`, not `{}`",
                       pprust::ty_to_string(ty));
             match ty.node {
@@ -788,8 +777,7 @@ fn ast_ty_to_trait_ref<'tcx,AC,RS>(this: &AC,
                                pprust::ty_to_string(&*mut_ty.ty),
                                pprust::bounds_to_string(bounds));
                 }
-
-                ast::TyRptr(Some(ref lt), ref mut_ty) => {
+               ast::TyRptr(Some(ref lt), ref mut_ty) => {
                     span_note!(this.tcx().sess, ty.span,
                                "perhaps you meant `&{} {}({} +{})`? (per RFC 248)",
                                pprust::lifetime_to_string(lt),
@@ -806,7 +794,6 @@ fn ast_ty_to_trait_ref<'tcx,AC,RS>(this: &AC,
             Err(ErrorReported)
         }
     }
-
 }
 
 fn trait_ref_to_object_type<'tcx,AC,RS>(this: &AC,

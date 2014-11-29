@@ -1020,7 +1020,7 @@ fn get_method_index<'tcx>(tcx: &ty::ctxt<'tcx>,
     // iterating down the supertraits of the object's trait until
     // we find the trait the method came from, counting up the
     // methods from them.
-    let mut method_count = 0;
+    let mut method_count = n_method;
     ty::each_bound_trait_and_supertraits(tcx, &[subtrait], |bound_ref| {
         if bound_ref.def_id == trait_ref.def_id {
             false
@@ -1035,7 +1035,7 @@ fn get_method_index<'tcx>(tcx: &ty::ctxt<'tcx>,
             true
         }
     });
-    method_count + n_method
+    method_count
 }
 
 impl<'tcx> Candidate<'tcx> {
