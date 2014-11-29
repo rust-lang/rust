@@ -663,48 +663,43 @@ fn is_associated_type_valid_for_param(ty: Ty,
 
 fn find_associated_type_in_generics<'tcx>(tcx: &ty::ctxt<'tcx>,
                                           span: Span,
-                                          ty: Option<Ty<'tcx>>,
+                                          self_ty: Option<Ty<'tcx>>,
                                           associated_type_id: ast::DefId,
                                           generics: &ty::Generics<'tcx>)
-                                          -> Ty<'tcx>
+                                          -> Option<Ty<'tcx>>
 {
     debug!("find_associated_type_in_generics(ty={}, associated_type_id={}, generics={}",
-           ty.repr(tcx), associated_type_id.repr(tcx), generics.repr(tcx));
+           self_ty.repr(tcx), associated_type_id.repr(tcx), generics.repr(tcx));
 
-    let ty = match ty {
+    let self_ty = match self_ty {
         None => {
-            tcx.sess.span_bug(span,
-                              "find_associated_type_in_generics(): no self \
-                               type")
+            return None;
         }
         Some(ty) => ty,
     };
 
-    match ty.sty {
+    match self_ty.sty {
         ty::ty_param(ref param_ty) => {
-            /*let type_parameter = generics.types.get(param_ty.space,
-                                                    param_ty.idx);
-            let param_id = type_parameter.def_id;*/
             let param_id = param_ty.def_id;
             for type_parameter in generics.types.iter() {
                 if type_parameter.def_id == associated_type_id
                     && type_parameter.associated_with == Some(param_id) {
-                    return ty::mk_param_from_def(tcx, type_parameter);
+                    return Some(ty::mk_param_from_def(tcx, type_parameter));
                 }
             }
 
             tcx.sess.span_err(
                 span,
                 format!("no suitable bound on `{}`",
-                        ty.user_string(tcx))[]);
-            ty::mk_err()
+                        self_ty.user_string(tcx))[]);
+            Some(ty::mk_err())
         }
         _ => {
             tcx.sess.span_err(
                 span,
                 "it is currently unsupported to access associated types except \
                  through a type parameter; this restriction will be lifted in time");
-            ty::mk_err()
+            Some(ty::mk_err())
         }
     }
 }
@@ -762,16 +757,16 @@ impl<'a,'tcx> AstConv<'tcx> for ImplCtxt<'a,'tcx> {
 
     fn associated_type_binding(&self,
                                span: Span,
-                               ty: Option<Ty<'tcx>>,
+                               self_ty: Option<Ty<'tcx>>,
                                trait_id: ast::DefId,
                                associated_type_id: ast::DefId)
-                               -> Ty<'tcx>
+                               -> Option<Ty<'tcx>>
     {
-        let trait_def = ty::lookup_trait_def(self.tcx(), trait_id);
         match self.opt_trait_ref_id {
+            // It's an associated type on the trait that we're
+            // implementing.
             Some(trait_ref_id) if trait_ref_id == trait_id => {
-                // It's an associated type on the trait that we're
-                // implementing.
+                let trait_def = ty::lookup_trait_def(self.tcx(), trait_id);
                 assert!(trait_def.generics.types
                         .get_slice(subst::AssocSpace)
                         .iter()
@@ -801,7 +796,7 @@ impl<'a,'tcx> AstConv<'tcx> for ImplCtxt<'a,'tcx> {
         // our bounds.
         find_associated_type_in_generics(self.ccx.tcx,
                                          span,
-                                         ty,
+                                         self_ty,
                                          associated_type_id,
                                          self.impl_generics)
     }
@@ -840,17 +835,17 @@ impl<'a,'tcx> AstConv<'tcx> for FnCtxt<'a,'tcx> {
 
     fn associated_type_binding(&self,
                                span: Span,
-                               ty: Option<Ty<'tcx>>,
+                               self_ty: Option<Ty<'tcx>>,
                                _: ast::DefId,
                                associated_type_id: ast::DefId)
-                               -> Ty<'tcx> {
+                               -> Option<Ty<'tcx>> {
         debug!("collect::FnCtxt::associated_type_binding()");
 
         // The ID should map to an associated type on one of the traits in
         // our bounds.
         find_associated_type_in_generics(self.ccx.tcx,
                                          span,
-                                         ty,
+                                         self_ty,
                                          associated_type_id,
                                          self.generics)
     }
@@ -887,17 +882,17 @@ impl<'a,'tcx> AstConv<'tcx> for ImplMethodCtxt<'a,'tcx> {
 
     fn associated_type_binding(&self,
                                span: Span,
-                               ty: Option<Ty<'tcx>>,
+                               self_ty: Option<Ty<'tcx>>,
                                _: ast::DefId,
                                associated_type_id: ast::DefId)
-                               -> Ty<'tcx> {
+                               -> Option<Ty<'tcx>> {
         debug!("collect::ImplMethodCtxt::associated_type_binding()");
 
         // The ID should map to an associated type on one of the traits in
         // our bounds.
         find_associated_type_in_generics(self.ccx.tcx,
                                          span,
-                                         ty,
+                                         self_ty,
                                          associated_type_id,
                                          self.method_generics)
     }
@@ -979,7 +974,7 @@ impl<'a,'tcx> AstConv<'tcx> for TraitMethodCtxt<'a,'tcx> {
         // our bounds.
         find_associated_type_in_generics(self.ccx.tcx,
                                          span,
-                                         ty,
+                                         self_ty,
                                          associated_type_id,
                                          self.method_generics)
     }
@@ -1020,17 +1015,17 @@ impl<'a,'tcx,AC:AstConv<'tcx>> AstConv<'tcx> for GenericsCtxt<'a,'tcx,AC> {
 
     fn associated_type_binding(&self,
                                span: Span,
-                               ty: Option<Ty<'tcx>>,
+                               self_ty: Option<Ty<'tcx>>,
                                _: ast::DefId,
                                associated_type_id: ast::DefId)
-                               -> Ty<'tcx> {
+                               -> Option<Ty<'tcx>> {
         debug!("collect::GenericsCtxt::associated_type_binding()");
 
         // The ID should map to an associated type on one of the traits in
         // our bounds.
         find_associated_type_in_generics(self.chain.tcx(),
                                          span,
-                                         ty,
+                                         self_ty,
                                          associated_type_id,
                                          self.associated_types_generics)
     }
@@ -1364,8 +1359,12 @@ pub fn trait_def_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
     let self_param_ty = ty::ParamTy::for_self(def_id);
 
-    let bounds = compute_bounds(ccx, token::SELF_KEYWORD_NAME, self_param_ty,
-                                bounds.as_slice(), unbound, it.span,
+    let bounds = compute_bounds(ccx,
+                                token::SELF_KEYWORD_NAME,
+                                self_param_ty,
+                                bounds.as_slice(),
+                                unbound,
+                                it.span,
                                 &generics.where_clause);
 
     let substs = mk_item_substs(ccx, &ty_generics);
@@ -1791,7 +1790,7 @@ fn ty_generics<'tcx,AC>(this: &AC,
 
     return result;
 
-    fn create_type_parameters_for_associated_types<'tcx,AC>(
+    fn create_type_parameters_for_associated_types<'tcx, AC>(
         this: &AC,
         space: subst::ParamSpace,
         types: &[ast::TyParam],

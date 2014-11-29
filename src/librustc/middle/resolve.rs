@@ -108,7 +108,7 @@ pub type ExportMap2 = NodeMap<Vec<Export2>>;
 
 pub struct Export2 {
     pub name: String,        // The name of the target.
-    pub def_id: DefId,     // The definition of the target.
+    pub def_id: DefId,       // The definition of the target.
 }
 
 // This set contains all exported definitions from external crates. The set does
@@ -314,7 +314,7 @@ impl<'a> Copy for TypeParameters<'a> {}
 
 // The rib kind controls the translation of local
 // definitions (`DefLocal`) to upvars (`DefUpvar`).
-
+#[deriving(Show)]
 enum RibKind {
     // No translation needs to be applied.
     NormalRibKind,
@@ -340,6 +340,7 @@ enum RibKind {
 impl Copy for RibKind {}
 
 // Methods can be required or provided. RequiredMethod methods only occur in traits.
+#[deriving(Show)]
 enum MethodSort {
     RequiredMethod,
     ProvidedMethod(NodeId)
@@ -414,6 +415,7 @@ enum DuplicateCheckingMode {
 impl Copy for DuplicateCheckingMode {}
 
 /// One local scope.
+#[deriving(Show)]
 struct Rib {
     bindings: HashMap<Name, DefLike>,
     kind: RibKind,
@@ -728,8 +730,11 @@ impl NameBindings {
         let type_def = self.type_def.borrow().clone();
         match type_def {
             None => {
-                let module = Module::new(parent_link, def_id, kind,
-                                         external, is_public);
+                let module = Module::new(parent_link,
+                                         def_id,
+                                         kind,
+                                         external,
+                                         is_public);
                 *self.type_def.borrow_mut() = Some(TypeNsDef {
                     modifiers: modifiers,
                     module_def: Some(Rc::new(module)),
@@ -774,9 +779,9 @@ impl NameBindings {
             }
             Some(type_def) => {
                 *self.type_def.borrow_mut() = Some(TypeNsDef {
+                    module_def: type_def.module_def,
                     type_def: Some(def),
                     type_span: Some(sp),
-                    module_def: type_def.module_def,
                     modifiers: modifiers,
                 });
             }
@@ -1286,7 +1291,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn get_parent_link(&mut self, parent: ReducedGraphParent, name: Name)
-                           -> ParentLink {
+                       -> ParentLink {
         match parent {
             ModuleReducedGraphParent(module_) => {
                 return ModuleParentLink(module_.downgrade(), name);
@@ -1578,14 +1583,14 @@ impl<'a> Resolver<'a> {
 
             ItemImpl(_, Some(_), _, _) => parent,
 
-            ItemTrait(_, _, _, ref methods) => {
+            ItemTrait(_, _, _, ref items) => {
                 let name_bindings =
                     self.add_child(name,
                                    parent.clone(),
                                    ForbidDuplicateTypesAndModules,
                                    sp);
 
-                // Add all the methods within to a new module.
+                // Add all the items within to a new module.
                 let parent_link = self.get_parent_link(parent.clone(), name);
                 name_bindings.define_module(parent_link,
                                             Some(local_def(item.id)),
@@ -1598,13 +1603,12 @@ impl<'a> Resolver<'a> {
 
                 let def_id = local_def(item.id);
 
-                // Add the names of all the methods to the trait info.
-                for method in methods.iter() {
-                    let (name, kind) = match *method {
+                // Add the names of all the items to the trait info.
+                for trait_item in items.iter() {
+                    let (name, kind) = match *trait_item {
                         ast::RequiredMethod(_) |
                         ast::ProvidedMethod(_) => {
-                            let ty_m =
-                                ast_util::trait_item_to_ty_method(method);
+                            let ty_m = ast_util::trait_item_to_ty_method(trait_item);
 
                             let name = ty_m.ident.name;
 
@@ -3353,7 +3357,7 @@ impl<'a> Resolver<'a> {
                            use_lexical_scope: UseLexicalScopeFlag,
                            span: Span,
                            name_search_type: NameSearchType)
-                               -> ResolveResult<(Rc<Module>, LastPrivate)> {
+                           -> ResolveResult<(Rc<Module>, LastPrivate)> {
         let module_path_len = module_path.len();
         assert!(module_path_len > 0);
 
@@ -3382,7 +3386,9 @@ impl<'a> Resolver<'a> {
                                             mpath.slice_to(idx - 1));
                         return Failed(Some((span, msg)));
                     },
-                    None => return Failed(None),
+                    None => {
+                        return Failed(None)
+                    }
                 }
             }
             Failed(err) => return Failed(err),
@@ -3575,8 +3581,7 @@ impl<'a> Resolver<'a> {
                                 -> ResolveResult<Rc<Module>> {
         // If this module is an anonymous module, resolve the item in the
         // lexical scope. Otherwise, resolve the item from the crate root.
-        let resolve_result = self.resolve_item_in_lexical_scope(
-            module_, name, TypeNS);
+        let resolve_result = self.resolve_item_in_lexical_scope(module_, name, TypeNS);
         match resolve_result {
             Success((target, _)) => {
                 let bindings = &*target.bindings;
@@ -5327,15 +5332,15 @@ impl<'a> Resolver<'a> {
 
     // resolve a single identifier (used as a varref)
     fn resolve_identifier(&mut self,
-                              identifier: Ident,
-                              namespace: Namespace,
-                              check_ribs: bool,
-                              span: Span)
-                              -> Option<(Def, LastPrivate)> {
+                          identifier: Ident,
+                          namespace: Namespace,
+                          check_ribs: bool,
+                          span: Span)
+                          -> Option<(Def, LastPrivate)> {
         if check_ribs {
             match self.resolve_identifier_in_local_ribs(identifier,
-                                                      namespace,
-                                                      span) {
+                                                        namespace,
+                                                        span) {
                 Some(def) => {
                     return Some((def, LastMod(AllPublic)));
                 }
@@ -5353,7 +5358,7 @@ impl<'a> Resolver<'a> {
                                             containing_module: Rc<Module>,
                                             name: Name,
                                             namespace: Namespace)
-                                                -> NameDefinition {
+                                            -> NameDefinition {
         // First, search children.
         self.populate_module_if_necessary(&containing_module);
 
@@ -5423,9 +5428,9 @@ impl<'a> Resolver<'a> {
 
     // resolve a "module-relative" path, e.g. a::b::c
     fn resolve_module_relative_path(&mut self,
-                                        path: &Path,
-                                        namespace: Namespace)
-                                        -> Option<(Def, LastPrivate)> {
+                                    path: &Path,
+                                    namespace: Namespace)
+                                    -> Option<(Def, LastPrivate)> {
         let module_path = path.segments.init().iter()
                                               .map(|ps| ps.identifier.name)
                                               .collect::<Vec<_>>();
@@ -5442,9 +5447,8 @@ impl<'a> Resolver<'a> {
                 let (span, msg) = match err {
                     Some((span, msg)) => (span, msg),
                     None => {
-                        let msg = format!("Use of undeclared module `{}`",
-                                          self.names_to_string(
-                                               module_path.as_slice()));
+                        let msg = format!("Use of undeclared type or module `{}`",
+                                          self.names_to_string(module_path.as_slice()));
                         (path.span, msg)
                     }
                 };
@@ -5538,10 +5542,10 @@ impl<'a> Resolver<'a> {
     }
 
     fn resolve_identifier_in_local_ribs(&mut self,
-                                            ident: Ident,
-                                            namespace: Namespace,
-                                            span: Span)
-                                            -> Option<Def> {
+                                        ident: Ident,
+                                        namespace: Namespace,
+                                        span: Span)
+                                        -> Option<Def> {
         // Check the local set of ribs.
         let search_result = match namespace {
             ValueNS => {
