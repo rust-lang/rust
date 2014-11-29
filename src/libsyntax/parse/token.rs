@@ -564,6 +564,12 @@ pub fn get_ident_interner() -> Rc<IdentInterner> {
     KEY.with(|k| k.clone())
 }
 
+/// Reset the ident interner to its initial state.
+pub fn reset_ident_interner() {
+    let interner = get_ident_interner();
+    interner.reset(mk_fresh_ident_interner());
+}
+
 /// Represents a string stored in the task-local interner. Because the
 /// interner lives for the life of the task, this can be safely treated as an
 /// immortal string, as long as it never crosses between tasks.
