@@ -441,21 +441,19 @@ impl<'a, 'tcx, 'v> Visitor<'v> for GatherLocalsVisitor<'a, 'tcx> {
 
     // Add pattern bindings.
     fn visit_pat(&mut self, p: &ast::Pat) {
-        match p.node {
-            ast::PatIdent(_, ref path1, _)
-                if pat_util::pat_is_binding(&self.fcx.ccx.tcx.def_map, p) => {
-                    let var_ty = self.assign(p.span, p.id, None);
+        if let ast::PatIdent(_, ref path1, _) = p.node {
+            if pat_util::pat_is_binding(&self.fcx.ccx.tcx.def_map, p) {
+                let var_ty = self.assign(p.span, p.id, None);
 
-                    self.fcx.require_type_is_sized(var_ty, p.span,
-                                                   traits::VariableType(p.id));
+                self.fcx.require_type_is_sized(var_ty, p.span,
+                                               traits::VariableType(p.id));
 
-                    debug!("Pattern binding {} is assigned to {} with type {}",
-                           token::get_ident(path1.node),
-                           self.fcx.infcx().ty_to_string(
-                               self.fcx.inh.locals.borrow()[p.id].clone()),
-                           var_ty.repr(self.fcx.tcx()));
-                }
-            _ => {}
+                debug!("Pattern binding {} is assigned to {} with type {}",
+                       token::get_ident(path1.node),
+                       self.fcx.infcx().ty_to_string(
+                           self.fcx.inh.locals.borrow()[p.id].clone()),
+                       var_ty.repr(self.fcx.tcx()));
+            }
         }
         visit::walk_pat(self, p);
     }
@@ -681,14 +679,11 @@ pub fn check_item(ccx: &CrateCtxt, it: &ast::Item) {
                         "foreign items may not have type parameters");
                 }
 
-                match item.node {
-                    ast::ForeignItemFn(ref fn_decl, _) => {
-                        if fn_decl.variadic && m.abi != abi::C {
-                            span_err!(ccx.tcx.sess, item.span, E0045,
-                                "variadic function must have C calling convention");
-                        }
+                if let ast::ForeignItemFn(ref fn_decl, _) = item.node {
+                    if fn_decl.variadic && m.abi != abi::C {
+                        span_err!(ccx.tcx.sess, item.span, E0045,
+                                  "variadic function must have C calling convention");
                     }
-                    _ => {}
                 }
             }
         }
@@ -1808,9 +1803,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             traits::ObligationCause::new(span, code),
             ty,
             bound);
-        match obligation {
-            Ok(ob) => self.register_obligation(ob),
-            _ => {}
+        if let Ok(ob) = obligation {
+            self.register_obligation(ob);
         }
     }
 
@@ -3763,19 +3757,16 @@ fn check_expr_with_unifier<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
           check_expr(fcx, &**subexpr);
 
           let mut checked = false;
-          match place.node {
-              ast::ExprPath(ref path) => {
-                  // FIXME(pcwalton): For now we hardcode the two permissible
-                  // places: the exchange heap and the managed heap.
-                  let definition = lookup_def(fcx, path.span, place.id);
-                  let def_id = definition.def_id();
-                  let referent_ty = fcx.expr_ty(&**subexpr);
-                  if tcx.lang_items.exchange_heap() == Some(def_id) {
-                      fcx.write_ty(id, ty::mk_uniq(tcx, referent_ty));
-                      checked = true
-                  }
+          if let ast::ExprPath(ref path) = place.node {
+              // FIXME(pcwalton): For now we hardcode the two permissible
+              // places: the exchange heap and the managed heap.
+              let definition = lookup_def(fcx, path.span, place.id);
+              let def_id = definition.def_id();
+              let referent_ty = fcx.expr_ty(&**subexpr);
+              if tcx.lang_items.exchange_heap() == Some(def_id) {
+                  fcx.write_ty(id, ty::mk_uniq(tcx, referent_ty));
+                  checked = true
               }
-              _ => {}
           }
 
           if !checked {
@@ -4129,11 +4120,8 @@ fn check_expr_with_unifier<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         }
       }
       ast::ExprCast(ref e, ref t) => {
-        match t.node {
-            ast::TyFixedLengthVec(_, ref count_expr) => {
-                check_expr_with_hint(fcx, &**count_expr, ty::mk_uint());
-            }
-            _ => {}
+        if let ast::TyFixedLengthVec(_, ref count_expr) = t.node {
+            check_expr_with_hint(fcx, &**count_expr, ty::mk_uint());
         }
         check_cast(fcx, expr, &**e, &**t);
       }
@@ -4524,15 +4512,12 @@ pub fn check_decl_local(fcx: &FnCtxt, local: &ast::Local)  {
     let t = fcx.local_ty(local.span, local.id);
     fcx.write_ty(local.id, t);
 
-    match local.init {
-        Some(ref init) => {
-            check_decl_initializer(fcx, local.id, &**init);
-            let init_ty = fcx.expr_ty(&**init);
-            if ty::type_is_error(init_ty) {
-                fcx.write_ty(local.id, init_ty);
-            }
+    if let Some(ref init) = local.init {
+        check_decl_initializer(fcx, local.id, &**init);
+        let init_ty = fcx.expr_ty(&**init);
+        if ty::type_is_error(init_ty) {
+            fcx.write_ty(local.id, init_ty);
         }
-        _ => {}
     }
 
     let pcx = pat_ctxt {

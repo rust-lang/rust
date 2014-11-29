@@ -151,21 +151,15 @@ pub fn trans_slice_vec<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let vec_ty = node_id_type(bcx, slice_expr.id);
 
     // Handle the "..." case (returns a slice since strings are always unsized):
-    match content_expr.node {
-        ast::ExprLit(ref lit) => {
-            match lit.node {
-                ast::LitStr(ref s, _) => {
-                    let scratch = rvalue_scratch_datum(bcx, vec_ty, "");
-                    bcx = trans_lit_str(bcx,
-                                        content_expr,
-                                        s.clone(),
-                                        SaveIn(scratch.val));
-                    return DatumBlock::new(bcx, scratch.to_expr_datum());
-                }
-                _ => {}
-            }
+    if let ast::ExprLit(ref lit) = content_expr.node {
+        if let ast::LitStr(ref s, _) = lit.node {
+            let scratch = rvalue_scratch_datum(bcx, vec_ty, "");
+            bcx = trans_lit_str(bcx,
+                                content_expr,
+                                s.clone(),
+                                SaveIn(scratch.val));
+            return DatumBlock::new(bcx, scratch.to_expr_datum());
         }
-        _ => {}
     }
 
     // Handle the &[...] case:

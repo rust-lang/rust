@@ -892,14 +892,9 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
             let guarantor = cmt.guarantor();
             debug!("check_for_aliasable_mutable_writes(cmt={}, guarantor={})",
                    cmt.repr(this.tcx()), guarantor.repr(this.tcx()));
-            match guarantor.cat {
-                mc::cat_deref(ref b, _, mc::BorrowedPtr(ty::MutBorrow, _)) => {
-                    // Statically prohibit writes to `&mut` when aliasable
-
-                    check_for_aliasability_violation(this, span, b.clone());
-                }
-
-                _ => {}
+            if let mc::cat_deref(ref b, _, mc::BorrowedPtr(ty::MutBorrow, _)) = guarantor.cat {
+                // Statically prohibit writes to `&mut` when aliasable
+                check_for_aliasability_violation(this, span, b.clone());
             }
 
             return true; // no errors reported
@@ -962,4 +957,3 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                     self.bccx.loan_path_to_string(loan_path)).as_slice());
     }
 }
-

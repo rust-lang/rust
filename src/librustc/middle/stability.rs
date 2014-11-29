@@ -69,24 +69,18 @@ impl<'v> Visitor<'v> for Annotator {
     fn visit_item(&mut self, i: &Item) {
         self.annotate(i.id, &i.attrs, |v| visit::walk_item(v, i));
 
-        match i.node {
-            ast::ItemStruct(ref sd, _) => {
-                sd.ctor_id.map(|id| {
-                    self.annotate(id, &i.attrs, |_| {})
-                });
-            }
-            _ => {}
+        if let ast::ItemStruct(ref sd, _) = i.node {
+            sd.ctor_id.map(|id| {
+                self.annotate(id, &i.attrs, |_| {})
+            });
         }
     }
 
     fn visit_fn(&mut self, fk: FnKind<'v>, _: &'v FnDecl,
                 _: &'v Block, _: Span, _: NodeId) {
-        match fk {
-            FkMethod(_, _, meth) => {
-                // Methods are not already annotated, so we annotate it
-                self.annotate(meth.id, &meth.attrs, |_| {});
-            }
-            _ => {}
+        if let FkMethod(_, _, meth) = fk {
+            // Methods are not already annotated, so we annotate it
+            self.annotate(meth.id, &meth.attrs, |_| {});
         }
         // Items defined in a function body have no reason to have
         // a stability attribute, so we don't recurse.

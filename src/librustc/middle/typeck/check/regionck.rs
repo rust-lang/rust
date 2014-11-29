@@ -672,12 +672,9 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
                 }
                 None => rcx.resolve_node_type(base.id)
             };
-            match base_ty.sty {
-                ty::ty_rptr(r_ptr, _) => {
-                    mk_subregion_due_to_dereference(
-                        rcx, expr.span, ty::ReScope(CodeExtent::from_node_id(expr.id)), r_ptr);
-                }
-                _ => {}
+            if let ty::ty_rptr(r_ptr, _) = base_ty.sty {
+                mk_subregion_due_to_dereference(
+                    rcx, expr.span, ty::ReScope(CodeExtent::from_node_id(expr.id)), r_ptr);
             }
 
             visit::walk_expr(rcx, expr);
@@ -943,12 +940,9 @@ fn check_expr_fn_block(rcx: &mut Rcx,
                 let cause = traits::ObligationCause::new(freevar.span, code);
                 let obligation = traits::obligation_for_builtin_bound(rcx.tcx(), cause,
                                                                       var_ty, builtin_bound);
-                match obligation {
-                    Ok(obligation) => {
-                        rcx.fcx.inh.fulfillment_cx.borrow_mut().register_obligation(rcx.tcx(),
-                                                                                    obligation)
-                    }
-                    _ => {}
+                if let Ok(obligation) = obligation {
+                    rcx.fcx.inh.fulfillment_cx.borrow_mut().register_obligation(rcx.tcx(),
+                                                                                obligation)
                 }
             }
             type_must_outlive(
@@ -1036,20 +1030,17 @@ fn check_expr_fn_block(rcx: &mut Rcx,
             // after checking the inner closure (and hence
             // determining the final borrow_kind) and propagate that as
             // a constraint on the outer closure.
-            match freevar.def {
-                def::DefUpvar(var_id, outer_closure_id, _) => {
-                    // thing being captured is itself an upvar:
-                    let outer_upvar_id = ty::UpvarId {
-                        var_id: var_id,
-                        closure_expr_id: outer_closure_id };
-                    let inner_upvar_id = ty::UpvarId {
-                        var_id: var_id,
-                        closure_expr_id: expr.id };
-                    link_upvar_borrow_kind_for_nested_closures(rcx,
-                                                               inner_upvar_id,
-                                                               outer_upvar_id);
-                }
-                _ => {}
+            if let def::DefUpvar(var_id, outer_closure_id, _) = freevar.def {
+                // thing being captured is itself an upvar:
+                let outer_upvar_id = ty::UpvarId {
+                    var_id: var_id,
+                    closure_expr_id: outer_closure_id };
+                let inner_upvar_id = ty::UpvarId {
+                    var_id: var_id,
+                    closure_expr_id: expr.id };
+                link_upvar_borrow_kind_for_nested_closures(rcx,
+                                                           inner_upvar_id,
+                                                           outer_upvar_id);
             }
         }
     }
@@ -1199,12 +1190,9 @@ fn constrain_autoderefs<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
             None => derefd_ty
         };
 
-        match derefd_ty.sty {
-            ty::ty_rptr(r_ptr, _) => {
-                mk_subregion_due_to_dereference(rcx, deref_expr.span,
-                                                r_deref_expr, r_ptr);
-            }
-            _ => {}
+        if let ty::ty_rptr(r_ptr, _) =  derefd_ty.sty {
+            mk_subregion_due_to_dereference(rcx, deref_expr.span,
+                                            r_deref_expr, r_ptr);
         }
 
         match ty::deref(derefd_ty, true) {
@@ -1235,16 +1223,14 @@ fn constrain_index<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
            rcx.fcx.infcx().ty_to_string(indexed_ty));
 
     let r_index_expr = ty::ReScope(CodeExtent::from_node_id(index_expr.id));
-    match indexed_ty.sty {
-        ty::ty_rptr(r_ptr, mt) => match mt.ty.sty {
+    if let ty::ty_rptr(r_ptr, mt) = indexed_ty.sty {
+        match mt.ty.sty {
             ty::ty_vec(_, None) | ty::ty_str => {
                 rcx.fcx.mk_subr(infer::IndexSlice(index_expr.span),
                                 r_index_expr, r_ptr);
             }
             _ => {}
-        },
-
-        _ => {}
+        }
     }
 }
 
@@ -1615,21 +1601,18 @@ fn link_reborrowed_region<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
             // upvar borrow kind to mutable/unique.  Record the
             // information needed to perform the recursive link in the
             // maybe link map.
-            match note {
-                mc::NoteUpvarRef(upvar_id) => {
-                    let link = MaybeLink {
-                        span: span,
-                        borrow_region: borrow_region,
-                        borrow_kind: new_borrow_kind,
-                        borrow_cmt: ref_cmt
-                    };
+            if let mc::NoteUpvarRef(upvar_id) = note {
+                let link = MaybeLink {
+                    span: span,
+                    borrow_region: borrow_region,
+                    borrow_kind: new_borrow_kind,
+                    borrow_cmt: ref_cmt
+                };
 
-                    match rcx.maybe_links.borrow_mut().entry(upvar_id) {
-                        Vacant(entry) => { entry.set(vec![link]); }
-                        Occupied(entry) => { entry.into_mut().push(link); }
-                    }
-                },
-                _ => {}
+                match rcx.maybe_links.borrow_mut().entry(upvar_id) {
+                    Vacant(entry) => { entry.set(vec![link]); }
+                    Occupied(entry) => { entry.into_mut().push(link); }
+                }
             }
 
             return None;
@@ -1673,19 +1656,15 @@ fn adjust_upvar_borrow_kind_for_mut<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
 
             mc::cat_deref(base, _, mc::BorrowedPtr(..)) |
             mc::cat_deref(base, _, mc::Implicit(..)) => {
-                match cmt.note {
-                    mc::NoteUpvarRef(ref upvar_id) => {
-                        // if this is an implicit deref of an
-                        // upvar, then we need to modify the
-                        // borrow_kind of the upvar to make sure it
-                        // is inferred to mutable if necessary
-                        let mut upvar_borrow_map =
-                            rcx.fcx.inh.upvar_borrow_map.borrow_mut();
-                        let ub = &mut (*upvar_borrow_map)[*upvar_id];
-                        return adjust_upvar_borrow_kind(rcx, *upvar_id, ub, ty::MutBorrow);
-                    }
-
-                    _ => {}
+                if let mc::NoteUpvarRef(ref upvar_id) = cmt.note {
+                    // if this is an implicit deref of an
+                    // upvar, then we need to modify the
+                    // borrow_kind of the upvar to make sure it
+                    // is inferred to mutable if necessary
+                    let mut upvar_borrow_map =
+                        rcx.fcx.inh.upvar_borrow_map.borrow_mut();
+                    let ub = &mut (*upvar_borrow_map)[*upvar_id];
+                    return adjust_upvar_borrow_kind(rcx, *upvar_id, ub, ty::MutBorrow);
                 }
 
                 // assignment to deref of an `&mut`
@@ -1724,18 +1703,14 @@ fn adjust_upvar_borrow_kind_for_unique<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>, cmt: mc::c
 
             mc::cat_deref(base, _, mc::BorrowedPtr(..)) |
             mc::cat_deref(base, _, mc::Implicit(..)) => {
-                match cmt.note {
-                    mc::NoteUpvarRef(ref upvar_id) => {
-                        // if this is an implicit deref of an
-                        // upvar, then we need to modify the
-                        // borrow_kind of the upvar to make sure it
-                        // is inferred to unique if necessary
-                        let mut ub = rcx.fcx.inh.upvar_borrow_map.borrow_mut();
-                        let ub = &mut (*ub)[*upvar_id];
-                        return adjust_upvar_borrow_kind(rcx, *upvar_id, ub, ty::UniqueImmBorrow);
-                    }
-
-                    _ => {}
+                if let mc::NoteUpvarRef(ref upvar_id) = cmt.note {
+                    // if this is an implicit deref of an
+                    // upvar, then we need to modify the
+                    // borrow_kind of the upvar to make sure it
+                    // is inferred to unique if necessary
+                    let mut ub = rcx.fcx.inh.upvar_borrow_map.borrow_mut();
+                    let ub = &mut (*ub)[*upvar_id];
+                    return adjust_upvar_borrow_kind(rcx, *upvar_id, ub, ty::UniqueImmBorrow);
                 }
 
                 // for a borrowed pointer to be unique, its

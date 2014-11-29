@@ -438,14 +438,11 @@ fn enter_match<'a, 'b, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                     }
                 }
                 ast::PatVec(ref before, Some(ref slice), ref after) => {
-                    match slice.node {
-                        ast::PatIdent(_, ref path, None) => {
-                            let subslice_val = bind_subslice_pat(
-                                bcx, this.id, val,
-                                before.len(), after.len());
-                            bound_ptrs.push((path.node, subslice_val));
-                        }
-                        _ => {}
+                    if let ast::PatIdent(_, ref path, None) = slice.node {
+                        let subslice_val = bind_subslice_pat(
+                            bcx, this.id, val,
+                            before.len(), after.len());
+                        bound_ptrs.push((path.node, subslice_val));
                     }
                 }
                 _ => {}
@@ -835,9 +832,8 @@ fn insert_lllocals<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                 let datum = Datum::new(llval, binding_info.ty, Lvalue);
                 call_lifetime_start(bcx, llbinding);
                 bcx = datum.store_to(bcx, llbinding);
-                match cs {
-                    Some(cs) => bcx.fcx.schedule_lifetime_end(cs, llbinding),
-                    _ => {}
+                if let Some(cs) = cs {
+                    bcx.fcx.schedule_lifetime_end(cs, llbinding);
                 }
 
                 llbinding
@@ -851,12 +847,9 @@ fn insert_lllocals<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         };
 
         let datum = Datum::new(llval, binding_info.ty, Lvalue);
-        match cs {
-            Some(cs) => {
-                bcx.fcx.schedule_drop_and_zero_mem(cs, llval, binding_info.ty);
-                bcx.fcx.schedule_lifetime_end(cs, binding_info.llmatch);
-            }
-            _ => {}
+        if let Some(cs) = cs {
+            bcx.fcx.schedule_drop_and_zero_mem(cs, llval, binding_info.ty);
+            bcx.fcx.schedule_lifetime_end(cs, binding_info.llmatch);
         }
 
         debug!("binding {} to {}",
@@ -894,9 +887,8 @@ fn compile_guard<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let val = val.to_llbool(bcx);
 
     for (_, &binding_info) in data.bindings_map.iter() {
-        match binding_info.trmode {
-            TrByCopy(llbinding) => call_lifetime_end(bcx, llbinding),
-            _ => {}
+        if let TrByCopy(llbinding) = binding_info.trmode {
+            call_lifetime_end(bcx, llbinding);
         }
     }
 

@@ -264,18 +264,12 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
             // functions may still participate in some form of native interface,
             // but all other rust-only interfaces can be private (they will not
             // participate in linkage after this product is produced)
-            match *node {
-                ast_map::NodeItem(item) => {
-                    match item.node {
-                        ast::ItemFn(_, _, abi, _, _) => {
-                            if abi != abi::Rust {
-                                self.reachable_symbols.insert(search_item);
-                            }
-                        }
-                        _ => {}
+            if let ast_map::NodeItem(item) = *node {
+                if let ast::ItemFn(_, _, abi, _, _) = item.node {
+                    if abi != abi::Rust {
+                        self.reachable_symbols.insert(search_item);
                     }
                 }
-                _ => {}
             }
         } else {
             // If we are building a library, then reachable symbols will

@@ -310,19 +310,16 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
             }
 
             ast::ItemTy(ref ty, _) if public_first => {
-                match ty.node {
-                    ast::TyPath(_, id) => {
-                        match self.tcx.def_map.borrow()[id].clone() {
-                            def::DefPrimTy(..) | def::DefTyParam(..) => {},
-                            def => {
-                                let did = def.def_id();
-                                if is_local(did) {
-                                    self.exported_items.insert(did.node);
-                                }
+                if let ast::TyPath(_, id) = ty.node {
+                    match self.tcx.def_map.borrow()[id].clone() {
+                        def::DefPrimTy(..) | def::DefTyParam(..) => {},
+                        def => {
+                            let did = def.def_id();
+                            if is_local(did) {
+                                self.exported_items.insert(did.node);
                             }
                         }
                     }
-                    _ => {}
                 }
             }
 
@@ -771,11 +768,8 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
                                 resolve::AllPublic => None,
                                 resolve::DependsOn(def) => ck_public(def),
                             };
-                            match (v, t) {
-                                (Some(_), Some(t)) => {
-                                    self.report_error(Some(t));
-                                },
-                                _ => {},
+                            if let (Some(_), Some(t)) = (v, t) {
+                                self.report_error(Some(t));
                             }
                         },
                         _ => {},
@@ -1001,9 +995,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
                 match ty::pat_ty(self.tcx, pattern).sty {
                     ty::ty_struct(id, _) => {
                         for (i, field) in fields.iter().enumerate() {
-                            match field.node {
-                                ast::PatWild(..) => continue,
-                                _ => {}
+                            if let ast::PatWild(..) = field.node {
+                                continue
                             }
                             self.check_field(field.span, id, UnnamedField(i));
                         }
@@ -1075,14 +1068,9 @@ impl<'a, 'tcx, 'v> Visitor<'v> for SanePrivacyVisitor<'a, 'tcx> {
                     self.tcx.sess.span_err(i.span, "unnecessary `pub`, imports \
                                                     in functions are never \
                                                     reachable");
-                } else {
-                    match i.node {
-                        ast::ViewItemExternCrate(..) => {
-                            self.tcx.sess.span_err(i.span, "`pub` visibility \
-                                                            is not allowed");
-                        }
-                        _ => {}
-                    }
+                } else if let ast::ViewItemExternCrate(..) = i.node {
+                    self.tcx.sess.span_err(i.span, "`pub` visibility \
+                                                    is not allowed");
                 }
             }
         }
@@ -1275,34 +1263,28 @@ impl<'a, 'tcx> VisiblePrivateTypesVisitor<'a, 'tcx> {
     fn check_ty_param_bound(&self,
                             span: Span,
                             ty_param_bound: &ast::TyParamBound) {
-        match *ty_param_bound {
-            ast::TraitTyParamBound(ref trait_ref) => {
-                if !self.tcx.sess.features.borrow().visible_private_types &&
-                        self.path_is_private_type(trait_ref.trait_ref.ref_id) {
+        if let ast::TraitTyParamBound(ref trait_ref) = *ty_param_bound {
+            if !self.tcx.sess.features.borrow().visible_private_types &&
+                self.path_is_private_type(trait_ref.trait_ref.ref_id) {
                     self.tcx.sess.span_err(span,
                                            "private type in exported type \
                                             parameter bound");
-                }
             }
-            _ => {}
         }
     }
 }
 
 impl<'a, 'b, 'tcx, 'v> Visitor<'v> for CheckTypeForPrivatenessVisitor<'a, 'b, 'tcx> {
     fn visit_ty(&mut self, ty: &ast::Ty) {
-        match ty.node {
-            ast::TyPath(_, path_id) => {
-                if self.inner.path_is_private_type(path_id) {
-                    self.contains_private = true;
-                    // found what we're looking for so let's stop
-                    // working.
-                    return
-                } else if self.at_outer_type {
-                    self.outer_type_is_public_path = true;
-                }
+        if let ast::TyPath(_, path_id) = ty.node {
+            if self.inner.path_is_private_type(path_id) {
+                self.contains_private = true;
+                // found what we're looking for so let's stop
+                // working.
+                return
+            } else if self.at_outer_type {
+                self.outer_type_is_public_path = true;
             }
-            _ => {}
         }
         self.at_outer_type = false;
         visit::walk_ty(self, ty)
@@ -1492,16 +1474,12 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
     }
 
     fn visit_ty(&mut self, t: &ast::Ty) {
-        match t.node {
-            ast::TyPath(ref p, path_id) => {
-                if !self.tcx.sess.features.borrow().visible_private_types &&
-                        self.path_is_private_type(path_id) {
-                    self.tcx.sess.span_err(p.span,
-                                           "private type in exported type \
-                                            signature");
-                }
+        if let ast::TyPath(ref p, path_id) = t.node {
+            if !self.tcx.sess.features.borrow().visible_private_types &&
+                self.path_is_private_type(path_id) {
+                self.tcx.sess.span_err(p.span,
+                                       "private type in exported type signature");
             }
-            _ => {}
         }
         visit::walk_ty(self, t)
     }

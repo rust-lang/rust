@@ -171,9 +171,8 @@ pub fn get_const_val(cx: &CrateContext,
             def_id = inline::maybe_instantiate_inline(cx, def_id);
         }
 
-        match cx.tcx().map.expect_item(def_id.node).node {
-            ast::ItemConst(..) => { base::get_item_val(cx, def_id.node); }
-            _ => {}
+        if let ast::ItemConst(..) = cx.tcx().map.expect_item(def_id.node).node {
+            base::get_item_val(cx, def_id.node);
         }
     }
 
@@ -546,12 +545,9 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr) -> ValueRef {
                   }
               }
               let opt_def = cx.tcx().def_map.borrow().get(&cur.id).cloned();
-              match opt_def {
-                  Some(def::DefStatic(def_id, _)) => {
-                      let ty = ty::expr_ty(cx.tcx(), e);
-                      return get_static_val(cx, def_id, ty);
-                  }
-                  _ => {}
+              if let Some(def::DefStatic(def_id, _)) = opt_def {
+                  let ty = ty::expr_ty(cx.tcx(), e);
+                  return get_static_val(cx, def_id, ty);
               }
 
               // If this isn't the address of a static, then keep going through

@@ -61,23 +61,13 @@ impl LintPass for WhileTrue {
     }
 
     fn check_expr(&mut self, cx: &Context, e: &ast::Expr) {
-        match e.node {
-            ast::ExprWhile(ref cond, _, _) => {
-                match cond.node {
-                    ast::ExprLit(ref lit) => {
-                        match lit.node {
-                            ast::LitBool(true) => {
-                                cx.span_lint(WHILE_TRUE, e.span,
-                                             "denote infinite loops with loop \
-                                              { ... }");
-                            }
-                            _ => {}
-                        }
-                    }
-                    _ => ()
+        if let ast::ExprWhile(ref cond, _, _) = e.node {
+            if let ast::ExprLit(ref lit) = cond.node {
+                if let ast::LitBool(true) = lit.node {
+                    cx.span_lint(WHILE_TRUE, e.span,
+                                 "denote infinite loops with loop { ... }");
                 }
             }
-            _ => ()
         }
     }
 }
@@ -93,14 +83,11 @@ impl LintPass for UnusedCasts {
     }
 
     fn check_expr(&mut self, cx: &Context, e: &ast::Expr) {
-        match e.node {
-            ast::ExprCast(ref expr, ref ty) => {
-                let t_t = ast_ty_to_ty(cx, &infer::new_infer_ctxt(cx.tcx), &**ty);
-                if ty::expr_ty(cx.tcx, &**expr) == t_t {
-                    cx.span_lint(UNUSED_TYPECASTS, ty.span, "unnecessary type cast");
-                }
+        if let ast::ExprCast(ref expr, ref ty) = e.node {
+            let t_t = ast_ty_to_ty(cx, &infer::new_infer_ctxt(cx.tcx), &**ty);
+            if ty::expr_ty(cx.tcx, &**expr) == t_t {
+                cx.span_lint(UNUSED_TYPECASTS, ty.span, "unnecessary type cast");
             }
-            _ => ()
         }
     }
 }
@@ -540,9 +527,8 @@ struct RawPtrDerivingVisitor<'a, 'tcx: 'a> {
 impl<'a, 'tcx, 'v> Visitor<'v> for RawPtrDerivingVisitor<'a, 'tcx> {
     fn visit_ty(&mut self, ty: &ast::Ty) {
         static MSG: &'static str = "use of `#[deriving]` with a raw pointer";
-        match ty.node {
-            ast::TyPtr(..) => self.cx.span_lint(RAW_POINTER_DERIVING, ty.span, MSG),
-            _ => {}
+        if let ast::TyPtr(..) = ty.node {
+            self.cx.span_lint(RAW_POINTER_DERIVING, ty.span, MSG);
         }
         visit::walk_ty(self, ty);
     }
@@ -720,9 +706,8 @@ impl LintPass for UnusedResults {
             _ => return
         };
 
-        match expr.node {
-            ast::ExprRet(..) => return,
-            _ => {}
+        if let ast::ExprRet(..) = expr.node {
+            return;
         }
 
         let t = ty::expr_ty(cx.tcx, expr);
@@ -733,11 +718,8 @@ impl LintPass for UnusedResults {
             ty::ty_struct(did, _) |
             ty::ty_enum(did, _) => {
                 if ast_util::is_local(did) {
-                    match cx.tcx.map.get(did.node) {
-                        ast_map::NodeItem(it) => {
-                            warned |= check_must_use(cx, it.attrs.as_slice(), s.span);
-                        }
-                        _ => {}
+                    if let ast_map::NodeItem(it) = cx.tcx.map.get(did.node) {
+                        warned |= check_must_use(cx, it.attrs.as_slice(), s.span);
                     }
                 } else {
                     csearch::get_item_attrs(&cx.sess().cstore, did, |attrs| {
@@ -969,11 +951,8 @@ impl LintPass for NonSnakeCase {
     }
 
     fn check_item(&mut self, cx: &Context, it: &ast::Item) {
-        match it.node {
-            ast::ItemMod(_) => {
-                self.check_snake_case(cx, "module", it.ident, it.span);
-            }
-            _ => {}
+        if let ast::ItemMod(_) = it.node {
+            self.check_snake_case(cx, "module", it.ident, it.span);
         }
     }
 
@@ -986,27 +965,18 @@ impl LintPass for NonSnakeCase {
     }
 
     fn check_pat(&mut self, cx: &Context, p: &ast::Pat) {
-        match &p.node {
-            &ast::PatIdent(_, ref path1, _) => {
-                match cx.tcx.def_map.borrow().get(&p.id) {
-                    Some(&def::DefLocal(_)) => {
-                        self.check_snake_case(cx, "variable", path1.node, p.span);
-                    }
-                    _ => {}
-                }
+        if let &ast::PatIdent(_, ref path1, _) = &p.node {
+            if let Some(&def::DefLocal(_)) = cx.tcx.def_map.borrow().get(&p.id) {
+                self.check_snake_case(cx, "variable", path1.node, p.span);
             }
-            _ => {}
         }
     }
 
     fn check_struct_def(&mut self, cx: &Context, s: &ast::StructDef,
             _: ast::Ident, _: &ast::Generics, _: ast::NodeId) {
         for sf in s.fields.iter() {
-            match sf.node {
-                ast::StructField_ { kind: ast::NamedField(ident, _), .. } => {
-                    self.check_snake_case(cx, "structure field", ident, sf.span);
-                }
-                _ => {}
+            if let ast::StructField_ { kind: ast::NamedField(ident, _), .. } = sf.node {
+                self.check_snake_case(cx, "structure field", ident, sf.span);
             }
         }
     }
@@ -1069,16 +1039,13 @@ pub struct UnusedParens;
 impl UnusedParens {
     fn check_unused_parens_core(&self, cx: &Context, value: &ast::Expr, msg: &str,
                                      struct_lit_needs_parens: bool) {
-        match value.node {
-            ast::ExprParen(ref inner) => {
-                let necessary = struct_lit_needs_parens && contains_exterior_struct_lit(&**inner);
-                if !necessary {
-                    cx.span_lint(UNUSED_PARENS, value.span,
-                                 format!("unnecessary parentheses around {}",
-                                         msg).as_slice())
-                }
+        if let ast::ExprParen(ref inner) = value.node {
+            let necessary = struct_lit_needs_parens && contains_exterior_struct_lit(&**inner);
+            if !necessary {
+                cx.span_lint(UNUSED_PARENS, value.span,
+                             format!("unnecessary parentheses around {}",
+                                     msg).as_slice())
             }
-            _ => {}
         }
 
         /// Expressions that syntactically contain an "exterior" struct
@@ -1201,24 +1168,21 @@ impl LintPass for NonShorthandFieldPatterns {
 
     fn check_pat(&mut self, cx: &Context, pat: &ast::Pat) {
         let def_map = cx.tcx.def_map.borrow();
-        match pat.node {
-            ast::PatStruct(_, ref v, _) => {
-                for fieldpat in v.iter()
-                                 .filter(|fieldpat| !fieldpat.node.is_shorthand)
-                                 .filter(|fieldpat| def_map.get(&fieldpat.node.pat.id)
-                                    == Some(&def::DefLocal(fieldpat.node.pat.id))) {
-                    match fieldpat.node.pat.node {
-                        ast::PatIdent(_, ident, None) if ident.node.as_str()
-                                                         == fieldpat.node.ident.as_str() => {
-                            cx.span_lint(NON_SHORTHAND_FIELD_PATTERNS, fieldpat.span,
-                                         format!("the `{}:` in this pattern is redundant and can \
-                                                  be removed", ident.node.as_str()).as_slice())
-                        },
-                        _ => {},
-                    }
+        if let ast::PatStruct(_, ref v, _) = pat.node {
+            for fieldpat in v.iter()
+                             .filter(|fieldpat| !fieldpat.node.is_shorthand)
+                             .filter(|fieldpat| def_map.get(&fieldpat.node.pat.id)
+                                                == Some(&def::DefLocal(fieldpat.node.pat.id))) {
+                match fieldpat.node.pat.node {
+                    ast::PatIdent(_, ident, None) if ident.node.as_str()
+                                                     == fieldpat.node.ident.as_str() => {
+                        cx.span_lint(NON_SHORTHAND_FIELD_PATTERNS, fieldpat.span,
+                                     format!("the `{}:` in this pattern is redundant and can \
+                                              be removed", ident.node.as_str()).as_slice())
+                    },
+                    _ => {},
                 }
-            },
-            _ => {}
+            }
         }
     }
 }
@@ -1313,27 +1277,18 @@ impl LintPass for UnusedMut {
     }
 
     fn check_expr(&mut self, cx: &Context, e: &ast::Expr) {
-        match e.node {
-            ast::ExprMatch(_, ref arms, _) => {
-                for a in arms.iter() {
-                    self.check_unused_mut_pat(cx, a.pats.as_slice())
-                }
+        if let ast::ExprMatch(_, ref arms, _) = e.node {
+            for a in arms.iter() {
+                self.check_unused_mut_pat(cx, a.pats.as_slice())
             }
-            _ => {}
         }
     }
 
     fn check_stmt(&mut self, cx: &Context, s: &ast::Stmt) {
-        match s.node {
-            ast::StmtDecl(ref d, _) => {
-                match d.node {
-                    ast::DeclLocal(ref l) => {
-                        self.check_unused_mut_pat(cx, slice::ref_slice(&l.pat));
-                    },
-                    _ => {}
-                }
-            },
-            _ => {}
+        if let ast::StmtDecl(ref d, _) = s.node {
+            if let ast::DeclLocal(ref l) = d.node {
+                self.check_unused_mut_pat(cx, slice::ref_slice(&l.pat));
+            }
         }
     }
 
@@ -1362,26 +1317,20 @@ impl LintPass for UnusedAllocation {
             _ => return
         }
 
-        match cx.tcx.adjustments.borrow().get(&e.id) {
-            Some(adjustment) => {
-                match *adjustment {
-                    ty::AdjustDerefRef(ty::AutoDerefRef { ref autoref, .. }) => {
-                        match autoref {
-                            &Some(ty::AutoPtr(_, ast::MutImmutable, None)) => {
-                                cx.span_lint(UNUSED_ALLOCATION, e.span,
-                                             "unnecessary allocation, use & instead");
-                            }
-                            &Some(ty::AutoPtr(_, ast::MutMutable, None)) => {
-                                cx.span_lint(UNUSED_ALLOCATION, e.span,
-                                             "unnecessary allocation, use &mut instead");
-                            }
-                            _ => ()
-                        }
+        if let Some(adjustment) = cx.tcx.adjustments.borrow().get(&e.id) {
+            if let ty::AdjustDerefRef(ty::AutoDerefRef { ref autoref, .. }) = *adjustment {
+                match autoref {
+                    &Some(ty::AutoPtr(_, ast::MutImmutable, None)) => {
+                        cx.span_lint(UNUSED_ALLOCATION, e.span,
+                                     "unnecessary allocation, use & instead");
                     }
-                    _ => {}
+                    &Some(ty::AutoPtr(_, ast::MutMutable, None)) => {
+                        cx.span_lint(UNUSED_ALLOCATION, e.span,
+                                     "unnecessary allocation, use &mut instead");
+                    }
+                    _ => ()
                 }
             }
-            _ => ()
         }
     }
 }
@@ -1499,17 +1448,14 @@ impl LintPass for MissingDoc {
     fn check_fn(&mut self, cx: &Context,
             fk: visit::FnKind, _: &ast::FnDecl,
             _: &ast::Block, _: Span, _: ast::NodeId) {
-        match fk {
-            visit::FkMethod(_, _, m) => {
-                // If the method is an impl for a trait, don't doc.
-                if method_context(cx, m) == TraitImpl { return; }
+        if let visit::FkMethod(_, _, m) = fk {
+            // If the method is an impl for a trait, don't doc.
+            if method_context(cx, m) == TraitImpl { return; }
 
-                // Otherwise, doc according to privacy. This will also check
-                // doc for default methods defined on traits.
-                self.check_missing_docs_attrs(cx, Some(m.id), m.attrs.as_slice(),
-                                             m.span, "a method");
-            }
-            _ => {}
+            // Otherwise, doc according to privacy. This will also check
+            // doc for default methods defined on traits.
+            self.check_missing_docs_attrs(cx, Some(m.id), m.attrs.as_slice(),
+                                          m.span, "a method");
         }
     }
 
