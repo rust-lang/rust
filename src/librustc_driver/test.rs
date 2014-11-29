@@ -25,6 +25,7 @@ use rustc_typeck::middle::infer::combine::Combine;
 use rustc_typeck::middle::infer;
 use rustc_typeck::middle::infer::lub::Lub;
 use rustc_typeck::middle::infer::glb::Glb;
+use rustc_typeck::middle::infer::sub::Sub;
 use rustc_typeck::util::ppaux::{ty_to_string, Repr, UserString};
 use rustc::session::{mod,config};
 use syntax::{abi, ast, ast_map, ast_util};
@@ -341,6 +342,11 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
         infer::TypeTrace::dummy()
     }
 
+    pub fn sub(&self) -> Sub<'a, 'tcx> {
+        let trace = self.dummy_type_trace();
+        Sub(self.infcx.combine_fields(true, trace))
+    }
+
     pub fn lub(&self) -> Lub<'a, 'tcx> {
         let trace = self.dummy_type_trace();
         Lub(self.infcx.combine_fields(true, trace))
@@ -356,6 +362,33 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
             Ok(t) => t,
             Err(ref e) => panic!("unexpected error computing LUB: {}",
                                 ty::type_err_to_str(self.infcx.tcx, e))
+        }
+    }
+
+    /// Checks that `t1 <: t2` is true (this may register additional
+    /// region checks).
+    pub fn check_sub(&self, t1: Ty<'tcx>, t2: Ty<'tcx>) {
+        match self.sub().tys(t1, t2) {
+            Ok(_) => { }
+            Err(ref e) => {
+                panic!("unexpected error computing sub({},{}): {}",
+                       t1.repr(self.infcx.tcx),
+                       t2.repr(self.infcx.tcx),
+                       ty::type_err_to_str(self.infcx.tcx, e));
+            }
+        }
+    }
+
+    /// Checks that `t1 <: t2` is false (this may register additional
+    /// region checks).
+    pub fn check_not_sub(&self, t1: Ty<'tcx>, t2: Ty<'tcx>) {
+        match self.sub().tys(t1, t2) {
+            Err(_) => { }
+            Ok(_) => {
+                panic!("unexpected success computing sub({},{})",
+                       t1.repr(self.infcx.tcx),
+                       t2.repr(self.infcx.tcx));
+            }
         }
     }
 
@@ -419,6 +452,54 @@ fn contravariant_region_ptr_err() {
                  // will cause an error when regions are resolved
                  env.make_subtype(t_rptr10, t_rptr1);
              })
+}
+
+#[test]
+fn sub_free_bound_false() {
+    //! Test that:
+    //!
+    //!     fn(&'a int) <: for<'b> fn(&'b int)
+    //!
+    //! does NOT hold.
+
+    test_env(EMPTY_SOURCE_STR, errors(&[]), |env| {
+        let t_rptr_free1 = env.t_rptr_free(0, 1);
+        let t_rptr_bound1 = env.t_rptr_late_bound(1);
+        env.check_not_sub(env.t_fn(&[t_rptr_free1], ty::mk_int()),
+                          env.t_fn(&[t_rptr_bound1], ty::mk_int()));
+    })
+}
+
+#[test]
+fn sub_bound_free_true() {
+    //! Test that:
+    //!
+    //!     for<'a> fn(&'a int) <: fn(&'b int)
+    //!
+    //! DOES hold.
+
+    test_env(EMPTY_SOURCE_STR, errors(&[]), |env| {
+        let t_rptr_bound1 = env.t_rptr_late_bound(1);
+        let t_rptr_free1 = env.t_rptr_free(0, 1);
+        env.check_sub(env.t_fn(&[t_rptr_bound1], ty::mk_int()),
+                      env.t_fn(&[t_rptr_free1], ty::mk_int()));
+    })
+}
+
+#[test]
+fn sub_free_bound_false_infer() {
+    //! Test that:
+    //!
+    //!     fn(_#1) <: for<'b> fn(&'b int)
+    //!
+    //! does NOT hold for any instantiation of `_#1`.
+
+    test_env(EMPTY_SOURCE_STR, errors(&[]), |env| {
+        let t_infer1 = env.infcx.next_ty_var();
+        let t_rptr_bound1 = env.t_rptr_late_bound(1);
+        env.check_not_sub(env.t_fn(&[t_infer1], ty::mk_int()),
+                          env.t_fn(&[t_rptr_bound1], ty::mk_int()));
+    })
 }
 
 #[test]
