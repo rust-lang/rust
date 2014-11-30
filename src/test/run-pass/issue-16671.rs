@@ -19,6 +19,6 @@
 pub fn main() {
     let mut stdin = std::io::stdin();
     spawn(proc() {
-        let _ = stdin.lines();
+        let _ = stdin.read_to_end();
     });
 }

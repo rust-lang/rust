@@ -14,6 +14,6 @@ fn main() {
     //~^ ERROR: cannot assign to immutable captured outer variable in a proc `x`
 
     let s = std::io::stdin();
-    proc() { s.lines(); };
+    proc() { s.read_to_end(); };
     //~^ ERROR: cannot borrow immutable captured outer variable in a proc `s` as mutable
 }
