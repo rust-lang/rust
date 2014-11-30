@@ -1177,7 +1177,7 @@ pub struct InlineAsm {
     pub asm_str_style: StrStyle,
     pub outputs: Vec<(InternedString, P<Expr>, bool)>,
     pub inputs: Vec<(InternedString, P<Expr>)>,
-    pub clobbers: InternedString,
+    pub clobbers: Vec<InternedString>,
     pub volatile: bool,
     pub alignstack: bool,
     pub dialect: AsmDialect,

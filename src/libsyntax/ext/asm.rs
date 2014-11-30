@@ -53,7 +53,7 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     let mut asm_str_style = None;
     let mut outputs = Vec::new();
     let mut inputs = Vec::new();
-    let mut cons = "".to_string();
+    let mut clobs = Vec::new();
     let mut volatile = false;
     let mut alignstack = false;
     let mut dialect = ast::AsmAtt;
@@ -138,7 +138,6 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                 }
             }
             Clobbers => {
-                let mut clobs = Vec::new();
                 while p.token != token::Eof &&
                       p.token != token::Colon &&
                       p.token != token::ModSep {
@@ -148,15 +147,12 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                     }
 
                     let (s, _str_style) = p.parse_str();
-                    let clob = format!("~{{{}}}", s);
-                    clobs.push(clob);
 
                     if OPTIONS.iter().any(|opt| s.equiv(opt)) {
                         cx.span_warn(p.last_span, "expected a clobber, found an option");
                     }
+                    clobs.push(s);
                 }
-
-                cons = clobs.connect(",");
             }
             Options => {
                 let (option, _str_style) = p.parse_str();
@@ -216,7 +212,7 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
             asm_str_style: asm_str_style.unwrap(),
             outputs: outputs,
             inputs: inputs,
-            clobbers: token::intern_and_get_ident(cons.as_slice()),
+            clobbers: clobs,
             volatile: volatile,
             alignstack: alignstack,
             dialect: dialect,
