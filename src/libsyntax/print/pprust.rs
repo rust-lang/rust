@@ -1839,7 +1839,11 @@ impl<'a> State<'a> {
                 try!(space(&mut self.s));
                 try!(self.word_space(":"));
 
-                try!(self.print_string(a.clobbers.get(), ast::CookedStr));
+                try!(self.commasep(Inconsistent, a.clobbers.as_slice(),
+                                   |s, co| {
+                    try!(s.print_string(co.get(), ast::CookedStr));
+                    Ok(())
+                }));
                 try!(self.pclose());
             }
             ast::ExprMac(ref m) => try!(self.print_mac(m)),
