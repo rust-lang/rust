@@ -1173,14 +1173,12 @@ impl LintPass for NonShorthandFieldPatterns {
                              .filter(|fieldpat| !fieldpat.node.is_shorthand)
                              .filter(|fieldpat| def_map.get(&fieldpat.node.pat.id)
                                                 == Some(&def::DefLocal(fieldpat.node.pat.id))) {
-                match fieldpat.node.pat.node {
-                    ast::PatIdent(_, ident, None) if ident.node.as_str()
-                                                     == fieldpat.node.ident.as_str() => {
+                if let ast::PatIdent(_, ident, None) = fieldpat.node.pat.node {
+                    if ident.node.as_str() == fieldpat.node.ident.as_str() {
                         cx.span_lint(NON_SHORTHAND_FIELD_PATTERNS, fieldpat.span,
                                      format!("the `{}:` in this pattern is redundant and can \
                                               be removed", ident.node.as_str()).as_slice())
-                    },
-                    _ => {},
+                    }
                 }
             }
         }
@@ -1198,15 +1196,12 @@ impl LintPass for UnusedUnsafe {
     }
 
     fn check_expr(&mut self, cx: &Context, e: &ast::Expr) {
-        match e.node {
+        if let ast::ExprBlock(ref blk) = e.node {
             // Don't warn about generated blocks, that'll just pollute the output.
-            ast::ExprBlock(ref blk) => {
-                if blk.rules == ast::UnsafeBlock(ast::UserProvided) &&
-                    !cx.tcx.used_unsafe.borrow().contains(&blk.id) {
+            if blk.rules == ast::UnsafeBlock(ast::UserProvided) &&
+                !cx.tcx.used_unsafe.borrow().contains(&blk.id) {
                     cx.span_lint(UNUSED_UNSAFE, blk.span, "unnecessary `unsafe` block");
-                }
             }
-            _ => ()
         }
     }
 }
@@ -1222,12 +1217,11 @@ impl LintPass for UnsafeBlocks {
     }
 
     fn check_expr(&mut self, cx: &Context, e: &ast::Expr) {
-        match e.node {
+        if let ast::ExprBlock(ref blk) = e.node {
             // Don't warn about generated blocks, that'll just pollute the output.
-            ast::ExprBlock(ref blk) if blk.rules == ast::UnsafeBlock(ast::UserProvided) => {
+            if blk.rules == ast::UnsafeBlock(ast::UserProvided) {
                 cx.span_lint(UNSAFE_BLOCKS, blk.span, "usage of an `unsafe` block");
             }
-            _ => ()
         }
     }
 }
@@ -1246,16 +1240,12 @@ impl UnusedMut {
         for p in pats.iter() {
             pat_util::pat_bindings(&cx.tcx.def_map, &**p, |mode, id, _, path1| {
                 let ident = path1.node;
-                match mode {
-                    ast::BindByValue(ast::MutMutable) => {
-                        if !token::get_ident(ident).get().starts_with("_") {
-                            match mutables.entry(ident.name.uint()) {
-                                Vacant(entry) => { entry.set(vec![id]); },
-                                Occupied(mut entry) => { entry.get_mut().push(id); },
-                            }
+                if let ast::BindByValue(ast::MutMutable) = mode {
+                    if !token::get_ident(ident).get().starts_with("_") {
+                        match mutables.entry(ident.name.uint()) {
+                            Vacant(entry) => { entry.set(vec![id]); },
+                            Occupied(mut entry) => { entry.get_mut().push(id); },
                         }
-                    }
-                    _ => {
                     }
                 }
             });
@@ -1379,9 +1369,10 @@ impl MissingDoc {
         // Only check publicly-visible items, using the result from the privacy pass.
         // It's an option so the crate root can also use this function (it doesn't
         // have a NodeId).
-        match id {
-            Some(ref id) if !cx.exported_items.contains(id) => return,
-            _ => ()
+        if let Some(ref id) = id {
+            if !cx.exported_items.contains(id) {
+                return;
+            }
         }
 
         let has_doc = attrs.iter().any(|a| {
@@ -1465,15 +1456,14 @@ impl LintPass for MissingDoc {
     }
 
     fn check_struct_field(&mut self, cx: &Context, sf: &ast::StructField) {
-        match sf.node.kind {
-            ast::NamedField(_, vis) if vis == ast::Public || self.in_variant => {
+        if let ast::NamedField(_, vis) = sf.node.kind {
+            if vis == ast::Public || self.in_variant {
                 let cur_struct_def = *self.struct_def_stack.last()
                     .expect("empty struct_def_stack");
                 self.check_missing_docs_attrs(cx, Some(cur_struct_def),
-                                             sf.node.attrs.as_slice(), sf.span,
-                                             "a struct field")
+                                              sf.node.attrs.as_slice(), sf.span,
+                                              "a struct field")
             }
-            _ => {}
         }
     }
 
@@ -1639,12 +1629,9 @@ impl LintPass for Stability {
         match item.node {
             ast::ItemTrait(_, _, ref supertraits, _) => {
                 for t in supertraits.iter() {
-                    match *t {
-                        ast::TraitTyParamBound(ref t) => {
-                            let id = ty::trait_ref_to_def_id(cx.tcx, &t.trait_ref);
-                            self.lint(cx, id, t.trait_ref.path.span);
-                        }
-                        _ => (/* pass */)
+                    if let ast::TraitTyParamBound(ref t) = *t {
+                        let id = ty::trait_ref_to_def_id(cx.tcx, &t.trait_ref);
+                        self.lint(cx, id, t.trait_ref.path.span);
                     }
                 }
             }

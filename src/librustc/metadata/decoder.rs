@@ -521,21 +521,15 @@ fn each_child_of_item_or_crate(intr: Rc<IdentInterner>,
                 let impl_item_def_id = item_def_id(impl_item_def_id_doc,
                                                    cdata);
                 if let Some(impl_method_doc) = maybe_find_item(impl_item_def_id.node, items) {
-                    match item_family(impl_method_doc) {
-                        StaticMethod => {
-                            // Hand off the static method
-                            // to the callback.
-                            let static_method_name =
-                                item_name(&*intr, impl_method_doc);
-                            let static_method_def_like =
-                                item_to_def_like(impl_method_doc,
-                                                 impl_item_def_id,
-                                                 cdata.cnum);
-                            callback(static_method_def_like,
-                                     static_method_name,
-                                     item_visibility(impl_method_doc));
-                        }
-                        _ => {}
+                    if let StaticMethod = item_family(impl_method_doc) {
+                        // Hand off the static method to the callback.
+                        let static_method_name = item_name(&*intr, impl_method_doc);
+                        let static_method_def_like = item_to_def_like(impl_method_doc,
+                                                                      impl_item_def_id,
+                                                                      cdata.cnum);
+                        callback(static_method_def_like,
+                                 static_method_name,
+                                 item_visibility(impl_method_doc));
                     }
                 }
                 true
