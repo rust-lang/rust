@@ -20,7 +20,7 @@ use metadata;
 use rustc::DIAGNOSTICS;
 
 use std::any::AnyRefExt;
-use std::io;
+use std::io::{mod, stdio};
 use std::os;
 use std::task::TaskBuilder;
 
@@ -35,6 +35,8 @@ use getopts;
 
 pub mod driver;
 pub mod pretty;
+
+mod license;
 
 pub fn run(args: Vec<String>) -> int {
     monitor(proc() run_compiler(args.as_slice()));
@@ -340,6 +342,11 @@ pub fn handle_options(mut args: Vec<String>) -> Option<getopts::Matches> {
 
     if matches.opt_present("h") || matches.opt_present("help") {
         usage();
+        return None;
+    }
+
+    if matches.opt_present("license") {
+        license::print(&mut stdio::stdout()).unwrap();
         return None;
     }
 

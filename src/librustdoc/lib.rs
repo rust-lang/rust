@@ -17,6 +17,7 @@
 #![feature(globs, if_let, macro_rules, phase, slicing_syntax, tuple_indexing)]
 
 extern crate arena;
+extern crate flate;
 extern crate getopts;
 extern crate libc;
 extern crate rustc;
@@ -30,7 +31,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::collections::hash_map::{Occupied, Vacant};
 use std::io::File;
-use std::io;
+use std::io::{mod, stdio};
 use std::rc::Rc;
 use externalfiles::ExternalHtml;
 use serialize::{Decodable, Encodable};
@@ -62,6 +63,7 @@ pub mod stability_summary;
 pub mod visit_ast;
 pub mod test;
 mod flock;
+mod license;
 
 type Pass = (&'static str,                                      // name
              fn(clean::Crate) -> plugins::PluginResult,         // fn
@@ -103,6 +105,7 @@ pub fn opts() -> Vec<getopts::OptGroup> {
     use getopts::*;
     vec!(
         optflag("h", "help", "show this help message"),
+        optflag("", "license", "display license documents"),
         optflagopt("", "version", "print rustdoc's version", "verbose"),
         optopt("r", "input-format", "the input type of the specified file",
                "[rust|json]"),
@@ -170,6 +173,9 @@ pub fn main_args(args: &[String]) -> int {
             },
             None => return 0
         }
+    } else if matches.opt_present("license") {
+        license::print(&mut stdio::stdout()).unwrap();
+        return 0
     }
 
     if matches.opt_strs("passes").as_slice() == &["list".to_string()] {

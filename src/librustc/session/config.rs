@@ -572,6 +572,7 @@ pub fn build_target_config(opts: &Options, sp: &SpanHandler) -> Config {
 pub fn optgroups() -> Vec<getopts::OptGroup> {
     vec!(
         optflag("h", "help", "Display this message"),
+        optflag("", "license", "Display license documents"),
         optmulti("", "cfg", "Configure the compilation environment", "SPEC"),
         optmulti("L", "",   "Add a directory to the library search path", "PATH"),
         optmulti("l", "",   "Link the generated crate(s) to the specified native
@@ -631,7 +632,7 @@ pub fn optgroups() -> Vec<getopts::OptGroup> {
             always = always colorize output;
             never  = never colorize output", "auto|always|never"),
         optmulti("", "extern", "Specify where an external rust library is located",
-                 "NAME=PATH"),
+                 "NAME=PATH")
     )
 }
 
