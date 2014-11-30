@@ -1063,7 +1063,7 @@ you create a new type that's a synonym for another one:
 ```{rust}
 struct Inches(int);
 
-let length = Inches(10);
+let length = Inches(10i);
 
 let Inches(integer_length) = length;
 println!("length is {} inches", integer_length);
