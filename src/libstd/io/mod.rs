@@ -32,7 +32,7 @@
 //!     ```rust
 //!     use std::io;
 //!
-//!     for line in io::stdin().lines() {
+//!     for line in io::stdin().lock().lines() {
 //!         print!("{}", line.unwrap());
 //!     }
 //!     ```
@@ -1413,10 +1413,10 @@ pub trait Buffer: Reader {
     /// # Example
     ///
     /// ```rust
-    /// use std::io;
+    /// use std::io::BufReader;
     ///
-    /// let mut reader = io::stdin();
-    /// let input = reader.read_line().ok().unwrap_or("nothing".to_string());
+    /// let mut reader = BufReader::new(b"hello\nworld");
+    /// assert_eq!("hello\n", &*reader.read_line().unwrap());
     /// ```
     ///
     /// # Error
