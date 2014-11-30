@@ -212,7 +212,7 @@ impl<'a> ParserAttr for Parser<'a> {
     fn parse_meta_seq(&mut self) -> Vec<P<ast::MetaItem>> {
         self.parse_seq(&token::OpenDelim(token::Paren),
                        &token::CloseDelim(token::Paren),
-                       seq_sep_trailing_disallowed(token::Comma),
+                       seq_sep_trailing_allowed(token::Comma),
                        |p| p.parse_meta_item()).node
     }
 
