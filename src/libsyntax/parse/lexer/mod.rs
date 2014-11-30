@@ -809,7 +809,7 @@ impl<'a> StringReader<'a> {
                                     self.span_diagnostic.span_help(
                                         sp,
                                         "this is an isolated carriage return; consider checking \
-                                         your editor and version control settings.")
+                                         your editor and version control settings")
                                 }
                                 false
                             }

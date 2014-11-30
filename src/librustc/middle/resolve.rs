@@ -3239,7 +3239,7 @@ impl<'a> Resolver<'a> {
                                             segment_name),
                         }
                     } else {
-                        format!("Could not find `{}` in `{}`.",
+                        format!("Could not find `{}` in `{}`",
                                 segment_name,
                                 module_name)
                     };
@@ -4744,7 +4744,7 @@ impl<'a> Resolver<'a> {
                         Some(&DefMod(_)) => {
                             self.resolve_error(path.span, "inherent implementations are not \
                                                            allowed for types not defined in \
-                                                           the current module.");
+                                                           the current module");
                         }
                         _ => {}
                     }
@@ -5843,12 +5843,12 @@ impl<'a> Resolver<'a> {
                                     };
 
                                     if msg.len() > 0 {
-                                        msg = format!(" Did you mean {}?", msg)
+                                        msg = format!(". Did you mean {}?", msg)
                                     }
 
                                     self.resolve_error(
                                         expr.span,
-                                        format!("unresolved name `{}`.{}",
+                                        format!("unresolved name `{}`{}",
                                                 wrong_name,
                                                 msg).as_slice());
                                 }

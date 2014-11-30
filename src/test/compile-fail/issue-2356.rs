@@ -25,7 +25,7 @@ impl MaybeDog {
   fn bark() {
     // If this provides a suggestion, it's a bug as MaybeDog doesn't impl Groom
     shave();
-    //~^ ERROR: unresolved name `shave`.
+    //~^ ERROR: unresolved name `shave`
   }
 }
 
@@ -67,7 +67,7 @@ impl cat {
     grow_older();
     //~^ ERROR: unresolved name `grow_older`. Did you mean to call `cat::grow_older`
     shave();
-    //~^ ERROR: unresolved name `shave`.
+    //~^ ERROR: unresolved name `shave`
   }
 
   fn burn_whiskers(&mut self) {
@@ -85,6 +85,6 @@ impl cat {
 
 fn main() {
     self += 1;
-    //~^ ERROR: unresolved name `self`.
+    //~^ ERROR: unresolved name `self`
     // it's a bug if this suggests a missing `self` as we're not in a method
 }
