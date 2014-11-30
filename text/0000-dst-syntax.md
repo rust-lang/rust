@@ -172,6 +172,11 @@ Alternatives
   of the previous syntaxes are discussed in the ‘History of the DST syntax’
   section of this RFC.
 
+- Change the syntax to `T: ?Sized` instead. This is more consistent with things
+  like negative bounds (which would probably be something like `T: !Foo`), and
+  uses a prefix operator, which is more consistent with other parts of Rust’s
+  syntax.
+
 Unresolved questions
 ====================
 
