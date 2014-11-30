@@ -77,20 +77,16 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
     // no failure occurred preparing operands, no need to cleanup
     fcx.pop_custom_cleanup_scope(temp_scope);
 
-    let mut constraints =
-        String::from_str(constraints.iter()
-                                    .map(|s| s.get().to_string())
-                                    .chain(ext_constraints.into_iter())
-                                    .collect::<Vec<String>>()
-                                    .connect(",")
-                                    .as_slice());
+    let mut constraints = constraints.iter()
+                                     .map(|s| s.get().to_string())
+                                     .chain(ext_constraints.into_iter())
+                                     .collect::<Vec<String>>()
+                                     .connect(",");
 
-    let mut clobbers =
-        String::from_str(ia.clobbers.iter()
-                                    .map(|s| format!("~{{{}}}", s.get()))
-                                    .collect::<Vec<String>>()
-                                    .connect(",")
-                                    .as_slice());
+    let mut clobbers = ia.clobbers.iter()
+                                  .map(|s| format!("~{{{}}}", s.get()))
+                                  .collect::<Vec<String>>()
+                                  .connect(",");
     let more_clobbers = get_clobbers();
     if !more_clobbers.is_empty() {
         if !clobbers.is_empty() {
