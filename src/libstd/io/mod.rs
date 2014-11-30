@@ -259,7 +259,7 @@ pub use self::net::ip::IpAddr;
 pub use self::net::tcp::TcpListener;
 pub use self::net::tcp::TcpStream;
 pub use self::net::udp::UdpStream;
-pub use self::pipe::{Pipe,PipeReader,PipeWriter};
+pub use self::pipe::{PipeReader,PipeWriter};
 pub use self::process::{Process, Command};
 pub use self::tempfile::TempDir;
 

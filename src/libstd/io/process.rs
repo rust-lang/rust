@@ -28,7 +28,7 @@ use collections::HashMap;
 use hash::Hash;
 #[cfg(windows)]
 use std::hash::sip::SipState;
-use io::pipe::{PipePair,Pipe,PipeReader,PipeWriter};
+use io::pipe::{PipePair,PipeReader,PipeWriter};
 use path::BytesContainer;
 
 use sys;
@@ -410,12 +410,12 @@ fn setup_io(way:Direction, io: StdioContainer)
         InheritFd(fd) => {
             match way {
                 Direction::Read => {
-                    reader = Some(Pipe::from_filedesc(FileDesc::new(fd, false)));
+                    reader = Some(PipeReader::from_filedesc(FileDesc::new(fd, false)));
                     writer = None;
                 }
                 Direction::Write => {
                     reader = None;
-                    writer = Some(Pipe::from_filedesc(FileDesc::new(fd, false)));
+                    writer = Some(PipeWriter::from_filedesc(FileDesc::new(fd, false)));
                 }
             }
         }

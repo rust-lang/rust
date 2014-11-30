@@ -25,18 +25,22 @@ use sys_common;
 use sys;
 use sys::fs::FileDesc as FileDesc;
 
-/// A synchronous, in-memory pipe.
-pub struct PipeImpl<D> {
+#[deriving(Clone)]
+struct PipeImpl {
     inner: Arc<FileDesc>
 }
 
-struct Readable;
-struct Writable;
-
 /// The reading end of a pipe
-pub type PipeReader = PipeImpl<Readable>;
+#[deriving(Clone)]
+pub struct PipeReader {
+    inner: PipeImpl
+}
+
 /// The writing end of a pipe
-pub type PipeWriter = PipeImpl<Writable>;
+#[deriving(Clone)]
+pub struct PipeWriter {
+    inner: PipeImpl
+}
 
 pub struct PipePair {
     pub reader: PipeReader,
@@ -57,17 +61,38 @@ impl PipePair {
     pub fn new() -> IoResult<PipePair> {
         let (reader, writer) = try!(unsafe { sys::os::pipe() });
         Ok(PipePair {
-            reader: Pipe::from_filedesc(reader),
-            writer: Pipe::from_filedesc(writer),
+            reader: PipeReader::from_filedesc(reader),
+            writer: PipeWriter::from_filedesc(writer),
         })
     }
 }
 
-pub struct Pipe;
+impl PipeImpl {
+    fn open(fd: libc::c_int) -> IoResult<PipeImpl> {
+        Ok(PipeImpl::from_filedesc(FileDesc::new(fd, true)))
+    }
 
-impl Pipe {
-    /// Consumes a file descriptor to return a pipe stream that will have
-    /// synchronous, but non-blocking reads/writes. This is useful if the file
+    #[doc(hidden)]
+    fn from_filedesc(fd: FileDesc) -> PipeImpl {
+        PipeImpl { inner: Arc::new(fd) }
+    }
+}
+
+impl sys_common::AsInner<sys::fs::FileDesc> for PipeReader {
+    fn as_inner(&self) -> &sys::fs::FileDesc {
+        &*self.inner.inner
+    }
+}
+
+impl sys_common::AsInner<sys::fs::FileDesc> for PipeWriter {
+    fn as_inner(&self) -> &sys::fs::FileDesc {
+        &*self.inner.inner
+    }
+}
+
+impl PipeReader {
+    /// Consumes a file descriptor to return a pipe reader that will have
+    /// synchronous, but non-blocking reads. This is useful if the file
     /// descriptor is acquired via means other than the standard methods.
     ///
     /// This operation consumes ownership of the file descriptor and it will be
@@ -79,46 +104,69 @@ impl Pipe {
     /// # #![allow(unused_must_use)]
     /// extern crate libc;
     ///
-    /// use std::io::pipe::Pipe;
+    /// use std::io::pipe::PipeReader;
     ///
     /// fn main() {
-    ///     let mut pipe = Pipe::open(libc::STDERR_FILENO);
-    ///     pipe.write(b"Hello, stderr!");
+    ///     let mut pipe = PipeReader::open(libc::STDIN_FILENO);
+    ///     let mut buf = [0, ..10];
+    ///     pipe.read(&mut buf).unwrap();
     /// }
     /// ```
-    pub fn open<T>(fd: libc::c_int) -> IoResult<PipeImpl<T>> {
-        Ok(Pipe::from_filedesc(FileDesc::new(fd, true)))
+    pub fn open(fd: libc::c_int) -> IoResult<PipeReader> {
+        PipeImpl::open(fd).map(|x| PipeReader { inner: x })
     }
 
     // FIXME: expose this some other way
     /// Wrap a FileDesc directly, taking ownership.
     #[doc(hidden)]
-    pub fn from_filedesc<T>(fd: FileDesc) -> PipeImpl<T> {
-        PipeImpl { inner: Arc::new(fd) }
+    pub fn from_filedesc(fd: FileDesc) -> PipeReader {
+        PipeReader { inner: PipeImpl::from_filedesc(fd) }
     }
+
 }
 
-impl<T> sys_common::AsInner<sys::fs::FileDesc> for PipeImpl<T> {
-    fn as_inner(&self) -> &sys::fs::FileDesc {
-        &*self.inner
+impl PipeWriter {
+    /// Consumes a file descriptor to return a pipe writer that will have
+    /// synchronous, but non-blocking writes. This is useful if the file
+    /// descriptor is acquired via means other than the standard methods.
+    ///
+    /// This operation consumes ownership of the file descriptor and it will be
+    /// closed once the object is deallocated.
+    ///
+    /// # Example
+    ///
+    /// ```{rust,no_run}
+    /// # #![allow(unused_must_use)]
+    /// extern crate libc;
+    ///
+    /// use std::io::pipe::PipeWriter;
+    ///
+    /// fn main() {
+    ///     let mut pipe = PipeWriter::open(libc::STDERR_FILENO);
+    ///     pipe.write(b"Hello, World!");
+    /// }
+    /// ```
+    pub fn open(fd: libc::c_int) -> IoResult<PipeWriter> {
+        PipeImpl::open(fd).map(|x| PipeWriter { inner: x })
     }
-}
 
-impl<T> Clone for PipeImpl<T> {
-    fn clone(&self) -> PipeImpl<T> {
-        PipeImpl { inner: self.inner.clone() }
+    // FIXME: expose this some other way
+    /// Wrap a FileDesc directly, taking ownership.
+    #[doc(hidden)]
+    pub fn from_filedesc(fd: FileDesc) -> PipeWriter {
+        PipeWriter { inner: PipeImpl::from_filedesc(fd) }
     }
 }
 
 impl Reader for PipeReader {
     fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
-        self.inner.read(buf)
+        self.inner.inner.read(buf)
     }
 }
 
 impl Writer for PipeWriter {
     fn write(&mut self, buf: &[u8]) -> IoResult<()> {
-        self.inner.write(buf)
+        self.inner.inner.write(buf)
     }
 }
 
@@ -129,11 +177,11 @@ mod test {
     #[test]
     fn partial_read() {
         use os;
-        use io::pipe::Pipe;
+        use io::pipe::{PipeReader,PipeWriter};
 
         let os::Pipe { reader, writer } = unsafe { os::pipe().unwrap() };
-        let out = Pipe::open(writer);
-        let mut input = Pipe::open(reader);
+        let out = PipeWriter::open(writer);
+        let mut input = PipeReader::open(reader);
         let (tx, rx) = channel();
         spawn(proc() {
             let mut out = out;
