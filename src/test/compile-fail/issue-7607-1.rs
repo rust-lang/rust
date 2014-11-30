@@ -14,7 +14,7 @@ struct Foo {
     x: int
 }
 
-impl Fo { //~ERROR inherent implementations are not allowed for types not defined in the current module.
+impl Fo { //~ERROR inherent implementations are not allowed for types not defined in the current module
     fn foo() {}
 }
 
