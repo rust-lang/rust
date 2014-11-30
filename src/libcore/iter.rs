@@ -2105,7 +2105,7 @@ impl<A: Add<A, A> + Clone> Iterator<A> for Counter<A> {
     }
 }
 
-/// An iterator over the range [start, stop)
+/// An iterator over the range (start, stop)
 #[deriving(Clone)]
 #[unstable = "may be refactored due to numerics reform or ops reform"]
 pub struct Range<A> {
