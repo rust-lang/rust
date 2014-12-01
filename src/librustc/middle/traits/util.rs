@@ -302,6 +302,10 @@ impl<'tcx, N:Repr<'tcx>> Repr<'tcx> for super::Vtable<'tcx, N> {
                         d.repr(tcx),
                         s.repr(tcx)),
 
+            super::VtableFnPointer(ref d) =>
+                format!("VtableFnPointer({})",
+                        d.repr(tcx)),
+
             super::VtableParam(ref v) =>
                 format!("VtableParam({})", v.repr(tcx)),
 

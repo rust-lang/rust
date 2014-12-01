@@ -22,7 +22,7 @@ use super::{SelectionError, Unimplemented, Overflow,
             OutputTypeParameterMismatch};
 use super::{Selection};
 use super::{SelectionResult};
-use super::{VtableBuiltin, VtableImpl, VtableParam, VtableUnboxedClosure};
+use super::{VtableBuiltin, VtableImpl, VtableParam, VtableUnboxedClosure, VtableFnPointer};
 use super::{VtableImplData, VtableParamData, VtableBuiltinData};
 use super::{util};
 
@@ -36,7 +36,7 @@ use middle::ty_fold::TypeFoldable;
 use std::cell::RefCell;
 use std::collections::hash_map::HashMap;
 use std::rc::Rc;
-use syntax::ast;
+use syntax::{abi, ast};
 use util::common::ErrorReported;
 use util::ppaux::Repr;
 
@@ -131,7 +131,15 @@ enum Candidate<'tcx> {
     BuiltinCandidate(ty::BuiltinBound),
     ParamCandidate(VtableParamData<'tcx>),
     ImplCandidate(ast::DefId),
+
+    /// Implementation of a `Fn`-family trait by one of the
+    /// anonymous types generated for a `||` expression.
     UnboxedClosureCandidate(/* closure */ ast::DefId, Substs<'tcx>),
+
+    /// Implementation of a `Fn`-family trait by one of the anonymous
+    /// types generated for a fn pointer type (e.g., `fn(int)->int`)
+    FnPointerCandidate,
+
     ErrorCandidate,
 }
 
@@ -917,7 +925,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             None => {
                 // For the time being, we ignore user-defined impls for builtin-bounds.
                 // (And unboxed candidates only apply to the Fn/FnMut/etc traits.)
-                try!(self.assemble_unboxed_candidates(obligation, &mut candidates));
+                try!(self.assemble_unboxed_closure_candidates(obligation, &mut candidates));
+                try!(self.assemble_fn_pointer_candidates(obligation, &mut candidates));
                 try!(self.assemble_candidates_from_impls(obligation, &mut candidates));
             }
         }
@@ -968,20 +977,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// Note: the type parameters on an unboxed closure candidate are modeled as *output* type
     /// parameters and hence do not affect whether this trait is a match or not. They will be
     /// unified during the confirmation step.
-    fn assemble_unboxed_candidates(&mut self,
-                                   obligation: &Obligation<'tcx>,
-                                   candidates: &mut CandidateSet<'tcx>)
-                                   -> Result<(),SelectionError<'tcx>>
+    fn assemble_unboxed_closure_candidates(&mut self,
+                                           obligation: &Obligation<'tcx>,
+                                           candidates: &mut CandidateSet<'tcx>)
+                                           -> Result<(),SelectionError<'tcx>>
     {
-        let tcx = self.tcx();
-        let kind = if Some(obligation.trait_ref.def_id) == tcx.lang_items.fn_trait() {
-            ty::FnUnboxedClosureKind
-        } else if Some(obligation.trait_ref.def_id) == tcx.lang_items.fn_mut_trait() {
-            ty::FnMutUnboxedClosureKind
-        } else if Some(obligation.trait_ref.def_id) == tcx.lang_items.fn_once_trait() {
-            ty::FnOnceUnboxedClosureKind
-        } else {
-            return Ok(()); // not a fn trait, ignore
+        let kind = match self.fn_family_trait_kind(obligation.trait_ref.def_id) {
+            Some(k) => k,
+            None => { return Ok(()); }
         };
 
         let self_ty = self.infcx.shallow_resolve(obligation.self_ty());
@@ -1010,6 +1013,42 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         if closure_kind == kind {
             candidates.vec.push(UnboxedClosureCandidate(closure_def_id, substs.clone()));
+        }
+
+        Ok(())
+    }
+
+    /// Implement one of the `Fn()` family for a fn pointer.
+    fn assemble_fn_pointer_candidates(&mut self,
+                                      obligation: &Obligation<'tcx>,
+                                      candidates: &mut CandidateSet<'tcx>)
+                                      -> Result<(),SelectionError<'tcx>>
+    {
+        // We provide a `Fn` impl for fn pointers (but not e.g. `FnMut`).
+        if Some(obligation.trait_ref.def_id) != self.tcx().lang_items.fn_trait() {
+            return Ok(());
+        }
+
+        let self_ty = self.infcx.shallow_resolve(obligation.self_ty());
+        match self_ty.sty {
+            ty::ty_infer(..) => {
+                candidates.ambiguous = true; // could wind up being a fn() type
+            }
+
+            // provide an impl, but only for suitable `fn` pointers
+            ty::ty_bare_fn(ty::BareFnTy {
+                fn_style: ast::NormalFn,
+                abi: abi::Rust,
+                sig: ty::FnSig {
+                    inputs: _,
+                    output: ty::FnConverging(_),
+                    variadic: false
+                }
+            }) => {
+                candidates.vec.push(FnPointerCandidate);
+            }
+
+            _ => { }
         }
 
         Ok(())
@@ -1551,6 +1590,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 try!(self.confirm_unboxed_closure_candidate(obligation, closure_def_id, &substs));
                 Ok(VtableUnboxedClosure(closure_def_id, substs))
             }
+
+            FnPointerCandidate => {
+                let fn_type =
+                    try!(self.confirm_fn_pointer_candidate(obligation));
+                Ok(VtableFnPointer(fn_type))
+            }
         }
     }
 
@@ -1644,6 +1689,51 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         VtableImplData { impl_def_id: impl_def_id,
                          substs: substs,
                          nested: impl_obligations }
+    }
+
+    fn confirm_fn_pointer_candidate(&mut self,
+                                    obligation: &Obligation<'tcx>)
+                                    -> Result<ty::Ty<'tcx>,SelectionError<'tcx>>
+    {
+        debug!("confirm_fn_pointer_candidate({})",
+               obligation.repr(self.tcx()));
+
+        let self_ty = self.infcx.shallow_resolve(obligation.self_ty());
+        let sig = match self_ty.sty {
+            ty::ty_bare_fn(ty::BareFnTy {
+                fn_style: ast::NormalFn,
+                abi: abi::Rust,
+                ref sig
+            }) => {
+                (*sig).clone()
+            }
+            _ => {
+                self.tcx().sess.span_bug(
+                    obligation.cause.span,
+                    format!("Fn pointer candidate for inappropriate self type: {}",
+                            self_ty.repr(self.tcx())).as_slice());
+            }
+        };
+
+        let arguments_tuple = ty::mk_tup(self.tcx(), sig.inputs.to_vec());
+        let output_type = sig.output.unwrap();
+        let substs =
+            Substs::new_trait(
+                vec![arguments_tuple, output_type],
+                vec![],
+                vec![],
+                self_ty);
+        let trait_ref = Rc::new(ty::TraitRef {
+            def_id: obligation.trait_ref.def_id,
+            substs: substs,
+        });
+
+        let () =
+            try!(self.confirm(obligation.cause,
+                              obligation.trait_ref.clone(),
+                              trait_ref));
+
+        Ok(self_ty)
     }
 
     fn confirm_unboxed_closure_candidate(&mut self,
@@ -1964,6 +2054,22 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         util::obligations_for_generics(self.tcx(), cause, recursion_depth,
                                        &bounds, &impl_substs.types)
     }
+
+    fn fn_family_trait_kind(&self,
+                            trait_def_id: ast::DefId)
+                            -> Option<ty::UnboxedClosureKind>
+    {
+        let tcx = self.tcx();
+        if Some(trait_def_id) == tcx.lang_items.fn_trait() {
+            Some(ty::FnUnboxedClosureKind)
+        } else if Some(trait_def_id) == tcx.lang_items.fn_mut_trait() {
+            Some(ty::FnMutUnboxedClosureKind)
+        } else if Some(trait_def_id) == tcx.lang_items.fn_once_trait() {
+            Some(ty::FnOnceUnboxedClosureKind)
+        } else {
+            None
+        }
+    }
 }
 
 impl<'tcx> Repr<'tcx> for Candidate<'tcx> {
@@ -1972,7 +2078,10 @@ impl<'tcx> Repr<'tcx> for Candidate<'tcx> {
             ErrorCandidate => format!("ErrorCandidate"),
             BuiltinCandidate(b) => format!("BuiltinCandidate({})", b),
             UnboxedClosureCandidate(c, ref s) => {
-                format!("MatchedUnboxedClosureCandidate({},{})", c, s.repr(tcx))
+                format!("UnboxedClosureCandidate({},{})", c, s.repr(tcx))
+            }
+            FnPointerCandidate => {
+                format!("FnPointerCandidate")
             }
             ParamCandidate(ref a) => format!("ParamCandidate({})", a.repr(tcx)),
             ImplCandidate(a) => format!("ImplCandidate({})", a.repr(tcx)),
