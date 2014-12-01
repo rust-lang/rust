@@ -369,7 +369,8 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
 
         self.tcx.sess.span_err(
             trace.origin.span(),
-            format!("{}: {} ({})",
+            format!("{}:\n {}\n({})",
+            //            ^ Space to align both sets of `{}`: issue 18946
                  message_root_str,
                  expected_found_str,
                  ty::type_err_to_str(self.tcx, terr)).as_slice());
@@ -412,7 +413,9 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
             return None;
         }
 
-        Some(format!("expected `{}`, found `{}`",
+        Some(format!("expected `{}`,\n    found `{}`",
+        // `expected` will be preceded by either a space or a `(` so the
+        // following line needs 4 spaces to align both `{}` sets: issue 18946
                      expected.user_string(self.tcx),
                      found.user_string(self.tcx)))
     }
