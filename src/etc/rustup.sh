@@ -443,6 +443,18 @@ download_and_extract_package() {
     fi
 }
 
+# Wrap all the commands needed to install a package.
+install_package() {
+    install_script="$1"
+
+    sh "${install_script}" "${CFG_INSTALL_FLAGS}"
+    if [ $? -ne 0 ]
+    then
+        rm -Rf "${CFG_TMP_DIR}"
+        err "failed to install Rust"
+    fi
+}
+
 rm -Rf "${CFG_TMP_DIR}"
 need_ok "failed to remove temporary installation directory"
 
@@ -459,35 +471,10 @@ if [ -z "${CFG_DISABLE_CARGO}" ]; then
         "${CARGO_TARBALL_NAME}"
 fi
 
-
-(cd "${CFG_TMP_DIR}" && ${CFG_TAR} xzf "${RUST_TARBALL_NAME}")
-if [ $? -ne 0 ]
-then
-        rm -Rf "${CFG_TMP_DIR}"
-        err "failed to unpack installer"
-fi
-
-sh "${RUST_LOCAL_INSTALL_SCRIPT}" "${CFG_INSTALL_FLAGS}"
-if [ $? -ne 0 ]
-then
-        rm -Rf "${CFG_TMP_DIR}"
-        err "failed to install Rust"
-fi
+install_package "${RUST_LOCAL_INSTALL_SCRIPT}"
 
 if [ -z "${CFG_DISABLE_CARGO}" ]; then
-    (cd "${CFG_TMP_DIR}" && ${CFG_TAR} xzf "${CARGO_TARBALL_NAME}")
-    if [ $? -ne 0 ]
-    then
-            rm -Rf "${CFG_TMP_DIR}"
-            err "failed to unpack cargo installer"
-    fi
-
-    sh "${CARGO_LOCAL_INSTALL_SCRIPT}" "${CFG_INSTALL_FLAGS}"
-    if [ $? -ne 0 ]
-    then
-            rm -Rf "${CFG_TMP_DIR}"
-            err "failed to install Cargo"
-    fi
+    install_package "${CARGO_LOCAL_INSTALL_SCRIPT}"
 fi
 
 rm -Rf "${CFG_TMP_DIR}"
