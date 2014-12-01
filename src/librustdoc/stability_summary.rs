@@ -42,7 +42,7 @@ pub struct Counts {
 impl Copy for Counts {}
 
 impl Add<Counts, Counts> for Counts {
-    fn add(&self, other: &Counts) -> Counts {
+    fn add(self, other: Counts) -> Counts {
         Counts {
             deprecated:   self.deprecated   + other.deprecated,
             experimental: self.experimental + other.experimental,
