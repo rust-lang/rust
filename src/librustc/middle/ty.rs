@@ -2859,20 +2859,47 @@ impl TypeContents {
     }
 }
 
+// NOTE(stage0): Remove impl after a snapshot
+#[cfg(stage0)]
 impl ops::BitOr<TypeContents,TypeContents> for TypeContents {
     fn bitor(&self, other: &TypeContents) -> TypeContents {
         TypeContents {bits: self.bits | other.bits}
     }
 }
 
+#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
+impl ops::BitOr<TypeContents,TypeContents> for TypeContents {
+    fn bitor(self, other: TypeContents) -> TypeContents {
+        TypeContents {bits: self.bits | other.bits}
+    }
+}
+
+// NOTE(stage0): Remove impl after a snapshot
+#[cfg(stage0)]
 impl ops::BitAnd<TypeContents,TypeContents> for TypeContents {
     fn bitand(&self, other: &TypeContents) -> TypeContents {
         TypeContents {bits: self.bits & other.bits}
     }
 }
 
+#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
+impl ops::BitAnd<TypeContents, TypeContents> for TypeContents {
+    fn bitand(self, other: TypeContents) -> TypeContents {
+        TypeContents {bits: self.bits & other.bits}
+    }
+}
+
+// NOTE(stage0): Remove impl after a snapshot
+#[cfg(stage0)]
 impl ops::Sub<TypeContents,TypeContents> for TypeContents {
     fn sub(&self, other: &TypeContents) -> TypeContents {
+        TypeContents {bits: self.bits & !other.bits}
+    }
+}
+
+#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
+impl ops::Sub<TypeContents, TypeContents> for TypeContents {
+    fn sub(self, other: TypeContents) -> TypeContents {
         TypeContents {bits: self.bits & !other.bits}
     }
 }
