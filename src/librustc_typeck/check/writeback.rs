@@ -19,8 +19,6 @@ use middle::def;
 use middle::pat_util;
 use middle::ty::{mod, Ty, MethodCall, MethodCallee};
 use middle::ty_fold::{TypeFolder,TypeFoldable};
-use middle::infer::{force_all, resolve_all, resolve_region};
-use middle::infer::resolve_type;
 use middle::infer;
 use write_substs_to_tcx;
 use write_ty_to_tcx;
@@ -337,8 +335,8 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         }
     }
 
-    fn resolve<T:ResolveIn<'tcx>>(&self, t: &T, reason: ResolveReason) -> T {
-        t.resolve_in(&mut Resolver::new(self.fcx, reason))
+    fn resolve<T:TypeFoldable<'tcx>>(&self, t: &T, reason: ResolveReason) -> T {
+        t.fold_with(&mut Resolver::new(self.fcx, reason))
     }
 }
 
@@ -372,19 +370,6 @@ impl ResolveReason {
                 }
             }
         }
-    }
-}
-
-///////////////////////////////////////////////////////////////////////////
-// Convenience methods for resolving different kinds of things.
-
-trait ResolveIn<'tcx> {
-    fn resolve_in<'a>(&self, resolver: &mut Resolver<'a, 'tcx>) -> Self;
-}
-
-impl<'tcx, T: TypeFoldable<'tcx>> ResolveIn<'tcx> for T {
-    fn resolve_in<'a>(&self, resolver: &mut Resolver<'a, 'tcx>) -> T {
-        self.fold_with(resolver)
     }
 }
 
@@ -465,13 +450,11 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Resolver<'cx, 'tcx> {
     }
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-        if !ty::type_needs_infer(t) {
-            return t;
-        }
-
-        match resolve_type(self.infcx, None, t, resolve_all | force_all) {
+        match self.infcx.fully_resolve(&t) {
             Ok(t) => t,
             Err(e) => {
+                debug!("Resolver::fold_ty: input type `{}` not fully resolvable",
+                       t.repr(self.tcx));
                 self.report_error(e);
                 ty::mk_err()
             }
@@ -479,7 +462,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Resolver<'cx, 'tcx> {
     }
 
     fn fold_region(&mut self, r: ty::Region) -> ty::Region {
-        match resolve_region(self.infcx, r, resolve_all | force_all) {
+        match self.infcx.fully_resolve(&r) {
             Ok(r) => r,
             Err(e) => {
                 self.report_error(e);
