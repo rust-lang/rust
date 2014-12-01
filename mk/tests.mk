@@ -598,7 +598,7 @@ CTEST_DISABLE_debuginfo-lldb = "lldb tests are only run on darwin"
 endif
 
 ifeq ($(CFG_OSTYPE),apple-darwin)
-CTEST_DISABLE_debuginfo-gdb = "gdb on darwing needs root"
+CTEST_DISABLE_debuginfo-gdb = "gdb on darwin needs root"
 endif
 
 # CTEST_DISABLE_NONSELFHOST_$(TEST_GROUP), if set, will cause that
