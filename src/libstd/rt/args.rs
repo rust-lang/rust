@@ -51,10 +51,10 @@ mod imp {
     use string::String;
     use mem;
 
-    use rt::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
+    use sync::mutex::{StaticMutex, MUTEX_INIT};
 
     static mut GLOBAL_ARGS_PTR: uint = 0;
-    static LOCK: StaticNativeMutex = NATIVE_MUTEX_INIT;
+    static LOCK: NativeMutex = MUTEX_INIT;
 
     pub unsafe fn init(argc: int, argv: *const *const u8) {
         let args = load_argc_and_argv(argc, argv);

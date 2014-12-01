@@ -58,10 +58,9 @@
 
 use prelude::*;
 
-use rt::exclusive::Exclusive;
 use rt;
 use sync::atomic::{mod, AtomicUint};
-use sync::{Once, ONCE_INIT};
+use sync::{Mutex, Once, ONCE_INIT};
 
 use sys::thread_local as imp;
 
@@ -143,7 +142,7 @@ pub const INIT_INNER: StaticKeyInner = StaticKeyInner {
 };
 
 static INIT_KEYS: Once = ONCE_INIT;
-static mut KEYS: *mut Exclusive<Vec<imp::Key>> = 0 as *mut _;
+static mut KEYS: *mut Mutex<Vec<imp::Key>> = 0 as *mut _;
 
 impl StaticKey {
     /// Gets the value associated with this TLS key

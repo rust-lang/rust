@@ -89,7 +89,7 @@ use libc;
 use mem;
 use option::{Some, None, Option};
 use result::{Ok, Err};
-use rt::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
+use sync::{StaticMutex, MUTEX_INIT};
 
 use sys_common::backtrace::*;
 
@@ -150,7 +150,7 @@ pub fn write(w: &mut Writer) -> IoResult<()> {
     // is semi-reasonable in terms of printing anyway, and we know that all
     // I/O done here is blocking I/O, not green I/O, so we don't have to
     // worry about this being a native vs green mutex.
-    static LOCK: StaticNativeMutex = NATIVE_MUTEX_INIT;
+    static LOCK: StaticMutex = MUTEX_INIT;
     let _g = unsafe { LOCK.lock() };
 
     try!(writeln!(w, "stack backtrace:"));
