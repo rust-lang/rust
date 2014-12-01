@@ -53,6 +53,7 @@ use std::rc::Rc;
 use std::u32;
 use std::str::Str as StrTrait; // Conflicts with Str variant
 use std::char::Char as CharTrait; // Conflicts with Char variant
+use std::path::Path as FsPath; // Conflicts with Path struct
 
 use core::DocContext;
 use doctree;
@@ -115,6 +116,7 @@ impl<T: Clean<U>, U> Clean<Vec<U>> for syntax::owned_slice::OwnedSlice<T> {
 #[deriving(Clone, Encodable, Decodable)]
 pub struct Crate {
     pub name: String,
+    pub src: FsPath,
     pub module: Option<Item>,
     pub externs: Vec<(ast::CrateNum, ExternalCrate)>,
     pub primitives: Vec<PrimitiveType>,
@@ -194,6 +196,7 @@ impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
 
         Crate {
             name: name.to_string(),
+            src: cx.src.clone(),
             module: Some(module),
             externs: externs,
             primitives: primitives,

@@ -83,6 +83,9 @@ pub struct Context {
     /// String representation of how to get back to the root path of the 'doc/'
     /// folder in terms of a relative URL.
     pub root_path: String,
+    /// The path to the crate root source minus the file name.
+    /// Used for simplifying paths to the highlighted source code files.
+    pub src_root: Path,
     /// The current destination folder of where HTML artifacts should be placed.
     /// This changes as the context descends into the module hierarchy.
     pub dst: Path,
@@ -249,6 +252,7 @@ pub fn run(mut krate: clean::Crate,
            passes: HashSet<String>) -> io::IoResult<()> {
     let mut cx = Context {
         dst: dst,
+        src_root: krate.src.dir_path(),
         passes: passes,
         current: Vec::new(),
         root_path: String::new(),
@@ -642,8 +646,13 @@ fn mkdir(path: &Path) -> io::IoResult<()> {
 /// things like ".." to components which preserve the "top down" hierarchy of a
 /// static HTML tree.
 // FIXME (#9639): The closure should deal with &[u8] instead of &str
-fn clean_srcpath(src: &[u8], f: |&str|) {
+// FIXME (#9639): This is too conservative, rejecting non-UTF-8 paths
+fn clean_srcpath(src_root: &Path, src: &[u8], f: |&str|) {
     let p = Path::new(src);
+
+    // make it relative, if possible
+    let p = p.path_relative_from(src_root).unwrap_or(p);
+
     if p.as_vec() != b"." {
         for c in p.str_components().map(|x|x.unwrap()) {
             if ".." == c {
@@ -749,7 +758,7 @@ impl<'a> SourceCollector<'a> {
         // Create the intermediate directories
         let mut cur = self.dst.clone();
         let mut root_path = String::from_str("../../");
-        clean_srcpath(p.dirname(), |component| {
+        clean_srcpath(&self.cx.src_root, p.dirname(), |component| {
             cur.push(component);
             mkdir(&cur).unwrap();
             root_path.push_str("../");
@@ -1299,13 +1308,13 @@ impl<'a> Item<'a> {
     /// If `None` is returned, then a source link couldn't be generated. This
     /// may happen, for example, with externally inlined items where the source
     /// of their crate documentation isn't known.
-    fn href(&self) -> Option<String> {
+    fn href(&self, cx: &Context) -> Option<String> {
         // If this item is part of the local crate, then we're guaranteed to
         // know the span, so we plow forward and generate a proper url. The url
         // has anchors for the line numbers that we're linking to.
         if ast_util::is_local(self.item.def_id) {
             let mut path = Vec::new();
-            clean_srcpath(self.item.source.filename.as_bytes(), |component| {
+            clean_srcpath(&cx.src_root, self.item.source.filename.as_bytes(), |component| {
                 path.push(component.to_string());
             });
             let href = if self.item.source.loline == self.item.source.hiline {
@@ -1412,7 +1421,7 @@ impl<'a> fmt::Show for Item<'a> {
         // this page, and this link will be auto-clicked. The `id` attribute is
         // used to find the link to auto-click.
         if self.cx.include_sources && !is_primitive {
-            match self.href() {
+            match self.href(self.cx) {
                 Some(l) => {
                     try!(write!(fmt, "<a id='src-{}' href='{}'>[src]</a>",
                                 self.item.def_id.node, l));
