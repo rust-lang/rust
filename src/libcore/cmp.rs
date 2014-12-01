@@ -407,19 +407,19 @@ mod impls {
         fn ne(&self, other: & &'b B) -> bool { PartialEq::ne(*self, *other) }
     }
     #[unstable = "Trait is unstable."]
-    impl<'a, Sized? T: PartialOrd> PartialOrd for &'a T {
+    impl<'a, 'b, Sized? T: PartialOrd> PartialOrd<&'b T> for &'a T {
         #[inline]
-        fn partial_cmp(&self, other: &&'a T) -> Option<Ordering> {
+        fn partial_cmp(&self, other: &&'b T) -> Option<Ordering> {
             PartialOrd::partial_cmp(*self, *other)
         }
         #[inline]
-        fn lt(&self, other: & &'a T) -> bool { PartialOrd::lt(*self, *other) }
+        fn lt(&self, other: & &'b T) -> bool { PartialOrd::lt(*self, *other) }
         #[inline]
-        fn le(&self, other: & &'a T) -> bool { PartialOrd::le(*self, *other) }
+        fn le(&self, other: & &'b T) -> bool { PartialOrd::le(*self, *other) }
         #[inline]
-        fn ge(&self, other: & &'a T) -> bool { PartialOrd::ge(*self, *other) }
+        fn ge(&self, other: & &'b T) -> bool { PartialOrd::ge(*self, *other) }
         #[inline]
-        fn gt(&self, other: & &'a T) -> bool { PartialOrd::gt(*self, *other) }
+        fn gt(&self, other: & &'b T) -> bool { PartialOrd::gt(*self, *other) }
     }
     #[unstable = "Trait is unstable."]
     impl<'a, Sized? T: Ord> Ord for &'a T {
@@ -439,19 +439,19 @@ mod impls {
         fn ne(&self, other: &&'b mut B) -> bool { PartialEq::ne(*self, *other) }
     }
     #[unstable = "Trait is unstable."]
-    impl<'a, Sized? T: PartialOrd> PartialOrd for &'a mut T {
+    impl<'a, 'b, Sized? T: PartialOrd> PartialOrd<&'b mut T> for &'a mut T {
         #[inline]
-        fn partial_cmp(&self, other: &&'a mut T) -> Option<Ordering> {
+        fn partial_cmp(&self, other: &&'b mut T) -> Option<Ordering> {
             PartialOrd::partial_cmp(*self, *other)
         }
         #[inline]
-        fn lt(&self, other: &&'a mut T) -> bool { PartialOrd::lt(*self, *other) }
+        fn lt(&self, other: &&'b mut T) -> bool { PartialOrd::lt(*self, *other) }
         #[inline]
-        fn le(&self, other: &&'a mut T) -> bool { PartialOrd::le(*self, *other) }
+        fn le(&self, other: &&'b mut T) -> bool { PartialOrd::le(*self, *other) }
         #[inline]
-        fn ge(&self, other: &&'a mut T) -> bool { PartialOrd::ge(*self, *other) }
+        fn ge(&self, other: &&'b mut T) -> bool { PartialOrd::ge(*self, *other) }
         #[inline]
-        fn gt(&self, other: &&'a mut T) -> bool { PartialOrd::gt(*self, *other) }
+        fn gt(&self, other: &&'b mut T) -> bool { PartialOrd::gt(*self, *other) }
     }
     #[unstable = "Trait is unstable."]
     impl<'a, Sized? T: Ord> Ord for &'a mut T {
