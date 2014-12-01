@@ -1296,13 +1296,14 @@ impl<'a> Parser<'a> {
                 let lo = p.span.lo;
 
                 let vis = p.parse_visibility();
+                let style = p.parse_fn_style();
                 let abi = if p.eat_keyword(keywords::Extern) {
                     p.parse_opt_abi().unwrap_or(abi::C)
                 } else {
                     abi::Rust
                 };
+                p.expect_keyword(keywords::Fn);
 
-                let style = p.parse_fn_style();
                 let ident = p.parse_ident();
                 let mut generics = p.parse_generics();
 
@@ -4458,12 +4459,13 @@ impl<'a> Parser<'a> {
                                                              self.span.hi) };
                 (ast::MethMac(m), self.span.hi, attrs)
             } else {
+                let fn_style = self.parse_fn_style();
                 let abi = if self.eat_keyword(keywords::Extern) {
                     self.parse_opt_abi().unwrap_or(abi::C)
                 } else {
                     abi::Rust
                 };
-                let fn_style = self.parse_fn_style();
+                self.expect_keyword(keywords::Fn);
                 let ident = self.parse_ident();
                 let mut generics = self.parse_generics();
                 let (explicit_self, decl) = self.parse_fn_decl_with_self(|p| {
@@ -5009,14 +5011,13 @@ impl<'a> Parser<'a> {
         })
     }
 
-    /// Parse safe/unsafe and fn
+    /// Parse unsafe or not
     fn parse_fn_style(&mut self) -> FnStyle {
-        if self.eat_keyword(keywords::Fn) { NormalFn }
-        else if self.eat_keyword(keywords::Unsafe) {
-            self.expect_keyword(keywords::Fn);
+        if self.eat_keyword(keywords::Unsafe) {
             UnsafeFn
+        } else {
+            NormalFn
         }
-        else { self.unexpected(); }
     }
 
 
