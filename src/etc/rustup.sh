@@ -455,27 +455,37 @@ install_package() {
     fi
 }
 
-rm -Rf "${CFG_TMP_DIR}"
-need_ok "failed to remove temporary installation directory"
+# It's possible that curl could be interrupted partway though downloading
+# `rustup.sh`, truncating the file. This could be especially bad if we were in
+# the middle of a line that would run "rm -rf ". To protect against this, we
+# wrap up the `rustup.sh` destructive functionality in this helper function,
+# which we call as the last thing we do. This means we will not do anything
+# unless we have the entire file downloaded.
+install_packages() {
+    rm -Rf "${CFG_TMP_DIR}"
+    need_ok "failed to remove temporary installation directory"
 
-mkdir -p "${CFG_TMP_DIR}"
-need_ok "failed to create create temporary installation directory"
+    mkdir -p "${CFG_TMP_DIR}"
+    need_ok "failed to create create temporary installation directory"
 
-download_and_extract_package \
-    "${RUST_URL}" \
-    "${RUST_TARBALL_NAME}"
-
-if [ -z "${CFG_DISABLE_CARGO}" ]; then
     download_and_extract_package \
-        "${CARGO_URL}" \
-        "${CARGO_TARBALL_NAME}"
-fi
+        "${RUST_URL}" \
+        "${RUST_TARBALL_NAME}"
 
-install_package "${RUST_LOCAL_INSTALL_SCRIPT}"
+    if [ -z "${CFG_DISABLE_CARGO}" ]; then
+        download_and_extract_package \
+            "${CARGO_URL}" \
+            "${CARGO_TARBALL_NAME}"
+    fi
 
-if [ -z "${CFG_DISABLE_CARGO}" ]; then
-    install_package "${CARGO_LOCAL_INSTALL_SCRIPT}"
-fi
+    install_package "${RUST_LOCAL_INSTALL_SCRIPT}"
 
-rm -Rf "${CFG_TMP_DIR}"
-need_ok "couldn't rm temporary installation directory"
+    if [ -z "${CFG_DISABLE_CARGO}" ]; then
+        install_package "${CARGO_LOCAL_INSTALL_SCRIPT}"
+    fi
+
+    rm -Rf "${CFG_TMP_DIR}"
+    need_ok "couldn't rm temporary installation directory"
+}
+
+install_packages
