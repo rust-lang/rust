@@ -4999,14 +4999,19 @@ pub fn unboxed_closure_upvars<'tcx>(tcx: &ctxt<'tcx>, closure_id: ast::DefId, su
     }
 }
 
-pub fn is_binopable<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>, op: ast::BinOp) -> bool {
+/// Returns `true` if `lhs OP rhs` is a built-in operation
+pub fn is_builtin_binop<'tcx>(cx: &ctxt<'tcx>,
+                              lhs: Ty<'tcx>,
+                              rhs: Ty<'tcx>,
+                              op: ast::BinOp)
+                              -> bool {
     #![allow(non_upper_case_globals)]
     static tycat_other: int = 0;
     static tycat_bool: int = 1;
     static tycat_char: int = 2;
     static tycat_int: int = 3;
     static tycat_float: int = 4;
-    static tycat_raw_ptr: int = 6;
+    static tycat_raw_ptr: int = 5;
 
     static opcat_add: int = 0;
     static opcat_sub: int = 1;
@@ -5065,10 +5070,16 @@ pub fn is_binopable<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>, op: ast::BinOp) -> bool
     /*char*/    [f, f, f, f,     t,   t,  f,   f,     f],
     /*int*/     [t, t, t, t,     t,   t,  t,   f,     t],
     /*float*/   [t, t, t, f,     t,   t,  f,   f,     f],
-    /*bot*/     [t, t, t, t,     t,   t,  t,   t,     t],
     /*raw ptr*/ [f, f, f, f,     t,   t,  f,   f,     f]];
 
-    return tbl[tycat(cx, ty) as uint ][opcat(op) as uint];
+    let lhs_cat = tycat(cx, lhs);
+    let rhs_cat = tycat(cx, rhs);
+
+    if lhs_cat == rhs_cat {
+        tbl[lhs_cat as uint ][opcat(op) as uint]
+    } else {
+        false
+    }
 }
 
 /// Returns an equivalent type with all the typedefs and self regions removed.
