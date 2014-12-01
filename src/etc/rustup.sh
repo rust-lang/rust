@@ -244,6 +244,7 @@ create_tmp_dir() {
 probe_need CFG_CURL  curl
 probe_need CFG_TAR   tar
 probe_need CFG_FILE  file
+probe_need CFG_SHASUM shasum
 
 CFG_SRC_DIR="$(cd $(dirname $0) && pwd)/"
 CFG_SELF="$0"
@@ -431,10 +432,39 @@ CARGO_TARBALL_NAME="${CARGO_PACKAGE_NAME_AND_TRIPLE}.tar.gz"
 CARGO_LOCAL_INSTALL_DIR="${CFG_TMP_DIR}/${CARGO_PACKAGE_NAME_AND_TRIPLE}"
 CARGO_LOCAL_INSTALL_SCRIPT="${CARGO_LOCAL_INSTALL_DIR}/install.sh"
 
+verify_hash() {
+    remote_sha256="$1"
+    local_file="$2"
+
+    msg "Downloading ${remote_sha256}"
+    remote_sha256=`"${CFG_CURL}" -f "${remote_sha256}"`
+    if [ "$?" -ne 0 ]; then
+        rm -Rf "${CFG_TMP_DIR}"
+        err "Failed to download ${remote_url}"
+    fi
+
+    msg "Verifying hash"
+    local_sha256=`"${CFG_SHASUM}" -a 256 "${local_file}"`
+    if [ "$?" -ne 0 ]; then
+        rm -Rf "${CFG_TMP_DIR}"
+        err "Failed to compute hash for ${local_tarball}"
+    fi
+
+    # We only need the sha, not the filenames
+    remote_sha256=`echo ${remote_sha256} | cut -f 1 -d ' '`
+    local_sha256=`echo ${local_sha256} | cut -f 1 -d ' '`
+
+    if [ "${remote_sha256}" != "${local_sha256}" ]; then
+        rm -Rf "${CFG_TMP_DIR}"
+        err "invalid sha256.\n  ${remote_sha256}\t${remote_tarball}\n  ${local_sha256}\t${local_tarball}"
+    fi
+}
+
 # Fetch the package.
 download_package() {
     remote_tarball="$1"
     local_tarball="$2"
+    remote_sha256="${remote_tarball}.sha256"
 
     msg "Downloading ${remote_tarball} to ${local_tarball}"
 
@@ -444,6 +474,8 @@ download_package() {
         rm -Rf "${CFG_TMP_DIR}"
         err "failed to download installer"
     fi
+
+    verify_hash "${remote_sha256}" "${local_tarball}"
 }
 
 # Wrap all the commands needed to install a package.
