@@ -2904,6 +2904,7 @@ pub fn lookup_tup_field_ty<'tcx>(tcx: &ty::ctxt<'tcx>,
 
 // Controls whether the arguments are automatically referenced. This is useful
 // for overloaded binary and unary operators.
+#[deriving(PartialEq)]
 pub enum DerefArgs {
     DontDerefArgs,
     DoDerefArgs
@@ -3130,7 +3131,8 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                      trait_did: Option<ast::DefId>,
                                      lhs: &'a ast::Expr,
                                      rhs: Option<&P<ast::Expr>>,
-                                     unbound_method: F) -> Ty<'tcx> where
+                                     unbound_method: F,
+                                     deref_args: DerefArgs) -> Ty<'tcx> where
         F: FnOnce(),
     {
         let method = match trait_did {
@@ -3146,7 +3148,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                 //   traits that don't force left and right to have same
                 //   type.
                 let (adj_ty, adjustment) = match lhs_ty.sty {
-                    ty::ty_rptr(r_in, mt) => {
+                    ty::ty_rptr(r_in, mt) if deref_args == DoDerefArgs => {
                         let r_adj = fcx.infcx().next_region_var(infer::Autoref(lhs.span));
                         fcx.mk_subr(infer::Reborrow(lhs.span), r_adj, r_in);
                         let adjusted_ty = ty::mk_rptr(fcx.tcx(), r_adj, mt);
@@ -3183,7 +3185,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                             method_ty,
                                             op_ex,
                                             args.as_slice(),
-                                            DoDerefArgs,
+                                            deref_args,
                                             DontTupleArguments) {
                     ty::FnConverging(result_type) => result_type,
                     ty::FnDiverging => ty::mk_err()
@@ -3199,7 +3201,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                             expected_ty,
                                             op_ex,
                                             args.as_slice(),
-                                            DoDerefArgs,
+                                            deref_args,
                                             DontTupleArguments);
                 ty::mk_err()
             }
@@ -3318,23 +3320,23 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                   rhs: &P<ast::Expr>) -> Ty<'tcx> {
         let tcx = fcx.ccx.tcx;
         let lang = &tcx.lang_items;
-        let (name, trait_did) = match op {
-            ast::BiAdd => ("add", lang.add_trait()),
-            ast::BiSub => ("sub", lang.sub_trait()),
-            ast::BiMul => ("mul", lang.mul_trait()),
-            ast::BiDiv => ("div", lang.div_trait()),
-            ast::BiRem => ("rem", lang.rem_trait()),
-            ast::BiBitXor => ("bitxor", lang.bitxor_trait()),
-            ast::BiBitAnd => ("bitand", lang.bitand_trait()),
-            ast::BiBitOr => ("bitor", lang.bitor_trait()),
-            ast::BiShl => ("shl", lang.shl_trait()),
-            ast::BiShr => ("shr", lang.shr_trait()),
-            ast::BiLt => ("lt", lang.ord_trait()),
-            ast::BiLe => ("le", lang.ord_trait()),
-            ast::BiGe => ("ge", lang.ord_trait()),
-            ast::BiGt => ("gt", lang.ord_trait()),
-            ast::BiEq => ("eq", lang.eq_trait()),
-            ast::BiNe => ("ne", lang.eq_trait()),
+        let (name, trait_did, deref_args) = match op {
+            ast::BiAdd => ("add", lang.add_trait(), DontDerefArgs),
+            ast::BiSub => ("sub", lang.sub_trait(), DontDerefArgs),
+            ast::BiMul => ("mul", lang.mul_trait(), DontDerefArgs),
+            ast::BiDiv => ("div", lang.div_trait(), DontDerefArgs),
+            ast::BiRem => ("rem", lang.rem_trait(), DontDerefArgs),
+            ast::BiBitXor => ("bitxor", lang.bitxor_trait(), DontDerefArgs),
+            ast::BiBitAnd => ("bitand", lang.bitand_trait(), DontDerefArgs),
+            ast::BiBitOr => ("bitor", lang.bitor_trait(), DontDerefArgs),
+            ast::BiShl => ("shl", lang.shl_trait(), DontDerefArgs),
+            ast::BiShr => ("shr", lang.shr_trait(), DontDerefArgs),
+            ast::BiLt => ("lt", lang.ord_trait(), DoDerefArgs),
+            ast::BiLe => ("le", lang.ord_trait(), DoDerefArgs),
+            ast::BiGe => ("ge", lang.ord_trait(), DoDerefArgs),
+            ast::BiGt => ("gt", lang.ord_trait(), DoDerefArgs),
+            ast::BiEq => ("eq", lang.eq_trait(), DoDerefArgs),
+            ast::BiNe => ("ne", lang.eq_trait(), DoDerefArgs),
             ast::BiAnd | ast::BiOr => {
                 check_expr(fcx, &**rhs);
                 return ty::mk_err();
@@ -3347,7 +3349,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                         ast_util::binop_to_string(op),
                         actual)
             }, lhs_resolved_t, None)
-        })
+        }, deref_args)
     }
 
     fn check_user_unop<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
@@ -3363,7 +3365,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                 format!("cannot apply unary operator `{}` to type `{}`",
                         op_str, actual)
             }, rhs_t, None);
-        })
+        }, DontDerefArgs)
     }
 
     // Check field access expressions
