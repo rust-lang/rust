@@ -10,12 +10,12 @@
 
 fn main() {
     let x = ();
-    1 +
-    x //~ ERROR mismatched types: expected `_`, found `()` (expected integral variable, found ())
+    1 //~ ERROR the trait `core::ops::Add<(), _>` is not implemented for the type `_`
+    + x
     ;
 
     let x: () = ();
-    1 +
-    x //~ ERROR mismatched types: expected `_`, found `()` (expected integral variable, found ())
+    1 //~ ERROR the trait `core::ops::Add<(), _>` is not implemented for the type `_`
+    + x
     ;
 }

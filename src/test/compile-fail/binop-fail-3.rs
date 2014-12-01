@@ -10,7 +10,8 @@
 
 fn foo() -> ! { panic!("quux"); }
 fn main() {
-    foo() //~ ERROR the type of this value must be known in this context
+    foo()
+    //~^ ERROR locate the impl of the trait `core::cmp::PartialEq<_>` for the type `_`
     ==
     foo();
 }
