@@ -30,7 +30,7 @@ use ops::Drop;
 use option::{Some, None};
 use path::Path;
 use result::{Ok, Err};
-use rt::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
+use sync::{StaticMutex, MUTEX_INIT};
 use slice::SliceExt;
 use str::StrPrelude;
 use dynamic_lib::DynamicLibrary;
@@ -293,7 +293,7 @@ impl Drop for Cleanup {
 pub fn write(w: &mut Writer) -> IoResult<()> {
     // According to windows documentation, all dbghelp functions are
     // single-threaded.
-    static LOCK: StaticNativeMutex = NATIVE_MUTEX_INIT;
+    static LOCK: StaticMutex = MUTEX_INIT;
     let _g = unsafe { LOCK.lock() };
 
     // Open up dbghelp.dll, we don't link to it explicitly because it can't

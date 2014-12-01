@@ -71,9 +71,6 @@ pub mod backtrace;
 mod macros;
 
 // These should be refactored/moved/made private over time
-pub mod mutex;
-pub mod thread;
-pub mod exclusive;
 pub mod util;
 <<<<<<< HEAD
 =======

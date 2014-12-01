@@ -17,20 +17,18 @@ use core::prelude::*;
 use libc;
 use boxed::Box;
 use vec::Vec;
-use sync::{atomic, Once, ONCE_INIT};
+use sync::{Mutex, atomic, Once, ONCE_INIT};
 use mem;
 use thunk::Thunk;
 
-use rt::exclusive::Exclusive;
-
-type Queue = Exclusive<Vec<Thunk>>;
+type Queue = Mutex<Vec<Thunk>>;
 
 static INIT: Once = ONCE_INIT;
 static QUEUE: atomic::AtomicUint = atomic::INIT_ATOMIC_UINT;
 static RUNNING: atomic::AtomicBool = atomic::INIT_ATOMIC_BOOL;
 
 fn init() {
-    let state: Box<Queue> = box Exclusive::new(Vec::new());
+    let state: Box<Queue> = box Mutex::new(Vec::new());
     unsafe {
         QUEUE.store(mem::transmute(state), atomic::SeqCst);
         libc::atexit(run);
