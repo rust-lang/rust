@@ -2203,12 +2203,9 @@ fn register_def(cx: &DocContext, def: def::Def) -> ast::DefId {
         None => return did
     };
     inline::record_extern_fqn(cx, did, kind);
-    match kind {
-        TypeTrait => {
-            let t = inline::build_external_trait(cx, tcx, did);
-            cx.external_traits.borrow_mut().as_mut().unwrap().insert(did, t);
-        }
-        _ => {}
+    if let TypeTrait = kind {
+        let t = inline::build_external_trait(cx, tcx, did);
+        cx.external_traits.borrow_mut().as_mut().unwrap().insert(did, t);
     }
     return did;
 }

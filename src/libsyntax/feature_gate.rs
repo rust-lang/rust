@@ -151,13 +151,10 @@ impl<'a, 'v> Visitor<'v> for Context<'a> {
     fn visit_view_item(&mut self, i: &ast::ViewItem) {
         match i.node {
             ast::ViewItemUse(ref path) => {
-                match path.node {
-                    ast::ViewPathGlob(..) => {
-                        self.gate_feature("globs", path.span,
-                                          "glob import statements are \
-                                           experimental and possibly buggy");
-                    }
-                    _ => {}
+                if let ast::ViewPathGlob(..) = path.node {
+                    self.gate_feature("globs", path.span,
+                                      "glob import statements are \
+                                       experimental and possibly buggy");
                 }
             }
             ast::ViewItemExternCrate(..) => {
@@ -295,13 +292,10 @@ impl<'a, 'v> Visitor<'v> for Context<'a> {
     }
 
     fn visit_ty(&mut self, t: &ast::Ty) {
-        match t.node {
-            ast::TyClosure(ref closure) => {
-                // this used to be blocked by a feature gate, but it should just
-                // be plain impossible right now
-                assert!(closure.onceness != ast::Once);
-            },
-            _ => {}
+        if let ast::TyClosure(ref closure) =  t.node {
+            // this used to be blocked by a feature gate, but it should just
+            // be plain impossible right now
+            assert!(closure.onceness != ast::Once);
         }
 
         visit::walk_ty(self, t);
@@ -465,4 +459,3 @@ pub fn check_crate(span_handler: &SpanHandler, krate: &ast::Crate) -> (Features,
     },
     unknown_features)
 }
-

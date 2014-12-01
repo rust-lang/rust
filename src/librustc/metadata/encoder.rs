@@ -433,17 +433,13 @@ fn encode_reexported_static_trait_methods(ecx: &EncodeContext,
     match ecx.tcx.trait_items_cache.borrow().get(&exp.def_id) {
         Some(trait_items) => {
             for trait_item in trait_items.iter() {
-                match *trait_item {
-                    ty::MethodTraitItem(ref m) => {
-                        encode_reexported_static_method(rbml_w,
-                                                        exp,
-                                                        m.def_id,
-                                                        m.name);
-                    }
-                    _ => {}
+                if let ty::MethodTraitItem(ref m) = *trait_item {
+                    encode_reexported_static_method(rbml_w,
+                                                    exp,
+                                                    m.def_id,
+                                                    m.name);
                 }
             }
-
             true
         }
         None => { false }
@@ -454,46 +450,42 @@ fn encode_reexported_static_methods(ecx: &EncodeContext,
                                     rbml_w: &mut Encoder,
                                     mod_path: PathElems,
                                     exp: &middle::resolve::Export2) {
-    match ecx.tcx.map.find(exp.def_id.node) {
-        Some(ast_map::NodeItem(item)) => {
-            let original_name = token::get_ident(item.ident);
+    if let Some(ast_map::NodeItem(item)) = ecx.tcx.map.find(exp.def_id.node) {
+        let original_name = token::get_ident(item.ident);
 
-            let path_differs = ecx.tcx.map.with_path(exp.def_id.node, |path| {
-                let (mut a, mut b) = (path, mod_path.clone());
-                loop {
-                    match (a.next(), b.next()) {
-                        (None, None) => return true,
-                        (None, _) | (_, None) => return false,
-                        (Some(x), Some(y)) => if x != y { return false },
-                    }
-                }
-            });
-
-            //
-            // We don't need to reexport static methods on items
-            // declared in the same module as our `pub use ...` since
-            // that's done when we encode the item itself.
-            //
-            // The only exception is when the reexport *changes* the
-            // name e.g. `pub use Foo = self::Bar` -- we have
-            // encoded metadata for static methods relative to Bar,
-            // but not yet for Foo.
-            //
-            if path_differs || original_name.get() != exp.name.as_slice() {
-                if !encode_reexported_static_base_methods(ecx, rbml_w, exp) {
-                    if encode_reexported_static_trait_methods(ecx, rbml_w, exp) {
-                        debug!("(encode reexported static methods) {} \
-                                 [trait]",
-                                original_name);
-                    }
-                }
-                else {
-                    debug!("(encode reexported static methods) {} [base]",
-                            original_name);
+        let path_differs = ecx.tcx.map.with_path(exp.def_id.node, |path| {
+            let (mut a, mut b) = (path, mod_path.clone());
+            loop {
+                match (a.next(), b.next()) {
+                    (None, None) => return true,
+                    (None, _) | (_, None) => return false,
+                    (Some(x), Some(y)) => if x != y { return false },
                 }
             }
+        });
+
+        //
+        // We don't need to reexport static methods on items
+        // declared in the same module as our `pub use ...` since
+        // that's done when we encode the item itself.
+        //
+        // The only exception is when the reexport *changes* the
+        // name e.g. `pub use Foo = self::Bar` -- we have
+        // encoded metadata for static methods relative to Bar,
+        // but not yet for Foo.
+        //
+        if path_differs || original_name.get() != exp.name.as_slice() {
+            if !encode_reexported_static_base_methods(ecx, rbml_w, exp) {
+                if encode_reexported_static_trait_methods(ecx, rbml_w, exp) {
+                    debug!("(encode reexported static methods) {} [trait]",
+                           original_name);
+                }
+            }
+            else {
+                debug!("(encode reexported static methods) {} [base]",
+                       original_name);
+            }
         }
-        _ => {}
     }
 }
 
@@ -581,19 +573,15 @@ fn encode_info_for_mod(ecx: &EncodeContext,
             true
         });
 
-        match item.node {
-            ast::ItemImpl(..) => {
-                let (ident, did) = (item.ident, item.id);
-                debug!("(encoding info for module) ... encoding impl {} \
-                        ({}/{})",
-                        token::get_ident(ident),
-                        did, ecx.tcx.map.node_to_string(did));
+        if let ast::ItemImpl(..) = item.node {
+            let (ident, did) = (item.ident, item.id);
+            debug!("(encoding info for module) ... encoding impl {} ({}/{})",
+                   token::get_ident(ident),
+                   did, ecx.tcx.map.node_to_string(did));
 
-                rbml_w.start_tag(tag_mod_impl);
-                rbml_w.wr_str(def_to_string(local_def(did)).as_slice());
-                rbml_w.end_tag();
-            }
-            _ => {}
+            rbml_w.start_tag(tag_mod_impl);
+            rbml_w.wr_str(def_to_string(local_def(did)).as_slice());
+            rbml_w.end_tag();
         }
     }
 
@@ -923,12 +911,9 @@ fn encode_method_argument_names(rbml_w: &mut Encoder,
     rbml_w.start_tag(tag_method_argument_names);
     for arg in decl.inputs.iter() {
         rbml_w.start_tag(tag_method_argument_name);
-        match arg.pat.node {
-            ast::PatIdent(_, ref path1, _) => {
-                let name = token::get_ident(path1.node);
-                rbml_w.writer.write(name.get().as_bytes());
-            }
-            _ => {}
+        if let ast::PatIdent(_, ref path1, _) = arg.pat.node {
+            let name = token::get_ident(path1.node);
+            rbml_w.writer.write(name.get().as_bytes());
         }
         rbml_w.end_tag();
     }
@@ -1854,22 +1839,19 @@ struct ImplVisitor<'a, 'b:'a, 'c:'a, 'tcx:'b> {
 
 impl<'a, 'b, 'c, 'tcx, 'v> Visitor<'v> for ImplVisitor<'a, 'b, 'c, 'tcx> {
     fn visit_item(&mut self, item: &ast::Item) {
-        match item.node {
-            ast::ItemImpl(_, Some(ref trait_ref), _, _) => {
-                let def_map = &self.ecx.tcx.def_map;
-                let trait_def = def_map.borrow()[trait_ref.ref_id].clone();
-                let def_id = trait_def.def_id();
+        if let ast::ItemImpl(_, Some(ref trait_ref), _, _) = item.node {
+            let def_map = &self.ecx.tcx.def_map;
+            let trait_def = def_map.borrow()[trait_ref.ref_id].clone();
+            let def_id = trait_def.def_id();
 
-                // Load eagerly if this is an implementation of the Drop trait
-                // or if the trait is not defined in this crate.
-                if Some(def_id) == self.ecx.tcx.lang_items.drop_trait() ||
-                        def_id.krate != ast::LOCAL_CRATE {
-                    self.rbml_w.start_tag(tag_impls_impl);
-                    encode_def_id(self.rbml_w, local_def(item.id));
-                    self.rbml_w.end_tag();
-                }
+            // Load eagerly if this is an implementation of the Drop trait
+            // or if the trait is not defined in this crate.
+            if Some(def_id) == self.ecx.tcx.lang_items.drop_trait() ||
+                    def_id.krate != ast::LOCAL_CRATE {
+                self.rbml_w.start_tag(tag_impls_impl);
+                encode_def_id(self.rbml_w, local_def(item.id));
+                self.rbml_w.end_tag();
             }
-            _ => {}
         }
         visit::walk_item(self, item);
     }
@@ -1931,17 +1913,12 @@ fn encode_reachable_extern_fns(ecx: &EncodeContext, rbml_w: &mut Encoder) {
     rbml_w.start_tag(tag_reachable_extern_fns);
 
     for id in ecx.reachable.iter() {
-        match ecx.tcx.map.find(*id) {
-            Some(ast_map::NodeItem(i)) => {
-                match i.node {
-                    ast::ItemFn(_, _, abi, ref generics, _)
-                                if abi != abi::Rust && !generics.is_type_parameterized() => {
-                        rbml_w.wr_tagged_u32(tag_reachable_extern_fn_id, *id);
-                    }
-                    _ => {}
+        if let Some(ast_map::NodeItem(i)) = ecx.tcx.map.find(*id) {
+            if let ast::ItemFn(_, _, abi, ref generics, _) = i.node {
+                if abi != abi::Rust && !generics.is_type_parameterized() {
+                    rbml_w.wr_tagged_u32(tag_reachable_extern_fn_id, *id);
                 }
             }
-            _ => {}
         }
     }
 

@@ -1073,16 +1073,12 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
     fn visit_generics(&mut self, generics: &ast::Generics) {
         for param in generics.ty_params.iter() {
             for bound in param.bounds.iter() {
-                match *bound {
-                    ast::TraitTyParamBound(ref trait_ref) => {
-                        self.process_trait_ref(&trait_ref.trait_ref, None);
-                    }
-                    _ => {}
+                if let ast::TraitTyParamBound(ref trait_ref) = *bound {
+                    self.process_trait_ref(&trait_ref.trait_ref, None);
                 }
             }
-            match param.default {
-                Some(ref ty) => self.visit_ty(&**ty),
-                None => {}
+            if let Some(ref ty) = param.default {
+                self.visit_ty(&**ty);
             }
         }
     }
