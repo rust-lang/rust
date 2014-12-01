@@ -26,12 +26,13 @@ use middle::ty::{ty_param, Polytype, ty_ptr};
 use middle::ty::{ty_rptr, ty_struct, ty_trait, ty_tup};
 use middle::ty::{ty_str, ty_vec, ty_float, ty_infer, ty_int, ty_open};
 use middle::ty::{ty_uint, ty_unboxed_closure, ty_uniq, ty_bare_fn};
-use middle::ty::{type_is_ty_var};
+use middle::ty::{ty_closure};
+use middle::subst::Subst;
 use middle::ty;
 use CrateCtxt;
 use middle::infer::combine::Combine;
 use middle::infer::InferCtxt;
-use middle::infer::{new_infer_ctxt, resolve_ivar, resolve_type};
+use middle::infer::{new_infer_ctxt};
 use std::collections::{HashSet};
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -52,80 +53,35 @@ mod orphan;
 mod overlap;
 mod unsafety;
 
-fn get_base_type<'a, 'tcx>(inference_context: &InferCtxt<'a, 'tcx>,
-                           span: Span,
-                           original_type: Ty<'tcx>)
-                           -> Option<Ty<'tcx>> {
-    let resolved_type = match resolve_type(inference_context,
-                                           Some(span),
-                                           original_type,
-                                           resolve_ivar) {
-        Ok(resulting_type) if !type_is_ty_var(resulting_type) => resulting_type,
-        _ => {
-            inference_context.tcx.sess.span_fatal(span,
-                                                  "the type of this value must be known in order \
-                                                   to determine the base type");
-        }
-    };
-
-    match resolved_type.sty {
-        ty_enum(..) | ty_struct(..) | ty_unboxed_closure(..) => {
-            debug!("(getting base type) found base type");
-            Some(resolved_type)
+// Returns the def ID of the base type, if there is one.
+fn get_base_type_def_id<'a, 'tcx>(inference_context: &InferCtxt<'a, 'tcx>,
+                                  span: Span,
+                                  ty: Ty<'tcx>)
+                                  -> Option<DefId> {
+    match ty.sty {
+        ty_enum(def_id, _) |
+        ty_struct(def_id, _) => {
+            Some(def_id)
         }
 
-        _ if ty::type_is_trait(resolved_type) => {
-            debug!("(getting base type) found base type (trait)");
-            Some(resolved_type)
+        ty_trait(ref t) => {
+            Some(t.principal.def_id)
         }
 
         ty_bool | ty_char | ty_int(..) | ty_uint(..) | ty_float(..) |
         ty_str(..) | ty_vec(..) | ty_bare_fn(..) | ty_closure(..) | ty_tup(..) |
-        ty_infer(..) | ty_param(..) | ty_err | ty_open(..) | ty_uniq(_) |
+        ty_param(..) | ty_err | ty_open(..) | ty_uniq(_) |
         ty_ptr(_) | ty_rptr(_, _) => {
-            debug!("(getting base type) no base type; found {}",
-                   original_type.sty);
             None
         }
-        ty_trait(..) => panic!("should have been caught")
-    }
-}
 
-// Returns the def ID of the base type, if there is one.
-fn get_base_type_def_id<'a, 'tcx>(inference_context: &InferCtxt<'a, 'tcx>,
-                                  span: Span,
-                                  original_type: Ty<'tcx>)
-                                  -> Option<DefId> {
-    match get_base_type(inference_context, span, original_type) {
-        None => None,
-        Some(base_type) => {
-            match base_type.sty {
-                ty_enum(def_id, _) |
-                ty_struct(def_id, _) |
-                ty_unboxed_closure(def_id, _, _) => {
-                    Some(def_id)
-                }
-                ty_ptr(ty::mt {ty, ..}) |
-                ty_rptr(_, ty::mt {ty, ..}) |
-                ty_uniq(ty) => {
-                    match ty.sty {
-                        ty_trait(box ty::TyTrait { ref principal, .. }) => {
-                            Some(principal.def_id)
-                        }
-                        _ => {
-                            panic!("get_base_type() returned a type that wasn't an \
-                                   enum, struct, or trait");
-                        }
-                    }
-                }
-                ty_trait(box ty::TyTrait { ref principal, .. }) => {
-                    Some(principal.def_id)
-                }
-                _ => {
-                    panic!("get_base_type() returned a type that wasn't an \
-                           enum, struct, or trait");
-                }
-            }
+        ty_infer(..) | ty_unboxed_closure(..) => {
+            // `ty` comes from a user declaration so we should only expect types
+            // that the user can type
+            inference_context.tcx.sess.span_bug(
+                span,
+                format!("coherence encountered unexpected type searching for base type: {}",
+                        ty.repr(inference_context.tcx))[]);
         }
     }
 }
