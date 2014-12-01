@@ -389,6 +389,17 @@ esac
 
 msg "host triple: ${HOST_TRIPLE}"
 
+CFG_INSTALL_FLAGS=""
+if [ -n "${CFG_UNINSTALL}" ]
+then
+    CFG_INSTALL_FLAGS="${CFG_INSTALL_FLAGS} --uninstall"
+fi
+
+if [ -n "${CFG_PREFIX}" ]
+then
+    CFG_INSTALL_FLAGS="${CFG_INSTALL_FLAGS} --prefix=${CFG_PREFIX}"
+fi
+
 CFG_TMP_DIR="./rustup-tmp-install"
 
 RUST_PACKAGE_NAME=rust-nightly
@@ -439,19 +450,7 @@ then
         err "failed to unpack installer"
 fi
 
-MAYBE_UNINSTALL=
-if [ -n "${CFG_UNINSTALL}" ]
-then
-        MAYBE_UNINSTALL="--uninstall"
-fi
-
-MAYBE_PREFIX=
-if [ -n "${CFG_PREFIX}" ]
-then
-        MAYBE_PREFIX="--prefix=${CFG_PREFIX}"
-fi
-
-sh "${RUST_LOCAL_INSTALL_SCRIPT}" "${MAYBE_UNINSTALL}" "${MAYBE_PREFIX}"
+sh "${RUST_LOCAL_INSTALL_SCRIPT}" "${CFG_INSTALL_FLAGS}"
 if [ $? -ne 0 ]
 then
         rm -Rf "${CFG_TMP_DIR}"
@@ -466,7 +465,7 @@ if [ -z "${CFG_DISABLE_CARGO}" ]; then
             err "failed to unpack cargo installer"
     fi
 
-    sh "${CARGO_LOCAL_INSTALL_SCRIPT}" "${MAYBE_UNINSTALL}" "${MAYBE_PREFIX}"
+    sh "${CARGO_LOCAL_INSTALL_SCRIPT}" "${CFG_INSTALL_FLAGS}"
     if [ $? -ne 0 ]
     then
             rm -Rf "${CFG_TMP_DIR}"
