@@ -389,14 +389,15 @@ esac
 
 msg "host triple: ${HOST_TRIPLE}"
 
-PACKAGE_NAME=rust-nightly
-PACKAGE_NAME_AND_TRIPLE="${PACKAGE_NAME}-${HOST_TRIPLE}"
-TARBALL_NAME="${PACKAGE_NAME_AND_TRIPLE}.tar.gz"
-REMOTE_TARBALL="https://static.rust-lang.org/dist/${TARBALL_NAME}"
 TMP_DIR="./rustup-tmp-install"
-LOCAL_TARBALL="${TMP_DIR}/${TARBALL_NAME}"
-LOCAL_INSTALL_DIR="${TMP_DIR}/${PACKAGE_NAME_AND_TRIPLE}"
-LOCAL_INSTALL_SCRIPT="${LOCAL_INSTALL_DIR}/install.sh"
+
+RUST_PACKAGE_NAME=rust-nightly
+RUST_PACKAGE_NAME_AND_TRIPLE="${RUST_PACKAGE_NAME}-${HOST_TRIPLE}"
+RUST_TARBALL_NAME="${RUST_PACKAGE_NAME_AND_TRIPLE}.tar.gz"
+RUST_REMOTE_TARBALL="https://static.rust-lang.org/dist/${RUST_TARBALL_NAME}"
+RUST_LOCAL_TARBALL="${TMP_DIR}/${RUST_TARBALL_NAME}"
+RUST_LOCAL_INSTALL_DIR="${TMP_DIR}/${RUST_PACKAGE_NAME_AND_TRIPLE}"
+RUST_LOCAL_INSTALL_SCRIPT="${RUST_LOCAL_INSTALL_DIR}/install.sh"
 
 CARGO_PACKAGE_NAME=cargo-nightly
 CARGO_PACKAGE_NAME_AND_TRIPLE="${CARGO_PACKAGE_NAME}-${HOST_TRIPLE}"
@@ -413,7 +414,7 @@ mkdir -p "${TMP_DIR}"
 need_ok "failed to create create temporary installation directory"
 
 msg "downloading rust installer"
-"${CFG_CURL}" "${REMOTE_TARBALL}" > "${LOCAL_TARBALL}"
+"${CFG_CURL}" "${RUST_REMOTE_TARBALL}" > "${RUST_LOCAL_TARBALL}"
 if [ $? -ne 0 ]
 then
         rm -Rf "${TMP_DIR}"
@@ -431,7 +432,7 @@ if [ -z "${CFG_DISABLE_CARGO}" ]; then
 fi
 
 
-(cd "${TMP_DIR}" && ${CFG_TAR} xzf "${TARBALL_NAME}")
+(cd "${TMP_DIR}" && ${CFG_TAR} xzf "${RUST_TARBALL_NAME}")
 if [ $? -ne 0 ]
 then
         rm -Rf "${TMP_DIR}"
@@ -450,7 +451,7 @@ then
         MAYBE_PREFIX="--prefix=${CFG_PREFIX}"
 fi
 
-sh "${LOCAL_INSTALL_SCRIPT}" "${MAYBE_UNINSTALL}" "${MAYBE_PREFIX}"
+sh "${RUST_LOCAL_INSTALL_SCRIPT}" "${MAYBE_UNINSTALL}" "${MAYBE_PREFIX}"
 if [ $? -ne 0 ]
 then
         rm -Rf "${TMP_DIR}"
