@@ -9,18 +9,19 @@
 // except according to those terms.
 
 
+#[deriving(Clone)]
 struct foo(Box<uint>);
 
 impl Add<foo, foo> for foo {
-    fn add(&self, f: &foo) -> foo {
-        let foo(box i) = *self;
-        let foo(box j) = *f;
+    fn add(self, f: foo) -> foo {
+        let foo(box i) = self;
+        let foo(box j) = f;
         foo(box() (i + j))
     }
 }
 
 fn main() {
     let x = foo(box 3);
-    let _y = x + {x}; // the `{x}` forces a move to occur
-    //~^ ERROR cannot move out of `x`
+    let _y = {x} + x.clone(); // the `{x}` forces a move to occur
+    //~^ ERROR use of moved value: `x`
 }
