@@ -776,11 +776,8 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
             }
             ItemTrait(_, _, ref bounds, ref trait_items) => {
                 for b in bounds.iter() {
-                    match *b {
-                        TraitTyParamBound(ref t) => {
-                            self.insert(t.trait_ref.ref_id, NodeItem(i));
-                        }
-                        _ => {}
+                    if let TraitTyParamBound(ref t) = *b {
+                        self.insert(t.trait_ref.ref_id, NodeItem(i));
                     }
                 }
 

@@ -208,15 +208,13 @@ pub fn check_object_safety<'tcx>(tcx: &ty::ctxt<'tcx>,
         };
         let ref sig = method.fty.sig;
         for &input_ty in sig.inputs[1..].iter() {
-            match check_for_self_ty(input_ty) {
-                Some(msg) => msgs.push(msg),
-                _ => {}
+            if let Some(msg) = check_for_self_ty(input_ty) {
+                msgs.push(msg);
             }
         }
         if let ty::FnConverging(result_type) = sig.output {
-            match check_for_self_ty(result_type) {
-                Some(msg) => msgs.push(msg),
-                _ => {}
+            if let Some(msg) = check_for_self_ty(result_type) {
+                msgs.push(msg);
             }
         }
 
@@ -290,10 +288,9 @@ pub fn register_object_cast_obligations<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                      traits::ObjectCastObligation(object_trait_ty)),
                 referent_ty,
                 builtin_bound);
-            match obligation {
-                Ok(obligation) => fcx.register_obligation(obligation),
-                _ => {}
-            }
+        if let Ok(obligation) = obligation {
+            fcx.register_obligation(obligation);
+        }
     }
 
     object_trait_ref

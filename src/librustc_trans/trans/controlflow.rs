@@ -465,17 +465,14 @@ pub fn trans_ret<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }
         _ => expr::Ignore,
     };
-    match e {
-        Some(x) => {
-            bcx = expr::trans_into(bcx, &*x, dest);
-            match dest {
-                expr::SaveIn(slot) if fcx.needs_ret_allocas => {
-                    Store(bcx, slot, fcx.llretslotptr.get().unwrap());
-                }
-                _ => {}
+    if let Some(x) = e {
+        bcx = expr::trans_into(bcx, &*x, dest);
+        match dest {
+            expr::SaveIn(slot) if fcx.needs_ret_allocas => {
+                Store(bcx, slot, fcx.llretslotptr.get().unwrap());
             }
+            _ => {}
         }
-        _ => {}
     }
     let cleanup_llbb = fcx.return_exit_block();
     Br(bcx, cleanup_llbb);

@@ -355,9 +355,8 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         // skip padding
         if arg_ty.pad.is_some() { arg_idx += 1; }
 
-        match arg_ty.attr {
-            Some(attr) => { attrs.arg(arg_idx, attr); },
-            _ => {}
+        if let Some(attr) = arg_ty.attr {
+            attrs.arg(arg_idx, attr);
         }
 
         arg_idx += 1;
@@ -429,22 +428,19 @@ pub fn trans_foreign_mod(ccx: &CrateContext, foreign_mod: &ast::ForeignMod) {
     for foreign_item in foreign_mod.items.iter() {
         let lname = link_name(&**foreign_item);
 
-        match foreign_item.node {
-            ast::ForeignItemFn(..) => {
-                match foreign_mod.abi {
-                    Rust | RustIntrinsic => {}
-                    abi => {
-                        let ty = ty::node_id_to_type(ccx.tcx(), foreign_item.id);
-                        register_foreign_item_fn(ccx, abi, ty,
-                                                 lname.get().as_slice());
-                        // Unlike for other items, we shouldn't call
-                        // `base::update_linkage` here.  Foreign items have
-                        // special linkage requirements, which are handled
-                        // inside `foreign::register_*`.
-                    }
+        if let ast::ForeignItemFn(..) = foreign_item.node {
+            match foreign_mod.abi {
+                Rust | RustIntrinsic => {}
+                abi => {
+                    let ty = ty::node_id_to_type(ccx.tcx(), foreign_item.id);
+                    register_foreign_item_fn(ccx, abi, ty,
+                                             lname.get().as_slice());
+                    // Unlike for other items, we shouldn't call
+                    // `base::update_linkage` here.  Foreign items have
+                    // special linkage requirements, which are handled
+                    // inside `foreign::register_*`.
                 }
             }
-            _ => {}
         }
 
         ccx.item_symbols().borrow_mut().insert(foreign_item.id,

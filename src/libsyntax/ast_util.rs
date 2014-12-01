@@ -412,13 +412,10 @@ impl<'a, 'v, O: IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> {
         }
 
         self.operation.visit_id(item.id);
-        match item.node {
-            ItemEnum(ref enum_definition, _) => {
-                for variant in enum_definition.variants.iter() {
-                    self.operation.visit_id(variant.node.id)
-                }
+        if let ItemEnum(ref enum_definition, _) = item.node {
+            for variant in enum_definition.variants.iter() {
+                self.operation.visit_id(variant.node.id)
             }
-            _ => {}
         }
 
         visit::walk_item(self, item);
@@ -453,9 +450,8 @@ impl<'a, 'v, O: IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> {
 
     fn visit_ty(&mut self, typ: &Ty) {
         self.operation.visit_id(typ.id);
-        match typ.node {
-            TyPath(_, id) => self.operation.visit_id(id),
-            _ => {}
+        if let TyPath(_, id) = typ.node {
+            self.operation.visit_id(id);
         }
         visit::walk_ty(self, typ)
     }
@@ -500,9 +496,8 @@ impl<'a, 'v, O: IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> {
                        span);
 
         if !self.pass_through_items {
-            match function_kind {
-                visit::FkMethod(..) => self.visited_outermost = false,
-                _ => {}
+            if let visit::FkMethod(..) = function_kind {
+                self.visited_outermost = false;
             }
         }
     }

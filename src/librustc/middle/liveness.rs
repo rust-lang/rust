@@ -445,9 +445,8 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
       ast::ExprPath(_) => {
         let def = ir.tcx.def_map.borrow()[expr.id].clone();
         debug!("expr {}: path that leads to {}", expr.id, def);
-        match def {
-            DefLocal(..) => ir.add_live_node_for_node(expr.id, ExprNode(expr.span)),
-            _ => {}
+        if let DefLocal(..) = def {
+            ir.add_live_node_for_node(expr.id, ExprNode(expr.span));
         }
         visit::walk_expr(ir, expr);
       }
@@ -463,13 +462,10 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
         let mut call_caps = Vec::new();
         ty::with_freevars(ir.tcx, expr.id, |freevars| {
             for fv in freevars.iter() {
-                match fv.def {
-                    DefLocal(rv) => {
-                        let fv_ln = ir.add_live_node(FreeVarNode(fv.span));
-                        call_caps.push(CaptureInfo {ln: fv_ln,
-                                                    var_nid: rv});
-                    }
-                    _ => {}
+                if let DefLocal(rv) = fv.def {
+                    let fv_ln = ir.add_live_node(FreeVarNode(fv.span));
+                    call_caps.push(CaptureInfo {ln: fv_ln,
+                                                var_nid: rv});
                 }
             }
         });
@@ -1576,27 +1572,23 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
     fn check_lvalue(&mut self, expr: &Expr) {
         match expr.node {
-          ast::ExprPath(_) => {
-            match self.ir.tcx.def_map.borrow()[expr.id].clone() {
-              DefLocal(nid) => {
-                // Assignment to an immutable variable or argument: only legal
-                // if there is no later assignment. If this local is actually
-                // mutable, then check for a reassignment to flag the mutability
-                // as being used.
-                let ln = self.live_node(expr.id, expr.span);
-                let var = self.variable(nid, expr.span);
-                self.warn_about_dead_assign(expr.span, expr.id, ln, var);
-              }
-              _ => {}
+            ast::ExprPath(_) => {
+                if let DefLocal(nid) = self.ir.tcx.def_map.borrow()[expr.id].clone() {
+                    // Assignment to an immutable variable or argument: only legal
+                    // if there is no later assignment. If this local is actually
+                    // mutable, then check for a reassignment to flag the mutability
+                    // as being used.
+                    let ln = self.live_node(expr.id, expr.span);
+                    let var = self.variable(nid, expr.span);
+                    self.warn_about_dead_assign(expr.span, expr.id, ln, var);
+                }
             }
-          }
-
-          _ => {
-            // For other kinds of lvalues, no checks are required,
-            // and any embedded expressions are actually rvalues
-            visit::walk_expr(self, expr);
-          }
-       }
+            _ => {
+                // For other kinds of lvalues, no checks are required,
+                // and any embedded expressions are actually rvalues
+                visit::walk_expr(self, expr);
+            }
+        }
     }
 
     fn should_warn(&self, var: Variable) -> Option<String> {

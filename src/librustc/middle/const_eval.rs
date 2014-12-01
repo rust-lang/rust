@@ -278,11 +278,8 @@ impl<'a, 'tcx> ConstEvalVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx, 'v> Visitor<'v> for ConstEvalVisitor<'a, 'tcx> {
     fn visit_ty(&mut self, t: &ast::Ty) {
-        match t.node {
-            ast::TyFixedLengthVec(_, ref expr) => {
-                check::check_const_in_type(self.tcx, &**expr, ty::mk_uint());
-            }
-            _ => {}
+        if let ast::TyFixedLengthVec(_, ref expr) = t.node {
+            check::check_const_in_type(self.tcx, &**expr, ty::mk_uint());
         }
 
         visit::walk_ty(self, t);
@@ -321,10 +318,9 @@ pub fn const_expr_to_pat(tcx: &ty::ctxt, expr: &Expr) -> P<ast::Pat> {
 
         ast::ExprCall(ref callee, ref args) => {
             let def = tcx.def_map.borrow()[callee.id].clone();
-            match tcx.def_map.borrow_mut().entry(expr.id) {
-              Vacant(entry) => { entry.set(def); }
-              _ => {}
-            };
+            if let Vacant(entry) = tcx.def_map.borrow_mut().entry(expr.id) {
+               entry.set(def);
+            }
             let path = match def {
                 def::DefStruct(def_id) => def_to_path(tcx, def_id),
                 def::DefVariant(_, variant_did, _) => def_to_path(tcx, variant_did),
