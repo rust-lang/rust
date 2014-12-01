@@ -2166,7 +2166,7 @@ impl<A: Add<A, A> + Clone> Iterator<A> for Counter<A> {
     #[inline]
     fn next(&mut self) -> Option<A> {
         let result = self.state.clone();
-        self.state = self.state + self.step;
+        self.state = self.state.clone() + self.step.clone();
         Some(result)
     }
 
