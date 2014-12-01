@@ -1290,7 +1290,7 @@ mod tests {
     fn test_str_add() {
         let a = String::from_str("12345");
         let b = a + "2";
-        let b = b + String::from_str("2");
+        let b = b + "2";
         assert_eq!(b.len(), 7);
         assert_eq!(b, "1234522");
     }
