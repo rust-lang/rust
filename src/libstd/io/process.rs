@@ -1237,4 +1237,16 @@ mod tests {
         let val = env.get(&EnvKey("PATH".to_c_str()));
         assert!(val.unwrap() == &"bar".to_c_str());
     }
+
+    fn check_show(c: &Command, v: &str) {
+        assert_eq!(format!("{}", c).as_slice(), v)
+    }
+
+    #[test]
+    fn show() {
+        check_show(Command::new("gcc ").arg("-Ifoo'bar"), "'gcc ' '-Ifoo'\\''bar'");
+        check_show(&Command::new("c99"), "'c99'");
+        check_show(&Command::new("c99 "), "'c99 '");
+        check_show(&Command::new("Can't buy me love"), "'Can'\\''t buy me love'");
+    }
 }
