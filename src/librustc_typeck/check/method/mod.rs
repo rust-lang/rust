@@ -100,7 +100,7 @@ pub fn lookup<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
            call_expr.repr(fcx.tcx()),
            self_expr.repr(fcx.tcx()));
 
-    let self_ty = fcx.infcx().resolve_type_vars_if_possible(self_ty);
+    let self_ty = fcx.infcx().resolve_type_vars_if_possible(&self_ty);
     let pick = try!(probe::probe(fcx, span, method_name, self_ty, call_expr.id));
     Ok(confirm::confirm(fcx, span, self_expr, call_expr, self_ty, pick, supplied_method_types))
 }

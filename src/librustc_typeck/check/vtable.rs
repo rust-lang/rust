@@ -331,7 +331,7 @@ pub fn report_selection_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             match obligation.trait_ref {
                 ty::Predicate::Trait(ref trait_ref) => {
                     let trait_ref =
-                        fcx.infcx().resolve_type_vars_in_trait_ref_if_possible(&**trait_ref);
+                        fcx.infcx().resolve_type_vars_if_possible(&**trait_ref);
                     fcx.tcx().sess.span_err(
                         obligation.cause.span,
                         format!(
@@ -341,8 +341,8 @@ pub fn report_selection_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 }
 
                 ty::Predicate::Equate(a, b) => {
-                    let a = fcx.infcx().resolve_type_vars_if_possible(a);
-                    let b = fcx.infcx().resolve_type_vars_if_possible(b);
+                    let a = fcx.infcx().resolve_type_vars_if_possible(&a);
+                    let b = fcx.infcx().resolve_type_vars_if_possible(&b);
                     fcx.tcx().sess.span_err(
                         obligation.cause.span,
                         format!(
@@ -373,8 +373,7 @@ pub fn report_selection_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             match obligation.trait_ref {
                 ty::Predicate::Trait(ref trait_ref) => {
                     let trait_ref =
-                        fcx.infcx().resolve_type_vars_in_trait_ref_if_possible(
-                            &**trait_ref);
+                        fcx.infcx().resolve_type_vars_if_possible(&**trait_ref);
                     if !ty::type_is_error(trait_ref.self_ty()) {
                         fcx.tcx().sess.span_err(
                             obligation.cause.span,
@@ -387,8 +386,8 @@ pub fn report_selection_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 }
 
                 ty::Predicate::Equate(a, b) => {
-                    let a = fcx.infcx().resolve_type_vars_if_possible(a);
-                    let b = fcx.infcx().resolve_type_vars_if_possible(b);
+                    let a = fcx.infcx().resolve_type_vars_if_possible(&a);
+                    let b = fcx.infcx().resolve_type_vars_if_possible(&b);
                     let err = infer::can_mk_eqty(fcx.infcx(), a, b).unwrap_err();
                     fcx.tcx().sess.span_err(
                         obligation.cause.span,
@@ -413,10 +412,10 @@ pub fn report_selection_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         }
         OutputTypeParameterMismatch(ref expected_trait_ref, ref actual_trait_ref, ref e) => {
             let expected_trait_ref =
-                fcx.infcx().resolve_type_vars_in_trait_ref_if_possible(
+                fcx.infcx().resolve_type_vars_if_possible(
                     &**expected_trait_ref);
             let actual_trait_ref =
-                fcx.infcx().resolve_type_vars_in_trait_ref_if_possible(
+                fcx.infcx().resolve_type_vars_if_possible(
                     &**actual_trait_ref);
             if !ty::type_is_error(actual_trait_ref.self_ty()) {
                 fcx.tcx().sess.span_err(
@@ -443,7 +442,7 @@ pub fn maybe_report_ambiguity<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
     let trait_ref = match obligation.trait_ref {
         ty::Predicate::Trait(ref trait_ref) => {
-            fcx.infcx().resolve_type_vars_in_trait_ref_if_possible(&**trait_ref)
+            fcx.infcx().resolve_type_vars_if_possible(&**trait_ref)
         }
         _ => {
             fcx.tcx().sess.span_bug(

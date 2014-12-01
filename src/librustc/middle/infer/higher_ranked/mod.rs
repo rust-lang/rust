@@ -11,14 +11,13 @@
 //! Helper routines for higher-ranked things. See the `doc` module at
 //! the end of the file for details.
 
-use super::{combine, cres, InferCtxt, HigherRankedType};
+use super::{combine, CombinedSnapshot, cres, InferCtxt, HigherRankedType};
 use super::combine::Combine;
-use super::region_inference::{RegionMark};
 
 use middle::ty::{mod, Ty, replace_late_bound_regions};
 use middle::ty_fold::{mod, HigherRankedFoldable, TypeFoldable};
 use syntax::codemap::Span;
-use util::nodemap::FnvHashMap;
+use util::nodemap::{FnvHashMap, FnvHashSet};
 use util::ppaux::{bound_region_to_string, Repr};
 
 pub trait HigherRankedCombineable<'tcx>: HigherRankedFoldable<'tcx> +
@@ -35,6 +34,14 @@ pub trait HigherRankedRelations<'tcx> {
 
     fn higher_ranked_glb<T>(&self, a: &T, b: &T) -> cres<'tcx, T>
         where T : HigherRankedCombineable<'tcx>;
+}
+
+trait InferCtxtExt<'tcx> {
+    fn tainted_regions(&self, snapshot: &CombinedSnapshot, r: ty::Region) -> Vec<ty::Region>;
+
+    fn region_vars_confined_to_snapshot(&self,
+                                        snapshot: &CombinedSnapshot)
+                                        -> Vec<ty::RegionVid>;
 }
 
 impl<'tcx,C> HigherRankedRelations<'tcx> for C
@@ -54,114 +61,115 @@ impl<'tcx,C> HigherRankedRelations<'tcx> for C
         // please see the large comment at the end of the file in the (inlined) module
         // `doc`.
 
-        // Make a mark so we can examine "all bindings that were
+        // Start a snapshot so we can examine "all bindings that were
         // created as part of this type comparison".
-        let mark = self.infcx().region_vars.mark();
+        return self.infcx().try(|snapshot| {
+            // First, we instantiate each bound region in the subtype with a fresh
+            // region variable.
+            let (a_prime, _) =
+                self.infcx().replace_late_bound_regions_with_fresh_var(
+                    self.trace().origin.span(),
+                    HigherRankedType,
+                    a);
 
-        // First, we instantiate each bound region in the subtype with a fresh
-        // region variable.
-        let (a_prime, _) =
-            self.infcx().replace_late_bound_regions_with_fresh_var(
-                self.trace().origin.span(),
-                HigherRankedType,
-                a);
+            // Second, we instantiate each bound region in the supertype with a
+            // fresh concrete region.
+            let (b_prime, skol_map) = {
+                replace_late_bound_regions(self.tcx(), b, |br, _| {
+                    let skol = self.infcx().region_vars.new_skolemized(br);
+                    debug!("Bound region {} skolemized to {}",
+                           bound_region_to_string(self.tcx(), "", false, br),
+                           skol);
+                    skol
+                })
+            };
 
-        // Second, we instantiate each bound region in the supertype with a
-        // fresh concrete region.
-        let (b_prime, skol_map) = {
-            replace_late_bound_regions(self.tcx(), b, |br, _| {
-                let skol = self.infcx().region_vars.new_skolemized(br);
-                debug!("Bound region {} skolemized to {}",
-                       bound_region_to_string(self.tcx(), "", false, br),
-                       skol);
-                skol
-            })
-        };
+            debug!("a_prime={}", a_prime.repr(self.tcx()));
+            debug!("b_prime={}", b_prime.repr(self.tcx()));
 
-        debug!("a_prime={}", a_prime.repr(self.tcx()));
-        debug!("b_prime={}", b_prime.repr(self.tcx()));
+            // Compare types now that bound regions have been replaced.
+            let result = try!(HigherRankedCombineable::super_combine(self, &a_prime, &b_prime));
 
-        // Compare types now that bound regions have been replaced.
-        let result = try!(HigherRankedCombineable::super_combine(self, &a_prime, &b_prime));
+            // Presuming type comparison succeeds, we need to check
+            // that the skolemized regions do not "leak".
+            let new_vars = self.infcx().region_vars_confined_to_snapshot(snapshot);
+            for (&skol_br, &skol) in skol_map.iter() {
+                let tainted = self.infcx().tainted_regions(snapshot, skol);
+                for tainted_region in tainted.iter() {
+                    // Each skolemized should only be relatable to itself
+                    // or new variables:
+                    match *tainted_region {
+                        ty::ReInfer(ty::ReVar(ref vid)) => {
+                            if new_vars.iter().any(|x| x == vid) { continue; }
+                        }
+                        _ => {
+                            if *tainted_region == skol { continue; }
+                        }
+                    };
 
-        // Presuming type comparison succeeds, we need to check
-        // that the skolemized regions do not "leak".
-        let new_vars =
-            self.infcx().region_vars.vars_created_since_mark(mark);
-        for (&skol_br, &skol) in skol_map.iter() {
-            let tainted = self.infcx().region_vars.tainted(mark, skol);
-            for tainted_region in tainted.iter() {
-                // Each skolemized should only be relatable to itself
-                // or new variables:
-                match *tainted_region {
-                    ty::ReInfer(ty::ReVar(ref vid)) => {
-                        if new_vars.iter().any(|x| x == vid) { continue; }
+                    // A is not as polymorphic as B:
+                    if self.a_is_expected() {
+                        debug!("Not as polymorphic!");
+                        return Err(ty::terr_regions_insufficiently_polymorphic(skol_br,
+                                                                               *tainted_region));
+                    } else {
+                        debug!("Overly polymorphic!");
+                        return Err(ty::terr_regions_overly_polymorphic(skol_br,
+                                                                       *tainted_region));
                     }
-                    _ => {
-                        if *tainted_region == skol { continue; }
-                    }
-                };
-
-                // A is not as polymorphic as B:
-                if self.a_is_expected() {
-                    debug!("Not as polymorphic!");
-                    return Err(ty::terr_regions_insufficiently_polymorphic(
-                        skol_br, *tainted_region));
-                } else {
-                    debug!("Overly polymorphic!");
-                    return Err(ty::terr_regions_overly_polymorphic(
-                        skol_br, *tainted_region));
                 }
             }
-        }
 
-        debug!("higher_ranked_sub: OK result={}",
-               result.repr(self.tcx()));
+            debug!("higher_ranked_sub: OK result={}",
+                   result.repr(self.tcx()));
 
-        return Ok(result);
+            Ok(result)
+        });
     }
 
     fn higher_ranked_lub<T>(&self, a: &T, b: &T) -> cres<'tcx, T>
         where T : HigherRankedCombineable<'tcx>
     {
-        // Make a mark so we can examine "all bindings that were
+        // Start a snapshot so we can examine "all bindings that were
         // created as part of this type comparison".
-        let mark = self.infcx().region_vars.mark();
+        return self.infcx().try(|snapshot| {
+            // Instantiate each bound region with a fresh region variable.
+            let span = self.trace().origin.span();
+            let (a_with_fresh, a_map) =
+                self.infcx().replace_late_bound_regions_with_fresh_var(
+                    span, HigherRankedType, a);
+            let (b_with_fresh, _) =
+                self.infcx().replace_late_bound_regions_with_fresh_var(
+                    span, HigherRankedType, b);
 
-        // Instantiate each bound region with a fresh region variable.
-        let span = self.trace().origin.span();
-        let (a_with_fresh, a_map) =
-            self.infcx().replace_late_bound_regions_with_fresh_var(
-                span, HigherRankedType, a);
-        let (b_with_fresh, _) =
-            self.infcx().replace_late_bound_regions_with_fresh_var(
-                span, HigherRankedType, b);
+            // Collect constraints.
+            let result0 =
+                try!(HigherRankedCombineable::super_combine(self, &a_with_fresh, &b_with_fresh));
+            let result0 =
+                self.infcx().resolve_type_vars_if_possible(&result0);
+            debug!("lub result0 = {}", result0.repr(self.tcx()));
 
-        // Collect constraints.
-        let result0 =
-            try!(HigherRankedCombineable::super_combine(self, &a_with_fresh, &b_with_fresh));
-        debug!("lub result0 = {}", result0.repr(self.tcx()));
+            // Generalize the regions appearing in result0 if possible
+            let new_vars = self.infcx().region_vars_confined_to_snapshot(snapshot);
+            let span = self.trace().origin.span();
+            let result1 =
+                fold_regions_in(
+                    self.tcx(),
+                    &result0,
+                    |r, debruijn| generalize_region(self.infcx(), span, snapshot, debruijn,
+                                                    new_vars.as_slice(), &a_map, r));
 
-        // Generalize the regions appearing in result0 if possible
-        let new_vars = self.infcx().region_vars.vars_created_since_mark(mark);
-        let span = self.trace().origin.span();
-        let result1 =
-            fold_regions_in(
-                self.tcx(),
-                &result0,
-                |r, debruijn| generalize_region(self.infcx(), span, mark, debruijn,
-                                                new_vars.as_slice(), &a_map, r));
+            debug!("lub({},{}) = {}",
+                   a.repr(self.tcx()),
+                   b.repr(self.tcx()),
+                   result1.repr(self.tcx()));
 
-        debug!("lub({},{}) = {}",
-               a.repr(self.tcx()),
-               b.repr(self.tcx()),
-               result1.repr(self.tcx()));
-
-        return Ok(result1);
+            Ok(result1)
+        });
 
         fn generalize_region(infcx: &InferCtxt,
                              span: Span,
-                             mark: RegionMark,
+                             snapshot: &CombinedSnapshot,
                              debruijn: ty::DebruijnIndex,
                              new_vars: &[ty::RegionVid],
                              a_map: &FnvHashMap<ty::BoundRegion, ty::Region>,
@@ -174,7 +182,7 @@ impl<'tcx,C> HigherRankedRelations<'tcx> for C
                 return r0;
             }
 
-            let tainted = infcx.region_vars.tainted(mark, r0);
+            let tainted = infcx.tainted_regions(snapshot, r0);
 
             // Variables created during LUB computation which are
             // *related* to regions that pre-date the LUB computation
@@ -215,47 +223,49 @@ impl<'tcx,C> HigherRankedRelations<'tcx> for C
         debug!("{}.higher_ranked_glb({}, {})",
                self.tag(), a.repr(self.tcx()), b.repr(self.tcx()));
 
-        // Make a mark so we can examine "all bindings that were
+        // Make a snapshot so we can examine "all bindings that were
         // created as part of this type comparison".
-        let mark = self.infcx().region_vars.mark();
+        return self.infcx().try(|snapshot| {
+            // Instantiate each bound region with a fresh region variable.
+            let (a_with_fresh, a_map) =
+                self.infcx().replace_late_bound_regions_with_fresh_var(
+                    self.trace().origin.span(), HigherRankedType, a);
+            let (b_with_fresh, b_map) =
+                self.infcx().replace_late_bound_regions_with_fresh_var(
+                    self.trace().origin.span(), HigherRankedType, b);
+            let a_vars = var_ids(self, &a_map);
+            let b_vars = var_ids(self, &b_map);
 
-        // Instantiate each bound region with a fresh region variable.
-        let (a_with_fresh, a_map) =
-            self.infcx().replace_late_bound_regions_with_fresh_var(
-                self.trace().origin.span(), HigherRankedType, a);
-        let (b_with_fresh, b_map) =
-            self.infcx().replace_late_bound_regions_with_fresh_var(
-                self.trace().origin.span(), HigherRankedType, b);
-        let a_vars = var_ids(self, &a_map);
-        let b_vars = var_ids(self, &b_map);
+            // Collect constraints.
+            let result0 =
+                try!(HigherRankedCombineable::super_combine(self, &a_with_fresh, &b_with_fresh));
+            let result0 =
+                self.infcx().resolve_type_vars_if_possible(&result0);
+            debug!("glb result0 = {}", result0.repr(self.tcx()));
 
-        // Collect constraints.
-        let result0 =
-            try!(HigherRankedCombineable::super_combine(self, &a_with_fresh, &b_with_fresh));
-        debug!("glb result0 = {}", result0.repr(self.tcx()));
+            // Generalize the regions appearing in fn_ty0 if possible
+            let new_vars = self.infcx().region_vars_confined_to_snapshot(snapshot);
+            let span = self.trace().origin.span();
+            let result1 =
+                fold_regions_in(
+                    self.tcx(),
+                    &result0,
+                    |r, debruijn| generalize_region(self.infcx(), span, snapshot, debruijn,
+                                                    new_vars.as_slice(),
+                                                    &a_map, a_vars.as_slice(), b_vars.as_slice(),
+                                                    r));
 
-        // Generalize the regions appearing in fn_ty0 if possible
-        let new_vars = self.infcx().region_vars.vars_created_since_mark(mark);
-        let span = self.trace().origin.span();
-        let result1 =
-            fold_regions_in(
-                self.tcx(),
-                &result0,
-                |r, debruijn| generalize_region(self.infcx(), span, mark, debruijn,
-                                                new_vars.as_slice(),
-                                                &a_map, a_vars.as_slice(), b_vars.as_slice(),
-                                                r));
+            debug!("glb({},{}) = {}",
+                   a.repr(self.tcx()),
+                   b.repr(self.tcx()),
+                   result1.repr(self.tcx()));
 
-        debug!("glb({},{}) = {}",
-               a.repr(self.tcx()),
-               b.repr(self.tcx()),
-               result1.repr(self.tcx()));
-
-        return Ok(result1);
+            Ok(result1)
+        });
 
         fn generalize_region(infcx: &InferCtxt,
                              span: Span,
-                             mark: RegionMark,
+                             snapshot: &CombinedSnapshot,
                              debruijn: ty::DebruijnIndex,
                              new_vars: &[ty::RegionVid],
                              a_map: &FnvHashMap<ty::BoundRegion, ty::Region>,
@@ -267,7 +277,7 @@ impl<'tcx,C> HigherRankedRelations<'tcx> for C
                 return r0;
             }
 
-            let tainted = infcx.region_vars.tainted(mark, r0);
+            let tainted = infcx.tainted_regions(snapshot, r0);
 
             let mut a_r = None;
             let mut b_r = None;
@@ -443,3 +453,86 @@ fn fold_regions_in<'tcx, T, F>(tcx: &ty::ctxt<'tcx>, value: &T, mut fldr: F) -> 
     }))
 }
 
+impl<'a,'tcx> InferCtxtExt<'tcx> for InferCtxt<'a,'tcx> {
+    fn tainted_regions(&self, snapshot: &CombinedSnapshot, r: ty::Region) -> Vec<ty::Region> {
+        self.region_vars.tainted(&snapshot.region_vars_snapshot, r)
+    }
+
+    fn region_vars_confined_to_snapshot(&self,
+                                        snapshot: &CombinedSnapshot)
+                                        -> Vec<ty::RegionVid>
+    {
+        /*!
+         * Returns the set of region variables that do not affect any
+         * types/regions which existed before `snapshot` was
+         * started. This is used in the sub/lub/glb computations. The
+         * idea here is that when we are computing lub/glb of two
+         * regions, we sometimes create intermediate region variables.
+         * Those region variables may touch some of the skolemized or
+         * other "forbidden" regions we created to replace bound
+         * regions, but they don't really represent an "external"
+         * constraint.
+         *
+         * However, sometimes fresh variables are created for other
+         * purposes too, and those *may* represent an external
+         * constraint. In particular, when a type variable is
+         * instantiated, we create region variables for all the
+         * regions that appear within, and if that type variable
+         * pre-existed the snapshot, then those region variables
+         * represent external constraints.
+         *
+         * An example appears in the unit test
+         * `sub_free_bound_false_infer`.  In this test, we want to
+         * know whether
+         *
+         * ```rust
+         * fn(_#0t) <: for<'a> fn(&'a int)
+         * ```
+         *
+         * Note that the subtype has a type variable. Because the type
+         * variable can't be instantiated with a region that is bound
+         * in the fn signature, this comparison ought to fail. But if
+         * we're not careful, it will succeed.
+         *
+         * The reason is that when we walk through the subtyping
+         * algorith, we begin by replacing `'a` with a skolemized
+         * variable `'0`. We then have `fn(_#0t) <: fn(&'0 int)`. This
+         * can be made true by unifying `_#0t` with `&'0 int`. In the
+         * process, we create a fresh variable for the skolemized
+         * region, `'$0`, and hence we have that `_#0t == &'$0
+         * int`. However, because `'$0` was created during the sub
+         * computation, if we're not careful we will erroneously
+         * assume it is one of the transient region variables
+         * representing a lub/glb internally. Not good.
+         *
+         * To prevent this, we check for type variables which were
+         * unified during the snapshot, and say that any region
+         * variable created during the snapshot but which finds its
+         * way into a type variable is considered to "escape" the
+         * snapshot.
+         */
+
+        let mut region_vars =
+            self.region_vars.vars_created_since_snapshot(&snapshot.region_vars_snapshot);
+
+        let escaping_types =
+            self.type_variables.borrow().types_escaping_snapshot(&snapshot.type_snapshot);
+
+        let escaping_region_vars: FnvHashSet<_> =
+            escaping_types
+            .iter()
+            .flat_map(|&t| ty_fold::collect_regions(self.tcx, &t).into_iter())
+            .collect();
+
+        region_vars.retain(|&region_vid| {
+            let r = ty::ReInfer(ty::ReVar(region_vid));
+            !escaping_region_vars.contains(&r)
+        });
+
+        debug!("region_vars_confined_to_snapshot: region_vars={} escaping_types={}",
+               region_vars.repr(self.tcx),
+               escaping_types.repr(self.tcx));
+
+        region_vars
+    }
+}

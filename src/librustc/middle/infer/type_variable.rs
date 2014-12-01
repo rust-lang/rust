@@ -13,7 +13,9 @@ use self::TypeVariableValue::*;
 use self::UndoEntry::*;
 
 use middle::ty::{mod, Ty};
+use std::cmp::min;
 use std::mem;
+use std::uint;
 use util::snapshot_vec as sv;
 
 pub struct TypeVariableTable<'tcx> {
@@ -78,7 +80,6 @@ impl<'tcx> TypeVariableTable<'tcx> {
     ///
     /// Precondition: neither `a` nor `b` are known.
     pub fn relate_vars(&mut self, a: ty::TyVid, dir: RelationDir, b: ty::TyVid) {
-
         if a != b {
             self.relations(a).push((dir, b));
             self.relations(b).push((dir.opposite(), a));
@@ -150,6 +151,49 @@ impl<'tcx> TypeVariableTable<'tcx> {
 
     pub fn commit(&mut self, s: Snapshot) {
         self.values.commit(s.snapshot);
+    }
+
+    pub fn types_escaping_snapshot(&self, s: &Snapshot) -> Vec<Ty<'tcx>> {
+        /*!
+         * Find the set of type variables that existed *before* `s`
+         * but which have only been unified since `s` started, and
+         * return the types with which they were unified. So if we had
+         * a type variable `V0`, then we started the snapshot, then we
+         * created a type variable `V1`, unifed `V0` with `T0`, and
+         * unified `V1` with `T1`, this function would return `{T0}`.
+         */
+
+        let mut new_elem_threshold = uint::MAX;
+        let mut escaping_types = Vec::new();
+        let actions_since_snapshot = self.values.actions_since_snapshot(&s.snapshot);
+        debug!("actions_since_snapshot.len() = {}", actions_since_snapshot.len());
+        for action in actions_since_snapshot.iter() {
+            match *action {
+                sv::UndoLog::NewElem(index) => {
+                    // if any new variables were created during the
+                    // snapshot, remember the lower index (which will
+                    // always be the first one we see). Note that this
+                    // action must precede those variables being
+                    // specified.
+                    new_elem_threshold = min(new_elem_threshold, index);
+                    debug!("NewElem({}) new_elem_threshold={}", index, new_elem_threshold);
+                }
+
+                sv::UndoLog::Other(SpecifyVar(vid, _)) => {
+                    if vid.index < new_elem_threshold {
+                        // quick check to see if this variable was
+                        // created since the snapshot started or not.
+                        let escaping_type = self.probe(vid).unwrap();
+                        escaping_types.push(escaping_type);
+                    }
+                    debug!("SpecifyVar({}) new_elem_threshold={}", vid, new_elem_threshold);
+                }
+
+                _ => { }
+            }
+        }
+
+        escaping_types
     }
 }
 
