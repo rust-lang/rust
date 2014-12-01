@@ -12,21 +12,21 @@
 use std::cmp;
 use std::ops;
 
-#[deriving(Show)]
+#[deriving(Copy, Show)]
 struct Point {
     x: int,
     y: int
 }
 
 impl ops::Add<Point,Point> for Point {
-    fn add(&self, other: &Point) -> Point {
-        Point {x: self.x + (*other).x, y: self.y + (*other).y}
+    fn add(self, other: Point) -> Point {
+        Point {x: self.x + other.x, y: self.y + other.y}
     }
 }
 
 impl ops::Sub<Point,Point> for Point {
-    fn sub(&self, other: &Point) -> Point {
-        Point {x: self.x - (*other).x, y: self.y - (*other).y}
+    fn sub(self, other: Point) -> Point {
+        Point {x: self.x - other.x, y: self.y - other.y}
     }
 }
 
