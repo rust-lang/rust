@@ -242,6 +242,112 @@ fn trans_fn_ref_with_substs_to_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 }
 
+/// Translates an adapter that implements the `Fn` trait for a fn
+/// pointer. This is basically the equivalent of something like:
+///
+/// ```rust
+/// impl<'a> Fn(&'a int) -> &'a int for fn(&int) -> &int {
+///     extern "rust-abi" fn call(&self, args: (&'a int,)) -> &'a int {
+///         (*self)(args.0)
+///     }
+/// }
+/// ```
+///
+/// but for the bare function type given.
+pub fn trans_fn_pointer_shim<'a, 'tcx>(
+    ccx: &'a CrateContext<'a, 'tcx>,
+    bare_fn_ty: Ty<'tcx>)
+    -> ValueRef
+{
+    let _icx = push_ctxt("trans_fn_pointer_shim");
+    let tcx = ccx.tcx();
+
+    debug!("trans_fn_pointer_shim(bare_fn_ty={})",
+           bare_fn_ty.repr(tcx));
+
+    // This is an impl of `Fn` trait, so receiver is `&self`.
+    let bare_fn_ty_ref = ty::mk_imm_rptr(tcx, ty::ReStatic, bare_fn_ty);
+
+    // Construct the "tuply" version of `bare_fn_ty`. It takes two arguments: `self`,
+    // which is the fn pointer, and `args`, which is the arguments tuple.
+    let (input_tys, output_ty) =
+        match bare_fn_ty.sty {
+            ty::ty_bare_fn(ty::BareFnTy { fn_style: ast::NormalFn,
+                                          abi: synabi::Rust,
+                                          sig: ty::FnSig { inputs: ref input_tys,
+                                                           output: output_ty,
+                                                           variadic: false }}) =>
+            {
+                (input_tys, output_ty)
+            }
+
+            _ => {
+                tcx.sess.bug(format!("trans_fn_pointer_shim invoked on invalid type: {}",
+                                           bare_fn_ty.repr(tcx)).as_slice());
+            }
+        };
+    let tuple_input_ty = ty::mk_tup(tcx, input_tys.to_vec());
+    let tuple_fn_ty = ty::mk_bare_fn(tcx,
+                                     ty::BareFnTy { fn_style: ast::NormalFn,
+                                                    abi: synabi::RustCall,
+                                                    sig: ty::FnSig {
+                                                        inputs: vec![bare_fn_ty_ref,
+                                                                     tuple_input_ty],
+                                                        output: output_ty,
+                                                        variadic: false
+                                                    }});
+    debug!("tuple_fn_ty: {}", tuple_fn_ty.repr(tcx));
+
+    //
+    let function_name =
+        link::mangle_internal_name_by_type_and_seq(ccx, bare_fn_ty,
+                                                   "fn_pointer_shim");
+    let llfn =
+        decl_internal_rust_fn(ccx,
+                              tuple_fn_ty,
+                              function_name.as_slice());
+
+    //
+    let block_arena = TypedArena::new();
+    let empty_substs = Substs::trans_empty();
+    let fcx = new_fn_ctxt(ccx,
+                          llfn,
+                          ast::DUMMY_NODE_ID,
+                          false,
+                          output_ty,
+                          &empty_substs,
+                          None,
+                          &block_arena);
+    let mut bcx = init_function(&fcx, false, output_ty);
+
+    // the first argument (`self`) will be ptr to the the fn pointer
+    let llfnpointer =
+        Load(bcx, get_param(fcx.llfn, fcx.arg_pos(0) as u32));
+
+    // the remaining arguments will be the untupled values
+    let llargs: Vec<_> =
+        input_tys.iter()
+        .enumerate()
+        .map(|(i, _)| get_param(fcx.llfn, fcx.arg_pos(i+1) as u32))
+        .collect();
+    assert!(!fcx.needs_ret_allocas);
+
+    let dest = fcx.llretslotptr.get().map(|_|
+        expr::SaveIn(fcx.get_ret_slot(bcx, output_ty, "ret_slot"))
+    );
+
+    bcx = trans_call_inner(bcx,
+                           None,
+                           bare_fn_ty,
+                           |bcx, _| Callee { bcx: bcx, data: Fn(llfnpointer) },
+                           ArgVals(llargs.as_slice()),
+                           dest).bcx;
+
+    finish_fn(&fcx, bcx, output_ty);
+
+    llfn
+}
+
 /// Translates the adapter that deconstructs a `Box<Trait>` object into
 /// `Trait` so that a by-value self method can be called.
 pub fn trans_unboxing_shim<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
