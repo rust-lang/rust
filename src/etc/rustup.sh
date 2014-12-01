@@ -416,8 +416,8 @@ CARGO_TARBALL_NAME="${CARGO_PACKAGE_NAME_AND_TRIPLE}.tar.gz"
 CARGO_LOCAL_INSTALL_DIR="${CFG_TMP_DIR}/${CARGO_PACKAGE_NAME_AND_TRIPLE}"
 CARGO_LOCAL_INSTALL_SCRIPT="${CARGO_LOCAL_INSTALL_DIR}/install.sh"
 
-# Fetch the package and extract it.
-download_and_extract_package() {
+# Fetch the package.
+download_package() {
     remote_url="$1"
     tarball_name="$2"
     remote_tarball="${remote_url}/${tarball_name}"
@@ -434,6 +434,12 @@ download_and_extract_package() {
         rm -Rf "${CFG_TMP_DIR}"
         err "failed to download installer"
     fi
+}
+
+# Wrap all the commands needed to install a package.
+install_package() {
+    tarball_name="$1"
+    install_script="$2"
 
     msg "Extracting ${tarball_name}"
     (cd "${CFG_TMP_DIR}" && "${CFG_TAR}" -xvf "${tarball_name}")
@@ -441,11 +447,6 @@ download_and_extract_package() {
         rm -Rf "${CFG_TMP_DIR}"
         err "failed to unpack installer"
     fi
-}
-
-# Wrap all the commands needed to install a package.
-install_package() {
-    install_script="$1"
 
     sh "${install_script}" "${CFG_INSTALL_FLAGS}"
     if [ $? -ne 0 ]
@@ -468,20 +469,24 @@ install_packages() {
     mkdir -p "${CFG_TMP_DIR}"
     need_ok "failed to create create temporary installation directory"
 
-    download_and_extract_package \
+    download_package \
         "${RUST_URL}" \
         "${RUST_TARBALL_NAME}"
 
     if [ -z "${CFG_DISABLE_CARGO}" ]; then
-        download_and_extract_package \
+        download_package \
             "${CARGO_URL}" \
             "${CARGO_TARBALL_NAME}"
     fi
 
-    install_package "${RUST_LOCAL_INSTALL_SCRIPT}"
+    install_package \
+        "${RUST_TARBALL_NAME}" \
+        "${RUST_LOCAL_INSTALL_SCRIPT}"
 
     if [ -z "${CFG_DISABLE_CARGO}" ]; then
-        install_package "${CARGO_LOCAL_INSTALL_SCRIPT}"
+        install_package \
+            "${CARGO_TARBALL_NAME}" \
+            "${CARGO_LOCAL_INSTALL_SCRIPT}"
     fi
 
     rm -Rf "${CFG_TMP_DIR}"
