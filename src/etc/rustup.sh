@@ -188,7 +188,7 @@ flag() {
      fi
 }
 
-validate_opt () {
+validate_opt() {
     for arg in $CFG_ARGS
     do
         isArgValid=0
