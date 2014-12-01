@@ -8,10 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
+#![feature(unboxed_closures)]
+
+fn foo<'a>() {
     if true {
-        proc(_) {}
+        // in this branch, the lifetime is bound
+        (box move|&mut: _: &mut ()| {}) as Box<FnMut(&mut ())>
     } else {
-        proc(_: &mut ()) {}
+        // in this branch, the lifetime is free
+        (box move|&mut: _: &mut ()| {}) as Box<FnMut(&'a mut ())>
     };
+}
+
+fn main() {
 }

@@ -284,7 +284,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                             let ty = ty::mk_rptr(self.get_ref().infcx.tcx,
                                                  r_borrow,
                                                  ty::mt{ty: ty, mutbl: mt_b.mutbl});
-                            try!(self.get_ref().infcx.try(|| sub.tys(ty, b)));
+                            try!(self.get_ref().infcx.try(|_| sub.tys(ty, b)));
                             debug!("Success, coerced with AutoDerefRef(1, \
                                     AutoPtr(AutoUnsize({})))", kind);
                             Ok(Some(AdjustDerefRef(AutoDerefRef {
@@ -307,7 +307,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
                             let ty = ty::mk_ptr(self.get_ref().infcx.tcx,
                                                  ty::mt{ty: ty, mutbl: mt_b.mutbl});
-                            try!(self.get_ref().infcx.try(|| sub.tys(ty, b)));
+                            try!(self.get_ref().infcx.try(|_| sub.tys(ty, b)));
                             debug!("Success, coerced with AutoDerefRef(1, \
                                     AutoPtr(AutoUnsize({})))", kind);
                             Ok(Some(AdjustDerefRef(AutoDerefRef {
@@ -325,7 +325,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                     match self.unsize_ty(t_a, sty_a, t_b) {
                         Some((ty, kind)) => {
                             let ty = ty::mk_uniq(self.get_ref().infcx.tcx, ty);
-                            try!(self.get_ref().infcx.try(|| sub.tys(ty, b)));
+                            try!(self.get_ref().infcx.try(|_| sub.tys(ty, b)));
                             debug!("Success, coerced with AutoDerefRef(1, \
                                     AutoUnsizeUniq({}))", kind);
                             Ok(Some(AdjustDerefRef(AutoDerefRef {
@@ -382,7 +382,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                     let mut result = None;
                     let mut tps = ty_substs_a.iter().zip(ty_substs_b.iter()).enumerate();
                     for (i, (tp_a, tp_b)) in tps {
-                        if self.get_ref().infcx.try(|| sub.tys(*tp_a, *tp_b)).is_ok() {
+                        if self.get_ref().infcx.try(|_| sub.tys(*tp_a, *tp_b)).is_ok() {
                             continue;
                         }
                         match
@@ -395,7 +395,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                                 let mut new_substs = substs_a.clone();
                                 new_substs.types.get_mut_slice(subst::TypeSpace)[i] = new_tp;
                                 let ty = ty::mk_struct(tcx, did_a, new_substs);
-                                if self.get_ref().infcx.try(|| sub.tys(ty, ty_b)).is_err() {
+                                if self.get_ref().infcx.try(|_| sub.tys(ty, ty_b)).is_err() {
                                     debug!("Unsized type parameter '{}', but still \
                                             could not match types {} and {}",
                                            ppaux::ty_to_string(tcx, *tp_a),

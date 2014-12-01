@@ -501,6 +501,26 @@ fn sub_free_bound_false_infer() {
 }
 
 #[test]
+fn lub_free_bound_infer() {
+    //! Test result of:
+    //!
+    //!     LUB(fn(_#1), for<'b> fn(&'b int))
+    //!
+    //! This should yield `fn(&'_ int)`. We check
+    //! that it yields `fn(&'x int)` for some free `'x`,
+    //! anyhow.
+
+    test_env(EMPTY_SOURCE_STR, errors(&[]), |env| {
+        let t_infer1 = env.infcx.next_ty_var();
+        let t_rptr_bound1 = env.t_rptr_late_bound(1);
+        let t_rptr_free1 = env.t_rptr_free(0, 1);
+        env.check_lub(env.t_fn(&[t_infer1], ty::mk_int()),
+                      env.t_fn(&[t_rptr_bound1], ty::mk_int()),
+                      env.t_fn(&[t_rptr_free1], ty::mk_int()));
+    });
+}
+
+#[test]
 fn lub_bound_bound() {
     test_env(EMPTY_SOURCE_STR, errors(&[]), |env| {
         let t_rptr_bound1 = env.t_rptr_late_bound(1);
@@ -600,6 +620,28 @@ fn glb_bound_free() {
         env.check_glb(env.t_fn(&[t_rptr_bound1], ty::mk_int()),
                       env.t_fn(&[t_rptr_free1], ty::mk_int()),
                       env.t_fn(&[t_rptr_bound1], ty::mk_int()));
+    })
+}
+
+#[test]
+fn glb_bound_free_infer() {
+    test_env(EMPTY_SOURCE_STR, errors(&[]), |env| {
+        let t_rptr_bound1 = env.t_rptr_late_bound(1);
+        let t_infer1 = env.infcx.next_ty_var();
+
+        // compute GLB(fn(_) -> int, for<'b> fn(&'b int) -> int),
+        // which should yield for<'b> fn(&'b int) -> int
+        env.check_glb(env.t_fn(&[t_rptr_bound1], ty::mk_int()),
+                      env.t_fn(&[t_infer1], ty::mk_int()),
+                      env.t_fn(&[t_rptr_bound1], ty::mk_int()));
+
+        // as a side-effect, computing GLB should unify `_` with
+        // `&'_ int`
+        let t_resolve1 = env.infcx.shallow_resolve(t_infer1);
+        match t_resolve1.sty {
+            ty::ty_rptr(..) => { }
+            _ => { panic!("t_resolve1={}", t_resolve1.repr(env.infcx.tcx)); }
+        }
     })
 }
 
