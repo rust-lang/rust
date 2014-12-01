@@ -230,6 +230,7 @@ validate_opt() {
 }
 
 probe_need CFG_CURL  curl
+probe_need CFG_TAR   tar
 
 CFG_SRC_DIR="$(cd $(dirname $0) && pwd)/"
 CFG_SELF="$0"
@@ -430,7 +431,7 @@ if [ -z "${CFG_DISABLE_CARGO}" ]; then
 fi
 
 
-(cd "${TMP_DIR}" && tar xzf "${TARBALL_NAME}")
+(cd "${TMP_DIR}" && ${CFG_TAR} xzf "${TARBALL_NAME}")
 if [ $? -ne 0 ]
 then
         rm -Rf "${TMP_DIR}"
@@ -457,7 +458,7 @@ then
 fi
 
 if [ -z "${CFG_DISABLE_CARGO}" ]; then
-    (cd "${TMP_DIR}" && tar xzf "${CARGO_TARBALL_NAME}")
+    (cd "${TMP_DIR}" && ${CFG_TAR} xzf "${CARGO_TARBALL_NAME}")
     if [ $? -ne 0 ]
     then
             rm -Rf "${TMP_DIR}"
