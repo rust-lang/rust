@@ -37,8 +37,8 @@ use str::{FromStr, from_str, StrPrelude};
 /// Simultaneous division and remainder
 #[inline]
 #[deprecated = "use division and remainder directly"]
-pub fn div_rem<T: Div<T, T> + Rem<T, T>>(x: T, y: T) -> (T, T) {
-    (x / y, x % y)
+pub fn div_rem<T: Clone + Div<T, T> + Rem<T, T>>(x: T, y: T) -> (T, T) {
+    (x.clone() / y.clone(), x % y)
 }
 
 /// Raises a `base` to the power of `exp`, using exponentiation by squaring.
