@@ -64,10 +64,9 @@ use middle::subst;
 use middle::ty::{AutoPtr, AutoDerefRef, AdjustDerefRef, AutoUnsize, AutoUnsafe};
 use middle::ty::{mt};
 use middle::ty::{mod, Ty};
-use middle::typeck::infer::{CoerceResult, resolve_type, Coercion};
+use middle::typeck::infer::{CoerceResult, Coercion};
 use middle::typeck::infer::combine::{CombineFields, Combine};
 use middle::typeck::infer::sub::Sub;
-use middle::typeck::infer::resolve::try_resolve_tvar_shallow;
 use util::ppaux;
 use util::ppaux::Repr;
 
@@ -194,19 +193,9 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     }
 
     pub fn unpack_actual_value<T>(&self, a: Ty<'tcx>, f: |&ty::sty<'tcx>| -> T)
-                                  -> T {
-        match resolve_type(self.get_ref().infcx, None,
-                           a, try_resolve_tvar_shallow) {
-            Ok(t) => {
-                f(&t.sty)
-            }
-            Err(e) => {
-                self.get_ref().infcx.tcx.sess.span_bug(
-                    self.get_ref().trace.origin.span(),
-                    format!("failed to resolve even without \
-                             any force options: {}", e).as_slice());
-            }
-        }
+                                  -> T
+    {
+        f(&self.get_ref().infcx.shallow_resolve(a).sty)
     }
 
     // ~T -> &T or &mut T -> &T (including where T = [U] or str)

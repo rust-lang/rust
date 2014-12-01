@@ -14,7 +14,7 @@ use middle::subst::{Subst, Substs};
 use middle::ty::{mod, Ty};
 use middle::typeck::check::{check_expr, check_expr_has_type, demand, FnCtxt};
 use middle::typeck::check::{instantiate_path, structurally_resolved_type, valid_range_bounds};
-use middle::typeck::infer::{mod, resolve};
+use middle::typeck::infer;
 use middle::typeck::require_same_types;
 use util::nodemap::FnvHashMap;
 
@@ -142,11 +142,8 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
         ast::PatRegion(ref inner) => {
             let inner_ty = fcx.infcx().next_ty_var();
 
-            let mutbl = infer::resolve_type(
-                fcx.infcx(), Some(pat.span),
-                expected, resolve::try_resolve_tvar_shallow)
-                .ok()
-                .and_then(|t| ty::deref(t, true))
+            let mutbl =
+                ty::deref(fcx.infcx().shallow_resolve(expected), true)
                 .map_or(ast::MutImmutable, |mt| mt.mutbl);
 
             let mt = ty::mt { ty: inner_ty, mutbl: mutbl };
@@ -213,23 +210,21 @@ pub fn check_dereferencable<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                                       inner: &ast::Pat) -> bool {
     let fcx = pcx.fcx;
     let tcx = pcx.fcx.ccx.tcx;
-    match infer::resolve_type(
-        fcx.infcx(), Some(span),
-        expected, resolve::try_resolve_tvar_shallow) {
-        Ok(t) if pat_is_binding(&tcx.def_map, inner) => {
-            ty::deref(t, true).map_or(true, |mt| match mt.ty.sty {
-                ty::ty_trait(_) => {
-                    // This is "x = SomeTrait" being reduced from
-                    // "let &x = &SomeTrait" or "let box x = Box<SomeTrait>", an error.
-                    span_err!(tcx.sess, span, E0033,
-                        "type `{}` cannot be dereferenced",
-                        fcx.infcx().ty_to_string(t));
-                    false
-                }
-                _ => true
-            })
-        }
-        _ => true
+    if pat_is_binding(&tcx.def_map, inner) {
+        let expected = fcx.infcx().shallow_resolve(expected);
+        ty::deref(expected, true).map_or(true, |mt| match mt.ty.sty {
+            ty::ty_trait(_) => {
+                // This is "x = SomeTrait" being reduced from
+                // "let &x = &SomeTrait" or "let box x = Box<SomeTrait>", an error.
+                span_err!(tcx.sess, span, E0033,
+                          "type `{}` cannot be dereferenced",
+                          fcx.infcx().ty_to_string(expected));
+                false
+            }
+            _ => true
+        })
+    } else {
+        true
     }
 }
 
