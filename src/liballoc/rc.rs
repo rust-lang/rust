@@ -228,8 +228,8 @@ pub fn strong_count<T>(this: &Rc<T>) -> uint { this.inner().strong_nonatomic() }
 /// Upgrades a unique `Rc` into an `Arc`. Returns `Err` if the `Rc` is not
 /// unique.
 /// ```
-#[experimental]
 #[inline]
+#[experimental]
 pub fn into_arc<T>(this: Rc<T>) -> Result<Arc<T>, Rc<T>> {
     unsafe {
         if is_unique(&this) {

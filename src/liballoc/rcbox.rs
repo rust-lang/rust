@@ -9,14 +9,15 @@
 // except according to those terms.
 
 use core::atomic;
+use core::cell::UnsafeCell;
 use core::mem;
 use core::ptr;
 
 /// A shared representation for reference counted pointers. This is factored out
 /// to allow upgrading from one to another seamlessly.
 pub struct RcBox<T> {
-    strong: uint,
-    weak:   uint,
+    strong: UnsafeCell<uint>,
+    weak:   UnsafeCell<uint>,
     value:  T,
 }
 
@@ -33,45 +34,35 @@ impl<T> RcBox<T> {
     #[inline]
     pub fn new(value: T) -> RcBox<T> {
         RcBox {
-            strong: 1,
+            strong: UnsafeCell::new(1),
             // there is an implicit weak pointer owned by all the
             // strong pointers, which ensures that the weak
             // destructor never frees the allocation while the
             // strong destructor is running, even if the weak
             // pointer is stored inside the strong one.
-            weak: 1,
+            weak: UnsafeCell::new(1),
             value: value,
         }
     }
 
     #[inline(always)]
     pub fn strong_nonatomic(&self) -> uint {
-        self.strong
+        unsafe { *self.strong.get() }
     }
 
     #[inline(always)]
     fn set_strong_nonatomic(&self, x: uint) {
-        let strong_ref: &uint = &self.strong;
-        unsafe {
-            let strong_ptr = strong_ref as *const uint;
-            let strong_ptr = strong_ptr as *mut uint;
-            *strong_ptr = x;
-        }
+        unsafe { *self.strong.get() = x; }
     }
 
     #[inline(always)]
     pub fn weak_nonatomic(&self) -> uint {
-        self.weak
+        unsafe { *self.weak.get() }
     }
 
     #[inline(always)]
     fn set_weak_nonatomic(&self, x: uint) {
-        let weak_ref: &uint = &self.weak;
-        unsafe {
-            let weak_ptr = weak_ref as *const uint;
-            let weak_ptr = weak_ptr as *mut uint;
-            *weak_ptr = x;
-        }
+        unsafe { *self.weak.get() = x; }
     }
 
     #[inline]
@@ -114,12 +105,14 @@ impl<T> RcBox<T> {
 
     #[inline(always)]
     pub unsafe fn strong_atomic<'a>(&'a self) -> &'a atomic::AtomicUint {
-        mem::transmute(&self.strong)
+        let strong_ref: &uint = &*self.strong.get();
+        mem::transmute(strong_ref)
     }
 
     #[inline(always)]
     pub unsafe fn weak_atomic<'a>(&'a self) -> &'a atomic::AtomicUint {
-        mem::transmute(&self.weak)
+        let weak_ref: &uint = &*self.weak.get();
+        mem::transmute(weak_ref)
     }
 
     #[inline]
