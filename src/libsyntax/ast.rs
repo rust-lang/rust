@@ -983,7 +983,7 @@ impl LitIntType {
 #[deriving(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Show)]
 pub enum Lit_ {
     LitStr(InternedString, StrStyle),
-    LitBinary(Rc<Vec<u8> >),
+    LitBinary(Rc<Vec<u8>>),
     LitByte(u8),
     LitChar(char),
     LitInt(u64, LitIntType),
