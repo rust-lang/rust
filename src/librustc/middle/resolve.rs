@@ -3052,22 +3052,15 @@ impl<'a> Resolver<'a> {
 
         match import_resolution.value_target {
             Some(ref target) if !target.shadowable => {
-                match *name_bindings.value_def.borrow() {
-                    Some(ref value) => {
-                        let msg = format!("import `{}` conflicts with value \
-                                           in this module",
-                                          token::get_name(name).get());
-                        self.session.span_err(import_span, msg.as_slice());
-                        match value.value_span {
-                            None => {}
-                            Some(span) => {
-                                self.session
-                                    .span_note(span,
+                if let Some(ref value) = *name_bindings.value_def.borrow() {
+                    let msg = format!("import `{}` conflicts with value \
+                                       in this module",
+                                      token::get_name(name).get());
+                    self.session.span_err(import_span, msg.as_slice());
+                    if let Some(span) = value.value_span {
+                        self.session.span_note(span,
                                                "conflicting value here");
-                            }
-                        }
                     }
-                    _ => {}
                 }
             }
             Some(_) | None => {}
@@ -3075,59 +3068,43 @@ impl<'a> Resolver<'a> {
 
         match import_resolution.type_target {
             Some(ref target) if !target.shadowable => {
-                match *name_bindings.type_def.borrow() {
-                    Some(ref ty) => {
-                        match ty.module_def {
-                            None => {
-                                let msg = format!("import `{}` conflicts with type in \
-                                                   this module",
-                                                  token::get_name(name).get());
-                                self.session.span_err(import_span, msg.as_slice());
-                                match ty.type_span {
-                                    None => {}
-                                    Some(span) => {
-                                        self.session
-                                            .span_note(span,
+                if let Some(ref ty) = *name_bindings.type_def.borrow() {
+                    match ty.module_def {
+                        None => {
+                            let msg = format!("import `{}` conflicts with type in \
+                                               this module",
+                                              token::get_name(name).get());
+                            self.session.span_err(import_span, msg.as_slice());
+                            if let Some(span) = ty.type_span {
+                                self.session.span_note(span,
                                                        "note conflicting type here")
+                            }
+                        }
+                        Some(ref module_def) => {
+                            match module_def.kind.get() {
+                                ImplModuleKind => {
+                                    if let Some(span) = ty.type_span {
+                                        let msg = format!("inherent implementations \
+                                                           are only allowed on types \
+                                                           defined in the current module");
+                                        self.session.span_err(span, msg.as_slice());
+                                        self.session.span_note(import_span,
+                                                               "import from other module here")
                                     }
                                 }
-                            }
-                            Some(ref module_def) => {
-                                match module_def.kind.get() {
-                                    ImplModuleKind => {
-                                        match ty.type_span {
-                                            None => { /* this can't ever happen */ }
-                                            Some(span) => {
-                                                let msg = format!("inherent implementations \
-                                                                   are only allowed on types \
-                                                                   defined in the current module");
-                                                self.session
-                                                    .span_err(span, msg.as_slice());
-                                                self.session
-                                                    .span_note(import_span,
-                                                               "import from other module here")
-                                            }
-                                        }
-                                    }
-                                    _ => {
-                                        let msg = format!("import `{}` conflicts with existing \
-                                                           submodule",
-                                                          token::get_name(name).get());
-                                        self.session.span_err(import_span, msg.as_slice());
-                                        match ty.type_span {
-                                            None => {}
-                                            Some(span) => {
-                                                self.session
-                                                    .span_note(span,
+                                _ => {
+                                    let msg = format!("import `{}` conflicts with existing \
+                                                       submodule",
+                                                      token::get_name(name).get());
+                                    self.session.span_err(import_span, msg.as_slice());
+                                    if let Some(span) = ty.type_span {
+                                        self.session.span_note(span,
                                                                "note conflicting module here")
-                                            }
-                                        }
                                     }
                                 }
                             }
                         }
                     }
-                    _ => {}
                 }
             }
             Some(_) | None => {}
@@ -3269,25 +3246,16 @@ impl<'a> Resolver<'a> {
                                     search_module = module_def.clone();
 
                                     // track extern crates for unused_extern_crate lint
-                                    match module_def.def_id.get() {
-                                        Some(did) => {
-                                            self.used_crates.insert(did.krate);
-                                        }
-                                        _ => {}
+                                    if let Some(did) = module_def.def_id.get() {
+                                        self.used_crates.insert(did.krate);
                                     }
 
                                     // Keep track of the closest
                                     // private module used when
                                     // resolving this import chain.
-                                    if !used_proxy &&
-                                       !search_module.is_public {
-                                        match search_module.def_id
-                                                           .get() {
-                                            Some(did) => {
-                                                closest_private =
-                                                    LastMod(DependsOn(did));
-                                            }
-                                            None => {}
+                                    if !used_proxy && !search_module.is_public {
+                                        if let Some(did) = search_module.def_id.get() {
+                                            closest_private = LastMod(DependsOn(did));
                                         }
                                     }
                                 }
@@ -3442,46 +3410,35 @@ impl<'a> Resolver<'a> {
         // all its imports in the usual way; this is because chains of
         // adjacent import statements are processed as though they mutated the
         // current scope.
-        match module_.import_resolutions.borrow().get(&name) {
-            None => {
-                // Not found; continue.
-            }
-            Some(import_resolution) => {
-                match (*import_resolution).target_for_namespace(namespace) {
-                    None => {
-                        // Not found; continue.
-                        debug!("(resolving item in lexical scope) found \
-                                import resolution, but not in namespace {}",
-                               namespace);
+        if let Some(import_resolution) = module_.import_resolutions.borrow().get(&name) {
+            match (*import_resolution).target_for_namespace(namespace) {
+                None => {
+                    // Not found; continue.
+                    debug!("(resolving item in lexical scope) found \
+                            import resolution, but not in namespace {}",
+                           namespace);
+                }
+                Some(target) => {
+                    debug!("(resolving item in lexical scope) using \
+                            import resolution");
+                    // track used imports and extern crates as well
+                    self.used_imports.insert((import_resolution.id(namespace), namespace));
+                    if let Some(DefId{krate: kid, ..}) = target.target_module.def_id.get() {
+                        self.used_crates.insert(kid);
                     }
-                    Some(target) => {
-                        debug!("(resolving item in lexical scope) using \
-                                import resolution");
-                        // track used imports and extern crates as well
-                        self.used_imports.insert((import_resolution.id(namespace), namespace));
-                        match target.target_module.def_id.get() {
-                            Some(DefId{krate: kid, ..}) => { self.used_crates.insert(kid); },
-                            _ => {}
-                        }
-                        return Success((target, false));
-                    }
+                    return Success((target, false));
                 }
             }
         }
 
         // Search for external modules.
         if namespace == TypeNS {
-            match module_.external_module_children.borrow().get(&name).cloned() {
-                None => {}
-                Some(module) => {
-                    let name_bindings =
-                        Rc::new(Resolver::create_name_bindings_from_module(module));
-                    debug!("lower name bindings succeeded");
-                    return Success((Target::new(module_,
-                                                name_bindings,
-                                                false),
-                                    false));
-                }
+            if let Some(module) = module_.external_module_children.borrow().get(&name).cloned() {
+                let name_bindings =
+                    Rc::new(Resolver::create_name_bindings_from_module(module));
+                debug!("lower name bindings succeeded");
+                return Success((Target::new(module_, name_bindings, false),
+                                false));
             }
         }
 
@@ -3743,9 +3700,8 @@ impl<'a> Resolver<'a> {
                                 import");
                         // track used imports and extern crates as well
                         self.used_imports.insert((import_resolution.id(namespace), namespace));
-                        match target.target_module.def_id.get() {
-                            Some(DefId{krate: kid, ..}) => { self.used_crates.insert(kid); },
-                            _ => {}
+                        if let Some(DefId{krate: kid, ..}) = target.target_module.def_id.get() {
+                            self.used_crates.insert(kid);
                         }
                         return Success((target, true));
                     }
@@ -3756,16 +3712,11 @@ impl<'a> Resolver<'a> {
 
         // Finally, search through external children.
         if namespace == TypeNS {
-            match module_.external_module_children.borrow().get(&name).cloned() {
-                None => {}
-                Some(module) => {
-                    let name_bindings =
-                        Rc::new(Resolver::create_name_bindings_from_module(module));
-                    return Success((Target::new(module_,
-                                                name_bindings,
-                                                false),
-                                    false));
-                }
+            if let Some(module) = module_.external_module_children.borrow().get(&name).cloned() {
+                let name_bindings =
+                    Rc::new(Resolver::create_name_bindings_from_module(module));
+                return Success((Target::new(module_, name_bindings, false),
+                                false));
             }
         }
 
@@ -4271,11 +4222,8 @@ impl<'a> Resolver<'a> {
                                     this.resolve_type(&*argument.ty);
                                 }
 
-                                match ty_m.explicit_self.node {
-                                    SelfExplicit(ref typ, _) => {
-                                        this.resolve_type(&**typ)
-                                    }
-                                    _ => {}
+                                if let SelfExplicit(ref typ, _) = ty_m.explicit_self.node {
+                                    this.resolve_type(&**typ)
                                 }
 
                                 if let ast::Return(ref ret_ty) = ty_m.decl.output {
@@ -4563,19 +4511,14 @@ impl<'a> Resolver<'a> {
                                                        &trait_reference.path)));
 
                         // If it's a typedef, give a note
-                        match def {
-                            DefTy(..) => {
-                                self.session.span_note(
-                                    trait_reference.path.span,
-                                    format!("`type` aliases cannot \
-                                                        be used for traits")
-                                                        .as_slice());
-                            }
-                            _ => {}
+                        if let DefTy(..) = def {
+                            self.session.span_note(
+                                trait_reference.path.span,
+                                format!("`type` aliases cannot be used for traits")
+                                    .as_slice());
                         }
                     }
                 }
-
             }
         }
     }
@@ -4637,9 +4580,8 @@ impl<'a> Resolver<'a> {
                                                 method.id,
                                                 rib_kind);
 
-        match method.pe_explicit_self().node {
-            SelfExplicit(ref typ, _) => self.resolve_type(&**typ),
-            _ => {}
+        if let SelfExplicit(ref typ, _) = method.pe_explicit_self().node {
+            self.resolve_type(&**typ);
         }
 
         self.resolve_function(rib_kind,
@@ -5351,29 +5293,26 @@ impl<'a> Resolver<'a> {
         // Next, search import resolutions.
         match containing_module.import_resolutions.borrow().get(&name) {
             Some(import_resolution) if import_resolution.is_public => {
-                match (*import_resolution).target_for_namespace(namespace) {
-                    Some(target) => {
-                        match target.bindings.def_for_namespace(namespace) {
-                            Some(def) => {
-                                // Found it.
-                                let id = import_resolution.id(namespace);
-                                // track imports and extern crates as well
-                                self.used_imports.insert((id, namespace));
-                                match target.target_module.def_id.get() {
-                                    Some(DefId{krate: kid, ..}) => {
-                                        self.used_crates.insert(kid);
-                                    },
-                                    _ => {}
-                                }
-                                return ImportNameDefinition(def, LastMod(AllPublic));
+                if let Some(target) = (*import_resolution).target_for_namespace(namespace) {
+                    match target.bindings.def_for_namespace(namespace) {
+                        Some(def) => {
+                            // Found it.
+                            let id = import_resolution.id(namespace);
+                            // track imports and extern crates as well
+                            self.used_imports.insert((id, namespace));
+                            match target.target_module.def_id.get() {
+                                Some(DefId{krate: kid, ..}) => {
+                                    self.used_crates.insert(kid);
+                                },
+                                _ => {}
                             }
-                            None => {
-                                // This can happen with external impls, due to
-                                // the imperfect way we read the metadata.
-                            }
+                            return ImportNameDefinition(def, LastMod(AllPublic));
+                        }
+                        None => {
+                            // This can happen with external impls, due to
+                            // the imperfect way we read the metadata.
                         }
                     }
-                    None => {}
                 }
             }
             Some(..) | None => {} // Continue.
@@ -5381,21 +5320,15 @@ impl<'a> Resolver<'a> {
 
         // Finally, search through external children.
         if namespace == TypeNS {
-            match containing_module.external_module_children.borrow()
-                                   .get(&name).cloned() {
-                None => {}
-                Some(module) => {
-                    match module.def_id.get() {
-                        None => {} // Continue.
-                        Some(def_id) => {
-                            // track used crates
-                            self.used_crates.insert(def_id.krate);
-                            let lp = if module.is_public {LastMod(AllPublic)} else {
-                                LastMod(DependsOn(def_id))
-                            };
-                            return ChildNameDefinition(DefMod(def_id), lp);
-                        }
-                    }
+            if let Some(module) = containing_module.external_module_children.borrow()
+                                                   .get(&name).cloned() {
+                if let Some(def_id) = module.def_id.get() {
+                    // track used crates
+                    self.used_crates.insert(def_id.krate);
+                    let lp = if module.is_public {LastMod(AllPublic)} else {
+                        LastMod(DependsOn(def_id))
+                    };
+                    return ChildNameDefinition(DefMod(def_id), lp);
                 }
             }
         }
@@ -5454,9 +5387,8 @@ impl<'a> Resolver<'a> {
                 (def, last_private.or(lp))
             }
         };
-        match containing_module.def_id.get() {
-            Some(DefId{krate: kid, ..}) => { self.used_crates.insert(kid); },
-            _ => {}
+        if let Some(DefId{krate: kid, ..}) = containing_module.def_id.get() {
+            self.used_crates.insert(kid);
         }
         return Some(def);
     }
@@ -6049,9 +5981,8 @@ impl<'a> Resolver<'a> {
                 if self.trait_item_map.contains_key(&(name, did)) {
                     add_trait_info(&mut found_traits, did, name);
                     self.used_imports.insert((import.type_id, TypeNS));
-                    match target.target_module.def_id.get() {
-                        Some(DefId{krate: kid, ..}) => { self.used_crates.insert(kid); },
-                        _ => {}
+                    if let Some(DefId{krate: kid, ..}) = target.target_module.def_id.get() {
+                        self.used_crates.insert(kid);
                     }
                 }
             }
@@ -6128,15 +6059,13 @@ impl<'a> Resolver<'a> {
 
         match vi.node {
             ViewItemExternCrate(_, _, id) => {
-                match self.session.cstore.find_extern_mod_stmt_cnum(id)
-                {
-                    Some(crate_num) => if !self.used_crates.contains(&crate_num) {
-                    self.session.add_lint(lint::builtin::UNUSED_EXTERN_CRATES,
-                                          id,
-                                          vi.span,
-                                          "unused extern crate".to_string());
-                    },
-                    _ => {}
+                if let Some(crate_num) = self.session.cstore.find_extern_mod_stmt_cnum(id) {
+                    if !self.used_crates.contains(&crate_num) {
+                        self.session.add_lint(lint::builtin::UNUSED_EXTERN_CRATES,
+                                              id,
+                                              vi.span,
+                                              "unused extern crate".to_string());
+                    }
                 }
             },
             ViewItemUse(ref p) => {

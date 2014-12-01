@@ -514,41 +514,27 @@ fn each_child_of_item_or_crate(intr: Rc<IdentInterner>,
         let inherent_impl_def_id = item_def_id(inherent_impl_def_id_doc,
                                                cdata);
         let items = reader::get_doc(rbml::Doc::new(cdata.data()), tag_items);
-        match maybe_find_item(inherent_impl_def_id.node, items) {
-            None => {}
-            Some(inherent_impl_doc) => {
-                let _ = reader::tagged_docs(inherent_impl_doc,
-                                            tag_item_impl_item,
-                                            |impl_item_def_id_doc| {
-                    let impl_item_def_id = item_def_id(impl_item_def_id_doc,
-                                                       cdata);
-                    match maybe_find_item(impl_item_def_id.node, items) {
-                        None => {}
-                        Some(impl_method_doc) => {
-                            match item_family(impl_method_doc) {
-                                StaticMethod => {
-                                    // Hand off the static method
-                                    // to the callback.
-                                    let static_method_name =
-                                        item_name(&*intr, impl_method_doc);
-                                    let static_method_def_like =
-                                        item_to_def_like(impl_method_doc,
-                                                         impl_item_def_id,
-                                                         cdata.cnum);
-                                    callback(static_method_def_like,
-                                             static_method_name,
-                                             item_visibility(impl_method_doc));
-                                }
-                                _ => {}
-                            }
-                        }
+        if let Some(inherent_impl_doc) = maybe_find_item(inherent_impl_def_id.node, items) {
+            let _ = reader::tagged_docs(inherent_impl_doc,
+                                        tag_item_impl_item,
+                                        |impl_item_def_id_doc| {
+                let impl_item_def_id = item_def_id(impl_item_def_id_doc,
+                                                   cdata);
+                if let Some(impl_method_doc) = maybe_find_item(impl_item_def_id.node, items) {
+                    if let StaticMethod = item_family(impl_method_doc) {
+                        // Hand off the static method to the callback.
+                        let static_method_name = item_name(&*intr, impl_method_doc);
+                        let static_method_def_like = item_to_def_like(impl_method_doc,
+                                                                      impl_item_def_id,
+                                                                      cdata.cnum);
+                        callback(static_method_def_like,
+                                 static_method_name,
+                                 item_visibility(impl_method_doc));
                     }
-
-                    true
-                });
-            }
+                }
+                true
+            });
         }
-
         true
     });
 
@@ -578,17 +564,14 @@ fn each_child_of_item_or_crate(intr: Rc<IdentInterner>,
         let other_crates_items = reader::get_doc(rbml::Doc::new(crate_data.data()), tag_items);
 
         // Get the item.
-        match maybe_find_item(child_def_id.node, other_crates_items) {
-            None => {}
-            Some(child_item_doc) => {
-                // Hand off the item to the callback.
-                let def_like = item_to_def_like(child_item_doc,
-                                                child_def_id,
-                                                child_def_id.krate);
-                // These items have a public visibility because they're part of
-                // a public re-export.
-                callback(def_like, token::intern(name), ast::Public);
-            }
+        if let Some(child_item_doc) = maybe_find_item(child_def_id.node, other_crates_items) {
+            // Hand off the item to the callback.
+            let def_like = item_to_def_like(child_item_doc,
+                                            child_def_id,
+                                            child_def_id.krate);
+            // These items have a public visibility because they're part of
+            // a public re-export.
+            callback(def_like, token::intern(name), ast::Public);
         }
 
         true

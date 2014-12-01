@@ -139,39 +139,27 @@ pub fn find_crate_name(sess: Option<&Session>,
     let attr_crate_name = attrs.iter().find(|at| at.check_name("crate_name"))
                                .and_then(|at| at.value_str().map(|s| (at, s)));
 
-    match sess {
-        Some(sess) => {
-            match sess.opts.crate_name {
-                Some(ref s) => {
-                    match attr_crate_name {
-                        Some((attr, ref name)) if s.as_slice() != name.get() => {
-                            let msg = format!("--crate-name and #[crate_name] \
-                                               are required to match, but `{}` \
-                                               != `{}`", s, name);
-                            sess.span_err(attr.span, msg.as_slice());
-                        }
-                        _ => {},
-                    }
-                    return validate(s.clone(), None);
+    if let Some(sess) = sess {
+        if let Some(ref s) = sess.opts.crate_name {
+            if let Some((attr, ref name)) = attr_crate_name {
+                if s.as_slice() != name.get() {
+                    let msg = format!("--crate-name and #[crate_name] are \
+                                       required to match, but `{}` != `{}`",
+                                      s, name);
+                    sess.span_err(attr.span, msg.as_slice());
                 }
-                None => {}
             }
+            return validate(s.clone(), None);
         }
-        None => {}
     }
 
-    match attr_crate_name {
-        Some((attr, s)) => return validate(s.get().to_string(), Some(attr.span)),
-        None => {}
+    if let Some((attr, s)) = attr_crate_name {
+        return validate(s.get().to_string(), Some(attr.span));
     }
-    match *input {
-        FileInput(ref path) => {
-            match path.filestem_str() {
-                Some(s) => return validate(s.to_string(), None),
-                None => {}
-            }
+    if let FileInput(ref path) = *input {
+        if let Some(s) = path.filestem_str() {
+            return validate(s.to_string(), None);
         }
-        _ => {}
     }
 
     "rust-out".to_string()

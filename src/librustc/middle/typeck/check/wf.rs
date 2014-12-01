@@ -127,9 +127,8 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                                                                               cause,
                                                                               field.ty,
                                                                               ty::BoundSized);
-                        match obligation {
-                            Ok(obligation) => fcx.register_obligation(obligation),
-                            _ => {}
+                        if let Ok(obligation) = obligation {
+                            fcx.register_obligation(obligation);
                         }
                     }
                 }
@@ -233,9 +232,8 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                                                                       cause,
                                                                       trait_ref.self_ty(),
                                                                       builtin_bound);
-                match obligation {
-                    Ok (obligation) => fcx.register_obligation(obligation),
-                    _ => {}
+                if let Ok(obligation) = obligation {
+                    fcx.register_obligation(obligation);
                 }
             }
             for trait_bound in trait_def.bounds.trait_bounds.iter() {
@@ -471,9 +469,8 @@ fn check_struct_safe_for_destructor<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                                               cause,
                                                               self_ty,
                                                               ty::BoundSend);
-        match obligation {
-            Ok(obligation) => fcx.register_obligation(obligation),
-            _ => {}
+        if let Ok(obligation) = obligation {
+            fcx.register_obligation(obligation);
         }
     } else {
         span_err!(fcx.tcx().sess, span, E0141,

@@ -969,14 +969,11 @@ impl<'a> State<'a> {
                                                     "trait").as_slice()));
                 try!(self.print_ident(item.ident));
                 try!(self.print_generics(generics));
-                match unbound {
-                    &Some(ref tref) => {
-                        try!(space(&mut self.s));
-                        try!(self.word_space("for"));
-                        try!(self.print_trait_ref(tref));
-                        try!(word(&mut self.s, "?"));
-                    }
-                    _ => {}
+                if let &Some(ref tref) = unbound {
+                    try!(space(&mut self.s));
+                    try!(self.word_space("for"));
+                    try!(self.print_trait_ref(tref));
+                    try!(word(&mut self.s, "?"));
                 }
                 try!(self.print_bounds(":", bounds.as_slice()));
                 try!(self.print_where_clause(generics));
@@ -1761,16 +1758,14 @@ impl<'a> State<'a> {
                         try!(space(&mut self.s));
                     }
                 }
-                match start {
-                    &Some(ref e) => try!(self.print_expr(&**e)),
-                    _ => {}
+                if let &Some(ref e) = start {
+                    try!(self.print_expr(&**e));
                 }
                 if start.is_some() || end.is_some() {
                     try!(word(&mut self.s, ".."));
                 }
-                match end {
-                    &Some(ref e) => try!(self.print_expr(&**e)),
-                    _ => {}
+                if let &Some(ref e) = end {
+                    try!(self.print_expr(&**e));
                 }
                 try!(word(&mut self.s, "]"));
             }
@@ -1879,13 +1874,10 @@ impl<'a> State<'a> {
                 try!(self.ibox(indent_unit));
                 try!(self.print_local_decl(&**loc));
                 try!(self.end());
-                match loc.init {
-                    Some(ref init) => {
-                        try!(self.nbsp());
-                        try!(self.word_space("="));
-                        try!(self.print_expr(&**init));
-                    }
-                    _ => {}
+                if let Some(ref init) = loc.init {
+                    try!(self.nbsp());
+                    try!(self.word_space("="));
+                    try!(self.print_expr(&**init));
                 }
                 self.end()
             }
@@ -2408,12 +2400,9 @@ impl<'a> State<'a> {
     }
 
     pub fn print_ty_param(&mut self, param: &ast::TyParam) -> IoResult<()> {
-        match param.unbound {
-            Some(ref tref) => {
-                try!(self.print_trait_ref(tref));
-                try!(self.word_space("?"));
-            }
-            _ => {}
+        if let Some(ref tref) = param.unbound {
+            try!(self.print_trait_ref(tref));
+            try!(self.word_space("?"));
         }
         try!(self.print_ident(param.ident));
         try!(self.print_bounds(":", param.bounds.as_slice()));

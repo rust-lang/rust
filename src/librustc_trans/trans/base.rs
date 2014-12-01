@@ -2212,21 +2212,18 @@ pub fn update_linkage(ccx: &CrateContext,
         OriginalTranslation => {},
     }
 
-    match id {
-        Some(id) => {
-            let item = ccx.tcx().map.get(id);
-            if let ast_map::NodeItem(i) = item {
-                if let Some(name) =  attr::first_attr_value_str_by_name(i.attrs[], "linkage") {
-                    if let Some(linkage) = llvm_linkage_by_name(name.get()) {
-                        llvm::SetLinkage(llval, linkage);
-                    } else {
-                        ccx.sess().span_fatal(i.span, "invalid linkage specified");
-                    }
-                    return;
+    if let Some(id) = id {
+        let item = ccx.tcx().map.get(id);
+        if let ast_map::NodeItem(i) = item {
+            if let Some(name) = attr::first_attr_value_str_by_name(i.attrs[], "linkage") {
+                if let Some(linkage) = llvm_linkage_by_name(name.get()) {
+                    llvm::SetLinkage(llval, linkage);
+                } else {
+                    ccx.sess().span_fatal(i.span, "invalid linkage specified");
                 }
+                return;
             }
         }
-        _ => {}
     }
 
     match id {
@@ -2492,11 +2489,8 @@ pub fn get_fn_llvm_attributes<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_ty: Ty<
                 _ => {}
             }
 
-            match ret_ty.sty {
-                ty::ty_bool => {
-                    attrs.ret(llvm::ZExtAttribute);
-                }
-                _ => {}
+            if let ty::ty_bool = ret_ty.sty {
+                attrs.ret(llvm::ZExtAttribute);
             }
         }
     }
@@ -2543,11 +2537,8 @@ pub fn get_fn_llvm_attributes<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_ty: Ty<
                     attrs.arg(idx, llvm::ReadOnlyAttribute);
                 }
 
-                match b {
-                    ReLateBound(_, BrAnon(_)) => {
-                        attrs.arg(idx, llvm::NoCaptureAttribute);
-                    }
-                    _ => {}
+                if let ReLateBound(_, BrAnon(_)) = b {
+                    attrs.arg(idx, llvm::NoCaptureAttribute);
                 }
             }
 
