@@ -54,17 +54,6 @@
 //! There are methods on both of senders and receivers to perform their
 //! respective operations without panicking, however.
 //!
-//! ## Runtime Requirements
-//!
-//! The channel types defined in this module generally have very few runtime
-//! requirements in order to operate. The major requirement they have is for a
-//! local rust `Task` to be available if any *blocking* operation is performed.
-//!
-//! If a local `Task` is not available (for example an FFI callback), then the
-//! `send` operation is safe on a `Sender` (as well as a `send_opt`) as well as
-//! the `try_send` method on a `SyncSender`, but no other operations are
-//! guaranteed to be safe.
-//!
 //! # Example
 //!
 //! Simple usage:
@@ -327,9 +316,9 @@ use alloc::arc::Arc;
 use core::kinds::marker;
 use core::mem;
 use core::cell::UnsafeCell;
-use rt::task::BlockedTask;
 
 pub use comm::select::{Select, Handle};
+use comm::select::StartResult::*;
 
 macro_rules! test {
     { fn $name:ident() $b:block $(#[$a:meta])*} => (
@@ -348,6 +337,7 @@ macro_rules! test {
     )
 }
 
+mod blocking;
 mod oneshot;
 mod select;
 mod shared;
@@ -947,34 +937,33 @@ impl<T: Send> select::Packet for Receiver<T> {
         }
     }
 
-    fn start_selection(&self, mut task: BlockedTask) -> Result<(), BlockedTask>{
+    fn start_selection(&self, mut token: SignalToken) -> bool {
         loop {
             let (t, new_port) = match *unsafe { self.inner() } {
                 Oneshot(ref p) => {
-                    match unsafe { (*p.get()).start_selection(task) } {
-                        oneshot::SelSuccess => return Ok(()),
-                        oneshot::SelCanceled(task) => return Err(task),
+                    match unsafe { (*p.get()).start_selection(token) } {
+                        oneshot::SelSuccess => return Installed,
+                        oneshot::SelCanceled => return Abort,
                         oneshot::SelUpgraded(t, rx) => (t, rx),
                     }
                 }
                 Stream(ref p) => {
-                    match unsafe { (*p.get()).start_selection(task) } {
-                        stream::SelSuccess => return Ok(()),
-                        stream::SelCanceled(task) => return Err(task),
+                    match unsafe { (*p.get()).start_selection(token) } {
+                        stream::SelSuccess => return Installed,
+                        stream::SelCanceled => return Abort,
                         stream::SelUpgraded(t, rx) => (t, rx),
                     }
                 }
                 Shared(ref p) => {
-                    return unsafe { (*p.get()).start_selection(task) };
+                    return unsafe { (*p.get()).start_selection(token) };
                 }
                 Sync(ref p) => {
-                    return unsafe { (*p.get()).start_selection(task) };
+                    return unsafe { (*p.get()).start_selection(token) };
                 }
             };
-            task = t;
+            token = t;
             unsafe {
-                mem::swap(self.inner_mut(),
-                          new_port.inner_mut());
+                mem::swap(self.inner_mut(), new_port.inner_mut());
             }
         }
     }
