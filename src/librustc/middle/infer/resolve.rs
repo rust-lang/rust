@@ -258,3 +258,38 @@ impl<'a, 'tcx> ResolveState<'a, 'tcx> {
         }
     }
 }
+
+///////////////////////////////////////////////////////////////////////////
+/// DEEP TYPE RESOLVER
+///
+/// This kind of resolver can be used at any time. It simply replaces
+/// type variables that have been unified with the things they have
+/// been unified with (similar to `shallow_resolve`, but deep). This is
+/// useful for printing messages etc but also required at various
+/// points for correctness.
+pub struct DeepTypeResolver<'a, 'tcx:'a> {
+    infcx: &'a InferCtxt<'a, 'tcx>,
+}
+
+impl<'a, 'tcx> DeepTypeResolver<'a, 'tcx> {
+    pub fn new(infcx: &'a InferCtxt<'a, 'tcx>) -> DeepTypeResolver<'a, 'tcx> {
+        DeepTypeResolver { infcx: infcx }
+    }
+}
+
+impl<'a, 'tcx> ty_fold::TypeFolder<'tcx> for DeepTypeResolver<'a, 'tcx> {
+    fn tcx(&self) -> &ty::ctxt<'tcx> {
+        self.infcx.tcx
+    }
+
+    fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
+        if !ty::type_has_ty_infer(t) {
+            t // micro-optimize -- if there is nothing in this type that this fold affects...
+        } else {
+            let t0 = self.infcx.shallow_resolve(t);
+            ty_fold::super_fold_ty(self, t0)
+        }
+    }
+}
+
+

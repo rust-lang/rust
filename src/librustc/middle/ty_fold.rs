@@ -790,6 +790,17 @@ impl<'a, 'tcx, F> RegionFolder<'a, 'tcx, F> where F: FnMut(ty::Region, uint) -> 
     }
 }
 
+pub fn collect_regions<'tcx,T>(tcx: &ty::ctxt<'tcx>, value: &T) -> Vec<ty::Region>
+    where T : TypeFoldable<'tcx>
+{
+    let mut vec = Vec::new();
+    {
+        let mut folder = RegionFolder::new(tcx, |r, _| { vec.push(r); r });
+        value.fold_with(&mut folder);
+    }
+    vec
+}
+
 impl<'a, 'tcx, F> TypeFolder<'tcx> for RegionFolder<'a, 'tcx, F> where
     F: FnMut(ty::Region, uint) -> ty::Region,
 {

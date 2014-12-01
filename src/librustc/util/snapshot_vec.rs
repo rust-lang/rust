@@ -23,7 +23,7 @@ use self::UndoLog::*;
 use std::mem;
 
 #[deriving(PartialEq)]
-enum UndoLog<T,U> {
+pub enum UndoLog<T,U> {
     /// Indicates where a snapshot started.
     OpenSnapshot,
 
@@ -111,6 +111,12 @@ impl<T,U,D:SnapshotVecDelegate<T,U>> SnapshotVec<T,U,D> {
         let length = self.undo_log.len();
         self.undo_log.push(OpenSnapshot);
         Snapshot { length: length }
+    }
+
+    pub fn actions_since_snapshot(&self,
+                                  snapshot: &Snapshot)
+                                  -> &[UndoLog<T,U>] {
+        self.undo_log[snapshot.length..]
     }
 
     fn assert_open_snapshot(&self, snapshot: &Snapshot) {

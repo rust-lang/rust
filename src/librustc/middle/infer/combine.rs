@@ -706,14 +706,38 @@ impl<'cx, 'tcx> ty_fold::TypeFolder<'tcx> for Generalizer<'cx, 'tcx> {
 
     fn fold_region(&mut self, r: ty::Region) -> ty::Region {
         match r {
-            ty::ReLateBound(..) | ty::ReEarlyBound(..) => r,
-            _ if self.make_region_vars => {
-                // FIXME: This is non-ideal because we don't give a
-                // very descriptive origin for this region variable.
-                self.infcx.next_region_var(MiscVariable(self.span))
+            // Never make variables for regions bound within the type itself.
+            ty::ReLateBound(..) => { return r; }
+
+            // Early-bound regions should really have been substituted away before
+            // we get to this point.
+            ty::ReEarlyBound(..) => {
+                self.tcx().sess.span_bug(
+                    self.span,
+                    format!("Encountered early bound region when generalizing: {}",
+                            r.repr(self.tcx()))[]);
             }
-            _ => r,
+
+            // Always make a fresh region variable for skolemized regions;
+            // the higher-ranked decision procedures rely on this.
+            ty::ReInfer(ty::ReSkolemized(..)) => { }
+
+            // For anything else, we make a region variable, unless we
+            // are *equating*, in which case it's just wasteful.
+            ty::ReEmpty |
+            ty::ReStatic |
+            ty::ReScope(..) |
+            ty::ReInfer(ty::ReVar(..)) |
+            ty::ReFree(..) => {
+                if !self.make_region_vars {
+                    return r;
+                }
+            }
         }
+
+        // FIXME: This is non-ideal because we don't give a
+        // very descriptive origin for this region variable.
+        self.infcx.next_region_var(MiscVariable(self.span))
     }
 }
 

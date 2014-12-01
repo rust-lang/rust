@@ -520,6 +520,7 @@ pub fn uok<'tcx>() -> ures<'tcx> {
     Ok(())
 }
 
+#[must_use = "once you start a snapshot, you should always consume it"]
 pub struct CombinedSnapshot {
     type_snapshot: type_variable::Snapshot,
     int_snapshot: unify::Snapshot<ty::IntVid>,
@@ -629,16 +630,16 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn commit_if_ok<T, E, F>(&self, f: F) -> Result<T, E> where
         F: FnOnce() -> Result<T, E>
     {
-        self.commit_unconditionally(move || self.try(move || f()))
+        self.commit_unconditionally(move || self.try(move |_| f()))
     }
 
     /// Execute `f`, unroll bindings on panic
     pub fn try<T, E, F>(&self, f: F) -> Result<T, E> where
-        F: FnOnce() -> Result<T, E>
+        F: FnOnce(&CombinedSnapshot) -> Result<T, E>
     {
         debug!("try()");
         let snapshot = self.start_snapshot();
-        let r = f();
+        let r = f(&snapshot);
         debug!("try() -- r.is_ok() = {}", r.is_ok());
         match r {
             Ok(_) => {
@@ -821,7 +822,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
     pub fn ty_to_string(&self, t: Ty<'tcx>) -> String {
         ty_to_string(self.tcx,
-                     self.resolve_type_vars_if_possible(t))
+                     self.resolve_type_vars_if_possible(&t))
     }
 
     pub fn tys_to_string(&self, ts: &[Ty<'tcx>]) -> String {
@@ -830,7 +831,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     pub fn trait_ref_to_string(&self, t: &Rc<ty::TraitRef<'tcx>>) -> String {
-        let t = self.resolve_type_vars_in_trait_ref_if_possible(&**t);
+        let t = self.resolve_type_vars_if_possible(&**t);
         trait_ref_to_string(self.tcx, &t)
     }
 
@@ -867,35 +868,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn resolve_type_vars_if_possible(&self, typ: Ty<'tcx>) -> Ty<'tcx> {
-        match resolve_type(self,
-                           None,
-                           typ, resolve_nested_tvar | resolve_ivar) {
-          Ok(new_type) => new_type,
-          Err(_) => typ
-        }
-    }
-
-    pub fn resolve_type_vars_in_trait_ref_if_possible(&self,
-                                                      trait_ref: &ty::TraitRef<'tcx>)
-                                                      -> ty::TraitRef<'tcx> {
-        // make up a dummy type just to reuse/abuse the resolve machinery
-        let dummy0 = ty::mk_trait(self.tcx,
-                                  (*trait_ref).clone(),
-                                  ty::region_existential_bound(ty::ReStatic));
-        let dummy1 = self.resolve_type_vars_if_possible(dummy0);
-        match dummy1.sty {
-            ty::ty_trait(box ty::TyTrait { ref principal, .. }) => {
-                (*principal).clone()
-            }
-            _ => {
-                self.tcx.sess.bug(
-                    format!("resolve_type_vars_if_possible() yielded {} \
-                             when supplied with {}",
-                            self.ty_to_string(dummy0),
-                            self.ty_to_string(dummy1)).as_slice());
-            }
-        }
+    pub fn resolve_type_vars_if_possible<T:TypeFoldable<'tcx>>(&self, value: &T) -> T {
+        let mut r = resolve::DeepTypeResolver::new(self);
+        value.fold_with(&mut r)
     }
 
     // [Note-Type-error-reporting]
@@ -929,9 +904,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     {
         debug!("hi! expected_ty = {}, actual_ty = {}", expected_ty, actual_ty);
 
-        let resolved_expected = expected_ty.map(|e_ty| {
-            self.resolve_type_vars_if_possible(e_ty)
-        });
+        let resolved_expected = expected_ty.map(|e_ty| self.resolve_type_vars_if_possible(&e_ty));
 
         match resolved_expected {
             Some(t) if ty::type_is_error(t) => (),
@@ -958,7 +931,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                  err: Option<&ty::type_err<'tcx>>) where
         M: FnOnce(String) -> String,
     {
-        let actual_ty = self.resolve_type_vars_if_possible(actual_ty);
+        let actual_ty = self.resolve_type_vars_if_possible(&actual_ty);
 
         // Don't report an error if actual type is ty_err.
         if ty::type_is_error(actual_ty) {
