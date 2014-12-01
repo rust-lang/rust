@@ -19,6 +19,7 @@
 #[cfg(test)] use cmp::PartialEq;
 #[cfg(test)] use fmt::Show;
 #[cfg(test)] use ops::{Add, Sub, Mul, Div, Rem};
+#[cfg(test)] use kinds::Copy;
 
 pub use core::num::{Num, div_rem, Zero, zero, One, one};
 pub use core::num::{Unsigned, pow, Bounded};
@@ -130,18 +131,19 @@ pub fn test_num<T>(ten: T, two: T) where
      + Add<T, T> + Sub<T, T>
      + Mul<T, T> + Div<T, T>
      + Rem<T, T> + Show
+     + Copy
 {
-    assert_eq!(ten.add(&two),  cast(12i).unwrap());
-    assert_eq!(ten.sub(&two),  cast(8i).unwrap());
-    assert_eq!(ten.mul(&two),  cast(20i).unwrap());
-    assert_eq!(ten.div(&two),  cast(5i).unwrap());
-    assert_eq!(ten.rem(&two),  cast(0i).unwrap());
+    assert_eq!(ten.add(two),  cast(12i).unwrap());
+    assert_eq!(ten.sub(two),  cast(8i).unwrap());
+    assert_eq!(ten.mul(two),  cast(20i).unwrap());
+    assert_eq!(ten.div(two),  cast(5i).unwrap());
+    assert_eq!(ten.rem(two),  cast(0i).unwrap());
 
-    assert_eq!(ten.add(&two),  ten + two);
-    assert_eq!(ten.sub(&two),  ten - two);
-    assert_eq!(ten.mul(&two),  ten * two);
-    assert_eq!(ten.div(&two),  ten / two);
-    assert_eq!(ten.rem(&two),  ten % two);
+    assert_eq!(ten.add(two),  ten + two);
+    assert_eq!(ten.sub(two),  ten - two);
+    assert_eq!(ten.mul(two),  ten * two);
+    assert_eq!(ten.div(two),  ten / two);
+    assert_eq!(ten.rem(two),  ten % two);
 }
 
 #[cfg(test)]
