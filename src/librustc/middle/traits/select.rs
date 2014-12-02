@@ -158,10 +158,10 @@ enum BuiltinBoundConditions<'tcx> {
 }
 
 #[deriving(Show)]
-enum EvaluationResult {
+enum EvaluationResult<'tcx> {
     EvaluatedToOk,
-    EvaluatedToErr,
     EvaluatedToAmbig,
+    EvaluatedToErr(SelectionError<'tcx>),
 }
 
 impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
@@ -275,7 +275,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                               bound: ty::BuiltinBound,
                                               previous_stack: &ObligationStack<'o, 'tcx>,
                                               ty: Ty<'tcx>)
-                                              -> EvaluationResult
+                                              -> EvaluationResult<'tcx>
     {
         let obligation =
             util::obligation_for_builtin_bound(
@@ -298,7 +298,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn evaluate_obligation_recursively<'o>(&mut self,
                                            previous_stack: Option<&ObligationStack<'o, 'tcx>>,
                                            obligation: &Obligation<'tcx>)
-                                           -> EvaluationResult
+                                           -> EvaluationResult<'tcx>
     {
         debug!("evaluate_obligation_recursively({})",
                obligation.repr(self.tcx()));
@@ -313,7 +313,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     fn evaluate_stack<'o>(&mut self,
                           stack: &ObligationStack<'o, 'tcx>)
-                          -> EvaluationResult
+                          -> EvaluationResult<'tcx>
     {
         // In intercrate mode, whenever any of the types are unbound,
         // there can always be an impl. Even if there are no impls in
@@ -384,7 +384,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         match self.candidate_from_obligation(stack) {
             Ok(Some(c)) => self.winnow_candidate(stack, &c),
             Ok(None) => EvaluatedToAmbig,
-            Err(_) => EvaluatedToErr,
+            Err(e) => EvaluatedToErr(e),
         }
     }
 
@@ -833,14 +833,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn winnow_candidate<'o>(&mut self,
                             stack: &ObligationStack<'o, 'tcx>,
                             candidate: &Candidate<'tcx>)
-                            -> EvaluationResult
+                            -> EvaluationResult<'tcx>
     {
         debug!("winnow_candidate: candidate={}", candidate.repr(self.tcx()));
         self.infcx.probe(|| {
             let candidate = (*candidate).clone();
             match self.confirm_candidate(stack.obligation, candidate) {
                 Ok(selection) => self.winnow_selection(Some(stack), selection),
-                Err(_) => EvaluatedToErr,
+                Err(error) => EvaluatedToErr(error),
             }
         })
     }
@@ -848,12 +848,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn winnow_selection<'o>(&mut self,
                             stack: Option<&ObligationStack<'o, 'tcx>>,
                             selection: Selection<'tcx>)
-                            -> EvaluationResult
+                            -> EvaluationResult<'tcx>
     {
         let mut result = EvaluatedToOk;
         for obligation in selection.iter_nested() {
             match self.evaluate_obligation_recursively(stack, obligation) {
-                EvaluatedToErr => { return EvaluatedToErr; }
+                EvaluatedToErr(e) => { return EvaluatedToErr(e); }
                 EvaluatedToAmbig => { result = EvaluatedToAmbig; }
                 EvaluatedToOk => { }
             }
@@ -1867,11 +1867,18 @@ impl<'o, 'tcx> Repr<'tcx> for ObligationStack<'o, 'tcx> {
     }
 }
 
-impl EvaluationResult {
+impl<'tcx> EvaluationResult<'tcx> {
     fn may_apply(&self) -> bool {
         match *self {
-            EvaluatedToOk | EvaluatedToAmbig => true,
-            EvaluatedToErr => false,
+            EvaluatedToOk |
+            EvaluatedToAmbig |
+            EvaluatedToErr(Overflow) |
+            EvaluatedToErr(OutputTypeParameterMismatch(..)) => {
+                true
+            }
+            EvaluatedToErr(Unimplemented) => {
+                false
+            }
         }
     }
 }
