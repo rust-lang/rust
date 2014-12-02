@@ -810,8 +810,7 @@ pub fn trans_call_inner<'a, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                       llfn,
                                       llargs,
                                       callee_ty,
-                                      call_info,
-                                      dest.is_none());
+                                      call_info);
         bcx = b;
         llresult = llret;
 

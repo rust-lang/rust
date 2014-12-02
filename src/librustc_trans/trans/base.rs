@@ -967,23 +967,14 @@ pub fn invoke<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                           llfn: ValueRef,
                           llargs: Vec<ValueRef> ,
                           fn_ty: Ty<'tcx>,
-                          call_info: Option<NodeInfo>,
-                          // FIXME(15064) is_lang_item is a horrible hack, please remove it
-                          // at the soonest opportunity.
-                          is_lang_item: bool)
+                          call_info: Option<NodeInfo>)
                           -> (ValueRef, Block<'blk, 'tcx>) {
     let _icx = push_ctxt("invoke_");
     if bcx.unreachable.get() {
         return (C_null(Type::i8(bcx.ccx())), bcx);
     }
 
-    // FIXME(15064) Lang item methods may (in the reflect case) not have proper
-    // types, so doing an attribute lookup will fail.
-    let attributes = if is_lang_item {
-        llvm::AttrBuilder::new()
-    } else {
-        get_fn_llvm_attributes(bcx.ccx(), fn_ty)
-    };
+    let attributes = get_fn_llvm_attributes(bcx.ccx(), fn_ty);
 
     match bcx.opt_node_id {
         None => {
