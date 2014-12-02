@@ -25,8 +25,8 @@
 # L10N_LANGS are the languages for which the docs have been
 # translated.
 ######################################################################
-DOCS := index intro tutorial  complement-bugreport
-	complement-lang-faq complement-design-faq complement-project-faq \
+DOCS := index intro tutorial  complement-bugreport \
+    complement-lang-faq complement-design-faq complement-project-faq \
     rustdoc reference
 
 PDF_DOCS := reference
@@ -295,3 +295,10 @@ compiler-docs: $(COMPILER_DOC_TARGETS)
 docs-l10n: $(DOC_L10N_TARGETS)
 
 .PHONY: docs-l10n
+
+ifdef CFG_RUSTBOOK
+
+trpl:
+	cd src/doc/trpl; rustbook build; cd ../../..;
+else
+endif

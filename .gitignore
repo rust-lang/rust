@@ -92,3 +92,4 @@ tmp.*.rs
 version.md
 version.ml
 version.texi
+src/doc/_book

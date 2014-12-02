@@ -633,6 +633,7 @@ probe CFG_XELATEX          xelatex
 probe CFG_LUALATEX         lualatex
 probe CFG_GDB              gdb
 probe CFG_LLDB             lldb
+probe CFG_RUSTBOOK         rustbook
 
 if [ ! -z "$CFG_GDB" ]
 then
