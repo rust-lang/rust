@@ -2064,8 +2064,8 @@ Great! Next up: let's compare our guess to the secret guess.
 ## Comparing guesses
 
 If you remember, earlier in the guide, we made a `cmp` function that compared
-two numbers. Let's add that in, along with a `match` statement to compare the
-guess to the secret guess:
+two numbers. Let's add that in, along with a `match` statement to compare our
+guess to the secret number:
 
 ```{rust,ignore}
 use std::io;
