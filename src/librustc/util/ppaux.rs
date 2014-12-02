@@ -241,7 +241,9 @@ pub fn trait_store_to_string(cx: &ctxt, s: ty::TraitStore) -> String {
     }
 }
 
-pub fn vec_map_to_string<T>(ts: &[T], f: |t: &T| -> String) -> String {
+pub fn vec_map_to_string<T, F>(ts: &[T], f: F) -> String where
+    F: FnMut(&T) -> String,
+{
     let tstrs = ts.iter().map(f).collect::<Vec<String>>();
     format!("[{}]", tstrs.connect(", "))
 }
