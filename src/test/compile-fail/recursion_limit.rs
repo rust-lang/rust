@@ -42,6 +42,10 @@ fn is_send<T:Send>() { }
 
 fn main() {
     is_send::<A>();
-    //~^ ERROR not implemented
-    //~^^ ERROR not implemented
+    //~^ ERROR overflow evaluating
+    //~^^ NOTE consider adding a `#![recursion_limit="20"]` attribute to your crate
+    //~^^^ NOTE must be implemented
+    //~^^^^ ERROR overflow evaluating
+    //~^^^^^ NOTE consider adding a `#![recursion_limit="20"]` attribute to your crate
+    //~^^^^^^ NOTE must be implemented
 }
