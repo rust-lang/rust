@@ -9,7 +9,7 @@
 # except according to those terms.
 
 ######################################################################
-# The various pieces of standalone documentation: guides, manual, etc
+# The various pieces of standalone documentation.
 #
 # The DOCS variable is their names (with no file extension).
 #
@@ -25,13 +25,11 @@
 # L10N_LANGS are the languages for which the docs have been
 # translated.
 ######################################################################
-DOCS := index intro tutorial guide guide-ffi guide-macros guide-lifetimes \
-	guide-tasks guide-container guide-pointers guide-testing \
-	guide-plugin guide-crates complement-bugreport guide-error-handling \
+DOCS := index intro tutorial  complement-bugreport
 	complement-lang-faq complement-design-faq complement-project-faq \
-    rustdoc guide-unsafe guide-strings reference
+    rustdoc reference
 
-PDF_DOCS := guide reference
+PDF_DOCS := reference
 
 RUSTDOC_DEPS_reference := doc/full-toc.inc
 RUSTDOC_FLAGS_reference := --html-in-header=doc/full-toc.inc
@@ -225,7 +223,6 @@ $(foreach docname,$(DOCS),$(eval $(call DEF_DOC,$(docname))))
 #
 # As such, I've attempted to get it working as much as possible (and
 # switching from pandoc to rustdoc), but preserving the old behaviour
-# (e.g. only running on the guide)
 .PHONY: l10n-mds
 l10n-mds: $(D)/po4a.conf \
 		$(foreach lang,$(L10N_LANG),$(D)/po/$(lang)/*.md.po)
@@ -243,7 +240,7 @@ doc/l10n/$(1)/$(2).html: l10n-mds $$(HTML_DEPS) $$(RUSTDOC_DEPS_$(2))
 	$$(RUSTDOC) $$(RUSTDOC_HTML_OPTS) $$(RUSTDOC_FLAGS_$(1)) doc/l10n/$(1)/$(2).md
 endef
 
-$(foreach lang,$(L10N_LANGS),$(eval $(call DEF_L10N_DOC,$(lang),guide)))
+$(foreach lang,$(L10N_LANGS),$(eval $(call DEF_L10N_DOC,$(lang))))
 
 
 ######################################################################
