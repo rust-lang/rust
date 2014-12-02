@@ -14,7 +14,7 @@ use lint::{LintPassObject, LintId, Lint};
 use session::Session;
 
 use syntax::ext::base::{SyntaxExtension, NamedSyntaxExtension, NormalTT};
-use syntax::ext::base::{IdentTT, Decorator, Modifier, MacroRulesTT};
+use syntax::ext::base::{IdentTT, Decorator, Modifier, MultiModifier, MacroRulesTT};
 use syntax::ext::base::{MacroExpanderFn};
 use syntax::codemap::Span;
 use syntax::parse::token;
@@ -82,7 +82,7 @@ impl<'a> Registry<'a> {
             IdentTT(ext, _) => IdentTT(ext, Some(self.krate_span)),
             Decorator(ext) => Decorator(ext),
             Modifier(ext) => Modifier(ext),
-
+            MultiModifier(ext) => MultiModifier(ext),
             MacroRulesTT => {
                 self.sess.err("plugin tried to register a new MacroRulesTT");
                 return;
