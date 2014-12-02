@@ -219,6 +219,20 @@ pub unsafe fn transmute_copy<T, U>(src: &T) -> U {
     ptr::read(src as *const T as *const U)
 }
 
+/// Transmutes a reference while preserving the lifetime annotation.
+#[inline]
+#[experimental]
+pub unsafe fn transmute_ref<'a, T, U>(src: &'a T) -> &'a U {
+    transmute(src)
+}
+
+/// Transmutes a mutable reference while preserving the lifetime annotation.
+#[inline]
+#[experimental]
+pub unsafe fn transmute_ref_mut<'a, T, U>(src: &'a mut T) -> &'a mut U {
+    transmute(src)
+}
+
 /// Transforms lifetime of the second pointer to match the first.
 #[inline]
 #[unstable = "this function may be removed in the future due to its \
