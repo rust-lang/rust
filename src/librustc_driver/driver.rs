@@ -180,6 +180,10 @@ pub fn phase_2_configure_and_expand(sess: &Session,
         *sess.features.borrow_mut() = features;
     });
 
+    time(time_passes, "recursion limit", (), |_| {
+        middle::recursion_limit::update_recursion_limit(sess, &krate);
+    });
+
     // strip before expansion to allow macros to depend on
     // configuration variables e.g/ in
     //
