@@ -29,8 +29,7 @@ use tables::grapheme::GraphemeCat;
 
 /// An iterator over the words of a string, separated by a sequence of whitespace
 /// FIXME: This should be opaque
-pub type Words<'a> =
-    Filter<'a, &'a str, CharSplits<'a, |char|:'a -> bool>>;
+pub type Words<'a> = Filter<&'a str, CharSplits<'a, |char|:'a -> bool>, fn(&&str) -> bool>;
 
 /// Methods for Unicode string slices
 pub trait UnicodeStrPrelude for Sized? {
@@ -143,8 +142,9 @@ impl UnicodeStrPrelude for str {
 
     #[inline]
     fn words(&self) -> Words {
+        fn is_not_empty(s: &&str) -> bool { !s.is_empty() }
         let f = |c: char| c.is_whitespace();
-        self.split(f).filter(|s| !s.is_empty())
+        self.split(f).filter(is_not_empty)
     }
 
     #[inline]
