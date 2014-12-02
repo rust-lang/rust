@@ -70,7 +70,7 @@ define PREPARE_MAN
 	$(Q)$(PREPARE_MAN_CMD) $(PREPARE_SOURCE_MAN_DIR)/$(1) $(PREPARE_DEST_MAN_DIR)/$(1)
 endef
 
-PREPARE_TOOLS = $(filter-out compiletest, $(TOOLS))
+PREPARE_TOOLS = $(filter-out compiletest rustbook, $(TOOLS))
 
 
 # $(1) is tool

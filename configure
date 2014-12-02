@@ -1055,18 +1055,6 @@ do
     make_dir $h/test/debuginfo-gdb
     make_dir $h/test/debuginfo-lldb
     make_dir $h/test/codegen
-    make_dir $h/test/doc-guide
-    make_dir $h/test/doc-guide-ffi
-    make_dir $h/test/doc-guide-runtime
-    make_dir $h/test/doc-guide-macros
-    make_dir $h/test/doc-guide-ownership
-    make_dir $h/test/doc-guide-pointers
-    make_dir $h/test/doc-guide-container
-    make_dir $h/test/doc-guide-tasks
-    make_dir $h/test/doc-guide-plugin
-    make_dir $h/test/doc-guide-crates
-    make_dir $h/test/doc-guide-error-handling
-    make_dir $h/test/doc-reference
 done
 
 # Configure submodules
