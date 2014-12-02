@@ -78,7 +78,7 @@ pub fn parse_pretty(sess: &Session, name: &str) -> (PpMode, Option<UserIdentifie
                  or `expanded,identified`; got {}", name).as_slice());
         }
     };
-    let opt_second = opt_second.and_then::<UserIdentifiedItem>(from_str);
+    let opt_second = opt_second.and_then::<UserIdentifiedItem, _>(from_str);
     (first, opt_second)
 }
 
@@ -313,14 +313,12 @@ pub enum UserIdentifiedItem {
 
 impl FromStr for UserIdentifiedItem {
     fn from_str(s: &str) -> Option<UserIdentifiedItem> {
-        let extract_path_parts = || {
+        from_str(s).map(ItemViaNode).or_else(|| {
             let v : Vec<_> = s.split_str("::")
                 .map(|x|x.to_string())
                 .collect();
             Some(ItemViaPath(v))
-        };
-
-        from_str(s).map(ItemViaNode).or_else(extract_path_parts)
+        })
     }
 }
 
