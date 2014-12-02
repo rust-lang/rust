@@ -53,6 +53,7 @@ the direction the language is evolving in.
 * [0430-finalizing-naming-conventions.md](text/0430-finalizing-naming-conventions.md)
 * [0438-precedence-of-plus.md](text/0438-precedence-of-plus.md)
 * [0439-cmp-ops-reform.md](text/0439-cmp-ops-reform.md)
+* [0450-un-feature-gate-some-more-gates.md](text/0450-un-feature-gate-some-more-gates.md)
 * [0459-disallow-shadowing.md](text/0459-disallow-shadowing.md)
 * [0463-future-proof-literal-suffixes.md](text/0463-future-proof-literal-suffixes.md)
 
