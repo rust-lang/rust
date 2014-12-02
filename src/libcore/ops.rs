@@ -32,13 +32,13 @@
 //! }
 //!
 //! impl Add<Point, Point> for Point {
-//!     fn add(&self, other: &Point) -> Point {
+//!     fn add(self, other: Point) -> Point {
 //!         Point {x: self.x + other.x, y: self.y + other.y}
 //!     }
 //! }
 //!
 //! impl Sub<Point, Point> for Point {
-//!     fn sub(&self, other: &Point) -> Point {
+//!     fn sub(self, other: Point) -> Point {
 //!         Point {x: self.x - other.x, y: self.y - other.y}
 //!     }
 //! }
@@ -133,9 +133,9 @@ macro_rules! add_impl(
 /// struct Foo;
 ///
 /// impl Add<Foo, Foo> for Foo {
-///     fn add(&self, _rhs: &Foo) -> Foo {
+///     fn add(self, _rhs: Foo) -> Foo {
 ///       println!("Adding!");
-///       *self
+///       self
 ///   }
 /// }
 ///
@@ -215,9 +215,9 @@ macro_rules! sub_impl(
 /// struct Foo;
 ///
 /// impl Sub<Foo, Foo> for Foo {
-///     fn sub(&self, _rhs: &Foo) -> Foo {
+///     fn sub(self, _rhs: Foo) -> Foo {
 ///         println!("Subtracting!");
-///         *self
+///         self
 ///     }
 /// }
 ///
@@ -297,9 +297,9 @@ macro_rules! mul_impl(
 /// struct Foo;
 ///
 /// impl Mul<Foo, Foo> for Foo {
-///     fn mul(&self, _rhs: &Foo) -> Foo {
+///     fn mul(self, _rhs: Foo) -> Foo {
 ///         println!("Multiplying!");
-///         *self
+///         self
 ///     }
 /// }
 ///
@@ -379,9 +379,9 @@ macro_rules! div_impl(
 /// struct Foo;
 ///
 /// impl Div<Foo, Foo> for Foo {
-///     fn div(&self, _rhs: &Foo) -> Foo {
+///     fn div(self, _rhs: Foo) -> Foo {
 ///         println!("Dividing!");
-///         *self
+///         self
 ///     }
 /// }
 ///
@@ -475,9 +475,9 @@ macro_rules! rem_float_impl(
 /// struct Foo;
 ///
 /// impl Rem<Foo, Foo> for Foo {
-///     fn rem(&self, _rhs: &Foo) -> Foo {
+///     fn rem(self, _rhs: Foo) -> Foo {
 ///         println!("Remainder-ing!");
-///         *self
+///         self
 ///     }
 /// }
 ///
@@ -669,9 +669,9 @@ macro_rules! bitand_impl(
 /// struct Foo;
 ///
 /// impl BitAnd<Foo, Foo> for Foo {
-///     fn bitand(&self, _rhs: &Foo) -> Foo {
+///     fn bitand(self, _rhs: Foo) -> Foo {
 ///         println!("Bitwise And-ing!");
-///         *self
+///         self
 ///     }
 /// }
 ///
@@ -751,9 +751,9 @@ macro_rules! bitor_impl(
 /// struct Foo;
 ///
 /// impl BitOr<Foo, Foo> for Foo {
-///     fn bitor(&self, _rhs: &Foo) -> Foo {
+///     fn bitor(self, _rhs: Foo) -> Foo {
 ///         println!("Bitwise Or-ing!");
-///         *self
+///         self
 ///     }
 /// }
 ///
@@ -833,9 +833,9 @@ macro_rules! bitxor_impl(
 /// struct Foo;
 ///
 /// impl BitXor<Foo, Foo> for Foo {
-///     fn bitxor(&self, _rhs: &Foo) -> Foo {
+///     fn bitxor(self, _rhs: Foo) -> Foo {
 ///         println!("Bitwise Xor-ing!");
-///         *self
+///         self
 ///     }
 /// }
 ///
@@ -917,9 +917,9 @@ macro_rules! shl_impl(
 /// struct Foo;
 ///
 /// impl Shl<Foo, Foo> for Foo {
-///     fn shl(&self, _rhs: &Foo) -> Foo {
+///     fn shl(self, _rhs: Foo) -> Foo {
 ///         println!("Shifting left!");
-///         *self
+///         self
 ///     }
 /// }
 ///
@@ -1001,9 +1001,9 @@ macro_rules! shr_impl(
 /// struct Foo;
 ///
 /// impl Shr<Foo, Foo> for Foo {
-///     fn shr(&self, _rhs: &Foo) -> Foo {
+///     fn shr(self, _rhs: Foo) -> Foo {
 ///         println!("Shifting right!");
-///         *self
+///         self
 ///     }
 /// }
 ///
