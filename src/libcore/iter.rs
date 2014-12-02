@@ -183,7 +183,7 @@ pub trait IteratorExt<A>: Iterator<A> {
     /// ```
     #[inline]
     #[unstable = "waiting for unboxed closures"]
-    fn filter<'r>(self, predicate: |&A|: 'r -> bool) -> Filter<'r, A, Self> {
+    fn filter<P>(self, predicate: P) -> Filter<A, Self, P> where P: FnMut(&A) -> bool {
         Filter{iter: self, predicate: predicate}
     }
 
@@ -1438,13 +1438,13 @@ impl<A, B, I, F> RandomAccessIterator<B> for Map<A, B, I, F> where
 /// An iterator which filters the elements of `iter` with `predicate`
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 #[stable]
-pub struct Filter<'a, A, T> {
-    iter: T,
-    predicate: |&A|: 'a -> bool
+pub struct Filter<A, I, P> where I: Iterator<A>, P: FnMut(&A) -> bool {
+    iter: I,
+    predicate: P,
 }
 
 #[unstable = "trait is unstable"]
-impl<'a, A, T: Iterator<A>> Iterator<A> for Filter<'a, A, T> {
+impl<A, I, P> Iterator<A> for Filter<A, I, P> where I: Iterator<A>, P: FnMut(&A) -> bool {
     #[inline]
     fn next(&mut self) -> Option<A> {
         for x in self.iter {
@@ -1465,7 +1465,10 @@ impl<'a, A, T: Iterator<A>> Iterator<A> for Filter<'a, A, T> {
 }
 
 #[unstable = "trait is unstable"]
-impl<'a, A, T: DoubleEndedIterator<A>> DoubleEndedIterator<A> for Filter<'a, A, T> {
+impl<A, I, P> DoubleEndedIterator<A> for Filter<A, I, P> where
+    I: DoubleEndedIterator<A>,
+    P: FnMut(&A) -> bool,
+{
     #[inline]
     fn next_back(&mut self) -> Option<A> {
         for x in self.iter.by_ref().rev() {
