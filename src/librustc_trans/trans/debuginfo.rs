@@ -1047,10 +1047,11 @@ pub fn create_argument_metadata(bcx: Block, arg: &ast::Arg) {
     })
 }
 
-pub fn get_cleanup_debug_loc_for_ast_node(node_id: ast::NodeId,
-                                          node_span: Span,
-                                          is_block: bool)
-                                          -> NodeInfo {
+pub fn get_cleanup_debug_loc_for_ast_node<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
+                                                    node_id: ast::NodeId,
+                                                    node_span: Span,
+                                                    is_block: bool)
+                                                 -> NodeInfo {
     // A debug location needs two things:
     // (1) A span (of which only the beginning will actually be used)
     // (2) An AST node-id which will be used to look up the lexical scope
@@ -1080,15 +1081,25 @@ pub fn get_cleanup_debug_loc_for_ast_node(node_id: ast::NodeId,
     // scope is actually left when the cleanup code is executed.
     // In practice it shouldn't make much of a difference.
 
-    let cleanup_span = if is_block {
-        Span {
-            lo: node_span.hi - codemap::BytePos(1), // closing brace should always be 1 byte...
-            hi: node_span.hi,
-            expn_id: node_span.expn_id
+    let mut cleanup_span = node_span;
+
+    if is_block {
+        // Not all blocks actually have curly braces (e.g. simple closure
+        // bodies), in which case we also just want to return the span of the
+        // whole expression.
+        let code_snippet = cx.sess().codemap().span_to_snippet(node_span);
+        if let Some(code_snippet) = code_snippet {
+            let bytes = code_snippet.as_bytes();
+
+            if bytes.len() > 0 && bytes[bytes.len()-1 ..] == b"}" {
+                cleanup_span = Span {
+                    lo: node_span.hi - codemap::BytePos(1),
+                    hi: node_span.hi,
+                    expn_id: node_span.expn_id
+                };
+            }
         }
-    } else {
-        node_span
-    };
+    }
 
     NodeInfo {
         id: node_id,
