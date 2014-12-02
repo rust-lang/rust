@@ -1648,6 +1648,12 @@ impl<'a> Parser<'a> {
     /// Matches token_lit = LIT_INTEGER | ...
     pub fn lit_from_token(&mut self, tok: &token::Token) -> Lit_ {
         match *tok {
+            token::Interpolated(token::NtExpr(ref v)) => {
+                match v.node {
+                    ExprLit(ref lit) => { lit.node.clone() }
+                    _ => { self.unexpected_last(tok); }
+                }
+            }
             token::Literal(lit, suf) => {
                 let (suffix_illegal, out) = match lit {
                     token::Byte(i) => (true, LitByte(parse::byte_lit(i.as_str()).val0())),
