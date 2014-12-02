@@ -5152,18 +5152,12 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             }
 
             Some(space) => {
-                let trait_def_id = match def {
-                    def::DefTrait(did) => Some(did),
-                    _ => None
-                };
                 push_explicit_parameters_from_segment_to_substs(fcx,
                                                                 space,
                                                                 path.span,
                                                                 type_defs,
                                                                 region_defs,
                                                                 segment,
-                                                                trait_def_id,
-                                                                path.span,
                                                                 &mut substs);
             }
         }
@@ -5250,14 +5244,12 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         type_defs: &VecPerParamSpace<ty::TypeParameterDef<'tcx>>,
         region_defs: &VecPerParamSpace<ty::RegionParameterDef>,
         segment: &ast::PathSegment,
-        trait_def_id: Option<DefId>,
-        path_span: Span,
         substs: &mut Substs<'tcx>)
     {
         match segment.parameters {
             ast::AngleBracketedParameters(ref data) => {
                 push_explicit_angle_bracketed_parameters_from_segment_to_substs(
-                    fcx, space, type_defs, region_defs, data, trait_def_id, path_span, substs);
+                    fcx, space, type_defs, region_defs, data, substs);
             }
 
             ast::ParenthesizedParameters(ref data) => {
@@ -5273,8 +5265,6 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         type_defs: &VecPerParamSpace<ty::TypeParameterDef<'tcx>>,
         region_defs: &VecPerParamSpace<ty::RegionParameterDef>,
         data: &ast::AngleBracketedParameterData,
-        trait_def_id: Option<DefId>,
-        path_span: Span,
         substs: &mut Substs<'tcx>)
     {
         {
@@ -5296,49 +5286,11 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             }
         }
 
-        if let Some(trait_def_id) = trait_def_id {
-            let ref items = fcx.tcx().trait_item_def_ids.borrow()[trait_def_id];
-            let mut assoc_tys = Vec::new();
-            for item in items.iter() {
-                if let &ty::ImplOrTraitItemId::TypeTraitItemId(id) = item {
-                    if let ty::ImplOrTraitItem::TypeTraitItem(ref ty) =
-                      fcx.tcx().impl_or_trait_items.borrow()[id] {
-                        assoc_tys.push(ty.clone());
-                    }
-                }
-            }
-
-            if data.bindings.len() > assoc_tys.len() {
-                span_err!(fcx.tcx().sess, data.bindings[assoc_tys.len()].span, E0174,
-                    "too many type equality constraints provided: \
-                     expected at most {} constraint(s), \
-                     found {} constraint(s)",
-                     assoc_tys.len(), data.types.len());
-                substs.types.truncate(space, 0);
-            } else if data.bindings.len() > 0 {
-                for assoc_ty in assoc_tys.iter() {
-                    let mut matched = false;
-                    for binding in data.bindings.iter() {
-                        if assoc_ty.name.ident() == binding.ident {
-                            let t = fcx.to_ty(&*binding.ty);
-                            substs.types.push(space, t);
-                            matched = true;
-                            break;
-                        }
-                    }
-                    if !matched {
-                        span_err!(fcx.tcx().sess, path_span, E0176,
-                            "missing type equality constraint for associated type: {}",
-                             assoc_ty.name);
-                        substs.types.truncate(space, 0);
-                        break;
-                    }
-                }
-            }
-        } else if data.bindings.len() > 0 {
-            span_err!(fcx.tcx().sess, path_span, E0175,
-                "type equality constraints provided on a non-trait type");
-            substs.types.truncate(space, 0);
+        if data.bindings.len() > 0 {
+            span_err!(fcx.tcx().sess, data.bindings[0].span, E0182,
+                      "unexpected binding of associated item in expression path \
+                       (only allowed in type paths)");
+            substs.types.truncate(subst::ParamSpace::AssocSpace, 0);
         }
 
         {

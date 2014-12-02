@@ -211,11 +211,17 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
         }
         for predicate in generics.where_clause.predicates.iter() {
             match predicate {
-                &ast::BoundPredicate(ast::WhereBoundPredicate{ident, ref bounds, span, ..}) => {
+                &ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate{ ident,
+                                                                               ref bounds,
+                                                                               span,
+                                                                               .. }) => {
                     self.visit_ident(span, ident);
                     visit::walk_ty_param_bounds_helper(self, bounds);
                 }
-                &ast::EqPredicate(ast::WhereEqPredicate{id, ref path, ref ty, ..}) => {
+                &ast::WherePredicate::EqPredicate(ast::WhereEqPredicate{ id,
+                                                                         ref path,
+                                                                         ref ty,
+                                                                         .. }) => {
                     self.visit_path(path, id);
                     self.visit_ty(&**ty);
                 }
@@ -495,10 +501,10 @@ fn early_bound_lifetime_names(generics: &ast::Generics) -> Vec<ast::Name> {
         }
         for predicate in generics.where_clause.predicates.iter() {
             match predicate {
-                &ast::BoundPredicate(ast::WhereBoundPredicate{ref bounds, ..}) => {
+                &ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate{ref bounds, ..}) => {
                     visit::walk_ty_param_bounds_helper(&mut collector, bounds);
                 }
-                _ => {}
+                &ast::WherePredicate::EqPredicate(_) => unimplemented!()
             }
         }
     }

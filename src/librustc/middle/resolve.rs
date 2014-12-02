@@ -4595,7 +4595,7 @@ impl<'a> Resolver<'a> {
     fn resolve_where_clause(&mut self, where_clause: &ast::WhereClause) {
         for predicate in where_clause.predicates.iter() {
             match predicate {
-                &ast::BoundPredicate(ref bound_pred) => {
+                &ast::WherePredicate::BoundPredicate(ref bound_pred) => {
                     match self.resolve_identifier(bound_pred.ident,
                                                   TypeNS,
                                                   true,
@@ -4617,7 +4617,7 @@ impl<'a> Resolver<'a> {
                                                           TraitBoundingTypeParameter);
                     }
                 }
-                &ast::EqPredicate(ref eq_pred) => {
+                &ast::WherePredicate::EqPredicate(ref eq_pred) => {
                     match self.resolve_path(eq_pred.id, &eq_pred.path, TypeNS, true) {
                         Some((def @ DefTyParam(..), last_private)) => {
                             self.record_def(eq_pred.id, (def, last_private));
