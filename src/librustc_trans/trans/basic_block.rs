@@ -17,7 +17,12 @@ pub struct BasicBlock(pub BasicBlockRef);
 
 impl Copy for BasicBlock {}
 
-pub type Preds<'a> = Map<Value, BasicBlock, Filter<'a, Value, Users>, fn(Value) -> BasicBlock>;
+pub type Preds = Map<
+    Value,
+    BasicBlock,
+    Filter<Value, Users, fn(&Value) -> bool>,
+    fn(Value) -> BasicBlock,
+>;
 
 /// Wrapper for LLVM BasicBlockRef
 impl BasicBlock {
@@ -31,11 +36,12 @@ impl BasicBlock {
         }
     }
 
-    pub fn pred_iter(self) -> Preds<'static> {
+    pub fn pred_iter(self) -> Preds {
+        fn is_a_terminator_inst(user: &Value) -> bool { user.is_a_terminator_inst() }
         fn get_parent(user: Value) -> BasicBlock { user.get_parent().unwrap() }
 
         self.as_value().user_iter()
-            .filter(|user| user.is_a_terminator_inst())
+            .filter(is_a_terminator_inst)
             .map(get_parent)
     }
 
