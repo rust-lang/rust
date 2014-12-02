@@ -141,14 +141,18 @@ impl<V> VecMap<V> {
     /// The iterator's element type is `uint`.
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn keys<'r>(&'r self) -> Keys<'r, V> {
-        self.iter().map(|(k, _v)| k)
+        fn first<A, B>((a, _): (A, B)) -> A { a }
+
+        self.iter().map(first)
     }
 
     /// Returns an iterator visiting all values in ascending order by the keys.
     /// The iterator's element type is `&'r V`.
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn values<'r>(&'r self) -> Values<'r, V> {
-        self.iter().map(|(_k, v)| v)
+        fn second<A, B>((_, b): (A, B)) -> B { b }
+
+        self.iter().map(second)
     }
 
     /// Returns an iterator visiting all key-value pairs in ascending order by the keys.
@@ -620,12 +624,11 @@ iterator!(impl MutEntries -> (uint, &'a mut V), as_mut)
 double_ended_iterator!(impl MutEntries -> (uint, &'a mut V), as_mut)
 
 /// Forward iterator over the keys of a map
-pub type Keys<'a, V> =
-    iter::Map<'static, (uint, &'a V), uint, Entries<'a, V>>;
+pub type Keys<'a, V> = iter::Map<(uint, &'a V), uint, Entries<'a, V>, fn((uint, &'a V)) -> uint>;
 
 /// Forward iterator over the values of a map
 pub type Values<'a, V> =
-    iter::Map<'static, (uint, &'a V), &'a V, Entries<'a, V>>;
+    iter::Map<(uint, &'a V), &'a V, Entries<'a, V>, fn((uint, &'a V)) -> &'a V>;
 
 /// Iterator over the key-value pairs of a map, the iterator consumes the map
 pub type MoveItems<V> =
