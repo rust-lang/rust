@@ -13,7 +13,7 @@
 //! Concurrency-enabled mechanisms for sharing mutable and/or immutable state
 //! between tasks.
 
-use rc::{mod, Rc};
+use rc::Rc;
 use rcbox::{RcBox, DecResult};
 
 use core::atomic;
@@ -77,6 +77,13 @@ pub struct Weak<T> {
 }
 
 impl<T: Sync + Send> Arc<T> {
+   #[inline]
+   #[experimental]
+   #[doc(hidden)]
+   pub unsafe fn from_raw_ptr(ptr: *mut RcBox<T>) -> Arc<T> {
+       Arc { _ptr: ptr }
+   }
+
     /// Creates an atomically reference counted wrapper.
     #[inline]
     #[stable]
@@ -107,13 +114,6 @@ impl<T> Arc<T> {
         // these contents.
         unsafe { &*self._ptr }
     }
-}
-
-#[inline]
-#[experimental]
-#[doc(hidden)]
-pub fn from_raw_ptr<T: Sync + Send>(ptr: *mut RcBox<T>) -> Arc<T> {
-    Arc { _ptr: ptr }
 }
 
 /// Get the number of weak references to this value.
@@ -148,7 +148,7 @@ pub fn is_unique<T>(this: &Arc<T>) -> bool {
 pub fn into_rc<T>(this: Arc<T>) -> Result<Rc<T>, Arc<T>> {
     unsafe {
         if is_unique(&this) {
-            let ret = rc::from_raw_ptr(this._ptr);
+            let ret = Rc::from_raw_ptr(this._ptr);
             forget(this);
             Ok(ret)
         } else {

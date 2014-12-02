@@ -141,7 +141,7 @@
 
 #![stable]
 
-use arc::{mod, Arc};
+use arc::Arc;
 use rcbox::{RcBox, DecResult};
 
 use core::clone::Clone;
@@ -172,6 +172,13 @@ pub struct Rc<T> {
 }
 
 impl<T> Rc<T> {
+    #[inline]
+    #[experimental]
+    #[doc(hidden)]
+    pub unsafe fn from_raw_ptr(ptr: *mut RcBox<T>) -> Rc<T> {
+        Rc { _ptr: ptr, _nosend: marker::NoSend, _noshare: marker::NoSync }
+    }
+
     /// Constructs a new `Rc<T>`.
     ///
     /// # Examples
@@ -215,13 +222,6 @@ impl<T> Rc<T> {
 
 }
 
-#[inline]
-#[experimental]
-#[doc(hidden)]
-pub fn from_raw_ptr<T>(ptr: *mut RcBox<T>) -> Rc<T> {
-    Rc { _ptr: ptr, _nosend: marker::NoSend, _noshare: marker::NoSync }
-}
-
 /// Get the number of weak references to this value.
 #[inline]
 #[experimental]
@@ -240,7 +240,7 @@ pub fn strong_count<T>(this: &Rc<T>) -> uint { this.inner().strong_nonatomic() }
 pub fn into_arc<T: Sync + Send>(this: Rc<T>) -> Result<Arc<T>, Rc<T>> {
     unsafe {
         if is_unique(&this) {
-            let ret = arc::from_raw_ptr(this._ptr);
+            let ret = Arc::from_raw_ptr(this._ptr);
             forget(this);
             Ok(ret)
         } else {
