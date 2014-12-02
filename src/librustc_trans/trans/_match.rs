@@ -771,7 +771,7 @@ fn pick_column_to_specialize(def_map: &DefMap, m: &[Match]) -> Option<uint> {
         }
     };
 
-    let column_contains_any_nonwild_patterns: |&uint| -> bool = |&col| {
+    let column_contains_any_nonwild_patterns = |&: &col: &uint| -> bool {
         m.iter().any(|row| match row.pats[col].node {
             ast::PatWild(_) => false,
             _ => true
