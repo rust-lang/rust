@@ -1390,13 +1390,7 @@ fn check_cast(fcx: &FnCtxt,
     let t_1 = fcx.to_ty(t);
     let t_1 = structurally_resolved_type(fcx, span, t_1);
 
-    if ty::type_is_scalar(t_1) {
-        // Supply the type as a hint so as to influence integer
-        // literals and other things that might care.
-        check_expr_with_expectation(fcx, e, ExpectCastableToType(t_1))
-    } else {
-        check_expr(fcx, e)
-    }
+    check_expr_with_expectation(fcx, e, ExpectCastableToType(t_1));
 
     let t_e = fcx.expr_ty(e);
 
