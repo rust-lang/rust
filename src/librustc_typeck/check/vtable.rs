@@ -366,6 +366,15 @@ pub fn report_selection_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                     "overflow evaluating the trait `{}` for the type `{}`",
                     trait_ref.user_string(fcx.tcx()),
                     self_ty.user_string(fcx.tcx())).as_slice());
+
+            let current_limit = fcx.tcx().sess.recursion_limit.get();
+            let suggested_limit = current_limit * 2;
+            fcx.tcx().sess.span_note(
+                obligation.cause.span,
+                format!(
+                    "consider adding a `#![recursion_limit=\"{}\"]` attribute to your crate",
+                    suggested_limit)[]);
+
             note_obligation_cause(fcx, obligation);
         }
         Unimplemented => {
