@@ -323,8 +323,7 @@ impl<'a> DoubleEndedIterator<(uint, char)> for CharOffsets<'a> {
 
 /// External iterator for a string's bytes.
 /// Use with the `std::iter` module.
-pub type Bytes<'a> =
-    Map<'a, &'a u8, u8, slice::Items<'a, u8>>;
+pub type Bytes<'a> = Map<&'a u8, u8, slice::Items<'a, u8>, fn(&u8) -> u8>;
 
 /// An iterator over the substrings of a string, separated by `sep`.
 #[deriving(Clone)]
@@ -349,8 +348,7 @@ pub struct CharSplitsN<'a, Sep> {
 }
 
 /// An iterator over the lines of a string, separated by either `\n` or (`\r\n`).
-pub type AnyLines<'a> =
-    Map<'a, &'a str, &'a str, CharSplits<'a, char>>;
+pub type AnyLines<'a> = Map<&'a str, &'a str, CharSplits<'a, char>, fn(&str) -> &str>;
 
 impl<'a, Sep> CharSplits<'a, Sep> {
     #[inline]
@@ -1980,7 +1978,9 @@ impl StrPrelude for str {
 
     #[inline]
     fn bytes(&self) -> Bytes {
-        self.as_bytes().iter().map(|&b| b)
+        fn deref(&x: &u8) -> u8 { x }
+
+        self.as_bytes().iter().map(deref)
     }
 
     #[inline]
@@ -2053,11 +2053,13 @@ impl StrPrelude for str {
     }
 
     fn lines_any(&self) -> AnyLines {
-        self.lines().map(|line| {
+        fn f(line: &str) -> &str {
             let l = line.len();
             if l > 0 && line.as_bytes()[l - 1] == b'\r' { line.slice(0, l - 1) }
             else { line }
-        })
+        }
+
+        self.lines().map(f)
     }
 
     #[inline]
