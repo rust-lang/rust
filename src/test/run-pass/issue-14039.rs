@@ -13,10 +13,10 @@
 fn foo<'a>() {
     if true {
         // in this branch, the lifetime is bound
-        (box move|&mut: _: &mut ()| {}) as Box<FnMut(&mut ())>
+        (box move|_| {}) as Box<FnMut(&mut ())>
     } else {
         // in this branch, the lifetime is free
-        (box move|&mut: _: &mut ()| {}) as Box<FnMut(&'a mut ())>
+        (box move|_| {}) as Box<FnMut(&'a mut ())>
     };
 }
 
