@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(macro_rules,if_let)]
+#![feature(macro_rules)]
 
 fn macros() {
     macro_rules! foo{
