@@ -141,14 +141,14 @@
 
 #![stable]
 
-use arc::Arc;
+use arc::{mod, Arc};
 use rcbox::{RcBox, DecResult};
 
 use core::clone::Clone;
 use core::cmp::{PartialEq, PartialOrd, Eq, Ord, Ordering};
 use core::default::Default;
 use core::fmt;
-use core::kinds::marker;
+use core::kinds::{marker, Sync, Send};
 use core::mem::{transmute, min_align_of, size_of, forget};
 use core::ops::{Deref, Drop};
 use core::option::{Option, Some, None};
@@ -215,6 +215,13 @@ impl<T> Rc<T> {
 
 }
 
+#[inline]
+#[experimental]
+#[doc(hidden)]
+pub fn from_raw_ptr<T>(ptr: *mut RcBox<T>) -> Rc<T> {
+    Rc { _ptr: ptr, _nosend: marker::NoSend, _noshare: marker::NoSync }
+}
+
 /// Get the number of weak references to this value.
 #[inline]
 #[experimental]
@@ -230,10 +237,12 @@ pub fn strong_count<T>(this: &Rc<T>) -> uint { this.inner().strong_nonatomic() }
 /// ```
 #[inline]
 #[experimental]
-pub fn into_arc<T>(this: Rc<T>) -> Result<Arc<T>, Rc<T>> {
+pub fn into_arc<T: Sync + Send>(this: Rc<T>) -> Result<Arc<T>, Rc<T>> {
     unsafe {
         if is_unique(&this) {
-            Ok(transmute(this))
+            let ret = arc::from_raw_ptr(this._ptr);
+            forget(this);
+            Ok(ret)
         } else {
             Err(this)
         }

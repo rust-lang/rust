@@ -13,7 +13,7 @@
 //! Concurrency-enabled mechanisms for sharing mutable and/or immutable state
 //! between tasks.
 
-use rc::Rc;
+use rc::{mod, Rc};
 use rcbox::{RcBox, DecResult};
 
 use core::atomic;
@@ -22,7 +22,7 @@ use core::fmt::{mod, Show};
 use core::cmp::{Eq, Ord, PartialEq, PartialOrd, Ordering};
 use core::default::Default;
 use core::kinds::{Sync, Send};
-use core::mem::{min_align_of, size_of};
+use core::mem::{min_align_of, size_of, forget};
 use core::mem;
 use core::ops::{Drop, Deref};
 use core::option::{Some, None, Option};
@@ -109,6 +109,13 @@ impl<T> Arc<T> {
     }
 }
 
+#[inline]
+#[experimental]
+#[doc(hidden)]
+pub fn from_raw_ptr<T: Sync + Send>(ptr: *mut RcBox<T>) -> Arc<T> {
+    Arc { _ptr: ptr }
+}
+
 /// Get the number of weak references to this value.
 #[inline]
 #[experimental]
@@ -141,7 +148,9 @@ pub fn is_unique<T>(this: &Arc<T>) -> bool {
 pub fn into_rc<T>(this: Arc<T>) -> Result<Rc<T>, Arc<T>> {
     unsafe {
         if is_unique(&this) {
-            Ok(mem::transmute(this))
+            let ret = rc::from_raw_ptr(this._ptr);
+            forget(this);
+            Ok(ret)
         } else {
             Err(this)
         }
