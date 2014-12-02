@@ -28,7 +28,7 @@ pub unsafe fn alloc<T>() -> *mut T {
         EMPTY as *mut T
     } else {
         let ptr = heap::allocate(size, min_align_of::<T>()) as *mut T;
-        if ptr == null_mut() { ::oom(); }
+        if ptr.is_null() { ::oom(); }
         ptr
     }
 }
@@ -49,13 +49,14 @@ pub unsafe fn alloc<T>() -> *mut T {
 /// Aborts on OOM
 #[inline]
 pub unsafe fn alloc_array<T>(len: uint) -> *mut T {
+    debug_assert!(len != 0, "0 len passed to alloc_array");
     let size = size_of::<T>();
     if size == 0 {
         EMPTY as *mut T
     } else {
         let desired_size = size.checked_mul(len).expect("capacity overflow");
         let ptr = heap::allocate(desired_size, min_align_of::<T>()) as *mut T;
-        if ptr == null_mut() { ::oom(); }
+        if ptr.is_null() { ::oom(); }
         ptr
     }
 }
@@ -77,6 +78,7 @@ pub unsafe fn alloc_array<T>(len: uint) -> *mut T {
 /// Aborts on OOM
 #[inline]
 pub unsafe fn realloc_array<T>(ptr: *mut T, old_len: uint, len: uint) -> *mut T {
+    debug_assert!(len != 0, "0 len passed to realloc_array");
     let size = size_of::<T>();
     if size == 0 {
         ptr
@@ -86,15 +88,15 @@ pub unsafe fn realloc_array<T>(ptr: *mut T, old_len: uint, len: uint) -> *mut T 
         // No need to check old_size * len, must have been checked when the ptr was made, or
         // else UB anyway.
         let ptr = heap::reallocate(ptr as *mut u8, size * old_len, desired_size, align) as *mut T;
-        if ptr == null_mut() { ::oom(); }
+        if ptr.is_null() { ::oom(); }
         ptr
     }
 
 }
 
-/// Tries to resize the allocation referenced by `ptr` in-place to fit `len` elements of type T.
-/// If successful, yields Ok. If unsuccessful, yields Err, and the allocation is unchanged.
-/// Handles zero-sized types by always returning Ok(()).
+/// Tries to resize the allocation referenced by `ptr` in-place to fit `len` elements of type `T`.
+/// If successful, yields `Ok`. If unsuccessful, yields `Err`, and the allocation is unchanged.
+/// Handles zero-sized types by always returning `Ok`.
 ///
 /// # Undefined Behaviour
 ///
@@ -107,6 +109,7 @@ pub unsafe fn realloc_array<T>(ptr: *mut T, old_len: uint, len: uint) -> *mut T 
 /// Panics if size_of<T> * len overflows.
 #[inline]
 pub unsafe fn realloc_array_inplace<T>(ptr: *mut T, old_len: uint, len: uint) -> Result<(), ()> {
+    debug_assert!(len != 0, "0 len passed to realloc_array_inplace");
     // FIXME: just remove this in favour of only shrink/grow?
     let size = size_of::<T>();
     let align = min_align_of::<T>();
@@ -126,9 +129,9 @@ pub unsafe fn realloc_array_inplace<T>(ptr: *mut T, old_len: uint, len: uint) ->
     }
 }
 
-/// Tries to grow the allocation referenced by `ptr` in-place to fit `len` elements of type T.
-/// If successful, yields Ok. If unsuccessful, yields Err, and the allocation is unchanged.
-/// Handles zero-sized types by always returning Ok(()).
+/// Tries to grow the allocation referenced by `ptr` in-place to fit `len` elements of type `T`.
+/// If successful, yields `Ok`. If unsuccessful, yields `Err`, and the allocation is unchanged.
+/// Handles zero-sized types by always returning `Ok`.
 ///
 /// # Undefined Behaviour
 ///
@@ -142,6 +145,7 @@ pub unsafe fn realloc_array_inplace<T>(ptr: *mut T, old_len: uint, len: uint) ->
 /// Panics if size_of<T> * len overflows.
 #[inline]
 pub unsafe fn try_grow_inplace<T>(ptr: *mut T, old_len: uint, len: uint) -> Result<(), ()> {
+    debug_assert!(len >= old_len, "new len smaller than old_len in try_grow_inplace");
     let size = size_of::<T>();
     let align = min_align_of::<T>();
     if size == 0 {
@@ -160,9 +164,9 @@ pub unsafe fn try_grow_inplace<T>(ptr: *mut T, old_len: uint, len: uint) -> Resu
     }
 }
 
-/// Tries to shrink the allocation referenced by `ptr` in-place to fit `len` elements of type T.
-/// If successful, yields Ok. If unsuccessful, yields Err, and the allocation is unchanged.
-/// Handles zero-sized types by always returning Ok(()).
+/// Tries to shrink the allocation referenced by `ptr` in-place to fit `len` elements of type `T`.
+/// If successful, yields `Ok`. If unsuccessful, yields `Err`, and the allocation is unchanged.
+/// Handles zero-sized types by always returning `Ok`.
 ///
 /// # Undefined Behaviour
 ///
@@ -176,6 +180,8 @@ pub unsafe fn try_grow_inplace<T>(ptr: *mut T, old_len: uint, len: uint) -> Resu
 /// Panics if size_of<T> * len overflows.
 #[inline]
 pub unsafe fn try_shrink_inplace<T>(ptr: *mut T, old_len: uint, len: uint) -> Result<(), ()> {
+    debug_assert!(len != 0, "0 len passed to try_shrink_inplace");
+    debug_assert!(len <= old_len, "new len bigger than old_len in try_grow_inplace");
     let size = size_of::<T>();
     let align = min_align_of::<T>();
     if size == 0 {
