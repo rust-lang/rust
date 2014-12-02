@@ -205,7 +205,9 @@ impl<T: Ord> TreeSet<T> {
     #[inline]
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn into_iter(self) -> MoveSetItems<T> {
-        self.map.into_iter().map(|(value, _)| value)
+        fn first<A, B>((a, _): (A, B)) -> A { a }
+
+        self.map.into_iter().map(first)
     }
 
     /// Gets a lazy iterator pointing to the first value not less than `v` (greater or equal).
@@ -560,7 +562,7 @@ pub struct RevSetItems<'a, T:'a> {
 }
 
 /// A lazy forward iterator over a set that consumes the set while iterating.
-pub type MoveSetItems<T> = iter::Map<'static, (T, ()), T, MoveEntries<T, ()>>;
+pub type MoveSetItems<T> = iter::Map<(T, ()), T, MoveEntries<T, ()>, fn((T, ())) -> T>;
 
 /// A lazy iterator producing elements in the set difference (in-order).
 pub struct DifferenceItems<'a, T:'a> {

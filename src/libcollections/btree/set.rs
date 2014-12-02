@@ -36,7 +36,8 @@ pub struct BTreeSet<T>{
 pub type Items<'a, T> = Keys<'a, T, ()>;
 
 /// An owning iterator over a BTreeSet's items.
-pub type MoveItems<T> = iter::Map<'static, (T, ()), T, MoveEntries<T, ()>>;
+pub type MoveItems<T> =
+    iter::Map<(T, ()), T, MoveEntries<T, ()>, fn((T, ())) -> T>;
 
 /// A lazy iterator producing elements in the set difference (in-order).
 pub struct DifferenceItems<'a, T:'a> {
@@ -87,7 +88,9 @@ impl<T> BTreeSet<T> {
     /// Gets an iterator for moving out the BtreeSet's contents.
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn into_iter(self) -> MoveItems<T> {
-        self.map.into_iter().map(|(k, _)| k)
+        fn first<A, B>((a, _): (A, B)) -> A { a }
+
+        self.map.into_iter().map(first)
     }
 }
 

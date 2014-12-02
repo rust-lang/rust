@@ -234,7 +234,9 @@ impl<K: Ord, V> TreeMap<K, V> {
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn keys<'a>(&'a self) -> Keys<'a, K, V> {
-        self.iter().map(|(k, _v)| k)
+        fn first<A, B>((a, _): (A, B)) -> A { a }
+
+        self.iter().map(first)
     }
 
     /// Gets a lazy iterator over the values in the map, in ascending order
@@ -256,7 +258,9 @@ impl<K: Ord, V> TreeMap<K, V> {
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn values<'a>(&'a self) -> Values<'a, K, V> {
-        self.iter().map(|(_k, v)| v)
+        fn second<A, B>((_, b): (A, B)) -> B { b }
+
+        self.iter().map(second)
     }
 
     /// Gets a lazy iterator over the key-value pairs in the map, in ascending order.
@@ -863,11 +867,11 @@ pub struct RevMutEntries<'a, K:'a, V:'a> {
 
 /// TreeMap keys iterator.
 pub type Keys<'a, K, V> =
-    iter::Map<'static, (&'a K, &'a V), &'a K, Entries<'a, K, V>>;
+    iter::Map<(&'a K, &'a V), &'a K, Entries<'a, K, V>, fn((&'a K, &'a V)) -> &'a K>;
 
 /// TreeMap values iterator.
 pub type Values<'a, K, V> =
-    iter::Map<'static, (&'a K, &'a V), &'a V, Entries<'a, K, V>>;
+    iter::Map<(&'a K, &'a V), &'a V, Entries<'a, K, V>, fn((&'a K, &'a V)) -> &'a V>;
 
 
 // FIXME #5846 we want to be able to choose between &x and &mut x
