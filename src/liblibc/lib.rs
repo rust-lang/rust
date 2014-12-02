@@ -192,7 +192,7 @@ pub use funcs::bsd43::{shutdown};
 #[cfg(unix)] pub use types::os::arch::posix01::{stat, utimbuf};
 #[cfg(unix)] pub use types::os::common::bsd44::{ifaddrs};
 #[cfg(unix)] pub use funcs::posix88::unistd::{sysconf, setgid, setsid, setuid, pread, pwrite};
-#[cfg(unix)] pub use funcs::posix88::unistd::{getgid, getuid};
+#[cfg(unix)] pub use funcs::posix88::unistd::{getgid, getuid, getsid};
 #[cfg(unix)] pub use funcs::posix88::unistd::{_PC_NAME_MAX, utime, nanosleep, pathconf, link};
 #[cfg(unix)] pub use funcs::posix88::unistd::{chown};
 #[cfg(unix)] pub use funcs::posix88::mman::{mmap, munmap, mprotect};
@@ -4402,6 +4402,7 @@ pub mod funcs {
                 pub fn getpid() -> pid_t;
                 pub fn getppid() -> pid_t;
                 pub fn getuid() -> uid_t;
+                pub fn getsid(pid: pid_t) -> pid_t;
                 pub fn isatty(fd: c_int) -> c_int;
                 pub fn link(src: *const c_char, dst: *const c_char) -> c_int;
                 pub fn lseek(fd: c_int, offset: off_t, whence: c_int)
