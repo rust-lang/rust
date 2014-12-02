@@ -54,13 +54,14 @@ def rust_pretty_printer_lookup_function(val):
       return RustStructPrinter(val, false)
 
     if enum_member_count == 1:
-      if enum_members[0].name == None:
+      first_variant_name = enum_members[0].name
+      if first_variant_name == None:
         # This is a singleton enum
         return rust_pretty_printer_lookup_function(val[enum_members[0]])
       else:
-        assert enum_members[0].name.startswith("RUST$ENCODED$ENUM$")
+        assert first_variant_name.startswith("RUST$ENCODED$ENUM$")
         # This is a space-optimized enum
-        last_separator_index = enum_members[0].name.rfind("$")
+        last_separator_index = first_variant_name.rfind("$")
         second_last_separator_index = first_variant_name.rfind("$", 0, last_separator_index)
         disr_field_index = first_variant_name[second_last_separator_index + 1 :
                                               last_separator_index]
@@ -68,7 +69,12 @@ def rust_pretty_printer_lookup_function(val):
 
         sole_variant_val = val[enum_members[0]]
         disr_field = get_field_at_index(sole_variant_val, disr_field_index)
-        discriminant = int(sole_variant_val[disr_field])
+        discriminant = sole_variant_val[disr_field]
+
+        # If the discriminant field is a fat pointer we have to consider the
+        # first word as the true discriminant
+        if discriminant.type.code == gdb.TYPE_CODE_STRUCT:
+            discriminant = discriminant[get_field_at_index(discriminant, 0)]
 
         if discriminant == 0:
           null_variant_name = first_variant_name[last_separator_index + 1:]
@@ -173,7 +179,7 @@ class RustCStyleEnumPrinter:
 
 class IdentityPrinter:
   def __init__(self, string):
-    self.string
+    self.string = string
 
   def to_string(self):
     return self.string
