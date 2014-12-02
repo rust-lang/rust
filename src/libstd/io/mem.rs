@@ -239,6 +239,16 @@ impl<'a> BufWriter<'a> {
             pos: 0
         }
     }
+
+    /// Consumes the `BufWriter`, returning the slice it was originally created
+    /// with. This is very useful when you need back the original slice and
+    /// can't use a block to set up a scope to achieve that, for example when
+    /// `BufWriter` is saved in a struct field and you need the original slice
+    /// in one of the struct's methods.
+    #[inline]
+    pub fn into_slice(self) -> &'a mut [u8] {
+        self.buf
+    }
 }
 
 impl<'a> Writer for BufWriter<'a> {
@@ -429,6 +439,13 @@ mod test {
             Ok(..) => panic!(),
             Err(e) => assert_eq!(e.kind, io::OtherIoError),
         }
+    }
+
+    #[test]
+    fn test_buf_writer_into_slice() {
+        let mut buf = [0, 1, 2, 3];
+        let writer = BufWriter::new(&mut buf);
+        assert_eq!([0, 1, 2, 3].as_slice(), &*writer.into_slice());
     }
 
     #[test]
