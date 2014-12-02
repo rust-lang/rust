@@ -73,6 +73,108 @@ impl<F> ItemModifier for F
     }
 }
 
+#[derive(Show,Clone)]
+pub enum Annotatable {
+    Item(P<ast::Item>),
+    TraitItem(ast::TraitItem),
+    ImplItem(ast::ImplItem),
+}
+
+impl Annotatable {
+    pub fn attrs(&self) -> &[ast::Attribute] {
+        match *self {
+            Annotatable::Item(ref i) => &i.attrs[],
+            Annotatable::TraitItem(ref i) => match *i {
+                ast::TraitItem::RequiredMethod(ref tm) => &tm.attrs[],
+                ast::TraitItem::ProvidedMethod(ref m) => &m.attrs[],
+                ast::TraitItem::TypeTraitItem(ref at) => &at.attrs[],
+            },
+            Annotatable::ImplItem(ref i) => match *i {
+                ast::ImplItem::MethodImplItem(ref m) => &m.attrs[],
+                ast::ImplItem::TypeImplItem(ref t) => &t.attrs[],
+            }
+        }
+    }
+
+    pub fn fold_attrs(self, attrs: Vec<ast::Attribute>) -> Annotatable {
+        match self {
+            Annotatable::Item(i) => Annotatable::Item(P(ast::Item {
+                attrs: attrs,
+                ..(*i).clone()
+            })),
+            Annotatable::TraitItem(i) => match i {
+                ast::TraitItem::RequiredMethod(tm) => Annotatable::TraitItem(
+                    ast::TraitItem::RequiredMethod(
+                        ast::TypeMethod { attrs: attrs, ..tm })),
+                ast::TraitItem::ProvidedMethod(m) => Annotatable::TraitItem(
+                    ast::TraitItem::ProvidedMethod(P(
+                        ast::Method { attrs: attrs, ..(*m).clone() }))),
+                ast::TraitItem::TypeTraitItem(at) => Annotatable::TraitItem(
+                    ast::TraitItem::TypeTraitItem(P(
+                        ast::AssociatedType { attrs: attrs, ..(*at).clone() }))),
+            },
+            Annotatable::ImplItem(i) => match i {
+                ast::ImplItem::MethodImplItem(m) => Annotatable::ImplItem(
+                    ast::ImplItem::MethodImplItem(P(
+                        ast::Method { attrs: attrs, ..(*m).clone() }))),
+                ast::ImplItem::TypeImplItem(t) => Annotatable::ImplItem(
+                    ast::ImplItem::TypeImplItem(P(
+                        ast::Typedef { attrs: attrs, ..(*t).clone() }))),
+            }
+        }
+    }
+
+    pub fn expect_item(self) -> P<ast::Item> {
+        match self {
+            Annotatable::Item(i) => i,
+            _ => panic!("expected Item")
+        }
+    }
+
+    pub fn expect_trait_item(self) -> ast::TraitItem {
+        match self {
+            Annotatable::TraitItem(i) => i,
+            _ => panic!("expected Item")
+        }
+    }
+
+    pub fn expect_impl_item(self) -> ast::ImplItem {
+        match self {
+            Annotatable::ImplItem(i) => i,
+            _ => panic!("expected Item")
+        }
+    }
+}
+
+// A more flexible ItemModifier (ItemModifier should go away, eventually, FIXME).
+// meta_item is the annotation, item is the item being modified, parent_item
+// is the impl or trait item is declared in if item is part of such a thing.
+// FIXME Decorators should follow the same pattern too.
+pub trait MultiItemModifier {
+    fn expand(&self,
+              ecx: &mut ExtCtxt,
+              span: Span,
+              meta_item: &ast::MetaItem,
+              item: Annotatable)
+              -> Annotatable;
+}
+
+impl<F> MultiItemModifier for F
+    where F: Fn(&mut ExtCtxt,
+                Span,
+                &ast::MetaItem,
+                Annotatable) -> Annotatable
+{
+    fn expand(&self,
+              ecx: &mut ExtCtxt,
+              span: Span,
+              meta_item: &ast::MetaItem,
+              item: Annotatable)
+              -> Annotatable {
+        (*self)(ecx, span, meta_item, item)
+    }
+}
+
 /// Represents a thing that maps token trees to Macro Results
 pub trait TTMacroExpander {
     fn expand<'cx>(&self,
@@ -298,6 +400,10 @@ pub enum SyntaxExtension {
     /// A syntax extension that is attached to an item and modifies it
     /// in-place.
     Modifier(Box<ItemModifier + 'static>),
+
+    /// A syntax extension that is attached to an item and modifies it
+    /// in-place. More flexible version than Modifier.
+    MultiModifier(Box<MultiItemModifier + 'static>),
 
     /// A normal, function-like syntax extension.
     ///
