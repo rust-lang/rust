@@ -62,7 +62,7 @@ use cmp::Ord;
 use kinds::Copy;
 use mem;
 use num::{ToPrimitive, Int};
-use ops::{Add, Deref};
+use ops::{Add, Deref, FnMut};
 use option::Option;
 use option::Option::{Some, None};
 use uint;
@@ -165,7 +165,7 @@ pub trait IteratorExt<A>: Iterator<A> {
     /// ```
     #[inline]
     #[unstable = "waiting for unboxed closures"]
-    fn map<'r, B>(self, f: |A|: 'r -> B) -> Map<'r, A, B, Self> {
+    fn map<B, F: FnMut(A) -> B>(self, f: F) -> Map<A, B, Self, F> {
         Map{iter: self, f: f}
     }
 
@@ -778,7 +778,10 @@ impl<'a, A, T: ExactSizeIterator<A>> ExactSizeIterator<A> for Inspect<'a, A, T> 
 #[unstable = "trait is unstable"]
 impl<A, T: ExactSizeIterator<A>> ExactSizeIterator<A> for Rev<T> {}
 #[unstable = "trait is unstable"]
-impl<'a, A, B, T: ExactSizeIterator<A>> ExactSizeIterator<B> for Map<'a, A, B, T> {}
+impl<A, B, I, F> ExactSizeIterator<B> for Map<A, B, I, F> where
+    I: ExactSizeIterator<A>,
+    F: FnMut(A) -> B,
+{}
 #[unstable = "trait is unstable"]
 impl<A, B, T, U> ExactSizeIterator<(A, B)> for Zip<T, U>
     where T: ExactSizeIterator<A>, U: ExactSizeIterator<B> {}
@@ -1374,12 +1377,12 @@ RandomAccessIterator<(A, B)> for Zip<T, U> {
 /// An iterator which maps the values of `iter` with `f`
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 #[stable]
-pub struct Map<'a, A, B, T> {
-    iter: T,
-    f: |A|: 'a -> B
+pub struct Map<A, B, I: Iterator<A>, F: FnMut(A) -> B> {
+    iter: I,
+    f: F,
 }
 
-impl<'a, A, B, T> Map<'a, A, B, T> {
+impl<A, B, I, F> Map<A, B, I, F> where I: Iterator<A>, F: FnMut(A) -> B {
     #[inline]
     fn do_map(&mut self, elt: Option<A>) -> Option<B> {
         match elt {
@@ -1390,7 +1393,7 @@ impl<'a, A, B, T> Map<'a, A, B, T> {
 }
 
 #[unstable = "trait is unstable"]
-impl<'a, A, B, T: Iterator<A>> Iterator<B> for Map<'a, A, B, T> {
+impl<A, B, I, F> Iterator<B> for Map<A, B, I, F> where I: Iterator<A>, F: FnMut(A) -> B {
     #[inline]
     fn next(&mut self) -> Option<B> {
         let next = self.iter.next();
@@ -1404,7 +1407,10 @@ impl<'a, A, B, T: Iterator<A>> Iterator<B> for Map<'a, A, B, T> {
 }
 
 #[unstable = "trait is unstable"]
-impl<'a, A, B, T: DoubleEndedIterator<A>> DoubleEndedIterator<B> for Map<'a, A, B, T> {
+impl<A, B, I, F> DoubleEndedIterator<B> for Map<A, B, I, F> where
+    I: DoubleEndedIterator<A>,
+    F: FnMut(A) -> B,
+{
     #[inline]
     fn next_back(&mut self) -> Option<B> {
         let next = self.iter.next_back();
@@ -1413,7 +1419,10 @@ impl<'a, A, B, T: DoubleEndedIterator<A>> DoubleEndedIterator<B> for Map<'a, A, 
 }
 
 #[experimental = "trait is experimental"]
-impl<'a, A, B, T: RandomAccessIterator<A>> RandomAccessIterator<B> for Map<'a, A, B, T> {
+impl<A, B, I, F> RandomAccessIterator<B> for Map<A, B, I, F> where
+    I: RandomAccessIterator<A>,
+    F: FnMut(A) -> B,
+{
     #[inline]
     fn indexable(&self) -> uint {
         self.iter.indexable()
