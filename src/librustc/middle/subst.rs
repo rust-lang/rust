@@ -432,7 +432,7 @@ impl<T> VecPerParamSpace<T> {
         self.all_vecs(|v| v.is_empty())
     }
 
-    pub fn map<U>(&self, pred: |&T| -> U) -> VecPerParamSpace<U> {
+    pub fn map<U, P>(&self, pred: P) -> VecPerParamSpace<U> where P: FnMut(&T) -> U {
         let result = self.iter().map(pred).collect();
         VecPerParamSpace::new_internal(result,
                                        self.type_limit,
@@ -440,7 +440,9 @@ impl<T> VecPerParamSpace<T> {
                                        self.assoc_limit)
     }
 
-    pub fn map_enumerated<U>(&self, pred: |(ParamSpace, uint, &T)| -> U) -> VecPerParamSpace<U> {
+    pub fn map_enumerated<U, P>(&self, pred: P) -> VecPerParamSpace<U> where
+        P: FnMut((ParamSpace, uint, &T)) -> U,
+    {
         let result = self.iter_enumerated().map(pred).collect();
         VecPerParamSpace::new_internal(result,
                                        self.type_limit,
