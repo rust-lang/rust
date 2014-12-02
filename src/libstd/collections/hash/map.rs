@@ -852,7 +852,9 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn keys(&self) -> Keys<K, V> {
-        self.iter().map(|(k, _v)| k)
+        fn first<A, B>((a, _): (A, B)) -> A { a }
+
+        self.iter().map(first)
     }
 
     /// An iterator visiting all values in arbitrary order.
@@ -874,7 +876,9 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn values(&self) -> Values<K, V> {
-        self.iter().map(|(_k, v)| v)
+        fn second<A, B>((_, b): (A, B)) -> B { b }
+
+        self.iter().map(second)
     }
 
     /// An iterator visiting all key-value pairs in arbitrary order.
@@ -946,8 +950,10 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn into_iter(self) -> MoveEntries<K, V> {
+        fn last_two<A, B, C>((_, b, c): (A, B, C)) -> (B, C) { (b, c) }
+
         MoveEntries {
-            inner: self.table.into_iter().map(|(_, k, v)| (k, v))
+            inner: self.table.into_iter().map(last_two)
         }
     }
 
@@ -1316,7 +1322,12 @@ pub struct MutEntries<'a, K: 'a, V: 'a> {
 
 /// HashMap move iterator
 pub struct MoveEntries<K, V> {
-    inner: iter::Map<'static, (SafeHash, K, V), (K, V), table::MoveEntries<K, V>>
+    inner: iter::Map<
+        (SafeHash, K, V),
+        (K, V),
+        table::MoveEntries<K, V>,
+        fn((SafeHash, K, V)) -> (K, V),
+    >
 }
 
 /// A view into a single occupied location in a HashMap
@@ -1434,11 +1445,11 @@ impl<'a, K, V> VacantEntry<'a, K, V> {
 
 /// HashMap keys iterator
 pub type Keys<'a, K, V> =
-    iter::Map<'static, (&'a K, &'a V), &'a K, Entries<'a, K, V>>;
+    iter::Map<(&'a K, &'a V), &'a K, Entries<'a, K, V>, fn((&'a K, &'a V)) -> &'a K>;
 
 /// HashMap values iterator
 pub type Values<'a, K, V> =
-    iter::Map<'static, (&'a K, &'a V), &'a V, Entries<'a, K, V>>;
+    iter::Map<(&'a K, &'a V), &'a V, Entries<'a, K, V>, fn((&'a K, &'a V)) -> &'a V>;
 
 impl<K: Eq + Hash<S>, V, S, H: Hasher<S> + Default> FromIterator<(K, V)> for HashMap<K, V, H> {
     fn from_iter<T: Iterator<(K, V)>>(iter: T) -> HashMap<K, V, H> {

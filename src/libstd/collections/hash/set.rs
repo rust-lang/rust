@@ -277,7 +277,9 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn into_iter(self) -> SetMoveItems<T> {
-        self.map.into_iter().map(|(k, _)| k)
+        fn first<A, B>((a, _): (A, B)) -> A { a }
+
+        self.map.into_iter().map(first)
     }
 
     /// Visit the values representing the difference.
@@ -611,11 +613,10 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S> + Default> Default for HashSet<T, H> {
 
 /// HashSet iterator
 pub type SetItems<'a, K> =
-    iter::Map<'static, (&'a K, &'a ()), &'a K, Entries<'a, K, ()>>;
+    iter::Map<(&'a K, &'a ()), &'a K, Entries<'a, K, ()>, fn((&'a K, &'a ())) -> &'a K>;
 
 /// HashSet move iterator
-pub type SetMoveItems<K> =
-    iter::Map<'static, (K, ()), K, MoveEntries<K, ()>>;
+pub type SetMoveItems<K> = iter::Map<(K, ()), K, MoveEntries<K, ()>, fn((K, ())) -> K>;
 
 // `Repeat` is used to feed the filter closure an explicit capture
 // of a reference to the other set
