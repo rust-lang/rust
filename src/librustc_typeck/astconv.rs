@@ -367,13 +367,11 @@ fn create_substs_for_ast_path<'tcx,AC,RS>(
         }
     }
 
-    let mut matched_assoc = 0u;
     for formal_assoc in decl_generics.types.get_slice(AssocSpace).iter() {
         let mut found = false;
         for &(ident, ty) in assoc_bindings.iter() {
             if formal_assoc.name.ident() == ident {
                 substs.types.push(AssocSpace, ty);
-                matched_assoc += 1;
                 found = true;
                 break;
             }
@@ -385,21 +383,15 @@ fn create_substs_for_ast_path<'tcx,AC,RS>(
                                                formal_assoc.def_id) {
                 Some(ty) => {
                     substs.types.push(AssocSpace, ty);
-                    matched_assoc += 1;
                 }
                 None => {
-                    span_err!(this.tcx().sess, span, E0179,
+                    substs.types.push(AssocSpace, ty::mk_err());
+                    span_err!(this.tcx().sess, span, E0171,
                               "missing type for associated type `{}`",
                               token::get_ident(formal_assoc.name.ident()));
                 }
             }
         }
-    }
-
-    if decl_generics.types.get_slice(AssocSpace).len() != matched_assoc {
-        span_err!(tcx.sess, span, E0171,
-                  "wrong number of associated type parameters: expected {}, found {}",
-                  decl_generics.types.get_slice(AssocSpace).len(), matched_assoc);
     }
 
     for &(ident, _) in assoc_bindings.iter() {
