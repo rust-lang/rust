@@ -349,6 +349,7 @@
 
 #![allow(unused_variables)]
 #![allow(unused_assignments)]
+#![omit_gdb_pretty_printer_section]
 
 static mut MUT_INT: int = 0;
 

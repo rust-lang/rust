@@ -31,6 +31,9 @@
 // gdb-check:$5 = 5
 // gdb-command:continue
 
+
+#![omit_gdb_pretty_printer_section]
+
 struct Struct {
     x: int
 }

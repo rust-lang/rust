@@ -257,7 +257,7 @@ extern "C" void LLVMDIBuilderFinalize(DIBuilderRef Builder) {
     Builder->finalize();
 }
 
-extern "C" void LLVMDIBuilderCreateCompileUnit(
+extern "C" LLVMValueRef LLVMDIBuilderCreateCompileUnit(
     DIBuilderRef Builder,
     unsigned Lang,
     const char* File,
@@ -267,8 +267,14 @@ extern "C" void LLVMDIBuilderCreateCompileUnit(
     const char* Flags,
     unsigned RuntimeVer,
     const char* SplitName) {
-    Builder->createCompileUnit(Lang, File, Dir, Producer, isOptimized,
-        Flags, RuntimeVer, SplitName);
+    return wrap(Builder->createCompileUnit(Lang,
+                                           File,
+                                           Dir,
+                                           Producer,
+                                           isOptimized,
+                                           Flags,
+                                           RuntimeVer,
+                                           SplitName));
 }
 
 extern "C" LLVMValueRef LLVMDIBuilderCreateFile(

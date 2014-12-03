@@ -45,6 +45,7 @@
 
 #![allow(unused_variables)]
 #![allow(dead_code)]
+#![omit_gdb_pretty_printer_section]
 
 
 static B: bool = false;

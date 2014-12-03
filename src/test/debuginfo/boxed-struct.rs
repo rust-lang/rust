@@ -35,6 +35,7 @@
 // lldb-check:[...]$1 = StructWithDestructor { x: 77, y: 777, z: 7777, w: 77777 }
 
 #![allow(unused_variables)]
+#![omit_gdb_pretty_printer_section]
 
 struct StructWithSomePadding {
     x: i16,

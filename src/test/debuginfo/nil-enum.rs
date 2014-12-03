@@ -23,6 +23,7 @@
 // gdb-check:$2 = {<No data fields>}
 
 #![allow(unused_variables)]
+#![omit_gdb_pretty_printer_section]
 
 enum ANilEnum {}
 enum AnotherNilEnum {}

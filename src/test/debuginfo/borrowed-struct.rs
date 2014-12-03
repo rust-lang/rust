@@ -64,6 +64,7 @@
 // lldb-check:[...]$6 = 26.5
 
 #![allow(unused_variables)]
+#![omit_gdb_pretty_printer_section]
 
 struct SomeStruct {
     x: int,

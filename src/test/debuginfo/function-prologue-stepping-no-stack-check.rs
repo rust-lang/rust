@@ -245,6 +245,7 @@
 // lldb-command:continue
 
 #![allow(unused_variables)]
+#![omit_gdb_pretty_printer_section]
 
 #[no_stack_check]
 fn immediate_args(a: int, b: bool, c: f64) {

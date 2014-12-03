@@ -18,6 +18,7 @@
 // is taken from issue #11083.
 
 #![allow(unused_variables)]
+#![omit_gdb_pretty_printer_section]
 
 pub struct Window<'a> {
     callbacks: WindowCallbacks<'a>
