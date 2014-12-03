@@ -173,6 +173,8 @@
 // gdb-command:whatis stack_closure2
 // gdb-check:type = struct (&mut|i8, f32| -> f32, uint)
 
+#![omit_gdb_pretty_printer_section]
+
 use self::Enum1::{Variant1_1, Variant1_2};
 use std::ptr;
 

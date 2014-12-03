@@ -2673,6 +2673,8 @@ pub fn create_entry_wrapper(ccx: &CrateContext,
         unsafe {
             llvm::LLVMPositionBuilderAtEnd(bld, llbb);
 
+            debuginfo::insert_reference_to_gdb_debug_scripts_section_global(ccx);
+
             let (start_fn, args) = if use_start_lang_item {
                 let start_def_id = match ccx.tcx().lang_items.require(StartFnLangItem) {
                     Ok(id) => id,

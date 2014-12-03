@@ -134,6 +134,7 @@
 // lldb-check:[...]$15 = -1
 // lldb-command:continue
 
+#![omit_gdb_pretty_printer_section]
 
 fn main() {
 

@@ -58,6 +58,9 @@
 // lldb-check:[...]$5 = 20
 // lldb-command:continue
 
+
+#![omit_gdb_pretty_printer_section]
+
 fn a_function(x: bool, y: bool) {
     zzz(); // #break
     sentinel();

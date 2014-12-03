@@ -57,6 +57,7 @@
 // lldb-check:[...]$7 = Tree { x: Simple { x: 25 }, y: InternalPaddingParent { x: InternalPadding { x: 26, y: 27 }, y: InternalPadding { x: 28, y: 29 }, z: InternalPadding { x: 30, y: 31 } }, z: BagInBag { x: Bag { x: Simple { x: 32 } } } }
 
 #![allow(unused_variables)]
+#![omit_gdb_pretty_printer_section]
 
 struct Simple {
     x: i32

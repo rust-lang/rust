@@ -152,6 +152,9 @@
 // lldb-check:[...]$23 = (34903493, 232323)
 // lldb-command:continue
 
+#![allow(unused_variables)]
+#![omit_gdb_pretty_printer_section]
+
 struct Struct {
     x: i16,
     y: f32,

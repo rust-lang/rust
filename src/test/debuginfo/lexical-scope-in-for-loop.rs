@@ -86,6 +86,8 @@
 // lldb-check:[...]$6 = 1000000
 // lldb-command:continue
 
+#![omit_gdb_pretty_printer_section]
+
 fn main() {
 
     let range = [1i, 2, 3];

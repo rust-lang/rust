@@ -49,6 +49,7 @@
 // lldb-check:[...]$3 = TheOnlyCase { a: -1 }
 
 #![allow(unused_variables)]
+#![omit_gdb_pretty_printer_section]
 
 use self::Regular::{Case1, Case2, Case3};
 use self::Univariant::TheOnlyCase;

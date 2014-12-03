@@ -60,6 +60,7 @@
 // lldb-check:[...]$5 = 40
 
 #![allow(unused_variables)]
+#![omit_gdb_pretty_printer_section]
 
 #[repr(packed)]
 struct Packed {
