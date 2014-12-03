@@ -647,7 +647,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
     }
 
     fn walk_callee(&mut self, call: &ast::Expr, callee: &ast::Expr) {
-        let callee_ty = ty::expr_ty_adjusted(self.tcx(), callee);
+        let callee_ty = return_if_err!(self.typer.expr_ty_adjusted(callee));
         debug!("walk_callee: callee={} callee_ty={}",
                callee.repr(self.tcx()), callee_ty.repr(self.tcx()));
         let call_scope = region::CodeExtent::from_node_id(call.id);
