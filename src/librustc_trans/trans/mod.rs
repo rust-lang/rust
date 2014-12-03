@@ -8,40 +8,64 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub mod doc;
-pub mod macros;
-pub mod inline;
-pub mod monomorphize;
-pub mod controlflow;
-pub mod glue;
-pub mod datum;
-pub mod callee;
-pub mod expr;
-pub mod common;
-pub mod context;
-pub mod consts;
-pub mod type_of;
-pub mod build;
-pub mod builder;
-pub mod base;
-pub mod _match;
-pub mod closure;
-pub mod tvec;
-pub mod meth;
-pub mod cabi;
-pub mod cabi_x86;
-pub mod cabi_x86_64;
-pub mod cabi_x86_win64;
-pub mod cabi_arm;
-pub mod cabi_mips;
-pub mod foreign;
-pub mod intrinsic;
-pub mod debuginfo;
-pub mod machine;
-pub mod adt;
-pub mod asm;
-pub mod type_;
-pub mod value;
-pub mod basic_block;
-pub mod llrepr;
-pub mod cleanup;
+use llvm::{ContextRef, ModuleRef};
+use metadata::common::LinkMeta;
+use middle::dependency_format;
+
+pub use self::base::trans_crate;
+pub use self::context::CrateContext;
+pub use self::common::gensym_name;
+
+mod doc;
+mod macros;
+mod inline;
+mod monomorphize;
+mod controlflow;
+mod glue;
+mod datum;
+mod callee;
+mod expr;
+mod common;
+mod context;
+mod consts;
+mod type_of;
+mod build;
+mod builder;
+mod base;
+mod _match;
+mod closure;
+mod tvec;
+mod meth;
+mod cabi;
+mod cabi_x86;
+mod cabi_x86_64;
+mod cabi_x86_win64;
+mod cabi_arm;
+mod cabi_mips;
+mod foreign;
+mod intrinsic;
+mod debuginfo;
+mod machine;
+mod adt;
+mod asm;
+mod type_;
+mod value;
+mod basic_block;
+mod llrepr;
+mod cleanup;
+
+pub struct ModuleTranslation {
+    pub llcx: ContextRef,
+    pub llmod: ModuleRef,
+}
+
+pub struct CrateTranslation {
+    pub modules: Vec<ModuleTranslation>,
+    pub metadata_module: ModuleTranslation,
+    pub link: LinkMeta,
+    pub metadata: Vec<u8>,
+    pub reachable: Vec<String>,
+    pub crate_formats: dependency_format::Dependencies,
+    pub no_builtins: bool,
+}
+

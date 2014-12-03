@@ -14,7 +14,7 @@ use self::UnsafeContext::*;
 
 use middle::def;
 use middle::ty::{mod, Ty};
-use middle::typeck::MethodCall;
+use middle::ty::MethodCall;
 use util::ppaux;
 
 use syntax::ast;

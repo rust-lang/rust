@@ -39,7 +39,6 @@ use syntax::parse::token;
 use syntax::ptr::P;
 
 use rustc_trans::back::link;
-use rustc_trans::driver::driver;
 use rustc::metadata::cstore;
 use rustc::metadata::csearch;
 use rustc::metadata::decoder;
@@ -48,6 +47,7 @@ use rustc::middle::subst;
 use rustc::middle::subst::VecPerParamSpace;
 use rustc::middle::ty;
 use rustc::middle::stability;
+use rustc::session::config;
 
 use std::rc::Rc;
 use std::u32;
@@ -131,7 +131,7 @@ impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
         externs.sort_by(|&(a, _), &(b, _)| a.cmp(&b));
 
         // Figure out the name of this crate
-        let input = driver::FileInput(cx.src.clone());
+        let input = config::Input::File(cx.src.clone());
         let name = link::find_crate_name(None, self.attrs.as_slice(), &input);
 
         // Clean the crate, translating the entire libsyntax AST to one that is

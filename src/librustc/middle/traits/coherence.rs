@@ -17,7 +17,7 @@ use super::util;
 use middle::subst;
 use middle::subst::Subst;
 use middle::ty::{mod, Ty};
-use middle::typeck::infer::{mod, InferCtxt};
+use middle::infer::{mod, InferCtxt};
 use syntax::ast;
 use syntax::codemap::DUMMY_SP;
 use util::ppaux::Repr;
