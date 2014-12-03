@@ -127,7 +127,7 @@ impl<V> VecMap<V> {
     /// ```
     /// let mut map: VecMap<String> = VecMap::new();
     /// map.reserve(10);
-    /// assert!(map.v.capacity() >= 9);
+    /// assert!(map.v.capacity() >= 10);
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn reserve(&mut self, additional: uint) {
@@ -146,7 +146,7 @@ impl<V> VecMap<V> {
     /// ```
     /// let mut map: VecMap<String> = VecMap::new();
     /// map.reserve_exact(10);
-    /// assert!(map.v.capacity() >= 9);
+    /// assert!(map.v.capacity() >= 10);
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn reserve_exact(&mut self, additional: uint) {

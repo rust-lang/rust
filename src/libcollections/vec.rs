@@ -621,7 +621,7 @@ impl<T> Vec<T> {
     /// ```
     /// let mut vec: Vec<uint> = Vec::new();
     /// vec.reserve(10);
-    /// assert!(vec.capacity() >= 9);
+    /// assert!(vec.capacity() >= 10);
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn reserve(&mut self, additional: uint) {
@@ -658,7 +658,7 @@ impl<T> Vec<T> {
     /// ```
     /// let mut vec: Vec<uint> = Vec::new();
     /// vec.reserve_exact(10);
-    /// assert!(vec.capacity() >= 9);
+    /// assert!(vec.capacity() >= 10);
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn reserve_exact(&mut self, additional: uint) {
