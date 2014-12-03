@@ -418,10 +418,8 @@ CARGO_LOCAL_INSTALL_SCRIPT="${CARGO_LOCAL_INSTALL_DIR}/install.sh"
 
 # Fetch the package.
 download_package() {
-    remote_url="$1"
-    tarball_name="$2"
-    remote_tarball="${remote_url}/${tarball_name}"
-    local_tarball="${CFG_TMP_DIR}/${tarball_name}"
+    remote_tarball="$1"
+    local_tarball="$2"
 
     msg "Downloading ${remote_tarball} to ${local_tarball}"
 
@@ -469,14 +467,17 @@ install_packages() {
     mkdir -p "${CFG_TMP_DIR}"
     need_ok "failed to create create temporary installation directory"
 
+    RUST_LOCAL_TARBALL="${CFG_TMP_DIR}/${RUST_TARBALL_NAME}"
+    CARGO_LOCAL_TARBALL="${CFG_TMP_DIR}/${CARGO_TARBALL_NAME}"
+
     download_package \
-        "${RUST_URL}" \
-        "${RUST_TARBALL_NAME}"
+        "${RUST_URL}/${RUST_TARBALL_NAME}" \
+        "${RUST_LOCAL_TARBALL}"
 
     if [ -z "${CFG_DISABLE_CARGO}" ]; then
         download_package \
-            "${CARGO_URL}" \
-            "${CARGO_TARBALL_NAME}"
+            "${CARGO_URL}/${CARGO_TARBALL_NAME}" \
+            "${CARGO_LOCAL_TARBALL}"
     fi
 
     install_package \
