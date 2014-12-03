@@ -1435,7 +1435,8 @@ impl<'a> fmt::Show for Item<'a> {
             clean::TypedefItem(ref t) => item_typedef(fmt, self.item, t),
             clean::MacroItem(ref m) => item_macro(fmt, self.item, m),
             clean::PrimitiveItem(ref p) => item_primitive(fmt, self.item, p),
-            clean::StaticItem(ref i) => item_static(fmt, self.item, i),
+            clean::StaticItem(ref i) | clean::ForeignStaticItem(ref i) =>
+                item_static(fmt, self.item, i),
             clean::ConstantItem(ref c) => item_constant(fmt, self.item, c),
             _ => Ok(())
         }
