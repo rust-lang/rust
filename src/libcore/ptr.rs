@@ -90,6 +90,7 @@
 use mem;
 use clone::Clone;
 use intrinsics;
+use kinds::Copy;
 use option::Option;
 use option::Option::{Some, None};
 use kinds::{Send, Sync};
@@ -108,6 +109,15 @@ pub use intrinsics::copy_memory;
 
 #[experimental = "uncertain about naming and semantics"]
 pub use intrinsics::set_memory;
+
+
+/// A wrapper type for raw pointers and integers that will never be
+/// NULL or 0 that might allow certain optimizations.
+#[lang="non_zero"]
+#[deriving(Clone, PartialEq, Eq, PartialOrd)]
+pub struct NonZero<T>(pub T);
+
+impl<T: Copy> Copy for NonZero<T> {}
 
 /// Creates a null raw pointer.
 ///
@@ -313,6 +323,32 @@ impl<T> RawPtr<T> for *const T {
     }
 }
 
+impl<T> RawPtr<T> for NonZero<*const T> {
+    #[inline]
+    fn null() -> NonZero<*const T> { NonZero(null()) }
+
+    #[inline]
+    fn is_null(&self) -> bool { false }
+
+    #[inline]
+    fn to_uint(&self) -> uint {
+        let NonZero(p) = *self;
+        p as uint
+    }
+
+    #[inline]
+    unsafe fn offset(self, count: int) -> NonZero<*const T> {
+        let NonZero(p) = self;
+        NonZero(intrinsics::offset(p, count))
+    }
+
+    #[inline]
+    unsafe fn as_ref<'a>(&self) -> Option<&'a T> {
+        let NonZero(p) = *self;
+        Some(&*p)
+    }
+}
+
 impl<T> RawPtr<T> for *mut T {
     #[inline]
     fn null() -> *mut T { null_mut() }
@@ -338,6 +374,32 @@ impl<T> RawPtr<T> for *mut T {
     }
 }
 
+impl<T> RawPtr<T> for NonZero<*mut T> {
+    #[inline]
+    fn null() -> NonZero<*mut T> { NonZero(null_mut()) }
+
+    #[inline]
+    fn is_null(&self) -> bool { false }
+
+    #[inline]
+    fn to_uint(&self) -> uint {
+        let NonZero(p) = *self;
+        p as uint
+    }
+
+    #[inline]
+    unsafe fn offset(self, count: int) -> NonZero<*mut T> {
+        let NonZero(p) = self;
+        NonZero(intrinsics::offset(p as *const T, count) as *mut T)
+    }
+
+    #[inline]
+    unsafe fn as_ref<'a>(&self) -> Option<&'a T> {
+        let NonZero(p) = *self;
+        Some(&*p)
+    }
+}
+
 impl<T> RawMutPtr<T> for *mut T {
     #[inline]
     unsafe fn as_mut<'a>(&self) -> Option<&'a mut T> {
@@ -346,6 +408,14 @@ impl<T> RawMutPtr<T> for *mut T {
         } else {
             Some(&mut **self)
         }
+    }
+}
+
+impl<T> RawMutPtr<T> for NonZero<*mut T> {
+    #[inline]
+    unsafe fn as_mut<'a>(&self) -> Option<&'a mut T> {
+        let NonZero(p) = *self;
+        Some(&mut *p)
     }
 }
 
