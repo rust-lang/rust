@@ -6165,12 +6165,12 @@ impl<'tcx> mc::Typer<'tcx> for ty::ctxt<'tcx> {
         self
     }
 
-    fn node_ty(&self, id: ast::NodeId) -> mc::McResult<Ty<'tcx>> {
-        Ok(ty::node_id_to_type(self, id))
+    fn node_ty(&self, id: ast::NodeId) -> Ty<'tcx> {
+        ty::node_id_to_type(self, id)
     }
 
-    fn expr_ty_adjusted(&self, expr: &ast::Expr) -> mc::McResult<Ty<'tcx>> {
-        Ok(ty::expr_ty_adjusted(self, expr))
+    fn expr_ty_adjusted(&self, expr: &ast::Expr) -> Ty<'tcx> {
+        ty::expr_ty_adjusted(self, expr)
     }
 
     fn node_method_ty(&self, method_call: ty::MethodCall) -> Option<Ty<'tcx>> {

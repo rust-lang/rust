@@ -463,12 +463,12 @@ impl<'blk, 'tcx> mc::Typer<'tcx> for BlockS<'blk, 'tcx> {
         self.tcx()
     }
 
-    fn node_ty(&self, id: ast::NodeId) -> mc::McResult<Ty<'tcx>> {
-        Ok(node_id_type(self, id))
+    fn node_ty(&self, id: ast::NodeId) -> Ty<'tcx> {
+        node_id_type(self, id)
     }
 
-    fn expr_ty_adjusted(&self, expr: &ast::Expr) -> mc::McResult<Ty<'tcx>> {
-        Ok(expr_ty_adjusted(self, expr))
+    fn expr_ty_adjusted(&self, expr: &ast::Expr) -> Ty<'tcx> {
+        expr_ty_adjusted(self, expr)
     }
 
     fn node_method_ty(&self, method_call: ty::MethodCall) -> Option<Ty<'tcx>> {

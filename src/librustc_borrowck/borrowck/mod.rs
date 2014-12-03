@@ -516,12 +516,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
     }
 
     pub fn cat_expr(&self, expr: &ast::Expr) -> mc::cmt<'tcx> {
-        match self.mc().cat_expr(expr) {
-            Ok(c) => c,
-            Err(()) => {
-                self.tcx.sess.span_bug(expr.span, "error in mem categorization");
-            }
-        }
+        self.mc().cat_expr(expr)
     }
 
     pub fn report(&self, err: BckError<'tcx>) {
