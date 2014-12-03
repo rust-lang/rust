@@ -23,7 +23,7 @@
        html_root_url = "http://doc.rust-lang.org/nightly/",
        html_playground_url = "http://play.rust-lang.org/")]
 
-#![feature(macro_rules, globs, import_shadowing)]
+#![feature(macro_rules, globs)]
 pub use self::Piece::*;
 pub use self::Position::*;
 pub use self::Alignment::*;

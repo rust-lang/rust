@@ -23,7 +23,7 @@
 
 #![allow(unknown_features)]
 #![feature(macro_rules, default_type_params, phase, globs)]
-#![feature(unsafe_destructor, import_shadowing, slicing_syntax)]
+#![feature(unsafe_destructor, slicing_syntax)]
 #![feature(unboxed_closures)]
 #![no_std]
 
