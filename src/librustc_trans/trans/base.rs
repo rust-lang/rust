@@ -965,7 +965,7 @@ pub fn trans_external_path<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
 pub fn invoke<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                           llfn: ValueRef,
-                          llargs: Vec<ValueRef> ,
+                          llargs: &[ValueRef],
                           fn_ty: Ty<'tcx>,
                           call_info: Option<NodeInfo>,
                           // FIXME(15064) is_lang_item is a horrible hack, please remove it

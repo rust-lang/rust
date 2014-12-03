@@ -13,18 +13,24 @@
 trait Foo for Sized? {}
 impl Foo for str {}
 
-fn test<Sized? T: Foo>(t: &T) {
+fn test1<Sized? T: Foo>(t: &T) {
     let u: &Foo = t;
     //~^ ERROR `core::kinds::Sized` is not implemented for the type `T`
+}
 
+fn test2<Sized? T: Foo>(t: &T) {
     let v: &Foo = t as &Foo;
     //~^ ERROR `core::kinds::Sized` is not implemented for the type `T`
 }
 
-fn main() {
+fn test3() {
     let _: &[&Foo] = &["hi"];
     //~^ ERROR `core::kinds::Sized` is not implemented for the type `str`
+}
 
+fn test4() {
     let _: &Foo = "hi" as &Foo;
     //~^ ERROR `core::kinds::Sized` is not implemented for the type `str`
 }
+
+fn main() { }

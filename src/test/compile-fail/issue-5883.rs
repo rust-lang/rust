@@ -18,7 +18,6 @@ fn new_struct(r: A+'static)
     -> Struct { //~^  ERROR the trait `core::kinds::Sized` is not implemented
     //~^ ERROR the trait `core::kinds::Sized` is not implemented
     Struct { r: r }
-    //~^ ERROR the trait `core::kinds::Sized` is not implemented
 }
 
 trait Curve {}

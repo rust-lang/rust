@@ -22,7 +22,7 @@ struct MyStruct {
 }
 
 struct MyNoncopyStruct {
-    x: Box<int>,
+    x: Box<char>,
 }
 
 fn test<'a,T,U:Copy>(_: &'a int) {
