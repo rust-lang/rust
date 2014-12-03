@@ -966,7 +966,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     pub fn clear(&mut self) {
         // Prevent reallocations from happening from now on. Makes it possible
         // for the map to be reused but has a downside: reserves permanently.
-        self.resize_policy.reserve(self.table.size());
+        self.resize_policy.reserve(max(self.table.size(), INITIAL_CAPACITY).next_power_of_two());
 
         let cap = self.table.capacity();
         let mut buckets = Bucket::first(&mut self.table);
@@ -2105,6 +2105,19 @@ mod test_map {
             }
 
             check(&m);
+        }
+    }
+
+    // This once triggered an assert failure in `robin_hood`.
+    #[test]
+    fn test_no_robinhood_failure() {
+        let mut m = HashMap::with_capacity(0);
+        m.clear();
+        for i in range(0u, 3) {
+            match m.entry(i) {
+                Vacant(x) => { x.set(i); },
+                _ => {},
+            }
         }
     }
 }
