@@ -6169,7 +6169,11 @@ impl<'tcx> mc::Typer<'tcx> for ty::ctxt<'tcx> {
         Ok(ty::node_id_to_type(self, id))
     }
 
-    fn node_method_ty(&self, method_call: MethodCall) -> Option<Ty<'tcx>> {
+    fn expr_ty_adjusted(&self, expr: &ast::Expr) -> mc::McResult<Ty<'tcx>> {
+        Ok(ty::expr_ty_adjusted(self, expr))
+    }
+
+    fn node_method_ty(&self, method_call: ty::MethodCall) -> Option<Ty<'tcx>> {
         self.method_map.borrow().get(&method_call).map(|method| method.ty)
     }
 

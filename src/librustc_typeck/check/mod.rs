@@ -290,6 +290,9 @@ impl<'a, 'tcx> mem_categorization::Typer<'tcx> for FnCtxt<'a, 'tcx> {
         let ty = self.node_ty(id);
         Ok(self.infcx().resolve_type_vars_if_possible(ty))
     }
+    fn expr_ty_adjusted(&self, expr: &ast::Expr) -> McResult<Ty<'tcx>> {
+        let ty = self.expr_ty_adjusted(expr);
+        Ok(self.infcx().resolve_type_vars_if_possible(ty))
     }
     fn node_method_ty(&self, method_call: ty::MethodCall)
                       -> Option<Ty<'tcx>> {
