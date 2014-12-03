@@ -34,8 +34,7 @@ pub enum ItemType {
     Method          = 10,
     StructField     = 11,
     Variant         = 12,
-    ForeignFunction = 13,
-    ForeignStatic   = 14,
+    // we used to have ForeignFunction and ForeignStatic. they are retired now.
     Macro           = 15,
     Primitive       = 16,
     AssociatedType  = 17,
@@ -59,8 +58,8 @@ impl ItemType {
             clean::MethodItem(..)          => ItemType::Method,
             clean::StructFieldItem(..)     => ItemType::StructField,
             clean::VariantItem(..)         => ItemType::Variant,
-            clean::ForeignFunctionItem(..) => ItemType::ForeignFunction,
-            clean::ForeignStaticItem(..)   => ItemType::ForeignStatic,
+            clean::ForeignFunctionItem(..) => ItemType::Function, // no ForeignFunction
+            clean::ForeignStaticItem(..)   => ItemType::Static, // no ForeignStatic
             clean::MacroItem(..)           => ItemType::Macro,
             clean::PrimitiveItem(..)       => ItemType::Primitive,
             clean::AssociatedTypeItem(..)  => ItemType::AssociatedType,
@@ -95,8 +94,6 @@ impl ItemType {
             ItemType::Method          => "method",
             ItemType::StructField     => "structfield",
             ItemType::Variant         => "variant",
-            ItemType::ForeignFunction => "ffi",
-            ItemType::ForeignStatic   => "ffs",
             ItemType::Macro           => "macro",
             ItemType::Primitive       => "primitive",
             ItemType::AssociatedType  => "associatedtype",
