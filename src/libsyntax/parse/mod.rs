@@ -393,16 +393,28 @@ pub fn char_lit(lit: &str) -> (char, int) {
     let msg = format!("lexer should have rejected a bad character escape {}", lit);
     let msg2 = msg.as_slice();
 
-    let esc: |uint| -> Option<(char, int)> = |len|
+    fn esc(len: uint, lit: &str) -> Option<(char, int)> {
         num::from_str_radix(lit.slice(2, len), 16)
         .and_then(char::from_u32)
-        .map(|x| (x, len as int));
+        .map(|x| (x, len as int))
+    }
+
+    let unicode_escape: || -> Option<(char, int)> = ||
+        if lit.as_bytes()[2] == b'{' {
+            let idx = lit.find('}').expect(msg2);
+            let subslice = lit.slice(3, idx);
+            num::from_str_radix(subslice, 16)
+                .and_then(char::from_u32)
+                .map(|x| (x, subslice.char_len() as int + 4))
+        } else {
+            esc(6, lit)
+        };
 
     // Unicode escapes
     return match lit.as_bytes()[1] as char {
-        'x' | 'X' => esc(4),
-        'u' => esc(6),
-        'U' => esc(10),
+        'x' | 'X' => esc(4, lit),
+        'u' => unicode_escape(),
+        'U' => esc(10, lit),
         _ => None,
     }.expect(msg2);
 }

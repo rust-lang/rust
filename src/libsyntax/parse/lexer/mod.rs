@@ -764,6 +764,15 @@ impl<'a> StringReader<'a> {
         }
     }
 
+    // SNAP c9f6d69
+    #[allow(unused)]
+    fn old_escape_warning(&mut self, sp: Span) {
+        self.span_diagnostic
+            .span_warn(sp, "\\U00ABCD12 and \\uABCD escapes are deprecated");
+        self.span_diagnostic
+            .span_help(sp, "use \\u{ABCD12} escapes instead");
+    }
+
     /// Scan for a single (possibly escaped) byte or char
     /// in a byte, (non-raw) byte string, char, or (non-raw) string literal.
     /// `start` is the position of `first_source_char`, which is already consumed.
@@ -782,12 +791,24 @@ impl<'a> StringReader<'a> {
                     Some(e) => {
                         return match e {
                             'n' | 'r' | 't' | '\\' | '\'' | '"' | '0' => true,
-                            'x' => self.scan_hex_digits(2u, delim, !ascii_only),
+                            'x' => self.scan_byte_escape(delim, !ascii_only),
                             'u' if !ascii_only => {
-                                self.scan_hex_digits(4u, delim, false)
+                                if self.curr == Some('{') {
+                                    self.scan_unicode_escape(delim)
+                                } else {
+                                    let res = self.scan_hex_digits(4u, delim, false);
+                                    // SNAP c9f6d69
+                                    //let sp = codemap::mk_sp(escaped_pos, self.last_pos);
+                                    //self.old_escape_warning(sp);
+                                    res
+                                }
                             }
                             'U' if !ascii_only => {
-                                self.scan_hex_digits(8u, delim, false)
+                                let res = self.scan_hex_digits(8u, delim, false);
+                                // SNAP c9f6d69
+                                //let sp = codemap::mk_sp(escaped_pos, self.last_pos);
+                                //self.old_escape_warning(sp);
+                                res
                             }
                             '\n' if delim == '"' => {
                                 self.consume_whitespace();
@@ -846,6 +867,56 @@ impl<'a> StringReader<'a> {
             }
         }
         true
+    }
+
+    /// Scan over a \u{...} escape
+    ///
+    /// At this point, we have already seen the \ and the u, the { is the current character. We
+    /// will read at least one digit, and up to 6, and pass over the }.
+    fn scan_unicode_escape(&mut self, delim: char) -> bool {
+        self.bump(); // past the {
+        let start_bpos = self.last_pos;
+        let mut count: uint = 0;
+        let mut accum_int = 0;
+
+        while !self.curr_is('}') && count <= 6 {
+            let c = match self.curr {
+                Some(c) => c,
+                None => {
+                    self.fatal_span_(start_bpos, self.last_pos,
+                                     "unterminated unicode escape (found EOF)");
+                }
+            };
+            accum_int *= 16;
+            accum_int += c.to_digit(16).unwrap_or_else(|| {
+                if c == delim {
+                    self.fatal_span_(self.last_pos, self.pos,
+                                     "unterminated unicode escape (needed a `}`)");
+                } else {
+                    self.fatal_span_char(self.last_pos, self.pos,
+                                   "illegal character in unicode escape", c);
+                }
+            }) as u32;
+            self.bump();
+            count += 1;
+        }
+
+        if count > 6 {
+            self.fatal_span_(start_bpos, self.last_pos,
+                          "overlong unicode escape (can have at most 6 hex digits)");
+        }
+
+        self.bump(); // past the ending }
+
+        let mut valid = count >= 1 && count <= 6;
+        if char::from_u32(accum_int).is_none() {
+            valid = false;
+        }
+
+        if !valid {
+            self.fatal_span_(start_bpos, self.last_pos, "illegal unicode character escape");
+        }
+        valid
     }
 
     /// Scan over a float exponent.
@@ -1271,6 +1342,10 @@ impl<'a> StringReader<'a> {
         let id = if valid { self.name_from(start) } else { token::intern("??") };
         self.bump(); // advance curr past token
         return token::Byte(id);
+    }
+
+    fn scan_byte_escape(&mut self, delim: char, below_0x7f_only: bool) -> bool {
+        self.scan_hex_digits(2, delim, below_0x7f_only)
     }
 
     fn scan_byte_string(&mut self) -> token::Lit {
