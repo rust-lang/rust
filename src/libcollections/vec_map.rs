@@ -115,6 +115,22 @@ impl<V> VecMap<V> {
         VecMap { v: Vec::with_capacity(capacity) }
     }
 
+    /// Returns the number of elements the `VecMap` can hold without
+    /// reallocating.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::VecMap;
+    /// let map: VecMap<String> = VecMap::with_capacity(10);
+    /// assert_eq!(map.capacity(), 10);
+    /// ```
+    #[inline]
+    #[stable]
+    pub fn capacity(&self) -> uint {
+        self.v.capacity()
+    }
+
     /// Reserves capacity for at least `additional` more elements to be inserted in the given
     /// `VecMap`. The collection may reserve more space to avoid frequent reallocations.
     ///
@@ -125,9 +141,10 @@ impl<V> VecMap<V> {
     /// # Example
     ///
     /// ```
+    /// use std::collections::VecMap;
     /// let mut map: VecMap<String> = VecMap::new();
     /// map.reserve(10);
-    /// assert!(map.v.capacity() >= 10);
+    /// assert!(map.capacity() >= 10);
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn reserve(&mut self, additional: uint) {
@@ -144,9 +161,10 @@ impl<V> VecMap<V> {
     /// # Example
     ///
     /// ```
+    /// use std::collections::VecMap;
     /// let mut map: VecMap<String> = VecMap::new();
     /// map.reserve_exact(10);
-    /// assert!(map.v.capacity() >= 10);
+    /// assert!(map.capacity() >= 10);
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn reserve_exact(&mut self, additional: uint) {
@@ -163,9 +181,10 @@ impl<V> VecMap<V> {
     /// # Example
     ///
     /// ```
+    /// use std::collections::VecMap;
     /// let mut map: VecMap<String> = VecMap::new();
     /// map.reserve_index(10);
-    /// assert!(map.v.capacity() >= 11);
+    /// assert!(map.capacity() >= 11);
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn reserve_index(&mut self, index: uint) {
@@ -186,9 +205,10 @@ impl<V> VecMap<V> {
     /// # Example
     ///
     /// ```
+    /// use std::collections::VecMap;
     /// let mut map: VecMap<String> = VecMap::new();
     /// map.reserve_index_exact(10);
-    /// assert!(map.v.capacity() >= 11);
+    /// assert!(map.capacity() >= 11);
     /// ```
     pub fn reserve_index_exact(&mut self, index: uint) {
         self.v.reserve_index_exact(index);
@@ -780,89 +800,89 @@ mod test_map {
     #[test]
     fn test_reserve() {
         let mut map = VecMap::new();
-        assert_eq!(map.v.capacity(), 0);
+        assert_eq!(map.capacity(), 0);
 
         map.reserve(2);
-        assert!(map.v.capacity() >= 2);
+        assert!(map.capacity() >= 2);
 
         for i in range(0u, 16) {
             map.insert(i, "a");
         }
 
-        assert!(map.v.capacity() >= 16);
+        assert!(map.capacity() >= 16);
         map.reserve(16);
-        assert!(map.v.capacity() >= 32);
+        assert!(map.capacity() >= 32);
 
         map.insert(16,"b");
 
         map.reserve(16);
-        assert!(map.v.capacity() >= 33)
+        assert!(map.capacity() >= 33)
     }
 
     #[test]
     fn test_reserve_exact() {
         let mut map = VecMap::new();
-        assert_eq!(map.v.capacity(), 0);
+        assert_eq!(map.capacity(), 0);
 
         map.reserve_exact(2);
-        assert!(map.v.capacity() >= 2);
+        assert!(map.capacity() >= 2);
 
         for i in range(0u, 16) {
             map.insert(i, "a");
         }
 
-        assert!(map.v.capacity() >= 16);
+        assert!(map.capacity() >= 16);
         map.reserve_exact(16);
-        assert!(map.v.capacity() >= 32);
+        assert!(map.capacity() >= 32);
 
         map.insert(16,"b");
 
         map.reserve_exact(16);
-        assert!(map.v.capacity() >= 33)
+        assert!(map.capacity() >= 33)
     }
 
     #[test]
     fn test_reserve_index() {
         let mut map = VecMap::new();
-        assert_eq!(map.v.capacity(), 0);
+        assert_eq!(map.capacity(), 0);
 
         map.reserve_index(2);
-        assert!(map.v.capacity() >= 3);
+        assert!(map.capacity() >= 3);
 
         for i in range(0u, 16) {
             map.insert(i, "a");
         }
 
-        assert!(map.v.capacity() >= 16);
+        assert!(map.capacity() >= 16);
         map.reserve_index(16);
-        assert!(map.v.capacity() >= 17);
+        assert!(map.capacity() >= 17);
 
         map.insert(16,"b");
 
         map.reserve_index(32);
-        assert!(map.v.capacity() >= 33)
+        assert!(map.capacity() >= 33)
     }
 
     #[test]
     fn test_reserve_index_exact() {
         let mut map = VecMap::new();
-        assert_eq!(map.v.capacity(), 0);
+        assert_eq!(map.capacity(), 0);
 
         map.reserve_index_exact(2);
-        assert!(map.v.capacity() >= 3);
+        assert!(map.capacity() >= 3);
 
         for i in range(0u, 16) {
             map.insert(i, "a");
         }
 
-        assert!(map.v.capacity() >= 16);
+        assert!(map.capacity() >= 16);
         map.reserve_index_exact(16);
-        assert!(map.v.capacity() >= 17);
+        assert!(map.capacity() >= 17);
 
         map.insert(16,"b");
 
         map.reserve_index_exact(32);
-        assert!(map.v.capacity() >= 33)
+        assert!(map.capacity() >= 33)
     }
 
     #[test]
