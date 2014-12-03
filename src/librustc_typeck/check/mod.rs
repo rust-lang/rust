@@ -3867,7 +3867,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         }
 
         let lhs_ty = fcx.expr_ty(&**lhs);
-        check_expr_has_type(fcx, &**rhs, lhs_ty);
+        check_expr_coercable_to_type(fcx, &**rhs, lhs_ty);
         let rhs_ty = fcx.expr_ty(&**rhs);
 
         fcx.require_expr_have_sized_type(&**lhs, traits::AssignmentLhsSized);
