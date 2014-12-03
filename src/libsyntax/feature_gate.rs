@@ -32,9 +32,7 @@ use parse::token;
 
 use std::slice;
 
-/// This is a list of all known features since the beginning of time. This list
-/// can never shrink, it may only be expanded (in order to prevent old programs
-/// from failing to compile). The status of each feature may change, however.
+// if you change this list without updating src/doc/reference.md, @cmr will be sad
 static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("globs", Active),
     ("macro_rules", Active),
@@ -72,8 +70,6 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
 
     ("if_let", Active),
     ("while_let", Active),
-
-    // if you change this list without updating src/doc/reference.md, cmr will be sad
 
     // A temporary feature gate used to enable parser extensions needed
     // to bootstrap fix for #5723.
