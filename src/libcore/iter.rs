@@ -264,7 +264,7 @@ pub trait IteratorExt<A>: Iterator<A> {
     /// ```
     #[inline]
     #[unstable = "waiting for unboxed closures"]
-    fn skip_while<'r>(self, predicate: |&A|: 'r -> bool) -> SkipWhile<'r, A, Self> {
+    fn skip_while<P>(self, predicate: P) -> SkipWhile<A, Self, P> where P: FnMut(&A) -> bool {
         SkipWhile{iter: self, flag: false, predicate: predicate}
     }
 
@@ -1645,14 +1645,14 @@ impl<'a, A, T: Iterator<A>> Peekable<A, T> {
 /// An iterator which rejects elements while `predicate` is true
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 #[stable]
-pub struct SkipWhile<'a, A, T> {
-    iter: T,
+pub struct SkipWhile<A, I, P> where I: Iterator<A>, P: FnMut(&A) -> bool {
+    iter: I,
     flag: bool,
-    predicate: |&A|: 'a -> bool
+    predicate: P,
 }
 
 #[unstable = "trait is unstable"]
-impl<'a, A, T: Iterator<A>> Iterator<A> for SkipWhile<'a, A, T> {
+impl<A, I, P> Iterator<A> for SkipWhile<A, I, P> where I: Iterator<A>, P: FnMut(&A) -> bool {
     #[inline]
     fn next(&mut self) -> Option<A> {
         for x in self.iter {
