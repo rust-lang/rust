@@ -221,7 +221,7 @@ fn test_iterator_flat_map() {
 #[test]
 fn test_inspect() {
     let xs = [1u, 2, 3, 4];
-    let mut n = 0;
+    let mut n = 0u;
 
     let ys = xs.iter()
                .map(|&x| x)
