@@ -86,7 +86,6 @@
        html_root_url = "http://doc.rust-lang.org/nightly/",
        html_playground_url = "http://play.rust-lang.org/")]
 #![feature(globs, phase)]
-#![feature(import_shadowing)]
 #![feature(unboxed_closures)]
 #![deny(missing_docs)]
 
