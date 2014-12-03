@@ -432,7 +432,7 @@ pub trait IteratorExt<A>: Iterator<A> {
     /// ```
     #[inline]
     #[unstable = "waiting for unboxed closures"]
-    fn inspect<'r>(self, f: |&A|: 'r) -> Inspect<'r, A, Self> {
+    fn inspect<F>(self, f: F) -> Inspect<A, Self, F> where F: FnMut(&A) {
         Inspect{iter: self, f: f}
     }
 
@@ -777,7 +777,10 @@ pub trait ExactSizeIterator<A> : DoubleEndedIterator<A> {
 #[unstable = "trait is unstable"]
 impl<A, T: ExactSizeIterator<A>> ExactSizeIterator<(uint, A)> for Enumerate<T> {}
 #[unstable = "trait is unstable"]
-impl<'a, A, T: ExactSizeIterator<A>> ExactSizeIterator<A> for Inspect<'a, A, T> {}
+impl<A, I, F> ExactSizeIterator<A> for Inspect<A, I, F> where
+    I: ExactSizeIterator<A>,
+    F: FnMut(&A),
+{}
 #[unstable = "trait is unstable"]
 impl<A, T: ExactSizeIterator<A>> ExactSizeIterator<A> for Rev<T> {}
 #[unstable = "trait is unstable"]
@@ -2012,12 +2015,12 @@ impl<T> Fuse<T> {
 /// element before yielding it.
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 #[unstable = "waiting for unboxed closures"]
-pub struct Inspect<'a, A, T> {
-    iter: T,
-    f: |&A|: 'a
+pub struct Inspect<A, I, F> where I: Iterator<A>, F: FnMut(&A) {
+    iter: I,
+    f: F,
 }
 
-impl<'a, A, T> Inspect<'a, A, T> {
+impl<A, I, F> Inspect<A, I, F> where I: Iterator<A>, F: FnMut(&A) {
     #[inline]
     fn do_inspect(&mut self, elt: Option<A>) -> Option<A> {
         match elt {
@@ -2030,7 +2033,7 @@ impl<'a, A, T> Inspect<'a, A, T> {
 }
 
 #[unstable = "trait is unstable"]
-impl<'a, A, T: Iterator<A>> Iterator<A> for Inspect<'a, A, T> {
+impl<A, I, F> Iterator<A> for Inspect<A, I, F> where I: Iterator<A>, F: FnMut(&A) {
     #[inline]
     fn next(&mut self) -> Option<A> {
         let next = self.iter.next();
@@ -2044,8 +2047,10 @@ impl<'a, A, T: Iterator<A>> Iterator<A> for Inspect<'a, A, T> {
 }
 
 #[unstable = "trait is unstable"]
-impl<'a, A, T: DoubleEndedIterator<A>> DoubleEndedIterator<A>
-for Inspect<'a, A, T> {
+impl<A, I, F> DoubleEndedIterator<A> for Inspect<A, I, F> where
+    I: DoubleEndedIterator<A>,
+    F: FnMut(&A),
+{
     #[inline]
     fn next_back(&mut self) -> Option<A> {
         let next = self.iter.next_back();
@@ -2054,8 +2059,10 @@ for Inspect<'a, A, T> {
 }
 
 #[experimental = "trait is experimental"]
-impl<'a, A, T: RandomAccessIterator<A>> RandomAccessIterator<A>
-for Inspect<'a, A, T> {
+impl<A, I, F> RandomAccessIterator<A> for Inspect<A, I, F> where
+    I: RandomAccessIterator<A>,
+    F: FnMut(&A),
+{
     #[inline]
     fn indexable(&self) -> uint {
         self.iter.indexable()
