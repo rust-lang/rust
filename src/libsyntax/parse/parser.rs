@@ -3111,6 +3111,11 @@ impl<'a> Parser<'a> {
                 first = false;
             } else {
                 self.expect(&token::Comma);
+
+                if self.token == token::CloseDelim(token::Bracket)
+                        && (before_slice || after.len() != 0) {
+                    break
+                }
             }
 
             if before_slice {
