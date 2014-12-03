@@ -125,7 +125,7 @@ impl<V> VecMap<V> {
     /// # Example
     ///
     /// ```
-    /// let mut map = VecMap::new();
+    /// let mut map: VecMap<String> = VecMap::new();
     /// map.reserve(10);
     /// assert!(map.v.capacity() >= 9);
     /// ```
@@ -144,7 +144,7 @@ impl<V> VecMap<V> {
     /// # Example
     ///
     /// ```
-    /// let mut map = VecMap::new();
+    /// let mut map: VecMap<String> = VecMap::new();
     /// map.reserve_exact(10);
     /// assert!(map.v.capacity() >= 9);
     /// ```
@@ -163,7 +163,7 @@ impl<V> VecMap<V> {
     /// # Example
     ///
     /// ```
-    /// let mut map = VecMap::new();
+    /// let mut map: VecMap<String> = VecMap::new();
     /// map.reserve_index(10);
     /// assert!(map.v.capacity() >= 11);
     /// ```
@@ -186,7 +186,7 @@ impl<V> VecMap<V> {
     /// # Example
     ///
     /// ```
-    /// let mut map = VecMap::new();
+    /// let mut map: VecMap<String> = VecMap::new();
     /// map.reserve_index_exact(10);
     /// assert!(map.v.capacity() >= 11);
     /// ```

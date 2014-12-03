@@ -619,7 +619,7 @@ impl<T> Vec<T> {
     /// # Example
     ///
     /// ```
-    /// let mut vec = Vec::new();
+    /// let mut vec: Vec<uint> = Vec::new();
     /// vec.reserve(10);
     /// assert!(vec.capacity() >= 9);
     /// ```
@@ -656,7 +656,7 @@ impl<T> Vec<T> {
     /// # Example
     ///
     /// ```
-    /// let mut vec = Vec::new();
+    /// let mut vec: Vec<uint> = Vec::new();
     /// vec.reserve_exact(10);
     /// assert!(vec.capacity() >= 9);
     /// ```
@@ -680,7 +680,7 @@ impl<T> Vec<T> {
     /// # Example
     ///
     /// ```
-    /// let mut vec = Vec::new();
+    /// let mut vec: Vec<uint> = Vec::new();
     /// vec.reserve_index(10);
     /// assert!(vec.capacity() >= 11);
     /// ```
@@ -706,7 +706,7 @@ impl<T> Vec<T> {
     /// # Example
     ///
     /// ```
-    /// let mut vec = Vec::new();
+    /// let mut vec: Vec<uint> = Vec::new();
     /// vec.reserve_index_exact(10);
     /// assert!(vec.capacity() >= 11);
     /// ```
