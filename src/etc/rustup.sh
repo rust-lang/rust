@@ -497,15 +497,28 @@ download_package() {
     remote_sha256="${remote_tarball}.sha256"
 
     # Check if we've already downloaded this file.
-    if [ ! -e "${local_tarball}" ]; then
-        msg "Downloading ${remote_tarball} to ${local_tarball}"
+    if [ -e "${local_tarball}.tmp" ]; then
+        msg "Resuming ${remote_tarball} to ${local_tarball}"
 
-        "${CFG_CURL}" -f -o "${local_tarball} "${remote_tarball}"
+        "${CFG_CURL}" -f -C - -o "${local_tarball}.tmp" "${remote_tarball}"
         if [ $? -ne 0 ]
         then
             rm -Rf "${CFG_TMP_DIR}"
             err "failed to download installer"
         fi
+
+        mv "${local_tarball}.tmp" "${local_tarball}"
+    elif [ ! -e "${local_tarball}" ]; then
+        msg "Downloading ${remote_tarball} to ${local_tarball}"
+
+        "${CFG_CURL}" -f -o "${local_tarball}.tmp" "${remote_tarball}"
+        if [ $? -ne 0 ]
+        then
+            rm -Rf "${CFG_TMP_DIR}"
+            err "failed to download installer"
+        fi
+
+        mv "${local_tarball}.tmp" "${local_tarball}"
     fi
 
     verify_hash "${remote_sha256}" "${local_tarball}"
