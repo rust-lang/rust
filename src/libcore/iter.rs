@@ -283,7 +283,7 @@ pub trait IteratorExt<A>: Iterator<A> {
     /// ```
     #[inline]
     #[unstable = "waiting for unboxed closures, may want to require peek"]
-    fn take_while<'r>(self, predicate: |&A|: 'r -> bool) -> TakeWhile<'r, A, Self> {
+    fn take_while<P>(self, predicate: P) -> TakeWhile<A, Self, P> where P: FnMut(&A) -> bool {
         TakeWhile{iter: self, flag: false, predicate: predicate}
     }
 
@@ -1674,14 +1674,14 @@ impl<A, I, P> Iterator<A> for SkipWhile<A, I, P> where I: Iterator<A>, P: FnMut(
 /// An iterator which only accepts elements while `predicate` is true
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 #[stable]
-pub struct TakeWhile<'a, A, T> {
-    iter: T,
+pub struct TakeWhile<A, I, P> where I: Iterator<A>, P: FnMut(&A) -> bool {
+    iter: I,
     flag: bool,
-    predicate: |&A|: 'a -> bool
+    predicate: P,
 }
 
 #[unstable = "trait is unstable"]
-impl<'a, A, T: Iterator<A>> Iterator<A> for TakeWhile<'a, A, T> {
+impl<A, I, P> Iterator<A> for TakeWhile<A, I, P> where I: Iterator<A>, P: FnMut(&A) -> bool {
     #[inline]
     fn next(&mut self) -> Option<A> {
         if self.flag {
