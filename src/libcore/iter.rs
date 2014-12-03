@@ -372,8 +372,10 @@ pub trait IteratorExt<A>: Iterator<A> {
     /// ```
     #[inline]
     #[unstable = "waiting for unboxed closures"]
-    fn flat_map<'r, B, U: Iterator<B>>(self, f: |A|: 'r -> U)
-        -> FlatMap<'r, A, Self, U> {
+    fn flat_map<B, U, F>(self, f: F) -> FlatMap<A, B, Self, U, F> where
+        U: Iterator<B>,
+        F: FnMut(A) -> U,
+    {
         FlatMap{iter: self, f: f, frontiter: None, backiter: None }
     }
 
@@ -1864,15 +1866,19 @@ impl<A, B, I, St, F> Iterator<B> for Scan<A, B, I, St, F> where
 ///
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 #[unstable = "waiting for unboxed closures"]
-pub struct FlatMap<'a, A, T, U> {
-    iter: T,
-    f: |A|: 'a -> U,
+pub struct FlatMap<A, B, I, U, F> where I: Iterator<A>, U: Iterator<B>, F: FnMut(A) -> U {
+    iter: I,
+    f: F,
     frontiter: Option<U>,
     backiter: Option<U>,
 }
 
 #[unstable = "trait is unstable"]
-impl<'a, A, T: Iterator<A>, B, U: Iterator<B>> Iterator<B> for FlatMap<'a, A, T, U> {
+impl<A, B, I, U, F> Iterator<B> for FlatMap<A, B, I, U, F> where
+    I: Iterator<A>,
+    U: Iterator<B>,
+    F: FnMut(A) -> U,
+{
     #[inline]
     fn next(&mut self) -> Option<B> {
         loop {
@@ -1901,10 +1907,11 @@ impl<'a, A, T: Iterator<A>, B, U: Iterator<B>> Iterator<B> for FlatMap<'a, A, T,
 }
 
 #[unstable = "trait is unstable"]
-impl<'a,
-     A, T: DoubleEndedIterator<A>,
-     B, U: DoubleEndedIterator<B>> DoubleEndedIterator<B>
-     for FlatMap<'a, A, T, U> {
+impl<A, B, I, U, F> DoubleEndedIterator<B> for FlatMap<A, B, I, U, F> where
+    I: DoubleEndedIterator<A>,
+    U: DoubleEndedIterator<B>,
+    F: FnMut(A) -> U,
+{
     #[inline]
     fn next_back(&mut self) -> Option<B> {
         loop {
