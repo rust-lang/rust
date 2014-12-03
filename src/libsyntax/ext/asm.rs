@@ -148,7 +148,7 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
 
                     let (s, _str_style) = p.parse_str();
 
-                    if OPTIONS.iter().any(|opt| s.equiv(opt)) {
+                    if OPTIONS.iter().any(|&opt| s == opt) {
                         cx.span_warn(p.last_span, "expected a clobber, found an option");
                     }
                     clobs.push(s);
@@ -157,13 +157,13 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
             Options => {
                 let (option, _str_style) = p.parse_str();
 
-                if option.equiv(&("volatile")) {
+                if option == "volatile" {
                     // Indicates that the inline assembly has side effects
                     // and must not be optimized out along with its outputs.
                     volatile = true;
-                } else if option.equiv(&("alignstack")) {
+                } else if option == "alignstack" {
                     alignstack = true;
-                } else if option.equiv(&("intel")) {
+                } else if option == "intel" {
                     dialect = ast::AsmIntel;
                 } else {
                     cx.span_warn(p.last_span, "unrecognized option");

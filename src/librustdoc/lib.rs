@@ -172,7 +172,7 @@ pub fn main_args(args: &[String]) -> int {
         }
     }
 
-    if matches.opt_strs("passes").as_slice() == &["list".to_string()] {
+    if matches.opt_strs("passes") == ["list"] {
         println!("Available passes for running rustdoc:");
         for &(name, _, description) in PASSES.iter() {
             println!("{:>20} - {}", name, description);
