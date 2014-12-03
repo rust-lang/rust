@@ -254,12 +254,14 @@ pub fn vec_map_to_string<T, F>(ts: &[T], f: F) -> String where
 
 pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
     fn bare_fn_to_string<'tcx>(cx: &ctxt<'tcx>,
+                               opt_def_id: Option<ast::DefId>,
                                unsafety: ast::Unsafety,
                                abi: abi::Abi,
                                ident: Option<ast::Ident>,
                                sig: &ty::PolyFnSig<'tcx>)
                                -> String {
         let mut s = String::new();
+
         match unsafety {
             ast::Unsafety::Normal => {}
             ast::Unsafety::Unsafe => {
@@ -283,6 +285,16 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
         }
 
         push_sig_to_string(cx, &mut s, '(', ')', sig, "");
+
+        match opt_def_id {
+            Some(def_id) => {
+                s.push_str(" {");
+                let path_str = ty::item_path_str(cx, def_id);
+                s.push_str(path_str[]);
+                s.push_str("}");
+            }
+            None => { }
+        }
 
         s
     }
@@ -408,8 +420,8 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
         ty_closure(ref f) => {
             closure_to_string(cx, &**f)
         }
-        ty_bare_fn(_, ref f) => {
-            bare_fn_to_string(cx, f.unsafety, f.abi, None, &f.sig)
+        ty_bare_fn(opt_def_id, ref f) => {
+            bare_fn_to_string(cx, opt_def_id, f.unsafety, f.abi, None, &f.sig)
         }
         ty_infer(infer_ty) => infer_ty_to_string(cx, infer_ty),
         ty_err => "[type error]".to_string(),
