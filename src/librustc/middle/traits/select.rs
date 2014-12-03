@@ -113,7 +113,7 @@ pub enum MethodMatchedData {
 /// candidate is one that might match or might not, depending on how
 /// type variables wind up being resolved. This only occurs during inference.
 ///
-/// For selection to suceed, there must be exactly one non-ambiguous
+/// For selection to succeed, there must be exactly one non-ambiguous
 /// candidate.  Usually, it is not possible to have more than one
 /// definitive candidate, due to the coherence rules. However, there is
 /// one case where it could occur: if there is a blanket impl for a
@@ -1149,24 +1149,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                              candidates: &mut CandidateSet<'tcx>)
                                              -> Result<(),SelectionError<'tcx>>
     {
-        // FIXME -- To be more like a normal impl, we should just
-        // ignore the nested cases here, and instead generate nested
-        // obligations in `confirm_candidate`. However, this doesn't
-        // work because we require handling the recursive cases to
-        // avoid infinite cycles (that is, with recursive types,
-        // sometimes `Foo : Copy` only holds if `Foo : Copy`).
-
         match self.builtin_bound(bound, stack.obligation.self_ty()) {
-            Ok(If(nested)) => {
-                debug!("builtin_bound: bound={} nested={}",
-                       bound.repr(self.tcx()),
-                       nested.repr(self.tcx()));
-                let data = self.vtable_builtin_data(stack.obligation, bound, nested);
-                match self.winnow_selection(Some(stack), VtableBuiltin(data)) {
-                    EvaluatedToOk => { Ok(candidates.vec.push(BuiltinCandidate(bound))) }
-                    EvaluatedToAmbig => { Ok(candidates.ambiguous = true) }
-                    EvaluatedToErr => { Err(Unimplemented) }
-                }
+            Ok(If(_)) => {
+                debug!("builtin_bound: bound={}",
+                       bound.repr(self.tcx()));
+                candidates.vec.push(BuiltinCandidate(bound));
+                Ok(())
             }
             Ok(ParameterBuiltin) => { Ok(()) }
             Ok(AmbiguousBuiltin) => { Ok(candidates.ambiguous = true) }
@@ -1539,8 +1527,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                candidate.repr(self.tcx()));
 
         match candidate {
-            // FIXME -- see assemble_builtin_bound_candidates()
-            BuiltinCandidate(_) |
+            BuiltinCandidate(builtin_bound) => {
+                Ok(VtableBuiltin(
+                    try!(self.confirm_builtin_candidate(obligation, builtin_bound))))
+            }
+
             ErrorCandidate => {
                 Ok(VtableBuiltin(VtableBuiltinData { nested: VecPerParamSpace::empty() }))
             }
@@ -1590,8 +1581,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         match try!(self.builtin_bound(bound, obligation.self_ty())) {
             If(nested) => Ok(self.vtable_builtin_data(obligation, bound, nested)),
-            AmbiguousBuiltin |
-            ParameterBuiltin => {
+            AmbiguousBuiltin | ParameterBuiltin => {
                 self.tcx().sess.span_bug(
                     obligation.cause.span,
                     format!("builtin bound for {} was ambig",
