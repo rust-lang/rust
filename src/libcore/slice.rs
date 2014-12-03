@@ -36,13 +36,15 @@
 
 use mem::transmute;
 use clone::Clone;
-use cmp::{PartialEq, PartialOrd, Eq, Ord, Ordering, Less, Equal, Greater, Equiv};
+use cmp::{Ordering, PartialEq, PartialOrd, Eq, Ord, Equiv};
+use cmp::Ordering::{Less, Equal, Greater};
 use cmp;
 use default::Default;
 use iter::*;
 use num::Int;
 use ops;
-use option::{None, Option, Some};
+use option::Option;
+use option::Option::{None, Some};
 use ptr;
 use ptr::RawPtr;
 use mem;
@@ -374,20 +376,20 @@ pub trait SlicePrelude<T> for Sized? {
     /// // scoped to restrict the lifetime of the borrows
     /// {
     ///    let (left, right) = v.split_at_mut(0);
-    ///    assert!(left == &mut []);
-    ///    assert!(right == &mut [1i, 2, 3, 4, 5, 6]);
+    ///    assert!(left == []);
+    ///    assert!(right == [1i, 2, 3, 4, 5, 6]);
     /// }
     ///
     /// {
     ///     let (left, right) = v.split_at_mut(2);
-    ///     assert!(left == &mut [1i, 2]);
-    ///     assert!(right == &mut [3i, 4, 5, 6]);
+    ///     assert!(left == [1i, 2]);
+    ///     assert!(right == [3i, 4, 5, 6]);
     /// }
     ///
     /// {
     ///     let (left, right) = v.split_at_mut(6);
-    ///     assert!(left == &mut [1i, 2, 3, 4, 5, 6]);
-    ///     assert!(right == &mut []);
+    ///     assert!(left == [1i, 2, 3, 4, 5, 6]);
+    ///     assert!(right == []);
     /// }
     /// ```
     #[unstable = "waiting on final error conventions"]
@@ -1702,7 +1704,8 @@ pub mod raw {
     use mem::transmute;
     use ptr::RawPtr;
     use raw::Slice;
-    use option::{None, Option, Some};
+    use option::Option;
+    use option::Option::{None, Some};
 
     /// Form a slice from a pointer and length (as a number of units,
     /// not bytes).
@@ -1781,12 +1784,13 @@ pub mod bytes {
 
     /// Copies data from `src` to `dst`
     ///
-    /// `src` and `dst` must not overlap. Panics if the length of `dst`
-    /// is less than the length of `src`.
+    /// Panics if the length of `dst` is less than the length of `src`.
     #[inline]
     pub fn copy_memory(dst: &mut [u8], src: &[u8]) {
         let len_src = src.len();
         assert!(dst.len() >= len_src);
+        // `dst` is unaliasable, so we know statically it doesn't overlap
+        // with `src`.
         unsafe {
             ptr::copy_nonoverlapping_memory(dst.as_mut_ptr(),
                                             src.as_ptr(),
@@ -1802,12 +1806,12 @@ pub mod bytes {
 //
 
 #[unstable = "waiting for DST"]
-impl<T: PartialEq> PartialEq for [T] {
-    fn eq(&self, other: &[T]) -> bool {
+impl<A, B> PartialEq<[B]> for [A] where A: PartialEq<B> {
+    fn eq(&self, other: &[B]) -> bool {
         self.len() == other.len() &&
             order::eq(self.iter(), other.iter())
     }
-    fn ne(&self, other: &[T]) -> bool {
+    fn ne(&self, other: &[B]) -> bool {
         self.len() != other.len() ||
             order::ne(self.iter(), other.iter())
     }
@@ -1816,13 +1820,15 @@ impl<T: PartialEq> PartialEq for [T] {
 #[unstable = "waiting for DST"]
 impl<T: Eq> Eq for [T] {}
 
-#[unstable = "waiting for DST"]
+#[allow(deprecated)]
+#[deprecated = "Use overloaded `core::cmp::PartialEq`"]
 impl<T: PartialEq, Sized? V: AsSlice<T>> Equiv<V> for [T] {
     #[inline]
     fn equiv(&self, other: &V) -> bool { self.as_slice() == other.as_slice() }
 }
 
-#[unstable = "waiting for DST"]
+#[allow(deprecated)]
+#[deprecated = "Use overloaded `core::cmp::PartialEq`"]
 impl<'a,T:PartialEq, Sized? V: AsSlice<T>> Equiv<V> for &'a mut [T] {
     #[inline]
     fn equiv(&self, other: &V) -> bool { self.as_slice() == other.as_slice() }

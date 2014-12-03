@@ -115,7 +115,7 @@ macro_rules! thread_local(
             use std::cell::UnsafeCell as __UnsafeCell;
             use std::thread_local::KeyInner as __KeyInner;
             use std::option::Option as __Option;
-            use std::option::None as __None;
+            use std::option::Option::None as __None;
 
             __thread_local_inner!(static __KEY: __UnsafeCell<__Option<$t>> = {
                 __UnsafeCell { value: __None }
@@ -132,7 +132,7 @@ macro_rules! thread_local(
             use std::cell::UnsafeCell as __UnsafeCell;
             use std::thread_local::KeyInner as __KeyInner;
             use std::option::Option as __Option;
-            use std::option::None as __None;
+            use std::option::Option::None as __None;
 
             __thread_local_inner!(static __KEY: __UnsafeCell<__Option<$t>> = {
                 __UnsafeCell { value: __None }
@@ -198,7 +198,7 @@ macro_rules! __thread_local_inner(
                 inner: ::std::cell::UnsafeCell { value: $init },
                 os: ::std::thread_local::OsStaticKey {
                     inner: ::std::thread_local::OS_INIT_INNER,
-                    dtor: ::std::option::Some(__destroy),
+                    dtor: ::std::option::Option::Some(__destroy),
                 },
             }
         };

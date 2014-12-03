@@ -280,7 +280,8 @@ pub mod dl {
     use libc;
     use os;
     use ptr;
-    use result::{Ok, Err, Result};
+    use result::Result;
+    use result::Result::{Ok, Err};
     use slice::SlicePrelude;
     use str::StrPrelude;
     use str;

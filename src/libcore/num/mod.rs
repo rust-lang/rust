@@ -30,7 +30,8 @@ use kinds::Copy;
 use mem::size_of;
 use ops::{Add, Sub, Mul, Div, Rem, Neg};
 use ops::{Not, BitAnd, BitOr, BitXor, Shl, Shr};
-use option::{Option, Some, None};
+use option::Option;
+use option::Option::{Some, None};
 use str::{FromStr, from_str, StrPrelude};
 
 /// Simultaneous division and remainder
@@ -284,7 +285,7 @@ pub trait Int
     /// ```
     fn checked_add(self, other: Self) -> Option<Self>;
 
-    /// Checked integer subtraction. Computes `self + other`, returning `None`
+    /// Checked integer subtraction. Computes `self - other`, returning `None`
     /// if underflow occurred.
     ///
     /// # Example
@@ -297,7 +298,7 @@ pub trait Int
     /// ```
     fn checked_sub(self, other: Self) -> Option<Self>;
 
-    /// Checked integer multiplication. Computes `self + other`, returning
+    /// Checked integer multiplication. Computes `self * other`, returning
     /// `None` if underflow or overflow occurred.
     ///
     /// # Example
@@ -310,8 +311,8 @@ pub trait Int
     /// ```
     fn checked_mul(self, other: Self) -> Option<Self>;
 
-    /// Checked integer division. Computes `self + other` returning `None` if
-    /// `self == 0` or the operation results in underflow or overflow.
+    /// Checked integer division. Computes `self / other`, returning `None` if
+    /// `other == 0` or the operation results in underflow or overflow.
     ///
     /// # Example
     ///

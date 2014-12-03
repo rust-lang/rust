@@ -62,7 +62,8 @@ use cmp::Ord;
 use mem;
 use num::{ToPrimitive, Int};
 use ops::{Add, Deref};
-use option::{Option, Some, None};
+use option::Option;
+use option::Option::{Some, None};
 use uint;
 
 #[deprecated = "renamed to Extend"] pub use self::Extend as Extendable;
@@ -2427,7 +2428,9 @@ pub fn repeat<T: Clone>(elt: T) -> Repeat<T> {
 pub mod order {
     use cmp;
     use cmp::{Eq, Ord, PartialOrd, PartialEq};
-    use option::{Option, Some, None};
+    use cmp::Ordering::{Equal, Less, Greater};
+    use option::Option;
+    use option::Option::{Some, None};
     use super::Iterator;
 
     /// Compare `a` and `b` for equality using `Eq`
@@ -2445,11 +2448,11 @@ pub mod order {
     pub fn cmp<A: Ord, T: Iterator<A>, S: Iterator<A>>(mut a: T, mut b: S) -> cmp::Ordering {
         loop {
             match (a.next(), b.next()) {
-                (None, None) => return cmp::Equal,
-                (None, _   ) => return cmp::Less,
-                (_   , None) => return cmp::Greater,
+                (None, None) => return Equal,
+                (None, _   ) => return Less,
+                (_   , None) => return Greater,
                 (Some(x), Some(y)) => match x.cmp(&y) {
-                    cmp::Equal => (),
+                    Equal => (),
                     non_eq => return non_eq,
                 },
             }
@@ -2461,11 +2464,11 @@ pub mod order {
             -> Option<cmp::Ordering> {
         loop {
             match (a.next(), b.next()) {
-                (None, None) => return Some(cmp::Equal),
-                (None, _   ) => return Some(cmp::Less),
-                (_   , None) => return Some(cmp::Greater),
+                (None, None) => return Some(Equal),
+                (None, _   ) => return Some(Less),
+                (_   , None) => return Some(Greater),
                 (Some(x), Some(y)) => match x.partial_cmp(&y) {
-                    Some(cmp::Equal) => (),
+                    Some(Equal) => (),
                     non_eq => return non_eq,
                 },
             }
@@ -2473,7 +2476,11 @@ pub mod order {
     }
 
     /// Compare `a` and `b` for equality (Using partial equality, `PartialEq`)
-    pub fn eq<A: PartialEq, T: Iterator<A>, S: Iterator<A>>(mut a: T, mut b: S) -> bool {
+    pub fn eq<A, B, L, R>(mut a: L, mut b: R) -> bool where
+        A: PartialEq<B>,
+        L: Iterator<A>,
+        R: Iterator<B>,
+    {
         loop {
             match (a.next(), b.next()) {
                 (None, None) => return true,
@@ -2484,7 +2491,11 @@ pub mod order {
     }
 
     /// Compare `a` and `b` for nonequality (Using partial equality, `PartialEq`)
-    pub fn ne<A: PartialEq, T: Iterator<A>, S: Iterator<A>>(mut a: T, mut b: S) -> bool {
+    pub fn ne<A, B, L, R>(mut a: L, mut b: R) -> bool where
+        A: PartialEq<B>,
+        L: Iterator<A>,
+        R: Iterator<B>,
+    {
         loop {
             match (a.next(), b.next()) {
                 (None, None) => return false,

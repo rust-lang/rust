@@ -12,7 +12,7 @@
 
 use io::Reader;
 use rand::Rng;
-use result::{Ok, Err};
+use result::Result::{Ok, Err};
 use slice::SlicePrelude;
 
 /// An RNG that reads random bytes straight from a `Reader`. This will

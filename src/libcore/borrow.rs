@@ -137,6 +137,18 @@ pub enum Cow<'a, T, Sized? B: 'a> where B: ToOwned<T> {
     Owned(T)
 }
 
+impl<'a, T, Sized? B> Clone for Cow<'a, T, B> where B: ToOwned<T> {
+    fn clone(&self) -> Cow<'a, T, B> {
+        match *self {
+            Borrowed(b) => Borrowed(b),
+            Owned(ref o) => {
+                let b: &B = BorrowFrom::borrow_from(o);
+                Owned(b.to_owned())
+            },
+        }
+    }
+}
+
 impl<'a, T, Sized? B> Cow<'a, T, B> where B: ToOwned<T> {
     /// Acquire a mutable reference to the owned form of the data.
     ///
@@ -196,9 +208,12 @@ impl<'a, T, Sized? B> Ord for Cow<'a, T, B> where B: Ord + ToOwned<T> {
     }
 }
 
-impl<'a, T, Sized? B> PartialEq for Cow<'a, T, B> where B: PartialEq + ToOwned<T> {
+impl<'a, 'b, T, U, Sized? B, Sized? C> PartialEq<Cow<'b, U, C>> for Cow<'a, T, B> where
+    B: PartialEq<C> + ToOwned<T>,
+    C: ToOwned<U>,
+{
     #[inline]
-    fn eq(&self, other: &Cow<'a, T, B>) -> bool {
+    fn eq(&self, other: &Cow<'b, U, C>) -> bool {
         PartialEq::eq(&**self, &**other)
     }
 }

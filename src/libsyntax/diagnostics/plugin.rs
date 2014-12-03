@@ -45,15 +45,6 @@ pub fn expand_diagnostic_used<'cx>(ecx: &'cx mut ExtCtxt,
         [ast::TtToken(_, token::Ident(code, _))] => code,
         _ => unreachable!()
     };
-    with_registered_diagnostics(|diagnostics| {
-        if !diagnostics.contains_key(&code.name) {
-            ecx.span_err(span, format!(
-                "unknown diagnostic code {}; add to librustc/diagnostics.rs",
-                token::get_ident(code).get()
-            ).as_slice());
-        }
-        ()
-    });
     with_used_diagnostics(|diagnostics| {
         match diagnostics.insert(code.name, span) {
             Some(previous_span) => {
@@ -106,25 +97,19 @@ pub fn expand_build_diagnostic_array<'cx>(ecx: &'cx mut ExtCtxt,
         _ => unreachable!()
     };
 
-    let (count, expr) = with_used_diagnostics(|diagnostics_in_use| {
+    let (count, expr) =
         with_registered_diagnostics(|diagnostics| {
-            let descriptions: Vec<P<ast::Expr>> = diagnostics
-                .iter().filter_map(|(code, description)| {
-                if !diagnostics_in_use.contains_key(code) {
-                    ecx.span_warn(span, format!(
-                        "diagnostic code {} never used", token::get_name(*code).get()
-                    ).as_slice());
-                }
-                description.map(|description| {
-                    ecx.expr_tuple(span, vec![
-                        ecx.expr_str(span, token::get_name(*code)),
-                        ecx.expr_str(span, token::get_name(description))
-                    ])
-                })
-            }).collect();
+            let descriptions: Vec<P<ast::Expr>> =
+                diagnostics.iter().filter_map(|(code, description)| {
+                    description.map(|description| {
+                        ecx.expr_tuple(span, vec![
+                            ecx.expr_str(span, token::get_name(*code)),
+                            ecx.expr_str(span, token::get_name(description))])
+                    })
+                }).collect();
             (descriptions.len(), ecx.expr_vec(span, descriptions))
-        })
-    });
+        });
+
     MacItems::new(vec![quote_item!(ecx,
         pub static $name: [(&'static str, &'static str), ..$count] = $expr;
     ).unwrap()].into_iter())

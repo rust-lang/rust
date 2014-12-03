@@ -65,13 +65,13 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("unboxed_closures", Active),
     ("import_shadowing", Active),
     ("advanced_slice_patterns", Active),
-    ("tuple_indexing", Active),
+    ("tuple_indexing", Accepted),
     ("associated_types", Active),
     ("visible_private_types", Active),
     ("slicing_syntax", Active),
 
-    ("if_let", Active),
-    ("while_let", Active),
+    ("if_let", Accepted),
+    ("while_let", Accepted),
 
     // if you change this list without updating src/doc/reference.md, cmr will be sad
 
@@ -172,12 +172,12 @@ impl<'a, 'v> Visitor<'v> for Context<'a> {
 
     fn visit_item(&mut self, i: &ast::Item) {
         for attr in i.attrs.iter() {
-            if attr.name().equiv(&("thread_local")) {
+            if attr.name() == "thread_local" {
                 self.gate_feature("thread_local", i.span,
                                   "`#[thread_local]` is an experimental feature, and does not \
                                   currently handle destructors. There is no corresponding \
                                   `#[task_local]` mapping to the task model");
-            } else if attr.name().equiv(&("linkage")) {
+            } else if attr.name() == "linkage" {
                 self.gate_feature("linkage", i.span,
                                   "the `linkage` attribute is experimental \
                                    and not portable across platforms")
@@ -309,23 +309,10 @@ impl<'a, 'v> Visitor<'v> for Context<'a> {
                                   "unboxed closures are a work-in-progress \
                                    feature with known bugs");
             }
-            ast::ExprTupField(..) => {
-                self.gate_feature("tuple_indexing",
-                                  e.span,
-                                  "tuple indexing is experimental");
-            }
-            ast::ExprIfLet(..) => {
-                self.gate_feature("if_let", e.span,
-                                  "`if let` syntax is experimental");
-            }
             ast::ExprSlice(..) => {
                 self.gate_feature("slicing_syntax",
                                   e.span,
                                   "slicing syntax is experimental");
-            }
-            ast::ExprWhileLet(..) => {
-                self.gate_feature("while_let", e.span,
-                                  "`while let` syntax is experimental");
             }
             _ => {}
         }
@@ -429,7 +416,7 @@ pub fn check_crate(span_handler: &SpanHandler, krate: &ast::Crate) -> (Features,
                         }
                     };
                     match KNOWN_FEATURES.iter()
-                                        .find(|& &(n, _)| name.equiv(&n)) {
+                                        .find(|& &(n, _)| name == n) {
                         Some(&(name, Active)) => { cx.features.push(name); }
                         Some(&(_, Removed)) => {
                             span_handler.span_err(mi.span, "feature has been removed");

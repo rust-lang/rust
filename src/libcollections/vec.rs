@@ -535,13 +535,68 @@ impl<T> Extend<T> for Vec<T> {
     }
 }
 
-#[unstable = "waiting on PartialEq stability"]
-impl<T: PartialEq> PartialEq for Vec<T> {
+impl<A, B> PartialEq<Vec<B>> for Vec<A> where A: PartialEq<B> {
     #[inline]
-    fn eq(&self, other: &Vec<T>) -> bool {
-        self.as_slice() == other.as_slice()
+    fn eq(&self, other: &Vec<B>) -> bool { PartialEq::eq(&**self, &**other) }
+    #[inline]
+    fn ne(&self, other: &Vec<B>) -> bool { PartialEq::ne(&**self, &**other) }
+}
+
+macro_rules! impl_eq {
+    ($lhs:ty, $rhs:ty) => {
+        impl<'b, A, B> PartialEq<$rhs> for $lhs where A: PartialEq<B> {
+            #[inline]
+            fn eq(&self, other: &$rhs) -> bool { PartialEq::eq(&**self, &**other) }
+            #[inline]
+            fn ne(&self, other: &$rhs) -> bool { PartialEq::ne(&**self, &**other) }
+        }
+
+        impl<'b, A, B> PartialEq<$lhs> for $rhs where B: PartialEq<A> {
+            #[inline]
+            fn eq(&self, other: &$lhs) -> bool { PartialEq::eq(&**self, &**other) }
+            #[inline]
+            fn ne(&self, other: &$lhs) -> bool { PartialEq::ne(&**self, &**other) }
+        }
     }
 }
+
+impl_eq!(Vec<A>, &'b [B])
+impl_eq!(Vec<A>, &'b mut [B])
+
+impl<'a, A, B> PartialEq<Vec<B>> for CowVec<'a, A> where A: PartialEq<B> + Clone {
+    #[inline]
+    fn eq(&self, other: &Vec<B>) -> bool { PartialEq::eq(&**self, &**other) }
+    #[inline]
+    fn ne(&self, other: &Vec<B>) -> bool { PartialEq::ne(&**self, &**other) }
+}
+
+impl<'a, A, B> PartialEq<CowVec<'a, A>> for Vec<B> where A: Clone, B: PartialEq<A> {
+    #[inline]
+    fn eq(&self, other: &CowVec<'a, A>) -> bool { PartialEq::eq(&**self, &**other) }
+    #[inline]
+    fn ne(&self, other: &CowVec<'a, A>) -> bool { PartialEq::ne(&**self, &**other) }
+}
+
+macro_rules! impl_eq_for_cowvec {
+    ($rhs:ty) => {
+        impl<'a, 'b, A, B> PartialEq<$rhs> for CowVec<'a, A> where A: PartialEq<B> + Clone {
+            #[inline]
+            fn eq(&self, other: &$rhs) -> bool { PartialEq::eq(&**self, &**other) }
+            #[inline]
+            fn ne(&self, other: &$rhs) -> bool { PartialEq::ne(&**self, &**other) }
+        }
+
+        impl<'a, 'b, A, B> PartialEq<CowVec<'a, A>> for $rhs where A: Clone, B: PartialEq<A> {
+            #[inline]
+            fn eq(&self, other: &CowVec<'a, A>) -> bool { PartialEq::eq(&**self, &**other) }
+            #[inline]
+            fn ne(&self, other: &CowVec<'a, A>) -> bool { PartialEq::ne(&**self, &**other) }
+        }
+    }
+}
+
+impl_eq_for_cowvec!(&'b [B])
+impl_eq_for_cowvec!(&'b mut [B])
 
 #[unstable = "waiting on PartialOrd stability"]
 impl<T: PartialOrd> PartialOrd for Vec<T> {
@@ -554,7 +609,8 @@ impl<T: PartialOrd> PartialOrd for Vec<T> {
 #[unstable = "waiting on Eq stability"]
 impl<T: Eq> Eq for Vec<T> {}
 
-#[experimental]
+#[allow(deprecated)]
+#[deprecated = "Use overloaded `core::cmp::PartialEq`"]
 impl<T: PartialEq, Sized? V: AsSlice<T>> Equiv<V> for Vec<T> {
     #[inline]
     fn equiv(&self, other: &V) -> bool { self.as_slice() == other.as_slice() }
@@ -1813,13 +1869,13 @@ mod tests {
         let mut values = vec![1u8,2,3,4,5];
         {
             let slice = values.slice_from_mut(2);
-            assert!(slice == &mut [3, 4, 5]);
+            assert!(slice == [3, 4, 5]);
             for p in slice.iter_mut() {
                 *p += 2;
             }
         }
 
-        assert!(values.as_slice() == &[1, 2, 5, 6, 7]);
+        assert!(values.as_slice() == [1, 2, 5, 6, 7]);
     }
 
     #[test]
@@ -1827,13 +1883,13 @@ mod tests {
         let mut values = vec![1u8,2,3,4,5];
         {
             let slice = values.slice_to_mut(2);
-            assert!(slice == &mut [1, 2]);
+            assert!(slice == [1, 2]);
             for p in slice.iter_mut() {
                 *p += 1;
             }
         }
 
-        assert!(values.as_slice() == &[2, 3, 3, 4, 5]);
+        assert!(values.as_slice() == [2, 3, 3, 4, 5]);
     }
 
     #[test]

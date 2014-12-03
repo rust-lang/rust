@@ -90,9 +90,12 @@
 use mem;
 use clone::Clone;
 use intrinsics;
-use option::{Some, None, Option};
+use option::Option;
+use option::Option::{Some, None};
 
-use cmp::{PartialEq, Eq, PartialOrd, Equiv, Ordering, Less, Equal, Greater};
+use cmp::{PartialEq, Eq, PartialOrd, Equiv};
+use cmp::Ordering;
+use cmp::Ordering::{Less, Equal, Greater};
 
 pub use intrinsics::copy_memory;
 pub use intrinsics::copy_nonoverlapping_memory;
@@ -321,12 +324,16 @@ impl<T> PartialEq for *mut T {
 impl<T> Eq for *mut T {}
 
 // Equivalence for pointers
+#[allow(deprecated)]
+#[deprecated = "Use overloaded `core::cmp::PartialEq`"]
 impl<T> Equiv<*mut T> for *const T {
     fn equiv(&self, other: &*mut T) -> bool {
         self.to_uint() == other.to_uint()
     }
 }
 
+#[allow(deprecated)]
+#[deprecated = "Use overloaded `core::cmp::PartialEq`"]
 impl<T> Equiv<*const T> for *mut T {
     fn equiv(&self, other: &*const T) -> bool {
         self.to_uint() == other.to_uint()

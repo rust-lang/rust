@@ -41,9 +41,9 @@ macro_rules! check_option {
         check_option!($e: $T, |ptr| assert!(*ptr == $e));
     }};
     ($e:expr: $T:ty, |$v:ident| $chk:expr) => {{
-        assert!(option::None::<$T>.is_none());
+        assert!(option::Option::None::<$T>.is_none());
         let e = $e;
-        let s_ = option::Some::<$T>(e);
+        let s_ = option::Option::Some::<$T>(e);
         let $v = s_.as_ref().unwrap();
         $chk
     }}

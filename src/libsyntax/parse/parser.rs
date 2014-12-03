@@ -1381,7 +1381,7 @@ impl<'a> Parser<'a> {
                 // clauses (i.e., not when parsing something like
                 // `FnMut() -> T + Send`, where the `+` is legal).
                 if self.token == token::BinOp(token::Plus) {
-                    self.warn("deprecated syntax: `()` are required, see RFC 248 for details");
+                    self.warn("deprecated syntax: `()` are required, see RFC 438 for details");
                 }
 
                 Return(t)
@@ -3111,6 +3111,11 @@ impl<'a> Parser<'a> {
                 first = false;
             } else {
                 self.expect(&token::Comma);
+
+                if self.token == token::CloseDelim(token::Bracket)
+                        && (before_slice || after.len() != 0) {
+                    break
+                }
             }
 
             if before_slice {

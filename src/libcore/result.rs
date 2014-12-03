@@ -236,7 +236,8 @@ use std::fmt::Show;
 use slice;
 use slice::AsSlice;
 use iter::{Iterator, IteratorExt, DoubleEndedIterator, FromIterator, ExactSizeIterator};
-use option::{None, Option, Some};
+use option::Option;
+use option::Option::{None, Some};
 
 /// `Result` is a type that represents either success (`Ok`) or failure (`Err`).
 ///
@@ -407,14 +408,14 @@ impl<T, E> Result<T, E> {
     /// let mut x: Result<&str, uint> = Ok("Gold");
     /// {
     ///     let v = x.as_mut_slice();
-    ///     assert!(v == &mut ["Gold"]);
+    ///     assert!(v == ["Gold"]);
     ///     v[0] = "Silver";
-    ///     assert!(v == &mut ["Silver"]);
+    ///     assert!(v == ["Silver"]);
     /// }
     /// assert_eq!(x, Ok("Silver"));
     ///
     /// let mut x: Result<&str, uint> = Err(45);
-    /// assert!(x.as_mut_slice() == &mut []);
+    /// assert!(x.as_mut_slice().is_empty());
     /// ```
     #[inline]
     #[unstable = "waiting for mut conventions"]
@@ -446,13 +447,12 @@ impl<T, E> Result<T, E> {
     /// ```
     /// use std::io::{BufReader, IoResult};
     ///
-    /// let buffer = "1\n2\n3\n4\n";
-    /// let mut reader = BufReader::new(buffer.as_bytes());
+    /// let mut buffer = "1\n2\n3\n4\n";
     ///
     /// let mut sum = 0;
     ///
-    /// while !reader.eof() {
-    ///     let line: IoResult<String> = reader.read_line();
+    /// while !buffer.is_empty() {
+    ///     let line: IoResult<String> = buffer.read_line();
     ///     // Convert the string line to a number using `map` and `from_str`
     ///     let val: IoResult<int> = line.map(|line| {
     ///         from_str::<int>(line.as_slice().trim_right()).unwrap_or(0)

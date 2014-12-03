@@ -24,10 +24,9 @@ use middle::{def, region, pat_util};
 use middle::mem_categorization as mc;
 use middle::mem_categorization::Typer;
 use middle::ty::{mod, Ty};
-use middle::typeck::{MethodCall, MethodObject, MethodTraitObject};
-use middle::typeck::{MethodOrigin, MethodParam, MethodTypeParam};
-use middle::typeck::{MethodStatic, MethodStaticUnboxedClosure};
-use middle::typeck;
+use middle::ty::{MethodCall, MethodObject, MethodTraitObject};
+use middle::ty::{MethodOrigin, MethodParam, MethodTypeParam};
+use middle::ty::{MethodStatic, MethodStaticUnboxedClosure};
 use util::ppaux::Repr;
 
 use syntax::ast;
@@ -825,7 +824,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
         debug!("walk_autoderefs expr={} autoderefs={}", expr.repr(self.tcx()), autoderefs);
 
         for i in range(0, autoderefs) {
-            let deref_id = typeck::MethodCall::autoderef(expr.id, i);
+            let deref_id = ty::MethodCall::autoderef(expr.id, i);
             match self.typer.node_method_ty(deref_id) {
                 None => {}
                 Some(method_ty) => {

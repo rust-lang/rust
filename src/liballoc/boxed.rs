@@ -19,7 +19,8 @@ use core::kinds::Sized;
 use core::mem;
 use core::option::Option;
 use core::raw::TraitObject;
-use core::result::{Ok, Err, Result};
+use core::result::Result;
+use core::result::Result::{Ok, Err};
 
 /// A value that represents the global exchange heap. This is the default
 /// place that the `box` keyword allocates into when no place is supplied.

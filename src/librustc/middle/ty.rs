@@ -35,6 +35,9 @@ pub use self::ImplOrTraitItem::*;
 pub use self::BoundRegion::*;
 pub use self::sty::*;
 pub use self::IntVarValue::*;
+pub use self::ExprAdjustment::*;
+pub use self::vtable_origin::*;
+pub use self::MethodOrigin::*;
 
 use back::svh::Svh;
 use session::Session;
@@ -53,7 +56,6 @@ use middle::stability;
 use middle::subst::{mod, Subst, Substs, VecPerParamSpace};
 use middle::traits;
 use middle::ty;
-use middle::typeck;
 use middle::ty_fold::{mod, TypeFoldable, TypeFolder, HigherRankedFoldable};
 use middle;
 use util::ppaux::{note_and_explain_region, bound_region_ptr_to_string};
@@ -89,6 +91,17 @@ pub type Disr = u64;
 pub const INITIAL_DISCRIMINANT_VALUE: Disr = 0;
 
 // Data types
+
+/// The complete set of all analyses described in this module. This is
+/// produced by the driver and fed to trans and later passes.
+pub struct CrateAnalysis<'tcx> {
+    pub exp_map2: middle::resolve::ExportMap2,
+    pub exported_items: middle::privacy::ExportedItems,
+    pub public_items: middle::privacy::PublicItems,
+    pub ty_cx: ty::ctxt<'tcx>,
+    pub reachable: NodeSet,
+    pub name: String,
+}
 
 #[deriving(PartialEq, Eq, Hash)]
 pub struct field<'tcx> {
@@ -412,7 +425,161 @@ pub fn type_of_adjust<'tcx>(cx: &ctxt<'tcx>, adj: &AutoAdjustment<'tcx>) -> Opti
     }
 }
 
+#[deriving(Clone, Encodable, Decodable, PartialEq, PartialOrd, Show)]
+pub struct param_index {
+    pub space: subst::ParamSpace,
+    pub index: uint
+}
 
+#[deriving(Clone, Show)]
+pub enum MethodOrigin<'tcx> {
+    // fully statically resolved method
+    MethodStatic(ast::DefId),
+
+    // fully statically resolved unboxed closure invocation
+    MethodStaticUnboxedClosure(ast::DefId),
+
+    // method invoked on a type parameter with a bounded trait
+    MethodTypeParam(MethodParam<'tcx>),
+
+    // method invoked on a trait instance
+    MethodTraitObject(MethodObject<'tcx>),
+
+}
+
+// details for a method invoked with a receiver whose type is a type parameter
+// with a bounded trait.
+#[deriving(Clone, Show)]
+pub struct MethodParam<'tcx> {
+    // the precise trait reference that occurs as a bound -- this may
+    // be a supertrait of what the user actually typed.
+    pub trait_ref: Rc<ty::TraitRef<'tcx>>,
+
+    // index of uint in the list of methods for the trait
+    pub method_num: uint,
+}
+
+// details for a method invoked with a receiver whose type is an object
+#[deriving(Clone, Show)]
+pub struct MethodObject<'tcx> {
+    // the (super)trait containing the method to be invoked
+    pub trait_ref: Rc<ty::TraitRef<'tcx>>,
+
+    // the actual base trait id of the object
+    pub object_trait_id: ast::DefId,
+
+    // index of the method to be invoked amongst the trait's methods
+    pub method_num: uint,
+
+    // index into the actual runtime vtable.
+    // the vtable is formed by concatenating together the method lists of
+    // the base object trait and all supertraits;  this is the index into
+    // that vtable
+    pub real_index: uint,
+}
+
+#[deriving(Clone)]
+pub struct MethodCallee<'tcx> {
+    pub origin: MethodOrigin<'tcx>,
+    pub ty: Ty<'tcx>,
+    pub substs: subst::Substs<'tcx>
+}
+
+/// With method calls, we store some extra information in
+/// side tables (i.e method_map). We use
+/// MethodCall as a key to index into these tables instead of
+/// just directly using the expression's NodeId. The reason
+/// for this being that we may apply adjustments (coercions)
+/// with the resulting expression also needing to use the
+/// side tables. The problem with this is that we don't
+/// assign a separate NodeId to this new expression
+/// and so it would clash with the base expression if both
+/// needed to add to the side tables. Thus to disambiguate
+/// we also keep track of whether there's an adjustment in
+/// our key.
+#[deriving(Clone, PartialEq, Eq, Hash, Show)]
+pub struct MethodCall {
+    pub expr_id: ast::NodeId,
+    pub adjustment: ExprAdjustment
+}
+
+#[deriving(Clone, PartialEq, Eq, Hash, Show, Encodable, Decodable)]
+pub enum ExprAdjustment {
+    NoAdjustment,
+    AutoDeref(uint),
+    AutoObject
+}
+
+impl MethodCall {
+    pub fn expr(id: ast::NodeId) -> MethodCall {
+        MethodCall {
+            expr_id: id,
+            adjustment: NoAdjustment
+        }
+    }
+
+    pub fn autoobject(id: ast::NodeId) -> MethodCall {
+        MethodCall {
+            expr_id: id,
+            adjustment: AutoObject
+        }
+    }
+
+    pub fn autoderef(expr_id: ast::NodeId, autoderef: uint) -> MethodCall {
+        MethodCall {
+            expr_id: expr_id,
+            adjustment: AutoDeref(1 + autoderef)
+        }
+    }
+}
+
+// maps from an expression id that corresponds to a method call to the details
+// of the method to be invoked
+pub type MethodMap<'tcx> = RefCell<FnvHashMap<MethodCall, MethodCallee<'tcx>>>;
+
+pub type vtable_param_res<'tcx> = Vec<vtable_origin<'tcx>>;
+
+// Resolutions for bounds of all parameters, left to right, for a given path.
+pub type vtable_res<'tcx> = VecPerParamSpace<vtable_param_res<'tcx>>;
+
+#[deriving(Clone)]
+pub enum vtable_origin<'tcx> {
+    /*
+      Statically known vtable. def_id gives the impl item
+      from whence comes the vtable, and tys are the type substs.
+      vtable_res is the vtable itself.
+     */
+    vtable_static(ast::DefId, subst::Substs<'tcx>, vtable_res<'tcx>),
+
+    /*
+      Dynamic vtable, comes from a parameter that has a bound on it:
+      fn foo<T:quux,baz,bar>(a: T) -- a's vtable would have a
+      vtable_param origin
+
+      The first argument is the param index (identifying T in the example),
+      and the second is the bound number (identifying baz)
+     */
+    vtable_param(param_index, uint),
+
+    /*
+      Vtable automatically generated for an unboxed closure. The def ID is the
+      ID of the closure expression.
+     */
+    vtable_unboxed_closure(ast::DefId),
+
+    /*
+      Asked to determine the vtable for ty_err. This is the value used
+      for the vtables of `Self` in a virtual call like `foo.bar()`
+      where `foo` is of object type. The same value is also used when
+      type errors occur.
+     */
+    vtable_error,
+}
+
+
+// For every explicit cast into an object type, maps from the cast
+// expr to the associated trait ref.
+pub type ObjectCastMap<'tcx> = RefCell<NodeMap<Rc<ty::TraitRef<'tcx>>>>;
 
 /// A restriction that certain types must be the same size. The use of
 /// `transmute` gives rise to these restrictions.
@@ -473,7 +640,7 @@ pub struct ctxt<'tcx> {
 
     /// Maps from node-id of a trait object cast (like `foo as
     /// Box<Trait>`) to the trait reference.
-    pub object_cast_map: typeck::ObjectCastMap<'tcx>,
+    pub object_cast_map: ObjectCastMap<'tcx>,
 
     pub map: ast_map::Map<'tcx>,
     pub intrinsic_defs: RefCell<DefIdMap<Ty<'tcx>>>,
@@ -548,7 +715,7 @@ pub struct ctxt<'tcx> {
     pub extern_const_statics: RefCell<DefIdMap<ast::NodeId>>,
     pub extern_const_variants: RefCell<DefIdMap<ast::NodeId>>,
 
-    pub method_map: typeck::MethodMap<'tcx>,
+    pub method_map: MethodMap<'tcx>,
 
     pub dependency_formats: RefCell<dependency_format::Dependencies>,
 
@@ -3658,7 +3825,7 @@ pub fn adjust_ty<'tcx>(cx: &ctxt<'tcx>,
                        expr_id: ast::NodeId,
                        unadjusted_ty: Ty<'tcx>,
                        adjustment: Option<&AutoAdjustment<'tcx>>,
-                       method_type: |typeck::MethodCall| -> Option<Ty<'tcx>>)
+                       method_type: |MethodCall| -> Option<Ty<'tcx>>)
                        -> Ty<'tcx> {
 
     if let ty_err = unadjusted_ty.sty {
@@ -3699,7 +3866,7 @@ pub fn adjust_ty<'tcx>(cx: &ctxt<'tcx>,
 
                     if !ty::type_is_error(adjusted_ty) {
                         for i in range(0, adj.autoderefs) {
-                            let method_call = typeck::MethodCall::autoderef(expr_id, i);
+                            let method_call = MethodCall::autoderef(expr_id, i);
                             match method_type(method_call) {
                                 Some(method_ty) => {
                                     if let ty::FnConverging(result_type) = ty_fn_ret(method_ty) {
@@ -3830,7 +3997,7 @@ pub enum ExprKind {
 }
 
 pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
-    if tcx.method_map.borrow().contains_key(&typeck::MethodCall::expr(expr.id)) {
+    if tcx.method_map.borrow().contains_key(&MethodCall::expr(expr.id)) {
         // Overloaded operations are generally calls, and hence they are
         // generated via DPS, but there are a few exceptions:
         return match expr.node {
@@ -5747,7 +5914,7 @@ impl<'tcx> mc::Typer<'tcx> for ty::ctxt<'tcx> {
         Ok(ty::node_id_to_type(self, id))
     }
 
-    fn node_method_ty(&self, method_call: typeck::MethodCall) -> Option<Ty<'tcx>> {
+    fn node_method_ty(&self, method_call: MethodCall) -> Option<Ty<'tcx>> {
         self.method_map.borrow().get(&method_call).map(|method| method.ty)
     }
 
@@ -5756,7 +5923,7 @@ impl<'tcx> mc::Typer<'tcx> for ty::ctxt<'tcx> {
     }
 
     fn is_method_call(&self, id: ast::NodeId) -> bool {
-        self.method_map.borrow().contains_key(&typeck::MethodCall::expr(id))
+        self.method_map.borrow().contains_key(&MethodCall::expr(id))
     }
 
     fn temporary_scope(&self, rvalue_id: ast::NodeId) -> Option<region::CodeExtent> {
@@ -6010,3 +6177,55 @@ impl<'tcx> Repr<'tcx> for TyTrait<'tcx> {
                 self.bounds.repr(tcx))
     }
 }
+
+impl<'tcx> Repr<'tcx> for vtable_origin<'tcx> {
+    fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
+        match *self {
+            vtable_static(def_id, ref tys, ref vtable_res) => {
+                format!("vtable_static({}:{}, {}, {})",
+                        def_id,
+                        ty::item_path_str(tcx, def_id),
+                        tys.repr(tcx),
+                        vtable_res.repr(tcx))
+            }
+
+            vtable_param(x, y) => {
+                format!("vtable_param({}, {})", x, y)
+            }
+
+            vtable_unboxed_closure(def_id) => {
+                format!("vtable_unboxed_closure({})", def_id)
+            }
+
+            vtable_error => {
+                format!("vtable_error")
+            }
+        }
+    }
+}
+
+pub fn make_substs_for_receiver_types<'tcx>(tcx: &ty::ctxt<'tcx>,
+                                            trait_ref: &ty::TraitRef<'tcx>,
+                                            method: &ty::Method<'tcx>)
+                                            -> subst::Substs<'tcx>
+{
+    /*!
+     * Substitutes the values for the receiver's type parameters
+     * that are found in method, leaving the method's type parameters
+     * intact.
+     */
+
+    let meth_tps: Vec<Ty> =
+        method.generics.types.get_slice(subst::FnSpace)
+              .iter()
+              .map(|def| ty::mk_param_from_def(tcx, def))
+              .collect();
+    let meth_regions: Vec<ty::Region> =
+        method.generics.regions.get_slice(subst::FnSpace)
+              .iter()
+              .map(|def| ty::ReEarlyBound(def.def_id.node, def.space,
+                                          def.index, def.name))
+              .collect();
+    trait_ref.substs.clone().with_method(meth_tps, meth_regions)
+}
+

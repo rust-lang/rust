@@ -156,7 +156,7 @@ mod test {
             "rpath2".to_string(),
             "rpath1".to_string()
         ]);
-        assert!(res.as_slice() == &[
+        assert!(res.as_slice() == [
             "rpath1".to_string(),
             "rpath2".to_string()
         ]);
@@ -176,7 +176,7 @@ mod test {
             "4a".to_string(),
             "3".to_string()
         ]);
-        assert!(res.as_slice() == &[
+        assert!(res.as_slice() == [
             "1a".to_string(),
             "2".to_string(),
             "4a".to_string(),

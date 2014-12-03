@@ -16,8 +16,9 @@ use cmp;
 use io::{Reader, Writer, Stream, Buffer, DEFAULT_BUF_SIZE, IoResult};
 use iter::ExactSizeIterator;
 use ops::Drop;
-use option::{Some, None, Option};
-use result::{Ok, Err};
+use option::Option;
+use option::Option::{Some, None};
+use result::Result::{Ok, Err};
 use slice::{SlicePrelude};
 use slice;
 use vec::Vec;
@@ -406,7 +407,7 @@ mod test {
     use prelude::*;
     use super::*;
     use super::super::{IoResult, EndOfFile};
-    use super::super::mem::{MemReader, BufReader};
+    use super::super::mem::MemReader;
     use self::test::Bencher;
     use str::StrPrelude;
 
@@ -626,14 +627,14 @@ mod test {
     #[test]
     fn read_char_buffered() {
         let buf = [195u8, 159u8];
-        let mut reader = BufferedReader::with_capacity(1, BufReader::new(&buf));
+        let mut reader = BufferedReader::with_capacity(1, buf[]);
         assert_eq!(reader.read_char(), Ok('ß'));
     }
 
     #[test]
     fn test_chars() {
         let buf = [195u8, 159u8, b'a'];
-        let mut reader = BufferedReader::with_capacity(1, BufReader::new(&buf));
+        let mut reader = BufferedReader::with_capacity(1, buf[]);
         let mut it = reader.chars();
         assert_eq!(it.next(), Some(Ok('ß')));
         assert_eq!(it.next(), Some(Ok('a')));

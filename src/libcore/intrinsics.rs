@@ -10,7 +10,7 @@
 
 //! rustc compiler intrinsics.
 //!
-//! The corresponding definitions are in librustc/middle/trans/foreign.rs.
+//! The corresponding definitions are in librustc_trans/trans/intrinsic.rs.
 //!
 //! # Volatiles
 //!
@@ -226,7 +226,7 @@ extern "rust-intrinsic" {
     /// use std::mem;
     ///
     /// let v: &[u8] = unsafe { mem::transmute("L") };
-    /// assert!(v == &[76u8]);
+    /// assert!(v == [76u8]);
     /// ```
     pub fn transmute<T,U>(e: T) -> U;
 

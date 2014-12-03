@@ -28,9 +28,11 @@
 pub use self::ValueOrigin::*;
 pub use self::scalar_type::*;
 
+use super::CrateTranslation;
+use super::ModuleTranslation;
+
 use back::link::{mangle_exported_name};
 use back::{link, abi};
-use driver::driver::{CrateAnalysis, CrateTranslation, ModuleTranslation};
 use lint;
 use llvm::{BasicBlockRef, Linkage, ValueRef, Vector, get_param};
 use llvm;
@@ -967,23 +969,14 @@ pub fn invoke<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                           llfn: ValueRef,
                           llargs: Vec<ValueRef> ,
                           fn_ty: Ty<'tcx>,
-                          call_info: Option<NodeInfo>,
-                          // FIXME(15064) is_lang_item is a horrible hack, please remove it
-                          // at the soonest opportunity.
-                          is_lang_item: bool)
+                          call_info: Option<NodeInfo>)
                           -> (ValueRef, Block<'blk, 'tcx>) {
     let _icx = push_ctxt("invoke_");
     if bcx.unreachable.get() {
         return (C_null(Type::i8(bcx.ccx())), bcx);
     }
 
-    // FIXME(15064) Lang item methods may (in the reflect case) not have proper
-    // types, so doing an attribute lookup will fail.
-    let attributes = if is_lang_item {
-        llvm::AttrBuilder::new()
-    } else {
-        get_fn_llvm_attributes(bcx.ccx(), fn_ty)
-    };
+    let attributes = get_fn_llvm_attributes(bcx.ccx(), fn_ty);
 
     match bcx.opt_node_id {
         None => {
@@ -1076,12 +1069,6 @@ pub fn store_ty(cx: Block, v: ValueRef, dst: ValueRef, t: Ty) {
     } else {
         Store(cx, v, dst);
     };
-}
-
-pub fn ignore_lhs(_bcx: Block, local: &ast::Local) -> bool {
-    match local.pat.node {
-        ast::PatWild(ast::PatWildSingle) => true, _ => false
-    }
 }
 
 pub fn init_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, local: &ast::Local)
@@ -2916,12 +2903,6 @@ fn register_method(ccx: &CrateContext, id: ast::NodeId,
     llfn
 }
 
-pub fn p2i(ccx: &CrateContext, v: ValueRef) -> ValueRef {
-    unsafe {
-        return llvm::LLVMConstPtrToInt(v, ccx.int_type().to_ref());
-    }
-}
-
 pub fn crate_ctxt_to_encode_parms<'a, 'tcx>(cx: &'a SharedCrateContext<'tcx>,
                                             ie: encoder::EncodeInlinedItem<'a>)
                                             -> encoder::EncodeParams<'a, 'tcx> {
@@ -3055,9 +3036,9 @@ fn internalize_symbols(cx: &SharedCrateContext, reachable: &HashSet<String>) {
     }
 }
 
-pub fn trans_crate<'tcx>(analysis: CrateAnalysis<'tcx>)
+pub fn trans_crate<'tcx>(analysis: ty::CrateAnalysis<'tcx>)
                          -> (ty::ctxt<'tcx>, CrateTranslation) {
-    let CrateAnalysis { ty_cx: tcx, exp_map2, reachable, name, .. } = analysis;
+    let ty::CrateAnalysis { ty_cx: tcx, exp_map2, reachable, name, .. } = analysis;
     let krate = tcx.map.krate();
 
     // Before we touch LLVM, make sure that multithreading is enabled.

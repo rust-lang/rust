@@ -23,7 +23,7 @@ mod imp {
     use path::Path;
     use rand::Rng;
     use rand::reader::ReaderRng;
-    use result::{Ok, Err};
+    use result::Result::{Ok, Err};
     use slice::SlicePrelude;
     use mem;
     use os::errno;
@@ -173,7 +173,7 @@ mod imp {
     use mem;
     use os;
     use rand::Rng;
-    use result::{Ok};
+    use result::Result::{Ok};
     use self::libc::{c_int, size_t};
     use slice::{SlicePrelude};
 
@@ -240,7 +240,7 @@ mod imp {
     use ops::Drop;
     use os;
     use rand::Rng;
-    use result::{Ok, Err};
+    use result::Result::{Ok, Err};
     use self::libc::{DWORD, BYTE, LPCSTR, BOOL};
     use self::libc::types::os::arch::extra::{LONG_PTR};
     use slice::{SlicePrelude};

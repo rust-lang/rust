@@ -522,7 +522,7 @@ The two values of the boolean type are written `true` and `false`.
 ### Symbols
 
 ```{.ebnf .gram}
-symbol : "::" "->"
+symbol : "::" | "->"
        | '#' | '[' | ']' | '(' | ')' | '{' | '}'
        | ',' | ';' ;
 ```
@@ -994,7 +994,7 @@ An example of `use` declarations:
 
 ```
 use std::iter::range_step;
-use std::option::{Some, None};
+use std::option::Option::{Some, None};
 use std::collections::hash_map::{mod, HashMap};
 
 fn foo<T>(_: T){}
@@ -1004,8 +1004,8 @@ fn main() {
     // Equivalent to 'std::iter::range_step(0u, 10u, 2u);'
     range_step(0u, 10u, 2u);
 
-    // Equivalent to 'foo(vec![std::option::Some(1.0f64),
-    // std::option::None]);'
+    // Equivalent to 'foo(vec![std::option::Option::Some(1.0f64),
+    // std::option::Option::None]);'
     foo(vec![Some(1.0f64), None]);
 
     // Both `hash_map` and `HashMap` are in scope.

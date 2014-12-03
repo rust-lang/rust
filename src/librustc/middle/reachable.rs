@@ -17,7 +17,6 @@
 
 use middle::def;
 use middle::ty;
-use middle::typeck;
 use middle::privacy;
 use session::config;
 use util::nodemap::NodeSet;
@@ -137,9 +136,9 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ReachableContext<'a, 'tcx> {
                 }
             }
             ast::ExprMethodCall(..) => {
-                let method_call = typeck::MethodCall::expr(expr.id);
+                let method_call = ty::MethodCall::expr(expr.id);
                 match (*self.tcx.method_map.borrow())[method_call].origin {
-                    typeck::MethodStatic(def_id) => {
+                    ty::MethodStatic(def_id) => {
                         if is_local(def_id) {
                             if self.def_id_represents_local_inlined_item(def_id) {
                                 self.worklist.push(def_id.node)

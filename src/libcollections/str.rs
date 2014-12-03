@@ -563,6 +563,7 @@ impl<'a> Ord for MaybeOwned<'a> {
     }
 }
 
+#[allow(deprecated)]
 #[deprecated = "use std::str::CowString"]
 impl<'a, S: Str> Equiv<S> for MaybeOwned<'a> {
     #[inline]
@@ -832,8 +833,10 @@ mod tests {
     use std::default::Default;
     use std::char::Char;
     use std::clone::Clone;
-    use std::cmp::{Equal, Greater, Less, Ord, PartialOrd, Equiv};
-    use std::option::{Some, None};
+    use std::cmp::{Ord, PartialOrd, Equiv};
+    use std::cmp::Ordering::{Equal, Greater, Less};
+    use std::option::Option;
+    use std::option::Option::{Some, None};
     use std::ptr::RawPtr;
     use std::iter::{Iterator, IteratorExt, DoubleEndedIteratorExt};
 

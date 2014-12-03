@@ -44,7 +44,8 @@
 pub use self::Ordering::*;
 
 use kinds::Sized;
-use option::{Option, Some, None};
+use option::Option;
+use option::Option::{Some, None};
 
 /// Trait for values that can be compared for equality and inequality.
 ///
@@ -61,13 +62,13 @@ use option::{Option, Some, None};
 /// `Eq`.
 #[lang="eq"]
 #[unstable = "Definition may change slightly after trait reform"]
-pub trait PartialEq for Sized? {
+pub trait PartialEq<Sized? Rhs = Self> for Sized? {
     /// This method tests for `self` and `other` values to be equal, and is used by `==`.
-    fn eq(&self, other: &Self) -> bool;
+    fn eq(&self, other: &Rhs) -> bool;
 
     /// This method tests for `!=`.
     #[inline]
-    fn ne(&self, other: &Self) -> bool { !self.eq(other) }
+    fn ne(&self, other: &Rhs) -> bool { !self.eq(other) }
 }
 
 /// Trait for equality comparisons which are [equivalence relations](
@@ -80,7 +81,7 @@ pub trait PartialEq for Sized? {
 /// - symmetric: `a == b` implies `b == a`; and
 /// - transitive: `a == b` and `b == c` implies `a == c`.
 #[unstable = "Definition may change slightly after trait reform"]
-pub trait Eq for Sized?: PartialEq {
+pub trait Eq<Sized? Rhs = Self> for Sized?: PartialEq<Rhs> {
     // FIXME #13101: this method is used solely by #[deriving] to
     // assert that every component of a type implements #[deriving]
     // itself, the current deriving infrastructure means doing this
@@ -150,7 +151,7 @@ impl Ordering {
 /// - transitive, `a < b` and `b < c` implies `a < c`. The same must hold for
 ///   both `==` and `>`.
 #[unstable = "Definition may change slightly after trait reform"]
-pub trait Ord for Sized?: Eq + PartialOrd {
+pub trait Ord<Sized? Rhs = Self> for Sized?: Eq<Rhs> + PartialOrd<Rhs> {
     /// This method returns an ordering between `self` and `other` values.
     ///
     /// By convention, `self.cmp(&other)` returns the ordering matching
@@ -161,7 +162,7 @@ pub trait Ord for Sized?: Eq + PartialOrd {
     /// assert_eq!(10u.cmp(&5),  Greater);  // because 10 > 5
     /// assert_eq!( 5u.cmp(&5),  Equal);    // because 5 == 5
     /// ```
-    fn cmp(&self, other: &Self) -> Ordering;
+    fn cmp(&self, other: &Rhs) -> Ordering;
 }
 
 #[unstable = "Trait is unstable."]
@@ -194,14 +195,14 @@ impl PartialOrd for Ordering {
 /// 5.11).
 #[lang="ord"]
 #[unstable = "Definition may change slightly after trait reform"]
-pub trait PartialOrd for Sized?: PartialEq {
+pub trait PartialOrd<Sized? Rhs = Self> for Sized?: PartialEq<Rhs> {
     /// This method returns an ordering between `self` and `other` values
     /// if one exists.
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering>;
+    fn partial_cmp(&self, other: &Rhs) -> Option<Ordering>;
 
     /// This method tests less than (for `self` and `other`) and is used by the `<` operator.
     #[inline]
-    fn lt(&self, other: &Self) -> bool {
+    fn lt(&self, other: &Rhs) -> bool {
         match self.partial_cmp(other) {
             Some(Less) => true,
             _ => false,
@@ -210,7 +211,7 @@ pub trait PartialOrd for Sized?: PartialEq {
 
     /// This method tests less than or equal to (`<=`).
     #[inline]
-    fn le(&self, other: &Self) -> bool {
+    fn le(&self, other: &Rhs) -> bool {
         match self.partial_cmp(other) {
             Some(Less) | Some(Equal) => true,
             _ => false,
@@ -219,7 +220,7 @@ pub trait PartialOrd for Sized?: PartialEq {
 
     /// This method tests greater than (`>`).
     #[inline]
-    fn gt(&self, other: &Self) -> bool {
+    fn gt(&self, other: &Rhs) -> bool {
         match self.partial_cmp(other) {
             Some(Greater) => true,
             _ => false,
@@ -228,7 +229,7 @@ pub trait PartialOrd for Sized?: PartialEq {
 
     /// This method tests greater than or equal to (`>=`).
     #[inline]
-    fn ge(&self, other: &Self) -> bool {
+    fn ge(&self, other: &Rhs) -> bool {
         match self.partial_cmp(other) {
             Some(Greater) | Some(Equal) => true,
             _ => false,
@@ -240,7 +241,7 @@ pub trait PartialOrd for Sized?: PartialEq {
 /// of different types. The most common use case for this relation is
 /// container types; e.g. it is often desirable to be able to use `&str`
 /// values to look up entries in a container with `String` keys.
-#[experimental = "Better solutions may be discovered."]
+#[deprecated = "Use overloaded core::cmp::PartialEq"]
 pub trait Equiv<Sized? T> for Sized? {
     /// Implement this function to decide equivalent values.
     fn equiv(&self, other: &T) -> bool;
@@ -288,10 +289,11 @@ pub fn partial_max<T: PartialOrd>(v1: T, v2: T) -> Option<T> {
 
 // Implementation of PartialEq, Eq, PartialOrd and Ord for primitive types
 mod impls {
-    use cmp::{PartialOrd, Ord, PartialEq, Eq, Ordering,
-              Less, Greater, Equal};
+    use cmp::{PartialOrd, Ord, PartialEq, Eq, Ordering};
+    use cmp::Ordering::{Less, Greater, Equal};
     use kinds::Sized;
-    use option::{Option, Some, None};
+    use option::Option;
+    use option::Option::{Some, None};
 
     macro_rules! partial_eq_impl(
         ($($t:ty)*) => ($(
@@ -400,11 +402,11 @@ mod impls {
     // & pointers
 
     #[unstable = "Trait is unstable."]
-    impl<'a, Sized? T: PartialEq> PartialEq for &'a T {
+    impl<'a, 'b, Sized? A, Sized? B> PartialEq<&'b B> for &'a A where A: PartialEq<B> {
         #[inline]
-        fn eq(&self, other: & &'a T) -> bool { PartialEq::eq(*self, *other) }
+        fn eq(&self, other: & &'b B) -> bool { PartialEq::eq(*self, *other) }
         #[inline]
-        fn ne(&self, other: & &'a T) -> bool { PartialEq::ne(*self, *other) }
+        fn ne(&self, other: & &'b B) -> bool { PartialEq::ne(*self, *other) }
     }
     #[unstable = "Trait is unstable."]
     impl<'a, Sized? T: PartialOrd> PartialOrd for &'a T {
@@ -432,11 +434,11 @@ mod impls {
     // &mut pointers
 
     #[unstable = "Trait is unstable."]
-    impl<'a, Sized? T: PartialEq> PartialEq for &'a mut T {
+    impl<'a, 'b, Sized? A, Sized? B> PartialEq<&'b mut B> for &'a mut A where A: PartialEq<B> {
         #[inline]
-        fn eq(&self, other: &&'a mut T) -> bool { PartialEq::eq(*self, *other) }
+        fn eq(&self, other: &&'b mut B) -> bool { PartialEq::eq(*self, *other) }
         #[inline]
-        fn ne(&self, other: &&'a mut T) -> bool { PartialEq::ne(*self, *other) }
+        fn ne(&self, other: &&'b mut B) -> bool { PartialEq::ne(*self, *other) }
     }
     #[unstable = "Trait is unstable."]
     impl<'a, Sized? T: PartialOrd> PartialOrd for &'a mut T {
@@ -460,4 +462,18 @@ mod impls {
     }
     #[unstable = "Trait is unstable."]
     impl<'a, Sized? T: Eq> Eq for &'a mut T {}
+
+    impl<'a, 'b, Sized? A, Sized? B> PartialEq<&'b mut B> for &'a A where A: PartialEq<B> {
+        #[inline]
+        fn eq(&self, other: &&'b mut B) -> bool { PartialEq::eq(*self, *other) }
+        #[inline]
+        fn ne(&self, other: &&'b mut B) -> bool { PartialEq::ne(*self, *other) }
+    }
+
+    impl<'a, 'b, Sized? A, Sized? B> PartialEq<&'b B> for &'a mut A where A: PartialEq<B> {
+        #[inline]
+        fn eq(&self, other: &&'b B) -> bool { PartialEq::eq(*self, *other) }
+        #[inline]
+        fn ne(&self, other: &&'b B) -> bool { PartialEq::ne(*self, *other) }
+    }
 }

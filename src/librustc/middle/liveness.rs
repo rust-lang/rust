@@ -111,7 +111,7 @@ use self::VarKind::*;
 
 use middle::def::*;
 use middle::mem_categorization::Typer;
-use middle::{pat_util, typeck, ty};
+use middle::{pat_util, ty};
 use lint;
 use util::nodemap::NodeMap;
 
@@ -1156,7 +1156,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
           }
 
           ast::ExprMethodCall(_, _, ref args) => {
-            let method_call = typeck::MethodCall::expr(expr.id);
+            let method_call = ty::MethodCall::expr(expr.id);
             let method_ty = self.ir.tcx.method_map.borrow().get(&method_call).unwrap().ty;
             let diverges = ty::ty_fn_ret(method_ty) == ty::FnDiverging;
             let succ = if diverges {

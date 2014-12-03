@@ -18,7 +18,7 @@ pub use self::ObligationCauseCode::*;
 use middle::mem_categorization::Typer;
 use middle::subst;
 use middle::ty::{mod, Ty};
-use middle::typeck::infer::InferCtxt;
+use middle::infer::InferCtxt;
 use std::rc::Rc;
 use std::slice::Items;
 use syntax::ast;

@@ -15,7 +15,7 @@
 //! as a `Reader` without unwrapping the result first.
 
 use clone::Clone;
-use result::{Ok, Err};
+use result::Result::{Ok, Err};
 use super::{Reader, Writer, Listener, Acceptor, Seek, SeekStyle, IoResult};
 
 impl<W: Writer> Writer for IoResult<W> {
