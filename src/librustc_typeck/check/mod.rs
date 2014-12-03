@@ -287,11 +287,16 @@ impl<'a, 'tcx> mem_categorization::Typer<'tcx> for FnCtxt<'a, 'tcx> {
         self.ccx.tcx
     }
     fn node_ty(&self, id: ast::NodeId) -> McResult<Ty<'tcx>> {
-        Ok(self.node_ty(id))
+        let ty = self.node_ty(id);
+        Ok(self.infcx().resolve_type_vars_if_possible(ty))
+    }
     }
     fn node_method_ty(&self, method_call: ty::MethodCall)
                       -> Option<Ty<'tcx>> {
-        self.inh.method_map.borrow().get(&method_call).map(|m| m.ty)
+        self.inh.method_map.borrow()
+                           .get(&method_call)
+                           .map(|method| method.ty)
+                           .map(|ty| self.infcx().resolve_type_vars_if_possible(ty))
     }
     fn adjustments(&self) -> &RefCell<NodeMap<ty::AutoAdjustment<'tcx>>> {
         &self.inh.adjustments

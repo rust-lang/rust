@@ -126,7 +126,7 @@ use middle::ty::{ReScope};
 use middle::ty::{mod, Ty, MethodCall};
 use middle::infer;
 use middle::pat_util;
-use util::nodemap::{DefIdMap, NodeMap, FnvHashMap};
+use util::nodemap::{FnvHashMap};
 use util::ppaux::{ty_to_string, Repr};
 
 use syntax::{ast, ast_util};
@@ -446,47 +446,6 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
     }
 }
 
-impl<'fcx, 'tcx> mc::Typer<'tcx> for Rcx<'fcx, 'tcx> {
-    fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx> {
-        self.fcx.ccx.tcx
-    }
-
-    fn node_ty(&self, id: ast::NodeId) -> mc::McResult<Ty<'tcx>> {
-        let t = self.resolve_node_type(id);
-        if ty::type_is_error(t) {Err(())} else {Ok(t)}
-    }
-
-    fn node_method_ty(&self, method_call: MethodCall) -> Option<Ty<'tcx>> {
-        self.resolve_method_type(method_call)
-    }
-
-    fn adjustments<'a>(&'a self) -> &'a RefCell<NodeMap<ty::AutoAdjustment<'tcx>>> {
-        &self.fcx.inh.adjustments
-    }
-
-    fn is_method_call(&self, id: ast::NodeId) -> bool {
-        self.fcx.inh.method_map.borrow().contains_key(&MethodCall::expr(id))
-    }
-
-    fn temporary_scope(&self, id: ast::NodeId) -> Option<CodeExtent> {
-        self.tcx().region_maps.temporary_scope(id)
-    }
-
-    fn upvar_borrow(&self, id: ty::UpvarId) -> ty::UpvarBorrow {
-        self.fcx.inh.upvar_borrow_map.borrow()[id].clone()
-    }
-
-    fn capture_mode(&self, closure_expr_id: ast::NodeId)
-                    -> ast::CaptureClause {
-        self.tcx().capture_modes.borrow()[closure_expr_id].clone()
-    }
-
-    fn unboxed_closures<'a>(&'a self)
-                        -> &'a RefCell<DefIdMap<ty::UnboxedClosure<'tcx>>> {
-        &self.fcx.inh.unboxed_closures
-    }
-}
-
 impl<'a, 'tcx, 'v> Visitor<'v> for Rcx<'a, 'tcx> {
     // (..) FIXME(#3238) should use visit_pat, not visit_arm/visit_local,
     // However, right now we run into an issue whereby some free
@@ -767,7 +726,7 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
             constrain_bindings_in_pat(&**pat, rcx);
 
             {
-                let mc = mc::MemCategorizationContext::new(rcx);
+                let mc = mc::MemCategorizationContext::new(rcx.fcx);
                 let pat_ty = rcx.resolve_node_type(pat.id);
                 let pat_cmt = mc.cat_rvalue(pat.id,
                                             pat.span,
@@ -1080,7 +1039,7 @@ fn constrain_callee(rcx: &mut Rcx,
                 ty::RegionTraitStore(r, _) => {
                     // While we're here, link the closure's region with a unique
                     // immutable borrow (gathered later in borrowck)
-                    let mc = mc::MemCategorizationContext::new(rcx);
+                    let mc = mc::MemCategorizationContext::new(rcx.fcx);
                     let expr_cmt = ignore_err!(mc.cat_expr(callee_expr));
                     link_region(rcx, callee_expr.span, call_region,
                                 ty::UniqueImmBorrow, expr_cmt);
@@ -1189,7 +1148,7 @@ fn constrain_autoderefs<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
                                     method.ty.repr(rcx.tcx()))[])
                 };
                 {
-                    let mc = mc::MemCategorizationContext::new(rcx);
+                    let mc = mc::MemCategorizationContext::new(rcx.fcx);
                     let self_cmt = ignore_err!(mc.cat_expr_autoderefd(deref_expr, i));
                     link_region(rcx, deref_expr.span, r,
                                 ty::BorrowKind::from_mutbl(m), self_cmt);
@@ -1285,7 +1244,7 @@ fn link_addr_of(rcx: &mut Rcx, expr: &ast::Expr,
     debug!("link_addr_of(base=?)");
 
     let cmt = {
-        let mc = mc::MemCategorizationContext::new(rcx);
+        let mc = mc::MemCategorizationContext::new(rcx.fcx);
         ignore_err!(mc.cat_expr(base))
     };
     link_region_from_node_type(rcx, expr.span, expr.id, mutability, cmt);
@@ -1300,7 +1259,7 @@ fn link_local(rcx: &Rcx, local: &ast::Local) {
         None => { return; }
         Some(ref expr) => &**expr,
     };
-    let mc = mc::MemCategorizationContext::new(rcx);
+    let mc = mc::MemCategorizationContext::new(rcx.fcx);
     let discr_cmt = ignore_err!(mc.cat_expr(init_expr));
     link_pattern(rcx, mc, discr_cmt, &*local.pat);
 }
@@ -1310,7 +1269,7 @@ fn link_local(rcx: &Rcx, local: &ast::Local) {
 /// linked to the lifetime of its guarantor (if any).
 fn link_match(rcx: &Rcx, discr: &ast::Expr, arms: &[ast::Arm]) {
     debug!("regionck::for_match()");
-    let mc = mc::MemCategorizationContext::new(rcx);
+    let mc = mc::MemCategorizationContext::new(rcx.fcx);
     let discr_cmt = ignore_err!(mc.cat_expr(discr));
     debug!("discr_cmt={}", discr_cmt.repr(rcx.tcx()));
     for arm in arms.iter() {
@@ -1325,7 +1284,7 @@ fn link_match(rcx: &Rcx, discr: &ast::Expr, arms: &[ast::Arm]) {
 /// linked to the lifetime of its guarantor (if any).
 fn link_fn_args(rcx: &Rcx, body_scope: CodeExtent, args: &[ast::Arg]) {
     debug!("regionck::link_fn_args(body_scope={})", body_scope);
-    let mc = mc::MemCategorizationContext::new(rcx);
+    let mc = mc::MemCategorizationContext::new(rcx.fcx);
     for arg in args.iter() {
         let arg_ty = rcx.fcx.node_ty(arg.id);
         let re_scope = ty::ReScope(body_scope);
@@ -1340,7 +1299,7 @@ fn link_fn_args(rcx: &Rcx, body_scope: CodeExtent, args: &[ast::Arg]) {
 /// Link lifetimes of any ref bindings in `root_pat` to the pointers found in the discriminant, if
 /// needed.
 fn link_pattern<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
-                          mc: mc::MemCategorizationContext<Rcx<'a, 'tcx>>,
+                          mc: mc::MemCategorizationContext<FnCtxt<'a, 'tcx>>,
                           discr_cmt: mc::cmt<'tcx>,
                           root_pat: &ast::Pat) {
     debug!("link_pattern(discr_cmt={}, root_pat={})",
@@ -1379,7 +1338,7 @@ fn link_autoref(rcx: &Rcx,
                 autoref: &ty::AutoRef) {
 
     debug!("link_autoref(autoref={})", autoref);
-    let mc = mc::MemCategorizationContext::new(rcx);
+    let mc = mc::MemCategorizationContext::new(rcx.fcx);
     let expr_cmt = ignore_err!(mc.cat_expr_autoderefd(expr, autoderefs));
     debug!("expr_cmt={}", expr_cmt.repr(rcx.tcx()));
 
@@ -1401,7 +1360,7 @@ fn link_by_ref(rcx: &Rcx,
     let tcx = rcx.tcx();
     debug!("link_by_ref(expr={}, callee_scope={})",
            expr.repr(tcx), callee_scope);
-    let mc = mc::MemCategorizationContext::new(rcx);
+    let mc = mc::MemCategorizationContext::new(rcx.fcx);
     let expr_cmt = ignore_err!(mc.cat_expr(expr));
     let borrow_region = ty::ReScope(callee_scope);
     link_region(rcx, expr.span, borrow_region, ty::ImmBorrow, expr_cmt);
@@ -1669,7 +1628,7 @@ fn link_reborrowed_region<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
 /// assignment expression.
 fn adjust_borrow_kind_for_assignment_lhs(rcx: &Rcx,
                                          lhs: &ast::Expr) {
-    let mc = mc::MemCategorizationContext::new(rcx);
+    let mc = mc::MemCategorizationContext::new(rcx.fcx);
     let cmt = ignore_err!(mc.cat_expr(lhs));
     adjust_upvar_borrow_kind_for_mut(rcx, cmt);
 }
