@@ -1244,6 +1244,10 @@ impl Context {
         for item in m.items.iter() {
             if self.ignore_private_item(item) { continue }
 
+            // avoid putting foreign items to the sidebar.
+            if let &clean::ForeignFunctionItem(..) = &item.inner { continue }
+            if let &clean::ForeignStaticItem(..) = &item.inner { continue }
+
             let short = shortty(item).to_static_str();
             let myname = match item.name {
                 None => continue,
