@@ -234,10 +234,12 @@ impl<V> VecMap<V> {
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn into_iter(&mut self) -> MoveItems<V> {
-        let values = replace(&mut self.v, vec!());
-        values.into_iter().enumerate().filter_map(|(i, v)| {
+        fn filter<A>((i, v): (uint, Option<A>)) -> Option<(uint, A)> {
             v.map(|v| (i, v))
-        })
+        }
+
+        let values = replace(&mut self.v, vec!());
+        values.into_iter().enumerate().filter_map(filter)
     }
 
     /// Return the number of elements in the map.
@@ -631,8 +633,11 @@ pub type Values<'a, V> =
     iter::Map<(uint, &'a V), &'a V, Entries<'a, V>, fn((uint, &'a V)) -> &'a V>;
 
 /// Iterator over the key-value pairs of a map, the iterator consumes the map
-pub type MoveItems<V> =
-    FilterMap<'static, (uint, Option<V>), (uint, V), Enumerate<vec::MoveItems<Option<V>>>>;
+pub type MoveItems<V> = FilterMap<
+    (uint, Option<V>),
+    (uint, V),
+    Enumerate<vec::MoveItems<Option<V>>>,
+    fn((uint, Option<V>)) -> Option<(uint, V)>>;
 
 #[cfg(test)]
 mod test_map {
