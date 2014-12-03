@@ -113,7 +113,8 @@ an on-the-stack buffer optimization in the future without having to resort to a
 `with_c_str` today. Of the other two constructors, `from_vec` will consume a
 vector, assert there are no 0 bytes, an then push a 0 byte on the end. The
 `from_vec_unchecked` constructor will not perform the verification, but will
-still push a zero.
+still push a zero. Note that both of these constructors expose the fact that a
+`CString` is not necessarily valid UTF-8.
 
 The `ToCStr` trait is removed entirely (including from the prelude) in favor of
 these construction functions. This could possibly be re-added in the future, but
@@ -241,6 +242,9 @@ and `with_c_str` methods are no longer in the prelude by default, and
   is today, a `proc`. This imposes a requirement of `Send`, however, and cannot
   be 0-size. It is not clear, however, whether using a trait for these two
   reasons is worth it.
+
+* The `from_vec_unchecked` function could do precisely 0 work instead of always
+  pushing a 0 at the end.
 
 # Unresolved questions
 
