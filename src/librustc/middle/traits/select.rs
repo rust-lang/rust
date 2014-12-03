@@ -1228,8 +1228,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             .iter()
                             .map(|freevar| {
                                 let freevar_def_id = freevar.def.def_id();
-                                self.typer.node_ty(freevar_def_id.node)
-                                    .unwrap_or(ty::mk_err()).subst(self.tcx(), substs)
+                                self.typer.node_ty(freevar_def_id.node).subst(self.tcx(), substs)
                             })
                             .collect();
                         Ok(If(tys))
