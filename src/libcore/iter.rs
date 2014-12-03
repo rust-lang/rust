@@ -201,7 +201,7 @@ pub trait IteratorExt<A>: Iterator<A> {
     /// ```
     #[inline]
     #[unstable = "waiting for unboxed closures"]
-    fn filter_map<'r, B>(self, f: |A|: 'r -> Option<B>) -> FilterMap<'r, A, B, Self> {
+    fn filter_map<B, F>(self, f: F) -> FilterMap<A, B, Self, F> where F: FnMut(A) -> Option<B> {
         FilterMap { iter: self, f: f }
     }
 
@@ -1483,13 +1483,16 @@ impl<A, I, P> DoubleEndedIterator<A> for Filter<A, I, P> where
 /// An iterator which uses `f` to both filter and map elements from `iter`
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 #[stable]
-pub struct FilterMap<'a, A, B, T> {
-    iter: T,
-    f: |A|: 'a -> Option<B>
+pub struct FilterMap<A, B, I, F> where I: Iterator<A>, F: FnMut(A) -> Option<B> {
+    iter: I,
+    f: F,
 }
 
 #[unstable = "trait is unstable"]
-impl<'a, A, B, T: Iterator<A>> Iterator<B> for FilterMap<'a, A, B, T> {
+impl<A, B, I, F> Iterator<B> for FilterMap<A, B, I, F> where
+    I: Iterator<A>,
+    F: FnMut(A) -> Option<B>,
+{
     #[inline]
     fn next(&mut self) -> Option<B> {
         for x in self.iter {
@@ -1509,8 +1512,10 @@ impl<'a, A, B, T: Iterator<A>> Iterator<B> for FilterMap<'a, A, B, T> {
 }
 
 #[unstable = "trait is unstable"]
-impl<'a, A, B, T: DoubleEndedIterator<A>> DoubleEndedIterator<B>
-for FilterMap<'a, A, B, T> {
+impl<A, B, I, F> DoubleEndedIterator<B> for FilterMap<A, B, I, F> where
+    I: DoubleEndedIterator<A>,
+    F: FnMut(A) -> Option<B>,
+{
     #[inline]
     fn next_back(&mut self) -> Option<B> {
         for x in self.iter.by_ref().rev() {
