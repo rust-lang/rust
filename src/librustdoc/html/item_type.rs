@@ -9,7 +9,6 @@
 // except according to those terms.
 
 //! Item types.
-pub use self::ItemType::*;
 
 use std::fmt;
 use clean;
@@ -44,27 +43,64 @@ pub enum ItemType {
 }
 
 impl ItemType {
+    pub fn from_item(item: &clean::Item) -> ItemType {
+        match item.inner {
+            clean::ModuleItem(..)          => ItemType::Module,
+            clean::StructItem(..)          => ItemType::Struct,
+            clean::EnumItem(..)            => ItemType::Enum,
+            clean::FunctionItem(..)        => ItemType::Function,
+            clean::TypedefItem(..)         => ItemType::Typedef,
+            clean::StaticItem(..)          => ItemType::Static,
+            clean::ConstantItem(..)        => ItemType::Constant,
+            clean::TraitItem(..)           => ItemType::Trait,
+            clean::ImplItem(..)            => ItemType::Impl,
+            clean::ViewItemItem(..)        => ItemType::ViewItem,
+            clean::TyMethodItem(..)        => ItemType::TyMethod,
+            clean::MethodItem(..)          => ItemType::Method,
+            clean::StructFieldItem(..)     => ItemType::StructField,
+            clean::VariantItem(..)         => ItemType::Variant,
+            clean::ForeignFunctionItem(..) => ItemType::ForeignFunction,
+            clean::ForeignStaticItem(..)   => ItemType::ForeignStatic,
+            clean::MacroItem(..)           => ItemType::Macro,
+            clean::PrimitiveItem(..)       => ItemType::Primitive,
+            clean::AssociatedTypeItem(..)  => ItemType::AssociatedType,
+        }
+    }
+
+    pub fn from_type_kind(kind: clean::TypeKind) -> ItemType {
+        match kind {
+            clean::TypeStruct   => ItemType::Struct,
+            clean::TypeEnum     => ItemType::Enum,
+            clean::TypeFunction => ItemType::Function,
+            clean::TypeTrait    => ItemType::Trait,
+            clean::TypeModule   => ItemType::Module,
+            clean::TypeStatic   => ItemType::Static,
+            clean::TypeVariant  => ItemType::Variant,
+            clean::TypeTypedef  => ItemType::Typedef,
+        }
+    }
+
     pub fn to_static_str(&self) -> &'static str {
         match *self {
-            Module          => "mod",
-            Struct          => "struct",
-            Enum            => "enum",
-            Function        => "fn",
-            Typedef         => "type",
-            Static          => "static",
-            Trait           => "trait",
-            Impl            => "impl",
-            ViewItem        => "viewitem",
-            TyMethod        => "tymethod",
-            Method          => "method",
-            StructField     => "structfield",
-            Variant         => "variant",
-            ForeignFunction => "ffi",
-            ForeignStatic   => "ffs",
-            Macro           => "macro",
-            Primitive       => "primitive",
-            AssociatedType  => "associatedtype",
-            Constant        => "constant",
+            ItemType::Module          => "mod",
+            ItemType::Struct          => "struct",
+            ItemType::Enum            => "enum",
+            ItemType::Function        => "fn",
+            ItemType::Typedef         => "type",
+            ItemType::Static          => "static",
+            ItemType::Trait           => "trait",
+            ItemType::Impl            => "impl",
+            ItemType::ViewItem        => "viewitem",
+            ItemType::TyMethod        => "tymethod",
+            ItemType::Method          => "method",
+            ItemType::StructField     => "structfield",
+            ItemType::Variant         => "variant",
+            ItemType::ForeignFunction => "ffi",
+            ItemType::ForeignStatic   => "ffs",
+            ItemType::Macro           => "macro",
+            ItemType::Primitive       => "primitive",
+            ItemType::AssociatedType  => "associatedtype",
+            ItemType::Constant        => "constant",
         }
     }
 }
@@ -72,30 +108,6 @@ impl ItemType {
 impl fmt::Show for ItemType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.to_static_str().fmt(f)
-    }
-}
-
-pub fn shortty(item: &clean::Item) -> ItemType {
-    match item.inner {
-        clean::ModuleItem(..)          => Module,
-        clean::StructItem(..)          => Struct,
-        clean::EnumItem(..)            => Enum,
-        clean::FunctionItem(..)        => Function,
-        clean::TypedefItem(..)         => Typedef,
-        clean::StaticItem(..)          => Static,
-        clean::ConstantItem(..)        => Constant,
-        clean::TraitItem(..)           => Trait,
-        clean::ImplItem(..)            => Impl,
-        clean::ViewItemItem(..)        => ViewItem,
-        clean::TyMethodItem(..)        => TyMethod,
-        clean::MethodItem(..)          => Method,
-        clean::StructFieldItem(..)     => StructField,
-        clean::VariantItem(..)         => Variant,
-        clean::ForeignFunctionItem(..) => ForeignFunction,
-        clean::ForeignStaticItem(..)   => ForeignStatic,
-        clean::MacroItem(..)           => Macro,
-        clean::PrimitiveItem(..)       => Primitive,
-        clean::AssociatedTypeItem(..)  => AssociatedType,
     }
 }
 
