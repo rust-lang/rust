@@ -619,9 +619,9 @@ impl<T> Vec<T> {
     /// # Example
     ///
     /// ```
-    /// let mut vec: Vec<int> = vec![1];
+    /// let mut vec = Vec::new();
     /// vec.reserve(10);
-    /// assert!(vec.capacity() >= 11);
+    /// assert!(vec.capacity() >= 9);
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn reserve(&mut self, additional: uint) {
@@ -656,9 +656,9 @@ impl<T> Vec<T> {
     /// # Example
     ///
     /// ```
-    /// let mut vec: Vec<int> = vec![1];
+    /// let mut vec = Vec::new();
     /// vec.reserve_exact(10);
-    /// assert!(vec.capacity() >= 11);
+    /// assert!(vec.capacity() >= 9);
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn reserve_exact(&mut self, additional: uint) {
@@ -667,6 +667,54 @@ impl<T> Vec<T> {
                 None => panic!("Vec::reserve: `uint` overflow"),
                 Some(new_cap) => self.grow_capacity(new_cap)
             }
+        }
+    }
+
+    /// Reserves the minimum capacity for an element to be inserted at `index` in the given
+    /// `Vec`. The collection may reserve more space to avoid frequent reallocations.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the new capacity overflows `uint`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let mut vec = Vec::new();
+    /// vec.reserve_index(10);
+    /// assert!(vec.capacity() >= 11);
+    /// ```
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    pub fn reserve_index(&mut self, index: uint) {
+        let len = self.len();
+        if index >= len {
+            self.reserve(index - len + 1);
+        }
+    }
+
+    /// Reserves the minimum capacity for an element to be inserted at `index` in the
+    /// given `Vec`. Does nothing if the capacity is already sufficient.
+    ///
+    /// Note that the allocator may give the collection more space than it requests. Therefore
+    /// capacity can not be relied upon to be precisely minimal. Prefer `reserve_index` if future
+    /// insertions are expected.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the new capacity overflows `uint`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let mut vec = Vec::new();
+    /// vec.reserve_index_exact(10);
+    /// assert!(vec.capacity() >= 11);
+    /// ```
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    pub fn reserve_index_exact(&mut self, index: uint) {
+        let len = self.len();
+        if index >= len {
+            self.reserve_exact(index - len + 1);
         }
     }
 
@@ -1789,6 +1837,72 @@ mod tests {
         v.push(16);
 
         v.reserve(16);
+        assert!(v.capacity() >= 33)
+    }
+
+    #[test]
+    fn test_reserve_exact() {
+        let mut v = Vec::new();
+        assert_eq!(v.capacity(), 0);
+
+        v.reserve_exact(2);
+        assert!(v.capacity() >= 2);
+
+        for i in range(0i, 16) {
+            v.push(i);
+        }
+
+        assert!(v.capacity() >= 16);
+        v.reserve_exact(16);
+        assert!(v.capacity() >= 32);
+
+        v.push(16);
+
+        v.reserve_exact(16);
+        assert!(v.capacity() >= 33)
+    }
+
+    #[test]
+    fn test_reserve_index() {
+        let mut v = Vec::new();
+        assert_eq!(v.capacity(), 0);
+
+        v.reserve_index(2);
+        assert!(v.capacity() >= 3);
+
+        for i in range(0i, 16) {
+            v.push(i);
+        }
+
+        assert!(v.capacity() >= 16);
+        v.reserve_index(16);
+        assert!(v.capacity() >= 17);
+
+        v.push(16);
+
+        v.reserve_index(32);
+        assert!(v.capacity() >= 33)
+    }
+
+    #[test]
+    fn test_reserve_index_exact() {
+        let mut v = Vec::new();
+        assert_eq!(v.capacity(), 0);
+
+        v.reserve_index_exact(2);
+        assert!(v.capacity() >= 3);
+
+        for i in range(0i, 16) {
+            v.push(i);
+        }
+
+        assert!(v.capacity() >= 16);
+        v.reserve_index_exact(16);
+        assert!(v.capacity() >= 17);
+
+        v.push(16);
+
+        v.reserve_index_exact(32);
         assert!(v.capacity() >= 33)
     }
 
