@@ -44,10 +44,11 @@ use hash::Hash;
 use iter::{range, Iterator, Extend};
 use mem;
 use ops::Drop;
-use option::{Some, None, Option};
+use option::Option;
+use option::Option::{Some, None};
 use boxed::Box;
 use ptr;
-use result::{Ok, Err};
+use result::Result::{Ok, Err};
 
 // FIXME(conventions): implement iterators?
 // FIXME(conventions): implement indexing?

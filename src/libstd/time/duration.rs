@@ -14,9 +14,11 @@
 
 use {fmt, i64};
 use ops::{Add, Sub, Mul, Div, Neg};
-use option::{Option, Some, None};
+use option::Option;
+use option::Option::{Some, None};
 use num::Int;
-use result::{Result, Ok, Err};
+use result::Result;
+use result::Result::{Ok, Err};
 
 /// The number of nanoseconds in a microsecond.
 const NANOS_PER_MICRO: i32 = 1000;
@@ -387,7 +389,7 @@ fn div_rem_64(this: i64, other: i64) -> (i64, i64) {
 mod tests {
     use super::{Duration, MIN, MAX};
     use {i32, i64};
-    use option::{Some, None};
+    use option::Option::{Some, None};
     use string::ToString;
 
     #[test]

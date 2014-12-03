@@ -160,7 +160,8 @@ use cmp::PartialEq;
 use default::Default;
 use kinds::{marker, Copy};
 use ops::{Deref, DerefMut, Drop};
-use option::{None, Option, Some};
+use option::Option;
+use option::Option::{None, Some};
 
 /// A mutable memory location that admits only `Copy` data.
 #[unstable = "likely to be renamed; otherwise stable"]

@@ -680,6 +680,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         let some = vec!(
             self.ident_of("std"),
             self.ident_of("option"),
+            self.ident_of("Option"),
             self.ident_of("Some"));
         self.expr_call_global(sp, some, vec!(expr))
     }
@@ -688,6 +689,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         let none = self.path_global(sp, vec!(
             self.ident_of("std"),
             self.ident_of("option"),
+            self.ident_of("Option"),
             self.ident_of("None")));
         self.expr_path(none)
     }
@@ -732,6 +734,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         let ok = vec!(
             self.ident_of("std"),
             self.ident_of("result"),
+            self.ident_of("Result"),
             self.ident_of("Ok"));
         self.expr_call_global(sp, ok, vec!(expr))
     }
@@ -740,6 +743,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         let err = vec!(
             self.ident_of("std"),
             self.ident_of("result"),
+            self.ident_of("Result"),
             self.ident_of("Err"));
         self.expr_call_global(sp, err, vec!(expr))
     }
@@ -810,6 +814,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         let some = vec!(
             self.ident_of("std"),
             self.ident_of("option"),
+            self.ident_of("Option"),
             self.ident_of("Some"));
         let path = self.path_global(span, some);
         self.pat_enum(span, path, vec!(pat))
@@ -819,6 +824,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         let some = vec!(
             self.ident_of("std"),
             self.ident_of("option"),
+            self.ident_of("Option"),
             self.ident_of("None"));
         let path = self.path_global(span, some);
         self.pat_enum(span, path, vec!())
@@ -828,6 +834,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         let some = vec!(
             self.ident_of("std"),
             self.ident_of("result"),
+            self.ident_of("Result"),
             self.ident_of("Ok"));
         let path = self.path_global(span, some);
         self.pat_enum(span, path, vec!(pat))
@@ -837,6 +844,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         let some = vec!(
             self.ident_of("std"),
             self.ident_of("result"),
+            self.ident_of("Result"),
             self.ident_of("Err"));
         let path = self.path_global(span, some);
         self.pat_enum(span, path, vec!(pat))

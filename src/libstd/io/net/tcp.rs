@@ -19,11 +19,12 @@
 
 use clone::Clone;
 use io::IoResult;
-use result::Err;
+use result::Result::Err;
 use io::net::ip::{SocketAddr, ToSocketAddr};
 use io::{Reader, Writer, Listener, Acceptor};
 use io::{standard_error, TimedOut};
-use option::{None, Some, Option};
+use option::Option;
+use option::Option::{None, Some};
 use time::Duration;
 
 use sys::tcp::TcpStream as TcpStreamImp;

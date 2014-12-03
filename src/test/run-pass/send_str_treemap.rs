@@ -11,7 +11,7 @@
 extern crate collections;
 
 use self::collections::TreeMap;
-use std::option::Some;
+use std::option::Option::Some;
 use std::str::SendStr;
 use std::string::ToString;
 

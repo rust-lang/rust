@@ -38,7 +38,8 @@
 use kinds::Send;
 use mem;
 use ops::Drop;
-use option::{Option, Some, None};
+use option::Option;
+use option::Option::{Some, None};
 use ptr::RawPtr;
 use ptr;
 use raw;

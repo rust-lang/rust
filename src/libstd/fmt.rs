@@ -406,7 +406,7 @@
 
 use io::Writer;
 use io;
-use result::{Ok, Err};
+use result::Result::{Ok, Err};
 use string;
 use vec::Vec;
 
