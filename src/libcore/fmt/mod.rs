@@ -543,14 +543,6 @@ pub fn argument<'a, T>(f: extern "Rust" fn(&T, &mut Formatter) -> Result,
     }
 }
 
-/// When the compiler determines that the type of an argument *must* be a string
-/// (such as for select), then it invokes this method.
-#[doc(hidden)] #[inline]
-#[experimental = "implementation detail of the `format_args!` macro"]
-pub fn argumentstr<'a>(s: &'a &str) -> Argument<'a> {
-    argument(Show::fmt, s)
-}
-
 /// When the compiler determines that the type of an argument *must* be a uint
 /// (such as for plural), then it invokes this method.
 #[doc(hidden)] #[inline]
