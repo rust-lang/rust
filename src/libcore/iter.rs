@@ -2108,19 +2108,18 @@ impl<A, I, F> RandomAccessIterator<A> for Inspect<A, I, F> where
 /// }
 /// ```
 #[experimental]
-pub struct Unfold<'a, A, St> {
-    f: |&mut St|: 'a -> Option<A>,
+pub struct Unfold<A, St, F> where F: FnMut(&mut St) -> Option<A> {
+    f: F,
     /// Internal state that will be passed to the closure on the next iteration
     pub state: St,
 }
 
 #[experimental]
-impl<'a, A, St> Unfold<'a, A, St> {
+impl<A, St, F> Unfold<A, St, F> where F: FnMut(&mut St) -> Option<A> {
     /// Creates a new iterator with the specified closure as the "iterator
     /// function" and an initial state to eventually pass to the closure
     #[inline]
-    pub fn new<'a>(initial_state: St, f: |&mut St|: 'a -> Option<A>)
-               -> Unfold<'a, A, St> {
+    pub fn new(initial_state: St, f: F) -> Unfold<A, St, F> {
         Unfold {
             f: f,
             state: initial_state
@@ -2129,7 +2128,7 @@ impl<'a, A, St> Unfold<'a, A, St> {
 }
 
 #[experimental]
-impl<'a, A, St> Iterator<A> for Unfold<'a, A, St> {
+impl<A, St, F> Iterator<A> for Unfold<A, St, F> where F: FnMut(&mut St) -> Option<A> {
     #[inline]
     fn next(&mut self) -> Option<A> {
         (self.f)(&mut self.state)
@@ -2456,18 +2455,24 @@ impl<A: Clone> RandomAccessIterator<A> for Repeat<A> {
     fn idx(&mut self, _: uint) -> Option<A> { Some(self.element.clone()) }
 }
 
-type IterateState<'a, T> = (|T|: 'a -> T, Option<T>, bool);
+type IterateState<T, F> = (F, Option<T>, bool);
 
 /// An iterator that repeatedly applies a given function, starting
 /// from a given seed value.
 #[experimental]
-pub type Iterate<'a, T> = Unfold<'a, T, IterateState<'a, T>>;
+pub type Iterate<T, F> = Unfold<T, IterateState<T, F>, fn(&mut IterateState<T, F>) -> Option<T>>;
 
 /// Create a new iterator that produces an infinite sequence of
 /// repeated applications of the given function `f`.
 #[experimental]
-pub fn iterate<'a, T: Clone>(seed: T, f: |T|: 'a -> T) -> Iterate<'a, T> {
-    Unfold::new((f, Some(seed), true), |st| {
+pub fn iterate<T, F>(seed: T, f: F) -> Iterate<T, F> where
+    T: Clone,
+    F: FnMut(T) -> T,
+{
+    fn next<T, F>(st: &mut IterateState<T, F>) -> Option<T> where
+        T: Clone,
+        F: FnMut(T) -> T,
+    {
         let &(ref mut f, ref mut val, ref mut first) = st;
         if *first {
             *first = false;
@@ -2480,7 +2485,9 @@ pub fn iterate<'a, T: Clone>(seed: T, f: |T|: 'a -> T) -> Iterate<'a, T> {
             }
         }
         val.clone()
-    })
+    }
+
+    Unfold::new((f, Some(seed), true), next)
 }
 
 /// Create a new iterator that endlessly repeats the element `elt`.
