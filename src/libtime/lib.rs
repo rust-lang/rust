@@ -32,7 +32,6 @@ use self::Fmt::*;
 
 use std::fmt::Show;
 use std::fmt;
-use std::io::BufReader;
 use std::num::SignedInt;
 use std::string::String;
 use std::time::Duration;
@@ -1187,7 +1186,7 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ParseError> {
         }
     }
 
-    let mut rdr = BufReader::new(format.as_bytes());
+    let mut rdr: &[u8] = format.as_bytes();
     let mut tm = Tm {
         tm_sec: 0_i32,
         tm_min: 0_i32,
@@ -1211,13 +1210,13 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ParseError> {
         let next = range.next;
 
         let mut buf = [0];
-        let c = match rdr.read(&mut buf) {
+        let c = match (&mut rdr).read(&mut buf) {
             Ok(..) => buf[0] as char,
             Err(..) => break
         };
         match c {
             '%' => {
-                let ch = match rdr.read(&mut buf) {
+                let ch = match (&mut rdr).read(&mut buf) {
                     Ok(..) => buf[0] as char,
                     Err(..) => break
                 };
@@ -1233,7 +1232,7 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ParseError> {
         }
     }
 
-    if pos == len && rdr.tell().unwrap() == format.len() as u64 {
+    if pos == len && (&mut rdr).is_empty() {
         Ok(Tm {
             tm_sec: tm.tm_sec,
             tm_min: tm.tm_min,
