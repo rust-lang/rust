@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(tuple_indexing)]
-
 // Test that we correctly compute the move fragments for a fn.
 //
 // Note that the code below is not actually incorrect; the
