@@ -402,21 +402,46 @@ fi
 
 CFG_TMP_DIR="./rustup-tmp-install"
 
+RUST_URL="https://static.rust-lang.org/dist"
 RUST_PACKAGE_NAME=rust-nightly
 RUST_PACKAGE_NAME_AND_TRIPLE="${RUST_PACKAGE_NAME}-${HOST_TRIPLE}"
 RUST_TARBALL_NAME="${RUST_PACKAGE_NAME_AND_TRIPLE}.tar.gz"
-RUST_REMOTE_TARBALL="https://static.rust-lang.org/dist/${RUST_TARBALL_NAME}"
-RUST_LOCAL_TARBALL="${CFG_TMP_DIR}/${RUST_TARBALL_NAME}"
 RUST_LOCAL_INSTALL_DIR="${CFG_TMP_DIR}/${RUST_PACKAGE_NAME_AND_TRIPLE}"
 RUST_LOCAL_INSTALL_SCRIPT="${RUST_LOCAL_INSTALL_DIR}/install.sh"
 
+CARGO_URL="https://static.rust-lang.org/cargo-dist"
 CARGO_PACKAGE_NAME=cargo-nightly
 CARGO_PACKAGE_NAME_AND_TRIPLE="${CARGO_PACKAGE_NAME}-${HOST_TRIPLE}"
 CARGO_TARBALL_NAME="${CARGO_PACKAGE_NAME_AND_TRIPLE}.tar.gz"
-CARGO_REMOTE_TARBALL="https://static.rust-lang.org/cargo-dist/${CARGO_TARBALL_NAME}"
-CARGO_LOCAL_TARBALL="${CFG_TMP_DIR}/${CARGO_TARBALL_NAME}"
 CARGO_LOCAL_INSTALL_DIR="${CFG_TMP_DIR}/${CARGO_PACKAGE_NAME_AND_TRIPLE}"
 CARGO_LOCAL_INSTALL_SCRIPT="${CARGO_LOCAL_INSTALL_DIR}/install.sh"
+
+# Fetch the package and extract it.
+download_and_extract_package() {
+    remote_url="$1"
+    tarball_name="$2"
+    remote_tarball="${remote_url}/${tarball_name}"
+    local_tarball="${CFG_TMP_DIR}/${tarball_name}"
+
+    msg "Downloading ${remote_tarball} to ${local_tarball}"
+
+    mkdir -p "${CFG_TMP_DIR}"
+    need_ok "failed to create create download directory"
+
+    "${CFG_CURL}" -f -o "${local_tarball}" "${remote_tarball}"
+    if [ $? -ne 0 ]
+    then
+        rm -Rf "${CFG_TMP_DIR}"
+        err "failed to download installer"
+    fi
+
+    msg "Extracting ${tarball_name}"
+    (cd "${CFG_TMP_DIR}" && "${CFG_TAR}" -xvf "${tarball_name}")
+    if [ $? -ne 0 ]; then
+        rm -Rf "${CFG_TMP_DIR}"
+        err "failed to unpack installer"
+    fi
+}
 
 rm -Rf "${CFG_TMP_DIR}"
 need_ok "failed to remove temporary installation directory"
@@ -424,22 +449,14 @@ need_ok "failed to remove temporary installation directory"
 mkdir -p "${CFG_TMP_DIR}"
 need_ok "failed to create create temporary installation directory"
 
-msg "downloading rust installer"
-"${CFG_CURL}" "${RUST_REMOTE_TARBALL}" > "${RUST_LOCAL_TARBALL}"
-if [ $? -ne 0 ]
-then
-        rm -Rf "${CFG_TMP_DIR}"
-        err "failed to download installer"
-fi
+download_and_extract_package \
+    "${RUST_URL}" \
+    "${RUST_TARBALL_NAME}"
 
 if [ -z "${CFG_DISABLE_CARGO}" ]; then
-    msg "downloading cargo installer"
-    "${CFG_CURL}" "${CARGO_REMOTE_TARBALL}" > "${CARGO_LOCAL_TARBALL}"
-    if [ $? -ne 0 ]
-    then
-            rm -Rf "${CFG_TMP_DIR}"
-            err "failed to download cargo installer"
-    fi
+    download_and_extract_package \
+        "${CARGO_URL}" \
+        "${CARGO_TARBALL_NAME}"
 fi
 
 
