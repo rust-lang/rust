@@ -13,4 +13,4 @@
 fn main()
 {
     let x = 3
-} //~ ERROR: expected `;`, found `}`
+} //~ ERROR: expected one of `.`, `;`, or an operator, found `}`
