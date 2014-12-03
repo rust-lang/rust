@@ -346,8 +346,9 @@ pub trait IteratorExt<A>: Iterator<A> {
     /// ```
     #[inline]
     #[unstable = "waiting for unboxed closures"]
-    fn scan<'r, St, B>(self, initial_state: St, f: |&mut St, A|: 'r -> Option<B>)
-        -> Scan<'r, A, B, Self, St> {
+    fn scan<St, B, F>(self, initial_state: St, f: F) -> Scan<A, B, Self, St, F> where
+        F: FnMut(&mut St, A) -> Option<B>,
+    {
         Scan{iter: self, f: f, state: initial_state}
     }
 
@@ -1833,16 +1834,19 @@ impl<A, T: RandomAccessIterator<A>> RandomAccessIterator<A> for Take<T> {
 /// An iterator to maintain state while iterating another iterator
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 #[unstable = "waiting for unboxed closures"]
-pub struct Scan<'a, A, B, T, St> {
-    iter: T,
-    f: |&mut St, A|: 'a -> Option<B>,
+pub struct Scan<A, B, I, St, F> where I: Iterator<A>, F: FnMut(&mut St, A) -> Option<B> {
+    iter: I,
+    f: F,
 
     /// The current internal state to be passed to the closure next.
     pub state: St,
 }
 
 #[unstable = "trait is unstable"]
-impl<'a, A, B, T: Iterator<A>, St> Iterator<B> for Scan<'a, A, B, T, St> {
+impl<A, B, I, St, F> Iterator<B> for Scan<A, B, I, St, F> where
+    I: Iterator<A>,
+    F: FnMut(&mut St, A) -> Option<B>,
+{
     #[inline]
     fn next(&mut self) -> Option<B> {
         self.iter.next().and_then(|a| (self.f)(&mut self.state, a))
