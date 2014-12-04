@@ -375,6 +375,21 @@ fn find_discr_field_candidate<'tcx>(tcx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> Optio
             None
         },
 
+        // Can we use one of the fields in this tuple?
+        ty::ty_tup(ref tys) => {
+            for (j, &ty) in tys.iter().enumerate() {
+                match find_discr_field_candidate(tcx, ty) {
+                    Some(v) => {
+                        let mut discrfield = vec![j];
+                        discrfield.extend(v.into_iter());
+                        return Some(discrfield);
+                    }
+                    None => continue
+                }
+            }
+            None
+        },
+
         // Anything else is not a pointer
         _ => None
     }
