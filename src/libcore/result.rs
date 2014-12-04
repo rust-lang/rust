@@ -444,15 +444,14 @@ impl<T, E> Result<T, E> {
     /// ignoring I/O and parse errors:
     ///
     /// ```
-    /// use std::io::{BufReader, IoResult};
+    /// use std::io::IoResult;
     ///
-    /// let buffer = "1\n2\n3\n4\n";
-    /// let mut reader = BufReader::new(buffer.as_bytes());
+    /// let mut buffer = &mut b"1\n2\n3\n4\n";
     ///
     /// let mut sum = 0;
     ///
-    /// while !reader.eof() {
-    ///     let line: IoResult<String> = reader.read_line();
+    /// while !buffer.is_empty() {
+    ///     let line: IoResult<String> = buffer.read_line();
     ///     // Convert the string line to a number using `map` and `from_str`
     ///     let val: IoResult<int> = line.map(|line| {
     ///         from_str::<int>(line.as_slice().trim_right()).unwrap_or(0)
