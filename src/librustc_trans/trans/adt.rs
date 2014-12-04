@@ -357,7 +357,19 @@ fn find_discr_field_candidate<'tcx>(tcx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> Optio
         // Closures are a pair of pointers: the code and environment
         ty::ty_closure(..) => Some(vec![FAT_PTR_ADDR]),
 
-        // Perhaps one of the fields of this struct is non-null
+        // Is this the NonZero lang item wrapping a pointer or integer type?
+        ty::ty_struct(did, ref substs) if Some(did) == tcx.lang_items.non_zero() => {
+            let nonzero_fields = ty::lookup_struct_fields(tcx, did);
+            assert_eq!(nonzero_fields.len(), 1);
+            let nonzero_field = ty::lookup_field_type(tcx, did, nonzero_fields[0].id, substs);
+            match nonzero_field.sty {
+                ty::ty_ptr(..) | ty::ty_int(..) |
+                ty::ty_uint(..) => Some(vec![0]),
+                _ => None
+            }
+        },
+
+        // Perhaps one of the fields of this struct is non-zero
         // let's recurse and find out
         ty::ty_struct(def_id, ref substs) => {
             let fields = ty::lookup_struct_fields(tcx, def_id);
