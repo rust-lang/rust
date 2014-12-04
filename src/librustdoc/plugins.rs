@@ -44,7 +44,7 @@ impl PluginManager {
     /// elsewhere, libname.so.
     pub fn load_plugin(&mut self, name: String) {
         let x = self.prefix.join(libname(name));
-        let lib_result = dl::DynamicLibrary::open(Some(&x));
+        let lib_result = dl::DynamicLibrary::load(&x);
         let lib = lib_result.unwrap();
         unsafe {
             let plugin = lib.symbol("rustdoc_plugin_entrypoint").unwrap();
