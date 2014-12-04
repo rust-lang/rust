@@ -395,6 +395,7 @@ impl<'tcx> LocalCrateContext<'tcx> {
                 tn: TypeNames::new(),
                 externs: RefCell::new(FnvHashMap::new()),
                 item_vals: RefCell::new(NodeMap::new()),
+                fn_pointer_shims: RefCell::new(FnvHashMap::new()),
                 drop_glues: RefCell::new(FnvHashMap::new()),
                 tydescs: RefCell::new(FnvHashMap::new()),
                 finished_tydescs: Cell::new(false),
