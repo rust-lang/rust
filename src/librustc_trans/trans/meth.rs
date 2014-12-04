@@ -639,7 +639,7 @@ fn emit_vtable_methods<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                        m.repr(tcx),
                        substs.repr(tcx));
                 if m.generics.has_type_params(subst::FnSpace) ||
-                    ty::type_has_self(ty::mk_bare_fn(tcx, None, m.fty.clone()))
+                    ty::type_has_self(ty::mk_bare_fn(tcx, None, tcx.mk_bare_fn(m.fty.clone())))
                 {
                     debug!("(making impl vtable) method has self or type \
                             params: {}",

@@ -454,10 +454,12 @@ fn parse_ty<'a, 'tcx>(st: &mut PState<'a, 'tcx>, conv: conv_did) -> Ty<'tcx> {
       }
       'F' => {
           let def_id = parse_def(st, NominalType, |x,y| conv(x,y));
-          return ty::mk_bare_fn(st.tcx, Some(def_id), parse_bare_fn_ty(st, |x,y| conv(x,y)));
+          return ty::mk_bare_fn(st.tcx, Some(def_id),
+                                st.tcx.mk_bare_fn(parse_bare_fn_ty(st, |x,y| conv(x,y))));
       }
       'G' => {
-          return ty::mk_bare_fn(st.tcx, None, parse_bare_fn_ty(st, |x,y| conv(x,y)));
+          return ty::mk_bare_fn(st.tcx, None,
+                                st.tcx.mk_bare_fn(parse_bare_fn_ty(st, |x,y| conv(x,y))));
       }
       '#' => {
         let pos = parse_hex(st);

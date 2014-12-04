@@ -81,7 +81,10 @@ pub fn compile_input(sess: Session,
 
         let type_arena = TypedArena::new();
         let substs_arena = TypedArena::new();
-        let analysis = phase_3_run_analysis_passes(sess, ast_map, &type_arena, &substs_arena, id);
+        let bare_fn_arena = TypedArena::new();
+        let analysis = phase_3_run_analysis_passes(sess, ast_map,
+                                                   &type_arena, &substs_arena, &bare_fn_arena,
+                                                   id);
         phase_save_analysis(&analysis.ty_cx.sess, analysis.ty_cx.map.krate(), &analysis, outdir);
 
         if log_enabled!(::log::INFO) {
@@ -345,6 +348,7 @@ pub fn phase_3_run_analysis_passes<'tcx>(sess: Session,
                                          ast_map: ast_map::Map<'tcx>,
                                          type_arena: &'tcx TypedArena<ty::TyS<'tcx>>,
                                          substs_arena: &'tcx TypedArena<subst::Substs<'tcx>>,
+                                         bare_fn_arena: &'tcx TypedArena<ty::BareFnTy<'tcx>>,
                                          name: String) -> ty::CrateAnalysis<'tcx> {
     let time_passes = sess.time_passes();
     let krate = ast_map.krate();
@@ -406,6 +410,7 @@ pub fn phase_3_run_analysis_passes<'tcx>(sess: Session,
     let ty_cx = ty::mk_ctxt(sess,
                             type_arena,
                             substs_arena,
+                            bare_fn_arena,
                             def_map,
                             named_region_map,
                             ast_map,

@@ -568,7 +568,7 @@ pub fn super_tys<'tcx, C: Combine<'tcx>>(this: &C,
         }
       }
 
-        (&ty::ty_bare_fn(a_opt_def_id, ref a_fty), &ty::ty_bare_fn(b_opt_def_id, ref b_fty))
+        (&ty::ty_bare_fn(a_opt_def_id, a_fty), &ty::ty_bare_fn(b_opt_def_id, b_fty))
             if a_opt_def_id == b_opt_def_id =>
         {
             let fty = try!(this.bare_fn_tys(a_fty, b_fty));
