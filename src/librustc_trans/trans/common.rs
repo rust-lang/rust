@@ -750,6 +750,7 @@ pub fn is_undef(val: ValueRef) -> bool {
     }
 }
 
+#[allow(dead_code)] // potentially useful
 pub fn is_null(val: ValueRef) -> bool {
     unsafe {
         llvm::LLVMIsNull(val) != False
