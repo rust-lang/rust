@@ -31,6 +31,7 @@ use mem;
 use num::Int;
 use option::Option;
 use option::Option::{None, Some};
+use ops::FnMut;
 use ptr::RawPtr;
 use raw::{Repr, Slice};
 use slice::{mod, SlicePrelude};
@@ -136,15 +137,7 @@ impl CharEq for char {
     fn only_ascii(&self) -> bool { (*self as uint) < 128 }
 }
 
-impl<'a> CharEq for |char|: 'a -> bool {
-    #[inline]
-    fn matches(&mut self, c: char) -> bool { (*self)(c) }
-
-    #[inline]
-    fn only_ascii(&self) -> bool { false }
-}
-
-impl CharEq for extern "Rust" fn(char) -> bool {
+impl<F> CharEq for F where F: FnMut(char) -> bool {
     #[inline]
     fn matches(&mut self, c: char) -> bool { (*self)(c) }
 
@@ -2142,11 +2135,11 @@ impl StrPrelude for str {
 
     #[inline]
     fn trim_chars<C: CharEq>(&self, mut to_trim: C) -> &str {
-        let cur = match self.find(|c: char| !to_trim.matches(c)) {
+        let cur = match self.find(|&mut: c: char| !to_trim.matches(c)) {
             None => "",
             Some(i) => unsafe { self.slice_unchecked(i, self.len()) }
         };
-        match cur.rfind(|c: char| !to_trim.matches(c)) {
+        match cur.rfind(|&mut: c: char| !to_trim.matches(c)) {
             None => "",
             Some(i) => {
                 let right = cur.char_range_at(i).next;
@@ -2157,7 +2150,7 @@ impl StrPrelude for str {
 
     #[inline]
     fn trim_left_chars<C: CharEq>(&self, mut to_trim: C) -> &str {
-        match self.find(|c: char| !to_trim.matches(c)) {
+        match self.find(|&mut: c: char| !to_trim.matches(c)) {
             None => "",
             Some(first) => unsafe { self.slice_unchecked(first, self.len()) }
         }
@@ -2165,7 +2158,7 @@ impl StrPrelude for str {
 
     #[inline]
     fn trim_right_chars<C: CharEq>(&self, mut to_trim: C) -> &str {
-        match self.rfind(|c: char| !to_trim.matches(c)) {
+        match self.rfind(|&mut: c: char| !to_trim.matches(c)) {
             None => "",
             Some(last) => {
                 let next = self.char_range_at(last).next;
