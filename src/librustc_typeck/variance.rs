@@ -750,8 +750,8 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 }
             }
 
-            ty::ty_enum(def_id, ref substs) |
-            ty::ty_struct(def_id, ref substs) => {
+            ty::ty_enum(def_id, substs) |
+            ty::ty_struct(def_id, substs) => {
                 let item_type = ty::lookup_item_type(self.tcx(), def_id);
                 let generics = &item_type.generics;
 

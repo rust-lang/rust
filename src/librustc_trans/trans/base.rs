@@ -288,7 +288,7 @@ pub fn decl_rust_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         ty::ty_closure(ref f) => {
             (f.sig.0.inputs.clone(), f.sig.0.output, f.abi, Some(Type::i8p(ccx)))
         }
-        ty::ty_unboxed_closure(closure_did, _, ref substs) => {
+        ty::ty_unboxed_closure(closure_did, _, substs) => {
             let unboxed_closures = ccx.tcx().unboxed_closures.borrow();
             let unboxed_closure = &(*unboxed_closures)[closure_did];
             let function_type = unboxed_closure.closure_type.clone();
@@ -529,9 +529,9 @@ pub fn get_res_dtor<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         assert_eq!(did.krate, ast::LOCAL_CRATE);
 
         // Since we're in trans we don't care for any region parameters
-        let ref substs = subst::Substs::erased(substs.types.clone());
+        let substs = subst::Substs::erased(substs.types.clone());
 
-        let (val, _) = monomorphize::monomorphic_fn(ccx, did, substs, None);
+        let (val, _) = monomorphize::monomorphic_fn(ccx, did, &substs, None);
 
         val
     } else if did.krate == ast::LOCAL_CRATE {
@@ -749,7 +749,7 @@ pub fn iter_structural_ty<'a, 'blk, 'tcx>(cx: Block<'blk, 'tcx>,
               }
           })
       }
-      ty::ty_unboxed_closure(def_id, _, ref substs) => {
+      ty::ty_unboxed_closure(def_id, _, substs) => {
           let repr = adt::represent_type(cx.ccx(), t);
           let upvars = ty::unboxed_closure_upvars(cx.tcx(), def_id, substs);
           for (i, upvar) in upvars.iter().enumerate() {
@@ -769,7 +769,7 @@ pub fn iter_structural_ty<'a, 'blk, 'tcx>(cx: Block<'blk, 'tcx>,
               cx = f(cx, llfld_a, *arg);
           }
       }
-      ty::ty_enum(tid, ref substs) => {
+      ty::ty_enum(tid, substs) => {
           let fcx = cx.fcx;
           let ccx = fcx.ccx;
 
@@ -2466,7 +2466,7 @@ pub fn get_fn_llvm_attributes<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_ty: Ty<
     let (fn_sig, abi, has_env) = match fn_ty.sty {
         ty::ty_closure(ref f) => (f.sig.clone(), f.abi, true),
         ty::ty_bare_fn(_, ref f) => (f.sig.clone(), f.abi, false),
-        ty::ty_unboxed_closure(closure_did, _, ref substs) => {
+        ty::ty_unboxed_closure(closure_did, _, substs) => {
             let unboxed_closures = ccx.tcx().unboxed_closures.borrow();
             let ref function_type = (*unboxed_closures)[closure_did]
                                                     .closure_type;

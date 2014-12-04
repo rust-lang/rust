@@ -37,7 +37,7 @@ fn type_size_is_affected_by_type_parameters<'tcx>(tcx: &ty::ctxt<'tcx>, typ: Ty<
                 // No need to continue; we now know the result.
                 false
             }
-            ty::ty_enum(did, ref substs) => {
+            ty::ty_enum(did, substs) => {
                 for enum_variant in (*ty::enum_variants(tcx, did)).iter() {
                     for argument_type in enum_variant.args.iter() {
                         let argument_type = argument_type.subst(tcx, substs);
@@ -51,7 +51,7 @@ fn type_size_is_affected_by_type_parameters<'tcx>(tcx: &ty::ctxt<'tcx>, typ: Ty<
                 // Don't traverse substitutions.
                 false
             }
-            ty::ty_struct(did, ref substs) => {
+            ty::ty_struct(did, substs) => {
                 for field in ty::struct_fields(tcx, did, substs).iter() {
                     result = result ||
                         type_size_is_affected_by_type_parameters(tcx,

@@ -240,7 +240,7 @@ pub fn trans_static_method_callee(bcx: Block,
                                              Vec::new()));
     debug!("trait_substs={}", trait_substs.repr(bcx.tcx()));
     let trait_ref = Rc::new(ty::Binder(ty::TraitRef { def_id: trait_id,
-                                                      substs: trait_substs }));
+                                                      substs: bcx.tcx().mk_substs(trait_substs) }));
     let vtbl = fulfill_obligation(bcx.ccx(),
                                   DUMMY_SP,
                                   trait_ref);

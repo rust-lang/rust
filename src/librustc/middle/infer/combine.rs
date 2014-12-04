@@ -470,13 +470,13 @@ pub fn super_tys<'tcx, C: Combine<'tcx>>(this: &C,
         Ok(a)
       }
 
-      (&ty::ty_enum(a_id, ref a_substs),
-       &ty::ty_enum(b_id, ref b_substs))
+      (&ty::ty_enum(a_id, a_substs),
+       &ty::ty_enum(b_id, b_substs))
       if a_id == b_id => {
           let substs = try!(this.substs(a_id,
                                           a_substs,
                                           b_substs));
-          Ok(ty::mk_enum(tcx, a_id, substs))
+          Ok(ty::mk_enum(tcx, a_id, tcx.mk_substs(substs)))
       }
 
       (&ty::ty_trait(ref a_),
@@ -487,21 +487,21 @@ pub fn super_tys<'tcx, C: Combine<'tcx>>(this: &C,
           Ok(ty::mk_trait(tcx, principal, bounds))
       }
 
-      (&ty::ty_struct(a_id, ref a_substs), &ty::ty_struct(b_id, ref b_substs))
+      (&ty::ty_struct(a_id, a_substs), &ty::ty_struct(b_id, b_substs))
       if a_id == b_id => {
             let substs = try!(this.substs(a_id, a_substs, b_substs));
-            Ok(ty::mk_struct(tcx, a_id, substs))
+            Ok(ty::mk_struct(tcx, a_id, tcx.mk_substs(substs)))
       }
 
-      (&ty::ty_unboxed_closure(a_id, a_region, ref a_substs),
-       &ty::ty_unboxed_closure(b_id, b_region, ref b_substs))
+      (&ty::ty_unboxed_closure(a_id, a_region, a_substs),
+       &ty::ty_unboxed_closure(b_id, b_region, b_substs))
       if a_id == b_id => {
           // All ty_unboxed_closure types with the same id represent
           // the (anonymous) type of the same closure expression. So
           // all of their regions should be equated.
           let region = try!(this.equate().regions(a_region, b_region));
           let substs = try!(this.substs_variances(None, a_substs, b_substs));
-          Ok(ty::mk_unboxed_closure(tcx, a_id, region, substs))
+          Ok(ty::mk_unboxed_closure(tcx, a_id, region, tcx.mk_substs(substs)))
       }
 
       (&ty::ty_uniq(a_inner), &ty::ty_uniq(b_inner)) => {
@@ -813,5 +813,3 @@ impl<'cx, 'tcx> ty_fold::TypeFolder<'tcx> for Generalizer<'cx, 'tcx> {
         self.infcx.next_region_var(MiscVariable(self.span))
     }
 }
-
-

@@ -310,7 +310,7 @@ fn size_and_align_of_dst<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, info: 
         return (size, align);
     }
     match t.sty {
-        ty::ty_struct(id, ref substs) => {
+        ty::ty_struct(id, substs) => {
             let ccx = bcx.ccx();
             // First get the size of all statically known fields.
             // Don't use type_of::sizing_type_of because that expects t to be sized.
@@ -407,7 +407,7 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, t: Ty<'tcx>)
                 }
             }
         }
-        ty::ty_struct(did, ref substs) | ty::ty_enum(did, ref substs) => {
+        ty::ty_struct(did, substs) | ty::ty_enum(did, substs) => {
             let tcx = bcx.tcx();
             match ty::ty_dtor(tcx, did) {
                 ty::TraitDtor(dtor, true) => {

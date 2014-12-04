@@ -156,7 +156,7 @@ fn represent_type_uncached<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         ty::ty_tup(ref elems) => {
             Univariant(mk_struct(cx, elems[], false, t), false)
         }
-        ty::ty_struct(def_id, ref substs) => {
+        ty::ty_struct(def_id, substs) => {
             let fields = ty::lookup_struct_fields(cx.tcx(), def_id);
             let mut ftys = fields.iter().map(|field| {
                 ty::lookup_field_type(cx.tcx(), def_id, field.id, substs)
@@ -167,12 +167,12 @@ fn represent_type_uncached<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
             Univariant(mk_struct(cx, ftys[], packed, t), dtor)
         }
-        ty::ty_unboxed_closure(def_id, _, ref substs) => {
+        ty::ty_unboxed_closure(def_id, _, substs) => {
             let upvars = ty::unboxed_closure_upvars(cx.tcx(), def_id, substs);
             let upvar_types = upvars.iter().map(|u| u.ty).collect::<Vec<_>>();
             Univariant(mk_struct(cx, upvar_types[], false, t), false)
         }
-        ty::ty_enum(def_id, ref substs) => {
+        ty::ty_enum(def_id, substs) => {
             let cases = get_cases(cx.tcx(), def_id, substs);
             let hint = *ty::lookup_repr_hints(cx.tcx(), def_id)[].get(0)
                 .unwrap_or(&attr::ReprAny);
