@@ -743,10 +743,23 @@ mod test {
         assert!(a < b && a <= b);
     }
 
-    fn check(a: &[uint],
-             b: &[uint],
-             expected: &[uint],
-             f: |&TrieSet, &TrieSet, f: |uint| -> bool| -> bool) {
+    struct Counter<'a, 'b> {
+        i: &'a mut uint,
+        expected: &'b [uint],
+    }
+
+    impl<'a, 'b> FnMut(uint) -> bool for Counter<'a, 'b> {
+        extern "rust-call" fn call_mut(&mut self, (x,): (uint,)) -> bool {
+            assert_eq!(x, self.expected[*self.i]);
+            *self.i += 1;
+            true
+        }
+    }
+
+    fn check<F>(a: &[uint], b: &[uint], expected: &[uint], f: F) where
+        // FIXME Replace `Counter` with `Box<FnMut(&uint) -> bool>`
+        F: FnOnce(&TrieSet, &TrieSet, Counter) -> bool,
+    {
         let mut set_a = TrieSet::new();
         let mut set_b = TrieSet::new();
 
@@ -754,11 +767,7 @@ mod test {
         for y in b.iter() { assert!(set_b.insert(*y)) }
 
         let mut i = 0;
-        f(&set_a, &set_b, |x| {
-            assert_eq!(x, expected[i]);
-            i += 1;
-            true
-        });
+        f(&set_a, &set_b, Counter { i: &mut i, expected: expected });
         assert_eq!(i, expected.len());
     }
 
