@@ -188,7 +188,7 @@ flag() {
      fi
 }
 
-validate_opt () {
+validate_opt() {
     for arg in $CFG_ARGS
     do
         isArgValid=0
@@ -230,6 +230,7 @@ validate_opt () {
 }
 
 probe_need CFG_CURL  curl
+probe_need CFG_TAR   tar
 
 CFG_SRC_DIR="$(cd $(dirname $0) && pwd)/"
 CFG_SELF="$0"
@@ -388,89 +389,109 @@ esac
 
 msg "host triple: ${HOST_TRIPLE}"
 
-PACKAGE_NAME=rust-nightly
-PACKAGE_NAME_AND_TRIPLE="${PACKAGE_NAME}-${HOST_TRIPLE}"
-TARBALL_NAME="${PACKAGE_NAME_AND_TRIPLE}.tar.gz"
-REMOTE_TARBALL="https://static.rust-lang.org/dist/${TARBALL_NAME}"
-TMP_DIR="./rustup-tmp-install"
-LOCAL_TARBALL="${TMP_DIR}/${TARBALL_NAME}"
-LOCAL_INSTALL_DIR="${TMP_DIR}/${PACKAGE_NAME_AND_TRIPLE}"
-LOCAL_INSTALL_SCRIPT="${LOCAL_INSTALL_DIR}/install.sh"
+CFG_INSTALL_FLAGS=""
+if [ -n "${CFG_UNINSTALL}" ]
+then
+    CFG_INSTALL_FLAGS="${CFG_INSTALL_FLAGS} --uninstall"
+fi
 
+if [ -n "${CFG_PREFIX}" ]
+then
+    CFG_INSTALL_FLAGS="${CFG_INSTALL_FLAGS} --prefix=${CFG_PREFIX}"
+fi
+
+CFG_TMP_DIR="./rustup-tmp-install"
+
+RUST_URL="https://static.rust-lang.org/dist"
+RUST_PACKAGE_NAME=rust-nightly
+RUST_PACKAGE_NAME_AND_TRIPLE="${RUST_PACKAGE_NAME}-${HOST_TRIPLE}"
+RUST_TARBALL_NAME="${RUST_PACKAGE_NAME_AND_TRIPLE}.tar.gz"
+RUST_LOCAL_INSTALL_DIR="${CFG_TMP_DIR}/${RUST_PACKAGE_NAME_AND_TRIPLE}"
+RUST_LOCAL_INSTALL_SCRIPT="${RUST_LOCAL_INSTALL_DIR}/install.sh"
+
+CARGO_URL="https://static.rust-lang.org/cargo-dist"
 CARGO_PACKAGE_NAME=cargo-nightly
 CARGO_PACKAGE_NAME_AND_TRIPLE="${CARGO_PACKAGE_NAME}-${HOST_TRIPLE}"
 CARGO_TARBALL_NAME="${CARGO_PACKAGE_NAME_AND_TRIPLE}.tar.gz"
-CARGO_REMOTE_TARBALL="https://static.rust-lang.org/cargo-dist/${CARGO_TARBALL_NAME}"
-CARGO_LOCAL_TARBALL="${TMP_DIR}/${CARGO_TARBALL_NAME}"
-CARGO_LOCAL_INSTALL_DIR="${TMP_DIR}/${CARGO_PACKAGE_NAME_AND_TRIPLE}"
+CARGO_LOCAL_INSTALL_DIR="${CFG_TMP_DIR}/${CARGO_PACKAGE_NAME_AND_TRIPLE}"
 CARGO_LOCAL_INSTALL_SCRIPT="${CARGO_LOCAL_INSTALL_DIR}/install.sh"
 
-rm -Rf "${TMP_DIR}"
-need_ok "failed to remove temporary installation directory"
+# Fetch the package.
+download_package() {
+    remote_tarball="$1"
+    local_tarball="$2"
 
-mkdir -p "${TMP_DIR}"
-need_ok "failed to create create temporary installation directory"
+    msg "Downloading ${remote_tarball} to ${local_tarball}"
 
-msg "downloading rust installer"
-"${CFG_CURL}" "${REMOTE_TARBALL}" > "${LOCAL_TARBALL}"
-if [ $? -ne 0 ]
-then
-        rm -Rf "${TMP_DIR}"
+    mkdir -p "${CFG_TMP_DIR}"
+    need_ok "failed to create create download directory"
+
+    "${CFG_CURL}" -f -o "${local_tarball}" "${remote_tarball}"
+    if [ $? -ne 0 ]
+    then
+        rm -Rf "${CFG_TMP_DIR}"
         err "failed to download installer"
-fi
-
-if [ -z "${CFG_DISABLE_CARGO}" ]; then
-    msg "downloading cargo installer"
-    "${CFG_CURL}" "${CARGO_REMOTE_TARBALL}" > "${CARGO_LOCAL_TARBALL}"
-    if [ $? -ne 0 ]
-    then
-            rm -Rf "${TMP_DIR}"
-            err "failed to download cargo installer"
     fi
-fi
+}
 
+# Wrap all the commands needed to install a package.
+install_package() {
+    tarball_name="$1"
+    install_script="$2"
 
-(cd "${TMP_DIR}" && tar xzf "${TARBALL_NAME}")
-if [ $? -ne 0 ]
-then
-        rm -Rf "${TMP_DIR}"
+    msg "Extracting ${tarball_name}"
+    (cd "${CFG_TMP_DIR}" && "${CFG_TAR}" -xvf "${tarball_name}")
+    if [ $? -ne 0 ]; then
+        rm -Rf "${CFG_TMP_DIR}"
         err "failed to unpack installer"
-fi
+    fi
 
-MAYBE_UNINSTALL=
-if [ -n "${CFG_UNINSTALL}" ]
-then
-        MAYBE_UNINSTALL="--uninstall"
-fi
-
-MAYBE_PREFIX=
-if [ -n "${CFG_PREFIX}" ]
-then
-        MAYBE_PREFIX="--prefix=${CFG_PREFIX}"
-fi
-
-sh "${LOCAL_INSTALL_SCRIPT}" "${MAYBE_UNINSTALL}" "${MAYBE_PREFIX}"
-if [ $? -ne 0 ]
-then
-        rm -Rf "${TMP_DIR}"
+    sh "${install_script}" "${CFG_INSTALL_FLAGS}"
+    if [ $? -ne 0 ]
+    then
+        rm -Rf "${CFG_TMP_DIR}"
         err "failed to install Rust"
-fi
+    fi
+}
 
-if [ -z "${CFG_DISABLE_CARGO}" ]; then
-    (cd "${TMP_DIR}" && tar xzf "${CARGO_TARBALL_NAME}")
-    if [ $? -ne 0 ]
-    then
-            rm -Rf "${TMP_DIR}"
-            err "failed to unpack cargo installer"
+# It's possible that curl could be interrupted partway though downloading
+# `rustup.sh`, truncating the file. This could be especially bad if we were in
+# the middle of a line that would run "rm -rf ". To protect against this, we
+# wrap up the `rustup.sh` destructive functionality in this helper function,
+# which we call as the last thing we do. This means we will not do anything
+# unless we have the entire file downloaded.
+install_packages() {
+    rm -Rf "${CFG_TMP_DIR}"
+    need_ok "failed to remove temporary installation directory"
+
+    mkdir -p "${CFG_TMP_DIR}"
+    need_ok "failed to create create temporary installation directory"
+
+    RUST_LOCAL_TARBALL="${CFG_TMP_DIR}/${RUST_TARBALL_NAME}"
+    CARGO_LOCAL_TARBALL="${CFG_TMP_DIR}/${CARGO_TARBALL_NAME}"
+
+    download_package \
+        "${RUST_URL}/${RUST_TARBALL_NAME}" \
+        "${RUST_LOCAL_TARBALL}"
+
+    if [ -z "${CFG_DISABLE_CARGO}" ]; then
+        download_package \
+            "${CARGO_URL}/${CARGO_TARBALL_NAME}" \
+            "${CARGO_LOCAL_TARBALL}"
     fi
 
-    sh "${CARGO_LOCAL_INSTALL_SCRIPT}" "${MAYBE_UNINSTALL}" "${MAYBE_PREFIX}"
-    if [ $? -ne 0 ]
-    then
-            rm -Rf "${TMP_DIR}"
-            err "failed to install Cargo"
-    fi
-fi
+    install_package \
+        "${RUST_TARBALL_NAME}" \
+        "${RUST_LOCAL_INSTALL_SCRIPT}"
 
-rm -Rf "${TMP_DIR}"
-need_ok "couldn't rm temporary installation directory"
+    if [ -z "${CFG_DISABLE_CARGO}" ]; then
+        install_package \
+            "${CARGO_TARBALL_NAME}" \
+            "${CARGO_LOCAL_INSTALL_SCRIPT}"
+    fi
+
+    rm -Rf "${CFG_TMP_DIR}"
+    need_ok "couldn't rm temporary installation directory"
+}
+
+install_packages
