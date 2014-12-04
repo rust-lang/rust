@@ -617,6 +617,9 @@ pub struct ctxt<'tcx> {
     // FIXME(eddyb) use a FnvHashSet<InternedTy<'tcx>> when equivalent keys can
     // queried from a HashSet.
     interner: RefCell<FnvHashMap<InternedTy<'tcx>, Ty<'tcx>>>,
+    // FIXME as above, use a hashset if equivalent elements can be queried.
+    substs_interner: RefCell<FnvHashMap<&'tcx Substs<'tcx>, &'tcx Substs<'tcx>>>,
+
     pub sess: Session,
     pub def_map: DefMap,
 
@@ -848,6 +851,8 @@ impl<'tcx> ctxt<'tcx> {
             self,
             ty_enum, ty_uniq, ty_vec, ty_ptr, ty_rptr, ty_bare_fn, ty_closure, ty_trait,
             ty_struct, ty_unboxed_closure, ty_tup, ty_param, ty_open, ty_infer);
+
+        println!("Substs interner: #{}", self.substs_interner.borrow().len());
     }
 }
 
@@ -2063,6 +2068,7 @@ pub fn mk_ctxt<'tcx>(s: Session,
         type_arena: type_arena,
         substs_arena: substs_arena,
         interner: RefCell::new(FnvHashMap::new()),
+        substs_interner: RefCell::new(FnvHashMap::new()),
         named_region_map: named_region_map,
         item_variance_map: RefCell::new(DefIdMap::new()),
         variance_computed: Cell::new(false),
@@ -2123,8 +2129,14 @@ pub fn mk_ctxt<'tcx>(s: Session,
 // Type constructors
 
 impl<'tcx> ctxt<'tcx> {
-    pub fn mk_substs(&self, subst: Substs<'tcx>) -> &'tcx Substs<'tcx> {
-        self.substs_arena.alloc(subst)
+    pub fn mk_substs(&self, substs: Substs<'tcx>) -> &'tcx Substs<'tcx> {
+        if let Some(substs) = self.substs_interner.borrow().get(&substs) {
+            return *substs;
+        }
+
+        let substs = self.substs_arena.alloc(substs);
+        self.substs_interner.borrow_mut().insert(substs, substs);
+        substs
     }
 }
 
