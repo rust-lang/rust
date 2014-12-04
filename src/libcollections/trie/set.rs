@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // FIXME(conventions): implement bounded iterators
-// FIXME(conventions): implement BitOr, BitAnd, BitXor, and Sub
 // FIXME(conventions): replace each_reverse by making iter DoubleEnded
 // FIXME(conventions): implement iter_mut and into_iter
 
@@ -463,6 +462,30 @@ impl Extend<uint> for TrieSet {
     }
 }
 
+impl BitOr<TrieSet, TrieSet> for TrieSet {
+    fn bitor(&self, rhs: &TrieSet) -> TrieSet {
+        self.union(rhs).collect()
+    }
+}
+
+impl BitAnd<TrieSet, TrieSet> for TrieSet {
+    fn bitand(&self, rhs: &TrieSet) -> TrieSet {
+        self.intersection(rhs).collect()
+    }
+}
+
+impl BitXor<TrieSet, TrieSet> for TrieSet {
+    fn bitxor(&self, rhs: &TrieSet) -> TrieSet {
+        self.symmetric_difference(rhs).collect()
+    }
+}
+
+impl Sub<TrieSet, TrieSet> for TrieSet {
+    fn sub(&self, rhs: &TrieSet) -> TrieSet {
+        self.difference(rhs).collect()
+    }
+}
+
 /// A forward iterator over a set.
 pub struct SetItems<'a> {
     iter: Entries<'a, ()>
@@ -569,6 +592,7 @@ impl<'a> Iterator<uint> for UnionItems<'a> {
 mod test {
     use std::prelude::*;
     use std::uint;
+    use vec::Vec;
 
     use super::TrieSet;
 
@@ -737,5 +761,45 @@ mod test {
         check_union(&[1, 3, 5, 9, 11, 16, 19, 24],
                     &[1, 5, 9, 13, 19],
                     &[1, 3, 5, 9, 11, 13, 16, 19, 24]);
+    }
+
+    #[test]
+    fn test_bit_or() {
+        let a: TrieSet = vec![1, 2, 3].into_iter().collect();
+        let b: TrieSet = vec![3, 4, 5].into_iter().collect();
+
+        let set: TrieSet = a | b;
+        let v: Vec<uint> = set.iter().collect();
+        assert_eq!(v, vec![1u, 2, 3, 4, 5]);
+    }
+
+    #[test]
+    fn test_bit_and() {
+        let a: TrieSet = vec![1, 2, 3].into_iter().collect();
+        let b: TrieSet = vec![2, 3, 4].into_iter().collect();
+
+        let set: TrieSet = a & b;
+        let v: Vec<uint> = set.iter().collect();
+        assert_eq!(v, vec![2u, 3]);
+    }
+
+    #[test]
+    fn test_bit_xor() {
+        let a: TrieSet = vec![1, 2, 3].into_iter().collect();
+        let b: TrieSet = vec![3, 4, 5].into_iter().collect();
+
+        let set: TrieSet = a ^ b;
+        let v: Vec<uint> = set.iter().collect();
+        assert_eq!(v, vec![1u, 2, 4, 5]);
+    }
+
+    #[test]
+    fn test_sub() {
+        let a: TrieSet = vec![1, 2, 3].into_iter().collect();
+        let b: TrieSet = vec![3, 4, 5].into_iter().collect();
+
+        let set: TrieSet = a - b;
+        let v: Vec<uint> = set.iter().collect();
+        assert_eq!(v, vec![1u, 2]);
     }
 }
