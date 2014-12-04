@@ -115,6 +115,22 @@ impl<V> VecMap<V> {
         VecMap { v: Vec::with_capacity(capacity) }
     }
 
+    /// Returns the number of elements the `VecMap` can hold without
+    /// reallocating.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::VecMap;
+    /// let map: VecMap<String> = VecMap::with_capacity(10);
+    /// assert!(map.capacity() >= 10);
+    /// ```
+    #[inline]
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    pub fn capacity(&self) -> uint {
+        self.v.capacity()
+    }
+
     /// Returns an iterator visiting all keys in ascending order by the keys.
     /// The iterator's element type is `uint`.
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
