@@ -1449,7 +1449,7 @@ fn doc_generics<'tcx>(base_doc: rbml::Doc,
         let space = subst::ParamSpace::from_uint(reader::doc_as_u64(doc) as uint);
 
         let doc = reader::get_doc(rp_doc, tag_region_param_def_index);
-        let index = reader::doc_as_u64(doc) as uint;
+        let index = reader::doc_as_u64(doc) as u32;
 
         let mut bounds = Vec::new();
         reader::tagged_docs(rp_doc, tag_items_data_region, |p| {

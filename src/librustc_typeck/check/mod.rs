@@ -5502,7 +5502,7 @@ pub fn check_bounds_are_used<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             match t.sty {
                 ty::ty_param(ParamTy {idx, ..}) => {
                     debug!("Found use of ty param num {}", idx);
-                    tps_used[idx] = true;
+                    tps_used[idx as uint] = true;
                 }
                 _ => ()
             }
@@ -5518,7 +5518,7 @@ pub fn check_bounds_are_used<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 }
 
 pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
-    fn param<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, n: uint) -> Ty<'tcx> {
+    fn param<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, n: u32) -> Ty<'tcx> {
         ty::mk_param(ccx.tcx, subst::FnSpace, n, local_def(0))
     }
 
@@ -5561,8 +5561,8 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
             "breakpoint" => (0, Vec::new(), ty::mk_nil(tcx)),
             "size_of" |
             "pref_align_of" | "min_align_of" => (1u, Vec::new(), ty::mk_uint()),
-            "init" => (1u, Vec::new(), param(ccx, 0u)),
-            "uninit" => (1u, Vec::new(), param(ccx, 0u)),
+            "init" => (1u, Vec::new(), param(ccx, 0)),
+            "uninit" => (1u, Vec::new(), param(ccx, 0)),
             "forget" => (1u, vec!( param(ccx, 0) ), ty::mk_nil(tcx)),
             "transmute" => (2, vec!( param(ccx, 0) ), param(ccx, 1)),
             "move_val_init" => {
@@ -5570,7 +5570,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
                  vec!(
                     ty::mk_mut_rptr(tcx, ty::ReLateBound(ty::DebruijnIndex::new(1), ty::BrAnon(0)),
                                     param(ccx, 0)),
-                    param(ccx, 0u)
+                    param(ccx, 0)
                   ),
                ty::mk_nil(tcx))
             }

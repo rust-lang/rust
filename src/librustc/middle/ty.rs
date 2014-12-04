@@ -862,7 +862,7 @@ pub struct TyS<'tcx> {
     pub flags: TypeFlags,
 
     // the maximal depth of any bound regions appearing in this type.
-    region_depth: uint,
+    region_depth: u32,
 }
 
 impl fmt::Show for TypeFlags {
@@ -955,7 +955,7 @@ pub fn type_has_escaping_regions(ty: Ty) -> bool {
     type_escapes_depth(ty, 0)
 }
 
-pub fn type_escapes_depth(ty: Ty, depth: uint) -> bool {
+pub fn type_escapes_depth(ty: Ty, depth: u32) -> bool {
     ty.region_depth > depth
 }
 
@@ -1009,7 +1009,7 @@ pub type PolyFnSig<'tcx> = Binder<FnSig<'tcx>>;
 #[deriving(Clone, Copy, PartialEq, Eq, Hash, Show)]
 pub struct ParamTy {
     pub space: subst::ParamSpace,
-    pub idx: uint,
+    pub idx: u32,
     pub def_id: DefId
 }
 
@@ -1056,7 +1056,7 @@ pub struct ParamTy {
 pub struct DebruijnIndex {
     // We maintain the invariant that this is never 0. So 1 indicates
     // the innermost binder. To ensure this, create with `DebruijnIndex::new`.
-    pub depth: uint,
+    pub depth: u32,
 }
 
 /// Representation of regions:
@@ -1067,7 +1067,7 @@ pub enum Region {
     // parameters are substituted.
     ReEarlyBound(/* param id */ ast::NodeId,
                  subst::ParamSpace,
-                 /*index*/ uint,
+                 /*index*/ u32,
                  ast::Name),
 
     // Region bound in a function scope, which will be substituted when the
@@ -1217,7 +1217,7 @@ impl Region {
         }
     }
 
-    pub fn escapes_depth(&self, depth: uint) -> bool {
+    pub fn escapes_depth(&self, depth: u32) -> bool {
         match *self {
             ty::ReLateBound(debruijn, _) => debruijn.depth > depth,
             _ => false,
@@ -1238,7 +1238,7 @@ pub struct FreeRegion {
            RustcEncodable, RustcDecodable, Show, Copy)]
 pub enum BoundRegion {
     /// An anonymous region parameter for a given fn (&T)
-    BrAnon(uint),
+    BrAnon(u32),
 
     /// Named region parameters for functions (a in &'a T)
     ///
@@ -1247,7 +1247,7 @@ pub enum BoundRegion {
     BrNamed(ast::DefId, ast::Name),
 
     /// Fresh bound identifiers created during GLB computations.
-    BrFresh(uint),
+    BrFresh(u32),
 
     // Anonymous region for the implicit env pointer parameter
     // to a closure
@@ -1538,22 +1538,22 @@ impl CLike for BuiltinBound {
 
 #[deriving(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TyVid {
-    pub index: uint
+    pub index: u32
 }
 
 #[deriving(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct IntVid {
-    pub index: uint
+    pub index: u32
 }
 
 #[deriving(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct FloatVid {
-    pub index: uint
+    pub index: u32
 }
 
 #[deriving(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy)]
 pub struct RegionVid {
-    pub index: uint
+    pub index: u32
 }
 
 #[deriving(Clone, Copy, PartialEq, Eq, Hash)]
@@ -1565,18 +1565,18 @@ pub enum InferTy {
     /// A `FreshTy` is one that is generated as a replacement for an
     /// unbound type variable. This is convenient for caching etc. See
     /// `middle::infer::freshen` for more details.
-    FreshTy(uint),
+    FreshTy(u32),
 
     // FIXME -- once integral fallback is impl'd, we should remove
     // this type. It's only needed to prevent spurious errors for
     // integers whose type winds up never being constrained.
-    FreshIntTy(uint),
+    FreshIntTy(u32),
 }
 
 #[deriving(Clone, RustcEncodable, RustcDecodable, Eq, Hash, Show, Copy)]
 pub enum InferRegion {
     ReVar(RegionVid),
-    ReSkolemized(uint, BoundRegion)
+    ReSkolemized(u32, BoundRegion)
 }
 
 impl cmp::PartialEq for InferRegion {
@@ -1653,7 +1653,7 @@ pub struct TypeParameterDef<'tcx> {
     pub name: ast::Name,
     pub def_id: ast::DefId,
     pub space: subst::ParamSpace,
-    pub index: uint,
+    pub index: u32,
     pub associated_with: Option<ast::DefId>,
     pub bounds: ParamBounds<'tcx>,
     pub default: Option<Ty<'tcx>>,
@@ -1664,7 +1664,7 @@ pub struct RegionParameterDef {
     pub name: ast::Name,
     pub def_id: ast::DefId,
     pub space: subst::ParamSpace,
-    pub index: uint,
+    pub index: u32,
     pub bounds: Vec<ty::Region>,
 }
 
@@ -2176,7 +2176,7 @@ struct FlagComputation {
     flags: TypeFlags,
 
     // maximum depth of any bound region that we have seen thus far
-    depth: uint,
+    depth: u32,
 }
 
 impl FlagComputation {
@@ -2194,7 +2194,7 @@ impl FlagComputation {
         self.flags = self.flags | flags;
     }
 
-    fn add_depth(&mut self, depth: uint) {
+    fn add_depth(&mut self, depth: u32) {
         if depth > self.depth {
             self.depth = depth;
         }
@@ -2508,7 +2508,7 @@ pub fn mk_infer<'tcx>(cx: &ctxt<'tcx>, it: InferTy) -> Ty<'tcx> {
 }
 
 pub fn mk_param<'tcx>(cx: &ctxt<'tcx>, space: subst::ParamSpace,
-                      n: uint, k: DefId) -> Ty<'tcx> {
+                      n: u32, k: DefId) -> Ty<'tcx> {
     mk_t(cx, ty_param(ParamTy { space: space, idx: n, def_id: k }))
 }
 
@@ -2580,7 +2580,7 @@ pub fn fold_ty<'tcx, F>(cx: &ctxt<'tcx>, t0: Ty<'tcx>,
 
 impl ParamTy {
     pub fn new(space: subst::ParamSpace,
-               index: uint,
+               index: u32,
                def_id: ast::DefId)
                -> ParamTy {
         ParamTy { space: space, idx: index, def_id: def_id }
@@ -4823,7 +4823,7 @@ pub fn associated_type_parameter_index(cx: &ctxt,
                                        -> uint {
     for type_parameter_def in trait_def.generics.types.iter() {
         if type_parameter_def.def_id == associated_type_id {
-            return type_parameter_def.index
+            return type_parameter_def.index as uint
         }
     }
     cx.sess.bug("couldn't find associated type parameter index")
@@ -6188,7 +6188,7 @@ pub fn construct_parameter_environment<'tcx>(
                    space,
                    def.repr(tcx),
                    i);
-            let ty = ty::mk_param(tcx, space, i, def.def_id);
+            let ty = ty::mk_param(tcx, space, i as u32, def.def_id);
             types.push(space, ty);
         }
     }
@@ -6509,12 +6509,12 @@ pub fn replace_late_bound_regions<'tcx, T, F>(
 }
 
 impl DebruijnIndex {
-    pub fn new(depth: uint) -> DebruijnIndex {
+    pub fn new(depth: u32) -> DebruijnIndex {
         assert!(depth > 0);
         DebruijnIndex { depth: depth }
     }
 
-    pub fn shifted(&self, amount: uint) -> DebruijnIndex {
+    pub fn shifted(&self, amount: u32) -> DebruijnIndex {
         DebruijnIndex { depth: self.depth + amount }
     }
 }

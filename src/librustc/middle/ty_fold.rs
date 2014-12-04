@@ -717,13 +717,13 @@ impl<'a, 'tcx, F> TypeFolder<'tcx> for BottomUpFolder<'a, 'tcx, F> where
 
 pub struct RegionFolder<'a, 'tcx: 'a> {
     tcx: &'a ty::ctxt<'tcx>,
-    current_depth: uint,
-    fld_r: &'a mut (FnMut(ty::Region, uint) -> ty::Region + 'a),
+    current_depth: u32,
+    fld_r: &'a mut (FnMut(ty::Region, u32) -> ty::Region + 'a),
 }
 
 impl<'a, 'tcx> RegionFolder<'a, 'tcx> {
     pub fn new<F>(tcx: &'a ty::ctxt<'tcx>, fld_r: &'a mut F) -> RegionFolder<'a, 'tcx>
-        where F : FnMut(ty::Region, uint) -> ty::Region
+        where F : FnMut(ty::Region, u32) -> ty::Region
     {
         RegionFolder {
             tcx: tcx,
@@ -813,7 +813,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for RegionEraser<'a, 'tcx> {
 // regions. See comment on `shift_regions_through_binders` method in
 // `subst.rs` for more details.
 
-pub fn shift_region(region: ty::Region, amount: uint) -> ty::Region {
+pub fn shift_region(region: ty::Region, amount: u32) -> ty::Region {
     match region {
         ty::ReLateBound(debruijn, br) => {
             ty::ReLateBound(debruijn.shifted(amount), br)
@@ -825,7 +825,7 @@ pub fn shift_region(region: ty::Region, amount: uint) -> ty::Region {
 }
 
 pub fn shift_regions<'tcx, T:TypeFoldable<'tcx>+Repr<'tcx>>(tcx: &ty::ctxt<'tcx>,
-                                                            amount: uint, value: &T) -> T {
+                                                            amount: u32, value: &T) -> T {
     debug!("shift_regions(value={}, amount={})",
            value.repr(tcx), amount);
 

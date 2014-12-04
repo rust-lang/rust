@@ -854,18 +854,18 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
         for p in type_param_defs.iter() {
             let variance_decl =
                 self.declared_variance(p.def_id, def_id, TypeParam,
-                                       p.space, p.index);
+                                       p.space, p.index as uint);
             let variance_i = self.xform(variance, variance_decl);
-            let substs_ty = *substs.types.get(p.space, p.index);
+            let substs_ty = *substs.types.get(p.space, p.index as uint);
             self.add_constraints_from_ty(substs_ty, variance_i);
         }
 
         for p in region_param_defs.iter() {
             let variance_decl =
                 self.declared_variance(p.def_id, def_id,
-                                       RegionParam, p.space, p.index);
+                                       RegionParam, p.space, p.index as uint);
             let variance_i = self.xform(variance, variance_decl);
-            let substs_r = *substs.regions().get(p.space, p.index);
+            let substs_r = *substs.regions().get(p.space, p.index as uint);
             self.add_constraints_from_region(substs_r, variance_i);
         }
     }
