@@ -444,9 +444,9 @@ impl<T, E> Result<T, E> {
     /// ignoring I/O and parse errors:
     ///
     /// ```
-    /// use std::io::{BufReader, IoResult};
+    /// use std::io::IoResult;
     ///
-    /// let mut buffer = "1\n2\n3\n4\n";
+    /// let mut buffer = &mut b"1\n2\n3\n4\n";
     ///
     /// let mut sum = 0;
     ///
