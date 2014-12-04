@@ -755,6 +755,50 @@ mod test_map {
     }
 
     #[test]
+    fn test_reserve() {
+        let mut map = VecMap::new();
+        assert_eq!(map.capacity(), 0);
+
+        map.reserve(2);
+        assert!(map.capacity() >= 2);
+
+        for i in range(0u, 16) {
+            map.insert(i, "a");
+        }
+
+        assert!(map.capacity() >= 16);
+        map.reserve(16);
+        assert!(map.capacity() >= 32);
+
+        map.insert(16,"b");
+
+        map.reserve(16);
+        assert!(map.capacity() >= 33)
+    }
+
+    #[test]
+    fn test_reserve_exact() {
+        let mut map = VecMap::new();
+        assert_eq!(map.capacity(), 0);
+
+        map.reserve_exact(2);
+        assert!(map.capacity() >= 2);
+
+        for i in range(0u, 16) {
+            map.insert(i, "a");
+        }
+
+        assert!(map.capacity() >= 16);
+        map.reserve_exact(16);
+        assert!(map.capacity() >= 32);
+
+        map.insert(16,"b");
+
+        map.reserve_exact(16);
+        assert!(map.capacity() >= 33)
+    }
+
+    #[test]
     fn test_keys() {
         let mut map = VecMap::new();
         map.insert(1, 'a');
