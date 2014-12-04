@@ -1024,7 +1024,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                       candidates: &mut CandidateSet<'tcx>)
                                       -> Result<(),SelectionError<'tcx>>
     {
-        // We provide a `Fn` impl for fn pointers (but not e.g. `FnMut`).
+        // We provide a `Fn` impl for fn pointers. There is no need to provide
+        // the other traits (e.g. `FnMut`) since those are provided by blanket
+        // impls.
         if Some(obligation.trait_ref.def_id) != self.tcx().lang_items.fn_trait() {
             return Ok(());
         }
@@ -1705,7 +1707,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 abi: abi::Rust,
                 ref sig
             }) => {
-                (*sig).clone()
+                sig
             }
             _ => {
                 self.tcx().sess.span_bug(
