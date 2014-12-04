@@ -749,7 +749,7 @@ pub trait ExactSizeIterator<A> : DoubleEndedIterator<A> {
     ///
     /// If no element matches, None is returned.
     #[inline]
-    fn rposition(&mut self, predicate: |A| -> bool) -> Option<uint> {
+    fn rposition<P>(&mut self, mut predicate: P) -> Option<uint> where P: FnMut(A) -> bool {
         let len = self.len();
         for i in range(0, len).rev() {
             if predicate(self.next_back().expect("rposition: incorrect ExactSizeIterator")) {
