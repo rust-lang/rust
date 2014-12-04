@@ -39,7 +39,7 @@ pub enum Def {
     DefAssociatedPath(TyParamProvenance, ast::Ident),
     DefTrait(ast::DefId),
     DefPrimTy(ast::PrimTy),
-    DefTyParam(ParamSpace, ast::DefId, uint),
+    DefTyParam(ParamSpace, ast::DefId, u32),
     DefUse(ast::DefId),
     DefUpvar(ast::NodeId,  // id of closed over local
              ast::NodeId,  // expr node that creates the closure

@@ -67,11 +67,11 @@ impl<'tcx> TypeVariableTable<'tcx> {
     }
 
     fn relations<'a>(&'a mut self, a: ty::TyVid) -> &'a mut Vec<Relation> {
-        relations(self.values.get_mut(a.index))
+        relations(self.values.get_mut(a.index as uint))
     }
 
     pub fn var_diverges<'a>(&'a self, vid: ty::TyVid) -> bool {
-        self.values.get(vid.index).diverging
+        self.values.get(vid.index as uint).diverging
     }
 
     /// Records that `a <: b`, `a :> b`, or `a == b`, depending on `dir`.
@@ -95,7 +95,7 @@ impl<'tcx> TypeVariableTable<'tcx> {
         stack: &mut Vec<(Ty<'tcx>, RelationDir, ty::TyVid)>)
     {
         let old_value = {
-            let value_ptr = &mut self.values.get_mut(vid.index).value;
+            let value_ptr = &mut self.values.get_mut(vid.index as uint).value;
             mem::replace(value_ptr, Known(ty))
         };
 
@@ -117,11 +117,11 @@ impl<'tcx> TypeVariableTable<'tcx> {
             value: Bounded(vec![]),
             diverging: diverging
         });
-        ty::TyVid { index: index }
+        ty::TyVid { index: index as u32 }
     }
 
     pub fn probe(&self, vid: ty::TyVid) -> Option<Ty<'tcx>> {
-        match self.values.get(vid.index).value {
+        match self.values.get(vid.index as uint).value {
             Bounded(..) => None,
             Known(t) => Some(t)
         }
@@ -201,12 +201,12 @@ impl<'tcx> sv::SnapshotVecDelegate<TypeVariableData<'tcx>,UndoEntry> for Delegat
                action: UndoEntry) {
         match action {
             SpecifyVar(vid, relations) => {
-                values[vid.index].value = Bounded(relations);
+                values[vid.index as uint].value = Bounded(relations);
             }
 
             Relate(a, b) => {
-                relations(&mut (*values)[a.index]).pop();
-                relations(&mut (*values)[b.index]).pop();
+                relations(&mut (*values)[a.index as uint]).pop();
+                relations(&mut (*values)[b.index as uint]).pop();
             }
         }
     }
@@ -218,4 +218,3 @@ fn relations<'a>(v: &'a mut TypeVariableData) -> &'a mut Vec<Relation> {
         Bounded(ref mut relations) => relations
     }
 }
-

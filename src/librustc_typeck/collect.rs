@@ -651,7 +651,7 @@ fn is_associated_type_valid_for_param(ty: Ty,
                                       generics: &ty::Generics)
                                       -> bool {
     if let ty::ty_param(param_ty) = ty.sty {
-        let type_parameter = generics.types.get(param_ty.space, param_ty.idx);
+        let type_parameter = generics.types.get(param_ty.space, param_ty.idx as uint);
         for trait_bound in type_parameter.bounds.trait_bounds.iter() {
             if trait_bound.def_id() == trait_id {
                 return true
@@ -1397,7 +1397,7 @@ pub fn trait_def_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                     .enumerate()
                     .map(|(i, def)| ty::ReEarlyBound(def.lifetime.id,
                                                      subst::TypeSpace,
-                                                     i,
+                                                     i as u32,
                                                      def.lifetime.name))
                     .collect();
 
@@ -1407,7 +1407,7 @@ pub fn trait_def_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                     .iter()
                     .enumerate()
                     .map(|(i, def)| ty::mk_param(ccx.tcx, subst::TypeSpace,
-                                                 i, local_def(def.id)))
+                                                 i as u32, local_def(def.id)))
                     .collect();
 
         // ...and also create generics synthesized from the associated types.
@@ -1419,7 +1419,7 @@ pub fn trait_def_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                     index += 1;
                     Some(ty::mk_param(ccx.tcx,
                                       subst::AssocSpace,
-                                      index - 1,
+                                      index as u32 - 1,
                                       local_def(trait_item.ty_param.id))).into_iter()
                 }
                 ast::RequiredMethod(_) | ast::ProvidedMethod(_) => {
@@ -1621,7 +1621,7 @@ fn ty_generics_for_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                         ccx,
                         subst::AssocSpace,
                         &associated_type.ty_param,
-                        generics.types.len(subst::AssocSpace),
+                        generics.types.len(subst::AssocSpace) as u32,
                         Some(local_def(trait_id)));
                 ccx.tcx.ty_param_defs.borrow_mut().insert(associated_type.ty_param.id,
                                                           def.clone());
@@ -1746,7 +1746,7 @@ fn ty_generics<'tcx,AC>(this: &AC,
                              .collect();
         let def = ty::RegionParameterDef { name: l.lifetime.name,
                                            space: space,
-                                           index: i,
+                                           index: i as u32,
                                            def_id: local_def(l.lifetime.id),
                                            bounds: bounds };
         debug!("ty_generics: def for region param: {}", def);
@@ -1775,7 +1775,12 @@ fn ty_generics<'tcx,AC>(this: &AC,
         let def = get_or_create_type_parameter_def(&gcx,
                                                    space,
                                                    param,
+<<<<<<< HEAD
                                                    i,
+=======
+                                                   i as u32,
+                                                   where_clause,
+>>>>>>> Switch Region information from uint to u32.
                                                    None);
         debug!("ty_generics: def for type param: {}, {}",
                def.repr(this.tcx()),
@@ -1788,7 +1793,7 @@ fn ty_generics<'tcx,AC>(this: &AC,
                                                           .get_slice(space)
                                                           .iter() {
         assert!(result.types.get_slice(space).len() ==
-                associated_type_param.index);
+                associated_type_param.index as uint);
         debug!("ty_generics: def for associated type: {}, {}",
                associated_type_param.repr(this.tcx()),
                space);
@@ -1915,7 +1920,7 @@ fn ty_generics<'tcx,AC>(this: &AC,
                         name: associated_type_def.name,
                         def_id: associated_type_def.def_id,
                         space: space,
-                        index: types.len() + index,
+                        index: types.len() as u32 + index,
                         bounds: ty::ParamBounds {
                             builtin_bounds: associated_type_def.bounds.builtin_bounds,
 
@@ -1963,7 +1968,12 @@ fn ty_generics<'tcx,AC>(this: &AC,
 fn get_or_create_type_parameter_def<'tcx,AC>(this: &AC,
                                              space: subst::ParamSpace,
                                              param: &ast::TyParam,
+<<<<<<< HEAD
                                              index: uint,
+=======
+                                             index: u32,
+                                             where_clause: &ast::WhereClause,
+>>>>>>> Switch Region information from uint to u32.
                                              associated_with: Option<ast::DefId>)
                                              -> ty::TypeParameterDef<'tcx>
     where AC: AstConv<'tcx>
