@@ -898,7 +898,7 @@ fn encode_info_for_associated_type(ecx: &EncodeContext,
     encode_visibility(rbml_w, associated_type.vis);
     encode_family(rbml_w, 'y');
     encode_parent_item(rbml_w, local_def(parent_id));
-    encode_item_sort(rbml_w, 'r');
+    encode_item_sort(rbml_w, 't');
 
     let stab = stability::lookup(ecx.tcx, associated_type.def_id);
     encode_stability(rbml_w, stab);
@@ -1404,6 +1404,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
                     encode_path(rbml_w,
                                 path.clone().chain(Some(elem).into_iter()));
 
+                    encode_item_sort(rbml_w, 't');
                     encode_family(rbml_w, 'y');
 
                     is_nonstatic_method = false;
