@@ -838,8 +838,9 @@ impl<'a> Parser<'a> {
     // Otherwise, an error will be returned.
     // Generally, `allow_start` is only true when you're *not* expecting an
     // opening parenthesis.
-    fn pos_last(&self, allow_start: bool, pred: |&BuildAst| -> bool)
-               -> Result<uint, Error> {
+    fn pos_last<P>(&self, allow_start: bool, pred: P) -> Result<uint, Error> where
+        P: FnMut(&BuildAst) -> bool,
+   {
         let from = match self.stack.iter().rev().position(pred) {
             Some(i) => i,
             None => {
