@@ -262,6 +262,12 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
     let _icx = push_ctxt("trans_fn_pointer_shim");
     let tcx = ccx.tcx();
 
+    let bare_fn_ty = ty::normalize_ty(tcx, bare_fn_ty);
+    match ccx.fn_pointer_shims().borrow().get(&bare_fn_ty) {
+        Some(&llval) => { return llval; }
+        None => { }
+    }
+
     debug!("trans_fn_pointer_shim(bare_fn_ty={})",
            bare_fn_ty.repr(tcx));
 
@@ -344,6 +350,8 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
                            dest).bcx;
 
     finish_fn(&fcx, bcx, output_ty);
+
+    ccx.fn_pointer_shims().borrow_mut().insert(bare_fn_ty, llfn);
 
     llfn
 }
