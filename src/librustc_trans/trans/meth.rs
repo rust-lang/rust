@@ -368,9 +368,15 @@ fn trans_monomorphized_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 data: Fn(llfn),
             }
         }
-        _ => {
-            bcx.tcx().sess.bug(
-                "vtable_param left in monomorphized function's vtable substs");
+        traits::VtableFnPointer(fn_ty) => {
+            let llfn = trans_fn_pointer_shim(bcx.ccx(), fn_ty);
+            Callee { bcx: bcx, data: Fn(llfn) }
+        }
+        traits::VtableBuiltin(..) |
+        traits::VtableParam(..) => {
+            bcx.sess().bug(
+                format!("resolved vtable bad vtable {} in trans",
+                        vtable.repr(bcx.tcx())).as_slice());
         }
     }
 }
@@ -608,6 +614,10 @@ pub fn get_vtable<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 }
 
                 (vec!(llfn)).into_iter()
+            }
+            traits::VtableFnPointer(bare_fn_ty) => {
+                let llfn = vec![trans_fn_pointer_shim(bcx.ccx(), bare_fn_ty)];
+                llfn.into_iter()
             }
             traits::VtableParam(..) => {
                 bcx.sess().bug(

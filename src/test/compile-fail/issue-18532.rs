@@ -17,6 +17,4 @@
 fn main() {
     (return)((),());
     //~^ ERROR the type of this value must be known
-    //~^^ ERROR the type of this value must be known
-    //~^^^ ERROR cannot use call notation
 }

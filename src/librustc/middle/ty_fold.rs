@@ -466,6 +466,9 @@ impl<'tcx, N: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::Vtable<'tcx, N>
             traits::VtableUnboxedClosure(d, ref s) => {
                 traits::VtableUnboxedClosure(d, s.fold_with(folder))
             }
+            traits::VtableFnPointer(ref d) => {
+                traits::VtableFnPointer(d.fold_with(folder))
+            }
             traits::VtableParam(ref p) => traits::VtableParam(p.fold_with(folder)),
             traits::VtableBuiltin(ref d) => traits::VtableBuiltin(d.fold_with(folder)),
         }
