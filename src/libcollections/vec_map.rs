@@ -115,6 +115,62 @@ impl<V> VecMap<V> {
         VecMap { v: Vec::with_capacity(capacity) }
     }
 
+    /// Returns the number of elements the `VecMap` can hold without
+    /// reallocating.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::VecMap;
+    /// let map: VecMap<String> = VecMap::with_capacity(10);
+    /// assert_eq!(map.capacity(), 10);
+    /// ```
+    #[inline]
+    #[stable]
+    pub fn capacity(&self) -> uint {
+        self.v.capacity()
+    }
+
+    /// Reserves capacity for at least `additional` more elements to be inserted in the given
+    /// `VecMap`. The collection may reserve more space to avoid frequent reallocations.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the new capacity overflows `uint`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::VecMap;
+    /// let mut map: VecMap<String> = VecMap::new();
+    /// map.reserve(10);
+    /// assert!(map.capacity() >= 10);
+    /// ```
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    pub fn reserve(&mut self, additional: uint) {
+        self.v.reserve(additional);
+    }
+
+    /// Reserves the minimum capacity for exactly `additional` more elements to be inserted in the
+    /// `VecMap`. The collection may reserve more space to avoid frequent reallocations.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the new capacity overflows `uint`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::VecMap;
+    /// let mut map: VecMap<String> = VecMap::new();
+    /// map.reserve_exact(10);
+    /// assert!(map.capacity() >= 10);
+    /// ```
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    pub fn reserve_exact(&mut self, additional: uint) {
+        self.v.reserve_exact(additional);
+    }
+
     /// Returns an iterator visiting all keys in ascending order by the keys.
     /// The iterator's element type is `uint`.
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
@@ -696,6 +752,50 @@ mod test_map {
         m.insert(1, 2i);
         assert_eq!(m.remove(&1), Some(2));
         assert_eq!(m.remove(&1), None);
+    }
+
+    #[test]
+    fn test_reserve() {
+        let mut map = VecMap::new();
+        assert_eq!(map.capacity(), 0);
+
+        map.reserve(2);
+        assert!(map.capacity() >= 2);
+
+        for i in range(0u, 16) {
+            map.insert(i, "a");
+        }
+
+        assert!(map.capacity() >= 16);
+        map.reserve(16);
+        assert!(map.capacity() >= 32);
+
+        map.insert(16,"b");
+
+        map.reserve(16);
+        assert!(map.capacity() >= 33)
+    }
+
+    #[test]
+    fn test_reserve_exact() {
+        let mut map = VecMap::new();
+        assert_eq!(map.capacity(), 0);
+
+        map.reserve_exact(2);
+        assert!(map.capacity() >= 2);
+
+        for i in range(0u, 16) {
+            map.insert(i, "a");
+        }
+
+        assert!(map.capacity() >= 16);
+        map.reserve_exact(16);
+        assert!(map.capacity() >= 32);
+
+        map.insert(16,"b");
+
+        map.reserve_exact(16);
+        assert!(map.capacity() >= 33)
     }
 
     #[test]
