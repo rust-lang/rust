@@ -322,7 +322,7 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 let substs = principal.substs().with_self_ty(unadjusted_ty).erase_regions();
                 let trait_ref =
                     Rc::new(ty::Binder(ty::TraitRef { def_id: principal.def_id(),
-                                                      substs: substs }));
+                                                      substs: bcx.tcx().mk_substs(substs) }));
                 let trait_ref = trait_ref.subst(bcx.tcx(), bcx.fcx.param_substs);
                 let box_ty = mk_ty(unadjusted_ty);
                 PointerCast(bcx,
@@ -1339,7 +1339,7 @@ pub fn with_field_tys<'tcx, R, F>(tcx: &ty::ctxt<'tcx>,
     F: FnOnce(ty::Disr, &[ty::field<'tcx>]) -> R,
 {
     match ty.sty {
-        ty::ty_struct(did, ref substs) => {
+        ty::ty_struct(did, substs) => {
             op(0, struct_fields(tcx, did, substs)[])
         }
 
@@ -1347,7 +1347,7 @@ pub fn with_field_tys<'tcx, R, F>(tcx: &ty::ctxt<'tcx>,
             op(0, tup_fields(v[])[])
         }
 
-        ty::ty_enum(_, ref substs) => {
+        ty::ty_enum(_, substs) => {
             // We want the *variant* ID here, not the enum ID.
             match node_id_opt {
                 None => {

@@ -1264,7 +1264,7 @@ pub fn convert_struct<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     tcx.struct_fields.borrow_mut().insert(local_def(id), Rc::new(field_tys));
 
     let substs = mk_item_substs(ccx, &pty.generics);
-    let selfty = ty::mk_struct(tcx, local_def(id), substs);
+    let selfty = ty::mk_struct(tcx, local_def(id), tcx.mk_substs(substs));
 
     // If this struct is enum-like or tuple-like, create the type of its
     // constructor.
@@ -1353,11 +1353,11 @@ pub fn trait_def_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         }
     };
 
-    let substs = mk_trait_substs(ccx, it.id, generics, items);
+    let substs = ccx.tcx.mk_substs(mk_trait_substs(ccx, it.id, generics, items));
 
     let ty_generics = ty_generics_for_trait(ccx,
                                             it.id,
-                                            &substs,
+                                            substs,
                                             generics,
                                             items);
 
@@ -1377,7 +1377,7 @@ pub fn trait_def_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         bounds: bounds,
         trait_ref: Rc::new(ty::TraitRef {
             def_id: def_id,
-            substs: substs
+            substs: ccx.tcx.mk_substs(substs)
         })
     });
     tcx.trait_defs.borrow_mut().insert(def_id, trait_def.clone());
@@ -1502,7 +1502,7 @@ pub fn ty_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, it: &ast::Item)
                 generics,
                 DontCreateTypeParametersForAssociatedTypes);
             let substs = mk_item_substs(ccx, &ty_generics);
-            let t = ty::mk_enum(tcx, local_def(it.id), substs);
+            let t = ty::mk_enum(tcx, local_def(it.id), tcx.mk_substs(substs));
             let pty = Polytype {
                 generics: ty_generics,
                 ty: t
@@ -1520,7 +1520,7 @@ pub fn ty_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, it: &ast::Item)
                 generics,
                 DontCreateTypeParametersForAssociatedTypes);
             let substs = mk_item_substs(ccx, &ty_generics);
-            let t = ty::mk_struct(tcx, local_def(it.id), substs);
+            let t = ty::mk_struct(tcx, local_def(it.id), tcx.mk_substs(substs));
             let pty = Polytype {
                 generics: ty_generics,
                 ty: t
@@ -1598,7 +1598,7 @@ fn ty_generics_for_type_or_impl<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
 fn ty_generics_for_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                    trait_id: ast::NodeId,
-                                   substs: &subst::Substs<'tcx>,
+                                   substs: &'tcx subst::Substs<'tcx>,
                                    ast_generics: &ast::Generics,
                                    items: &[ast::TraitItem])
                                    -> ty::Generics<'tcx>
@@ -1639,7 +1639,7 @@ fn ty_generics_for_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
     let self_trait_ref =
         Rc::new(ty::Binder(ty::TraitRef { def_id: local_def(trait_id),
-                                          substs: (*substs).clone() }));
+                                          substs: substs }));
 
     let def = ty::TypeParameterDef {
         space: subst::SelfSpace,

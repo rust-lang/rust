@@ -1464,10 +1464,10 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
                     ty::RegionTraitStore(..) => Closure(decl),
                 }
             }
-            ty::ty_struct(did, ref substs) |
-            ty::ty_enum(did, ref substs) |
+            ty::ty_struct(did, substs) |
+            ty::ty_enum(did, substs) |
             ty::ty_trait(box ty::TyTrait {
-                principal: ty::Binder(ty::TraitRef { def_id: did, ref substs }),
+                principal: ty::Binder(ty::TraitRef { def_id: did, substs }),
                 .. }) =>
             {
                 let fqn = csearch::get_item_path(cx.tcx(), did);

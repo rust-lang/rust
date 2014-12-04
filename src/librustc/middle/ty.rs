@@ -610,6 +610,7 @@ pub struct TransmuteRestriction<'tcx> {
 pub struct ctxt<'tcx> {
     /// The arena that types are allocated from.
     type_arena: &'tcx TypedArena<TyS<'tcx>>,
+    substs_arena: &'tcx TypedArena<Substs<'tcx>>,
 
     /// Specifically use a speedy hash algorithm for this hash map, it's used
     /// quite often.
@@ -1312,7 +1313,7 @@ pub enum sty<'tcx> {
     /// from the tcx, use the `NodeId` from the `ast::Ty` and look it up in
     /// the `ast_ty_to_ty_cache`. This is probably true for `ty_struct` as
     /// well.`
-    ty_enum(DefId, Substs<'tcx>),
+    ty_enum(DefId, &'tcx Substs<'tcx>),
     ty_uniq(Ty<'tcx>),
     ty_str,
     ty_vec(Ty<'tcx>, Option<uint>), // Second field is length.
@@ -1325,9 +1326,9 @@ pub enum sty<'tcx> {
 
     ty_closure(Box<ClosureTy<'tcx>>),
     ty_trait(Box<TyTrait<'tcx>>),
-    ty_struct(DefId, Substs<'tcx>),
+    ty_struct(DefId, &'tcx Substs<'tcx>),
 
-    ty_unboxed_closure(DefId, Region, Substs<'tcx>),
+    ty_unboxed_closure(DefId, Region, &'tcx Substs<'tcx>),
 
     ty_tup(Vec<Ty<'tcx>>),
 
@@ -1384,7 +1385,7 @@ impl<'tcx> TyTrait<'tcx> {
 #[deriving(Clone, PartialEq, Eq, Hash, Show)]
 pub struct TraitRef<'tcx> {
     pub def_id: DefId,
-    pub substs: Substs<'tcx>,
+    pub substs: &'tcx Substs<'tcx>,
 }
 
 pub type PolyTraitRef<'tcx> = Binder<TraitRef<'tcx>>;
@@ -1820,7 +1821,7 @@ impl<'tcx> GenericBounds<'tcx> {
 }
 
 impl<'tcx> TraitRef<'tcx> {
-    pub fn new(def_id: ast::DefId, substs: Substs<'tcx>) -> TraitRef<'tcx> {
+    pub fn new(def_id: ast::DefId, substs: &'tcx Substs<'tcx>) -> TraitRef<'tcx> {
         TraitRef { def_id: def_id, substs: substs }
     }
 
@@ -2049,6 +2050,7 @@ impl UnboxedClosureKind {
 
 pub fn mk_ctxt<'tcx>(s: Session,
                      type_arena: &'tcx TypedArena<TyS<'tcx>>,
+                     substs_arena: &'tcx TypedArena<Substs<'tcx>>,
                      dm: DefMap,
                      named_region_map: resolve_lifetime::NamedRegionMap,
                      map: ast_map::Map<'tcx>,
@@ -2059,6 +2061,7 @@ pub fn mk_ctxt<'tcx>(s: Session,
                      stability: stability::Index) -> ctxt<'tcx> {
     ctxt {
         type_arena: type_arena,
+        substs_arena: substs_arena,
         interner: RefCell::new(FnvHashMap::new()),
         named_region_map: named_region_map,
         item_variance_map: RefCell::new(DefIdMap::new()),
@@ -2118,6 +2121,12 @@ pub fn mk_ctxt<'tcx>(s: Session,
 }
 
 // Type constructors
+
+impl<'tcx> ctxt<'tcx> {
+    pub fn mk_substs(&self, subst: Substs<'tcx>) -> &'tcx Substs<'tcx> {
+        self.substs_arena.alloc(subst)
+    }
+}
 
 // Interns a type/name combination, stores the resulting box in cx.interner,
 // and returns the box as cast to an unsafe ptr (see comments for Ty above).
@@ -2222,7 +2231,7 @@ impl FlagComputation {
                 }
             }
 
-            &ty_unboxed_closure(_, ref region, ref substs) => {
+            &ty_unboxed_closure(_, ref region, substs) => {
                 self.add_region(*region);
                 self.add_substs(substs);
             }
@@ -2231,7 +2240,7 @@ impl FlagComputation {
                 self.add_flags(HAS_TY_INFER)
             }
 
-            &ty_enum(_, ref substs) | &ty_struct(_, ref substs) => {
+            &ty_enum(_, substs) | &ty_struct(_, substs) => {
                 self.add_substs(substs);
             }
 
@@ -2365,7 +2374,7 @@ pub fn mk_str_slice<'tcx>(cx: &ctxt<'tcx>, r: Region, m: ast::Mutability) -> Ty<
             })
 }
 
-pub fn mk_enum<'tcx>(cx: &ctxt<'tcx>, did: ast::DefId, substs: Substs<'tcx>) -> Ty<'tcx> {
+pub fn mk_enum<'tcx>(cx: &ctxt<'tcx>, did: ast::DefId, substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {
     // take a copy of substs so that we own the vectors inside
     mk_t(cx, ty_enum(did, substs))
 }
@@ -2459,13 +2468,13 @@ pub fn mk_trait<'tcx>(cx: &ctxt<'tcx>,
 }
 
 pub fn mk_struct<'tcx>(cx: &ctxt<'tcx>, struct_id: ast::DefId,
-                       substs: Substs<'tcx>) -> Ty<'tcx> {
+                       substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {
     // take a copy of substs so that we own the vectors inside
     mk_t(cx, ty_struct(struct_id, substs))
 }
 
 pub fn mk_unboxed_closure<'tcx>(cx: &ctxt<'tcx>, closure_id: ast::DefId,
-                                region: Region, substs: Substs<'tcx>)
+                                region: Region, substs: &'tcx Substs<'tcx>)
                                 -> Ty<'tcx> {
     mk_t(cx, ty_unboxed_closure(closure_id, region, substs))
 }
@@ -2688,7 +2697,7 @@ pub fn sequence_element_type<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
 
 pub fn simd_type<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
     match ty.sty {
-        ty_struct(did, ref substs) => {
+        ty_struct(did, substs) => {
             let fields = lookup_struct_fields(cx, did);
             lookup_field_type(cx, did, fields[0].id, substs)
         }
@@ -2787,7 +2796,7 @@ pub fn type_needs_unwind_cleanup<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
                 ty_bool | ty_int(_) | ty_uint(_) |
                 ty_float(_) | ty_tup(_) | ty_ptr(_) => false,
 
-                ty_enum(did, ref substs) =>
+                ty_enum(did, substs) =>
                     enum_variants(cx, did).iter().any(|v|
                         v.args.iter().any(|aty| {
                             let t = aty.subst(cx, substs);
@@ -3055,7 +3064,7 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
             }
             ty_str => TC::Nonsized,
 
-            ty_struct(did, ref substs) => {
+            ty_struct(did, substs) => {
                 let flds = struct_fields(cx, did, substs);
                 let mut res =
                     TypeContents::union(flds[],
@@ -3071,7 +3080,7 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
                 apply_lang_items(cx, did, res)
             }
 
-            ty_unboxed_closure(did, r, ref substs) => {
+            ty_unboxed_closure(did, r, substs) => {
                 // FIXME(#14449): `borrowed_contents` below assumes `&mut`
                 // unboxed closure.
                 let upvars = unboxed_closure_upvars(cx, did, substs);
@@ -3085,7 +3094,7 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
                                     |ty| tc_ty(cx, *ty, cache))
             }
 
-            ty_enum(did, ref substs) => {
+            ty_enum(did, substs) => {
                 let variants = substd_enum_variants(cx, did, substs);
                 let mut res =
                     TypeContents::union(variants[], |variant| {
@@ -3377,7 +3386,7 @@ pub fn is_instantiable<'tcx>(cx: &ctxt<'tcx>, r_ty: Ty<'tcx>) -> bool {
                 false
             }
 
-            ty_struct(did, ref substs) => {
+            ty_struct(did, substs) => {
                 seen.push(did);
                 let fields = struct_fields(cx, did, substs);
                 let r = fields.iter().any(|f| type_requires(cx, seen, r_ty, f.mt.ty));
@@ -3385,7 +3394,7 @@ pub fn is_instantiable<'tcx>(cx: &ctxt<'tcx>, r_ty: Ty<'tcx>) -> bool {
                 r
             }
 
-            ty_unboxed_closure(did, _, ref substs) => {
+            ty_unboxed_closure(did, _, substs) => {
                 let upvars = unboxed_closure_upvars(cx, did, substs);
                 upvars.iter().any(|f| type_requires(cx, seen, r_ty, f.ty))
             }
@@ -3398,7 +3407,7 @@ pub fn is_instantiable<'tcx>(cx: &ctxt<'tcx>, r_ty: Ty<'tcx>) -> bool {
                 false
             }
 
-            ty_enum(did, ref substs) => {
+            ty_enum(did, substs) => {
                 seen.push(did);
                 let vs = enum_variants(cx, did);
                 let r = !vs.is_empty() && vs.iter().all(|variant| {
@@ -3465,11 +3474,11 @@ pub fn is_type_representable<'tcx>(cx: &ctxt<'tcx>, sp: Span, ty: Ty<'tcx>)
             ty_vec(ty, Some(_)) => {
                 is_type_structurally_recursive(cx, sp, seen, ty)
             }
-            ty_struct(did, ref substs) => {
+            ty_struct(did, substs) => {
                 let fields = struct_fields(cx, did, substs);
                 find_nonrepresentable(cx, sp, seen, fields.iter().map(|f| f.mt.ty))
             }
-            ty_enum(did, ref substs) => {
+            ty_enum(did, substs) => {
                 let vs = enum_variants(cx, did);
                 let iter = vs.iter()
                     .flat_map(|variant| { variant.args.iter() })
@@ -3477,7 +3486,7 @@ pub fn is_type_representable<'tcx>(cx: &ctxt<'tcx>, sp: Span, ty: Ty<'tcx>)
 
                 find_nonrepresentable(cx, sp, seen, iter)
             }
-            ty_unboxed_closure(did, _, ref substs) => {
+            ty_unboxed_closure(did, _, substs) => {
                 let upvars = unboxed_closure_upvars(cx, did, substs);
                 find_nonrepresentable(cx, sp, seen, upvars.iter().map(|f| f.ty))
             }
@@ -3697,7 +3706,7 @@ pub fn lltype_is_sized<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
 pub fn unsized_part_of_type<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
     match ty.sty {
         ty_str | ty_trait(..) | ty_vec(..) => ty,
-        ty_struct(def_id, ref substs) => {
+        ty_struct(def_id, substs) => {
             let unsized_fields: Vec<_> = struct_fields(cx, def_id, substs).iter()
                 .map(|f| f.mt.ty).filter(|ty| !type_is_sized(cx, *ty)).collect();
             // Exactly one of the fields must be unsized.
@@ -3801,16 +3810,16 @@ pub fn positional_element_ty<'tcx>(cx: &ctxt<'tcx>,
         (&ty_tup(ref v), None) => v.get(i).map(|&t| t),
 
 
-        (&ty_struct(def_id, ref substs), None) => lookup_struct_fields(cx, def_id)
+        (&ty_struct(def_id, substs), None) => lookup_struct_fields(cx, def_id)
             .get(i)
             .map(|&t|lookup_item_type(cx, t.id).ty.subst(cx, substs)),
 
-        (&ty_enum(def_id, ref substs), Some(variant_def_id)) => {
+        (&ty_enum(def_id, substs), Some(variant_def_id)) => {
             let variant_info = enum_variant_with_id(cx, def_id, variant_def_id);
             variant_info.args.get(i).map(|t|t.subst(cx, substs))
         }
 
-        (&ty_enum(def_id, ref substs), None) => {
+        (&ty_enum(def_id, substs), None) => {
             assert!(enum_is_univariant(cx, def_id));
             let enum_variants = enum_variants(cx, def_id);
             let variant_info = &(*enum_variants)[0];
@@ -3829,12 +3838,12 @@ pub fn named_element_ty<'tcx>(cx: &ctxt<'tcx>,
                               variant: Option<ast::DefId>) -> Option<Ty<'tcx>> {
 
     match (&ty.sty, variant) {
-        (&ty_struct(def_id, ref substs), None) => {
+        (&ty_struct(def_id, substs), None) => {
             let r = lookup_struct_fields(cx, def_id);
             r.iter().find(|f| f.name == n)
                 .map(|&f| lookup_field_type(cx, def_id, f.id, substs))
         }
-        (&ty_enum(def_id, ref substs), Some(variant_def_id)) => {
+        (&ty_enum(def_id, substs), Some(variant_def_id)) => {
             let variant_info = enum_variant_with_id(cx, def_id, variant_def_id);
             variant_info.arg_names.as_ref()
                 .expect("must have struct enum variant if accessing a named fields")
@@ -4197,12 +4206,12 @@ pub fn unsize_ty<'tcx>(cx: &ctxt<'tcx>,
                                           ty_to_string(cx, ty))[])
         },
         &UnsizeStruct(box ref k, tp_index) => match ty.sty {
-            ty_struct(did, ref substs) => {
+            ty_struct(did, substs) => {
                 let ty_substs = substs.types.get_slice(subst::TypeSpace);
                 let new_ty = unsize_ty(cx, ty_substs[tp_index], k, span);
                 let mut unsized_substs = substs.clone();
                 unsized_substs.types.get_mut_slice(subst::TypeSpace)[tp_index] = new_ty;
-                mk_struct(cx, did, unsized_substs)
+                mk_struct(cx, did, cx.mk_substs(unsized_substs))
             }
             _ => cx.sess.span_bug(span,
                                   format!("UnsizeStruct with bad sty: {}",
@@ -5227,9 +5236,10 @@ pub fn predicates_for_trait_ref<'tcx>(tcx: &ctxt<'tcx>,
         trait_def.bounds.trait_bounds
         .iter()
         .map(|bound_trait_ref| {
+            let substs = tcx.mk_substs(bound_trait_ref.substs().subst(tcx, trait_ref.substs()));
             ty::Binder(
                 ty::TraitRef::new(bound_trait_ref.def_id(),
-                                  bound_trait_ref.substs().subst(tcx, trait_ref.substs())))
+                                  substs))
         })
         .map(|bound_trait_ref| Rc::new(bound_trait_ref))
         .collect();
@@ -6305,8 +6315,8 @@ pub fn accumulate_lifetimes_in_type(accumulator: &mut Vec<ty::Region>,
             ty_trait(ref t) => {
                 accumulator.push_all(t.principal.substs().regions().as_slice());
             }
-            ty_enum(_, ref substs) |
-            ty_struct(_, ref substs) => {
+            ty_enum(_, substs) |
+            ty_struct(_, substs) => {
                 accum_substs(accumulator, substs);
             }
             ty_closure(ref closure_ty) => {
@@ -6315,7 +6325,7 @@ pub fn accumulate_lifetimes_in_type(accumulator: &mut Vec<ty::Region>,
                     UniqTraitStore => {}
                 }
             }
-            ty_unboxed_closure(_, ref region, ref substs) => {
+            ty_unboxed_closure(_, ref region, substs) => {
                 accumulator.push(*region);
                 accum_substs(accumulator, substs);
             }
@@ -6702,4 +6712,3 @@ impl<T:RegionEscape,U:RegionEscape> RegionEscape for OutlivesPredicate<T,U> {
         self.0.has_regions_escaping_depth(depth) || self.1.has_regions_escaping_depth(depth)
     }
 }
-

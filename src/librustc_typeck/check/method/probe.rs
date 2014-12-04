@@ -499,7 +499,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
 
             // Determine the receiver type that the method itself expects.
             let xform_self_ty =
-                self.xform_self_ty(&method, &impl_trait_ref.substs);
+                self.xform_self_ty(&method, impl_trait_ref.substs);
 
             debug!("xform_self_ty={}", xform_self_ty.repr(self.tcx()));
 

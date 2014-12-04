@@ -3331,7 +3331,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         let (_, autoderefs, field_ty) =
             autoderef(fcx, expr.span, expr_t, Some(base.id), lvalue_pref, |base_t, _| {
                 match base_t.sty {
-                    ty::ty_struct(base_id, ref substs) => {
+                    ty::ty_struct(base_id, substs) => {
                         debug!("struct named {}", ppaux::ty_to_string(tcx, base_t));
                         let fields = ty::lookup_struct_fields(tcx, base_id);
                         lookup_field_ty(tcx, base_id, fields[],
@@ -3392,7 +3392,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         let (_, autoderefs, field_ty) =
             autoderef(fcx, expr.span, expr_t, Some(base.id), lvalue_pref, |base_t, _| {
                 match base_t.sty {
-                    ty::ty_struct(base_id, ref substs) => {
+                    ty::ty_struct(base_id, substs) => {
                         tuple_like = ty::is_tuple_struct(tcx, base_id);
                         if tuple_like {
                             debug!("tuple struct named {}", ppaux::ty_to_string(tcx, base_t));
@@ -3443,7 +3443,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                                 span: Span,
                                                 class_id: ast::DefId,
                                                 node_id: ast::NodeId,
-                                                substitutions: subst::Substs<'tcx>,
+                                                substitutions: &'tcx subst::Substs<'tcx>,
                                                 field_types: &[ty::field_ty],
                                                 ast_fields: &[ast::Field],
                                                 check_completeness: bool,
@@ -3495,7 +3495,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                 Some((field_id, false)) => {
                     expected_field_type =
                         ty::lookup_field_type(
-                            tcx, class_id, field_id, &substitutions);
+                            tcx, class_id, field_id, substitutions);
                     class_field_map.insert(
                         field.ident.node.name, (field_id, true));
                     fields_found += 1;
@@ -3561,7 +3561,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                        span,
                                        class_id,
                                        id,
-                                       struct_substs,
+                                       fcx.ccx.tcx.mk_substs(struct_substs),
                                        class_fields[],
                                        fields,
                                        base_expr.is_none(),
@@ -3604,7 +3604,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                        span,
                                        variant_id,
                                        id,
-                                       substitutions,
+                                       fcx.ccx.tcx.mk_substs(substitutions),
                                        variant_fields[],
                                        fields,
                                        true,
@@ -3737,7 +3737,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                             Some(mt) => mt.ty,
                             None => {
                                 let is_newtype = match oprnd_t.sty {
-                                    ty::ty_struct(did, ref substs) => {
+                                    ty::ty_struct(did, substs) => {
                                         let fields = ty::struct_fields(fcx.tcx(), did, substs);
                                         fields.len() == 1
                                         && fields[0].name ==
@@ -4749,7 +4749,7 @@ pub fn check_simd(tcx: &ty::ctxt, sp: Span, id: ast::NodeId) {
         return;
     }
     match t.sty {
-        ty::ty_struct(did, ref substs) => {
+        ty::ty_struct(did, substs) => {
             let fields = ty::lookup_struct_fields(tcx, did);
             if fields.is_empty() {
                 span_err!(tcx.sess, sp, E0075, "SIMD vector cannot be empty");
@@ -5594,7 +5594,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
                     Ok(did) => (1u,
                                 Vec::new(),
                                 ty::mk_struct(ccx.tcx, did,
-                                              subst::Substs::empty())),
+                                              ccx.tcx.mk_substs(subst::Substs::empty()))),
                     Err(msg) => {
                         tcx.sess.span_fatal(it.span, msg[]);
                     }
@@ -5798,4 +5798,3 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
             });
     }
 }
-

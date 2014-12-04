@@ -275,7 +275,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                                                                  self.infcx().next_ty_var());
 
                 let trait_ref =
-                    Rc::new(ty::TraitRef::new(trait_def_id, substs.clone()));
+                    Rc::new(ty::TraitRef::new(trait_def_id, self.tcx().mk_substs(substs.clone())));
                 let origin = MethodTypeParam(MethodParam { trait_ref: trait_ref,
                                                            method_num: method_num });
                 (substs, origin)

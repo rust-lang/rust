@@ -1210,7 +1210,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 Ok(If(tys.clone()))
             }
 
-            ty::ty_unboxed_closure(def_id, _, ref substs) => {
+            ty::ty_unboxed_closure(def_id, _, substs) => {
                 // FIXME -- This case is tricky. In the case of by-ref
                 // closures particularly, we need the results of
                 // inference to decide how to reflect the type of each
@@ -1248,7 +1248,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
             }
 
-            ty::ty_struct(def_id, ref substs) => {
+            ty::ty_struct(def_id, substs) => {
                 let types: Vec<Ty> =
                     ty::struct_fields(self.tcx(), def_id, substs)
                     .iter()
@@ -1257,7 +1257,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 nominal(self, bound, def_id, types)
             }
 
-            ty::ty_enum(def_id, ref substs) => {
+            ty::ty_enum(def_id, substs) => {
                 let types: Vec<Ty> =
                     ty::substd_enum_variants(self.tcx(), def_id, substs)
                     .iter()
@@ -1574,7 +1574,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 self_ty);
         let trait_ref = Rc::new(ty::Binder(ty::TraitRef {
             def_id: obligation.trait_ref.def_id(),
-            substs: substs,
+            substs: self.tcx().mk_substs(substs),
         }));
 
         try!(self.confirm_poly_trait_refs(obligation.cause.clone(),
@@ -1615,7 +1615,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 obligation.self_ty());
         let trait_ref = Rc::new(ty::Binder(ty::TraitRef {
             def_id: obligation.trait_ref.def_id(),
-            substs: substs,
+            substs: self.tcx().mk_substs(substs),
         }));
 
         debug!("confirm_unboxed_closure_candidate(closure_def_id={}, trait_ref={})",

@@ -262,8 +262,8 @@ fn parse_substs<'a, 'tcx>(st: &mut PState<'a, 'tcx>,
     let types =
         parse_vec_per_param_space(st, |st| parse_ty(st, |x,y| conv(x,y)));
 
-    return subst::Substs { types: types,
-                           regions: regions };
+    subst::Substs { types: types,
+                    regions: regions }
 }
 
 fn parse_region_substs(st: &mut PState, conv: conv_did) -> subst::RegionSubsts {
@@ -380,7 +380,7 @@ fn parse_trait_ref<'a, 'tcx>(st: &mut PState<'a, 'tcx>, conv: conv_did)
                              -> ty::TraitRef<'tcx> {
     let def = parse_def(st, NominalType, |x,y| conv(x,y));
     let substs = parse_substs(st, |x,y| conv(x,y));
-    ty::TraitRef {def_id: def, substs: substs}
+    ty::TraitRef {def_id: def, substs: st.tcx.mk_substs(substs)}
 }
 
 fn parse_ty<'a, 'tcx>(st: &mut PState<'a, 'tcx>, conv: conv_did) -> Ty<'tcx> {
@@ -409,7 +409,7 @@ fn parse_ty<'a, 'tcx>(st: &mut PState<'a, 'tcx>, conv: conv_did) -> Ty<'tcx> {
         let def = parse_def(st, NominalType, |x,y| conv(x,y));
         let substs = parse_substs(st, |x,y| conv(x,y));
         assert_eq!(next(st), ']');
-        return ty::mk_enum(st.tcx, def, substs);
+        return ty::mk_enum(st.tcx, def, st.tcx.mk_substs(substs));
       }
       'x' => {
         assert_eq!(next(st), '[');
@@ -490,7 +490,7 @@ fn parse_ty<'a, 'tcx>(st: &mut PState<'a, 'tcx>, conv: conv_did) -> Ty<'tcx> {
           let did = parse_def(st, NominalType, |x,y| conv(x,y));
           let substs = parse_substs(st, |x,y| conv(x,y));
           assert_eq!(next(st), ']');
-          return ty::mk_struct(st.tcx, did, substs);
+          return ty::mk_struct(st.tcx, did, st.tcx.mk_substs(substs));
       }
       'k' => {
           assert_eq!(next(st), '[');
@@ -498,7 +498,7 @@ fn parse_ty<'a, 'tcx>(st: &mut PState<'a, 'tcx>, conv: conv_did) -> Ty<'tcx> {
           let region = parse_region(st, |x,y| conv(x,y));
           let substs = parse_substs(st, |x,y| conv(x,y));
           assert_eq!(next(st), ']');
-          return ty::mk_unboxed_closure(st.tcx, did, region, substs);
+          return ty::mk_unboxed_closure(st.tcx, did, region, st.tcx.mk_substs(substs));
       }
       'e' => {
           return ty::mk_err();

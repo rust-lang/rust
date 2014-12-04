@@ -411,13 +411,13 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>, pat: &ast::Pat,
 
     let real_path_ty = fcx.node_ty(pat.id);
     let (arg_tys, kind_name) = match real_path_ty.sty {
-        ty::ty_enum(enum_def_id, ref expected_substs)
+        ty::ty_enum(enum_def_id, expected_substs)
             if def == def::DefVariant(enum_def_id, def.def_id(), false) => {
             let variant = ty::enum_variant_with_id(tcx, enum_def_id, def.def_id());
             (variant.args.iter().map(|t| t.subst(tcx, expected_substs)).collect::<Vec<_>>(),
                 "variant")
         }
-        ty::ty_struct(struct_def_id, ref expected_substs) => {
+        ty::ty_struct(struct_def_id, expected_substs) => {
             let struct_fields = ty::struct_fields(tcx, struct_def_id, expected_substs);
             (struct_fields.iter().map(|field| field.mt.ty).collect::<Vec<_>>(),
                 "struct")

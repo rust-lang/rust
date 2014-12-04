@@ -633,7 +633,7 @@ fn ast_path_to_trait_ref<'tcx,AC,RS>(
                                             regions,
                                             assoc_bindings);
 
-    ty::TraitRef::new(trait_def_id, substs)
+    ty::TraitRef::new(trait_def_id, this.tcx().mk_substs(substs))
 }
 
 pub fn ast_path_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(

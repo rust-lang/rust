@@ -391,7 +391,7 @@ fn add_fragment_siblings_for_extension<'tcx>(this: &MoveData<'tcx>,
             }
         }
 
-        (&ty::ty_enum(enum_def_id, ref substs), ref enum_variant_info) => {
+        (&ty::ty_enum(enum_def_id, substs), ref enum_variant_info) => {
             let variant_info = {
                 let mut variants = ty::substd_enum_variants(tcx, enum_def_id, substs);
                 match *enum_variant_info {

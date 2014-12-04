@@ -102,8 +102,8 @@ impl<'a, 'tcx> Wf<'a, 'tcx> {
                 self.accumulate_from_object_ty(ty, t.bounds.region_bound, required_region_bounds)
             }
 
-            ty::ty_enum(def_id, ref substs) |
-            ty::ty_struct(def_id, ref substs) => {
+            ty::ty_enum(def_id, substs) |
+            ty::ty_struct(def_id, substs) => {
                 self.accumulate_from_adt(ty, def_id, substs)
             }
 

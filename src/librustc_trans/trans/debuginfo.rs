@@ -360,11 +360,11 @@ impl<'tcx> TypeMap<'tcx> {
             ty::ty_float(_) => {
                 push_debuginfo_type_name(cx, type_, false, &mut unique_type_id);
             },
-            ty::ty_enum(def_id, ref substs) => {
+            ty::ty_enum(def_id, substs) => {
                 unique_type_id.push_str("enum ");
                 from_def_id_and_substs(self, cx, def_id, substs, &mut unique_type_id);
             },
-            ty::ty_struct(def_id, ref substs) => {
+            ty::ty_struct(def_id, substs) => {
                 unique_type_id.push_str("struct ");
                 from_def_id_and_substs(self, cx, def_id, substs, &mut unique_type_id);
             },
@@ -469,7 +469,7 @@ impl<'tcx> TypeMap<'tcx> {
                                                         closure_ty.clone(),
                                                         &mut unique_type_id);
             },
-            ty::ty_unboxed_closure(ref def_id, _, ref substs) => {
+            ty::ty_unboxed_closure(ref def_id, _, substs) => {
                 let closure_ty = cx.tcx().unboxed_closures.borrow()
                                    .get(def_id).unwrap().closure_type.subst(cx.tcx(), substs);
                 self.get_unique_type_id_of_closure_type(cx,
@@ -3003,12 +3003,12 @@ fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         ty::ty_closure(ref closurety) => {
             subroutine_type_metadata(cx, unique_type_id, &closurety.sig, usage_site_span)
         }
-        ty::ty_unboxed_closure(ref def_id, _, ref substs) => {
+        ty::ty_unboxed_closure(ref def_id, _, substs) => {
             let sig = cx.tcx().unboxed_closures.borrow()
                         .get(def_id).unwrap().closure_type.sig.subst(cx.tcx(), substs);
             subroutine_type_metadata(cx, unique_type_id, &sig, usage_site_span)
         }
-        ty::ty_struct(def_id, ref substs) => {
+        ty::ty_struct(def_id, substs) => {
             prepare_struct_metadata(cx,
                                     t,
                                     def_id,
@@ -3763,8 +3763,8 @@ fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         ty::ty_uint(ast::TyU64)  => output.push_str("u64"),
         ty::ty_float(ast::TyF32) => output.push_str("f32"),
         ty::ty_float(ast::TyF64) => output.push_str("f64"),
-        ty::ty_struct(def_id, ref substs) |
-        ty::ty_enum(def_id, ref substs) => {
+        ty::ty_struct(def_id, substs) |
+        ty::ty_enum(def_id, substs) => {
             push_item_name(cx, def_id, qualified, output);
             push_type_params(cx, substs, output);
         },

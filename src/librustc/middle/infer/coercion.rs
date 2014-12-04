@@ -358,7 +358,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                                                              bounds: bounds },
                                                ty_a)))
                 }
-                (&ty::ty_struct(did_a, ref substs_a), &ty::ty_struct(did_b, ref substs_b))
+                (&ty::ty_struct(did_a, substs_a), &ty::ty_struct(did_b, substs_b))
                   if did_a == did_b => {
                     debug!("unsizing a struct");
                     // Try unsizing each type param in turn to see if we end up with ty_b.
@@ -383,7 +383,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                                 // Check that the whole types match.
                                 let mut new_substs = substs_a.clone();
                                 new_substs.types.get_mut_slice(subst::TypeSpace)[i] = new_tp;
-                                let ty = ty::mk_struct(tcx, did_a, new_substs);
+                                let ty = ty::mk_struct(tcx, did_a, tcx.mk_substs(new_substs));
                                 if self.get_ref().infcx.try(|_| sub.tys(ty, ty_b)).is_err() {
                                     debug!("Unsized type parameter '{}', but still \
                                             could not match types {} and {}",

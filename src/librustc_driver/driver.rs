@@ -12,7 +12,7 @@ use rustc::session::Session;
 use rustc::session::config::{mod, Input, OutputFilenames};
 use rustc::lint;
 use rustc::metadata::creader;
-use rustc::middle::{stability, ty, reachable};
+use rustc::middle::{stability, ty, reachable, subst};
 use rustc::middle::dependency_format;
 use rustc::middle;
 use rustc::plugin::load::Plugins;
@@ -80,7 +80,8 @@ pub fn compile_input(sess: Session,
         if stop_after_phase_2(&sess) { return; }
 
         let type_arena = TypedArena::new();
-        let analysis = phase_3_run_analysis_passes(sess, ast_map, &type_arena, id);
+        let substs_arena = TypedArena::new();
+        let analysis = phase_3_run_analysis_passes(sess, ast_map, &type_arena, &substs_arena, id);
         phase_save_analysis(&analysis.ty_cx.sess, analysis.ty_cx.map.krate(), &analysis, outdir);
 
         if log_enabled!(::log::INFO) {
@@ -343,6 +344,7 @@ pub fn assign_node_ids_and_map<'ast>(sess: &Session,
 pub fn phase_3_run_analysis_passes<'tcx>(sess: Session,
                                          ast_map: ast_map::Map<'tcx>,
                                          type_arena: &'tcx TypedArena<ty::TyS<'tcx>>,
+                                         substs_arena: &'tcx TypedArena<subst::Substs<'tcx>>,
                                          name: String) -> ty::CrateAnalysis<'tcx> {
     let time_passes = sess.time_passes();
     let krate = ast_map.krate();
@@ -403,6 +405,7 @@ pub fn phase_3_run_analysis_passes<'tcx>(sess: Session,
 
     let ty_cx = ty::mk_ctxt(sess,
                             type_arena,
+                            substs_arena,
                             def_map,
                             named_region_map,
                             ast_map,

@@ -59,7 +59,7 @@ pub use trans::context::CrateContext;
 fn type_is_newtype_immediate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                        ty: Ty<'tcx>) -> bool {
     match ty.sty {
-        ty::ty_struct(def_id, ref substs) => {
+        ty::ty_struct(def_id, substs) => {
             let fields = ty::struct_fields(ccx.tcx(), def_id, substs);
             fields.len() == 1 &&
                 fields[0].name ==

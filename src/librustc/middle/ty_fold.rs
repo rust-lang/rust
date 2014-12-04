@@ -626,7 +626,7 @@ pub fn super_fold_trait_ref<'tcx, T: TypeFolder<'tcx>>(this: &mut T,
 {
     ty::TraitRef {
         def_id: t.def_id,
-        substs: t.substs.fold_with(this),
+        substs: this.tcx().mk_substs(substs),
     }
 }
 
@@ -833,4 +833,3 @@ pub fn shift_regions<'tcx, T:TypeFoldable<'tcx>+Repr<'tcx>>(tcx: &ty::ctxt<'tcx>
         shift_region(region, amount)
     }))
 }
-
