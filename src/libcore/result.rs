@@ -407,14 +407,14 @@ impl<T, E> Result<T, E> {
     /// let mut x: Result<&str, uint> = Ok("Gold");
     /// {
     ///     let v = x.as_mut_slice();
-    ///     assert!(v == &mut ["Gold"]);
+    ///     assert!(v == ["Gold"]);
     ///     v[0] = "Silver";
-    ///     assert!(v == &mut ["Silver"]);
+    ///     assert!(v == ["Silver"]);
     /// }
     /// assert_eq!(x, Ok("Silver"));
     ///
     /// let mut x: Result<&str, uint> = Err(45);
-    /// assert!(x.as_mut_slice() == &mut []);
+    /// assert!(x.as_mut_slice().is_empty());
     /// ```
     #[inline]
     #[unstable = "waiting for mut conventions"]

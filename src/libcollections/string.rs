@@ -30,7 +30,7 @@ use str::{CharRange, CowString, FromStr, StrAllocating, Owned};
 use vec::{DerefVec, Vec, as_vec};
 
 /// A growable string stored as a UTF-8 encoded buffer.
-#[deriving(Clone, PartialEq, PartialOrd, Eq, Ord)]
+#[deriving(Clone, PartialOrd, Eq, Ord)]
 #[stable]
 pub struct String {
     vec: Vec<u8>,
@@ -738,6 +738,49 @@ impl Extend<char> for String {
     }
 }
 
+impl PartialEq for String {
+    #[inline]
+    fn eq(&self, other: &String) -> bool { PartialEq::eq(&**self, &**other) }
+    #[inline]
+    fn ne(&self, other: &String) -> bool { PartialEq::ne(&**self, &**other) }
+}
+
+macro_rules! impl_eq {
+    ($lhs:ty, $rhs: ty) => {
+        impl<'a> PartialEq<$rhs> for $lhs {
+            #[inline]
+            fn eq(&self, other: &$rhs) -> bool { PartialEq::eq(&**self, &**other) }
+            #[inline]
+            fn ne(&self, other: &$rhs) -> bool { PartialEq::ne(&**self, &**other) }
+        }
+
+        impl<'a> PartialEq<$lhs> for $rhs {
+            #[inline]
+            fn eq(&self, other: &$lhs) -> bool { PartialEq::eq(&**self, &**other) }
+            #[inline]
+            fn ne(&self, other: &$lhs) -> bool { PartialEq::ne(&**self, &**other) }
+        }
+
+    }
+}
+
+impl_eq!(String, &'a str)
+impl_eq!(CowString<'a>, String)
+
+impl<'a, 'b> PartialEq<&'b str> for CowString<'a> {
+    #[inline]
+    fn eq(&self, other: &&'b str) -> bool { PartialEq::eq(&**self, &**other) }
+    #[inline]
+    fn ne(&self, other: &&'b str) -> bool { PartialEq::ne(&**self, &**other) }
+}
+
+impl<'a, 'b> PartialEq<CowString<'a>> for &'b str {
+    #[inline]
+    fn eq(&self, other: &CowString<'a>) -> bool { PartialEq::eq(&**self, &**other) }
+    #[inline]
+    fn ne(&self, other: &CowString<'a>) -> bool { PartialEq::ne(&**self, &**other) }
+}
+
 #[experimental = "waiting on Str stabilization"]
 impl Str for String {
     #[inline]
@@ -779,7 +822,8 @@ impl<H: hash::Writer> hash::Hash<H> for String {
     }
 }
 
-#[experimental = "waiting on Equiv stabilization"]
+#[allow(deprecated)]
+#[deprecated = "Use overloaded `core::cmp::PartialEq`"]
 impl<'a, S: Str> Equiv<S> for String {
     #[inline]
     fn equiv(&self, other: &S) -> bool {
@@ -967,10 +1011,12 @@ mod tests {
     #[test]
     fn test_from_utf8_lossy() {
         let xs = b"hello";
-        assert_eq!(String::from_utf8_lossy(xs), "hello".into_cow());
+        let ys: str::CowString = "hello".into_cow();
+        assert_eq!(String::from_utf8_lossy(xs), ys);
 
         let xs = "ศไทย中华Việt Nam".as_bytes();
-        assert_eq!(String::from_utf8_lossy(xs), "ศไทย中华Việt Nam".into_cow());
+        let ys: str::CowString = "ศไทย中华Việt Nam".into_cow();
+        assert_eq!(String::from_utf8_lossy(xs), ys);
 
         let xs = b"Hello\xC2 There\xFF Goodbye";
         assert_eq!(String::from_utf8_lossy(xs),

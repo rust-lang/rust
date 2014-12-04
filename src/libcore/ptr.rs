@@ -321,12 +321,16 @@ impl<T> PartialEq for *mut T {
 impl<T> Eq for *mut T {}
 
 // Equivalence for pointers
+#[allow(deprecated)]
+#[deprecated = "Use overloaded `core::cmp::PartialEq`"]
 impl<T> Equiv<*mut T> for *const T {
     fn equiv(&self, other: &*mut T) -> bool {
         self.to_uint() == other.to_uint()
     }
 }
 
+#[allow(deprecated)]
+#[deprecated = "Use overloaded `core::cmp::PartialEq`"]
 impl<T> Equiv<*const T> for *mut T {
     fn equiv(&self, other: &*const T) -> bool {
         self.to_uint() == other.to_uint()

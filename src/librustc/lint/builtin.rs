@@ -1377,7 +1377,7 @@ impl MissingDoc {
 
         let has_doc = attrs.iter().any(|a| {
             match a.node.value.node {
-                ast::MetaNameValue(ref name, _) if name.equiv(&("doc")) => true,
+                ast::MetaNameValue(ref name, _) if *name == "doc" => true,
                 _ => false
             }
         });

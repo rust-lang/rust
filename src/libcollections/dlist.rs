@@ -945,7 +945,7 @@ mod tests {
         let mut m = list_from(v.as_slice());
         m.rotate_backward(); check_links(&m);
         m.rotate_forward(); check_links(&m);
-        assert_eq!(v.iter().collect::<Vec<&int>>(), m.iter().collect());
+        assert_eq!(v.iter().collect::<Vec<&int>>(), m.iter().collect::<Vec<_>>());
         m.rotate_forward(); check_links(&m);
         m.rotate_forward(); check_links(&m);
         m.pop_front(); check_links(&m);
@@ -953,7 +953,7 @@ mod tests {
         m.rotate_backward(); check_links(&m);
         m.push_front(9); check_links(&m);
         m.rotate_forward(); check_links(&m);
-        assert_eq!(vec![3i,9,5,1,2], m.into_iter().collect());
+        assert_eq!(vec![3i,9,5,1,2], m.into_iter().collect::<Vec<_>>());
     }
 
     #[test]
