@@ -779,6 +779,77 @@ bitflags! {
     }
 }
 
+impl Copy for TypeFlags {}
+
+macro_rules! sty_debug_print {
+    ($ctxt: expr, $($variant: ident),*) => {{
+        // curious inner module to allow variant names to be used as
+        // variable names.
+        mod inner {
+            use middle::ty;
+            struct DebugStat {
+                total: uint,
+                region_infer: uint,
+                ty_infer: uint,
+                both_infer: uint,
+            }
+
+            pub fn go(tcx: &ty::ctxt) {
+                let mut total = DebugStat {
+                    total: 0,
+                    region_infer: 0, ty_infer: 0, both_infer: 0,
+                };
+                $(let mut $variant = total;)*
+
+
+                for (_, t) in tcx.interner.borrow().iter() {
+                    let variant = match t.sty {
+                        ty::ty_bool | ty::ty_char | ty::ty_int(..) | ty::ty_uint(..) |
+                            ty::ty_float(..) | ty::ty_str => continue,
+                        ty::ty_err => /* unimportant */ continue,
+                        $(ty::$variant(..) => &mut $variant,)*
+                    };
+                    let region = t.flags.intersects(ty::HAS_RE_INFER);
+                    let ty = t.flags.intersects(ty::HAS_TY_INFER);
+
+                    variant.total += 1;
+                    total.total += 1;
+                    if region { total.region_infer += 1; variant.region_infer += 1 }
+                    if ty { total.ty_infer += 1; variant.ty_infer += 1 }
+                    if region && ty { total.both_infer += 1; variant.both_infer += 1 }
+                }
+                println!("Ty interner             total           ty region  both");
+                $(println!("    {:18}: {uses:6} {usespc:4.1}%, \
+{ty:4.1}% {region:5.1}% {both:4.1}%",
+                           stringify!($variant),
+                           uses = $variant.total,
+                           usespc = $variant.total as f64 * 100.0 / total.total as f64,
+                           ty = $variant.ty_infer as f64 * 100.0  / total.total as f64,
+                           region = $variant.region_infer as f64 * 100.0  / total.total as f64,
+                           both = $variant.both_infer as f64 * 100.0  / total.total as f64);
+                  )*
+                println!("                  total {uses:6}        \
+{ty:4.1}% {region:5.1}% {both:4.1}%",
+                         uses = total.total,
+                         ty = total.ty_infer as f64 * 100.0  / total.total as f64,
+                         region = total.region_infer as f64 * 100.0  / total.total as f64,
+                         both = total.both_infer as f64 * 100.0  / total.total as f64)
+            }
+        }
+
+        inner::go($ctxt)
+    }}
+}
+
+impl<'tcx> ctxt<'tcx> {
+    pub fn print_debug_stats(&self) {
+        sty_debug_print!(
+            self,
+            ty_enum, ty_uniq, ty_vec, ty_ptr, ty_rptr, ty_bare_fn, ty_closure, ty_trait,
+            ty_struct, ty_unboxed_closure, ty_tup, ty_param, ty_open, ty_infer);
+    }
+}
+
 #[deriving(Show)]
 pub struct TyS<'tcx> {
     pub sty: sty<'tcx>,
