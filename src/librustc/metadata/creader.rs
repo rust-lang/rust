@@ -105,7 +105,7 @@ fn warn_if_multiple_versions(diag: &SpanHandler, cstore: &CStore) {
 }
 
 fn visit_crate(e: &Env, c: &ast::Crate) {
-    for a in c.attrs.iter().filter(|m| m.name().equiv(&("link_args"))) {
+    for a in c.attrs.iter().filter(|m| m.name() == "link_args") {
         match a.value_str() {
             Some(ref linkarg) => e.sess.cstore.add_used_link_args(linkarg.get()),
             None => { /* fallthrough */ }
@@ -205,7 +205,7 @@ fn visit_item(e: &Env, i: &ast::Item) {
 
             // First, add all of the custom link_args attributes
             let link_args = i.attrs.iter()
-                .filter_map(|at| if at.name().equiv(&("link_args")) {
+                .filter_map(|at| if at.name() == "link_args" {
                     Some(at)
                 } else {
                     None
@@ -220,7 +220,7 @@ fn visit_item(e: &Env, i: &ast::Item) {
 
             // Next, process all of the #[link(..)]-style arguments
             let link_args = i.attrs.iter()
-                .filter_map(|at| if at.name().equiv(&("link")) {
+                .filter_map(|at| if at.name() == "link" {
                     Some(at)
                 } else {
                     None
@@ -230,18 +230,18 @@ fn visit_item(e: &Env, i: &ast::Item) {
                 match m.meta_item_list() {
                     Some(items) => {
                         let kind = items.iter().find(|k| {
-                            k.name().equiv(&("kind"))
+                            k.name() == "kind"
                         }).and_then(|a| a.value_str());
                         let kind = match kind {
                             Some(k) => {
-                                if k.equiv(&("static")) {
+                                if k == "static" {
                                     cstore::NativeStatic
                                 } else if e.sess.target.target.options.is_like_osx
-                                          && k.equiv(&("framework")) {
+                                          && k == "framework" {
                                     cstore::NativeFramework
-                                } else if k.equiv(&("framework")) {
+                                } else if k == "framework" {
                                     cstore::NativeFramework
-                                } else if k.equiv(&("dylib")) {
+                                } else if k == "dylib" {
                                     cstore::NativeUnknown
                                 } else {
                                     e.sess.span_err(m.span,
@@ -253,7 +253,7 @@ fn visit_item(e: &Env, i: &ast::Item) {
                             None => cstore::NativeUnknown
                         };
                         let n = items.iter().find(|n| {
-                            n.name().equiv(&("name"))
+                            n.name() == "name"
                         }).and_then(|a| a.value_str());
                         let n = match n {
                             Some(n) => n,

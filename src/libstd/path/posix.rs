@@ -443,7 +443,6 @@ static dot_dot_static: &'static [u8] = b"..";
 mod tests {
     use prelude::*;
     use super::*;
-    use mem;
     use str;
     use str::StrPrelude;
 
@@ -601,10 +600,8 @@ mod tests {
         macro_rules! t(
             (s: $path:expr, $op:ident, $exp:expr) => (
                 {
-                    unsafe {
-                        let path = Path::new($path);
-                        assert!(path.$op() == mem::transmute(($exp).as_bytes()));
-                    }
+                    let path = Path::new($path);
+                    assert!(path.$op() == ($exp).as_bytes());
                 }
             );
             (s: $path:expr, $op:ident, $exp:expr, opt) => (
@@ -616,11 +613,9 @@ mod tests {
             );
             (v: $path:expr, $op:ident, $exp:expr) => (
                 {
-                    unsafe {
-                        let arg = $path;
-                        let path = Path::new(arg);
-                        assert!(path.$op() == mem::transmute($exp));
-                    }
+                    let arg = $path;
+                    let path = Path::new(arg);
+                    assert!(path.$op() == $exp);
                 }
             );
         )
@@ -668,9 +663,8 @@ mod tests {
         t!(v: b"hi/there.txt", extension, Some(b"txt"));
         t!(v: b"hi/there\x80.txt", extension, Some(b"txt"));
         t!(v: b"hi/there.t\x80xt", extension, Some(b"t\x80xt"));
-        let no: Option<&'static [u8]> = None;
-        t!(v: b"hi/there", extension, no);
-        t!(v: b"hi/there\x80", extension, no);
+        t!(v: b"hi/there", extension, None);
+        t!(v: b"hi/there\x80", extension, None);
         t!(s: "hi/there.txt", extension, Some("txt"), opt);
         t!(s: "hi/there", extension, None, opt);
         t!(s: "there.txt", extension, Some("txt"), opt);
@@ -959,62 +953,57 @@ mod tests {
         macro_rules! t(
             (s: $path:expr, $filename:expr, $dirname:expr, $filestem:expr, $ext:expr) => (
                 {
-                    unsafe {
-                        let path = $path;
-                        let filename = $filename;
-                        assert!(path.filename_str() == filename,
-                                "{}.filename_str(): Expected `{}`, found {}",
-                                path.as_str().unwrap(), filename, path.filename_str());
-                        let dirname = $dirname;
-                        assert!(path.dirname_str() == dirname,
-                                "`{}`.dirname_str(): Expected `{}`, found `{}`",
-                                path.as_str().unwrap(), dirname, path.dirname_str());
-                        let filestem = $filestem;
-                        assert!(path.filestem_str() == filestem,
-                                "`{}`.filestem_str(): Expected `{}`, found `{}`",
-                                path.as_str().unwrap(), filestem, path.filestem_str());
-                        let ext = $ext;
-                        assert!(path.extension_str() == mem::transmute(ext),
-                                "`{}`.extension_str(): Expected `{}`, found `{}`",
-                                path.as_str().unwrap(), ext, path.extension_str());
-                    }
+                    let path = $path;
+                    let filename = $filename;
+                    assert!(path.filename_str() == filename,
+                            "{}.filename_str(): Expected `{}`, found {}",
+                            path.as_str().unwrap(), filename, path.filename_str());
+                    let dirname = $dirname;
+                    assert!(path.dirname_str() == dirname,
+                            "`{}`.dirname_str(): Expected `{}`, found `{}`",
+                            path.as_str().unwrap(), dirname, path.dirname_str());
+                    let filestem = $filestem;
+                    assert!(path.filestem_str() == filestem,
+                            "`{}`.filestem_str(): Expected `{}`, found `{}`",
+                            path.as_str().unwrap(), filestem, path.filestem_str());
+                    let ext = $ext;
+                    assert!(path.extension_str() == ext,
+                            "`{}`.extension_str(): Expected `{}`, found `{}`",
+                            path.as_str().unwrap(), ext, path.extension_str());
                 }
             );
             (v: $path:expr, $filename:expr, $dirname:expr, $filestem:expr, $ext:expr) => (
                 {
-                    unsafe {
-                        let path = $path;
-                        assert!(path.filename() == mem::transmute($filename));
-                        assert!(path.dirname() == mem::transmute($dirname));
-                        assert!(path.filestem() == mem::transmute($filestem));
-                        assert!(path.extension() == mem::transmute($ext));
-                    }
+                    let path = $path;
+                    assert!(path.filename() == $filename);
+                    assert!(path.dirname() == $dirname);
+                    assert!(path.filestem() == $filestem);
+                    assert!(path.extension() == $ext);
                 }
             )
         )
 
-        let no: Option<&'static str> = None;
-        t!(v: Path::new(b"a/b/c"), Some(b"c"), b"a/b", Some(b"c"), no);
-        t!(v: Path::new(b"a/b/\xFF"), Some(b"\xFF"), b"a/b", Some(b"\xFF"), no);
+        t!(v: Path::new(b"a/b/c"), Some(b"c"), b"a/b", Some(b"c"), None);
+        t!(v: Path::new(b"a/b/\xFF"), Some(b"\xFF"), b"a/b", Some(b"\xFF"), None);
         t!(v: Path::new(b"hi/there.\xFF"), Some(b"there.\xFF"), b"hi",
               Some(b"there"), Some(b"\xFF"));
-        t!(s: Path::new("a/b/c"), Some("c"), Some("a/b"), Some("c"), no);
-        t!(s: Path::new("."), None, Some("."), None, no);
-        t!(s: Path::new("/"), None, Some("/"), None, no);
-        t!(s: Path::new(".."), None, Some(".."), None, no);
-        t!(s: Path::new("../.."), None, Some("../.."), None, no);
+        t!(s: Path::new("a/b/c"), Some("c"), Some("a/b"), Some("c"), None);
+        t!(s: Path::new("."), None, Some("."), None, None);
+        t!(s: Path::new("/"), None, Some("/"), None, None);
+        t!(s: Path::new(".."), None, Some(".."), None, None);
+        t!(s: Path::new("../.."), None, Some("../.."), None, None);
         t!(s: Path::new("hi/there.txt"), Some("there.txt"), Some("hi"),
               Some("there"), Some("txt"));
-        t!(s: Path::new("hi/there"), Some("there"), Some("hi"), Some("there"), no);
+        t!(s: Path::new("hi/there"), Some("there"), Some("hi"), Some("there"), None);
         t!(s: Path::new("hi/there."), Some("there."), Some("hi"),
               Some("there"), Some(""));
-        t!(s: Path::new("hi/.there"), Some(".there"), Some("hi"), Some(".there"), no);
+        t!(s: Path::new("hi/.there"), Some(".there"), Some("hi"), Some(".there"), None);
         t!(s: Path::new("hi/..there"), Some("..there"), Some("hi"),
               Some("."), Some("there"));
-        t!(s: Path::new(b"a/b/\xFF"), None, Some("a/b"), None, no);
+        t!(s: Path::new(b"a/b/\xFF"), None, Some("a/b"), None, None);
         t!(s: Path::new(b"a/b/\xFF.txt"), None, Some("a/b"), None, Some("txt"));
-        t!(s: Path::new(b"a/b/c.\x80"), None, Some("a/b"), Some("c"), no);
-        t!(s: Path::new(b"\xFF/b"), Some("b"), None, Some("b"), no);
+        t!(s: Path::new(b"a/b/c.\x80"), None, Some("a/b"), Some("c"), None);
+        t!(s: Path::new(b"\xFF/b"), Some("b"), None, Some("b"), None);
     }
 
     #[test]
