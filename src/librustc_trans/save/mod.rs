@@ -221,6 +221,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
             def::DefStruct(_) => Some(recorder::StructRef),
             def::DefTy(..) |
             def::DefAssociatedTy(..) |
+            def::DefAssociatedPath(..) |
             def::DefTrait(_) => Some(recorder::TypeRef),
             def::DefStatic(_, _) |
             def::DefConst(_) |

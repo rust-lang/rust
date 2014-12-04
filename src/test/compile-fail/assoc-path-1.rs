@@ -8,18 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test equality constraints on associated types. Check that unsupported syntax
-// does not ICE.
+// Test that we have one and only one associated type per ref.
 
 #![feature(associated_types)]
 
 pub trait Foo {
     type A;
-    fn boo(&self) -> <Self as Foo>::A;
+}
+pub trait Bar {
+    type A;
 }
 
-fn foo2<I: Foo>(x: I) {
-    let _: A = x.boo(); //~ERROR use of undeclared
-}
+pub fn f1<T>(a: T, x: T::A) {} //~ERROR associated type `A` not found
+pub fn f2<T: Foo + Bar>(a: T, x: T::A) {} //~ERROR ambiguous associated type `A`
 
 pub fn main() {}
+
