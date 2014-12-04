@@ -393,7 +393,7 @@ impl LangString {
         let mut seen_other_tags = false;
         let mut data = LangString::all_false();
 
-        let mut tokens = string.split(|c: char|
+        let mut tokens = string.split(|&: c: char|
             !(c == '_' || c == '-' || c.is_alphanumeric())
         );
 
