@@ -1248,6 +1248,8 @@ pub mod traits {
         }
     }
 
+    #[allow(deprecated)]
+    #[deprecated = "Use overloaded `core::cmp::PartialEq`"]
     impl<S: Str> Equiv<S> for str {
         #[inline]
         fn equiv(&self, other: &S) -> bool { eq_slice(self, other.as_slice()) }
