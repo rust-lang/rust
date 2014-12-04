@@ -5174,12 +5174,12 @@ processor. Rust's semantics lend themselves very nicely to solving a number of
 issues that programmers have with concurrency. Many concurrency errors that are
 runtime errors in other languages are compile-time errors in Rust.
 
-Rust's concurrency primitive is called a **task**. Tasks are lightweight, and
-do not share memory in an unsafe manner, preferring message passing to
-communicate.  It's worth noting that tasks are implemented as a library, and
-not part of the language.  This means that in the future, other concurrency
-libraries can be written for Rust to help in specific scenarios.  Here's an
-example of creating a task:
+Rust's concurrency primitive is called a **task**. Tasks are similar to
+threads, and do not share memory in an unsafe manner, preferring message
+passing to communicate. It's worth noting that tasks are implemented as a
+library, and not part of the language. This means that in the future, other
+concurrency libraries can be written for Rust to help in specific scenarios.
+Here's an example of creating a task:
 
 ```{rust}
 spawn(proc() {
