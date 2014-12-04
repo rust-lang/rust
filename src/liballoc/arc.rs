@@ -24,8 +24,7 @@ use core::mem;
 use core::ops::{Drop, Deref};
 use core::option::Option;
 use core::option::Option::{Some, None};
-use core::ptr::RawPtr;
-use core::ptr;
+use core::ptr::{mod, NonZero, RawPtr};
 use heap::deallocate;
 
 /// An atomically reference counted wrapper for shared state.
@@ -59,7 +58,7 @@ use heap::deallocate;
 pub struct Arc<T> {
     // FIXME #12808: strange name to try to avoid interfering with
     // field accesses of the contained type via Deref
-    _ptr: *mut ArcInner<T>,
+    _ptr: NonZero<*mut ArcInner<T>>,
 }
 
 /// A weak pointer to an `Arc`.
@@ -71,7 +70,7 @@ pub struct Arc<T> {
 pub struct Weak<T> {
     // FIXME #12808: strange name to try to avoid interfering with
     // field accesses of the contained type via Deref
-    _ptr: *mut ArcInner<T>,
+    _ptr: NonZero<*mut ArcInner<T>>,
 }
 
 struct ArcInner<T> {
@@ -92,7 +91,7 @@ impl<T: Sync + Send> Arc<T> {
             weak: atomic::AtomicUint::new(1),
             data: data,
         };
-        Arc { _ptr: unsafe { mem::transmute(x) } }
+        Arc { _ptr: NonZero(unsafe { mem::transmute(x) }) }
     }
 
     /// Downgrades a strong pointer to a weak pointer.
@@ -116,7 +115,8 @@ impl<T> Arc<T> {
         // `ArcInner` structure itself is `Sync` because the inner data is
         // `Sync` as well, so we're ok loaning out an immutable pointer to
         // these contents.
-        unsafe { &*self._ptr }
+        let NonZero(ptr) = self._ptr;
+        unsafe { &*ptr }
     }
 }
 
@@ -184,7 +184,8 @@ impl<T: Send + Sync + Clone> Arc<T> {
         // reference count is guaranteed to be 1 at this point, and we required
         // the Arc itself to be `mut`, so we're returning the only possible
         // reference to the inner data.
-        let inner = unsafe { &mut *self._ptr };
+        let NonZero(ptr) = self._ptr;
+        let inner = unsafe { &mut *ptr };
         &mut inner.data
     }
 }
@@ -193,10 +194,11 @@ impl<T: Send + Sync + Clone> Arc<T> {
 #[experimental = "waiting on stability of Drop"]
 impl<T: Sync + Send> Drop for Arc<T> {
     fn drop(&mut self) {
+        let NonZero(ptr) = self._ptr;
         // This structure has #[unsafe_no_drop_flag], so this drop glue may run
         // more than once (but it is guaranteed to be zeroed after the first if
         // it's run more than once)
-        if self._ptr.is_null() { return }
+        if ptr.is_null() { return }
 
         // Because `fetch_sub` is already atomic, we do not need to synchronize
         // with other threads unless we are going to delete the object. This
@@ -228,7 +230,7 @@ impl<T: Sync + Send> Drop for Arc<T> {
 
         if self.inner().weak.fetch_sub(1, atomic::Release) == 1 {
             atomic::fence(atomic::Acquire);
-            unsafe { deallocate(self._ptr as *mut u8, size_of::<ArcInner<T>>(),
+            unsafe { deallocate(ptr as *mut u8, size_of::<ArcInner<T>>(),
                                 min_align_of::<ArcInner<T>>()) }
         }
     }
@@ -256,7 +258,8 @@ impl<T: Sync + Send> Weak<T> {
     #[inline]
     fn inner(&self) -> &ArcInner<T> {
         // See comments above for why this is "safe"
-        unsafe { &*self._ptr }
+        let NonZero(ptr) = self._ptr;
+        unsafe { &*ptr }
     }
 }
 
@@ -274,15 +277,17 @@ impl<T: Sync + Send> Clone for Weak<T> {
 #[experimental = "Weak pointers may not belong in this module."]
 impl<T: Sync + Send> Drop for Weak<T> {
     fn drop(&mut self) {
+        let NonZero(ptr) = self._ptr;
+
         // see comments above for why this check is here
-        if self._ptr.is_null() { return }
+        if ptr.is_null() { return }
 
         // If we find out that we were the last weak pointer, then its time to
         // deallocate the data entirely. See the discussion in Arc::drop() about
         // the memory orderings
         if self.inner().weak.fetch_sub(1, atomic::Release) == 1 {
             atomic::fence(atomic::Acquire);
-            unsafe { deallocate(self._ptr as *mut u8, size_of::<ArcInner<T>>(),
+            unsafe { deallocate(ptr as *mut u8, size_of::<ArcInner<T>>(),
                                 min_align_of::<ArcInner<T>>()) }
         }
     }
