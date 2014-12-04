@@ -1154,9 +1154,9 @@ fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
     }
 
     // Compute skolemized form of impl and trait method tys.
-    let impl_fty = ty::mk_bare_fn(tcx, None, impl_m.fty.clone());
+    let impl_fty = ty::mk_bare_fn(tcx, None, tcx.mk_bare_fn(impl_m.fty.clone()));
     let impl_fty = impl_fty.subst(tcx, &impl_to_skol_substs);
-    let trait_fty = ty::mk_bare_fn(tcx, None, trait_m.fty.clone());
+    let trait_fty = ty::mk_bare_fn(tcx, None, tcx.mk_bare_fn(trait_m.fty.clone()));
     let trait_fty = trait_fty.subst(tcx, &trait_to_skol_substs);
 
     // Check the impl method type IM is a subtype of the trait method
@@ -2949,7 +2949,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         });
 
         let fn_sig = match fn_ty.sty {
-            ty::ty_bare_fn(_, ty::BareFnTy {ref sig, ..}) |
+            ty::ty_bare_fn(_, &ty::BareFnTy {ref sig, ..}) |
             ty::ty_closure(box ty::ClosureTy {ref sig, ..}) => sig,
             _ => {
                 fcx.type_error_message(call_expr.span, |actual| {
@@ -5769,7 +5769,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
         };
         (n_tps, inputs, ty::FnConverging(output))
     };
-    let fty = ty::mk_bare_fn(tcx, None, ty::BareFnTy {
+    let fty = ty::mk_bare_fn(tcx, None, tcx.mk_bare_fn(ty::BareFnTy {
         unsafety: ast::Unsafety::Unsafe,
         abi: abi::RustIntrinsic,
         sig: ty::Binder(FnSig {
@@ -5777,7 +5777,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
             output: output,
             variadic: false,
         }),
-    });
+    }));
     let i_ty = ty::lookup_item_type(ccx.tcx, local_def(it.id));
     let i_n_tps = i_ty.generics.types.len(subst::FnSpace);
     if i_n_tps != n_tps {

@@ -355,7 +355,7 @@ fn collect_trait_methods<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             m.def_id,
             Polytype {
                 generics: m.generics.clone(),
-                ty: ty::mk_bare_fn(ccx.tcx, Some(m.def_id), m.fty.clone()) });
+                ty: ty::mk_bare_fn(ccx.tcx, Some(m.def_id), ccx.tcx.mk_bare_fn(m.fty.clone())) });
     }
 
     fn ty_method_of_trait_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
@@ -529,7 +529,7 @@ fn convert_methods<'a,'tcx,'i,I>(ccx: &CrateCtxt<'a, 'tcx>,
                                        untransformed_rcvr_ty,
                                        rcvr_ty_generics,
                                        rcvr_visibility));
-        let fty = ty::mk_bare_fn(tcx, Some(m_def_id), mty.fty.clone());
+        let fty = ty::mk_bare_fn(tcx, Some(m_def_id), tcx.mk_bare_fn(mty.fty.clone()));
         debug!("method {} (id {}) has type {}",
                 m.pe_ident().repr(tcx),
                 m.id,
@@ -1465,7 +1465,7 @@ pub fn ty_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, it: &ast::Item)
             };
             let pty = Polytype {
                 generics: ty_generics,
-                ty: ty::mk_bare_fn(ccx.tcx, Some(local_def(it.id)), tofd)
+                ty: ty::mk_bare_fn(ccx.tcx, Some(local_def(it.id)), ccx.tcx.mk_bare_fn(tofd))
             };
             debug!("type of {} (id {}) is {}",
                     token::get_ident(it.ident),
@@ -1775,12 +1775,7 @@ fn ty_generics<'tcx,AC>(this: &AC,
         let def = get_or_create_type_parameter_def(&gcx,
                                                    space,
                                                    param,
-<<<<<<< HEAD
-                                                   i,
-=======
                                                    i as u32,
-                                                   where_clause,
->>>>>>> Switch Region information from uint to u32.
                                                    None);
         debug!("ty_generics: def for type param: {}, {}",
                def.repr(this.tcx()),
@@ -1968,12 +1963,7 @@ fn ty_generics<'tcx,AC>(this: &AC,
 fn get_or_create_type_parameter_def<'tcx,AC>(this: &AC,
                                              space: subst::ParamSpace,
                                              param: &ast::TyParam,
-<<<<<<< HEAD
-                                             index: uint,
-=======
                                              index: u32,
-                                             where_clause: &ast::WhereClause,
->>>>>>> Switch Region information from uint to u32.
                                              associated_with: Option<ast::DefId>)
                                              -> ty::TypeParameterDef<'tcx>
     where AC: AstConv<'tcx>
@@ -2153,13 +2143,13 @@ pub fn ty_of_foreign_fn_decl<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     let t_fn = ty::mk_bare_fn(
         ccx.tcx,
         None,
-        ty::BareFnTy {
+        ccx.tcx.mk_bare_fn(ty::BareFnTy {
             abi: abi,
             unsafety: ast::Unsafety::Unsafe,
             sig: ty::Binder(ty::FnSig {inputs: input_tys,
-                                       output: output,
-                                       variadic: decl.variadic}),
-        });
+                            output: output,
+                            variadic: decl.variadic})
+        }));
     let pty = Polytype {
         generics: ty_generics_for_fn_or_method,
         ty: t_fn

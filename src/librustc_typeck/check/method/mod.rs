@@ -199,11 +199,10 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
                                                                        infer::FnCall,
                                                                        &fn_sig).0;
     let transformed_self_ty = fn_sig.inputs[0];
-    let fty = ty::mk_bare_fn(tcx, None, ty::BareFnTy {
-        sig: ty::Binder(fn_sig),
+    let fty = ty::mk_bare_fn(tcx, None, tcx.mk_bare_fn(ty::BareFnTy {
         unsafety: bare_fn_ty.unsafety,
         abi: bare_fn_ty.abi.clone(),
-    });
+    }));
 
     debug!("lookup_in_trait_adjusted: matched method fty={} obligation={}",
            fty.repr(fcx.tcx()),

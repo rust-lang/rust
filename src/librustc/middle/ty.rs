@@ -611,6 +611,7 @@ pub struct ctxt<'tcx> {
     /// The arena that types are allocated from.
     type_arena: &'tcx TypedArena<TyS<'tcx>>,
     substs_arena: &'tcx TypedArena<Substs<'tcx>>,
+    bare_fn_arena: &'tcx TypedArena<BareFnTy<'tcx>>,
 
     /// Specifically use a speedy hash algorithm for this hash map, it's used
     /// quite often.
@@ -619,6 +620,7 @@ pub struct ctxt<'tcx> {
     interner: RefCell<FnvHashMap<InternedTy<'tcx>, Ty<'tcx>>>,
     // FIXME as above, use a hashset if equivalent elements can be queried.
     substs_interner: RefCell<FnvHashMap<&'tcx Substs<'tcx>, &'tcx Substs<'tcx>>>,
+    bare_fn_interner: RefCell<FnvHashMap<&'tcx BareFnTy<'tcx>, &'tcx BareFnTy<'tcx>>>,
 
     pub sess: Session,
     pub def_map: DefMap,
@@ -1327,7 +1329,7 @@ pub enum sty<'tcx> {
 
     // If the def-id is Some(_), then this is the type of a specific
     // fn item. Otherwise, if None(_), it a fn pointer type.
-    ty_bare_fn(Option<DefId>, BareFnTy<'tcx>),
+    ty_bare_fn(Option<DefId>, &'tcx BareFnTy<'tcx>),
 
     ty_closure(Box<ClosureTy<'tcx>>),
     ty_trait(Box<TyTrait<'tcx>>),
@@ -2056,6 +2058,7 @@ impl UnboxedClosureKind {
 pub fn mk_ctxt<'tcx>(s: Session,
                      type_arena: &'tcx TypedArena<TyS<'tcx>>,
                      substs_arena: &'tcx TypedArena<Substs<'tcx>>,
+                     bare_fn_arena: &'tcx TypedArena<BareFnTy<'tcx>>,
                      dm: DefMap,
                      named_region_map: resolve_lifetime::NamedRegionMap,
                      map: ast_map::Map<'tcx>,
@@ -2067,8 +2070,10 @@ pub fn mk_ctxt<'tcx>(s: Session,
     ctxt {
         type_arena: type_arena,
         substs_arena: substs_arena,
+        bare_fn_arena: bare_fn_arena,
         interner: RefCell::new(FnvHashMap::new()),
         substs_interner: RefCell::new(FnvHashMap::new()),
+        bare_fn_interner: RefCell::new(FnvHashMap::new()),
         named_region_map: named_region_map,
         item_variance_map: RefCell::new(DefIdMap::new()),
         variance_computed: Cell::new(false),
@@ -2137,6 +2142,16 @@ impl<'tcx> ctxt<'tcx> {
         let substs = self.substs_arena.alloc(substs);
         self.substs_interner.borrow_mut().insert(substs, substs);
         substs
+    }
+
+    pub fn mk_bare_fn(&self, bare_fn: BareFnTy<'tcx>) -> &'tcx BareFnTy<'tcx> {
+        if let Some(bare_fn) = self.bare_fn_interner.borrow().get(&bare_fn) {
+            return *bare_fn;
+        }
+
+        let bare_fn = self.bare_fn_arena.alloc(bare_fn);
+        self.bare_fn_interner.borrow_mut().insert(bare_fn, bare_fn);
+        bare_fn
     }
 }
 
@@ -2444,7 +2459,7 @@ pub fn mk_closure<'tcx>(cx: &ctxt<'tcx>, fty: ClosureTy<'tcx>) -> Ty<'tcx> {
 
 pub fn mk_bare_fn<'tcx>(cx: &ctxt<'tcx>,
                         opt_def_id: Option<ast::DefId>,
-                        fty: BareFnTy<'tcx>) -> Ty<'tcx> {
+                        fty: &'tcx BareFnTy<'tcx>) -> Ty<'tcx> {
     mk_t(cx, ty_bare_fn(opt_def_id, fty))
 }
 
@@ -2455,7 +2470,7 @@ pub fn mk_ctor_fn<'tcx>(cx: &ctxt<'tcx>,
     let input_args = input_tys.iter().map(|ty| *ty).collect();
     mk_bare_fn(cx,
                Some(def_id),
-               BareFnTy {
+               cx.mk_bare_fn(BareFnTy {
                    unsafety: ast::Unsafety::Normal,
                    abi: abi::Rust,
                    sig: ty::Binder(FnSig {
@@ -2463,7 +2478,7 @@ pub fn mk_ctor_fn<'tcx>(cx: &ctxt<'tcx>,
                     output: ty::FnConverging(output),
                     variadic: false
                    })
-                })
+                }))
 }
 
 

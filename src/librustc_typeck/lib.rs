@@ -225,7 +225,7 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
                 }
                 _ => ()
             }
-            let se_ty = ty::mk_bare_fn(tcx, Some(local_def(main_id)), ty::BareFnTy {
+            let se_ty = ty::mk_bare_fn(tcx, Some(local_def(main_id)), tcx.mk_bare_fn(ty::BareFnTy {
                 unsafety: ast::Unsafety::Normal,
                 abi: abi::Rust,
                 sig: ty::Binder(ty::FnSig {
@@ -233,7 +233,7 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
                     output: ty::FnConverging(ty::mk_nil(tcx)),
                     variadic: false
                 })
-            });
+            }));
 
             require_same_types(tcx, None, false, main_span, main_t, se_ty,
                 || {
@@ -273,7 +273,7 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
                 _ => ()
             }
 
-            let se_ty = ty::mk_bare_fn(tcx, Some(local_def(start_id)), ty::BareFnTy {
+            let se_ty = ty::mk_bare_fn(tcx, Some(local_def(start_id)), tcx.mk_bare_fn(ty::BareFnTy {
                 unsafety: ast::Unsafety::Normal,
                 abi: abi::Rust,
                 sig: ty::Binder(ty::FnSig {
@@ -284,7 +284,7 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
                     output: ty::FnConverging(ty::mk_int()),
                     variadic: false
                 }),
-            });
+            }));
 
             require_same_types(tcx, None, false, start_span, start_t, se_ty,
                 || {

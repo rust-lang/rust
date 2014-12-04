@@ -954,7 +954,8 @@ pub fn ast_ty_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                     tcx.sess.span_err(ast_ty.span,
                                       "variadic function must have C calling convention");
                 }
-                ty::mk_bare_fn(tcx, None, ty_of_bare_fn(this, bf.unsafety, bf.abi, &*bf.decl))
+                let bare_fn = ty_of_bare_fn(this, bf.unsafety, bf.abi, &*bf.decl);
+                ty::mk_bare_fn(tcx, None, tcx.mk_bare_fn(bare_fn))
             }
             ast::TyClosure(ref f) => {
                 // Use corresponding trait store to figure out default bounds

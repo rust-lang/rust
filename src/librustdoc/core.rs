@@ -123,9 +123,12 @@ pub fn run_core(libs: Vec<Path>, cfgs: Vec<String>, externs: Externs,
 
     let type_arena = TypedArena::new();
     let substs_arena = TypedArena::new();
+    let bare_fn_arena = TypedArena::new();
     let ty::CrateAnalysis {
         exported_items, public_items, ty_cx, ..
-    } = driver::phase_3_run_analysis_passes(sess, ast_map, &type_arena, &substs_arena, name);
+    } = driver::phase_3_run_analysis_passes(sess, ast_map,
+                                            &type_arena, &substs_arena, &bare_fn_arena,
+                                            name);
 
     let ctxt = DocContext {
         krate: ty_cx.map.krate(),

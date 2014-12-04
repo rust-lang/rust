@@ -174,7 +174,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
         self.unpack_actual_value(a, |a| {
             match a.sty {
-                ty::ty_bare_fn(Some(a_def_id), ref a_f) => {
+                ty::ty_bare_fn(Some(a_def_id), a_f) => {
                     // Function items are coercible to any closure
                     // type; function pointers are not (that would
                     // require double indirection).
@@ -486,7 +486,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                b.repr(self.tcx()));
 
         match a.sty {
-            ty::ty_bare_fn(Some(a_def_id), ref f) => {
+            ty::ty_bare_fn(Some(a_def_id), f) => {
                 self.coerce_from_fn_item(a, a_def_id, f, b)
             }
             _ => {
