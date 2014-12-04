@@ -90,10 +90,10 @@
 use mem;
 use clone::Clone;
 use intrinsics;
-use kinds::Copy;
+use kinds::{Copy, Send, Sync};
+use ops::Deref;
 use option::Option;
 use option::Option::{Some, None};
-use kinds::{Send, Sync};
 
 use cmp::{PartialEq, Eq, Ord, PartialOrd, Equiv};
 use cmp::Ordering;
@@ -115,7 +115,25 @@ pub use intrinsics::set_memory;
 /// NULL or 0 that might allow certain optimizations.
 #[lang="non_zero"]
 #[deriving(Clone, PartialEq, Eq, PartialOrd)]
-pub struct NonZero<T>(pub T);
+#[experimental]
+pub struct NonZero<T>(T);
+
+impl<T> NonZero<T> {
+    /// Create an instance of NonZero with the provided value.
+    /// You must indeed ensure that the value is actually "non-zero".
+    #[inline(always)]
+    pub unsafe fn new(inner: T) -> NonZero<T> {
+        NonZero(inner)
+    }
+}
+
+impl<T> Deref<T> for NonZero<T> {
+    #[inline]
+    fn deref<'a>(&'a self) -> &'a T {
+        let NonZero(ref inner) = *self;
+        inner
+    }
+}
 
 impl<T: Copy> Copy for NonZero<T> {}
 
