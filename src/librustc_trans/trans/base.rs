@@ -995,9 +995,9 @@ pub fn invoke<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 
     if need_invoke(bcx) {
-        debug!("invoking {} at {}", llfn, bcx.llbb);
+        debug!("invoking {} at {}", bcx.val_to_string(llfn), bcx.llbb);
         for &llarg in llargs.iter() {
-            debug!("arg: {}", llarg);
+            debug!("arg: {}", bcx.val_to_string(llarg));
         }
         let normal_bcx = bcx.fcx.new_temp_block("normal-return");
         let landing_pad = bcx.fcx.get_landing_pad();
@@ -1015,9 +1015,9 @@ pub fn invoke<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                               Some(attributes));
         return (llresult, normal_bcx);
     } else {
-        debug!("calling {} at {}", llfn, bcx.llbb);
+        debug!("calling {} at {}", bcx.val_to_string(llfn), bcx.llbb);
         for &llarg in llargs.iter() {
-            debug!("arg: {}", llarg);
+            debug!("arg: {}", bcx.val_to_string(llarg));
         }
 
         match call_info {

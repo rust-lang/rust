@@ -84,6 +84,7 @@ pub struct LocalCrateContext<'tcx> {
     tn: TypeNames,
     externs: RefCell<ExternMap>,
     item_vals: RefCell<NodeMap<ValueRef>>,
+    fn_pointer_shims: RefCell<FnvHashMap<Ty<'tcx>, ValueRef>>,
     drop_glues: RefCell<FnvHashMap<Ty<'tcx>, ValueRef>>,
     tydescs: RefCell<FnvHashMap<Ty<'tcx>, Rc<tydesc_info<'tcx>>>>,
     /// Set when running emit_tydescs to enforce that no more tydescs are
@@ -394,6 +395,7 @@ impl<'tcx> LocalCrateContext<'tcx> {
                 tn: TypeNames::new(),
                 externs: RefCell::new(FnvHashMap::new()),
                 item_vals: RefCell::new(NodeMap::new()),
+                fn_pointer_shims: RefCell::new(FnvHashMap::new()),
                 drop_glues: RefCell::new(FnvHashMap::new()),
                 tydescs: RefCell::new(FnvHashMap::new()),
                 finished_tydescs: Cell::new(false),
@@ -571,6 +573,10 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
 
     pub fn link_meta<'a>(&'a self) -> &'a LinkMeta {
         &self.shared.link_meta
+    }
+
+    pub fn fn_pointer_shims(&self) -> &RefCell<FnvHashMap<Ty<'tcx>, ValueRef>> {
+        &self.local.fn_pointer_shims
     }
 
     pub fn drop_glues<'a>(&'a self) -> &'a RefCell<FnvHashMap<Ty<'tcx>, ValueRef>> {
