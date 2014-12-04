@@ -153,7 +153,9 @@ pub fn expr_kind(tcx: &ty::ctxt, expr: &ast::Expr) -> ExprKind {
                 def::DefFn(_, true) => ExprKind::RvalueDps,
 
                 // Fn pointers are just scalar values.
-                def::DefFn(..) | def::DefStaticMethod(..) | def::DefMethod(..) => ExprKind::RvalueDatum,
+                def::DefFn(..) |
+                def::DefStaticMethod(..) |
+                def::DefMethod(..) => ExprKind::RvalueDatum,
 
                 // Note: there is actually a good case to be made that
                 // DefArg's, particularly those of immediate type, ought to
