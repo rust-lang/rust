@@ -91,7 +91,7 @@ impl<T: Sync + Send> Arc<T> {
             weak: atomic::AtomicUint::new(1),
             data: data,
         };
-        Arc { _ptr: NonZero(unsafe { mem::transmute(x) }) }
+        Arc { _ptr: unsafe { NonZero::new(mem::transmute(x)) } }
     }
 
     /// Downgrades a strong pointer to a weak pointer.
@@ -115,8 +115,7 @@ impl<T> Arc<T> {
         // `ArcInner` structure itself is `Sync` because the inner data is
         // `Sync` as well, so we're ok loaning out an immutable pointer to
         // these contents.
-        let NonZero(ptr) = self._ptr;
-        unsafe { &*ptr }
+        unsafe { &**self._ptr }
     }
 }
 
@@ -184,8 +183,7 @@ impl<T: Send + Sync + Clone> Arc<T> {
         // reference count is guaranteed to be 1 at this point, and we required
         // the Arc itself to be `mut`, so we're returning the only possible
         // reference to the inner data.
-        let NonZero(ptr) = self._ptr;
-        let inner = unsafe { &mut *ptr };
+        let inner = unsafe { &mut **self._ptr };
         &mut inner.data
     }
 }
@@ -194,7 +192,7 @@ impl<T: Send + Sync + Clone> Arc<T> {
 #[experimental = "waiting on stability of Drop"]
 impl<T: Sync + Send> Drop for Arc<T> {
     fn drop(&mut self) {
-        let NonZero(ptr) = self._ptr;
+        let ptr = *self._ptr;
         // This structure has #[unsafe_no_drop_flag], so this drop glue may run
         // more than once (but it is guaranteed to be zeroed after the first if
         // it's run more than once)
@@ -258,8 +256,7 @@ impl<T: Sync + Send> Weak<T> {
     #[inline]
     fn inner(&self) -> &ArcInner<T> {
         // See comments above for why this is "safe"
-        let NonZero(ptr) = self._ptr;
-        unsafe { &*ptr }
+        unsafe { &**self._ptr }
     }
 }
 
@@ -277,7 +274,7 @@ impl<T: Sync + Send> Clone for Weak<T> {
 #[experimental = "Weak pointers may not belong in this module."]
 impl<T: Sync + Send> Drop for Weak<T> {
     fn drop(&mut self) {
-        let NonZero(ptr) = self._ptr;
+        let ptr = *self._ptr;
 
         // see comments above for why this check is here
         if ptr.is_null() { return }
