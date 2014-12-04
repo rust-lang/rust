@@ -1038,9 +1038,8 @@ fn parse_prefix<'a>(mut path: &'a str) -> Option<PathPrefix> {
     }
     return None;
 
-    fn parse_two_comps<'a>(mut path: &'a str, f: |char| -> bool)
-                       -> Option<(uint, uint)> {
-        let idx_a = match path.find(|x| f(x)) {
+    fn parse_two_comps(mut path: &str, f: fn(char) -> bool) -> Option<(uint, uint)> {
+        let idx_a = match path.find(f) {
             None => return None,
             Some(x) => x
         };
