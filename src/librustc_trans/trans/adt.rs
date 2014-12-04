@@ -390,6 +390,19 @@ fn find_discr_field_candidate<'tcx>(tcx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> Optio
             None
         },
 
+        // Is this a fixed-size array of something non-zero
+        // with at least one element?
+        ty::ty_vec(ety, Some(d)) if d > 0 => {
+            match find_discr_field_candidate(tcx, ety) {
+                Some(v) => {
+                    let mut discrfield = vec![0];
+                    discrfield.extend(v.into_iter());
+                    return Some(discrfield);
+                }
+                None => None
+            }
+        },
+
         // Anything else is not a pointer
         _ => None
     }
