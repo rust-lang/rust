@@ -521,7 +521,7 @@ pub trait IteratorExt<A>: Iterator<A> {
     /// ```
     #[inline]
     #[unstable = "waiting for unboxed closures, just changed to take self by value"]
-    fn fold<B>(mut self, init: B, f: |B, A| -> B) -> B {
+    fn fold<B, F>(mut self, init: B, mut f: F) -> B where F: FnMut(B, A) -> B {
         let mut accum = init;
         for x in self {
             accum = f(accum, x);
@@ -555,7 +555,7 @@ pub trait IteratorExt<A>: Iterator<A> {
     /// ```
     #[inline]
     #[unstable = "waiting for unboxed closures, just changed to take self by value"]
-    fn all(mut self, f: |A| -> bool) -> bool {
+    fn all<F>(mut self, mut f: F) -> bool where F: FnMut(A) -> bool {
         for x in self { if !f(x) { return false; } }
         true
     }
@@ -573,7 +573,7 @@ pub trait IteratorExt<A>: Iterator<A> {
     /// ```
     #[inline]
     #[unstable = "waiting for unboxed closures"]
-    fn any(&mut self, f: |A| -> bool) -> bool {
+    fn any<F>(&mut self, mut f: F) -> bool where F: FnMut(A) -> bool {
         for x in *self { if f(x) { return true; } }
         false
     }
@@ -583,7 +583,7 @@ pub trait IteratorExt<A>: Iterator<A> {
     /// Does not consume the iterator past the first found element.
     #[inline]
     #[unstable = "waiting for unboxed closures"]
-    fn find(&mut self, predicate: |&A| -> bool) -> Option<A> {
+    fn find<P>(&mut self, mut predicate: P) -> Option<A> where P: FnMut(&A) -> bool {
         for x in *self {
             if predicate(&x) { return Some(x) }
         }
@@ -593,7 +593,7 @@ pub trait IteratorExt<A>: Iterator<A> {
     /// Return the index of the first element satisfying the specified predicate
     #[inline]
     #[unstable = "waiting for unboxed closures"]
-    fn position(&mut self, predicate: |A| -> bool) -> Option<uint> {
+    fn position<P>(&mut self, mut predicate: P) -> Option<uint> where P: FnMut(A) -> bool {
         let mut i = 0;
         for x in *self {
             if predicate(x) {
@@ -617,7 +617,7 @@ pub trait IteratorExt<A>: Iterator<A> {
     /// ```
     #[inline]
     #[unstable = "waiting for unboxed closures, just changed to take self by value"]
-    fn max_by<B: Ord>(self, f: |&A| -> B) -> Option<A> {
+    fn max_by<B: Ord, F>(self, mut f: F) -> Option<A> where F: FnMut(&A) -> B {
         self.fold(None, |max: Option<(A, B)>, x| {
             let x_val = f(&x);
             match max {
@@ -644,7 +644,7 @@ pub trait IteratorExt<A>: Iterator<A> {
     /// ```
     #[inline]
     #[unstable = "waiting for unboxed closures, just changed to take self by value"]
-    fn min_by<B: Ord>(self, f: |&A| -> B) -> Option<A> {
+    fn min_by<B: Ord, F>(self, mut f: F) -> Option<A> where F: FnMut(&A) -> B {
         self.fold(None, |min: Option<(A, B)>, x| {
             let x_val = f(&x);
             match min {
