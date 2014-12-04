@@ -25,7 +25,6 @@ use result::{Ok, Err};
 use super::map::{HashMap, Entries, MoveEntries, INITIAL_CAPACITY};
 
 // FIXME(conventions): implement BitOr, BitAnd, BitXor, and Sub
-// FIXME(conventions): update capacity management to match other collections (no auto-shrink)
 
 
 // Future Optimization (FIXME!)
@@ -172,7 +171,28 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
         HashSet { map: HashMap::with_capacity_and_hasher(capacity, hasher) }
     }
 
-    /// Reserve space for at least `n` elements in the hash table.
+    /// Returns the number of elements the set can hold without reallocating.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::HashSet;
+    /// let set: HashSet<int> = HashSet::with_capacity(100);
+    /// assert!(set.capacity() >= 100);
+    /// ```
+    #[inline]
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    pub fn capacity(&self) -> uint {
+        self.map.capacity()
+    }
+
+    /// Reserves capacity for at least `additional` more elements to be inserted
+    /// in the `HashSet`. The collection may reserve more space to avoid
+    /// frequent reallocations.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the new allocation size overflows `uint`.
     ///
     /// # Example
     ///
@@ -181,8 +201,30 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     /// let mut set: HashSet<int> = HashSet::new();
     /// set.reserve(10);
     /// ```
-    pub fn reserve(&mut self, n: uint) {
-        self.map.reserve(n)
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    pub fn reserve(&mut self, additional: uint) {
+        self.map.reserve(additional)
+    }
+
+    /// Shrinks the capacity of the set as much as possible. It will drop
+    /// down as much as possible while maintaining the internal rules
+    /// and possibly leaving some space in accordance with the resize policy.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::HashSet;
+    ///
+    /// let mut set: HashSet<int> = HashSet::with_capacity(100);
+    /// set.insert(1);
+    /// set.insert(2);
+    /// assert!(set.capacity() >= 100);
+    /// set.shrink_to_fit();
+    /// assert!(set.capacity() >= 2);
+    /// ```
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    pub fn shrink_to_fit(&mut self) {
+        self.map.shrink_to_fit()
     }
 
     /// Deprecated: use `contains` and `BorrowFrom`.
