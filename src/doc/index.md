@@ -54,9 +54,9 @@ Rust Guides are in-depth looks at a particular topic that's relevant to Rust
 development. If you're trying to figure out how to do something, there may be
 a guide that can help you out:
 
+* [Ownership](guide-ownership.html)
 * [Strings](guide-strings.html)
 * [Pointers](guide-pointers.html)
-* [References and Lifetimes](guide-lifetimes.html)
 * [Crates and modules](guide-crates.html)
 * [Tasks and Communication](guide-tasks.html)
 * [Error Handling](guide-error-handling.html)
