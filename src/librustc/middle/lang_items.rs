@@ -327,6 +327,8 @@ lets_do_this! {
     NoSyncItem,                      "no_sync_bound",           no_sync_bound;
     ManagedItem,                     "managed_bound",           managed_bound;
 
+    NonZeroItem,                     "non_zero",                non_zero;
+
     IteratorItem,                    "iterator",                iterator;
 
     StackExhaustedLangItem,          "stack_exhausted",         stack_exhausted;
