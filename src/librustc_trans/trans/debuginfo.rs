@@ -2245,14 +2245,14 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
             },
             adt::StructWrappedNullablePointer { nonnull: ref struct_def,
                                                 nndiscr,
-                                                ptrfield, ..} => {
+                                                ref discrfield, ..} => {
                 // Create a description of the non-null variant
                 let (variant_type_metadata, variant_llvm_type, member_description_factory) =
                     describe_enum_variant(cx,
                                           self.enum_type,
                                           struct_def,
                                           &*(*self.variants)[nndiscr as uint],
-                                          OptimizedDiscriminant(ptrfield),
+                                          OptimizedDiscriminant,
                                           self.containing_scope,
                                           self.span);
 
@@ -2268,10 +2268,9 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                 // member's name.
                 let null_variant_index = (1 - nndiscr) as uint;
                 let null_variant_name = token::get_name((*self.variants)[null_variant_index].name);
-                let discrfield = match ptrfield {
-                    adt::ThinPointer(field) => format!("{}", field),
-                    adt::FatPointer(field) => format!("{}", field)
-                };
+                let discrfield = discrfield.iter()
+                                           .map(|x| x.to_string())
+                                           .collect::<Vec<_>>().connect("$");
                 let union_member_name = format!("RUST$ENCODED$ENUM${}${}",
                                                 discrfield,
                                                 null_variant_name);
@@ -2319,7 +2318,7 @@ impl<'tcx> VariantMemberDescriptionFactory<'tcx> {
 
 enum EnumDiscriminantInfo {
     RegularDiscriminant(DIType),
-    OptimizedDiscriminant(adt::PointerField),
+    OptimizedDiscriminant,
     NoDiscriminant
 }
 
