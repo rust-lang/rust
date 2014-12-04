@@ -2125,14 +2125,20 @@ fn trans_enum_variant_or_tuple_like_struct<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx
 fn enum_variant_size_lint(ccx: &CrateContext, enum_def: &ast::EnumDef, sp: Span, id: ast::NodeId) {
     let mut sizes = Vec::new(); // does no allocation if no pushes, thankfully
 
+    let print_info = log_enabled!(::log::INFO);
+
     let levels = ccx.tcx().node_lint_levels.borrow();
     let lint_id = lint::LintId::of(lint::builtin::VARIANT_SIZE_DIFFERENCES);
-    let lvlsrc = match levels.get(&(id, lint_id)) {
-        None | Some(&(lint::Allow, _)) => return,
-        Some(&lvlsrc) => lvlsrc,
-    };
+    let lvlsrc = levels.get(&(id, lint_id));
+    let is_allow = lvlsrc.map_or(true, |&(lvl, _)| lvl == lint::Allow);
 
-    let avar = adt::represent_type(ccx, ty::node_id_to_type(ccx.tcx(), id));
+    if is_allow && !print_info {
+        // we're not interested in anything here
+        return
+    }
+
+    let ty = ty::node_id_to_type(ccx.tcx(), id);
+    let avar = adt::represent_type(ccx, ty);
     match *avar {
         adt::General(_, ref variants, _) => {
             for var in variants.iter() {
@@ -2158,13 +2164,29 @@ fn enum_variant_size_lint(ccx: &CrateContext, enum_def: &ast::EnumDef, sp: Span,
             }
     );
 
+    if print_info {
+        let llty = type_of::sizing_type_of(ccx, ty);
+
+        let sess = &ccx.tcx().sess;
+        sess.span_note(sp, &*format!("total size: {} bytes", llsize_of_real(ccx, llty)));
+        match *avar {
+            adt::General(..) => {
+                for (i, var) in enum_def.variants.iter().enumerate() {
+                    ccx.tcx().sess.span_note(var.span,
+                                             &*format!("variant data: {} bytes", sizes[i]));
+                }
+            }
+            _ => {}
+        }
+    }
+
     // we only warn if the largest variant is at least thrice as large as
     // the second-largest.
-    if largest > slargest * 3 && slargest > 0 {
+    if !is_allow && largest > slargest * 3 && slargest > 0 {
         // Use lint::raw_emit_lint rather than sess.add_lint because the lint-printing
         // pass for the latter already ran.
         lint::raw_emit_lint(&ccx.tcx().sess, lint::builtin::VARIANT_SIZE_DIFFERENCES,
-                            lvlsrc, Some(sp),
+                            *lvlsrc.unwrap(), Some(sp),
                             format!("enum variant is more than three times larger \
                                      ({} bytes) than the next largest (ignoring padding)",
                                     largest)[]);
@@ -2332,8 +2354,12 @@ pub fn trans_item(ccx: &CrateContext, item: &ast::Item) {
       ast::ItemMod(ref m) => {
         trans_mod(&ccx.rotate(), m);
       }
-      ast::ItemEnum(ref enum_definition, _) => {
-        enum_variant_size_lint(ccx, enum_definition, item.span, item.id);
+      ast::ItemEnum(ref enum_definition, ref gens) => {
+        if gens.ty_params.is_empty() {
+            // sizes only make sense for non-generic types
+
+            enum_variant_size_lint(ccx, enum_definition, item.span, item.id);
+        }
       }
       ast::ItemConst(_, ref expr) => {
           // Recurse on the expression to catch items in blocks

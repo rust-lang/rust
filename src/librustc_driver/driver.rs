@@ -82,8 +82,19 @@ pub fn compile_input(sess: Session,
         let type_arena = TypedArena::new();
         let analysis = phase_3_run_analysis_passes(sess, ast_map, &type_arena, id);
         phase_save_analysis(&analysis.ty_cx.sess, analysis.ty_cx.map.krate(), &analysis, outdir);
+
+        if log_enabled!(::log::INFO) {
+            println!("Pre-trans")
+            analysis.ty_cx.print_debug_stats();
+        }
+
         if stop_after_phase_3(&analysis.ty_cx.sess) { return; }
         let (tcx, trans) = phase_4_translate_to_llvm(analysis);
+
+        if log_enabled!(::log::INFO) {
+            println!("Post-trans")
+            tcx.print_debug_stats();
+        }
 
         // Discard interned strings as they are no longer required.
         token::get_ident_interner().clear();
