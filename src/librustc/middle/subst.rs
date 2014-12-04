@@ -420,11 +420,11 @@ impl<T> VecPerParamSpace<T> {
         spaces.iter().all(|&space| { pred(self.get_slice(space)) })
     }
 
-    pub fn all(&self, pred: |&T| -> bool) -> bool {
+    pub fn all<P>(&self, pred: P) -> bool where P: FnMut(&T) -> bool {
         self.iter().all(pred)
     }
 
-    pub fn any(&self, pred: |&T| -> bool) -> bool {
+    pub fn any<P>(&self, pred: P) -> bool where P: FnMut(&T) -> bool {
         self.iter().any(pred)
     }
 
