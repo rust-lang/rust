@@ -3209,6 +3209,89 @@ fn check_expr_with_unifier<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         fcx.write_ty(id, if_ty);
     }
 
+    // FIXME This is very similar to `look_op_method`. We should try to merge them.
+    fn lookup_binop_method<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
+                                  op_ex: &ast::Expr,
+                                  lhs_ty: Ty<'tcx>,
+                                  opname: ast::Name,
+                                  trait_did: Option<ast::DefId>,
+                                  lhs: &'a ast::Expr,
+                                  rhs: &P<ast::Expr>,
+                                  unbound_method: ||) -> Ty<'tcx> {
+        let method = match trait_did {
+            Some(trait_did) => {
+                // We do eager coercions to make using operators
+                // more ergonomic:
+                //
+                // - If the input is of type &'a T (resp. &'a mut T),
+                //   then reborrow it to &'b T (resp. &'b mut T) where
+                //   'b <= 'a.  This makes things like `x == y`, where
+                //   `x` and `y` are both region pointers, work.  We
+                //   could also solve this with variance or different
+                //   traits that don't force left and right to have same
+                //   type.
+                let (adj_ty, adjustment) = match lhs_ty.sty {
+                    ty::ty_rptr(r_in, mt) => {
+                        let r_adj = fcx.infcx().next_region_var(infer::Autoref(lhs.span));
+                        fcx.mk_subr(infer::Reborrow(lhs.span), r_adj, r_in);
+                        let adjusted_ty = ty::mk_rptr(fcx.tcx(), r_adj, mt);
+                        let autoptr = ty::AutoPtr(r_adj, mt.mutbl, None);
+                        let adjustment = ty::AutoDerefRef { autoderefs: 1, autoref: Some(autoptr) };
+                        (adjusted_ty, adjustment)
+                    }
+                    _ => {
+                        (lhs_ty, ty::AutoDerefRef { autoderefs: 0, autoref: None })
+                    }
+                };
+
+                debug!("adjusted_ty={} adjustment={}",
+                       adj_ty.repr(fcx.tcx()),
+                       adjustment);
+
+                method::lookup_in_trait_adjusted(fcx, op_ex.span, Some(lhs), opname,
+                                                 trait_did, adjustment, adj_ty, None)
+            }
+            None => None
+        };
+
+        match method {
+            Some(method) => {
+                let result_ty = {
+                    let fty = match method.ty.sty {
+                        ty::ty_bare_fn(ref fty) => fty,
+                        _ => unreachable!(),
+                    };
+
+                    // NB We don't call `check_method_argument_types` here to avoid type checking
+                    // the `lhs` and `rhs` expressions again
+                    match fty.sig.inputs[1].sty {
+                        ty::ty_rptr(_, mt) => demand::coerce(fcx, rhs.span, mt.ty, &**rhs),
+                        // So we hit this case when one implements the
+                        // operator traits but leaves an argument as
+                        // just T instead of &T. We'll catch it in the
+                        // mismatch impl/trait method phase no need to
+                        // ICE here.
+                        // See: #11450
+                        _ => {},
+                    }
+
+                    match fty.sig.output {
+                        ty::FnConverging(result_ty) => result_ty,
+                        ty::FnDiverging => ty::mk_err(),
+                    }
+                };
+                // HACK(eddyb) Fully qualified path to work around a resolve bug.
+                let method_call = ::middle::typeck::MethodCall::expr(op_ex.id);
+                fcx.inh.method_map.borrow_mut().insert(method_call, method);
+                result_ty
+            }
+            None => {
+                unbound_method();
+                ty::mk_err()
+            }
+        }
+    }
+
     fn lookup_op_method<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
                                   op_ex: &ast::Expr,
                                   lhs_ty: Ty<'tcx>,
@@ -3304,54 +3387,58 @@ fn check_expr_with_unifier<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             SimpleBinop => NoPreference
         };
         check_expr_with_lvalue_pref(fcx, &*lhs, lvalue_pref);
+        check_expr(fcx, &**rhs);
 
-        // Callee does bot / err checking
-        let lhs_t = structurally_resolved_type(fcx, lhs.span,
-                                               fcx.expr_ty(&*lhs));
+        let lhs_t = try_structurally_resolved_type(fcx, fcx.expr_ty(&*lhs));
+        let rhs_t = try_structurally_resolved_type(fcx, fcx.expr_ty(&**rhs));
 
-        if ty::type_is_integral(lhs_t) && ast_util::is_shift_binop(op) {
-            // Shift is a special case: rhs must be uint, no matter what lhs is
-            check_expr_has_type(fcx, &**rhs, ty::mk_uint());
-            fcx.write_ty(expr.id, lhs_t);
-            return;
-        }
+        if let (Some(lhs_t), Some(rhs_t)) = (lhs_t, rhs_t) {
+            if ty::type_is_integral(lhs_t) && ty::type_is_integral(rhs_t) &&
+                ast_util::is_shift_binop(op) {
+                // Integer shift is a special case: rhs must be uint, no matter what lhs is
+                check_expr_has_type(fcx, &**rhs, ty::mk_uint());
+                fcx.write_ty(expr.id, lhs_t);
+                return;
+            }
 
-        if ty::is_binopable(tcx, lhs_t, op) {
-            let tvar = fcx.infcx().next_ty_var();
-            demand::suptype(fcx, expr.span, tvar, lhs_t);
-            check_expr_has_type(fcx, &**rhs, tvar);
+            if ty::is_builtin_binop(tcx, lhs_t, rhs_t, op) {
+                demand::suptype(fcx, expr.span, lhs_t, rhs_t);
 
-            let result_t = match op {
-                ast::BiEq | ast::BiNe | ast::BiLt | ast::BiLe | ast::BiGe |
-                ast::BiGt => {
-                    if ty::type_is_simd(tcx, lhs_t) {
-                        if ty::type_is_fp(ty::simd_type(tcx, lhs_t)) {
-                            fcx.type_error_message(expr.span,
-                                |actual| {
-                                    format!("binary comparison \
-                                             operation `{}` not \
-                                             supported for floating \
-                                             point SIMD vector `{}`",
-                                            ast_util::binop_to_string(op),
-                                            actual)
-                                },
-                                lhs_t,
-                                None
-                            );
-                            ty::mk_err()
+                let result_t = match op {
+                    ast::BiEq | ast::BiNe | ast::BiLt | ast::BiLe | ast::BiGe |
+                    ast::BiGt => {
+                        if ty::type_is_simd(tcx, lhs_t) {
+                            if ty::type_is_fp(ty::simd_type(tcx, lhs_t)) {
+                                fcx.type_error_message(expr.span,
+                                    |actual| {
+                                        format!("binary comparison \
+                                                 operation `{}` not \
+                                                 supported for floating \
+                                                 point SIMD vector `{}`",
+                                                ast_util::binop_to_string(op),
+                                                actual)
+                                    },
+                                    lhs_t,
+                                    None
+                                );
+                                ty::mk_err()
+                            } else {
+                                lhs_t
+                            }
                         } else {
-                            lhs_t
+                            ty::mk_bool()
                         }
-                    } else {
-                        ty::mk_bool()
-                    }
-                },
-                _ => lhs_t,
-            };
+                    },
+                    _ => lhs_t,
+                };
 
-            fcx.write_ty(expr.id, result_t);
-            return;
+                fcx.write_ty(expr.id, result_t);
+                return;
+            }
         }
+
+        // NB Use the type of `lhs` for error messages, even if it's not fully resolved
+        let lhs_t = fcx.expr_ty(lhs);
 
         if op == ast::BiOr || op == ast::BiAnd {
             // This is an error; one of the operands must have the wrong
@@ -3424,8 +3511,8 @@ fn check_expr_with_unifier<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 return ty::mk_err();
             }
         };
-        lookup_op_method(fcx, ex, lhs_resolved_t, token::intern(name),
-                         trait_did, lhs_expr, Some(rhs), || {
+        lookup_binop_method(fcx, ex, lhs_resolved_t, token::intern(name),
+                         trait_did, lhs_expr, rhs, || {
             fcx.type_error_message(ex.span, |actual| {
                 format!("binary operation `{}` cannot be applied to type `{}`",
                         ast_util::binop_to_string(op),
@@ -5443,6 +5530,24 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 // resolution is possible, then an error is reported.
 pub fn structurally_resolved_type<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>, sp: Span,
                                             mut ty: Ty<'tcx>) -> Ty<'tcx> {
+    match try_structurally_resolved_type(fcx, ty) {
+        Some(ty) => ty,
+        None => {
+            fcx.type_error_message(sp, |_actual| {
+                "the type of this value must be known in this \
+                 context".to_string()
+            }, ty, None);
+            demand::suptype(fcx, sp, ty::mk_err(), ty);
+            ty = ty::mk_err();
+            ty
+        }
+    }
+}
+
+// Like `structurally_resolved_type`, but if resolving fails returns `None` instead of raising a
+// compile error
+fn try_structurally_resolved_type<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
+                                            mut ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
     // If `ty` is a type variable, see whether we already know what it is.
     ty = fcx.infcx().shallow_resolve(ty);
 
@@ -5459,15 +5564,10 @@ pub fn structurally_resolved_type<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>, sp: Span,
 
     // If not, error.
     if ty::type_is_ty_var(ty) {
-        fcx.type_error_message(sp, |_actual| {
-            "the type of this value must be known in this \
-             context".to_string()
-        }, ty, None);
-        demand::suptype(fcx, sp, ty::mk_err(), ty);
-        ty = ty::mk_err();
+        None
+    } else {
+        Some(ty)
     }
-
-    ty
 }
 
 // Returns the one-level-deep structure of the given type.

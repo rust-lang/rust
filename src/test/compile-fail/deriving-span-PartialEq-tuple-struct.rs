@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // This file was auto-generated using 'src/etc/generate-deriving-span-tests.py'
+// ignore-test FIXME too many error messages
 
 extern crate rand;
 

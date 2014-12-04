@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,10 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foo() -> ! { panic!("quux"); }
-fn main() {
-    foo()
-    //~^ ERROR locate the impl of the trait `core::cmp::PartialEq<_>` for the type `_`
-    ==
-    foo();
+fn make<T>() -> T {
+    unimplemented!();
 }
+
+fn lhs_unknown<T: Add<T, T>>(rhs: T) -> T {
+    make() + rhs
+}
+
+fn rhs_unknown<T: Add<T, T>>(lhs: T) -> T {
+    lhs + make()
+}
+
+fn main() {}

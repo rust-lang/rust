@@ -563,6 +563,7 @@ impl<'a> Ord for MaybeOwned<'a> {
     }
 }
 
+#[allow(deprecated)]
 #[deprecated = "use std::str::CowString"]
 impl<'a, S: Str> Equiv<S> for MaybeOwned<'a> {
     #[inline]

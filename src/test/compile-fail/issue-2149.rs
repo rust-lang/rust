@@ -17,7 +17,7 @@ impl<A> vec_monad<A> for Vec<A> {
     fn bind<B>(&self, f: |A| -> Vec<B> ) {
         let mut r = panic!();
         for elt in self.iter() { r = r + f(*elt); }
-        //~^ ERROR the type of this value must be known
+        //~^ ERROR the trait `core::clone::Clone` is not implemented for the type `B`
    }
 }
 fn main() {

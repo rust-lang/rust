@@ -535,12 +535,25 @@ impl<T> Extend<T> for Vec<T> {
     }
 }
 
-#[unstable = "waiting on PartialEq stability"]
-impl<T: PartialEq> PartialEq for Vec<T> {
+impl<A, B, Rhs> PartialEq<Rhs> for Vec<A> where A: PartialEq<B>, Rhs: Deref<[B]> {
     #[inline]
-    fn eq(&self, other: &Vec<T>) -> bool {
-        self.as_slice() == other.as_slice()
-    }
+    fn eq(&self, other: &Rhs) -> bool { PartialEq::eq(&**self, &**other) }
+    #[inline]
+    fn ne(&self, other: &Rhs) -> bool { PartialEq::ne(&**self, &**other) }
+}
+
+impl<'a, A, B> PartialEq<Vec<B>> for &'a [A] where A: PartialEq<B> {
+    #[inline]
+    fn eq(&self, other: &Vec<B>) -> bool { PartialEq::eq(*self, &**other) }
+    #[inline]
+    fn ne(&self, other: &Vec<B>) -> bool { PartialEq::ne(*self, &**other) }
+}
+
+impl<'a, A, B> PartialEq<Vec<B>> for &'a mut [A] where A: PartialEq<B> {
+    #[inline]
+    fn eq(&self, other: &Vec<B>) -> bool { PartialEq::eq(&**self, &**other) }
+    #[inline]
+    fn ne(&self, other: &Vec<B>) -> bool { PartialEq::ne(&**self, &**other) }
 }
 
 #[unstable = "waiting on PartialOrd stability"]
@@ -554,7 +567,8 @@ impl<T: PartialOrd> PartialOrd for Vec<T> {
 #[unstable = "waiting on Eq stability"]
 impl<T: Eq> Eq for Vec<T> {}
 
-#[experimental]
+#[allow(deprecated)]
+#[deprecated = "Use overloaded `core::cmp::PartialEq`"]
 impl<T: PartialEq, Sized? V: AsSlice<T>> Equiv<V> for Vec<T> {
     #[inline]
     fn equiv(&self, other: &V) -> bool { self.as_slice() == other.as_slice() }
@@ -1813,13 +1827,13 @@ mod tests {
         let mut values = vec![1u8,2,3,4,5];
         {
             let slice = values.slice_from_mut(2);
-            assert!(slice == &mut [3, 4, 5]);
+            assert!(slice == [3, 4, 5]);
             for p in slice.iter_mut() {
                 *p += 2;
             }
         }
 
-        assert!(values.as_slice() == &[1, 2, 5, 6, 7]);
+        assert!(values.as_slice() == [1, 2, 5, 6, 7]);
     }
 
     #[test]
@@ -1827,13 +1841,13 @@ mod tests {
         let mut values = vec![1u8,2,3,4,5];
         {
             let slice = values.slice_to_mut(2);
-            assert!(slice == &mut [1, 2]);
+            assert!(slice == [1, 2]);
             for p in slice.iter_mut() {
                 *p += 1;
             }
         }
 
-        assert!(values.as_slice() == &[2, 3, 3, 4, 5]);
+        assert!(values.as_slice() == [2, 3, 3, 4, 5]);
     }
 
     #[test]
