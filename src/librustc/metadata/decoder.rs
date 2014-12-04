@@ -172,14 +172,15 @@ fn item_visibility(item: rbml::Doc) -> ast::Visibility {
 }
 
 fn item_sort(item: rbml::Doc) -> char {
-    // NB(pcwalton): The default of 'r' here is relied upon in
-    // `is_associated_type` below.
-    let mut ret = 'r';
+    let mut ret = None;
     reader::tagged_docs(item, tag_item_trait_item_sort, |doc| {
-        ret = doc.as_str_slice().as_bytes()[0] as char;
+        ret = Some(doc.as_str_slice().as_bytes()[0] as char);
         false
     });
-    ret
+    match ret {
+        Some(r) => r,
+        None => panic!("No item_sort found")
+    }
 }
 
 fn item_symbol(item: rbml::Doc) -> String {
