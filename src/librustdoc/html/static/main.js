@@ -566,8 +566,8 @@
                          "method",
                          "structfield",
                          "variant",
-                         "ffi",
-                         "ffs",
+                         "ffi", // retained for backward compatibility
+                         "ffs", // retained for backward compatibility
                          "macro",
                          "primitive",
                          "associatedtype",
