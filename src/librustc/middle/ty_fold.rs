@@ -399,6 +399,25 @@ impl<'tcx> TypeFoldable<'tcx> for ty::Generics<'tcx> {
         ty::Generics {
             types: self.types.fold_with(folder),
             regions: self.regions.fold_with(folder),
+            predicates: self.predicates.fold_with(folder),
+        }
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for ty::Predicate<'tcx> {
+    fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> ty::Predicate<'tcx> {
+        match *self {
+            ty::Predicate::Trait(ref a) =>
+                ty::Predicate::Trait(a.fold_with(folder)),
+            ty::Predicate::Equate(ref a, ref b) =>
+                ty::Predicate::Equate(a.fold_with(folder),
+                                        b.fold_with(folder)),
+            ty::Predicate::RegionOutlives(ref a, ref b) =>
+                ty::Predicate::RegionOutlives(a.fold_with(folder),
+                                                b.fold_with(folder)),
+            ty::Predicate::TypeOutlives(ref a, ref b) =>
+                ty::Predicate::TypeOutlives(a.fold_with(folder),
+                                              b.fold_with(folder)),
         }
     }
 }
