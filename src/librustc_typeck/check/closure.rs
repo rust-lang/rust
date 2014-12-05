@@ -126,7 +126,7 @@ fn check_unboxed_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
 
     let closure_type = ty::mk_unboxed_closure(fcx.ccx.tcx,
                                               expr_def_id,
-                                              region,
+                                              fcx.ccx.tcx.mk_region(region),
                                               fcx.ccx.tcx.mk_substs(
                                                   fcx.inh.param_env.free_substs.clone()));
 

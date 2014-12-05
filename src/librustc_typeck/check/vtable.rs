@@ -63,8 +63,8 @@ pub fn check_object_cast<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 // Ensure that if &'a T is cast to &'b Trait, then 'b <= 'a
                 infer::mk_subr(fcx.infcx(),
                                infer::RelateObjectBound(source_expr.span),
-                               target_region,
-                               referent_region);
+                               *target_region,
+                               *referent_region);
 
                 check_object_safety(fcx.tcx(), object_trait, source_expr.span);
             }

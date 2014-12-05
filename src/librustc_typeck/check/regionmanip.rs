@@ -93,7 +93,7 @@ impl<'a, 'tcx> Wf<'a, 'tcx> {
                 // captured by reference it must also outlive the
                 // region bound on the closure, but this is explicitly
                 // handled by logic in regionck.
-                self.push_region_constraint_from_top(region);
+                self.push_region_constraint_from_top(*region);
             }
 
             ty::ty_trait(ref t) => {
@@ -114,7 +114,7 @@ impl<'a, 'tcx> Wf<'a, 'tcx> {
             }
 
             ty::ty_rptr(r_b, mt) => {
-                self.accumulate_from_rptr(ty, r_b, mt.ty);
+                self.accumulate_from_rptr(ty, *r_b, mt.ty);
             }
 
             ty::ty_param(p) => {

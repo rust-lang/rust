@@ -2736,9 +2736,10 @@ fn check_lit<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     let tcx = fcx.ccx.tcx;
 
     match lit.node {
-        ast::LitStr(..) => ty::mk_str_slice(tcx, ty::ReStatic, ast::MutImmutable),
+        ast::LitStr(..) => ty::mk_str_slice(tcx, tcx.mk_region(ty::ReStatic), ast::MutImmutable),
         ast::LitBinary(..) => {
-            ty::mk_slice(tcx, ty::ReStatic, ty::mt{ ty: ty::mk_u8(), mutbl: ast::MutImmutable })
+            ty::mk_slice(tcx, tcx.mk_region(ty::ReStatic),
+                         ty::mt{ ty: ty::mk_u8(), mutbl: ast::MutImmutable })
         }
         ast::LitByte(_) => ty::mk_u8(),
         ast::LitChar(_) => ty::mk_char(),
@@ -3098,8 +3099,8 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                 let (adj_ty, adjustment) = match lhs_ty.sty {
                     ty::ty_rptr(r_in, mt) => {
                         let r_adj = fcx.infcx().next_region_var(infer::Autoref(lhs.span));
-                        fcx.mk_subr(infer::Reborrow(lhs.span), r_adj, r_in);
-                        let adjusted_ty = ty::mk_rptr(fcx.tcx(), r_adj, mt);
+                        fcx.mk_subr(infer::Reborrow(lhs.span), r_adj, *r_in);
+                        let adjusted_ty = ty::mk_rptr(fcx.tcx(), fcx.tcx().mk_region(r_adj), mt);
                         let autoptr = ty::AutoPtr(r_adj, mt.mutbl, None);
                         let adjustment = ty::AutoDerefRef { autoderefs: 1, autoref: Some(autoptr) };
                         (adjusted_ty, adjustment)
@@ -3839,11 +3840,11 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                     // `'static`!
                     let region = fcx.infcx().next_region_var(
                         infer::AddrOfSlice(expr.span));
-                    ty::mk_rptr(tcx, region, tm)
+                    ty::mk_rptr(tcx, tcx.mk_region(region), tm)
                 }
                 _ => {
                     let region = fcx.infcx().next_region_var(infer::AddrOfRegion(expr.span));
-                    ty::mk_rptr(tcx, region, tm)
+                    ty::mk_rptr(tcx, tcx.mk_region(region), tm)
                 }
             }
         };
@@ -5568,7 +5569,9 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
             "move_val_init" => {
                 (1u,
                  vec!(
-                    ty::mk_mut_rptr(tcx, ty::ReLateBound(ty::DebruijnIndex::new(1), ty::BrAnon(0)),
+                    ty::mk_mut_rptr(tcx,
+                                    tcx.mk_region(ty::ReLateBound(ty::DebruijnIndex::new(1),
+                                                                  ty::BrAnon(0))),
                                     param(ccx, 0)),
                     param(ccx, 0)
                   ),

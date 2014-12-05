@@ -259,7 +259,7 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
                                 span,
                                 ty::AdjustDerefRef(ty::AutoDerefRef {
                                     autoderefs: autoderefs,
-                                    autoref: Some(ty::AutoPtr(region, mutbl, autoref))
+                                    autoref: Some(ty::AutoPtr(*region, mutbl, autoref))
                                 }));
                         }
 

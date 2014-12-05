@@ -432,7 +432,7 @@ fn parse_ty<'a, 'tcx>(st: &mut PState<'a, 'tcx>, conv: conv_did) -> Ty<'tcx> {
       '&' => {
         let r = parse_region(st, |x,y| conv(x,y));
         let mt = parse_mt(st, |x,y| conv(x,y));
-        return ty::mk_rptr(st.tcx, r, mt);
+        return ty::mk_rptr(st.tcx, st.tcx.mk_region(r), mt);
       }
       'V' => {
         let t = parse_ty(st, |x,y| conv(x,y));
@@ -500,7 +500,8 @@ fn parse_ty<'a, 'tcx>(st: &mut PState<'a, 'tcx>, conv: conv_did) -> Ty<'tcx> {
           let region = parse_region(st, |x,y| conv(x,y));
           let substs = parse_substs(st, |x,y| conv(x,y));
           assert_eq!(next(st), ']');
-          return ty::mk_unboxed_closure(st.tcx, did, region, st.tcx.mk_substs(substs));
+          return ty::mk_unboxed_closure(st.tcx, did,
+                  st.tcx.mk_region(region), st.tcx.mk_substs(substs));
       }
       'e' => {
           return ty::mk_err();

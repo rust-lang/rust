@@ -401,7 +401,7 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
             }, ty_to_string(cx, tm.ty))
         }
         ty_rptr(r, ref tm) => {
-            let mut buf = region_ptr_to_string(cx, r);
+            let mut buf = region_ptr_to_string(cx, *r);
             buf.push_str(mt_to_string(cx, tm)[]);
             buf
         }

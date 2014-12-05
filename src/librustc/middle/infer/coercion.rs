@@ -230,7 +230,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         };
 
         let a_borrowed = ty::mk_rptr(self.tcx(),
-                                     r_borrow,
+                                     self.tcx().mk_region(r_borrow),
                                      mt {ty: inner_ty, mutbl: mutbl_b});
         try!(sub.tys(a_borrowed, b));
 
@@ -271,7 +271,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                             let coercion = Coercion(self.get_ref().trace.clone());
                             let r_borrow = self.get_ref().infcx.next_region_var(coercion);
                             let ty = ty::mk_rptr(self.tcx(),
-                                                 r_borrow,
+                                                 self.tcx().mk_region(r_borrow),
                                                  ty::mt{ty: ty, mutbl: mt_b.mutbl});
                             try!(self.get_ref().infcx.try(|_| sub.tys(ty, b)));
                             debug!("Success, coerced with AutoDerefRef(1, \
@@ -424,7 +424,8 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         let r_a = self.get_ref().infcx.next_region_var(coercion);
 
         self.coerce_object(a, b, b_mutbl,
-                           |tr| ty::mk_rptr(tcx, r_a, ty::mt{ mutbl: b_mutbl, ty: tr }),
+                           |tr| ty::mk_rptr(tcx, tcx.mk_region(r_a),
+                                            ty::mt{ mutbl: b_mutbl, ty: tr }),
                            || AutoPtr(r_a, b_mutbl, None))
     }
 

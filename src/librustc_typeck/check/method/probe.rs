@@ -657,7 +657,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         let tcx = self.tcx();
         self.search_mutabilities(
             |m| AutoRef(m, box step.adjustment.clone()),
-            |m,r| ty::mk_rptr(tcx, r, ty::mt {ty:step.self_ty, mutbl:m}))
+            |m,r| ty::mk_rptr(tcx, tcx.mk_region(r), ty::mt {ty:step.self_ty, mutbl:m}))
     }
 
     fn search_mutabilities<F, G>(&mut self,

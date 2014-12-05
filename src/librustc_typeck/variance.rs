@@ -732,7 +732,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
 
             ty::ty_rptr(region, ref mt) => {
                 let contra = self.contravariant(variance);
-                self.add_constraints_from_region(region, contra);
+                self.add_constraints_from_region(*region, contra);
                 self.add_constraints_from_mt(mt, variance);
             }
 
