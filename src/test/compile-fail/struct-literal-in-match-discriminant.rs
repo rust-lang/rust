@@ -14,7 +14,7 @@ struct Foo {
 
 fn main() {
     match Foo {
-        x: 3    //~ ERROR expected `=>`
+        x: 3    //~ ERROR expected one of `!`, `=>`, `@`, or `|`, found `:`
     } {
         Foo {
             x: x

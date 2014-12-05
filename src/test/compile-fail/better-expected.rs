@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn removed_moves() {
-    let mut x = 0;
-    let y <- x;
-    //~^ ERROR expected one of `!`, `:`, `;`, `=`, or `@`, found `<-`
+fn main() {
+    let x: [int ..3]; //~ ERROR expected one of `(`, `+`, `,`, `::`, or `]`, found `..`
 }
