@@ -364,7 +364,7 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, t: Ty<'tcx>)
                 ty::ty_vec(ty, None) => {
                     tvec::make_drop_glue_unboxed(bcx, v0, ty, true)
                 }
-                ty::ty_str => {
+                ty::ty_struct(did, _) if ty::is_str(bcx.tcx(), did) => {
                     let unit_ty = ty::sequence_element_type(bcx.tcx(), content_ty);
                     tvec::make_drop_glue_unboxed(bcx, v0, unit_ty, true)
                 }
@@ -469,7 +469,7 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, t: Ty<'tcx>)
         _ => {
             assert!(ty::type_is_sized(bcx.tcx(), t));
             if ty::type_needs_drop(bcx.tcx(), t) &&
-                ty::type_is_structural(t) {
+                ty::type_is_structural(bcx.tcx(), t) {
                 iter_structural_ty(bcx, v0, t, |bb, vv, tt| drop_ty(bb, vv, tt, None))
             } else {
                 bcx

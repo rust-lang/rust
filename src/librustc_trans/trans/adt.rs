@@ -298,7 +298,7 @@ impl<'tcx> Case<'tcx> {
                 // &T/&mut T/Box<T> could either be a thin or fat pointer depending on T
                 ty::ty_rptr(_, ty::mt { ty, .. }) | ty::ty_uniq(ty) => match ty.sty {
                     // &[T] and &str are a pointer and length pair
-                    ty::ty_vec(_, None) | ty::ty_str => return Some(FatPointer(i)),
+                    ty::ty_vec(_, None) => return Some(FatPointer(i)),
 
                     // &Trait is a pair of pointers: the actual object and a vtable
                     ty::ty_trait(..) => return Some(FatPointer(i)),

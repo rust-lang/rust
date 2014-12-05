@@ -436,7 +436,11 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr) -> ValueRef {
               let (arr, len) = match bt.sty {
                   ty::ty_vec(_, Some(u)) => (bv, C_uint(cx, u)),
                   ty::ty_open(ty) => match ty.sty {
-                      ty::ty_vec(_, None) | ty::ty_str => {
+                      ty::ty_vec(_, None) => {
+                          let e1 = const_get_elt(cx, bv, &[0]);
+                          (const_deref_ptr(cx, e1), const_get_elt(cx, bv, &[1]))
+                      },
+                      ty::ty_struct(did, _) if ty::is_str(cx.tcx(), did) => {
                           let e1 = const_get_elt(cx, bv, &[0]);
                           (const_deref_ptr(cx, e1), const_get_elt(cx, bv, &[1]))
                       },
@@ -463,7 +467,7 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr) -> ValueRef {
               let len = llvm::LLVMConstIntGetZExtValue(len) as u64;
               let len = match bt.sty {
                   ty::ty_uniq(ty) | ty::ty_rptr(_, ty::mt{ty, ..}) => match ty.sty {
-                      ty::ty_str => {
+                      ty::ty_struct(did, _) if ty::is_str(cx.tcx(), did) => {
                           assert!(len > 0);
                           len - 1
                       }

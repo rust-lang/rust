@@ -401,13 +401,19 @@ pub fn get_base_and_len(bcx: Block,
     match vec_ty.sty {
         ty::ty_vec(_, Some(n)) => get_fixed_base_and_len(bcx, llval, n),
         ty::ty_open(ty) => match ty.sty {
-            ty::ty_vec(_, None) | ty::ty_str => get_slice_base_and_len(bcx, llval),
+            ty::ty_vec(_, None) => get_slice_base_and_len(bcx, llval),
+            ty::ty_struct(did, _) if ty::is_str(bcx.tcx(), did) => {
+                get_slice_base_and_len(bcx, llval)
+            },
             _ => ccx.sess().bug("unexpected type in get_base_and_len")
         },
 
         // Only used for pattern matching.
         ty::ty_uniq(ty) | ty::ty_rptr(_, ty::mt{ty, ..}) => match ty.sty {
-            ty::ty_vec(_, None) | ty::ty_str => get_slice_base_and_len(bcx, llval),
+            ty::ty_vec(_, None) => get_slice_base_and_len(bcx, llval),
+            ty::ty_struct(did, _) if ty::is_str(bcx.tcx(), did) => {
+                get_slice_base_and_len(bcx, llval)
+            },
             ty::ty_vec(_, Some(n)) => {
                 let base = GEPi(bcx, Load(bcx, llval), &[0u, 0u]);
                 (base, C_uint(ccx, n))

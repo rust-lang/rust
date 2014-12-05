@@ -800,7 +800,7 @@ fn compare_values<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
 
     match rhs_t.sty {
         ty::ty_rptr(_, mt) => match mt.ty.sty {
-            ty::ty_str => compare_str(cx, lhs, rhs, rhs_t),
+            ty::ty_struct(did, _) if ty::is_str(cx.tcx(), did) => compare_str(cx, lhs, rhs, rhs_t),
             ty::ty_vec(ty, _) => match ty.sty {
                 ty::ty_uint(ast::TyU8) => {
                     // NOTE: cast &[u8] to &str and abuse the str_eq lang item,

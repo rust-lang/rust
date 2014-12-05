@@ -1161,7 +1161,7 @@ pub fn memcpy_ty<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                              t: Ty<'tcx>) {
     let _icx = push_ctxt("memcpy_ty");
     let ccx = bcx.ccx();
-    if ty::type_is_structural(t) {
+    if ty::type_is_structural(bcx.tcx(), t) {
         let llty = type_of::type_of(ccx, t);
         let llsz = llsize_of(ccx, llty);
         let llalign = type_of::align_of(ccx, t);
