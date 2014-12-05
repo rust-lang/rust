@@ -105,7 +105,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         match b.sty {
             ty::ty_ptr(mt_b) => {
                 match mt_b.ty.sty {
-                    ty::ty_str => {
+                    ty::ty_struct(did, _) if ty::is_str(self.0.infcx.tcx, did) => {
                         return self.unpack_actual_value(a, |sty_a| {
                             self.coerce_unsafe_ptr(a, sty_a, b, ast::MutImmutable)
                         });
@@ -132,7 +132,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
             ty::ty_rptr(_, mt_b) => {
                 match mt_b.ty.sty {
-                    ty::ty_str => {
+                    ty::ty_struct(did, _) if ty::is_str(self.0.infcx.tcx, did) => {
                         return self.unpack_actual_value(a, |sty_a| {
                             self.coerce_borrowed_pointer(a, sty_a, b, ast::MutImmutable)
                         });

@@ -1224,7 +1224,11 @@ fn constrain_index<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
     let r_index_expr = ty::ReScope(CodeExtent::from_node_id(index_expr.id));
     if let ty::ty_rptr(r_ptr, mt) = indexed_ty.sty {
         match mt.ty.sty {
-            ty::ty_vec(_, None) | ty::ty_str => {
+            ty::ty_vec(_, None) => {
+                rcx.fcx.mk_subr(infer::IndexSlice(index_expr.span),
+                                r_index_expr, r_ptr);
+            }
+            ty::ty_struct(did, _) if ty::is_str(rcx.tcx(), did) => {
                 rcx.fcx.mk_subr(infer::IndexSlice(index_expr.span),
                                 r_index_expr, r_ptr);
             }

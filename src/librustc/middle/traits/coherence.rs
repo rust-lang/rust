@@ -84,10 +84,11 @@ pub fn ty_is_local<'tcx>(tcx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
         ty::ty_char |
         ty::ty_int(..) |
         ty::ty_uint(..) |
-        ty::ty_float(..) |
-        ty::ty_str(..) => {
+        ty::ty_float(..) => {
             false
         }
+
+        ty::ty_struct(did, _) if ty::is_str(tcx, did) => { false }
 
         ty::ty_unboxed_closure(..) => {
             // This routine is invoked on types specified by users as

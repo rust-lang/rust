@@ -639,7 +639,10 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         // FIXME -- Super hack. For DST types, we will convert to
         // &&[T] or &&str, as part of a kind of legacy lookup scheme.
         match step.self_ty.sty {
-            ty::ty_str | ty::ty_vec(_, None) => self.pick_autorefrefd_method(step),
+            ty::ty_vec(_, None) => self.pick_autorefrefd_method(step),
+            ty::ty_struct(did, _) if ty::is_str(self.tcx(), did) => {
+                self.pick_autorefrefd_method(step)
+            }
             _ => None
         }
     }

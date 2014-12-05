@@ -194,7 +194,7 @@ pub enum deref_kind {
 // Categorizes a derefable type.  Note that we include vectors and strings as
 // derefable (we model an index as the combination of a deref and then a
 // pointer adjustment).
-pub fn opt_deref_kind(t: Ty) -> Option<deref_kind> {
+pub fn opt_deref_kind(tcx: &ty::ctxt, t: Ty) -> Option<deref_kind> {
     match t.sty {
         ty::ty_uniq(_) |
         ty::ty_closure(box ty::ClosureTy {store: ty::UniqTraitStore, ..}) => {
@@ -217,12 +217,16 @@ pub fn opt_deref_kind(t: Ty) -> Option<deref_kind> {
             Some(deref_ptr(UnsafePtr(mt.mutbl)))
         }
 
+        ty::ty_struct(did, _) if ty::is_str(tcx, did) => {
+            Some(deref_interior(InteriorElement(element_kind(t))))
+        }
+
         ty::ty_enum(..) |
         ty::ty_struct(..) => { // newtype
             Some(deref_interior(InteriorField(PositionalField(0))))
         }
 
-        ty::ty_vec(_, _) | ty::ty_str => {
+        ty::ty_vec(_, _) => {
             Some(deref_interior(InteriorElement(element_kind(t))))
         }
 
@@ -232,7 +236,7 @@ pub fn opt_deref_kind(t: Ty) -> Option<deref_kind> {
 
 pub fn deref_kind<'tcx>(tcx: &ty::ctxt<'tcx>, t: Ty<'tcx>) -> deref_kind {
     debug!("deref_kind {}", ty_to_string(tcx, t));
-    match opt_deref_kind(t) {
+    match opt_deref_kind(tcx, t) {
       Some(k) => k,
       None => {
         tcx.sess.bug(
@@ -989,7 +993,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                 ty::ty_fn_args(method_ty)[0]
             }
             None => {
-                match ty::array_element_ty(base_cmt.ty) {
+                match ty::array_element_ty(self.tcx(), base_cmt.ty) {
                     Some(ty) => ty,
                     None => {
                         self.tcx().sess.span_bug(

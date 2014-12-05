@@ -478,10 +478,6 @@ pub fn super_tys<'tcx, C: Combine<'tcx>>(this: &C,
         })
       }
 
-      (&ty::ty_str, &ty::ty_str) => {
-            Ok(ty::mk_str(tcx))
-      }
-
       (&ty::ty_tup(ref as_), &ty::ty_tup(ref bs)) => {
         if as_.len() == bs.len() {
             as_.iter().zip(bs.iter())

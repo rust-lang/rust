@@ -485,7 +485,9 @@ fn construct_witness(cx: &MatchCheckCtxt, ctor: &Constructor,
                     },
                     _ => unreachable!()
                 },
-                ty::ty_str => ast::PatWild(ast::PatWildSingle),
+                ty::ty_struct(did, _) if ty::is_str(cx.tcx, did) => {
+                    ast::PatWild(ast::PatWildSingle)
+                },
 
                 _ => {
                     assert_eq!(pats_len, 1);
@@ -737,7 +739,7 @@ pub fn constructor_arity(cx: &MatchCheckCtxt, ctor: &Constructor, ty: Ty) -> uin
                 ConstantValue(_) => 0u,
                 _ => unreachable!()
             },
-            ty::ty_str => 0u,
+            ty::ty_struct(did, _) if ty::is_str(cx.tcx, did) => 0u,
             _ => 1u
         },
         ty::ty_enum(eid, _) => {

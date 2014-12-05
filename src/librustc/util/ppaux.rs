@@ -18,7 +18,7 @@ use middle::ty::{ReFree, ReScope, ReInfer, ReStatic, Region, ReEmpty};
 use middle::ty::{ReSkolemized, ReVar, BrEnv};
 use middle::ty::{mt, Ty, ParamTy};
 use middle::ty::{ty_bool, ty_char, ty_struct, ty_enum};
-use middle::ty::{ty_err, ty_str, ty_vec, ty_float, ty_bare_fn, ty_closure};
+use middle::ty::{ty_err, ty_vec, ty_float, ty_bare_fn, ty_closure};
 use middle::ty::{ty_param, ty_ptr, ty_rptr, ty_tup, ty_open};
 use middle::ty::{ty_unboxed_closure};
 use middle::ty::{ty_uniq, ty_trait, ty_int, ty_uint, ty_infer};
@@ -442,7 +442,6 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
                     bound_sep,
                     bound_str)
         }
-        ty_str => "str".to_string(),
         ty_unboxed_closure(ref did, _, ref substs) => {
             let unboxed_closures = cx.unboxed_closures.borrow();
             unboxed_closures.get(did).map(|cl| {

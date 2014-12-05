@@ -62,8 +62,11 @@ impl<'a, 'tcx> Wf<'a, 'tcx> {
             ty::ty_uint(..) |
             ty::ty_float(..) |
             ty::ty_bare_fn(..) |
-            ty::ty_err |
-            ty::ty_str => {
+            ty::ty_err => {
+                // No borrowed content reachable here.
+            }
+
+            ty::ty_struct(did, _) if ty::is_str(self.tcx, did) => {
                 // No borrowed content reachable here.
             }
 
