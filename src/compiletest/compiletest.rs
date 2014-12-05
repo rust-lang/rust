@@ -286,6 +286,9 @@ pub fn test_opts(config: &Config) -> test::TestOpts {
         test_shard: config.test_shard.clone(),
         nocapture: false,
         color: test::AutoColor,
+        show_boxplot: false,
+        boxplot_width: 50,
+        show_all_stats: false,
     }
 }
 
