@@ -10,28 +10,28 @@
 
 //! # Standalone Tests for the Inference Module
 
-use driver::diagnostic;
-use driver::diagnostic::Emitter;
-use driver::driver;
-use middle::lang_items;
-use middle::region::{mod, CodeExtent};
-use middle::resolve;
-use middle::resolve_lifetime;
-use middle::stability;
-use middle::subst;
-use middle::subst::Subst;
-use middle::ty::{mod, Ty};
-use middle::infer::combine::Combine;
-use middle::infer;
-use middle::infer::lub::Lub;
-use middle::infer::glb::Glb;
-use session::{mod,config};
+use diagnostic;
+use diagnostic::Emitter;
+use driver;
+use rustc_typeck::middle::lang_items;
+use rustc_typeck::middle::region::{mod, CodeExtent};
+use rustc_typeck::middle::resolve;
+use rustc_typeck::middle::resolve_lifetime;
+use rustc_typeck::middle::stability;
+use rustc_typeck::middle::subst;
+use rustc_typeck::middle::subst::Subst;
+use rustc_typeck::middle::ty::{mod, Ty};
+use rustc_typeck::middle::infer::combine::Combine;
+use rustc_typeck::middle::infer;
+use rustc_typeck::middle::infer::lub::Lub;
+use rustc_typeck::middle::infer::glb::Glb;
+use rustc_typeck::util::ppaux::{ty_to_string, Repr, UserString};
+use rustc::session::{mod,config};
 use syntax::{abi, ast, ast_map, ast_util};
 use syntax::codemap;
 use syntax::codemap::{Span, CodeMap, DUMMY_SP};
 use syntax::diagnostic::{Level, RenderSpan, Bug, Fatal, Error, Warning, Note, Help};
 use syntax::parse::token;
-use util::ppaux::{ty_to_string, Repr, UserString};
 
 use arena::TypedArena;
 
@@ -108,7 +108,7 @@ fn test_env(source_string: &str,
 
     let sess = session::build_session_(options, None, span_diagnostic_handler);
     let krate_config = Vec::new();
-    let input = driver::StrInput(source_string.to_string());
+    let input = config::Input::Str(source_string.to_string());
     let krate = driver::phase_1_parse_input(&sess, krate_config, &input);
     let krate = driver::phase_2_configure_and_expand(&sess, krate, "test", None)
                     .expect("phase 2 aborted");
