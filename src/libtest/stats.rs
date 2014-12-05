@@ -331,8 +331,8 @@ pub fn winsorize<T: Float + FromPrimitive>(samples: &mut [T], pct: T) {
 }
 
 /// Render writes the min, max and quartiles of the provided `Summary` to the provided `Writer`.
-pub fn write_5_number_summary<T: Float + Show>(w: &mut io::Writer,
-                                               s: &Summary<T>) -> io::IoResult<()> {
+pub fn write_5_number_summary<W: Writer, T: Float + Show>(w: &mut W,
+                                                          s: &Summary<T>) -> io::IoResult<()> {
     let (q1,q2,q3) = s.quartiles;
     write!(w, "(min={}, q1={}, med={}, q3={}, max={})",
                      s.min,
@@ -353,8 +353,8 @@ pub fn write_5_number_summary<T: Float + Show>(w: &mut io::Writer,
 /// ```{.ignore}
 ///   10 |        [--****#******----------]          | 40
 /// ```
-pub fn write_boxplot<T: Float + Show + FromPrimitive>(
-                     w: &mut io::Writer,
+pub fn write_boxplot<W: Writer, T: Float + Show + FromPrimitive>(
+                     w: &mut W,
                      s: &Summary<T>,
                      width_hint: uint)
                       -> io::IoResult<()> {
@@ -473,7 +473,7 @@ mod tests {
         let summ2 = Summary::new(samples);
 
         let mut w = io::stdout();
-        let w = &mut w as &mut io::Writer;
+        let w = &mut w;
         (write!(w, "\n")).unwrap();
         write_5_number_summary(w, &summ2).unwrap();
         (write!(w, "\n")).unwrap();
@@ -1028,7 +1028,7 @@ mod tests {
     fn test_boxplot_nonpositive() {
         fn t(s: &Summary<f64>, expected: String) {
             let mut m = Vec::new();
-            write_boxplot(&mut m as &mut io::Writer, s, 30).unwrap();
+            write_boxplot(&mut m, s, 30).unwrap();
             let out = String::from_utf8(m).unwrap();
             assert_eq!(out, expected);
         }
