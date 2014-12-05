@@ -21,7 +21,7 @@ $(eval $(call RUST_CRATE,coretest))
 
 TEST_TARGET_CRATES = $(filter-out core unicode,$(TARGET_CRATES)) coretest
 TEST_DOC_CRATES = $(DOC_CRATES)
-TEST_HOST_CRATES = $(HOST_CRATES)
+TEST_HOST_CRATES = $(filter-out rustc_typeck rustc_trans,$(HOST_CRATES))
 TEST_CRATES = $(TEST_TARGET_CRATES) $(TEST_HOST_CRATES)
 
 ######################################################################
