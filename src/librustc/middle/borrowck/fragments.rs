@@ -346,9 +346,10 @@ fn add_fragment_siblings_for_extension<'tcx>(this: &MoveData<'tcx>,
                                                                         Rc<LoanPath<'tcx>>)>) {
     let parent_ty = parent_lp.to_type();
 
-    let add_fragment_sibling_local = |field_name| {
+    let add_fragment_sibling_local = |field_name, variant_did| {
         add_fragment_sibling_core(
-            this, tcx, gathered_fragments, parent_lp.clone(), mc, field_name, origin_lp);
+            this, tcx, gathered_fragments, parent_lp.clone(), mc, field_name, origin_lp,
+            variant_did);
     };
 
     match (&parent_ty.sty, enum_variant_info) {
@@ -363,7 +364,7 @@ fn add_fragment_siblings_for_extension<'tcx>(this: &MoveData<'tcx>,
             for i in range(0, tuple_len) {
                 if i == tuple_idx { continue }
                 let field_name = mc::PositionalField(i);
-                add_fragment_sibling_local(field_name);
+                add_fragment_sibling_local(field_name, None);
             }
         }
 
@@ -376,7 +377,7 @@ fn add_fragment_siblings_for_extension<'tcx>(this: &MoveData<'tcx>,
                             continue;
                         }
                         let field_name = mc::NamedField(f.name);
-                        add_fragment_sibling_local(field_name);
+                        add_fragment_sibling_local(field_name, None);
                     }
                 }
                 mc::PositionalField(tuple_idx) => {
@@ -385,7 +386,7 @@ fn add_fragment_siblings_for_extension<'tcx>(this: &MoveData<'tcx>,
                             continue
                         }
                         let field_name = mc::PositionalField(i);
-                        add_fragment_sibling_local(field_name);
+                        add_fragment_sibling_local(field_name, None);
                     }
                 }
             }
@@ -414,7 +415,7 @@ fn add_fragment_siblings_for_extension<'tcx>(this: &MoveData<'tcx>,
                             continue;
                         }
                         let field_name = mc::NamedField(variant_arg_ident.name);
-                        add_fragment_sibling_local(field_name);
+                        add_fragment_sibling_local(field_name, Some(variant_info.id));
                     }
                 }
                 mc::PositionalField(tuple_idx) => {
@@ -424,7 +425,7 @@ fn add_fragment_siblings_for_extension<'tcx>(this: &MoveData<'tcx>,
                             continue;
                         }
                         let field_name = mc::PositionalField(i);
-                        add_fragment_sibling_local(field_name);
+                        add_fragment_sibling_local(field_name, None);
                     }
                 }
             }
@@ -447,10 +448,11 @@ fn add_fragment_sibling_core<'tcx>(this: &MoveData<'tcx>,
                                    parent: Rc<LoanPath<'tcx>>,
                                    mc: mc::MutabilityCategory,
                                    new_field_name: mc::FieldName,
-                                   origin_lp: &Rc<LoanPath<'tcx>>) -> MovePathIndex {
+                                   origin_lp: &Rc<LoanPath<'tcx>>,
+                                   enum_variant_did: Option<ast::DefId>) -> MovePathIndex {
     let opt_variant_did = match parent.kind {
         LpDowncast(_, variant_did) => Some(variant_did),
-        LpVar(..) | LpUpvar(..) | LpExtend(..) => None,
+        LpVar(..) | LpUpvar(..) | LpExtend(..) => enum_variant_did,
     };
 
     let loan_path_elem = LpInterior(mc::InteriorField(new_field_name));
