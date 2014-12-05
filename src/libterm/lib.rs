@@ -165,6 +165,7 @@ pub mod color {
 /// Terminal attributes
 pub mod attr {
     pub use self::Attr::*;
+    use std::kinds::Copy;
 
     /// Terminal attributes for use with term.attr().
     ///
@@ -193,6 +194,8 @@ pub mod attr {
         /// Convenience attribute to set the background color
         BackgroundColor(super::color::Color)
     }
+
+    impl Copy for Attr {}
 }
 
 /// A terminal with similar capabilities to an ANSI Terminal

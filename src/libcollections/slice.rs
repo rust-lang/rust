@@ -91,7 +91,7 @@ use self::Direction::*;
 use alloc::boxed::Box;
 use core::borrow::{BorrowFrom, BorrowFromMut, ToOwned};
 use core::cmp;
-use core::kinds::Sized;
+use core::kinds::{Copy, Sized};
 use core::mem::size_of;
 use core::mem;
 use core::prelude::{Clone, Greater, Iterator, IteratorExt, Less, None, Option};
@@ -177,11 +177,15 @@ impl ElementSwaps {
 
 enum Direction { Pos, Neg }
 
+impl Copy for Direction {}
+
 /// An `Index` and `Direction` together.
 struct SizeDirection {
     size: uint,
     dir: Direction,
 }
+
+impl Copy for SizeDirection {}
 
 impl Iterator<(uint, uint)> for ElementSwaps {
     #[inline]
@@ -1482,11 +1486,17 @@ mod tests {
             fn clone(&self) -> S {
                 self.f.set(self.f.get() + 1);
                 if self.f.get() == 10 { panic!() }
-                S { f: self.f, boxes: self.boxes.clone() }
+                S {
+                    f: self.f.clone(),
+                    boxes: self.boxes.clone(),
+                }
             }
         }
 
-        let s = S { f: Cell::new(0), boxes: (box 0, Rc::new(0)) };
+        let s = S {
+            f: Cell::new(0),
+            boxes: (box 0, Rc::new(0)),
+        };
         let _ = Vec::from_elem(100, s);
     }
 

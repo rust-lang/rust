@@ -434,3 +434,4 @@ impl<T> PartialOrd for *mut T {
     #[inline]
     fn ge(&self, other: &*mut T) -> bool { *self >= *other }
 }
+

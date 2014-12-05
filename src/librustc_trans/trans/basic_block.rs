@@ -15,6 +15,8 @@ use std::iter::{Filter, Map};
 
 pub struct BasicBlock(pub BasicBlockRef);
 
+impl Copy for BasicBlock {}
+
 pub type Preds<'a> = Map<'a, Value, BasicBlock, Filter<'a, Value, Users>>;
 
 /// Wrapper for LLVM BasicBlockRef

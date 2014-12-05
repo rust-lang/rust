@@ -18,6 +18,7 @@
 //!
 //! Their definition should always match the ABI defined in `rustc::back::abi`.
 
+use kinds::Copy;
 use mem;
 use kinds::Sized;
 
@@ -28,6 +29,8 @@ pub struct Slice<T> {
     pub len: uint,
 }
 
+impl<T> Copy for Slice<T> {}
+
 /// The representation of a Rust closure
 #[repr(C)]
 pub struct Closure {
@@ -35,12 +38,16 @@ pub struct Closure {
     pub env: *mut (),
 }
 
+impl Copy for Closure {}
+
 /// The representation of a Rust procedure (`proc()`)
 #[repr(C)]
 pub struct Procedure {
     pub code: *mut (),
     pub env: *mut (),
 }
+
+impl Copy for Procedure {}
 
 /// The representation of a Rust trait object.
 ///
@@ -51,6 +58,8 @@ pub struct TraitObject {
     pub data: *mut (),
     pub vtable: *mut (),
 }
+
+impl Copy for TraitObject {}
 
 /// This trait is meant to map equivalences between raw structs and their
 /// corresponding rust values.

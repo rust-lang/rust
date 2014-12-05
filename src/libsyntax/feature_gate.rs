@@ -107,6 +107,8 @@ pub struct Features {
     pub quote: bool,
 }
 
+impl Copy for Features {}
+
 impl Features {
     pub fn new() -> Features {
         Features {

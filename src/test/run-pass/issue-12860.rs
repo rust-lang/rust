@@ -20,6 +20,8 @@ struct XYZ {
     z: int
 }
 
+impl Copy for XYZ {}
+
 fn main() {
     let mut connected = HashSet::new();
     let mut border = HashSet::new();

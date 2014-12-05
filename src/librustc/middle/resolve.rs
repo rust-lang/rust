@@ -94,6 +94,8 @@ struct binding_info {
     binding_mode: BindingMode,
 }
 
+impl Copy for binding_info {}
+
 // Map from the name in a pattern to its binding mode.
 type BindingMap = HashMap<Name,binding_info>;
 
@@ -130,11 +132,15 @@ pub enum LastPrivate {
                type_used: ImportUse},
 }
 
+impl Copy for LastPrivate {}
+
 #[deriving(Show)]
 pub enum PrivateDep {
     AllPublic,
     DependsOn(DefId),
 }
+
+impl Copy for PrivateDep {}
 
 // How an import is used.
 #[deriving(PartialEq, Show)]
@@ -142,6 +148,8 @@ pub enum ImportUse {
     Unused,       // The import is not used.
     Used,         // The import is used.
 }
+
+impl Copy for ImportUse {}
 
 impl LastPrivate {
     fn or(self, other: LastPrivate) -> LastPrivate {
@@ -159,11 +167,15 @@ enum PatternBindingMode {
     ArgumentIrrefutableMode,
 }
 
+impl Copy for PatternBindingMode {}
+
 #[deriving(PartialEq, Eq, Hash, Show)]
 enum Namespace {
     TypeNS,
     ValueNS
 }
+
+impl Copy for Namespace {}
 
 #[deriving(PartialEq)]
 enum NamespaceError {
@@ -172,6 +184,8 @@ enum NamespaceError {
     TypeError,
     ValueError
 }
+
+impl Copy for NamespaceError {}
 
 /// A NamespaceResult represents the result of resolving an import in
 /// a particular namespace. The result is either definitely-resolved,
@@ -238,6 +252,8 @@ enum ImportDirectiveSubclass {
     GlobImport
 }
 
+impl Copy for ImportDirectiveSubclass {}
+
 /// The context that we thread through while building the reduced graph.
 #[deriving(Clone)]
 enum ReducedGraphParent {
@@ -294,6 +310,8 @@ enum TypeParameters<'a> {
         RibKind)
 }
 
+impl<'a> Copy for TypeParameters<'a> {}
+
 // The rib kind controls the translation of local
 // definitions (`DefLocal`) to upvars (`DefUpvar`).
 
@@ -319,16 +337,22 @@ enum RibKind {
     ConstantItemRibKind
 }
 
+impl Copy for RibKind {}
+
 // Methods can be required or provided. RequiredMethod methods only occur in traits.
 enum MethodSort {
     RequiredMethod,
     ProvidedMethod(NodeId)
 }
 
+impl Copy for MethodSort {}
+
 enum UseLexicalScopeFlag {
     DontUseLexicalScope,
     UseLexicalScope
 }
+
+impl Copy for UseLexicalScopeFlag {}
 
 enum ModulePrefixResult {
     NoPrefixFound,
@@ -341,6 +365,8 @@ pub enum TraitItemKind {
     StaticMethodTraitItemKind,
     TypeTraitItemKind,
 }
+
+impl Copy for TraitItemKind {}
 
 impl TraitItemKind {
     pub fn from_explicit_self_category(explicit_self_category:
@@ -364,11 +390,15 @@ enum NameSearchType {
     PathSearch,
 }
 
+impl Copy for NameSearchType {}
+
 enum BareIdentifierPatternResolution {
     FoundStructOrEnumVariant(Def, LastPrivate),
     FoundConst(Def, LastPrivate),
     BareIdentifierPatternUnresolved
 }
+
+impl Copy for BareIdentifierPatternResolution {}
 
 // Specifies how duplicates should be handled when adding a child item if
 // another item exists with the same name in some namespace.
@@ -380,6 +410,8 @@ enum DuplicateCheckingMode {
     ForbidDuplicateTypesAndValues,
     OverwriteDuplicates
 }
+
+impl Copy for DuplicateCheckingMode {}
 
 /// One local scope.
 struct Rib {
@@ -518,6 +550,8 @@ enum ModuleKind {
     AnonymousModuleKind,
 }
 
+impl Copy for ModuleKind {}
+
 /// One node in the tree of modules.
 struct Module {
     parent_link: ParentLink,
@@ -599,6 +633,8 @@ bitflags! {
     }
 }
 
+impl Copy for DefModifiers {}
+
 // Records a possibly-private type definition.
 #[deriving(Clone)]
 struct TypeNsDef {
@@ -616,6 +652,8 @@ struct ValueNsDef {
     value_span: Option<Span>,
 }
 
+impl Copy for ValueNsDef {}
+
 // Records the definitions (at most one for each namespace) that a name is
 // bound to.
 struct NameBindings {
@@ -631,6 +669,8 @@ enum TraitReferenceType {
     TraitObject,                     // Box<for<'a> SomeTrait>
     TraitQPath,                      // <T as SomeTrait>::
 }
+
+impl Copy for TraitReferenceType {}
 
 impl NameBindings {
     fn new() -> NameBindings {

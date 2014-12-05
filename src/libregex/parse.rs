@@ -83,6 +83,8 @@ pub enum Greed {
     Ungreedy,
 }
 
+impl Copy for Greed {}
+
 impl Greed {
     pub fn is_greedy(&self) -> bool {
         match *self {

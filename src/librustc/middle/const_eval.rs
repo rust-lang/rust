@@ -68,6 +68,8 @@ pub enum constness {
     non_const
 }
 
+impl Copy for constness {}
+
 type constness_cache = DefIdMap<constness>;
 
 pub fn join(a: constness, b: constness) -> constness {

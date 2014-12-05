@@ -480,6 +480,8 @@ pub enum StdioContainer {
     CreatePipe(bool /* readable */, bool /* writable */),
 }
 
+impl Copy for StdioContainer {}
+
 /// Describes the result of a process after it has terminated.
 /// Note that Windows have no signals, so the result is usually ExitStatus.
 #[deriving(PartialEq, Eq, Clone)]
@@ -490,6 +492,8 @@ pub enum ProcessExit {
     /// Termination by signal, with the signal number.
     ExitSignal(int),
 }
+
+impl Copy for ProcessExit {}
 
 impl fmt::Show for ProcessExit {
     /// Format a ProcessExit enum, to nicely present the information.

@@ -128,6 +128,8 @@ pub struct tydesc_info<'tcx> {
     pub name: ValueRef,
 }
 
+impl<'tcx> Copy for tydesc_info<'tcx> {}
+
 /*
  * A note on nomenclature of linking: "extern", "foreign", and "upcall".
  *
@@ -158,6 +160,8 @@ pub struct NodeInfo {
     pub id: ast::NodeId,
     pub span: Span,
 }
+
+impl Copy for NodeInfo {}
 
 pub fn expr_info(expr: &ast::Expr) -> NodeInfo {
     NodeInfo { id: expr.id, span: expr.span }
@@ -873,10 +877,11 @@ pub enum ExprOrMethodCall {
     MethodCall(typeck::MethodCall)
 }
 
+impl Copy for ExprOrMethodCall {}
+
 pub fn node_id_substs<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                   node: ExprOrMethodCall)
-                                  -> subst::Substs<'tcx>
-{
+                                  -> subst::Substs<'tcx> {
     let tcx = bcx.tcx();
 
     let substs = match node {

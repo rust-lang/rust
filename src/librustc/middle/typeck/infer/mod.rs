@@ -132,6 +132,8 @@ pub enum TypeOrigin {
     IfExpressionWithNoElse(Span)
 }
 
+impl Copy for TypeOrigin {}
+
 /// See `error_reporting.rs` for more details
 #[deriving(Clone, Show)]
 pub enum ValuePairs<'tcx> {
@@ -237,6 +239,8 @@ pub enum LateBoundRegionConversionTime {
     HigherRankedType,
 }
 
+impl Copy for LateBoundRegionConversionTime {}
+
 /// Reasons to create a region inference variable
 ///
 /// See `error_reporting.rs` for more details
@@ -279,6 +283,8 @@ pub enum fixup_err {
     unresolved_float_ty(FloatVid),
     unresolved_ty(TyVid)
 }
+
+impl Copy for fixup_err {}
 
 pub fn fixup_err_to_string(f: fixup_err) -> String {
     match f {

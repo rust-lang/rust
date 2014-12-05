@@ -52,6 +52,8 @@ pub enum Def {
     DefMethod(ast::DefId /* method */, Option<ast::DefId> /* trait */, MethodProvenance),
 }
 
+impl Copy for Def {}
+
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum MethodProvenance {
     FromTrait(ast::DefId),
@@ -66,6 +68,8 @@ impl MethodProvenance {
         }
     }
 }
+
+impl Copy for MethodProvenance {}
 
 impl Def {
     pub fn def_id(&self) -> ast::DefId {

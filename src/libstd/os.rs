@@ -36,6 +36,7 @@ use error::{FromError, Error};
 use fmt;
 use io::{IoResult, IoError};
 use iter::{Iterator, IteratorExt};
+use kinds::Copy;
 use libc::{c_void, c_int};
 use libc;
 use boxed::Box;
@@ -618,6 +619,8 @@ pub struct Pipe {
     pub writer: c_int,
 }
 
+impl Copy for Pipe {}
+
 /// Creates a new low-level OS in-memory pipe.
 ///
 /// This function can fail to succeed if there are no more resources available
@@ -1184,6 +1187,9 @@ pub struct MemoryMap {
     kind: MemoryMapKind,
 }
 
+#[cfg(not(stage0))]
+impl Copy for MemoryMap {}
+
 /// Type of memory map
 pub enum MemoryMapKind {
     /// Virtual memory map. Usually used to change the permissions of a given
@@ -1194,6 +1200,8 @@ pub enum MemoryMapKind {
     /// Windows.
     MapVirtual
 }
+
+impl Copy for MemoryMapKind {}
 
 /// Options the memory map is created with
 pub enum MapOption {
@@ -1217,6 +1225,8 @@ pub enum MapOption {
     /// (the exact values used) and ignored on Windows.
     MapNonStandardFlags(c_int),
 }
+
+impl Copy for MapOption {}
 
 /// Possible errors when creating a map.
 pub enum MapError {
@@ -1262,6 +1272,8 @@ pub enum MapError {
     /// value of `GetLastError`.
     ErrMapViewOfFile(uint)
 }
+
+impl Copy for MapError {}
 
 impl fmt::Show for MapError {
     fn fmt(&self, out: &mut fmt::Formatter) -> fmt::Result {

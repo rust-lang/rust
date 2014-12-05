@@ -38,6 +38,8 @@ pub enum PathElem {
     PathName(Name)
 }
 
+impl Copy for PathElem {}
+
 impl PathElem {
     pub fn name(&self) -> Name {
         match *self {
@@ -120,6 +122,8 @@ pub enum Node<'ast> {
     NodeLifetime(&'ast Lifetime),
 }
 
+impl<'ast> Copy for Node<'ast> {}
+
 /// Represents an entry and its parent Node ID
 /// The odd layout is to bring down the total size.
 #[deriving(Show)]
@@ -146,6 +150,8 @@ enum MapEntry<'ast> {
     RootCrate,
     RootInlinedParent(&'ast InlinedParent)
 }
+
+impl<'ast> Copy for MapEntry<'ast> {}
 
 impl<'ast> Clone for MapEntry<'ast> {
     fn clone(&self) -> MapEntry<'ast> {

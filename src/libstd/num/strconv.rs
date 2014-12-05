@@ -18,6 +18,7 @@ pub use self::SignFormat::*;
 
 use char;
 use char::Char;
+use kinds::Copy;
 use num;
 use num::{Int, Float, FPNaN, FPInfinite, ToPrimitive};
 use slice::{SlicePrelude, CloneSliceAllocPrelude};
@@ -38,6 +39,8 @@ pub enum ExponentFormat {
     ExpBin,
 }
 
+impl Copy for ExponentFormat {}
+
 /// The number of digits used for emitting the fractional part of a number, if
 /// any.
 pub enum SignificantDigits {
@@ -55,6 +58,8 @@ pub enum SignificantDigits {
     DigExact(uint)
 }
 
+impl Copy for SignificantDigits {}
+
 /// How to emit the sign of a number.
 pub enum SignFormat {
     /// No sign will be printed. The exponent sign will also be emitted.
@@ -67,25 +72,33 @@ pub enum SignFormat {
     SignAll,
 }
 
-/// Converts an integral number to its string representation as a byte vector.
-/// This is meant to be a common base implementation for all integral string
-/// conversion functions like `to_string()` or `to_str_radix()`.
-///
-/// # Arguments
-///
-/// - `num`           - The number to convert. Accepts any number that
-///                     implements the numeric traits.
-/// - `radix`         - Base to use. Accepts only the values 2-36.
-/// - `sign`          - How to emit the sign. Options are:
-///     - `SignNone`: No sign at all. Basically emits `abs(num)`.
-///     - `SignNeg`:  Only `-` on negative values.
-///     - `SignAll`:  Both `+` on positive, and `-` on negative numbers.
-/// - `f`             - a callback which will be invoked for each ascii character
-///                     which composes the string representation of this integer
-///
-/// # Panics
-///
-/// - Panics if `radix` < 2 or `radix` > 36.
+impl Copy for SignFormat {}
+
+/**
+ * Converts an integral number to its string representation as a byte vector.
+ * This is meant to be a common base implementation for all integral string
+ * conversion functions like `to_string()` or `to_str_radix()`.
+ *
+ * # Arguments
+ * - `num`           - The number to convert. Accepts any number that
+ *                     implements the numeric traits.
+ * - `radix`         - Base to use. Accepts only the values 2-36.
+ * - `sign`          - How to emit the sign. Options are:
+ *     - `SignNone`: No sign at all. Basically emits `abs(num)`.
+ *     - `SignNeg`:  Only `-` on negative values.
+ *     - `SignAll`:  Both `+` on positive, and `-` on negative numbers.
+ * - `f`             - a callback which will be invoked for each ascii character
+ *                     which composes the string representation of this integer
+ *
+ * # Return value
+ * A tuple containing the byte vector, and a boolean flag indicating
+ * whether it represents a special value like `inf`, `-inf`, `NaN` or not.
+ * It returns a tuple because there can be ambiguity between a special value
+ * and a number representation at higher bases.
+ *
+ * # Failure
+ * - Fails if `radix` < 2 or `radix` > 36.
+ */
 fn int_to_str_bytes_common<T: Int>(num: T, radix: uint, sign: SignFormat, f: |u8|) {
     assert!(2 <= radix && radix <= 36);
 

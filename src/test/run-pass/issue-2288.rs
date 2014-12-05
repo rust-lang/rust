@@ -12,9 +12,12 @@
 trait clam<A> {
   fn chowder(&self, y: A);
 }
+
 struct foo<A> {
   x: A,
 }
+
+impl<A:Copy> Copy for foo<A> {}
 
 impl<A> clam<A> for foo<A> {
   fn chowder(&self, _y: A) {

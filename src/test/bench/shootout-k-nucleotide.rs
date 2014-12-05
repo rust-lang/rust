@@ -62,6 +62,8 @@ static OCCURRENCES: [&'static str, ..5] = [
 #[deriving(PartialEq, PartialOrd, Ord, Eq)]
 struct Code(u64);
 
+impl Copy for Code {}
+
 impl Code {
     fn hash(&self) -> u64 {
         let Code(ret) = *self;

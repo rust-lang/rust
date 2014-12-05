@@ -10,6 +10,8 @@
 
 struct Point {x: int, y: int}
 
+impl Copy for Point {}
+
 type rect = (Point, Point);
 
 fn fst(r: rect) -> Point { let (fst, _) = r; return fst; }

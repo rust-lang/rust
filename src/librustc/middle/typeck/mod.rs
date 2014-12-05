@@ -96,6 +96,8 @@ pub struct param_index {
     pub index: uint
 }
 
+impl Copy for param_index {}
+
 #[deriving(Clone, Show)]
 pub enum MethodOrigin<'tcx> {
     // fully statically resolved method
@@ -168,12 +170,16 @@ pub struct MethodCall {
     pub adjustment: ExprAdjustment
 }
 
+impl Copy for MethodCall {}
+
 #[deriving(Clone, PartialEq, Eq, Hash, Show, Encodable, Decodable)]
 pub enum ExprAdjustment {
     NoAdjustment,
     AutoDeref(uint),
     AutoObject
 }
+
+impl Copy for ExprAdjustment {}
 
 pub struct TypeAndSubsts<'tcx> {
     pub substs: subst::Substs<'tcx>,

@@ -71,6 +71,9 @@ pub mod DefIdSet {
 #[deriving(Clone, Default)]
 pub struct FnvHasher;
 
+impl Copy for FnvHasher {}
+
+#[allow(missing_copy_implementations)]
 pub struct FnvState(u64);
 
 impl Hasher<FnvState> for FnvHasher {

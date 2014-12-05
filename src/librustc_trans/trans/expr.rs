@@ -71,6 +71,8 @@ pub enum Dest {
     Ignore,
 }
 
+impl Copy for Dest {}
+
 impl Dest {
     pub fn to_string(&self, ccx: &CrateContext) -> String {
         match *self {
@@ -1873,6 +1875,8 @@ pub enum cast_kind {
     cast_enum,
     cast_other,
 }
+
+impl Copy for cast_kind {}
 
 pub fn cast_type_kind<'tcx>(tcx: &ty::ctxt<'tcx>, t: Ty<'tcx>) -> cast_kind {
     match t.sty {

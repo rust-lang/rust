@@ -20,6 +20,7 @@ macro_rules! check {
                 A = 0
             }
             static C: E = E::V;
+            impl Copy for E {}
             pub fn check() {
                 assert_eq!(size_of::<E>(), size_of::<$t>());
                 assert_eq!(E::V as $t, $v as $t);

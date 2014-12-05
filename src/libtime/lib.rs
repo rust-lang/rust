@@ -77,7 +77,13 @@ mod imp {
 
 /// A record specifying a time value in seconds and nanoseconds.
 #[deriving(Clone, PartialEq, Eq, PartialOrd, Ord, Encodable, Decodable, Show)]
-pub struct Timespec { pub sec: i64, pub nsec: i32 }
+pub struct Timespec {
+    pub sec: i64,
+    pub nsec: i32,
+}
+
+impl Copy for Timespec {}
+
 /*
  * Timespec assumes that pre-epoch Timespecs have negative sec and positive
  * nsec fields. Darwin's and Linux's struct timespec functions handle pre-
@@ -269,6 +275,8 @@ pub struct Tm {
     pub tm_nsec: i32,
 }
 
+impl Copy for Tm {}
+
 pub fn empty_tm() -> Tm {
     Tm {
         tm_sec: 0_i32,
@@ -427,6 +435,8 @@ pub enum ParseError {
     InvalidFormatSpecifier(char),
     UnexpectedCharacter(char, char),
 }
+
+impl Copy for ParseError {}
 
 impl Show for ParseError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

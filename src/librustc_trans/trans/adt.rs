@@ -287,8 +287,11 @@ pub enum PointerField {
     FatPointer(uint)
 }
 
+impl Copy for PointerField {}
+
 impl<'tcx> Case<'tcx> {
-    fn is_zerolen<'a>(&self, cx: &CrateContext<'a, 'tcx>, scapegoat: Ty<'tcx>) -> bool {
+    fn is_zerolen<'a>(&self, cx: &CrateContext<'a, 'tcx>, scapegoat: Ty<'tcx>)
+                      -> bool {
         mk_struct(cx, self.tys.as_slice(), false, scapegoat).size == 0
     }
 

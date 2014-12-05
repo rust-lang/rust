@@ -13,6 +13,8 @@ struct Vec2 {
     y: f64
 }
 
+impl Copy for Vec2 {}
+
 // methods we want to export as methods as well as operators
 impl Vec2 {
 #[inline(always)]

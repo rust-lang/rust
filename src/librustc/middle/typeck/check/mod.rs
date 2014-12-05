@@ -207,12 +207,16 @@ enum Expectation<'tcx> {
     ExpectCastableToType(Ty<'tcx>),
 }
 
+impl<'tcx> Copy for Expectation<'tcx> {}
+
 #[deriving(Clone)]
 pub struct FnStyleState {
     pub def: ast::NodeId,
     pub fn_style: ast::FnStyle,
     from_fn: bool
 }
+
+impl Copy for FnStyleState {}
 
 impl FnStyleState {
     pub fn function(fn_style: ast::FnStyle, def: ast::NodeId) -> FnStyleState {
@@ -2122,6 +2126,8 @@ pub enum LvaluePreference {
     NoPreference
 }
 
+impl Copy for LvaluePreference {}
+
 /// Executes an autoderef loop for the type `t`. At each step, invokes `should_stop` to decide
 /// whether to terminate the loop. Returns the final type and number of derefs that it performed.
 ///
@@ -2997,6 +3003,8 @@ pub enum DerefArgs {
     DontDerefArgs,
     DoDerefArgs
 }
+
+impl Copy for DerefArgs {}
 
 /// Controls whether the arguments are tupled. This is used for the call
 /// operator.

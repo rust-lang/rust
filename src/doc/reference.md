@@ -1660,6 +1660,7 @@ Implementations are defined with the keyword `impl`.
 
 ```
 # struct Point {x: f64, y: f64};
+# impl Copy for Point {}
 # type Surface = int;
 # struct BoundingBox {x: f64, y: f64, width: f64, height: f64};
 # trait Shape { fn draw(&self, Surface); fn bounding_box(&self) -> BoundingBox; }
@@ -1668,6 +1669,8 @@ struct Circle {
     radius: f64,
     center: Point,
 }
+
+impl Copy for Circle {}
 
 impl Shape for Circle {
     fn draw(&self, s: Surface) { do_draw_circle(s, *self); }
@@ -1791,6 +1794,7 @@ default visibility with the `priv` keyword. When an item is declared as `pub`,
 it can be thought of as being accessible to the outside world. For example:
 
 ```
+# #![allow(missing_copy_implementations)]
 # fn main() {}
 // Declare a private struct
 struct Foo;

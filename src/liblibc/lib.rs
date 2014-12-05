@@ -340,12 +340,15 @@ pub mod types {
             /// variants, because the compiler complains about the repr attribute
             /// otherwise.
             #[repr(u8)]
+            #[allow(missing_copy_implementations)]
             pub enum c_void {
                 __variant1,
                 __variant2,
             }
 
+            #[allow(missing_copy_implementations)]
             pub enum FILE {}
+            #[allow(missing_copy_implementations)]
             pub enum fpos_t {}
         }
         pub mod c99 {
@@ -359,7 +362,9 @@ pub mod types {
             pub type uint64_t = u64;
         }
         pub mod posix88 {
+            #[allow(missing_copy_implementations)]
             pub enum DIR {}
+            #[allow(missing_copy_implementations)]
             pub enum dirent_t {}
         }
         pub mod posix01 {}
@@ -1670,9 +1675,10 @@ pub mod types {
     pub mod os {
         pub mod common {
             pub mod posix01 {
+                use core::kinds::Copy;
                 use types::common::c95::c_void;
-                use types::os::arch::c95::{c_char, c_int, size_t,
-                                                 time_t, suseconds_t, c_long};
+                use types::os::arch::c95::{c_char, c_int, size_t, time_t};
+                use types::os::arch::c95::{suseconds_t, c_long};
                 use types::os::arch::c99::{uintptr_t};
 
                 pub type pthread_t = uintptr_t;
@@ -1694,11 +1700,15 @@ pub mod types {
                     pub __unused8: *mut c_void,
                 }
 
+                impl Copy for glob_t {}
+
                 #[repr(C)]
                 pub struct timeval {
                     pub tv_sec: time_t,
                     pub tv_usec: suseconds_t,
                 }
+
+                impl Copy for timeval {}
 
                 #[repr(C)]
                 pub struct timespec {
@@ -1706,12 +1716,16 @@ pub mod types {
                     pub tv_nsec: c_long,
                 }
 
+                impl Copy for timespec {}
+
+                #[allow(missing_copy_implementations)]
                 pub enum timezone {}
 
                 pub type sighandler_t = size_t;
             }
 
             pub mod bsd44 {
+                use core::kinds::Copy;
                 use types::common::c95::{c_void};
                 use types::os::arch::c95::{c_char, c_int, c_uint};
 
@@ -1725,6 +1739,9 @@ pub mod types {
                     pub sa_family: sa_family_t,
                     pub sa_data: [u8, ..14],
                 }
+
+                impl Copy for sockaddr {}
+
                 #[repr(C)]
                 pub struct sockaddr_storage {
                     pub ss_len: u8,
@@ -1733,6 +1750,9 @@ pub mod types {
                     pub __ss_align: i64,
                     pub __ss_pad2: [u8, ..112],
                 }
+
+                impl Copy for sockaddr_storage {}
+
                 #[repr(C)]
                 pub struct sockaddr_in {
                     pub sin_len: u8,
@@ -1741,10 +1761,16 @@ pub mod types {
                     pub sin_addr: in_addr,
                     pub sin_zero: [u8, ..8],
                 }
+
+                impl Copy for sockaddr_in {}
+
                 #[repr(C)]
                 pub struct in_addr {
                     pub s_addr: in_addr_t,
                 }
+
+                impl Copy for in_addr {}
+
                 #[repr(C)]
                 pub struct sockaddr_in6 {
                     pub sin6_len: u8,
@@ -1754,20 +1780,32 @@ pub mod types {
                     pub sin6_addr: in6_addr,
                     pub sin6_scope_id: u32,
                 }
+
+                impl Copy for sockaddr_in6 {}
+
                 #[repr(C)]
                 pub struct in6_addr {
                     pub s6_addr: [u16, ..8]
                 }
+
+                impl Copy for in6_addr {}
+
                 #[repr(C)]
                 pub struct ip_mreq {
                     pub imr_multiaddr: in_addr,
                     pub imr_interface: in_addr,
                 }
+
+                impl Copy for ip_mreq {}
+
                 #[repr(C)]
                 pub struct ip6_mreq {
                     pub ipv6mr_multiaddr: in6_addr,
                     pub ipv6mr_interface: c_uint,
                 }
+
+                impl Copy for ip6_mreq {}
+
                 #[repr(C)]
                 pub struct addrinfo {
                     pub ai_flags: c_int,
@@ -1779,12 +1817,18 @@ pub mod types {
                     pub ai_addr: *mut sockaddr,
                     pub ai_next: *mut addrinfo,
                 }
+
+                impl Copy for addrinfo {}
+
                 #[repr(C)]
                 pub struct sockaddr_un {
                     pub sun_len: u8,
                     pub sun_family: sa_family_t,
                     pub sun_path: [c_char, ..104]
                 }
+
+                impl Copy for sockaddr_un {}
+
                 #[repr(C)]
                 pub struct ifaddrs {
                     pub ifa_next: *mut ifaddrs,
@@ -1795,6 +1839,8 @@ pub mod types {
                     pub ifa_dstaddr: *mut sockaddr,
                     pub ifa_data: *mut c_void
                 }
+
+                impl Copy for ifaddrs {}
             }
         }
 
@@ -1839,6 +1885,7 @@ pub mod types {
                 pub type ssize_t = i32;
             }
             pub mod posix01 {
+                use core::kinds::Copy;
                 use types::common::c99::{int32_t, int64_t, uint32_t};
                 use types::os::arch::c95::{c_char, c_long, time_t};
                 use types::os::arch::posix88::{dev_t, gid_t, ino_t,
@@ -1874,28 +1921,39 @@ pub mod types {
                     pub st_qspare: [int64_t, ..2],
                 }
 
+                impl Copy for stat {}
+
+
                 #[repr(C)]
                 pub struct utimbuf {
                     pub actime: time_t,
                     pub modtime: time_t,
                 }
 
+                impl Copy for utimbuf {}
+
                 #[repr(C)]
                 pub struct pthread_attr_t {
                     pub __sig: c_long,
                     pub __opaque: [c_char, ..36]
                 }
+
+                impl Copy for pthread_attr_t {}
             }
             pub mod posix08 {
             }
             pub mod bsd44 {
             }
             pub mod extra {
+                use core::kinds::Copy;
+
                 #[repr(C)]
                 pub struct mach_timebase_info {
                     pub numer: u32,
                     pub denom: u32,
                 }
+
+                impl Copy for mach_timebase_info {}
 
                 pub type mach_timebase_info_data_t = mach_timebase_info;
             }
@@ -1942,6 +2000,7 @@ pub mod types {
                 pub type ssize_t = i64;
             }
             pub mod posix01 {
+                use core::kinds::Copy;
                 use types::common::c99::{int32_t, int64_t};
                 use types::common::c99::{uint32_t};
                 use types::os::arch::c95::{c_char, c_long, time_t};
@@ -1978,28 +2037,38 @@ pub mod types {
                     pub st_qspare: [int64_t, ..2],
                 }
 
+                impl Copy for stat {}
+
                 #[repr(C)]
                 pub struct utimbuf {
                     pub actime: time_t,
                     pub modtime: time_t,
                 }
 
+                impl Copy for utimbuf {}
+
                 #[repr(C)]
                 pub struct pthread_attr_t {
                     pub __sig: c_long,
                     pub __opaque: [c_char, ..56]
                 }
+
+                impl Copy for pthread_attr_t {}
             }
             pub mod posix08 {
             }
             pub mod bsd44 {
             }
             pub mod extra {
+                use core::kinds::Copy;
+
                 #[repr(C)]
                 pub struct mach_timebase_info {
                     pub numer: u32,
                     pub denom: u32,
                 }
+
+                impl Copy for mach_timebase_info {}
 
                 pub type mach_timebase_info_data_t = mach_timebase_info;
             }

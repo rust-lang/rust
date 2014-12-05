@@ -16,6 +16,7 @@
 
 use fmt;
 use iter::DoubleEndedIteratorExt;
+use kinds::Copy;
 use num::{Int, cast};
 use slice::SlicePrelude;
 
@@ -114,6 +115,8 @@ pub struct Radix {
     base: u8,
 }
 
+impl Copy for Radix {}
+
 impl Radix {
     fn new(base: u8) -> Radix {
         assert!(2 <= base && base <= 36, "the base must be in the range of 2..36: {}", base);
@@ -135,6 +138,8 @@ impl GenericRadix for Radix {
 /// A helper type for formatting radixes.
 #[unstable = "may be renamed or move to a different module"]
 pub struct RadixFmt<T, R>(T, R);
+
+impl<T,R> Copy for RadixFmt<T,R> where T: Copy, R: Copy {}
 
 /// Constructs a radix formatter in the range of `2..36`.
 ///

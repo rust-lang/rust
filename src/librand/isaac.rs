@@ -37,6 +37,9 @@ pub struct IsaacRng {
     b: u32,
     c: u32
 }
+
+impl Copy for IsaacRng {}
+
 static EMPTY: IsaacRng = IsaacRng {
     cnt: 0,
     rsl: [0, ..RAND_SIZE_UINT],
@@ -270,6 +273,8 @@ pub struct Isaac64Rng {
     b: u64,
     c: u64,
 }
+
+impl Copy for Isaac64Rng {}
 
 static EMPTY_64: Isaac64Rng = Isaac64Rng {
     cnt: 0,

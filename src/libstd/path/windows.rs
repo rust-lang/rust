@@ -22,6 +22,7 @@ use hash;
 use io::Writer;
 use iter::{AdditiveIterator, DoubleEndedIteratorExt, Extend};
 use iter::{Iterator, IteratorExt, Map};
+use kinds::Copy;
 use mem;
 use option::{Option, Some, None};
 use slice::{AsSlice, SlicePrelude};
@@ -983,6 +984,8 @@ pub enum PathPrefix {
     /// Prefix `C:` for any alphabetic character
     DiskPrefix
 }
+
+impl Copy for PathPrefix {}
 
 fn parse_prefix<'a>(mut path: &'a str) -> Option<PathPrefix> {
     if path.starts_with("\\\\") {

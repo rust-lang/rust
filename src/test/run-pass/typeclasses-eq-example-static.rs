@@ -18,7 +18,10 @@ trait Equal {
     fn isEq(a: &Self, b: &Self) -> bool;
 }
 
+#[deriving(Clone)]
 enum Color { cyan, magenta, yellow, black }
+
+impl Copy for Color {}
 
 impl Equal for Color {
     fn isEq(a: &Color, b: &Color) -> bool {
@@ -32,6 +35,7 @@ impl Equal for Color {
     }
 }
 
+#[deriving(Clone)]
 enum ColorTree {
     leaf(Color),
     branch(Box<ColorTree>, Box<ColorTree>)
@@ -40,9 +44,12 @@ enum ColorTree {
 impl Equal for ColorTree {
     fn isEq(a: &ColorTree, b: &ColorTree) -> bool {
         match (a, b) {
-          (&leaf(x), &leaf(y)) => { Equal::isEq(&x, &y) }
+          (&leaf(ref x), &leaf(ref y)) => {
+              Equal::isEq(&(*x).clone(), &(*y).clone())
+          }
           (&branch(ref l1, ref r1), &branch(ref l2, ref r2)) => {
-            Equal::isEq(&**l1, &**l2) && Equal::isEq(&**r1, &**r2)
+            Equal::isEq(&(**l1).clone(), &(**l2).clone()) &&
+                Equal::isEq(&(**r1).clone(), &(**r2).clone())
           }
           _ => { false }
         }

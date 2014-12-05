@@ -39,6 +39,8 @@ pub enum Piece<'a> {
     NextArgument(Argument<'a>),
 }
 
+impl<'a> Copy for Piece<'a> {}
+
 /// Representation of an argument specification.
 #[deriving(PartialEq)]
 pub struct Argument<'a> {
@@ -47,6 +49,8 @@ pub struct Argument<'a> {
     /// How to format the argument
     pub format: FormatSpec<'a>,
 }
+
+impl<'a> Copy for Argument<'a> {}
 
 /// Specification for the formatting of an argument in the format string.
 #[deriving(PartialEq)]
@@ -67,6 +71,8 @@ pub struct FormatSpec<'a> {
     pub ty: &'a str
 }
 
+impl<'a> Copy for FormatSpec<'a> {}
+
 /// Enum describing where an argument for a format can be located.
 #[deriving(PartialEq)]
 pub enum Position<'a> {
@@ -77,6 +83,8 @@ pub enum Position<'a> {
     /// The argument has a name.
     ArgumentNamed(&'a str),
 }
+
+impl<'a> Copy for Position<'a> {}
 
 /// Enum of alignments which are supported.
 #[deriving(PartialEq)]
@@ -90,6 +98,8 @@ pub enum Alignment {
     /// The value will take on a default alignment.
     AlignUnknown,
 }
+
+impl Copy for Alignment {}
 
 /// Various flags which can be applied to format strings. The meaning of these
 /// flags is defined by the formatters themselves.
@@ -107,6 +117,8 @@ pub enum Flag {
     FlagSignAwareZeroPad,
 }
 
+impl Copy for Flag {}
+
 /// A count is used for the precision and width parameters of an integer, and
 /// can reference either an argument or a literal integer.
 #[deriving(PartialEq)]
@@ -122,6 +134,8 @@ pub enum Count<'a> {
     /// The count is implied and cannot be explicitly specified.
     CountImplied,
 }
+
+impl<'a> Copy for Count<'a> {}
 
 /// The parser structure for interpreting the input format string. This is
 /// modelled as an iterator over `Piece` structures to form a stream of tokens
