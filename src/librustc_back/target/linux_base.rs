@@ -26,6 +26,7 @@ pub fn opts() -> TargetOptions {
             "-Wl,--as-needed".to_string(),
         ),
         position_independent_executables: true,
+        weak_malloc: true,
         .. Default::default()
     }
 }

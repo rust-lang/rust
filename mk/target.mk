@@ -152,6 +152,12 @@ $$(TLIB$(1)_T_$(2)_H_$(3))/libmorestack.a: \
 	    | $$(TLIB$(1)_T_$(2)_H_$(3))/ $$(SNAPSHOT_RUSTC_POST_CLEANUP)
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
+
+$$(TLIB$(1)_T_$(2)_H_$(3))/librust_malloc.a: \
+	    $$(RT_OUTPUT_DIR_$(2))/$$(call CFG_STATIC_LIB_NAME_$(2),rust_malloc) \
+	    | $$(TLIB$(1)_T_$(2)_H_$(3))/ $$(SNAPSHOT_RUSTC_POST_CLEANUP)
+	@$$(call E, cp: $$@)
+	$$(Q)cp $$< $$@
 endef
 
 $(foreach source,$(CFG_HOST), \

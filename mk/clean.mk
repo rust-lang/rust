@@ -102,6 +102,7 @@ clean$(1)_T_$(2)_H_$(3): \
 	    $$(foreach tool,$$(TOOLS) $$(DEBUGGER_BIN_SCRIPTS),clean$(1)_T_$(2)_H_$(3)-tool-$$(tool))
 	$$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/libmorestack.a
 	$$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/libcompiler-rt.a
+	$$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/librust_malloc.a
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/librun_pass_stage* # For unix
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/run_pass_stage* # For windows
 

@@ -186,6 +186,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
         collect_crate_types(sess, krate.attrs.as_slice());
     *sess.crate_metadata.borrow_mut() =
         collect_crate_metadata(sess, krate.attrs.as_slice());
+    sess.use_std.set(syntax::std_inject::use_std(&krate));
 
     time(time_passes, "gated feature checking", (), |_| {
         let (features, unknown_features) =

@@ -324,6 +324,13 @@ macro_rules! cgoptions(
             }
         )*
 
+        fn parse_opt_toggle(slot: &mut Option<bool>, v: Option<&str>) -> bool {
+            match v.and_then(from_str) {
+                Some(b) => { *slot = Some(b); true },
+                None => false
+            }
+        }
+
         fn parse_bool(slot: &mut bool, v: Option<&str>) -> bool {
             match v {
                 Some(..) => false,
@@ -453,6 +460,8 @@ cgoptions!(
         "print remarks for these optimization passes (space separated, or \"all\")"),
     no_stack_check: bool = (false, parse_bool,
         "disable checks for stack exhaustion (a memory-safety hazard!)"),
+    replace_allocator: Option<bool> = (None, parse_opt_toggle,
+        "attempt to replace the system allocator with jemalloc"),
 )
 
 pub fn build_codegen_options(matches: &getopts::Matches) -> CodegenOptions
