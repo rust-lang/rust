@@ -74,11 +74,15 @@ use core::kinds::{Sized, marker};
 use core::mem;
 use core::prelude::{Clone, Drop, Eq, Iterator};
 use core::prelude::{SlicePrelude, None, Option, Ordering, PartialEq};
-use core::prelude::{PartialOrd, RawPtr, Some, StrPrelude, range};
+use core::prelude::{PartialOrd, RawPtr, Some, range};
+#[cfg(stage0)]  // NOTE(stage0): Remove import after a snapshot
+use core::prelude::{StrPrelude};
 use core::ptr;
 use core::raw::Slice;
 use core::slice;
-use core::str;
+use core::str as str_;
+#[cfg(not(stage0))] // NOTE(stage0): Remove cfg after a snapshot
+use core::str::str;
 use libc;
 
 /// The representation of a C String.
@@ -228,7 +232,7 @@ impl CString {
     #[inline]
     pub fn as_str<'a>(&'a self) -> Option<&'a str> {
         let buf = self.as_bytes_no_nul();
-        str::from_utf8(buf)
+        str_::from_utf8(buf)
     }
 
     /// Return a CString iterator.

@@ -70,6 +70,8 @@ use core::fmt;
 use core::intrinsics;
 use core::mem;
 use core::raw::Closure;
+#[cfg(not(stage0))] // NOTE(stage0): Remove cfg after a snapshot
+use core::str::str;
 use libc::c_void;
 
 use local::Local;
