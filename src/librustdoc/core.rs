@@ -19,7 +19,6 @@ use syntax::{ast, ast_map, codemap, diagnostic};
 
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
-use arena::TypedArena;
 
 use visit_ast::RustdocVisitor;
 use clean;
@@ -121,14 +120,11 @@ pub fn run_core(libs: Vec<Path>, cfgs: Vec<String>, externs: Externs,
     let mut forest = ast_map::Forest::new(krate);
     let ast_map = driver::assign_node_ids_and_map(&sess, &mut forest);
 
-    let type_arena = TypedArena::new();
-    let substs_arena = TypedArena::new();
-    let bare_fn_arena = TypedArena::new();
+    let arenas = ty::CtxtArenas::new();
     let ty::CrateAnalysis {
+    let driver::CrateAnalysis {
         exported_items, public_items, ty_cx, ..
-    } = driver::phase_3_run_analysis_passes(sess, ast_map,
-                                            &type_arena, &substs_arena, &bare_fn_arena,
-                                            name);
+    } = driver::phase_3_run_analysis_passes(sess, ast_map, &arenas, name);
 
     let ctxt = DocContext {
         krate: ty_cx.map.krate(),

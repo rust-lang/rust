@@ -604,14 +604,29 @@ pub struct TransmuteRestriction<'tcx> {
     pub id: ast::NodeId,
 }
 
+/// Internal storage
+pub struct CtxtArenas<'tcx> {
+    type_: TypedArena<TyS<'tcx>>,
+    substs: TypedArena<Substs<'tcx>>,
+    bare_fn: TypedArena<BareFnTy<'tcx>>,
+}
+
+impl<'tcx> CtxtArenas<'tcx> {
+    pub fn new() -> CtxtArenas<'tcx> {
+        CtxtArenas {
+            type_: TypedArena::new(),
+            substs: TypedArena::new(),
+            bare_fn: TypedArena::new(),
+        }
+    }
+}
+
 /// The data structure to keep track of all the information that typechecker
 /// generates so that so that it can be reused and doesn't have to be redone
 /// later on.
 pub struct ctxt<'tcx> {
-    /// The arena that types are allocated from.
-    type_arena: &'tcx TypedArena<TyS<'tcx>>,
-    substs_arena: &'tcx TypedArena<Substs<'tcx>>,
-    bare_fn_arena: &'tcx TypedArena<BareFnTy<'tcx>>,
+    /// The arenas that types etc are allocated from.
+    arenas: &'tcx CtxtArenas<'tcx>,
 
     /// Specifically use a speedy hash algorithm for this hash map, it's used
     /// quite often.
@@ -2056,9 +2071,7 @@ impl UnboxedClosureKind {
 }
 
 pub fn mk_ctxt<'tcx>(s: Session,
-                     type_arena: &'tcx TypedArena<TyS<'tcx>>,
-                     substs_arena: &'tcx TypedArena<Substs<'tcx>>,
-                     bare_fn_arena: &'tcx TypedArena<BareFnTy<'tcx>>,
+                     arenas: &'tcx CtxtArenas<'tcx>,
                      dm: DefMap,
                      named_region_map: resolve_lifetime::NamedRegionMap,
                      map: ast_map::Map<'tcx>,
@@ -2068,9 +2081,7 @@ pub fn mk_ctxt<'tcx>(s: Session,
                      lang_items: middle::lang_items::LanguageItems,
                      stability: stability::Index) -> ctxt<'tcx> {
     ctxt {
-        type_arena: type_arena,
-        substs_arena: substs_arena,
-        bare_fn_arena: bare_fn_arena,
+        arenas: arenas,
         interner: RefCell::new(FnvHashMap::new()),
         substs_interner: RefCell::new(FnvHashMap::new()),
         bare_fn_interner: RefCell::new(FnvHashMap::new()),
@@ -2139,7 +2150,7 @@ impl<'tcx> ctxt<'tcx> {
             return *substs;
         }
 
-        let substs = self.substs_arena.alloc(substs);
+        let substs = self.arenas.substs.alloc(substs);
         self.substs_interner.borrow_mut().insert(substs, substs);
         substs
     }
@@ -2149,7 +2160,7 @@ impl<'tcx> ctxt<'tcx> {
             return *bare_fn;
         }
 
-        let bare_fn = self.bare_fn_arena.alloc(bare_fn);
+        let bare_fn = self.arenas.bare_fn.alloc(bare_fn);
         self.bare_fn_interner.borrow_mut().insert(bare_fn, bare_fn);
         bare_fn
     }
@@ -2176,7 +2187,7 @@ pub fn mk_t<'tcx>(cx: &ctxt<'tcx>, st: sty<'tcx>) -> Ty<'tcx> {
 
     let flags = FlagComputation::for_sty(&st);
 
-    let ty = cx.type_arena.alloc(TyS {
+    let ty = cx.arenas.type_.alloc(TyS {
         sty: st,
         flags: flags.flags,
         region_depth: flags.depth,

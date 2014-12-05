@@ -127,13 +127,9 @@ fn test_env<F>(source_string: &str,
     let named_region_map = resolve_lifetime::krate(&sess, krate, &def_map);
     let region_map = region::resolve_crate(&sess, krate);
     let stability_index = stability::Index::build(krate);
-    let type_arena = TypedArena::new();
-    let substs_arena = TypedArena::new();
-    let bare_fn_arena = TypedArena::new();
+    let arenas = ty::CtxtArenas::new();
     let tcx = ty::mk_ctxt(sess,
-                          &type_arena,
-                          &substs_arena,
-                          &bare_fn_arena,
+                          &arenas,
                           def_map,
                           named_region_map,
                           ast_map,
