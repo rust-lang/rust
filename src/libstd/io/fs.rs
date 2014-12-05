@@ -53,7 +53,8 @@
 use clone::Clone;
 use io::standard_error;
 use io::{FilePermission, Write, Open, FileAccess, FileMode, FileType};
-use io::{IoResult, IoError, FileStat, SeekStyle, Seek, Writer, Reader};
+use io::{IoResult, IoError, InvalidInput};
+use io::{FileStat, SeekStyle, Seek, Writer, Reader};
 use io::{Read, Truncate, ReadWrite, Append};
 use io::UpdateIoError;
 use io;
@@ -134,13 +135,26 @@ impl File {
     pub fn open_mode(path: &Path,
                      mode: FileMode,
                      access: FileAccess) -> IoResult<File> {
-        fs_imp::open(path, mode, access).map(|fd| {
-            File {
-                path: path.clone(),
-                fd: fd,
-                last_nread: -1
+        fs_imp::open(path, mode, access).and_then(|fd| {
+            // On *BSD systems, we can open a directory as a file and read from it:
+            // fd=open("/tmp", O_RDONLY); read(fd, buf, N);
+            // due to an old tradition before the introduction of opendir(3).
+            // We explicitly reject it because there are few use cases.
+            if cfg!(not(any(windows, target_os = "linux", target_os = "android"))) &&
+               try!(fd.fstat()).kind == FileType::Directory {
+                Err(IoError {
+                    kind: InvalidInput,
+                    desc: "is a directory",
+                    detail: None
+                })
+            } else {
+                Ok(File {
+                    path: path.clone(),
+                    fd: fd,
+                    last_nread: -1
+                })
             }
-        }).update_err("couldn't open file", |e| {
+        }).update_err("couldn't open path as file", |e| {
             format!("{}; path={}; mode={}; access={}", e, path.display(),
                 mode_string(mode), access_string(access))
         })
@@ -237,7 +251,7 @@ impl File {
     }
 
     /// Queries information about the underlying file.
-    pub fn stat(&mut self) -> IoResult<FileStat> {
+    pub fn stat(&self) -> IoResult<FileStat> {
         self.fd.fstat()
             .update_err("couldn't fstat file", |e|
                 format!("{}; path={}", e, self.path.display()))
@@ -886,7 +900,7 @@ mod test {
         let filename = &tmpdir.join("file_that_does_not_exist.txt");
         let result = File::open_mode(filename, Open, Read);
 
-        error!(result, "couldn't open file");
+        error!(result, "couldn't open path as file");
         if cfg!(unix) {
             error!(result, "no such file or directory");
         }
