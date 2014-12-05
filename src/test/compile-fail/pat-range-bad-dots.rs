@@ -10,7 +10,7 @@
 
 pub fn main() {
     match 22i {
-        0 .. 3 => {} //~ ERROR expected `=>`, found `..`
+        0 .. 3 => {} //~ ERROR expected one of `...`, `=>`, or `|`, found `..`
         _ => {}
     }
 }

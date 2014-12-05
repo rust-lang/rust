@@ -1428,6 +1428,7 @@ impl LintPass for MissingDoc {
             ast::ItemEnum(..) => "an enum",
             ast::ItemStruct(..) => "a struct",
             ast::ItemTrait(..) => "a trait",
+            ast::ItemTy(..) => "a type alias",
             _ => return
         };
         self.check_missing_docs_attrs(cx, Some(it.id), it.attrs.as_slice(),

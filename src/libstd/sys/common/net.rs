@@ -16,13 +16,13 @@ use libc::{mod, c_char, c_int};
 use mem;
 use num::Int;
 use ptr::{mod, null, null_mut};
-use rustrt::mutex;
 use io::net::ip::{SocketAddr, IpAddr, Ipv4Addr, Ipv6Addr};
 use io::net::addrinfo;
 use io::{IoResult, IoError};
 use sys::{mod, retry, c, sock_t, last_error, last_net_error, last_gai_error, close_sock,
           wrlen, msglen_t, os, wouldblock, set_nonblocking, timer, ms_to_timeval,
           decode_error_detailed};
+use sync::{Mutex, MutexGuard};
 use sys_common::{mod, keep_going, short_write, timeout};
 use prelude::*;
 use cmp;
@@ -557,12 +557,12 @@ struct Inner {
 
     // Unused on Linux, where this lock is not necessary.
     #[allow(dead_code)]
-    lock: mutex::NativeMutex
+    lock: Mutex<()>,
 }
 
 impl Inner {
     fn new(fd: sock_t) -> Inner {
-        Inner { fd: fd, lock: unsafe { mutex::NativeMutex::new() } }
+        Inner { fd: fd, lock: Mutex::new(()) }
     }
 }
 
@@ -572,7 +572,7 @@ impl Drop for Inner {
 
 pub struct Guard<'a> {
     pub fd: sock_t,
-    pub guard: mutex::LockGuard<'a>,
+    pub guard: MutexGuard<'a, ()>,
 }
 
 #[unsafe_destructor]
@@ -666,7 +666,7 @@ impl TcpStream {
     fn lock_nonblocking<'a>(&'a self) -> Guard<'a> {
         let ret = Guard {
             fd: self.fd(),
-            guard: unsafe { self.inner.lock.lock() },
+            guard: self.inner.lock.lock(),
         };
         assert!(set_nonblocking(self.fd(), true).is_ok());
         ret
@@ -805,7 +805,7 @@ impl UdpSocket {
     fn lock_nonblocking<'a>(&'a self) -> Guard<'a> {
         let ret = Guard {
             fd: self.fd(),
-            guard: unsafe { self.inner.lock.lock() },
+            guard: self.inner.lock.lock(),
         };
         assert!(set_nonblocking(self.fd(), true).is_ok());
         ret

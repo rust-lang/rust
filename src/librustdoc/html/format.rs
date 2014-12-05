@@ -23,7 +23,6 @@ use syntax::ast_util;
 
 use clean;
 use stability_summary::ModuleSummary;
-use html::item_type;
 use html::item_type::ItemType;
 use html::render;
 use html::render::{cache, CURRENT_LOCATION_KEY};
@@ -283,7 +282,7 @@ fn path(w: &mut fmt::Formatter, path: &clean::Path, print_all: bool,
                 url.push_str("/");
             }
             match shortty {
-                item_type::Module => {
+                ItemType::Module => {
                     url.push_str(fqp.last().unwrap().as_slice());
                     url.push_str("/index.html");
                 }

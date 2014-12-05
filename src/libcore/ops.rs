@@ -787,7 +787,7 @@ impl<'a, Sized? T> Deref<T> for &'a mut T {
 /// }
 /// ```
 #[lang="deref_mut"]
-pub trait DerefMut<Sized? Result>: Deref<Result> {
+pub trait DerefMut<Sized? Result> for Sized? : Deref<Result> {
     /// The method called to mutably dereference a value
     fn deref_mut<'a>(&'a mut self) -> &'a mut Result;
 }

@@ -140,7 +140,7 @@ $ editor main.rs
 ```
 
 Rust files always end in a `.rs` extension. If you're using more than one word
-in your file name, use an underscore. `hello_world.rs` rather than
+in your filename, use an underscore. `hello_world.rs` rather than
 `helloworld.rs`.
 
 Now that you've got your file open, type this in:
@@ -200,7 +200,7 @@ about this difference. Just know that sometimes, you'll see a `!`, and that
 means that you're calling a macro instead of a normal function. Rust implements
 `println!` as a macro rather than a function for good reasons, but that's a
 very advanced topic. You'll learn more when we talk about macros later. One
-last thing to mention: Rust's macros are significantly different than C macros,
+last thing to mention: Rust's macros are significantly different from C macros,
 if you've used those. Don't be scared of using macros. We'll get to the details
 eventually, you'll just have to trust us for now.
 
@@ -595,8 +595,8 @@ let y = if x == 5i { 10i } else { 15i };
 ```
 
 This reveals two interesting things about Rust: it is an expression-based
-language, and semicolons are different than in other 'curly brace and
-semicolon'-based languages. These two things are related.
+language, and semicolons are different from semicolons in other 'curly brace
+and semicolon'-based languages. These two things are related.
 
 ## Expressions vs. Statements
 
@@ -1454,7 +1454,7 @@ Both `continue` and `break` are valid in both kinds of loops.
 # Strings
 
 Strings are an important concept for any programmer to master. Rust's string
-handling system is a bit different than in other languages, due to its systems
+handling system is a bit different from other languages, due to its systems
 focus. Any time you have a data structure of variable size, things can get
 tricky, and strings are a re-sizable data structure. That said, Rust's strings
 also work differently than in some other systems languages, such as C.
@@ -2064,8 +2064,8 @@ Great! Next up: let's compare our guess to the secret guess.
 ## Comparing guesses
 
 If you remember, earlier in the guide, we made a `cmp` function that compared
-two numbers. Let's add that in, along with a `match` statement to compare the
-guess to the secret guess:
+two numbers. Let's add that in, along with a `match` statement to compare our
+guess to the secret number:
 
 ```{rust,ignore}
 use std::io;
@@ -2861,7 +2861,7 @@ parts of your library. The six levels are:
 * experimental: This item was only recently introduced or is otherwise in a
   state of flux. It may change significantly, or even be removed. No guarantee
   of backwards-compatibility.
-* unstable: This item is still under development, but requires more testing to
+* unstable: This item is still under development and requires more testing to
   be considered stable. No guarantee of backwards-compatibility.
 * stable: This item is considered stable, and will not change significantly.
   Guarantee of backwards-compatibility.
@@ -5174,12 +5174,12 @@ processor. Rust's semantics lend themselves very nicely to solving a number of
 issues that programmers have with concurrency. Many concurrency errors that are
 runtime errors in other languages are compile-time errors in Rust.
 
-Rust's concurrency primitive is called a **task**. Tasks are lightweight, and
-do not share memory in an unsafe manner, preferring message passing to
-communicate.  It's worth noting that tasks are implemented as a library, and
-not part of the language.  This means that in the future, other concurrency
-libraries can be written for Rust to help in specific scenarios.  Here's an
-example of creating a task:
+Rust's concurrency primitive is called a **task**. Tasks are similar to
+threads, and do not share memory in an unsafe manner, preferring message
+passing to communicate. It's worth noting that tasks are implemented as a
+library, and not part of the language. This means that in the future, other
+concurrency libraries can be written for Rust to help in specific scenarios.
+Here's an example of creating a task:
 
 ```{rust}
 spawn(proc() {
