@@ -14,16 +14,15 @@
 
 use self::Fragment::*;
 
-use session::config;
-use middle::borrowck::{LoanPath};
-use middle::borrowck::LoanPathKind::{LpVar, LpUpvar, LpDowncast, LpExtend};
-use middle::borrowck::LoanPathElem::{LpDeref, LpInterior};
-use middle::borrowck::move_data::{InvalidMovePathIndex};
-use middle::borrowck::move_data::{MoveData, MovePathIndex};
-use middle::ty;
-use middle::mem_categorization as mc;
-use util::ppaux::{Repr, UserString};
-
+use borrowck::{LoanPath};
+use borrowck::LoanPathKind::{LpVar, LpUpvar, LpDowncast, LpExtend};
+use borrowck::LoanPathElem::{LpDeref, LpInterior};
+use borrowck::move_data::{InvalidMovePathIndex};
+use borrowck::move_data::{MoveData, MovePathIndex};
+use rustc::session::config;
+use rustc::middle::ty;
+use rustc::middle::mem_categorization as mc;
+use rustc::util::ppaux::{Repr, UserString};
 use std::mem;
 use std::rc::Rc;
 use std::slice;

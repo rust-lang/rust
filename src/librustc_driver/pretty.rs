@@ -20,13 +20,13 @@ use rustc_trans::back::link;
 use driver;
 
 use rustc::middle::ty;
-use rustc::middle::borrowck::{mod, FnPartsWithCFG};
-use rustc::middle::borrowck::graphviz as borrowck_dot;
 use rustc::middle::cfg;
 use rustc::middle::cfg::graphviz::LabelledCFG;
 use rustc::session::Session;
 use rustc::session::config::{mod, Input};
 use rustc::util::ppaux;
+use rustc_borrowck as borrowck;
+use rustc_borrowck::graphviz as borrowck_dot;
 
 use syntax::ast;
 use syntax::ast_map::{mod, blocks, NodePrinter};
@@ -565,7 +565,7 @@ fn print_flowgraph<W:io::Writer>(variants: Vec<borrowck_dot::Variant>,
             return Ok(())
         }
         blocks::FnLikeCode(fn_like) => {
-            let fn_parts = FnPartsWithCFG::from_fn_like(&fn_like, &cfg);
+            let fn_parts = borrowck::FnPartsWithCFG::from_fn_like(&fn_like, &cfg);
             let (bccx, analysis_data) =
                 borrowck::build_borrowck_dataflow_data_for_fn(ty_cx, fn_parts);
 

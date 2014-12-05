@@ -14,17 +14,15 @@
 
 pub use self::Variant::*;
 
-/// For clarity, rename the graphviz crate locally to dot.
-use graphviz as dot;
-pub use middle::cfg::graphviz::{Node, Edge};
-use middle::cfg::graphviz as cfg_dot;
+pub use rustc::middle::cfg::graphviz::{Node, Edge};
+use rustc::middle::cfg::graphviz as cfg_dot;
 
-use middle::borrowck;
-use middle::borrowck::{BorrowckCtxt, LoanPath};
-use middle::cfg::{CFGIndex};
-use middle::dataflow::{DataFlowOperator, DataFlowContext, EntryOrExit};
-use middle::dataflow;
-
+use borrowck;
+use borrowck::{BorrowckCtxt, LoanPath};
+use dot;
+use rustc::middle::cfg::{CFGIndex};
+use rustc::middle::dataflow::{DataFlowOperator, DataFlowContext, EntryOrExit};
+use rustc::middle::dataflow;
 use std::rc::Rc;
 
 #[deriving(Show)]
