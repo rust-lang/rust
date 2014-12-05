@@ -873,6 +873,8 @@ impl<'tcx> ctxt<'tcx> {
             ty_struct, ty_unboxed_closure, ty_tup, ty_param, ty_open, ty_infer);
 
         println!("Substs interner: #{}", self.substs_interner.borrow().len());
+        println!("BareFnTy interner: #{}", self.bare_fn_interner.borrow().len());
+        println!("Region interner: #{}", self.region_interner.borrow().len());
     }
 }
 
