@@ -462,25 +462,85 @@ impl Extend<uint> for TrieSet {
     }
 }
 
+#[unstable = "matches collection reform specification, waiting for dust to settle"]
 impl BitOr<TrieSet, TrieSet> for TrieSet {
+    /// Returns the union of `self` and `rhs` as a new `TrieSet`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::TrieSet;
+    ///
+    /// let a: TrieSet = vec![1, 2, 3].into_iter().collect();
+    /// let b: TrieSet = vec![3, 4, 5].into_iter().collect();
+    ///
+    /// let set: TrieSet = a | b;
+    /// let v: Vec<uint> = set.iter().collect();
+    /// assert_eq!(v, vec![1u, 2, 3, 4, 5]);
+    /// ```
     fn bitor(&self, rhs: &TrieSet) -> TrieSet {
         self.union(rhs).collect()
     }
 }
 
+#[unstable = "matches collection reform specification, waiting for dust to settle"]
 impl BitAnd<TrieSet, TrieSet> for TrieSet {
+    /// Returns the intersection of `self` and `rhs` as a new `TrieSet`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::TrieSet;
+    ///
+    /// let a: TrieSet = vec![1, 2, 3].into_iter().collect();
+    /// let b: TrieSet = vec![2, 3, 4].into_iter().collect();
+    ///
+    /// let set: TrieSet = a & b;
+    /// let v: Vec<uint> = set.iter().collect();
+    /// assert_eq!(v, vec![2u, 3]);
+    /// ```
     fn bitand(&self, rhs: &TrieSet) -> TrieSet {
         self.intersection(rhs).collect()
     }
 }
 
+#[unstable = "matches collection reform specification, waiting for dust to settle"]
 impl BitXor<TrieSet, TrieSet> for TrieSet {
+    /// Returns the symmetric difference of `self` and `rhs` as a new `TrieSet`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::TrieSet;
+    ///
+    /// let a: TrieSet = vec![1, 2, 3].into_iter().collect();
+    /// let b: TrieSet = vec![3, 4, 5].into_iter().collect();
+    ///
+    /// let set: TrieSet = a ^ b;
+    /// let v: Vec<uint> = set.iter().collect();
+    /// assert_eq!(v, vec![1u, 2, 4, 5]);
+    /// ```
     fn bitxor(&self, rhs: &TrieSet) -> TrieSet {
         self.symmetric_difference(rhs).collect()
     }
 }
 
+#[unstable = "matches collection reform specification, waiting for dust to settle"]
 impl Sub<TrieSet, TrieSet> for TrieSet {
+    /// Returns the difference of `self` and `rhs` as a new `TrieSet`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::TrieSet;
+    ///
+    /// let a: TrieSet = vec![1, 2, 3].into_iter().collect();
+    /// let b: TrieSet = vec![3, 4, 5].into_iter().collect();
+    ///
+    /// let set: TrieSet = a - b;
+    /// let v: Vec<uint> = set.iter().collect();
+    /// assert_eq!(v, vec![1u, 2]);
+    /// ```
     fn sub(&self, rhs: &TrieSet) -> TrieSet {
         self.difference(rhs).collect()
     }
