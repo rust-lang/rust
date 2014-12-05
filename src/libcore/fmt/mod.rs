@@ -19,7 +19,7 @@ use kinds::{Copy, Sized};
 use mem;
 use option::Option;
 use option::Option::{Some, None};
-use ops::Deref;
+use ops::{Deref, FnOnce};
 use result::Result::{Ok, Err};
 use result;
 use slice::SlicePrelude;
@@ -491,10 +491,9 @@ impl<'a> Formatter<'a> {
 
     /// Runs a callback, emitting the correct padding either before or
     /// afterwards depending on whether right or left alignment is requested.
-    fn with_padding(&mut self,
-                    padding: uint,
-                    default: rt::Alignment,
-                    f: |&mut Formatter| -> Result) -> Result {
+    fn with_padding<F>(&mut self, padding: uint, default: rt::Alignment, f: F) -> Result where
+        F: FnOnce(&mut Formatter) -> Result,
+    {
         use char::Char;
         let align = match self.align {
             rt::AlignUnknown => default,
