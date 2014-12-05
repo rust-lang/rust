@@ -764,7 +764,7 @@ impl<'a> StringReader<'a> {
         }
     }
 
-    // SNAP c9f6d69
+    // SNAP 361baab
     #[allow(unused)]
     fn old_escape_warning(&mut self, sp: Span) {
         self.span_diagnostic
@@ -797,7 +797,7 @@ impl<'a> StringReader<'a> {
                                     self.scan_unicode_escape(delim)
                                 } else {
                                     let res = self.scan_hex_digits(4u, delim, false);
-                                    // SNAP c9f6d69
+                                    // SNAP 361baab
                                     //let sp = codemap::mk_sp(escaped_pos, self.last_pos);
                                     //self.old_escape_warning(sp);
                                     res
@@ -805,7 +805,7 @@ impl<'a> StringReader<'a> {
                             }
                             'U' if !ascii_only => {
                                 let res = self.scan_hex_digits(8u, delim, false);
-                                // SNAP c9f6d69
+                                // SNAP 361baab
                                 //let sp = codemap::mk_sp(escaped_pos, self.last_pos);
                                 //self.old_escape_warning(sp);
                                 res
