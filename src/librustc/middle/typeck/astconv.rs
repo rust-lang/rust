@@ -52,6 +52,7 @@ use middle::resolve_lifetime as rl;
 use middle::subst::{FnSpace, TypeSpace, AssocSpace, SelfSpace, Subst, Substs};
 use middle::subst::{VecPerParamSpace};
 use middle::ty::{mod, Ty};
+use middle::ty_fold;
 use middle::typeck::lookup_def_tcx;
 use middle::typeck::rscope::{UnelidableRscope, RegionScope, SpecificRscope,
                              ShiftedRscope, BindingRscope};
@@ -1069,7 +1070,8 @@ fn ty_of_method_or_bare_fn<'a, 'tcx, AC: AstConv<'tcx>>(
                            opt_self_info: Option<SelfInfo<'a, 'tcx>>,
                            decl: &ast::FnDecl)
                            -> (ty::BareFnTy<'tcx>,
-                               Option<ty::ExplicitSelfCategory>) {
+                               Option<ty::ExplicitSelfCategory>)
+{
     debug!("ty_of_method_or_bare_fn");
 
     // New region names that appear inside of the arguments of the function
@@ -1085,6 +1087,11 @@ fn ty_of_method_or_bare_fn<'a, 'tcx, AC: AstConv<'tcx>>(
     let (self_ty, mut implied_output_region) = match opt_self_info {
         None => (None, None),
         Some(self_info) => {
+            // Shift regions in the self type by 1 to account for the binding
+            // level introduced by the function itself.
+            let untransformed_self_ty =
+                ty_fold::shift_regions(this.tcx(), 1, &self_info.untransformed_self_ty);
+
             // Figure out and record the explicit self category.
             let explicit_self_category =
                 determine_explicit_self_category(this, &rb, &self_info);
@@ -1094,21 +1101,19 @@ fn ty_of_method_or_bare_fn<'a, 'tcx, AC: AstConv<'tcx>>(
                     (None, None)
                 }
                 ty::ByValueExplicitSelfCategory => {
-                    (Some(self_info.untransformed_self_ty), None)
+                    (Some(untransformed_self_ty), None)
                 }
                 ty::ByReferenceExplicitSelfCategory(region, mutability) => {
                     (Some(ty::mk_rptr(this.tcx(),
                                       region,
                                       ty::mt {
-                                        ty: self_info.untransformed_self_ty,
+                                        ty: untransformed_self_ty,
                                         mutbl: mutability
                                       })),
                      Some(region))
                 }
                 ty::ByBoxExplicitSelfCategory => {
-                    (Some(ty::mk_uniq(this.tcx(),
-                                      self_info.untransformed_self_ty)),
-                     None)
+                    (Some(ty::mk_uniq(this.tcx(), untransformed_self_ty)), None)
                 }
             }
         }
