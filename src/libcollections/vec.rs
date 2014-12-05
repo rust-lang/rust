@@ -206,7 +206,7 @@ impl<T> Vec<T> {
     #[inline]
     #[unstable = "the naming is uncertain as well as this migrating to unboxed \
                   closures in the future"]
-    pub fn from_fn(length: uint, op: |uint| -> T) -> Vec<T> {
+    pub fn from_fn<F>(length: uint, mut op: F) -> Vec<T> where F: FnMut(uint) -> T {
         unsafe {
             let mut xs = Vec::with_capacity(length);
             while xs.len < length {
@@ -289,7 +289,7 @@ impl<T> Vec<T> {
     /// ```
     #[inline]
     #[experimental]
-    pub fn partition(self, f: |&T| -> bool) -> (Vec<T>, Vec<T>) {
+    pub fn partition<F>(self, mut f: F) -> (Vec<T>, Vec<T>) where F: FnMut(&T) -> bool {
         let mut lefts  = Vec::new();
         let mut rights = Vec::new();
 
@@ -400,7 +400,7 @@ impl<T: Clone> Vec<T> {
     /// assert_eq!(odd, vec![1i, 3]);
     /// ```
     #[experimental]
-    pub fn partitioned(&self, f: |&T| -> bool) -> (Vec<T>, Vec<T>) {
+    pub fn partitioned<F>(&self, mut f: F) -> (Vec<T>, Vec<T>) where F: FnMut(&T) -> bool {
         let mut lefts = Vec::new();
         let mut rights = Vec::new();
 
@@ -991,7 +991,7 @@ impl<T> Vec<T> {
     /// assert_eq!(vec, vec![2, 4]);
     /// ```
     #[unstable = "the closure argument may become an unboxed closure"]
-    pub fn retain(&mut self, f: |&T| -> bool) {
+    pub fn retain<F>(&mut self, mut f: F) where F: FnMut(&T) -> bool {
         let len = self.len();
         let mut del = 0u;
         {
@@ -1023,7 +1023,7 @@ impl<T> Vec<T> {
     /// assert_eq!(vec, vec![0, 1, 0, 1, 2]);
     /// ```
     #[unstable = "this function may be renamed or change to unboxed closures"]
-    pub fn grow_fn(&mut self, n: uint, f: |uint| -> T) {
+    pub fn grow_fn<F>(&mut self, n: uint, mut f: F) where F: FnMut(uint) -> T {
         self.reserve(n);
         for i in range(0u, n) {
             self.push(f(i));
@@ -1570,7 +1570,7 @@ impl<T> Vec<T> {
     /// let newtyped_bytes = bytes.map_in_place(|x| Newtype(x));
     /// assert_eq!(newtyped_bytes.as_slice(), [Newtype(0x11), Newtype(0x22)].as_slice());
     /// ```
-    pub fn map_in_place<U>(self, f: |T| -> U) -> Vec<U> {
+    pub fn map_in_place<U, F>(self, mut f: F) -> Vec<U> where F: FnMut(T) -> U {
         // FIXME: Assert statically that the types `T` and `U` have the same
         // size.
         assert!(mem::size_of::<T>() == mem::size_of::<U>());
