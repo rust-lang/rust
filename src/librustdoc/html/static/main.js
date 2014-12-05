@@ -707,8 +707,8 @@
                 var code = $('<code>').append(structs[j]);
                 $.each(code.find('a'), function(idx, a) {
                     var href = $(a).attr('href');
-                    if (!href.startsWith('http')) {
-                        $(a).attr('href', rootPath + $(a).attr('href'));
+                    if (href && !href.startsWith('http')) {
+                        $(a).attr('href', rootPath + href);
                     }
                 });
                 var li = $('<li>').append(code);
