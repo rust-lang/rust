@@ -805,7 +805,7 @@ fn compare_values<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                 ty::ty_uint(ast::TyU8) => {
                     // NOTE: cast &[u8] to &str and abuse the str_eq lang item,
                     // which calls memcmp().
-                    let t = ty::mk_str_slice(cx.tcx(), ty::ReStatic, ast::MutImmutable);
+                    let t = ty::mk_str_slice(cx.tcx(), ty::ReStatic);
                     let lhs = BitCast(cx, lhs, type_of::type_of(cx.ccx(), t).ptr_to());
                     let rhs = BitCast(cx, rhs, type_of::type_of(cx.ccx(), t).ptr_to());
                     compare_str(cx, lhs, rhs, rhs_t)
