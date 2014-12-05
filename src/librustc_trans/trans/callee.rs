@@ -272,7 +272,7 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
            bare_fn_ty.repr(tcx));
 
     // This is an impl of `Fn` trait, so receiver is `&self`.
-    let bare_fn_ty_ref = ty::mk_imm_rptr(tcx, ty::ReStatic, bare_fn_ty);
+    let bare_fn_ty_ref = ty::mk_imm_rptr(tcx, tcx.mk_region(ty::ReStatic), bare_fn_ty);
 
     // Construct the "tuply" version of `bare_fn_ty`. It takes two arguments: `self`,
     // which is the fn pointer, and `args`, which is the arguments tuple.

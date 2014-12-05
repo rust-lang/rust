@@ -32,7 +32,6 @@ use serialize::{json, Encodable};
 use std::io;
 use std::io::fs;
 use std::os;
-use save;
 use syntax::ast;
 use syntax::ast_map;
 use syntax::attr;

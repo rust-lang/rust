@@ -122,7 +122,6 @@ pub fn run_core(libs: Vec<Path>, cfgs: Vec<String>, externs: Externs,
 
     let arenas = ty::CtxtArenas::new();
     let ty::CrateAnalysis {
-    let driver::CrateAnalysis {
         exported_items, public_items, ty_cx, ..
     } = driver::phase_3_run_analysis_passes(sess, ast_map, &arenas, name);
 
