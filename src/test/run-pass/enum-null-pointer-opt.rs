@@ -34,9 +34,21 @@ fn main() {
     // Pointers - Box<T>
     assert_eq!(size_of::<Box<int>>(), size_of::<Option<Box<int>>>());
 
-
     // The optimization can't apply to raw pointers
     assert!(size_of::<Option<*const int>>() != size_of::<*const int>());
     assert!(Some(0 as *const int).is_some()); // Can't collapse None to null
+
+    struct Foo {
+        _a: Box<int>
+    }
+    struct Bar(Box<int>);
+
+    // Should apply through structs
+    assert_eq!(size_of::<Foo>(), size_of::<Option<Foo>>());
+    assert_eq!(size_of::<Bar>(), size_of::<Option<Bar>>());
+    // and tuples
+    assert_eq!(size_of::<(u8, Box<int>)>(), size_of::<Option<(u8, Box<int>)>>());
+    // and fixed-size arrays
+    assert_eq!(size_of::<[Box<int>, ..1]>(), size_of::<Option<[Box<int>, ..1]>>());
 
 }
