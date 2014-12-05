@@ -607,7 +607,7 @@ pub enum Stmt_ {
     /// Expr with trailing semi-colon (may have any type):
     StmtSemi(P<Expr>, NodeId),
 
-    StmtMac(Mac, MacStmtStyle),
+    StmtMac(P<Mac>, MacStmtStyle),
 }
 
 #[deriving(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Show)]

@@ -1337,7 +1337,7 @@ impl<'a> State<'a> {
                     ast::MacStmtWithBraces => token::Brace,
                     _ => token::Paren
                 };
-                try!(self.print_mac(mac, delim));
+                try!(self.print_mac(&**mac, delim));
                 match style {
                     ast::MacStmtWithBraces => {}
                     _ => try!(word(&mut self.s, ";")),
