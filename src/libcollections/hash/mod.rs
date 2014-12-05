@@ -69,6 +69,8 @@ use core::borrow::{Cow, ToOwned};
 use core::intrinsics::TypeId;
 use core::mem;
 use core::num::Int;
+#[cfg(not(stage0))] // NOTE(stage0): Remove cfg after a snapshot
+use core::str::str;
 
 use vec::Vec;
 

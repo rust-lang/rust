@@ -79,7 +79,12 @@ pub use core::str::{eq_slice, is_utf8, is_utf16, Utf16Items};
 pub use core::str::{Utf16Item, ScalarValue, LoneSurrogate, utf16_items};
 pub use core::str::{truncate_utf16_at_nul, utf8_char_width, CharRange};
 pub use core::str::{FromStr, from_str};
-pub use core::str::{Str, StrPrelude};
+pub use core::str::Str;
+// NOTE(stage0): Remove import after a snapshot
+#[cfg(stage0)]
+pub use core::str::StrPrelude;
+#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
+pub use core::str::str;
 pub use core::str::{from_utf8_unchecked, from_c_str};
 pub use unicode::str::{UnicodeStrPrelude, Words, Graphemes, GraphemeIndices};
 
