@@ -19,13 +19,17 @@
 //! # Example
 //!
 //! ```
+//! # #![feature(unboxed_closures)]
+//!
 //! use std::finally::Finally;
 //!
-//! (|| {
+//! # fn main() {
+//! (|&mut:| {
 //!     // ...
 //! }).finally(|| {
 //!     // this code is always run
 //! })
+//! # }
 //! ```
 
 #![experimental]
