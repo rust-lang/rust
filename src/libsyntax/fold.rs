@@ -1267,7 +1267,7 @@ pub fn noop_fold_pat<T: Folder>(p: P<Pat>, folder: &mut T) -> P<Pat> {
             }
             PatTup(elts) => PatTup(elts.move_map(|x| folder.fold_pat(x))),
             PatBox(inner) => PatBox(folder.fold_pat(inner)),
-            PatRegion(inner) => PatRegion(folder.fold_pat(inner)),
+            PatRegion(inner, mutbl) => PatRegion(folder.fold_pat(inner), mutbl),
             PatRange(e1, e2) => {
                 PatRange(folder.fold_expr(e1), folder.fold_expr(e2))
             },

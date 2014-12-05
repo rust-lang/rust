@@ -2235,7 +2235,7 @@ fn name_from_pat(p: &ast::Pat) -> String {
         PatTup(ref elts) => format!("({})", elts.iter().map(|p| name_from_pat(&**p))
                                             .collect::<Vec<String>>().connect(", ")),
         PatBox(ref p) => name_from_pat(&**p),
-        PatRegion(ref p) => name_from_pat(&**p),
+        PatRegion(ref p, _) => name_from_pat(&**p),
         PatLit(..) => {
             warn!("tried to get argument name from PatLit, \
                   which is silly in function arguments");

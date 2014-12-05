@@ -2092,8 +2092,11 @@ impl<'a> State<'a> {
                 try!(word(&mut self.s, "box "));
                 try!(self.print_pat(&**inner));
             }
-            ast::PatRegion(ref inner) => {
+            ast::PatRegion(ref inner, mutbl) => {
                 try!(word(&mut self.s, "&"));
+                if mutbl == ast::MutMutable {
+                    try!(word(&mut self.s, "mut "));
+                }
                 try!(self.print_pat(&**inner));
             }
             ast::PatLit(ref e) => try!(self.print_expr(&**e)),
