@@ -11,7 +11,7 @@
 //! See `doc.rs` for high-level documentation
 
 use super::SelectionContext;
-use super::Obligation;
+use super::{Obligation, ObligationCause};
 use super::util;
 
 use middle::subst;
@@ -48,7 +48,7 @@ pub fn impl_can_satisfy(infcx: &InferCtxt,
     // same types.
     let param_env = ty::empty_parameter_environment();
     let mut selcx = SelectionContext::intercrate(infcx, &param_env, infcx.tcx);
-    let obligation = Obligation::misc(DUMMY_SP, impl1_trait_ref);
+    let obligation = Obligation::new(ObligationCause::dummy(), impl1_trait_ref);
     debug!("impl_can_satisfy(obligation={})", obligation.repr(infcx.tcx));
     selcx.evaluate_impl(impl2_def_id, &obligation)
 }

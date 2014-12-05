@@ -59,6 +59,10 @@ pub type TraitObligation<'tcx> = Obligation<'tcx, Rc<ty::TraitRef<'tcx>>>;
 #[deriving(Copy, Clone)]
 pub struct ObligationCause<'tcx> {
     pub span: Span,
+
+    // the id of XXX
+    pub scope_id: ast::NodeId,
+
     pub code: ObligationCauseCode<'tcx>
 }
 
@@ -303,8 +307,8 @@ impl<'tcx,O> Obligation<'tcx,O> {
                      trait_ref: trait_ref }
     }
 
-    pub fn misc(span: Span, trait_ref: O) -> Obligation<'tcx, O> {
-        Obligation::new(ObligationCause::misc(span), trait_ref)
+    pub fn misc(span: Span, scope_id: ast::NodeId, trait_ref: O) -> Obligation<'tcx, O> {
+        Obligation::new(ObligationCause::misc(span, scope_id), trait_ref)
     }
 }
 
@@ -315,17 +319,19 @@ impl<'tcx> Obligation<'tcx,Rc<ty::TraitRef<'tcx>>> {
 }
 
 impl<'tcx> ObligationCause<'tcx> {
-    pub fn new(span: Span, code: ObligationCauseCode<'tcx>)
+    pub fn new(span: Span,
+               scope_id: ast::NodeId,
+               code: ObligationCauseCode<'tcx>)
                -> ObligationCause<'tcx> {
-        ObligationCause { span: span, code: code }
+        ObligationCause { span: span, scope_id: scope_id, code: code }
     }
 
-    pub fn misc(span: Span) -> ObligationCause<'tcx> {
-        ObligationCause { span: span, code: MiscObligation }
+    pub fn misc(span: Span, scope_id: ast::NodeId) -> ObligationCause<'tcx> {
+        ObligationCause { span: span, scope_id: scope_id, code: MiscObligation }
     }
 
     pub fn dummy() -> ObligationCause<'tcx> {
-        ObligationCause { span: DUMMY_SP, code: MiscObligation }
+        ObligationCause { span: DUMMY_SP, scope_id: 0, code: MiscObligation }
     }
 }
 

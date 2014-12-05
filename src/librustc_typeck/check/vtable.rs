@@ -252,7 +252,7 @@ pub fn register_object_cast_obligations<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     let sized_obligation =
         traits::obligation_for_builtin_bound(
             fcx.tcx(),
-            traits::ObligationCause::new(span, traits::ObjectSized),
+            traits::ObligationCause::new(span, fcx.body_id, traits::ObjectSized),
             referent_ty,
             ty::BoundSized);
     match sized_obligation {
@@ -287,6 +287,7 @@ pub fn register_object_cast_obligations<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     let object_obligation =
         Obligation::new(
             ObligationCause::new(span,
+                                 fcx.body_id,
                                  traits::ObjectCastObligation(object_trait_ty)),
             object_trait_ref.clone());
     fcx.register_obligation(object_obligation);
@@ -299,6 +300,7 @@ pub fn register_object_cast_obligations<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             let obligation = obligation_for_builtin_bound(
                 fcx.tcx(),
                 ObligationCause::new(span,
+                                     fcx.body_id,
                                      traits::ObjectCastObligation(object_trait_ty)),
                 referent_ty,
                 builtin_bound);

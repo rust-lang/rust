@@ -36,7 +36,7 @@ use util::nodemap::NodeSet;
 use syntax::ast;
 use syntax::print::pprust;
 use syntax::visit::Visitor;
-use syntax::codemap::{DUMMY_SP, Span};
+use syntax::codemap::Span;
 use syntax::visit;
 
 #[deriving(Eq, PartialEq)]
@@ -119,7 +119,7 @@ impl<'a, 'tcx> CheckStaticVisitor<'a, 'tcx> {
         let ty = ty::node_id_to_type(self.tcx, e.id);
         let infcx = infer::new_infer_ctxt(self.tcx);
         let mut fulfill_cx = traits::FulfillmentContext::new();
-        let cause = traits::ObligationCause::misc(DUMMY_SP);
+        let cause = traits::ObligationCause::dummy();
         let obligation = traits::obligation_for_builtin_bound(self.tcx, cause, ty,
                                                               ty::BoundSync);
         fulfill_cx.register_obligation(self.tcx, obligation.unwrap());

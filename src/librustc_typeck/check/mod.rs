@@ -1790,6 +1790,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.add_obligations_for_parameters(
             traits::ObligationCause::new(
                 span,
+                self.body_id,
                 traits::ItemObligation(def_id)),
             &substs,
             &bounds);
@@ -1817,7 +1818,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     {
         let obligation = traits::obligation_for_builtin_bound(
             self.tcx(),
-            traits::ObligationCause::new(span, code),
+            traits::ObligationCause::new(span, self.body_id, code),
             ty,
             bound);
         if let Ok(ob) = obligation {
@@ -5197,7 +5198,7 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     debug!("after late-bounds have been replaced: bounds={}", bounds.repr(fcx.tcx()));
 
     fcx.add_obligations_for_parameters(
-        traits::ObligationCause::new(span, traits::ItemObligation(def.def_id())),
+        traits::ObligationCause::new(span, fcx.body_id, traits::ItemObligation(def.def_id())),
         &substs,
         &bounds);
 
