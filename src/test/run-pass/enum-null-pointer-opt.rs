@@ -10,6 +10,9 @@
 
 
 use std::mem::size_of;
+use std::ptr::NonZero;
+use std::rc::Rc;
+use std::sync::Arc;
 
 trait Trait {}
 
@@ -50,5 +53,17 @@ fn main() {
     assert_eq!(size_of::<(u8, Box<int>)>(), size_of::<Option<(u8, Box<int>)>>());
     // and fixed-size arrays
     assert_eq!(size_of::<[Box<int>, ..1]>(), size_of::<Option<[Box<int>, ..1]>>());
+
+    // Should apply to NonZero
+    assert_eq!(size_of::<NonZero<uint>>(), size_of::<Option<NonZero<uint>>>());
+    assert_eq!(size_of::<NonZero<*mut i8>>(), size_of::<Option<NonZero<*mut i8>>>());
+
+    // Should apply to types that use NonZero internally
+    assert_eq!(size_of::<Vec<int>>(), size_of::<Option<Vec<int>>>());
+    assert_eq!(size_of::<Arc<int>>(), size_of::<Option<Arc<int>>>());
+    assert_eq!(size_of::<Rc<int>>(), size_of::<Option<Rc<int>>>());
+
+    // Should apply to types that have NonZero transitively
+    assert_eq!(size_of::<String>(), size_of::<Option<String>>());
 
 }
