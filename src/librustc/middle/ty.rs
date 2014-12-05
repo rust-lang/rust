@@ -46,6 +46,7 @@ use metadata::csearch;
 use middle::const_eval;
 use middle::def;
 use middle::dependency_format;
+use middle::lang_items::StrStructLangItem;
 use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem};
 use middle::lang_items::{FnOnceTraitLangItem, TyDescStructLangItem};
 use middle::mem_categorization as mc;
@@ -2149,15 +2150,14 @@ pub fn mk_mach_float<'tcx>(tm: ast::FloatTy) -> Ty<'tcx> {
 }
 
 pub fn mk_str<'tcx>(cx: &ctxt<'tcx>) -> Ty<'tcx> {
-    mk_t(cx, ty_str)
+    match cx.lang_items.require(StrStructLangItem) {
+        Ok(did) => mk_struct(cx, did, Substs::empty()),
+        Err(err) => cx.sess.fatal(err.as_slice()),
+    }
 }
 
-pub fn mk_str_slice<'tcx>(cx: &ctxt<'tcx>, r: Region, m: ast::Mutability) -> Ty<'tcx> {
-    mk_rptr(cx, r,
-            mt {
-                ty: mk_t(cx, ty_str),
-                mutbl: m
-            })
+pub fn mk_str_slice<'tcx>(cx: &ctxt<'tcx>, r: Region) -> Ty<'tcx> {
+    mk_rptr(cx, r, mt { ty: mk_str(cx), mutbl: MutImmutable })
 }
 
 pub fn mk_enum<'tcx>(cx: &ctxt<'tcx>, did: ast::DefId, substs: Substs<'tcx>) -> Ty<'tcx> {
