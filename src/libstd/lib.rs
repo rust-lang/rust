@@ -273,4 +273,6 @@ mod std {
 
     pub use boxed; // used for vec![]
 
+    #[cfg(not(stage0))] // NOTE(stage0): Remove cfg after a snapshot
+    pub use core::str;
 }

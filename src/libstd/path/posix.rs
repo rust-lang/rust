@@ -12,6 +12,8 @@
 
 use c_str::{CString, ToCStr};
 use clone::Clone;
+#[cfg(not(stage0))] // NOTE(stage0): Remove cfg after a snapshot
+use core::str::str;
 use cmp::{PartialEq, Eq, PartialOrd, Ord, Ordering};
 use hash;
 use io::Writer;
@@ -20,7 +22,7 @@ use iter::{Iterator, IteratorExt, Map};
 use option::{Option, None, Some};
 use kinds::Sized;
 use str::{FromStr, Str};
-use str;
+use str as str_;
 use slice::{CloneSliceAllocPrelude, Splits, AsSlice, VectorVector,
             PartialEqSlicePrelude, SlicePrelude};
 use vec::Vec;
@@ -400,7 +402,7 @@ impl Path {
     /// Returns an iterator that yields each component of the path as Option<&str>.
     /// See components() for details.
     pub fn str_components<'a>(&'a self) -> StrComponents<'a> {
-        self.components().map(str::from_utf8)
+        self.components().map(str_::from_utf8)
     }
 }
 

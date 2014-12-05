@@ -12,12 +12,16 @@
 
 #![allow(non_camel_case_types)]
 
+#[cfg(not(stage0))] // NOTE(stage0): Remove cfg after a snapshot
+use core::str::str;
 use io::{IoResult, Writer};
 use iter::{Iterator, IteratorExt};
 use option::{Some, None};
 use os;
 use result::{Ok, Err};
-use str::{StrPrelude, from_str};
+use str::from_str;
+#[cfg(stage0)]  // NOTE(stage0): Remove import after a snapshot
+use str::StrPrelude;
 use sync::atomic;
 use unicode::char::UnicodeChar;
 

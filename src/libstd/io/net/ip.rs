@@ -17,13 +17,17 @@
 
 pub use self::IpAddr::*;
 
+#[cfg(not(stage0))] // NOTE(stage0): Remove cfg after a snapshot
+use core::str::str;
 use fmt;
 use io::{mod, IoResult, IoError};
 use io::net;
 use iter::{Iterator, IteratorExt};
 use option::{Option, None, Some};
 use result::{Ok, Err};
-use str::{FromStr, StrPrelude};
+use str::FromStr;
+#[cfg(stage0)]  // NOTE(stage0): Remove import after a snapshot
+use str::StrPrelude;
 use slice::{CloneSlicePrelude, SlicePrelude};
 use vec::Vec;
 

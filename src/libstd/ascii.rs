@@ -16,12 +16,16 @@
 #![allow(deprecated)]
 
 use core::kinds::Sized;
+#[cfg(not(stage0))] // NOTE(stage0): Remove cfg after a snapshot
+use core::str::str;
 use fmt;
 use iter::IteratorExt;
 use mem;
 use option::{Option, Some, None};
 use slice::{SlicePrelude, AsSlice};
-use str::{Str, StrPrelude};
+use str::Str;
+#[cfg(stage0)]  // NOTE(stage0): Remove import after a snapshot
+use str::StrPrelude;
 use string::{String, IntoString};
 use vec::Vec;
 

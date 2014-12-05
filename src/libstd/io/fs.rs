@@ -50,6 +50,8 @@
 //! fs::unlink(&path);
 //! ```
 
+#[cfg(not(stage0))] // NOTE(stage0): Remove cfg after a snapshot
+use core::str::str;
 use clone::Clone;
 use io::standard_error;
 use io::{FilePermission, Write, Open, FileAccess, FileMode, FileType};

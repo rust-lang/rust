@@ -21,6 +21,7 @@ use char::Char;
 use num;
 use num::{Int, Float, FPNaN, FPInfinite, ToPrimitive};
 use slice::{SlicePrelude, CloneSliceAllocPrelude};
+#[cfg(stage0)]  // NOTE(stage0): Remove import after a snapshot
 use str::StrPrelude;
 use string::String;
 use vec::Vec;

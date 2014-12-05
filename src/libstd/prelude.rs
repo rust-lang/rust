@@ -79,8 +79,12 @@
 #[doc(no_inline)] pub use result::Result;
 #[doc(no_inline)] pub use result::Result::{Ok, Err};
 #[doc(no_inline)] pub use io::{Buffer, Writer, Reader, Seek, BufferPrelude};
-#[doc(no_inline)] pub use str::{Str, StrVector, StrPrelude};
+#[doc(no_inline)] pub use str::{Str, StrVector};
+#[cfg(stage0)]  // NOTE(stage0): Remove import after a snapshot
+#[doc(no_inline)] pub use str::StrPrelude;
 #[doc(no_inline)] pub use str::{StrAllocating, UnicodeStrPrelude};
+#[cfg(not(stage0))] // NOTE(stage0): Remove cfg after a snapshot
+#[doc(no_inline)] pub use core::str::str;
 #[doc(no_inline)] pub use tuple::{Tuple1, Tuple2, Tuple3, Tuple4};
 #[doc(no_inline)] pub use tuple::{Tuple5, Tuple6, Tuple7, Tuple8};
 #[doc(no_inline)] pub use tuple::{Tuple9, Tuple10, Tuple11, Tuple12};

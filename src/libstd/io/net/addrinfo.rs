@@ -19,6 +19,8 @@ pub use self::SocketType::*;
 pub use self::Flag::*;
 pub use self::Protocol::*;
 
+#[cfg(not(stage0))] // NOTE(stage0): Remove cfg after a snapshot
+use core::str::str;
 use iter::IteratorExt;
 use io::{IoResult};
 use io::net::ip::{SocketAddr, IpAddr};
