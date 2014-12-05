@@ -74,15 +74,25 @@ crate should be imported to the syntax environment:
 #[use_macros(vec, panic="fail")]
 extern crate std;
 
-#[use_macros(*)]
+#[use_macros]
 extern crate core;
 ```
+
+The list of macros to import is optional. Omitting the list imports all macros,
+similar to a glob `use`.  (This is also the mechanism by which `std` will
+inject its macros into every non-`no_std` crate.)
+
+Importing with rename is an optional part of this proposal that will be
+implemented for 1.0 only if time permits.
 
 Macros imported this way can be used anywhere in the module after the
 `extern crate` item, including in child modules.  Since a macro-importing
 `extern crate` must appear at the crate root, and view items come before
 other items, this effectively means imported macros will be visible for
 the entire crate.
+
+Any name collision between macros, whether imported or defined in-crate, is a
+hard error.
 
 Many macros expand using other "helper macros" as an implementation detail.
 For example, librustc's `declare_lint!` uses `lint_initializer!`.  The client
@@ -110,6 +120,11 @@ The macro `lint_initializer!`, imported from the same crate as `declare_lint!`,
 will be visible only during further expansion of the result of invoking
 `declare_lint!`.
 
+`use_macros` on `macro_rules` is an optional part of this proposal that will be
+implemented for 1.0 only if time permits.  Without it, libraries that use
+helper macros will need to list them in documentation so that users can import
+them.
+
 Procedural macros need their own way to manipulate the syntax environment, but
 that's an unstable internal API, so it's outside the scope of this RFC.
 
@@ -125,17 +140,17 @@ rest of the enclosing module, including any child modules.  A crate might start
 with
 
 ```rust
-#[use_macros(*)]
+#[use_macros]
 mod macros;
 ```
 
 to define some macros for use by the whole crate, without putting those
 definitions in `lib.rs`.
 
-Note that `#[use_macros(*)]` is equivalent to the current `#[macro_escape]`.
-However, the new convention is to use an outer attribute, in the file whose
-syntax environment is affected, rather than an inner attribute in the file
-defining the macros.
+Note that `#[use_macros]` (without a list of names) is equivalent to the
+current `#[macro_escape]`.  However, the new convention is to use an outer
+attribute, in the file whose syntax environment is affected, rather than an
+inner attribute in the file defining the macros.
 
 ## Macro export and re-export
 
@@ -265,7 +280,7 @@ however I think we should allow it anyway, to encourage the habit of writing
 This proposal is edited by Keegan McAllister.  It has been refined through many
 engaging discussions with:
 
-* Brian Anderson, Shachaf Ben-Kiki, Lars Bergstrom, Nick Cameron, John Clements, Alex Crichton, Cathy Douglass, Steven Fackler, Manish Goregaokar, Dave Herman, Steve Klabnik, Felix S. Klock II, Niko Matsakis, Matthew McPherrin, Paul Stansifer, Sam Tobin-Hochstadt, Aaron Turon, Huon Wilson, Brendan Zabarauskas, Cameron Zwarich
+* Brian Anderson, Shachaf Ben-Kiki, Lars Bergstrom, Nick Cameron, John Clements, Alex Crichton, Cathy Douglass, Steven Fackler, Manish Goregaokar, Dave Herman, Steve Klabnik, Felix S. Klock II, Niko Matsakis, Matthew McPherrin, Paul Stansifer, Sam Tobin-Hochstadt, Erick Tryzelaar, Aaron Turon, Huon Wilson, Brendan Zabarauskas, Cameron Zwarich
 * *GitHub*: `@bill-myers` `@blaenk` `@comex` `@glaebhoerl` `@Kimundi` `@mitchmindtree` `@mitsuhiko` `@P1Start` `@petrochenkov` `@skinner`
 * *Reddit*: `gnusouth` `ippa` `!kibwen` `Mystor` `Quxxy` `rime-frost` `Sinistersnare` `tejp` `UtherII` `yigal100`
 * *IRC*: `bstrie` `ChrisMorgan` `cmr` `Earnestly` `eddyb` `tiffany`
