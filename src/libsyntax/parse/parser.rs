@@ -3357,11 +3357,16 @@ impl<'a> Parser<'a> {
             })
           }
           token::BinOp(token::And) | token::AndAnd => {
-            // parse &pat
+            // parse &pat and &mut pat
             let lo = self.span.lo;
             self.expect_and();
+            let mutability = if self.eat_keyword(keywords::Mut) {
+                ast::MutMutable
+            } else {
+                ast::MutImmutable
+            };
             let sub = self.parse_pat();
-            pat = PatRegion(sub);
+            pat = PatRegion(sub, mutability);
             hi = self.last_span.hi;
             return P(ast::Pat {
                 id: ast::DUMMY_NODE_ID,

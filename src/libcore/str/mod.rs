@@ -230,7 +230,7 @@ impl<F> CharEq for F where F: FnMut(char) -> bool {
 impl<'a> CharEq for &'a [char] {
     #[inline]
     fn matches(&mut self, c: char) -> bool {
-        self.iter().any(|&mut m| m.matches(c))
+        self.iter().any(|&m| { let mut m = m; m.matches(c) })
     }
 
     #[inline]
