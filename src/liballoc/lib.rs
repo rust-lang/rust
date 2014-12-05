@@ -64,7 +64,8 @@
        html_root_url = "http://doc.rust-lang.org/nightly/")]
 
 #![no_std]
-#![feature(lang_items, phase, unsafe_destructor)]
+#![feature(lang_items, phase, unsafe_destructor, if_let)]
+#![allow(dead_code)]
 
 #[phase(plugin, link)]
 extern crate core;
@@ -91,6 +92,7 @@ pub mod heap;
 pub mod boxed;
 pub mod arc;
 pub mod rc;
+mod rcbox;
 
 /// Common out-of-memory routine
 #[cold]
