@@ -2861,7 +2861,7 @@ parts of your library. The six levels are:
 * experimental: This item was only recently introduced or is otherwise in a
   state of flux. It may change significantly, or even be removed. No guarantee
   of backwards-compatibility.
-* unstable: This item is still under development, but requires more testing to
+* unstable: This item is still under development and requires more testing to
   be considered stable. No guarantee of backwards-compatibility.
 * stable: This item is considered stable, and will not change significantly.
   Guarantee of backwards-compatibility.
