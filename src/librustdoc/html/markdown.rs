@@ -235,7 +235,7 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
         };
 
         // Transform the contents of the header into a hyphenated string
-        let id = s.words().map(|s| s.to_ascii_lower())
+        let id = s.words().map(|s| s.to_ascii_lowercase())
             .collect::<Vec<String>>().connect("-");
 
         // This is a terrible hack working around how hoedown gives us rendered
