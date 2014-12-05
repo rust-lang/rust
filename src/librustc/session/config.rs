@@ -278,7 +278,8 @@ debugging_opts! {
         PARSE_ONLY,
         NO_TRANS,
         NO_ANALYSIS,
-        UNSTABLE_OPTIONS
+        UNSTABLE_OPTIONS,
+        PRINT_ENUM_SIZES
     ]
     0
 }
@@ -331,7 +332,9 @@ pub fn debugging_opts_map() -> Vec<(&'static str, &'static str, u64)> {
      ("no-analysis", "Parse and expand the source, but run no analysis and",
       NO_TRANS),
      ("unstable-options", "Adds unstable command line options to rustc interface",
-      UNSTABLE_OPTIONS)]
+      UNSTABLE_OPTIONS),
+     ("print-enum-sizes", "Print the size of enums and their variants", PRINT_ENUM_SIZES),
+    ]
 }
 
 #[deriving(Clone)]

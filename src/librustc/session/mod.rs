@@ -202,6 +202,9 @@ impl Session {
     pub fn show_span(&self) -> bool {
         self.debugging_opt(config::SHOW_SPAN)
     }
+    pub fn print_enum_sizes(&self) -> bool {
+        self.debugging_opt(config::PRINT_ENUM_SIZES)
+    }
     pub fn sysroot<'a>(&'a self) -> &'a Path {
         match self.opts.maybe_sysroot {
             Some (ref sysroot) => sysroot,
@@ -304,4 +307,3 @@ pub fn early_warn(msg: &str) {
     let mut emitter = diagnostic::EmitterWriter::stderr(diagnostic::Auto, None);
     emitter.emit(None, msg, None, diagnostic::Warning);
 }
-
