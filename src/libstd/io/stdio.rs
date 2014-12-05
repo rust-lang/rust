@@ -29,22 +29,27 @@ use self::StdSource::*;
 
 use boxed::Box;
 use cell::RefCell;
+use clone::Clone;
 use failure::LOCAL_STDERR;
 use fmt;
-use io::{Reader, Writer, IoResult, IoError, OtherIoError,
+use io::{Reader, Writer, IoResult, IoError, OtherIoError, Buffer,
          standard_error, EndOfFile, LineBufferedWriter, BufferedReader};
 use kinds::Send;
 use libc;
 use mem;
 use option::{Option, Some, None};
+use ops::{Deref, DerefMut};
 use result::{Ok, Err};
 use rustrt;
 use rustrt::local::Local;
 use rustrt::task::Task;
 use slice::SlicePrelude;
 use str::StrPrelude;
+use string::String;
 use sys::{fs, tty};
+use sync::{Arc, Mutex, MutexGuard, Once, ONCE_INIT};
 use uint;
+use vec::Vec;
 
 // And so begins the tale of acquiring a uv handle to a stdio stream on all
 // platforms in all situations. Our story begins by splitting the world into two
@@ -90,28 +95,135 @@ thread_local!(static LOCAL_STDOUT: RefCell<Option<Box<Writer + Send>>> = {
     RefCell::new(None)
 })
 
-/// Creates a new non-blocking handle to the stdin of the current process.
+/// A synchronized wrapper around a buffered reader from stdin
+#[deriving(Clone)]
+pub struct StdinReader {
+    inner: Arc<Mutex<BufferedReader<StdReader>>>,
+}
+
+/// A guard for exlusive access to `StdinReader`'s internal `BufferedReader`.
+pub struct StdinReaderGuard<'a> {
+    inner: MutexGuard<'a, BufferedReader<StdReader>>,
+}
+
+impl<'a> Deref<BufferedReader<StdReader>> for StdinReaderGuard<'a> {
+    fn deref(&self) -> &BufferedReader<StdReader> {
+        &*self.inner
+    }
+}
+
+impl<'a> DerefMut<BufferedReader<StdReader>> for StdinReaderGuard<'a> {
+    fn deref_mut(&mut self) -> &mut BufferedReader<StdReader> {
+        &mut *self.inner
+    }
+}
+
+impl StdinReader {
+    /// Locks the `StdinReader`, granting the calling thread exclusive access
+    /// to the underlying `BufferedReader`.
+    ///
+    /// This provides access to methods like `chars` and `lines`.
+    ///
+    /// ## Example
+    ///
+    /// ```rust
+    /// use std::io;
+    ///
+    /// for line in io::stdin().lock().lines() {
+    ///     println!("{}", line.unwrap());
+    /// }
+    /// ```
+    pub fn lock<'a>(&'a mut self) -> StdinReaderGuard<'a> {
+        StdinReaderGuard {
+            inner: self.inner.lock()
+        }
+    }
+
+    /// Like `Buffer::read_line`.
+    ///
+    /// The read is performed atomically - concurrent read calls in other
+    /// threads will not interleave with this one.
+    pub fn read_line(&mut self) -> IoResult<String> {
+        self.inner.lock().read_line()
+    }
+
+    /// Like `Buffer::read_until`.
+    ///
+    /// The read is performed atomically - concurrent read calls in other
+    /// threads will not interleave with this one.
+    pub fn read_until(&mut self, byte: u8) -> IoResult<Vec<u8>> {
+        self.inner.lock().read_until(byte)
+    }
+
+    /// Like `Buffer::read_char`.
+    ///
+    /// The read is performed atomically - concurrent read calls in other
+    /// threads will not interleave with this one.
+    pub fn read_char(&mut self) -> IoResult<char> {
+        self.inner.lock().read_char()
+    }
+}
+
+impl Reader for StdinReader {
+    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
+        self.inner.lock().read(buf)
+    }
+
+    // We have to manually delegate all of these because the default impls call
+    // read more than once and we don't want those calls to interleave (or
+    // incur the costs of repeated locking).
+
+    fn read_at_least(&mut self, min: uint, buf: &mut [u8]) -> IoResult<uint> {
+        self.inner.lock().read_at_least(min, buf)
+    }
+
+    fn push_at_least(&mut self, min: uint, len: uint, buf: &mut Vec<u8>) -> IoResult<uint> {
+        self.inner.lock().push_at_least(min, len, buf)
+    }
+
+    fn read_to_end(&mut self) -> IoResult<Vec<u8>> {
+        self.inner.lock().read_to_end()
+    }
+
+    fn read_le_uint_n(&mut self, nbytes: uint) -> IoResult<u64> {
+        self.inner.lock().read_le_uint_n(nbytes)
+    }
+
+    fn read_be_uint_n(&mut self, nbytes: uint) -> IoResult<u64> {
+        self.inner.lock().read_be_uint_n(nbytes)
+    }
+}
+
+/// Creates a new handle to the stdin of the current process.
 ///
-/// The returned handled is buffered by default with a `BufferedReader`. If
-/// buffered access is not desired, the `stdin_raw` function is provided to
-/// provided unbuffered access to stdin.
-///
-/// Care should be taken when creating multiple handles to the stdin of a
-/// process. Because this is a buffered reader by default, it's possible for
-/// pending input to be unconsumed in one reader and unavailable to other
-/// readers. It is recommended that only one handle at a time is created for the
-/// stdin of a process.
+/// The returned handle is a wrapper around a global `BufferedReader` shared
+/// by all threads. If buffered access is not desired, the `stdin_raw` function
+/// is provided to provided unbuffered access to stdin.
 ///
 /// See `stdout()` for more notes about this function.
-pub fn stdin() -> BufferedReader<StdReader> {
-    // The default buffer capacity is 64k, but apparently windows doesn't like
-    // 64k reads on stdin. See #13304 for details, but the idea is that on
-    // windows we use a slightly smaller buffer that's been seen to be
-    // acceptable.
-    if cfg!(windows) {
-        BufferedReader::with_capacity(8 * 1024, stdin_raw())
-    } else {
-        BufferedReader::new(stdin_raw())
+pub fn stdin() -> StdinReader {
+    // We're following the same strategy as kimundi's lazy_static library
+    static mut STDIN: *const StdinReader = 0 as *const StdinReader;
+    static ONCE: Once = ONCE_INIT;
+
+    unsafe {
+        ONCE.doit(|| {
+            // The default buffer capacity is 64k, but apparently windows doesn't like
+            // 64k reads on stdin. See #13304 for details, but the idea is that on
+            // windows we use a slightly smaller buffer that's been seen to be
+            // acceptable.
+            let stdin = if cfg!(windows) {
+                BufferedReader::with_capacity(8 * 1024, stdin_raw())
+            } else {
+                BufferedReader::new(stdin_raw())
+            };
+            let stdin = StdinReader {
+                inner: Arc::new(Mutex::new(stdin))
+            };
+            STDIN = mem::transmute(box stdin);
+        });
+
+        (*STDIN).clone()
     }
 }
 
