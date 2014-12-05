@@ -193,7 +193,7 @@ impl StaticKey {
         // prove that it has not yet been set. As such, we'll continue using a
         // value of 0, but with some gyrations to make sure we have a non-0
         // value returned from the creation routine.
-        // TODO: this is clearly a hack, and should be cleaned up.
+        // FIXME: this is clearly a hack, and should be cleaned up.
         let key1 = imp::create(self.dtor);
         let key = if key1 != 0 {
             key1
