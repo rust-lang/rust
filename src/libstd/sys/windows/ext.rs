@@ -76,13 +76,13 @@ impl AsRawSocket for io::net::tcp::TcpStream {
 
 impl AsRawSocket for io::net::tcp::TcpListener {
     fn as_raw_socket(&self) -> Socket {
-        self.as_inner().fd()
+        self.as_inner().socket()
     }
 }
 
 impl AsRawSocket for io::net::tcp::TcpAcceptor {
     fn as_raw_socket(&self) -> Socket {
-        self.as_inner().fd()
+        self.as_inner().socket()
     }
 }
 
