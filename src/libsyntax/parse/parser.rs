@@ -3940,7 +3940,7 @@ impl<'a> Parser<'a> {
                                     expr = Some(
                                         self.mk_mac_expr(span.lo,
                                                          span.hi,
-                                                         m.node));
+                                                         m.and_then(|x| x.node)));
                                 }
                                 _ => {
                                     stmts.push(P(Spanned {

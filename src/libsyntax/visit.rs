@@ -730,7 +730,7 @@ pub fn walk_stmt<'v, V: Visitor<'v>>(visitor: &mut V, statement: &'v Stmt) {
         StmtExpr(ref expression, _) | StmtSemi(ref expression, _) => {
             visitor.visit_expr(&**expression)
         }
-        StmtMac(ref macro, _) => visitor.visit_mac(macro),
+        StmtMac(ref macro, _) => visitor.visit_mac(&**macro),
     }
 }
 
