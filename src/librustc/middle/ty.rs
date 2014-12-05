@@ -1619,6 +1619,22 @@ pub struct RegionParameterDef {
 pub struct Generics<'tcx> {
     pub types: VecPerParamSpace<TypeParameterDef<'tcx>>,
     pub regions: VecPerParamSpace<RegionParameterDef>,
+    pub predicates: VecPerParamSpace<Predicate<'tcx>>,
+}
+
+#[deriving(Clone, Show)]
+pub enum Predicate<'tcx> {
+    /// where Foo : Bar
+    Trait(Rc<TraitRef<'tcx>>),
+
+    /// where Foo == Bar
+    Equate(Ty<'tcx>, Ty<'tcx>),
+
+    /// where 'a : 'b
+    RegionOutlives(Region, Region),
+
+    /// where T : 'a
+    TypeOutlives(Ty<'tcx>, Region),
 }
 
 impl<'tcx> Generics<'tcx> {
@@ -1626,6 +1642,7 @@ impl<'tcx> Generics<'tcx> {
         Generics {
             types: VecPerParamSpace::empty(),
             regions: VecPerParamSpace::empty(),
+            predicates: VecPerParamSpace::empty(),
         }
     }
 

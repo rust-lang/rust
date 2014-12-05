@@ -1437,7 +1437,9 @@ fn doc_generics<'tcx>(base_doc: rbml::Doc,
         true
     });
 
-    ty::Generics { types: types, regions: regions }
+    let predicates = subst::VecPerParamSpace::empty(); // TODO fix in later commit
+
+    ty::Generics { types: types, regions: regions, predicates: predicates }
 }
 
 pub fn is_associated_type(cdata: Cmd, id: ast::NodeId) -> bool {

@@ -163,6 +163,7 @@ fn no_params<'tcx>(t: Ty<'tcx>) -> ty::Polytype<'tcx> {
         generics: ty::Generics {
             types: VecPerParamSpace::empty(),
             regions: VecPerParamSpace::empty(),
+            predicates: VecPerParamSpace::empty(),
         },
         ty: t
     }

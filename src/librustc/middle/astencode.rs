@@ -1554,6 +1554,9 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
                                 Ok(this.read_vec_per_param_space(
                                     |this| Decodable::decode(this).unwrap()))
                             }).unwrap(),
+
+                            predicates:
+                            subst::VecPerParamSpace::empty(), // TODO fix in later commit
                         })
                     })
                 }).unwrap(),
