@@ -26,8 +26,7 @@ use metadata::tyencode;
 use middle::mem_categorization::Typer;
 use middle::subst;
 use middle::subst::VecPerParamSpace;
-use middle::typeck::{mod, MethodCall, MethodCallee, MethodOrigin};
-use middle::ty::{mod, Ty};
+use middle::ty::{mod, Ty, MethodCall, MethodCallee, MethodOrigin};
 use util::ppaux::ty_to_string;
 
 use syntax::{ast, ast_map, ast_util, codemap, fold};
@@ -576,12 +575,12 @@ impl tr for ty::UpvarBorrow {
 
 trait read_method_callee_helper<'tcx> {
     fn read_method_callee<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
-        -> (typeck::ExprAdjustment, MethodCallee<'tcx>);
+        -> (ty::ExprAdjustment, MethodCallee<'tcx>);
 }
 
 fn encode_method_callee<'a, 'tcx>(ecx: &e::EncodeContext<'a, 'tcx>,
                                   rbml_w: &mut Encoder,
-                                  adjustment: typeck::ExprAdjustment,
+                                  adjustment: ty::ExprAdjustment,
                                   method: &MethodCallee<'tcx>) {
     use serialize::Encoder;
 
@@ -603,7 +602,7 @@ fn encode_method_callee<'a, 'tcx>(ecx: &e::EncodeContext<'a, 'tcx>,
 
 impl<'a, 'tcx> read_method_callee_helper<'tcx> for reader::Decoder<'a> {
     fn read_method_callee<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
-        -> (typeck::ExprAdjustment, MethodCallee<'tcx>) {
+        -> (ty::ExprAdjustment, MethodCallee<'tcx>) {
 
         self.read_struct("MethodCallee", 4, |this| {
             let adjustment = this.read_struct_field("adjustment", 0, |this| {
@@ -627,22 +626,22 @@ impl<'a, 'tcx> read_method_callee_helper<'tcx> for reader::Decoder<'a> {
 impl<'tcx> tr for MethodOrigin<'tcx> {
     fn tr(&self, dcx: &DecodeContext) -> MethodOrigin<'tcx> {
         match *self {
-            typeck::MethodStatic(did) => typeck::MethodStatic(did.tr(dcx)),
-            typeck::MethodStaticUnboxedClosure(did) => {
-                typeck::MethodStaticUnboxedClosure(did.tr(dcx))
+            ty::MethodStatic(did) => ty::MethodStatic(did.tr(dcx)),
+            ty::MethodStaticUnboxedClosure(did) => {
+                ty::MethodStaticUnboxedClosure(did.tr(dcx))
             }
-            typeck::MethodTypeParam(ref mp) => {
-                typeck::MethodTypeParam(
-                    typeck::MethodParam {
+            ty::MethodTypeParam(ref mp) => {
+                ty::MethodTypeParam(
+                    ty::MethodParam {
                         // def-id is already translated when we read it out
                         trait_ref: mp.trait_ref.clone(),
                         method_num: mp.method_num,
                     }
                 )
             }
-            typeck::MethodTraitObject(ref mo) => {
-                typeck::MethodTraitObject(
-                    typeck::MethodObject {
+            ty::MethodTraitObject(ref mo) => {
+                ty::MethodTraitObject(
+                    ty::MethodObject {
                         trait_ref: mo.trait_ref.clone(),
                         .. *mo
                     }
@@ -687,16 +686,16 @@ pub trait vtable_decoder_helpers<'tcx> {
     fn read_vtable_res_with_key(&mut self,
                                 tcx: &ty::ctxt<'tcx>,
                                 cdata: &cstore::crate_metadata)
-                                -> (typeck::ExprAdjustment, typeck::vtable_res<'tcx>);
+                                -> (ty::ExprAdjustment, ty::vtable_res<'tcx>);
     fn read_vtable_res(&mut self,
                        tcx: &ty::ctxt<'tcx>, cdata: &cstore::crate_metadata)
-                      -> typeck::vtable_res<'tcx>;
+                      -> ty::vtable_res<'tcx>;
     fn read_vtable_param_res(&mut self,
                        tcx: &ty::ctxt<'tcx>, cdata: &cstore::crate_metadata)
-                      -> typeck::vtable_param_res<'tcx>;
+                      -> ty::vtable_param_res<'tcx>;
     fn read_vtable_origin(&mut self,
                           tcx: &ty::ctxt<'tcx>, cdata: &cstore::crate_metadata)
-                          -> typeck::vtable_origin<'tcx>;
+                          -> ty::vtable_origin<'tcx>;
 }
 
 impl<'tcx, 'a> vtable_decoder_helpers<'tcx> for reader::Decoder<'a> {
@@ -714,7 +713,7 @@ impl<'tcx, 'a> vtable_decoder_helpers<'tcx> for reader::Decoder<'a> {
     fn read_vtable_res_with_key(&mut self,
                                 tcx: &ty::ctxt<'tcx>,
                                 cdata: &cstore::crate_metadata)
-                                -> (typeck::ExprAdjustment, typeck::vtable_res<'tcx>) {
+                                -> (ty::ExprAdjustment, ty::vtable_res<'tcx>) {
         self.read_struct("VtableWithKey", 2, |this| {
             let adjustment = this.read_struct_field("adjustment", 0, |this| {
                 Decodable::decode(this)
@@ -728,7 +727,7 @@ impl<'tcx, 'a> vtable_decoder_helpers<'tcx> for reader::Decoder<'a> {
     fn read_vtable_res(&mut self,
                        tcx: &ty::ctxt<'tcx>,
                        cdata: &cstore::crate_metadata)
-                       -> typeck::vtable_res<'tcx>
+                       -> ty::vtable_res<'tcx>
     {
         self.read_vec_per_param_space(
             |this| this.read_vtable_param_res(tcx, cdata))
@@ -736,14 +735,14 @@ impl<'tcx, 'a> vtable_decoder_helpers<'tcx> for reader::Decoder<'a> {
 
     fn read_vtable_param_res(&mut self,
                              tcx: &ty::ctxt<'tcx>, cdata: &cstore::crate_metadata)
-                      -> typeck::vtable_param_res<'tcx> {
+                      -> ty::vtable_param_res<'tcx> {
         self.read_to_vec(|this| Ok(this.read_vtable_origin(tcx, cdata)))
              .unwrap().into_iter().collect()
     }
 
     fn read_vtable_origin(&mut self,
                           tcx: &ty::ctxt<'tcx>, cdata: &cstore::crate_metadata)
-        -> typeck::vtable_origin<'tcx> {
+        -> ty::vtable_origin<'tcx> {
         self.read_enum("vtable_origin", |this| {
             this.read_enum_variant(&["vtable_static",
                                      "vtable_param",
@@ -752,7 +751,7 @@ impl<'tcx, 'a> vtable_decoder_helpers<'tcx> for reader::Decoder<'a> {
                                    |this, i| {
                 Ok(match i {
                   0 => {
-                    typeck::vtable_static(
+                    ty::vtable_static(
                         this.read_enum_variant_arg(0u, |this| {
                             Ok(this.read_def_id_nodcx(cdata))
                         }).unwrap(),
@@ -765,7 +764,7 @@ impl<'tcx, 'a> vtable_decoder_helpers<'tcx> for reader::Decoder<'a> {
                     )
                   }
                   1 => {
-                    typeck::vtable_param(
+                    ty::vtable_param(
                         this.read_enum_variant_arg(0u, |this| {
                             Decodable::decode(this)
                         }).unwrap(),
@@ -775,14 +774,14 @@ impl<'tcx, 'a> vtable_decoder_helpers<'tcx> for reader::Decoder<'a> {
                     )
                   }
                   2 => {
-                    typeck::vtable_unboxed_closure(
+                    ty::vtable_unboxed_closure(
                         this.read_enum_variant_arg(0u, |this| {
                             Ok(this.read_def_id_nodcx(cdata))
                         }).unwrap()
                     )
                   }
                   3 => {
-                    typeck::vtable_error
+                    ty::vtable_error
                   }
                   _ => panic!("bad enum variant")
                 })
@@ -826,7 +825,7 @@ trait rbml_writer_helpers<'tcx> {
                              closure_type: &ty::ClosureTy<'tcx>);
     fn emit_method_origin<'a>(&mut self,
                               ecx: &e::EncodeContext<'a, 'tcx>,
-                              method_origin: &typeck::MethodOrigin<'tcx>);
+                              method_origin: &ty::MethodOrigin<'tcx>);
     fn emit_ty<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>, ty: Ty<'tcx>);
     fn emit_tys<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>, tys: &[Ty<'tcx>]);
     fn emit_type_param_def<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>,
@@ -860,25 +859,25 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
 
     fn emit_method_origin<'a>(&mut self,
                               ecx: &e::EncodeContext<'a, 'tcx>,
-                              method_origin: &typeck::MethodOrigin<'tcx>)
+                              method_origin: &ty::MethodOrigin<'tcx>)
     {
         use serialize::Encoder;
 
         self.emit_enum("MethodOrigin", |this| {
             match *method_origin {
-                typeck::MethodStatic(def_id) => {
+                ty::MethodStatic(def_id) => {
                     this.emit_enum_variant("MethodStatic", 0, 1, |this| {
                         Ok(this.emit_def_id(def_id))
                     })
                 }
 
-                typeck::MethodStaticUnboxedClosure(def_id) => {
+                ty::MethodStaticUnboxedClosure(def_id) => {
                     this.emit_enum_variant("MethodStaticUnboxedClosure", 1, 1, |this| {
                         Ok(this.emit_def_id(def_id))
                     })
                 }
 
-                typeck::MethodTypeParam(ref p) => {
+                ty::MethodTypeParam(ref p) => {
                     this.emit_enum_variant("MethodTypeParam", 2, 1, |this| {
                         this.emit_struct("MethodParam", 2, |this| {
                             try!(this.emit_struct_field("trait_ref", 0, |this| {
@@ -892,7 +891,7 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
                     })
                 }
 
-                typeck::MethodTraitObject(ref o) => {
+                ty::MethodTraitObject(ref o) => {
                     this.emit_enum_variant("MethodTraitObject", 3, 1, |this| {
                         this.emit_struct("MethodObject", 2, |this| {
                             try!(this.emit_struct_field("trait_ref", 0, |this| {
@@ -1330,7 +1329,7 @@ impl<'a> doc_decoder_helpers for rbml::Doc<'a> {
 
 trait rbml_decoder_decoder_helpers<'tcx> {
     fn read_method_origin<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
-                                  -> typeck::MethodOrigin<'tcx>;
+                                  -> ty::MethodOrigin<'tcx>;
     fn read_ty<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>) -> Ty<'tcx>;
     fn read_tys<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>) -> Vec<Ty<'tcx>>;
     fn read_trait_ref<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
@@ -1409,7 +1408,7 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
     }
 
     fn read_method_origin<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
-                                  -> typeck::MethodOrigin<'tcx>
+                                  -> ty::MethodOrigin<'tcx>
     {
         self.read_enum("MethodOrigin", |this| {
             let variants = &["MethodStatic", "MethodStaticUnboxedClosure",
@@ -1418,18 +1417,18 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
                 Ok(match i {
                     0 => {
                         let def_id = this.read_def_id(dcx);
-                        typeck::MethodStatic(def_id)
+                        ty::MethodStatic(def_id)
                     }
 
                     1 => {
                         let def_id = this.read_def_id(dcx);
-                        typeck::MethodStaticUnboxedClosure(def_id)
+                        ty::MethodStaticUnboxedClosure(def_id)
                     }
 
                     2 => {
                         this.read_struct("MethodTypeParam", 2, |this| {
-                            Ok(typeck::MethodTypeParam(
-                                typeck::MethodParam {
+                            Ok(ty::MethodTypeParam(
+                                ty::MethodParam {
                                     trait_ref: {
                                         this.read_struct_field("trait_ref", 0, |this| {
                                             Ok(this.read_trait_ref(dcx))
@@ -1446,8 +1445,8 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
 
                     3 => {
                         this.read_struct("MethodTraitObject", 2, |this| {
-                            Ok(typeck::MethodTraitObject(
-                                typeck::MethodObject {
+                            Ok(ty::MethodTraitObject(
+                                ty::MethodObject {
                                     trait_ref: {
                                         this.read_struct_field("trait_ref", 0, |this| {
                                             Ok(this.read_trait_ref(dcx))

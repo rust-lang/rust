@@ -38,7 +38,6 @@ use middle::subst;
 use middle::subst::VecPerParamSpace;
 use middle::ty::{mod, Ty};
 use middle::traits;
-use middle::typeck;
 use std::rc::Rc;
 use syntax::owned_slice::OwnedSlice;
 use util::ppaux::Repr;
@@ -304,23 +303,23 @@ impl<'tcx> TypeFoldable<'tcx> for ty::AutoRef<'tcx> {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for typeck::MethodOrigin<'tcx> {
-    fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> typeck::MethodOrigin<'tcx> {
+impl<'tcx> TypeFoldable<'tcx> for ty::MethodOrigin<'tcx> {
+    fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> ty::MethodOrigin<'tcx> {
         match *self {
-            typeck::MethodStatic(def_id) => {
-                typeck::MethodStatic(def_id)
+            ty::MethodStatic(def_id) => {
+                ty::MethodStatic(def_id)
             }
-            typeck::MethodStaticUnboxedClosure(def_id) => {
-                typeck::MethodStaticUnboxedClosure(def_id)
+            ty::MethodStaticUnboxedClosure(def_id) => {
+                ty::MethodStaticUnboxedClosure(def_id)
             }
-            typeck::MethodTypeParam(ref param) => {
-                typeck::MethodTypeParam(typeck::MethodParam {
+            ty::MethodTypeParam(ref param) => {
+                ty::MethodTypeParam(ty::MethodParam {
                     trait_ref: param.trait_ref.fold_with(folder),
                     method_num: param.method_num
                 })
             }
-            typeck::MethodTraitObject(ref object) => {
-                typeck::MethodTraitObject(typeck::MethodObject {
+            ty::MethodTraitObject(ref object) => {
+                ty::MethodTraitObject(ty::MethodObject {
                     trait_ref: object.trait_ref.fold_with(folder),
                     object_trait_id: object.object_trait_id,
                     method_num: object.method_num,
@@ -331,22 +330,22 @@ impl<'tcx> TypeFoldable<'tcx> for typeck::MethodOrigin<'tcx> {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for typeck::vtable_origin<'tcx> {
-    fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> typeck::vtable_origin<'tcx> {
+impl<'tcx> TypeFoldable<'tcx> for ty::vtable_origin<'tcx> {
+    fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> ty::vtable_origin<'tcx> {
         match *self {
-            typeck::vtable_static(def_id, ref substs, ref origins) => {
+            ty::vtable_static(def_id, ref substs, ref origins) => {
                 let r_substs = substs.fold_with(folder);
                 let r_origins = origins.fold_with(folder);
-                typeck::vtable_static(def_id, r_substs, r_origins)
+                ty::vtable_static(def_id, r_substs, r_origins)
             }
-            typeck::vtable_param(n, b) => {
-                typeck::vtable_param(n, b)
+            ty::vtable_param(n, b) => {
+                ty::vtable_param(n, b)
             }
-            typeck::vtable_unboxed_closure(def_id) => {
-                typeck::vtable_unboxed_closure(def_id)
+            ty::vtable_unboxed_closure(def_id) => {
+                ty::vtable_unboxed_closure(def_id)
             }
-            typeck::vtable_error => {
-                typeck::vtable_error
+            ty::vtable_error => {
+                ty::vtable_error
             }
         }
     }
