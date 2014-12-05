@@ -132,15 +132,6 @@ impl<T: Send> Queue<T> {
             if self.head.load(Acquire) == tail {Empty} else {Inconsistent}
         }
     }
-
-    /// Attempts to pop data from this queue, but doesn't attempt too hard. This
-    /// will canonicalize inconsistent states to a `None` value.
-    pub fn casual_pop(&self) -> Option<T> {
-        match self.pop() {
-            Data(t) => Some(t),
-            Empty | Inconsistent => None,
-        }
-    }
 }
 
 #[unsafe_destructor]

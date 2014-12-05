@@ -20,13 +20,14 @@
 //! can be created in the future and there must be no active timers at that
 //! time.
 
+use prelude::*;
+
+use cell::UnsafeCell;
 use mem;
 use rustrt::bookkeeping;
-use rustrt::mutex::StaticNativeMutex;
 use rustrt;
-use cell::UnsafeCell;
+use sync::{StaticMutex, StaticCondvar};
 use sys::helper_signal;
-use prelude::*;
 
 use task;
 
@@ -39,7 +40,8 @@ use task;
 /// is for static initialization.
 pub struct Helper<M> {
     /// Internal lock which protects the remaining fields
-    pub lock: StaticNativeMutex,
+    pub lock: StaticMutex,
+    pub cond: StaticCondvar,
 
     // You'll notice that the remaining fields are UnsafeCell<T>, and this is
     // because all helper thread operations are done through &self, but we need
@@ -53,6 +55,9 @@ pub struct Helper<M> {
 
     /// Flag if this helper thread has booted and been initialized yet.
     pub initialized: UnsafeCell<bool>,
+
+    /// Flag if this helper thread has shut down
+    pub shutdown: UnsafeCell<bool>,
 }
 
 impl<M: Send> Helper<M> {
@@ -80,7 +85,9 @@ impl<M: Send> Helper<M> {
                 task::spawn(proc() {
                     bookkeeping::decrement();
                     helper(receive, rx, t);
-                    self.lock.lock().signal()
+                    let _g = self.lock.lock();
+                    *self.shutdown.get() = true;
+                    self.cond.notify_one()
                 });
 
                 rustrt::at_exit(proc() { self.shutdown() });
@@ -119,7 +126,9 @@ impl<M: Send> Helper<M> {
             helper_signal::signal(*self.signal.get() as helper_signal::signal);
 
             // Wait for the child to exit
-            guard.wait();
+            while !*self.shutdown.get() {
+                self.cond.wait(&guard);
+            }
             drop(guard);
 
             // Clean up after ourselves

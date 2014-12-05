@@ -209,14 +209,12 @@ Accessing environment variables is not generally threadsafe.
 Serialize access through a global lock.
 */
 fn with_env_lock<T>(f: || -> T) -> T {
-    use rustrt::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
+    use sync::{StaticMutex, MUTEX_INIT};
 
-    static LOCK: StaticNativeMutex = NATIVE_MUTEX_INIT;
+    static LOCK: StaticMutex = MUTEX_INIT;
 
-    unsafe {
-        let _guard = LOCK.lock();
-        f()
-    }
+    let _guard = LOCK.lock();
+    f()
 }
 
 /// Returns a vector of (variable, value) pairs, for all the environment
