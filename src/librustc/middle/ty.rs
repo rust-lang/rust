@@ -78,7 +78,7 @@ use std::rc::Rc;
 use std::collections::hash_map::{HashMap, Occupied, Vacant};
 use arena::TypedArena;
 use syntax::abi;
-use syntax::ast::{CrateNum, DefId, FnStyle, Ident, ItemTrait, LOCAL_CRATE};
+use syntax::ast::{CrateNum, DefId, DUMMY_NODE_ID, FnStyle, Ident, ItemTrait, LOCAL_CRATE};
 use syntax::ast::{MutImmutable, MutMutable, Name, NamedField, NodeId};
 use syntax::ast::{Onceness, StmtExpr, StmtSemi, StructField, UnnamedField};
 use syntax::ast::{Visibility};
@@ -3158,9 +3158,15 @@ pub fn type_moves_by_default<'tcx>(cx: &ctxt<'tcx>,
 
     let infcx = infer::new_infer_ctxt(cx);
     let mut fulfill_cx = traits::FulfillmentContext::new();
+
+    // we can use dummy values here because we won't report any errors
+    // that result nor will we pay any mind to region obligations that arise
+    // (there shouldn't really be any anyhow)
+    let cause = ObligationCause::misc(DUMMY_SP, DUMMY_NODE_ID);
+
     let obligation = traits::obligation_for_builtin_bound(
         cx,
-        ObligationCause::misc(DUMMY_SP),
+        cause,
         ty,
         ty::BoundCopy).unwrap();
     fulfill_cx.register_obligation(cx, obligation);
@@ -5846,7 +5852,7 @@ pub fn empty_parameter_environment<'tcx>() -> ParameterEnvironment<'tcx> {
 /// See `ParameterEnvironment` struct def'n for details
 pub fn construct_parameter_environment<'tcx>(
     tcx: &ctxt<'tcx>,
-    span: Span,
+    _span: Span,
     generics: &ty::Generics<'tcx>,
     free_id: ast::NodeId)
     -> ParameterEnvironment<'tcx>
@@ -5884,7 +5890,7 @@ pub fn construct_parameter_environment<'tcx>(
     let bounds = generics.to_bounds(tcx, &free_substs);
     let bounds = liberate_late_bound_regions(tcx, free_id_scope, &bind(bounds)).value;
     let obligations = traits::obligations_for_generics(tcx,
-                                                       traits::ObligationCause::misc(span),
+                                                       traits::ObligationCause::dummy(),
                                                        &bounds,
                                                        &free_substs.types);
     let type_bounds = bounds.types.subst(tcx, &free_substs);

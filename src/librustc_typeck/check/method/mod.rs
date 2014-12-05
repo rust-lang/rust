@@ -169,7 +169,7 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
     let trait_ref = Rc::new(ty::TraitRef::new(trait_def_id, substs));
 
     // Construct an obligation
-    let obligation = traits::Obligation::misc(span, trait_ref.clone());
+    let obligation = traits::Obligation::misc(span, fcx.body_id, trait_ref.clone());
 
     // Now we want to know if this can be matched
     let mut selcx = traits::SelectionContext::new(fcx.infcx(),
@@ -219,7 +219,7 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
     let method_bounds = method_ty.generics.to_bounds(fcx.tcx(), &trait_ref.substs);
     assert!(!method_bounds.has_escaping_regions());
     fcx.add_obligations_for_parameters(
-        traits::ObligationCause::misc(span),
+        traits::ObligationCause::misc(span, fcx.body_id),
         &trait_ref.substs,
         &method_bounds);
 

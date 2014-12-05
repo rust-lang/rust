@@ -804,7 +804,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                     let obligations =
                         traits::obligations_for_generics(
                             self.tcx(),
-                            traits::ObligationCause::misc(self.span),
+                            traits::ObligationCause::misc(self.span, self.fcx.body_id),
                             &impl_bounds,
                             &substs.types);
                     debug!("impl_obligations={}", obligations.repr(self.tcx()));

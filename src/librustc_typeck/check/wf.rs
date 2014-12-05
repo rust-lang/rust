@@ -122,7 +122,9 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                 // For DST, all intermediate types must be sized.
                 if variant.fields.len() > 0 {
                     for field in variant.fields.init().iter() {
-                        let cause = traits::ObligationCause::new(field.span, traits::FieldSized);
+                        let cause = traits::ObligationCause::new(field.span,
+                                                                 fcx.body_id,
+                                                                 traits::FieldSized);
                         let obligation = traits::obligation_for_builtin_bound(fcx.tcx(),
                                                                               cause,
                                                                               field.ty,
@@ -223,6 +225,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
             let cause =
                 traits::ObligationCause::new(
                     item.span,
+                    fcx.body_id,
                     traits::ItemObligation(trait_ref.def_id));
 
             // Find the supertrait bounds. This will add `int:Bar`.
@@ -291,6 +294,7 @@ impl<'cx,'tcx> BoundsChecker<'cx,'tcx> {
         self.fcx.add_obligations_for_parameters(
             traits::ObligationCause::new(
                 self.span,
+                self.fcx.body_id,
                 traits::ItemObligation(trait_ref.def_id)),
             &trait_ref.substs,
             &bounds);
@@ -341,6 +345,7 @@ impl<'cx,'tcx> TypeFolder<'tcx> for BoundsChecker<'cx,'tcx> {
                 if self.binding_count == 0 {
                     self.fcx.add_obligations_for_parameters(
                         traits::ObligationCause::new(self.span,
+                                                     self.fcx.body_id,
                                                      traits::ItemObligation(type_id)),
                         substs,
                         &polytype.generics.to_bounds(self.tcx(), substs));
@@ -369,6 +374,7 @@ impl<'cx,'tcx> TypeFolder<'tcx> for BoundsChecker<'cx,'tcx> {
                     // that will require an RFC. -nmatsakis)
                     self.fcx.add_trait_obligations_for_generics(
                         traits::ObligationCause::new(self.span,
+                                                     self.fcx.body_id,
                                                      traits::ItemObligation(type_id)),
                         substs,
                         &polytype.generics.to_bounds(self.tcx(), substs));
@@ -469,7 +475,7 @@ fn check_struct_safe_for_destructor<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     if !struct_tpt.generics.has_type_params(subst::TypeSpace)
         && !struct_tpt.generics.has_region_params(subst::TypeSpace)
     {
-        let cause = traits::ObligationCause::new(span, traits::DropTrait);
+        let cause = traits::ObligationCause::new(span, fcx.body_id, traits::DropTrait);
         let obligation = traits::obligation_for_builtin_bound(fcx.tcx(),
                                                               cause,
                                                               self_ty,

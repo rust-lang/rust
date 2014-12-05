@@ -938,7 +938,7 @@ fn check_expr_fn_block(rcx: &mut Rcx,
             // Check that the type meets the criteria of the existential bounds:
             for builtin_bound in bounds.builtin_bounds.iter() {
                 let code = traits::ClosureCapture(var_node_id, expr.span);
-                let cause = traits::ObligationCause::new(freevar.span, code);
+                let cause = traits::ObligationCause::new(freevar.span, rcx.fcx.body_id, code);
                 let obligation = traits::obligation_for_builtin_bound(rcx.tcx(), cause,
                                                                       var_ty, builtin_bound);
                 if let Ok(obligation) = obligation {
