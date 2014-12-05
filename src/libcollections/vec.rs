@@ -688,11 +688,12 @@ impl<T> Vec<T> {
                 Some(new_cap) => {
                     let amort_cap = new_cap.next_power_of_two();
                     // next_power_of_two will overflow to exactly 0 for really big capacities
-                    if amort_cap == 0 {
-                        self.grow_capacity(new_cap);
+                    let cap = if amort_cap == 0 {
+                        new_cap
                     } else {
-                        self.grow_capacity(amort_cap);
-                    }
+                        amort_cap
+                    };
+                    self.grow_capacity(cap)
                 }
             }
         }
