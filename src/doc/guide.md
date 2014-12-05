@@ -1091,9 +1091,9 @@ time. Here's an example:
 
 ```{rust}
 fn cmp(a: int, b: int) -> Ordering {
-    if a < b { Less }
-    else if a > b { Greater }
-    else { Equal }
+    if a < b { Ordering::Less }
+    else if a > b { Ordering::Greater }
+    else { Ordering::Equal }
 }
 
 fn main() {
@@ -1102,11 +1102,11 @@ fn main() {
 
     let ordering = cmp(x, y);
 
-    if ordering == Less {
+    if ordering == Ordering::Less {
         println!("less");
-    } else if ordering == Greater {
+    } else if ordering == Ordering::Greater {
         println!("greater");
-    } else if ordering == Equal {
+    } else if ordering == Ordering::Equal {
         println!("equal");
     }
 }
@@ -1213,9 +1213,9 @@ section on enums?
 
 ```{rust}
 fn cmp(a: int, b: int) -> Ordering {
-    if a < b { Less }
-    else if a > b { Greater }
-    else { Equal }
+    if a < b { Ordering::Less }
+    else if a > b { Ordering::Greater }
+    else { Ordering::Equal }
 }
 
 fn main() {
@@ -1224,11 +1224,11 @@ fn main() {
 
     let ordering = cmp(x, y);
 
-    if ordering == Less {
+    if ordering == Ordering::Less {
         println!("less");
-    } else if ordering == Greater {
+    } else if ordering == Ordering::Greater {
         println!("greater");
-    } else if ordering == Equal {
+    } else if ordering == Ordering::Equal {
         println!("equal");
     }
 }
@@ -1238,9 +1238,9 @@ We can re-write this as a `match`:
 
 ```{rust}
 fn cmp(a: int, b: int) -> Ordering {
-    if a < b { Less }
-    else if a > b { Greater }
-    else { Equal }
+    if a < b { Ordering::Less }
+    else if a > b { Ordering::Greater }
+    else { Ordering::Equal }
 }
 
 fn main() {
@@ -1248,9 +1248,9 @@ fn main() {
     let y = 10i;
 
     match cmp(x, y) {
-        Less    => println!("less"),
-        Greater => println!("greater"),
-        Equal   => println!("equal"),
+        Ordering::Less    => println!("less"),
+        Ordering::Greater => println!("greater"),
+        Ordering::Equal   => println!("equal"),
     }
 }
 ```
@@ -1298,9 +1298,9 @@ used. We could also implement the previous line like this:
 
 ```{rust}
 fn cmp(a: int, b: int) -> Ordering {
-    if a < b { Less }
-    else if a > b { Greater }
-    else { Equal }
+    if a < b { Ordering::Less }
+    else if a > b { Ordering::Greater }
+    else { Ordering::Equal }
 }
 
 fn main() {
@@ -1308,9 +1308,9 @@ fn main() {
     let y = 10i;
 
     println!("{}", match cmp(x, y) {
-        Less    => "less",
-        Greater => "greater",
-        Equal   => "equal",
+        Ordering::Less    => "less",
+        Ordering::Greater => "greater",
+        Ordering::Equal   => "equal",
     });
 }
 ```
