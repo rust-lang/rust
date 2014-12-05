@@ -204,7 +204,7 @@ pub fn opt_deref_kind(t: Ty) -> Option<deref_kind> {
 
         ty::ty_rptr(r, mt) => {
             let kind = ty::BorrowKind::from_mutbl(mt.mutbl);
-            Some(deref_ptr(BorrowedPtr(kind, r)))
+            Some(deref_ptr(BorrowedPtr(kind, *r)))
         }
 
         ty::ty_closure(box ty::ClosureTy {
@@ -1071,7 +1071,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                           -> (ast::Mutability, ty::Region) {
             match slice_ty.sty {
                 ty::ty_rptr(r, ref mt) => match mt.ty.sty {
-                    ty::ty_vec(_, None) => (mt.mutbl, r),
+                    ty::ty_vec(_, None) => (mt.mutbl, *r),
                     _ => vec_slice_info(tcx, pat, mt.ty),
                 },
 

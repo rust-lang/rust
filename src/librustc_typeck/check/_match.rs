@@ -93,7 +93,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                     // and T is the expected type
                     let region_var = fcx.infcx().next_region_var(infer::PatternRegion(pat.span));
                     let mt = ty::mt { ty: expected, mutbl: mutbl };
-                    let region_ty = ty::mk_rptr(tcx, region_var, mt);
+                    let region_ty = ty::mk_rptr(tcx, tcx.mk_region(region_var), mt);
                     demand::eqtype(fcx, pat.span, region_ty, typ);
                 }
                 // otherwise the type of x is the expected type T
@@ -154,7 +154,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
 
             let mt = ty::mt { ty: inner_ty, mutbl: mutbl };
             let region = fcx.infcx().next_region_var(infer::PatternRegion(pat.span));
-            let rptr_ty = ty::mk_rptr(tcx, region, mt);
+            let rptr_ty = ty::mk_rptr(tcx, tcx.mk_region(region), mt);
 
             if check_dereferencable(pcx, pat.span, expected, &**inner) {
                 demand::suptype(fcx, pat.span, expected, rptr_ty);
@@ -178,7 +178,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                 })),
                 _ => {
                     let region = fcx.infcx().next_region_var(infer::PatternRegion(pat.span));
-                    ty::mk_slice(tcx, region, ty::mt {
+                    ty::mk_slice(tcx, tcx.mk_region(region), ty::mt {
                         ty: inner_ty,
                         mutbl: ty::deref(expected_ty, true)
                             .map_or(ast::MutImmutable, |mt| mt.mutbl)
@@ -197,7 +197,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                 let mutbl = ty::deref(expected_ty, true)
                     .map_or(ast::MutImmutable, |mt| mt.mutbl);
 
-                let slice_ty = ty::mk_slice(tcx, region, ty::mt {
+                let slice_ty = ty::mk_slice(tcx, tcx.mk_region(region), ty::mt {
                     ty: inner_ty,
                     mutbl: mutbl
                 });

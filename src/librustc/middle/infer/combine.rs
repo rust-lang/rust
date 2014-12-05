@@ -499,9 +499,9 @@ pub fn super_tys<'tcx, C: Combine<'tcx>>(this: &C,
           // All ty_unboxed_closure types with the same id represent
           // the (anonymous) type of the same closure expression. So
           // all of their regions should be equated.
-          let region = try!(this.equate().regions(a_region, b_region));
+          let region = try!(this.equate().regions(*a_region, *b_region));
           let substs = try!(this.substs_variances(None, a_substs, b_substs));
-          Ok(ty::mk_unboxed_closure(tcx, a_id, region, tcx.mk_substs(substs)))
+          Ok(ty::mk_unboxed_closure(tcx, a_id, tcx.mk_region(region), tcx.mk_substs(substs)))
       }
 
       (&ty::ty_uniq(a_inner), &ty::ty_uniq(b_inner)) => {
@@ -515,7 +515,7 @@ pub fn super_tys<'tcx, C: Combine<'tcx>>(this: &C,
       }
 
       (&ty::ty_rptr(a_r, ref a_mt), &ty::ty_rptr(b_r, ref b_mt)) => {
-            let r = try!(this.contraregions(a_r, b_r));
+            let r = try!(this.contraregions(*a_r, *b_r));
             // FIXME(14985)  If we have mutable references to trait objects, we
             // used to use covariant subtyping. I have preserved this behaviour,
             // even though it is probably incorrect. So don't go down the usual
@@ -527,7 +527,7 @@ pub fn super_tys<'tcx, C: Combine<'tcx>>(this: &C,
                 }
                 _ => try!(this.mts(a_mt, b_mt))
             };
-            Ok(ty::mk_rptr(tcx, r, mt))
+            Ok(ty::mk_rptr(tcx, tcx.mk_region(r), mt))
       }
 
       (&ty::ty_vec(a_t, Some(sz_a)), &ty::ty_vec(b_t, Some(sz_b))) => {

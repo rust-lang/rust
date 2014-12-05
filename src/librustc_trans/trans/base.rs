@@ -264,10 +264,10 @@ pub fn self_type_for_unboxed_closure<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let unboxed_closure = &(*unboxed_closures)[closure_id];
     match unboxed_closure.kind {
         ty::FnUnboxedClosureKind => {
-            ty::mk_imm_rptr(ccx.tcx(), ty::ReStatic, fn_ty)
+            ty::mk_imm_rptr(ccx.tcx(), ccx.tcx().mk_region(ty::ReStatic), fn_ty)
         }
         ty::FnMutUnboxedClosureKind => {
-            ty::mk_mut_rptr(ccx.tcx(), ty::ReStatic, fn_ty)
+            ty::mk_mut_rptr(ccx.tcx(), ccx.tcx().mk_region(ty::ReStatic), fn_ty)
         }
         ty::FnOnceUnboxedClosureKind => fn_ty
     }
@@ -2599,14 +2599,14 @@ pub fn get_fn_llvm_attributes<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_ty: Ty<
                     attrs.arg(idx, llvm::ReadOnlyAttribute);
                 }
 
-                if let ReLateBound(_, BrAnon(_)) = b {
+                if let ReLateBound(_, BrAnon(_)) = *b {
                     attrs.arg(idx, llvm::NoCaptureAttribute);
                 }
             }
 
             // When a reference in an argument has no named lifetime, it's impossible for that
             // reference to escape this function (returned or stored beyond the call by a closure).
-            ty::ty_rptr(ReLateBound(_, BrAnon(_)), mt) => {
+            ty::ty_rptr(&ReLateBound(_, BrAnon(_)), mt) => {
                 let llsz = llsize_of_real(ccx, type_of::type_of(ccx, mt.ty));
                 attrs.arg(idx, llvm::NoCaptureAttribute)
                      .arg(idx, llvm::DereferenceableAttribute(llsz));

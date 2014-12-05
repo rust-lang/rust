@@ -861,7 +861,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                     };
                     let bk = ty::BorrowKind::from_mutbl(m);
                     self.delegate.borrow(expr.id, expr.span, cmt,
-                                         r, bk, AutoRef);
+                                         *r, bk, AutoRef);
                 }
             }
         }

@@ -410,7 +410,7 @@ pub fn type_of_adjust<'tcx>(cx: &ctxt<'tcx>, adj: &AutoAdjustment<'tcx>) -> Opti
             },
             &AutoPtr(r, m, Some(box ref autoref)) => {
                 match type_of_autoref(cx, autoref) {
-                    Some(ty) => Some(mk_rptr(cx, r, mt {mutbl: m, ty: ty})),
+                    Some(ty) => Some(mk_rptr(cx, cx.mk_region(r), mt {mutbl: m, ty: ty})),
                     None => None
                 }
             }
@@ -609,6 +609,7 @@ pub struct CtxtArenas<'tcx> {
     type_: TypedArena<TyS<'tcx>>,
     substs: TypedArena<Substs<'tcx>>,
     bare_fn: TypedArena<BareFnTy<'tcx>>,
+    region: TypedArena<Region>,
 }
 
 impl<'tcx> CtxtArenas<'tcx> {
@@ -617,6 +618,7 @@ impl<'tcx> CtxtArenas<'tcx> {
             type_: TypedArena::new(),
             substs: TypedArena::new(),
             bare_fn: TypedArena::new(),
+            region: TypedArena::new(),
         }
     }
 }
@@ -636,6 +638,7 @@ pub struct ctxt<'tcx> {
     // FIXME as above, use a hashset if equivalent elements can be queried.
     substs_interner: RefCell<FnvHashMap<&'tcx Substs<'tcx>, &'tcx Substs<'tcx>>>,
     bare_fn_interner: RefCell<FnvHashMap<&'tcx BareFnTy<'tcx>, &'tcx BareFnTy<'tcx>>>,
+    region_interner: RefCell<FnvHashMap<&'tcx Region, &'tcx Region>>,
 
     pub sess: Session,
     pub def_map: DefMap,
@@ -1340,7 +1343,7 @@ pub enum sty<'tcx> {
     ty_str,
     ty_vec(Ty<'tcx>, Option<uint>), // Second field is length.
     ty_ptr(mt<'tcx>),
-    ty_rptr(Region, mt<'tcx>),
+    ty_rptr(&'tcx Region, mt<'tcx>),
 
     // If the def-id is Some(_), then this is the type of a specific
     // fn item. Otherwise, if None(_), it a fn pointer type.
@@ -1350,7 +1353,7 @@ pub enum sty<'tcx> {
     ty_trait(Box<TyTrait<'tcx>>),
     ty_struct(DefId, &'tcx Substs<'tcx>),
 
-    ty_unboxed_closure(DefId, Region, &'tcx Substs<'tcx>),
+    ty_unboxed_closure(DefId, &'tcx Region, &'tcx Substs<'tcx>),
 
     ty_tup(Vec<Ty<'tcx>>),
 
@@ -2085,6 +2088,7 @@ pub fn mk_ctxt<'tcx>(s: Session,
         interner: RefCell::new(FnvHashMap::new()),
         substs_interner: RefCell::new(FnvHashMap::new()),
         bare_fn_interner: RefCell::new(FnvHashMap::new()),
+        region_interner: RefCell::new(FnvHashMap::new()),
         named_region_map: named_region_map,
         item_variance_map: RefCell::new(DefIdMap::new()),
         variance_computed: Cell::new(false),
@@ -2163,6 +2167,16 @@ impl<'tcx> ctxt<'tcx> {
         let bare_fn = self.arenas.bare_fn.alloc(bare_fn);
         self.bare_fn_interner.borrow_mut().insert(bare_fn, bare_fn);
         bare_fn
+    }
+
+    pub fn mk_region(&self, region: Region) -> &'tcx Region {
+        if let Some(region) = self.region_interner.borrow().get(&region) {
+            return *region;
+        }
+
+        let region = self.arenas.region.alloc(region);
+        self.region_interner.borrow_mut().insert(region, region);
+        region
     }
 }
 
@@ -2269,7 +2283,7 @@ impl FlagComputation {
                 }
             }
 
-            &ty_unboxed_closure(_, ref region, substs) => {
+            &ty_unboxed_closure(_, region, substs) => {
                 self.add_region(*region);
                 self.add_substs(substs);
             }
@@ -2299,7 +2313,7 @@ impl FlagComputation {
             }
 
             &ty_rptr(r, ref m) => {
-                self.add_region(r);
+                self.add_region(*r);
                 self.add_ty(m.ty);
             }
 
@@ -2404,7 +2418,7 @@ pub fn mk_str<'tcx>(cx: &ctxt<'tcx>) -> Ty<'tcx> {
     mk_t(cx, ty_str)
 }
 
-pub fn mk_str_slice<'tcx>(cx: &ctxt<'tcx>, r: Region, m: ast::Mutability) -> Ty<'tcx> {
+pub fn mk_str_slice<'tcx>(cx: &ctxt<'tcx>, r: &'tcx Region, m: ast::Mutability) -> Ty<'tcx> {
     mk_rptr(cx, r,
             mt {
                 ty: mk_t(cx, ty_str),
@@ -2421,14 +2435,14 @@ pub fn mk_uniq<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> { mk_t(cx, ty_un
 
 pub fn mk_ptr<'tcx>(cx: &ctxt<'tcx>, tm: mt<'tcx>) -> Ty<'tcx> { mk_t(cx, ty_ptr(tm)) }
 
-pub fn mk_rptr<'tcx>(cx: &ctxt<'tcx>, r: Region, tm: mt<'tcx>) -> Ty<'tcx> {
+pub fn mk_rptr<'tcx>(cx: &ctxt<'tcx>, r: &'tcx Region, tm: mt<'tcx>) -> Ty<'tcx> {
     mk_t(cx, ty_rptr(r, tm))
 }
 
-pub fn mk_mut_rptr<'tcx>(cx: &ctxt<'tcx>, r: Region, ty: Ty<'tcx>) -> Ty<'tcx> {
+pub fn mk_mut_rptr<'tcx>(cx: &ctxt<'tcx>, r: &'tcx Region, ty: Ty<'tcx>) -> Ty<'tcx> {
     mk_rptr(cx, r, mt {ty: ty, mutbl: ast::MutMutable})
 }
-pub fn mk_imm_rptr<'tcx>(cx: &ctxt<'tcx>, r: Region, ty: Ty<'tcx>) -> Ty<'tcx> {
+pub fn mk_imm_rptr<'tcx>(cx: &ctxt<'tcx>, r: &'tcx Region, ty: Ty<'tcx>) -> Ty<'tcx> {
     mk_rptr(cx, r, mt {ty: ty, mutbl: ast::MutImmutable})
 }
 
@@ -2448,7 +2462,7 @@ pub fn mk_vec<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>, sz: Option<uint>) -> Ty<'tcx>
     mk_t(cx, ty_vec(ty, sz))
 }
 
-pub fn mk_slice<'tcx>(cx: &ctxt<'tcx>, r: Region, tm: mt<'tcx>) -> Ty<'tcx> {
+pub fn mk_slice<'tcx>(cx: &ctxt<'tcx>, r: &'tcx Region, tm: mt<'tcx>) -> Ty<'tcx> {
     mk_rptr(cx, r,
             mt {
                 ty: mk_vec(cx, tm.ty, None),
@@ -2512,7 +2526,7 @@ pub fn mk_struct<'tcx>(cx: &ctxt<'tcx>, struct_id: ast::DefId,
 }
 
 pub fn mk_unboxed_closure<'tcx>(cx: &ctxt<'tcx>, closure_id: ast::DefId,
-                                region: Region, substs: &'tcx Substs<'tcx>)
+                                region: &'tcx Region, substs: &'tcx Substs<'tcx>)
                                 -> Ty<'tcx> {
     mk_t(cx, ty_unboxed_closure(closure_id, region, substs))
 }
@@ -3087,9 +3101,10 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
 
             ty_rptr(r, ref mt) => {
                 TC::ReachesFfiUnsafe | match mt.ty.sty {
-                    ty_str => borrowed_contents(r, ast::MutImmutable),
-                    ty_vec(..) => tc_ty(cx, mt.ty, cache).reference(borrowed_contents(r, mt.mutbl)),
-                    _ => tc_ty(cx, mt.ty, cache).reference(borrowed_contents(r, mt.mutbl)),
+                    ty_str => borrowed_contents(*r, ast::MutImmutable),
+                    ty_vec(..) => tc_ty(cx, mt.ty, cache).reference(borrowed_contents(*r,
+                                                                                      mt.mutbl)),
+                    _ => tc_ty(cx, mt.ty, cache).reference(borrowed_contents(*r, mt.mutbl)),
                 }
             }
 
@@ -3124,7 +3139,7 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
                 let upvars = unboxed_closure_upvars(cx, did, substs);
                 TypeContents::union(upvars.as_slice(),
                                     |f| tc_ty(cx, f.ty, cache))
-                    | borrowed_contents(r, MutMutable)
+                    | borrowed_contents(*r, MutMutable)
             }
 
             ty_tup(ref tys) => {
@@ -3796,7 +3811,7 @@ pub fn deref<'tcx>(ty: Ty<'tcx>, explicit: bool) -> Option<mt<'tcx>> {
 
 pub fn close_type<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
     match ty.sty {
-        ty_open(ty) => mk_rptr(cx, ReStatic, mt {ty: ty, mutbl:ast::MutImmutable}),
+        ty_open(ty) => mk_rptr(cx, cx.mk_region(ReStatic), mt {ty: ty, mutbl:ast::MutImmutable}),
         _ => cx.sess.bug(format!("Trying to close a non-open type {}",
                                  ty_to_string(cx, ty))[])
     }
@@ -4000,7 +4015,7 @@ pub fn ty_region(tcx: &ctxt,
                  span: Span,
                  ty: Ty) -> Region {
     match ty.sty {
-        ty_rptr(r, _) => r,
+        ty_rptr(r, _) => *r,
         ref s => {
             tcx.sess.span_bug(
                 span,
@@ -4206,7 +4221,7 @@ pub fn adjust_ty_for_autoref<'tcx>(cx: &ctxt<'tcx>,
                 &Some(box ref a) => adjust_ty_for_autoref(cx, span, ty, Some(a)),
                 &None => ty
             };
-            mk_rptr(cx, r, mt {
+            mk_rptr(cx, cx.mk_region(r), mt {
                 ty: adjusted_ty,
                 mutbl: m
             })
@@ -5494,7 +5509,7 @@ pub fn unboxed_closure_upvars<'tcx>(tcx: &ctxt<'tcx>, closure_id: ast::DefId, su
                         var_id: freevar_def_id.node,
                         closure_expr_id: closure_id.node
                     }].clone();
-                    freevar_ty = mk_rptr(tcx, borrow.region, ty::mt {
+                    freevar_ty = mk_rptr(tcx, tcx.mk_region(borrow.region), ty::mt {
                         ty: freevar_ty,
                         mutbl: borrow.kind.to_mutbl_lossy()
                     });
@@ -6348,7 +6363,7 @@ pub fn accumulate_lifetimes_in_type(accumulator: &mut Vec<ty::Region>,
     walk_ty(ty, |ty| {
         match ty.sty {
             ty_rptr(region, _) => {
-                accumulator.push(region)
+                accumulator.push(*region)
             }
             ty_trait(ref t) => {
                 accumulator.push_all(t.principal.substs().regions().as_slice());
@@ -6363,7 +6378,7 @@ pub fn accumulate_lifetimes_in_type(accumulator: &mut Vec<ty::Region>,
                     UniqTraitStore => {}
                 }
             }
-            ty_unboxed_closure(_, ref region, substs) => {
+            ty_unboxed_closure(_, region, substs) => {
                 accumulator.push(*region);
                 accum_substs(accumulator, substs);
             }
