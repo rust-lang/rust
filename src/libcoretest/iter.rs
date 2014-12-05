@@ -501,17 +501,18 @@ fn test_double_ended_zip() {
 
 #[test]
 fn test_double_ended_zip_longest() {
+    use core::iter::EitherOrBoth::{Both, Left};
     let xs = [1i, 2, 3, 4, 5, 6];
     let ys = [1i, 2, 3, 7];
     let a = xs.iter().map(|&x| x);
     let b = ys.iter().map(|&x| x);
     let mut it = a.zip_longest(b);
-    assert_eq!(it.next(), Some((Some(1), Some(1))));
-    assert_eq!(it.next(), Some((Some(2), Some(2))));
-    assert_eq!(it.next_back(), Some((Some(6), None)));
-    assert_eq!(it.next_back(), Some((Some(5), None)));
-    assert_eq!(it.next_back(), Some((Some(4), Some(7))));
-    assert_eq!(it.next(), Some((Some(3), Some(3))));
+    assert_eq!(it.next(), Some(Both(1, 1)));
+    assert_eq!(it.next(), Some(Both(2, 2)));
+    assert_eq!(it.next_back(), Some(Left(6)));
+    assert_eq!(it.next_back(), Some(Left(5)));
+    assert_eq!(it.next_back(), Some(Both(4, 7)));
+    assert_eq!(it.next(), Some(Both(3, 3)));
     assert_eq!(it.next(), None);
 }
 

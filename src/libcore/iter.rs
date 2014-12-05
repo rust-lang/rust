@@ -64,6 +64,7 @@ use num::{ToPrimitive, Int};
 use ops::{Add, Deref};
 use option::{Option, Some, None};
 use uint;
+use self::EitherOrBoth::{Left, Right, Both};
 
 #[deprecated = "renamed to Extend"] pub use self::Extend as Extendable;
 
@@ -802,7 +803,7 @@ impl<'a, A, B, T: ExactSizeIterator<A>> ExactSizeIterator<B> for Map<'a, A, B, T
 impl<A, B, T, U> ExactSizeIterator<(A, B)> for Zip<T, U>
     where T: ExactSizeIterator<A>, U: ExactSizeIterator<B> {}
 #[unstable = "trait is unstable"]
-impl<A, B, T, U> ExactSizeIterator<(Option<A>, Option<B>)> for ZipLongest<T, U>
+impl<A, B, T, U> ExactSizeIterator<EitherOrBoth<A, B>> for ZipLongest<T, U>
     where T: ExactSizeIterator<A>, U: ExactSizeIterator<B> {}
 
 /// An double-ended iterator with the direction inverted
@@ -1400,12 +1401,14 @@ pub struct ZipLongest<T, U> {
     b: U
 }
 
-impl<A, B, T: Iterator<A>, U: Iterator<B>> Iterator<(Option<A>, Option<B>)> for ZipLongest<T, U> {
+impl<A, B, T: Iterator<A>, U: Iterator<B>> Iterator<EitherOrBoth<A, B>> for ZipLongest<T, U> {
     #[inline]
-    fn next(&mut self) -> Option<(Option<A>, Option<B>)> {
+    fn next(&mut self) -> Option<EitherOrBoth<A, B>> {
         match (self.a.next(), self.b.next()) {
             (None, None) => None,
-            pair_of_options => Some(pair_of_options),
+            (Some(a), None) => Some(Left(a)),
+            (None, Some(b)) => Some(Right(b)),
+            (Some(a), Some(b)) => Some(Both(a, b)),
         }
     }
 
@@ -1425,36 +1428,56 @@ impl<A, B, T: Iterator<A>, U: Iterator<B>> Iterator<(Option<A>, Option<B>)> for 
     }
 }
 
-impl<A, B, T: ExactSize<A>, U: ExactSize<B>> DoubleEndedIterator<(Option<A>, Option<B>)>
+impl<A, B, T: ExactSizeIterator<A>, U: ExactSizeIterator<B>> DoubleEndedIterator<EitherOrBoth<A, B>>
 for ZipLongest<T, U> {
     #[inline]
-    fn next_back(&mut self) -> Option<(Option<A>, Option<B>)> {
+    fn next_back(&mut self) -> Option<EitherOrBoth<A, B>> {
         use cmp::{Equal, Greater, Less};
         match self.a.len().cmp(&self.b.len()) {
             Equal => match (self.a.next_back(), self.b.next_back()) {
                 (None, None) => None,
-                pair_of_options => Some(pair_of_options),
+                (Some(a), Some(b)) => Some(Both(a, b)),
+                // These can only happen if .len() is inconsistent with .next_back()
+                (Some(a), None) => Some(Left(a)),
+                (None, Some(b)) => Some(Right(b)),
             },
-            Greater => self.a.next_back().map(|x| (Some(x), None)),
-            Less => self.b.next_back().map(|y| (None, Some(y))),
+            Greater => self.a.next_back().map(Left),
+            Less => self.b.next_back().map(Right),
         }
     }
 }
 
 impl<A, B, T: RandomAccessIterator<A>, U: RandomAccessIterator<B>>
-RandomAccessIterator<(Option<A>, Option<B>)> for ZipLongest<T, U> {
+RandomAccessIterator<EitherOrBoth<A, B>> for ZipLongest<T, U> {
     #[inline]
     fn indexable(&self) -> uint {
         cmp::max(self.a.indexable(), self.b.indexable())
     }
 
     #[inline]
-    fn idx(&mut self, index: uint) -> Option<(Option<A>, Option<B>)> {
+    fn idx(&mut self, index: uint) -> Option<EitherOrBoth<A, B>> {
         match (self.a.idx(index), self.b.idx(index)) {
             (None, None) => None,
-            pair_of_options => Some(pair_of_options),
+            (Some(a), None) => Some(Left(a)),
+            (None, Some(b)) => Some(Right(b)),
+            (Some(a), Some(b)) => Some(Both(a, b)),
         }
     }
+}
+
+/// A value yielded by `ZipLongest`.
+/// Contains one or two values,
+/// depending on which of the input iterators are exhausted.
+#[deriving(Clone, PartialEq, Eq, Show)]
+pub enum EitherOrBoth<A, B> {
+    /// Neither input iterator is exhausted yet, yielding two values.
+    Both(A, B),
+    /// The parameter iterator of `.zip_longest()` is exhausted,
+    /// only yielding a value from the `self` iterator.
+    Left(A),
+    /// The `self` iterator of `.zip_longest()` is exhausted,
+    /// only yielding a value from the parameter iterator.
+    Right(B),
 }
 
 /// An iterator which maps the values of `iter` with `f`
