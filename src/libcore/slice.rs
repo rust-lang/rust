@@ -43,7 +43,7 @@ use default::Default;
 use iter::*;
 use kinds::Copy;
 use num::Int;
-use ops;
+use ops::{FnMut, mod};
 use option::Option;
 use option::Option::{None, Some};
 use ptr;
@@ -105,20 +105,23 @@ pub trait SlicePrelude<T> for Sized? {
     /// Returns an iterator over subslices separated by elements that match
     /// `pred`.  The matched element is not contained in the subslices.
     #[unstable = "iterator type may change, waiting on unboxed closures"]
-    fn split<'a>(&'a self, pred: |&T|: 'a -> bool) -> Splits<'a, T>;
+    fn split<'a, P>(&'a self, pred: P) -> Splits<'a, T, P> where
+        P: FnMut(&T) -> bool;
 
     /// Returns an iterator over subslices separated by elements that match
     /// `pred`, limited to splitting at most `n` times.  The matched element is
     /// not contained in the subslices.
     #[unstable = "iterator type may change"]
-    fn splitn<'a>(&'a self, n: uint, pred: |&T|: 'a -> bool) -> SplitsN<Splits<'a, T>>;
+    fn splitn<'a, P>(&'a self, n: uint, pred: P) -> SplitsN<Splits<'a, T, P>> where
+        P: FnMut(&T) -> bool;
 
     /// Returns an iterator over subslices separated by elements that match
     /// `pred` limited to splitting at most `n` times. This starts at the end of
     /// the slice and works backwards.  The matched element is not contained in
     /// the subslices.
     #[unstable = "iterator type may change"]
-    fn rsplitn<'a>(&'a self,  n: uint, pred: |&T|: 'a -> bool) -> SplitsN<Splits<'a, T>>;
+    fn rsplitn<'a, P>(&'a self,  n: uint, pred: P) -> SplitsN<Splits<'a, T, P>> where
+        P: FnMut(&T) -> bool;
 
     /// Returns an iterator over all contiguous windows of length
     /// `size`. The windows overlap. If the slice is shorter than
@@ -470,7 +473,7 @@ impl<T> SlicePrelude<T> for [T] {
     }
 
     #[inline]
-    fn split<'a>(&'a self, pred: |&T|: 'a -> bool) -> Splits<'a, T> {
+    fn split<'a, P>(&'a self, pred: P) -> Splits<'a, T, P> where P: FnMut(&T) -> bool {
         Splits {
             v: self,
             pred: pred,
@@ -479,7 +482,9 @@ impl<T> SlicePrelude<T> for [T] {
     }
 
     #[inline]
-    fn splitn<'a>(&'a self, n: uint, pred: |&T|: 'a -> bool) -> SplitsN<Splits<'a, T>> {
+    fn splitn<'a, P>(&'a self, n: uint, pred: P) -> SplitsN<Splits<'a, T, P>> where
+        P: FnMut(&T) -> bool,
+    {
         SplitsN {
             iter: self.split(pred),
             count: n,
@@ -488,7 +493,9 @@ impl<T> SlicePrelude<T> for [T] {
     }
 
     #[inline]
-    fn rsplitn<'a>(&'a self, n: uint, pred: |&T|: 'a -> bool) -> SplitsN<Splits<'a, T>> {
+    fn rsplitn<'a, P>(&'a self, n: uint, pred: P) -> SplitsN<Splits<'a, T, P>> where
+        P: FnMut(&T) -> bool,
+    {
         SplitsN {
             iter: self.split(pred),
             count: n,
@@ -1271,14 +1278,14 @@ trait SplitsIter<E>: DoubleEndedIterator<E> {
 /// An iterator over subslices separated by elements that match a predicate
 /// function.
 #[experimental = "needs review"]
-pub struct Splits<'a, T:'a> {
+pub struct Splits<'a, T:'a, P> where P: FnMut(&T) -> bool {
     v: &'a [T],
-    pred: |t: &T|: 'a -> bool,
+    pred: P,
     finished: bool
 }
 
 #[experimental = "needs review"]
-impl<'a, T> Iterator<&'a [T]> for Splits<'a, T> {
+impl<'a, T, P> Iterator<&'a [T]> for Splits<'a, T, P> where P: FnMut(&T) -> bool {
     #[inline]
     fn next(&mut self) -> Option<&'a [T]> {
         if self.finished { return None; }
@@ -1304,7 +1311,7 @@ impl<'a, T> Iterator<&'a [T]> for Splits<'a, T> {
 }
 
 #[experimental = "needs review"]
-impl<'a, T> DoubleEndedIterator<&'a [T]> for Splits<'a, T> {
+impl<'a, T, P> DoubleEndedIterator<&'a [T]> for Splits<'a, T, P> where P: FnMut(&T) -> bool {
     #[inline]
     fn next_back(&mut self) -> Option<&'a [T]> {
         if self.finished { return None; }
@@ -1320,7 +1327,7 @@ impl<'a, T> DoubleEndedIterator<&'a [T]> for Splits<'a, T> {
     }
 }
 
-impl<'a, T> SplitsIter<&'a [T]> for Splits<'a, T> {
+impl<'a, T, P> SplitsIter<&'a [T]> for Splits<'a, T, P> where P: FnMut(&T) -> bool {
     #[inline]
     fn finish(&mut self) -> Option<&'a [T]> {
         if self.finished { None } else { self.finished = true; Some(self.v) }
