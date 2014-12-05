@@ -25,19 +25,74 @@ use sys_common;
 use sys;
 use sys::fs::FileDesc as FileDesc;
 
-/// A synchronous, in-memory pipe.
-pub struct PipeStream {
+#[deriving(Clone)]
+struct PipeImpl {
     inner: Arc<FileDesc>
 }
 
-pub struct PipePair {
-    pub reader: PipeStream,
-    pub writer: PipeStream,
+/// The reading end of a pipe
+#[deriving(Clone)]
+pub struct PipeReader {
+    inner: PipeImpl
 }
 
-impl PipeStream {
-    /// Consumes a file descriptor to return a pipe stream that will have
-    /// synchronous, but non-blocking reads/writes. This is useful if the file
+/// The writing end of a pipe
+#[deriving(Clone)]
+pub struct PipeWriter {
+    inner: PipeImpl
+}
+
+pub struct PipePair {
+    pub reader: PipeReader,
+    pub writer: PipeWriter,
+}
+
+impl PipePair {
+    /// Creates a pair of in-memory OS pipes for a unidirectional communication
+    /// stream.
+    ///
+    /// The structure returned contains a reader and writer I/O object. Data
+    /// written to the writer can be read from the reader.
+    ///
+    /// # Errors
+    ///
+    /// This function can fail to succeed if the underlying OS has run out of
+    /// available resources to allocate a new pipe.
+    pub fn new() -> IoResult<PipePair> {
+        let (reader, writer) = try!(unsafe { sys::os::pipe() });
+        Ok(PipePair {
+            reader: PipeReader::from_filedesc(reader),
+            writer: PipeWriter::from_filedesc(writer),
+        })
+    }
+}
+
+impl PipeImpl {
+    fn open(fd: libc::c_int) -> IoResult<PipeImpl> {
+        Ok(PipeImpl::from_filedesc(FileDesc::new(fd, true)))
+    }
+
+    #[doc(hidden)]
+    fn from_filedesc(fd: FileDesc) -> PipeImpl {
+        PipeImpl { inner: Arc::new(fd) }
+    }
+}
+
+impl sys_common::AsInner<sys::fs::FileDesc> for PipeReader {
+    fn as_inner(&self) -> &sys::fs::FileDesc {
+        &*self.inner.inner
+    }
+}
+
+impl sys_common::AsInner<sys::fs::FileDesc> for PipeWriter {
+    fn as_inner(&self) -> &sys::fs::FileDesc {
+        &*self.inner.inner
+    }
+}
+
+impl PipeReader {
+    /// Consumes a file descriptor to return a pipe reader that will have
+    /// synchronous, but non-blocking reads. This is useful if the file
     /// descriptor is acquired via means other than the standard methods.
     ///
     /// This operation consumes ownership of the file descriptor and it will be
@@ -49,64 +104,69 @@ impl PipeStream {
     /// # #![allow(unused_must_use)]
     /// extern crate libc;
     ///
-    /// use std::io::pipe::PipeStream;
+    /// use std::io::pipe::PipeReader;
     ///
     /// fn main() {
-    ///     let mut pipe = PipeStream::open(libc::STDERR_FILENO);
-    ///     pipe.write(b"Hello, stderr!");
+    ///     let mut pipe = PipeReader::open(libc::STDIN_FILENO);
+    ///     let mut buf = [0, ..10];
+    ///     pipe.read(&mut buf).unwrap();
     /// }
     /// ```
-    pub fn open(fd: libc::c_int) -> IoResult<PipeStream> {
-        Ok(PipeStream::from_filedesc(FileDesc::new(fd, true)))
+    pub fn open(fd: libc::c_int) -> IoResult<PipeReader> {
+        PipeImpl::open(fd).map(|x| PipeReader { inner: x })
     }
 
     // FIXME: expose this some other way
     /// Wrap a FileDesc directly, taking ownership.
     #[doc(hidden)]
-    pub fn from_filedesc(fd: FileDesc) -> PipeStream {
-        PipeStream { inner: Arc::new(fd) }
+    pub fn from_filedesc(fd: FileDesc) -> PipeReader {
+        PipeReader { inner: PipeImpl::from_filedesc(fd) }
     }
 
-    /// Creates a pair of in-memory OS pipes for a unidirectional communication
-    /// stream.
+}
+
+impl PipeWriter {
+    /// Consumes a file descriptor to return a pipe writer that will have
+    /// synchronous, but non-blocking writes. This is useful if the file
+    /// descriptor is acquired via means other than the standard methods.
     ///
-    /// The structure returned contains a reader and writer I/O object. Data
-    /// written to the writer can be read from the reader.
+    /// This operation consumes ownership of the file descriptor and it will be
+    /// closed once the object is deallocated.
     ///
-    /// # Errors
+    /// # Example
     ///
-    /// This function can fail to succeed if the underlying OS has run out of
-    /// available resources to allocate a new pipe.
-    pub fn pair() -> IoResult<PipePair> {
-        let (reader, writer) = try!(unsafe { sys::os::pipe() });
-        Ok(PipePair {
-            reader: PipeStream::from_filedesc(reader),
-            writer: PipeStream::from_filedesc(writer),
-        })
+    /// ```{rust,no_run}
+    /// # #![allow(unused_must_use)]
+    /// extern crate libc;
+    ///
+    /// use std::io::pipe::PipeWriter;
+    ///
+    /// fn main() {
+    ///     let mut pipe = PipeWriter::open(libc::STDERR_FILENO);
+    ///     pipe.write(b"Hello, World!");
+    /// }
+    /// ```
+    pub fn open(fd: libc::c_int) -> IoResult<PipeWriter> {
+        PipeImpl::open(fd).map(|x| PipeWriter { inner: x })
+    }
+
+    // FIXME: expose this some other way
+    /// Wrap a FileDesc directly, taking ownership.
+    #[doc(hidden)]
+    pub fn from_filedesc(fd: FileDesc) -> PipeWriter {
+        PipeWriter { inner: PipeImpl::from_filedesc(fd) }
     }
 }
 
-impl sys_common::AsInner<sys::fs::FileDesc> for PipeStream {
-    fn as_inner(&self) -> &sys::fs::FileDesc {
-        &*self.inner
-    }
-}
-
-impl Clone for PipeStream {
-    fn clone(&self) -> PipeStream {
-        PipeStream { inner: self.inner.clone() }
-    }
-}
-
-impl Reader for PipeStream {
+impl Reader for PipeReader {
     fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
-        self.inner.read(buf)
+        self.inner.inner.read(buf)
     }
 }
 
-impl Writer for PipeStream {
+impl Writer for PipeWriter {
     fn write(&mut self, buf: &[u8]) -> IoResult<()> {
-        self.inner.write(buf)
+        self.inner.inner.write(buf)
     }
 }
 
@@ -117,11 +177,11 @@ mod test {
     #[test]
     fn partial_read() {
         use os;
-        use io::pipe::PipeStream;
+        use io::pipe::{PipeReader,PipeWriter};
 
         let os::Pipe { reader, writer } = unsafe { os::pipe().unwrap() };
-        let out = PipeStream::open(writer);
-        let mut input = PipeStream::open(reader);
+        let out = PipeWriter::open(writer);
+        let mut input = PipeReader::open(reader);
         let (tx, rx) = channel();
         spawn(proc() {
             let mut out = out;

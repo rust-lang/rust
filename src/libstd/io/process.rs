@@ -28,7 +28,7 @@ use collections::HashMap;
 use hash::Hash;
 #[cfg(windows)]
 use std::hash::sip::SipState;
-use io::pipe::{PipeStream, PipePair};
+use io::pipe::{PipePair,PipeReader,PipeWriter};
 use path::BytesContainer;
 
 use sys;
@@ -82,15 +82,15 @@ pub struct Process {
 
     /// Handle to the child's stdin, if the `stdin` field of this process's
     /// `ProcessConfig` was `CreatePipe`. By default, this handle is `Some`.
-    pub stdin: Option<PipeStream>,
+    pub stdin: Option<PipeWriter>,
 
     /// Handle to the child's stdout, if the `stdout` field of this process's
     /// `ProcessConfig` was `CreatePipe`. By default, this handle is `Some`.
-    pub stdout: Option<PipeStream>,
+    pub stdout: Option<PipeReader>,
 
     /// Handle to the child's stderr, if the `stderr` field of this process's
     /// `ProcessConfig` was `CreatePipe`. By default, this handle is `Some`.
-    pub stderr: Option<PipeStream>,
+    pub stderr: Option<PipeReader>,
 }
 
 /// A representation of environment variable name
@@ -208,9 +208,9 @@ impl Command {
             args: Vec::new(),
             env: None,
             cwd: None,
-            stdin: CreatePipe(true, false),
-            stdout: CreatePipe(false, true),
-            stderr: CreatePipe(false, true),
+            stdin: CreatePipe,
+            stdout: CreatePipe,
+            stderr: CreatePipe,
             uid: None,
             gid: None,
             detach: false,
@@ -278,21 +278,21 @@ impl Command {
     }
 
     /// Configuration for the child process's stdin handle (file descriptor 0).
-    /// Defaults to `CreatePipe(true, false)` so the input can be written to.
+    /// Defaults to `CreatePipe` so the input can be written to.
     pub fn stdin<'a>(&'a mut self, cfg: StdioContainer) -> &'a mut Command {
         self.stdin = cfg;
         self
     }
 
     /// Configuration for the child process's stdout handle (file descriptor 1).
-    /// Defaults to `CreatePipe(false, true)` so the output can be collected.
+    /// Defaults to `CreatePipe` so the output can be collected.
     pub fn stdout<'a>(&'a mut self, cfg: StdioContainer) -> &'a mut Command {
         self.stdout = cfg;
         self
     }
 
     /// Configuration for the child process's stderr handle (file descriptor 2).
-    /// Defaults to `CreatePipe(false, true)` so the output can be collected.
+    /// Defaults to `CreatePipe` so the output can be collected.
     pub fn stderr<'a>(&'a mut self, cfg: StdioContainer) -> &'a mut Command {
         self.stderr = cfg;
         self
@@ -323,9 +323,9 @@ impl Command {
 
     /// Executes the command as a child process, which is returned.
     pub fn spawn(&self) -> IoResult<Process> {
-        let (their_stdin, our_stdin) = try!(setup_io(self.stdin));
-        let (their_stdout, our_stdout) = try!(setup_io(self.stdout));
-        let (their_stderr, our_stderr) = try!(setup_io(self.stderr));
+        let (their_stdin, our_stdin) = try!(setup_io(Direction::Write, self.stdin));
+        let (our_stdout, their_stdout) = try!(setup_io(Direction::Read, self.stdout));
+        let (our_stderr, their_stderr) = try!(setup_io(Direction::Read, self.stderr));
 
         match ProcessImp::spawn(self, their_stdin, their_stdout, their_stderr) {
             Err(e) => Err(e),
@@ -396,30 +396,36 @@ impl fmt::Show for Command {
     }
 }
 
-fn setup_io(io: StdioContainer) -> IoResult<(Option<PipeStream>, Option<PipeStream>)> {
-    let ours;
-    let theirs;
+enum Direction{Read,Write}
+
+fn setup_io(way:Direction, io: StdioContainer)
+            -> IoResult<(Option<PipeReader>, Option<PipeWriter>)> {
+    let reader;
+    let writer;
     match io {
         Ignored => {
-            theirs = None;
-            ours = None;
+            reader = None;
+            writer = None;
         }
         InheritFd(fd) => {
-            theirs = Some(PipeStream::from_filedesc(FileDesc::new(fd, false)));
-            ours = None;
-        }
-        CreatePipe(readable, _writable) => {
-            let PipePair { reader, writer } = try!(PipeStream::pair());
-            if readable {
-                theirs = Some(reader);
-                ours = Some(writer);
-            } else {
-                theirs = Some(writer);
-                ours = Some(reader);
+            match way {
+                Direction::Read => {
+                    reader = Some(PipeReader::from_filedesc(FileDesc::new(fd, false)));
+                    writer = None;
+                }
+                Direction::Write => {
+                    reader = None;
+                    writer = Some(PipeWriter::from_filedesc(FileDesc::new(fd, false)));
+                }
             }
         }
+        CreatePipe => {
+            let PipePair { reader:read, writer:write } = try!(PipePair::new());
+            reader = Some(read);
+            writer = Some(write);
+        }
     }
-    Ok((theirs, ours))
+    Ok((reader, writer))
 }
 
 // Allow the sys module to get access to the Command state
@@ -473,11 +479,7 @@ pub enum StdioContainer {
 
     /// Creates a pipe for the specified file descriptor which will be created
     /// when the process is spawned.
-    ///
-    /// The first boolean argument is whether the pipe is readable, and the
-    /// second is whether it is writable. These properties are from the view of
-    /// the *child* process, not the parent process.
-    CreatePipe(bool /* readable */, bool /* writable */),
+    CreatePipe,
 }
 
 /// Describes the result of a process after it has terminated.
@@ -686,7 +688,7 @@ impl Process {
     /// fail.
     pub fn wait_with_output(mut self) -> IoResult<ProcessOutput> {
         drop(self.stdin.take());
-        fn read(stream: Option<io::PipeStream>) -> Receiver<IoResult<Vec<u8>>> {
+        fn read(stream: Option<PipeReader>) -> Receiver<IoResult<Vec<u8>>> {
             let (tx, rx) = channel();
             match stream {
                 Some(stream) => spawn(proc() {
@@ -809,7 +811,7 @@ mod tests {
     #[test]
     fn stdout_works() {
         let mut cmd = Command::new("echo");
-        cmd.arg("foobar").stdout(CreatePipe(false, true));
+        cmd.arg("foobar").stdout(CreatePipe);
         assert_eq!(run_output(cmd), "foobar\n".to_string());
     }
 
@@ -819,7 +821,7 @@ mod tests {
         let mut cmd = Command::new("/bin/sh");
         cmd.arg("-c").arg("pwd")
            .cwd(&Path::new("/"))
-           .stdout(CreatePipe(false, true));
+           .stdout(CreatePipe);
         assert_eq!(run_output(cmd), "/\n".to_string());
     }
 
@@ -828,8 +830,8 @@ mod tests {
     fn stdin_works() {
         let mut p = Command::new("/bin/sh")
                             .arg("-c").arg("read line; echo $line")
-                            .stdin(CreatePipe(true, false))
-                            .stdout(CreatePipe(false, true))
+                            .stdin(CreatePipe)
+                            .stdout(CreatePipe)
                             .spawn().unwrap();
         p.stdin.as_mut().unwrap().write("foobar".as_bytes()).unwrap();
         drop(p.stdin.take());

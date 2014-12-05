@@ -39,7 +39,13 @@ impl AsRawHandle for io::fs::File {
     }
 }
 
-impl AsRawHandle for io::pipe::PipeStream {
+impl AsRawHandle for io::pipe::PipeReader {
+    fn as_raw_handle(&self) -> Handle {
+        self.as_inner().handle()
+    }
+}
+
+impl AsRawHandle for io::pipe::PipeWriter {
     fn as_raw_handle(&self) -> Handle {
         self.as_inner().handle()
     }

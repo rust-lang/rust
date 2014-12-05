@@ -10,6 +10,7 @@
 use self::Req::*;
 
 use libc::{mod, pid_t, c_void, c_int};
+use libc::funcs::posix88::unistd::dup2;
 use c_str::CString;
 use io::{mod, IoResult, IoError};
 use mem;
@@ -39,6 +40,34 @@ enum Req {
     NewChild(libc::pid_t, Sender<ProcessExit>, u64),
 }
 
+// If a stdio file descriptor is set to be ignored (via a -1 file
+// descriptor), then we don't actually close it, but rather open
+// up /dev/null into that file descriptor. Otherwise, the first file
+// descriptor opened up in the child would be numbered as one of the
+// stdio file descriptors, which is likely to wreak havoc.
+unsafe fn setup<T>(src: Option<T>, dst: c_int, devnull:&CString, ) -> bool
+    where T : AsInner<FileDesc> {
+    let src = match src {
+        None => {
+            let flags = if dst == libc::STDIN_FILENO {
+                libc::O_RDONLY
+            } else {
+                libc::O_RDWR
+            };
+            libc::open(devnull.as_ptr(), flags, 0)
+        }
+        Some(obj) => {
+            let fd = obj.as_inner().fd();
+            // Leak the memory and the file descriptor. We're in the
+            // child now an all our resources are going to be
+            // cleaned up very soon
+            mem::forget(obj);
+            fd
+        }
+    };
+    src != -1 && retry(|| dup2(src, dst)) != -1
+}
+
 impl Process {
     pub fn id(&self) -> pid_t {
         self.pid
@@ -53,10 +82,10 @@ impl Process {
         mkerr_libc(r)
     }
 
-    pub fn spawn<K, V, C, P>(cfg: &C, in_fd: Option<P>,
-                              out_fd: Option<P>, err_fd: Option<P>)
-                              -> IoResult<Process>
-        where C: ProcessConfig<K, V>, P: AsInner<FileDesc>,
+    pub fn spawn<K, V, C, P, Q>(cfg: &C, in_fd: Option<P>,
+                                out_fd: Option<Q>, err_fd: Option<Q>)
+                                -> IoResult<Process>
+        where C: ProcessConfig<K, V>, P: AsInner<FileDesc>, Q: AsInner<FileDesc>,
               K: BytesContainer + Eq + Hash, V: BytesContainer
     {
         use libc::funcs::posix88::unistd::{fork, dup2, close, chdir, execvp};
@@ -167,36 +196,10 @@ impl Process {
 
                 rustrt::rust_unset_sigprocmask();
 
-                // If a stdio file descriptor is set to be ignored (via a -1 file
-                // descriptor), then we don't actually close it, but rather open
-                // up /dev/null into that file descriptor. Otherwise, the first file
-                // descriptor opened up in the child would be numbered as one of the
-                // stdio file descriptors, which is likely to wreak havoc.
-                let setup = |src: Option<P>, dst: c_int| {
-                    let src = match src {
-                        None => {
-                            let flags = if dst == libc::STDIN_FILENO {
-                                libc::O_RDONLY
-                            } else {
-                                libc::O_RDWR
-                            };
-                            libc::open(devnull.as_ptr(), flags, 0)
-                        }
-                        Some(obj) => {
-                            let fd = obj.as_inner().fd();
-                            // Leak the memory and the file descriptor. We're in the
-                            // child now an all our resources are going to be
-                            // cleaned up very soon
-                            mem::forget(obj);
-                            fd
-                        }
-                    };
-                    src != -1 && retry(|| dup2(src, dst)) != -1
-                };
 
-                if !setup(in_fd, libc::STDIN_FILENO) { fail(&mut output) }
-                if !setup(out_fd, libc::STDOUT_FILENO) { fail(&mut output) }
-                if !setup(err_fd, libc::STDERR_FILENO) { fail(&mut output) }
+                if !setup(in_fd, libc::STDIN_FILENO, &devnull) { fail(&mut output) }
+                if !setup(out_fd, libc::STDOUT_FILENO, &devnull) { fail(&mut output) }
+                if !setup(err_fd, libc::STDERR_FILENO, &devnull) { fail(&mut output) }
 
                 // close all other fds
                 for fd in range(3, getdtablesize()).rev() {
