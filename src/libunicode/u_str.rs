@@ -93,6 +93,21 @@ pub trait UnicodeStrPrelude for Sized? {
     /// ```
     fn is_whitespace(&self) -> bool;
 
+    /// Returns true if the string contains only alphabetic code
+    /// points.
+    ///
+    /// Alphabetic characters are determined by `char::is_alphabetic`.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// assert!("Löwe老虎Léopard".is_alphabetic());
+    /// assert!("".is_alphabetic());
+    ///
+    /// assert!( !" &*~".is_alphabetic());
+    /// ```
+    fn is_alphabetic(&self) -> bool;
+
     /// Returns true if the string contains only alphanumeric code
     /// points.
     ///
@@ -148,6 +163,9 @@ impl UnicodeStrPrelude for str {
 
     #[inline]
     fn is_whitespace(&self) -> bool { self.chars().all(|c| c.is_whitespace()) }
+
+    #[inline]
+    fn is_alphabetic(&self) -> bool { self.chars().all(|c| c.is_alphabetic()) }
 
     #[inline]
     fn is_alphanumeric(&self) -> bool { self.chars().all(|c| c.is_alphanumeric()) }
