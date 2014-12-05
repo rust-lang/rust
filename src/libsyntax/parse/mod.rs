@@ -21,7 +21,7 @@ use std::cell::{Cell, RefCell};
 use std::io::File;
 use std::rc::Rc;
 use std::num::Int;
-use std::str;
+use std::str as str_;
 use std::iter;
 
 pub mod lexer;
@@ -255,7 +255,7 @@ pub fn file_to_filemap(sess: &ParseSess, path: &Path, spanopt: Option<Span>)
             unreachable!()
         }
     };
-    match str::from_utf8(bytes.as_slice()) {
+    match str_::from_utf8(bytes.as_slice()) {
         Some(s) => {
             return string_to_filemap(sess, s.to_string(),
                                      path.as_str().unwrap().to_string())
@@ -429,7 +429,7 @@ pub fn str_lit(lit: &str) -> String {
     let error = |i| format!("lexer should have rejected {} at {}", lit, i);
 
     /// Eat everything up to a non-whitespace
-    fn eat<'a>(it: &mut iter::Peekable<(uint, char), str::CharOffsets<'a>>) {
+    fn eat<'a>(it: &mut iter::Peekable<(uint, char), str_::CharOffsets<'a>>) {
         loop {
             match it.peek().map(|x| x.val1()) {
                 Some(' ') | Some('\n') | Some('\r') | Some('\t') => {

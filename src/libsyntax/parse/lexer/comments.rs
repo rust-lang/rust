@@ -20,7 +20,7 @@ use parse::lexer;
 use print::pprust;
 
 use std::io;
-use std::str;
+use std::str as str_;
 use std::string::String;
 use std::uint;
 
@@ -212,7 +212,7 @@ fn all_whitespace(s: &str, col: CharPos) -> Option<uint> {
     let mut col = col.to_uint();
     let mut cursor: uint = 0;
     while col > 0 && cursor < len {
-        let r: str::CharRange = s.char_range_at(cursor);
+        let r: str_::CharRange = s.char_range_at(cursor);
         if !r.ch.is_whitespace() {
             return None;
         }

@@ -21,7 +21,7 @@ use std::fmt;
 use std::mem::replace;
 use std::num;
 use std::rc::Rc;
-use std::str;
+use std::str as str_;
 
 pub use ext::tt::transcribe::{TtReader, new_tt_reader};
 
@@ -272,10 +272,10 @@ impl<'a> StringReader<'a> {
 
     /// Converts CRLF to LF in the given string, raising an error on bare CR.
     fn translate_crlf<'a>(&self, start: BytePos,
-                          s: &'a str, errmsg: &'a str) -> str::CowString<'a> {
+                          s: &'a str, errmsg: &'a str) -> str_::CowString<'a> {
         let mut i = 0u;
         while i < s.len() {
-            let str::CharRange { ch, next } = s.char_range_at(i);
+            let str_::CharRange { ch, next } = s.char_range_at(i);
             if ch == '\r' {
                 if next < s.len() && s.char_at(next) == '\n' {
                     return translate_crlf_(self, start, s, errmsg, i).into_cow();
@@ -293,7 +293,7 @@ impl<'a> StringReader<'a> {
             let mut buf = String::with_capacity(s.len());
             let mut j = 0;
             while i < s.len() {
-                let str::CharRange { ch, next } = s.char_range_at(i);
+                let str_::CharRange { ch, next } = s.char_range_at(i);
                 if ch == '\r' {
                     if j < i { buf.push_str(s.slice(j, i)); }
                     j = next;
@@ -357,7 +357,7 @@ impl<'a> StringReader<'a> {
         let offset = self.byte_offset(self.pos).to_uint();
         let s = self.filemap.deref().src.as_slice();
         if offset >= s.len() { return None }
-        let str::CharRange { next, .. } = s.char_range_at(offset);
+        let str_::CharRange { next, .. } = s.char_range_at(offset);
         if next < s.len() {
             Some(s.char_at(next))
         } else {

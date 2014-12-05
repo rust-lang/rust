@@ -256,11 +256,11 @@ pub fn parse_or_else(sess: &ParseSess,
                      -> HashMap<Ident, Rc<NamedMatch>> {
     match parse(sess, cfg, rdr, ms.as_slice()) {
         Success(m) => m,
-        Failure(sp, str) => {
-            sess.span_diagnostic.span_fatal(sp, str.as_slice())
+        Failure(sp, s) => {
+            sess.span_diagnostic.span_fatal(sp, s.as_slice())
         }
-        Error(sp, str) => {
-            sess.span_diagnostic.span_fatal(sp, str.as_slice())
+        Error(sp, s) => {
+            sess.span_diagnostic.span_fatal(sp, s.as_slice())
         }
     }
 }
