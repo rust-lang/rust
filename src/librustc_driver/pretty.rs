@@ -19,7 +19,7 @@ use rustc_trans::back::link;
 
 use driver;
 
-use rustc::middle::{ty, subst};
+use rustc::middle::ty;
 use rustc::middle::cfg;
 use rustc::middle::cfg::graphviz::LabelledCFG;
 use rustc::session::Session;
@@ -40,7 +40,6 @@ use graphviz as dot;
 use std::io::{mod, MemReader};
 use std::option;
 use std::str::FromStr;
-use arena::TypedArena;
 
 #[deriving(Copy, PartialEq, Show)]
 pub enum PpSourceMode {
@@ -112,9 +111,7 @@ impl PpSourceMode {
     fn call_with_pp_support<'tcx, A, B, F>(&self,
                                            sess: Session,
                                            ast_map: Option<ast_map::Map<'tcx>>,
-                                           type_arena: &'tcx TypedArena<ty::TyS<'tcx>>,
-                                           substs_arena: &'tcx TypedArena<subst::Substs<'tcx>>,
-                                           bare_fn_arena: &'tcx TypedArena<ty::BareFnTy<'tcx>>,
+                                           arenas: &'tcx ty::CtxtArenas<'tcx>,
                                            id: String,
                                            payload: B,
                                            f: F) -> A where
@@ -136,10 +133,7 @@ impl PpSourceMode {
             }
             PpmTyped => {
                 let ast_map = ast_map.expect("--pretty=typed missing ast_map");
-                let analysis = driver::phase_3_run_analysis_passes(sess, ast_map,
-                                                                   type_arena, substs_arena,
-                                                                   bare_fn_arena,
-                                                                   id);
+                let analysis = driver::phase_3_run_analysis_passes(sess, ast_map, arenas, id);
                 let annotation = TypedAnnotation { analysis: analysis };
                 f(&annotation, payload)
             }
@@ -514,9 +508,7 @@ pub fn pretty_print_input(sess: Session,
     };
 
     let mut forest = ast_map::Forest::new(krate);
-    let type_arena = TypedArena::new();
-    let substs_arena = TypedArena::new();
-    let bare_fn_arena = TypedArena::new();
+    let arenas = ty::CtxtArenas::new();
 
     let (krate, ast_map) = if compute_ast_map {
         let map = driver::assign_node_ids_and_map(&sess, &mut forest);
@@ -545,8 +537,7 @@ pub fn pretty_print_input(sess: Session,
     match (ppm, opt_uii) {
         (PpmSource(s), None) =>
             s.call_with_pp_support(
-                sess, ast_map, &type_arena, &substs_arena, &bare_fn_arena,
-                id, out, |annotation, out| {
+                sess, ast_map, &arenas, id, out, |annotation, out| {
                     debug!("pretty printing source code {}", s);
                     let sess = annotation.sess();
                     pprust::print_crate(sess.codemap(),
@@ -561,8 +552,7 @@ pub fn pretty_print_input(sess: Session,
 
         (PpmSource(s), Some(uii)) =>
             s.call_with_pp_support(
-                sess, ast_map, &type_arena, &substs_arena, &bare_fn_arena,
-                id, (out,uii), |annotation, (out,uii)| {
+                sess, ast_map, &arenas, id, (out,uii), |annotation, (out,uii)| {
                     debug!("pretty printing source code {}", s);
                     let sess = annotation.sess();
                     let ast_map = annotation.ast_map()
@@ -604,10 +594,7 @@ pub fn pretty_print_input(sess: Session,
             match code {
                 Some(code) => {
                     let variants = gather_flowgraph_variants(&sess);
-                    let analysis = driver::phase_3_run_analysis_passes(sess, ast_map,
-                                                                       &type_arena, &substs_arena,
-                                                                       &bare_fn_arena,
-                                                                       id);
+                    let analysis = driver::phase_3_run_analysis_passes(sess, ast_map, &arenas, id);
                     print_flowgraph(variants, analysis, code, out)
                 }
                 None => {
