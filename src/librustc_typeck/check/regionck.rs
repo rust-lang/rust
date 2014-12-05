@@ -353,18 +353,13 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
     fn visit_region_obligations(&mut self, node_id: ast::NodeId)
     {
         debug!("visit_region_obligations: node_id={}", node_id);
-        let region_obligations = self.fcx.inh.region_obligations.borrow();
-        match region_obligations.get(&node_id) {
-            None => { }
-            Some(vec) => {
-                for r_o in vec.iter() {
-                    debug!("visit_region_obligations: r_o={}",
-                           r_o.repr(self.tcx()));
-                    let sup_type = self.resolve_type(r_o.sup_type);
-                    type_must_outlive(self, r_o.origin.clone(),
-                                      sup_type, r_o.sub_region);
-                }
-            }
+        let fulfillment_cx = self.fcx.inh.fulfillment_cx.borrow();
+        for r_o in fulfillment_cx.region_obligations(node_id).iter() {
+            debug!("visit_region_obligations: r_o={}",
+                   r_o.repr(self.tcx()));
+            let sup_type = self.resolve_type(r_o.sup_type);
+            type_must_outlive(self, r_o.origin.clone(),
+                              sup_type, r_o.sub_region);
         }
     }
 

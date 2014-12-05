@@ -25,7 +25,7 @@ use syntax::ast;
 use syntax::codemap::{Span, DUMMY_SP};
 use util::common::ErrorReported;
 
-pub use self::fulfill::FulfillmentContext;
+pub use self::fulfill::{FulfillmentContext, RegionObligation};
 pub use self::select::SelectionContext;
 pub use self::select::SelectionCache;
 pub use self::select::{MethodMatchResult, MethodMatched, MethodAmbiguous, MethodDidNotMatch};

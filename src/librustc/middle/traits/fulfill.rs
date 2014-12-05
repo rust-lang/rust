@@ -9,11 +9,15 @@
 // except according to those terms.
 
 use middle::mem_categorization::Typer;
-use middle::ty;
-use middle::infer::InferCtxt;
+use middle::ty::{mod, Ty};
+use middle::infer::{mod, InferCtxt};
 use std::collections::HashSet;
+use std::collections::hash_map::{Occupied, Vacant};
+use std::default::Default;
 use std::rc::Rc;
+use syntax::ast;
 use util::ppaux::Repr;
+use util::nodemap::NodeMap;
 
 use super::CodeAmbiguity;
 use super::TraitObligation;
@@ -47,6 +51,38 @@ pub struct FulfillmentContext<'tcx> {
     // attempted to select. This is used to avoid repeating work
     // when `select_new_obligations` is called.
     attempted_mark: uint,
+
+    // A set of constraints that regionck must validate. Each
+    // constraint has the form `T:'a`, meaning "some type `T` must
+    // outlive the lifetime 'a". These constraints derive from
+    // instantiated type parameters. So if you had a struct defined
+    // like
+    //
+    //     struct Foo<T:'static> { ... }
+    //
+    // then in some expression `let x = Foo { ... }` it will
+    // instantiate the type parameter `T` with a fresh type `$0`. At
+    // the same time, it will record a region obligation of
+    // `$0:'static`. This will get checked later by regionck. (We
+    // can't generally check these things right away because we have
+    // to wait until types are resolved.)
+    //
+    // These are stored in a map keyed to the id of the innermost
+    // enclosing fn body / static initializer expression. This is
+    // because the location where the obligation was incurred can be
+    // relevant with respect to which sublifetime assumptions are in
+    // place. The reason that we store under the fn-id, and not
+    // something more fine-grained, is so that it is easier for
+    // regionck to be sure that it has found *all* the region
+    // obligations (otherwise, it's easy to fail to walk to a
+    // particular node-id).
+    region_obligations: NodeMap<Vec<RegionObligation<'tcx>>>,
+}
+
+pub struct RegionObligation<'tcx> {
+    pub sub_region: ty::Region,
+    pub sup_type: Ty<'tcx>,
+    pub origin: infer::SubregionOrigin<'tcx>,
 }
 
 impl<'tcx> FulfillmentContext<'tcx> {
@@ -55,6 +91,7 @@ impl<'tcx> FulfillmentContext<'tcx> {
             duplicate_set: HashSet::new(),
             trait_obligations: Vec::new(),
             attempted_mark: 0,
+            region_obligations: NodeMap::new(),
         }
     }
 
@@ -68,6 +105,26 @@ impl<'tcx> FulfillmentContext<'tcx> {
             self.trait_obligations.push(obligation);
         } else {
             debug!("register_obligation({}) -- already seen, skip", obligation.repr(tcx));
+        }
+    }
+
+    pub fn register_region_obligation(&mut self,
+                                      body_id: ast::NodeId,
+                                      region_obligation: RegionObligation<'tcx>)
+    {
+        match self.region_obligations.entry(body_id) {
+            Vacant(entry) => { entry.set(vec![region_obligation]); },
+            Occupied(mut entry) => { entry.get_mut().push(region_obligation); },
+        }
+    }
+
+    pub fn region_obligations(&self,
+                              body_id: ast::NodeId)
+                              -> &[RegionObligation<'tcx>]
+    {
+        match self.region_obligations.get(&body_id) {
+            None => Default::default(),
+            Some(vec) => vec.as_slice(),
         }
     }
 
@@ -206,5 +263,14 @@ impl<'tcx> FulfillmentContext<'tcx> {
         } else {
             Err(errors)
         }
+    }
+}
+
+impl<'tcx> Repr<'tcx> for RegionObligation<'tcx> {
+    fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
+        format!("RegionObligation(sub_region={}, sup_type={}, origin={})",
+                self.sub_region.repr(tcx),
+                self.sup_type.repr(tcx),
+                self.origin.repr(tcx))
     }
 }
