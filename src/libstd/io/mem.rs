@@ -315,10 +315,10 @@ impl<'a> Seek for BufWriter<'a> {
 /// # #![allow(unused_must_use)]
 /// use std::io::BufReader;
 ///
-/// let mut buf = [0, 1, 2, 3];
-/// let mut r = BufReader::new(&mut buf);
+/// let buf = [0, 1, 2, 3];
+/// let mut r = BufReader::new(&buf);
 ///
-/// assert_eq!(r.read_to_end().unwrap(), vec!(0, 1, 2, 3));
+/// assert_eq!(r.read_to_end().unwrap(), vec![0, 1, 2, 3]);
 /// ```
 pub struct BufReader<'a> {
     buf: &'a [u8],
