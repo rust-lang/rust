@@ -26,12 +26,11 @@ use alloc::boxed::Box;
 use core::cmp;
 use core::int;
 use rustrt::local::Local;
-use rustrt::mutex::NativeMutex;
 use rustrt::task::{Task, BlockedTask};
 use rustrt::thread::Thread;
 
-use sync::atomic;
-use sync::mpsc_queue as mpsc;
+use sync::{atomic, Mutex, MutexGuard};
+use comm::mpsc_queue as mpsc;
 
 const DISCONNECTED: int = int::MIN;
 const FUDGE: int = 1024;
@@ -56,7 +55,7 @@ pub struct Packet<T> {
 
     // this lock protects various portions of this implementation during
     // select()
-    select_lock: NativeMutex,
+    select_lock: Mutex<()>,
 }
 
 pub enum Failure {
@@ -76,7 +75,7 @@ impl<T: Send> Packet<T> {
             channels: atomic::AtomicInt::new(2),
             port_dropped: atomic::AtomicBool::new(false),
             sender_drain: atomic::AtomicInt::new(0),
-            select_lock: unsafe { NativeMutex::new() },
+            select_lock: Mutex::new(()),
         };
         return p;
     }
@@ -86,8 +85,8 @@ impl<T: Send> Packet<T> {
     // In other case mutex data will be duplicated while cloning
     // and that could cause problems on platforms where it is
     // represented by opaque data structure
-    pub fn postinit_lock(&mut self) {
-        unsafe { self.select_lock.lock_noguard() }
+    pub fn postinit_lock(&self) -> MutexGuard<()> {
+        self.select_lock.lock()
     }
 
     // This function is used at the creation of a shared packet to inherit a
@@ -95,7 +94,9 @@ impl<T: Send> Packet<T> {
     // tasks in select().
     //
     // This can only be called at channel-creation time
-    pub fn inherit_blocker(&mut self, task: Option<BlockedTask>) {
+    pub fn inherit_blocker(&mut self,
+                           task: Option<BlockedTask>,
+                           guard: MutexGuard<()>) {
         match task {
             Some(task) => {
                 assert_eq!(self.cnt.load(atomic::SeqCst), 0);
@@ -135,7 +136,7 @@ impl<T: Send> Packet<T> {
         // interfere with this method. After we unlock this lock, we're
         // signifying that we're done modifying self.cnt and self.to_wake and
         // the port is ready for the world to continue using it.
-        unsafe { self.select_lock.unlock_noguard() }
+        drop(guard);
     }
 
     pub fn send(&mut self, t: T) -> Result<(), T> {
@@ -441,7 +442,7 @@ impl<T: Send> Packet<T> {
         // done with. Without this bounce, we can race with inherit_blocker
         // about looking at and dealing with to_wake. Once we have acquired the
         // lock, we are guaranteed that inherit_blocker is done.
-        unsafe {
+        {
             let _guard = self.select_lock.lock();
         }
 

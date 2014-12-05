@@ -12,8 +12,7 @@ use alloc::arc::Arc;
 use libc;
 use c_str::CString;
 use mem;
-use rustrt::mutex;
-use sync::atomic;
+use sync::{atomic, Mutex};
 use io::{mod, IoResult, IoError};
 use prelude::*;
 
@@ -60,12 +59,12 @@ struct Inner {
 
     // Unused on Linux, where this lock is not necessary.
     #[allow(dead_code)]
-    lock: mutex::NativeMutex
+    lock: Mutex<()>,
 }
 
 impl Inner {
     fn new(fd: fd_t) -> Inner {
-        Inner { fd: fd, lock: unsafe { mutex::NativeMutex::new() } }
+        Inner { fd: fd, lock: Mutex::new(()) }
     }
 }
 
