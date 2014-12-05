@@ -20,6 +20,7 @@ use core::fmt;
 use core::iter;
 use core::iter::{Enumerate, FilterMap};
 use core::mem::replace;
+use core::ops::FnOnce;
 
 use hash::{Hash, Writer};
 use {vec, slice};
@@ -452,8 +453,8 @@ impl<V:Clone> VecMap<V> {
     /// assert!(!map.update(1, vec![3i, 4], |mut old, new| { old.extend(new.into_iter()); old }));
     /// assert_eq!(map[1], vec![1i, 2, 3, 4]);
     /// ```
-    pub fn update(&mut self, key: uint, newval: V, ff: |V, V| -> V) -> bool {
-        self.update_with_key(key, newval, |_k, v, v1| ff(v,v1))
+    pub fn update<F>(&mut self, key: uint, newval: V, ff: F) -> bool where F: FnOnce(V, V) -> V {
+        self.update_with_key(key, newval, move |_k, v, v1| ff(v,v1))
     }
 
     /// Updates a value in the map. If the key already exists in the map,
@@ -476,11 +477,9 @@ impl<V:Clone> VecMap<V> {
     /// assert!(!map.update_with_key(7, 20, |key, old, new| (old + new) % key));
     /// assert_eq!(map[7], 2);
     /// ```
-    pub fn update_with_key(&mut self,
-                           key: uint,
-                           val: V,
-                           ff: |uint, V, V| -> V)
-                           -> bool {
+    pub fn update_with_key<F>(&mut self, key: uint, val: V, ff: F) -> bool where
+        F: FnOnce(uint, V, V) -> V
+    {
         let new_val = match self.get(&key) {
             None => val,
             Some(orig) => ff(key, (*orig).clone(), val)
