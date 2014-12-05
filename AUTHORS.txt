@@ -672,3 +672,5 @@ xales <xales@naveria.com>
 zofrex <zofrex@gmail.com>
 zslayton <zack.slayton@gmail.com>
 zzmp <zmp@umich.edu>
+
+Run src/etc/copyright2rs.sh to embed this file to rustc.

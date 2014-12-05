@@ -73,7 +73,7 @@ DEPS_rustc := syntax flate arena serialize getopts rbml \
 DEPS_rustc_llvm := native:rustllvm libc std
 DEPS_rustc_back := std syntax rustc_llvm flate log libc
 DEPS_rustdoc := rustc rustc_trans native:hoedown serialize getopts \
-                test time
+                test time flate
 DEPS_flate := std native:miniz
 DEPS_arena := std
 DEPS_graphviz := std
