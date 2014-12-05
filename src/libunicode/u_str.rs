@@ -22,7 +22,11 @@ use core::iter::{Filter, AdditiveIterator, Iterator, IteratorExt};
 use core::iter::{DoubleEndedIterator, DoubleEndedIteratorExt};
 use core::kinds::Sized;
 use core::option::{Option, None, Some};
-use core::str::{CharSplits, StrPrelude};
+use core::str::CharSplits;
+#[cfg(stage0)] // NOTE(stage0): Remove import after a snapshot
+use core::str::StrPrelude;
+#[cfg(not(stage0))] // NOTE(stage0): Remove cfg after a snapshot
+use core::str::str;
 use u_char::UnicodeChar;
 use tables::grapheme::GraphemeCat;
 

@@ -3641,6 +3641,9 @@ pub mod property {
 }
 
 pub mod regex {
+    #[cfg(not(stage0))] // NOTE(stage0): Remove cfg after a snapshot
+    use core::str::str;
+
     pub static UNICODE_CLASSES: &'static [(&'static str, &'static &'static [(char, char)])] = &[
         ("Alphabetic", &super::derived_property::Alphabetic_table), ("Arabic",
         &super::script::Arabic_table), ("Armenian", &super::script::Armenian_table), ("Avestan",
