@@ -199,7 +199,8 @@ use self::InternalStackElement::*;
 
 use std;
 use std::collections::{HashMap, TreeMap};
-use std::{char, f64, fmt, io, num, str};
+use std::{char, f64, fmt, io, num};
+use std::str as str_;
 use std::mem::{swap, transmute};
 use std::num::{Float, FPNaN, FPInfinite, Int};
 use std::str::{FromStr, ScalarValue};
@@ -577,7 +578,7 @@ impl<'a> ::Encoder<io::IoError> for Encoder<'a> {
             let mut check_encoder = Encoder::new(&mut buf);
             try!(f(transmute(&mut check_encoder)));
         }
-        let out = str::from_utf8(buf[]).unwrap();
+        let out = str_::from_utf8(buf[]).unwrap();
         let needs_wrapping = out.char_at(0) != '"' && out.char_at_reverse(out.len()) != '"';
         if needs_wrapping { try!(write!(self.writer, "\"")); }
         try!(f(self));
@@ -838,7 +839,7 @@ impl<'a> ::Encoder<io::IoError> for PrettyEncoder<'a> {
             let mut check_encoder = PrettyEncoder::new(&mut buf);
             try!(f(transmute(&mut check_encoder)));
         }
-        let out = str::from_utf8(buf[]).unwrap();
+        let out = str_::from_utf8(buf[]).unwrap();
         let needs_wrapping = out.char_at(0) != '"' && out.char_at_reverse(out.len()) != '"';
         if needs_wrapping { try!(write!(self.writer, "\"")); }
         try!(f(self));
@@ -1162,7 +1163,7 @@ impl Stack {
         match self.stack[idx] {
             InternalIndex(i) => Index(i),
             InternalKey(start, size) => {
-                Key(str::from_utf8(
+                Key(str_::from_utf8(
                     self.str_buffer[start as uint .. start as uint + size as uint]).unwrap())
             }
         }
@@ -1204,7 +1205,7 @@ impl Stack {
             None => None,
             Some(&InternalIndex(i)) => Some(Index(i)),
             Some(&InternalKey(start, size)) => {
-                Some(Key(str::from_utf8(
+                Some(Key(str_::from_utf8(
                     self.str_buffer[start as uint .. (start+size) as uint]
                 ).unwrap()))
             }
@@ -1557,7 +1558,7 @@ impl<T: Iterator<char>> Parser<T> {
                             }
 
                             let buf = [n1, try!(self.decode_hex_escape())];
-                            match str::utf16_items(buf.as_slice()).next() {
+                            match str_::utf16_items(buf.as_slice()).next() {
                                 Some(ScalarValue(c)) => res.push(c),
                                 _ => return self.error(LoneLeadingSurrogateInHexEscape),
                             }
@@ -1906,7 +1907,7 @@ pub fn from_reader(rdr: &mut io::Reader) -> Result<Json, BuilderError> {
         Ok(c)  => c,
         Err(e) => return Err(io_error_to_error(e))
     };
-    let s = match str::from_utf8(contents.as_slice()) {
+    let s = match str_::from_utf8(contents.as_slice()) {
         Some(s) => s,
         _       => return Err(SyntaxError(NotUtf8, 0, 0))
     };
@@ -2098,7 +2099,7 @@ impl ::Decoder<DecoderError> for Decoder {
             }
         };
         let idx = match names.iter()
-                             .position(|n| str::eq_slice(*n, name.as_slice())) {
+                             .position(|n| str_::eq_slice(*n, name.as_slice())) {
             Some(idx) => idx,
             None => return Err(UnknownVariantError(name))
         };
