@@ -1377,13 +1377,7 @@ fn check_cast(fcx: &FnCtxt,
     let t_1 = fcx.to_ty(t);
     let t_1 = structurally_resolved_type(fcx, span, t_1);
 
-    if ty::type_is_scalar(t_1) {
-        // Supply the type as a hint so as to influence integer
-        // literals and other things that might care.
-        check_expr_with_expectation(fcx, e, ExpectCastableToType(t_1))
-    } else {
-        check_expr(fcx, e)
-    }
+    check_expr_with_expectation(fcx, e, ExpectCastableToType(t_1));
 
     let t_e = fcx.expr_ty(e);
 
@@ -1621,7 +1615,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub fn default_diverging_type_variables_to_nil(&self) {
         for (_, &ref ty) in self.inh.node_types.borrow_mut().iter_mut() {
-            if self.infcx().type_var_diverges(self.infcx().resolve_type_vars_if_possible(*ty)) {
+            if self.infcx().type_var_diverges(self.infcx().resolve_type_vars_if_possible(ty)) {
                 demand::eqtype(self, codemap::DUMMY_SP, *ty, ty::mk_nil(self.tcx()));
             }
         }
@@ -2557,7 +2551,7 @@ fn lookup_method_for_for_loop<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     let method_type = match method {
         Some(ref method) => method.ty,
         None => {
-            let true_expr_type = fcx.infcx().resolve_type_vars_if_possible(expr_type);
+            let true_expr_type = fcx.infcx().resolve_type_vars_if_possible(&expr_type);
 
             if !ty::type_is_error(true_expr_type) {
                 let ty_string = fcx.infcx().ty_to_string(true_expr_type);
@@ -4456,11 +4450,11 @@ impl<'tcx> Expectation<'tcx> {
             }
             ExpectCastableToType(t) => {
                 ExpectCastableToType(
-                    fcx.infcx().resolve_type_vars_if_possible(t))
+                    fcx.infcx().resolve_type_vars_if_possible(&t))
             }
             ExpectHasType(t) => {
                 ExpectHasType(
-                    fcx.infcx().resolve_type_vars_if_possible(t))
+                    fcx.infcx().resolve_type_vars_if_possible(&t))
             }
         }
     }

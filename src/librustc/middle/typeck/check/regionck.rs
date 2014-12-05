@@ -124,8 +124,6 @@ use middle::typeck::astconv::AstConv;
 use middle::typeck::check::FnCtxt;
 use middle::typeck::check::regionmanip;
 use middle::typeck::check::vtable;
-use middle::typeck::infer::resolve_and_force_all_but_regions;
-use middle::typeck::infer::resolve_type;
 use middle::typeck::infer;
 use middle::typeck::MethodCall;
 use middle::pat_util;
@@ -295,11 +293,7 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
     /// of b will be `&<R0>.int` and then `*b` will require that `<R0>` be bigger than the let and
     /// the `*b` expression, so we will effectively resolve `<R0>` to be the block B.
     pub fn resolve_type(&self, unresolved_ty: Ty<'tcx>) -> Ty<'tcx> {
-        match resolve_type(self.fcx.infcx(), None, unresolved_ty,
-                           resolve_and_force_all_but_regions) {
-            Ok(t) => t,
-            Err(_) => ty::mk_err()
-        }
+        self.fcx.infcx().resolve_type_vars_if_possible(&unresolved_ty)
     }
 
     /// Try to resolve the type for the given node.

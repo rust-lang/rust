@@ -313,8 +313,7 @@ fn resolve_trait_ref<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>, obligation: &Obligation<'
                                -> (Rc<ty::TraitRef<'tcx>>, Ty<'tcx>)
 {
     let trait_ref =
-        fcx.infcx().resolve_type_vars_in_trait_ref_if_possible(
-            &*obligation.trait_ref);
+        fcx.infcx().resolve_type_vars_if_possible(&*obligation.trait_ref);
     let self_ty =
         trait_ref.substs.self_ty().unwrap();
     (Rc::new(trait_ref), self_ty)
@@ -368,8 +367,7 @@ pub fn report_selection_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         }
         OutputTypeParameterMismatch(ref expected_trait_ref, ref e) => {
             let expected_trait_ref =
-                fcx.infcx().resolve_type_vars_in_trait_ref_if_possible(
-                    &**expected_trait_ref);
+                fcx.infcx().resolve_type_vars_if_possible(&**expected_trait_ref);
             let (trait_ref, self_ty) = resolve_trait_ref(fcx, obligation);
             if !ty::type_is_error(self_ty) {
                 fcx.tcx().sess.span_err(

@@ -199,7 +199,7 @@ fn deduce_unboxed_closure_expectations_from_trait_ref<'a,'tcx>(
             debug!("found object type {}", kind);
 
             let arg_param_ty = *trait_ref.substs.types.get(subst::TypeSpace, 0);
-            let arg_param_ty = fcx.infcx().resolve_type_vars_if_possible(arg_param_ty);
+            let arg_param_ty = fcx.infcx().resolve_type_vars_if_possible(&arg_param_ty);
             debug!("arg_param_ty {}", arg_param_ty.repr(tcx));
 
             let input_tys = match arg_param_ty.sty {
@@ -209,7 +209,7 @@ fn deduce_unboxed_closure_expectations_from_trait_ref<'a,'tcx>(
             debug!("input_tys {}", input_tys.repr(tcx));
 
             let ret_param_ty = *trait_ref.substs.types.get(subst::TypeSpace, 1);
-            let ret_param_ty = fcx.infcx().resolve_type_vars_if_possible(ret_param_ty);
+            let ret_param_ty = fcx.infcx().resolve_type_vars_if_possible(&ret_param_ty);
             debug!("ret_param_ty {}", ret_param_ty.repr(tcx));
 
             let fn_sig = ty::FnSig {

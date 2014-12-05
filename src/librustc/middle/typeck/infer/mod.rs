@@ -19,13 +19,6 @@ pub use self::TypeOrigin::*;
 pub use self::ValuePairs::*;
 pub use self::fixup_err::*;
 pub use middle::ty::IntVarValue;
-pub use self::resolve::resolve_and_force_all_but_regions;
-pub use self::resolve::{force_all, not_regions};
-pub use self::resolve::{force_ivar};
-pub use self::resolve::{force_tvar, force_rvar};
-pub use self::resolve::{resolve_ivar, resolve_all};
-pub use self::resolve::{resolve_nested_tvar};
-pub use self::resolve::{resolve_rvar};
 pub use self::skolemize::TypeSkolemizer;
 
 use middle::subst;
@@ -47,7 +40,6 @@ use util::ppaux::{trait_ref_to_string, Repr};
 use self::coercion::Coerce;
 use self::combine::{Combine, CombineFields};
 use self::region_inference::{RegionVarBindings, RegionSnapshot};
-use self::resolve::{resolver};
 use self::equate::Equate;
 use self::sub::Sub;
 use self::lub::Lub;
@@ -451,22 +443,6 @@ pub fn mk_coercety<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
     })
 }
 
-// See comment on the type `resolve_state` below
-pub fn resolve_type<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
-                              span: Option<Span>,
-                              a: Ty<'tcx>,
-                              modes: uint)
-                              -> fres<Ty<'tcx>> {
-    let mut resolver = resolver(cx, modes, span);
-    cx.commit_unconditionally(|| resolver.resolve_type_chk(a))
-}
-
-pub fn resolve_region(cx: &InferCtxt, r: ty::Region, modes: uint)
-                      -> fres<ty::Region> {
-    let mut resolver = resolver(cx, modes, None);
-    resolver.resolve_region_chk(r)
-}
-
 trait then<'tcx> {
     fn then<T:Clone>(&self, f: || -> Result<T,ty::type_err<'tcx>>)
         -> Result<T,ty::type_err<'tcx>>;
@@ -512,6 +488,7 @@ pub fn uok<'tcx>() -> ures<'tcx> {
     Ok(())
 }
 
+#[must_use = "once you start a snapshot, you should always consume it"]
 pub struct CombinedSnapshot {
     type_snapshot: type_variable::Snapshot,
     int_snapshot: unify::Snapshot<ty::IntVid>,
@@ -617,14 +594,14 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
     /// Execute `f` and commit the bindings if successful
     pub fn commit_if_ok<T,E>(&self, f: || -> Result<T,E>) -> Result<T,E> {
-        self.commit_unconditionally(|| self.try(|| f()))
+        self.commit_unconditionally(|| self.try(|_| f()))
     }
 
     /// Execute `f`, unroll bindings on panic
-    pub fn try<T,E>(&self, f: || -> Result<T,E>) -> Result<T,E> {
+    pub fn try<T,E>(&self, f: |&CombinedSnapshot| -> Result<T,E>) -> Result<T,E> {
         debug!("try()");
         let snapshot = self.start_snapshot();
-        let r = f();
+        let r = f(&snapshot);
         debug!("try() -- r.is_ok() = {}", r.is_ok());
         match r {
             Ok(_) => {
@@ -805,7 +782,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
     pub fn ty_to_string(&self, t: Ty<'tcx>) -> String {
         ty_to_string(self.tcx,
-                     self.resolve_type_vars_if_possible(t))
+                     self.resolve_type_vars_if_possible(&t))
     }
 
     pub fn tys_to_string(&self, ts: &[Ty<'tcx>]) -> String {
@@ -814,24 +791,25 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     pub fn trait_ref_to_string(&self, t: &Rc<ty::TraitRef<'tcx>>) -> String {
-        let t = self.resolve_type_vars_in_trait_ref_if_possible(&**t);
+        let t = self.resolve_type_vars_if_possible(&**t);
         trait_ref_to_string(self.tcx, &t)
-    }
-
-    pub fn contains_unbound_type_variables(&self, typ: Ty<'tcx>) -> Ty<'tcx> {
-        match resolve_type(self,
-                           None,
-                           typ, resolve_nested_tvar | resolve_ivar) {
-          Ok(new_type) => new_type,
-          Err(_) => typ
-        }
     }
 
     pub fn shallow_resolve(&self, typ: Ty<'tcx>) -> Ty<'tcx> {
         match typ.sty {
             ty::ty_infer(ty::TyVar(v)) => {
+                // Not entirely obvious: if `typ` is a type variable,
+                // it can be resolved to an int/float variable, which
+                // can then be recursively resolved, hence the
+                // recursion. Note though that we prevent type
+                // variables from unifying to other type variables
+                // directly (though they may be embedded
+                // structurally), and we prevent cycles in any case,
+                // so this recursion should always be of very limited
+                // depth.
                 self.type_variables.borrow()
                     .probe(v)
+                    .map(|t| self.shallow_resolve(t))
                     .unwrap_or(typ)
             }
 
@@ -851,35 +829,32 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn resolve_type_vars_if_possible(&self, typ: Ty<'tcx>) -> Ty<'tcx> {
-        match resolve_type(self,
-                           None,
-                           typ, resolve_nested_tvar | resolve_ivar) {
-          Ok(new_type) => new_type,
-          Err(_) => typ
-        }
+    pub fn resolve_type_vars_if_possible<T:TypeFoldable<'tcx>>(&self, value: &T) -> T {
+        /*!
+         * Where possible, replaces type/int/float variables in
+         * `value` with their final value. Note that region variables
+         * are unaffected. If a type variable has not been unified, it
+         * is left as is.  This is an idempotent operation that does
+         * not affect inference state in any way and so you can do it
+         * at will.
+         */
+
+        let mut r = resolve::OpportunisticTypeResolver::new(self);
+        value.fold_with(&mut r)
     }
 
-    pub fn resolve_type_vars_in_trait_ref_if_possible(&self,
-                                                      trait_ref: &ty::TraitRef<'tcx>)
-                                                      -> ty::TraitRef<'tcx> {
-        // make up a dummy type just to reuse/abuse the resolve machinery
-        let dummy0 = ty::mk_trait(self.tcx,
-                                  (*trait_ref).clone(),
-                                  ty::region_existential_bound(ty::ReStatic));
-        let dummy1 = self.resolve_type_vars_if_possible(dummy0);
-        match dummy1.sty {
-            ty::ty_trait(box ty::TyTrait { ref principal, .. }) => {
-                (*principal).clone()
-            }
-            _ => {
-                self.tcx.sess.bug(
-                    format!("resolve_type_vars_if_possible() yielded {} \
-                             when supplied with {}",
-                            self.ty_to_string(dummy0),
-                            self.ty_to_string(dummy1)).as_slice());
-            }
-        }
+    pub fn fully_resolve<T:TypeFoldable<'tcx>>(&self, value: &T) -> fres<T> {
+        /*!
+         * Attempts to resolve all type/region variables in
+         * `value`. Region inference must have been run already (e.g.,
+         * by calling `resolve_regions_and_report_errors`).  If some
+         * variable was never unified, an `Err` results.
+         *
+         * This method is idempotent, but it not typically not invoked
+         * except during the writeback phase.
+         */
+
+        resolve::fully_resolve(self, value)
     }
 
     // [Note-Type-error-reporting]
@@ -911,9 +886,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                                 err: Option<&ty::type_err<'tcx>>) {
         debug!("hi! expected_ty = {}, actual_ty = {}", expected_ty, actual_ty);
 
-        let resolved_expected = expected_ty.map(|e_ty| {
-            self.resolve_type_vars_if_possible(e_ty)
-        });
+        let resolved_expected = expected_ty.map(|e_ty| self.resolve_type_vars_if_possible(&e_ty));
 
         match resolved_expected {
             Some(t) if ty::type_is_error(t) => (),
@@ -938,7 +911,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                               mk_msg: |String| -> String,
                               actual_ty: Ty<'tcx>,
                               err: Option<&ty::type_err<'tcx>>) {
-        let actual_ty = self.resolve_type_vars_if_possible(actual_ty);
+        let actual_ty = self.resolve_type_vars_if_possible(&actual_ty);
 
         // Don't report an error if actual type is ty_err.
         if ty::type_is_error(actual_ty) {

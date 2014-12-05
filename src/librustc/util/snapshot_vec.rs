@@ -24,7 +24,7 @@ use std::kinds::marker;
 use std::mem;
 
 #[deriving(PartialEq)]
-enum UndoLog<T,U> {
+pub enum UndoLog<T,U> {
     /// Indicates where a snapshot started.
     OpenSnapshot,
 
@@ -114,6 +114,12 @@ impl<T,U,D:SnapshotVecDelegate<T,U>> SnapshotVec<T,U,D> {
         self.undo_log.push(OpenSnapshot);
         Snapshot { length: length,
                    marker: marker::NoCopy }
+    }
+
+    pub fn actions_since_snapshot(&self,
+                                  snapshot: &Snapshot)
+                                  -> &[UndoLog<T,U>] {
+        self.undo_log[snapshot.length..]
     }
 
     fn assert_open_snapshot(&self, snapshot: &Snapshot) {

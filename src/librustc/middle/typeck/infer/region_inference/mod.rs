@@ -76,7 +76,6 @@ pub struct TwoRegions {
 pub enum UndoLogEntry {
     OpenSnapshot,
     CommitedSnapshot,
-    Mark,
     AddVar(RegionVid),
     AddConstraint(Constraint),
     AddVerify(uint),
@@ -220,11 +219,6 @@ pub struct RegionSnapshot {
     length: uint
 }
 
-#[deriving(Show)]
-pub struct RegionMark {
-    length: uint
-}
-
 impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
     pub fn new(tcx: &'a ty::ctxt<'tcx>) -> RegionVarBindings<'a, 'tcx> {
         RegionVarBindings {
@@ -253,13 +247,6 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         RegionSnapshot { length: length }
     }
 
-    pub fn mark(&self) -> RegionMark {
-        let length = self.undo_log.borrow().len();
-        debug!("RegionVarBindings: mark({})", length);
-        self.undo_log.borrow_mut().push(Mark);
-        RegionMark { length: length }
-    }
-
     pub fn commit(&self, snapshot: RegionSnapshot) {
         debug!("RegionVarBindings: commit({})", snapshot.length);
         assert!(self.undo_log.borrow().len() > snapshot.length);
@@ -283,7 +270,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                 OpenSnapshot => {
                     panic!("Failure to observe stack discipline");
                 }
-                Mark | CommitedSnapshot => { }
+                CommitedSnapshot => { }
                 AddVar(vid) => {
                     let mut var_origins = self.var_origins.borrow_mut();
                     var_origins.pop().unwrap();
@@ -584,8 +571,8 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         ReInfer(ReVar(c))
     }
 
-    pub fn vars_created_since_mark(&self, mark: RegionMark)
-                                   -> Vec<RegionVid>
+    pub fn vars_created_since_snapshot(&self, mark: &RegionSnapshot)
+                                       -> Vec<RegionVid>
     {
         self.undo_log.borrow()
             .slice_from(mark.length)
@@ -600,7 +587,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
     /// Computes all regions that have been related to `r0` in any way since the mark `mark` was
     /// made---`r0` itself will be the first entry. This is used when checking whether skolemized
     /// regions are being improperly related to other regions.
-    pub fn tainted(&self, mark: RegionMark, r0: Region) -> Vec<Region> {
+    pub fn tainted(&self, mark: &RegionSnapshot, r0: Region) -> Vec<Region> {
         debug!("tainted(mark={}, r0={})", mark, r0.repr(self.tcx));
         let _indenter = indenter();
 
@@ -655,7 +642,6 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                         }
                     }
                     &AddCombination(..) |
-                    &Mark |
                     &AddVar(..) |
                     &OpenSnapshot |
                     &CommitedSnapshot => {
