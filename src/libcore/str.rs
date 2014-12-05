@@ -1352,10 +1352,13 @@ pub trait StrPrelude for Sized? {
     /// # Example
     ///
     /// ```rust
+    /// # #![feature(unboxed_closures)]
+    ///
+    /// # fn main() {
     /// let v: Vec<&str> = "Mary had a little lamb".split(' ').collect();
     /// assert_eq!(v, vec!["Mary", "had", "a", "little", "lamb"]);
     ///
-    /// let v: Vec<&str> = "abc1def2ghi".split(|c: char| c.is_numeric()).collect();
+    /// let v: Vec<&str> = "abc1def2ghi".split(|&: c: char| c.is_numeric()).collect();
     /// assert_eq!(v, vec!["abc", "def", "ghi"]);
     ///
     /// let v: Vec<&str> = "lionXXtigerXleopard".split('X').collect();
@@ -1363,6 +1366,7 @@ pub trait StrPrelude for Sized? {
     ///
     /// let v: Vec<&str> = "".split('X').collect();
     /// assert_eq!(v, vec![""]);
+    /// # }
     /// ```
     fn split<'a, Sep: CharEq>(&'a self, sep: Sep) -> CharSplits<'a, Sep>;
 
@@ -1373,10 +1377,13 @@ pub trait StrPrelude for Sized? {
     /// # Example
     ///
     /// ```rust
+    /// # #![feature(unboxed_closures)]
+    ///
+    /// # fn main() {
     /// let v: Vec<&str> = "Mary had a little lambda".splitn(2, ' ').collect();
     /// assert_eq!(v, vec!["Mary", "had", "a little lambda"]);
     ///
-    /// let v: Vec<&str> = "abc1def2ghi".splitn(1, |c: char| c.is_numeric()).collect();
+    /// let v: Vec<&str> = "abc1def2ghi".splitn(1, |&: c: char| c.is_numeric()).collect();
     /// assert_eq!(v, vec!["abc", "def2ghi"]);
     ///
     /// let v: Vec<&str> = "lionXXtigerXleopard".splitn(2, 'X').collect();
@@ -1387,6 +1394,7 @@ pub trait StrPrelude for Sized? {
     ///
     /// let v: Vec<&str> = "".splitn(1, 'X').collect();
     /// assert_eq!(v, vec![""]);
+    /// # }
     /// ```
     fn splitn<'a, Sep: CharEq>(&'a self, count: uint, sep: Sep) -> CharSplitsN<'a, Sep>;
 
@@ -1399,6 +1407,9 @@ pub trait StrPrelude for Sized? {
     /// # Example
     ///
     /// ```rust
+    /// # #![feature(unboxed_closures)]
+    ///
+    /// # fn main() {
     /// let v: Vec<&str> = "A.B.".split_terminator('.').collect();
     /// assert_eq!(v, vec!["A", "B"]);
     ///
@@ -1408,11 +1419,12 @@ pub trait StrPrelude for Sized? {
     /// let v: Vec<&str> = "Mary had a little lamb".split(' ').rev().collect();
     /// assert_eq!(v, vec!["lamb", "little", "a", "had", "Mary"]);
     ///
-    /// let v: Vec<&str> = "abc1def2ghi".split(|c: char| c.is_numeric()).rev().collect();
+    /// let v: Vec<&str> = "abc1def2ghi".split(|&: c: char| c.is_numeric()).rev().collect();
     /// assert_eq!(v, vec!["ghi", "def", "abc"]);
     ///
     /// let v: Vec<&str> = "lionXXtigerXleopard".split('X').rev().collect();
     /// assert_eq!(v, vec!["leopard", "tiger", "", "lion"]);
+    /// # }
     /// ```
     fn split_terminator<'a, Sep: CharEq>(&'a self, sep: Sep) -> CharSplits<'a, Sep>;
 
@@ -1423,14 +1435,18 @@ pub trait StrPrelude for Sized? {
     /// # Example
     ///
     /// ```rust
+    /// # #![feature(unboxed_closures)]
+    ///
+    /// # fn main() {
     /// let v: Vec<&str> = "Mary had a little lamb".rsplitn(2, ' ').collect();
     /// assert_eq!(v, vec!["lamb", "little", "Mary had a"]);
     ///
-    /// let v: Vec<&str> = "abc1def2ghi".rsplitn(1, |c: char| c.is_numeric()).collect();
+    /// let v: Vec<&str> = "abc1def2ghi".rsplitn(1, |&: c: char| c.is_numeric()).collect();
     /// assert_eq!(v, vec!["ghi", "abc1def"]);
     ///
     /// let v: Vec<&str> = "lionXXtigerXleopard".rsplitn(2, 'X').collect();
     /// assert_eq!(v, vec!["leopard", "tiger", "lionX"]);
+    /// # }
     /// ```
     fn rsplitn<'a, Sep: CharEq>(&'a self, count: uint, sep: Sep) -> CharSplitsN<'a, Sep>;
 
@@ -1641,10 +1657,14 @@ pub trait StrPrelude for Sized? {
     /// # Example
     ///
     /// ```rust
+    /// # #![feature(unboxed_closures)]
+    ///
+    /// # fn main() {
     /// assert_eq!("11foo1bar11".trim_chars('1'), "foo1bar")
     /// let x: &[_] = &['1', '2'];
     /// assert_eq!("12foo1bar12".trim_chars(x), "foo1bar")
-    /// assert_eq!("123foo1bar123".trim_chars(|c: char| c.is_numeric()), "foo1bar")
+    /// assert_eq!("123foo1bar123".trim_chars(|&: c: char| c.is_numeric()), "foo1bar")
+    /// # }
     /// ```
     fn trim_chars<'a, C: CharEq>(&'a self, to_trim: C) -> &'a str;
 
@@ -1657,10 +1677,14 @@ pub trait StrPrelude for Sized? {
     /// # Example
     ///
     /// ```rust
+    /// # #![feature(unboxed_closures)]
+    ///
+    /// # fn main() {
     /// assert_eq!("11foo1bar11".trim_left_chars('1'), "foo1bar11")
     /// let x: &[_] = &['1', '2'];
     /// assert_eq!("12foo1bar12".trim_left_chars(x), "foo1bar12")
-    /// assert_eq!("123foo1bar123".trim_left_chars(|c: char| c.is_numeric()), "foo1bar123")
+    /// assert_eq!("123foo1bar123".trim_left_chars(|&: c: char| c.is_numeric()), "foo1bar123")
+    /// # }
     /// ```
     fn trim_left_chars<'a, C: CharEq>(&'a self, to_trim: C) -> &'a str;
 
@@ -1673,10 +1697,14 @@ pub trait StrPrelude for Sized? {
     /// # Example
     ///
     /// ```rust
+    /// # #![feature(unboxed_closures)]
+    ///
+    /// # fn main() {
     /// assert_eq!("11foo1bar11".trim_right_chars('1'), "11foo1bar")
     /// let x: &[_] = &['1', '2'];
     /// assert_eq!("12foo1bar12".trim_right_chars(x), "12foo1bar")
-    /// assert_eq!("123foo1bar123".trim_right_chars(|c: char| c.is_numeric()), "123foo1bar")
+    /// assert_eq!("123foo1bar123".trim_right_chars(|&: c: char| c.is_numeric()), "123foo1bar")
+    /// # }
     /// ```
     fn trim_right_chars<'a, C: CharEq>(&'a self, to_trim: C) -> &'a str;
 
@@ -1817,17 +1845,21 @@ pub trait StrPrelude for Sized? {
     /// # Example
     ///
     /// ```rust
+    /// # #![feature(unboxed_closures)]
+    ///
+    /// # fn main() {
     /// let s = "Löwe 老虎 Léopard";
     ///
     /// assert_eq!(s.find('L'), Some(0));
     /// assert_eq!(s.find('é'), Some(14));
     ///
     /// // the first space
-    /// assert_eq!(s.find(|c: char| c.is_whitespace()), Some(5));
+    /// assert_eq!(s.find(|&: c: char| c.is_whitespace()), Some(5));
     ///
     /// // neither are found
     /// let x: &[_] = &['1', '2'];
     /// assert_eq!(s.find(x), None);
+    /// # }
     /// ```
     fn find<C: CharEq>(&self, search: C) -> Option<uint>;
 
@@ -1842,17 +1874,21 @@ pub trait StrPrelude for Sized? {
     /// # Example
     ///
     /// ```rust
+    /// # #![feature(unboxed_closures)]
+    ///
+    /// # fn main() {
     /// let s = "Löwe 老虎 Léopard";
     ///
     /// assert_eq!(s.rfind('L'), Some(13));
     /// assert_eq!(s.rfind('é'), Some(14));
     ///
     /// // the second space
-    /// assert_eq!(s.rfind(|c: char| c.is_whitespace()), Some(12));
+    /// assert_eq!(s.rfind(|&: c: char| c.is_whitespace()), Some(12));
     ///
     /// // searches for an occurrence of either `1` or `2`, but neither are found
     /// let x: &[_] = &['1', '2'];
     /// assert_eq!(s.rfind(x), None);
+    /// # }
     /// ```
     fn rfind<C: CharEq>(&self, search: C) -> Option<uint>;
 
