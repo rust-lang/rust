@@ -84,13 +84,14 @@ use self::TupleArgumentsFlag::*;
 
 use astconv::{mod, ast_region_to_region, ast_ty_to_ty, AstConv};
 use check::_match::pat_ctxt;
-use middle::{const_eval, def, traits};
+use middle::{const_eval, def};
 use middle::infer;
 use middle::lang_items::IteratorItem;
 use middle::mem_categorization::{mod, McResult};
 use middle::pat_util::{mod, pat_id_map};
 use middle::region::CodeExtent;
 use middle::subst::{mod, Subst, Substs, VecPerParamSpace, ParamSpace};
+use middle::traits;
 use middle::ty::{FnSig, VariantInfo, Polytype};
 use middle::ty::{Disr, ParamTy, ParameterEnvironment};
 use middle::ty::{mod, Ty};
@@ -108,7 +109,6 @@ use util::ppaux::{mod, UserString, Repr};
 use util::nodemap::{DefIdMap, FnvHashMap, NodeMap};
 
 use std::cell::{Cell, Ref, RefCell};
-use std::collections::hash_map::{Occupied, Vacant};
 use std::mem::replace;
 use std::rc::Rc;
 use syntax::{mod, abi, attr};
@@ -161,40 +161,8 @@ pub struct Inherited<'a, 'tcx: 'a> {
     // one is never copied into the tcx: it is only used by regionck.
     fn_sig_map: RefCell<NodeMap<Vec<Ty<'tcx>>>>,
 
-    // A set of constraints that regionck must validate. Each
-    // constraint has the form `T:'a`, meaning "some type `T` must
-    // outlive the lifetime 'a". These constraints derive from
-    // instantiated type parameters. So if you had a struct defined
-    // like
-    //
-    //     struct Foo<T:'static> { ... }
-    //
-    // then in some expression `let x = Foo { ... }` it will
-    // instantiate the type parameter `T` with a fresh type `$0`. At
-    // the same time, it will record a region obligation of
-    // `$0:'static`. This will get checked later by regionck. (We
-    // can't generally check these things right away because we have
-    // to wait until types are resolved.)
-    //
-    // These are stored in a map keyed to the id of the innermost
-    // enclosing fn body / static initializer expression. This is
-    // because the location where the obligation was incurred can be
-    // relevant with respect to which sublifetime assumptions are in
-    // place. The reason that we store under the fn-id, and not
-    // something more fine-grained, is so that it is easier for
-    // regionck to be sure that it has found *all* the region
-    // obligations (otherwise, it's easy to fail to walk to a
-    // particular node-id).
-    region_obligations: RefCell<NodeMap<Vec<RegionObligation<'tcx>>>>,
-
     // Tracks trait obligations incurred during this function body.
     fulfillment_cx: RefCell<traits::FulfillmentContext<'tcx>>,
-}
-
-struct RegionObligation<'tcx> {
-    sub_region: ty::Region,
-    sup_type: Ty<'tcx>,
-    origin: infer::SubregionOrigin<'tcx>,
 }
 
 /// When type-checking an expression, we propagate downward
@@ -328,7 +296,6 @@ impl<'a, 'tcx> Inherited<'a, 'tcx> {
             upvar_borrow_map: RefCell::new(FnvHashMap::new()),
             unboxed_closures: RefCell::new(DefIdMap::new()),
             fn_sig_map: RefCell::new(NodeMap::new()),
-            region_obligations: RefCell::new(NodeMap::new()),
             fulfillment_cx: RefCell::new(traits::FulfillmentContext::new()),
         }
     }
@@ -1988,15 +1955,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                       ty: Ty<'tcx>,
                                       r: ty::Region)
     {
-        let mut region_obligations = self.inh.region_obligations.borrow_mut();
-        let region_obligation = RegionObligation { sub_region: r,
-                                                   sup_type: ty,
-                                                   origin: origin };
-
-        match region_obligations.entry(self.body_id) {
-            Vacant(entry) => { entry.set(vec![region_obligation]); },
-            Occupied(mut entry) => { entry.get_mut().push(region_obligation); },
-        }
+        let mut fulfillment_cx = self.inh.fulfillment_cx.borrow_mut();
+        let region_obligation = traits::RegionObligation { sub_region: r,
+                                                           sup_type: ty,
+                                                           origin: origin };
+        fulfillment_cx.register_region_obligation(self.body_id, region_obligation);
     }
 
     pub fn add_default_region_param_bounds(&self,
@@ -5833,11 +5796,3 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
     }
 }
 
-impl<'tcx> Repr<'tcx> for RegionObligation<'tcx> {
-    fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
-        format!("RegionObligation(sub_region={}, sup_type={}, origin={})",
-                self.sub_region.repr(tcx),
-                self.sup_type.repr(tcx),
-                self.origin.repr(tcx))
-    }
-}
