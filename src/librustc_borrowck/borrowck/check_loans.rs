@@ -18,18 +18,16 @@
 // 4. moves do not affect things loaned out in any way
 use self::UseError::*;
 
-use middle::borrowck::*;
-use middle::borrowck::LoanPathElem::*;
-use middle::borrowck::LoanPathKind::*;
-use middle::expr_use_visitor as euv;
-use middle::mem_categorization as mc;
-use middle::region;
-use middle::ty::ParameterEnvironment;
-use middle::ty;
-use syntax::ast::NodeId;
+use borrowck::*;
+use borrowck::LoanPathElem::*;
+use borrowck::LoanPathKind::*;
+use rustc::middle::expr_use_visitor as euv;
+use rustc::middle::mem_categorization as mc;
+use rustc::middle::region;
+use rustc::middle::ty;
+use rustc::util::ppaux::Repr;
 use syntax::ast;
 use syntax::codemap::Span;
-use util::ppaux::Repr;
 
 use std::rc::Rc;
 
@@ -91,7 +89,7 @@ struct CheckLoanCtxt<'a, 'tcx: 'a> {
     dfcx_loans: &'a LoanDataFlow<'a, 'tcx>,
     move_data: move_data::FlowedMoveData<'a, 'tcx>,
     all_loans: &'a [Loan<'tcx>],
-    param_env: &'a ParameterEnvironment<'tcx>,
+    param_env: &'a ty::ParameterEnvironment<'tcx>,
 }
 
 impl<'a, 'tcx> euv::Delegate<'tcx> for CheckLoanCtxt<'a, 'tcx> {
@@ -196,12 +194,12 @@ pub fn check_loans<'a, 'b, 'c, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                      dfcx_loans: &LoanDataFlow<'b, 'tcx>,
                                      move_data: move_data::FlowedMoveData<'c, 'tcx>,
                                      all_loans: &[Loan<'tcx>],
-                                     fn_id: NodeId,
+                                     fn_id: ast::NodeId,
                                      decl: &ast::FnDecl,
                                      body: &ast::Block) {
     debug!("check_loans(body id={})", body.id);
 
-    let param_env = ParameterEnvironment::for_item(bccx.tcx, fn_id);
+    let param_env = ty::ParameterEnvironment::for_item(bccx.tcx, fn_id);
 
     let mut clcx = CheckLoanCtxt {
         bccx: bccx,

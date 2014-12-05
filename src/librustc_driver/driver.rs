@@ -19,6 +19,7 @@ use rustc::plugin::load::Plugins;
 use rustc::plugin::registry::Registry;
 use rustc::plugin;
 use rustc::util::common::time;
+use rustc_borrowck as borrowck;
 use rustc_trans::back::link;
 use rustc_trans::back::write;
 use rustc_trans::save;
@@ -420,7 +421,7 @@ pub fn phase_3_run_analysis_passes<'tcx>(sess: Session,
          middle::liveness::check_crate(&ty_cx));
 
     time(time_passes, "borrow checking", (), |_|
-         middle::borrowck::check_crate(&ty_cx));
+         borrowck::check_crate(&ty_cx));
 
     time(time_passes, "rvalue checking", (), |_|
          middle::check_rvalues::check_crate(&ty_cx, krate));
