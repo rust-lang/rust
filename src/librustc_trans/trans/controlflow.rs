@@ -27,7 +27,7 @@ use trans::meth;
 use trans::type_::Type;
 use trans;
 use middle::ty;
-use middle::typeck::MethodCall;
+use middle::ty::MethodCall;
 use session::config::FullDebugInfo;
 use util::ppaux::Repr;
 use util::ppaux;

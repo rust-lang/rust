@@ -12,7 +12,6 @@ use middle::cfg::*;
 use middle::def;
 use middle::graph;
 use middle::region::CodeExtent;
-use middle::typeck;
 use middle::ty;
 use syntax::ast;
 use syntax::ast_util;
@@ -510,7 +509,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
             pred: CFGIndex,
             func_or_rcvr: &ast::Expr,
             args: I) -> CFGIndex {
-        let method_call = typeck::MethodCall::expr(call_expr.id);
+        let method_call = ty::MethodCall::expr(call_expr.id);
         let return_ty = ty::ty_fn_ret(match self.tcx.method_map.borrow().get(&method_call) {
             Some(method) => method.ty,
             None => ty::expr_ty(self.tcx, func_or_rcvr)
@@ -635,7 +634,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
     }
 
     fn is_method_call(&self, expr: &ast::Expr) -> bool {
-        let method_call = typeck::MethodCall::expr(expr.id);
+        let method_call = ty::MethodCall::expr(expr.id);
         self.tcx.method_map.borrow().contains_key(&method_call)
     }
 }

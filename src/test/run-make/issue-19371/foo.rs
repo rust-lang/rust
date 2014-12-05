@@ -9,12 +9,12 @@
 // except according to those terms.
 
 extern crate rustc;
-extern crate rustc_trans;
+extern crate rustc_driver;
 extern crate syntax;
 
 use rustc::session::{build_session, Session};
-use rustc::session::config::{basic_options, build_configuration, OutputTypeExe};
-use rustc_trans::driver::driver::{Input, StrInput, compile_input};
+use rustc::session::config::{basic_options, build_configuration, Input, OutputTypeExe};
+use rustc_driver::driver::{compile_input};
 use syntax::diagnostics::registry::Registry;
 
 fn main() {
@@ -55,7 +55,7 @@ fn compile(code: String, output: Path, sysroot: Path) {
 
     compile_input(sess,
             cfg,
-            &StrInput(code),
+            &Input::Str(code),
             &None,
             &Some(output),
             None);

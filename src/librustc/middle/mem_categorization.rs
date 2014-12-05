@@ -74,7 +74,6 @@ pub use self::categorization::*;
 use middle::def;
 use middle::region;
 use middle::ty::{mod, Ty};
-use middle::typeck;
 use util::nodemap::{DefIdMap, NodeMap};
 use util::ppaux::{ty_to_string, Repr};
 
@@ -283,7 +282,7 @@ pub type McResult<T> = Result<T, ()>;
 pub trait Typer<'tcx> {
     fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx>;
     fn node_ty(&self, id: ast::NodeId) -> McResult<Ty<'tcx>>;
-    fn node_method_ty(&self, method_call: typeck::MethodCall) -> Option<Ty<'tcx>>;
+    fn node_method_ty(&self, method_call: ty::MethodCall) -> Option<Ty<'tcx>>;
     fn adjustments<'a>(&'a self) -> &'a RefCell<NodeMap<ty::AutoAdjustment<'tcx>>>;
     fn is_method_call(&self, id: ast::NodeId) -> bool;
     fn temporary_scope(&self, rvalue_id: ast::NodeId) -> Option<region::CodeExtent>;
@@ -509,7 +508,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
           }
 
           ast::ExprIndex(ref base, _) => {
-            let method_call = typeck::MethodCall::expr(expr.id());
+            let method_call = ty::MethodCall::expr(expr.id());
             match self.typer.node_method_ty(method_call) {
                 Some(method_ty) => {
                     // If this is an index implemented by a method call, then it will
@@ -890,12 +889,12 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                              implicit: bool)
                              -> cmt<'tcx> {
         let adjustment = match self.typer.adjustments().borrow().get(&node.id()) {
-            Some(adj) if ty::adjust_is_object(adj) => typeck::AutoObject,
-            _ if deref_cnt != 0 => typeck::AutoDeref(deref_cnt),
-            _ => typeck::NoAdjustment
+            Some(adj) if ty::adjust_is_object(adj) => ty::AutoObject,
+            _ if deref_cnt != 0 => ty::AutoDeref(deref_cnt),
+            _ => ty::NoAdjustment
         };
 
-        let method_call = typeck::MethodCall {
+        let method_call = ty::MethodCall {
             expr_id: node.id(),
             adjustment: adjustment
         };
@@ -980,7 +979,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
         //! - `elt`: the AST node being indexed
         //! - `base_cmt`: the cmt of `elt`
 
-        let method_call = typeck::MethodCall::expr(elt.id());
+        let method_call = ty::MethodCall::expr(elt.id());
         let method_ty = self.typer.node_method_ty(method_call);
 
         let element_ty = match method_ty {

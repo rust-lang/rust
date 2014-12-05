@@ -11,7 +11,6 @@
 
 use middle::def::*;
 use middle::ty;
-use middle::typeck;
 use util::ppaux;
 
 use syntax::ast;
@@ -111,7 +110,7 @@ fn check_expr(v: &mut CheckCrateVisitor, e: &ast::Expr) -> bool {
         }
         ast::ExprLit(ref lit) if ast_util::lit_is_str(&**lit) => {}
         ast::ExprBinary(..) | ast::ExprUnary(..) => {
-            let method_call = typeck::MethodCall::expr(e.id);
+            let method_call = ty::MethodCall::expr(e.id);
             if v.tcx.method_map.borrow().contains_key(&method_call) {
                 span_err!(v.tcx.sess, e.span, E0011,
                           "user-defined operators are not allowed in constant \

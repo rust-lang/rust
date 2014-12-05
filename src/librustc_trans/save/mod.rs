@@ -27,10 +27,9 @@
 //! the format of the output away from extracting it from the compiler.
 //! DxrVisitor walks the AST and processes it.
 
-use driver::driver::CrateAnalysis;
 use session::Session;
 
-use middle::{def, typeck};
+use middle::def;
 use middle::ty::{mod, Ty};
 
 use std::cell::Cell;
@@ -68,7 +67,7 @@ fn generated_code(span: Span) -> bool {
 
 struct DxrVisitor<'l, 'tcx: 'l> {
     sess: &'l Session,
-    analysis: &'l CrateAnalysis<'tcx>,
+    analysis: &'l ty::CrateAnalysis<'tcx>,
 
     collected_paths: Vec<(NodeId, ast::Path, bool, recorder::Row)>,
     collecting: bool,
@@ -912,10 +911,10 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                            ex: &ast::Expr,
                            args: &Vec<P<ast::Expr>>) {
         let method_map = self.analysis.ty_cx.method_map.borrow();
-        let method_callee = &(*method_map)[typeck::MethodCall::expr(ex.id)];
+        let method_callee = &(*method_map)[ty::MethodCall::expr(ex.id)];
         let (def_id, decl_id) = match method_callee.origin {
-            typeck::MethodStatic(def_id) |
-            typeck::MethodStaticUnboxedClosure(def_id) => {
+            ty::MethodStatic(def_id) |
+            ty::MethodStaticUnboxedClosure(def_id) => {
                 // method invoked on an object with a concrete type (not a static method)
                 let decl_id =
                     match ty::trait_item_of_item(&self.analysis.ty_cx,
@@ -936,14 +935,14 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                 };
                 (Some(def_id), decl_id)
             }
-            typeck::MethodTypeParam(ref mp) => {
+            ty::MethodTypeParam(ref mp) => {
                 // method invoked on a type parameter
                 let trait_item = ty::trait_item(&self.analysis.ty_cx,
                                                 mp.trait_ref.def_id,
                                                 mp.method_num);
                 (None, Some(trait_item.def_id()))
             }
-            typeck::MethodTraitObject(ref mo) => {
+            ty::MethodTraitObject(ref mo) => {
                 // method invoked on a trait instance
                 let trait_item = ty::trait_item(&self.analysis.ty_cx,
                                                 mo.trait_ref.def_id,
@@ -1473,7 +1472,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
 
 pub fn process_crate(sess: &Session,
                      krate: &ast::Crate,
-                     analysis: &CrateAnalysis,
+                     analysis: &ty::CrateAnalysis,
                      odir: &Option<Path>) {
     if generated_code(krate.span) {
         return;

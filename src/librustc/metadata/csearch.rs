@@ -21,7 +21,6 @@ use middle::def;
 use middle::lang_items;
 use middle::resolve;
 use middle::ty;
-use middle::typeck;
 use middle::subst::VecPerParamSpace;
 
 use rbml;
@@ -268,7 +267,7 @@ pub fn get_impl_trait<'tcx>(tcx: &ty::ctxt<'tcx>,
 // Given a def_id for an impl, return information about its vtables
 pub fn get_impl_vtables<'tcx>(tcx: &ty::ctxt<'tcx>,
                               def: ast::DefId)
-                              -> typeck::vtable_res<'tcx> {
+                              -> ty::vtable_res<'tcx> {
     let cstore = &tcx.sess.cstore;
     let cdata = cstore.get_crate_data(def.krate);
     decoder::get_impl_vtables(&*cdata, def.node, tcx)
