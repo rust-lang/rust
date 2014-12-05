@@ -2390,6 +2390,13 @@ impl<'tcx> ParamBounds<'tcx> {
 
 // Type utilities
 
+pub fn is_str(cx: &ctxt, did: DefId) -> bool {
+    match cx.lang_items.require(StrStructLangItem) {
+        Ok(lang_did) => lang_did == did,
+        Err(err) => cx.sess.fatal(err.as_slice()),
+    }
+}
+
 pub fn type_is_nil(ty: Ty) -> bool {
     match ty.sty {
         ty_tup(ref tys) => tys.is_empty(),
