@@ -140,7 +140,7 @@ $ editor main.rs
 ```
 
 Rust files always end in a `.rs` extension. If you're using more than one word
-in your file name, use an underscore. `hello_world.rs` rather than
+in your filename, use an underscore. `hello_world.rs` rather than
 `helloworld.rs`.
 
 Now that you've got your file open, type this in:
@@ -200,7 +200,7 @@ about this difference. Just know that sometimes, you'll see a `!`, and that
 means that you're calling a macro instead of a normal function. Rust implements
 `println!` as a macro rather than a function for good reasons, but that's a
 very advanced topic. You'll learn more when we talk about macros later. One
-last thing to mention: Rust's macros are significantly different than C macros,
+last thing to mention: Rust's macros are significantly different from C macros,
 if you've used those. Don't be scared of using macros. We'll get to the details
 eventually, you'll just have to trust us for now.
 
@@ -595,8 +595,8 @@ let y = if x == 5i { 10i } else { 15i };
 ```
 
 This reveals two interesting things about Rust: it is an expression-based
-language, and semicolons are different than in other 'curly brace and
-semicolon'-based languages. These two things are related.
+language, and semicolons are different from semicolons in other 'curly brace
+and semicolon'-based languages. These two things are related.
 
 ## Expressions vs. Statements
 
@@ -1454,7 +1454,7 @@ Both `continue` and `break` are valid in both kinds of loops.
 # Strings
 
 Strings are an important concept for any programmer to master. Rust's string
-handling system is a bit different than in other languages, due to its systems
+handling system is a bit different from other languages, due to its systems
 focus. Any time you have a data structure of variable size, things can get
 tricky, and strings are a re-sizable data structure. That said, Rust's strings
 also work differently than in some other systems languages, such as C.
