@@ -11,7 +11,6 @@
 // aux-build:issue-13560-1.rs
 // aux-build:issue-13560-2.rs
 // aux-build:issue-13560-3.rs
-// ignore-pretty FIXME #19501
 // ignore-stage1
 
 // Regression test for issue #13560, the test itself is all in the dependent
