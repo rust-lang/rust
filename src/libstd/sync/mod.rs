@@ -17,41 +17,27 @@
 
 #![experimental]
 
-pub use self::one::{Once, ONCE_INIT};
-
 pub use alloc::arc::{Arc, Weak};
-pub use self::lock::{Mutex, MutexGuard, Condvar, Barrier,
-                     RWLock, RWLockReadGuard, RWLockWriteGuard};
 
-// The mutex/rwlock in this module are not meant for reexport
-pub use self::raw::{Semaphore, SemaphoreGuard};
+pub use self::mutex::{Mutex, MutexGuard, StaticMutex, StaticMutexGuard, MUTEX_INIT};
+pub use self::rwlock::{RWLock, StaticRWLock, RWLOCK_INIT};
+pub use self::rwlock::{RWLockReadGuard, RWLockWriteGuard};
+pub use self::rwlock::{StaticRWLockReadGuard, StaticRWLockWriteGuard};
+pub use self::condvar::{Condvar, StaticCondvar, CONDVAR_INIT, AsMutexGuard};
+pub use self::once::{Once, ONCE_INIT};
+pub use self::semaphore::{Semaphore, SemaphoreGuard};
+pub use self::barrier::Barrier;
 
 pub use self::future::Future;
 pub use self::task_pool::TaskPool;
 
-// Core building blocks for all primitives in this crate
-
-#[stable]
 pub mod atomic;
-
-// Concurrent data structures
-
-pub mod spsc_queue;
-pub mod mpsc_queue;
-pub mod mpmc_bounded_queue;
-pub mod deque;
-
-// Low-level concurrency primitives
-
-mod raw;
-mod mutex;
-mod one;
-
-// Higher level primitives based on those above
-
-mod lock;
-
-// Task management
-
+mod barrier;
+mod condvar;
 mod future;
+mod mutex;
+mod once;
+mod poison;
+mod rwlock;
+mod semaphore;
 mod task_pool;

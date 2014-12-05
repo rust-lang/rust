@@ -51,8 +51,7 @@ use std::collections::TreeMap;
 use stats::Stats;
 use getopts::{OptGroup, optflag, optopt};
 use regex::Regex;
-use serialize::{json, Decodable};
-use serialize::json::{Json, ToJson};
+use serialize::{json, Decodable, Encodable};
 use term::Terminal;
 use term::color::{Color, RED, YELLOW, GREEN, CYAN};
 
@@ -1159,17 +1158,6 @@ fn calc_result(desc: &TestDesc, task_succeeded: bool) -> TestResult {
     }
 }
 
-
-impl ToJson for Metric {
-    fn to_json(&self) -> json::Json {
-        let mut map = TreeMap::new();
-        map.insert("value".to_string(), json::Json::F64(self.value));
-        map.insert("noise".to_string(), json::Json::F64(self.noise));
-        json::Json::Object(map)
-    }
-}
-
-
 impl MetricMap {
 
     pub fn new() -> MetricMap {
@@ -1197,14 +1185,8 @@ impl MetricMap {
     pub fn save(&self, p: &Path) -> io::IoResult<()> {
         let mut file = try!(File::create(p));
         let MetricMap(ref map) = *self;
-
-        // FIXME(pcwalton): Yuck.
-        let mut new_map = TreeMap::new();
-        for (ref key, ref value) in map.iter() {
-            new_map.insert(key.to_string(), (*value).clone());
-        }
-
-        new_map.to_json().to_pretty_writer(&mut file)
+        let mut enc = json::PrettyEncoder::new(&mut file);
+        map.encode(&mut enc)
     }
 
     /// Compare against another MetricMap. Optionally compare all

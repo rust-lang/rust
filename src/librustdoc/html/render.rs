@@ -61,8 +61,7 @@ use fold::DocFolder;
 use html::format::{VisSpace, Method, FnStyleSpace, MutableSpace, Stability};
 use html::format::{ConciseStability, TyParamBounds, WhereClause};
 use html::highlight;
-use html::item_type::{ItemType, shortty};
-use html::item_type;
+use html::item_type::ItemType;
 use html::layout;
 use html::markdown::Markdown;
 use html::markdown;
@@ -314,19 +313,8 @@ pub fn run(mut krate: clean::Crate,
     let paths: HashMap<ast::DefId, (Vec<String>, ItemType)> =
       analysis.as_ref().map(|a| {
         let paths = a.external_paths.borrow_mut().take().unwrap();
-        paths.into_iter().map(|(k, (v, t))| {
-            (k, (v, match t {
-                clean::TypeStruct => item_type::Struct,
-                clean::TypeEnum => item_type::Enum,
-                clean::TypeFunction => item_type::Function,
-                clean::TypeTrait => item_type::Trait,
-                clean::TypeModule => item_type::Module,
-                clean::TypeStatic => item_type::Static,
-                clean::TypeVariant => item_type::Variant,
-                clean::TypeTypedef => item_type::Typedef,
-            }))
-        }).collect()
-    }).unwrap_or(HashMap::new());
+        paths.into_iter().map(|(k, (v, t))| (k, (v, ItemType::from_type_kind(t)))).collect()
+      }).unwrap_or(HashMap::new());
     let mut cache = Cache {
         impls: HashMap::new(),
         external_paths: paths.iter().map(|(&k, v)| (k, v.ref0().clone()))
@@ -359,7 +347,7 @@ pub fn run(mut krate: clean::Crate,
     for &(n, ref e) in krate.externs.iter() {
         cache.extern_locations.insert(n, extern_location(e, &cx.dst));
         let did = ast::DefId { krate: n, node: ast::CRATE_NODE_ID };
-        cache.paths.insert(did, (vec![e.name.to_string()], item_type::Module));
+        cache.paths.insert(did, (vec![e.name.to_string()], ItemType::Module));
     }
 
     // Cache where all known primitives have their documentation located.
@@ -642,6 +630,11 @@ fn mkdir(path: &Path) -> io::IoResult<()> {
     }
 }
 
+/// Returns a documentation-level item type from the item.
+fn shortty(item: &clean::Item) -> ItemType {
+    ItemType::from_item(item)
+}
+
 /// Takes a path to a source file and cleans the path to it. This canonicalizes
 /// things like ".." to components which preserve the "top down" hierarchy of a
 /// static HTML tree.
@@ -855,13 +848,13 @@ impl DocFolder for Cache {
                         let last = self.parent_stack.last().unwrap();
                         let did = *last;
                         let path = match self.paths.get(&did) {
-                            Some(&(_, item_type::Trait)) =>
+                            Some(&(_, ItemType::Trait)) =>
                                 Some(self.stack[..self.stack.len() - 1]),
                             // The current stack not necessarily has correlation for
                             // where the type was defined. On the other hand,
                             // `paths` always has the right information if present.
-                            Some(&(ref fqp, item_type::Struct)) |
-                            Some(&(ref fqp, item_type::Enum)) =>
+                            Some(&(ref fqp, ItemType::Struct)) |
+                            Some(&(ref fqp, ItemType::Enum)) =>
                                 Some(fqp[..fqp.len() - 1]),
                             Some(..) => Some(self.stack.as_slice()),
                             None => None
@@ -929,7 +922,7 @@ impl DocFolder for Cache {
             clean::VariantItem(..) if !self.privmod => {
                 let mut stack = self.stack.clone();
                 stack.pop();
-                self.paths.insert(item.def_id, (stack, item_type::Enum));
+                self.paths.insert(item.def_id, (stack, ItemType::Enum));
             }
 
             clean::PrimitiveItem(..) if item.visibility.is_some() => {
@@ -1251,6 +1244,10 @@ impl Context {
         for item in m.items.iter() {
             if self.ignore_private_item(item) { continue }
 
+            // avoid putting foreign items to the sidebar.
+            if let &clean::ForeignFunctionItem(..) = &item.inner { continue }
+            if let &clean::ForeignStaticItem(..) = &item.inner { continue }
+
             let short = shortty(item).to_static_str();
             let myname = match item.name {
                 None => continue,
@@ -1435,7 +1432,8 @@ impl<'a> fmt::Show for Item<'a> {
             clean::TypedefItem(ref t) => item_typedef(fmt, self.item, t),
             clean::MacroItem(ref m) => item_macro(fmt, self.item, m),
             clean::PrimitiveItem(ref p) => item_primitive(fmt, self.item, p),
-            clean::StaticItem(ref i) => item_static(fmt, self.item, i),
+            clean::StaticItem(ref i) | clean::ForeignStaticItem(ref i) =>
+                item_static(fmt, self.item, i),
             clean::ConstantItem(ref c) => item_constant(fmt, self.item, c),
             _ => Ok(())
         }
@@ -1490,45 +1488,48 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
         !cx.ignore_private_item(&items[*i])
     }).collect::<Vec<uint>>();
 
+    // the order of item types in the listing
+    fn reorder(ty: ItemType) -> u8 {
+        match ty {
+            ItemType::ViewItem        => 0,
+            ItemType::Primitive       => 1,
+            ItemType::Module          => 2,
+            ItemType::Macro           => 3,
+            ItemType::Struct          => 4,
+            ItemType::Enum            => 5,
+            ItemType::Constant        => 6,
+            ItemType::Static          => 7,
+            ItemType::Trait           => 8,
+            ItemType::Function        => 9,
+            ItemType::Typedef         => 10,
+            _                         => 11 + ty as u8,
+        }
+    }
+
     fn cmp(i1: &clean::Item, i2: &clean::Item, idx1: uint, idx2: uint) -> Ordering {
-        if shortty(i1) == shortty(i2) {
+        let ty1 = shortty(i1);
+        let ty2 = shortty(i2);
+        if ty1 == ty2 {
             return i1.name.cmp(&i2.name);
         }
-        match (&i1.inner, &i2.inner) {
-            (&clean::ViewItemItem(ref a), &clean::ViewItemItem(ref b)) => {
-                match (&a.inner, &b.inner) {
-                    (&clean::ExternCrate(..), _) => Less,
-                    (_, &clean::ExternCrate(..)) => Greater,
-                    _ => idx1.cmp(&idx2),
+
+        let tycmp = reorder(ty1).cmp(&reorder(ty2));
+        if let Equal = tycmp {
+            // for reexports, `extern crate` takes precedence.
+            match (&i1.inner, &i2.inner) {
+                (&clean::ViewItemItem(ref a), &clean::ViewItemItem(ref b)) => {
+                    match (&a.inner, &b.inner) {
+                        (&clean::ExternCrate(..), _) => return Less,
+                        (_, &clean::ExternCrate(..)) => return Greater,
+                        _ => {}
+                    }
                 }
+                (_, _) => {}
             }
-            (&clean::ViewItemItem(..), _) => Less,
-            (_, &clean::ViewItemItem(..)) => Greater,
-            (&clean::PrimitiveItem(..), _) => Less,
-            (_, &clean::PrimitiveItem(..)) => Greater,
-            (&clean::ModuleItem(..), _) => Less,
-            (_, &clean::ModuleItem(..)) => Greater,
-            (&clean::MacroItem(..), _) => Less,
-            (_, &clean::MacroItem(..)) => Greater,
-            (&clean::StructItem(..), _) => Less,
-            (_, &clean::StructItem(..)) => Greater,
-            (&clean::EnumItem(..), _) => Less,
-            (_, &clean::EnumItem(..)) => Greater,
-            (&clean::ConstantItem(..), _) => Less,
-            (_, &clean::ConstantItem(..)) => Greater,
-            (&clean::StaticItem(..), _) => Less,
-            (_, &clean::StaticItem(..)) => Greater,
-            (&clean::ForeignFunctionItem(..), _) => Less,
-            (_, &clean::ForeignFunctionItem(..)) => Greater,
-            (&clean::ForeignStaticItem(..), _) => Less,
-            (_, &clean::ForeignStaticItem(..)) => Greater,
-            (&clean::TraitItem(..), _) => Less,
-            (_, &clean::TraitItem(..)) => Greater,
-            (&clean::FunctionItem(..), _) => Less,
-            (_, &clean::FunctionItem(..)) => Greater,
-            (&clean::TypedefItem(..), _) => Less,
-            (_, &clean::TypedefItem(..)) => Greater,
-            _ => idx1.cmp(&idx2),
+
+            idx1.cmp(&idx2)
+        } else {
+            tycmp
         }
     }
 
@@ -1545,26 +1546,24 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
                 try!(write!(w, "</table>"));
             }
             curty = myty;
-            let (short, name) = match myitem.inner {
-                clean::ModuleItem(..)          => ("modules", "Modules"),
-                clean::StructItem(..)          => ("structs", "Structs"),
-                clean::EnumItem(..)            => ("enums", "Enums"),
-                clean::FunctionItem(..)        => ("functions", "Functions"),
-                clean::TypedefItem(..)         => ("types", "Type Definitions"),
-                clean::StaticItem(..)          => ("statics", "Statics"),
-                clean::ConstantItem(..)        => ("constants", "Constants"),
-                clean::TraitItem(..)           => ("traits", "Traits"),
-                clean::ImplItem(..)            => ("impls", "Implementations"),
-                clean::ViewItemItem(..)        => ("reexports", "Reexports"),
-                clean::TyMethodItem(..)        => ("tymethods", "Type Methods"),
-                clean::MethodItem(..)          => ("methods", "Methods"),
-                clean::StructFieldItem(..)     => ("fields", "Struct Fields"),
-                clean::VariantItem(..)         => ("variants", "Variants"),
-                clean::ForeignFunctionItem(..) => ("ffi-fns", "Foreign Functions"),
-                clean::ForeignStaticItem(..)   => ("ffi-statics", "Foreign Statics"),
-                clean::MacroItem(..)           => ("macros", "Macros"),
-                clean::PrimitiveItem(..)       => ("primitives", "Primitive Types"),
-                clean::AssociatedTypeItem(..)  => ("associated-types", "Associated Types"),
+            let (short, name) = match myty.unwrap() {
+                ItemType::Module          => ("modules", "Modules"),
+                ItemType::Struct          => ("structs", "Structs"),
+                ItemType::Enum            => ("enums", "Enums"),
+                ItemType::Function        => ("functions", "Functions"),
+                ItemType::Typedef         => ("types", "Type Definitions"),
+                ItemType::Static          => ("statics", "Statics"),
+                ItemType::Constant        => ("constants", "Constants"),
+                ItemType::Trait           => ("traits", "Traits"),
+                ItemType::Impl            => ("impls", "Implementations"),
+                ItemType::ViewItem        => ("reexports", "Reexports"),
+                ItemType::TyMethod        => ("tymethods", "Type Methods"),
+                ItemType::Method          => ("methods", "Methods"),
+                ItemType::StructField     => ("fields", "Struct Fields"),
+                ItemType::Variant         => ("variants", "Variants"),
+                ItemType::Macro           => ("macros", "Macros"),
+                ItemType::Primitive       => ("primitives", "Primitive Types"),
+                ItemType::AssociatedType  => ("associated-types", "Associated Types"),
             };
             try!(write!(w,
                         "<h2 id='{id}' class='section-header'>\

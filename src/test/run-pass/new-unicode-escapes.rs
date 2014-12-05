@@ -8,8 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern {
-    const FOO: uint; //~ ERROR: unexpected token: `const`
-}
+pub fn main() {
+    let s = "\u{2603}";
+    assert_eq!(s, "☃");
 
-fn main() {}
+    let s = "\u{2a10}\u{2A01}\u{2Aa0}";
+    assert_eq!(s, "⨐⨁⪠");
+
+    let s = "\\{20}";
+    let mut correct_s = String::from_str("\\");
+    correct_s.push_str("{20}");
+    assert_eq!(s, correct_s.as_slice());
+}

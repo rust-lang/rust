@@ -32,9 +32,7 @@ use parse::token;
 
 use std::slice;
 
-/// This is a list of all known features since the beginning of time. This list
-/// can never shrink, it may only be expanded (in order to prevent old programs
-/// from failing to compile). The status of each feature may change, however.
+// if you change this list without updating src/doc/reference.md, @cmr will be sad
 static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("globs", Active),
     ("macro_rules", Active),
@@ -65,15 +63,13 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("unboxed_closures", Active),
     ("import_shadowing", Active),
     ("advanced_slice_patterns", Active),
-    ("tuple_indexing", Active),
+    ("tuple_indexing", Accepted),
     ("associated_types", Active),
     ("visible_private_types", Active),
     ("slicing_syntax", Active),
 
-    ("if_let", Active),
-    ("while_let", Active),
-
-    // if you change this list without updating src/doc/reference.md, cmr will be sad
+    ("if_let", Accepted),
+    ("while_let", Accepted),
 
     // A temporary feature gate used to enable parser extensions needed
     // to bootstrap fix for #5723.
@@ -309,23 +305,10 @@ impl<'a, 'v> Visitor<'v> for Context<'a> {
                                   "unboxed closures are a work-in-progress \
                                    feature with known bugs");
             }
-            ast::ExprTupField(..) => {
-                self.gate_feature("tuple_indexing",
-                                  e.span,
-                                  "tuple indexing is experimental");
-            }
-            ast::ExprIfLet(..) => {
-                self.gate_feature("if_let", e.span,
-                                  "`if let` syntax is experimental");
-            }
             ast::ExprSlice(..) => {
                 self.gate_feature("slicing_syntax",
                                   e.span,
                                   "slicing syntax is experimental");
-            }
-            ast::ExprWhileLet(..) => {
-                self.gate_feature("while_let", e.span,
-                                  "`while let` syntax is experimental");
             }
             _ => {}
         }
