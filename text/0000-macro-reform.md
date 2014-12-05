@@ -67,14 +67,14 @@ However, the exclamation point is really part of the invocation syntax, not the
 name, and some syntax extensions are invoked with no exclamation point, for
 example item decorators like `deriving`.
 
-We introduce an attribute `use_macros` to specify which macros from an external
+We introduce an attribute `macro_use` to specify which macros from an external
 crate should be imported to the syntax environment:
 
 ```rust
-#[use_macros(vec, panic="fail")]
+#[macro_use(vec, panic="fail")]
 extern crate std;
 
-#[use_macros]
+#[macro_use]
 extern crate core;
 ```
 
@@ -97,17 +97,17 @@ hard error.
 Many macros expand using other "helper macros" as an implementation detail.
 For example, librustc's `declare_lint!` uses `lint_initializer!`.  The client
 should not know about this macro, although it still needs to be exported for
-cross-crate use.  For this reason we allow `#[use_macros]` on a macro
+cross-crate use.  For this reason we allow `#[macro_use]` on a macro
 definition.
 
 ```rust
 /// Not to be imported directly.
-#[export]
+#[macro_export]
 macro_rules! lint_initializer { ... }
 
 /// Declare a lint.
-#[export]
-#[use_macros(lint_initializer)]
+#[macro_export]
+#[macro_use(lint_initializer)]
 macro_rules! declare_lint {
     ($name:ident, $level:ident, $desc:expr) => (
         static $name: &'static $crate::lint::Lint
@@ -120,7 +120,7 @@ The macro `lint_initializer!`, imported from the same crate as `declare_lint!`,
 will be visible only during further expansion of the result of invoking
 `declare_lint!`.
 
-`use_macros` on `macro_rules` is an optional part of this proposal that will be
+`macro_use` on `macro_rules` is an optional part of this proposal that will be
 implemented for 1.0 only if time permits.  Without it, libraries that use
 helper macros will need to list them in documentation so that users can import
 them.
@@ -132,39 +132,42 @@ that's an unstable internal API, so it's outside the scope of this RFC.
 
 We also clean up macro syntax in a way that complements the semantic changes above.
 
-## `#[use_macros(...)] mod`
+## `#[macro_use(...)] mod`
 
-The `use_macros` attribute can be applied to a `mod` item as well.  The
+The `macro_use` attribute can be applied to a `mod` item as well.  The
 specified macros will "escape" the module and become visible throughout the
 rest of the enclosing module, including any child modules.  A crate might start
 with
 
 ```rust
-#[use_macros]
+#[macro_use]
 mod macros;
 ```
 
 to define some macros for use by the whole crate, without putting those
 definitions in `lib.rs`.
 
-Note that `#[use_macros]` (without a list of names) is equivalent to the
+Note that `#[macro_use]` (without a list of names) is equivalent to the
 current `#[macro_escape]`.  However, the new convention is to use an outer
 attribute, in the file whose syntax environment is affected, rather than an
 inner attribute in the file defining the macros.
 
 ## Macro export and re-export
 
-A macro definition qualified by `#[export]` becomes available to other crates.
-That is, it can be the target of `#[use_macros]`.  Or put another way,
-`#[export] macro_rules!` works the way `#[macro_export] macro_rules!` does
-today.  Adding `#[export]` has no effect on the syntax environment for the
-current crate.
+Currently in Rust, a macro definition qualified by `#[macro_export]` becomes
+available to other crates.  We keep this behavior in the new system.  A macro
+qualified by `#[macro_export]` can be the target of `#[macro_use(...)]`, and
+will be imported automatically when `#[macro_use]` is given with no list of
+names.
+
+`#[macro_export]` has no effect on the syntax environment for the current
+crate.
 
 We can also re-export macros that were imported from another crate.  For
 example, libcollections defines a `vec!` macro, which would now look like:
 
 ```rust
-#[export]
+#[macro_export]
 macro_rules! vec {
     ($($e:expr),*) => ({
         let mut _temp = $crate::vec::Vec::new();
@@ -178,7 +181,7 @@ Currently, libstd duplicates this macro in its own `macros.rs`.  Now it could
 do
 
 ```rust
-#[reexport_macros(vec)]
+#[macro_reexport(vec)]
 extern crate collections;
 ```
 
@@ -271,9 +274,9 @@ reform.  Two ways this could work out:
 
 # Unresolved questions
 
-Should we forbid `$crate` in non-`#[export]`ed macros?  It seems useless,
-however I think we should allow it anyway, to encourage the habit of writing
-`$crate::` for any references to the local crate.
+Should we forbid `$crate` in non-exported macros?  It seems useless, however I
+think we should allow it anyway, to encourage the habit of writing `$crate::`
+for any references to the local crate.
 
 # Acknowledgements
 
