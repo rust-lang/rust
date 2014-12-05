@@ -1090,7 +1090,6 @@ pub enum PrimTy {
     TyInt(IntTy),
     TyUint(UintTy),
     TyFloat(FloatTy),
-    TyStr,
     TyBool,
     TyChar
 }
