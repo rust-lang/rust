@@ -34,6 +34,7 @@ mod float;
 pub mod rt;
 
 #[experimental = "core and I/O reconciliation may alter this definition"]
+/// The type returned by formatter methods.
 pub type Result = result::Result<(), Error>;
 
 /// The error type which is returned from formatting a message into a stream.

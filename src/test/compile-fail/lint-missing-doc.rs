@@ -17,6 +17,9 @@
 //! Some garbage docs for the crate here
 #![doc="More garbage"]
 
+type Typedef = String;
+pub type PubTypedef = String; //~ ERROR: missing documentation
+
 struct Foo {
     a: int,
     b: int,
