@@ -238,7 +238,7 @@ pub trait SlicePrelude<T> for Sized? {
     /// assert!(match r { Found(1...4) => true, _ => false, });
     /// ```
     #[unstable = "waiting on unboxed closures"]
-    fn binary_search(&self, f: |&T| -> Ordering) -> BinarySearchResult;
+    fn binary_search<F>(&self, f: F) -> BinarySearchResult where F: FnMut(&T) -> Ordering;
 
     /// Return the number of elements in the slice
     ///
@@ -552,7 +552,7 @@ impl<T> SlicePrelude<T> for [T] {
     }
 
     #[unstable]
-    fn binary_search(&self, f: |&T| -> Ordering) -> BinarySearchResult {
+    fn binary_search<F>(&self, mut f: F) -> BinarySearchResult where F: FnMut(&T) -> Ordering {
         let mut base : uint = 0;
         let mut lim : uint = self.len();
 
