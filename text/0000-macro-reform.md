@@ -278,6 +278,9 @@ Should we forbid `$crate` in non-exported macros?  It seems useless, however I
 think we should allow it anyway, to encourage the habit of writing `$crate::`
 for any references to the local crate.
 
+Should `#[macro_reexport]` support the "glob" behavior of `#[macro_use]` with
+no names listed?
+
 # Acknowledgements
 
 This proposal is edited by Keegan McAllister.  It has been refined through many
