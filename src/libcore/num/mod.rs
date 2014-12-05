@@ -284,7 +284,7 @@ pub trait Int
     /// ```
     fn checked_add(self, other: Self) -> Option<Self>;
 
-    /// Checked integer subtraction. Computes `self + other`, returning `None`
+    /// Checked integer subtraction. Computes `self - other`, returning `None`
     /// if underflow occurred.
     ///
     /// # Example
@@ -297,7 +297,7 @@ pub trait Int
     /// ```
     fn checked_sub(self, other: Self) -> Option<Self>;
 
-    /// Checked integer multiplication. Computes `self + other`, returning
+    /// Checked integer multiplication. Computes `self * other`, returning
     /// `None` if underflow or overflow occurred.
     ///
     /// # Example
@@ -310,8 +310,8 @@ pub trait Int
     /// ```
     fn checked_mul(self, other: Self) -> Option<Self>;
 
-    /// Checked integer division. Computes `self + other` returning `None` if
-    /// `self == 0` or the operation results in underflow or overflow.
+    /// Checked integer division. Computes `self / other`, returning `None` if
+    /// `other == 0` or the operation results in underflow or overflow.
     ///
     /// # Example
     ///
