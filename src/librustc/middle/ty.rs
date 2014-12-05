@@ -1623,8 +1623,10 @@ pub struct Generics<'tcx> {
 
 impl<'tcx> Generics<'tcx> {
     pub fn empty() -> Generics<'tcx> {
-        Generics { types: VecPerParamSpace::empty(),
-                   regions: VecPerParamSpace::empty() }
+        Generics {
+            types: VecPerParamSpace::empty(),
+            regions: VecPerParamSpace::empty(),
+        }
     }
 
     pub fn has_type_params(&self, space: subst::ParamSpace) -> bool {
@@ -1743,7 +1745,7 @@ pub struct ParameterEnvironment<'tcx> {
     ///
     /// Note: This effectively *duplicates* the `bounds` array for
     /// now.
-    pub caller_obligations: VecPerParamSpace<traits::Obligation<'tcx>>,
+    pub caller_obligations: VecPerParamSpace<traits::TraitObligation<'tcx>>,
 
     /// Caches the results of trait selection. This cache is used
     /// for things that have to do with the parameters in scope.

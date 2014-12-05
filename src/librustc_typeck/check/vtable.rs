@@ -12,9 +12,9 @@ use check::{FnCtxt, structurally_resolved_type};
 use middle::subst::{SelfSpace, FnSpace};
 use middle::traits;
 use middle::traits::{SelectionError, OutputTypeParameterMismatch, Overflow, Unimplemented};
-use middle::traits::{Obligation, obligation_for_builtin_bound};
+use middle::traits::{Obligation, ObligationCause, obligation_for_builtin_bound};
 use middle::traits::{FulfillmentError, CodeSelectionError, CodeAmbiguity};
-use middle::traits::{ObligationCause};
+use middle::traits::{TraitObligation};
 use middle::ty::{mod, Ty};
 use middle::infer;
 use std::rc::Rc;
@@ -323,7 +323,7 @@ pub fn select_all_fcx_obligations_or_error(fcx: &FnCtxt) {
     }
 }
 
-fn resolve_trait_ref<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>, obligation: &Obligation<'tcx>)
+fn resolve_trait_ref<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>, obligation: &TraitObligation<'tcx>)
                                -> (Rc<ty::TraitRef<'tcx>>, Ty<'tcx>)
 {
     let trait_ref =
@@ -354,7 +354,7 @@ pub fn report_fulfillment_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 }
 
 pub fn report_selection_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
-                                        obligation: &Obligation<'tcx>,
+                                        obligation: &TraitObligation<'tcx>,
                                         error: &SelectionError<'tcx>)
 {
     match *error {
@@ -411,7 +411,7 @@ pub fn report_selection_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 }
 
 pub fn maybe_report_ambiguity<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
-                                        obligation: &Obligation<'tcx>) {
+                                        obligation: &TraitObligation<'tcx>) {
     // Unable to successfully determine, probably means
     // insufficient type information, but could mean
     // ambiguous impls. The latter *ought* to be a
@@ -500,7 +500,7 @@ pub fn select_new_fcx_obligations(fcx: &FnCtxt) {
 }
 
 fn note_obligation_cause<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
-                                   obligation: &Obligation<'tcx>) {
+                                   obligation: &TraitObligation<'tcx>) {
     let tcx = fcx.tcx();
     let trait_name = ty::item_path_str(tcx, obligation.trait_ref.def_id);
     match obligation.cause.code {

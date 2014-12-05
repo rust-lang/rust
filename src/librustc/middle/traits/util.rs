@@ -21,7 +21,7 @@ use syntax::codemap::Span;
 use util::common::ErrorReported;
 use util::ppaux::Repr;
 
-use super::{Obligation, ObligationCause, VtableImpl,
+use super::{Obligation, ObligationCause, TraitObligation, VtableImpl,
             VtableParam, VtableParamData, VtableImplData};
 
 ///////////////////////////////////////////////////////////////////////////
@@ -181,7 +181,7 @@ pub fn obligations_for_generics<'tcx>(tcx: &ty::ctxt<'tcx>,
                                       recursion_depth: uint,
                                       generic_bounds: &ty::GenericBounds<'tcx>,
                                       type_substs: &VecPerParamSpace<Ty<'tcx>>)
-                                      -> VecPerParamSpace<Obligation<'tcx>>
+                                      -> VecPerParamSpace<TraitObligation<'tcx>>
 {
 
     debug!("obligations_for_generics(generic_bounds={}, type_substs={})",
@@ -213,7 +213,7 @@ fn push_obligations_for_param_bounds<'tcx>(
     index: uint,
     param_bounds: &ty::ParamBounds<'tcx>,
     param_type_substs: &VecPerParamSpace<Ty<'tcx>>,
-    obligations: &mut VecPerParamSpace<Obligation<'tcx>>)
+    obligations: &mut VecPerParamSpace<TraitObligation<'tcx>>)
 {
     let param_ty = *param_type_substs.get(space, index);
     for builtin_bound in param_bounds.builtin_bounds.iter() {
@@ -262,7 +262,7 @@ pub fn obligation_for_builtin_bound<'tcx>(
     builtin_bound: ty::BuiltinBound,
     recursion_depth: uint,
     param_ty: Ty<'tcx>)
-    -> Result<Obligation<'tcx>, ErrorReported>
+    -> Result<TraitObligation<'tcx>, ErrorReported>
 {
     let trait_ref = trait_ref_for_builtin_bound(tcx, builtin_bound, param_ty);
     match trait_ref {
@@ -294,7 +294,7 @@ pub fn search_trait_and_supertraits_from_bound<'tcx>(tcx: &ty::ctxt<'tcx>,
     return None;
 }
 
-impl<'tcx> Repr<'tcx> for super::Obligation<'tcx> {
+impl<'tcx,O:Repr<'tcx>> Repr<'tcx> for super::Obligation<'tcx, O> {
     fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
         format!("Obligation(trait_ref={},depth={})",
                 self.trait_ref.repr(tcx),
