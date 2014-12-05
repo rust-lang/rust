@@ -20,6 +20,8 @@
 
 use mem;
 use kinds::Sized;
+#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
+use str::str;
 
 /// The representation of a Rust slice
 #[repr(C)]

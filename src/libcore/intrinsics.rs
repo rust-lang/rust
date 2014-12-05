@@ -42,6 +42,9 @@
 #![experimental]
 #![allow(missing_docs)]
 
+#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
+use str::str;
+
 pub type GlueFn = extern "Rust" fn(*const i8);
 
 #[lang="ty_desc"]

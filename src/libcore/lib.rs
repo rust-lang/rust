@@ -142,4 +142,5 @@ mod std {
     pub use kinds;
     pub use option;
     pub use fmt;
+    pub use str;
 }

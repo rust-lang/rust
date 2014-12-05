@@ -32,6 +32,8 @@
 
 use fmt;
 use intrinsics;
+#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
+use str::str;
 
 #[cold] #[inline(never)] // this is the slow path, always
 #[lang="panic"]

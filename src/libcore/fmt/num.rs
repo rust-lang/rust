@@ -18,6 +18,8 @@ use fmt;
 use iter::DoubleEndedIteratorExt;
 use num::{Int, cast};
 use slice::SlicePrelude;
+#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
+use str::str;
 
 /// A type that represents a specific radix
 #[doc(hidden)]

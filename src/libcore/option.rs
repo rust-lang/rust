@@ -154,6 +154,8 @@ use slice;
 use slice::AsSlice;
 use clone::Clone;
 use ops::Deref;
+#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
+use str::str;
 
 // Note that this is not a lang item per se, but it has a hidden dependency on
 // `Iterator`, which is one. The compiler assumes that the `next` method of

@@ -22,6 +22,7 @@ use num::{Float, FPNaN, FPInfinite, ToPrimitive};
 use num::cast;
 use result::Ok;
 use slice::{mod, SlicePrelude};
+#[cfg(stage0)]  // NOTE(stage0): Remove import after a snapshot
 use str::StrPrelude;
 
 /// A flag that specifies whether to use exponential (scientific) notation.
