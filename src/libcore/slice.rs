@@ -319,20 +319,23 @@ pub trait SlicePrelude<T> for Sized? {
     /// Returns an iterator over mutable subslices separated by elements that
     /// match `pred`.  The matched element is not contained in the subslices.
     #[unstable = "waiting on unboxed closures, iterator type name conventions"]
-    fn split_mut<'a>(&'a mut self, pred: |&T|: 'a -> bool) -> MutSplits<'a, T>;
+    fn split_mut<'a, P>(&'a mut self, pred: P) -> MutSplits<'a, T, P> where
+        P: FnMut(&T) -> bool;
 
     /// Returns an iterator over subslices separated by elements that match
     /// `pred`, limited to splitting at most `n` times.  The matched element is
     /// not contained in the subslices.
     #[unstable = "waiting on unboxed closures, iterator type name conventions"]
-    fn splitn_mut<'a>(&'a mut self, n: uint, pred: |&T|: 'a -> bool) -> SplitsN<MutSplits<'a, T>>;
+    fn splitn_mut<'a, P>(&'a mut self, n: uint, pred: P) -> SplitsN<MutSplits<'a, T, P>> where
+        P: FnMut(&T) -> bool;
 
     /// Returns an iterator over subslices separated by elements that match
     /// `pred` limited to splitting at most `n` times. This starts at the end of
     /// the slice and works backwards.  The matched element is not contained in
     /// the subslices.
     #[unstable = "waiting on unboxed closures, iterator type name conventions"]
-    fn rsplitn_mut<'a>(&'a mut self,  n: uint, pred: |&T|: 'a -> bool) -> SplitsN<MutSplits<'a, T>>;
+    fn rsplitn_mut<'a, P>(&'a mut self,  n: uint, pred: P) -> SplitsN<MutSplits<'a, T, P>> where
+        P: FnMut(&T) -> bool;
 
     /// Returns an iterator over `chunk_size` elements of the slice at a time.
     /// The chunks are mutable and do not overlap. If `chunk_size` does
@@ -644,12 +647,14 @@ impl<T> SlicePrelude<T> for [T] {
     }
 
     #[inline]
-    fn split_mut<'a>(&'a mut self, pred: |&T|: 'a -> bool) -> MutSplits<'a, T> {
+    fn split_mut<'a, P>(&'a mut self, pred: P) -> MutSplits<'a, T, P> where P: FnMut(&T) -> bool {
         MutSplits { v: self, pred: pred, finished: false }
     }
 
     #[inline]
-    fn splitn_mut<'a>(&'a mut self, n: uint, pred: |&T|: 'a -> bool) -> SplitsN<MutSplits<'a, T>> {
+    fn splitn_mut<'a, P>(&'a mut self, n: uint, pred: P) -> SplitsN<MutSplits<'a, T, P>> where
+        P: FnMut(&T) -> bool
+    {
         SplitsN {
             iter: self.split_mut(pred),
             count: n,
@@ -658,7 +663,9 @@ impl<T> SlicePrelude<T> for [T] {
     }
 
     #[inline]
-    fn rsplitn_mut<'a>(&'a mut self, n: uint, pred: |&T|: 'a -> bool) -> SplitsN<MutSplits<'a, T>> {
+    fn rsplitn_mut<'a, P>(&'a mut self, n: uint, pred: P) -> SplitsN<MutSplits<'a, T, P>> where
+        P: FnMut(&T) -> bool,
+    {
         SplitsN {
             iter: self.split_mut(pred),
             count: n,
@@ -1337,13 +1344,13 @@ impl<'a, T, P> SplitsIter<&'a [T]> for Splits<'a, T, P> where P: FnMut(&T) -> bo
 /// An iterator over the subslices of the vector which are separated
 /// by elements that match `pred`.
 #[experimental = "needs review"]
-pub struct MutSplits<'a, T:'a> {
+pub struct MutSplits<'a, T:'a, P> where P: FnMut(&T) -> bool {
     v: &'a mut [T],
-    pred: |t: &T|: 'a -> bool,
+    pred: P,
     finished: bool
 }
 
-impl<'a, T> SplitsIter<&'a mut [T]> for MutSplits<'a, T> {
+impl<'a, T, P> SplitsIter<&'a mut [T]> for MutSplits<'a, T, P> where P: FnMut(&T) -> bool {
     #[inline]
     fn finish(&mut self) -> Option<&'a mut [T]> {
         if self.finished {
@@ -1356,7 +1363,7 @@ impl<'a, T> SplitsIter<&'a mut [T]> for MutSplits<'a, T> {
 }
 
 #[experimental = "needs review"]
-impl<'a, T> Iterator<&'a mut [T]> for MutSplits<'a, T> {
+impl<'a, T, P> Iterator<&'a mut [T]> for MutSplits<'a, T, P> where P: FnMut(&T) -> bool {
     #[inline]
     fn next(&mut self) -> Option<&'a mut [T]> {
         if self.finished { return None; }
@@ -1389,7 +1396,9 @@ impl<'a, T> Iterator<&'a mut [T]> for MutSplits<'a, T> {
 }
 
 #[experimental = "needs review"]
-impl<'a, T> DoubleEndedIterator<&'a mut [T]> for MutSplits<'a, T> {
+impl<'a, T, P> DoubleEndedIterator<&'a mut [T]> for MutSplits<'a, T, P> where
+    P: FnMut(&T) -> bool,
+{
     #[inline]
     fn next_back(&mut self) -> Option<&'a mut [T]> {
         if self.finished { return None; }
