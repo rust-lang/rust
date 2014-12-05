@@ -30,7 +30,6 @@ use middle::resolve::{TraitItemKind, TypeTraitItemKind};
 use middle::subst;
 use middle::ty::{ImplContainer, TraitContainer};
 use middle::ty::{mod, Ty};
-use middle::typeck;
 use middle::astencode::vtable_decoder_helpers;
 
 use std::hash::Hash;
@@ -422,7 +421,7 @@ pub fn get_impl_trait<'tcx>(cdata: Cmd,
 pub fn get_impl_vtables<'tcx>(cdata: Cmd,
                               id: ast::NodeId,
                               tcx: &ty::ctxt<'tcx>)
-                              -> typeck::vtable_res<'tcx>
+                              -> ty::vtable_res<'tcx>
 {
     let item_doc = lookup_item(id, cdata.data());
     let vtables_doc = reader::get_doc(item_doc, tag_item_impl_vtables);

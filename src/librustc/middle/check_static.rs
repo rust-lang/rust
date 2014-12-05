@@ -27,7 +27,7 @@ use self::Mode::*;
 
 use middle::ty;
 use middle::def;
-use middle::typeck;
+use middle::infer;
 use middle::traits;
 use middle::mem_categorization as mc;
 use middle::expr_use_visitor as euv;
@@ -113,7 +113,7 @@ impl<'a, 'tcx> CheckStaticVisitor<'a, 'tcx> {
 
     fn check_static_type(&self, e: &ast::Expr) {
         let ty = ty::node_id_to_type(self.tcx, e.id);
-        let infcx = typeck::infer::new_infer_ctxt(self.tcx);
+        let infcx = infer::new_infer_ctxt(self.tcx);
         let mut fulfill_cx = traits::FulfillmentContext::new();
         let cause = traits::ObligationCause::misc(DUMMY_SP);
         let obligation = traits::obligation_for_builtin_bound(self.tcx, cause, ty,

@@ -589,8 +589,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for SubstFolder<'a, 'tcx> {
         // type declarations and other outer declarations, not those
         // bound in *fn types*. Region substitution of the bound
         // regions that appear in a function signature is done using
-        // the specialized routine
-        // `middle::typeck::check::regionmanip::replace_late_regions_in_fn_sig()`.
+        // the specialized routine `ty::replace_late_regions()`.
         match r {
             ty::ReEarlyBound(_, space, i, region_name) => {
                 match self.substs.regions {

@@ -65,17 +65,7 @@ pub mod back {
 
 pub mod trans;
 pub mod save;
-pub mod driver;
 
 pub mod lib {
     pub use llvm;
 }
-
-pub fn main() {
-    let args = std::os::args();
-    let result = driver::run(args);
-    std::os::set_exit_status(result);
-}
-
-#[cfg(test)]
-pub mod test;

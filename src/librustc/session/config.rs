@@ -114,6 +114,59 @@ pub struct Options {
     pub alt_std_name: Option<String>
 }
 
+pub enum Input {
+    /// Load source from file
+    File(Path),
+    /// The string is the source
+    Str(String)
+}
+
+impl Input {
+    pub fn filestem(&self) -> String {
+        match *self {
+            Input::File(ref ifile) => ifile.filestem_str().unwrap().to_string(),
+            Input::Str(_) => "rust_out".to_string(),
+        }
+    }
+}
+
+#[deriving(Clone)]
+pub struct OutputFilenames {
+    pub out_directory: Path,
+    pub out_filestem: String,
+    pub single_output_file: Option<Path>,
+    pub extra: String,
+}
+
+impl OutputFilenames {
+    pub fn path(&self, flavor: OutputType) -> Path {
+        match self.single_output_file {
+            Some(ref path) => return path.clone(),
+            None => {}
+        }
+        self.temp_path(flavor)
+    }
+
+    pub fn temp_path(&self, flavor: OutputType) -> Path {
+        let base = self.out_directory.join(self.filestem());
+        match flavor {
+            OutputTypeBitcode => base.with_extension("bc"),
+            OutputTypeAssembly => base.with_extension("s"),
+            OutputTypeLlvmAssembly => base.with_extension("ll"),
+            OutputTypeObject => base.with_extension("o"),
+            OutputTypeExe => base,
+        }
+    }
+
+    pub fn with_extension(&self, extension: &str) -> Path {
+        self.out_directory.join(self.filestem()).with_extension(extension)
+    }
+
+    pub fn filestem(&self) -> String {
+        format!("{}{}", self.out_filestem, self.extra)
+    }
+}
+
 pub fn host_triple() -> &'static str {
     // Get the host triple out of the build environment. This ensures that our
     // idea of the host triple is the same as for the set of libraries we've

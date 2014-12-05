@@ -12,7 +12,7 @@
 // closely. The idea is that all reachable symbols are live, codes called
 // from live codes are live, and everything else is dead.
 
-use middle::{def, pat_util, privacy, ty, typeck};
+use middle::{def, pat_util, privacy, ty};
 use lint;
 use util::nodemap::NodeSet;
 
@@ -90,23 +90,23 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
 
     fn lookup_and_handle_method(&mut self, id: ast::NodeId,
                                 span: codemap::Span) {
-        let method_call = typeck::MethodCall::expr(id);
+        let method_call = ty::MethodCall::expr(id);
         match self.tcx.method_map.borrow().get(&method_call) {
             Some(method) => {
                 match method.origin {
-                    typeck::MethodStatic(def_id) => {
+                    ty::MethodStatic(def_id) => {
                         match ty::provided_source(self.tcx, def_id) {
                             Some(p_did) => self.check_def_id(p_did),
                             None => self.check_def_id(def_id)
                         }
                     }
-                    typeck::MethodStaticUnboxedClosure(_) => {}
-                    typeck::MethodTypeParam(typeck::MethodParam {
+                    ty::MethodStaticUnboxedClosure(_) => {}
+                    ty::MethodTypeParam(ty::MethodParam {
                         ref trait_ref,
                         method_num: index,
                         ..
                     }) |
-                    typeck::MethodTraitObject(typeck::MethodObject {
+                    ty::MethodTraitObject(ty::MethodObject {
                         ref trait_ref,
                         method_num: index,
                         ..
