@@ -16,7 +16,7 @@ use std::rc::Rc;
 use util::ppaux::Repr;
 
 use super::CodeAmbiguity;
-use super::Obligation;
+use super::TraitObligation;
 use super::FulfillmentError;
 use super::CodeSelectionError;
 use super::select::SelectionContext;
@@ -41,7 +41,7 @@ pub struct FulfillmentContext<'tcx> {
 
     // A list of all obligations that have been registered with this
     // fulfillment context.
-    trait_obligations: Vec<Obligation<'tcx>>,
+    trait_obligations: Vec<TraitObligation<'tcx>>,
 
     // Remembers the count of trait obligations that we have already
     // attempted to select. This is used to avoid repeating work
@@ -60,7 +60,7 @@ impl<'tcx> FulfillmentContext<'tcx> {
 
     pub fn register_obligation(&mut self,
                                tcx: &ty::ctxt<'tcx>,
-                               obligation: Obligation<'tcx>)
+                               obligation: TraitObligation<'tcx>)
     {
         if self.duplicate_set.insert(obligation.trait_ref.clone()) {
             debug!("register_obligation({})", obligation.repr(tcx));
@@ -117,7 +117,7 @@ impl<'tcx> FulfillmentContext<'tcx> {
         self.select(&mut selcx, false)
     }
 
-    pub fn pending_trait_obligations(&self) -> &[Obligation<'tcx>] {
+    pub fn pending_trait_obligations(&self) -> &[TraitObligation<'tcx>] {
         self.trait_obligations[]
     }
 

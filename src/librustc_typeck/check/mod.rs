@@ -1841,7 +1841,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     pub fn register_obligation(&self,
-                               obligation: traits::Obligation<'tcx>)
+                               obligation: traits::TraitObligation<'tcx>)
     {
         debug!("register_obligation({})",
                obligation.repr(self.tcx()));

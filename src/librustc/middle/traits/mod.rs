@@ -47,22 +47,22 @@ mod util;
 /// provides the required vtable, or else finding a bound that is in
 /// scope. The eventual result is usually a `Selection` (defined below).
 #[deriving(Clone)]
-pub struct Obligation<'tcx> {
+pub struct Obligation<'tcx, T> {
     pub cause: ObligationCause<'tcx>,
     pub recursion_depth: uint,
-    pub trait_ref: Rc<ty::TraitRef<'tcx>>,
+    pub trait_ref: T,
 }
 
+pub type TraitObligation<'tcx> = Obligation<'tcx, Rc<ty::TraitRef<'tcx>>>;
+
 /// Why did we incur this obligation? Used for error reporting.
-#[deriving(Clone)]
+#[deriving(Copy, Clone)]
 pub struct ObligationCause<'tcx> {
     pub span: Span,
     pub code: ObligationCauseCode<'tcx>
 }
 
-impl<'tcx> Copy for ObligationCause<'tcx> {}
-
-#[deriving(Clone)]
+#[deriving(Copy, Clone)]
 pub enum ObligationCauseCode<'tcx> {
     /// Not well classified or should be obvious from span.
     MiscObligation,
@@ -95,11 +95,11 @@ pub enum ObligationCauseCode<'tcx> {
     ObjectSized,
 }
 
-pub type Obligations<'tcx> = subst::VecPerParamSpace<Obligation<'tcx>>;
+pub type Obligations<'tcx, O> = subst::VecPerParamSpace<Obligation<'tcx, O>>;
 
-impl<'tcx> Copy for ObligationCauseCode<'tcx> {}
+pub type TraitObligations<'tcx> = subst::VecPerParamSpace<TraitObligation<'tcx>>;
 
-pub type Selection<'tcx> = Vtable<'tcx, Obligation<'tcx>>;
+pub type Selection<'tcx> = Vtable<'tcx, TraitObligation<'tcx>>;
 
 #[deriving(Clone,Show)]
 pub enum SelectionError<'tcx> {
@@ -109,7 +109,7 @@ pub enum SelectionError<'tcx> {
 }
 
 pub struct FulfillmentError<'tcx> {
-    pub obligation: Obligation<'tcx>,
+    pub obligation: TraitObligation<'tcx>,
     pub code: FulfillmentErrorCode<'tcx>
 }
 
@@ -230,7 +230,7 @@ pub fn select_inherent_impl<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
                                      impl_def_id: ast::DefId,
                                      self_ty: Ty<'tcx>)
                                      -> SelectionResult<'tcx,
-                                            VtableImplData<'tcx, Obligation<'tcx>>>
+                                            VtableImplData<'tcx, TraitObligation<'tcx>>>
 {
     // This routine is only suitable for inherent impls. This is
     // because it does not attempt to unify the output type parameters
@@ -279,7 +279,7 @@ pub fn obligations_for_generics<'tcx>(tcx: &ty::ctxt<'tcx>,
                                       cause: ObligationCause<'tcx>,
                                       generic_bounds: &ty::GenericBounds<'tcx>,
                                       type_substs: &subst::VecPerParamSpace<Ty<'tcx>>)
-                                      -> subst::VecPerParamSpace<Obligation<'tcx>>
+                                      -> subst::VecPerParamSpace<TraitObligation<'tcx>>
 {
     util::obligations_for_generics(tcx, cause, 0, generic_bounds, type_substs)
 }
@@ -288,23 +288,27 @@ pub fn obligation_for_builtin_bound<'tcx>(tcx: &ty::ctxt<'tcx>,
                                           cause: ObligationCause<'tcx>,
                                           source_ty: Ty<'tcx>,
                                           builtin_bound: ty::BuiltinBound)
-                                          -> Result<Obligation<'tcx>, ErrorReported>
+                                          -> Result<TraitObligation<'tcx>, ErrorReported>
 {
     util::obligation_for_builtin_bound(tcx, cause, builtin_bound, 0, source_ty)
 }
 
-impl<'tcx> Obligation<'tcx> {
-    pub fn new(cause: ObligationCause<'tcx>, trait_ref: Rc<ty::TraitRef<'tcx>>)
-               -> Obligation<'tcx> {
+impl<'tcx,O> Obligation<'tcx,O> {
+    pub fn new(cause: ObligationCause<'tcx>,
+               trait_ref: O)
+               -> Obligation<'tcx, O>
+    {
         Obligation { cause: cause,
                      recursion_depth: 0,
                      trait_ref: trait_ref }
     }
 
-    pub fn misc(span: Span, trait_ref: Rc<ty::TraitRef<'tcx>>) -> Obligation<'tcx> {
+    pub fn misc(span: Span, trait_ref: O) -> Obligation<'tcx, O> {
         Obligation::new(ObligationCause::misc(span), trait_ref)
     }
+}
 
+impl<'tcx> Obligation<'tcx,Rc<ty::TraitRef<'tcx>>> {
     pub fn self_ty(&self) -> Ty<'tcx> {
         self.trait_ref.self_ty()
     }
@@ -406,7 +410,8 @@ impl<N> VtableBuiltinData<N> {
 }
 
 impl<'tcx> FulfillmentError<'tcx> {
-    fn new(obligation: Obligation<'tcx>, code: FulfillmentErrorCode<'tcx>)
+    fn new(obligation: TraitObligation<'tcx>,
+           code: FulfillmentErrorCode<'tcx>)
            -> FulfillmentError<'tcx>
     {
         FulfillmentError { obligation: obligation, code: code }
