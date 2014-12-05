@@ -35,7 +35,7 @@ extern crate serialize;
 pub use self::EbmlEncoderTag::*;
 pub use self::Error::*;
 
-use std::str;
+use std::str as str_;
 
 pub mod io;
 
@@ -57,7 +57,7 @@ impl<'doc> Doc<'doc> {
     }
 
     pub fn as_str_slice<'a>(&'a self) -> &'a str {
-        str::from_utf8(self.data[self.start..self.end]).unwrap()
+        str_::from_utf8(self.data[self.start..self.end]).unwrap()
     }
 
     pub fn as_str(&self) -> String {
@@ -333,10 +333,10 @@ pub mod reader {
 
                 if r_tag == (EsLabel as uint) {
                     self.pos = r_doc.end;
-                    let str = r_doc.as_str_slice();
-                    if lbl != str {
+                    let s = r_doc.as_str_slice();
+                    if lbl != s {
                         return Err(Expected(format!("Expected label {} but \
-                                                     found {}", lbl, str)));
+                                                     found {}", lbl, s)));
                     }
                 }
             }
