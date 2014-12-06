@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// DON'T REENABLE THIS UNLESS YOU'VE ACTUALLY FIXED THE UNDERLYING ISSUE
+// ignore-android seems to block forever
 
 #![forbid(warnings)]
 
