@@ -1498,11 +1498,11 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
         }).unwrap();
 
         fn type_string(doc: rbml::Doc) -> String {
-            let mut str = String::new();
+            let mut s = String::new();
             for i in range(doc.start, doc.end) {
-                str.push(doc.data[i] as char);
+                s.push(doc.data[i] as char);
             }
-            str
+            s
         }
     }
 

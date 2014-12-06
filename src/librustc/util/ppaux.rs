@@ -49,15 +49,15 @@ pub fn note_and_explain_region(cx: &ctxt,
                                region: ty::Region,
                                suffix: &str) -> Option<Span> {
     match explain_region_and_span(cx, region) {
-      (ref str, Some(span)) => {
+      (ref s, Some(span)) => {
         cx.sess.span_note(
             span,
-            format!("{}{}{}", prefix, *str, suffix).as_slice());
+            format!("{}{}{}", prefix, *s, suffix).as_slice());
         Some(span)
       }
-      (ref str, None) => {
+      (ref s, None) => {
         cx.sess.note(
-            format!("{}{}{}", prefix, *str, suffix).as_slice());
+            format!("{}{}{}", prefix, *s, suffix).as_slice());
         None
       }
     }
