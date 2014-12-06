@@ -1322,7 +1322,6 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
             ty::ty_uint(ast::TyU64) => Primitive(U64),
             ty::ty_float(ast::TyF32) => Primitive(F32),
             ty::ty_float(ast::TyF64) => Primitive(F64),
-            ty::ty_str => Primitive(Str),
             ty::ty_uniq(t) => {
                 let box_did = cx.tcx_opt().and_then(|tcx| {
                     tcx.lang_items.owned_box()
@@ -2161,7 +2160,6 @@ fn resolve_type(cx: &DocContext,
     match def {
         def::DefSelfTy(i) => return Self(ast_util::local_def(i)),
         def::DefPrimTy(p) => match p {
-            ast::TyStr => return Primitive(Str),
             ast::TyBool => return Primitive(Bool),
             ast::TyChar => return Primitive(Char),
             ast::TyInt(ast::TyI) => return Primitive(Int),
