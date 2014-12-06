@@ -9,24 +9,24 @@
 // except according to those terms.
 
 struct clam {
-    x: Box<int>,
-    y: Box<int>,
+    x: Box<isize>,
+    y: Box<isize>,
 }
 
 struct fish {
-    a: Box<int>,
+    a: Box<isize>,
 }
 
 fn main() {
     let a: clam = clam{x: box 1, y: box 2};
     let b: clam = clam{x: box 10, y: box 20};
-    let z: int = a.x + b.y; //~ ERROR binary operation `+` cannot be applied to type `Box<int>`
+    let z: isize = a.x + b.y; //~ ERROR binary operation `+` cannot be applied to type `Box<isize>`
     println!("{}", z);
     assert_eq!(z, 21);
     let forty: fish = fish{a: box 40};
     let two: fish = fish{a: box 2};
     let answer: int = forty.a + two.a;
-    //~^ ERROR binary operation `+` cannot be applied to type `Box<int>`
+    //~^ ERROR binary operation `+` cannot be applied to type `Box<isize>`
     println!("{}", answer);
     assert_eq!(answer, 42);
 }
