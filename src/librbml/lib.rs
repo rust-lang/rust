@@ -260,7 +260,9 @@ pub mod reader {
         }
     }
 
-    pub fn docs<'a>(d: Doc<'a>, it: |uint, Doc<'a>| -> bool) -> bool {
+    pub fn docs<F>(d: Doc, mut it: F) -> bool where
+        F: FnMut(uint, Doc) -> bool,
+    {
         let mut pos = d.start;
         while pos < d.end {
             let elt_tag = try_or!(vuint_at(d.data, pos), false);
@@ -274,7 +276,9 @@ pub mod reader {
         return true;
     }
 
-    pub fn tagged_docs<'a>(d: Doc<'a>, tg: uint, it: |Doc<'a>| -> bool) -> bool {
+    pub fn tagged_docs<F>(d: Doc, tg: uint, mut it: F) -> bool where
+        F: FnMut(Doc) -> bool,
+    {
         let mut pos = d.start;
         while pos < d.end {
             let elt_tag = try_or!(vuint_at(d.data, pos), false);
@@ -291,7 +295,9 @@ pub mod reader {
         return true;
     }
 
-    pub fn with_doc_data<'a, T>(d: Doc<'a>, f: |x: &'a [u8]| -> T) -> T {
+    pub fn with_doc_data<T, F>(d: Doc, f: F) -> T where
+        F: FnOnce(&[u8]) -> T,
+    {
         f(d.data[d.start..d.end])
     }
 
@@ -399,8 +405,9 @@ pub mod reader {
             Ok(r as uint)
         }
 
-        pub fn read_opaque<R>(&mut self,
-                              op: |&mut Decoder<'doc>, Doc| -> DecodeResult<R>) -> DecodeResult<R> {
+        pub fn read_opaque<R, F>(&mut self, op: F) -> DecodeResult<R> where
+            F: FnOnce(&mut Decoder, Doc) -> DecodeResult<R>,
+        {
             let doc = try!(self.next_doc(EsOpaque));
 
             let (old_parent, old_pos) = (self.parent, self.pos);
@@ -761,7 +768,9 @@ pub mod writer {
             Ok(r)
         }
 
-        pub fn wr_tag(&mut self, tag_id: uint, blk: || -> EncodeResult) -> EncodeResult {
+        pub fn wr_tag<F>(&mut self, tag_id: uint, blk: F) -> EncodeResult where
+            F: FnOnce() -> EncodeResult,
+        {
             try!(self.start_tag(tag_id));
             try!(blk());
             self.end_tag()
@@ -857,7 +866,9 @@ pub mod writer {
             else { Ok(()) }
         }
 
-        pub fn emit_opaque(&mut self, f: |&mut Encoder<W>| -> EncodeResult) -> EncodeResult {
+        pub fn emit_opaque<F>(&mut self, f: F) -> EncodeResult where
+            F: FnOnce(&mut Encoder<W>) -> EncodeResult,
+        {
             try!(self.start_tag(EsOpaque as uint));
             try!(f(self));
             self.end_tag()
