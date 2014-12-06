@@ -328,6 +328,7 @@ mod tests {
     #[test]
     fn test_writer_hasher() {
         use alloc::boxed::Box;
+        use core::str::str;
 
         let hasher = MyWriterHasher;
 

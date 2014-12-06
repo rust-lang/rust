@@ -2336,6 +2336,7 @@ mod bench {
     use test::black_box;
     use super::*;
     use std::iter::{IteratorExt, DoubleEndedIteratorExt};
+    #[cfg(stage0)]  // NOTE(stage0): Remove import after a snapshot
     use std::str::StrPrelude;
     use std::slice::SlicePrelude;
 

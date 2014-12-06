@@ -983,8 +983,10 @@ mod tests {
     use test::Bencher;
 
     use slice::CloneSliceAllocPrelude;
-    use str::{Str, StrPrelude};
-    use str;
+    use str::Str;
+    #[cfg(stage0)]  // NOTE(stage0): Remove import after a snapshot
+    use str::StrPrelude;
+    use str as str_;
     use super::{as_string, String, ToString};
     use vec::Vec;
 
@@ -1016,11 +1018,11 @@ mod tests {
     #[test]
     fn test_from_utf8_lossy() {
         let xs = b"hello";
-        let ys: str::CowString = "hello".into_cow();
+        let ys: str_::CowString = "hello".into_cow();
         assert_eq!(String::from_utf8_lossy(xs), ys);
 
         let xs = "ศไทย中华Việt Nam".as_bytes();
-        let ys: str::CowString = "ศไทย中华Việt Nam".into_cow();
+        let ys: str_::CowString = "ศไทย中华Việt Nam".into_cow();
         assert_eq!(String::from_utf8_lossy(xs), ys);
 
         let xs = b"Hello\xC2 There\xFF Goodbye";
@@ -1100,7 +1102,7 @@ mod tests {
             let s_as_utf16 = s.as_slice().utf16_units().collect::<Vec<u16>>();
             let u_as_string = String::from_utf16(u.as_slice()).unwrap();
 
-            assert!(str::is_utf16(u.as_slice()));
+            assert!(str_::is_utf16(u.as_slice()));
             assert_eq!(s_as_utf16, u);
 
             assert_eq!(u_as_string, s);
