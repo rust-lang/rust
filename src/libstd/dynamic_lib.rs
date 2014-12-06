@@ -16,7 +16,6 @@
 #![allow(missing_docs)]
 
 use clone::Clone;
-use core::kinds::Sized;
 use c_str::ToCStr;
 use iter::IteratorExt;
 use mem;
@@ -70,11 +69,11 @@ impl DynamicLibrary {
     }
 
     /// Load a dynamic library.
-    pub fn load<Sized? T: ToCStr>(file_name: &T)
+    pub fn load<T: ToCStr>(file_name: T)
                         -> Result<DynamicLibrary, String> {
         unsafe {
             let maybe_library = dl::check_for_errors_in(|| {
-                dl::open_external(file_name)
+                dl::open_external(&file_name)
             });
 
             // The dynamic library must not be constructed if there is
@@ -235,14 +234,13 @@ mod test {
 pub mod dl {
     pub use self::Rtld::*;
 
-    use core::kinds::Sized;
     use c_str::{CString, ToCStr};
     use libc;
     use ptr;
     use result::*;
     use string::String;
 
-    pub unsafe fn open_external<Sized? T: ToCStr>(file_name: &T) -> *mut u8 {
+    pub unsafe fn open_external<T: ToCStr>(file_name: T) -> *mut u8 {
         file_name.with_c_str(|raw_name| {
             dlopen(raw_name, Lazy as libc::c_int) as *mut u8
         })
@@ -304,7 +302,6 @@ pub mod dl {
 #[cfg(target_os = "windows")]
 pub mod dl {
     use c_str::ToCStr;
-    use core::kinds::Sized;
     use iter::IteratorExt;
     use libc;
     use os;
@@ -316,7 +313,7 @@ pub mod dl {
     use string::String;
     use vec::Vec;
 
-    pub unsafe fn open_external<Sized? T: ToCStr>(file_name: &T) -> *mut u8 {
+    pub unsafe fn open_external<T: ToCStr>(file_name: T) -> *mut u8 {
         // Windows expects Unicode data
         let filename_cstr = file_name.to_c_str();
         let filename_str = str::from_utf8(filename_cstr.as_bytes_no_nul()).unwrap();
