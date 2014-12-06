@@ -9,8 +9,8 @@
 // except according to those terms.
 
 fn main() {
-    let _x: int = [1i, 2, 3]; //~ ERROR expected int, found array of 3 elements
+    let _x: isize = [1is, 2, 3]; //~ ERROR expected isize, found array of 3 elements
 
-    let x: &[int] = &[1, 2, 3];
-    let _y: &int = x; //~ ERROR expected int, found slice
+    let x: &[isize] = &[1, 2, 3];
+    let _y: &isize = x; //~ ERROR expected isize, found slice
 }
