@@ -15,7 +15,7 @@ use std::io::process::{Command, ProcessOutput};
 use std::io::{fs, TempDir};
 use std::io;
 use std::os;
-use std::str;
+use std::str as str_;
 use syntax::diagnostic::Handler as ErrorHandler;
 
 pub static METADATA_FILENAME: &'static str = "rust.metadata.bin";
@@ -77,11 +77,11 @@ fn run_ar(handler: &ErrorHandler, maybe_ar_prog: &Option<String>,
                                  cmd,
                                  o.status).as_slice());
                 handler.note(format!("stdout ---\n{}",
-                                  str::from_utf8(o.output
+                                  str_::from_utf8(o.output
                                                   .as_slice()).unwrap())
                           .as_slice());
                 handler.note(format!("stderr ---\n{}",
-                                  str::from_utf8(o.error
+                                  str_::from_utf8(o.error
                                                   .as_slice()).unwrap())
                           .as_slice());
                 handler.abort_if_errors();
@@ -147,7 +147,7 @@ impl<'a> Archive<'a> {
     /// Lists all files in an archive
     pub fn files(&self) -> Vec<String> {
         let output = run_ar(self.handler, &self.maybe_ar_prog, "t", None, &[&self.dst]);
-        let output = str::from_utf8(output.output.as_slice()).unwrap();
+        let output = str_::from_utf8(output.output.as_slice()).unwrap();
         // use lines_any because windows delimits output with `\r\n` instead of
         // just `\n`
         output.lines_any().map(|s| s.to_string()).collect()
