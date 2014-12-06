@@ -61,7 +61,7 @@ pub fn enc_ty<'a, 'tcx>(w: &mut SeekableMemWriter, cx: &ctxt<'a, 'tcx>, t: Ty<'t
         ty::ty_char => mywrite!(w, "c"),
         ty::ty_int(t) => {
             match t {
-                ast::TyI => mywrite!(w, "i"),
+                ast::TyIs => mywrite!(w, "is"),
                 ast::TyI8 => mywrite!(w, "MB"),
                 ast::TyI16 => mywrite!(w, "MW"),
                 ast::TyI32 => mywrite!(w, "ML"),
@@ -70,7 +70,7 @@ pub fn enc_ty<'a, 'tcx>(w: &mut SeekableMemWriter, cx: &ctxt<'a, 'tcx>, t: Ty<'t
         }
         ty::ty_uint(t) => {
             match t {
-                ast::TyU => mywrite!(w, "u"),
+                ast::TyUs => mywrite!(w, "us"),
                 ast::TyU8 => mywrite!(w, "Mb"),
                 ast::TyU16 => mywrite!(w, "Mw"),
                 ast::TyU32 => mywrite!(w, "Ml"),

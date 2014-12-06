@@ -2302,12 +2302,12 @@ impl<'tcx> CommonTypes<'tcx> {
             bool: intern_ty(arena, interner, ty_bool),
             char: intern_ty(arena, interner, ty_char),
             err: intern_ty(arena, interner, ty_err),
-            int: intern_ty(arena, interner, ty_int(ast::TyI)),
+            int: intern_ty(arena, interner, ty_int(ast::TyIs)),
             i8: intern_ty(arena, interner, ty_int(ast::TyI8)),
             i16: intern_ty(arena, interner, ty_int(ast::TyI16)),
             i32: intern_ty(arena, interner, ty_int(ast::TyI32)),
             i64: intern_ty(arena, interner, ty_int(ast::TyI64)),
-            uint: intern_ty(arena, interner, ty_uint(ast::TyU)),
+            uint: intern_ty(arena, interner, ty_uint(ast::TyUs)),
             u8: intern_ty(arena, interner, ty_uint(ast::TyU8)),
             u16: intern_ty(arena, interner, ty_uint(ast::TyU16)),
             u32: intern_ty(arena, interner, ty_uint(ast::TyU32)),
@@ -2653,7 +2653,7 @@ impl FlagComputation {
 
 pub fn mk_mach_int<'tcx>(tcx: &ctxt<'tcx>, tm: ast::IntTy) -> Ty<'tcx> {
     match tm {
-        ast::TyI    => tcx.types.int,
+        ast::TyIs   => tcx.types.int,
         ast::TyI8   => tcx.types.i8,
         ast::TyI16  => tcx.types.i16,
         ast::TyI32  => tcx.types.i32,
@@ -2663,7 +2663,7 @@ pub fn mk_mach_int<'tcx>(tcx: &ctxt<'tcx>, tm: ast::IntTy) -> Ty<'tcx> {
 
 pub fn mk_mach_uint<'tcx>(tcx: &ctxt<'tcx>, tm: ast::UintTy) -> Ty<'tcx> {
     match tm {
-        ast::TyU    => tcx.types.uint,
+        ast::TyUs   => tcx.types.uint,
         ast::TyU8   => tcx.types.u8,
         ast::TyU16  => tcx.types.u16,
         ast::TyU32  => tcx.types.u32,
@@ -3324,7 +3324,7 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
 
         let result = match ty.sty {
             // uint and int are ffi-unsafe
-            ty_uint(ast::TyU) | ty_int(ast::TyI) => {
+            ty_uint(ast::TyUs) | ty_int(ast::TyIs) => {
                 TC::ReachesFfiUnsafe
             }
 
@@ -3896,7 +3896,7 @@ pub fn type_is_fresh(ty: Ty) -> bool {
 
 pub fn type_is_uint(ty: Ty) -> bool {
     match ty.sty {
-      ty_infer(IntVar(_)) | ty_uint(ast::TyU) => true,
+      ty_infer(IntVar(_)) | ty_uint(ast::TyUs) => true,
       _ => false
     }
 }
@@ -3942,7 +3942,7 @@ pub fn type_is_signed(ty: Ty) -> bool {
 
 pub fn type_is_machine(ty: Ty) -> bool {
     match ty.sty {
-        ty_int(ast::TyI) | ty_uint(ast::TyU) => false,
+        ty_int(ast::TyIs) | ty_uint(ast::TyUs) => false,
         ty_int(..) | ty_uint(..) | ty_float(..) => true,
         _ => false
     }

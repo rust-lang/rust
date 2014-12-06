@@ -443,8 +443,8 @@ fn parse_ty_<'a, 'tcx, F>(st: &mut PState<'a, 'tcx>, conv: &mut F) -> Ty<'tcx> w
     let tcx = st.tcx;
     match next(st) {
       'b' => return tcx.types.bool,
-      'i' => return tcx.types.int,
-      'u' => return tcx.types.uint,
+      'i' => { /* eat the s of is */ next(st); return tcx.types.int },
+      'u' => { /* eat the s of us */ next(st); return tcx.types.uint },
       'M' => {
         match next(st) {
           'b' => return tcx.types.u8,
