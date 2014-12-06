@@ -30,6 +30,8 @@ use io::{IoResult, IoError, FileStat, SeekStyle, Seek, Writer, Reader};
 use io::{Read, Truncate, SeekCur, SeekSet, ReadWrite, SeekEnd, Append};
 
 pub use path::WindowsPath as Path;
+pub use libc::{F_OK,R_OK,W_OK,X_OK};
+
 pub type fd_t = libc::c_int;
 
 pub struct FileDesc {
@@ -446,6 +448,11 @@ pub fn stat(p: &Path) -> IoResult<FileStat> {
 pub fn lstat(_p: &Path) -> IoResult<FileStat> {
     // FIXME: implementation is missing
     Err(super::unimpl())
+}
+
+pub fn access(p: &Path, a: i32) -> IoResult<()> {
+    let p = p.to_c_str();
+    mkerr_libc(unsafe { libc::access(p.as_ptr(), a) })
 }
 
 pub fn utime(p: &Path, atime: u64, mtime: u64) -> IoResult<()> {

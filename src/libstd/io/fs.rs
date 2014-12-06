@@ -70,6 +70,8 @@ use vec::Vec;
 use sys::fs as fs_imp;
 use sys_common;
 
+pub use libc::{F_OK,R_OK,W_OK,X_OK};
+
 /// Unconstrained file access type that exposes read and write operations
 ///
 /// Can be constructed via `File::open()`, `File::create()`, and
@@ -324,6 +326,36 @@ pub fn lstat(path: &Path) -> IoResult<FileStat> {
     fs_imp::lstat(path)
            .update_err("couldn't lstat path", |e|
                format!("{}; path={}", e, path.display()))
+}
+
+/// Given a path and access mode, checks whether the calling process can access
+/// the path and perform the requested operations.
+/// Mode can either be F_OK to check for existence or a bitwise OR of one or
+/// more of R_OK, W_OK, and X_OK to test for read, write and execute access
+/// respectively.
+///
+/// # Example
+///
+/// ```rust
+/// use std::io::fs;
+/// use std::io::fs::{R_OK,W_OK,X_OK};
+///
+/// let p = Path::new("/some/file/path.txt");
+/// match fs::access(&p, R_OK|W_OK|X_OK) {
+///     Err(e) => { /* handle error */ }
+///     _ => { /* ... */ }
+/// }
+/// ```
+///
+/// # Error
+///
+/// This function will return an error if the user is not allowed to
+/// perform the requested operations on the file.
+pub fn access(path: &Path, amode: i32) -> IoResult<()> {
+    fs_imp::access(path, amode)
+           .update_err("couldn't access path", |e|
+               format!("{}; path={}; amode={}", e, path.display(), amode))
+
 }
 
 /// Rename a file or directory to a new name.
