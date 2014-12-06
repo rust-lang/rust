@@ -1026,6 +1026,24 @@ impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
 
 impl<K, V> BTreeMap<K, V> {
     /// Gets an iterator over the entries of the map.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::BTreeMap;
+    ///
+    /// let mut map = BTreeMap::new();
+    /// map.insert(1u, "a");
+    /// map.insert(2u, "b");
+    /// map.insert(3u, "c");
+    ///
+    /// for (key, value) in map.iter() {
+    ///     println!("{}: {}", key, value);
+    /// }
+    ///
+    /// let (first_key, first_value) = map.iter().next().unwrap();
+    /// assert_eq!((*first_key, *first_value), (1u, "a"));
+    /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn iter<'a>(&'a self) -> Entries<'a, K, V> {
         let len = self.len();
