@@ -14,7 +14,7 @@
 // ignore-pretty: does not work well with `--test`
 
 #[test]
-#[should_fail(message = "foobar")]
+#[should_fail(expected = "foobar")]
 fn test_foo() {
     panic!("blah")
 }
