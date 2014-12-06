@@ -17,6 +17,7 @@ pub use self::Ordering::*;
 use intrinsics;
 use std::kinds::marker;
 use cell::UnsafeCell;
+use kinds::Copy;
 
 /// A boolean type which can be safely shared between threads.
 #[stable]
@@ -80,6 +81,8 @@ pub enum Ordering {
     #[stable]
     SeqCst,
 }
+
+impl Copy for Ordering {}
 
 /// An `AtomicBool` initialized to `false`.
 #[unstable = "may be renamed, pending conventions for static initalizers"]

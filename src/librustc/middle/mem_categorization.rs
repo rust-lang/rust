@@ -110,6 +110,8 @@ pub struct Upvar {
     pub is_unboxed: bool
 }
 
+impl Copy for Upvar {}
+
 // different kinds of pointers:
 #[deriving(Clone, PartialEq, Eq, Hash, Show)]
 pub enum PointerKind {
@@ -119,6 +121,8 @@ pub enum PointerKind {
     UnsafePtr(ast::Mutability)
 }
 
+impl Copy for PointerKind {}
+
 // We use the term "interior" to mean "something reachable from the
 // base without a pointer dereference", e.g. a field
 #[deriving(Clone, PartialEq, Eq, Hash, Show)]
@@ -127,11 +131,15 @@ pub enum InteriorKind {
     InteriorElement(ElementKind),
 }
 
+impl Copy for InteriorKind {}
+
 #[deriving(Clone, PartialEq, Eq, Hash, Show)]
 pub enum FieldName {
     NamedField(ast::Name),
     PositionalField(uint)
 }
+
+impl Copy for FieldName {}
 
 #[deriving(Clone, PartialEq, Eq, Hash, Show)]
 pub enum ElementKind {
@@ -139,12 +147,16 @@ pub enum ElementKind {
     OtherElement,
 }
 
+impl Copy for ElementKind {}
+
 #[deriving(Clone, PartialEq, Eq, Hash, Show)]
 pub enum MutabilityCategory {
     McImmutable, // Immutable.
     McDeclared,  // Directly declared as mutable.
     McInherited, // Inherited from the fact that owner is mutable.
 }
+
+impl Copy for MutabilityCategory {}
 
 // A note about the provenance of a `cmt`.  This is used for
 // special-case handling of upvars such as mutability inference.
@@ -157,6 +169,8 @@ pub enum Note {
     NoteUpvarRef(ty::UpvarId),   // Deref through by-ref upvar
     NoteNone                     // Nothing special
 }
+
+impl Copy for Note {}
 
 // `cmt`: "Category, Mutability, and Type".
 //
@@ -190,6 +204,8 @@ pub enum deref_kind {
     deref_ptr(PointerKind),
     deref_interior(InteriorKind),
 }
+
+impl Copy for deref_kind {}
 
 // Categorizes a derefable type.  Note that we include vectors and strings as
 // derefable (we model an index as the combination of a deref and then a
@@ -260,6 +276,8 @@ impl ast_node for ast::Pat {
 pub struct MemCategorizationContext<'t,TYPER:'t> {
     typer: &'t TYPER
 }
+
+impl<'t,TYPER:'t> Copy for MemCategorizationContext<'t,TYPER> {}
 
 pub type McResult<T> = Result<T, ()>;
 
@@ -1384,6 +1402,8 @@ pub enum InteriorSafety {
     InteriorSafe
 }
 
+impl Copy for InteriorSafety {}
+
 pub enum AliasableReason {
     AliasableBorrowed,
     AliasableClosure(ast::NodeId), // Aliasable due to capture Fn closure env
@@ -1391,6 +1411,8 @@ pub enum AliasableReason {
     AliasableStatic(InteriorSafety),
     AliasableStaticMut(InteriorSafety),
 }
+
+impl Copy for AliasableReason {}
 
 impl<'tcx> cmt_<'tcx> {
     pub fn guarantor(&self) -> cmt<'tcx> {

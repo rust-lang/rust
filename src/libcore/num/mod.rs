@@ -1240,6 +1240,8 @@ pub enum FPCategory {
     FPNormal,
 }
 
+impl Copy for FPCategory {}
+
 /// A built-in floating point number.
 // FIXME(#5527): In a future version of Rust, many of these functions will
 //               become constants.

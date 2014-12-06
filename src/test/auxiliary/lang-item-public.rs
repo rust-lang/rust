@@ -22,3 +22,8 @@ extern fn stack_exhausted() {}
 
 #[lang = "eh_personality"]
 extern fn eh_personality() {}
+
+#[lang="copy"]
+pub trait Copy {}
+
+

@@ -92,6 +92,8 @@ pub struct Node<K,V> {
 
 pub struct Delegate;
 
+impl Copy for Delegate {}
+
 // We can't use V:LatticeValue, much as I would like to,
 // because frequently the pattern is that V=Option<U> for some
 // other type parameter U, and we have no way to say

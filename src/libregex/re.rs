@@ -135,8 +135,12 @@ pub struct ExNative {
     pub prog: fn(MatchKind, &str, uint, uint) -> Vec<Option<uint>>
 }
 
+impl Copy for ExNative {}
+
 impl Clone for ExNative {
-    fn clone(&self) -> ExNative { *self }
+    fn clone(&self) -> ExNative {
+        *self
+    }
 }
 
 impl fmt::Show for Regex {
@@ -917,7 +921,7 @@ fn exec_slice(re: &Regex, which: MatchKind,
               input: &str, s: uint, e: uint) -> CaptureLocs {
     match *re {
         Dynamic(ExDynamic { ref prog, .. }) => vm::run(which, prog, input, s, e),
-        Native(ExNative { prog, .. }) => prog(which, input, s, e),
+        Native(ExNative { ref prog, .. }) => (*prog)(which, input, s, e),
     }
 }
 

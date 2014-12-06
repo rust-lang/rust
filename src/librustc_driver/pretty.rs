@@ -49,11 +49,15 @@ pub enum PpSourceMode {
     PpmExpandedHygiene,
 }
 
+impl Copy for PpSourceMode {}
+
 #[deriving(PartialEq, Show)]
 pub enum PpMode {
     PpmSource(PpSourceMode),
     PpmFlowGraph,
 }
+
+impl Copy for PpMode {}
 
 pub fn parse_pretty(sess: &Session, name: &str) -> (PpMode, Option<UserIdentifiedItem>) {
     let mut split = name.splitn(1, '=');

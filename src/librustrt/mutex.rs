@@ -361,6 +361,7 @@ mod imp {
 
     #[cfg(any(target_os = "macos", target_os = "ios"))]
     mod os {
+        use core::kinds::Copy;
         use libc;
 
         #[cfg(target_arch = "x86_64")]
@@ -384,11 +385,16 @@ mod imp {
             __sig: libc::c_long,
             __opaque: [u8, ..__PTHREAD_MUTEX_SIZE__],
         }
+
+        impl Copy for pthread_mutex_t {}
+
         #[repr(C)]
         pub struct pthread_cond_t {
             __sig: libc::c_long,
             __opaque: [u8, ..__PTHREAD_COND_SIZE__],
         }
+
+        impl Copy for pthread_cond_t {}
 
         pub const PTHREAD_MUTEX_INITIALIZER: pthread_mutex_t = pthread_mutex_t {
             __sig: _PTHREAD_MUTEX_SIG_INIT,
@@ -402,6 +408,7 @@ mod imp {
 
     #[cfg(target_os = "linux")]
     mod os {
+        use core::kinds::Copy;
         use libc;
 
         // minus 8 because we have an 'align' field
@@ -431,11 +438,16 @@ mod imp {
             __align: libc::c_longlong,
             size: [u8, ..__SIZEOF_PTHREAD_MUTEX_T],
         }
+
+        impl Copy for pthread_mutex_t {}
+
         #[repr(C)]
         pub struct pthread_cond_t {
             __align: libc::c_longlong,
             size: [u8, ..__SIZEOF_PTHREAD_COND_T],
         }
+
+        impl Copy for pthread_cond_t {}
 
         pub const PTHREAD_MUTEX_INITIALIZER: pthread_mutex_t = pthread_mutex_t {
             __align: 0,

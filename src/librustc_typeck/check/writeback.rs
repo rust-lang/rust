@@ -354,6 +354,8 @@ enum ResolveReason {
     ResolvingUnboxedClosure(ast::DefId),
 }
 
+impl Copy for ResolveReason {}
+
 impl ResolveReason {
     fn span(&self, tcx: &ty::ctxt) -> Span {
         match *self {

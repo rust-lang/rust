@@ -39,6 +39,8 @@ pub struct Counts {
     pub unmarked: uint,
 }
 
+impl Copy for Counts {}
+
 impl Add<Counts, Counts> for Counts {
     fn add(&self, other: &Counts) -> Counts {
         Counts {

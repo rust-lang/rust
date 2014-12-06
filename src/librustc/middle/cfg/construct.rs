@@ -32,6 +32,8 @@ struct LoopScope {
     break_index: CFGIndex,    // where to go on a `break
 }
 
+impl Copy for LoopScope {}
+
 pub fn construct(tcx: &ty::ctxt,
                  blk: &ast::Block) -> CFG {
     let mut graph = graph::Graph::new();

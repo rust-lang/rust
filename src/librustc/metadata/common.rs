@@ -144,6 +144,8 @@ pub enum astencode_tag { // Reserves 0x40 -- 0x5f
     tag_table_capture_modes = 0x56,
     tag_table_object_cast_map = 0x57,
 }
+
+impl Copy for astencode_tag {}
 static first_astencode_tag: uint = tag_ast as uint;
 static last_astencode_tag: uint = tag_table_object_cast_map as uint;
 impl astencode_tag {

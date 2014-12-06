@@ -85,6 +85,8 @@ pub enum OrderingOp {
     PartialCmpOp, LtOp, LeOp, GtOp, GeOp,
 }
 
+impl Copy for OrderingOp {}
+
 pub fn some_ordering_collapsed(cx: &mut ExtCtxt,
                                span: Span,
                                op: OrderingOp,

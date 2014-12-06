@@ -466,7 +466,7 @@ impl<T> TypedArena<T> {
         }
 
         let ptr: &mut T = unsafe {
-            let ptr: &mut T = mem::transmute(self.ptr);
+            let ptr: &mut T = mem::transmute(self.ptr.clone());
             ptr::write(ptr, object);
             self.ptr.set(self.ptr.get().offset(1));
             ptr

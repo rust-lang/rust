@@ -28,6 +28,7 @@ use self::MethodContext::*;
 
 use metadata::csearch;
 use middle::def::*;
+use middle::subst::Substs;
 use middle::ty::{mod, Ty};
 use middle::{def, pat_util, stability};
 use middle::const_eval::{eval_const_expr_partial, const_int, const_uint};
@@ -40,11 +41,12 @@ use std::collections::hash_map::{Occupied, Vacant};
 use std::num::SignedInt;
 use std::{i8, i16, i32, i64, u8, u16, u32, u64, f32, f64};
 use syntax::{abi, ast, ast_map};
-use syntax::ast_util::{mod, is_shift_binop};
+use syntax::ast_util::is_shift_binop;
 use syntax::attr::{mod, AttrMetaMethods};
 use syntax::codemap::{Span, DUMMY_SP};
 use syntax::parse::token;
 use syntax::ast::{TyI, TyU, TyI8, TyU8, TyI16, TyU16, TyI32, TyU32, TyI64, TyU64};
+use syntax::ast_util;
 use syntax::ptr::P;
 use syntax::visit::{mod, Visitor};
 
@@ -52,6 +54,8 @@ declare_lint!(WHILE_TRUE, Warn,
               "suggest using `loop { }` instead of `while true { }`")
 
 pub struct WhileTrue;
+
+impl Copy for WhileTrue {}
 
 impl LintPass for WhileTrue {
     fn get_lints(&self) -> LintArray {
@@ -74,6 +78,8 @@ declare_lint!(UNUSED_TYPECASTS, Allow,
               "detects unnecessary type casts, that can be removed")
 
 pub struct UnusedCasts;
+
+impl Copy for UnusedCasts {}
 
 impl LintPass for UnusedCasts {
     fn get_lints(&self) -> LintArray {
@@ -106,6 +112,8 @@ pub struct TypeLimits {
     /// Id of the last visited negated expression
     negated_expr_id: ast::NodeId,
 }
+
+impl Copy for TypeLimits {}
 
 impl TypeLimits {
     pub fn new() -> TypeLimits {
@@ -415,6 +423,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ImproperCTypesVisitor<'a, 'tcx> {
 
 pub struct ImproperCTypes;
 
+impl Copy for ImproperCTypes {}
+
 impl LintPass for ImproperCTypes {
     fn get_lints(&self) -> LintArray {
         lint_array!(IMPROPER_CTYPES)
@@ -453,6 +463,8 @@ declare_lint!(BOX_POINTERS, Allow,
               "use of owned (Box type) heap memory")
 
 pub struct BoxPointers;
+
+impl Copy for BoxPointers {}
 
 impl BoxPointers {
     fn check_heap_type<'a, 'tcx>(&self, cx: &Context<'a, 'tcx>,
@@ -587,6 +599,8 @@ declare_lint!(UNUSED_ATTRIBUTES, Warn,
 
 pub struct UnusedAttributes;
 
+impl Copy for UnusedAttributes {}
+
 impl LintPass for UnusedAttributes {
     fn get_lints(&self) -> LintArray {
         lint_array!(UNUSED_ATTRIBUTES)
@@ -666,6 +680,8 @@ declare_lint!(pub PATH_STATEMENTS, Warn,
 
 pub struct PathStatements;
 
+impl Copy for PathStatements {}
+
 impl LintPass for PathStatements {
     fn get_lints(&self) -> LintArray {
         lint_array!(PATH_STATEMENTS)
@@ -692,6 +708,8 @@ declare_lint!(pub UNUSED_RESULTS, Allow,
               "unused result of an expression in a statement")
 
 pub struct UnusedResults;
+
+impl Copy for UnusedResults {}
 
 impl LintPass for UnusedResults {
     fn get_lints(&self) -> LintArray {
@@ -756,6 +774,8 @@ declare_lint!(pub NON_CAMEL_CASE_TYPES, Warn,
               "types, variants, traits and type parameters should have camel case names")
 
 pub struct NonCamelCaseTypes;
+
+impl Copy for NonCamelCaseTypes {}
 
 impl NonCamelCaseTypes {
     fn check_case(&self, cx: &Context, sort: &str, ident: ast::Ident, span: Span) {
@@ -876,6 +896,8 @@ declare_lint!(pub NON_SNAKE_CASE, Warn,
 
 pub struct NonSnakeCase;
 
+impl Copy for NonSnakeCase {}
+
 impl NonSnakeCase {
     fn check_snake_case(&self, cx: &Context, sort: &str, ident: ast::Ident, span: Span) {
         fn is_snake_case(ident: ast::Ident) -> bool {
@@ -985,6 +1007,8 @@ declare_lint!(pub NON_UPPER_CASE_GLOBALS, Warn,
 
 pub struct NonUpperCaseGlobals;
 
+impl Copy for NonUpperCaseGlobals {}
+
 impl LintPass for NonUpperCaseGlobals {
     fn get_lints(&self) -> LintArray {
         lint_array!(NON_UPPER_CASE_GLOBALS)
@@ -1033,6 +1057,8 @@ declare_lint!(UNUSED_PARENS, Warn,
               "`if`, `match`, `while` and `return` do not need parentheses")
 
 pub struct UnusedParens;
+
+impl Copy for UnusedParens {}
 
 impl UnusedParens {
     fn check_unused_parens_core(&self, cx: &Context, value: &ast::Expr, msg: &str,
@@ -1124,6 +1150,8 @@ declare_lint!(UNUSED_IMPORT_BRACES, Allow,
 
 pub struct UnusedImportBraces;
 
+impl Copy for UnusedImportBraces {}
+
 impl LintPass for UnusedImportBraces {
     fn get_lints(&self) -> LintArray {
         lint_array!(UNUSED_IMPORT_BRACES)
@@ -1159,6 +1187,8 @@ declare_lint!(NON_SHORTHAND_FIELD_PATTERNS, Warn,
 
 pub struct NonShorthandFieldPatterns;
 
+impl Copy for NonShorthandFieldPatterns {}
+
 impl LintPass for NonShorthandFieldPatterns {
     fn get_lints(&self) -> LintArray {
         lint_array!(NON_SHORTHAND_FIELD_PATTERNS)
@@ -1188,6 +1218,8 @@ declare_lint!(pub UNUSED_UNSAFE, Warn,
 
 pub struct UnusedUnsafe;
 
+impl Copy for UnusedUnsafe {}
+
 impl LintPass for UnusedUnsafe {
     fn get_lints(&self) -> LintArray {
         lint_array!(UNUSED_UNSAFE)
@@ -1209,6 +1241,8 @@ declare_lint!(UNSAFE_BLOCKS, Allow,
 
 pub struct UnsafeBlocks;
 
+impl Copy for UnsafeBlocks {}
+
 impl LintPass for UnsafeBlocks {
     fn get_lints(&self) -> LintArray {
         lint_array!(UNSAFE_BLOCKS)
@@ -1228,6 +1262,8 @@ declare_lint!(pub UNUSED_MUT, Warn,
               "detect mut variables which don't need to be mutable")
 
 pub struct UnusedMut;
+
+impl Copy for UnusedMut {}
 
 impl UnusedMut {
     fn check_unused_mut_pat(&self, cx: &Context, pats: &[P<ast::Pat>]) {
@@ -1293,6 +1329,8 @@ declare_lint!(UNUSED_ALLOCATION, Warn,
               "detects unnecessary allocations that can be eliminated")
 
 pub struct UnusedAllocation;
+
+impl Copy for UnusedAllocation {}
 
 impl LintPass for UnusedAllocation {
     fn get_lints(&self) -> LintArray {
@@ -1479,6 +1517,61 @@ impl LintPass for MissingDoc {
     }
 }
 
+pub struct MissingCopyImplementations;
+
+impl Copy for MissingCopyImplementations {}
+
+impl LintPass for MissingCopyImplementations {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(MISSING_COPY_IMPLEMENTATIONS)
+    }
+
+    fn check_item(&mut self, cx: &Context, item: &ast::Item) {
+        if !cx.exported_items.contains(&item.id) {
+            return
+        }
+        if cx.tcx
+             .destructor_for_type
+             .borrow()
+             .contains_key(&ast_util::local_def(item.id)) {
+            return
+        }
+        let ty = match item.node {
+            ast::ItemStruct(_, ref ast_generics) => {
+                if ast_generics.is_parameterized() {
+                    return
+                }
+                ty::mk_struct(cx.tcx,
+                              ast_util::local_def(item.id),
+                              Substs::empty())
+            }
+            ast::ItemEnum(_, ref ast_generics) => {
+                if ast_generics.is_parameterized() {
+                    return
+                }
+                ty::mk_enum(cx.tcx,
+                            ast_util::local_def(item.id),
+                            Substs::empty())
+            }
+            _ => return,
+        };
+        let parameter_environment = ty::empty_parameter_environment();
+        if !ty::type_moves_by_default(cx.tcx,
+                                      ty,
+                                      &parameter_environment) {
+            return
+        }
+        if ty::can_type_implement_copy(cx.tcx,
+                                       ty,
+                                       &parameter_environment).is_ok() {
+            cx.span_lint(MISSING_COPY_IMPLEMENTATIONS,
+                         item.span,
+                         "type could implement `Copy`; consider adding `impl \
+                          Copy`")
+        }
+    }
+}
+
 declare_lint!(DEPRECATED, Warn,
               "detects use of #[deprecated] items")
 
@@ -1492,6 +1585,8 @@ declare_lint!(UNSTABLE, Allow,
 /// Checks for use of items with `#[deprecated]`, `#[experimental]` and
 /// `#[unstable]` attributes, or no stability attribute.
 pub struct Stability;
+
+impl Copy for Stability {}
 
 impl Stability {
     fn lint(&self, cx: &Context, id: ast::DefId, span: Span) {
@@ -1682,9 +1777,14 @@ declare_lint!(pub VARIANT_SIZE_DIFFERENCES, Allow,
 declare_lint!(pub FAT_PTR_TRANSMUTES, Allow,
               "detects transmutes of fat pointers")
 
+declare_lint!(pub MISSING_COPY_IMPLEMENTATIONS, Warn,
+              "detects potentially-forgotten implementations of `Copy`")
+
 /// Does nothing as a lint pass, but registers some `Lint`s
 /// which are used by other parts of the compiler.
 pub struct HardwiredLints;
+
+impl Copy for HardwiredLints {}
 
 impl LintPass for HardwiredLints {
     fn get_lints(&self) -> LintArray {

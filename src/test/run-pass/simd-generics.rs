@@ -15,6 +15,8 @@ use std::ops;
 
 #[simd] struct f32x4(f32, f32, f32, f32);
 
+impl Copy for f32x4 {}
+
 fn add<T: ops::Add<T, T>>(lhs: T, rhs: T) -> T {
     lhs + rhs
 }

@@ -43,6 +43,8 @@ pub struct SipState {
     ntail: uint,  // how many bytes in tail are valid
 }
 
+impl Copy for SipState {}
+
 // sadly, these macro definitions can't appear later,
 // because they're needed in the following defs;
 // this design could be improved.
@@ -211,6 +213,7 @@ impl Default for SipState {
 
 /// `SipHasher` computes the SipHash algorithm from a stream of bytes.
 #[deriving(Clone)]
+#[allow(missing_copy_implementations)]
 pub struct SipHasher {
     k0: u64,
     k1: u64,

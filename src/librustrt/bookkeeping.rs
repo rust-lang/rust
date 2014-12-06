@@ -26,6 +26,7 @@ use mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
 static TASK_COUNT: atomic::AtomicUint = atomic::INIT_ATOMIC_UINT;
 static TASK_LOCK: StaticNativeMutex = NATIVE_MUTEX_INIT;
 
+#[allow(missing_copy_implementations)]
 pub struct Token { _private: () }
 
 impl Drop for Token {

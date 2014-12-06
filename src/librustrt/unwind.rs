@@ -77,6 +77,7 @@ use task::Task;
 
 use libunwind as uw;
 
+#[allow(missing_copy_implementations)]
 pub struct Unwinder {
     unwinding: bool,
 }

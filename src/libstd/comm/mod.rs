@@ -405,6 +405,8 @@ pub enum TryRecvError {
     Disconnected,
 }
 
+impl Copy for TryRecvError {}
+
 /// This enumeration is the list of the possible error outcomes for the
 /// `SyncSender::try_send` method.
 #[deriving(PartialEq, Clone, Show)]

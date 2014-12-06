@@ -43,9 +43,8 @@
 
 pub use self::Ordering::*;
 
-use kinds::Sized;
-use option::Option;
-use option::Option::{Some, None};
+use kinds::{Copy, Sized};
+use option::{Option, Some, None};
 
 /// Trait for values that can be compared for equality and inequality.
 ///
@@ -105,6 +104,8 @@ pub enum Ordering {
    /// An ordering where a compared value is greater [than another].
    Greater = 1i,
 }
+
+impl Copy for Ordering {}
 
 impl Ordering {
     /// Reverse the `Ordering`, so that `Less` becomes `Greater` and

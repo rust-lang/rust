@@ -49,6 +49,8 @@ pub enum RelationDir {
     SubtypeOf, SupertypeOf, EqTo
 }
 
+impl Copy for RelationDir {}
+
 impl RelationDir {
     fn opposite(self) -> RelationDir {
         match self {
