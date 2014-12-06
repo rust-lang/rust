@@ -168,7 +168,7 @@ fn create_steps<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         check::autoderef(
             fcx, span, self_ty, None, NoPreference,
             |t, d| {
-                let adjustment = consider_reborrow(t, d);
+                let adjustment = AutoDeref(d);
                 steps.push(CandidateStep { self_ty: t, adjustment: adjustment });
                 None::<()> // keep iterating until we can't anymore
             });
@@ -185,14 +185,6 @@ fn create_steps<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     }
 
     return steps;
-
-    fn consider_reborrow(ty: Ty, d: uint) -> PickAdjustment {
-        // Insert a `&*` or `&mut *` if this is a reference type:
-        match ty.sty {
-            ty::ty_rptr(_, ref mt) => AutoRef(mt.mutbl, box AutoDeref(d+1)),
-            _ => AutoDeref(d),
-        }
-    }
 }
 
 impl<'a,'tcx> ProbeContext<'a,'tcx> {
@@ -626,7 +618,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             return None;
         }
 
-        match self.pick_adjusted_method(step) {
+        match self.pick_by_value_method(step) {
             Some(result) => return Some(result),
             None => {}
         }
@@ -644,11 +636,34 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         }
     }
 
-    fn pick_adjusted_method(&mut self,
+    fn pick_by_value_method(&mut self,
                             step: &CandidateStep<'tcx>)
                             -> Option<PickResult<'tcx>>
     {
-        self.pick_method(step.self_ty).map(|r| self.adjust(r, step.adjustment.clone()))
+        /*!
+         * For each type `T` in the step list, this attempts to find a
+         * method where the (transformed) self type is exactly `T`. We
+         * do however do one transformation on the adjustment: if we
+         * are passing a region pointer in, we will potentially
+         * *reborrow* it to a shorter lifetime. This allows us to
+         * transparently pass `&mut` pointers, in particular, without
+         * consuming them for their entire lifetime.
+         */
+
+        let adjustment = match step.adjustment {
+            AutoDeref(d) => consider_reborrow(step.self_ty, d),
+            AutoUnsizeLength(..) | AutoRef(..) => step.adjustment.clone(),
+        };
+
+        return self.pick_method(step.self_ty).map(|r| self.adjust(r, adjustment.clone()));
+
+        fn consider_reborrow(ty: Ty, d: uint) -> PickAdjustment {
+            // Insert a `&*` or `&mut *` if this is a reference type:
+            match ty.sty {
+                ty::ty_rptr(_, ref mt) => AutoRef(mt.mutbl, box AutoDeref(d+1)),
+                _ => AutoDeref(d),
+            }
+        }
     }
 
     fn pick_autorefd_method(&mut self,
