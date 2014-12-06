@@ -8,6 +8,12 @@
 # option. This file may not be copied, modified, or distributed
 # except according to those terms.
 
+# Script parameters:
+#     argv[1] = rust component root,
+#     argv[2] = gcc component root,
+#     argv[3] = target triple
+# The first two correspond to the two installable components defined in the setup script.
+
 import sys, os, shutil, subprocess
 
 def find_files(files, path):
@@ -22,7 +28,7 @@ def find_files(files, path):
             raise Exception("Could not find '%s' in %s" % (fname, path))
     return found
 
-def make_win_dist(dist_root, target_triple):
+def make_win_dist(rust_root, gcc_root, target_triple):
     # Ask gcc where it keeps its stuff
     gcc_out = subprocess.check_output(["gcc.exe", "-print-search-dirs"])
     bin_path = os.environ["PATH"].split(os.pathsep)
@@ -90,29 +96,29 @@ def make_win_dist(dist_root, target_triple):
     target_libs = find_files(target_libs, lib_path)
 
     # Copy runtime dlls next to rustc.exe
-    dist_bin_dir = os.path.join(dist_root, "bin")
+    dist_bin_dir = os.path.join(rust_root, "bin")
     for src in rustc_dlls:
         shutil.copy(src, dist_bin_dir)
 
     # Copy platform tools to platform-specific bin directory
-    target_bin_dir = os.path.join(dist_root, "bin", "rustlib", target_triple, "bin")
+    target_bin_dir = os.path.join(gcc_root, "bin", "rustlib", target_triple, "bin")
     if not os.path.exists(target_bin_dir):
         os.makedirs(target_bin_dir)
     for src in target_tools:
         shutil.copy(src, target_bin_dir)
 
     # Copy platform libs to platform-spcific lib directory
-    target_lib_dir = os.path.join(dist_root, "bin", "rustlib", target_triple, "lib")
+    target_lib_dir = os.path.join(gcc_root, "bin", "rustlib", target_triple, "lib")
     if not os.path.exists(target_lib_dir):
         os.makedirs(target_lib_dir)
     for src in target_libs:
         shutil.copy(src, target_lib_dir)
 
     # Copy license files
-    lic_dir = os.path.join(dist_root, "bin", "third-party")
+    lic_dir = os.path.join(rust_root, "bin", "third-party")
     if os.path.exists(lic_dir):
         shutil.rmtree(lic_dir) # copytree() won't overwrite existing files
     shutil.copytree(os.path.join(os.path.dirname(__file__), "third-party"), lic_dir)
 
 if __name__=="__main__":
-    make_win_dist(sys.argv[1], sys.argv[2])
+    make_win_dist(sys.argv[1], sys.argv[2], sys.argv[3])
