@@ -50,6 +50,7 @@ use rustc::middle::stability;
 use rustc::session::config;
 
 use std::rc::Rc;
+use std::cell::RefCell;
 use std::u32;
 use std::str::Str as StrTrait; // Conflicts with Str variant
 use std::char::Char as CharTrait; // Conflicts with Char variant
@@ -63,7 +64,7 @@ use visit_ast;
 /// Increment this when the `Crate` and related structures change.
 pub static SCHEMA_VERSION: &'static str = "0.8.3";
 
-mod inline;
+pub mod inline;
 
 // extract the stability index for a node from tcx, if possible
 fn get_stability(cx: &DocContext, def_id: ast::DefId) -> Option<Stability> {
@@ -124,19 +125,23 @@ pub struct Crate {
 
 impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
     fn clean(&self, cx: &DocContext) -> Crate {
-        let mut externs = Vec::new();
-        cx.sess().cstore.iter_crate_data(|n, meta| {
-            externs.push((n, meta.clean(cx)));
-        });
-        externs.sort_by(|&(a, _), &(b, _)| a.cmp(&b));
-
         // Figure out the name of this crate
         let input = config::Input::File(cx.src.clone());
         let name = link::find_crate_name(None, self.attrs.as_slice(), &input);
 
         // Clean the crate, translating the entire libsyntax AST to one that is
         // understood by rustdoc.
-        let mut module = self.module.clean(cx);
+        let module = self.module.clean(cx);
+
+        let postclean = RefCell::new(Some((name.to_string(), cx.src.clone(), module)));
+        postclean.clean(cx)
+    }
+}
+
+// post-cleaning processing consumes the cleaned results.
+impl Clean<Crate> for RefCell<Option<(String, FsPath, Item)>> {
+    fn clean(&self, cx: &DocContext) -> Crate {
+        let (name, src, mut module) = self.borrow_mut().take().unwrap();
 
         // Collect all inner modules which are tagged as implementations of
         // primitives.
@@ -194,9 +199,15 @@ impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
             m.items.extend(tmp.into_iter());
         }
 
+        let mut externs = Vec::new();
+        cx.sess().cstore.iter_crate_data(|n, meta| {
+            externs.push((n, meta.clean(cx)));
+        });
+        externs.sort_by(|&(a, _), &(b, _)| a.cmp(&b));
+
         Crate {
-            name: name.to_string(),
-            src: cx.src.clone(),
+            name: name,
+            src: src,
             module: Some(module),
             externs: externs,
             primitives: primitives,
@@ -1643,7 +1654,7 @@ pub struct Span {
 }
 
 impl Span {
-    fn empty() -> Span {
+    pub fn empty() -> Span {
         Span {
             filename: "".to_string(),
             loline: 0, locol: 0,

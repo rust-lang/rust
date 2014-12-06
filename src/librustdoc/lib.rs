@@ -282,10 +282,16 @@ fn acquire_input(input: &str,
     match matches.opt_str("r").as_ref().map(|s| s.as_slice()) {
         Some("rust") => Ok(rust_input(input, externs, matches)),
         Some("json") => json_input(input),
+        Some("lib") => Ok(lib_input(input)),
         Some(s) => Err(format!("unknown input format: {}", s)),
         None => {
             if input.ends_with(".json") {
                 json_input(input)
+            } else if input.ends_with(".rlib") ||
+                      input.ends_with(".so") ||
+                      input.ends_with(".dylib") ||
+                      input.ends_with(".dll") {
+                Ok(lib_input(input))
             } else {
                 Ok(rust_input(input, externs, matches))
             }
@@ -416,6 +422,27 @@ fn rust_input(cratefile: &str, externs: core::Externs, matches: &getopts::Matche
     info!("Executing passes/plugins");
     let (krate, json) = pm.run_plugins(krate);
     return Output { krate: krate, json_plugins: json, passes: passes, };
+}
+
+/// This input format extracts the metadata from given rlib or dylib file.
+/// No passes are run over the deserialized output.
+fn lib_input(libfile: &str) -> Output {
+    let lib = Path::new(libfile);
+    info!("starting to run rustc");
+    let (krate, analysis) = std::task::try(proc() {
+        let lib = lib;
+        core::run_core_with_lib(&lib, &lib.clone())
+    }).map_err(|_| "rustc failed").unwrap();
+    info!("finished with rustc");
+    let mut analysis = Some(analysis);
+    ANALYSISKEY.with(|s| {
+        *s.borrow_mut() = analysis.take();
+    });
+
+    // FIXME: this should read from the "plugins" field, but currently
+    //      Json doesn't implement decodable...
+    let plugin_output = Vec::new();
+    Output { krate: krate, json_plugins: plugin_output, passes: Vec::new() }
 }
 
 /// This input format purely deserializes the json output file. No passes are
