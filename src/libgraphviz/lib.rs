@@ -421,7 +421,7 @@ pub trait Labeller<'a,N,E> {
 }
 
 impl<'a> LabelText<'a> {
-    fn escape_char(c: char, f: |char|) {
+    fn escape_char<F>(c: char, mut f: F) where F: FnMut(char) {
         match c {
             // not escaping \\, since Graphviz escString needs to
             // interpret backslashes; see EscStr above.
