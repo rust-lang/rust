@@ -56,6 +56,7 @@ the direction the language is evolving in.
 * [0450-un-feature-gate-some-more-gates.md](text/0450-un-feature-gate-some-more-gates.md)
 * [0459-disallow-shadowing.md](text/0459-disallow-shadowing.md)
 * [0463-future-proof-literal-suffixes.md](text/0463-future-proof-literal-suffixes.md)
+* [0490-dst-syntax.md](text/0490-dst-syntax.md)
 
 ## Table of Contents
 [Table of Contents]: #table-of-contents
