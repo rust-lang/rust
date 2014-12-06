@@ -6,8 +6,8 @@ Summary
 =======
 
 Change the syntax for dynamically sized type parameters from `Sized? T` to `T:
-Sized?`, and change the syntax for traits for dynamically sized types to `trait
-Foo: Sized?`. Extend this new syntax to work with `where` clauses.
+?Sized`, and change the syntax for traits for dynamically sized types to `trait
+Foo for ?Sized`. Extend this new syntax to work with `where` clauses.
 
 Motivation
 ==========
@@ -79,8 +79,8 @@ before being dropped.  However, many generic functions assume that any parameter
 passed to them can be dropped. `Drop` could be made a default bound to resolve
 this, and `Drop?` would remove this bound from a type parameter.
 
-The problem with `Sized?`
--------------------------
+The problem with `Sized? T`
+---------------------------
 
 There is some inconsistency present with the `Sized` syntax. After going through
 multiple syntaxes for DST, all of which were keywords preceding type parameters,
@@ -116,46 +116,43 @@ trait Foo<T> where Sized? T {
 }
 ```
 
-Furthermore, another syntax had to be invented for traits for which `Self` can
-be unsized:
-
-```rust
-trait Foo for Sized? { ... }
-```
+Furthermore, the `?` on `Sized?` comes after the trait name, whereas most
+unary-operator-like symbols in the Rust language come before what they are
+attached to.
 
 This RFC proposes to change the syntax for dynamically sized type parameters to
-`T: Sized?` to resolve these issues.
+`T: ?Sized` to resolve these issues.
 
 Detailed design
 ===============
 
-Change the syntax for dynamically sized type parameters to `T: Sized?`:
+Change the syntax for dynamically sized type parameters to `T: ?Sized`:
 
 ```rust
-fn foo<T: Sized?>(x: &T) { ... }
-struct Foo<T: Send + Sized? + Sync> { field: Box<T> }
-trait Bar { type Baz: Sized?; }
+fn foo<T: ?Sized>(x: &T) { ... }
+struct Foo<T: Send + ?Sized + Sync> { field: Box<T> }
+trait Bar { type Baz: ?Sized; }
 // etc.
 ```
 
-Change the syntax for traits for dynamically-sized types to look like the syntax
-for bounds on `Self`:
+Change the syntax for traits for dynamically-sized types to have a prefix `?`
+instead of a postfix one:
 
 ```rust
-trait Foo: Sized? { ... }
+trait Foo for ?Sized { ... }
 ```
 
 Allow using this syntax in `where` clauses:
 
 ```rust
-fn foo<T>(x: &T) where T: Sized? { ... }
+fn foo<T>(x: &T) where T: ?Sized { ... }
 ```
 
 Drawbacks
 =========
 
 - The current syntax uses position to distinguish between removing and adding
-  bounds, while the proposed syntax only uses a symbol. Since `Sized?` is
+  bounds, while the proposed syntax only uses a symbol. Since `?Sized` is
   actually an anti-bound (it removes a bound), it (in some ways) makes sense to
   put it on the opposite side of a type parameter to show this.
 
@@ -172,10 +169,11 @@ Alternatives
   of the previous syntaxes are discussed in the ‘History of the DST syntax’
   section of this RFC.
 
-- Change the syntax to `T: ?Sized` instead. This is more consistent with things
+- Change the syntax to `T: Sized?` instead. This is less consistent with things
   like negative bounds (which would probably be something like `T: !Foo`), and
-  uses a prefix operator, which is more consistent with other parts of Rust’s
-  syntax.
+  uses a suffix operator, which is less consistent with other parts of Rust’s
+  syntax. It is, however, closer to the current syntax (`Sized? T`), and looks
+  more natural because of how `?` is used in natural languages such as English.
 
 Unresolved questions
 ====================
