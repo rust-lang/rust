@@ -212,7 +212,9 @@ fn get_provided_source(d: rbml::Doc, cdata: Cmd) -> Option<ast::DefId> {
     })
 }
 
-fn each_reexport(d: rbml::Doc, f: |rbml::Doc| -> bool) -> bool {
+fn each_reexport<F>(d: rbml::Doc, f: F) -> bool where
+    F: FnMut(rbml::Doc) -> bool,
+{
     reader::tagged_docs(d, tag_items_data_item_reexport, f)
 }
 
