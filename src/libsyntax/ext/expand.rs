@@ -1611,7 +1611,7 @@ mod test {
     fn run_renaming_test(t: &RenamingTest, test_idx: uint) {
         let invalid_name = token::special_idents::invalid.name;
         let (teststr, bound_connections, bound_ident_check) = match *t {
-            (ref str,ref conns, bic) => (str.to_string(), conns.clone(), bic)
+            (ref s,ref conns, bic) => (s.to_string(), conns.clone(), bic)
         };
         let cr = expand_crate_str(teststr.to_string());
         let bindings = crate_bindings(&cr);
