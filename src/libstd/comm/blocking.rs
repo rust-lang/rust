@@ -17,6 +17,7 @@ use kinds::marker::{NoSend, NoSync};
 use mem;
 use clone::Clone;
 
+#[deriving(Send, Sync)]
 struct Inner {
     thread: Thread,
     woken: AtomicBool,

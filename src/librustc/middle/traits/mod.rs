@@ -23,6 +23,7 @@ use std::slice::Iter;
 use syntax::ast;
 use syntax::codemap::{Span, DUMMY_SP};
 
+pub use self::error_reporting::report_fulfillment_errors;
 pub use self::fulfill::{FulfillmentContext, RegionObligation};
 pub use self::select::SelectionContext;
 pub use self::select::SelectionCache;
@@ -36,6 +37,7 @@ pub use self::util::transitive_bounds;
 pub use self::util::poly_trait_ref_for_builtin_bound;
 
 mod coherence;
+mod error_reporting;
 mod fulfill;
 mod select;
 mod util;
@@ -57,7 +59,7 @@ pub type PredicateObligation<'tcx> = Obligation<'tcx, ty::Predicate<'tcx>>;
 pub type TraitObligation<'tcx> = Obligation<'tcx, Rc<ty::PolyTraitRef<'tcx>>>;
 
 /// Why did we incur this obligation? Used for error reporting.
-#[deriving(Copy, Clone)]
+#[deriving(Clone)]
 pub struct ObligationCause<'tcx> {
     pub span: Span,
 
@@ -72,7 +74,7 @@ pub struct ObligationCause<'tcx> {
     pub code: ObligationCauseCode<'tcx>
 }
 
-#[deriving(Copy, Clone)]
+#[deriving(Clone)]
 pub enum ObligationCauseCode<'tcx> {
     /// Not well classified or should be obvious from span.
     MiscObligation,
@@ -83,9 +85,6 @@ pub enum ObligationCauseCode<'tcx> {
 
     /// Obligation incurred due to an object cast.
     ObjectCastObligation(/* Object type */ Ty<'tcx>),
-
-    /// To implement drop, type must be sendable.
-    DropTrait,
 
     /// Various cases where expressions must be sized/copy/etc:
     AssignmentLhsSized,        // L = X implies that L is Sized
@@ -103,6 +102,13 @@ pub enum ObligationCauseCode<'tcx> {
 
     // Only Sized types can be made into objects
     ObjectSized,
+
+    // static items must have `Sync` type
+    SharedStatic,
+
+    BuiltinDerivedObligation(Rc<ty::PolyTraitRef<'tcx>>, Rc<ObligationCauseCode<'tcx>>),
+
+    ImplDerivedObligation(Rc<ty::PolyTraitRef<'tcx>>, Rc<ObligationCauseCode<'tcx>>),
 }
 
 pub type Obligations<'tcx, O> = subst::VecPerParamSpace<Obligation<'tcx, O>>;

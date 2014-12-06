@@ -127,9 +127,9 @@
 use any::Any;
 use borrow::IntoCow;
 use boxed::Box;
-use cell::UnsafeCell;
+use cell::RacyCell;
 use clone::Clone;
-use kinds::Send;
+use kinds::{Send, Sync};
 use ops::{Drop, FnOnce};
 use option::Option::{mod, Some, None};
 use result::Result::{Err, Ok};
@@ -211,7 +211,7 @@ impl Builder {
     }
 
     fn spawn_inner<T: Send>(self, f: Thunk<(), T>) -> JoinGuard<T> {
-        let my_packet = Arc::new(UnsafeCell::new(None));
+        let my_packet = Arc::new(RacyCell::new(None));
         let their_packet = my_packet.clone();
 
         let Builder { name, stack_size, stdout, stderr } = self;
@@ -283,13 +283,14 @@ impl Builder {
     }
 }
 
+#[deriving(Sync)]
 struct Inner {
     name: Option<String>,
     lock: Mutex<bool>,          // true when there is a buffered unpark
     cvar: Condvar,
 }
 
-#[deriving(Clone)]
+#[deriving(Clone, Sync)]
 /// A handle to a thread.
 pub struct Thread {
     inner: Arc<Inner>,
@@ -387,7 +388,7 @@ pub struct JoinGuard<T> {
     native: imp::rust_thread,
     thread: Thread,
     joined: bool,
-    packet: Arc<UnsafeCell<Option<Result<T>>>>,
+    packet: Arc<RacyCell<Option<Result<T>>>>,
 }
 
 impl<T: Send> JoinGuard<T> {

@@ -280,6 +280,8 @@ mod imp {
         pub dtor_running: UnsafeCell<bool>, // should be Cell
     }
 
+    impl<T> ::kinds::Sync for Key<T> { }
+
     #[doc(hidden)]
     impl<T> Key<T> {
         pub unsafe fn get(&'static self) -> Option<&'static T> {
@@ -409,6 +411,8 @@ mod imp {
         // OS-TLS key that we'll use to key off.
         pub os: OsStaticKey,
     }
+
+    impl<T> ::kinds::Sync for Key<T> { }
 
     struct Value<T: 'static> {
         key: &'static Key<T>,

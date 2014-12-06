@@ -29,6 +29,7 @@ pub use sys_common::net::TcpStream;
 // TCP listeners
 ////////////////////////////////////////////////////////////////////////////////
 
+#[deriving(Sync)]
 pub struct TcpListener {
     pub inner: FileDesc,
 }
@@ -89,6 +90,7 @@ pub struct TcpAcceptor {
     deadline: u64,
 }
 
+#[deriving(Sync)]
 struct AcceptorInner {
     listener: TcpListener,
     reader: FileDesc,

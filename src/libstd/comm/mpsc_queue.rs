@@ -76,6 +76,9 @@ pub struct Queue<T> {
     tail: UnsafeCell<*mut Node<T>>,
 }
 
+impl<T:Send> Send for Queue<T> { }
+impl<T:Send> Sync for Queue<T> { }
+
 impl<T> Node<T> {
     unsafe fn new(v: Option<T>) -> *mut Node<T> {
         mem::transmute(box Node {

@@ -10,7 +10,7 @@
 
 use prelude::*;
 
-use cell::UnsafeCell;
+use cell::{UnsafeCell, RacyCell};
 use kinds::marker;
 use sync::{poison, AsMutexGuard};
 use sys_common::mutex as sys;
@@ -70,8 +70,12 @@ pub struct Mutex<T> {
     // time, so to ensure that the native mutex is used correctly we box the
     // inner lock to give it a constant address.
     inner: Box<StaticMutex>,
-    data: UnsafeCell<T>,
+    data: RacyCell<T>,
 }
+
+impl<T:Send> Send for Mutex<T> { }
+
+impl<T:Send> Sync for Mutex<T> { }
 
 /// The static mutex type is provided to allow for static allocation of mutexes.
 ///
@@ -94,9 +98,10 @@ pub struct Mutex<T> {
 /// }
 /// // lock is unlocked here.
 /// ```
+#[deriving(Sync)]
 pub struct StaticMutex {
     lock: sys::Mutex,
-    poison: UnsafeCell<poison::Flag>,
+    poison: RacyCell<poison::Flag>,
 }
 
 /// An RAII implementation of a "scoped lock" of a mutex. When this structure is
@@ -125,7 +130,7 @@ pub struct StaticMutexGuard {
 /// other mutex constants.
 pub const MUTEX_INIT: StaticMutex = StaticMutex {
     lock: sys::MUTEX_INIT,
-    poison: UnsafeCell { value: poison::Flag { failed: false } },
+    poison: RacyCell(UnsafeCell { value: poison::Flag { failed: false } }),
 };
 
 impl<T: Send> Mutex<T> {
@@ -133,7 +138,7 @@ impl<T: Send> Mutex<T> {
     pub fn new(t: T) -> Mutex<T> {
         Mutex {
             inner: box MUTEX_INIT,
-            data: UnsafeCell::new(t),
+            data: RacyCell::new(t),
         }
     }
 

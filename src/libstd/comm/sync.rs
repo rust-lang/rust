@@ -53,6 +53,11 @@ pub struct Packet<T> {
     lock: Mutex<State<T>>,
 }
 
+impl<T:Send> Send for Packet<T> { }
+
+impl<T:Send> Sync for Packet<T> { }
+
+#[deriving(Send)]
 struct State<T> {
     disconnected: bool, // Is the channel disconnected yet?
     queue: Queue,       // queue of senders waiting to send data
@@ -87,6 +92,8 @@ struct Node {
     token: Option<SignalToken>,
     next: *mut Node,
 }
+
+impl Send for Node {}
 
 /// A simple ring-buffer
 struct Buffer<T> {

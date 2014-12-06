@@ -19,6 +19,7 @@ use core::hash::{mod, Hash};
 use core::kinds::Sized;
 use core::mem;
 use core::option::Option;
+use core::ptr::OwnedPtr;
 use core::raw::TraitObject;
 use core::result::Result;
 use core::result::Result::{Ok, Err};
@@ -44,7 +45,7 @@ pub static HEAP: () = ();
 /// A type that represents a uniquely-owned value.
 #[lang = "owned_box"]
 #[unstable = "custom allocators will add an additional type parameter (with default)"]
-pub struct Box<T>(*mut T);
+pub struct Box<T>(OwnedPtr<T>);
 
 #[stable]
 impl<T: Default> Default for Box<T> {

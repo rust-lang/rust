@@ -60,6 +60,9 @@ pub struct ModuleTranslation {
     pub llmod: ModuleRef,
 }
 
+impl Send for ModuleTranslation { }
+impl Sync for ModuleTranslation { }
+
 pub struct CrateTranslation {
     pub modules: Vec<ModuleTranslation>,
     pub metadata_module: ModuleTranslation,

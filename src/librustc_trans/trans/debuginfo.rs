@@ -216,32 +216,32 @@ use syntax::{ast, codemap, ast_util, ast_map};
 use syntax::ast_util::PostExpansionMethod;
 use syntax::parse::token::{mod, special_idents};
 
-static DW_LANG_RUST: c_uint = 0x9000;
+const DW_LANG_RUST: c_uint = 0x9000;
 
 #[allow(non_upper_case_globals)]
-static DW_TAG_auto_variable: c_uint = 0x100;
+const DW_TAG_auto_variable: c_uint = 0x100;
 #[allow(non_upper_case_globals)]
-static DW_TAG_arg_variable: c_uint = 0x101;
+const DW_TAG_arg_variable: c_uint = 0x101;
 
 #[allow(non_upper_case_globals)]
-static DW_ATE_boolean: c_uint = 0x02;
+const DW_ATE_boolean: c_uint = 0x02;
 #[allow(non_upper_case_globals)]
-static DW_ATE_float: c_uint = 0x04;
+const DW_ATE_float: c_uint = 0x04;
 #[allow(non_upper_case_globals)]
-static DW_ATE_signed: c_uint = 0x05;
+const DW_ATE_signed: c_uint = 0x05;
 #[allow(non_upper_case_globals)]
-static DW_ATE_unsigned: c_uint = 0x07;
+const DW_ATE_unsigned: c_uint = 0x07;
 #[allow(non_upper_case_globals)]
-static DW_ATE_unsigned_char: c_uint = 0x08;
+const DW_ATE_unsigned_char: c_uint = 0x08;
 
-static UNKNOWN_LINE_NUMBER: c_uint = 0;
-static UNKNOWN_COLUMN_NUMBER: c_uint = 0;
+const UNKNOWN_LINE_NUMBER: c_uint = 0;
+const UNKNOWN_COLUMN_NUMBER: c_uint = 0;
 
 // ptr::null() doesn't work :(
-static UNKNOWN_FILE_METADATA: DIFile = (0 as DIFile);
-static UNKNOWN_SCOPE_METADATA: DIScope = (0 as DIScope);
+const UNKNOWN_FILE_METADATA: DIFile = (0 as DIFile);
+const UNKNOWN_SCOPE_METADATA: DIScope = (0 as DIScope);
 
-static FLAGS_NONE: c_uint = 0;
+const FLAGS_NONE: c_uint = 0;
 
 //=-----------------------------------------------------------------------------
 //  Public Interface of debuginfo module

@@ -162,6 +162,9 @@ mod signal {
         sa_restorer: *mut libc::c_void,
     }
 
+    impl ::kinds::Send for sigaction { }
+    impl ::kinds::Sync for sigaction { }
+
     #[repr(C)]
     #[cfg(target_word_size = "32")]
     pub struct sigset_t {
@@ -210,6 +213,9 @@ mod signal {
         sa_restorer: *mut libc::c_void,
         sa_resv: [libc::c_int, ..1],
     }
+
+    impl ::kinds::Send for sigaction { }
+    impl ::kinds::Sync for sigaction { }
 
     #[repr(C)]
     pub struct sigset_t {

@@ -210,6 +210,7 @@ impl Clone for UnixStream {
 // Unix Listener
 ////////////////////////////////////////////////////////////////////////////////
 
+#[deriving(Sync)]
 pub struct UnixListener {
     inner: Inner,
     path: CString,
@@ -252,6 +253,7 @@ pub struct UnixAcceptor {
     deadline: u64,
 }
 
+#[deriving(Sync)]
 struct AcceptorInner {
     listener: UnixListener,
     reader: FileDesc,

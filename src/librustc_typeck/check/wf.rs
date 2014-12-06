@@ -188,7 +188,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                 match self_ty.sty {
                     ty::ty_struct(def_id, _) |
                     ty::ty_enum(def_id, _) => {
-                        check_struct_safe_for_destructor(fcx, item.span, self_ty, def_id);
+                        check_struct_safe_for_destructor(fcx, item.span, def_id);
                     }
                     _ => {
                         // Coherence already reports an error in this case.
@@ -221,7 +221,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
             let poly_trait_ref = ty::Binder(trait_ref);
             let predicates = ty::predicates_for_trait_ref(fcx.tcx(), &poly_trait_ref);
             for predicate in predicates.into_iter() {
-                fcx.register_predicate(traits::Obligation::new(cause, predicate));
+                fcx.register_predicate(traits::Obligation::new(cause.clone(), predicate));
             }
         });
     }
@@ -460,20 +460,16 @@ fn filter_to_trait_obligations<'tcx>(bounds: ty::GenericBounds<'tcx>)
 
 fn check_struct_safe_for_destructor<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                               span: Span,
-                                              self_ty: Ty<'tcx>,
                                               struct_did: ast::DefId) {
     let struct_tpt = ty::lookup_item_type(fcx.tcx(), struct_did);
-    if !struct_tpt.generics.has_type_params(subst::TypeSpace)
-        && !struct_tpt.generics.has_region_params(subst::TypeSpace)
+    if struct_tpt.generics.has_type_params(subst::TypeSpace)
+        || struct_tpt.generics.has_region_params(subst::TypeSpace)
     {
-        let cause = traits::ObligationCause::new(span, fcx.body_id, traits::DropTrait);
-        fcx.register_builtin_bound(self_ty, ty::BoundSend, cause);
-    } else {
         span_err!(fcx.tcx().sess, span, E0141,
                   "cannot implement a destructor on a structure \
-                       with type parameters");
-            span_note!(fcx.tcx().sess, span,
-                       "use \"#[unsafe_destructor]\" on the implementation \
-                        to force the compiler to allow this");
+                   with type parameters");
+        span_note!(fcx.tcx().sess, span,
+                   "use \"#[unsafe_destructor]\" on the implementation \
+                    to force the compiler to allow this");
     }
 }

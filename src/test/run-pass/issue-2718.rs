@@ -23,6 +23,7 @@ pub mod pipes {
     use std::mem::{replace, swap};
     use std::mem;
     use std::task;
+    use std::kinds::Send;
 
     pub struct Stuff<T> {
         state: state,
@@ -44,6 +45,8 @@ pub mod pipes {
         blocked_task: Option<Task>,
         payload: Option<T>
     }
+
+    impl<T:Send> Send for packet<T> {}
 
     pub fn packet<T:Send>() -> *const packet<T> {
         unsafe {
@@ -230,7 +233,12 @@ pub mod pingpong {
     use std::mem;
 
     pub struct ping(::pipes::send_packet<pong>);
+
+    unsafe impl Send for ping {}
+
     pub struct pong(::pipes::send_packet<ping>);
+
+    unsafe impl Send for pong {}
 
     pub fn liberate_ping(p: ping) -> ::pipes::send_packet<pong> {
         unsafe {

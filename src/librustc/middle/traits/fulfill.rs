@@ -305,7 +305,7 @@ fn process_predicate<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
     let tcx = selcx.tcx();
     match predicate.trait_ref {
         ty::Predicate::Trait(ref trait_ref) => {
-            let trait_obligation = Obligation { cause: predicate.cause,
+            let trait_obligation = Obligation { cause: predicate.cause.clone(),
                                                 recursion_depth: predicate.recursion_depth,
                                                 trait_ref: trait_ref.clone() };
             match selcx.select(&trait_obligation) {
@@ -368,7 +368,9 @@ fn process_predicate<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
                         CodeSelectionError(Unimplemented)));
             } else {
                 let ty::OutlivesPredicate(t_a, r_b) = binder.0;
-                register_region_obligation(tcx, t_a, r_b, predicate.cause, region_obligations);
+                register_region_obligation(tcx, t_a, r_b,
+                                           predicate.cause.clone(),
+                                           region_obligations);
             }
             true
         }
