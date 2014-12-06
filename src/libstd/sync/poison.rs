@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
+use core::str::str;
 use option::None;
 use rustrt::task::Task;
 use rustrt::local::Local;
