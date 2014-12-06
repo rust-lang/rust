@@ -14,7 +14,6 @@
 
 pub use self::FromBase64Error::*;
 pub use self::CharacterSet::*;
-pub use self::Newline::*;
 
 use std::fmt;
 use std::error;
@@ -55,15 +54,15 @@ impl Copy for Config {}
 
 /// Configuration for RFC 4648 standard base64 encoding
 pub static STANDARD: Config =
-    Config {char_set: Standard, newline: CRLF, pad: true, line_length: None};
+    Config {char_set: Standard, newline: Newline::CRLF, pad: true, line_length: None};
 
 /// Configuration for RFC 4648 base64url encoding
 pub static URL_SAFE: Config =
-    Config {char_set: UrlSafe, newline: CRLF, pad: false, line_length: None};
+    Config {char_set: UrlSafe, newline: Newline::CRLF, pad: false, line_length: None};
 
 /// Configuration for RFC 2045 MIME base64 encoding
 pub static MIME: Config =
-    Config {char_set: Standard, newline: CRLF, pad: true, line_length: Some(76)};
+    Config {char_set: Standard, newline: Newline::CRLF, pad: true, line_length: Some(76)};
 
 static STANDARD_CHARS: &'static[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ\
                                         abcdefghijklmnopqrstuvwxyz\
@@ -108,14 +107,15 @@ impl ToBase64 for [u8] {
         let len = self.len();
         let mod_len = len % 3;
         let cond_len = len - mod_len;
+        let newline = match config.newline {
+            Newline::LF => b"\n",
+            Newline::CRLF => b"\r\n"
+        };
         while i < cond_len {
             let (first, second, third) = (self[i], self[i + 1], self[i + 2]);
             if let Some(line_length) = config.line_length {
                 if cur_length >= line_length {
-                    v.push_all(match config.newline {
-                        LF => b"\n",
-                        CRLF => b"\r\n"
-                    });
+                    v.push_all(newline);
                     cur_length = 0;
                 }
             }
@@ -137,10 +137,7 @@ impl ToBase64 for [u8] {
         if mod_len != 0 {
             if let Some(line_length) = config.line_length {
                 if cur_length >= line_length {
-                    v.push_all(match config.newline {
-                        LF => b"\n",
-                        CRLF => b"\r\n"
-                    });
+                    v.push_all(newline);
                 }
             }
         }
@@ -306,7 +303,7 @@ impl FromBase64 for [u8] {
 mod tests {
     extern crate test;
     use self::test::Bencher;
-    use base64::{Config, FromBase64, ToBase64, STANDARD, URL_SAFE, LF};
+    use base64::{Config, Newline, FromBase64, ToBase64, STANDARD, URL_SAFE};
 
     #[test]
     fn test_to_base64_basic() {
@@ -330,12 +327,13 @@ mod tests {
 
     #[test]
     fn test_to_base64_lf_line_break() {
-        assert!(![0u8, ..1000].to_base64(Config {line_length: None, newline: LF,
+        assert!(![0u8, ..1000].to_base64(Config {line_length: None,
+                                                 newline: Newline::LF,
                                                  ..STANDARD})
                               .as_slice()
                               .contains("\n"));
         assert_eq!("foobar".as_bytes().to_base64(Config {line_length: Some(4),
-                                                         newline: LF,
+                                                         newline: Newline::LF,
                                                          ..STANDARD}),
                    "Zm9v\nYmFy".to_string());
     }
