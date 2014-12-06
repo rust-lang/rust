@@ -14,6 +14,9 @@
 #[lang="sized"]
 pub trait Sized for Sized? {}
 
+#[lang="str"]
+struct str([u8]);
+
 #[lang="panic"]
 fn panic(_: &(&'static str, &'static str, uint)) -> ! { loop {} }
 
