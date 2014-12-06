@@ -59,6 +59,10 @@ pub struct Helper<M> {
     pub shutdown: UnsafeCell<bool>,
 }
 
+impl<M:Send> Send for Helper<M> { }
+
+impl<M:Send> Sync for Helper<M> { }
+
 impl<M: Send> Helper<M> {
     /// Lazily boots a helper thread, becoming a no-op if the helper has already
     /// been spawned.

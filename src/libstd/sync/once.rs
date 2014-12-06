@@ -35,6 +35,7 @@ use sync::{StaticMutex, MUTEX_INIT};
 ///     // run initialization here
 /// });
 /// ```
+#[deriving(Sync)]
 pub struct Once {
     mutex: StaticMutex,
     cnt: atomic::AtomicInt,

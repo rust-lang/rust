@@ -160,7 +160,7 @@ mod imp {
 
         pub static SIGSTKSZ: libc::size_t = 8192;
 
-        pub static SIG_DFL: sighandler_t = 0i as sighandler_t;
+        pub const SIG_DFL: sighandler_t = 0i as sighandler_t;
 
         // This definition is not as accurate as it could be, {si_addr} is
         // actually a giant union. Currently we're only interested in that field,

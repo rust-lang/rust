@@ -11,10 +11,14 @@
 #![allow(dead_code)]
 #![allow(unused_unsafe)]
 
+use std::kinds::Sync;
+
 struct Foo {
     a: uint,
     b: *const ()
 }
+
+impl Sync for Foo {}
 
 fn foo<T>(a: T) -> T {
     a

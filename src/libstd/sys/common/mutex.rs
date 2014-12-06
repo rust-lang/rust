@@ -15,6 +15,7 @@ use sys::mutex as imp;
 /// This is the thinnest cross-platform wrapper around OS mutexes. All usage of
 /// this mutex is unsafe and it is recommended to instead use the safe wrapper
 /// at the top level of the crate instead of this type.
+#[deriving(Sync)]
 pub struct Mutex(imp::Mutex);
 
 /// Constant initializer for statically allocated mutexes.

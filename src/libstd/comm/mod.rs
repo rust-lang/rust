@@ -321,7 +321,7 @@ use self::Flavor::*;
 use alloc::arc::Arc;
 use core::kinds::marker;
 use core::mem;
-use core::cell::UnsafeCell;
+use core::cell::{UnsafeCell, RacyCell};
 
 pub use self::select::{Select, Handle};
 use self::select::StartResult;
@@ -359,9 +359,11 @@ mod spsc_queue;
 #[unstable]
 pub struct Receiver<T> {
     inner: UnsafeCell<Flavor<T>>,
-    // can't share in an arc
-    _marker: marker::NoSync,
 }
+
+// The receiver port can be sent from place to place, so long as it
+// is not used to receive non-sendable things.
+impl<T:Send> Send for Receiver<T> { }
 
 /// An iterator over messages on a receiver, this iterator will block
 /// whenever `next` is called, waiting for a new message, and `None` will be
@@ -376,15 +378,17 @@ pub struct Messages<'a, T:'a> {
 #[unstable]
 pub struct Sender<T> {
     inner: UnsafeCell<Flavor<T>>,
-    // can't share in an arc
-    _marker: marker::NoSync,
 }
+
+// The send port can be sent from place to place, so long as it
+// is not used to send non-sendable things.
+impl<T:Send> Send for Sender<T> { }
 
 /// The sending-half of Rust's synchronous channel type. This half can only be
 /// owned by one task, but it can be cloned to send to other tasks.
 #[unstable = "this type may be renamed, but it will always exist"]
 pub struct SyncSender<T> {
-    inner: Arc<UnsafeCell<sync::Packet<T>>>,
+    inner: Arc<RacyCell<sync::Packet<T>>>,
     // can't share in an arc
     _marker: marker::NoSync,
 }
@@ -420,10 +424,10 @@ pub enum TrySendError<T> {
 }
 
 enum Flavor<T> {
-    Oneshot(Arc<UnsafeCell<oneshot::Packet<T>>>),
-    Stream(Arc<UnsafeCell<stream::Packet<T>>>),
-    Shared(Arc<UnsafeCell<shared::Packet<T>>>),
-    Sync(Arc<UnsafeCell<sync::Packet<T>>>),
+    Oneshot(Arc<RacyCell<oneshot::Packet<T>>>),
+    Stream(Arc<RacyCell<stream::Packet<T>>>),
+    Shared(Arc<RacyCell<shared::Packet<T>>>),
+    Sync(Arc<RacyCell<sync::Packet<T>>>),
 }
 
 #[doc(hidden)]
@@ -474,7 +478,7 @@ impl<T> UnsafeFlavor<T> for Receiver<T> {
 /// ```
 #[unstable]
 pub fn channel<T: Send>() -> (Sender<T>, Receiver<T>) {
-    let a = Arc::new(UnsafeCell::new(oneshot::Packet::new()));
+    let a = Arc::new(RacyCell::new(oneshot::Packet::new()));
     (Sender::new(Oneshot(a.clone())), Receiver::new(Oneshot(a)))
 }
 
@@ -514,7 +518,7 @@ pub fn channel<T: Send>() -> (Sender<T>, Receiver<T>) {
 #[unstable = "this function may be renamed to more accurately reflect the type \
               of channel that is is creating"]
 pub fn sync_channel<T: Send>(bound: uint) -> (SyncSender<T>, Receiver<T>) {
-    let a = Arc::new(UnsafeCell::new(sync::Packet::new(bound)));
+    let a = Arc::new(RacyCell::new(sync::Packet::new(bound)));
     (SyncSender::new(a.clone()), Receiver::new(Sync(a)))
 }
 
@@ -526,7 +530,6 @@ impl<T: Send> Sender<T> {
     fn new(inner: Flavor<T>) -> Sender<T> {
         Sender {
             inner: UnsafeCell::new(inner),
-            _marker: marker::NoSync,
         }
     }
 
@@ -596,7 +599,8 @@ impl<T: Send> Sender<T> {
                     if !(*p).sent() {
                         return (*p).send(t);
                     } else {
-                        let a = Arc::new(UnsafeCell::new(stream::Packet::new()));
+                        let a =
+                            Arc::new(RacyCell::new(stream::Packet::new()));
                         match (*p).upgrade(Receiver::new(Stream(a.clone()))) {
                             oneshot::UpSuccess => {
                                 let ret = (*a.get()).send(t);
@@ -633,7 +637,7 @@ impl<T: Send> Clone for Sender<T> {
     fn clone(&self) -> Sender<T> {
         let (packet, sleeper, guard) = match *unsafe { self.inner() } {
             Oneshot(ref p) => {
-                let a = Arc::new(UnsafeCell::new(shared::Packet::new()));
+                let a = Arc::new(RacyCell::new(shared::Packet::new()));
                 unsafe {
                     let guard = (*a.get()).postinit_lock();
                     match (*p.get()).upgrade(Receiver::new(Shared(a.clone()))) {
@@ -644,7 +648,7 @@ impl<T: Send> Clone for Sender<T> {
                 }
             }
             Stream(ref p) => {
-                let a = Arc::new(UnsafeCell::new(shared::Packet::new()));
+                let a = Arc::new(RacyCell::new(shared::Packet::new()));
                 unsafe {
                     let guard = (*a.get()).postinit_lock();
                     match (*p.get()).upgrade(Receiver::new(Shared(a.clone()))) {
@@ -688,7 +692,7 @@ impl<T: Send> Drop for Sender<T> {
 ////////////////////////////////////////////////////////////////////////////////
 
 impl<T: Send> SyncSender<T> {
-    fn new(inner: Arc<UnsafeCell<sync::Packet<T>>>) -> SyncSender<T> {
+    fn new(inner: Arc<RacyCell<sync::Packet<T>>>) -> SyncSender<T> {
         SyncSender { inner: inner, _marker: marker::NoSync }
     }
 
@@ -777,7 +781,7 @@ impl<T: Send> Drop for SyncSender<T> {
 
 impl<T: Send> Receiver<T> {
     fn new(inner: Flavor<T>) -> Receiver<T> {
-        Receiver { inner: UnsafeCell::new(inner), _marker: marker::NoSync }
+        Receiver { inner: UnsafeCell::new(inner) }
     }
 
     /// Blocks waiting for a value on this receiver
