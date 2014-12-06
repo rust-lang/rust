@@ -8,8 +8,5 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
-// error-pattern:1i == 2
-fn main() { assert!((1i == 2)); }
+// error-pattern:1is == 2
+fn main() { assert!((1is == 2)); }

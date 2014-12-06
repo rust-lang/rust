@@ -1087,7 +1087,7 @@ pub struct Typedef {
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy)]
 pub enum IntTy {
-    TyI,
+    TyIs,
     TyI8,
     TyI16,
     TyI32,
@@ -1103,7 +1103,7 @@ impl fmt::Show for IntTy {
 impl IntTy {
     pub fn suffix_len(&self) -> uint {
         match *self {
-            TyI => 1,
+            TyIs => 1,
             TyI8 => 2,
             TyI16 | TyI32 | TyI64  => 3,
         }
@@ -1112,7 +1112,7 @@ impl IntTy {
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy)]
 pub enum UintTy {
-    TyU,
+    TyUs,
     TyU8,
     TyU16,
     TyU32,
@@ -1122,7 +1122,7 @@ pub enum UintTy {
 impl UintTy {
     pub fn suffix_len(&self) -> uint {
         match *self {
-            TyU => 1,
+            TyUs => 1,
             TyU8 => 2,
             TyU16 | TyU32 | TyU64  => 3,
         }
