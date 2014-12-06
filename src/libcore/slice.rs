@@ -1725,6 +1725,7 @@ pub mod raw {
     use mem::transmute;
     use ptr::RawPtr;
     use raw::Slice;
+    use ops::FnOnce;
     use option::Option;
     use option::Option::{None, Some};
 
@@ -1732,8 +1733,9 @@ pub mod raw {
     /// not bytes).
     #[inline]
     #[deprecated = "renamed to slice::from_raw_buf"]
-    pub unsafe fn buf_as_slice<T,U>(p: *const T, len: uint, f: |v: &[T]| -> U)
-                               -> U {
+    pub unsafe fn buf_as_slice<T, U, F>(p: *const T, len: uint, f: F) -> U where
+        F: FnOnce(&[T]) -> U,
+    {
         f(transmute(Slice {
             data: p,
             len: len
@@ -1744,12 +1746,9 @@ pub mod raw {
     /// not bytes).
     #[inline]
     #[deprecated = "renamed to slice::from_raw_mut_buf"]
-    pub unsafe fn mut_buf_as_slice<T,
-                                   U>(
-                                   p: *mut T,
-                                   len: uint,
-                                   f: |v: &mut [T]| -> U)
-                                   -> U {
+    pub unsafe fn mut_buf_as_slice<T, U, F>(p: *mut T, len: uint, f: F) -> U where
+        F: FnOnce(&mut [T]) -> U,
+    {
         f(transmute(Slice {
             data: p as *const T,
             len: len
