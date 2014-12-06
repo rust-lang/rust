@@ -1729,8 +1729,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 // If the type is `Foo+'a`, ensures that the type
                 // being cast to `Foo+'a` outlives `'a`:
-                let origin = infer::RelateObjectBound(span);
-                self.register_region_obligation(origin, self_ty, ty_trait.bounds.region_bound);
+                let cause = traits::ObligationCause { span: span,
+                                                      body_id: self.body_id,
+                                                      code: traits::ObjectCastObligation(self_ty) };
+                self.register_region_obligation(self_ty, ty_trait.bounds.region_bound, cause);
             }
         }
     }
@@ -1951,15 +1953,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Registers an obligation for checking later, during regionck, that the type `ty` must
     /// outlive the region `r`.
     pub fn register_region_obligation(&self,
-                                      origin: infer::SubregionOrigin<'tcx>,
                                       ty: Ty<'tcx>,
-                                      r: ty::Region)
+                                      region: ty::Region,
+                                      cause: traits::ObligationCause<'tcx>)
     {
         let mut fulfillment_cx = self.inh.fulfillment_cx.borrow_mut();
-        let region_obligation = traits::RegionObligation { sub_region: r,
-                                                           sup_type: ty,
-                                                           origin: origin };
-        fulfillment_cx.register_region_obligation(self.body_id, region_obligation);
+        fulfillment_cx.register_region_obligation(ty, region, cause);
     }
 
     pub fn add_default_region_param_bounds(&self,
@@ -1968,8 +1967,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     {
         for &ty in substs.types.iter() {
             let default_bound = ty::ReScope(CodeExtent::from_node_id(expr.id));
-            let origin = infer::RelateDefaultParamBound(expr.span, ty);
-            self.register_region_obligation(origin, ty, default_bound);
+            let cause = traits::ObligationCause::new(expr.span, self.body_id,
+                                                     traits::MiscObligation);
+            self.register_region_obligation(ty, default_bound, cause);
         }
     }
 
@@ -2061,8 +2061,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 param_bound.builtin_bounds,
                 param_bound.trait_bounds.as_slice());
         for &r in region_bounds.iter() {
-            let origin = infer::RelateParamBound(span, ty);
-            self.register_region_obligation(origin, ty, r);
+            let cause = traits::ObligationCause::new(span, self.body_id, traits::MiscObligation);
+            self.register_region_obligation(ty, r, cause);
         }
     }
 

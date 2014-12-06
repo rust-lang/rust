@@ -10,7 +10,7 @@
 
 use middle::mem_categorization::Typer;
 use middle::ty::{mod, Ty};
-use middle::infer::{mod, InferCtxt};
+use middle::infer::{mod, InferCtxt, ures};
 use std::collections::HashSet;
 use std::collections::hash_map::{Occupied, Vacant};
 use std::default::Default;
@@ -20,6 +20,8 @@ use util::ppaux::Repr;
 use util::nodemap::NodeMap;
 
 use super::CodeAmbiguity;
+use super::Obligation;
+use super::ObligationCause;
 use super::TraitObligation;
 use super::FulfillmentError;
 use super::CodeSelectionError;
@@ -82,7 +84,7 @@ pub struct FulfillmentContext<'tcx> {
 pub struct RegionObligation<'tcx> {
     pub sub_region: ty::Region,
     pub sup_type: Ty<'tcx>,
-    pub origin: infer::SubregionOrigin<'tcx>,
+    pub cause: ObligationCause<'tcx>,
 }
 
 impl<'tcx> FulfillmentContext<'tcx> {
@@ -92,6 +94,32 @@ impl<'tcx> FulfillmentContext<'tcx> {
             trait_obligations: Vec::new(),
             attempted_mark: 0,
             region_obligations: NodeMap::new(),
+        }
+    }
+
+    pub fn register_predicate<'a>(&mut self,
+                                  infcx: &InferCtxt<'a,'tcx>,
+                                  predicate: &Obligation<'tcx, ty::Predicate<'tcx>>)
+                                  -> ures<'tcx>
+    {
+        match predicate.trait_ref {
+            ty::Predicate::Trait(ref trait_ref) => {
+                let trait_obligation = Obligation { cause: predicate.cause,
+                                                    recursion_depth: predicate.recursion_depth,
+                                                    trait_ref: (*trait_ref).clone() };
+                Ok(self.register_obligation(infcx.tcx, trait_obligation))
+            }
+            ty::Predicate::Equate(a, b) => {
+                let origin = infer::EquatePredicate(predicate.cause.span);
+                infer::mk_eqty(infcx, false, origin, a, b) // `a == b` ==> ``
+            }
+            ty::Predicate::RegionOutlives(r_a, r_b) => {
+                let origin = infer::RelateRegionParamBound(predicate.cause.span);
+                Ok(infer::mk_subr(infcx, origin, r_b, r_a)) // `b : a` ==> `a <= b`
+            }
+            ty::Predicate::TypeOutlives(t_a, r_b) => {
+                Ok(self.register_region_obligation(t_a, r_b, predicate.cause))
+            }
         }
     }
 
@@ -109,10 +137,14 @@ impl<'tcx> FulfillmentContext<'tcx> {
     }
 
     pub fn register_region_obligation(&mut self,
-                                      body_id: ast::NodeId,
-                                      region_obligation: RegionObligation<'tcx>)
+                                      sup_type: Ty<'tcx>,
+                                      sub_region: ty::Region,
+                                      cause: ObligationCause<'tcx>)
     {
-        match self.region_obligations.entry(body_id) {
+        let region_obligation = RegionObligation { sup_type: sup_type,
+                                                   sub_region: sub_region,
+                                                   cause: cause };
+        match self.region_obligations.entry(cause.body_id) {
             Vacant(entry) => { entry.set(vec![region_obligation]); },
             Occupied(mut entry) => { entry.get_mut().push(region_obligation); },
         }
@@ -268,9 +300,8 @@ impl<'tcx> FulfillmentContext<'tcx> {
 
 impl<'tcx> Repr<'tcx> for RegionObligation<'tcx> {
     fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
-        format!("RegionObligation(sub_region={}, sup_type={}, origin={})",
+        format!("RegionObligation(sub_region={}, sup_type={})",
                 self.sub_region.repr(tcx),
-                self.sup_type.repr(tcx),
-                self.origin.repr(tcx))
+                self.sup_type.repr(tcx))
     }
 }
