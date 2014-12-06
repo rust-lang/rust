@@ -11,6 +11,6 @@
 #![forbid(non_upper_case_globals)]
 #![allow(dead_code)]
 
-static foo: isize = 1; //~ ERROR static constant `foo` should have an uppercase name such as `FOO`
+static foo: isize = 1; //~ ERROR static constant `foo` should have an upper case name such as `FOO`
 
 fn main() { }
