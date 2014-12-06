@@ -3501,9 +3501,36 @@ fn check_expr_with_unifier<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                             actual)
                 },
                 expr_t, None);
+            suggest_field_names(expr_t, field, tcx);
         }
 
         fcx.write_error(expr.id);
+    }
+
+    fn suggest_field_names<'tcx>(t : ty::t,
+                                 field : &ast::SpannedIdent,
+                                 tcx : &ty::ctxt<'tcx>) {
+        let id = ty::ty_to_def_id(t).unwrap();
+        let ident = token::get_ident(field.node);
+        let name = ident.get();
+        // only find fits with at least one matching letter
+        let mut best_dist = name.len();
+        let mut best = vec![];
+        let fields = ty::lookup_struct_fields(tcx, id);
+        for elem in fields.iter() {
+            let n = elem.name.as_str();
+            let dist = n.lev_distance(name);
+            if dist < best_dist {
+                best = vec![n];
+                best_dist = dist;
+            } else if dist == best_dist {
+                best.push(n);
+            }
+        }
+        for n in best.iter() {
+            tcx.sess.span_help(field.span,
+                format!("did you mean `{}`?", n).as_slice());
+        }
     }
 
     // Check tuple index expressions
@@ -3601,6 +3628,8 @@ fn check_expr_with_unifier<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                       },
                       struct_ty,
                       None);
+                    // FIXME: suggest_field_names also displays already defined fields
+                    suggest_field_names(struct_ty, &field.ident, tcx);
                     error_happened = true;
                 }
                 Some((_, true)) => {
