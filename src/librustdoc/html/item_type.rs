@@ -41,6 +41,8 @@ pub enum ItemType {
     Constant        = 18,
 }
 
+impl Copy for ItemType {}
+
 impl ItemType {
     pub fn from_item(item: &clean::Item) -> ItemType {
         match item.inner {

@@ -204,6 +204,7 @@ impl LintStore {
                      UnusedMut,
                      UnusedAllocation,
                      Stability,
+                     MissingCopyImplementations,
         )
 
         add_builtin_with_new!(sess,

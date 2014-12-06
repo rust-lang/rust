@@ -46,6 +46,8 @@ pub enum DefRegion {
                   /* lifetime decl */ ast::NodeId),
 }
 
+impl Copy for DefRegion {}
+
 // maps the id of each lifetime reference to the lifetime decl
 // that it corresponds to
 pub type NamedRegionMap = NodeMap<DefRegion>;

@@ -21,6 +21,8 @@ fn test2() -> int { let val = &0i; { } *val }
 
 struct S { eax: int }
 
+impl Copy for S {}
+
 fn test3() {
     let regs = &Cell::new(S {eax: 0});
     match true { true => { } _ => { } }

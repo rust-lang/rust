@@ -661,6 +661,9 @@ extern {
     fn abort() -> !;
 }
 
+#[lang = "owned_box"]
+pub struct Box<T>(*mut T);
+
 #[lang="exchange_malloc"]
 unsafe fn allocate(size: uint, _align: uint) -> *mut u8 {
     let p = libc::malloc(size as libc::size_t) as *mut u8;

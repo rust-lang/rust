@@ -19,10 +19,12 @@ use trait_superkinds_in_metadata::{RequiresCopy};
 
 struct X<T>(T);
 
-impl <T:Sync> RequiresShare for X<T> { }
+impl<T:Copy> Copy for X<T> {}
 
-impl <T:Sync+Send> RequiresRequiresShareAndSend for X<T> { }
+impl<T:Sync> RequiresShare for X<T> { }
 
-impl <T:Copy> RequiresCopy for X<T> { }
+impl<T:Sync+Send> RequiresRequiresShareAndSend for X<T> { }
+
+impl<T:Copy> RequiresCopy for X<T> { }
 
 pub fn main() { }

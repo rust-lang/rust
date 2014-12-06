@@ -21,6 +21,8 @@ struct Vec2 {
     y: f32,
 }
 
+impl Copy for Vec2 {}
+
 fn lerp(a: f32, b: f32, v: f32) -> f32 { a * (1.0 - v) + b * v }
 
 fn smooth(v: f32) -> f32 { v * v * (3.0 - 2.0 * v) }

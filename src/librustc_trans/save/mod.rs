@@ -249,7 +249,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
             self.collecting = true;
             self.visit_pat(&*arg.pat);
             self.collecting = false;
-            let span_utils = self.span;
+            let span_utils = self.span.clone();
             for &(id, ref p, _, _) in self.collected_paths.iter() {
                 let typ = ppaux::ty_to_string(&self.analysis.ty_cx,
                     (*self.analysis.ty_cx.node_types.borrow())[id]);

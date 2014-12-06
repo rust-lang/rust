@@ -12,6 +12,8 @@ struct Foo {
     f: int,
 }
 
+impl Copy for Foo {}
+
 impl Foo {
     fn foo(self: Foo, x: int) -> int {
         self.f + x
@@ -27,6 +29,8 @@ impl Foo {
 struct Bar<T> {
     f: T,
 }
+
+impl<T:Copy> Copy for Bar<T> {}
 
 impl<T> Bar<T> {
     fn foo(self: Bar<T>, x: int) -> int {

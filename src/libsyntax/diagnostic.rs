@@ -40,6 +40,8 @@ pub enum RenderSpan {
     FileLine(Span),
 }
 
+impl Copy for RenderSpan {}
+
 impl RenderSpan {
     fn span(self) -> Span {
         match self {
@@ -61,6 +63,8 @@ pub enum ColorConfig {
     Never
 }
 
+impl Copy for ColorConfig {}
+
 pub trait Emitter {
     fn emit(&mut self, cmsp: Option<(&codemap::CodeMap, Span)>,
             msg: &str, code: Option<&str>, lvl: Level);
@@ -73,9 +77,13 @@ pub trait Emitter {
 /// how a rustc task died (if so desired).
 pub struct FatalError;
 
+impl Copy for FatalError {}
+
 /// Signifies that the compiler died with an explicit call to `.bug`
 /// or `.span_bug` rather than a failed assertion, etc.
 pub struct ExplicitBug;
+
+impl Copy for ExplicitBug {}
 
 /// A span-handler is like a handler but also
 /// accepts span information for source-location
@@ -229,6 +237,8 @@ pub enum Level {
     Note,
     Help,
 }
+
+impl Copy for Level {}
 
 impl fmt::Show for Level {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

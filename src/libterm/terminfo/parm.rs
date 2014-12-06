@@ -33,12 +33,16 @@ enum States {
     SeekIfEndPercent(int)
 }
 
+impl Copy for States {}
+
 #[deriving(PartialEq)]
 enum FormatState {
     FormatStateFlags,
     FormatStateWidth,
     FormatStatePrecision
 }
+
+impl Copy for FormatState {}
 
 /// Types of parameters a capability can use
 #[allow(missing_docs)]
@@ -452,6 +456,8 @@ struct Flags {
     space: bool
 }
 
+impl Copy for Flags {}
+
 impl Flags {
     fn new() -> Flags {
         Flags{ width: 0, precision: 0, alternate: false,
@@ -466,6 +472,8 @@ enum FormatOp {
     FormatHEX,
     FormatString
 }
+
+impl Copy for FormatOp {}
 
 impl FormatOp {
     fn from_char(c: char) -> FormatOp {

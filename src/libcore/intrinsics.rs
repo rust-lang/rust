@@ -42,6 +42,8 @@
 #![experimental]
 #![allow(missing_docs)]
 
+use kinds::Copy;
+
 pub type GlueFn = extern "Rust" fn(*const i8);
 
 #[lang="ty_desc"]
@@ -58,6 +60,8 @@ pub struct TyDesc {
     // Name corresponding to the type
     pub name: &'static str,
 }
+
+impl Copy for TyDesc {}
 
 extern "rust-intrinsic" {
 
@@ -538,6 +542,8 @@ extern "rust-intrinsic" {
 pub struct TypeId {
     t: u64,
 }
+
+impl Copy for TypeId {}
 
 impl TypeId {
     /// Returns the `TypeId` of the type this generic function has been instantiated with

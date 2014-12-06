@@ -12,6 +12,8 @@ enum Foo {
     Bar = 0xDEADBEE
 }
 
+impl Copy for Foo {}
+
 static X: Foo = Foo::Bar;
 
 pub fn main() {

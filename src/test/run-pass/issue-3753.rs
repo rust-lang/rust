@@ -19,10 +19,14 @@ pub struct Point {
     y: f64
 }
 
+impl Copy for Point {}
+
 pub enum Shape {
     Circle(Point, f64),
     Rectangle(Point, Point)
 }
+
+impl Copy for Shape {}
 
 impl Shape {
     pub fn area(&self, sh: Shape) -> f64 {

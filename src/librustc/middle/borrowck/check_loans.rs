@@ -24,7 +24,9 @@ use middle::borrowck::LoanPathKind::*;
 use middle::expr_use_visitor as euv;
 use middle::mem_categorization as mc;
 use middle::region;
+use middle::ty::ParameterEnvironment;
 use middle::ty;
+use syntax::ast::NodeId;
 use syntax::ast;
 use syntax::codemap::Span;
 use util::ppaux::Repr;
@@ -89,6 +91,7 @@ struct CheckLoanCtxt<'a, 'tcx: 'a> {
     dfcx_loans: &'a LoanDataFlow<'a, 'tcx>,
     move_data: move_data::FlowedMoveData<'a, 'tcx>,
     all_loans: &'a [Loan<'tcx>],
+    param_env: &'a ParameterEnvironment<'tcx>,
 }
 
 impl<'a, 'tcx> euv::Delegate<'tcx> for CheckLoanCtxt<'a, 'tcx> {
@@ -193,19 +196,25 @@ pub fn check_loans<'a, 'b, 'c, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                      dfcx_loans: &LoanDataFlow<'b, 'tcx>,
                                      move_data: move_data::FlowedMoveData<'c, 'tcx>,
                                      all_loans: &[Loan<'tcx>],
+                                     fn_id: NodeId,
                                      decl: &ast::FnDecl,
                                      body: &ast::Block) {
     debug!("check_loans(body id={})", body.id);
+
+    let param_env = ParameterEnvironment::for_item(bccx.tcx, fn_id);
 
     let mut clcx = CheckLoanCtxt {
         bccx: bccx,
         dfcx_loans: dfcx_loans,
         move_data: move_data,
         all_loans: all_loans,
+        param_env: &param_env,
     };
 
     {
-        let mut euv = euv::ExprUseVisitor::new(&mut clcx, bccx.tcx);
+        let mut euv = euv::ExprUseVisitor::new(&mut clcx,
+                                               bccx.tcx,
+                                               param_env.clone());
         euv.walk_fn(decl, body);
     }
 }
@@ -700,7 +709,8 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                 use_kind,
                 &**lp,
                 the_move,
-                moved_lp);
+                moved_lp,
+                self.param_env);
             false
         });
     }

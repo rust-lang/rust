@@ -13,6 +13,8 @@ enum Foo {
     Baz
 }
 
+impl Copy for Foo {}
+
 impl Foo {
     fn foo(&self) {
         match self {

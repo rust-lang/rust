@@ -80,6 +80,7 @@ struct ObligationStack<'prev, 'tcx: 'prev> {
     previous: Option<&'prev ObligationStack<'prev, 'tcx>>
 }
 
+#[deriving(Clone)]
 pub struct SelectionCache<'tcx> {
     hashmap: RefCell<HashMap<Rc<ty::TraitRef<'tcx>>,
                              SelectionResult<'tcx, Candidate<'tcx>>>>,
@@ -101,6 +102,8 @@ pub enum MethodMatchedData {
     // that we can determine the type to which things were coerced.
     CoerciveMethodMatch(/* impl we matched */ ast::DefId)
 }
+
+impl Copy for MethodMatchedData {}
 
 /// The selection process begins by considering all impls, where
 /// clauses, and so forth that might resolve an obligation.  Sometimes
@@ -918,20 +921,31 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // and applicable impls. There is a certain set of precedence rules here.
 
         match self.tcx().lang_items.to_builtin_kind(obligation.trait_ref.def_id) {
-            Some(bound) => {
-                try!(self.assemble_builtin_bound_candidates(bound, stack, &mut candidates));
+            Some(ty::BoundCopy) => {
+                debug!("obligation self ty is {}",
+                       obligation.self_ty().repr(self.tcx()));
+                try!(self.assemble_candidates_from_impls(obligation, &mut candidates));
+                try!(self.assemble_builtin_bound_candidates(ty::BoundCopy,
+                                                            stack,
+                                                            &mut candidates));
             }
 
             None => {
-                // For the time being, we ignore user-defined impls for builtin-bounds.
+                // For the time being, we ignore user-defined impls for builtin-bounds, other than
+                // `Copy`.
                 // (And unboxed candidates only apply to the Fn/FnMut/etc traits.)
                 try!(self.assemble_unboxed_closure_candidates(obligation, &mut candidates));
                 try!(self.assemble_fn_pointer_candidates(obligation, &mut candidates));
                 try!(self.assemble_candidates_from_impls(obligation, &mut candidates));
             }
+
+            Some(bound) => {
+                try!(self.assemble_builtin_bound_candidates(bound, stack, &mut candidates));
+            }
         }
 
         try!(self.assemble_candidates_from_caller_bounds(obligation, &mut candidates));
+        debug!("candidate list size: {}", candidates.vec.len());
         Ok(candidates)
     }
 
@@ -1519,13 +1533,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
 
                 ty::BoundCopy => {
-                    if
-                        Some(def_id) == tcx.lang_items.no_copy_bound() ||
-                        Some(def_id) == tcx.lang_items.managed_bound() ||
-                        ty::has_dtor(tcx, def_id)
-                    {
-                        return Err(Unimplemented);
-                    }
+                    // This is an Opt-In Built-In Trait.
+                    return Ok(ParameterBuiltin)
                 }
 
                 ty::BoundSync => {

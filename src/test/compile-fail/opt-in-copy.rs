@@ -8,25 +8,26 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[repr(packed)]
-#[deriving(PartialEq, Show)]
-struct Foo {
-    a: i8,
-    b: i16,
-    c: i8
+struct CantCopyThis;
+
+struct IWantToCopyThis {
+    but_i_cant: CantCopyThis,
 }
 
-impl Copy for Foo {}
+impl Copy for IWantToCopyThis {}
+//~^ ERROR the trait `Copy` may not be implemented for this type
 
-#[link(name = "test", kind = "static")]
-extern {
-    fn foo(f: Foo) -> Foo;
+enum CantCopyThisEither {
+    A,
+    B,
 }
 
-fn main() {
-    unsafe {
-        let a = Foo { a: 1, b: 2, c: 3 };
-        let b = foo(a);
-        assert_eq!(a, b);
-    }
+enum IWantToCopyThisToo {
+    ButICant(CantCopyThisEither),
 }
+
+impl Copy for IWantToCopyThisToo {}
+//~^ ERROR the trait `Copy` may not be implemented for this type
+
+fn main() {}
+

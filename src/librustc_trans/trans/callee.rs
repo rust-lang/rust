@@ -63,6 +63,8 @@ pub struct MethodData {
     pub llself: ValueRef,
 }
 
+impl Copy for MethodData {}
+
 pub enum CalleeData<'tcx> {
     Closure(Datum<'tcx, Lvalue>),
 
@@ -1199,6 +1201,8 @@ pub enum AutorefArg {
     DontAutorefArg,
     DoAutorefArg(ast::NodeId)
 }
+
+impl Copy for AutorefArg {}
 
 pub fn trans_arg_datum<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                    formal_arg_ty: Ty<'tcx>,

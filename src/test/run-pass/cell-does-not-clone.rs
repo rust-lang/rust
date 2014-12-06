@@ -24,6 +24,8 @@ impl Clone for Foo {
     }
 }
 
+impl Copy for Foo {}
+
 pub fn main() {
     let x = Cell::new(Foo { x: 22 });
     let _y = x.get();

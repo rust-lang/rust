@@ -15,6 +15,8 @@ fn f(arg: &mut A) {
 
 struct A { a: int }
 
+impl Copy for A {}
+
 pub fn main() {
     let mut x = A {a: 10};
     f(&mut x);

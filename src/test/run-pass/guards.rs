@@ -10,6 +10,8 @@
 
 struct Pair { x: int, y: int }
 
+impl Copy for Pair {}
+
 pub fn main() {
     let a: int =
         match 10i { x if x < 7 => { 1i } x if x < 11 => { 2i } 10 => { 3i } _ => { 4i } };

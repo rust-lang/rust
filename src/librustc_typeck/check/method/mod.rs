@@ -52,6 +52,8 @@ pub enum CandidateSource {
     TraitSource(/* trait id */ ast::DefId),
 }
 
+impl Copy for CandidateSource {}
+
 type MethodIndex = uint; // just for doc purposes
 
 /// Determines whether the type `self_ty` supports a method name `method_name` or not.

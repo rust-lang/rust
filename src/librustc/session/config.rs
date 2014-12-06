@@ -55,12 +55,16 @@ pub enum OptLevel {
     Aggressive // -O3
 }
 
+impl Copy for OptLevel {}
+
 #[deriving(Clone, PartialEq)]
 pub enum DebugInfoLevel {
     NoDebugInfo,
     LimitedDebugInfo,
     FullDebugInfo,
 }
+
+impl Copy for DebugInfoLevel {}
 
 #[deriving(Clone, PartialEq, PartialOrd, Ord, Eq)]
 pub enum OutputType {
@@ -70,6 +74,8 @@ pub enum OutputType {
     OutputTypeObject,
     OutputTypeExe,
 }
+
+impl Copy for OutputType {}
 
 #[deriving(Clone)]
 pub struct Options {
@@ -87,7 +93,7 @@ pub struct Options {
     // parsed code. It remains mutable in case its replacements wants to use
     // this.
     pub addl_lib_search_paths: RefCell<Vec<Path>>,
-    pub libs: Vec<(String, cstore::NativeLibaryKind)>,
+    pub libs: Vec<(String, cstore::NativeLibraryKind)>,
     pub maybe_sysroot: Option<Path>,
     pub target_triple: String,
     // User-specified cfg meta items. The compiler itself will add additional
@@ -221,6 +227,8 @@ pub enum EntryFnType {
     EntryNone,
 }
 
+impl Copy for EntryFnType {}
+
 #[deriving(PartialEq, PartialOrd, Clone, Ord, Eq, Hash)]
 pub enum CrateType {
     CrateTypeExecutable,
@@ -228,6 +236,8 @@ pub enum CrateType {
     CrateTypeRlib,
     CrateTypeStaticlib,
 }
+
+impl Copy for CrateType {}
 
 macro_rules! debugging_opts(
     ([ $opt:ident ] $cnt:expr ) => (

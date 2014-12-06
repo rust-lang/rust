@@ -96,6 +96,8 @@ pub struct VecTypes<'tcx> {
     pub llunit_alloc_size: u64
 }
 
+impl<'tcx> Copy for VecTypes<'tcx> {}
+
 impl<'tcx> VecTypes<'tcx> {
     pub fn to_string<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> String {
         format!("VecTypes {{unit_ty={}, llunit_ty={}, \
@@ -301,8 +303,6 @@ pub fn write_content<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                         1 => expr::trans_into(bcx, &**element, SaveIn(lldest)),
                         count => {
                             let elem = unpack_datum!(bcx, expr::trans(bcx, &**element));
-                            assert!(!ty::type_moves_by_default(bcx.tcx(), elem.ty));
-
                             let bcx = iter_vec_loop(bcx, lldest, vt,
                                                     C_uint(bcx.ccx(), count),
                                                     |set_bcx, lleltptr, _| {

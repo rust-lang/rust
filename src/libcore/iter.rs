@@ -59,6 +59,7 @@ pub use self::MinMaxResult::*;
 use clone::Clone;
 use cmp;
 use cmp::Ord;
+use kinds::Copy;
 use mem;
 use num::{ToPrimitive, Int};
 use ops::{Add, Deref};
@@ -1166,7 +1167,8 @@ pub struct Cycle<T> {
     iter: T,
 }
 
-#[unstable = "trait is unstable"]
+impl<T:Copy> Copy for Cycle<T> {}
+
 impl<A, T: Clone + Iterator<A>> Iterator<A> for Cycle<T> {
     #[inline]
     fn next(&mut self) -> Option<A> {
@@ -1576,7 +1578,8 @@ pub struct Peekable<A, T> {
     peeked: Option<A>,
 }
 
-#[unstable = "trait is unstable"]
+impl<T:Copy,A:Copy> Copy for Peekable<A,T> {}
+
 impl<A, T: Iterator<A>> Iterator<A> for Peekable<A, T> {
     #[inline]
     fn next(&mut self) -> Option<A> {
@@ -2115,6 +2118,8 @@ pub struct Counter<A> {
     step: A,
 }
 
+impl<A:Copy> Copy for Counter<A> {}
+
 /// Creates a new counter with the specified start/step
 #[inline]
 #[unstable = "may be renamed"]
@@ -2145,6 +2150,8 @@ pub struct Range<A> {
     stop: A,
     one: A,
 }
+
+impl<A:Copy> Copy for Range<A> {}
 
 /// Returns an iterator over the given range [start, stop) (that is, starting
 /// at start (inclusive), and ending at stop (exclusive)).

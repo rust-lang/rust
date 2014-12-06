@@ -56,6 +56,8 @@ pub enum SyntaxContext_ {
     IllegalCtxt
 }
 
+impl Copy for SyntaxContext_ {}
+
 /// A list of ident->name renamings
 pub type RenameList = Vec<(Ident, Name)>;
 

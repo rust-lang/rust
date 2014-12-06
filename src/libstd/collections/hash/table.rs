@@ -16,7 +16,7 @@ use clone::Clone;
 use cmp;
 use hash::{Hash, Hasher};
 use iter::{Iterator, count};
-use kinds::{Sized, marker};
+use kinds::{Copy, Sized, marker};
 use mem::{min_align_of, size_of};
 use mem;
 use num::{Int, UnsignedInt};
@@ -81,11 +81,15 @@ struct RawBucket<K, V> {
     val:  *mut V
 }
 
+impl<K,V> Copy for RawBucket<K,V> {}
+
 pub struct Bucket<K, V, M> {
     raw:   RawBucket<K, V>,
     idx:   uint,
     table: M
 }
+
+impl<K,V,M:Copy> Copy for Bucket<K,V,M> {}
 
 pub struct EmptyBucket<K, V, M> {
     raw:   RawBucket<K, V>,

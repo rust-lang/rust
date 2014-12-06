@@ -30,6 +30,8 @@ enum UnsafeContext {
     UnsafeBlock(ast::NodeId),
 }
 
+impl Copy for UnsafeContext {}
+
 fn type_is_unsafe_function(ty: Ty) -> bool {
     match ty.sty {
         ty::ty_bare_fn(ref f) => f.fn_style == ast::UnsafeFn,

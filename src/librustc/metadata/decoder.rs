@@ -442,6 +442,8 @@ pub enum DefLike {
     DlField
 }
 
+impl Copy for DefLike {}
+
 /// Iterates over the language items in the given crate.
 pub fn each_lang_item(cdata: Cmd, f: |ast::NodeId, uint| -> bool) -> bool {
     let root = rbml::Doc::new(cdata.data());
@@ -1267,14 +1269,14 @@ pub fn get_trait_of_item(cdata: Cmd, id: ast::NodeId, tcx: &ty::ctxt)
 
 
 pub fn get_native_libraries(cdata: Cmd)
-                            -> Vec<(cstore::NativeLibaryKind, String)> {
+                            -> Vec<(cstore::NativeLibraryKind, String)> {
     let libraries = reader::get_doc(rbml::Doc::new(cdata.data()),
                                     tag_native_libraries);
     let mut result = Vec::new();
     reader::tagged_docs(libraries, tag_native_libraries_lib, |lib_doc| {
         let kind_doc = reader::get_doc(lib_doc, tag_native_libraries_kind);
         let name_doc = reader::get_doc(lib_doc, tag_native_libraries_name);
-        let kind: cstore::NativeLibaryKind =
+        let kind: cstore::NativeLibraryKind =
             FromPrimitive::from_u32(reader::doc_as_u32(kind_doc)).unwrap();
         let name = name_doc.as_str().to_string();
         result.push((kind, name));

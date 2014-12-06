@@ -51,6 +51,8 @@ pub enum Constraint {
     ConstrainVarSubReg(RegionVid, Region),
 }
 
+impl Copy for Constraint {}
+
 // Something we have to verify after region inference is done, but
 // which does not directly influence the inference process
 pub enum Verify<'tcx> {
@@ -72,6 +74,8 @@ pub struct TwoRegions {
     b: Region,
 }
 
+impl Copy for TwoRegions {}
+
 #[deriving(PartialEq)]
 pub enum UndoLogEntry {
     OpenSnapshot,
@@ -84,10 +88,14 @@ pub enum UndoLogEntry {
     AddCombination(CombineMapType, TwoRegions)
 }
 
+impl Copy for UndoLogEntry {}
+
 #[deriving(PartialEq)]
 pub enum CombineMapType {
     Lub, Glb
 }
+
+impl Copy for CombineMapType {}
 
 #[deriving(Clone, Show)]
 pub enum RegionResolutionError<'tcx> {
@@ -220,10 +228,14 @@ pub struct RegionSnapshot {
     length: uint
 }
 
+impl Copy for RegionSnapshot {}
+
 #[deriving(Show)]
 pub struct RegionMark {
     length: uint
 }
+
+impl Copy for RegionMark {}
 
 impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
     pub fn new(tcx: &'a ty::ctxt<'tcx>) -> RegionVarBindings<'a, 'tcx> {
@@ -926,7 +938,11 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
 #[deriving(PartialEq, Show)]
 enum Classification { Expanding, Contracting }
 
+impl Copy for Classification {}
+
 pub enum VarValue { NoValue, Value(Region), ErrorValue }
+
+impl Copy for VarValue {}
 
 struct VarData {
     classification: Classification,

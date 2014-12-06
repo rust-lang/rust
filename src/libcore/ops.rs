@@ -90,6 +90,8 @@ pub trait Drop {
 /// ```rust
 /// struct Foo;
 ///
+/// impl Copy for Foo {}
+///
 /// impl Add<Foo, Foo> for Foo {
 ///     fn add(&self, _rhs: &Foo) -> Foo {
 ///       println!("Adding!");
@@ -127,6 +129,8 @@ add_impl!(uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64)
 ///
 /// ```rust
 /// struct Foo;
+///
+/// impl Copy for Foo {}
 ///
 /// impl Sub<Foo, Foo> for Foo {
 ///     fn sub(&self, _rhs: &Foo) -> Foo {
@@ -166,6 +170,8 @@ sub_impl!(uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64)
 /// ```rust
 /// struct Foo;
 ///
+/// impl Copy for Foo {}
+///
 /// impl Mul<Foo, Foo> for Foo {
 ///     fn mul(&self, _rhs: &Foo) -> Foo {
 ///         println!("Multiplying!");
@@ -204,6 +210,8 @@ mul_impl!(uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64)
 /// ```
 /// struct Foo;
 ///
+/// impl Copy for Foo {}
+///
 /// impl Div<Foo, Foo> for Foo {
 ///     fn div(&self, _rhs: &Foo) -> Foo {
 ///         println!("Dividing!");
@@ -241,6 +249,8 @@ div_impl!(uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64)
 ///
 /// ```
 /// struct Foo;
+///
+/// impl Copy for Foo {}
 ///
 /// impl Rem<Foo, Foo> for Foo {
 ///     fn rem(&self, _rhs: &Foo) -> Foo {
@@ -293,6 +303,8 @@ rem_float_impl!(f64, fmod)
 ///
 /// ```
 /// struct Foo;
+///
+/// impl Copy for Foo {}
 ///
 /// impl Neg<Foo> for Foo {
 ///     fn neg(&self) -> Foo {
@@ -348,6 +360,8 @@ neg_uint_impl!(u64, i64)
 /// ```
 /// struct Foo;
 ///
+/// impl Copy for Foo {}
+///
 /// impl Not<Foo> for Foo {
 ///     fn not(&self) -> Foo {
 ///         println!("Not-ing!");
@@ -387,6 +401,8 @@ not_impl!(bool uint u8 u16 u32 u64 int i8 i16 i32 i64)
 /// ```
 /// struct Foo;
 ///
+/// impl Copy for Foo {}
+///
 /// impl BitAnd<Foo, Foo> for Foo {
 ///     fn bitand(&self, _rhs: &Foo) -> Foo {
 ///         println!("Bitwise And-ing!");
@@ -424,6 +440,8 @@ bitand_impl!(bool uint u8 u16 u32 u64 int i8 i16 i32 i64)
 ///
 /// ```
 /// struct Foo;
+///
+/// impl Copy for Foo {}
 ///
 /// impl BitOr<Foo, Foo> for Foo {
 ///     fn bitor(&self, _rhs: &Foo) -> Foo {
@@ -463,6 +481,8 @@ bitor_impl!(bool uint u8 u16 u32 u64 int i8 i16 i32 i64)
 /// ```
 /// struct Foo;
 ///
+/// impl Copy for Foo {}
+///
 /// impl BitXor<Foo, Foo> for Foo {
 ///     fn bitxor(&self, _rhs: &Foo) -> Foo {
 ///         println!("Bitwise Xor-ing!");
@@ -500,6 +520,8 @@ bitxor_impl!(bool uint u8 u16 u32 u64 int i8 i16 i32 i64)
 ///
 /// ```
 /// struct Foo;
+///
+/// impl Copy for Foo {}
 ///
 /// impl Shl<Foo, Foo> for Foo {
 ///     fn shl(&self, _rhs: &Foo) -> Foo {
@@ -541,6 +563,8 @@ shl_impl!(uint u8 u16 u32 u64 int i8 i16 i32 i64)
 /// ```
 /// struct Foo;
 ///
+/// impl Copy for Foo {}
+///
 /// impl Shr<Foo, Foo> for Foo {
 ///     fn shr(&self, _rhs: &Foo) -> Foo {
 ///         println!("Shifting right!");
@@ -580,6 +604,8 @@ shr_impl!(uint u8 u16 u32 u64 int i8 i16 i32 i64)
 /// ```
 /// struct Foo;
 ///
+/// impl Copy for Foo {}
+///
 /// impl Index<Foo, Foo> for Foo {
 ///     fn index<'a>(&'a self, _index: &Foo) -> &'a Foo {
 ///         println!("Indexing!");
@@ -608,6 +634,8 @@ pub trait Index<Sized? Index, Sized? Result> for Sized? {
 /// ```
 /// struct Foo;
 ///
+/// impl Copy for Foo {}
+///
 /// impl IndexMut<Foo, Foo> for Foo {
 ///     fn index_mut<'a>(&'a mut self, _index: &Foo) -> &'a mut Foo {
 ///         println!("Indexing!");
@@ -635,6 +663,8 @@ pub trait IndexMut<Sized? Index, Sized? Result> for Sized? {
 ///
 /// ```ignore
 /// struct Foo;
+///
+/// impl Copy for Foo {}
 ///
 /// impl Slice<Foo, Foo> for Foo {
 ///     fn as_slice_<'a>(&'a self) -> &'a Foo {
@@ -681,6 +711,8 @@ pub trait Slice<Sized? Idx, Sized? Result> for Sized? {
 ///
 /// ```ignore
 /// struct Foo;
+///
+/// impl Copy for Foo {}
 ///
 /// impl SliceMut<Foo, Foo> for Foo {
 ///     fn as_mut_slice_<'a>(&'a mut self) -> &'a mut Foo {

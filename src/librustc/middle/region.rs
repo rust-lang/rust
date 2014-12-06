@@ -41,6 +41,8 @@ pub enum CodeExtent {
     Misc(ast::NodeId)
 }
 
+impl Copy for CodeExtent {}
+
 impl CodeExtent {
     /// Creates a scope that represents the dynamic extent associated
     /// with `node_id`.
@@ -119,6 +121,8 @@ pub struct Context {
     // Innermost enclosing expression
     parent: Option<ast::NodeId>,
 }
+
+impl Copy for Context {}
 
 struct RegionResolutionVisitor<'a> {
     sess: &'a Session,

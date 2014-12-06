@@ -10,6 +10,7 @@
 
 //! The normal and derived distributions.
 
+use core::kinds::Copy;
 use core::num::Float;
 
 use {Rng, Rand, Open01};
@@ -29,6 +30,8 @@ use distributions::{ziggurat, ziggurat_tables, Sample, IndependentSample};
 /// Samples*](http://www.doornik.com/research/ziggurat.pdf). Nuffield
 /// College, Oxford
 pub struct StandardNormal(pub f64);
+
+impl Copy for StandardNormal {}
 
 impl Rand for StandardNormal {
     fn rand<R:Rng>(rng: &mut R) -> StandardNormal {
@@ -88,6 +91,8 @@ pub struct Normal {
     std_dev: f64,
 }
 
+impl Copy for Normal {}
+
 impl Normal {
     /// Construct a new `Normal` distribution with the given mean and
     /// standard deviation.
@@ -133,6 +138,8 @@ impl IndependentSample<f64> for Normal {
 pub struct LogNormal {
     norm: Normal
 }
+
+impl Copy for LogNormal {}
 
 impl LogNormal {
     /// Construct a new `LogNormal` distribution with the given mean

@@ -99,7 +99,8 @@ impl<'a> FromIterator<Vec<&'a Pat>> for Matrix<'a> {
 }
 
 pub struct MatchCheckCtxt<'a, 'tcx: 'a> {
-    pub tcx: &'a ty::ctxt<'tcx>
+    pub tcx: &'a ty::ctxt<'tcx>,
+    pub param_env: ParameterEnvironment<'tcx>,
 }
 
 #[deriving(Clone, PartialEq)]
@@ -131,6 +132,8 @@ enum WitnessPreference {
     LeaveOutWitness
 }
 
+impl Copy for WitnessPreference {}
+
 impl<'a, 'tcx, 'v> Visitor<'v> for MatchCheckCtxt<'a, 'tcx> {
     fn visit_expr(&mut self, ex: &ast::Expr) {
         check_expr(self, ex);
@@ -145,7 +148,10 @@ impl<'a, 'tcx, 'v> Visitor<'v> for MatchCheckCtxt<'a, 'tcx> {
 }
 
 pub fn check_crate(tcx: &ty::ctxt) {
-    visit::walk_crate(&mut MatchCheckCtxt { tcx: tcx }, tcx.map.krate());
+    visit::walk_crate(&mut MatchCheckCtxt {
+        tcx: tcx,
+        param_env: ty::empty_parameter_environment(),
+    }, tcx.map.krate());
     tcx.sess.abort_if_errors();
 }
 
@@ -954,8 +960,14 @@ fn check_fn(cx: &mut MatchCheckCtxt,
             decl: &ast::FnDecl,
             body: &ast::Block,
             sp: Span,
-            _: NodeId) {
+            fn_id: NodeId) {
+    match kind {
+        visit::FkFnBlock => {}
+        _ => cx.param_env = ParameterEnvironment::for_item(cx.tcx, fn_id),
+    }
+
     visit::walk_fn(cx, kind, decl, body, sp);
+
     for input in decl.inputs.iter() {
         is_refutable(cx, &*input.pat, |pat| {
             span_err!(cx.tcx.sess, input.pat.span, E0006,
@@ -1020,7 +1032,9 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
                 match p.node {
                     ast::PatIdent(ast::BindByValue(_), _, ref sub) => {
                         let pat_ty = ty::node_id_to_type(tcx, p.id);
-                        if ty::type_moves_by_default(tcx, pat_ty) {
+                        if ty::type_moves_by_default(tcx,
+                                                      pat_ty,
+                                                      &cx.param_env) {
                             check_move(p, sub.as_ref().map(|p| &**p));
                         }
                     }
@@ -1048,7 +1062,9 @@ fn check_for_mutation_in_guard<'a, 'tcx>(cx: &'a MatchCheckCtxt<'a, 'tcx>,
     let mut checker = MutationChecker {
         cx: cx,
     };
-    let mut visitor = ExprUseVisitor::new(&mut checker, checker.cx.tcx);
+    let mut visitor = ExprUseVisitor::new(&mut checker,
+                                          checker.cx.tcx,
+                                          cx.param_env.clone());
     visitor.walk_expr(guard);
 }
 

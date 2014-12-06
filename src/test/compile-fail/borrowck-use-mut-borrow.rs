@@ -9,6 +9,9 @@
 // except according to those terms.
 
 struct A { a: int, b: int }
+
+impl Copy for A {}
+
 struct B { a: int, b: Box<int> }
 
 fn var_copy_after_var_borrow() {

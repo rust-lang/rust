@@ -47,13 +47,16 @@ enum Mode {
     InNothing,
 }
 
+impl Copy for Mode {}
+
 struct CheckStaticVisitor<'a, 'tcx: 'a> {
     tcx: &'a ty::ctxt<'tcx>,
     mode: Mode,
     checker: &'a mut GlobalChecker,
 }
 
-struct GlobalVisitor<'a, 'b, 'tcx: 'b>(euv::ExprUseVisitor<'a, 'b, 'tcx, ty::ctxt<'tcx>>);
+struct GlobalVisitor<'a,'b,'tcx:'a+'b>(
+    euv::ExprUseVisitor<'a,'b,'tcx,ty::ctxt<'tcx>>);
 struct GlobalChecker {
     static_consumptions: NodeSet,
     const_borrows: NodeSet,
@@ -69,7 +72,8 @@ pub fn check_crate(tcx: &ty::ctxt) {
         static_local_borrows: NodeSet::new(),
     };
     {
-        let visitor = euv::ExprUseVisitor::new(&mut checker, tcx);
+        let param_env = ty::empty_parameter_environment();
+        let visitor = euv::ExprUseVisitor::new(&mut checker, tcx, param_env);
         visit::walk_crate(&mut GlobalVisitor(visitor), tcx.map.krate());
     }
     visit::walk_crate(&mut CheckStaticVisitor {
@@ -242,7 +246,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckStaticVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'b, 't, 'v> Visitor<'v> for GlobalVisitor<'a, 'b, 't> {
+impl<'a,'b,'t,'v> Visitor<'v> for GlobalVisitor<'a,'b,'t> {
     fn visit_item(&mut self, item: &ast::Item) {
         match item.node {
             ast::ItemConst(_, ref e) |

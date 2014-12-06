@@ -61,6 +61,8 @@ pub enum DefIdSource {
     // Identifies an unboxed closure
     UnboxedClosureSource
 }
+
+impl Copy for DefIdSource {}
 pub type conv_did<'a> =
     |source: DefIdSource, ast::DefId|: 'a -> ast::DefId;
 
