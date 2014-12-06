@@ -366,6 +366,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
             infer::MatchExpressionArm(_, _) => "match arms have incompatible types",
             infer::IfExpression(_) => "if and else have incompatible types",
             infer::IfExpressionWithNoElse(_) => "if may be missing an else clause",
+            infer::EquatePredicate(_) => "equality predicate not satisfied",
         };
 
         self.tcx.sess.span_err(
@@ -1522,6 +1523,9 @@ impl<'a, 'tcx> ErrorReportingHelpers<'tcx> for InferCtxt<'a, 'tcx> {
                     }
                     infer::IfExpressionWithNoElse(_) => {
                         format!("if may be missing an else clause")
+                    }
+                    infer::EquatePredicate(_) => {
+                        format!("equality where clause is satisfied")
                     }
                 };
 

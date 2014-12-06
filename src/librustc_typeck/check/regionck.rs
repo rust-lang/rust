@@ -358,8 +358,8 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
             debug!("visit_region_obligations: r_o={}",
                    r_o.repr(self.tcx()));
             let sup_type = self.resolve_type(r_o.sup_type);
-            type_must_outlive(self, r_o.origin.clone(),
-                              sup_type, r_o.sub_region);
+            let origin = infer::RelateRegionParamBound(r_o.cause.span);
+            type_must_outlive(self, origin, sup_type, r_o.sub_region);
         }
     }
 

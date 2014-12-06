@@ -31,9 +31,10 @@ pub use self::select::SelectionCache;
 pub use self::select::{MethodMatchResult, MethodMatched, MethodAmbiguous, MethodDidNotMatch};
 pub use self::select::{MethodMatchedData}; // intentionally don't export variants
 pub use self::util::supertraits;
-pub use self::util::transitive_bounds;
 pub use self::util::Supertraits;
 pub use self::util::search_trait_and_supertraits_from_bound;
+pub use self::util::transitive_bounds;
+pub use self::util::trait_ref_for_builtin_bound;
 
 mod coherence;
 mod fulfill;
@@ -61,7 +62,7 @@ pub struct ObligationCause<'tcx> {
     pub span: Span,
 
     // the id of XXX
-    pub scope_id: ast::NodeId,
+    pub body_id: ast::NodeId,
 
     pub code: ObligationCauseCode<'tcx>
 }
@@ -307,8 +308,8 @@ impl<'tcx,O> Obligation<'tcx,O> {
                      trait_ref: trait_ref }
     }
 
-    pub fn misc(span: Span, scope_id: ast::NodeId, trait_ref: O) -> Obligation<'tcx, O> {
-        Obligation::new(ObligationCause::misc(span, scope_id), trait_ref)
+    pub fn misc(span: Span, body_id: ast::NodeId, trait_ref: O) -> Obligation<'tcx, O> {
+        Obligation::new(ObligationCause::misc(span, body_id), trait_ref)
     }
 }
 
@@ -320,18 +321,18 @@ impl<'tcx> Obligation<'tcx,Rc<ty::TraitRef<'tcx>>> {
 
 impl<'tcx> ObligationCause<'tcx> {
     pub fn new(span: Span,
-               scope_id: ast::NodeId,
+               body_id: ast::NodeId,
                code: ObligationCauseCode<'tcx>)
                -> ObligationCause<'tcx> {
-        ObligationCause { span: span, scope_id: scope_id, code: code }
+        ObligationCause { span: span, body_id: body_id, code: code }
     }
 
-    pub fn misc(span: Span, scope_id: ast::NodeId) -> ObligationCause<'tcx> {
-        ObligationCause { span: span, scope_id: scope_id, code: MiscObligation }
+    pub fn misc(span: Span, body_id: ast::NodeId) -> ObligationCause<'tcx> {
+        ObligationCause { span: span, body_id: body_id, code: MiscObligation }
     }
 
     pub fn dummy() -> ObligationCause<'tcx> {
-        ObligationCause { span: DUMMY_SP, scope_id: 0, code: MiscObligation }
+        ObligationCause { span: DUMMY_SP, body_id: 0, code: MiscObligation }
     }
 }
 

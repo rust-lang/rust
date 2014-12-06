@@ -42,6 +42,7 @@ use middle::region;
 use middle::resolve_lifetime;
 use middle::subst;
 use middle::subst::{Substs};
+use middle::traits;
 use middle::ty::{ImplContainer, ImplOrTraitItemContainer, TraitContainer};
 use middle::ty::{Polytype};
 use middle::ty::{mod, Ty};
@@ -49,6 +50,7 @@ use middle::ty_fold::TypeFolder;
 use middle::infer;
 use rscope::*;
 use {CrateCtxt, lookup_def_tcx, no_params, write_ty_to_tcx};
+use util::common::ErrorReported;
 use util::nodemap::{FnvHashMap, FnvHashSet};
 use util::ppaux;
 use util::ppaux::{Repr,UserString};
@@ -1806,6 +1808,10 @@ fn ty_generics<'tcx,AC>(this: &AC,
         result.types.push(space, (*associated_type_param).clone());
     }
 
+    // Just for fun, also push the bounds from the type parameters
+    // into the predicates list. This is currently kind of non-DRY.
+    create_predicates(this.tcx(), &mut result, space);
+
     return result;
 
     fn create_type_parameters_for_associated_types<'tcx, AC>(
@@ -1889,6 +1895,33 @@ fn ty_generics<'tcx,AC>(this: &AC,
                     associated_types_generics.types.push(space, def);
                     index += 1;
                 }
+            }
+        }
+    }
+
+    fn create_predicates<'tcx>(
+        tcx: &ty::ctxt<'tcx>,
+        result: &mut ty::Generics<'tcx>,
+        space: subst::ParamSpace)
+    {
+        for (index, type_param_def) in result.types.get_slice(space).iter().enumerate() {
+            let param_ty = ty::mk_param(tcx, space, index, type_param_def.def_id);
+
+            for builtin_bound in type_param_def.bounds.builtin_bounds.iter() {
+                match traits::trait_ref_for_builtin_bound(tcx, builtin_bound, param_ty) {
+                    Ok(trait_ref) => {
+                        result.predicates.push(space, ty::Predicate::Trait(trait_ref));
+                    }
+                    Err(ErrorReported) => { }
+                }
+            }
+
+            for &region_bound in type_param_def.bounds.region_bounds.iter() {
+                result.predicates.push(space, ty::Predicate::TypeOutlives(param_ty, region_bound));
+            }
+
+            for bound_trait_ref in type_param_def.bounds.trait_bounds.iter() {
+                result.predicates.push(space, ty::Predicate::Trait((*bound_trait_ref).clone()));
             }
         }
     }
