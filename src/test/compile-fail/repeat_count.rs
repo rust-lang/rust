@@ -21,7 +21,7 @@ fn main() {
     let d = [0, ..0.5]; //~ ERROR expected positive integer for repeat count, found float
     //~^ ERROR: expected `uint`, found `_`
     let e = [0, .."foo"]; //~ ERROR expected positive integer for repeat count, found string
-    //~^ ERROR: expected `uint`, found `&'static str`
+    //~^ ERROR: expected `uint`, found `&'static core::str::str`
     let f = [0, ..-4];
     //~^ ERROR expected positive integer for repeat count, found negative integer
     let f = [0u, ..-1];

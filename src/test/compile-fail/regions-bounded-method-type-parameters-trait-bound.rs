@@ -18,6 +18,9 @@
 #[lang="sized"]
 trait Sized { }
 
+#[lang = "str"]
+struct str([u8]);
+
 struct Inv<'a> { // invariant w/r/t 'a
     x: &'a mut &'a int
 }

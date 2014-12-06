@@ -15,6 +15,6 @@ pub fn foo(params: Option<&[&str]>) -> uint {
 fn main() {
     let name = "Foo";
     let msg = foo(Some(&[name.as_slice()]));
-//~^ ERROR mismatched types: expected `core::option::Option<&[&str]>`
+//~^ ERROR mismatched types: expected `core::option::Option<&[&core::str::str]>`
     assert_eq!(msg, 3);
 }

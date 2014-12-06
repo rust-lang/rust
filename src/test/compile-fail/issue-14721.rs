@@ -10,6 +10,6 @@
 
 fn main() {
     let foo = "str";
-    println!("{}", foo.desc); //~ ERROR attempted access of field `desc` on type `&str`,
+    println!("{}", foo.desc); //~ ERROR attempted access of field `desc` on type `&core::str::str`,
                               //        but no field with that name was found
 }

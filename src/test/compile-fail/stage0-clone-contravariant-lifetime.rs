@@ -23,6 +23,9 @@ pub trait Sized for Sized? {
     // Empty.
 }
 
+#[lang = "str"]
+struct str([u8]);
+
 pub mod std {
     pub mod clone {
         pub trait Clone {

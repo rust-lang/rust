@@ -25,12 +25,12 @@ fn test2<Sized? T: Foo>(t: &T) {
 
 fn test3() {
     let _: &[&Foo] = &["hi"];
-    //~^ ERROR `core::kinds::Sized` is not implemented for the type `str`
+    //~^ ERROR `core::kinds::Sized` is not implemented for the type `core::str::str`
 }
 
 fn test4() {
     let _: &Foo = "hi" as &Foo;
-    //~^ ERROR `core::kinds::Sized` is not implemented for the type `str`
+    //~^ ERROR `core::kinds::Sized` is not implemented for the type `core::str::str`
 }
 
 fn main() { }
