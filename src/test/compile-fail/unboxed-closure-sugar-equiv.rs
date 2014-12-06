@@ -44,9 +44,9 @@ fn test<'a,'b>() {
     eq::< for<'a,'b> Foo<(&'a int,&'b uint),uint>,
           Foo(&int,&uint) -> uint                             >();
 
-    // FIXME(#18992) Test lifetime elision in `()` form:
-    // eq::< for<'a,'b> Foo<(&'a int,), &'a int>,
-    //      Foo(&int) -> &int                                   >();
+    // lifetime elision
+    eq::< for<'a,'b> Foo<(&'a int,), &'a int>,
+          Foo(&int) -> &int                                   >();
 
     // Errors expected:
     eq::< Foo<(),()>,                   Foo(char)                     >();
