@@ -374,7 +374,7 @@ Test Attributes:
     #[should_fail] - This function (also labeled with #[test]) will only pass if
                      the code causes a failure (an assertion failure or panic!)
                      A message may be provided, which the failure string must
-                     contain: #[should_fail(message = "foo")].
+                     contain: #[should_fail(expected = "foo")].
     #[ignore]      - When applied to a function which is already attributed as a
                      test, then the test runner will ignore these tests during
                      normal test runs. Running with --ignored will run these

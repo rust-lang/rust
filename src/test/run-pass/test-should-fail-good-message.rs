@@ -12,13 +12,13 @@
 // ignore-pretty: does not work well with `--test`
 
 #[test]
-#[should_fail(message = "foo")]
+#[should_fail(expected = "foo")]
 fn test_foo() {
     panic!("foo bar")
 }
 
 #[test]
-#[should_fail(message = "foo")]
+#[should_fail(expected = "foo")]
 fn test_foo_dynamic() {
     panic!("{} bar", "foo")
 }

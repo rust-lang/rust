@@ -369,7 +369,7 @@ fn should_fail(i: &ast::Item) -> ShouldFail {
     match i.attrs.iter().find(|attr| attr.check_name("should_fail")) {
         Some(attr) => {
             let msg = attr.meta_item_list()
-                .and_then(|list| list.iter().find(|mi| mi.check_name("message")))
+                .and_then(|list| list.iter().find(|mi| mi.check_name("expected")))
                 .and_then(|mi| mi.value_str());
             ShouldFail::Yes(msg)
         }
