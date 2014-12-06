@@ -633,6 +633,7 @@ mod tests {
     use prelude::*;
     use super::*;
     use char::from_u32;
+    #[cfg(stage0)]  // NOTE(stage0): Remove import after a snapshot
     use str::StrPrelude;
 
     macro_rules! v2ascii (

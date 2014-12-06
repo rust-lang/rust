@@ -445,7 +445,8 @@ static dot_dot_static: &'static [u8] = b"..";
 mod tests {
     use prelude::*;
     use super::*;
-    use str;
+    use str as str_;
+    #[cfg(stage0)]  // NOTE(stage0): Remove import after a snapshot
     use str::StrPrelude;
 
     macro_rules! t(
@@ -609,7 +610,7 @@ mod tests {
             (s: $path:expr, $op:ident, $exp:expr, opt) => (
                 {
                     let path = Path::new($path);
-                    let left = path.$op().map(|x| str::from_utf8(x).unwrap());
+                    let left = path.$op().map(|x| str_::from_utf8(x).unwrap());
                     assert!(left == $exp);
                 }
             );
