@@ -14,6 +14,7 @@ AppPublisherURL=http://www.rust-lang.org
 VersionInfoVersion={#CFG_VERSION_WIN}
 LicenseFile=LICENSE.txt
 
+PrivilegesRequired=lowest
 DisableWelcomePage=true
 DisableProgramGroupPage=true
 DisableReadyPage=true
@@ -37,8 +38,13 @@ Uninstallable=yes
 [Tasks]
 Name: modifypath; Description: &Add {app}\bin to your PATH (recommended)
 
+[Components]
+Name: rust; Description: "Rust compiler and standard crates"; Types: full compact custom; Flags: fixed
+Name: gcc; Description: "Linker and platform libraries"; Types: full
+
 [Files]
-Source: "tmp/dist/win/*.*" ; DestDir: "{app}"; Flags: ignoreversion recursesubdirs
+Source: "tmp/dist/win/rust/*.*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs; Components: rust
+Source: "tmp/dist/win/gcc/*.*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs; Components: gcc
 
 [Code]
 const
