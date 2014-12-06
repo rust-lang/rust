@@ -13,7 +13,7 @@ use std::dynamic_lib::DynamicLibrary;
 use std::io::{Command, TempDir};
 use std::io;
 use std::os;
-use std::str;
+use std::str as str_;
 use std::string::String;
 
 use std::collections::{HashSet, HashMap};
@@ -198,7 +198,7 @@ fn runtest(test: &str, cratename: &str, libs: Vec<Path>, externs: core::Externs,
                 panic!("test executable succeeded when it should have failed");
             } else if !should_fail && !out.status.success() {
                 panic!("test executable failed:\n{}",
-                      str::from_utf8(out.error.as_slice()));
+                      str_::from_utf8(out.error.as_slice()));
             }
         }
     }
