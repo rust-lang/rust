@@ -1160,6 +1160,55 @@ Where a `StringResult` is either an `StringOK`, with the result of a computation
 `ErrorReason` with a `String` explaining what caused the computation to fail. These kinds of
 `enum`s are actually very useful and are even part of the standard library.
 
+Enum variants are namespaced under the enum names. For example, here is an example of using
+our `StringResult`:
+
+```rust
+# enum StringResult {
+#     StringOK(String),
+#     ErrorReason(String),
+# }
+fn respond(greeting: &str) -> StringResult {
+    if greeting == "Hello" {
+        StringResult::StringOK("Good morning!".to_string())
+    } else {
+        StringResult::ErrorReason("I didn't understand you!".to_string())
+    }
+}
+```
+
+Notice that we need both the enum name and the variant name: `StringResult::StringOK`, but
+we didn't need to with `Ordering`, we just said `Greater` rather than `Ordering::Greater`.
+There's a reason: the Rust prelude imports the variants of `Ordering` as well as the enum
+itself. We can use the `use` keyword to do something similar with `StringResult`:
+
+```rust
+use StringResult::StringOK;
+use StringResult::ErrorReason;
+
+enum StringResult {
+    StringOK(String),
+    ErrorReason(String),
+}
+
+# fn main() {}
+
+fn respond(greeting: &str) -> StringResult {
+    if greeting == "Hello" {
+        StringOK("Good morning!".to_string())
+    } else {
+        ErrorReason("I didn't understand you!".to_string())
+    }
+}
+```
+
+We'll learn more about `use` later, but it's used to bring names into scope. `use` declarations
+must come before anything else, which looks a little strange in this example, since we `use`
+the variants before we define them. Anyway, in the body of `respond`, we can just say `StringOK`
+now, rather than the full `StringResult::StringOK`. Importing variants can be convenient, but can
+also cause name conflicts, so do this with caution. It's considered good style to rarely import
+variants for this reason.
+
 As you can see `enum`s with values are quite a powerful tool for data representation,
 and can be even more useful when they're generic across types. But before we get to
 generics, let's talk about how to use them with pattern matching, a tool that will
