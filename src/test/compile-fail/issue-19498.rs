@@ -8,8 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate core;
-use core;
-//~^ ERROR import `core` conflicts with imported crate in this module
+use self::A; //~ ERROR import `A` conflicts with existing submodule
+use self::B; //~ ERROR import `B` conflicts with existing submodule
+mod A {}
+pub mod B {}
+
+mod C {
+    use C::D; //~ ERROR import `D` conflicts with existing submodule
+    mod D {}
+}
 
 fn main() {}
