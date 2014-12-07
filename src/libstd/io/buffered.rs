@@ -408,6 +408,7 @@ mod test {
     use super::super::{IoResult, EndOfFile};
     use super::super::mem::MemReader;
     use self::test::Bencher;
+    #[cfg(stage0)]  // NOTE(stage0): Remove import after a snapshot
     use str::StrPrelude;
 
     /// A type, free to create, primarily intended for benchmarking creation of

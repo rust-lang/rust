@@ -16,6 +16,9 @@
 #[lang="sized"]
 pub trait Sized {}
 
+#[lang = "str"]
+struct str([u8]);
+
 struct S<T> {
     contents: T,
 }

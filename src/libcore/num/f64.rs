@@ -21,6 +21,8 @@ use mem;
 use num::{Float, FPNormal, FPCategory, FPZero, FPSubnormal, FPInfinite, FPNaN};
 use num::from_str_radix;
 use option::Option;
+#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
+use str::str;
 
 // FIXME(#5527): These constants should be deprecated once associated
 // constants are implemented in favour of referencing the respective

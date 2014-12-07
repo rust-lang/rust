@@ -75,9 +75,6 @@ pub fn ast_ty_to_prim_ty<'tcx>(tcx: &ty::ctxt<'tcx>, ast_ty: &ast::Ty)
                             check_path_args(tcx, path, NO_TPS | NO_REGIONS);
                             Some(ty::mk_mach_float(ft))
                         }
-                        ast::TyStr => {
-                            Some(ty::mk_str(tcx))
-                        }
                     }
                 }
                 _ => None

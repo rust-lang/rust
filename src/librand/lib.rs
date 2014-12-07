@@ -488,6 +488,8 @@ pub struct Closed01<F>(pub F);
 #[cfg(not(test))]
 mod std {
     pub use core::{option, fmt}; // panic!()
+    #[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
+    pub use core::str;
 }
 
 #[cfg(test)]

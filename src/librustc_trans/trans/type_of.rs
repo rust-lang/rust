@@ -243,7 +243,7 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
             cx.sess().bug(format!("fictitious type {} in sizing_type_of()",
                                   ppaux::ty_to_string(cx.tcx(), t)).as_slice())
         }
-        ty::ty_vec(_, None) | ty::ty_trait(..) | ty::ty_str => panic!("unreachable")
+        ty::ty_vec(_, None) | ty::ty_trait(..) => panic!("unreachable")
     };
 
     cx.llsizingtypes().borrow_mut().insert(t, llsizingty);
@@ -270,7 +270,8 @@ pub fn type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
         }
 
         match ty::unsized_part_of_type(cx.tcx(), t).sty {
-            ty::ty_str | ty::ty_vec(..) => Type::uint_from_ty(cx, ast::TyU),
+            ty::ty_vec(..) => Type::uint_from_ty(cx, ast::TyU),
+            ty::ty_struct(did, _) if ty::is_str(cx.tcx(), did) => Type::uint_from_ty(cx, ast::TyU),
             ty::ty_trait(_) => Type::vtable_ptr(cx),
             _ => panic!("Unexpected type returned from unsized_part_of_type : {}",
                        t.repr(cx.tcx()))
@@ -334,7 +335,7 @@ pub fn type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
 
       ty::ty_uniq(ty) | ty::ty_rptr(_, ty::mt{ty, ..}) | ty::ty_ptr(ty::mt{ty, ..}) => {
           match ty.sty {
-              ty::ty_str => {
+              ty::ty_struct(did, _) if ty::is_str(cx.tcx(), did) => {
                   // This means we get a nicer name in the output (str is always
                   // unsized).
                   cx.tn().find_type("str_slice").unwrap()
@@ -362,7 +363,7 @@ pub fn type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
           Type::opaque_trait_data(cx)
       }
 
-      ty::ty_str => Type::i8(cx),
+      ty::ty_struct(did, _) if ty::is_str(cx.tcx(), did) => Type::i8(cx),
 
       ty::ty_bare_fn(_) => {
           type_of_fn_from_ty(cx, t).ptr_to()
@@ -394,16 +395,16 @@ pub fn type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
       }
 
       ty::ty_open(t) => match t.sty {
+          ty::ty_struct(did, _) if ty::is_str(cx.tcx(), did) => {
+              let p_ty = Type::i8p(cx);
+              Type::struct_(cx, &[p_ty, type_of_unsize_info(cx, t)], false)
+          }
           ty::ty_struct(..) => {
               let p_ty = type_of(cx, t).ptr_to();
               Type::struct_(cx, &[p_ty, type_of_unsize_info(cx, t)], false)
           }
           ty::ty_vec(ty, None) => {
               let p_ty = type_of(cx, ty).ptr_to();
-              Type::struct_(cx, &[p_ty, type_of_unsize_info(cx, t)], false)
-          }
-          ty::ty_str => {
-              let p_ty = Type::i8p(cx);
               Type::struct_(cx, &[p_ty, type_of_unsize_info(cx, t)], false)
           }
           ty::ty_trait(..) => Type::opaque_trait(cx),

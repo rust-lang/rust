@@ -10,9 +10,9 @@
 
 static a: &'static str = "foo";
 static b: *const u8 = a as *const u8;
-//~^ ERROR mismatched types: expected `*const u8`, found `&'static str`
+//~^ ERROR mismatched types: expected `*const u8`, found `&'static core::str::str`
 static c: *const u8 = &a as *const u8;
-//~^ ERROR mismatched types: expected `*const u8`, found `&&'static str`
+//~^ ERROR mismatched types: expected `*const u8`, found `&&'static core::str::str`
 
 fn main() {
 }

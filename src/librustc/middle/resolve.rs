@@ -65,7 +65,7 @@ use syntax::ast::{StructVariantKind, TraitRef, TraitTyParamBound};
 use syntax::ast::{TupleVariantKind, Ty, TyBool, TyChar, TyClosure, TyF32};
 use syntax::ast::{TyF64, TyFloat, TyI, TyI8, TyI16, TyI32, TyI64, TyInt, TyObjectSum};
 use syntax::ast::{TyParam, TyParamBound, TyPath, TyPtr, TyPolyTraitRef, TyProc, TyQPath};
-use syntax::ast::{TyRptr, TyStr, TyU, TyU8, TyU16, TyU32, TyU64, TyUint};
+use syntax::ast::{TyRptr, TyU, TyU8, TyU16, TyU32, TyU64, TyUint};
 use syntax::ast::{TypeImplItem, UnnamedField};
 use syntax::ast::{Variant, ViewItem, ViewItemExternCrate};
 use syntax::ast::{ViewItemUse, ViewPathGlob, ViewPathList, ViewPathSimple};
@@ -869,7 +869,6 @@ impl PrimitiveTypeTable {
         table.intern("i16",     TyInt(TyI16));
         table.intern("i32",     TyInt(TyI32));
         table.intern("i64",     TyInt(TyI64));
-        table.intern("str",     TyStr);
         table.intern("uint",    TyUint(TyU));
         table.intern("u8",      TyUint(TyU8));
         table.intern("u16",     TyUint(TyU16));

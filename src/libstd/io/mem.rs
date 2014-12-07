@@ -404,6 +404,7 @@ mod test {
     use io::*;
     use io;
     use self::test::Bencher;
+    #[cfg(stage0)]  // NOTE(stage0): Remove import after a snapshot
     use str::StrPrelude;
 
     #[test]

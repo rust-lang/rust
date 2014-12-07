@@ -567,7 +567,7 @@ pub extern fn dot_product(a: *const u32, a_len: u32,
 
 #[lang = "panic_fmt"]
 extern fn panic_fmt(args: &core::fmt::Arguments,
-                       file: &str,
+                       file: &core::str::str,
                        line: uint) -> ! {
     loop {}
 }

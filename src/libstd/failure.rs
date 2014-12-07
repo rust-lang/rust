@@ -13,6 +13,8 @@
 use alloc::boxed::Box;
 use any::{Any, AnyRefExt};
 use cell::RefCell;
+#[cfg(not(stage0))] // NOTE(stage0): Remove cfg after a snapshot
+use core::str::str;
 use fmt;
 use io::{Writer, IoResult};
 use kinds::Send;

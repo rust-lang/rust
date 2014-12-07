@@ -115,4 +115,6 @@ mod std {
     pub use core::clone;    // deriving(Clone)
     pub use core::cmp;      // deriving(Eq, Ord, etc.)
     pub use hash;           // deriving(Hash)
+    #[cfg(not(stage0))] // NOTE(stage0): Remove cfg after a snapshot
+    pub use core::str;
 }

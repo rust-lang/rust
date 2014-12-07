@@ -10,6 +10,8 @@
 
 //! Temporary files and directories
 
+#[cfg(not(stage0))] // NOTE(stage0): Remove cfg after a snapshot
+use core::str::str;
 use io::{fs, IoResult};
 use io;
 use libc;

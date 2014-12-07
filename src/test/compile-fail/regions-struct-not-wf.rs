@@ -12,6 +12,10 @@
 
 #![no_std]
 #![allow(dead_code)]
+#![feature(lang_items)]
+
+#[lang = "str"]
+struct str([u8]);
 
 struct Ref<'a, T> { //~ ERROR the parameter type `T` may not live long enough
     field: &'a T

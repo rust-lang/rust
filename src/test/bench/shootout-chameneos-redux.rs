@@ -56,12 +56,12 @@ fn print_complements() {
 enum Color { Red, Yellow, Blue }
 impl fmt::Show for Color {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let str = match *self {
+        let s = match *self {
             Red => "red",
             Yellow => "yellow",
             Blue => "blue",
         };
-        write!(f, "{}", str)
+        write!(f, "{}", s)
     }
 }
 

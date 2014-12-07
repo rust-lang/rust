@@ -14,6 +14,9 @@
 #[lang="sized"]
 pub trait Sized {}
 
+#[lang = "str"]
+struct str([u8]);
+
 mod bar {
     // shouldn't bring in too much
     pub use self::glob::*;

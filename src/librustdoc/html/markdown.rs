@@ -32,7 +32,7 @@ use std::ascii::AsciiExt;
 use std::cell::{RefCell, Cell};
 use std::fmt;
 use std::slice;
-use std::str;
+use std::str as str_;
 use std::collections::HashMap;
 
 use html::toc::TocBuilder;
@@ -166,14 +166,14 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
             let my_opaque: &MyOpaque = &*((*opaque).opaque as *const MyOpaque);
             let text = slice::from_raw_buf(&(*orig_text).data,
                                            (*orig_text).size as uint);
-            let origtext = str::from_utf8(text).unwrap();
+            let origtext = str_::from_utf8(text).unwrap();
             debug!("docblock: ==============\n{}\n=======", text);
             let rendered = if lang.is_null() {
                 false
             } else {
                 let rlang = slice::from_raw_buf(&(*lang).data,
                                                 (*lang).size as uint);
-                let rlang = str::from_utf8(rlang).unwrap();
+                let rlang = str_::from_utf8(rlang).unwrap();
                 if LangString::parse(rlang).notrust {
                     (my_opaque.dfltblk)(ob, orig_text, lang,
                                         opaque as *mut libc::c_void);
@@ -317,14 +317,14 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
             } else {
                 let lang = slice::from_raw_buf(&(*lang).data,
                                                (*lang).size as uint);
-                let s = str::from_utf8(lang).unwrap();
+                let s = str_::from_utf8(lang).unwrap();
                 LangString::parse(s)
             };
             if block_info.notrust { return }
             let text = slice::from_raw_buf(&(*text).data, (*text).size as uint);
             let opaque = opaque as *mut hoedown_html_renderer_state;
             let tests = &mut *((*opaque).opaque as *mut ::test::Collector);
-            let text = str::from_utf8(text).unwrap();
+            let text = str_::from_utf8(text).unwrap();
             let lines = text.lines().map(|l| {
                 stripped_filtered_line(l).unwrap_or(l)
             });
@@ -345,7 +345,7 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
                 tests.register_header("", level as u32);
             } else {
                 let text = slice::from_raw_buf(&(*text).data, (*text).size as uint);
-                let text = str::from_utf8(text).unwrap();
+                let text = str_::from_utf8(text).unwrap();
                 tests.register_header(text, level as u32);
             }
         }

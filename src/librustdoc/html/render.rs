@@ -42,7 +42,7 @@ use std::fmt;
 use std::io::fs::PathExtensions;
 use std::io::{fs, File, BufferedWriter, BufferedReader};
 use std::io;
-use std::str;
+use std::str as str_;
 use std::string::String;
 use std::sync::Arc;
 
@@ -739,7 +739,7 @@ impl<'a> SourceCollector<'a> {
                        filename.ends_with("macros>") => return Ok(()),
             Err(e) => return Err(e)
         };
-        let contents = str::from_utf8(contents.as_slice()).unwrap();
+        let contents = str_::from_utf8(contents.as_slice()).unwrap();
 
         // Remove the utf-8 BOM if any
         let contents = if contents.starts_with("\ufeff") {

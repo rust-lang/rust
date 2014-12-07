@@ -46,6 +46,7 @@ use metadata::csearch;
 use middle::const_eval;
 use middle::def;
 use middle::dependency_format;
+use middle::lang_items::StrStructLangItem;
 use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem};
 use middle::lang_items::{FnOnceTraitLangItem, TyDescStructLangItem};
 use middle::mem_categorization as mc;
@@ -1229,7 +1230,6 @@ pub enum sty<'tcx> {
     /// well.`
     ty_enum(DefId, Substs<'tcx>),
     ty_uniq(Ty<'tcx>),
-    ty_str,
     ty_vec(Ty<'tcx>, Option<uint>), // Second field is length.
     ty_ptr(mt<'tcx>),
     ty_rptr(Region, mt<'tcx>),
@@ -1994,8 +1994,7 @@ impl FlagComputation {
             &ty_char |
             &ty_int(_) |
             &ty_float(_) |
-            &ty_uint(_) |
-            &ty_str => {
+            &ty_uint(_)  => {
             }
 
             // You might think that we could just return ty_err for
@@ -2149,15 +2148,14 @@ pub fn mk_mach_float<'tcx>(tm: ast::FloatTy) -> Ty<'tcx> {
 }
 
 pub fn mk_str<'tcx>(cx: &ctxt<'tcx>) -> Ty<'tcx> {
-    mk_t(cx, ty_str)
+    match cx.lang_items.require(StrStructLangItem) {
+        Ok(did) => mk_struct(cx, did, Substs::empty()),
+        Err(err) => cx.sess.fatal(err.as_slice()),
+    }
 }
 
-pub fn mk_str_slice<'tcx>(cx: &ctxt<'tcx>, r: Region, m: ast::Mutability) -> Ty<'tcx> {
-    mk_rptr(cx, r,
-            mt {
-                ty: mk_t(cx, ty_str),
-                mutbl: m
-            })
+pub fn mk_str_slice<'tcx>(cx: &ctxt<'tcx>, r: Region) -> Ty<'tcx> {
+    mk_rptr(cx, r, mt { ty: mk_str(cx), mutbl: MutImmutable })
 }
 
 pub fn mk_enum<'tcx>(cx: &ctxt<'tcx>, did: ast::DefId, substs: Substs<'tcx>) -> Ty<'tcx> {
@@ -2302,7 +2300,7 @@ pub fn maybe_walk_ty<'tcx>(ty: Ty<'tcx>, f: |Ty<'tcx>| -> bool) {
     }
     match ty.sty {
         ty_bool | ty_char | ty_int(_) | ty_uint(_) | ty_float(_) |
-        ty_str | ty_infer(_) | ty_param(_) | ty_err => {}
+        ty_infer(_) | ty_param(_) | ty_err => {}
         ty_uniq(ty) | ty_vec(ty, _) | ty_open(ty) => maybe_walk_ty(ty, f),
         ty_ptr(ref tm) | ty_rptr(_, ref tm) => {
             maybe_walk_ty(tm.ty, f);
@@ -2390,6 +2388,13 @@ impl<'tcx> ParamBounds<'tcx> {
 
 // Type utilities
 
+pub fn is_str(cx: &ctxt, did: DefId) -> bool {
+    match cx.lang_items.require(StrStructLangItem) {
+        Ok(lang_did) => lang_did == did,
+        Err(err) => cx.sess.fatal(err.as_slice()),
+    }
+}
+
 pub fn type_is_nil(ty: Ty) -> bool {
     match ty.sty {
         ty_tup(ref tys) => tys.is_empty(),
@@ -2425,10 +2430,11 @@ pub fn type_is_self(ty: Ty) -> bool {
     }
 }
 
-fn type_is_slice(ty: Ty) -> bool {
+fn type_is_slice(cx: &ctxt, ty: Ty) -> bool {
     match ty.sty {
         ty_ptr(mt) | ty_rptr(_, mt) => match mt.ty.sty {
-            ty_vec(_, None) | ty_str => true,
+            ty_vec(_, None) => true,
+            ty_struct(did, _) if is_str(cx, did) => true,
             _ => false,
         },
         _ => false
@@ -2447,11 +2453,11 @@ pub fn type_is_vec(ty: Ty) -> bool {
     }
 }
 
-pub fn type_is_structural(ty: Ty) -> bool {
+pub fn type_is_structural(cx: &ctxt, ty: Ty) -> bool {
     match ty.sty {
       ty_struct(..) | ty_tup(_) | ty_enum(..) | ty_closure(_) |
       ty_vec(_, Some(_)) | ty_unboxed_closure(..) => true,
-      _ => type_is_slice(ty) | type_is_trait(ty)
+      _ => type_is_slice(cx, ty) | type_is_trait(ty)
     }
 }
 
@@ -2465,7 +2471,7 @@ pub fn type_is_simd(cx: &ctxt, ty: Ty) -> bool {
 pub fn sequence_element_type<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
     match ty.sty {
         ty_vec(ty, _) => ty,
-        ty_str => mk_mach_uint(ast::TyU8),
+        ty_struct(did, _) if is_str(cx, did) => mk_mach_uint(ast::TyU8),
         ty_open(ty) => sequence_element_type(cx, ty),
         _ => cx.sess.bug(format!("sequence_element_type called on non-sequence value: {}",
                                  ty_to_string(cx, ty)).as_slice()),
@@ -2826,7 +2832,7 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
 
             ty_uniq(typ) => {
                 TC::ReachesFfiUnsafe | match typ.sty {
-                    ty_str => TC::OwnsOwned,
+                    ty_struct(did, _) if is_str(cx, did) => TC::OwnsOwned,
                     _ => tc_ty(cx, typ, cache).owned_pointer(),
                 }
             }
@@ -2841,7 +2847,7 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
 
             ty_rptr(r, ref mt) => {
                 TC::ReachesFfiUnsafe | match mt.ty.sty {
-                    ty_str => borrowed_contents(r, ast::MutImmutable),
+                    ty_struct(did, _) if is_str(cx, did) => borrowed_contents(r, ast::MutImmutable),
                     ty_vec(..) => tc_ty(cx, mt.ty, cache).reference(borrowed_contents(r, mt.mutbl)),
                     _ => tc_ty(cx, mt.ty, cache).reference(borrowed_contents(r, mt.mutbl)),
                 }
@@ -2854,7 +2860,7 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
             ty_vec(ty, None) => {
                 tc_ty(cx, ty, cache) | TC::Nonsized
             }
-            ty_str => TC::Nonsized,
+            ty_struct(did, _) if is_str(cx, did) => TC::Nonsized,
 
             ty_struct(did, ref substs) => {
                 let flds = struct_fields(cx, did, substs);
@@ -3124,7 +3130,6 @@ pub fn is_instantiable<'tcx>(cx: &ctxt<'tcx>, r_ty: Ty<'tcx>) -> bool {
             ty_int(_) |
             ty_uint(_) |
             ty_float(_) |
-            ty_str |
             ty_bare_fn(_) |
             ty_closure(_) |
             ty_infer(_) |
@@ -3133,6 +3138,7 @@ pub fn is_instantiable<'tcx>(cx: &ctxt<'tcx>, r_ty: Ty<'tcx>) -> bool {
             ty_vec(_, None) => {
                 false
             }
+            ty_struct(did, _) if ty::is_str(cx, did) => false,
             ty_uniq(typ) | ty_open(typ) => {
                 type_requires(cx, seen, r_ty, typ)
             }
@@ -3464,7 +3470,8 @@ pub fn lltype_is_sized<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
 // the size of an object at runtime.
 pub fn unsized_part_of_type<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
     match ty.sty {
-        ty_str | ty_trait(..) | ty_vec(..) => ty,
+        ty_trait(..) | ty_vec(..) => ty,
+        ty_struct(did, _) if ty::is_str(cx, did) => ty,
         ty_struct(def_id, ref substs) => {
             let unsized_fields: Vec<_> = struct_fields(cx, def_id, substs).iter()
                 .map(|f| f.mt.ty).filter(|ty| !type_is_sized(cx, *ty)).collect();
@@ -3550,10 +3557,10 @@ pub fn index<'tcx>(ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
 // Returns the type of elements contained within an 'array-like' type.
 // This is exactly the same as the above, except it supports strings,
 // which can't actually be indexed.
-pub fn array_element_ty<'tcx>(ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
+pub fn array_element_ty<'tcx>(cx: &ctxt, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
     match ty.sty {
         ty_vec(ty, _) => Some(ty),
-        ty_str => Some(mk_u8()),
+        ty_struct(did, _) if is_str(cx, did) => Some(mk_u8()),
         _ => None
     }
 }
@@ -4201,9 +4208,10 @@ pub fn impl_or_trait_item_idx(id: ast::Name, trait_items: &[ImplOrTraitItem])
 pub fn ty_sort_string<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> String {
     match ty.sty {
         ty_bool | ty_char | ty_int(_) |
-        ty_uint(_) | ty_float(_) | ty_str => {
+        ty_uint(_) | ty_float(_) => {
             ::util::ppaux::ty_to_string(cx, ty)
         }
+        ty_struct(did, _) if ty::is_str(cx, did) => ::util::ppaux::ty_to_string(cx, ty),
         ty_tup(ref tys) if tys.is_empty() => ::util::ppaux::ty_to_string(cx, ty),
 
         ty_enum(id, _) => format!("enum {}", item_path_str(cx, id)),
@@ -5646,7 +5654,7 @@ pub fn hash_crate_independent(tcx: &ctxt, ty: Ty, svh: &Svh) -> u64 {
                 byte!(6);
                 hash!(f);
             }
-            ty_str => {
+            ty_struct(did, _) if is_str(tcx, did) => {
                 byte!(7);
             }
             ty_enum(d, _) => {
@@ -5988,7 +5996,6 @@ pub fn accumulate_lifetimes_in_type(accumulator: &mut Vec<ty::Region>,
             ty_uint(_) |
             ty_float(_) |
             ty_uniq(_) |
-            ty_str |
             ty_vec(_, _) |
             ty_ptr(_) |
             ty_bare_fn(_) |

@@ -73,8 +73,8 @@ impl ToBase64 for [u8] {
     /// use serialize::base64::{ToBase64, STANDARD};
     ///
     /// fn main () {
-    ///     let str = [52,32].to_base64(STANDARD);
-    ///     println!("base 64 output: {}", str);
+    ///     let s = [52,32].to_base64(STANDARD);
+    ///     println!("base 64 output: {}", s);
     /// }
     /// ```
     fn to_base64(&self, config: Config) -> String {

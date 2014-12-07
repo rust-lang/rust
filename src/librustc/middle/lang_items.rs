@@ -265,6 +265,7 @@ lets_do_this! {
     OrdTraitLangItem,                "ord",                     ord_trait;
 
     StrEqFnLangItem,                 "str_eq",                  str_eq_fn;
+    StrStructLangItem,               "str",                     str_struct;
 
     // A number of panic-related lang items. The `panic` item corresponds to
     // divide-by-zero and various panic cases with `match`. The

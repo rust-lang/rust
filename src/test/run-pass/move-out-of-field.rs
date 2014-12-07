@@ -30,6 +30,6 @@ pub fn main() {
     };
     sb.append("Hello, ");
     sb.append("World!");
-    let str = to_string(sb);
-    assert_eq!(str.as_slice(), "Hello, World!");
+    let s = to_string(sb);
+    assert_eq!(s.as_slice(), "Hello, World!");
 }

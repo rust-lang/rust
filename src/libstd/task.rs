@@ -47,6 +47,8 @@ use any::Any;
 use borrow::IntoCow;
 use boxed::Box;
 use comm::channel;
+#[cfg(not(stage0))] // NOTE(stage0): Remove cfg after a snapshot
+use core::str::str;
 use io::{Writer, stdio};
 use kinds::{Send, marker};
 use option::{None, Some, Option};

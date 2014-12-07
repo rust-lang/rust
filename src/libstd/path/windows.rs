@@ -18,6 +18,8 @@ use ascii::AsciiCast;
 use c_str::{CString, ToCStr};
 use clone::Clone;
 use cmp::{PartialEq, Eq, PartialOrd, Ord, Ordering};
+#[cfg(not(stage0))] // NOTE(stage0): Remove cfg after a snapshot
+use core::str::str;
 use hash;
 use io::Writer;
 use iter::{AdditiveIterator, DoubleEndedIteratorExt, Extend};
@@ -25,7 +27,9 @@ use iter::{Iterator, IteratorExt, Map};
 use mem;
 use option::{Option, Some, None};
 use slice::{AsSlice, SlicePrelude};
-use str::{CharSplits, FromStr, Str, StrAllocating, StrVector, StrPrelude};
+use str::{CharSplits, FromStr, Str, StrAllocating, StrVector};
+#[cfg(stage0)]  // NOTE(stage0): Remove import after a snapshot
+use str::StrPrelude;
 use string::String;
 use unicode::char::UnicodeChar;
 use vec::Vec;

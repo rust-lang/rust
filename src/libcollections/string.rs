@@ -14,6 +14,9 @@
 
 use core::prelude::*;
 
+#[cfg(stage0)]  // NOTE(stage0): Remove import after a snapshot
+use core::str::StrPrelude;
+
 use core::borrow::{Cow, IntoCow};
 use core::default::Default;
 use core::fmt;
@@ -22,11 +25,13 @@ use core::ptr;
 use core::ops;
 // FIXME: ICE's abound if you import the `Slice` type while importing `Slice` trait
 use core::raw::Slice as RawSlice;
+#[cfg(not(stage0))] // NOTE(stage0): Remove cfg after a snapshot
+use core::str::str;
 
 use hash;
 use slice::CloneSliceAllocPrelude;
-use str;
 use str::{CharRange, CowString, FromStr, StrAllocating, Owned};
+use str as str_;
 use vec::{DerefVec, Vec, as_vec};
 
 /// A growable string stored as a UTF-8 encoded buffer.
@@ -103,7 +108,7 @@ impl String {
     #[inline]
     #[unstable = "error type may change"]
     pub fn from_utf8(vec: Vec<u8>) -> Result<String, Vec<u8>> {
-        if str::is_utf8(vec.as_slice()) {
+        if str_::is_utf8(vec.as_slice()) {
             Ok(String { vec: vec })
         } else {
             Err(vec)
@@ -122,7 +127,7 @@ impl String {
     /// ```
     #[unstable = "return type may change"]
     pub fn from_utf8_lossy<'a>(v: &'a [u8]) -> CowString<'a> {
-        if str::is_utf8(v) {
+        if str_::is_utf8(v) {
             return Cow::Borrowed(unsafe { mem::transmute(v) })
         }
 
@@ -172,7 +177,7 @@ impl String {
             if byte < 128u8 {
                 // subseqidx handles this
             } else {
-                let w = str::utf8_char_width(byte);
+                let w = str_::utf8_char_width(byte);
 
                 match w {
                     2 => {
@@ -255,10 +260,10 @@ impl String {
     #[unstable = "error value in return may change"]
     pub fn from_utf16(v: &[u16]) -> Option<String> {
         let mut s = String::with_capacity(v.len());
-        for c in str::utf16_items(v) {
+        for c in str_::utf16_items(v) {
             match c {
-                str::ScalarValue(c) => s.push(c),
-                str::LoneSurrogate(_) => return None
+                str_::ScalarValue(c) => s.push(c),
+                str_::LoneSurrogate(_) => return None
             }
         }
         Some(s)
@@ -279,7 +284,7 @@ impl String {
     /// ```
     #[stable]
     pub fn from_utf16_lossy(v: &[u16]) -> String {
-        str::utf16_items(v).map(|c| c.to_char_lossy()).collect()
+        str_::utf16_items(v).map(|c| c.to_char_lossy()).collect()
     }
 
     /// Convert a vector of `char`s to a `String`.
@@ -317,7 +322,7 @@ impl String {
     /// slice is not checked to see whether it contains valid UTF-8
     #[unstable = "just renamed from `mod raw`"]
     pub unsafe fn from_raw_buf(buf: *const u8) -> String {
-        String::from_str(str::from_c_str(buf as *const i8))
+        String::from_str(str_::from_c_str(buf as *const i8))
     }
 
     /// Creates a `String` from a `*const u8` buffer of the given length.
@@ -978,8 +983,10 @@ mod tests {
     use test::Bencher;
 
     use slice::CloneSliceAllocPrelude;
-    use str::{Str, StrPrelude};
-    use str;
+    use str::Str;
+    #[cfg(stage0)]  // NOTE(stage0): Remove import after a snapshot
+    use str::StrPrelude;
+    use str as str_;
     use super::{as_string, String, ToString};
     use vec::Vec;
 
@@ -1011,11 +1018,11 @@ mod tests {
     #[test]
     fn test_from_utf8_lossy() {
         let xs = b"hello";
-        let ys: str::CowString = "hello".into_cow();
+        let ys: str_::CowString = "hello".into_cow();
         assert_eq!(String::from_utf8_lossy(xs), ys);
 
         let xs = "ศไทย中华Việt Nam".as_bytes();
-        let ys: str::CowString = "ศไทย中华Việt Nam".into_cow();
+        let ys: str_::CowString = "ศไทย中华Việt Nam".into_cow();
         assert_eq!(String::from_utf8_lossy(xs), ys);
 
         let xs = b"Hello\xC2 There\xFF Goodbye";
@@ -1095,7 +1102,7 @@ mod tests {
             let s_as_utf16 = s.as_slice().utf16_units().collect::<Vec<u16>>();
             let u_as_string = String::from_utf16(u.as_slice()).unwrap();
 
-            assert!(str::is_utf16(u.as_slice()));
+            assert!(str_::is_utf16(u.as_slice()));
             assert_eq!(s_as_utf16, u);
 
             assert_eq!(u_as_string, s);

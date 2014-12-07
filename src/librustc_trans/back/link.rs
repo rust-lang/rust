@@ -29,7 +29,7 @@ use std::io::fs::PathExtensions;
 use std::io::{fs, TempDir, Command};
 use std::io;
 use std::mem;
-use std::str;
+use std::str as str_;
 use std::string::String;
 use flate;
 use serialize::hex::ToHex;
@@ -794,7 +794,7 @@ fn link_natively(sess: &Session, trans: &CrateTranslation, dylib: bool,
                 sess.note(format!("{}", &cmd).as_slice());
                 let mut output = prog.error.clone();
                 output.push_all(prog.output.as_slice());
-                sess.note(str::from_utf8(output.as_slice()).unwrap());
+                sess.note(str_::from_utf8(output.as_slice()).unwrap());
                 sess.abort_if_errors();
             }
             debug!("linker stderr:\n{}", String::from_utf8(prog.error).unwrap());

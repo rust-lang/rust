@@ -512,9 +512,14 @@ impl<'a, 'b> Context<'a, 'b> {
         // format "string"
         let static_str_name = self.ecx.ident_of("__STATIC_FMTSTR");
         let static_lifetime = self.ecx.lifetime(self.fmtsp, self.ecx.ident_of("'static").name);
+        let str_path = self.ecx.path_global(self.fmtsp, vec![
+            self.ecx.ident_of("std"),
+            self.ecx.ident_of("str"),
+            self.ecx.ident_of("str"),
+        ]);
         let piece_ty = self.ecx.ty_rptr(
                 self.fmtsp,
-                self.ecx.ty_ident(self.fmtsp, self.ecx.ident_of("str")),
+                self.ecx.ty_path(str_path),
                 Some(static_lifetime),
                 ast::MutImmutable);
         lets.push(Context::item_static_array(self.ecx,

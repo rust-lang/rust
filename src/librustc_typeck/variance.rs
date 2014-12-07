@@ -720,7 +720,11 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
         match ty.sty {
             ty::ty_bool |
             ty::ty_char | ty::ty_int(_) | ty::ty_uint(_) |
-            ty::ty_float(_) | ty::ty_str => {
+            ty::ty_float(_) => {
+                /* leaf type -- noop */
+            }
+
+            ty::ty_struct(did, _) if ty::is_str(self.tcx(), did) => {
                 /* leaf type -- noop */
             }
 

@@ -895,9 +895,9 @@ impl NonSnakeCase {
             })
         }
 
-        fn to_snake_case(str: &str) -> String {
+        fn to_snake_case(s: &str) -> String {
             let mut words = vec![];
-            for s in str.split('_') {
+            for s in s.split('_') {
                 let mut last_upper = false;
                 let mut buf = String::new();
                 if s.is_empty() { continue; }

@@ -31,7 +31,11 @@ use mem::size_of;
 use ops::{Add, Sub, Mul, Div, Rem, Neg};
 use ops::{Not, BitAnd, BitOr, BitXor, Shl, Shr};
 use option::{Option, Some, None};
-use str::{FromStr, from_str, StrPrelude};
+use str::{FromStr, from_str};
+#[cfg(stage0)]  // NOTE(stage0): Remove import after a snapshot
+use str::StrPrelude;
+#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
+use str::str;
 
 /// Simultaneous division and remainder
 #[inline]
@@ -1437,8 +1441,8 @@ pub trait FromStrRadix {
 
 /// A utility function that just calls FromStrRadix::from_str_radix.
 #[experimental = "might need to return Result"]
-pub fn from_str_radix<T: FromStrRadix>(str: &str, radix: uint) -> Option<T> {
-    FromStrRadix::from_str_radix(str, radix)
+pub fn from_str_radix<T: FromStrRadix>(s: &str, radix: uint) -> Option<T> {
+    FromStrRadix::from_str_radix(s, radix)
 }
 
 macro_rules! from_str_radix_float_impl {

@@ -65,10 +65,10 @@ fn main() {
 You can also get a `&str` from a stack-allocated array of bytes:
 
 ```{rust}
-use std::str;
+use std::str as str_;
 
 let x: &[u8] = &[b'a', b'b'];
-let stack_str: &str = str::from_utf8(x).unwrap();
+let stack_str: &str = str_::from_utf8(x).unwrap();
 ```
 
 # Best Practices

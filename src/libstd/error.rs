@@ -78,6 +78,8 @@
 //! }
 //! ```
 
+#[cfg(not(stage0))] // NOTE(stage0): Remove cfg after a snapshot
+use core::str::str;
 use option::{Option, None};
 use kinds::Send;
 use string::String;

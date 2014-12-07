@@ -22,7 +22,6 @@ extern crate libc;
 
 use std::io::{Process, Command, timer};
 use std::time::Duration;
-use std::str;
 
 macro_rules! succeed( ($e:expr) => (
     match $e { Ok(..) => {}, Err(e) => panic!("panic: {}", e) }
@@ -58,7 +57,6 @@ pub fn test_destroy_actually_kills(force: bool) {
     use std::io::process::{Command, ProcessOutput, ExitStatus, ExitSignal};
     use std::io::timer;
     use libc;
-    use std::str;
 
     #[cfg(all(unix,not(target_os="android")))]
     static BLOCK_COMMAND: &'static str = "cat";

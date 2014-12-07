@@ -50,6 +50,8 @@
 //! fs::unlink(&path);
 //! ```
 
+#[cfg(not(stage0))] // NOTE(stage0): Remove cfg after a snapshot
+use core::str::str;
 use clone::Clone;
 use io::standard_error;
 use io::{FilePermission, Write, Open, FileAccess, FileMode, FileType};
@@ -820,11 +822,12 @@ mod test {
     use prelude::*;
     use io::{SeekSet, SeekCur, SeekEnd, Read, Open, ReadWrite, FileType};
     use io;
-    use str;
+    use str as str_;
     use io::fs::*;
     use path::Path;
     use io;
     use ops::Drop;
+    #[cfg(stage0)]  // NOTE(stage0): Remove import after a snapshot
     use str::StrPrelude;
 
     macro_rules! check( ($e:expr) => (
@@ -887,7 +890,7 @@ mod test {
             let mut read_buf = [0, .. 1028];
             let read_str = match check!(read_stream.read(&mut read_buf)) {
                 -1|0 => panic!("shouldn't happen"),
-                n => str::from_utf8(read_buf[..n]).unwrap().to_string()
+                n => str_::from_utf8(read_buf[..n]).unwrap().to_string()
             };
             assert_eq!(read_str.as_slice(), message);
         }
@@ -943,7 +946,7 @@ mod test {
             }
         }
         check!(unlink(filename));
-        let read_str = str::from_utf8(&read_mem).unwrap();
+        let read_str = str_::from_utf8(&read_mem).unwrap();
         assert_eq!(read_str, message);
     }
 
@@ -968,7 +971,7 @@ mod test {
             tell_pos_post_read = check!(read_stream.tell());
         }
         check!(unlink(filename));
-        let read_str = str::from_utf8(&read_mem).unwrap();
+        let read_str = str_::from_utf8(&read_mem).unwrap();
         assert_eq!(read_str, message.slice(4, 8));
         assert_eq!(tell_pos_pre_read, set_cursor);
         assert_eq!(tell_pos_post_read, message.len() as u64);
@@ -994,13 +997,12 @@ mod test {
             check!(read_stream.read(&mut read_mem));
         }
         check!(unlink(filename));
-        let read_str = str::from_utf8(&read_mem).unwrap();
+        let read_str = str_::from_utf8(&read_mem).unwrap();
         assert!(read_str.as_slice() == final_msg.as_slice());
     }
 
     #[test]
     fn file_test_io_seek_shakedown() {
-        use str;          // 01234567890123
         let initial_msg =   "qwer-asdf-zxcv";
         let chunk_one: &str = "qwer";
         let chunk_two: &str = "asdf";
@@ -1017,15 +1019,15 @@ mod test {
 
             check!(read_stream.seek(-4, SeekEnd));
             check!(read_stream.read(&mut read_mem));
-            assert_eq!(str::from_utf8(&read_mem).unwrap(), chunk_three);
+            assert_eq!(str_::from_utf8(&read_mem).unwrap(), chunk_three);
 
             check!(read_stream.seek(-9, SeekCur));
             check!(read_stream.read(&mut read_mem));
-            assert_eq!(str::from_utf8(&read_mem).unwrap(), chunk_two);
+            assert_eq!(str_::from_utf8(&read_mem).unwrap(), chunk_two);
 
             check!(read_stream.seek(0, SeekSet));
             check!(read_stream.read(&mut read_mem));
-            assert_eq!(str::from_utf8(&read_mem).unwrap(), chunk_one);
+            assert_eq!(str_::from_utf8(&read_mem).unwrap(), chunk_one);
         }
         check!(unlink(filename));
     }
@@ -1112,7 +1114,7 @@ mod test {
             {
                 let n = f.filestem_str();
                 check!(File::open(f).read(&mut mem));
-                let read_str = str::from_utf8(&mem).unwrap();
+                let read_str = str_::from_utf8(&mem).unwrap();
                 let expected = match n {
                     None|Some("") => panic!("really shouldn't happen.."),
                     Some(n) => format!("{}{}", prefix, n),

@@ -30,7 +30,7 @@ pub use self::Alignment::*;
 pub use self::Flag::*;
 pub use self::Count::*;
 
-use std::str;
+use std::str as str_;
 use std::string;
 
 /// A piece is a portion of the format string which represents the next part
@@ -136,7 +136,7 @@ pub enum Count<'a> {
 /// necessary there's probably lots of room for improvement performance-wise.
 pub struct Parser<'a> {
     input: &'a str,
-    cur: str::CharOffsets<'a>,
+    cur: str_::CharOffsets<'a>,
     /// Error messages accumulated during parsing
     pub errors: Vec<string::String>,
 }

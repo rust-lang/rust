@@ -23,7 +23,10 @@ use result::{Ok, Err};
 use result;
 use slice::SlicePrelude;
 use slice;
+#[cfg(stage0)]  // NOTE(stage0): Remove import after a snapshot
 use str::StrPrelude;
+#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
+use str::str;
 
 pub use self::num::radix;
 pub use self::num::Radix;

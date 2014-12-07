@@ -16,6 +16,8 @@
 #![allow(missing_docs)]
 
 use clone::Clone;
+#[cfg(not(stage0))] // NOTE(stage0): Remove cfg after a snapshot
+use core::str::str;
 use c_str::ToCStr;
 use iter::IteratorExt;
 use mem;
@@ -25,7 +27,7 @@ use os;
 use path::{Path,GenericPath};
 use result::*;
 use slice::{AsSlice,SlicePrelude};
-use str;
+use str as str_;
 use string::String;
 use vec::Vec;
 
@@ -39,7 +41,7 @@ impl Drop for DynamicLibrary {
             }
         }) {
             Ok(()) => {},
-            Err(str) => panic!("{}", str)
+            Err(s) => panic!("{}", s)
         }
     }
 }
@@ -82,7 +84,7 @@ impl DynamicLibrary {
         search_path.insert(0, path.clone());
         let newval = DynamicLibrary::create_path(search_path.as_slice());
         os::setenv(DynamicLibrary::envvar(),
-                   str::from_utf8(newval.as_slice()).unwrap());
+                   str_::from_utf8(newval.as_slice()).unwrap());
     }
 
     /// From a slice of paths, create a new vector which is suitable to be an
@@ -282,6 +284,7 @@ pub mod dl {
     use ptr;
     use result::{Ok, Err, Result};
     use slice::SlicePrelude;
+    #[cfg(stage0)]  // NOTE(stage0): Remove import after a snapshot
     use str::StrPrelude;
     use str;
     use string::String;

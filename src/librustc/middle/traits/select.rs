@@ -1400,7 +1400,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
             }
 
-            ty::ty_str => {
+            ty::ty_struct(did, _) if ty::is_str(self.tcx(), did) => {
                 // Equivalent to [u8]
                 match bound {
                     ty::BoundSync |

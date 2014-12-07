@@ -355,10 +355,12 @@ impl<'tcx> TypeMap<'tcx> {
         match type_.sty {
             ty::ty_bool     |
             ty::ty_char     |
-            ty::ty_str      |
             ty::ty_int(_)   |
             ty::ty_uint(_)  |
             ty::ty_float(_) => {
+                push_debuginfo_type_name(cx, type_, false, &mut unique_type_id);
+            },
+            ty::ty_struct(did, _) if ty::is_str(cx.tcx(), did) => {
                 push_debuginfo_type_name(cx, type_, false, &mut unique_type_id);
             },
             ty::ty_enum(def_id, ref substs) => {
@@ -2915,7 +2917,9 @@ fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         }
         // FIXME Can we do better than this for unsized vec/str fields?
         ty::ty_vec(typ, None) => fixed_vec_metadata(cx, unique_type_id, typ, 0, usage_site_span),
-        ty::ty_str => fixed_vec_metadata(cx, unique_type_id, ty::mk_i8(), 0, usage_site_span),
+        ty::ty_struct(did, _) if ty::is_str(cx.tcx(), did) => {
+            fixed_vec_metadata(cx, unique_type_id, ty::mk_i8(), 0, usage_site_span)
+        },
         ty::ty_trait(..) => {
             MetadataCreationResult::new(
                         trait_pointer_metadata(cx, t, None, unique_type_id),
@@ -2926,7 +2930,7 @@ fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 ty::ty_vec(typ, None) => {
                     vec_slice_metadata(cx, t, typ, unique_type_id, usage_site_span)
                 }
-                ty::ty_str => {
+                ty::ty_struct(did, _) if ty::is_str(cx.tcx(), did) => {
                     vec_slice_metadata(cx, t, ty::mk_u8(), unique_type_id, usage_site_span)
                 }
                 ty::ty_trait(..) => {
@@ -3692,7 +3696,7 @@ fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     match t.sty {
         ty::ty_bool              => output.push_str("bool"),
         ty::ty_char              => output.push_str("char"),
-        ty::ty_str               => output.push_str("str"),
+        ty::ty_struct(did, _) if ty::is_str(cx.tcx(), did) => output.push_str("str"),
         ty::ty_int(ast::TyI)     => output.push_str("int"),
         ty::ty_int(ast::TyI8)    => output.push_str("i8"),
         ty::ty_int(ast::TyI16)   => output.push_str("i16"),

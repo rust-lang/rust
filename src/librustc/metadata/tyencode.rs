@@ -272,7 +272,7 @@ fn enc_sty<'a, 'tcx>(w: &mut SeekableMemWriter, cx: &ctxt<'a, 'tcx>,
                 None => mywrite!(w, "|"),
             }
         }
-        ty::ty_str => {
+        ty::ty_struct(did, _) if ty::is_str(cx.tcx, did) => {
             mywrite!(w, "v");
         }
         ty::ty_closure(ref f) => {

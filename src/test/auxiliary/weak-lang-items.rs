@@ -32,6 +32,6 @@ pub fn foo() {
 }
 
 mod std {
-    pub use core::{option, fmt};
+    pub use core::{option, fmt, str};
 }
 

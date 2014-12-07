@@ -30,7 +30,7 @@ use std::io::process;
 use std::io::timer;
 use std::io;
 use std::os;
-use std::str;
+use std::str as str_;
 use std::string::String;
 use std::task;
 use std::time::Duration;
@@ -426,7 +426,7 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
                                    gdbserver :5039 {}/{}",
                                   config.adb_test_dir.clone(),
                                   config.adb_test_dir.clone(),
-                                  str::from_utf8(
+                                  str_::from_utf8(
                                       exe_file.filename()
                                       .unwrap()).unwrap());
 
@@ -1731,7 +1731,7 @@ fn disassemble_extract(config: &Config, _props: &TestProps,
 
 fn count_extracted_lines(p: &Path) -> uint {
     let x = File::open(&p.with_extension("ll")).read_to_end().unwrap();
-    let x = str::from_utf8(x.as_slice()).unwrap();
+    let x = str_::from_utf8(x.as_slice()).unwrap();
     x.lines().count()
 }
 

@@ -145,7 +145,6 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeSkolemizer<'a, 'tcx> {
             ty::ty_float(..) |
             ty::ty_enum(..) |
             ty::ty_uniq(..) |
-            ty::ty_str |
             ty::ty_err |
             ty::ty_vec(..) |
             ty::ty_ptr(..) |

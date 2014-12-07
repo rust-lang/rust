@@ -36,8 +36,8 @@ impl ToHex for [u8] {
     /// use serialize::hex::ToHex;
     ///
     /// fn main () {
-    ///     let str = [52,32].to_hex();
-    ///     println!("{}", str);
+    ///     let s = [52,32].to_hex();
+    ///     println!("{}", s);
     /// }
     /// ```
     fn to_hex(&self) -> String {

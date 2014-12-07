@@ -32,6 +32,8 @@ pub use self::MapOption::*;
 pub use self::MapError::*;
 
 use clone::Clone;
+#[cfg(not(stage0))] // NOTE(stage0): Remove cfg after a snapshot
+use core::str::str;
 use error::{FromError, Error};
 use fmt;
 use io::{IoResult, IoError};
@@ -50,7 +52,9 @@ use ptr;
 use result::{Err, Ok, Result};
 use slice::{AsSlice, SlicePrelude, PartialEqSlicePrelude};
 use slice::CloneSliceAllocPrelude;
-use str::{Str, StrPrelude, StrAllocating};
+use str::{Str, StrAllocating};
+#[cfg(stage0)]  // NOTE(stage0): Remove import after a snapshot
+use str::StrPrelude;
 use string::{String, ToString};
 use sync::atomic::{AtomicInt, INIT_ATOMIC_INT, SeqCst};
 use vec::Vec;
@@ -1263,7 +1267,7 @@ pub enum MapError {
 
 impl fmt::Show for MapError {
     fn fmt(&self, out: &mut fmt::Formatter) -> fmt::Result {
-        let str = match *self {
+        let s = match *self {
             ErrFdNotAvail => "fd not available for reading or writing",
             ErrInvalidFd => "Invalid fd",
             ErrUnaligned => {
@@ -1289,7 +1293,7 @@ impl fmt::Show for MapError {
                 return write!(out, "MapViewOfFile failure = {}", code)
             }
         };
-        write!(out, "{}", str)
+        write!(out, "{}", s)
     }
 }
 
@@ -1536,6 +1540,9 @@ impl MemoryMap {
 
 #[cfg(target_os = "linux")]
 pub mod consts {
+    #[cfg(not(stage0))] // NOTE(stage0): Remove cfg after a snapshot
+    use core::str::str;
+
     pub use os::arch_consts::ARCH;
 
     pub const FAMILY: &'static str = "unix";
@@ -1567,6 +1574,9 @@ pub mod consts {
 
 #[cfg(target_os = "macos")]
 pub mod consts {
+    #[cfg(not(stage0))] // NOTE(stage0): Remove cfg after a snapshot
+    use core::str::str;
+
     pub use os::arch_consts::ARCH;
 
     pub const FAMILY: &'static str = "unix";
@@ -1598,6 +1608,9 @@ pub mod consts {
 
 #[cfg(target_os = "ios")]
 pub mod consts {
+    #[cfg(not(stage0))] // NOTE(stage0): Remove cfg after a snapshot
+    use core::str::str;
+
     pub use os::arch_consts::ARCH;
 
     pub const FAMILY: &'static str = "unix";
@@ -1617,6 +1630,9 @@ pub mod consts {
 
 #[cfg(target_os = "freebsd")]
 pub mod consts {
+    #[cfg(not(stage0))] // NOTE(stage0): Remove cfg after a snapshot
+    use core::str::str;
+
     pub use os::arch_consts::ARCH;
 
     pub const FAMILY: &'static str = "unix";
@@ -1648,6 +1664,9 @@ pub mod consts {
 
 #[cfg(target_os = "dragonfly")]
 pub mod consts {
+    #[cfg(not(stage0))] // NOTE(stage0): Remove cfg after a snapshot
+    use core::str::str;
+
     pub use os::arch_consts::ARCH;
 
     pub const FAMILY: &'static str = "unix";
@@ -1679,6 +1698,9 @@ pub mod consts {
 
 #[cfg(target_os = "android")]
 pub mod consts {
+    #[cfg(not(stage0))] // NOTE(stage0): Remove cfg after a snapshot
+    use core::str::str;
+
     pub use os::arch_consts::ARCH;
 
     pub const FAMILY: &'static str = "unix";
@@ -1710,6 +1732,9 @@ pub mod consts {
 
 #[cfg(target_os = "windows")]
 pub mod consts {
+    #[cfg(not(stage0))] // NOTE(stage0): Remove cfg after a snapshot
+    use core::str::str;
+
     pub use os::arch_consts::ARCH;
 
     pub const FAMILY: &'static str = "windows";
@@ -1741,26 +1766,41 @@ pub mod consts {
 
 #[cfg(target_arch = "x86")]
 mod arch_consts {
+    #[cfg(not(stage0))] // NOTE(stage0): Remove cfg after a snapshot
+    use core::str::str;
+
     pub const ARCH: &'static str = "x86";
 }
 
 #[cfg(target_arch = "x86_64")]
 mod arch_consts {
+    #[cfg(not(stage0))] // NOTE(stage0): Remove cfg after a snapshot
+    use core::str::str;
+
     pub const ARCH: &'static str = "x86_64";
 }
 
 #[cfg(target_arch = "arm")]
 mod arch_consts {
+    #[cfg(not(stage0))] // NOTE(stage0): Remove cfg after a snapshot
+    use core::str::str;
+
     pub const ARCH: &'static str = "arm";
 }
 
 #[cfg(target_arch = "mips")]
 mod arch_consts {
+    #[cfg(not(stage0))] // NOTE(stage0): Remove cfg after a snapshot
+    use core::str::str;
+
     pub const ARCH: &'static str = "mips";
 }
 
 #[cfg(target_arch = "mipsel")]
 mod arch_consts {
+    #[cfg(not(stage0))] // NOTE(stage0): Remove cfg after a snapshot
+    use core::str::str;
+
     pub const ARCH: &'static str = "mipsel";
 }
 

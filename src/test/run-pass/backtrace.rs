@@ -13,7 +13,7 @@
 use std::os;
 use std::io::process::Command;
 use std::finally::Finally;
-use std::str;
+use std::str as str_;
 
 #[inline(never)]
 fn foo() {
@@ -40,7 +40,7 @@ fn runtest(me: &str) {
     let p = template.clone().arg("fail").env("RUST_BACKTRACE", "1").spawn().unwrap();
     let out = p.wait_with_output().unwrap();
     assert!(!out.status.success());
-    let s = str::from_utf8(out.error.as_slice()).unwrap();
+    let s = str_::from_utf8(out.error.as_slice()).unwrap();
     assert!(s.contains("stack backtrace") && s.contains("foo::h"),
             "bad output: {}", s);
 
@@ -48,7 +48,7 @@ fn runtest(me: &str) {
     let p = template.clone().arg("fail").spawn().unwrap();
     let out = p.wait_with_output().unwrap();
     assert!(!out.status.success());
-    let s = str::from_utf8(out.error.as_slice()).unwrap();
+    let s = str_::from_utf8(out.error.as_slice()).unwrap();
     assert!(!s.contains("stack backtrace") && !s.contains("foo::h"),
             "bad output2: {}", s);
 
@@ -56,7 +56,7 @@ fn runtest(me: &str) {
     let p = template.clone().arg("double-fail").spawn().unwrap();
     let out = p.wait_with_output().unwrap();
     assert!(!out.status.success());
-    let s = str::from_utf8(out.error.as_slice()).unwrap();
+    let s = str_::from_utf8(out.error.as_slice()).unwrap();
     // loosened the following from double::h to double:: due to
     // spurious failures on mac, 32bit, optimized
     assert!(s.contains("stack backtrace") && s.contains("double::"),
@@ -67,7 +67,7 @@ fn runtest(me: &str) {
                                 .env("RUST_BACKTRACE", "1").spawn().unwrap();
     let out = p.wait_with_output().unwrap();
     assert!(!out.status.success());
-    let s = str::from_utf8(out.error.as_slice()).unwrap();
+    let s = str_::from_utf8(out.error.as_slice()).unwrap();
     let mut i = 0;
     for _ in range(0i, 2) {
         i += s.slice_from(i + 10).find_str("stack backtrace").unwrap() + 10;

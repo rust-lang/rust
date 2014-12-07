@@ -27,7 +27,7 @@ use std::io::Command;
 use std::io::fs;
 use std::iter::Unfold;
 use std::ptr;
-use std::str;
+use std::str as str_;
 use std::mem;
 use std::sync::{Arc, Mutex};
 use std::task::TaskBuilder;
@@ -930,7 +930,7 @@ pub fn run_assembler(sess: &Session, outputs: &OutputFilenames) {
                 sess.note(format!("{}", &cmd).as_slice());
                 let mut note = prog.error.clone();
                 note.push_all(prog.output.as_slice());
-                sess.note(str::from_utf8(note.as_slice()).unwrap());
+                sess.note(str_::from_utf8(note.as_slice()).unwrap());
                 sess.abort_if_errors();
             }
         },

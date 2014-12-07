@@ -30,6 +30,8 @@ use self::StdSource::*;
 use boxed::Box;
 use cell::RefCell;
 use clone::Clone;
+#[cfg(not(stage0))] // NOTE(stage0): Remove cfg after a snapshot
+use core::str::str;
 use failure::LOCAL_STDERR;
 use fmt;
 use io::{Reader, Writer, IoResult, IoError, OtherIoError, Buffer,
@@ -44,6 +46,7 @@ use rustrt;
 use rustrt::local::Local;
 use rustrt::task::Task;
 use slice::SlicePrelude;
+#[cfg(stage0)]  // NOTE(stage0): Remove import after a snapshot
 use str::StrPrelude;
 use string::String;
 use sys::{fs, tty};
