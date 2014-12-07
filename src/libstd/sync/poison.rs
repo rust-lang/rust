@@ -8,21 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use option::Option::None;
-use rustrt::task::Task;
-use rustrt::local::Local;
+use thread::Thread;
 
 pub struct Flag { pub failed: bool }
 
 impl Flag {
     pub fn borrow(&mut self) -> Guard {
-        Guard { flag: &mut self.failed, failing: failing() }
+        Guard { flag: &mut self.failed, panicking: Thread::panicking() }
     }
 }
 
 pub struct Guard<'a> {
     flag: &'a mut bool,
-    failing: bool,
+    panicking: bool,
 }
 
 impl<'a> Guard<'a> {
@@ -33,16 +31,8 @@ impl<'a> Guard<'a> {
     }
 
     pub fn done(&mut self) {
-        if !self.failing && failing() {
+        if !self.panicking && Thread::panicking() {
             *self.flag = true;
         }
-    }
-}
-
-fn failing() -> bool {
-    if Local::exists(None::<Task>) {
-        Local::borrow(None::<Task>).unwinder.unwinding()
-    } else {
-        false
     }
 }

@@ -196,8 +196,7 @@ memory and partly incapable of presentation to others.",
 }
 
 pub unsafe fn report_overflow() {
-    use rt::task::Task;
-    use rt::local::Local;
+    use thread::Thread;
 
     // See the message below for why this is not emitted to the
     // ^ Where did the message below go?
@@ -206,11 +205,6 @@ pub unsafe fn report_overflow() {
     // call would happen to initialized it (calling out to libuv),
     // and the FFI call needs 2MB of stack when we just ran out.
 
-    let task: Option<*mut Task> = Local::try_unsafe_borrow();
-
-    let name = task.and_then(|task| {
-        (*task).name.as_ref().map(|n| n.as_slice())
-    });
-
-    rterrln!("\ntask '{}' has overflowed its stack", name.unwrap_or("<unknown>"));
+    rterrln!("\nthread '{}' has overflowed its stack",
+             Thread::current().name().unwrap_or("<unknown>"));
 }

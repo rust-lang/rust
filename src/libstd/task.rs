@@ -12,8 +12,11 @@
 
 #![deprecated = "use std::thread instead"]
 
+use any::Any;
+use boxed::Box;
 use thread;
 use kinds::Send;
+use result::Result;
 
 /// Deprecate: use `std::thread::Cfg` instead.
 #[deprecated = "use std::thread::Cfg instead"]
@@ -23,4 +26,16 @@ pub type TaskBuilder = thread::Cfg;
 #[deprecated = "use std::thread::Thread::spawn instead"]
 pub fn spawn(f: proc(): Send) {
     thread::Thread::spawn(f);
+}
+
+/// Deprecated: use `std::thread::Thread::with_join instead`.
+#[deprecated = "use std::thread::Thread::with_join instead"]
+pub fn try<T: Send>(f: proc(): Send -> T) -> Result<T, Box<Any + Send>> {
+    thread::Thread::with_join(f).join()
+}
+
+/// Deprecated: use `std::thread::Thread::yield_now instead`.
+#[deprecated = "use std::thread::Thread::yield_now instead"]
+pub fn deschedule() {
+    thread::Thread::yield_now()
 }

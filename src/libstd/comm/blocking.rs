@@ -32,7 +32,7 @@ pub struct WaitToken {
     no_send: NoSend,
 }
 
-fn token() -> (WaitToken, SignalToken) {
+pub fn tokens() -> (WaitToken, SignalToken) {
     let inner = Arc::new(Inner {
         thread: Thread::current(),
         woken: INIT_ATOMIC_BOOL,
@@ -48,7 +48,7 @@ fn token() -> (WaitToken, SignalToken) {
 }
 
 impl SignalToken {
-    fn signal(&self) -> bool {
+    pub fn signal(&self) -> bool {
         let wake = !self.inner.woken.compare_and_swap(false, true, Ordering::SeqCst);
         if wake {
             self.inner.thread.unpark();
@@ -73,7 +73,7 @@ impl SignalToken {
 }
 
 impl WaitToken {
-    fn wait(self) {
+    pub fn wait(self) {
         while !self.inner.woken.load(Ordering::SeqCst) {
             Thread::park()
         }

@@ -54,7 +54,6 @@
 
 use core::prelude::*;
 
-use alloc::boxed::Box;
 use core::cell::Cell;
 use core::kinds::marker;
 use core::mem;
@@ -62,8 +61,6 @@ use core::uint;
 
 use comm::Receiver;
 use comm::blocking::{mod, SignalToken};
-
-use self::StartResult::*;
 
 /// The "receiver set" of the select interface. This structure is used to manage
 /// a set of receivers which are being selected over.
@@ -190,8 +187,8 @@ impl Select {
             let (wait_token, signal_token) = blocking::tokens();
             for (i, handle) in self.iter().enumerate() {
                 match (*handle).packet.start_selection(signal_token.clone()) {
-                    Installed => {}
-                    Abort => {
+                    StartResult::Installed => {}
+                    StartResult::Abort => {
                         // Go back and abort the already-begun selections
                         for handle in self.iter().take(i) {
                             (*handle).packet.abort_selection();
@@ -417,10 +414,10 @@ mod test {
         let (tx3, rx3) = channel::<int>();
 
         spawn(move|| {
-            for _ in range(0u, 20) { task::deschedule(); }
+            for _ in range(0u, 20) { Thread::yield_now(); }
             tx1.send(1);
             rx3.recv();
-            for _ in range(0u, 20) { task::deschedule(); }
+            for _ in range(0u, 20) { Thread::yield_now(); }
         });
 
         select! {
@@ -440,7 +437,7 @@ mod test {
         let (tx3, rx3) = channel::<()>();
 
         spawn(move|| {
-            for _ in range(0u, 20) { task::deschedule(); }
+            for _ in range(0u, 20) { Thread::yield_now(); }
             tx1.send(1);
             tx2.send(2);
             rx3.recv();
@@ -541,7 +538,7 @@ mod test {
             tx3.send(());
         });
 
-        for _ in range(0u, 1000) { task::deschedule(); }
+        for _ in range(0u, 1000) { Thread::yield_now(); }
         drop(tx1.clone());
         tx2.send(());
         rx3.recv();
@@ -644,7 +641,7 @@ mod test {
             tx2.send(());
         });
 
-        for _ in range(0u, 100) { task::deschedule() }
+        for _ in range(0u, 100) { Thread::yield_now() }
         tx1.send(());
         rx2.recv();
     } }
@@ -663,7 +660,7 @@ mod test {
             tx2.send(());
         });
 
-        for _ in range(0u, 100) { task::deschedule() }
+        for _ in range(0u, 100) { Thread::yield_now() }
         tx1.send(());
         rx2.recv();
     } }
@@ -681,7 +678,7 @@ mod test {
             tx2.send(());
         });
 
-        for _ in range(0u, 100) { task::deschedule() }
+        for _ in range(0u, 100) { Thread::yield_now() }
         tx1.send(());
         rx2.recv();
     } }
@@ -697,7 +694,7 @@ mod test {
     test! { fn sync2() {
         let (tx, rx) = sync_channel::<int>(0);
         spawn(move|| {
-            for _ in range(0u, 100) { task::deschedule() }
+            for _ in range(0u, 100) { Thread::yield_now() }
             tx.send(1);
         });
         select! {

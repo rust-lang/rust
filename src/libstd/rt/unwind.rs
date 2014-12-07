@@ -565,7 +565,7 @@ fn begin_unwind_inner(msg: Box<Any + Send>, file_line: &(&'static str, uint)) ->
 
     // Now that we've run all the necessary unwind callbacks, we actually
     // perform the unwinding.
-    if thread_info::unwinding() {
+    if thread_info::panicking() {
         // If a thread panics while it's already unwinding then we
         // have limited options. Currently our preference is to
         // just abort. In the future we may consider resuming

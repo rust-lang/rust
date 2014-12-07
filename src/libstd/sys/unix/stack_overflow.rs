@@ -45,8 +45,6 @@ mod imp {
     use self::signal::{siginfo, sigaction, SIGBUS, SIG_DFL,
                        SA_SIGINFO, SA_ONSTACK, sigaltstack,
                        SIGSTKSZ};
-    use rt::local::Local;
-    use rt::task::Task;
     use libc;
     use libc::funcs::posix88::mman::{mmap, munmap};
     use libc::consts::os::posix88::{SIGSEGV,
@@ -56,19 +54,11 @@ mod imp {
                                     MAP_ANON,
                                     MAP_FAILED};
 
+    use sys_common::thread_info;
+
 
     // This is initialized in init() and only read from after
     static mut PAGE_SIZE: uint = 0;
-
-    // get_task_info is called from an exception / signal handler.
-    // It returns the guard page of the current task or 0 if that
-    // guard page doesn't exist. None is returned if there's currently
-    // no local task.
-    unsafe fn get_task_guard_page() -> Option<uint> {
-        let task: Option<*mut Task> = Local::try_unsafe_borrow();
-        task.map(|task| (&*task).stack_guard().unwrap_or(0))
-    }
-
 
     #[no_stack_check]
     unsafe extern fn signal_handler(signum: libc::c_int,
@@ -89,20 +79,16 @@ mod imp {
         // We're calling into functions with stack checks
         stack::record_sp_limit(0);
 
-        match get_task_guard_page() {
-            Some(guard) => {
-                let addr = (*info).si_addr as uint;
+        let guard = thread_info::stack_guard();
+        let addr = (*info).si_addr as uint;
 
-                if guard == 0 || addr < guard - PAGE_SIZE || addr >= guard {
-                    term(signum);
-                }
-
-                report_overflow();
-
-                intrinsics::abort()
-            }
-            None => term(signum)
+        if guard == 0 || addr < guard - PAGE_SIZE || addr >= guard {
+            term(signum);
         }
+
+        report_overflow();
+
+        intrinsics::abort()
     }
 
     static mut MAIN_ALTSTACK: *mut libc::c_void = 0 as *mut libc::c_void;

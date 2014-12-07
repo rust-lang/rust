@@ -48,14 +48,14 @@
 
 #![allow(dead_code)]
 
-use borrow::IntoCow;
 use failure;
 use os;
 use thunk::Thunk;
 use kinds::Send;
 use thread::Thread;
+use sys;
 use sys_common;
-use sys_common::thread::{mod, NewThread};
+use sys_common::thread_info::{mod, NewThread};
 
 // Reexport some of our utilities which are expected by other crates.
 pub use self::util::{default_sched_threads, min_stack, running_on_valgrind};
@@ -87,10 +87,9 @@ pub const DEFAULT_ERROR_CODE: int = 101;
 /// Initializes global state, including frobbing
 /// the crate's logging flags, registering GC
 /// metadata, and storing the process arguments.
+// FIXME: this should be unsafe
 #[allow(experimental)]
 pub fn init(argc: int, argv: *const *const u8) {
-    // FIXME: Derefing these pointers is not safe.
-    // Need to propagate the unsafety to `start`.
     unsafe {
         args::init(argc, argv);
         thread::init();
@@ -122,8 +121,6 @@ fn lang_start(main: *const u8, argc: int, argv: *const *const u8) -> int {
 pub fn start(argc: int, argv: *const *const u8, main: Thunk) -> int {
     use prelude::*;
     use rt;
-    use rt::task::Task;
-    use str;
 
     let something_around_the_top_of_the_stack = 1;
     let addr = &something_around_the_top_of_the_stack as *const int;
@@ -153,18 +150,19 @@ pub fn start(argc: int, argv: *const *const u8, main: Thunk) -> int {
     init(argc, argv);
     let mut exit_code = None;
 
-    let thread: std::Thread = NewThread::new(Some("<main>".into_string()));
+    let thread: Thread = NewThread::new(Some("<main>".into_string()));
     thread_info::set((my_stack_bottom, my_stack_top),
                      unsafe { sys::thread::guard::main() },
                      thread);
-    unwind::try(|| {
-        unsafe {
+    let mut main_opt = Some(main); // option dance
+    unsafe {
+        let _ = unwind::try(|| {
             sys_common::stack::record_os_managed_stack_bounds(my_stack_bottom, my_stack_top);
-        }
-        (main.take().unwrap()).invoke(());
-        exit_code = Some(os::get_exit_status());
-    });
-    unsafe { cleanup(); }
+            (main_opt.take().unwrap()).invoke();
+            exit_code = Some(os::get_exit_status());
+        });
+        cleanup();
+    }
     // If the exit code wasn't set, then the task block must have panicked.
     return exit_code.unwrap_or(rt::DEFAULT_ERROR_CODE);
 }
@@ -197,14 +195,6 @@ pub fn at_exit(f: proc():Send) {
 /// undefined behavior.
 pub unsafe fn cleanup() {
     args::cleanup();
-    thread::cleanup();
-}
-
-// FIXME: these probably shouldn't be public...
-#[doc(hidden)]
-pub mod shouldnt_be_public {
-    #[cfg(not(test))]
-    pub use super::local_ptr::native::maybe_tls_key;
-    #[cfg(all(not(windows), not(target_os = "android"), not(target_os = "ios")))]
-    pub use super::local_ptr::compiled::RT_TLS_PTR;
+    sys::stack_overflow::cleanup();
+    at_exit_imp::cleanup();
 }

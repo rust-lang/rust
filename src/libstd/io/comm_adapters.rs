@@ -156,12 +156,12 @@ mod test {
     use prelude::*;
     use super::*;
     use io;
-    use task;
+    use thread::Thread;
 
     #[test]
     fn test_rx_reader() {
         let (tx, rx) = channel();
-        task::spawn(move|| {
+        Thread::spawn(move|| {
           tx.send(vec![1u8, 2u8]);
           tx.send(vec![]);
           tx.send(vec![3u8, 4u8]);
@@ -203,7 +203,7 @@ mod test {
     #[test]
     fn test_rx_buffer() {
         let (tx, rx) = channel();
-        task::spawn(move|| {
+        Thread::spawn(move|| {
           tx.send(b"he".to_vec());
           tx.send(b"llo wo".to_vec());
           tx.send(b"".to_vec());
@@ -229,7 +229,11 @@ mod test {
         writer.write_be_u32(42).unwrap();
 
         let wanted = vec![0u8, 0u8, 0u8, 42u8];
+<<<<<<< HEAD
         let got = match task::try(move|| { rx.recv() }) {
+=======
+        let got = match Thread::with_join(proc() { rx.recv() }).join() {
+>>>>>>> Fallout from new thread API
             Ok(got) => got,
             Err(_) => panic!(),
         };

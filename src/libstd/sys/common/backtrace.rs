@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use io::{IoResult, Writer};
-use iter::Iterator;
+use iter::{Iterator, IteratorExt};
 use option::{Some, None};
 use result::{Ok, Err};
 use str::{StrPrelude, from_str};

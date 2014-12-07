@@ -342,10 +342,11 @@ fn rust_input(cratefile: &str, externs: core::Externs, matches: &getopts::Matche
 
     let cr = Path::new(cratefile);
     info!("starting to run rustc");
-    let (mut krate, analysis) = std::task::try(move |:| {
+
+    let (mut krate, analysis) = std::thread::Thread::with_join(move |:| {
         let cr = cr;
         core::run_core(libs, cfgs, externs, &cr, triple)
-    }).map_err(|_| "rustc failed").unwrap();
+    }).join().map_err(|_| "rustc failed").unwrap();
     info!("finished with rustc");
     let mut analysis = Some(analysis);
     ANALYSISKEY.with(|s| {

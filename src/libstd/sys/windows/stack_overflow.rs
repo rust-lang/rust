@@ -8,15 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rt::local::Local;
-use rt::task::Task;
 use rt::util::report_overflow;
 use core::prelude::*;
 use ptr;
 use mem;
 use libc;
 use libc::types::os::arch::extra::{LPVOID, DWORD, LONG, BOOL};
-use sys_common::stack;
+use sys_common::{stack, thread_info};
 
 pub struct Handler {
     _data: *mut libc::c_void
@@ -37,8 +35,7 @@ impl Drop for Handler {
 // guard page doesn't exist. None is returned if there's currently
 // no local task.
 unsafe fn get_task_guard_page() -> Option<uint> {
-    let task: Option<*mut Task> = Local::try_unsafe_borrow();
-    task.map(|task| (&*task).stack_guard().unwrap_or(0))
+    thread_info::stack_guard()
 }
 
 // This is initialized in init() and only read from after

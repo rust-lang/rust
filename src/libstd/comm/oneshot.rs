@@ -39,9 +39,8 @@ use self::MyUpgrade::*;
 
 use core::prelude::*;
 
-use alloc::boxed::Box;
 use comm::Receiver;
-use comm::blocking::{mod, WaitToken, SignalToken};
+use comm::blocking::{mod, SignalToken};
 use core::mem;
 use sync::atomic;
 
@@ -143,7 +142,7 @@ impl<T: Send> Packet<T> {
         // Attempt to not block the task (it's a little expensive). If it looks
         // like we're not empty, then immediately go through to `try_recv`.
         if self.state.load(atomic::SeqCst) == EMPTY {
-            let (wait_token, signal_token) = blocking::token();
+            let (wait_token, signal_token) = blocking::tokens();
             let ptr = unsafe { signal_token.cast_to_uint() };
 
             // race with senders to enter the blocking state
@@ -332,7 +331,7 @@ impl<T: Send> Packet<T> {
 
             // If we've got a blocked task, then use an atomic to gain ownership
             // of it (may fail)
-            BLOCKED => self.state.compare_and_swap(BLOCKED, EMPTY, atomic::SeqCst)
+            ptr => self.state.compare_and_swap(ptr, EMPTY, atomic::SeqCst)
         };
 
         // Now that we've got ownership of our state, figure out what to do
