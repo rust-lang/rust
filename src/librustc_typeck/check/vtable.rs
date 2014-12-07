@@ -45,7 +45,7 @@ pub fn check_object_cast<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
             // Ensure that if ~T is cast to ~Trait, then T : Trait
             push_cast_obligation(fcx, cast_expr, object_trait, referent_ty);
-            check_object_safety(fcx.tcx(), object_trait, source_expr.span);
+            check_object_safety(fcx.tcx(), &object_trait.principal, source_expr.span);
         }
 
         (&ty::ty_rptr(referent_region, ty::mt { ty: referent_ty,
@@ -69,7 +69,7 @@ pub fn check_object_cast<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                target_region,
                                referent_region);
 
-                check_object_safety(fcx.tcx(), object_trait, source_expr.span);
+                check_object_safety(fcx.tcx(), &object_trait.principal, source_expr.span);
             }
         }
 
@@ -133,17 +133,32 @@ pub fn check_object_cast<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 // self by value, has no type parameters and does not use the `Self` type, except
 // in self position.
 pub fn check_object_safety<'tcx>(tcx: &ty::ctxt<'tcx>,
-                                 object_trait: &ty::TyTrait<'tcx>,
+                                 object_trait: &ty::TraitRef<'tcx>,
+                                 span: Span) {
+
+    let mut object = object_trait.clone();
+    if object.substs.types.len(SelfSpace) == 0 {
+        object.substs.types.push(SelfSpace, ty::mk_err());
+    }
+
+    let object = Rc::new(object);
+    for tr in traits::supertraits(tcx, object) {
+        check_object_safety_inner(tcx, &*tr, span);
+    }
+}
+
+fn check_object_safety_inner<'tcx>(tcx: &ty::ctxt<'tcx>,
+                                 object_trait: &ty::TraitRef<'tcx>,
                                  span: Span) {
     // Skip the fn_once lang item trait since only the compiler should call
     // `call_once` which is the method which takes self by value. What could go
     // wrong?
     match tcx.lang_items.fn_once_trait() {
-        Some(def_id) if def_id == object_trait.principal.def_id => return,
+        Some(def_id) if def_id == object_trait.def_id => return,
         _ => {}
     }
 
-    let trait_items = ty::trait_items(tcx, object_trait.principal.def_id);
+    let trait_items = ty::trait_items(tcx, object_trait.def_id);
 
     let mut errors = Vec::new();
     for item in trait_items.iter() {
@@ -157,7 +172,7 @@ pub fn check_object_safety<'tcx>(tcx: &ty::ctxt<'tcx>,
 
     let mut errors = errors.iter().flat_map(|x| x.iter()).peekable();
     if errors.peek().is_some() {
-        let trait_name = ty::item_path_str(tcx, object_trait.principal.def_id);
+        let trait_name = ty::item_path_str(tcx, object_trait.def_id);
         span_err!(tcx.sess, span, E0038,
             "cannot convert to a trait object because trait `{}` is not object-safe",
             trait_name);
