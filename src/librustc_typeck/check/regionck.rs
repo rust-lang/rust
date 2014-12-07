@@ -932,14 +932,9 @@ fn check_expr_fn_block(rcx: &mut Rcx,
 
             // Check that the type meets the criteria of the existential bounds:
             for builtin_bound in bounds.builtin_bounds.iter() {
-                let code = traits::ClosureCapture(var_node_id, expr.span);
+                let code = traits::ClosureCapture(var_node_id, expr.span, builtin_bound);
                 let cause = traits::ObligationCause::new(freevar.span, rcx.fcx.body_id, code);
-                let obligation = traits::obligation_for_builtin_bound(rcx.tcx(), cause,
-                                                                      var_ty, builtin_bound);
-                if let Ok(obligation) = obligation {
-                    rcx.fcx.inh.fulfillment_cx.borrow_mut().register_obligation(rcx.tcx(),
-                                                                                obligation)
-                }
+                rcx.fcx.register_builtin_bound(var_ty, builtin_bound, cause);
             }
             type_must_outlive(
                 rcx, infer::RelateProcBound(expr.span, var_node_id, var_ty),
@@ -1859,20 +1854,14 @@ fn param_must_outlive<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
            region.repr(rcx.tcx()),
            param_ty.repr(rcx.tcx()));
 
-    // Collect all regions that `param_ty` is known to outlive into
-    // this vector:
-    let mut param_bounds;
-
     // To start, collect bounds from user:
-    let param_bound = param_env.bounds.get(param_ty.space, param_ty.idx);
-    param_bounds =
+    let mut param_bounds =
         ty::required_region_bounds(rcx.tcx(),
-                                   param_bound.region_bounds.as_slice(),
-                                   param_bound.builtin_bounds,
-                                   param_bound.trait_bounds.as_slice());
+                                   param_ty.to_ty(rcx.tcx()),
+                                   param_env.caller_bounds.predicates.as_slice().to_vec());
 
-    // Collect default bound of fn body that applies to all in scope
-    // type parameters:
+    // Add in the default bound of fn body that applies to all in
+    // scope type parameters:
     param_bounds.push(param_env.implicit_region_bound);
 
     // Finally, collect regions we scraped from the well-formedness

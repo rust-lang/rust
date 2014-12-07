@@ -353,11 +353,27 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                                                param_ty: ty::ParamTy) {
         // FIXME -- Do we want to commit to this behavior for param bounds?
 
-        let ty::ParamTy { space, idx: index, .. } = param_ty;
-        let bounds =
-            self.fcx.inh.param_env.bounds.get(space, index).trait_bounds
-            .as_slice();
-        self.elaborate_bounds(bounds, true, |this, trait_ref, m, method_num| {
+        let bounds: Vec<_> =
+            self.fcx.inh.param_env.caller_bounds.predicates
+            .iter()
+            .filter_map(|predicate| {
+                match *predicate {
+                    ty::Predicate::Trait(ref trait_ref) => {
+                        match trait_ref.self_ty().sty {
+                            ty::ty_param(ref p) if *p == param_ty => Some(trait_ref.clone()),
+                            _ => None
+                        }
+                    }
+                    ty::Predicate::Equate(..) |
+                    ty::Predicate::RegionOutlives(..) |
+                    ty::Predicate::TypeOutlives(..) => {
+                        None
+                    }
+                }
+            })
+            .collect();
+
+        self.elaborate_bounds(bounds.as_slice(), true, |this, trait_ref, m, method_num| {
             let xform_self_ty =
                 this.xform_self_ty(&m, &trait_ref.substs);
 
@@ -400,6 +416,8 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                           m: Rc<ty::Method<'tcx>>,
                           method_num: uint|)
     {
+        debug!("elaborate_bounds(bounds={})", bounds.repr(self.tcx()));
+
         let tcx = self.tcx();
         let mut cache = HashSet::new();
         for bound_trait_ref in traits::transitive_bounds(tcx, bounds) {
@@ -802,11 +820,10 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
 
                     // Convert the bounds into obligations.
                     let obligations =
-                        traits::obligations_for_generics(
+                        traits::predicates_for_generics(
                             self.tcx(),
                             traits::ObligationCause::misc(self.span, self.fcx.body_id),
-                            &impl_bounds,
-                            &substs.types);
+                            &impl_bounds);
                     debug!("impl_obligations={}", obligations.repr(self.tcx()));
 
                     // Evaluate those obligations to see if they might possibly hold.

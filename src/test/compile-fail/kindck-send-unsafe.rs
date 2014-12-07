@@ -15,7 +15,7 @@ fn test70() {
     assert_send::<*mut int>();
 }
 fn test71<'a>() {
-    assert_send::<*mut &'a int>(); //~ ERROR does not fulfill the required lifetime
+    assert_send::<*mut &'a int>(); //~ ERROR declared lifetime bound not satisfied
 }
 
 fn main() {

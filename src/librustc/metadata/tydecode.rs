@@ -470,7 +470,7 @@ fn parse_ty<'a, 'tcx>(st: &mut PState<'a, 'tcx>, conv: conv_did) -> Ty<'tcx> {
         st.tcx.rcache.borrow_mut().insert(key, tt);
         return tt;
       }
-      '"' => {
+      '\"' => {
         let _ = parse_def(st, TypeWithId, |x,y| conv(x,y));
         let inner = parse_ty(st, |x,y| conv(x,y));
         inner
@@ -644,6 +644,33 @@ pub fn parse_def_id(buf: &[u8]) -> ast::DefId {
                      def_part)
     };
     ast::DefId { krate: crate_num, node: def_num }
+}
+
+pub fn parse_predicate_data<'tcx>(data: &[u8],
+                                  start: uint,
+                                  crate_num: ast::CrateNum,
+                                  tcx: &ty::ctxt<'tcx>,
+                                  conv: conv_did)
+                                  -> ty::Predicate<'tcx>
+{
+    let mut st = parse_state_from_data(data, crate_num, start, tcx);
+    parse_predicate(&mut st, conv)
+}
+
+pub fn parse_predicate<'a,'tcx>(st: &mut PState<'a, 'tcx>,
+                                conv: conv_did)
+                                -> ty::Predicate<'tcx>
+{
+    match next(st) {
+        't' => ty::Predicate::Trait(Rc::new(parse_trait_ref(st, conv))),
+        'e' => ty::Predicate::Equate(parse_ty(st, |x,y| conv(x,y)),
+                                     parse_ty(st, |x,y| conv(x,y))),
+        'r' => ty::Predicate::RegionOutlives(parse_region(st, |x,y| conv(x,y)),
+                                             parse_region(st, |x,y| conv(x,y))),
+        'o' => ty::Predicate::TypeOutlives(parse_ty(st, |x,y| conv(x,y)),
+                                           parse_region(st, |x,y| conv(x,y))),
+        c => panic!("Encountered invalid character in metadata: {}", c)
+    }
 }
 
 pub fn parse_type_param_def_data<'tcx>(data: &[u8], start: uint,

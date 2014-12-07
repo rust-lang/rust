@@ -803,6 +803,18 @@ fn encode_generics<'a, 'tcx>(rbml_w: &mut Encoder,
         rbml_w.end_tag();
     }
 
+    for (space, _, predicate) in generics.predicates.iter_enumerated() {
+        rbml_w.start_tag(tag_predicate);
+
+        rbml_w.wr_tagged_u8(tag_predicate_space, space as u8);
+
+        rbml_w.start_tag(tag_predicate_data);
+        tyencode::enc_predicate(rbml_w.writer, ty_str_ctxt, predicate);
+        rbml_w.end_tag();
+
+        rbml_w.end_tag();
+    }
+
     rbml_w.end_tag();
 }
 

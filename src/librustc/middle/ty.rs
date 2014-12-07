@@ -44,6 +44,7 @@ use back::svh::Svh;
 use session::Session;
 use lint;
 use metadata::csearch;
+use middle;
 use middle::const_eval;
 use middle::def;
 use middle::dependency_format;
@@ -60,13 +61,14 @@ use middle::traits::ObligationCause;
 use middle::traits;
 use middle::ty;
 use middle::ty_fold::{mod, TypeFoldable, TypeFolder, HigherRankedFoldable};
-use middle;
 use util::ppaux::{note_and_explain_region, bound_region_ptr_to_string};
 use util::ppaux::{trait_store_to_string, ty_to_string};
 use util::ppaux::{Repr, UserString};
-use util::common::{indenter, memoized};
+use util::common::{indenter, memoized, ErrorReported};
 use util::nodemap::{NodeMap, NodeSet, DefIdMap, DefIdSet};
 use util::nodemap::{FnvHashMap, FnvHashSet};
+
+use arena::TypedArena;
 use std::borrow::BorrowFrom;
 use std::cell::{Cell, RefCell};
 use std::cmp;
@@ -75,8 +77,8 @@ use std::hash::{Hash, sip, Writer};
 use std::mem;
 use std::ops;
 use std::rc::Rc;
+use std::collections::enum_set::{EnumSet, CLike};
 use std::collections::hash_map::{HashMap, Occupied, Vacant};
-use arena::TypedArena;
 use syntax::abi;
 use syntax::ast::{CrateNum, DefId, DUMMY_NODE_ID, FnStyle, Ident, ItemTrait, LOCAL_CRATE};
 use syntax::ast::{MutImmutable, MutMutable, Name, NamedField, NodeId};
@@ -87,7 +89,6 @@ use syntax::attr::{mod, AttrMetaMethods};
 use syntax::codemap::{DUMMY_SP, Span};
 use syntax::parse::token::{mod, InternedString};
 use syntax::{ast, ast_map};
-use std::collections::enum_set::{EnumSet, CLike};
 
 pub type Disr = u64;
 
@@ -1613,28 +1614,19 @@ pub struct RegionParameterDef {
     pub bounds: Vec<ty::Region>,
 }
 
-/// Information about the formal type/lifetime parameters associated with an
-/// item or method. Analogous to ast::Generics.
+impl RegionParameterDef {
+    pub fn to_early_bound_region(&self) -> ty::Region {
+        ty::ReEarlyBound(self.def_id.node, self.space, self.index, self.name)
+    }
+}
+
+/// Information about the formal type/lifetime parameters associated
+/// with an item or method. Analogous to ast::Generics.
 #[deriving(Clone, Show)]
 pub struct Generics<'tcx> {
     pub types: VecPerParamSpace<TypeParameterDef<'tcx>>,
     pub regions: VecPerParamSpace<RegionParameterDef>,
     pub predicates: VecPerParamSpace<Predicate<'tcx>>,
-}
-
-#[deriving(Clone, Show)]
-pub enum Predicate<'tcx> {
-    /// where Foo : Bar
-    Trait(Rc<TraitRef<'tcx>>),
-
-    /// where Foo == Bar
-    Equate(Ty<'tcx>, Ty<'tcx>),
-
-    /// where 'a : 'b
-    RegionOutlives(Region, Region),
-
-    /// where T : 'a
-    TypeOutlives(Ty<'tcx>, Region),
 }
 
 impl<'tcx> Generics<'tcx> {
@@ -1657,8 +1649,47 @@ impl<'tcx> Generics<'tcx> {
     pub fn to_bounds(&self, tcx: &ty::ctxt<'tcx>, substs: &Substs<'tcx>)
                      -> GenericBounds<'tcx> {
         GenericBounds {
-            types: self.types.map(|d| d.bounds.subst(tcx, substs)),
-            regions: self.regions.map(|d| d.bounds.subst(tcx, substs)),
+            predicates: self.predicates.subst(tcx, substs),
+        }
+    }
+}
+
+#[deriving(Clone, PartialEq, Eq, Hash, Show)]
+pub enum Predicate<'tcx> {
+    /// where Foo : Bar
+    Trait(Rc<TraitRef<'tcx>>),
+
+    /// where Foo == Bar
+    Equate(Ty<'tcx>, Ty<'tcx>),
+
+    /// where 'a : 'b
+    RegionOutlives(Region, Region),
+
+    /// where T : 'a
+    TypeOutlives(Ty<'tcx>, Region),
+}
+
+impl<'tcx> Predicate<'tcx> {
+    pub fn has_escaping_regions(&self) -> bool {
+        match *self {
+            Predicate::Trait(ref trait_ref) => trait_ref.has_escaping_regions(),
+            Predicate::Equate(a, b) => (ty::type_has_escaping_regions(a) ||
+                                        ty::type_has_escaping_regions(b)),
+            Predicate::RegionOutlives(a, b) => a.escapes_depth(0) || b.escapes_depth(0),
+            Predicate::TypeOutlives(a, b) => ty::type_has_escaping_regions(a) || b.escapes_depth(0),
+        }
+    }
+
+    pub fn to_trait(&self) -> Option<Rc<TraitRef<'tcx>>> {
+        match *self {
+            Predicate::Trait(ref t) => {
+                Some(t.clone())
+            }
+            Predicate::Equate(..) |
+            Predicate::RegionOutlives(..) |
+            Predicate::TypeOutlives(..) => {
+                None
+            }
         }
     }
 }
@@ -1684,19 +1715,20 @@ impl<'tcx> Generics<'tcx> {
 /// [uint:Bar<int>]]`.
 #[deriving(Clone, Show)]
 pub struct GenericBounds<'tcx> {
-    pub types: VecPerParamSpace<ParamBounds<'tcx>>,
-    pub regions: VecPerParamSpace<Vec<Region>>,
+    pub predicates: VecPerParamSpace<Predicate<'tcx>>,
 }
 
 impl<'tcx> GenericBounds<'tcx> {
     pub fn empty() -> GenericBounds<'tcx> {
-        GenericBounds { types: VecPerParamSpace::empty(),
-                        regions: VecPerParamSpace::empty() }
+        GenericBounds { predicates: VecPerParamSpace::empty() }
     }
 
     pub fn has_escaping_regions(&self) -> bool {
-        self.types.any(|pb| pb.trait_bounds.iter().any(|tr| tr.has_escaping_regions())) ||
-            self.regions.any(|rs| rs.iter().any(|r| r.escapes_depth(0)))
+        self.predicates.any(|p| p.has_escaping_regions())
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.predicates.is_empty()
     }
 }
 
@@ -1747,9 +1779,6 @@ pub struct ParameterEnvironment<'tcx> {
     /// parameters in the same way, this only has an effect on regions.
     pub free_substs: Substs<'tcx>,
 
-    /// Bounds on the various type parameters
-    pub bounds: VecPerParamSpace<ParamBounds<'tcx>>,
-
     /// Each type parameter has an implicit region bound that
     /// indicates it must outlive at least the function body (the user
     /// may specify stronger requirements). This field indicates the
@@ -1759,10 +1788,7 @@ pub struct ParameterEnvironment<'tcx> {
     /// Obligations that the caller must satisfy. This is basically
     /// the set of bounds on the in-scope type parameters, translated
     /// into Obligations.
-    ///
-    /// Note: This effectively *duplicates* the `bounds` array for
-    /// now.
-    pub caller_obligations: VecPerParamSpace<traits::TraitObligation<'tcx>>,
+    pub caller_bounds: ty::GenericBounds<'tcx>,
 
     /// Caches the results of trait selection. This cache is used
     /// for things that have to do with the parameters in scope.
@@ -3160,7 +3186,8 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
 pub fn type_moves_by_default<'tcx>(cx: &ctxt<'tcx>,
                                    ty: Ty<'tcx>,
                                    param_env: &ParameterEnvironment<'tcx>)
-                                    -> bool {
+                                   -> bool
+{
     if !type_has_params(ty) && !type_has_self(ty) {
         match cx.type_moves_by_default_cache.borrow().get(&ty) {
             None => {}
@@ -3181,20 +3208,20 @@ pub fn type_moves_by_default<'tcx>(cx: &ctxt<'tcx>,
     // (there shouldn't really be any anyhow)
     let cause = ObligationCause::misc(DUMMY_SP, DUMMY_NODE_ID);
 
-    let obligation = traits::obligation_for_builtin_bound(
-        cx,
-        cause,
-        ty,
-        ty::BoundCopy).unwrap();
-    fulfill_cx.register_obligation(cx, obligation);
-    let result = !fulfill_cx.select_all_or_error(&infcx,
-                                                 param_env,
-                                                 cx).is_ok();
-    cx.type_moves_by_default_cache.borrow_mut().insert(ty, result);
+    fulfill_cx.register_builtin_bound(cx, ty, ty::BoundCopy, cause);
+
+    // Note: we only assuming something is `Copy` if we can
+    // *definitively* show that it implements `Copy`. Otherwise,
+    // assume it is move; linear is always ok.
+    let is_copy = fulfill_cx.select_all_or_error(&infcx, param_env, cx).is_ok();
+    let is_move = !is_copy;
+
     debug!("determined whether {} moves by default: {}",
            ty_to_string(cx, ty),
-           result);
-    result
+           is_move);
+
+    cx.type_moves_by_default_cache.borrow_mut().insert(ty, is_move);
+    is_move
 }
 
 pub fn is_ffi_safe<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
@@ -5006,9 +5033,9 @@ pub fn lookup_trait_def<'tcx>(cx: &ctxt<'tcx>, did: ast::DefId)
 
 /// Given a reference to a trait, returns the bounds declared on the
 /// trait, with appropriate substitutions applied.
-pub fn bounds_for_trait_ref<'tcx>(tcx: &ctxt<'tcx>,
-                                  trait_ref: &TraitRef<'tcx>)
-                                  -> ty::ParamBounds<'tcx>
+pub fn predicates_for_trait_ref<'tcx>(tcx: &ctxt<'tcx>,
+                                      trait_ref: &TraitRef<'tcx>)
+                                      -> Vec<ty::Predicate<'tcx>>
 {
     let trait_def = lookup_trait_def(tcx, trait_ref.def_id);
 
@@ -5099,11 +5126,39 @@ pub fn bounds_for_trait_ref<'tcx>(tcx: &ctxt<'tcx>,
     let builtin_bounds =
         trait_def.bounds.builtin_bounds.subst(tcx, &trait_ref.substs);
 
-    ty::ParamBounds {
+    let bounds = ty::ParamBounds {
         trait_bounds: trait_bounds,
         region_bounds: region_bounds,
         builtin_bounds: builtin_bounds,
+    };
+
+    predicates(tcx, trait_ref.self_ty(), &bounds)
+}
+
+pub fn predicates<'tcx>(
+    tcx: &ctxt<'tcx>,
+    param_ty: Ty<'tcx>,
+    bounds: &ParamBounds<'tcx>)
+    -> Vec<Predicate<'tcx>>
+{
+    let mut vec = Vec::new();
+
+    for builtin_bound in bounds.builtin_bounds.iter() {
+        match traits::trait_ref_for_builtin_bound(tcx, builtin_bound, param_ty) {
+            Ok(trait_ref) => { vec.push(Predicate::Trait(trait_ref)); }
+            Err(ErrorReported) => { }
+        }
     }
+
+    for &region_bound in bounds.region_bounds.iter() {
+        vec.push(Predicate::TypeOutlives(param_ty, region_bound));
+    }
+
+    for bound_trait_ref in bounds.trait_bounds.iter() {
+        vec.push(Predicate::Trait((*bound_trait_ref).clone()));
+    }
+
+    vec
 }
 
 /// Iterate over attributes of a definition.
@@ -5461,56 +5516,62 @@ pub fn each_bound_trait_and_supertraits<'tcx>(tcx: &ctxt<'tcx>,
     return true;
 }
 
+pub fn object_region_bounds<'tcx>(tcx: &ctxt<'tcx>,
+                                  opt_principal: Option<&TraitRef<'tcx>>, // None for boxed closures
+                                  others: BuiltinBounds)
+                                  -> Vec<ty::Region>
+{
+    // Since we don't actually *know* the self type for an object,
+    // this "open(err)" serves as a kind of dummy standin -- basically
+    // a skolemized type.
+    let open_ty = ty::mk_infer(tcx, SkolemizedTy(0));
+
+    let opt_trait_ref = opt_principal.map_or(Vec::new(), |principal| {
+        let substs = principal.substs.with_self_ty(open_ty);
+        vec!(Rc::new(ty::TraitRef::new(principal.def_id, substs)))
+    });
+
+    let param_bounds = ty::ParamBounds {
+        region_bounds: Vec::new(),
+        builtin_bounds: others,
+        trait_bounds: opt_trait_ref,
+    };
+
+    let predicates = ty::predicates(tcx, open_ty, &param_bounds);
+    ty::required_region_bounds(tcx, open_ty, predicates)
+}
+
 /// Given a type which must meet the builtin bounds and trait bounds, returns a set of lifetimes
 /// which the type must outlive.
 ///
 /// Requires that trait definitions have been processed.
 pub fn required_region_bounds<'tcx>(tcx: &ctxt<'tcx>,
-                                    region_bounds: &[ty::Region],
-                                    builtin_bounds: BuiltinBounds,
-                                    trait_bounds: &[Rc<TraitRef<'tcx>>])
+                                    param_ty: Ty<'tcx>,
+                                    predicates: Vec<ty::Predicate<'tcx>>)
                                     -> Vec<ty::Region>
 {
-    let mut all_bounds = Vec::new();
+    debug!("required_region_bounds(param_ty={}, predicates={})",
+           param_ty.repr(tcx),
+           predicates.repr(tcx));
 
-    debug!("required_region_bounds(builtin_bounds={}, trait_bounds={})",
-           builtin_bounds.repr(tcx),
-           trait_bounds.repr(tcx));
-
-    all_bounds.push_all(region_bounds);
-
-    push_region_bounds(&[],
-                       builtin_bounds,
-                       &mut all_bounds);
-
-    debug!("from builtin bounds: all_bounds={}", all_bounds.repr(tcx));
-
-    each_bound_trait_and_supertraits(
-        tcx,
-        trait_bounds,
-        |trait_ref| {
-            let bounds = ty::bounds_for_trait_ref(tcx, &*trait_ref);
-            push_region_bounds(bounds.region_bounds.as_slice(),
-                               bounds.builtin_bounds,
-                               &mut all_bounds);
-            debug!("from {}: bounds={} all_bounds={}",
-                   trait_ref.repr(tcx),
-                   bounds.repr(tcx),
-                   all_bounds.repr(tcx));
-            true
-        });
-
-    return all_bounds;
-
-    fn push_region_bounds(region_bounds: &[ty::Region],
-                          builtin_bounds: ty::BuiltinBounds,
-                          all_bounds: &mut Vec<ty::Region>) {
-        all_bounds.push_all(region_bounds.as_slice());
-
-        if builtin_bounds.contains(&ty::BoundSend) {
-            all_bounds.push(ty::ReStatic);
-        }
-    }
+    traits::elaborate_predicates(tcx, predicates)
+        .filter_map(|predicate| {
+            match predicate {
+                ty::Predicate::Trait(..) |
+                ty::Predicate::Equate(..) |
+                ty::Predicate::RegionOutlives(..) => {
+                    None
+                }
+                ty::Predicate::TypeOutlives(t, r) => {
+                    if t == param_ty {
+                        Some(r)
+                    } else {
+                        None
+                    }
+                }
+            }
+        })
+        .collect()
 }
 
 pub fn get_tydesc_ty<'tcx>(tcx: &ctxt<'tcx>) -> Result<Ty<'tcx>, String> {
@@ -5860,8 +5921,7 @@ impl Variance {
 /// are no free type/lifetime parameters in scope.
 pub fn empty_parameter_environment<'tcx>() -> ParameterEnvironment<'tcx> {
     ty::ParameterEnvironment { free_substs: Substs::empty(),
-                               bounds: VecPerParamSpace::empty(),
-                               caller_obligations: VecPerParamSpace::empty(),
+                               caller_bounds: GenericBounds::empty(),
                                implicit_region_bound: ty::ReEmpty,
                                selection_cache: traits::SelectionCache::new(), }
 }
@@ -5906,11 +5966,6 @@ pub fn construct_parameter_environment<'tcx>(
 
     let bounds = generics.to_bounds(tcx, &free_substs);
     let bounds = liberate_late_bound_regions(tcx, free_id_scope, &bind(bounds)).value;
-    let obligations = traits::obligations_for_generics(tcx,
-                                                       traits::ObligationCause::dummy(),
-                                                       &bounds,
-                                                       &free_substs.types);
-    let type_bounds = bounds.types.subst(tcx, &free_substs);
 
     //
     // Compute region bounds. For now, these relations are stored in a
@@ -5918,23 +5973,17 @@ pub fn construct_parameter_environment<'tcx>(
     // crazy about this scheme, but it's convenient, at least.
     //
 
-    for &space in subst::ParamSpace::all().iter() {
-        record_region_bounds(tcx, space, &free_substs, bounds.regions.get_slice(space));
-    }
+    record_region_bounds(tcx, &bounds);
 
-
-    debug!("construct_parameter_environment: free_id={} free_subst={} \
-           obligations={} type_bounds={}",
+    debug!("construct_parameter_environment: free_id={} free_subst={} bounds={}",
            free_id,
            free_substs.repr(tcx),
-           obligations.repr(tcx),
-           type_bounds.repr(tcx));
+           bounds.repr(tcx));
 
     return ty::ParameterEnvironment {
         free_substs: free_substs,
-        bounds: bounds.types,
         implicit_region_bound: ty::ReScope(free_id_scope),
-        caller_obligations: obligations,
+        caller_bounds: bounds,
         selection_cache: traits::SelectionCache::new(),
     };
 
@@ -5963,31 +6012,24 @@ pub fn construct_parameter_environment<'tcx>(
         }
     }
 
-    fn record_region_bounds<'tcx>(tcx: &ty::ctxt<'tcx>,
-                                  space: subst::ParamSpace,
-                                  free_substs: &Substs<'tcx>,
-                                  bound_sets: &[Vec<ty::Region>]) {
-        for (subst_region, bound_set) in
-            free_substs.regions().get_slice(space).iter().zip(
-                bound_sets.iter())
-        {
-            // For each region parameter 'subst...
-            for bound_region in bound_set.iter() {
-                // Which is declared with a bound like 'subst:'bound...
-                match (subst_region, bound_region) {
-                    (&ty::ReFree(subst_fr), &ty::ReFree(bound_fr)) => {
-                        // Record that 'subst outlives 'bound. Or, put
-                        // another way, 'bound <= 'subst.
-                        tcx.region_maps.relate_free_regions(bound_fr, subst_fr);
-                    },
-                    _ => {
-                        // All named regions are instantiated with free regions.
-                        tcx.sess.bug(
-                            format!("record_region_bounds: \
-                                     non free region: {} / {}",
-                                    subst_region.repr(tcx),
-                                    bound_region.repr(tcx)).as_slice());
-                    }
+    fn record_region_bounds<'tcx>(tcx: &ty::ctxt<'tcx>, bounds: &GenericBounds<'tcx>) {
+        debug!("record_region_bounds(bounds={})", bounds.repr(tcx));
+
+        for predicate in bounds.predicates.iter() {
+            match *predicate {
+                Predicate::Trait(..) | Predicate::Equate(..) | Predicate::TypeOutlives(..) => {
+                    // No region bounds here
+                }
+                Predicate::RegionOutlives(ty::ReFree(fr_a), ty::ReFree(fr_b)) => {
+                    // Record that `'a:'b`. Or, put another way, `'b <= 'a`.
+                    tcx.region_maps.relate_free_regions(fr_b, fr_a);
+                }
+                Predicate::RegionOutlives(r_a, r_b) => {
+                    // All named regions are instantiated with free regions.
+                    tcx.sess.bug(
+                        format!("record_region_bounds: non free region: {} / {}",
+                                r_a.repr(tcx),
+                                r_b.repr(tcx)).as_slice());
                 }
             }
         }
@@ -6303,6 +6345,17 @@ impl<'tcx> Repr<'tcx> for TyTrait<'tcx> {
         format!("TyTrait({},{})",
                 self.principal.repr(tcx),
                 self.bounds.repr(tcx))
+    }
+}
+
+impl<'tcx> Repr<'tcx> for ty::Predicate<'tcx> {
+    fn repr(&self, tcx: &ctxt<'tcx>) -> String {
+        match *self {
+            Predicate::Trait(ref a) => a.repr(tcx),
+            Predicate::Equate(a, b) => format!("Equate({},{})", a.repr(tcx), b.repr(tcx)),
+            Predicate::RegionOutlives(a, b) => format!("Outlives({}:{})", a.repr(tcx), b.repr(tcx)),
+            Predicate::TypeOutlives(a, b) => format!("Outlives({}:{})", a.repr(tcx), b.repr(tcx)),
+        }
     }
 }
 
