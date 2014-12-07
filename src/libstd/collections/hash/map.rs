@@ -24,7 +24,7 @@ use iter::{mod, Iterator, IteratorExt, FromIterator, Extend};
 use kinds::Sized;
 use mem::{mod, replace};
 use num::{Int, UnsignedInt};
-use ops::{Deref, Index, IndexMut};
+use ops::{Deref, FnMut, Index, IndexMut};
 use option::Option;
 use option::Option::{Some, None};
 use result::Result;
@@ -296,10 +296,13 @@ pub struct HashMap<K, V, H = RandomSipHasher> {
 }
 
 /// Search for a pre-hashed key.
-fn search_hashed<K, V, M: Deref<RawTable<K, V>>>(table: M,
-                                                 hash: &SafeHash,
-                                                 is_match: |&K| -> bool)
-                                                 -> SearchResult<K, V, M> {
+fn search_hashed<K, V, M, F>(table: M,
+                             hash: &SafeHash,
+                             mut is_match: F)
+                             -> SearchResult<K, V, M> where
+    M: Deref<RawTable<K, V>>,
+    F: FnMut(&K) -> bool,
+{
     let size = table.size();
     let mut probe = Bucket::new(table, hash);
     let ib = probe.index();
@@ -749,12 +752,14 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
         self.insert_or_replace_with(hash, k, v, |_, _, _| ())
     }
 
-    fn insert_or_replace_with<'a>(&'a mut self,
-                                  hash: SafeHash,
-                                  k: K,
-                                  v: V,
-                                  found_existing: |&mut K, &mut V, V|)
-                                  -> &'a mut V {
+    fn insert_or_replace_with<'a, F>(&'a mut self,
+                                     hash: SafeHash,
+                                     k: K,
+                                     v: V,
+                                     mut found_existing: F)
+                                     -> &'a mut V where
+        F: FnMut(&mut K, &mut V, V),
+    {
         // Worst case, we'll find one empty bucket among `size + 1` buckets.
         let size = self.table.size();
         let mut probe = Bucket::new(&mut self.table, &hash);

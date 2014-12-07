@@ -19,6 +19,7 @@ use io::{IoError, IoResult, Reader};
 use io;
 use iter::Iterator;
 use num::Int;
+use ops::FnOnce;
 use option::Option;
 use option::Option::{Some, None};
 use ptr::RawPtr;
@@ -76,7 +77,9 @@ impl<'r, R: Reader> Iterator<IoResult<u8>> for Bytes<'r, R> {
 /// * `f`: A callback that receives the value.
 ///
 /// This function returns the value returned by the callback, for convenience.
-pub fn u64_to_le_bytes<T>(n: u64, size: uint, f: |v: &[u8]| -> T) -> T {
+pub fn u64_to_le_bytes<T, F>(n: u64, size: uint, f: F) -> T where
+    F: FnOnce(&[u8]) -> T,
+{
     use mem::transmute;
 
     // LLVM fails to properly optimize this when using shifts instead of the to_le* intrinsics
@@ -115,7 +118,9 @@ pub fn u64_to_le_bytes<T>(n: u64, size: uint, f: |v: &[u8]| -> T) -> T {
 /// * `f`: A callback that receives the value.
 ///
 /// This function returns the value returned by the callback, for convenience.
-pub fn u64_to_be_bytes<T>(n: u64, size: uint, f: |v: &[u8]| -> T) -> T {
+pub fn u64_to_be_bytes<T, F>(n: u64, size: uint, f: F) -> T where
+    F: FnOnce(&[u8]) -> T,
+{
     use mem::transmute;
 
     // LLVM fails to properly optimize this when using shifts instead of the to_be* intrinsics

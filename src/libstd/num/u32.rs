@@ -15,4 +15,6 @@
 
 pub use core::u32::{BITS, BYTES, MIN, MAX};
 
+use ops::FnOnce;
+
 uint_module!(u32)

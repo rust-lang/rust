@@ -21,6 +21,7 @@ use char::Char;
 use kinds::Copy;
 use num;
 use num::{Int, Float, FPNaN, FPInfinite, ToPrimitive};
+use ops::FnMut;
 use slice::{SlicePrelude, CloneSliceAllocPrelude};
 use str::StrPrelude;
 use string::String;
@@ -93,7 +94,10 @@ impl Copy for SignFormat {}
 /// # Panics
 ///
 /// - Panics if `radix` < 2 or `radix` > 36.
-fn int_to_str_bytes_common<T: Int>(num: T, radix: uint, sign: SignFormat, f: |u8|) {
+fn int_to_str_bytes_common<T, F>(num: T, radix: uint, sign: SignFormat, mut f: F) where
+    T: Int,
+    F: FnMut(u8),
+{
     assert!(2 <= radix && radix <= 36);
 
     let _0: T = Int::zero();
