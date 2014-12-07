@@ -14,7 +14,7 @@
 
 use self::PathPrefix::*;
 
-use ascii::AsciiCast;
+use ascii::AsciiExt;
 use c_str::{CString, ToCStr};
 use clone::Clone;
 use cmp::{PartialEq, Eq, PartialOrd, Ord, Ordering};
@@ -237,10 +237,10 @@ impl GenericPathUnsafe for Path {
             let repr = me.repr[];
             match me.prefix {
                 Some(DiskPrefix) => {
-                    repr.as_bytes()[0] == path.as_bytes()[0].to_ascii().to_uppercase().as_byte()
+                    repr.as_bytes()[0] == path.as_bytes()[0].to_ascii_uppercase()
                 }
                 Some(VerbatimDiskPrefix) => {
-                    repr.as_bytes()[4] == path.as_bytes()[0].to_ascii().to_uppercase().as_byte()
+                    repr.as_bytes()[4] == path.as_bytes()[0].to_ascii_uppercase()
                 }
                 _ => false
             }
@@ -673,17 +673,17 @@ impl Path {
         match (self.prefix, other.prefix) {
             (Some(DiskPrefix), Some(VerbatimDiskPrefix)) => {
                 self.is_absolute() &&
-                    s_repr.as_bytes()[0].to_ascii().to_lowercase() ==
-                        o_repr.as_bytes()[4].to_ascii().to_lowercase()
+                    s_repr.as_bytes()[0].to_ascii_lowercase() ==
+                        o_repr.as_bytes()[4].to_ascii_lowercase()
             }
             (Some(VerbatimDiskPrefix), Some(DiskPrefix)) => {
                 other.is_absolute() &&
-                    s_repr.as_bytes()[4].to_ascii().to_lowercase() ==
-                        o_repr.as_bytes()[0].to_ascii().to_lowercase()
+                    s_repr.as_bytes()[4].to_ascii_lowercase() ==
+                        o_repr.as_bytes()[0].to_ascii_lowercase()
             }
             (Some(VerbatimDiskPrefix), Some(VerbatimDiskPrefix)) => {
-                s_repr.as_bytes()[4].to_ascii().to_lowercase() ==
-                    o_repr.as_bytes()[4].to_ascii().to_lowercase()
+                s_repr.as_bytes()[4].to_ascii_lowercase() ==
+                    o_repr.as_bytes()[4].to_ascii_lowercase()
             }
             (Some(UNCPrefix(_,_)), Some(VerbatimUNCPrefix(_,_))) => {
                 s_repr[2..self.prefix_len()] == o_repr[8..other.prefix_len()]
@@ -750,7 +750,7 @@ impl Path {
                                 let mut s = String::from_str(s[0..len]);
                                 unsafe {
                                     let v = s.as_mut_vec();
-                                    v[0] = (*v)[0].to_ascii().to_uppercase().as_byte();
+                                    v[0] = (*v)[0].to_ascii_uppercase();
                                 }
                                 if is_abs {
                                     // normalize C:/ to C:\
@@ -765,7 +765,7 @@ impl Path {
                                 let mut s = String::from_str(s[0..len]);
                                 unsafe {
                                     let v = s.as_mut_vec();
-                                    v[4] = (*v)[4].to_ascii().to_uppercase().as_byte();
+                                    v[4] = (*v)[4].to_ascii_uppercase();
                                 }
                                 Some(s)
                             }
@@ -786,14 +786,12 @@ impl Path {
                         let mut s = String::with_capacity(n);
                         match prefix {
                             Some(DiskPrefix) => {
-                                s.push(prefix_.as_bytes()[0].to_ascii()
-                                                   .to_uppercase().as_char());
+                                s.push(prefix_.as_bytes()[0].to_ascii_uppercase() as char);
                                 s.push(':');
                             }
                             Some(VerbatimDiskPrefix) => {
                                 s.push_str(prefix_[0..4]);
-                                s.push(prefix_.as_bytes()[4].to_ascii()
-                                                   .to_uppercase().as_char());
+                                s.push(prefix_.as_bytes()[4].to_ascii_uppercase() as char);
                                 s.push_str(prefix_[5..]);
                             }
                             Some(UNCPrefix(a,b)) => {
