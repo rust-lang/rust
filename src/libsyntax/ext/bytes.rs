@@ -15,6 +15,7 @@ use codemap::Span;
 use ext::base::*;
 use ext::base;
 use ext::build::AstBuilder;
+use std::ascii::AsciiExt;
 
 
 pub fn expand_syntax_ext<'cx>(cx: &'cx mut ExtCtxt,
