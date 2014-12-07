@@ -11,8 +11,8 @@
 //! Networking I/O
 
 use io::{IoError, IoResult, InvalidInput};
-use option::None;
-use result::{Ok, Err};
+use option::Option::None;
+use result::Result::{Ok, Err};
 use self::ip::{SocketAddr, ToSocketAddr};
 
 pub use self::addrinfo::get_host_addresses;

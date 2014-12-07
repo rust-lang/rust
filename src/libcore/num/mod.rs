@@ -30,7 +30,8 @@ use kinds::Copy;
 use mem::size_of;
 use ops::{Add, Sub, Mul, Div, Rem, Neg};
 use ops::{Not, BitAnd, BitOr, BitXor, Shl, Shr};
-use option::{Option, Some, None};
+use option::Option;
+use option::Option::{Some, None};
 use str::{FromStr, from_str, StrPrelude};
 
 /// Simultaneous division and remainder
