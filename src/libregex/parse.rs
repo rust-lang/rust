@@ -888,8 +888,9 @@ impl<'a> Parser<'a> {
     // build_from combines all AST elements starting at 'from' in the
     // parser's stack using 'mk' to combine them. If any such element is not an
     // AST then it is popped off the stack and ignored.
-    fn build_from(&mut self, from: uint, mk: |Ast, Ast| -> Ast)
-                 -> Result<Ast, Error> {
+    fn build_from<F>(&mut self, from: uint, mut mk: F) -> Result<Ast, Error> where
+        F: FnMut(Ast, Ast) -> Ast,
+    {
         if from >= self.stack.len() {
             return self.err("Empty group or alternate not allowed.")
         }
