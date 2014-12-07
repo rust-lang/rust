@@ -14,7 +14,6 @@ use middle::ty;
 use util::ppaux;
 
 use syntax::ast;
-use syntax::ast_util;
 use syntax::visit::Visitor;
 use syntax::visit;
 
@@ -82,26 +81,11 @@ fn check_item(v: &mut CheckCrateVisitor, it: &ast::Item) {
 }
 
 fn check_pat(v: &mut CheckCrateVisitor, p: &ast::Pat) {
-    fn is_str(e: &ast::Expr) -> bool {
-        match e.node {
-            ast::ExprBox(_, ref expr) => {
-                match expr.node {
-                    ast::ExprLit(ref lit) => ast_util::lit_is_str(&**lit),
-                    _ => false,
-                }
-            }
-            _ => false,
-        }
-    }
-    match p.node {
-        // Let through plain ~-string literals here
-        ast::PatLit(ref a) => if !is_str(&**a) { v.inside_const(|v| v.visit_expr(&**a)); },
-        ast::PatRange(ref a, ref b) => {
-            if !is_str(&**a) { v.inside_const(|v| v.visit_expr(&**a)); }
-            if !is_str(&**b) { v.inside_const(|v| v.visit_expr(&**b)); }
-        }
-        _ => v.outside_const(|v| visit::walk_pat(v, p))
-    }
+    let is_const = match p.node {
+        ast::PatLit(_) | ast::PatRange(..) => true,
+        _ => false
+    };
+    v.with_const(is_const, |v| visit::walk_pat(v, p))
 }
 
 fn check_expr(v: &mut CheckCrateVisitor, e: &ast::Expr) -> bool {
@@ -114,7 +98,6 @@ fn check_expr(v: &mut CheckCrateVisitor, e: &ast::Expr) -> bool {
                       "cannot do allocations in constant expressions");
             return false;
         }
-        ast::ExprLit(ref lit) if ast_util::lit_is_str(&**lit) => {}
         ast::ExprBinary(..) | ast::ExprUnary(..) => {
             let method_call = ty::MethodCall::expr(e.id);
             if v.tcx.method_map.borrow().contains_key(&method_call) {
@@ -123,7 +106,7 @@ fn check_expr(v: &mut CheckCrateVisitor, e: &ast::Expr) -> bool {
                            expressions");
             }
         }
-        ast::ExprLit(_) => (),
+        ast::ExprLit(_) => {}
         ast::ExprCast(ref from, _) => {
             let toty = ty::expr_ty(v.tcx, e);
             let fromty = ty::expr_ty(v.tcx, &**from);
