@@ -27,7 +27,7 @@ use sys_common::{keep_going, eof, mkerr_libc};
 
 use io::{FilePermission, Write, UnstableFileStat, Open, FileAccess, FileMode};
 use io::{IoResult, IoError, FileStat, SeekStyle};
-use io::{Read, Truncate, SeekCur, SeekSet, ReadWrite, SeekEnd, Append};
+use io::{Read, Truncate, SeekCur, SeekSet, ReadWrite, SeekEnd, Append, Create};
 
 pub type fd_t = libc::c_int;
 
@@ -173,6 +173,7 @@ pub fn open(path: &Path, fm: FileMode, fa: FileAccess) -> IoResult<FileDesc> {
         Open => 0,
         Append => libc::O_APPEND,
         Truncate => libc::O_TRUNC,
+        Create => libc::O_CREAT | libc::O_EXCL,
     };
     let flags = match fa {
         Read => flags | libc::O_RDONLY,

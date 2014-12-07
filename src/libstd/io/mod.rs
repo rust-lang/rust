@@ -1666,6 +1666,8 @@ pub enum FileMode {
     Append,
     /// Opens a file, truncating it if it already exists.
     Truncate,
+    /// Create a file and fail if it already exists.
+    Create,
 }
 
 /// Access permissions with which the file should be opened. `File`s
