@@ -3055,8 +3055,9 @@ impl<'a> Resolver<'a> {
                  .contains_key(&name) {
             match import_resolution.type_target {
                 Some(ref target) if !target.shadowable => {
-                    let msg = format!("import `{}` conflicts with imported \
-                                       crate in this module",
+                    let msg = format!("import `{0}` conflicts with imported \
+                                       crate in this module \
+                                       (maybe you meant `use {0}::*`?)",
                                       token::get_name(name).get());
                     self.session.span_err(import_span, msg.as_slice());
                 }
