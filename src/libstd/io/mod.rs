@@ -233,7 +233,7 @@ use int;
 use iter::{Iterator, IteratorExt};
 use kinds::Copy;
 use mem::transmute;
-use ops::{BitOr, BitXor, BitAnd, Sub, Not};
+use ops::{BitOr, BitXor, BitAnd, Sub, Not, FnOnce};
 use option::Option;
 use option::Option::{Some, None};
 use os;
@@ -426,18 +426,22 @@ impl Copy for IoErrorKind {}
 /// A trait that lets you add a `detail` to an IoError easily
 trait UpdateIoError<T> {
     /// Returns an IoError with updated description and detail
-    fn update_err(self, desc: &'static str, detail: |&IoError| -> String) -> Self;
+    fn update_err<D>(self, desc: &'static str, detail: D) -> Self where
+        D: FnOnce(&IoError) -> String;
 
     /// Returns an IoError with updated detail
-    fn update_detail(self, detail: |&IoError| -> String) -> Self;
+    fn update_detail<D>(self, detail: D) -> Self where
+        D: FnOnce(&IoError) -> String;
 
     /// Returns an IoError with update description
     fn update_desc(self, desc: &'static str) -> Self;
 }
 
 impl<T> UpdateIoError<T> for IoResult<T> {
-    fn update_err(self, desc: &'static str, detail: |&IoError| -> String) -> IoResult<T> {
-        self.map_err(|mut e| {
+    fn update_err<D>(self, desc: &'static str, detail: D) -> IoResult<T> where
+        D: FnOnce(&IoError) -> String,
+    {
+        self.map_err(move |mut e| {
             let detail = detail(&e);
             e.desc = desc;
             e.detail = Some(detail);
@@ -445,8 +449,10 @@ impl<T> UpdateIoError<T> for IoResult<T> {
         })
     }
 
-    fn update_detail(self, detail: |&IoError| -> String) -> IoResult<T> {
-        self.map_err(|mut e| { e.detail = Some(detail(&e)); e })
+    fn update_detail<D>(self, detail: D) -> IoResult<T> where
+        D: FnOnce(&IoError) -> String,
+    {
+        self.map_err(move |mut e| { e.detail = Some(detail(&e)); e })
     }
 
     fn update_desc(self, desc: &'static str) -> IoResult<T> {

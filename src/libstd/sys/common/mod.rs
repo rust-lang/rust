@@ -69,7 +69,9 @@ pub fn mkerr_libc<T: Int>(ret: T) -> IoResult<()> {
     }
 }
 
-pub fn keep_going(data: &[u8], f: |*const u8, uint| -> i64) -> i64 {
+pub fn keep_going<F>(data: &[u8], mut f: F) -> i64 where
+    F: FnMut(*const u8, uint) -> i64,
+{
     let origamt = data.len();
     let mut data = data.as_ptr();
     let mut amt = origamt;

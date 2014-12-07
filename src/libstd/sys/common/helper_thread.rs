@@ -70,9 +70,10 @@ impl<M: Send> Helper<M> {
     /// passed to the helper thread in a separate task.
     ///
     /// This function is safe to be called many times.
-    pub fn boot<T: Send>(&'static self,
-                         f: || -> T,
-                         helper: fn(helper_signal::signal, Receiver<M>, T)) {
+    pub fn boot<T, F>(&'static self, f: F, helper: fn(helper_signal::signal, Receiver<M>, T)) where
+        T: Send,
+        F: FnOnce() -> T,
+    {
         unsafe {
             let _guard = self.lock.lock();
             if !*self.initialized.get() {

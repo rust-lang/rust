@@ -381,7 +381,9 @@ mod test {
         rx.recv();
     }
 
-    fn avoid_copying_the_body(spawnfn: |v: proc():Send|) {
+    fn avoid_copying_the_body<F>(spawnfn: F) where
+        F: FnOnce(proc():Send),
+    {
         let (tx, rx) = channel::<uint>();
 
         let x = box 1;

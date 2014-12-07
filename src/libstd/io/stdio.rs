@@ -39,7 +39,7 @@ use libc;
 use mem;
 use option::Option;
 use option::Option::{Some, None};
-use ops::{Deref, DerefMut};
+use ops::{Deref, DerefMut, FnOnce};
 use result::Result::{Ok, Err};
 use rustrt;
 use rustrt::local::Local;
@@ -85,7 +85,9 @@ enum StdSource {
     File(fs::FileDesc),
 }
 
-fn src<T>(fd: libc::c_int, _readable: bool, f: |StdSource| -> T) -> T {
+fn src<T, F>(fd: libc::c_int, _readable: bool, f: F) -> T where
+    F: FnOnce(StdSource) -> T,
+{
     match tty::TTY::new(fd) {
         Ok(tty) => f(TTY(tty)),
         Err(_) => f(File(fs::FileDesc::new(fd, false))),
@@ -318,7 +320,9 @@ pub fn set_stderr(stderr: Box<Writer + Send>) -> Option<Box<Writer + Send>> {
 //          // io1 aliases io2
 //      })
 //  })
-fn with_task_stdout(f: |&mut Writer| -> IoResult<()>) {
+fn with_task_stdout<F>(f: F) where
+    F: FnOnce(&mut Writer) -> IoResult<()>,
+{
     let result = if Local::exists(None::<Task>) {
         let mut my_stdout = LOCAL_STDOUT.with(|slot| {
             slot.borrow_mut().take()

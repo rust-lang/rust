@@ -18,6 +18,7 @@
 use clone::Clone;
 use io::net::ip::{SocketAddr, IpAddr, ToSocketAddr};
 use io::{Reader, Writer, IoResult};
+use ops::FnOnce;
 use option::Option;
 use result::Result::{Ok, Err};
 use sys::udp::UdpSocket as UdpSocketImp;
@@ -210,7 +211,9 @@ impl UdpStream {
     /// Allows access to the underlying UDP socket owned by this stream. This
     /// is useful to, for example, use the socket to send data to hosts other
     /// than the one that this stream is connected to.
-    pub fn as_socket<T>(&mut self, f: |&mut UdpSocket| -> T) -> T {
+    pub fn as_socket<T, F>(&mut self, f: F) -> T where
+        F: FnOnce(&mut UdpSocket) -> T,
+    {
         f(&mut self.socket)
     }
 

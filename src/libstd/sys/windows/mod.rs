@@ -138,7 +138,7 @@ pub fn decode_error_detailed(errno: i32) -> IoError {
 }
 
 #[inline]
-pub fn retry<I> (f: || -> I) -> I { f() } // PR rust-lang/rust/#17020
+pub fn retry<I, F>(f: F) -> I where F: FnOnce() -> I { f() } // PR rust-lang/rust/#17020
 
 pub fn ms_to_timeval(ms: u64) -> libc::timeval {
     libc::timeval {

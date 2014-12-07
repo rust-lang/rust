@@ -149,8 +149,8 @@ impl UnixStream {
 
     pub fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
         let fd = self.fd();
-        let dolock = || self.lock_nonblocking();
-        let doread = |nb| unsafe {
+        let dolock = |&:| self.lock_nonblocking();
+        let doread = |&mut: nb| unsafe {
             let flags = if nb {c::MSG_DONTWAIT} else {0};
             libc::recv(fd,
                        buf.as_mut_ptr() as *mut libc::c_void,
@@ -162,8 +162,8 @@ impl UnixStream {
 
     pub fn write(&mut self, buf: &[u8]) -> IoResult<()> {
         let fd = self.fd();
-        let dolock = || self.lock_nonblocking();
-        let dowrite = |nb: bool, buf: *const u8, len: uint| unsafe {
+        let dolock = |&: | self.lock_nonblocking();
+        let dowrite = |&: nb: bool, buf: *const u8, len: uint| unsafe {
             let flags = if nb {c::MSG_DONTWAIT} else {0};
             libc::send(fd,
                        buf as *const _,
