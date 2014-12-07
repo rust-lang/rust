@@ -78,6 +78,7 @@
 //! }
 //! ```
 
+pub use core::error::FromError;
 use option::{Option, None};
 use kinds::Send;
 use string::String;
@@ -92,17 +93,4 @@ pub trait Error: Send {
 
     /// The lower-level cause of this error, if any.
     fn cause(&self) -> Option<&Error> { None }
-}
-
-/// A trait for types that can be converted from a given error type `E`.
-pub trait FromError<E> {
-    /// Perform the conversion.
-    fn from_error(err: E) -> Self;
-}
-
-// Any type is convertable from itself
-impl<E> FromError<E> for E {
-    fn from_error(err: E) -> E {
-        err
-    }
 }

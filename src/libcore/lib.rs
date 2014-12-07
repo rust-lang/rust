@@ -57,7 +57,7 @@
 
 #![no_std]
 #![allow(unknown_features)]
-#![feature(globs, intrinsics, lang_items, macro_rules, phase)]
+#![feature(default_type_params, globs, intrinsics, lang_items, macro_rules, phase)]
 #![feature(simd, unsafe_destructor, slicing_syntax)]
 #![feature(default_type_params)]
 #![deny(missing_docs)]
@@ -102,6 +102,7 @@ pub mod ops;
 pub mod cmp;
 pub mod clone;
 pub mod default;
+pub mod error;
 
 /* Core types and methods on primitives */
 
