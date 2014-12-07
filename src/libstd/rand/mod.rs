@@ -80,7 +80,7 @@
 //! circle, both centered at the origin. Since the area of a unit circle is π,
 //! we have:
 //!
-//! ```notrust
+//! ```text
 //!     (area of unit circle) / (area of square) = π / 4
 //! ```
 //!
