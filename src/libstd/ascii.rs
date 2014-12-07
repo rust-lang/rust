@@ -108,22 +108,20 @@ impl AsciiExt<Vec<u8>> for [u8] {
 
     #[inline]
     fn to_ascii_uppercase(&self) -> Vec<u8> {
-        self.iter().map(|&byte| ASCII_UPPER_MAP[byte as uint]).collect()
+        self.iter().map(|b| b.to_ascii_uppercase()).collect()
     }
 
     #[inline]
     fn to_ascii_lowercase(&self) -> Vec<u8> {
-        self.iter().map(|&byte| ASCII_LOWER_MAP[byte as uint]).collect()
+        self.iter().map(|b| b.to_ascii_lowercase()).collect()
     }
 
     #[inline]
     fn eq_ignore_ascii_case(&self, other: &[u8]) -> bool {
         self.len() == other.len() &&
-            self.iter().zip(other.iter()).all(
-            |(byte_self, byte_other)| {
-                ASCII_LOWER_MAP[*byte_self as uint] ==
-                    ASCII_LOWER_MAP[*byte_other as uint]
-            })
+        self.iter().zip(other.iter()).all(|(a, b)| {
+            a.eq_ignore_ascii_case(b)
+        })
     }
 }
 
@@ -132,7 +130,7 @@ impl OwnedAsciiExt for Vec<u8> {
     #[inline]
     fn into_ascii_uppercase(mut self) -> Vec<u8> {
         for byte in self.iter_mut() {
-            *byte = ASCII_UPPER_MAP[*byte as uint];
+            *byte = byte.to_ascii_uppercase();
         }
         self
     }
@@ -140,7 +138,7 @@ impl OwnedAsciiExt for Vec<u8> {
     #[inline]
     fn into_ascii_lowercase(mut self) -> Vec<u8> {
         for byte in self.iter_mut() {
-            *byte = ASCII_LOWER_MAP[*byte as uint];
+            *byte = byte.to_ascii_lowercase();
         }
         self
     }
@@ -155,17 +153,17 @@ impl AsciiExt for u8 {
 
     #[inline]
     fn to_ascii_uppercase(&self) -> u8 {
-        ASCII_UPPER_MAP[*self as uint]
+        ASCII_UPPERCASE_MAP[*self as uint]
     }
 
     #[inline]
     fn to_ascii_lowercase(&self) -> u8 {
-        ASCII_LOWER_MAP[*self as uint]
+        ASCII_LOWERCASE_MAP[*self as uint]
     }
 
     #[inline]
     fn eq_ignore_ascii_case(&self, other: &u8) -> bool {
-        ASCII_LOWER_MAP[*self as uint] == ASCII_LOWER_MAP[*other as uint]
+        self.to_ascii_lowercase() == other.to_ascii_lowercase()
     }
 }
 
@@ -179,7 +177,7 @@ impl AsciiExt for char {
     #[inline]
     fn to_ascii_uppercase(&self) -> char {
         if self.is_ascii() {
-            ASCII_UPPER_MAP[*self as uint] as char
+            (*self as u8).to_ascii_uppercase() as char
         } else {
             *self
         }
@@ -188,7 +186,7 @@ impl AsciiExt for char {
     #[inline]
     fn to_ascii_lowercase(&self) -> char {
         if self.is_ascii() {
-            ASCII_UPPER_MAP[*self as uint] as char
+            (*self as u8).to_ascii_lowercase() as char
         } else {
             *self
         }
@@ -236,7 +234,7 @@ pub fn escape_default<F>(c: u8, mut f: F) where
     }
 }
 
-static ASCII_LOWER_MAP: [u8, ..256] = [
+static ASCII_LOWERCASE_MAP: [u8, ..256] = [
     0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
     0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
     0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
@@ -275,7 +273,7 @@ static ASCII_LOWER_MAP: [u8, ..256] = [
     0xf8, 0xf9, 0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff,
 ];
 
-static ASCII_UPPER_MAP: [u8, ..256] = [
+static ASCII_UPPERCASE_MAP: [u8, ..256] = [
     0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
     0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
     0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
