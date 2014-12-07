@@ -76,7 +76,7 @@ impl FromStr for bool {
 Section: Creating a string
 */
 
-/// Converts a vector to a string slice without performing any allocations.
+/// Converts a slice of bytes to a string slice without performing any allocations.
 ///
 /// Once the slice has been validated as utf-8, it is transmuted in-place and
 /// returned as a '&str' instead of a '&[u8]'
