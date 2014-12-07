@@ -72,10 +72,6 @@ mod macros;
 
 // These should be refactored/moved/made private over time
 pub mod util;
-<<<<<<< HEAD
-=======
-pub mod task;
->>>>>>> Remove rt::{local, local_data, thread_local_storage}
 pub mod unwind;
 
 mod args;
