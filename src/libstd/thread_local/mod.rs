@@ -446,7 +446,7 @@ mod tests {
     use prelude::*;
 
     use cell::UnsafeCell;
-    use rt::thread::Thread;
+    use thread::Thread;
 
     struct Foo(Sender<()>);
 
@@ -534,7 +534,7 @@ mod tests {
             }
         }
 
-        Thread::start(move|| {
+        Thread::with_join(move|| {
             drop(S1);
         }).join();
     }
@@ -552,7 +552,7 @@ mod tests {
             }
         }
 
-        Thread::start(move|| unsafe {
+        Thread::with_join(move|| unsafe {
             K1.with(|s| *s.get() = Some(S1));
         }).join();
     }

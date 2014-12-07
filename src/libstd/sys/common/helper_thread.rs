@@ -28,7 +28,7 @@ use sync::{StaticMutex, StaticCondvar};
 use rt;
 use sys::helper_signal;
 
-use task;
+use thread::Thread;
 
 /// A structure for management of a helper thread.
 ///
@@ -82,7 +82,11 @@ impl<M: Send> Helper<M> {
                 *self.signal.get() = send as uint;
 
                 let t = f();
+<<<<<<< HEAD
                 task::spawn(move |:| {
+=======
+                Thread::spawn(proc() {
+>>>>>>> Fallout from new thread API
                     helper(receive, rx, t);
                     let _g = self.lock.lock();
                     *self.shutdown.get() = true;

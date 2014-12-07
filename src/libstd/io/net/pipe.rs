@@ -549,7 +549,7 @@ mod tests {
                 Err(ref e) if e.kind == TimedOut => {}
                 Err(e) => panic!("error: {}", e),
             }
-            ::task::deschedule();
+            ::thread::Thread::yield_now();
             if i == 1000 { panic!("should have a pending connection") }
         }
         drop(l);

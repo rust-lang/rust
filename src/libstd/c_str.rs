@@ -536,7 +536,7 @@ pub unsafe fn from_c_multistring<F>(buf: *const libc::c_char,
 mod tests {
     use prelude::*;
     use ptr;
-    use task;
+    use thread::Thread;
     use libc;
 
     use super::*;
@@ -637,7 +637,7 @@ mod tests {
 
     #[test]
     fn test_to_c_str_fail() {
-        assert!(task::try(move|| { "he\x00llo".to_c_str() }).is_err());
+        assert!(Thread::with_join(move|| { "he\x00llo".to_c_str() }).join().is_err());
     }
 
     #[test]

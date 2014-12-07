@@ -14,7 +14,6 @@
 
 use core::prelude::*;
 
-use libc;
 use boxed::Box;
 use vec::Vec;
 use sync::{Mutex, atomic, Once, ONCE_INIT};
@@ -25,31 +24,30 @@ type Queue = Mutex<Vec<Thunk>>;
 
 static INIT: Once = ONCE_INIT;
 static QUEUE: atomic::AtomicUint = atomic::INIT_ATOMIC_UINT;
-static RUNNING: atomic::AtomicBool = atomic::INIT_ATOMIC_BOOL;
 
 fn init() {
     let state: Box<Queue> = box Mutex::new(Vec::new());
     unsafe {
         QUEUE.store(mem::transmute(state), atomic::SeqCst);
-        libc::atexit(run);
+
+        // FIXME: switch this to use atexit as below. Currently this
+        // segfaults (the queue's memory is mysteriously gone), so
+        // instead the cleanup is tied to the `std::rt` entry point.
+        //
+        // ::libc::atexit(cleanup);
     }
 }
 
-// Note: this is private and so can only be called via atexit above,
-// which guarantees initialization.
-extern fn run() {
-    let cur = unsafe {
-        rtassert!(!RUNNING.load(atomic::SeqCst));
+pub fn cleanup() {
+    unsafe {
         let queue = QUEUE.swap(0, atomic::SeqCst);
-        rtassert!(queue != 0);
-
-        let queue: Box<Queue> = mem::transmute(queue);
-        let v = mem::replace(&mut *queue.lock(), Vec::new());
-        v
-    };
-
-    for to_run in cur.into_iter() {
-        to_run.invoke(());
+        if queue != 0 {
+            let queue: Box<Queue> = mem::transmute(queue);
+            let v = mem::replace(&mut *queue.lock(), Vec::new());
+            for to_run in v.into_iter() {
+                to_run.invoke();
+            }
+        }
     }
 }
 
@@ -60,7 +58,6 @@ pub fn push(f: Thunk) {
         // all with respect to `run`, meaning that this could theoretically be a
         // use-after-free. There's not much we can do to protect against that,
         // however. Let's just assume a well-behaved runtime and go from there!
-        rtassert!(!RUNNING.load(atomic::SeqCst));
         let queue = QUEUE.load(atomic::SeqCst);
         rtassert!(queue != 0);
         (*(queue as *const Queue)).lock().push(f);

@@ -317,8 +317,10 @@ use core::kinds::marker;
 use core::mem;
 use core::cell::UnsafeCell;
 
-pub use comm::select::{Select, Handle};
-use comm::select::StartResult::*;
+pub use self::select::{Select, Handle};
+use self::select::StartResult;
+use self::select::StartResult::*;
+use self::blocking::SignalToken;
 
 macro_rules! test {
     { fn $name:ident() $b:block $(#[$a:meta])*} => (
@@ -330,7 +332,7 @@ macro_rules! test {
 
             use comm::*;
             use super::*;
-            use task;
+            use thread::Thread;
 
             $(#[$a])* #[test] fn f() { $b }
         }
@@ -593,12 +595,12 @@ impl<T: Send> Sender<T> {
                                 (a, ret)
                             }
                             oneshot::UpDisconnected => (a, Err(t)),
-                            oneshot::UpWoke(task) => {
-                                // This send cannot panic because the task is
+                            oneshot::UpWoke(token) => {
+                                // This send cannot panic because the thread is
                                 // asleep (we're looking at it), so the receiver
                                 // can't go away.
                                 (*a.get()).send(t).ok().unwrap();
-                                task.wake().map(|t| t.reawaken());
+                                token.signal();
                                 (a, Ok(()))
                             }
                         }
@@ -937,7 +939,7 @@ impl<T: Send> select::Packet for Receiver<T> {
         }
     }
 
-    fn start_selection(&self, mut token: SignalToken) -> bool {
+    fn start_selection(&self, mut token: SignalToken) -> StartResult {
         loop {
             let (t, new_port) = match *unsafe { self.inner() } {
                 Oneshot(ref p) => {
@@ -1240,11 +1242,11 @@ mod test {
 
     test! { fn oneshot_single_thread_recv_chan_close() {
         // Receiving on a closed chan will panic
-        let res = task::try(move|| {
+        let res = Thread::with_join(move|| {
             let (tx, rx) = channel::<int>();
             drop(tx);
             rx.recv();
-        });
+        }).join();
         // What is our res?
         assert!(res.is_err());
     } }
@@ -1312,9 +1314,9 @@ mod test {
         spawn(move|| {
             drop(tx);
         });
-        let res = task::try(move|| {
+        let res = Thread::with_join(move|| {
             assert!(rx.recv() == box 10);
-        });
+        }).join();
         assert!(res.is_err());
     } }
 
@@ -1334,19 +1336,19 @@ mod test {
             spawn(move|| {
                 drop(rx);
             });
-            let _ = task::try(move|| {
+            let _ = Thread::with_join(move|| {
                 tx.send(1);
-            });
+            }).join();
         }
     } }
 
     test! { fn oneshot_multi_thread_recv_close_stress() {
         for _ in range(0, stress_factor()) {
             let (tx, rx) = channel::<int>();
-            spawn(move|| {
-                let res = task::try(move|| {
+            spawn(proc() {
+                let res = Thread::with_join(move|| {
                     rx.recv();
-                });
+                }).join();
                 assert!(res.is_err());
             });
             spawn(move|| {
@@ -1495,7 +1497,7 @@ mod test {
             tx2.send(());
         });
         // make sure the other task has gone to sleep
-        for _ in range(0u, 5000) { task::deschedule(); }
+        for _ in range(0u, 5000) { Thread::yield_now(); }
 
         // upgrade to a shared chan and send a message
         let t = tx.clone();
@@ -1504,45 +1506,7 @@ mod test {
 
         // wait for the child task to exit before we exit
         rx2.recv();
-    } }
-
-    test! { fn sends_off_the_runtime() {
-        use rt::thread::Thread;
-
-        let (tx, rx) = channel();
-        let t = Thread::start(move|| {
-            for _ in range(0u, 1000) {
-                tx.send(());
-            }
-        });
-        for _ in range(0u, 1000) {
-            rx.recv();
-        }
-        t.join();
-    } }
-
-    test! { fn try_recvs_off_the_runtime() {
-        use rt::thread::Thread;
-
-        let (tx, rx) = channel();
-        let (cdone, pdone) = channel();
-        let t = Thread::start(move|| {
-            let mut hits = 0u;
-            while hits < 10 {
-                match rx.try_recv() {
-                    Ok(()) => { hits += 1; }
-                    Err(Empty) => { Thread::yield_now(); }
-                    Err(Disconnected) => return,
-                }
-            }
-            cdone.send(());
-        });
-        for _ in range(0u, 10) {
-            tx.send(());
-        }
-        t.join();
-        pdone.recv();
-    } }
+    })
 }
 
 #[cfg(test)]
@@ -1700,11 +1664,11 @@ mod sync_tests {
 
     test! { fn oneshot_single_thread_recv_chan_close() {
         // Receiving on a closed chan will panic
-        let res = task::try(move|| {
+        let res = Thread::with_join(move|| {
             let (tx, rx) = sync_channel::<int>(0);
             drop(tx);
             rx.recv();
-        });
+        }).join();
         // What is our res?
         assert!(res.is_err());
     } }
@@ -1777,9 +1741,9 @@ mod sync_tests {
         spawn(move|| {
             drop(tx);
         });
-        let res = task::try(move|| {
+        let res = Thread::with_join(move|| {
             assert!(rx.recv() == box 10);
-        });
+        }).join();
         assert!(res.is_err());
     } }
 
@@ -1799,19 +1763,19 @@ mod sync_tests {
             spawn(move|| {
                 drop(rx);
             });
-            let _ = task::try(move|| {
+            let _ = Thread::with_join(move || {
                 tx.send(1);
-            });
+            }).join();
         }
     } }
 
     test! { fn oneshot_multi_thread_recv_close_stress() {
         for _ in range(0, stress_factor()) {
             let (tx, rx) = sync_channel::<int>(0);
-            spawn(move|| {
-                let res = task::try(move|| {
+            spawn(proc() {
+                let res = Thread::with_join(move|| {
                     rx.recv();
-                });
+                }).join();
                 assert!(res.is_err());
             });
             spawn(move|| {
@@ -1960,7 +1924,7 @@ mod sync_tests {
             tx2.send(());
         });
         // make sure the other task has gone to sleep
-        for _ in range(0u, 5000) { task::deschedule(); }
+        for _ in range(0u, 5000) { Thread::yield_now(); }
 
         // upgrade to a shared chan and send a message
         let t = tx.clone();
@@ -1969,29 +1933,6 @@ mod sync_tests {
 
         // wait for the child task to exit before we exit
         rx2.recv();
-    } }
-
-    test! { fn try_recvs_off_the_runtime() {
-        use rt::thread::Thread;
-
-        let (tx, rx) = sync_channel::<()>(0);
-        let (cdone, pdone) = channel();
-        let t = Thread::start(move|| {
-            let mut hits = 0u;
-            while hits < 10 {
-                match rx.try_recv() {
-                    Ok(()) => { hits += 1; }
-                    Err(Empty) => { Thread::yield_now(); }
-                    Err(Disconnected) => return,
-                }
-            }
-            cdone.send(());
-        });
-        for _ in range(0u, 10) {
-            tx.send(());
-        }
-        t.join();
-        pdone.recv();
     } }
 
     test! { fn send_opt1() {
@@ -2052,7 +1993,7 @@ mod sync_tests {
     test! { fn try_send4() {
         let (tx, rx) = sync_channel::<int>(0);
         spawn(move|| {
-            for _ in range(0u, 1000) { task::deschedule(); }
+            for _ in range(0u, 1000) { Thread::yield_now(); }
             assert_eq!(tx.try_send(1), Ok(()));
         });
         assert_eq!(rx.recv(), 1);

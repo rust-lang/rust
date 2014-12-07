@@ -49,7 +49,7 @@ use ptr::RawPtr;
 use ptr;
 use result::Result;
 use result::Result::{Err, Ok};
-use slice::{AsSlice, SliceExt, PartialEqSliceExt};
+use slice::{AsSlice, SliceExt};
 use slice::CloneSliceExt;
 use str::{Str, StrPrelude, StrAllocating};
 use string::{String, ToString};

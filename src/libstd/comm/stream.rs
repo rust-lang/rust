@@ -24,7 +24,6 @@ use self::Message::*;
 
 use core::prelude::*;
 
-use alloc::boxed::Box;
 use core::cmp;
 use core::int;
 use thread::Thread;
@@ -32,7 +31,7 @@ use thread::Thread;
 use sync::atomic;
 use comm::spsc_queue as spsc;
 use comm::Receiver;
-use comm::blocking::{mod, WaitToken, SignalToken};
+use comm::blocking::{mod, SignalToken};
 
 const DISCONNECTED: int = int::MIN;
 #[cfg(test)]
@@ -147,7 +146,7 @@ impl<T: Send> Packet<T> {
         let ptr = self.to_wake.load(atomic::SeqCst);
         self.to_wake.store(0, atomic::SeqCst);
         assert!(ptr != 0);
-        unsafe { SignaToken::cast_from_uint(ptr) }
+        unsafe { SignalToken::cast_from_uint(ptr) }
     }
 
     // Decrements the count on the channel for a sleeper, returning the sleeper

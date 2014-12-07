@@ -1155,7 +1155,7 @@ mod test {
                     Err(ref e) if e.kind == TimedOut => {}
                     Err(e) => panic!("error: {}", e),
                 }
-                ::task::deschedule();
+                ::thread::Thread::yield_now();
                 if i == 1000 { panic!("should have a pending connection") }
             }
         }
@@ -1378,7 +1378,7 @@ mod test {
 
         // Try to ensure that the reading clone is indeed reading
         for _ in range(0i, 50) {
-            ::task::deschedule();
+            ::thread::Thread::yield_now();
         }
 
         // clone the handle again while it's reading, then let it finish the

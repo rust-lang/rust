@@ -141,7 +141,7 @@ pub fn write(w: &mut Writer) -> IoResult<()> {
 
     struct Context<'a> {
         idx: int,
-        writer: &'a mut Writer+'a,
+        writer: &'a mut (Writer+'a),
         last_error: Option<IoError>,
     }
 

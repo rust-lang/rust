@@ -22,7 +22,6 @@ pub use self::Failure::*;
 
 use core::prelude::*;
 
-use alloc::boxed::Box;
 use core::cmp;
 use core::int;
 
@@ -31,6 +30,7 @@ use comm::mpsc_queue as mpsc;
 use comm::blocking::{mod, SignalToken};
 use comm::select::StartResult;
 use comm::select::StartResult::*;
+use thread::Thread;
 
 const DISCONNECTED: int = int::MIN;
 const FUDGE: int = 1024;

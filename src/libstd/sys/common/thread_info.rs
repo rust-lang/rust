@@ -33,11 +33,11 @@ impl ThreadInfo {
                 *c.borrow_mut() = Some(ThreadInfo {
                     stack_bounds: (0, 0),
                     stack_guard: 0,
-                    unwinder: false,
-                    thread: Thread::new(None),
+                    unwinding: false,
+                    thread: NewThread::new(None),
                 })
             }
-            f(c.borrow_mut().as_ref().unwrap())
+            f(c.borrow_mut().as_mut().unwrap())
         })
     }
 }
@@ -47,15 +47,11 @@ pub fn current_thread() -> Thread {
 }
 
 pub fn panicking() -> bool {
-    ThreadInfo::with(|info| info.unwinder.unwinding())
+    ThreadInfo::with(|info| info.unwinding)
 }
 
 pub fn stack_guard() -> uint {
     ThreadInfo::with(|info| info.stack_guard)
-}
-
-pub fn unwinding() -> bool {
-    ThreadInfo::with(|info| info.unwinder.unwinding)
 }
 
 pub fn set_unwinding(unwinding: bool) {
@@ -64,11 +60,12 @@ pub fn set_unwinding(unwinding: bool) {
 
 pub fn set(stack_bounds: (uint, uint), stack_guard: uint, thread: Thread) {
     THREAD_INFO.with(|c| assert!(c.borrow().is_none()));
+    let mut thread_opt = Some(thread); // option dance
     THREAD_INFO.with(|c| *c.borrow_mut() = Some(ThreadInfo{
         stack_bounds: stack_bounds,
         stack_guard: stack_guard,
         unwinding: false,
-        thread: thread,
+        thread: thread_opt.take().unwrap(),
     }));
 }
 

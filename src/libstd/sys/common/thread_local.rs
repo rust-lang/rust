@@ -58,7 +58,6 @@
 
 use prelude::*;
 
-use rt;
 use sync::atomic::{mod, AtomicUint};
 use sync::{Mutex, Once, ONCE_INIT};
 

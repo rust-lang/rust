@@ -274,7 +274,7 @@ impl Drop for StaticMutexGuard {
 mod test {
     use prelude::*;
 
-    use task;
+    use thread::Thread;
     use sync::{Arc, Mutex, StaticMutex, MUTEX_INIT, Condvar};
 
     #[test]
@@ -386,10 +386,10 @@ mod test {
     fn test_mutex_arc_poison() {
         let arc = Arc::new(Mutex::new(1i));
         let arc2 = arc.clone();
-        let _ = task::try(move|| {
+        let _ = Thread::with_join(move|| {
             let lock = arc2.lock();
             assert_eq!(*lock, 2);
-        });
+        }).join();
         let lock = arc.lock();
         assert_eq!(*lock, 1);
     }
@@ -414,7 +414,7 @@ mod test {
     fn test_mutex_arc_access_in_unwind() {
         let arc = Arc::new(Mutex::new(1i));
         let arc2 = arc.clone();
-        let _ = task::try(move|| -> () {
+        let _ = Thread::with_join::<()>(move|| -> () {
             struct Unwinder {
                 i: Arc<Mutex<int>>,
             }
@@ -425,7 +425,7 @@ mod test {
             }
             let _u = Unwinder { i: arc2 };
             panic!();
-        });
+        }).join();
         let lock = arc.lock();
         assert_eq!(*lock, 2);
     }

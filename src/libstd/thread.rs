@@ -231,7 +231,7 @@ impl Cfg {
             }
             thread_info::set(
                 (my_stack_bottom, my_stack_top),
-                thread::current_guard_page(),
+                unsafe { imp::guard::current() },
                 their_thread
             );
 
@@ -261,7 +261,7 @@ impl Cfg {
                 }
             }
         };
-        (unsafe { imp::create(stack, box main) }, my_thread)
+        (unsafe { imp::create(stack_size, box main) }, my_thread)
     }
 
     /// Spawn a detached thread, and return a handle to it.
@@ -278,19 +278,20 @@ impl Cfg {
         // We need the address of the packet to fill in to be stable so when
         // `main` fills it in it's still valid, so allocate an extra box to do
         // so.
-        let my_packet = box Err(box 0); // sentinel value
+        let any: Box<Any+Send> = box 0u8; // sentinel value
+        let my_packet = box Err(any);
         let their_packet: *mut Result<T> = unsafe {
             *mem::transmute::<&Box<Result<T>>, *const *mut Result<T>>(&my_packet)
         };
 
         let (native, thread) = self.core_spawn(f, proc(result) {
-            *their_packet = result;
+            unsafe { *their_packet = result; }
         });
 
         JoinGuard {
             native: native,
             joined: false,
-            packet: my_packet,
+            packet: Some(my_packet),
             thread: thread,
         }
     }
@@ -336,7 +337,7 @@ impl Thread {
 
     /// Gets a handle to the thread that invokes it.
     pub fn current() -> Thread {
-        ThreadInfo::current_thread()
+        thread_info::current_thread()
     }
 
     /// Cooperatively give up a timeslice to the OS scheduler.
@@ -346,7 +347,7 @@ impl Thread {
 
     /// Determines whether the current thread is panicking.
     pub fn panicking() -> bool {
-        ThreadInfo::panicking()
+        thread_info::panicking()
     }
 
     // http://cr.openjdk.java.net/~stefank/6989984.1/raw_files/new/src/os/linux/vm/os_linux.cpp
@@ -355,9 +356,9 @@ impl Thread {
     /// See the module doc for more detail.
     pub fn park() {
         let thread = Thread::current();
-        let guard = thread.inner.lock.lock();
+        let mut guard = thread.inner.lock.lock();
         while !*guard {
-            thread.inner.cvar.wait(guard);
+            thread.inner.cvar.wait(&guard);
         }
         *guard = false;
     }
@@ -366,7 +367,7 @@ impl Thread {
     ///
     /// See the module doc for more detail.
     pub fn unpark(&self) {
-        let guard = self.inner.lock();
+        let mut guard = self.inner.lock.lock();
         if !*guard {
             *guard = true;
             self.inner.cvar.notify_one();
@@ -375,7 +376,7 @@ impl Thread {
 
     /// Get the thread's name.
     pub fn name(&self) -> Option<&str> {
-        self.inner.name.as_ref()
+        self.inner.name.as_ref().map(|s| s.as_slice())
     }
 }
 
@@ -387,7 +388,7 @@ impl thread_info::NewThread for Thread {
 /// Indicates the manner in which a thread exited.
 ///
 /// A thread that completes without panicking is considered to exit successfully.
-pub type Result<T> = result::Result<T, Box<Any + Send>>;
+pub type Result<T> = ::result::Result<T, Box<Any + Send>>;
 
 #[must_use]
 /// An RAII guard that will block until thread termination when dropped.
@@ -395,7 +396,7 @@ pub struct JoinGuard<T> {
     native: imp::rust_thread,
     thread: Thread,
     joined: bool,
-    packet: Box<Result<T>>,
+    packet: Option<Box<Result<T>>>,
 }
 
 impl<T: Send> JoinGuard<T> {

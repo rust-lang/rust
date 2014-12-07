@@ -347,16 +347,16 @@ result with an `int` field (representing a successful result) or an `Err` result
 (representing termination with an error).
 
 ```{rust}
-# use std::task;
+# use std::thread::Thread;
 # fn some_condition() -> bool { false }
 # fn calculate_result() -> int { 0 }
-let result: Result<int, Box<std::any::Any + Send>> = task::try(move || {
+let result: Result<int, Box<std::any::Any + Send>> = Thread::with_join(move || {
     if some_condition() {
         calculate_result()
     } else {
         panic!("oops!");
     }
-});
+}).join();
 assert!(result.is_err());
 ```
 

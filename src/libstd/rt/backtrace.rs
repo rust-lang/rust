@@ -12,12 +12,8 @@
 
 #![allow(non_camel_case_types)]
 
-use io::{IoResult, Writer};
-use iter::{Iterator, IteratorExt};
 use option::Option::{Some, None};
 use os;
-use result::Result::{Ok, Err};
-use str::{StrPrelude, from_str};
 use sync::atomic;
 
 pub use sys::backtrace::write;
