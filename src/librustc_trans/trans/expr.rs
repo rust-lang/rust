@@ -88,11 +88,10 @@ impl Dest {
     }
 }
 
-/// We categorize expressions into three kinds.  The distinction between
+/// We categorize expressions into four kinds.  The distinction between
 /// lvalue/rvalue is fundamental to the language.  The distinction between the
-/// two kinds of rvalues is an artifact of trans which reflects how we will
-/// generate code for that kind of expression.  See trans/expr.rs for more
-/// information.
+/// three kinds of rvalues is an artifact of trans which reflects how we will
+/// generate code for that kind of expression.
 pub enum ExprKind {
     Lvalue,
     RvalueDps,
@@ -157,9 +156,6 @@ pub fn expr_kind(tcx: &ty::ctxt, expr: &ast::Expr) -> ExprKind {
                 def::DefStaticMethod(..) |
                 def::DefMethod(..) => ExprKind::RvalueDatum,
 
-                // Note: there is actually a good case to be made that
-                // DefArg's, particularly those of immediate type, ought to
-                // considered rvalues.
                 def::DefStatic(..) |
                 def::DefUpvar(..) |
                 def::DefLocal(..) => ExprKind::Lvalue,
@@ -219,18 +215,7 @@ pub fn expr_kind(tcx: &ty::ctxt, expr: &ast::Expr) -> ExprKind {
                     }
                 }
                 None => {
-                    // Technically, it should not happen that the expr is not
-                    // present within the table.  However, it DOES happen
-                    // during type check, because the final types from the
-                    // expressions are not yet recorded in the tcx.  At that
-                    // time, though, we are only interested in knowing lvalue
-                    // vs rvalue.  It would be better to base this decision on
-                    // the AST type in cast node---but (at the time of this
-                    // writing) it's not easy to distinguish casts to traits
-                    // from other casts based on the AST.  This should be
-                    // easier in the future, when casts to traits
-                    // would like @Foo, Box<Foo>, or &Foo.
-                    ExprKind::RvalueDatum
+                    panic!("Cast expression not in types table");
                 }
             }
         }
