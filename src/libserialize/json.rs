@@ -2680,7 +2680,7 @@ mod tests {
                    from_str(a.to_pretty_str().as_slice()).unwrap());
     }
 
-    fn with_str_writer(f: |&mut io::Writer|) -> string::String {
+    fn with_str_writer<F>(f: F) -> string::String where F: FnOnce(&mut io::Writer){
         use std::str;
 
         let mut m = Vec::new();
