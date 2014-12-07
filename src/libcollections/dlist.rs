@@ -11,9 +11,6 @@
 //! A doubly-linked list with owned nodes.
 //!
 //! The `DList` allows pushing and popping elements at either end.
-//!
-//! `DList` implements the trait `Deque`. It should be imported with
-//! `use collections::Deque`.
 
 // DList is constructed like a singly-linked list over the field `next`.
 // including the last link being None; each Node owns its `next` field.
