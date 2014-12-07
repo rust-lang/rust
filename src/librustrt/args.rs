@@ -89,7 +89,7 @@ mod imp {
         })
     }
 
-    fn with_lock<T>(f: || -> T) -> T {
+    fn with_lock<T, F>(f: F) -> T where F: FnOnce() -> T {
         unsafe {
             let _guard = LOCK.lock();
             f()

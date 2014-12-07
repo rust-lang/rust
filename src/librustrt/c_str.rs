@@ -72,6 +72,7 @@ use collections::hash;
 use core::fmt;
 use core::kinds::{Sized, marker};
 use core::mem;
+use core::ops::{FnMut, FnOnce};
 use core::prelude::{Clone, Drop, Eq, Iterator};
 use core::prelude::{SlicePrelude, None, Option, Ordering, PartialEq};
 use core::prelude::{PartialOrd, RawPtr, Some, StrPrelude, range};
@@ -319,14 +320,18 @@ pub trait ToCStr for Sized? {
     ///
     /// Panics the task if the receiver has an interior null.
     #[inline]
-    fn with_c_str<T>(&self, f: |*const libc::c_char| -> T) -> T {
+    fn with_c_str<T, F>(&self, f: F) -> T where
+        F: FnOnce(*const libc::c_char) -> T,
+    {
         let c_str = self.to_c_str();
         f(c_str.as_ptr())
     }
 
     /// Unsafe variant of `with_c_str()` that doesn't check for nulls.
     #[inline]
-    unsafe fn with_c_str_unchecked<T>(&self, f: |*const libc::c_char| -> T) -> T {
+    unsafe fn with_c_str_unchecked<T, F>(&self, f: F) -> T where
+        F: FnOnce(*const libc::c_char) -> T,
+    {
         let c_str = self.to_c_str_unchecked();
         f(c_str.as_ptr())
     }
@@ -344,12 +349,16 @@ impl ToCStr for str {
     }
 
     #[inline]
-    fn with_c_str<T>(&self, f: |*const libc::c_char| -> T) -> T {
+    fn with_c_str<T, F>(&self, f: F) -> T where
+        F: FnOnce(*const libc::c_char) -> T,
+    {
         self.as_bytes().with_c_str(f)
     }
 
     #[inline]
-    unsafe fn with_c_str_unchecked<T>(&self, f: |*const libc::c_char| -> T) -> T {
+    unsafe fn with_c_str_unchecked<T, F>(&self, f: F) -> T where
+        F: FnOnce(*const libc::c_char) -> T,
+    {
         self.as_bytes().with_c_str_unchecked(f)
     }
 }
@@ -366,12 +375,16 @@ impl ToCStr for String {
     }
 
     #[inline]
-    fn with_c_str<T>(&self, f: |*const libc::c_char| -> T) -> T {
+    fn with_c_str<T, F>(&self, f: F) -> T where
+        F: FnOnce(*const libc::c_char) -> T,
+    {
         self.as_bytes().with_c_str(f)
     }
 
     #[inline]
-    unsafe fn with_c_str_unchecked<T>(&self, f: |*const libc::c_char| -> T) -> T {
+    unsafe fn with_c_str_unchecked<T, F>(&self, f: F) -> T where
+        F: FnOnce(*const libc::c_char) -> T,
+    {
         self.as_bytes().with_c_str_unchecked(f)
     }
 }
@@ -397,11 +410,15 @@ impl ToCStr for [u8] {
         CString::new(buf as *const libc::c_char, true)
     }
 
-    fn with_c_str<T>(&self, f: |*const libc::c_char| -> T) -> T {
+    fn with_c_str<T, F>(&self, f: F) -> T where
+        F: FnOnce(*const libc::c_char) -> T,
+    {
         unsafe { with_c_str(self, true, f) }
     }
 
-    unsafe fn with_c_str_unchecked<T>(&self, f: |*const libc::c_char| -> T) -> T {
+    unsafe fn with_c_str_unchecked<T, F>(&self, f: F) -> T where
+        F: FnOnce(*const libc::c_char) -> T,
+    {
         with_c_str(self, false, f)
     }
 }
@@ -418,19 +435,24 @@ impl<'a, Sized? T: ToCStr> ToCStr for &'a T {
     }
 
     #[inline]
-    fn with_c_str<T>(&self, f: |*const libc::c_char| -> T) -> T {
+    fn with_c_str<T, F>(&self, f: F) -> T where
+        F: FnOnce(*const libc::c_char) -> T,
+    {
         (**self).with_c_str(f)
     }
 
     #[inline]
-    unsafe fn with_c_str_unchecked<T>(&self, f: |*const libc::c_char| -> T) -> T {
+    unsafe fn with_c_str_unchecked<T, F>(&self, f: F) -> T where
+        F: FnOnce(*const libc::c_char) -> T,
+    {
         (**self).with_c_str_unchecked(f)
     }
 }
 
 // Unsafe function that handles possibly copying the &[u8] into a stack array.
-unsafe fn with_c_str<T>(v: &[u8], checked: bool,
-                        f: |*const libc::c_char| -> T) -> T {
+unsafe fn with_c_str<T, F>(v: &[u8], checked: bool, f: F) -> T where
+    F: FnOnce(*const libc::c_char) -> T,
+{
     let c_str = if v.len() < BUF_LEN {
         let mut buf: [u8, .. BUF_LEN] = mem::uninitialized();
         slice::bytes::copy_memory(&mut buf, v);
@@ -489,9 +511,12 @@ impl<'a> Iterator<libc::c_char> for CChars<'a> {
 ///
 /// The specified closure is invoked with each string that
 /// is found, and the number of strings found is returned.
-pub unsafe fn from_c_multistring(buf: *const libc::c_char,
-                                 count: Option<uint>,
-                                 f: |&CString|) -> uint {
+pub unsafe fn from_c_multistring<F>(buf: *const libc::c_char,
+                                    count: Option<uint>,
+                                    mut f: F)
+                                    -> uint where
+    F: FnMut(&CString),
+{
 
     let mut curr_ptr: uint = buf as uint;
     let mut ctr = 0;
@@ -678,7 +703,7 @@ mod tests {
 
     #[test]
     fn test_clone_noleak() {
-        fn foo(f: |c: &CString|) {
+        fn foo<F>(f: F) where F: FnOnce(&CString) {
             let s = "test".to_string();
             let c = s.to_c_str();
             // give the closure a non-owned CString
