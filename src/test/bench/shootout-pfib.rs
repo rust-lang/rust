@@ -21,7 +21,7 @@
 extern crate getopts;
 
 use std::os;
-use std::result::{Ok, Err};
+use std::result::Result::{Ok, Err};
 use std::task;
 use std::time::Duration;
 

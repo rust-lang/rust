@@ -177,7 +177,8 @@ mod imp {
 
 #[cfg(all(not(external_funcs), not(external_crate), jemalloc))]
 mod imp {
-    use core::option::{None, Option};
+    use core::option::Option;
+    use core::option::Option::None;
     use core::ptr::{null_mut, null};
     use core::num::Int;
     use libc::{c_char, c_int, c_void, size_t};

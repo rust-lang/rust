@@ -11,7 +11,7 @@
 extern crate collections;
 
 use std::collections::HashMap;
-use std::option::Some;
+use std::option::Option::Some;
 use std::str::SendStr;
 
 pub fn main() {
