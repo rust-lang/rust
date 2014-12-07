@@ -729,6 +729,15 @@ impl FromIterator<char> for String {
     }
 }
 
+#[experimental = "waiting on FromIterator stabilization"]
+impl<'a> FromIterator<&'a str> for String {
+    fn from_iter<I:Iterator<&'a str>>(iterator: I) -> String {
+        let mut buf = String::new();
+        buf.extend(iterator);
+        buf
+    }
+}
+
 #[experimental = "waiting on Extend stabilization"]
 impl Extend<char> for String {
     fn extend<I:Iterator<char>>(&mut self, mut iterator: I) {
@@ -736,6 +745,18 @@ impl Extend<char> for String {
         self.reserve(lower_bound);
         for ch in iterator {
             self.push(ch)
+        }
+    }
+}
+
+#[experimental = "waiting on Extend stabilization"]
+impl<'a> Extend<&'a str> for String {
+    fn extend<I: Iterator<&'a str>>(&mut self, mut iterator: I) {
+        // A guess that at least one byte per iterator element will be needed.
+        let (lower_bound, _) = iterator.size_hint();
+        self.reserve(lower_bound);
+        for s in iterator {
+            self.push_str(s)
         }
     }
 }
