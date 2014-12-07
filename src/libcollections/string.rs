@@ -1330,6 +1330,20 @@ mod tests {
                "[[], [1], [1, 1]]".to_string());
     }
 
+    #[test]
+    fn test_from_iterator() {
+        let s = "ศไทย中华Việt Nam".to_string();
+        let t = "ศไทย中华";
+        let u = "Việt Nam";
+
+        let a: String = s.chars().collect();
+        assert_eq!(s, a.as_slice());
+
+        let mut b = t.to_string();
+        b.extend(u.chars());
+        assert_eq!(s, b.as_slice());
+    }
+
     #[bench]
     fn bench_with_capacity(b: &mut Bencher) {
         b.iter(|| {
