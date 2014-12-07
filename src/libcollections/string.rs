@@ -732,6 +732,8 @@ impl FromIterator<char> for String {
 #[experimental = "waiting on Extend stabilization"]
 impl Extend<char> for String {
     fn extend<I:Iterator<char>>(&mut self, mut iterator: I) {
+        let (lower_bound, _) = iterator.size_hint();
+        self.reserve(lower_bound);
         for ch in iterator {
             self.push(ch)
         }
