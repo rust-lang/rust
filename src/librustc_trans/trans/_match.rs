@@ -1226,30 +1226,50 @@ pub fn trans_match<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
 /// Checks whether the binding in `discr` is assigned to anywhere in the expression `body`
 fn is_discr_reassigned(bcx: Block, discr: &ast::Expr, body: &ast::Expr) -> bool {
-    match discr.node {
+    let (vid, field) = match discr.node {
         ast::ExprPath(..) => match bcx.def(discr.id) {
-            def::DefLocal(vid) | def::DefUpvar(vid, _, _) => {
-                let mut rc = ReassignmentChecker {
-                    node: vid,
-                    reassigned: false
-                };
-                {
-                    let mut visitor = euv::ExprUseVisitor::new(&mut rc, bcx);
-                    visitor.walk_expr(body);
-                }
-                rc.reassigned
-            }
-            _ => false
+            def::DefLocal(vid) | def::DefUpvar(vid, _, _) => (vid, None),
+            _ => return false
         },
-        _ => false
+        ast::ExprField(ref base, field) => {
+            let vid = match bcx.tcx().def_map.borrow().get(&base.id) {
+                Some(&def::DefLocal(vid)) | Some(&def::DefUpvar(vid, _, _)) => vid,
+                _ => return false
+            };
+            (vid, Some(mc::NamedField(field.node.name)))
+        },
+        ast::ExprTupField(ref base, field) => {
+            let vid = match bcx.tcx().def_map.borrow().get(&base.id) {
+                Some(&def::DefLocal(vid)) | Some(&def::DefUpvar(vid, _, _)) => vid,
+                _ => return false
+            };
+            (vid, Some(mc::PositionalField(field.node)))
+        },
+        _ => return false
+    };
+
+    let mut rc = ReassignmentChecker {
+        node: vid,
+        field: field,
+        reassigned: false
+    };
+    {
+        let mut visitor = euv::ExprUseVisitor::new(&mut rc, bcx);
+        visitor.walk_expr(body);
     }
+    rc.reassigned
 }
 
 struct ReassignmentChecker {
     node: ast::NodeId,
+    field: Option<mc::FieldName>,
     reassigned: bool
 }
 
+// Determine if the expression we're matching on is reassigned to within
+// the body of the match's arm.
+// We only care for the `mutate` callback since this check only matters
+// for cases where the matched value is moved.
 impl<'tcx> euv::Delegate<'tcx> for ReassignmentChecker {
     fn consume(&mut self, _: ast::NodeId, _: Span, _: mc::cmt, _: euv::ConsumeMode) {}
     fn matched_pat(&mut self, _: &ast::Pat, _: mc::cmt, _: euv::MatchMode) {}
@@ -1262,6 +1282,15 @@ impl<'tcx> euv::Delegate<'tcx> for ReassignmentChecker {
         match cmt.cat {
             mc::cat_upvar(mc::Upvar { id: ty::UpvarId { var_id: vid, .. }, .. }) |
             mc::cat_local(vid) => self.reassigned = self.node == vid,
+            mc::cat_interior(ref base_cmt, mc::InteriorField(field)) => {
+                match base_cmt.cat {
+                    mc::cat_upvar(mc::Upvar { id: ty::UpvarId { var_id: vid, .. }, .. }) |
+                    mc::cat_local(vid) => {
+                        self.reassigned = self.node == vid && Some(field) == self.field
+                    },
+                    _ => {}
+                }
+            },
             _ => {}
         }
     }
