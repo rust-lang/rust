@@ -416,7 +416,7 @@ note: `car` moved here because it has type `Car`, which is non-copyable
 ```
 
 We need our `Car` to be pointed to by multiple `Wheel`s. We can't do that with
-`Box<T>`, because it has a single owner. We can do t with `Rc<T>` instead:
+`Box<T>`, because it has a single owner. We can do it with `Rc<T>` instead:
 
 ```rust
 use std::rc::Rc;
