@@ -425,8 +425,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::Predicate<'tcx> {
 impl<'tcx> TypeFoldable<'tcx> for ty::GenericBounds<'tcx> {
     fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> ty::GenericBounds<'tcx> {
         ty::GenericBounds {
-            types: self.types.fold_with(folder),
-            regions: self.regions.fold_with(folder),
+            predicates: self.predicates.fold_with(folder),
         }
     }
 }

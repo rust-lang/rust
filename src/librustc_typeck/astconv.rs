@@ -800,7 +800,7 @@ fn trait_ref_to_object_type<'tcx,AC,RS>(this: &AC,
     let existential_bounds = conv_existential_bounds(this,
                                                      rscope,
                                                      span,
-                                                     &[Rc::new(trait_ref.clone())],
+                                                     Some(&trait_ref),
                                                      bounds);
 
     let result = ty::mk_trait(this.tcx(), trait_ref, existential_bounds);
@@ -918,7 +918,7 @@ pub fn ast_ty_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                 let bounds = conv_existential_bounds(this,
                                                      rscope,
                                                      ast_ty.span,
-                                                     [].as_slice(),
+                                                     None,
                                                      f.bounds.as_slice());
                 let fn_decl = ty_of_closure(this,
                                             f.fn_style,
@@ -935,9 +935,10 @@ pub fn ast_ty_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
             ast::TyProc(ref f) => {
                 // Use corresponding trait store to figure out default bounds
                 // if none were specified.
-                let bounds = conv_existential_bounds(this, rscope,
+                let bounds = conv_existential_bounds(this,
+                                                     rscope,
                                                      ast_ty.span,
-                                                     [].as_slice(),
+                                                     None,
                                                      f.bounds.as_slice());
 
                 let fn_decl = ty_of_closure(this,
@@ -1370,7 +1371,7 @@ pub fn conv_existential_bounds<'tcx, AC: AstConv<'tcx>, RS:RegionScope>(
     this: &AC,
     rscope: &RS,
     span: Span,
-    main_trait_refs: &[Rc<ty::TraitRef<'tcx>>],
+    principal_trait_ref: Option<&ty::TraitRef<'tcx>>, // None for boxed closures
     ast_bounds: &[ast::TyParamBound])
     -> ty::ExistentialBounds
 {
@@ -1381,7 +1382,7 @@ pub fn conv_existential_bounds<'tcx, AC: AstConv<'tcx>, RS:RegionScope>(
         partition_bounds(this.tcx(), span, ast_bound_refs.as_slice());
 
     conv_existential_bounds_from_partitioned_bounds(
-        this, rscope, span, main_trait_refs, partitioned_bounds)
+        this, rscope, span, principal_trait_ref, partitioned_bounds)
 }
 
 fn conv_ty_poly_trait_ref<'tcx, AC, RS>(
@@ -1411,11 +1412,12 @@ fn conv_ty_poly_trait_ref<'tcx, AC, RS>(
         }
     };
 
-    let bounds = conv_existential_bounds_from_partitioned_bounds(this,
-                                                                 rscope,
-                                                                 span,
-                                                                 main_trait_bound.as_slice(),
-                                                                 partitioned_bounds);
+    let bounds =
+        conv_existential_bounds_from_partitioned_bounds(this,
+                                                        rscope,
+                                                        span,
+                                                        main_trait_bound.as_ref().map(|tr| &**tr),
+                                                        partitioned_bounds);
 
     match main_trait_bound {
         None => ty::mk_err(),
@@ -1427,7 +1429,7 @@ pub fn conv_existential_bounds_from_partitioned_bounds<'tcx, AC, RS>(
     this: &AC,
     rscope: &RS,
     span: Span,
-    main_trait_refs: &[Rc<ty::TraitRef<'tcx>>],
+    principal_trait_ref: Option<&ty::TraitRef<'tcx>>, // None for boxed closures
     partitioned_bounds: PartitionedBounds)
     -> ty::ExistentialBounds
     where AC: AstConv<'tcx>, RS:RegionScope
@@ -1445,28 +1447,12 @@ pub fn conv_existential_bounds_from_partitioned_bounds<'tcx, AC, RS>(
                      as closure or object bounds").as_slice());
     }
 
-    // The "main trait refs", rather annoyingly, have no type
-    // specified for the `Self` parameter of the trait. The reason for
-    // this is that they are, after all, *existential* types, and
-    // hence that type is unknown. However, leaving this type missing
-    // causes the substitution code to go all awry when walking the
-    // bounds, so here we clone those trait refs and insert ty::err as
-    // the self type. Perhaps we should do this more generally, it'd
-    // be convenient (or perhaps something else, i.e., ty::erased).
-    let main_trait_refs: Vec<Rc<ty::TraitRef>> =
-        main_trait_refs.iter()
-        .map(|t|
-             Rc::new(ty::TraitRef {
-                 def_id: t.def_id,
-                 substs: t.substs.with_self_ty(ty::mk_err()) }))
-        .collect();
-
     let region_bound = compute_region_bound(this,
                                             rscope,
                                             span,
-                                            builtin_bounds,
                                             region_bounds.as_slice(),
-                                            main_trait_refs.as_slice());
+                                            principal_trait_ref,
+                                            builtin_bounds);
 
     ty::ExistentialBounds {
         region_bound: region_bound,
@@ -1478,33 +1464,35 @@ pub fn conv_existential_bounds_from_partitioned_bounds<'tcx, AC, RS>(
 /// (if any) we can use to summarize this type. The basic idea is that we will use the bound the
 /// user provided, if they provided one, and otherwise search the supertypes of trait bounds for
 /// region bounds. It may be that we can derive no bound at all, in which case we return `None`.
-pub fn compute_opt_region_bound<'tcx>(tcx: &ty::ctxt<'tcx>,
-                                      span: Span,
-                                      builtin_bounds: ty::BuiltinBounds,
-                                      region_bounds: &[&ast::Lifetime],
-                                      trait_bounds: &[Rc<ty::TraitRef<'tcx>>])
-                                      -> Option<ty::Region>
+fn compute_opt_region_bound<'tcx>(tcx: &ty::ctxt<'tcx>,
+                                  span: Span,
+                                  explicit_region_bounds: &[&ast::Lifetime],
+                                  principal_trait_ref: Option<&ty::TraitRef<'tcx>>,
+                                  builtin_bounds: ty::BuiltinBounds)
+                                  -> Option<ty::Region>
 {
-    if region_bounds.len() > 1 {
+    debug!("compute_opt_region_bound(explicit_region_bounds={}, \
+           principal_trait_ref={}, builtin_bounds={})",
+           explicit_region_bounds,
+           principal_trait_ref.repr(tcx),
+           builtin_bounds.repr(tcx));
+
+    if explicit_region_bounds.len() > 1 {
         tcx.sess.span_err(
-            region_bounds[1].span,
+            explicit_region_bounds[1].span,
             format!("only a single explicit lifetime bound is permitted").as_slice());
     }
 
-    if region_bounds.len() != 0 {
+    if explicit_region_bounds.len() != 0 {
         // Explicitly specified region bound. Use that.
-        let r = region_bounds[0];
+        let r = explicit_region_bounds[0];
         return Some(ast_region_to_region(tcx, r));
     }
 
     // No explicit region bound specified. Therefore, examine trait
     // bounds and see if we can derive region bounds from those.
     let derived_region_bounds =
-        ty::required_region_bounds(
-            tcx,
-            &[],
-            builtin_bounds,
-            trait_bounds);
+        ty::object_region_bounds(tcx, principal_trait_ref, builtin_bounds);
 
     // If there are no derived region bounds, then report back that we
     // can find no region bound.
@@ -1538,13 +1526,13 @@ fn compute_region_bound<'tcx, AC: AstConv<'tcx>, RS:RegionScope>(
     this: &AC,
     rscope: &RS,
     span: Span,
-    builtin_bounds: ty::BuiltinBounds,
     region_bounds: &[&ast::Lifetime],
-    trait_bounds: &[Rc<ty::TraitRef<'tcx>>])
+    principal_trait_ref: Option<&ty::TraitRef<'tcx>>, // None for closures
+    builtin_bounds: ty::BuiltinBounds)
     -> ty::Region
 {
-    match compute_opt_region_bound(this.tcx(), span, builtin_bounds,
-                                   region_bounds, trait_bounds) {
+    match compute_opt_region_bound(this.tcx(), span, region_bounds,
+                                   principal_trait_ref, builtin_bounds) {
         Some(r) => r,
         None => {
             match rscope.default_region_bound(span) {

@@ -97,7 +97,9 @@ impl<'a, 'tcx> Wf<'a, 'tcx> {
             }
 
             ty::ty_trait(ref t) => {
-                self.accumulate_from_object_ty(ty, &t.bounds)
+                let required_region_bounds =
+                    ty::object_region_bounds(self.tcx, Some(&t.principal), t.bounds.builtin_bounds);
+                self.accumulate_from_object_ty(ty, t.bounds.region_bound, required_region_bounds)
             }
 
             ty::ty_enum(def_id, ref substs) |
@@ -321,12 +323,15 @@ impl<'a, 'tcx> Wf<'a, 'tcx> {
             ty::UniqTraitStore => { }
         }
 
-        self.accumulate_from_object_ty(ty, &c.bounds)
+        let required_region_bounds =
+            ty::object_region_bounds(self.tcx, None, c.bounds.builtin_bounds);
+        self.accumulate_from_object_ty(ty, c.bounds.region_bound, required_region_bounds);
     }
 
     fn accumulate_from_object_ty(&mut self,
                                  ty: Ty<'tcx>,
-                                 bounds: &ty::ExistentialBounds)
+                                 region_bound: ty::Region,
+                                 required_region_bounds: Vec<ty::Region>)
     {
         // Imagine a type like this:
         //
@@ -362,17 +367,12 @@ impl<'a, 'tcx> Wf<'a, 'tcx> {
 
         // The content of this object type must outlive
         // `bounds.region_bound`:
-        let r_c = bounds.region_bound;
+        let r_c = region_bound;
         self.push_region_constraint_from_top(r_c);
 
         // And then, in turn, to be well-formed, the
         // `region_bound` that user specified must imply the
         // region bounds required from all of the trait types:
-        let required_region_bounds =
-            ty::required_region_bounds(self.tcx,
-                                       &[],
-                                       bounds.builtin_bounds,
-                                       &[]);
         for &r_d in required_region_bounds.iter() {
             // Each of these is an instance of the `'c <= 'b`
             // constraint above

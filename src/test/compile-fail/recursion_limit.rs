@@ -44,8 +44,8 @@ fn main() {
     is_send::<A>();
     //~^ ERROR overflow evaluating
     //~^^ NOTE consider adding a `#![recursion_limit="20"]` attribute to your crate
-    //~^^^ NOTE must be implemented
+    //~^^^ NOTE required by `is_send`
     //~^^^^ ERROR overflow evaluating
     //~^^^^^ NOTE consider adding a `#![recursion_limit="20"]` attribute to your crate
-    //~^^^^^^ NOTE must be implemented
+    //~^^^^^^ NOTE required by `is_send`
 }

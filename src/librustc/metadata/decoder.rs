@@ -23,7 +23,8 @@ use metadata::csearch;
 use metadata::cstore;
 use metadata::tydecode::{parse_ty_data, parse_region_data, parse_def_id,
                          parse_type_param_def_data, parse_bounds_data,
-                         parse_bare_fn_ty_data, parse_trait_ref_data};
+                         parse_bare_fn_ty_data, parse_trait_ref_data,
+                         parse_predicate_data};
 use middle::def;
 use middle::lang_items;
 use middle::resolve::{TraitItemKind, TypeTraitItemKind};
@@ -1437,7 +1438,18 @@ fn doc_generics<'tcx>(base_doc: rbml::Doc,
         true
     });
 
-    let predicates = subst::VecPerParamSpace::empty(); // TODO fix in later commit
+    let mut predicates = subst::VecPerParamSpace::empty();
+    reader::tagged_docs(doc, tag_predicate, |predicate_doc| {
+        let space_doc = reader::get_doc(predicate_doc, tag_predicate_space);
+        let space = subst::ParamSpace::from_uint(reader::doc_as_u8(space_doc) as uint);
+
+        let data_doc = reader::get_doc(predicate_doc, tag_predicate_data);
+        let data = parse_predicate_data(data_doc.data, data_doc.start, cdata.cnum, tcx,
+                                        |_, did| translate_def_id(cdata, did));
+
+        predicates.push(space, data);
+        true
+    });
 
     ty::Generics { types: types, regions: regions, predicates: predicates }
 }

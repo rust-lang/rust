@@ -827,8 +827,8 @@ pub fn fulfill_obligation<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     // fully bound. It could be a slight optimization to stop
     // iterating early.
     let mut fulfill_cx = traits::FulfillmentContext::new();
-    let vtable = selection.map_move_nested(|obligation| {
-        fulfill_cx.register_obligation(tcx, obligation);
+    let vtable = selection.map_move_nested(|predicate| {
+        fulfill_cx.register_predicate(infcx.tcx, predicate);
     });
     match fulfill_cx.select_all_or_error(&infcx, &param_env, tcx) {
         Ok(()) => { }

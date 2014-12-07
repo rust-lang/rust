@@ -104,6 +104,7 @@ use {CrateCtxt, lookup_def_ccx, no_params, require_same_types};
 use TypeAndSubsts;
 use middle::lang_items::TypeIdLangItem;
 use lint;
+use util::common::ErrorReported;
 use util::common::{block_query, indenter, loop_query};
 use util::ppaux::{mod, UserString, Repr};
 use util::nodemap::{DefIdMap, FnvHashMap, NodeMap};
@@ -1761,7 +1762,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 span,
                 self.body_id,
                 traits::ItemObligation(def_id)),
-            &substs,
             &bounds);
         let monotype =
             polytype.ty.subst(self.tcx(), &substs);
@@ -1785,14 +1785,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                               code: traits::ObligationCauseCode<'tcx>,
                               bound: ty::BuiltinBound)
     {
-        let obligation = traits::obligation_for_builtin_bound(
-            self.tcx(),
-            traits::ObligationCause::new(span, self.body_id, code),
+        self.register_builtin_bound(
             ty,
-            bound);
-        if let Ok(ob) = obligation {
-            self.register_obligation(ob);
-        }
+            bound,
+            traits::ObligationCause::new(span, self.body_id, code));
     }
 
     pub fn require_type_is_sized(&self,
@@ -1810,15 +1806,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.require_type_is_sized(self.expr_ty(expr), expr.span, code);
     }
 
-    pub fn register_obligation(&self,
-                               obligation: traits::TraitObligation<'tcx>)
+    pub fn register_builtin_bound(&self,
+                                  ty: Ty<'tcx>,
+                                  builtin_bound: ty::BuiltinBound,
+                                  cause: traits::ObligationCause<'tcx>)
     {
-        debug!("register_obligation({})",
+        self.inh.fulfillment_cx.borrow_mut()
+            .register_builtin_bound(self.tcx(), ty, builtin_bound, cause);
+    }
+
+    pub fn register_predicate(&self,
+                              obligation: traits::PredicateObligation<'tcx>)
+    {
+        debug!("register_predicate({})",
                obligation.repr(self.tcx()));
 
         self.inh.fulfillment_cx
             .borrow_mut()
-            .register_obligation(self.tcx(), obligation);
+            .register_predicate(self.tcx(), obligation);
     }
 
     pub fn to_ty(&self, ast_t: &ast::Ty) -> Ty<'tcx> {
@@ -1958,7 +1963,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                       cause: traits::ObligationCause<'tcx>)
     {
         let mut fulfillment_cx = self.inh.fulfillment_cx.borrow_mut();
-        fulfillment_cx.register_region_obligation(ty, region, cause);
+        fulfillment_cx.register_region_obligation(self.tcx(), ty, region, cause);
     }
 
     pub fn add_default_region_param_bounds(&self,
@@ -1993,90 +1998,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// and `T`. This routine will add a region obligation `$1:'$0` and register it locally.
     pub fn add_obligations_for_parameters(&self,
                                           cause: traits::ObligationCause<'tcx>,
-                                          substs: &Substs<'tcx>,
                                           generic_bounds: &ty::GenericBounds<'tcx>)
     {
         assert!(!generic_bounds.has_escaping_regions());
 
-        debug!("add_obligations_for_parameters(substs={}, generic_bounds={})",
-               substs.repr(self.tcx()),
+        debug!("add_obligations_for_parameters(generic_bounds={})",
                generic_bounds.repr(self.tcx()));
 
-        self.add_trait_obligations_for_generics(cause, substs, generic_bounds);
-        self.add_region_obligations_for_generics(cause, substs, generic_bounds);
-    }
+        let obligations = traits::predicates_for_generics(self.tcx(),
+                                                          cause,
+                                                          generic_bounds);
 
-    fn add_trait_obligations_for_generics(&self,
-                                          cause: traits::ObligationCause<'tcx>,
-                                          substs: &Substs<'tcx>,
-                                          generic_bounds: &ty::GenericBounds<'tcx>) {
-        assert!(!generic_bounds.has_escaping_regions());
-        assert!(!substs.has_regions_escaping_depth(0));
-
-        let obligations =
-            traits::obligations_for_generics(self.tcx(),
-                                             cause,
-                                             generic_bounds,
-                                             &substs.types);
-        obligations.map_move(|o| self.register_obligation(o));
-    }
-
-    fn add_region_obligations_for_generics(&self,
-                                           cause: traits::ObligationCause<'tcx>,
-                                           substs: &Substs<'tcx>,
-                                           generic_bounds: &ty::GenericBounds<'tcx>)
-    {
-        assert!(!generic_bounds.has_escaping_regions());
-        assert_eq!(generic_bounds.types.iter().len(), substs.types.iter().len());
-
-        for (type_bounds, &type_param) in
-            generic_bounds.types.iter().zip(
-                substs.types.iter())
-        {
-            self.add_region_obligations_for_type_parameter(
-                cause.span, type_bounds, type_param);
-        }
-
-        assert_eq!(generic_bounds.regions.iter().len(),
-                   substs.regions().iter().len());
-        for (region_bounds, &region_param) in
-            generic_bounds.regions.iter().zip(
-                substs.regions().iter())
-        {
-            self.add_region_obligations_for_region_parameter(
-                cause.span, region_bounds.as_slice(), region_param);
-        }
-    }
-
-    fn add_region_obligations_for_type_parameter(&self,
-                                                 span: Span,
-                                                 param_bound: &ty::ParamBounds<'tcx>,
-                                                 ty: Ty<'tcx>)
-    {
-        // For each declared region bound `T:r`, `T` must outlive `r`.
-        let region_bounds =
-            ty::required_region_bounds(
-                self.tcx(),
-                param_bound.region_bounds.as_slice(),
-                param_bound.builtin_bounds,
-                param_bound.trait_bounds.as_slice());
-        for &r in region_bounds.iter() {
-            let cause = traits::ObligationCause::new(span, self.body_id, traits::MiscObligation);
-            self.register_region_obligation(ty, r, cause);
-        }
-    }
-
-    fn add_region_obligations_for_region_parameter(&self,
-                                                   span: Span,
-                                                   region_bounds: &[ty::Region],
-                                                   region_param: ty::Region)
-    {
-        for &b in region_bounds.iter() {
-            // For each bound `region:b`, `b <= region` must hold
-            // (i.e., `region` must outlive `b`).
-            let origin = infer::RelateRegionParamBound(span);
-            self.mk_subr(origin, b, region_param);
-        }
+        obligations.map_move(|o| self.register_predicate(o));
     }
 }
 
@@ -4029,6 +3962,9 @@ fn check_expr_with_unifier<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         let typ = lookup_method_for_for_loop(fcx, &**head, expr.id);
         vtable::select_new_fcx_obligations(fcx);
 
+        debug!("ExprForLoop each item has type {}",
+               fcx.infcx().resolve_type_vars_if_possible(typ).repr(fcx.tcx()));
+
         let pcx = pat_ctxt {
             fcx: fcx,
             map: pat_id_map(&tcx.def_map, &**pat),
@@ -5162,7 +5098,6 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
     fcx.add_obligations_for_parameters(
         traits::ObligationCause::new(span, fcx.body_id, traits::ItemObligation(def.def_id())),
-        &substs,
         &bounds);
 
     // Substitute the values for the type parameters into the type of
