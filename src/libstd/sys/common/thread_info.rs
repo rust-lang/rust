@@ -8,30 +8,36 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
+use thread::Thread;
+use cell::RefCell;
+use string::String;
+
 struct ThreadInfo {
     // This field holds the known bounds of the stack in (lo, hi)
     // form. Not all threads necessarily know their precise bounds,
     // hence this is optional.
     stack_bounds: (uint, uint),
     stack_guard: uint,
-    unwinder: Unwinder,
+    unwinding: bool,
     thread: Thread,
 }
 
-thread_local!(static THREAD_INFO: RefCell<Option<ThreadInfo>> = RefCell::new(None));
+thread_local!(static THREAD_INFO: RefCell<Option<ThreadInfo>> = RefCell::new(None))
 
 impl ThreadInfo {
-    fn with<R>(f: |&ThreadInfo| -> R) -> R {
+    fn with<R>(f: |&mut ThreadInfo| -> R) -> R {
         THREAD_INFO.with(|c| {
             if c.borrow().is_none() {
                 *c.borrow_mut() = Some(ThreadInfo {
                     stack_bounds: (0, 0),
                     stack_guard: 0,
-                    unwinder: Unwinder::new(),
+                    unwinder: false,
                     thread: Thread::new(None),
                 })
             }
-            f(c.borrow().as_ref().unwrap())
+            f(c.borrow_mut().as_ref().unwrap())
         })
     }
 }
@@ -44,12 +50,24 @@ pub fn panicking() -> bool {
     ThreadInfo::with(|info| info.unwinder.unwinding())
 }
 
+pub fn stack_guard() -> uint {
+    ThreadInfo::with(|info| info.stack_guard)
+}
+
+pub fn unwinding() -> bool {
+    ThreadInfo::with(|info| info.unwinder.unwinding)
+}
+
+pub fn set_unwinding(unwinding: bool) {
+    ThreadInfo::with(|info| info.unwinding = unwinding)
+}
+
 pub fn set(stack_bounds: (uint, uint), stack_guard: uint, thread: Thread) {
     THREAD_INFO.with(|c| assert!(c.borrow().is_none()));
     THREAD_INFO.with(|c| *c.borrow_mut() = Some(ThreadInfo{
         stack_bounds: stack_bounds,
         stack_guard: stack_guard,
-        unwinder: Unwinder::new(),
+        unwinding: false,
         thread: thread,
     }));
 }

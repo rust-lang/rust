@@ -72,15 +72,8 @@ use mem;
 use raw::Closure;
 use libc::c_void;
 
-use rt::local::Local;
-use rt::task::Task;
-
+use sys_common::thread_info;
 use rt::libunwind as uw;
-
-#[allow(missing_copy_implementations)]
-pub struct Unwinder {
-    unwinding: bool,
-}
 
 struct Exception {
     uwe: uw::_Unwind_Exception,
@@ -103,18 +96,6 @@ static CALLBACKS: [atomic::AtomicUint, ..MAX_CALLBACKS] =
          atomic::INIT_ATOMIC_UINT, atomic::INIT_ATOMIC_UINT,
          atomic::INIT_ATOMIC_UINT, atomic::INIT_ATOMIC_UINT];
 static CALLBACK_CNT: atomic::AtomicUint = atomic::INIT_ATOMIC_UINT;
-
-impl Unwinder {
-    pub fn new() -> Unwinder {
-        Unwinder {
-            unwinding: false,
-        }
-    }
-
-    pub fn unwinding(&self) -> bool {
-        self.unwinding
-    }
-}
 
 /// Invoke a closure, capturing the cause of panic if one occurs.
 ///
@@ -556,7 +537,7 @@ pub fn begin_unwind<M: Any + Send>(msg: M, file_line: &(&'static str, uint)) -> 
 /// we need the `Any` object anyway, we're not just creating it to
 /// avoid being generic.)
 ///
-/// Do this split took the LLVM IR line counts of `fn main() { panic!()
+/// Doing this split took the LLVM IR line counts of `fn main() { panic!()
 /// }` from ~1900/3700 (-O/no opts) to 180/590.
 #[inline(never)] #[cold] // this is the slow path, please never inline this
 fn begin_unwind_inner(msg: Box<Any + Send>, file_line: &(&'static str, uint)) -> ! {
@@ -583,27 +564,16 @@ fn begin_unwind_inner(msg: Box<Any + Send>, file_line: &(&'static str, uint)) ->
     };
 
     // Now that we've run all the necessary unwind callbacks, we actually
-    // perform the unwinding. If we don't have a task, then it's time to die
-    // (hopefully someone printed something about this).
-    let mut task: Box<Task> = match Local::try_take() {
-        Some(task) => task,
-        None => rust_panic(msg),
-    };
-
-    if task.unwinder.unwinding {
-        // If a task panics while it's already unwinding then we
+    // perform the unwinding.
+    if thread_info::unwinding() {
+        // If a thread panics while it's already unwinding then we
         // have limited options. Currently our preference is to
         // just abort. In the future we may consider resuming
         // unwinding or otherwise exiting the task cleanly.
         rterrln!("task failed during unwinding. aborting.");
         unsafe { intrinsics::abort() }
     }
-    task.unwinder.unwinding = true;
-
-    // Put the task back in TLS because the unwinding process may run code which
-    // requires the task. We need a handle to its unwinder, however, so after
-    // this we unsafely extract it and continue along.
-    Local::put(task);
+    thread_info::set_unwinding(true);
     rust_panic(msg);
 }
 
