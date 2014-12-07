@@ -19,7 +19,7 @@ use clone::Clone;
 use io::net::ip::{SocketAddr, IpAddr, ToSocketAddr};
 use io::{Reader, Writer, IoResult};
 use option::Option;
-use result::{Ok, Err};
+use result::Result::{Ok, Err};
 use sys::udp::UdpSocket as UdpSocketImp;
 use sys_common;
 

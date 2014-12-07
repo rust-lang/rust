@@ -78,7 +78,8 @@
 //! }
 //! ```
 
-use option::{Option, None};
+use option::Option;
+use option::Option::None;
 use kinds::Send;
 use string::String;
 

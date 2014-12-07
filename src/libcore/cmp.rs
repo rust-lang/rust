@@ -44,7 +44,8 @@
 pub use self::Ordering::*;
 
 use kinds::Sized;
-use option::{Option, Some, None};
+use option::Option;
+use option::Option::{Some, None};
 
 /// Trait for values that can be compared for equality and inequality.
 ///
@@ -288,10 +289,11 @@ pub fn partial_max<T: PartialOrd>(v1: T, v2: T) -> Option<T> {
 
 // Implementation of PartialEq, Eq, PartialOrd and Ord for primitive types
 mod impls {
-    use cmp::{PartialOrd, Ord, PartialEq, Eq, Ordering,
-              Less, Greater, Equal};
+    use cmp::{PartialOrd, Ord, PartialEq, Eq, Ordering};
+    use cmp::Ordering::{Less, Greater, Equal};
     use kinds::Sized;
-    use option::{Option, Some, None};
+    use option::Option;
+    use option::Option::{Some, None};
 
     macro_rules! partial_eq_impl(
         ($($t:ty)*) => ($(

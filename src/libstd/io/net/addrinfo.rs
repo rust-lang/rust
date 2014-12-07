@@ -22,7 +22,8 @@ pub use self::Protocol::*;
 use iter::IteratorExt;
 use io::{IoResult};
 use io::net::ip::{SocketAddr, IpAddr};
-use option::{Option, Some, None};
+use option::Option;
+use option::Option::{Some, None};
 use sys;
 use vec::Vec;
 

@@ -15,8 +15,7 @@ use middle::infer;
 use middle::infer::resolve_type;
 use middle::infer::resolve::try_resolve_tvar_shallow;
 
-use std::result::{Err, Ok};
-use std::result;
+use std::result::Result::{Err, Ok};
 use syntax::ast;
 use syntax::codemap::Span;
 use util::ppaux::Repr;
@@ -38,8 +37,8 @@ pub fn suptype_with_fn<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     // n.b.: order of actual, expected is reversed
     match infer::mk_subty(fcx.infcx(), b_is_expected, infer::Misc(sp),
                           ty_b, ty_a) {
-      result::Ok(()) => { /* ok */ }
-      result::Err(ref err) => {
+      Ok(()) => { /* ok */ }
+      Err(ref err) => {
           handle_err(sp, ty_a, ty_b, err);
       }
     }
@@ -69,8 +68,8 @@ pub fn coerce<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>, sp: Span,
                      try_resolve_tvar_shallow).unwrap_or(expected)
     } else { expected };
     match fcx.mk_assignty(expr, expr_ty, expected) {
-      result::Ok(()) => { /* ok */ }
-      result::Err(ref err) => {
+      Ok(()) => { /* ok */ }
+      Err(ref err) => {
         fcx.report_mismatched_types(sp, expected, expr_ty, err);
       }
     }

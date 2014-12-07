@@ -69,7 +69,8 @@ pub use unit;
 use clone::Clone;
 use cmp::*;
 use default::Default;
-use option::{Option, Some};
+use option::Option;
+use option::Option::Some;
 
 // macro for implementing n-ary tuple functions and operations
 macro_rules! tuple_impls {
