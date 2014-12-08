@@ -340,6 +340,7 @@ fn test_iterator_size_hint() {
     assert_eq!(c.enumerate().size_hint(), (uint::MAX, None));
     assert_eq!(c.chain(vi.map(|&i| i)).size_hint(), (uint::MAX, None));
     assert_eq!(c.zip(vi).size_hint(), (10, Some(10)));
+    assert_eq!(c.zip_longest(vi).size_hint(), (uint::MAX, None));
     assert_eq!(c.scan(0i, |_,_| Some(0i)).size_hint(), (0, None));
     assert_eq!(c.filter(|_| false).size_hint(), (0, None));
     assert_eq!(c.map(|_| 0i).size_hint(), (uint::MAX, None));
@@ -354,6 +355,7 @@ fn test_iterator_size_hint() {
     assert_eq!(vi.enumerate().size_hint(), (10, Some(10)));
     assert_eq!(vi.chain(v2.iter()).size_hint(), (13, Some(13)));
     assert_eq!(vi.zip(v2.iter()).size_hint(), (3, Some(3)));
+    assert_eq!(vi.zip_longest(v2.iter()).size_hint(), (10, Some(10)));
     assert_eq!(vi.scan(0i, |_,_| Some(0i)).size_hint(), (0, Some(10)));
     assert_eq!(vi.filter(|_| false).size_hint(), (0, Some(10)));
     assert_eq!(vi.map(|&i| i+1).size_hint(), (10, Some(10)));
@@ -494,6 +496,23 @@ fn test_double_ended_zip() {
     assert_eq!(it.next(), Some((2, 2)));
     assert_eq!(it.next_back(), Some((4, 7)));
     assert_eq!(it.next_back(), Some((3, 3)));
+    assert_eq!(it.next(), None);
+}
+
+#[test]
+fn test_double_ended_zip_longest() {
+    use core::iter::EitherOrBoth::{Both, Left};
+    let xs = [1i, 2, 3, 4, 5, 6];
+    let ys = [1i, 2, 3, 7];
+    let a = xs.iter().map(|&x| x);
+    let b = ys.iter().map(|&x| x);
+    let mut it = a.zip_longest(b);
+    assert_eq!(it.next(), Some(Both(1, 1)));
+    assert_eq!(it.next(), Some(Both(2, 2)));
+    assert_eq!(it.next_back(), Some(Left(6)));
+    assert_eq!(it.next_back(), Some(Left(5)));
+    assert_eq!(it.next_back(), Some(Both(4, 7)));
+    assert_eq!(it.next(), Some(Both(3, 3)));
     assert_eq!(it.next(), None);
 }
 
@@ -639,6 +658,13 @@ fn test_random_access_zip() {
     let xs = [1i, 2, 3, 4, 5];
     let ys = [7i, 9, 11];
     check_randacc_iter(xs.iter().zip(ys.iter()), cmp::min(xs.len(), ys.len()));
+}
+
+#[test]
+fn test_random_access_zip_longest() {
+    let xs = [1i, 2, 3, 4, 5];
+    let ys = [7i, 9, 11];
+    check_randacc_iter(xs.iter().zip_longest(ys.iter()), cmp::max(xs.len(), ys.len()));
 }
 
 #[test]
