@@ -143,65 +143,27 @@ following functions will also be deprecated:
   `String::from_raw_buf` except that `slice::from_raw_buf` is used instead of
   `c_str`.
 
-## A new `c_vec`
+## Removing `c_vec`
 
-> **Note**: an implementation of the design below can be found [in a branch of
-> mine][c_vec]
+The new `c_string` module serves as a solution to desires (1) and (2) above, but
+the third use case is left unsolved so far. This is what the current `c_vec`
+module is attempting to solve, but it does so in a somewhat ad-hoc fashion. The
+constructor for the type takes a `proc` destructor to invoke when the vector is
+dropped to allow for custom destruction. To make matters a little more
+interesting, the `CVec` type provides a default constructor which invokes
+`libc::free` on the pointer.
 
-[c_vec]: https://github.com/alexcrichton/rust/blob/cstr/src/libstd/c_vec.rs
+Transferring ownership of pointers without a custom deallocation function is in
+general quite a dangerous operation for libraries to perform. Not all platforms
+support the ability to `malloc` in one library and `free` in the other, and this
+is also generally considered an antipattern.
 
-The new `c_str` module serves as a solution to desires (1) and (2) above, but
-the third use case is left unsolved so far. This is what the new `c_vec` module
-will be realized to do. The new module will look like:
-
-```rust
-pub struct CVec<T, D = LibcDtor> { /* ... */ }
-
-impl<T> CVec<T> {
-    pub unsafe fn new(base: *mut T, len: uint) -> CVec<T> { /* ... */ }
-}
-impl<u8> CVec<u8> {
-    pub unsafe fn from_c_str(base: *mut libc::c_char) -> CVec<u8> { /* ... */ }
-}
-impl<T, D: Dtor<T>> CVec<T, D> {
-    pub unsafe fn new_with_dtor(base: *mut T, len: uint, dtor: D) -> CVec<T, D> { /* ... */ }
-}
-
-impl<T, D> Deref<[T]> for CVec<T, D> { /* ... */ }
-impl<T, D> DerefMut<[T]> for CVec<T, D> { /* ... */ }
-
-pub trait Dtor<T> {
-    fn destroy(&mut self, ptr: *mut T, len: uint);
-}
-
-pub struct LibcDtor;
-
-impl<T> Dtor<T> for LibcDtor { /* ... */ }
-```
-
-The new `CVec` type is similar to the `CString` type in that it will provide a
-few constructor functions, but largely rely on its `Deref` implementations to
-inherit most of its methods. Fundamentally a `CVec` is quite similar to a
-`Box<[T]>` with a different deallocation strategy. This is realized with the few
-constructor functions, the `Deref`/`DerefMut` implementation, and the destructor
-type parameter.
-
-Each `CVec` will by default be deallocated with `libc::free` (what `LibcDtor`
-does), but custom deallocation strategies can be implemented via the `Dtor`
-trait.
-
-### Construction
-
-A `CVec` is primarily constructed through the `new` function where a pointer/len
-pair is specified. The constructor consumes ownership of the memory and will
-treat it as mutable (hence `*mut T`). The default constructor is also hardwired
-to `LibcDtor` in a similar fashion to `HashMap::new` being hardwired to sip
-hashing.
-
-A convenience constructor, `from_c_str`, is provided for taking ownership of a
-foreign-allocated C string. The returned vector is a `u8` vector to indicate
-that it is intended for use in Rust itself (with a Rust type, not
-`libc::c_char`).
+Creating a custom wrapper struct with a simple `Deref` and `Drop` implementation
+as necessary is likely to be sufficient for this use case, so this RFC proposes
+removing the entire `c_vec` module with no replacement. It is expected that a
+utility crate for interoperating with raw pointers in this fashion may manifest
+itself on crates.io, and inclusion into the standard library can be considered
+at that time.
 
 ## Working with C Strings
 
@@ -237,11 +199,6 @@ and `with_c_str` methods are no longer in the prelude by default, and
 * There is an [alternative RFC](https://github.com/rust-lang/rfcs/pull/435)
   which discusses pursuit of today's general design of the `c_str` module  as
   well as a refinement of its current types.
-
-* The `Dtor` trait in the `c_vec` module could possibly be replaced with what it
-  is today, a `proc`. This imposes a requirement of `Send`, however, and cannot
-  be 0-size. It is not clear, however, whether using a trait for these two
-  reasons is worth it.
 
 * The `from_vec_unchecked` function could do precisely 0 work instead of always
   pushing a 0 at the end.
