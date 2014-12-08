@@ -196,6 +196,11 @@ Furthermore, the fact that a given RFC has been accepted and is
 'active' implies nothing about what priority is assigned to its
 implementation, nor does it imply anything about whether a Rust
 developer has been assigned the task of implementing the feature.
+While it is not *necessary* that the author of the RFC also write the
+implementation, it is by far the most effective way to see an RFC
+through to completion: authors should not expect that other project
+developers will take on responsibility for implementing their accepted
+feature.
 
 Modifications to active RFC's can be done in followup PR's.  We strive
 to write each RFC in a manner that it will reflect the final design of
