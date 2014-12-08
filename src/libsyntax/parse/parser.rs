@@ -718,11 +718,12 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse a sequence bracketed by `|` and `|`, stopping before the `|`.
-    fn parse_seq_to_before_or<T>(
-                              &mut self,
-                              sep: &token::Token,
-                              f: |&mut Parser| -> T)
-                              -> Vec<T> {
+    fn parse_seq_to_before_or<T, F>(&mut self,
+                                    sep: &token::Token,
+                                    mut f: F)
+                                    -> Vec<T> where
+        F: FnMut(&mut Parser) -> T,
+    {
         let mut first = true;
         let mut vector = Vec::new();
         while self.token != token::BinOp(token::Or) &&
@@ -769,10 +770,12 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn parse_seq_to_before_gt_or_return<T>(&mut self,
-                                               sep: Option<token::Token>,
-                                               f: |&mut Parser| -> Option<T>)
-                                               -> (OwnedSlice<T>, bool) {
+    pub fn parse_seq_to_before_gt_or_return<T, F>(&mut self,
+                                                  sep: Option<token::Token>,
+                                                  mut f: F)
+                                                  -> (OwnedSlice<T>, bool) where
+        F: FnMut(&mut Parser) -> Option<T>,
+    {
         let mut v = Vec::new();
         // This loop works by alternating back and forth between parsing types
         // and commas.  For example, given a string `A, B,>`, the parser would
@@ -802,28 +805,34 @@ impl<'a> Parser<'a> {
 
     /// Parse a sequence bracketed by '<' and '>', stopping
     /// before the '>'.
-    pub fn parse_seq_to_before_gt<T>(&mut self,
-                                     sep: Option<token::Token>,
-                                     f: |&mut Parser| -> T)
-                                     -> OwnedSlice<T> {
+    pub fn parse_seq_to_before_gt<T, F>(&mut self,
+                                        sep: Option<token::Token>,
+                                        mut f: F)
+                                        -> OwnedSlice<T> where
+        F: FnMut(&mut Parser) -> T,
+    {
         let (result, returned) = self.parse_seq_to_before_gt_or_return(sep, |p| Some(f(p)));
         assert!(!returned);
         return result;
     }
 
-    pub fn parse_seq_to_gt<T>(&mut self,
-                              sep: Option<token::Token>,
-                              f: |&mut Parser| -> T)
-                              -> OwnedSlice<T> {
+    pub fn parse_seq_to_gt<T, F>(&mut self,
+                                 sep: Option<token::Token>,
+                                 f: F)
+                                 -> OwnedSlice<T> where
+        F: FnMut(&mut Parser) -> T,
+    {
         let v = self.parse_seq_to_before_gt(sep, f);
         self.expect_gt();
         return v;
     }
 
-    pub fn parse_seq_to_gt_or_return<T>(&mut self,
-                                        sep: Option<token::Token>,
-                                        f: |&mut Parser| -> Option<T>)
-                                        -> (OwnedSlice<T>, bool) {
+    pub fn parse_seq_to_gt_or_return<T, F>(&mut self,
+                                           sep: Option<token::Token>,
+                                           f: F)
+                                           -> (OwnedSlice<T>, bool) where
+        F: FnMut(&mut Parser) -> Option<T>,
+    {
         let (v, returned) = self.parse_seq_to_before_gt_or_return(sep, f);
         if !returned {
             self.expect_gt();
@@ -834,12 +843,13 @@ impl<'a> Parser<'a> {
     /// Parse a sequence, including the closing delimiter. The function
     /// f must consume tokens until reaching the next separator or
     /// closing bracket.
-    pub fn parse_seq_to_end<T>(
-                            &mut self,
-                            ket: &token::Token,
-                            sep: SeqSep,
-                            f: |&mut Parser| -> T)
-                            -> Vec<T> {
+    pub fn parse_seq_to_end<T, F>(&mut self,
+                                  ket: &token::Token,
+                                  sep: SeqSep,
+                                  f: F)
+                                  -> Vec<T> where
+        F: FnMut(&mut Parser) -> T,
+    {
         let val = self.parse_seq_to_before_end(ket, sep, f);
         self.bump();
         val
@@ -848,12 +858,13 @@ impl<'a> Parser<'a> {
     /// Parse a sequence, not including the closing delimiter. The function
     /// f must consume tokens until reaching the next separator or
     /// closing bracket.
-    pub fn parse_seq_to_before_end<T>(
-                                   &mut self,
-                                   ket: &token::Token,
-                                   sep: SeqSep,
-                                   f: |&mut Parser| -> T)
-                                   -> Vec<T> {
+    pub fn parse_seq_to_before_end<T, F>(&mut self,
+                                         ket: &token::Token,
+                                         sep: SeqSep,
+                                         mut f: F)
+                                         -> Vec<T> where
+        F: FnMut(&mut Parser) -> T,
+    {
         let mut first: bool = true;
         let mut v = vec!();
         while self.token != *ket {
@@ -873,13 +884,14 @@ impl<'a> Parser<'a> {
     /// Parse a sequence, including the closing delimiter. The function
     /// f must consume tokens until reaching the next separator or
     /// closing bracket.
-    pub fn parse_unspanned_seq<T>(
-                               &mut self,
-                               bra: &token::Token,
-                               ket: &token::Token,
-                               sep: SeqSep,
-                               f: |&mut Parser| -> T)
-                               -> Vec<T> {
+    pub fn parse_unspanned_seq<T, F>(&mut self,
+                                     bra: &token::Token,
+                                     ket: &token::Token,
+                                     sep: SeqSep,
+                                     f: F)
+                                     -> Vec<T> where
+        F: FnMut(&mut Parser) -> T,
+    {
         self.expect(bra);
         let result = self.parse_seq_to_before_end(ket, sep, f);
         self.bump();
@@ -888,13 +900,14 @@ impl<'a> Parser<'a> {
 
     /// Parse a sequence parameter of enum variant. For consistency purposes,
     /// these should not be empty.
-    pub fn parse_enum_variant_seq<T>(
-                               &mut self,
-                               bra: &token::Token,
-                               ket: &token::Token,
-                               sep: SeqSep,
-                               f: |&mut Parser| -> T)
-                               -> Vec<T> {
+    pub fn parse_enum_variant_seq<T, F>(&mut self,
+                                        bra: &token::Token,
+                                        ket: &token::Token,
+                                        sep: SeqSep,
+                                        f: F)
+                                        -> Vec<T> where
+        F: FnMut(&mut Parser) -> T,
+    {
         let result = self.parse_unspanned_seq(bra, ket, sep, f);
         if result.is_empty() {
             let last_span = self.last_span;
@@ -906,13 +919,14 @@ impl<'a> Parser<'a> {
 
     // NB: Do not use this function unless you actually plan to place the
     // spanned list in the AST.
-    pub fn parse_seq<T>(
-                     &mut self,
-                     bra: &token::Token,
-                     ket: &token::Token,
-                     sep: SeqSep,
-                     f: |&mut Parser| -> T)
-                     -> Spanned<Vec<T> > {
+    pub fn parse_seq<T, F>(&mut self,
+                           bra: &token::Token,
+                           ket: &token::Token,
+                           sep: SeqSep,
+                           f: F)
+                           -> Spanned<Vec<T>> where
+        F: FnMut(&mut Parser) -> T,
+    {
         let lo = self.span.lo;
         self.expect(bra);
         let result = self.parse_seq_to_before_end(ket, sep, f);
@@ -972,8 +986,9 @@ impl<'a> Parser<'a> {
         }
         return (4 - self.buffer_start) + self.buffer_end;
     }
-    pub fn look_ahead<R>(&mut self, distance: uint, f: |&token::Token| -> R)
-                      -> R {
+    pub fn look_ahead<R, F>(&mut self, distance: uint, f: F) -> R where
+        F: FnOnce(&token::Token) -> R,
+    {
         let dist = distance as int;
         while self.buffer_length() < dist {
             self.buffer[self.buffer_end as uint] = self.reader.real_token();
@@ -4285,8 +4300,9 @@ impl<'a> Parser<'a> {
 
     /// Parse the argument list and result type of a function
     /// that may have a self type.
-    fn parse_fn_decl_with_self(&mut self, parse_arg_fn: |&mut Parser| -> Arg)
-                               -> (ExplicitSelf, P<FnDecl>) {
+    fn parse_fn_decl_with_self<F>(&mut self, parse_arg_fn: F) -> (ExplicitSelf, P<FnDecl>) where
+        F: FnMut(&mut Parser) -> Arg,
+    {
         fn maybe_parse_borrowed_explicit_self(this: &mut Parser)
                                               -> ast::ExplicitSelf_ {
             // The following things are possible to see here:

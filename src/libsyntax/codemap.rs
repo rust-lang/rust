@@ -568,7 +568,9 @@ impl CodeMap {
         ExpnId(expansions.len().to_u32().expect("too many ExpnInfo's!") - 1)
     }
 
-    pub fn with_expn_info<T>(&self, id: ExpnId, f: |Option<&ExpnInfo>| -> T) -> T {
+    pub fn with_expn_info<T, F>(&self, id: ExpnId, f: F) -> T where
+        F: FnOnce(Option<&ExpnInfo>) -> T,
+    {
         match id {
             NO_EXPANSION => f(None),
             ExpnId(i) => f(Some(&(*self.expansions.borrow())[i as uint]))
