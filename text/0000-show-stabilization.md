@@ -166,6 +166,9 @@ format of a `String` to include escaped characters (as opposed to printing the
 string). Due to the debugging nature of `Show`, it is seen as a non-starter to
 make it the "default" via `{}`.
 
+It may be too ambitious to define that `String` is a non-lossy representation of
+a type, eventually motivating other formatting traits.
+
 # Alternatives
 
 The names `String` and `Show` may not necessarily imply "user readable" and
