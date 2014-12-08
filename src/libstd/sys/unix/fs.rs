@@ -25,6 +25,7 @@ use sys::retry;
 use sys_common::{keep_going, eof, mkerr_libc};
 
 pub use path::PosixPath as Path;
+pub use libc::{F_OK,R_OK,W_OK,X_OK};
 
 pub type fd_t = libc::c_int;
 
@@ -347,6 +348,11 @@ pub fn lstat(p: &Path) -> IoResult<FileStat> {
         0 => Ok(mkstat(&stat)),
         _ => Err(super::last_error()),
     }
+}
+
+pub fn access(p: &Path, a: i32) -> IoResult<()> {
+    let p = p.to_c_str();
+    mkerr_libc(unsafe { libc::access(p.as_ptr(), a) })
 }
 
 pub fn utime(p: &Path, atime: u64, mtime: u64) -> IoResult<()> {
