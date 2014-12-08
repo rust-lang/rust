@@ -76,13 +76,16 @@ This trait is identical to all other formatting traits except for its name. The
 the default specifier for Rust.
 
 An implementation of the `String` trait is an assertion that the type can be
-faithfully represented as a UTF-8 string at all times. In many cases the type
-can actually be precisely reconstructed from a string such that the following
-relation is true:
+faithfully represented as a UTF-8 string at all times. If the type can be
+reconstructed from a string, then the following relation must be true:
 
 ```rust
 assert_eq!(foo, from_str(format!("{}", foo).as_slice()).unwrap());
 ```
+
+If the type cannot necessarily be reconstructed from a string, then the output
+may be less descriptive than the type can provide, but it is guaranteed to be
+human readable for all users.
 
 It is **not** expected that all types implement the `String` trait. Not all
 types can satisfy the purpose of this trait, and for example the following types
