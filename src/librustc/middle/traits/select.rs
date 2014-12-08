@@ -924,7 +924,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             Some(ty::BoundCopy) => {
                 debug!("obligation self ty is {}",
                        obligation.self_ty().repr(self.tcx()));
-                try!(self.assemble_candidates_from_impls(obligation, &mut candidates));
+
+                // If the user has asked for the older, compatibility
+                // behavior, ignore user-defined impls here. This will
+                // go away by the time 1.0 is released.
+                if !self.tcx().sess.features.borrow().opt_out_copy {
+                    try!(self.assemble_candidates_from_impls(obligation, &mut candidates));
+                }
+
                 try!(self.assemble_builtin_bound_candidates(ty::BoundCopy,
                                                             stack,
                                                             &mut candidates));
@@ -1533,8 +1540,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
 
                 ty::BoundCopy => {
-                    // This is an Opt-In Built-In Trait.
-                    return Ok(ParameterBuiltin)
+                    // This is an Opt-In Built-In Trait. So, unless
+                    // the user is asking for the old behavior, we
+                    // don't supply any form of builtin impl.
+                    if !this.tcx().sess.features.borrow().opt_out_copy {
+                        return Ok(ParameterBuiltin)
+                    }
                 }
 
                 ty::BoundSync => {
