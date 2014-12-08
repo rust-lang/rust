@@ -1068,12 +1068,38 @@ impl<K, V> BTreeMap<K, V> {
     }
 
     /// Gets an iterator over the keys of the map.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::BTreeMap;
+    ///
+    /// let mut a = BTreeMap::new();
+    /// a.insert(1u, "a");
+    /// a.insert(2u, "b");
+    ///
+    /// let keys: Vec<uint> = a.keys().cloned().collect();
+    /// assert_eq!(keys, vec![1u,2,]);
+    /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn keys<'a>(&'a self) -> Keys<'a, K, V> {
         self.iter().map(|(k, _)| k)
     }
 
     /// Gets an iterator over the values of the map.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::BTreeMap;
+    ///
+    /// let mut a = BTreeMap::new();
+    /// a.insert(1u, "a");
+    /// a.insert(2u, "b");
+    ///
+    /// let values: Vec<&str> = a.values().cloned().collect();
+    /// assert_eq!(values, vec!["a","b"]);
+    /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn values<'a>(&'a self) -> Values<'a, K, V> {
         self.iter().map(|(_, v)| v)
