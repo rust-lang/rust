@@ -26,6 +26,7 @@ use core::mem;
 use core::num::{Int, UnsignedInt};
 use core::ops;
 use core::ptr;
+use core::ptr::NonZero;
 use core::raw::Slice as RawSlice;
 use core::uint;
 
@@ -103,7 +104,7 @@ use slice::{CloneSliceAllocPrelude};
 #[unsafe_no_drop_flag]
 #[stable]
 pub struct Vec<T> {
-    ptr: *mut T,
+    ptr: NonZero<*mut T>,
     len: uint,
     cap: uint,
 }
@@ -146,7 +147,7 @@ impl<T> Vec<T> {
         // non-null value which is fine since we never call deallocate on the ptr
         // if cap is 0. The reason for this is because the pointer of a slice
         // being NULL would break the null pointer optimization for enums.
-        Vec { ptr: EMPTY as *mut T, len: 0, cap: 0 }
+        Vec { ptr: unsafe { NonZero::new(EMPTY as *mut T) }, len: 0, cap: 0 }
     }
 
     /// Constructs a new, empty `Vec` with the specified capacity.
@@ -180,7 +181,7 @@ impl<T> Vec<T> {
     #[stable]
     pub fn with_capacity(capacity: uint) -> Vec<T> {
         if mem::size_of::<T>() == 0 {
-            Vec { ptr: EMPTY as *mut T, len: 0, cap: uint::MAX }
+            Vec { ptr: unsafe { NonZero::new(EMPTY as *mut T) }, len: 0, cap: uint::MAX }
         } else if capacity == 0 {
             Vec::new()
         } else {
@@ -188,7 +189,7 @@ impl<T> Vec<T> {
                                .expect("capacity overflow");
             let ptr = unsafe { allocate(size, mem::min_align_of::<T>()) };
             if ptr.is_null() { ::alloc::oom() }
-            Vec { ptr: ptr as *mut T, len: 0, cap: capacity }
+            Vec { ptr: unsafe { NonZero::new(ptr as *mut T) }, len: 0, cap: capacity }
         }
     }
 
@@ -255,7 +256,7 @@ impl<T> Vec<T> {
     #[unstable = "needs finalization"]
     pub unsafe fn from_raw_parts(ptr: *mut T, length: uint,
                                  capacity: uint) -> Vec<T> {
-        Vec { ptr: ptr, len: length, cap: capacity }
+        Vec { ptr: NonZero::new(ptr), len: length, cap: capacity }
     }
 
     /// Creates a vector by copying the elements from a raw pointer.
@@ -741,7 +742,7 @@ impl<T> Vec<T> {
         if self.len == 0 {
             if self.cap != 0 {
                 unsafe {
-                    dealloc(self.ptr, self.cap)
+                    dealloc(*self.ptr, self.cap)
                 }
                 self.cap = 0;
             }
@@ -749,11 +750,12 @@ impl<T> Vec<T> {
             unsafe {
                 // Overflow check is unnecessary as the vector is already at
                 // least this large.
-                self.ptr = reallocate(self.ptr as *mut u8,
-                                      self.cap * mem::size_of::<T>(),
-                                      self.len * mem::size_of::<T>(),
-                                      mem::min_align_of::<T>()) as *mut T;
-                if self.ptr.is_null() { ::alloc::oom() }
+                let ptr = reallocate(*self.ptr as *mut u8,
+                                     self.cap * mem::size_of::<T>(),
+                                     self.len * mem::size_of::<T>(),
+                                     mem::min_align_of::<T>()) as *mut T;
+                if ptr.is_null() { ::alloc::oom() }
+                self.ptr = NonZero::new(ptr);
             }
             self.cap = self.len;
         }
@@ -813,7 +815,7 @@ impl<T> Vec<T> {
     pub fn as_mut_slice<'a>(&'a mut self) -> &'a mut [T] {
         unsafe {
             mem::transmute(RawSlice {
-                data: self.ptr as *const T,
+                data: *self.ptr as *const T,
                 len: self.len,
             })
         }
@@ -836,9 +838,9 @@ impl<T> Vec<T> {
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn into_iter(self) -> MoveItems<T> {
         unsafe {
-            let ptr = self.ptr;
+            let ptr = *self.ptr;
             let cap = self.cap;
-            let begin = self.ptr as *const T;
+            let begin = ptr as *const T;
             let end = if mem::size_of::<T>() == 0 {
                 (ptr as uint + self.len()) as *const T
             } else {
@@ -1055,14 +1057,15 @@ impl<T> Vec<T> {
             let size = max(old_size, 2 * mem::size_of::<T>()) * 2;
             if old_size > size { panic!("capacity overflow") }
             unsafe {
-                self.ptr = alloc_or_realloc(self.ptr, old_size, size);
-                if self.ptr.is_null() { ::alloc::oom() }
+                let ptr = alloc_or_realloc(*self.ptr, old_size, size);
+                if ptr.is_null() { ::alloc::oom() }
+                self.ptr = NonZero::new(ptr);
             }
             self.cap = max(self.cap, 2) * 2;
         }
 
         unsafe {
-            let end = (self.ptr as *const T).offset(self.len as int) as *mut T;
+            let end = *self.ptr.offset(self.len as int);
             ptr::write(&mut *end, value);
             self.len += 1;
         }
@@ -1142,8 +1145,9 @@ impl<T> Vec<T> {
             let size = capacity.checked_mul(mem::size_of::<T>())
                                .expect("capacity overflow");
             unsafe {
-                self.ptr = alloc_or_realloc(self.ptr, self.cap * mem::size_of::<T>(), size);
-                if self.ptr.is_null() { ::alloc::oom() }
+                let ptr = alloc_or_realloc(*self.ptr, self.cap * mem::size_of::<T>(), size);
+                if ptr.is_null() { ::alloc::oom() }
+                self.ptr = NonZero::new(ptr);
             }
             self.cap = capacity;
         }
@@ -1264,7 +1268,7 @@ impl<T> AsSlice<T> for Vec<T> {
     fn as_slice<'a>(&'a self) -> &'a [T] {
         unsafe {
             mem::transmute(RawSlice {
-                data: self.ptr as *const T,
+                data: *self.ptr as *const T,
                 len: self.len
             })
         }
@@ -1291,7 +1295,7 @@ impl<T> Drop for Vec<T> {
                 for x in self.iter() {
                     ptr::read(x);
                 }
-                dealloc(self.ptr, self.cap)
+                dealloc(*self.ptr, self.cap)
             }
         }
     }
@@ -1327,7 +1331,7 @@ impl<T> MoveItems<T> {
             for _x in self { }
             let MoveItems { allocation, cap, ptr: _ptr, end: _end } = self;
             mem::forget(self);
-            Vec { ptr: allocation, cap: cap, len: 0 }
+            Vec { ptr: NonZero::new(allocation), cap: cap, len: 0 }
         }
     }
 
