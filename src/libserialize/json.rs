@@ -1947,7 +1947,7 @@ macro_rules! expect(
     ($e:expr, Null) => ({
         match $e {
             Json::Null => Ok(()),
-            other => Err(ExpectedError("Null".to_string(),
+            other => Err(ExpectedError("Null".into_string(),
                                        format!("{}", other)))
         }
     });
@@ -1968,20 +1968,20 @@ macro_rules! read_primitive {
             match self.pop() {
                 Json::I64(f) => match num::cast(f) {
                     Some(f) => Ok(f),
-                    None => Err(ExpectedError("Number".to_string(), format!("{}", f))),
+                    None => Err(ExpectedError("Number".into_string(), format!("{}", f))),
                 },
                 Json::U64(f) => match num::cast(f) {
                     Some(f) => Ok(f),
-                    None => Err(ExpectedError("Number".to_string(), format!("{}", f))),
+                    None => Err(ExpectedError("Number".into_string(), format!("{}", f))),
                 },
-                Json::F64(f) => Err(ExpectedError("Integer".to_string(), format!("{}", f))),
+                Json::F64(f) => Err(ExpectedError("Integer".into_string(), format!("{}", f))),
                 // re: #12967.. a type w/ numeric keys (ie HashMap<uint, V> etc)
                 // is going to have a string here, as per JSON spec.
                 Json::String(s) => match std::str::from_str(s.as_slice()) {
                     Some(f) => Ok(f),
-                    None => Err(ExpectedError("Number".to_string(), s)),
+                    None => Err(ExpectedError("Number".into_string(), s)),
                 },
-                value => Err(ExpectedError("Number".to_string(), format!("{}", value))),
+                value => Err(ExpectedError("Number".into_string(), format!("{}", value))),
             }
         }
     }
@@ -2017,11 +2017,11 @@ impl ::Decoder<DecoderError> for Decoder {
                 // is going to have a string here, as per JSON spec.
                 match std::str::from_str(s.as_slice()) {
                     Some(f) => Ok(f),
-                    None => Err(ExpectedError("Number".to_string(), s)),
+                    None => Err(ExpectedError("Number".into_string(), s)),
                 }
             },
             Json::Null => Ok(f64::NAN),
-            value => Err(ExpectedError("Number".to_string(), format!("{}", value)))
+            value => Err(ExpectedError("Number".into_string(), format!("{}", value)))
         }
     }
 
@@ -2040,7 +2040,7 @@ impl ::Decoder<DecoderError> for Decoder {
                 _ => ()
             }
         }
-        Err(ExpectedError("single character string".to_string(), format!("{}", s)))
+        Err(ExpectedError("single character string".into_string(), format!("{}", s)))
     }
 
     fn read_str(&mut self) -> DecodeResult<string::String> {
@@ -2063,32 +2063,32 @@ impl ::Decoder<DecoderError> for Decoder {
         let name = match self.pop() {
             Json::String(s) => s,
             Json::Object(mut o) => {
-                let n = match o.remove(&"variant".to_string()) {
+                let n = match o.remove(&"variant".into_string()) {
                     Some(Json::String(s)) => s,
                     Some(val) => {
-                        return Err(ExpectedError("String".to_string(), format!("{}", val)))
+                        return Err(ExpectedError("String".into_string(), format!("{}", val)))
                     }
                     None => {
-                        return Err(MissingFieldError("variant".to_string()))
+                        return Err(MissingFieldError("variant".into_string()))
                     }
                 };
-                match o.remove(&"fields".to_string()) {
+                match o.remove(&"fields".into_string()) {
                     Some(Json::Array(l)) => {
                         for field in l.into_iter().rev() {
                             self.stack.push(field);
                         }
                     },
                     Some(val) => {
-                        return Err(ExpectedError("Array".to_string(), format!("{}", val)))
+                        return Err(ExpectedError("Array".into_string(), format!("{}", val)))
                     }
                     None => {
-                        return Err(MissingFieldError("fields".to_string()))
+                        return Err(MissingFieldError("fields".into_string()))
                     }
                 }
                 n
             }
             json => {
-                return Err(ExpectedError("String or Object".to_string(), format!("{}", json)))
+                return Err(ExpectedError("String or Object".into_string(), format!("{}", json)))
             }
         };
         let idx = match names.iter()
@@ -2437,9 +2437,9 @@ mod tests {
     #[test]
     fn test_decode_option_malformed() {
         check_err::<OptionData>("{ \"opt\": [] }",
-                                ExpectedError("Number".to_string(), "[]".to_string()));
+                                ExpectedError("Number".into_string(), "[]".into_string()));
         check_err::<OptionData>("{ \"opt\": false }",
-                                ExpectedError("Number".to_string(), "false".to_string()));
+                                ExpectedError("Number".into_string(), "false".into_string()));
     }
 
     #[deriving(PartialEq, Encodable, Decodable, Show)]
@@ -2525,11 +2525,11 @@ mod tests {
 
     #[test]
     fn test_write_str() {
-        assert_eq!(String("".to_string()).to_string(), "\"\"");
-        assert_eq!(String("".to_string()).to_pretty_str(), "\"\"");
+        assert_eq!(String("".into_string()).to_string(), "\"\"");
+        assert_eq!(String("".into_string()).to_pretty_str(), "\"\"");
 
-        assert_eq!(String("homura".to_string()).to_string(), "\"homura\"");
-        assert_eq!(String("madoka".to_string()).to_pretty_str(), "\"madoka\"");
+        assert_eq!(String("homura".into_string()).to_string(), "\"homura\"");
+        assert_eq!(String("madoka".into_string()).to_pretty_str(), "\"madoka\"");
     }
 
     #[test]
@@ -2558,7 +2558,7 @@ mod tests {
         let long_test_array = Array(vec![
             Boolean(false),
             Null,
-            Array(vec![String("foo\nbar".to_string()), F64(3.5)])]);
+            Array(vec![String("foo\nbar".into_string()), F64(3.5)])]);
 
         assert_eq!(long_test_array.to_string(),
             "[false,null,[\"foo\\nbar\",3.5]]");
@@ -2583,12 +2583,12 @@ mod tests {
 
         assert_eq!(
             mk_object(&[
-                ("a".to_string(), Boolean(true))
+                ("a".into_string(), Boolean(true))
             ]).to_string(),
             "{\"a\":true}"
         );
         assert_eq!(
-            mk_object(&[("a".to_string(), Boolean(true))]).to_pretty_str(),
+            mk_object(&[("a".into_string(), Boolean(true))]).to_pretty_str(),
             "\
             {\n  \
                 \"a\": true\n\
@@ -2596,9 +2596,9 @@ mod tests {
         );
 
         let complex_obj = mk_object(&[
-                ("b".to_string(), Array(vec![
-                    mk_object(&[("c".to_string(), String("\x0c\r".to_string()))]),
-                    mk_object(&[("d".to_string(), String("".to_string()))])
+                ("b".into_string(), Array(vec![
+                    mk_object(&[("c".into_string(), String("\x0c\r".into_string()))]),
+                    mk_object(&[("d".into_string(), String("".into_string()))])
                 ]))
             ]);
 
@@ -2627,10 +2627,10 @@ mod tests {
         );
 
         let a = mk_object(&[
-            ("a".to_string(), Boolean(true)),
-            ("b".to_string(), Array(vec![
-                mk_object(&[("c".to_string(), String("\x0c\r".to_string()))]),
-                mk_object(&[("d".to_string(), String("".to_string()))])
+            ("a".into_string(), Boolean(true)),
+            ("b".into_string(), Array(vec![
+                mk_object(&[("c".into_string(), String("\x0c\r".into_string()))]),
+                mk_object(&[("d".into_string(), String("".into_string()))])
             ]))
         ]);
 
@@ -2667,7 +2667,7 @@ mod tests {
             "\"Dog\""
         );
 
-        let animal = Frog("Henry".to_string(), 349);
+        let animal = Frog("Henry".into_string(), 349);
         assert_eq!(
             with_str_writer(|writer| {
                 let mut encoder = Encoder::new(writer);
@@ -2692,14 +2692,14 @@ mod tests {
 
     #[test]
     fn test_write_some() {
-        let value = Some("jodhpurs".to_string());
+        let value = Some("jodhpurs".into_string());
         let s = with_str_writer(|writer| {
             let mut encoder = Encoder::new(writer);
             value.encode(&mut encoder).unwrap();
         });
         assert_eq!(s, "\"jodhpurs\"");
 
-        let value = Some("jodhpurs".to_string());
+        let value = Some("jodhpurs".into_string());
         let s = with_str_writer(|writer| {
             let mut encoder = PrettyEncoder::new(writer);
             value.encode(&mut encoder).unwrap();
@@ -2834,16 +2834,16 @@ mod tests {
         assert_eq!(from_str("\""),    Err(SyntaxError(EOFWhileParsingString, 1, 2)));
         assert_eq!(from_str("\"lol"), Err(SyntaxError(EOFWhileParsingString, 1, 5)));
 
-        assert_eq!(from_str("\"\""), Ok(String("".to_string())));
-        assert_eq!(from_str("\"foo\""), Ok(String("foo".to_string())));
-        assert_eq!(from_str("\"\\\"\""), Ok(String("\"".to_string())));
-        assert_eq!(from_str("\"\\b\""), Ok(String("\x08".to_string())));
-        assert_eq!(from_str("\"\\n\""), Ok(String("\n".to_string())));
-        assert_eq!(from_str("\"\\r\""), Ok(String("\r".to_string())));
-        assert_eq!(from_str("\"\\t\""), Ok(String("\t".to_string())));
-        assert_eq!(from_str(" \"foo\" "), Ok(String("foo".to_string())));
-        assert_eq!(from_str("\"\\u12ab\""), Ok(String("\u12ab".to_string())));
-        assert_eq!(from_str("\"\\uAB12\""), Ok(String("\uAB12".to_string())));
+        assert_eq!(from_str("\"\""), Ok(String("".into_string())));
+        assert_eq!(from_str("\"foo\""), Ok(String("foo".into_string())));
+        assert_eq!(from_str("\"\\\"\""), Ok(String("\"".into_string())));
+        assert_eq!(from_str("\"\\b\""), Ok(String("\x08".into_string())));
+        assert_eq!(from_str("\"\\n\""), Ok(String("\n".into_string())));
+        assert_eq!(from_str("\"\\r\""), Ok(String("\r".into_string())));
+        assert_eq!(from_str("\"\\t\""), Ok(String("\t".into_string())));
+        assert_eq!(from_str(" \"foo\" "), Ok(String("foo".into_string())));
+        assert_eq!(from_str("\"\\u12ab\""), Ok(String("\u12ab".into_string())));
+        assert_eq!(from_str("\"\\uAB12\""), Ok(String("\uAB12".into_string())));
     }
 
     #[test]
@@ -2909,7 +2909,7 @@ mod tests {
         assert_eq!(t, (1u, 2, 3))
 
         let t: (uint, string::String) = super::decode("[1, \"two\"]").unwrap();
-        assert_eq!(t, (1u, "two".to_string()));
+        assert_eq!(t, (1u, "two".into_string()));
     }
 
     #[test]
@@ -2939,22 +2939,22 @@ mod tests {
 
         assert_eq!(from_str("{}").unwrap(), mk_object(&[]));
         assert_eq!(from_str("{\"a\": 3}").unwrap(),
-                  mk_object(&[("a".to_string(), U64(3))]));
+                  mk_object(&[("a".into_string(), U64(3))]));
 
         assert_eq!(from_str(
                       "{ \"a\": null, \"b\" : true }").unwrap(),
                   mk_object(&[
-                      ("a".to_string(), Null),
-                      ("b".to_string(), Boolean(true))]));
+                      ("a".into_string(), Null),
+                      ("b".into_string(), Boolean(true))]));
         assert_eq!(from_str("\n{ \"a\": null, \"b\" : true }\n").unwrap(),
                   mk_object(&[
-                      ("a".to_string(), Null),
-                      ("b".to_string(), Boolean(true))]));
+                      ("a".into_string(), Null),
+                      ("b".into_string(), Boolean(true))]));
         assert_eq!(from_str(
                       "{\"a\" : 1.0 ,\"b\": [ true ]}").unwrap(),
                   mk_object(&[
-                      ("a".to_string(), F64(1.0)),
-                      ("b".to_string(), Array(vec![Boolean(true)]))
+                      ("a".into_string(), F64(1.0)),
+                      ("b".into_string(), Array(vec![Boolean(true)]))
                   ]));
         assert_eq!(from_str(
                       "{\
@@ -2966,12 +2966,12 @@ mod tests {
                           ]\
                       }").unwrap(),
                   mk_object(&[
-                      ("a".to_string(), F64(1.0)),
-                      ("b".to_string(), Array(vec![
+                      ("a".into_string(), F64(1.0)),
+                      ("b".into_string(), Array(vec![
                           Boolean(true),
-                          String("foo\nbar".to_string()),
+                          String("foo\nbar".into_string()),
                           mk_object(&[
-                              ("c".to_string(), mk_object(&[("d".to_string(), Null)]))
+                              ("c".into_string(), mk_object(&[("d".into_string(), Null)]))
                           ])
                       ]))
                   ]));
@@ -2990,7 +2990,7 @@ mod tests {
             v,
             Outer {
                 inner: vec![
-                    Inner { a: (), b: 2, c: vec!["abc".to_string(), "xyz".to_string()] }
+                    Inner { a: (), b: 2, c: vec!["abc".into_string(), "xyz".into_string()] }
                 ]
             }
         );
@@ -3016,7 +3016,7 @@ mod tests {
         assert_eq!(value, None);
 
         let value: Option<string::String> = super::decode("\"jodhpurs\"").unwrap();
-        assert_eq!(value, Some("jodhpurs".to_string()));
+        assert_eq!(value, Some("jodhpurs".into_string()));
     }
 
     #[test]
@@ -3026,7 +3026,7 @@ mod tests {
 
         let s = "{\"variant\":\"Frog\",\"fields\":[\"Henry\",349]}";
         let value: Animal = super::decode(s).unwrap();
-        assert_eq!(value, Frog("Henry".to_string(), 349));
+        assert_eq!(value, Frog("Henry".into_string(), 349));
     }
 
     #[test]
@@ -3035,8 +3035,8 @@ mod tests {
                   \"fields\":[\"Henry\", 349]}}";
         let mut map: TreeMap<string::String, Animal> = super::decode(s).unwrap();
 
-        assert_eq!(map.remove(&"a".to_string()), Some(Dog));
-        assert_eq!(map.remove(&"b".to_string()), Some(Frog("Henry".to_string(), 349)));
+        assert_eq!(map.remove(&"a".into_string()), Some(Dog));
+        assert_eq!(map.remove(&"b".into_string()), Some(Frog("Henry".into_string(), 349)));
     }
 
     #[test]
@@ -3076,30 +3076,30 @@ mod tests {
     }
     #[test]
     fn test_decode_errors_struct() {
-        check_err::<DecodeStruct>("[]", ExpectedError("Object".to_string(), "[]".to_string()));
+        check_err::<DecodeStruct>("[]", ExpectedError("Object".into_string(), "[]".into_string()));
         check_err::<DecodeStruct>("{\"x\": true, \"y\": true, \"z\": \"\", \"w\": []}",
-                                  ExpectedError("Number".to_string(), "true".to_string()));
+                                  ExpectedError("Number".into_string(), "true".into_string()));
         check_err::<DecodeStruct>("{\"x\": 1, \"y\": [], \"z\": \"\", \"w\": []}",
-                                  ExpectedError("Boolean".to_string(), "[]".to_string()));
+                                  ExpectedError("Boolean".into_string(), "[]".into_string()));
         check_err::<DecodeStruct>("{\"x\": 1, \"y\": true, \"z\": {}, \"w\": []}",
-                                  ExpectedError("String".to_string(), "{}".to_string()));
+                                  ExpectedError("String".into_string(), "{}".into_string()));
         check_err::<DecodeStruct>("{\"x\": 1, \"y\": true, \"z\": \"\", \"w\": null}",
-                                  ExpectedError("Array".to_string(), "null".to_string()));
+                                  ExpectedError("Array".into_string(), "null".into_string()));
         check_err::<DecodeStruct>("{\"x\": 1, \"y\": true, \"z\": \"\"}",
-                                  MissingFieldError("w".to_string()));
+                                  MissingFieldError("w".into_string()));
     }
     #[test]
     fn test_decode_errors_enum() {
         check_err::<DecodeEnum>("{}",
-                                MissingFieldError("variant".to_string()));
+                                MissingFieldError("variant".into_string()));
         check_err::<DecodeEnum>("{\"variant\": 1}",
-                                ExpectedError("String".to_string(), "1".to_string()));
+                                ExpectedError("String".into_string(), "1".into_string()));
         check_err::<DecodeEnum>("{\"variant\": \"A\"}",
-                                MissingFieldError("fields".to_string()));
+                                MissingFieldError("fields".into_string()));
         check_err::<DecodeEnum>("{\"variant\": \"A\", \"fields\": null}",
-                                ExpectedError("Array".to_string(), "null".to_string()));
+                                ExpectedError("Array".into_string(), "null".into_string()));
         check_err::<DecodeEnum>("{\"variant\": \"C\", \"fields\": []}",
-                                UnknownVariantError("C".to_string()));
+                                UnknownVariantError("C".into_string()));
     }
 
     #[test]
@@ -3384,7 +3384,7 @@ mod tests {
         };
         let mut decoder = Decoder::new(json_obj);
         let result: Result<HashMap<uint, bool>, DecoderError> = Decodable::decode(&mut decoder);
-        assert_eq!(result, Err(ExpectedError("Number".to_string(), "a".to_string())));
+        assert_eq!(result, Err(ExpectedError("Number".into_string(), "a".into_string())));
     }
 
     fn assert_stream_equal(src: &str,
@@ -3411,7 +3411,7 @@ mod tests {
             r#"{ "foo":"bar", "array" : [0, 1, 2, 3, 4, 5], "idents":[null,true,false]}"#,
             vec![
                 (ObjectStart,             vec![]),
-                  (StringValue("bar".to_string()),   vec![Key("foo")]),
+                  (StringValue("bar".into_string()),   vec![Key("foo")]),
                   (ArrayStart,            vec![Key("array")]),
                     (U64Value(0),         vec![Key("array"), Index(0)]),
                     (U64Value(1),         vec![Key("array"), Index(1)]),
@@ -3502,7 +3502,7 @@ mod tests {
                   (F64Value(1.0),               vec![Key("a")]),
                   (ArrayStart,                  vec![Key("b")]),
                     (BooleanValue(true),        vec![Key("b"), Index(0)]),
-                    (StringValue("foo\nbar".to_string()),  vec![Key("b"), Index(1)]),
+                    (StringValue("foo\nbar".into_string()),  vec![Key("b"), Index(1)]),
                     (ObjectStart,               vec![Key("b"), Index(2)]),
                       (ObjectStart,             vec![Key("b"), Index(2), Key("c")]),
                         (NullValue,             vec![Key("b"), Index(2), Key("c"), Key("d")]),
@@ -3635,7 +3635,7 @@ mod tests {
         assert!(stack.last_is_index());
         assert!(stack.get(0) == Index(1));
 
-        stack.push_key("foo".to_string());
+        stack.push_key("foo".into_string());
 
         assert!(stack.len() == 2);
         assert!(stack.is_equal_to(&[Index(1), Key("foo")]));
@@ -3647,7 +3647,7 @@ mod tests {
         assert!(stack.get(0) == Index(1));
         assert!(stack.get(1) == Key("foo"));
 
-        stack.push_key("bar".to_string());
+        stack.push_key("bar".into_string());
 
         assert!(stack.len() == 3);
         assert!(stack.is_equal_to(&[Index(1), Key("foo"), Key("bar")]));
@@ -3684,8 +3684,8 @@ mod tests {
         let array3 = Array(vec!(U64(1), U64(2), U64(3)));
         let object = {
             let mut tree_map = TreeMap::new();
-            tree_map.insert("a".to_string(), U64(1));
-            tree_map.insert("b".to_string(), U64(2));
+            tree_map.insert("a".into_string(), U64(1));
+            tree_map.insert("b".into_string(), U64(2));
             Object(tree_map)
         };
 
@@ -3717,12 +3717,12 @@ mod tests {
         assert_eq!((vec![1u, 2]).to_json(), array2);
         assert_eq!(vec!(1u, 2, 3).to_json(), array3);
         let mut tree_map = TreeMap::new();
-        tree_map.insert("a".to_string(), 1u);
-        tree_map.insert("b".to_string(), 2);
+        tree_map.insert("a".into_string(), 1u);
+        tree_map.insert("b".into_string(), 2);
         assert_eq!(tree_map.to_json(), object);
         let mut hash_map = HashMap::new();
-        hash_map.insert("a".to_string(), 1u);
-        hash_map.insert("b".to_string(), 2);
+        hash_map.insert("a".into_string(), 1u);
+        hash_map.insert("b".into_string(), 2);
         assert_eq!(hash_map.to_json(), object);
         assert_eq!(Some(15i).to_json(), I64(15));
         assert_eq!(Some(15u).to_json(), U64(15));
@@ -3765,7 +3765,7 @@ mod tests {
     }
 
     fn big_json() -> string::String {
-        let mut src = "[\n".to_string();
+        let mut src = "[\n".into_string();
         for _ in range(0i, 500) {
             src.push_str(r#"{ "a": true, "b": null, "c":3.1415, "d": "Hello world", "e": \
                             [1,2,3]},"#);
