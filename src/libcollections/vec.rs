@@ -710,20 +710,10 @@ impl<T> Vec<T> {
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn reserve(&mut self, additional: uint) {
         if self.cap - self.len < additional {
-            match self.len.checked_add(additional) {
-                None => panic!("Vec::reserve: `uint` overflow"),
-                // if the checked_add
-                Some(new_cap) => {
-                    let amort_cap = new_cap.next_power_of_two();
-                    // next_power_of_two will overflow to exactly 0 for really big capacities
-                    let cap = if amort_cap == 0 {
-                        new_cap
-                    } else {
-                        amort_cap
-                    };
-                    self.grow_capacity(cap)
-                }
-            }
+            let err_msg = "Vec::reserve: `uint` overflow";
+            let new_cap = self.len.checked_add(additional).expect(err_msg)
+                                  .checked_next_power_of_two().expect(err_msg);
+            self.grow_capacity(new_cap);
         }
     }
 
