@@ -28,7 +28,7 @@ autocrlf=result.strip() == true if result is not None else False
 
 def report_error_name_no(name, no, s):
     global err
-    print("%s:%d: %s" % (name, no, s))
+    print("\033[4;31m%s:%d: %s\033[0m" % (name, no, s))
     err=1
 
 def report_err(s):
