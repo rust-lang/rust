@@ -158,11 +158,11 @@ pub fn regionck_item(fcx: &FnCtxt, item: &ast::Item) {
     fcx.infcx().resolve_regions_and_report_errors();
 }
 
-pub fn regionck_fn(fcx: &FnCtxt, id: ast::NodeId, blk: &ast::Block) {
+pub fn regionck_fn(fcx: &FnCtxt, id: ast::NodeId, decl: &ast::FnDecl, blk: &ast::Block) {
     let mut rcx = Rcx::new(fcx, blk.id);
     if fcx.err_count_since_creation() == 0 {
         // regionck assumes typeck succeeded
-        rcx.visit_fn_body(id, blk);
+        rcx.visit_fn_body(id, decl, blk);
     }
 
     // Region checking a fn can introduce new trait obligations,
@@ -328,6 +328,7 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
 
     fn visit_fn_body(&mut self,
                      id: ast::NodeId,
+                     fn_decl: &ast::FnDecl,
                      body: &ast::Block)
     {
         // When we enter a function, we can derive
@@ -343,6 +344,7 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
 
         let len = self.region_param_pairs.len();
         self.relate_free_regions(fn_sig.as_slice(), body.id);
+        link_fn_args(self, CodeExtent::from_node_id(body.id), fn_decl.inputs.as_slice());
         self.visit_block(body);
         self.visit_region_obligations(body.id);
         self.region_param_pairs.truncate(len);
@@ -480,9 +482,9 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Rcx<'a, 'tcx> {
     // hierarchy, and in particular the relationships between free
     // regions, until regionck, as described in #3238.
 
-    fn visit_fn(&mut self, _fk: visit::FnKind<'v>, _fd: &'v ast::FnDecl,
+    fn visit_fn(&mut self, _fk: visit::FnKind<'v>, fd: &'v ast::FnDecl,
                 b: &'v ast::Block, _s: Span, id: ast::NodeId) {
-        self.visit_fn_body(id, b)
+        self.visit_fn_body(id, fd, b)
     }
 
     fn visit_item(&mut self, i: &ast::Item) { visit_item(self, i); }
@@ -1288,7 +1290,6 @@ fn link_local(rcx: &Rcx, local: &ast::Local) {
 /// then ensures that the lifetime of the resulting pointer is
 /// linked to the lifetime of its guarantor (if any).
 fn link_match(rcx: &Rcx, discr: &ast::Expr, arms: &[ast::Arm]) {
-
     debug!("regionck::for_match()");
     let mc = mc::MemCategorizationContext::new(rcx);
     let discr_cmt = ignore_err!(mc.cat_expr(discr));
@@ -1300,12 +1301,32 @@ fn link_match(rcx: &Rcx, discr: &ast::Expr, arms: &[ast::Arm]) {
     }
 }
 
+/// Computes the guarantors for any ref bindings in a match and
+/// then ensures that the lifetime of the resulting pointer is
+/// linked to the lifetime of its guarantor (if any).
+fn link_fn_args(rcx: &Rcx, body_scope: CodeExtent, args: &[ast::Arg]) {
+    debug!("regionck::link_fn_args(body_scope={})", body_scope);
+    let mc = mc::MemCategorizationContext::new(rcx);
+    for arg in args.iter() {
+        let arg_ty = rcx.fcx.node_ty(arg.id);
+        let re_scope = ty::ReScope(body_scope);
+        let arg_cmt = mc.cat_rvalue(arg.id, arg.ty.span, re_scope, arg_ty);
+        debug!("arg_ty={} arg_cmt={}",
+               arg_ty.repr(rcx.tcx()),
+               arg_cmt.repr(rcx.tcx()));
+        link_pattern(rcx, mc, arg_cmt, &*arg.pat);
+    }
+}
+
 /// Link lifetimes of any ref bindings in `root_pat` to the pointers found in the discriminant, if
 /// needed.
 fn link_pattern<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
                           mc: mc::MemCategorizationContext<Rcx<'a, 'tcx>>,
                           discr_cmt: mc::cmt<'tcx>,
                           root_pat: &ast::Pat) {
+    debug!("link_pattern(discr_cmt={}, root_pat={})",
+           discr_cmt.repr(rcx.tcx()),
+           root_pat.repr(rcx.tcx()));
     let _ = mc.cat_pattern(discr_cmt, root_pat, |mc, sub_cmt, sub_pat| {
             match sub_pat.node {
                 // `ref x` pattern
