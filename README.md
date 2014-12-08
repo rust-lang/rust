@@ -142,7 +142,7 @@ into Rust.
 'my-feature' is descriptive. don't assign an RFC number yet).
 * Fill in the RFC. Put care into the details: RFCs that do not
 present convincing motivation, demonstrate understanding of the
-impact of the design, or are disinginuous about the drawbacks or
+impact of the design, or are disingenuous about the drawbacks or
 alternatives tend to be poorly-received.
 * Submit a pull request. As a pull request the RFC will receive design
 feedback from the larger community, and the author should be prepared
