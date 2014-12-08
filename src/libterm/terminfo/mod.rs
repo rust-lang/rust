@@ -183,7 +183,7 @@ impl<T: Writer+Send> TerminfoTerminal<T> {
         let entry = open(term.as_slice());
         if entry.is_err() {
             if os::getenv("MSYSCON").map_or(false, |s| {
-                    "mintty.exe" == s.as_slice()
+                    "mintty.exe" == s
                 }) {
                 // msys terminal
                 return Some(box TerminfoTerminal {out: out,

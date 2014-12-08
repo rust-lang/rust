@@ -132,7 +132,7 @@ impl GenericPathUnsafe for Path {
     unsafe fn set_filename_unchecked<T: BytesContainer>(&mut self, filename: T) {
         let filename = filename.container_as_bytes();
         match self.sepidx {
-            None if b".." == self.repr.as_slice() => {
+            None if b".." == self.repr => {
                 let mut v = Vec::with_capacity(3 + filename.len());
                 v.push_all(dot_dot_static);
                 v.push(SEP_BYTE);
@@ -159,7 +159,7 @@ impl GenericPathUnsafe for Path {
                 self.repr = Path::normalize(v.as_slice());
             }
         }
-        self.sepidx = self.repr.as_slice().rposition_elem(&SEP_BYTE);
+        self.sepidx = self.repr.rposition_elem(&SEP_BYTE);
     }
 
     unsafe fn push_unchecked<T: BytesContainer>(&mut self, path: T) {
@@ -175,7 +175,7 @@ impl GenericPathUnsafe for Path {
                 // FIXME: this is slow
                 self.repr = Path::normalize(v.as_slice());
             }
-            self.sepidx = self.repr.as_slice().rposition_elem(&SEP_BYTE);
+            self.sepidx = self.repr.rposition_elem(&SEP_BYTE);
         }
     }
 }
@@ -192,7 +192,7 @@ impl GenericPath for Path {
 
     fn dirname<'a>(&'a self) -> &'a [u8] {
         match self.sepidx {
-            None if b".." == self.repr.as_slice() => self.repr.as_slice(),
+            None if b".." == self.repr => self.repr.as_slice(),
             None => dot_static,
             Some(0) => self.repr[..1],
             Some(idx) if self.repr[idx+1..] == b".." => self.repr.as_slice(),
@@ -202,8 +202,8 @@ impl GenericPath for Path {
 
     fn filename<'a>(&'a self) -> Option<&'a [u8]> {
         match self.sepidx {
-            None if b"." == self.repr.as_slice() ||
-                b".." == self.repr.as_slice() => None,
+            None if b"." == self.repr ||
+                b".." == self.repr => None,
             None => Some(self.repr.as_slice()),
             Some(idx) if self.repr[idx+1..] == b".." => None,
             Some(0) if self.repr[1..].is_empty() => None,
@@ -213,20 +213,20 @@ impl GenericPath for Path {
 
     fn pop(&mut self) -> bool {
         match self.sepidx {
-            None if b"." == self.repr.as_slice() => false,
+            None if b"." == self.repr => false,
             None => {
                 self.repr = vec![b'.'];
                 self.sepidx = None;
                 true
             }
-            Some(0) if b"/" == self.repr.as_slice() => false,
+            Some(0) if b"/" == self.repr => false,
             Some(idx) => {
                 if idx == 0 {
                     self.repr.truncate(idx+1);
                 } else {
                     self.repr.truncate(idx);
                 }
-                self.sepidx = self.repr.as_slice().rposition_elem(&SEP_BYTE);
+                self.sepidx = self.repr.rposition_elem(&SEP_BYTE);
                 true
             }
         }
@@ -251,7 +251,7 @@ impl GenericPath for Path {
         } else {
             let mut ita = self.components();
             let mut itb = other.components();
-            if b"." == self.repr.as_slice() {
+            if b"." == self.repr {
                 return match itb.next() {
                     None => true,
                     Some(b) => b != b".."
@@ -306,7 +306,7 @@ impl GenericPath for Path {
                     }
                 }
             }
-            Some(Path::new(comps.as_slice().connect_vec(&SEP_BYTE)))
+            Some(Path::new(comps.connect_vec(&SEP_BYTE)))
         }
     }
 
@@ -407,7 +407,7 @@ impl Path {
 
 // None result means the byte vector didn't need normalizing
 fn normalize_helper<'a>(v: &'a [u8], is_abs: bool) -> Option<Vec<&'a [u8]>> {
-    if is_abs && v.as_slice().is_empty() {
+    if is_abs && v.is_empty() {
         return None;
     }
     let mut comps: Vec<&'a [u8]> = vec![];
@@ -496,8 +496,8 @@ mod tests {
         t!(s: Path::new("foo/../../.."), "../..");
         t!(s: Path::new("foo/../../bar"), "../bar");
 
-        assert_eq!(Path::new(b"foo/bar").into_vec().as_slice(), b"foo/bar");
-        assert_eq!(Path::new(b"/foo/../../bar").into_vec().as_slice(),
+        assert_eq!(Path::new(b"foo/bar").into_vec(), b"foo/bar");
+        assert_eq!(Path::new(b"/foo/../../bar").into_vec(),
                    b"/bar");
 
         let p = Path::new(b"foo/bar\x80");
@@ -537,7 +537,7 @@ mod tests {
             ($path:expr, $disp:ident, $exp:expr) => (
                 {
                     let path = Path::new($path);
-                    assert!(path.$disp().to_string().as_slice() == $exp);
+                    assert!(path.$disp().to_string() == $exp);
                 }
             )
         )
@@ -580,9 +580,9 @@ mod tests {
                 {
                     let path = Path::new($path);
                     let f = format!("{}", path.display());
-                    assert!(f.as_slice() == $exp);
+                    assert!(f == $exp);
                     let f = format!("{}", path.filename_display());
-                    assert!(f.as_slice() == $expf);
+                    assert!(f == $expf);
                 }
             )
         )
@@ -1180,7 +1180,7 @@ mod tests {
                     let path = Path::new($arg);
                     let comps = path.components().collect::<Vec<&[u8]>>();
                     let exp: &[&[u8]] = &[$($exp),*];
-                    assert_eq!(comps.as_slice(), exp);
+                    assert_eq!(comps, exp);
                     let comps = path.components().rev().collect::<Vec<&[u8]>>();
                     let exp = exp.iter().rev().map(|&x|x).collect::<Vec<&[u8]>>();
                     assert_eq!(comps, exp)
@@ -1212,7 +1212,7 @@ mod tests {
                     let path = Path::new($arg);
                     let comps = path.str_components().collect::<Vec<Option<&str>>>();
                     let exp: &[Option<&str>] = &$exp;
-                    assert_eq!(comps.as_slice(), exp);
+                    assert_eq!(comps, exp);
                     let comps = path.str_components().rev().collect::<Vec<Option<&str>>>();
                     let exp = exp.iter().rev().map(|&x|x).collect::<Vec<Option<&str>>>();
                     assert_eq!(comps, exp);

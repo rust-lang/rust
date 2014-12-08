@@ -378,13 +378,13 @@ pub fn handle_options(mut args: Vec<String>) -> Option<getopts::Matches> {
     // Don't handle -W help here, because we might first load plugins.
 
     let r = matches.opt_strs("Z");
-    if r.iter().any(|x| x.as_slice() == "help") {
+    if r.iter().any(|x| *x == "help") {
         describe_debug_flags();
         return None;
     }
 
     let cg_flags = matches.opt_strs("C");
-    if cg_flags.iter().any(|x| x.as_slice() == "help") {
+    if cg_flags.iter().any(|x| *x == "help") {
         describe_codegen_flags();
         return None;
     }

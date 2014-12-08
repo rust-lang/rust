@@ -55,7 +55,7 @@ use result::Result;
 use rustrt::local::Local;
 use rustrt::task::Task;
 use rustrt::task;
-use str::{Str, SendStr};
+use str::SendStr;
 use string::{String, ToString};
 use sync::Future;
 
@@ -244,7 +244,7 @@ pub fn name() -> Option<String> {
 
     let task = Local::borrow(None::<Task>);
     match task.name {
-        Some(ref name) => Some(name.as_slice().to_string()),
+        Some(ref name) => Some(name.to_string()),
         None => None
     }
 }
@@ -289,21 +289,21 @@ mod test {
     #[test]
     fn test_owned_named_task() {
         TaskBuilder::new().named("ada lovelace".to_string()).try(proc() {
-            assert!(name().unwrap() == "ada lovelace".to_string());
+            assert!(name().unwrap() == "ada lovelace");
         }).map_err(|_| ()).unwrap();
     }
 
     #[test]
     fn test_static_named_task() {
         TaskBuilder::new().named("ada lovelace").try(proc() {
-            assert!(name().unwrap() == "ada lovelace".to_string());
+            assert!(name().unwrap() == "ada lovelace");
         }).map_err(|_| ()).unwrap();
     }
 
     #[test]
     fn test_send_named_task() {
         TaskBuilder::new().named("ada lovelace".into_cow()).try(proc() {
-            assert!(name().unwrap() == "ada lovelace".to_string());
+            assert!(name().unwrap() == "ada lovelace");
         }).map_err(|_| ()).unwrap();
     }
 
@@ -464,7 +464,7 @@ mod test {
             Err(e) => {
                 type T = String;
                 assert!(e.is::<T>());
-                assert_eq!(*e.downcast::<T>().unwrap(), "owned string".to_string());
+                assert_eq!(*e.downcast::<T>().unwrap(), "owned string");
             }
             Ok(()) => panic!()
         }
@@ -511,7 +511,7 @@ mod test {
         assert!(r.is_ok());
 
         let output = reader.read_to_string().unwrap();
-        assert_eq!(output, "Hello, world!".to_string());
+        assert_eq!(output, "Hello, world!");
     }
 
     // NOTE: the corresponding test for stderr is in run-pass/task-stderr, due

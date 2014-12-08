@@ -2907,7 +2907,7 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
                         res = res | TC::ReachesFfiUnsafe;
                     }
 
-                    match repr_hints.as_slice().get(0) {
+                    match repr_hints.get(0) {
                         Some(h) => if !h.is_ffi_safe() {
                             res = res | TC::ReachesFfiUnsafe;
                         },
@@ -3566,23 +3566,23 @@ pub fn positional_element_ty<'tcx>(cx: &ctxt<'tcx>,
                                    variant: Option<ast::DefId>) -> Option<Ty<'tcx>> {
 
     match (&ty.sty, variant) {
-        (&ty_tup(ref v), None) => v.as_slice().get(i).map(|&t| t),
+        (&ty_tup(ref v), None) => v.get(i).map(|&t| t),
 
 
         (&ty_struct(def_id, ref substs), None) => lookup_struct_fields(cx, def_id)
-            .as_slice().get(i)
+            .get(i)
             .map(|&t|lookup_item_type(cx, t.id).ty.subst(cx, substs)),
 
         (&ty_enum(def_id, ref substs), Some(variant_def_id)) => {
             let variant_info = enum_variant_with_id(cx, def_id, variant_def_id);
-            variant_info.args.as_slice().get(i).map(|t|t.subst(cx, substs))
+            variant_info.args.get(i).map(|t|t.subst(cx, substs))
         }
 
         (&ty_enum(def_id, ref substs), None) => {
             assert!(enum_is_univariant(cx, def_id));
             let enum_variants = enum_variants(cx, def_id);
             let variant_info = &(*enum_variants)[0];
-            variant_info.args.as_slice().get(i).map(|t|t.subst(cx, substs))
+            variant_info.args.get(i).map(|t|t.subst(cx, substs))
         }
 
         _ => None

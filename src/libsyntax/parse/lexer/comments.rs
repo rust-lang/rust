@@ -66,21 +66,20 @@ pub fn strip_doc_comment_decoration(comment: &str) -> String {
         let mut j = lines.len();
         // first line of all-stars should be omitted
         if lines.len() > 0 &&
-                lines[0].as_slice().chars().all(|c| c == '*') {
+                lines[0].chars().all(|c| c == '*') {
             i += 1;
         }
-        while i < j && lines[i].as_slice().trim().is_empty() {
+        while i < j && lines[i].trim().is_empty() {
             i += 1;
         }
         // like the first, a last line of all stars should be omitted
         if j > i && lines[j - 1]
-                         .as_slice()
                          .chars()
                          .skip(1)
                          .all(|c| c == '*') {
             j -= 1;
         }
-        while j > i && lines[j - 1].as_slice().trim().is_empty() {
+        while j > i && lines[j - 1].trim().is_empty() {
             j -= 1;
         }
         return lines.slice(i, j).iter().map(|x| (*x).clone()).collect();
@@ -92,7 +91,7 @@ pub fn strip_doc_comment_decoration(comment: &str) -> String {
         let mut can_trim = true;
         let mut first = true;
         for line in lines.iter() {
-            for (j, c) in line.as_slice().chars().enumerate() {
+            for (j, c) in line.chars().enumerate() {
                 if j > i || !"* \t".contains_char(c) {
                     can_trim = false;
                     break;
@@ -117,7 +116,7 @@ pub fn strip_doc_comment_decoration(comment: &str) -> String {
 
         if can_trim {
             lines.iter().map(|line| {
-                line.as_slice().slice(i + 1, line.len()).to_string()
+                line.slice(i + 1, line.len()).to_string()
             }).collect()
         } else {
             lines
@@ -228,7 +227,7 @@ fn trim_whitespace_prefix_and_push_line(lines: &mut Vec<String> ,
     let s1 = match all_whitespace(s.as_slice(), col) {
         Some(col) => {
             if col < len {
-                s.as_slice().slice(col, len).to_string()
+                s.slice(col, len).to_string()
             } else {
                 "".to_string()
             }
@@ -265,7 +264,7 @@ fn read_block_comment(rdr: &mut StringReader,
         if is_block_doc_comment(curr_line.as_slice()) {
             return
         }
-        assert!(!curr_line.as_slice().contains_char('\n'));
+        assert!(!curr_line.contains_char('\n'));
         lines.push(curr_line);
     } else {
         let mut level: int = 1;
@@ -390,41 +389,41 @@ mod test {
     #[test] fn test_block_doc_comment_1() {
         let comment = "/**\n * Test \n **  Test\n *   Test\n*/";
         let stripped = strip_doc_comment_decoration(comment);
-        assert_eq!(stripped, " Test \n*  Test\n   Test".to_string());
+        assert_eq!(stripped, " Test \n*  Test\n   Test");
     }
 
     #[test] fn test_block_doc_comment_2() {
         let comment = "/**\n * Test\n *  Test\n*/";
         let stripped = strip_doc_comment_decoration(comment);
-        assert_eq!(stripped, " Test\n  Test".to_string());
+        assert_eq!(stripped, " Test\n  Test");
     }
 
     #[test] fn test_block_doc_comment_3() {
         let comment = "/**\n let a: *int;\n *a = 5;\n*/";
         let stripped = strip_doc_comment_decoration(comment);
-        assert_eq!(stripped, " let a: *int;\n *a = 5;".to_string());
+        assert_eq!(stripped, " let a: *int;\n *a = 5;");
     }
 
     #[test] fn test_block_doc_comment_4() {
         let comment = "/*******************\n test\n *********************/";
         let stripped = strip_doc_comment_decoration(comment);
-        assert_eq!(stripped, " test".to_string());
+        assert_eq!(stripped, " test");
     }
 
     #[test] fn test_line_doc_comment() {
         let stripped = strip_doc_comment_decoration("/// test");
-        assert_eq!(stripped, " test".to_string());
+        assert_eq!(stripped, " test");
         let stripped = strip_doc_comment_decoration("///! test");
-        assert_eq!(stripped, " test".to_string());
+        assert_eq!(stripped, " test");
         let stripped = strip_doc_comment_decoration("// test");
-        assert_eq!(stripped, " test".to_string());
+        assert_eq!(stripped, " test");
         let stripped = strip_doc_comment_decoration("// test");
-        assert_eq!(stripped, " test".to_string());
+        assert_eq!(stripped, " test");
         let stripped = strip_doc_comment_decoration("///test");
-        assert_eq!(stripped, "test".to_string());
+        assert_eq!(stripped, "test");
         let stripped = strip_doc_comment_decoration("///!test");
-        assert_eq!(stripped, "test".to_string());
+        assert_eq!(stripped, "test");
         let stripped = strip_doc_comment_decoration("//test");
-        assert_eq!(stripped, "test".to_string());
+        assert_eq!(stripped, "test");
     }
 }

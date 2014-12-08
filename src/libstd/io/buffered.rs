@@ -450,30 +450,30 @@ mod test {
         let nread = reader.read(&mut buf);
         assert_eq!(Ok(3), nread);
         let b: &[_] = &[5, 6, 7];
-        assert_eq!(buf.as_slice(), b);
+        assert_eq!(buf, b);
 
         let mut buf = [0, 0];
         let nread = reader.read(&mut buf);
         assert_eq!(Ok(2), nread);
         let b: &[_] = &[0, 1];
-        assert_eq!(buf.as_slice(), b);
+        assert_eq!(buf, b);
 
         let mut buf = [0];
         let nread = reader.read(&mut buf);
         assert_eq!(Ok(1), nread);
         let b: &[_] = &[2];
-        assert_eq!(buf.as_slice(), b);
+        assert_eq!(buf, b);
 
         let mut buf = [0, 0, 0];
         let nread = reader.read(&mut buf);
         assert_eq!(Ok(1), nread);
         let b: &[_] = &[3, 0, 0];
-        assert_eq!(buf.as_slice(), b);
+        assert_eq!(buf, b);
 
         let nread = reader.read(&mut buf);
         assert_eq!(Ok(1), nread);
         let b: &[_] = &[4, 0, 0];
-        assert_eq!(buf.as_slice(), b);
+        assert_eq!(buf, b);
 
         assert!(reader.read(&mut buf).is_err());
     }

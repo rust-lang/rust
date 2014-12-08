@@ -2844,7 +2844,7 @@ impl<'a> State<'a> {
             comments::BlankLine => {
                 // We need to do at least one, possibly two hardbreaks.
                 let is_semi = match self.s.last_token() {
-                    pp::String(s, _) => ";" == s.as_slice(),
+                    pp::String(s, _) => ";" == s,
                     _ => false
                 };
                 if is_semi || self.is_begin() || self.is_end() {
@@ -2961,9 +2961,9 @@ mod test {
             variadic: false
         };
         let generics = ast_util::empty_generics();
-        assert_eq!(&fun_to_string(&decl, ast::NormalFn, abba_ident,
+        assert_eq!(fun_to_string(&decl, ast::NormalFn, abba_ident,
                                None, &generics),
-                   &"fn abba()".to_string());
+                   "fn abba()");
     }
 
     #[test]
@@ -2981,7 +2981,7 @@ mod test {
         });
 
         let varstr = variant_to_string(&var);
-        assert_eq!(&varstr,&"pub principal_skinner".to_string());
+        assert_eq!(varstr, "pub principal_skinner");
     }
 
     #[test]

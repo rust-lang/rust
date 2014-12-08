@@ -200,7 +200,7 @@ impl Target {
     pub fn adjust_abi(&self, abi: abi::Abi) -> abi::Abi {
         match abi {
             abi::System => {
-                if self.options.is_like_windows && self.arch.as_slice() == "x86" {
+                if self.options.is_like_windows && self.arch == "x86" {
                     abi::Stdcall
                 } else {
                     abi::C
@@ -308,7 +308,6 @@ impl Target {
             ( $($name:ident),+ ) => (
                 {
                     let target = target.replace("-", "_");
-                    let target = target.as_slice();
                     if false { }
                     $(
                         else if target == stringify!($name) {

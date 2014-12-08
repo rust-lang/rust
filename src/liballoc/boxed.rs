@@ -170,14 +170,14 @@ mod test {
         let b = box Test as Box<Any>;
         let a_str = a.to_str();
         let b_str = b.to_str();
-        assert_eq!(a_str.as_slice(), "Box<Any>");
-        assert_eq!(b_str.as_slice(), "Box<Any>");
+        assert_eq!(a_str, "Box<Any>");
+        assert_eq!(b_str, "Box<Any>");
 
         let a = &8u as &Any;
         let b = &Test as &Any;
         let s = format!("{}", a);
-        assert_eq!(s.as_slice(), "&Any");
+        assert_eq!(s, "&Any");
         let s = format!("{}", b);
-        assert_eq!(s.as_slice(), "&Any");
+        assert_eq!(s, "&Any");
     }
 }

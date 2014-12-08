@@ -523,7 +523,7 @@ mod tests {
     #[test]
     fn show_arc() {
         let a = Arc::new(5u32);
-        assert!(format!("{}", a).as_slice() == "5")
+        assert!(format!("{}", a) == "5")
     }
 
     // Make sure deriving works with Arc<T>

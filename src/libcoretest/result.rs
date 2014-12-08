@@ -93,9 +93,9 @@ pub fn test_fmt_default() {
     let err: Result<int, &'static str> = Err("Err");
 
     let s = format!("{}", ok);
-    assert_eq!(s.as_slice(), "Ok(100)");
+    assert_eq!(s, "Ok(100)");
     let s = format!("{}", err);
-    assert_eq!(s.as_slice(), "Err(Err)");
+    assert_eq!(s, "Err(Err)");
 }
 
 #[test]

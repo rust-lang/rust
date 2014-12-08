@@ -316,7 +316,7 @@ pub fn env_as_bytes() -> Vec<(Vec<u8>,Vec<u8>)> {
         fn env_convert(input: Vec<Vec<u8>>) -> Vec<(Vec<u8>, Vec<u8>)> {
             let mut pairs = Vec::new();
             for p in input.iter() {
-                let mut it = p.as_slice().splitn(1, |b| *b == b'=');
+                let mut it = p.splitn(1, |b| *b == b'=');
                 let key = it.next().unwrap().to_vec();
                 let default: &[u8] = &[];
                 let val = it.next().unwrap_or(default).to_vec();
@@ -2069,7 +2069,7 @@ mod tests {
     #[cfg(unix)]
     fn join_paths_unix() {
         fn test_eq(input: &[&str], output: &str) -> bool {
-            join_paths(input).unwrap().as_slice() == output.as_bytes()
+            join_paths(input).unwrap() == output.as_bytes()
         }
 
         assert!(test_eq(&[], ""));
@@ -2084,7 +2084,7 @@ mod tests {
     #[cfg(windows)]
     fn join_paths_windows() {
         fn test_eq(input: &[&str], output: &str) -> bool {
-            join_paths(input).unwrap().as_slice() == output.as_bytes()
+            join_paths(input).unwrap() == output.as_bytes()
         }
 
         assert!(test_eq(&[], ""));

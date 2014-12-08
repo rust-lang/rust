@@ -1548,7 +1548,7 @@ mod test_map {
 
             DROP_VECTOR.with(|v| {
                 for i in range(0u, 200) {
-                    assert_eq!(v.borrow().as_slice()[i], 0);
+                    assert_eq!(v.borrow()[i], 0);
                 }
             });
 
@@ -1560,7 +1560,7 @@ mod test_map {
 
             DROP_VECTOR.with(|v| {
                 for i in range(0u, 200) {
-                    assert_eq!(v.borrow().as_slice()[i], 1);
+                    assert_eq!(v.borrow()[i], 1);
                 }
             });
 
@@ -1571,27 +1571,27 @@ mod test_map {
                 assert!(v.is_some());
 
                 DROP_VECTOR.with(|v| {
-                    assert_eq!(v.borrow().as_slice()[i], 1);
-                    assert_eq!(v.borrow().as_slice()[i+100], 1);
+                    assert_eq!(v.borrow()[i], 1);
+                    assert_eq!(v.borrow()[i+100], 1);
                 });
             }
 
             DROP_VECTOR.with(|v| {
                 for i in range(0u, 50) {
-                    assert_eq!(v.borrow().as_slice()[i], 0);
-                    assert_eq!(v.borrow().as_slice()[i+100], 0);
+                    assert_eq!(v.borrow()[i], 0);
+                    assert_eq!(v.borrow()[i+100], 0);
                 }
 
                 for i in range(50u, 100) {
-                    assert_eq!(v.borrow().as_slice()[i], 1);
-                    assert_eq!(v.borrow().as_slice()[i+100], 1);
+                    assert_eq!(v.borrow()[i], 1);
+                    assert_eq!(v.borrow()[i+100], 1);
                 }
             });
         }
 
         DROP_VECTOR.with(|v| {
             for i in range(0u, 200) {
-                assert_eq!(v.borrow().as_slice()[i], 0);
+                assert_eq!(v.borrow()[i], 0);
             }
         });
     }
@@ -1607,7 +1607,7 @@ mod test_map {
 
             DROP_VECTOR.with(|v| {
                 for i in range(0u, 200) {
-                    assert_eq!(v.borrow().as_slice()[i], 0);
+                    assert_eq!(v.borrow()[i], 0);
                 }
             });
 
@@ -1619,7 +1619,7 @@ mod test_map {
 
             DROP_VECTOR.with(|v| {
                 for i in range(0u, 200) {
-                    assert_eq!(v.borrow().as_slice()[i], 1);
+                    assert_eq!(v.borrow()[i], 1);
                 }
             });
 
@@ -1634,7 +1634,7 @@ mod test_map {
 
             DROP_VECTOR.with(|v| {
                 for i in range(0u, 200) {
-                    assert_eq!(v.borrow().as_slice()[i], 1);
+                    assert_eq!(v.borrow()[i], 1);
                 }
             });
 
@@ -1642,11 +1642,11 @@ mod test_map {
 
             DROP_VECTOR.with(|v| {
                 let nk = range(0u, 100).filter(|&i| {
-                    v.borrow().as_slice()[i] == 1
+                    v.borrow()[i] == 1
                 }).count();
 
                 let nv = range(0u, 100).filter(|&i| {
-                    v.borrow().as_slice()[i+100] == 1
+                    v.borrow()[i+100] == 1
                 }).count();
 
                 assert_eq!(nk, 50);
@@ -1656,7 +1656,7 @@ mod test_map {
 
         DROP_VECTOR.with(|v| {
             for i in range(0u, 200) {
-                assert_eq!(v.borrow().as_slice()[i], 0);
+                assert_eq!(v.borrow()[i], 0);
             }
         });
     }
@@ -1905,8 +1905,8 @@ mod test_map {
 
         let map_str = format!("{}", map);
 
-        assert!(map_str == "{1: 2, 3: 4}".to_string() || map_str == "{3: 4, 1: 2}".to_string());
-        assert_eq!(format!("{}", empty), "{}".to_string());
+        assert!(map_str == "{1: 2, 3: 4}" || map_str == "{3: 4, 1: 2}");
+        assert_eq!(format!("{}", empty), "{}");
     }
 
     #[test]
