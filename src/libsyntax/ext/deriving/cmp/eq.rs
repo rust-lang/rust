@@ -17,11 +17,13 @@ use ext::deriving::generic::ty::*;
 use parse::token::InternedString;
 use ptr::P;
 
-pub fn expand_deriving_eq(cx: &mut ExtCtxt,
-                          span: Span,
-                          mitem: &MetaItem,
-                          item: &Item,
-                          push: |P<Item>|) {
+pub fn expand_deriving_eq<F>(cx: &mut ExtCtxt,
+                             span: Span,
+                             mitem: &MetaItem,
+                             item: &Item,
+                             push: F) where
+    F: FnOnce(P<Item>),
+{
     // structures are equal if all fields are equal, and non equal, if
     // any fields are not equal or if the enum variants are different
     fn cs_eq(cx: &mut ExtCtxt, span: Span, substr: &Substructure) -> P<Expr> {

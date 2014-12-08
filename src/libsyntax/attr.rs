@@ -115,7 +115,8 @@ impl AttrMetaMethods for P<MetaItem> {
 
 pub trait AttributeMethods {
     fn meta<'a>(&'a self) -> &'a MetaItem;
-    fn with_desugared_doc<T>(&self, f: |&Attribute| -> T) -> T;
+    fn with_desugared_doc<T, F>(&self, f: F) -> T where
+        F: FnOnce(&Attribute) -> T;
 }
 
 impl AttributeMethods for Attribute {
@@ -127,7 +128,9 @@ impl AttributeMethods for Attribute {
     /// Convert self to a normal #[doc="foo"] comment, if it is a
     /// comment like `///` or `/** */`. (Returns self unchanged for
     /// non-sugared doc attributes.)
-    fn with_desugared_doc<T>(&self, f: |&Attribute| -> T) -> T {
+    fn with_desugared_doc<T, F>(&self, f: F) -> T where
+        F: FnOnce(&Attribute) -> T,
+    {
         if self.node.is_sugared_doc {
             let comment = self.value_str().unwrap();
             let meta = mk_name_value_item_str(

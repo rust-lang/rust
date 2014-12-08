@@ -244,7 +244,9 @@ impl<'a> StringReader<'a> {
     /// Calls `f` with a string slice of the source text spanning from `start`
     /// up to but excluding `self.last_pos`, meaning the slice does not include
     /// the character `self.curr`.
-    pub fn with_str_from<T>(&self, start: BytePos, f: |s: &str| -> T) -> T {
+    pub fn with_str_from<T, F>(&self, start: BytePos, f: F) -> T where
+        F: FnOnce(&str) -> T,
+    {
         self.with_str_from_to(start, self.last_pos, f)
     }
 
@@ -264,7 +266,9 @@ impl<'a> StringReader<'a> {
 
     /// Calls `f` with a string slice of the source text spanning from `start`
     /// up to but excluding `end`.
-    fn with_str_from_to<T>(&self, start: BytePos, end: BytePos, f: |s: &str| -> T) -> T {
+    fn with_str_from_to<T, F>(&self, start: BytePos, end: BytePos, f: F) -> T where
+        F: FnOnce(&str) -> T,
+    {
         f(self.filemap.src.slice(
                 self.byte_offset(start).to_uint(),
                 self.byte_offset(end).to_uint()))

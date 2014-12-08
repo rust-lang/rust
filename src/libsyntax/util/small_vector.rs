@@ -171,7 +171,7 @@ impl<T> Iterator<T> for MoveItems<T> {
 }
 
 impl<T> MoveMap<T> for SmallVector<T> {
-    fn move_map(self, f: |T| -> T) -> SmallVector<T> {
+    fn move_map<F>(self, mut f: F) -> SmallVector<T> where F: FnMut(T) -> T {
         let repr = match self.repr {
             Zero => Zero,
             One(v) => One(f(v)),
