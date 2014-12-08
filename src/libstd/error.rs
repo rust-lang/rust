@@ -86,9 +86,11 @@ use string::String;
 /// Base functionality for all errors in Rust.
 pub trait Error: Send {
     /// A short description of the error; usually a static string.
+    /// Description should be single-line, i. e. it should not contain \n characters.
     fn description(&self) -> &str;
 
     /// A detailed description of the error, usually including dynamic information.
+    /// Detail should be single-line, i. e. it should not contain \n characters.
     fn detail(&self) -> Option<String> { None }
 
     /// The lower-level cause of this error, if any.
