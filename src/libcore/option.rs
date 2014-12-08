@@ -143,7 +143,7 @@
 
 #![stable]
 
-pub use self::Option::*;
+use self::Option::*;
 
 use cmp::{Eq, Ord};
 use default::Default;
