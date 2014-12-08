@@ -37,12 +37,17 @@ use {ast, ast_util};
 use ptr::P;
 use util::small_vector::SmallVector;
 
+enum ShouldFail {
+    No,
+    Yes(Option<InternedString>),
+}
+
 struct Test {
     span: Span,
     path: Vec<ast::Ident> ,
     bench: bool,
     ignore: bool,
-    should_fail: bool
+    should_fail: ShouldFail
 }
 
 struct TestCtxt<'a> {
@@ -360,8 +365,16 @@ fn is_ignored(i: &ast::Item) -> bool {
     i.attrs.iter().any(|attr| attr.check_name("ignore"))
 }
 
-fn should_fail(i: &ast::Item) -> bool {
-    attr::contains_name(i.attrs.as_slice(), "should_fail")
+fn should_fail(i: &ast::Item) -> ShouldFail {
+    match i.attrs.iter().find(|attr| attr.check_name("should_fail")) {
+        Some(attr) => {
+            let msg = attr.meta_item_list()
+                .and_then(|list| list.iter().find(|mi| mi.check_name("expected")))
+                .and_then(|mi| mi.value_str());
+            ShouldFail::Yes(msg)
+        }
+        None => ShouldFail::No,
+    }
 }
 
 /*
@@ -550,7 +563,20 @@ fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> P<ast::Expr> {
                                   vec![name_expr]);
 
     let ignore_expr = ecx.expr_bool(span, test.ignore);
-    let fail_expr = ecx.expr_bool(span, test.should_fail);
+    let should_fail_path = |name| {
+        ecx.path(span, vec![self_id, test_id, ecx.ident_of("ShouldFail"), ecx.ident_of(name)])
+    };
+    let fail_expr = match test.should_fail {
+        ShouldFail::No => ecx.expr_path(should_fail_path("No")),
+        ShouldFail::Yes(ref msg) => {
+            let path = should_fail_path("Yes");
+            let arg = match *msg {
+                Some(ref msg) => ecx.expr_some(span, ecx.expr_str(span, msg.clone())),
+                None => ecx.expr_none(span),
+            };
+            ecx.expr_call(span, ecx.expr_path(path), vec![arg])
+        }
+    };
 
     // self::test::TestDesc { ... }
     let desc_expr = ecx.expr_struct(

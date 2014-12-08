@@ -346,7 +346,7 @@ pub fn make_test(config: &Config, testfile: &Path, f: || -> test::TestFn)
         desc: test::TestDesc {
             name: make_test_name(config, testfile),
             ignore: header::is_test_ignored(config, testfile),
-            should_fail: false
+            should_fail: test::ShouldFail::No,
         },
         testfn: f(),
     }

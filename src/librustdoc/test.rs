@@ -280,7 +280,7 @@ impl Collector {
             desc: testing::TestDesc {
                 name: testing::DynTestName(name),
                 ignore: should_ignore,
-                should_fail: false, // compiler failures are test failures
+                should_fail: testing::ShouldFail::No, // compiler failures are test failures
             },
             testfn: testing::DynTestFn(proc() {
                 runtest(test.as_slice(),
