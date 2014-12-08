@@ -22,10 +22,10 @@ Rust language.
 # Motivation
 
 We soon intend to [provide stable releases][1] of Rust that offer
-forward compatibility with future releases. Still, we expect to
-continue developing new features at a rapid pace for some time to
-come. We need to be able to provide these features to users for
-testing as they are developed while also proving strong stability
+backwards compatibility with previous stable releases. Still, we
+expect to continue developing new features at a rapid pace for some
+time to come. We need to be able to provide these features to users
+for testing as they are developed while also proving strong stability
 guarantees to users.
 
 [1]: http://blog.rust-lang.org/2014/10/30/Stability.html
@@ -73,6 +73,8 @@ Each pending version of Rust progresses in sequence through the
 'nightly' and 'beta' channels before being promoted to the 'stable'
 channel, at which time the final commit is tagged and that version is
 considered 'released'.
+
+Development cycles are reduced to six weeks from the current twelve.
 
 Under normal circumstances, the version is only bumped on the nightly
 branch, once per development cycle, with the release channel
@@ -126,6 +128,10 @@ channel, and the release on the beta channel will be called
 1.0.0-beta1. If 1.0.0 betas extend for multiple cycles, the will be
 called 1.0.0-beta2, -beta3, etc, before being promoted to the stable
 channel as 1.0.0 and beginning the release train process in full.
+
+During the beta cycles, as with the normal release cycles, primary
+development will be on the nightly branch, with only bugfixes on the
+beta branch.
 
 ## Feature staging
 
@@ -392,7 +398,8 @@ Syntax extensions, lints, and any program using the compiler APIs
 will not be compatible with the stable release channel at 1.0 since it
 is not possible to stabilize `#[plugin_registrar]` in time. Plugins
 are very popular. This pain will partially be alleviated by a proposed
-[Cargo] feature that enables Rust code generation.
+[Cargo] feature that enables Rust code generation. `macro_rules!`
+*is* expected to be stable by 1.0 though.
 
 [Cargo]: https://github.com/rust-lang/rfcs/pull/403
 [1]: http://blog.rust-lang.org/2014/10/30/Stability.html
