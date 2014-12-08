@@ -4916,7 +4916,9 @@ pub fn has_dtor(cx: &ctxt, struct_id: DefId) -> bool {
     cx.destructor_for_type.borrow().contains_key(&struct_id)
 }
 
-pub fn with_path<T>(cx: &ctxt, id: ast::DefId, f: |ast_map::PathElems| -> T) -> T {
+pub fn with_path<T, F>(cx: &ctxt, id: ast::DefId, f: F) -> T where
+    F: FnOnce(ast_map::PathElems) -> T,
+{
     if id.krate == ast::LOCAL_CRATE {
         cx.map.with_path(id.node, f)
     } else {
