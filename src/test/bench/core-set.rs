@@ -10,6 +10,8 @@
 
 // ignore-pretty very bad with line comments
 
+#![feature(unboxed_closures)]
+
 extern crate collections;
 extern crate rand;
 
@@ -31,7 +33,7 @@ struct Results {
     delete_strings: Duration,
 }
 
-fn timed(result: &mut Duration, op: ||) {
+fn timed<F>(result: &mut Duration, op: F) where F: FnOnce() {
     *result = Duration::span(op);
 }
 
@@ -66,7 +68,7 @@ impl Results {
                      rand_cap: uint,
                      f: || -> T) { {
             let mut set = f();
-            timed(&mut self.sequential_ints, || {
+            timed(&mut self.sequential_ints, move || {
                 for i in range(0u, num_keys) {
                     set.insert(i);
                 }
@@ -79,7 +81,7 @@ impl Results {
 
         {
             let mut set = f();
-            timed(&mut self.random_ints, || {
+            timed(&mut self.random_ints, move || {
                 for _ in range(0, num_keys) {
                     set.insert(rng.gen::<uint>() % rand_cap);
                 }
@@ -92,7 +94,7 @@ impl Results {
                 set.insert(i);
             }
 
-            timed(&mut self.delete_ints, || {
+            timed(&mut self.delete_ints, move || {
                 for i in range(0u, num_keys) {
                     assert!(set.remove(&i));
                 }
@@ -108,7 +110,7 @@ impl Results {
                      f: || -> T) {
         {
             let mut set = f();
-            timed(&mut self.sequential_strings, || {
+            timed(&mut self.sequential_strings, move || {
                 for i in range(0u, num_keys) {
                     set.insert(i.to_string());
                 }
@@ -121,7 +123,7 @@ impl Results {
 
         {
             let mut set = f();
-            timed(&mut self.random_strings, || {
+            timed(&mut self.random_strings, move || {
                 for _ in range(0, num_keys) {
                     let s = rng.gen::<uint>().to_string();
                     set.insert(s);
@@ -134,7 +136,7 @@ impl Results {
             for i in range(0u, num_keys) {
                 set.insert(i.to_string());
             }
-            timed(&mut self.delete_strings, || {
+            timed(&mut self.delete_strings, move || {
                 for i in range(0u, num_keys) {
                     assert!(set.remove(&i.to_string()));
                 }
