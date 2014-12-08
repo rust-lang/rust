@@ -89,6 +89,21 @@ fn test_out_of_bounds_failure() {
 }
 ~~~
 
+`#[should_fail]` tests can be fragile as it's hard to guarantee that the test
+didn't fail for an unexpected reason. To help with this, an optional `expected`
+parameter can be added to the `should_fail` attribute. The test harness will
+make sure that the failure message contains the provided text. A safer version
+of the example above would be:
+
+~~~test_harness
+#[test]
+#[should_fail(expected = "index out of bounds")]
+fn test_out_of_bounds_failure() {
+    let v: &[int] = &[];
+    v[0];
+}
+~~~
+
 A test runner built with the `--test` flag supports a limited set of
 arguments to control which tests are run:
 

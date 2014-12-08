@@ -47,6 +47,7 @@ use self::TestEvent::*;
 use self::NamePadding::*;
 use self::OutputLocation::*;
 
+use std::any::{Any, AnyRefExt};
 use std::collections::TreeMap;
 use stats::Stats;
 use getopts::{OptGroup, optflag, optopt};
@@ -78,7 +79,7 @@ pub mod test {
              MetricChange, Improvement, Regression, LikelyNoise,
              StaticTestFn, StaticTestName, DynTestName, DynTestFn,
              run_test, test_main, test_main_static, filter_tests,
-             parse_opts, StaticBenchFn};
+             parse_opts, StaticBenchFn, ShouldFail};
 }
 
 pub mod stats;
@@ -184,13 +185,19 @@ pub struct Bencher {
     pub bytes: u64,
 }
 
+#[deriving(Clone, Show, PartialEq, Eq, Hash)]
+pub enum ShouldFail {
+    No,
+    Yes(Option<&'static str>)
+}
+
 // The definition of a single test. A test runner will run a list of
 // these.
 #[deriving(Clone, Show, PartialEq, Eq, Hash)]
 pub struct TestDesc {
     pub name: TestName,
     pub ignore: bool,
-    pub should_fail: bool,
+    pub should_fail: ShouldFail,
 }
 
 #[deriving(Show)]
@@ -346,7 +353,7 @@ fn optgroups() -> Vec<getopts::OptGroup> {
 
 fn usage(binary: &str) {
     let message = format!("Usage: {} [OPTIONS] [FILTER]", binary);
-    println!(r"{usage}
+    println!(r#"{usage}
 
 The FILTER regex is tested against the name of all tests to run, and
 only those tests that match are run.
@@ -366,10 +373,12 @@ Test Attributes:
                      function takes one argument (test::Bencher).
     #[should_fail] - This function (also labeled with #[test]) will only pass if
                      the code causes a failure (an assertion failure or panic!)
+                     A message may be provided, which the failure string must
+                     contain: #[should_fail(expected = "foo")].
     #[ignore]      - When applied to a function which is already attributed as a
                      test, then the test runner will ignore these tests during
                      normal test runs. Running with --ignored will run these
-                     tests.",
+                     tests."#,
              usage = getopts::usage(message.as_slice(),
                                     optgroups().as_slice()));
 }
@@ -902,13 +911,13 @@ fn should_sort_failures_before_printing_them() {
     let test_a = TestDesc {
         name: StaticTestName("a"),
         ignore: false,
-        should_fail: false
+        should_fail: ShouldFail::No
     };
 
     let test_b = TestDesc {
         name: StaticTestName("b"),
         ignore: false,
-        should_fail: false
+        should_fail: ShouldFail::No
     };
 
     let mut st = ConsoleTestState {
@@ -1114,7 +1123,7 @@ pub fn run_test(opts: &TestOpts,
 
             let stdout = reader.read_to_end().unwrap().into_iter().collect();
             let task_result = result_future.into_inner();
-            let test_result = calc_result(&desc, task_result.is_ok());
+            let test_result = calc_result(&desc, task_result);
             monitor_ch.send((desc.clone(), test_result, stdout));
         })
     }
@@ -1148,13 +1157,17 @@ pub fn run_test(opts: &TestOpts,
     }
 }
 
-fn calc_result(desc: &TestDesc, task_succeeded: bool) -> TestResult {
-    if task_succeeded {
-        if desc.should_fail { TrFailed }
-        else { TrOk }
-    } else {
-        if desc.should_fail { TrOk }
-        else { TrFailed }
+fn calc_result(desc: &TestDesc, task_result: Result<(), Box<Any+Send>>) -> TestResult {
+    match (&desc.should_fail, task_result) {
+        (&ShouldFail::No, Ok(())) |
+        (&ShouldFail::Yes(None), Err(_)) => TrOk,
+        (&ShouldFail::Yes(Some(msg)), Err(ref err))
+            if err.downcast_ref::<String>()
+                .map(|e| &**e)
+                .or_else(|| err.downcast_ref::<&'static str>().map(|e| *e))
+                .map(|e| e.contains(msg))
+                .unwrap_or(false) => TrOk,
+        _ => TrFailed,
     }
 }
 
@@ -1437,7 +1450,7 @@ mod tests {
                TestDesc, TestDescAndFn, TestOpts, run_test,
                Metric, MetricMap, MetricAdded, MetricRemoved,
                Improvement, Regression, LikelyNoise,
-               StaticTestName, DynTestName, DynTestFn};
+               StaticTestName, DynTestName, DynTestFn, ShouldFail};
     use std::io::TempDir;
 
     #[test]
@@ -1447,7 +1460,7 @@ mod tests {
             desc: TestDesc {
                 name: StaticTestName("whatever"),
                 ignore: true,
-                should_fail: false
+                should_fail: ShouldFail::No,
             },
             testfn: DynTestFn(proc() f()),
         };
@@ -1464,7 +1477,7 @@ mod tests {
             desc: TestDesc {
                 name: StaticTestName("whatever"),
                 ignore: true,
-                should_fail: false
+                should_fail: ShouldFail::No,
             },
             testfn: DynTestFn(proc() f()),
         };
@@ -1481,7 +1494,7 @@ mod tests {
             desc: TestDesc {
                 name: StaticTestName("whatever"),
                 ignore: false,
-                should_fail: true
+                should_fail: ShouldFail::Yes(None)
             },
             testfn: DynTestFn(proc() f()),
         };
@@ -1492,13 +1505,47 @@ mod tests {
     }
 
     #[test]
+    fn test_should_fail_good_message() {
+        fn f() { panic!("an error message"); }
+        let desc = TestDescAndFn {
+            desc: TestDesc {
+                name: StaticTestName("whatever"),
+                ignore: false,
+                should_fail: ShouldFail::Yes(Some("error message"))
+            },
+            testfn: DynTestFn(proc() f()),
+        };
+        let (tx, rx) = channel();
+        run_test(&TestOpts::new(), false, desc, tx);
+        let (_, res, _) = rx.recv();
+        assert!(res == TrOk);
+    }
+
+    #[test]
+    fn test_should_fail_bad_message() {
+        fn f() { panic!("an error message"); }
+        let desc = TestDescAndFn {
+            desc: TestDesc {
+                name: StaticTestName("whatever"),
+                ignore: false,
+                should_fail: ShouldFail::Yes(Some("foobar"))
+            },
+            testfn: DynTestFn(proc() f()),
+        };
+        let (tx, rx) = channel();
+        run_test(&TestOpts::new(), false, desc, tx);
+        let (_, res, _) = rx.recv();
+        assert!(res == TrFailed);
+    }
+
+    #[test]
     fn test_should_fail_but_succeeds() {
         fn f() { }
         let desc = TestDescAndFn {
             desc: TestDesc {
                 name: StaticTestName("whatever"),
                 ignore: false,
-                should_fail: true
+                should_fail: ShouldFail::Yes(None)
             },
             testfn: DynTestFn(proc() f()),
         };
@@ -1544,7 +1591,7 @@ mod tests {
                 desc: TestDesc {
                     name: StaticTestName("1"),
                     ignore: true,
-                    should_fail: false,
+                    should_fail: ShouldFail::No,
                 },
                 testfn: DynTestFn(proc() {}),
             },
@@ -1552,7 +1599,7 @@ mod tests {
                 desc: TestDesc {
                     name: StaticTestName("2"),
                     ignore: false,
-                    should_fail: false
+                    should_fail: ShouldFail::No,
                 },
                 testfn: DynTestFn(proc() {}),
             });
@@ -1588,7 +1635,7 @@ mod tests {
                     desc: TestDesc {
                         name: DynTestName((*name).clone()),
                         ignore: false,
-                        should_fail: false
+                        should_fail: ShouldFail::No,
                     },
                     testfn: DynTestFn(testfn),
                 };
@@ -1629,7 +1676,7 @@ mod tests {
                 desc: TestDesc {
                     name: DynTestName(name.to_string()),
                     ignore: false,
-                    should_fail: false
+                    should_fail: ShouldFail::No,
                 },
                 testfn: DynTestFn(test_fn)
             }
