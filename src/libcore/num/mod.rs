@@ -673,35 +673,30 @@ signed_int_impl! { int }
 #[unstable = "recently settled as part of numerics reform"]
 pub trait UnsignedInt: Int {
     /// Returns `true` iff `self == 2^k` for some `k`.
+    #[inline]
     fn is_power_of_two(self) -> bool {
-        (self - Int::one()) & self == Int::zero()
+        (self - Int::one()) & self == Int::zero() && !(self == Int::zero())
     }
 
     /// Returns the smallest power of two greater than or equal to `self`.
+    /// Unspecified behavior on overflow.
     #[inline]
     fn next_power_of_two(self) -> Self {
-        let halfbits = size_of::<Self>() * 4;
-        let mut tmp = self - Int::one();
-        let mut shift = 1u;
-        while shift <= halfbits {
-            tmp = tmp | (tmp >> shift);
-            shift = shift << 1u;
-        }
-        tmp + Int::one()
+        let bits = size_of::<Self>() * 8;
+        let one: Self = Int::one();
+        one << ((bits - (self - one).leading_zeros()) % bits)
     }
 
     /// Returns the smallest power of two greater than or equal to `n`. If the
     /// next power of two is greater than the type's maximum value, `None` is
     /// returned, otherwise the power of two is wrapped in `Some`.
     fn checked_next_power_of_two(self) -> Option<Self> {
-        let halfbits = size_of::<Self>() * 4;
-        let mut tmp = self - Int::one();
-        let mut shift = 1u;
-        while shift <= halfbits {
-            tmp = tmp | (tmp >> shift);
-            shift = shift << 1u;
+        let npot = self.next_power_of_two();
+        if npot >= self {
+            Some(npot)
+        } else {
+            None
         }
-        tmp.checked_add(Int::one())
     }
 }
 
