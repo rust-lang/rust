@@ -577,17 +577,11 @@ impl<'a, 'b> Context<'a, 'b> {
         }
 
         // Now create a vector containing all the arguments
-        let slicename = self.ecx.ident_of("__args_vec");
-        {
-            let args = names.into_iter().map(|a| a.unwrap());
-            let args = locals.into_iter().chain(args);
-            let args = self.ecx.expr_vec_slice(self.fmtsp, args.collect());
-            lets.push(self.ecx.stmt_let(self.fmtsp, false, slicename, args));
-        }
+        let args = locals.into_iter().chain(names.into_iter().map(|a| a.unwrap()));
 
         // Now create the fmt::Arguments struct with all our locals we created.
         let pieces = self.ecx.expr_ident(self.fmtsp, static_str_name);
-        let args_slice = self.ecx.expr_ident(self.fmtsp, slicename);
+        let args_slice = self.ecx.expr_vec_slice(self.fmtsp, args.collect());
 
         let (fn_name, fn_args) = if self.all_pieces_simple {
             ("new", vec![pieces, args_slice])
@@ -602,29 +596,18 @@ impl<'a, 'b> Context<'a, 'b> {
                 self.ecx.ident_of("Arguments"),
                 self.ecx.ident_of(fn_name)), fn_args);
 
-        // We did all the work of making sure that the arguments
-        // structure is safe, so we can safely have an unsafe block.
-        let result = self.ecx.expr_block(P(ast::Block {
-           view_items: Vec::new(),
-           stmts: Vec::new(),
-           expr: Some(result),
-           id: ast::DUMMY_NODE_ID,
-           rules: ast::UnsafeBlock(ast::CompilerGenerated),
-           span: self.fmtsp,
-        }));
-        let resname = self.ecx.ident_of("__args");
-        lets.push(self.ecx.stmt_let(self.fmtsp, false, resname, result));
-        let res = self.ecx.expr_ident(self.fmtsp, resname);
         let result = match invocation {
             Call(e) => {
                 let span = e.span;
-                self.ecx.expr_call(span, e,
-                                   vec!(self.ecx.expr_addr_of(span, res)))
+                self.ecx.expr_call(span, e, vec![
+                    self.ecx.expr_addr_of(span, result)
+                ])
             }
             MethodCall(e, m) => {
                 let span = e.span;
-                self.ecx.expr_method_call(span, e, m,
-                                          vec!(self.ecx.expr_addr_of(span, res)))
+                self.ecx.expr_method_call(span, e, m, vec![
+                    self.ecx.expr_addr_of(span, result)
+                ])
             }
         };
         let body = self.ecx.expr_block(self.ecx.block(self.fmtsp, lets,

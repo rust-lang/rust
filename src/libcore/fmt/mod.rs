@@ -92,6 +92,9 @@ pub struct Formatter<'a> {
     args: &'a [Argument<'a>],
 }
 
+// NB. Argument is essentially an optimized partially applied formatting function,
+// equivalent to `exists T.(&T, fn(&T, &mut Formatter) -> Result`.
+
 enum Void {}
 
 /// This struct represents the generic "argument" which is taken by the Xprintf
@@ -100,21 +103,47 @@ enum Void {}
 /// types, and then this struct is used to canonicalize arguments to one type.
 #[experimental = "implementation detail of the `format_args!` macro"]
 pub struct Argument<'a> {
-    formatter: extern "Rust" fn(&Void, &mut Formatter) -> Result,
     value: &'a Void,
+    formatter: fn(&Void, &mut Formatter) -> Result,
+}
+
+impl<'a> Argument<'a> {
+    #[inline(never)]
+    fn show_uint(x: &uint, f: &mut Formatter) -> Result {
+        Show::fmt(x, f)
+    }
+
+    fn new<'a, T>(x: &'a T, f: fn(&T, &mut Formatter) -> Result) -> Argument<'a> {
+        unsafe {
+            Argument {
+                formatter: mem::transmute(f),
+                value: mem::transmute(x)
+            }
+        }
+    }
+
+    fn from_uint<'a>(x: &'a uint) -> Argument<'a> {
+        Argument::new(x, Argument::show_uint)
+    }
+
+    fn as_uint(&self) -> Option<uint> {
+        if self.formatter as uint == Argument::show_uint as uint {
+            Some(unsafe { *(self.value as *const _ as *const uint) })
+        } else {
+            None
+        }
+    }
 }
 
 impl<'a> Arguments<'a> {
     /// When using the format_args!() macro, this function is used to generate the
-    /// Arguments structure. The compiler inserts an `unsafe` block to call this,
-    /// which is valid because the compiler performs all necessary validation to
-    /// ensure that the resulting call to format/write would be safe.
+    /// Arguments structure.
     #[doc(hidden)] #[inline]
     #[experimental = "implementation detail of the `format_args!` macro"]
-    pub unsafe fn new<'a>(pieces: &'static [&'static str],
-                          args: &'a [Argument<'a>]) -> Arguments<'a> {
+    pub fn new<'a>(pieces: &'a [&'a str],
+                   args: &'a [Argument<'a>]) -> Arguments<'a> {
         Arguments {
-            pieces: mem::transmute(pieces),
+            pieces: pieces,
             fmt: None,
             args: args
         }
@@ -122,15 +151,18 @@ impl<'a> Arguments<'a> {
 
     /// This function is used to specify nonstandard formatting parameters.
     /// The `pieces` array must be at least as long as `fmt` to construct
-    /// a valid Arguments structure.
+    /// a valid Arguments structure. Also, any `Count` within `fmt` that is
+    /// `CountIsParam` or `CountIsNextParam` has to point to an argument
+    /// created with `argumentuint`. However, failing to do so doesn't cause
+    /// unsafety, but will ignore invalid .
     #[doc(hidden)] #[inline]
     #[experimental = "implementation detail of the `format_args!` macro"]
-    pub unsafe fn with_placeholders<'a>(pieces: &'static [&'static str],
-                                        fmt: &'static [rt::Argument<'static>],
-                                        args: &'a [Argument<'a>]) -> Arguments<'a> {
+    pub fn with_placeholders<'a>(pieces: &'a [&'a str],
+                                 fmt: &'a [rt::Argument<'a>],
+                                 args: &'a [Argument<'a>]) -> Arguments<'a> {
         Arguments {
-            pieces: mem::transmute(pieces),
-            fmt: Some(mem::transmute(fmt)),
+            pieces: pieces,
+            fmt: Some(fmt),
             args: args
         }
     }
@@ -312,15 +344,13 @@ impl<'a> Formatter<'a> {
 
     fn getcount(&mut self, cnt: &rt::Count) -> Option<uint> {
         match *cnt {
-            rt::CountIs(n) => { Some(n) }
-            rt::CountImplied => { None }
+            rt::CountIs(n) => Some(n),
+            rt::CountImplied => None,
             rt::CountIsParam(i) => {
-                let v = self.args[i].value;
-                unsafe { Some(*(v as *const _ as *const uint)) }
+                self.args[i].as_uint()
             }
             rt::CountIsNextParam => {
-                let v = self.curarg.next().unwrap().value;
-                unsafe { Some(*(v as *const _ as *const uint)) }
+                self.curarg.next().and_then(|arg| arg.as_uint())
             }
         }
     }
@@ -533,30 +563,17 @@ impl Show for Error {
 /// create the Argument structures that are passed into the `format` function.
 #[doc(hidden)] #[inline]
 #[experimental = "implementation detail of the `format_args!` macro"]
-pub fn argument<'a, T>(f: extern "Rust" fn(&T, &mut Formatter) -> Result,
+pub fn argument<'a, T>(f: fn(&T, &mut Formatter) -> Result,
                        t: &'a T) -> Argument<'a> {
-    unsafe {
-        Argument {
-            formatter: mem::transmute(f),
-            value: mem::transmute(t)
-        }
-    }
-}
-
-/// When the compiler determines that the type of an argument *must* be a string
-/// (such as for select), then it invokes this method.
-#[doc(hidden)] #[inline]
-#[experimental = "implementation detail of the `format_args!` macro"]
-pub fn argumentstr<'a>(s: &'a &str) -> Argument<'a> {
-    argument(Show::fmt, s)
+    Argument::new(t, f)
 }
 
 /// When the compiler determines that the type of an argument *must* be a uint
-/// (such as for plural), then it invokes this method.
+/// (such as for width and precision), then it invokes this method.
 #[doc(hidden)] #[inline]
 #[experimental = "implementation detail of the `format_args!` macro"]
 pub fn argumentuint<'a>(s: &'a uint) -> Argument<'a> {
-    argument(Show::fmt, s)
+    Argument::from_uint(s)
 }
 
 // Implementations of the core formatting traits
