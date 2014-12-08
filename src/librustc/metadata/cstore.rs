@@ -162,7 +162,7 @@ impl CStore {
         let mut ordering = Vec::new();
         fn visit(cstore: &CStore, cnum: ast::CrateNum,
                  ordering: &mut Vec<ast::CrateNum>) {
-            if ordering.as_slice().contains(&cnum) { return }
+            if ordering.contains(&cnum) { return }
             let meta = cstore.get_crate_data(cnum);
             for (_, &dep) in meta.cnum_map.iter() {
                 visit(cstore, dep, ordering);
@@ -172,8 +172,7 @@ impl CStore {
         for (&num, _) in self.metas.borrow().iter() {
             visit(self, num, &mut ordering);
         }
-        ordering.as_mut_slice().reverse();
-        let ordering = ordering.as_slice();
+        ordering.reverse();
         let mut libs = self.used_crate_sources.borrow()
             .iter()
             .map(|src| (src.cnum, match prefer {

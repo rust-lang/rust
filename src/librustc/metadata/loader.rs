@@ -545,7 +545,7 @@ impl<'a> Context<'a> {
     fn crate_matches(&mut self, crate_data: &[u8], libpath: &Path) -> bool {
         if self.should_match_name {
             match decoder::maybe_get_crate_name(crate_data) {
-                Some(ref name) if self.crate_name == name.as_slice() => {}
+                Some(ref name) if self.crate_name == *name => {}
                 _ => { info!("Rejecting via crate name"); return false }
             }
         }
@@ -560,7 +560,7 @@ impl<'a> Context<'a> {
             None => { debug!("triple not present"); return false }
             Some(t) => t,
         };
-        if triple.as_slice() != self.triple {
+        if triple != self.triple {
             info!("Rejecting via crate triple: expected {} got {}", self.triple, triple);
             self.rejected_via_triple.push(CrateMismatch {
                 path: libpath.clone(),
@@ -743,7 +743,7 @@ fn get_metadata_section_imp(is_osx: bool, filename: &Path) -> Result<MetadataBlo
             let name = String::from_raw_buf_len(name_buf as *const u8,
                                                 name_len as uint);
             debug!("get_metadata_section: name {}", name);
-            if read_meta_section_name(is_osx).as_slice() == name.as_slice() {
+            if read_meta_section_name(is_osx) == name {
                 let cbuf = llvm::LLVMGetSectionContents(si.llsi);
                 let csz = llvm::LLVMGetSectionSize(si.llsi) as uint;
                 let cvbuf: *const u8 = cbuf as *const u8;

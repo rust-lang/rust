@@ -121,31 +121,31 @@ fn test_escape_default() {
         return result;
     }
     let s = string('\n');
-    assert_eq!(s.as_slice(), "\\n");
+    assert_eq!(s, "\\n");
     let s = string('\r');
-    assert_eq!(s.as_slice(), "\\r");
+    assert_eq!(s, "\\r");
     let s = string('\'');
-    assert_eq!(s.as_slice(), "\\'");
+    assert_eq!(s, "\\'");
     let s = string('"');
-    assert_eq!(s.as_slice(), "\\\"");
+    assert_eq!(s, "\\\"");
     let s = string(' ');
-    assert_eq!(s.as_slice(), " ");
+    assert_eq!(s, " ");
     let s = string('a');
-    assert_eq!(s.as_slice(), "a");
+    assert_eq!(s, "a");
     let s = string('~');
-    assert_eq!(s.as_slice(), "~");
+    assert_eq!(s, "~");
     let s = string('\x00');
-    assert_eq!(s.as_slice(), "\\x00");
+    assert_eq!(s, "\\x00");
     let s = string('\x1f');
-    assert_eq!(s.as_slice(), "\\x1f");
+    assert_eq!(s, "\\x1f");
     let s = string('\x7f');
-    assert_eq!(s.as_slice(), "\\x7f");
+    assert_eq!(s, "\\x7f");
     let s = string('\u00ff');
-    assert_eq!(s.as_slice(), "\\u00ff");
+    assert_eq!(s, "\\u00ff");
     let s = string('\u011b');
-    assert_eq!(s.as_slice(), "\\u011b");
+    assert_eq!(s, "\\u011b");
     let s = string('\U0001d4b6');
-    assert_eq!(s.as_slice(), "\\U0001d4b6");
+    assert_eq!(s, "\\U0001d4b6");
 }
 
 #[test]
@@ -156,17 +156,17 @@ fn test_escape_unicode() {
         return result;
     }
     let s = string('\x00');
-    assert_eq!(s.as_slice(), "\\x00");
+    assert_eq!(s, "\\x00");
     let s = string('\n');
-    assert_eq!(s.as_slice(), "\\x0a");
+    assert_eq!(s, "\\x0a");
     let s = string(' ');
-    assert_eq!(s.as_slice(), "\\x20");
+    assert_eq!(s, "\\x20");
     let s = string('a');
-    assert_eq!(s.as_slice(), "\\x61");
+    assert_eq!(s, "\\x61");
     let s = string('\u011b');
-    assert_eq!(s.as_slice(), "\\u011b");
+    assert_eq!(s, "\\u011b");
     let s = string('\U0001d4b6');
-    assert_eq!(s.as_slice(), "\\U0001d4b6");
+    assert_eq!(s, "\\U0001d4b6");
 }
 
 #[test]

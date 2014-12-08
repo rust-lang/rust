@@ -2739,7 +2739,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
                                 format!("Illegal null byte in export_name \
                                          value: `{}`", sym).as_slice());
                         }
-                        let g = sym.as_slice().with_c_str(|buf| {
+                        let g = sym.with_c_str(|buf| {
                             llvm::LLVMAddGlobal(ccx.llmod(), llty, buf)
                         });
 

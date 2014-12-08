@@ -528,7 +528,7 @@ mod tests {
             set_stdout(box w);
             println!("hello!");
         });
-        assert_eq!(r.read_to_string().unwrap(), "hello!\n".to_string());
+        assert_eq!(r.read_to_string().unwrap(), "hello!\n");
     }
 
     #[test]
@@ -543,6 +543,6 @@ mod tests {
             panic!("my special message");
         });
         let s = r.read_to_string().unwrap();
-        assert!(s.as_slice().contains("my special message"));
+        assert!(s.contains("my special message"));
     }
 }

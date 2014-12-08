@@ -641,10 +641,10 @@ mod test {
     #[test]
     fn ipv6_addr_to_string() {
         let a1 = Ipv6Addr(0, 0, 0, 0, 0, 0xffff, 0xc000, 0x280);
-        assert!(a1.to_string() == "::ffff:192.0.2.128".to_string() ||
-                a1.to_string() == "::FFFF:192.0.2.128".to_string());
+        assert!(a1.to_string() == "::ffff:192.0.2.128" ||
+                a1.to_string() == "::FFFF:192.0.2.128");
         assert_eq!(Ipv6Addr(8, 9, 10, 11, 12, 13, 14, 15).to_string(),
-                   "8:9:a:b:c:d:e:f".to_string());
+                   "8:9:a:b:c:d:e:f");
     }
 
     #[test]

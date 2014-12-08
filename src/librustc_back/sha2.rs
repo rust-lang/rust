@@ -263,7 +263,7 @@ pub trait Digest {
     /// Convenience function that retrieves the result of a digest as a
     /// String in hexadecimal format.
     fn result_str(&mut self) -> String {
-        self.result_bytes().as_slice().to_hex().to_string()
+        self.result_bytes().to_hex().to_string()
     }
 }
 
@@ -568,7 +568,6 @@ mod tests {
             while left > 0u {
                 let take = (left + 1u) / 2u;
                 sh.input_str(t.input
-                              .as_slice()
                               .slice(len - left, take + len - left));
                 left = left - take;
             }

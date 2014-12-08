@@ -1668,7 +1668,7 @@ impl<'a> Resolver<'a> {
                 let module_path = match view_path.node {
                     ViewPathSimple(_, ref full_path, _) => {
                         full_path.segments
-                            .as_slice().init()
+                            .init()
                             .iter().map(|ident| ident.identifier.name)
                             .collect()
                     }
@@ -1739,7 +1739,7 @@ impl<'a> Resolver<'a> {
                                             continue;
                                         }
                                     };
-                                    let module_path = module_path.as_slice().init();
+                                    let module_path = module_path.init();
                                     (module_path.to_vec(), name)
                                 }
                             };
@@ -3760,12 +3760,12 @@ impl<'a> Resolver<'a> {
                          .codemap()
                          .span_to_snippet((*imports)[index].span)
                          .unwrap();
-            if sn.as_slice().contains("::") {
+            if sn.contains("::") {
                 self.resolve_error((*imports)[index].span,
                                    "unresolved import");
             } else {
                 let err = format!("unresolved import (maybe you meant `{}::*`?)",
-                                  sn.as_slice().slice(0, sn.len()));
+                                  sn.slice(0, sn.len()));
                 self.resolve_error((*imports)[index].span, err.as_slice());
             }
         }
@@ -5773,7 +5773,7 @@ impl<'a> Resolver<'a> {
                                 });
 
                                 if method_scope && token::get_name(self.self_name).get()
-                                                                   == wrong_name.as_slice() {
+                                                                   == wrong_name {
                                         self.resolve_error(
                                             expr.span,
                                             "`self` is not available \

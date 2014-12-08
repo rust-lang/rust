@@ -223,7 +223,7 @@ impl Process {
 
             with_envp(cfg.env(), |envp| {
                 with_dirp(cfg.cwd(), |dirp| {
-                    let mut cmd_str: Vec<u16> = cmd_str.as_slice().utf16_units().collect();
+                    let mut cmd_str: Vec<u16> = cmd_str.utf16_units().collect();
                     cmd_str.push(0);
                     let created = CreateProcessW(ptr::null(),
                                                  cmd_str.as_mut_ptr(),
@@ -433,7 +433,7 @@ fn with_envp<K, V, T>(env: Option<&collections::HashMap<K, V>>,
                 let kv = format!("{}={}",
                                  pair.ref0().container_as_str().unwrap(),
                                  pair.ref1().container_as_str().unwrap());
-                blk.extend(kv.as_slice().utf16_units());
+                blk.extend(kv.utf16_units());
                 blk.push(0);
             }
 
@@ -484,24 +484,24 @@ mod tests {
 
         assert_eq!(
             test_wrapper("prog", &["aaa", "bbb", "ccc"]),
-            "prog aaa bbb ccc".to_string()
+            "prog aaa bbb ccc"
         );
 
         assert_eq!(
             test_wrapper("C:\\Program Files\\blah\\blah.exe", &["aaa"]),
-            "\"C:\\Program Files\\blah\\blah.exe\" aaa".to_string()
+            "\"C:\\Program Files\\blah\\blah.exe\" aaa"
         );
         assert_eq!(
             test_wrapper("C:\\Program Files\\test", &["aa\"bb"]),
-            "\"C:\\Program Files\\test\" aa\\\"bb".to_string()
+            "\"C:\\Program Files\\test\" aa\\\"bb"
         );
         assert_eq!(
             test_wrapper("echo", &["a b c"]),
-            "echo \"a b c\"".to_string()
+            "echo \"a b c\""
         );
         assert_eq!(
             test_wrapper("\u03c0\u042f\u97f3\u00e6\u221e", &[]),
-            "\u03c0\u042f\u97f3\u00e6\u221e".to_string()
+            "\u03c0\u042f\u97f3\u00e6\u221e"
         );
     }
 }

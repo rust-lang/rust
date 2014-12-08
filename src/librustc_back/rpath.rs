@@ -145,8 +145,8 @@ mod test {
             "path2".to_string()
         ]);
         assert_eq!(flags,
-                   vec!("-Wl,-rpath,path1".to_string(),
-                        "-Wl,-rpath,path2".to_string()));
+                   ["-Wl,-rpath,path1",
+                    "-Wl,-rpath,path2"]);
     }
 
     #[test]
@@ -156,9 +156,9 @@ mod test {
             "rpath2".to_string(),
             "rpath1".to_string()
         ]);
-        assert!(res.as_slice() == [
-            "rpath1".to_string(),
-            "rpath2".to_string()
+        assert!(res == [
+            "rpath1",
+            "rpath2",
         ]);
     }
 
@@ -176,11 +176,11 @@ mod test {
             "4a".to_string(),
             "3".to_string()
         ]);
-        assert!(res.as_slice() == [
-            "1a".to_string(),
-            "2".to_string(),
-            "4a".to_string(),
-            "3".to_string()
+        assert!(res == [
+            "1a",
+            "2",
+            "4a",
+            "3",
         ]);
     }
 
@@ -196,7 +196,7 @@ mod test {
             realpath: |p| Ok(p.clone())
         };
         let res = get_rpath_relative_to_output(config, &Path::new("lib/libstd.so"));
-        assert_eq!(res.as_slice(), "$ORIGIN/../lib");
+        assert_eq!(res, "$ORIGIN/../lib");
     }
 
     #[test]
@@ -211,7 +211,7 @@ mod test {
             realpath: |p| Ok(p.clone())
         };
         let res = get_rpath_relative_to_output(config, &Path::new("lib/libstd.so"));
-        assert_eq!(res.as_slice(), "$ORIGIN/../lib");
+        assert_eq!(res, "$ORIGIN/../lib");
     }
 
     #[test]
@@ -226,7 +226,7 @@ mod test {
             realpath: |p| Ok(p.clone())
         };
         let res = get_rpath_relative_to_output(config, &Path::new("lib/libstd.so"));
-        assert_eq!(res.as_slice(), "$ORIGIN/../lib");
+        assert_eq!(res, "$ORIGIN/../lib");
     }
 
     #[test]
@@ -241,6 +241,6 @@ mod test {
             realpath: |p| Ok(p.clone())
         };
         let res = get_rpath_relative_to_output(config, &Path::new("lib/libstd.so"));
-        assert_eq!(res.as_slice(), "@loader_path/../lib");
+        assert_eq!(res, "@loader_path/../lib");
     }
 }

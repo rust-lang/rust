@@ -256,7 +256,7 @@ impl Item {
     pub fn doc_list<'a>(&'a self) -> Option<&'a [Attribute]> {
         for attr in self.attrs.iter() {
             match *attr {
-                List(ref x, ref list) if "doc" == x.as_slice() => {
+                List(ref x, ref list) if "doc" == *x => {
                     return Some(list.as_slice());
                 }
                 _ => {}
@@ -270,7 +270,7 @@ impl Item {
     pub fn doc_value<'a>(&'a self) -> Option<&'a str> {
         for attr in self.attrs.iter() {
             match *attr {
-                NameValue(ref x, ref v) if "doc" == x.as_slice() => {
+                NameValue(ref x, ref v) if "doc" == *x => {
                     return Some(v.as_slice());
                 }
                 _ => {}
@@ -284,7 +284,7 @@ impl Item {
             Some(ref l) => {
                 for innerattr in l.iter() {
                     match *innerattr {
-                        Word(ref s) if "hidden" == s.as_slice() => {
+                        Word(ref s) if "hidden" == *s => {
                             return true
                         }
                         _ => (),
@@ -1217,13 +1217,13 @@ impl PrimitiveType {
     fn find(attrs: &[Attribute]) -> Option<PrimitiveType> {
         for attr in attrs.iter() {
             let list = match *attr {
-                List(ref k, ref l) if k.as_slice() == "doc" => l,
+                List(ref k, ref l) if *k == "doc" => l,
                 _ => continue,
             };
             for sub_attr in list.iter() {
                 let value = match *sub_attr {
                     NameValue(ref k, ref v)
-                        if k.as_slice() == "primitive" => v.as_slice(),
+                        if *k == "primitive" => v.as_slice(),
                     _ => continue,
                 };
                 match PrimitiveType::from_str(value) {

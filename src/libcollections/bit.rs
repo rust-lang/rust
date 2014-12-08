@@ -1692,10 +1692,10 @@ mod tests {
     #[test]
     fn test_to_str() {
         let zerolen = Bitv::new();
-        assert_eq!(zerolen.to_string().as_slice(), "");
+        assert_eq!(zerolen.to_string(), "");
 
         let eightbits = Bitv::with_capacity(8u, false);
-        assert_eq!(eightbits.to_string().as_slice(), "00000000")
+        assert_eq!(eightbits.to_string(), "00000000")
     }
 
     #[test]
@@ -1718,7 +1718,7 @@ mod tests {
         let mut b = bitv::Bitv::with_capacity(2, false);
         b.set(0, true);
         b.set(1, false);
-        assert_eq!(b.to_string().as_slice(), "10");
+        assert_eq!(b.to_string(), "10");
     }
 
     #[test]
@@ -2029,7 +2029,7 @@ mod tests {
     fn test_from_bytes() {
         let bitv = from_bytes(&[0b10110110, 0b00000000, 0b11111111]);
         let str = format!("{}{}{}", "10110110", "00000000", "11111111");
-        assert_eq!(bitv.to_string().as_slice(), str.as_slice());
+        assert_eq!(bitv.to_string(), str);
     }
 
     #[test]
@@ -2048,7 +2048,7 @@ mod tests {
     fn test_from_bools() {
         let bools = vec![true, false, true, true];
         let bitv: Bitv = bools.iter().map(|n| *n).collect();
-        assert_eq!(bitv.to_string().as_slice(), "1011");
+        assert_eq!(bitv.to_string(), "1011");
     }
 
     #[test]
@@ -2207,7 +2207,7 @@ mod tests {
 
         let expected = [3, 5, 11, 77];
         let actual = a.intersection(&b).collect::<Vec<uint>>();
-        assert_eq!(actual.as_slice(), expected.as_slice());
+        assert_eq!(actual, expected);
     }
 
     #[test]
@@ -2226,7 +2226,7 @@ mod tests {
 
         let expected = [1, 5, 500];
         let actual = a.difference(&b).collect::<Vec<uint>>();
-        assert_eq!(actual.as_slice(), expected.as_slice());
+        assert_eq!(actual, expected);
     }
 
     #[test]
@@ -2247,7 +2247,7 @@ mod tests {
 
         let expected = [1, 5, 11, 14, 220];
         let actual = a.symmetric_difference(&b).collect::<Vec<uint>>();
-        assert_eq!(actual.as_slice(), expected.as_slice());
+        assert_eq!(actual, expected);
     }
 
     #[test]
@@ -2272,7 +2272,7 @@ mod tests {
 
         let expected = [1, 3, 5, 9, 11, 13, 19, 24, 160, 200];
         let actual = a.union(&b).collect::<Vec<uint>>();
-        assert_eq!(actual.as_slice(), expected.as_slice());
+        assert_eq!(actual, expected);
     }
 
     #[test]
@@ -2660,7 +2660,7 @@ mod tests {
         s.insert(10);
         s.insert(50);
         s.insert(2);
-        assert_eq!("{1, 2, 10, 50}".to_string(), s.to_string());
+        assert_eq!("{1, 2, 10, 50}", s.to_string());
     }
 
     fn rng() -> rand::IsaacRng {

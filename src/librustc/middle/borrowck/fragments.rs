@@ -234,15 +234,15 @@ pub fn fixup_fragment_sets<'tcx>(this: &MoveData<'tcx>, tcx: &ty::ctxt<'tcx>) {
     debug!("fragments 3 assigned: {}", path_lps(assigned.as_slice()));
 
     // Fourth, build the leftover from the moved, assigned, and parents.
-    for m in moved.as_slice().iter() {
+    for m in moved.iter() {
         let lp = this.path_loan_path(*m);
         add_fragment_siblings(this, tcx, &mut unmoved, lp, None);
     }
-    for a in assigned.as_slice().iter() {
+    for a in assigned.iter() {
         let lp = this.path_loan_path(*a);
         add_fragment_siblings(this, tcx, &mut unmoved, lp, None);
     }
-    for p in parents.as_slice().iter() {
+    for p in parents.iter() {
         let lp = this.path_loan_path(*p);
         add_fragment_siblings(this, tcx, &mut unmoved, lp, None);
     }

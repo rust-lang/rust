@@ -251,8 +251,8 @@ fn path(w: &mut fmt::Formatter, path: &clean::Path, print_all: bool,
             Some(root) => {
                 let mut root = String::from_str(root.as_slice());
                 for seg in path.segments[..amt].iter() {
-                    if "super" == seg.name.as_slice() ||
-                            "self" == seg.name.as_slice() {
+                    if "super" == seg.name ||
+                            "self" == seg.name {
                         try!(write!(w, "{}::", seg.name));
                     } else {
                         root.push_str(seg.name.as_slice());
@@ -337,7 +337,7 @@ fn primitive_link(f: &mut fmt::Formatter,
                 Some(root) => {
                     try!(write!(f, "<a href='{}{}/primitive.{}.html'>",
                                 root,
-                                path.ref0().as_slice().head().unwrap(),
+                                path.ref0().head().unwrap(),
                                 prim.to_url_str()));
                     needs_termination = true;
                 }
