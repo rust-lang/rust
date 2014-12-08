@@ -115,7 +115,8 @@ instead move to the `{:?}` specifier instead of the `{}` specifier (which
 An implementation of the `Show` trait is expected for **all** types in Rust and
 provides very few guarantees about the output. Output will typically represent
 the internal state as faithfully as possible, but it is not expected that this
-will always be true.
+will always be true. The output of `Show` should never be used to reconstruct
+the object itself as it is not guaranteed to be possible to do so.
 
 The purpose of the `Show` trait is to facilitate debugging Rust code which
 implies that it needs to be maximally useful by extending to all Rust types. All
