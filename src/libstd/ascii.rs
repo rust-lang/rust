@@ -678,16 +678,16 @@ mod tests {
         assert_eq!(test.to_ascii(), b);
         assert_eq!("( ;".to_ascii(), b);
         let v = vec![40u8, 32u8, 59u8];
-        assert_eq!(v.as_slice().to_ascii(), b);
-        assert_eq!("( ;".to_string().as_slice().to_ascii(), b);
+        assert_eq!(v.to_ascii(), b);
+        assert_eq!("( ;".to_string().to_ascii(), b);
 
-        assert_eq!("abCDef&?#".to_ascii().to_lowercase().into_string(), "abcdef&?#".to_string());
-        assert_eq!("abCDef&?#".to_ascii().to_uppercase().into_string(), "ABCDEF&?#".to_string());
+        assert_eq!("abCDef&?#".to_ascii().to_lowercase().into_string(), "abcdef&?#");
+        assert_eq!("abCDef&?#".to_ascii().to_uppercase().into_string(), "ABCDEF&?#");
 
-        assert_eq!("".to_ascii().to_lowercase().into_string(), "".to_string());
-        assert_eq!("YMCA".to_ascii().to_lowercase().into_string(), "ymca".to_string());
+        assert_eq!("".to_ascii().to_lowercase().into_string(), "");
+        assert_eq!("YMCA".to_ascii().to_lowercase().into_string(), "ymca");
         let mixed = "abcDEFxyz:.;".to_ascii();
-        assert_eq!(mixed.to_uppercase().into_string(), "ABCDEFXYZ:.;".to_string());
+        assert_eq!(mixed.to_uppercase().into_string(), "ABCDEFXYZ:.;");
 
         assert!("aBcDeF&?#".to_ascii().eq_ignore_case("AbCdEf&?#".to_ascii()));
 
@@ -699,12 +699,12 @@ mod tests {
 
     #[test]
     fn test_ascii_vec_ng() {
-        assert_eq!("abCDef&?#".to_ascii().to_lowercase().into_string(), "abcdef&?#".to_string());
-        assert_eq!("abCDef&?#".to_ascii().to_uppercase().into_string(), "ABCDEF&?#".to_string());
-        assert_eq!("".to_ascii().to_lowercase().into_string(), "".to_string());
-        assert_eq!("YMCA".to_ascii().to_lowercase().into_string(), "ymca".to_string());
+        assert_eq!("abCDef&?#".to_ascii().to_lowercase().into_string(), "abcdef&?#");
+        assert_eq!("abCDef&?#".to_ascii().to_uppercase().into_string(), "ABCDEF&?#");
+        assert_eq!("".to_ascii().to_lowercase().into_string(), "");
+        assert_eq!("YMCA".to_ascii().to_lowercase().into_string(), "ymca");
         let mixed = "abcDEFxyz:.;".to_ascii();
-        assert_eq!(mixed.to_uppercase().into_string(), "ABCDEFXYZ:.;".to_string());
+        assert_eq!(mixed.to_uppercase().into_string(), "ABCDEFXYZ:.;");
     }
 
     #[test]
@@ -721,8 +721,8 @@ mod tests {
 
     #[test]
     fn test_ascii_into_string() {
-        assert_eq!(vec2ascii![40, 32, 59].into_string(), "( ;".to_string());
-        assert_eq!(vec2ascii!(40, 32, 59).into_string(), "( ;".to_string());
+        assert_eq!(vec2ascii![40, 32, 59].into_string(), "( ;");
+        assert_eq!(vec2ascii!(40, 32, 59).into_string(), "( ;");
     }
 
     #[test]
@@ -774,14 +774,14 @@ mod tests {
 
     #[test]
     fn test_to_ascii_upper() {
-        assert_eq!("url()URL()uRl()ürl".to_ascii_upper(), "URL()URL()URL()üRL".to_string());
-        assert_eq!("hıKß".to_ascii_upper(), "HıKß".to_string());
+        assert_eq!("url()URL()uRl()ürl".to_ascii_upper(), "URL()URL()URL()üRL");
+        assert_eq!("hıKß".to_ascii_upper(), "HıKß");
 
         let mut i = 0;
         while i <= 500 {
             let upper = if 'a' as u32 <= i && i <= 'z' as u32 { i + 'A' as u32 - 'a' as u32 }
                         else { i };
-            assert_eq!((from_u32(i).unwrap()).to_string().as_slice().to_ascii_upper(),
+            assert_eq!((from_u32(i).unwrap()).to_string().to_ascii_upper(),
                        (from_u32(upper).unwrap()).to_string())
             i += 1;
         }
@@ -789,15 +789,15 @@ mod tests {
 
     #[test]
     fn test_to_ascii_lower() {
-        assert_eq!("url()URL()uRl()Ürl".to_ascii_lower(), "url()url()url()Ürl".to_string());
+        assert_eq!("url()URL()uRl()Ürl".to_ascii_lower(), "url()url()url()Ürl");
         // Dotted capital I, Kelvin sign, Sharp S.
-        assert_eq!("HİKß".to_ascii_lower(), "hİKß".to_string());
+        assert_eq!("HİKß".to_ascii_lower(), "hİKß");
 
         let mut i = 0;
         while i <= 500 {
             let lower = if 'A' as u32 <= i && i <= 'Z' as u32 { i + 'a' as u32 - 'A' as u32 }
                         else { i };
-            assert_eq!((from_u32(i).unwrap()).to_string().as_slice().to_ascii_lower(),
+            assert_eq!((from_u32(i).unwrap()).to_string().to_ascii_lower(),
                        (from_u32(lower).unwrap()).to_string())
             i += 1;
         }
@@ -807,7 +807,7 @@ mod tests {
     fn test_into_ascii_upper() {
         assert_eq!(("url()URL()uRl()ürl".to_string()).into_ascii_upper(),
                    "URL()URL()URL()üRL".to_string());
-        assert_eq!(("hıKß".to_string()).into_ascii_upper(), "HıKß".to_string());
+        assert_eq!(("hıKß".to_string()).into_ascii_upper(), "HıKß");
 
         let mut i = 0;
         while i <= 500 {
@@ -822,9 +822,9 @@ mod tests {
     #[test]
     fn test_into_ascii_lower() {
         assert_eq!(("url()URL()uRl()Ürl".to_string()).into_ascii_lower(),
-                   "url()url()url()Ürl".to_string());
+                   "url()url()url()Ürl");
         // Dotted capital I, Kelvin sign, Sharp S.
-        assert_eq!(("HİKß".to_string()).into_ascii_lower(), "hİKß".to_string());
+        assert_eq!(("HİKß".to_string()).into_ascii_lower(), "hİKß");
 
         let mut i = 0;
         while i <= 500 {
@@ -851,7 +851,7 @@ mod tests {
             let c = i;
             let lower = if 'A' as u32 <= c && c <= 'Z' as u32 { c + 'a' as u32 - 'A' as u32 }
                         else { c };
-            assert!((from_u32(i).unwrap()).to_string().as_slice().eq_ignore_ascii_case(
+            assert!((from_u32(i).unwrap()).to_string().eq_ignore_ascii_case(
                     (from_u32(lower).unwrap()).to_string().as_slice()));
             i += 1;
         }
@@ -860,12 +860,12 @@ mod tests {
     #[test]
     fn test_to_string() {
         let s = Ascii{ chr: b't' }.to_string();
-        assert_eq!(s, "t".to_string());
+        assert_eq!(s, "t");
     }
 
     #[test]
     fn test_show() {
         let c = Ascii { chr: b't' };
-        assert_eq!(format!("{}", c), "t".to_string());
+        assert_eq!(format!("{}", c), "t");
     }
 }

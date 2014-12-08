@@ -128,7 +128,7 @@ mod tests {
             debug!("{} bytes deflated to {} ({:.1}% size)",
                    input.len(), cmp.len(),
                    100.0 * ((cmp.len() as f64) / (input.len() as f64)));
-            assert_eq!(input.as_slice(), out.as_slice());
+            assert_eq!(input, out.as_slice());
         }
     }
 
@@ -137,6 +137,6 @@ mod tests {
         let bytes = vec!(1, 2, 3, 4, 5);
         let deflated = deflate_bytes(bytes.as_slice()).expect("deflation failed");
         let inflated = inflate_bytes(deflated.as_slice()).expect("inflation failed");
-        assert_eq!(inflated.as_slice(), bytes.as_slice());
+        assert_eq!(inflated.as_slice(), bytes);
     }
 }

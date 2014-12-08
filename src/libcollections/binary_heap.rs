@@ -485,7 +485,7 @@ impl<T: Ord> BinaryHeap<T> {
         let mut end = q.len();
         while end > 1 {
             end -= 1;
-            q.data.as_mut_slice().swap(0, end);
+            q.data.swap(0, end);
             q.siftdown_range(0, end)
         }
         q.into_vec()
@@ -769,8 +769,8 @@ mod tests {
         v.sort();
         data.sort();
 
-        assert_eq!(v.as_slice(), data.as_slice());
-        assert_eq!(heap.into_sorted_vec().as_slice(), data.as_slice());
+        assert_eq!(v, data);
+        assert_eq!(heap.into_sorted_vec(), data);
     }
 
     #[test]
@@ -812,7 +812,7 @@ mod tests {
     fn test_from_iter() {
         let xs = vec!(9u, 8, 7, 6, 5, 4, 3, 2, 1);
 
-        let mut q: BinaryHeap<uint> = xs.as_slice().iter().rev().map(|&x| x).collect();
+        let mut q: BinaryHeap<uint> = xs.iter().rev().map(|&x| x).collect();
 
         for &x in xs.iter() {
             assert_eq!(q.pop().unwrap(), x);

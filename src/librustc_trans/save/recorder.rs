@@ -163,7 +163,7 @@ impl<'a> FmtStrs<'a> {
         let values = values.iter().map(|s| {
             // Never take more than 1020 chars
             if s.len() > 1020 {
-                s.as_slice().slice_to(1020)
+                s.slice_to(1020)
             } else {
                 s.as_slice()
             }

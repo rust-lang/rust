@@ -31,14 +31,14 @@ pub struct LabelledCFG<'a, 'ast: 'a> {
 fn replace_newline_with_backslash_l(s: String) -> String {
     // Replacing newlines with \\l causes each line to be left-aligned,
     // improving presentation of (long) pretty-printed expressions.
-    if s.as_slice().contains("\n") {
+    if s.contains("\n") {
         let mut s = s.replace("\n", "\\l");
         // Apparently left-alignment applies to the line that precedes
         // \l, not the line that follows; so, add \l at end of string
         // if not already present, ensuring last line gets left-aligned
         // as well.
         let mut last_two: Vec<_> =
-            s.as_slice().chars().rev().take(2).collect();
+            s.chars().rev().take(2).collect();
         last_two.reverse();
         if last_two != ['\\', 'l'] {
             s.push_str("\\l");

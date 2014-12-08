@@ -341,10 +341,10 @@ fn build_impl(cx: &DocContext, tcx: &ty::ctxt,
 
     fn is_doc_hidden(a: &clean::Attribute) -> bool {
         match *a {
-            clean::List(ref name, ref inner) if name.as_slice() == "doc" => {
+            clean::List(ref name, ref inner) if *name == "doc" => {
                 inner.iter().any(|a| {
                     match *a {
-                        clean::Word(ref s) => s.as_slice() == "hidden",
+                        clean::Word(ref s) => *s == "hidden",
                         _ => false,
                     }
                 })

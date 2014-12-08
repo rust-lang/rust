@@ -447,15 +447,15 @@ mod tests {
         cache.insert(1, 10);
         cache.insert(2, 20);
         cache.insert(3, 30);
-        assert_eq!(cache.to_string(), "{3: 30, 2: 20, 1: 10}".to_string());
+        assert_eq!(cache.to_string(), "{3: 30, 2: 20, 1: 10}");
         cache.insert(2, 22);
-        assert_eq!(cache.to_string(), "{2: 22, 3: 30, 1: 10}".to_string());
+        assert_eq!(cache.to_string(), "{2: 22, 3: 30, 1: 10}");
         cache.insert(6, 60);
-        assert_eq!(cache.to_string(), "{6: 60, 2: 22, 3: 30}".to_string());
+        assert_eq!(cache.to_string(), "{6: 60, 2: 22, 3: 30}");
         cache.get(&3);
-        assert_eq!(cache.to_string(), "{3: 30, 6: 60, 2: 22}".to_string());
+        assert_eq!(cache.to_string(), "{3: 30, 6: 60, 2: 22}");
         cache.set_capacity(2);
-        assert_eq!(cache.to_string(), "{3: 30, 6: 60}".to_string());
+        assert_eq!(cache.to_string(), "{3: 30, 6: 60}");
     }
 
     #[test]
@@ -466,6 +466,6 @@ mod tests {
         cache.clear();
         assert!(cache.get(&1).is_none());
         assert!(cache.get(&2).is_none());
-        assert_eq!(cache.to_string(), "{}".to_string());
+        assert_eq!(cache.to_string(), "{}");
     }
 }

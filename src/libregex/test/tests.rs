@@ -156,13 +156,13 @@ macro_rules! mat(
             };
             // The test set sometimes leave out capture groups, so truncate
             // actual capture groups to match test set.
-            let (sexpect, mut sgot) = (expected.as_slice(), got.as_slice());
-            if sgot.len() > sexpect.len() {
-                sgot = sgot[0..sexpect.len()]
+            let mut sgot = got.as_slice();
+            if sgot.len() > expected.len() {
+                sgot = sgot[0..expected.len()]
             }
-            if sexpect != sgot {
+            if expected != sgot {
                 panic!("For RE '{}' against '{}', expected '{}' but got '{}'",
-                      $re, text, sexpect, sgot);
+                      $re, text, expected, sgot);
             }
         }
     );

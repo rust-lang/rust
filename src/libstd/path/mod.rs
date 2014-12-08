@@ -942,6 +942,6 @@ mod tests {
 
         let input = r"\foo\bar\baz";
         let path: WindowsPath = WindowsPath::new(input.to_c_str());
-        assert_eq!(path.as_str().unwrap(), input.as_slice());
+        assert_eq!(path.as_str().unwrap(), input);
     }
 }

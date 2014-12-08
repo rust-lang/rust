@@ -440,7 +440,7 @@ mod tests {
 
     fn same(fmt: &'static str, p: &[Piece<'static>]) {
         let mut parser = Parser::new(fmt);
-        assert!(p == parser.collect::<Vec<Piece<'static>>>().as_slice());
+        assert!(p == parser.collect::<Vec<Piece<'static>>>());
     }
 
     fn fmtdflt() -> FormatSpec<'static> {

@@ -1246,7 +1246,7 @@ mod tests {
         }
         {
             let b: &[_] = &[&0,&1,&2,&3,&4];
-            assert_eq!(d.iter().collect::<Vec<&int>>().as_slice(), b);
+            assert_eq!(d.iter().collect::<Vec<&int>>(), b);
         }
 
         for i in range(6i, 9) {
@@ -1254,7 +1254,7 @@ mod tests {
         }
         {
             let b: &[_] = &[&8,&7,&6,&0,&1,&2,&3,&4];
-            assert_eq!(d.iter().collect::<Vec<&int>>().as_slice(), b);
+            assert_eq!(d.iter().collect::<Vec<&int>>(), b);
         }
 
         let mut it = d.iter();
@@ -1277,14 +1277,14 @@ mod tests {
         }
         {
             let b: &[_] = &[&4,&3,&2,&1,&0];
-            assert_eq!(d.iter().rev().collect::<Vec<&int>>().as_slice(), b);
+            assert_eq!(d.iter().rev().collect::<Vec<&int>>(), b);
         }
 
         for i in range(6i, 9) {
             d.push_front(i);
         }
         let b: &[_] = &[&4,&3,&2,&1,&0,&6,&7,&8];
-        assert_eq!(d.iter().rev().collect::<Vec<&int>>().as_slice(), b);
+        assert_eq!(d.iter().rev().collect::<Vec<&int>>(), b);
     }
 
     #[test]
@@ -1495,12 +1495,12 @@ mod tests {
     #[test]
     fn test_show() {
         let ringbuf: RingBuf<int> = range(0i, 10).collect();
-        assert!(format!("{}", ringbuf).as_slice() == "[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]");
+        assert!(format!("{}", ringbuf) == "[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]");
 
         let ringbuf: RingBuf<&str> = vec!["just", "one", "test", "more"].iter()
                                                                         .map(|&s| s)
                                                                         .collect();
-        assert!(format!("{}", ringbuf).as_slice() == "[just, one, test, more]");
+        assert!(format!("{}", ringbuf) == "[just, one, test, more]");
     }
 
     #[test]

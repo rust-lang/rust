@@ -870,9 +870,8 @@ mod test_map {
         map.insert(3, 4i);
 
         let map_str = map.to_string();
-        let map_str = map_str.as_slice();
         assert!(map_str == "{1: 2, 3: 4}" || map_str == "{3: 4, 1: 2}");
-        assert_eq!(format!("{}", empty), "{}".to_string());
+        assert_eq!(format!("{}", empty), "{}");
     }
 
     #[test]

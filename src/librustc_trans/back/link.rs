@@ -140,7 +140,7 @@ pub fn find_crate_name(sess: Option<&Session>,
     if let Some(sess) = sess {
         if let Some(ref s) = sess.opts.crate_name {
             if let Some((attr, ref name)) = attr_crate_name {
-                if s.as_slice() != name.get() {
+                if *s != name.get() {
                     let msg = format!("--crate-name and #[crate_name] are \
                                        required to match, but `{}` != `{}`",
                                       s, name);
@@ -249,7 +249,7 @@ pub fn sanitize(s: &str) -> String {
                 let mut tstr = String::new();
                 for c in c.escape_unicode() { tstr.push(c) }
                 result.push('$');
-                result.push_str(tstr.as_slice().slice_from(1));
+                result.push_str(tstr.slice_from(1));
             }
         }
     }
@@ -669,7 +669,7 @@ fn link_rlib<'a>(sess: &'a Session,
 fn write_rlib_bytecode_object_v1<T: Writer>(writer: &mut T,
                                             bc_data_deflated: &[u8])
                                          -> ::std::io::IoResult<()> {
-    let bc_data_deflated_size: u64 = bc_data_deflated.as_slice().len() as u64;
+    let bc_data_deflated_size: u64 = bc_data_deflated.len() as u64;
 
     try! { writer.write(RLIB_BYTECODE_OBJECT_MAGIC) };
     try! { writer.write_le_u32(1) };
@@ -910,10 +910,10 @@ fn link_args(cmd: &mut Command,
         let args = sess.opts.cg.link_args.as_ref().unwrap_or(&empty_vec);
         let mut args = args.iter().chain(used_link_args.iter());
         if !dylib
-            && (t.options.relocation_model.as_slice() == "pic"
-                || sess.opts.cg.relocation_model.as_ref()
-                   .unwrap_or(&empty_str).as_slice() == "pic")
-            && !args.any(|x| x.as_slice() == "-static") {
+            && (t.options.relocation_model == "pic"
+                || *sess.opts.cg.relocation_model.as_ref()
+                   .unwrap_or(&empty_str) == "pic")
+            && !args.any(|x| *x == "-static") {
             cmd.arg("-pie");
         }
     }

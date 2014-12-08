@@ -527,7 +527,7 @@ impl<'a> ExtCtxt<'a> {
         let mut call_site = None;
         loop {
             let expn_info = self.codemap().with_expn_info(expn_id, |ei| {
-                ei.map(|ei| (ei.call_site, ei.callee.name.as_slice() == "include"))
+                ei.map(|ei| (ei.call_site, ei.callee.name == "include"))
             });
             match expn_info {
                 None => break,

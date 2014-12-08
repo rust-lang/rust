@@ -774,7 +774,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let comment_text = format!("{} {}", "#",
                                        sanitized.replace("\n", "\n\t# "));
             self.count_insn("inlineasm");
-            let asm = comment_text.as_slice().with_c_str(|c| {
+            let asm = comment_text.with_c_str(|c| {
                 unsafe {
                     llvm::LLVMConstInlineAsm(Type::func(&[], &Type::void(self.ccx)).to_ref(),
                                              c, noname(), False, False)

@@ -240,8 +240,8 @@ use boxed::Box;
 use result::Result;
 use result::Result::{Ok, Err};
 use sys;
-use slice::{AsSlice, SlicePrelude};
-use str::{Str, StrPrelude};
+use slice::SlicePrelude;
+use str::StrPrelude;
 use str;
 use string::String;
 use uint;
@@ -318,7 +318,7 @@ impl IoError {
     pub fn from_errno(errno: uint, detail: bool) -> IoError {
         let mut err = sys::decode_error(errno as i32);
         if detail && err.kind == OtherIoError {
-            err.detail = Some(os::error_string(errno).as_slice().chars()
+            err.detail = Some(os::error_string(errno).chars()
                                  .map(|c| c.to_lowercase()).collect())
         }
         err
@@ -2007,14 +2007,14 @@ mod tests {
     fn test_show() {
         use super::*;
 
-        assert_eq!(format!("{}", USER_READ), "0400".to_string());
-        assert_eq!(format!("{}", USER_FILE), "0644".to_string());
-        assert_eq!(format!("{}", USER_EXEC), "0755".to_string());
-        assert_eq!(format!("{}", USER_RWX),  "0700".to_string());
-        assert_eq!(format!("{}", GROUP_RWX), "0070".to_string());
-        assert_eq!(format!("{}", OTHER_RWX), "0007".to_string());
-        assert_eq!(format!("{}", ALL_PERMISSIONS), "0777".to_string());
-        assert_eq!(format!("{}", USER_READ | USER_WRITE | OTHER_WRITE), "0602".to_string());
+        assert_eq!(format!("{}", USER_READ), "0400");
+        assert_eq!(format!("{}", USER_FILE), "0644");
+        assert_eq!(format!("{}", USER_EXEC), "0755");
+        assert_eq!(format!("{}", USER_RWX),  "0700");
+        assert_eq!(format!("{}", GROUP_RWX), "0070");
+        assert_eq!(format!("{}", OTHER_RWX), "0007");
+        assert_eq!(format!("{}", ALL_PERMISSIONS), "0777");
+        assert_eq!(format!("{}", USER_READ | USER_WRITE | OTHER_WRITE), "0602");
     }
 
     fn _ensure_buffer_is_object_safe<T: Buffer>(x: &T) -> &Buffer {

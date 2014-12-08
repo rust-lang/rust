@@ -2039,7 +2039,7 @@ impl ::Decoder<DecoderError> for Decoder {
     fn read_char(&mut self) -> DecodeResult<char> {
         let s = try!(self.read_str());
         {
-            let mut it = s.as_slice().chars();
+            let mut it = s.chars();
             match (it.next(), it.next()) {
                 // exactly one character
                 (Some(c), None) => return Ok(c),
@@ -2486,76 +2486,76 @@ mod tests {
 
     #[test]
     fn test_write_null() {
-        assert_eq!(Null.to_string().into_string(), "null".to_string());
-        assert_eq!(Null.to_pretty_str().into_string(), "null".to_string());
+        assert_eq!(Null.to_string().into_string(), "null");
+        assert_eq!(Null.to_pretty_str().into_string(), "null");
     }
 
     #[test]
     fn test_write_i64() {
-        assert_eq!(U64(0).to_string().into_string(), "0".to_string());
-        assert_eq!(U64(0).to_pretty_str().into_string(), "0".to_string());
+        assert_eq!(U64(0).to_string().into_string(), "0");
+        assert_eq!(U64(0).to_pretty_str().into_string(), "0");
 
-        assert_eq!(U64(1234).to_string().into_string(), "1234".to_string());
-        assert_eq!(U64(1234).to_pretty_str().into_string(), "1234".to_string());
+        assert_eq!(U64(1234).to_string().into_string(), "1234");
+        assert_eq!(U64(1234).to_pretty_str().into_string(), "1234");
 
-        assert_eq!(I64(-5678).to_string().into_string(), "-5678".to_string());
-        assert_eq!(I64(-5678).to_pretty_str().into_string(), "-5678".to_string());
+        assert_eq!(I64(-5678).to_string().into_string(), "-5678");
+        assert_eq!(I64(-5678).to_pretty_str().into_string(), "-5678");
     }
 
     #[test]
     fn test_write_f64() {
-        assert_eq!(F64(3.0).to_string().into_string(), "3".to_string());
-        assert_eq!(F64(3.0).to_pretty_str().into_string(), "3".to_string());
+        assert_eq!(F64(3.0).to_string().into_string(), "3");
+        assert_eq!(F64(3.0).to_pretty_str().into_string(), "3");
 
-        assert_eq!(F64(3.1).to_string().into_string(), "3.1".to_string());
-        assert_eq!(F64(3.1).to_pretty_str().into_string(), "3.1".to_string());
+        assert_eq!(F64(3.1).to_string().into_string(), "3.1");
+        assert_eq!(F64(3.1).to_pretty_str().into_string(), "3.1");
 
-        assert_eq!(F64(-1.5).to_string().into_string(), "-1.5".to_string());
-        assert_eq!(F64(-1.5).to_pretty_str().into_string(), "-1.5".to_string());
+        assert_eq!(F64(-1.5).to_string().into_string(), "-1.5");
+        assert_eq!(F64(-1.5).to_pretty_str().into_string(), "-1.5");
 
-        assert_eq!(F64(0.5).to_string().into_string(), "0.5".to_string());
-        assert_eq!(F64(0.5).to_pretty_str().into_string(), "0.5".to_string());
+        assert_eq!(F64(0.5).to_string().into_string(), "0.5");
+        assert_eq!(F64(0.5).to_pretty_str().into_string(), "0.5");
 
-        assert_eq!(F64(f64::NAN).to_string().into_string(), "null".to_string());
-        assert_eq!(F64(f64::NAN).to_pretty_str().into_string(), "null".to_string());
+        assert_eq!(F64(f64::NAN).to_string().into_string(), "null");
+        assert_eq!(F64(f64::NAN).to_pretty_str().into_string(), "null");
 
-        assert_eq!(F64(f64::INFINITY).to_string().into_string(), "null".to_string());
-        assert_eq!(F64(f64::INFINITY).to_pretty_str().into_string(), "null".to_string());
+        assert_eq!(F64(f64::INFINITY).to_string().into_string(), "null");
+        assert_eq!(F64(f64::INFINITY).to_pretty_str().into_string(), "null");
 
-        assert_eq!(F64(f64::NEG_INFINITY).to_string().into_string(), "null".to_string());
-        assert_eq!(F64(f64::NEG_INFINITY).to_pretty_str().into_string(), "null".to_string());
+        assert_eq!(F64(f64::NEG_INFINITY).to_string().into_string(), "null");
+        assert_eq!(F64(f64::NEG_INFINITY).to_pretty_str().into_string(), "null");
     }
 
     #[test]
     fn test_write_str() {
-        assert_eq!(String("".to_string()).to_string().into_string(), "\"\"".to_string());
-        assert_eq!(String("".to_string()).to_pretty_str().into_string(), "\"\"".to_string());
+        assert_eq!(String("".to_string()).to_string().into_string(), "\"\"");
+        assert_eq!(String("".to_string()).to_pretty_str().into_string(), "\"\"");
 
-        assert_eq!(String("foo".to_string()).to_string().into_string(), "\"foo\"".to_string());
-        assert_eq!(String("foo".to_string()).to_pretty_str().into_string(), "\"foo\"".to_string());
+        assert_eq!(String("foo".to_string()).to_string().into_string(), "\"foo\"");
+        assert_eq!(String("foo".to_string()).to_pretty_str().into_string(), "\"foo\"");
     }
 
     #[test]
     fn test_write_bool() {
-        assert_eq!(Boolean(true).to_string().into_string(), "true".to_string());
-        assert_eq!(Boolean(true).to_pretty_str().into_string(), "true".to_string());
+        assert_eq!(Boolean(true).to_string().into_string(), "true");
+        assert_eq!(Boolean(true).to_pretty_str().into_string(), "true");
 
-        assert_eq!(Boolean(false).to_string().into_string(), "false".to_string());
-        assert_eq!(Boolean(false).to_pretty_str().into_string(), "false".to_string());
+        assert_eq!(Boolean(false).to_string().into_string(), "false");
+        assert_eq!(Boolean(false).to_pretty_str().into_string(), "false");
     }
 
     #[test]
     fn test_write_array() {
-        assert_eq!(Array(vec![]).to_string().into_string(), "[]".to_string());
-        assert_eq!(Array(vec![]).to_pretty_str().into_string(), "[]".to_string());
+        assert_eq!(Array(vec![]).to_string().into_string(), "[]");
+        assert_eq!(Array(vec![]).to_pretty_str().into_string(), "[]");
 
-        assert_eq!(Array(vec![Boolean(true)]).to_string().into_string(), "[true]".to_string());
+        assert_eq!(Array(vec![Boolean(true)]).to_string().into_string(), "[true]");
         assert_eq!(
             Array(vec![Boolean(true)]).to_pretty_str().into_string(),
             "\
             [\n  \
                 true\n\
-            ]".to_string()
+            ]"
         );
 
         let long_test_array = Array(vec![
@@ -2564,7 +2564,7 @@ mod tests {
             Array(vec![String("foo\nbar".to_string()), F64(3.5)])]);
 
         assert_eq!(long_test_array.to_string().into_string(),
-            "[false,null,[\"foo\\nbar\",3.5]]".to_string());
+            "[false,null,[\"foo\\nbar\",3.5]]");
         assert_eq!(
             long_test_array.to_pretty_str().into_string(),
             "\
@@ -2575,27 +2575,27 @@ mod tests {
                     \"foo\\nbar\",\n    \
                     3.5\n  \
                 ]\n\
-            ]".to_string()
+            ]"
         );
     }
 
     #[test]
     fn test_write_object() {
-        assert_eq!(mk_object(&[]).to_string().into_string(), "{}".to_string());
-        assert_eq!(mk_object(&[]).to_pretty_str().into_string(), "{}".to_string());
+        assert_eq!(mk_object(&[]).to_string().into_string(), "{}");
+        assert_eq!(mk_object(&[]).to_pretty_str().into_string(), "{}");
 
         assert_eq!(
             mk_object(&[
                 ("a".to_string(), Boolean(true))
             ]).to_string().into_string(),
-            "{\"a\":true}".to_string()
+            "{\"a\":true}"
         );
         assert_eq!(
             mk_object(&[("a".to_string(), Boolean(true))]).to_pretty_str(),
             "\
             {\n  \
                 \"a\": true\n\
-            }".to_string()
+            }"
         );
 
         let complex_obj = mk_object(&[
@@ -2612,7 +2612,7 @@ mod tests {
                     {\"c\":\"\\f\\r\"},\
                     {\"d\":\"\"}\
                 ]\
-            }".to_string()
+            }"
         );
         assert_eq!(
             complex_obj.to_pretty_str().into_string(),
@@ -2626,7 +2626,7 @@ mod tests {
                         \"d\": \"\"\n    \
                     }\n  \
                 ]\n\
-            }".to_string()
+            }"
         );
 
         let a = mk_object(&[
@@ -2660,14 +2660,14 @@ mod tests {
                 let mut encoder = Encoder::new(writer);
                 animal.encode(&mut encoder).unwrap();
             }),
-            "\"Dog\"".to_string()
+            "\"Dog\""
         );
         assert_eq!(
             with_str_writer(|writer| {
                 let mut encoder = PrettyEncoder::new(writer);
                 animal.encode(&mut encoder).unwrap();
             }),
-            "\"Dog\"".to_string()
+            "\"Dog\""
         );
 
         let animal = Frog("Henry".to_string(), 349);
@@ -2676,7 +2676,7 @@ mod tests {
                 let mut encoder = Encoder::new(writer);
                 animal.encode(&mut encoder).unwrap();
             }),
-            "{\"variant\":\"Frog\",\"fields\":[\"Henry\",349]}".to_string()
+            "{\"variant\":\"Frog\",\"fields\":[\"Henry\",349]}"
         );
         assert_eq!(
             with_str_writer(|writer| {
@@ -2689,7 +2689,7 @@ mod tests {
                  \"Henry\",\n    \
                  349\n  \
                ]\n\
-             }".to_string()
+             }"
         );
     }
 
@@ -2700,14 +2700,14 @@ mod tests {
             let mut encoder = Encoder::new(writer);
             value.encode(&mut encoder).unwrap();
         });
-        assert_eq!(s, "\"jodhpurs\"".to_string());
+        assert_eq!(s, "\"jodhpurs\"");
 
         let value = Some("jodhpurs".to_string());
         let s = with_str_writer(|writer| {
             let mut encoder = PrettyEncoder::new(writer);
             value.encode(&mut encoder).unwrap();
         });
-        assert_eq!(s, "\"jodhpurs\"".to_string());
+        assert_eq!(s, "\"jodhpurs\"");
     }
 
     #[test]
@@ -2717,13 +2717,13 @@ mod tests {
             let mut encoder = Encoder::new(writer);
             value.encode(&mut encoder).unwrap();
         });
-        assert_eq!(s, "null".to_string());
+        assert_eq!(s, "null");
 
         let s = with_str_writer(|writer| {
             let mut encoder = Encoder::new(writer);
             value.encode(&mut encoder).unwrap();
         });
-        assert_eq!(s, "null".to_string());
+        assert_eq!(s, "null");
     }
 
     #[test]
@@ -2860,7 +2860,7 @@ mod tests {
 
         for &(i, o) in s.iter() {
             let v: string::String = super::decode(i).unwrap();
-            assert_eq!(v.as_slice(), o);
+            assert_eq!(v, o);
         }
     }
 
@@ -3778,7 +3778,7 @@ mod tests {
     fn bench_streaming_large(b: &mut Bencher) {
         let src = big_json();
         b.iter( || {
-            let mut parser = Parser::new(src.as_slice().chars());
+            let mut parser = Parser::new(src.chars());
             loop {
                 match parser.next() {
                     None => return,

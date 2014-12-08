@@ -1605,8 +1605,8 @@ mod test {
 
         let map_str = format!("{}", map);
 
-        assert!(map_str == "{1: a, 2: b}".to_string());
-        assert_eq!(format!("{}", empty), "{}".to_string());
+        assert!(map_str == "{1: a, 2: b}");
+        assert_eq!(format!("{}", empty), "{}");
     }
 
     #[test]

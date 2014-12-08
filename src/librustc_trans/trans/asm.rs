@@ -122,7 +122,7 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
     };
 
     let r = ia.asm.get().with_c_str(|a| {
-        constraints.as_slice().with_c_str(|c| {
+        constraints.with_c_str(|c| {
             InlineAsmCall(bcx,
                           a,
                           c,

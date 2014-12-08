@@ -1013,7 +1013,7 @@ mod test {
     macro_rules! t( ($a:expr, $b:expr) => ({
         let mut m = Vec::new();
         super::demangle(&mut m, $a).unwrap();
-        assert_eq!(String::from_utf8(m).unwrap(), $b.to_string());
+        assert_eq!(String::from_utf8(m).unwrap(), $b);
     }) )
 
     #[test]

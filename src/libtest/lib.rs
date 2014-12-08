@@ -471,7 +471,7 @@ pub fn opt_shard(maybestr: Option<String>) -> Option<(uint,uint)> {
     match maybestr {
         None => None,
         Some(s) => {
-            let mut it = s.as_slice().split('.');
+            let mut it = s.split('.');
             match (it.next().and_then(from_str::<uint>), it.next().and_then(from_str::<uint>),
                    it.next()) {
                 (Some(a), Some(b), None) => {
@@ -706,7 +706,7 @@ impl<T: Writer> ConsoleTestState<T> {
         }
 
         try!(self.write_plain("\nfailures:\n"));
-        failures.as_mut_slice().sort();
+        failures.sort();
         for name in failures.iter() {
             try!(self.write_plain(format!("    {}\n",
                                           name.as_slice()).as_slice()));
@@ -934,8 +934,8 @@ fn should_sort_failures_before_printing_them() {
         Pretty(_) => unreachable!()
     };
 
-    let apos = s.as_slice().find_str("a").unwrap();
-    let bpos = s.as_slice().find_str("b").unwrap();
+    let apos = s.find_str("a").unwrap();
+    let bpos = s.find_str("b").unwrap();
     assert!(apos < bpos);
 }
 
@@ -1560,7 +1560,7 @@ mod tests {
 
         assert_eq!(filtered.len(), 1);
         assert_eq!(filtered[0].desc.name.to_string(),
-                   "1".to_string());
+                   "1");
         assert!(filtered[0].desc.ignore == false);
     }
 

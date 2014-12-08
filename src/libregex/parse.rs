@@ -523,11 +523,11 @@ impl<'a> Parser<'a> {
 
         // Parse the min and max values from the regex.
         let (mut min, mut max): (uint, Option<uint>);
-        if !inner.as_slice().contains(",") {
+        if !inner.contains(",") {
             min = try!(self.parse_uint(inner.as_slice()));
             max = Some(min);
         } else {
-            let pieces: Vec<&str> = inner.as_slice().splitn(1, ',').collect();
+            let pieces: Vec<&str> = inner.splitn(1, ',').collect();
             let (smin, smax) = (pieces[0], pieces[1]);
             if smin.len() == 0 {
                 return self.err("Max repetitions cannot be specified \
@@ -751,7 +751,7 @@ impl<'a> Parser<'a> {
             return self.err("Capture names must have at least 1 character.")
         }
         let name = self.slice(self.chari, closer);
-        if !name.as_slice().chars().all(is_valid_cap) {
+        if !name.chars().all(is_valid_cap) {
             return self.err(
                 "Capture names can only have underscores, letters and digits.")
         }
