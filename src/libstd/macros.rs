@@ -120,14 +120,14 @@ macro_rules! assert(
 /// ```
 #[macro_export]
 macro_rules! assert_eq(
-    ($given:expr , $expected:expr) => ({
-        match (&($given), &($expected)) {
-            (given_val, expected_val) => {
+    ($left:expr , $right:expr) => ({
+        match (&($left), &($right)) {
+            (left_val, right_val) => {
                 // check both directions of equality....
-                if !((*given_val == *expected_val) &&
-                     (*expected_val == *given_val)) {
+                if !((*left_val == *right_val) &&
+                     (*right_val == *left_val)) {
                     panic!("assertion failed: `(left == right) && (right == left)` \
-                           (left: `{}`, right: `{}`)", *given_val, *expected_val)
+                           (left: `{}`, right: `{}`)", *left_val, *right_val)
                 }
             }
         }
