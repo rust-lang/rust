@@ -429,10 +429,11 @@ impl Regex {
     ///
     /// ```rust
     /// # #![feature(phase)]
+    /// # #![feature(unboxed_closures)]
     /// # extern crate regex; #[phase(plugin)] extern crate regex_macros;
     /// # use regex::Captures; fn main() {
     /// let re = regex!(r"([^,\s]+),\s+(\S+)");
-    /// let result = re.replace("Springsteen, Bruce", |caps: &Captures| {
+    /// let result = re.replace("Springsteen, Bruce", |&: caps: &Captures| {
     ///     format!("{} {}", caps.at(2), caps.at(1))
     /// });
     /// assert_eq!(result.as_slice(), "Bruce Springsteen");
