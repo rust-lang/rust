@@ -507,8 +507,31 @@ pub mod types {
                   target_arch = "mips",
                   target_arch = "mipsel"))]
         pub mod arch {
+            #[cfg(any(target_arch = "x86",
+                      target_arch = "mips",
+                      target_arch = "mipsel"))]
             pub mod c95 {
                 pub type c_char = i8;
+                pub type c_schar = i8;
+                pub type c_uchar = u8;
+                pub type c_short = i16;
+                pub type c_ushort = u16;
+                pub type c_int = i32;
+                pub type c_uint = u32;
+                pub type c_long = i32;
+                pub type c_ulong = u32;
+                pub type c_float = f32;
+                pub type c_double = f64;
+                pub type size_t = u32;
+                pub type ptrdiff_t = i32;
+                pub type clock_t = i32;
+                pub type time_t = i32;
+                pub type suseconds_t = i32;
+                pub type wchar_t = i32;
+            }
+            #[cfg(target_arch = "arm")]
+            pub mod c95 {
+                pub type c_char = u8;
                 pub type c_schar = i8;
                 pub type c_uchar = u8;
                 pub type c_short = i16;
@@ -1800,8 +1823,29 @@ pub mod types {
 
         #[cfg(any(target_arch = "arm", target_arch = "x86"))]
         pub mod arch {
+            #[cfg(target_arch = "x86")]
             pub mod c95 {
                 pub type c_char = i8;
+                pub type c_schar = i8;
+                pub type c_uchar = u8;
+                pub type c_short = i16;
+                pub type c_ushort = u16;
+                pub type c_int = i32;
+                pub type c_uint = u32;
+                pub type c_long = i32;
+                pub type c_ulong = u32;
+                pub type c_float = f32;
+                pub type c_double = f64;
+                pub type size_t = u32;
+                pub type ptrdiff_t = i32;
+                pub type clock_t = u32;
+                pub type time_t = i32;
+                pub type suseconds_t = i32;
+                pub type wchar_t = i32;
+            }
+            #[cfg(target_arch = "arm")]
+            pub mod c95 {
+                pub type c_char = u8;
                 pub type c_schar = i8;
                 pub type c_uchar = u8;
                 pub type c_short = i16;
