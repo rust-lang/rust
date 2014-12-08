@@ -36,7 +36,7 @@ impl TempDir {
     /// If no directory can be created, `Err` is returned.
     pub fn new_in(tmpdir: &Path, suffix: &str) -> IoResult<TempDir> {
         if !tmpdir.is_absolute() {
-            let abs_tmpdir = try!(os::make_absolute(tmpdir));
+            let abs_tmpdir = try!(os::abspath(tmpdir));
             return TempDir::new_in(&abs_tmpdir, suffix);
         }
 
@@ -117,6 +117,6 @@ impl Drop for TempDir {
     }
 }
 
-// the tests for this module need to change the path using change_dir,
+// the tests for this module need to change the path using chdir,
 // and this doesn't play nicely with other tests so these unit tests are located
 // in src/test/run-pass/tempfile.rs

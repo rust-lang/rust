@@ -849,14 +849,14 @@ pub fn tmpdir() -> Path {
 ///
 /// // Assume we're in a path like /home/someuser
 /// let rel_path = Path::new("..");
-/// let abs_path = os::make_absolute(&rel_path).unwrap();
+/// let abs_path = os::abspath(&rel_path).unwrap();
 /// println!("The absolute path is {}", abs_path.display());
 /// // Prints "The absolute path is /home"
 /// ```
 // NB: this is here rather than in path because it is a form of environment
 // querying; what it does depends on the process working directory, not just
 // the input paths.
-pub fn make_absolute(p: &Path) -> IoResult<Path> {
+pub fn abspath(p: &Path) -> IoResult<Path> {
     if p.is_absolute() {
         Ok(p.clone())
     } else {
@@ -876,14 +876,14 @@ pub fn make_absolute(p: &Path) -> IoResult<Path> {
 /// use std::path::Path;
 ///
 /// let root = Path::new("/");
-/// assert!(os::change_dir(&root).is_ok());
+/// assert!(os::chdir(&root).is_ok());
 /// println!("Successfully changed working directory to {}!", root.display());
 /// ```
-pub fn change_dir(p: &Path) -> IoResult<()> {
-    return chdir(p);
+pub fn chdir(p: &Path) -> IoResult<()> {
+    return _chdir(p);
 
     #[cfg(windows)]
-    fn chdir(p: &Path) -> IoResult<()> {
+    fn _chdir(p: &Path) -> IoResult<()> {
         let mut p = p.as_str().unwrap().utf16_units().collect::<Vec<u16>>();
         p.push(0);
 
@@ -896,7 +896,7 @@ pub fn change_dir(p: &Path) -> IoResult<()> {
     }
 
     #[cfg(unix)]
-    fn chdir(p: &Path) -> IoResult<()> {
+    fn _chdir(p: &Path) -> IoResult<()> {
         p.with_c_str(|buf| {
             unsafe {
                 match libc::chdir(buf) == (0 as c_int) {
@@ -1772,7 +1772,7 @@ mod tests {
     use prelude::*;
     use c_str::ToCStr;
     use option;
-    use os::{env, getcwd, getenv, make_absolute};
+    use os::{env, getcwd, getenv, abspath};
     use os::{split_paths, join_paths, setenv, unsetenv};
     use os;
     use rand::Rng;
@@ -1906,8 +1906,8 @@ mod tests {
         let cwd = getcwd().unwrap();
         debug!("Current working directory: {}", cwd.display());
 
-        debug!("{}", make_absolute(&Path::new("test-path")).unwrap().display());
-        debug!("{}", make_absolute(&Path::new("/usr/bin")).unwrap().display());
+        debug!("{}", abspath(&Path::new("test-path")).unwrap().display());
+        debug!("{}", abspath(&Path::new("/usr/bin")).unwrap().display());
     }
 
     #[test]
