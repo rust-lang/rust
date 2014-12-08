@@ -390,6 +390,31 @@ impl<T: Clone> Vec<T> {
         }
     }
 
+    /// Resizes the `Vec` in-place so that `len()` equals to `new_len`.
+    ///
+    /// Calls either `grow()` or `truncate()` depending on whether `new_len` is
+    /// larger than the current value of `len()` or not.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let mut vec = vec!["hello", "world"];
+    /// vec.resize(1, "world");
+    /// assert_eq!(vec!["hello"], vec);
+    /// vec.resize(3, "world");
+    /// assert_eq!(vec!["hello", "world", "world"], vec);
+    /// ```
+    #[inline]
+    #[experimental]
+    pub fn resize(&mut self, new_len: uint, value: T) {
+        let l = self.len();
+        if l < new_len {
+            self.grow(new_len - l, value)
+        } else {
+            self.truncate(new_len)
+        }
+    }
+
     /// Partitions a vector based on a predicate.
     ///
     /// Clones the elements of the vector, partitioning them into two `Vec`s
@@ -786,20 +811,20 @@ impl<T> Vec<T> {
     /// # Example
     ///
     /// ```
-    /// let mut vec = vec![1i, 2, 3, 4];
+    /// let mut vec = vec![1i, 2, 3];
     /// vec.truncate(2);
+    /// assert_eq!(vec, vec![1, 2]);
+    /// vec.truncate(1000);
     /// assert_eq!(vec, vec![1, 2]);
     /// ```
     #[unstable = "matches collection reform specification; waiting on panic semantics"]
     pub fn truncate(&mut self, len: uint) {
-        unsafe {
-            // drop any extra elements
-            while len < self.len {
-                // decrement len before the read(), so a panic on Drop doesn't
-                // re-drop the just-failed value.
-                self.len -= 1;
-                ptr::read(self.as_slice().unsafe_get(self.len));
-            }
+        // drop any extra elements
+        while len < self.len {
+            // decrement len before the read(), so a panic on Drop doesn't
+            // re-drop the just-failed value.
+            self.len -= 1;
+            unsafe { ptr::read(self.as_slice().unsafe_get(self.len)); }
         }
     }
 
