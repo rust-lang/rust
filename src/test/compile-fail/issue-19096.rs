@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(tuple_indexing)]
-
 fn main() {
     let t = (42i, 42i);
     t.0::<int>; //~ ERROR expected one of `.`, `;`, `}`, or an operator, found `::`
