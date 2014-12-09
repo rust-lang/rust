@@ -230,7 +230,7 @@
 
 #![stable]
 
-pub use self::Result::*;
+use self::Result::*;
 
 use kinds::Copy;
 use std::fmt::Show;
