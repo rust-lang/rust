@@ -89,10 +89,8 @@ impl Lit {
     }
 }
 
-#[cfg(not(stage0))]
 impl Copy for Lit {}
 
-#[cfg(not(stage0))]
 impl Copy for IdentStyle {}
 
 #[allow(non_camel_case_types)]

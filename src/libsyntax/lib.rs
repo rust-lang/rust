@@ -23,7 +23,7 @@
        html_root_url = "http://doc.rust-lang.org/nightly/")]
 
 #![allow(unknown_features)]
-#![feature(if_let, macro_rules, globs, default_type_params, phase, slicing_syntax)]
+#![feature(macro_rules, globs, default_type_params, phase, slicing_syntax)]
 #![feature(quote, unsafe_destructor, import_shadowing)]
 
 extern crate arena;
