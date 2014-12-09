@@ -47,12 +47,16 @@ pub trait PpAnn {
 
 pub struct NoAnn;
 
+impl Copy for NoAnn {}
+
 impl PpAnn for NoAnn {}
 
 pub struct CurrentCommentAndLiteral {
     cur_cmnt: uint,
     cur_lit: uint,
 }
+
+impl Copy for CurrentCommentAndLiteral {}
 
 pub struct State<'a> {
     pub s: pp::Printer,

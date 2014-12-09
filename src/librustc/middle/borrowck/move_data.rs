@@ -81,6 +81,8 @@ pub struct FlowedMoveData<'a, 'tcx: 'a> {
 #[deriving(PartialEq, Eq, PartialOrd, Ord, Show)]
 pub struct MovePathIndex(uint);
 
+impl Copy for MovePathIndex {}
+
 impl MovePathIndex {
     fn get(&self) -> uint {
         let MovePathIndex(v) = *self; v
@@ -100,6 +102,8 @@ static InvalidMovePathIndex: MovePathIndex =
 /// Index into `MoveData.moves`, used like a pointer
 #[deriving(PartialEq)]
 pub struct MoveIndex(uint);
+
+impl Copy for MoveIndex {}
 
 impl MoveIndex {
     fn get(&self) -> uint {
@@ -138,6 +142,8 @@ pub enum MoveKind {
     Captured    // Closure creation that moves a value
 }
 
+impl Copy for MoveKind {}
+
 pub struct Move {
     /// Path being moved.
     pub path: MovePathIndex,
@@ -152,6 +158,8 @@ pub struct Move {
     pub next_move: MoveIndex
 }
 
+impl Copy for Move {}
+
 pub struct Assignment {
     /// Path being assigned.
     pub path: MovePathIndex,
@@ -162,6 +170,8 @@ pub struct Assignment {
     /// span of node where assignment occurs
     pub span: Span,
 }
+
+impl Copy for Assignment {}
 
 pub struct VariantMatch {
     /// downcast to the variant.
@@ -177,13 +187,19 @@ pub struct VariantMatch {
     pub mode: euv::MatchMode
 }
 
+impl Copy for VariantMatch {}
+
 #[deriving(Clone)]
 pub struct MoveDataFlowOperator;
+
+impl Copy for MoveDataFlowOperator {}
 
 pub type MoveDataFlow<'a, 'tcx> = DataFlowContext<'a, 'tcx, MoveDataFlowOperator>;
 
 #[deriving(Clone)]
 pub struct AssignDataFlowOperator;
+
+impl Copy for AssignDataFlowOperator {}
 
 pub type AssignDataFlow<'a, 'tcx> = DataFlowContext<'a, 'tcx, AssignDataFlowOperator>;
 

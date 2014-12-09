@@ -44,6 +44,8 @@ pub enum FnKind<'a> {
     FkFnBlock,
 }
 
+impl<'a> Copy for FnKind<'a> {}
+
 /// Each method of the Visitor trait is a hook to be potentially
 /// overridden.  Each method's default implementation recursively visits
 /// the substructure of the input via the corresponding `walk` method;

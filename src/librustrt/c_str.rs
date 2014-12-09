@@ -85,6 +85,7 @@ use libc;
 ///
 /// This structure wraps a `*libc::c_char`, and will automatically free the
 /// memory it is pointing to when it goes out of scope.
+#[allow(missing_copy_implementations)]
 pub struct CString {
     buf: *const libc::c_char,
     owns_buffer_: bool,

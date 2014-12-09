@@ -36,6 +36,8 @@ pub enum CommentStyle {
     BlankLine,
 }
 
+impl Copy for CommentStyle {}
+
 #[deriving(Clone)]
 pub struct Comment {
     pub style: CommentStyle,

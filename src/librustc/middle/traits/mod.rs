@@ -60,6 +60,8 @@ pub struct ObligationCause<'tcx> {
     pub code: ObligationCauseCode<'tcx>
 }
 
+impl<'tcx> Copy for ObligationCause<'tcx> {}
+
 #[deriving(Clone)]
 pub enum ObligationCauseCode<'tcx> {
     /// Not well classified or should be obvious from span.
@@ -94,6 +96,8 @@ pub enum ObligationCauseCode<'tcx> {
 }
 
 pub type Obligations<'tcx> = subst::VecPerParamSpace<Obligation<'tcx>>;
+
+impl<'tcx> Copy for ObligationCauseCode<'tcx> {}
 
 pub type Selection<'tcx> = Vtable<'tcx, Obligation<'tcx>>;
 
@@ -338,7 +342,7 @@ impl<'tcx, N> Vtable<'tcx, N> {
             VtableFnPointer(ref sig) => VtableFnPointer((*sig).clone()),
             VtableUnboxedClosure(d, ref s) => VtableUnboxedClosure(d, s.clone()),
             VtableParam(ref p) => VtableParam((*p).clone()),
-            VtableBuiltin(ref i) => VtableBuiltin(i.map_nested(op)),
+            VtableBuiltin(ref b) => VtableBuiltin(b.map_nested(op)),
         }
     }
 
@@ -348,7 +352,7 @@ impl<'tcx, N> Vtable<'tcx, N> {
             VtableFnPointer(sig) => VtableFnPointer(sig),
             VtableUnboxedClosure(d, s) => VtableUnboxedClosure(d, s),
             VtableParam(p) => VtableParam(p),
-            VtableBuiltin(i) => VtableBuiltin(i.map_move_nested(op)),
+            VtableBuiltin(no) => VtableBuiltin(no.map_move_nested(op)),
         }
     }
 }

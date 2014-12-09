@@ -449,12 +449,13 @@ pub enum named_ty {
     an_unboxed_closure,
 }
 
+impl Copy for named_ty {}
+
 pub fn llvm_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                 what: named_ty,
                                 did: ast::DefId,
                                 tps: &[Ty<'tcx>])
-                                -> String
-{
+                                -> String {
     let name = match what {
         a_struct => "struct",
         an_enum => "enum",

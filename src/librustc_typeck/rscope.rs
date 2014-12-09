@@ -38,6 +38,8 @@ pub trait RegionScope {
 // for types that appear in structs and so on.
 pub struct ExplicitRscope;
 
+impl Copy for ExplicitRscope {}
+
 impl RegionScope for ExplicitRscope {
     fn default_region_bound(&self, _span: Span) -> Option<ty::Region> {
         None
@@ -77,6 +79,7 @@ impl RegionScope for UnelidableRscope {
 // A scope in which any omitted region defaults to `default`. This is
 // used after the `->` in function signatures, but also for backwards
 // compatibility with object types. The latter use may go away.
+#[allow(missing_copy_implementations)]
 pub struct SpecificRscope {
     default: ty::Region
 }

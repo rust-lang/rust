@@ -86,6 +86,8 @@ pub struct Ident {
     pub ctxt: SyntaxContext
 }
 
+impl Copy for Ident {}
+
 impl Ident {
     /// Construct an identifier with the given name and an empty context:
     pub fn new(name: Name) -> Ident { Ident {name: name, ctxt: EMPTY_CTXT}}
@@ -161,6 +163,8 @@ pub const ILLEGAL_CTXT : SyntaxContext = 1;
 #[deriving(Eq, Ord, PartialEq, PartialOrd, Hash, Encodable, Decodable, Clone)]
 pub struct Name(pub u32);
 
+impl Copy for Name {}
+
 impl Name {
     pub fn as_str<'a>(&'a self) -> &'a str {
         unsafe {
@@ -203,6 +207,8 @@ pub struct Lifetime {
     pub span: Span,
     pub name: Name
 }
+
+impl Copy for Lifetime {}
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub struct LifetimeDef {
@@ -337,6 +343,8 @@ pub struct DefId {
     pub krate: CrateNum,
     pub node: NodeId,
 }
+
+impl Copy for DefId {}
 
 /// Item definitions in the currently-compiled crate would have the CrateNum
 /// LOCAL_CRATE in their DefId.
@@ -482,6 +490,8 @@ pub enum BindingMode {
     BindByValue(Mutability),
 }
 
+impl Copy for BindingMode {}
+
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum PatWildKind {
     /// Represents the wildcard pattern `_`
@@ -490,6 +500,8 @@ pub enum PatWildKind {
     /// Represents the wildcard pattern `..`
     PatWildMulti,
 }
+
+impl Copy for PatWildKind {}
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum Pat_ {
@@ -526,6 +538,8 @@ pub enum Mutability {
     MutImmutable,
 }
 
+impl Copy for Mutability {}
+
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum BinOp {
     BiAdd,
@@ -548,6 +562,9 @@ pub enum BinOp {
     BiGt,
 }
 
+#[cfg(not(stage0))]
+impl Copy for BinOp {}
+
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum UnOp {
     UnUniq,
@@ -555,6 +572,8 @@ pub enum UnOp {
     UnNot,
     UnNeg
 }
+
+impl Copy for UnOp {}
 
 pub type Stmt = Spanned<Stmt_>;
 
@@ -580,6 +599,8 @@ pub enum LocalSource {
     LocalLet,
     LocalFor,
 }
+
+impl Copy for LocalSource {}
 
 // FIXME (pending discussion of #1697, #2178...): local should really be
 // a refinement on pat.
@@ -628,11 +649,15 @@ pub enum BlockCheckMode {
     UnsafeBlock(UnsafeSource),
 }
 
+impl Copy for BlockCheckMode {}
+
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum UnsafeSource {
     CompilerGenerated,
     UserProvided,
 }
+
+impl Copy for UnsafeSource {}
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub struct Expr {
@@ -718,11 +743,15 @@ pub enum MatchSource {
     MatchWhileLetDesugar,
 }
 
+impl Copy for MatchSource {}
+
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum CaptureClause {
     CaptureByValue,
     CaptureByRef,
 }
+
+impl Copy for CaptureClause {}
 
 /// A delimited sequence of token trees
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
@@ -779,6 +808,8 @@ pub enum KleeneOp {
     ZeroOrMore,
     OneOrMore,
 }
+
+impl Copy for KleeneOp {}
 
 /// When the main rust parser encounters a syntax-extension invocation, it
 /// parses the arguments to the invocation as a token-tree. This is a very
@@ -895,6 +926,8 @@ pub enum StrStyle {
     RawStr(uint)
 }
 
+impl Copy for StrStyle {}
+
 pub type Lit = Spanned<Lit_>;
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
@@ -903,7 +936,9 @@ pub enum Sign {
     Plus
 }
 
-impl<T: Int> Sign {
+impl Copy for Sign {}
+
+impl<T> Sign where T: Int {
     pub fn new(n: T) -> Sign {
         if n < Int::zero() {
             Minus
@@ -919,6 +954,8 @@ pub enum LitIntType {
     UnsignedIntLit(UintTy),
     UnsuffixedIntLit(Sign)
 }
+
+impl Copy for LitIntType {}
 
 impl LitIntType {
     pub fn suffix_len(&self) -> uint {
@@ -1015,6 +1052,8 @@ pub enum IntTy {
     TyI64,
 }
 
+impl Copy for IntTy {}
+
 impl fmt::Show for IntTy {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", ast_util::int_ty_to_string(*self, None))
@@ -1040,6 +1079,8 @@ pub enum UintTy {
     TyU64,
 }
 
+impl Copy for UintTy {}
+
 impl UintTy {
     pub fn suffix_len(&self) -> uint {
         match *self {
@@ -1061,6 +1102,8 @@ pub enum FloatTy {
     TyF32,
     TyF64,
 }
+
+impl Copy for FloatTy {}
 
 impl fmt::Show for FloatTy {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -1095,11 +1138,15 @@ pub enum PrimTy {
     TyChar
 }
 
+impl Copy for PrimTy {}
+
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash)]
 pub enum Onceness {
     Once,
     Many
 }
+
+impl Copy for Onceness {}
 
 impl fmt::Show for Onceness {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -1171,6 +1218,8 @@ pub enum AsmDialect {
     AsmIntel
 }
 
+impl Copy for AsmDialect {}
+
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub struct InlineAsm {
     pub asm: InternedString,
@@ -1227,6 +1276,8 @@ pub enum FnStyle {
     /// Declared with "fn"
     NormalFn,
 }
+
+impl Copy for FnStyle {}
 
 impl fmt::Show for FnStyle {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -1345,6 +1396,8 @@ pub enum PathListItem_ {
     PathListMod { id: NodeId }
 }
 
+impl Copy for PathListItem_ {}
+
 impl PathListItem_ {
     pub fn id(&self) -> NodeId {
         match *self {
@@ -1404,8 +1457,12 @@ pub enum AttrStyle {
     AttrInner,
 }
 
+impl Copy for AttrStyle {}
+
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub struct AttrId(pub uint);
+
+impl Copy for AttrId {}
 
 /// Doc-comments are promoted to attributes that have is_sugared_doc = true
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
@@ -1442,6 +1499,8 @@ pub enum Visibility {
     Inherited,
 }
 
+impl Copy for Visibility {}
+
 impl Visibility {
     pub fn inherit_from(&self, parent_visibility: Visibility) -> Visibility {
         match self {
@@ -1476,6 +1535,8 @@ pub enum StructFieldKind {
     /// Element of a tuple-like struct
     UnnamedField(Visibility),
 }
+
+impl Copy for StructFieldKind {}
 
 impl StructFieldKind {
     pub fn is_unnamed(&self) -> bool {
@@ -1582,6 +1643,8 @@ pub enum UnboxedClosureKind {
     FnMutUnboxedClosureKind,
     FnOnceUnboxedClosureKind,
 }
+
+impl Copy for UnboxedClosureKind {}
 
 /// The data we save and restore about an inlined item or method.  This is not
 /// part of the AST that we parse from a file, but it becomes part of the tree

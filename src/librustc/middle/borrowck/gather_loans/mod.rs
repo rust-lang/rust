@@ -22,6 +22,7 @@ use middle::borrowck::move_data::MoveData;
 use middle::expr_use_visitor as euv;
 use middle::mem_categorization as mc;
 use middle::region;
+use middle::ty::ParameterEnvironment;
 use middle::ty;
 use util::ppaux::{Repr};
 
@@ -37,10 +38,11 @@ mod gather_moves;
 mod move_error;
 
 pub fn gather_loans_in_fn<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
+                                    fn_id: NodeId,
                                     decl: &ast::FnDecl,
                                     body: &ast::Block)
-                                    -> (Vec<Loan<'tcx>>, move_data::MoveData<'tcx>)
-{
+                                    -> (Vec<Loan<'tcx>>,
+                                        move_data::MoveData<'tcx>) {
     let mut glcx = GatherLoanCtxt {
         bccx: bccx,
         all_loans: Vec::new(),
@@ -49,8 +51,12 @@ pub fn gather_loans_in_fn<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
         move_error_collector: move_error::MoveErrorCollector::new(),
     };
 
+    let param_env = ParameterEnvironment::for_item(bccx.tcx, fn_id);
+
     {
-        let mut euv = euv::ExprUseVisitor::new(&mut glcx, bccx.tcx);
+        let mut euv = euv::ExprUseVisitor::new(&mut glcx,
+                                               bccx.tcx,
+                                               param_env);
         euv.walk_fn(decl, body);
     }
 

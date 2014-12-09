@@ -18,6 +18,7 @@
 use core::kinds::Sized;
 use fmt;
 use iter::IteratorExt;
+use kinds::Copy;
 use mem;
 use option::Option;
 use option::Option::{Some, None};
@@ -29,6 +30,8 @@ use vec::Vec;
 /// Datatype to hold one ascii character. It wraps a `u8`, with the highest bit always zero.
 #[deriving(Clone, PartialEq, PartialOrd, Ord, Eq, Hash)]
 pub struct Ascii { chr: u8 }
+
+impl Copy for Ascii {}
 
 impl Ascii {
     /// Converts an ascii character into a `u8`.

@@ -42,6 +42,8 @@ pub enum BinOpToken {
     Shr,
 }
 
+impl Copy for BinOpToken {}
+
 /// A delimeter token
 #[deriving(Clone, Encodable, Decodable, PartialEq, Eq, Hash, Show)]
 pub enum DelimToken {
@@ -52,6 +54,8 @@ pub enum DelimToken {
     /// A curly brace: `{` or `}`
     Brace,
 }
+
+impl Copy for DelimToken {}
 
 #[deriving(Clone, Encodable, Decodable, PartialEq, Eq, Hash, Show)]
 pub enum IdentStyle {
@@ -84,6 +88,12 @@ impl Lit {
         }
     }
 }
+
+#[cfg(not(stage0))]
+impl Copy for Lit {}
+
+#[cfg(not(stage0))]
+impl Copy for IdentStyle {}
 
 #[allow(non_camel_case_types)]
 #[deriving(Clone, Encodable, Decodable, PartialEq, Eq, Hash, Show)]
@@ -434,6 +444,8 @@ macro_rules! declare_special_idents_and_keywords {(
             $( $sk_variant, )*
             $( $rk_variant, )*
         }
+
+        impl Copy for Keyword {}
 
         impl Keyword {
             pub fn to_name(&self) -> ast::Name {

@@ -20,12 +20,15 @@ pub use self::Alignment::*;
 pub use self::Count::*;
 pub use self::Position::*;
 pub use self::Flag::*;
+use kinds::Copy;
 
 #[doc(hidden)]
 pub struct Argument<'a> {
     pub position: Position,
     pub format: FormatSpec,
 }
+
+impl<'a> Copy for Argument<'a> {}
 
 #[doc(hidden)]
 pub struct FormatSpec {
@@ -35,6 +38,8 @@ pub struct FormatSpec {
     pub precision: Count,
     pub width: Count,
 }
+
+impl Copy for FormatSpec {}
 
 /// Possible alignments that can be requested as part of a formatting directive.
 #[deriving(PartialEq)]
@@ -49,15 +54,21 @@ pub enum Alignment {
     AlignUnknown,
 }
 
+impl Copy for Alignment {}
+
 #[doc(hidden)]
 pub enum Count {
     CountIs(uint), CountIsParam(uint), CountIsNextParam, CountImplied,
 }
 
+impl Copy for Count {}
+
 #[doc(hidden)]
 pub enum Position {
     ArgumentNext, ArgumentIs(uint)
 }
+
+impl Copy for Position {}
 
 /// Flags which can be passed to formatting via a directive.
 ///
@@ -78,3 +89,5 @@ pub enum Flag {
     /// being aware of the sign to be printed.
     FlagSignAwareZeroPad,
 }
+
+impl Copy for Flag {}

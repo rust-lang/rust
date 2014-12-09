@@ -22,6 +22,10 @@ mod private {
         p: i32,
     }
     pub const THREE: P = P { p: 3 };
+    impl Copy for P {}
 }
 
 pub static A: S = S { p: private::THREE };
+
+impl Copy for S {}
+

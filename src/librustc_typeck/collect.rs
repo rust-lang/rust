@@ -499,6 +499,8 @@ enum ConvertMethodContext<'a> {
     TraitConvertMethodContext(ast::DefId, &'a [ast::TraitItem]),
 }
 
+impl<'a> Copy for ConvertMethodContext<'a> {}
+
 fn convert_methods<'a,'tcx,'i,I>(ccx: &CrateCtxt<'a, 'tcx>,
                                  convert_method_context: ConvertMethodContext,
                                  container: ImplOrTraitItemContainer,

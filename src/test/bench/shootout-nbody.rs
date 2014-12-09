@@ -100,6 +100,8 @@ struct Planet {
     mass: f64,
 }
 
+impl Copy for Planet {}
+
 fn advance(bodies: &mut [Planet, ..N_BODIES], dt: f64, steps: int) {
     for _ in range(0, steps) {
         let mut b_slice = bodies.as_mut_slice();

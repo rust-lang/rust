@@ -13,6 +13,7 @@
 #![experimental]
 
 use {fmt, i64};
+use kinds::Copy;
 use ops::{Add, Sub, Mul, Div, Neg};
 use option::Option;
 use option::Option::{Some, None};
@@ -63,6 +64,8 @@ pub const MAX: Duration = Duration {
     secs: i64::MAX / MILLIS_PER_SEC,
     nanos: (i64::MAX % MILLIS_PER_SEC) as i32 * NANOS_PER_MILLI
 };
+
+impl Copy for Duration {}
 
 impl Duration {
     /// Makes a new `Duration` with given number of weeks.

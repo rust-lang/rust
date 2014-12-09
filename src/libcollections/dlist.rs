@@ -39,7 +39,12 @@ pub struct DList<T> {
 }
 
 type Link<T> = Option<Box<Node<T>>>;
-struct Rawlink<T> { p: *mut T }
+
+struct Rawlink<T> {
+    p: *mut T,
+}
+
+impl<T> Copy for Rawlink<T> {}
 
 struct Node<T> {
     next: Link<T>,
@@ -58,6 +63,8 @@ pub struct Items<'a, T:'a> {
 impl<'a, T> Clone for Items<'a, T> {
     fn clone(&self) -> Items<'a, T> { *self }
 }
+
+impl<'a,T> Copy for Items<'a,T> {}
 
 /// An iterator over mutable references to the items of a `DList`.
 pub struct MutItems<'a, T:'a> {

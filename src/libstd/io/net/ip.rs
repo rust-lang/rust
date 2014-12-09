@@ -18,6 +18,7 @@
 pub use self::IpAddr::*;
 
 use fmt;
+use kinds::Copy;
 use io::{mod, IoResult, IoError};
 use io::net;
 use iter::{Iterator, IteratorExt};
@@ -35,6 +36,8 @@ pub enum IpAddr {
     Ipv4Addr(u8, u8, u8, u8),
     Ipv6Addr(u16, u16, u16, u16, u16, u16, u16, u16)
 }
+
+impl Copy for IpAddr {}
 
 impl fmt::Show for IpAddr {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
@@ -66,6 +69,8 @@ pub struct SocketAddr {
     pub ip: IpAddr,
     pub port: Port,
 }
+
+impl Copy for SocketAddr {}
 
 impl fmt::Show for SocketAddr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

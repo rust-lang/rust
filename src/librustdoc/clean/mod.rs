@@ -1178,6 +1178,8 @@ pub enum PrimitiveType {
     PrimitiveTuple,
 }
 
+impl Copy for PrimitiveType {}
+
 #[deriving(Clone, Encodable, Decodable)]
 pub enum TypeKind {
     TypeEnum,
@@ -1189,6 +1191,8 @@ pub enum TypeKind {
     TypeVariant,
     TypeTypedef,
 }
+
+impl Copy for TypeKind {}
 
 impl PrimitiveType {
     fn from_str(s: &str) -> Option<PrimitiveType> {
@@ -1842,6 +1846,8 @@ pub enum Mutability {
     Mutable,
     Immutable,
 }
+
+impl Copy for Mutability {}
 
 impl Clean<Mutability> for ast::Mutability {
     fn clean(&self, _: &DocContext) -> Mutability {

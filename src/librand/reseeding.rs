@@ -135,6 +135,8 @@ pub trait Reseeder<R> {
 /// replacing the RNG with the result of a `Default::default` call.
 pub struct ReseedWithDefault;
 
+impl Copy for ReseedWithDefault {}
+
 impl<R: Rng + Default> Reseeder<R> for ReseedWithDefault {
     fn reseed(&mut self, rng: &mut R) {
         *rng = Default::default();

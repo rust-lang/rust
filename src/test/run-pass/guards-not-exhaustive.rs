@@ -10,6 +10,8 @@
 
 enum Q { R(Option<uint>) }
 
+impl Copy for Q {}
+
 fn xyzzy(q: Q) -> uint {
     match q {
         Q::R(S) if S.is_some() => { 0 }

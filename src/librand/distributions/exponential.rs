@@ -10,6 +10,7 @@
 
 //! The exponential distribution.
 
+use core::kinds::Copy;
 use core::num::Float;
 
 use {Rng, Rand};
@@ -30,6 +31,8 @@ use distributions::{ziggurat, ziggurat_tables, Sample, IndependentSample};
 /// Samples*](http://www.doornik.com/research/ziggurat.pdf). Nuffield
 /// College, Oxford
 pub struct Exp1(pub f64);
+
+impl Copy for Exp1 {}
 
 // This could be done via `-rng.gen::<f64>().ln()` but that is slower.
 impl Rand for Exp1 {
@@ -70,6 +73,8 @@ pub struct Exp {
     /// `lambda` stored as `1/lambda`, since this is what we scale by.
     lambda_inverse: f64
 }
+
+impl Copy for Exp {}
 
 impl Exp {
     /// Construct a new `Exp` with the given shape parameter

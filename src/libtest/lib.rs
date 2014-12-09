@@ -109,7 +109,13 @@ impl Show for TestName {
 }
 
 #[deriving(Clone)]
-enum NamePadding { PadNone, PadOnLeft, PadOnRight }
+enum NamePadding {
+    PadNone,
+    PadOnLeft,
+    PadOnRight,
+}
+
+impl Copy for NamePadding {}
 
 impl TestDesc {
     fn padded_name(&self, column_count: uint, align: NamePadding) -> String {
@@ -179,13 +185,14 @@ impl fmt::Show for TestFn {
 /// This is feed into functions marked with `#[bench]` to allow for
 /// set-up & tear-down before running a piece of code repeatedly via a
 /// call to `iter`.
+#[deriving(Copy)]
 pub struct Bencher {
     iterations: u64,
     dur: Duration,
     pub bytes: u64,
 }
 
-#[deriving(Clone, Show, PartialEq, Eq, Hash)]
+#[deriving(Copy, Clone, Show, PartialEq, Eq, Hash)]
 pub enum ShouldFail {
     No,
     Yes(Option<&'static str>)
@@ -212,6 +219,8 @@ pub struct Metric {
     noise: f64
 }
 
+impl Copy for Metric {}
+
 impl Metric {
     pub fn new(value: f64, noise: f64) -> Metric {
         Metric {value: value, noise: noise}
@@ -237,6 +246,8 @@ pub enum MetricChange {
     Improvement(f64),
     Regression(f64)
 }
+
+impl Copy for MetricChange {}
 
 pub type MetricDiff = TreeMap<String,MetricChange>;
 
@@ -279,6 +290,8 @@ pub enum ColorConfig {
     AlwaysColor,
     NeverColor,
 }
+
+impl Copy for ColorConfig {}
 
 pub struct TestOpts {
     pub filter: Option<Regex>,
@@ -1135,7 +1148,7 @@ pub fn run_test(opts: &TestOpts,
             return;
         }
         StaticBenchFn(benchfn) => {
-            let bs = ::bench::benchmark(|harness| benchfn(harness));
+            let bs = ::bench::benchmark(|harness| (benchfn.clone())(harness));
             monitor_ch.send((desc, TrBench(bs), Vec::new()));
             return;
         }

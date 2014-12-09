@@ -282,6 +282,8 @@ pub enum InlineAttr {
     InlineNever,
 }
 
+impl Copy for InlineAttr {}
+
 /// Determine what `#[inline]` attribute is present in `attrs`, if any.
 pub fn find_inline_attr(attrs: &[Attribute]) -> InlineAttr {
     // FIXME (#2809)---validate the usage of #[inline] and #[inline]
@@ -353,6 +355,8 @@ pub enum StabilityLevel {
     Frozen,
     Locked
 }
+
+impl Copy for StabilityLevel {}
 
 pub fn find_stability_generic<'a,
                               AM: AttrMetaMethods,
@@ -469,6 +473,8 @@ pub enum ReprAttr {
     ReprPacked,
 }
 
+impl Copy for ReprAttr {}
+
 impl ReprAttr {
     pub fn is_ffi_safe(&self) -> bool {
         match *self {
@@ -485,6 +491,8 @@ pub enum IntType {
     SignedInt(ast::IntTy),
     UnsignedInt(ast::UintTy)
 }
+
+impl Copy for IntType {}
 
 impl IntType {
     #[inline]
