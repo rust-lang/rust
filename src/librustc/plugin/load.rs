@@ -44,11 +44,11 @@ pub struct Plugins {
     pub registrars: Vec<PluginRegistrar>,
 }
 
-struct PluginLoader<'a> {
+pub struct PluginLoader<'a> {
     sess: &'a Session,
     span_whitelist: HashSet<Span>,
     reader: CrateReader<'a>,
-    plugins: Plugins,
+    pub plugins: Plugins,
 }
 
 impl<'a> PluginLoader<'a> {
@@ -67,7 +67,7 @@ impl<'a> PluginLoader<'a> {
 
 /// Read plugin metadata and dynamically load registrar functions.
 pub fn load_plugins(sess: &Session, krate: &ast::Crate,
-                    addl_plugins: Option<Plugins>) -> Plugins {
+                    addl_plugins: Option<Vec<String>>) -> Plugins {
     let mut loader = PluginLoader::new(sess);
 
     // We need to error on `#[macro_use] extern crate` when it isn't at the
@@ -79,19 +79,14 @@ pub fn load_plugins(sess: &Session, krate: &ast::Crate,
 
     visit::walk_crate(&mut loader, krate);
 
-    let mut plugins = loader.plugins;
-
-    match addl_plugins {
-        Some(addl_plugins) => {
-            // Add in the additional plugins requested by the frontend
-            let Plugins { macros: addl_macros, registrars: addl_registrars } = addl_plugins;
-            plugins.macros.extend(addl_macros.into_iter());
-            plugins.registrars.extend(addl_registrars.into_iter());
+    if let Some(plugins) = addl_plugins {
+        for plugin in plugins.iter() {
+            loader.load_plugin(CrateOrString::Str(plugin.as_slice()),
+                                                  None, None, None)
         }
-        None => ()
     }
 
-    return plugins;
+    return loader.plugins;
 }
 
 // note that macros aren't expanded yet, and therefore macros can't add plugins.
@@ -160,7 +155,7 @@ impl<'a, 'v> Visitor<'v> for PluginLoader<'a> {
             }
         }
 
-        self.load_plugin(CrateOrString::Krate(vi), plugin_attr, macro_selection, reexport)
+        self.load_plugin(CrateOrString::Krate(vi), plugin_attr, macro_selection, Some(reexport))
     }
 
     fn visit_mac(&mut self, _: &ast::Mac) {
@@ -174,13 +169,13 @@ impl<'a> PluginLoader<'a> {
                            c: CrateOrString<'b>,
                            plugin_attr: Option<P<ast::MetaItem>>,
                            macro_selection: Option<HashSet<token::InternedString>>,
-                           reexport: HashSet<token::InternedString>) {
+                           reexport: Option<HashSet<token::InternedString>>) {
         let mut macros = vec![];
         let mut registrar = None;
 
-        let load_macros = match macro_selection.as_ref() {
-            Some(sel) => sel.len() != 0 || reexport.len() != 0,
-            None => true,
+        let load_macros = match (macro_selection.as_ref(), reexport.as_ref()) {
+            (Some(sel), Some(re)) => sel.len() != 0 || re.len() != 0,
+            _ => true,
         };
         let load_registrar = plugin_attr.is_some();
 
@@ -207,7 +202,11 @@ impl<'a> PluginLoader<'a> {
                 None => true,
                 Some(sel) => sel.contains(&name),
             };
-            def.export = reexport.contains(&name);
+            def.export = if let Some(ref re) = reexport {
+                re.contains(&name)
+            } else {
+                false // Don't reexport macros from crates loaded from the command line
+            };
             self.plugins.macros.push(def);
         }
 
