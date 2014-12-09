@@ -24,7 +24,7 @@ impl Drop for Foo {
 
 impl Bar for Foo {
     fn blah(&self) {
-        self.drop();    //~ ERROR explicit call to destructor
+        self.drop();    //~ ERROR explicit use of destructor method
     }
 }
 
