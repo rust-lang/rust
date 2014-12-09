@@ -14,6 +14,8 @@ pub struct S {
     z: u64,
 }
 
+impl Copy for S {}
+
 #[link(name = "rust_test_helpers")]
 extern {
     pub fn get_x(x: S) -> u64;

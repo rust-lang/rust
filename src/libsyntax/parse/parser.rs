@@ -98,6 +98,8 @@ bitflags! {
     }
 }
 
+impl Copy for Restrictions {}
+
 type ItemInfo = (Ident, Item_, Option<Vec<Attribute> >);
 
 /// How to parse a path. There are four different kinds of paths, all of which
@@ -113,6 +115,8 @@ pub enum PathParsingMode {
     /// the type parameters; e.g. `foo::bar::<'a>::Baz::<T>`
     LifetimeAndTypesWithColons,
 }
+
+impl Copy for PathParsingMode {}
 
 enum ItemOrViewItem {
     /// Indicates a failure to parse any kind of item. The attributes are

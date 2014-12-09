@@ -97,6 +97,9 @@ use self::HasArg::*;
 use self::Occur::*;
 use self::Fail::*;
 use self::Optval::*;
+use self::SplitWithinState::*;
+use self::Whitespace::*;
+use self::LengthLimit::*;
 
 use std::fmt;
 use std::result::Result::{Err, Ok};
@@ -125,6 +128,8 @@ pub enum HasArg {
     Maybe,
 }
 
+impl Copy for HasArg {}
+
 /// Describes how often an option may occur.
 #[deriving(Clone, PartialEq, Eq)]
 pub enum Occur {
@@ -135,6 +140,8 @@ pub enum Occur {
     /// The option occurs zero or more times.
     Multi,
 }
+
+impl Copy for Occur {}
 
 /// A description of a possible option.
 #[deriving(Clone, PartialEq, Eq)]
@@ -202,6 +209,19 @@ pub enum Fail {
     /// There's an argument being passed to a non-argument option.
     UnexpectedArgument(String),
 }
+
+/// The type of failure that occurred.
+#[deriving(PartialEq, Eq)]
+#[allow(missing_docs)]
+pub enum FailType {
+    ArgumentMissing_,
+    UnrecognizedOption_,
+    OptionMissing_,
+    OptionDuplicated_,
+    UnexpectedArgument_,
+}
+
+impl Copy for FailType {}
 
 /// The result of parsing a command line with a set of options.
 pub type Result = result::Result<Matches, Fail>;
@@ -824,14 +844,17 @@ enum SplitWithinState {
     B,  // words
     C,  // internal and trailing whitespace
 }
+impl Copy for SplitWithinState {}
 enum Whitespace {
     Ws, // current char is whitespace
     Cr  // current char is not whitespace
 }
+impl Copy for Whitespace {}
 enum LengthLimit {
     UnderLim, // current char makes current substring still fit in limit
     OverLim   // current char makes current substring no longer fit in limit
 }
+impl Copy for LengthLimit {}
 
 
 /// Splits a string into substrings with possibly internal whitespace,
@@ -847,9 +870,6 @@ enum LengthLimit {
 /// sequence longer than the limit.
 fn each_split_within<'a>(ss: &'a str, lim: uint, it: |&'a str| -> bool)
                      -> bool {
-    use self::SplitWithinState::*;
-    use self::Whitespace::*;
-    use self::LengthLimit::*;
     // Just for fun, let's write this as a state machine:
 
     let mut slice_start = 0;

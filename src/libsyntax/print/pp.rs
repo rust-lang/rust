@@ -72,17 +72,23 @@ pub enum Breaks {
     Inconsistent,
 }
 
+impl Copy for Breaks {}
+
 #[deriving(Clone)]
 pub struct BreakToken {
     offset: int,
     blank_space: int
 }
 
+impl Copy for BreakToken {}
+
 #[deriving(Clone)]
 pub struct BeginToken {
     offset: int,
     breaks: Breaks
 }
+
+impl Copy for BeginToken {}
 
 #[deriving(Clone)]
 pub enum Token {
@@ -152,10 +158,14 @@ pub enum PrintStackBreak {
     Broken(Breaks),
 }
 
+impl Copy for PrintStackBreak {}
+
 pub struct PrintStackElem {
     offset: int,
     pbreak: PrintStackBreak
 }
+
+impl Copy for PrintStackElem {}
 
 static SIZE_INFINITY: int = 0xffff;
 

@@ -29,7 +29,10 @@ use str;
 use string::String;
 use vec::Vec;
 
-pub struct DynamicLibrary { handle: *mut u8 }
+#[allow(missing_copy_implementations)]
+pub struct DynamicLibrary {
+    handle: *mut u8
+}
 
 impl Drop for DynamicLibrary {
     fn drop(&mut self) {
@@ -210,6 +213,7 @@ pub mod dl {
 
     use c_str::{CString, ToCStr};
     use libc;
+    use kinds::Copy;
     use ptr;
     use result::*;
     use string::String;
@@ -261,6 +265,8 @@ pub mod dl {
         Global = 256,
         Local = 0,
     }
+
+    impl Copy for Rtld {}
 
     #[link_name = "dl"]
     extern {

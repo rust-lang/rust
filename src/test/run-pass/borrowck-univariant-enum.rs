@@ -15,6 +15,8 @@ enum newtype {
     newvar(int)
 }
 
+impl Copy for newtype {}
+
 pub fn main() {
 
     // Test that borrowck treats enums with a single variant

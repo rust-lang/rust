@@ -47,6 +47,8 @@ pub struct Doc<'a> {
     pub end: uint,
 }
 
+impl<'doc> Copy for Doc<'doc> {}
+
 impl<'doc> Doc<'doc> {
     pub fn new(data: &'doc [u8]) -> Doc<'doc> {
         Doc { data: data, start: 0u, end: data.len() }
@@ -104,6 +106,8 @@ pub enum EbmlEncoderTag {
     EsLabel, // Used only when debugging
 }
 
+impl Copy for EbmlEncoderTag {}
+
 #[deriving(Show)]
 pub enum Error {
     IntTooBig(uint),
@@ -150,6 +154,8 @@ pub mod reader {
         pub val: uint,
         pub next: uint
     }
+
+    impl Copy for Res {}
 
     #[inline(never)]
     fn vuint_at_slow(data: &[u8], start: uint) -> DecodeResult<Res> {

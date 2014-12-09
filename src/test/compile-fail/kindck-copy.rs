@@ -14,12 +14,15 @@
 use std::rc::Rc;
 
 fn assert_copy<T:Copy>() { }
+
 trait Dummy { }
 
 struct MyStruct {
     x: int,
     y: int,
 }
+
+impl Copy for MyStruct {}
 
 struct MyNoncopyStruct {
     x: Box<char>,

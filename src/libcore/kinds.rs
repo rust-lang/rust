@@ -91,6 +91,8 @@ pub trait Sync for Sized? {
 /// implemented using unsafe code. In that case, you may want to embed
 /// some of the marker types below into your type.
 pub mod marker {
+    use super::Copy;
+
     /// A marker type whose type parameter `T` is considered to be
     /// covariant with respect to the type itself. This is (typically)
     /// used to indicate that an instance of the type `T` is being stored
@@ -131,6 +133,8 @@ pub mod marker {
     #[lang="covariant_type"]
     #[deriving(Clone, PartialEq, Eq, PartialOrd, Ord)]
     pub struct CovariantType<T>;
+
+    impl<T> Copy for CovariantType<T> {}
 
     /// A marker type whose type parameter `T` is considered to be
     /// contravariant with respect to the type itself. This is (typically)
@@ -175,6 +179,8 @@ pub mod marker {
     #[deriving(Clone, PartialEq, Eq, PartialOrd, Ord)]
     pub struct ContravariantType<T>;
 
+    impl<T> Copy for ContravariantType<T> {}
+
     /// A marker type whose type parameter `T` is considered to be
     /// invariant with respect to the type itself. This is (typically)
     /// used to indicate that instances of the type `T` may be read or
@@ -200,6 +206,8 @@ pub mod marker {
     #[deriving(Clone, PartialEq, Eq, PartialOrd, Ord)]
     pub struct InvariantType<T>;
 
+    impl<T> Copy for InvariantType<T> {}
+
     /// As `CovariantType`, but for lifetime parameters. Using
     /// `CovariantLifetime<'a>` indicates that it is ok to substitute
     /// a *longer* lifetime for `'a` than the one you originally
@@ -220,6 +228,8 @@ pub mod marker {
     #[deriving(Clone, PartialEq, Eq, PartialOrd, Ord)]
     pub struct CovariantLifetime<'a>;
 
+    impl<'a> Copy for CovariantLifetime<'a> {}
+
     /// As `ContravariantType`, but for lifetime parameters. Using
     /// `ContravariantLifetime<'a>` indicates that it is ok to
     /// substitute a *shorter* lifetime for `'a` than the one you
@@ -235,6 +245,8 @@ pub mod marker {
     #[lang="contravariant_lifetime"]
     #[deriving(Clone, PartialEq, Eq, PartialOrd, Ord)]
     pub struct ContravariantLifetime<'a>;
+
+    impl<'a> Copy for ContravariantLifetime<'a> {}
 
     /// As `InvariantType`, but for lifetime parameters. Using
     /// `InvariantLifetime<'a>` indicates that it is not ok to
@@ -253,6 +265,7 @@ pub mod marker {
     /// their instances remain thread-local.
     #[lang="no_send_bound"]
     #[deriving(Clone, PartialEq, Eq, PartialOrd, Ord)]
+    #[allow(missing_copy_implementations)]
     pub struct NoSend;
 
     /// A type which is considered "not POD", meaning that it is not
@@ -260,6 +273,7 @@ pub mod marker {
     /// ensure that they are never copied, even if they lack a destructor.
     #[lang="no_copy_bound"]
     #[deriving(Clone, PartialEq, Eq, PartialOrd, Ord)]
+    #[allow(missing_copy_implementations)]
     pub struct NoCopy;
 
     /// A type which is considered "not sync", meaning that
@@ -267,11 +281,14 @@ pub mod marker {
     /// shared between tasks.
     #[lang="no_sync_bound"]
     #[deriving(Clone, PartialEq, Eq, PartialOrd, Ord)]
+    #[allow(missing_copy_implementations)]
     pub struct NoSync;
 
     /// A type which is considered managed by the GC. This is typically
     /// embedded in other types.
     #[lang="managed_bound"]
     #[deriving(Clone, PartialEq, Eq, PartialOrd, Ord)]
+    #[allow(missing_copy_implementations)]
     pub struct Managed;
 }
+

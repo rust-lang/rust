@@ -251,6 +251,8 @@ static FLAGS_NONE: c_uint = 0;
 #[deriving(Show, Hash, Eq, PartialEq, Clone)]
 struct UniqueTypeId(ast::Name);
 
+impl Copy for UniqueTypeId {}
+
 // The TypeMap is where the CrateDebugContext holds the type metadata nodes
 // created so far. The metadata nodes are indexed by UniqueTypeId, and, for
 // faster lookup, also by Ty. The TypeMap is responsible for creating
@@ -2323,6 +2325,8 @@ enum EnumDiscriminantInfo {
     NoDiscriminant
 }
 
+impl Copy for EnumDiscriminantInfo {}
+
 // Returns a tuple of (1) type_metadata_stub of the variant, (2) the llvm_type
 // of the variant, and (3) a MemberDescriptionFactory for producing the
 // descriptions of the fields of the variant. This is a rudimentary version of a
@@ -3047,6 +3051,8 @@ enum DebugLocation {
     KnownLocation { scope: DIScope, line: uint, col: uint },
     UnknownLocation
 }
+
+impl Copy for DebugLocation {}
 
 impl DebugLocation {
     fn new(scope: DIScope, line: uint, col: uint) -> DebugLocation {

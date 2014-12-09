@@ -82,6 +82,8 @@ pub enum StructType {
     Unit
 }
 
+impl Copy for StructType {}
+
 pub enum TypeBound {
     RegionBound,
     TraitBound(ast::TraitRef)

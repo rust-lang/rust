@@ -40,6 +40,8 @@ enum RegClass {
     Memory
 }
 
+impl Copy for RegClass {}
+
 trait TypeMethods {
     fn is_reg_ty(&self) -> bool;
 }

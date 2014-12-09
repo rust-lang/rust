@@ -30,6 +30,9 @@ fn main(){
 
     #[deriving(Show, PartialEq)]
     struct Foo(uint, &'static str);
+
+    impl Copy for Foo {}
+
     let x = Foo(42, "forty-two");
     let f = bar(x);
     assert_eq!(f.call_once(()), x);

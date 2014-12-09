@@ -24,6 +24,8 @@ pub enum OptimizationDiagnosticKind {
     OptimizationFailure,
 }
 
+impl Copy for OptimizationDiagnosticKind {}
+
 impl OptimizationDiagnosticKind {
     pub fn describe(self) -> &'static str {
         match self {
@@ -42,6 +44,8 @@ pub struct OptimizationDiagnostic {
     pub debug_loc: DebugLocRef,
     pub message: TwineRef,
 }
+
+impl Copy for OptimizationDiagnostic {}
 
 impl OptimizationDiagnostic {
     unsafe fn unpack(kind: OptimizationDiagnosticKind, di: DiagnosticInfoRef)
@@ -71,6 +75,8 @@ pub enum Diagnostic {
     /// LLVM has other types that we do not wrap here.
     UnknownDiagnostic(DiagnosticInfoRef),
 }
+
+impl Copy for Diagnostic {}
 
 impl Diagnostic {
     pub unsafe fn unpack(di: DiagnosticInfoRef) -> Diagnostic {

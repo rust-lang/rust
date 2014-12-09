@@ -55,6 +55,8 @@ pub struct CustomScopeIndex {
     index: uint
 }
 
+impl Copy for CustomScopeIndex {}
+
 pub const EXIT_BREAK: uint = 0;
 pub const EXIT_LOOP: uint = 1;
 pub const EXIT_MAX: uint = 2;
@@ -88,10 +90,14 @@ pub enum EarlyExitLabel {
     LoopExit(ast::NodeId, uint)
 }
 
+impl Copy for EarlyExitLabel {}
+
 pub struct CachedEarlyExit {
     label: EarlyExitLabel,
     cleanup_block: BasicBlockRef,
 }
+
+impl Copy for CachedEarlyExit {}
 
 pub trait Cleanup<'tcx> {
     fn must_unwind(&self) -> bool;
@@ -110,6 +116,8 @@ pub enum ScopeId {
     AstScope(ast::NodeId),
     CustomScope(CustomScopeIndex)
 }
+
+impl Copy for ScopeId {}
 
 impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
     /// Invoked when we start to trans the code contained within a new cleanup scope.
@@ -876,6 +884,8 @@ pub struct DropValue<'tcx> {
     zero: bool
 }
 
+impl<'tcx> Copy for DropValue<'tcx> {}
+
 impl<'tcx> Cleanup<'tcx> for DropValue<'tcx> {
     fn must_unwind(&self) -> bool {
         self.must_unwind
@@ -910,11 +920,15 @@ pub enum Heap {
     HeapExchange
 }
 
+impl Copy for Heap {}
+
 pub struct FreeValue<'tcx> {
     ptr: ValueRef,
     heap: Heap,
     content_ty: Ty<'tcx>
 }
+
+impl<'tcx> Copy for FreeValue<'tcx> {}
 
 impl<'tcx> Cleanup<'tcx> for FreeValue<'tcx> {
     fn must_unwind(&self) -> bool {
@@ -950,6 +964,8 @@ pub struct FreeSlice {
     heap: Heap,
 }
 
+impl Copy for FreeSlice {}
+
 impl<'tcx> Cleanup<'tcx> for FreeSlice {
     fn must_unwind(&self) -> bool {
         true
@@ -980,6 +996,8 @@ impl<'tcx> Cleanup<'tcx> for FreeSlice {
 pub struct LifetimeEnd {
     ptr: ValueRef,
 }
+
+impl Copy for LifetimeEnd {}
 
 impl<'tcx> Cleanup<'tcx> for LifetimeEnd {
     fn must_unwind(&self) -> bool {

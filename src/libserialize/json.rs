@@ -247,12 +247,16 @@ pub enum ErrorCode {
     NotUtf8,
 }
 
+impl Copy for ErrorCode {}
+
 #[deriving(Clone, PartialEq, Show)]
 pub enum ParserError {
     /// msg, line, col
     SyntaxError(ErrorCode, uint, uint),
     IoError(io::IoErrorKind, &'static str),
 }
+
+impl Copy for ParserError {}
 
 // Builder and Parser have the same errors.
 pub type BuilderError = ParserError;

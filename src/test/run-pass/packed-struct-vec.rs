@@ -19,6 +19,8 @@ struct Foo {
     baz: u64
 }
 
+impl Copy for Foo {}
+
 pub fn main() {
     let foos = [Foo { bar: 1, baz: 2 }, .. 10];
 

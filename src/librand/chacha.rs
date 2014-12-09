@@ -35,6 +35,8 @@ pub struct ChaChaRng {
     index:   uint,                 // Index into state
 }
 
+impl Copy for ChaChaRng {}
+
 static EMPTY: ChaChaRng = ChaChaRng {
     buffer:  [0, ..STATE_WORDS],
     state:   [0, ..STATE_WORDS],

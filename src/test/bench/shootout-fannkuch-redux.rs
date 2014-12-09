@@ -67,6 +67,8 @@ struct P {
     p: [i32, .. 16],
 }
 
+impl Copy for P {}
+
 struct Perm {
     cnt: [i32, .. 16],
     fact: [u32, .. 16],
@@ -74,6 +76,8 @@ struct Perm {
     permcount: u32,
     perm: P,
 }
+
+impl Copy for Perm {}
 
 impl Perm {
     fn new(n: u32) -> Perm {

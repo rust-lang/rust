@@ -26,6 +26,8 @@ pub enum CharacterSet {
     UrlSafe
 }
 
+impl Copy for CharacterSet {}
+
 /// Contains configuration parameters for `to_base64`.
 pub struct Config {
     /// Character set to use
@@ -35,6 +37,8 @@ pub struct Config {
     /// `Some(len)` to wrap lines at `len`, `None` to disable line wrapping
     pub line_length: Option<uint>
 }
+
+impl Copy for Config {}
 
 /// Configuration for RFC 4648 standard base64 encoding
 pub static STANDARD: Config =
@@ -167,6 +171,8 @@ pub enum FromBase64Error {
     /// The input had an invalid length
     InvalidBase64Length,
 }
+
+impl Copy for FromBase64Error {}
 
 impl fmt::Show for FromBase64Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

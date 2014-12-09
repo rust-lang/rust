@@ -225,7 +225,13 @@ struct Source<'a>(&'a str);
 // Helper structs for rendering items/sidebars and carrying along contextual
 // information
 
-struct Item<'a> { cx: &'a Context, item: &'a clean::Item, }
+struct Item<'a> {
+    cx: &'a Context,
+    item: &'a clean::Item,
+}
+
+impl<'a> Copy for Item<'a> {}
+
 struct Sidebar<'a> { cx: &'a Context, item: &'a clean::Item, }
 
 /// Struct representing one entry in the JS search index. These are all emitted

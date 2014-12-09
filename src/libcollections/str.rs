@@ -228,24 +228,32 @@ impl<'a> Iterator<char> for Decompositions<'a> {
             _ => self.sorted = false
         }
 
-        let decomposer = match self.kind {
-            Canonical => unicode::char::decompose_canonical,
-            Compatible => unicode::char::decompose_compatible
-        };
-
         if !self.sorted {
             for ch in self.iter {
                 let buffer = &mut self.buffer;
                 let sorted = &mut self.sorted;
-                decomposer(ch, |d| {
-                    let class = unicode::char::canonical_combining_class(d);
-                    if class == 0 && !*sorted {
-                        canonical_sort(buffer.as_mut_slice());
-                        *sorted = true;
+                {
+                    let callback = |d| {
+                        let class =
+                            unicode::char::canonical_combining_class(d);
+                        if class == 0 && !*sorted {
+                            canonical_sort(buffer.as_mut_slice());
+                            *sorted = true;
+                        }
+                        buffer.push((d, class));
+                    };
+                    match self.kind {
+                        Canonical => {
+                            unicode::char::decompose_canonical(ch, callback)
+                        }
+                        Compatible => {
+                            unicode::char::decompose_compatible(ch, callback)
+                        }
                     }
-                    buffer.push((d, class));
-                });
-                if *sorted { break }
+                }
+                if *sorted {
+                    break
+                }
             }
         }
 

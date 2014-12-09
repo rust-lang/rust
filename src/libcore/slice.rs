@@ -41,6 +41,7 @@ use cmp::Ordering::{Less, Equal, Greater};
 use cmp;
 use default::Default;
 use iter::*;
+use kinds::Copy;
 use num::Int;
 use ops;
 use option::Option;
@@ -1157,6 +1158,8 @@ impl<'a, T> Items<'a, T> {
     }
 }
 
+impl<'a,T> Copy for Items<'a,T> {}
+
 iterator!{struct Items -> *const T, &'a T}
 
 #[experimental = "needs review"]
@@ -1607,6 +1610,8 @@ pub enum BinarySearchResult {
     NotFound(uint)
 }
 
+impl Copy for BinarySearchResult {}
+
 #[experimental = "needs review"]
 impl BinarySearchResult {
     /// Converts a `Found` to `Some`, `NotFound` to `None`.
@@ -1920,3 +1925,4 @@ impl_int_slice!(u16,  i16)
 impl_int_slice!(u32,  i32)
 impl_int_slice!(u64,  i64)
 impl_int_slice!(uint, int)
+

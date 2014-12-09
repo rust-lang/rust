@@ -107,6 +107,8 @@ pub struct EnvValue<'tcx> {
     datum: Datum<'tcx, Lvalue>
 }
 
+impl<'tcx> Copy for EnvValue<'tcx> {}
+
 impl<'tcx> EnvValue<'tcx> {
     pub fn to_string<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> String {
         format!("{}({})", self.action, self.datum.to_string(ccx))

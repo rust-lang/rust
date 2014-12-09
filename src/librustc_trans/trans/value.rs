@@ -16,6 +16,8 @@ use libc::c_uint;
 
 pub struct Value(pub ValueRef);
 
+impl Copy for Value {}
+
 macro_rules! opt_val ( ($e:expr) => (
     unsafe {
         match $e {
@@ -123,9 +125,14 @@ impl Value {
     }
 }
 
+/// Wrapper for LLVM UseRef
 pub struct Use(UseRef);
 
-/// Wrapper for LLVM UseRef
+impl Copy for Use {}
+
+/**
+ * Wrapper for LLVM UseRef
+ */
 impl Use {
     pub fn get(&self) -> UseRef {
         let Use(v) = *self; v
@@ -148,6 +155,7 @@ impl Use {
 }
 
 /// Iterator for the users of a value
+#[allow(missing_copy_implementations)]
 pub struct Users {
     next: Option<Use>
 }
