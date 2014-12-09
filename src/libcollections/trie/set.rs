@@ -24,7 +24,7 @@ use trie_map::{TrieMap, Entries};
 
 /// A set implemented as a radix trie.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use std::collections::TrieSet;
@@ -77,7 +77,7 @@ impl Default for TrieSet {
 impl TrieSet {
     /// Creates an empty TrieSet.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TrieSet;
@@ -92,7 +92,7 @@ impl TrieSet {
     /// Visits all values in reverse order. Aborts traversal when `f` returns `false`.
     /// Returns `true` if `f` returns `true` for all elements.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TrieSet;
@@ -115,7 +115,7 @@ impl TrieSet {
 
     /// Gets an iterator over the values in the set, in sorted order.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TrieSet;
@@ -140,7 +140,7 @@ impl TrieSet {
     /// Gets an iterator pointing to the first value that is not less than `val`.
     /// If all values in the set are less than `val` an empty iterator is returned.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TrieSet;
@@ -157,7 +157,7 @@ impl TrieSet {
     /// Gets an iterator pointing to the first value that key is greater than `val`.
     /// If all values in the set are less than or equal to `val` an empty iterator is returned.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TrieSet;
@@ -173,7 +173,7 @@ impl TrieSet {
 
     /// Visits the values representing the difference, in ascending order.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TrieSet;
@@ -201,7 +201,7 @@ impl TrieSet {
 
     /// Visits the values representing the symmetric difference, in ascending order.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TrieSet;
@@ -227,7 +227,7 @@ impl TrieSet {
 
     /// Visits the values representing the intersection, in ascending order.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TrieSet;
@@ -250,7 +250,7 @@ impl TrieSet {
 
     /// Visits the values representing the union, in ascending order.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TrieSet;
@@ -273,7 +273,7 @@ impl TrieSet {
 
     /// Return the number of elements in the set
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TrieSet;
@@ -289,7 +289,7 @@ impl TrieSet {
 
     /// Returns true if the set contains no elements
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TrieSet;
@@ -304,7 +304,7 @@ impl TrieSet {
 
     /// Clears the set, removing all values.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TrieSet;
@@ -320,7 +320,7 @@ impl TrieSet {
 
     /// Returns `true` if the set contains a value.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TrieSet;
@@ -338,7 +338,7 @@ impl TrieSet {
     /// Returns `true` if the set has no elements in common with `other`.
     /// This is equivalent to checking for an empty intersection.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TrieSet;
@@ -360,7 +360,7 @@ impl TrieSet {
 
     /// Returns `true` if the set is a subset of another.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TrieSet;
@@ -382,7 +382,7 @@ impl TrieSet {
 
     /// Returns `true` if the set is a superset of another.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TrieSet;
@@ -408,7 +408,7 @@ impl TrieSet {
     /// Adds a value to the set. Returns `true` if the value was not already
     /// present in the set.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TrieSet;
@@ -428,7 +428,7 @@ impl TrieSet {
     /// Removes a value from the set. Returns `true` if the value was
     /// present in the set.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TrieSet;
@@ -466,7 +466,7 @@ impl Extend<uint> for TrieSet {
 impl BitOr<TrieSet, TrieSet> for TrieSet {
     /// Returns the union of `self` and `rhs` as a new `TrieSet`.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TrieSet;
@@ -487,7 +487,7 @@ impl BitOr<TrieSet, TrieSet> for TrieSet {
 impl BitAnd<TrieSet, TrieSet> for TrieSet {
     /// Returns the intersection of `self` and `rhs` as a new `TrieSet`.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TrieSet;
@@ -508,7 +508,7 @@ impl BitAnd<TrieSet, TrieSet> for TrieSet {
 impl BitXor<TrieSet, TrieSet> for TrieSet {
     /// Returns the symmetric difference of `self` and `rhs` as a new `TrieSet`.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TrieSet;
@@ -529,7 +529,7 @@ impl BitXor<TrieSet, TrieSet> for TrieSet {
 impl Sub<TrieSet, TrieSet> for TrieSet {
     /// Returns the difference of `self` and `rhs` as a new `TrieSet`.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TrieSet;

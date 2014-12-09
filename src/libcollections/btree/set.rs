@@ -95,7 +95,7 @@ impl<T> BTreeSet<T> {
 impl<T: Ord> BTreeSet<T> {
     /// Visits the values representing the difference, in ascending order.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BTreeSet;
@@ -118,7 +118,7 @@ impl<T: Ord> BTreeSet<T> {
 
     /// Visits the values representing the symmetric difference, in ascending order.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BTreeSet;
@@ -142,7 +142,7 @@ impl<T: Ord> BTreeSet<T> {
 
     /// Visits the values representing the intersection, in ascending order.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BTreeSet;
@@ -166,7 +166,7 @@ impl<T: Ord> BTreeSet<T> {
 
     /// Visits the values representing the union, in ascending order.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BTreeSet;
@@ -187,7 +187,7 @@ impl<T: Ord> BTreeSet<T> {
 
     /// Return the number of elements in the set
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BTreeSet;
@@ -202,7 +202,7 @@ impl<T: Ord> BTreeSet<T> {
 
     /// Returns true if the set contains no elements
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BTreeSet;
@@ -217,7 +217,7 @@ impl<T: Ord> BTreeSet<T> {
 
     /// Clears the set, removing all values.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BTreeSet;
@@ -238,7 +238,7 @@ impl<T: Ord> BTreeSet<T> {
     /// but the ordering on the borrowed form *must* match the
     /// ordering on the value type.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BTreeSet;
@@ -255,7 +255,7 @@ impl<T: Ord> BTreeSet<T> {
     /// Returns `true` if the set has no elements in common with `other`.
     /// This is equivalent to checking for an empty intersection.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BTreeSet;
@@ -276,7 +276,7 @@ impl<T: Ord> BTreeSet<T> {
 
     /// Returns `true` if the set is a subset of another.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BTreeSet;
@@ -318,7 +318,7 @@ impl<T: Ord> BTreeSet<T> {
 
     /// Returns `true` if the set is a superset of another.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BTreeSet;
@@ -343,7 +343,7 @@ impl<T: Ord> BTreeSet<T> {
     /// Adds a value to the set. Returns `true` if the value was not already
     /// present in the set.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BTreeSet;
@@ -366,7 +366,7 @@ impl<T: Ord> BTreeSet<T> {
     /// but the ordering on the borrowed form *must* match the
     /// ordering on the value type.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BTreeSet;
