@@ -26,6 +26,7 @@ use option::Option::{Some, None};
 use ptr::{RawPtr, copy_nonoverlapping_memory, zero_memory};
 use ptr;
 use rt::heap::{allocate, deallocate};
+use collections::hash_state::HashState;
 
 const EMPTY_BUCKET: u64 = 0u64;
 
@@ -138,8 +139,12 @@ impl SafeHash {
 /// We need to remove hashes of 0. That's reserved for empty buckets.
 /// This function wraps up `hash_keyed` to be the only way outside this
 /// module to generate a SafeHash.
-pub fn make_hash<Sized? T: Hash<S>, S, H: Hasher<S>>(hasher: &H, t: &T) -> SafeHash {
-    match hasher.hash(t) {
+pub fn make_hash<Sized? T, H, S>(hash_state: &S, t: &T) -> SafeHash
+    where T: Hash<H>, H: Hasher<u64>, S: HashState<u64, H>
+{
+    let mut state = hash_state.hasher();
+    t.hash(&mut state);
+    match state.finish() {
         // This constant is exceedingly likely to hash to the same
         // bucket, but it won't be counted as empty! Just so we can maintain
         // our precious uniform distribution of initial indexes.
