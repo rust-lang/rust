@@ -160,6 +160,21 @@ impl<'a, 'v> Visitor<'v> for PluginLoader<'a> {
             }
         }
 
+        self.load_plugin(CrateOrString::Krate(vi), plugin_attr, macro_selection, reexport)
+    }
+
+    fn visit_mac(&mut self, _: &ast::Mac) {
+        // bummer... can't see plugins inside macros.
+        // do nothing.
+    }
+}
+
+impl<'a> PluginLoader<'a> {
+    pub fn load_plugin<'b>(&mut self,
+                           c: CrateOrString<'b>,
+                           plugin_attr: Option<P<ast::MetaItem>>,
+                           macro_selection: Option<HashSet<token::InternedString>>,
+                           reexport: HashSet<token::InternedString>) {
         let mut macros = vec![];
         let mut registrar = None;
 
@@ -169,13 +184,15 @@ impl<'a, 'v> Visitor<'v> for PluginLoader<'a> {
         };
         let load_registrar = plugin_attr.is_some();
 
-        if load_macros && !self.span_whitelist.contains(&vi.span) {
-            self.sess.span_err(vi.span, "an `extern crate` loading macros must be at \
-                                         the crate root");
-        }
+        if let CrateOrString::Krate(vi) = c {
+            if load_macros && !self.span_whitelist.contains(&vi.span) {
+                self.sess.span_err(vi.span, "an `extern crate` loading macros must be at \
+                                             the crate root");
+            }
+       }
 
         if load_macros || load_registrar {
-            let pmd = self.reader.read_plugin_metadata(CrateOrString::Krate(vi));
+            let pmd = self.reader.read_plugin_metadata(c);
             if load_macros {
                 macros = pmd.exported_macros();
             }
@@ -195,7 +212,7 @@ impl<'a, 'v> Visitor<'v> for PluginLoader<'a> {
         }
 
         if let Some((lib, symbol)) = registrar {
-            let fun = self.dylink_registrar(vi, lib, symbol);
+            let fun = self.dylink_registrar(c, lib, symbol);
             self.plugins.registrars.push(PluginRegistrar {
                 fun: fun,
                 args: plugin_attr.unwrap(),
@@ -203,16 +220,9 @@ impl<'a, 'v> Visitor<'v> for PluginLoader<'a> {
         }
     }
 
-    fn visit_mac(&mut self, _: &ast::Mac) {
-        // bummer... can't see plugins inside macros.
-        // do nothing.
-    }
-}
-
-impl<'a> PluginLoader<'a> {
     // Dynamically link a registrar function into the compiler process.
-    fn dylink_registrar(&mut self,
-                        vi: &ast::ViewItem,
+    fn dylink_registrar<'b>(&mut self,
+                        c: CrateOrString<'b>,
                         path: Path,
                         symbol: String) -> PluginRegistrarFun {
         // Make sure the path contains a / or the linker will search for it.
@@ -223,7 +233,13 @@ impl<'a> PluginLoader<'a> {
             // this is fatal: there are almost certainly macros we need
             // inside this crate, so continue would spew "macro undefined"
             // errors
-            Err(err) => self.sess.span_fatal(vi.span, &err[])
+            Err(err) => {
+                if let CrateOrString::Krate(cr) = c {
+                    self.sess.span_fatal(cr.span, &err[])
+                } else {
+                    self.sess.fatal(&err[])
+                }
+            }
         };
 
         unsafe {
@@ -233,7 +249,13 @@ impl<'a> PluginLoader<'a> {
                         mem::transmute::<*mut u8,PluginRegistrarFun>(registrar)
                     }
                     // again fatal if we can't register macros
-                    Err(err) => self.sess.span_fatal(vi.span, &err[])
+                    Err(err) => {
+                        if let CrateOrString::Krate(cr) = c {
+                            self.sess.span_fatal(cr.span, &err[])
+                        } else {
+                            self.sess.fatal(&err[])
+                        }
+                    }
                 };
 
             // Intentionally leak the dynamic library. We can't ever unload it
