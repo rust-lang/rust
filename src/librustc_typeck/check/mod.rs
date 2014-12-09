@@ -1885,9 +1885,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.inh.item_substs.borrow()
     }
 
-    pub fn opt_node_ty_substs(&self,
-                              id: ast::NodeId,
-                              f: |&ty::ItemSubsts<'tcx>|) {
+    pub fn opt_node_ty_substs<F>(&self,
+                                 id: ast::NodeId,
+                                 f: F) where
+        F: FnOnce(&ty::ItemSubsts<'tcx>),
+    {
         match self.inh.item_substs.borrow().get(&id) {
             Some(s) => { f(s) }
             None => { }
@@ -2027,12 +2029,14 @@ impl Copy for LvaluePreference {}
 ///
 /// Note: this method does not modify the adjustments table. The caller is responsible for
 /// inserting an AutoAdjustment record into the `fcx` using one of the suitable methods.
-pub fn autoderef<'a, 'tcx, T>(fcx: &FnCtxt<'a, 'tcx>, sp: Span,
-                              base_ty: Ty<'tcx>,
-                              expr_id: Option<ast::NodeId>,
-                              mut lvalue_pref: LvaluePreference,
-                              should_stop: |Ty<'tcx>, uint| -> Option<T>)
-                              -> (Ty<'tcx>, uint, Option<T>) {
+pub fn autoderef<'a, 'tcx, T, F>(fcx: &FnCtxt<'a, 'tcx>, sp: Span,
+                                 base_ty: Ty<'tcx>,
+                                 expr_id: Option<ast::NodeId>,
+                                 mut lvalue_pref: LvaluePreference,
+                                 mut should_stop: F)
+                                 -> (Ty<'tcx>, uint, Option<T>) where
+    F: FnMut(Ty<'tcx>, uint) -> Option<T>,
+{
     let mut t = base_ty;
     for autoderefs in range(0, fcx.tcx().sess.recursion_limit.get()) {
         let resolved_t = structurally_resolved_type(fcx, sp, t);
@@ -2194,12 +2198,13 @@ fn make_overloaded_lvalue_return_type<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     }
 }
 
-fn autoderef_for_index<'a, 'tcx, T>(fcx: &FnCtxt<'a, 'tcx>,
-                                    base_expr: &ast::Expr,
-                                    base_ty: Ty<'tcx>,
-                                    lvalue_pref: LvaluePreference,
-                                    step: |Ty<'tcx>, ty::AutoDerefRef<'tcx>| -> Option<T>)
-                                    -> Option<T>
+fn autoderef_for_index<'a, 'tcx, T, F>(fcx: &FnCtxt<'a, 'tcx>,
+                                       base_expr: &ast::Expr,
+                                       base_ty: Ty<'tcx>,
+                                       lvalue_pref: LvaluePreference,
+                                       mut step: F)
+                                       -> Option<T> where
+    F: FnMut(Ty<'tcx>, ty::AutoDerefRef<'tcx>) -> Option<T>,
 {
     // FIXME(#18741) -- this is almost but not quite the same as the
     // autoderef that normal method probing does. They could likely be
@@ -2938,11 +2943,12 @@ enum TupleArgumentsFlag {
 /// Note that inspecting a type's structure *directly* may expose the fact
 /// that there are actually multiple representations for `ty_err`, so avoid
 /// that when err needs to be handled differently.
-fn check_expr_with_unifier<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
-                                     expr: &ast::Expr,
-                                     expected: Expectation<'tcx>,
-                                     lvalue_pref: LvaluePreference,
-                                     unifier: ||)
+fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
+                                        expr: &ast::Expr,
+                                        expected: Expectation<'tcx>,
+                                        lvalue_pref: LvaluePreference,
+                                        unifier: F) where
+    F: FnOnce(),
 {
     debug!(">> typechecking: expr={} expected={}",
            expr.repr(fcx.tcx()), expected.repr(fcx.tcx()));
@@ -3117,14 +3123,16 @@ fn check_expr_with_unifier<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         fcx.write_ty(id, if_ty);
     }
 
-    fn lookup_op_method<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
-                                  op_ex: &ast::Expr,
-                                  lhs_ty: Ty<'tcx>,
-                                  opname: ast::Name,
-                                  trait_did: Option<ast::DefId>,
-                                  lhs: &'a ast::Expr,
-                                  rhs: Option<&P<ast::Expr>>,
-                                  unbound_method: ||) -> Ty<'tcx> {
+    fn lookup_op_method<'a, 'tcx, F>(fcx: &'a FnCtxt<'a, 'tcx>,
+                                     op_ex: &ast::Expr,
+                                     lhs_ty: Ty<'tcx>,
+                                     opname: ast::Name,
+                                     trait_did: Option<ast::DefId>,
+                                     lhs: &'a ast::Expr,
+                                     rhs: Option<&P<ast::Expr>>,
+                                     unbound_method: F) -> Ty<'tcx> where
+        F: FnOnce(),
+    {
         let method = match trait_did {
             Some(trait_did) => {
                 // We do eager coercions to make using operators
@@ -4376,19 +4384,17 @@ impl<'tcx> Expectation<'tcx> {
         }
     }
 
-    fn map<'a>(self, fcx: &FnCtxt<'a, 'tcx>,
-               unpack: |&ty::sty<'tcx>| -> Expectation<'tcx>)
-               -> Expectation<'tcx> {
+    fn map<'a, F>(self, fcx: &FnCtxt<'a, 'tcx>, unpack: F) -> Expectation<'tcx> where
+        F: FnOnce(&ty::sty<'tcx>) -> Expectation<'tcx>
+    {
         match self.resolve(fcx) {
             NoExpectation => NoExpectation,
             ExpectCastableToType(t) | ExpectHasType(t) => unpack(&t.sty),
         }
     }
 
-    fn map_to_option<'a, O>(self,
-                            fcx: &FnCtxt<'a, 'tcx>,
-                            unpack: |&ty::sty<'tcx>| -> Option<O>)
-                            -> Option<O>
+    fn map_to_option<'a, O, F>(self, fcx: &FnCtxt<'a, 'tcx>, unpack: F) -> Option<O> where
+        F: FnOnce(&ty::sty<'tcx>) -> Option<O>,
     {
         match self.resolve(fcx) {
             NoExpectation => None,
