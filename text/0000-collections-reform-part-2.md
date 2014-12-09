@@ -188,7 +188,7 @@ Based on feedback and collections reform landing, this RFC proposes the followin
 
 ```
 impl Map<K, V> {
-    fn entry<O: ToOwned<K>>(&'a mut self, key: &O) -> Entry<'a, O, V>
+    fn entry<'a, O: ToOwned<K>>(&'a mut self, key: &O) -> Entry<'a, O, V>
 }
 
 pub enum Entry<'a, O: 'a, V: 'a> {
