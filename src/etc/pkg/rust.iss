@@ -23,7 +23,7 @@ DisableStartupPrompt=true
 OutputDir=.\dist\
 SourceDir=.\
 OutputBaseFilename={#CFG_PACKAGE_NAME}-{#CFG_BUILD}
-DefaultDirName={pf32}\Rust
+DefaultDirName={sd}\Rust
 
 Compression=lzma2/ultra
 InternalCompressLevel=ultra
@@ -49,7 +49,7 @@ Source: "tmp/dist/win/gcc/*.*"; DestDir: "{app}"; Flags: ignoreversion recursesu
 [Code]
 const
 	ModPathName = 'modifypath';
-	ModPathType = 'system';
+	ModPathType = 'user';
 
 function ModPathDir(): TArrayOfString;
 begin
