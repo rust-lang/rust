@@ -532,7 +532,7 @@ mod tests {
         assert_eq!(r.read_to_string().unwrap(), "hello!\n");
     }
 
-    #[test]
+    //#[test]
     fn capture_stderr() {
         use realstd::comm::channel;
         use realstd::io::{ChanReader, ChanWriter, Reader};
