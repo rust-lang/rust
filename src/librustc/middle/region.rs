@@ -426,7 +426,7 @@ impl RegionMaps {
 
         fn ancestors_of(this: &RegionMaps, scope: CodeExtent)
             -> Vec<CodeExtent> {
-            // debug!("ancestors_of(scope={})", scope);
+            debug!("ancestors_of(scope={})", scope);
             let mut result = vec!(scope);
             let mut scope = scope;
             loop {
@@ -437,7 +437,7 @@ impl RegionMaps {
                         scope = superscope;
                     }
                 }
-                // debug!("ancestors_of_loop(scope={})", scope);
+                debug!("ancestors_of_loop(scope={})", scope);
             }
         }
     }
@@ -475,6 +475,7 @@ fn record_superlifetime(visitor: &mut RegionResolutionVisitor,
 fn record_var_lifetime(visitor: &mut RegionResolutionVisitor,
                        var_id: ast::NodeId,
                        _sp: Span) {
+    debug!("record_var_lifetime var_id: {}", var_id);
     match visitor.cx.var_parent {
         InnermostDeclaringBlock::Some(parent_id) => {
             let parent_scope = CodeExtent::from_node_id(parent_id);
