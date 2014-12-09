@@ -28,12 +28,14 @@ pub fn suptype<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>, sp: Span,
         |sp, e, a, s| { fcx.report_mismatched_types(sp, e, a, s) })
 }
 
-pub fn suptype_with_fn<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
-                                 sp: Span,
-                                 b_is_expected: bool,
-                                 ty_a: Ty<'tcx>,
-                                 ty_b: Ty<'tcx>,
-                                 handle_err: |Span, Ty<'tcx>, Ty<'tcx>, &ty::type_err<'tcx>|) {
+pub fn suptype_with_fn<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
+                                    sp: Span,
+                                    b_is_expected: bool,
+                                    ty_a: Ty<'tcx>,
+                                    ty_b: Ty<'tcx>,
+                                    handle_err: F) where
+    F: FnOnce(Span, Ty<'tcx>, Ty<'tcx>, &ty::type_err<'tcx>),
+{
     // n.b.: order of actual, expected is reversed
     match infer::mk_subty(fcx.infcx(), b_is_expected, infer::Misc(sp),
                           ty_b, ty_a) {
