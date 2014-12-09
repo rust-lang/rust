@@ -150,6 +150,7 @@ pub use core::clone;
 #[cfg(not(test))] pub use core::cmp;
 pub use core::default;
 pub use core::finally;
+pub use core::hash;
 pub use core::intrinsics;
 pub use core::iter;
 #[cfg(stage0)] #[cfg(not(test))] pub use core::marker as kinds;
@@ -242,7 +243,6 @@ pub mod time;
 /* Common data structures */
 
 pub mod collections;
-pub mod hash;
 
 /* Threads and communication */
 
@@ -274,6 +274,7 @@ mod std {
     pub use clone;
     pub use cmp;
     pub use hash;
+    pub use default;
 
     pub use sync; // used for select!()
     pub use error; // used for try!()

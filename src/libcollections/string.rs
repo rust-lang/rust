@@ -820,7 +820,16 @@ impl fmt::Show for String {
 }
 
 #[experimental = "waiting on Hash stabilization"]
+#[cfg(stage0)]
 impl<H: hash::Writer> hash::Hash<H> for String {
+    #[inline]
+    fn hash(&self, hasher: &mut H) {
+        (**self).hash(hasher)
+    }
+}
+#[experimental = "waiting on Hash stabilization"]
+#[cfg(not(stage0))]
+impl<H: hash::Writer + hash::Hasher> hash::Hash<H> for String {
     #[inline]
     fn hash(&self, hasher: &mut H) {
         (**self).hash(hasher)

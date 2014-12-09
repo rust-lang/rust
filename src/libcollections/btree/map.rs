@@ -23,7 +23,9 @@ use core::borrow::BorrowFrom;
 use core::cmp::Ordering;
 use core::default::Default;
 use core::fmt::Show;
-use core::hash::{Writer, Hash};
+use core::hash::{Hash, Hasher};
+#[cfg(stage0)]
+use core::hash::Writer;
 use core::iter::{Map, FromIterator};
 use core::ops::{Index, IndexMut};
 use core::{iter, fmt, mem};
@@ -820,7 +822,17 @@ impl<K: Ord, V> Extend<(K, V)> for BTreeMap<K, V> {
 }
 
 #[stable]
+#[cfg(stage0)]
 impl<S: Writer, K: Hash<S>, V: Hash<S>> Hash<S> for BTreeMap<K, V> {
+    fn hash(&self, state: &mut S) {
+        for elt in self.iter() {
+            elt.hash(state);
+        }
+    }
+}
+#[stable]
+#[cfg(not(stage0))]
+impl<S: Hasher, K: Hash<S>, V: Hash<S>> Hash<S> for BTreeMap<K, V> {
     fn hash(&self, state: &mut S) {
         for elt in self.iter() {
             elt.hash(state);

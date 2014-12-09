@@ -72,7 +72,7 @@ use std::borrow::BorrowFrom;
 use std::cell::{Cell, RefCell};
 use std::cmp::{self, Ordering};
 use std::fmt::{self, Show};
-use std::hash::{Hash, sip, Writer};
+use std::hash::{Hash, Writer, SipHasher, Hasher};
 use std::mem;
 use std::ops;
 use std::rc::Rc;
@@ -946,7 +946,14 @@ impl<'tcx> PartialEq for TyS<'tcx> {
 }
 impl<'tcx> Eq for TyS<'tcx> {}
 
+#[cfg(stage0)]
 impl<'tcx, S: Writer> Hash<S> for TyS<'tcx> {
+    fn hash(&self, s: &mut S) {
+        (self as *const _).hash(s)
+    }
+}
+#[cfg(not(stage0))]
+impl<'tcx, S: Writer + Hasher> Hash<S> for TyS<'tcx> {
     fn hash(&self, s: &mut S) {
         (self as *const _).hash(s)
     }
@@ -968,7 +975,7 @@ impl<'tcx> PartialEq for InternedTy<'tcx> {
 
 impl<'tcx> Eq for InternedTy<'tcx> {}
 
-impl<'tcx, S: Writer> Hash<S> for InternedTy<'tcx> {
+impl<'tcx, S: Writer + Hasher> Hash<S> for InternedTy<'tcx> {
     fn hash(&self, s: &mut S) {
         self.ty.sty.hash(s)
     }
@@ -6164,15 +6171,16 @@ pub fn trait_item_of_item(tcx: &ctxt, def_id: ast::DefId)
 /// Creates a hash of the type `Ty` which will be the same no matter what crate
 /// context it's calculated within. This is used by the `type_id` intrinsic.
 pub fn hash_crate_independent<'tcx>(tcx: &ctxt<'tcx>, ty: Ty<'tcx>, svh: &Svh) -> u64 {
-    let mut state = sip::SipState::new();
+    let mut state = SipHasher::new();
     helper(tcx, ty, svh, &mut state);
-    return state.result();
+    return state.finish();
 
-    fn helper<'tcx>(tcx: &ctxt<'tcx>, ty: Ty<'tcx>, svh: &Svh, state: &mut sip::SipState) {
+    fn helper<'tcx>(tcx: &ctxt<'tcx>, ty: Ty<'tcx>, svh: &Svh,
+                    state: &mut SipHasher) {
         macro_rules! byte { ($b:expr) => { ($b as u8).hash(state) } }
         macro_rules! hash { ($e:expr) => { $e.hash(state) }  }
 
-        let region = |&: state: &mut sip::SipState, r: Region| {
+        let region = |&: state: &mut SipHasher, r: Region| {
             match r {
                 ReStatic => {}
                 ReLateBound(db, BrAnon(i)) => {
@@ -6189,7 +6197,7 @@ pub fn hash_crate_independent<'tcx>(tcx: &ctxt<'tcx>, ty: Ty<'tcx>, svh: &Svh) -
                 }
             }
         };
-        let did = |&: state: &mut sip::SipState, did: DefId| {
+        let did = |&: state: &mut SipHasher, did: DefId| {
             let h = if ast_util::is_local(did) {
                 svh.clone()
             } else {
@@ -6198,10 +6206,10 @@ pub fn hash_crate_independent<'tcx>(tcx: &ctxt<'tcx>, ty: Ty<'tcx>, svh: &Svh) -
             h.as_str().hash(state);
             did.node.hash(state);
         };
-        let mt = |&: state: &mut sip::SipState, mt: mt| {
+        let mt = |&: state: &mut SipHasher, mt: mt| {
             mt.mutbl.hash(state);
         };
-        let fn_sig = |&: state: &mut sip::SipState, sig: &Binder<FnSig<'tcx>>| {
+        let fn_sig = |&: state: &mut SipHasher, sig: &Binder<FnSig<'tcx>>| {
             let sig = anonymize_late_bound_regions(tcx, sig).0;
             for a in sig.inputs.iter() { helper(tcx, *a, svh, state); }
             if let ty::FnConverging(output) = sig.output {
