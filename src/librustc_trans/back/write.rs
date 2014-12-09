@@ -715,7 +715,7 @@ pub fn run_passes(sess: &Session,
 
         cmd.args(&sess.target.target.options.post_link_args[]);
 
-        if (sess.opts.debugging_opts & config::PRINT_LINK_ARGS) != 0 {
+        if sess.opts.debugging_opts.print_link_args {
             println!("{}", &cmd);
         }
 

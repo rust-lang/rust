@@ -23,7 +23,7 @@ use rustc::middle::ty;
 use rustc::middle::cfg;
 use rustc::middle::cfg::graphviz::LabelledCFG;
 use rustc::session::Session;
-use rustc::session::config::{self, Input};
+use rustc::session::config::Input;
 use rustc::util::ppaux;
 use rustc_borrowck as borrowck;
 use rustc_borrowck::graphviz as borrowck_dot;
@@ -305,19 +305,18 @@ impl<'tcx> pprust::PpAnn for TypedAnnotation<'tcx> {
 }
 
 fn gather_flowgraph_variants(sess: &Session) -> Vec<borrowck_dot::Variant> {
-    let print_loans   = config::FLOWGRAPH_PRINT_LOANS;
-    let print_moves   = config::FLOWGRAPH_PRINT_MOVES;
-    let print_assigns = config::FLOWGRAPH_PRINT_ASSIGNS;
-    let print_all     = config::FLOWGRAPH_PRINT_ALL;
-    let opt = |&: print_which| sess.debugging_opt(print_which);
+    let print_loans = sess.opts.debugging_opts.flowgraph_print_loans;
+    let print_moves = sess.opts.debugging_opts.flowgraph_print_moves;
+    let print_assigns = sess.opts.debugging_opts.flowgraph_print_assigns;
+    let print_all = sess.opts.debugging_opts.flowgraph_print_all;
     let mut variants = Vec::new();
-    if opt(print_all) || opt(print_loans) {
+    if print_all || print_loans {
         variants.push(borrowck_dot::Loans);
     }
-    if opt(print_all) || opt(print_moves) {
+    if print_all || print_moves {
         variants.push(borrowck_dot::Moves);
     }
-    if opt(print_all) || opt(print_assigns) {
+    if print_all || print_assigns {
         variants.push(borrowck_dot::Assigns);
     }
     variants
