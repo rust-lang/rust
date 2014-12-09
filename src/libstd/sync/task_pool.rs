@@ -113,7 +113,7 @@ fn spawn_in_pool(jobs: Arc<Mutex<Receiver<Thunk>>>) {
             let message = {
                 // Only lock jobs for the time it takes
                 // to get a job, not run it.
-                let lock = jobs.lock();
+                let lock = jobs.lock().unwrap();
                 lock.recv_opt()
             };
 

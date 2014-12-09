@@ -334,6 +334,7 @@ impl Thread {
     }
 
     /// Determines whether the current thread is panicking.
+    #[inline]
     pub fn panicking() -> bool {
         unwind::panicking()
     }
@@ -349,9 +350,9 @@ impl Thread {
     // or futuxes, and in either case may allow spurious wakeups.
     pub fn park() {
         let thread = Thread::current();
-        let mut guard = thread.inner.lock.lock();
+        let mut guard = thread.inner.lock.lock().unwrap();
         while !*guard {
-            thread.inner.cvar.wait(&guard);
+            guard = thread.inner.cvar.wait(guard).unwrap();
         }
         *guard = false;
     }
@@ -360,7 +361,7 @@ impl Thread {
     ///
     /// See the module doc for more detail.
     pub fn unpark(&self) {
-        let mut guard = self.inner.lock.lock();
+        let mut guard = self.inner.lock.lock().unwrap();
         if !*guard {
             *guard = true;
             self.inner.cvar.notify_one();
