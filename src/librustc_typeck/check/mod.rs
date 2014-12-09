@@ -301,6 +301,13 @@ impl<'a, 'tcx> mc::Typer<'tcx> for FnCtxt<'a, 'tcx> {
                            .map(|method| method.ty)
                            .map(|ty| self.infcx().resolve_type_vars_if_possible(&ty))
     }
+    fn node_method_origin(&self, method_call: ty::MethodCall)
+                          -> Option<ty::MethodOrigin<'tcx>>
+    {
+        self.inh.method_map.borrow()
+                           .get(&method_call)
+                           .map(|method| method.origin.clone())
+    }
     fn adjustments(&self) -> &RefCell<NodeMap<ty::AutoAdjustment<'tcx>>> {
         &self.inh.adjustments
     }
