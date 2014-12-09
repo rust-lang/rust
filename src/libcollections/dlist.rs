@@ -10,7 +10,8 @@
 
 //! A doubly-linked list with owned nodes.
 //!
-//! The `DList` allows pushing and popping elements at either end.
+//! The `DList` allows pushing and popping elements at either end and is thus
+//! efficiently usable as a double-ended queue.
 
 // DList is constructed like a singly-linked list over the field `next`.
 // including the last link being None; each Node owns its `next` field.

@@ -34,7 +34,7 @@ static MINIMUM_CAPACITY: uint = 2u;
 // FIXME(conventions): implement shrink_to_fit. Awkward with the current design, but it should
 // be scrapped anyway. Defer to rewrite?
 
-/// `RingBuf` is a circular buffer.
+/// `RingBuf` is a circular buffer, which can be used as a double-ended queue efficiently.
 pub struct RingBuf<T> {
     // tail and head are pointers into the buffer. Tail always points
     // to the first element that could be read, Head always points
