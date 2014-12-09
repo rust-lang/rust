@@ -129,7 +129,7 @@ pub struct Function {
     pub name: Ident,
     pub vis: ast::Visibility,
     pub stab: Option<attr::Stability>,
-    pub fn_style: ast::FnStyle,
+    pub unsafety: ast::Unsafety,
     pub whence: Span,
     pub generics: ast::Generics,
 }

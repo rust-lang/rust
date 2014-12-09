@@ -115,7 +115,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
         // Create the final `MethodCallee`.
         let fty = ty::mk_bare_fn(self.tcx(), ty::BareFnTy {
             sig: method_sig,
-            fn_style: pick.method_ty.fty.fn_style,
+            unsafety: pick.method_ty.fty.unsafety,
             abi: pick.method_ty.fty.abi.clone(),
         });
         let callee = MethodCallee {

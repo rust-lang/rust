@@ -51,7 +51,7 @@ use middle::ty_fold;
 use middle::ty_fold::{TypeFoldable};
 use util::ppaux::Repr;
 
-use syntax::ast::{Onceness, FnStyle};
+use syntax::ast::{Onceness, Unsafety};
 use syntax::ast;
 use syntax::abi;
 use syntax::codemap::Span;
@@ -193,12 +193,12 @@ pub trait Combine<'tcx> {
 
     fn bare_fn_tys(&self, a: &ty::BareFnTy<'tcx>,
                    b: &ty::BareFnTy<'tcx>) -> cres<'tcx, ty::BareFnTy<'tcx>> {
-        let fn_style = try!(self.fn_styles(a.fn_style, b.fn_style));
+        let unsafety = try!(self.unsafeties(a.unsafety, b.unsafety));
         let abi = try!(self.abi(a.abi, b.abi));
         let sig = try!(self.fn_sigs(&a.sig, &b.sig));
-        Ok(ty::BareFnTy {fn_style: fn_style,
-                abi: abi,
-                sig: sig})
+        Ok(ty::BareFnTy {unsafety: unsafety,
+                         abi: abi,
+                         sig: sig})
     }
 
     fn closure_tys(&self, a: &ty::ClosureTy<'tcx>,
@@ -219,13 +219,13 @@ pub trait Combine<'tcx> {
                 return Err(ty::terr_sigil_mismatch(expected_found(self, a.store, b.store)))
             }
         };
-        let fn_style = try!(self.fn_styles(a.fn_style, b.fn_style));
+        let unsafety = try!(self.unsafeties(a.unsafety, b.unsafety));
         let onceness = try!(self.oncenesses(a.onceness, b.onceness));
         let bounds = try!(self.existential_bounds(a.bounds, b.bounds));
         let sig = try!(self.fn_sigs(&a.sig, &b.sig));
         let abi = try!(self.abi(a.abi, b.abi));
         Ok(ty::ClosureTy {
-            fn_style: fn_style,
+            unsafety: unsafety,
             onceness: onceness,
             store: store,
             bounds: bounds,
@@ -240,7 +240,7 @@ pub trait Combine<'tcx> {
         self.contratys(a, b).and_then(|t| Ok(t))
     }
 
-    fn fn_styles(&self, a: FnStyle, b: FnStyle) -> cres<'tcx, FnStyle>;
+    fn unsafeties(&self, a: Unsafety, b: Unsafety) -> cres<'tcx, Unsafety>;
 
     fn abi(&self, a: abi::Abi, b: abi::Abi) -> cres<'tcx, abi::Abi> {
         if a == b {

@@ -226,7 +226,7 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
                 _ => ()
             }
             let se_ty = ty::mk_bare_fn(tcx, ty::BareFnTy {
-                fn_style: ast::NormalFn,
+                unsafety: ast::Unsafety::Normal,
                 abi: abi::Rust,
                 sig: ty::FnSig {
                     inputs: Vec::new(),
@@ -274,7 +274,7 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
             }
 
             let se_ty = ty::mk_bare_fn(tcx, ty::BareFnTy {
-                fn_style: ast::NormalFn,
+                unsafety: ast::Unsafety::Normal,
                 abi: abi::Rust,
                 sig: ty::FnSig {
                     inputs: vec!(

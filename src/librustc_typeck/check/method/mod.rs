@@ -205,7 +205,7 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
     let transformed_self_ty = fn_sig.inputs[0];
     let fty = ty::mk_bare_fn(tcx, ty::BareFnTy {
         sig: fn_sig,
-        fn_style: bare_fn_ty.fn_style,
+        unsafety: bare_fn_ty.unsafety,
         abi: bare_fn_ty.abi.clone(),
     });
 

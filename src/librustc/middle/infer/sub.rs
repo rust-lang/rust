@@ -23,7 +23,7 @@ use middle::ty::{mod, Ty};
 use middle::ty::TyVar;
 use util::ppaux::{Repr};
 
-use syntax::ast::{Onceness, FnStyle, MutImmutable, MutMutable};
+use syntax::ast::{Onceness, MutImmutable, MutMutable, Unsafety};
 
 
 /// "Greatest lower bound" (common subtype)
@@ -93,9 +93,9 @@ impl<'f, 'tcx> Combine<'tcx> for Sub<'f, 'tcx> {
         Ok(*a) // return is meaningless in sub, just return *a
     }
 
-    fn fn_styles(&self, a: FnStyle, b: FnStyle) -> cres<'tcx, FnStyle> {
-        self.lub().fn_styles(a, b).compare(b, || {
-            ty::terr_fn_style_mismatch(expected_found(self, a, b))
+    fn unsafeties(&self, a: Unsafety, b: Unsafety) -> cres<'tcx, Unsafety> {
+        self.lub().unsafeties(a, b).compare(b, || {
+            ty::terr_unsafety_mismatch(expected_found(self, a, b))
         })
     }
 

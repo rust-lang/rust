@@ -363,11 +363,11 @@ pub fn ident_to_string(id: &ast::Ident) -> String {
     $to_string(|s| s.print_ident(*id))
 }
 
-pub fn fun_to_string(decl: &ast::FnDecl, fn_style: ast::FnStyle, name: ast::Ident,
+pub fn fun_to_string(decl: &ast::FnDecl, unsafety: ast::Unsafety, name: ast::Ident,
                   opt_explicit_self: Option<&ast::ExplicitSelf_>,
                   generics: &ast::Generics) -> String {
     $to_string(|s| {
-        try!(s.print_fn(decl, Some(fn_style), abi::Rust,
+        try!(s.print_fn(decl, Some(unsafety), abi::Rust,
                         name, generics, opt_explicit_self, ast::Inherited));
         try!(s.end()); // Close the head box
         s.end() // Close the outer box
@@ -707,7 +707,7 @@ impl<'a> State<'a> {
                 };
                 try!(self.print_ty_fn(Some(f.abi),
                                       None,
-                                      f.fn_style,
+                                      f.unsafety,
                                       ast::Many,
                                       &*f.decl,
                                       None,
@@ -726,7 +726,7 @@ impl<'a> State<'a> {
                 };
                 try!(self.print_ty_fn(None,
                                       Some('&'),
-                                      f.fn_style,
+                                      f.unsafety,
                                       f.onceness,
                                       &*f.decl,
                                       None,
@@ -858,10 +858,10 @@ impl<'a> State<'a> {
                 try!(word(&mut self.s, ";"));
                 try!(self.end()); // end the outer cbox
             }
-            ast::ItemFn(ref decl, fn_style, abi, ref typarams, ref body) => {
+            ast::ItemFn(ref decl, unsafety, abi, ref typarams, ref body) => {
                 try!(self.print_fn(
                     &**decl,
-                    Some(fn_style),
+                    Some(unsafety),
                     abi,
                     item.ident,
                     typarams,
@@ -1188,7 +1188,7 @@ impl<'a> State<'a> {
         try!(self.print_outer_attributes(m.attrs.as_slice()));
         try!(self.print_ty_fn(None,
                               None,
-                              m.fn_style,
+                              m.unsafety,
                               ast::Many,
                               &*m.decl,
                               Some(m.ident),
@@ -1223,12 +1223,12 @@ impl<'a> State<'a> {
                           ref generics,
                           abi,
                           ref explicit_self,
-                          fn_style,
+                          unsafety,
                           ref decl,
                           ref body,
                           vis) => {
                 try!(self.print_fn(&**decl,
-                                   Some(fn_style),
+                                   Some(unsafety),
                                    abi,
                                    ident,
                                    generics,
@@ -2164,14 +2164,14 @@ impl<'a> State<'a> {
 
     pub fn print_fn(&mut self,
                     decl: &ast::FnDecl,
-                    fn_style: Option<ast::FnStyle>,
+                    unsafety: Option<ast::Unsafety>,
                     abi: abi::Abi,
                     name: ast::Ident,
                     generics: &ast::Generics,
                     opt_explicit_self: Option<&ast::ExplicitSelf_>,
                     vis: ast::Visibility) -> IoResult<()> {
         try!(self.head(""));
-        try!(self.print_fn_header_info(opt_explicit_self, fn_style, abi, vis));
+        try!(self.print_fn_header_info(opt_explicit_self, unsafety, abi, vis));
         try!(self.nbsp());
         try!(self.print_ident(name));
         try!(self.print_generics(generics));
@@ -2588,7 +2588,7 @@ impl<'a> State<'a> {
     pub fn print_ty_fn(&mut self,
                        opt_abi: Option<abi::Abi>,
                        opt_sigil: Option<char>,
-                       fn_style: ast::FnStyle,
+                       unsafety: ast::Unsafety,
                        onceness: ast::Onceness,
                        decl: &ast::FnDecl,
                        id: Option<ast::Ident>,
@@ -2603,11 +2603,11 @@ impl<'a> State<'a> {
         if opt_sigil == Some('~') && onceness == ast::Once {
             try!(word(&mut self.s, "proc"));
         } else if opt_sigil == Some('&') {
-            try!(self.print_fn_style(fn_style));
+            try!(self.print_unsafety(unsafety));
             try!(self.print_extern_opt_abi(opt_abi));
         } else {
             assert!(opt_sigil.is_none());
-            try!(self.print_fn_style(fn_style));
+            try!(self.print_unsafety(unsafety));
             try!(self.print_opt_abi_and_extern_if_nondefault(opt_abi));
             try!(word(&mut self.s, "fn"));
         }
@@ -2872,10 +2872,10 @@ impl<'a> State<'a> {
         }
     }
 
-    pub fn print_opt_fn_style(&mut self,
-                            opt_fn_style: Option<ast::FnStyle>) -> IoResult<()> {
-        match opt_fn_style {
-            Some(fn_style) => self.print_fn_style(fn_style),
+    pub fn print_opt_unsafety(&mut self,
+                            opt_unsafety: Option<ast::Unsafety>) -> IoResult<()> {
+        match opt_unsafety {
+            Some(unsafety) => self.print_unsafety(unsafety),
             None => Ok(())
         }
     }
@@ -2906,11 +2906,11 @@ impl<'a> State<'a> {
 
     pub fn print_fn_header_info(&mut self,
                                 _opt_explicit_self: Option<&ast::ExplicitSelf_>,
-                                opt_fn_style: Option<ast::FnStyle>,
+                                opt_unsafety: Option<ast::Unsafety>,
                                 abi: abi::Abi,
                                 vis: ast::Visibility) -> IoResult<()> {
         try!(word(&mut self.s, visibility_qualified(vis, "").as_slice()));
-        try!(self.print_opt_fn_style(opt_fn_style));
+        try!(self.print_opt_unsafety(opt_unsafety));
 
         if abi != abi::Rust {
             try!(self.word_nbsp("extern"));
@@ -2920,10 +2920,10 @@ impl<'a> State<'a> {
         word(&mut self.s, "fn")
     }
 
-    pub fn print_fn_style(&mut self, s: ast::FnStyle) -> IoResult<()> {
+    pub fn print_unsafety(&mut self, s: ast::Unsafety) -> IoResult<()> {
         match s {
-            ast::NormalFn => Ok(()),
-            ast::UnsafeFn => self.word_nbsp("unsafe"),
+            ast::Unsafety::Normal => Ok(()),
+            ast::Unsafety::Unsafe => self.word_nbsp("unsafe"),
         }
     }
 }
@@ -2950,7 +2950,7 @@ mod test {
             variadic: false
         };
         let generics = ast_util::empty_generics();
-        assert_eq!(fun_to_string(&decl, ast::NormalFn, abba_ident,
+        assert_eq!(fun_to_string(&decl, ast::Unsafety::Normal, abba_ident,
                                None, &generics),
                    "fn abba()");
     }

@@ -549,11 +549,11 @@ fn parse_hex(st: &mut PState) -> uint {
     };
 }
 
-fn parse_fn_style(c: char) -> ast::FnStyle {
+fn parse_unsafety(c: char) -> ast::Unsafety {
     match c {
-        'u' => ast::UnsafeFn,
-        'n' => ast::NormalFn,
-        _ => panic!("parse_fn_style: bad fn_style {}", c)
+        'u' => ast::Unsafety::Unsafe,
+        'n' => ast::Unsafety::Normal,
+        _ => panic!("parse_unsafety: bad unsafety {}", c)
     }
 }
 
@@ -575,14 +575,14 @@ fn parse_onceness(c: char) -> ast::Onceness {
 
 fn parse_closure_ty<'a, 'tcx>(st: &mut PState<'a, 'tcx>,
                               conv: conv_did) -> ty::ClosureTy<'tcx> {
-    let fn_style = parse_fn_style(next(st));
+    let unsafety = parse_unsafety(next(st));
     let onceness = parse_onceness(next(st));
     let store = parse_trait_store(st, |x,y| conv(x,y));
     let bounds = parse_existential_bounds(st, |x,y| conv(x,y));
     let sig = parse_sig(st, |x,y| conv(x,y));
     let abi = parse_abi_set(st);
     ty::ClosureTy {
-        fn_style: fn_style,
+        unsafety: unsafety,
         onceness: onceness,
         store: store,
         bounds: bounds,
@@ -593,11 +593,11 @@ fn parse_closure_ty<'a, 'tcx>(st: &mut PState<'a, 'tcx>,
 
 fn parse_bare_fn_ty<'a, 'tcx>(st: &mut PState<'a, 'tcx>,
                               conv: conv_did) -> ty::BareFnTy<'tcx> {
-    let fn_style = parse_fn_style(next(st));
+    let unsafety = parse_unsafety(next(st));
     let abi = parse_abi_set(st);
     let sig = parse_sig(st, |x,y| conv(x,y));
     ty::BareFnTy {
-        fn_style: fn_style,
+        unsafety: unsafety,
         abi: abi,
         sig: sig
     }

@@ -20,8 +20,7 @@ use super::{TypeTrace, Subtype};
 use middle::ty::{BuiltinBounds};
 use middle::ty::{mod, Ty};
 use syntax::ast::{Many, Once};
-use syntax::ast::{NormalFn, UnsafeFn};
-use syntax::ast::{Onceness, FnStyle};
+use syntax::ast::{Onceness, Unsafety};
 use syntax::ast::{MutMutable, MutImmutable};
 use util::ppaux::mt_to_string;
 use util::ppaux::Repr;
@@ -77,10 +76,10 @@ impl<'f, 'tcx> Combine<'tcx> for Lub<'f, 'tcx> {
         self.glb().tys(a, b)
     }
 
-    fn fn_styles(&self, a: FnStyle, b: FnStyle) -> cres<'tcx, FnStyle> {
+    fn unsafeties(&self, a: Unsafety, b: Unsafety) -> cres<'tcx, Unsafety> {
         match (a, b) {
-          (UnsafeFn, _) | (_, UnsafeFn) => Ok(UnsafeFn),
-          (NormalFn, NormalFn) => Ok(NormalFn),
+          (Unsafety::Unsafe, _) | (_, Unsafety::Unsafe) => Ok(Unsafety::Unsafe),
+          (Unsafety::Normal, Unsafety::Normal) => Ok(Unsafety::Normal),
         }
     }
 

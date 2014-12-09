@@ -233,14 +233,14 @@ pub fn trait_method_to_ty_method(method: &Method) -> TypeMethod {
                  ref generics,
                  abi,
                  ref explicit_self,
-                 fn_style,
+                 unsafety,
                  ref decl,
                  _,
                  vis) => {
             TypeMethod {
                 ident: ident,
                 attrs: method.attrs.clone(),
-                fn_style: fn_style,
+                unsafety: unsafety,
                 decl: (*decl).clone(),
                 generics: generics.clone(),
                 explicit_self: (*explicit_self).clone(),
@@ -722,7 +722,7 @@ pub trait PostExpansionMethod {
     fn pe_generics<'a>(&'a self) -> &'a ast::Generics;
     fn pe_abi(&self) -> Abi;
     fn pe_explicit_self<'a>(&'a self) -> &'a ast::ExplicitSelf;
-    fn pe_fn_style(&self) -> ast::FnStyle;
+    fn pe_unsafety(&self) -> ast::Unsafety;
     fn pe_fn_decl<'a>(&'a self) -> &'a ast::FnDecl;
     fn pe_body<'a>(&'a self) -> &'a ast::Block;
     fn pe_vis(&self) -> ast::Visibility;
@@ -749,7 +749,7 @@ impl PostExpansionMethod for Method {
     mf_method!(pe_abi,Abi,MethDecl(_,_,abi,_,_,_,_,_),abi)
     mf_method!(pe_explicit_self,&'a ast::ExplicitSelf,
                MethDecl(_,_,_,ref explicit_self,_,_,_,_),explicit_self)
-    mf_method!(pe_fn_style,ast::FnStyle,MethDecl(_,_,_,_,fn_style,_,_,_),fn_style)
+    mf_method!(pe_unsafety,ast::Unsafety,MethDecl(_,_,_,_,unsafety,_,_,_),unsafety)
     mf_method!(pe_fn_decl,&'a ast::FnDecl,MethDecl(_,_,_,_,_,ref decl,_,_),&**decl)
     mf_method!(pe_body,&'a ast::Block,MethDecl(_,_,_,_,_,_,ref body,_),&**body)
     mf_method!(pe_vis,ast::Visibility,MethDecl(_,_,_,_,_,_,_,vis),vis)

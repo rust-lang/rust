@@ -121,7 +121,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
 
     pub fn visit_fn(&mut self, item: &ast::Item,
                     name: ast::Ident, fd: &ast::FnDecl,
-                    fn_style: &ast::FnStyle, _abi: &abi::Abi,
+                    unsafety: &ast::Unsafety, _abi: &abi::Abi,
                     gen: &ast::Generics) -> Function {
         debug!("Visiting fn");
         Function {
@@ -133,7 +133,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             name: name,
             whence: item.span,
             generics: gen.clone(),
-            fn_style: *fn_style,
+            unsafety: *unsafety,
         }
     }
 

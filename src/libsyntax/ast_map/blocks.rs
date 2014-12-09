@@ -122,7 +122,7 @@ impl<'a> Code<'a> {
 struct ItemFnParts<'a> {
     ident:    ast::Ident,
     decl:     &'a ast::FnDecl,
-    style:    ast::FnStyle,
+    unsafety: ast::Unsafety,
     abi:      abi::Abi,
     generics: &'a ast::Generics,
     body:     &'a Block,
@@ -182,7 +182,7 @@ impl<'a> FnLikeNode<'a> {
 
     pub fn kind(self) -> visit::FnKind<'a> {
         let item = |: p: ItemFnParts<'a>| -> visit::FnKind<'a> {
-            visit::FkItemFn(p.ident, p.generics, p.style, p.abi)
+            visit::FkItemFn(p.ident, p.generics, p.unsafety, p.abi)
         };
         let closure = |: _: ClosureParts| {
             visit::FkFnBlock
@@ -200,9 +200,9 @@ impl<'a> FnLikeNode<'a> {
     {
         match self.node {
             ast_map::NodeItem(i) => match i.node {
-                ast::ItemFn(ref decl, style, abi, ref generics, ref block) =>
+                ast::ItemFn(ref decl, unsafety, abi, ref generics, ref block) =>
                     item_fn(ItemFnParts{
-                        ident: i.ident, decl: &**decl, style: style, body: &**block,
+                        ident: i.ident, decl: &**decl, unsafety: unsafety, body: &**block,
                         generics: generics, abi: abi, id: i.id, span: i.span
                     }),
                 _ => panic!("item FnLikeNode that is not fn-like"),
