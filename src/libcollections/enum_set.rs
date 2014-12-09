@@ -20,7 +20,7 @@ use core::num::Int;
 // FIXME(contentions): implement union family of methods? (general design may be wrong here)
 
 #[deriving(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-/// A specialized `Set` implementation to use enum types.
+/// A specialized set implementation to use enum types.
 pub struct EnumSet<E> {
     // We must maintain the invariant that no bits are set
     // for which no variant exists
