@@ -88,6 +88,7 @@ pub mod middle {
     pub mod privacy;
     pub mod reachable;
     pub mod region;
+    pub mod recursion_limit;
     pub mod resolve;
     pub mod resolve_lifetime;
     pub mod stability;
