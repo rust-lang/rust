@@ -151,14 +151,14 @@ fn summarize_item(item: &Item) -> (Counts, Option<ModuleSummary>) {
         ImplItem(Impl { items: ref subitems, trait_: None, .. }) => {
             let subcounts = subitems.iter().filter(|i| visible(*i))
                                            .map(summarize_item)
-                                           .map(|s| s.val0())
+                                           .map(|s| s.0)
                                            .fold(Counts::zero(), |acc, x| acc + x);
             (subcounts, None)
         }
         // `pub` automatically
         EnumItem(Enum { variants: ref subitems, .. }) => {
             let subcounts = subitems.iter().map(summarize_item)
-                                           .map(|s| s.val0())
+                                           .map(|s| s.0)
                                            .fold(Counts::zero(), |acc, x| acc + x);
             (item_counts + subcounts, None)
         }
@@ -176,7 +176,7 @@ fn summarize_item(item: &Item) -> (Counts, Option<ModuleSummary>) {
             let subcounts = trait_items.iter()
                                        .map(extract_item)
                                        .map(summarize_item)
-                                       .map(|s| s.val0())
+                                       .map(|s| s.0)
                                        .fold(Counts::zero(), |acc, x| acc + x);
             (item_counts + subcounts, None)
         }
@@ -212,7 +212,7 @@ pub fn build(krate: &Crate) -> ModuleSummary {
             submodules: Vec::new(),
         },
         Some(ref item) => ModuleSummary {
-            name: krate.name.clone(), .. summarize_item(item).val1().unwrap()
+            name: krate.name.clone(), .. summarize_item(item).1.unwrap()
         }
     }
 }
