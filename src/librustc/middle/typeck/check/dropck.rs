@@ -37,12 +37,23 @@ fn constrain_region_for_destructor_safety(rcx: &mut Rcx,
     }
 
     // Get the parent scope.
+    let mut could_have_been_re_function = false;
     let parent_inner_region =
         match rcx.tcx().region_maps.opt_encl_scope(inner_scope) {
-            None | Some(region::CodeExtent::Closure(_)) => ty::ReFunction,
+            None => ty::ReFunction,
+            // FIXME (onkfelix): if closures need not be handled specially,
+            // then perhaps I can/should do away with ReFunction entirely.
+            Some(parent_inner_scope @ region::CodeExtent::Closure(_)) => {
+                could_have_been_re_function = true;
+                // ty::ReFunction
+                ty::ReScope(parent_inner_scope)
+            }
             Some(parent_inner_scope) => ty::ReScope(parent_inner_scope),
         };
 
+    debug!("constrain_region_for_destructor_safety region: {} :> parent_inner_region: {} (from inner_scope: {}){}",
+           region, parent_inner_region, inner_scope,
+           if could_have_been_re_function { " could_have_been_re_function" } else { "" });
     rcx.tcx().sess.span_note(
         span,
         format!("constrain_region_for_destructor_safety \
