@@ -158,10 +158,10 @@ enum BuiltinBoundConditions<'tcx> {
 }
 
 #[deriving(Show)]
-enum EvaluationResult {
+enum EvaluationResult<'tcx> {
     EvaluatedToOk,
-    EvaluatedToErr,
     EvaluatedToAmbig,
+    EvaluatedToErr(SelectionError<'tcx>),
 }
 
 impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
@@ -275,7 +275,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                               bound: ty::BuiltinBound,
                                               previous_stack: &ObligationStack<'o, 'tcx>,
                                               ty: Ty<'tcx>)
-                                              -> EvaluationResult
+                                              -> EvaluationResult<'tcx>
     {
         let obligation =
             util::obligation_for_builtin_bound(
@@ -298,7 +298,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn evaluate_obligation_recursively<'o>(&mut self,
                                            previous_stack: Option<&ObligationStack<'o, 'tcx>>,
                                            obligation: &Obligation<'tcx>)
-                                           -> EvaluationResult
+                                           -> EvaluationResult<'tcx>
     {
         debug!("evaluate_obligation_recursively({})",
                obligation.repr(self.tcx()));
@@ -313,7 +313,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     fn evaluate_stack<'o>(&mut self,
                           stack: &ObligationStack<'o, 'tcx>)
-                          -> EvaluationResult
+                          -> EvaluationResult<'tcx>
     {
         // In intercrate mode, whenever any of the types are unbound,
         // there can always be an impl. Even if there are no impls in
@@ -384,7 +384,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         match self.candidate_from_obligation(stack) {
             Ok(Some(c)) => self.winnow_candidate(stack, &c),
             Ok(None) => EvaluatedToAmbig,
-            Err(_) => EvaluatedToErr,
+            Err(e) => EvaluatedToErr(e),
         }
     }
 
@@ -401,285 +401,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         self.infcx.probe(|| {
             match self.match_impl(impl_def_id, obligation) {
-                Ok(substs) => {
-                    let vtable_impl = self.vtable_impl(impl_def_id,
-                                                       substs,
-                                                       obligation.cause,
-                                                       obligation.recursion_depth + 1);
-                    self.winnow_selection(None, VtableImpl(vtable_impl)).may_apply()
-                }
-                Err(()) => {
-                    false
-                }
-            }
-        })
-    }
-
-    ///////////////////////////////////////////////////////////////////////////
-    // METHOD MATCHING
-    //
-    // Method matching is a variation on the normal select/evaluation
-    // situation.  In this scenario, rather than having a full trait
-    // reference to select from, we start with an expression like
-    // `receiver.method(...)`. This means that we have `rcvr_ty`, the
-    // type of the receiver, and we have a possible trait that
-    // supplies `method`. We must determine whether the receiver is
-    // applicable, taking into account the transformed self type
-    // declared on `method`. We also must consider the possibility
-    // that `receiver` can be *coerced* into a suitable type (for
-    // example, a receiver type like `&(Any+Send)` might be coerced
-    // into a receiver like `&Any` to allow for method dispatch).  See
-    // the body of `evaluate_method_obligation()` for more details on
-    // the algorithm.
-
-    /// Determine whether a trait-method is applicable to a receiver of
-    /// type `rcvr_ty`. *Does not affect the inference state.*
-    ///
-    /// - `rcvr_ty` -- type of the receiver
-    /// - `xform_self_ty` -- transformed self type declared on the method, with `Self`
-    ///   to a fresh type variable
-    /// - `obligation` -- a reference to the trait where the method is declared, with
-    ///   the input types on the trait replaced with fresh type variables
-    pub fn evaluate_method_obligation(&mut self,
-                                      rcvr_ty: Ty<'tcx>,
-                                      xform_self_ty: Ty<'tcx>,
-                                      obligation: &Obligation<'tcx>)
-                                      -> MethodMatchResult
-    {
-        // Here is the situation. We have a trait method declared (say) like so:
-        //
-        //     trait TheTrait {
-        //         fn the_method(self: Rc<Self>, ...) { ... }
-        //     }
-        //
-        // And then we have a call looking (say) like this:
-        //
-        //     let x: Rc<Foo> = ...;
-        //     x.the_method()
-        //
-        // Now we want to decide if `TheTrait` is applicable. As a
-        // human, we can see that `TheTrait` is applicable if there is
-        // an impl for the type `Foo`. But how does the compiler know
-        // what impl to look for, given that our receiver has type
-        // `Rc<Foo>`? We need to take the method's self type into
-        // account.
-        //
-        // On entry to this function, we have the following inputs:
-        //
-        // - `rcvr_ty = Rc<Foo>`
-        // - `xform_self_ty = Rc<$0>`
-        // - `obligation = $0 as TheTrait`
-        //
-        // We do the match in two phases. The first is a *precise
-        // match*, which means that no coercion is required. This is
-        // the preferred way to match. It works by first making
-        // `rcvr_ty` a subtype of `xform_self_ty`. This unifies `$0`
-        // and `Foo`. We can then evaluate (roughly as normal) the
-        // trait reference `Foo as TheTrait`.
-        //
-        // If this fails, we fallback to a coercive match, described below.
-
-        match self.infcx.probe(|| self.match_method_precise(rcvr_ty, xform_self_ty, obligation)) {
-            Ok(()) => { return MethodMatched(PreciseMethodMatch); }
-            Err(_) => { }
-        }
-
-        // Coercive matches work slightly differently and cannot
-        // completely reuse the normal trait matching machinery
-        // (though they employ many of the same bits and pieces). To
-        // see how it works, let's continue with our previous example,
-        // but with the following declarations:
-        //
-        // ```
-        // trait Foo : Bar { .. }
-        // trait Bar : Baz { ... }
-        // trait Baz { ... }
-        // impl TheTrait for Bar {
-        //     fn the_method(self: Rc<Bar>, ...) { ... }
-        // }
-        // ```
-        //
-        // Now we see that the receiver type `Rc<Foo>` is actually an
-        // object type. And in fact the impl we want is an impl on the
-        // supertrait `Rc<Bar>`.  The precise matching procedure won't
-        // find it, however, because `Rc<Foo>` is not a subtype of
-        // `Rc<Bar>` -- it is *coercible* to `Rc<Bar>` (actually, such
-        // coercions are not yet implemented, but let's leave that
-        // aside for now).
-        //
-        // To handle this case, we employ a different procedure. Recall
-        // that our initial state is as follows:
-        //
-        // - `rcvr_ty = Rc<Foo>`
-        // - `xform_self_ty = Rc<$0>`
-        // - `obligation = $0 as TheTrait`
-        //
-        // We now go through each impl and instantiate all of its type
-        // variables, yielding the trait reference that the impl
-        // provides. In our example, the impl would provide `Bar as
-        // TheTrait`.  Next we (try to) unify the trait reference that
-        // the impl provides with the input obligation. This would
-        // unify `$0` and `Bar`. Now we can see whether the receiver
-        // type (`Rc<Foo>`) is *coercible to* the transformed self
-        // type (`Rc<$0> == Rc<Bar>`). In this case, the answer is
-        // yes, so the impl is considered a candidate.
-        //
-        // Note that there is the possibility of ambiguity here, even
-        // when all types are known. In our example, this might occur
-        // if there was *also* an impl of `TheTrait` for `Baz`. In
-        // this case, `Rc<Foo>` would be coercible to both `Rc<Bar>`
-        // and `Rc<Baz>`. (Note that it is not a *coherence violation*
-        // to have impls for both `Bar` and `Baz`, despite this
-        // ambiguity).  In this case, we report an error, listing all
-        // the applicable impls.  The user can explicitly "up-coerce"
-        // to the type they want.
-        //
-        // Note that this coercion step only considers actual impls
-        // found in the source. This is because all the
-        // compiler-provided impls (such as those for unboxed
-        // closures) do not have relevant coercions. This simplifies
-        // life immensely.
-
-        let mut impls =
-            self.assemble_method_candidates_from_impls(rcvr_ty, xform_self_ty, obligation);
-
-        if impls.len() > 1 {
-            impls.retain(|&c| self.winnow_method_impl(c, rcvr_ty, xform_self_ty, obligation));
-        }
-
-        if impls.len() > 1 {
-            return MethodAmbiguous(impls);
-        }
-
-        match impls.pop() {
-            Some(def_id) => MethodMatched(CoerciveMethodMatch(def_id)),
-            None => MethodDidNotMatch
-        }
-    }
-
-    /// Given the successful result of a method match, this function "confirms" the result, which
-    /// basically repeats the various matching operations, but outside of any snapshot so that
-    /// their effects are committed into the inference state.
-    pub fn confirm_method_match(&mut self,
-                                rcvr_ty: Ty<'tcx>,
-                                xform_self_ty: Ty<'tcx>,
-                                obligation: &Obligation<'tcx>,
-                                data: MethodMatchedData)
-    {
-        let is_ok = match data {
-            PreciseMethodMatch => {
-                self.match_method_precise(rcvr_ty, xform_self_ty, obligation).is_ok()
-            }
-
-            CoerciveMethodMatch(impl_def_id) => {
-                self.match_method_coerce(impl_def_id, rcvr_ty, xform_self_ty, obligation).is_ok()
-            }
-        };
-
-        if !is_ok {
-            self.tcx().sess.span_bug(
-                obligation.cause.span,
-                format!("match not repeatable: {}, {}, {}, {}",
-                        rcvr_ty.repr(self.tcx()),
-                        xform_self_ty.repr(self.tcx()),
-                        obligation.repr(self.tcx()),
-                        data)[]);
-        }
-    }
-
-    /// Implements the *precise method match* procedure described in
-    /// `evaluate_method_obligation()`.
-    fn match_method_precise(&mut self,
-                            rcvr_ty: Ty<'tcx>,
-                            xform_self_ty: Ty<'tcx>,
-                            obligation: &Obligation<'tcx>)
-                            -> Result<(),()>
-    {
-        self.infcx.commit_if_ok(|| {
-            match self.infcx.sub_types(false, infer::RelateSelfType(obligation.cause.span),
-                                       rcvr_ty, xform_self_ty) {
-                Ok(()) => { }
-                Err(_) => { return Err(()); }
-            }
-
-            if self.evaluate_obligation(obligation) {
-                Ok(())
-            } else {
-                Err(())
-            }
-        })
-    }
-
-    /// Assembles a list of potentially applicable impls using the *coercive match* procedure
-    /// described in `evaluate_method_obligation()`.
-    fn assemble_method_candidates_from_impls(&mut self,
-                                             rcvr_ty: Ty<'tcx>,
-                                             xform_self_ty: Ty<'tcx>,
-                                             obligation: &Obligation<'tcx>)
-                                             -> Vec<ast::DefId>
-    {
-        let mut candidates = Vec::new();
-
-        let all_impls = self.all_impls(obligation.trait_ref.def_id);
-        for &impl_def_id in all_impls.iter() {
-            self.infcx.probe(|| {
-                match self.match_method_coerce(impl_def_id, rcvr_ty, xform_self_ty, obligation) {
-                    Ok(_) => { candidates.push(impl_def_id); }
-                    Err(_) => { }
-                }
-            });
-        }
-
-        candidates
-    }
-
-    /// Applies the *coercive match* procedure described in `evaluate_method_obligation()` to a
-    /// particular impl.
-    fn match_method_coerce(&mut self,
-                           impl_def_id: ast::DefId,
-                           rcvr_ty: Ty<'tcx>,
-                           xform_self_ty: Ty<'tcx>,
-                           obligation: &Obligation<'tcx>)
-                           -> Result<Substs<'tcx>, ()>
-    {
-        // This is almost always expected to succeed. It
-        // causes the impl's self-type etc to be unified with
-        // the type variable that is shared between
-        // obligation/xform_self_ty. In our example, after
-        // this is done, the type of `xform_self_ty` would
-        // change from `Rc<$0>` to `Rc<Foo>` (because $0 is
-        // unified with `Foo`).
-        let substs = try!(self.match_impl(impl_def_id, obligation));
-
-        // Next, check whether we can coerce. For now we require
-        // that the coercion be a no-op.
-        let origin = infer::Misc(obligation.cause.span);
-        match infer::mk_coercety(self.infcx, true, origin,
-                                 rcvr_ty, xform_self_ty) {
-            Ok(None) => { /* Fallthrough */ }
-            Ok(Some(_)) | Err(_) => { return Err(()); }
-        }
-
-        Ok(substs)
-    }
-
-    /// A version of `winnow_impl` applicable to coerice method matching.  This is basically the
-    /// same as `winnow_impl` but it uses the method matching procedure and is specific to impls.
-    fn winnow_method_impl(&mut self,
-                          impl_def_id: ast::DefId,
-                          rcvr_ty: Ty<'tcx>,
-                          xform_self_ty: Ty<'tcx>,
-                          obligation: &Obligation<'tcx>)
-                          -> bool
-    {
-        debug!("winnow_method_impl: impl_def_id={} rcvr_ty={} xform_self_ty={} obligation={}",
-               impl_def_id.repr(self.tcx()),
-               rcvr_ty.repr(self.tcx()),
-               xform_self_ty.repr(self.tcx()),
-               obligation.repr(self.tcx()));
-
-        self.infcx.probe(|| {
-            match self.match_method_coerce(impl_def_id, rcvr_ty, xform_self_ty, obligation) {
                 Ok(substs) => {
                     let vtable_impl = self.vtable_impl(impl_def_id,
                                                        substs,
@@ -1112,14 +833,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn winnow_candidate<'o>(&mut self,
                             stack: &ObligationStack<'o, 'tcx>,
                             candidate: &Candidate<'tcx>)
-                            -> EvaluationResult
+                            -> EvaluationResult<'tcx>
     {
         debug!("winnow_candidate: candidate={}", candidate.repr(self.tcx()));
         self.infcx.probe(|| {
             let candidate = (*candidate).clone();
             match self.confirm_candidate(stack.obligation, candidate) {
                 Ok(selection) => self.winnow_selection(Some(stack), selection),
-                Err(_) => EvaluatedToErr,
+                Err(error) => EvaluatedToErr(error),
             }
         })
     }
@@ -1127,12 +848,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn winnow_selection<'o>(&mut self,
                             stack: Option<&ObligationStack<'o, 'tcx>>,
                             selection: Selection<'tcx>)
-                            -> EvaluationResult
+                            -> EvaluationResult<'tcx>
     {
         let mut result = EvaluatedToOk;
         for obligation in selection.iter_nested() {
             match self.evaluate_obligation_recursively(stack, obligation) {
-                EvaluatedToErr => { return EvaluatedToErr; }
+                EvaluatedToErr(e) => { return EvaluatedToErr(e); }
                 EvaluatedToAmbig => { result = EvaluatedToAmbig; }
                 EvaluatedToOk => { }
             }
@@ -2146,11 +1867,18 @@ impl<'o, 'tcx> Repr<'tcx> for ObligationStack<'o, 'tcx> {
     }
 }
 
-impl EvaluationResult {
+impl<'tcx> EvaluationResult<'tcx> {
     fn may_apply(&self) -> bool {
         match *self {
-            EvaluatedToOk | EvaluatedToAmbig => true,
-            EvaluatedToErr => false,
+            EvaluatedToOk |
+            EvaluatedToAmbig |
+            EvaluatedToErr(Overflow) |
+            EvaluatedToErr(OutputTypeParameterMismatch(..)) => {
+                true
+            }
+            EvaluatedToErr(Unimplemented) => {
+                false
+            }
         }
     }
 }
