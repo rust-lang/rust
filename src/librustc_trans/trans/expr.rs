@@ -295,6 +295,7 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     // into a type to be destructed. If we want to end up with a Box pointer,
     // then mk_ty should make a Box pointer (T -> Box<T>), if we want a
     // borrowed reference then it should be T -> &T.
+    // FIXME(#19596) unbox `mk_ty`
     fn unsized_info<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                 kind: &ty::UnsizeKind<'tcx>,
                                 id: ast::NodeId,
@@ -341,27 +342,30 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         debug!("dest_ty={}", unsized_ty.repr(bcx.tcx()));
         // Closures for extracting and manipulating the data and payload parts of
         // the fat pointer.
-        let base = match k {
-            &ty::UnsizeStruct(..) =>
-                |bcx, val| PointerCast(bcx,
-                                       val,
-                                       type_of::type_of(bcx.ccx(), unsized_ty).ptr_to()),
-            &ty::UnsizeLength(..) =>
-                |bcx, val| GEPi(bcx, val, &[0u, 0u]),
-            &ty::UnsizeVtable(..) =>
-                |_bcx, val| PointerCast(bcx, val, Type::i8p(bcx.ccx()))
-        };
-        let info = |bcx, _val| unsized_info(bcx,
-                                            k,
-                                            expr.id,
-                                            datum_ty,
-                                            |t| ty::mk_rptr(tcx,
-                                                            ty::ReStatic,
-                                                            ty::mt{
-                                                                ty: t,
-                                                                mutbl: ast::MutImmutable
-                                                            }));
-        into_fat_ptr(bcx, expr, datum, dest_ty, base, info)
+        let info = |: bcx, _val| unsized_info(bcx,
+                                              k,
+                                              expr.id,
+                                              datum_ty,
+                                              |t| ty::mk_rptr(tcx,
+                                                              ty::ReStatic,
+                                                              ty::mt{
+                                                                  ty: t,
+                                                                  mutbl: ast::MutImmutable
+                                                              }));
+        match *k {
+            ty::UnsizeStruct(..) =>
+                into_fat_ptr(bcx, expr, datum, dest_ty, |bcx, val| {
+                    PointerCast(bcx, val, type_of::type_of(bcx.ccx(), unsized_ty).ptr_to())
+                }, info),
+            ty::UnsizeLength(..) =>
+                into_fat_ptr(bcx, expr, datum, dest_ty, |bcx, val| {
+                    GEPi(bcx, val, &[0u, 0u])
+                }, info),
+            ty::UnsizeVtable(..) =>
+                into_fat_ptr(bcx, expr, datum, dest_ty, |_bcx, val| {
+                    PointerCast(bcx, val, Type::i8p(bcx.ccx()))
+                }, info),
+        }
     }
 
     fn ref_fat_ptr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
@@ -370,18 +374,21 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                -> DatumBlock<'blk, 'tcx, Expr> {
         let tcx = bcx.tcx();
         let dest_ty = ty::close_type(tcx, datum.ty);
-        let base = |bcx, val| Load(bcx, get_dataptr(bcx, val));
-        let len = |bcx, val| Load(bcx, get_len(bcx, val));
+        let base = |: bcx, val| Load(bcx, get_dataptr(bcx, val));
+        let len = |: bcx, val| Load(bcx, get_len(bcx, val));
         into_fat_ptr(bcx, expr, datum, dest_ty, base, len)
     }
 
-    fn into_fat_ptr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                expr: &ast::Expr,
-                                datum: Datum<'tcx, Expr>,
-                                dest_ty: Ty<'tcx>,
-                                base: |Block<'blk, 'tcx>, ValueRef| -> ValueRef,
-                                info: |Block<'blk, 'tcx>, ValueRef| -> ValueRef)
-                                -> DatumBlock<'blk, 'tcx, Expr> {
+    fn into_fat_ptr<'blk, 'tcx, F, G>(bcx: Block<'blk, 'tcx>,
+                                      expr: &ast::Expr,
+                                      datum: Datum<'tcx, Expr>,
+                                      dest_ty: Ty<'tcx>,
+                                      base: F,
+                                      info: G)
+                                      -> DatumBlock<'blk, 'tcx, Expr> where
+        F: FnOnce(Block<'blk, 'tcx>, ValueRef) -> ValueRef,
+        G: FnOnce(Block<'blk, 'tcx>, ValueRef) -> ValueRef,
+    {
         let mut bcx = bcx;
 
         // Arrange cleanup
@@ -659,17 +666,19 @@ fn trans_datum_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 }
 
-fn trans_field<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                           base: &ast::Expr,
-                           get_idx: |&'blk ty::ctxt<'tcx>, &[ty::field<'tcx>]| -> uint)
-                           -> DatumBlock<'blk, 'tcx, Expr> {
+fn trans_field<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
+                              base: &ast::Expr,
+                              get_idx: F)
+                              -> DatumBlock<'blk, 'tcx, Expr> where
+    F: FnOnce(&'blk ty::ctxt<'tcx>, &[ty::field<'tcx>]) -> uint,
+{
     let mut bcx = bcx;
     let _icx = push_ctxt("trans_rec_field");
 
     let base_datum = unpack_datum!(bcx, trans_to_lvalue(bcx, base, "field"));
     let bare_ty = ty::unopen_type(base_datum.ty);
     let repr = adt::represent_type(bcx.ccx(), bare_ty);
-    with_field_tys(bcx.tcx(), bare_ty, None, |discr, field_tys| {
+    with_field_tys(bcx.tcx(), bare_ty, None, move |discr, field_tys| {
         let ix = get_idx(bcx.tcx(), field_tys);
         let d = base_datum.get_element(
             bcx,
@@ -1254,11 +1263,13 @@ pub fn trans_local_var<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 /// Helper for enumerating the field types of structs, enums, or records. The optional node ID here
 /// is the node ID of the path identifying the enum variant in use. If none, this cannot possibly
 /// an enum variant (so, if it is and `node_id_opt` is none, this function panics).
-pub fn with_field_tys<'tcx, R>(tcx: &ty::ctxt<'tcx>,
-                               ty: Ty<'tcx>,
-                               node_id_opt: Option<ast::NodeId>,
-                               op: |ty::Disr, (&[ty::field<'tcx>])| -> R)
-                               -> R {
+pub fn with_field_tys<'tcx, R, F>(tcx: &ty::ctxt<'tcx>,
+                                  ty: Ty<'tcx>,
+                                  node_id_opt: Option<ast::NodeId>,
+                                  op: F)
+                                  -> R where
+    F: FnOnce(ty::Disr, &[ty::field<'tcx>]) -> R,
+{
     match ty.sty {
         ty::ty_struct(did, ref substs) => {
             op(0, struct_fields(tcx, did, substs).as_slice())

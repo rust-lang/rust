@@ -1578,14 +1578,15 @@ pub fn store_for_loop_binding<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     bind_irrefutable_pat(bcx, pat, llvalue, body_scope)
 }
 
-fn mk_binding_alloca<'blk, 'tcx, A>(bcx: Block<'blk, 'tcx>,
-                                    p_id: ast::NodeId,
-                                    ident: &ast::Ident,
-                                    cleanup_scope: cleanup::ScopeId,
-                                    arg: A,
-                                    populate: |A, Block<'blk, 'tcx>, ValueRef, Ty<'tcx>|
-                                              -> Block<'blk, 'tcx>)
-                                    -> Block<'blk, 'tcx> {
+fn mk_binding_alloca<'blk, 'tcx, A, F>(bcx: Block<'blk, 'tcx>,
+                                       p_id: ast::NodeId,
+                                       ident: &ast::Ident,
+                                       cleanup_scope: cleanup::ScopeId,
+                                       arg: A,
+                                       populate: F)
+                                       -> Block<'blk, 'tcx> where
+    F: FnOnce(A, Block<'blk, 'tcx>, ValueRef, Ty<'tcx>) -> Block<'blk, 'tcx>,
+{
     let var_ty = node_id_type(bcx, p_id);
 
     // Allocate memory on stack for the binding.
