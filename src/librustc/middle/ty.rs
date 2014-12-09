@@ -3481,18 +3481,17 @@ pub fn unsized_part_of_type<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
     }
 }
 
-// Whether a type is enum like, that is an enum type with only nullary
+// Whether an enum is C-like, that is, has only nullary constructors.
+pub fn enum_is_c_like(cx: &ctxt, def_id: ast::DefId) -> bool {
+    let variants = enum_variants(cx, def_id);
+    variants.len() > 0 && variants.iter().all(|v| v.args.len() == 0)
+}
+
+// Whether a type is C-enum like, that is an enum type with only nullary
 // constructors
 pub fn type_is_c_like_enum(cx: &ctxt, ty: Ty) -> bool {
     match ty.sty {
-        ty_enum(did, _) => {
-            let variants = enum_variants(cx, did);
-            if variants.len() == 0 {
-                false
-            } else {
-                variants.iter().all(|v| v.args.len() == 0)
-            }
-        }
+        ty_enum(did, _) => enum_is_c_like(cx, did),
         _ => false
     }
 }
