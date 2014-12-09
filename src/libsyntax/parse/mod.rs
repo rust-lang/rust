@@ -431,7 +431,7 @@ pub fn str_lit(lit: &str) -> String {
     /// Eat everything up to a non-whitespace
     fn eat<'a>(it: &mut iter::Peekable<(uint, char), str::CharOffsets<'a>>) {
         loop {
-            match it.peek().map(|x| x.val1()) {
+            match it.peek().map(|x| x.1) {
                 Some(' ') | Some('\n') | Some('\r') | Some('\t') => {
                     it.next();
                 },
@@ -448,7 +448,7 @@ pub fn str_lit(lit: &str) -> String {
                     '\\' => {
                         let ch = chars.peek().unwrap_or_else(|| {
                             panic!("{}", error(i).as_slice())
-                        }).val1();
+                        }).1;
 
                         if ch == '\n' {
                             eat(&mut chars);
@@ -456,7 +456,7 @@ pub fn str_lit(lit: &str) -> String {
                             chars.next();
                             let ch = chars.peek().unwrap_or_else(|| {
                                 panic!("{}", error(i).as_slice())
-                            }).val1();
+                            }).1;
 
                             if ch != '\n' {
                                 panic!("lexer accepted bare CR");
@@ -474,7 +474,7 @@ pub fn str_lit(lit: &str) -> String {
                     '\r' => {
                         let ch = chars.peek().unwrap_or_else(|| {
                             panic!("{}", error(i).as_slice())
-                        }).val1();
+                        }).1;
 
                         if ch != '\n' {
                             panic!("lexer accepted bare CR");
@@ -600,7 +600,7 @@ pub fn binary_lit(lit: &str) -> Rc<Vec<u8>> {
     /// Eat everything up to a non-whitespace
     fn eat<'a, I: Iterator<(uint, u8)>>(it: &mut iter::Peekable<(uint, u8), I>) {
         loop {
-            match it.peek().map(|x| x.val1()) {
+            match it.peek().map(|x| x.1) {
                 Some(b' ') | Some(b'\n') | Some(b'\r') | Some(b'\t') => {
                     it.next();
                 },
@@ -615,11 +615,11 @@ pub fn binary_lit(lit: &str) -> Rc<Vec<u8>> {
         match chars.next() {
             Some((i, b'\\')) => {
                 let em = error(i);
-                match chars.peek().expect(em.as_slice()).val1() {
+                match chars.peek().expect(em.as_slice()).1 {
                     b'\n' => eat(&mut chars),
                     b'\r' => {
                         chars.next();
-                        if chars.peek().expect(em.as_slice()).val1() != b'\n' {
+                        if chars.peek().expect(em.as_slice()).1 != b'\n' {
                             panic!("lexer accepted bare CR");
                         }
                         eat(&mut chars);
@@ -637,7 +637,7 @@ pub fn binary_lit(lit: &str) -> Rc<Vec<u8>> {
             },
             Some((i, b'\r')) => {
                 let em = error(i);
-                if chars.peek().expect(em.as_slice()).val1() != b'\n' {
+                if chars.peek().expect(em.as_slice()).1 != b'\n' {
                     panic!("lexer accepted bare CR");
                 }
                 chars.next();
