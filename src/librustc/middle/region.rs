@@ -192,6 +192,8 @@ impl RegionMaps {
     fn record_encl_scope(&self, sub: CodeExtent, sup: CodeExtent) {
         debug!("record_encl_scope(sub={}, sup={})", sub, sup);
         assert!(sub != sup);
+        assert!(self.scope_map.borrow().get(&sup) != Some(&sub),
+                "cyclic encl scope sub: {} sup: {}", sub, sup);
         self.scope_map.borrow_mut().insert(sub, sup);
     }
 
