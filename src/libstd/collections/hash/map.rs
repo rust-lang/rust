@@ -17,18 +17,19 @@ use self::VacantEntryState::*;
 use borrow::BorrowFrom;
 use clone::Clone;
 use cmp::{max, Eq, Equiv, PartialEq};
+use collections::hash_state::{HashState, RandomSipState};
 use default::Default;
 use fmt::{mod, Show};
-use hash::{Hash, Hasher, RandomSipHasher};
+use hash::{Hash, Hasher};
 use iter::{mod, Iterator, IteratorExt, FromIterator, Extend};
 use kinds::Sized;
 use mem::{mod, replace};
 use num::{Int, UnsignedInt};
 use ops::{Deref, Index, IndexMut};
-use option::Option;
 use option::Option::{Some, None};
-use result::Result;
+use option::Option;
 use result::Result::{Ok, Err};
+use result::Result;
 
 use super::table;
 use super::table::{
@@ -286,9 +287,9 @@ fn test_resize_policy() {
 /// }
 /// ```
 #[deriving(Clone)]
-pub struct HashMap<K, V, H = RandomSipHasher> {
+pub struct HashMap<K, V, S = RandomSipState> {
     // All hashes are keyed on these values, to prevent hash collision attacks.
-    hasher: H,
+    hash_state: S,
 
     table: RawTable<K, V>,
 
@@ -429,20 +430,22 @@ impl<K, V, M> SearchResult<K, V, M> {
     }
 }
 
-impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
-    fn make_hash<Sized? X: Hash<S>>(&self, x: &X) -> SafeHash {
-        table::make_hash(&self.hasher, x)
+impl<K, V, H, S> HashMap<K, V, S>
+    where K: Eq + Hash<H>, H: Hasher<u64>, S: HashState<u64, H>
+{
+    fn make_hash<Sized? X: Hash<H>>(&self, x: &X) -> SafeHash {
+        table::make_hash(&self.hash_state, x)
     }
 
     #[allow(deprecated)]
-    fn search_equiv<'a, Sized? Q: Hash<S> + Equiv<K>>(&'a self, q: &Q)
+    fn search_equiv<'a, Sized? Q: Hash<H> + Equiv<K>>(&'a self, q: &Q)
                     -> Option<FullBucketImm<'a, K, V>> {
         let hash = self.make_hash(q);
         search_hashed(&self.table, &hash, |k| q.equiv(k)).into_option()
     }
 
     #[allow(deprecated)]
-    fn search_equiv_mut<'a, Sized? Q: Hash<S> + Equiv<K>>(&'a mut self, q: &Q)
+    fn search_equiv_mut<'a, Sized? Q: Hash<H> + Equiv<K>>(&'a mut self, q: &Q)
                     -> Option<FullBucketMut<'a, K, V>> {
         let hash = self.make_hash(q);
         search_hashed(&mut self.table, &hash, |k| q.equiv(k)).into_option()
@@ -452,7 +455,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// If you already have the hash for the key lying around, use
     /// search_hashed.
     fn search<'a, Sized? Q>(&'a self, q: &Q) -> Option<FullBucketImm<'a, K, V>>
-        where Q: BorrowFrom<K> + Eq + Hash<S>
+        where Q: BorrowFrom<K> + Eq + Hash<H>
     {
         let hash = self.make_hash(q);
         search_hashed(&self.table, &hash, |k| q.eq(BorrowFrom::borrow_from(k)))
@@ -460,7 +463,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     }
 
     fn search_mut<'a, Sized? Q>(&'a mut self, q: &Q) -> Option<FullBucketMut<'a, K, V>>
-        where Q: BorrowFrom<K> + Eq + Hash<S>
+        where Q: BorrowFrom<K> + Eq + Hash<H>
     {
         let hash = self.make_hash(q);
         search_hashed(&mut self.table, &hash, |k| q.eq(BorrowFrom::borrow_from(k)))
@@ -489,7 +492,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     }
 }
 
-impl<K: Hash + Eq, V> HashMap<K, V, RandomSipHasher> {
+impl<K: Hash + Eq, V> HashMap<K, V, RandomSipState> {
     /// Create an empty HashMap.
     ///
     /// # Example
@@ -500,9 +503,8 @@ impl<K: Hash + Eq, V> HashMap<K, V, RandomSipHasher> {
     /// ```
     #[inline]
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn new() -> HashMap<K, V, RandomSipHasher> {
-        let hasher = RandomSipHasher::new();
-        HashMap::with_hasher(hasher)
+    pub fn new() -> HashMap<K, V, RandomSipState> {
+        Default::default()
     }
 
     /// Creates an empty hash map with the given initial capacity.
@@ -515,13 +517,14 @@ impl<K: Hash + Eq, V> HashMap<K, V, RandomSipHasher> {
     /// ```
     #[inline]
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn with_capacity(capacity: uint) -> HashMap<K, V, RandomSipHasher> {
-        let hasher = RandomSipHasher::new();
-        HashMap::with_capacity_and_hasher(capacity, hasher)
+    pub fn with_capacity(capacity: uint) -> HashMap<K, V, RandomSipState> {
+        HashMap::with_capacity_and_hash_state(capacity, Default::default())
     }
 }
 
-impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
+impl<K, V, H, S> HashMap<K, V, S>
+    where K: Eq + Hash<H>, H: Hasher<u64>, S: HashState<u64, H>
+{
     /// Creates an empty hashmap which will use the given hasher to hash keys.
     ///
     /// The creates map has the default initial capacity.
@@ -530,19 +533,26 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     ///
     /// ```
     /// use std::collections::HashMap;
-    /// use std::hash::sip::SipHasher;
+    /// use std::collections::hash_state::RandomSipState;
     ///
-    /// let h = SipHasher::new();
-    /// let mut map = HashMap::with_hasher(h);
+    /// let s = RandomSipState::new();
+    /// let mut map = HashMap::with_hash_state(s);
     /// map.insert(1i, 2u);
     /// ```
     #[inline]
-    pub fn with_hasher(hasher: H) -> HashMap<K, V, H> {
+    pub fn with_hash_state(hash_state: S) -> HashMap<K, V, S> {
         HashMap {
-            hasher:        hasher,
+            hash_state:    hash_state,
             resize_policy: DefaultResizePolicy::new(),
             table:         RawTable::new(0),
         }
+    }
+
+    /// Renamed to `with_hash_state`.
+    #[inline]
+    #[deprecated = "renamed to with_hash_state"]
+    pub fn with_hasher(hash_state: S) -> HashMap<K, V, S> {
+        HashMap::with_hash_state(hash_state)
     }
 
     /// Create an empty HashMap with space for at least `capacity`
@@ -557,23 +567,32 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     ///
     /// ```
     /// use std::collections::HashMap;
-    /// use std::hash::sip::SipHasher;
+    /// use std::collections::hash_state::RandomSipState;
     ///
-    /// let h = SipHasher::new();
-    /// let mut map = HashMap::with_capacity_and_hasher(10, h);
+    /// let s = RandomSipState::new();
+    /// let mut map = HashMap::with_capacity_and_hash_state(10, s);
     /// map.insert(1i, 2u);
     /// ```
     #[inline]
-    pub fn with_capacity_and_hasher(capacity: uint, hasher: H) -> HashMap<K, V, H> {
+    pub fn with_capacity_and_hash_state(capacity: uint, hash_state: S)
+                                        -> HashMap<K, V, S> {
         let resize_policy = DefaultResizePolicy::new();
         let min_cap = max(INITIAL_CAPACITY, resize_policy.min_capacity(capacity));
         let internal_cap = min_cap.checked_next_power_of_two().expect("capacity overflow");
         assert!(internal_cap >= capacity, "capacity overflow");
         HashMap {
-            hasher:        hasher,
+            hash_state:    hash_state,
             resize_policy: resize_policy,
             table:         RawTable::new(internal_cap),
         }
+    }
+
+    /// Renamed to with_capacity_and_hash_state
+    #[inline]
+    #[deprecated = "renamed to with_capacity_and_hash_state"]
+    pub fn with_capacity_and_hasher(capacity: uint, hash_state: S)
+                                    -> HashMap<K, V, S> {
+        HashMap::with_capacity_and_hash_state(capacity, hash_state)
     }
 
     /// Returns the number of elements the map can hold without reallocating.
@@ -799,13 +818,17 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
 
     /// Deprecated: use `contains_key` and `BorrowFrom` instead.
     #[deprecated = "use contains_key and BorrowFrom instead"]
-    pub fn contains_key_equiv<Sized? Q: Hash<S> + Equiv<K>>(&self, key: &Q) -> bool {
+    pub fn contains_key_equiv<Sized? Q>(&self, key: &Q) -> bool
+                                        where Q: Hash<H> + Equiv<K>
+    {
         self.search_equiv(key).is_some()
     }
 
     /// Deprecated: use `get` and `BorrowFrom` instead.
     #[deprecated = "use get and BorrowFrom instead"]
-    pub fn find_equiv<'a, Sized? Q: Hash<S> + Equiv<K>>(&'a self, k: &Q) -> Option<&'a V> {
+    pub fn find_equiv<'a, Sized? Q>(&'a self, k: &Q) -> Option<&'a V>
+                                    where Q: Hash<H> + Equiv<K>
+    {
         match self.search_equiv(k) {
             None      => None,
             Some(bucket) => {
@@ -817,7 +840,9 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
 
     /// Deprecated: use `remove` and `BorrowFrom` instead.
     #[deprecated = "use remove and BorrowFrom instead"]
-    pub fn pop_equiv<Sized? Q:Hash<S> + Equiv<K>>(&mut self, k: &Q) -> Option<V> {
+    pub fn pop_equiv<Sized? Q>(&mut self, k: &Q) -> Option<V>
+                               where Q: Hash<H> + Equiv<K>
+    {
         if self.table.size() == 0 {
             return None
         }
@@ -1044,7 +1069,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn get<Sized? Q>(&self, k: &Q) -> Option<&V>
-        where Q: Hash<S> + Eq + BorrowFrom<K>
+        where Q: Hash<H> + Eq + BorrowFrom<K>
     {
         self.search(k).map(|bucket| {
             let (_, v) = bucket.into_refs();
@@ -1070,7 +1095,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn contains_key<Sized? Q>(&self, k: &Q) -> bool
-        where Q: Hash<S> + Eq + BorrowFrom<K>
+        where Q: Hash<H> + Eq + BorrowFrom<K>
     {
         self.search(k).is_some()
     }
@@ -1102,7 +1127,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn get_mut<Sized? Q>(&mut self, k: &Q) -> Option<&mut V>
-        where Q: Hash<S> + Eq + BorrowFrom<K>
+        where Q: Hash<H> + Eq + BorrowFrom<K>
     {
         match self.search_mut(k) {
             Some(bucket) => {
@@ -1172,7 +1197,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn remove<Sized? Q>(&mut self, k: &Q) -> Option<V>
-        where Q: Hash<S> + Eq + BorrowFrom<K>
+        where Q: Hash<H> + Eq + BorrowFrom<K>
     {
         if self.table.size() == 0 {
             return None
@@ -1234,7 +1259,9 @@ fn search_entry_hashed<'a, K: Eq, V>(table: &'a mut RawTable<K,V>, hash: SafeHas
     }
 }
 
-impl<K: Eq + Hash<S>, V: Clone, S, H: Hasher<S>> HashMap<K, V, H> {
+impl<K, V, H, S> HashMap<K, V, S>
+    where K: Eq + Hash<H>, V: Clone, H: Hasher<u64>, S: HashState<u64, H>
+{
     /// Deprecated: Use `map.get(k).cloned()`.
     ///
     /// Return a copy of the value corresponding to the key.
@@ -1252,8 +1279,10 @@ impl<K: Eq + Hash<S>, V: Clone, S, H: Hasher<S>> HashMap<K, V, H> {
     }
 }
 
-impl<K: Eq + Hash<S>, V: PartialEq, S, H: Hasher<S>> PartialEq for HashMap<K, V, H> {
-    fn eq(&self, other: &HashMap<K, V, H>) -> bool {
+impl<K, V, H, S> PartialEq for HashMap<K, V, S>
+    where K: Eq + Hash<H>, V: PartialEq, H: Hasher<u64>, S: HashState<u64, H>
+{
+    fn eq(&self, other: &HashMap<K, V, S>) -> bool {
         if self.len() != other.len() { return false; }
 
         self.iter().all(|(key, value)|
@@ -1262,9 +1291,12 @@ impl<K: Eq + Hash<S>, V: PartialEq, S, H: Hasher<S>> PartialEq for HashMap<K, V,
     }
 }
 
-impl<K: Eq + Hash<S>, V: Eq, S, H: Hasher<S>> Eq for HashMap<K, V, H> {}
+impl<K, V, H, S> Eq for HashMap<K, V, S>
+    where K: Eq + Hash<H>, V: Eq, H: Hasher<u64>, S: HashState<u64, H> {}
 
-impl<K: Eq + Hash<S> + Show, V: Show, S, H: Hasher<S>> Show for HashMap<K, V, H> {
+impl<K, V, H, S> Show for HashMap<K, V, S>
+    where K: Eq + Hash<H> + Show, V: Show, H: Hasher<u64>, S: HashState<u64, H>
+{
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         try!(write!(f, "{{"));
 
@@ -1277,14 +1309,19 @@ impl<K: Eq + Hash<S> + Show, V: Show, S, H: Hasher<S>> Show for HashMap<K, V, H>
     }
 }
 
-impl<K: Eq + Hash<S>, V, S, H: Hasher<S> + Default> Default for HashMap<K, V, H> {
-    fn default() -> HashMap<K, V, H> {
-        HashMap::with_hasher(Default::default())
+impl<K, V, H, S> Default for HashMap<K, V, S>
+    where K: Eq + Hash<H>, H: Hasher<u64>, S: HashState<u64, H> + Default
+{
+    fn default() -> HashMap<K, V, S> {
+        HashMap::with_hash_state(Default::default())
     }
 }
 
-impl<K: Hash<S> + Eq, Sized? Q, V, S, H: Hasher<S>> Index<Q, V> for HashMap<K, V, H>
-    where Q: BorrowFrom<K> + Hash<S> + Eq
+impl<K, Sized? Q, V, H, S> Index<Q, V> for HashMap<K, V, S>
+    where K: Eq + Hash<H>,
+          Q: BorrowFrom<K> + Hash<H> + Eq,
+          H: Hasher<u64>,
+          S: HashState<u64, H>
 {
     #[inline]
     fn index<'a>(&'a self, index: &Q) -> &'a V {
@@ -1292,8 +1329,11 @@ impl<K: Hash<S> + Eq, Sized? Q, V, S, H: Hasher<S>> Index<Q, V> for HashMap<K, V
     }
 }
 
-impl<K: Hash<S> + Eq, Sized? Q, V, S, H: Hasher<S>> IndexMut<Q, V> for HashMap<K, V, H>
-    where Q: BorrowFrom<K> + Hash<S> + Eq
+impl<K, Sized? Q, V, H, S> IndexMut<Q, V> for HashMap<K, V, S>
+    where K: Eq + Hash<H>,
+          Q: BorrowFrom<K> + Hash<H> + Eq,
+          H: Hasher<u64>,
+          S: HashState<u64, H>
 {
     #[inline]
     fn index_mut<'a>(&'a mut self, index: &Q) -> &'a mut V {
@@ -1440,16 +1480,23 @@ pub type Keys<'a, K, V> =
 pub type Values<'a, K, V> =
     iter::Map<'static, (&'a K, &'a V), &'a V, Entries<'a, K, V>>;
 
-impl<K: Eq + Hash<S>, V, S, H: Hasher<S> + Default> FromIterator<(K, V)> for HashMap<K, V, H> {
-    fn from_iter<T: Iterator<(K, V)>>(iter: T) -> HashMap<K, V, H> {
+impl<K, V, H, S> FromIterator<(K, V)> for HashMap<K, V, S>
+    where K: Eq + Hash<H>, H: Hasher<u64>,
+          S: HashState<u64, H> + Default
+{
+    fn from_iter<T: Iterator<(K, V)>>(iter: T) -> HashMap<K, V, S> {
         let (lower, _) = iter.size_hint();
-        let mut map = HashMap::with_capacity_and_hasher(lower, Default::default());
+        let state = Default::default();
+        let mut map = HashMap::with_capacity_and_hash_state(lower, state);
         map.extend(iter);
         map
     }
 }
 
-impl<K: Eq + Hash<S>, V, S, H: Hasher<S> + Default> Extend<(K, V)> for HashMap<K, V, H> {
+impl<K, V, H, S> Extend<(K, V)> for HashMap<K, V, S>
+    where K: Eq + Hash<H>, H: Hasher<u64>,
+          S: HashState<u64, H> + Default
+{
     fn extend<T: Iterator<(K, V)>>(&mut self, mut iter: T) {
         for (k, v) in iter {
             self.insert(k, v);

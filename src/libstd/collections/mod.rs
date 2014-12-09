@@ -351,4 +351,11 @@ pub mod hash_set {
     pub use super::hash::set::*;
 }
 
+/// Experimental support for providing custom hash algorithms to a HashMap and
+/// HashSet.
+#[unstable]
+pub mod hash_state {
+    pub use super::hash::state::*;
+}
+
 pub mod lru_cache;

@@ -38,7 +38,7 @@
 //! ```rust
 //! use std::hash;
 //! use std::hash::Hash;
-//! use std::hash::sip::SipState;
+//! use std::hash::SipHasher;
 //!
 //! struct Person {
 //!     id: uint,
@@ -47,7 +47,7 @@
 //! }
 //!
 //! impl Hash for Person {
-//!     fn hash(&self, state: &mut SipState) {
+//!     fn hash(&self, state: &mut SipHasher) {
 //!         self.id.hash(state);
 //!         self.phone.hash(state);
 //!     }
@@ -60,40 +60,61 @@
 //! ```
 
 #![allow(unused_must_use)]
+#![stable]
 
 use core::prelude::*;
 
 use alloc::boxed::Box;
 use alloc::rc::Rc;
 use core::borrow::{Cow, ToOwned};
+use core::default::Default;
 use core::intrinsics::TypeId;
 use core::mem;
 use core::num::Int;
-
 use vec::Vec;
 
-/// Reexport the `sip::hash` function as our default hasher.
-pub use self::sip::hash as hash;
+pub use self::sip::SipHasher;
 
-pub mod sip;
+mod sip;
 
 /// A hashable type. The `S` type parameter is an abstract hash state that is
 /// used by the `Hash` to compute the hash. It defaults to
 /// `std::hash::sip::SipState`.
-pub trait Hash<S = sip::SipState> for Sized? {
+#[unstable = "waiting for std::hash dust to settle"]
+pub trait Hash<S: Writer = SipHasher> for Sized? {
     /// Computes the hash of a value.
     fn hash(&self, state: &mut S);
 }
 
 /// A trait that computes a hash for a value. The main users of this trait are
 /// containers like `HashMap`, which need a generic way hash multiple types.
-pub trait Hasher<S> {
-    /// Compute the hash of a value.
-    fn hash<Sized? T: Hash<S>>(&self, value: &T) -> u64;
+// FIXME(#17307) Output should be an associated type
+#[unstable = "the Output type parameter should be an associated type"]
+pub trait Hasher<Output>: Writer {
+    /// Resets this hasher back to its initial state (as if it were just
+    /// created).
+    #[stable]
+    fn reset(&mut self);
+
+    /// Completes a round of hashing, producing the output hash generated.
+    #[unstable = "may be renamed or may take some extra bytes"]
+    fn finish(&self) -> Output;
 }
 
+#[experimental = "this trait will likely be replaced by io::Writer"]
 pub trait Writer {
     fn write(&mut self, bytes: &[u8]);
+}
+
+/// Hash a value with the default SipHasher algorithm (two initial keys of 0).
+///
+/// The specified value will be hashed with this hasher and then the resulting
+/// hash will be returned.
+#[unstable = "the hashing algorithm used will likely become generic soon"]
+pub fn hash<T: Hash<SipHasher>>(value: &T) -> u64 {
+    let mut h: SipHasher = Default::default();
+    value.hash(&mut h);
+    h.finish()
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -283,7 +304,8 @@ impl<S: Writer, T: Hash<S>, U: Hash<S>> Hash<S> for Result<T, U> {
     }
 }
 
-impl<'a, T, Sized? B, S> Hash<S> for Cow<'a, T, B> where B: Hash<S> + ToOwned<T> {
+impl<'a, T, Sized? B, S> Hash<S> for Cow<'a, T, B>
+        where B: Hash<S> + ToOwned<T>, S: Writer {
     #[inline]
     fn hash(&self, state: &mut S) {
         Hash::hash(&**self, state)
@@ -300,16 +322,6 @@ mod tests {
     use slice::SlicePrelude;
     use super::{Hash, Hasher, Writer};
 
-    struct MyWriterHasher;
-
-    impl Hasher<MyWriter> for MyWriterHasher {
-        fn hash<Sized? T: Hash<MyWriter>>(&self, value: &T) -> u64 {
-            let mut state = MyWriter { hash: 0 };
-            value.hash(&mut state);
-            state.hash
-        }
-    }
-
     struct MyWriter {
         hash: u64,
     }
@@ -323,69 +335,80 @@ mod tests {
         }
     }
 
+    impl Hasher<u64> for MyWriter {
+        fn reset(&mut self) { self.hash = 0; }
+        fn finish(&self) -> u64 { self.hash }
+    }
+
     #[test]
     fn test_writer_hasher() {
         use alloc::boxed::Box;
 
-        let hasher = MyWriterHasher;
+        fn hash<T: Hash<MyWriter>>(t: &T) -> u64 {
+            let mut hasher = MyWriter { hash: 0 };
+            t.hash(&mut hasher);
+            hasher.finish()
+        }
 
-        assert_eq!(hasher.hash(&()), 0);
+        assert_eq!(hash(&()), 0);
 
-        assert_eq!(hasher.hash(&5u8), 5);
-        assert_eq!(hasher.hash(&5u16), 5);
-        assert_eq!(hasher.hash(&5u32), 5);
-        assert_eq!(hasher.hash(&5u64), 5);
-        assert_eq!(hasher.hash(&5u), 5);
+        assert_eq!(hash(&5u8), 5);
+        assert_eq!(hash(&5u16), 5);
+        assert_eq!(hash(&5u32), 5);
+        assert_eq!(hash(&5u64), 5);
+        assert_eq!(hash(&5u), 5);
 
-        assert_eq!(hasher.hash(&5i8), 5);
-        assert_eq!(hasher.hash(&5i16), 5);
-        assert_eq!(hasher.hash(&5i32), 5);
-        assert_eq!(hasher.hash(&5i64), 5);
-        assert_eq!(hasher.hash(&5i), 5);
+        assert_eq!(hash(&5i8), 5);
+        assert_eq!(hash(&5i16), 5);
+        assert_eq!(hash(&5i32), 5);
+        assert_eq!(hash(&5i64), 5);
+        assert_eq!(hash(&5i), 5);
 
-        assert_eq!(hasher.hash(&false), 0);
-        assert_eq!(hasher.hash(&true), 1);
+        assert_eq!(hash(&false), 0);
+        assert_eq!(hash(&true), 1);
 
-        assert_eq!(hasher.hash(&'a'), 97);
+        assert_eq!(hash(&'a'), 97);
 
         let s: &str = "a";
-        assert_eq!(hasher.hash(& s), 97 + 0xFF);
+        assert_eq!(hash(& s), 97 + 0xFF);
         // FIXME (#18283) Enable test
         //let s: Box<str> = box "a";
         //assert_eq!(hasher.hash(& s), 97 + 0xFF);
         let cs: &[u8] = &[1u8, 2u8, 3u8];
-        assert_eq!(hasher.hash(& cs), 9);
+        assert_eq!(hash(& cs), 9);
         let cs: Box<[u8]> = box [1u8, 2u8, 3u8];
-        assert_eq!(hasher.hash(& cs), 9);
+        assert_eq!(hash(& cs), 9);
 
         // FIXME (#18248) Add tests for hashing Rc<str> and Rc<[T]>
 
-        unsafe {
-            let ptr: *const int = mem::transmute(5i);
-            assert_eq!(hasher.hash(&ptr), 5);
-        }
+        let ptr = 5i as *const int;
+        assert_eq!(hash(&ptr), 5);
 
-        unsafe {
-            let ptr: *mut int = mem::transmute(5i);
-            assert_eq!(hasher.hash(&ptr), 5);
-        }
+        let ptr = 5i as *mut int;
+        assert_eq!(hash(&ptr), 5);
     }
 
     struct Custom {
         hash: u64
     }
 
-    impl Hash<u64> for Custom {
-        fn hash(&self, state: &mut u64) {
-            *state = self.hash;
+    struct CustomHasher { state: u64 }
+
+    impl Writer for CustomHasher {
+        fn write(&mut self, _data: &[u8]) {}
+    }
+
+    impl Hash<CustomHasher> for Custom {
+        fn hash(&self, state: &mut CustomHasher) {
+            state.state = self.hash;
         }
     }
 
     #[test]
     fn test_custom_state() {
         let custom = Custom { hash: 5 };
-        let mut state = 0;
+        let mut state = CustomHasher { state: 0 };
         custom.hash(&mut state);
-        assert_eq!(state, 5);
+        assert_eq!(state.state, 5);
     }
 }

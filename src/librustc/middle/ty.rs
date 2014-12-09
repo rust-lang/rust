@@ -71,7 +71,7 @@ use std::borrow::BorrowFrom;
 use std::cell::{Cell, RefCell};
 use std::cmp;
 use std::fmt::{mod, Show};
-use std::hash::{Hash, sip, Writer};
+use std::hash::{Hash, Writer, SipHasher, Hasher};
 use std::mem;
 use std::ops;
 use std::rc::Rc;
@@ -5697,11 +5697,11 @@ pub fn trait_item_of_item(tcx: &ctxt, def_id: ast::DefId)
 /// Creates a hash of the type `Ty` which will be the same no matter what crate
 /// context it's calculated within. This is used by the `type_id` intrinsic.
 pub fn hash_crate_independent(tcx: &ctxt, ty: Ty, svh: &Svh) -> u64 {
-    let mut state = sip::SipState::new();
+    let mut state = SipHasher::new();
     macro_rules! byte( ($b:expr) => { ($b as u8).hash(&mut state) } );
     macro_rules! hash( ($e:expr) => { $e.hash(&mut state) } );
 
-    let region = |_state: &mut sip::SipState, r: Region| {
+    let region = |_state: &mut SipHasher, r: Region| {
         match r {
             ReStatic => {}
 
@@ -5715,7 +5715,7 @@ pub fn hash_crate_independent(tcx: &ctxt, ty: Ty, svh: &Svh) -> u64 {
             }
         }
     };
-    let did = |state: &mut sip::SipState, did: DefId| {
+    let did = |state: &mut SipHasher, did: DefId| {
         let h = if ast_util::is_local(did) {
             svh.clone()
         } else {
@@ -5724,7 +5724,7 @@ pub fn hash_crate_independent(tcx: &ctxt, ty: Ty, svh: &Svh) -> u64 {
         h.as_str().hash(state);
         did.node.hash(state);
     };
-    let mt = |state: &mut sip::SipState, mt: mt| {
+    let mt = |state: &mut SipHasher, mt: mt| {
         mt.mutbl.hash(state);
     };
     ty::walk_ty(ty, |ty| {
@@ -5817,7 +5817,7 @@ pub fn hash_crate_independent(tcx: &ctxt, ty: Ty, svh: &Svh) -> u64 {
         }
     });
 
-    state.result()
+    state.finish()
 }
 
 impl Variance {

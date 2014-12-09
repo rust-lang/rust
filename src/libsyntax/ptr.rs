@@ -36,7 +36,7 @@
 
 use std::fmt;
 use std::fmt::Show;
-use std::hash::Hash;
+use std::hash::{Hash, Writer};
 use std::ptr;
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 
@@ -97,7 +97,7 @@ impl<T: Show> Show for P<T> {
     }
 }
 
-impl<S, T: Hash<S>> Hash<S> for P<T> {
+impl<S: Writer, T: Hash<S>> Hash<S> for P<T> {
     fn hash(&self, state: &mut S) {
         (**self).hash(state);
     }

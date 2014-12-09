@@ -16,7 +16,8 @@ use core::kinds::Sized;
 use default::Default;
 use fmt::Show;
 use fmt;
-use hash::{Hash, Hasher, RandomSipHasher};
+use hash::{Hash, Hasher};
+use collections::hash_state::{HashState, RandomSipState};
 use iter::{Iterator, IteratorExt, FromIterator, FilterMap, Chain, Repeat, Zip, Extend, repeat};
 use iter;
 use option::Option::{Some, None};
@@ -92,11 +93,11 @@ use super::map::{HashMap, Entries, MoveEntries, INITIAL_CAPACITY};
 /// }
 /// ```
 #[deriving(Clone)]
-pub struct HashSet<T, H = RandomSipHasher> {
-    map: HashMap<T, (), H>
+pub struct HashSet<T, S = RandomSipState> {
+    map: HashMap<T, (), S>
 }
 
-impl<T: Hash + Eq> HashSet<T, RandomSipHasher> {
+impl<T: Hash + Eq> HashSet<T, RandomSipState> {
     /// Create an empty HashSet.
     ///
     /// # Example
@@ -107,7 +108,7 @@ impl<T: Hash + Eq> HashSet<T, RandomSipHasher> {
     /// ```
     #[inline]
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn new() -> HashSet<T, RandomSipHasher> {
+    pub fn new() -> HashSet<T, RandomSipState> {
         HashSet::with_capacity(INITIAL_CAPACITY)
     }
 
@@ -122,12 +123,12 @@ impl<T: Hash + Eq> HashSet<T, RandomSipHasher> {
     /// ```
     #[inline]
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn with_capacity(capacity: uint) -> HashSet<T, RandomSipHasher> {
+    pub fn with_capacity(capacity: uint) -> HashSet<T, RandomSipState> {
         HashSet { map: HashMap::with_capacity(capacity) }
     }
 }
 
-impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
+impl<T: Eq + Hash<H>, H: Hasher<u64>, S: HashState<u64, H>> HashSet<T, S> {
     /// Creates a new empty hash set which will use the given hasher to hash
     /// keys.
     ///
@@ -137,15 +138,22 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     ///
     /// ```
     /// use std::collections::HashSet;
-    /// use std::hash::sip::SipHasher;
+    /// use std::collections::hash_state::RandomSipState;
     ///
-    /// let h = SipHasher::new();
-    /// let mut set = HashSet::with_hasher(h);
+    /// let s = RandomSipState::new();
+    /// let mut set = HashSet::with_hash_state(s);
     /// set.insert(2u);
     /// ```
     #[inline]
-    pub fn with_hasher(hasher: H) -> HashSet<T, H> {
-        HashSet::with_capacity_and_hasher(INITIAL_CAPACITY, hasher)
+    pub fn with_hash_state(hash_state: S) -> HashSet<T, S> {
+        HashSet::with_capacity_and_hash_state(INITIAL_CAPACITY, hash_state)
+    }
+
+    /// Deprecated in favor of `with_hash_state`
+    #[inline]
+    #[deprecated = "renamed to with_hash_state"]
+    pub fn with_hasher(hash_state: S) -> HashSet<T, S> {
+        HashSet::with_hash_state(hash_state)
     }
 
     /// Create an empty HashSet with space for at least `capacity`
@@ -160,15 +168,26 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     ///
     /// ```
     /// use std::collections::HashSet;
-    /// use std::hash::sip::SipHasher;
+    /// use std::collections::hash_state::RandomSipState;
     ///
-    /// let h = SipHasher::new();
-    /// let mut set = HashSet::with_capacity_and_hasher(10u, h);
+    /// let s = RandomSipState::new();
+    /// let mut set = HashSet::with_capacity_and_hash_state(10u, s);
     /// set.insert(1i);
     /// ```
     #[inline]
-    pub fn with_capacity_and_hasher(capacity: uint, hasher: H) -> HashSet<T, H> {
-        HashSet { map: HashMap::with_capacity_and_hasher(capacity, hasher) }
+    pub fn with_capacity_and_hash_state(capacity: uint, hash_state: S)
+                                        -> HashSet<T, S> {
+        HashSet {
+            map: HashMap::with_capacity_and_hash_state(capacity, hash_state),
+        }
+    }
+
+    /// Deprecated in favor of `with_capacity_and_hash_state`
+    #[inline]
+    #[deprecated = "renamed to with_capacity_and_hash_state"]
+    pub fn with_capacity_and_hasher(capacity: uint, hash_state: S)
+                                    -> HashSet<T, S> {
+        HashSet::with_capacity_and_hash_state(capacity, hash_state)
     }
 
     /// Returns the number of elements the set can hold without reallocating.
@@ -230,7 +249,7 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     /// Deprecated: use `contains` and `BorrowFrom`.
     #[deprecated = "use contains and BorrowFrom"]
     #[allow(deprecated)]
-    pub fn contains_equiv<Sized? Q: Hash<S> + Equiv<T>>(&self, value: &Q) -> bool {
+    pub fn contains_equiv<Sized? Q: Hash<H> + Equiv<T>>(&self, value: &Q) -> bool {
       self.map.contains_key_equiv(value)
     }
 
@@ -303,7 +322,7 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     /// assert_eq!(diff, [4i].iter().map(|&x| x).collect());
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn difference<'a>(&'a self, other: &'a HashSet<T, H>) -> SetAlgebraItems<'a, T, H> {
+    pub fn difference<'a>(&'a self, other: &'a HashSet<T, S>) -> SetAlgebraItems<'a, T, S> {
         repeat(other).zip(self.iter())
             .filter_map(|(other, elt)| {
                 if !other.contains(elt) { Some(elt) } else { None }
@@ -331,8 +350,8 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     /// assert_eq!(diff1, [1i, 4].iter().map(|&x| x).collect());
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn symmetric_difference<'a>(&'a self, other: &'a HashSet<T, H>)
-        -> Chain<SetAlgebraItems<'a, T, H>, SetAlgebraItems<'a, T, H>> {
+    pub fn symmetric_difference<'a>(&'a self, other: &'a HashSet<T, S>)
+        -> Chain<SetAlgebraItems<'a, T, S>, SetAlgebraItems<'a, T, S>> {
         self.difference(other).chain(other.difference(self))
     }
 
@@ -354,8 +373,8 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     /// assert_eq!(diff, [2i, 3].iter().map(|&x| x).collect());
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn intersection<'a>(&'a self, other: &'a HashSet<T, H>)
-        -> SetAlgebraItems<'a, T, H> {
+    pub fn intersection<'a>(&'a self, other: &'a HashSet<T, S>)
+        -> SetAlgebraItems<'a, T, S> {
         repeat(other).zip(self.iter())
             .filter_map(|(other, elt)| {
                 if other.contains(elt) { Some(elt) } else { None }
@@ -380,8 +399,8 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     /// assert_eq!(diff, [1i, 2, 3, 4].iter().map(|&x| x).collect());
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn union<'a>(&'a self, other: &'a HashSet<T, H>)
-        -> Chain<SetItems<'a, T>, SetAlgebraItems<'a, T, H>> {
+    pub fn union<'a>(&'a self, other: &'a HashSet<T, S>)
+        -> Chain<SetItems<'a, T>, SetAlgebraItems<'a, T, S>> {
         self.iter().chain(other.difference(self))
     }
 
@@ -447,7 +466,7 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn contains<Sized? Q>(&self, value: &Q) -> bool
-        where Q: BorrowFrom<T> + Hash<S> + Eq
+        where Q: BorrowFrom<T> + Hash<H> + Eq
     {
         self.map.contains_key(value)
     }
@@ -470,7 +489,7 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     /// assert_eq!(a.is_disjoint(&b), false);
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn is_disjoint(&self, other: &HashSet<T, H>) -> bool {
+    pub fn is_disjoint(&self, other: &HashSet<T, S>) -> bool {
         self.iter().all(|v| !other.contains(v))
     }
 
@@ -491,7 +510,7 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     /// assert_eq!(set.is_subset(&sup), false);
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn is_subset(&self, other: &HashSet<T, H>) -> bool {
+    pub fn is_subset(&self, other: &HashSet<T, S>) -> bool {
         self.iter().all(|v| other.contains(v))
     }
 
@@ -516,7 +535,7 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     /// ```
     #[inline]
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn is_superset(&self, other: &HashSet<T, H>) -> bool {
+    pub fn is_superset(&self, other: &HashSet<T, S>) -> bool {
         other.is_subset(self)
     }
 
@@ -557,23 +576,29 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn remove<Sized? Q>(&mut self, value: &Q) -> bool
-        where Q: BorrowFrom<T> + Hash<S> + Eq
+        where Q: BorrowFrom<T> + Hash<H> + Eq
     {
         self.map.remove(value).is_some()
     }
 }
 
-impl<T: Eq + Hash<S>, S, H: Hasher<S>> PartialEq for HashSet<T, H> {
-    fn eq(&self, other: &HashSet<T, H>) -> bool {
+impl<T, H, S> PartialEq for HashSet<T, S>
+    where T: Eq + Hash<H>, H: Hasher<u64>, S: HashState<u64, H>
+{
+    fn eq(&self, other: &HashSet<T, S>) -> bool {
         if self.len() != other.len() { return false; }
 
         self.iter().all(|key| other.contains(key))
     }
 }
 
-impl<T: Eq + Hash<S>, S, H: Hasher<S>> Eq for HashSet<T, H> {}
+impl<T, H, S> Eq for HashSet<T, S>
+    where T: Eq + Hash<H>, H: Hasher<u64>, S: HashState<u64, H>
+{}
 
-impl<T: Eq + Hash<S> + fmt::Show, S, H: Hasher<S>> fmt::Show for HashSet<T, H> {
+impl<T: fmt::Show, H, S> fmt::Show for HashSet<T, S>
+    where T: Eq + Hash<H>, H: Hasher<u64>, S: HashState<u64, H>
+{
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         try!(write!(f, "{{"));
 
@@ -586,16 +611,21 @@ impl<T: Eq + Hash<S> + fmt::Show, S, H: Hasher<S>> fmt::Show for HashSet<T, H> {
     }
 }
 
-impl<T: Eq + Hash<S>, S, H: Hasher<S> + Default> FromIterator<T> for HashSet<T, H> {
-    fn from_iter<I: Iterator<T>>(iter: I) -> HashSet<T, H> {
+impl<T, H, S> FromIterator<T> for HashSet<T, S>
+    where T: Eq + Hash<H>, H: Hasher<u64>, S: HashState<u64, H> + Default
+{
+    fn from_iter<I: Iterator<T>>(iter: I) -> HashSet<T, S> {
         let (lower, _) = iter.size_hint();
-        let mut set = HashSet::with_capacity_and_hasher(lower, Default::default());
+        let state = Default::default();
+        let mut set = HashSet::with_capacity_and_hash_state(lower, state);
         set.extend(iter);
         set
     }
 }
 
-impl<T: Eq + Hash<S>, S, H: Hasher<S> + Default> Extend<T> for HashSet<T, H> {
+impl<T, H, S> Extend<T> for HashSet<T, S>
+    where T: Eq + Hash<H>, H: Hasher<u64>, S: HashState<u64, H>
+{
     fn extend<I: Iterator<T>>(&mut self, mut iter: I) {
         for k in iter {
             self.insert(k);
@@ -603,9 +633,11 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S> + Default> Extend<T> for HashSet<T, H> {
     }
 }
 
-impl<T: Eq + Hash<S>, S, H: Hasher<S> + Default> Default for HashSet<T, H> {
-    fn default() -> HashSet<T, H> {
-        HashSet::with_hasher(Default::default())
+impl<T, H, S> Default for HashSet<T, S>
+    where T: Eq + Hash<H>, H: Hasher<u64>, S: HashState<u64, H> + Default
+{
+    fn default() -> HashSet<T, S> {
+        HashSet::with_hash_state(Default::default())
     }
 }
 
@@ -620,9 +652,9 @@ pub type SetMoveItems<K> =
 // `Repeat` is used to feed the filter closure an explicit capture
 // of a reference to the other set
 /// Set operations iterator
-pub type SetAlgebraItems<'a, T, H> =
-    FilterMap<'static, (&'a HashSet<T, H>, &'a T), &'a T,
-              Zip<Repeat<&'a HashSet<T, H>>, SetItems<'a, T>>>;
+pub type SetAlgebraItems<'a, T, S> =
+    FilterMap<'static, (&'a HashSet<T, S>, &'a T), &'a T,
+              Zip<Repeat<&'a HashSet<T, S>>, SetItems<'a, T>>>;
 
 #[cfg(test)]
 mod test_set {

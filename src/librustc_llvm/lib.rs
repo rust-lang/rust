@@ -22,7 +22,7 @@
        html_root_url = "http://doc.rust-lang.org/nightly/")]
 
 #![feature(globs)]
-#![feature(link_args)]
+#![feature(link_args, default_type_params)]
 
 extern crate libc;
 

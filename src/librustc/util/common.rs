@@ -15,6 +15,7 @@ use std::collections::HashMap;
 use std::fmt::Show;
 use std::hash::{Hash, Hasher};
 use std::time::Duration;
+use std::collections::hash_state::HashState;
 
 use syntax::ast;
 use syntax::visit;
@@ -132,8 +133,8 @@ pub fn block_query(b: &ast::Block, p: |&ast::Expr| -> bool) -> bool {
 /// Efficiency note: This is implemented in an inefficient way because it is typically invoked on
 /// very small graphs. If the graphs become larger, a more efficient graph representation and
 /// algorithm would probably be advised.
-pub fn can_reach<S,H:Hasher<S>,T:Eq+Clone+Hash<S>>(
-    edges_map: &HashMap<T,Vec<T>,H>,
+pub fn can_reach<S: HashState<u64, H>, H: Hasher<u64>, T: Eq + Clone + Hash<H>>(
+    edges_map: &HashMap<T, Vec<T>, S>,
     source: T,
     destination: T)
     -> bool
@@ -194,8 +195,9 @@ pub fn can_reach<S,H:Hasher<S>,T:Eq+Clone+Hash<S>>(
 /// }
 /// ```
 #[inline(always)]
-pub fn memoized<T: Clone + Hash<S> + Eq, U: Clone, S, H: Hasher<S>>(
-    cache: &RefCell<HashMap<T, U, H>>,
+pub fn memoized<T: Clone + Hash<H> + Eq, U: Clone, H: Hasher<u64>,
+                S: HashState<u64, H>>(
+    cache: &RefCell<HashMap<T, U, S>>,
     arg: T,
     f: |T| -> U
 ) -> U {

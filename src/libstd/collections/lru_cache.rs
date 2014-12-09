@@ -40,7 +40,7 @@
 use cmp::{PartialEq, Eq};
 use collections::HashMap;
 use fmt;
-use hash::Hash;
+use hash::{Hash, Writer};
 use iter::{range, Iterator, Extend};
 use mem;
 use ops::Drop;
@@ -69,7 +69,7 @@ pub struct LruCache<K, V> {
     head: *mut LruEntry<K, V>,
 }
 
-impl<S, K: Hash<S>> Hash<S> for KeyRef<K> {
+impl<S: Writer, K: Hash<S>> Hash<S> for KeyRef<K> {
     fn hash(&self, state: &mut S) {
         unsafe { (*self.k).hash(state) }
     }
