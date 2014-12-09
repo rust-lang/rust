@@ -386,20 +386,81 @@ fn convert_angle_bracketed_parameters<'tcx, AC, RS>(this: &AC,
     (regions, types)
 }
 
+/// Returns the appropriate lifetime to use for any output lifetimes
+/// (if one exists) and a vector of the (pattern, number of lifetimes)
+/// corresponding to each input type/pattern.
+fn find_implied_output_region(input_tys: &[Ty], input_pats: Vec<String>)
+                              -> (Option<ty::Region>, Vec<(String, uint)>)
+{
+    let mut lifetimes_for_params: Vec<(String, uint)> = Vec::new();
+    let mut possible_implied_output_region = None;
+
+    for (input_type, input_pat) in input_tys.iter().zip(input_pats.into_iter()) {
+        let mut accumulator = Vec::new();
+        ty::accumulate_lifetimes_in_type(&mut accumulator, *input_type);
+
+        if accumulator.len() == 1 {
+            // there's a chance that the unique lifetime of this
+            // iteration will be the appropriate lifetime for output
+            // parameters, so lets store it.
+            possible_implied_output_region = Some(accumulator[0])
+        }
+
+        lifetimes_for_params.push((input_pat, accumulator.len()));
+    }
+
+    let implied_output_region = if lifetimes_for_params.iter().map(|&(_, n)| n).sum() == 1 {
+        assert!(possible_implied_output_region.is_some());
+        possible_implied_output_region
+    } else {
+        None
+    };
+    (implied_output_region, lifetimes_for_params)
+}
+
+fn convert_ty_with_lifetime_elision<'tcx,AC>(this: &AC,
+                                             implied_output_region: Option<ty::Region>,
+                                             param_lifetimes: Vec<(String, uint)>,
+                                             ty: &ast::Ty)
+                                             -> Ty<'tcx>
+    where AC: AstConv<'tcx>
+{
+    match implied_output_region {
+        Some(implied_output_region) => {
+            let rb = SpecificRscope::new(implied_output_region);
+            ast_ty_to_ty(this, &rb, ty)
+        }
+        None => {
+            // All regions must be explicitly specified in the output
+            // if the lifetime elision rules do not apply. This saves
+            // the user from potentially-confusing errors.
+            let rb = UnelidableRscope::new(param_lifetimes);
+            ast_ty_to_ty(this, &rb, ty)
+        }
+    }
+}
+
 fn convert_parenthesized_parameters<'tcx,AC>(this: &AC,
                                              data: &ast::ParenthesizedParameterData)
                                              -> Vec<Ty<'tcx>>
     where AC: AstConv<'tcx>
 {
     let binding_rscope = BindingRscope::new();
-
     let inputs = data.inputs.iter()
                             .map(|a_t| ast_ty_to_ty(this, &binding_rscope, &**a_t))
-                            .collect();
+                            .collect::<Vec<Ty<'tcx>>>();
+
+    let input_params = Vec::from_elem(inputs.len(), String::new());
+    let (implied_output_region,
+         params_lifetimes) = find_implied_output_region(&*inputs, input_params);
+
     let input_ty = ty::mk_tup(this.tcx(), inputs);
 
     let output = match data.output {
-        Some(ref output_ty) => ast_ty_to_ty(this, &binding_rscope, &**output_ty),
+        Some(ref output_ty) => convert_ty_with_lifetime_elision(this,
+                                                                implied_output_region,
+                                                                params_lifetimes,
+                                                                &**output_ty),
         None => ty::mk_nil(this.tcx()),
     };
 
@@ -1059,55 +1120,33 @@ fn ty_of_method_or_bare_fn<'a, 'tcx, AC: AstConv<'tcx>>(
     let self_and_input_tys: Vec<Ty> =
         self_ty.into_iter().chain(input_tys).collect();
 
-    let mut lifetimes_for_params: Vec<(String, Vec<ty::Region>)> = Vec::new();
 
     // Second, if there was exactly one lifetime (either a substitution or a
     // reference) in the arguments, then any anonymous regions in the output
     // have that lifetime.
-    if implied_output_region.is_none() {
-        let mut self_and_input_tys_iter = self_and_input_tys.iter();
-        if self_ty.is_some() {
+    let lifetimes_for_params = if implied_output_region.is_none() {
+        let input_tys = if self_ty.is_some() {
             // Skip the first argument if `self` is present.
-            drop(self_and_input_tys_iter.next())
-        }
+            self_and_input_tys.slice_from(1)
+        } else {
+            self_and_input_tys.slice_from(0)
+        };
 
-        for (input_type, input_pat) in self_and_input_tys_iter.zip(input_pats.into_iter()) {
-            let mut accumulator = Vec::new();
-            ty::accumulate_lifetimes_in_type(&mut accumulator, *input_type);
-            lifetimes_for_params.push((input_pat, accumulator));
-        }
-
-        if lifetimes_for_params.iter().map(|&(_, ref x)| x.len()).sum() == 1 {
-            implied_output_region =
-                Some(lifetimes_for_params.iter()
-                                         .filter_map(|&(_, ref x)|
-                                            if x.len() == 1 { Some(x[0]) } else { None })
-                                         .next().unwrap());
-        }
-    }
-
-    let param_lifetimes: Vec<(String, uint)> = lifetimes_for_params.into_iter()
-                                                                   .map(|(n, v)| (n, v.len()))
-                                                                   .filter(|&(_, l)| l != 0)
-                                                                   .collect();
+        let (ior, lfp) = find_implied_output_region(input_tys, input_pats);
+        implied_output_region = ior;
+        lfp
+    } else {
+        vec![]
+    };
 
     let output_ty = match decl.output {
         ast::Return(ref output) if output.node == ast::TyInfer =>
             ty::FnConverging(this.ty_infer(output.span)),
         ast::Return(ref output) =>
-            ty::FnConverging(match implied_output_region {
-                Some(implied_output_region) => {
-                    let rb = SpecificRscope::new(implied_output_region);
-                    ast_ty_to_ty(this, &rb, &**output)
-                }
-                None => {
-                    // All regions must be explicitly specified in the output
-                    // if the lifetime elision rules do not apply. This saves
-                    // the user from potentially-confusing errors.
-                    let rb = UnelidableRscope::new(param_lifetimes);
-                    ast_ty_to_ty(this, &rb, &**output)
-                }
-            }),
+            ty::FnConverging(convert_ty_with_lifetime_elision(this,
+                                                              implied_output_region,
+                                                              lifetimes_for_params,
+                                                              &**output)),
         ast::NoReturn(_) => ty::FnDiverging
     };
 
