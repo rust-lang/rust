@@ -426,7 +426,7 @@ x = 10i;
 
 It will give you this error:
 
-```{ignore}
+```{notrust}
 error: re-assignment of immutable variable `x`
      x = 10i;
      ^~~~~~~
@@ -486,7 +486,7 @@ fn main() {
 You can use `cargo build` on the command line to build it. You'll get a warning,
 but it will still print "Hello, world!":
 
-```{ignore}
+```{notrust}
    Compiling hello_world v0.0.1 (file:///home/you/projects/hello_world)
 src/main.rs:2:9: 2:10 warning: unused variable: `x`, #[warn(unused_variable)] on by default
 src/main.rs:2     let x: int;
@@ -664,7 +664,7 @@ let y: int = if x == 5i { 10i; } else { 15i; };
 
 Note the semicolons after the 10 and 15. Rust will give us the following error:
 
-```{ignore}
+```{notrust}
 error: mismatched types: expected `int` but found `()` (expected int but found ())
 ```
 
@@ -747,7 +747,7 @@ fn print_number(x, y) {
 
 You get this error:
 
-```{ignore}
+```{notrust}
 hello.rs:5:18: 5:19 error: expected `:` but found `,`
 hello.rs:5 fn print_number(x, y) {
 ```
@@ -1246,7 +1246,7 @@ So what's the big advantage here? Well, there are a few. First of all, `match`
 enforces 'exhaustiveness checking.' Do you see that last arm, the one with the
 underscore (`_`)? If we remove that arm, Rust will give us an error:
 
-```{ignore}
+```{notrust}
 error: non-exhaustive patterns: `_` not covered
 ```
 
@@ -1898,7 +1898,7 @@ Before we move on, let me show you one more Cargo command: `run`. `cargo run`
 is kind of like `cargo build`, but it also then runs the produced executable.
 Try it out:
 
-```{ignore}
+```{notrust}
 $ cargo run
    Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
      Running `target/guessing_game`
@@ -1996,7 +1996,7 @@ for this example, it is not important.
 
 Let's try to compile this using `cargo build`:
 
-```{no_run}
+```{notrust}
 $ cargo build
    Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
 src/main.rs:7:26: 7:34 error: the type of this value must be known in this context
@@ -2044,7 +2044,7 @@ fn main() {
 
 Try running our new program a few times:
 
-```{ignore}
+```{notrust}
 $ cargo run
    Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
      Running `target/guessing_game`
@@ -2097,7 +2097,7 @@ fn main() {
 
 And trying it out:
 
-```{ignore}
+```{notrust}
 $ cargo run
    Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
      Running `target/guessing_game`
@@ -2152,7 +2152,7 @@ fn cmp(a: int, b: int) -> Ordering {
 
 If we try to compile, we'll get some errors:
 
-```{ignore}
+```{notrust}
 $ cargo build
    Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
 src/main.rs:20:15: 20:20 error: mismatched types: expected `int` but found `collections::string::String` (expected int but found struct collections::string::String)
@@ -2206,7 +2206,7 @@ fn cmp(a: uint, b: uint) -> Ordering {
 
 And try compiling again:
 
-```{ignore}
+```{notrust}
 $ cargo build
    Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
 src/main.rs:20:15: 20:20 error: mismatched types: expected `uint` but found `collections::string::String` (expected uint but found struct collections::string::String)
@@ -2219,7 +2219,7 @@ This error is similar to the last one: we expected to get a `uint`, but we got
 a `String` instead! That's because our `input` variable is coming from the
 standard input, and you can guess anything. Try it:
 
-```{ignore}
+```{notrust}
 $ ./target/guessing_game
 Guess the number!
 The secret number is: 73
@@ -2303,7 +2303,7 @@ fn cmp(a: uint, b: uint) -> Ordering {
 
 Let's try it out!
 
-```{ignore}
+```{notrust}
 $ cargo build
    Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
 src/main.rs:22:15: 22:24 error: mismatched types: expected `uint` but found `core::option::Option<uint>` (expected uint but found enum core::option::Option)
@@ -2362,7 +2362,7 @@ fn cmp(a: uint, b: uint) -> Ordering {
 We use a `match` to either give us the `uint` inside of the `Option`, or we
 print an error message and return. Let's give this a shot:
 
-```{ignore}
+```{notrust}
 $ cargo run
    Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
      Running `target/guessing_game`
@@ -2427,7 +2427,7 @@ fn cmp(a: uint, b: uint) -> Ordering {
 
 Let's try it!
 
-```{ignore}
+```{notrust}
 $ cargo run
    Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
      Running `target/guessing_game`
@@ -2504,7 +2504,7 @@ fn cmp(a: uint, b: uint) -> Ordering {
 And try it out. But wait, didn't we just add an infinite loop? Yup. Remember
 that `return`? If we give a non-number answer, we'll `return` and quit. Observe:
 
-```{ignore}
+```{notrust}
 $ cargo run
    Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
      Running `target/guessing_game`
@@ -2636,7 +2636,7 @@ fn cmp(a: uint, b: uint) -> Ordering {
 
 Now we should be good! Let's try:
 
-```{ignore}
+```{notrust}
 $ cargo run
    Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
      Running `target/guessing_game`
@@ -2814,7 +2814,7 @@ mod hello {
 
 It gives an error:
 
-```{ignore}
+```{notrust}
    Compiling modules v0.0.1 (file:///home/you/projects/modules)
 src/main.rs:2:5: 2:23 error: function `print_hello` is private
 src/main.rs:2     hello::print_hello();
@@ -2838,7 +2838,7 @@ mod hello {
 Usage of the `pub` keyword is sometimes called 'exporting', because
 we're making the function available for other modules. This will work:
 
-```{ignore}
+```{notrust}
 $ cargo run
    Compiling modules v0.0.1 (file:///home/you/projects/modules)
      Running `target/modules`
@@ -2972,7 +2972,7 @@ $ cd testing
 
 And try it out:
 
-```{ignore}
+```{notrust}
 $ cargo run
    Compiling testing v0.0.1 (file:///home/you/projects/testing)
      Running `target/testing`
@@ -3004,7 +3004,7 @@ you give them descriptive names. You'll see why in a moment. We then use a
 macro, `assert!`, to assert that something is true. In this case, we're giving
 it `false`, so this test should fail. Let's try it!
 
-```{ignore}
+```{notrust}
 $ cargo test
    Compiling testing v0.0.1 (file:///home/you/projects/testing)
 /home/you/projects/testing/src/main.rs:1:1: 3:2 warning: function is never used: `main`, #[warn(dead_code)] on by default
@@ -3041,7 +3041,7 @@ $ cargo test
 You can run all of your tests with `cargo test`. This runs both your tests in
 `tests`, as well as the tests you put inside of your crate.
 
-```{ignore}
+```{notrust}
 /home/you/projects/testing/src/main.rs:1:1: 3:2 warning: function is never used: `main`, #[warn(dead_code)] on by default
 /home/you/projects/testing/src/main.rs:1 fn main() {
 /home/you/projects/testing/src/main.rs:2     println!("Hello, world!")
@@ -3067,7 +3067,7 @@ with good names? This is why. Here, it says 'test foo' because we called our
 test 'foo.' If we had given it a good name, it'd be more clear which test
 failed, especially as we accumulate more tests.
 
-```{ignore}
+```{notrust}
 failures:
 
 ---- foo stdout ----
@@ -3169,7 +3169,7 @@ fn math_checks_out() {
 
 And try to run the test:
 
-```{ignore}
+```{notrust}
 $ cargo test
    Compiling testing v0.0.1 (file:///home/you/projects/testing)
 /home/you/projects/testing/tests/lib.rs:3:18: 3:38 error: unresolved name `add_three_times_four`.
@@ -3332,7 +3332,7 @@ fn test_add_three() {
 
 We'd get this error:
 
-```{ignore}
+```{notrust}
    Compiling testing v0.0.1 (file:///home/you/projects/testing)
 /home/you/projects/testing/tests/lib.rs:3:5: 3:24 error: function `add_three` is private
 /home/you/projects/testing/tests/lib.rs:3 use testing::add_three;
@@ -3504,7 +3504,7 @@ let y = &mut x;
 
 Rust will complain:
 
-```{ignore}
+```{notrust}
 error: cannot borrow immutable local variable `x` as mutable
  let y = &mut x;
               ^
@@ -3531,7 +3531,7 @@ let z = &mut x;
 
 It gives us this error:
 
-```{ignore}
+```{notrust}
 error: cannot borrow `x` as mutable more than once at a time
      let z = &mut x;
                   ^
@@ -3677,7 +3677,7 @@ let z = &mut x;
 
 The error:
 
-```{ignore}
+```{notrust}
 error: cannot borrow `x` as mutable more than once at a time
      let z = &mut x;
                   ^
@@ -3695,7 +3695,7 @@ note: previous borrow ends here
 
 This error comes in three parts. Let's go over each in turn.
 
-```{ignore}
+```{notrust}
 error: cannot borrow `x` as mutable more than once at a time
      let z = &mut x;
                   ^
@@ -3704,7 +3704,7 @@ error: cannot borrow `x` as mutable more than once at a time
 This error states the restriction: you cannot lend out something mutable more
 than once at the same time. The borrow checker knows the rules!
 
-```{ignore}
+```{notrust}
 note: previous borrow of `x` occurs here; the mutable borrow prevents subsequent moves, borrows, or modification of `x` until the borrow ends
      let y = &mut x;
                   ^
@@ -3819,7 +3819,7 @@ let y = &mut x;
 
 This gives us this error:
 
-```{ignore}
+```{notrust}
 error: cannot use `*x` because it was mutably borrowed
  *x;
  ^~
@@ -4887,7 +4887,7 @@ We can then use `T` inside the rest of the signature: `x` has type `T`, and half
 of the `Result` has type `T`. However, if we try to compile that example, we'll get
 an error:
 
-```{ignore}
+```{notrust}
 error: binary operation `==` cannot be applied to type `T`
 ```
 
@@ -4943,7 +4943,7 @@ we use `impl Trait for Item`, rather than just `impl Item`.
 So what's the big deal? Remember the error we were getting with our generic
 `inverse` function?
 
-```{ignore}
+```{notrust}
 error: binary operation `==` cannot be applied to type `T`
 ```
 
@@ -4958,7 +4958,7 @@ fn print_area<T>(shape: T) {
 
 Rust complains:
 
-```{ignore}
+```{notrust}
 error: type `T` does not implement any method in scope named `area`
 ```
 
@@ -5115,7 +5115,7 @@ fn main() {
 Now that we've moved the structs and traits into their own module, we get an
 error:
 
-```{ignore}
+```{notrust}
 error: type `shapes::Circle` does not implement any method in scope named `area`
 ```
 
