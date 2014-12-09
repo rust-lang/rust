@@ -76,7 +76,7 @@ fn main() {
 
 This will give us an error:
 
-```{notrust,ignore}
+```{ignore}
 error: non-exhaustive patterns: `_` not covered [E0004]
 ```
 
@@ -189,7 +189,7 @@ panic!("boom");
 
 gives
 
-```{notrust,ignore}
+```{ignore}
 task '<main>' panicked at 'boom', hello.rs:2
 ```
 
