@@ -3681,8 +3681,8 @@ Here's the second note, which lets us know where the first borrow would be over.
 This is useful, because if we wait to try to borrow `x` after this borrow is
 over, then everything will work.
 
-For more advanced patterns, please consult the [Lifetime
-Guide](guide-lifetimes.html).  You'll also learn what this type signature with
+For more advanced patterns, please consult the [Ownership
+Guide](guide-ownership.html).  You'll also learn what this type signature with
 the `'a` syntax is:
 
 ```{rust,ignore}
