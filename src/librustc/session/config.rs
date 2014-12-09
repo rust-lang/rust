@@ -370,7 +370,7 @@ impl Passes {
     }
 }
 
-/// Declare a macro that will define all CodegenOptions fields and parsers all
+/// Declare a macro that will define all CodegenOptions/DebuggingOptions fields and parsers all
 /// at once. The goal of this macro is to define an interface that can be
 /// programmatically used by the option parser in order to initialize the struct
 /// without hardcoding field names all over the place.
@@ -380,23 +380,67 @@ impl Passes {
 /// cgsetters module which is a bunch of generated code to parse an option into
 /// its respective field in the struct. There are a few hand-written parsers for
 /// parsing specific types of values in this module.
-macro_rules! cgoptions {
-    ($($opt:ident : $t:ty = ($init:expr, $parse:ident, $desc:expr)),* ,) =>
+macro_rules! options {
+    ($struct_name:ident, $setter_name:ident, $defaultfn:ident,
+     $buildfn:ident, $prefix:expr, $outputname:expr,
+     $stat:ident, $mod_desc:ident, $mod_set:ident,
+     $($opt:ident : $t:ty = ($init:expr, $parse:ident, $desc:expr)),* ,) =>
 (
     #[derive(Clone)]
-    pub struct CodegenOptions { $(pub $opt: $t),* }
+    pub struct $struct_name { $(pub $opt: $t),* }
 
-    pub fn basic_codegen_options() -> CodegenOptions {
-        CodegenOptions { $($opt: $init),* }
+    pub fn $defaultfn() -> $struct_name {
+        $struct_name { $($opt: $init),* }
     }
 
-    pub type CodegenSetter = fn(&mut CodegenOptions, v: Option<&str>) -> bool;
-    pub const CG_OPTIONS: &'static [(&'static str, CodegenSetter,
+    pub fn $buildfn(matches: &getopts::Matches) -> $struct_name
+    {
+        let mut op = $defaultfn();
+        for option in matches.opt_strs($prefix).into_iter() {
+            let mut iter = option.splitn(1, '=');
+            let key = iter.next().unwrap();
+            let value = iter.next();
+            let option_to_lookup = key.replace("-", "_");
+            let mut found = false;
+            for &(candidate, setter, opt_type_desc, _) in $stat.iter() {
+                if option_to_lookup != candidate { continue }
+                if !setter(&mut op, value) {
+                    match (value, opt_type_desc) {
+                        (Some(..), None) => {
+                            early_error(format!("{} option `{}` takes no \
+                                                 value", $outputname, key)[])
+                        }
+                        (None, Some(type_desc)) => {
+                            early_error(format!("{0} option `{1}` requires \
+                                                 {2} ({3} {1}=<value>)",
+                                                $outputname, key, type_desc, $prefix)[])
+                        }
+                        (Some(value), Some(type_desc)) => {
+                            early_error(format!("incorrect value `{}` for {} \
+                                                 option `{}` - {} was expected",
+                                                 value, $outputname, key, type_desc)[])
+                        }
+                        (None, None) => unreachable!()
+                    }
+                }
+                found = true;
+                break;
+            }
+            if !found {
+                early_error(format!("unknown codegen option: `{}`",
+                                    key)[]);
+            }
+        }
+        return op;
+    }
+
+    pub type $setter_name = fn(&mut $struct_name, v: Option<&str>) -> bool;
+    pub const $stat: &'static [(&'static str, $setter_name,
                                      Option<&'static str>, &'static str)] =
-        &[ $( (stringify!($opt), cgsetters::$opt, cg_type_descs::$parse, $desc) ),* ];
+        &[ $( (stringify!($opt), $mod_set::$opt, $mod_desc::$parse, $desc) ),* ];
 
     #[allow(non_upper_case_globals)]
-    mod cg_type_descs {
+    mod $mod_desc {
         pub const parse_bool: Option<&'static str> = None;
         pub const parse_opt_bool: Option<&'static str> = None;
         pub const parse_string: Option<&'static str> = Some("a string");
@@ -410,11 +454,11 @@ macro_rules! cgoptions {
             Some("a number");
     }
 
-    mod cgsetters {
-        use super::{CodegenOptions, Passes, SomePasses, AllPasses};
+    mod $mod_set {
+        use super::{$struct_name, Passes, SomePasses, AllPasses};
 
         $(
-            pub fn $opt(cg: &mut CodegenOptions, v: Option<&str>) -> bool {
+            pub fn $opt(cg: &mut $struct_name, v: Option<&str>) -> bool {
                 $parse(&mut cg.$opt, v)
             }
         )*
@@ -506,7 +550,9 @@ macro_rules! cgoptions {
     }
 ) }
 
-cgoptions! {
+options! {CodegenOptions, CodegenSetter, basic_codegen_options,
+         build_codegen_options, "C", "codegen",
+         CG_OPTIONS, cg_type_desc, cgsetters,
     ar: Option<String> = (None, parse_opt_string,
         "tool to assemble archives with"),
     linker: Option<String> = (None, parse_opt_string,
@@ -560,47 +606,6 @@ cgoptions! {
          2 = full debug info with variable and type information"),
     opt_level: Option<uint> = (None, parse_opt_uint,
         "Optimize with possible levels 0-3"),
-}
-
-pub fn build_codegen_options(matches: &getopts::Matches) -> CodegenOptions
-{
-    let mut cg = basic_codegen_options();
-    for option in matches.opt_strs("C").into_iter() {
-        let mut iter = option.splitn(1, '=');
-        let key = iter.next().unwrap();
-        let value = iter.next();
-        let option_to_lookup = key.replace("-", "_");
-        let mut found = false;
-        for &(candidate, setter, opt_type_desc, _) in CG_OPTIONS.iter() {
-            if option_to_lookup != candidate { continue }
-            if !setter(&mut cg, value) {
-                match (value, opt_type_desc) {
-                    (Some(..), None) => {
-                        early_error(&format!("codegen option `{}` takes no \
-                                             value", key)[])
-                    }
-                    (None, Some(type_desc)) => {
-                        early_error(&format!("codegen option `{0}` requires \
-                                             {1} (-C {0}=<value>)",
-                                            key, type_desc)[])
-                    }
-                    (Some(value), Some(type_desc)) => {
-                        early_error(&format!("incorrect value `{}` for codegen \
-                                             option `{}` - {} was expected",
-                                             value, key, type_desc)[])
-                    }
-                    (None, None) => unreachable!()
-                }
-            }
-            found = true;
-            break;
-        }
-        if !found {
-            early_error(&format!("unknown codegen option: `{}`",
-                                key)[]);
-        }
-    }
-    return cg;
 }
 
 pub fn default_lib_output() -> CrateType {
