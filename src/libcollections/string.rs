@@ -729,11 +729,34 @@ impl FromIterator<char> for String {
     }
 }
 
+#[experimental = "waiting on FromIterator stabilization"]
+impl<'a> FromIterator<&'a str> for String {
+    fn from_iter<I:Iterator<&'a str>>(iterator: I) -> String {
+        let mut buf = String::new();
+        buf.extend(iterator);
+        buf
+    }
+}
+
 #[experimental = "waiting on Extend stabilization"]
 impl Extend<char> for String {
     fn extend<I:Iterator<char>>(&mut self, mut iterator: I) {
+        let (lower_bound, _) = iterator.size_hint();
+        self.reserve(lower_bound);
         for ch in iterator {
             self.push(ch)
+        }
+    }
+}
+
+#[experimental = "waiting on Extend stabilization"]
+impl<'a> Extend<&'a str> for String {
+    fn extend<I: Iterator<&'a str>>(&mut self, mut iterator: I) {
+        // A guess that at least one byte per iterator element will be needed.
+        let (lower_bound, _) = iterator.size_hint();
+        self.reserve(lower_bound);
+        for s in iterator {
+            self.push_str(s)
         }
     }
 }
@@ -1305,6 +1328,27 @@ mod tests {
         assert_eq!((vec![1i, 2, 3]).to_string(), "[1, 2, 3]");
         assert!((vec![vec![], vec![1i], vec![1i, 1]]).to_string() ==
                "[[], [1], [1, 1]]");
+    }
+
+    #[test]
+    fn test_from_iterator() {
+        let s = "ศไทย中华Việt Nam".to_string();
+        let t = "ศไทย中华";
+        let u = "Việt Nam";
+
+        let a: String = s.chars().collect();
+        assert_eq!(s, a);
+
+        let mut b = t.to_string();
+        b.extend(u.chars());
+        assert_eq!(s, b);
+
+        let c: String = vec![t, u].into_iter().collect();
+        assert_eq!(s, c);
+
+        let mut d = t.to_string();
+        d.extend(vec![u].into_iter());
+        assert_eq!(s, d);
     }
 
     #[bench]
