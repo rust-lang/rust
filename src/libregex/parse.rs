@@ -1031,7 +1031,7 @@ fn is_valid_cap(c: char) -> bool {
 
 fn find_class(classes: NamedClasses, name: &str) -> Option<Vec<(char, char)>> {
     match classes.binary_search(|&(s, _)| s.cmp(name)) {
-        BinarySearchResult::Found(i) => Some(classes[i].val1().to_vec()),
+        BinarySearchResult::Found(i) => Some(classes[i].1.to_vec()),
         BinarySearchResult::NotFound(_) => None,
     }
 }
