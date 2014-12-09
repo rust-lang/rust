@@ -379,8 +379,8 @@ impl Process {
                 // wait indefinitely for a message to arrive.
                 //
                 // FIXME: sure would be nice to not have to scan the entire array
-                let min = active.iter().map(|a| *a.ref2()).enumerate().min_by(|p| {
-                    p.val1()
+                let min = active.iter().map(|a| a.2).enumerate().min_by(|p| {
+                    p.1
                 });
                 let (p, idx) = match min {
                     Some((idx, deadline)) => {
@@ -564,9 +564,9 @@ fn with_envp<K, V, T>(env: Option<&collections::HashMap<K, V>>,
 
             for pair in env.iter() {
                 let mut kv = Vec::new();
-                kv.push_all(pair.ref0().container_as_bytes());
+                kv.push_all(pair.0.container_as_bytes());
                 kv.push('=' as u8);
-                kv.push_all(pair.ref1().container_as_bytes());
+                kv.push_all(pair.1.container_as_bytes());
                 kv.push(0); // terminating null
                 tmps.push(kv);
             }
