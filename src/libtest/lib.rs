@@ -32,6 +32,7 @@
        html_root_url = "http://doc.rust-lang.org/nightly/")]
 
 #![feature(asm, macro_rules, phase, globs, slicing_syntax)]
+#![feature(unboxed_closures)]
 
 extern crate getopts;
 extern crate regex;
@@ -978,9 +979,11 @@ enum TestEvent {
 
 pub type MonitorMsg = (TestDesc, TestResult, Vec<u8> );
 
-fn run_tests(opts: &TestOpts,
-             tests: Vec<TestDescAndFn> ,
-             callback: |e: TestEvent| -> io::IoResult<()>) -> io::IoResult<()> {
+fn run_tests<F>(opts: &TestOpts,
+                tests: Vec<TestDescAndFn> ,
+                mut callback: F) -> io::IoResult<()> where
+    F: FnMut(TestEvent) -> io::IoResult<()>,
+{
     let filtered_tests = filter_tests(opts, tests);
     let filtered_descs = filtered_tests.iter()
                                        .map(|t| t.desc.clone())
@@ -1339,7 +1342,7 @@ pub fn black_box<T>(dummy: T) {
 
 impl Bencher {
     /// Callback for benchmark functions to run in their body.
-    pub fn iter<T>(&mut self, inner: || -> T) {
+    pub fn iter<T, F>(&mut self, mut inner: F) where F: FnMut() -> T {
         self.dur = Duration::span(|| {
             let k = self.iterations;
             for _ in range(0u64, k) {
@@ -1360,14 +1363,13 @@ impl Bencher {
         }
     }
 
-    pub fn bench_n(&mut self, n: u64, f: |&mut Bencher|) {
+    pub fn bench_n<F>(&mut self, n: u64, f: F) where F: FnOnce(&mut Bencher) {
         self.iterations = n;
         f(self);
     }
 
     // This is a more statistics-driven benchmark algorithm
-    pub fn auto_bench(&mut self, f: |&mut Bencher|) -> stats::Summary<f64> {
-
+    pub fn auto_bench<F>(&mut self, mut f: F) -> stats::Summary<f64> where F: FnMut(&mut Bencher) {
         // Initial bench run to get ballpark figure.
         let mut n = 1_u64;
         self.bench_n(n, |x| f(x));
@@ -1437,7 +1439,7 @@ pub mod bench {
     use std::time::Duration;
     use super::{Bencher, BenchSamples};
 
-    pub fn benchmark(f: |&mut Bencher|) -> BenchSamples {
+    pub fn benchmark<F>(f: F) -> BenchSamples where F: FnMut(&mut Bencher) {
         let mut bs = Bencher {
             iterations: 0,
             dur: Duration::nanoseconds(0),
