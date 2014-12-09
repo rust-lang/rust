@@ -1995,21 +1995,21 @@ mod tests {
 
     #[test]
     fn memory_map_file() {
+        use libc;
         use os::*;
         use io::fs::{File, unlink};
         use io::SeekStyle::SeekSet;
         use io::FileMode::Open;
         use io::FileAccess::ReadWrite;
-        use libc::HANDLE;
 
         #[cfg(not(windows))]
-        fn get_fd(file: &File) -> c_int {
+        fn get_fd(file: &File) -> libc::c_int {
             use os::unix::AsRawFd;
             file.as_raw_fd()
         }
 
         #[cfg(windows)]
-        fn get_fd(file: &File) -> HANDLE {
+        fn get_fd(file: &File) -> libc::HANDLE {
             use os::windows::AsRawHandle;
             file.as_raw_handle()
         }

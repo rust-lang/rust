@@ -33,7 +33,6 @@ fn h(_x: &Foo) -> &int { //~ ERROR missing lifetime specifier
 
 fn i(_x: int) -> &int { //~ ERROR missing lifetime specifier
 //~^ HELP this function's return type contains a borrowed value
-//~^^ HELP consider giving it a 'static lifetime
     panic!()
 }
 

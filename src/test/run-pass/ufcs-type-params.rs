@@ -18,5 +18,5 @@ impl Foo<i32> for i32 {
 
 fn main() {
     let x: i32 = 1;
-    Foo::<i32>::get(&x)
+    Foo::<i32>::get(&x);
 }

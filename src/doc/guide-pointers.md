@@ -84,7 +84,7 @@ println!("{}", x + z);
 
 This gives us an error:
 
-```{ignore}
+```{notrust}
 hello.rs:6:24: 6:25 error: mismatched types: expected `int` but found `&int` (expected int but found &-ptr)
 hello.rs:6     println!("{}", x + z);
                                   ^
@@ -398,7 +398,7 @@ fn main() {
 
 It gives this error:
 
-```{ignore}
+```{notrust}
 test.rs:5:8: 5:10 error: cannot assign to `*x` because it is borrowed
 test.rs:5         *x -= 1;
                   ^~
