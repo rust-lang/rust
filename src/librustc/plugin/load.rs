@@ -11,7 +11,7 @@
 //! Used by `rustc` when loading a plugin, or a crate with exported macros.
 
 use session::Session;
-use metadata::creader::CrateReader;
+use metadata::creader::{CrateOrString, CrateReader};
 use plugin::registry::Registry;
 
 use std::mem;
@@ -175,7 +175,7 @@ impl<'a, 'v> Visitor<'v> for PluginLoader<'a> {
         }
 
         if load_macros || load_registrar {
-            let pmd = self.reader.read_plugin_metadata(vi);
+            let pmd = self.reader.read_plugin_metadata(CrateOrString::Krate(vi));
             if load_macros {
                 macros = pmd.exported_macros();
             }

@@ -26,7 +26,7 @@ use syntax::ast;
 use syntax::abi;
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
-use syntax::codemap::{Span, mk_sp};
+use syntax::codemap::{DUMMY_SP, Span, mk_sp};
 use syntax::parse;
 use syntax::parse::token::InternedString;
 use syntax::parse::token;
@@ -445,8 +445,20 @@ impl<'a> CrateReader<'a> {
     }
 
     pub fn read_plugin_metadata<'b>(&'b mut self,
-                                    vi: &'b ast::ViewItem) -> PluginMetadata<'b> {
-        let info = self.extract_crate_info(vi).unwrap();
+                                    krate: CrateOrString<'b>) -> PluginMetadata<'b> {
+        let (info, span) = match krate {
+            CrateOrString::Krate(c) => {
+                (self.extract_crate_info(c).unwrap(), c.span)
+            }
+            CrateOrString::Str(s) => {
+                (CrateInfo {
+                     name: s.to_string(),
+                     ident: s.to_string(),
+                     id: ast::DUMMY_NODE_ID,
+                     should_link: true,
+                 }, DUMMY_SP)
+            }
+        };
         let target_triple = &self.sess.opts.target_triple[];
         let is_cross = target_triple != config::host_triple();
         let mut should_link = info.should_link && !is_cross;
@@ -455,7 +467,7 @@ impl<'a> CrateReader<'a> {
         let name = info.name.clone();
         let mut load_ctxt = loader::Context {
             sess: self.sess,
-            span: vi.span,
+            span: span,
             ident: &ident[],
             crate_name: &name[],
             hash: None,
@@ -485,8 +497,8 @@ impl<'a> CrateReader<'a> {
         let register = should_link && self.existing_match(info.name.as_slice(), None).is_none();
         let metadata = if register {
             // Register crate now to avoid double-reading metadata
-            let (_, cmd, _) = self.register_crate(&None, &info.ident[],
-                                &info.name[], vi.span, library);
+            let (_, cmd, _) = self.register_crate(&None, info.ident[],
+                                info.name[], span, library);
             PMDSource::Registered(cmd)
         } else {
             // Not registering the crate; just hold on to the metadata
@@ -498,10 +510,15 @@ impl<'a> CrateReader<'a> {
             metadata: metadata,
             dylib: dylib,
             info: info,
-            vi_span: vi.span,
+            vi_span: span,
             target_only: target_only,
         }
     }
+}
+
+pub enum CrateOrString<'a> {
+    Krate(&'a ast::ViewItem),
+    Str(&'a str)
 }
 
 impl<'a> PluginMetadata<'a> {
