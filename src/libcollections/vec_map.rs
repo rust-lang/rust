@@ -21,6 +21,7 @@ use core::iter;
 use core::iter::{Enumerate, FilterMap};
 use core::mem::replace;
 
+use hash::{Hash, Writer};
 use {vec, slice};
 use vec::Vec;
 
@@ -78,6 +79,19 @@ impl<V:Clone> Clone for VecMap<V> {
     #[inline]
     fn clone_from(&mut self, source: &VecMap<V>) {
         self.v.clone_from(&source.v);
+    }
+}
+
+impl<S: Writer, V: Hash<S>> Hash<S> for VecMap<V> {
+    fn hash(&self, state: &mut S) {
+        // In order to not traverse the `VecMap` twice, count the elements
+        // during iteration.
+        let mut count: uint = 0;
+        for elt in self.iter() {
+            elt.hash(state);
+            count += 1;
+        }
+        count.hash(state);
     }
 }
 
@@ -605,6 +619,7 @@ pub type MoveItems<V> =
 mod test_map {
     use std::prelude::*;
     use vec::Vec;
+    use hash::hash;
 
     use super::VecMap;
 
@@ -916,6 +931,28 @@ mod test_map {
         assert!(b.insert(2, 2).is_none());
         assert!(b > a && b >= a);
         assert!(a < b && a <= b);
+    }
+
+    #[test]
+    fn test_hash() {
+        let mut x = VecMap::new();
+        let mut y = VecMap::new();
+
+        assert!(hash(&x) == hash(&y));
+        x.insert(1, 'a');
+        x.insert(2, 'b');
+        x.insert(3, 'c');
+
+        y.insert(3, 'c');
+        y.insert(2, 'b');
+        y.insert(1, 'a');
+
+        assert!(hash(&x) == hash(&y));
+
+        x.insert(1000, 'd');
+        x.remove(&1000);
+
+        assert!(hash(&x) == hash(&y));
     }
 
     #[test]
