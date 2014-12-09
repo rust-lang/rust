@@ -185,7 +185,23 @@ impl StaticKey {
     }
 
     unsafe fn lazy_init(&self) -> uint {
-        let key = imp::create(self.dtor);
+        // POSIX allows the key created here to be 0, but the compare_and_swap
+        // below relies on using 0 as a sentinel value to check who won the
+        // race to set the shared TLS key. As far as I know, there is no
+        // guaranteed value that cannot be returned as a posix_key_create key,
+        // so there is no value we can initialize the inner key with to
+        // prove that it has not yet been set. As such, we'll continue using a
+        // value of 0, but with some gyrations to make sure we have a non-0
+        // value returned from the creation routine.
+        // FIXME: this is clearly a hack, and should be cleaned up.
+        let key1 = imp::create(self.dtor);
+        let key = if key1 != 0 {
+            key1
+        } else {
+            let key2 = imp::create(self.dtor);
+            imp::destroy(key1);
+            key2
+        };
         assert!(key != 0);
         match self.inner.key.compare_and_swap(0, key as uint, atomic::SeqCst) {
             // The CAS succeeded, so we've created the actual key
