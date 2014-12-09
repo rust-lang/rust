@@ -1979,7 +1979,32 @@ pub const metadata_encoding_version : &'static [u8] = &[b'r', b'u', b's', b't', 
 pub fn encode_metadata(parms: EncodeParams, krate: &ast::Crate) -> Vec<u8> {
     let mut wr = SeekableMemWriter::new();
     encode_metadata_inner(&mut wr, parms, krate);
-    wr.unwrap().into_iter().collect()
+    let mut v = wr.unwrap();
+
+    // And here we run into yet another obscure archive bug: in which metadata
+    // loaded from archives may have trailing garbage bytes. Awhile back one of
+    // our tests was failing sporadially on the OSX 64-bit builders (both nopt
+    // and opt) by having rbml generate an out-of-bounds panic when looking at
+    // metadata.
+    //
+    // Upon investigation it turned out that the metadata file inside of an rlib
+    // (and ar archive) was being corrupted. Some compilations would generate a
+    // metadata file which would end in a few extra bytes, while other
+    // compilations would not have these extra bytes appended to the end. These
+    // extra bytes were interpreted by rbml as an extra tag, so they ended up
+    // being interpreted causing the out-of-bounds.
+    //
+    // The root cause of why these extra bytes were appearing was never
+    // discovered, and in the meantime the solution we're employing is to insert
+    // the length of the metadata to the start of the metadata. Later on this
+    // will allow us to slice the metadata to the precise length that we just
+    // generated regardless of trailing bytes that end up in it.
+    let len = v.len() as u32;
+    v.insert(0, (len >>  0) as u8);
+    v.insert(0, (len >>  8) as u8);
+    v.insert(0, (len >> 16) as u8);
+    v.insert(0, (len >> 24) as u8);
+    return v;
 }
 
 fn encode_metadata_inner(wr: &mut SeekableMemWriter,

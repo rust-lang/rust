@@ -231,9 +231,18 @@ impl crate_metadata {
 
 impl MetadataBlob {
     pub fn as_slice<'a>(&'a self) -> &'a [u8] {
-        match *self {
+        let slice = match *self {
             MetadataVec(ref vec) => vec.as_slice(),
             MetadataArchive(ref ar) => ar.as_slice(),
+        };
+        if slice.len() < 4 {
+            &[]
+        } else {
+            let len = ((slice[0] as u32) << 24) |
+                      ((slice[1] as u32) << 16) |
+                      ((slice[2] as u32) << 8) |
+                      ((slice[3] as u32) << 0);
+            slice.slice(4, len as uint + 4)
         }
     }
 }
