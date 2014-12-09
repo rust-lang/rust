@@ -93,7 +93,7 @@ must have a deallocation for each allocation. Rust handles this for you. It
 knows that our handle, `x`, is the owning reference to our box. Rust knows that
 `x` will go out of scope at the end of the block, and so it inserts a call to
 deallocate the memory at the end of the scope. Because the compiler does this
-for us, it's impossible to forget. We always exaclty one deallocations paired
+for us, it's impossible to forget. We always have exactly one deallocation paired
 with each of our allocations.
 
 This is pretty straightforward, but what happens when we want to pass our box
@@ -186,11 +186,11 @@ This function takes ownership, because it takes a `Box`, which owns its
 contents. But then we give ownership right back.
 
 In the physical world, you can give one of your possessions to someone for a
-short period of time. You still own your posession, you're just letting someone
+short period of time. You still own your possession, you're just letting someone
 else use it for a while. We call that 'lending' something to someone, and that
 person is said to be 'borrowing' that something from you.
 
-Rust's ownershp system also allows an owner to lend out a handle for a limited
+Rust's ownership system also allows an owner to lend out a handle for a limited
 period. This is also called 'borrowing.' Here's a version of `add_one` which
 borrows its argument rather than taking ownership:
 
