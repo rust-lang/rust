@@ -88,6 +88,182 @@ impl Dest {
     }
 }
 
+/// We categorize expressions into four kinds.  The distinction between
+/// lvalue/rvalue is fundamental to the language.  The distinction between the
+/// three kinds of rvalues is an artifact of trans which reflects how we will
+/// generate code for that kind of expression.
+pub enum ExprKind {
+    Lvalue,
+    RvalueDps,
+    RvalueDatum,
+    RvalueStmt
+}
+
+pub fn expr_kind(tcx: &ty::ctxt, expr: &ast::Expr) -> ExprKind {
+    if tcx.method_map.borrow().contains_key(&typeck::MethodCall::expr(expr.id)) {
+        // Overloaded operations are generally calls, and hence they are
+        // generated via DPS, but there are a few exceptions:
+        return match expr.node {
+            // `a += b` has a unit result.
+            ast::ExprAssignOp(..) => ExprKind::RvalueStmt,
+
+            // the deref method invoked for `*a` always yields an `&T`
+            ast::ExprUnary(ast::UnDeref, _) => ExprKind::Lvalue,
+
+            // the index method invoked for `a[i]` always yields an `&T`
+            ast::ExprIndex(..) => ExprKind::Lvalue,
+
+            // the slice method invoked for `a[..]` always yields an `&T`
+            ast::ExprSlice(..) => ExprKind::Lvalue,
+
+            // `for` loops are statements
+            ast::ExprForLoop(..) => ExprKind::RvalueStmt,
+
+            // in the general case, result could be any type, use DPS
+            _ => ExprKind::RvalueDps
+        };
+    }
+
+    match expr.node {
+        ast::ExprPath(..) => {
+            match ty::resolve_expr(tcx, expr) {
+                def::DefVariant(tid, vid, _) => {
+                    let variant_info = ty::enum_variant_with_id(tcx, tid, vid);
+                    if variant_info.args.len() > 0u {
+                        // N-ary variant.
+                        ExprKind::RvalueDatum
+                    } else {
+                        // Nullary variant.
+                        ExprKind::RvalueDps
+                    }
+                }
+
+                def::DefStruct(_) => {
+                    match ty::expr_ty(tcx, expr).sty {
+                        ty::ty_bare_fn(..) => ExprKind::RvalueDatum,
+                        _ => ExprKind::RvalueDps
+                    }
+                }
+
+                // Special case: A unit like struct's constructor must be called without () at the
+                // end (like `UnitStruct`) which means this is an ExprPath to a DefFn. But in case
+                // of unit structs this is should not be interpreted as function pointer but as
+                // call to the constructor.
+                def::DefFn(_, true) => ExprKind::RvalueDps,
+
+                // Fn pointers are just scalar values.
+                def::DefFn(..) |
+                def::DefStaticMethod(..) |
+                def::DefMethod(..) => ExprKind::RvalueDatum,
+
+                def::DefStatic(..) |
+                def::DefUpvar(..) |
+                def::DefLocal(..) => ExprKind::Lvalue,
+
+                def::DefConst(..) => ExprKind::RvalueDatum,
+
+                def => {
+                    tcx.sess.span_bug(
+                        expr.span,
+                        format!("uncategorized def for expr {}: {}",
+                                expr.id,
+                                def).as_slice());
+                }
+            }
+        }
+
+        ast::ExprUnary(ast::UnDeref, _) |
+        ast::ExprField(..) |
+        ast::ExprTupField(..) |
+        ast::ExprIndex(..) |
+        ast::ExprSlice(..) => {
+            ExprKind::Lvalue
+        }
+
+        ast::ExprCall(..) |
+        ast::ExprMethodCall(..) |
+        ast::ExprStruct(..) |
+        ast::ExprTup(..) |
+        ast::ExprIf(..) |
+        ast::ExprMatch(..) |
+        ast::ExprClosure(..) |
+        ast::ExprProc(..) |
+        ast::ExprBlock(..) |
+        ast::ExprRepeat(..) |
+        ast::ExprVec(..) => {
+            ExprKind::RvalueDps
+        }
+
+        ast::ExprIfLet(..) => {
+            tcx.sess.span_bug(expr.span, "non-desugared ExprIfLet");
+        }
+        ast::ExprWhileLet(..) => {
+            tcx.sess.span_bug(expr.span, "non-desugared ExprWhileLet");
+        }
+
+        ast::ExprLit(ref lit) if ast_util::lit_is_str(&**lit) => {
+            ExprKind::RvalueDps
+        }
+
+        ast::ExprCast(..) => {
+            match tcx.node_types.borrow().get(&expr.id) {
+                Some(&ty) => {
+                    if ty::type_is_trait(ty) {
+                        ExprKind::RvalueDps
+                    } else {
+                        ExprKind::RvalueDatum
+                    }
+                }
+                None => {
+                    panic!("Cast expression not in types table");
+                }
+            }
+        }
+
+        ast::ExprBreak(..) |
+        ast::ExprAgain(..) |
+        ast::ExprRet(..) |
+        ast::ExprWhile(..) |
+        ast::ExprLoop(..) |
+        ast::ExprAssign(..) |
+        ast::ExprInlineAsm(..) |
+        ast::ExprAssignOp(..) |
+        ast::ExprForLoop(..) => {
+            ExprKind::RvalueStmt
+        }
+
+        ast::ExprLit(_) | // Note: LitStr is carved out above
+        ast::ExprUnary(..) |
+        ast::ExprAddrOf(..) |
+        ast::ExprBinary(..) => {
+            ExprKind::RvalueDatum
+        }
+
+        ast::ExprBox(ref place, _) => {
+            // Special case `Box<T>` for now:
+            let definition = match tcx.def_map.borrow().get(&place.id) {
+                Some(&def) => def,
+                None => panic!("no def for place"),
+            };
+            let def_id = definition.def_id();
+            if tcx.lang_items.exchange_heap() == Some(def_id) {
+                ExprKind::RvalueDatum
+            } else {
+                ExprKind::RvalueDps
+            }
+        }
+
+        ast::ExprParen(ref e) => expr_kind(tcx, &**e),
+
+        ast::ExprMac(..) => {
+            tcx.sess.span_bug(
+                expr.span,
+                "macro expression remains after expansion");
+        }
+    }
+}
+
+
 /// This function is equivalent to `trans(bcx, expr).store_to_dest(dest)` but it may generate
 /// better optimized LLVM code.
 pub fn trans_into<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
@@ -112,15 +288,15 @@ pub fn trans_into<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     bcx.fcx.push_ast_cleanup_scope(cleanup_debug_loc);
 
     debuginfo::set_source_location(bcx.fcx, expr.id, expr.span);
-    let kind = ty::expr_kind(bcx.tcx(), expr);
+    let kind = expr_kind(bcx.tcx(), expr);
     bcx = match kind {
-        ty::LvalueExpr | ty::RvalueDatumExpr => {
+        ExprKind::Lvalue | ExprKind::RvalueDatum => {
             trans_unadjusted(bcx, expr).store_to_dest(dest, expr.id)
         }
-        ty::RvalueDpsExpr => {
+        ExprKind::RvalueDps => {
             trans_rvalue_dps_unadjusted(bcx, expr, dest)
         }
-        ty::RvalueStmtExpr => {
+        ExprKind::RvalueStmt => {
             trans_rvalue_stmt_unadjusted(bcx, expr)
         }
     };
@@ -503,8 +679,8 @@ fn trans_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     debuginfo::set_source_location(bcx.fcx, expr.id, expr.span);
 
-    return match ty::expr_kind(bcx.tcx(), expr) {
-        ty::LvalueExpr | ty::RvalueDatumExpr => {
+    return match expr_kind(bcx.tcx(), expr) {
+        ExprKind::Lvalue | ExprKind::RvalueDatum => {
             let datum = unpack_datum!(bcx, {
                 trans_datum_unadjusted(bcx, expr)
             });
@@ -512,12 +688,12 @@ fn trans_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             DatumBlock {bcx: bcx, datum: datum}
         }
 
-        ty::RvalueStmtExpr => {
+        ExprKind::RvalueStmt => {
             bcx = trans_rvalue_stmt_unadjusted(bcx, expr);
             nil(bcx, expr_ty(bcx, expr))
         }
 
-        ty::RvalueDpsExpr => {
+        ExprKind::RvalueDps => {
             let ty = expr_ty(bcx, expr);
             if type_is_zero_size(bcx.ccx(), ty) {
                 bcx = trans_rvalue_dps_unadjusted(bcx, expr, Ignore);
@@ -1082,20 +1258,20 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                       dest)
         }
         ast::ExprBinary(_, ref lhs, ref rhs) => {
-            // if not overloaded, would be RvalueDatumExpr
+            // if not overloaded, would be ExprKind::RvalueDatum
             let lhs = unpack_datum!(bcx, trans(bcx, &**lhs));
             let rhs_datum = unpack_datum!(bcx, trans(bcx, &**rhs));
             trans_overloaded_op(bcx, expr, MethodCall::expr(expr.id), lhs,
                                 vec![(rhs_datum, rhs.id)], Some(dest)).bcx
         }
         ast::ExprUnary(_, ref subexpr) => {
-            // if not overloaded, would be RvalueDatumExpr
+            // if not overloaded, would be ExprKind::RvalueDatum
             let arg = unpack_datum!(bcx, trans(bcx, &**subexpr));
             trans_overloaded_op(bcx, expr, MethodCall::expr(expr.id),
                                 arg, Vec::new(), Some(dest)).bcx
         }
         ast::ExprIndex(ref base, ref idx) => {
-            // if not overloaded, would be RvalueDatumExpr
+            // if not overloaded, would be ExprKind::RvalueDatum
             let base = unpack_datum!(bcx, trans(bcx, &**base));
             let idx_datum = unpack_datum!(bcx, trans(bcx, &**idx));
             trans_overloaded_op(bcx, expr, MethodCall::expr(expr.id), base,
@@ -1415,11 +1591,11 @@ pub fn trans_adt<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     for base in optbase.iter() {
         assert_eq!(discr, 0);
 
-        match ty::expr_kind(bcx.tcx(), &*base.expr) {
-            ty::RvalueDpsExpr | ty::RvalueDatumExpr if !ty::type_needs_drop(bcx.tcx(), ty) => {
+        match expr_kind(bcx.tcx(), &*base.expr) {
+            ExprKind::RvalueDps | ExprKind::RvalueDatum if !ty::type_needs_drop(bcx.tcx(), ty) => {
                 bcx = trans_into(bcx, &*base.expr, SaveIn(addr));
             },
-            ty::RvalueStmtExpr => bcx.tcx().sess.bug("unexpected expr kind for struct base expr"),
+            ExprKind::RvalueStmt => bcx.tcx().sess.bug("unexpected expr kind for struct base expr"),
             _ => {
                 let base_datum = unpack_datum!(bcx, trans_to_lvalue(bcx, &*base.expr, "base"));
                 for &(i, t) in base.fields.iter() {
@@ -1491,7 +1667,7 @@ fn trans_immediate_lit<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                    expr: &ast::Expr,
                                    lit: &ast::Lit)
                                    -> DatumBlock<'blk, 'tcx, Expr> {
-    // must not be a string constant, that is a RvalueDpsExpr
+    // must not be a string constant, that is a ExprKind::RvalueDps
     let _icx = push_ctxt("trans_immediate_lit");
     let ty = expr_ty(bcx, expr);
     let v = consts::const_lit(bcx.ccx(), expr, lit);
@@ -1511,7 +1687,7 @@ fn trans_unary<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     // The only overloaded operator that is translated to a datum
     // is an overloaded deref, since it is always yields a `&T`.
-    // Otherwise, we should be in the RvalueDpsExpr path.
+    // Otherwise, we should be in the ExprKind::RvalueDps path.
     assert!(
         op == ast::UnDeref ||
         !ccx.tcx().method_map.borrow().contains_key(&method_call));
@@ -1752,7 +1928,7 @@ fn trans_binary<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let _icx = push_ctxt("trans_binary");
     let ccx = bcx.ccx();
 
-    // if overloaded, would be RvalueDpsExpr
+    // if overloaded, would be ExprKind::RvalueDps
     assert!(!ccx.tcx().method_map.borrow().contains_key(&MethodCall::expr(expr.id)));
 
     match op {

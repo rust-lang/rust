@@ -24,7 +24,6 @@ pub use self::AutoAdjustment::*;
 pub use self::Representability::*;
 pub use self::UnsizeKind::*;
 pub use self::AutoRef::*;
-pub use self::ExprKind::*;
 pub use self::DtorKind::*;
 pub use self::ExplicitSelfCategory::*;
 pub use self::FnOutput::*;
@@ -79,7 +78,7 @@ use syntax::ast::{CrateNum, DefId, FnStyle, Ident, ItemTrait, LOCAL_CRATE};
 use syntax::ast::{MutImmutable, MutMutable, Name, NamedField, NodeId};
 use syntax::ast::{Onceness, StmtExpr, StmtSemi, StructField, UnnamedField};
 use syntax::ast::{Visibility};
-use syntax::ast_util::{mod, is_local, lit_is_str, local_def, PostExpansionMethod};
+use syntax::ast_util::{mod, is_local, local_def, PostExpansionMethod};
 use syntax::attr::{mod, AttrMetaMethods};
 use syntax::codemap::Span;
 use syntax::parse::token::{mod, InternedString};
@@ -3977,96 +3976,20 @@ pub fn resolve_expr(tcx: &ctxt, expr: &ast::Expr) -> def::Def {
     }
 }
 
-pub fn expr_is_lval(tcx: &ctxt, e: &ast::Expr) -> bool {
-    match expr_kind(tcx, e) {
-        LvalueExpr => true,
-        RvalueDpsExpr | RvalueDatumExpr | RvalueStmtExpr => false
-    }
-}
-
-/// We categorize expressions into three kinds.  The distinction between
-/// lvalue/rvalue is fundamental to the language.  The distinction between the
-/// two kinds of rvalues is an artifact of trans which reflects how we will
-/// generate code for that kind of expression.  See trans/expr.rs for more
-/// information.
-pub enum ExprKind {
-    LvalueExpr,
-    RvalueDpsExpr,
-    RvalueDatumExpr,
-    RvalueStmtExpr
-}
-
-pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
-    if tcx.method_map.borrow().contains_key(&MethodCall::expr(expr.id)) {
-        // Overloaded operations are generally calls, and hence they are
-        // generated via DPS, but there are a few exceptions:
-        return match expr.node {
-            // `a += b` has a unit result.
-            ast::ExprAssignOp(..) => RvalueStmtExpr,
-
-            // the deref method invoked for `*a` always yields an `&T`
-            ast::ExprUnary(ast::UnDeref, _) => LvalueExpr,
-
-            // the index method invoked for `a[i]` always yields an `&T`
-            ast::ExprIndex(..) => LvalueExpr,
-
-            // the slice method invoked for `a[..]` always yields an `&T`
-            ast::ExprSlice(..) => LvalueExpr,
-
-            // `for` loops are statements
-            ast::ExprForLoop(..) => RvalueStmtExpr,
-
-            // in the general case, result could be any type, use DPS
-            _ => RvalueDpsExpr
-        };
-    }
-
+pub fn expr_is_lval(tcx: &ctxt, expr: &ast::Expr) -> bool {
+    // Only a handful of expression types are valid lvalues, so just
+    // check them and return false for everything else
     match expr.node {
+        ast::ExprParen(ref e) => expr_is_lval(tcx, &**e),
+
+        // Some paths are lvalues (e.g. variables) others are
+        // rvalues (e.g. variants, consts)
         ast::ExprPath(..) => {
             match resolve_expr(tcx, expr) {
-                def::DefVariant(tid, vid, _) => {
-                    let variant_info = enum_variant_with_id(tcx, tid, vid);
-                    if variant_info.args.len() > 0u {
-                        // N-ary variant.
-                        RvalueDatumExpr
-                    } else {
-                        // Nullary variant.
-                        RvalueDpsExpr
-                    }
-                }
-
-                def::DefStruct(_) => {
-                    match expr_ty(tcx, expr).sty {
-                        ty_bare_fn(..) => RvalueDatumExpr,
-                        _ => RvalueDpsExpr
-                    }
-                }
-
-                // Special case: A unit like struct's constructor must be called without () at the
-                // end (like `UnitStruct`) which means this is an ExprPath to a DefFn. But in case
-                // of unit structs this is should not be interpreted as function pointer but as
-                // call to the constructor.
-                def::DefFn(_, true) => RvalueDpsExpr,
-
-                // Fn pointers are just scalar values.
-                def::DefFn(..) | def::DefStaticMethod(..) | def::DefMethod(..) => RvalueDatumExpr,
-
-                // Note: there is actually a good case to be made that
-                // DefArg's, particularly those of immediate type, ought to
-                // considered rvalues.
                 def::DefStatic(..) |
                 def::DefUpvar(..) |
-                def::DefLocal(..) => LvalueExpr,
-
-                def::DefConst(..) => RvalueDatumExpr,
-
-                def => {
-                    tcx.sess.span_bug(
-                        expr.span,
-                        format!("uncategorized def for expr {}: {}",
-                                expr.id,
-                                def).as_slice());
-                }
+                def::DefLocal(..) => true,
+                _ => false
             }
         }
 
@@ -4074,101 +3997,8 @@ pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
         ast::ExprField(..) |
         ast::ExprTupField(..) |
         ast::ExprIndex(..) |
-        ast::ExprSlice(..) => {
-            LvalueExpr
-        }
-
-        ast::ExprCall(..) |
-        ast::ExprMethodCall(..) |
-        ast::ExprStruct(..) |
-        ast::ExprTup(..) |
-        ast::ExprIf(..) |
-        ast::ExprMatch(..) |
-        ast::ExprClosure(..) |
-        ast::ExprProc(..) |
-        ast::ExprBlock(..) |
-        ast::ExprRepeat(..) |
-        ast::ExprVec(..) => {
-            RvalueDpsExpr
-        }
-
-        ast::ExprIfLet(..) => {
-            tcx.sess.span_bug(expr.span, "non-desugared ExprIfLet");
-        }
-        ast::ExprWhileLet(..) => {
-            tcx.sess.span_bug(expr.span, "non-desugared ExprWhileLet");
-        }
-
-        ast::ExprLit(ref lit) if lit_is_str(&**lit) => {
-            RvalueDpsExpr
-        }
-
-        ast::ExprCast(..) => {
-            match tcx.node_types.borrow().get(&expr.id) {
-                Some(&ty) => {
-                    if type_is_trait(ty) {
-                        RvalueDpsExpr
-                    } else {
-                        RvalueDatumExpr
-                    }
-                }
-                None => {
-                    // Technically, it should not happen that the expr is not
-                    // present within the table.  However, it DOES happen
-                    // during type check, because the final types from the
-                    // expressions are not yet recorded in the tcx.  At that
-                    // time, though, we are only interested in knowing lvalue
-                    // vs rvalue.  It would be better to base this decision on
-                    // the AST type in cast node---but (at the time of this
-                    // writing) it's not easy to distinguish casts to traits
-                    // from other casts based on the AST.  This should be
-                    // easier in the future, when casts to traits
-                    // would like @Foo, Box<Foo>, or &Foo.
-                    RvalueDatumExpr
-                }
-            }
-        }
-
-        ast::ExprBreak(..) |
-        ast::ExprAgain(..) |
-        ast::ExprRet(..) |
-        ast::ExprWhile(..) |
-        ast::ExprLoop(..) |
-        ast::ExprAssign(..) |
-        ast::ExprInlineAsm(..) |
-        ast::ExprAssignOp(..) |
-        ast::ExprForLoop(..) => {
-            RvalueStmtExpr
-        }
-
-        ast::ExprLit(_) | // Note: LitStr is carved out above
-        ast::ExprUnary(..) |
-        ast::ExprAddrOf(..) |
-        ast::ExprBinary(..) => {
-            RvalueDatumExpr
-        }
-
-        ast::ExprBox(ref place, _) => {
-            // Special case `Box<T>` for now:
-            let definition = match tcx.def_map.borrow().get(&place.id) {
-                Some(&def) => def,
-                None => panic!("no def for place"),
-            };
-            let def_id = definition.def_id();
-            if tcx.lang_items.exchange_heap() == Some(def_id) {
-                RvalueDatumExpr
-            } else {
-                RvalueDpsExpr
-            }
-        }
-
-        ast::ExprParen(ref e) => expr_kind(tcx, &**e),
-
-        ast::ExprMac(..) => {
-            tcx.sess.span_bug(
-                expr.span,
-                "macro expression remains after expansion");
-        }
+        ast::ExprSlice(..) => true,
+        _ => false,
     }
 }
 
