@@ -294,7 +294,7 @@ pub fn as_slices(&'a self) -> (&'a [T], &'a [T])
 ```
 /// Gets a slice over all the elements in the RingBuf. This may require shifting
 /// all the elements to make this possible.
-pub fn to_slice(&'a self) -> &'a [T]
+pub fn to_slice(&mut self) -> &[T]
 ```
 
 The one settled on seemed to simply be the nicest.
