@@ -654,22 +654,19 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
             }
             _ => {
                 let overloaded_call_type =
-                    match self.tcx()
-                              .method_map
-                              .borrow()
-                              .get(&MethodCall::expr(call.id)) {
-                    Some(ref method_callee) => {
-                        OverloadedCallType::from_method_origin(
-                            self.tcx(),
-                            &method_callee.origin)
-                    }
-                    None => {
-                        self.tcx().sess.span_bug(
-                            callee.span,
-                            format!("unexpected callee type {}",
-                                    callee_ty.repr(self.tcx()))[])
-                    }
-                };
+                    match self.typer.node_method_origin(MethodCall::expr(call.id)) {
+                        Some(method_origin) => {
+                            OverloadedCallType::from_method_origin(
+                                self.tcx(),
+                                &method_origin)
+                        }
+                        None => {
+                            self.tcx().sess.span_bug(
+                                callee.span,
+                                format!("unexpected callee type {}",
+                                        callee_ty.repr(self.tcx())).as_slice())
+                        }
+                    };
                 match overloaded_call_type {
                     FnMutOverloadedCall => {
                         self.borrow_expr(callee,

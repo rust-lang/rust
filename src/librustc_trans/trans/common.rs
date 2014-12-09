@@ -479,6 +479,16 @@ impl<'blk, 'tcx> mc::Typer<'tcx> for BlockS<'blk, 'tcx> {
             .map(|method| monomorphize_type(self, method.ty))
     }
 
+    fn node_method_origin(&self, method_call: ty::MethodCall)
+                          -> Option<ty::MethodOrigin<'tcx>>
+    {
+        self.tcx()
+            .method_map
+            .borrow()
+            .get(&method_call)
+            .map(|method| method.origin.clone())
+    }
+
     fn adjustments<'a>(&'a self) -> &'a RefCell<NodeMap<ty::AutoAdjustment<'tcx>>> {
         &self.tcx().adjustments
     }

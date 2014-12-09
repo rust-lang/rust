@@ -285,6 +285,8 @@ pub trait Typer<'tcx> {
     fn node_ty(&self, id: ast::NodeId) -> Ty<'tcx>;
     fn expr_ty_adjusted(&self, expr: &ast::Expr) -> Ty<'tcx>;
     fn node_method_ty(&self, method_call: ty::MethodCall) -> Option<Ty<'tcx>>;
+    fn node_method_origin(&self, method_call: ty::MethodCall)
+                          -> Option<ty::MethodOrigin<'tcx>>;
     fn adjustments<'a>(&'a self) -> &'a RefCell<NodeMap<ty::AutoAdjustment<'tcx>>>;
     fn is_method_call(&self, id: ast::NodeId) -> bool;
     fn temporary_scope(&self, rvalue_id: ast::NodeId) -> Option<region::CodeExtent>;
