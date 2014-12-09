@@ -13,6 +13,7 @@
 #![experimental]
 
 use {fmt, i64};
+use from_str::FromStr;
 use ops::{Add, Sub, Mul, Div, Neg};
 use option::Option;
 use option::Option::{Some, None};
@@ -356,6 +357,170 @@ impl fmt::Show for Duration {
     }
 }
 
+impl FromStr for Duration {
+    /// Parse a `Duration` from a string.
+    ///
+    /// Durations are represented by the format ±P[n]DT[n]H[n]M[n]S, where [n] is a positive decimal
+    /// number, and the remaining characters are case-insensitive. The smallest value used may also
+    /// have a decimal fraction, as in "P0.5H" to indicate half an hour. The decimal fraction shall
+    /// at least have one digit and may be specified with either a comma or a full stop, as in
+    /// "P0,5H" or "P0.5H". If the magnitude of the number is less than unity, the decimal sign
+    /// shall be preceded by a zero.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// assert_eq!(from_str::<Duration>("-P106751991167DT25975.808S"), Some(Duration::MIN));
+    /// assert_eq!(from_str::<Duration>("P106751991167DT25975.807S"), Some(Duration::MAX));
+    /// assert_eq!(from_str::<Duration>("P31D"), Some(Duration::days(31)));
+    /// assert_eq!(from_str::<Duration>("not even a Duration"), None);
+    /// ```
+    fn from_str(source: &str) -> Option<Duration> {
+        fn atoi(source: &str) -> (Option<i64>, i64, &str) {
+            let mut value: Option<i64> = None;
+            let mut scale = 1i64;
+            let mut s = source;
+
+            while !s.is_empty() {
+                s = match s.slice_shift_char() {
+                    (Some(c), rem) if '0' <= c && c <= '9' => {
+                        let digit = (c as u8 - b'0') as i64;
+
+                        value = value.unwrap_or(0).checked_mul(10);
+
+                        if value.is_none() {
+                            break;
+                        }
+
+                        value = value.unwrap().checked_add(digit);
+
+                        if value.is_none() {
+                            break;
+                        }
+
+                        scale *= 10;
+                        rem
+                    },
+                    _ => break
+                }
+            }
+
+            (value, scale, s)
+        }
+
+        fn atof(source: &str) -> (Option<(i64, i64, i64)>, &str) {
+            let (integral, _, next) = atoi(source);
+
+            if integral.is_none() {
+                return (None, next);
+            }
+
+            let integral = integral.unwrap();
+
+            match next.slice_shift_char() {
+                (Some(c), rem) if c == ',' || c == '.' => {
+                    let (numerator, denominator, next) = atoi(rem);
+
+                    if numerator.is_none() {
+                        return (None, next);
+                    }
+
+                    (Some((integral, numerator.unwrap(), denominator)), next)
+                },
+                _ =>(Some((integral, 0, 1)), next)
+            }
+        }
+
+        fn to_secs_and_nanos(value: Option<(i64, i64, i64)>, factor: i64) -> Option<(i64, i64)> {
+            let (integral, numerator, denominator) = value.unwrap();
+
+            let mut secs = try_opt!(integral.checked_mul(factor));
+            let mut nanos= try_opt!(numerator.checked_mul(factor));
+
+            secs += nanos / denominator;
+            nanos = nanos % denominator;
+
+            Some((secs, try_opt!(nanos.checked_mul(NANOS_PER_SEC as i64))/denominator))
+        }
+
+        // Parsing starts here
+        let source = source.trim_left();
+
+        // Sign
+        let (mut s, sign) = match source.slice_shift_char() {
+            (Some(c), rem) if c == '-' || c == '+' => (rem, c),
+            _ => (source, '+'),
+        };
+
+        // P - period
+        s = match s.slice_shift_char() {
+            (Some(c), rem) if c == 'P' || c == 'p' => rem,
+            _ => return None
+        };
+
+        let (mut seconds, mut nanoseconds): (i64, i64) = (0, 0);
+
+        let designators: [(char, i64), ..5] = [
+            //('Y', ?),
+            //('M', ?),
+            //('W', ?),
+            ('D', SECS_PER_DAY),
+            ('T', 0),
+            ('H', SECS_PER_HOUR),
+            ('M', SECS_PER_MINUTE),
+            ('S', 1),
+        ];
+        let t_index = 1u;        // index of T designator in the array
+        let mut t_found = false; // T designator was found in the string
+        let mut i = 0u;          // index of first valid unused designator
+
+        while !s.is_empty() {
+            let (value, next) = atof(s);                // value
+            let (d, next) = next.slice_shift_char();    // designator
+
+            // d is valid designator?
+            let d = try_opt!(d).to_uppercase();
+
+            while i < designators.len() && designators[i].val0() != d { i += 1; }
+
+            if i >= designators.len() { return None };
+
+            // value is required for d?
+            if (value.is_none() && d != 'T') || (value.is_some() && d == 'T') { return None; }
+
+            if value.is_none() { t_found = true; }
+            else {
+                // found T+ designator without T itself? fraction is not the smallest value used?
+                let (_, numerator, _) = value.unwrap();
+
+                if numerator != 0 && !next.is_empty() || !t_found && (i > t_index) { return None; }
+
+                // OK, convert value to seconds and nanoseconds
+                let (secs, nanos) = try_opt!(to_secs_and_nanos(value, designators[i].val1()));
+
+                seconds += secs;
+                nanoseconds += nanos;
+            }
+
+            s = next;
+            i += 1;
+        };
+
+        if sign == '-' {
+            seconds = -seconds;
+
+            if nanoseconds != 0 {
+                seconds -= 1;
+                nanoseconds = (NANOS_PER_SEC as i64) - nanoseconds;
+            }
+        }
+
+        let result = Duration { secs: seconds, nanos: nanoseconds as i32 };
+
+        if result < MIN || result > MAX { None } else { Some(result) }
+    }
+}
+
 // Copied from libnum
 #[inline]
 fn div_mod_floor_64(this: i64, other: i64) -> (i64, i64) {
@@ -555,5 +720,58 @@ mod tests {
         // the format specifier should have no effect on `Duration`
         assert_eq!(format!("{:30}", Duration::days(1) + Duration::milliseconds(2345)),
                    "P1DT2.345S");
+    }
+
+    #[test]
+    fn test_duration_from_str() {
+        assert_eq!(from_str::<Duration>("not even a Duration"), None);
+        assert_eq!(from_str::<Duration>("DT755S"), None);
+        assert_eq!(from_str::<Duration>("P123T9S"), None);
+        assert_eq!(from_str::<Duration>("PDT7S"), None);
+        assert_eq!(from_str::<Duration>("P1D7S"), None);
+        assert_eq!(from_str::<Duration>("P1D"), Some(Duration::days(1)));
+        assert_eq!(from_str::<Duration>("+P2D"), Some(Duration::days(2)));
+        assert_eq!(from_str::<Duration>("-P3D"), Some(Duration::days(-3)));
+        assert_eq!(from_str::<Duration>("-PT5H"), Some(Duration::hours(-5)));
+        assert_eq!(from_str::<Duration>("PT5H30M"), Some(Duration::seconds(19800)));
+        assert_eq!(from_str::<Duration>("PT30M"), Some(Duration::minutes(30)));
+        assert_eq!(from_str::<Duration>("PT30M5H"), None);
+        assert_eq!(from_str::<Duration>("PT1M5S"), Some(Duration::seconds(65)));
+        assert_eq!(from_str::<Duration>("PT5S1M"), None);
+        assert_eq!(from_str::<Duration>("PT5S1H"), None);
+        assert_eq!(from_str::<Duration>("PT1H2M5S"), Some(Duration::seconds(3725)));
+        assert_eq!(from_str::<Duration>("PT1H1H2M5S"), None);
+        assert_eq!(from_str::<Duration>("PT1H2M1H5S"), None);
+        assert_eq!(from_str::<Duration>("PT1H2M5S1H"), None);
+        assert_eq!(from_str::<Duration>("PT1H2M5.S"), None);
+        assert_eq!(from_str::<Duration>("P0,5D"), Some(Duration::seconds(43200)));
+        assert_eq!(from_str::<Duration>("PT0,25H"), Some(Duration::seconds(900)));
+        assert_eq!(from_str::<Duration>("PT0,25M"), Some(Duration::seconds(15)));
+        assert_eq!(from_str::<Duration>("P0.5DT30M"), None);
+        assert_eq!(from_str::<Duration>("PT0.25H1S"), None);
+
+        assert_eq!(from_str::<Duration>("PT1H2M5.5S"),
+                                            Some(Duration::nanoseconds(3725500000000)));
+        assert_eq!(from_str::<Duration>("PT1H2M5.05S"),
+                                            Some(Duration::nanoseconds(3725050000000)));
+        assert_eq!(from_str::<Duration>("PT1H2M5.005S"),
+                                            Some(Duration::nanoseconds(3725005000000)));
+        assert_eq!(from_str::<Duration>("PT1H2M5.0005S"),
+                                            Some(Duration::nanoseconds(3725000500000)));
+        assert_eq!(from_str::<Duration>("PT1H2M5.00005S"),
+                                            Some(Duration::nanoseconds(3725000050000)));
+        assert_eq!(from_str::<Duration>("PT1H2M5.000005S"),
+                                            Some(Duration::nanoseconds(3725000005000)));
+        assert_eq!(from_str::<Duration>("PT1H2M5.0000005S"),
+                                            Some(Duration::nanoseconds(3725000000500)));
+        assert_eq!(from_str::<Duration>("PT1H2M5.00000005S"),
+                                            Some(Duration::nanoseconds(3725000000050)));
+        assert_eq!(from_str::<Duration>("PT1H2M5.000000005S"),
+                                            Some(Duration::nanoseconds(3725000000005)));
+
+        assert_eq!(from_str::<Duration>("-P106751991167DT25975.808S"), Some(MIN));
+        assert_eq!(from_str::<Duration>("-P106751991167DT25975,808S"), Some(MIN));
+        assert_eq!(from_str::<Duration>("P106751991167DT25975.807S"), Some(MAX));
+        assert_eq!(from_str::<Duration>("P106751991167DT25975,807S"), Some(MAX));
     }
 }
