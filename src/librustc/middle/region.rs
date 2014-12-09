@@ -445,7 +445,7 @@ impl RegionMaps {
 
 /// Records the current parent (if any) as the parent of `child_id`.
 fn record_superlifetime(visitor: &mut RegionResolutionVisitor,
-                        child_id: ast::NodeId,
+                        child_scope: CodeExtent,
                         _sp: Span) {
     // FIXME (pnkfelix): currently this is redundantly adding entries
     // for both a specific variant (Closure in this case) as well as
@@ -455,16 +455,10 @@ fn record_superlifetime(visitor: &mut RegionResolutionVisitor,
     match visitor.cx.parent {
         InnermostEnclosingExpr::Some(parent_id) => {
             let parent_scope = CodeExtent::from_node_id(parent_id);
-            let child_scope = CodeExtent::Misc(child_id);
-            visitor.region_maps.record_encl_scope(child_scope, parent_scope);
-            let child_scope = CodeExtent::Closure(child_id);
             visitor.region_maps.record_encl_scope(child_scope, parent_scope);
         }
         InnermostEnclosingExpr::Closure(closure_id) => {
             let parent_scope = CodeExtent::Closure(closure_id);
-            let child_scope = CodeExtent::Misc(child_id);
-            visitor.region_maps.record_encl_scope(child_scope, parent_scope);
-            let child_scope = CodeExtent::Closure(child_id);
             visitor.region_maps.record_encl_scope(child_scope, parent_scope);
         }
         InnermostEnclosingExpr::None => {}
@@ -493,7 +487,7 @@ fn resolve_block(visitor: &mut RegionResolutionVisitor, blk: &ast::Block) {
     debug!("resolve_block(blk.id={})", blk.id);
 
     // Record the parent of this block.
-    record_superlifetime(visitor, blk.id, blk.span);
+    record_superlifetime(visitor, CodeExtent::Misc(blk.id), blk.span);
 
     // We treat the tail expression in the block (if any) somewhat
     // differently from the statements. The issue has to do with
@@ -529,7 +523,9 @@ fn resolve_arm(visitor: &mut RegionResolutionVisitor, arm: &ast::Arm) {
 }
 
 fn resolve_pat(visitor: &mut RegionResolutionVisitor, pat: &ast::Pat) {
-    record_superlifetime(visitor, pat.id, pat.span);
+    debug!("resolve_pat(pat.id={})", pat.id);
+
+    record_superlifetime(visitor, CodeExtent::Misc(pat.id), pat.span);
 
     // If this is a binding (or maybe a binding, I'm too lazy to check
     // the def map) then record the lifetime of that binding.
@@ -549,7 +545,7 @@ fn resolve_stmt(visitor: &mut RegionResolutionVisitor, stmt: &ast::Stmt) {
 
     let stmt_scope = CodeExtent::from_node_id(stmt_id);
     visitor.region_maps.mark_as_terminating_scope(stmt_scope);
-    record_superlifetime(visitor, stmt_id, stmt.span);
+    record_superlifetime(visitor, CodeExtent::Misc(stmt_id), stmt.span);
 
     let prev_parent = visitor.cx.parent;
     visitor.cx.parent = InnermostEnclosingExpr::Some(stmt_id);
@@ -560,7 +556,7 @@ fn resolve_stmt(visitor: &mut RegionResolutionVisitor, stmt: &ast::Stmt) {
 fn resolve_expr(visitor: &mut RegionResolutionVisitor, expr: &ast::Expr) {
     debug!("resolve_expr(expr.id={})", expr.id);
 
-    record_superlifetime(visitor, expr.id, expr.span);
+    record_superlifetime(visitor, CodeExtent::Misc(expr.id), expr.span);
 
     let prev_cx = visitor.cx;
     visitor.cx.parent = InnermostEnclosingExpr::Some(expr.id);
@@ -918,10 +914,23 @@ fn resolve_fn(visitor: &mut RegionResolutionVisitor,
            body.id,
            visitor.cx.parent);
 
+    let outer_cx = visitor.cx;
+
+    match fk {
+        visit::FkFnBlock(..) => {
+            // A closure's body is enclosed by the closure's original
+            // expression.  (and the block that forms that body is
+            // itself enclosed by the closure body.)
+            //
+            // FiXME (pnkfelix): clean all this up, there must be a
+            // cleaner construction and/or presentation.
+            record_superlifetime(visitor, CodeExtent::Closure(id), sp);
+        }
+        _ => {}
+    }
+
     let body_scope = CodeExtent::from_node_id(body.id);
     visitor.region_maps.mark_as_terminating_scope(body_scope);
-
-    let outer_cx = visitor.cx;
 
     // The arguments and `self` are parented to the body of the fn.
     visitor.cx = Context {
