@@ -542,10 +542,10 @@ mod tests {
             )
         )
         t!("foo", display, "foo");
-        t!(b"foo\x80", display, "foo\uFFFD");
-        t!(b"foo\xFFbar", display, "foo\uFFFDbar");
+        t!(b"foo\x80", display, "foo\u{FFFD}");
+        t!(b"foo\xFFbar", display, "foo\u{FFFD}bar");
         t!(b"foo\xFF/bar", filename_display, "bar");
-        t!(b"foo/\xFFbar", filename_display, "\uFFFDbar");
+        t!(b"foo/\xFFbar", filename_display, "\u{FFFD}bar");
         t!(b"/", filename_display, "");
 
         macro_rules! t(
@@ -566,10 +566,10 @@ mod tests {
         )
 
         t!("foo", "foo");
-        t!(b"foo\x80", "foo\uFFFD");
-        t!(b"foo\xFFbar", "foo\uFFFDbar");
+        t!(b"foo\x80", "foo\u{FFFD}");
+        t!(b"foo\xFFbar", "foo\u{FFFD}bar");
         t!(b"foo\xFF/bar", "bar", filename);
-        t!(b"foo/\xFFbar", "\uFFFDbar", filename);
+        t!(b"foo/\xFFbar", "\u{FFFD}bar", filename);
         t!(b"/", "", filename);
     }
 
@@ -590,10 +590,10 @@ mod tests {
         t!(b"foo", "foo", "foo");
         t!(b"foo/bar", "foo/bar", "bar");
         t!(b"/", "/", "");
-        t!(b"foo\xFF", "foo\uFFFD", "foo\uFFFD");
-        t!(b"foo\xFF/bar", "foo\uFFFD/bar", "bar");
-        t!(b"foo/\xFFbar", "foo/\uFFFDbar", "\uFFFDbar");
-        t!(b"\xFFfoo/bar\xFF", "\uFFFDfoo/bar\uFFFD", "bar\uFFFD");
+        t!(b"foo\xFF", "foo\u{FFFD}", "foo\u{FFFD}");
+        t!(b"foo\xFF/bar", "foo\u{FFFD}/bar", "bar");
+        t!(b"foo/\xFFbar", "foo/\u{FFFD}bar", "\u{FFFD}bar");
+        t!(b"\xFFfoo/bar\xFF", "\u{FFFD}foo/bar\u{FFFD}", "bar\u{FFFD}");
     }
 
     #[test]

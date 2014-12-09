@@ -562,7 +562,6 @@ pub enum BinOp {
     BiGt,
 }
 
-#[cfg(not(stage0))]
 impl Copy for BinOp {}
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]

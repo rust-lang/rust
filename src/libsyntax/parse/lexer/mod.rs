@@ -763,8 +763,6 @@ impl<'a> StringReader<'a> {
         }
     }
 
-    // SNAP c9f6d69
-    #[allow(unused)]
     fn old_escape_warning(&mut self, sp: Span) {
         self.span_diagnostic
             .span_warn(sp, "\\U00ABCD12 and \\uABCD escapes are deprecated");
@@ -796,17 +794,15 @@ impl<'a> StringReader<'a> {
                                     self.scan_unicode_escape(delim)
                                 } else {
                                     let res = self.scan_hex_digits(4u, delim, false);
-                                    // SNAP c9f6d69
-                                    //let sp = codemap::mk_sp(escaped_pos, self.last_pos);
-                                    //self.old_escape_warning(sp);
+                                    let sp = codemap::mk_sp(escaped_pos, self.last_pos);
+                                    self.old_escape_warning(sp);
                                     res
                                 }
                             }
                             'U' if !ascii_only => {
                                 let res = self.scan_hex_digits(8u, delim, false);
-                                // SNAP c9f6d69
-                                //let sp = codemap::mk_sp(escaped_pos, self.last_pos);
-                                //self.old_escape_warning(sp);
+                                let sp = codemap::mk_sp(escaped_pos, self.last_pos);
+                                self.old_escape_warning(sp);
                                 res
                             }
                             '\n' if delim == '"' => {
