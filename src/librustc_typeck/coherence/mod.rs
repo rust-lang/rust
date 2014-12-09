@@ -212,6 +212,9 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
                    trait_ref.repr(self.crate_context.tcx),
                    token::get_ident(item.ident));
 
+            enforce_trait_manually_implementable(self.crate_context.tcx,
+                                                 item.span,
+                                                 trait_ref.def_id);
             self.add_trait_impl(trait_ref.def_id, impl_did);
         }
 
@@ -540,6 +543,28 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
             }
         }
     }
+}
+
+fn enforce_trait_manually_implementable(tcx: &ty::ctxt, sp: Span, trait_def_id: ast::DefId) {
+    if tcx.sess.features.borrow().unboxed_closures {
+        // the feature gate allows all of them
+        return
+    }
+    let did = Some(trait_def_id);
+    let li = &tcx.lang_items;
+
+    let trait_name = if did == li.fn_trait() {
+        "Fn"
+    } else if did == li.fn_mut_trait() {
+        "FnMut"
+    } else if did == li.fn_once_trait() {
+        "FnOnce"
+    } else {
+        return // everything OK
+    };
+    span_err!(tcx.sess, sp, E0173, "manual implementations of `{}` are experimental", trait_name);
+    span_help!(tcx.sess, sp,
+               "add `#![feature(unboxed_closures)]` to the crate attributes to enable");
 }
 
 fn subst_receiver_types_in_method_ty<'tcx>(tcx: &ty::ctxt<'tcx>,

@@ -288,7 +288,6 @@ fn load_environment<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             debuginfo::create_captured_var_metadata(
                 bcx,
                 def_id.node,
-                cdata_ty,
                 env_pointer_alloca,
                 i,
                 captured_by_ref,
@@ -328,7 +327,7 @@ fn load_unboxed_closure_environment<'blk, 'tcx>(
     // Store the pointer to closure data in an alloca for debug info because that's what the
     // llvm.dbg.declare intrinsic expects
     let env_pointer_alloca = if bcx.sess().opts.debuginfo == FullDebugInfo {
-        let alloc = alloc_ty(bcx, ty::mk_mut_ptr(bcx.tcx(), self_type), "__debuginfo_env_ptr");
+        let alloc = alloca(bcx, val_ty(llenv), "__debuginfo_env_ptr");
         Store(bcx, llenv, alloc);
         Some(alloc)
     } else {
@@ -357,7 +356,6 @@ fn load_unboxed_closure_environment<'blk, 'tcx>(
             debuginfo::create_captured_var_metadata(
                 bcx,
                 def_id.node,
-                self_type,
                 env_pointer_alloca,
                 i,
                 captured_by_ref,

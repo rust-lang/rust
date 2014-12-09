@@ -66,12 +66,19 @@ pub fn cs_cmp(cx: &mut ExtCtxt, span: Span,
                                           cx.ident_of("cmp"),
                                           cx.ident_of("Equal")));
 
+    let cmp_path = vec![
+        cx.ident_of("std"),
+        cx.ident_of("cmp"),
+        cx.ident_of("Ord"),
+        cx.ident_of("cmp"),
+    ];
+
     /*
     Builds:
 
-    let __test = self_field1.cmp(&other_field2);
+    let __test = ::std::cmp::Ord::cmp(&self_field1, &other_field1);
     if other == ::std::cmp::Ordering::Equal {
-        let __test = self_field2.cmp(&other_field2);
+        let __test = ::std::cmp::Ord::cmp(&self_field2, &other_field2);
         if __test == ::std::cmp::Ordering::Equal {
             ...
         } else {
@@ -83,17 +90,31 @@ pub fn cs_cmp(cx: &mut ExtCtxt, span: Span,
 
     FIXME #6449: These `if`s could/should be `match`es.
     */
-    cs_same_method_fold(
+    cs_fold(
         // foldr nests the if-elses correctly, leaving the first field
         // as the outermost one, and the last as the innermost.
         false,
-        |cx, span, old, new| {
+        |cx, span, old, self_f, other_fs| {
             // let __test = new;
             // if __test == ::std::cmp::Ordering::Equal {
             //    old
             // } else {
             //    __test
             // }
+
+            let new = {
+                let other_f = match other_fs {
+                    [ref o_f] => o_f,
+                    _ => cx.span_bug(span, "not exactly 2 arguments in `deriving(PartialOrd)`"),
+                };
+
+                let args = vec![
+                    cx.expr_addr_of(span, self_f),
+                    cx.expr_addr_of(span, other_f.clone()),
+                ];
+
+                cx.expr_call_global(span, cmp_path.clone(), args)
+            };
 
             let assign = cx.stmt_let(span, false, test_id, new);
 

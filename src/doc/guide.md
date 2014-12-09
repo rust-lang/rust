@@ -355,7 +355,7 @@ just `cargo build` and it'll work the right way.
 
 You'll also notice that Cargo has created a new file: `Cargo.lock`.
 
-```{ignore,notrust}
+```{ignore}
 [root]
 name = "hello_world"
 version = "0.0.1"
@@ -426,7 +426,7 @@ x = 10i;
 
 It will give you this error:
 
-```{ignore,notrust}
+```{notrust}
 error: re-assignment of immutable variable `x`
      x = 10i;
      ^~~~~~~
@@ -486,7 +486,7 @@ fn main() {
 You can use `cargo build` on the command line to build it. You'll get a warning,
 but it will still print "Hello, world!":
 
-```{ignore,notrust}
+```{notrust}
    Compiling hello_world v0.0.1 (file:///home/you/projects/hello_world)
 src/main.rs:2:9: 2:10 warning: unused variable: `x`, #[warn(unused_variable)] on by default
 src/main.rs:2     let x: int;
@@ -664,7 +664,7 @@ let y: int = if x == 5i { 10i; } else { 15i; };
 
 Note the semicolons after the 10 and 15. Rust will give us the following error:
 
-```{ignore,notrust}
+```{notrust}
 error: mismatched types: expected `int` but found `()` (expected int but found ())
 ```
 
@@ -747,7 +747,7 @@ fn print_number(x, y) {
 
 You get this error:
 
-```{ignore,notrust}
+```{notrust}
 hello.rs:5:18: 5:19 error: expected `:` but found `,`
 hello.rs:5 fn print_number(x, y) {
 ```
@@ -779,7 +779,7 @@ fn add_one(x: int) -> int {
 
 We would get an error:
 
-```{ignore,notrust}
+```{ignore}
 error: not all control paths return a value
 fn add_one(x: int) -> int {
      x + 1;
@@ -1160,6 +1160,55 @@ Where a `StringResult` is either an `StringOK`, with the result of a computation
 `ErrorReason` with a `String` explaining what caused the computation to fail. These kinds of
 `enum`s are actually very useful and are even part of the standard library.
 
+Enum variants are namespaced under the enum names. For example, here is an example of using
+our `StringResult`:
+
+```rust
+# enum StringResult {
+#     StringOK(String),
+#     ErrorReason(String),
+# }
+fn respond(greeting: &str) -> StringResult {
+    if greeting == "Hello" {
+        StringResult::StringOK("Good morning!".to_string())
+    } else {
+        StringResult::ErrorReason("I didn't understand you!".to_string())
+    }
+}
+```
+
+Notice that we need both the enum name and the variant name: `StringResult::StringOK`, but
+we didn't need to with `Ordering`, we just said `Greater` rather than `Ordering::Greater`.
+There's a reason: the Rust prelude imports the variants of `Ordering` as well as the enum
+itself. We can use the `use` keyword to do something similar with `StringResult`:
+
+```rust
+use StringResult::StringOK;
+use StringResult::ErrorReason;
+
+enum StringResult {
+    StringOK(String),
+    ErrorReason(String),
+}
+
+# fn main() {}
+
+fn respond(greeting: &str) -> StringResult {
+    if greeting == "Hello" {
+        StringOK("Good morning!".to_string())
+    } else {
+        ErrorReason("I didn't understand you!".to_string())
+    }
+}
+```
+
+We'll learn more about `use` later, but it's used to bring names into scope. `use` declarations
+must come before anything else, which looks a little strange in this example, since we `use`
+the variants before we define them. Anyway, in the body of `respond`, we can just say `StringOK`
+now, rather than the full `StringResult::StringOK`. Importing variants can be convenient, but can
+also cause name conflicts, so do this with caution. It's considered good style to rarely import
+variants for this reason.
+
 As you can see `enum`s with values are quite a powerful tool for data representation,
 and can be even more useful when they're generic across types. But before we get to
 generics, let's talk about how to use them with pattern matching, a tool that will
@@ -1197,7 +1246,7 @@ So what's the big advantage here? Well, there are a few. First of all, `match`
 enforces 'exhaustiveness checking.' Do you see that last arm, the one with the
 underscore (`_`)? If we remove that arm, Rust will give us an error:
 
-```{ignore,notrust}
+```{notrust}
 error: non-exhaustive patterns: `_` not covered
 ```
 
@@ -1344,7 +1393,7 @@ for x in range(0i, 10i) {
 
 In slightly more abstract terms,
 
-```{ignore,notrust}
+```{ignore}
 for var in expression {
     code
 }
@@ -1849,7 +1898,7 @@ Before we move on, let me show you one more Cargo command: `run`. `cargo run`
 is kind of like `cargo build`, but it also then runs the produced executable.
 Try it out:
 
-```{notrust,ignore}
+```{notrust}
 $ cargo run
    Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
      Running `target/guessing_game`
@@ -1947,7 +1996,7 @@ for this example, it is not important.
 
 Let's try to compile this using `cargo build`:
 
-```{notrust,no_run}
+```{notrust}
 $ cargo build
    Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
 src/main.rs:7:26: 7:34 error: the type of this value must be known in this context
@@ -1995,7 +2044,7 @@ fn main() {
 
 Try running our new program a few times:
 
-```{notrust,ignore}
+```{notrust}
 $ cargo run
    Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
      Running `target/guessing_game`
@@ -2048,7 +2097,7 @@ fn main() {
 
 And trying it out:
 
-```{notrust,ignore}
+```{notrust}
 $ cargo run
    Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
      Running `target/guessing_game`
@@ -2103,7 +2152,7 @@ fn cmp(a: int, b: int) -> Ordering {
 
 If we try to compile, we'll get some errors:
 
-```{notrust,ignore}
+```{notrust}
 $ cargo build
    Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
 src/main.rs:20:15: 20:20 error: mismatched types: expected `int` but found `collections::string::String` (expected int but found struct collections::string::String)
@@ -2157,7 +2206,7 @@ fn cmp(a: uint, b: uint) -> Ordering {
 
 And try compiling again:
 
-```{notrust,ignore}
+```{notrust}
 $ cargo build
    Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
 src/main.rs:20:15: 20:20 error: mismatched types: expected `uint` but found `collections::string::String` (expected uint but found struct collections::string::String)
@@ -2170,7 +2219,7 @@ This error is similar to the last one: we expected to get a `uint`, but we got
 a `String` instead! That's because our `input` variable is coming from the
 standard input, and you can guess anything. Try it:
 
-```{notrust,ignore}
+```{notrust}
 $ ./target/guessing_game
 Guess the number!
 The secret number is: 73
@@ -2254,7 +2303,7 @@ fn cmp(a: uint, b: uint) -> Ordering {
 
 Let's try it out!
 
-```{notrust,ignore}
+```{notrust}
 $ cargo build
    Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
 src/main.rs:22:15: 22:24 error: mismatched types: expected `uint` but found `core::option::Option<uint>` (expected uint but found enum core::option::Option)
@@ -2313,7 +2362,7 @@ fn cmp(a: uint, b: uint) -> Ordering {
 We use a `match` to either give us the `uint` inside of the `Option`, or we
 print an error message and return. Let's give this a shot:
 
-```{notrust,ignore}
+```{notrust}
 $ cargo run
    Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
      Running `target/guessing_game`
@@ -2378,7 +2427,7 @@ fn cmp(a: uint, b: uint) -> Ordering {
 
 Let's try it!
 
-```{notrust,ignore}
+```{notrust}
 $ cargo run
    Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
      Running `target/guessing_game`
@@ -2455,7 +2504,7 @@ fn cmp(a: uint, b: uint) -> Ordering {
 And try it out. But wait, didn't we just add an infinite loop? Yup. Remember
 that `return`? If we give a non-number answer, we'll `return` and quit. Observe:
 
-```{notrust,ignore}
+```{notrust}
 $ cargo run
    Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
      Running `target/guessing_game`
@@ -2587,7 +2636,7 @@ fn cmp(a: uint, b: uint) -> Ordering {
 
 Now we should be good! Let's try:
 
-```{notrust,ignore}
+```{notrust}
 $ cargo run
    Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
      Running `target/guessing_game`
@@ -2703,7 +2752,7 @@ $ cd modules
 
 Let's double check our work by compiling:
 
-```{bash,notrust}
+```{bash}
 $ cargo run
    Compiling modules v0.0.1 (file:///home/you/projects/modules)
      Running `target/modules`
@@ -2765,7 +2814,7 @@ mod hello {
 
 It gives an error:
 
-```{notrust,ignore}
+```{notrust}
    Compiling modules v0.0.1 (file:///home/you/projects/modules)
 src/main.rs:2:5: 2:23 error: function `print_hello` is private
 src/main.rs:2     hello::print_hello();
@@ -2789,7 +2838,7 @@ mod hello {
 Usage of the `pub` keyword is sometimes called 'exporting', because
 we're making the function available for other modules. This will work:
 
-```{notrust,ignore}
+```{notrust}
 $ cargo run
    Compiling modules v0.0.1 (file:///home/you/projects/modules)
      Running `target/modules`
@@ -2923,7 +2972,7 @@ $ cd testing
 
 And try it out:
 
-```{notrust,ignore}
+```{notrust}
 $ cargo run
    Compiling testing v0.0.1 (file:///home/you/projects/testing)
      Running `target/testing`
@@ -2955,7 +3004,7 @@ you give them descriptive names. You'll see why in a moment. We then use a
 macro, `assert!`, to assert that something is true. In this case, we're giving
 it `false`, so this test should fail. Let's try it!
 
-```{notrust,ignore}
+```{notrust}
 $ cargo test
    Compiling testing v0.0.1 (file:///home/you/projects/testing)
 /home/you/projects/testing/src/main.rs:1:1: 3:2 warning: function is never used: `main`, #[warn(dead_code)] on by default
@@ -2984,7 +3033,7 @@ task '<main>' failed at 'Some tests failed', /home/you/src/rust/src/libtest/lib.
 
 Lots of output! Let's break this down:
 
-```{notrust,ignore}
+```{ignore}
 $ cargo test
    Compiling testing v0.0.1 (file:///home/you/projects/testing)
 ```
@@ -2992,7 +3041,7 @@ $ cargo test
 You can run all of your tests with `cargo test`. This runs both your tests in
 `tests`, as well as the tests you put inside of your crate.
 
-```{notrust,ignore}
+```{notrust}
 /home/you/projects/testing/src/main.rs:1:1: 3:2 warning: function is never used: `main`, #[warn(dead_code)] on by default
 /home/you/projects/testing/src/main.rs:1 fn main() {
 /home/you/projects/testing/src/main.rs:2     println!("Hello, world!")
@@ -3006,7 +3055,7 @@ case, Rust is warning us that we've written some code that's never used: our
 We'll turn this lint off for just this function soon. For now, just ignore this
 output.
 
-```{notrust,ignore}
+```{ignore}
      Running target/lib-654ce120f310a3a5
 
 running 1 test
@@ -3018,7 +3067,7 @@ with good names? This is why. Here, it says 'test foo' because we called our
 test 'foo.' If we had given it a good name, it'd be more clear which test
 failed, especially as we accumulate more tests.
 
-```{notrust,ignore}
+```{notrust}
 failures:
 
 ---- foo stdout ----
@@ -3049,7 +3098,7 @@ fn foo() {
 
 And then try to run our tests again:
 
-```{notrust,ignore}
+```{ignore}
 $ cargo test
    Compiling testing v0.0.1 (file:///home/you/projects/testing)
      Running target/lib-654ce120f310a3a5
@@ -3089,7 +3138,7 @@ include `main` when it's _not_ true. So we use `not` to negate things:
 With this attribute we won't get the warning (even
 though `src/main.rs` gets recompiled this time):
 
-```{notrust,ignore}
+```{ignore}
 $ cargo test
    Compiling testing v0.0.1 (file:///home/you/projects/testing)
      Running target/lib-654ce120f310a3a5
@@ -3120,7 +3169,7 @@ fn math_checks_out() {
 
 And try to run the test:
 
-```{notrust,ignore}
+```{notrust}
 $ cargo test
    Compiling testing v0.0.1 (file:///home/you/projects/testing)
 /home/you/projects/testing/tests/lib.rs:3:18: 3:38 error: unresolved name `add_three_times_four`.
@@ -3180,7 +3229,7 @@ fn math_checks_out() {
 
 Let's give it a run:
 
-```{ignore,notrust}
+```{ignore}
 $ cargo test
    Compiling testing v0.0.1 (file:///home/you/projects/testing)
      Running target/lib-654ce120f310a3a5
@@ -3229,7 +3278,7 @@ fn times_four(x: int) -> int { x * 4 }
 
 If you run `cargo test`, you should get the same output:
 
-```{ignore,notrust}
+```{ignore}
 $ cargo test
    Compiling testing v0.0.1 (file:///home/you/projects/testing)
      Running target/lib-654ce120f310a3a5
@@ -3283,7 +3332,7 @@ fn test_add_three() {
 
 We'd get this error:
 
-```{notrust,ignore}
+```{notrust}
    Compiling testing v0.0.1 (file:///home/you/projects/testing)
 /home/you/projects/testing/tests/lib.rs:3:5: 3:24 error: function `add_three` is private
 /home/you/projects/testing/tests/lib.rs:3 use testing::add_three;
@@ -3325,7 +3374,7 @@ mod test {
 
 Let's give it a shot:
 
-```{ignore,notrust}
+```{ignore}
 $ cargo test
    Compiling testing v0.0.1 (file:///home/you/projects/testing)
      Running target/lib-654ce120f310a3a5
@@ -3455,7 +3504,7 @@ let y = &mut x;
 
 Rust will complain:
 
-```{ignore,notrust}
+```{notrust}
 error: cannot borrow immutable local variable `x` as mutable
  let y = &mut x;
               ^
@@ -3482,7 +3531,7 @@ let z = &mut x;
 
 It gives us this error:
 
-```{notrust,ignore}
+```{notrust}
 error: cannot borrow `x` as mutable more than once at a time
      let z = &mut x;
                   ^
@@ -3628,7 +3677,7 @@ let z = &mut x;
 
 The error:
 
-```{notrust,ignore}
+```{notrust}
 error: cannot borrow `x` as mutable more than once at a time
      let z = &mut x;
                   ^
@@ -3646,7 +3695,7 @@ note: previous borrow ends here
 
 This error comes in three parts. Let's go over each in turn.
 
-```{notrust,ignore}
+```{notrust}
 error: cannot borrow `x` as mutable more than once at a time
      let z = &mut x;
                   ^
@@ -3655,7 +3704,7 @@ error: cannot borrow `x` as mutable more than once at a time
 This error states the restriction: you cannot lend out something mutable more
 than once at the same time. The borrow checker knows the rules!
 
-```{notrust,ignore}
+```{notrust}
 note: previous borrow of `x` occurs here; the mutable borrow prevents subsequent moves, borrows, or modification of `x` until the borrow ends
      let y = &mut x;
                   ^
@@ -3667,7 +3716,7 @@ the first mutable borrow occurred. The error showed us the second. So now we
 see both parts of the problem. It also alludes to rule #3, by reminding us that
 we can't change `x` until the borrow is over.
 
-```{notrust,ignore}
+```{ignore}
 note: previous borrow ends here
  fn main() {
      let mut x = 5i;
@@ -3681,8 +3730,8 @@ Here's the second note, which lets us know where the first borrow would be over.
 This is useful, because if we wait to try to borrow `x` after this borrow is
 over, then everything will work.
 
-For more advanced patterns, please consult the [Lifetime
-Guide](guide-lifetimes.html).  You'll also learn what this type signature with
+For more advanced patterns, please consult the [Ownership
+Guide](guide-ownership.html).  You'll also learn what this type signature with
 the `'a` syntax is:
 
 ```{rust,ignore}
@@ -3770,7 +3819,7 @@ let y = &mut x;
 
 This gives us this error:
 
-```{notrust,ignore}
+```{notrust}
 error: cannot use `*x` because it was mutably borrowed
  *x;
  ^~
@@ -4595,7 +4644,7 @@ element reference has the closure it's been given as an argument called on it.
 So this would give us the numbers from `2-100`. Well, almost! If you
 compile the example, you'll get a warning:
 
-```{notrust,ignore}
+```{ignore}
 warning: unused result which must be used: iterator adaptors are lazy and
          do nothing unless consumed, #[warn(unused_must_use)] on by default
  range(1i, 100i).map(|x| x + 1i);
@@ -4625,7 +4674,7 @@ for i in std::iter::count(1i, 5i).take(5) {
 
 This will print
 
-```{notrust,ignore}
+```{ignore}
 1
 6
 11
@@ -4838,7 +4887,7 @@ We can then use `T` inside the rest of the signature: `x` has type `T`, and half
 of the `Result` has type `T`. However, if we try to compile that example, we'll get
 an error:
 
-```{notrust,ignore}
+```{notrust}
 error: binary operation `==` cannot be applied to type `T`
 ```
 
@@ -4894,7 +4943,7 @@ we use `impl Trait for Item`, rather than just `impl Item`.
 So what's the big deal? Remember the error we were getting with our generic
 `inverse` function?
 
-```{notrust,ignore}
+```{notrust}
 error: binary operation `==` cannot be applied to type `T`
 ```
 
@@ -4909,7 +4958,7 @@ fn print_area<T>(shape: T) {
 
 Rust complains:
 
-```{notrust,ignore}
+```{notrust}
 error: type `T` does not implement any method in scope named `area`
 ```
 
@@ -4985,7 +5034,7 @@ fn main() {
 
 This program outputs:
 
-```{notrust,ignore}
+```{ignore}
 This shape has an area of 3.141593
 This shape has an area of 1
 ```
@@ -4999,7 +5048,7 @@ print_area(5i);
 
 We get a compile-time error:
 
-```{notrust,ignore}
+```{ignore}
 error: failed to find an implementation of trait main::HasArea for int
 ```
 
@@ -5066,7 +5115,7 @@ fn main() {
 Now that we've moved the structs and traits into their own module, we get an
 error:
 
-```{notrust,ignore}
+```{notrust}
 error: type `shapes::Circle` does not implement any method in scope named `area`
 ```
 

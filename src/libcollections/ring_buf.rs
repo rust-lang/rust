@@ -11,7 +11,6 @@
 //! This crate implements a double-ended queue with `O(1)` amortized inserts and removals from both
 //! ends of the container. It also has `O(1)` indexing like a vector. The contained elements are
 //! not required to be copyable, and the queue will be sendable if the contained type is sendable.
-//! Its interface `Deque` is defined in `collections`.
 
 use core::prelude::*;
 
@@ -35,7 +34,7 @@ static MINIMUM_CAPACITY: uint = 2u;
 // FIXME(conventions): implement shrink_to_fit. Awkward with the current design, but it should
 // be scrapped anyway. Defer to rewrite?
 
-/// `RingBuf` is a circular buffer that implements `Deque`.
+/// `RingBuf` is a circular buffer.
 pub struct RingBuf<T> {
     // tail and head are pointers into the buffer. Tail always points
     // to the first element that could be read, Head always points
