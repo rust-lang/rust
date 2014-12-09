@@ -8,18 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[deriving(Eq, PartialEq, PartialOrd, Ord)]
-enum Test<'a> {
-    Int(&'a int),
-    Slice(&'a [u8]),
+trait Foo<T> {
+    fn get(&self) -> T;
 }
 
-#[deriving(Eq, PartialEq, PartialOrd, Ord)]
-struct Version {
-    vendor_info: &'static str
+impl Foo<i32> for i32 {
+    fn get(&self) -> i32 { *self }
 }
 
-#[deriving(Eq, PartialEq, PartialOrd, Ord)]
-struct Foo(&'static str);
-
-fn main() {}
+fn main() {
+    let x: i32 = 1;
+    Foo::<i32>::get(&x);
+}

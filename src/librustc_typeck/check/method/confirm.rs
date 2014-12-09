@@ -10,7 +10,7 @@
 
 use super::probe;
 
-use check::{mod, FnCtxt, NoPreference, PreferMutLvalue};
+use check::{mod, FnCtxt, NoPreference, PreferMutLvalue, callee};
 use middle::subst::{mod, Subst};
 use middle::traits;
 use middle::ty::{mod, Ty};
@@ -90,7 +90,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
         let self_ty = self.adjust_self_ty(unadjusted_self_ty, &pick.adjustment);
 
         // Make sure nobody calls `drop()` explicitly.
-        self.enforce_drop_trait_limitations(&pick);
+        self.enforce_illegal_method_limitations(&pick);
 
         // Create substitutions for the method's type parameters.
         let (rcvr_substs, method_origin) =
@@ -624,14 +624,11 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
         self.fcx.infcx()
     }
 
-    fn enforce_drop_trait_limitations(&self, pick: &probe::Pick) {
+    fn enforce_illegal_method_limitations(&self, pick: &probe::Pick) {
         // Disallow calls to the method `drop` defined in the `Drop` trait.
         match pick.method_ty.container {
             ty::TraitContainer(trait_def_id) => {
-                if Some(trait_def_id) == self.tcx().lang_items.drop_trait() {
-                    span_err!(self.tcx().sess, self.span, E0040,
-                              "explicit call to destructor");
-                }
+                callee::check_legal_trait_for_method_call(self.fcx.ccx, self.span, trait_def_id)
             }
             ty::ImplContainer(..) => {
                 // Since `drop` is a trait method, we expect that any

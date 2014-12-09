@@ -130,6 +130,7 @@ pub mod demand;
 pub mod method;
 pub mod wf;
 mod closure;
+mod callee;
 
 /// Fields that are part of a `FnCtxt` which are inherited by
 /// closures defined within the function.  For example:
@@ -5095,8 +5096,17 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         }
 
         // Case 3. Reference to a method.
-        def::DefStaticMethod(..) => {
+        def::DefStaticMethod(_, providence) |
+        def::DefMethod(_, _, providence) => {
             assert!(path.segments.len() >= 2);
+
+            match providence {
+                def::FromTrait(trait_did) => {
+                    callee::check_legal_trait_for_method_call(fcx.ccx, span, trait_did)
+                }
+                def::FromImpl(_) => {}
+            }
+
             segment_spaces = Vec::from_elem(path.segments.len() - 2, None);
             segment_spaces.push(Some(subst::TypeSpace));
             segment_spaces.push(Some(subst::FnSpace));
@@ -5108,7 +5118,6 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         def::DefMod(..) |
         def::DefForeignMod(..) |
         def::DefLocal(..) |
-        def::DefMethod(..) |
         def::DefUse(..) |
         def::DefRegion(..) |
         def::DefLabel(..) |

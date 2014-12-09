@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-test
-
 extern crate libc;
 
 use std::io::process::Command;
@@ -18,51 +16,38 @@ use std::iter::IteratorExt;
 use libc::funcs::posix88::unistd;
 
 
-// "ps -A -o pid,sid,command" with GNU ps should output something like this:
-//   PID   SID COMMAND
-//     1     1 /sbin/init
+// The output from "ps -A -o pid,ppid,args" should look like this:
+//   PID  PPID COMMAND
+//     1     0 /sbin/init
 //     2     0 [kthreadd]
-//     3     0 [ksoftirqd/0]
 // ...
-// 12562  9237 ./spawn-failure
-// 12563  9237 [spawn-failure] <defunct>
-// 12564  9237 [spawn-failure] <defunct>
+//  6076  9064 /bin/zsh
 // ...
-// 12592  9237 [spawn-failure] <defunct>
-// 12593  9237 ps -A -o pid,sid,command
-// 12884 12884 /bin/zsh
-// 12922 12922 /bin/zsh
+//  7164  6076 ./spawn-failure
+//  7165  7164 [spawn-failure] <defunct>
+//  7166  7164 [spawn-failure] <defunct>
+// ...
+//  7197  7164 [spawn-failure] <defunct>
+//  7198  7164 ps -A -o pid,ppid,command
 // ...
 
 #[cfg(unix)]
 fn find_zombies() {
-    // http://man.freebsd.org/ps(1)
-    // http://man7.org/linux/man-pages/man1/ps.1.html
-    #[cfg(not(target_os = "macos"))]
-    const FIELDS: &'static str = "pid,sid,command";
+    let my_pid = unsafe { unistd::getpid() };
 
-    // https://developer.apple.com/library/mac/documentation/Darwin/
-    // Reference/ManPages/man1/ps.1.html
-    #[cfg(target_os = "macos")]
-    const FIELDS: &'static str = "pid,sess,command";
-
-    let my_sid = unsafe { unistd::getsid(0) };
-
-    let ps_cmd_output = Command::new("ps").args(&["-A", "-o", FIELDS]).output().unwrap();
+    // http://pubs.opengroup.org/onlinepubs/9699919799/utilities/ps.html
+    let ps_cmd_output = Command::new("ps").args(&["-A", "-o", "pid,ppid,args"]).output().unwrap();
     let ps_output = String::from_utf8_lossy(ps_cmd_output.output.as_slice());
 
-    let found = ps_output.split('\n').enumerate().any(|(line_no, line)|
-        0 < line_no && 0 < line.len() &&
-        my_sid == from_str(line.split(' ').filter(|w| 0 < w.len()).nth(1)
-            .expect("1st column should be Session ID")
-            ).expect("Session ID string into integer") &&
-        line.contains("defunct") && {
-            println!("Zombie child {}", line);
-            true
+    for (line_no, line) in ps_output.split('\n').enumerate() {
+        if 0 < line_no && 0 < line.len() &&
+           my_pid == from_str(line.split(' ').filter(|w| 0 < w.len()).nth(1)
+               .expect("1st column should be PPID")
+               ).expect("PPID string into integer") &&
+           line.contains("defunct") {
+            panic!("Zombie child {}", line);
         }
-    );
-
-    assert!( ! found, "Found at least one zombie child");
+    }
 }
 
 #[cfg(windows)]
@@ -71,10 +56,13 @@ fn find_zombies() { }
 fn main() {
     let too_long = format!("/NoSuchCommand{:0300}", 0u8);
 
-    for _ in range(0u32, 100) {
-        let invalid = Command::new(too_long.as_slice()).spawn();
-        assert!(invalid.is_err());
-    }
+    let _failures = Vec::from_fn(100, |_i| {
+        let cmd = Command::new(too_long.as_slice());
+        let failed = cmd.spawn();
+        assert!(failed.is_err(), "Make sure the command fails to spawn(): {}", cmd);
+        failed
+    });
 
     find_zombies();
+    // then _failures goes out of scope
 }

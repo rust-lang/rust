@@ -143,7 +143,10 @@
 
 #![stable]
 
+#[cfg(stage0)]
 pub use self::Option::*;
+#[cfg(not(stage0))]
+use self::Option::*;
 
 use cmp::{Eq, Ord};
 use default::Default;

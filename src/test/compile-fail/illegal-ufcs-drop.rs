@@ -8,18 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[deriving(Eq, PartialEq, PartialOrd, Ord)]
-enum Test<'a> {
-    Int(&'a int),
-    Slice(&'a [u8]),
+
+struct Foo;
+
+impl Drop for Foo {
+    fn drop(&mut self) {}
 }
 
-#[deriving(Eq, PartialEq, PartialOrd, Ord)]
-struct Version {
-    vendor_info: &'static str
+fn main() {
+    Drop::drop(&mut Foo) //~ ERROR explicit use of destructor method
 }
-
-#[deriving(Eq, PartialEq, PartialOrd, Ord)]
-struct Foo(&'static str);
-
-fn main() {}

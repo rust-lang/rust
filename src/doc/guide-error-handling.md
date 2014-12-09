@@ -2,7 +2,7 @@
 
 > The best-laid plans of mice and men
 > Often go awry
-> 
+>
 > "Tae a Moose", Robert Burns
 
 Sometimes, things just go wrong. It's important to have a plan for when the
@@ -76,7 +76,7 @@ fn main() {
 
 This will give us an error:
 
-```{notrust,ignore}
+```{notrust}
 error: non-exhaustive patterns: `_` not covered [E0004]
 ```
 
@@ -189,7 +189,7 @@ panic!("boom");
 
 gives
 
-```{notrust,ignore}
+```{notrust}
 task '<main>' panicked at 'boom', hello.rs:2
 ```
 

@@ -58,13 +58,13 @@ authors = ["Your Name <you@example.com>"]
 ```
 
 This is called a **manifest**, and it contains all of the metadata that Cargo
-needs to compile your project. 
+needs to compile your project.
 
 Here's what's in `src/main.rs`:
 
 ```{rust}
 fn main() {
-    println!("Hello, world!")
+    println!("Hello, world!");
 }
 ```
 
@@ -207,7 +207,7 @@ and two...
 
 ```{bash}
 $ g++ hello.cpp -Wall -Werror
-$ ./a.out 
+$ ./a.out
 Segmentation fault (core dumped)
 ```
 
@@ -313,7 +313,7 @@ print `"Hello"`, or does Rust crash?
 
 Neither. It refuses to compile:
 
-```{notrust,ignore}
+```{notrust}
 $ cargo run
    Compiling hello_world v0.0.1 (file:///Users/you/src/hello_world)
 main.rs:8:5: 8:6 error: cannot borrow `v` as mutable because it is also borrowed as immutable
@@ -428,7 +428,7 @@ fn main() {
 
 It gives us this error:
 
-```{notrust,ignore}
+```{notrust}
 6:71 error: capture of moved value: `numbers`
     for j in range(0, 3) { numbers[j] += 1 }
                ^~~~~~~

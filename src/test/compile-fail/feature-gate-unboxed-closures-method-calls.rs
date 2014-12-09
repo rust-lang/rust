@@ -8,18 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[deriving(Eq, PartialEq, PartialOrd, Ord)]
-enum Test<'a> {
-    Int(&'a int),
-    Slice(&'a [u8]),
-}
+#![allow(dead_code)]
 
-#[deriving(Eq, PartialEq, PartialOrd, Ord)]
-struct Version {
-    vendor_info: &'static str
+fn foo<F: Fn<(), ()>>(mut f: F) {
+    f.call(()); //~ ERROR explicit use of unboxed closure method `call`
+    f.call_mut(()); //~ ERROR explicit use of unboxed closure method `call_mut`
+    f.call_once(()); //~ ERROR explicit use of unboxed closure method `call_once`
 }
-
-#[deriving(Eq, PartialEq, PartialOrd, Ord)]
-struct Foo(&'static str);
 
 fn main() {}

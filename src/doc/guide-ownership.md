@@ -93,7 +93,7 @@ must have a deallocation for each allocation. Rust handles this for you. It
 knows that our handle, `x`, is the owning reference to our box. Rust knows that
 `x` will go out of scope at the end of the block, and so it inserts a call to
 deallocate the memory at the end of the scope. Because the compiler does this
-for us, it's impossible to forget. We always exaclty one deallocations paired
+for us, it's impossible to forget. We always have exactly one deallocation paired
 with each of our allocations.
 
 This is pretty straightforward, but what happens when we want to pass our box
@@ -130,7 +130,7 @@ fn add_one(mut num: Box<int>) {
 
 This does not compile, and gives us an error:
 
-```{notrust,ignore}
+```{notrust}
 error: use of moved value: `x`
    println!("{}", x);
                   ^
@@ -186,11 +186,11 @@ This function takes ownership, because it takes a `Box`, which owns its
 contents. But then we give ownership right back.
 
 In the physical world, you can give one of your possessions to someone for a
-short period of time. You still own your posession, you're just letting someone
+short period of time. You still own your possession, you're just letting someone
 else use it for a while. We call that 'lending' something to someone, and that
 person is said to be 'borrowing' that something from you.
 
-Rust's ownershp system also allows an owner to lend out a handle for a limited
+Rust's ownership system also allows an owner to lend out a handle for a limited
 period. This is also called 'borrowing.' Here's a version of `add_one` which
 borrows its argument rather than taking ownership:
 
@@ -231,7 +231,7 @@ fn add_one(num: &int) -> int {
 
 Rust has a feature called 'lifetime elision,' which allows you to not write
 lifetime annotations in certain circumstances. This is one of them. Without
-eliding the liftimes, `add_one` looks like this:
+eliding the lifetimes, `add_one` looks like this:
 
 ```rust
 fn add_one<'a>(num: &'a int) -> int {
@@ -254,7 +254,7 @@ This part _declares_ our lifetimes. This says that `add_one` has one lifetime,
 fn add_two<'a, 'b>(...)
 ```
 
-Then in our parameter list, we use the liftimes we've named:
+Then in our parameter list, we use the lifetimes we've named:
 
 ```{rust,ignore}
 ...(num: &'a int) -> ...
@@ -279,7 +279,7 @@ fn main() {
 }
 ```
 
-As you can see, `struct`s can also have liftimes. In a similar way to functions,
+As you can see, `struct`s can also have lifetimes. In a similar way to functions,
 
 ```{rust}
 struct Foo<'a> {
@@ -295,7 +295,7 @@ x: &'a int,
 # }
 ```
 
-uses it. So why do we need a liftime here? We need to ensure that any reference
+uses it. So why do we need a lifetime here? We need to ensure that any reference
 to a `Foo` cannot outlive the reference to an `int` it contains.
 
 ## Thinking in scopes
@@ -406,7 +406,7 @@ fn main() {
 We try to make four `Wheel`s, each with a `Car` that it's attached to. But the
 compiler knows that on the second iteration of the loop, there's a problem:
 
-```{notrust,ignore}
+```{notrust}
 error: use of moved value: `car`
     Wheel { size: 360, owner: car };
                               ^~~
