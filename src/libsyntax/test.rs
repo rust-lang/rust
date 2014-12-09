@@ -123,7 +123,7 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
 
         if is_test_fn(&self.cx, &*i) || is_bench_fn(&self.cx, &*i) {
             match i.node {
-                ast::ItemFn(_, ast::UnsafeFn, _, _, _) => {
+                ast::ItemFn(_, ast::Unsafety::Unsafe, _, _, _) => {
                     let diag = self.cx.span_diagnostic;
                     diag.span_fatal(i.span,
                                     "unsafe functions cannot be used for \

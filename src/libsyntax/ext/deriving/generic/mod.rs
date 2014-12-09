@@ -684,7 +684,7 @@ impl<'a> MethodDef<'a> {
                                 fn_generics,
                                 abi,
                                 explicit_self,
-                                ast::NormalFn,
+                                ast::Unsafety::Normal,
                                 fn_decl,
                                 body_block,
                                 ast::Inherited)

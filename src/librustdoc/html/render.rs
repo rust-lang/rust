@@ -58,7 +58,7 @@ use rustc::util::nodemap::NodeSet;
 use clean;
 use doctree;
 use fold::DocFolder;
-use html::format::{VisSpace, Method, FnStyleSpace, MutableSpace, Stability};
+use html::format::{VisSpace, Method, UnsafetySpace, MutableSpace, Stability};
 use html::format::{ConciseStability, TyParamBounds, WhereClause};
 use html::highlight;
 use html::item_type::ItemType;
@@ -1664,10 +1664,10 @@ fn item_static(w: &mut fmt::Formatter, it: &clean::Item,
 
 fn item_function(w: &mut fmt::Formatter, it: &clean::Item,
                  f: &clean::Function) -> fmt::Result {
-    try!(write!(w, "<pre class='rust fn'>{vis}{fn_style}fn \
+    try!(write!(w, "<pre class='rust fn'>{vis}{unsafety}fn \
                     {name}{generics}{decl}{where_clause}</pre>",
            vis = VisSpace(it.visibility),
-           fn_style = FnStyleSpace(f.fn_style),
+           unsafety = UnsafetySpace(f.unsafety),
            name = it.name.as_ref().unwrap().as_slice(),
            generics = f.generics,
            where_clause = WhereClause(&f.generics),
@@ -1813,13 +1813,13 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
 }
 
 fn render_method(w: &mut fmt::Formatter, meth: &clean::Item) -> fmt::Result {
-    fn method(w: &mut fmt::Formatter, it: &clean::Item, fn_style: ast::FnStyle,
+    fn method(w: &mut fmt::Formatter, it: &clean::Item, unsafety: ast::Unsafety,
            g: &clean::Generics, selfty: &clean::SelfTy,
            d: &clean::FnDecl) -> fmt::Result {
         write!(w, "{}fn <a href='#{ty}.{name}' class='fnname'>{name}</a>\
                    {generics}{decl}{where_clause}",
-               match fn_style {
-                   ast::UnsafeFn => "unsafe ",
+               match unsafety {
+                   ast::Unsafety::Unsafe => "unsafe ",
                    _ => "",
                },
                ty = shortty(it),
@@ -1841,10 +1841,10 @@ fn render_method(w: &mut fmt::Formatter, meth: &clean::Item) -> fmt::Result {
     }
     match meth.inner {
         clean::TyMethodItem(ref m) => {
-            method(w, meth, m.fn_style, &m.generics, &m.self_, &m.decl)
+            method(w, meth, m.unsafety, &m.generics, &m.self_, &m.decl)
         }
         clean::MethodItem(ref m) => {
-            method(w, meth, m.fn_style, &m.generics, &m.self_, &m.decl)
+            method(w, meth, m.unsafety, &m.generics, &m.self_, &m.decl)
         }
         clean::AssociatedTypeItem(ref typ) => {
             assoc_type(w, meth, typ)

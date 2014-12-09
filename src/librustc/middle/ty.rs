@@ -80,7 +80,7 @@ use std::rc::Rc;
 use std::collections::enum_set::{EnumSet, CLike};
 use std::collections::hash_map::{HashMap, Occupied, Vacant};
 use syntax::abi;
-use syntax::ast::{CrateNum, DefId, DUMMY_NODE_ID, FnStyle, Ident, ItemTrait, LOCAL_CRATE};
+use syntax::ast::{CrateNum, DefId, DUMMY_NODE_ID, Ident, ItemTrait, LOCAL_CRATE};
 use syntax::ast::{MutImmutable, MutMutable, Name, NamedField, NodeId};
 use syntax::ast::{Onceness, StmtExpr, StmtSemi, StructField, UnnamedField};
 use syntax::ast::{Visibility};
@@ -908,14 +908,14 @@ pub fn type_escapes_depth(ty: Ty, depth: uint) -> bool {
 
 #[deriving(Clone, PartialEq, Eq, Hash, Show)]
 pub struct BareFnTy<'tcx> {
-    pub fn_style: ast::FnStyle,
+    pub unsafety: ast::Unsafety,
     pub abi: abi::Abi,
     pub sig: FnSig<'tcx>,
 }
 
 #[deriving(Clone, PartialEq, Eq, Hash, Show)]
 pub struct ClosureTy<'tcx> {
-    pub fn_style: ast::FnStyle,
+    pub unsafety: ast::Unsafety,
     pub onceness: ast::Onceness,
     pub store: TraitStore,
     pub bounds: ExistentialBounds,
@@ -1380,7 +1380,7 @@ impl<T:Copy> Copy for expected_found<T> {}
 #[deriving(Clone, Show)]
 pub enum type_err<'tcx> {
     terr_mismatch,
-    terr_fn_style_mismatch(expected_found<FnStyle>),
+    terr_unsafety_mismatch(expected_found<ast::Unsafety>),
     terr_onceness_mismatch(expected_found<Onceness>),
     terr_abi_mismatch(expected_found<abi::Abi>),
     terr_mutability,
@@ -2354,7 +2354,7 @@ pub fn mk_ctor_fn<'tcx>(cx: &ctxt<'tcx>,
     let input_args = input_tys.iter().map(|ty| *ty).collect();
     mk_bare_fn(cx,
                BareFnTy {
-                   fn_style: ast::NormalFn,
+                   unsafety: ast::Unsafety::Normal,
                    abi: abi::Rust,
                    sig: FnSig {
                     inputs: input_args,
@@ -3994,7 +3994,7 @@ pub fn adjust_ty<'tcx, F>(cx: &ctxt<'tcx>,
 
                             ty::mk_closure(
                                 cx,
-                                ty::ClosureTy {fn_style: b.fn_style,
+                                ty::ClosureTy {unsafety: b.unsafety,
                                                onceness: ast::Many,
                                                store: store,
                                                bounds: bounds,
@@ -4404,7 +4404,7 @@ pub fn type_err_to_str<'tcx>(cx: &ctxt<'tcx>, err: &type_err<'tcx>) -> String {
     match *err {
         terr_cyclic_ty => "cyclic type of infinite size".to_string(),
         terr_mismatch => "types differ".to_string(),
-        terr_fn_style_mismatch(values) => {
+        terr_unsafety_mismatch(values) => {
             format!("expected {} fn, found {} fn",
                     values.expected.to_string(),
                     values.found.to_string())
@@ -5871,12 +5871,12 @@ pub fn hash_crate_independent(tcx: &ctxt, ty: Ty, svh: &Svh) -> u64 {
             }
             ty_bare_fn(ref b) => {
                 byte!(14);
-                hash!(b.fn_style);
+                hash!(b.unsafety);
                 hash!(b.abi);
             }
             ty_closure(ref c) => {
                 byte!(15);
-                hash!(c.fn_style);
+                hash!(c.unsafety);
                 hash!(c.onceness);
                 hash!(c.bounds);
                 match c.store {

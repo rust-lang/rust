@@ -34,8 +34,8 @@ impl Copy for UnsafeContext {}
 
 fn type_is_unsafe_function(ty: Ty) -> bool {
     match ty.sty {
-        ty::ty_bare_fn(ref f) => f.fn_style == ast::UnsafeFn,
-        ty::ty_closure(ref f) => f.fn_style == ast::UnsafeFn,
+        ty::ty_bare_fn(ref f) => f.unsafety == ast::Unsafety::Unsafe,
+        ty::ty_closure(ref f) => f.unsafety == ast::Unsafety::Unsafe,
         _ => false,
     }
 }
@@ -92,9 +92,9 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EffectCheckVisitor<'a, 'tcx> {
 
         let (is_item_fn, is_unsafe_fn) = match fn_kind {
             visit::FkItemFn(_, _, fn_style, _) =>
-                (true, fn_style == ast::UnsafeFn),
+                (true, fn_style == ast::Unsafety::Unsafe),
             visit::FkMethod(_, _, method) =>
-                (true, method.pe_fn_style() == ast::UnsafeFn),
+                (true, method.pe_unsafety() == ast::Unsafety::Unsafe),
             _ => (false, false),
         };
 

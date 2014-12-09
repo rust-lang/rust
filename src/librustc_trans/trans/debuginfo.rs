@@ -433,8 +433,8 @@ impl<'tcx> TypeMap<'tcx> {
                                        &trait_data.principal.substs,
                                        &mut unique_type_id);
             },
-            ty::ty_bare_fn(ty::BareFnTy{ fn_style, abi, ref sig } ) => {
-                if fn_style == ast::UnsafeFn {
+            ty::ty_bare_fn(ty::BareFnTy{ unsafety, abi, ref sig } ) => {
+                if unsafety == ast::Unsafety::Unsafe {
                     unique_type_id.push_str("unsafe ");
                 }
 
@@ -551,13 +551,13 @@ impl<'tcx> TypeMap<'tcx> {
                                               cx: &CrateContext<'a, 'tcx>,
                                               closure_ty: ty::ClosureTy<'tcx>,
                                               unique_type_id: &mut String) {
-        let ty::ClosureTy { fn_style,
+        let ty::ClosureTy { unsafety,
                             onceness,
                             store,
                             ref bounds,
                             ref sig,
                             abi: _ } = closure_ty;
-        if fn_style == ast::UnsafeFn {
+        if unsafety == ast::Unsafety::Unsafe {
             unique_type_id.push_str("unsafe ");
         }
 
@@ -3767,8 +3767,8 @@ fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             push_item_name(cx, trait_data.principal.def_id, false, output);
             push_type_params(cx, &trait_data.principal.substs, output);
         },
-        ty::ty_bare_fn(ty::BareFnTy{ fn_style, abi, ref sig } ) => {
-            if fn_style == ast::UnsafeFn {
+        ty::ty_bare_fn(ty::BareFnTy{ unsafety, abi, ref sig } ) => {
+            if unsafety == ast::Unsafety::Unsafe {
                 output.push_str("unsafe ");
             }
 
@@ -3810,13 +3810,13 @@ fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 }
             }
         },
-        ty::ty_closure(box ty::ClosureTy { fn_style,
+        ty::ty_closure(box ty::ClosureTy { unsafety,
                                            onceness,
                                            store,
                                            ref sig,
                                            .. // omitting bounds ...
                                            }) => {
-            if fn_style == ast::UnsafeFn {
+            if unsafety == ast::Unsafety::Unsafe {
                 output.push_str("unsafe ");
             }
 

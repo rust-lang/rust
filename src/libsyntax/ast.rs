@@ -20,7 +20,6 @@ pub use self::Decl_::*;
 pub use self::ExplicitSelf_::*;
 pub use self::Expr_::*;
 pub use self::FloatTy::*;
-pub use self::FnStyle::*;
 pub use self::FunctionRetTy::*;
 pub use self::ForeignItem_::*;
 pub use self::ImplItem::*;
@@ -1027,7 +1026,7 @@ pub struct TypeField {
 pub struct TypeMethod {
     pub ident: Ident,
     pub attrs: Vec<Attribute>,
-    pub fn_style: FnStyle,
+    pub unsafety: Unsafety,
     pub abi: Abi,
     pub decl: P<FnDecl>,
     pub generics: Generics,
@@ -1198,7 +1197,7 @@ impl fmt::Show for Onceness {
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub struct ClosureTy {
     pub lifetimes: Vec<LifetimeDef>,
-    pub fn_style: FnStyle,
+    pub unsafety: Unsafety,
     pub onceness: Onceness,
     pub decl: P<FnDecl>,
     pub bounds: TyParamBounds,
@@ -1206,7 +1205,7 @@ pub struct ClosureTy {
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub struct BareFnTy {
-    pub fn_style: FnStyle,
+    pub unsafety: Unsafety,
     pub abi: Abi,
     pub lifetimes: Vec<LifetimeDef>,
     pub decl: P<FnDecl>
@@ -1304,21 +1303,17 @@ pub struct FnDecl {
     pub variadic: bool
 }
 
-#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash)]
-pub enum FnStyle {
-    /// Declared with "unsafe fn"
-    UnsafeFn,
-    /// Declared with "fn"
-    NormalFn,
+#[deriving(Copy, Clone, PartialEq, Eq, Encodable, Decodable, Hash)]
+pub enum Unsafety {
+    Unsafe,
+    Normal,
 }
 
-impl Copy for FnStyle {}
-
-impl fmt::Show for FnStyle {
+impl fmt::Show for Unsafety {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            NormalFn => "normal".fmt(f),
-            UnsafeFn => "unsafe".fmt(f),
+            Unsafety::Normal => "normal".fmt(f),
+            Unsafety::Unsafe => "unsafe".fmt(f),
         }
     }
 }
@@ -1371,7 +1366,7 @@ pub enum Method_ {
              Generics,
              Abi,
              ExplicitSelf,
-             FnStyle,
+             Unsafety,
              P<FnDecl>,
              P<Block>,
              Visibility),
@@ -1609,7 +1604,7 @@ pub struct Item {
 pub enum Item_ {
     ItemStatic(P<Ty>, Mutability, P<Expr>),
     ItemConst(P<Ty>, P<Expr>),
-    ItemFn(P<FnDecl>, FnStyle, Abi, Generics, P<Block>),
+    ItemFn(P<FnDecl>, Unsafety, Abi, Generics, P<Block>),
     ItemMod(Mod),
     ItemForeignMod(ForeignMod),
     ItemTy(P<Ty>, Generics),
