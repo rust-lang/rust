@@ -47,7 +47,7 @@ pub fn compile_input(sess: Session,
                      input: &Input,
                      outdir: &Option<Path>,
                      output: &Option<Path>,
-                     addl_plugins: Option<Plugins>) {
+                     addl_plugins: Option<Vec<String>>) {
     // We need nested scopes here, because the intermediate results can keep
     // large chunks of memory alive and we want to free them as soon as
     // possible to keep the peak memory usage low
@@ -166,7 +166,7 @@ pub fn phase_1_parse_input(sess: &Session, cfg: ast::CrateConfig, input: &Input)
 pub fn phase_2_configure_and_expand(sess: &Session,
                                     mut krate: ast::Crate,
                                     crate_name: &str,
-                                    addl_plugins: Option<Plugins>)
+                                    addl_plugins: Option<Vec<String>>)
                                     -> Option<ast::Crate> {
     let time_passes = sess.time_passes();
 
