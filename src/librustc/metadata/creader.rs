@@ -516,6 +516,7 @@ impl<'a> CrateReader<'a> {
     }
 }
 
+#[deriving(Copy)]
 pub enum CrateOrString<'a> {
     Krate(&'a ast::ViewItem),
     Str(&'a str)
