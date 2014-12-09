@@ -32,7 +32,7 @@ two languages for those phrases to be in. We'll use this module layout:
               +---------+   |   +-----------+
               |             +---| farewells |
 +---------+   |                 +-----------+
-| phrases |---+ 
+| phrases |---+
 +---------+   |                  +-----------+
               |              +---| greetings |
               +----------+   |   +-----------+
@@ -219,7 +219,7 @@ Put this in `src/english/greetings.rs`:
 
 fn hello() -> String {
     "Hello!".to_string()
-}  
+}
 ```
 
 Put this in `src/english/farewells.rs`:
@@ -229,7 +229,7 @@ Put this in `src/english/farewells.rs`:
 
 fn goodbye() -> String {
     "Goodbye.".to_string()
-} 
+}
 ```
 
 Put this in `src/japanese/greetings.rs`:
@@ -239,7 +239,7 @@ Put this in `src/japanese/greetings.rs`:
 
 fn hello() -> String {
     "こんにちは".to_string()
-}  
+}
 ```
 
 Of course, you can copy and paste this from this web page, or just type
@@ -253,7 +253,7 @@ Put this in `src/japanese/farewells.rs`:
 
 fn goodbye() -> String {
     "さようなら".to_string()
-} 
+}
 ```
 
 (This is "Sayoonara", if you're curious.)
@@ -381,11 +381,11 @@ $ cargo run
 /home/you/projects/phrases/src/japanese/greetings.rs:1:1: 3:2 warning: code is never used: `hello`, #[warn(dead_code)] on by default
 /home/you/projects/phrases/src/japanese/greetings.rs:1 fn hello() -> String {
 /home/you/projects/phrases/src/japanese/greetings.rs:2     "こんにちは".to_string()
-/home/you/projects/phrases/src/japanese/greetings.rs:3 } 
+/home/you/projects/phrases/src/japanese/greetings.rs:3 }
 /home/you/projects/phrases/src/japanese/farewells.rs:1:1: 3:2 warning: code is never used: `goodbye`, #[warn(dead_code)] on by default
 /home/you/projects/phrases/src/japanese/farewells.rs:1 fn goodbye() -> String {
 /home/you/projects/phrases/src/japanese/farewells.rs:2     "さようなら".to_string()
-/home/you/projects/phrases/src/japanese/farewells.rs:3 } 
+/home/you/projects/phrases/src/japanese/farewells.rs:3 }
      Running `target/phrases`
 Hello in English: Hello!
 Goodbye in English: Goodbye.
@@ -452,7 +452,7 @@ fn main() {
 
 Rust will give us a compile-time error:
 
-```{notrust,ignore}
+```{notrust}
    Compiling phrases v0.0.1 (file:///home/you/projects/phrases)
 /home/you/projects/phrases/src/main.rs:4:5: 4:40 error: a value named `hello` has already been imported in this module
 /home/you/projects/phrases/src/main.rs:4 use phrases::japanese::greetings::hello;

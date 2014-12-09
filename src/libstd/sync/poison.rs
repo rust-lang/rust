@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use option::None;
+use option::Option::None;
 use rustrt::task::Task;
 use rustrt::local::Local;
 

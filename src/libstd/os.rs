@@ -160,7 +160,7 @@ pub fn getcwd() -> IoResult<Path> {
 }
 
 #[cfg(windows)]
-pub mod windows {
+pub mod windoze {
     use libc::types::os::arch::extra::DWORD;
     use libc;
     use option::Option;
@@ -386,7 +386,7 @@ pub fn getenv_as_bytes(n: &str) -> Option<Vec<u8>> {
 pub fn getenv(n: &str) -> Option<String> {
     unsafe {
         with_env_lock(|| {
-            use os::windows::{fill_utf16_buf_and_decode};
+            use os::windoze::{fill_utf16_buf_and_decode};
             let mut n: Vec<u16> = n.utf16_units().collect();
             n.push(0);
             fill_utf16_buf_and_decode(|buf, sz| {
@@ -715,7 +715,7 @@ pub fn self_exe_name() -> Option<Path> {
     #[cfg(windows)]
     fn load_self() -> Option<Vec<u8>> {
         unsafe {
-            use os::windows::fill_utf16_buf_and_decode;
+            use os::windoze::fill_utf16_buf_and_decode;
             fill_utf16_buf_and_decode(|buf, sz| {
                 libc::GetModuleFileNameW(0u as libc::DWORD, buf, sz)
             }).map(|s| s.into_string().into_bytes())
@@ -1215,7 +1215,11 @@ pub enum MapOption {
     /// Create a map for a specific address range. Corresponds to `MAP_FIXED` on
     /// POSIX.
     MapAddr(*const u8),
+    /// Create a memory mapping for a file with a given HANDLE.
+    #[cfg(windows)]
+    MapFd(libc::HANDLE),
     /// Create a memory mapping for a file with a given fd.
+    #[cfg(not(windows))]
     MapFd(c_int),
     /// When using `MapFd`, the start of the map is `uint` bytes from the start
     /// of the file.
@@ -1413,7 +1417,7 @@ impl MemoryMap {
         let mut readable = false;
         let mut writable = false;
         let mut executable = false;
-        let mut fd: c_int = -1;
+        let mut handle: HANDLE = libc::INVALID_HANDLE_VALUE;
         let mut offset: uint = 0;
         let len = round_up(min_len, page_size());
 
@@ -1423,23 +1427,23 @@ impl MemoryMap {
                 MapWritable => { writable = true; },
                 MapExecutable => { executable = true; }
                 MapAddr(addr_) => { lpAddress = addr_ as LPVOID; },
-                MapFd(fd_) => { fd = fd_; },
+                MapFd(handle_) => { handle = handle_; },
                 MapOffset(offset_) => { offset = offset_; },
                 MapNonStandardFlags(..) => {}
             }
         }
 
         let flProtect = match (executable, readable, writable) {
-            (false, false, false) if fd == -1 => libc::PAGE_NOACCESS,
+            (false, false, false) if handle == libc::INVALID_HANDLE_VALUE => libc::PAGE_NOACCESS,
             (false, true, false) => libc::PAGE_READONLY,
             (false, true, true) => libc::PAGE_READWRITE,
-            (true, false, false) if fd == -1 => libc::PAGE_EXECUTE,
+            (true, false, false) if handle == libc::INVALID_HANDLE_VALUE => libc::PAGE_EXECUTE,
             (true, true, false) => libc::PAGE_EXECUTE_READ,
             (true, true, true) => libc::PAGE_EXECUTE_READWRITE,
             _ => return Err(ErrUnsupProt)
         };
 
-        if fd == -1 {
+        if handle == libc::INVALID_HANDLE_VALUE {
             if offset != 0 {
                 return Err(ErrUnsupOffset);
             }
@@ -1467,7 +1471,7 @@ impl MemoryMap {
                                               // we should never get here.
             };
             unsafe {
-                let hFile = libc::get_osfhandle(fd) as HANDLE;
+                let hFile = handle;
                 let mapping = libc::CreateFileMappingW(hFile,
                                                        ptr::null_mut(),
                                                        flProtect,
@@ -1991,55 +1995,47 @@ mod tests {
 
     #[test]
     fn memory_map_file() {
-        use result::Result::{Ok, Err};
+        use libc;
         use os::*;
-        use libc::*;
-        use io::fs;
+        use io::fs::{File, unlink};
+        use io::SeekStyle::SeekSet;
+        use io::FileMode::Open;
+        use io::FileAccess::ReadWrite;
 
-        #[cfg(unix)]
-        fn lseek_(fd: c_int, size: uint) {
-            unsafe {
-                assert!(lseek(fd, size as off_t, SEEK_SET) == size as off_t);
-            }
+        #[cfg(not(windows))]
+        fn get_fd(file: &File) -> libc::c_int {
+            use os::unix::AsRawFd;
+            file.as_raw_fd()
         }
+
         #[cfg(windows)]
-        fn lseek_(fd: c_int, size: uint) {
-           unsafe {
-               assert!(lseek(fd, size as c_long, SEEK_SET) == size as c_long);
-           }
+        fn get_fd(file: &File) -> libc::HANDLE {
+            use os::windows::AsRawHandle;
+            file.as_raw_handle()
         }
 
         let mut path = tmpdir();
         path.push("mmap_file.tmp");
         let size = MemoryMap::granularity() * 2;
+        let mut file = File::open_mode(&path, Open, ReadWrite).unwrap();
+        file.seek(size as i64, SeekSet);
+        file.write_u8(0);
 
-        let fd = unsafe {
-            let fd = path.with_c_str(|path| {
-                open(path, O_CREAT | O_RDWR | O_TRUNC, S_IRUSR | S_IWUSR)
-            });
-            lseek_(fd, size);
-            "x".with_c_str(|x| assert!(write(fd, x as *const c_void, 1) == 1));
-            fd
-        };
-        let chunk = match MemoryMap::new(size / 2, &[
+        let chunk = MemoryMap::new(size / 2, &[
             MapReadable,
             MapWritable,
-            MapFd(fd),
+            MapFd(get_fd(&file)),
             MapOffset(size / 2)
-        ]) {
-            Ok(chunk) => chunk,
-            Err(msg) => panic!("{}", msg)
-        };
+        ]).unwrap();
         assert!(chunk.len > 0);
 
         unsafe {
             *chunk.data = 0xbe;
             assert!(*chunk.data == 0xbe);
-            close(fd);
         }
         drop(chunk);
 
-        fs::unlink(&path).unwrap();
+        unlink(&path).unwrap();
     }
 
     #[test]

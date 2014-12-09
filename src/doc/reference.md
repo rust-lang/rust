@@ -496,9 +496,8 @@ Examples of integer literals of various forms:
 
 A _floating-point literal_ has one of two forms:
 
-* Two _decimal literals_ separated by a period
-  character `U+002E` (`.`), with an optional _exponent_ trailing after the
-  second decimal literal.
+* A _decimal literal_ followed by a period character `U+002E` (`.`). This is
+  optionally followed by another decimal literal, with an optional _exponent_.
 * A single _decimal literal_ followed by an _exponent_.
 
 By default, a floating-point literal has a generic type, and, like integer
@@ -509,11 +508,16 @@ types), which explicitly determine the type of the literal.
 Examples of floating-point literals of various forms:
 
 ```
-123.0f64;                          // type f64
-0.1f64;                            // type f64
-0.1f32;                            // type f32
-12E+99_f64;                        // type f64
+123.0f64;        // type f64
+0.1f64;          // type f64
+0.1f32;          // type f32
+12E+99_f64;      // type f64
+let x: f64 = 2.; // type f64
 ```
+
+This last example is different because it is not possible to use the suffix
+syntax with a floating point literal ending in a period. `2.f64` would attempt
+to call a method named `f64` on `2`.
 
 ##### Boolean literals
 
