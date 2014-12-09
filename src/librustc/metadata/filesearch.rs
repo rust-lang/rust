@@ -42,7 +42,9 @@ pub struct FileSearch<'a> {
 }
 
 impl<'a> FileSearch<'a> {
-    pub fn for_each_lib_search_path(&self, f: |&Path| -> FileMatch) {
+    pub fn for_each_lib_search_path<F>(&self, mut f: F) where
+        F: FnMut(&Path) -> FileMatch,
+    {
         let mut visited_dirs = HashSet::new();
         let mut found = false;
 

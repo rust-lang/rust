@@ -27,7 +27,9 @@ pub struct ErrorReported;
 
 impl Copy for ErrorReported {}
 
-pub fn time<T, U>(do_it: bool, what: &str, u: U, f: |U| -> T) -> T {
+pub fn time<T, U, F>(do_it: bool, what: &str, u: U, f: F) -> T where
+    F: FnOnce(U) -> T,
+{
     thread_local!(static DEPTH: Cell<uint> = Cell::new(0));
     if !do_it { return f(u); }
 
@@ -39,9 +41,13 @@ pub fn time<T, U>(do_it: bool, what: &str, u: U, f: |U| -> T) -> T {
 
     let mut u = Some(u);
     let mut rv = None;
-    let dur = Duration::span(|| {
-        rv = Some(f(u.take().unwrap()))
-    });
+    let dur = {
+        let ref mut rvp = rv;
+
+        Duration::span(move || {
+            *rvp = Some(f(u.take().unwrap()))
+        })
+    };
     let rv = rv.unwrap();
 
     println!("{}time: {}.{:03} \t{}", "  ".repeat(old),
@@ -51,7 +57,10 @@ pub fn time<T, U>(do_it: bool, what: &str, u: U, f: |U| -> T) -> T {
     rv
 }
 
-pub fn indent<R: Show>(op: || -> R) -> R {
+pub fn indent<R, F>(op: F) -> R where
+    R: Show,
+    F: FnOnce() -> R,
+{
     // Use in conjunction with the log post-processor like `src/etc/indenter`
     // to make debug output more readable.
     debug!(">>");
@@ -73,12 +82,12 @@ pub fn indenter() -> Indenter {
     Indenter { _cannot_construct_outside_of_this_module: () }
 }
 
-struct LoopQueryVisitor<'a> {
-    p: |&ast::Expr_|: 'a -> bool,
+struct LoopQueryVisitor<P> where P: FnMut(&ast::Expr_) -> bool {
+    p: P,
     flag: bool,
 }
 
-impl<'a, 'v> Visitor<'v> for LoopQueryVisitor<'a> {
+impl<'v, P> Visitor<'v> for LoopQueryVisitor<P> where P: FnMut(&ast::Expr_) -> bool {
     fn visit_expr(&mut self, e: &ast::Expr) {
         self.flag |= (self.p)(&e.node);
         match e.node {
@@ -92,7 +101,7 @@ impl<'a, 'v> Visitor<'v> for LoopQueryVisitor<'a> {
 
 // Takes a predicate p, returns true iff p is true for any subexpressions
 // of b -- skipping any inner loops (loop, while, loop_body)
-pub fn loop_query(b: &ast::Block, p: |&ast::Expr_| -> bool) -> bool {
+pub fn loop_query<P>(b: &ast::Block, p: P) -> bool where P: FnMut(&ast::Expr_) -> bool {
     let mut v = LoopQueryVisitor {
         p: p,
         flag: false,
@@ -101,12 +110,12 @@ pub fn loop_query(b: &ast::Block, p: |&ast::Expr_| -> bool) -> bool {
     return v.flag;
 }
 
-struct BlockQueryVisitor<'a> {
-    p: |&ast::Expr|: 'a -> bool,
+struct BlockQueryVisitor<P> where P: FnMut(&ast::Expr) -> bool {
+    p: P,
     flag: bool,
 }
 
-impl<'a, 'v> Visitor<'v> for BlockQueryVisitor<'a> {
+impl<'v, P> Visitor<'v> for BlockQueryVisitor<P> where P: FnMut(&ast::Expr) -> bool {
     fn visit_expr(&mut self, e: &ast::Expr) {
         self.flag |= (self.p)(e);
         visit::walk_expr(self, e)
@@ -115,7 +124,7 @@ impl<'a, 'v> Visitor<'v> for BlockQueryVisitor<'a> {
 
 // Takes a predicate p, returns true iff p is true for any subexpressions
 // of b -- skipping any inner loops (loop, while, loop_body)
-pub fn block_query(b: &ast::Block, p: |&ast::Expr| -> bool) -> bool {
+pub fn block_query<P>(b: &ast::Block, p: P) -> bool where P: FnMut(&ast::Expr) -> bool {
     let mut v = BlockQueryVisitor {
         p: p,
         flag: false,
@@ -194,11 +203,12 @@ pub fn can_reach<S,H:Hasher<S>,T:Eq+Clone+Hash<S>>(
 /// }
 /// ```
 #[inline(always)]
-pub fn memoized<T: Clone + Hash<S> + Eq, U: Clone, S, H: Hasher<S>>(
-    cache: &RefCell<HashMap<T, U, H>>,
-    arg: T,
-    f: |T| -> U
-) -> U {
+pub fn memoized<T, U, S, H, F>(cache: &RefCell<HashMap<T, U, H>>, arg: T, f: F) -> U where
+    T: Clone + Hash<S> + Eq,
+    U: Clone,
+    H: Hasher<S>,
+    F: FnOnce(T) -> U,
+{
     let key = arg.clone();
     let result = cache.borrow().get(&key).map(|result| result.clone());
     match result {

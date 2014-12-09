@@ -322,7 +322,9 @@ impl<'tcx, N> Vtable<'tcx, N> {
         }
     }
 
-    pub fn map_move_nested<M>(self, op: |N| -> M) -> Vtable<'tcx, M> {
+    pub fn map_move_nested<M, F>(self, op: F) -> Vtable<'tcx, M> where
+        F: FnMut(N) -> M,
+    {
         match self {
             VtableImpl(i) => VtableImpl(i.map_move_nested(op)),
             VtableFnPointer(sig) => VtableFnPointer(sig),
@@ -348,8 +350,9 @@ impl<'tcx, N> VtableImplData<'tcx, N> {
         }
     }
 
-    pub fn map_move_nested<M>(self, op: |N| -> M)
-                              -> VtableImplData<'tcx, M> {
+    pub fn map_move_nested<M, F>(self, op: F) -> VtableImplData<'tcx, M> where
+        F: FnMut(N) -> M,
+    {
         let VtableImplData { impl_def_id, substs, nested } = self;
         VtableImplData {
             impl_def_id: impl_def_id,
@@ -370,7 +373,9 @@ impl<N> VtableBuiltinData<N> {
         }
     }
 
-    pub fn map_move_nested<M>(self, op: |N| -> M) -> VtableBuiltinData<M> {
+    pub fn map_move_nested<M, F>(self, op: F) -> VtableBuiltinData<M> where
+        F: FnMut(N) -> M,
+    {
         VtableBuiltinData {
             nested: self.nested.map_move(op)
         }

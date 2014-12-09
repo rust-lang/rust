@@ -247,7 +247,9 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
 }
 
 impl<'a> LifetimeContext<'a> {
-    fn with(&mut self, wrap_scope: ScopeChain, f: |&mut LifetimeContext|) {
+    fn with<F>(&mut self, wrap_scope: ScopeChain, f: F) where
+        F: FnOnce(&mut LifetimeContext),
+    {
         let LifetimeContext {sess, ref mut named_region_map, ..} = *self;
         let mut this = LifetimeContext {
             sess: sess,
@@ -278,10 +280,12 @@ impl<'a> LifetimeContext<'a> {
     /// already in scope (for a fn item, that will be 0, but for a method it might not be). Late
     /// bound lifetimes are resolved by name and associated with a binder id (`binder_id`), so the
     /// ordering is not important there.
-    fn visit_early_late(&mut self,
-                        early_space: subst::ParamSpace,
-                        generics: &ast::Generics,
-                        walk: |&mut LifetimeContext|) {
+    fn visit_early_late<F>(&mut self,
+                           early_space: subst::ParamSpace,
+                           generics: &ast::Generics,
+                           walk: F) where
+        F: FnOnce(&mut LifetimeContext),
+    {
         let referenced_idents = early_bound_lifetime_names(generics);
 
         debug!("visit_early_late: referenced_idents={}",
@@ -290,8 +294,8 @@ impl<'a> LifetimeContext<'a> {
         let (early, late) = generics.lifetimes.clone().partition(
             |l| referenced_idents.iter().any(|&i| i == l.lifetime.name));
 
-        self.with(EarlyScope(early_space, &early, self.scope), |this| {
-            this.with(LateScope(&late, this.scope), |this| {
+        self.with(EarlyScope(early_space, &early, self.scope), move |this| {
+            this.with(LateScope(&late, this.scope), move |this| {
                 this.check_lifetime_defs(&generics.lifetimes);
                 walk(this);
             });

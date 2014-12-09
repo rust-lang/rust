@@ -426,11 +426,9 @@ fn is_var_in_set(new_vars: &[ty::RegionVid], r: ty::Region) -> bool {
     }
 }
 
-fn fold_regions_in<'tcx, T>(tcx: &ty::ctxt<'tcx>,
-                            value: &T,
-                            fldr: |ty::Region, ty::DebruijnIndex| -> ty::Region)
-                            -> T
-    where T: HigherRankedFoldable<'tcx>
+fn fold_regions_in<'tcx, T, F>(tcx: &ty::ctxt<'tcx>, value: &T, mut fldr: F) -> T where
+    T: HigherRankedFoldable<'tcx>,
+    F: FnMut(ty::Region, ty::DebruijnIndex) -> ty::Region,
 {
     value.fold_contents(&mut ty_fold::RegionFolder::new(tcx, |region, current_depth| {
         // we should only be encountering "escaping" late-bound regions here,

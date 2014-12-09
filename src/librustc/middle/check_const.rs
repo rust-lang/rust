@@ -24,16 +24,22 @@ struct CheckCrateVisitor<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
-    fn with_const(&mut self, in_const: bool, f: |&mut CheckCrateVisitor<'a, 'tcx>|) {
+    fn with_const<F>(&mut self, in_const: bool, f: F) where
+        F: FnOnce(&mut CheckCrateVisitor<'a, 'tcx>),
+    {
         let was_const = self.in_const;
         self.in_const = in_const;
         f(self);
         self.in_const = was_const;
     }
-    fn inside_const(&mut self, f: |&mut CheckCrateVisitor<'a, 'tcx>|) {
+    fn inside_const<F>(&mut self, f: F) where
+        F: FnOnce(&mut CheckCrateVisitor<'a, 'tcx>),
+    {
         self.with_const(true, f);
     }
-    fn outside_const(&mut self, f: |&mut CheckCrateVisitor<'a, 'tcx>|) {
+    fn outside_const<F>(&mut self, f: F) where
+        F: FnOnce(&mut CheckCrateVisitor<'a, 'tcx>),
+    {
         self.with_const(false, f);
     }
 }

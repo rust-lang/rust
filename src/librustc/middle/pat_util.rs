@@ -91,9 +91,9 @@ pub fn pat_is_binding_or_wild(dm: &resolve::DefMap, pat: &ast::Pat) -> bool {
 
 /// Call `it` on every "binding" in a pattern, e.g., on `a` in
 /// `match foo() { Some(a) => (), None => () }`
-pub fn pat_bindings(dm: &resolve::DefMap,
-                    pat: &ast::Pat,
-                    it: |ast::BindingMode, ast::NodeId, Span, &ast::SpannedIdent|) {
+pub fn pat_bindings<I>(dm: &resolve::DefMap, pat: &ast::Pat, mut it: I) where
+    I: FnMut(ast::BindingMode, ast::NodeId, Span, &ast::SpannedIdent),
+{
     walk_pat(pat, |p| {
         match p.node {
           ast::PatIdent(binding_mode, ref pth, _) if pat_is_binding(dm, p) => {

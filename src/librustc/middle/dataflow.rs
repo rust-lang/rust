@@ -280,10 +280,9 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
     }
 
 
-    pub fn each_bit_on_entry(&self,
-                             id: ast::NodeId,
-                             f: |uint| -> bool)
-                             -> bool {
+    pub fn each_bit_on_entry<F>(&self, id: ast::NodeId, f: F) -> bool where
+        F: FnMut(uint) -> bool,
+    {
         //! Iterates through each bit that is set on entry to `id`.
         //! Only useful after `propagate()` has been called.
         if !self.has_bitset_for_nodeid(id) {
@@ -293,11 +292,9 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
         self.each_bit_for_node(Entry, cfgidx, f)
     }
 
-    pub fn each_bit_for_node(&self,
-                             e: EntryOrExit,
-                             cfgidx: CFGIndex,
-                             f: |uint| -> bool)
-                             -> bool {
+    pub fn each_bit_for_node<F>(&self, e: EntryOrExit, cfgidx: CFGIndex, f: F) -> bool where
+        F: FnMut(uint) -> bool,
+    {
         //! Iterates through each bit that is set on entry/exit to `cfgidx`.
         //! Only useful after `propagate()` has been called.
 
@@ -324,8 +321,9 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
         self.each_bit(slice, f)
     }
 
-    pub fn each_gen_bit(&self, id: ast::NodeId, f: |uint| -> bool)
-                        -> bool {
+    pub fn each_gen_bit<F>(&self, id: ast::NodeId, f: F) -> bool where
+        F: FnMut(uint) -> bool,
+    {
         //! Iterates through each bit in the gen set for `id`.
         if !self.has_bitset_for_nodeid(id) {
             return true;
@@ -345,7 +343,9 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
         self.each_bit(gens, f)
     }
 
-    fn each_bit(&self, words: &[uint], f: |uint| -> bool) -> bool {
+    fn each_bit<F>(&self, words: &[uint], mut f: F) -> bool where
+        F: FnMut(uint) -> bool,
+    {
         //! Helper for iterating over the bits in a bit set.
         //! Returns false on the first call to `f` that returns false;
         //! if all calls to `f` return true, then returns true.

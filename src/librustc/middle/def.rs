@@ -61,7 +61,9 @@ pub enum MethodProvenance {
 }
 
 impl MethodProvenance {
-    pub fn map(self, f: |ast::DefId| -> ast::DefId) -> MethodProvenance {
+    pub fn map<F>(self, f: F) -> MethodProvenance where
+        F: FnOnce(ast::DefId) -> ast::DefId,
+    {
         match self {
             FromTrait(did) => FromTrait(f(did)),
             FromImpl(did) => FromImpl(f(did))

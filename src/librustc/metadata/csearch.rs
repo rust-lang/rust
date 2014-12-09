@@ -47,20 +47,22 @@ pub fn get_symbol(cstore: &cstore::CStore, def: ast::DefId) -> String {
 }
 
 /// Iterates over all the language items in the given crate.
-pub fn each_lang_item(cstore: &cstore::CStore,
-                      cnum: ast::CrateNum,
-                      f: |ast::NodeId, uint| -> bool)
-                      -> bool {
+pub fn each_lang_item<F>(cstore: &cstore::CStore,
+                         cnum: ast::CrateNum,
+                         f: F)
+                         -> bool where
+    F: FnMut(ast::NodeId, uint) -> bool,
+{
     let crate_data = cstore.get_crate_data(cnum);
     decoder::each_lang_item(&*crate_data, f)
 }
 
 /// Iterates over each child of the given item.
-pub fn each_child_of_item(cstore: &cstore::CStore,
-                          def_id: ast::DefId,
-                          callback: |decoder::DefLike,
-                                     ast::Name,
-                                     ast::Visibility|) {
+pub fn each_child_of_item<F>(cstore: &cstore::CStore,
+                             def_id: ast::DefId,
+                             callback: F) where
+    F: FnMut(decoder::DefLike, ast::Name, ast::Visibility),
+{
     let crate_data = cstore.get_crate_data(def_id.krate);
     let get_crate_data: decoder::GetCrateDataCb = |cnum| {
         cstore.get_crate_data(cnum)
@@ -73,11 +75,11 @@ pub fn each_child_of_item(cstore: &cstore::CStore,
 }
 
 /// Iterates over each top-level crate item.
-pub fn each_top_level_item_of_crate(cstore: &cstore::CStore,
-                                    cnum: ast::CrateNum,
-                                    callback: |decoder::DefLike,
-                                               ast::Name,
-                                               ast::Visibility|) {
+pub fn each_top_level_item_of_crate<F>(cstore: &cstore::CStore,
+                                       cnum: ast::CrateNum,
+                                       callback: F) where
+    F: FnMut(decoder::DefLike, ast::Name, ast::Visibility),
+{
     let crate_data = cstore.get_crate_data(cnum);
     let get_crate_data: decoder::GetCrateDataCb = |cnum| {
         cstore.get_crate_data(cnum)
@@ -195,9 +197,11 @@ pub fn get_methods_if_impl(cstore: &cstore::CStore,
     decoder::get_methods_if_impl(cstore.intr.clone(), &*cdata, def.node)
 }
 
-pub fn get_item_attrs(cstore: &cstore::CStore,
-                      def_id: ast::DefId,
-                      f: |Vec<ast::Attribute>|) {
+pub fn get_item_attrs<F>(cstore: &cstore::CStore,
+                         def_id: ast::DefId,
+                         f: F) where
+    F: FnOnce(Vec<ast::Attribute>),
+{
     let cdata = cstore.get_crate_data(def_id.krate);
     decoder::get_item_attrs(&*cdata, def_id.node, f)
 }
@@ -279,23 +283,29 @@ pub fn get_native_libraries(cstore: &cstore::CStore, crate_num: ast::CrateNum)
     decoder::get_native_libraries(&*cdata)
 }
 
-pub fn each_impl(cstore: &cstore::CStore,
-                 crate_num: ast::CrateNum,
-                 callback: |ast::DefId|) {
+pub fn each_impl<F>(cstore: &cstore::CStore,
+                    crate_num: ast::CrateNum,
+                    callback: F) where
+    F: FnMut(ast::DefId),
+{
     let cdata = cstore.get_crate_data(crate_num);
     decoder::each_impl(&*cdata, callback)
 }
 
-pub fn each_implementation_for_type(cstore: &cstore::CStore,
-                                    def_id: ast::DefId,
-                                    callback: |ast::DefId|) {
+pub fn each_implementation_for_type<F>(cstore: &cstore::CStore,
+                                       def_id: ast::DefId,
+                                       callback: F) where
+    F: FnMut(ast::DefId),
+{
     let cdata = cstore.get_crate_data(def_id.krate);
     decoder::each_implementation_for_type(&*cdata, def_id.node, callback)
 }
 
-pub fn each_implementation_for_trait(cstore: &cstore::CStore,
-                                     def_id: ast::DefId,
-                                     callback: |ast::DefId|) {
+pub fn each_implementation_for_trait<F>(cstore: &cstore::CStore,
+                                        def_id: ast::DefId,
+                                        callback: F) where
+    F: FnMut(ast::DefId),
+{
     let cdata = cstore.get_crate_data(def_id.krate);
     decoder::each_implementation_for_trait(&*cdata, def_id.node, callback)
 }

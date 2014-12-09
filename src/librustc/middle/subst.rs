@@ -167,10 +167,9 @@ impl<'tcx> Substs<'tcx> {
 }
 
 impl RegionSubsts {
-    fn map<A>(self,
-              a: A,
-              op: |VecPerParamSpace<ty::Region>, A| -> VecPerParamSpace<ty::Region>)
-              -> RegionSubsts {
+    fn map<A, F>(self, a: A, op: F) -> RegionSubsts where
+        F: FnOnce(VecPerParamSpace<ty::Region>, A) -> VecPerParamSpace<ty::Region>,
+    {
         match self {
             ErasedRegions => ErasedRegions,
             NonerasedRegions(r) => NonerasedRegions(op(r, a))
@@ -415,7 +414,9 @@ impl<T> VecPerParamSpace<T> {
         self.content.as_slice()
     }
 
-    pub fn all_vecs(&self, pred: |&[T]| -> bool) -> bool {
+    pub fn all_vecs<P>(&self, mut pred: P) -> bool where
+        P: FnMut(&[T]) -> bool,
+    {
         let spaces = [TypeSpace, SelfSpace, FnSpace];
         spaces.iter().all(|&space| { pred(self.get_slice(space)) })
     }
@@ -450,7 +451,9 @@ impl<T> VecPerParamSpace<T> {
                                        self.assoc_limit)
     }
 
-    pub fn map_move<U>(self, pred: |T| -> U) -> VecPerParamSpace<U> {
+    pub fn map_move<U, F>(self, mut pred: F) -> VecPerParamSpace<U> where
+        F: FnMut(T) -> U,
+    {
         let SeparateVecsPerParamSpace {
             types: t,
             selfs: s,

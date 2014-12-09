@@ -89,7 +89,10 @@ fn next_byte(st: &mut PState) -> u8 {
     return b;
 }
 
-fn scan<R>(st: &mut PState, is_last: |char| -> bool, op: |&[u8]| -> R) -> R {
+fn scan<R, F, G>(st: &mut PState, mut is_last: F, op: G) -> R where
+    F: FnMut(char) -> bool,
+    G: FnOnce(&[u8]) -> R,
+{
     let start_pos = st.pos;
     debug!("scan: '{}' (start)", st.data[st.pos] as char);
     while !is_last(st.data[st.pos] as char) {
@@ -110,7 +113,9 @@ pub fn parse_name(st: &mut PState, last: char) -> ast::Name {
     parse_name_(st, |a| is_last(last, a) )
 }
 
-fn parse_name_(st: &mut PState, is_last: |char| -> bool) -> ast::Name {
+fn parse_name_<F>(st: &mut PState, is_last: F) -> ast::Name where
+    F: FnMut(char) -> bool,
+{
     scan(st, is_last, |bytes| {
         token::intern(str::from_utf8(bytes).unwrap())
     })
@@ -234,9 +239,10 @@ fn parse_trait_store(st: &mut PState, conv: conv_did) -> ty::TraitStore {
     }
 }
 
-fn parse_vec_per_param_space<'a, 'tcx, T>(st: &mut PState<'a, 'tcx>,
-                                          f: |&mut PState<'a, 'tcx>| -> T)
-                                          -> VecPerParamSpace<T>
+fn parse_vec_per_param_space<'a, 'tcx, T, F>(st: &mut PState<'a, 'tcx>,
+                                             mut f: F)
+                                             -> VecPerParamSpace<T> where
+    F: FnMut(&mut PState<'a, 'tcx>) -> T,
 {
     let mut r = VecPerParamSpace::empty();
     for &space in subst::ParamSpace::all().iter() {
@@ -350,8 +356,9 @@ fn parse_scope(st: &mut PState) -> region::CodeExtent {
     }
 }
 
-fn parse_opt<'a, 'tcx, T>(st: &mut PState<'a, 'tcx>, f: |&mut PState<'a, 'tcx>| -> T)
-                          -> Option<T> {
+fn parse_opt<'a, 'tcx, T, F>(st: &mut PState<'a, 'tcx>, f: F) -> Option<T> where
+    F: FnOnce(&mut PState<'a, 'tcx>) -> T,
+{
     match next(st) {
       'n' => None,
       's' => Some(f(st)),

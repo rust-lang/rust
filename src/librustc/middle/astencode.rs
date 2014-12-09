@@ -680,9 +680,8 @@ pub fn encode_unboxed_closure_kind(ebml_w: &mut Encoder,
 }
 
 pub trait vtable_decoder_helpers<'tcx> {
-    fn read_vec_per_param_space<T>(&mut self,
-                                   f: |&mut Self| -> T)
-                                   -> VecPerParamSpace<T>;
+    fn read_vec_per_param_space<T, F>(&mut self, f: F) -> VecPerParamSpace<T> where
+        F: FnMut(&mut Self) -> T;
     fn read_vtable_res_with_key(&mut self,
                                 tcx: &ty::ctxt<'tcx>,
                                 cdata: &cstore::crate_metadata)
@@ -699,9 +698,8 @@ pub trait vtable_decoder_helpers<'tcx> {
 }
 
 impl<'tcx, 'a> vtable_decoder_helpers<'tcx> for reader::Decoder<'a> {
-    fn read_vec_per_param_space<T>(&mut self,
-                                   f: |&mut reader::Decoder<'a>| -> T)
-                                   -> VecPerParamSpace<T>
+    fn read_vec_per_param_space<T, F>(&mut self, mut f: F) -> VecPerParamSpace<T> where
+        F: FnMut(&mut reader::Decoder<'a>) -> T,
     {
         let types = self.read_to_vec(|this| Ok(f(this))).unwrap();
         let selfs = self.read_to_vec(|this| Ok(f(this))).unwrap();
@@ -793,9 +791,11 @@ impl<'tcx, 'a> vtable_decoder_helpers<'tcx> for reader::Decoder<'a> {
 // ___________________________________________________________________________
 //
 
-fn encode_vec_per_param_space<T>(rbml_w: &mut Encoder,
-                                 v: &subst::VecPerParamSpace<T>,
-                                 f: |&mut Encoder, &T|) {
+fn encode_vec_per_param_space<T, F>(rbml_w: &mut Encoder,
+                                    v: &subst::VecPerParamSpace<T>,
+                                    mut f: F) where
+    F: FnMut(&mut Encoder, &T),
+{
     for &space in subst::ParamSpace::all().iter() {
         rbml_w.emit_from_vec(v.get_slice(space),
                              |rbml_w, n| Ok(f(rbml_w, n))).unwrap();
@@ -1124,14 +1124,16 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
 }
 
 trait write_tag_and_id {
-    fn tag(&mut self, tag_id: c::astencode_tag, f: |&mut Self|);
+    fn tag<F>(&mut self, tag_id: c::astencode_tag, f: F) where F: FnOnce(&mut Self);
     fn id(&mut self, id: ast::NodeId);
 }
 
 impl<'a> write_tag_and_id for Encoder<'a> {
-    fn tag(&mut self,
-           tag_id: c::astencode_tag,
-           f: |&mut Encoder<'a>|) {
+    fn tag<F>(&mut self,
+              tag_id: c::astencode_tag,
+              f: F) where
+        F: FnOnce(&mut Encoder<'a>),
+    {
         self.start_tag(tag_id as uint);
         f(self);
         self.end_tag();

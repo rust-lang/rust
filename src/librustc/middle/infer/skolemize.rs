@@ -54,11 +54,12 @@ impl<'a, 'tcx> TypeSkolemizer<'a, 'tcx> {
         }
     }
 
-    fn skolemize(&mut self,
-                 opt_ty: Option<Ty<'tcx>>,
-                 key: ty::InferTy,
-                 skolemizer: |uint| -> ty::InferTy)
-                 -> Ty<'tcx>
+    fn skolemize<F>(&mut self,
+                    opt_ty: Option<Ty<'tcx>>,
+                    key: ty::InferTy,
+                    skolemizer: F)
+                    -> Ty<'tcx> where
+        F: FnOnce(uint) -> ty::InferTy,
     {
         match opt_ty {
             Some(ty) => { return ty.fold_with(self); }

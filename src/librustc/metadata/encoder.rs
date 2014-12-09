@@ -493,7 +493,9 @@ fn encode_reexported_static_methods(ecx: &EncodeContext,
 /// top-level items that are sub-items of the given item. Specifically:
 ///
 /// * For newtype structs, iterates through the node ID of the constructor.
-fn each_auxiliary_node_id(item: &ast::Item, callback: |NodeId| -> bool) -> bool {
+fn each_auxiliary_node_id<F>(item: &ast::Item, callback: F) -> bool where
+    F: FnOnce(NodeId) -> bool,
+{
     let mut continue_ = true;
     match item.node {
         ast::ItemStruct(ref struct_def, _) => {
@@ -1579,8 +1581,10 @@ fn encode_info_for_items(ecx: &EncodeContext,
 
 // Path and definition ID indexing
 
-fn encode_index<T: Hash>(rbml_w: &mut Encoder, index: Vec<entry<T>>,
-                         write_fn: |&mut SeekableMemWriter, &T|) {
+fn encode_index<T, F>(rbml_w: &mut Encoder, index: Vec<entry<T>>, mut write_fn: F) where
+    F: FnMut(&mut SeekableMemWriter, &T),
+    T: Hash,
+{
     let mut buckets: Vec<Vec<entry<T>>> = Vec::from_fn(256, |_| Vec::new());
     for elt in index.into_iter() {
         let h = hash::hash(&elt.val) as uint;
