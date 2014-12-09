@@ -32,7 +32,7 @@ use syntax::ast_map;
 use syntax::ast_util::{local_def, PostExpansionMethod};
 use syntax::attr;
 use syntax::codemap::DUMMY_SP;
-use std::hash::{sip, Hash};
+use std::hash::{Hasher, Hash, SipHasher};
 
 pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                 fn_id: ast::DefId,
@@ -125,11 +125,11 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     let hash;
     let s = {
-        let mut state = sip::SipState::new();
+        let mut state = SipHasher::new();
         hash_id.hash(&mut state);
         mono_ty.hash(&mut state);
 
-        hash = format!("h{}", state.result());
+        hash = format!("h{}", state.finish());
         ccx.tcx().map.with_path(fn_id.node, |path| {
             exported_name(path, hash.index(&FullRange))
         })

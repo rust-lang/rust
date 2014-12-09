@@ -333,3 +333,10 @@ pub mod hash_set {
     //! A hashset
     pub use super::hash::set::*;
 }
+
+/// Experimental support for providing custom hash algorithms to a HashMap and
+/// HashSet.
+#[unstable = "module was recently added"]
+pub mod hash_state {
+    pub use super::hash::state::*;
+}

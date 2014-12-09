@@ -118,7 +118,7 @@ impl FromStr for Path {
     }
 }
 
-impl<S: hash::Writer> hash::Hash<S> for Path {
+impl<S: hash::Writer + hash::Hasher> hash::Hash<S> for Path {
     #[cfg(not(test))]
     #[inline]
     fn hash(&self, state: &mut S) {

@@ -20,6 +20,7 @@ use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::fmt;
 use std::hash::Hash;
+use std::collections::hash_map::Hasher;
 use std::ops::Deref;
 use std::rc::Rc;
 
@@ -28,8 +29,8 @@ pub struct Interner<T> {
     vect: RefCell<Vec<T> >,
 }
 
-// when traits can extend traits, we should extend index<Name,T> to get .index(&FullRange)
-impl<T: Eq + Hash + Clone + 'static> Interner<T> {
+// when traits can extend traits, we should extend index<Name,T> to get []
+impl<T: Eq + Hash<Hasher> + Clone + 'static> Interner<T> {
     pub fn new() -> Interner<T> {
         Interner {
             map: RefCell::new(HashMap::new()),
@@ -78,7 +79,7 @@ impl<T: Eq + Hash + Clone + 'static> Interner<T> {
     }
 
     pub fn find<Q: ?Sized>(&self, val: &Q) -> Option<Name>
-    where Q: BorrowFrom<T> + Eq + Hash {
+    where Q: BorrowFrom<T> + Eq + Hash<Hasher> {
         let map = self.map.borrow();
         match (*map).get(val) {
             Some(v) => Some(*v),
@@ -203,7 +204,7 @@ impl StrInterner {
     }
 
     pub fn find<Q: ?Sized>(&self, val: &Q) -> Option<Name>
-    where Q: BorrowFrom<RcStr> + Eq + Hash {
+    where Q: BorrowFrom<RcStr> + Eq + Hash<Hasher> {
         match (*self.map.borrow()).get(val) {
             Some(v) => Some(*v),
             None => None,

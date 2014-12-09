@@ -29,8 +29,7 @@ use util::nodemap::{FnvHashMap, NodeMap, NodeSet};
 
 use serialize::Encodable;
 use std::cell::RefCell;
-use std::hash::Hash;
-use std::hash;
+use std::hash::{Hash, Hasher, SipHasher};
 use syntax::abi;
 use syntax::ast::{self, DefId, NodeId};
 use syntax::ast_map::{PathElem, PathElems};
@@ -1598,11 +1597,13 @@ fn encode_info_for_items(ecx: &EncodeContext,
 
 fn encode_index<T, F>(rbml_w: &mut Encoder, index: Vec<entry<T>>, mut write_fn: F) where
     F: FnMut(&mut SeekableMemWriter, &T),
-    T: Hash,
+    T: Hash<SipHasher>,
 {
     let mut buckets: Vec<Vec<entry<T>>> = range(0, 256u16).map(|_| Vec::new()).collect();
     for elt in index.into_iter() {
-        let h = hash::hash(&elt.val) as uint;
+        let mut s = SipHasher::new();
+        elt.val.hash(&mut s);
+        let h = s.finish() as uint;
         (&mut buckets[h % 256]).push(elt);
     }
 
