@@ -21,6 +21,7 @@ use syntax::parse::lexer::{Reader,StringReader};
 use syntax::parse::token;
 use syntax::parse::token::{keywords, Token};
 
+#[deriving(Clone)]
 pub struct SpanUtils<'a> {
     pub sess: &'a Session,
     pub err_count: Cell<int>,

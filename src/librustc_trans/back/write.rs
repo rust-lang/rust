@@ -33,6 +33,17 @@ use std::sync::{Arc, Mutex};
 use std::task::TaskBuilder;
 use libc::{c_uint, c_int, c_void};
 
+#[deriving(Clone, PartialEq, PartialOrd, Ord, Eq)]
+pub enum OutputType {
+    OutputTypeBitcode,
+    OutputTypeAssembly,
+    OutputTypeLlvmAssembly,
+    OutputTypeObject,
+    OutputTypeExe,
+}
+
+impl Copy for OutputType {}
+
 pub fn llvm_err(handler: &diagnostic::Handler, msg: String) -> ! {
     unsafe {
         let cstr = llvm::LLVMRustGetLastError();

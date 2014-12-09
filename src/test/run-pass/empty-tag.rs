@@ -11,6 +11,8 @@
 #[deriving(Show)]
 enum chan { chan_t, }
 
+impl Copy for chan {}
+
 impl PartialEq for chan {
     fn eq(&self, other: &chan) -> bool {
         ((*self) as uint) == ((*other) as uint)

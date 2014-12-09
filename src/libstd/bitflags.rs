@@ -33,6 +33,8 @@
 ///     }
 /// }
 ///
+/// impl Copy for Flags {}
+///
 /// fn main() {
 ///     let e1 = FLAG_A | FLAG_C;
 ///     let e2 = FLAG_B | FLAG_C;
@@ -54,6 +56,8 @@
 ///         const FLAG_B   = 0x00000010,
 ///     }
 /// }
+///
+/// impl Copy for Flags {}
 ///
 /// impl Flags {
 ///     pub fn clear(&mut self) {
@@ -260,6 +264,7 @@ macro_rules! bitflags {
 #[cfg(test)]
 #[allow(non_upper_case_globals)]
 mod tests {
+    use kinds::Copy;
     use hash;
     use option::Option::{Some, None};
     use ops::{BitOr, BitAnd, BitXor, Sub, Not};
@@ -283,11 +288,15 @@ mod tests {
         }
     }
 
+    impl Copy for Flags {}
+
     bitflags! {
         flags AnotherSetOfFlags: i8 {
             const AnotherFlag = -1_i8,
         }
     }
+
+    impl Copy for AnotherSetOfFlags {}
 
     #[test]
     fn test_bits(){

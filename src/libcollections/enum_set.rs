@@ -27,6 +27,8 @@ pub struct EnumSet<E> {
     bits: uint
 }
 
+impl<E> Copy for EnumSet<E> {}
+
 impl<E:CLike+fmt::Show> fmt::Show for EnumSet<E> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         try!(write!(fmt, "{{"));
@@ -269,6 +271,8 @@ mod test {
         A, B, C
     }
 
+    impl Copy for Foo {}
+
     impl CLike for Foo {
         fn to_uint(&self) -> uint {
             *self as uint
@@ -477,6 +481,9 @@ mod test {
             V50, V51, V52, V53, V54, V55, V56, V57, V58, V59,
             V60, V61, V62, V63, V64, V65, V66, V67, V68, V69,
         }
+
+        impl Copy for Bar {}
+
         impl CLike for Bar {
             fn to_uint(&self) -> uint {
                 *self as uint

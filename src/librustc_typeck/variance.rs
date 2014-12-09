@@ -232,11 +232,15 @@ type VarianceTermPtr<'a> = &'a VarianceTerm<'a>;
 #[deriving(Show)]
 struct InferredIndex(uint);
 
+impl Copy for InferredIndex {}
+
 enum VarianceTerm<'a> {
     ConstantTerm(ty::Variance),
     TransformTerm(VarianceTermPtr<'a>, VarianceTermPtr<'a>),
     InferredTerm(InferredIndex),
 }
+
+impl<'a> Copy for VarianceTerm<'a> {}
 
 impl<'a> fmt::Show for VarianceTerm<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -269,6 +273,8 @@ enum ParamKind {
     TypeParam,
     RegionParam
 }
+
+impl Copy for ParamKind {}
 
 struct InferredInfo<'a> {
     item_id: ast::NodeId,
@@ -425,6 +431,8 @@ struct Constraint<'a> {
     inferred: InferredIndex,
     variance: &'a VarianceTerm<'a>,
 }
+
+impl<'a> Copy for Constraint<'a> {}
 
 fn add_constraints_from_crate<'a, 'tcx>(terms_cx: TermsContext<'a, 'tcx>,
                                         krate: &ast::Crate)
@@ -1015,7 +1023,7 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
 
             while index < num_inferred &&
                   inferred_infos[index].item_id == item_id {
-                let info = inferred_infos[index];
+                let info = &inferred_infos[index];
                 let variance = solutions[index];
                 debug!("Index {} Info {} / {} / {} Variance {}",
                        index, info.index, info.kind, info.space, variance);

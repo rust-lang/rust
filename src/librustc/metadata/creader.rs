@@ -275,8 +275,10 @@ fn visit_item(e: &Env, i: &ast::Item) {
     }
 }
 
-fn register_native_lib(sess: &Session, span: Option<Span>, name: String,
-                       kind: cstore::NativeLibaryKind) {
+fn register_native_lib(sess: &Session,
+                       span: Option<Span>,
+                       name: String,
+                       kind: cstore::NativeLibraryKind) {
     if name.is_empty() {
         match span {
             Some(span) => {

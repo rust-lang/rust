@@ -13,6 +13,10 @@ enum side { mayo, catsup, vinegar }
 enum order { hamburger, fries(side), shake }
 enum meal { to_go(order), for_here(order) }
 
+impl Copy for side {}
+impl Copy for order {}
+impl Copy for meal {}
+
 fn foo(m: Box<meal>, cond: bool) {
     match *m {
       meal::to_go(_) => { }

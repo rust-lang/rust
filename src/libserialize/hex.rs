@@ -68,6 +68,8 @@ pub enum FromHexError {
     InvalidHexLength,
 }
 
+impl Copy for FromHexError {}
+
 impl fmt::Show for FromHexError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {

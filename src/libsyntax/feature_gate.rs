@@ -75,6 +75,9 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     // to bootstrap fix for #5723.
     ("issue_5723_bootstrap", Accepted),
 
+    // A way to temporary opt out of opt in copy. This will *never* be accepted.
+    ("opt_out_copy", Active),
+
     // These are used to test this portion of the compiler, they don't actually
     // mean anything
     ("test_accepted_feature", Accepted),
@@ -101,7 +104,10 @@ pub struct Features {
     pub import_shadowing: bool,
     pub visible_private_types: bool,
     pub quote: bool,
+    pub opt_out_copy: bool,
 }
+
+impl Copy for Features {}
 
 impl Features {
     pub fn new() -> Features {
@@ -112,6 +118,7 @@ impl Features {
             import_shadowing: false,
             visible_private_types: false,
             quote: false,
+            opt_out_copy: false,
         }
     }
 }
@@ -439,6 +446,7 @@ pub fn check_crate(span_handler: &SpanHandler, krate: &ast::Crate) -> (Features,
         import_shadowing: cx.has_feature("import_shadowing"),
         visible_private_types: cx.has_feature("visible_private_types"),
         quote: cx.has_feature("quote"),
+        opt_out_copy: cx.has_feature("opt_out_copy"),
     },
     unknown_features)
 }

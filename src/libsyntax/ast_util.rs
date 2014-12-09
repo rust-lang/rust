@@ -315,6 +315,8 @@ pub struct IdRange {
     pub max: NodeId,
 }
 
+impl Copy for IdRange {}
+
 impl IdRange {
     pub fn max() -> IdRange {
         IdRange {

@@ -31,6 +31,8 @@ pub enum ArgKind {
     Ignore,
 }
 
+impl Copy for ArgKind {}
+
 /// Information about how a specific C type
 /// should be passed to or returned from a function
 ///
@@ -47,6 +49,8 @@ pub struct ArgType {
     /// LLVM attribute of argument
     pub attr: option::Option<Attribute>
 }
+
+impl Copy for ArgType {}
 
 impl ArgType {
     pub fn direct(ty: Type, cast: option::Option<Type>,

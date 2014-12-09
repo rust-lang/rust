@@ -15,7 +15,7 @@
 
 pub use self::MetadataBlob::*;
 pub use self::LinkagePreference::*;
-pub use self::NativeLibaryKind::*;
+pub use self::NativeLibraryKind::*;
 
 use back::svh::Svh;
 use metadata::decoder;
@@ -54,12 +54,16 @@ pub enum LinkagePreference {
     RequireStatic,
 }
 
-#[deriving(PartialEq, FromPrimitive, Clone)]
-pub enum NativeLibaryKind {
+impl Copy for LinkagePreference {}
+
+#[deriving(Clone, PartialEq, FromPrimitive)]
+pub enum NativeLibraryKind {
     NativeStatic,    // native static library (.a archive)
     NativeFramework, // OSX-specific
     NativeUnknown,   // default way to specify a dynamic library
 }
+
+impl Copy for NativeLibraryKind {}
 
 // Where a crate came from on the local filesystem. One of these two options
 // must be non-None.
@@ -75,7 +79,7 @@ pub struct CStore {
     /// Map from NodeId's of local extern crate statements to crate numbers
     extern_mod_crate_map: RefCell<NodeMap<ast::CrateNum>>,
     used_crate_sources: RefCell<Vec<CrateSource>>,
-    used_libraries: RefCell<Vec<(String, NativeLibaryKind)>>,
+    used_libraries: RefCell<Vec<(String, NativeLibraryKind)>>,
     used_link_args: RefCell<Vec<String>>,
     pub intr: Rc<IdentInterner>,
 }
@@ -186,13 +190,14 @@ impl CStore {
         libs
     }
 
-    pub fn add_used_library(&self, lib: String, kind: NativeLibaryKind) {
+    pub fn add_used_library(&self, lib: String, kind: NativeLibraryKind) {
         assert!(!lib.is_empty());
         self.used_libraries.borrow_mut().push((lib, kind));
     }
 
     pub fn get_used_libraries<'a>(&'a self)
-                              -> &'a RefCell<Vec<(String, NativeLibaryKind)> > {
+                              -> &'a RefCell<Vec<(String,
+                                                  NativeLibraryKind)>> {
         &self.used_libraries
     }
 

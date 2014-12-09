@@ -50,6 +50,8 @@ pub enum LangItem {
     $($variant),*
 }
 
+impl Copy for LangItem {}
+
 pub struct LanguageItems {
     pub items: Vec<Option<ast::DefId>>,
     pub missing: Vec<LangItem>,

@@ -13,6 +13,7 @@
 
 use middle::expr_use_visitor as euv;
 use middle::mem_categorization as mc;
+use middle::ty::ParameterEnvironment;
 use middle::ty;
 use util::ppaux::ty_to_string;
 
@@ -36,9 +37,10 @@ impl<'a, 'tcx, 'v> visit::Visitor<'v> for RvalueContext<'a, 'tcx> {
                 fd: &'v ast::FnDecl,
                 b: &'v ast::Block,
                 s: Span,
-                _: ast::NodeId) {
+                fn_id: ast::NodeId) {
         {
-            let mut euv = euv::ExprUseVisitor::new(self, self.tcx);
+            let param_env = ParameterEnvironment::for_item(self.tcx, fn_id);
+            let mut euv = euv::ExprUseVisitor::new(self, self.tcx, param_env);
             euv.walk_fn(fd, b);
         }
         visit::walk_fn(self, fk, fd, b, s)

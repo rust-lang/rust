@@ -48,6 +48,11 @@ pub struct WhereClause<'a>(pub &'a clean::Generics);
 /// Wrapper struct for emitting type parameter bounds.
 pub struct TyParamBounds<'a>(pub &'a [clean::TyParamBound]);
 
+impl Copy for VisSpace {}
+impl Copy for FnStyleSpace {}
+impl Copy for MutableSpace {}
+impl Copy for RawMutableSpace {}
+
 impl VisSpace {
     pub fn get(&self) -> Option<ast::Visibility> {
         let VisSpace(v) = *self; v

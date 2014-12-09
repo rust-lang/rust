@@ -59,6 +59,8 @@ pub struct ModuleTranslation {
     pub llmod: ModuleRef,
 }
 
+impl Copy for ModuleTranslation {}
+
 pub struct CrateTranslation {
     pub modules: Vec<ModuleTranslation>,
     pub metadata_module: ModuleTranslation,

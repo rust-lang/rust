@@ -20,7 +20,12 @@ use std::os;
 
 use util::fs as myfs;
 
-pub enum FileMatch { FileMatches, FileDoesntMatch }
+pub enum FileMatch {
+    FileMatches,
+    FileDoesntMatch,
+}
+
+impl Copy for FileMatch {}
 
 // A module for searching for libraries
 // FIXME (#2658): I'm not happy how this module turned out. Should

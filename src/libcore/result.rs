@@ -232,6 +232,7 @@
 
 pub use self::Result::*;
 
+use kinds::Copy;
 use std::fmt::Show;
 use slice;
 use slice::AsSlice;
@@ -916,3 +917,7 @@ pub fn fold<T,
     }
     Ok(init)
 }
+
+#[cfg(not(stage0))]
+impl<T:Copy,U:Copy> Copy for Result<T,U> {}
+
