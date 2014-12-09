@@ -464,9 +464,11 @@ impl<'a, 'tcx> Context<'a, 'tcx> {
     /// Merge the lints specified by any lint attributes into the
     /// current lint context, call the provided function, then reset the
     /// lints in effect to their previous state.
-    fn with_lint_attrs(&mut self,
-                       attrs: &[ast::Attribute],
-                       f: |&mut Context|) {
+    fn with_lint_attrs<F>(&mut self,
+                          attrs: &[ast::Attribute],
+                          f: F) where
+        F: FnOnce(&mut Context),
+    {
         // Parse all of the lint attributes, and then add them all to the
         // current dictionary of lint information. Along the way, keep a history
         // of what we changed so we can roll everything back after invoking the
@@ -528,7 +530,9 @@ impl<'a, 'tcx> Context<'a, 'tcx> {
         }
     }
 
-    fn visit_ids(&mut self, f: |&mut ast_util::IdVisitor<Context>|) {
+    fn visit_ids<F>(&mut self, f: F) where
+        F: FnOnce(&mut ast_util::IdVisitor<Context>)
+    {
         let mut v = ast_util::IdVisitor {
             operation: self,
             pass_through_items: false,

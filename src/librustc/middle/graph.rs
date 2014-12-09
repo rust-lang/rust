@@ -221,39 +221,43 @@ impl<N,E> Graph<N,E> {
     ///////////////////////////////////////////////////////////////////////////
     // Iterating over nodes, edges
 
-    pub fn each_node<'a>(&'a self, f: |NodeIndex, &'a Node<N>| -> bool) -> bool {
+    pub fn each_node<'a, F>(&'a self, mut f: F) -> bool where
+        F: FnMut(NodeIndex, &'a Node<N>) -> bool,
+    {
         //! Iterates over all edges defined in the graph.
         self.nodes.iter().enumerate().all(|(i, node)| f(NodeIndex(i), node))
     }
 
-    pub fn each_edge<'a>(&'a self, f: |EdgeIndex, &'a Edge<E>| -> bool) -> bool {
+    pub fn each_edge<'a, F>(&'a self, mut f: F) -> bool where
+        F: FnMut(EdgeIndex, &'a Edge<E>) -> bool,
+    {
         //! Iterates over all edges defined in the graph
         self.edges.iter().enumerate().all(|(i, edge)| f(EdgeIndex(i), edge))
     }
 
-    pub fn each_outgoing_edge<'a>(&'a self,
-                                  source: NodeIndex,
-                                  f: |EdgeIndex, &'a Edge<E>| -> bool)
-                                  -> bool {
+    pub fn each_outgoing_edge<'a, F>(&'a self, source: NodeIndex, f: F) -> bool where
+        F: FnMut(EdgeIndex, &'a Edge<E>) -> bool,
+    {
         //! Iterates over all outgoing edges from the node `from`
 
         self.each_adjacent_edge(source, Outgoing, f)
     }
 
-    pub fn each_incoming_edge<'a>(&'a self,
-                                  target: NodeIndex,
-                                  f: |EdgeIndex, &'a Edge<E>| -> bool)
-                                  -> bool {
+    pub fn each_incoming_edge<'a, F>(&'a self, target: NodeIndex, f: F) -> bool where
+        F: FnMut(EdgeIndex, &'a Edge<E>) -> bool,
+    {
         //! Iterates over all incoming edges to the node `target`
 
         self.each_adjacent_edge(target, Incoming, f)
     }
 
-    pub fn each_adjacent_edge<'a>(&'a self,
-                                  node: NodeIndex,
-                                  dir: Direction,
-                                  f: |EdgeIndex, &'a Edge<E>| -> bool)
-                                  -> bool {
+    pub fn each_adjacent_edge<'a, F>(&'a self,
+                                     node: NodeIndex,
+                                     dir: Direction,
+                                     mut f: F)
+                                     -> bool where
+        F: FnMut(EdgeIndex, &'a Edge<E>) -> bool,
+    {
         //! Iterates over all edges adjacent to the node `node`
         //! in the direction `dir` (either `Outgoing` or `Incoming)
 
@@ -277,11 +281,9 @@ impl<N,E> Graph<N,E> {
     // variables or other bitsets. This method facilitates such a
     // computation.
 
-    pub fn iterate_until_fixed_point<'a>(&'a self,
-                                         op: |iter_index: uint,
-                                              edge_index: EdgeIndex,
-                                              edge: &'a Edge<E>|
-                                              -> bool) {
+    pub fn iterate_until_fixed_point<'a, F>(&'a self, mut op: F) where
+        F: FnMut(uint, EdgeIndex, &'a Edge<E>) -> bool,
+    {
         let mut iteration = 0;
         let mut changed = true;
         while changed {
@@ -294,7 +296,9 @@ impl<N,E> Graph<N,E> {
     }
 }
 
-pub fn each_edge_index(max_edge_index: EdgeIndex, f: |EdgeIndex| -> bool) {
+pub fn each_edge_index<F>(max_edge_index: EdgeIndex, mut f: F) where
+    F: FnMut(EdgeIndex) -> bool,
+{
     let mut i = 0;
     let n = max_edge_index.get();
     while i < n {

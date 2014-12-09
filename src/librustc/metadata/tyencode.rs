@@ -86,7 +86,9 @@ fn enc_mt<'a, 'tcx>(w: &mut SeekableMemWriter, cx: &ctxt<'a, 'tcx>,
     enc_ty(w, cx, mt.ty);
 }
 
-fn enc_opt<T>(w: &mut SeekableMemWriter, t: Option<T>, enc_f: |&mut SeekableMemWriter, T|) {
+fn enc_opt<T, F>(w: &mut SeekableMemWriter, t: Option<T>, enc_f: F) where
+    F: FnOnce(&mut SeekableMemWriter, T),
+{
     match t {
         None => mywrite!(w, "n"),
         Some(v) => {
@@ -96,10 +98,12 @@ fn enc_opt<T>(w: &mut SeekableMemWriter, t: Option<T>, enc_f: |&mut SeekableMemW
     }
 }
 
-fn enc_vec_per_param_space<'a, 'tcx, T>(w: &mut SeekableMemWriter,
-                                        cx: &ctxt<'a, 'tcx>,
-                                        v: &VecPerParamSpace<T>,
-                                        op: |&mut SeekableMemWriter, &ctxt<'a, 'tcx>, &T|) {
+fn enc_vec_per_param_space<'a, 'tcx, T, F>(w: &mut SeekableMemWriter,
+                                           cx: &ctxt<'a, 'tcx>,
+                                           v: &VecPerParamSpace<T>,
+                                           mut op: F) where
+    F: FnMut(&mut SeekableMemWriter, &ctxt<'a, 'tcx>, &T),
+{
     for &space in subst::ParamSpace::all().iter() {
         mywrite!(w, "[");
         for t in v.get_slice(space).iter() {

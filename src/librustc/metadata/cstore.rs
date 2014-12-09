@@ -113,16 +113,18 @@ impl CStore {
         self.metas.borrow_mut().insert(cnum, data);
     }
 
-    pub fn iter_crate_data(&self, i: |ast::CrateNum, &crate_metadata|) {
+    pub fn iter_crate_data<I>(&self, mut i: I) where
+        I: FnMut(ast::CrateNum, &crate_metadata),
+    {
         for (&k, v) in self.metas.borrow().iter() {
             i(k, &**v);
         }
     }
 
     /// Like `iter_crate_data`, but passes source paths (if available) as well.
-    pub fn iter_crate_data_origins(&self, i: |ast::CrateNum,
-                                              &crate_metadata,
-                                              Option<CrateSource>|) {
+    pub fn iter_crate_data_origins<I>(&self, mut i: I) where
+        I: FnMut(ast::CrateNum, &crate_metadata, Option<CrateSource>),
+    {
         for (&k, v) in self.metas.borrow().iter() {
             let origin = self.get_used_crate_source(k);
             origin.as_ref().map(|cs| { assert!(k == cs.cnum); });

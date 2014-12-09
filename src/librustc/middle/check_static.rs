@@ -85,7 +85,9 @@ pub fn check_crate(tcx: &ty::ctxt) {
 }
 
 impl<'a, 'tcx> CheckStaticVisitor<'a, 'tcx> {
-    fn with_mode(&mut self, mode: Mode, f: |&mut CheckStaticVisitor<'a, 'tcx>|) {
+    fn with_mode<F>(&mut self, mode: Mode, f: F) where
+        F: FnOnce(&mut CheckStaticVisitor<'a, 'tcx>),
+    {
         let old = self.mode;
         self.mode = mode;
         f(self);
