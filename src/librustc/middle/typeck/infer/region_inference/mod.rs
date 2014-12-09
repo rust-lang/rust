@@ -714,7 +714,8 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
     }
 
     fn lub_concrete_regions(&self, a: Region, b: Region) -> Region {
-        match (a, b) {
+        debug!("lub_concrete_regions(a: {}, b: {})", a, b);
+        let ret = match (a, b) {
           (ReLateBound(..), _) |
           (_, ReLateBound(..)) |
           (ReEarlyBound(..), _) |
@@ -780,7 +781,9 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
           (_, ReInfer(ReSkolemized(..))) => {
             if a == b {a} else {ReStatic}
           }
-        }
+        };
+        debug!("lub_concrete_regions(a: {}, b: {}) returns {}", a, b, ret);
+        ret
     }
 
     fn lub_free_regions(&self,
@@ -793,11 +796,14 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
          * in any order, a consistent result is returned.
          */
 
-        return match a.cmp(b) {
+        debug!("lub_free_regions(a: {}, b: {})", a, b);
+        let ret = match a.cmp(b) {
             Less => helper(self, a, b),
             Greater => helper(self, b, a),
             Equal => ty::ReFree(*a)
         };
+        debug!("lub_free_regions(a: {}, b: {}) returns {}", a, b, ret);
+        return ret;
 
         fn helper(this: &RegionVarBindings,
                   a: &FreeRegion,
@@ -818,7 +824,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                             b: Region)
                          -> cres<'tcx, Region> {
         debug!("glb_concrete_regions({}, {})", a, b);
-        match (a, b) {
+        let ret = match (a, b) {
             (ReLateBound(..), _) |
             (_, ReLateBound(..)) |
             (ReEarlyBound(..), _) |
@@ -881,7 +887,9 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                     Err(ty::terr_regions_no_overlap(b, a))
                 }
             }
-        }
+        };
+        debug!("glb_concrete_regions(a: {}, b: {}) returns {}", a, b, ret);
+        ret
     }
 
     fn glb_free_regions(&self,
@@ -894,11 +902,14 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
          * in any order, a consistent result is returned.
          */
 
-        return match a.cmp(b) {
+        debug!("glb_free_regions(a: {}, b: {})", a, b);
+        let ret = match a.cmp(b) {
             Less => helper(self, a, b),
             Greater => helper(self, b, a),
             Equal => Ok(ty::ReFree(*a))
         };
+        debug!("glb_free_regions(a: {}, b: {}) returns {}", a, b, ret);
+        return ret;
 
         fn helper<'a, 'tcx>(this: &RegionVarBindings<'a, 'tcx>,
                             a: &FreeRegion,
@@ -927,11 +938,14 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         // it. Otherwise fail.
         debug!("intersect_scopes(scope_a={}, scope_b={}, region_a={}, region_b={})",
                scope_a, scope_b, region_a, region_b);
-        match self.tcx.region_maps.nearest_common_ancestor(scope_a, scope_b) {
+        let ret = match self.tcx.region_maps.nearest_common_ancestor(scope_a, scope_b) {
             Some(r_id) if scope_a == r_id => Ok(ReScope(scope_b)),
             Some(r_id) if scope_b == r_id => Ok(ReScope(scope_a)),
             _ => Err(ty::terr_regions_no_overlap(region_a, region_b))
-        }
+        };
+        debug!("intersect_scopes(scope_a={}, scope_b={}, region_a={}, region_b={}) returns {}",
+               scope_a, scope_b, region_a, region_b, ret);
+        return ret;
     }
 }
 
