@@ -164,9 +164,6 @@ impl Session {
     pub fn diagnostic<'a>(&'a self) -> &'a diagnostic::SpanHandler {
         &self.parse_sess.span_diagnostic
     }
-    pub fn debugging_opt(&self, opt: u64) -> bool {
-        (self.opts.debugging_opts & opt) != 0
-    }
     pub fn codemap<'a>(&'a self) -> &'a codemap::CodeMap {
         &self.parse_sess.span_diagnostic.cm
     }
@@ -176,36 +173,36 @@ impl Session {
         self.span_bug(sp,
                       &format!("impossible case reached: {}", msg)[]);
     }
-    pub fn verbose(&self) -> bool { self.debugging_opt(config::VERBOSE) }
-    pub fn time_passes(&self) -> bool { self.debugging_opt(config::TIME_PASSES) }
+    pub fn verbose(&self) -> bool { self.opts.debugging_opts.verbose }
+    pub fn time_passes(&self) -> bool { self.opts.debugging_opts.time_passes }
     pub fn count_llvm_insns(&self) -> bool {
-        self.debugging_opt(config::COUNT_LLVM_INSNS)
+        self.opts.debugging_opts.count_llvm_insns
     }
     pub fn count_type_sizes(&self) -> bool {
-        self.debugging_opt(config::COUNT_TYPE_SIZES)
+        self.opts.debugging_opts.count_type_sizes
     }
     pub fn time_llvm_passes(&self) -> bool {
-        self.debugging_opt(config::TIME_LLVM_PASSES)
+        self.opts.debugging_opts.time_llvm_passes
     }
-    pub fn trans_stats(&self) -> bool { self.debugging_opt(config::TRANS_STATS) }
-    pub fn meta_stats(&self) -> bool { self.debugging_opt(config::META_STATS) }
-    pub fn asm_comments(&self) -> bool { self.debugging_opt(config::ASM_COMMENTS) }
-    pub fn no_verify(&self) -> bool { self.debugging_opt(config::NO_VERIFY) }
-    pub fn borrowck_stats(&self) -> bool { self.debugging_opt(config::BORROWCK_STATS) }
+    pub fn trans_stats(&self) -> bool { self.opts.debugging_opts.trans_stats }
+    pub fn meta_stats(&self) -> bool { self.opts.debugging_opts.meta_stats }
+    pub fn asm_comments(&self) -> bool { self.opts.debugging_opts.asm_comments }
+    pub fn no_verify(&self) -> bool { self.opts.debugging_opts.no_verify }
+    pub fn borrowck_stats(&self) -> bool { self.opts.debugging_opts.borrowck_stats }
     pub fn print_llvm_passes(&self) -> bool {
-        self.debugging_opt(config::PRINT_LLVM_PASSES)
+        self.opts.debugging_opts.print_llvm_passes
     }
     pub fn lto(&self) -> bool {
         self.opts.cg.lto
     }
     pub fn no_landing_pads(&self) -> bool {
-        self.debugging_opt(config::NO_LANDING_PADS)
+        self.opts.debugging_opts.no_landing_pads
     }
     pub fn unstable_options(&self) -> bool {
-        self.debugging_opt(config::UNSTABLE_OPTIONS)
+        self.opts.debugging_opts.unstable_options
     }
     pub fn print_enum_sizes(&self) -> bool {
-        self.debugging_opt(config::PRINT_ENUM_SIZES)
+        self.opts.debugging_opts.print_enum_sizes
     }
     pub fn sysroot<'a>(&'a self) -> &'a Path {
         match self.opts.maybe_sysroot {

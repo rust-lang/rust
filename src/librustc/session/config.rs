@@ -99,7 +99,7 @@ pub struct Options {
     pub parse_only: bool,
     pub no_trans: bool,
     pub no_analysis: bool,
-    pub debugging_opts: u64,
+    pub debugging_opts: DebuggingOptions,
     /// Whether to write dependency files. It's (enabled, optional filename).
     pub write_dependency_info: (bool, Option<Path>),
     pub prints: Vec<PrintRequest>,
@@ -224,7 +224,7 @@ pub fn basic_options() -> Options {
         parse_only: false,
         no_trans: false,
         no_analysis: false,
-        debugging_opts: 0,
+        debugging_opts: basic_debugging_options(),
         write_dependency_info: (false, None),
         prints: Vec::new(),
         cg: basic_codegen_options(),
@@ -257,103 +257,6 @@ pub enum CrateType {
     CrateTypeStaticlib,
 }
 
-macro_rules! debugging_opts {
-    ([ $opt:ident ] $cnt:expr ) => (
-        pub const $opt: u64 = 1 << $cnt;
-    );
-    ([ $opt:ident, $($rest:ident),* ] $cnt:expr ) => (
-        pub const $opt: u64 = 1 << $cnt;
-        debugging_opts! { [ $($rest),* ] $cnt + 1 }
-    )
-}
-
-debugging_opts! {
-    [
-        VERBOSE,
-        TIME_PASSES,
-        COUNT_LLVM_INSNS,
-        TIME_LLVM_PASSES,
-        TRANS_STATS,
-        ASM_COMMENTS,
-        NO_VERIFY,
-        BORROWCK_STATS,
-        NO_LANDING_PADS,
-        DEBUG_LLVM,
-        COUNT_TYPE_SIZES,
-        META_STATS,
-        GC,
-        PRINT_LINK_ARGS,
-        PRINT_LLVM_PASSES,
-        AST_JSON,
-        AST_JSON_NOEXPAND,
-        LS,
-        SAVE_ANALYSIS,
-        PRINT_MOVE_FRAGMENTS,
-        FLOWGRAPH_PRINT_LOANS,
-        FLOWGRAPH_PRINT_MOVES,
-        FLOWGRAPH_PRINT_ASSIGNS,
-        FLOWGRAPH_PRINT_ALL,
-        PRINT_REGION_GRAPH,
-        PARSE_ONLY,
-        NO_TRANS,
-        NO_ANALYSIS,
-        UNSTABLE_OPTIONS,
-        PRINT_ENUM_SIZES
-    ]
-    0
-}
-
-pub fn debugging_opts_map() -> Vec<(&'static str, &'static str, u64)> {
-    vec![("verbose", "in general, enable more debug printouts", VERBOSE),
-     ("time-passes", "measure time of each rustc pass", TIME_PASSES),
-     ("count-llvm-insns", "count where LLVM \
-                           instrs originate", COUNT_LLVM_INSNS),
-     ("time-llvm-passes", "measure time of each LLVM pass",
-      TIME_LLVM_PASSES),
-     ("trans-stats", "gather trans statistics", TRANS_STATS),
-     ("asm-comments", "generate comments into the assembly (may change behavior)",
-      ASM_COMMENTS),
-     ("no-verify", "skip LLVM verification", NO_VERIFY),
-     ("borrowck-stats", "gather borrowck statistics",  BORROWCK_STATS),
-     ("no-landing-pads", "omit landing pads for unwinding",
-      NO_LANDING_PADS),
-     ("debug-llvm", "enable debug output from LLVM", DEBUG_LLVM),
-     ("count-type-sizes", "count the sizes of aggregate types",
-      COUNT_TYPE_SIZES),
-     ("meta-stats", "gather metadata statistics", META_STATS),
-     ("print-link-args", "Print the arguments passed to the linker",
-      PRINT_LINK_ARGS),
-     ("gc", "Garbage collect shared data (experimental)", GC),
-     ("print-llvm-passes",
-      "Prints the llvm optimization passes being run",
-      PRINT_LLVM_PASSES),
-     ("ast-json", "Print the AST as JSON and halt", AST_JSON),
-     ("ast-json-noexpand", "Print the pre-expansion AST as JSON and halt", AST_JSON_NOEXPAND),
-     ("ls", "List the symbols defined by a library crate", LS),
-     ("save-analysis", "Write syntax and type analysis information \
-                        in addition to normal output", SAVE_ANALYSIS),
-     ("print-move-fragments", "Print out move-fragment data for every fn",
-      PRINT_MOVE_FRAGMENTS),
-     ("flowgraph-print-loans", "Include loan analysis data in \
-                       --pretty flowgraph output", FLOWGRAPH_PRINT_LOANS),
-     ("flowgraph-print-moves", "Include move analysis data in \
-                       --pretty flowgraph output", FLOWGRAPH_PRINT_MOVES),
-     ("flowgraph-print-assigns", "Include assignment analysis data in \
-                       --pretty flowgraph output", FLOWGRAPH_PRINT_ASSIGNS),
-     ("flowgraph-print-all", "Include all dataflow analysis data in \
-                       --pretty flowgraph output", FLOWGRAPH_PRINT_ALL),
-     ("print-region-graph", "Prints region inference graph. \
-                             Use with RUST_REGION_GRAPH=help for more info",
-      PRINT_REGION_GRAPH),
-     ("parse-only", "Parse only; do not compile, assemble, or link", PARSE_ONLY),
-     ("no-trans", "Run all passes except translation; no output", NO_TRANS),
-     ("no-analysis", "Parse and expand the source, but run no analysis and",
-      NO_ANALYSIS),
-     ("unstable-options", "Adds unstable command line options to rustc interface",
-      UNSTABLE_OPTIONS),
-     ("print-enum-sizes", "Print the size of enums and their variants", PRINT_ENUM_SIZES),
-    ]
-}
 
 #[derive(Clone)]
 pub enum Passes {
@@ -387,6 +290,7 @@ macro_rules! options {
      $($opt:ident : $t:ty = ($init:expr, $parse:ident, $desc:expr)),* ,) =>
 (
     #[derive(Clone)]
+    #[allow(missing_copy_implementations)]
     pub struct $struct_name { $(pub $opt: $t),* }
 
     pub fn $defaultfn() -> $struct_name {
@@ -439,7 +343,7 @@ macro_rules! options {
                                      Option<&'static str>, &'static str)] =
         &[ $( (stringify!($opt), $mod_set::$opt, $mod_desc::$parse, $desc) ),* ];
 
-    #[allow(non_upper_case_globals)]
+    #[allow(non_upper_case_globals, dead_code)]
     mod $mod_desc {
         pub const parse_bool: Option<&'static str> = None;
         pub const parse_opt_bool: Option<&'static str> = None;
@@ -454,6 +358,7 @@ macro_rules! options {
             Some("a number");
     }
 
+    #[allow(dead_code)]
     mod $mod_set {
         use super::{$struct_name, Passes, SomePasses, AllPasses};
 
@@ -606,6 +511,73 @@ options! {CodegenOptions, CodegenSetter, basic_codegen_options,
          2 = full debug info with variable and type information"),
     opt_level: Option<uint> = (None, parse_opt_uint,
         "Optimize with possible levels 0-3"),
+}
+
+
+options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
+         build_debugging_options, "Z", "debugging",
+         DB_OPTIONS, db_type_desc, dbsetters,
+    verbose: bool = (false, parse_bool,
+        "in general, enable more debug printouts"),
+    time_passes: bool = (false, parse_bool,
+        "measure time of each rustc pass"),
+    count_llvm_insns: bool = (false, parse_bool,
+        "count where LLVM instrs originate"),
+    time_llvm_passes: bool = (false, parse_bool,
+        "measure time of each LLVM pass"),
+    trans_stats: bool = (false, parse_bool,
+        "gather trans statistics"),
+    asm_comments: bool = (false, parse_bool,
+        "generate comments into the assembly (may change behavior)"),
+    no_verify: bool = (false, parse_bool,
+        "skip LLVM verification"),
+    borrowck_stats: bool = (false, parse_bool,
+        "gather borrowck statistics"),
+    no_landing_pads: bool = (false, parse_bool,
+        "omit landing pads for unwinding"),
+    debug_llvm: bool = (false, parse_bool,
+        "enable debug output from LLVM"),
+    count_type_sizes: bool = (false, parse_bool,
+        "count the sizes of aggregate types"),
+    meta_stats: bool = (false, parse_bool,
+        "gather metadata statistics"),
+    print_link_args: bool = (false, parse_bool,
+        "Print the arguments passed to the linker"),
+    gc: bool = (false, parse_bool,
+        "Garbage collect shared data (experimental)"),
+    print_llvm_passes: bool = (false, parse_bool,
+        "Prints the llvm optimization passes being run"),
+    ast_json: bool = (false, parse_bool,
+        "Print the AST as JSON and halt"),
+    ast_json_noexpand: bool = (false, parse_bool,
+        "Print the pre-expansion AST as JSON and halt"),
+    ls: bool = (false, parse_bool,
+        "List the symbols defined by a library crate"),
+    save_analysis: bool = (false, parse_bool,
+        "Write syntax and type analysis information in addition to normal output"),
+    print_move_fragments: bool = (false, parse_bool,
+        "Print out move-fragment data for every fn"),
+    flowgraph_print_loans: bool = (false, parse_bool,
+        "Include loan analysis data in --pretty flowgraph output"),
+    flowgraph_print_moves: bool = (false, parse_bool,
+        "Include move analysis data in --pretty flowgraph output"),
+    flowgraph_print_assigns: bool = (false, parse_bool,
+        "Include assignment analysis data in --pretty flowgraph output"),
+    flowgraph_print_all: bool = (false, parse_bool,
+        "Include all dataflow analysis data in --pretty flowgraph output"),
+    print_region_graph: bool = (false, parse_bool,
+         "Prints region inference graph. \
+          Use with RUST_REGION_GRAPH=help for more info"),
+    parse_only: bool = (false, parse_bool,
+          "Parse only; do not compile, assemble, or link"),
+    no_trans: bool = (false, parse_bool,
+          "Run all passes except translation; no output"),
+    no_analysis: bool = (false, parse_bool,
+          "Parse and expand the source, but run no analysis"),
+    unstable_options: bool = (false, parse_bool,
+          "Adds unstable command line options to rustc interface"),
+    print_enum_sizes: bool = (false, parse_bool,
+          "Print the size of enums and their variants"),
 }
 
 pub fn default_lib_output() -> CrateType {
@@ -883,52 +855,36 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         }
     }
 
-    let mut debugging_opts = 0;
-    let debug_flags = matches.opt_strs("Z");
-    let debug_map = debugging_opts_map();
-    for debug_flag in debug_flags.iter() {
-        let mut this_bit = 0;
-        for &(name, _, bit) in debug_map.iter() {
-            if name == *debug_flag {
-                this_bit = bit;
-                break;
-            }
-        }
-        if this_bit == 0 {
-            early_error(&format!("unknown debug flag: {}",
-                                *debug_flag)[])
-        }
-        debugging_opts |= this_bit;
-    }
+    let debugging_opts = build_debugging_options(matches);
 
     let parse_only = if matches.opt_present("parse-only") {
         // FIXME(acrichto) remove this eventually
         early_warn("--parse-only is deprecated in favor of -Z parse-only");
         true
     } else {
-        debugging_opts & PARSE_ONLY != 0
+        debugging_opts.parse_only
     };
     let no_trans = if matches.opt_present("no-trans") {
         // FIXME(acrichto) remove this eventually
         early_warn("--no-trans is deprecated in favor of -Z no-trans");
         true
     } else {
-        debugging_opts & NO_TRANS != 0
+        debugging_opts.no_trans
     };
     let no_analysis = if matches.opt_present("no-analysis") {
         // FIXME(acrichto) remove this eventually
         early_warn("--no-analysis is deprecated in favor of -Z no-analysis");
         true
     } else {
-        debugging_opts & NO_ANALYSIS != 0
+        debugging_opts.no_analysis
     };
 
-    if debugging_opts & DEBUG_LLVM != 0 {
+    if debugging_opts.debug_llvm {
         unsafe { llvm::LLVMSetDebug(1); }
     }
 
     let mut output_types = Vec::new();
-    if !parse_only && !no_trans {
+    if !debugging_opts.parse_only && !no_trans {
         let unparsed_output_types = matches.opt_strs("emit");
         for unparsed_output_type in unparsed_output_types.iter() {
             for part in unparsed_output_type.split(',') {
@@ -998,7 +954,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
             }
         }
     };
-    let gc = debugging_opts & GC != 0;
+    let gc = debugging_opts.gc;
     let debuginfo = if matches.opt_present("g") {
         if matches.opt_present("debuginfo") {
             early_error("-g and --debuginfo both provided");

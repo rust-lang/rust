@@ -778,7 +778,7 @@ fn link_natively(sess: &Session, trans: &CrateTranslation, dylib: bool,
         cmd.arg("-lcompiler-rt");
     }
 
-    if (sess.opts.debugging_opts & config::PRINT_LINK_ARGS) != 0 {
+    if sess.opts.debugging_opts.print_link_args {
         println!("{}", &cmd);
     }
 

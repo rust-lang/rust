@@ -378,13 +378,13 @@ Available lint options:
 
 fn describe_debug_flags() {
     println!("\nAvailable debug options:\n");
-    let r = config::debugging_opts_map();
-    for tuple in r.iter() {
-        match *tuple {
-            (ref name, ref desc, _) => {
-                println!("    -Z {:>20} -- {}", *name, *desc);
-            }
-        }
+    for &(name, _, opt_type_desc, desc) in config::DB_OPTIONS.iter() {
+        let (width, extra) = match opt_type_desc {
+            Some(..) => (21, "=val"),
+            None => (25, "")
+        };
+        println!("    -Z {:>width$}{} -- {}", name.replace("_", "-"),
+                 extra, desc, width=width);
     }
 }
 

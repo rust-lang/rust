@@ -22,7 +22,6 @@ use middle::ty;
 use super::Constraint;
 use middle::infer::SubregionOrigin;
 use middle::infer::region_inference::RegionVarBindings;
-use session::config;
 use util::nodemap::{FnvHashMap, FnvHashSet};
 use util::ppaux::Repr;
 
@@ -55,7 +54,7 @@ pub fn maybe_print_constraints_for<'a, 'tcx>(region_vars: &RegionVarBindings<'a,
                                              subject_node: ast::NodeId) {
     let tcx = region_vars.tcx;
 
-    if !region_vars.tcx.sess.debugging_opt(config::PRINT_REGION_GRAPH) {
+    if !region_vars.tcx.sess.opts.debugging_opts.print_region_graph {
         return;
     }
 
