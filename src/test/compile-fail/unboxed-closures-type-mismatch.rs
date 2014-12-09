@@ -14,6 +14,6 @@ use std::ops::FnMut;
 
 pub fn main() {
     let mut f = |&mut: x: int, y: int| -> int { x + y };
-    let z = f.call_mut((1u, 2));    //~ ERROR not implemented
+    let z = f.call_mut((1u, 2));    //~ ERROR type mismatch
     println!("{}", z);
 }
