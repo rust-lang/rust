@@ -30,7 +30,7 @@ use hash::Hash;
 
 /// A map optimized for small integer keys.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use std::collections::VecMap;
@@ -92,7 +92,7 @@ impl <S: hash::Writer, T: Hash<S>> Hash<S> for VecMap<T> {
 impl<V> VecMap<V> {
     /// Creates an empty `VecMap`.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::VecMap;
@@ -104,7 +104,7 @@ impl<V> VecMap<V> {
     /// Creates an empty `VecMap` with space for at least `capacity`
     /// elements before resizing.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::VecMap;
@@ -118,7 +118,7 @@ impl<V> VecMap<V> {
     /// Returns the number of elements the `VecMap` can hold without
     /// reallocating.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::VecMap;
@@ -148,7 +148,7 @@ impl<V> VecMap<V> {
     /// Returns an iterator visiting all key-value pairs in ascending order by the keys.
     /// The iterator's element type is `(uint, &'r V)`.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::VecMap;
@@ -176,7 +176,7 @@ impl<V> VecMap<V> {
     /// with mutable references to the values.
     /// The iterator's element type is `(uint, &'r mut V)`.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::VecMap;
@@ -207,7 +207,7 @@ impl<V> VecMap<V> {
     /// the keys, emptying (but not consuming) the original `VecMap`.
     /// The iterator's element type is `(uint, &'r V)`.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::VecMap;
@@ -235,7 +235,7 @@ impl<V> VecMap<V> {
 
     /// Return the number of elements in the map.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::VecMap;
@@ -252,7 +252,7 @@ impl<V> VecMap<V> {
 
     /// Return true if the map contains no elements.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::VecMap;
@@ -269,7 +269,7 @@ impl<V> VecMap<V> {
 
     /// Clears the map, removing all key-value pairs.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::VecMap;
@@ -290,7 +290,7 @@ impl<V> VecMap<V> {
 
     /// Returns a reference to the value corresponding to the key.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::VecMap;
@@ -314,7 +314,7 @@ impl<V> VecMap<V> {
 
     /// Returns true if the map contains a value for the specified key.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::VecMap;
@@ -338,7 +338,7 @@ impl<V> VecMap<V> {
 
     /// Returns a mutable reference to the value corresponding to the key.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::VecMap;
@@ -372,7 +372,7 @@ impl<V> VecMap<V> {
     /// Inserts a key-value pair from the map. If the key already had a value
     /// present in the map, that value is returned. Otherwise, `None` is returned.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::VecMap;
@@ -403,7 +403,7 @@ impl<V> VecMap<V> {
     /// Removes a key from the map, returning the value at the key if the key
     /// was previously in the map.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::VecMap;
@@ -428,7 +428,7 @@ impl<V:Clone> VecMap<V> {
     /// Otherwise, sets the value to `newval`.
     /// Returns `true` if the key did not already exist in the map.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::VecMap;
@@ -452,7 +452,7 @@ impl<V:Clone> VecMap<V> {
     /// Otherwise, sets the value to `newval`.
     /// Returns `true` if the key did not already exist in the map.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::VecMap;
