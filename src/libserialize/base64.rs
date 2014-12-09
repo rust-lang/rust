@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -28,10 +28,22 @@ pub enum CharacterSet {
 
 impl Copy for CharacterSet {}
 
+/// Available newline types
+pub enum Newline {
+    /// A linefeed (i.e. Unix-style newline)
+    LF,
+    /// A carriage return and a linefeed (i.e. Windows-style newline)
+    CRLF
+}
+
+impl Copy for Newline {}
+
 /// Contains configuration parameters for `to_base64`.
 pub struct Config {
     /// Character set to use
     pub char_set: CharacterSet,
+    /// Newline to use
+    pub newline: Newline,
     /// True to pad output with `=` characters
     pub pad: bool,
     /// `Some(len)` to wrap lines at `len`, `None` to disable line wrapping
@@ -42,15 +54,15 @@ impl Copy for Config {}
 
 /// Configuration for RFC 4648 standard base64 encoding
 pub static STANDARD: Config =
-    Config {char_set: Standard, pad: true, line_length: None};
+    Config {char_set: Standard, newline: Newline::CRLF, pad: true, line_length: None};
 
 /// Configuration for RFC 4648 base64url encoding
 pub static URL_SAFE: Config =
-    Config {char_set: UrlSafe, pad: false, line_length: None};
+    Config {char_set: UrlSafe, newline: Newline::CRLF, pad: false, line_length: None};
 
 /// Configuration for RFC 2045 MIME base64 encoding
 pub static MIME: Config =
-    Config {char_set: Standard, pad: true, line_length: Some(76)};
+    Config {char_set: Standard, newline: Newline::CRLF, pad: true, line_length: Some(76)};
 
 static STANDARD_CHARS: &'static[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ\
                                         abcdefghijklmnopqrstuvwxyz\
@@ -87,24 +99,30 @@ impl ToBase64 for [u8] {
             UrlSafe => URLSAFE_CHARS
         };
 
-        let mut v = Vec::new();
+        // In general, this Vec only needs (4/3) * self.len() memory, but
+        // addition is faster than multiplication and division.
+        let mut v = Vec::with_capacity(self.len() + self.len());
         let mut i = 0;
         let mut cur_length = 0;
         let len = self.len();
-        while i < len - (len % 3) {
-            match config.line_length {
-                Some(line_length) =>
-                    if cur_length >= line_length {
-                        v.push(b'\r');
-                        v.push(b'\n');
-                        cur_length = 0;
-                    },
-                None => ()
+        let mod_len = len % 3;
+        let cond_len = len - mod_len;
+        let newline = match config.newline {
+            Newline::LF => b"\n",
+            Newline::CRLF => b"\r\n"
+        };
+        while i < cond_len {
+            let (first, second, third) = (self[i], self[i + 1], self[i + 2]);
+            if let Some(line_length) = config.line_length {
+                if cur_length >= line_length {
+                    v.push_all(newline);
+                    cur_length = 0;
+                }
             }
 
-            let n = (self[i] as u32) << 16 |
-                    (self[i + 1] as u32) << 8 |
-                    (self[i + 2] as u32);
+            let n = (first  as u32) << 16 |
+                    (second as u32) << 8 |
+                    (third  as u32);
 
             // This 24-bit number gets separated into four 6-bit numbers.
             v.push(bytes[((n >> 18) & 63) as uint]);
@@ -116,20 +134,17 @@ impl ToBase64 for [u8] {
             i += 3;
         }
 
-        if len % 3 != 0 {
-            match config.line_length {
-                Some(line_length) =>
-                    if cur_length >= line_length {
-                        v.push(b'\r');
-                        v.push(b'\n');
-                    },
-                None => ()
+        if mod_len != 0 {
+            if let Some(line_length) = config.line_length {
+                if cur_length >= line_length {
+                    v.push_all(newline);
+                }
             }
         }
 
         // Heh, would be cool if we knew this was exhaustive
         // (the dream of bounded integer types)
-        match len % 3 {
+        match mod_len {
             0 => (),
             1 => {
                 let n = (self[i] as u32) << 16;
@@ -232,7 +247,7 @@ impl FromBase64 for str {
 
 impl FromBase64 for [u8] {
     fn from_base64(&self) -> Result<Vec<u8>, FromBase64Error> {
-        let mut r = Vec::new();
+        let mut r = Vec::with_capacity(self.len());
         let mut buf: u32 = 0;
         let mut modulus = 0i;
 
@@ -288,7 +303,7 @@ impl FromBase64 for [u8] {
 mod tests {
     extern crate test;
     use self::test::Bencher;
-    use base64::{Config, FromBase64, ToBase64, STANDARD, URL_SAFE};
+    use base64::{Config, Newline, FromBase64, ToBase64, STANDARD, URL_SAFE};
 
     #[test]
     fn test_to_base64_basic() {
@@ -302,12 +317,25 @@ mod tests {
     }
 
     #[test]
-    fn test_to_base64_line_break() {
+    fn test_to_base64_crlf_line_break() {
         assert!(![0u8, ..1000].to_base64(Config {line_length: None, ..STANDARD})
                               .contains("\r\n"));
-        assert_eq!("foobar".as_bytes().to_base64(Config {line_length: Some(4),
-                                                         ..STANDARD}),
+        assert_eq!(b"foobar".to_base64(Config {line_length: Some(4),
+                                               ..STANDARD}),
                    "Zm9v\r\nYmFy");
+    }
+
+    #[test]
+    fn test_to_base64_lf_line_break() {
+        assert!(![0u8, ..1000].to_base64(Config {line_length: None,
+                                                 newline: Newline::LF,
+                                                 ..STANDARD})
+                              .as_slice()
+                              .contains("\n"));
+        assert_eq!(b"foobar".to_base64(Config {line_length: Some(4),
+                                               newline: Newline::LF,
+                                               ..STANDARD}),
+                   "Zm9v\nYmFy");
     }
 
     #[test]
@@ -343,6 +371,10 @@ mod tests {
         assert_eq!("Zm9v\r\nYmFy".from_base64().unwrap(),
                    b"foobar");
         assert_eq!("Zm9vYg==\r\n".from_base64().unwrap(),
+                   b"foob");
+        assert_eq!("Zm9v\nYmFy".from_base64().unwrap(),
+                   b"foobar");
+        assert_eq!("Zm9vYg==\n".from_base64().unwrap(),
                    b"foob");
     }
 
