@@ -99,13 +99,15 @@ pub fn parse_pretty(sess: &Session, name: &str) -> (PpMode, Option<UserIdentifie
 
 impl PpSourceMode {
     /// Constructs a `PrinterSupport` object and passes it to `f`.
-    fn call_with_pp_support<'tcx, A, B>(&self,
-                                        sess: Session,
-                                        ast_map: Option<ast_map::Map<'tcx>>,
-                                        type_arena: &'tcx TypedArena<ty::TyS<'tcx>>,
-                                        id: String,
-                                        payload: B,
-                                        f: |&PrinterSupport, B| -> A) -> A {
+    fn call_with_pp_support<'tcx, A, B, F>(&self,
+                                           sess: Session,
+                                           ast_map: Option<ast_map::Map<'tcx>>,
+                                           type_arena: &'tcx TypedArena<ty::TyS<'tcx>>,
+                                           id: String,
+                                           payload: B,
+                                           f: F) -> A where
+        F: FnOnce(&PrinterSupport, B) -> A,
+    {
         match *self {
             PpmNormal | PpmExpanded => {
                 let annotation = NoAnn { sess: sess, ast_map: ast_map };
