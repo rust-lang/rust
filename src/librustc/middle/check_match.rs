@@ -220,7 +220,7 @@ fn check_expr(cx: &mut MatchCheckCtxt, ex: &ast::Expr) {
             let matrix: Matrix = inlined_arms
                 .iter()
                 .filter(|&&(_, guard)| guard.is_none())
-                .flat_map(|arm| arm.ref0().iter())
+                .flat_map(|arm| arm.0.iter())
                 .map(|pat| vec![&**pat])
                 .collect();
             check_exhaustive(cx, ex.span, &matrix);
