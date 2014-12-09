@@ -96,9 +96,9 @@ impl<'a, 'tcx> GuaranteeLifetimeContext<'a, 'tcx> {
     fn check_scope(&self, max_scope: ty::Region) -> R {
         //! Reports an error if `loan_region` is larger than `max_scope`
 
-        debug!("check_scope max_scope: {} self.loan_region: {}",
-               max_scope.repr(self.bccx.tcx),
-               self.loan_region.repr(self.bccx.tcx));
+        debug!("check_scope self.loan_region: {} max_scope: {}",
+               self.loan_region.repr(self.bccx.tcx),
+               max_scope.repr(self.bccx.tcx));
         if !self.bccx.is_subregion_of(self.loan_region, max_scope) {
             Err(self.report_error(err_out_of_scope(max_scope, self.loan_region)))
         } else {
