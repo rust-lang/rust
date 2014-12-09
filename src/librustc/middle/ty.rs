@@ -1436,7 +1436,7 @@ impl Copy for ExistentialBounds {}
 pub type BuiltinBounds = EnumSet<BuiltinBound>;
 
 #[deriving(Clone, Encodable, PartialEq, Eq, Decodable, Hash, Show)]
-#[repr(uint)]
+#[repr(u8)]
 pub enum BuiltinBound {
     BoundSend,
     BoundSized,
@@ -1465,11 +1465,11 @@ pub fn region_existential_bound(r: ty::Region) -> ExistentialBounds {
 }
 
 impl CLike for BuiltinBound {
-    fn to_uint(&self) -> uint {
-        *self as uint
+    fn to_u32(&self) -> u32 {
+        *self as u32
     }
-    fn from_uint(v: uint) -> BuiltinBound {
-        unsafe { mem::transmute(v) }
+    unsafe fn from_u32(v: u32) -> BuiltinBound {
+        mem::transmute(v as u8)
     }
 }
 
