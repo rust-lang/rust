@@ -69,7 +69,7 @@ impl Barrier {
     /// Barriers are re-usable after all threads have rendezvoused once, and can
     /// be used continuously.
     pub fn wait(&self) {
-        let mut lock = self.lock.lock();
+        let mut lock = self.lock.lock().unwrap();
         let local_gen = lock.generation_id;
         lock.count += 1;
         if lock.count < self.num_threads {
@@ -77,7 +77,7 @@ impl Barrier {
             // http://en.wikipedia.org/wiki/Spurious_wakeup
             while local_gen == lock.generation_id &&
                   lock.count < self.num_threads {
-                self.cvar.wait(&lock);
+                lock = self.cvar.wait(lock).unwrap();
             }
         } else {
             lock.count = 0;

@@ -240,11 +240,16 @@ impl<T: 'static> Key<T> {
         unsafe {
             let slot = slot.get().expect("cannot access a TLS value during or \
                                           after it is destroyed");
-            if (*slot.get()).is_none() {
-                *slot.get() = Some((self.init)());
-            }
-            f((*slot.get()).as_ref().unwrap())
+            f(match *slot.get() {
+                Some(ref inner) => inner,
+                None => self.init(slot),
+            })
         }
+    }
+
+    unsafe fn init(&self, slot: &UnsafeCell<Option<T>>) -> &T {
+        *slot.get() = Some((self.init)());
+        (*slot.get()).as_ref().unwrap()
     }
 
     /// Test this TLS key to determine whether its value has been destroyed for

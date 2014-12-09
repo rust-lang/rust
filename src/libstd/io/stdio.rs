@@ -146,7 +146,7 @@ impl StdinReader {
     /// ```
     pub fn lock<'a>(&'a mut self) -> StdinReaderGuard<'a> {
         StdinReaderGuard {
-            inner: self.inner.lock()
+            inner: self.inner.lock().unwrap()
         }
     }
 
@@ -155,7 +155,7 @@ impl StdinReader {
     /// The read is performed atomically - concurrent read calls in other
     /// threads will not interleave with this one.
     pub fn read_line(&mut self) -> IoResult<String> {
-        self.inner.lock().0.read_line()
+        self.inner.lock().unwrap().0.read_line()
     }
 
     /// Like `Buffer::read_until`.
@@ -163,7 +163,7 @@ impl StdinReader {
     /// The read is performed atomically - concurrent read calls in other
     /// threads will not interleave with this one.
     pub fn read_until(&mut self, byte: u8) -> IoResult<Vec<u8>> {
-        self.inner.lock().0.read_until(byte)
+        self.inner.lock().unwrap().0.read_until(byte)
     }
 
     /// Like `Buffer::read_char`.
@@ -171,13 +171,13 @@ impl StdinReader {
     /// The read is performed atomically - concurrent read calls in other
     /// threads will not interleave with this one.
     pub fn read_char(&mut self) -> IoResult<char> {
-        self.inner.lock().0.read_char()
+        self.inner.lock().unwrap().0.read_char()
     }
 }
 
 impl Reader for StdinReader {
     fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
-        self.inner.lock().0.read(buf)
+        self.inner.lock().unwrap().0.read(buf)
     }
 
     // We have to manually delegate all of these because the default impls call
@@ -185,23 +185,23 @@ impl Reader for StdinReader {
     // incur the costs of repeated locking).
 
     fn read_at_least(&mut self, min: uint, buf: &mut [u8]) -> IoResult<uint> {
-        self.inner.lock().0.read_at_least(min, buf)
+        self.inner.lock().unwrap().0.read_at_least(min, buf)
     }
 
     fn push_at_least(&mut self, min: uint, len: uint, buf: &mut Vec<u8>) -> IoResult<uint> {
-        self.inner.lock().0.push_at_least(min, len, buf)
+        self.inner.lock().unwrap().0.push_at_least(min, len, buf)
     }
 
     fn read_to_end(&mut self) -> IoResult<Vec<u8>> {
-        self.inner.lock().0.read_to_end()
+        self.inner.lock().unwrap().0.read_to_end()
     }
 
     fn read_le_uint_n(&mut self, nbytes: uint) -> IoResult<u64> {
-        self.inner.lock().0.read_le_uint_n(nbytes)
+        self.inner.lock().unwrap().0.read_le_uint_n(nbytes)
     }
 
     fn read_be_uint_n(&mut self, nbytes: uint) -> IoResult<u64> {
-        self.inner.lock().0.read_be_uint_n(nbytes)
+        self.inner.lock().unwrap().0.read_be_uint_n(nbytes)
     }
 }
 

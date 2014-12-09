@@ -58,7 +58,7 @@
 //!     let five = five.clone();
 //!
 //!     Thread::spawn(move || {
-//!         let mut number = five.lock();
+//!         let mut number = five.lock().unwrap();
 //!
 //!         *number += 1;
 //!
@@ -722,7 +722,7 @@ mod tests {
 
         let a = Arc::new(Cycle { x: Mutex::new(None) });
         let b = a.clone().downgrade();
-        *a.x.lock() = Some(b);
+        *a.x.lock().unwrap() = Some(b);
 
         // hopefully we don't double-free (or leak)...
     }

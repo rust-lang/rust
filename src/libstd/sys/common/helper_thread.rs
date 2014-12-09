@@ -83,7 +83,7 @@ impl<M: Send> Helper<M> {
         F: FnOnce() -> T,
     {
         unsafe {
-            let _guard = self.lock.lock();
+            let _guard = self.lock.lock().unwrap();
             if !*self.initialized.get() {
                 let (tx, rx) = channel();
                 *self.chan.get() = mem::transmute(box tx);
@@ -95,7 +95,7 @@ impl<M: Send> Helper<M> {
                 let t = f();
                 Thread::spawn(move |:| {
                     helper(receive.0, rx, t);
-                    let _g = self.lock.lock();
+                    let _g = self.lock.lock().unwrap();
                     *self.shutdown.get() = true;
                     self.cond.notify_one()
                 }).detach();
@@ -111,7 +111,7 @@ impl<M: Send> Helper<M> {
     /// This is only valid if the worker thread has previously booted
     pub fn send(&'static self, msg: M) {
         unsafe {
-            let _guard = self.lock.lock();
+            let _guard = self.lock.lock().unwrap();
 
             // Must send and *then* signal to ensure that the child receives the
             // message. Otherwise it could wake up and go to sleep before we
@@ -127,7 +127,7 @@ impl<M: Send> Helper<M> {
             // Shut down, but make sure this is done inside our lock to ensure
             // that we'll always receive the exit signal when the thread
             // returns.
-            let guard = self.lock.lock();
+            let mut guard = self.lock.lock().unwrap();
 
             // Close the channel by destroying it
             let chan: Box<Sender<M>> = mem::transmute(*self.chan.get());
@@ -137,7 +137,7 @@ impl<M: Send> Helper<M> {
 
             // Wait for the child to exit
             while !*self.shutdown.get() {
-                self.cond.wait(&guard);
+                guard = self.cond.wait(guard).unwrap();
             }
             drop(guard);
 
