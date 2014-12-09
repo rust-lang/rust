@@ -1938,11 +1938,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         infer::mk_subr(self.infcx(), origin, sub, sup)
     }
 
-    pub fn type_error_message(&self,
-                              sp: Span,
-                              mk_msg: |String| -> String,
-                              actual_ty: Ty<'tcx>,
-                              err: Option<&ty::type_err<'tcx>>) {
+    pub fn type_error_message<M>(&self,
+                                 sp: Span,
+                                 mk_msg: M,
+                                 actual_ty: Ty<'tcx>,
+                                 err: Option<&ty::type_err<'tcx>>) where
+        M: FnOnce(String) -> String,
+    {
         self.infcx().type_error_message(sp, mk_msg, actual_ty, err);
     }
 
