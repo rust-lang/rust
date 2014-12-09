@@ -646,7 +646,9 @@ fn shortty(item: &clean::Item) -> ItemType {
 /// static HTML tree.
 // FIXME (#9639): The closure should deal with &[u8] instead of &str
 // FIXME (#9639): This is too conservative, rejecting non-UTF-8 paths
-fn clean_srcpath(src_root: &Path, src: &[u8], f: |&str|) {
+fn clean_srcpath<F>(src_root: &Path, src: &[u8], mut f: F) where
+    F: FnMut(&str),
+{
     let p = Path::new(src);
 
     // make it relative, if possible
@@ -1051,7 +1053,9 @@ impl<'a> Cache {
 impl Context {
     /// Recurse in the directory structure and change the "root path" to make
     /// sure it always points to the top (relatively)
-    fn recurse<T>(&mut self, s: String, f: |&mut Context| -> T) -> T {
+    fn recurse<T, F>(&mut self, s: String, f: F) -> T where
+        F: FnOnce(&mut Context) -> T,
+    {
         if s.len() == 0 {
             panic!("Unexpected empty destination: {}", self.current);
         }
@@ -1131,8 +1135,9 @@ impl Context {
     /// all sub-items which need to be rendered.
     ///
     /// The rendering driver uses this closure to queue up more work.
-    fn item(&mut self, item: clean::Item,
-            f: |&mut Context, clean::Item|) -> io::IoResult<()> {
+    fn item<F>(&mut self, item: clean::Item, mut f: F) -> io::IoResult<()> where
+        F: FnMut(&mut Context, clean::Item),
+    {
         fn render(w: io::File, cx: &Context, it: &clean::Item,
                   pushname: bool) -> io::IoResult<()> {
             info!("Rendering an item to {}", w.path().display());
