@@ -1015,7 +1015,7 @@ mod tests {
     use test::Bencher;
 
     use slice::CloneSliceAllocPrelude;
-    use str::{Str, StrPrelude};
+    use str::{Str, StrAllocating, StrPrelude};
     use str;
     use super::{as_string, String, ToString};
     use vec::Vec;
