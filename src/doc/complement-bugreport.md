@@ -37,7 +37,7 @@ It's also helpful to provide the exact version and host by copying the output of
 re-running the erroneous rustc command with the `--version=verbose` flag, which will
 produce something like this:
 
-```{ignore}
+```text
 rustc 0.12.0 (ba4081a5a 2014-10-07 13:44:41 -0700)
 binary: rustc
 commit-hash: ba4081a5a8573875fed17545846f6f6902c8ba8d
