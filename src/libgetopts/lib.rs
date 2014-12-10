@@ -33,7 +33,7 @@
 //!
 //! ```{.rust}
 //! extern crate getopts;
-//! use getopts::{optopt,optflag,getopts,OptGroup};
+//! use getopts::{optopt,optflag,getopts,OptGroup,usage};
 //! use std::os;
 //!
 //! fn do_work(inp: &str, out: Option<String>) {
@@ -44,10 +44,9 @@
 //!     }
 //! }
 //!
-//! fn print_usage(program: &str, _opts: &[OptGroup]) {
-//!     println!("Usage: {} [options]", program);
-//!     println!("-o\t\tOutput");
-//!     println!("-h --help\tUsage");
+//! fn print_usage(program: &str, opts: &[OptGroup]) {
+//!     let brief = format!("Usage: {} [options]", program);
+//!     print!("{}", usage(brief.as_slice(), opts));
 //! }
 //!
 //! fn main() {
