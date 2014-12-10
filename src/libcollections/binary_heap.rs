@@ -15,7 +15,7 @@
 //! complexity. A priority queue can also be converted to a sorted vector in-place, allowing it to
 //! be used for an `O(n log n)` in-place heapsort.
 //!
-//! # Example
+//! # Examples
 //!
 //! This is a larger example which implements [Dijkstra's algorithm][dijkstra]
 //! to solve the [shortest path problem][sssp] on a [directed graph][dir_graph].
@@ -180,7 +180,7 @@ impl<T: Ord> Default for BinaryHeap<T> {
 impl<T: Ord> BinaryHeap<T> {
     /// Creates an empty `BinaryHeap` as a max-heap.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BinaryHeap;
@@ -194,7 +194,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// so that the `BinaryHeap` does not have to be reallocated
     /// until it contains at least that many values.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BinaryHeap;
@@ -208,7 +208,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// Creates a `BinaryHeap` from a vector. This is sometimes called
     /// `heapifying` the vector.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BinaryHeap;
@@ -227,7 +227,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// An iterator visiting all values in underlying vector, in
     /// arbitrary order.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BinaryHeap;
@@ -247,7 +247,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// the binary heap in arbitrary order.  The binary heap cannot be used
     /// after calling this.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BinaryHeap;
@@ -266,7 +266,7 @@ impl<T: Ord> BinaryHeap<T> {
 
     /// Returns the greatest item in a queue, or `None` if it is empty.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BinaryHeap;
@@ -286,7 +286,7 @@ impl<T: Ord> BinaryHeap<T> {
 
     /// Returns the number of elements the queue can hold without reallocating.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BinaryHeap;
@@ -308,7 +308,7 @@ impl<T: Ord> BinaryHeap<T> {
     ///
     /// Panics if the new capacity overflows `uint`.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BinaryHeap;
@@ -327,7 +327,7 @@ impl<T: Ord> BinaryHeap<T> {
     ///
     /// Panics if the new capacity overflows `uint`.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BinaryHeap;
@@ -350,7 +350,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// Removes the greatest item from a queue and returns it, or `None` if it
     /// is empty.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BinaryHeap;
@@ -377,7 +377,7 @@ impl<T: Ord> BinaryHeap<T> {
 
     /// Pushes an item onto the queue.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BinaryHeap;
@@ -400,7 +400,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// Pushes an item onto a queue then pops the greatest item off the queue in
     /// an optimized fashion.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BinaryHeap;
@@ -426,7 +426,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// an optimized fashion. The push is done regardless of whether the queue
     /// was empty.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BinaryHeap;
@@ -452,7 +452,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// Consumes the `BinaryHeap` and returns the underlying vector
     /// in arbitrary order.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BinaryHeap;
@@ -470,7 +470,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// Consumes the `BinaryHeap` and returns a vector in sorted
     /// (ascending) order.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BinaryHeap;
