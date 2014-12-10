@@ -87,8 +87,8 @@ use std::hash;
 
 use vec::Vec;
 
-type Blocks<'a> = Cloned<Items<'a, u32>>
-type MutBlocks<'a> MutItems<'a, u32>;
+type Blocks<'a> = Cloned<Items<'a, u32>>;
+type MutBlocks<'a> = MutItems<'a, u32>;
 type MatchWords<'a> = Chain<Enumerate<Blocks<'a>>, Skip<Take<Enumerate<Repeat<u32>>>>>;
 
 // Take two BitV's, and return iterators of their words, where the shorter one
@@ -199,7 +199,7 @@ impl Bitv {
     /// Iterator over mutable refs to  the underlying blocks of data.
     fn blocks_mut(&mut self) -> MutBlocks {
         let blocks = blocks_for_bits(self.len());
-        self.storage[..blocks].iter_mut()
+        self.storage.slice_to_mut(blocks).iter_mut()
     }
 
     /// Iterator over the underlying blocks of data
@@ -336,7 +336,7 @@ impl Bitv {
         assert!(i < self.nbits);
         let w = i / u32::BITS;
         let b = i % u32::BITS;
-        self.storage.get(w).map(|block|
+        self.storage.get(w).map(|&block|
             (block & (1 << b)) != 0
         )
     }
@@ -835,10 +835,11 @@ impl Bitv {
         if self.is_empty() {
             None
         } else {
-            let ret = self[self.nbits - 1];
+            let i = self.nbits - 1;
+            let ret = self[i];
             // Second rule of Bitv Club
-            self.set(self.nbits - 1, false);
-            self.nbits -= 1;
+            self.set(i, false);
+            self.nbits = i;
             Some(ret)
         }
     }
