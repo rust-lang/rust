@@ -120,7 +120,7 @@
 //!
 //! The compiler accepts a flag of this form a number of times:
 //!
-//! ```ignore
+//! ```text
 //! --extern crate-name=path/to/the/crate.rlib
 //! ```
 //!
@@ -152,7 +152,7 @@
 //!
 //! and the compiler would be invoked as:
 //!
-//! ```ignore
+//! ```text
 //! rustc a.rs --extern b1=path/to/libb1.rlib --extern b2=path/to/libb2.rlib
 //! ```
 //!
@@ -178,7 +178,7 @@
 //! dependencies, not the upstream transitive dependencies. Consider this
 //! dependency graph:
 //!
-//! ```ignore
+//! ```text
 //! A.1   A.2
 //! |     |
 //! |     |

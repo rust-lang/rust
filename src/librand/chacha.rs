@@ -117,7 +117,7 @@ impl ChaChaRng {
     /// security proof for a more involved example of this.
     ///
     /// The modified word layout is:
-    /// ```ignore
+    /// ```text
     /// constant constant constant constant
     /// key      key      key      key
     /// key      key      key      key
