@@ -11,3 +11,5 @@ Lints included in this crate:
  - `clippy_dlist`: Warns on usage of `DList`
 
 More to come, please [file an issue](https://github.com/Manishearth/rust-clippy/issues) if you have ideas!
+
+Licensed under [MPL](https://www.mozilla.org/MPL/2.0/). If you're having issues with the license, let me know and I'll try to change it to something more permissive.
