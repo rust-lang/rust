@@ -115,6 +115,7 @@ pub mod util {
     pub mod ppaux;
     pub mod nodemap;
     pub mod snapshot_vec;
+    pub mod lev_distance;
 }
 
 pub mod lib {

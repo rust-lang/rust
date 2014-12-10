@@ -78,10 +78,9 @@
 //! }
 //! ```
 
-use option::Option;
-use option::Option::None;
-use kinds::Send;
-use string::String;
+use prelude::*;
+
+use str::Utf8Error;
 
 /// Base functionality for all errors in Rust.
 pub trait Error: Send {
@@ -106,4 +105,15 @@ impl<E> FromError<E> for E {
     fn from_error(err: E) -> E {
         err
     }
+}
+
+impl Error for Utf8Error {
+    fn description(&self) -> &str {
+        match *self {
+            Utf8Error::TooShort => "invalid utf-8: not enough bytes",
+            Utf8Error::InvalidByte(..) => "invalid utf-8: corrupt contents",
+        }
+    }
+
+    fn detail(&self) -> Option<String> { Some(self.to_string()) }
 }

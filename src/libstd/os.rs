@@ -729,7 +729,7 @@ fn real_args() -> Vec<String> {
         // Push it onto the list.
         let ptr = ptr as *const u16;
         let buf = slice::from_raw_buf(&ptr, len);
-        let opt_s = String::from_utf16(::str::truncate_utf16_at_nul(buf));
+        let opt_s = String::from_utf16(os_imp::truncate_utf16_at_nul(buf));
         opt_s.expect("CommandLineToArgvW returned invalid UTF-16")
     });
 

@@ -57,6 +57,7 @@ use rustc::middle::privacy::*;
 use rustc::middle::subst::{ParamSpace, FnSpace, TypeSpace};
 use rustc::middle::ty::{CaptureModeMap, Freevar, FreevarMap, TraitMap};
 use rustc::util::nodemap::{NodeMap, NodeSet, DefIdSet, FnvHashMap};
+use rustc::util::lev_distance::lev_distance;
 
 use syntax::ast::{Arm, BindByRef, BindByValue, BindingMode, Block, Crate, CrateNum};
 use syntax::ast::{DeclItem, DefId, Expr, ExprAgain, ExprBreak, ExprField};
@@ -96,8 +97,8 @@ use std::mem::replace;
 use std::rc::{Rc, Weak};
 use std::uint;
 
-mod check_unused;
-mod record_exports;
+// Definition mapping
+pub type DefMap = RefCell<NodeMap<Def>>;
 
 #[deriving(Copy)]
 struct BindingInfo {
@@ -5539,7 +5540,7 @@ impl<'a> Resolver<'a> {
 
         let mut smallest = 0;
         for (i, other) in maybes.iter().enumerate() {
-            values[i] = name.lev_distance(other.get());
+            values[i] = lev_distance(name, other.get());
 
             if values[i] <= values[smallest] {
                 smallest = i;
