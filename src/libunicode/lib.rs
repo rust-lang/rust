@@ -28,8 +28,7 @@
        html_root_url = "http://doc.rust-lang.org/nightly/",
        html_playground_url = "http://play.rust-lang.org/")]
 #![no_std]
-#![feature(globs)]
-#![feature(unboxed_closures)]
+#![feature(globs, macro_rules, slicing_syntax, unboxed_closures)]
 
 extern crate core;
 
@@ -74,11 +73,14 @@ pub mod char {
 }
 
 pub mod str {
-    pub use u_str::{UnicodeStrPrelude, Words, Graphemes, GraphemeIndices};
+    pub use u_str::{UnicodeStr, Words, Graphemes, GraphemeIndices};
+    pub use u_str::{utf8_char_width, is_utf16, Utf16Items, Utf16Item};
+    pub use u_str::{utf16_items, Utf16Encoder};
 }
 
-// this lets us use #[deriving(Clone)]
+// this lets us use #[deriving(..)]
 mod std {
     pub use core::clone;
     pub use core::cmp;
+    pub use core::fmt;
 }

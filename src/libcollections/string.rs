@@ -21,13 +21,12 @@ use core::hash;
 use core::mem;
 use core::ptr;
 use core::ops;
-// FIXME: ICE's abound if you import the `Slice` type while importing `Slice` trait
 use core::raw::Slice as RawSlice;
+use unicode::str as unicode_str;
+use unicode::str::Utf16Item;
 
 use slice::CloneSliceExt;
-use str;
-use str::{CharRange, CowString, FromStr, StrAllocating};
-use str::MaybeOwned::Owned;
+use str::{mod, CharRange, FromStr, StrExt, Owned, Utf8Error};
 use vec::{DerefVec, Vec, as_vec};
 
 /// A growable string stored as a UTF-8 encoded buffer.
@@ -87,8 +86,10 @@ impl String {
     /// Returns the vector as a string buffer, if possible, taking care not to
     /// copy it.
     ///
-    /// Returns `Err` with the original vector if the vector contains invalid
-    /// UTF-8.
+    /// # Failure
+    ///
+    /// If the given vector is not valid UTF-8, then the original vector and the
+    /// corresponding error is returned.
     ///
     /// # Examples
     ///
@@ -103,11 +104,10 @@ impl String {
     /// ```
     #[inline]
     #[unstable = "error type may change"]
-    pub fn from_utf8(vec: Vec<u8>) -> Result<String, Vec<u8>> {
-        if str::is_utf8(vec.as_slice()) {
-            Ok(String { vec: vec })
-        } else {
-            Err(vec)
+    pub fn from_utf8(vec: Vec<u8>) -> Result<String, (Vec<u8>, Utf8Error)> {
+        match str::from_utf8(vec.as_slice()) {
+            Ok(..) => Ok(String { vec: vec }),
+            Err(e) => Err((vec, e))
         }
     }
 
@@ -123,8 +123,9 @@ impl String {
     /// ```
     #[unstable = "return type may change"]
     pub fn from_utf8_lossy<'a>(v: &'a [u8]) -> CowString<'a> {
-        if str::is_utf8(v) {
-            return Cow::Borrowed(unsafe { mem::transmute(v) })
+        match str::from_utf8(v) {
+            Ok(s) => return Cow::Borrowed(s),
+            Err(..) => {}
         }
 
         static TAG_CONT_U8: u8 = 128u8;
@@ -173,7 +174,7 @@ impl String {
             if byte < 128u8 {
                 // subseqidx handles this
             } else {
-                let w = str::utf8_char_width(byte);
+                let w = unicode_str::utf8_char_width(byte);
 
                 match w {
                     2 => {
@@ -235,7 +236,7 @@ impl String {
                 res.as_mut_vec().push_all(v[subseqidx..total])
             };
         }
-        Cow::Owned(res.into_string())
+        Cow::Owned(res)
     }
 
     /// Decode a UTF-16 encoded vector `v` into a `String`, returning `None`
@@ -256,10 +257,10 @@ impl String {
     #[unstable = "error value in return may change"]
     pub fn from_utf16(v: &[u16]) -> Option<String> {
         let mut s = String::with_capacity(v.len());
-        for c in str::utf16_items(v) {
+        for c in unicode_str::utf16_items(v) {
             match c {
-                str::ScalarValue(c) => s.push(c),
-                str::LoneSurrogate(_) => return None
+                Utf16Item::ScalarValue(c) => s.push(c),
+                Utf16Item::LoneSurrogate(_) => return None
             }
         }
         Some(s)
@@ -281,7 +282,7 @@ impl String {
     /// ```
     #[stable]
     pub fn from_utf16_lossy(v: &[u16]) -> String {
-        str::utf16_items(v).map(|c| c.to_char_lossy()).collect()
+        unicode_str::utf16_items(v).map(|c| c.to_char_lossy()).collect()
     }
 
     /// Convert a vector of `char`s to a `String`.
@@ -812,21 +813,12 @@ impl<'a, 'b> PartialEq<CowString<'a>> for &'b str {
 }
 
 #[experimental = "waiting on Str stabilization"]
+#[allow(deprecated)]
 impl Str for String {
     #[inline]
     #[stable]
     fn as_slice<'a>(&'a self) -> &'a str {
-        unsafe {
-            mem::transmute(self.vec.as_slice())
-        }
-    }
-}
-
-#[experimental = "waiting on StrAllocating stabilization"]
-impl StrAllocating for String {
-    #[inline]
-    fn into_string(self) -> String {
-        self
+        unsafe { mem::transmute(self.vec.as_slice()) }
     }
 }
 
@@ -841,7 +833,7 @@ impl Default for String {
 #[experimental = "waiting on Show stabilization"]
 impl fmt::Show for String {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.as_slice().fmt(f)
+        (*self).fmt(f)
     }
 }
 
@@ -849,7 +841,7 @@ impl fmt::Show for String {
 impl<H: hash::Writer> hash::Hash<H> for String {
     #[inline]
     fn hash(&self, hasher: &mut H) {
-        self.as_slice().hash(hasher)
+        (*self).hash(hasher)
     }
 }
 
@@ -873,7 +865,7 @@ impl<'a> Add<&'a str, String> for String {
 impl ops::Slice<uint, str> for String {
     #[inline]
     fn as_slice_<'a>(&'a self) -> &'a str {
-        self.as_slice()
+        unsafe { mem::transmute(self.vec.as_slice()) }
     }
 
     #[inline]
@@ -894,7 +886,9 @@ impl ops::Slice<uint, str> for String {
 
 #[experimental = "waiting on Deref stabilization"]
 impl ops::Deref<str> for String {
-    fn deref<'a>(&'a self) -> &'a str { self.as_slice() }
+    fn deref<'a>(&'a self) -> &'a str {
+        unsafe { mem::transmute(self.vec[]) }
+    }
 }
 
 /// Wrapper type providing a `&String` reference via `Deref`.
@@ -1012,6 +1006,18 @@ pub mod raw {
     #[deprecated = "renamed to String::from_utf8_unchecked"]
     pub unsafe fn from_utf8(bytes: Vec<u8>) -> String {
         String::from_utf8_unchecked(bytes)
+    }
+}
+
+/// A clone-on-write string
+#[stable]
+pub type CowString<'a> = Cow<'a, String, str>;
+
+#[allow(deprecated)]
+impl<'a> Str for CowString<'a> {
+    #[inline]
+    fn as_slice<'b>(&'b self) -> &'b str {
+        (**self).as_slice()
     }
 }
 

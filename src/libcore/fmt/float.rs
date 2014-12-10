@@ -23,7 +23,7 @@ use num::cast;
 use ops::FnOnce;
 use result::Result::Ok;
 use slice::{mod, SliceExt};
-use str::StrPrelude;
+use str::StrExt;
 
 /// A flag that specifies whether to use exponential (scientific) notation.
 pub enum ExponentFormat {
