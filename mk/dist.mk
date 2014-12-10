@@ -48,7 +48,6 @@ PKG_FILES := \
     $(S)configure $(S)Makefile.in              \
     $(S)man                                    \
     $(addprefix $(S)src/,                      \
-      README.md                                \
       compiletest                              \
       doc                                      \
       driver                                   \
