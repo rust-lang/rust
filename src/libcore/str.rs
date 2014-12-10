@@ -1738,9 +1738,9 @@ pub trait StrPrelude for Sized? {
     /// }
     /// ```
     ///
-    /// ## Output
+    /// This outputs:
     ///
-    /// ```ignore
+    /// ```text
     /// 0: 中
     /// 3: 华
     /// 6: V

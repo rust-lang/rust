@@ -16,7 +16,7 @@
 //!
 //! `TreeMap`s are ordered.
 //!
-//! ## Example
+//! # Examples
 //!
 //! ```{rust}
 //! use std::collections::TreeSet;
