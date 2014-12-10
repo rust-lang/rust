@@ -2623,7 +2623,13 @@ fn check_method_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                          tuple_arguments: TupleArgumentsFlag)
                                          -> ty::FnOutput<'tcx> {
     if ty::type_is_error(method_fn_ty) {
-       let err_inputs = err_args(args_no_rcvr.len());
+        let err_inputs = err_args(args_no_rcvr.len());
+
+        let err_inputs = match tuple_arguments {
+            DontTupleArguments => err_inputs,
+            TupleArguments => vec![ty::mk_tup(fcx.tcx(), err_inputs)],
+        };
+
         check_argument_types(fcx,
                              sp,
                              err_inputs.as_slice(),
