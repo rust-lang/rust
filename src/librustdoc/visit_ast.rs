@@ -322,8 +322,9 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 };
                 om.constants.push(s);
             },
-            ast::ItemTrait(ref gen, ref def_ub, ref b, ref items) => {
+            ast::ItemTrait(unsafety, ref gen, ref def_ub, ref b, ref items) => {
                 let t = Trait {
+                    unsafety: unsafety,
                     name: name,
                     items: items.clone(),
                     generics: gen.clone(),

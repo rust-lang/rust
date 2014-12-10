@@ -76,7 +76,7 @@ impl<'v> Visitor<'v> for ParentVisitor {
             // method to the root. In this case, if the trait is private, then
             // parent all the methods to the trait to indicate that they're
             // private.
-            ast::ItemTrait(_, _, _, ref methods) if item.vis != ast::Public => {
+            ast::ItemTrait(_, _, _, _, ref methods) if item.vis != ast::Public => {
                 for m in methods.iter() {
                     match *m {
                         ast::ProvidedMethod(ref m) => {
@@ -282,7 +282,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
 
             // Default methods on traits are all public so long as the trait
             // is public
-            ast::ItemTrait(_, _, _, ref methods) if public_first => {
+            ast::ItemTrait(_, _, _, _, ref methods) if public_first => {
                 for method in methods.iter() {
                     match *method {
                         ast::ProvidedMethod(ref m) => {
@@ -1134,7 +1134,7 @@ impl<'a, 'tcx> SanePrivacyVisitor<'a, 'tcx> {
                 }
             }
 
-            ast::ItemTrait(_, _, _, ref methods) => {
+            ast::ItemTrait(_, _, _, _, ref methods) => {
                 for m in methods.iter() {
                     match *m {
                         ast::ProvidedMethod(ref m) => {
@@ -1198,7 +1198,7 @@ impl<'a, 'tcx> SanePrivacyVisitor<'a, 'tcx> {
 
             ast::ItemStruct(ref def, _) => check_struct(&**def),
 
-            ast::ItemTrait(_, _, _, ref methods) => {
+            ast::ItemTrait(_, _, _, _, ref methods) => {
                 for m in methods.iter() {
                     match *m {
                         ast::RequiredMethod(..) => {}
@@ -1305,7 +1305,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
             // namespace (the contents have their own privacies).
             ast::ItemForeignMod(_) => {}
 
-            ast::ItemTrait(_, _, ref bounds, _) => {
+            ast::ItemTrait(_, _, _, ref bounds, _) => {
                 if !self.trait_is_public(item.id) {
                     return
                 }

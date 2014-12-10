@@ -170,6 +170,7 @@ pub struct Constant {
 }
 
 pub struct Trait {
+    pub unsafety: ast::Unsafety,
     pub name: Ident,
     pub items: Vec<ast::TraitItem>, //should be TraitItem
     pub generics: ast::Generics,

@@ -1035,7 +1035,7 @@ pub fn noop_fold_item_underscore<T: Folder>(i: Item_, folder: &mut T) -> Item_ {
                      folder.fold_ty(ty),
                      new_impl_items)
         }
-        ItemTrait(generics, unbound, bounds, methods) => {
+        ItemTrait(unsafety, generics, unbound, bounds, methods) => {
             let bounds = folder.fold_bounds(bounds);
             let methods = methods.into_iter().flat_map(|method| {
                 let r = match method {
@@ -1063,7 +1063,8 @@ pub fn noop_fold_item_underscore<T: Folder>(i: Item_, folder: &mut T) -> Item_ {
                 };
                 r
             }).collect();
-            ItemTrait(folder.fold_generics(generics),
+            ItemTrait(unsafety,
+                      folder.fold_generics(generics),
                       unbound,
                       bounds,
                       methods)

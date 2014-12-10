@@ -4628,7 +4628,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse trait Foo { ... }
-    fn parse_item_trait(&mut self) -> ItemInfo {
+    fn parse_item_trait(&mut self, unsafety: Unsafety) -> ItemInfo {
         let ident = self.parse_ident();
         let mut tps = self.parse_generics();
         let sized = self.parse_for_sized();
@@ -4639,7 +4639,7 @@ impl<'a> Parser<'a> {
         self.parse_where_clause(&mut tps);
 
         let meths = self.parse_trait_items();
-        (ident, ItemTrait(tps, sized, bounds, meths), None)
+        (ident, ItemTrait(unsafety, tps, sized, bounds, meths), None)
     }
 
     fn parse_impl_items(&mut self) -> (Vec<ImplItem>, Vec<Attribute>) {
@@ -5539,6 +5539,23 @@ impl<'a> Parser<'a> {
                                     maybe_append(attrs, extra_attrs));
             return IoviItem(item);
         }
+        if self.token.is_keyword(keywords::Unsafe) &&
+            self.look_ahead(1u, |t| t.is_keyword(keywords::Trait))
+        {
+            // UNSAFE TRAIT ITEM
+            self.expect_keyword(keywords::Unsafe);
+            self.expect_keyword(keywords::Trait);
+            let (ident, item_, extra_attrs) =
+                self.parse_item_trait(ast::Unsafety::Unsafe);
+            let last_span = self.last_span;
+            let item = self.mk_item(lo,
+                                    last_span.hi,
+                                    ident,
+                                    item_,
+                                    visibility,
+                                    maybe_append(attrs, extra_attrs));
+            return IoviItem(item);
+        }
         if self.token.is_keyword(keywords::Fn) &&
                 self.look_ahead(1, |f| !Parser::fn_expr_lookahead(f)) {
             // FUNCTION ITEM
@@ -5614,7 +5631,8 @@ impl<'a> Parser<'a> {
         }
         if self.eat_keyword(keywords::Trait) {
             // TRAIT ITEM
-            let (ident, item_, extra_attrs) = self.parse_item_trait();
+            let (ident, item_, extra_attrs) =
+                self.parse_item_trait(ast::Unsafety::Normal);
             let last_span = self.last_span;
             let item = self.mk_item(lo,
                                     last_span.hi,

@@ -1308,13 +1308,22 @@ fn encode_info_for_item(ecx: &EncodeContext,
             }
         }
       }
-      ast::ItemTrait(_, _, _, ref ms) => {
+      ast::ItemTrait(_, _, _, _, ref ms) => {
         add_to_index(item, rbml_w, index);
         rbml_w.start_tag(tag_items_data_item);
         encode_def_id(rbml_w, def_id);
         encode_family(rbml_w, 'I');
         encode_item_variances(rbml_w, ecx, item.id);
         let trait_def = ty::lookup_trait_def(tcx, def_id);
+
+        match trait_def.unsafety {
+            ast::Unsafety::Unsafe => {
+                rbml_w.start_tag(tag_unsafety);
+                rbml_w.end_tag();
+            }
+            ast::Unsafety::Normal => { }
+        }
+
         encode_generics(rbml_w, ecx, &trait_def.generics, tag_item_generics);
         encode_trait_ref(rbml_w, ecx, &*trait_def.trait_ref, tag_item_trait_ref);
         encode_name(rbml_w, item.ident.name);

@@ -974,6 +974,7 @@ impl Clean<FunctionRetTy> for ast::FunctionRetTy {
 
 #[deriving(Clone, Encodable, Decodable)]
 pub struct Trait {
+    pub unsafety: ast::Unsafety,
     pub items: Vec<TraitMethod>,
     pub generics: Generics,
     pub bounds: Vec<TyParamBound>,
@@ -991,6 +992,7 @@ impl Clean<Item> for doctree::Trait {
             visibility: self.vis.clean(cx),
             stability: self.stab.clean(cx),
             inner: TraitItem(Trait {
+                unsafety: self.unsafety,
                 items: self.items.clean(cx),
                 generics: self.generics.clean(cx),
                 bounds: self.bounds.clean(cx),

@@ -106,7 +106,7 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
             ast::ItemTy(_, ref generics) |
             ast::ItemEnum(_, ref generics) |
             ast::ItemStruct(_, ref generics) |
-            ast::ItemTrait(ref generics, _, _, _) => {
+            ast::ItemTrait(_, ref generics, _, _, _) => {
                 // These kinds of items have only early bound lifetime parameters.
                 let lifetimes = &generics.lifetimes;
                 self.with(EarlyScope(subst::TypeSpace, lifetimes, &ROOT_SCOPE), |this| {
