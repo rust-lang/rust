@@ -301,7 +301,7 @@ pub trait CloneSliceAllocPrelude<T> for Sized? {
     /// Creates an iterator that yields every possible permutation of the
     /// vector in succession.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// let v = [1i, 2, 3];
@@ -312,7 +312,7 @@ pub trait CloneSliceAllocPrelude<T> for Sized? {
     /// }
     /// ```
     ///
-    /// # Example 2: iterating through permutations one by one.
+    /// Iterating through permutations one by one.
     ///
     /// ```rust
     /// let v = [1i, 2, 3];
@@ -571,7 +571,7 @@ pub trait OrdSliceAllocPrelude<T> for Sized? {
     ///
     /// This is equivalent to `self.sort_by(|a, b| a.cmp(b))`.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// let mut v = [-5i, 4, 1, -3, 2];
@@ -600,7 +600,7 @@ pub trait SliceAllocPrelude<T> for Sized? {
     /// This sort is `O(n log n)` worst-case and stable, but allocates
     /// approximately `2 * n`, where `n` is the length of `self`.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// let mut v = [5i, 4, 1, 3, 2];
@@ -625,7 +625,7 @@ pub trait SliceAllocPrelude<T> for Sized? {
     /// * start - The index into `src` to start copying from
     /// * end - The index into `src` to stop copying from
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// let mut a = [1i, 2, 3, 4, 5];

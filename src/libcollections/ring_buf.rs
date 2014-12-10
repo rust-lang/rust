@@ -136,7 +136,7 @@ impl<T> RingBuf<T> {
 
     /// Retrieves an element in the `RingBuf` by index.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::collections::RingBuf;
@@ -159,7 +159,7 @@ impl<T> RingBuf<T> {
 
     /// Retrieves an element in the `RingBuf` mutably by index.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::collections::RingBuf;
@@ -193,7 +193,7 @@ impl<T> RingBuf<T> {
     ///
     /// Fails if there is no element with either index.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::collections::RingBuf;
@@ -219,7 +219,7 @@ impl<T> RingBuf<T> {
     /// Returns the number of elements the `RingBuf` can hold without
     /// reallocating.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::RingBuf;
@@ -242,7 +242,7 @@ impl<T> RingBuf<T> {
     ///
     /// Panics if the new capacity overflows `uint`.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::RingBuf;
@@ -263,7 +263,7 @@ impl<T> RingBuf<T> {
     ///
     /// Panics if the new capacity overflows `uint`.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::RingBuf;
@@ -341,7 +341,7 @@ impl<T> RingBuf<T> {
 
     /// Returns a front-to-back iterator.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::collections::RingBuf;
@@ -364,7 +364,7 @@ impl<T> RingBuf<T> {
 
     /// Returns a front-to-back iterator which returns mutable references.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::collections::RingBuf;
@@ -401,7 +401,7 @@ impl<T> RingBuf<T> {
 
     /// Returns the number of elements in the `RingBuf`.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::RingBuf;
@@ -416,7 +416,7 @@ impl<T> RingBuf<T> {
 
     /// Returns true if the buffer contains no elements
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::RingBuf;
@@ -431,7 +431,7 @@ impl<T> RingBuf<T> {
 
     /// Clears the buffer, removing all values.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::RingBuf;
@@ -451,7 +451,7 @@ impl<T> RingBuf<T> {
     /// Provides a reference to the front element, or `None` if the sequence is
     /// empty.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::RingBuf;
@@ -471,7 +471,7 @@ impl<T> RingBuf<T> {
     /// Provides a mutable reference to the front element, or `None` if the
     /// sequence is empty.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::RingBuf;
@@ -495,7 +495,7 @@ impl<T> RingBuf<T> {
     /// Provides a reference to the back element, or `None` if the sequence is
     /// empty.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::RingBuf;
@@ -515,7 +515,7 @@ impl<T> RingBuf<T> {
     /// Provides a mutable reference to the back element, or `None` if the
     /// sequence is empty.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::RingBuf;
@@ -540,7 +540,7 @@ impl<T> RingBuf<T> {
     /// Removes the first element and returns it, or `None` if the sequence is
     /// empty.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::RingBuf;
@@ -566,7 +566,7 @@ impl<T> RingBuf<T> {
 
     /// Inserts an element first in the sequence.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::RingBuf;
@@ -596,7 +596,7 @@ impl<T> RingBuf<T> {
 
     /// Appends an element to the back of a buffer
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::collections::RingBuf;
@@ -627,7 +627,7 @@ impl<T> RingBuf<T> {
     /// Removes the last element from a buffer and returns it, or `None` if
     /// it is empty.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::collections::RingBuf;

@@ -208,7 +208,7 @@ impl<T> DList<T> {
     ///
     /// If the list is empty, does nothing.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::collections::DList;
@@ -235,7 +235,7 @@ impl<T> DList<T> {
     ///
     /// If the list is empty, does nothing.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::collections::DList;
@@ -262,7 +262,7 @@ impl<T> DList<T> {
     ///
     /// This operation should compute in O(1) time.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::collections::DList;
@@ -303,7 +303,7 @@ impl<T> DList<T> {
     ///
     /// This operation should compute in O(1) time.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::collections::DList;
@@ -332,7 +332,7 @@ impl<T> DList<T> {
     ///
     /// This operation should compute in O(N) time.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::collections::DList;
@@ -504,7 +504,7 @@ impl<T> DList<T> {
 
     /// Appends an element to the back of a list
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::collections::DList;
@@ -528,7 +528,7 @@ impl<T> DList<T> {
     /// Removes the last element from a list and returns it, or `None` if
     /// it is empty.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::collections::DList;

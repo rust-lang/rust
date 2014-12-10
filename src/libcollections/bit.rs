@@ -13,7 +13,7 @@
 
 //! Collections implemented with bit vectors.
 //!
-//! # Example
+//! # Examples
 //!
 //! This is a simple example of the [Sieve of Eratosthenes][sieve]
 //! which calculates prime numbers up to a given limit.
@@ -101,7 +101,7 @@ static FALSE: bool = false;
 
 /// The bitvector type.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```rust
 /// use collections::Bitv;
@@ -214,7 +214,7 @@ impl Bitv {
 
     /// Creates an empty `Bitv`.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::Bitv;
@@ -228,7 +228,7 @@ impl Bitv {
     /// Creates a `Bitv` that holds `nbits` elements, setting each element
     /// to `init`.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::Bitv;
@@ -262,7 +262,7 @@ impl Bitv {
     ///
     /// Panics if `i` is out of bounds.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::bitv;
@@ -289,7 +289,7 @@ impl Bitv {
     ///
     /// Panics if `i` is out of bounds.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::Bitv;
@@ -311,7 +311,7 @@ impl Bitv {
 
     /// Sets all bits to 1.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::bitv;
@@ -330,7 +330,7 @@ impl Bitv {
 
     /// Flips all bits.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::bitv;
@@ -357,7 +357,7 @@ impl Bitv {
     ///
     /// Panics if the bitvectors are of different lengths.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::bitv;
@@ -387,7 +387,7 @@ impl Bitv {
     ///
     /// Panics if the bitvectors are of different lengths.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::bitv;
@@ -417,7 +417,7 @@ impl Bitv {
     ///
     /// Panics if the bitvectors are of different length.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::bitv;
@@ -446,7 +446,7 @@ impl Bitv {
 
     /// Returns `true` if all bits are 1.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::Bitv;
@@ -469,7 +469,7 @@ impl Bitv {
 
     /// Returns an iterator over the elements of the vector in order.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::bitv;
@@ -484,7 +484,7 @@ impl Bitv {
 
     /// Returns `true` if all bits are 0.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::Bitv;
@@ -501,7 +501,7 @@ impl Bitv {
 
     /// Returns `true` if any bit is 1.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::Bitv;
@@ -522,7 +522,7 @@ impl Bitv {
     /// size of the `Bitv` is not a multiple of eight then trailing bits
     /// will be filled-in with `false`.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::Bitv;
@@ -564,7 +564,7 @@ impl Bitv {
 
     /// Transforms `self` into a `Vec<bool>` by turning each bit into a `bool`.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::bitv;
@@ -584,7 +584,7 @@ impl Bitv {
     ///
     /// Panics if the `Bitv` and slice are of different length.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::bitv;
@@ -609,7 +609,7 @@ impl Bitv {
     /// If `len` is greater than the vector's current length, this has no
     /// effect.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::bitv;
@@ -633,7 +633,7 @@ impl Bitv {
 
     /// Grows the vector to be able to store `size` bits without resizing.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::Bitv;
@@ -654,7 +654,7 @@ impl Bitv {
     /// Returns the capacity in bits for this bit vector. Inserting any
     /// element less than this amount will not trigger a resizing.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::Bitv;
@@ -670,7 +670,7 @@ impl Bitv {
 
     /// Grows the `Bitv` in-place, adding `n` copies of `value` to the `Bitv`.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::bitv;
@@ -722,7 +722,7 @@ impl Bitv {
     ///
     /// Assert if empty.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::bitv;
@@ -745,7 +745,7 @@ impl Bitv {
 
     /// Pushes a `bool` onto the end.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::Bitv;
@@ -786,7 +786,7 @@ impl Bitv {
 /// with the most significant bits of each byte coming first. Each
 /// bit becomes `true` if equal to 1 or `false` if equal to 0.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use std::collections::bitv;
@@ -808,7 +808,7 @@ pub fn from_bytes(bytes: &[u8]) -> Bitv {
 /// Creates a `Bitv` of the specified length where the value at each
 /// index is `f(index)`.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use std::collections::bitv::from_fn;
@@ -968,7 +968,7 @@ impl<'a> RandomAccessIterator<bool> for Bits<'a> {
 /// set of objects is proportional to the maximum of the objects when viewed
 /// as a `uint`.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use std::collections::{BitvSet, Bitv};
@@ -1053,7 +1053,7 @@ impl cmp::Eq for BitvSet {}
 impl BitvSet {
     /// Creates a new bit vector set with initially no contents.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BitvSet;
@@ -1068,7 +1068,7 @@ impl BitvSet {
     /// Creates a new bit vector set with initially no contents, able to
     /// hold `nbits` elements without resizing.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BitvSet;
@@ -1084,7 +1084,7 @@ impl BitvSet {
 
     /// Creates a new bit vector set from the given bit vector.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::{bitv, BitvSet};
@@ -1107,7 +1107,7 @@ impl BitvSet {
     /// Returns the capacity in bits for this bit vector. Inserting any
     /// element less than this amount will not trigger a resizing.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BitvSet;
@@ -1124,7 +1124,7 @@ impl BitvSet {
 
     /// Grows the underlying vector to be able to store `size` bits.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BitvSet;
@@ -1143,7 +1143,7 @@ impl BitvSet {
 
     /// Consumes this set to return the underlying bit vector.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BitvSet;
@@ -1164,7 +1164,7 @@ impl BitvSet {
 
     /// Returns a reference to the underlying bit vector.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BitvSet;
@@ -1206,7 +1206,7 @@ impl BitvSet {
 
     /// Truncates the underlying vector to the least length required.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BitvSet;
@@ -1238,7 +1238,7 @@ impl BitvSet {
 
     /// Iterator over each u32 stored in the `BitvSet`.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BitvSet;
@@ -1260,7 +1260,7 @@ impl BitvSet {
     /// Iterator over each u32 stored in `self` union `other`.
     /// See [union_with](#method.union_with) for an efficient in-place version.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BitvSet;
@@ -1289,7 +1289,7 @@ impl BitvSet {
     /// Iterator over each uint stored in `self` intersect `other`.
     /// See [intersect_with](#method.intersect_with) for an efficient in-place version.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BitvSet;
@@ -1319,7 +1319,7 @@ impl BitvSet {
     /// Iterator over each uint stored in the `self` setminus `other`.
     /// See [difference_with](#method.difference_with) for an efficient in-place version.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BitvSet;
@@ -1356,7 +1356,7 @@ impl BitvSet {
     /// See [symmetric_difference_with](#method.symmetric_difference_with) for
     /// an efficient in-place version.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BitvSet;
@@ -1384,7 +1384,7 @@ impl BitvSet {
 
     /// Unions in-place with the specified other bit vector.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BitvSet;
@@ -1408,7 +1408,7 @@ impl BitvSet {
 
     /// Intersects in-place with the specified other bit vector.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BitvSet;
@@ -1433,7 +1433,7 @@ impl BitvSet {
     /// Makes this bit vector the difference with the specified other bit vector
     /// in-place.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BitvSet;
@@ -1466,7 +1466,7 @@ impl BitvSet {
     /// Makes this bit vector the symmetric difference with the specified other
     /// bit vector in-place.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BitvSet;
