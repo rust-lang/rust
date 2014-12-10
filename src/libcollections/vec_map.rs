@@ -21,10 +21,9 @@ use core::iter;
 use core::iter::{Enumerate, FilterMap};
 use core::mem::replace;
 
+use hash::{Hash, Writer};
 use {vec, slice};
 use vec::Vec;
-use hash;
-use hash::Hash;
 
 // FIXME(conventions): capacity management???
 
@@ -62,8 +61,8 @@ use hash::Hash;
 /// assert!(months.is_empty());
 /// ```
 #[deriving(PartialEq, Eq)]
-pub struct VecMap<T> {
-    v: Vec<Option<T>>,
+pub struct VecMap<V> {
+    v: Vec<Option<V>>,
 }
 
 impl<V> Default for VecMap<V> {
@@ -83,9 +82,16 @@ impl<V:Clone> Clone for VecMap<V> {
     }
 }
 
-impl <S: hash::Writer, T: Hash<S>> Hash<S> for VecMap<T> {
+impl<S: Writer, V: Hash<S>> Hash<S> for VecMap<V> {
     fn hash(&self, state: &mut S) {
-        self.v.hash(state)
+        // In order to not traverse the `VecMap` twice, count the elements
+        // during iteration.
+        let mut count: uint = 0;
+        for elt in self.iter() {
+            elt.hash(state);
+            count += 1;
+        }
+        count.hash(state);
     }
 }
 
@@ -99,7 +105,7 @@ impl<V> VecMap<V> {
     /// let mut map: VecMap<&str> = VecMap::new();
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn new() -> VecMap<V> { VecMap{v: vec!()} }
+    pub fn new() -> VecMap<V> { VecMap { v: vec![] } }
 
     /// Creates an empty `VecMap` with space for at least `capacity`
     /// elements before resizing.
@@ -223,10 +229,7 @@ impl<V> VecMap<V> {
     /// assert_eq!(vec, vec![(1, "a"), (2, "b"), (3, "c")]);
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn into_iter(&mut self)
-        -> FilterMap<(uint, Option<V>), (uint, V),
-                Enumerate<vec::MoveItems<Option<V>>>>
-    {
+    pub fn into_iter(&mut self) -> MoveItems<V> {
         let values = replace(&mut self.v, vec!());
         values.into_iter().enumerate().filter_map(|(i, v)| {
             v.map(|v| (i, v))
@@ -539,16 +542,19 @@ impl<V> IndexMut<uint, V> for VecMap<V> {
 
 macro_rules! iterator {
     (impl $name:ident -> $elem:ty, $($getter:ident),+) => {
-        impl<'a, T> Iterator<$elem> for $name<'a, T> {
+        impl<'a, V> Iterator<$elem> for $name<'a, V> {
             #[inline]
             fn next(&mut self) -> Option<$elem> {
                 while self.front < self.back {
                     match self.iter.next() {
                         Some(elem) => {
-                            if elem.is_some() {
-                                let index = self.front;
-                                self.front += 1;
-                                return Some((index, elem $(. $getter ())+));
+                            match elem$(. $getter ())+ {
+                                Some(x) => {
+                                    let index = self.front;
+                                    self.front += 1;
+                                    return Some((index, x));
+                                },
+                                None => {},
                             }
                         }
                         _ => ()
@@ -568,15 +574,18 @@ macro_rules! iterator {
 
 macro_rules! double_ended_iterator {
     (impl $name:ident -> $elem:ty, $($getter:ident),+) => {
-        impl<'a, T> DoubleEndedIterator<$elem> for $name<'a, T> {
+        impl<'a, V> DoubleEndedIterator<$elem> for $name<'a, V> {
             #[inline]
             fn next_back(&mut self) -> Option<$elem> {
                 while self.front < self.back {
                     match self.iter.next_back() {
                         Some(elem) => {
-                            if elem.is_some() {
-                                self.back -= 1;
-                                return Some((self.back, elem$(. $getter ())+));
+                            match elem$(. $getter ())+ {
+                                Some(x) => {
+                                    self.back -= 1;
+                                    return Some((self.back, x));
+                                },
+                                None => {},
                             }
                         }
                         _ => ()
@@ -590,39 +599,43 @@ macro_rules! double_ended_iterator {
 }
 
 /// Forward iterator over a map.
-pub struct Entries<'a, T:'a> {
+pub struct Entries<'a, V:'a> {
     front: uint,
     back: uint,
-    iter: slice::Items<'a, Option<T>>
+    iter: slice::Items<'a, Option<V>>
 }
 
-iterator!(impl Entries -> (uint, &'a T), as_ref, unwrap)
-double_ended_iterator!(impl Entries -> (uint, &'a T), as_ref, unwrap)
+iterator!(impl Entries -> (uint, &'a V), as_ref)
+double_ended_iterator!(impl Entries -> (uint, &'a V), as_ref)
 
 /// Forward iterator over the key-value pairs of a map, with the
 /// values being mutable.
-pub struct MutEntries<'a, T:'a> {
+pub struct MutEntries<'a, V:'a> {
     front: uint,
     back: uint,
-    iter: slice::MutItems<'a, Option<T>>
+    iter: slice::MutItems<'a, Option<V>>
 }
 
-iterator!(impl MutEntries -> (uint, &'a mut T), as_mut, unwrap)
-double_ended_iterator!(impl MutEntries -> (uint, &'a mut T), as_mut, unwrap)
+iterator!(impl MutEntries -> (uint, &'a mut V), as_mut)
+double_ended_iterator!(impl MutEntries -> (uint, &'a mut V), as_mut)
 
 /// Forward iterator over the keys of a map
-pub type Keys<'a, T> =
-    iter::Map<'static, (uint, &'a T), uint, Entries<'a, T>>;
+pub type Keys<'a, V> =
+    iter::Map<'static, (uint, &'a V), uint, Entries<'a, V>>;
 
 /// Forward iterator over the values of a map
-pub type Values<'a, T> =
-    iter::Map<'static, (uint, &'a T), &'a T, Entries<'a, T>>;
+pub type Values<'a, V> =
+    iter::Map<'static, (uint, &'a V), &'a V, Entries<'a, V>>;
+
+/// Iterator over the key-value pairs of a map, the iterator consumes the map
+pub type MoveItems<V> =
+    FilterMap<'static, (uint, Option<V>), (uint, V), Enumerate<vec::MoveItems<Option<V>>>>;
 
 #[cfg(test)]
 mod test_map {
     use std::prelude::*;
     use vec::Vec;
-    use hash;
+    use hash::hash;
 
     use super::VecMap;
 
@@ -940,7 +953,7 @@ mod test_map {
         let mut x = VecMap::new();
         let mut y = VecMap::new();
 
-        assert!(hash::hash(&x) == hash::hash(&y));
+        assert!(hash(&x) == hash(&y));
         x.insert(1, 'a');
         x.insert(2, 'b');
         x.insert(3, 'c');
@@ -949,7 +962,12 @@ mod test_map {
         y.insert(2, 'b');
         y.insert(1, 'a');
 
-        assert!(hash::hash(&x) == hash::hash(&y));
+        assert!(hash(&x) == hash(&y));
+
+        x.insert(1000, 'd');
+        x.remove(&1000);
+
+        assert!(hash(&x) == hash(&y));
     }
 
     #[test]
