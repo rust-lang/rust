@@ -903,6 +903,19 @@ impl<'a> Deref<String> for DerefString<'a> {
 }
 
 /// Convert a string slice to a wrapper type providing a `&String` reference.
+///
+/// # Examples
+///
+/// ```
+/// use std::string::as_string;
+///
+/// fn string_consumer(s: String) {
+///     assert_eq!(s, "foo".to_string());
+/// }
+///
+/// let string = as_string("foo").clone();
+/// string_consumer(string);
+/// ```
 #[experimental]
 pub fn as_string<'a>(x: &'a str) -> DerefString<'a> {
     DerefString { x: as_vec(x.as_bytes()) }
