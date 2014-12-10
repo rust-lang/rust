@@ -752,7 +752,7 @@ impl LintPass for UnusedResults {
         fn check_must_use(cx: &Context, attrs: &[ast::Attribute], sp: Span) -> bool {
             for attr in attrs.iter() {
                 if attr.check_name("must_use") {
-                    let mut msg = "unused result which must be used".to_string();
+                    let mut msg = "unused result which must be used".into_string();
                     // check for #[must_use="..."]
                     match attr.value_str() {
                         None => {}

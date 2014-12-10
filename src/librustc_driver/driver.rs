@@ -102,7 +102,7 @@ pub fn compile_input(sess: Session,
 /// The name used for source code that doesn't originate in a file
 /// (e.g. source from stdin or a string)
 pub fn anon_src() -> String {
-    "<anon>".to_string()
+    "<anon>".into_string()
 }
 
 pub fn source_name(input: &Input) -> String {
@@ -173,7 +173,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
             sess.add_lint(lint::builtin::UNKNOWN_FEATURES,
                           ast::CRATE_NODE_ID,
                           *uf,
-                          "unknown feature".to_string());
+                          "unknown feature".into_string());
         }
 
         sess.abort_if_errors();
@@ -654,7 +654,7 @@ pub fn collect_crate_types(session: &Session,
                                      ast::CRATE_NODE_ID,
                                      a.span,
                                      "invalid `crate_type` \
-                                      value".to_string());
+                                      value".into_string());
                     None
                 }
                 _ => {
@@ -662,7 +662,7 @@ pub fn collect_crate_types(session: &Session,
                                      ast::CRATE_NODE_ID,
                                      a.span,
                                      "`crate_type` requires a \
-                                      value".to_string());
+                                      value".into_string());
                     None
                 }
             }

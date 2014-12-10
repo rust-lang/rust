@@ -875,7 +875,7 @@ impl<'a> MethodDef<'a> {
         let self_arg_names = self_args.iter().enumerate()
             .map(|(arg_count, _self_arg)| {
                 if arg_count == 0 {
-                    "__self".to_string()
+                    "__self".into_string()
                 } else {
                     format!("__arg_{}", arg_count)
                 }

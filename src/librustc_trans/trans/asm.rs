@@ -168,10 +168,10 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
           target_arch = "mips",
           target_arch = "mipsel"))]
 fn get_clobbers() -> String {
-    "".to_string()
+    "".into_string()
 }
 
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 fn get_clobbers() -> String {
-    "~{dirflag},~{fpsr},~{flags}".to_string()
+    "~{dirflag},~{fpsr},~{flags}".into_string()
 }

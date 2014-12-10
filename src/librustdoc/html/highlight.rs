@@ -26,7 +26,7 @@ pub fn highlight(src: &str, class: Option<&str>, id: Option<&str>) -> String {
     let sess = parse::new_parse_sess();
     let fm = parse::string_to_filemap(&sess,
                                       src.to_string(),
-                                      "<stdin>".to_string());
+                                      "<stdin>".into_string());
 
     let mut out = Vec::new();
     doit(&sess,

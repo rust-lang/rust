@@ -2426,7 +2426,7 @@ impl<'a> Resolver<'a> {
             SingleImport(_, source) => {
                 token::get_name(source).get().to_string()
             }
-            GlobImport => "*".to_string()
+            GlobImport => "*".into_string()
         }
     }
 
@@ -3270,7 +3270,7 @@ impl<'a> Resolver<'a> {
                                     self.module_to_string(&*self.current_module);
 
                                 let prefix = if target_mod_str == current_mod_str {
-                                    "self::".to_string()
+                                    "self::".into_string()
                                 } else {
                                     format!("{}::", target_mod_str)
                                 };
@@ -5294,7 +5294,7 @@ impl<'a> Resolver<'a> {
                         .add_lint(lint::builtin::UNUSED_QUALIFICATIONS,
                                   id,
                                   path.span,
-                                  "unnecessary qualification".to_string());
+                                  "unnecessary qualification".into_string());
                 }
                 _ => ()
             }
@@ -5826,7 +5826,7 @@ impl<'a> Resolver<'a> {
                                             // limit search to 5 to reduce the number
                                             // of stupid suggestions
                                             self.find_best_match_for_name(wrong_name.as_slice(), 5)
-                                                                .map_or("".to_string(),
+                                                                .map_or("".into_string(),
                                                                         |x| format!("`{}`", x))
                                         }
                                         Field =>
@@ -6129,7 +6129,7 @@ impl<'a> Resolver<'a> {
                         self.session.add_lint(lint::builtin::UNUSED_EXTERN_CRATES,
                                               id,
                                               vi.span,
-                                              "unused extern crate".to_string());
+                                              "unused extern crate".into_string());
                     }
                 }
             },
@@ -6149,7 +6149,7 @@ impl<'a> Resolver<'a> {
                                 .add_lint(lint::builtin::UNUSED_IMPORTS,
                                           id,
                                           p.span,
-                                          "unused import".to_string());
+                                          "unused import".into_string());
                         }
                     },
                 }
@@ -6173,7 +6173,7 @@ impl<'a> Resolver<'a> {
             self.session.add_lint(lint::builtin::UNUSED_IMPORTS,
                                   id,
                                   span,
-                                  "unused import".to_string());
+                                  "unused import".into_string());
         }
 
         let (v_priv, t_priv) = match self.last_private.get(&id) {
@@ -6242,7 +6242,7 @@ impl<'a> Resolver<'a> {
         collect_mod(&mut names, module);
 
         if names.len() == 0 {
-            return "???".to_string();
+            return "???".into_string();
         }
         self.names_to_string(names.into_iter().rev()
                                   .collect::<Vec<ast::Name>>()
@@ -6264,18 +6264,18 @@ impl<'a> Resolver<'a> {
         for (&name, import_resolution) in import_resolutions.iter() {
             let value_repr;
             match import_resolution.target_for_namespace(ValueNS) {
-                None => { value_repr = "".to_string(); }
+                None => { value_repr = "".into_string(); }
                 Some(_) => {
-                    value_repr = " value:?".to_string();
+                    value_repr = " value:?".into_string();
                     // FIXME #4954
                 }
             }
 
             let type_repr;
             match import_resolution.target_for_namespace(TypeNS) {
-                None => { type_repr = "".to_string(); }
+                None => { type_repr = "".into_string(); }
                 Some(_) => {
-                    type_repr = " type:?".to_string();
+                    type_repr = " type:?".into_string();
                     // FIXME #4954
                 }
             }

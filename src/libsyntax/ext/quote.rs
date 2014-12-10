@@ -211,7 +211,7 @@ pub mod rt {
 
     impl ToSource for () {
         fn to_source(&self) -> String {
-            "()".to_string()
+            "()".into_string()
         }
     }
     impl ToSourceWithHygiene for () {
@@ -354,7 +354,7 @@ pub mod rt {
 
         fn parse_item(&self, s: String) -> P<ast::Item> {
             let res = parse::parse_item_from_source_str(
-                "<quote expansion>".to_string(),
+                "<quote expansion>".into_string(),
                 s,
                 self.cfg(),
                 self.parse_sess());
@@ -368,7 +368,7 @@ pub mod rt {
         }
 
         fn parse_stmt(&self, s: String) -> P<ast::Stmt> {
-            parse::parse_stmt_from_source_str("<quote expansion>".to_string(),
+            parse::parse_stmt_from_source_str("<quote expansion>".into_string(),
                                               s,
                                               self.cfg(),
                                               Vec::new(),
@@ -376,14 +376,14 @@ pub mod rt {
         }
 
         fn parse_expr(&self, s: String) -> P<ast::Expr> {
-            parse::parse_expr_from_source_str("<quote expansion>".to_string(),
+            parse::parse_expr_from_source_str("<quote expansion>".into_string(),
                                               s,
                                               self.cfg(),
                                               self.parse_sess())
         }
 
         fn parse_tts(&self, s: String) -> Vec<ast::TokenTree> {
-            parse::parse_tts_from_source_str("<quote expansion>".to_string(),
+            parse::parse_tts_from_source_str("<quote expansion>".into_string(),
                                              s,
                                              self.cfg(),
                                              self.parse_sess())
@@ -394,7 +394,7 @@ pub mod rt {
 
         fn parse_tts_with_hygiene(&self, s: String) -> Vec<ast::TokenTree> {
             use parse::with_hygiene::parse_tts_from_source_str;
-            parse_tts_from_source_str("<quote expansion>".to_string(),
+            parse_tts_from_source_str("<quote expansion>".into_string(),
                                       s,
                                       self.cfg(),
                                       self.parse_sess())

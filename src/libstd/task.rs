@@ -288,7 +288,7 @@ mod test {
 
     #[test]
     fn test_owned_named_task() {
-        TaskBuilder::new().named("ada lovelace".to_string()).try(proc() {
+        TaskBuilder::new().named("ada lovelace".into_string()).try(proc() {
             assert!(name().unwrap() == "ada lovelace");
         }).map_err(|_| ()).unwrap();
     }
@@ -330,7 +330,7 @@ mod test {
     #[test]
     fn test_try_success() {
         match try(proc() {
-            "Success!".to_string()
+            "Success!".into_string()
         }).as_ref().map(|s| s.as_slice()) {
             result::Result::Ok("Success!") => (),
             _ => panic!()
@@ -459,7 +459,7 @@ mod test {
     #[test]
     fn test_try_panic_message_owned_str() {
         match try(proc() {
-            panic!("owned string".to_string());
+            panic!("owned string".into_string());
         }) {
             Err(e) => {
                 type T = String;

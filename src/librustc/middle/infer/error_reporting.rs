@@ -1444,12 +1444,12 @@ impl<'a, 'tcx> ErrorReportingHelpers<'tcx> for InferCtxt<'a, 'tcx> {
     fn report_inference_failure(&self,
                                 var_origin: RegionVariableOrigin) {
         let var_description = match var_origin {
-            infer::MiscVariable(_) => "".to_string(),
-            infer::PatternRegion(_) => " for pattern".to_string(),
-            infer::AddrOfRegion(_) => " for borrow expression".to_string(),
-            infer::AddrOfSlice(_) => " for slice expression".to_string(),
-            infer::Autoref(_) => " for autoref".to_string(),
-            infer::Coercion(_) => " for automatic coercion".to_string(),
+            infer::MiscVariable(_) => "".into_string(),
+            infer::PatternRegion(_) => " for pattern".into_string(),
+            infer::AddrOfRegion(_) => " for borrow expression".into_string(),
+            infer::AddrOfSlice(_) => " for slice expression".into_string(),
+            infer::Autoref(_) => " for autoref".into_string(),
+            infer::Coercion(_) => " for automatic coercion".into_string(),
             infer::LateBoundRegion(_, br, infer::FnCall) => {
                 format!(" for {}in function call",
                         bound_region_to_string(self.tcx, "lifetime parameter ", true, br))

@@ -593,9 +593,9 @@ mod test {
     fn test_read_line() {
         let in_buf = MemReader::new(b"a\nb\nc".to_vec());
         let mut reader = BufferedReader::with_capacity(2, in_buf);
-        assert_eq!(reader.read_line(), Ok("a\n".to_string()));
-        assert_eq!(reader.read_line(), Ok("b\n".to_string()));
-        assert_eq!(reader.read_line(), Ok("c".to_string()));
+        assert_eq!(reader.read_line(), Ok("a\n".into_string()));
+        assert_eq!(reader.read_line(), Ok("b\n".into_string()));
+        assert_eq!(reader.read_line(), Ok("c".into_string()));
         assert!(reader.read_line().is_err());
     }
 
@@ -604,9 +604,9 @@ mod test {
         let in_buf = MemReader::new(b"a\nb\nc".to_vec());
         let mut reader = BufferedReader::with_capacity(2, in_buf);
         let mut it = reader.lines();
-        assert_eq!(it.next(), Some(Ok("a\n".to_string())));
-        assert_eq!(it.next(), Some(Ok("b\n".to_string())));
-        assert_eq!(it.next(), Some(Ok("c".to_string())));
+        assert_eq!(it.next(), Some(Ok("a\n".into_string())));
+        assert_eq!(it.next(), Some(Ok("b\n".into_string())));
+        assert_eq!(it.next(), Some(Ok("c".into_string())));
         assert_eq!(it.next(), None);
     }
 

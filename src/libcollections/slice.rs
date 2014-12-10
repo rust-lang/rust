@@ -1121,7 +1121,7 @@ mod tests {
             assert_eq!(it.next(), None);
         }
         {
-            let v = ["Hello".to_string()];
+            let v = ["Hello".into_string()];
             let mut it = v.permutations();
             let (min_size, max_opt) = it.size_hint();
             assert_eq!(min_size, 1);

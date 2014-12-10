@@ -85,7 +85,7 @@ fn test_swap() {
 
 #[test]
 fn test_replace() {
-    let mut x = Some("test".to_string());
+    let mut x = Some("test".into_string());
     let y = replace(&mut x, None);
     assert!(x.is_none());
     assert!(y.is_some());
@@ -109,7 +109,7 @@ fn test_transmute() {
     }
 
     unsafe {
-        assert!(vec![76u8] == transmute::<_, Vec<u8>>("L".to_string()));
+        assert!(vec![76u8] == transmute::<_, Vec<u8>>("L".into_string()));
     }
 }
 

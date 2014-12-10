@@ -1391,7 +1391,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
             let value = if *immut {
                 self.span.snippet(p.span).into_string()
             } else {
-                "<mutable>".to_string()
+                "<mutable>".into_string()
             };
             let sub_span = self.span.span_for_first_ident(p.span);
             let def_map = self.analysis.ty_cx.def_map.borrow();
@@ -1448,7 +1448,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
         let value = self.span.snippet(l.span);
 
         for &(id, ref p, ref immut, _) in self.collected_paths.iter() {
-            let value = if *immut { value.to_string() } else { "<mutable>".to_string() };
+            let value = if *immut { value.to_string() } else { "<mutable>".into_string() };
             let types = self.analysis.ty_cx.node_types.borrow();
             let typ = ppaux::ty_to_string(&self.analysis.ty_cx, (*types)[id]);
             // Get the span only for the name of the variable (I hope the path

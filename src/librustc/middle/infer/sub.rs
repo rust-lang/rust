@@ -38,7 +38,7 @@ pub fn Sub<'f, 'tcx>(cf: CombineFields<'f, 'tcx>) -> Sub<'f, 'tcx> {
 
 impl<'f, 'tcx> Combine<'tcx> for Sub<'f, 'tcx> {
     fn infcx<'a>(&'a self) -> &'a InferCtxt<'a, 'tcx> { self.fields.infcx }
-    fn tag(&self) -> String { "sub".to_string() }
+    fn tag(&self) -> String { "sub".into_string() }
     fn a_is_expected(&self) -> bool { self.fields.a_is_expected }
     fn trace(&self) -> TypeTrace<'tcx> { self.fields.trace.clone() }
 

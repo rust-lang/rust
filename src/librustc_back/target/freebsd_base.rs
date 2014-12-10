@@ -13,15 +13,15 @@ use std::default::Default;
 
 pub fn opts() -> TargetOptions {
     TargetOptions {
-        linker: "cc".to_string(),
+        linker: "cc".into_string(),
         dynamic_linking: true,
         executables: true,
         morestack: true,
         has_rpath: true,
         pre_link_args: vec!(
-            "-L/usr/local/lib".to_string(),
-            "-L/usr/local/lib/gcc46".to_string(),
-            "-L/usr/local/lib/gcc44".to_string(),
+            "-L/usr/local/lib".into_string(),
+            "-L/usr/local/lib/gcc46".into_string(),
+            "-L/usr/local/lib/gcc44".into_string(),
         ),
 
         .. Default::default()

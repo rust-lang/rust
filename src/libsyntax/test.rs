@@ -245,7 +245,7 @@ fn generate_test_harness(sess: &ParseSess,
         sess: sess,
         span_diagnostic: sd,
         ext_cx: ExtCtxt::new(sess, cfg.clone(),
-                             ExpansionConfig::default("test".to_string())),
+                             ExpansionConfig::default("test".into_string())),
         path: Vec::new(),
         testfns: Vec::new(),
         reexport_test_harness_main: reexport_test_harness_main,
@@ -257,7 +257,7 @@ fn generate_test_harness(sess: &ParseSess,
     cx.ext_cx.bt_push(ExpnInfo {
         call_site: DUMMY_SP,
         callee: NameAndSpan {
-            name: "test".to_string(),
+            name: "test".into_string(),
             format: MacroAttribute,
             span: None
         }

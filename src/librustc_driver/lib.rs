@@ -146,7 +146,7 @@ fn run_compiler(args: &[String]) {
     }
 
     let r = matches.opt_strs("Z");
-    if r.contains(&("ls".to_string())) {
+    if r.contains(&("ls".into_string())) {
         match input {
             Input::File(ref ifile) => {
                 let mut stdout = io::stdout();
@@ -389,7 +389,7 @@ pub fn handle_options(mut args: Vec<String>) -> Option<getopts::Matches> {
         return None;
     }
 
-    if cg_flags.contains(&"passes=list".to_string()) {
+    if cg_flags.contains(&"passes=list".into_string()) {
         unsafe { ::llvm::LLVMRustPrintPasses(); }
         return None;
     }
@@ -502,10 +502,10 @@ pub fn monitor(f: proc():Send) {
                 }
 
                 let xs = [
-                    "the compiler unexpectedly panicked. this is a bug.".to_string(),
+                    "the compiler unexpectedly panicked. this is a bug.".into_string(),
                     format!("we would appreciate a bug report: {}",
                             BUG_REPORT_URL),
-                    "run with `RUST_BACKTRACE=1` for a backtrace".to_string(),
+                    "run with `RUST_BACKTRACE=1` for a backtrace".into_string(),
                 ];
                 for note in xs.iter() {
                     emitter.emit(None, note.as_slice(), None, diagnostic::Note)

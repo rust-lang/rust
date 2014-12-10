@@ -13,7 +13,7 @@ use std::default::Default;
 
 pub fn opts() -> TargetOptions {
     TargetOptions {
-        linker: "cc".to_string(),
+        linker: "cc".into_string(),
         dynamic_linking: true,
         executables: true,
         morestack: true,
@@ -23,7 +23,7 @@ pub fn opts() -> TargetOptions {
             // GNU-style linkers will use this to omit linking to libraries which
             // don't actually fulfill any relocations, but only for libraries which
             // follow this flag. Thus, use it before specifying libraries to link to.
-            "-Wl,--as-needed".to_string(),
+            "-Wl,--as-needed".into_string(),
         ),
         position_independent_executables: true,
         .. Default::default()

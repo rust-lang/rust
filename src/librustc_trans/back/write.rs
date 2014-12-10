@@ -71,7 +71,7 @@ pub fn write_output_file(
             let result = llvm::LLVMRustWriteOutputFile(
                     target, pm, m, output, file_type);
             if !result {
-                llvm_err(handler, "could not write output".to_string());
+                llvm_err(handler, "could not write output".into_string());
             }
         })
     }
@@ -620,7 +620,7 @@ pub fn run_passes(sess: &Session,
                                    trans.metadata_module,
                                    metadata_config.clone(),
                                    crate_output.clone(),
-                                   "metadata".to_string());
+                                   "metadata".into_string());
         work_items.push(work);
     }
 

@@ -120,10 +120,10 @@ impl Token {
 pub fn tok_str(t: Token) -> string::String {
     match t {
         String(s, len) => return format!("STR({},{})", s, len),
-        Break(_) => return "BREAK".to_string(),
-        Begin(_) => return "BEGIN".to_string(),
-        End => return "END".to_string(),
-        Eof => return "EOF".to_string()
+        Break(_) => return "BREAK".into_string(),
+        Begin(_) => return "BEGIN".into_string(),
+        End => return "END".into_string(),
+        Eof => return "EOF".into_string()
     }
 }
 

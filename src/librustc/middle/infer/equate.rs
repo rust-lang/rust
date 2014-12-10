@@ -34,7 +34,7 @@ pub fn Equate<'f, 'tcx>(cf: CombineFields<'f, 'tcx>) -> Equate<'f, 'tcx> {
 
 impl<'f, 'tcx> Combine<'tcx> for Equate<'f, 'tcx> {
     fn infcx<'a>(&'a self) -> &'a InferCtxt<'a, 'tcx> { self.fields.infcx }
-    fn tag(&self) -> String { "eq".to_string() }
+    fn tag(&self) -> String { "eq".into_string() }
     fn a_is_expected(&self) -> bool { self.fields.a_is_expected }
     fn trace(&self) -> TypeTrace<'tcx> { self.fields.trace.clone() }
 

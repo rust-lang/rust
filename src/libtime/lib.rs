@@ -1456,62 +1456,62 @@ mod tests {
         }
 
         let days = [
-            "Sunday".to_string(),
-            "Monday".to_string(),
-            "Tuesday".to_string(),
-            "Wednesday".to_string(),
-            "Thursday".to_string(),
-            "Friday".to_string(),
-            "Saturday".to_string()
+            "Sunday".into_string(),
+            "Monday".into_string(),
+            "Tuesday".into_string(),
+            "Wednesday".into_string(),
+            "Thursday".into_string(),
+            "Friday".into_string(),
+            "Saturday".into_string()
         ];
         for day in days.iter() {
             assert!(test(day.as_slice(), "%A"));
         }
 
         let days = [
-            "Sun".to_string(),
-            "Mon".to_string(),
-            "Tue".to_string(),
-            "Wed".to_string(),
-            "Thu".to_string(),
-            "Fri".to_string(),
-            "Sat".to_string()
+            "Sun".into_string(),
+            "Mon".into_string(),
+            "Tue".into_string(),
+            "Wed".into_string(),
+            "Thu".into_string(),
+            "Fri".into_string(),
+            "Sat".into_string()
         ];
         for day in days.iter() {
             assert!(test(day.as_slice(), "%a"));
         }
 
         let months = [
-            "January".to_string(),
-            "February".to_string(),
-            "March".to_string(),
-            "April".to_string(),
-            "May".to_string(),
-            "June".to_string(),
-            "July".to_string(),
-            "August".to_string(),
-            "September".to_string(),
-            "October".to_string(),
-            "November".to_string(),
-            "December".to_string()
+            "January".into_string(),
+            "February".into_string(),
+            "March".into_string(),
+            "April".into_string(),
+            "May".into_string(),
+            "June".into_string(),
+            "July".into_string(),
+            "August".into_string(),
+            "September".into_string(),
+            "October".into_string(),
+            "November".into_string(),
+            "December".into_string()
         ];
         for day in months.iter() {
             assert!(test(day.as_slice(), "%B"));
         }
 
         let months = [
-            "Jan".to_string(),
-            "Feb".to_string(),
-            "Mar".to_string(),
-            "Apr".to_string(),
-            "May".to_string(),
-            "Jun".to_string(),
-            "Jul".to_string(),
-            "Aug".to_string(),
-            "Sep".to_string(),
-            "Oct".to_string(),
-            "Nov".to_string(),
-            "Dec".to_string()
+            "Jan".into_string(),
+            "Feb".into_string(),
+            "Mar".into_string(),
+            "Apr".into_string(),
+            "May".into_string(),
+            "Jun".into_string(),
+            "Jul".into_string(),
+            "Aug".into_string(),
+            "Sep".into_string(),
+            "Oct".into_string(),
+            "Nov".into_string(),
+            "Dec".into_string()
         ];
         for day in months.iter() {
             assert!(test(day.as_slice(), "%b"));

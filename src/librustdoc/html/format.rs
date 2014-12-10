@@ -246,7 +246,7 @@ fn path(w: &mut fmt::Formatter, path: &clean::Path, print_all: bool,
     let cache = cache();
     let abs_root = root(&*cache, loc.as_slice());
     let rel_root = match path.segments[0].name.as_slice() {
-        "self" => Some("./".to_string()),
+        "self" => Some("./".into_string()),
         _ => None,
     };
 
@@ -392,7 +392,7 @@ impl fmt::Show for clean::Type {
                 write!(f, "{style}{lifetimes}|{args}|{bounds}{arrow}",
                        style = FnStyleSpace(decl.fn_style),
                        lifetimes = if decl.lifetimes.len() == 0 {
-                           "".to_string()
+                           "".into_string()
                        } else {
                            format!("&lt;{:#}&gt;", decl.lifetimes)
                        },
@@ -421,13 +421,13 @@ impl fmt::Show for clean::Type {
                 write!(f, "{style}{lifetimes}proc({args}){bounds}{arrow}",
                        style = FnStyleSpace(decl.fn_style),
                        lifetimes = if decl.lifetimes.len() == 0 {
-                           "".to_string()
+                           "".into_string()
                        } else {
                            format!("&lt;{:#}&gt;", decl.lifetimes)
                        },
                        args = decl.decl.inputs,
                        bounds = if decl.bounds.len() == 0 {
-                           "".to_string()
+                           "".into_string()
                        } else {
                            let m = decl.bounds
                                            .iter()
@@ -442,8 +442,8 @@ impl fmt::Show for clean::Type {
                 write!(f, "{}{}fn{}{}",
                        FnStyleSpace(decl.fn_style),
                        match decl.abi.as_slice() {
-                           "" => " extern ".to_string(),
-                           "\"Rust\"" => "".to_string(),
+                           "" => " extern ".into_string(),
+                           "\"Rust\"" => "".into_string(),
                            s => format!(" extern {} ", s)
                        },
                        decl.generics,
@@ -470,7 +470,7 @@ impl fmt::Show for clean::Type {
             clean::BorrowedRef{ lifetime: ref l, mutability, type_: ref ty} => {
                 let lt = match *l {
                     Some(ref l) => format!("{} ", *l),
-                    _ => "".to_string(),
+                    _ => "".into_string(),
                 };
                 let m = MutableSpace(mutability);
                 match **ty {

@@ -192,7 +192,7 @@ fn summarize_item(item: &Item) -> (Counts, Option<ModuleSummary>) {
             submodules.sort();
 
             (counts, Some(ModuleSummary {
-                name: item.name.as_ref().map_or("".to_string(), |n| n.clone()),
+                name: item.name.as_ref().map_or("".into_string(), |n| n.clone()),
                 counts: counts,
                 submodules: submodules,
             }))

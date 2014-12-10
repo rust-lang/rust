@@ -827,7 +827,7 @@ impl<T> Vec<T> {
     /// # Examples
     ///
     /// ```
-    /// let v = vec!["a".to_string(), "b".to_string()];
+    /// let v = vec!["a".into_string(), "b".into_string()];
     /// for s in v.into_iter() {
     ///     // s has type String, not &String
     ///     println!("{}", s);

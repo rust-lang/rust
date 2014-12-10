@@ -126,14 +126,14 @@ impl<'a, 'tcx, O:DataFlowOperator> pprust::PpAnn for DataFlowContext<'a, 'tcx, O
             let gens_str = if gens.iter().any(|&u| u != 0) {
                 format!(" gen: {}", bits_to_string(gens))
             } else {
-                "".to_string()
+                "".into_string()
             };
 
             let kills = self.kills.slice(start, end);
             let kills_str = if kills.iter().any(|&u| u != 0) {
                 format!(" kill: {}", bits_to_string(kills))
             } else {
-                "".to_string()
+                "".into_string()
             };
 
             try!(ps.synth_comment(format!("id {}: {}{}{}", id, entry_str,

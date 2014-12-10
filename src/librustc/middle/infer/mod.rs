@@ -290,13 +290,13 @@ pub fn fixup_err_to_string(f: fixup_err) -> String {
     match f {
       unresolved_int_ty(_) => {
           "cannot determine the type of this integer; add a suffix to \
-           specify the type explicitly".to_string()
+           specify the type explicitly".into_string()
       }
       unresolved_float_ty(_) => {
           "cannot determine the type of this number; add a suffix to specify \
-           the type explicitly".to_string()
+           the type explicitly".into_string()
       }
-      unresolved_ty(_) => "unconstrained type".to_string(),
+      unresolved_ty(_) => "unconstrained type".into_string(),
     }
 }
 
@@ -924,7 +924,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         match resolved_expected {
             Some(t) if ty::type_is_error(t) => (),
             _ => {
-                let error_str = err.map_or("".to_string(), |t_err| {
+                let error_str = err.map_or("".into_string(), |t_err| {
                     format!(" ({})", ty::type_err_to_str(self.tcx, t_err))
                 });
 

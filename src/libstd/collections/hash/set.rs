@@ -264,8 +264,8 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     /// ```
     /// use std::collections::HashSet;
     /// let mut set = HashSet::new();
-    /// set.insert("a".to_string());
-    /// set.insert("b".to_string());
+    /// set.insert("a".into_string());
+    /// set.insert("b".into_string());
     ///
     /// // Not possible to collect to a Vec<String> with a regular `.iter()`.
     /// let v: Vec<String> = set.into_iter().collect();

@@ -57,7 +57,7 @@ pub fn render(input: &str, mut output: Path, matches: &getopts::Matches,
     if playground.is_some() {
         markdown::PLAYGROUND_KRATE.with(|s| { *s.borrow_mut() = None; });
     }
-    let playground = playground.unwrap_or("".to_string());
+    let playground = playground.unwrap_or("".into_string());
 
     let mut out = match io::File::create(&output) {
         Err(e) => {
@@ -141,7 +141,7 @@ pub fn test(input: &str, libs: Vec<Path>, externs: core::Externs,
 
     let mut collector = Collector::new(input.to_string(), libs, externs, true);
     find_testable_code(input_str.as_slice(), &mut collector);
-    test_args.insert(0, "rustdoctest".to_string());
+    test_args.insert(0, "rustdoctest".into_string());
     testing::test_main(test_args.as_slice(), collector.tests);
     0
 }

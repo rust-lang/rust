@@ -199,7 +199,7 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     let expn_id = cx.codemap().record_expansion(codemap::ExpnInfo {
         call_site: sp,
         callee: codemap::NameAndSpan {
-            name: "asm".to_string(),
+            name: "asm".into_string(),
             format: codemap::MacroBang,
             span: None,
         },

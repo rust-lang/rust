@@ -697,9 +697,9 @@ impl<T: Writer> ConsoleTestState<T> {
             None => Ok(()),
             Some(ref mut o) => {
                 let s = format!("{} {}\n", match *result {
-                        TrOk => "ok".to_string(),
-                        TrFailed => "failed".to_string(),
-                        TrIgnored => "ignored".to_string(),
+                        TrOk => "ok".into_string(),
+                        TrFailed => "failed".into_string(),
+                        TrIgnored => "ignored".into_string(),
                         TrMetrics(ref mm) => fmt_metrics(mm),
                         TrBench(ref bs) => fmt_bench_samples(bs)
                     }, test.name.as_slice());
@@ -1570,7 +1570,7 @@ mod tests {
 
     #[test]
     fn first_free_arg_should_be_a_filter() {
-        let args = vec!("progname".to_string(), "some_regex_filter".to_string());
+        let args = vec!("progname".into_string(), "some_regex_filter".into_string());
         let opts = match parse_opts(args.as_slice()) {
             Some(Ok(o)) => o,
             _ => panic!("Malformed arg in first_free_arg_should_be_a_filter")
@@ -1580,9 +1580,9 @@ mod tests {
 
     #[test]
     fn parse_ignored_flag() {
-        let args = vec!("progname".to_string(),
-                        "filter".to_string(),
-                        "--ignored".to_string());
+        let args = vec!("progname".into_string(),
+                        "filter".into_string(),
+                        "--ignored".into_string());
         let opts = match parse_opts(args.as_slice()) {
             Some(Ok(o)) => o,
             _ => panic!("Malformed arg in parse_ignored_flag")
@@ -1630,15 +1630,15 @@ mod tests {
         opts.run_tests = true;
 
         let names =
-            vec!("sha1::test".to_string(),
-                 "int::test_to_str".to_string(),
-                 "int::test_pow".to_string(),
-                 "test::do_not_run_ignored_tests".to_string(),
-                 "test::ignored_tests_result_in_ignored".to_string(),
-                 "test::first_free_arg_should_be_a_filter".to_string(),
-                 "test::parse_ignored_flag".to_string(),
-                 "test::filter_for_ignored_option".to_string(),
-                 "test::sort_tests".to_string());
+            vec!("sha1::test".into_string(),
+                 "int::test_to_str".into_string(),
+                 "int::test_pow".into_string(),
+                 "test::do_not_run_ignored_tests".into_string(),
+                 "test::ignored_tests_result_in_ignored".into_string(),
+                 "test::first_free_arg_should_be_a_filter".into_string(),
+                 "test::parse_ignored_flag".into_string(),
+                 "test::filter_for_ignored_option".into_string(),
+                 "test::sort_tests".into_string());
         let tests =
         {
             fn testfn() { }
@@ -1659,15 +1659,15 @@ mod tests {
         let filtered = filter_tests(&opts, tests);
 
         let expected =
-            vec!("int::test_pow".to_string(),
-                 "int::test_to_str".to_string(),
-                 "sha1::test".to_string(),
-                 "test::do_not_run_ignored_tests".to_string(),
-                 "test::filter_for_ignored_option".to_string(),
-                 "test::first_free_arg_should_be_a_filter".to_string(),
-                 "test::ignored_tests_result_in_ignored".to_string(),
-                 "test::parse_ignored_flag".to_string(),
-                 "test::sort_tests".to_string());
+            vec!("int::test_pow".into_string(),
+                 "int::test_to_str".into_string(),
+                 "sha1::test".into_string(),
+                 "test::do_not_run_ignored_tests".into_string(),
+                 "test::filter_for_ignored_option".into_string(),
+                 "test::first_free_arg_should_be_a_filter".into_string(),
+                 "test::ignored_tests_result_in_ignored".into_string(),
+                 "test::parse_ignored_flag".into_string(),
+                 "test::sort_tests".into_string());
 
         for (a, b) in expected.iter().zip(filtered.iter()) {
             assert!(*a == b.desc.name.to_string());
@@ -1729,31 +1729,31 @@ mod tests {
 
         let diff1 = m2.compare_to_old(&m1, None);
 
-        assert_eq!(*(diff1.get(&"in-both-noise".to_string()).unwrap()), LikelyNoise);
-        assert_eq!(*(diff1.get(&"in-first-noise".to_string()).unwrap()), MetricRemoved);
-        assert_eq!(*(diff1.get(&"in-second-noise".to_string()).unwrap()), MetricAdded);
-        assert_eq!(*(diff1.get(&"in-both-want-downwards-but-regressed".to_string()).unwrap()),
+        assert_eq!(*(diff1.get(&"in-both-noise".into_string()).unwrap()), LikelyNoise);
+        assert_eq!(*(diff1.get(&"in-first-noise".into_string()).unwrap()), MetricRemoved);
+        assert_eq!(*(diff1.get(&"in-second-noise".into_string()).unwrap()), MetricAdded);
+        assert_eq!(*(diff1.get(&"in-both-want-downwards-but-regressed".into_string()).unwrap()),
                    Regression(100.0));
-        assert_eq!(*(diff1.get(&"in-both-want-downwards-and-improved".to_string()).unwrap()),
+        assert_eq!(*(diff1.get(&"in-both-want-downwards-and-improved".into_string()).unwrap()),
                    Improvement(50.0));
-        assert_eq!(*(diff1.get(&"in-both-want-upwards-but-regressed".to_string()).unwrap()),
+        assert_eq!(*(diff1.get(&"in-both-want-upwards-but-regressed".into_string()).unwrap()),
                    Regression(50.0));
-        assert_eq!(*(diff1.get(&"in-both-want-upwards-and-improved".to_string()).unwrap()),
+        assert_eq!(*(diff1.get(&"in-both-want-upwards-and-improved".into_string()).unwrap()),
                    Improvement(100.0));
         assert_eq!(diff1.len(), 7);
 
         let diff2 = m2.compare_to_old(&m1, Some(200.0));
 
-        assert_eq!(*(diff2.get(&"in-both-noise".to_string()).unwrap()), LikelyNoise);
-        assert_eq!(*(diff2.get(&"in-first-noise".to_string()).unwrap()), MetricRemoved);
-        assert_eq!(*(diff2.get(&"in-second-noise".to_string()).unwrap()), MetricAdded);
-        assert_eq!(*(diff2.get(&"in-both-want-downwards-but-regressed".to_string()).unwrap()),
+        assert_eq!(*(diff2.get(&"in-both-noise".into_string()).unwrap()), LikelyNoise);
+        assert_eq!(*(diff2.get(&"in-first-noise".into_string()).unwrap()), MetricRemoved);
+        assert_eq!(*(diff2.get(&"in-second-noise".into_string()).unwrap()), MetricAdded);
+        assert_eq!(*(diff2.get(&"in-both-want-downwards-but-regressed".into_string()).unwrap()),
                    LikelyNoise);
-        assert_eq!(*(diff2.get(&"in-both-want-downwards-and-improved".to_string()).unwrap()),
+        assert_eq!(*(diff2.get(&"in-both-want-downwards-and-improved".into_string()).unwrap()),
                    LikelyNoise);
-        assert_eq!(*(diff2.get(&"in-both-want-upwards-but-regressed".to_string()).unwrap()),
+        assert_eq!(*(diff2.get(&"in-both-want-upwards-but-regressed".into_string()).unwrap()),
                    LikelyNoise);
-        assert_eq!(*(diff2.get(&"in-both-want-upwards-and-improved".to_string()).unwrap()),
+        assert_eq!(*(diff2.get(&"in-both-want-upwards-and-improved".into_string()).unwrap()),
                    LikelyNoise);
         assert_eq!(diff2.len(), 7);
     }
@@ -1778,29 +1778,29 @@ mod tests {
         let (diff1, ok1) = m2.ratchet(&pth, None);
         assert_eq!(ok1, false);
         assert_eq!(diff1.len(), 2);
-        assert_eq!(*(diff1.get(&"runtime".to_string()).unwrap()), Regression(10.0));
-        assert_eq!(*(diff1.get(&"throughput".to_string()).unwrap()), LikelyNoise);
+        assert_eq!(*(diff1.get(&"runtime".into_string()).unwrap()), Regression(10.0));
+        assert_eq!(*(diff1.get(&"throughput".into_string()).unwrap()), LikelyNoise);
 
         // Check that it was not rewritten.
         let m3 = MetricMap::load(&pth);
         let MetricMap(m3) = m3;
         assert_eq!(m3.len(), 2);
-        assert_eq!(*(m3.get(&"runtime".to_string()).unwrap()), Metric::new(1000.0, 2.0));
-        assert_eq!(*(m3.get(&"throughput".to_string()).unwrap()), Metric::new(50.0, 2.0));
+        assert_eq!(*(m3.get(&"runtime".into_string()).unwrap()), Metric::new(1000.0, 2.0));
+        assert_eq!(*(m3.get(&"throughput".into_string()).unwrap()), Metric::new(50.0, 2.0));
 
         // Ask for a ratchet with an explicit noise-percentage override,
         // that should advance.
         let (diff2, ok2) = m2.ratchet(&pth, Some(10.0));
         assert_eq!(ok2, true);
         assert_eq!(diff2.len(), 2);
-        assert_eq!(*(diff2.get(&"runtime".to_string()).unwrap()), LikelyNoise);
-        assert_eq!(*(diff2.get(&"throughput".to_string()).unwrap()), LikelyNoise);
+        assert_eq!(*(diff2.get(&"runtime".into_string()).unwrap()), LikelyNoise);
+        assert_eq!(*(diff2.get(&"throughput".into_string()).unwrap()), LikelyNoise);
 
         // Check that it was rewritten.
         let m4 = MetricMap::load(&pth);
         let MetricMap(m4) = m4;
         assert_eq!(m4.len(), 2);
-        assert_eq!(*(m4.get(&"runtime".to_string()).unwrap()), Metric::new(1100.0, 2.0));
-        assert_eq!(*(m4.get(&"throughput".to_string()).unwrap()), Metric::new(50.0, 2.0));
+        assert_eq!(*(m4.get(&"runtime".into_string()).unwrap()), Metric::new(1100.0, 2.0));
+        assert_eq!(*(m4.get(&"throughput".into_string()).unwrap()), Metric::new(50.0, 2.0));
     }
 }

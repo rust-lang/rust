@@ -488,7 +488,7 @@ impl<T, E> Result<T, E> {
     /// assert_eq!(x.map_err(stringify), Ok(2u));
     ///
     /// let x: Result<uint, uint> = Err(13);
-    /// assert_eq!(x.map_err(stringify), Err("error code: 13".to_string()));
+    /// assert_eq!(x.map_err(stringify), Err("error code: 13".into_string()));
     /// ```
     #[inline]
     #[unstable = "waiting for unboxed closures"]

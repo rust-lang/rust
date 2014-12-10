@@ -160,7 +160,7 @@ pub fn find_crate_name(sess: Option<&Session>,
         }
     }
 
-    "rust-out".to_string()
+    "rust-out".into_string()
 }
 
 pub fn build_link_meta(sess: &Session, krate: &ast::Crate,

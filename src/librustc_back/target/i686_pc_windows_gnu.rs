@@ -15,20 +15,20 @@ pub fn target() -> Target {
 
     // Mark all dynamic libraries and executables as compatible with the larger 4GiB address
     // space available to x86 Windows binaries on x86_64.
-    options.pre_link_args.push("-Wl,--large-address-aware".to_string());
+    options.pre_link_args.push("-Wl,--large-address-aware".into_string());
 
     // Make sure that we link to the dynamic libgcc, otherwise cross-module
     // DWARF stack unwinding will not work.
     // This behavior may be overridden by -Clink-args="-static-libgcc"
-    options.pre_link_args.push("-shared-libgcc".to_string());
+    options.pre_link_args.push("-shared-libgcc".into_string());
 
     Target {
-        data_layout: "e-p:32:32-f64:64:64-i64:64:64-f80:32:32-n8:16:32".to_string(),
-        llvm_target: "i686-pc-windows-gnu".to_string(),
-        target_endian: "little".to_string(),
-        target_word_size: "32".to_string(),
-        arch: "x86".to_string(),
-        target_os: "windows".to_string(),
+        data_layout: "e-p:32:32-f64:64:64-i64:64:64-f80:32:32-n8:16:32".into_string(),
+        llvm_target: "i686-pc-windows-gnu".into_string(),
+        target_endian: "little".into_string(),
+        target_word_size: "32".into_string(),
+        arch: "x86".into_string(),
+        target_os: "windows".into_string(),
         options: options,
     }
 }

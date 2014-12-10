@@ -1052,7 +1052,7 @@ mod tests {
         let r = os::env();
         for &(ref k, ref v) in r.iter() {
             // don't check android RANDOM variables
-            if *k != "RANDOM".to_string() {
+            if *k != "RANDOM".into_string() {
                 assert!(output.contains(format!("{}={}",
                                                 *k,
                                                 *v).as_slice()) ||

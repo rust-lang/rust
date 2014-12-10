@@ -230,7 +230,7 @@ impl<'a> Parser<'a> {
                         self.caps += 1;
                         self.stack.push(Paren(self.flags,
                                               self.caps,
-                                              "".to_string()))
+                                              "".into_string()))
                     }
                 }
                 ')' => {
@@ -808,7 +808,7 @@ impl<'a> Parser<'a> {
                     }
                     if self.cur() == ':' {
                         // Save the old flags with the opening paren.
-                        self.stack.push(Paren(self.flags, 0, "".to_string()));
+                        self.stack.push(Paren(self.flags, 0, "".into_string()));
                     }
                     self.flags = flags;
                     return Ok(())

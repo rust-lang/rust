@@ -91,7 +91,7 @@
 //! fn main() {
 //!     let object = TestStruct {
 //!         data_int: 1,
-//!         data_str: "homura".to_string(),
+//!         data_str: "homura".into_string(),
 //!         data_vector: vec![2,3,4,5],
 //!     };
 //!
@@ -139,7 +139,7 @@
 //!     let num = ComplexNum { a: 0.0001, b: 12.539 };
 //!     let data: String = json::encode(&ComplexNumRecord{
 //!         uid: 1,
-//!         dsc: "test".to_string(),
+//!         dsc: "test".into_string(),
 //!         val: num.to_json(),
 //!     });
 //!     println!("data: {}", data);
@@ -167,9 +167,9 @@
 //!     fn to_json(&self) -> Json {
 //!         let mut d = TreeMap::new();
 //!         // All standard types implement `to_json()`, so use it
-//!         d.insert("data_int".to_string(), self.data_int.to_json());
-//!         d.insert("data_str".to_string(), self.data_str.to_json());
-//!         d.insert("data_vector".to_string(), self.data_vector.to_json());
+//!         d.insert("data_int".into_string(), self.data_int.to_json());
+//!         d.insert("data_str".into_string(), self.data_str.to_json());
+//!         d.insert("data_vector".into_string(), self.data_vector.to_json());
 //!         Json::Object(d)
 //!     }
 //! }
@@ -178,7 +178,7 @@
 //!     // Serialize using `ToJson`
 //!     let input_data = TestStruct {
 //!         data_int: 1,
-//!         data_str: "madoka".to_string(),
+//!         data_str: "madoka".into_string(),
 //!         data_vector: vec![2,3,4,5],
 //!     };
 //!     let json_obj: Json = input_data.to_json();

@@ -682,7 +682,7 @@ mod tests {
         assert_eq!("( ;".to_ascii(), b);
         let v = vec![40u8, 32u8, 59u8];
         assert_eq!(v.to_ascii(), b);
-        assert_eq!("( ;".to_string().to_ascii(), b);
+        assert_eq!("( ;".into_string().to_ascii(), b);
 
         assert_eq!("abCDef&?#".to_ascii().to_lowercase().into_string(), "abcdef&?#");
         assert_eq!("abCDef&?#".to_ascii().to_uppercase().into_string(), "ABCDEF&?#");
@@ -712,7 +712,7 @@ mod tests {
 
     #[test]
     fn test_owned_ascii_vec() {
-        assert_eq!(("( ;".to_string()).into_ascii(), vec2ascii![40, 32, 59]);
+        assert_eq!(("( ;".into_string()).into_ascii(), vec2ascii![40, 32, 59]);
         assert_eq!((vec![40u8, 32u8, 59u8]).into_ascii(), vec2ascii![40, 32, 59]);
     }
 
@@ -771,8 +771,8 @@ mod tests {
         assert_eq!((vec![40u8, 32u8, 59u8]).into_ascii_opt(), Some(vec2ascii![40, 32, 59]));
         assert_eq!((vec![127u8, 128u8, 255u8]).into_ascii_opt(), None);
 
-        assert_eq!(("( ;".to_string()).into_ascii_opt(), Some(vec2ascii![40, 32, 59]));
-        assert_eq!(("zoä华".to_string()).into_ascii_opt(), None);
+        assert_eq!(("( ;".into_string()).into_ascii_opt(), Some(vec2ascii![40, 32, 59]));
+        assert_eq!(("zoä华".into_string()).into_ascii_opt(), None);
     }
 
     #[test]
@@ -808,9 +808,9 @@ mod tests {
 
     #[test]
     fn test_into_ascii_upper() {
-        assert_eq!(("url()URL()uRl()ürl".to_string()).into_ascii_upper(),
-                   "URL()URL()URL()üRL".to_string());
-        assert_eq!(("hıKß".to_string()).into_ascii_upper(), "HıKß");
+        assert_eq!(("url()URL()uRl()ürl".into_string()).into_ascii_upper(),
+                   "URL()URL()URL()üRL".into_string());
+        assert_eq!(("hıKß".into_string()).into_ascii_upper(), "HıKß");
 
         let mut i = 0;
         while i <= 500 {
@@ -824,10 +824,10 @@ mod tests {
 
     #[test]
     fn test_into_ascii_lower() {
-        assert_eq!(("url()URL()uRl()Ürl".to_string()).into_ascii_lower(),
+        assert_eq!(("url()URL()uRl()Ürl".into_string()).into_ascii_lower(),
                    "url()url()url()Ürl");
         // Dotted capital I, Kelvin sign, Sharp S.
-        assert_eq!(("HİKß".to_string()).into_ascii_lower(), "hİKß");
+        assert_eq!(("HİKß".into_string()).into_ascii_lower(), "hİKß");
 
         let mut i = 0;
         while i <= 500 {

@@ -147,7 +147,7 @@ impl<T,R> Copy for RadixFmt<T,R> where T: Copy, R: Copy {}
 ///
 /// ```
 /// use std::fmt::radix;
-/// assert_eq!(format!("{}", radix(55i, 36)), "1j".to_string());
+/// assert_eq!(format!("{}", radix(55i, 36)), "1j".into_string());
 /// ```
 #[unstable = "may be renamed or move to a different module"]
 pub fn radix<T>(x: T, base: u8) -> RadixFmt<T, Radix> {
