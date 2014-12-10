@@ -84,30 +84,17 @@ impl<'tcx,C> HigherRankedRelations<'tcx> for C
 
             // Presuming type comparison succeeds, we need to check
             // that the skolemized regions do not "leak".
-            let new_vars = self.infcx().region_vars_confined_to_snapshot(snapshot);
-            for (&skol_br, &skol) in skol_map.iter() {
-                let tainted = self.infcx().tainted_regions(snapshot, skol);
-                for tainted_region in tainted.iter() {
-                    // Each skolemized should only be relatable to itself
-                    // or new variables:
-                    match *tainted_region {
-                        ty::ReInfer(ty::ReVar(ref vid)) => {
-                            if new_vars.iter().any(|x| x == vid) { continue; }
-                        }
-                        _ => {
-                            if *tainted_region == skol { continue; }
-                        }
-                    };
-
-                    // A is not as polymorphic as B:
+            match leak_check(self.infcx(), &skol_map, snapshot) {
+                Ok(()) => { }
+                Err((skol_br, tainted_region)) => {
                     if self.a_is_expected() {
                         debug!("Not as polymorphic!");
                         return Err(ty::terr_regions_insufficiently_polymorphic(skol_br,
-                                                                               *tainted_region));
+                                                                               tainted_region));
                     } else {
                         debug!("Overly polymorphic!");
                         return Err(ty::terr_regions_overly_polymorphic(skol_br,
-                                                                       *tainted_region));
+                                                                       tainted_region));
                     }
                 }
             }
@@ -547,4 +534,31 @@ fn skolemize_regions<'a,'tcx,HR>(infcx: &InferCtxt<'a,'tcx>,
 
         skol
     })
+}
+
+fn leak_check<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
+                       skol_map: &FnvHashMap<ty::BoundRegion,ty::Region>,
+                       snapshot: &CombinedSnapshot)
+                       -> Result<(),(ty::BoundRegion,ty::Region)>
+{
+    let new_vars = infcx.region_vars_confined_to_snapshot(snapshot);
+    for (&skol_br, &skol) in skol_map.iter() {
+        let tainted = infcx.tainted_regions(snapshot, skol);
+        for &tainted_region in tainted.iter() {
+            // Each skolemized should only be relatable to itself
+            // or new variables:
+            match tainted_region {
+                ty::ReInfer(ty::ReVar(vid)) => {
+                    if new_vars.iter().any(|&x| x == vid) { continue; }
+                }
+                _ => {
+                    if tainted_region == skol { continue; }
+                }
+            };
+
+            // A is not as polymorphic as B:
+            return Err((skol_br, tainted_region));
+        }
+    }
+    Ok(())
 }
