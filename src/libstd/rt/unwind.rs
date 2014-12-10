@@ -59,18 +59,20 @@
 
 use core::prelude::*;
 
-use boxed::Box;
-use string::String;
-use str::StrAllocating;
-use vec::Vec;
 use any::Any;
-use sync::atomic;
+use boxed::Box;
 use cmp;
+use failure;
 use fmt;
 use intrinsics;
+use libc::c_void;
 use mem;
 use raw::Closure;
-use libc::c_void;
+use str::StrAllocating;
+use string::String;
+use sync::atomic;
+use sync::{Once, ONCE_INIT};
+use vec::Vec;
 
 use sys_common::thread_info;
 use rt::libunwind as uw;
@@ -541,6 +543,11 @@ pub fn begin_unwind<M: Any + Send>(msg: M, file_line: &(&'static str, uint)) -> 
 /// }` from ~1900/3700 (-O/no opts) to 180/590.
 #[inline(never)] #[cold] // this is the slow path, please never inline this
 fn begin_unwind_inner(msg: Box<Any + Send>, file_line: &(&'static str, uint)) -> ! {
+    // Make sure the default failure handler is registered before we look at the
+    // callbacks.
+    static INIT: Once = ONCE_INIT;
+    INIT.doit(|| unsafe { register(failure::on_fail); });
+
     // First, invoke call the user-defined callbacks triggered on task panic.
     //
     // By the time that we see a callback has been registered (by reading

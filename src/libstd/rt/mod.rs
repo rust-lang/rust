@@ -48,7 +48,6 @@
 
 #![allow(dead_code)]
 
-use failure;
 use os;
 use thunk::Thunk;
 use kinds::Send;
@@ -73,8 +72,8 @@ mod macros;
 // These should be refactored/moved/made private over time
 pub mod util;
 pub mod unwind;
+pub mod args;
 
-mod args;
 mod at_exit_imp;
 mod libunwind;
 
@@ -82,43 +81,15 @@ mod libunwind;
 /// of exiting cleanly.
 pub const DEFAULT_ERROR_CODE: int = 101;
 
-/// One-time runtime initialization.
-///
-/// Initializes global state, including frobbing
-/// the crate's logging flags, registering GC
-/// metadata, and storing the process arguments.
-// FIXME: this should be unsafe
-#[allow(experimental)]
-pub fn init(argc: int, argv: *const *const u8) {
-    unsafe {
-        args::init(argc, argv);
-        thread::init();
-        unwind::register(failure::on_fail);
-    }
-}
-
 #[cfg(any(windows, android))]
-static OS_DEFAULT_STACK_ESTIMATE: uint = 1 << 20;
+const OS_DEFAULT_STACK_ESTIMATE: uint = 1 << 20;
 #[cfg(all(unix, not(android)))]
-static OS_DEFAULT_STACK_ESTIMATE: uint = 2 * (1 << 20);
+const OS_DEFAULT_STACK_ESTIMATE: uint = 2 * (1 << 20);
 
 #[cfg(not(test))]
 #[lang = "start"]
 fn lang_start(main: *const u8, argc: int, argv: *const *const u8) -> int {
     use mem;
-    start(argc, argv, Thunk::new(move|| {
-        let main: extern "Rust" fn() = unsafe { mem::transmute(main) };
-        main();
-    }))
-}
-
-/// Executes the given procedure after initializing the runtime with the given
-/// argc/argv.
-///
-/// This procedure is guaranteed to run on the thread calling this function, but
-/// the stack bounds for this rust task will *not* be set. Care must be taken
-/// for this function to not overflow its stack.
-pub fn start(argc: int, argv: *const *const u8, main: Thunk) -> int {
     use prelude::*;
     use rt;
 
@@ -131,40 +102,59 @@ pub fn start(argc: int, argv: *const *const u8, main: Thunk) -> int {
     // frames above our current position.
     let my_stack_bottom = my_stack_top + 20000 - OS_DEFAULT_STACK_ESTIMATE;
 
-    // By default, some platforms will send a *signal* when a EPIPE error would
-    // otherwise be delivered. This runtime doesn't install a SIGPIPE handler,
-    // causing it to kill the program, which isn't exactly what we want!
-    //
-    // Hence, we set SIGPIPE to ignore when the program starts up in order to
-    // prevent this problem.
-    #[cfg(windows)] fn ignore_sigpipe() {}
-    #[cfg(unix)] fn ignore_sigpipe() {
-        use libc;
-        use libc::funcs::posix01::signal::signal;
-        unsafe {
-            assert!(signal(libc::SIGPIPE, libc::SIG_IGN) != -1);
+    let failed = unsafe {
+        // First, make sure we don't trigger any __morestack overflow checks,
+        // and next set up our stack to have a guard page and run through our
+        // own fault handlers if we hit it.
+        sys_common::stack::record_os_managed_stack_bounds(my_stack_bottom,
+                                                          my_stack_top);
+        sys::thread::guard::init();
+        sys::stack_overflow::init();
+
+        // Next, set up the current Thread with the guard information we just
+        // created. Note that this isn't necessary in general for new threads,
+        // but we just do this to name the main thread and to give it correct
+        // info about the stack bounds.
+        let thread: Thread = NewThread::new(Some("<main>".into_string()));
+        thread_info::set((my_stack_bottom, my_stack_top),
+                         sys::thread::guard::main(),
+                         thread);
+
+        // By default, some platforms will send a *signal* when a EPIPE error
+        // would otherwise be delivered. This runtime doesn't install a SIGPIPE
+        // handler, causing it to kill the program, which isn't exactly what we
+        // want!
+        //
+        // Hence, we set SIGPIPE to ignore when the program starts up in order
+        // to prevent this problem.
+        #[cfg(windows)] fn ignore_sigpipe() {}
+        #[cfg(unix)] fn ignore_sigpipe() {
+            use libc;
+            use libc::funcs::posix01::signal::signal;
+            unsafe {
+                assert!(signal(libc::SIGPIPE, libc::SIG_IGN) != -1);
+            }
         }
-    }
-    ignore_sigpipe();
+        ignore_sigpipe();
 
-    init(argc, argv);
-    let mut exit_code = None;
+        // Store our args if necessary in a squirreled away location
+        args::init(argc, argv);
 
-    let thread: Thread = NewThread::new(Some("<main>".into_string()));
-    thread_info::set((my_stack_bottom, my_stack_top),
-                     unsafe { sys::thread::guard::main() },
-                     thread);
-    let mut main_opt = Some(main); // option dance
-    unsafe {
-        let _ = unwind::try(|| {
-            sys_common::stack::record_os_managed_stack_bounds(my_stack_bottom, my_stack_top);
-            (main_opt.take().unwrap()).invoke();
-            exit_code = Some(os::get_exit_status());
+        // And finally, let's run some code!
+        let res = unwind::try(|| {
+            let main: fn() = mem::transmute(main);
+            main();
         });
         cleanup();
+        res.is_err()
+    };
+
+    // If the exit code wasn't set, then the try block must have panicked.
+    if failed {
+        rt::DEFAULT_ERROR_CODE
+    } else {
+        os::get_exit_status()
     }
-    // If the exit code wasn't set, then the task block must have panicked.
-    return exit_code.unwrap_or(rt::DEFAULT_ERROR_CODE);
 }
 
 /// Enqueues a procedure to run when the runtime is cleaned up
