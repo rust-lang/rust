@@ -18,11 +18,12 @@ use {Decodable, Encodable, Decoder, Encoder};
 use std::collections::{DList, RingBuf, TreeMap, TreeSet, HashMap, HashSet,
                        TrieMap, TrieSet, VecMap};
 use std::collections::enum_set::{EnumSet, CLike};
+use std::collections::vec_map::UintKey;
 
 impl<
     E,
     S: Encoder<E>,
-    T: Encodable<S, E>
+    T: Encodable<S, E>,
 > Encodable<S, E> for DList<T> {
     fn encode(&self, s: &mut S) -> Result<(), E> {
         s.emit_seq(self.len(), |s| {
@@ -49,7 +50,7 @@ impl<E, D:Decoder<E>,T:Decodable<D, E>> Decodable<D, E> for DList<T> {
 impl<
     E,
     S: Encoder<E>,
-    T: Encodable<S, E>
+    T: Encodable<S, E>,
 > Encodable<S, E> for RingBuf<T> {
     fn encode(&self, s: &mut S) -> Result<(), E> {
         s.emit_seq(self.len(), |s| {
@@ -77,7 +78,7 @@ impl<
     E,
     S: Encoder<E>,
     K: Encodable<S, E> + PartialEq + Ord,
-    V: Encodable<S, E> + PartialEq
+    V: Encodable<S, E> + PartialEq,
 > Encodable<S, E> for TreeMap<K, V> {
     fn encode(&self, e: &mut S) -> Result<(), E> {
         e.emit_map(self.len(), |e| {
@@ -96,7 +97,7 @@ impl<
     E,
     D: Decoder<E>,
     K: Decodable<D, E> + PartialEq + Ord,
-    V: Decodable<D, E> + PartialEq
+    V: Decodable<D, E> + PartialEq,
 > Decodable<D, E> for TreeMap<K, V> {
     fn decode(d: &mut D) -> Result<TreeMap<K, V>, E> {
         d.read_map(|d, len| {
@@ -114,7 +115,7 @@ impl<
 impl<
     E,
     S: Encoder<E>,
-    T: Encodable<S, E> + PartialEq + Ord
+    T: Encodable<S, E> + PartialEq + Ord,
 > Encodable<S, E> for TreeSet<T> {
     fn encode(&self, s: &mut S) -> Result<(), E> {
         s.emit_seq(self.len(), |s| {
@@ -131,7 +132,7 @@ impl<
 impl<
     E,
     D: Decoder<E>,
-    T: Decodable<D, E> + PartialEq + Ord
+    T: Decodable<D, E> + PartialEq + Ord,
 > Decodable<D, E> for TreeSet<T> {
     fn decode(d: &mut D) -> Result<TreeSet<T>, E> {
         d.read_seq(|d, len| {
@@ -147,7 +148,7 @@ impl<
 impl<
     E,
     S: Encoder<E>,
-    T: Encodable<S, E> + CLike
+    T: Encodable<S, E> + CLike,
 > Encodable<S, E> for EnumSet<T> {
     fn encode(&self, s: &mut S) -> Result<(), E> {
         let mut bits = 0;
@@ -181,7 +182,7 @@ impl<
     K: Encodable<S, E> + Hash<X> + Eq,
     V: Encodable<S, E>,
     X,
-    H: Hasher<X>
+    H: Hasher<X>,
 > Encodable<S, E> for HashMap<K, V, H> {
     fn encode(&self, e: &mut S) -> Result<(), E> {
         e.emit_map(self.len(), |e| {
@@ -202,7 +203,7 @@ impl<
     K: Decodable<D, E> + Hash<S> + Eq,
     V: Decodable<D, E>,
     S,
-    H: Hasher<S> + Default
+    H: Hasher<S> + Default,
 > Decodable<D, E> for HashMap<K, V, H> {
     fn decode(d: &mut D) -> Result<HashMap<K, V, H>, E> {
         d.read_map(|d, len| {
@@ -223,7 +224,7 @@ impl<
     S: Encoder<E>,
     T: Encodable<S, E> + Hash<X> + Eq,
     X,
-    H: Hasher<X>
+    H: Hasher<X>,
 > Encodable<S, E> for HashSet<T, H> {
     fn encode(&self, s: &mut S) -> Result<(), E> {
         s.emit_seq(self.len(), |s| {
@@ -242,7 +243,7 @@ impl<
     D: Decoder<E>,
     T: Decodable<D, E> + Hash<S> + Eq,
     S,
-    H: Hasher<S> + Default
+    H: Hasher<S> + Default,
 > Decodable<D, E> for HashSet<T, H> {
     fn decode(d: &mut D) -> Result<HashSet<T, H>, E> {
         d.read_seq(|d, len| {
@@ -258,7 +259,7 @@ impl<
 impl<
     E,
     S: Encoder<E>,
-    V: Encodable<S, E>
+    V: Encodable<S, E>,
 > Encodable<S, E> for TrieMap<V> {
     fn encode(&self, e: &mut S) -> Result<(), E> {
         e.emit_map(self.len(), |e| {
@@ -274,7 +275,7 @@ impl<
 impl<
     E,
     D: Decoder<E>,
-    V: Decodable<D, E>
+    V: Decodable<D, E>,
 > Decodable<D, E> for TrieMap<V> {
     fn decode(d: &mut D) -> Result<TrieMap<V>, E> {
         d.read_map(|d, len| {
@@ -315,8 +316,9 @@ impl<E, D: Decoder<E>> Decodable<D, E> for TrieSet {
 impl<
     E,
     S: Encoder<E>,
-    V: Encodable<S, E>
-> Encodable<S, E> for VecMap<V> {
+    K: Encodable<S, E> + UintKey,
+    V: Encodable<S, E>,
+> Encodable<S, E> for VecMap<K, V> {
     fn encode(&self, e: &mut S) -> Result<(), E> {
         e.emit_map(self.len(), |e| {
                 for (i, (key, val)) in self.iter().enumerate() {
@@ -331,9 +333,10 @@ impl<
 impl<
     E,
     D: Decoder<E>,
-    V: Decodable<D, E>
-> Decodable<D, E> for VecMap<V> {
-    fn decode(d: &mut D) -> Result<VecMap<V>, E> {
+    K: Decodable<D, E> + UintKey,
+    V: Decodable<D, E>,
+> Decodable<D, E> for VecMap<K, V> {
+    fn decode(d: &mut D) -> Result<VecMap<K, V>, E> {
         d.read_map(|d, len| {
             let mut map = VecMap::new();
             for i in range(0u, len) {

@@ -43,7 +43,7 @@ impl<E:CLike+fmt::Show> fmt::Show for EnumSet<E> {
 }
 
 /// An interface for casting C-like enum to uint and back.
-/// A typically implementation is as below.
+/// A typical implementation is as below.
 ///
 /// ```{rust,ignore}
 /// #[repr(uint)]
