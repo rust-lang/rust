@@ -50,6 +50,7 @@ use util::ppaux::Repr;
 
 mod orphan;
 mod overlap;
+mod unsafety;
 
 fn get_base_type<'a, 'tcx>(inference_context: &InferCtxt<'a, 'tcx>,
                            span: Span,
@@ -620,6 +621,7 @@ pub fn check_coherence(crate_context: &CrateCtxt) {
         inference_context: new_infer_ctxt(crate_context.tcx),
         inherent_impls: RefCell::new(FnvHashMap::new()),
     }.check(crate_context.tcx.map.krate());
+    unsafety::check(crate_context.tcx);
     orphan::check(crate_context.tcx);
     overlap::check(crate_context.tcx);
 }
