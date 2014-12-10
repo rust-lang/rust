@@ -1583,7 +1583,7 @@ impl<'a> Resolver<'a> {
 
             ItemImpl(_, Some(_), _, _) => parent,
 
-            ItemTrait(_, _, _, ref items) => {
+            ItemTrait(_, _, _, _, ref items) => {
                 let name_bindings =
                     self.add_child(name,
                                    parent.clone(),
@@ -4241,7 +4241,7 @@ impl<'a> Resolver<'a> {
                                             impl_items.as_slice());
             }
 
-            ItemTrait(ref generics, ref unbound, ref bounds, ref trait_items) => {
+            ItemTrait(_, ref generics, ref unbound, ref bounds, ref trait_items) => {
                 // Create a new rib for the self type.
                 let mut self_type_rib = Rib::new(ItemRibKind);
 

@@ -368,8 +368,13 @@ pub fn get_trait_def<'tcx>(cdata: Cmd,
     let item_doc = lookup_item(item_id, cdata.data());
     let generics = doc_generics(item_doc, tcx, cdata, tag_item_generics);
     let bounds = trait_def_bounds(item_doc, tcx, cdata);
+    let unsafety = match reader::maybe_get_doc(item_doc, tag_unsafety) {
+        Some(_) => ast::Unsafety::Unsafe,
+        None => ast::Unsafety::Normal,
+    };
 
     ty::TraitDef {
+        unsafety: unsafety,
         generics: generics,
         bounds: bounds,
         trait_ref: Rc::new(item_trait_ref(item_doc, tcx, cdata))

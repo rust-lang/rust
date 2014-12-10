@@ -1050,7 +1050,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                                   &**typ,
                                   impl_items)
             }
-            ast::ItemTrait(ref generics, _, ref trait_refs, ref methods) =>
+            ast::ItemTrait(_, ref generics, _, ref trait_refs, ref methods) =>
                 self.process_trait(item, generics, trait_refs, methods),
             ast::ItemMod(ref m) => self.process_mod(item, m),
             ast::ItemTy(ref ty, ref ty_params) => {

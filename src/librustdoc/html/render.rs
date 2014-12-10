@@ -1693,8 +1693,9 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     }
 
     // Output the trait definition
-    try!(write!(w, "<pre class='rust trait'>{}trait {}{}{}{} ",
+    try!(write!(w, "<pre class='rust trait'>{}{}trait {}{}{}{} ",
                   VisSpace(it.visibility),
+                  UnsafetySpace(t.unsafety),
                   it.name.as_ref().unwrap().as_slice(),
                   t.generics,
                   bounds,

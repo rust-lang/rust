@@ -255,3 +255,5 @@ pub const tag_method_ty_generics: uint = 0xa7;
 pub const tag_predicate: uint = 0xa8;
 pub const tag_predicate_space: uint = 0xa9;
 pub const tag_predicate_data: uint = 0xb0;
+
+pub const tag_unsafety: uint = 0xb1;

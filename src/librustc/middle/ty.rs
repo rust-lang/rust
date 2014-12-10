@@ -1915,6 +1915,8 @@ pub struct Polytype<'tcx> {
 
 /// As `Polytype` but for a trait ref.
 pub struct TraitDef<'tcx> {
+    pub unsafety: ast::Unsafety,
+
     /// Generic type definitions. Note that `Self` is listed in here
     /// as having a single bound, the trait itself (e.g., in the trait
     /// `Eq`, there is a single bound `Self : Eq`). This is so that
@@ -4572,7 +4574,7 @@ pub fn provided_trait_methods<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
         match cx.map.find(id.node) {
             Some(ast_map::NodeItem(item)) => {
                 match item.node {
-                    ItemTrait(_, _, _, ref ms) => {
+                    ItemTrait(_, _, _, _, ref ms) => {
                         let (_, p) =
                             ast_util::split_trait_methods(ms.as_slice());
                         p.iter()

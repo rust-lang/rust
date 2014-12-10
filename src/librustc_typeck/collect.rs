@@ -258,7 +258,7 @@ fn collect_trait_methods<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                    trait_def: &ty::TraitDef<'tcx>) {
     let tcx = ccx.tcx;
     if let ast_map::NodeItem(item) = tcx.map.get(trait_id) {
-        if let ast::ItemTrait(_, _, _, ref trait_items) = item.node {
+        if let ast::ItemTrait(_, _, _, _, ref trait_items) = item.node {
             // For each method, construct a suitable ty::Method and
             // store it into the `tcx.impl_or_trait_items` table:
             for trait_item in trait_items.iter() {
@@ -1144,7 +1144,7 @@ pub fn convert(ccx: &CrateCtxt, it: &ast::Item) {
                                                AllowEqConstraints::DontAllow);
             }
         },
-        ast::ItemTrait(_, _, _, ref trait_methods) => {
+        ast::ItemTrait(_, _, _, _, ref trait_methods) => {
             let trait_def = trait_def_of_item(ccx, it);
 
             debug!("trait_def: ident={} trait_def={}",
@@ -1335,12 +1335,13 @@ pub fn trait_def_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         return def.clone();
     }
 
-    let (generics, unbound, bounds, items) = match it.node {
-        ast::ItemTrait(ref generics,
+    let (unsafety, generics, unbound, bounds, items) = match it.node {
+        ast::ItemTrait(unsafety,
+                       ref generics,
                        ref unbound,
                        ref supertraits,
                        ref items) => {
-            (generics, unbound, supertraits, items.as_slice())
+            (unsafety, generics, unbound, supertraits, items.as_slice())
         }
         ref s => {
             tcx.sess.span_bug(
@@ -1369,6 +1370,7 @@ pub fn trait_def_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
     let substs = mk_item_substs(ccx, &ty_generics);
     let trait_def = Rc::new(ty::TraitDef {
+        unsafety: unsafety,
         generics: ty_generics,
         bounds: bounds,
         trait_ref: Rc::new(ty::TraitRef {

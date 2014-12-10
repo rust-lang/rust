@@ -1611,7 +1611,8 @@ pub enum Item_ {
     ItemEnum(EnumDef, Generics),
     ItemStruct(P<StructDef>, Generics),
     /// Represents a Trait Declaration
-    ItemTrait(Generics,
+    ItemTrait(Unsafety,
+              Generics,
               Option<TraitRef>, // (optional) default bound not required for Self.
                                 // Currently, only Sized makes sense here.
               TyParamBounds,

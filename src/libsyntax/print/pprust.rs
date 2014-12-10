@@ -955,9 +955,11 @@ impl<'a> State<'a> {
                 }
                 try!(self.bclose(item.span));
             }
-            ast::ItemTrait(ref generics, ref unbound, ref bounds, ref methods) => {
-                try!(self.head(visibility_qualified(item.vis,
-                                                    "trait").as_slice()));
+            ast::ItemTrait(unsafety, ref generics, ref unbound, ref bounds, ref methods) => {
+                try!(self.head(""));
+                try!(self.print_visibility(item.vis));
+                try!(self.print_unsafety(unsafety));
+                try!(self.word_nbsp("trait"));
                 try!(self.print_ident(item.ident));
                 try!(self.print_generics(generics));
                 if let &Some(ref tref) = unbound {
