@@ -178,7 +178,7 @@
 //! dependencies, not the upstream transitive dependencies. Consider this
 //! dependency graph:
 //!
-//! ```ignore
+//! ```text
 //! A.1   A.2
 //! |     |
 //! |     |
