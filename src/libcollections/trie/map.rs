@@ -53,7 +53,7 @@ const MAX_DEPTH: uint = uint::BITS / SHIFT;
 /// 4 bits. If both numbers are used as keys, a chain of maximum length will be created to
 /// differentiate them.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use std::collections::TrieMap;
@@ -158,7 +158,7 @@ impl<T> Default for TrieMap<T> {
 impl<T> TrieMap<T> {
     /// Creates an empty `TrieMap`.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TrieMap;
@@ -173,7 +173,7 @@ impl<T> TrieMap<T> {
     /// Visits all key-value pairs in reverse order. Aborts traversal when `f` returns `false`.
     /// Returns `true` if `f` returns `true` for all elements.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TrieMap;
@@ -209,7 +209,7 @@ impl<T> TrieMap<T> {
 
     /// Gets an iterator over the key-value pairs in the map, ordered by keys.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TrieMap;
@@ -233,7 +233,7 @@ impl<T> TrieMap<T> {
     /// Gets an iterator over the key-value pairs in the map, with the
     /// ability to mutate the values.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TrieMap;
@@ -260,7 +260,7 @@ impl<T> TrieMap<T> {
 
     /// Return the number of elements in the map.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TrieMap;
@@ -276,7 +276,7 @@ impl<T> TrieMap<T> {
 
     /// Return true if the map contains no elements.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TrieMap;
@@ -292,7 +292,7 @@ impl<T> TrieMap<T> {
 
     /// Clears the map, removing all values.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TrieMap;
@@ -317,7 +317,7 @@ impl<T> TrieMap<T> {
 
     /// Returns a reference to the value corresponding to the key.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TrieMap;
@@ -350,7 +350,7 @@ impl<T> TrieMap<T> {
 
     /// Returns true if the map contains a value for the specified key.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TrieMap;
@@ -374,7 +374,7 @@ impl<T> TrieMap<T> {
 
     /// Returns a mutable reference to the value corresponding to the key.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TrieMap;
@@ -402,7 +402,7 @@ impl<T> TrieMap<T> {
     /// Inserts a key-value pair from the map. If the key already had a value
     /// present in the map, that value is returned. Otherwise, `None` is returned.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TrieMap;
@@ -433,7 +433,7 @@ impl<T> TrieMap<T> {
     /// Removes a key from the map, returning the value at the key if the key
     /// was previously in the map.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TrieMap;
@@ -551,7 +551,7 @@ impl<T> TrieMap<T> {
     /// Gets an iterator pointing to the first key-value pair whose key is not less than `key`.
     /// If all keys in the map are less than `key` an empty iterator is returned.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TrieMap;
@@ -568,7 +568,7 @@ impl<T> TrieMap<T> {
     /// Gets an iterator pointing to the first key-value pair whose key is greater than `key`.
     /// If all keys in the map are not greater than `key` an empty iterator is returned.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TrieMap;
@@ -593,7 +593,7 @@ impl<T> TrieMap<T> {
     /// Gets an iterator pointing to the first key-value pair whose key is not less than `key`.
     /// If all keys in the map are less than `key` an empty iterator is returned.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TrieMap;
@@ -618,7 +618,7 @@ impl<T> TrieMap<T> {
     /// Gets an iterator pointing to the first key-value pair whose key is greater than `key`.
     /// If all keys in the map are not greater than `key` an empty iterator is returned.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TrieMap;

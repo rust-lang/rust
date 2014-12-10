@@ -31,7 +31,7 @@ use vec::Vec;
 /// as a right child. The time complexity is the same, and re-balancing
 /// operations are more frequent but also cheaper.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use std::collections::TreeMap;
@@ -207,7 +207,7 @@ impl<K: Ord, Sized? Q, V> IndexMut<Q, V> for TreeMap<K, V> where Q: BorrowFrom<K
 impl<K: Ord, V> TreeMap<K, V> {
     /// Creates an empty `TreeMap`.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TreeMap;
@@ -218,7 +218,7 @@ impl<K: Ord, V> TreeMap<K, V> {
 
     /// Gets a lazy iterator over the keys in the map, in ascending order.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TreeMap;
@@ -240,7 +240,7 @@ impl<K: Ord, V> TreeMap<K, V> {
     /// Gets a lazy iterator over the values in the map, in ascending order
     /// with respect to the corresponding keys.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TreeMap;
@@ -261,7 +261,7 @@ impl<K: Ord, V> TreeMap<K, V> {
 
     /// Gets a lazy iterator over the key-value pairs in the map, in ascending order.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TreeMap;
@@ -287,7 +287,7 @@ impl<K: Ord, V> TreeMap<K, V> {
 
     /// Gets a lazy reverse iterator over the key-value pairs in the map, in descending order.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TreeMap;
@@ -308,7 +308,7 @@ impl<K: Ord, V> TreeMap<K, V> {
     /// Gets a lazy forward iterator over the key-value pairs in the
     /// map, with the values being mutable.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TreeMap;
@@ -340,7 +340,7 @@ impl<K: Ord, V> TreeMap<K, V> {
     /// Gets a lazy reverse iterator over the key-value pairs in the
     /// map, with the values being mutable.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TreeMap;
@@ -365,7 +365,7 @@ impl<K: Ord, V> TreeMap<K, V> {
 
     /// Gets a lazy iterator that consumes the treemap.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TreeMap;
@@ -393,7 +393,7 @@ impl<K: Ord, V> TreeMap<K, V> {
 
     /// Return the number of elements in the map.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TreeMap;
@@ -408,7 +408,7 @@ impl<K: Ord, V> TreeMap<K, V> {
 
     /// Return true if the map contains no elements.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TreeMap;
@@ -424,7 +424,7 @@ impl<K: Ord, V> TreeMap<K, V> {
 
     /// Clears the map, removing all values.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TreeMap;
@@ -451,7 +451,7 @@ impl<K: Ord, V> TreeMap<K, V> {
     /// The key may be any borrowed form of the map's key type, but the ordering
     /// on the borrowed form *must* match the ordering on the key type.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TreeMap;
@@ -474,7 +474,7 @@ impl<K: Ord, V> TreeMap<K, V> {
     /// The key may be any borrowed form of the map's key type, but the ordering
     /// on the borrowed form *must* match the ordering on the key type.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TreeMap;
@@ -503,7 +503,7 @@ impl<K: Ord, V> TreeMap<K, V> {
     /// The key may be any borrowed form of the map's key type, but the ordering
     /// on the borrowed form *must* match the ordering on the key type.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TreeMap;
@@ -533,7 +533,7 @@ impl<K: Ord, V> TreeMap<K, V> {
     /// Inserts a key-value pair from the map. If the key already had a value
     /// present in the map, that value is returned. Otherwise, `None` is returned.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TreeMap;
@@ -565,7 +565,7 @@ impl<K: Ord, V> TreeMap<K, V> {
     /// The key may be any borrowed form of the map's key type, but the ordering
     /// on the borrowed form *must* match the ordering on the key type.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TreeMap;
@@ -590,7 +590,7 @@ impl<K, V> TreeMap<K, V> {
     /// with current key and guides tree navigation. That means `f` should
     /// be aware of natural ordering of the tree.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use collections::tree_map::TreeMap;
@@ -620,7 +620,7 @@ impl<K, V> TreeMap<K, V> {
     /// with current key and guides tree navigation. That means `f` should
     /// be aware of natural ordering of the tree.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// let mut t = collections::tree_map::TreeMap::new();
@@ -691,7 +691,7 @@ impl<K: Ord, V> TreeMap<K, V> {
     /// Returns a lazy iterator to the first key-value pair whose key is not less than `k`
     /// If all keys in map are less than `k` an empty iterator is returned.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TreeMap;
@@ -713,7 +713,7 @@ impl<K: Ord, V> TreeMap<K, V> {
     /// Returns a lazy iterator to the first key-value pair whose key is greater than `k`
     /// If all keys in map are less than or equal to `k` an empty iterator is returned.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TreeMap;
@@ -749,7 +749,7 @@ impl<K: Ord, V> TreeMap<K, V> {
     /// If all keys in map are less than `k` an empty iterator is
     /// returned.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TreeMap;
@@ -783,7 +783,7 @@ impl<K: Ord, V> TreeMap<K, V> {
     /// If all keys in map are less than or equal to `k` an empty iterator
     /// is returned.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TreeMap;

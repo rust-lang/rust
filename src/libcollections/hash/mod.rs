@@ -13,7 +13,7 @@
 //! This module provides a generic way to compute the hash of a value. The
 //! simplest way to make a type hashable is to use `#[deriving(Hash)]`:
 //!
-//! # Example
+//! # Examples
 //!
 //! ```rust
 //! use std::hash;

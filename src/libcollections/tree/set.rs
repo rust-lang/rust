@@ -27,7 +27,7 @@ use tree_map::{TreeMap, Entries, RevEntries, MoveEntries};
 /// only requirement is that the type of the elements contained ascribes to the
 /// `Ord` trait.
 ///
-/// ## Example
+/// ## Examples
 ///
 /// ```{rust}
 /// use std::collections::TreeSet;
@@ -142,7 +142,7 @@ impl<T: Ord> Default for TreeSet<T> {
 impl<T: Ord> TreeSet<T> {
     /// Creates an empty `TreeSet`.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TreeSet;
@@ -154,7 +154,7 @@ impl<T: Ord> TreeSet<T> {
 
     /// Gets a lazy iterator over the values in the set, in ascending order.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TreeSet;
@@ -173,7 +173,7 @@ impl<T: Ord> TreeSet<T> {
 
     /// Gets a lazy iterator over the values in the set, in descending order.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TreeSet;
@@ -192,7 +192,7 @@ impl<T: Ord> TreeSet<T> {
     /// Creates a consuming iterator, that is, one that moves each value out of the
     /// set in ascending order. The set cannot be used after calling this.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TreeSet;
@@ -211,7 +211,7 @@ impl<T: Ord> TreeSet<T> {
     /// Gets a lazy iterator pointing to the first value not less than `v` (greater or equal).
     /// If all elements in the set are less than `v` empty iterator is returned.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TreeSet;
@@ -230,7 +230,7 @@ impl<T: Ord> TreeSet<T> {
     /// If all elements in the set are less than or equal to `v` an
     /// empty iterator is returned.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TreeSet;
@@ -247,7 +247,7 @@ impl<T: Ord> TreeSet<T> {
 
     /// Visits the values representing the difference, in ascending order.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TreeSet;
@@ -275,7 +275,7 @@ impl<T: Ord> TreeSet<T> {
 
     /// Visits the values representing the symmetric difference, in ascending order.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TreeSet;
@@ -302,7 +302,7 @@ impl<T: Ord> TreeSet<T> {
 
     /// Visits the values representing the intersection, in ascending order.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TreeSet;
@@ -326,7 +326,7 @@ impl<T: Ord> TreeSet<T> {
 
     /// Visits the values representing the union, in ascending order.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TreeSet;
@@ -349,7 +349,7 @@ impl<T: Ord> TreeSet<T> {
 
     /// Return the number of elements in the set
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TreeSet;
@@ -365,7 +365,7 @@ impl<T: Ord> TreeSet<T> {
 
     /// Returns true if the set contains no elements
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TreeSet;
@@ -380,7 +380,7 @@ impl<T: Ord> TreeSet<T> {
 
     /// Clears the set, removing all values.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TreeSet;
@@ -400,7 +400,7 @@ impl<T: Ord> TreeSet<T> {
     /// but the ordering on the borrowed form *must* match the
     /// ordering on the value type.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TreeSet;
@@ -420,7 +420,7 @@ impl<T: Ord> TreeSet<T> {
     /// Returns `true` if the set has no elements in common with `other`.
     /// This is equivalent to checking for an empty intersection.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TreeSet;
@@ -441,7 +441,7 @@ impl<T: Ord> TreeSet<T> {
 
     /// Returns `true` if the set is a subset of another.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TreeSet;
@@ -482,7 +482,7 @@ impl<T: Ord> TreeSet<T> {
 
     /// Returns `true` if the set is a superset of another.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TreeSet;
@@ -507,7 +507,7 @@ impl<T: Ord> TreeSet<T> {
     /// Adds a value to the set. Returns `true` if the value was not already
     /// present in the set.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TreeSet;
@@ -529,7 +529,7 @@ impl<T: Ord> TreeSet<T> {
     /// but the ordering on the borrowed form *must* match the
     /// ordering on the value type.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TreeSet;
@@ -669,7 +669,7 @@ impl<'a, T: Ord> Iterator<&'a T> for UnionItems<'a, T> {
 impl<T: Ord + Clone> BitOr<TreeSet<T>, TreeSet<T>> for TreeSet<T> {
     /// Returns the union of `self` and `rhs` as a new `TreeSet<T>`.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TreeSet;
@@ -690,7 +690,7 @@ impl<T: Ord + Clone> BitOr<TreeSet<T>, TreeSet<T>> for TreeSet<T> {
 impl<T: Ord + Clone> BitAnd<TreeSet<T>, TreeSet<T>> for TreeSet<T> {
     /// Returns the intersection of `self` and `rhs` as a new `TreeSet<T>`.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TreeSet;
@@ -711,7 +711,7 @@ impl<T: Ord + Clone> BitAnd<TreeSet<T>, TreeSet<T>> for TreeSet<T> {
 impl<T: Ord + Clone> BitXor<TreeSet<T>, TreeSet<T>> for TreeSet<T> {
     /// Returns the symmetric difference of `self` and `rhs` as a new `TreeSet<T>`.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TreeSet;
@@ -732,7 +732,7 @@ impl<T: Ord + Clone> BitXor<TreeSet<T>, TreeSet<T>> for TreeSet<T> {
 impl<T: Ord + Clone> Sub<TreeSet<T>, TreeSet<T>> for TreeSet<T> {
     /// Returns the difference of `self` and `rhs` as a new `TreeSet<T>`.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::TreeSet;

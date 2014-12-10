@@ -152,7 +152,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
 
     /// Clears the map, removing all values.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BTreeMap;
@@ -188,7 +188,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// The key may be any borrowed form of the map's key type, but the ordering
     /// on the borrowed form *must* match the ordering on the key type.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BTreeMap;
@@ -220,7 +220,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// The key may be any borrowed form of the map's key type, but the ordering
     /// on the borrowed form *must* match the ordering on the key type.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BTreeMap;
@@ -246,7 +246,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// The key may be any borrowed form of the map's key type, but the ordering
     /// on the borrowed form *must* match the ordering on the key type.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BTreeMap;
@@ -314,7 +314,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// Inserts a key-value pair from the map. If the key already had a value
     /// present in the map, that value is returned. Otherwise, `None` is returned.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BTreeMap;
@@ -423,7 +423,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// The key may be any borrowed form of the map's key type, but the ordering
     /// on the borrowed form *must* match the ordering on the key type.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BTreeMap;
@@ -1087,7 +1087,7 @@ impl<K, V> BTreeMap<K, V> {
 
     /// Gets an iterator over the keys of the map.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BTreeMap;
@@ -1106,7 +1106,7 @@ impl<K, V> BTreeMap<K, V> {
 
     /// Gets an iterator over the values of the map.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BTreeMap;
@@ -1125,7 +1125,7 @@ impl<K, V> BTreeMap<K, V> {
 
     /// Return the number of elements in the map.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BTreeMap;
@@ -1140,7 +1140,7 @@ impl<K, V> BTreeMap<K, V> {
 
     /// Return true if the map contains no elements.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BTreeMap;
