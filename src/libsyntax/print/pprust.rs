@@ -917,12 +917,16 @@ impl<'a> State<'a> {
                 try!(self.print_struct(&**struct_def, generics, item.ident, item.span));
             }
 
-            ast::ItemImpl(ref generics,
+            ast::ItemImpl(unsafety,
+                          ref generics,
                           ref opt_trait,
                           ref ty,
                           ref impl_items) => {
-                try!(self.head(visibility_qualified(item.vis,
-                                                    "impl").as_slice()));
+                try!(self.head(""));
+                try!(self.print_visibility(item.vis));
+                try!(self.print_unsafety(unsafety));
+                try!(self.word_nbsp("impl"));
+
                 if generics.is_parameterized() {
                     try!(self.print_generics(generics));
                     try!(space(&mut self.s));

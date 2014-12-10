@@ -1729,7 +1729,7 @@ impl LintPass for Stability {
                     }
                 }
             }
-            ast::ItemImpl(_, Some(ref t), _, _) => {
+            ast::ItemImpl(_, _, Some(ref t), _, _) => {
                 let id = ty::trait_ref_to_def_id(cx.tcx, t);
                 self.lint(cx, id, t.path.span);
             }

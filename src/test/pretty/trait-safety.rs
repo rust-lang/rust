@@ -14,6 +14,10 @@ unsafe trait UnsafeTrait {
     fn foo(&self);
 }
 
+unsafe impl UnsafeTrait for int {
+    fn foo(&self) { }
+}
+
 pub unsafe trait PubUnsafeTrait {
     fn foo(&self);
 }

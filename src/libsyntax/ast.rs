@@ -1617,7 +1617,8 @@ pub enum Item_ {
                                 // Currently, only Sized makes sense here.
               TyParamBounds,
               Vec<TraitItem>),
-    ItemImpl(Generics,
+    ItemImpl(Unsafety,
+             Generics,
              Option<TraitRef>, // (optional) trait this impl implements
              P<Ty>, // self
              Vec<ImplItem>),
