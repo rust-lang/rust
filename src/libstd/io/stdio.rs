@@ -532,15 +532,14 @@ mod tests {
         assert_eq!(r.read_to_string().unwrap(), "hello!\n");
     }
 
-    //#[test]
+    #[test]
     fn capture_stderr() {
-        use realstd::comm::channel;
-        use realstd::io::{ChanReader, ChanWriter, Reader};
+        use io::{ChanReader, ChanWriter, Reader};
 
         let (tx, rx) = channel();
         let (mut r, w) = (ChanReader::new(rx), ChanWriter::new(tx));
         spawn(move|| {
-            ::realstd::io::stdio::set_stderr(box w);
+            set_stderr(box w);
             panic!("my special message");
         });
         let s = r.read_to_string().unwrap();
