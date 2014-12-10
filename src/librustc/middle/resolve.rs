@@ -5769,16 +5769,30 @@ impl<'a> Resolver<'a> {
                 // This is a local path in the value namespace. Walk through
                 // scopes looking for it.
 
+                let path_name = self.path_names_to_string(path);
+
                 match self.resolve_path(expr.id, path, ValueNS, true) {
+                    // Check if struct variant
+                    Some((DefVariant(_, _, true), _)) => {
+                        self.resolve_error(expr.span,
+                                format!("`{}` is a struct variant name, but \
+                                         this expression \
+                                         uses it like a function name",
+                                        path_name).as_slice());
+
+                        self.session.span_help(expr.span,
+                            format!("Did you mean to write: \
+                                    `{} {{ /* fields */ }}`?",
+                                    path_name).as_slice());
+                    }
                     Some(def) => {
                         // Write the result into the def map.
                         debug!("(resolving expr) resolved `{}`",
-                               self.path_names_to_string(path));
+                               path_name);
 
                         self.record_def(expr.id, def);
                     }
                     None => {
-                        let wrong_name = self.path_names_to_string(path);
                         // Be helpful if the name refers to a struct
                         // (The pattern matching def_tys where the id is in self.structs
                         // matches on regular structs while excluding tuple- and enum-like
@@ -5791,12 +5805,12 @@ impl<'a> Resolver<'a> {
                                         format!("`{}` is a structure name, but \
                                                  this expression \
                                                  uses it like a function name",
-                                                wrong_name).as_slice());
+                                                path_name).as_slice());
 
                                 self.session.span_help(expr.span,
                                     format!("Did you mean to write: \
                                             `{} {{ /* fields */ }}`?",
-                                            wrong_name).as_slice());
+                                            path_name).as_slice());
 
                             }
                             _ => {
@@ -5813,7 +5827,7 @@ impl<'a> Resolver<'a> {
                                 });
 
                                 if method_scope && token::get_name(self.self_name).get()
-                                                                   == wrong_name {
+                                                                   == path_name {
                                         self.resolve_error(
                                             expr.span,
                                             "`self` is not available \
@@ -5825,18 +5839,18 @@ impl<'a> Resolver<'a> {
                                         NoSuggestion => {
                                             // limit search to 5 to reduce the number
                                             // of stupid suggestions
-                                            self.find_best_match_for_name(wrong_name.as_slice(), 5)
+                                            self.find_best_match_for_name(path_name.as_slice(), 5)
                                                                 .map_or("".to_string(),
                                                                         |x| format!("`{}`", x))
                                         }
                                         Field =>
-                                            format!("`self.{}`", wrong_name),
+                                            format!("`self.{}`", path_name),
                                         Method
                                         | TraitItem =>
-                                            format!("to call `self.{}`", wrong_name),
+                                            format!("to call `self.{}`", path_name),
                                         TraitMethod(path_str)
                                         | StaticMethod(path_str) =>
-                                            format!("to call `{}::{}`", path_str, wrong_name)
+                                            format!("to call `{}::{}`", path_str, path_name)
                                     };
 
                                     if msg.len() > 0 {
@@ -5846,7 +5860,7 @@ impl<'a> Resolver<'a> {
                                     self.resolve_error(
                                         expr.span,
                                         format!("unresolved name `{}`{}",
-                                                wrong_name,
+                                                path_name,
                                                 msg).as_slice());
                                 }
                             }
