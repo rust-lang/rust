@@ -76,7 +76,9 @@ impl<'tcx,C> HigherRankedRelations<'tcx> for C
             // fresh concrete region.
             let (b_prime, skol_map) = {
                 replace_late_bound_regions(self.tcx(), b, |br, _| {
-                    let skol = self.infcx().region_vars.new_skolemized(br);
+                    let skol =
+                        self.infcx().region_vars.new_skolemized(
+                            br, &snapshot.region_vars_snapshot);
                     debug!("Bound region {} skolemized to {}",
                            bound_region_to_string(self.tcx(), "", false, br),
                            skol);

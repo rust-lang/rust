@@ -226,7 +226,8 @@ pub struct RegionVarBindings<'a, 'tcx: 'a> {
 #[deriving(Show)]
 #[allow(missing_copy_implementations)]
 pub struct RegionSnapshot {
-    length: uint
+    length: uint,
+    skolemization_count: uint,
 }
 
 impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
@@ -254,7 +255,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         let length = self.undo_log.borrow().len();
         debug!("RegionVarBindings: start_snapshot({})", length);
         self.undo_log.borrow_mut().push(OpenSnapshot);
-        RegionSnapshot { length: length }
+        RegionSnapshot { length: length, skolemization_count: self.skolemization_count.get() }
     }
 
     pub fn commit(&self, snapshot: RegionSnapshot) {
@@ -268,6 +269,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         } else {
             (*undo_log)[snapshot.length] = CommitedSnapshot;
         }
+        self.skolemization_count.set(snapshot.skolemization_count);
     }
 
     pub fn rollback_to(&self, snapshot: RegionSnapshot) {
@@ -306,6 +308,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         }
         let c = undo_log.pop().unwrap();
         assert!(c == OpenSnapshot);
+        self.skolemization_count.set(snapshot.skolemization_count);
     }
 
     pub fn num_vars(&self) -> uint {
@@ -324,7 +327,25 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         return vid;
     }
 
-    pub fn new_skolemized(&self, br: ty::BoundRegion) -> Region {
+    /// Creates a new skolemized region. Skolemized regions are fresh
+    /// regions used when performing higher-ranked computations. They
+    /// must be used in a very particular way and are never supposed
+    /// to "escape" out into error messages or the code at large.
+    ///
+    /// The idea is to always create a snapshot. Skolemized regions
+    /// can be created in the context of this snapshot, but once the
+    /// snapshot is commited or rolled back, their numbers will be
+    /// recycled, so you must be finished with them. See the extensive
+    /// comments in `higher_ranked.rs` to see how it works (in
+    /// particular, the subtyping comparison).
+    ///
+    /// The `snapshot` argument to this function is not really used;
+    /// it's just there to make it explicit which snapshot bounds the
+    /// skolemized region that results.
+    pub fn new_skolemized(&self, br: ty::BoundRegion, snapshot: &RegionSnapshot) -> Region {
+        assert!(self.in_snapshot());
+        assert!(self.undo_log.borrow()[snapshot.length] == OpenSnapshot);
+
         let sc = self.skolemization_count.get();
         self.skolemization_count.set(sc + 1);
         ReInfer(ReSkolemized(sc, br))
