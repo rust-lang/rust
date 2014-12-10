@@ -57,7 +57,6 @@ use sync::atomic::{AtomicInt, INIT_ATOMIC_INT, SeqCst};
 use vec::Vec;
 
 #[cfg(unix)] use c_str::ToCStr;
-#[cfg(unix)] use libc::c_char;
 
 #[cfg(unix)]
 pub use sys::ext as unix;
