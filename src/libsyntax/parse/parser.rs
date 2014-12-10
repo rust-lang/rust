@@ -5973,6 +5973,10 @@ impl<'a> Parser<'a> {
     fn parse_view_path(&mut self) -> P<ViewPath> {
         let lo = self.span.lo;
 
+        // Allow a leading :: because the paths are absolute either way.
+        // This occurs with "use $crate::..." in macros.
+        self.eat(&token::ModSep);
+
         if self.check(&token::OpenDelim(token::Brace)) {
             // use {foo,bar}
             let idents = self.parse_unspanned_seq(
