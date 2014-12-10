@@ -104,7 +104,6 @@ use {CrateCtxt, lookup_def_ccx, no_params, require_same_types};
 use TypeAndSubsts;
 use middle::lang_items::TypeIdLangItem;
 use lint;
-use util::common::ErrorReported;
 use util::common::{block_query, indenter, loop_query};
 use util::ppaux::{mod, UserString, Repr};
 use util::nodemap::{DefIdMap, FnvHashMap, NodeMap};

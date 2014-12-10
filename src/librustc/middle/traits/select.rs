@@ -1289,6 +1289,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     // don't supply any form of builtin impl.
                     if !this.tcx().sess.features.borrow().opt_out_copy {
                         return Ok(ParameterBuiltin)
+                    } else {
+                        // Older, backwards compatibility behavior:
+                        if
+                            Some(def_id) == tcx.lang_items.no_copy_bound() ||
+                            Some(def_id) == tcx.lang_items.managed_bound() ||
+                            ty::has_dtor(tcx, def_id)
+                        {
+                            return Err(Unimplemented);
+                        }
                     }
                 }
 
