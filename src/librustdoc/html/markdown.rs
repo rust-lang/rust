@@ -403,7 +403,11 @@ impl LangString {
                 "should_fail" => { data.should_fail = true; seen_rust_tags = true; },
                 "no_run" => { data.no_run = true; seen_rust_tags = true; },
                 "ignore" => { data.ignore = true; seen_rust_tags = true; },
-                "notrust" => { data.notrust = true; seen_rust_tags = true; },
+                "notrust" => {
+                    data.notrust = true; seen_rust_tags = true;
+                    warn!("Use of the `notrust` code tag is discouraged. \
+                           Tag the code with its language instead or use `plain`.");
+                },
                 "rust" => { data.notrust = false; seen_rust_tags = true; },
                 "test_harness" => { data.test_harness = true; seen_rust_tags = true; }
                 _ => { seen_other_tags = true }
