@@ -174,6 +174,12 @@ fn blocks_for_bits(bits: uint) -> uint {
 
 }
 
+/// Computes the bitmask for the final word of the vector
+fn mask_for_bits(bits: uint) -> u32 {
+    // Note especially that a perfect multiple of u32::BITS should mask all 1s.
+    !0u32 >> (u32::BITS - bits % u32::BITS) % u32::BITS
+}
+
 impl Bitv {
     /// Applies the given operation to the blocks of self and other, and sets self to
     /// be the result.
@@ -526,7 +532,7 @@ impl Bitv {
             last_word = elem;
             tmp == !0u32
         // and then check the last one has enough ones
-        }) && (last_word == ((1 << self.nbits % u32::BITS) - 1) || last_word == !0u32)
+        }) && (last_word == mask_for_bits(self.nbits))
     }
 
     /// Returns an iterator over the elements of the vector in order.
@@ -788,15 +794,15 @@ impl Bitv {
         let new_nblocks = blocks_for_bits(new_nbits);
         let full_value = if value { !0 } else { 0 };
 
-        // Correct the old tail word
+        // Correct the old tail word, setting or clearing formerly unused bits
         let old_last_word = blocks_for_bits(self.nbits) - 1;
         if self.nbits % u32::BITS > 0 {
-            let overhang = self.nbits % u32::BITS; // # of already-used bits
-            let mask = !((1 << overhang) - 1);  // e.g. 5 unused bits => 111110..0
+            let mask = mask_for_bits(self.nbits);
             if value {
-                self.storage[old_last_word] |= mask;
+                self.storage[old_last_word] |= !mask;
             } else {
-                self.storage[old_last_word] &= !mask;
+                // Extra bits are already supposed to be zero by invariant, but play it safe...
+                self.storage[old_last_word] &= mask;
             }
         }
 
@@ -1808,14 +1814,17 @@ mod tests {
         let act = Bitv::new();
         let exp = Vec::from_elem(0u, false);
         assert!(act.eq_vec(exp.as_slice()));
+        assert!(act.none() && act.all());
     }
 
     #[test]
     fn test_1_element() {
         let mut act = Bitv::from_elem(1u, false);
         assert!(act.eq_vec(&[false]));
+        assert!(act.none() && !act.all());
         act = Bitv::from_elem(1u, true);
         assert!(act.eq_vec(&[true]));
+        assert!(!act.none() && act.all());
     }
 
     #[test]
@@ -1824,6 +1833,7 @@ mod tests {
         b.set(0, true);
         b.set(1, false);
         assert_eq!(b.to_string(), "10");
+        assert!(!b.none() && !b.all());
     }
 
     #[test]
@@ -1834,10 +1844,12 @@ mod tests {
         act = Bitv::from_elem(10u, false);
         assert!((act.eq_vec(
                     &[false, false, false, false, false, false, false, false, false, false])));
+        assert!(act.none() && !act.all());
         // all 1
 
         act = Bitv::from_elem(10u, true);
         assert!((act.eq_vec(&[true, true, true, true, true, true, true, true, true, true])));
+        assert!(!act.none() && act.all());
         // mixed
 
         act = Bitv::from_elem(10u, false);
@@ -1847,6 +1859,7 @@ mod tests {
         act.set(3u, true);
         act.set(4u, true);
         assert!((act.eq_vec(&[true, true, true, true, true, false, false, false, false, false])));
+        assert!(!act.none() && !act.all());
         // mixed
 
         act = Bitv::from_elem(10u, false);
@@ -1856,6 +1869,7 @@ mod tests {
         act.set(8u, true);
         act.set(9u, true);
         assert!((act.eq_vec(&[false, false, false, false, false, true, true, true, true, true])));
+        assert!(!act.none() && !act.all());
         // mixed
 
         act = Bitv::from_elem(10u, false);
@@ -1864,6 +1878,7 @@ mod tests {
         act.set(6u, true);
         act.set(9u, true);
         assert!((act.eq_vec(&[true, false, false, true, false, false, true, false, false, true])));
+        assert!(!act.none() && !act.all());
     }
 
     #[test]
@@ -1876,6 +1891,7 @@ mod tests {
                 &[false, false, false, false, false, false, false, false, false, false, false,
                   false, false, false, false, false, false, false, false, false, false, false,
                   false, false, false, false, false, false, false, false, false]));
+        assert!(act.none() && !act.all());
         // all 1
 
         act = Bitv::from_elem(31u, true);
@@ -1883,6 +1899,7 @@ mod tests {
                 &[true, true, true, true, true, true, true, true, true, true, true, true, true,
                   true, true, true, true, true, true, true, true, true, true, true, true, true,
                   true, true, true, true, true]));
+        assert!(!act.none() && act.all());
         // mixed
 
         act = Bitv::from_elem(31u, false);
@@ -1898,6 +1915,7 @@ mod tests {
                 &[true, true, true, true, true, true, true, true, false, false, false, false, false,
                   false, false, false, false, false, false, false, false, false, false, false,
                   false, false, false, false, false, false, false]));
+        assert!(!act.none() && !act.all());
         // mixed
 
         act = Bitv::from_elem(31u, false);
@@ -1913,6 +1931,7 @@ mod tests {
                 &[false, false, false, false, false, false, false, false, false, false, false,
                   false, false, false, false, false, true, true, true, true, true, true, true, true,
                   false, false, false, false, false, false, false]));
+        assert!(!act.none() && !act.all());
         // mixed
 
         act = Bitv::from_elem(31u, false);
@@ -1927,6 +1946,7 @@ mod tests {
                 &[false, false, false, false, false, false, false, false, false, false, false,
                   false, false, false, false, false, false, false, false, false, false, false,
                   false, false, true, true, true, true, true, true, true]));
+        assert!(!act.none() && !act.all());
         // mixed
 
         act = Bitv::from_elem(31u, false);
@@ -1937,6 +1957,7 @@ mod tests {
                 &[false, false, false, true, false, false, false, false, false, false, false, false,
                   false, false, false, false, false, true, false, false, false, false, false, false,
                   false, false, false, false, false, false, true]));
+        assert!(!act.none() && !act.all());
     }
 
     #[test]
@@ -1949,6 +1970,7 @@ mod tests {
                 &[false, false, false, false, false, false, false, false, false, false, false,
                   false, false, false, false, false, false, false, false, false, false, false,
                   false, false, false, false, false, false, false, false, false, false]));
+        assert!(act.none() && !act.all());
         // all 1
 
         act = Bitv::from_elem(32u, true);
@@ -1956,6 +1978,7 @@ mod tests {
                 &[true, true, true, true, true, true, true, true, true, true, true, true, true,
                   true, true, true, true, true, true, true, true, true, true, true, true, true,
                   true, true, true, true, true, true]));
+        assert!(!act.none() && act.all());
         // mixed
 
         act = Bitv::from_elem(32u, false);
@@ -1971,6 +1994,7 @@ mod tests {
                 &[true, true, true, true, true, true, true, true, false, false, false, false, false,
                   false, false, false, false, false, false, false, false, false, false, false,
                   false, false, false, false, false, false, false, false]));
+        assert!(!act.none() && !act.all());
         // mixed
 
         act = Bitv::from_elem(32u, false);
@@ -1986,6 +2010,7 @@ mod tests {
                 &[false, false, false, false, false, false, false, false, false, false, false,
                   false, false, false, false, false, true, true, true, true, true, true, true, true,
                   false, false, false, false, false, false, false, false]));
+        assert!(!act.none() && !act.all());
         // mixed
 
         act = Bitv::from_elem(32u, false);
@@ -2001,6 +2026,7 @@ mod tests {
                 &[false, false, false, false, false, false, false, false, false, false, false,
                   false, false, false, false, false, false, false, false, false, false, false,
                   false, false, true, true, true, true, true, true, true, true]));
+        assert!(!act.none() && !act.all());
         // mixed
 
         act = Bitv::from_elem(32u, false);
@@ -2012,6 +2038,7 @@ mod tests {
                 &[false, false, false, true, false, false, false, false, false, false, false, false,
                   false, false, false, false, false, true, false, false, false, false, false, false,
                   false, false, false, false, false, false, true, true]));
+        assert!(!act.none() && !act.all());
     }
 
     #[test]
@@ -2024,6 +2051,7 @@ mod tests {
                 &[false, false, false, false, false, false, false, false, false, false, false,
                   false, false, false, false, false, false, false, false, false, false, false,
                   false, false, false, false, false, false, false, false, false, false, false]));
+        assert!(act.none() && !act.all());
         // all 1
 
         act = Bitv::from_elem(33u, true);
@@ -2031,6 +2059,7 @@ mod tests {
                 &[true, true, true, true, true, true, true, true, true, true, true, true, true,
                   true, true, true, true, true, true, true, true, true, true, true, true, true,
                   true, true, true, true, true, true, true]));
+        assert!(!act.none() && act.all());
         // mixed
 
         act = Bitv::from_elem(33u, false);
@@ -2046,6 +2075,7 @@ mod tests {
                 &[true, true, true, true, true, true, true, true, false, false, false, false, false,
                   false, false, false, false, false, false, false, false, false, false, false,
                   false, false, false, false, false, false, false, false, false]));
+        assert!(!act.none() && !act.all());
         // mixed
 
         act = Bitv::from_elem(33u, false);
@@ -2061,6 +2091,7 @@ mod tests {
                 &[false, false, false, false, false, false, false, false, false, false, false,
                   false, false, false, false, false, true, true, true, true, true, true, true, true,
                   false, false, false, false, false, false, false, false, false]));
+        assert!(!act.none() && !act.all());
         // mixed
 
         act = Bitv::from_elem(33u, false);
@@ -2076,6 +2107,7 @@ mod tests {
                 &[false, false, false, false, false, false, false, false, false, false, false,
                   false, false, false, false, false, false, false, false, false, false, false,
                   false, false, true, true, true, true, true, true, true, true, false]));
+        assert!(!act.none() && !act.all());
         // mixed
 
         act = Bitv::from_elem(33u, false);
@@ -2088,6 +2120,7 @@ mod tests {
                 &[false, false, false, true, false, false, false, false, false, false, false, false,
                   false, false, false, false, false, true, false, false, false, false, false, false,
                   false, false, false, false, false, false, true, true, true]));
+        assert!(!act.none() && !act.all());
     }
 
     #[test]
@@ -2234,15 +2267,17 @@ mod tests {
     #[test]
     fn test_small_clear() {
         let mut b = Bitv::from_elem(14, true);
+        assert!(!b.none() && b.all());
         b.clear();
-        assert!(b.none());
+        assert!(b.none() && !b.all());
     }
 
     #[test]
     fn test_big_clear() {
         let mut b = Bitv::from_elem(140, true);
+        assert!(!b.none() && b.all());
         b.clear();
-        assert!(b.none());
+        assert!(b.none() && !b.all());
     }
 
     #[test]
