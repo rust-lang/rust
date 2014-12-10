@@ -26,7 +26,7 @@ use syntax::ast;
 use syntax::abi;
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
-use syntax::codemap::{DUMMY_SP, Span, mk_sp};
+use syntax::codemap::{COMMAND_LINE_SP, Span, mk_sp};
 use syntax::parse;
 use syntax::parse::token::InternedString;
 use syntax::parse::token;
@@ -456,7 +456,7 @@ impl<'a> CrateReader<'a> {
                      ident: s.to_string(),
                      id: ast::DUMMY_NODE_ID,
                      should_link: true,
-                 }, DUMMY_SP)
+                 }, COMMAND_LINE_SP)
             }
         };
         let target_triple = &self.sess.opts.target_triple[];
