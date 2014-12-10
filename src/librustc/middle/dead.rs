@@ -355,7 +355,7 @@ impl<'v> Visitor<'v> for LifeSeeder {
             ast::ItemEnum(ref enum_def, _) if allow_dead_code => {
                 self.worklist.extend(enum_def.variants.iter().map(|variant| variant.node.id));
             }
-            ast::ItemImpl(_, Some(ref _trait_ref), _, ref impl_items) => {
+            ast::ItemImpl(_, _, Some(ref _trait_ref), _, ref impl_items) => {
                 for impl_item in impl_items.iter() {
                     match *impl_item {
                         ast::MethodImplItem(ref method) => {

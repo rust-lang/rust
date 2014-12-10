@@ -4667,7 +4667,7 @@ impl<'a> Parser<'a> {
     /// Parses two variants (with the region/type params always optional):
     ///    impl<T> Foo { ... }
     ///    impl<T> ToString for ~[T] { ... }
-    fn parse_item_impl(&mut self) -> ItemInfo {
+    fn parse_item_impl(&mut self, unsafety: ast::Unsafety) -> ItemInfo {
         // First, parse type parameters if necessary.
         let mut generics = self.parse_generics();
 
@@ -4706,7 +4706,7 @@ impl<'a> Parser<'a> {
         let ident = ast_util::impl_pretty_name(&opt_trait, &*ty);
 
         (ident,
-         ItemImpl(generics, opt_trait, ty, impl_items),
+         ItemImpl(unsafety, generics, opt_trait, ty, impl_items),
          Some(attrs))
     }
 
@@ -5556,6 +5556,22 @@ impl<'a> Parser<'a> {
                                     maybe_append(attrs, extra_attrs));
             return IoviItem(item);
         }
+        if self.token.is_keyword(keywords::Unsafe) &&
+            self.look_ahead(1u, |t| t.is_keyword(keywords::Impl))
+        {
+            // IMPL ITEM
+            self.expect_keyword(keywords::Unsafe);
+            self.expect_keyword(keywords::Impl);
+            let (ident, item_, extra_attrs) = self.parse_item_impl(ast::Unsafety::Unsafe);
+            let last_span = self.last_span;
+            let item = self.mk_item(lo,
+                                    last_span.hi,
+                                    ident,
+                                    item_,
+                                    visibility,
+                                    maybe_append(attrs, extra_attrs));
+            return IoviItem(item);
+        }
         if self.token.is_keyword(keywords::Fn) &&
                 self.look_ahead(1, |f| !Parser::fn_expr_lookahead(f)) {
             // FUNCTION ITEM
@@ -5644,7 +5660,7 @@ impl<'a> Parser<'a> {
         }
         if self.eat_keyword(keywords::Impl) {
             // IMPL ITEM
-            let (ident, item_, extra_attrs) = self.parse_item_impl();
+            let (ident, item_, extra_attrs) = self.parse_item_impl(ast::Unsafety::Normal);
             let last_span = self.last_span;
             let item = self.mk_item(lo,
                                     last_span.hi,

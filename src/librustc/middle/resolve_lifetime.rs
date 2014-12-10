@@ -114,7 +114,7 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
                     visit::walk_item(this, item);
                 });
             }
-            ast::ItemImpl(ref generics, _, _, _) => {
+            ast::ItemImpl(_, ref generics, _, _, _) => {
                 // Impls have both early- and late-bound lifetimes.
                 self.visit_early_late(subst::TypeSpace, generics, |this| {
                     this.check_lifetime_defs(&generics.lifetimes);

@@ -215,7 +215,7 @@ impl<'a, 'v> Visitor<'v> for Context<'a> {
                 }
             }
 
-            ast::ItemImpl(_, _, _, ref items) => {
+            ast::ItemImpl(_, _, _, _, ref items) => {
                 if attr::contains_name(i.attrs.as_slice(),
                                        "unsafe_destructor") {
                     self.gate_feature("unsafe_destructor",

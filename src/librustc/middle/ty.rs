@@ -4741,7 +4741,7 @@ pub fn impl_trait_ref<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
             match cx.map.find(id.node) {
                 Some(ast_map::NodeItem(item)) => {
                     match item.node {
-                        ast::ItemImpl(_, ref opt_trait, _, _) => {
+                        ast::ItemImpl(_, _, ref opt_trait, _, _) => {
                             match opt_trait {
                                 &Some(ref t) => {
                                     Some(ty::node_id_to_trait_ref(cx, t.ref_id))
@@ -5722,7 +5722,7 @@ pub fn trait_id_of_impl(tcx: &ctxt,
     match node {
         ast_map::NodeItem(item) => {
             match item.node {
-                ast::ItemImpl(_, Some(ref trait_ref), _, _) => {
+                ast::ItemImpl(_, _, Some(ref trait_ref), _, _) => {
                     Some(node_id_to_trait_ref(tcx, trait_ref.ref_id).def_id)
                 }
                 _ => None

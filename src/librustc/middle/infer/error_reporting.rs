@@ -1690,7 +1690,7 @@ fn lifetimes_in_scope(tcx: &ty::ctxt,
         match tcx.map.find(parent) {
             Some(node) => match node {
                 ast_map::NodeItem(item) => match item.node {
-                    ast::ItemImpl(ref gen, _, _, _) => {
+                    ast::ItemImpl(_, ref gen, _, _, _) => {
                         taken.push_all(gen.lifetimes.as_slice());
                     }
                     _ => ()

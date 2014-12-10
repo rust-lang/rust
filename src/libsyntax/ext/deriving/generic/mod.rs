@@ -462,7 +462,8 @@ impl<'a> TraitDef<'a> {
             self.span,
             ident,
             a,
-            ast::ItemImpl(trait_generics,
+            ast::ItemImpl(ast::Unsafety::Normal,
+                          trait_generics,
                           opt_trait_ref,
                           self_type,
                           methods.into_iter()
