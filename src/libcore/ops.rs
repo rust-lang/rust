@@ -844,12 +844,12 @@ pub trait FnMut<Args,Result> for Sized? {
 
 /// A version of the call operator that takes a by-value receiver.
 #[lang="fn_once"]
-pub trait FnOnce<Args,Result> for Sized? {
+pub trait FnOnce<Args,Result> {
     /// This is called when the call operator is used.
     extern "rust-call" fn call_once(self, args: Args) -> Result;
 }
 
-impl<F,A,R> FnMut<A,R> for F
+impl<Sized? F,A,R> FnMut<A,R> for F
     where F : Fn<A,R>
 {
     extern "rust-call" fn call_mut(&mut self, args: A) -> R {
