@@ -74,17 +74,7 @@ impl<'tcx,C> HigherRankedRelations<'tcx> for C
 
             // Second, we instantiate each bound region in the supertype with a
             // fresh concrete region.
-            let (b_prime, skol_map) = {
-                replace_late_bound_regions(self.tcx(), b, |br, _| {
-                    let skol =
-                        self.infcx().region_vars.new_skolemized(
-                            br, &snapshot.region_vars_snapshot);
-                    debug!("Bound region {} skolemized to {}",
-                           bound_region_to_string(self.tcx(), "", false, br),
-                           skol);
-                    skol
-                })
-            };
+            let (b_prime, skol_map) = skolemize_regions(self.infcx(), b, snapshot);
 
             debug!("a_prime={}", a_prime.repr(self.tcx()));
             debug!("b_prime={}", b_prime.repr(self.tcx()));
@@ -537,4 +527,24 @@ impl<'a,'tcx> InferCtxtExt<'tcx> for InferCtxt<'a,'tcx> {
 
         region_vars
     }
+}
+
+fn skolemize_regions<'a,'tcx,HR>(infcx: &InferCtxt<'a,'tcx>,
+                                 value: &HR,
+                                 snapshot: &CombinedSnapshot)
+                                 -> (HR, FnvHashMap<ty::BoundRegion,ty::Region>)
+    where HR : HigherRankedFoldable<'tcx>
+{
+    replace_late_bound_regions(infcx.tcx, value, |br, _| {
+        let skol =
+            infcx.region_vars.new_skolemized(
+                br,
+                &snapshot.region_vars_snapshot);
+
+        debug!("Bound region {} skolemized to {}",
+               bound_region_to_string(infcx.tcx, "", false, br),
+               skol);
+
+        skol
+    })
 }
