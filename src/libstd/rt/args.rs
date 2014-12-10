@@ -51,10 +51,10 @@ mod imp {
     use string::String;
     use mem;
 
-    use sync::mutex::{StaticMutex, MUTEX_INIT};
+    use sync::{StaticMutex, MUTEX_INIT};
 
     static mut GLOBAL_ARGS_PTR: uint = 0;
-    static LOCK: NativeMutex = MUTEX_INIT;
+    static LOCK: StaticMutex = MUTEX_INIT;
 
     pub unsafe fn init(argc: int, argv: *const *const u8) {
         let args = load_argc_and_argv(argc, argv);
@@ -67,7 +67,7 @@ mod imp {
     }
 
     pub fn take() -> Option<Vec<Vec<u8>>> {
-        let guard = LOCK.lock();
+        let _guard = LOCK.lock();
         unsafe {
             let ptr = get_global_ptr();
             let val = mem::replace(&mut *ptr, None);
@@ -76,7 +76,7 @@ mod imp {
     }
 
     pub fn put(args: Vec<Vec<u8>>) {
-        let guard = LOCK.lock();
+        let _guard = LOCK.lock();
         unsafe {
             let ptr = get_global_ptr();
             rtassert!((*ptr).is_none());
@@ -85,7 +85,7 @@ mod imp {
     }
 
     pub fn clone() -> Option<Vec<Vec<u8>>> {
-        let guard = LOCK.lock();
+        let _guard = LOCK.lock();
         unsafe {
             let ptr = get_global_ptr();
             (*ptr).as_ref().map(|s: &Box<Vec<Vec<u8>>>| (**s).clone())
@@ -104,8 +104,8 @@ mod imp {
 
     #[cfg(test)]
     mod tests {
-        use std::prelude::*;
-        use std::finally::Finally;
+        use prelude::*;
+        use finally::Finally;
 
         use super::*;
 

@@ -241,7 +241,7 @@ fn print(w: &mut Writer, idx: int, addr: *mut libc::c_void) -> IoResult<()> {
 
 #[cfg(not(any(target_os = "macos", target_os = "ios")))]
 fn print(w: &mut Writer, idx: int, addr: *mut libc::c_void) -> IoResult<()> {
-    use iter::Iterator;
+    use iter::{Iterator, IteratorExt};
     use os;
     use path::GenericPath;
     use ptr::RawPtr;
