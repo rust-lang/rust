@@ -60,12 +60,11 @@ pub fn set_unwinding(unwinding: bool) {
 
 pub fn set(stack_bounds: (uint, uint), stack_guard: uint, thread: Thread) {
     THREAD_INFO.with(|c| assert!(c.borrow().is_none()));
-    let mut thread_opt = Some(thread); // option dance
-    THREAD_INFO.with(|c| *c.borrow_mut() = Some(ThreadInfo{
+    THREAD_INFO.with(move |c| *c.borrow_mut() = Some(ThreadInfo{
         stack_bounds: stack_bounds,
         stack_guard: stack_guard,
         unwinding: false,
-        thread: thread_opt.take().unwrap(),
+        thread: thread,
     }));
 }
 

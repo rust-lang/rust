@@ -243,17 +243,20 @@ impl Cfg {
             // the thread itself. For these reasons, this unsafety should be ok.
             unsafe {
                 let mut output = None;
-                let mut f_opt = Some( // option dance
-                    if stdout.is_some() || stderr.is_some() {
-                        proc() {
-                            let _ = stdout.map(stdio::set_stdout);
-                            let _ = stderr.map(stdio::set_stderr);
-                            f()
-                        }
-                    } else {
-                        f
-                    });
-                let try_result = unwind::try(|| output = Some((f_opt.take().unwrap())()));
+                let f = if stdout.is_some() || stderr.is_some() {
+                    proc() {
+                        let _ = stdout.map(stdio::set_stdout);
+                        let _ = stderr.map(stdio::set_stderr);
+                        f()
+                    }
+                } else {
+                    f
+                };
+
+                let try_result = {
+                    let ptr = &mut output;
+                    unwind::try(move || *ptr = Some(f()))
+                };
                 match (output, try_result) {
                     (Some(data), Ok(_)) => after(Ok(data)),
                     (None, Err(cause)) => after(Err(cause)),

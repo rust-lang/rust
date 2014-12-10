@@ -57,22 +57,17 @@
 //!
 //! Currently Rust uses unwind runtime provided by libgcc.
 
-use core::prelude::*;
+use prelude::*;
 
 use any::Any;
-use boxed::Box;
 use cmp;
 use failure;
 use fmt;
 use intrinsics;
 use libc::c_void;
 use mem;
-use raw::Closure;
-use str::StrAllocating;
-use string::String;
 use sync::atomic;
 use sync::{Once, ONCE_INIT};
-use vec::Vec;
 
 use sys_common::thread_info;
 use rt::libunwind as uw;
@@ -119,10 +114,9 @@ static CALLBACK_CNT: atomic::AtomicUint = atomic::INIT_ATOMIC_UINT;
 ///   guaranteed that a rust task is in place when invoking this function.
 ///   Unwinding twice can lead to resource leaks where some destructors are not
 ///   run.
-pub unsafe fn try(f: ||) -> ::core::result::Result<(), Box<Any + Send>> {
-    let closure: Closure = mem::transmute(f);
-    let ep = rust_try(try_fn, closure.code as *mut c_void,
-                      closure.env as *mut c_void);
+pub unsafe fn try<F: FnOnce()>(f: F) -> Result<(), Box<Any + Send>> {
+    let mut f = Some(f);
+    let ep = rust_try(try_fn::<F>, &mut f as *mut _ as *mut c_void);
     return if ep.is_null() {
         Ok(())
     } else {
@@ -133,14 +127,9 @@ pub unsafe fn try(f: ||) -> ::core::result::Result<(), Box<Any + Send>> {
         Err(cause.unwrap())
     };
 
-    extern fn try_fn(code: *mut c_void, env: *mut c_void) {
-        unsafe {
-            let closure: || = mem::transmute(Closure {
-                code: code as *mut (),
-                env: env as *mut (),
-            });
-            closure();
-        }
+    extern fn try_fn<F: FnOnce()>(opt_closure: *mut c_void) {
+        let opt_closure = opt_closure as *mut Option<F>;
+        unsafe { (*opt_closure).take().unwrap()(); }
     }
 
     #[link(name = "rustrt_native", kind = "static")]
@@ -152,8 +141,7 @@ pub unsafe fn try(f: ||) -> ::core::result::Result<(), Box<Any + Send>> {
         // When f(...) returns normally, the return value is null.
         // When f(...) throws, the return value is a pointer to the caught
         // exception object.
-        fn rust_try(f: extern "C" fn(*mut c_void, *mut c_void),
-                    code: *mut c_void,
+        fn rust_try(f: extern fn(*mut c_void),
                     data: *mut c_void) -> *mut uw::_Unwind_Exception;
     }
 }
