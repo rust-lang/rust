@@ -197,7 +197,7 @@ pub enum Entry<'a, O: 'a, V: 'a> {
 }
 
 impl Entry<'a, O: 'a, V:'a> {
-    get(self) -> Result<&'a mut V, VacantEntry<'a, O, V>>
+    fn get(self) -> Result<&'a mut V, VacantEntry<'a, O, V>>
 }
 
 impl<'a, K, V> VacantEntry<'a, K, V> {
