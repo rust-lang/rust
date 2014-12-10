@@ -1,4 +1,4 @@
-#![feature(globs, phase, plugin_registrar, if_let)] 
+#![feature(globs, phase, plugin_registrar)] 
 
 #![allow(unused_imports)]
 
