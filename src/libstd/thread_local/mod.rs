@@ -217,9 +217,8 @@ impl<T: 'static> Key<T> {
     /// This function will `panic!()` if the key currently has its
     /// destructor running, and it **may** panic if the destructor has
     /// previously been run for this thread.
-    pub fn with<R, F>(&'static self, f: F) -> R where
-        F: FnOnce(&T) -> R,
-    {
+    pub fn with<F, R>(&'static self, f: F) -> R
+                      where F: FnOnce(&T) -> R {
         let slot = (self.inner)();
         unsafe {
             let slot = slot.get().expect("cannot access a TLS value during or \
