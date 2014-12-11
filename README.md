@@ -65,11 +65,12 @@ the direction the language is evolving in.
 * [Active RFC List]
 * [Table of Contents]
 * [When you need to follow this process]
+* [Before creating an RFC]
 * [What the process is]
 * [The role of the shepherd]
 * [The RFC life-cycle]
-* [Implementing an RFC]
 * [Reviewing RFC's]
+* [Implementing an RFC]
 * [RFC Postponement]
 * [Help this is all too informal!]
 
@@ -100,8 +101,38 @@ If you submit a pull request to implement a new feature without going
 through the RFC process, it may be closed with a polite request to
 submit an RFC first.
 
+## Before creating an RFC
+[Before creating an RFC]: #before-creating-an-rfc
+
+A hastily-proposed RFC can hurt its chances of acceptance. Low quality
+proposals, proposals for previously-rejected features, or those that
+don't fit into the near-term roadmap, may be quickly rejected, which
+can be demotivating for the unprepared contributor. Laying some
+groundwork ahead of the RFC can make the process smoother.
+
+Although there is no single way to prepare for submitting an RFC, it
+is generally a good idea to pursue feedback from other project
+developers beforehand, to ascertain that the RFC may be desirable:
+having a consistent impact on the project requires concerted effort
+toward consensus-building.
+
+The most common preparations for writing and submitting an RFC include
+talking the idea over on #rust-internals, filing and discusssing ideas
+on the [RFC issue tracker][issues], and occasionally posting
+'pre-RFCs' on [the developer discussion forum][discuss] for early
+review.
+
+As a rule of thumb, receiving encouraging feedback from long-standing
+project developers, and particularly members of the [core team][core]
+is a good indication that the RFC is worth pursuing.
+
+[issues]: https://github.com/rust-lang/rfcs/issues
+[discuss]: http://discuss.rust-lang.org/
+[core]: https://github.com/rust-lang/rust/wiki/Note-core-team
+
 ## What the process is
 [What the process is]: #what-the-process-is
+
 In short, to get a major feature added to Rust, one must first get the
 RFC merged into the RFC repo as a markdown file. At that point the RFC
 is 'active' and may be implemented with the goal of eventual inclusion
@@ -110,18 +141,34 @@ into Rust.
 * Fork the RFC repo http://github.com/rust-lang/rfcs
 * Copy `0000-template.md` to `text/0000-my-feature.md` (where
 'my-feature' is descriptive. don't assign an RFC number yet).
-* Fill in the RFC
-* Submit a pull request. The pull request is the time to get review of
-the design from the larger community.
-* During Rust triage, the pull request will either be closed or
-assigned a shepherd. The shepherd will help to move the RFC forward,
+* Fill in the RFC. Put care into the details: RFCs that do not
+present convincing motivation, demonstrate understanding of the
+impact of the design, or are disingenuous about the drawbacks or
+alternatives tend to be poorly-received.
+* Submit a pull request. As a pull request the RFC will receive design
+feedback from the larger community, and the author should be prepared
+to revise it in response.
+* During Rust triage, the pull request will either be closed (for RFCs
+that clearly will not be accepted) or assigned a *shepherd*. The
+shepherd is a trusted developer who is familiar with the process, who
+will help to move the RFC forward, and ensure that the right people
+see and review it.
 * Build consensus and integrate feedback. RFCs that have broad support
 are much more likely to make progress than those that don't receive
 any comments. The shepherd assigned to your RFC should help you get
 feedback from Rust developers as well.
-* Eventually, somebody on the [core team] will either accept the RFC by
-merging the pull request and assigning the RFC a number, at which point
-the RFC is 'active', or reject it by closing the pull request.
+* The shepherd may schedule meetings with the author and/or relevant
+stakeholders to discuss the issues in greater detail, and in some
+cases the topic may be discussed at the larger [weekly meeting]. In
+either case a summary from the meeting will be posted back to the RFC
+pull request.
+* Once both proponents and opponents have clarified and defended
+positions and the conversation has settled, the shepherd will take it
+to the [core team] for a final decision.
+* Eventually, someone from the [core team] will either accept the RFC
+by merging the pull request, assigning the RFC a number (corresponding
+to the pull request number), at which point the RFC is 'active', or
+reject it by closing the pull request.
 
 ## The role of the shepherd
 [The role of the shepherd]: the-role-of-the-shepherd
@@ -139,16 +186,22 @@ point where we actually reach a decision.
 ## The RFC life-cycle
 [The RFC life-cycle]: #the-rfc-life-cycle
 
-Once an RFC becomes active then authors may implement it and submit the
-feature as a pull request to the Rust repo. An 'active' is not a rubber
-stamp, and in particular still does not mean the feature will ultimately
-be merged; it does mean that in principle all the major stakeholders
-have agreed to the feature and are amenable to merging it.
+Once an RFC becomes active then authors may implement it and submit
+the feature as a pull request to the Rust repo. Being 'active' is not
+a rubber stamp, and in particular still does not mean the feature will
+ultimately be merged; it does mean that in principle all the major
+stakeholders have agreed to the feature and are amenable to merging
+it.
 
 Furthermore, the fact that a given RFC has been accepted and is
 'active' implies nothing about what priority is assigned to its
 implementation, nor does it imply anything about whether a Rust
 developer has been assigned the task of implementing the feature.
+While it is not *necessary* that the author of the RFC also write the
+implementation, it is by far the most effective way to see an RFC
+through to completion: authors should not expect that other project
+developers will take on responsibility for implementing their accepted
+feature.
 
 Modifications to active RFC's can be done in followup PR's.  We strive
 to write each RFC in a manner that it will reflect the final design of
@@ -162,6 +215,23 @@ An RFC that makes it through the entire process to implementation is
 considered 'complete' and is moved to the 'complete' folder; an RFC
 that fails after becoming active is 'inactive' and moves to the
 'inactive' folder.
+
+## Reviewing RFC's
+[Reviewing RFC's]: #reviewing-rfcs
+
+While the RFC PR is up, the shepherd may schedule meetings with the
+author and/or relevant stakeholders to discuss the issues in greater
+detail, and in some cases the topic may be discussed at the larger
+[weekly meeting]. In either case a summary from the meeting will be
+posted back to the RFC pull request.
+
+The core team makes final decisions about RFCs after the benefits and
+drawbacks are well understood. These decisions can be made at any
+time, but the core team will regularly issue decisions on at least a
+weekly basis. When a decision is made, the RFC PR will either be
+merged or closed, in either case with a comment describing the
+rationale for the decision. The comment should largely be a summary of
+discussion already on the comment thread.
 
 ## Implementing an RFC
 [Implementing an RFC]: #implementing-an-rfc
@@ -181,33 +251,6 @@ implementation for review after the RFC has been accepted.
 If you are interested in working on the implementation for an 'active'
 RFC, but cannot determine if someone else is already working on it,
 feel free to ask (e.g. by leaving a comment on the associated issue).
-
-## Reviewing RFC's
-[Reviewing RFC's]: #reviewing-rfcs
-
-Each week the [core team] will attempt to review some set of open RFC
-pull requests.  The choice of pull requests to review is largely
-driven by an informal estimate of whether its associated comment
-thread has reached a steady state (i.e. either died out, or not
-showing any sign of providing feedback improvements to the RFC
-itself). The list of RFC's up for review is posted a week ahead of
-time via standard notification channels (currently the 'rust-dev'
-mailing list as well as the http://discuss.rust-lang.org/ discourse
-site).
-
-We try to make sure that any RFC that we accept is accepted at the
-Tuesday team meeting, with a formal record of discussion regarding
-acceptance.  We do not accept RFC’s at the Thursday triage meeting.
-We may reject RFC’s at either meeting; in other words, the only RFC
-activity on Thursdays is closing the ones that have reached a steady
-state and that the team agrees we will not be adopting.
-
-At both meetings, we try to only consider RFC’s for which at least a
-few participants have read the corresponding discussion thread and are
-prepared to represent the viewpoints presented there. One participant
-should act as a "shepherd" for the feature.  The shepherd need not
-*personally* desire the feature; they just need to act to represent
-its virtues and the community’s desire for it.
 
 ## RFC Postponement
 [RFC Postponement]: #rfc-postponement
@@ -237,3 +280,5 @@ necessary.
 
 [core team]: https://github.com/mozilla/rust/wiki/Note-core-team
 [triage process]: https://github.com/rust-lang/rust/wiki/Note-development-policy#milestone-and-priority-nomination-and-triage
+[weekly meeting]: https://github.com/rust-lang/meeting-minutes
+
