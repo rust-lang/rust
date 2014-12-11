@@ -696,7 +696,7 @@ mod tests {
 
         assert!("".is_ascii());
         assert!("a".is_ascii());
-        assert!(!"\u2009".is_ascii());
+        assert!(!"\u{2009}".is_ascii());
 
     }
 

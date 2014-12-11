@@ -284,8 +284,8 @@ pub fn error_str(error: ErrorCode) -> &'static str {
         TrailingCharacters => "trailing characters",
         TrailingComma => "trailing comma",
         InvalidEscape => "invalid escape",
-        UnrecognizedHex => "invalid \\u escape (unrecognized hex)",
-        NotFourDigit => "invalid \\u escape (not four digits)",
+        UnrecognizedHex => "invalid \\u{ esc}ape (unrecognized hex)",
+        NotFourDigit => "invalid \\u{ esc}ape (not four digits)",
         NotUtf8 => "contents not utf-8",
         InvalidUnicodeCodePoint => "invalid Unicode code point",
         LoneLeadingSurrogateInHexEscape => "lone leading surrogate in hex escape",
@@ -2846,8 +2846,8 @@ mod tests {
         assert_eq!(from_str("\"\\r\""), Ok(String("\r".into_string())));
         assert_eq!(from_str("\"\\t\""), Ok(String("\t".into_string())));
         assert_eq!(from_str(" \"foo\" "), Ok(String("foo".into_string())));
-        assert_eq!(from_str("\"\\u12ab\""), Ok(String("\u12ab".into_string())));
-        assert_eq!(from_str("\"\\uAB12\""), Ok(String("\uAB12".into_string())));
+        assert_eq!(from_str("\"\\u12ab\""), Ok(String("\u{12ab}".into_string())));
+        assert_eq!(from_str("\"\\uAB12\""), Ok(String("\u{AB12}".into_string())));
     }
 
     #[test]
@@ -2859,8 +2859,8 @@ mod tests {
                  ("\"\\n\"", "\n"),
                  ("\"\\r\"", "\r"),
                  ("\"\\t\"", "\t"),
-                 ("\"\\u12ab\"", "\u12ab"),
-                 ("\"\\uAB12\"", "\uAB12")];
+                 ("\"\\u12ab\"", "\u{12ab}"),
+                 ("\"\\uAB12\"", "\u{AB12}")];
 
         for &(i, o) in s.iter() {
             let v: string::String = super::decode(i).unwrap();

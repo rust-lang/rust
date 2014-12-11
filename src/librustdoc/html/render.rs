@@ -748,7 +748,7 @@ impl<'a> SourceCollector<'a> {
         let contents = str::from_utf8(contents.as_slice()).unwrap();
 
         // Remove the utf-8 BOM if any
-        let contents = if contents.starts_with("\ufeff") {
+        let contents = if contents.starts_with("\u{feff}") {
             contents.slice_from(3)
         } else {
             contents
