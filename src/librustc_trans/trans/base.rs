@@ -66,6 +66,7 @@ use trans::context::SharedCrateContext;
 use trans::controlflow;
 use trans::datum;
 use trans::debuginfo;
+use trans::debuginfo::SourceLocation::{mod, SourceLoc, NoSourceLoc};
 use trans::expr;
 use trans::foreign;
 use trans::glue;
@@ -808,7 +809,7 @@ pub fn iter_structural_ty<'a, 'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                                        &**variant,
                                        substs,
                                        |x,y,z| f(x,y,z));
-                      Br(variant_cx, next_cx.llbb);
+                      Br(variant_cx, next_cx.llbb, NoSourceLoc);
                   }
                   cx = next_cx;
               }
@@ -1002,6 +1003,11 @@ pub fn invoke<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }
     }
 
+    let source_loc = match call_info {
+        Some(info) => SourceLoc(info.id, info.span),
+        None => NoSourceLoc
+    };
+
     if need_invoke(bcx) {
         debug!("invoking {} at {}", bcx.val_to_string(llfn), bcx.llbb);
         for &llarg in llargs.iter() {
@@ -1010,17 +1016,13 @@ pub fn invoke<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         let normal_bcx = bcx.fcx.new_temp_block("normal-return");
         let landing_pad = bcx.fcx.get_landing_pad();
 
-        match call_info {
-            Some(info) => debuginfo::set_source_location(bcx.fcx, info.id, info.span),
-            None => debuginfo::clear_source_location(bcx.fcx)
-        };
-
         let llresult = Invoke(bcx,
                               llfn,
                               llargs.as_slice(),
                               normal_bcx.llbb,
                               landing_pad,
-                              Some(attributes));
+                              Some(attributes),
+                              source_loc);
         return (llresult, normal_bcx);
     } else {
         debug!("calling {} at {}", bcx.val_to_string(llfn), bcx.llbb);
@@ -1028,12 +1030,11 @@ pub fn invoke<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             debug!("arg: {}", bcx.val_to_string(llarg));
         }
 
-        match call_info {
-            Some(info) => debuginfo::set_source_location(bcx.fcx, info.id, info.span),
-            None => debuginfo::clear_source_location(bcx.fcx)
-        };
-
-        let llresult = Call(bcx, llfn, llargs.as_slice(), Some(attributes));
+        let llresult = Call(bcx,
+                            llfn,
+                            llargs.as_slice(),
+                            Some(attributes),
+                            source_loc);
         return (llresult, bcx);
     }
 }
@@ -1109,10 +1110,10 @@ pub fn with_cond<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let fcx = bcx.fcx;
     let next_cx = fcx.new_temp_block("next");
     let cond_cx = fcx.new_temp_block("cond");
-    CondBr(bcx, val, cond_cx.llbb, next_cx.llbb);
+    CondBr(bcx, val, cond_cx.llbb, next_cx.llbb, NoSourceLoc);
     let after_cx = f(cond_cx);
     if !after_cx.terminated.get() {
-        Br(after_cx, next_cx.llbb);
+        Br(after_cx, next_cx.llbb, NoSourceLoc);
     }
     next_cx
 }
@@ -1128,7 +1129,7 @@ pub fn call_lifetime_start(cx: Block, ptr: ValueRef) {
     let llsize = C_u64(ccx, machine::llsize_of_alloc(ccx, val_ty(ptr).element_type()));
     let ptr = PointerCast(cx, ptr, Type::i8p(ccx));
     let lifetime_start = ccx.get_intrinsic(&"llvm.lifetime.start");
-    Call(cx, lifetime_start, &[llsize, ptr], None);
+    Call(cx, lifetime_start, &[llsize, ptr], None, NoSourceLoc);
 }
 
 pub fn call_lifetime_end(cx: Block, ptr: ValueRef) {
@@ -1142,7 +1143,7 @@ pub fn call_lifetime_end(cx: Block, ptr: ValueRef) {
     let llsize = C_u64(ccx, machine::llsize_of_alloc(ccx, val_ty(ptr).element_type()));
     let ptr = PointerCast(cx, ptr, Type::i8p(ccx));
     let lifetime_end = ccx.get_intrinsic(&"llvm.lifetime.end");
-    Call(cx, lifetime_end, &[llsize, ptr], None);
+    Call(cx, lifetime_end, &[llsize, ptr], None, NoSourceLoc);
 }
 
 pub fn call_memcpy(cx: Block, dst: ValueRef, src: ValueRef, n_bytes: ValueRef, align: u32) {
@@ -1159,7 +1160,7 @@ pub fn call_memcpy(cx: Block, dst: ValueRef, src: ValueRef, n_bytes: ValueRef, a
     let size = IntCast(cx, n_bytes, ccx.int_type());
     let align = C_i32(ccx, align as i32);
     let volatile = C_bool(ccx, false);
-    Call(cx, memcpy, &[dst_ptr, src_ptr, size, align, volatile], None);
+    Call(cx, memcpy, &[dst_ptr, src_ptr, size, align, volatile], None, NoSourceLoc);
 }
 
 pub fn memcpy_ty<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
@@ -1700,13 +1701,14 @@ fn copy_unboxed_closure_args_to_allocas<'blk, 'tcx>(
 // and builds the return block.
 pub fn finish_fn<'blk, 'tcx>(fcx: &'blk FunctionContext<'blk, 'tcx>,
                              last_bcx: Block<'blk, 'tcx>,
-                             retty: ty::FnOutput<'tcx>) {
+                             retty: ty::FnOutput<'tcx>,
+                             ret_source_loc: SourceLocation) {
     let _icx = push_ctxt("finish_fn");
 
     let ret_cx = match fcx.llreturn.get() {
         Some(llreturn) => {
             if !last_bcx.terminated.get() {
-                Br(last_bcx, llreturn);
+                Br(last_bcx, llreturn, NoSourceLoc);
             }
             raw_block(fcx, false, llreturn)
         }
@@ -1716,7 +1718,7 @@ pub fn finish_fn<'blk, 'tcx>(fcx: &'blk FunctionContext<'blk, 'tcx>,
     // This shouldn't need to recompute the return type,
     // as new_fn_ctxt did it already.
     let substd_retty = retty.subst(fcx.ccx.tcx(), fcx.param_substs);
-    build_return_block(fcx, ret_cx, substd_retty);
+    build_return_block(fcx, ret_cx, substd_retty, ret_source_loc);
 
     debuginfo::clear_source_location(fcx);
     fcx.cleanup();
@@ -1725,10 +1727,11 @@ pub fn finish_fn<'blk, 'tcx>(fcx: &'blk FunctionContext<'blk, 'tcx>,
 // Builds the return block for a function.
 pub fn build_return_block<'blk, 'tcx>(fcx: &FunctionContext<'blk, 'tcx>,
                                       ret_cx: Block<'blk, 'tcx>,
-                                      retty: ty::FnOutput<'tcx>) {
+                                      retty: ty::FnOutput<'tcx>,
+                                      ret_source_location: SourceLocation) {
     if fcx.llretslotptr.get().is_none() ||
        (!fcx.needs_ret_allocas && fcx.caller_expects_out_pointer) {
-        return RetVoid(ret_cx);
+        return RetVoid(ret_cx, ret_source_location);
     }
 
     let retslot = if fcx.needs_ret_allocas {
@@ -1758,9 +1761,9 @@ pub fn build_return_block<'blk, 'tcx>(fcx: &FunctionContext<'blk, 'tcx>,
                 if let ty::FnConverging(retty) = retty {
                     store_ty(ret_cx, retval, get_param(fcx.llfn, 0), retty);
                 }
-                RetVoid(ret_cx)
+                RetVoid(ret_cx, ret_source_location)
             } else {
-                Ret(ret_cx, retval)
+                Ret(ret_cx, retval, ret_source_location)
             }
         }
         // Otherwise, copy the return value to the ret slot
@@ -1768,16 +1771,16 @@ pub fn build_return_block<'blk, 'tcx>(fcx: &FunctionContext<'blk, 'tcx>,
             ty::FnConverging(retty) => {
                 if fcx.caller_expects_out_pointer {
                     memcpy_ty(ret_cx, get_param(fcx.llfn, 0), retslot, retty);
-                    RetVoid(ret_cx)
+                    RetVoid(ret_cx, ret_source_location)
                 } else {
-                    Ret(ret_cx, load_ty(ret_cx, retslot, retty))
+                    Ret(ret_cx, load_ty(ret_cx, retslot, retty), ret_source_location)
                 }
             }
             ty::FnDiverging => {
                 if fcx.caller_expects_out_pointer {
-                    RetVoid(ret_cx)
+                    RetVoid(ret_cx, ret_source_location)
                 } else {
-                    Ret(ret_cx, C_undef(Type::nil(fcx.ccx)))
+                    Ret(ret_cx, C_undef(Type::nil(fcx.ccx)), ret_source_location)
                 }
             }
         }
@@ -1911,7 +1914,7 @@ pub fn trans_closure<'a, 'b, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     match fcx.llreturn.get() {
         Some(_) => {
-            Br(bcx, fcx.return_exit_block());
+            Br(bcx, fcx.return_exit_block(), NoSourceLoc);
             fcx.pop_custom_cleanup_scope(arg_scope);
         }
         None => {
@@ -1930,8 +1933,11 @@ pub fn trans_closure<'a, 'b, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         }
     }
 
+    let ret_source_loc = SourceLoc(fn_cleanup_debug_loc.id,
+                                   fn_cleanup_debug_loc.span);
+
     // Insert the mandatory first few basic blocks before lltop.
-    finish_fn(&fcx, bcx, output_type);
+    finish_fn(&fcx, bcx, output_type, ret_source_loc);
 }
 
 // trans_fn: creates an LLVM function corresponding to a source language
@@ -2094,7 +2100,7 @@ fn trans_enum_variant_or_tuple_like_struct<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx
         adt::trans_set_discr(bcx, &*repr, dest, disr);
     }
 
-    finish_fn(&fcx, bcx, result_ty);
+    finish_fn(&fcx, bcx, result_ty, NoSourceLoc);
 }
 
 fn enum_variant_size_lint(ccx: &CrateContext, enum_def: &ast::EnumDef, sp: Span, id: ast::NodeId) {

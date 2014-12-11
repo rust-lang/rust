@@ -20,6 +20,7 @@ use syntax::codemap::Span;
 
 use trans::builder::Builder;
 use trans::type_::Type;
+use trans::debuginfo::SourceLocation;
 
 use libc::{c_uint, c_char};
 
@@ -48,41 +49,59 @@ pub fn B<'blk, 'tcx>(cx: Block<'blk, 'tcx>) -> Builder<'blk, 'tcx> {
 // for (panic/break/return statements, call to diverging functions, etc), and
 // further instructions to the block should simply be ignored.
 
-pub fn RetVoid(cx: Block) {
-    if cx.unreachable.get() { return; }
+pub fn RetVoid(cx: Block, source_loc: SourceLocation) {
+    if cx.unreachable.get() {
+        return;
+    }
     check_not_terminated(cx);
     terminate(cx, "RetVoid");
+    source_loc.apply(cx.fcx);
     B(cx).ret_void();
 }
 
-pub fn Ret(cx: Block, v: ValueRef) {
-    if cx.unreachable.get() { return; }
+pub fn Ret(cx: Block, v: ValueRef, source_loc: SourceLocation) {
+    if cx.unreachable.get() {
+        return;
+    }
     check_not_terminated(cx);
     terminate(cx, "Ret");
+    source_loc.apply(cx.fcx);
     B(cx).ret(v);
 }
 
-pub fn AggregateRet(cx: Block, ret_vals: &[ValueRef]) {
-    if cx.unreachable.get() { return; }
+pub fn AggregateRet(cx: Block,
+                    ret_vals: &[ValueRef],
+                    source_loc: SourceLocation) {
+    if cx.unreachable.get() {
+        return;
+    }
     check_not_terminated(cx);
     terminate(cx, "AggregateRet");
+    source_loc.apply(cx.fcx);
     B(cx).aggregate_ret(ret_vals);
 }
 
-pub fn Br(cx: Block, dest: BasicBlockRef) {
-    if cx.unreachable.get() { return; }
+pub fn Br(cx: Block, dest: BasicBlockRef, source_loc: SourceLocation) {
+    if cx.unreachable.get() {
+        return;
+    }
     check_not_terminated(cx);
     terminate(cx, "Br");
+    source_loc.apply(cx.fcx);
     B(cx).br(dest);
 }
 
 pub fn CondBr(cx: Block,
               if_: ValueRef,
               then: BasicBlockRef,
-              else_: BasicBlockRef) {
-    if cx.unreachable.get() { return; }
+              else_: BasicBlockRef,
+              source_loc: SourceLocation) {
+    if cx.unreachable.get() {
+        return;
+    }
     check_not_terminated(cx);
     terminate(cx, "CondBr");
+    source_loc.apply(cx.fcx);
     B(cx).cond_br(if_, then, else_);
 }
 
@@ -101,10 +120,16 @@ pub fn AddCase(s: ValueRef, on_val: ValueRef, dest: BasicBlockRef) {
     }
 }
 
-pub fn IndirectBr(cx: Block, addr: ValueRef, num_dests: uint) {
-    if cx.unreachable.get() { return; }
+pub fn IndirectBr(cx: Block,
+                  addr: ValueRef,
+                  num_dests: uint,
+                  source_loc: SourceLocation) {
+    if cx.unreachable.get() {
+        return;
+    }
     check_not_terminated(cx);
     terminate(cx, "IndirectBr");
+    source_loc.apply(cx.fcx);
     B(cx).indirect_br(addr, num_dests);
 }
 
@@ -113,7 +138,8 @@ pub fn Invoke(cx: Block,
               args: &[ValueRef],
               then: BasicBlockRef,
               catch: BasicBlockRef,
-              attributes: Option<AttrBuilder>)
+              attributes: Option<AttrBuilder>,
+              source_loc: SourceLocation)
               -> ValueRef {
     if cx.unreachable.get() {
         return C_null(Type::i8(cx.ccx()));
@@ -123,6 +149,7 @@ pub fn Invoke(cx: Block,
     debug!("Invoke({} with arguments ({}))",
            cx.val_to_string(fn_),
            args.iter().map(|a| cx.val_to_string(*a)).collect::<Vec<String>>().connect(", "));
+    source_loc.apply(cx.fcx);
     B(cx).invoke(fn_, args, then, catch, attributes)
 }
 
@@ -143,158 +170,355 @@ pub fn _Undef(val: ValueRef) -> ValueRef {
 }
 
 /* Arithmetic */
-pub fn Add(cx: Block, lhs: ValueRef, rhs: ValueRef) -> ValueRef {
-    if cx.unreachable.get() { return _Undef(lhs); }
+pub fn Add(cx: Block,
+           lhs: ValueRef,
+           rhs: ValueRef,
+           source_loc: SourceLocation)
+           -> ValueRef {
+    if cx.unreachable.get() {
+        return _Undef(lhs);
+    }
+    source_loc.apply(cx.fcx);
     B(cx).add(lhs, rhs)
 }
 
-pub fn NSWAdd(cx: Block, lhs: ValueRef, rhs: ValueRef) -> ValueRef {
-    if cx.unreachable.get() { return _Undef(lhs); }
+pub fn NSWAdd(cx: Block,
+              lhs: ValueRef,
+              rhs: ValueRef,
+              source_loc: SourceLocation)
+              -> ValueRef {
+    if cx.unreachable.get() {
+        return _Undef(lhs);
+    }
+    source_loc.apply(cx.fcx);
     B(cx).nswadd(lhs, rhs)
 }
 
-pub fn NUWAdd(cx: Block, lhs: ValueRef, rhs: ValueRef) -> ValueRef {
-    if cx.unreachable.get() { return _Undef(lhs); }
+pub fn NUWAdd(cx: Block,
+              lhs: ValueRef,
+              rhs: ValueRef,
+              source_loc: SourceLocation)
+              -> ValueRef {
+    if cx.unreachable.get() {
+        return _Undef(lhs);
+    }
+    source_loc.apply(cx.fcx);
     B(cx).nuwadd(lhs, rhs)
 }
 
-pub fn FAdd(cx: Block, lhs: ValueRef, rhs: ValueRef) -> ValueRef {
-    if cx.unreachable.get() { return _Undef(lhs); }
+pub fn FAdd(cx: Block,
+            lhs: ValueRef,
+            rhs: ValueRef,
+            source_loc: SourceLocation)
+            -> ValueRef {
+    if cx.unreachable.get() {
+        return _Undef(lhs);
+    }
+    source_loc.apply(cx.fcx);
     B(cx).fadd(lhs, rhs)
 }
 
-pub fn Sub(cx: Block, lhs: ValueRef, rhs: ValueRef) -> ValueRef {
-    if cx.unreachable.get() { return _Undef(lhs); }
+pub fn Sub(cx: Block,
+           lhs: ValueRef,
+           rhs: ValueRef,
+           source_loc: SourceLocation)
+           -> ValueRef {
+    if cx.unreachable.get() {
+        return _Undef(lhs);
+    }
+    source_loc.apply(cx.fcx);
     B(cx).sub(lhs, rhs)
 }
 
-pub fn NSWSub(cx: Block, lhs: ValueRef, rhs: ValueRef) -> ValueRef {
-    if cx.unreachable.get() { return _Undef(lhs); }
+pub fn NSWSub(cx: Block,
+              lhs: ValueRef,
+              rhs: ValueRef,
+              source_loc: SourceLocation)
+              -> ValueRef {
+    if cx.unreachable.get() {
+        return _Undef(lhs);
+    }
+    source_loc.apply(cx.fcx);
     B(cx).nswsub(lhs, rhs)
 }
 
-pub fn NUWSub(cx: Block, lhs: ValueRef, rhs: ValueRef) -> ValueRef {
-    if cx.unreachable.get() { return _Undef(lhs); }
+pub fn NUWSub(cx: Block,
+              lhs: ValueRef,
+              rhs: ValueRef,
+              source_loc: SourceLocation)
+              -> ValueRef {
+    if cx.unreachable.get() {
+        return _Undef(lhs);
+    }
+    source_loc.apply(cx.fcx);
     B(cx).nuwsub(lhs, rhs)
 }
 
-pub fn FSub(cx: Block, lhs: ValueRef, rhs: ValueRef) -> ValueRef {
-    if cx.unreachable.get() { return _Undef(lhs); }
+pub fn FSub(cx: Block,
+            lhs: ValueRef,
+            rhs: ValueRef,
+            source_loc: SourceLocation)
+            -> ValueRef {
+    if cx.unreachable.get() {
+        return _Undef(lhs);
+    }
+    source_loc.apply(cx.fcx);
     B(cx).fsub(lhs, rhs)
 }
 
-pub fn Mul(cx: Block, lhs: ValueRef, rhs: ValueRef) -> ValueRef {
-    if cx.unreachable.get() { return _Undef(lhs); }
+pub fn Mul(cx: Block,
+           lhs: ValueRef,
+           rhs: ValueRef,
+           source_loc: SourceLocation)
+           -> ValueRef {
+    if cx.unreachable.get() {
+        return _Undef(lhs);
+    }
+    source_loc.apply(cx.fcx);
     B(cx).mul(lhs, rhs)
 }
 
-pub fn NSWMul(cx: Block, lhs: ValueRef, rhs: ValueRef) -> ValueRef {
-    if cx.unreachable.get() { return _Undef(lhs); }
+pub fn NSWMul(cx: Block,
+              lhs: ValueRef,
+              rhs: ValueRef,
+              source_loc: SourceLocation)
+              -> ValueRef {
+    if cx.unreachable.get() {
+        return _Undef(lhs);
+    }
+    source_loc.apply(cx.fcx);
     B(cx).nswmul(lhs, rhs)
 }
 
-pub fn NUWMul(cx: Block, lhs: ValueRef, rhs: ValueRef) -> ValueRef {
-    if cx.unreachable.get() { return _Undef(lhs); }
+pub fn NUWMul(cx: Block,
+              lhs: ValueRef,
+              rhs: ValueRef,
+              source_loc: SourceLocation)
+              -> ValueRef {
+    if cx.unreachable.get() {
+        return _Undef(lhs);
+    }
+    source_loc.apply(cx.fcx);
     B(cx).nuwmul(lhs, rhs)
 }
 
-pub fn FMul(cx: Block, lhs: ValueRef, rhs: ValueRef) -> ValueRef {
-    if cx.unreachable.get() { return _Undef(lhs); }
+pub fn FMul(cx: Block,
+            lhs: ValueRef,
+            rhs: ValueRef,
+            source_loc: SourceLocation)
+            -> ValueRef {
+    if cx.unreachable.get() {
+        return _Undef(lhs);
+    }
+    source_loc.apply(cx.fcx);
     B(cx).fmul(lhs, rhs)
 }
 
-pub fn UDiv(cx: Block, lhs: ValueRef, rhs: ValueRef) -> ValueRef {
-    if cx.unreachable.get() { return _Undef(lhs); }
+pub fn UDiv(cx: Block,
+            lhs: ValueRef,
+            rhs: ValueRef,
+            source_loc: SourceLocation)
+            -> ValueRef {
+    if cx.unreachable.get() {
+        return _Undef(lhs);
+    }
+    source_loc.apply(cx.fcx);
     B(cx).udiv(lhs, rhs)
 }
 
-pub fn SDiv(cx: Block, lhs: ValueRef, rhs: ValueRef) -> ValueRef {
-    if cx.unreachable.get() { return _Undef(lhs); }
+pub fn SDiv(cx: Block,
+            lhs: ValueRef,
+            rhs: ValueRef,
+            source_loc: SourceLocation)
+            -> ValueRef {
+    if cx.unreachable.get() {
+        return _Undef(lhs);
+    }
+    source_loc.apply(cx.fcx);
     B(cx).sdiv(lhs, rhs)
 }
 
-pub fn ExactSDiv(cx: Block, lhs: ValueRef, rhs: ValueRef) -> ValueRef {
-    if cx.unreachable.get() { return _Undef(lhs); }
+pub fn ExactSDiv(cx: Block,
+                 lhs: ValueRef,
+                 rhs: ValueRef,
+                 source_loc: SourceLocation)
+                 -> ValueRef {
+    if cx.unreachable.get() {
+        return _Undef(lhs);
+    }
+    source_loc.apply(cx.fcx);
     B(cx).exactsdiv(lhs, rhs)
 }
 
-pub fn FDiv(cx: Block, lhs: ValueRef, rhs: ValueRef) -> ValueRef {
-    if cx.unreachable.get() { return _Undef(lhs); }
+pub fn FDiv(cx: Block,
+            lhs: ValueRef,
+            rhs: ValueRef,
+            source_loc: SourceLocation)
+            -> ValueRef {
+    if cx.unreachable.get() {
+        return _Undef(lhs);
+    }
+    source_loc.apply(cx.fcx);
     B(cx).fdiv(lhs, rhs)
 }
 
-pub fn URem(cx: Block, lhs: ValueRef, rhs: ValueRef) -> ValueRef {
-    if cx.unreachable.get() { return _Undef(lhs); }
+pub fn URem(cx: Block,
+            lhs: ValueRef,
+            rhs: ValueRef,
+            source_loc: SourceLocation)
+            -> ValueRef {
+    if cx.unreachable.get() {
+        return _Undef(lhs);
+    }
+    source_loc.apply(cx.fcx);
     B(cx).urem(lhs, rhs)
 }
 
-pub fn SRem(cx: Block, lhs: ValueRef, rhs: ValueRef) -> ValueRef {
-    if cx.unreachable.get() { return _Undef(lhs); }
+pub fn SRem(cx: Block,
+            lhs: ValueRef,
+            rhs: ValueRef,
+            source_loc: SourceLocation)
+            -> ValueRef {
+    if cx.unreachable.get() {
+        return _Undef(lhs);
+    }
+    source_loc.apply(cx.fcx);
     B(cx).srem(lhs, rhs)
 }
 
-pub fn FRem(cx: Block, lhs: ValueRef, rhs: ValueRef) -> ValueRef {
-    if cx.unreachable.get() { return _Undef(lhs); }
+pub fn FRem(cx: Block,
+            lhs: ValueRef,
+            rhs: ValueRef,
+            source_loc: SourceLocation)
+            -> ValueRef {
+    if cx.unreachable.get() {
+        return _Undef(lhs);
+    }
+    source_loc.apply(cx.fcx);
     B(cx).frem(lhs, rhs)
 }
 
-pub fn Shl(cx: Block, lhs: ValueRef, rhs: ValueRef) -> ValueRef {
-    if cx.unreachable.get() { return _Undef(lhs); }
+pub fn Shl(cx: Block,
+           lhs: ValueRef,
+           rhs: ValueRef,
+           source_loc: SourceLocation)
+           -> ValueRef {
+    if cx.unreachable.get() {
+        return _Undef(lhs);
+    }
+    source_loc.apply(cx.fcx);
     B(cx).shl(lhs, rhs)
 }
 
-pub fn LShr(cx: Block, lhs: ValueRef, rhs: ValueRef) -> ValueRef {
-    if cx.unreachable.get() { return _Undef(lhs); }
+pub fn LShr(cx: Block,
+            lhs: ValueRef,
+            rhs: ValueRef,
+            source_loc: SourceLocation)
+            -> ValueRef {
+    if cx.unreachable.get() {
+        return _Undef(lhs);
+    }
+    source_loc.apply(cx.fcx);
     B(cx).lshr(lhs, rhs)
 }
 
-pub fn AShr(cx: Block, lhs: ValueRef, rhs: ValueRef) -> ValueRef {
-    if cx.unreachable.get() { return _Undef(lhs); }
+pub fn AShr(cx: Block,
+            lhs: ValueRef,
+            rhs: ValueRef,
+            source_loc: SourceLocation)
+            -> ValueRef {
+    if cx.unreachable.get() {
+        return _Undef(lhs);
+    }
+    source_loc.apply(cx.fcx);
     B(cx).ashr(lhs, rhs)
 }
 
-pub fn And(cx: Block, lhs: ValueRef, rhs: ValueRef) -> ValueRef {
-    if cx.unreachable.get() { return _Undef(lhs); }
+pub fn And(cx: Block,
+           lhs: ValueRef,
+           rhs: ValueRef,
+           source_loc: SourceLocation)
+           -> ValueRef {
+    if cx.unreachable.get() {
+        return _Undef(lhs);
+    }
+    source_loc.apply(cx.fcx);
     B(cx).and(lhs, rhs)
 }
 
-pub fn Or(cx: Block, lhs: ValueRef, rhs: ValueRef) -> ValueRef {
-    if cx.unreachable.get() { return _Undef(lhs); }
+pub fn Or(cx: Block,
+          lhs: ValueRef,
+          rhs: ValueRef,
+          source_loc: SourceLocation)
+          -> ValueRef {
+    if cx.unreachable.get() {
+        return _Undef(lhs);
+    }
+    source_loc.apply(cx.fcx);
     B(cx).or(lhs, rhs)
 }
 
-pub fn Xor(cx: Block, lhs: ValueRef, rhs: ValueRef) -> ValueRef {
-    if cx.unreachable.get() { return _Undef(lhs); }
+pub fn Xor(cx: Block,
+           lhs: ValueRef,
+           rhs: ValueRef,
+           source_loc: SourceLocation)
+           -> ValueRef {
+    if cx.unreachable.get() {
+        return _Undef(lhs);
+    }
+    source_loc.apply(cx.fcx);
     B(cx).xor(lhs, rhs)
 }
 
-pub fn BinOp(cx: Block, op: Opcode, lhs: ValueRef, rhs: ValueRef)
+pub fn BinOp(cx: Block,
+             op: Opcode,
+             lhs: ValueRef,
+             rhs: ValueRef,
+             source_loc: SourceLocation)
           -> ValueRef {
-    if cx.unreachable.get() { return _Undef(lhs); }
+    if cx.unreachable.get() {
+        return _Undef(lhs);
+    }
+    source_loc.apply(cx.fcx);
     B(cx).binop(op, lhs, rhs)
 }
 
-pub fn Neg(cx: Block, v: ValueRef) -> ValueRef {
-    if cx.unreachable.get() { return _Undef(v); }
+pub fn Neg(cx: Block, v: ValueRef, source_loc: SourceLocation) -> ValueRef {
+    if cx.unreachable.get() {
+        return _Undef(v);
+    }
+    source_loc.apply(cx.fcx);
     B(cx).neg(v)
 }
 
-pub fn NSWNeg(cx: Block, v: ValueRef) -> ValueRef {
-    if cx.unreachable.get() { return _Undef(v); }
+pub fn NSWNeg(cx: Block, v: ValueRef, source_loc: SourceLocation) -> ValueRef {
+    if cx.unreachable.get() {
+        return _Undef(v);
+    }
+    source_loc.apply(cx.fcx);
     B(cx).nswneg(v)
 }
 
-pub fn NUWNeg(cx: Block, v: ValueRef) -> ValueRef {
-    if cx.unreachable.get() { return _Undef(v); }
+pub fn NUWNeg(cx: Block, v: ValueRef, source_loc: SourceLocation) -> ValueRef {
+    if cx.unreachable.get() {
+        return _Undef(v);
+    }
+    source_loc.apply(cx.fcx);
     B(cx).nuwneg(v)
 }
-pub fn FNeg(cx: Block, v: ValueRef) -> ValueRef {
-    if cx.unreachable.get() { return _Undef(v); }
+pub fn FNeg(cx: Block, v: ValueRef, source_loc: SourceLocation) -> ValueRef {
+    if cx.unreachable.get() {
+        return _Undef(v);
+    }
+    source_loc.apply(cx.fcx);
     B(cx).fneg(v)
 }
 
-pub fn Not(cx: Block, v: ValueRef) -> ValueRef {
-    if cx.unreachable.get() { return _Undef(v); }
+pub fn Not(cx: Block, v: ValueRef, source_loc: SourceLocation) -> ValueRef {
+    if cx.unreachable.get() {
+        return _Undef(v);
+    }
+    source_loc.apply(cx.fcx);
     B(cx).not(v)
 }
 
@@ -680,9 +904,16 @@ pub fn InlineAsmCall(cx: Block, asm: *const c_char, cons: *const c_char,
     B(cx).inline_asm_call(asm, cons, inputs, output, volatile, alignstack, dia)
 }
 
-pub fn Call(cx: Block, fn_: ValueRef, args: &[ValueRef],
-            attributes: Option<AttrBuilder>) -> ValueRef {
-    if cx.unreachable.get() { return _UndefReturn(cx, fn_); }
+pub fn Call(cx: Block,
+            fn_: ValueRef,
+            args: &[ValueRef],
+            attributes: Option<AttrBuilder>,
+            source_loc: SourceLocation)
+            -> ValueRef {
+    if cx.unreachable.get() {
+        return _UndefReturn(cx, fn_);
+    }
+    source_loc.apply(cx.fcx);
     B(cx).call(fn_, args, attributes)
 }
 

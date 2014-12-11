@@ -209,10 +209,11 @@ use trans::cleanup::{mod, CleanupMethods};
 use trans::common::*;
 use trans::consts;
 use trans::datum::*;
+use trans::debuginfo::{mod, SourceLocation};
+use trans::debuginfo::SourceLocation::NoSourceLoc;
 use trans::expr::{mod, Dest};
 use trans::tvec;
 use trans::type_of;
-use trans::debuginfo;
 use middle::ty::{mod, Ty};
 use session::config::FullDebugInfo;
 use util::common::indenter;
@@ -639,10 +640,13 @@ fn bind_subslice_pat(bcx: Block,
     let vec_datum = match_datum(val, vec_ty);
     let (base, len) = vec_datum.get_vec_base_and_len(bcx);
 
-    let slice_byte_offset = Mul(bcx, vt.llunit_size, C_uint(bcx.ccx(), offset_left));
+    let slice_byte_offset = Mul(bcx,
+                                vt.llunit_size,
+                                C_uint(bcx.ccx(), offset_left),
+                                NoSourceLoc);
     let slice_begin = tvec::pointer_add_byte(bcx, base, slice_byte_offset);
     let slice_len_offset = C_uint(bcx.ccx(), offset_left + offset_right);
-    let slice_len = Sub(bcx, len, slice_len_offset);
+    let slice_len = Sub(bcx, len, slice_len_offset, NoSourceLoc);
     let slice_ty = ty::mk_slice(bcx.tcx(),
                                 ty::ReStatic,
                                 ty::mt {ty: vt.unit_ty, mutbl: ast::MutImmutable});
@@ -666,7 +670,7 @@ fn extract_vec_elems<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     elems.extend(range(0, before).map(|i| GEPi(bcx, base, &[i])));
     elems.extend(range(0, after).rev().map(|i| {
         InBoundsGEP(bcx, base, &[
-            Sub(bcx, len, C_uint(bcx.ccx(), i + 1))
+            Sub(bcx, len, C_uint(bcx.ccx(), i + 1), NoSourceLoc)
         ])
     }));
     ExtractedBlock { vals: elems, bcx: bcx }
@@ -741,7 +745,7 @@ impl FailureHandler {
             Infallible =>
                 panic!("attempted to panic in a non-panicking panic handler!"),
             JumpToBasicBlock(basic_block) =>
-                Br(bcx, basic_block),
+                Br(bcx, basic_block, NoSourceLoc),
             Unreachable =>
                 build::Unreachable(bcx)
         }
@@ -904,7 +908,7 @@ fn compile_guard<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }
     }
 
-    with_cond(bcx, Not(bcx, val), |bcx| {
+    with_cond(bcx, Not(bcx, val, SourceLocation::from_expr(guard_expr)), |bcx| {
         // Guard does not match: remove all bindings from the lllocals table
         for (_, &binding_info) in data.bindings_map.iter() {
             call_lifetime_end(bcx, binding_info.llmatch);
@@ -981,7 +985,7 @@ fn compile_submatch<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 }
                 _ => ()
             }
-            Br(bcx, data.bodycx.llbb);
+            Br(bcx, data.bodycx.llbb, NoSourceLoc);
         }
     }
 }
@@ -1111,7 +1115,7 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         if !exhaustive || i + 1 < len {
             opt_cx = bcx.fcx.new_temp_block("match_case");
             match kind {
-                Single => Br(bcx, opt_cx.llbb),
+                Single => Br(bcx, opt_cx.llbb, NoSourceLoc),
                 Switch => {
                     match opt.trans(bcx) {
                         SingleResult(r) => {
@@ -1146,7 +1150,7 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                     compare_scalar_types(
                                     bcx, test_val, vend,
                                     t, ast::BiLe);
-                                Result::new(bcx, And(bcx, llge, llle))
+                                Result::new(bcx, And(bcx, llge, llle, NoSourceLoc))
                             }
                             LowerBound(Result { bcx, val }) => {
                                 compare_scalar_types(bcx, test_val, val, t, ast::BiGe)
@@ -1164,12 +1168,12 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                     if i + 1 < len && (guarded || multi_pats || kind == CompareSliceLength) {
                         branch_chk = Some(JumpToBasicBlock(bcx.llbb));
                     }
-                    CondBr(after_cx, matches, opt_cx.llbb, bcx.llbb);
+                    CondBr(after_cx, matches, opt_cx.llbb, bcx.llbb, NoSourceLoc);
                 }
                 _ => ()
             }
         } else if kind == Compare || kind == CompareSliceLength {
-            Br(bcx, else_cx.llbb);
+            Br(bcx, else_cx.llbb, NoSourceLoc);
         }
 
         let mut size = 0u;
@@ -1209,7 +1213,7 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     // Compile the fall-through case, if any
     if !exhaustive && kind != Single {
         if kind == Compare || kind == CompareSliceLength {
-            Br(bcx, else_cx.llbb);
+            Br(bcx, else_cx.llbb, NoSourceLoc);
         }
         match chk {
             // If there is only one default arm left, move on to the next
