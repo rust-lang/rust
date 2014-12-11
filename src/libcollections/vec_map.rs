@@ -18,7 +18,7 @@ use core::prelude::*;
 use core::default::Default;
 use core::fmt;
 use core::iter;
-use core::iter::{Enumerate, FilterMap};
+use core::iter::{Enumerate, FilterMap, Map};
 use core::mem::replace;
 use core::ops::FnOnce;
 
@@ -144,7 +144,7 @@ impl<V> VecMap<V> {
     pub fn keys<'r>(&'r self) -> Keys<'r, V> {
         fn first<A, B>((a, _): (A, B)) -> A { a }
 
-        self.iter().map(first)
+        Keys { iter: self.iter().map(first) }
     }
 
     /// Returns an iterator visiting all values in ascending order by the keys.
@@ -153,7 +153,7 @@ impl<V> VecMap<V> {
     pub fn values<'r>(&'r self) -> Values<'r, V> {
         fn second<A, B>((_, b): (A, B)) -> B { b }
 
-        self.iter().map(second)
+        Values { iter: self.iter().map(second) }
     }
 
     /// Returns an iterator visiting all key-value pairs in ascending order by the keys.
@@ -240,7 +240,7 @@ impl<V> VecMap<V> {
         }
 
         let values = replace(&mut self.v, vec!());
-        values.into_iter().enumerate().filter_map(filter)
+        MoveItems { iter: values.into_iter().enumerate().filter_map(filter) }
     }
 
     /// Return the number of elements in the map.
@@ -603,7 +603,7 @@ macro_rules! double_ended_iterator {
     }
 }
 
-/// Forward iterator over a map.
+/// An iterator over the key-value pairs of a map.
 pub struct Entries<'a, V:'a> {
     front: uint,
     back: uint,
@@ -613,7 +613,7 @@ pub struct Entries<'a, V:'a> {
 iterator!(impl Entries -> (uint, &'a V), as_ref)
 double_ended_iterator!(impl Entries -> (uint, &'a V), as_ref)
 
-/// Forward iterator over the key-value pairs of a map, with the
+/// An iterator over the key-value pairs of a map, with the
 /// values being mutable.
 pub struct MutEntries<'a, V:'a> {
     front: uint,
@@ -624,19 +624,50 @@ pub struct MutEntries<'a, V:'a> {
 iterator!(impl MutEntries -> (uint, &'a mut V), as_mut)
 double_ended_iterator!(impl MutEntries -> (uint, &'a mut V), as_mut)
 
-/// Forward iterator over the keys of a map
-pub type Keys<'a, V> = iter::Map<(uint, &'a V), uint, Entries<'a, V>, fn((uint, &'a V)) -> uint>;
+/// An iterator over the keys of a map.
+pub struct Keys<'a, V: 'a> {
+    iter: Map<(uint, &'a V), uint, Entries<'a, V>, fn((uint, &'a V)) -> uint>
+}
 
-/// Forward iterator over the values of a map
-pub type Values<'a, V> =
-    iter::Map<(uint, &'a V), &'a V, Entries<'a, V>, fn((uint, &'a V)) -> &'a V>;
+/// An iterator over the values of a map.
+pub struct Values<'a, V: 'a> {
+    iter: Map<(uint, &'a V), &'a V, Entries<'a, V>, fn((uint, &'a V)) -> &'a V>
+}
 
-/// Iterator over the key-value pairs of a map, the iterator consumes the map
-pub type MoveItems<V> = FilterMap<
+/// A consuming iterator over the key-value pairs of a map.
+pub struct MoveItems<V> {
+    iter: FilterMap<
     (uint, Option<V>),
     (uint, V),
     Enumerate<vec::MoveItems<Option<V>>>,
-    fn((uint, Option<V>)) -> Option<(uint, V)>>;
+    fn((uint, Option<V>)) -> Option<(uint, V)>>
+}
+
+impl<'a, V> Iterator<uint> for Keys<'a, V> {
+    fn next(&mut self) -> Option<uint> { self.iter.next() }
+    fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
+}
+impl<'a, V> DoubleEndedIterator<uint> for Keys<'a, V> {
+    fn next_back(&mut self) -> Option<uint> { self.iter.next_back() }
+}
+
+
+impl<'a, V> Iterator<&'a V> for Values<'a, V> {
+    fn next(&mut self) -> Option<(&'a V)> { self.iter.next() }
+    fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
+}
+impl<'a, V> DoubleEndedIterator<&'a V> for Values<'a, V> {
+    fn next_back(&mut self) -> Option<(&'a V)> { self.iter.next_back() }
+}
+
+
+impl<V> Iterator<(uint, V)> for MoveItems<V> {
+    fn next(&mut self) -> Option<(uint, V)> { self.iter.next() }
+    fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
+}
+impl<V> DoubleEndedIterator<(uint, V)> for MoveItems<V> {
+    fn next_back(&mut self) -> Option<(uint, V)> { self.iter.next_back() }
+}
 
 #[cfg(test)]
 mod test_map {
