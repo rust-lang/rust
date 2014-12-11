@@ -61,7 +61,12 @@ pub type TraitObligation<'tcx> = Obligation<'tcx, Rc<ty::TraitRef<'tcx>>>;
 pub struct ObligationCause<'tcx> {
     pub span: Span,
 
-    // the id of XXX
+    // The id of the fn body that triggered this obligation. This is
+    // used for region obligations to determine the precise
+    // environment in which the region obligation should be evaluated
+    // (in particular, closures can add new assumptions). See the
+    // field `region_obligations` of the `FulfillmentContext` for more
+    // information.
     pub body_id: ast::NodeId,
 
     pub code: ObligationCauseCode<'tcx>

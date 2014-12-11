@@ -91,7 +91,6 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
         let polytype = ty::lookup_item_type(ccx.tcx, item_def_id);
         let param_env =
             ty::construct_parameter_environment(ccx.tcx,
-                                                item.span,
                                                 &polytype.generics,
                                                 item.id);
         let inh = Inherited::new(ccx.tcx, param_env);
