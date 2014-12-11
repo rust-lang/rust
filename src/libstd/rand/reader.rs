@@ -13,7 +13,7 @@
 use io::Reader;
 use rand::Rng;
 use result::Result::{Ok, Err};
-use slice::SlicePrelude;
+use slice::SliceExt;
 
 /// An RNG that reads random bytes straight from a `Reader`. This will
 /// work best with an infinite reader, but this is not required.

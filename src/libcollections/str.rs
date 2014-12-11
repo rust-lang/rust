@@ -51,19 +51,17 @@
 
 #![doc(primitive = "str")]
 
+use core::prelude::*;
+
 pub use self::MaybeOwned::*;
 use self::RecompositionState::*;
 use self::DecompositionType::*;
+
 use core::borrow::{BorrowFrom, Cow, ToOwned};
 use core::default::Default;
 use core::fmt;
 use core::cmp;
 use core::iter::AdditiveIterator;
-use core::kinds::Sized;
-use core::prelude::{Char, Clone, Eq, Equiv};
-use core::prelude::{Iterator, IteratorExt, SlicePrelude, None, Option, Ord, Ordering};
-use core::prelude::{PartialEq, PartialOrd, Result, AsSlice, Some};
-use core::prelude::{range};
 
 use hash;
 use ring_buf::RingBuf;
@@ -849,10 +847,10 @@ mod tests {
     use std::iter::{Iterator, IteratorExt, DoubleEndedIteratorExt};
 
     use super::*;
-    use std::slice::{AsSlice, SlicePrelude};
+    use std::slice::{AsSlice, SliceExt};
     use string::String;
     use vec::Vec;
-    use slice::CloneSliceAllocPrelude;
+    use slice::CloneSliceExt;
 
     use unicode::char::UnicodeChar;
 
@@ -2464,7 +2462,7 @@ mod bench {
     use super::*;
     use std::iter::{IteratorExt, DoubleEndedIteratorExt};
     use std::str::StrPrelude;
-    use std::slice::SlicePrelude;
+    use std::slice::SliceExt;
 
     #[bench]
     fn char_iterator(b: &mut Bencher) {

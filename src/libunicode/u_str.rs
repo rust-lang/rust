@@ -17,7 +17,7 @@
 
 use self::GraphemeState::*;
 use core::cmp;
-use core::slice::SlicePrelude;
+use core::slice::SliceExt;
 use core::iter::{Filter, AdditiveIterator, Iterator, IteratorExt};
 use core::iter::{DoubleEndedIterator, DoubleEndedIteratorExt};
 use core::kinds::Sized;

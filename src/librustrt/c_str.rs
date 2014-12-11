@@ -67,15 +67,13 @@
 //! }
 //! ```
 
+use core::prelude::*;
+
 use collections::string::String;
 use collections::hash;
 use core::fmt;
 use core::kinds::{Sized, marker};
 use core::mem;
-use core::ops::{FnMut, FnOnce};
-use core::prelude::{Clone, Drop, Eq, Iterator};
-use core::prelude::{SlicePrelude, None, Option, Ordering, PartialEq};
-use core::prelude::{PartialOrd, RawPtr, Some, StrPrelude, range};
 use core::ptr;
 use core::raw::Slice;
 use core::slice;

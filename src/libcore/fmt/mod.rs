@@ -22,7 +22,7 @@ use option::Option::{Some, None};
 use ops::{Deref, FnOnce};
 use result::Result::{Ok, Err};
 use result;
-use slice::SlicePrelude;
+use slice::SliceExt;
 use slice;
 use str::StrPrelude;
 

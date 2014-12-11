@@ -241,7 +241,7 @@ use boxed::Box;
 use result::Result;
 use result::Result::{Ok, Err};
 use sys;
-use slice::SlicePrelude;
+use slice::SliceExt;
 use str::StrPrelude;
 use str;
 use string::String;
