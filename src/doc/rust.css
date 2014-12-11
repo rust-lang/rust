@@ -1,5 +1,5 @@
 /**
- * Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+ * Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
  * file at the top-level directory of this distribution and at
  * http://rust-lang.org/COPYRIGHT.
  * With elements taken from Bootstrap v3.0.2 (MIT licensed).
@@ -209,7 +209,6 @@ pre {
 code {
     padding: 0 2px;
     color: #8D1A38;
-    white-space: pre-wrap;
 }
 pre code {
     padding: 0;
