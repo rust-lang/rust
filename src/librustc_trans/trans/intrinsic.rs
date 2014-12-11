@@ -11,7 +11,7 @@
 #![allow(non_upper_case_globals)]
 
 use llvm;
-use llvm::{SequentiallyConsistent, Acquire, Release, AtomicXchg, ValueRef};
+use llvm::{SequentiallyConsistent, Acquire, Release, AtomicXchg, ValueRef, TypeKind};
 use middle::subst;
 use middle::subst::FnSpace;
 use trans::base::*;
@@ -174,12 +174,65 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                 // This should be caught by the intrinsicck pass
                 assert_eq!(in_type_size, out_type_size);
 
-                // We need to cast the dest so the types work out
-                let dest = match dest {
-                    expr::SaveIn(d) => expr::SaveIn(PointerCast(bcx, d, llintype.ptr_to())),
-                    expr::Ignore => expr::Ignore
+                let nonpointer_nonaggregate = |llkind: TypeKind| -> bool {
+                    use llvm::TypeKind::*;
+                    match llkind {
+                        Half | Float | Double | X86_FP80 | FP128 |
+                            PPC_FP128 | Integer | Vector | X86_MMX => true,
+                        _ => false
+                    }
                 };
-                bcx = expr::trans_into(bcx, &*arg_exprs[0], dest);
+
+                // An approximation to which types can be directly cast via
+                // LLVM's bitcast.  This doesn't cover pointer -> pointer casts,
+                // but does, importantly, cover SIMD types.
+                let in_kind = llintype.kind();
+                let ret_kind = llret_ty.kind();
+                let bitcast_compatible =
+                    (nonpointer_nonaggregate(in_kind) && nonpointer_nonaggregate(ret_kind)) || {
+                        in_kind == TypeKind::Pointer && ret_kind == TypeKind::Pointer
+                    };
+
+                let dest = if bitcast_compatible {
+                    // if we're here, the type is scalar-like (a primitive, a
+                    // SIMD type or a pointer), and so can be handled as a
+                    // by-value ValueRef and can also be directly bitcast to the
+                    // target type.  Doing this special case makes conversions
+                    // like `u32x4` -> `u64x2` much nicer for LLVM and so more
+                    // efficient (these are done efficiently implicitly in C
+                    // with the `__m128i` type and so this means Rust doesn't
+                    // lose out there).
+                    let expr = &*arg_exprs[0];
+                    let datum = unpack_datum!(bcx, expr::trans(bcx, expr));
+                    let datum = unpack_datum!(bcx, datum.to_rvalue_datum(bcx, "transmute_temp"));
+                    let val = if datum.kind.is_by_ref() {
+                        load_ty(bcx, datum.val, datum.ty)
+                    } else {
+                        datum.val
+                    };
+
+                    let cast_val = BitCast(bcx, val, llret_ty);
+
+                    match dest {
+                        expr::SaveIn(d) => {
+                            // this often occurs in a sequence like `Store(val,
+                            // d); val2 = Load(d)`, so disappears easily.
+                            Store(bcx, cast_val, d);
+                        }
+                        expr::Ignore => {}
+                    }
+                    dest
+                } else {
+                    // The types are too complicated to do with a by-value
+                    // bitcast, so pointer cast instead. We need to cast the
+                    // dest so the types work out.
+                    let dest = match dest {
+                        expr::SaveIn(d) => expr::SaveIn(PointerCast(bcx, d, llintype.ptr_to())),
+                        expr::Ignore => expr::Ignore
+                    };
+                    bcx = expr::trans_into(bcx, &*arg_exprs[0], dest);
+                    dest
+                };
 
                 fcx.pop_custom_cleanup_scope(cleanup_scope);
 
