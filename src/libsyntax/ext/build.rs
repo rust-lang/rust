@@ -712,8 +712,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         let loc = self.codemap().lookup_char_pos(span.lo);
         let expr_file = self.expr_str(span,
                                       token::intern_and_get_ident(loc.file
-                                                                  .name
-                                                                  .as_slice()));
+                                                                  .name[]));
         let expr_line = self.expr_uint(span, loc.line);
         let expr_file_line_tuple = self.expr_tuple(span, vec!(expr_file, expr_line));
         let expr_file_line_ptr = self.expr_addr_of(span, expr_file_line_tuple);

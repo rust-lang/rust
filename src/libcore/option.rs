@@ -718,15 +718,15 @@ impl<T: Default> Option<T> {
     /// # Example
     ///
     /// Convert a string to an integer, turning poorly-formed strings
-    /// into 0 (the default value for integers). `from_str` converts
+    /// into 0 (the default value for integers). `parse` converts
     /// a string to any other type that implements `FromStr`, returning
     /// `None` on error.
     ///
     /// ```
     /// let good_year_from_input = "1909";
     /// let bad_year_from_input = "190blarg";
-    /// let good_year = from_str(good_year_from_input).unwrap_or_default();
-    /// let bad_year = from_str(bad_year_from_input).unwrap_or_default();
+    /// let good_year = good_year_from_input.parse().unwrap_or_default();
+    /// let bad_year = bad_year_from_input.parse().unwrap_or_default();
     ///
     /// assert_eq!(1909i, good_year);
     /// assert_eq!(0i, bad_year);

@@ -242,10 +242,11 @@ use result::Result;
 use result::Result::{Ok, Err};
 use sys;
 use slice::SliceExt;
-use str::StrPrelude;
+use str::StrExt;
 use str;
 use string::String;
 use uint;
+use unicode;
 use unicode::char::UnicodeChar;
 use vec::Vec;
 
@@ -1505,7 +1506,7 @@ pub trait Buffer: Reader {
     /// valid utf-8 encoded codepoint as the next few bytes in the stream.
     fn read_char(&mut self) -> IoResult<char> {
         let first_byte = try!(self.read_byte());
-        let width = str::utf8_char_width(first_byte);
+        let width = unicode::str::utf8_char_width(first_byte);
         if width == 1 { return Ok(first_byte as char) }
         if width == 0 { return Err(standard_error(InvalidInput)) } // not utf8
         let mut buf = [first_byte, 0, 0, 0];
@@ -1519,7 +1520,7 @@ pub trait Buffer: Reader {
                 }
             }
         }
-        match str::from_utf8(buf[..width]) {
+        match str::from_utf8(buf[..width]).ok() {
             Some(s) => Ok(s.char_at(0)),
             None => Err(standard_error(InvalidInput))
         }

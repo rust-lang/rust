@@ -557,7 +557,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                     self.tcx().sess.span_bug(
                         self.span,
                         format!("No entry for unboxed closure: {}",
-                                closure_def_id.repr(self.tcx())).as_slice());
+                                closure_def_id.repr(self.tcx()))[]);
                 }
             };
 

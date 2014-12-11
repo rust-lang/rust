@@ -55,25 +55,31 @@ use self::MaybeOwned::*;
 use self::RecompositionState::*;
 use self::DecompositionType::*;
 
-use core::prelude::*;
-
 use core::borrow::{BorrowFrom, Cow, ToOwned};
-use core::cmp::{mod, Equiv, PartialEq, Eq, PartialOrd, Ord, Ordering};
+use core::char::Char;
+use core::clone::Clone;
+use core::cmp::{Equiv, PartialEq, Eq, PartialOrd, Ord, Ordering};
+use core::cmp;
 use core::default::Default;
 use core::fmt;
 use core::hash;
 use core::iter::AdditiveIterator;
 use core::iter::{mod, range, Iterator, IteratorExt};
+use core::kinds::Sized;
+use core::ops;
+use core::option::Option::{mod, Some, None};
+use core::slice::AsSlice;
 use core::str as core_str;
 use unicode::str::{UnicodeStr, Utf16Encoder};
 
 use ring_buf::RingBuf;
-use string::{String, ToString};
+use slice::SliceExt;
+use string::String;
 use unicode;
 use vec::Vec;
 
 pub use core::str::{from_utf8, CharEq, Chars, CharIndices};
-pub use core::str::{Bytes, CharSplits};
+pub use core::str::{Bytes, CharSplits, is_utf8};
 pub use core::str::{CharSplitsN, Lines, LinesAny, MatchIndices, StrSplits};
 pub use core::str::{CharRange};
 pub use core::str::{FromStr, from_str, Utf8Error};
@@ -408,6 +414,7 @@ impl<'a> Iterator<u16> for Utf16Units<'a> {
 /// # Examples
 ///
 /// ```rust
+/// # #![allow(deprecated)]
 /// use std::str;
 /// let string = "orange";
 /// let new_string = str::replace(string, "or", "str");
@@ -441,7 +448,7 @@ Section: MaybeOwned
 /// A string type that can hold either a `String` or a `&str`.
 /// This can be useful as an optimization when an allocation is sometimes
 /// needed but not always.
-#[deprecated = "use stding::string::CowString"]
+#[deprecated = "use std::string::CowString"]
 pub enum MaybeOwned<'a> {
     /// A borrowed string.
     Slice(&'a str),
@@ -650,7 +657,11 @@ impl BorrowFrom<String> for str {
 
 #[unstable = "trait is unstable"]
 impl ToOwned<String> for str {
-    fn to_owned(&self) -> String { self.to_string() }
+    fn to_owned(&self) -> String {
+        unsafe {
+            String::from_utf8_unchecked(self.as_bytes().to_owned())
+        }
+    }
 }
 
 /// Unsafe string operations.
@@ -673,7 +684,7 @@ Section: Trait implementations
 */
 
 /// Any string that can be represented as a slice.
-pub trait StrExt for Sized?: Slice<uint, str> {
+pub trait StrExt for Sized?: ops::Slice<uint, str> {
     /// Escapes each char in `s` with `char::escape_default`.
     #[unstable = "return type may change to be an iterator"]
     fn escape_default(&self) -> String {
@@ -724,7 +735,7 @@ pub trait StrExt for Sized?: Slice<uint, str> {
     }
 
     /// Given a string, makes a new string with repeated copies of it.
-    #[deprecated = "user repeat(self).take(n).collect() instead"]
+    #[deprecated = "use repeat(self).take(n).collect() instead"]
     fn repeat(&self, nn: uint) -> String {
         iter::repeat(self[]).take(nn).collect()
     }
@@ -766,7 +777,7 @@ pub trait StrExt for Sized?: Slice<uint, str> {
     /// Returns an iterator over the string in Unicode Normalization Form D
     /// (canonical decomposition).
     #[inline]
-    #[unstable = "this functionality may only be provided by libunicode"]
+    #[unstable = "this functionality may be moved to libunicode"]
     fn nfd_chars<'a>(&'a self) -> Decompositions<'a> {
         Decompositions {
             iter: self[].chars(),
@@ -779,7 +790,7 @@ pub trait StrExt for Sized?: Slice<uint, str> {
     /// Returns an iterator over the string in Unicode Normalization Form KD
     /// (compatibility decomposition).
     #[inline]
-    #[unstable = "this functionality may only be provided by libunicode"]
+    #[unstable = "this functionality may be moved to libunicode"]
     fn nfkd_chars<'a>(&'a self) -> Decompositions<'a> {
         Decompositions {
             iter: self[].chars(),
@@ -792,7 +803,7 @@ pub trait StrExt for Sized?: Slice<uint, str> {
     /// An Iterator over the string in Unicode Normalization Form C
     /// (canonical decomposition followed by canonical composition).
     #[inline]
-    #[unstable = "this functionality may only be provided by libunicode"]
+    #[unstable = "this functionality may be moved to libunicode"]
     fn nfc_chars<'a>(&'a self) -> Recompositions<'a> {
         Recompositions {
             iter: self.nfd_chars(),
@@ -806,7 +817,7 @@ pub trait StrExt for Sized?: Slice<uint, str> {
     /// An Iterator over the string in Unicode Normalization Form KC
     /// (compatibility decomposition followed by canonical composition).
     #[inline]
-    #[unstable = "this functionality may only be provided by libunicode"]
+    #[unstable = "this functionality may be moved to libunicode"]
     fn nfkc_chars<'a>(&'a self) -> Recompositions<'a> {
         Recompositions {
             iter: self.nfkd_chars(),
@@ -891,7 +902,7 @@ pub trait StrExt for Sized?: Slice<uint, str> {
     /// let v: Vec<&str> = "Mary had a little lamb".split(' ').collect();
     /// assert_eq!(v, vec!["Mary", "had", "a", "little", "lamb"]);
     ///
-    /// let v: Vec<&str> = "abc1def2ghi".split(|c: char| c.is_numeric()).collect();
+    /// let v: Vec<&str> = "abc1def2ghi".split(|&: c: char| c.is_numeric()).collect();
     /// assert_eq!(v, vec!["abc", "def", "ghi"]);
     ///
     /// let v: Vec<&str> = "lionXXtigerXleopard".split('X').collect();
@@ -915,7 +926,7 @@ pub trait StrExt for Sized?: Slice<uint, str> {
     /// let v: Vec<&str> = "Mary had a little lambda".splitn(2, ' ').collect();
     /// assert_eq!(v, vec!["Mary", "had", "a little lambda"]);
     ///
-    /// let v: Vec<&str> = "abc1def2ghi".splitn(1, |c: char| c.is_numeric()).collect();
+    /// let v: Vec<&str> = "abc1def2ghi".splitn(1, |&: c: char| c.is_numeric()).collect();
     /// assert_eq!(v, vec!["abc", "def2ghi"]);
     ///
     /// let v: Vec<&str> = "lionXXtigerXleopard".splitn(2, 'X').collect();
@@ -950,7 +961,7 @@ pub trait StrExt for Sized?: Slice<uint, str> {
     /// let v: Vec<&str> = "Mary had a little lamb".split(' ').rev().collect();
     /// assert_eq!(v, vec!["lamb", "little", "a", "had", "Mary"]);
     ///
-    /// let v: Vec<&str> = "abc1def2ghi".split(|c: char| c.is_numeric()).rev().collect();
+    /// let v: Vec<&str> = "abc1def2ghi".split(|&: c: char| c.is_numeric()).rev().collect();
     /// assert_eq!(v, vec!["ghi", "def", "abc"]);
     ///
     /// let v: Vec<&str> = "lionXXtigerXleopard".split('X').rev().collect();
@@ -971,7 +982,7 @@ pub trait StrExt for Sized?: Slice<uint, str> {
     /// let v: Vec<&str> = "Mary had a little lamb".rsplitn(2, ' ').collect();
     /// assert_eq!(v, vec!["lamb", "little", "Mary had a"]);
     ///
-    /// let v: Vec<&str> = "abc1def2ghi".rsplitn(1, |c: char| c.is_numeric()).collect();
+    /// let v: Vec<&str> = "abc1def2ghi".rsplitn(1, |&: c: char| c.is_numeric()).collect();
     /// assert_eq!(v, vec!["ghi", "abc1def"]);
     ///
     /// let v: Vec<&str> = "lionXXtigerXleopard".rsplitn(2, 'X').collect();
@@ -1071,10 +1082,11 @@ pub trait StrExt for Sized?: Slice<uint, str> {
     /// # Example
     ///
     /// ```rust
+    /// # #![allow(deprecated)]
     /// // composed forms of `ö` and `é`
     /// let c = "Löwe 老虎 Léopard"; // German, Simplified Chinese, French
     /// // decomposed forms of `ö` and `é`
-    /// let d = "Lo\u0308we 老虎 Le\u0301opard";
+    /// let d = "Lo\u{0308}we 老虎 Le\u{0301}opard";
     ///
     /// assert_eq!(c.char_len(), 15);
     /// assert_eq!(d.char_len(), 17);
@@ -1225,10 +1237,10 @@ pub trait StrExt for Sized?: Slice<uint, str> {
     /// # Example
     ///
     /// ```rust
-    /// assert_eq!("11foo1bar11".trim_chars('1'), "foo1bar")
+    /// assert_eq!("11foo1bar11".trim_chars('1'), "foo1bar");
     /// let x: &[_] = &['1', '2'];
-    /// assert_eq!("12foo1bar12".trim_chars(x), "foo1bar")
-    /// assert_eq!("123foo1bar123".trim_chars(|c: char| c.is_numeric()), "foo1bar")
+    /// assert_eq!("12foo1bar12".trim_chars(x), "foo1bar");
+    /// assert_eq!("123foo1bar123".trim_chars(|&: c: char| c.is_numeric()), "foo1bar");
     /// ```
     #[unstable = "awaiting pattern/matcher stabilization"]
     fn trim_chars<C: CharEq>(&self, to_trim: C) -> &str {
@@ -1244,10 +1256,10 @@ pub trait StrExt for Sized?: Slice<uint, str> {
     /// # Example
     ///
     /// ```rust
-    /// assert_eq!("11foo1bar11".trim_left_chars('1'), "foo1bar11")
+    /// assert_eq!("11foo1bar11".trim_left_chars('1'), "foo1bar11");
     /// let x: &[_] = &['1', '2'];
-    /// assert_eq!("12foo1bar12".trim_left_chars(x), "foo1bar12")
-    /// assert_eq!("123foo1bar123".trim_left_chars(|c: char| c.is_numeric()), "foo1bar123")
+    /// assert_eq!("12foo1bar12".trim_left_chars(x), "foo1bar12");
+    /// assert_eq!("123foo1bar123".trim_left_chars(|&: c: char| c.is_numeric()), "foo1bar123");
     /// ```
     #[unstable = "awaiting pattern/matcher stabilization"]
     fn trim_left_chars<C: CharEq>(&self, to_trim: C) -> &str {
@@ -1263,10 +1275,10 @@ pub trait StrExt for Sized?: Slice<uint, str> {
     /// # Example
     ///
     /// ```rust
-    /// assert_eq!("11foo1bar11".trim_right_chars('1'), "11foo1bar")
+    /// assert_eq!("11foo1bar11".trim_right_chars('1'), "11foo1bar");
     /// let x: &[_] = &['1', '2'];
-    /// assert_eq!("12foo1bar12".trim_right_chars(x), "12foo1bar")
-    /// assert_eq!("123foo1bar123".trim_right_chars(|c: char| c.is_numeric()), "123foo1bar")
+    /// assert_eq!("12foo1bar12".trim_right_chars(x), "12foo1bar");
+    /// assert_eq!("123foo1bar123".trim_right_chars(|&: c: char| c.is_numeric()), "123foo1bar");
     /// ```
     #[unstable = "awaiting pattern/matcher stabilization"]
     fn trim_right_chars<C: CharEq>(&self, to_trim: C) -> &str {
@@ -1434,7 +1446,7 @@ pub trait StrExt for Sized?: Slice<uint, str> {
     /// assert_eq!(s.find('é'), Some(14));
     ///
     /// // the first space
-    /// assert_eq!(s.find(|c: char| c.is_whitespace()), Some(5));
+    /// assert_eq!(s.find(|&: c: char| c.is_whitespace()), Some(5));
     ///
     /// // neither are found
     /// let x: &[_] = &['1', '2'];
@@ -1462,7 +1474,7 @@ pub trait StrExt for Sized?: Slice<uint, str> {
     /// assert_eq!(s.rfind('é'), Some(14));
     ///
     /// // the second space
-    /// assert_eq!(s.rfind(|c: char| c.is_whitespace()), Some(12));
+    /// assert_eq!(s.rfind(|&: c: char| c.is_whitespace()), Some(12));
     ///
     /// // searches for an occurrence of either `1` or `2`, but neither are found
     /// let x: &[_] = &['1', '2'];
@@ -1609,8 +1621,8 @@ pub trait StrExt for Sized?: Slice<uint, str> {
     /// # Example
     ///
     /// ```rust
-    /// let gr1 = "a\u0310e\u0301o\u0308\u0332".graphemes(true).collect::<Vec<&str>>();
-    /// let b: &[_] = &["a\u0310", "e\u0301", "o\u0308\u0332"];
+    /// let gr1 = "a\u{310}e\u{301}o\u{308}\u{332}".graphemes(true).collect::<Vec<&str>>();
+    /// let b: &[_] = &["a\u{310}", "e\u{301}", "o\u{308}\u{332}"];
     /// assert_eq!(gr1.as_slice(), b);
     /// let gr2 = "a\r\nb🇷🇺🇸🇹".graphemes(true).collect::<Vec<&str>>();
     /// let b: &[_] = &["a", "\r\n", "b", "🇷🇺🇸🇹"];
@@ -1659,6 +1671,7 @@ pub trait StrExt for Sized?: Slice<uint, str> {
     /// # Example
     ///
     /// ```rust
+    /// # #![allow(deprecated)]
     /// assert!(" \t\n".is_whitespace());
     /// assert!("".is_whitespace());
     ///
@@ -1677,6 +1690,7 @@ pub trait StrExt for Sized?: Slice<uint, str> {
     /// # Example
     ///
     /// ```rust
+    /// # #![allow(deprecated)]
     /// assert!("Löwe老虎Léopard123".is_alphanumeric());
     /// assert!("".is_alphanumeric());
     ///
@@ -1718,25 +1732,39 @@ pub trait StrExt for Sized?: Slice<uint, str> {
     fn trim_right(&self) -> &str {
         UnicodeStr::trim_right(self[])
     }
+
+    /// Deprecated, call `.to_owned()` instead from the `std::borrow::ToOwned`
+    /// trait.
+    #[deprecated = "call `.to_owned()` on `std::borrow::ToOwned` instead"]
+    fn into_string(&self) -> String {
+        self[].to_owned()
+    }
 }
 
 impl StrExt for str {}
 
 #[cfg(test)]
 mod tests {
-    use prelude::*;
-    use core::default::Default;
-    use core::iter::AdditiveIterator;
-    use super::{eq_slice, from_utf8, is_utf8, is_utf16, raw};
-    use super::truncate_utf16_at_nul;
-    use super::MaybeOwned::{Owned, Slice};
+    use std::iter::AdditiveIterator;
+    use std::iter::range;
+    use std::default::Default;
+    use std::char::Char;
+    use std::clone::Clone;
+    use std::cmp::{Ord, PartialOrd, Equiv};
+    use std::cmp::Ordering::{Equal, Greater, Less};
+    use std::option::Option::{mod, Some, None};
+    use std::result::Result::{Ok, Err};
+    use std::ptr::RawPtr;
+    use std::iter::{Iterator, IteratorExt, DoubleEndedIteratorExt};
 
-    #[test]
-    fn test_eq_slice() {
-        assert!((eq_slice("foobar".slice(0, 3), "foo")));
-        assert!((eq_slice("barfoo".slice(3, 6), "foo")));
-        assert!((!eq_slice("foo1", "foo2")));
-    }
+    use super::*;
+    use super::MaybeOwned::{Owned, Slice};
+    use std::slice::{AsSlice, SliceExt};
+    use string::{String, ToString};
+    use vec::Vec;
+    use slice::CloneSliceExt;
+
+    use unicode::char::UnicodeChar;
 
     #[test]
     fn test_le() {
@@ -2267,6 +2295,7 @@ mod tests {
 
     #[test]
     fn test_is_utf16() {
+        use unicode::str::is_utf16;
         macro_rules! pos ( ($($e:expr),*) => { { $(assert!(is_utf16($e));)* } });
 
         // non-surrogates
@@ -3229,13 +3258,13 @@ mod tests {
     #[test]
     fn test_str_from_utf8() {
         let xs = b"hello";
-        assert_eq!(from_utf8(xs), Some("hello"));
+        assert_eq!(from_utf8(xs), Ok("hello"));
 
         let xs = "ศไทย中华Việt Nam".as_bytes();
-        assert_eq!(from_utf8(xs), Some("ศไทย中华Việt Nam"));
+        assert_eq!(from_utf8(xs), Ok("ศไทย中华Việt Nam"));
 
         let xs = b"hello\xFF";
-        assert_eq!(from_utf8(xs), None);
+        assert_eq!(from_utf8(xs), Err(Utf8Error::TooShort));
     }
 
     #[test]
@@ -3284,8 +3313,8 @@ mod tests {
 
     #[test]
     fn test_maybe_owned_into_string() {
-        assert_eq!(Slice("abcde").into_string(), String::from_str("abcde"));
-        assert_eq!(Owned(String::from_str("abcde")).into_string(),
+        assert_eq!(Slice("abcde").to_string(), String::from_str("abcde"));
+        assert_eq!(Owned(String::from_str("abcde")).to_string(),
                    String::from_str("abcde"));
     }
 

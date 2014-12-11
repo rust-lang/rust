@@ -250,10 +250,12 @@ impl LintPass for TypeLimits {
                         let (min, max) = float_ty_range(t);
                         let lit_val: f64 = match lit.node {
                             ast::LitFloat(ref v, _) |
-                            ast::LitFloatUnsuffixed(ref v) => match from_str(v.get()) {
-                                Some(f) => f,
-                                None => return
-                            },
+                            ast::LitFloatUnsuffixed(ref v) => {
+                                match v.parse() {
+                                    Some(f) => f,
+                                    None => return
+                                }
+                            }
                             _ => panic!()
                         };
                         if lit_val < min || lit_val > max {
@@ -507,7 +509,7 @@ impl BoxPointers {
         if n_uniq > 0 {
             let s = ty_to_string(cx.tcx, ty);
             let m = format!("type uses owned (Box type) pointers: {}", s);
-            cx.span_lint(BOX_POINTERS, span, m.as_slice());
+            cx.span_lint(BOX_POINTERS, span, m[]);
         }
     }
 }
@@ -587,7 +589,7 @@ impl LintPass for RawPointerDeriving {
     }
 
     fn check_item(&mut self, cx: &Context, item: &ast::Item) {
-        if !attr::contains_name(item.attrs.as_slice(), "automatically_derived") {
+        if !attr::contains_name(item.attrs[], "automatically_derived") {
             return
         }
         let did = match item.node {
@@ -766,11 +768,11 @@ impl LintPass for UnusedResults {
             ty::ty_enum(did, _) => {
                 if ast_util::is_local(did) {
                     if let ast_map::NodeItem(it) = cx.tcx.map.get(did.node) {
-                        warned |= check_must_use(cx, it.attrs.as_slice(), s.span);
+                        warned |= check_must_use(cx, it.attrs[], s.span);
                     }
                 } else {
                     csearch::get_item_attrs(&cx.sess().cstore, did, |attrs| {
-                        warned |= check_must_use(cx, attrs.as_slice(), s.span);
+                        warned |= check_must_use(cx, attrs[], s.span);
                     });
                 }
             }
@@ -792,7 +794,7 @@ impl LintPass for UnusedResults {
                             msg.push_str(s.get());
                         }
                     }
-                    cx.span_lint(UNUSED_MUST_USE, sp, msg.as_slice());
+                    cx.span_lint(UNUSED_MUST_USE, sp, msg[]);
                     return true;
                 }
             }
@@ -838,7 +840,7 @@ impl NonCamelCaseTypes {
             } else {
                 format!("{} `{}` should have a camel case name such as `{}`", sort, s, c)
             };
-            cx.span_lint(NON_CAMEL_CASE_TYPES, span, m.as_slice());
+            cx.span_lint(NON_CAMEL_CASE_TYPES, span, m[]);
         }
     }
 }
@@ -978,7 +980,7 @@ impl NonSnakeCase {
         if !is_snake_case(ident) {
             cx.span_lint(NON_SNAKE_CASE, span,
                 format!("{} `{}` should have a snake case name such as `{}`",
-                        sort, s, to_snake_case(s.get())).as_slice());
+                        sort, s, to_snake_case(s.get()))[]);
         }
     }
 }
@@ -1065,7 +1067,7 @@ impl LintPass for NonUpperCaseGlobals {
                         format!("static constant `{}` should have an uppercase name \
                                  such as `{}`",
                                 s.get(), s.get().chars().map(|c| c.to_uppercase())
-                                .collect::<String>().as_slice()).as_slice());
+                                .collect::<String>()[])[]);
                 }
             }
             _ => {}
@@ -1082,7 +1084,7 @@ impl LintPass for NonUpperCaseGlobals {
                         format!("static constant in pattern `{}` should have an uppercase \
                                  name such as `{}`",
                                 s.get(), s.get().chars().map(|c| c.to_uppercase())
-                                    .collect::<String>().as_slice()).as_slice());
+                                    .collect::<String>()[])[]);
                 }
             }
             _ => {}
@@ -1107,7 +1109,7 @@ impl UnusedParens {
             if !necessary {
                 cx.span_lint(UNUSED_PARENS, value.span,
                              format!("unnecessary parentheses around {}",
-                                     msg).as_slice())
+                                     msg)[])
             }
         }
 
@@ -1209,7 +1211,7 @@ impl LintPass for UnusedImportBraces {
                                     let m = format!("braces around {} is unnecessary",
                                                     token::get_ident(*name).get());
                                     cx.span_lint(UNUSED_IMPORT_BRACES, view_item.span,
-                                                 m.as_slice());
+                                                 m[]);
                                 },
                                 _ => ()
                             }
@@ -1248,7 +1250,7 @@ impl LintPass for NonShorthandFieldPatterns {
                     if ident.node.as_str() == fieldpat.node.ident.as_str() {
                         cx.span_lint(NON_SHORTHAND_FIELD_PATTERNS, fieldpat.span,
                                      format!("the `{}:` in this pattern is redundant and can \
-                                              be removed", ident.node.as_str()).as_slice())
+                                              be removed", ident.node.as_str())[])
                     }
                 }
             }
@@ -1352,7 +1354,7 @@ impl LintPass for UnusedMut {
     fn check_expr(&mut self, cx: &Context, e: &ast::Expr) {
         if let ast::ExprMatch(_, ref arms, _) = e.node {
             for a in arms.iter() {
-                self.check_unused_mut_pat(cx, a.pats.as_slice())
+                self.check_unused_mut_pat(cx, a.pats[])
             }
         }
     }
@@ -1473,7 +1475,7 @@ impl MissingDoc {
         });
         if !has_doc {
             cx.span_lint(MISSING_DOCS, sp,
-                format!("missing documentation for {}", desc).as_slice());
+                format!("missing documentation for {}", desc)[]);
         }
     }
 }
@@ -1487,7 +1489,7 @@ impl LintPass for MissingDoc {
         let doc_hidden = self.doc_hidden() || attrs.iter().any(|attr| {
             attr.check_name("doc") && match attr.meta_item_list() {
                 None => false,
-                Some(l) => attr::contains_name(l.as_slice(), "hidden"),
+                Some(l) => attr::contains_name(l[], "hidden"),
             }
         });
         self.doc_hidden_stack.push(doc_hidden);
@@ -1509,7 +1511,7 @@ impl LintPass for MissingDoc {
     }
 
     fn check_crate(&mut self, cx: &Context, krate: &ast::Crate) {
-        self.check_missing_docs_attrs(cx, None, krate.attrs.as_slice(),
+        self.check_missing_docs_attrs(cx, None, krate.attrs[],
                                      krate.span, "crate");
     }
 
@@ -1523,7 +1525,7 @@ impl LintPass for MissingDoc {
             ast::ItemTy(..) => "a type alias",
             _ => return
         };
-        self.check_missing_docs_attrs(cx, Some(it.id), it.attrs.as_slice(),
+        self.check_missing_docs_attrs(cx, Some(it.id), it.attrs[],
                                      it.span, desc);
     }
 
@@ -1536,13 +1538,13 @@ impl LintPass for MissingDoc {
 
             // Otherwise, doc according to privacy. This will also check
             // doc for default methods defined on traits.
-            self.check_missing_docs_attrs(cx, Some(m.id), m.attrs.as_slice(),
+            self.check_missing_docs_attrs(cx, Some(m.id), m.attrs[],
                                           m.span, "a method");
         }
     }
 
     fn check_ty_method(&mut self, cx: &Context, tm: &ast::TypeMethod) {
-        self.check_missing_docs_attrs(cx, Some(tm.id), tm.attrs.as_slice(),
+        self.check_missing_docs_attrs(cx, Some(tm.id), tm.attrs[],
                                      tm.span, "a type method");
     }
 
@@ -1552,14 +1554,14 @@ impl LintPass for MissingDoc {
                 let cur_struct_def = *self.struct_def_stack.last()
                     .expect("empty struct_def_stack");
                 self.check_missing_docs_attrs(cx, Some(cur_struct_def),
-                                              sf.node.attrs.as_slice(), sf.span,
+                                              sf.node.attrs[], sf.span,
                                               "a struct field")
             }
         }
     }
 
     fn check_variant(&mut self, cx: &Context, v: &ast::Variant, _: &ast::Generics) {
-        self.check_missing_docs_attrs(cx, Some(v.node.id), v.node.attrs.as_slice(),
+        self.check_missing_docs_attrs(cx, Some(v.node.id), v.node.attrs[],
                                      v.span, "a variant");
         assert!(!self.in_variant);
         self.in_variant = true;
@@ -1675,7 +1677,7 @@ impl Stability {
             _ => format!("use of {} item", label)
         };
 
-        cx.span_lint(lint, span, msg.as_slice());
+        cx.span_lint(lint, span, msg[]);
     }
 
     fn is_internal(&self, cx: &Context, span: Span) -> bool {

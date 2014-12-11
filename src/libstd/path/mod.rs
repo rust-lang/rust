@@ -69,7 +69,7 @@ use iter::IteratorExt;
 use option::Option;
 use option::Option::{None, Some};
 use str;
-use str::{CowString, MaybeOwned, Str, StrPrelude};
+use str::{CowString, MaybeOwned, Str, StrExt};
 use string::String;
 use slice::{AsSlice, CloneSliceExt};
 use slice::{PartialEqSliceExt, SliceExt};
@@ -197,7 +197,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// ```
     #[inline]
     fn as_str<'a>(&'a self) -> Option<&'a str> {
-        str::from_utf8(self.as_vec())
+        str::from_utf8(self.as_vec()).ok()
     }
 
     /// Returns the path as a byte vector
@@ -293,7 +293,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// ```
     #[inline]
     fn dirname_str<'a>(&'a self) -> Option<&'a str> {
-        str::from_utf8(self.dirname())
+        str::from_utf8(self.dirname()).ok()
     }
 
     /// Returns the file component of `self`, as a byte vector.
@@ -327,7 +327,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// ```
     #[inline]
     fn filename_str<'a>(&'a self) -> Option<&'a str> {
-        self.filename().and_then(str::from_utf8)
+        self.filename().and_then(|s| str::from_utf8(s).ok())
     }
 
     /// Returns the stem of the filename of `self`, as a byte vector.
@@ -373,7 +373,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// ```
     #[inline]
     fn filestem_str<'a>(&'a self) -> Option<&'a str> {
-        self.filestem().and_then(str::from_utf8)
+        self.filestem().and_then(|s| str::from_utf8(s).ok())
     }
 
     /// Returns the extension of the filename of `self`, as an optional byte vector.
@@ -420,7 +420,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// ```
     #[inline]
     fn extension_str<'a>(&'a self) -> Option<&'a str> {
-        self.extension().and_then(str::from_utf8)
+        self.extension().and_then(|s| str::from_utf8(s).ok())
     }
 
     /// Replaces the filename portion of the path with the given byte vector or string.
@@ -793,7 +793,7 @@ pub trait BytesContainer for Sized? {
     /// Returns the receiver interpreted as a utf-8 string, if possible
     #[inline]
     fn container_as_str<'a>(&'a self) -> Option<&'a str> {
-        str::from_utf8(self.container_as_bytes())
+        str::from_utf8(self.container_as_bytes()).ok()
     }
     /// Returns whether .container_as_str() is guaranteed to not fail
     // FIXME (#8888): Remove unused arg once ::<for T> works
@@ -870,7 +870,7 @@ impl BytesContainer for String {
     }
     #[inline]
     fn container_as_str(&self) -> Option<&str> {
-        Some(self.as_slice())
+        Some(self[])
     }
     #[inline]
     fn is_str(_: Option<&String>) -> bool { true }
@@ -886,7 +886,7 @@ impl BytesContainer for [u8] {
 impl BytesContainer for Vec<u8> {
     #[inline]
     fn container_as_bytes(&self) -> &[u8] {
-        self.as_slice()
+        self[]
     }
 }
 
@@ -897,6 +897,7 @@ impl BytesContainer for CString {
     }
 }
 
+#[allow(deprecated)]
 impl<'a> BytesContainer for str::MaybeOwned<'a> {
     #[inline]
     fn container_as_bytes<'b>(&'b self) -> &'b [u8] {

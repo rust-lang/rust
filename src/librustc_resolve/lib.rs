@@ -97,8 +97,8 @@ use std::mem::replace;
 use std::rc::{Rc, Weak};
 use std::uint;
 
-// Definition mapping
-pub type DefMap = RefCell<NodeMap<Def>>;
+mod check_unused;
+mod record_exports;
 
 #[deriving(Copy)]
 struct BindingInfo {
@@ -1119,14 +1119,14 @@ impl<'a> Resolver<'a> {
                     self.resolve_error(sp,
                         format!("duplicate definition of {} `{}`",
                              namespace_error_to_string(duplicate_type),
-                             token::get_name(name)).as_slice());
+                             token::get_name(name))[]);
                     {
                         let r = child.span_for_namespace(ns);
                         for sp in r.iter() {
                             self.session.span_note(*sp,
                                  format!("first definition of {} `{}` here",
                                       namespace_error_to_string(duplicate_type),
-                                      token::get_name(name)).as_slice());
+                                      token::get_name(name))[]);
                         }
                     }
                 }
@@ -2147,7 +2147,7 @@ impl<'a> Resolver<'a> {
                 debug!("(building import directive) building import \
                         directive: {}::{}",
                        self.names_to_string(module_.imports.borrow().last().unwrap()
-                                                 .module_path.as_slice()),
+                                                 .module_path[]),
                        token::get_name(target));
 
                 let mut import_resolutions = module_.import_resolutions
@@ -2265,10 +2265,10 @@ impl<'a> Resolver<'a> {
                     let msg = format!("unresolved import `{}`{}",
                                       self.import_path_to_string(
                                           import_directive.module_path
-                                                          .as_slice(),
+                                                          [],
                                           import_directive.subclass),
                                       help);
-                    self.resolve_error(span, msg.as_slice());
+                    self.resolve_error(span, msg[]);
                 }
                 Indeterminate => break, // Bail out. We'll come around next time.
                 Success(()) => () // Good. Continue.
@@ -2298,7 +2298,7 @@ impl<'a> Resolver<'a> {
                                         .iter()
                                         .map(|seg| seg.identifier.name)
                                         .collect();
-        self.names_to_string(names.as_slice())
+        self.names_to_string(names[])
     }
 
     fn import_directive_subclass_to_string(&mut self,
@@ -2340,7 +2340,7 @@ impl<'a> Resolver<'a> {
 
         debug!("(resolving import for module) resolving import `{}::...` in \
                 `{}`",
-               self.names_to_string(module_path.as_slice()),
+               self.names_to_string(module_path[]),
                self.module_to_string(&*module_));
 
         // First, resolve the module path for the directive, if necessary.
@@ -2349,7 +2349,7 @@ impl<'a> Resolver<'a> {
             Some((self.graph_root.get_module(), LastMod(AllPublic)))
         } else {
             match self.resolve_module_path(module_.clone(),
-                                           module_path.as_slice(),
+                                           module_path[],
                                            DontUseLexicalScope,
                                            import_directive.span,
                                            ImportSearch) {
@@ -2941,7 +2941,7 @@ impl<'a> Resolver<'a> {
                                     ValueNS => "value",
                                   },
                                   token::get_name(name).get());
-                self.session.span_err(import_span, msg.as_slice());
+                self.session.span_err(import_span, msg[]);
             }
             Some(_) | None => {}
         }
@@ -2956,7 +2956,7 @@ impl<'a> Resolver<'a> {
         if !name_bindings.defined_in_namespace_with(namespace, IMPORTABLE) {
             let msg = format!("`{}` is not directly importable",
                               token::get_name(name));
-            self.session.span_err(import_span, msg.as_slice());
+            self.session.span_err(import_span, msg[]);
         }
     }
 
@@ -2981,7 +2981,7 @@ impl<'a> Resolver<'a> {
                                        crate in this module \
                                        (maybe you meant `use {0}::*`?)",
                                       token::get_name(name).get());
-                    self.session.span_err(import_span, msg.as_slice());
+                    self.session.span_err(import_span, msg[]);
                 }
                 Some(_) | None => {}
             }
@@ -3003,7 +3003,7 @@ impl<'a> Resolver<'a> {
                     let msg = format!("import `{}` conflicts with value \
                                        in this module",
                                       token::get_name(name).get());
-                    self.session.span_err(import_span, msg.as_slice());
+                    self.session.span_err(import_span, msg[]);
                     if let Some(span) = value.value_span {
                         self.session.span_note(span,
                                                "conflicting value here");
@@ -3021,7 +3021,7 @@ impl<'a> Resolver<'a> {
                             let msg = format!("import `{}` conflicts with type in \
                                                this module",
                                               token::get_name(name).get());
-                            self.session.span_err(import_span, msg.as_slice());
+                            self.session.span_err(import_span, msg[]);
                             if let Some(span) = ty.type_span {
                                 self.session.span_note(span,
                                                        "note conflicting type here")
@@ -3034,7 +3034,7 @@ impl<'a> Resolver<'a> {
                                         let msg = format!("inherent implementations \
                                                            are only allowed on types \
                                                            defined in the current module");
-                                        self.session.span_err(span, msg.as_slice());
+                                        self.session.span_err(span, msg[]);
                                         self.session.span_note(import_span,
                                                                "import from other module here")
                                     }
@@ -3043,7 +3043,7 @@ impl<'a> Resolver<'a> {
                                     let msg = format!("import `{}` conflicts with existing \
                                                        submodule",
                                                       token::get_name(name).get());
-                                    self.session.span_err(import_span, msg.as_slice());
+                                    self.session.span_err(import_span, msg[]);
                                     if let Some(span) = ty.type_span {
                                         self.session.span_note(span,
                                                                "note conflicting module here")
@@ -3073,7 +3073,7 @@ impl<'a> Resolver<'a> {
                 .span_err(span,
                           format!("an external crate named `{}` has already \
                                    been imported into this module",
-                                  token::get_name(name).get()).as_slice());
+                                  token::get_name(name).get())[]);
         }
     }
 
@@ -3092,7 +3092,7 @@ impl<'a> Resolver<'a> {
                           format!("the name `{}` conflicts with an external \
                                    crate that has been imported into this \
                                    module",
-                                  token::get_name(name).get()).as_slice());
+                                  token::get_name(name).get())[]);
         }
     }
 
@@ -3140,7 +3140,7 @@ impl<'a> Resolver<'a> {
                     let segment_name = token::get_name(name);
                     let module_name = self.module_to_string(&*search_module);
                     let mut span = span;
-                    let msg = if "???" == module_name.as_slice() {
+                    let msg = if "???" == module_name[] {
                         span.hi = span.lo + Pos::from_uint(segment_name.get().len());
 
                         match search_parent_externals(name,
@@ -3253,14 +3253,14 @@ impl<'a> Resolver<'a> {
         match module_prefix_result {
             Failed(None) => {
                 let mpath = self.names_to_string(module_path);
-                let mpath = mpath.as_slice();
+                let mpath = mpath[];
                 match mpath.rfind(':') {
                     Some(idx) => {
                         let msg = format!("Could not find `{}` in `{}`",
                                             // idx +- 1 to account for the
                                             // colons on either side
-                                            mpath.slice_from(idx + 1),
-                                            mpath.slice_to(idx - 1));
+                                            mpath[idx + 1..],
+                                            mpath[0..idx - 1]);
                         return Failed(Some((span, msg)));
                     },
                     None => {
@@ -3431,7 +3431,7 @@ impl<'a> Resolver<'a> {
                                               true) {
                 Failed(Some((span, msg))) =>
                     self.resolve_error(span, format!("failed to resolve. {}",
-                                                     msg)),
+                                                     msg)[]),
                 Failed(None) => (), // Continue up the search chain.
                 Indeterminate => {
                     // We couldn't see through the higher scope because of an
@@ -3686,8 +3686,8 @@ impl<'a> Resolver<'a> {
                                    "unresolved import");
             } else {
                 let err = format!("unresolved import (maybe you meant `{}::*`?)",
-                                  sn.slice(0, sn.len()));
-                self.resolve_error((*imports)[index].span, err.as_slice());
+                                  sn);
+                self.resolve_error((*imports)[index].span, err[]);
             }
         }
 
@@ -3779,7 +3779,7 @@ impl<'a> Resolver<'a> {
         match def_like {
             DlDef(d @ DefUpvar(..)) => {
                 self.session.span_bug(span,
-                    format!("unexpected {} in bindings", d).as_slice())
+                    format!("unexpected {} in bindings", d)[])
             }
             DlDef(d @ DefLocal(_)) => {
                 let node_id = d.def_id().node;
@@ -3995,7 +3995,7 @@ impl<'a> Resolver<'a> {
                                             generics,
                                             implemented_traits,
                                             &**self_type,
-                                            impl_items.as_slice());
+                                            impl_items[]);
             }
 
             ItemTrait(_, ref generics, ref unbound, ref bounds, ref trait_items) => {
@@ -4080,7 +4080,7 @@ impl<'a> Resolver<'a> {
             ItemStruct(ref struct_def, ref generics) => {
                 self.resolve_struct(item.id,
                                     generics,
-                                    struct_def.fields.as_slice());
+                                    struct_def.fields[]);
             }
 
             ItemMod(ref module_) => {
@@ -4153,7 +4153,7 @@ impl<'a> Resolver<'a> {
                                                     parameter in this type \
                                                     parameter list",
                                                    token::get_name(
-                                                       name)).as_slice())
+                                                       name))[])
                     }
                     seen_bindings.insert(name);
 
@@ -4330,7 +4330,7 @@ impl<'a> Resolver<'a> {
                 };
 
                 let msg = format!("attempt to {} a nonexistent trait `{}`", usage_str, path_str);
-                self.resolve_error(trait_reference.path.span, msg.as_slice());
+                self.resolve_error(trait_reference.path.span, msg[]);
             }
             Some(def) => {
                 match def {
@@ -4342,14 +4342,14 @@ impl<'a> Resolver<'a> {
                         self.resolve_error(trait_reference.path.span,
                                            format!("`{}` is not a trait",
                                                    self.path_names_to_string(
-                                                       &trait_reference.path)));
+                                                       &trait_reference.path))[]);
 
                         // If it's a typedef, give a note
                         if let DefTy(..) = def {
                             self.session.span_note(
                                 trait_reference.path.span,
                                 format!("`type` aliases cannot be used for traits")
-                                    .as_slice());
+                                    []);
                         }
                     }
                 }
@@ -4546,7 +4546,7 @@ impl<'a> Resolver<'a> {
                 self.resolve_error(span,
                                     format!("method `{}` is not a member of trait `{}`",
                                             token::get_name(name),
-                                            path_str).as_slice());
+                                            path_str)[]);
             }
         }
     }
@@ -4613,7 +4613,7 @@ impl<'a> Resolver<'a> {
                         format!("variable `{}` from pattern #1 is \
                                   not bound in pattern #{}",
                                 token::get_name(key),
-                                i + 1).as_slice());
+                                i + 1)[]);
                   }
                   Some(binding_i) => {
                     if binding_0.binding_mode != binding_i.binding_mode {
@@ -4622,7 +4622,7 @@ impl<'a> Resolver<'a> {
                             format!("variable `{}` is bound with different \
                                       mode in pattern #{} than in pattern #1",
                                     token::get_name(key),
-                                    i + 1).as_slice());
+                                    i + 1)[]);
                     }
                   }
                 }
@@ -4635,7 +4635,7 @@ impl<'a> Resolver<'a> {
                         format!("variable `{}` from pattern {}{} is \
                                   not bound in pattern {}1",
                                 token::get_name(key),
-                                "#", i + 1, "#").as_slice());
+                                "#", i + 1, "#")[]);
                 }
             }
         }
@@ -4752,7 +4752,7 @@ impl<'a> Resolver<'a> {
                     None => {
                         let msg = format!("use of undeclared type name `{}`",
                                           self.path_names_to_string(path));
-                        self.resolve_error(ty.span, msg.as_slice());
+                        self.resolve_error(ty.span, msg[]);
                     }
                 }
             }
@@ -4832,7 +4832,7 @@ impl<'a> Resolver<'a> {
                                 format!("declaration of `{}` shadows an enum \
                                          variant or unit-like struct in \
                                          scope",
-                                        token::get_name(renamed)).as_slice());
+                                        token::get_name(renamed))[]);
                         }
                         FoundConst(ref def, lp) if mode == RefutableMode => {
                             debug!("(resolving pattern) resolving `{}` to \
@@ -4884,7 +4884,7 @@ impl<'a> Resolver<'a> {
                                                             list",
                                                            token::get_ident(
                                                                ident))
-                                                   .as_slice())
+                                                   [])
                             } else if bindings_list.get(&renamed) ==
                                     Some(&pat_id) {
                                 // Then this is a duplicate variable in the
@@ -4893,7 +4893,7 @@ impl<'a> Resolver<'a> {
                                     format!("identifier `{}` is bound \
                                              more than once in the same \
                                              pattern",
-                                            token::get_ident(ident)).as_slice());
+                                            token::get_ident(ident))[]);
                             }
                             // Else, not bound in the same pattern: do
                             // nothing.
@@ -4922,7 +4922,7 @@ impl<'a> Resolver<'a> {
                                         path.segments
                                             .last()
                                             .unwrap()
-                                            .identifier)).as_slice());
+                                            .identifier))[]);
                         }
                         None => {
                             self.resolve_error(path.span,
@@ -4931,7 +4931,7 @@ impl<'a> Resolver<'a> {
                                         path.segments
                                             .last()
                                             .unwrap()
-                                            .identifier)).as_slice());
+                                            .identifier))[]);
                         }
                     }
 
@@ -4962,7 +4962,7 @@ impl<'a> Resolver<'a> {
                                     def: {}", result);
                             let msg = format!("`{}` does not name a structure",
                                               self.path_names_to_string(path));
-                            self.resolve_error(path.span, msg.as_slice());
+                            self.resolve_error(path.span, msg[]);
                         }
                     }
                 }
@@ -5024,7 +5024,7 @@ impl<'a> Resolver<'a> {
                 match err {
                     Some((span, msg)) => {
                         self.resolve_error(span, format!("failed to resolve: {}",
-                                                         msg));
+                                                         msg)[]);
                     }
                     None => ()
                 }
@@ -5220,7 +5220,7 @@ impl<'a> Resolver<'a> {
         let last_private;
         let module = self.current_module.clone();
         match self.resolve_module_path(module,
-                                       module_path.as_slice(),
+                                       module_path[],
                                        UseLexicalScope,
                                        path.span,
                                        PathSearch) {
@@ -5235,7 +5235,7 @@ impl<'a> Resolver<'a> {
                 };
 
                 self.resolve_error(span, format!("failed to resolve. {}",
-                                                 msg.as_slice()));
+                                                 msg)[]);
                 return None;
             }
             Indeterminate => panic!("indeterminate unexpected"),
@@ -5278,7 +5278,7 @@ impl<'a> Resolver<'a> {
         let containing_module;
         let last_private;
         match self.resolve_module_path_from_root(root_module,
-                                                 module_path.as_slice(),
+                                                 module_path[],
                                                  0,
                                                  path.span,
                                                  PathSearch,
@@ -5288,13 +5288,13 @@ impl<'a> Resolver<'a> {
                     Some((span, msg)) => (span, msg),
                     None => {
                         let msg = format!("Use of undeclared module `::{}`",
-                                          self.names_to_string(module_path.as_slice()));
+                                          self.names_to_string(module_path[]));
                         (path.span, msg)
                     }
                 };
 
                 self.resolve_error(span, format!("failed to resolve. {}",
-                                                 msg.as_slice()));
+                                                 msg)[]);
                 return None;
             }
 
@@ -5335,7 +5335,7 @@ impl<'a> Resolver<'a> {
             }
             TypeNS => {
                 let name = ident.name;
-                self.search_ribs(self.type_ribs.as_slice(), name, span)
+                self.search_ribs(self.type_ribs[], name, span)
             }
         };
 
@@ -5389,7 +5389,8 @@ impl<'a> Resolver<'a> {
             Failed(err) => {
                 match err {
                     Some((span, msg)) =>
-                        self.resolve_error(span, format!("failed to resolve. {}", msg)),
+                        self.resolve_error(span, format!("failed to resolve. {}",
+                                                         msg)[]),
                     None => ()
                 }
 
@@ -5409,9 +5410,9 @@ impl<'a> Resolver<'a> {
         rs
     }
 
-    fn resolve_error<T: Str>(&self, span: Span, s: T) {
+    fn resolve_error(&self, span: Span, s: &str) {
         if self.emit_errors {
-            self.session.span_err(span, s.as_slice());
+            self.session.span_err(span, s);
         }
     }
 
@@ -5446,7 +5447,7 @@ impl<'a> Resolver<'a> {
                 }
             } else {
                 match this.resolve_module_path(root,
-                                                name_path.as_slice(),
+                                                name_path[],
                                                 UseLexicalScope,
                                                 span,
                                                 PathSearch) {
@@ -5484,7 +5485,7 @@ impl<'a> Resolver<'a> {
         let name_path = path.segments.iter().map(|seg| seg.identifier.name).collect::<Vec<_>>();
 
         // Look for a method in the current self type's impl module.
-        match get_module(self, path.span, name_path.as_slice()) {
+        match get_module(self, path.span, name_path[]) {
             Some(module) => match module.children.borrow().get(&name) {
                 Some(binding) => {
                     let p_str = self.path_names_to_string(&path);
@@ -5695,7 +5696,7 @@ impl<'a> Resolver<'a> {
                                 def: {}", result);
                         let msg = format!("`{}` does not name a structure",
                                           self.path_names_to_string(path));
-                        self.resolve_error(path.span, msg.as_slice());
+                        self.resolve_error(path.span, msg[]);
                     }
                 }
 
@@ -5751,13 +5752,13 @@ impl<'a> Resolver<'a> {
 
             ExprBreak(Some(label)) | ExprAgain(Some(label)) => {
                 let renamed = mtwt::resolve(label);
-                match self.search_ribs(self.label_ribs.as_slice(),
+                match self.search_ribs(self.label_ribs[],
                                        renamed, expr.span) {
                     None => {
                         self.resolve_error(
                             expr.span,
                             format!("use of undeclared label `{}`",
-                                    token::get_ident(label)).as_slice())
+                                    token::get_ident(label))[])
                     }
                     Some(DlDef(def @ DefLabel(_))) => {
                         // Since this def is a label, it is never read.
@@ -5893,7 +5894,7 @@ impl<'a> Resolver<'a> {
                                   then {}",
                                  node_id,
                                  *entry.get(),
-                                 def).as_slice());
+                                 def)[]);
             },
             Vacant(entry) => { entry.set(def); },
         }
@@ -5909,7 +5910,7 @@ impl<'a> Resolver<'a> {
                 self.resolve_error(pat.span,
                                    format!("cannot use `ref` binding mode \
                                             with {}",
-                                           descr).as_slice());
+                                           descr)[]);
             }
         }
     }
@@ -5945,8 +5946,7 @@ impl<'a> Resolver<'a> {
             return "???".to_string();
         }
         self.names_to_string(names.into_iter().rev()
-                                  .collect::<Vec<ast::Name>>()
-                                  .as_slice())
+                                  .collect::<Vec<ast::Name>>()[])
     }
 
     #[allow(dead_code)]   // useful for debugging

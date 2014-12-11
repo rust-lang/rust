@@ -32,7 +32,7 @@ use path::Path;
 use result::Result::{Ok, Err};
 use sync::{StaticMutex, MUTEX_INIT};
 use slice::SliceExt;
-use str::StrPrelude;
+use str::StrExt;
 use dynamic_lib::DynamicLibrary;
 
 use sys_common::backtrace::*;

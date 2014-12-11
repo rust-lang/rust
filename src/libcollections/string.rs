@@ -26,7 +26,7 @@ use unicode::str as unicode_str;
 use unicode::str::Utf16Item;
 
 use slice::CloneSliceExt;
-use str::{mod, CharRange, FromStr, StrExt, Owned, Utf8Error};
+use str::{mod, CharRange, FromStr, Utf8Error};
 use vec::{DerefVec, Vec, as_vec};
 
 /// A growable string stored as a UTF-8 encoded buffer.
@@ -94,13 +94,16 @@ impl String {
     /// # Examples
     ///
     /// ```rust
+    /// # #![allow(deprecated)]
+    /// use std::str::Utf8Error;
+    ///
     /// let hello_vec = vec![104, 101, 108, 108, 111];
     /// let s = String::from_utf8(hello_vec);
     /// assert_eq!(s, Ok("hello".to_string()));
     ///
     /// let invalid_vec = vec![240, 144, 128];
     /// let s = String::from_utf8(invalid_vec);
-    /// assert_eq!(s, Err(vec![240, 144, 128]));
+    /// assert_eq!(s, Err((vec![240, 144, 128], Utf8Error::TooShort)));
     /// ```
     #[inline]
     #[unstable = "error type may change"]
@@ -833,7 +836,7 @@ impl Default for String {
 #[experimental = "waiting on Show stabilization"]
 impl fmt::Show for String {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        (*self).fmt(f)
+        (**self).fmt(f)
     }
 }
 
@@ -841,7 +844,7 @@ impl fmt::Show for String {
 impl<H: hash::Writer> hash::Hash<H> for String {
     #[inline]
     fn hash(&self, hasher: &mut H) {
-        (*self).hash(hasher)
+        (**self).hash(hasher)
     }
 }
 
@@ -1026,6 +1029,7 @@ mod tests {
     use prelude::*;
     use test::Bencher;
 
+    use str::{StrExt, Utf8Error};
     use str;
     use super::as_string;
 
@@ -1044,14 +1048,16 @@ mod tests {
     #[test]
     fn test_from_utf8() {
         let xs = b"hello".to_vec();
-        assert_eq!(String::from_utf8(xs), Ok(String::from_str("hello")));
+        assert_eq!(String::from_utf8(xs),
+                   Ok(String::from_str("hello")));
 
         let xs = "ศไทย中华Việt Nam".as_bytes().to_vec();
-        assert_eq!(String::from_utf8(xs), Ok(String::from_str("ศไทย中华Việt Nam")));
+        assert_eq!(String::from_utf8(xs),
+                   Ok(String::from_str("ศไทย中华Việt Nam")));
 
         let xs = b"hello\xFF".to_vec();
         assert_eq!(String::from_utf8(xs),
-                   Err(b"hello\xFF".to_vec()));
+                   Err((b"hello\xFF".to_vec(), Utf8Error::TooShort)));
     }
 
     #[test]
@@ -1141,7 +1147,7 @@ mod tests {
             let s_as_utf16 = s.utf16_units().collect::<Vec<u16>>();
             let u_as_string = String::from_utf16(u.as_slice()).unwrap();
 
-            assert!(str::is_utf16(u.as_slice()));
+            assert!(::unicode::str::is_utf16(u.as_slice()));
             assert_eq!(s_as_utf16, u);
 
             assert_eq!(u_as_string, s);

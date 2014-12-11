@@ -168,7 +168,7 @@ pub fn getcwd() -> IoResult<Path> {
         }
     }
 
-    match String::from_utf16(::str::truncate_utf16_at_nul(&buf)) {
+    match String::from_utf16(truncate_utf16_at_nul(&buf)) {
         Some(ref cwd) => Ok(Path::new(cwd)),
         None => Err(IoError {
             kind: OtherIoError,
@@ -279,7 +279,7 @@ pub fn load_self() -> Option<Vec<u8>> {
     unsafe {
         fill_utf16_buf_and_decode(|buf, sz| {
             libc::GetModuleFileNameW(0u as libc::DWORD, buf, sz)
-        }).map(|s| s.into_string().into_bytes())
+        }).map(|s| s.to_string().into_bytes())
     }
 }
 

@@ -23,7 +23,7 @@ use ops::FnMut;
 use option::Option;
 use option::Option::{Some, None};
 use slice::{SliceExt, AsSlice};
-use str::{Str, StrPrelude};
+use str::{Str, StrExt};
 use string::{String, IntoString};
 use vec::Vec;
 

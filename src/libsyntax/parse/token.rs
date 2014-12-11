@@ -454,7 +454,7 @@ macro_rules! declare_special_idents_and_keywords {(
         $(init_vec.push($si_str);)*
         $(init_vec.push($sk_str);)*
         $(init_vec.push($rk_str);)*
-        interner::StrInterner::prefill(init_vec.as_slice())
+        interner::StrInterner::prefill(init_vec[])
     }
 }}
 
@@ -602,8 +602,12 @@ impl InternedString {
 
     #[inline]
     pub fn get<'a>(&'a self) -> &'a str {
-        self.string.as_slice()
+        self.string[]
     }
+}
+
+impl Deref<str> for InternedString {
+    fn deref(&self) -> &str { &*self.string }
 }
 
 impl BytesContainer for InternedString {
@@ -620,49 +624,49 @@ impl BytesContainer for InternedString {
 
 impl fmt::Show for InternedString {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.string.as_slice())
+        write!(f, "{}", self.string[])
     }
 }
 
 #[allow(deprecated)]
 impl<'a> Equiv<&'a str> for InternedString {
     fn equiv(&self, other: & &'a str) -> bool {
-        (*other) == self.string.as_slice()
+        (*other) == self.string[]
     }
 }
 
 impl<'a> PartialEq<&'a str> for InternedString {
     #[inline(always)]
     fn eq(&self, other: & &'a str) -> bool {
-        PartialEq::eq(self.string.as_slice(), *other)
+        PartialEq::eq(self.string[], *other)
     }
     #[inline(always)]
     fn ne(&self, other: & &'a str) -> bool {
-        PartialEq::ne(self.string.as_slice(), *other)
+        PartialEq::ne(self.string[], *other)
     }
 }
 
 impl<'a> PartialEq<InternedString > for &'a str {
     #[inline(always)]
     fn eq(&self, other: &InternedString) -> bool {
-        PartialEq::eq(*self, other.string.as_slice())
+        PartialEq::eq(*self, other.string[])
     }
     #[inline(always)]
     fn ne(&self, other: &InternedString) -> bool {
-        PartialEq::ne(*self, other.string.as_slice())
+        PartialEq::ne(*self, other.string[])
     }
 }
 
 impl<D:Decoder<E>, E> Decodable<D, E> for InternedString {
     fn decode(d: &mut D) -> Result<InternedString, E> {
         Ok(get_name(get_ident_interner().intern(
-                    try!(d.read_str()).as_slice())))
+                    try!(d.read_str())[])))
     }
 }
 
 impl<S:Encoder<E>, E> Encodable<S, E> for InternedString {
     fn encode(&self, s: &mut S) -> Result<(), E> {
-        s.emit_str(self.string.as_slice())
+        s.emit_str(self.string[])
     }
 }
 
