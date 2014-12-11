@@ -11,22 +11,14 @@
 //! Runtime services, including the task scheduler and I/O dispatcher
 //!
 //! The `rt` module provides the private runtime infrastructure necessary to support core language
-//! features like the exchange and local heap, logging, local data and unwinding. It also
-//! implements the default task scheduler and task model. Initialization routines are provided for
-//! setting up runtime resources in common configurations, including that used by `rustc` when
-//! generating executables.
+//! features like logging, local data and unwinding. It also implements the task model.
+//! Initialization routines are provided for setting up runtime resources in common configurations,
+//! including that used by `rustc` when generating executables.
 //!
 //! It is intended that the features provided by `rt` can be factored in a way such that the core
 //! library can be built with different 'profiles' for different use cases, e.g. excluding the task
 //! scheduler. A number of runtime features though are critical to the functioning of the language
 //! and an implementation must be provided regardless of the execution environment.
-//!
-//! Of foremost importance is the global exchange heap, in the module `heap`. Very little practical
-//! Rust code can be written without access to the global heap. Unlike most of `rt` the global heap
-//! is truly a global resource and generally operates independently of the rest of the runtime.
-//!
-//! All other runtime features are task-local, including the local heap, local storage, logging and
-//! the stack unwinder.
 //!
 //! The relationship between `rt` and the rest of the core library is not entirely clear yet and
 //! some modules will be moving into or out of `rt` as development proceeds.
