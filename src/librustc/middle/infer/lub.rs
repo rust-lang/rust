@@ -38,7 +38,7 @@ pub fn Lub<'f, 'tcx>(cf: CombineFields<'f, 'tcx>) -> Lub<'f, 'tcx> {
 
 impl<'f, 'tcx> Combine<'tcx> for Lub<'f, 'tcx> {
     fn infcx<'a>(&'a self) -> &'a InferCtxt<'a, 'tcx> { self.fields.infcx }
-    fn tag(&self) -> String { "lub".to_string() }
+    fn tag(&self) -> String { "lub".into_string() }
     fn a_is_expected(&self) -> bool { self.fields.a_is_expected }
     fn trace(&self) -> TypeTrace<'tcx> { self.fields.trace.clone() }
 

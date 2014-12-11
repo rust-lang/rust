@@ -150,7 +150,7 @@ impl<T: Writer+Send> Terminal<T> for TerminfoTerminal<T> {
                 cap = self.ti.strings.get("op");
             }
         }
-        let s = cap.map_or(Err("can't find terminfo capability `sgr0`".to_string()), |op| {
+        let s = cap.map_or(Err("can't find terminfo capability `sgr0`".into_string()), |op| {
             expand(op.as_slice(), &[], &mut Variables::new())
         });
         if s.is_ok() {

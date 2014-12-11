@@ -377,8 +377,8 @@ pub fn eval_const_expr_partial(tcx: &ty::ctxt, e: &Expr) -> Result<const_val, St
           Ok(const_float(f)) => Ok(const_float(-f)),
           Ok(const_int(i)) => Ok(const_int(-i)),
           Ok(const_uint(i)) => Ok(const_uint(-i)),
-          Ok(const_str(_)) => Err("negate on string".to_string()),
-          Ok(const_bool(_)) => Err("negate on boolean".to_string()),
+          Ok(const_str(_)) => Err("negate on string".into_string()),
+          Ok(const_bool(_)) => Err("negate on boolean".into_string()),
           ref err => ((*err).clone())
         }
       }
@@ -387,7 +387,7 @@ pub fn eval_const_expr_partial(tcx: &ty::ctxt, e: &Expr) -> Result<const_val, St
           Ok(const_int(i)) => Ok(const_int(!i)),
           Ok(const_uint(i)) => Ok(const_uint(!i)),
           Ok(const_bool(b)) => Ok(const_bool(!b)),
-          _ => Err("not on float or string".to_string())
+          _ => Err("not on float or string".into_string())
         }
       }
       ast::ExprBinary(op, ref a, ref b) => {
@@ -406,7 +406,7 @@ pub fn eval_const_expr_partial(tcx: &ty::ctxt, e: &Expr) -> Result<const_val, St
               ast::BiNe => fromb(a != b),
               ast::BiGe => fromb(a >= b),
               ast::BiGt => fromb(a > b),
-              _ => Err("can't do this op on floats".to_string())
+              _ => Err("can't do this op on floats".into_string())
             }
           }
           (Ok(const_int(a)), Ok(const_int(b))) => {
@@ -415,12 +415,12 @@ pub fn eval_const_expr_partial(tcx: &ty::ctxt, e: &Expr) -> Result<const_val, St
               ast::BiSub => Ok(const_int(a - b)),
               ast::BiMul => Ok(const_int(a * b)),
               ast::BiDiv if b == 0 => {
-                  Err("attempted to divide by zero".to_string())
+                  Err("attempted to divide by zero".into_string())
               }
               ast::BiDiv => Ok(const_int(a / b)),
               ast::BiRem if b == 0 => {
                   Err("attempted remainder with a divisor of \
-                       zero".to_string())
+                       zero".into_string())
               }
               ast::BiRem => Ok(const_int(a % b)),
               ast::BiAnd | ast::BiBitAnd => Ok(const_int(a & b)),
@@ -442,12 +442,12 @@ pub fn eval_const_expr_partial(tcx: &ty::ctxt, e: &Expr) -> Result<const_val, St
               ast::BiSub => Ok(const_uint(a - b)),
               ast::BiMul => Ok(const_uint(a * b)),
               ast::BiDiv if b == 0 => {
-                  Err("attempted to divide by zero".to_string())
+                  Err("attempted to divide by zero".into_string())
               }
               ast::BiDiv => Ok(const_uint(a / b)),
               ast::BiRem if b == 0 => {
                   Err("attempted remainder with a divisor of \
-                       zero".to_string())
+                       zero".into_string())
               }
               ast::BiRem => Ok(const_uint(a % b)),
               ast::BiAnd | ast::BiBitAnd => Ok(const_uint(a & b)),
@@ -468,14 +468,14 @@ pub fn eval_const_expr_partial(tcx: &ty::ctxt, e: &Expr) -> Result<const_val, St
             match op {
               ast::BiShl => Ok(const_int(a << b as uint)),
               ast::BiShr => Ok(const_int(a >> b as uint)),
-              _ => Err("can't do this op on an int and uint".to_string())
+              _ => Err("can't do this op on an int and uint".into_string())
             }
           }
           (Ok(const_uint(a)), Ok(const_int(b))) => {
             match op {
               ast::BiShl => Ok(const_uint(a << b as uint)),
               ast::BiShr => Ok(const_uint(a >> b as uint)),
-              _ => Err("can't do this op on a uint and int".to_string())
+              _ => Err("can't do this op on a uint and int".into_string())
             }
           }
           (Ok(const_bool(a)), Ok(const_bool(b))) => {
@@ -487,10 +487,10 @@ pub fn eval_const_expr_partial(tcx: &ty::ctxt, e: &Expr) -> Result<const_val, St
               ast::BiBitOr => a | b,
               ast::BiEq => a == b,
               ast::BiNe => a != b,
-              _ => return Err("can't do this op on bools".to_string())
+              _ => return Err("can't do this op on bools".into_string())
              }))
           }
-          _ => Err("bad operands for binary".to_string())
+          _ => Err("bad operands for binary".into_string())
         }
       }
       ast::ExprCast(ref base, ref target_ty) => {
@@ -523,7 +523,7 @@ pub fn eval_const_expr_partial(tcx: &ty::ctxt, e: &Expr) -> Result<const_val, St
                         ).to_string())
                     }
                 },)*
-                _ => Err("can't cast this type".to_string())
+                _ => Err("can't cast this type".into_string())
             })
         )
 
@@ -546,7 +546,7 @@ pub fn eval_const_expr_partial(tcx: &ty::ctxt, e: &Expr) -> Result<const_val, St
       ast::ExprPath(_) => {
           match lookup_const(tcx, e) {
               Some(actual_e) => eval_const_expr_partial(tcx, &*actual_e),
-              None => Err("non-constant path in constant expr".to_string())
+              None => Err("non-constant path in constant expr".into_string())
           }
       }
       ast::ExprLit(ref lit) => Ok(lit_to_const(&**lit)),
@@ -564,11 +564,11 @@ pub fn eval_const_expr_partial(tcx: &ty::ctxt, e: &Expr) -> Result<const_val, St
             if fields.len() > index.node {
                 return eval_const_expr_partial(tcx, &*fields[index.node])
             } else {
-                return Err("tuple index out of bounds".to_string())
+                return Err("tuple index out of bounds".into_string())
             }
         }
 
-        Err("non-constant struct in constant expr".to_string())
+        Err("non-constant struct in constant expr".into_string())
       }
       ast::ExprField(ref base, field_name) => {
         // Get the base expression if it is a struct and it is constant
@@ -579,13 +579,13 @@ pub fn eval_const_expr_partial(tcx: &ty::ctxt, e: &Expr) -> Result<const_val, St
                                            f.ident.node.as_str() == field_name.node.as_str()) {
                 return eval_const_expr_partial(tcx, &*f.expr)
             } else {
-                return Err("nonexistent struct field".to_string())
+                return Err("nonexistent struct field".into_string())
             }
         }
 
-        Err("non-constant struct in constant expr".to_string())
+        Err("non-constant struct in constant expr".into_string())
       }
-      _ => Err("unsupported constant expr".to_string())
+      _ => Err("unsupported constant expr".into_string())
     }
 }
 

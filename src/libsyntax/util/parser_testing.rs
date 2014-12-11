@@ -20,14 +20,14 @@ use ptr::P;
 pub fn string_to_tts(source_str: String) -> Vec<ast::TokenTree> {
     let ps = new_parse_sess();
     filemap_to_tts(&ps,
-                   string_to_filemap(&ps, source_str, "bogofile".to_string()))
+                   string_to_filemap(&ps, source_str, "bogofile".into_string()))
 }
 
 /// Map string to parser (via tts)
 pub fn string_to_parser<'a>(ps: &'a ParseSess, source_str: String) -> Parser<'a> {
     new_parser_from_source_str(ps,
                                Vec::new(),
-                               "bogofile".to_string(),
+                               "bogofile".into_string(),
                                source_str)
 }
 

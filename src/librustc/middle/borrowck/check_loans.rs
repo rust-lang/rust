@@ -458,7 +458,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                 };
 
             let ol_pronoun = if new_loan.loan_path == old_loan.loan_path {
-                "it".to_string()
+                "it".into_string()
             } else {
                 format!("`{}`", ol)
             };

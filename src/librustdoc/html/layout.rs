@@ -130,7 +130,7 @@ r##"<!DOCTYPE html>
     root_path = page.root_path,
     ty        = page.ty,
     logo      = if layout.logo.len() == 0 {
-        "".to_string()
+        "".into_string()
     } else {
         format!("<a href='{}{}/index.html'>\
                  <img src='{}' alt='' width='100'></a>",
@@ -141,7 +141,7 @@ r##"<!DOCTYPE html>
     description = page.description,
     keywords = page.keywords,
     favicon   = if layout.favicon.len() == 0 {
-        "".to_string()
+        "".into_string()
     } else {
         format!(r#"<link rel="shortcut icon" href="{}">"#, layout.favicon)
     },
@@ -152,7 +152,7 @@ r##"<!DOCTYPE html>
     krate     = layout.krate,
     play_url  = layout.playground_url,
     play_js   = if layout.playground_url.len() == 0 {
-        "".to_string()
+        "".into_string()
     } else {
         format!(r#"<script src="{}playpen.js"></script>"#, page.root_path)
     },

@@ -1344,17 +1344,17 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
 
         match cmt.cat {
           cat_static_item => {
-              "static item".to_string()
+              "static item".into_string()
           }
           cat_rvalue(..) => {
-              "non-lvalue".to_string()
+              "non-lvalue".into_string()
           }
           cat_local(vid) => {
               match self.tcx().map.find(vid) {
                   Some(ast_map::NodeArg(_)) => {
-                      "argument".to_string()
+                      "argument".into_string()
                   }
-                  _ => "local variable".to_string()
+                  _ => "local variable".into_string()
               }
           }
           cat_deref(_, _, pk) => {
@@ -1367,7 +1367,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                   None => {
                       match pk {
                           Implicit(..) => {
-                            "dereference (dereference is implicit, due to indexing)".to_string()
+                            "dereference (dereference is implicit, due to indexing)".into_string()
                           }
                           OwnedPtr => format!("dereference of `{}`", ptr_sigil(pk)),
                           _ => format!("dereference of `{}`-pointer", ptr_sigil(pk))
@@ -1376,16 +1376,16 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
               }
           }
           cat_interior(_, InteriorField(NamedField(_))) => {
-              "field".to_string()
+              "field".into_string()
           }
           cat_interior(_, InteriorField(PositionalField(_))) => {
-              "anonymous field".to_string()
+              "anonymous field".into_string()
           }
           cat_interior(_, InteriorElement(VecElement)) => {
-              "vec content".to_string()
+              "vec content".into_string()
           }
           cat_interior(_, InteriorElement(OtherElement)) => {
-              "indexed content".to_string()
+              "indexed content".into_string()
           }
           cat_upvar(ref var) => {
               upvar_to_string(var, true)
@@ -1561,7 +1561,7 @@ impl<'tcx> Repr<'tcx> for InteriorKind {
                 token::get_name(fld).get().to_string()
             }
             InteriorField(PositionalField(i)) => format!("#{}", i),
-            InteriorElement(_) => "[]".to_string(),
+            InteriorElement(_) => "[]".into_string(),
         }
     }
 }

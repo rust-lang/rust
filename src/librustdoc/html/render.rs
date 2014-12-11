@@ -263,11 +263,11 @@ pub fn run(mut krate: clean::Crate,
         root_path: String::new(),
         sidebar: HashMap::new(),
         layout: layout::Layout {
-            logo: "".to_string(),
-            favicon: "".to_string(),
+            logo: "".into_string(),
+            favicon: "".into_string(),
             external_html: external_html.clone(),
             krate: krate.name.clone(),
-            playground_url: "".to_string(),
+            playground_url: "".into_string(),
         },
         include_sources: true,
         render_redirect_pages: false,
@@ -436,7 +436,7 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> io::IoResult<String> 
     let mut w = Vec::new();
     try!(write!(&mut w, r#"searchIndex['{}'] = {{"items":["#, krate.name));
 
-    let mut lastpath = "".to_string();
+    let mut lastpath = "".into_string();
     for (i, item) in cache.search_index.iter().enumerate() {
         // Omit the path if it is same to that of the prior item.
         let path;
@@ -616,7 +616,7 @@ fn render_sources(cx: &mut Context,
         cx: cx,
     };
     // skip all invalid spans
-    folder.seen.insert("".to_string());
+    folder.seen.insert("".into_string());
     Ok(folder.fold_crate(krate))
 }
 

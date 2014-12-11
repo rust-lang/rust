@@ -117,7 +117,7 @@ pub fn explain_region_and_span(cx: &ctxt, region: ty::Region)
           BrAnon(idx) => {
               format!("the anonymous lifetime #{} defined on", idx + 1)
           }
-          BrFresh(_) => "an anonymous lifetime defined on".to_string(),
+          BrFresh(_) => "an anonymous lifetime defined on".into_string(),
           _ => {
               format!("the lifetime {} as defined on",
                       bound_region_ptr_to_string(cx, fr.bound_region))
@@ -141,9 +141,9 @@ pub fn explain_region_and_span(cx: &ctxt, region: ty::Region)
         }
       }
 
-      ReStatic => { ("the static lifetime".to_string(), None) }
+      ReStatic => { ("the static lifetime".into_string(), None) }
 
-      ReEmpty => { ("the empty lifetime".to_string(), None) }
+      ReEmpty => { ("the empty lifetime".into_string(), None) }
 
       ReEarlyBound(_, _, _, name) => {
         (format!("{}", token::get_name(name)), None)
@@ -221,8 +221,8 @@ pub fn region_to_string(cx: &ctxt, prefix: &str, space: bool, region: Region) ->
 
 pub fn mutability_to_string(m: ast::Mutability) -> String {
     match m {
-        ast::MutMutable => "mut ".to_string(),
-        ast::MutImmutable => "".to_string(),
+        ast::MutMutable => "mut ".into_string(),
+        ast::MutImmutable => "".into_string(),
     }
 }
 
@@ -234,7 +234,7 @@ pub fn mt_to_string<'tcx>(cx: &ctxt<'tcx>, m: &mt<'tcx>) -> String {
 
 pub fn trait_store_to_string(cx: &ctxt, s: ty::TraitStore) -> String {
     match s {
-        ty::UniqTraitStore => "Box ".to_string(),
+        ty::UniqTraitStore => "Box ".into_string(),
         ty::RegionTraitStore(r, m) => {
             format!("{}{}", region_ptr_to_string(cx, r), mutability_to_string(m))
         }
@@ -379,8 +379,8 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
 
     // pretty print the structural type representation:
     match typ.sty {
-        ty_bool => "bool".to_string(),
-        ty_char => "char".to_string(),
+        ty_bool => "bool".into_string(),
+        ty_char => "char".into_string(),
         ty_int(t) => ast_util::int_ty_to_string(t, None).to_string(),
         ty_uint(t) => ast_util::uint_ty_to_string(t, None).to_string(),
         ty_float(t) => ast_util::float_ty_to_string(t).to_string(),
@@ -415,7 +415,7 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
             bare_fn_to_string(cx, f.fn_style, f.abi, None, &f.sig)
         }
         ty_infer(infer_ty) => infer_ty_to_string(cx, infer_ty),
-        ty_err => "[type error]".to_string(),
+        ty_err => "[type error]".into_string(),
         ty_param(ref param_ty) => {
             if cx.sess.verbose() {
                 param_ty.repr(cx)
@@ -442,12 +442,12 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
                     bound_sep,
                     bound_str)
         }
-        ty_str => "str".to_string(),
+        ty_str => "str".into_string(),
         ty_unboxed_closure(ref did, _, ref substs) => {
             let unboxed_closures = cx.unboxed_closures.borrow();
             unboxed_closures.get(did).map(|cl| {
                 closure_to_string(cx, &cl.closure_type.subst(cx, substs))
-            }).unwrap_or_else(|| "closure".to_string())
+            }).unwrap_or_else(|| "closure".into_string())
         }
         ty_vec(t, sz) => {
             let inner_str = ty_to_string(cx, t);
@@ -546,7 +546,7 @@ pub fn ty_to_short_str<'tcx>(cx: &ctxt<'tcx>, typ: Ty<'tcx>) -> String {
 impl<'tcx, T:Repr<'tcx>> Repr<'tcx> for Option<T> {
     fn repr(&self, tcx: &ctxt<'tcx>) -> String {
         match self {
-            &None => "None".to_string(),
+            &None => "None".into_string(),
             &Some(ref t) => t.repr(tcx),
         }
     }
@@ -569,7 +569,7 @@ impl<'tcx,T:Repr<'tcx>,U:Repr<'tcx>> Repr<'tcx> for Result<T,U> {
 
 impl<'tcx> Repr<'tcx> for () {
     fn repr(&self, _tcx: &ctxt) -> String {
-        "()".to_string()
+        "()".into_string()
     }
 }
 
@@ -687,7 +687,7 @@ impl<'tcx> Repr<'tcx> for ty::ItemSubsts<'tcx> {
 impl<'tcx> Repr<'tcx> for subst::RegionSubsts {
     fn repr(&self, tcx: &ctxt) -> String {
         match *self {
-            subst::ErasedRegions => "erased".to_string(),
+            subst::ErasedRegions => "erased".into_string(),
             subst::NonerasedRegions(ref regions) => regions.repr(tcx)
         }
     }
@@ -698,10 +698,10 @@ impl<'tcx> Repr<'tcx> for ty::BuiltinBounds {
         let mut res = Vec::new();
         for b in self.iter() {
             res.push(match b {
-                ty::BoundSend => "Send".to_string(),
-                ty::BoundSized => "Sized".to_string(),
-                ty::BoundCopy => "Copy".to_string(),
-                ty::BoundSync => "Sync".to_string(),
+                ty::BoundSend => "Send".into_string(),
+                ty::BoundSized => "Sized".into_string(),
+                ty::BoundCopy => "Copy".into_string(),
+                ty::BoundSync => "Sync".into_string(),
             });
         }
         res.connect("+")
@@ -818,7 +818,7 @@ impl<'tcx> Repr<'tcx> for ty::BoundRegion {
                 format!("BrNamed({}, {})", id.repr(tcx), token::get_name(name))
             }
             ty::BrFresh(id) => format!("BrFresh({})", id),
-            ty::BrEnv => "BrEnv".to_string()
+            ty::BrEnv => "BrEnv".into_string()
         }
     }
 }
@@ -847,7 +847,7 @@ impl<'tcx> Repr<'tcx> for ty::Region {
             }
 
             ty::ReStatic => {
-                "ReStatic".to_string()
+                "ReStatic".into_string()
             }
 
             ty::ReInfer(ReVar(ref vid)) => {
@@ -859,7 +859,7 @@ impl<'tcx> Repr<'tcx> for ty::Region {
             }
 
             ty::ReEmpty => {
-                "ReEmpty".to_string()
+                "ReEmpty".into_string()
             }
         }
     }
@@ -1011,7 +1011,7 @@ impl<'tcx> Repr<'tcx> for ty::FnOutput<'tcx> {
             ty::FnConverging(ty) =>
                 format!("FnConverging({0})", ty.repr(tcx)),
             ty::FnDiverging =>
-                "FnDiverging".to_string()
+                "FnDiverging".into_string()
         }
     }
 }
@@ -1076,10 +1076,10 @@ impl<'tcx> Repr<'tcx> for ty::BuiltinBound {
 impl<'tcx> UserString<'tcx> for ty::BuiltinBound {
     fn user_string(&self, _tcx: &ctxt) -> String {
         match *self {
-            ty::BoundSend => "Send".to_string(),
-            ty::BoundSized => "Sized".to_string(),
-            ty::BoundCopy => "Copy".to_string(),
-            ty::BoundSync => "Sync".to_string(),
+            ty::BoundSend => "Send".into_string(),
+            ty::BoundSized => "Sized".into_string(),
+            ty::BoundCopy => "Copy".into_string(),
+            ty::BoundSync => "Sync".into_string(),
         }
     }
 }

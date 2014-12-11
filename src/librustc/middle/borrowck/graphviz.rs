@@ -57,7 +57,7 @@ impl<'a, 'tcx> DataflowLabeller<'a, 'tcx> {
     fn dataflow_for(&self, e: EntryOrExit, n: &Node<'a>) -> String {
         let id = n.val1().data.id;
         debug!("dataflow_for({}, id={}) {}", e, id, self.variants);
-        let mut sets = "".to_string();
+        let mut sets = "".into_string();
         let mut seen_one = false;
         for &variant in self.variants.iter() {
             if seen_one { sets.push_str(" "); } else { seen_one = true; }
@@ -83,7 +83,7 @@ impl<'a, 'tcx> DataflowLabeller<'a, 'tcx> {
                                      dfcx: &DataFlowContext<'a, 'tcx, O>,
                                      to_lp: |uint| -> Rc<LoanPath<'tcx>>) -> String {
         let mut saw_some = false;
-        let mut set = "{".to_string();
+        let mut set = "{".into_string();
         dfcx.each_bit_for_node(e, cfgidx, |index| {
             let lp = to_lp(index);
             if saw_some {

@@ -353,7 +353,7 @@ impl Clean<Item> for doctree::Module {
         let name = if self.name.is_some() {
             self.name.unwrap().clean(cx)
         } else {
-            "".to_string()
+            "".into_string()
         };
         let mut foreigns = Vec::new();
         for subforeigns in self.foreigns.clean(cx).into_iter() {
@@ -646,7 +646,7 @@ impl Lifetime {
     }
 
     pub fn statik() -> Lifetime {
-        Lifetime("'static".to_string())
+        Lifetime("'static".into_string())
     }
 }
 
@@ -925,7 +925,7 @@ impl<'a, 'tcx> Clean<FnDecl> for (ast::DefId, &'a ty::FnSig<'tcx>) {
                     Argument {
                         type_: t.clean(cx),
                         id: 0,
-                        name: names.next().unwrap_or("".to_string()),
+                        name: names.next().unwrap_or("".into_string()),
                     }
                 }).collect(),
             },
@@ -1649,7 +1649,7 @@ pub struct Span {
 impl Span {
     fn empty() -> Span {
         Span {
-            filename: "".to_string(),
+            filename: "".into_string(),
             loline: 0, locol: 0,
             hiline: 0, hicol: 0,
         }
@@ -2030,7 +2030,7 @@ impl Clean<ViewListIdent> for ast::PathListItem {
                 source: resolve_def(cx, id)
             },
             ast::PathListMod { id } => ViewListIdent {
-                name: "mod".to_string(),
+                name: "mod".into_string(),
                 source: resolve_def(cx, id)
             }
         }
@@ -2057,7 +2057,7 @@ impl Clean<Item> for ast::ForeignItem {
                 ForeignStaticItem(Static {
                     type_: ty.clean(cx),
                     mutability: if mutbl {Mutable} else {Immutable},
-                    expr: "".to_string(),
+                    expr: "".into_string(),
                 })
             }
         };
@@ -2084,7 +2084,7 @@ impl ToSource for syntax::codemap::Span {
         debug!("converting span {} to snippet", self.clean(cx));
         let sn = match cx.sess().codemap().span_to_snippet(*self) {
             Some(x) => x.to_string(),
-            None    => "".to_string()
+            None    => "".into_string()
         };
         debug!("got snippet {}", sn);
         sn
@@ -2116,8 +2116,8 @@ fn name_from_pat(p: &ast::Pat) -> String {
     debug!("Trying to get a name from pattern: {}", p);
 
     match p.node {
-        PatWild(PatWildSingle) => "_".to_string(),
-        PatWild(PatWildMulti) => "..".to_string(),
+        PatWild(PatWildSingle) => "_".into_string(),
+        PatWild(PatWildMulti) => "..".into_string(),
         PatIdent(_, ref p, _) => token::get_ident(p.node).get().to_string(),
         PatEnum(ref p, _) => path_to_string(p),
         PatStruct(ref name, ref fields, etc) => {
@@ -2135,7 +2135,7 @@ fn name_from_pat(p: &ast::Pat) -> String {
         PatLit(..) => {
             warn!("tried to get argument name from PatLit, \
                   which is silly in function arguments");
-            "()".to_string()
+            "()".into_string()
         },
         PatRange(..) => panic!("tried to get argument name from PatRange, \
                               which is not allowed in function arguments"),
@@ -2144,7 +2144,7 @@ fn name_from_pat(p: &ast::Pat) -> String {
         PatMac(..) => {
             warn!("can't document the name of a function argument \
                    produced by a pattern macro");
-            "(argument produced by macro)".to_string()
+            "(argument produced by macro)".into_string()
         }
     }
 }
@@ -2260,7 +2260,7 @@ impl Clean<Stability> for attr::Stability {
     fn clean(&self, _: &DocContext) -> Stability {
         Stability {
             level: self.level,
-            text: self.text.as_ref().map_or("".to_string(),
+            text: self.text.as_ref().map_or("".into_string(),
                                             |interned| interned.get().to_string()),
         }
     }

@@ -214,8 +214,8 @@ mod test {
 
         let mut reader = ChanReader::new(rx);
 
-        assert_eq!(Ok("hello world\n".to_string()), reader.read_line());
-        assert_eq!(Ok("how are you?".to_string()), reader.read_line());
+        assert_eq!(Ok("hello world\n".into_string()), reader.read_line());
+        assert_eq!(Ok("how are you?".into_string()), reader.read_line());
         match reader.read_line() {
             Ok(..) => panic!(),
             Err(e) => assert_eq!(e.kind, io::EndOfFile),

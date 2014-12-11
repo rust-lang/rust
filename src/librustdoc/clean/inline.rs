@@ -393,6 +393,6 @@ fn build_static(cx: &DocContext, tcx: &ty::ctxt,
     clean::Static {
         type_: ty::lookup_item_type(tcx, did).ty.clean(cx),
         mutability: if mutable {clean::Mutable} else {clean::Immutable},
-        expr: "\n\n\n".to_string(), // trigger the "[definition]" links
+        expr: "\n\n\n".into_string(), // trigger the "[definition]" links
     }
 }

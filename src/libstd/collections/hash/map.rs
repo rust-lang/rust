@@ -2025,9 +2025,9 @@ mod test_map {
         let mut m = HashMap::new();
 
         let (foo, bar, baz) = (1i,2i,3i);
-        m.insert("foo".to_string(), foo);
-        m.insert("bar".to_string(), bar);
-        m.insert("baz".to_string(), baz);
+        m.insert("foo".into_string(), foo);
+        m.insert("bar".into_string(), bar);
+        m.insert("baz".into_string(), baz);
 
 
         assert_eq!(m.get("foo"), Some(&foo));

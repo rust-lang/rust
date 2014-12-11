@@ -223,7 +223,7 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
 
         // Extract the text provided
         let s = if text.is_null() {
-            "".to_string()
+            "".into_string()
         } else {
             unsafe {
                 String::from_raw_buf_len((*text).data, (*text).size as uint)

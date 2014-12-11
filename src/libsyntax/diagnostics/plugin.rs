@@ -83,7 +83,7 @@ pub fn expand_register_diagnostic<'cx>(ecx: &'cx mut ExtCtxt,
         }
     });
     let sym = Ident::new(token::gensym((
-        "__register_diagnostic_".to_string() + token::get_ident(*code).get()
+        "__register_diagnostic_".into_string() + token::get_ident(*code).get()
     ).as_slice()));
     MacItems::new(vec![quote_item!(ecx, mod $sym {}).unwrap()].into_iter())
 }

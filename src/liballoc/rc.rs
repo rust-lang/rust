@@ -107,7 +107,7 @@
 //!     // through a shared reference.
 //!     let gadget_owner : Rc<Owner> = Rc::new(
 //!             Owner {
-//!                 name: "Gadget Man".to_string(),
+//!                 name: "Gadget Man".into_string(),
 //!                 gadgets: RefCell::new(Vec::new())
 //!             }
 //!     );

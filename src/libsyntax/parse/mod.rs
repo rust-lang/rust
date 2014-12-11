@@ -761,7 +761,7 @@ mod test {
     }
 
     #[test] fn path_exprs_1() {
-        assert!(string_to_expr("a".to_string()) ==
+        assert!(string_to_expr("a".into_string()) ==
                    P(ast::Expr{
                     id: ast::DUMMY_NODE_ID,
                     node: ast::ExprPath(ast::Path {
@@ -779,7 +779,7 @@ mod test {
     }
 
     #[test] fn path_exprs_2 () {
-        assert!(string_to_expr("::a::b".to_string()) ==
+        assert!(string_to_expr("::a::b".into_string()) ==
                    P(ast::Expr {
                     id: ast::DUMMY_NODE_ID,
                     node: ast::ExprPath(ast::Path {
@@ -802,13 +802,13 @@ mod test {
 
     #[should_fail]
     #[test] fn bad_path_expr_1() {
-        string_to_expr("::abc::def::return".to_string());
+        string_to_expr("::abc::def::return".into_string());
     }
 
     // check the token-tree-ization of macros
     #[test]
     fn string_to_tts_macro () {
-        let tts = string_to_tts("macro_rules! zip (($a)=>($a))".to_string());
+        let tts = string_to_tts("macro_rules! zip (($a)=>($a))".into_string());
         let tts: &[ast::TokenTree] = tts.as_slice();
         match tts {
             [ast::TtToken(_, token::Ident(name_macro_rules, token::Plain)),
@@ -846,7 +846,7 @@ mod test {
 
     #[test]
     fn string_to_tts_1 () {
-        let tts = string_to_tts("fn a (b : int) { b; }".to_string());
+        let tts = string_to_tts("fn a (b : int) { b; }".into_string());
         assert_eq!(json::encode(&tts),
         "[\
     {\
@@ -959,7 +959,7 @@ mod test {
     }
 
     #[test] fn ret_expr() {
-        assert!(string_to_expr("return d".to_string()) ==
+        assert!(string_to_expr("return d".into_string()) ==
                    P(ast::Expr{
                     id: ast::DUMMY_NODE_ID,
                     node:ast::ExprRet(Some(P(ast::Expr{
@@ -981,7 +981,7 @@ mod test {
     }
 
     #[test] fn parse_stmt_1 () {
-        assert!(string_to_stmt("b;".to_string()) ==
+        assert!(string_to_stmt("b;".into_string()) ==
                    P(Spanned{
                        node: ast::StmtExpr(P(ast::Expr {
                            id: ast::DUMMY_NODE_ID,
@@ -1007,7 +1007,7 @@ mod test {
 
     #[test] fn parse_ident_pat () {
         let sess = new_parse_sess();
-        let mut parser = string_to_parser(&sess, "b".to_string());
+        let mut parser = string_to_parser(&sess, "b".into_string());
         assert!(parser.parse_pat()
                 == P(ast::Pat{
                 id: ast::DUMMY_NODE_ID,
@@ -1023,7 +1023,7 @@ mod test {
     // check the contents of the tt manually:
     #[test] fn parse_fundecl () {
         // this test depends on the intern order of "fn" and "int"
-        assert!(string_to_item("fn a (b : int) { b; }".to_string()) ==
+        assert!(string_to_item("fn a (b : int) { b; }".into_string()) ==
                   Some(
                       P(ast::Item{ident:str_to_ident("a"),
                             attrs:Vec::new(),
@@ -1170,8 +1170,8 @@ mod test {
 
     #[test] fn parse_exprs () {
         // just make sure that they parse....
-        string_to_expr("3 + 4".to_string());
-        string_to_expr("a::z.froob(b,&(987+3))".to_string());
+        string_to_expr("3 + 4".into_string());
+        string_to_expr("a::z.froob(b,&(987+3))".into_string());
     }
 
     #[test] fn attrs_fix_bug () {
@@ -1186,26 +1186,26 @@ mod test {
     fn wb() -> c_int { O_WRONLY as c_int }
 
     let mut fflags: c_int = wb();
-}".to_string());
+}".into_string());
     }
 
     #[test] fn crlf_doc_comments() {
         let sess = new_parse_sess();
 
-        let name = "<source>".to_string();
-        let source = "/// doc comment\r\nfn foo() {}".to_string();
+        let name = "<source>".into_string();
+        let source = "/// doc comment\r\nfn foo() {}".into_string();
         let item = parse_item_from_source_str(name.clone(), source, Vec::new(), &sess).unwrap();
         let doc = attr::first_attr_value_str_by_name(item.attrs.as_slice(), "doc").unwrap();
         assert_eq!(doc.get(), "/// doc comment");
 
-        let source = "/// doc comment\r\n/// line 2\r\nfn foo() {}".to_string();
+        let source = "/// doc comment\r\n/// line 2\r\nfn foo() {}".into_string();
         let item = parse_item_from_source_str(name.clone(), source, Vec::new(), &sess).unwrap();
         let docs = item.attrs.iter().filter(|a| a.name().get() == "doc")
                     .map(|a| a.value_str().unwrap().get().to_string()).collect::<Vec<_>>();
-        let b: &[_] = &["/// doc comment".to_string(), "/// line 2".to_string()];
+        let b: &[_] = &["/// doc comment".into_string(), "/// line 2".into_string()];
         assert_eq!(docs.as_slice(), b);
 
-        let source = "/** doc comment\r\n *  with CRLF */\r\nfn foo() {}".to_string();
+        let source = "/** doc comment\r\n *  with CRLF */\r\nfn foo() {}".into_string();
         let item = parse_item_from_source_str(name, source, Vec::new(), &sess).unwrap();
         let doc = attr::first_attr_value_str_by_name(item.attrs.as_slice(), "doc").unwrap();
         assert_eq!(doc.get(), "/** doc comment\n *  with CRLF */");

@@ -15,14 +15,14 @@ pub fn opts() -> TargetOptions {
     TargetOptions {
         // FIXME(#13846) this should be enabled for windows
         function_sections: false,
-        linker: "gcc".to_string(),
+        linker: "gcc".into_string(),
         dynamic_linking: true,
         executables: true,
-        dll_prefix: "".to_string(),
-        dll_suffix: ".dll".to_string(),
-        exe_suffix: ".exe".to_string(),
-        staticlib_prefix: "".to_string(),
-        staticlib_suffix: ".lib".to_string(),
+        dll_prefix: "".into_string(),
+        dll_suffix: ".dll".into_string(),
+        exe_suffix: ".exe".into_string(),
+        staticlib_prefix: "".into_string(),
+        staticlib_suffix: ".lib".into_string(),
         morestack: false,
         is_like_windows: true,
         pre_link_args: vec!(
@@ -51,14 +51,14 @@ pub fn opts() -> TargetOptions {
             //
             // [1] - https://sourceware.org/bugzilla/show_bug.cgi?id=13130
             // [2] - https://code.google.com/p/go/issues/detail?id=2139
-            "-Wl,--enable-long-section-names".to_string(),
+            "-Wl,--enable-long-section-names".into_string(),
 
             // Tell GCC to avoid linker plugins, because we are not bundling
             // them with Windows installer, and Rust does its own LTO anyways.
-            "-fno-use-linker-plugin".to_string(),
+            "-fno-use-linker-plugin".into_string(),
 
             // Always enable DEP (NX bit) when it is available
-            "-Wl,--nxcompat".to_string(),
+            "-Wl,--nxcompat".into_string(),
         ),
 
         .. Default::default()

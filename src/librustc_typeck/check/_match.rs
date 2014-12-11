@@ -50,7 +50,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
             let rhs_ty = fcx.expr_ty(&**end);
             if require_same_types(
                 tcx, Some(fcx.infcx()), false, pat.span, lhs_ty, rhs_ty,
-                || "mismatched types in range".to_string())
+                || "mismatched types in range".into_string())
                 && (ty::type_is_numeric(lhs_ty) || ty::type_is_char(rhs_ty)) {
                 match valid_range_bounds(fcx.ccx, &**begin, &**end) {
                     Some(false) => {

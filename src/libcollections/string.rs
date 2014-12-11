@@ -94,7 +94,7 @@ impl String {
     /// ```rust
     /// let hello_vec = vec![104, 101, 108, 108, 111];
     /// let s = String::from_utf8(hello_vec);
-    /// assert_eq!(s, Ok("hello".to_string()));
+    /// assert_eq!(s, Ok("hello".into_string()));
     ///
     /// let invalid_vec = vec![240, 144, 128];
     /// let s = String::from_utf8(invalid_vec);
@@ -246,7 +246,7 @@ impl String {
     /// // 𝄞music
     /// let mut v = &mut [0xD834, 0xDD1E, 0x006d, 0x0075,
     ///                   0x0073, 0x0069, 0x0063];
-    /// assert_eq!(String::from_utf16(v), Some("𝄞music".to_string()));
+    /// assert_eq!(String::from_utf16(v), Some("𝄞music".into_string()));
     ///
     /// // 𝄞mu<invalid>ic
     /// v[4] = 0xD800;
@@ -276,7 +276,7 @@ impl String {
     ///           0xD834];
     ///
     /// assert_eq!(String::from_utf16_lossy(v),
-    ///            "𝄞mus\uFFFDic\uFFFD".to_string());
+    ///            "𝄞mus\uFFFDic\uFFFD".into_string());
     /// ```
     #[stable]
     pub fn from_utf16_lossy(v: &[u16]) -> String {
@@ -686,7 +686,7 @@ impl String {
     /// # Examples
     ///
     /// ```
-    /// let a = "foo".to_string();
+    /// let a = "foo".into_string();
     /// assert_eq!(a.len(), 3);
     /// ```
     #[inline]
@@ -710,7 +710,7 @@ impl String {
     /// # Examples
     ///
     /// ```
-    /// let mut s = "foo".to_string();
+    /// let mut s = "foo".into_string();
     /// s.clear();
     /// assert!(s.is_empty());
     /// ```
@@ -911,7 +911,7 @@ impl<'a> Deref<String> for DerefString<'a> {
 /// use std::string::as_string;
 ///
 /// fn string_consumer(s: String) {
-///     assert_eq!(s, "foo".to_string());
+///     assert_eq!(s, "foo".into_string());
 /// }
 ///
 /// let string = as_string("foo").clone();
@@ -1015,7 +1015,7 @@ mod tests {
     use test::Bencher;
 
     use slice::CloneSliceAllocPrelude;
-    use str::{Str, StrPrelude};
+    use str::{Str, StrAllocating, StrPrelude};
     use str;
     use super::{as_string, String, ToString};
     use vec::Vec;
@@ -1286,7 +1286,7 @@ mod tests {
 
     #[test]
     fn remove() {
-        let mut s = "ศไทย中华Việt Nam; foobar".to_string();;
+        let mut s = "ศไทย中华Việt Nam; foobar".into_string();;
         assert_eq!(s.remove(0), Some('ศ'));
         assert_eq!(s.len(), 33);
         assert_eq!(s, "ไทย中华Việt Nam; foobar");
@@ -1298,24 +1298,24 @@ mod tests {
 
     #[test] #[should_fail]
     fn remove_bad() {
-        "ศ".to_string().remove(1);
+        "ศ".into_string().remove(1);
     }
 
     #[test]
     fn insert() {
-        let mut s = "foobar".to_string();
+        let mut s = "foobar".into_string();
         s.insert(0, 'ệ');
         assert_eq!(s, "ệfoobar");
         s.insert(6, 'ย');
         assert_eq!(s, "ệfooยbar");
     }
 
-    #[test] #[should_fail] fn insert_bad1() { "".to_string().insert(1, 't'); }
-    #[test] #[should_fail] fn insert_bad2() { "ệ".to_string().insert(1, 't'); }
+    #[test] #[should_fail] fn insert_bad1() { "".into_string().insert(1, 't'); }
+    #[test] #[should_fail] fn insert_bad2() { "ệ".into_string().insert(1, 't'); }
 
     #[test]
     fn test_slicing() {
-        let s = "foobar".to_string();
+        let s = "foobar".into_string();
         assert_eq!("foobar", s[]);
         assert_eq!("foo", s[..3]);
         assert_eq!("bar", s[3..]);
@@ -1331,7 +1331,7 @@ mod tests {
         assert_eq!(true.to_string(), "true");
         assert_eq!(false.to_string(), "false");
         assert_eq!(().to_string(), "()");
-        assert_eq!(("hi".to_string()).to_string(), "hi");
+        assert_eq!(("hi".into_string()).to_string(), "hi");
     }
 
     #[test]
@@ -1346,7 +1346,7 @@ mod tests {
 
     #[test]
     fn test_from_iterator() {
-        let s = "ศไทย中华Việt Nam".to_string();
+        let s = "ศไทย中华Việt Nam".into_string();
         let t = "ศไทย中华";
         let u = "Việt Nam";
 

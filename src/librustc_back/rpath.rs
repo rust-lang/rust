@@ -141,8 +141,8 @@ mod test {
     #[test]
     fn test_rpaths_to_flags() {
         let flags = rpaths_to_flags(&[
-            "path1".to_string(),
-            "path2".to_string()
+            "path1".into_string(),
+            "path2".into_string()
         ]);
         assert_eq!(flags,
                    ["-Wl,-rpath,path1",
@@ -152,9 +152,9 @@ mod test {
     #[test]
     fn test_minimize1() {
         let res = minimize_rpaths(&[
-            "rpath1".to_string(),
-            "rpath2".to_string(),
-            "rpath1".to_string()
+            "rpath1".into_string(),
+            "rpath2".into_string(),
+            "rpath1".into_string()
         ]);
         assert!(res == [
             "rpath1",
@@ -165,16 +165,16 @@ mod test {
     #[test]
     fn test_minimize2() {
         let res = minimize_rpaths(&[
-            "1a".to_string(),
-            "2".to_string(),
-            "2".to_string(),
-            "1a".to_string(),
-            "4a".to_string(),
-            "1a".to_string(),
-            "2".to_string(),
-            "3".to_string(),
-            "4a".to_string(),
-            "3".to_string()
+            "1a".into_string(),
+            "2".into_string(),
+            "2".into_string(),
+            "1a".into_string(),
+            "4a".into_string(),
+            "1a".into_string(),
+            "2".into_string(),
+            "3".into_string(),
+            "4a".into_string(),
+            "3".into_string()
         ]);
         assert!(res == [
             "1a",

@@ -597,8 +597,8 @@ impl<K, V> TreeMap<K, V> {
     ///
     /// fn get_headers() -> TreeMap<String, String> {
     ///     let mut result = TreeMap::new();
-    ///     result.insert("Content-Type".to_string(), "application/xml".to_string());
-    ///     result.insert("User-Agent".to_string(), "Curl-Rust/0.1".to_string());
+    ///     result.insert("Content-Type".into_string(), "application/xml".into_string());
+    ///     result.insert("User-Agent".into_string(), "Curl-Rust/0.1".into_string());
     ///     result
     /// }
     ///

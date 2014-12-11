@@ -404,21 +404,21 @@ mod test {
         let r = &mut b"0123456789\n0123456789\n";
         {
             let mut r = LimitReader::new(r.by_ref(), 3);
-            assert_eq!(r.read_line(), Ok("012".to_string()));
+            assert_eq!(r.read_line(), Ok("012".into_string()));
             assert_eq!(r.limit(), 0);
             assert_eq!(r.read_line().err().unwrap().kind, io::EndOfFile);
         }
         {
             let mut r = LimitReader::new(r.by_ref(), 9);
-            assert_eq!(r.read_line(), Ok("3456789\n".to_string()));
+            assert_eq!(r.read_line(), Ok("3456789\n".into_string()));
             assert_eq!(r.limit(), 1);
-            assert_eq!(r.read_line(), Ok("0".to_string()));
+            assert_eq!(r.read_line(), Ok("0".into_string()));
         }
         {
             let mut r = LimitReader::new(r.by_ref(), 100);
             assert_eq!(r.read_char(), Ok('1'));
             assert_eq!(r.limit(), 99);
-            assert_eq!(r.read_line(), Ok("23456789\n".to_string()));
+            assert_eq!(r.read_line(), Ok("23456789\n".into_string()));
         }
     }
 

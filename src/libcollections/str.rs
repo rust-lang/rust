@@ -96,10 +96,10 @@ pub trait StrVector for Sized? {
     /// # Examples
     ///
     /// ```rust
-    /// let first = "Restaurant at the End of the".to_string();
-    /// let second = " Universe".to_string();
+    /// let first = "Restaurant at the End of the".into_string();
+    /// let second = " Universe".into_string();
     /// let string_vec = vec![first, second];
-    /// assert_eq!(string_vec.concat(), "Restaurant at the End of the Universe".to_string());
+    /// assert_eq!(string_vec.concat(), "Restaurant at the End of the Universe".into_string());
     /// ```
     fn concat(&self) -> String;
 
@@ -108,10 +108,10 @@ pub trait StrVector for Sized? {
     /// # Examples
     ///
     /// ```rust
-    /// let first = "Roast".to_string();
-    /// let second = "Sirloin Steak".to_string();
+    /// let first = "Roast".into_string();
+    /// let second = "Sirloin Steak".into_string();
     /// let string_vec = vec![first, second];
-    /// assert_eq!(string_vec.connect(", "), "Roast, Sirloin Steak".to_string());
+    /// assert_eq!(string_vec.connect(", "), "Roast, Sirloin Steak".into_string());
     /// ```
     fn connect(&self, sep: &str) -> String;
 }
@@ -720,11 +720,11 @@ pub trait StrAllocating: Str {
     ///
     /// ```rust
     /// let s = "Do you know the muffin man,
-    /// The muffin man, the muffin man, ...".to_string();
+    /// The muffin man, the muffin man, ...".into_string();
     ///
     /// assert_eq!(s.replace("muffin man", "little lamb"),
     ///            "Do you know the little lamb,
-    /// The little lamb, the little lamb, ...".to_string());
+    /// The little lamb, the little lamb, ...".into_string());
     ///
     /// // not found, so no change.
     /// assert_eq!(s.replace("cookie monster", "little lamb"), s);

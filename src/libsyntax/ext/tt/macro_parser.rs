@@ -448,9 +448,9 @@ pub fn parse(sess: &ParseSess,
                 }
                 return Success(nameize(sess, ms, v.as_slice()));
             } else if eof_eis.len() > 1u {
-                return Error(sp, "ambiguity: multiple successful parses".to_string());
+                return Error(sp, "ambiguity: multiple successful parses".into_string());
             } else {
-                return Failure(sp, "unexpected end of macro invocation".to_string());
+                return Failure(sp, "unexpected end of macro invocation".into_string());
             }
         } else {
             if (bb_eis.len() > 0u && next_eis.len() > 0u)

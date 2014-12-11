@@ -435,7 +435,7 @@ pub use core::fmt::{argument, argumentuint};
 /// use std::fmt;
 ///
 /// let s = format_args!(fmt::format, "Hello, {}!", "world");
-/// assert_eq!(s, "Hello, world!".to_string());
+/// assert_eq!(s, "Hello, world!".into_string());
 /// ```
 #[experimental = "this is an implementation detail of format! and should not \
                   be called directly"]

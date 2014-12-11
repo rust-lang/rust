@@ -1322,17 +1322,17 @@ mod test {
     // *kind* of failure occurs.
 
     fn test_ecfg() -> ExpansionConfig {
-        ExpansionConfig::default("test".to_string())
+        ExpansionConfig::default("test".into_string())
     }
 
     // make sure that macros can't escape fns
     #[should_fail]
     #[test] fn macros_cant_escape_fns_test () {
         let src = "fn bogus() {macro_rules! z (() => (3+4))}\
-                   fn inty() -> int { z!() }".to_string();
+                   fn inty() -> int { z!() }".into_string();
         let sess = parse::new_parse_sess();
         let crate_ast = parse::parse_crate_from_source_str(
-            "<test>".to_string(),
+            "<test>".into_string(),
             src,
             Vec::new(), &sess);
         // should fail:
@@ -1343,10 +1343,10 @@ mod test {
     #[should_fail]
     #[test] fn macros_cant_escape_mods_test () {
         let src = "mod foo {macro_rules! z (() => (3+4))}\
-                   fn inty() -> int { z!() }".to_string();
+                   fn inty() -> int { z!() }".into_string();
         let sess = parse::new_parse_sess();
         let crate_ast = parse::parse_crate_from_source_str(
-            "<test>".to_string(),
+            "<test>".into_string(),
             src,
             Vec::new(), &sess);
         expand_crate(&sess,test_ecfg(),vec!(),vec!(),crate_ast);
@@ -1355,10 +1355,10 @@ mod test {
     // macro_escape modules should allow macros to escape
     #[test] fn macros_can_escape_flattened_mods_test () {
         let src = "#[macro_escape] mod foo {macro_rules! z (() => (3+4))}\
-                   fn inty() -> int { z!() }".to_string();
+                   fn inty() -> int { z!() }".into_string();
         let sess = parse::new_parse_sess();
         let crate_ast = parse::parse_crate_from_source_str(
-            "<test>".to_string(),
+            "<test>".into_string(),
             src,
             Vec::new(), &sess);
         expand_crate(&sess, test_ecfg(), vec!(), vec!(), crate_ast);
@@ -1406,14 +1406,14 @@ mod test {
 
     #[test] fn macro_tokens_should_match(){
         expand_crate_str(
-            "macro_rules! m((a)=>(13)) fn main(){m!(a);}".to_string());
+            "macro_rules! m((a)=>(13)) fn main(){m!(a);}".into_string());
     }
 
     // should be able to use a bound identifier as a literal in a macro definition:
     #[test] fn self_macro_parsing(){
         expand_crate_str(
             "macro_rules! foo ((zz) => (287u;))
-            fn f(zz : int) {foo!(zz);}".to_string()
+            fn f(zz : int) {foo!(zz);}".into_string()
             );
     }
 
@@ -1591,7 +1591,7 @@ mod test {
             "macro_rules! my_method (() => (fn thirteen(&self) -> int {13}))
             struct A;
             impl A{ my_method!()}
-            fn f(){A.thirteen;}".to_string());
+            fn f(){A.thirteen;}".into_string());
     }
 
     // another nested macro
@@ -1684,7 +1684,7 @@ mod test {
         let crate_str = "macro_rules! fmt_wrap(($b:expr)=>($b.to_string()))
 macro_rules! foo_module (() => (mod generated { fn a() { let xx = 147; fmt_wrap!(xx);}}))
 foo_module!()
-".to_string();
+".into_string();
         let cr = expand_crate_str(crate_str);
         // find the xx binding
         let bindings = crate_bindings(&cr);
@@ -1725,7 +1725,7 @@ foo_module!()
     #[test]
     fn pat_idents(){
         let pat = string_to_pat(
-            "(a,Foo{x:c @ (b,9),y:Bar(4,d)})".to_string());
+            "(a,Foo{x:c @ (b,9),y:Bar(4,d)})".into_string());
         let idents = pattern_bindings(&*pat);
         assert_eq!(idents, strs_to_idents(vec!("a","c","b","d")));
     }
@@ -1736,7 +1736,7 @@ foo_module!()
     #[test]
     fn crate_bindings_test(){
         let the_crate = string_to_crate("fn main (a : int) -> int {|b| {
-        match 34 {None => 3, Some(i) | i => j, Foo{k:z,l:y} => \"banana\"}} }".to_string());
+        match 34 {None => 3, Some(i) | i => j, Foo{k:z,l:y} => \"banana\"}} }".into_string());
         let idents = crate_bindings(&the_crate);
         assert_eq!(idents, strs_to_idents(vec!("a","b","None","i","i","z","y")));
     }
@@ -1744,7 +1744,7 @@ foo_module!()
     // test the IdentRenamer directly
     #[test]
     fn ident_renamer_test () {
-        let the_crate = string_to_crate("fn f(x : int){let x = x; x}".to_string());
+        let the_crate = string_to_crate("fn f(x : int){let x = x; x}".into_string());
         let f_ident = token::str_to_ident("f");
         let x_ident = token::str_to_ident("x");
         let int_ident = token::str_to_ident("int");
@@ -1759,7 +1759,7 @@ foo_module!()
     // test the PatIdentRenamer; only PatIdents get renamed
     #[test]
     fn pat_ident_renamer_test () {
-        let the_crate = string_to_crate("fn f(x : int){let x = x; x}".to_string());
+        let the_crate = string_to_crate("fn f(x : int){let x = x; x}".into_string());
         let f_ident = token::str_to_ident("f");
         let x_ident = token::str_to_ident("x");
         let int_ident = token::str_to_ident("int");

@@ -142,7 +142,7 @@ pub fn register_static(ccx: &CrateContext,
                 // linkage and there are no definitions), then
                 // `extern_with_linkage_foo` will instead be initialized to
                 // zero.
-                let mut real_name = "_rust_extern_with_linkage_".to_string();
+                let mut real_name = "_rust_extern_with_linkage_".into_string();
                 real_name.push_str(ident.get());
                 let g2 = real_name.with_c_str(|buf| {
                     llvm::LLVMAddGlobal(ccx.llmod(), llty.to_ref(), buf)

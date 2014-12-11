@@ -166,7 +166,7 @@ impl Handler {
         let s;
         match self.err_count.get() {
           0u => return,
-          1u => s = "aborting due to previous error".to_string(),
+          1u => s = "aborting due to previous error".into_string(),
           _  => {
             s = format!("aborting due to {} previous errors",
                         self.err_count.get());

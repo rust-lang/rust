@@ -157,8 +157,8 @@ pub fn uint_ty_max(t: UintTy) -> u64 {
 
 pub fn float_ty_to_string(t: FloatTy) -> String {
     match t {
-        TyF32 => "f32".to_string(),
-        TyF64 => "f64".to_string(),
+        TyF32 => "f32".into_string(),
+        TyF64 => "f64".into_string(),
     }
 }
 

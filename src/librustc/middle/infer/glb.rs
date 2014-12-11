@@ -37,7 +37,7 @@ pub fn Glb<'f, 'tcx>(cf: CombineFields<'f, 'tcx>) -> Glb<'f, 'tcx> {
 
 impl<'f, 'tcx> Combine<'tcx> for Glb<'f, 'tcx> {
     fn infcx<'a>(&'a self) -> &'a InferCtxt<'a, 'tcx> { self.fields.infcx }
-    fn tag(&self) -> String { "glb".to_string() }
+    fn tag(&self) -> String { "glb".into_string() }
     fn a_is_expected(&self) -> bool { self.fields.a_is_expected }
     fn trace(&self) -> TypeTrace<'tcx> { self.fields.trace.clone() }
 

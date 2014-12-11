@@ -399,22 +399,22 @@ mod tests {
     #[test]
     fn test_put_update() {
         let mut cache: LruCache<String, Vec<u8>> = LruCache::new(1);
-        cache.insert("1".to_string(), vec![10, 10]);
-        cache.insert("1".to_string(), vec![10, 19]);
-        assert_opt_eq(cache.get(&"1".to_string()), vec![10, 19]);
+        cache.insert("1".into_string(), vec![10, 10]);
+        cache.insert("1".into_string(), vec![10, 19]);
+        assert_opt_eq(cache.get(&"1".into_string()), vec![10, 19]);
         assert_eq!(cache.len(), 1);
     }
 
     #[test]
     fn test_expire_lru() {
         let mut cache: LruCache<String, String> = LruCache::new(2);
-        cache.insert("foo1".to_string(), "bar1".to_string());
-        cache.insert("foo2".to_string(), "bar2".to_string());
-        cache.insert("foo3".to_string(), "bar3".to_string());
-        assert!(cache.get(&"foo1".to_string()).is_none());
-        cache.insert("foo2".to_string(), "bar2update".to_string());
-        cache.insert("foo4".to_string(), "bar4".to_string());
-        assert!(cache.get(&"foo3".to_string()).is_none());
+        cache.insert("foo1".into_string(), "bar1".into_string());
+        cache.insert("foo2".into_string(), "bar2".into_string());
+        cache.insert("foo3".into_string(), "bar3".into_string());
+        assert!(cache.get(&"foo1".into_string()).is_none());
+        cache.insert("foo2".into_string(), "bar2update".into_string());
+        cache.insert("foo4".into_string(), "bar4".into_string());
+        assert!(cache.get(&"foo3".into_string()).is_none());
     }
 
     #[test]

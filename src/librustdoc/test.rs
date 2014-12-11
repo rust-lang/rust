@@ -98,7 +98,7 @@ pub fn run(input: &str,
                                        false);
     collector.fold_crate(krate);
 
-    test_args.insert(0, "rustdoctest".to_string());
+    test_args.insert(0, "rustdoctest".into_string());
 
     testing::test_main(test_args.as_slice(),
                        collector.tests.into_iter().collect());

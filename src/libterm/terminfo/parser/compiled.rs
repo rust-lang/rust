@@ -198,24 +198,24 @@ pub fn parse(file: &mut io::Reader, longnames: bool)
 
     if (bools_bytes as uint) > boolnames.len() {
         return Err("incompatible file: more booleans than \
-                    expected".to_string());
+                    expected".into_string());
     }
 
     if (numbers_count as uint) > numnames.len() {
         return Err("incompatible file: more numbers than \
-                    expected".to_string());
+                    expected".into_string());
     }
 
     if (string_offsets_count as uint) > stringnames.len() {
         return Err("incompatible file: more string offsets than \
-                    expected".to_string());
+                    expected".into_string());
     }
 
     // don't read NUL
     let bytes = try!(file.read_exact(names_bytes as uint - 1));
     let names_str = match String::from_utf8(bytes) {
         Ok(s)  => s,
-        Err(_) => return Err("input not utf-8".to_string()),
+        Err(_) => return Err("input not utf-8".into_string()),
     };
 
     let term_names: Vec<String> = names_str.split('|')
@@ -260,7 +260,7 @@ pub fn parse(file: &mut io::Reader, longnames: bool)
 
         if string_table.len() != string_table_bytes as uint {
             return Err("error: hit EOF before end of string \
-                        table".to_string());
+                        table".into_string());
         }
 
         for (i, v) in string_offsets.iter().enumerate() {
@@ -294,7 +294,7 @@ pub fn parse(file: &mut io::Reader, longnames: bool)
                 },
                 None => {
                     return Err("invalid file: missing NUL in \
-                                string_table".to_string());
+                                string_table".into_string());
                 }
             };
         }
@@ -312,12 +312,12 @@ pub fn parse(file: &mut io::Reader, longnames: bool)
 /// Create a dummy TermInfo struct for msys terminals
 pub fn msys_terminfo() -> Box<TermInfo> {
     let mut strings = HashMap::new();
-    strings.insert("sgr0".to_string(), b"\x1B[0m".to_vec());
-    strings.insert("bold".to_string(), b"\x1B[1m".to_vec());
-    strings.insert("setaf".to_string(), b"\x1B[3%p1%dm".to_vec());
-    strings.insert("setab".to_string(), b"\x1B[4%p1%dm".to_vec());
+    strings.insert("sgr0".into_string(), b"\x1B[0m".to_vec());
+    strings.insert("bold".into_string(), b"\x1B[1m".to_vec());
+    strings.insert("setaf".into_string(), b"\x1B[3%p1%dm".to_vec());
+    strings.insert("setab".into_string(), b"\x1B[4%p1%dm".to_vec());
     box TermInfo {
-        names: vec!("cygwin".to_string()), // msys is a fork of an older cygwin version
+        names: vec!("cygwin".into_string()), // msys is a fork of an older cygwin version
         bools: HashMap::new(),
         numbers: HashMap::new(),
         strings: strings

@@ -1753,26 +1753,26 @@ fn basic_type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
     let (name, encoding) = match t.sty {
         ty::ty_tup(ref elements) if elements.is_empty() =>
-            ("()".to_string(), DW_ATE_unsigned),
-        ty::ty_bool => ("bool".to_string(), DW_ATE_boolean),
-        ty::ty_char => ("char".to_string(), DW_ATE_unsigned_char),
+            ("()".into_string(), DW_ATE_unsigned),
+        ty::ty_bool => ("bool".into_string(), DW_ATE_boolean),
+        ty::ty_char => ("char".into_string(), DW_ATE_unsigned_char),
         ty::ty_int(int_ty) => match int_ty {
-            ast::TyI => ("int".to_string(), DW_ATE_signed),
-            ast::TyI8 => ("i8".to_string(), DW_ATE_signed),
-            ast::TyI16 => ("i16".to_string(), DW_ATE_signed),
-            ast::TyI32 => ("i32".to_string(), DW_ATE_signed),
-            ast::TyI64 => ("i64".to_string(), DW_ATE_signed)
+            ast::TyI => ("int".into_string(), DW_ATE_signed),
+            ast::TyI8 => ("i8".into_string(), DW_ATE_signed),
+            ast::TyI16 => ("i16".into_string(), DW_ATE_signed),
+            ast::TyI32 => ("i32".into_string(), DW_ATE_signed),
+            ast::TyI64 => ("i64".into_string(), DW_ATE_signed)
         },
         ty::ty_uint(uint_ty) => match uint_ty {
-            ast::TyU => ("uint".to_string(), DW_ATE_unsigned),
-            ast::TyU8 => ("u8".to_string(), DW_ATE_unsigned),
-            ast::TyU16 => ("u16".to_string(), DW_ATE_unsigned),
-            ast::TyU32 => ("u32".to_string(), DW_ATE_unsigned),
-            ast::TyU64 => ("u64".to_string(), DW_ATE_unsigned)
+            ast::TyU => ("uint".into_string(), DW_ATE_unsigned),
+            ast::TyU8 => ("u8".into_string(), DW_ATE_unsigned),
+            ast::TyU16 => ("u16".into_string(), DW_ATE_unsigned),
+            ast::TyU32 => ("u32".into_string(), DW_ATE_unsigned),
+            ast::TyU64 => ("u64".into_string(), DW_ATE_unsigned)
         },
         ty::ty_float(float_ty) => match float_ty {
-            ast::TyF32 => ("f32".to_string(), DW_ATE_float),
-            ast::TyF64 => ("f64".to_string(), DW_ATE_float),
+            ast::TyF32 => ("f32".into_string(), DW_ATE_float),
+            ast::TyF64 => ("f64".into_string(), DW_ATE_float),
         },
         _ => cx.sess().bug("debuginfo::basic_type_metadata - t is invalid type")
     };
@@ -1974,7 +1974,7 @@ impl<'tcx> StructMemberDescriptionFactory<'tcx> {
 
         self.fields.iter().enumerate().map(|(i, field)| {
             let name = if field.name == special_idents::unnamed_field.name {
-                "".to_string()
+                "".into_string()
             } else {
                 token::get_name(field.name).get().to_string()
             };
@@ -2048,7 +2048,7 @@ impl<'tcx> TupleMemberDescriptionFactory<'tcx> {
                                       -> Vec<MemberDescription> {
         self.component_types.iter().map(|&component_type| {
             MemberDescription {
-                name: "".to_string(),
+                name: "".into_string(),
                 llvm_type: type_of::type_of(cx, component_type),
                 type_metadata: type_metadata(cx, component_type, self.span),
                 offset: ComputedMemberOffset,
@@ -2135,7 +2135,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                                                       variant_llvm_type,
                                                       member_descriptions.as_slice());
                         MemberDescription {
-                            name: "".to_string(),
+                            name: "".into_string(),
                             llvm_type: variant_llvm_type,
                             type_metadata: variant_type_metadata,
                             offset: FixedMemberOffset { bytes: 0 },
@@ -2169,7 +2169,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                                                   member_descriptions.as_slice());
                     vec![
                         MemberDescription {
-                            name: "".to_string(),
+                            name: "".into_string(),
                             llvm_type: variant_llvm_type,
                             type_metadata: variant_type_metadata,
                             offset: FixedMemberOffset { bytes: 0 },
@@ -2201,7 +2201,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                 let sole_struct_member_description = MemberDescription {
                     name: match non_null_variant.arg_names {
                         Some(ref names) => token::get_ident(names[0]).get().to_string(),
-                        None => "".to_string()
+                        None => "".into_string()
                     },
                     llvm_type: non_null_llvm_type,
                     type_metadata: non_null_type_metadata,
@@ -2373,12 +2373,12 @@ fn describe_enum_variant<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                      token::get_ident(*ident).get().to_string().into_string()
                  }).collect()
         }
-        None => variant_info.args.iter().map(|_| "".to_string()).collect()
+        None => variant_info.args.iter().map(|_| "".into_string()).collect()
     };
 
     // If this is not a univariant enum, there is also the discriminant field.
     match discriminant_info {
-        RegularDiscriminant(_) => arg_names.insert(0, "RUST$ENUM$DISR".to_string()),
+        RegularDiscriminant(_) => arg_names.insert(0, "RUST$ENUM$DISR".into_string()),
         _ => { /* do nothing */ }
     };
 
@@ -2746,14 +2746,14 @@ fn vec_slice_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                     element_type));
     let member_descriptions = [
         MemberDescription {
-            name: "data_ptr".to_string(),
+            name: "data_ptr".into_string(),
             llvm_type: member_llvm_types[0],
             type_metadata: element_type_metadata,
             offset: ComputedMemberOffset,
             flags: FLAGS_NONE
         },
         MemberDescription {
-            name: "length".to_string(),
+            name: "length".into_string(),
             llvm_type: member_llvm_types[1],
             type_metadata: type_metadata(cx, ty::mk_uint(), span),
             offset: ComputedMemberOffset,

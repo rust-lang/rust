@@ -1816,7 +1816,7 @@ mod tests {
     fn test_setenv() {
         let n = make_rand_name();
         setenv(n.as_slice(), "VALUE");
-        assert_eq!(getenv(n.as_slice()), option::Option::Some("VALUE".to_string()));
+        assert_eq!(getenv(n.as_slice()), option::Option::Some("VALUE".into_string()));
     }
 
     #[test]
@@ -1833,9 +1833,9 @@ mod tests {
         let n = make_rand_name();
         setenv(n.as_slice(), "1");
         setenv(n.as_slice(), "2");
-        assert_eq!(getenv(n.as_slice()), option::Option::Some("2".to_string()));
+        assert_eq!(getenv(n.as_slice()), option::Option::Some("2".into_string()));
         setenv(n.as_slice(), "");
-        assert_eq!(getenv(n.as_slice()), option::Option::Some("".to_string()));
+        assert_eq!(getenv(n.as_slice()), option::Option::Some("".into_string()));
     }
 
     // Windows GetEnvironmentVariable requires some extra work to make sure
@@ -1843,7 +1843,7 @@ mod tests {
     #[test]
     #[ignore]
     fn test_getenv_big() {
-        let mut s = "".to_string();
+        let mut s = "".into_string();
         let mut i = 0i;
         while i < 100 {
             s.push_str("aaaaaaaaaa");
@@ -1909,10 +1909,10 @@ mod tests {
 
         let mut e = env();
         setenv(n.as_slice(), "VALUE");
-        assert!(!e.contains(&(n.clone(), "VALUE".to_string())));
+        assert!(!e.contains(&(n.clone(), "VALUE".into_string())));
 
         e = env();
-        assert!(e.contains(&(n, "VALUE".to_string())));
+        assert!(e.contains(&(n, "VALUE".into_string())));
     }
 
     #[test]

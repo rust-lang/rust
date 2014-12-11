@@ -459,7 +459,7 @@ pub fn llvm_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     let name = match what {
         a_struct => "struct",
         an_enum => "enum",
-        an_unboxed_closure => return "closure".to_string(),
+        an_unboxed_closure => return "closure".into_string(),
     };
 
     let base = ty::item_path_str(cx.tcx(), did);

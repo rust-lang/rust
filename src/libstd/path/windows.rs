@@ -1588,7 +1588,7 @@ mod tests {
         t!(s: "a\\b\\c", ["d", "e"], "a\\b\\c\\d\\e");
         t!(s: "a\\b\\c", ["d", "\\e"], "\\e");
         t!(s: "a\\b\\c", ["d", "\\e", "f"], "\\e\\f");
-        t!(s: "a\\b\\c", ["d".to_string(), "e".to_string()], "a\\b\\c\\d\\e");
+        t!(s: "a\\b\\c", ["d".into_string(), "e".into_string()], "a\\b\\c\\d\\e");
         t!(v: b"a\\b\\c", [b"d", b"e"], b"a\\b\\c\\d\\e");
         t!(v: b"a\\b\\c", [b"d", b"\\e", b"f"], b"\\e\\f");
         t!(v: b"a\\b\\c", [b"d".to_vec(), b"e".to_vec()],
@@ -1729,7 +1729,7 @@ mod tests {
         t!(s: "a\\b\\c", ["d", "e"], "a\\b\\c\\d\\e");
         t!(s: "a\\b\\c", ["..", "d"], "a\\b\\d");
         t!(s: "a\\b\\c", ["d", "\\e", "f"], "\\e\\f");
-        t!(s: "a\\b\\c", ["d".to_string(), "e".to_string()], "a\\b\\c\\d\\e");
+        t!(s: "a\\b\\c", ["d".into_string(), "e".into_string()], "a\\b\\c\\d\\e");
         t!(v: b"a\\b\\c", [b"d", b"e"], b"a\\b\\c\\d\\e");
         t!(v: b"a\\b\\c", [b"d".to_vec(), b"e".to_vec()],
            b"a\\b\\c\\d\\e");

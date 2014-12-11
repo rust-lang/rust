@@ -131,7 +131,7 @@ impl Input {
     pub fn filestem(&self) -> String {
         match *self {
             Input::File(ref ifile) => ifile.filestem_str().unwrap().to_string(),
-            Input::Str(_) => "rust_out".to_string(),
+            Input::Str(_) => "rust_out".into_string(),
         }
     }
 }
@@ -478,7 +478,7 @@ cgoptions!(
         "perform LLVM link-time optimizations"),
     target_cpu: Option<String> = (None, parse_opt_string,
         "select target processor (llc -mcpu=help for details)"),
-    target_feature: String = ("".to_string(), parse_string,
+    target_feature: String = ("".into_string(), parse_string,
         "target specific attributes (llc -mattr=help for details)"),
     passes: Vec<String> = (Vec::new(), parse_list,
         "a list of extra LLVM passes to run (space separated)"),
@@ -508,7 +508,7 @@ cgoptions!(
          "choose the code model to use (llc -code-model for details)"),
     metadata: Vec<String> = (Vec::new(), parse_list,
          "metadata to mangle symbol names with"),
-    extra_filename: String = ("".to_string(), parse_string,
+    extra_filename: String = ("".into_string(), parse_string,
          "extra data to put in each output filename"),
     codegen_units: uint = (1, parse_uint,
         "divide crate into N units to optimize in parallel"),
@@ -702,7 +702,7 @@ pub fn optgroups() -> Vec<getopts::OptGroup> {
 // Convert strings provided as --cfg [cfgspec] into a crate_cfg
 pub fn parse_cfgspecs(cfgspecs: Vec<String> ) -> ast::CrateConfig {
     cfgspecs.into_iter().map(|s| {
-        parse::parse_meta_from_source_str("cfgspec".to_string(),
+        parse::parse_meta_from_source_str("cfgspec".into_string(),
                                           s.to_string(),
                                           Vec::new(),
                                           &parse::new_parse_sess())
@@ -979,7 +979,7 @@ mod test {
     #[test]
     fn test_switch_implies_cfg_test() {
         let matches =
-            &match getopts(&["--test".to_string()], optgroups().as_slice()) {
+            &match getopts(&["--test".into_string()], optgroups().as_slice()) {
               Ok(m) => m,
               Err(f) => panic!("test_switch_implies_cfg_test: {}", f)
             };
@@ -995,7 +995,7 @@ mod test {
     #[test]
     fn test_switch_implies_cfg_test_unless_cfg_test() {
         let matches =
-            &match getopts(&["--test".to_string(), "--cfg=test".to_string()],
+            &match getopts(&["--test".into_string(), "--cfg=test".into_string()],
                            optgroups().as_slice()) {
               Ok(m) => m,
               Err(f) => {
@@ -1015,7 +1015,7 @@ mod test {
     fn test_can_print_warnings() {
         {
             let matches = getopts(&[
-                "-Awarnings".to_string()
+                "-Awarnings".into_string()
             ], optgroups().as_slice()).unwrap();
             let registry = diagnostics::registry::Registry::new(&[]);
             let sessopts = build_session_options(&matches);
@@ -1025,8 +1025,8 @@ mod test {
 
         {
             let matches = getopts(&[
-                "-Awarnings".to_string(),
-                "-Dwarnings".to_string()
+                "-Awarnings".into_string(),
+                "-Dwarnings".into_string()
             ], optgroups().as_slice()).unwrap();
             let registry = diagnostics::registry::Registry::new(&[]);
             let sessopts = build_session_options(&matches);
@@ -1036,7 +1036,7 @@ mod test {
 
         {
             let matches = getopts(&[
-                "-Adead_code".to_string()
+                "-Adead_code".into_string()
             ], optgroups().as_slice()).unwrap();
             let registry = diagnostics::registry::Registry::new(&[]);
             let sessopts = build_session_options(&matches);
