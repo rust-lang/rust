@@ -22,8 +22,8 @@ use option::Option::{None, Some};
 use kinds::Sized;
 use str::{FromStr, Str};
 use str;
-use slice::{CloneSliceAllocPrelude, Splits, AsSlice, VectorVector,
-            PartialEqSlicePrelude, SlicePrelude};
+use slice::{CloneSliceExt, Splits, AsSlice, VectorVector,
+            PartialEqSliceExt, SliceExt};
 use vec::Vec;
 
 use super::{BytesContainer, GenericPath, GenericPathUnsafe};

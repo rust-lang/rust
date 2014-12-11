@@ -297,7 +297,7 @@ mod tests {
     use core::kinds::Sized;
     use std::mem;
 
-    use slice::SlicePrelude;
+    use slice::SliceExt;
     use super::{Hash, Hasher, Writer};
 
     struct MyWriterHasher;

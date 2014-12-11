@@ -24,7 +24,7 @@ use core::ops;
 use core::raw::Slice as RawSlice;
 
 use hash;
-use slice::CloneSliceAllocPrelude;
+use slice::CloneSliceExt;
 use str;
 use str::{CharRange, CowString, FromStr, StrAllocating, Owned};
 use vec::{DerefVec, Vec, as_vec};
@@ -1014,7 +1014,7 @@ mod tests {
     use std::prelude::*;
     use test::Bencher;
 
-    use slice::CloneSliceAllocPrelude;
+    use slice::CloneSliceExt;
     use str::{Str, StrPrelude};
     use str;
     use super::{as_string, String, ToString};

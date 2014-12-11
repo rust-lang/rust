@@ -29,7 +29,7 @@ use core::ptr;
 use core::raw::Slice as RawSlice;
 use core::uint;
 
-use slice::{CloneSliceAllocPrelude};
+use slice::CloneSliceExt;
 
 /// An owned, growable vector.
 ///

@@ -19,7 +19,7 @@ use ops::Drop;
 use option::Option;
 use option::Option::{Some, None};
 use result::Result::{Ok, Err};
-use slice::{SlicePrelude};
+use slice::{SliceExt};
 use slice;
 use vec::Vec;
 

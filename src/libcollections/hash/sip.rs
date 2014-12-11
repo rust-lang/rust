@@ -276,7 +276,7 @@ mod tests {
 
     use str::Str;
     use string::String;
-    use slice::{AsSlice, SlicePrelude};
+    use slice::{AsSlice, SliceExt};
     use vec::Vec;
 
     use super::super::{Hash, Writer};

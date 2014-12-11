@@ -19,7 +19,7 @@ use option::Option::None;
 use result::Result::{Err, Ok};
 use io;
 use io::{Reader, Writer, Seek, Buffer, IoError, SeekStyle, IoResult};
-use slice::{mod, AsSlice, SlicePrelude};
+use slice::{mod, AsSlice, SliceExt};
 use vec::Vec;
 
 const BUF_CAPACITY: uint = 128;

@@ -232,13 +232,12 @@ fn demangle(writer: &mut Writer, s: &str) -> IoResult<()> {
 /// all unix platforms we support right now, so it at least gets the job done.
 #[cfg(unix)]
 mod imp {
+    use prelude::*;
+
     use c_str::CString;
-    use io::{IoResult, Writer};
+    use io::IoResult;
     use libc;
     use mem;
-    use option::Option;
-    use option::Option::{Some, None};
-    use result::Result::{Ok, Err};
     use sync::{StaticMutex, MUTEX_INIT};
 
     /// As always - iOS on arm uses SjLj exceptions and
@@ -253,9 +252,7 @@ mod imp {
     #[cfg(all(target_os = "ios", target_arch = "arm"))]
     #[inline(never)]
     pub fn write(w: &mut Writer) -> IoResult<()> {
-        use iter::{IteratorExt, range};
         use result;
-        use slice::{SlicePrelude};
 
         extern {
             fn backtrace(buf: *mut *mut libc::c_void,
@@ -389,12 +386,8 @@ mod imp {
 
     #[cfg(not(any(target_os = "macos", target_os = "ios")))]
     fn print(w: &mut Writer, idx: int, addr: *mut libc::c_void) -> IoResult<()> {
-        use iter::IteratorExt;
         use os;
-        use path::GenericPath;
-        use ptr::RawPtr;
         use ptr;
-        use slice::{SlicePrelude};
 
         ////////////////////////////////////////////////////////////////////////
         // libbacktrace.h API
@@ -669,7 +662,7 @@ mod imp {
     use path::Path;
     use result::Result::{Ok, Err};
     use sync::{StaticMutex, MUTEX_INIT};
-    use slice::SlicePrelude;
+    use slice::SliceExt;
     use str::StrPrelude;
     use dynamic_lib::DynamicLibrary;
 

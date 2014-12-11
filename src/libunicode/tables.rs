@@ -18,7 +18,7 @@ pub const UNICODE_VERSION: (uint, uint, uint) = (7, 0, 0);
 
 fn bsearch_range_table(c: char, r: &'static [(char,char)]) -> bool {
     use core::cmp::Ordering::{Equal, Less, Greater};
-    use core::slice::SlicePrelude;
+    use core::slice::SliceExt;
     r.binary_search(|&(lo,hi)| {
         if lo <= c && c <= hi { Equal }
         else if hi < c { Less }
@@ -6825,7 +6825,7 @@ pub mod normalization {
 
     fn bsearch_range_value_table(c: char, r: &'static [(char, char, u8)]) -> u8 {
         use core::cmp::Ordering::{Equal, Less, Greater};
-        use core::slice::SlicePrelude;
+        use core::slice::SliceExt;
         use core::slice;
         match r.binary_search(|&(lo, hi, _)| {
             if lo <= c && c <= hi { Equal }
@@ -6958,7 +6958,7 @@ pub mod normalization {
 
 pub mod conversions {
     use core::cmp::Ordering::{Equal, Less, Greater};
-    use core::slice::SlicePrelude;
+    use core::slice::SliceExt;
     use core::option::Option;
     use core::option::Option::{Some, None};
     use core::slice;
@@ -7595,7 +7595,7 @@ pub mod conversions {
 pub mod charwidth {
     use core::option::Option;
     use core::option::Option::{Some, None};
-    use core::slice::SlicePrelude;
+    use core::slice::SliceExt;
     use core::slice;
 
     fn bsearch_range_value_table(c: char, is_cjk: bool, r: &'static [(char, char, u8, u8)]) -> u8 {
@@ -7801,8 +7801,8 @@ pub mod charwidth {
 }
 
 pub mod grapheme {
-    use core::slice::SlicePrelude;
     use core::kinds::Copy;
+    use core::slice::SliceExt;
     pub use self::GraphemeCat::*;
     use core::slice;
 

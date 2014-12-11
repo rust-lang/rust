@@ -34,7 +34,7 @@ use option::Option::{None, Some};
 use ops::FnMut;
 use ptr::RawPtr;
 use raw::{Repr, Slice};
-use slice::{mod, SlicePrelude};
+use slice::{mod, SliceExt};
 use uint;
 
 /// A trait to abstract the idea of creating a new instance of a type from a
@@ -1146,7 +1146,7 @@ const TAG_CONT_U8: u8 = 0b1000_0000u8;
 pub mod raw {
     use ptr::RawPtr;
     use raw::Slice;
-    use slice::SlicePrelude;
+    use slice::SliceExt;
     use str::{is_utf8, StrPrelude};
 
     /// Converts a slice of bytes to a string slice without checking
