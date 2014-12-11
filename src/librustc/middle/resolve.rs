@@ -633,8 +633,6 @@ bitflags! {
     }
 }
 
-impl Copy for DefModifiers {}
-
 // Records a possibly-private type definition.
 #[deriving(Clone)]
 struct TypeNsDef {

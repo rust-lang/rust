@@ -800,8 +800,6 @@ bitflags! {
     }
 }
 
-impl Copy for TypeFlags {}
-
 #[deriving(Show)]
 pub struct TyS<'tcx> {
     pub sty: sty<'tcx>,
