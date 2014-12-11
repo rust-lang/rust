@@ -250,13 +250,15 @@ impl<'tcx> FulfillmentContext<'tcx> {
                 self.predicates.retain(|predicate| {
                     // Hack: Retain does not pass in the index, but we want
                     // to avoid processing the first `start_count` entries.
-                    if skip == 0 {
-                        retain_predicate(selcx, predicate,
-                                         &mut selections, &mut errors, region_obligations)
-                    } else {
-                        skip -= 1;
-                        true
-                    }
+                    let processed =
+                        if skip == 0 {
+                            process_predicate(selcx, predicate,
+                                              &mut selections, &mut errors, region_obligations)
+                        } else {
+                            skip -= 1;
+                            false
+                        };
+                    !processed
                 });
             }
 
@@ -286,17 +288,17 @@ impl<'tcx> FulfillmentContext<'tcx> {
     }
 }
 
-fn retain_predicate<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
-                             predicate: &PredicateObligation<'tcx>,
-                             selections: &mut Vec<Selection<'tcx>>,
-                             errors: &mut Vec<FulfillmentError<'tcx>>,
-                             region_obligations: &mut NodeMap<Vec<RegionObligation<'tcx>>>)
-                             -> bool
+fn process_predicate<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
+                              predicate: &PredicateObligation<'tcx>,
+                              selections: &mut Vec<Selection<'tcx>>,
+                              errors: &mut Vec<FulfillmentError<'tcx>>,
+                              region_obligations: &mut NodeMap<Vec<RegionObligation<'tcx>>>)
+                              -> bool
 {
     /*!
-     * Evaluates a predicate obligation and modifies the appropriate
-     * output array.  Returns `true` if the predicate must be retained
-     * because it could not be fully evaluated yet due to insufficient
+     * Processes a predicate obligation and modifies the appropriate
+     * output array with the successful/error result.  Returns `false`
+     * if the predicate could not be processed due to insufficient
      * type inference.
      */
 
@@ -308,11 +310,11 @@ fn retain_predicate<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
                                                 trait_ref: trait_ref.clone() };
             match selcx.select(&trait_obligation) {
                 Ok(None) => {
-                    true
+                    false
                 }
                 Ok(Some(s)) => {
                     selections.push(s);
-                    false
+                    true
                 }
                 Err(selection_err) => {
                     debug!("predicate: {} error: {}",
@@ -322,7 +324,7 @@ fn retain_predicate<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
                         FulfillmentError::new(
                             predicate.clone(),
                             CodeSelectionError(selection_err)));
-                    false
+                    true
                 }
             }
         }
@@ -331,14 +333,14 @@ fn retain_predicate<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
             let origin = infer::EquatePredicate(predicate.cause.span);
             match infer::mk_eqty(selcx.infcx(), false, origin, a, b) {
                 Ok(()) => {
-                    false
+                    true
                 }
                 Err(_) => {
                     errors.push(
                         FulfillmentError::new(
                             predicate.clone(),
                             CodeSelectionError(Unimplemented)));
-                    false
+                    true
                 }
             }
         }
@@ -346,12 +348,12 @@ fn retain_predicate<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
         ty::Predicate::RegionOutlives(r_a, r_b) => {
             let origin = infer::RelateRegionParamBound(predicate.cause.span);
             let () = infer::mk_subr(selcx.infcx(), origin, r_b, r_a); // `b : a` ==> `a <= b`
-            false
+            true
         }
 
         ty::Predicate::TypeOutlives(t_a, r_b) => {
             register_region_obligation(tcx, t_a, r_b, predicate.cause, region_obligations);
-            false
+            true
         }
     }
 }

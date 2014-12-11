@@ -1656,14 +1656,16 @@ impl<'tcx> Generics<'tcx> {
 
 #[deriving(Clone, PartialEq, Eq, Hash, Show)]
 pub enum Predicate<'tcx> {
-    /// where Foo : Bar
+    /// Corresponds to `where Foo : Bar<A,B,C>`. `Foo` here would be
+    /// the `Self` type of the trait reference and `A`, `B`, and `C`
+    /// would be the parameters in the `TypeSpace`.
     Trait(Rc<TraitRef<'tcx>>),
 
-    /// where Foo == Bar
-    Equate(Ty<'tcx>, Ty<'tcx>),
+    /// where `T1 == T2`.
+    Equate(/* T1 */ Ty<'tcx>, /* T2 */ Ty<'tcx>),
 
     /// where 'a : 'b
-    RegionOutlives(Region, Region),
+    RegionOutlives(/* 'a */ Region, /* 'b */ Region),
 
     /// where T : 'a
     TypeOutlives(Ty<'tcx>, Region),
@@ -1807,7 +1809,6 @@ impl<'tcx> ParameterEnvironment<'tcx> {
                                 let method_generics = &method_ty.generics;
                                 construct_parameter_environment(
                                     cx,
-                                    method.span,
                                     method_generics,
                                     method.pe_body().id)
                             }
@@ -1842,7 +1843,6 @@ impl<'tcx> ParameterEnvironment<'tcx> {
                                 let method_generics = &method_ty.generics;
                                 construct_parameter_environment(
                                     cx,
-                                    method.span,
                                     method_generics,
                                     method.pe_body().id)
                             }
@@ -1869,7 +1869,6 @@ impl<'tcx> ParameterEnvironment<'tcx> {
                         let fn_pty = ty::lookup_item_type(cx, fn_def_id);
 
                         construct_parameter_environment(cx,
-                                                        item.span,
                                                         &fn_pty.generics,
                                                         body.id)
                     }
@@ -1880,8 +1879,7 @@ impl<'tcx> ParameterEnvironment<'tcx> {
                     ast::ItemStatic(..) => {
                         let def_id = ast_util::local_def(id);
                         let pty = ty::lookup_item_type(cx, def_id);
-                        construct_parameter_environment(cx, item.span,
-                                                        &pty.generics, id)
+                        construct_parameter_environment(cx, &pty.generics, id)
                     }
                     _ => {
                         cx.sess.span_bug(item.span,
@@ -5031,8 +5029,8 @@ pub fn lookup_trait_def<'tcx>(cx: &ctxt<'tcx>, did: ast::DefId)
     })
 }
 
-/// Given a reference to a trait, returns the bounds declared on the
-/// trait, with appropriate substitutions applied.
+/// Given a reference to a trait, returns the "superbounds" declared
+/// on the trait, with appropriate substitutions applied.
 pub fn predicates_for_trait_ref<'tcx>(tcx: &ctxt<'tcx>,
                                       trait_ref: &TraitRef<'tcx>)
                                       -> Vec<ty::Predicate<'tcx>>
@@ -5929,7 +5927,6 @@ pub fn empty_parameter_environment<'tcx>() -> ParameterEnvironment<'tcx> {
 /// See `ParameterEnvironment` struct def'n for details
 pub fn construct_parameter_environment<'tcx>(
     tcx: &ctxt<'tcx>,
-    _span: Span,
     generics: &ty::Generics<'tcx>,
     free_id: ast::NodeId)
     -> ParameterEnvironment<'tcx>

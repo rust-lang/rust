@@ -24,8 +24,16 @@ use super::{Obligation, ObligationCause, PredicateObligation,
             VtableImpl, VtableParam, VtableParamData, VtableImplData};
 
 ///////////////////////////////////////////////////////////////////////////
-// Elaboration iterator
+// `Elaboration` iterator
+///////////////////////////////////////////////////////////////////////////
 
+/// "Elaboration" is the process of identifying all the predicates that
+/// are implied by a source predicate. Currently this basically means
+/// walking the "supertraits" and other similar assumptions. For
+/// example, if we know that `T : Ord`, the elaborator would deduce
+/// that `T : PartialOrd` holds as well. Similarly, if we have `trait
+/// Foo : 'static`, and we know that `T : Foo`, then we know that `T :
+/// 'static`.
 pub struct Elaborator<'cx, 'tcx:'cx> {
     tcx: &'cx ty::ctxt<'tcx>,
     stack: Vec<StackEntry<'tcx>>,
@@ -157,7 +165,10 @@ impl<'cx, 'tcx> Iterator<ty::Predicate<'tcx>> for Elaborator<'cx, 'tcx> {
 
 ///////////////////////////////////////////////////////////////////////////
 // Supertrait iterator
+///////////////////////////////////////////////////////////////////////////
 
+/// A filter around the `Elaborator` that just yields up supertrait references,
+/// not other kinds of predicates.
 pub struct Supertraits<'cx, 'tcx:'cx> {
     elaborator: Elaborator<'cx, 'tcx>,
 }
@@ -197,6 +208,8 @@ impl<'cx, 'tcx> Iterator<Rc<ty::TraitRef<'tcx>>> for Supertraits<'cx, 'tcx> {
     }
 }
 
+///////////////////////////////////////////////////////////////////////////
+// Other
 ///////////////////////////////////////////////////////////////////////////
 
 // determine the `self` type, using fresh variables for all variables
