@@ -1361,7 +1361,7 @@ fn split_maybe_args(argstr: &Option<String>) -> Vec<String> {
             s.as_slice()
              .split(' ')
              .filter_map(|s| {
-                 if s.is_whitespace() {
+                 if s.chars().all(|c| c.is_whitespace()) {
                      None
                  } else {
                      Some(s.to_string())

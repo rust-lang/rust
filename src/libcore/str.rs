@@ -18,14 +18,13 @@
 
 use self::Searcher::{Naive, TwoWay, TwoWayLong};
 
-use char::{mod, Char};
 use clone::Clone;
 use cmp::{mod, Eq};
 use default::Default;
 use iter::range;
 use iter::{DoubleEndedIteratorExt, ExactSizeIterator};
 use iter::{Map, Iterator, IteratorExt, DoubleEndedIterator};
-use kinds::{Copy, Sized};
+use kinds::Sized;
 use mem;
 use num::Int;
 use ops::{Fn, FnMut};
@@ -60,9 +59,9 @@ impl FromStr for bool {
     /// # Examples
     ///
     /// ```rust
-    /// assert_eq!(from_str::<bool>("true"), Some(true));
-    /// assert_eq!(from_str::<bool>("false"), Some(false));
-    /// assert_eq!(from_str::<bool>("not even a boolean"), None);
+    /// assert_eq!("true".parse(), Some(true));
+    /// assert_eq!("false".parse(), Some(false));
+    /// assert_eq!("not even a boolean".parse::<bool>(), None);
     /// ```
     #[inline]
     fn from_str(s: &str) -> Option<bool> {
@@ -79,6 +78,7 @@ Section: Creating a string
 */
 
 /// Errors which can occur when attempting to interpret a byte slice as a `str`.
+#[deriving(Copy, Eq, PartialEq, Clone)]
 pub enum Utf8Error {
     /// An invalid byte was detected at the byte offset given.
     ///
@@ -334,6 +334,7 @@ impl<'a> DoubleEndedIterator<(uint, char)> for CharIndices<'a> {
 /// External iterator for a string's bytes.
 /// Use with the `std::iter` module.
 #[stable]
+#[deriving(Clone)]
 pub struct Bytes<'a> {
     inner: Map<&'a u8, u8, slice::Items<'a, u8>, BytesFn>,
 }
@@ -946,24 +947,7 @@ pub fn is_utf8(v: &[u8]) -> bool {
     run_utf8_validation_iterator(&mut v.iter()).is_ok()
 }
 
-/// Return a slice of `v` ending at (and not including) the first NUL
-/// (0).
-///
-/// # Example
-///
-/// ```rust
-/// use std::str;
-///
-/// // "abcd"
-/// let mut v = ['a' as u16, 'b' as u16, 'c' as u16, 'd' as u16];
-/// // no NULs so no change
-/// assert_eq!(str::truncate_utf16_at_nul(&v), v.as_slice());
-///
-/// // "ab\0d"
-/// v[2] = 0;
-/// let b: &[_] = &['a' as u16, 'b' as u16];
-/// assert_eq!(str::truncate_utf16_at_nul(&v), b);
-/// ```
+/// Deprecated function
 #[deprecated = "this function will be removed"]
 pub fn truncate_utf16_at_nul<'a>(v: &'a [u16]) -> &'a [u16] {
     match v.iter().position(|c| *c == 0) {
@@ -1595,6 +1579,8 @@ impl<'a> Default for &'a str {
 impl<'a> Iterator<&'a str> for Lines<'a> {
     #[inline]
     fn next(&mut self) -> Option<&'a str> { self.inner.next() }
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) { self.inner.size_hint() }
 }
 impl<'a> DoubleEndedIterator<&'a str> for Lines<'a> {
     #[inline]
@@ -1603,6 +1589,8 @@ impl<'a> DoubleEndedIterator<&'a str> for Lines<'a> {
 impl<'a> Iterator<&'a str> for LinesAny<'a> {
     #[inline]
     fn next(&mut self) -> Option<&'a str> { self.inner.next() }
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) { self.inner.size_hint() }
 }
 impl<'a> DoubleEndedIterator<&'a str> for LinesAny<'a> {
     #[inline]
@@ -1611,6 +1599,8 @@ impl<'a> DoubleEndedIterator<&'a str> for LinesAny<'a> {
 impl<'a> Iterator<u8> for Bytes<'a> {
     #[inline]
     fn next(&mut self) -> Option<u8> { self.inner.next() }
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) { self.inner.size_hint() }
 }
 impl<'a> DoubleEndedIterator<u8> for Bytes<'a> {
     #[inline]

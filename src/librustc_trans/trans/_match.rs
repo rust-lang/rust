@@ -427,7 +427,7 @@ fn enter_match<'a, 'b, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let _indenter = indenter();
 
     m.iter().filter_map(|br| {
-        e(br.pats.as_slice()).map(|pats| {
+        e(br.pats[]).map(|pats| {
             let this = br.pats[col];
             let mut bound_ptrs = br.bound_ptrs.clone();
             match this.node {
@@ -548,7 +548,7 @@ fn enter_opt<'a, 'p, 'blk, 'tcx>(
         param_env: param_env,
     };
     enter_match(bcx, dm, m, col, val, |pats|
-        check_match::specialize(&mcx, pats.as_slice(), &ctor, col, variant_size)
+        check_match::specialize(&mcx, pats[], &ctor, col, variant_size)
     )
 }
 
@@ -790,7 +790,7 @@ fn compare_values<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
         let did = langcall(cx,
                            None,
                            format!("comparison of `{}`",
-                                   cx.ty_to_string(rhs_t)).as_slice(),
+                                   cx.ty_to_string(rhs_t))[],
                            StrEqFnLangItem);
         callee::trans_lang_call(cx, did, &[lhs, rhs], None)
     }
@@ -943,7 +943,7 @@ fn compile_submatch<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             if has_nested_bindings(m, col) {
                 let expanded = expand_nested_bindings(bcx, m, col, val);
                 compile_submatch_continue(bcx,
-                                          expanded.as_slice(),
+                                          expanded[],
                                           vals,
                                           chk,
                                           col,
@@ -1035,8 +1035,8 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                         field_vals.len())
             );
             let mut vals = field_vals;
-            vals.push_all(vals_left.as_slice());
-            compile_submatch(bcx, pats.as_slice(), vals.as_slice(), chk, has_genuine_default);
+            vals.push_all(vals_left[]);
+            compile_submatch(bcx, pats[], vals[], chk, has_genuine_default);
             return;
         }
         _ => ()
@@ -1189,10 +1189,10 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         }
         let opt_ms = enter_opt(opt_cx, pat_id, dm, m, opt, col, size, val);
         let mut opt_vals = unpacked;
-        opt_vals.push_all(vals_left.as_slice());
+        opt_vals.push_all(vals_left[]);
         compile_submatch(opt_cx,
-                         opt_ms.as_slice(),
-                         opt_vals.as_slice(),
+                         opt_ms[],
+                         opt_vals[],
                          branch_chk.as_ref().unwrap_or(chk),
                          has_genuine_default);
     }
@@ -1211,8 +1211,8 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             }
             _ => {
                 compile_submatch(else_cx,
-                                 defaults.as_slice(),
-                                 vals_left.as_slice(),
+                                 defaults[],
+                                 vals_left[],
                                  chk,
                                  has_genuine_default);
             }
@@ -1333,7 +1333,7 @@ fn create_bindings_map<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, pat: &ast::Pat,
                                  "__llmatch");
                 trmode = TrByCopy(alloca_no_lifetime(bcx,
                                          llvariable_ty,
-                                         bcx.ident(ident).as_slice()));
+                                         bcx.ident(ident)[]));
             }
             ast::BindByValue(_) => {
                 // in this case, the final type of the variable will be T,
@@ -1341,13 +1341,13 @@ fn create_bindings_map<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, pat: &ast::Pat,
                 // above
                 llmatch = alloca_no_lifetime(bcx,
                                  llvariable_ty.ptr_to(),
-                                 bcx.ident(ident).as_slice());
+                                 bcx.ident(ident)[]);
                 trmode = TrByMove;
             }
             ast::BindByRef(_) => {
                 llmatch = alloca_no_lifetime(bcx,
                                  llvariable_ty,
-                                 bcx.ident(ident).as_slice());
+                                 bcx.ident(ident)[]);
                 trmode = TrByRef;
             }
         };
@@ -1415,7 +1415,7 @@ fn trans_match_inner<'blk, 'tcx>(scope_cx: Block<'blk, 'tcx>,
         && arm.pats.last().unwrap().node == ast::PatWild(ast::PatWildSingle)
     });
 
-    compile_submatch(bcx, matches.as_slice(), &[discr_datum.val], &chk, has_default);
+    compile_submatch(bcx, matches[], &[discr_datum.val], &chk, has_default);
 
     let mut arm_cxs = Vec::new();
     for arm_data in arm_datas.iter() {
@@ -1429,7 +1429,7 @@ fn trans_match_inner<'blk, 'tcx>(scope_cx: Block<'blk, 'tcx>,
         arm_cxs.push(bcx);
     }
 
-    bcx = scope_cx.fcx.join_blocks(match_id, arm_cxs.as_slice());
+    bcx = scope_cx.fcx.join_blocks(match_id, arm_cxs[]);
     return bcx;
 }
 
@@ -1581,7 +1581,7 @@ fn mk_binding_alloca<'blk, 'tcx, A, F>(bcx: Block<'blk, 'tcx>,
     let var_ty = node_id_type(bcx, p_id);
 
     // Allocate memory on stack for the binding.
-    let llval = alloc_ty(bcx, var_ty, bcx.ident(*ident).as_slice());
+    let llval = alloc_ty(bcx, var_ty, bcx.ident(*ident)[]);
 
     // Subtle: be sure that we *populate* the memory *before*
     // we schedule the cleanup.
@@ -1619,7 +1619,7 @@ fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     if bcx.sess().asm_comments() {
         add_comment(bcx, format!("bind_irrefutable_pat(pat={})",
-                                 pat.repr(bcx.tcx())).as_slice());
+                                 pat.repr(bcx.tcx()))[]);
     }
 
     let _indenter = indenter();

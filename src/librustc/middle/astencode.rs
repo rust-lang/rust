@@ -132,7 +132,7 @@ pub fn decode_inlined_item<'tcx>(cdata: &cstore::crate_metadata,
             // Do an Option dance to use the path after it is moved below.
             let s = ast_map::path_to_string(ast_map::Values(path.iter()));
             path_as_str = Some(s);
-            path_as_str.as_ref().map(|x| x.as_slice())
+            path_as_str.as_ref().map(|x| x[])
         });
         let mut ast_dsr = reader::Decoder::new(ast_doc);
         let from_id_range = Decodable::decode(&mut ast_dsr).unwrap();
@@ -1876,7 +1876,7 @@ fn decode_side_tables(dcx: &DecodeContext,
             None => {
                 dcx.tcx.sess.bug(
                     format!("unknown tag found in side tables: {:x}",
-                            tag).as_slice());
+                            tag)[]);
             }
             Some(value) => {
                 let val_doc = entry_doc.get(c::tag_table_val as uint);
@@ -1961,7 +1961,7 @@ fn decode_side_tables(dcx: &DecodeContext,
                     _ => {
                         dcx.tcx.sess.bug(
                             format!("unknown tag found in side tables: {:x}",
-                                    tag).as_slice());
+                                    tag)[]);
                     }
                 }
             }

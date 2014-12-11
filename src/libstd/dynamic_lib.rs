@@ -280,7 +280,7 @@ pub mod dl {
     use result::Result;
     use result::Result::{Ok, Err};
     use slice::SliceExt;
-    use str::StrPrelude;
+    use str::StrExt;
     use str;
     use string::String;
     use vec::Vec;

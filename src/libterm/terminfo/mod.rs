@@ -180,7 +180,7 @@ impl<T: Writer+Send> TerminfoTerminal<T> {
             }
         };
 
-        let entry = open(term.as_slice());
+        let entry = open(term[]);
         if entry.is_err() {
             if os::getenv("MSYSCON").map_or(false, |s| {
                     "mintty.exe" == s

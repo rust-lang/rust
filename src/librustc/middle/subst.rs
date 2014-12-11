@@ -620,7 +620,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for SubstFolder<'a, 'tcx> {
                                      (space={}, index={})",
                                     region_name.as_str(),
                                     self.root_ty.repr(self.tcx()),
-                                    space, i).as_slice());
+                                    space, i)[]);
                             }
                         }
                 }
@@ -677,7 +677,7 @@ impl<'a,'tcx> SubstFolder<'a,'tcx> {
                             p.space,
                             p.idx,
                             self.root_ty.repr(self.tcx()),
-                            self.substs.repr(self.tcx())).as_slice());
+                            self.substs.repr(self.tcx()))[]);
             }
         };
 

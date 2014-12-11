@@ -14,6 +14,7 @@ use std::cell::{RefCell, Cell};
 use std::collections::HashMap;
 use std::fmt::Show;
 use std::hash::{Hash, Hasher};
+use std::iter::repeat;
 use std::time::Duration;
 
 use syntax::ast;
@@ -48,7 +49,7 @@ pub fn time<T, U, F>(do_it: bool, what: &str, u: U, f: F) -> T where
     };
     let rv = rv.unwrap();
 
-    println!("{}time: {}.{:03} \t{}", "  ".repeat(old),
+    println!("{}time: {}.{:03} \t{}", repeat("  ").take(old).collect::<String>(),
              dur.num_seconds(), dur.num_milliseconds() % 1000, what);
     DEPTH.with(|slot| slot.set(old));
 

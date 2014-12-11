@@ -121,7 +121,7 @@ mod prelude {
     // in core and collections (may differ).
     pub use slice::{PartialEqSliceExt, OrdSliceExt};
     pub use slice::{AsSlice, SliceExt};
-    pub use str::{from_str, Str, StrPrelude};
+    pub use str::{from_str, Str};
 
     // from other crates.
     pub use alloc::boxed::Box;
@@ -129,7 +129,7 @@ mod prelude {
 
     // from collections.
     pub use slice::{CloneSliceExt, VectorVector};
-    pub use str::{IntoMaybeOwned, UnicodeStrPrelude, StrAllocating, StrVector};
+    pub use str::{IntoMaybeOwned, StrVector};
     pub use string::{String, ToString};
     pub use vec::Vec;
 }

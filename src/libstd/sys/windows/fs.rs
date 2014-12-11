@@ -23,6 +23,7 @@ use io;
 
 use prelude::*;
 use sys;
+use sys::os;
 use sys_common::{keep_going, eof, mkerr_libc};
 
 use io::{FilePermission, Write, UnstableFileStat, Open, FileAccess, FileMode};
@@ -262,7 +263,7 @@ pub fn readdir(p: &Path) -> IoResult<Vec<Path>> {
             let mut more_files = 1 as libc::BOOL;
             while more_files != 0 {
                 {
-                    let filename = str::truncate_utf16_at_nul(&wfd.cFileName);
+                    let filename = os::truncate_utf16_at_nul(&wfd.cFileName);
                     match String::from_utf16(filename) {
                         Some(filename) => paths.push(Path::new(filename)),
                         None => {

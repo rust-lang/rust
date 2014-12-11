@@ -107,7 +107,7 @@ pub fn compute_abi_info(ccx: &CrateContext,
                         atys: &[Type],
                         rty: Type,
                         ret_def: bool) -> FnType {
-    match ccx.sess().target.target.arch.as_slice() {
+    match ccx.sess().target.target.arch[] {
         "x86" => cabi_x86::compute_abi_info(ccx, atys, rty, ret_def),
         "x86_64" => if ccx.sess().target.target.options.is_like_windows {
             cabi_x86_win64::compute_abi_info(ccx, atys, rty, ret_def)
@@ -117,6 +117,6 @@ pub fn compute_abi_info(ccx: &CrateContext,
         "arm" => cabi_arm::compute_abi_info(ccx, atys, rty, ret_def),
         "mips" => cabi_mips::compute_abi_info(ccx, atys, rty, ret_def),
         a => ccx.sess().fatal((format!("unrecognized arch \"{}\" in target specification", a))
-                              .as_slice()),
+                              []),
     }
 }

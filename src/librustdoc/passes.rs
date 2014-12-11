@@ -319,7 +319,7 @@ pub fn unindent(s: &str) -> String {
         let ignore_previous_indents =
             saw_first_line &&
             !saw_second_line &&
-            !line.is_whitespace();
+            !line.chars().all(|c| c.is_whitespace());
 
         let min_indent = if ignore_previous_indents {
             uint::MAX
@@ -331,7 +331,7 @@ pub fn unindent(s: &str) -> String {
             saw_second_line = true;
         }
 
-        if line.is_whitespace() {
+        if line.chars().all(|c| c.is_whitespace()) {
             min_indent
         } else {
             saw_first_line = true;
@@ -353,7 +353,7 @@ pub fn unindent(s: &str) -> String {
     if lines.len() >= 1 {
         let mut unindented = vec![ lines[0].trim().to_string() ];
         unindented.push_all(lines.tail().iter().map(|&line| {
-            if line.is_whitespace() {
+            if line.chars().all(|c| c.is_whitespace()) {
                 line.to_string()
             } else {
                 assert!(line.len() >= min_indent);

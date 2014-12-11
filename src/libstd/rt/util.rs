@@ -10,16 +10,16 @@
 //
 // ignore-lexer-test FIXME #15677
 
-use core::prelude::*;
+use prelude::*;
 
-use core::cmp;
-use core::fmt;
-use core::intrinsics;
-use core::slice;
-use core::str;
-
-use libc::{mod, uintptr_t};
+use cmp;
+use fmt;
+use intrinsics;
+use libc::uintptr_t;
+use libc;
 use os;
+use slice;
+use str;
 use sync::atomic;
 
 /// Dynamically inquire about whether we're running under V.
@@ -52,7 +52,7 @@ pub fn min_stack() -> uint {
         0 => {}
         n => return n - 1,
     }
-    let amt = os::getenv("RUST_MIN_STACK").and_then(|s| from_str(s.as_slice()));
+    let amt = os::getenv("RUST_MIN_STACK").and_then(|s| s.parse());
     let amt = amt.unwrap_or(2 * 1024 * 1024);
     // 0 is our sentinel value, so ensure that we'll never see 0 after
     // initialization has run
@@ -65,7 +65,7 @@ pub fn min_stack() -> uint {
 pub fn default_sched_threads() -> uint {
     match os::getenv("RUST_THREADS") {
         Some(nstr) => {
-            let opt_n: Option<uint> = from_str(nstr.as_slice());
+            let opt_n: Option<uint> = nstr.parse();
             match opt_n {
                 Some(n) if n > 0 => n,
                 _ => panic!("`RUST_THREADS` is `{}`, should be a positive integer", nstr)
@@ -113,9 +113,8 @@ impl fmt::FormatWriter for Stdio {
 }
 
 pub fn dumb_print(args: &fmt::Arguments) {
-    use fmt::FormatWriter;
     let mut w = Stderr;
-    let _ = w.write_fmt(args);
+    let _ = write!(&mut w, "{}", args);
 }
 
 pub fn abort(args: &fmt::Arguments) -> ! {

@@ -17,7 +17,7 @@ enum Homura {
 
 fn main() {
     let homura = Homura::Madoka {
-        name: "Akemi".into_string(),
+        name: "Akemi".to_string(),
         age: 14,
     };
 

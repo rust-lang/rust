@@ -74,13 +74,11 @@ impl<'a> CheckLoopVisitor<'a> {
             Loop => {}
             Closure => {
                 self.sess.span_err(span,
-                                   format!("`{}` inside of a closure",
-                                           name).as_slice());
+                                   format!("`{}` inside of a closure", name)[]);
             }
             Normal => {
                 self.sess.span_err(span,
-                                   format!("`{}` outside of loop",
-                                           name).as_slice());
+                                   format!("`{}` outside of loop", name)[]);
             }
         }
     }
