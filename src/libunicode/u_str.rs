@@ -46,8 +46,8 @@ pub trait UnicodeStrPrelude for Sized? {
     /// # Example
     ///
     /// ```rust
-    /// let gr1 = "a\u0310e\u0301o\u0308\u0332".graphemes(true).collect::<Vec<&str>>();
-    /// let b: &[_] = &["a\u0310", "e\u0301", "o\u0308\u0332"];
+    /// let gr1 = "a\u{0310}e\u{0301}o\u{0308}\u{0332}".graphemes(true).collect::<Vec<&str>>();
+    /// let b: &[_] = &["a\u{0310}", "e\u{0301}", "o\u{0308}\u{0332}"];
     /// assert_eq!(gr1.as_slice(), b);
     /// let gr2 = "a\r\nb🇷🇺🇸🇹".graphemes(true).collect::<Vec<&str>>();
     /// let b: &[_] = &["a", "\r\n", "b", "🇷🇺🇸🇹"];
