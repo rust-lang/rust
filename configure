@@ -988,8 +988,7 @@ do
     make_dir $t/rt/jemalloc
     for i in                                          \
       isaac sync test \
-      arch/i386 arch/x86_64 arch/arm arch/mips  \
-      sundown/src sundown/html
+      arch/i386 arch/x86_64 arch/arm arch/mips
     do
       make_dir $t/rt/stage$s/$i
     done
