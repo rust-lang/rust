@@ -251,7 +251,7 @@ fn enc_sty<'a, 'tcx>(w: &mut SeekableMemWriter, cx: &ctxt<'a, 'tcx>,
         ty::ty_trait(box ty::TyTrait { ref principal,
                                        ref bounds }) => {
             mywrite!(w, "x[");
-            enc_trait_ref(w, cx, principal);
+            enc_trait_ref(w, cx, &principal.value);
             enc_existential_bounds(w, cx, bounds);
             mywrite!(w, "]");
         }
@@ -401,7 +401,7 @@ pub fn enc_bounds<'a, 'tcx>(w: &mut SeekableMemWriter, cx: &ctxt<'a, 'tcx>,
 
     for tp in bs.trait_bounds.iter() {
         mywrite!(w, "I");
-        enc_trait_ref(w, cx, &**tp);
+        enc_trait_ref(w, cx, &tp.value);
     }
 
     mywrite!(w, ".");
@@ -425,7 +425,7 @@ pub fn enc_predicate<'a, 'tcx>(w: &mut SeekableMemWriter,
     match *p {
         ty::Predicate::Trait(ref trait_ref) => {
             mywrite!(w, "t");
-            enc_trait_ref(w, cx, &**trait_ref);
+            enc_trait_ref(w, cx, &trait_ref.value);
         }
         ty::Predicate::Equate(a, b) => {
             mywrite!(w, "e");

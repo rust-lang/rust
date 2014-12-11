@@ -433,16 +433,11 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
         ty_trait(box ty::TyTrait {
             ref principal, ref bounds
         }) => {
-            let base = ty::item_path_str(cx, principal.def_id);
-            let trait_def = ty::lookup_trait_def(cx, principal.def_id);
-            let did = trait_def.trait_ref.def_id;
-            let ty = parameterized(cx, base.as_slice(),
-                                   &principal.substs, &trait_def.generics,
-                                   did);
+            let principal = principal.user_string(cx);
             let bound_str = bounds.user_string(cx);
             let bound_sep = if bound_str.is_empty() { "" } else { " + " };
             format!("{}{}{}",
-                    ty,
+                    principal,
                     bound_sep,
                     bound_str)
         }
@@ -749,7 +744,7 @@ impl<'tcx> Repr<'tcx> for ty::TraitRef<'tcx> {
         // tells you everything you need to know.
         let base = ty::item_path_str(tcx, self.def_id);
         let trait_def = ty::lookup_trait_def(tcx, self.def_id);
-        format!("<{} : {}>",
+        format!("TraitRef({}, {})",
                 self.substs.self_ty().repr(tcx),
                 parameterized(tcx, base.as_slice(), &self.substs, &trait_def.generics, self.def_id))
     }
@@ -1161,7 +1156,7 @@ impl<'tcx> UserString<'tcx> for ty::BuiltinBounds {
     }
 }
 
-impl<'tcx> UserString<'tcx> for ty::TraitRef<'tcx> {
+impl<'tcx> UserString<'tcx> for ty::PolyTraitRef<'tcx> {
     fn user_string(&self, tcx: &ctxt<'tcx>) -> String {
         // Replace any anonymous late-bound regions with named
         // variants, using gensym'd identifiers, so that we can
@@ -1178,7 +1173,7 @@ impl<'tcx> UserString<'tcx> for ty::TraitRef<'tcx> {
                 ty::BrAnon(_) |
                 ty::BrFresh(_) |
                 ty::BrEnv => {
-                    let name = token::gensym("r");
+                    let name = token::gensym("'r");
                     names.push(token::get_name(name));
                     ty::BrNamed(ast_util::local_def(ast::DUMMY_NODE_ID), name)
                 }
@@ -1186,19 +1181,21 @@ impl<'tcx> UserString<'tcx> for ty::TraitRef<'tcx> {
         });
         let names: Vec<_> = names.iter().map(|s| s.get()).collect();
 
-        // Let the base string be either `SomeTrait` for `for<'a,'b> SomeTrait`,
-        // depending on whether there are bound regions.
-        let path_str = ty::item_path_str(tcx, self.def_id);
-        let base =
-            if names.is_empty() {
-                path_str
-            } else {
-                format!("for<{}> {}", names.connect(","), path_str)
-            };
+        let trait_ref_str = trait_ref.value.user_string(tcx);
+        if names.len() == 0 {
+            trait_ref_str
+        } else {
+            format!("for<{}> {}", names.connect(","), trait_ref_str)
+        }
+    }
+}
 
+impl<'tcx> UserString<'tcx> for ty::TraitRef<'tcx> {
+    fn user_string(&self, tcx: &ctxt<'tcx>) -> String {
+        let path_str = ty::item_path_str(tcx, self.def_id);
         let trait_def = ty::lookup_trait_def(tcx, self.def_id);
-        let did = trait_def.trait_ref.def_id;
-        parameterized(tcx, base.as_slice(), &trait_ref.substs, &trait_def.generics, did)
+        parameterized(tcx, path_str.as_slice(), &self.substs,
+                      &trait_def.generics, self.def_id)
     }
 }
 

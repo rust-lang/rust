@@ -524,6 +524,19 @@ fn convert_parenthesized_parameters<'tcx,AC>(this: &AC,
     vec![input_ty, output]
 }
 
+pub fn instantiate_poly_trait_ref<'tcx,AC,RS>(
+    this: &AC,
+    rscope: &RS,
+    ast_trait_ref: &ast::PolyTraitRef,
+    self_ty: Option<Ty<'tcx>>,
+    allow_eq: AllowEqConstraints)
+    -> Rc<ty::PolyTraitRef<'tcx>>
+    where AC: AstConv<'tcx>, RS: RegionScope
+{
+    let trait_ref = instantiate_trait_ref(this, rscope, &ast_trait_ref.trait_ref, self_ty, allow_eq);
+    let trait_ref = (*trait_ref).clone();
+    Rc::new(ty::bind(trait_ref)) // Ugh.
+}
 
 /// Instantiates the path for the given trait reference, assuming that it's
 /// bound to a valid trait type. Returns the def_id for the defining trait.
@@ -537,9 +550,7 @@ pub fn instantiate_trait_ref<'tcx,AC,RS>(this: &AC,
                                          where AC: AstConv<'tcx>,
                                                RS: RegionScope
 {
-    match ::lookup_def_tcx(this.tcx(),
-                           ast_trait_ref.path.span,
-                           ast_trait_ref.ref_id) {
+    match ::lookup_def_tcx(this.tcx(), ast_trait_ref.path.span, ast_trait_ref.ref_id) {
         def::DefTrait(trait_def_id) => {
             let trait_ref = Rc::new(ast_path_to_trait_ref(this,
                                                           rscope,
@@ -749,7 +760,7 @@ fn ast_ty_to_trait_ref<'tcx,AC,RS>(this: &AC,
                                    rscope: &RS,
                                    ty: &ast::Ty,
                                    bounds: &[ast::TyParamBound])
-                                   -> Result<ty::TraitRef<'tcx>, ErrorReported>
+                                   -> Result<ty::PolyTraitRef<'tcx>, ErrorReported>
     where AC : AstConv<'tcx>, RS : RegionScope
 {
     /*!
@@ -767,12 +778,12 @@ fn ast_ty_to_trait_ref<'tcx,AC,RS>(this: &AC,
         ast::TyPath(ref path, id) => {
             match this.tcx().def_map.borrow().get(&id) {
                 Some(&def::DefTrait(trait_def_id)) => {
-                    return Ok(ast_path_to_trait_ref(this,
-                                                    rscope,
-                                                    trait_def_id,
-                                                    None,
-                                                    path,
-                                                    AllowEqConstraints::Allow));
+                    return Ok(ty::bind(ast_path_to_trait_ref(this,
+                                                             rscope,
+                                                             trait_def_id,
+                                                             None,
+                                                             path,
+                                                             AllowEqConstraints::Allow)));
                 }
                 _ => {
                     span_err!(this.tcx().sess, ty.span, E0172, "expected a reference to a trait");
@@ -814,7 +825,7 @@ fn ast_ty_to_trait_ref<'tcx,AC,RS>(this: &AC,
 fn trait_ref_to_object_type<'tcx,AC,RS>(this: &AC,
                                         rscope: &RS,
                                         span: Span,
-                                        trait_ref: ty::TraitRef<'tcx>,
+                                        trait_ref: ty::PolyTraitRef<'tcx>,
                                         bounds: &[ast::TyParamBound])
                                         -> Ty<'tcx>
     where AC : AstConv<'tcx>, RS : RegionScope
@@ -982,12 +993,12 @@ pub fn ast_ty_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                     def::DefTrait(trait_def_id) => {
                         // N.B. this case overlaps somewhat with
                         // TyObjectSum, see that fn for details
-                        let result = ast_path_to_trait_ref(this,
-                                                           rscope,
-                                                           trait_def_id,
-                                                           None,
-                                                           path,
-                                                           AllowEqConstraints::Allow);
+                        let result = ty::bind(ast_path_to_trait_ref(this,
+                                                                    rscope,
+                                                                    trait_def_id,
+                                                                    None,
+                                                                    path,
+                                                                    AllowEqConstraints::Allow));
                         trait_ref_to_object_type(this, rscope, path.span, result, &[])
                     }
                     def::DefTy(did, _) | def::DefStruct(did) => {
@@ -1039,7 +1050,7 @@ pub fn ast_ty_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                                 let ty_param_defs = tcx.ty_param_defs.borrow();
                                 let tp_def = &(*ty_param_defs)[did.node];
                                 let assoc_tys = tp_def.bounds.trait_bounds.iter()
-                                    .filter_map(|b| find_assoc_ty(this, &**b, assoc_ident))
+                                    .filter_map(|b| find_assoc_ty(this, &b.value, assoc_ident))
                                     .collect();
                                 (assoc_tys, token::get_name(tp_def.name).to_string())
                             }
@@ -1423,7 +1434,7 @@ pub fn conv_existential_bounds<'tcx, AC: AstConv<'tcx>, RS:RegionScope>(
     this: &AC,
     rscope: &RS,
     span: Span,
-    principal_trait_ref: Option<&ty::TraitRef<'tcx>>, // None for boxed closures
+    principal_trait_ref: Option<&ty::PolyTraitRef<'tcx>>, // None for boxed closures
     ast_bounds: &[ast::TyParamBound])
     -> ty::ExistentialBounds
 {
@@ -1450,11 +1461,11 @@ fn conv_ty_poly_trait_ref<'tcx, AC, RS>(
 
     let main_trait_bound = match partitioned_bounds.trait_bounds.remove(0) {
         Some(trait_bound) => {
-            Some(instantiate_trait_ref(this,
-                                       rscope,
-                                       &trait_bound.trait_ref,
-                                       None,
-                                       AllowEqConstraints::Allow))
+            Some(instantiate_poly_trait_ref(this,
+                                            rscope,
+                                            trait_bound,
+                                            None,
+                                            AllowEqConstraints::Allow))
         }
         None => {
             this.tcx().sess.span_err(
@@ -1481,7 +1492,7 @@ pub fn conv_existential_bounds_from_partitioned_bounds<'tcx, AC, RS>(
     this: &AC,
     rscope: &RS,
     span: Span,
-    principal_trait_ref: Option<&ty::TraitRef<'tcx>>, // None for boxed closures
+    principal_trait_ref: Option<&ty::PolyTraitRef<'tcx>>, // None for boxed closures
     partitioned_bounds: PartitionedBounds)
     -> ty::ExistentialBounds
     where AC: AstConv<'tcx>, RS:RegionScope
@@ -1519,7 +1530,7 @@ pub fn conv_existential_bounds_from_partitioned_bounds<'tcx, AC, RS>(
 fn compute_opt_region_bound<'tcx>(tcx: &ty::ctxt<'tcx>,
                                   span: Span,
                                   explicit_region_bounds: &[&ast::Lifetime],
-                                  principal_trait_ref: Option<&ty::TraitRef<'tcx>>,
+                                  principal_trait_ref: Option<&ty::PolyTraitRef<'tcx>>,
                                   builtin_bounds: ty::BuiltinBounds)
                                   -> Option<ty::Region>
 {
@@ -1579,7 +1590,7 @@ fn compute_region_bound<'tcx, AC: AstConv<'tcx>, RS:RegionScope>(
     rscope: &RS,
     span: Span,
     region_bounds: &[&ast::Lifetime],
-    principal_trait_ref: Option<&ty::TraitRef<'tcx>>, // None for closures
+    principal_trait_ref: Option<&ty::PolyTraitRef<'tcx>>, // None for closures
     builtin_bounds: ty::BuiltinBounds)
     -> ty::Region
 {

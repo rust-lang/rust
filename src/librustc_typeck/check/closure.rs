@@ -180,7 +180,7 @@ fn deduce_unboxed_closure_expectations_from_expected_type<'a,'tcx>(
 
 fn deduce_unboxed_closure_expectations_from_trait_ref<'a,'tcx>(
     fcx: &FnCtxt<'a,'tcx>,
-    trait_ref: &ty::TraitRef<'tcx>)
+    trait_ref: &ty::PolyTraitRef<'tcx>)
     -> Option<(ty::FnSig<'tcx>, ty::UnboxedClosureKind)>
 {
     let tcx = fcx.tcx();
@@ -188,14 +188,14 @@ fn deduce_unboxed_closure_expectations_from_trait_ref<'a,'tcx>(
     debug!("deduce_unboxed_closure_expectations_from_object_type({})",
            trait_ref.repr(tcx));
 
-    let kind = match tcx.lang_items.fn_trait_kind(trait_ref.def_id) {
+    let kind = match tcx.lang_items.fn_trait_kind(trait_ref.def_id()) {
         Some(k) => k,
         None => { return None; }
     };
 
     debug!("found object type {}", kind);
 
-    let arg_param_ty = *trait_ref.substs.types.get(subst::TypeSpace, 0);
+    let arg_param_ty = *trait_ref.substs().types.get(subst::TypeSpace, 0);
     let arg_param_ty = fcx.infcx().resolve_type_vars_if_possible(&arg_param_ty);
     debug!("arg_param_ty {}", arg_param_ty.repr(tcx));
 
@@ -205,7 +205,7 @@ fn deduce_unboxed_closure_expectations_from_trait_ref<'a,'tcx>(
     };
     debug!("input_tys {}", input_tys.repr(tcx));
 
-    let ret_param_ty = *trait_ref.substs.types.get(subst::TypeSpace, 1);
+    let ret_param_ty = *trait_ref.substs().types.get(subst::TypeSpace, 1);
     let ret_param_ty = fcx.infcx().resolve_type_vars_if_possible(&ret_param_ty);
     debug!("ret_param_ty {}", ret_param_ty.repr(tcx));
 

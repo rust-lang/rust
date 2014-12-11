@@ -625,23 +625,20 @@ pub fn check_item(ccx: &CrateCtxt, it: &ast::Item) {
         let param_env = ParameterEnvironment::for_item(ccx.tcx, it.id);
         check_bare_fn(ccx, &**decl, &**body, it.id, fn_pty.ty, param_env);
       }
-      ast::ItemImpl(_, _, ref opt_trait_ref, _, ref impl_items) => {
+      ast::ItemImpl(_, _, _, _, ref impl_items) => {
         debug!("ItemImpl {} with id {}", token::get_ident(it.ident), it.id);
 
         let impl_pty = ty::lookup_item_type(ccx.tcx, ast_util::local_def(it.id));
 
-        match *opt_trait_ref {
-            Some(ref ast_trait_ref) => {
-                let impl_trait_ref =
-                    ty::node_id_to_trait_ref(ccx.tcx, ast_trait_ref.ref_id);
+          match ty::impl_trait_ref(ccx.tcx, local_def(it.id)) {
+              Some(impl_trait_ref) => {
                 check_impl_items_against_trait(ccx,
                                                it.span,
-                                               ast_trait_ref,
                                                &*impl_trait_ref,
                                                impl_items.as_slice());
-            }
-            None => { }
-        }
+              }
+              None => { }
+          }
 
         for impl_item in impl_items.iter() {
             match *impl_item {
@@ -739,12 +736,11 @@ fn check_method_body<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
 fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                             impl_span: Span,
-                                            ast_trait_ref: &ast::TraitRef,
-                                            impl_trait_ref: &ty::TraitRef<'tcx>,
+                                            impl_trait_ref: &ty::PolyTraitRef<'tcx>,
                                             impl_items: &[ast::ImplItem]) {
     // Locate trait methods
     let tcx = ccx.tcx;
-    let trait_items = ty::trait_items(tcx, impl_trait_ref.def_id);
+    let trait_items = ty::trait_items(tcx, impl_trait_ref.def_id());
 
     // Check existing impl methods to see if they are both present in trait
     // and compatible with trait signature
@@ -772,21 +768,16 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                                     impl_method.span,
                                                     impl_method.pe_body().id,
                                                     &**trait_method_ty,
-                                                    impl_trait_ref);
+                                                    &*impl_trait_ref);
                             }
                             _ => {
                                 // This is span_bug as it should have already been
                                 // caught in resolve.
-                                tcx.sess
-                                   .span_bug(impl_method.span,
-                                             format!("item `{}` is of a \
-                                                      different kind from \
-                                                      its trait `{}`",
-                                                     token::get_name(
-                                                        impl_item_ty.name()),
-                                                     pprust::path_to_string(
-                                                        &ast_trait_ref.path))
-                                             .as_slice());
+                                tcx.sess.span_bug(
+                                    impl_method.span,
+                                    format!("item `{}` is of a different kind from its trait `{}`",
+                                            token::get_name(impl_item_ty.name()),
+                                            impl_trait_ref.repr(tcx)).as_slice());
                             }
                         }
                     }
@@ -795,11 +786,9 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                         // caught in resolve.
                         tcx.sess.span_bug(
                             impl_method.span,
-                            format!(
-                                "method `{}` is not a member of trait `{}`",
-                                token::get_name(impl_item_ty.name()),
-                                pprust::path_to_string(
-                                    &ast_trait_ref.path)).as_slice());
+                            format!("method `{}` is not a member of trait `{}`",
+                                    token::get_name(impl_item_ty.name()),
+                                    impl_trait_ref.repr(tcx)).as_slice());
                     }
                 }
             }
@@ -812,27 +801,19 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                 // corresponding type definition in the trait.
                 let opt_associated_type =
                     trait_items.iter()
-                               .find(|ti| {
-                                   ti.name() == typedef_ty.name()
-                               });
+                               .find(|ti| ti.name() == typedef_ty.name());
                 match opt_associated_type {
                     Some(associated_type) => {
                         match (associated_type, &typedef_ty) {
-                            (&ty::TypeTraitItem(_),
-                             &ty::TypeTraitItem(_)) => {}
+                            (&ty::TypeTraitItem(_), &ty::TypeTraitItem(_)) => {}
                             _ => {
                                 // This is `span_bug` as it should have
                                 // already been caught in resolve.
-                                tcx.sess
-                                   .span_bug(typedef.span,
-                                             format!("item `{}` is of a \
-                                                      different kind from \
-                                                      its trait `{}`",
-                                                     token::get_name(
-                                                        typedef_ty.name()),
-                                                     pprust::path_to_string(
-                                                        &ast_trait_ref.path))
-                                             .as_slice());
+                                tcx.sess.span_bug(
+                                    typedef.span,
+                                    format!("item `{}` is of a different kind from its trait `{}`",
+                                            token::get_name(typedef_ty.name()),
+                                            impl_trait_ref.repr(tcx)).as_slice());
                             }
                         }
                     }
@@ -845,8 +826,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                 "associated type `{}` is not a member of \
                                  trait `{}`",
                                 token::get_name(typedef_ty.name()),
-                                pprust::path_to_string(
-                                    &ast_trait_ref.path)).as_slice());
+                                impl_trait_ref.repr(tcx)).as_slice());
                     }
                 }
             }
@@ -855,7 +835,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
     // Check for missing items from trait
     let provided_methods = ty::provided_trait_methods(tcx,
-                                                      impl_trait_ref.def_id);
+                                                      impl_trait_ref.def_id());
     let mut missing_methods = Vec::new();
     for trait_item in trait_items.iter() {
         match *trait_item {
@@ -870,8 +850,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                         }
                     });
                 let is_provided =
-                    provided_methods.iter().any(
-                        |m| m.name == trait_method.name);
+                    provided_methods.iter().any(|m| m.name == trait_method.name);
                 if !is_implemented && !is_provided {
                     missing_methods.push(format!("`{}`", token::get_name(trait_method.name)));
                 }
@@ -915,7 +894,7 @@ fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
                              impl_m_span: Span,
                              impl_m_body_id: ast::NodeId,
                              trait_m: &ty::Method<'tcx>,
-                             impl_trait_ref: &ty::TraitRef<'tcx>) {
+                             impl_trait_ref: &ty::PolyTraitRef<'tcx>) {
     debug!("compare_impl_method(impl_trait_ref={})",
            impl_trait_ref.repr(tcx));
 
@@ -945,7 +924,7 @@ fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
 
     let infcx = infer::new_infer_ctxt(tcx);
 
-    let trait_to_impl_substs = &impl_trait_ref.substs;
+    let trait_to_impl_substs = impl_trait_ref.substs();
 
     // Try to give more informative error messages about self typing
     // mismatches.  Note that any mismatch will also be detected
@@ -1167,20 +1146,20 @@ fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
                     let trait_bound =
                         trait_bound.subst(tcx, &trait_to_skol_substs);
                     let infcx = infer::new_infer_ctxt(tcx);
-                    infer::mk_sub_trait_refs(&infcx,
-                                             true,
-                                             infer::Misc(impl_m_span),
-                                             trait_bound,
-                                             impl_trait_bound.clone()).is_ok()
+                    infer::mk_sub_poly_trait_refs(&infcx,
+                                                  true,
+                                                  infer::Misc(impl_m_span),
+                                                  trait_bound,
+                                                  impl_trait_bound.clone()).is_ok()
                 });
 
             if !found_match_in_trait {
                 span_err!(tcx.sess, impl_m_span, E0052,
-                    "in method `{}`, type parameter {} requires bound `{}`, which is not \
-                     required by the corresponding type parameter in the trait declaration",
-                    token::get_name(trait_m.name),
-                    i,
-                    ppaux::trait_ref_to_string(tcx, &*impl_trait_bound));
+                          "in method `{}`, type parameter {} requires bound `{}`, which is not \
+                           required by the corresponding type parameter in the trait declaration",
+                          token::get_name(trait_m.name),
+                          i,
+                          impl_trait_bound.user_string(tcx));
             }
         }
     }
@@ -1647,7 +1626,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub fn write_object_cast(&self,
                              key: ast::NodeId,
-                             trait_ref: Rc<ty::TraitRef<'tcx>>) {
+                             trait_ref: Rc<ty::PolyTraitRef<'tcx>>) {
         debug!("write_object_cast key={} trait_ref={}",
                key, trait_ref.repr(self.tcx()));
         self.inh.object_cast_map.borrow_mut().insert(key, trait_ref);
@@ -1745,7 +1724,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.register_unsize_obligations(span, &**u)
             }
             ty::UnsizeVtable(ref ty_trait, self_ty) => {
-                vtable::check_object_safety(self.tcx(), &ty_trait.principal, span);
+                vtable::check_object_safety(self.tcx(), ty_trait, span);
+
                 // If the type is `Foo+'a`, ensures that the type
                 // being cast to `Foo+'a` implements `Foo`:
                 vtable::register_object_cast_obligations(self,

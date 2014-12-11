@@ -28,7 +28,7 @@ use super::ObligationCause;
 use super::PredicateObligation;
 use super::Selection;
 use super::select::SelectionContext;
-use super::trait_ref_for_builtin_bound;
+use super::poly_trait_ref_for_builtin_bound;
 use super::Unimplemented;
 
 /// The fulfillment context is used to drive trait resolution.  It
@@ -107,7 +107,7 @@ impl<'tcx> FulfillmentContext<'tcx> {
                                   builtin_bound: ty::BuiltinBound,
                                   cause: ObligationCause<'tcx>)
     {
-        match trait_ref_for_builtin_bound(tcx, builtin_bound, ty) {
+        match poly_trait_ref_for_builtin_bound(tcx, builtin_bound, ty) {
             Ok(trait_ref) => {
                 self.register_trait_ref(tcx, trait_ref, cause);
             }
@@ -117,7 +117,7 @@ impl<'tcx> FulfillmentContext<'tcx> {
 
     pub fn register_trait_ref<'a>(&mut self,
                                   tcx: &ty::ctxt<'tcx>,
-                                  trait_ref: Rc<ty::TraitRef<'tcx>>,
+                                  trait_ref: Rc<ty::PolyTraitRef<'tcx>>,
                                   cause: ObligationCause<'tcx>)
     {
         /*!

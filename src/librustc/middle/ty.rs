@@ -479,7 +479,7 @@ pub enum MethodOrigin<'tcx> {
 pub struct MethodParam<'tcx> {
     // the precise trait reference that occurs as a bound -- this may
     // be a supertrait of what the user actually typed.
-    pub trait_ref: Rc<ty::TraitRef<'tcx>>,
+    pub trait_ref: Rc<ty::PolyTraitRef<'tcx>>,
 
     // index of uint in the list of methods for the trait
     pub method_num: uint,
@@ -489,7 +489,7 @@ pub struct MethodParam<'tcx> {
 #[deriving(Clone, Show)]
 pub struct MethodObject<'tcx> {
     // the (super)trait containing the method to be invoked
-    pub trait_ref: Rc<ty::TraitRef<'tcx>>,
+    pub trait_ref: Rc<ty::PolyTraitRef<'tcx>>,
 
     // the actual base trait id of the object
     pub object_trait_id: ast::DefId,
@@ -609,7 +609,7 @@ pub enum vtable_origin<'tcx> {
 
 // For every explicit cast into an object type, maps from the cast
 // expr to the associated trait ref.
-pub type ObjectCastMap<'tcx> = RefCell<NodeMap<Rc<ty::TraitRef<'tcx>>>>;
+pub type ObjectCastMap<'tcx> = RefCell<NodeMap<Rc<ty::PolyTraitRef<'tcx>>>>;
 
 /// A restriction that certain types must be the same size. The use of
 /// `transmute` gives rise to these restrictions.
@@ -665,7 +665,7 @@ pub struct ctxt<'tcx> {
     /// A cache for the trait_items() routine
     pub trait_items_cache: RefCell<DefIdMap<Rc<Vec<ImplOrTraitItem<'tcx>>>>>,
 
-    pub impl_trait_cache: RefCell<DefIdMap<Option<Rc<ty::TraitRef<'tcx>>>>>,
+    pub impl_trait_cache: RefCell<DefIdMap<Option<Rc<ty::PolyTraitRef<'tcx>>>>>,
 
     pub trait_refs: RefCell<NodeMap<Rc<TraitRef<'tcx>>>>,
     pub trait_defs: RefCell<DefIdMap<Rc<TraitDef<'tcx>>>>,
@@ -1308,8 +1308,21 @@ pub enum sty<'tcx> {
 #[deriving(Clone, PartialEq, Eq, Hash, Show)]
 pub struct TyTrait<'tcx> {
     // Principal trait reference.
-    pub principal: TraitRef<'tcx>, // would use Rc<TraitRef>, but it runs afoul of some static rules
+    pub principal: PolyTraitRef<'tcx>, // would use Rc<TraitRef>, but it runs afoul of some static rules
     pub bounds: ExistentialBounds
+}
+
+impl<'tcx> TyTrait<'tcx> {
+    /// Object types don't have a self-type specified. Therefore, when
+    /// we convert the principal trait-ref into a normal trait-ref,
+    /// you must give *some* self-type. A common choice is `mk_err()`
+    /// or some skolemized type.
+    pub fn principal_trait_ref_with_self_ty(&self, self_ty: Ty<'tcx>) -> Rc<ty::PolyTraitRef<'tcx>> {
+        Rc::new(ty::bind(ty::TraitRef {
+            def_id: self.principal.value.def_id,
+            substs: self.principal.value.substs.with_self_ty(self_ty),
+        }))
+    }
 }
 
 /// A complete reference to a trait. These take numerous guises in syntax,
@@ -1331,6 +1344,26 @@ pub struct TyTrait<'tcx> {
 pub struct TraitRef<'tcx> {
     pub def_id: DefId,
     pub substs: Substs<'tcx>,
+}
+
+pub type PolyTraitRef<'tcx> = Binder<TraitRef<'tcx>>;
+
+impl<'tcx> PolyTraitRef<'tcx> {
+    pub fn self_ty(&self) -> Ty<'tcx> {
+        self.value.self_ty()
+    }
+
+    pub fn def_id(&self) -> ast::DefId {
+        self.value.def_id
+    }
+
+    pub fn substs(&self) -> &Substs<'tcx> {
+        &self.value.substs
+    }
+
+    pub fn input_types(&self) -> &[Ty<'tcx>] {
+        self.value.input_types()
+    }
 }
 
 /// Binder serves as a synthetic binder for lifetimes. It is used when
@@ -1416,7 +1449,7 @@ impl<'tcx> Copy for type_err<'tcx> {}
 pub struct ParamBounds<'tcx> {
     pub region_bounds: Vec<ty::Region>,
     pub builtin_bounds: BuiltinBounds,
-    pub trait_bounds: Vec<Rc<TraitRef<'tcx>>>
+    pub trait_bounds: Vec<Rc<PolyTraitRef<'tcx>>>
 }
 
 /// Bounds suitable for an existentially quantified type parameter
@@ -1657,7 +1690,7 @@ pub enum Predicate<'tcx> {
     /// Corresponds to `where Foo : Bar<A,B,C>`. `Foo` here would be
     /// the `Self` type of the trait reference and `A`, `B`, and `C`
     /// would be the parameters in the `TypeSpace`.
-    Trait(Rc<TraitRef<'tcx>>),
+    Trait(Rc<PolyTraitRef<'tcx>>),
 
     /// where `T1 == T2`.
     Equate(/* T1 */ Ty<'tcx>, /* T2 */ Ty<'tcx>),
@@ -1680,7 +1713,7 @@ impl<'tcx> Predicate<'tcx> {
         }
     }
 
-    pub fn to_trait(&self) -> Option<Rc<TraitRef<'tcx>>> {
+    pub fn to_trait(&self) -> Option<Rc<PolyTraitRef<'tcx>>> {
         match *self {
             Predicate::Trait(ref t) => {
                 Some(t.clone())
@@ -1747,14 +1780,6 @@ impl<'tcx> TraitRef<'tcx> {
         // trait-reference, but it should eventually exclude
         // associated types.
         self.substs.types.as_slice()
-    }
-
-    pub fn has_escaping_regions(&self) -> bool {
-        self.substs.has_regions_escaping_depth(1)
-    }
-
-    pub fn has_bound_regions(&self) -> bool {
-        self.substs.has_regions_escaping_depth(0)
     }
 }
 
@@ -2160,7 +2185,7 @@ impl FlagComputation {
 
             &ty_trait(box TyTrait { ref principal, ref bounds }) => {
                 let mut computation = FlagComputation::new();
-                computation.add_substs(&principal.substs);
+                computation.add_substs(principal.substs());
                 self.add_bound_computation(&computation);
 
                 self.add_bounds(bounds);
@@ -2366,7 +2391,7 @@ pub fn mk_ctor_fn<'tcx>(cx: &ctxt<'tcx>,
 
 
 pub fn mk_trait<'tcx>(cx: &ctxt<'tcx>,
-                      principal: ty::TraitRef<'tcx>,
+                      principal: ty::PolyTraitRef<'tcx>,
                       bounds: ExistentialBounds)
                       -> Ty<'tcx> {
     // take a copy of substs so that we own the vectors inside
@@ -2439,7 +2464,7 @@ pub fn maybe_walk_ty<'tcx>(ty: Ty<'tcx>, f: |Ty<'tcx>| -> bool) {
             maybe_walk_ty(tm.ty, f);
         }
         ty_trait(box TyTrait { ref principal, .. }) => {
-            for subty in principal.substs.types.iter() {
+            for subty in principal.substs().types.iter() {
                 maybe_walk_ty(*subty, |x| f(x));
             }
         }
@@ -3182,7 +3207,7 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
 
     fn kind_bounds_to_contents<'tcx>(cx: &ctxt<'tcx>,
                                      bounds: BuiltinBounds,
-                                     traits: &[Rc<TraitRef<'tcx>>])
+                                     traits: &[Rc<PolyTraitRef<'tcx>>])
                                      -> TypeContents {
         let _i = indenter();
         let mut tc = TC::All;
@@ -3198,7 +3223,7 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
         // those inherited from traits with builtin-kind-supertraits.
         fn each_inherited_builtin_bound<'tcx, F>(cx: &ctxt<'tcx>,
                                                  bounds: BuiltinBounds,
-                                                 traits: &[Rc<TraitRef<'tcx>>],
+                                                 traits: &[Rc<PolyTraitRef<'tcx>>],
                                                  mut f: F) where
             F: FnMut(BuiltinBound),
         {
@@ -3207,7 +3232,7 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
             }
 
             each_bound_trait_and_supertraits(cx, traits, |trait_ref| {
-                let trait_def = lookup_trait_def(cx, trait_ref.def_id);
+                let trait_def = lookup_trait_def(cx, trait_ref.def_id());
                 for bound in trait_def.bounds.builtin_bounds.iter() {
                     f(bound);
                 }
@@ -4393,7 +4418,7 @@ pub fn ty_sort_string<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> String {
         ty_bare_fn(_) => "extern fn".to_string(),
         ty_closure(_) => "fn".to_string(),
         ty_trait(ref inner) => {
-            format!("trait {}", item_path_str(cx, inner.principal.def_id))
+            format!("trait {}", item_path_str(cx, inner.principal.def_id()))
         }
         ty_struct(id, _) => {
             format!("struct {}", item_path_str(cx, id))
@@ -4760,7 +4785,7 @@ pub fn trait_item_def_ids(cx: &ctxt, id: ast::DefId)
 }
 
 pub fn impl_trait_ref<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
-                            -> Option<Rc<TraitRef<'tcx>>> {
+                            -> Option<Rc<PolyTraitRef<'tcx>>> {
     memoized(&cx.impl_trait_cache, id, |id: ast::DefId| {
         if id.krate == ast::LOCAL_CRATE {
             debug!("(impl_trait_ref) searching for trait impl {}", id);
@@ -4770,7 +4795,9 @@ pub fn impl_trait_ref<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
                         ast::ItemImpl(_, _, ref opt_trait, _, _) => {
                             match opt_trait {
                                 &Some(ref t) => {
-                                    Some(ty::node_id_to_trait_ref(cx, t.ref_id))
+                                    let trait_ref =
+                                        (*ty::node_id_to_trait_ref(cx, t.ref_id)).clone();
+                                    Some(Rc::new(ty::bind(trait_ref)))
                                 }
                                 &None => None
                             }
@@ -4813,7 +4840,7 @@ pub fn try_add_builtin_trait(
 pub fn ty_to_def_id(ty: Ty) -> Option<ast::DefId> {
     match ty.sty {
         ty_trait(ref tt) =>
-            Some(tt.principal.def_id),
+            Some(tt.principal.def_id()),
         ty_struct(id, _) |
         ty_enum(id, _) |
         ty_unboxed_closure(id, _, _) =>
@@ -5073,10 +5100,10 @@ pub fn lookup_trait_def<'tcx>(cx: &ctxt<'tcx>, did: ast::DefId)
 /// Given a reference to a trait, returns the "superbounds" declared
 /// on the trait, with appropriate substitutions applied.
 pub fn predicates_for_trait_ref<'tcx>(tcx: &ctxt<'tcx>,
-                                      trait_ref: &TraitRef<'tcx>)
+                                      trait_ref: &PolyTraitRef<'tcx>)
                                       -> Vec<ty::Predicate<'tcx>>
 {
-    let trait_def = lookup_trait_def(tcx, trait_ref.def_id);
+    let trait_def = lookup_trait_def(tcx, trait_ref.def_id());
 
     debug!("bounds_for_trait_ref(trait_def={}, trait_ref={})",
            trait_def.repr(tcx), trait_ref.repr(tcx));
@@ -5149,8 +5176,9 @@ pub fn predicates_for_trait_ref<'tcx>(tcx: &ctxt<'tcx>,
         trait_def.bounds.trait_bounds
         .iter()
         .map(|bound_trait_ref| {
-            ty::TraitRef::new(bound_trait_ref.def_id,
-                              bound_trait_ref.substs.subst(tcx, &trait_ref.substs))
+            ty::bind(
+                ty::TraitRef::new(bound_trait_ref.def_id(),
+                                  bound_trait_ref.substs().subst(tcx, trait_ref.substs())))
         })
         .map(|bound_trait_ref| Rc::new(bound_trait_ref))
         .collect();
@@ -5161,9 +5189,9 @@ pub fn predicates_for_trait_ref<'tcx>(tcx: &ctxt<'tcx>,
     // The region bounds and builtin bounds do not currently introduce
     // binders so we can just substitute in a straightforward way here.
     let region_bounds =
-        trait_def.bounds.region_bounds.subst(tcx, &trait_ref.substs);
+        trait_def.bounds.region_bounds.subst(tcx, trait_ref.substs());
     let builtin_bounds =
-        trait_def.bounds.builtin_bounds.subst(tcx, &trait_ref.substs);
+        trait_def.bounds.builtin_bounds.subst(tcx, trait_ref.substs());
 
     let bounds = ty::ParamBounds {
         trait_bounds: trait_bounds,
@@ -5183,7 +5211,7 @@ pub fn predicates<'tcx>(
     let mut vec = Vec::new();
 
     for builtin_bound in bounds.builtin_bounds.iter() {
-        match traits::trait_ref_for_builtin_bound(tcx, builtin_bound, param_ty) {
+        match traits::poly_trait_ref_for_builtin_bound(tcx, builtin_bound, param_ty) {
             Ok(trait_ref) => { vec.push(Predicate::Trait(trait_ref)); }
             Err(ErrorReported) => { }
         }
@@ -5545,10 +5573,10 @@ pub fn eval_repeat_count(tcx: &ctxt, count_expr: &ast::Expr) -> uint {
 // relation on the supertraits from each bounded trait's constraint
 // list.
 pub fn each_bound_trait_and_supertraits<'tcx, F>(tcx: &ctxt<'tcx>,
-                                                 bounds: &[Rc<TraitRef<'tcx>>],
+                                                 bounds: &[Rc<PolyTraitRef<'tcx>>],
                                                  mut f: F)
                                                  -> bool where
-    F: FnMut(Rc<TraitRef<'tcx>>) -> bool,
+    F: FnMut(Rc<PolyTraitRef<'tcx>>) -> bool,
 {
     for bound_trait_ref in traits::transitive_bounds(tcx, bounds) {
         if !f(bound_trait_ref) {
@@ -5559,7 +5587,7 @@ pub fn each_bound_trait_and_supertraits<'tcx, F>(tcx: &ctxt<'tcx>,
 }
 
 pub fn object_region_bounds<'tcx>(tcx: &ctxt<'tcx>,
-                                  opt_principal: Option<&TraitRef<'tcx>>, // None for boxed closures
+                                  opt_principal: Option<&PolyTraitRef<'tcx>>, // None for closures
                                   others: BuiltinBounds)
                                   -> Vec<ty::Region>
 {
@@ -5569,8 +5597,8 @@ pub fn object_region_bounds<'tcx>(tcx: &ctxt<'tcx>,
     let open_ty = ty::mk_infer(tcx, SkolemizedTy(0));
 
     let opt_trait_ref = opt_principal.map_or(Vec::new(), |principal| {
-        let substs = principal.substs.with_self_ty(open_ty);
-        vec!(Rc::new(ty::TraitRef::new(principal.def_id, substs)))
+        let substs = principal.substs().with_self_ty(open_ty);
+        vec!(Rc::new(ty::bind(ty::TraitRef::new(principal.def_id(), substs))))
     });
 
     let param_bounds = ty::ParamBounds {
@@ -5663,7 +5691,7 @@ pub fn populate_implementations_for_type_if_necessary(tcx: &ctxt,
         // Record the trait->implementation mappings, if applicable.
         let associated_traits = csearch::get_impl_trait(tcx, impl_def_id);
         for trait_ref in associated_traits.iter() {
-            record_trait_implementation(tcx, trait_ref.def_id, impl_def_id);
+            record_trait_implementation(tcx, trait_ref.def_id(), impl_def_id);
         }
 
         // For any methods that use a default implementation, add them to
@@ -5938,11 +5966,11 @@ pub fn hash_crate_independent(tcx: &ctxt, ty: Ty, svh: &Svh) -> u64 {
                 }
                 ty_trait(box TyTrait { ref principal, bounds }) => {
                     byte!(17);
-                    did(state, principal.def_id);
+                    did(state, principal.def_id());
                     hash!(bounds);
 
                     let principal = anonymize_late_bound_regions(tcx, principal);
-                    for subty in principal.substs.types.iter() {
+                    for subty in principal.substs().types.iter() {
                         helper(tcx, *subty, svh, state);
                     }
 
@@ -6200,7 +6228,7 @@ pub fn accumulate_lifetimes_in_type(accumulator: &mut Vec<ty::Region>,
                 accumulator.push(region)
             }
             ty_trait(ref t) => {
-                accumulator.push_all(t.principal.substs.regions().as_slice());
+                accumulator.push_all(t.principal.substs().regions().as_slice());
             }
             ty_enum(_, ref substs) |
             ty_struct(_, ref substs) => {
@@ -6538,3 +6566,43 @@ pub fn can_type_implement_copy<'tcx>(tcx: &ctxt<'tcx>,
 
     Ok(())
 }
+
+pub trait RegionEscape {
+    fn has_escaping_regions(&self) -> bool {
+        self.has_regions_escaping_depth(0)
+    }
+
+    fn has_regions_escaping_depth(&self, depth: uint) -> bool;
+}
+
+impl<'tcx> RegionEscape for Ty<'tcx> {
+    fn has_regions_escaping_depth(&self, depth: uint) -> bool {
+        ty::type_escapes_depth(*self, depth)
+    }
+}
+
+impl RegionEscape for Region {
+    fn has_regions_escaping_depth(&self, depth: uint) -> bool {
+        self.escapes_depth(depth)
+    }
+}
+
+impl<'tcx> RegionEscape for TraitRef<'tcx> {
+    fn has_regions_escaping_depth(&self, depth: uint) -> bool {
+        self.substs.types.iter().any(|t| t.has_regions_escaping_depth(depth)) &&
+            self.substs.regions().iter().any(|t| t.has_regions_escaping_depth(depth))
+    }
+}
+
+impl<'tcx,T:RegionEscape> RegionEscape for Binder<T> {
+    fn has_regions_escaping_depth(&self, depth: uint) -> bool {
+        self.value.has_regions_escaping_depth(depth + 1)
+    }
+}
+
+impl<T:RegionEscape> Binder<T> {
+    pub fn has_bound_regions(&self) -> bool {
+        self.value.has_regions_escaping_depth(0)
+    }
+}
+

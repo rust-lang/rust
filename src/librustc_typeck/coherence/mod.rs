@@ -64,7 +64,7 @@ fn get_base_type_def_id<'a, 'tcx>(inference_context: &InferCtxt<'a, 'tcx>,
         }
 
         ty_trait(ref t) => {
-            Some(t.principal.def_id)
+            Some(t.principal.def_id())
         }
 
         ty_bool | ty_char | ty_int(..) | ty_uint(..) | ty_float(..) |
@@ -339,7 +339,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
 
         // Record all the trait items.
         for trait_ref in associated_traits.iter() {
-            self.add_trait_impl(trait_ref.def_id, impl_def_id);
+            self.add_trait_impl(trait_ref.def_id(), impl_def_id);
         }
 
         // For any methods that use a default implementation, add them to

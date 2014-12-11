@@ -414,7 +414,7 @@ fn parse_ty<'a, 'tcx>(st: &mut PState<'a, 'tcx>, conv: conv_did) -> Ty<'tcx> {
       }
       'x' => {
         assert_eq!(next(st), '[');
-        let trait_ref = parse_trait_ref(st, |x,y| conv(x,y));
+        let trait_ref = ty::bind(parse_trait_ref(st, |x,y| conv(x,y)));
         let bounds = parse_existential_bounds(st, |x,y| conv(x,y));
         assert_eq!(next(st), ']');
         return ty::mk_trait(st.tcx, trait_ref, bounds);
@@ -669,7 +669,7 @@ pub fn parse_predicate<'a,'tcx>(st: &mut PState<'a, 'tcx>,
                                 -> ty::Predicate<'tcx>
 {
     match next(st) {
-        't' => ty::Predicate::Trait(Rc::new(parse_trait_ref(st, conv))),
+        't' => ty::Predicate::Trait(Rc::new(ty::bind(parse_trait_ref(st, conv)))),
         'e' => ty::Predicate::Equate(parse_ty(st, |x,y| conv(x,y)),
                                      parse_ty(st, |x,y| conv(x,y))),
         'r' => ty::Predicate::RegionOutlives(parse_region(st, |x,y| conv(x,y)),
@@ -759,10 +759,12 @@ fn parse_bounds<'a, 'tcx>(st: &mut PState<'a, 'tcx>, conv: conv_did)
     loop {
         match next(st) {
             'R' => {
-                param_bounds.region_bounds.push(parse_region(st, |x, y| conv (x, y)));
+                param_bounds.region_bounds.push(
+                    parse_region(st, |x, y| conv (x, y)));
             }
             'I' => {
-                param_bounds.trait_bounds.push(Rc::new(parse_trait_ref(st, |x,y| conv(x,y))));
+                param_bounds.trait_bounds.push(
+                    Rc::new(ty::bind(parse_trait_ref(st, |x,y| conv(x,y)))));
             }
             '.' => {
                 return param_bounds;

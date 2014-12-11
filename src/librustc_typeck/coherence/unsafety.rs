@@ -45,7 +45,7 @@ impl<'cx, 'tcx,'v> visit::Visitor<'v> for UnsafetyChecker<'cx, 'tcx> {
                     }
 
                     Some(trait_ref) => {
-                        let trait_def = ty::lookup_trait_def(self.tcx, trait_ref.def_id);
+                        let trait_def = ty::lookup_trait_def(self.tcx, trait_ref.def_id());
                         match (trait_def.unsafety, unsafety) {
                             (ast::Unsafety::Normal, ast::Unsafety::Unsafe) => {
                                 self.tcx.sess.span_err(

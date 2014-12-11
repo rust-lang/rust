@@ -18,6 +18,7 @@ use check::{check_expr_coercable_to_type, demand, FnCtxt, Expectation};
 use check::{instantiate_path, structurally_resolved_type, valid_range_bounds};
 use require_same_types;
 use util::nodemap::FnvHashMap;
+use util::ppaux::Repr;
 
 use std::cmp;
 use std::collections::hash_map::{Occupied, Vacant};
@@ -32,6 +33,10 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                            pat: &ast::Pat, expected: Ty<'tcx>) {
     let fcx = pcx.fcx;
     let tcx = pcx.fcx.ccx.tcx;
+
+    debug!("check_pat(pat={},expected={})",
+           pat.repr(tcx),
+           expected.repr(tcx));
 
     match pat.node {
         ast::PatWild(_) => {

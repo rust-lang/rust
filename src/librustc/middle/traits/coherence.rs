@@ -65,15 +65,15 @@ pub fn impl_is_local(tcx: &ty::ctxt,
     debug!("trait_ref={}", trait_ref.repr(tcx));
 
     // If the trait is local to the crate, ok.
-    if trait_ref.def_id.krate == ast::LOCAL_CRATE {
+    if trait_ref.value.def_id.krate == ast::LOCAL_CRATE {
         debug!("trait {} is local to current crate",
-               trait_ref.def_id.repr(tcx));
+               trait_ref.value.def_id.repr(tcx));
         return true;
     }
 
     // Otherwise, at least one of the input types must be local to the
     // crate.
-    trait_ref.input_types().iter().any(|&t| ty_is_local(tcx, t))
+    trait_ref.value.input_types().iter().any(|&t| ty_is_local(tcx, t))
 }
 
 pub fn ty_is_local<'tcx>(tcx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
@@ -143,7 +143,7 @@ pub fn ty_is_local<'tcx>(tcx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
         }
 
         ty::ty_trait(ref tt) => {
-            tt.principal.def_id.krate == ast::LOCAL_CRATE
+            tt.principal.value.def_id.krate == ast::LOCAL_CRATE
         }
 
         // Type parameters may be bound to types that are not local to

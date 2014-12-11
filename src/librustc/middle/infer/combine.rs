@@ -301,7 +301,21 @@ pub trait Combine<'tcx> {
     fn trait_refs(&self,
                   a: &ty::TraitRef<'tcx>,
                   b: &ty::TraitRef<'tcx>)
-                  -> cres<'tcx, ty::TraitRef<'tcx>>;
+                  -> cres<'tcx, ty::TraitRef<'tcx>>
+    {
+        // Different traits cannot be related
+        if a.def_id != b.def_id {
+            Err(ty::terr_traits(expected_found(self, a.def_id, b.def_id)))
+        } else {
+            let substs = try!(self.substs(a.def_id, &a.substs, &b.substs));
+            Ok(ty::TraitRef { def_id: a.def_id, substs: substs })
+        }
+    }
+
+    fn poly_trait_refs(&self,
+                       a: &ty::PolyTraitRef<'tcx>,
+                       b: &ty::PolyTraitRef<'tcx>)
+                       -> cres<'tcx, ty::PolyTraitRef<'tcx>>;
     // this must be overridden to do correctly, so as to account for higher-ranked
     // behavior
 }
@@ -410,7 +424,7 @@ pub fn super_tys<'tcx, C: Combine<'tcx>>(this: &C,
       (&ty::ty_trait(ref a_),
        &ty::ty_trait(ref b_)) => {
           debug!("Trying to match traits {} and {}", a, b);
-          let principal = try!(this.trait_refs(&a_.principal, &b_.principal));
+          let principal = try!(this.poly_trait_refs(&a_.principal, &b_.principal));
           let bounds = try!(this.existential_bounds(a_.bounds, b_.bounds));
           Ok(ty::mk_trait(tcx, principal, bounds))
       }

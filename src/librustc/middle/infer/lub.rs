@@ -122,8 +122,8 @@ impl<'f, 'tcx> Combine<'tcx> for Lub<'f, 'tcx> {
         super_lattice_tys(self, a, b)
     }
 
-    fn trait_refs(&self, a: &ty::TraitRef<'tcx>, b: &ty::TraitRef<'tcx>)
-                  -> cres<'tcx, ty::TraitRef<'tcx>> {
+    fn poly_trait_refs(&self, a: &ty::PolyTraitRef<'tcx>, b: &ty::PolyTraitRef<'tcx>)
+                       -> cres<'tcx, ty::PolyTraitRef<'tcx>> {
         self.higher_ranked_lub(a, b)
     }
 }

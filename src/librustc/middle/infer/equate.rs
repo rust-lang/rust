@@ -134,14 +134,16 @@ impl<'f, 'tcx> Combine<'tcx> for Equate<'f, 'tcx> {
     }
 
     fn fn_sigs(&self, a: &ty::FnSig<'tcx>, b: &ty::FnSig<'tcx>)
-               -> cres<'tcx, ty::FnSig<'tcx>> {
+               -> cres<'tcx, ty::FnSig<'tcx>>
+    {
         try!(self.sub().fn_sigs(a, b));
         self.sub().fn_sigs(b, a)
     }
 
-    fn trait_refs(&self, a: &ty::TraitRef<'tcx>, b: &ty::TraitRef<'tcx>)
-                  -> cres<'tcx, ty::TraitRef<'tcx>> {
-        try!(self.sub().trait_refs(a, b));
-        self.sub().trait_refs(b, a)
+    fn poly_trait_refs(&self, a: &ty::PolyTraitRef<'tcx>, b: &ty::PolyTraitRef<'tcx>)
+                       -> cres<'tcx, ty::PolyTraitRef<'tcx>>
+    {
+        try!(self.sub().poly_trait_refs(a, b));
+        self.sub().poly_trait_refs(b, a)
     }
 }

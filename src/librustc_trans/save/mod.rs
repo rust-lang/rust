@@ -941,14 +941,14 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
             ty::MethodTypeParam(ref mp) => {
                 // method invoked on a type parameter
                 let trait_item = ty::trait_item(&self.analysis.ty_cx,
-                                                mp.trait_ref.def_id,
+                                                mp.trait_ref.def_id(),
                                                 mp.method_num);
                 (None, Some(trait_item.def_id()))
             }
             ty::MethodTraitObject(ref mo) => {
                 // method invoked on a trait instance
                 let trait_item = ty::trait_item(&self.analysis.ty_cx,
-                                                mo.trait_ref.def_id,
+                                                mo.trait_ref.def_id(),
                                                 mo.method_num);
                 (None, Some(trait_item.def_id()))
             }

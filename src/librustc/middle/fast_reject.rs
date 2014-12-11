@@ -60,7 +60,7 @@ pub fn simplify_type(tcx: &ty::ctxt,
         ty::ty_vec(..) => Some(VecSimplifiedType),
         ty::ty_ptr(_) => Some(PtrSimplifiedType),
         ty::ty_trait(ref trait_info) => {
-            Some(TraitSimplifiedType(trait_info.principal.def_id))
+            Some(TraitSimplifiedType(trait_info.principal.value.def_id))
         }
         ty::ty_struct(def_id, _) => {
             Some(StructSimplifiedType(def_id))

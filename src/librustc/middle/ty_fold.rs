@@ -584,16 +584,6 @@ pub fn super_fold_trait_ref<'tcx, T: TypeFolder<'tcx>>(this: &mut T,
                                                        t: &ty::TraitRef<'tcx>)
                                                        -> ty::TraitRef<'tcx>
 {
-    this.enter_region_binder();
-    let result = super_fold_trait_ref_contents(this, t);
-    this.exit_region_binder();
-    result
-}
-
-pub fn super_fold_trait_ref_contents<'tcx, T: TypeFolder<'tcx>>(this: &mut T,
-                                                                t: &ty::TraitRef<'tcx>)
-                                                                -> ty::TraitRef<'tcx>
-{
     ty::TraitRef {
         def_id: t.def_id,
         substs: t.substs.fold_with(this),
@@ -719,12 +709,6 @@ pub trait HigherRankedFoldable<'tcx>: Repr<'tcx> {
 impl<'tcx> HigherRankedFoldable<'tcx> for ty::FnSig<'tcx> {
     fn fold_contents<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> ty::FnSig<'tcx> {
         super_fold_fn_sig_contents(folder, self)
-    }
-}
-
-impl<'tcx> HigherRankedFoldable<'tcx> for ty::TraitRef<'tcx> {
-    fn fold_contents<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> ty::TraitRef<'tcx> {
-        super_fold_trait_ref_contents(folder, self)
     }
 }
 

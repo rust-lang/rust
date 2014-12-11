@@ -1785,7 +1785,7 @@ impl LintPass for Stability {
                                 ..
                             }) => {
                                 ty::trait_item(cx.tcx,
-                                               trait_ref.def_id,
+                                               trait_ref.def_id(),
                                                index).def_id()
                             }
                         }

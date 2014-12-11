@@ -28,7 +28,7 @@ use super::{util};
 use middle::fast_reject;
 use middle::mem_categorization::Typer;
 use middle::subst::{Subst, Substs, VecPerParamSpace};
-use middle::ty::{mod, Ty};
+use middle::ty::{mod, Ty, RegionEscape};
 use middle::infer;
 use middle::infer::{InferCtxt, TypeSkolemizer};
 use middle::ty_fold::TypeFoldable;
@@ -74,14 +74,14 @@ struct TraitObligationStack<'prev, 'tcx: 'prev> {
 
     /// Trait ref from `obligation` but skolemized with the
     /// selection-context's skolemizer. Used to check for recursion.
-    skol_trait_ref: Rc<ty::TraitRef<'tcx>>,
+    skol_trait_ref: Rc<ty::PolyTraitRef<'tcx>>,
 
     previous: Option<&'prev TraitObligationStack<'prev, 'tcx>>
 }
 
 #[deriving(Clone)]
 pub struct SelectionCache<'tcx> {
-    hashmap: RefCell<HashMap<Rc<ty::TraitRef<'tcx>>,
+    hashmap: RefCell<HashMap<Rc<ty::PolyTraitRef<'tcx>>,
                              SelectionResult<'tcx, Candidate<'tcx>>>>,
 }
 
@@ -347,13 +347,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // This suffices to allow chains like `FnMut` implemented in
         // terms of `Fn` etc, but we could probably make this more
         // precise still.
-        let input_types = stack.skol_trait_ref.input_types();
+        let input_types = stack.skol_trait_ref.value.input_types();
         let unbound_input_types = input_types.iter().any(|&t| ty::type_is_skolemized(t));
         if
             unbound_input_types &&
              (self.intercrate ||
               stack.iter().skip(1).any(
-                  |prev| stack.skol_trait_ref.def_id == prev.skol_trait_ref.def_id))
+                  |prev| stack.skol_trait_ref.value.def_id == prev.skol_trait_ref.value.def_id))
         {
             debug!("evaluate_stack({}) --> unbound argument, recursion -->  ambiguous",
                    stack.skol_trait_ref.repr(self.tcx()));
@@ -569,7 +569,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     }
 
     fn pick_candidate_cache(&self,
-                            cache_skol_trait_ref: &Rc<ty::TraitRef<'tcx>>)
+                            cache_skol_trait_ref: &Rc<ty::PolyTraitRef<'tcx>>)
                             -> &SelectionCache<'tcx>
     {
         // High-level idea: we have to decide whether to consult the
@@ -591,7 +591,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // If the trait refers to any parameters in scope, then use
         // the cache of the param-environment.
         if
-            cache_skol_trait_ref.input_types().iter().any(
+            cache_skol_trait_ref.value.input_types().iter().any(
                 |&t| ty::type_has_self(t) || ty::type_has_params(t))
         {
             return &self.param_env.selection_cache;
@@ -604,7 +604,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // See the discussion in doc.rs for more details.
         if
             !self.param_env.caller_bounds.is_empty() &&
-            cache_skol_trait_ref.input_types().iter().any(
+            cache_skol_trait_ref.value.input_types().iter().any(
                 |&t| ty::type_has_ty_infer(t))
         {
             return &self.param_env.selection_cache;
@@ -615,7 +615,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     }
 
     fn check_candidate_cache(&mut self,
-                             cache_skol_trait_ref: Rc<ty::TraitRef<'tcx>>)
+                             cache_skol_trait_ref: Rc<ty::PolyTraitRef<'tcx>>)
                              -> Option<SelectionResult<'tcx, Candidate<'tcx>>>
     {
         let cache = self.pick_candidate_cache(&cache_skol_trait_ref);
@@ -624,7 +624,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     }
 
     fn insert_candidate_cache(&mut self,
-                              cache_skol_trait_ref: Rc<ty::TraitRef<'tcx>>,
+                              cache_skol_trait_ref: Rc<ty::PolyTraitRef<'tcx>>,
                               candidate: SelectionResult<'tcx, Candidate<'tcx>>)
     {
         let cache = self.pick_candidate_cache(&cache_skol_trait_ref);
@@ -648,7 +648,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // Other bounds. Consider both in-scope bounds from fn decl
         // and applicable impls. There is a certain set of precedence rules here.
 
-        match self.tcx().lang_items.to_builtin_kind(obligation.trait_ref.def_id) {
+        match self.tcx().lang_items.to_builtin_kind(obligation.trait_ref.value.def_id) {
             Some(ty::BoundCopy) => {
                 debug!("obligation self ty is {}",
                        obligation.self_ty().repr(self.tcx()));
@@ -696,7 +696,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         debug!("assemble_candidates_from_caller_bounds({})",
                obligation.repr(self.tcx()));
 
-        let caller_trait_refs: Vec<Rc<ty::TraitRef>> =
+        let caller_trait_refs: Vec<_> =
             self.param_env.caller_bounds.predicates.iter()
             .filter_map(|o| o.to_trait())
             .collect();
@@ -731,7 +731,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                            candidates: &mut CandidateSet<'tcx>)
                                            -> Result<(),SelectionError<'tcx>>
     {
-        let kind = match self.fn_family_trait_kind(obligation.trait_ref.def_id) {
+        let kind = match self.fn_family_trait_kind(obligation.trait_ref.value.def_id) {
             Some(k) => k,
             None => { return Ok(()); }
         };
@@ -779,7 +779,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // We provide a `Fn` impl for fn pointers. There is no need to provide
         // the other traits (e.g. `FnMut`) since those are provided by blanket
         // impls.
-        if Some(obligation.trait_ref.def_id) != self.tcx().lang_items.fn_trait() {
+        if Some(obligation.trait_ref.value.def_id) != self.tcx().lang_items.fn_trait() {
             return Ok(());
         }
 
@@ -814,7 +814,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                       candidates: &mut CandidateSet<'tcx>)
                                       -> Result<(), SelectionError<'tcx>>
     {
-        let all_impls = self.all_impls(obligation.trait_ref.def_id);
+        let all_impls = self.all_impls(obligation.trait_ref.value.def_id);
         for &impl_def_id in all_impls.iter() {
             self.infcx.probe(|| {
                 match self.match_impl(impl_def_id, obligation) {
@@ -926,8 +926,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     let origin =
                         infer::RelateOutputImplTypes(stack.obligation.cause.span);
                     self.infcx
-                        .sub_trait_refs(false, origin,
-                                        impl_trait_ref, vt.bound.clone())
+                        .sub_poly_trait_refs(false, origin, impl_trait_ref, vt.bound.clone())
                         .is_ok()
                 })
             }
@@ -1071,26 +1070,20 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
             }
 
-            ty::ty_trait(box ty::TyTrait { ref principal, bounds }) => {
+            ty::ty_trait(ref data) => {
                 match bound {
                     ty::BoundSized => {
                         Err(Unimplemented)
                     }
                     ty::BoundCopy | ty::BoundSync | ty::BoundSend => {
-                        if bounds.builtin_bounds.contains(&bound) {
+                        if data.bounds.builtin_bounds.contains(&bound) {
                             Ok(If(Vec::new()))
                         } else {
                             // Recursively check all supertraits to find out if any further
                             // bounds are required and thus we must fulfill.
-                            // We have to create a temp trait ref here since TyTraits don't
-                            // have actual self type info (which is required for the
-                            // supertraits iterator).
-                            let tmp_tr = Rc::new(ty::TraitRef {
-                                def_id: principal.def_id,
-                                substs: principal.substs.with_self_ty(ty::mk_err())
-                            });
+                            let tmp_tr = data.principal_trait_ref_with_self_ty(ty::mk_err());
                             for tr in util::supertraits(self.tcx(), tmp_tr) {
-                                let td = ty::lookup_trait_def(self.tcx(), tr.def_id);
+                                let td = ty::lookup_trait_def(self.tcx(), tr.value.def_id);
 
                                 if td.bounds.builtin_bounds.contains(&bound) {
                                     return Ok(If(Vec::new()))
@@ -1534,10 +1527,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 vec![],
                 vec![],
                 self_ty);
-        let trait_ref = Rc::new(ty::TraitRef {
-            def_id: obligation.trait_ref.def_id,
+        let trait_ref = Rc::new(ty::bind(ty::TraitRef {
+            def_id: obligation.trait_ref.def_id(),
             substs: substs,
-        });
+        }));
 
         let () =
             try!(self.confirm(obligation.cause,
@@ -1577,10 +1570,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 vec![],
                 vec![],
                 obligation.self_ty());
-        let trait_ref = Rc::new(ty::TraitRef {
-            def_id: obligation.trait_ref.def_id,
+        let trait_ref = Rc::new(ty::bind(ty::TraitRef {
+            def_id: obligation.trait_ref.def_id(),
             substs: substs,
-        });
+        }));
 
         debug!("confirm_unboxed_closure_candidate(closure_def_id={}, trait_ref={})",
                closure_def_id.repr(self.tcx()),
@@ -1650,7 +1643,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     fn fast_reject_trait_refs(&mut self,
                               obligation: &TraitObligation,
-                              impl_trait_ref: &ty::TraitRef)
+                              impl_trait_ref: &ty::PolyTraitRef)
                               -> bool
     {
         // We can avoid creating type variables and doing the full
@@ -1673,7 +1666,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     fn match_trait_refs(&mut self,
                         obligation: &TraitObligation<'tcx>,
-                        trait_ref: Rc<ty::TraitRef<'tcx>>)
+                        trait_ref: Rc<ty::PolyTraitRef<'tcx>>)
                         -> Result<(),()>
     {
         debug!("match_trait_refs: obligation={} trait_ref={}",
@@ -1681,10 +1674,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                trait_ref.repr(self.tcx()));
 
         let origin = infer::RelateOutputImplTypes(obligation.cause.span);
-        match self.infcx.sub_trait_refs(false,
-                                        origin,
-                                        trait_ref,
-                                        obligation.trait_ref.clone()) {
+        match self.infcx.sub_poly_trait_refs(false,
+                                             origin,
+                                             trait_ref,
+                                             obligation.trait_ref.clone()) {
             Ok(()) => Ok(()),
             Err(_) => Err(()),
         }
@@ -1783,7 +1776,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn confirm_impl_vtable(&mut self,
                            impl_def_id: ast::DefId,
                            obligation_cause: ObligationCause<'tcx>,
-                           obligation_trait_ref: Rc<ty::TraitRef<'tcx>>,
+                           obligation_trait_ref: Rc<ty::PolyTraitRef<'tcx>>,
                            substs: &Substs<'tcx>)
                            -> Result<(), SelectionError<'tcx>>
     {
@@ -1814,17 +1807,17 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// we report an error to the user.
     fn confirm(&mut self,
                obligation_cause: ObligationCause,
-               obligation_trait_ref: Rc<ty::TraitRef<'tcx>>,
-               expected_trait_ref: Rc<ty::TraitRef<'tcx>>)
+               obligation_trait_ref: Rc<ty::PolyTraitRef<'tcx>>,
+               expected_trait_ref: Rc<ty::PolyTraitRef<'tcx>>)
                -> Result<(), SelectionError<'tcx>>
     {
         let origin = infer::RelateOutputImplTypes(obligation_cause.span);
 
         let obligation_trait_ref = obligation_trait_ref.clone();
-        match self.infcx.sub_trait_refs(false,
-                                        origin,
-                                        expected_trait_ref.clone(),
-                                        obligation_trait_ref.clone()) {
+        match self.infcx.sub_poly_trait_refs(false,
+                                             origin,
+                                             expected_trait_ref.clone(),
+                                             obligation_trait_ref.clone()) {
             Ok(()) => Ok(()),
             Err(e) => Err(OutputTypeParameterMismatch(expected_trait_ref, obligation_trait_ref, e))
         }

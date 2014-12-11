@@ -1647,13 +1647,13 @@ impl<'tcx> Resolvable<'tcx> for Ty<'tcx> {
     }
 }
 
-impl<'tcx> Resolvable<'tcx> for Rc<ty::TraitRef<'tcx>> {
+impl<'tcx> Resolvable<'tcx> for Rc<ty::PolyTraitRef<'tcx>> {
     fn resolve<'a>(&self, infcx: &InferCtxt<'a, 'tcx>)
-                   -> Rc<ty::TraitRef<'tcx>> {
+                   -> Rc<ty::PolyTraitRef<'tcx>> {
         Rc::new(infcx.resolve_type_vars_if_possible(&**self))
     }
     fn contains_error(&self) -> bool {
-        ty::trait_ref_contains_error(&**self)
+        ty::trait_ref_contains_error(&self.value)
     }
 }
 

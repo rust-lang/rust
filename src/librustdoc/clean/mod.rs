@@ -575,6 +575,12 @@ impl Clean<TyParamBound> for ty::BuiltinBound {
     }
 }
 
+impl<'tcx> Clean<TyParamBound> for ty::PolyTraitRef<'tcx> {
+    fn clean(&self, cx: &DocContext) -> TyParamBound {
+        self.value.clean(cx)
+    }
+}
+
 impl<'tcx> Clean<TyParamBound> for ty::TraitRef<'tcx> {
     fn clean(&self, cx: &DocContext) -> TyParamBound {
         let tcx = match cx.tcx_opt() {
@@ -1391,8 +1397,10 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
             }
             ty::ty_struct(did, ref substs) |
             ty::ty_enum(did, ref substs) |
-            ty::ty_trait(box ty::TyTrait { principal: ty::TraitRef { def_id: did, ref substs },
-                                           .. }) => {
+            ty::ty_trait(box ty::TyTrait {
+                principal: ty::Binder { value: ty::TraitRef { def_id: did, ref substs } },
+                .. }) =>
+            {
                 let fqn = csearch::get_item_path(cx.tcx(), did);
                 let fqn: Vec<String> = fqn.into_iter().map(|i| {
                     i.to_string()

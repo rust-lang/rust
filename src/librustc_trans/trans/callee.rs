@@ -426,7 +426,7 @@ pub fn trans_fn_ref_with_substs<'blk, 'tcx>(
 
                     // Compute the first substitution
                     let first_subst =
-                        ty::make_substs_for_receiver_types(tcx, &*trait_ref, &*method)
+                        ty::make_substs_for_receiver_types(tcx, &trait_ref.value, &*method)
                         .erase_regions();
 
                     // And compose them
@@ -435,7 +435,7 @@ pub fn trans_fn_ref_with_substs<'blk, 'tcx>(
                     debug!("trans_fn_with_vtables - default method: \
                             substs = {}, trait_subst = {}, \
                             first_subst = {}, new_subst = {}",
-                           substs.repr(tcx), trait_ref.substs.repr(tcx),
+                           substs.repr(tcx), trait_ref.substs().repr(tcx),
                            first_subst.repr(tcx), new_substs.repr(tcx));
 
                     (true, source_id, new_substs)
