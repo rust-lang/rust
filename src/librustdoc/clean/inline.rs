@@ -281,7 +281,7 @@ fn build_impl(cx: &DocContext, tcx: &ty::ctxt,
     // If this is an impl for a #[doc(hidden)] trait, be sure to not inline it.
     match associated_trait {
         Some(ref t) => {
-            let trait_attrs = load_attrs(cx, tcx, t.def_id);
+            let trait_attrs = load_attrs(cx, tcx, t.def_id());
             if trait_attrs.iter().any(|a| is_doc_hidden(a)) {
                 return None
             }

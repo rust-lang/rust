@@ -142,7 +142,7 @@ pub fn trans_method_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                             span,
                                             (*trait_ref).clone());
             debug!("origin = {}", origin.repr(bcx.tcx()));
-            trans_monomorphized_callee(bcx, method_call, trait_ref.def_id,
+            trans_monomorphized_callee(bcx, method_call, trait_ref.def_id(),
                                        method_num, origin)
         }
 
@@ -239,8 +239,8 @@ pub fn trans_static_method_callee(bcx: Block,
                                              rcvr_assoc,
                                              Vec::new()));
     debug!("trait_substs={}", trait_substs.repr(bcx.tcx()));
-    let trait_ref = Rc::new(ty::TraitRef { def_id: trait_id,
-                                           substs: trait_substs });
+    let trait_ref = Rc::new(ty::bind(ty::TraitRef { def_id: trait_id,
+                                                    substs: trait_substs }));
     let vtbl = fulfill_obligation(bcx.ccx(),
                                   DUMMY_SP,
                                   trait_ref);
@@ -515,7 +515,7 @@ pub fn trans_trait_callee_from_llval<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 /// This will hopefully change now that DST is underway.
 pub fn get_vtable<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                               box_ty: Ty<'tcx>,
-                              trait_ref: Rc<ty::TraitRef<'tcx>>)
+                              trait_ref: Rc<ty::PolyTraitRef<'tcx>>)
                               -> ValueRef
 {
     debug!("get_vtable(box_ty={}, trait_ref={})",
@@ -618,7 +618,7 @@ fn emit_vtable_methods<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let tcx = ccx.tcx();
 
     let trt_id = match ty::impl_trait_ref(tcx, impl_id) {
-        Some(t_id) => t_id.def_id,
+        Some(t_id) => t_id.def_id(),
         None       => ccx.sess().bug("make_impl_vtable: don't know how to \
                                       make a vtable for a type impl!")
     };
@@ -670,7 +670,7 @@ fn emit_vtable_methods<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 pub fn trans_trait_cast<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                     datum: Datum<'tcx, Expr>,
                                     id: ast::NodeId,
-                                    trait_ref: Rc<ty::TraitRef<'tcx>>,
+                                    trait_ref: Rc<ty::PolyTraitRef<'tcx>>,
                                     dest: expr::Dest)
                                     -> Block<'blk, 'tcx> {
     let mut bcx = bcx;

@@ -47,7 +47,7 @@ struct StackEntry<'tcx> {
 
 pub fn elaborate_trait_ref<'cx, 'tcx>(
     tcx: &'cx ty::ctxt<'tcx>,
-    trait_ref: Rc<ty::TraitRef<'tcx>>)
+    trait_ref: Rc<ty::PolyTraitRef<'tcx>>)
     -> Elaborator<'cx, 'tcx>
 {
     elaborate_predicates(tcx, vec![ty::Predicate::Trait(trait_ref)])
@@ -55,7 +55,7 @@ pub fn elaborate_trait_ref<'cx, 'tcx>(
 
 pub fn elaborate_trait_refs<'cx, 'tcx>(
     tcx: &'cx ty::ctxt<'tcx>,
-    trait_refs: &[Rc<ty::TraitRef<'tcx>>])
+    trait_refs: &[Rc<ty::PolyTraitRef<'tcx>>])
     -> Elaborator<'cx, 'tcx>
 {
     let predicates = trait_refs.iter()
@@ -174,7 +174,7 @@ pub struct Supertraits<'cx, 'tcx:'cx> {
 }
 
 pub fn supertraits<'cx, 'tcx>(tcx: &'cx ty::ctxt<'tcx>,
-                              trait_ref: Rc<ty::TraitRef<'tcx>>)
+                              trait_ref: Rc<ty::PolyTraitRef<'tcx>>)
                               -> Supertraits<'cx, 'tcx>
 {
     let elaborator = elaborate_trait_ref(tcx, trait_ref);
@@ -182,15 +182,15 @@ pub fn supertraits<'cx, 'tcx>(tcx: &'cx ty::ctxt<'tcx>,
 }
 
 pub fn transitive_bounds<'cx, 'tcx>(tcx: &'cx ty::ctxt<'tcx>,
-                                    bounds: &[Rc<ty::TraitRef<'tcx>>])
+                                    bounds: &[Rc<ty::PolyTraitRef<'tcx>>])
                                     -> Supertraits<'cx, 'tcx>
 {
     let elaborator = elaborate_trait_refs(tcx, bounds);
     Supertraits { elaborator: elaborator }
 }
 
-impl<'cx, 'tcx> Iterator<Rc<ty::TraitRef<'tcx>>> for Supertraits<'cx, 'tcx> {
-    fn next(&mut self) -> Option<Rc<ty::TraitRef<'tcx>>> {
+impl<'cx, 'tcx> Iterator<Rc<ty::PolyTraitRef<'tcx>>> for Supertraits<'cx, 'tcx> {
+    fn next(&mut self) -> Option<Rc<ty::PolyTraitRef<'tcx>>> {
         loop {
             match self.elaborator.next() {
                 None => {
@@ -266,18 +266,18 @@ pub fn predicates_for_generics<'tcx>(tcx: &ty::ctxt<'tcx>,
     })
 }
 
-pub fn trait_ref_for_builtin_bound<'tcx>(
+pub fn poly_trait_ref_for_builtin_bound<'tcx>(
     tcx: &ty::ctxt<'tcx>,
     builtin_bound: ty::BuiltinBound,
     param_ty: Ty<'tcx>)
-    -> Result<Rc<ty::TraitRef<'tcx>>, ErrorReported>
+    -> Result<Rc<ty::PolyTraitRef<'tcx>>, ErrorReported>
 {
     match tcx.lang_items.from_builtin_kind(builtin_bound) {
         Ok(def_id) => {
-            Ok(Rc::new(ty::TraitRef {
+            Ok(Rc::new(ty::bind(ty::TraitRef {
                 def_id: def_id,
                 substs: Substs::empty().with_self_ty(param_ty)
-            }))
+            })))
         }
         Err(e) => {
             tcx.sess.err(e.as_slice());
@@ -294,7 +294,7 @@ pub fn predicate_for_builtin_bound<'tcx>(
     param_ty: Ty<'tcx>)
     -> Result<PredicateObligation<'tcx>, ErrorReported>
 {
-    let trait_ref = try!(trait_ref_for_builtin_bound(tcx, builtin_bound, param_ty));
+    let trait_ref = try!(poly_trait_ref_for_builtin_bound(tcx, builtin_bound, param_ty));
     Ok(Obligation {
         cause: cause,
         recursion_depth: recursion_depth,
@@ -306,14 +306,14 @@ pub fn predicate_for_builtin_bound<'tcx>(
 /// of caller obligations), search through the trait and supertraits to find one where `test(d)` is
 /// true, where `d` is the def-id of the trait/supertrait. If any is found, return `Some(p)` where
 /// `p` is the path to that trait/supertrait. Else `None`.
-pub fn search_trait_and_supertraits_from_bound<'tcx, F>(tcx: &ty::ctxt<'tcx>,
-                                                        caller_bound: Rc<ty::TraitRef<'tcx>>,
-                                                        mut test: F)
-                                                        -> Option<VtableParamData<'tcx>> where
-    F: FnMut(ast::DefId) -> bool,
+pub fn search_trait_and_supertraits_from_bound<'tcx,F>(tcx: &ty::ctxt<'tcx>,
+                                                       caller_bound: Rc<ty::PolyTraitRef<'tcx>>,
+                                                       mut test: F)
+                                                       -> Option<VtableParamData<'tcx>>
+    where F: FnMut(ast::DefId) -> bool,
 {
     for bound in transitive_bounds(tcx, &[caller_bound]) {
-        if test(bound.def_id) {
+        if test(bound.def_id()) {
             let vtable_param = VtableParamData { bound: bound };
             return Some(vtable_param);
         }

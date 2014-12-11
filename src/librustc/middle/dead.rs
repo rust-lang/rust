@@ -112,7 +112,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
                         ..
                     }) => {
                         let trait_item = ty::trait_item(self.tcx,
-                                                        trait_ref.def_id,
+                                                        trait_ref.def_id(),
                                                         index);
                         match trait_item {
                             ty::MethodTraitItem(method) => {

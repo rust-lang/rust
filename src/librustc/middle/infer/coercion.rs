@@ -354,7 +354,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 }
                 (_, &ty::ty_trait(box ty::TyTrait { ref principal, bounds })) => {
                     // FIXME what is the purpose of `ty`?
-                    let ty = ty::mk_trait(tcx, (*principal).clone(), bounds);
+                    let ty = ty::mk_trait(tcx, principal.clone(), bounds);
                     Some((ty, ty::UnsizeVtable(ty::TyTrait { principal: (*principal).clone(),
                                                              bounds: bounds },
                                                ty_a)))
@@ -464,7 +464,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 ty::ty_trait(box ty::TyTrait { ref principal, bounds }) => {
                     debug!("mutbl={} b_mutbl={}", mutbl, b_mutbl);
                     // FIXME what is purpose of this type `tr`?
-                    let tr = ty::mk_trait(tcx, (*principal).clone(), bounds);
+                    let tr = ty::mk_trait(tcx, principal.clone(), bounds);
                     try!(self.subtype(mk_ty(tr), b));
                     Ok(Some(AdjustDerefRef(AutoDerefRef {
                         autoderefs: 1,

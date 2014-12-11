@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use check::{FnCtxt, structurally_resolved_type};
-use middle::subst::{SelfSpace, FnSpace};
+use middle::subst::{FnSpace};
 use middle::traits;
 use middle::traits::{SelectionError, OutputTypeParameterMismatch, Overflow, Unimplemented};
 use middle::traits::{Obligation, ObligationCause};
@@ -44,7 +44,7 @@ pub fn check_object_cast<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
             // Ensure that if ~T is cast to ~Trait, then T : Trait
             push_cast_obligation(fcx, cast_expr, object_trait, referent_ty);
-            check_object_safety(fcx.tcx(), &object_trait.principal, source_expr.span);
+            check_object_safety(fcx.tcx(), object_trait, source_expr.span);
         }
 
         (&ty::ty_rptr(referent_region, ty::mt { ty: referent_ty,
@@ -68,7 +68,7 @@ pub fn check_object_cast<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                target_region,
                                referent_region);
 
-                check_object_safety(fcx.tcx(), &object_trait.principal, source_expr.span);
+                check_object_safety(fcx.tcx(), object_trait, source_expr.span);
             }
         }
 
@@ -132,24 +132,19 @@ pub fn check_object_cast<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 // self by value, has no type parameters and does not use the `Self` type, except
 // in self position.
 pub fn check_object_safety<'tcx>(tcx: &ty::ctxt<'tcx>,
-                                 object_trait: &ty::TraitRef<'tcx>,
-                                 span: Span) {
-
-    let mut object = object_trait.clone();
-    if object.substs.types.len(SelfSpace) == 0 {
-        object.substs.types.push(SelfSpace, ty::mk_err());
-    }
-
-    let object = Rc::new(object);
-    for tr in traits::supertraits(tcx, object) {
+                                 object_trait: &ty::TyTrait<'tcx>,
+                                 span: Span)
+{
+    let object_trait_ref = object_trait.principal_trait_ref_with_self_ty(ty::mk_err());
+    for tr in traits::supertraits(tcx, object_trait_ref) {
         check_object_safety_inner(tcx, &*tr, span);
     }
 }
 
 fn check_object_safety_inner<'tcx>(tcx: &ty::ctxt<'tcx>,
-                                 object_trait: &ty::TraitRef<'tcx>,
+                                 object_trait: &ty::PolyTraitRef<'tcx>,
                                  span: Span) {
-    let trait_items = ty::trait_items(tcx, object_trait.def_id);
+    let trait_items = ty::trait_items(tcx, object_trait.def_id());
 
     let mut errors = Vec::new();
     for item in trait_items.iter() {
@@ -163,7 +158,7 @@ fn check_object_safety_inner<'tcx>(tcx: &ty::ctxt<'tcx>,
 
     let mut errors = errors.iter().flat_map(|x| x.iter()).peekable();
     if errors.peek().is_some() {
-        let trait_name = ty::item_path_str(tcx, object_trait.def_id);
+        let trait_name = ty::item_path_str(tcx, object_trait.def_id());
         span_err!(tcx.sess, span, E0038,
             "cannot convert to a trait object because trait `{}` is not object-safe",
             trait_name);
@@ -237,7 +232,7 @@ pub fn register_object_cast_obligations<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                                   span: Span,
                                                   object_trait: &ty::TyTrait<'tcx>,
                                                   referent_ty: Ty<'tcx>)
-                                                  -> Rc<ty::TraitRef<'tcx>>
+                                                  -> Rc<ty::PolyTraitRef<'tcx>>
 {
     // We can only make objects from sized types.
     fcx.register_builtin_bound(
@@ -256,17 +251,9 @@ pub fn register_object_cast_obligations<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
            referent_ty.repr(fcx.tcx()),
            object_trait_ty.repr(fcx.tcx()));
 
-    // Take the type parameters from the object type, but set
-    // the Self type (which is unknown, for the object type)
-    // to be the type we are casting from.
-    let mut object_substs = object_trait.principal.substs.clone();
-    assert!(object_substs.self_ty().is_none());
-    object_substs.types.push(SelfSpace, referent_ty);
-
     // Create the obligation for casting from T to Trait.
     let object_trait_ref =
-        Rc::new(ty::TraitRef { def_id: object_trait.principal.def_id,
-                               substs: object_substs });
+        object_trait.principal_trait_ref_with_self_ty(referent_ty);
     let object_obligation =
         Obligation::new(
             ObligationCause::new(span,
@@ -457,7 +444,7 @@ pub fn maybe_report_ambiguity<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
            trait_ref.repr(fcx.tcx()),
            self_ty.repr(fcx.tcx()),
            obligation.repr(fcx.tcx()));
-    let all_types = &trait_ref.substs.types;
+    let all_types = &trait_ref.substs().types;
     if all_types.iter().any(|&t| ty::type_is_error(t)) {
     } else if all_types.iter().any(|&t| ty::type_needs_infer(t)) {
         // This is kind of a hack: it frequently happens that some earlier
@@ -476,7 +463,7 @@ pub fn maybe_report_ambiguity<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         // anyway. In that case, why inundate the user.
         if !fcx.tcx().sess.has_errors() {
             if fcx.ccx.tcx.lang_items.sized_trait()
-                  .map_or(false, |sized_id| sized_id == trait_ref.def_id) {
+                  .map_or(false, |sized_id| sized_id == trait_ref.def_id()) {
                 fcx.tcx().sess.span_err(
                     obligation.cause.span,
                     format!(

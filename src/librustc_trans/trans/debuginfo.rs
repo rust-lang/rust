@@ -429,8 +429,8 @@ impl<'tcx> TypeMap<'tcx> {
 
                 from_def_id_and_substs(self,
                                        cx,
-                                       trait_data.principal.def_id,
-                                       &trait_data.principal.substs,
+                                       trait_data.principal.def_id(),
+                                       trait_data.principal.substs(),
                                        &mut unique_type_id);
             },
             ty::ty_bare_fn(ty::BareFnTy{ unsafety, abi, ref sig } ) => {
@@ -2834,7 +2834,7 @@ fn trait_pointer_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     // But it does not describe the trait's methods.
 
     let def_id = match trait_type.sty {
-        ty::ty_trait(box ty::TyTrait { ref principal, .. }) => principal.def_id,
+        ty::ty_trait(box ty::TyTrait { ref principal, .. }) => principal.def_id(),
         _ => {
             let pp_type_name = ppaux::ty_to_string(cx.tcx(), trait_type);
             cx.sess().bug(format!("debuginfo: Unexpected trait-object type in \
@@ -3765,8 +3765,8 @@ fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             output.push(']');
         },
         ty::ty_trait(ref trait_data) => {
-            push_item_name(cx, trait_data.principal.def_id, false, output);
-            push_type_params(cx, &trait_data.principal.substs, output);
+            push_item_name(cx, trait_data.principal.def_id(), false, output);
+            push_type_params(cx, trait_data.principal.substs(), output);
         },
         ty::ty_bare_fn(ty::BareFnTy{ unsafety, abi, ref sig } ) => {
             if unsafety == ast::Unsafety::Unsafe {

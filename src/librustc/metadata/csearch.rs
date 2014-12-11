@@ -262,7 +262,7 @@ pub fn get_field_type<'tcx>(tcx: &ty::ctxt<'tcx>, class_id: ast::DefId,
 // if there is one.
 pub fn get_impl_trait<'tcx>(tcx: &ty::ctxt<'tcx>,
                             def: ast::DefId)
-                            -> Option<Rc<ty::TraitRef<'tcx>>> {
+                            -> Option<Rc<ty::PolyTraitRef<'tcx>>> {
     let cstore = &tcx.sess.cstore;
     let cdata = cstore.get_crate_data(def.krate);
     decoder::get_impl_trait(&*cdata, def.node, tcx)

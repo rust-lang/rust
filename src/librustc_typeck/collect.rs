@@ -652,7 +652,7 @@ fn is_associated_type_valid_for_param(ty: Ty,
     if let ty::ty_param(param_ty) = ty.sty {
         let type_parameter = generics.types.get(param_ty.space, param_ty.idx);
         for trait_bound in type_parameter.bounds.trait_bounds.iter() {
-            if trait_bound.def_id == trait_id {
+            if trait_bound.def_id() == trait_id {
                 return true
             }
         }
@@ -1638,8 +1638,8 @@ fn ty_generics_for_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     let param_id = trait_id;
 
     let self_trait_ref =
-        Rc::new(ty::TraitRef { def_id: local_def(trait_id),
-                               substs: (*substs).clone() });
+        Rc::new(ty::bind(ty::TraitRef { def_id: local_def(trait_id),
+                                        substs: (*substs).clone() }));
 
     let def = ty::TypeParameterDef {
         space: subst::SelfSpace,
@@ -2015,7 +2015,7 @@ fn compute_bounds<'tcx,AC>(this: &AC,
                             &param_bounds,
                             span);
 
-    param_bounds.trait_bounds.sort_by(|a,b| a.def_id.cmp(&b.def_id));
+    param_bounds.trait_bounds.sort_by(|a,b| a.def_id().cmp(&b.def_id()));
 
     param_bounds
 }
@@ -2031,13 +2031,13 @@ fn check_bounds_compatible<'tcx>(tcx: &ty::ctxt<'tcx>,
             tcx,
             param_bounds.trait_bounds.as_slice(),
             |trait_ref| {
-                let trait_def = ty::lookup_trait_def(tcx, trait_ref.def_id);
+                let trait_def = ty::lookup_trait_def(tcx, trait_ref.def_id());
                 if trait_def.bounds.builtin_bounds.contains(&ty::BoundSized) {
                     span_err!(tcx.sess, span, E0129,
                               "incompatible bounds on type parameter `{}`, \
                                bound `{}` does not allow unsized type",
                               name_of_bounded_thing.user_string(tcx),
-                              ppaux::trait_ref_to_string(tcx, &*trait_ref));
+                              trait_ref.user_string(tcx));
                 }
                 true
             });
@@ -2057,14 +2057,14 @@ fn conv_param_bounds<'tcx,AC>(this: &AC,
                                      trait_bounds,
                                      region_bounds } =
         astconv::partition_bounds(this.tcx(), span, all_bounds.as_slice());
-    let trait_bounds: Vec<Rc<ty::TraitRef>> =
+    let trait_bounds: Vec<Rc<ty::PolyTraitRef>> =
         trait_bounds.into_iter()
         .map(|bound| {
-            astconv::instantiate_trait_ref(this,
-                                           &ExplicitRscope,
-                                           &bound.trait_ref,
-                                           Some(param_ty.to_ty(this.tcx())),
-                                           AllowEqConstraints::Allow)
+            astconv::instantiate_poly_trait_ref(this,
+                                                &ExplicitRscope,
+                                                bound,
+                                                Some(param_ty.to_ty(this.tcx())),
+                                                AllowEqConstraints::Allow)
         })
         .collect();
     let region_bounds: Vec<ty::Region> =

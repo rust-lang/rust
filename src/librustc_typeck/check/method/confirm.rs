@@ -222,15 +222,15 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                     // argument type), but those cases have already
                     // been ruled out when we deemed the trait to be
                     // "object safe".
-                    let substs = data.principal.substs.clone().with_self_ty(object_ty);
                     let original_trait_ref =
-                        Rc::new(ty::TraitRef::new(data.principal.def_id, substs));
-                    let upcast_trait_ref = this.upcast(original_trait_ref.clone(), trait_def_id);
+                        data.principal_trait_ref_with_self_ty(object_ty);
+                    let upcast_trait_ref =
+                        this.upcast(original_trait_ref.clone(), trait_def_id);
                     debug!("original_trait_ref={} upcast_trait_ref={} target_trait={}",
                            original_trait_ref.repr(this.tcx()),
                            upcast_trait_ref.repr(this.tcx()),
                            trait_def_id.repr(this.tcx()));
-                    let substs = upcast_trait_ref.substs.clone();
+                    let substs = upcast_trait_ref.substs().clone();
                     let origin = MethodTraitObject(MethodObject {
                         trait_ref: upcast_trait_ref,
                         object_trait_id: trait_def_id,
@@ -257,7 +257,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                                      .subst(self.tcx(), &impl_polytype.substs);
                 let origin = MethodTypeParam(MethodParam { trait_ref: impl_trait_ref.clone(),
                                                            method_num: method_num });
-                (impl_trait_ref.substs.clone(), origin)
+                (impl_trait_ref.substs().clone(), origin)
             }
 
             probe::TraitPick(trait_def_id, method_num) => {
@@ -272,16 +272,16 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                                                                  &trait_def.generics,
                                                                  self.infcx().next_ty_var());
 
-                let trait_ref = Rc::new(ty::TraitRef::new(trait_def_id, substs.clone()));
+                let trait_ref = Rc::new(ty::bind(ty::TraitRef::new(trait_def_id, substs.clone())));
                 let origin = MethodTypeParam(MethodParam { trait_ref: trait_ref,
                                                            method_num: method_num });
                 (substs, origin)
             }
 
             probe::WhereClausePick(ref trait_ref, method_num) => {
-                let origin = MethodTypeParam(MethodParam { trait_ref: (*trait_ref).clone(),
+                let origin = MethodTypeParam(MethodParam { trait_ref: trait_ref.clone(),
                                                            method_num: method_num });
-                (trait_ref.substs.clone(), origin)
+                (trait_ref.substs().clone(), origin)
             }
         }
     }
@@ -637,12 +637,12 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
     }
 
     fn upcast(&mut self,
-              source_trait_ref: Rc<ty::TraitRef<'tcx>>,
+              source_trait_ref: Rc<ty::PolyTraitRef<'tcx>>,
               target_trait_def_id: ast::DefId)
-              -> Rc<ty::TraitRef<'tcx>>
+              -> Rc<ty::PolyTraitRef<'tcx>>
     {
         for super_trait_ref in traits::supertraits(self.tcx(), source_trait_ref.clone()) {
-            if super_trait_ref.def_id == target_trait_def_id {
+            if super_trait_ref.def_id() == target_trait_def_id {
                 return super_trait_ref;
             }
         }

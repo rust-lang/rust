@@ -55,7 +55,7 @@ impl<'cx, 'tcx,'v> visit::Visitor<'v> for OrphanChecker<'cx, 'tcx> {
                         self.check_def_id(item.span, def_id);
                     }
                     ty::ty_trait(box ty::TyTrait{ ref principal, ..}) => {
-                        self.check_def_id(item.span, principal.def_id);
+                        self.check_def_id(item.span, principal.def_id());
                     }
                     _ => {
                         span_err!(self.tcx.sess, item.span, E0118,

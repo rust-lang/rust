@@ -133,7 +133,7 @@ impl Copy for TypeOrigin {}
 #[deriving(Clone, Show)]
 pub enum ValuePairs<'tcx> {
     Types(ty::expected_found<Ty<'tcx>>),
-    TraitRefs(ty::expected_found<Rc<ty::TraitRef<'tcx>>>),
+    TraitRefs(ty::expected_found<Rc<ty::PolyTraitRef<'tcx>>>),
 }
 
 /// The trace designates the path through inference that we took to
@@ -402,17 +402,17 @@ pub fn mk_eqty<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
         || cx.eq_types(a_is_expected, origin, a, b))
 }
 
-pub fn mk_sub_trait_refs<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
+pub fn mk_sub_poly_trait_refs<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
                                    a_is_expected: bool,
                                    origin: TypeOrigin,
-                                   a: Rc<ty::TraitRef<'tcx>>,
-                                   b: Rc<ty::TraitRef<'tcx>>)
+                                   a: Rc<ty::PolyTraitRef<'tcx>>,
+                                   b: Rc<ty::PolyTraitRef<'tcx>>)
                                    -> ures<'tcx>
 {
     debug!("mk_sub_trait_refs({} <: {})",
            a.repr(cx.tcx), b.repr(cx.tcx));
     cx.commit_if_ok(
-        || cx.sub_trait_refs(a_is_expected, origin, a.clone(), b.clone()))
+        || cx.sub_poly_trait_refs(a_is_expected, origin, a.clone(), b.clone()))
 }
 
 fn expected_found<T>(a_is_expected: bool,
@@ -679,12 +679,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         })
     }
 
-    pub fn sub_trait_refs(&self,
-                          a_is_expected: bool,
-                          origin: TypeOrigin,
-                          a: Rc<ty::TraitRef<'tcx>>,
-                          b: Rc<ty::TraitRef<'tcx>>)
-                          -> ures<'tcx>
+    pub fn sub_poly_trait_refs(&self,
+                               a_is_expected: bool,
+                               origin: TypeOrigin,
+                               a: Rc<ty::PolyTraitRef<'tcx>>,
+                               b: Rc<ty::PolyTraitRef<'tcx>>)
+                               -> ures<'tcx>
     {
         debug!("sub_trait_refs({} <: {})",
                a.repr(self.tcx),
@@ -695,7 +695,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 values: TraitRefs(expected_found(a_is_expected,
                                                  a.clone(), b.clone()))
             };
-            self.sub(a_is_expected, trace).trait_refs(&*a, &*b).to_ures()
+            self.sub(a_is_expected, trace).poly_trait_refs(&*a, &*b).to_ures()
         })
     }
 }

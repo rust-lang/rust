@@ -160,8 +160,8 @@ impl<'f, 'tcx> Combine<'tcx> for Sub<'f, 'tcx> {
         self.higher_ranked_sub(a, b)
     }
 
-    fn trait_refs(&self, a: &ty::TraitRef<'tcx>, b: &ty::TraitRef<'tcx>)
-                  -> cres<'tcx, ty::TraitRef<'tcx>> {
+    fn poly_trait_refs(&self, a: &ty::PolyTraitRef<'tcx>, b: &ty::PolyTraitRef<'tcx>)
+                       -> cres<'tcx, ty::PolyTraitRef<'tcx>> {
         self.higher_ranked_sub(a, b)
     }
 }

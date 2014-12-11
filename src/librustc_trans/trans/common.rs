@@ -764,7 +764,7 @@ pub fn expr_ty_adjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ex: &ast::Expr) -> T
 /// guarantee to us that all nested obligations *could be* resolved if we wanted to.
 pub fn fulfill_obligation<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                     span: Span,
-                                    trait_ref: Rc<ty::TraitRef<'tcx>>)
+                                    trait_ref: Rc<ty::PolyTraitRef<'tcx>>)
                                     -> traits::Vtable<'tcx, ()>
 {
     let tcx = ccx.tcx();
@@ -783,7 +783,7 @@ pub fn fulfill_obligation<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     debug!("trans fulfill_obligation: trait_ref={}", trait_ref.repr(ccx.tcx()));
 
-    ty::populate_implementations_for_trait_if_necessary(tcx, trait_ref.def_id);
+    ty::populate_implementations_for_trait_if_necessary(tcx, trait_ref.def_id());
     let infcx = infer::new_infer_ctxt(tcx);
 
     // Parameter environment is used to give details about type parameters,

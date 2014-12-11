@@ -377,21 +377,13 @@ impl<'tcx> HigherRankedCombineable<'tcx> for ty::FnSig<'tcx> {
     }
 }
 
-impl<'tcx> HigherRankedCombineable<'tcx> for ty::TraitRef<'tcx> {
+impl<'tcx> HigherRankedCombineable<'tcx> for ty::PolyTraitRef<'tcx> {
     fn super_combine<C:Combine<'tcx>>(combiner: &C,
-                                      a: &ty::TraitRef<'tcx>,
-                                      b: &ty::TraitRef<'tcx>)
-                                      -> cres<'tcx, ty::TraitRef<'tcx>>
+                                      a: &ty::PolyTraitRef<'tcx>,
+                                      b: &ty::PolyTraitRef<'tcx>)
+                                      -> cres<'tcx, ty::PolyTraitRef<'tcx>>
     {
-        // Different traits cannot be related
-        if a.def_id != b.def_id {
-            Err(ty::terr_traits(
-                combine::expected_found(combiner, a.def_id, b.def_id)))
-        } else {
-            let substs = try!(combiner.substs(a.def_id, &a.substs, &b.substs));
-            Ok(ty::TraitRef { def_id: a.def_id,
-                              substs: substs })
-        }
+        Ok(ty::bind(try!(combiner.trait_refs(&a.value, &b.value))))
     }
 }
 
