@@ -1,6 +1,6 @@
 - Start Date: 2014-11-05
-- RFC PR:
-- Rust Issue:
+- RFC PR: https://github.com/rust-lang/rfcs/pull/446
+- Rust Issue: https://github.com/rust-lang/rust/issues/19739
 
 # Summary
 
@@ -43,6 +43,21 @@ That is, `\u{` followed by one to six hexadecimal digits, followed by `}`.
 
 The behavior would otherwise be identical.
 
+## Migration strategy
+
+In order to provide a graceful transition from the old `\uDDDD` and
+`\UDDDDDDDD` syntax to the new `\u{DDDDD}` syntax, this feature
+should be added in stages:
+
+* Stage 1: Add support for the new `\u{DDDDD}` syntax, without removing
+previous support for `\uDDDD` and `\UDDDDDDDD`.
+
+* Stage 2: Warn on occurrences of `\uDDDD` and `\UDDDDDDDD`. Convert
+all library code to use `\u{DDDDD}` instead of the old syntax.
+
+* Stage 3: Remove support for the old syntax entirely (preferably
+during a separate release from the one that added the warning from
+Stage 2).
 
 # Drawbacks
 
