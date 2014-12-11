@@ -29,7 +29,7 @@ use trans::cleanup::CleanupMethods;
 use trans::consts;
 use trans::common::*;
 use trans::datum;
-use trans::debuginfo;
+use trans::debuginfo::DebugLoc;
 use trans::expr;
 use trans::machine::*;
 use trans::tvec;
@@ -106,7 +106,7 @@ pub fn get_drop_glue_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 pub fn drop_ty<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                            v: ValueRef,
                            t: Ty<'tcx>,
-                           source_location: Option<NodeInfo>)
+                           debug_loc: DebugLoc)
                            -> Block<'blk, 'tcx> {
     // NB: v is an *alias* of type t here, not a direct value.
     debug!("drop_ty(t={})", t.repr(bcx.tcx()));
@@ -121,12 +121,7 @@ pub fn drop_ty<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             v
         };
 
-        match source_location {
-            Some(sl) => debuginfo::set_source_location(bcx.fcx, sl.id, sl.span),
-            None => debuginfo::clear_source_location(bcx.fcx)
-        };
-
-        Call(bcx, glue, &[ptr], None);
+        Call(bcx, glue, &[ptr], None, debug_loc);
     }
     bcx
 }
@@ -134,12 +129,12 @@ pub fn drop_ty<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 pub fn drop_ty_immediate<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                      v: ValueRef,
                                      t: Ty<'tcx>,
-                                     source_location: Option<NodeInfo>)
+                                     debug_loc: DebugLoc)
                                      -> Block<'blk, 'tcx> {
     let _icx = push_ctxt("drop_ty_immediate");
     let vp = alloca(bcx, type_of(bcx.ccx(), t), "");
     store_ty(bcx, v, vp, t);
-    drop_ty(bcx, vp, t, source_location)
+    drop_ty(bcx, vp, t, debug_loc)
 }
 
 pub fn get_drop_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> ValueRef {
@@ -295,7 +290,7 @@ fn trans_struct_drop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                      class_did,
                                      &[get_drop_glue_type(bcx.ccx(), t)],
                                      ty::mk_nil(bcx.tcx()));
-        let (_, variant_cx) = invoke(variant_cx, dtor_addr, &args[], dtor_ty, None);
+        let (_, variant_cx) = invoke(variant_cx, dtor_addr, &args[], dtor_ty, DebugLoc::None);
 
         variant_cx.fcx.pop_and_trans_custom_cleanup_scope(variant_cx, field_scope);
         variant_cx
@@ -331,7 +326,7 @@ fn size_and_align_of_dst<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, info: 
             let (unsized_size, unsized_align) = size_and_align_of_dst(bcx, field_ty, info);
 
             // Return the sum of sizes and max of aligns.
-            let size = Add(bcx, sized_size, unsized_size);
+            let size = Add(bcx, sized_size, unsized_size, DebugLoc::None);
             let align = Select(bcx,
                                ICmp(bcx, llvm::IntULT, sized_align, unsized_align),
                                sized_align,
@@ -353,7 +348,8 @@ fn size_and_align_of_dst<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, info: 
             let llunit_ty = sizing_type_of(bcx.ccx(), unit_ty);
             let unit_align = llalign_of_min(bcx.ccx(), llunit_ty);
             let unit_size = llsize_of_alloc(bcx.ccx(), llunit_ty);
-            (Mul(bcx, info, C_uint(bcx.ccx(), unit_size)), C_uint(bcx.ccx(), unit_align))
+            (Mul(bcx, info, C_uint(bcx.ccx(), unit_size), DebugLoc::None),
+             C_uint(bcx.ccx(), unit_align))
         }
         _ => bcx.sess().bug(&format!("Unexpected unsized type, found {}",
                                     bcx.ty_to_string(t))[])
@@ -384,7 +380,8 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, t: Ty<'tcx>)
                         Call(bcx,
                              dtor,
                              &[PointerCast(bcx, lluniquevalue, Type::i8p(bcx.ccx()))],
-                             None);
+                             None,
+                             DebugLoc::None);
                         bcx
                     })
                 }
@@ -393,7 +390,7 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, t: Ty<'tcx>)
                     let llbox = Load(bcx, llval);
                     let not_null = IsNotNull(bcx, llbox);
                     with_cond(bcx, not_null, |bcx| {
-                        let bcx = drop_ty(bcx, v0, content_ty, None);
+                        let bcx = drop_ty(bcx, v0, content_ty, DebugLoc::None);
                         let info = GEPi(bcx, v0, &[0, abi::FAT_PTR_EXTRA]);
                         let info = Load(bcx, info);
                         let (llsize, llalign) = size_and_align_of_dst(bcx, content_ty, info);
@@ -406,7 +403,7 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, t: Ty<'tcx>)
                     let llbox = Load(bcx, llval);
                     let not_null = IsNotNull(bcx, llbox);
                     with_cond(bcx, not_null, |bcx| {
-                        let bcx = drop_ty(bcx, llbox, content_ty, None);
+                        let bcx = drop_ty(bcx, llbox, content_ty, DebugLoc::None);
                         trans_exchange_free_ty(bcx, llbox, content_ty)
                     })
                 }
@@ -437,14 +434,16 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, t: Ty<'tcx>)
                 }
                 ty::NoDtor => {
                     // No dtor? Just the default case
-                    iter_structural_ty(bcx, v0, t, |bb, vv, tt| drop_ty(bb, vv, tt, None))
+                    iter_structural_ty(bcx, v0, t, |bb, vv, tt| drop_ty(bb, vv, tt, DebugLoc::None))
                 }
             }
         }
-        ty::ty_unboxed_closure(..) => iter_structural_ty(bcx,
-                                                         v0,
-                                                         t,
-                                                         |bb, vv, tt| drop_ty(bb, vv, tt, None)),
+        ty::ty_unboxed_closure(..) => {
+            iter_structural_ty(bcx,
+                               v0,
+                               t,
+                               |bb, vv, tt| drop_ty(bb, vv, tt, DebugLoc::None))
+        }
         ty::ty_trait(..) => {
             // No need to do a null check here (as opposed to the Box<trait case
             // above), because this happens for a trait field in an unsized
@@ -456,7 +455,8 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, t: Ty<'tcx>)
             Call(bcx,
                  dtor,
                  &[PointerCast(bcx, Load(bcx, lluniquevalue), Type::i8p(bcx.ccx()))],
-                 None);
+                 None,
+                 DebugLoc::None);
             bcx
         },
         ty::ty_vec(_, None) | ty::ty_str => {
@@ -465,9 +465,11 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, t: Ty<'tcx>)
         },
         _ => {
             assert!(type_is_sized(bcx.tcx(), t));
-            if type_needs_drop(bcx.tcx(), t) &&
-                ty::type_is_structural(t) {
-                iter_structural_ty(bcx, v0, t, |bb, vv, tt| drop_ty(bb, vv, tt, None))
+            if type_needs_drop(bcx.tcx(), t) && ty::type_is_structural(t) {
+                iter_structural_ty(bcx,
+                                   v0,
+                                   t,
+                                   |bb, vv, tt| drop_ty(bb, vv, tt, DebugLoc::None))
             } else {
                 bcx
             }
@@ -559,7 +561,7 @@ fn make_generic_glue<'a, 'tcx, F>(ccx: &CrateContext<'a, 'tcx>,
 
     let llrawptr0 = get_param(llfn, fcx.arg_pos(0) as c_uint);
     let bcx = helper(bcx, llrawptr0, t);
-    finish_fn(&fcx, bcx, ty::FnConverging(ty::mk_nil(ccx.tcx())));
+    finish_fn(&fcx, bcx, ty::FnConverging(ty::mk_nil(ccx.tcx())), DebugLoc::None);
 
     llfn
 }

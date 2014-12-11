@@ -188,7 +188,7 @@ use self::MemberOffset::*;
 use self::MemberDescriptionFactory::*;
 use self::RecursiveTypeDescription::*;
 use self::EnumDiscriminantInfo::*;
-use self::DebugLocation::*;
+use self::InternalDebugLocation::*;
 
 use llvm;
 use llvm::{ModuleRef, ContextRef, ValueRef};
@@ -196,7 +196,8 @@ use llvm::debuginfo::*;
 use metadata::csearch;
 use middle::subst::{self, Substs};
 use trans::{self, adt, machine, type_of};
-use trans::common::*;
+use trans::common::{self, NodeIdAndSpan, CrateContext, FunctionContext, Block,
+                    C_bytes, C_i32, C_i64, NormalizingUnboxedClosureTyper};
 use trans::_match::{BindingInfo, TrByCopy, TrByMove, TrByRef};
 use trans::monomorphize;
 use trans::type_::Type;
@@ -650,7 +651,7 @@ macro_rules! return_if_metadata_created_in_meantime {
 pub struct CrateDebugContext<'tcx> {
     llcontext: ContextRef,
     builder: DIBuilderRef,
-    current_debug_location: Cell<DebugLocation>,
+    current_debug_location: Cell<InternalDebugLocation>,
     created_files: RefCell<FnvHashMap<String, DIFile>>,
     created_enum_disr_types: RefCell<DefIdMap<DIType>>,
 
@@ -940,13 +941,14 @@ pub fn create_captured_var_metadata<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }
     };
 
-    let variable_type = node_id_type(bcx, node_id);
+    let variable_type = common::node_id_type(bcx, node_id);
     let scope_metadata = bcx.fcx.debug_context.get_ref(cx, span).fn_metadata;
 
     // env_pointer is the alloca containing the pointer to the environment,
     // so it's type is **EnvironmentType. In order to find out the type of
     // the environment we have to "dereference" two times.
-    let llvm_env_data_type = val_ty(env_pointer).element_type().element_type();
+    let llvm_env_data_type = common::val_ty(env_pointer).element_type()
+                                                        .element_type();
     let byte_offset_of_var_in_env = machine::llelement_offset(cx,
                                                               llvm_env_data_type,
                                                               env_index);
@@ -1123,7 +1125,7 @@ pub fn get_cleanup_debug_loc_for_ast_node<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                                     node_id: ast::NodeId,
                                                     node_span: Span,
                                                     is_block: bool)
-                                                 -> NodeInfo {
+                                                 -> NodeIdAndSpan {
     // A debug location needs two things:
     // (1) A span (of which only the beginning will actually be used)
     // (2) An AST node-id which will be used to look up the lexical scope
@@ -1173,9 +1175,53 @@ pub fn get_cleanup_debug_loc_for_ast_node<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         }
     }
 
-    NodeInfo {
+    NodeIdAndSpan {
         id: node_id,
         span: cleanup_span
+    }
+}
+
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub enum DebugLoc {
+    At(ast::NodeId, Span),
+    None
+}
+
+impl DebugLoc {
+    pub fn apply(&self, fcx: &FunctionContext) {
+        match *self {
+            DebugLoc::At(node_id, span) => {
+                set_source_location(fcx, node_id, span);
+            }
+            DebugLoc::None => {
+                clear_source_location(fcx);
+            }
+        }
+    }
+}
+
+pub trait ToDebugLoc {
+    fn debug_loc(&self) -> DebugLoc;
+}
+
+impl ToDebugLoc for ast::Expr {
+    fn debug_loc(&self) -> DebugLoc {
+        DebugLoc::At(self.id, self.span)
+    }
+}
+
+impl ToDebugLoc for NodeIdAndSpan {
+    fn debug_loc(&self) -> DebugLoc {
+        DebugLoc::At(self.id, self.span)
+    }
+}
+
+impl ToDebugLoc for Option<NodeIdAndSpan> {
+    fn debug_loc(&self) -> DebugLoc {
+        match *self {
+            Some(NodeIdAndSpan { id, span }) => DebugLoc::At(id, span),
+            None => DebugLoc::None
+        }
     }
 }
 
@@ -1202,9 +1248,9 @@ pub fn set_source_location(fcx: &FunctionContext,
                 let loc = span_start(cx, span);
                 let scope = scope_metadata(fcx, node_id, span);
 
-                set_debug_location(cx, DebugLocation::new(scope,
-                                                          loc.line,
-                                                          loc.col.to_uint()));
+                set_debug_location(cx, InternalDebugLocation::new(scope,
+                                                                  loc.line,
+                                                                  loc.col.to_uint()));
             } else {
                 set_debug_location(cx, UnknownLocation);
             }
@@ -1714,9 +1760,9 @@ fn declare_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         )
     };
 
-    set_debug_location(cx, DebugLocation::new(scope_metadata,
-                                              loc.line,
-                                              loc.col.to_uint()));
+    set_debug_location(cx, InternalDebugLocation::new(scope_metadata,
+                                                      loc.line,
+                                                      loc.col.to_uint()));
     unsafe {
         let instr = llvm::LLVMDIBuilderInsertDeclareAtEnd(
             DIB(cx),
@@ -3095,13 +3141,13 @@ impl MetadataCreationResult {
 }
 
 #[derive(Copy, PartialEq)]
-enum DebugLocation {
+enum InternalDebugLocation {
     KnownLocation { scope: DIScope, line: uint, col: uint },
     UnknownLocation
 }
 
-impl DebugLocation {
-    fn new(scope: DIScope, line: uint, col: uint) -> DebugLocation {
+impl InternalDebugLocation {
+    fn new(scope: DIScope, line: uint, col: uint) -> InternalDebugLocation {
         KnownLocation {
             scope: scope,
             line: line,
@@ -3110,7 +3156,7 @@ impl DebugLocation {
     }
 }
 
-fn set_debug_location(cx: &CrateContext, debug_location: DebugLocation) {
+fn set_debug_location(cx: &CrateContext, debug_location: InternalDebugLocation) {
     if debug_location == debug_context(cx).current_debug_location.get() {
         return;
     }
