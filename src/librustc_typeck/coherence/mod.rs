@@ -18,6 +18,7 @@
 
 use metadata::csearch::{each_impl, get_impl_trait};
 use metadata::csearch;
+use middle::region;
 use middle::subst::{mod, Subst};
 use middle::ty::{ImplContainer, ImplOrTraitItemId, MethodTraitItemId};
 use middle::ty::{ParameterEnvironment, TypeTraitItemId, lookup_item_type};
@@ -26,8 +27,6 @@ use middle::ty::{ty_param, Polytype, ty_ptr};
 use middle::ty::{ty_rptr, ty_struct, ty_trait, ty_tup};
 use middle::ty::{ty_str, ty_vec, ty_float, ty_infer, ty_int, ty_open};
 use middle::ty::{ty_uint, ty_unboxed_closure, ty_uniq, ty_bare_fn};
-use middle::ty::{ty_closure};
-use middle::subst::Subst;
 use middle::ty;
 use CrateCtxt;
 use middle::infer::combine::Combine;
@@ -471,6 +470,17 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
             let param_env = ParameterEnvironment::for_item(tcx,
                                                            impl_did.node);
             let self_type = self_type.ty.subst(tcx, &param_env.free_substs);
+
+            // the self-type may have late-bound regions bound in the
+            // impl; liberate them.
+            let item_scope = region::CodeExtent::from_node_id(impl_did.node);
+            let self_type =
+                ty::liberate_late_bound_regions(tcx,
+                                                item_scope,
+                                                &ty::bind(self_type)).value;
+
+            debug!("can_type_implement_copy(self_type={})",
+                   self_type.repr(tcx));
 
             match ty::can_type_implement_copy(tcx, self_type, &param_env) {
                 Ok(()) => {}
