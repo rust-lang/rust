@@ -1569,10 +1569,10 @@ Options:
     #[test]
     fn test_usage_description_multibyte_handling() {
         let optgroups = vec!(
-            optflag("k", "k\u2013w\u2013",
+            optflag("k", "k\u{2013}w\u{2013}",
                 "The word kiwi is normally spelled with two i's"),
             optflag("a", "apple",
-                "This \u201Cdescription\u201D has some characters that could \
+                "This \u{201C}description\u{201D} has some characters that could \
 confuse the line wrapping; an apple costs 0.51€ in some parts of Europe."));
 
         let expected =

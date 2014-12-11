@@ -350,7 +350,7 @@ impl CodeMap {
         // Remove utf-8 BOM if any.
         // FIXME #12884: no efficient/safe way to remove from the start of a string
         // and reuse the allocation.
-        let mut src = if src.starts_with("\ufeff") {
+        let mut src = if src.starts_with("\u{feff}") {
             String::from_str(src.slice_from(3))
         } else {
             String::from_str(src.as_slice())

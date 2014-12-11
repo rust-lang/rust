@@ -1215,7 +1215,7 @@ mod test {
         assert!(dirpath.is_dir());
 
         let mut filepath = dirpath;
-        filepath.push("unicode-file-\uac00\u4e00\u30fc\u4f60\u597d.rs");
+        filepath.push("unicode-file-\u{ac00}\u{4e00}\u{30fc}\u{4f60}\u{597d}.rs");
         check!(File::create(&filepath)); // ignore return; touch only
         assert!(!filepath.is_dir());
         assert!(filepath.exists());

@@ -1182,14 +1182,12 @@ pub fn page_size() -> uint {
 ///
 /// The memory map is released (unmapped) when the destructor is run, so don't
 /// let it leave scope by accident if you want it to stick around.
+#[allow(missing_copy_implementations)]
 pub struct MemoryMap {
     data: *mut u8,
     len: uint,
     kind: MemoryMapKind,
 }
-
-#[cfg(not(stage0))]
-impl Copy for MemoryMap {}
 
 /// Type of memory map
 pub enum MemoryMapKind {

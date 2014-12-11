@@ -914,13 +914,13 @@ fn run_utf8_validation_iterator(iter: &mut slice::Items<u8>) -> bool {
         if first >= 128 {
             let w = utf8_char_width(first);
             let second = next!();
-            // 2-byte encoding is for codepoints  \u0080 to  \u07ff
+            // 2-byte encoding is for codepoints  \u{0080} to  \u{07ff}
             //        first  C2 80        last DF BF
-            // 3-byte encoding is for codepoints  \u0800 to  \uffff
+            // 3-byte encoding is for codepoints  \u{0800} to  \u{ffff}
             //        first  E0 A0 80     last EF BF BF
-            //   excluding surrogates codepoints  \ud800 to  \udfff
+            //   excluding surrogates codepoints  \u{d800} to  \u{dfff}
             //               ED A0 80 to       ED BF BF
-            // 4-byte encoding is for codepoints \u10000 to \u10ffff
+            // 4-byte encoding is for codepoints \u{1000}0 to \u{10ff}ff
             //        first  F0 90 80 80  last F4 8F BF BF
             //
             // Use the UTF-8 syntax from the RFC
@@ -1007,7 +1007,7 @@ impl Utf16Item {
     pub fn to_char_lossy(&self) -> char {
         match *self {
             ScalarValue(c) => c,
-            LoneSurrogate(_) => '\uFFFD'
+            LoneSurrogate(_) => '\u{FFFD}'
         }
     }
 }
@@ -1523,7 +1523,7 @@ pub trait StrPrelude for Sized? {
     /// // composed forms of `ö` and `é`
     /// let c = "Löwe 老虎 Léopard"; // German, Simplified Chinese, French
     /// // decomposed forms of `ö` and `é`
-    /// let d = "Lo\u0308we 老虎 Le\u0301opard";
+    /// let d = "Lo\u{0308}we 老虎 Le\u{0301}opard";
     ///
     /// assert_eq!(c.char_len(), 15);
     /// assert_eq!(d.char_len(), 17);

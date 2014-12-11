@@ -31,7 +31,7 @@ pub struct Stdio(libc::c_int);
 #[allow(non_upper_case_globals)]
 impl Copy for Stdio {}
 
-#[allow(non_uppercase_statics)]
+#[allow(non_upper_case_globals)]
 pub const Stdout: Stdio = Stdio(libc::STDOUT_FILENO);
 #[allow(non_upper_case_globals)]
 pub const Stderr: Stdio = Stdio(libc::STDERR_FILENO);

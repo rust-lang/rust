@@ -65,7 +65,7 @@ static MAX_THREE_B: u32 =  0x10000u32;
 
 /// The highest valid code point
 #[stable]
-pub const MAX: char = '\U0010ffff';
+pub const MAX: char = '\u{10ffff}';
 
 /// Converts from `u32` to a `char`
 #[inline]
@@ -161,8 +161,8 @@ pub fn from_digit(num: uint, radix: uint) -> Option<char> {
 /// The rules are as follows:
 ///
 /// - chars in [0,0xff] get 2-digit escapes: `\\xNN`
-/// - chars in [0x100,0xffff] get 4-digit escapes: `\\uNNNN`
-/// - chars above 0x10000 get 8-digit escapes: `\\UNNNNNNNN`
+/// - chars in [0x100,0xffff] get 4-digit escapes: `\\u{NNNN}`
+/// - chars above 0x10000 get 8-digit escapes: `\\u{{NNN}NNNNN}`
 ///
 #[deprecated = "use the Char::escape_unicode method"]
 pub fn escape_unicode(c: char, f: |char|) {
@@ -269,8 +269,8 @@ pub trait Char {
     /// The rules are as follows:
     ///
     /// * Characters in [0,0xff] get 2-digit escapes: `\\xNN`
-    /// * Characters in [0x100,0xffff] get 4-digit escapes: `\\uNNNN`.
-    /// * Characters above 0x10000 get 8-digit escapes: `\\UNNNNNNNN`.
+    /// * Characters in [0x100,0xffff] get 4-digit escapes: `\\u{NNNN}`.
+    /// * Characters above 0x10000 get 8-digit escapes: `\\u{{NNN}NNNNN}`.
     #[unstable = "pending error conventions, trait organization"]
     fn escape_unicode(self) -> UnicodeEscapedChars;
 
@@ -470,7 +470,7 @@ impl Iterator<char> for UnicodeEscapedChars {
             }
             UnicodeEscapedCharsState::Type => {
                 let (typechar, pad) = if self.c <= '\x7f' { ('x', 2) }
-                                      else if self.c <= '\uffff' { ('u', 4) }
+                                      else if self.c <= '\u{ffff}' { ('u', 4) }
                                       else { ('U', 8) };
                 self.state = UnicodeEscapedCharsState::Value(range_step(4 * (pad - 1), -1, -4i32));
                 Some(typechar)

@@ -18,7 +18,7 @@
        html_playground_url = "http://play.rust-lang.org/")]
 
 #![allow(unknown_features)]
-#![feature(globs, if_let, macro_rules, phase, slicing_syntax, tuple_indexing)]
+#![feature(globs, macro_rules, phase, slicing_syntax)]
 
 extern crate arena;
 extern crate getopts;

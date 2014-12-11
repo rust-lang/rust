@@ -118,7 +118,7 @@ impl String {
     /// ```rust
     /// let input = b"Hello \xF0\x90\x80World";
     /// let output = String::from_utf8_lossy(input);
-    /// assert_eq!(output.as_slice(), "Hello \uFFFDWorld");
+    /// assert_eq!(output.as_slice(), "Hello \u{FFFD}World");
     /// ```
     #[unstable = "return type may change"]
     pub fn from_utf8_lossy<'a>(v: &'a [u8]) -> CowString<'a> {
@@ -276,7 +276,7 @@ impl String {
     ///           0xD834];
     ///
     /// assert_eq!(String::from_utf16_lossy(v),
-    ///            "𝄞mus\uFFFDic\uFFFD".to_string());
+    ///            "𝄞mus\u{FFFD}ic\u{FFFD}".to_string());
     /// ```
     #[stable]
     pub fn from_utf16_lossy(v: &[u16]) -> String {
@@ -1057,32 +1057,32 @@ mod tests {
 
         let xs = b"Hello\xC2 There\xFF Goodbye";
         assert_eq!(String::from_utf8_lossy(xs),
-                   String::from_str("Hello\uFFFD There\uFFFD Goodbye").into_cow());
+                   String::from_str("Hello\u{FFFD} There\u{FFFD} Goodbye").into_cow());
 
         let xs = b"Hello\xC0\x80 There\xE6\x83 Goodbye";
         assert_eq!(String::from_utf8_lossy(xs),
-                   String::from_str("Hello\uFFFD\uFFFD There\uFFFD Goodbye").into_cow());
+                   String::from_str("Hello\u{FFFD}\u{FFFD} There\u{FFFD} Goodbye").into_cow());
 
         let xs = b"\xF5foo\xF5\x80bar";
         assert_eq!(String::from_utf8_lossy(xs),
-                   String::from_str("\uFFFDfoo\uFFFD\uFFFDbar").into_cow());
+                   String::from_str("\u{FFFD}foo\u{FFFD}\u{FFFD}bar").into_cow());
 
         let xs = b"\xF1foo\xF1\x80bar\xF1\x80\x80baz";
         assert_eq!(String::from_utf8_lossy(xs),
-                   String::from_str("\uFFFDfoo\uFFFDbar\uFFFDbaz").into_cow());
+                   String::from_str("\u{FFFD}foo\u{FFFD}bar\u{FFFD}baz").into_cow());
 
         let xs = b"\xF4foo\xF4\x80bar\xF4\xBFbaz";
         assert_eq!(String::from_utf8_lossy(xs),
-                   String::from_str("\uFFFDfoo\uFFFDbar\uFFFD\uFFFDbaz").into_cow());
+                   String::from_str("\u{FFFD}foo\u{FFFD}bar\u{FFFD}\u{FFFD}baz").into_cow());
 
         let xs = b"\xF0\x80\x80\x80foo\xF0\x90\x80\x80bar";
-        assert_eq!(String::from_utf8_lossy(xs), String::from_str("\uFFFD\uFFFD\uFFFD\uFFFD\
-                                               foo\U00010000bar").into_cow());
+        assert_eq!(String::from_utf8_lossy(xs), String::from_str("\u{FFFD}\u{FFFD}\u{FFFD}\u{FFFD}\
+                                               foo\u{10000}bar").into_cow());
 
         // surrogates
         let xs = b"\xED\xA0\x80foo\xED\xBF\xBFbar";
-        assert_eq!(String::from_utf8_lossy(xs), String::from_str("\uFFFD\uFFFD\uFFFDfoo\
-                                               \uFFFD\uFFFD\uFFFDbar").into_cow());
+        assert_eq!(String::from_utf8_lossy(xs), String::from_str("\u{FFFD}\u{FFFD}\u{FFFD}foo\
+                                               \u{FFFD}\u{FFFD}\u{FFFD}bar").into_cow());
     }
 
     #[test]
@@ -1124,7 +1124,7 @@ mod tests {
                 0xd801_u16, 0xdc95_u16, 0xd801_u16, 0xdc86_u16,
                 0x000a_u16 ]),
              // Issue #12318, even-numbered non-BMP planes
-             (String::from_str("\U00020000"),
+             (String::from_str("\u{20000}"),
               vec![0xD840, 0xDC00])];
 
         for p in pairs.iter() {
@@ -1162,16 +1162,17 @@ mod tests {
     fn test_from_utf16_lossy() {
         // completely positive cases tested above.
         // lead + eof
-        assert_eq!(String::from_utf16_lossy(&[0xD800]), String::from_str("\uFFFD"));
+        assert_eq!(String::from_utf16_lossy(&[0xD800]), String::from_str("\u{FFFD}"));
         // lead + lead
-        assert_eq!(String::from_utf16_lossy(&[0xD800, 0xD800]), String::from_str("\uFFFD\uFFFD"));
+        assert_eq!(String::from_utf16_lossy(&[0xD800, 0xD800]),
+                   String::from_str("\u{FFFD}\u{FFFD}"));
 
         // isolated trail
-        assert_eq!(String::from_utf16_lossy(&[0x0061, 0xDC00]), String::from_str("a\uFFFD"));
+        assert_eq!(String::from_utf16_lossy(&[0x0061, 0xDC00]), String::from_str("a\u{FFFD}"));
 
         // general
         assert_eq!(String::from_utf16_lossy(&[0xD800, 0xd801, 0xdc8b, 0xD800]),
-                   String::from_str("\uFFFD𐒋\uFFFD"));
+                   String::from_str("\u{FFFD}𐒋\u{FFFD}"));
     }
 
     #[test]
@@ -1263,7 +1264,7 @@ mod tests {
     #[test]
     #[should_fail]
     fn test_str_truncate_split_codepoint() {
-        let mut s = String::from_str("\u00FC"); // ü
+        let mut s = String::from_str("\u{FC}"); // ü
         s.truncate(1);
     }
 
