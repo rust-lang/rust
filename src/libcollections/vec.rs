@@ -2161,6 +2161,35 @@ mod tests {
     }
 
     #[test]
+    fn test_map_in_place_zero_drop_count() {
+        use std::sync::atomic;
+        use std::sync::atomic::AtomicUint;
+
+        #[deriving(Clone, PartialEq, Show)]
+        struct Nothing;
+        impl Drop for Nothing { fn drop(&mut self) { } }
+
+        #[deriving(Clone, PartialEq, Show)]
+        struct ZeroSized;
+        impl Drop for ZeroSized {
+            fn drop(&mut self) {
+                DROP_COUNTER.fetch_add(1, atomic::Relaxed);
+            }
+        }
+        const NUM_ELEMENTS: uint = 2;
+        static DROP_COUNTER: AtomicUint = atomic::INIT_ATOMIC_UINT;
+
+        let v = Vec::from_elem(NUM_ELEMENTS, Nothing);
+
+        DROP_COUNTER.store(0, atomic::Relaxed);
+
+        let v = v.map_in_place(|_| ZeroSized);
+        assert_eq!(DROP_COUNTER.load(atomic::Relaxed), 0);
+        drop(v);
+        assert_eq!(DROP_COUNTER.load(atomic::Relaxed), NUM_ELEMENTS);
+    }
+
+    #[test]
     fn test_move_items() {
         let vec = vec![1, 2, 3];
         let mut vec2 : Vec<i32> = vec![];
