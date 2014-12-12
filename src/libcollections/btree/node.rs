@@ -17,12 +17,11 @@ pub use self::TraversalItem::*;
 
 use core::prelude::*;
 
-use core::{slice, mem, ptr};
+use core::{slice, mem, ptr, cmp, num, raw};
+use core::kinds::marker;
 use core::iter::Zip;
 use core::borrow::BorrowFrom;
-
-use vec;
-use vec::Vec;
+use alloc::heap;
 
 /// Represents the result of an Insertion: either the item fit, or the node had to split
 pub enum InsertionResult<K, V> {
@@ -33,86 +32,516 @@ pub enum InsertionResult<K, V> {
 }
 
 /// Represents the result of a search for a key in a single node
-pub enum SearchResult {
+pub enum SearchResult<NodeRef> {
     /// The element was found at the given index
-    Found(uint),
+    Found(KVNodeHandle<NodeRef>),
     /// The element wasn't found, but if it's anywhere, it must be beyond this edge
-    GoDown(uint),
+    GoDown(EdgeNodeHandle<NodeRef>),
 }
 
 /// A B-Tree Node. We keep keys/edges/values separate to optimize searching for keys.
-#[deriving(Clone)]
+#[unsafe_no_drop_flag]
 pub struct Node<K, V> {
-    // FIXME(Gankro): This representation is super safe and easy to reason about, but painfully
-    // inefficient. As three Vecs, each node consists of *9* words: (ptr, cap, size) * 3. In
-    // theory, if we take full control of allocation like HashMap's RawTable does,
-    // and restrict leaves to max size 256 (not unreasonable for a btree node) we can cut
-    // this down to just (ptr, cap: u8, size: u8, is_leaf: bool). With generic
-    // integer arguments, cap can even move into the type, reducing this just to
-    // (ptr, size, is_leaf). This could also have cache benefits for very small nodes, as keys
-    // could bleed into edges and vals.
+    // To avoid the need for multiple allocations, we allocate a single buffer with enough space
+    // for `capacity` keys, `capacity` values, and (in internal nodes) `capacity + 1` edges.
+    // Despite this, we store three separate pointers to the three "chunks" of the buffer because
+    // the performance drops significantly if the locations of the vals and edges need to be
+    // recalculated upon access.
     //
-    // However doing this would require a fair amount of code to reimplement all
-    // the Vec logic and iterators. It would also use *way* more unsafe code, which sucks and is
-    // hard. For now, we accept this cost in the name of correctness and simplicity.
-    //
-    // As a compromise, keys and vals could be merged into one Vec<(K, V)>, which would shave
-    // off 3 words, but possibly hurt our cache efficiency during search, which only cares about
-    // keys. This would also avoid the Zip we use in our iterator implementations. This is
-    // probably worth investigating.
-    //
-    // Note that this space waste is especially tragic since we store the Nodes by value in their
-    // parent's edges Vec, so unoccupied spaces in the edges Vec are quite large, and we have
-    // to shift around a lot more bits during insertion/removal.
+    // These will never be null during normal usage of a `Node`. However, to avoid the need for a
+    // drop flag, `Node::drop` zeroes `keys`, signaling that the `Node` has already been cleaned
+    // up.
+    keys: *mut K,
+    vals: *mut V,
 
-    keys: Vec<K>,
-    edges: Vec<Node<K, V>>,
-    vals: Vec<V>,
+    // In leaf nodes, this will be null, and no space will be allocated for edges.
+    edges: *mut Node<K, V>,
+
+    // At any given time, there will be `_len` keys, `_len` values, and (in an internal node)
+    // `_len + 1` edges. In a leaf node, there will never be any edges.
+    //
+    // Note: instead of accessing this field directly, please call the `len()` method, which should
+    // be more stable in the face of representation changes.
+    _len: uint,
+
+    // FIXME(gereeter) It shouldn't be necessary to store the capacity in every node, as it should
+    // be constant throughout the tree. Once a solution to this is found, it might be possible to
+    // also pass down the offsets into the buffer that vals and edges are stored at, removing the
+    // need for those two pointers.
+    //
+    // Note: instead of accessing this field directly, please call the `capacity()` method, which
+    // should be more stable in the face of representation changes.
+    _capacity: uint,
+}
+
+/// Rounds up to a multiple of a power of two. Returns the closest multiple
+/// of `target_alignment` that is higher or equal to `unrounded`.
+///
+/// # Panics
+///
+/// Fails if `target_alignment` is not a power of two.
+#[inline]
+fn round_up_to_next(unrounded: uint, target_alignment: uint) -> uint {
+    assert!(num::UnsignedInt::is_power_of_two(target_alignment));
+    (unrounded + target_alignment - 1) & !(target_alignment - 1)
+}
+
+#[test]
+fn test_rounding() {
+    assert_eq!(round_up_to_next(0, 4), 0);
+    assert_eq!(round_up_to_next(1, 4), 4);
+    assert_eq!(round_up_to_next(2, 4), 4);
+    assert_eq!(round_up_to_next(3, 4), 4);
+    assert_eq!(round_up_to_next(4, 4), 4);
+    assert_eq!(round_up_to_next(5, 4), 8);
+}
+
+// Returns a tuple of (val_offset, edge_offset),
+// from the start of a mallocated array.
+#[inline]
+fn calculate_offsets(keys_size: uint,
+                     vals_size: uint, vals_align: uint,
+                     edges_align: uint)
+                     -> (uint, uint) {
+    let vals_offset = round_up_to_next(keys_size, vals_align);
+    let end_of_vals = vals_offset + vals_size;
+
+    let edges_offset = round_up_to_next(end_of_vals, edges_align);
+
+    (vals_offset, edges_offset)
+}
+
+// Returns a tuple of (minimum required alignment, array_size),
+// from the start of a mallocated array.
+#[inline]
+fn calculate_allocation(keys_size: uint, keys_align: uint,
+                        vals_size: uint, vals_align: uint,
+                        edges_size: uint, edges_align: uint)
+                        -> (uint, uint) {
+    let (_, edges_offset) = calculate_offsets(keys_size,
+                                              vals_size, vals_align,
+                                                         edges_align);
+    let end_of_edges = edges_offset + edges_size;
+
+    let min_align = cmp::max(keys_align, cmp::max(vals_align, edges_align));
+
+    (min_align, end_of_edges)
+}
+
+#[test]
+fn test_offset_calculation() {
+    assert_eq!(calculate_allocation(128, 8, 15, 1, 4, 4), (8, 148));
+    assert_eq!(calculate_allocation(3, 1, 2, 1, 1, 1), (1, 6));
+    assert_eq!(calculate_allocation(6, 2, 12, 4, 24, 8), (8, 48));
+    assert_eq!(calculate_offsets(128, 15, 1, 4), (128, 144));
+    assert_eq!(calculate_offsets(3, 2, 1, 1), (3, 5));
+    assert_eq!(calculate_offsets(6, 12, 4, 8), (8, 24));
+}
+
+fn calculate_allocation_generic<K, V>(capacity: uint, is_leaf: bool) -> (uint, uint) {
+    let (keys_size, keys_align) = (capacity * mem::size_of::<K>(), mem::min_align_of::<K>());
+    let (vals_size, vals_align) = (capacity * mem::size_of::<V>(), mem::min_align_of::<V>());
+    let (edges_size, edges_align) = if is_leaf {
+        (0, 1)
+    } else {
+        ((capacity + 1) * mem::size_of::<Node<K, V>>(), mem::min_align_of::<Node<K, V>>())
+    };
+
+    calculate_allocation(
+            keys_size, keys_align,
+            vals_size, vals_align,
+            edges_size, edges_align
+    )
+}
+
+fn calculate_offsets_generic<K, V>(capacity: uint, is_leaf: bool) -> (uint, uint) {
+    let keys_size = capacity * mem::size_of::<K>();
+    let vals_size = capacity * mem::size_of::<V>();
+    let vals_align = mem::min_align_of::<V>();
+    let edges_align = if is_leaf {
+        1
+    } else {
+        mem::min_align_of::<Node<K, V>>()
+    };
+
+    calculate_offsets(
+            keys_size,
+            vals_size, vals_align,
+                       edges_align
+    )
+}
+
+/// An iterator over a slice that owns the elements of the slice but not the allocation.
+struct RawItems<T> {
+    head: *const T,
+    tail: *const T,
+    marker: marker::NoCopy
+}
+
+impl<T> RawItems<T> {
+    unsafe fn from_slice(slice: &[T]) -> RawItems<T> {
+        RawItems::from_parts(slice.as_ptr(), slice.len())
+    }
+
+    unsafe fn from_parts(ptr: *const T, len: uint) -> RawItems<T> {
+        if mem::size_of::<T>() == 0 {
+            RawItems {
+                head: ptr,
+                tail: (ptr as uint + len) as *const T,
+                marker: marker::NoCopy
+            }
+        } else {
+            RawItems {
+                head: ptr,
+                tail: ptr.offset(len as int),
+                marker: marker::NoCopy
+            }
+        }
+    }
+
+    unsafe fn push(&mut self, val: T) {
+        ptr::write(self.tail as *mut T, val);
+
+        if mem::size_of::<T>() == 0 {
+            self.tail = (self.tail as uint + 1) as *const T;
+        } else {
+            self.tail = self.tail.offset(1);
+        }
+    }
+}
+
+impl<T> Iterator<T> for RawItems<T> {
+    fn next(&mut self) -> Option<T> {
+        if self.head == self.tail {
+            None
+        } else {
+            unsafe {
+                let ret = Some(ptr::read(self.head));
+
+                if mem::size_of::<T>() == 0 {
+                    self.head = (self.head as uint + 1) as *const T;
+                } else {
+                    self.head = self.head.offset(1);
+                }
+
+                ret
+            }
+        }
+    }
+}
+
+impl<T> DoubleEndedIterator<T> for RawItems<T> {
+    fn next_back(&mut self) -> Option<T> {
+        if self.head == self.tail {
+            None
+        } else {
+            unsafe {
+                if mem::size_of::<T>() == 0 {
+                    self.tail = (self.tail as uint - 1) as *const T;
+                } else {
+                    self.tail = self.tail.offset(-1);
+                }
+
+                Some(ptr::read(self.tail))
+            }
+        }
+    }
+}
+
+#[unsafe_destructor]
+impl<T> Drop for RawItems<T> {
+    fn drop(&mut self) {
+        for _ in *self {}
+    }
+}
+
+#[unsafe_destructor]
+impl<K, V> Drop for Node<K, V> {
+    fn drop(&mut self) {
+        if self.keys.is_null() {
+            // We have already cleaned up this node.
+            return;
+        }
+
+        // Do the actual cleanup.
+        unsafe {
+            drop(RawItems::from_slice(self.keys()));
+            drop(RawItems::from_slice(self.vals()));
+            drop(RawItems::from_slice(self.edges()));
+
+            self.destroy();
+        }
+
+        self.keys = ptr::null_mut();
+    }
+}
+
+impl<K, V> Node<K, V> {
+    /// Make a new internal node. The caller must initialize the result to fix the invariant that
+    /// there are `len() + 1` edges.
+    unsafe fn new_internal(capacity: uint) -> Node<K, V> {
+        let (alignment, size) = calculate_allocation_generic::<K, V>(capacity, false);
+
+        let buffer = heap::allocate(size, alignment);
+        if buffer.is_null() { ::alloc::oom(); }
+
+        let (vals_offset, edges_offset) = calculate_offsets_generic::<K, V>(capacity, false);
+
+        Node {
+            keys: buffer as *mut K,
+            vals: buffer.offset(vals_offset as int) as *mut V,
+            edges: buffer.offset(edges_offset as int) as *mut Node<K, V>,
+            _len: 0,
+            _capacity: capacity,
+        }
+    }
+
+    /// Make a new leaf node
+    fn new_leaf(capacity: uint) -> Node<K, V> {
+        let (alignment, size) = calculate_allocation_generic::<K, V>(capacity, true);
+
+        let buffer = unsafe { heap::allocate(size, alignment) };
+        if buffer.is_null() { ::alloc::oom(); }
+
+        let (vals_offset, _) = calculate_offsets_generic::<K, V>(capacity, true);
+
+        Node {
+            keys: buffer as *mut K,
+            vals: unsafe { buffer.offset(vals_offset as int) as *mut V },
+            edges: ptr::null_mut(),
+            _len: 0,
+            _capacity: capacity,
+        }
+    }
+
+    unsafe fn destroy(&mut self) {
+        let (alignment, size) =
+                calculate_allocation_generic::<K, V>(self.capacity(), self.is_leaf());
+        heap::deallocate(self.keys as *mut u8, size, alignment);
+    }
+
+    #[inline]
+    pub fn as_slices<'a>(&'a self) -> (&'a [K], &'a [V]) {
+        unsafe {(
+            mem::transmute(raw::Slice {
+                data: self.keys as *const K,
+                len: self.len()
+            }),
+            mem::transmute(raw::Slice {
+                data: self.vals as *const V,
+                len: self.len()
+            })
+        )}
+    }
+
+    #[inline]
+    pub fn as_slices_mut<'a>(&'a mut self) -> (&'a mut [K], &'a mut [V]) {
+        unsafe { mem::transmute(self.as_slices()) }
+    }
+
+    #[inline]
+    pub fn as_slices_internal<'a>(&'a self) -> (&'a [K], &'a [V], &'a [Node<K, V>]) {
+        let (keys, vals) = self.as_slices();
+        let edges: &[_] = if self.is_leaf() {
+            &[]
+        } else {
+            unsafe {
+                mem::transmute(raw::Slice {
+                    data: self.edges as *const Node<K, V>,
+                    len: self.len() + 1
+                })
+            }
+        };
+        (keys, vals, edges)
+    }
+
+    #[inline]
+    pub fn as_slices_internal_mut<'a>(&'a mut self) -> (&'a mut [K], &'a mut [V],
+                                                        &'a mut [Node<K, V>]) {
+        unsafe { mem::transmute(self.as_slices_internal()) }
+    }
+
+    #[inline]
+    pub fn keys<'a>(&'a self) -> &'a [K] {
+        self.as_slices().0
+    }
+
+    #[inline]
+    pub fn keys_mut<'a>(&'a mut self) -> &'a mut [K] {
+        self.as_slices_mut().0
+    }
+
+    #[inline]
+    pub fn vals<'a>(&'a self) -> &'a [V] {
+        self.as_slices().1
+    }
+
+    #[inline]
+    pub fn vals_mut<'a>(&'a mut self) -> &'a mut [V] {
+        self.as_slices_mut().1
+    }
+
+    #[inline]
+    pub fn edges<'a>(&'a self) -> &'a [Node<K, V>] {
+        self.as_slices_internal().2
+    }
+
+    #[inline]
+    pub fn edges_mut<'a>(&'a mut self) -> &'a mut [Node<K, V>] {
+        self.as_slices_internal_mut().2
+    }
+}
+
+// FIXME(gereeter) Write an efficient clone_from
+impl<K: Clone, V: Clone> Clone for Node<K, V> {
+    fn clone(&self) -> Node<K, V> {
+        let mut ret = if self.is_leaf() {
+            Node::new_leaf(self.capacity())
+        } else {
+            unsafe { Node::new_internal(self.capacity()) }
+        };
+
+        unsafe {
+            // For failure safety
+            let mut keys = RawItems::from_parts(ret.keys().as_ptr(), 0);
+            let mut vals = RawItems::from_parts(ret.vals().as_ptr(), 0);
+            let mut edges = RawItems::from_parts(ret.edges().as_ptr(), 0);
+
+            for key in self.keys().iter() {
+                keys.push(key.clone())
+            }
+            for val in self.vals().iter() {
+                vals.push(val.clone())
+            }
+            for edge in self.edges().iter() {
+                edges.push(edge.clone())
+            }
+
+            mem::forget(keys);
+            mem::forget(vals);
+            mem::forget(edges);
+
+            ret._len = self.len();
+        }
+
+        ret
+    }
+}
+
+/// A reference to a key/value pair in the middle of a `Node`. Methods are provided for removing
+/// the pair and accessing the pair and the adjacent edges.
+///
+/// This handle is generic, and can take any sort of reference to a `Node`. The reason for this is
+/// two-fold. First of all, it reduces the amount of repetitive code, implementing functions that
+/// don't need mutability on both mutable and immutable references. Secondly and more importantly,
+/// this allows users of the `Handle` API to associate metadata with the reference. This is used in
+/// `BTreeMap` to give `Node`s temporary "IDs" that persist to when the `Node` is used in a
+/// `Handle`.
+///
+/// # A note on safety
+///
+/// Unfortunately, the extra power afforded by being generic also means that safety can technically
+/// be broken. For sensible implementations of `Deref` and `DerefMut`, these handles are perfectly
+/// safe. As long as repeatedly calling `.deref()` results in the same Node being returned each
+/// time, everything should work fine. However, if the `Deref` implementation swaps in multiple
+/// different nodes, then the indices that are assumed to be in bounds suddenly stop being so. For
+/// example:
+///
+/// ```rust,ignore
+/// struct Nasty<'a> {
+///     first: &'a Node<uint, uint>,
+///     second: &'a Node<uint, uint>,
+///     flag: &'a Cell<bool>,
+/// }
+///
+/// impl<'a> Deref<Node<uint, uint>> for Nasty<'a> {
+///     fn deref(&self) -> &Node<uint, uint> {
+///         if self.flag.get() {
+///             &*self.second
+///         } else {
+///             &*self.first
+///         }
+///     }
+/// }
+///
+/// fn main() {
+///     let flag = Cell::new(false);
+///     let mut small_node = Node::make_leaf_root(3);
+///     let mut large_node = Node::make_leaf_root(100);
+///
+///     for i in range(0, 100) {
+///         // Insert to the end
+///         large_node.edge_handle(i).insert_as_leaf(i, i);
+///     }
+///
+///     let nasty = Nasty {
+///         first: &large_node,
+///         second: &small_node,
+///         flag: &flag
+///     }
+///
+///     // The handle points at index 75.
+///     let handle = Node::search(nasty, 75);
+///
+///     // Now the handle still points at index 75, but on the small node, which has no index 75.
+///     flag.set(true);
+///
+///     println!("Uninitialized memory: {}", handle.into_kv());
+/// }
+/// ```
+#[deriving(Copy)]
+pub struct KVNodeHandle<NodeRef> {
+    node: NodeRef,
+    index: uint
+}
+
+/// A reference to an edge in the middle of a `Node`. Methods are provided for inserting stuff into
+/// the space, handling underflow, and accessing the pointed-to edge.
+///
+/// Please see the notes on `KVNodeHandle` about the generic parameter and safety concerns.
+#[deriving(Copy)]
+pub struct EdgeNodeHandle<NodeRef> {
+    node: NodeRef,
+    index: uint
 }
 
 impl<K: Ord, V> Node<K, V> {
     /// Searches for the given key in the node. If it finds an exact match,
     /// `Found` will be yielded with the matching index. If it doesn't find an exact match,
     /// `GoDown` will be yielded with the index of the subtree the key must lie in.
-    pub fn search<Sized? Q>(&self, key: &Q) -> SearchResult where Q: BorrowFrom<K> + Ord {
+    pub fn search<Sized? Q, NodeRef: Deref<Node<K, V>>>(node: NodeRef, key: &Q)
+                  -> SearchResult<NodeRef> where Q: BorrowFrom<K> + Ord {
         // FIXME(Gankro): Tune when to search linear or binary based on B (and maybe K/V).
         // For the B configured as of this writing (B = 6), binary search was *significantly*
         // worse for uints.
-        self.search_linear(key)
+        let (found, index) = node.search_linear(key);
+        if found {
+            Found(KVNodeHandle {
+                node: node,
+                index: index
+            })
+        } else {
+            GoDown(EdgeNodeHandle {
+                node: node,
+                index: index
+            })
+        }
     }
 
-    fn search_linear<Sized? Q>(&self, key: &Q) -> SearchResult where Q: BorrowFrom<K> + Ord {
-        for (i, k) in self.keys.iter().enumerate() {
+    fn search_linear<Sized? Q>(&self, key: &Q) -> (bool, uint) where Q: BorrowFrom<K> + Ord {
+        for (i, k) in self.keys().iter().enumerate() {
             match key.cmp(BorrowFrom::borrow_from(k)) {
                 Greater => {},
-                Equal => return Found(i),
-                Less => return GoDown(i),
+                Equal => return (true, i),
+                Less => return (false, i),
             }
         }
-        GoDown(self.len())
+        (false, self.len())
     }
 }
 
 // Public interface
 impl <K, V> Node<K, V> {
-    /// Make a new internal node
-    pub fn new_internal(capacity: uint) -> Node<K, V> {
-        Node {
-            keys: Vec::with_capacity(capacity),
-            vals: Vec::with_capacity(capacity),
-            edges: Vec::with_capacity(capacity + 1),
-        }
-    }
-
-    /// Make a new leaf node
-    pub fn new_leaf(capacity: uint) -> Node<K, V> {
-        Node {
-            keys: Vec::with_capacity(capacity),
-            vals: Vec::with_capacity(capacity),
-            edges: Vec::new(),
-        }
-    }
-
     /// Make a leaf root from scratch
     pub fn make_leaf_root(b: uint) -> Node<K, V> {
         Node::new_leaf(capacity_from_b(b))
@@ -121,28 +550,29 @@ impl <K, V> Node<K, V> {
     /// Make an internal root and swap it with an old root
     pub fn make_internal_root(left_and_out: &mut Node<K,V>, b: uint, key: K, value: V,
             right: Node<K,V>) {
-        let mut node = Node::new_internal(capacity_from_b(b));
-        mem::swap(left_and_out, &mut node);
-        left_and_out.keys.push(key);
-        left_and_out.vals.push(value);
-        left_and_out.edges.push(node);
-        left_and_out.edges.push(right);
+        let node = mem::replace(left_and_out, unsafe { Node::new_internal(capacity_from_b(b)) });
+        left_and_out._len = 1;
+        unsafe {
+            ptr::write(left_and_out.keys_mut().unsafe_mut(0), key);
+            ptr::write(left_and_out.vals_mut().unsafe_mut(0), value);
+            ptr::write(left_and_out.edges_mut().unsafe_mut(0), node);
+            ptr::write(left_and_out.edges_mut().unsafe_mut(1), right);
+        }
     }
-
 
     /// How many key-value pairs the node contains
     pub fn len(&self) -> uint {
-        self.keys.len()
+        self._len
     }
 
     /// How many key-value pairs the node can fit
     pub fn capacity(&self) -> uint {
-        self.keys.capacity()
+        self._capacity
     }
 
     /// If the node has any children
     pub fn is_leaf(&self) -> bool {
-        self.edges.is_empty()
+        self.edges.is_null()
     }
 
     /// if the node has too few elements
@@ -154,110 +584,142 @@ impl <K, V> Node<K, V> {
     pub fn is_full(&self) -> bool {
         self.len() == self.capacity()
     }
+}
 
-    /// Swap the given key-value pair with the key-value pair stored in the node's index,
-    /// without checking bounds.
-    pub unsafe fn unsafe_swap(&mut self, index: uint, key: &mut K, val: &mut V) {
-        mem::swap(self.keys.unsafe_mut(index), key);
-        mem::swap(self.vals.unsafe_mut(index), val);
+impl<'a, K: 'a, V: 'a> EdgeNodeHandle<&'a Node<K, V>> {
+    /// Turns the handle into a reference to the edge it points at. This is necessary because the
+    /// returned pointer has a larger lifetime than what would be returned by `edge` or `edge_mut`,
+    /// making it more suitable for moving down a chain of nodes.
+    ///
+    /// Returns `None` if called on an edge in a leaf node.
+    pub fn into_edge(self) -> Option<&'a Node<K, V>> {
+        if self.node.is_leaf() {
+            None
+        } else {
+            unsafe {
+                Some(self.node.edges().unsafe_get(self.index))
+            }
+        }
+    }
+}
+
+impl<'a, K: 'a, V: 'a> EdgeNodeHandle<&'a mut Node<K, V>> {
+    /// Turns the handle into a mutable reference to the edge it points at. This is necessary
+    /// because the returned pointer has a larger lifetime than what would be returned by
+    /// `edge_mut`, making it more suitable for moving down a chain of nodes.
+    ///
+    /// Returns `None` if called on an edge in a leaf node.
+    pub fn into_edge_mut(self) -> Option<&'a mut Node<K, V>> {
+        if self.node.is_leaf() {
+            None
+        } else {
+            unsafe {
+                Some(self.node.edges_mut().unsafe_mut(self.index))
+            }
+        }
+    }
+}
+
+impl<K, V, NodeRef: Deref<Node<K, V>>> EdgeNodeHandle<NodeRef> {
+    /// Returns a reference to the node that contains the pointed-to edge. This is very different
+    /// from `edge` and `edge_mut` because those return children of the node returned by `node`.
+    pub fn node(&self) -> &Node<K, V> {
+        &*self.node
     }
 
-    /// Get the node's key mutably without any bounds checks.
-    pub unsafe fn unsafe_key_mut(&mut self, index: uint) -> &mut K {
-        self.keys.unsafe_mut(index)
+    // This doesn't exist because there are no uses for it,
+    // but is fine to add, analagous to edge_mut.
+    //
+    // /// Returns a reference to the edge pointed-to by this handle. This should not be
+    // /// confused with `node`, which references the parent node of what is returned here.
+    // ///
+    // /// Returns `None` when called on an edge in a leaf node.
+    // pub fn edge(&self) -> Option<&Node<K, V>>
+}
+
+impl<K, V, NodeRef: DerefMut<Node<K, V>>> EdgeNodeHandle<NodeRef> {
+    /// Returns a mutable reference to the edge pointed-to by this handle. This should not be
+    /// confused with `node`, which references the parent node of what is returned here.
+    ///
+    /// Returns `None` when called on an edge in a leaf node.
+    pub fn edge_mut(&mut self) -> Option<&mut Node<K, V>> {
+        if self.node.is_leaf() {
+            None
+        } else {
+            unsafe { Some(self.node.edges_mut().unsafe_mut(self.index)) }
+        }
     }
 
-    /// Get the node's value at the given index
-    pub fn val(&self, index: uint) -> Option<&V> {
-        self.vals.get(index)
-    }
-
-    /// Get the node's value at the given index
-    pub fn val_mut(&mut self, index: uint) -> Option<&mut V> {
-        self.vals.get_mut(index)
-    }
-
-    /// Get the node's value mutably without any bounds checks.
-    pub unsafe fn unsafe_val_mut(&mut self, index: uint) -> &mut V {
-        self.vals.unsafe_mut(index)
-    }
-
-    /// Get the node's edge at the given index
-    pub fn edge(&self, index: uint) -> Option<&Node<K,V>> {
-        self.edges.get(index)
-    }
-
-    /// Get the node's edge mutably at the given index
-    pub fn edge_mut(&mut self, index: uint) -> Option<&mut Node<K,V>> {
-        self.edges.get_mut(index)
-    }
-
-    /// Get the node's edge mutably without any bounds checks.
-    pub unsafe fn unsafe_edge_mut(&mut self, index: uint) -> &mut Node<K,V> {
-        self.edges.unsafe_mut(index)
-    }
-
-    /// Pop an edge off the end of the node
-    pub fn pop_edge(&mut self) -> Option<Node<K,V>> {
-        self.edges.pop()
-    }
-
-    /// Try to insert this key-value pair at the given index in this internal node
+    /// Tries to insert this key-value pair at the given index in this leaf node
     /// If the node is full, we have to split it.
     ///
     /// Returns a *mut V to the inserted value, because the caller may want this when
     /// they're done mutating the tree, but we don't want to borrow anything for now.
-    pub fn insert_as_leaf(&mut self, index: uint, key: K, value: V) ->
+    pub fn insert_as_leaf(mut self, key: K, value: V) ->
             (InsertionResult<K, V>, *mut V) {
-        if !self.is_full() {
+        // Necessary for correctness, but in a private module
+        debug_assert!(self.node.is_leaf(),
+                      "insert_as_leaf must only be called on leaf nodes");
+
+        if !self.node.is_full() {
             // The element can fit, just insert it
-            self.insert_fit_as_leaf(index, key, value);
-            (Fit, unsafe { self.unsafe_val_mut(index) as *mut _ })
+            (Fit, unsafe { self.node.insert_kv(self.index, key, value) as *mut _ })
         } else {
             // The element can't fit, this node is full. Split it into two nodes.
-            let (new_key, new_val, mut new_right) = self.split();
-            let left_len = self.len();
+            let (new_key, new_val, mut new_right) = self.node.split();
+            let left_len = self.node.len();
 
-            let ptr = if index <= left_len {
-                self.insert_fit_as_leaf(index, key, value);
-                unsafe { self.unsafe_val_mut(index) as *mut _ }
-            } else {
-                new_right.insert_fit_as_leaf(index - left_len - 1, key, value);
-                unsafe { new_right.unsafe_val_mut(index - left_len - 1) as *mut _ }
-            };
+            let ptr = unsafe {
+                if self.index <= left_len {
+                    self.node.insert_kv(self.index, key, value)
+                } else {
+                    // We need to subtract 1 because in splitting we took out new_key and new_val.
+                    // Just being in the right node means we are past left_len k/v pairs in the
+                    // left node and 1 k/v pair in the parent node.
+                    new_right.insert_kv(self.index - left_len - 1, key, value)
+                }
+            } as *mut _;
 
             (Split(new_key, new_val, new_right), ptr)
         }
     }
 
-    /// Try to insert this key-value pair at the given index in this internal node
+    /// Tries to insert this key-value pair at the given index in this internal node
     /// If the node is full, we have to split it.
-    pub fn insert_as_internal(&mut self, index: uint, key: K, value: V, right: Node<K, V>)
+    pub fn insert_as_internal(mut self, key: K, value: V, right: Node<K, V>)
             -> InsertionResult<K, V> {
-        if !self.is_full() {
+        // Necessary for correctness, but in a private module
+        debug_assert!(!self.node.is_leaf(),
+                      "insert_as_internal must only be called on internal nodes");
+
+        if !self.node.is_full() {
             // The element can fit, just insert it
-            self.insert_fit_as_internal(index, key, value, right);
+            unsafe {
+                self.node.insert_kv(self.index, key, value);
+                self.node.insert_edge(self.index + 1, right); // +1 to insert to the right
+            }
             Fit
         } else {
             // The element can't fit, this node is full. Split it into two nodes.
-            let (new_key, new_val, mut new_right) = self.split();
-            let left_len = self.len();
+            let (new_key, new_val, mut new_right) = self.node.split();
+            let left_len = self.node.len();
 
-            if index <= left_len {
-                self.insert_fit_as_internal(index, key, value, right);
+            if self.index <= left_len {
+                unsafe {
+                    self.node.insert_kv(self.index, key, value);
+                    self.node.insert_edge(self.index + 1, right); // +1 to insert to the right
+                }
             } else {
-                new_right.insert_fit_as_internal(index - left_len - 1, key, value, right);
+                unsafe {
+                    // The -1 here is for the same reason as in insert_as_internal - because we
+                    // split, there are actually left_len + 1 k/v pairs before the right node, with
+                    // the extra 1 being put in the parent.
+                    new_right.insert_kv(self.index - left_len - 1, key, value);
+                    new_right.insert_edge(self.index - left_len, right);
+                }
             }
 
             Split(new_key, new_val, new_right)
-        }
-    }
-
-    /// Remove the key-value pair at the given index
-    pub fn remove_as_leaf(&mut self, index: uint) -> (K, V) {
-        match (self.keys.remove(index), self.vals.remove(index)) {
-            (Some(k), Some(v)) => (k, v),
-            _ => unreachable!(),
         }
     }
 
@@ -267,22 +729,335 @@ impl <K, V> Node<K, V> {
     /// (always slow, but at least faster since we know we're half-empty).
     /// Handling "to the right" reverses these roles. Of course, we merge whenever possible
     /// because we want dense nodes, and merging is about equal work regardless of direction.
-    pub fn handle_underflow(&mut self, underflowed_child_index: uint) {
-        assert!(underflowed_child_index <= self.len());
+    pub fn handle_underflow(mut self) {
         unsafe {
-            if underflowed_child_index > 0 {
-                self.handle_underflow_to_left(underflowed_child_index);
+            if self.index > 0 {
+                self.handle_underflow_to_left();
             } else {
-                self.handle_underflow_to_right(underflowed_child_index);
+                self.handle_underflow_to_right();
             }
+        }
+    }
+
+    /// Gets the handle pointing to the key/value pair just to the left of the pointed-to edge.
+    /// This is unsafe because the handle might point to the first edge in the node, which has no
+    /// pair to its left.
+    unsafe fn left_kv<'a>(&'a mut self) -> KVNodeHandle<&'a mut Node<K, V>> {
+        KVNodeHandle {
+            node: &mut *self.node,
+            index: self.index - 1
+        }
+    }
+
+    /// Gets the handle pointing to the key/value pair just to the right of the pointed-to edge.
+    /// This is unsafe because the handle might point to the last edge in the node, which has no
+    /// pair to its right.
+    unsafe fn right_kv<'a>(&'a mut self) -> KVNodeHandle<&'a mut Node<K, V>> {
+        KVNodeHandle {
+            node: &mut *self.node,
+            index: self.index
+        }
+    }
+
+    /// Right is underflowed. Tries to steal from left,
+    /// but merges left and right if left is low too.
+    unsafe fn handle_underflow_to_left(&mut self) {
+        let left_len = self.node.edges()[self.index - 1].len();
+        if left_len > min_load_from_capacity(self.node.capacity()) {
+            self.left_kv().steal_rightward();
+        } else {
+            self.left_kv().merge_children();
+        }
+    }
+
+    /// Left is underflowed. Tries to steal from the right,
+    /// but merges left and right if right is low too.
+    unsafe fn handle_underflow_to_right(&mut self) {
+        let right_len = self.node.edges()[self.index + 1].len();
+        if right_len > min_load_from_capacity(self.node.capacity()) {
+            self.right_kv().steal_leftward();
+        } else {
+            self.right_kv().merge_children();
+        }
+    }
+
+    /// Converts a handle into one that stores the same information using a raw pointer. This can
+    /// be useful in conjunction with `from_raw` in the cases in which the type system is
+    /// insufficient for determining the lifetimes of the nodes.
+    pub fn as_raw(&mut self) -> EdgeNodeHandle<*mut Node<K, V>> {
+        EdgeNodeHandle {
+            node: &mut *self.node as *mut _,
+            index: self.index
+        }
+    }
+}
+
+impl<K, V> EdgeNodeHandle<*mut Node<K, V>> {
+    /// Converts from a handle stored with a raw pointer, which isn't directly usable, to a handle
+    /// stored with a reference. This is an unsafe inverse of `as_raw`, and together they allow
+    /// unsafely extending the lifetime of the reference to the `Node`.
+    pub unsafe fn from_raw<'a>(&'a self) -> EdgeNodeHandle<&'a Node<K, V>> {
+        EdgeNodeHandle {
+            node: &*self.node,
+            index: self.index
+        }
+    }
+
+    /// Converts from a handle stored with a raw pointer, which isn't directly usable, to a handle
+    /// stored with a mutable reference. This is an unsafe inverse of `as_raw`, and together they
+    /// allow unsafely extending the lifetime of the reference to the `Node`.
+    pub unsafe fn from_raw_mut<'a>(&'a mut self) -> EdgeNodeHandle<&'a mut Node<K, V>> {
+        EdgeNodeHandle {
+            node: &mut *self.node,
+            index: self.index
+        }
+    }
+}
+
+impl<'a, K: 'a, V: 'a> KVNodeHandle<&'a Node<K, V>> {
+    /// Turns the handle into references to the key and value it points at. This is necessary
+    /// because the returned pointers have larger lifetimes than what would be returned by `key`
+    /// or `val`.
+    pub fn into_kv(self) -> (&'a K, &'a V) {
+        let (keys, vals) = self.node.as_slices();
+        unsafe {
+            (
+                keys.unsafe_get(self.index),
+                vals.unsafe_get(self.index)
+            )
+        }
+    }
+}
+
+impl<'a, K: 'a, V: 'a> KVNodeHandle<&'a mut Node<K, V>> {
+    /// Turns the handle into mutable references to the key and value it points at. This is
+    /// necessary because the returned pointers have larger lifetimes than what would be returned
+    /// by `key_mut` or `val_mut`.
+    pub fn into_kv_mut(self) -> (&'a mut K, &'a mut V) {
+        let (keys, vals) = self.node.as_slices_mut();
+        unsafe {
+            (
+                keys.unsafe_mut(self.index),
+                vals.unsafe_mut(self.index)
+            )
+        }
+    }
+}
+
+impl<'a, K: 'a, V: 'a, NodeRef: Deref<Node<K, V>> + 'a> KVNodeHandle<NodeRef> {
+    /// Returns a reference to the node that contains the pointed-to key/value pair.
+    pub fn node(&'a self) -> &'a Node<K, V> {
+        &*self.node
+    }
+
+    // These are fine to include, but are currently unneeded.
+    //
+    // /// Returns a reference to the key pointed-to by this handle. This doesn't return a
+    // /// reference with a lifetime as large as `into_kv_mut`, but it also does not consume the
+    // /// handle.
+    // pub fn key(&'a self) -> &'a K {
+    //     unsafe { self.node.keys().unsafe_get(self.index) }
+    // }
+    //
+    // /// Returns a reference to the value pointed-to by this handle. This doesn't return a
+    // /// reference with a lifetime as large as `into_kv_mut`, but it also does not consume the
+    // /// handle.
+    // pub fn val(&'a self) -> &'a V {
+    //     unsafe { self.node.vals().unsafe_get(self.index) }
+    // }
+}
+
+impl<'a, K: 'a, V: 'a, NodeRef: DerefMut<Node<K, V>> + 'a> KVNodeHandle<NodeRef> {
+    /// Returns a mutable reference to the key pointed-to by this handle. This doesn't return a
+    /// reference with a lifetime as large as `into_kv_mut`, but it also does not consume the
+    /// handle.
+    pub fn key_mut(&'a mut self) -> &'a mut K {
+        unsafe { self.node.keys_mut().unsafe_mut(self.index) }
+    }
+
+    /// Returns a mutable reference to the value pointed-to by this handle. This doesn't return a
+    /// reference with a lifetime as large as `into_kv_mut`, but it also does not consume the
+    /// handle.
+    pub fn val_mut(&'a mut self) -> &'a mut V {
+        unsafe { self.node.vals_mut().unsafe_mut(self.index) }
+    }
+}
+
+impl<K, V, NodeRef: DerefMut<Node<K, V>>> KVNodeHandle<NodeRef> {
+    /// Gets the handle pointing to the edge immediately to the left of the key/value pair pointed
+    /// to by this handle.
+    pub fn left_edge<'a>(&'a mut self) -> EdgeNodeHandle<&'a mut Node<K, V>> {
+        EdgeNodeHandle {
+            node: &mut *self.node,
+            index: self.index
+        }
+    }
+
+    /// Gets the handle pointing to the edge immediately to the right of the key/value pair pointed
+    /// to by this handle.
+    pub fn right_edge<'a>(&'a mut self) -> EdgeNodeHandle<&'a mut Node<K, V>> {
+        EdgeNodeHandle {
+            node: &mut *self.node,
+            index: self.index + 1
+        }
+    }
+
+    /// Removes the key/value pair at the handle's location.
+    ///
+    /// # Panics (in debug build)
+    ///
+    /// Panics if the node containing the pair is not a leaf node.
+    pub fn remove_as_leaf(mut self) -> (K, V) {
+        // Necessary for correctness, but in a private module
+        debug_assert!(self.node.is_leaf(), "remove_as_leaf must only be called on leaf nodes");
+        unsafe { self.node.remove_kv(self.index) }
+    }
+
+    /// Converts a handle into one that stores the same information using a raw pointer. This can
+    /// be useful in conjunction with `from_raw` in the cases in which the type system is
+    /// insufficient for determining the lifetimes of the nodes.
+    pub fn as_raw(&mut self) -> KVNodeHandle<*mut Node<K, V>> {
+        KVNodeHandle {
+            node: &mut *self.node as *mut _,
+            index: self.index
+        }
+    }
+
+    /// Steal! Stealing is roughly analogous to a binary tree rotation.
+    /// In this case, we're "rotating" right.
+    unsafe fn steal_rightward(&mut self) {
+        // Take the biggest stuff off left
+        let (mut key, mut val, edge) = {
+            let mut left_handle = self.left_edge();
+            let left = left_handle.edge_mut().unwrap();
+            let (key, val) = left.pop_kv();
+            let edge = if left.is_leaf() {
+                None
+            } else {
+                Some(left.pop_edge())
+            };
+
+            (key, val, edge)
+        };
+
+        // Swap the parent's separating key-value pair with left's
+        mem::swap(&mut key, self.key_mut());
+        mem::swap(&mut val, self.val_mut());
+
+        // Put them at the start of right
+        let mut right_handle = self.right_edge();
+        let right = right_handle.edge_mut().unwrap();
+        right.insert_kv(0, key, val);
+        match edge {
+            Some(edge) => right.insert_edge(0, edge),
+            None => {}
+        }
+    }
+
+    /// Steal! Stealing is roughly analogous to a binary tree rotation.
+    /// In this case, we're "rotating" left.
+    unsafe fn steal_leftward(&mut self) {
+        // Take the smallest stuff off right
+        let (mut key, mut val, edge) = {
+            let mut right_handle = self.right_edge();
+            let right = right_handle.edge_mut().unwrap();
+            let (key, val) = right.remove_kv(0);
+            let edge = if right.is_leaf() {
+                None
+            } else {
+                Some(right.remove_edge(0))
+            };
+
+            (key, val, edge)
+        };
+
+        // Swap the parent's separating key-value pair with right's
+        mem::swap(&mut key, self.key_mut());
+        mem::swap(&mut val, self.val_mut());
+
+        // Put them at the end of left
+        let mut left_handle = self.left_edge();
+        let left = left_handle.edge_mut().unwrap();
+        left.push_kv(key, val);
+        match edge {
+            Some(edge) => left.push_edge(edge),
+            None => {}
+        }
+    }
+
+    /// Merge! Smooshes left and right into one node, along with the key-value
+    /// pair that separated them in their parent.
+    unsafe fn merge_children(mut self) {
+        // Permanently remove right's index, and the key-value pair that separates
+        // left and right
+        let (key, val) = self.node.remove_kv(self.index);
+        let right = self.node.remove_edge(self.index + 1);
+
+        // Give left right's stuff.
+        self.left_edge().edge_mut().unwrap()
+            .absorb(key, val, right);
+    }
+}
+
+impl<K, V> KVNodeHandle<*mut Node<K, V>> {
+    /// Converts from a handle stored with a raw pointer, which isn't directly usable, to a handle
+    /// stored with a reference. This is an unsafe inverse of `as_raw`, and together they allow
+    /// unsafely extending the lifetime of the reference to the `Node`.
+    pub unsafe fn from_raw<'a>(&'a self) -> KVNodeHandle<&'a Node<K, V>> {
+        KVNodeHandle {
+            node: &*self.node,
+            index: self.index
+        }
+    }
+
+    /// Converts from a handle stored with a raw pointer, which isn't directly usable, to a handle
+    /// stored with a mutable reference. This is an unsafe inverse of `as_raw`, and together they
+    /// allow unsafely extending the lifetime of the reference to the `Node`.
+    pub unsafe fn from_raw_mut<'a>(&'a mut self) -> KVNodeHandle<&'a mut Node<K, V>> {
+        KVNodeHandle {
+            node: &mut *self.node,
+            index: self.index
+        }
+    }
+}
+
+impl<K, V> Node<K, V> {
+    /// Returns the mutable handle pointing to the key/value pair at a given index.
+    ///
+    /// # Panics (in debug build)
+    ///
+    /// Panics if the given index is out of bounds.
+    pub fn kv_handle(&mut self, index: uint) -> KVNodeHandle<&mut Node<K, V>> {
+        // Necessary for correctness, but in a private module
+        debug_assert!(index < self.len(), "kv_handle index out of bounds");
+        KVNodeHandle {
+            node: self,
+            index: index
+        }
+    }
+
+    /// Returns the mutable handle pointing to the edge at a given index.
+    ///
+    /// # Panics (in debug build)
+    ///
+    /// Panics if the given index is out of bounds.
+    pub fn edge_handle(&mut self, index: uint) -> EdgeNodeHandle<&mut Node<K, V>> {
+        // Necessary for correctness, but in a private module
+        debug_assert!(index <= self.len(), "edge_handle index out of bounds");
+        EdgeNodeHandle {
+            node: self,
+            index: index
         }
     }
 
     pub fn iter<'a>(&'a self) -> Traversal<'a, K, V> {
         let is_leaf = self.is_leaf();
+        let (keys, vals, edges) = self.as_slices_internal();
         Traversal {
-            elems: self.keys.iter().zip(self.vals.iter()),
-            edges: self.edges.iter(),
+            inner: ElemsAndEdges(
+                keys.iter().zip(vals.iter()),
+                edges.iter()
+            ),
             head_is_edge: true,
             tail_is_edge: true,
             has_edges: !is_leaf,
@@ -291,9 +1066,12 @@ impl <K, V> Node<K, V> {
 
     pub fn iter_mut<'a>(&'a mut self) -> MutTraversal<'a, K, V> {
         let is_leaf = self.is_leaf();
+        let (keys, vals, edges) = self.as_slices_internal_mut();
         MutTraversal {
-            elems: self.keys.iter().zip(self.vals.iter_mut()),
-            edges: self.edges.iter_mut(),
+            inner: ElemsAndEdges(
+                keys.iter().zip(vals.iter_mut()),
+                edges.iter_mut()
+            ),
             head_is_edge: true,
             tail_is_edge: true,
             has_edges: !is_leaf,
@@ -301,189 +1079,230 @@ impl <K, V> Node<K, V> {
     }
 
     pub fn into_iter(self) -> MoveTraversal<K, V> {
-        let is_leaf = self.is_leaf();
-        MoveTraversal {
-            elems: self.keys.into_iter().zip(self.vals.into_iter()),
-            edges: self.edges.into_iter(),
-            head_is_edge: true,
-            tail_is_edge: true,
-            has_edges: !is_leaf,
+        unsafe {
+            let ret = MoveTraversal {
+                inner: MoveTraversalImpl {
+                    keys: RawItems::from_slice(self.keys()),
+                    vals: RawItems::from_slice(self.vals()),
+                    edges: RawItems::from_slice(self.edges()),
+
+                    ptr: self.keys as *mut u8,
+                    capacity: self.capacity(),
+                    is_leaf: self.is_leaf()
+                },
+                head_is_edge: true,
+                tail_is_edge: true,
+                has_edges: !self.is_leaf(),
+            };
+            mem::forget(self);
+            ret
         }
+    }
+
+    /// When a node has no keys or values and only a single edge, extract that edge.
+    pub fn into_edge(&mut self) {
+        // Necessary for correctness, but in a private module
+        debug_assert!(self.len() == 0);
+        debug_assert!(!self.is_leaf());
+
+        unsafe {
+            let ret = ptr::read(self.edges().unsafe_get(0));
+            self.destroy();
+            ptr::write(self, ret);
+        }
+    }
+}
+
+// Vector functions (all unchecked)
+impl<K, V> Node<K, V> {
+    // This must be followed by push_edge on an internal node.
+    #[inline]
+    unsafe fn push_kv(&mut self, key: K, val: V) {
+        let len = self.len();
+
+        ptr::write(self.keys_mut().unsafe_mut(len), key);
+        ptr::write(self.vals_mut().unsafe_mut(len), val);
+
+        self._len += 1;
+    }
+
+    // This can only be called immediately after a call to push_kv.
+    #[inline]
+    unsafe fn push_edge(&mut self, edge: Node<K, V>) {
+        let len = self.len();
+
+        ptr::write(self.edges_mut().unsafe_mut(len), edge);
+    }
+
+    // This must be followed by insert_edge on an internal node.
+    #[inline]
+    unsafe fn insert_kv(&mut self, index: uint, key: K, val: V) -> &mut V {
+        ptr::copy_memory(
+            self.keys_mut().as_mut_ptr().offset(index as int + 1),
+            self.keys().as_ptr().offset(index as int),
+            self.len() - index
+        );
+        ptr::copy_memory(
+            self.vals_mut().as_mut_ptr().offset(index as int + 1),
+            self.vals().as_ptr().offset(index as int),
+            self.len() - index
+        );
+
+        ptr::write(self.keys_mut().unsafe_mut(index), key);
+        ptr::write(self.vals_mut().unsafe_mut(index), val);
+
+        self._len += 1;
+
+        self.vals_mut().unsafe_mut(index)
+    }
+
+    // This can only be called immediately after a call to insert_kv.
+    #[inline]
+    unsafe fn insert_edge(&mut self, index: uint, edge: Node<K, V>) {
+        ptr::copy_memory(
+            self.edges_mut().as_mut_ptr().offset(index as int + 1),
+            self.edges().as_ptr().offset(index as int),
+            self.len() - index
+        );
+        ptr::write(self.edges_mut().unsafe_mut(index), edge);
+    }
+
+    // This must be followed by pop_edge on an internal node.
+    #[inline]
+    unsafe fn pop_kv(&mut self) -> (K, V) {
+        let key = ptr::read(self.keys().unsafe_get(self.len() - 1));
+        let val = ptr::read(self.vals().unsafe_get(self.len() - 1));
+
+        self._len -= 1;
+
+        (key, val)
+    }
+
+    // This can only be called immediately after a call to pop_kv.
+    #[inline]
+    unsafe fn pop_edge(&mut self) -> Node<K, V> {
+        let edge = ptr::read(self.edges().unsafe_get(self.len() + 1));
+
+        edge
+    }
+
+    // This must be followed by remove_edge on an internal node.
+    #[inline]
+    unsafe fn remove_kv(&mut self, index: uint) -> (K, V) {
+        let key = ptr::read(self.keys().unsafe_get(index));
+        let val = ptr::read(self.vals().unsafe_get(index));
+
+        ptr::copy_memory(
+            self.keys_mut().as_mut_ptr().offset(index as int),
+            self.keys().as_ptr().offset(index as int + 1),
+            self.len() - index - 1
+        );
+        ptr::copy_memory(
+            self.vals_mut().as_mut_ptr().offset(index as int),
+            self.vals().as_ptr().offset(index as int + 1),
+            self.len() - index - 1
+        );
+
+        self._len -= 1;
+
+        (key, val)
+    }
+
+    // This can only be called immediately after a call to remove_kv.
+    #[inline]
+    unsafe fn remove_edge(&mut self, index: uint) -> Node<K, V> {
+        let edge = ptr::read(self.edges().unsafe_get(index));
+
+        ptr::copy_memory(
+            self.edges_mut().as_mut_ptr().offset(index as int),
+            self.edges().as_ptr().offset(index as int + 1),
+            self.len() - index + 1
+        );
+
+        edge
     }
 }
 
 // Private implementation details
 impl<K, V> Node<K, V> {
-    /// Make a node from its raw components
-    fn from_vecs(keys: Vec<K>, vals: Vec<V>, edges: Vec<Node<K, V>>) -> Node<K, V> {
-        Node {
-            keys: keys,
-            vals: vals,
-            edges: edges,
-        }
-    }
-
-    /// We have somehow verified that this key-value pair will fit in this internal node,
-    /// so insert under that assumption.
-    fn insert_fit_as_leaf(&mut self, index: uint, key: K, val: V) {
-        self.keys.insert(index, key);
-        self.vals.insert(index, val);
-    }
-
-    /// We have somehow verified that this key-value pair will fit in this internal node,
-    /// so insert under that assumption
-    fn insert_fit_as_internal(&mut self, index: uint, key: K, val: V, right: Node<K, V>) {
-        self.keys.insert(index, key);
-        self.vals.insert(index, val);
-        self.edges.insert(index + 1, right);
-    }
-
     /// Node is full, so split it into two nodes, and yield the middle-most key-value pair
     /// because we have one too many, and our parent now has one too few
     fn split(&mut self) -> (K, V, Node<K, V>) {
-        let r_keys = split(&mut self.keys);
-        let r_vals = split(&mut self.vals);
-        let r_edges = if self.edges.is_empty() {
-            Vec::new()
+        // Necessary for correctness, but in a private funtion
+        debug_assert!(self.len() > 0);
+
+        let mut right = if self.is_leaf() {
+            Node::new_leaf(self.capacity())
         } else {
-            split(&mut self.edges)
+            unsafe { Node::new_internal(self.capacity()) }
         };
 
-        let right = Node::from_vecs(r_keys, r_vals, r_edges);
-        // Pop it
-        let key = self.keys.pop().unwrap();
-        let val = self.vals.pop().unwrap();
+        unsafe {
+            right._len = self.len() / 2;
+            let right_offset = self.len() - right.len();
+            ptr::copy_nonoverlapping_memory(
+                right.keys_mut().as_mut_ptr(),
+                self.keys().as_ptr().offset(right_offset as int),
+                right.len()
+            );
+            ptr::copy_nonoverlapping_memory(
+                right.vals_mut().as_mut_ptr(),
+                self.vals().as_ptr().offset(right_offset as int),
+                right.len()
+            );
+            if !self.is_leaf() {
+                ptr::copy_nonoverlapping_memory(
+                    right.edges_mut().as_mut_ptr(),
+                    self.edges().as_ptr().offset(right_offset as int),
+                    right.len() + 1
+                );
+            }
 
-        (key, val, right)
-    }
+            let key = ptr::read(self.keys().unsafe_get(right_offset - 1));
+            let val = ptr::read(self.vals().unsafe_get(right_offset - 1));
 
-    /// Right is underflowed. Try to steal from left,
-    /// but merge left and right if left is low too.
-    unsafe fn handle_underflow_to_left(&mut self, underflowed_child_index: uint) {
-        let left_len = self.edges[underflowed_child_index - 1].len();
-        if left_len > min_load_from_capacity(self.capacity()) {
-            self.steal_to_left(underflowed_child_index);
-        } else {
-            self.merge_children(underflowed_child_index - 1);
+            self._len = right_offset - 1;
+
+            (key, val, right)
         }
     }
 
-    /// Left is underflowed. Try to steal from the right,
-    /// but merge left and right if right is low too.
-    unsafe fn handle_underflow_to_right(&mut self, underflowed_child_index: uint) {
-        let right_len = self.edges[underflowed_child_index + 1].len();
-        if right_len > min_load_from_capacity(self.capacity()) {
-            self.steal_to_right(underflowed_child_index);
-        } else {
-            self.merge_children(underflowed_child_index);
-        }
-    }
-
-    /// Steal! Stealing is roughly analogous to a binary tree rotation.
-    /// In this case, we're "rotating" right.
-    unsafe fn steal_to_left(&mut self, underflowed_child_index: uint) {
-        // Take the biggest stuff off left
-        let (mut key, mut val, edge) = {
-            let left = self.unsafe_edge_mut(underflowed_child_index - 1);
-            match (left.keys.pop(), left.vals.pop(), left.edges.pop()) {
-                (Some(k), Some(v), e) => (k, v, e),
-                _ => unreachable!(),
-            }
-        };
-
-        // Swap the parent's separating key-value pair with left's
-        self.unsafe_swap(underflowed_child_index - 1, &mut key, &mut val);
-
-        // Put them at the start of right
-        {
-            let right = self.unsafe_edge_mut(underflowed_child_index);
-            right.keys.insert(0, key);
-            right.vals.insert(0, val);
-            match edge {
-                None => {}
-                Some(e) => right.edges.insert(0, e)
-            }
-        }
-    }
-
-    /// Steal! Stealing is roughly analogous to a binary tree rotation.
-    /// In this case, we're "rotating" left.
-    unsafe fn steal_to_right(&mut self, underflowed_child_index: uint) {
-        // Take the smallest stuff off right
-        let (mut key, mut val, edge) = {
-            let right = self.unsafe_edge_mut(underflowed_child_index + 1);
-            match (right.keys.remove(0), right.vals.remove(0), right.edges.remove(0)) {
-                (Some(k), Some(v), e) => (k, v, e),
-                _ => unreachable!(),
-            }
-        };
-
-        // Swap the parent's separating key-value pair with right's
-        self.unsafe_swap(underflowed_child_index, &mut key, &mut val);
-
-        // Put them at the end of left
-        {
-            let left = self.unsafe_edge_mut(underflowed_child_index);
-            left.keys.push(key);
-            left.vals.push(val);
-            match edge {
-                None => {}
-                Some(e) => left.edges.push(e)
-            }
-        }
-    }
-
-    /// Merge! Left and right will be smooshed into one node, along with the key-value
-    /// pair that separated them in their parent.
-    unsafe fn merge_children(&mut self, left_index: uint) {
-        // Permanently remove right's index, and the key-value pair that separates
-        // left and right
-        let (key, val, right) = {
-            match (self.keys.remove(left_index),
-                self.vals.remove(left_index),
-                self.edges.remove(left_index + 1)) {
-                (Some(k), Some(v), Some(e)) => (k, v, e),
-                _ => unreachable!(),
-            }
-        };
-
-        // Give left right's stuff.
-        let left = self.unsafe_edge_mut(left_index);
-        left.absorb(key, val, right);
-    }
-
-    /// Take all the values from right, separated by the given key and value
-    fn absorb(&mut self, key: K, val: V, right: Node<K, V>) {
+    /// Take all the values from right, seperated by the given key and value
+    fn absorb(&mut self, key: K, val: V, mut right: Node<K, V>) {
+        // Necessary for correctness, but in a private function
         // Just as a sanity check, make sure we can fit this guy in
-        debug_assert!(self.len() + right.len() <= self.capacity())
+        debug_assert!(self.len() + right.len() <= self.capacity());
+        debug_assert!(self.is_leaf() == right.is_leaf());
 
-        self.keys.push(key);
-        self.vals.push(val);
-        self.keys.extend(right.keys.into_iter());
-        self.vals.extend(right.vals.into_iter());
-        self.edges.extend(right.edges.into_iter());
-    }
-}
+        unsafe {
+            let old_len = self.len();
+            self._len += right.len() + 1;
 
-/// Takes a Vec, and splits half the elements into a new one.
-fn split<T>(left: &mut Vec<T>) -> Vec<T> {
-    // This function is intended to be called on a full Vec of size 2B - 1 (keys, values),
-    // or 2B (edges). In the former case, left should get B elements, and right should get
-    // B - 1. In the latter case, both should get B. Therefore, we can just always take the last
-    // size / 2 elements from left, and put them on right. This also ensures this method is
-    // safe, even if the Vec isn't full. Just uninteresting for our purposes.
-    let len = left.len();
-    let right_len = len / 2;
-    let left_len = len - right_len;
-    let mut right = Vec::with_capacity(left.capacity());
-    unsafe {
-        let left_ptr = left.unsafe_get(left_len) as *const _;
-        let right_ptr = right.as_mut_ptr();
-        ptr::copy_nonoverlapping_memory(right_ptr, left_ptr, right_len);
-        left.set_len(left_len);
-        right.set_len(right_len);
+            ptr::write(self.keys_mut().unsafe_mut(old_len), key);
+            ptr::write(self.vals_mut().unsafe_mut(old_len), val);
+
+            ptr::copy_nonoverlapping_memory(
+                self.keys_mut().as_mut_ptr().offset(old_len as int + 1),
+                right.keys().as_ptr(),
+                right.len()
+            );
+            ptr::copy_nonoverlapping_memory(
+                self.vals_mut().as_mut_ptr().offset(old_len as int + 1),
+                right.vals().as_ptr(),
+                right.len()
+            );
+            if !self.is_leaf() {
+                ptr::copy_nonoverlapping_memory(
+                    self.edges_mut().as_mut_ptr().offset(old_len as int + 1),
+                    right.edges().as_ptr(),
+                    right.len() + 1
+                );
+            }
+
+            right.destroy();
+            mem::forget(right);
+        }
     }
-    right
 }
 
 /// Get the capacity of a node from the order of the parent B-Tree
@@ -497,10 +1316,89 @@ fn min_load_from_capacity(cap: uint) -> uint {
     cap / 2
 }
 
+/// A trait for pairs of `Iterator`s, one over edges and the other over key/value pairs. This is
+/// necessary, as the `MoveTraversalImpl` needs to have a destructor that deallocates the `Node`,
+/// and a pair of `Iterator`s would require two independent destructors.
+trait TraversalImpl<K, V, E> {
+    fn next_kv(&mut self) -> Option<(K, V)>;
+    fn next_kv_back(&mut self) -> Option<(K, V)>;
+
+    fn next_edge(&mut self) -> Option<E>;
+    fn next_edge_back(&mut self) -> Option<E>;
+}
+
+/// A `TraversalImpl` that actually is backed by two iterators. This works in the non-moving case,
+/// as no deallocation needs to be done.
+struct ElemsAndEdges<Elems, Edges>(Elems, Edges);
+
+impl<K, V, E, Elems: DoubleEndedIterator<(K, V)>, Edges: DoubleEndedIterator<E>>
+        TraversalImpl<K, V, E> for ElemsAndEdges<Elems, Edges> {
+
+    fn next_kv(&mut self) -> Option<(K, V)> { self.0.next() }
+    fn next_kv_back(&mut self) -> Option<(K, V)> { self.0.next_back() }
+
+    fn next_edge(&mut self) -> Option<E> { self.1.next() }
+    fn next_edge_back(&mut self) -> Option<E> { self.1.next_back() }
+}
+
+/// A `TraversalImpl` taking a `Node` by value.
+struct MoveTraversalImpl<K, V> {
+    keys: RawItems<K>,
+    vals: RawItems<V>,
+    edges: RawItems<Node<K, V>>,
+
+    // For deallocation when we are done iterating.
+    ptr: *mut u8,
+    capacity: uint,
+    is_leaf: bool
+}
+
+impl<K, V> TraversalImpl<K, V, Node<K, V>> for MoveTraversalImpl<K, V> {
+    fn next_kv(&mut self) -> Option<(K, V)> {
+        match (self.keys.next(), self.vals.next()) {
+            (Some(k), Some(v)) => Some((k, v)),
+            _ => None
+        }
+    }
+
+    fn next_kv_back(&mut self) -> Option<(K, V)> {
+        match (self.keys.next_back(), self.vals.next_back()) {
+            (Some(k), Some(v)) => Some((k, v)),
+            _ => None
+        }
+    }
+
+    fn next_edge(&mut self) -> Option<Node<K, V>> {
+        // Necessary for correctness, but in a private module
+        debug_assert!(!self.is_leaf);
+        self.edges.next()
+    }
+
+    fn next_edge_back(&mut self) -> Option<Node<K, V>> {
+        // Necessary for correctness, but in a private module
+        debug_assert!(!self.is_leaf);
+        self.edges.next_back()
+    }
+}
+
+#[unsafe_destructor]
+impl<K, V> Drop for MoveTraversalImpl<K, V> {
+    fn drop(&mut self) {
+        // We need to cleanup the stored values manually, as the RawItems destructor would run
+        // after our deallocation.
+        for _ in self.keys {}
+        for _ in self.vals {}
+        for _ in self.edges {}
+
+        let (alignment, size) =
+                calculate_allocation_generic::<K, V>(self.capacity, self.is_leaf);
+        unsafe { heap::deallocate(self.ptr, size, alignment) };
+    }
+}
+
 /// An abstraction over all the different kinds of traversals a node supports
-struct AbsTraversal<Elems, Edges> {
-    elems: Elems,
-    edges: Edges,
+struct AbsTraversal<Impl> {
+    inner: Impl,
     head_is_edge: bool,
     tail_is_edge: bool,
     has_edges: bool,
@@ -513,44 +1411,45 @@ pub enum TraversalItem<K, V, E> {
 }
 
 /// A traversal over a node's entries and edges
-pub type Traversal<'a, K, V> = AbsTraversal<Zip<slice::Items<'a, K>, slice::Items<'a, V>>,
-                                            slice::Items<'a, Node<K, V>>>;
+pub type Traversal<'a, K, V> = AbsTraversal<ElemsAndEdges<Zip<slice::Items<'a, K>,
+                                                              slice::Items<'a, V>>,
+                                                              slice::Items<'a, Node<K, V>>>>;
 
 /// A mutable traversal over a node's entries and edges
-pub type MutTraversal<'a, K, V> = AbsTraversal<Zip<slice::Items<'a, K>, slice::MutItems<'a, V>>,
-                                               slice::MutItems<'a, Node<K, V>>>;
+pub type MutTraversal<'a, K, V> = AbsTraversal<ElemsAndEdges<Zip<slice::Items<'a, K>,
+                                                                 slice::MutItems<'a, V>>,
+                                                                 slice::MutItems<'a, Node<K, V>>>>;
 
 /// An owning traversal over a node's entries and edges
-pub type MoveTraversal<K, V> = AbsTraversal<Zip<vec::MoveItems<K>, vec::MoveItems<V>>,
-                                                vec::MoveItems<Node<K, V>>>;
+pub type MoveTraversal<K, V> = AbsTraversal<MoveTraversalImpl<K, V>>;
 
 
-impl<K, V, E, Elems: Iterator<(K, V)>, Edges: Iterator<E>>
-        Iterator<TraversalItem<K, V, E>> for AbsTraversal<Elems, Edges> {
+impl<K, V, E, Impl: TraversalImpl<K, V, E>>
+        Iterator<TraversalItem<K, V, E>> for AbsTraversal<Impl> {
 
     fn next(&mut self) -> Option<TraversalItem<K, V, E>> {
         let head_is_edge = self.head_is_edge;
         self.head_is_edge = !head_is_edge;
 
         if head_is_edge && self.has_edges {
-            self.edges.next().map(|node| Edge(node))
+            self.inner.next_edge().map(|node| Edge(node))
         } else {
-            self.elems.next().map(|(k, v)| Elem(k, v))
+            self.inner.next_kv().map(|(k, v)| Elem(k, v))
         }
     }
 }
 
-impl<K, V, E, Elems: DoubleEndedIterator<(K, V)>, Edges: DoubleEndedIterator<E>>
-        DoubleEndedIterator<TraversalItem<K, V, E>> for AbsTraversal<Elems, Edges> {
+impl<K, V, E, Impl: TraversalImpl<K, V, E>>
+        DoubleEndedIterator<TraversalItem<K, V, E>> for AbsTraversal<Impl> {
 
     fn next_back(&mut self) -> Option<TraversalItem<K, V, E>> {
         let tail_is_edge = self.tail_is_edge;
         self.tail_is_edge = !tail_is_edge;
 
         if tail_is_edge && self.has_edges {
-            self.edges.next_back().map(|node| Edge(node))
+            self.inner.next_edge_back().map(|node| Edge(node))
         } else {
-            self.elems.next_back().map(|(k, v)| Elem(k, v))
+            self.inner.next_kv_back().map(|(k, v)| Elem(k, v))
         }
     }
 }
