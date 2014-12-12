@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -226,6 +226,11 @@ pub unsafe fn record_sp_limit(limit: uint) {
         }
     }
 
+    // aarch64 - FIXME(AARCH64): missing...
+    #[cfg(target_arch = "aarch64")]
+    unsafe fn target_record_sp_limit(_: uint) {
+    }
+
     // iOS segmented stack is disabled for now, see related notes
     #[cfg(all(target_arch = "arm", target_os = "ios"))] #[inline(always)]
     unsafe fn target_record_sp_limit(_: uint) {
@@ -313,6 +318,12 @@ pub unsafe fn get_sp_limit() -> uint {
         extern {
             fn get_sp_limit() -> *const c_void;
         }
+    }
+
+    // aarch64 - FIXME(AARCH64): missing...
+    #[cfg(target_arch = "aarch64")]
+    unsafe fn target_get_sp_limit() -> uint {
+        1024
     }
 
     // iOS doesn't support segmented stacks yet. This function might

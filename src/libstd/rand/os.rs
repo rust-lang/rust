@@ -1,4 +1,4 @@
-// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -29,7 +29,10 @@ mod imp {
     use os::errno;
 
     #[cfg(all(target_os = "linux",
-              any(target_arch = "x86_64", target_arch = "x86", target_arch = "arm")))]
+              any(target_arch = "x86_64",
+                  target_arch = "x86",
+                  target_arch = "arm",
+                  target_arch = "aarch64")))]
     fn getrandom(buf: &mut [u8]) -> libc::c_long {
         extern "C" {
             fn syscall(number: libc::c_long, ...) -> libc::c_long;
@@ -39,7 +42,7 @@ mod imp {
         const NR_GETRANDOM: libc::c_long = 318;
         #[cfg(target_arch = "x86")]
         const NR_GETRANDOM: libc::c_long = 355;
-        #[cfg(target_arch = "arm")]
+        #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
         const NR_GETRANDOM: libc::c_long = 384;
 
         unsafe {
@@ -48,7 +51,10 @@ mod imp {
     }
 
     #[cfg(not(all(target_os = "linux",
-                  any(target_arch = "x86_64", target_arch = "x86", target_arch = "arm"))))]
+                  any(target_arch = "x86_64",
+                      target_arch = "x86",
+                      target_arch = "arm",
+                      target_arch = "aarch64"))))]
     fn getrandom(_buf: &mut [u8]) -> libc::c_long { -1 }
 
     fn getrandom_fill_bytes(v: &mut [u8]) {
@@ -82,7 +88,10 @@ mod imp {
     }
 
     #[cfg(all(target_os = "linux",
-              any(target_arch = "x86_64", target_arch = "x86", target_arch = "arm")))]
+              any(target_arch = "x86_64",
+                  target_arch = "x86",
+                  target_arch = "arm",
+                  target_arch = "aarch64")))]
     fn is_getrandom_available() -> bool {
         use sync::atomic::{AtomicBool, ATOMIC_BOOL_INIT, Relaxed};
 
@@ -107,7 +116,10 @@ mod imp {
     }
 
     #[cfg(not(all(target_os = "linux",
-                  any(target_arch = "x86_64", target_arch = "x86", target_arch = "arm"))))]
+                  any(target_arch = "x86_64",
+                      target_arch = "x86",
+                      target_arch = "arm",
+                      target_arch = "aarch64"))))]
     fn is_getrandom_available() -> bool { false }
 
     /// A random number generator that retrieves randomness straight from

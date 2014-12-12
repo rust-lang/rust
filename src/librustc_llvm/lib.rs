@@ -1,4 +1,4 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -1962,6 +1962,11 @@ extern {
     pub fn LLVMInitializeARMTargetMC();
     pub fn LLVMInitializeARMAsmPrinter();
     pub fn LLVMInitializeARMAsmParser();
+    pub fn LLVMInitializeAArch64TargetInfo();
+    pub fn LLVMInitializeAArch64Target();
+    pub fn LLVMInitializeAArch64TargetMC();
+    pub fn LLVMInitializeAArch64AsmPrinter();
+    pub fn LLVMInitializeAArch64AsmParser();
     pub fn LLVMInitializeMipsTargetInfo();
     pub fn LLVMInitializeMipsTarget();
     pub fn LLVMInitializeMipsTargetMC();
@@ -2230,6 +2235,12 @@ pub unsafe fn static_link_hack_this_sucks() {
     LLVMInitializeARMTargetMC();
     LLVMInitializeARMAsmPrinter();
     LLVMInitializeARMAsmParser();
+
+    LLVMInitializeAArch64TargetInfo();
+    LLVMInitializeAArch64Target();
+    LLVMInitializeAArch64TargetMC();
+    LLVMInitializeAArch64AsmPrinter();
+    LLVMInitializeAArch64AsmParser();
 
     LLVMInitializeMipsTargetInfo();
     LLVMInitializeMipsTarget();

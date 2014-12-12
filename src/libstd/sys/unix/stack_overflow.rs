@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -147,6 +147,7 @@ mod imp {
     #[cfg(any(all(target_os = "linux", target_arch = "x86"), // may not match
               all(target_os = "linux", target_arch = "x86_64"),
               all(target_os = "linux", target_arch = "arm"), // may not match
+              all(target_os = "linux", target_arch = "aarch64"),
               all(target_os = "linux", target_arch = "mips"), // may not match
               all(target_os = "linux", target_arch = "mipsel"), // may not match
               target_os = "android"))] // may not match

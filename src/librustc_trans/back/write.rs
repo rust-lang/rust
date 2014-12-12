@@ -1,4 +1,4 @@
-// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -1028,6 +1028,12 @@ unsafe fn configure_llvm(sess: &Session) {
         llvm::LLVMInitializeARMTargetMC();
         llvm::LLVMInitializeARMAsmPrinter();
         llvm::LLVMInitializeARMAsmParser();
+
+        llvm::LLVMInitializeAArch64TargetInfo();
+        llvm::LLVMInitializeAArch64Target();
+        llvm::LLVMInitializeAArch64TargetMC();
+        llvm::LLVMInitializeAArch64AsmPrinter();
+        llvm::LLVMInitializeAArch64AsmParser();
 
         llvm::LLVMInitializeMipsTargetInfo();
         llvm::LLVMInitializeMipsTarget();
