@@ -222,7 +222,7 @@ Based on feedback and collections reform landing, this RFC proposes the followin
 
 ```
 impl Map<K, V> {
-    fn entry<O: ToOwned<K>>(&'a mut self, key: &O) -> Entry<'a, O, V>
+    fn entry<'a, O: ToOwned<K>>(&'a mut self, key: &O) -> Entry<'a, O, V>
 }
 
 pub enum Entry<'a, O: 'a, V: 'a> {
@@ -231,7 +231,7 @@ pub enum Entry<'a, O: 'a, V: 'a> {
 }
 
 impl Entry<'a, O: 'a, V:'a> {
-    get(self) -> Result<&'a mut V, VacantEntry<'a, O, V>>
+    fn get(self) -> Result<&'a mut V, VacantEntry<'a, O, V>>
 }
 
 impl<'a, K, V> VacantEntry<'a, K, V> {
@@ -335,7 +335,7 @@ enum RingBufSlice<'a, T> {
 ```
 /// Gets a slice over all the elements in the RingBuf. This may require shifting
 /// all the elements to make this possible.
-pub fn to_slice(&'a self) -> &'a [T]
+pub fn to_slice(&mut self) -> &[T]
 ```
 
 The one settled on had the benefit of being the simplest. In particular, having the enum wasn't
