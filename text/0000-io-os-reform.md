@@ -1102,13 +1102,13 @@ pub trait BufferedReader: Reader {
 
 pub trait BufferedReaderExt: BufferedReader {
     fn lines(&mut self) -> Lines<Self, Self::Err> { ... };
-    fn chars(&mut self) -> Chars<Self, Self::Err> { ... };
 }
 ```
 
 In addition, `read_line` is removed in favor of the `lines` iterator,
-and `read_char` is removed in favor of the `chars` iterator. These
-iterators will be changed to yield `NonatomicResult` values.
+and `read_char` is removed in favor of the `chars` iterator (now on
+`ReaderExt`). These iterators will be changed to yield
+`NonatomicResult` values.
 
 The `BufferedReader`, `BufferedWriter` and `BufferedStream` types stay
 essentially as they are today, except that for streams and writers the
