@@ -347,13 +347,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // This suffices to allow chains like `FnMut` implemented in
         // terms of `Fn` etc, but we could probably make this more
         // precise still.
-        let input_types = stack.fresh_trait_ref.value.input_types();
+        let input_types = stack.fresh_trait_ref.0.input_types();
         let unbound_input_types = input_types.iter().any(|&t| ty::type_is_fresh(t));
         if
             unbound_input_types &&
              (self.intercrate ||
               stack.iter().skip(1).any(
-                  |prev| stack.fresh_trait_ref.value.def_id == prev.fresh_trait_ref.value.def_id))
+                  |prev| stack.fresh_trait_ref.def_id() == prev.fresh_trait_ref.def_id()))
         {
             debug!("evaluate_stack({}) --> unbound argument, recursion -->  ambiguous",
                    stack.fresh_trait_ref.repr(self.tcx()));
@@ -591,7 +591,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // If the trait refers to any parameters in scope, then use
         // the cache of the param-environment.
         if
-            cache_fresh_trait_ref.value.input_types().iter().any(
+            cache_fresh_trait_ref.0.input_types().iter().any(
                 |&t| ty::type_has_self(t) || ty::type_has_params(t))
         {
             return &self.param_env.selection_cache;
@@ -604,7 +604,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // See the discussion in doc.rs for more details.
         if
             !self.param_env.caller_bounds.is_empty() &&
-            cache_fresh_trait_ref.value.input_types().iter().any(
+            cache_fresh_trait_ref.0.input_types().iter().any(
                 |&t| ty::type_has_ty_infer(t))
         {
             return &self.param_env.selection_cache;
@@ -648,7 +648,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // Other bounds. Consider both in-scope bounds from fn decl
         // and applicable impls. There is a certain set of precedence rules here.
 
-        match self.tcx().lang_items.to_builtin_kind(obligation.trait_ref.value.def_id) {
+        match self.tcx().lang_items.to_builtin_kind(obligation.trait_ref.def_id()) {
             Some(ty::BoundCopy) => {
                 debug!("obligation self ty is {}",
                        obligation.self_ty().repr(self.tcx()));
@@ -731,7 +731,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                            candidates: &mut CandidateSet<'tcx>)
                                            -> Result<(),SelectionError<'tcx>>
     {
-        let kind = match self.fn_family_trait_kind(obligation.trait_ref.value.def_id) {
+        let kind = match self.fn_family_trait_kind(obligation.trait_ref.def_id()) {
             Some(k) => k,
             None => { return Ok(()); }
         };
@@ -779,7 +779,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // We provide a `Fn` impl for fn pointers. There is no need to provide
         // the other traits (e.g. `FnMut`) since those are provided by blanket
         // impls.
-        if Some(obligation.trait_ref.value.def_id) != self.tcx().lang_items.fn_trait() {
+        if Some(obligation.trait_ref.def_id()) != self.tcx().lang_items.fn_trait() {
             return Ok(());
         }
 
@@ -793,11 +793,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::ty_bare_fn(ty::BareFnTy {
                 unsafety: ast::Unsafety::Normal,
                 abi: abi::Rust,
-                sig: ty::FnSig {
+                sig: ty::Binder(ty::FnSig {
                     inputs: _,
                     output: ty::FnConverging(_),
                     variadic: false
-                }
+                })
             }) => {
                 candidates.vec.push(FnPointerCandidate);
             }
@@ -814,7 +814,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                       candidates: &mut CandidateSet<'tcx>)
                                       -> Result<(), SelectionError<'tcx>>
     {
-        let all_impls = self.all_impls(obligation.trait_ref.value.def_id);
+        let all_impls = self.all_impls(obligation.trait_ref.def_id());
         for &impl_def_id in all_impls.iter() {
             self.infcx.probe(|| {
                 match self.match_impl(impl_def_id, obligation) {
@@ -1083,7 +1083,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             // bounds are required and thus we must fulfill.
                             let tmp_tr = data.principal_trait_ref_with_self_ty(ty::mk_err());
                             for tr in util::supertraits(self.tcx(), tmp_tr) {
-                                let td = ty::lookup_trait_def(self.tcx(), tr.value.def_id);
+                                let td = ty::lookup_trait_def(self.tcx(), tr.def_id());
 
                                 if td.bounds.builtin_bounds.contains(&bound) {
                                     return Ok(If(Vec::new()))
@@ -1519,15 +1519,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
         };
 
-        let arguments_tuple = ty::mk_tup(self.tcx(), sig.inputs.to_vec());
-        let output_type = sig.output.unwrap();
+        let arguments_tuple = ty::mk_tup(self.tcx(), sig.0.inputs.to_vec());
+        let output_type = sig.0.output.unwrap();
         let substs =
             Substs::new_trait(
                 vec![arguments_tuple, output_type],
                 vec![],
                 vec![],
                 self_ty);
-        let trait_ref = Rc::new(ty::bind(ty::TraitRef {
+        let trait_ref = Rc::new(ty::Binder(ty::TraitRef {
             def_id: obligation.trait_ref.def_id(),
             substs: substs,
         }));
@@ -1562,15 +1562,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         };
 
         let closure_sig = &closure_type.sig;
-        let arguments_tuple = closure_sig.inputs[0];
+        let arguments_tuple = closure_sig.0.inputs[0];
         let substs =
             Substs::new_trait(
                 vec![arguments_tuple.subst(self.tcx(), substs),
-                     closure_sig.output.unwrap().subst(self.tcx(), substs)],
+                     closure_sig.0.output.unwrap().subst(self.tcx(), substs)],
                 vec![],
                 vec![],
                 obligation.self_ty());
-        let trait_ref = Rc::new(ty::bind(ty::TraitRef {
+        let trait_ref = Rc::new(ty::Binder(ty::TraitRef {
             def_id: obligation.trait_ref.def_id(),
             substs: substs,
         }));

@@ -318,8 +318,8 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             &ty::UnsizeVtable(ty::TyTrait { ref principal, .. }, _) => {
                 let substs = principal.substs().with_self_ty(unadjusted_ty).erase_regions();
                 let trait_ref =
-                    Rc::new(ty::bind(ty::TraitRef { def_id: principal.def_id(),
-                                                    substs: substs }));
+                    Rc::new(ty::Binder(ty::TraitRef { def_id: principal.def_id(),
+                                                      substs: substs }));
                 let trait_ref = trait_ref.subst(bcx.tcx(), bcx.fcx.param_substs);
                 let box_ty = mk_ty(unadjusted_ty);
                 PointerCast(bcx,

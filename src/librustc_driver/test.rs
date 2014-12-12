@@ -275,11 +275,11 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
             onceness: ast::Many,
             store: ty::RegionTraitStore(region_bound, ast::MutMutable),
             bounds: ty::region_existential_bound(region_bound),
-            sig: ty::FnSig {
+            sig: ty::Binder(ty::FnSig {
                 inputs: input_tys.to_vec(),
                 output: ty::FnConverging(output_ty),
                 variadic: false,
-            },
+            }),
             abi: abi::Rust,
         })
     }

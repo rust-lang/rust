@@ -658,9 +658,9 @@ pub fn get_wrapper_for_bare_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     let arena = TypedArena::new();
     let empty_param_substs = Substs::trans_empty();
-    let fcx = new_fn_ctxt(ccx, llfn, ast::DUMMY_NODE_ID, true, f.sig.output,
+    let fcx = new_fn_ctxt(ccx, llfn, ast::DUMMY_NODE_ID, true, f.sig.0.output,
                           &empty_param_substs, None, &arena);
-    let bcx = init_function(&fcx, true, f.sig.output);
+    let bcx = init_function(&fcx, true, f.sig.0.output);
 
     let args = create_datums_for_fn_args(&fcx,
                                          ty::ty_fn_args(closure_ty)
@@ -676,7 +676,7 @@ pub fn get_wrapper_for_bare_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     llargs.extend(args.iter().map(|arg| arg.val));
 
     let retval = Call(bcx, fn_ptr, llargs.as_slice(), None);
-    match f.sig.output {
+    match f.sig.0.output {
         ty::FnConverging(output_type) => {
             if return_type_is_void(ccx, output_type) || fcx.llretslotptr.get().is_some() {
                 RetVoid(bcx);

@@ -93,8 +93,8 @@ pub trait TypeFolder<'tcx> {
     }
 
     fn fold_fn_sig(&mut self,
-                sig: &ty::FnSig<'tcx>)
-                -> ty::FnSig<'tcx> {
+                   sig: &ty::FnSig<'tcx>)
+                   -> ty::FnSig<'tcx> {
         super_fold_fn_sig(self, sig)
     }
 
@@ -183,7 +183,7 @@ impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for Vec<T> {
 impl<'tcx, T:TypeFoldable<'tcx>> TypeFoldable<'tcx> for ty::Binder<T> {
     fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> ty::Binder<T> {
         folder.enter_region_binder();
-        let result = ty::bind(self.value.fold_with(folder));
+        let result = ty::Binder(self.0.fold_with(folder));
         folder.exit_region_binder();
         result
     }
@@ -533,16 +533,6 @@ pub fn super_fold_fn_sig<'tcx, T: TypeFolder<'tcx>>(this: &mut T,
                                                     sig: &ty::FnSig<'tcx>)
                                                     -> ty::FnSig<'tcx>
 {
-    this.enter_region_binder();
-    let result = super_fold_fn_sig_contents(this, sig);
-    this.exit_region_binder();
-    result
-}
-
-pub fn super_fold_fn_sig_contents<'tcx, T: TypeFolder<'tcx>>(this: &mut T,
-                                                             sig: &ty::FnSig<'tcx>)
-                                                             -> ty::FnSig<'tcx>
-{
     ty::FnSig { inputs: sig.inputs.fold_with(this),
                 output: sig.output.fold_with(this),
                 variadic: sig.variadic }
@@ -697,34 +687,6 @@ pub fn super_fold_item_substs<'tcx, T: TypeFolder<'tcx>>(this: &mut T,
 }
 
 ///////////////////////////////////////////////////////////////////////////
-// Higher-ranked things
-
-/// Designates a "binder" for late-bound regions.
-pub trait HigherRankedFoldable<'tcx>: Repr<'tcx> {
-    /// Folds the contents of `self`, ignoring the region binder created
-    /// by `self`.
-    fn fold_contents<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self;
-}
-
-impl<'tcx> HigherRankedFoldable<'tcx> for ty::FnSig<'tcx> {
-    fn fold_contents<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> ty::FnSig<'tcx> {
-        super_fold_fn_sig_contents(folder, self)
-    }
-}
-
-impl<'tcx, T:TypeFoldable<'tcx>+Repr<'tcx>> HigherRankedFoldable<'tcx> for ty::Binder<T> {
-    fn fold_contents<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> ty::Binder<T> {
-        ty::bind(self.value.fold_with(folder))
-    }
-}
-
-impl<'tcx, T:HigherRankedFoldable<'tcx>> HigherRankedFoldable<'tcx> for Rc<T> {
-    fn fold_contents<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Rc<T> {
-        Rc::new((**self).fold_contents(folder))
-    }
-}
-
-///////////////////////////////////////////////////////////////////////////
 // Some sample folders
 
 pub struct BottomUpFolder<'a, 'tcx: 'a, F> where F: FnMut(Ty<'tcx>) -> Ty<'tcx> {
@@ -754,10 +716,6 @@ impl<'a, 'tcx, F> TypeFolder<'tcx> for BottomUpFolder<'a, 'tcx, F> where
 /// regions (aka "lifetimes") that are bound within a type are not
 /// visited by this folder; only regions that occur free will be
 /// visited by `fld_r`.
-///
-/// (The distinction between "free" and "bound" is represented by
-/// keeping track of each `FnSig` in the lexical context of the
-/// current position of the fold.)
 pub struct RegionFolder<'a, 'tcx: 'a, F> where F: FnMut(ty::Region, uint) -> ty::Region {
     tcx: &'a ty::ctxt<'tcx>,
     current_depth: uint,

@@ -113,17 +113,13 @@ impl<'f, 'tcx> Combine<'tcx> for Lub<'f, 'tcx> {
         Ok(self.infcx().region_vars.lub_regions(Subtype(self.trace()), a, b))
     }
 
-    fn fn_sigs(&self, a: &ty::FnSig<'tcx>, b: &ty::FnSig<'tcx>)
-               -> cres<'tcx, ty::FnSig<'tcx>> {
-        self.higher_ranked_lub(a, b)
-    }
-
     fn tys(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> cres<'tcx, Ty<'tcx>> {
         super_lattice_tys(self, a, b)
     }
 
-    fn poly_trait_refs(&self, a: &ty::PolyTraitRef<'tcx>, b: &ty::PolyTraitRef<'tcx>)
-                       -> cres<'tcx, ty::PolyTraitRef<'tcx>> {
+    fn binders<T>(&self, a: &ty::Binder<T>, b: &ty::Binder<T>) -> cres<'tcx, ty::Binder<T>>
+        where T : Combineable<'tcx>
+    {
         self.higher_ranked_lub(a, b)
     }
 }

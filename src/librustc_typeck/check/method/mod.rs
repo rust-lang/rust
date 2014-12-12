@@ -166,7 +166,7 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
 
     // Construct a trait-reference `self_ty : Trait<input_tys>`
     let substs = subst::Substs::new_trait(input_types, Vec::new(), assoc_types, self_ty);
-    let trait_ref = Rc::new(ty::bind(ty::TraitRef::new(trait_def_id, substs)));
+    let trait_ref = Rc::new(ty::Binder(ty::TraitRef::new(trait_def_id, substs)));
 
     // Construct an obligation
     let obligation = traits::Obligation::misc(span,
@@ -204,7 +204,7 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
                                                                        &fn_sig).0;
     let transformed_self_ty = fn_sig.inputs[0];
     let fty = ty::mk_bare_fn(tcx, ty::BareFnTy {
-        sig: fn_sig,
+        sig: ty::Binder(fn_sig),
         unsafety: bare_fn_ty.unsafety,
         abi: bare_fn_ty.abi.clone(),
     });

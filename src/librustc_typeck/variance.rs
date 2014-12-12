@@ -878,13 +878,13 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
     /// Adds constraints appropriate for a function with signature
     /// `sig` appearing in a context with ambient variance `variance`
     fn add_constraints_from_sig(&mut self,
-                                sig: &ty::FnSig<'tcx>,
+                                sig: &ty::PolyFnSig<'tcx>,
                                 variance: VarianceTermPtr<'a>) {
         let contra = self.contravariant(variance);
-        for &input in sig.inputs.iter() {
+        for &input in sig.0.inputs.iter() {
             self.add_constraints_from_ty(input, contra);
         }
-        if let ty::FnConverging(result_type) = sig.output {
+        if let ty::FnConverging(result_type) = sig.0.output {
             self.add_constraints_from_ty(result_type, variance);
         }
     }

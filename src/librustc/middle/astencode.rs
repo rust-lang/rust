@@ -887,7 +887,7 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
                     this.emit_enum_variant("MethodTypeParam", 2, 1, |this| {
                         this.emit_struct("MethodParam", 2, |this| {
                             try!(this.emit_struct_field("trait_ref", 0, |this| {
-                                Ok(this.emit_trait_ref(ecx, &p.trait_ref.value))
+                                Ok(this.emit_trait_ref(ecx, &p.trait_ref.0))
                             }));
                             try!(this.emit_struct_field("method_num", 0, |this| {
                                 this.emit_uint(p.method_num)
@@ -901,7 +901,7 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
                     this.emit_enum_variant("MethodTraitObject", 3, 1, |this| {
                         this.emit_struct("MethodObject", 2, |this| {
                             try!(this.emit_struct_field("trait_ref", 0, |this| {
-                                Ok(this.emit_trait_ref(ecx, &o.trait_ref.value))
+                                Ok(this.emit_trait_ref(ecx, &o.trait_ref.0))
                             }));
                             try!(this.emit_struct_field("object_trait_id", 0, |this| {
                                 Ok(this.emit_def_id(o.object_trait_id))
@@ -1113,7 +1113,7 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
                     this.emit_enum_variant("UnsizeVtable", 2, 4, |this| {
                         this.emit_enum_variant_arg(0, |this| {
                             try!(this.emit_struct_field("principal", 0, |this| {
-                                Ok(this.emit_trait_ref(ecx, &principal.value))
+                                Ok(this.emit_trait_ref(ecx, &principal.0))
                             }));
                             this.emit_struct_field("bounds", 1, |this| {
                                 Ok(this.emit_existential_bounds(ecx, b))
@@ -1277,7 +1277,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
         rbml_w.tag(c::tag_table_object_cast_map, |rbml_w| {
             rbml_w.id(id);
             rbml_w.tag(c::tag_table_val, |rbml_w| {
-                rbml_w.emit_trait_ref(ecx, &trait_ref.value);
+                rbml_w.emit_trait_ref(ecx, &trait_ref.0);
             })
         })
     }
@@ -1552,7 +1552,7 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
 
     fn read_poly_trait_ref<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
                                    -> Rc<ty::PolyTraitRef<'tcx>> {
-        Rc::new(ty::bind(self.read_opaque(|this, doc| {
+        Rc::new(ty::Binder(self.read_opaque(|this, doc| {
             let ty = tydecode::parse_trait_ref_data(
                 doc.data,
                 dcx.cdata.cnum,

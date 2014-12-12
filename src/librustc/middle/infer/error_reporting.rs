@@ -1653,7 +1653,7 @@ impl<'tcx> Resolvable<'tcx> for Rc<ty::PolyTraitRef<'tcx>> {
         Rc::new(infcx.resolve_type_vars_if_possible(&**self))
     }
     fn contains_error(&self) -> bool {
-        ty::trait_ref_contains_error(&self.value)
+        ty::trait_ref_contains_error(&self.0)
     }
 }
 

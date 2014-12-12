@@ -26,7 +26,7 @@ use middle::subst::Substs;
 use middle::ty::{TyVid, IntVid, FloatVid, RegionVid};
 use middle::ty::replace_late_bound_regions;
 use middle::ty::{mod, Ty};
-use middle::ty_fold::{HigherRankedFoldable, TypeFolder, TypeFoldable};
+use middle::ty_fold::{TypeFolder, TypeFoldable};
 use std::cell::{RefCell};
 use std::rc::Rc;
 use syntax::ast;
@@ -35,7 +35,7 @@ use syntax::codemap::Span;
 use util::common::indent;
 use util::nodemap::FnvHashMap;
 use util::ppaux::{ty_to_string};
-use util::ppaux::{trait_ref_to_string, Repr};
+use util::ppaux::{Repr, UserString};
 
 use self::coercion::Coerce;
 use self::combine::{Combine, CombineFields};
@@ -699,26 +699,26 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 values: TraitRefs(expected_found(a_is_expected,
                                                  a.clone(), b.clone()))
             };
-            self.sub(a_is_expected, trace).poly_trait_refs(&*a, &*b).to_ures()
+            self.sub(a_is_expected, trace).binders(&*a, &*b).to_ures()
         })
     }
 
-    pub fn skolemize_bound_regions<T>(&self,
-                                      value: &ty::Binder<T>,
-                                      snapshot: &CombinedSnapshot)
-                                      -> (T, SkolemizationMap)
-        where T : TypeFoldable<'tcx>
+    pub fn skolemize_late_bound_regions<T>(&self,
+                                           value: &ty::Binder<T>,
+                                           snapshot: &CombinedSnapshot)
+                                           -> (T, SkolemizationMap)
+        where T : TypeFoldable<'tcx> + Repr<'tcx>
     {
-        let (result_binder, map) = replace_late_bound_regions(self.tcx, value, |br, _| {
+        let (result, map) = replace_late_bound_regions(self.tcx, value, |br, _| {
             self.region_vars.new_skolemized(br, &snapshot.region_vars_snapshot)
         });
 
         debug!("skolemize_bound_regions(value={}, result={}, map={})",
                value.repr(self.tcx),
-               result_binder.value.repr(self.tcx),
+               result.repr(self.tcx),
                map.repr(self.tcx));
 
-        (result_binder.value, map)
+        (result, map)
     }
 
     pub fn next_ty_var_id(&self, diverging: bool) -> TyVid {
@@ -828,7 +828,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
     pub fn trait_ref_to_string(&self, t: &Rc<ty::TraitRef<'tcx>>) -> String {
         let t = self.resolve_type_vars_if_possible(&**t);
-        trait_ref_to_string(self.tcx, &t)
+        t.user_string(self.tcx)
     }
 
     pub fn shallow_resolve(&self, typ: Ty<'tcx>) -> Ty<'tcx> {
@@ -982,9 +982,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         &self,
         span: Span,
         lbrct: LateBoundRegionConversionTime,
-        value: &T)
+        value: &ty::Binder<T>)
         -> (T, FnvHashMap<ty::BoundRegion,ty::Region>)
-        where T : HigherRankedFoldable<'tcx>
+        where T : TypeFoldable<'tcx> + Repr<'tcx>
     {
         ty::replace_late_bound_regions(
             self.tcx,

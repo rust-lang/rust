@@ -60,7 +60,7 @@ pub fn simplify_type(tcx: &ty::ctxt,
         ty::ty_vec(..) => Some(VecSimplifiedType),
         ty::ty_ptr(_) => Some(PtrSimplifiedType),
         ty::ty_trait(ref trait_info) => {
-            Some(TraitSimplifiedType(trait_info.principal.value.def_id))
+            Some(TraitSimplifiedType(trait_info.principal.def_id()))
         }
         ty::ty_struct(def_id, _) => {
             Some(StructSimplifiedType(def_id))
@@ -83,10 +83,10 @@ pub fn simplify_type(tcx: &ty::ctxt,
             Some(TupleSimplifiedType(tys.len()))
         }
         ty::ty_closure(ref f) => {
-            Some(FunctionSimplifiedType(f.sig.inputs.len()))
+            Some(FunctionSimplifiedType(f.sig.0.inputs.len()))
         }
         ty::ty_bare_fn(ref f) => {
-            Some(FunctionSimplifiedType(f.sig.inputs.len()))
+            Some(FunctionSimplifiedType(f.sig.0.inputs.len()))
         }
         ty::ty_param(_) => {
             if can_simplify_params {

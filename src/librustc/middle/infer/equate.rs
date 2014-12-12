@@ -133,17 +133,10 @@ impl<'f, 'tcx> Combine<'tcx> for Equate<'f, 'tcx> {
         }
     }
 
-    fn fn_sigs(&self, a: &ty::FnSig<'tcx>, b: &ty::FnSig<'tcx>)
-               -> cres<'tcx, ty::FnSig<'tcx>>
+    fn binders<T>(&self, a: &ty::Binder<T>, b: &ty::Binder<T>) -> cres<'tcx, ty::Binder<T>>
+        where T : Combineable<'tcx>
     {
-        try!(self.sub().fn_sigs(a, b));
-        self.sub().fn_sigs(b, a)
-    }
-
-    fn poly_trait_refs(&self, a: &ty::PolyTraitRef<'tcx>, b: &ty::PolyTraitRef<'tcx>)
-                       -> cres<'tcx, ty::PolyTraitRef<'tcx>>
-    {
-        try!(self.sub().poly_trait_refs(a, b));
-        self.sub().poly_trait_refs(b, a)
+        try!(self.sub().binders(a, b));
+        self.sub().binders(b, a)
     }
 }

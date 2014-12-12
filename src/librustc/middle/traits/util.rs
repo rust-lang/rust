@@ -274,7 +274,7 @@ pub fn poly_trait_ref_for_builtin_bound<'tcx>(
 {
     match tcx.lang_items.from_builtin_kind(builtin_bound) {
         Ok(def_id) => {
-            Ok(Rc::new(ty::bind(ty::TraitRef {
+            Ok(Rc::new(ty::Binder(ty::TraitRef {
                 def_id: def_id,
                 substs: Substs::empty().with_self_ty(param_ty)
             })))

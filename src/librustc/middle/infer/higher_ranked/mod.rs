@@ -11,29 +11,24 @@
 //! Helper routines for higher-ranked things. See the `doc` module at
 //! the end of the file for details.
 
-use super::{combine, CombinedSnapshot, cres, InferCtxt, HigherRankedType};
-use super::combine::Combine;
+use super::{CombinedSnapshot, cres, InferCtxt, HigherRankedType};
+use super::combine::{Combine, Combineable};
 
-use middle::ty::{mod, Ty, replace_late_bound_regions};
-use middle::ty_fold::{mod, HigherRankedFoldable, TypeFoldable};
+use middle::ty::{mod, Binder};
+use middle::ty_fold::{mod, TypeFoldable};
 use syntax::codemap::Span;
 use util::nodemap::{FnvHashMap, FnvHashSet};
-use util::ppaux::{bound_region_to_string, Repr};
-
-pub trait HigherRankedCombineable<'tcx>: HigherRankedFoldable<'tcx> +
-                                         TypeFoldable<'tcx> + Repr<'tcx> {
-    fn super_combine<C:Combine<'tcx>>(combiner: &C, a: &Self, b: &Self) -> cres<'tcx, Self>;
-}
+use util::ppaux::Repr;
 
 pub trait HigherRankedRelations<'tcx> {
-    fn higher_ranked_sub<T>(&self, a: &T, b: &T) -> cres<'tcx, T>
-        where T : HigherRankedCombineable<'tcx>;
+    fn higher_ranked_sub<T>(&self, a: &Binder<T>, b: &Binder<T>) -> cres<'tcx, Binder<T>>
+        where T : Combineable<'tcx>;
 
-    fn higher_ranked_lub<T>(&self, a: &T, b: &T) -> cres<'tcx, T>
-        where T : HigherRankedCombineable<'tcx>;
+    fn higher_ranked_lub<T>(&self, a: &Binder<T>, b: &Binder<T>) -> cres<'tcx, Binder<T>>
+        where T : Combineable<'tcx>;
 
-    fn higher_ranked_glb<T>(&self, a: &T, b: &T) -> cres<'tcx, T>
-        where T : HigherRankedCombineable<'tcx>;
+    fn higher_ranked_glb<T>(&self, a: &Binder<T>, b: &Binder<T>) -> cres<'tcx, Binder<T>>
+        where T : Combineable<'tcx>;
 }
 
 trait InferCtxtExt<'tcx> {
@@ -47,8 +42,9 @@ trait InferCtxtExt<'tcx> {
 impl<'tcx,C> HigherRankedRelations<'tcx> for C
     where C : Combine<'tcx>
 {
-    fn higher_ranked_sub<T>(&self, a: &T, b: &T) -> cres<'tcx, T>
-        where T : HigherRankedCombineable<'tcx>
+    fn higher_ranked_sub<T>(&self, a: &Binder<T>, b: &Binder<T>)
+                            -> cres<'tcx, Binder<T>>
+        where T : Combineable<'tcx>
     {
         debug!("higher_ranked_sub(a={}, b={})",
                a.repr(self.tcx()), b.repr(self.tcx()));
@@ -74,13 +70,14 @@ impl<'tcx,C> HigherRankedRelations<'tcx> for C
 
             // Second, we instantiate each bound region in the supertype with a
             // fresh concrete region.
-            let (b_prime, skol_map) = skolemize_regions(self.infcx(), b, snapshot);
+            let (b_prime, skol_map) =
+                self.infcx().skolemize_late_bound_regions(b, snapshot);
 
             debug!("a_prime={}", a_prime.repr(self.tcx()));
             debug!("b_prime={}", b_prime.repr(self.tcx()));
 
             // Compare types now that bound regions have been replaced.
-            let result = try!(HigherRankedCombineable::super_combine(self, &a_prime, &b_prime));
+            let result = try!(Combineable::combine(self, &a_prime, &b_prime));
 
             // Presuming type comparison succeeds, we need to check
             // that the skolemized regions do not "leak".
@@ -102,12 +99,12 @@ impl<'tcx,C> HigherRankedRelations<'tcx> for C
             debug!("higher_ranked_sub: OK result={}",
                    result.repr(self.tcx()));
 
-            Ok(result)
+            Ok(ty::Binder(result))
         });
     }
 
-    fn higher_ranked_lub<T>(&self, a: &T, b: &T) -> cres<'tcx, T>
-        where T : HigherRankedCombineable<'tcx>
+    fn higher_ranked_lub<T>(&self, a: &Binder<T>, b: &Binder<T>) -> cres<'tcx, Binder<T>>
+        where T : Combineable<'tcx>
     {
         // Start a snapshot so we can examine "all bindings that were
         // created as part of this type comparison".
@@ -123,7 +120,7 @@ impl<'tcx,C> HigherRankedRelations<'tcx> for C
 
             // Collect constraints.
             let result0 =
-                try!(HigherRankedCombineable::super_combine(self, &a_with_fresh, &b_with_fresh));
+                try!(Combineable::combine(self, &a_with_fresh, &b_with_fresh));
             let result0 =
                 self.infcx().resolve_type_vars_if_possible(&result0);
             debug!("lub result0 = {}", result0.repr(self.tcx()));
@@ -143,7 +140,7 @@ impl<'tcx,C> HigherRankedRelations<'tcx> for C
                    b.repr(self.tcx()),
                    result1.repr(self.tcx()));
 
-            Ok(result1)
+            Ok(ty::Binder(result1))
         });
 
         fn generalize_region(infcx: &InferCtxt,
@@ -196,8 +193,8 @@ impl<'tcx,C> HigherRankedRelations<'tcx> for C
         }
     }
 
-    fn higher_ranked_glb<T>(&self, a: &T, b: &T) -> cres<'tcx, T>
-        where T : HigherRankedCombineable<'tcx>
+    fn higher_ranked_glb<T>(&self, a: &Binder<T>, b: &Binder<T>) -> cres<'tcx, Binder<T>>
+        where T : Combineable<'tcx>
     {
         debug!("{}.higher_ranked_glb({}, {})",
                self.tag(), a.repr(self.tcx()), b.repr(self.tcx()));
@@ -217,7 +214,7 @@ impl<'tcx,C> HigherRankedRelations<'tcx> for C
 
             // Collect constraints.
             let result0 =
-                try!(HigherRankedCombineable::super_combine(self, &a_with_fresh, &b_with_fresh));
+                try!(Combineable::combine(self, &a_with_fresh, &b_with_fresh));
             let result0 =
                 self.infcx().resolve_type_vars_if_possible(&result0);
             debug!("glb result0 = {}", result0.repr(self.tcx()));
@@ -239,7 +236,7 @@ impl<'tcx,C> HigherRankedRelations<'tcx> for C
                    b.repr(self.tcx()),
                    result1.repr(self.tcx()));
 
-            Ok(result1)
+            Ok(ty::Binder(result1))
         });
 
         fn generalize_region(infcx: &InferCtxt,
@@ -334,59 +331,6 @@ impl<'tcx,C> HigherRankedRelations<'tcx> for C
     }
 }
 
-impl<'tcx> HigherRankedCombineable<'tcx> for ty::FnSig<'tcx> {
-    fn super_combine<C:Combine<'tcx>>(combiner: &C, a: &ty::FnSig<'tcx>, b: &ty::FnSig<'tcx>)
-                                      -> cres<'tcx, ty::FnSig<'tcx>>
-    {
-        if a.variadic != b.variadic {
-            return Err(ty::terr_variadic_mismatch(
-                combine::expected_found(combiner, a.variadic, b.variadic)));
-        }
-
-        let inputs = try!(argvecs(combiner,
-                                  a.inputs.as_slice(),
-                                  b.inputs.as_slice()));
-
-        let output = try!(match (a.output, b.output) {
-            (ty::FnConverging(a_ty), ty::FnConverging(b_ty)) =>
-                Ok(ty::FnConverging(try!(combiner.tys(a_ty, b_ty)))),
-            (ty::FnDiverging, ty::FnDiverging) =>
-                Ok(ty::FnDiverging),
-            (a, b) =>
-                Err(ty::terr_convergence_mismatch(
-                    combine::expected_found(combiner, a != ty::FnDiverging, b != ty::FnDiverging))),
-        });
-
-        return Ok(ty::FnSig {inputs: inputs,
-                             output: output,
-                             variadic: a.variadic});
-
-
-        fn argvecs<'tcx, C: Combine<'tcx>>(combiner: &C,
-                                           a_args: &[Ty<'tcx>],
-                                           b_args: &[Ty<'tcx>])
-                                           -> cres<'tcx, Vec<Ty<'tcx>>>
-        {
-            if a_args.len() == b_args.len() {
-                a_args.iter().zip(b_args.iter())
-                    .map(|(a, b)| combiner.args(*a, *b)).collect()
-            } else {
-                Err(ty::terr_arg_count)
-            }
-        }
-    }
-}
-
-impl<'tcx> HigherRankedCombineable<'tcx> for ty::PolyTraitRef<'tcx> {
-    fn super_combine<C:Combine<'tcx>>(combiner: &C,
-                                      a: &ty::PolyTraitRef<'tcx>,
-                                      b: &ty::PolyTraitRef<'tcx>)
-                                      -> cres<'tcx, ty::PolyTraitRef<'tcx>>
-    {
-        Ok(ty::bind(try!(combiner.trait_refs(&a.value, &b.value))))
-    }
-}
-
 fn var_ids<'tcx, T: Combine<'tcx>>(combiner: &T,
                                    map: &FnvHashMap<ty::BoundRegion, ty::Region>)
                                    -> Vec<ty::RegionVid> {
@@ -407,11 +351,14 @@ fn is_var_in_set(new_vars: &[ty::RegionVid], r: ty::Region) -> bool {
     }
 }
 
-fn fold_regions_in<'tcx, T, F>(tcx: &ty::ctxt<'tcx>, value: &T, mut fldr: F) -> T where
-    T: HigherRankedFoldable<'tcx>,
-    F: FnMut(ty::Region, ty::DebruijnIndex) -> ty::Region,
+fn fold_regions_in<'tcx, T, F>(tcx: &ty::ctxt<'tcx>,
+                               unbound_value: &T,
+                               mut fldr: F)
+                               -> T
+    where T : Combineable<'tcx>,
+          F : FnMut(ty::Region, ty::DebruijnIndex) -> ty::Region,
 {
-    value.fold_contents(&mut ty_fold::RegionFolder::new(tcx, |region, current_depth| {
+    unbound_value.fold_with(&mut ty_fold::RegionFolder::new(tcx, |region, current_depth| {
         // we should only be encountering "escaping" late-bound regions here,
         // because the ones at the current level should have been replaced
         // with fresh variables
@@ -506,26 +453,6 @@ impl<'a,'tcx> InferCtxtExt<'tcx> for InferCtxt<'a,'tcx> {
 
         region_vars
     }
-}
-
-fn skolemize_regions<'a,'tcx,HR>(infcx: &InferCtxt<'a,'tcx>,
-                                 value: &HR,
-                                 snapshot: &CombinedSnapshot)
-                                 -> (HR, FnvHashMap<ty::BoundRegion,ty::Region>)
-    where HR : HigherRankedFoldable<'tcx>
-{
-    replace_late_bound_regions(infcx.tcx, value, |br, _| {
-        let skol =
-            infcx.region_vars.new_skolemized(
-                br,
-                &snapshot.region_vars_snapshot);
-
-        debug!("Bound region {} skolemized to {}",
-               bound_region_to_string(infcx.tcx, "", false, br),
-               skol);
-
-        skol
-    })
 }
 
 fn leak_check<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,

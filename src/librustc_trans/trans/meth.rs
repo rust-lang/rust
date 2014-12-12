@@ -239,8 +239,8 @@ pub fn trans_static_method_callee(bcx: Block,
                                              rcvr_assoc,
                                              Vec::new()));
     debug!("trait_substs={}", trait_substs.repr(bcx.tcx()));
-    let trait_ref = Rc::new(ty::bind(ty::TraitRef { def_id: trait_id,
-                                                    substs: trait_substs }));
+    let trait_ref = Rc::new(ty::Binder(ty::TraitRef { def_id: trait_id,
+                                                      substs: trait_substs }));
     let vtbl = fulfill_obligation(bcx.ccx(),
                                   DUMMY_SP,
                                   trait_ref);
@@ -480,8 +480,8 @@ pub fn trans_trait_callee_from_llval<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         ty::ty_bare_fn(ref f) if f.abi == Rust || f.abi == RustCall => {
             type_of_rust_fn(ccx,
                             Some(Type::i8p(ccx)),
-                            f.sig.inputs.slice_from(1),
-                            f.sig.output,
+                            f.sig.0.inputs.slice_from(1),
+                            f.sig.0.output,
                             f.abi)
         }
         _ => {

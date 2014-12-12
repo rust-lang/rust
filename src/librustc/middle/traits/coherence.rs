@@ -18,6 +18,7 @@ use middle::subst;
 use middle::subst::Subst;
 use middle::ty::{mod, Ty};
 use middle::infer::{mod, InferCtxt};
+use std::rc::Rc;
 use syntax::ast;
 use syntax::codemap::DUMMY_SP;
 use util::ppaux::Repr;
@@ -42,13 +43,14 @@ pub fn impl_can_satisfy(infcx: &InferCtxt,
     let impl1_trait_ref =
         infcx.replace_late_bound_regions_with_fresh_var(DUMMY_SP,
                                                         infer::FnCall,
-                                                        &impl1_trait_ref).0;
+                                                        &*impl1_trait_ref).0;
 
     // Determine whether `impl2` can provide an implementation for those
     // same types.
     let param_env = ty::empty_parameter_environment();
     let mut selcx = SelectionContext::intercrate(infcx, &param_env, infcx.tcx);
-    let obligation = Obligation::new(ObligationCause::dummy(), impl1_trait_ref);
+    let obligation = Obligation::new(ObligationCause::dummy(),
+                                     Rc::new(ty::Binder(impl1_trait_ref)));
     debug!("impl_can_satisfy(obligation={})", obligation.repr(infcx.tcx));
     selcx.evaluate_impl(impl2_def_id, &obligation)
 }
@@ -65,15 +67,15 @@ pub fn impl_is_local(tcx: &ty::ctxt,
     debug!("trait_ref={}", trait_ref.repr(tcx));
 
     // If the trait is local to the crate, ok.
-    if trait_ref.value.def_id.krate == ast::LOCAL_CRATE {
+    if trait_ref.def_id().krate == ast::LOCAL_CRATE {
         debug!("trait {} is local to current crate",
-               trait_ref.value.def_id.repr(tcx));
+               trait_ref.def_id().repr(tcx));
         return true;
     }
 
     // Otherwise, at least one of the input types must be local to the
     // crate.
-    trait_ref.value.input_types().iter().any(|&t| ty_is_local(tcx, t))
+    trait_ref.0.input_types().iter().any(|&t| ty_is_local(tcx, t))
 }
 
 pub fn ty_is_local<'tcx>(tcx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
@@ -143,7 +145,7 @@ pub fn ty_is_local<'tcx>(tcx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
         }
 
         ty::ty_trait(ref tt) => {
-            tt.principal.value.def_id.krate == ast::LOCAL_CRATE
+            tt.principal.def_id().krate == ast::LOCAL_CRATE
         }
 
         // Type parameters may be bound to types that are not local to

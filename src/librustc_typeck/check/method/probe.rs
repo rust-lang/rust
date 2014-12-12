@@ -20,7 +20,7 @@ use middle::subst::Subst;
 use middle::traits;
 use middle::ty::{mod, Ty};
 use middle::ty::{MethodObject};
-use middle::ty_fold::HigherRankedFoldable;
+use middle::ty_fold::TypeFoldable;
 use middle::infer;
 use middle::infer::InferCtxt;
 use syntax::ast;
@@ -308,8 +308,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             let vtable_index =
                 get_method_index(tcx, &*new_trait_ref, trait_ref.clone(), method_num);
 
-            let xform_self_ty =
-                this.xform_self_ty(&m, new_trait_ref.substs());
+            let xform_self_ty = this.xform_self_ty(&m, new_trait_ref.substs());
 
             this.inherent_candidates.push(Candidate {
                 xform_self_ty: xform_self_ty,
@@ -772,7 +771,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
 
                     // Erase any late-bound regions bound in the impl
                     // which appear in the bounds.
-                    let impl_bounds = self.erase_late_bound_regions(&ty::bind(impl_bounds)).value;
+                    let impl_bounds = self.erase_late_bound_regions(&ty::Binder(impl_bounds));
 
                     // Convert the bounds into obligations.
                     let obligations =
@@ -874,9 +873,10 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
     fn xform_self_ty(&self,
                      method: &Rc<ty::Method<'tcx>>,
                      substs: &subst::Substs<'tcx>)
-                     -> Ty<'tcx> {
+                     -> Ty<'tcx>
+    {
         debug!("xform_self_ty(self_ty={}, substs={})",
-               method.fty.sig.inputs[0].repr(self.tcx()),
+               method.fty.sig.0.inputs[0].repr(self.tcx()),
                substs.repr(self.tcx()));
 
         // It is possible for type parameters or early-bound lifetimes
@@ -909,15 +909,13 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         }
 
         // Replace early-bound regions and types.
-        let xform_self_ty = method.fty.sig.inputs[0].subst(self.tcx(), substs);
+        let xform_self_ty = method.fty.sig.0.inputs[0].subst(self.tcx(), substs);
 
         // Replace late-bound regions bound in the impl or
-        // where-clause (2 levels of binding).
-        let xform_self_ty =
-            self.erase_late_bound_regions(&ty::bind(ty::bind(xform_self_ty))).value.value;
-
-        // Replace late-bound regions bound in the method (1 level of binding).
-        self.erase_late_bound_regions(&ty::bind(xform_self_ty)).value
+        // where-clause (2 levels of binding) and method (1 level of binding).
+        self.erase_late_bound_regions(
+            &self.erase_late_bound_regions(
+                &ty::Binder(ty::Binder(xform_self_ty))))
     }
 
     fn impl_substs(&self,
@@ -955,8 +953,8 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
     ///    region got replaced with the same variable, which requires a bit more coordination
     ///    and/or tracking the substitution and
     ///    so forth.
-    fn erase_late_bound_regions<T>(&self, value: &T) -> T
-        where T : HigherRankedFoldable<'tcx>
+    fn erase_late_bound_regions<T>(&self, value: &ty::Binder<T>) -> T
+        where T : TypeFoldable<'tcx> + Repr<'tcx>
     {
         ty::erase_late_bound_regions(self.tcx(), value)
     }

@@ -207,12 +207,12 @@ fn check_object_safety_inner<'tcx>(tcx: &ty::ctxt<'tcx>,
             }
         };
         let ref sig = method.fty.sig;
-        for &input_ty in sig.inputs[1..].iter() {
+        for &input_ty in sig.0.inputs[1..].iter() {
             if let Some(msg) = check_for_self_ty(input_ty) {
                 msgs.push(msg);
             }
         }
-        if let ty::FnConverging(result_type) = sig.output {
+        if let ty::FnConverging(result_type) = sig.0.output {
             if let Some(msg) = check_for_self_ty(result_type) {
                 msgs.push(msg);
             }

@@ -60,7 +60,7 @@ use middle::subst::{mod, Subst, Substs, VecPerParamSpace};
 use middle::traits::ObligationCause;
 use middle::traits;
 use middle::ty;
-use middle::ty_fold::{mod, TypeFoldable, TypeFolder, HigherRankedFoldable};
+use middle::ty_fold::{mod, TypeFoldable, TypeFolder};
 use util::ppaux::{note_and_explain_region, bound_region_ptr_to_string};
 use util::ppaux::{trait_store_to_string, ty_to_string};
 use util::ppaux::{Repr, UserString};
@@ -908,7 +908,7 @@ pub fn type_escapes_depth(ty: Ty, depth: uint) -> bool {
 pub struct BareFnTy<'tcx> {
     pub unsafety: ast::Unsafety,
     pub abi: abi::Abi,
-    pub sig: FnSig<'tcx>,
+    pub sig: PolyFnSig<'tcx>,
 }
 
 #[deriving(Clone, PartialEq, Eq, Hash, Show)]
@@ -917,7 +917,7 @@ pub struct ClosureTy<'tcx> {
     pub onceness: ast::Onceness,
     pub store: TraitStore,
     pub bounds: ExistentialBounds,
-    pub sig: FnSig<'tcx>,
+    pub sig: PolyFnSig<'tcx>,
     pub abi: abi::Abi,
 }
 
@@ -944,16 +944,14 @@ impl<'tcx> Copy for FnOutput<'tcx> {}
 /// - `inputs` is the list of arguments and their modes.
 /// - `output` is the return type.
 /// - `variadic` indicates whether this is a varidic function. (only true for foreign fns)
-///
-/// Note that a `FnSig` introduces a level of region binding, to
-/// account for late-bound parameters that appear in the types of the
-/// fn's arguments or the fn's return type.
 #[deriving(Clone, PartialEq, Eq, Hash)]
 pub struct FnSig<'tcx> {
     pub inputs: Vec<Ty<'tcx>>,
     pub output: FnOutput<'tcx>,
     pub variadic: bool
 }
+
+pub type PolyFnSig<'tcx> = Binder<FnSig<'tcx>>;
 
 #[deriving(Clone, PartialEq, Eq, Hash, Show)]
 pub struct ParamTy {
@@ -1318,9 +1316,9 @@ impl<'tcx> TyTrait<'tcx> {
     /// you must give *some* self-type. A common choice is `mk_err()`
     /// or some skolemized type.
     pub fn principal_trait_ref_with_self_ty(&self, self_ty: Ty<'tcx>) -> Rc<ty::PolyTraitRef<'tcx>> {
-        Rc::new(ty::bind(ty::TraitRef {
-            def_id: self.principal.value.def_id,
-            substs: self.principal.value.substs.with_self_ty(self_ty),
+        Rc::new(ty::Binder(ty::TraitRef {
+            def_id: self.principal.def_id(),
+            substs: self.principal.substs().with_self_ty(self_ty),
         }))
     }
 }
@@ -1350,19 +1348,19 @@ pub type PolyTraitRef<'tcx> = Binder<TraitRef<'tcx>>;
 
 impl<'tcx> PolyTraitRef<'tcx> {
     pub fn self_ty(&self) -> Ty<'tcx> {
-        self.value.self_ty()
+        self.0.self_ty()
     }
 
     pub fn def_id(&self) -> ast::DefId {
-        self.value.def_id
+        self.0.def_id
     }
 
     pub fn substs(&self) -> &Substs<'tcx> {
-        &self.value.substs
+        &self.0.substs
     }
 
     pub fn input_types(&self) -> &[Ty<'tcx>] {
-        self.value.input_types()
+        self.0.input_types()
     }
 }
 
@@ -1373,13 +1371,7 @@ impl<'tcx> PolyTraitRef<'tcx> {
 /// by the binder supplied to it; but a type is not a binder, so you
 /// must introduce an artificial one).
 #[deriving(Clone, PartialEq, Eq, Hash, Show)]
-pub struct Binder<T> {
-    pub value: T
-}
-
-pub fn bind<T>(value: T) -> Binder<T> {
-    Binder { value: value }
-}
+pub struct Binder<T>(pub T);
 
 #[deriving(Clone, PartialEq)]
 pub enum IntVarValue {
@@ -2237,12 +2229,12 @@ impl FlagComputation {
         }
     }
 
-    fn add_fn_sig(&mut self, fn_sig: &FnSig) {
+    fn add_fn_sig(&mut self, fn_sig: &PolyFnSig) {
         let mut computation = FlagComputation::new();
 
-        computation.add_tys(fn_sig.inputs[]);
+        computation.add_tys(fn_sig.0.inputs[]);
 
-        if let ty::FnConverging(output) = fn_sig.output {
+        if let ty::FnConverging(output) = fn_sig.0.output {
             computation.add_ty(output);
         }
 
@@ -2385,11 +2377,11 @@ pub fn mk_ctor_fn<'tcx>(cx: &ctxt<'tcx>,
                BareFnTy {
                    unsafety: ast::Unsafety::Normal,
                    abi: abi::Rust,
-                   sig: FnSig {
+                   sig: ty::Binder(FnSig {
                     inputs: input_args,
                     output: ty::FnConverging(output),
                     variadic: false
-                   }
+                   })
                 })
 }
 
@@ -2481,14 +2473,14 @@ pub fn maybe_walk_ty<'tcx>(ty: Ty<'tcx>, f: |Ty<'tcx>| -> bool) {
         }
         ty_tup(ref ts) => { for tt in ts.iter() { maybe_walk_ty(*tt, |x| f(x)); } }
         ty_bare_fn(ref ft) => {
-            for a in ft.sig.inputs.iter() { maybe_walk_ty(*a, |x| f(x)); }
-            if let ty::FnConverging(output) = ft.sig.output {
+            for a in ft.sig.0.inputs.iter() { maybe_walk_ty(*a, |x| f(x)); }
+            if let ty::FnConverging(output) = ft.sig.0.output {
                 maybe_walk_ty(output, f);
             }
         }
         ty_closure(ref ft) => {
-            for a in ft.sig.inputs.iter() { maybe_walk_ty(*a, |x| f(x)); }
-            if let ty::FnConverging(output) = ft.sig.output {
+            for a in ft.sig.0.inputs.iter() { maybe_walk_ty(*a, |x| f(x)); }
+            if let ty::FnConverging(output) = ft.sig.0.output {
                 maybe_walk_ty(output, f);
             }
         }
@@ -3857,15 +3849,15 @@ pub fn node_id_item_substs<'tcx>(cx: &ctxt<'tcx>, id: ast::NodeId) -> ItemSubsts
 
 pub fn fn_is_variadic(fty: Ty) -> bool {
     match fty.sty {
-        ty_bare_fn(ref f) => f.sig.variadic,
-        ty_closure(ref f) => f.sig.variadic,
+        ty_bare_fn(ref f) => f.sig.0.variadic,
+        ty_closure(ref f) => f.sig.0.variadic,
         ref s => {
             panic!("fn_is_variadic() called on non-fn type: {}", s)
         }
     }
 }
 
-pub fn ty_fn_sig<'tcx>(fty: Ty<'tcx>) -> &'tcx FnSig<'tcx> {
+pub fn ty_fn_sig<'tcx>(fty: Ty<'tcx>) -> &'tcx PolyFnSig<'tcx> {
     match fty.sty {
         ty_bare_fn(ref f) => &f.sig,
         ty_closure(ref f) => &f.sig,
@@ -3886,7 +3878,7 @@ pub fn ty_fn_abi(fty: Ty) -> abi::Abi {
 
 // Type accessors for substructures of types
 pub fn ty_fn_args<'tcx>(fty: Ty<'tcx>) -> &'tcx [Ty<'tcx>] {
-    ty_fn_sig(fty).inputs.as_slice()
+    ty_fn_sig(fty).0.inputs.as_slice()
 }
 
 pub fn ty_closure_store(fty: Ty) -> TraitStore {
@@ -3905,8 +3897,8 @@ pub fn ty_closure_store(fty: Ty) -> TraitStore {
 
 pub fn ty_fn_ret<'tcx>(fty: Ty<'tcx>) -> FnOutput<'tcx> {
     match fty.sty {
-        ty_bare_fn(ref f) => f.sig.output,
-        ty_closure(ref f) => f.sig.output,
+        ty_bare_fn(ref f) => f.sig.0.output,
+        ty_closure(ref f) => f.sig.0.output,
         ref s => {
             panic!("ty_fn_ret() called on non-fn type: {}", s)
         }
@@ -4801,7 +4793,7 @@ pub fn impl_trait_ref<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
                                 &Some(ref t) => {
                                     let trait_ref =
                                         (*ty::node_id_to_trait_ref(cx, t.ref_id)).clone();
-                                    Some(Rc::new(ty::bind(trait_ref)))
+                                    Some(Rc::new(ty::Binder(trait_ref)))
                                 }
                                 &None => None
                             }
@@ -5180,7 +5172,7 @@ pub fn predicates_for_trait_ref<'tcx>(tcx: &ctxt<'tcx>,
         trait_def.bounds.trait_bounds
         .iter()
         .map(|bound_trait_ref| {
-            ty::bind(
+            ty::Binder(
                 ty::TraitRef::new(bound_trait_ref.def_id(),
                                   bound_trait_ref.substs().subst(tcx, trait_ref.substs())))
         })
@@ -5515,18 +5507,6 @@ pub fn normalize_ty<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
             subst::Substs { regions: subst::ErasedRegions,
                             types: substs.types.fold_with(self) }
         }
-
-        fn fold_fn_sig(&mut self,
-                       sig: &ty::FnSig<'tcx>)
-                       -> ty::FnSig<'tcx> {
-            // The binder-id is only relevant to bound regions, which
-            // are erased at trans time.
-            ty::FnSig {
-                inputs: sig.inputs.fold_with(self),
-                output: sig.output.fold_with(self),
-                variadic: sig.variadic,
-            }
-        }
     }
 }
 
@@ -5602,7 +5582,7 @@ pub fn object_region_bounds<'tcx>(tcx: &ctxt<'tcx>,
 
     let opt_trait_ref = opt_principal.map_or(Vec::new(), |principal| {
         let substs = principal.substs().with_self_ty(open_ty);
-        vec!(Rc::new(ty::bind(ty::TraitRef::new(principal.def_id(), substs))))
+        vec!(Rc::new(ty::Binder(ty::TraitRef::new(principal.def_id(), substs))))
     });
 
     let param_bounds = ty::ParamBounds {
@@ -5856,12 +5836,12 @@ pub fn trait_item_of_item(tcx: &ctxt, def_id: ast::DefId)
 
 /// Creates a hash of the type `Ty` which will be the same no matter what crate
 /// context it's calculated within. This is used by the `type_id` intrinsic.
-pub fn hash_crate_independent(tcx: &ctxt, ty: Ty, svh: &Svh) -> u64 {
+pub fn hash_crate_independent<'tcx>(tcx: &ctxt<'tcx>, ty: Ty<'tcx>, svh: &Svh) -> u64 {
     let mut state = sip::SipState::new();
     helper(tcx, ty, svh, &mut state);
     return state.result();
 
-    fn helper(tcx: &ctxt, ty: Ty, svh: &Svh, state: &mut sip::SipState) {
+    fn helper<'tcx>(tcx: &ctxt<'tcx>, ty: Ty<'tcx>, svh: &Svh, state: &mut sip::SipState) {
         macro_rules! byte( ($b:expr) => { ($b as u8).hash(state) } );
         macro_rules! hash( ($e:expr) => { $e.hash(state) } );
 
@@ -5894,7 +5874,7 @@ pub fn hash_crate_independent(tcx: &ctxt, ty: Ty, svh: &Svh) -> u64 {
         let mt = |state: &mut sip::SipState, mt: mt| {
             mt.mutbl.hash(state);
         };
-        let fn_sig = |state: &mut sip::SipState, sig: &FnSig| {
+        let fn_sig = |state: &mut sip::SipState, sig: &Binder<FnSig<'tcx>>| {
             let sig = anonymize_late_bound_regions(tcx, sig);
             for a in sig.inputs.iter() { helper(tcx, *a, svh, state); }
             if let ty::FnConverging(output) = sig.output {
@@ -5974,7 +5954,7 @@ pub fn hash_crate_independent(tcx: &ctxt, ty: Ty, svh: &Svh) -> u64 {
                     hash!(bounds);
 
                     let principal = anonymize_late_bound_regions(tcx, principal);
-                    for subty in principal.substs().types.iter() {
+                    for subty in principal.substs.types.iter() {
                         helper(tcx, *subty, svh, state);
                     }
 
@@ -6065,7 +6045,7 @@ pub fn construct_parameter_environment<'tcx>(
     //
 
     let bounds = generics.to_bounds(tcx, &free_substs);
-    let bounds = liberate_late_bound_regions(tcx, free_id_scope, &bind(bounds)).value;
+    let bounds = liberate_late_bound_regions(tcx, free_id_scope, &ty::Binder(bounds));
 
     //
     // Compute region bounds. For now, these relations are stored in a
@@ -6321,12 +6301,12 @@ impl<'tcx> AutoDerefRef<'tcx> {
 
 /// Replace any late-bound regions bound in `value` with free variants attached to scope-id
 /// `scope_id`.
-pub fn liberate_late_bound_regions<'tcx, HR>(
+pub fn liberate_late_bound_regions<'tcx, T>(
     tcx: &ty::ctxt<'tcx>,
     scope: region::CodeExtent,
-    value: &HR)
-    -> HR
-    where HR : HigherRankedFoldable<'tcx>
+    value: &Binder<T>)
+    -> T
+    where T : TypeFoldable<'tcx> + Repr<'tcx>
 {
     replace_late_bound_regions(
         tcx, value,
@@ -6335,11 +6315,11 @@ pub fn liberate_late_bound_regions<'tcx, HR>(
 
 /// Replace any late-bound regions bound in `value` with `'static`. Useful in trans but also
 /// method lookup and a few other places where precise region relationships are not required.
-pub fn erase_late_bound_regions<'tcx, HR>(
+pub fn erase_late_bound_regions<'tcx, T>(
     tcx: &ty::ctxt<'tcx>,
-    value: &HR)
-    -> HR
-    where HR : HigherRankedFoldable<'tcx>
+    value: &Binder<T>)
+    -> T
+    where T : TypeFoldable<'tcx> + Repr<'tcx>
 {
     replace_late_bound_regions(tcx, value, |_, _| ty::ReStatic).0
 }
@@ -6352,8 +6332,12 @@ pub fn erase_late_bound_regions<'tcx, HR>(
 /// `FnSig`s or `TraitRef`s which are equivalent up to region naming will become
 /// structurally identical.  For example, `for<'a, 'b> fn(&'a int, &'b int)` and
 /// `for<'a, 'b> fn(&'b int, &'a int)` will become identical after anonymization.
-pub fn anonymize_late_bound_regions<'tcx, HR>(tcx: &ctxt<'tcx>, sig: &HR) -> HR
-                                              where HR: HigherRankedFoldable<'tcx> {
+pub fn anonymize_late_bound_regions<'tcx, T>(
+    tcx: &ctxt<'tcx>,
+    sig: &Binder<T>)
+    -> T
+    where T : TypeFoldable<'tcx> + Repr<'tcx>,
+{
     let mut counter = 0;
     replace_late_bound_regions(tcx, sig, |_, db| {
         counter += 1;
@@ -6362,15 +6346,15 @@ pub fn anonymize_late_bound_regions<'tcx, HR>(tcx: &ctxt<'tcx>, sig: &HR) -> HR
 }
 
 /// Replaces the late-bound-regions in `value` that are bound by `value`.
-pub fn replace_late_bound_regions<'tcx, HR, F>(
+pub fn replace_late_bound_regions<'tcx, T, F>(
     tcx: &ty::ctxt<'tcx>,
-    value: &HR,
+    binder: &Binder<T>,
     mut mapf: F)
--> (HR, FnvHashMap<ty::BoundRegion, ty::Region>) where
-    HR : HigherRankedFoldable<'tcx>,
-    F: FnMut(BoundRegion, DebruijnIndex) -> ty::Region,
+    -> (T, FnvHashMap<ty::BoundRegion,ty::Region>)
+    where T : TypeFoldable<'tcx> + Repr<'tcx>,
+          F : FnMut(BoundRegion, DebruijnIndex) -> ty::Region,
 {
-    debug!("replace_late_bound_regions({})", value.repr(tcx));
+    debug!("replace_late_bound_regions({})", binder.repr(tcx));
 
     let mut map = FnvHashMap::new();
     let value = {
@@ -6389,11 +6373,9 @@ pub fn replace_late_bound_regions<'tcx, HR, F>(
             }
         });
 
-        // Note: use `fold_contents` not `fold_with`. If we used
-        // `fold_with`, it would consider the late-bound regions bound
-        // by `value` to be bound, but we want to consider them as
-        // `free`.
-        value.fold_contents(&mut f)
+        // Note: fold the field `0`, not the binder, so that late-bound
+        // regions bound by `binder` are considered free.
+        binder.0.fold_with(&mut f)
     };
     debug!("resulting map: {} value: {}", map, value.repr(tcx));
     (value, map)
@@ -6600,13 +6582,13 @@ impl<'tcx> RegionEscape for TraitRef<'tcx> {
 
 impl<'tcx,T:RegionEscape> RegionEscape for Binder<T> {
     fn has_regions_escaping_depth(&self, depth: uint) -> bool {
-        self.value.has_regions_escaping_depth(depth + 1)
+        self.0.has_regions_escaping_depth(depth + 1)
     }
 }
 
 impl<T:RegionEscape> Binder<T> {
     pub fn has_bound_regions(&self) -> bool {
-        self.value.has_regions_escaping_depth(0)
+        self.0.has_regions_escaping_depth(0)
     }
 }
 

@@ -280,9 +280,9 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
         match bare_fn_ty.sty {
             ty::ty_bare_fn(ty::BareFnTy { unsafety: ast::Unsafety::Normal,
                                           abi: synabi::Rust,
-                                          sig: ty::FnSig { inputs: ref input_tys,
-                                                           output: output_ty,
-                                                           variadic: false }}) =>
+                                          sig: ty::Binder(ty::FnSig { inputs: ref input_tys,
+                                                                      output: output_ty,
+                                                                      variadic: false })}) =>
             {
                 (input_tys, output_ty)
             }
@@ -296,12 +296,12 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
     let tuple_fn_ty = ty::mk_bare_fn(tcx,
                                      ty::BareFnTy { unsafety: ast::Unsafety::Normal,
                                                     abi: synabi::RustCall,
-                                                    sig: ty::FnSig {
+                                                    sig: ty::Binder(ty::FnSig {
                                                         inputs: vec![bare_fn_ty_ref,
                                                                      tuple_input_ty],
                                                         output: output_ty,
                                                         variadic: false
-                                                    }});
+                                                    })});
     debug!("tuple_fn_ty: {}", tuple_fn_ty.repr(tcx));
 
     //
@@ -421,12 +421,12 @@ pub fn trans_fn_ref_with_substs<'blk, 'tcx>(
             let impl_or_trait_item = ty::impl_or_trait_item(tcx, source_id);
             match impl_or_trait_item {
                 ty::MethodTraitItem(method) => {
-                    let trait_ref = ty::impl_trait_ref(tcx, impl_id).unwrap();
-                    let trait_ref = ty::erase_late_bound_regions(tcx, &trait_ref);
+                    let poly_trait_ref = ty::impl_trait_ref(tcx, impl_id).unwrap();
+                    let trait_ref = ty::erase_late_bound_regions(tcx, &*poly_trait_ref);
 
                     // Compute the first substitution
                     let first_subst =
-                        ty::make_substs_for_receiver_types(tcx, &trait_ref.value, &*method)
+                        ty::make_substs_for_receiver_types(tcx, &trait_ref, &*method)
                         .erase_regions();
 
                     // And compose them
@@ -435,7 +435,7 @@ pub fn trans_fn_ref_with_substs<'blk, 'tcx>(
                     debug!("trans_fn_with_vtables - default method: \
                             substs = {}, trait_subst = {}, \
                             first_subst = {}, new_subst = {}",
-                           substs.repr(tcx), trait_ref.substs().repr(tcx),
+                           substs.repr(tcx), trait_ref.substs.repr(tcx),
                            first_subst.repr(tcx), new_substs.repr(tcx));
 
                     (true, source_id, new_substs)
@@ -657,8 +657,8 @@ pub fn trans_call_inner<'a, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
     let mut bcx = callee.bcx;
 
     let (abi, ret_ty) = match callee_ty.sty {
-        ty::ty_bare_fn(ref f) => (f.abi, f.sig.output),
-        ty::ty_closure(ref f) => (f.abi, f.sig.output),
+        ty::ty_bare_fn(ref f) => (f.abi, f.sig.0.output),
+        ty::ty_closure(ref f) => (f.abi, f.sig.0.output),
         _ => panic!("expected bare rust fn or closure in trans_call_inner")
     };
 
