@@ -885,7 +885,7 @@ impl<T> Deadlined<T> {
         Deadlined { deadline: deadline, inner: inner }
     }
 
-    pub fn deadline(&self) -> u64 {
+    pub fn deadline(&self) -> Duration {
         self.deadline
     }
 
