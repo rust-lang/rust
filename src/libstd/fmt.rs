@@ -201,7 +201,7 @@
 //!         // for details, and the function `pad` can be used to pad strings.
 //!         let decimals = f.precision().unwrap_or(3);
 //!         let string = f64::to_str_exact(magnitude, decimals);
-//!         f.pad_integral(true, "", string.as_bytes())
+//!         f.pad_integral(true, "", string.as_slice())
 //!     }
 //! }
 //!
@@ -390,13 +390,9 @@
 
 #![experimental]
 
-use io::Writer;
-use io;
-use result::Result::{Ok, Err};
 use string;
-use vec::Vec;
 
-pub use core::fmt::{Formatter, Result, FormatWriter, rt};
+pub use core::fmt::{Formatter, Result, Writer, rt};
 pub use core::fmt::{Show, Octal, Binary};
 pub use core::fmt::{LowerHex, UpperHex, Pointer};
 pub use core::fmt::{LowerExp, UpperExp};
@@ -424,16 +420,7 @@ pub use core::fmt::{argument, argumentuint};
 #[experimental = "this is an implementation detail of format! and should not \
                   be called directly"]
 pub fn format(args: Arguments) -> string::String {
-    let mut output = Vec::new();
-    let _ = write!(&mut output as &mut Writer, "{}", args);
-    string::String::from_utf8(output).unwrap()
-}
-
-impl<'a> Writer for Formatter<'a> {
-    fn write(&mut self, b: &[u8]) -> io::IoResult<()> {
-        match (*self).write(b) {
-            Ok(()) => Ok(()),
-            Err(Error) => Err(io::standard_error(io::OtherIoError))
-        }
-    }
+    let mut output = string::String::new();
+    let _ = write!(&mut output, "{}", args);
+    output
 }

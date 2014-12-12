@@ -49,7 +49,6 @@ use std::sync::Arc;
 use externalfiles::ExternalHtml;
 
 use serialize::json;
-use serialize::Encodable;
 use serialize::json::ToJson;
 use syntax::ast;
 use syntax::ast_util;
@@ -1095,7 +1094,7 @@ impl Context {
         try!(self.recurse(stability.name.clone(), |this| {
             let json_dst = &this.dst.join("stability.json");
             let mut json_out = BufferedWriter::new(try!(File::create(json_dst)));
-            try!(stability.encode(&mut json::Encoder::new(&mut json_out)));
+            try!(write!(&mut json_out, "{}", json::as_json(&stability)));
 
             let mut title = stability.name.clone();
             title.push_str(" - Stability dashboard");
@@ -1311,7 +1310,8 @@ impl<'a> Item<'a> {
         // has anchors for the line numbers that we're linking to.
         if ast_util::is_local(self.item.def_id) {
             let mut path = Vec::new();
-            clean_srcpath(&cx.src_root, self.item.source.filename.as_bytes(), |component| {
+            clean_srcpath(&cx.src_root, self.item.source.filename.as_bytes(),
+                          |component| {
                 path.push(component.to_string());
             });
             let href = if self.item.source.loline == self.item.source.hiline {
@@ -1713,7 +1713,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
             try!(write!(w, ";\n"));
         }
         if types.len() > 0 && required.len() > 0 {
-            try!(w.write("\n".as_bytes()));
+            try!(w.write_str("\n"));
         }
         for m in required.iter() {
             try!(write!(w, "    "));
@@ -1721,7 +1721,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
             try!(write!(w, ";\n"));
         }
         if required.len() > 0 && provided.len() > 0 {
-            try!(w.write("\n".as_bytes()));
+            try!(w.write_str("\n"));
         }
         for m in provided.iter() {
             try!(write!(w, "    "));
@@ -2260,8 +2260,9 @@ impl<'a> fmt::Show for Source<'a> {
 
 fn item_macro(w: &mut fmt::Formatter, it: &clean::Item,
               t: &clean::Macro) -> fmt::Result {
-    try!(w.write(highlight::highlight(t.source.as_slice(), Some("macro"),
-                                      None).as_bytes()));
+    try!(w.write_str(highlight::highlight(t.source.as_slice(),
+                                          Some("macro"),
+                                          None)[]));
     document(w, it)
 }
 

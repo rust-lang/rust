@@ -12,7 +12,8 @@ extern crate rbml;
 extern crate serialize;
 
 use std::io;
-use std::io::{IoError, IoResult, SeekStyle};
+use std::fmt;
+use std::io::{IoResult, SeekStyle};
 use std::slice;
 
 use serialize::{Encodable, Encoder};
@@ -37,16 +38,15 @@ enum WireProtocol {
     // ...
 }
 
-fn encode_json<'a,
-               T: Encodable<json::Encoder<'a>,
-                            std::io::IoError>>(val: &T,
-                                               wr: &'a mut SeekableMemWriter) {
-    let mut encoder = json::Encoder::new(wr);
-    val.encode(&mut encoder);
+fn encode_json<
+               T: for<'a> Encodable<json::Encoder<'a>,
+                            fmt::Error>>(val: &T,
+                                               wr: &mut SeekableMemWriter) {
+    write!(wr, "{}", json::as_json(val));
 }
 fn encode_rbml<'a,
                T: Encodable<writer::Encoder<'a, SeekableMemWriter>,
-                            std::io::IoError>>(val: &T,
+                            io::IoError>>(val: &T,
                                                wr: &'a mut SeekableMemWriter) {
     let mut encoder = writer::Encoder::new(wr);
     val.encode(&mut encoder);

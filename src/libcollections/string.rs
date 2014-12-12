@@ -995,9 +995,11 @@ pub trait ToString {
 
 impl<T: fmt::Show> ToString for T {
     fn to_string(&self) -> String {
-        let mut buf = Vec::<u8>::new();
-        let _ = fmt::write(&mut buf, format_args!("{}", *self));
-        String::from_utf8(buf).unwrap()
+        use core::fmt::Writer;
+        let mut buf = String::new();
+        let _ = buf.write_fmt(format_args!("{}", self));
+        buf.shrink_to_fit();
+        buf
     }
 }
 
@@ -1070,6 +1072,13 @@ impl<'a> Str for CowString<'a> {
     #[inline]
     fn as_slice<'b>(&'b self) -> &'b str {
         (**self).as_slice()
+    }
+}
+
+impl fmt::Writer for String {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        self.push_str(s);
+        Ok(())
     }
 }
 
