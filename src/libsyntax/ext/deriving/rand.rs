@@ -88,6 +88,7 @@ fn rand_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) 
                                         true,
                                         rand_ident.clone(),
                                         Vec::new(),
+                                        Vec::new(),
                                         Vec::new());
             let rand_name = cx.expr_path(rand_name);
 

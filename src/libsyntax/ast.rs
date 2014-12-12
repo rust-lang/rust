@@ -255,6 +255,7 @@ impl PathParameters {
         AngleBracketedParameters(AngleBracketedParameterData {
             lifetimes: Vec::new(),
             types: OwnedSlice::empty(),
+            bindings: OwnedSlice::empty(),
         })
     }
 
@@ -307,6 +308,17 @@ impl PathParameters {
             }
         }
     }
+
+    pub fn bindings(&self) -> Vec<&P<TypeBinding>> {
+        match *self {
+            AngleBracketedParameters(ref data) => {
+                data.bindings.iter().collect()
+            }
+            ParenthesizedParameters(_) => {
+                Vec::new()
+            }
+        }
+    }
 }
 
 /// A path like `Foo<'a, T>`
@@ -316,11 +328,14 @@ pub struct AngleBracketedParameterData {
     pub lifetimes: Vec<Lifetime>,
     /// The type parameters for this path segment, if present.
     pub types: OwnedSlice<P<Ty>>,
+    /// Bindings (equality constraints) on associated types, if present.
+    /// E.g., `Foo<A=Bar>`.
+    pub bindings: OwnedSlice<P<TypeBinding>>,
 }
 
 impl AngleBracketedParameterData {
     fn is_empty(&self) -> bool {
-        self.lifetimes.is_empty() && self.types.is_empty()
+        self.lifetimes.is_empty() && self.types.is_empty() && self.bindings.is_empty()
     }
 }
 
@@ -406,11 +421,25 @@ pub struct WhereClause {
 }
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
-pub struct WherePredicate {
+pub enum WherePredicate {
+    BoundPredicate(WhereBoundPredicate),
+    EqPredicate(WhereEqPredicate)
+}
+
+#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+pub struct WhereBoundPredicate {
     pub id: NodeId,
     pub span: Span,
     pub ident: Ident,
     pub bounds: OwnedSlice<TyParamBound>,
+}
+
+#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+pub struct WhereEqPredicate {
+    pub id: NodeId,
+    pub span: Span,
+    pub path: Path,
+    pub ty: P<Ty>,
 }
 
 /// The set of MetaItems that define the compilation environment of the crate,
@@ -1117,6 +1146,16 @@ impl FloatTy {
         }
     }
 }
+
+// Bind a type to an associated type: `A=Foo`.
+#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+pub struct TypeBinding {
+    pub id: NodeId,
+    pub ident: Ident,
+    pub ty: P<Ty>,
+    pub span: Span,
+}
+
 
 // NB PartialEq method appears below.
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]

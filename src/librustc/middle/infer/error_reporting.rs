@@ -1405,10 +1405,22 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                 let new_types = data.types.map(|t| {
                     self.rebuild_arg_ty_or_output(&**t, lifetime, anon_nums, region_names)
                 });
+                let new_bindings = data.bindings.map(|b| {
+                    P(ast::TypeBinding {
+                        id: b.id,
+                        ident: b.ident,
+                        ty: self.rebuild_arg_ty_or_output(&*b.ty,
+                                                          lifetime,
+                                                          anon_nums,
+                                                          region_names),
+                        span: b.span
+                    })
+                });
                 ast::AngleBracketedParameters(ast::AngleBracketedParameterData {
                     lifetimes: new_lts,
-                    types: new_types
-                })
+                    types: new_types,
+                    bindings: new_bindings,
+               })
             }
         };
         let new_seg = ast::PathSegment {

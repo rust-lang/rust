@@ -310,7 +310,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             substs: rcvr_substs.clone()
         });
 
-        self.elaborate_bounds(&[trait_ref.clone()], |this, new_trait_ref, m, method_num| {
+        self.elaborate_bounds(&[trait_ref.clone()], false, |this, new_trait_ref, m, method_num| {
             let vtable_index =
                 get_method_index(tcx, &*new_trait_ref,
                                  trait_ref.clone(), method_num);
@@ -357,7 +357,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         let bounds =
             self.fcx.inh.param_env.bounds.get(space, index).trait_bounds
             .as_slice();
-        self.elaborate_bounds(bounds, |this, trait_ref, m, method_num| {
+        self.elaborate_bounds(bounds, true, |this, trait_ref, m, method_num| {
             let xform_self_ty =
                 this.xform_self_ty(&m, &trait_ref.substs);
 
@@ -394,6 +394,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
     fn elaborate_bounds(
         &mut self,
         bounds: &[Rc<ty::TraitRef<'tcx>>],
+        num_includes_types: bool,
         mk_cand: for<'a> |this: &mut ProbeContext<'a, 'tcx>,
                           tr: Rc<ty::TraitRef<'tcx>>,
                           m: Rc<ty::Method<'tcx>>,
@@ -407,7 +408,10 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                 continue;
             }
 
-            let (pos, method) = match trait_method(tcx, bound_trait_ref.def_id, self.method_name) {
+            let (pos, method) = match trait_method(tcx,
+                                                   bound_trait_ref.def_id,
+                                                   self.method_name,
+                                                   num_includes_types) {
                 Some(v) => v,
                 None => { continue; }
             };
@@ -1003,12 +1007,18 @@ fn impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
 /// index (or `None`, if no such method).
 fn trait_method<'tcx>(tcx: &ty::ctxt<'tcx>,
                       trait_def_id: ast::DefId,
-                      method_name: ast::Name)
+                      method_name: ast::Name,
+                      num_includes_types: bool)
                       -> Option<(uint, Rc<ty::Method<'tcx>>)>
 {
     let trait_items = ty::trait_items(tcx, trait_def_id);
     trait_items
         .iter()
+        .filter(|item|
+            num_includes_types || match *item {
+                &ty::MethodTraitItem(_) => true,
+                &ty::TypeTraitItem(_) => false
+            })
         .enumerate()
         .find(|&(_, ref item)| item.name() == method_name)
         .and_then(|(idx, item)| item.as_opt_method().map(|m| (idx, m)))
@@ -1025,7 +1035,7 @@ fn get_method_index<'tcx>(tcx: &ty::ctxt<'tcx>,
     // iterating down the supertraits of the object's trait until
     // we find the trait the method came from, counting up the
     // methods from them.
-    let mut method_count = 0;
+    let mut method_count = n_method;
     ty::each_bound_trait_and_supertraits(tcx, &[subtrait], |bound_ref| {
         if bound_ref.def_id == trait_ref.def_id {
             false
@@ -1040,7 +1050,7 @@ fn get_method_index<'tcx>(tcx: &ty::ctxt<'tcx>,
             true
         }
     });
-    method_count + n_method
+    method_count
 }
 
 impl<'tcx> Candidate<'tcx> {

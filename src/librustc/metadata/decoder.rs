@@ -435,7 +435,7 @@ pub fn get_symbol(data: &[u8], id: ast::NodeId) -> String {
 }
 
 // Something that a name can resolve to.
-#[deriving(Clone)]
+#[deriving(Clone,Show)]
 pub enum DefLike {
     DlDef(def::Def),
     DlImpl(ast::DefId),

@@ -444,7 +444,7 @@ impl<'a> TraitDef<'a> {
         // Create the type of `self`.
         let self_type = cx.ty_path(
             cx.path_all(self.span, false, vec!( type_ident ), self_lifetimes,
-                        self_ty_params.into_vec()));
+                        self_ty_params.into_vec(), Vec::new()));
 
         let attr = cx.attribute(
             self.span,

@@ -693,9 +693,16 @@ pub struct WherePredicate {
 
 impl Clean<WherePredicate> for ast::WherePredicate {
     fn clean(&self, cx: &DocContext) -> WherePredicate {
-        WherePredicate {
-            name: self.ident.clean(cx),
-            bounds: self.bounds.clean(cx)
+        match *self {
+            ast::WherePredicate::BoundPredicate(ref wbp) => {
+                WherePredicate {
+                    name: wbp.ident.clean(cx),
+                    bounds: wbp.bounds.clean(cx)
+                }
+            }
+            ast::WherePredicate::EqPredicate(_) => {
+                unimplemented!();
+            }
         }
     }
 }
