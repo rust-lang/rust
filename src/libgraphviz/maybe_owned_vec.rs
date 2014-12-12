@@ -169,7 +169,7 @@ impl<'a, T> Default for MaybeOwnedVector<'a, T> {
 }
 
 impl<'a> BytesContainer for MaybeOwnedVector<'a, u8> {
-    fn container_as_bytes<'a>(&'a self) -> &'a [u8] {
+    fn container_as_bytes(&self) -> &[u8] {
         self.as_slice()
     }
 }

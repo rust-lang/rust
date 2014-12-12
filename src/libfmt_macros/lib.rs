@@ -185,7 +185,7 @@ impl<'a> Iterator<Piece<'a>> for Parser<'a> {
 
 impl<'a> Parser<'a> {
     /// Creates a new parser for the given format string
-    pub fn new<'a>(s: &'a str) -> Parser<'a> {
+    pub fn new(s: &'a str) -> Parser<'a> {
         Parser {
             input: s,
             cur: s.char_indices(),

@@ -394,7 +394,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         &mut self,
         bounds: &[Rc<ty::TraitRef<'tcx>>],
         num_includes_types: bool,
-        mk_cand: for<'a> |this: &mut ProbeContext<'a, 'tcx>,
+        mk_cand: for<'b> |this: &mut ProbeContext<'b, 'tcx>,
                           tr: Rc<ty::TraitRef<'tcx>>,
                           m: Rc<ty::Method<'tcx>>,
                           method_num: uint|)

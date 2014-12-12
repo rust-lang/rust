@@ -246,7 +246,7 @@ pub struct FnCtxt<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> mem_categorization::Typer<'tcx> for FnCtxt<'a, 'tcx> {
-    fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx> {
+    fn tcx(&self) -> &ty::ctxt<'tcx> {
         self.ccx.tcx
     }
     fn node_ty(&self, id: ast::NodeId) -> McResult<Ty<'tcx>> {
@@ -256,7 +256,7 @@ impl<'a, 'tcx> mem_categorization::Typer<'tcx> for FnCtxt<'a, 'tcx> {
                       -> Option<Ty<'tcx>> {
         self.inh.method_map.borrow().get(&method_call).map(|m| m.ty)
     }
-    fn adjustments<'a>(&'a self) -> &'a RefCell<NodeMap<ty::AutoAdjustment<'tcx>>> {
+    fn adjustments(&self) -> &RefCell<NodeMap<ty::AutoAdjustment<'tcx>>> {
         &self.inh.adjustments
     }
     fn is_method_call(&self, id: ast::NodeId) -> bool {
@@ -272,8 +272,7 @@ impl<'a, 'tcx> mem_categorization::Typer<'tcx> for FnCtxt<'a, 'tcx> {
                     -> ast::CaptureClause {
         self.ccx.tcx.capture_mode(closure_expr_id)
     }
-    fn unboxed_closures<'a>(&'a self)
-                        -> &'a RefCell<DefIdMap<ty::UnboxedClosure<'tcx>>> {
+    fn unboxed_closures(&self) -> &RefCell<DefIdMap<ty::UnboxedClosure<'tcx>>> {
         &self.inh.unboxed_closures
     }
 }
@@ -1526,7 +1525,7 @@ fn check_cast(fcx: &FnCtxt,
 }
 
 impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
-    fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx> { self.ccx.tcx }
+    fn tcx(&self) -> &ty::ctxt<'tcx> { self.ccx.tcx }
 
     fn get_item_ty(&self, id: ast::DefId) -> ty::Polytype<'tcx> {
         ty::lookup_item_type(self.tcx(), id)
@@ -1557,7 +1556,7 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
-    fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx> { self.ccx.tcx }
+    fn tcx(&self) -> &ty::ctxt<'tcx> { self.ccx.tcx }
 
     pub fn infcx<'b>(&'b self) -> &'b infer::InferCtxt<'a, 'tcx> {
         &self.inh.infcx
@@ -1879,7 +1878,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn item_substs<'a>(&'a self) -> Ref<'a, NodeMap<ty::ItemSubsts<'tcx>>> {
+    pub fn item_substs(&self) -> Ref<NodeMap<ty::ItemSubsts<'tcx>>> {
         self.inh.item_substs.borrow()
     }
 

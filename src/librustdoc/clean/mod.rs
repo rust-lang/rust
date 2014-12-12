@@ -459,7 +459,7 @@ impl attr::AttrMetaMethods for Attribute {
 impl<'a> attr::AttrMetaMethods for &'a Attribute {
     fn name(&self) -> InternedString { (**self).name() }
     fn value_str(&self) -> Option<InternedString> { (**self).value_str() }
-    fn meta_item_list<'a>(&'a self) -> Option<&'a [P<ast::MetaItem>]> { None }
+    fn meta_item_list(&self) -> Option<&[P<ast::MetaItem>]> { None }
 }
 
 #[deriving(Clone, Encodable, Decodable, PartialEq)]

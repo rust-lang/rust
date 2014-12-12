@@ -226,7 +226,7 @@ impl<'a> Reader for &'a [u8] {
 
 impl<'a> Buffer for &'a [u8] {
     #[inline]
-    fn fill_buf<'a>(&'a mut self) -> IoResult<&'a [u8]> {
+    fn fill_buf(&mut self) -> IoResult<&[u8]> {
         if self.is_empty() {
             Err(io::standard_error(io::EndOfFile))
         } else {
@@ -268,7 +268,7 @@ impl<'a> BufWriter<'a> {
     /// Creates a new `BufWriter` which will wrap the specified buffer. The
     /// writer initially starts at position 0.
     #[inline]
-    pub fn new<'a>(buf: &'a mut [u8]) -> BufWriter<'a> {
+    pub fn new(buf: &'a mut [u8]) -> BufWriter<'a> {
         BufWriter {
             buf: buf,
             pos: 0
@@ -337,7 +337,7 @@ pub struct BufReader<'a> {
 impl<'a> BufReader<'a> {
     /// Creates a new buffered reader which will read the specified buffer
     #[inline]
-    pub fn new<'a>(buf: &'a [u8]) -> BufReader<'a> {
+    pub fn new(buf: &'a [u8]) -> BufReader<'a> {
         BufReader {
             buf: buf,
             pos: 0
@@ -384,7 +384,7 @@ impl<'a> Seek for BufReader<'a> {
 
 impl<'a> Buffer for BufReader<'a> {
     #[inline]
-    fn fill_buf<'a>(&'a mut self) -> IoResult<&'a [u8]> {
+    fn fill_buf(&mut self) -> IoResult<&[u8]> {
         if self.pos < self.buf.len() {
             Ok(self.buf[self.pos..])
         } else {

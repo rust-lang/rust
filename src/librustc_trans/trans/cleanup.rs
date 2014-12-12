@@ -979,10 +979,10 @@ impl<'tcx> Cleanup<'tcx> for FreeSlice {
         false
     }
 
-    fn trans<'blk, 'tcx>(&self,
-                         bcx: Block<'blk, 'tcx>,
-                         debug_loc: Option<NodeInfo>)
-                      -> Block<'blk, 'tcx> {
+    fn trans<'blk>(&self,
+                   bcx: Block<'blk, 'tcx>,
+                   debug_loc: Option<NodeInfo>)
+                   -> Block<'blk, 'tcx> {
         apply_debug_loc(bcx.fcx, debug_loc);
 
         match self.heap {
@@ -1012,10 +1012,10 @@ impl<'tcx> Cleanup<'tcx> for LifetimeEnd {
         true
     }
 
-    fn trans<'blk, 'tcx>(&self,
-                         bcx: Block<'blk, 'tcx>,
-                         debug_loc: Option<NodeInfo>)
-                      -> Block<'blk, 'tcx> {
+    fn trans<'blk>(&self,
+                   bcx: Block<'blk, 'tcx>,
+                   debug_loc: Option<NodeInfo>)
+                   -> Block<'blk, 'tcx> {
         apply_debug_loc(bcx.fcx, debug_loc);
         base::call_lifetime_end(bcx, self.ptr);
         bcx
