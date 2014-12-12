@@ -2141,7 +2141,7 @@ arbitrarily complex configurations through nesting.
 The following configurations must be defined by the implementation:
 
 * `target_arch = "..."`. Target CPU architecture, such as `"x86"`, `"x86_64"`
-  `"mips"`, or `"arm"`.
+  `"mips"`, `"arm"`, or `"aarch64"`.
 * `target_endian = "..."`. Endianness of the target CPU, either `"little"` or
   `"big"`.
 * `target_family = "..."`. Operating system family of the target, e. g.

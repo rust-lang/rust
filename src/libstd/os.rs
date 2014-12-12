@@ -1,4 +1,4 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -1412,6 +1412,11 @@ mod arch_consts {
 #[cfg(target_arch = "arm")]
 mod arch_consts {
     pub const ARCH: &'static str = "arm";
+}
+
+#[cfg(target_arch = "aarch64")]
+mod arch_consts {
+    pub const ARCH: &'static str = "aarch64";
 }
 
 #[cfg(target_arch = "mips")]

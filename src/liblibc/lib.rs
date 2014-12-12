@@ -1,4 +1,4 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -720,10 +720,14 @@ pub mod types {
 
         }
 
-        #[cfg(target_arch = "x86_64")]
+        #[cfg(any(target_arch = "x86_64",
+                  target_arch = "aarch64"))]
         pub mod arch {
             pub mod c95 {
+                #[cfg(not(target_arch = "aarch64"))]
                 pub type c_char = i8;
+                #[cfg(target_arch = "aarch64")]
+                pub type c_char = u8;
                 pub type c_schar = i8;
                 pub type c_uchar = u8;
                 pub type c_short = i16;
@@ -739,7 +743,10 @@ pub mod types {
                 pub type clock_t = i64;
                 pub type time_t = i64;
                 pub type suseconds_t = i64;
+                #[cfg(not(target_arch = "aarch64"))]
                 pub type wchar_t = i32;
+                #[cfg(target_arch = "aarch64")]
+                pub type wchar_t = u32;
             }
             pub mod c99 {
                 pub type c_longlong = i64;
@@ -760,6 +767,7 @@ pub mod types {
                 pub type mode_t = u32;
                 pub type ssize_t = i64;
             }
+            #[cfg(not(target_arch = "aarch64"))]
             pub mod posix01 {
                 use types::os::arch::c95::{c_int, c_long, time_t};
                 use types::os::arch::posix88::{dev_t, gid_t, ino_t};
@@ -769,6 +777,7 @@ pub mod types {
                 pub type nlink_t = u64;
                 pub type blksize_t = i64;
                 pub type blkcnt_t = i64;
+
                 #[repr(C)]
                 #[deriving(Copy)] pub struct stat {
                     pub st_dev: dev_t,
@@ -800,6 +809,51 @@ pub mod types {
                 #[repr(C)]
                 #[deriving(Copy)] pub struct pthread_attr_t {
                     pub __size: [u64; 7]
+                }
+            }
+            #[cfg(target_arch = "aarch64")]
+            pub mod posix01 {
+                use types::os::arch::c95::{c_int, c_long, time_t};
+                use types::os::arch::posix88::{dev_t, gid_t, ino_t};
+                use types::os::arch::posix88::{mode_t, off_t};
+                use types::os::arch::posix88::{uid_t};
+
+                pub type nlink_t = u32;
+                pub type blksize_t = i32;
+                pub type blkcnt_t = i64;
+
+                #[repr(C)]
+                #[deriving(Copy)] pub struct stat {
+                    pub st_dev: dev_t,
+                    pub st_ino: ino_t,
+                    pub st_mode: mode_t,
+                    pub st_nlink: nlink_t,
+                    pub st_uid: uid_t,
+                    pub st_gid: gid_t,
+                    pub st_rdev: dev_t,
+                    pub __pad1: dev_t,
+                    pub st_size: off_t,
+                    pub st_blksize: blksize_t,
+                    pub __pad2: c_int,
+                    pub st_blocks: blkcnt_t,
+                    pub st_atime: time_t,
+                    pub st_atime_nsec: c_long,
+                    pub st_mtime: time_t,
+                    pub st_mtime_nsec: c_long,
+                    pub st_ctime: time_t,
+                    pub st_ctime_nsec: c_long,
+                    pub __unused: [c_int; 2],
+                }
+
+                #[repr(C)]
+                #[deriving(Copy)] pub struct utimbuf {
+                    pub actime: time_t,
+                    pub modtime: time_t,
+                }
+
+                #[repr(C)]
+                #[deriving(Copy)] pub struct pthread_attr_t {
+                    pub __size: [u64; 8]
                 }
             }
             pub mod posix08 {
@@ -2444,7 +2498,8 @@ pub mod consts {
         }
         #[cfg(any(target_arch = "x86",
                   target_arch = "x86_64",
-                  target_arch = "arm"))]
+                  target_arch = "arm",
+                  target_arch = "aarch64"))]
         pub mod posix88 {
             use types::os::arch::c95::c_int;
             use types::common::c95::c_void;
@@ -2939,7 +2994,9 @@ pub mod consts {
             pub const PTHREAD_STACK_MIN: size_t = 16384;
 
             #[cfg(all(target_os = "linux",
-                      any(target_arch = "mips", target_arch = "mipsel")))]
+                      any(target_arch = "mips",
+                          target_arch = "mipsel",
+                          target_arch = "aarch64")))]
             pub const PTHREAD_STACK_MIN: size_t = 131072;
 
             pub const CLOCK_REALTIME: c_int = 0;
@@ -2948,6 +3005,7 @@ pub mod consts {
         pub mod posix08 {
         }
         #[cfg(any(target_arch = "arm",
+                  target_arch = "aarch64",
                   target_arch = "x86",
                   target_arch = "x86_64"))]
         pub mod bsd44 {
@@ -3043,7 +3101,8 @@ pub mod consts {
         }
         #[cfg(any(target_arch = "x86",
                   target_arch = "x86_64",
-                  target_arch = "arm"))]
+                  target_arch = "arm",
+                  target_arch = "aarch64"))]
         pub mod extra {
             use types::os::arch::c95::c_int;
 

@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -41,6 +41,7 @@ mod cabi_x86;
 mod cabi_x86_64;
 mod cabi_x86_win64;
 mod cabi_arm;
+mod cabi_aarch64;
 mod cabi_mips;
 mod foreign;
 mod intrinsic;

@@ -1,4 +1,4 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -47,7 +47,7 @@ mod m {
         pub fn size() -> uint { 12u }
     }
 
-    #[cfg(any(target_arch = "x86_64", target_arch = "arm"))]
+    #[cfg(any(target_arch = "x86_64", target_arch = "arm", target_arch = "aarch64"))]
     pub mod m {
         pub fn align() -> uint { 8u }
         pub fn size() -> uint { 16u }
