@@ -150,10 +150,11 @@ use core::fmt;
 use core::hash::{mod, Hash};
 use core::kinds::marker;
 use core::mem::{transmute, min_align_of, size_of, forget};
+use core::nonzero::NonZero;
 use core::ops::{Deref, Drop};
 use core::option::Option;
 use core::option::Option::{Some, None};
-use core::ptr::{mod, NonZero, RawPtr};
+use core::ptr::{mod, RawPtr};
 use core::result::Result;
 use core::result::Result::{Ok, Err};
 

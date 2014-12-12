@@ -93,6 +93,7 @@ pub mod prelude;
 
 pub mod intrinsics;
 pub mod mem;
+pub mod nonzero;
 pub mod ptr;
 
 /* Core language traits */

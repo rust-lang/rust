@@ -9,8 +9,10 @@
 // except according to those terms.
 
 
+extern crate core;
+
+use core::nonzero::NonZero;
 use std::mem::size_of;
-use std::ptr::NonZero;
 use std::rc::Rc;
 use std::sync::Arc;
 

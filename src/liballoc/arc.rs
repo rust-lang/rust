@@ -76,10 +76,11 @@ use core::default::Default;
 use core::kinds::{Sync, Send};
 use core::mem::{min_align_of, size_of, drop};
 use core::mem;
+use core::nonzero::NonZero;
 use core::ops::{Drop, Deref};
 use core::option::Option;
 use core::option::Option::{Some, None};
-use core::ptr::{mod, NonZero, RawPtr};
+use core::ptr::{mod, RawPtr};
 use heap::deallocate;
 
 /// An atomically reference counted wrapper for shared state.
