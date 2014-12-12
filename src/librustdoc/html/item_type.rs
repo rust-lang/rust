@@ -76,6 +76,7 @@ impl ItemType {
             clean::TypeTrait    => ItemType::Trait,
             clean::TypeModule   => ItemType::Module,
             clean::TypeStatic   => ItemType::Static,
+            clean::TypeConst    => ItemType::Constant,
             clean::TypeVariant  => ItemType::Variant,
             clean::TypeTypedef  => ItemType::Typedef,
         }
