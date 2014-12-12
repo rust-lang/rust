@@ -170,7 +170,7 @@ impl<'a> fmt::Show for Ascii {
 
 /// Trait for converting into an ascii type.
 #[experimental = "may be replaced by generic conversion traits"]
-pub trait AsciiCast<T> {
+pub trait AsciiCast<T> for Sized? {
     /// Convert to an ascii type, panic on non-ASCII input.
     #[inline]
     fn to_ascii(&self) -> T {
@@ -196,10 +196,10 @@ pub trait AsciiCast<T> {
 }
 
 #[experimental = "may be replaced by generic conversion traits"]
-impl<'a> AsciiCast<&'a[Ascii]> for &'a [u8] {
+impl<'a> AsciiCast<&'a[Ascii]> for [u8] {
     #[inline]
     unsafe fn to_ascii_nocheck(&self) -> &'a[Ascii] {
-        mem::transmute(*self)
+        mem::transmute(self)
     }
 
     #[inline]
@@ -212,10 +212,10 @@ impl<'a> AsciiCast<&'a[Ascii]> for &'a [u8] {
 }
 
 #[experimental = "may be replaced by generic conversion traits"]
-impl<'a> AsciiCast<&'a [Ascii]> for &'a str {
+impl<'a> AsciiCast<&'a [Ascii]> for str {
     #[inline]
     unsafe fn to_ascii_nocheck(&self) -> &'a [Ascii] {
-        mem::transmute(*self)
+        mem::transmute(self)
     }
 
     #[inline]
