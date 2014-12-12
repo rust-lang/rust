@@ -1419,7 +1419,7 @@ pub fn trait_def_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                     index += 1;
                     Some(ty::mk_param(ccx.tcx,
                                       subst::AssocSpace,
-                                      index as u32 - 1,
+                                      index - 1,
                                       local_def(trait_item.ty_param.id))).into_iter()
                 }
                 ast::RequiredMethod(_) | ast::ProvidedMethod(_) => {

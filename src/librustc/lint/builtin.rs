@@ -1598,7 +1598,7 @@ impl LintPass for MissingCopyImplementations {
                 }
                 ty::mk_struct(cx.tcx,
                               ast_util::local_def(item.id),
-                              Substs::empty())
+                              cx.tcx.mk_substs(Substs::empty()))
             }
             ast::ItemEnum(_, ref ast_generics) => {
                 if ast_generics.is_parameterized() {
@@ -1606,7 +1606,7 @@ impl LintPass for MissingCopyImplementations {
                 }
                 ty::mk_enum(cx.tcx,
                             ast_util::local_def(item.id),
-                            Substs::empty())
+                            cx.tcx.mk_substs(Substs::empty()))
             }
             _ => return,
         };
