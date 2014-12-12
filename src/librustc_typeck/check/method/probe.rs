@@ -628,17 +628,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             None => {}
         }
 
-        match self.pick_autorefd_method(step) {
-            Some(result) => return Some(result),
-            None => {}
-        }
-
-        // FIXME -- Super hack. For DST types, we will convert to
-        // &&[T] or &&str, as part of a kind of legacy lookup scheme.
-        match step.self_ty.sty {
-            ty::ty_str | ty::ty_vec(_, None) => self.pick_autorefrefd_method(step),
-            _ => None
-        }
+        self.pick_autorefd_method(step)
     }
 
     fn pick_by_value_method(&mut self,
@@ -679,18 +669,6 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         self.search_mutabilities(
             |m| AutoRef(m, box step.adjustment.clone()),
             |m,r| ty::mk_rptr(tcx, r, ty::mt {ty:step.self_ty, mutbl:m}))
-    }
-
-    fn pick_autorefrefd_method(&mut self,
-                               step: &CandidateStep<'tcx>)
-                               -> Option<PickResult<'tcx>>
-    {
-        let tcx = self.tcx();
-        self.search_mutabilities(
-            |m| AutoRef(m, box AutoRef(m, box step.adjustment.clone())),
-            |m,r| ty::mk_rptr(tcx, r, ty::mt { ty: ty::mk_rptr(tcx, r, ty::mt { ty:step.self_ty,
-                                                                                mutbl:m}),
-                                               mutbl: m }))
     }
 
     fn search_mutabilities<F, G>(&mut self,
