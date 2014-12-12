@@ -1613,7 +1613,7 @@ pub struct RegionParameterDef {
     pub bounds: Vec<ty::Region>,
 }
 
-/// Information about the type/lifetime parameters associated with an
+/// Information about the formal type/lifetime parameters associated with an
 /// item or method. Analogous to ast::Generics.
 #[deriving(Clone, Show)]
 pub struct Generics<'tcx> {

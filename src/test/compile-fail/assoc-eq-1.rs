@@ -8,25 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(macro_rules)]
+// Test equality constraints on associated types. Check that unsupported syntax
+// does not ICE.
 
-macro_rules! test ( ($nm:ident,
-                     #[$a:meta],
-                     $i:item) => (mod $nm { #![$a] $i }); )
+#![feature(associated_types)]
 
-test!(a,
-      #[cfg(qux)],
-      pub fn bar() { })
-
-test!(b,
-      #[cfg(not(qux))],
-      pub fn bar() { })
-
-#[qux]
-fn main() {
-    a::bar();
-    //~^ ERROR failed to resolve. Use of undeclared type or module `a`
-    //~^^ ERROR unresolved name `a::bar`
-    b::bar();
+pub trait Foo {
+    type A;
+    fn boo(&self) -> <Self as Foo>::A;
 }
 
+fn foo2<I: Foo>(x: I) {
+    let _: A = x.boo(); //~ERROR use of undeclared
+    let _: I::A = x.boo(); //~ERROR failed to resolve
+    //~^ERROR use of undeclared type name `I::A`
+}
+
+pub fn main() {}

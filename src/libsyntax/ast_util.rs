@@ -174,10 +174,26 @@ pub fn ident_to_path(s: Span, identifier: Ident) -> Path {
                 parameters: ast::AngleBracketedParameters(ast::AngleBracketedParameterData {
                     lifetimes: Vec::new(),
                     types: OwnedSlice::empty(),
+                    bindings: OwnedSlice::empty(),
                 })
             }
         ),
     }
+}
+
+// If path is a single segment ident path, return that ident. Otherwise, return
+// None.
+pub fn path_to_ident(path: &Path) -> Option<Ident> {
+    if path.segments.len() != 1 {
+        return None;
+    }
+
+    let segment = &path.segments[0];
+    if !segment.parameters.is_empty() {
+        return None;
+    }
+
+    Some(segment.identifier)
 }
 
 pub fn ident_to_pat(id: NodeId, s: Span, i: Ident) -> P<Pat> {

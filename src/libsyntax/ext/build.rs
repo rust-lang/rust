@@ -37,7 +37,8 @@ pub trait AstBuilder {
                 global: bool,
                 idents: Vec<ast::Ident> ,
                 lifetimes: Vec<ast::Lifetime>,
-                types: Vec<P<ast::Ty>> )
+                types: Vec<P<ast::Ty>>,
+                bindings: Vec<P<ast::TypeBinding>> )
         -> ast::Path;
 
     // types
@@ -293,20 +294,21 @@ pub trait AstBuilder {
 
 impl<'a> AstBuilder for ExtCtxt<'a> {
     fn path(&self, span: Span, strs: Vec<ast::Ident> ) -> ast::Path {
-        self.path_all(span, false, strs, Vec::new(), Vec::new())
+        self.path_all(span, false, strs, Vec::new(), Vec::new(), Vec::new())
     }
     fn path_ident(&self, span: Span, id: ast::Ident) -> ast::Path {
         self.path(span, vec!(id))
     }
     fn path_global(&self, span: Span, strs: Vec<ast::Ident> ) -> ast::Path {
-        self.path_all(span, true, strs, Vec::new(), Vec::new())
+        self.path_all(span, true, strs, Vec::new(), Vec::new(), Vec::new())
     }
     fn path_all(&self,
                 sp: Span,
                 global: bool,
                 mut idents: Vec<ast::Ident> ,
                 lifetimes: Vec<ast::Lifetime>,
-                types: Vec<P<ast::Ty>> )
+                types: Vec<P<ast::Ty>>,
+                bindings: Vec<P<ast::TypeBinding>> )
                 -> ast::Path {
         let last_identifier = idents.pop().unwrap();
         let mut segments: Vec<ast::PathSegment> = idents.into_iter()
@@ -321,6 +323,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             parameters: ast::AngleBracketedParameters(ast::AngleBracketedParameterData {
                 lifetimes: lifetimes,
                 types: OwnedSlice::from_vec(types),
+                bindings: OwnedSlice::from_vec(bindings),
             })
         });
         ast::Path {
@@ -391,7 +394,8 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                               self.ident_of("Option")
                           ),
                           Vec::new(),
-                          vec!( ty )))
+                          vec!( ty ),
+                          Vec::new()))
     }
 
     fn ty_field_imm(&self, span: Span, name: Ident, ty: P<ast::Ty>) -> ast::TypeField {
