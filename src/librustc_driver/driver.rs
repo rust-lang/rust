@@ -83,7 +83,7 @@ pub fn compile_input(sess: Session,
         phase_save_analysis(&analysis.ty_cx.sess, analysis.ty_cx.map.krate(), &analysis, outdir);
 
         if log_enabled!(::log::INFO) {
-            println!("Pre-trans")
+            println!("Pre-trans");
             analysis.ty_cx.print_debug_stats();
         }
 
@@ -91,7 +91,7 @@ pub fn compile_input(sess: Session,
         let (tcx, trans) = phase_4_translate_to_llvm(analysis);
 
         if log_enabled!(::log::INFO) {
-            println!("Post-trans")
+            println!("Post-trans");
             tcx.print_debug_stats();
         }
 

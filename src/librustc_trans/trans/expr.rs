@@ -350,7 +350,7 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                               expr.id,
                                               datum_ty,
                                               |t| ty::mk_rptr(tcx,
-                                                              ty::ReStatic,
+                                                              tcx.mk_region(ty::ReStatic),
                                                               ty::mt{
                                                                   ty: t,
                                                                   mutbl: ast::MutImmutable

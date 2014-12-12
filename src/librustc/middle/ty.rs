@@ -803,14 +803,13 @@ bitflags! {
     }
 }
 
-impl Copy for TypeFlags {}
-
 macro_rules! sty_debug_print {
     ($ctxt: expr, $($variant: ident),*) => {{
         // curious inner module to allow variant names to be used as
         // variable names.
         mod inner {
             use middle::ty;
+            #[deriving(Copy)]
             struct DebugStat {
                 total: uint,
                 region_infer: uint,
@@ -5704,7 +5703,7 @@ pub fn object_region_bounds<'tcx>(tcx: &ctxt<'tcx>,
 
     let opt_trait_ref = opt_principal.map_or(Vec::new(), |principal| {
         let substs = principal.substs().with_self_ty(open_ty);
-        vec!(Rc::new(ty::Binder(ty::TraitRef::new(principal.def_id(), substs))))
+        vec!(Rc::new(ty::Binder(ty::TraitRef::new(principal.def_id(), tcx.mk_substs(substs)))))
     });
 
     let param_bounds = ty::ParamBounds {
@@ -6063,7 +6062,7 @@ pub fn hash_crate_independent<'tcx>(tcx: &ctxt<'tcx>, ty: Ty<'tcx>, svh: &Svh) -
                 }
                 ty_rptr(r, m) => {
                     byte!(13);
-                    region(state, r);
+                    region(state, *r);
                     mt(state, m);
                 }
                 ty_bare_fn(opt_def_id, ref b) => {
@@ -6123,7 +6122,7 @@ pub fn hash_crate_independent<'tcx>(tcx: &ctxt<'tcx>, ty: Ty<'tcx>, svh: &Svh) -
                 ty_unboxed_closure(d, r, _) => {
                     byte!(24);
                     did(state, d);
-                    region(state, r);
+                    region(state, *r);
                 }
             }
             true
@@ -6695,7 +6694,7 @@ pub fn can_type_implement_copy<'tcx>(tcx: &ctxt<'tcx>,
                                      param_env: &ParameterEnvironment<'tcx>)
                                      -> Result<(),CopyImplementationError> {
     match self_type.sty {
-        ty::ty_struct(struct_did, ref substs) => {
+        ty::ty_struct(struct_did, substs) => {
             let fields = ty::struct_fields(tcx, struct_did, substs);
             for field in fields.iter() {
                 if type_moves_by_default(tcx, field.mt.ty, param_env) {
@@ -6703,7 +6702,7 @@ pub fn can_type_implement_copy<'tcx>(tcx: &ctxt<'tcx>,
                 }
             }
         }
-        ty::ty_enum(enum_did, ref substs) => {
+        ty::ty_enum(enum_did, substs) => {
             let enum_variants = ty::enum_variants(tcx, enum_did);
             for variant in enum_variants.iter() {
                 for variant_arg_type in variant.args.iter() {
