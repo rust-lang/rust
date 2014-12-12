@@ -90,6 +90,10 @@ pub struct InferCtxt<'a, 'tcx: 'a> {
         RegionVarBindings<'a, 'tcx>,
 }
 
+/// A map returned by `skolemize_bound_regions()` indicating the skolemized
+/// region that each late-bound region was replaced with.
+pub type SkolemizationMap = FnvHashMap<ty::BoundRegion,ty::Region>;
+
 /// Why did we require that the two types be related?
 ///
 /// See `error_reporting.rs` for more details
@@ -698,9 +702,25 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             self.sub(a_is_expected, trace).poly_trait_refs(&*a, &*b).to_ures()
         })
     }
-}
 
-impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
+    pub fn skolemize_bound_regions<T>(&self,
+                                      value: &ty::Binder<T>,
+                                      snapshot: &CombinedSnapshot)
+                                      -> (T, SkolemizationMap)
+        where T : TypeFoldable<'tcx>
+    {
+        let (result_binder, map) = replace_late_bound_regions(self.tcx, value, |br, _| {
+            self.region_vars.new_skolemized(br, &snapshot.region_vars_snapshot)
+        });
+
+        debug!("skolemize_bound_regions(value={}, result={}, map={})",
+               value.repr(self.tcx),
+               result_binder.value.repr(self.tcx),
+               map.repr(self.tcx));
+
+        (result_binder.value, map)
+    }
+
     pub fn next_ty_var_id(&self, diverging: bool) -> TyVid {
         self.type_variables
             .borrow_mut()
