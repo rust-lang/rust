@@ -11,7 +11,7 @@
 //! Helper routines for higher-ranked things. See the `doc` module at
 //! the end of the file for details.
 
-use super::{CombinedSnapshot, cres, InferCtxt, HigherRankedType};
+use super::{CombinedSnapshot, cres, InferCtxt, HigherRankedType, SkolemizationMap};
 use super::combine::{Combine, Combineable};
 
 use middle::ty::{mod, Binder};
@@ -81,7 +81,7 @@ impl<'tcx,C> HigherRankedRelations<'tcx> for C
 
             // Presuming type comparison succeeds, we need to check
             // that the skolemized regions do not "leak".
-            match leak_check(self.infcx(), &skol_map, snapshot) {
+            match self.infcx().leak_check(&skol_map, snapshot) {
                 Ok(()) => { }
                 Err((skol_br, tainted_region)) => {
                     if self.a_is_expected() {
@@ -455,11 +455,47 @@ impl<'a,'tcx> InferCtxtExt<'tcx> for InferCtxt<'a,'tcx> {
     }
 }
 
-fn leak_check<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
-                       skol_map: &FnvHashMap<ty::BoundRegion,ty::Region>,
-                       snapshot: &CombinedSnapshot)
-                       -> Result<(),(ty::BoundRegion,ty::Region)>
+pub fn skolemize_late_bound_regions<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,
+                                               binder: &ty::Binder<T>,
+                                               snapshot: &CombinedSnapshot)
+                                               -> (T, SkolemizationMap)
+    where T : TypeFoldable<'tcx> + Repr<'tcx>
 {
+    /*!
+     * Replace all regions bound by `binder` with skolemized regions and
+     * return a map indicating which bound-region was replaced with what
+     * skolemized region. This is the first step of checking subtyping
+     * when higher-ranked things are involved. See `doc.rs` for more details.
+     */
+
+    let (result, map) = ty::replace_late_bound_regions(infcx.tcx, binder, |br, _| {
+        infcx.region_vars.new_skolemized(br, &snapshot.region_vars_snapshot)
+    });
+
+    debug!("skolemize_bound_regions(binder={}, result={}, map={})",
+           binder.repr(infcx.tcx),
+           result.repr(infcx.tcx),
+           map.repr(infcx.tcx));
+
+    (result, map)
+}
+
+pub fn leak_check<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
+                           skol_map: &SkolemizationMap,
+                           snapshot: &CombinedSnapshot)
+                           -> Result<(),(ty::BoundRegion,ty::Region)>
+{
+    /*!
+     * Searches the region constriants created since `snapshot` was started
+     * and checks to determine whether any of the skolemized regions created
+     * in `skol_map` would "escape" -- meaning that they are related to
+     * other regions in some way. If so, the higher-ranked subtyping doesn't
+     * hold. See `doc.rs` for more details.
+     */
+
+    debug!("leak_check: skol_map={}",
+           skol_map.repr(infcx.tcx));
+
     let new_vars = infcx.region_vars_confined_to_snapshot(snapshot);
     for (&skol_br, &skol) in skol_map.iter() {
         let tainted = infcx.tainted_regions(snapshot, skol);
@@ -474,6 +510,11 @@ fn leak_check<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
                     if tainted_region == skol { continue; }
                 }
             };
+
+            debug!("{} (which replaced {}) is tainted by {}",
+                   skol.repr(infcx.tcx),
+                   skol_br.repr(infcx.tcx),
+                   tainted_region.repr(infcx.tcx));
 
             // A is not as polymorphic as B:
             return Err((skol_br, tainted_region));
