@@ -1026,16 +1026,17 @@ fn expand_method(m: P<ast::Method>, fld: &mut MacroExpander) -> SmallVector<P<as
                                  |meths, mark| meths.move_map(|m| mark_method(m, mark)),
                                  fld);
 
-            let new_methods = match maybe_new_methods {
-                Some(methods) => methods,
+            match maybe_new_methods {
+                Some(methods) => {
+                    // expand again if necessary
+                    let new_methods = methods.into_iter()
+                                             .flat_map(|m| fld.fold_method(m).into_iter())
+                                             .collect();
+                    fld.cx.bt_pop();
+                    new_methods
+                }
                 None => SmallVector::zero()
-            };
-
-            // expand again if necessary
-            let new_methods = new_methods.into_iter()
-                                  .flat_map(|m| fld.fold_method(m).into_iter()).collect();
-            fld.cx.bt_pop();
-            new_methods
+            }
         }
     })
 }
