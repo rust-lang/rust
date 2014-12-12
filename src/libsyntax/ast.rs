@@ -1662,6 +1662,7 @@ mod test {
     use serialize;
     use codemap::*;
     use super::*;
+    use std::fmt;
 
     // are ASTs encodable?
     #[test]
@@ -1687,6 +1688,6 @@ mod test {
             exported_macros: Vec::new(),
         };
         // doesn't matter which encoder we use....
-        let _f = &e as &serialize::Encodable<json::Encoder, io::IoError>;
+        let _f = &e as &serialize::Encodable<json::Encoder, fmt::Error>;
     }
 }

@@ -18,6 +18,7 @@ use fmt;
 use iter::DoubleEndedIteratorExt;
 use num::{Int, cast};
 use slice::SliceExt;
+use str;
 
 /// A type that represents a specific radix
 #[doc(hidden)]
@@ -60,7 +61,8 @@ trait GenericRadix {
                 if x == zero { break };                   // No more digits left to accumulate.
             }
         }
-        f.pad_integral(is_positive, self.prefix(), buf[curr..])
+        let buf = unsafe { str::from_utf8_unchecked(buf[curr..]) };
+        f.pad_integral(is_positive, self.prefix(), buf)
     }
 }
 
