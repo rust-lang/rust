@@ -535,10 +535,10 @@ impl<'tcx, K: KindOps + fmt::Show> Datum<'tcx, K> {
     /// Copies the value into a new location. This function always preserves the existing datum as
     /// a valid value. Therefore, it does not consume `self` and, also, cannot be applied to affine
     /// values (since they must never be duplicated).
-    pub fn shallow_copy<'blk, 'tcx>(&self,
-                                    bcx: Block<'blk, 'tcx>,
-                                    dst: ValueRef)
-                                    -> Block<'blk, 'tcx> {
+    pub fn shallow_copy<'blk>(&self,
+                              bcx: Block<'blk, 'tcx>,
+                              dst: ValueRef)
+                              -> Block<'blk, 'tcx> {
         /*!
          * Copies the value into a new location. This function always
          * preserves the existing datum as a valid value. Therefore,
