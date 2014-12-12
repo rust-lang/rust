@@ -130,9 +130,6 @@ pub struct Use(UseRef);
 
 impl Copy for Use {}
 
-/**
- * Wrapper for LLVM UseRef
- */
 impl Use {
     pub fn get(&self) -> UseRef {
         let Use(v) = *self; v
