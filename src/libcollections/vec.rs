@@ -56,9 +56,10 @@ use core::hash::{mod, Hash};
 use core::iter::repeat;
 use core::kinds::marker::{ContravariantLifetime, InvariantType};
 use core::mem;
+use core::nonzero::NonZero;
 use core::num::{Int, UnsignedInt};
 use core::ops;
-use core::ptr::{mod, NonZero};
+use core::ptr;
 use core::raw::Slice as RawSlice;
 use core::uint;
 
