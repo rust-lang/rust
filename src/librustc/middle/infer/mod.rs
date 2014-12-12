@@ -52,7 +52,7 @@ pub mod doc;
 pub mod equate;
 pub mod error_reporting;
 pub mod glb;
-pub mod higher_ranked;
+mod higher_ranked;
 pub mod lattice;
 pub mod lub;
 pub mod region_inference;
@@ -90,7 +90,7 @@ pub struct InferCtxt<'a, 'tcx: 'a> {
         RegionVarBindings<'a, 'tcx>,
 }
 
-/// A map returned by `skolemize_bound_regions()` indicating the skolemized
+/// A map returned by `skolemize_late_bound_regions()` indicating the skolemized
 /// region that each late-bound region was replaced with.
 pub type SkolemizationMap = FnvHashMap<ty::BoundRegion,ty::Region>;
 
@@ -709,16 +709,19 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                            -> (T, SkolemizationMap)
         where T : TypeFoldable<'tcx> + Repr<'tcx>
     {
-        let (result, map) = replace_late_bound_regions(self.tcx, value, |br, _| {
-            self.region_vars.new_skolemized(br, &snapshot.region_vars_snapshot)
-        });
+        /*! See `higher_ranked::skolemize_late_bound_regions` */
 
-        debug!("skolemize_bound_regions(value={}, result={}, map={})",
-               value.repr(self.tcx),
-               result.repr(self.tcx),
-               map.repr(self.tcx));
+        higher_ranked::skolemize_late_bound_regions(self, value, snapshot)
+    }
 
-        (result, map)
+    pub fn leak_check(&self,
+                      skol_map: &SkolemizationMap,
+                      snapshot: &CombinedSnapshot)
+                      -> Result<(),(ty::BoundRegion,ty::Region)>
+    {
+        /*! See `higher_ranked::leak_check` */
+
+        higher_ranked::leak_check(self, skol_map, snapshot)
     }
 
     pub fn next_ty_var_id(&self, diverging: bool) -> TyVid {
