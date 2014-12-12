@@ -683,14 +683,22 @@ pub fn get_enum_variants<'tcx>(intr: Rc<IdentInterner>, cdata: Cmd, id: ast::Nod
         let ctor_ty = item_type(ast::DefId { krate: cdata.cnum, node: id},
                                 item, tcx, cdata);
         let name = item_name(&*intr, item);
-        let (ctor_ty, arg_tys) = match ctor_ty.sty {
+        let (ctor_ty, arg_tys, arg_names) = match ctor_ty.sty {
             ty::ty_bare_fn(ref f) =>
-                (Some(ctor_ty), f.sig.inputs.clone()),
-            _ => // Nullary or struct enum variant.
-                (None, get_struct_fields(intr.clone(), cdata, did.node)
+                (Some(ctor_ty), f.sig.inputs.clone(), None),
+            _ => { // Nullary or struct enum variant.
+                let mut arg_names = Vec::new();
+                let arg_tys = get_struct_fields(intr.clone(), cdata, did.node)
                     .iter()
-                    .map(|field_ty| get_type(cdata, field_ty.id.node, tcx).ty)
-                    .collect())
+                    .map(|field_ty| {
+                        arg_names.push(ast::Ident::new(field_ty.name));
+                        get_type(cdata, field_ty.id.node, tcx).ty
+                    })
+                    .collect();
+                let arg_names = if arg_names.len() == 0 { None } else { Some(arg_names) };
+
+                (None, arg_tys, arg_names)
+            }
         };
         match variant_disr_val(item) {
             Some(val) => { disr_val = val; }
@@ -700,7 +708,7 @@ pub fn get_enum_variants<'tcx>(intr: Rc<IdentInterner>, cdata: Cmd, id: ast::Nod
         disr_val += 1;
         Rc::new(ty::VariantInfo {
             args: arg_tys,
-            arg_names: None,
+            arg_names: arg_names,
             ctor_ty: ctor_ty,
             name: name,
             // I'm not even sure if we encode visibility
