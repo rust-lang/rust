@@ -154,7 +154,7 @@ struct MaskWords<'a> {
 impl<'a> Iterator<(uint, u32)> for MaskWords<'a> {
     /// Returns (offset, word)
     #[inline]
-    fn next<'a>(&'a mut self) -> Option<(uint, u32)> {
+    fn next(&mut self) -> Option<(uint, u32)> {
         let ret = self.next_word;
         match ret {
             Some(&w) => {

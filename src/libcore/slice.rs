@@ -1036,12 +1036,12 @@ impl<T> AsSlice<T> for [T] {
 
 impl<'a, T, Sized? U: AsSlice<T>> AsSlice<T> for &'a U {
     #[inline(always)]
-    fn as_slice<'a>(&'a self) -> &'a [T] { AsSlice::as_slice(*self) }
+    fn as_slice(&self) -> &[T] { AsSlice::as_slice(*self) }
 }
 
 impl<'a, T, Sized? U: AsSlice<T>> AsSlice<T> for &'a mut U {
     #[inline(always)]
-    fn as_slice<'a>(&'a self) -> &'a [T] { AsSlice::as_slice(*self) }
+    fn as_slice(&self) -> &[T] { AsSlice::as_slice(*self) }
 }
 
 #[unstable = "waiting for DST"]

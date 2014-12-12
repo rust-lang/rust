@@ -392,7 +392,7 @@ pub struct StaticInliner<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> StaticInliner<'a, 'tcx> {
-    pub fn new<'a>(tcx: &'a ty::ctxt<'tcx>) -> StaticInliner<'a, 'tcx> {
+    pub fn new<'b>(tcx: &'b ty::ctxt<'tcx>) -> StaticInliner<'b, 'tcx> {
         StaticInliner {
             tcx: tcx,
             failed: false

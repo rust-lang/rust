@@ -71,10 +71,10 @@ impl<'a, T: Send> ExclusiveGuard<'a, T> {
 }
 
 impl<'a, T: Send> Deref<T> for ExclusiveGuard<'a, T> {
-    fn deref<'a>(&'a self) -> &'a T { &*self._data }
+    fn deref(&self) -> &T { &*self._data }
 }
 impl<'a, T: Send> DerefMut<T> for ExclusiveGuard<'a, T> {
-    fn deref_mut<'a>(&'a mut self) -> &'a mut T { &mut *self._data }
+    fn deref_mut(&mut self) -> &mut T { &mut *self._data }
 }
 
 #[cfg(test)]

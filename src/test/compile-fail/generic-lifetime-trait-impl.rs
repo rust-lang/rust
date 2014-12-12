@@ -19,7 +19,7 @@
 trait Bar<'a> {}
 
 trait Foo<'a> {
-    fn bar<'a, T: Bar<'a>>(self) -> &'a str;
+    fn bar<'b, T: Bar<'b>>(self) -> &'b str;
 }
 
 impl<'a> Foo<'a> for &'a str {

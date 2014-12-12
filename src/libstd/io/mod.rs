@@ -981,7 +981,7 @@ impl<'a, R: Reader> Reader for RefReader<'a, R> {
 }
 
 impl<'a, R: Buffer> Buffer for RefReader<'a, R> {
-    fn fill_buf<'a>(&'a mut self) -> IoResult<&'a [u8]> { self.inner.fill_buf() }
+    fn fill_buf(&mut self) -> IoResult<&[u8]> { self.inner.fill_buf() }
     fn consume(&mut self, amt: uint) { self.inner.consume(amt) }
 }
 

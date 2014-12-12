@@ -46,7 +46,7 @@ pub struct TypeSkolemizer<'a, 'tcx:'a> {
 }
 
 impl<'a, 'tcx> TypeSkolemizer<'a, 'tcx> {
-    pub fn new<'tcx>(infcx: &'a InferCtxt<'a, 'tcx>) -> TypeSkolemizer<'a, 'tcx> {
+    pub fn new(infcx: &'a InferCtxt<'a, 'tcx>) -> TypeSkolemizer<'a, 'tcx> {
         TypeSkolemizer {
             infcx: infcx,
             skolemization_count: 0,
