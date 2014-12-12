@@ -112,7 +112,7 @@ use std::collections::hash_map::{Occupied, Vacant};
 use std::mem::replace;
 use std::rc::Rc;
 use syntax::{mod, abi, attr};
-use syntax::ast::{mod, ProvidedMethod, RequiredMethod, TypeTraitItem};
+use syntax::ast::{mod, ProvidedMethod, RequiredMethod, TypeTraitItem, DefId};
 use syntax::ast_util::{mod, local_def, PostExpansionMethod};
 use syntax::codemap::{mod, Span};
 use syntax::owned_slice::OwnedSlice;
@@ -1585,9 +1585,9 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
                                _: Option<Ty<'tcx>>,
                                _: ast::DefId,
                                _: ast::DefId)
-                               -> Ty<'tcx> {
+                               -> Option<Ty<'tcx>> {
         self.tcx().sess.span_err(span, "unsupported associated type binding");
-        ty::mk_err()
+        Some(ty::mk_err())
     }
 }
 
@@ -5281,8 +5281,16 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                          found {} parameter(s)",
                          type_count, data.types.len());
                     substs.types.truncate(space, 0);
+                    break;
                 }
             }
+        }
+
+        if data.bindings.len() > 0 {
+            span_err!(fcx.tcx().sess, data.bindings[0].span, E0182,
+                      "unexpected binding of associated item in expression path \
+                       (only allowed in type paths)");
+            substs.types.truncate(subst::ParamSpace::AssocSpace, 0);
         }
 
         {
@@ -5299,6 +5307,7 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                         region_count,
                         data.lifetimes.len());
                     substs.mut_regions().truncate(space, 0);
+                    break;
                 }
             }
         }

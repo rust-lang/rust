@@ -53,7 +53,7 @@ use ast::{StructVariantKind, BiSub, StrStyle};
 use ast::{SelfExplicit, SelfRegion, SelfStatic, SelfValue};
 use ast::{Delimited, SequenceRepetition, TokenTree, TraitItem, TraitRef};
 use ast::{TtDelimited, TtSequence, TtToken};
-use ast::{TupleVariantKind, Ty, Ty_};
+use ast::{TupleVariantKind, Ty, Ty_, TypeBinding};
 use ast::{TypeField, TyFixedLengthVec, TyClosure, TyProc, TyBareFn};
 use ast::{TyTypeof, TyInfer, TypeMethod};
 use ast::{TyParam, TyParamBound, TyParen, TyPath, TyPolyTraitRef, TyPtr, TyQPath};
@@ -62,7 +62,7 @@ use ast::{TypeImplItem, TypeTraitItem, Typedef, UnboxedClosureKind};
 use ast::{UnnamedField, UnsafeBlock};
 use ast::{UnsafeFn, ViewItem, ViewItem_, ViewItemExternCrate, ViewItemUse};
 use ast::{ViewPath, ViewPathGlob, ViewPathList, ViewPathSimple};
-use ast::{Visibility, WhereClause, WherePredicate};
+use ast::{Visibility, WhereClause};
 use ast;
 use ast_util::{mod, as_prec, ident_to_path, operator_prec};
 use codemap::{mod, Span, BytePos, Spanned, spanned, mk_sp};
@@ -769,13 +769,10 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Parse a sequence bracketed by '<' and '>', stopping
-    /// before the '>'.
-    pub fn parse_seq_to_before_gt<T>(
-                                  &mut self,
-                                  sep: Option<token::Token>,
-                                  f: |&mut Parser| -> T)
-                                  -> OwnedSlice<T> {
+    pub fn parse_seq_to_before_gt_or_return<T>(&mut self,
+                                               sep: Option<token::Token>,
+                                               f: |&mut Parser| -> Option<T>)
+                                               -> (OwnedSlice<T>, bool) {
         let mut v = Vec::new();
         // This loop works by alternating back and forth between parsing types
         // and commas.  For example, given a string `A, B,>`, the parser would
@@ -792,22 +789,46 @@ impl<'a> Parser<'a> {
             }
 
             if i % 2 == 0 {
-                v.push(f(self));
+                match f(self) {
+                    Some(result) => v.push(result),
+                    None => return (OwnedSlice::from_vec(v), true)
+                }
             } else {
                 sep.as_ref().map(|t| self.expect(t));
             }
         }
-        return OwnedSlice::from_vec(v);
+        return (OwnedSlice::from_vec(v), false);
     }
 
-    pub fn parse_seq_to_gt<T>(
-                           &mut self,
-                           sep: Option<token::Token>,
-                           f: |&mut Parser| -> T)
-                           -> OwnedSlice<T> {
+    /// Parse a sequence bracketed by '<' and '>', stopping
+    /// before the '>'.
+    pub fn parse_seq_to_before_gt<T>(&mut self,
+                                     sep: Option<token::Token>,
+                                     f: |&mut Parser| -> T)
+                                     -> OwnedSlice<T> {
+        let (result, returned) = self.parse_seq_to_before_gt_or_return(sep, |p| Some(f(p)));
+        assert!(!returned);
+        return result;
+    }
+
+    pub fn parse_seq_to_gt<T>(&mut self,
+                              sep: Option<token::Token>,
+                              f: |&mut Parser| -> T)
+                              -> OwnedSlice<T> {
         let v = self.parse_seq_to_before_gt(sep, f);
         self.expect_gt();
         return v;
+    }
+
+    pub fn parse_seq_to_gt_or_return<T>(&mut self,
+                                        sep: Option<token::Token>,
+                                        f: |&mut Parser| -> Option<T>)
+                                        -> (OwnedSlice<T>, bool) {
+        let (v, returned) = self.parse_seq_to_before_gt_or_return(sep, f);
+        if !returned {
+            self.expect_gt();
+        }
+        return (v, returned);
     }
 
     /// Parse a sequence, including the closing delimiter. The function
@@ -1842,11 +1863,12 @@ impl<'a> Parser<'a> {
 
             // Parse types, optionally.
             let parameters = if self.eat_lt(false) {
-                let (lifetimes, types) = self.parse_generic_values_after_lt();
+                let (lifetimes, types, bindings) = self.parse_generic_values_after_lt();
 
                 ast::AngleBracketedParameters(ast::AngleBracketedParameterData {
                     lifetimes: lifetimes,
                     types: OwnedSlice::from_vec(types),
+                    bindings: OwnedSlice::from_vec(bindings),
                 })
             } else if self.eat(&token::OpenDelim(token::Paren)) {
                 let inputs = self.parse_seq_to_end(
@@ -1894,6 +1916,7 @@ impl<'a> Parser<'a> {
                     parameters: ast::AngleBracketedParameters(ast::AngleBracketedParameterData {
                         lifetimes: Vec::new(),
                         types: OwnedSlice::empty(),
+                        bindings: OwnedSlice::empty(),
                     })
                 });
                 return segments;
@@ -1902,12 +1925,13 @@ impl<'a> Parser<'a> {
             // Check for a type segment.
             if self.eat_lt(false) {
                 // Consumed `a::b::<`, go look for types
-                let (lifetimes, types) = self.parse_generic_values_after_lt();
+                let (lifetimes, types, bindings) = self.parse_generic_values_after_lt();
                 segments.push(ast::PathSegment {
                     identifier: identifier,
                     parameters: ast::AngleBracketedParameters(ast::AngleBracketedParameterData {
                         lifetimes: lifetimes,
                         types: OwnedSlice::from_vec(types),
+                        bindings: OwnedSlice::from_vec(bindings),
                     }),
                 });
 
@@ -2435,12 +2459,17 @@ impl<'a> Parser<'a> {
                     let dot = self.last_span.hi;
                     hi = self.span.hi;
                     self.bump();
-                    let (_, tys) = if self.eat(&token::ModSep) {
+                    let (_, tys, bindings) = if self.eat(&token::ModSep) {
                         self.expect_lt();
                         self.parse_generic_values_after_lt()
                     } else {
-                        (Vec::new(), Vec::new())
+                        (Vec::new(), Vec::new(), Vec::new())
                     };
+
+                    if bindings.len() > 0 {
+                        let last_span = self.last_span;
+                        self.span_err(last_span, "type bindings are only permitted on trait paths");
+                    }
 
                     // expr.f() method call
                     match self.token {
@@ -4041,16 +4070,51 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_generic_values_after_lt(&mut self) -> (Vec<ast::Lifetime>, Vec<P<Ty>> ) {
+    fn parse_generic_values_after_lt(&mut self)
+                                     -> (Vec<ast::Lifetime>, Vec<P<Ty>>, Vec<P<TypeBinding>>) {
         let lifetimes = self.parse_lifetimes(token::Comma);
-        let result = self.parse_seq_to_gt(
+
+        // First parse types.
+        let (types, returned) = self.parse_seq_to_gt_or_return(
             Some(token::Comma),
             |p| {
                 p.forbid_lifetime();
-                p.parse_ty_sum()
+                if p.look_ahead(1, |t| t == &token::Eq) {
+                    None
+                } else {
+                    Some(p.parse_ty_sum())
+                }
             }
         );
-        (lifetimes, result.into_vec())
+
+        // If we found the `>`, don't continue.
+        if !returned {
+            return (lifetimes, types.into_vec(), Vec::new());
+        }
+
+        // Then parse type bindings.
+        let bindings = self.parse_seq_to_gt(
+            Some(token::Comma),
+            |p| {
+                p.forbid_lifetime();
+                let lo = p.span.lo;
+                let ident = p.parse_ident();
+                let found_eq = p.eat(&token::Eq);
+                if !found_eq {
+                    let span = p.span;
+                    p.span_warn(span, "whoops, no =?");
+                }
+                let ty = p.parse_ty();
+                let hi = p.span.hi;
+                let span = mk_sp(lo, hi);
+                return P(TypeBinding{id: ast::DUMMY_NODE_ID,
+                    ident: ident,
+                    ty: ty,
+                    span: span,
+                });
+            }
+        );
+        (lifetimes, types.into_vec(), bindings.into_vec())
     }
 
     fn forbid_lifetime(&mut self) {
@@ -4070,29 +4134,58 @@ impl<'a> Parser<'a> {
         let mut parsed_something = false;
         loop {
             let lo = self.span.lo;
-            let ident = match self.token {
-                token::Ident(..) => self.parse_ident(),
+            let path = match self.token {
+                token::Ident(..) => self.parse_path(NoTypesAllowed),
                 _ => break,
             };
-            self.expect(&token::Colon);
 
-            let bounds = self.parse_ty_param_bounds();
-            let hi = self.span.hi;
-            let span = mk_sp(lo, hi);
+            if self.eat(&token::Colon) {
+                let bounds = self.parse_ty_param_bounds();
+                let hi = self.span.hi;
+                let span = mk_sp(lo, hi);
 
-            if bounds.len() == 0 {
-                self.span_err(span,
-                              "each predicate in a `where` clause must have \
-                               at least one bound in it");
+                if bounds.len() == 0 {
+                    self.span_err(span,
+                                  "each predicate in a `where` clause must have \
+                                   at least one bound in it");
+                }
+
+                let ident = match ast_util::path_to_ident(&path) {
+                    Some(ident) => ident,
+                    None => {
+                        self.span_err(path.span, "expected a single identifier \
+                                                  in bound where clause");
+                        break;
+                    }
+                };
+
+                generics.where_clause.predicates.push(
+                    ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate {
+                        id: ast::DUMMY_NODE_ID,
+                        span: span,
+                        ident: ident,
+                        bounds: bounds,
+                }));
+                parsed_something = true;
+            } else if self.eat(&token::Eq) {
+                let ty = self.parse_ty();
+                let hi = self.span.hi;
+                let span = mk_sp(lo, hi);
+                generics.where_clause.predicates.push(
+                    ast::WherePredicate::EqPredicate(ast::WhereEqPredicate {
+                        id: ast::DUMMY_NODE_ID,
+                        span: span,
+                        path: path,
+                        ty: ty,
+                }));
+                parsed_something = true;
+                // FIXME(#18433)
+                self.span_err(span, "equality constraints are not yet supported in where clauses");
+            } else {
+                let last_span = self.last_span;
+                self.span_err(last_span,
+                              "unexpected token in `where` clause");
             }
-
-            generics.where_clause.predicates.push(ast::WherePredicate {
-                id: ast::DUMMY_NODE_ID,
-                span: span,
-                ident: ident,
-                bounds: bounds,
-            });
-            parsed_something = true;
 
             if !self.eat(&token::Comma) {
                 break

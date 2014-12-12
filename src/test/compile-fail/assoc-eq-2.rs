@@ -8,25 +8,23 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(macro_rules)]
+// Test equality constraints on associated types. Check we get an error when an
+// equality constraint is used in a qualified path.
 
-macro_rules! test ( ($nm:ident,
-                     #[$a:meta],
-                     $i:item) => (mod $nm { #![$a] $i }); )
+#![feature(associated_types)]
 
-test!(a,
-      #[cfg(qux)],
-      pub fn bar() { })
-
-test!(b,
-      #[cfg(not(qux))],
-      pub fn bar() { })
-
-#[qux]
-fn main() {
-    a::bar();
-    //~^ ERROR failed to resolve. Use of undeclared type or module `a`
-    //~^^ ERROR unresolved name `a::bar`
-    b::bar();
+pub trait Foo {
+    type A;
+    fn boo(&self) -> <Self as Foo>::A;
 }
 
+struct Bar;
+
+impl Foo for int {
+    type A = uint;
+    fn boo(&self) -> uint { 42 }
+}
+
+fn baz<I: Foo>(x: &<I as Foo<A=Bar>>::A) {} //~ERROR equality constraints are not allowed in this
+
+pub fn main() {}

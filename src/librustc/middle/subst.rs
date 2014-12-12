@@ -112,7 +112,7 @@ impl<'tcx> Substs<'tcx> {
         }
     }
 
-pub fn self_ty(&self) -> Option<Ty<'tcx>> {
+    pub fn self_ty(&self) -> Option<Ty<'tcx>> {
         self.types.get_self().map(|&t| t)
     }
 
@@ -120,6 +120,13 @@ pub fn self_ty(&self) -> Option<Ty<'tcx>> {
         assert!(self.self_ty().is_none());
         let mut s = (*self).clone();
         s.types.push(SelfSpace, self_ty);
+        s
+    }
+
+    pub fn with_assoc_tys(&self, assoc_tys: Vec<Ty<'tcx>>) -> Substs<'tcx> {
+        assert!(self.types.is_empty_in(AssocSpace));
+        let mut s = (*self).clone();
+        s.types.replace(AssocSpace, assoc_tys);
         s
     }
 

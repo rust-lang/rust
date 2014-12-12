@@ -8,25 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(macro_rules)]
+// Check that an associated type cannot be bound in an expression path.
 
-macro_rules! test ( ($nm:ident,
-                     #[$a:meta],
-                     $i:item) => (mod $nm { #![$a] $i }); )
+#![feature(associated_types)]
 
-test!(a,
-      #[cfg(qux)],
-      pub fn bar() { })
-
-test!(b,
-      #[cfg(not(qux))],
-      pub fn bar() { })
-
-#[qux]
-fn main() {
-    a::bar();
-    //~^ ERROR failed to resolve. Use of undeclared type or module `a`
-    //~^^ ERROR unresolved name `a::bar`
-    b::bar();
+trait Foo {
+    type A;
+    fn bar() -> int;
 }
 
+impl Foo for int {
+    type A = uint;
+    fn bar() -> int { 42 }
+}
+
+pub fn main() {
+    let x: int = Foo::<A=uint>::bar();
+    //~^ERROR unexpected binding of associated item in expression path
+}

@@ -146,6 +146,10 @@ pub trait Folder {
         noop_fold_qpath(t, self)
     }
 
+    fn fold_ty_binding(&mut self, t: P<TypeBinding>) -> P<TypeBinding> {
+        noop_fold_ty_binding(t, self)
+    }
+
     fn fold_mod(&mut self, m: Mod) -> Mod {
         noop_fold_mod(m, self)
     }
@@ -391,6 +395,15 @@ pub fn noop_fold_decl<T: Folder>(d: P<Decl>, fld: &mut T) -> SmallVector<P<Decl>
     })
 }
 
+pub fn noop_fold_ty_binding<T: Folder>(b: P<TypeBinding>, fld: &mut T) -> P<TypeBinding> {
+    b.map(|TypeBinding { id, ident, ty, span }| TypeBinding {
+        id: fld.new_id(id),
+        ident: ident,
+        ty: fld.fold_ty(ty),
+        span: fld.new_span(span),
+    })
+}
+
 pub fn noop_fold_ty<T: Folder>(t: P<Ty>, fld: &mut T) -> P<Ty> {
     t.map(|Ty {id, node, span}| Ty {
         id: fld.new_id(id),
@@ -533,9 +546,10 @@ pub fn noop_fold_angle_bracketed_parameter_data<T: Folder>(data: AngleBracketedP
                                                            fld: &mut T)
                                                            -> AngleBracketedParameterData
 {
-    let AngleBracketedParameterData { lifetimes, types } = data;
+    let AngleBracketedParameterData { lifetimes, types, bindings } = data;
     AngleBracketedParameterData { lifetimes: fld.fold_lifetimes(lifetimes),
-                                  types: types.move_map(|ty| fld.fold_ty(ty)) }
+                                  types: types.move_map(|ty| fld.fold_ty(ty)),
+                                  bindings: bindings.move_map(|b| fld.fold_ty_binding(b)) }
 }
 
 pub fn noop_fold_parenthesized_parameter_data<T: Folder>(data: ParenthesizedParameterData,
@@ -807,14 +821,32 @@ pub fn noop_fold_where_clause<T: Folder>(
 }
 
 pub fn noop_fold_where_predicate<T: Folder>(
-                                 WherePredicate {id, ident, bounds, span}: WherePredicate,
+                                 pred: WherePredicate,
                                  fld: &mut T)
                                  -> WherePredicate {
-    WherePredicate {
-        id: fld.new_id(id),
-        ident: fld.fold_ident(ident),
-        bounds: bounds.move_map(|x| fld.fold_ty_param_bound(x)),
-        span: fld.new_span(span)
+    match pred {
+        ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate{id,
+                                                                     ident,
+                                                                     bounds,
+                                                                     span}) => {
+            ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate {
+                id: fld.new_id(id),
+                ident: fld.fold_ident(ident),
+                bounds: bounds.move_map(|x| fld.fold_ty_param_bound(x)),
+                span: fld.new_span(span)
+            })
+        }
+        ast::WherePredicate::EqPredicate(ast::WhereEqPredicate{id,
+                                                               path,
+                                                               ty,
+                                                               span}) => {
+            ast::WherePredicate::EqPredicate(ast::WhereEqPredicate{
+                id: fld.new_id(id),
+                path: fld.fold_path(path),
+                ty:fld.fold_ty(ty),
+                span: fld.new_span(span)
+            })
+        }
     }
 }
 

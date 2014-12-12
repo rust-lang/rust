@@ -1976,6 +1976,18 @@ impl<'a> State<'a> {
                         Inconsistent,
                         data.types.as_slice(),
                         |s, ty| s.print_type(&**ty)));
+                        comma = true;
+                }
+
+                for binding in data.bindings.iter() {
+                    if comma {
+                        try!(self.word_space(","))
+                    }
+                    try!(self.print_ident(binding.ident));
+                    try!(space(&mut self.s));
+                    try!(self.word_space("="));
+                    try!(self.print_type(&*binding.ty));
+                    comma = true;
                 }
 
                 try!(word(&mut self.s, ">"))
@@ -2437,8 +2449,20 @@ impl<'a> State<'a> {
                 try!(self.word_space(","));
             }
 
-            try!(self.print_ident(predicate.ident));
-            try!(self.print_bounds(":", predicate.bounds.as_slice()));
+            match predicate {
+                &ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate{ident,
+                                                                              ref bounds,
+                                                                              ..}) => {
+                    try!(self.print_ident(ident));
+                    try!(self.print_bounds(":", bounds.as_slice()));
+                }
+                &ast::WherePredicate::EqPredicate(ast::WhereEqPredicate{ref path, ref ty, ..}) => {
+                    try!(self.print_path(path, false));
+                    try!(space(&mut self.s));
+                    try!(self.word_space("="));
+                    try!(self.print_type(&**ty));
+                }
+            }
         }
 
         Ok(())
