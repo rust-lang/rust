@@ -24,6 +24,7 @@
 #![allow(unknown_features)]
 #![feature(macro_rules, default_type_params, phase, globs)]
 #![feature(unsafe_destructor, import_shadowing, slicing_syntax)]
+#![feature(tuple_indexing, unboxed_closures)]
 #![no_std]
 
 #[phase(plugin, link)] extern crate core;
@@ -114,5 +115,6 @@ mod std {
     pub use core::option;   // necessary for panic!()
     pub use core::clone;    // deriving(Clone)
     pub use core::cmp;      // deriving(Eq, Ord, etc.)
+    pub use core::kinds;    // deriving(Copy)
     pub use hash;           // deriving(Hash)
 }
