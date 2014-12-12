@@ -107,7 +107,7 @@ method, `write`, may actually involve several calls to the underlying system --
 and if a failure occurs, there is no indication of how much was written.
 
 Existing blocking APIs all have to deal with this problem, and Rust can and
-should follow the existing tradition here. See [io] for the proposed
+should follow the existing tradition here. See [Revising `Reader` and `Writer`] for the proposed
 solution.
 
 ## Timeouts
@@ -175,7 +175,7 @@ of changing e.g. "stdout" -- but there is no connection between these two! In
 particular, `set_stdout` affects only the writer that `println!` and friends
 use, while `set_stderr` affects `panic!`.
 
-This module needs to be clarified. See [io] and
+This module needs to be clarified. See [The std::io facade] and
 [Functionality moved elsewhere] for the detailed design.
 
 ## Overly high-level abstractions
@@ -187,7 +187,7 @@ services without also providing more direct access to the service as-is. For exa
 * The `Writer` trait's `write` method -- a cornerstone of IO -- actually
   corresponds to an unbounded number of invocations of writes to the underlying
   IO object. This RFC changes `write` to follow more standard, lower-level
-  practice; see [io].
+  practice; see [Revising `Reader` and `Writer`].
 
 * Objects like `TcpStream` are `Clone`, which involves a fair amount of
   supporting infrastructure. This RFC tackles the problems that `Clone` was
@@ -1193,7 +1193,7 @@ that we will hew more closely to the traditional setup:
 
 Most of what's available in `std::os` today will move to `std::env`,
 and the signatures will be updated to follow this RFC's
-[Desgin principles] as follows.
+[Design principles] as follows.
 
 **Arguments**:
 
