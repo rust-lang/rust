@@ -1538,12 +1538,16 @@ pub enum InferTy {
     TyVar(TyVid),
     IntVar(IntVid),
     FloatVar(FloatVid),
-    SkolemizedTy(uint),
+
+    /// A `FreshTy` is one that is generated as a replacement for an
+    /// unbound type variable. This is convenient for caching etc. See
+    /// `middle::infer::freshen` for more details.
+    FreshTy(uint),
 
     // FIXME -- once integral fallback is impl'd, we should remove
     // this type. It's only needed to prevent spurious errors for
     // integers whose type winds up never being constrained.
-    SkolemizedIntTy(uint),
+    FreshIntTy(uint),
 }
 
 impl Copy for InferTy {}
@@ -1610,8 +1614,8 @@ impl fmt::Show for InferTy {
             TyVar(ref v) => v.fmt(f),
             IntVar(ref v) => v.fmt(f),
             FloatVar(ref v) => v.fmt(f),
-            SkolemizedTy(v) => write!(f, "SkolemizedTy({})", v),
-            SkolemizedIntTy(v) => write!(f, "SkolemizedIntTy({})", v),
+            FreshTy(v) => write!(f, "FreshTy({})", v),
+            FreshIntTy(v) => write!(f, "FreshIntTy({})", v),
         }
     }
 }
@@ -2986,7 +2990,7 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
             }
 
             // Scalar and unique types are sendable, and durable
-            ty_infer(ty::SkolemizedIntTy(_)) |
+            ty_infer(ty::FreshIntTy(_)) |
             ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
             ty_bare_fn(_) | ty::ty_char => {
                 TC::None
@@ -3592,10 +3596,10 @@ pub fn type_is_integral(ty: Ty) -> bool {
     }
 }
 
-pub fn type_is_skolemized(ty: Ty) -> bool {
+pub fn type_is_fresh(ty: Ty) -> bool {
     match ty.sty {
-      ty_infer(SkolemizedTy(_)) => true,
-      ty_infer(SkolemizedIntTy(_)) => true,
+      ty_infer(FreshTy(_)) => true,
+      ty_infer(FreshIntTy(_)) => true,
       _ => false
     }
 }
@@ -4428,8 +4432,8 @@ pub fn ty_sort_string<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> String {
         ty_infer(TyVar(_)) => "inferred type".to_string(),
         ty_infer(IntVar(_)) => "integral variable".to_string(),
         ty_infer(FloatVar(_)) => "floating-point variable".to_string(),
-        ty_infer(SkolemizedTy(_)) => "skolemized type".to_string(),
-        ty_infer(SkolemizedIntTy(_)) => "skolemized integral type".to_string(),
+        ty_infer(FreshTy(_)) => "skolemized type".to_string(),
+        ty_infer(FreshIntTy(_)) => "skolemized integral type".to_string(),
         ty_param(ref p) => {
             if p.space == subst::SelfSpace {
                 "Self".to_string()
@@ -5594,7 +5598,7 @@ pub fn object_region_bounds<'tcx>(tcx: &ctxt<'tcx>,
     // Since we don't actually *know* the self type for an object,
     // this "open(err)" serves as a kind of dummy standin -- basically
     // a skolemized type.
-    let open_ty = ty::mk_infer(tcx, SkolemizedTy(0));
+    let open_ty = ty::mk_infer(tcx, FreshTy(0));
 
     let opt_trait_ref = opt_principal.map_or(Vec::new(), |principal| {
         let substs = principal.substs().with_self_ty(open_ty);

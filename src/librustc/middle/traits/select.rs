@@ -30,7 +30,7 @@ use middle::mem_categorization::Typer;
 use middle::subst::{Subst, Substs, VecPerParamSpace};
 use middle::ty::{mod, Ty, RegionEscape};
 use middle::infer;
-use middle::infer::{InferCtxt, TypeSkolemizer};
+use middle::infer::{InferCtxt, TypeFreshener};
 use middle::ty_fold::TypeFoldable;
 use std::cell::RefCell;
 use std::collections::hash_map::HashMap;
@@ -44,12 +44,12 @@ pub struct SelectionContext<'cx, 'tcx:'cx> {
     param_env: &'cx ty::ParameterEnvironment<'tcx>,
     typer: &'cx (Typer<'tcx>+'cx),
 
-    /// Skolemizer used specifically for skolemizing entries on the
+    /// Freshener used specifically for skolemizing entries on the
     /// obligation stack. This ensures that all entries on the stack
     /// at one time will have the same set of skolemized entries,
     /// which is important for checking for trait bounds that
     /// recursively require themselves.
-    skolemizer: TypeSkolemizer<'cx, 'tcx>,
+    freshener: TypeFreshener<'cx, 'tcx>,
 
     /// If true, indicates that the evaluation should be conservative
     /// and consider the possibility of types outside this crate.
@@ -73,8 +73,8 @@ struct TraitObligationStack<'prev, 'tcx: 'prev> {
     obligation: &'prev TraitObligation<'tcx>,
 
     /// Trait ref from `obligation` but skolemized with the
-    /// selection-context's skolemizer. Used to check for recursion.
-    skol_trait_ref: Rc<ty::PolyTraitRef<'tcx>>,
+    /// selection-context's freshener. Used to check for recursion.
+    fresh_trait_ref: Rc<ty::PolyTraitRef<'tcx>>,
 
     previous: Option<&'prev TraitObligationStack<'prev, 'tcx>>
 }
@@ -172,7 +172,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             infcx: infcx,
             param_env: param_env,
             typer: typer,
-            skolemizer: infcx.skolemizer(),
+            freshener: infcx.freshener(),
             intercrate: false,
         }
     }
@@ -185,7 +185,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             infcx: infcx,
             param_env: param_env,
             typer: typer,
-            skolemizer: infcx.skolemizer(),
+            freshener: infcx.freshener(),
             intercrate: true,
         }
     }
@@ -347,16 +347,16 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // This suffices to allow chains like `FnMut` implemented in
         // terms of `Fn` etc, but we could probably make this more
         // precise still.
-        let input_types = stack.skol_trait_ref.value.input_types();
-        let unbound_input_types = input_types.iter().any(|&t| ty::type_is_skolemized(t));
+        let input_types = stack.fresh_trait_ref.value.input_types();
+        let unbound_input_types = input_types.iter().any(|&t| ty::type_is_fresh(t));
         if
             unbound_input_types &&
              (self.intercrate ||
               stack.iter().skip(1).any(
-                  |prev| stack.skol_trait_ref.value.def_id == prev.skol_trait_ref.value.def_id))
+                  |prev| stack.fresh_trait_ref.value.def_id == prev.fresh_trait_ref.value.def_id))
         {
             debug!("evaluate_stack({}) --> unbound argument, recursion -->  ambiguous",
-                   stack.skol_trait_ref.repr(self.tcx()));
+                   stack.fresh_trait_ref.repr(self.tcx()));
             return EvaluatedToAmbig;
         }
 
@@ -373,19 +373,19 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // `Option<Box<List<T>>>` is `Send` if `Box<List<T>>` is
         // `Send`.
         //
-        // Note that we do this comparison using the `skol_trait_ref`
+        // Note that we do this comparison using the `fresh_trait_ref`
         // fields. Because these have all been skolemized using
-        // `self.skolemizer`, we can be sure that (a) this will not
+        // `self.freshener`, we can be sure that (a) this will not
         // affect the inferencer state and (b) that if we see two
         // skolemized types with the same index, they refer to the
         // same unbound type variable.
         if
             stack.iter()
             .skip(1) // skip top-most frame
-            .any(|prev| stack.skol_trait_ref == prev.skol_trait_ref)
+            .any(|prev| stack.fresh_trait_ref == prev.fresh_trait_ref)
         {
             debug!("evaluate_stack({}) --> recursive",
-                   stack.skol_trait_ref.repr(self.tcx()));
+                   stack.fresh_trait_ref.repr(self.tcx()));
             return EvaluatedToOk;
         }
 
@@ -445,20 +445,20 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         // Check the cache. Note that we skolemize the trait-ref
-        // separately rather than using `stack.skol_trait_ref` -- this
+        // separately rather than using `stack.fresh_trait_ref` -- this
         // is because we want the unbound variables to be replaced
         // with fresh skolemized types starting from index 0.
-        let cache_skol_trait_ref =
-            self.infcx.skolemize(stack.obligation.trait_ref.clone());
-        debug!("candidate_from_obligation(cache_skol_trait_ref={}, obligation={})",
-               cache_skol_trait_ref.repr(self.tcx()),
+        let cache_fresh_trait_ref =
+            self.infcx.freshen(stack.obligation.trait_ref.clone());
+        debug!("candidate_from_obligation(cache_fresh_trait_ref={}, obligation={})",
+               cache_fresh_trait_ref.repr(self.tcx()),
                stack.repr(self.tcx()));
         assert!(!stack.obligation.trait_ref.has_escaping_regions());
 
-        match self.check_candidate_cache(cache_skol_trait_ref.clone()) {
+        match self.check_candidate_cache(cache_fresh_trait_ref.clone()) {
             Some(c) => {
-                debug!("CACHE HIT: cache_skol_trait_ref={}, candidate={}",
-                       cache_skol_trait_ref.repr(self.tcx()),
+                debug!("CACHE HIT: cache_fresh_trait_ref={}, candidate={}",
+                       cache_fresh_trait_ref.repr(self.tcx()),
                        c.repr(self.tcx()));
                 return c;
             }
@@ -467,9 +467,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         // If no match, compute result and insert into cache.
         let candidate = self.candidate_from_obligation_no_cache(stack);
-        debug!("CACHE MISS: cache_skol_trait_ref={}, candidate={}",
-               cache_skol_trait_ref.repr(self.tcx()), candidate.repr(self.tcx()));
-        self.insert_candidate_cache(cache_skol_trait_ref, candidate.clone());
+        debug!("CACHE MISS: cache_fresh_trait_ref={}, candidate={}",
+               cache_fresh_trait_ref.repr(self.tcx()), candidate.repr(self.tcx()));
+        self.insert_candidate_cache(cache_fresh_trait_ref, candidate.clone());
         candidate
     }
 
@@ -569,7 +569,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     }
 
     fn pick_candidate_cache(&self,
-                            cache_skol_trait_ref: &Rc<ty::PolyTraitRef<'tcx>>)
+                            cache_fresh_trait_ref: &Rc<ty::PolyTraitRef<'tcx>>)
                             -> &SelectionCache<'tcx>
     {
         // High-level idea: we have to decide whether to consult the
@@ -591,7 +591,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // If the trait refers to any parameters in scope, then use
         // the cache of the param-environment.
         if
-            cache_skol_trait_ref.value.input_types().iter().any(
+            cache_fresh_trait_ref.value.input_types().iter().any(
                 |&t| ty::type_has_self(t) || ty::type_has_params(t))
         {
             return &self.param_env.selection_cache;
@@ -604,7 +604,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // See the discussion in doc.rs for more details.
         if
             !self.param_env.caller_bounds.is_empty() &&
-            cache_skol_trait_ref.value.input_types().iter().any(
+            cache_fresh_trait_ref.value.input_types().iter().any(
                 |&t| ty::type_has_ty_infer(t))
         {
             return &self.param_env.selection_cache;
@@ -615,21 +615,21 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     }
 
     fn check_candidate_cache(&mut self,
-                             cache_skol_trait_ref: Rc<ty::PolyTraitRef<'tcx>>)
+                             cache_fresh_trait_ref: Rc<ty::PolyTraitRef<'tcx>>)
                              -> Option<SelectionResult<'tcx, Candidate<'tcx>>>
     {
-        let cache = self.pick_candidate_cache(&cache_skol_trait_ref);
+        let cache = self.pick_candidate_cache(&cache_fresh_trait_ref);
         let hashmap = cache.hashmap.borrow();
-        hashmap.get(&cache_skol_trait_ref).map(|c| (*c).clone())
+        hashmap.get(&cache_fresh_trait_ref).map(|c| (*c).clone())
     }
 
     fn insert_candidate_cache(&mut self,
-                              cache_skol_trait_ref: Rc<ty::PolyTraitRef<'tcx>>,
+                              cache_fresh_trait_ref: Rc<ty::PolyTraitRef<'tcx>>,
                               candidate: SelectionResult<'tcx, Candidate<'tcx>>)
     {
-        let cache = self.pick_candidate_cache(&cache_skol_trait_ref);
+        let cache = self.pick_candidate_cache(&cache_fresh_trait_ref);
         let mut hashmap = cache.hashmap.borrow_mut();
-        hashmap.insert(cache_skol_trait_ref, candidate);
+        hashmap.insert(cache_fresh_trait_ref, candidate);
     }
 
     fn assemble_candidates<'o>(&mut self,
@@ -1269,8 +1269,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             ty::ty_open(_) |
-            ty::ty_infer(ty::SkolemizedTy(_)) |
-            ty::ty_infer(ty::SkolemizedIntTy(_)) => {
+            ty::ty_infer(ty::FreshTy(_)) |
+            ty::ty_infer(ty::FreshIntTy(_)) => {
                 self.tcx().sess.bug(
                     format!(
                         "asked to assemble builtin bounds of unexpected type: {}",
@@ -1831,11 +1831,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             obligation: &'o TraitObligation<'tcx>)
                             -> TraitObligationStack<'o, 'tcx>
     {
-        let skol_trait_ref = obligation.trait_ref.fold_with(&mut self.skolemizer);
+        let fresh_trait_ref = obligation.trait_ref.fold_with(&mut self.freshener);
 
         TraitObligationStack {
             obligation: obligation,
-            skol_trait_ref: skol_trait_ref,
+            fresh_trait_ref: fresh_trait_ref,
             previous: previous_stack.map(|p| p), // FIXME variance
         }
     }

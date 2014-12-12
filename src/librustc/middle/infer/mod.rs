@@ -19,7 +19,7 @@ pub use self::TypeOrigin::*;
 pub use self::ValuePairs::*;
 pub use self::fixup_err::*;
 pub use middle::ty::IntVarValue;
-pub use self::skolemize::TypeSkolemizer;
+pub use self::freshen::TypeFreshener;
 
 use middle::subst;
 use middle::subst::Substs;
@@ -57,7 +57,7 @@ pub mod lattice;
 pub mod lub;
 pub mod region_inference;
 pub mod resolve;
-mod skolemize;
+mod freshen;
 pub mod sub;
 pub mod type_variable;
 pub mod unify;
@@ -505,8 +505,8 @@ pub struct CombinedSnapshot {
 }
 
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
-    pub fn skolemize<T:TypeFoldable<'tcx>>(&self, t: T) -> T {
-        t.fold_with(&mut self.skolemizer())
+    pub fn freshen<T:TypeFoldable<'tcx>>(&self, t: T) -> T {
+        t.fold_with(&mut self.freshener())
     }
 
     pub fn type_var_diverges(&'a self, ty: Ty) -> bool {
@@ -516,8 +516,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn skolemizer<'b>(&'b self) -> TypeSkolemizer<'b, 'tcx> {
-        skolemize::TypeSkolemizer::new(self)
+    pub fn freshener<'b>(&'b self) -> TypeFreshener<'b, 'tcx> {
+        freshen::TypeFreshener::new(self)
     }
 
     pub fn combine_fields<'b>(&'b self, a_is_expected: bool, trace: TypeTrace<'tcx>)
