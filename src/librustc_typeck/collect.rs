@@ -1055,7 +1055,7 @@ pub fn convert(ccx: &CrateCtxt, it: &ast::Item) {
                       ref selfty,
                       ref impl_items) => {
             // Create generics from the generics specified in the impl head.
-            let ty_generics = ty_generics_for_type(
+            let ty_generics = ty_generics_for_impl(
                     ccx,
                     generics,
                     CreateTypeParametersForAssociatedTypes);
@@ -1653,6 +1653,24 @@ fn ty_generics_for_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     generics.types.push(subst::SelfSpace, def);
 
     generics
+}
+
+fn ty_generics_for_impl<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
+                                  generics: &ast::Generics,
+                                  create_type_parameters_for_associated_types:
+                                      CreateTypeParametersForAssociatedTypesFlag)
+                                  -> ty::Generics<'tcx>
+{
+    let early_lifetimes = resolve_lifetime::early_bound_lifetimes(generics);
+    debug!("ty_generics_for_impl: early_lifetimes={}",
+           early_lifetimes);
+    ty_generics(ccx,
+                subst::TypeSpace,
+                early_lifetimes.as_slice(),
+                generics.ty_params.as_slice(),
+                ty::Generics::empty(),
+                &generics.where_clause,
+                create_type_parameters_for_associated_types)
 }
 
 fn ty_generics_for_fn_or_method<'tcx,AC>(
