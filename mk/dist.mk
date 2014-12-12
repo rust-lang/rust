@@ -242,7 +242,9 @@ dist/$$(PKG_NAME)-$(1).tar.gz: dist-install-dir-$(1)
 		--work-dir=tmp/dist \
 		--output-dir=dist \
 		--non-installed-prefixes=$$(NON_INSTALLED_PREFIXES) \
-		--package-name=$$(PKG_NAME)-$(1)
+		--package-name=$$(PKG_NAME)-$(1) \
+		--component-name=rustc \
+		--legacy-manifest-dirs=rustlib,cargo
 	$$(Q)rm -R tmp/dist/$$(PKG_NAME)-$(1)-image
 
 endef
