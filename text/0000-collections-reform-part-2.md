@@ -17,6 +17,32 @@ hashed out.
 
 # Detailed design
 
+## The fate of entire collections:
+
+* Stable: Vec, RingBuf, HashMap, HashSet, BTreeMap, BTreeSet, DList, BinaryHeap
+* Unstable: Bitv, BitvSet, VecMap
+* Move to [collect-rs](https://github.com/Gankro/collect-rs/) for incubation:
+EnumSet, bitflags!, LruCache, TreeMap, TreeSet, TrieMap, TrieSet
+
+The stable collections have solid implementations, well-maintained APIs, are non-trivial,
+fundamental, and clearly useful.
+
+The unstable collections are effectively "on probation". They're ok, but they need some TLC and
+further consideration before we commit to having them in the standard library *forever*. Bitv in
+particular won't have *quite* the right API without IndexGet *and* IndexSet.
+
+The collections being moved out are in poor shape. EnumSet is weird/trivial, bitflags is awkward,
+LruCache is niche. Meanwhile Tree\* and Trie\* have simply bit-rotted for too long, without anyone
+clearly stepping up to maintain them. Their code is scary, and their APIs are out of date. Their
+functionality can also already reasonably be obtained through either HashMap or BTreeMap.
+
+Of course, instead of moving them out-of-tree, they could be left `experimental`, but that would
+perhaps be a fate *worse* than death, as it would mean that these collections would only be
+accessible to those who opt into running the Rust nightly. This way, these collections will be
+available for everyone through the cargo ecosystem. Putting them in `collect-rs` also gives them
+a chance to still benefit from a network effect and active experimentation. If they thrive there,
+they may still return to the standard library at a later time.
+
 ## Add the following methods:
 
 * To all collections
@@ -40,14 +66,14 @@ to avoid an Option).
 * To DList, Vec, RingBuf, BitV:
 ```
 /// Splits the collection into two at the given index. Useful for similar reasons as `append`.
-pub fn split_at(&mut self, at: uint) -> Self;
+pub fn split_off(&mut self, at: uint) -> Self;
 ```
 
 * To all other "sorted" collections
 ```
 /// Splits the collection into two at the given key. Returns everything after the given key,
 /// including the key.
-pub fn split_at<B: Borrow<K>>(&mut self, at: B) -> Self;
+pub fn split_off<B: Borrow<K>>(&mut self, at: B) -> Self;
 ```
 
 Similar reasoning to `append`, although perhaps even more needed, as there's *no* other mechanism
@@ -59,13 +85,13 @@ unwraps, and ultimately produce a *reversed* Vec.
 * To BitvSet, VecMap:
 
 ```
-/// Reserves capacity for an element to be inserted at `index` in the given
+/// Reserves capacity for an element to be inserted at `len - 1` in the given
 /// collection. The collection may reserve more space to avoid frequent reallocations.
-pub fn reserve_index(&mut self, index: uint)
+pub fn reserve_len(&mut self, len: uint)
 
-/// Reserves the minimum capacity for an element to be inserted at `index` in the given
+/// Reserves the minimum capacity for an element to be inserted at `len - 1` in the given
 /// collection.
-pub fn reserve_index_exact(&mut self, index: uint)
+pub fn reserve_len_exact(&mut self, len: uint)
 ```
 
 The "capacity" of these two collections isn't really strongly related to the
@@ -74,14 +100,9 @@ See Errata and Alternatives for extended discussion of this design.
 
 * For Ringbuf:
 ```
-/// Attempts to get a slice over all the elements in the RingBuf, but may instead
-/// have to return two slices, in the case that the elements aren't contiguous.
-pub fn as_slice(&'a self) -> RingBufSlice<'a, T>
-
-enum RingBufSlice<'a, T> {
-    Contiguous(&'a [T]),
-    Split((&'a [T], &'a [T])),
-}
+/// Gets two slices that cover the whole range of the RingBuf.
+/// The second one may be empty. Otherwise, it continues *after* the first.
+pub fn as_slices(&'a self) -> (&'a [T], &'a [T])
 ```
 
 This provides some amount of support for viewing the RingBuf like a slice. Unfortunately
@@ -100,6 +121,15 @@ This is actually easy to implement out-of-tree on top of the current Vec API, bu
 been frequently requested.
 
 ==============
+## Deprecate
+
+* `Vec::from_fn(n, f)` use `(0..n).map(f).collect()`
+* `Vec::from_elem(n, v)` use `repeat(v).take(n).collect()`
+* `Vec::grow` use `extend(repeat(v).take(n))`
+* `Vec::grow_fn` use `extend((0..n).map(f))`
+* `dlist::ListInsertion` in favour of inherent methods on the iterator
+
+==============
 
 ## Misc Stabilization:
 
@@ -116,6 +146,10 @@ to wait on IndexSet being a thing (see Alternatives).
 * Explicitly specify HashMap's iterators to be non-deterministic between iterations. This would
 allow e.g. `next_back` to be implemented as `next`, reducing code complexity. This can be undone
 in the future backwards-compatibly, but the reverse does not hold.
+
+* Move `Vec` from `std::vec` to `std::collections::vec`.
+
+* Stabilize RingBuf::swap
 
 ==============
 
@@ -270,14 +304,16 @@ don't like to provide redundant APIs. On the other hand, it's kind of weird to h
 
 ## `reserve_index` vs `reserve_len`
 
-`reserve_index` is primarily motivated by BitvSet and VecMap, whose capacity semantics are largely
-based around the largest index they have set, and not the number of elements they contain.
-One could instead opt for `reserve_len` or
-`reserve_capacity`, which are effectively the same method, but with an off-by-one. That is,
-`reserve_len(x)` == reserve_index(x - 1)`. `reserve_len` would have the benefit of returning the
-old semantics of `reserve`.
+`reserve_len` is primarily motivated by BitvSet and VecMap, whose capacity semantics are largely
+based around the largest index they have set, and not the number of elements they contain. This
+design was chosen for its equivalence to `with_capacity`, as well as possible
+future-proofing for adding it to other collections like `Vec` or `RingBuf`.
 
-This would also be a more appropriate API for e.g. Vec and RingBuf to provide.
+However one could instead opt for `reserve_index`, which are effectively the same method,
+but with an off-by-one. That is, `reserve_len(x) == reserve_index(x - 1)`. This more closely
+matches the intent (let me have index `7`), but has tricky off-by-one with `capacity`.
+
+Alternatively `reserve_len` could just be called `reserve_capacity`.
 
 ==============
 
@@ -286,9 +322,14 @@ This would also be a more appropriate API for e.g. Vec and RingBuf to provide.
 Other designs for this usecase were considered:
 
 ```
-/// Gets two slices that cover the whole range of the RingBuf.
-/// The second one may be empty. Otherwise, it continues *after* the first.
-pub fn as_slices(&'a self) -> (&'a [T], &'a [T])
+/// Attempts to get a slice over all the elements in the RingBuf, but may instead
+/// have to return two slices, in the case that the elements aren't contiguous.
+pub fn as_slice(&'a self) -> RingBufSlice<'a, T>
+
+enum RingBufSlice<'a, T> {
+    Contiguous(&'a [T]),
+    Split((&'a [T], &'a [T])),
+}
 ```
 
 ```
@@ -297,7 +338,9 @@ pub fn as_slices(&'a self) -> (&'a [T], &'a [T])
 pub fn to_slice(&'a self) -> &'a [T]
 ```
 
-The one settled on seemed to simply be the nicest.
+The one settled on had the benefit of being the simplest. In particular, having the enum wasn't
+very helpful, because most code would just create an empty slice anyway in the contiguous case
+to avoid code-duplication.
 
 # Unresolved questions
 
