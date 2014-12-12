@@ -152,7 +152,7 @@ the details.
 [Unicode]: #unicode
 
 Rust has followed the [utf8 everywhere](http://utf8everywhere.org/) approach to
-its strings. However, at the boarders to platform APIs, it is revealed that the
+its strings. However, at the borders to platform APIs, it is revealed that the
 world is not, in fact, UTF-8 (or even Unicode) everywhere.
 
 Currently our story for platform APIs is that we either assume they can take or
@@ -1189,7 +1189,7 @@ Most of what's available in `std::os` today will move to `std::env`,
 and the signatures will be updated to follow this RFC's
 [Desgin principles] as follows.
 
-**Arguments*:
+**Arguments**:
 
 * `args`: change to yield an iterator rather than vector if possible; in any case, it should produce an `OsStrBuf`.
 
