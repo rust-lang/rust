@@ -902,7 +902,13 @@ impl<T> Deadlined<T> {
     }
 }
 
-impl Reader for Deadlined<TcpStream> {
+impl TcpStream {
+    fn with_deadline(&mut self, deadline: Duration) -> Deadlined<&mut TcpStream> {
+        Deadlined::new(self, deadline)
+    }
+}
+
+impl<'a> Reader for Deadlined<&'a mut TcpStream> {
     type Err = IoError;
     fn read(&mut self, buf: &mut [u8]) -> Result<uint, Err> {
         // read, using the specified deadline
@@ -1035,7 +1041,7 @@ which will allow `impl`s like the following in `core::io`:
 ```rust
 impl<'a, W: Writer> Writer for ByRef<'a, W> {
     #[inline]
-    fn write(&mut self, buf: &[u8]) -> IoResult<()> { self.inner.write(buf) }
+    fn write(&mut self, buf: &[u8]) -> Result<uint, W::Err> { self.inner.write(buf) }
 
     #[inline]
     fn flush(&mut self) -> IoResult<()> { self.inner.flush() }
