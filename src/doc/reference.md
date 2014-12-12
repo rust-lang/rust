@@ -2549,10 +2549,6 @@ The currently implemented features of the reference compiler are:
 * `default_type_params` - Allows use of default type parameters. The future of
                           this feature is uncertain.
 
-* `if_let` - Allows use of the `if let` syntax.
-
-* `while_let` - Allows use of the `while let` syntax.
-
 * `intrinsics` - Allows use of the "rust-intrinsics" ABI. Compiler intrinsics
                  are inherently unstable and no promise about them is made.
 
@@ -2638,8 +2634,6 @@ The currently implemented features of the reference compiler are:
 * `unsafe_destructor` - Allows use of the `#[unsafe_destructor]` attribute,
                         which is considered wildly unsafe and will be
                         obsoleted by language improvements.
-
-* `tuple_indexing` - Allows use of tuple indexing (expressions like `expr.0`)
 
 * `associated_types` - Allows type aliases in traits. Experimental.
 
