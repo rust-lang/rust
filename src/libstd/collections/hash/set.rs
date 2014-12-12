@@ -22,7 +22,7 @@ use iter;
 use option::Option::{Some, None, mod};
 use result::Result::{Ok, Err};
 
-use super::map::{HashMap, Entries, MoveEntries, INITIAL_CAPACITY};
+use super::map::{HashMap, MoveEntries, Keys, INITIAL_CAPACITY};
 
 // FIXME(conventions): implement BitOr, BitAnd, BitXor, and Sub
 
@@ -617,8 +617,7 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S> + Default> Default for HashSet<T, H> {
 }
 
 /// HashSet iterator
-pub type SetItems<'a, K> =
-    iter::Map<(&'a K, &'a ()), &'a K, Entries<'a, K, ()>, fn((&'a K, &'a ())) -> &'a K>;
+pub type SetItems<'a, K> = Keys<'a, K, ()>;
 
 /// HashSet move iterator
 pub type SetMoveItems<K> = iter::Map<(K, ()), K, MoveEntries<K, ()>, fn((K, ())) -> K>;
