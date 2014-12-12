@@ -90,7 +90,7 @@ syn keyword rustTrait Clone
 syn keyword rustTrait PartialEq PartialOrd Eq Ord
 syn keyword rustEnum Ordering Equiv
 syn keyword rustEnumVariant Less Equal Greater
-syn keyword rustTrait FromIterator Extend ExactSize
+syn keyword rustTrait FromIterator Extend ExactSizeIterator
 syn keyword rustTrait Iterator DoubleEndedIterator
 syn keyword rustTrait RandomAccessIterator CloneableIterator
 syn keyword rustTrait OrdIterator MutableDoubleEndedIterator
