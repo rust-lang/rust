@@ -848,12 +848,12 @@ pub fn fulfill_obligation<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         }
     }
 
-    // Use skolemize to simultaneously replace all type variables with
+    // Use freshen to simultaneously replace all type variables with
     // their bindings and replace all regions with 'static.  This is
     // sort of overkill because we do not expect there to be any
-    // unbound type variables, hence no skolemized types should ever
-    // be inserted.
-    let vtable = vtable.fold_with(&mut infcx.skolemizer());
+    // unbound type variables, hence no `TyFresh` types should ever be
+    // inserted.
+    let vtable = vtable.fold_with(&mut infcx.freshener());
 
     info!("Cache miss: {}", trait_ref.repr(ccx.tcx()));
     ccx.trait_cache().borrow_mut().insert(trait_ref,
