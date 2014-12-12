@@ -13,7 +13,8 @@ use middle::infer::{mod, resolve};
 use middle::pat_util::{PatIdMap, pat_id_map, pat_is_binding, pat_is_const};
 use middle::subst::{Subst, Substs};
 use middle::ty::{mod, Ty};
-use check::{check_expr, check_expr_has_type, demand, FnCtxt};
+use check::{check_expr, check_expr_has_type, check_expr_with_expectation};
+use check::{check_expr_coercable_to_type, demand, FnCtxt, Expectation};
 use check::{instantiate_path, structurally_resolved_type, valid_range_bounds};
 use require_same_types;
 use util::nodemap::FnvHashMap;
@@ -233,10 +234,11 @@ pub fn check_dereferencable<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
     }
 }
 
-pub fn check_match(fcx: &FnCtxt,
-                   expr: &ast::Expr,
-                   discrim: &ast::Expr,
-                   arms: &[ast::Arm]) {
+pub fn check_match<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
+                             expr: &ast::Expr,
+                             discrim: &ast::Expr,
+                             arms: &[ast::Arm],
+                             expected: Expectation<'tcx>) {
     let tcx = fcx.ccx.tcx;
 
     let discrim_ty = fcx.infcx().next_ty_var();
@@ -263,9 +265,23 @@ pub fn check_match(fcx: &FnCtxt,
     // on any empty type and is therefore unreachable; should the flow
     // of execution reach it, we will panic, so bottom is an appropriate
     // type in that case)
+    let expected = expected.adjust_for_branches(fcx);
     let result_ty = arms.iter().fold(fcx.infcx().next_diverging_ty_var(), |result_ty, arm| {
-        check_expr(fcx, &*arm.body);
-        let bty = fcx.node_ty(arm.body.id);
+        let bty = match expected {
+            // We don't coerce to `()` so that if the match expression is a
+            // statement it's branches can have any consistent type. That allows
+            // us to give better error messages (pointing to a usually better
+            // arm for inconsistent arms or to the whole match when a `()` type
+            // is required).
+            Expectation::ExpectHasType(ety) if ety != ty::mk_nil(fcx.tcx()) => {
+                check_expr_coercable_to_type(fcx, &*arm.body, ety);
+                ety
+            }
+            _ => {
+                check_expr_with_expectation(fcx, &*arm.body, expected);
+                fcx.node_ty(arm.body.id)
+            }
+        };
 
         if let Some(ref e) = arm.guard {
             check_expr_has_type(fcx, &**e, ty::mk_bool());
