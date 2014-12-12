@@ -251,7 +251,7 @@ fn enc_sty<'a, 'tcx>(w: &mut SeekableMemWriter, cx: &ctxt<'a, 'tcx>,
         ty::ty_trait(box ty::TyTrait { ref principal,
                                        ref bounds }) => {
             mywrite!(w, "x[");
-            enc_trait_ref(w, cx, &principal.value);
+            enc_trait_ref(w, cx, &principal.0);
             enc_existential_bounds(w, cx, bounds);
             mywrite!(w, "]");
         }
@@ -351,18 +351,18 @@ pub fn enc_closure_ty<'a, 'tcx>(w: &mut SeekableMemWriter, cx: &ctxt<'a, 'tcx>,
 }
 
 fn enc_fn_sig<'a, 'tcx>(w: &mut SeekableMemWriter, cx: &ctxt<'a, 'tcx>,
-                        fsig: &ty::FnSig<'tcx>) {
+                        fsig: &ty::PolyFnSig<'tcx>) {
     mywrite!(w, "[");
-    for ty in fsig.inputs.iter() {
+    for ty in fsig.0.inputs.iter() {
         enc_ty(w, cx, *ty);
     }
     mywrite!(w, "]");
-    if fsig.variadic {
+    if fsig.0.variadic {
         mywrite!(w, "V");
     } else {
         mywrite!(w, "N");
     }
-    match fsig.output {
+    match fsig.0.output {
         ty::FnConverging(result_type) => {
             enc_ty(w, cx, result_type);
         }
@@ -401,7 +401,7 @@ pub fn enc_bounds<'a, 'tcx>(w: &mut SeekableMemWriter, cx: &ctxt<'a, 'tcx>,
 
     for tp in bs.trait_bounds.iter() {
         mywrite!(w, "I");
-        enc_trait_ref(w, cx, &tp.value);
+        enc_trait_ref(w, cx, &tp.0);
     }
 
     mywrite!(w, ".");
@@ -425,7 +425,7 @@ pub fn enc_predicate<'a, 'tcx>(w: &mut SeekableMemWriter,
     match *p {
         ty::Predicate::Trait(ref trait_ref) => {
             mywrite!(w, "t");
-            enc_trait_ref(w, cx, &trait_ref.value);
+            enc_trait_ref(w, cx, &trait_ref.0);
         }
         ty::Predicate::Equate(a, b) => {
             mywrite!(w, "e");

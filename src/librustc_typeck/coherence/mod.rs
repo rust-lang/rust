@@ -477,7 +477,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
             let self_type =
                 ty::liberate_late_bound_regions(tcx,
                                                 item_scope,
-                                                &ty::bind(self_type)).value;
+                                                &ty::Binder(self_type));
 
             debug!("can_type_implement_copy(self_type={})",
                    self_type.repr(tcx));

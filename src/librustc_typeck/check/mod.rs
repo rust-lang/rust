@@ -506,7 +506,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for GatherLocalsVisitor<'a, 'tcx> {
 fn check_fn<'a, 'tcx>(ccx: &'a CrateCtxt<'a, 'tcx>,
                       unsafety: ast::Unsafety,
                       unsafety_id: ast::NodeId,
-                      fn_sig: &ty::FnSig<'tcx>,
+                      fn_sig: &ty::PolyFnSig<'tcx>,
                       decl: &ast::FnDecl,
                       fn_id: ast::NodeId,
                       body: &ast::Block,
@@ -723,7 +723,7 @@ fn check_method_body<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
     let body_id = method.pe_body().id;
     let fty = liberate_late_bound_regions(
-        ccx.tcx, CodeExtent::from_node_id(body_id), &ty::bind(fty)).value;
+        ccx.tcx, CodeExtent::from_node_id(body_id), &ty::Binder(fty));
     debug!("fty (liberated): {}", fty.repr(ccx.tcx));
 
     check_bare_fn(ccx,
@@ -924,7 +924,7 @@ fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
 
     let infcx = infer::new_infer_ctxt(tcx);
 
-    let trait_to_impl_substs = impl_trait_ref.substs();
+    let trait_to_impl_substs = impl_trait_ref.substs;
 
     // Try to give more informative error messages about self typing
     // mismatches.  Note that any mismatch will also be detected
@@ -975,15 +975,15 @@ fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
         return;
     }
 
-    if impl_m.fty.sig.inputs.len() != trait_m.fty.sig.inputs.len() {
+    if impl_m.fty.sig.0.inputs.len() != trait_m.fty.sig.0.inputs.len() {
         span_err!(tcx.sess, impl_m_span, E0050,
             "method `{}` has {} parameter{} \
              but the declaration in trait `{}` has {}",
             token::get_name(trait_m.name),
-            impl_m.fty.sig.inputs.len(),
-            if impl_m.fty.sig.inputs.len() == 1 {""} else {"s"},
+            impl_m.fty.sig.0.inputs.len(),
+            if impl_m.fty.sig.0.inputs.len() == 1 {""} else {"s"},
             ty::item_path_str(tcx, trait_m.def_id),
-            trait_m.fty.sig.inputs.len());
+            trait_m.fty.sig.0.inputs.len());
         return;
     }
 
@@ -1085,7 +1085,7 @@ fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
     // `Bound<&'a T>`, the lifetime `'a` will be late-bound with a
     // depth of 3 (it is nested within 3 binders: the impl, method,
     // and trait-ref itself). So when we do the liberation, we have
-    // two introduce two `ty::bind` scopes, one for the impl and one
+    // two introduce two `ty::Binder` scopes, one for the impl and one
     // the method.
     //
     // The only late-bounded regions that can possibly appear here are
@@ -1103,7 +1103,7 @@ fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
              liberate_late_bound_regions(
                  tcx,
                  impl_m_body_scope,
-                 &ty::bind(ty::bind(impl_param_def.bounds.clone()))).value.value);
+                 &ty::Binder(ty::Binder(impl_param_def.bounds.clone()))).0);
     for (i, (trait_param_bounds, impl_param_bounds)) in
         trait_bounds.zip(impl_bounds).enumerate()
     {
@@ -1169,7 +1169,7 @@ fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
     let impl_fty = ty::mk_bare_fn(tcx, impl_m.fty.clone());
     let impl_fty = impl_fty.subst(tcx, &impl_to_skol_substs);
     let impl_fty = liberate_late_bound_regions(
-        tcx, impl_m_body_scope, &ty::bind(impl_fty)).value;
+        tcx, impl_m_body_scope, &ty::Binder(impl_fty));
     let trait_fty = ty::mk_bare_fn(tcx, trait_m.fty.clone());
     let trait_fty = trait_fty.subst(tcx, &trait_to_skol_substs);
 
@@ -1289,7 +1289,7 @@ fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
             // impl, and the method.
             let impl_bounds =
                 ty::liberate_late_bound_regions(
-                    tcx, impl_m_body_scope, &ty::bind(ty::bind(impl_bounds))).value.value;
+                    tcx, impl_m_body_scope, &ty::Binder(ty::Binder(impl_bounds))).0;
 
             debug!("check_region_bounds_on_impl_method: \
                    trait_param={} \
@@ -2546,13 +2546,13 @@ fn check_method_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 // HACK(eddyb) ignore self in the definition (see above).
                 check_argument_types(fcx,
                                      sp,
-                                     fty.sig.inputs.slice_from(1),
+                                     fty.sig.0.inputs.slice_from(1),
                                      callee_expr,
                                      args_no_rcvr,
                                      autoref_args,
-                                     fty.sig.variadic,
+                                     fty.sig.0.variadic,
                                      tuple_arguments);
-                fty.sig.output
+                fty.sig.0.output
             }
             _ => {
                 fcx.tcx().sess.span_bug(callee_expr.span,
@@ -2966,11 +2966,11 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         // This is the "default" function signature, used in case of error.
         // In that case, we check each argument against "error" in order to
         // set up all the node type bindings.
-        let error_fn_sig = FnSig {
+        let error_fn_sig = ty::Binder(FnSig {
             inputs: err_args(args.len()),
             output: ty::FnConverging(ty::mk_err()),
             variadic: false
-        };
+        });
 
         let fn_sig = match *fn_sty {
             ty::ty_bare_fn(ty::BareFnTy {ref sig, ..}) |
@@ -5070,7 +5070,7 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         fcx.infcx().replace_late_bound_regions_with_fresh_var(
             span,
             infer::FnCall,
-            &ty::bind((polytype.ty, bounds))).0.value;
+            &ty::Binder((polytype.ty, bounds))).0;
 
     debug!("after late-bounds have been replaced: ty_late_bound={}", ty_late_bound.repr(fcx.tcx()));
     debug!("after late-bounds have been replaced: bounds={}", bounds.repr(fcx.tcx()));
@@ -5686,11 +5686,11 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
     let fty = ty::mk_bare_fn(tcx, ty::BareFnTy {
         unsafety: ast::Unsafety::Unsafe,
         abi: abi::RustIntrinsic,
-        sig: FnSig {
+        sig: ty::Binder(FnSig {
             inputs: inputs,
             output: output,
             variadic: false,
-        }
+        }),
     });
     let i_ty = ty::lookup_item_type(ccx.tcx, local_def(it.id));
     let i_n_tps = i_ty.generics.types.len(subst::FnSpace);

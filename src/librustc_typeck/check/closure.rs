@@ -129,7 +129,7 @@ fn check_unboxed_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
 
     // Tuple up the arguments and insert the resulting function type into
     // the `unboxed_closures` table.
-    fn_ty.sig.inputs = vec![ty::mk_tup(fcx.tcx(), fn_ty.sig.inputs)];
+    fn_ty.sig.0.inputs = vec![ty::mk_tup(fcx.tcx(), fn_ty.sig.0.inputs)];
 
     debug!("unboxed_closure for {} --> sig={} kind={}",
            expr_def_id.repr(fcx.tcx()),

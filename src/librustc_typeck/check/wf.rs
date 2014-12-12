@@ -170,8 +170,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
             // liberated.
             let self_ty = ty::node_id_to_type(fcx.tcx(), item.id);
             let self_ty = self_ty.subst(fcx.tcx(), &fcx.inh.param_env.free_substs);
-            let self_ty = liberate_late_bound_regions(
-                fcx.tcx(), item_scope, &ty::bind(self_ty)).value;
+            let self_ty = liberate_late_bound_regions(fcx.tcx(), item_scope, &ty::Binder(self_ty));
 
             bounds_checker.check_traits_in_ty(self_ty);
 
@@ -186,7 +185,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
 
             // There are special rules that apply to drop.
             if
-                fcx.tcx().lang_items.drop_trait() == Some(trait_ref.def_id()) &&
+                fcx.tcx().lang_items.drop_trait() == Some(trait_ref.def_id) &&
                 !attr::contains_name(item.attrs.as_slice(), "unsafe_destructor")
             {
                 match self_ty.sty {
@@ -200,7 +199,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                 }
             }
 
-            if fcx.tcx().lang_items.copy_trait() == Some(trait_ref.def_id()) {
+            if fcx.tcx().lang_items.copy_trait() == Some(trait_ref.def_id) {
                 // This is checked in coherence.
                 return
             }
@@ -219,10 +218,11 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                 traits::ObligationCause::new(
                     item.span,
                     fcx.body_id,
-                    traits::ItemObligation(trait_ref.def_id()));
+                    traits::ItemObligation(trait_ref.def_id));
 
             // Find the supertrait bounds. This will add `int:Bar`.
-            let predicates = ty::predicates_for_trait_ref(fcx.tcx(), &trait_ref);
+            let poly_trait_ref = ty::Binder(trait_ref);
+            let predicates = ty::predicates_for_trait_ref(fcx.tcx(), &poly_trait_ref);
             for predicate in predicates.into_iter() {
                 fcx.register_predicate(traits::Obligation::new(cause, predicate));
             }
@@ -264,18 +264,18 @@ impl<'cx,'tcx> BoundsChecker<'cx,'tcx> {
     ///
     /// Note that it does not (currently, at least) check that `A : Copy` (that check is delegated
     /// to the point where impl `A : Trait<B>` is implemented).
-    pub fn check_trait_ref(&mut self, trait_ref: &ty::PolyTraitRef<'tcx>) {
-        let trait_def = ty::lookup_trait_def(self.fcx.tcx(), trait_ref.def_id());
+    pub fn check_trait_ref(&mut self, trait_ref: &ty::TraitRef<'tcx>) {
+        let trait_def = ty::lookup_trait_def(self.fcx.tcx(), trait_ref.def_id);
 
-        let bounds = trait_def.generics.to_bounds(self.tcx(), trait_ref.substs());
+        let bounds = trait_def.generics.to_bounds(self.tcx(), &trait_ref.substs);
         self.fcx.add_obligations_for_parameters(
             traits::ObligationCause::new(
                 self.span,
                 self.fcx.body_id,
-                traits::ItemObligation(trait_ref.def_id())),
+                traits::ItemObligation(trait_ref.def_id)),
             &bounds);
 
-        for &ty in trait_ref.substs().types.iter() {
+        for &ty in trait_ref.substs.types.iter() {
             self.check_traits_in_ty(ty);
         }
     }

@@ -257,8 +257,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
                 };
                 let tr = ty::impl_trait_ref(self.tcx, local_def(item.id));
                 let public_trait = tr.clone().map_or(false, |tr| {
-                    !is_local(tr.value.def_id) ||
-                     self.exported_items.contains(&tr.value.def_id.node)
+                    !is_local(tr.def_id()) ||
+                     self.exported_items.contains(&tr.def_id().node)
                 });
 
                 if public_ty || public_trait {
@@ -407,7 +407,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
                             match ty::impl_trait_ref(self.tcx, id) {
                                 Some(t) => {
                                     debug!("privacy - impl of trait {}", id);
-                                    self.def_privacy(t.value.def_id)
+                                    self.def_privacy(t.def_id())
                                 }
                                 None => {
                                     debug!("privacy - found a method {}",
@@ -432,7 +432,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
                             match ty::impl_trait_ref(self.tcx, id) {
                                 Some(t) => {
                                     debug!("privacy - impl of trait {}", id);
-                                    self.def_privacy(t.value.def_id)
+                                    self.def_privacy(t.def_id())
                                 }
                                 None => {
                                     debug!("privacy - found a typedef {}",

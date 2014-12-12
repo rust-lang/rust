@@ -265,7 +265,7 @@ impl OverloadedCallType {
             }
             Some(ref trait_ref) => (*trait_ref).clone(),
         };
-        OverloadedCallType::from_trait_id(tcx, trait_ref.value.def_id)
+        OverloadedCallType::from_trait_id(tcx, trait_ref.def_id())
     }
 
     fn from_unboxed_closure(tcx: &ty::ctxt, closure_did: ast::DefId)

@@ -1638,8 +1638,8 @@ fn ty_generics_for_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     let param_id = trait_id;
 
     let self_trait_ref =
-        Rc::new(ty::bind(ty::TraitRef { def_id: local_def(trait_id),
-                                        substs: (*substs).clone() }));
+        Rc::new(ty::Binder(ty::TraitRef { def_id: local_def(trait_id),
+                                          substs: (*substs).clone() }));
 
     let def = ty::TypeParameterDef {
         space: subst::SelfSpace,
@@ -2155,9 +2155,9 @@ pub fn ty_of_foreign_fn_decl<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         ty::BareFnTy {
             abi: abi,
             unsafety: ast::Unsafety::Unsafe,
-            sig: ty::FnSig {inputs: input_tys,
-                            output: output,
-                            variadic: decl.variadic}
+            sig: ty::Binder(ty::FnSig {inputs: input_tys,
+                                       output: output,
+                                       variadic: decl.variadic}),
         });
     let pty = Polytype {
         generics: ty_generics_for_fn_or_method,
@@ -2209,16 +2209,16 @@ fn check_method_self_type<'a, 'tcx, RS:RegionScope>(
         assert!(!ty::type_escapes_depth(required_type, 1));
         let required_type_free =
             ty::liberate_late_bound_regions(
-                crate_context.tcx, body_scope, &ty::bind(required_type)).value;
+                crate_context.tcx, body_scope, &ty::Binder(required_type));
 
         // The "base type" comes from the impl. It may have late-bound
         // regions from the impl or the method.
-        let base_type_free = // liberate impl regions:
-            ty::liberate_late_bound_regions(
-                crate_context.tcx, body_scope, &ty::bind(ty::bind(base_type))).value.value;
-        let base_type_free = // liberate method regions:
-            ty::liberate_late_bound_regions(
-                crate_context.tcx, body_scope, &ty::bind(base_type_free)).value;
+        let base_type_free =
+            ty::liberate_late_bound_regions( // liberate impl regions:
+                crate_context.tcx, body_scope,
+                &ty::liberate_late_bound_regions( // liberate method regions:
+                    crate_context.tcx, body_scope,
+                    &ty::Binder(ty::Binder(base_type))));
 
         debug!("required_type={} required_type_free={} \
                 base_type={} base_type_free={}",

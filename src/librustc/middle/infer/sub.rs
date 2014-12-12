@@ -155,13 +155,9 @@ impl<'f, 'tcx> Combine<'tcx> for Sub<'f, 'tcx> {
         }
     }
 
-    fn fn_sigs(&self, a: &ty::FnSig<'tcx>, b: &ty::FnSig<'tcx>)
-               -> cres<'tcx, ty::FnSig<'tcx>> {
-        self.higher_ranked_sub(a, b)
-    }
-
-    fn poly_trait_refs(&self, a: &ty::PolyTraitRef<'tcx>, b: &ty::PolyTraitRef<'tcx>)
-                       -> cres<'tcx, ty::PolyTraitRef<'tcx>> {
+    fn binders<T>(&self, a: &ty::Binder<T>, b: &ty::Binder<T>) -> cres<'tcx, ty::Binder<T>>
+        where T : Combineable<'tcx>
+    {
         self.higher_ranked_sub(a, b)
     }
 }

@@ -429,7 +429,7 @@ pub fn get_impl_trait<'tcx>(cdata: Cmd,
 {
     let item_doc = lookup_item(id, cdata.data());
     reader::maybe_get_doc(item_doc, tag_item_trait_ref).map(|tp| {
-        Rc::new(ty::bind(doc_trait_ref(tp, tcx, cdata)))
+        Rc::new(ty::Binder(doc_trait_ref(tp, tcx, cdata)))
     })
 }
 
@@ -704,7 +704,7 @@ pub fn get_enum_variants<'tcx>(intr: Rc<IdentInterner>, cdata: Cmd, id: ast::Nod
         let name = item_name(&*intr, item);
         let (ctor_ty, arg_tys, arg_names) = match ctor_ty.sty {
             ty::ty_bare_fn(ref f) =>
-                (Some(ctor_ty), f.sig.inputs.clone(), None),
+                (Some(ctor_ty), f.sig.0.inputs.clone(), None),
             _ => { // Nullary or struct enum variant.
                 let mut arg_names = Vec::new();
                 let arg_tys = get_struct_fields(intr.clone(), cdata, did.node)

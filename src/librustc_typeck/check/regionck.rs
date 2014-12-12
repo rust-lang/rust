@@ -1181,7 +1181,7 @@ fn constrain_autoderefs<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
                 // Treat overloaded autoderefs as if an AutoRef adjustment
                 // was applied on the base type, as that is always the case.
                 let fn_sig = ty::ty_fn_sig(method.ty);
-                let self_ty = fn_sig.inputs[0];
+                let self_ty = fn_sig.0.inputs[0];
                 let (m, r) = match self_ty.sty {
                     ty::ty_rptr(r, ref m) => (m.mutbl, r),
                     _ => rcx.tcx().sess.span_bug(deref_expr.span,
@@ -1198,7 +1198,7 @@ fn constrain_autoderefs<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
                 // Specialized version of constrain_call.
                 type_must_outlive(rcx, infer::CallRcvr(deref_expr.span),
                                   self_ty, r_deref_expr);
-                match fn_sig.output {
+                match fn_sig.0.output {
                     ty::FnConverging(return_type) => {
                         type_must_outlive(rcx, infer::CallReturn(deref_expr.span),
                                           return_type, r_deref_expr);

@@ -16,9 +16,9 @@ use middle::traits;
 use middle::ty::{mod, Ty};
 use middle::ty::{MethodCall, MethodCallee, MethodObject, MethodOrigin,
                  MethodParam, MethodStatic, MethodTraitObject, MethodTypeParam};
+use middle::ty_fold::TypeFoldable;
 use middle::infer;
 use middle::infer::InferCtxt;
-use middle::ty_fold::HigherRankedFoldable;
 use syntax::ast;
 use syntax::codemap::Span;
 use std::rc::Rc;
@@ -114,7 +114,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
 
         // Create the final `MethodCallee`.
         let fty = ty::mk_bare_fn(self.tcx(), ty::BareFnTy {
-            sig: method_sig,
+            sig: ty::Binder(method_sig),
             unsafety: pick.method_ty.fty.unsafety,
             abi: pick.method_ty.fty.abi.clone(),
         });
@@ -272,7 +272,8 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                                                                  &trait_def.generics,
                                                                  self.infcx().next_ty_var());
 
-                let trait_ref = Rc::new(ty::bind(ty::TraitRef::new(trait_def_id, substs.clone())));
+                let trait_ref =
+                    Rc::new(ty::Binder(ty::TraitRef::new(trait_def_id, substs.clone())));
                 let origin = MethodTypeParam(MethodParam { trait_ref: trait_ref,
                                                            method_num: method_num });
                 (substs, origin)
@@ -388,9 +389,9 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
         // The binder level here corresponds to the impl.
         let (all_substs, (method_sig, method_generics)) =
             self.replace_late_bound_regions_with_fresh_var(
-                &ty::bind((all_substs,
-                           (pick.method_ty.fty.sig.clone(),
-                            pick.method_ty.generics.clone())))).value;
+                &ty::Binder((all_substs,
+                             (pick.method_ty.fty.sig.clone(),
+                              pick.method_ty.generics.clone()))));
 
         debug!("late-bound lifetimes from impl instantiated, \
                 all_substs={} method_sig={} method_generics={}",
@@ -481,7 +482,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
             _ => return,
         };
 
-        match sig.inputs[0].sty {
+        match sig.0.inputs[0].sty {
             ty::ty_rptr(_, ty::mt {
                 ty: _,
                 mutbl: ast::MutMutable,
@@ -654,8 +655,8 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                     target_trait_def_id.repr(self.tcx()))[]);
     }
 
-    fn replace_late_bound_regions_with_fresh_var<T>(&self, value: &T) -> T
-        where T : HigherRankedFoldable<'tcx>
+    fn replace_late_bound_regions_with_fresh_var<T>(&self, value: &ty::Binder<T>) -> T
+        where T : TypeFoldable<'tcx> + Repr<'tcx>
     {
         self.infcx().replace_late_bound_regions_with_fresh_var(
             self.span, infer::FnCall, value).0

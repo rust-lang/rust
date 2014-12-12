@@ -535,7 +535,7 @@ pub fn instantiate_poly_trait_ref<'tcx,AC,RS>(
 {
     let trait_ref = instantiate_trait_ref(this, rscope, &ast_trait_ref.trait_ref, self_ty, allow_eq);
     let trait_ref = (*trait_ref).clone();
-    Rc::new(ty::bind(trait_ref)) // Ugh.
+    Rc::new(ty::Binder(trait_ref)) // Ugh.
 }
 
 /// Instantiates the path for the given trait reference, assuming that it's
@@ -778,12 +778,12 @@ fn ast_ty_to_trait_ref<'tcx,AC,RS>(this: &AC,
         ast::TyPath(ref path, id) => {
             match this.tcx().def_map.borrow().get(&id) {
                 Some(&def::DefTrait(trait_def_id)) => {
-                    return Ok(ty::bind(ast_path_to_trait_ref(this,
-                                                             rscope,
-                                                             trait_def_id,
-                                                             None,
-                                                             path,
-                                                             AllowEqConstraints::Allow)));
+                    return Ok(ty::Binder(ast_path_to_trait_ref(this,
+                                                               rscope,
+                                                               trait_def_id,
+                                                               None,
+                                                               path,
+                                                               AllowEqConstraints::Allow)));
                 }
                 _ => {
                     span_err!(this.tcx().sess, ty.span, E0172, "expected a reference to a trait");
@@ -993,12 +993,12 @@ pub fn ast_ty_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                     def::DefTrait(trait_def_id) => {
                         // N.B. this case overlaps somewhat with
                         // TyObjectSum, see that fn for details
-                        let result = ty::bind(ast_path_to_trait_ref(this,
-                                                                    rscope,
-                                                                    trait_def_id,
-                                                                    None,
-                                                                    path,
-                                                                    AllowEqConstraints::Allow));
+                        let result = ty::Binder(ast_path_to_trait_ref(this,
+                                                                      rscope,
+                                                                      trait_def_id,
+                                                                      None,
+                                                                      path,
+                                                                      AllowEqConstraints::Allow));
                         trait_ref_to_object_type(this, rscope, path.span, result, &[])
                     }
                     def::DefTy(did, _) | def::DefStruct(did) => {
@@ -1050,7 +1050,7 @@ pub fn ast_ty_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                                 let ty_param_defs = tcx.ty_param_defs.borrow();
                                 let tp_def = &(*ty_param_defs)[did.node];
                                 let assoc_tys = tp_def.bounds.trait_bounds.iter()
-                                    .filter_map(|b| find_assoc_ty(this, &b.value, assoc_ident))
+                                    .filter_map(|b| find_assoc_ty(this, &b.0, assoc_ident))
                                     .collect();
                                 (assoc_tys, token::get_name(tp_def.name).to_string())
                             }
@@ -1278,11 +1278,11 @@ fn ty_of_method_or_bare_fn<'a, 'tcx, AC: AstConv<'tcx>>(
     (ty::BareFnTy {
         unsafety: unsafety,
         abi: abi,
-        sig: ty::FnSig {
+        sig: ty::Binder(ty::FnSig {
             inputs: self_and_input_tys,
             output: output_ty,
             variadic: decl.variadic
-        }
+        }),
     }, explicit_self_category_result)
 }
 
@@ -1420,9 +1420,9 @@ pub fn ty_of_closure<'tcx, AC: AstConv<'tcx>>(
         store: store,
         bounds: bounds,
         abi: abi,
-        sig: ty::FnSig {inputs: input_tys,
-                        output: output_ty,
-                        variadic: decl.variadic}
+        sig: ty::Binder(ty::FnSig {inputs: input_tys,
+                                   output: output_ty,
+                                   variadic: decl.variadic}),
     }
 }
 
