@@ -17,8 +17,8 @@ use btree_map::{BTreeMap, Keys, MoveEntries};
 use std::hash::Hash;
 use core::borrow::BorrowFrom;
 use core::default::Default;
-use core::{iter, fmt};
-use core::iter::Peekable;
+use core::fmt;
+use core::iter::{Peekable, Map};
 use core::fmt::Show;
 
 // FIXME(conventions): implement bounded iterators
@@ -33,11 +33,14 @@ pub struct BTreeSet<T>{
 }
 
 /// An iterator over a BTreeSet's items.
-pub type Items<'a, T> = Keys<'a, T, ()>;
+pub struct Items<'a, T: 'a> {
+    iter: Keys<'a, T, ()>
+}
 
 /// An owning iterator over a BTreeSet's items.
-pub type MoveItems<T> =
-    iter::Map<(T, ()), T, MoveEntries<T, ()>, fn((T, ())) -> T>;
+pub struct MoveItems<T> {
+    iter: Map<(T, ()), T, MoveEntries<T, ()>, fn((T, ())) -> T>
+}
 
 /// A lazy iterator producing elements in the set difference (in-order).
 pub struct DifferenceItems<'a, T:'a> {
@@ -105,7 +108,7 @@ impl<T> BTreeSet<T> {
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn iter<'a>(&'a self) -> Items<'a, T> {
-        self.map.keys()
+        Items { iter: self.map.keys() }
     }
 
     /// Gets an iterator for moving out the BtreeSet's contents.
@@ -124,7 +127,7 @@ impl<T> BTreeSet<T> {
     pub fn into_iter(self) -> MoveItems<T> {
         fn first<A, B>((a, _): (A, B)) -> A { a }
 
-        self.map.into_iter().map(first)
+        MoveItems { iter: self.map.into_iter().map(first) }
     }
 }
 
@@ -634,6 +637,25 @@ impl<T: Show> Show for BTreeSet<T> {
         write!(f, "}}")
     }
 }
+
+impl<'a, T> Iterator<&'a T> for Items<'a, T> {
+    fn next(&mut self) -> Option<&'a T> { self.iter.next() }
+    fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
+}
+impl<'a, T> DoubleEndedIterator<&'a T> for Items<'a, T> {
+    fn next_back(&mut self) -> Option<&'a T> { self.iter.next_back() }
+}
+impl<'a, T> ExactSizeIterator<&'a T> for Items<'a, T> {}
+
+
+impl<T> Iterator<T> for MoveItems<T> {
+    fn next(&mut self) -> Option<T> { self.iter.next() }
+    fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
+}
+impl<T> DoubleEndedIterator<T> for MoveItems<T> {
+    fn next_back(&mut self) -> Option<T> { self.iter.next_back() }
+}
+impl<T> ExactSizeIterator<T> for MoveItems<T> {}
 
 /// Compare `x` and `y`, but return `short` if x is None and `long` if y is None
 fn cmp_opt<T: Ord>(x: Option<&T>, y: Option<&T>,
