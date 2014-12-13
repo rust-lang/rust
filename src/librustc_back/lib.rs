@@ -30,7 +30,7 @@
       html_root_url = "http://doc.rust-lang.org/nightly/")]
 
 #![allow(unknown_features)]
-#![feature(globs, phase, macro_rules, slicing_syntax)]
+#![feature(globs, phase, macro_rules, slicing_syntax, default_type_params)]
 
 #[phase(plugin, link)]
 extern crate log;

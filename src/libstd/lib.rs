@@ -161,6 +161,7 @@ pub use core::option;
 pub use alloc::boxed;
 pub use alloc::rc;
 
+pub use core_collections::hash;
 pub use core_collections::slice;
 pub use core_collections::str;
 pub use core_collections::string;
@@ -225,7 +226,6 @@ pub mod time;
 /* Common data structures */
 
 pub mod collections;
-pub mod hash;
 
 /* Tasks and communication */
 
@@ -252,6 +252,7 @@ mod std {
     pub use clone;
     pub use cmp;
     pub use hash;
+    pub use default;
 
     pub use comm; // used for select!()
     pub use error; // used for try!()

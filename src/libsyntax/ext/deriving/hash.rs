@@ -35,7 +35,7 @@ pub fn expand_deriving_hash(cx: &mut ExtCtxt,
     } else {
         (Path::new(vec!("std", "hash", "Hash")),
          LifetimeBounds::empty(),
-         Path::new(vec!("std", "hash", "sip", "SipState")))
+         Path::new(vec!("std", "hash", "SipHasher")))
     };
     let inline = cx.meta_word(span, InternedString::new("inline"));
     let attrs = vec!(cx.attribute(span, inline));
