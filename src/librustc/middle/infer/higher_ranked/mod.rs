@@ -81,7 +81,7 @@ impl<'tcx,C> HigherRankedRelations<'tcx> for C
 
             // Presuming type comparison succeeds, we need to check
             // that the skolemized regions do not "leak".
-            match self.infcx().leak_check(&skol_map, snapshot) {
+            match leak_check(self.infcx(), &skol_map, snapshot) {
                 Ok(()) => { }
                 Err((skol_br, tainted_region)) => {
                     if self.a_is_expected() {

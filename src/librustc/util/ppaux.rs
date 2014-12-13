@@ -1350,3 +1350,56 @@ impl<'tcx, S, H, K, V> Repr<'tcx> for HashMap<K,V,H>
                     .connect(", "))
     }
 }
+
+impl<'tcx, T, U> Repr<'tcx> for ty::OutlivesPredicate<T,U>
+    where T : Repr<'tcx> + TypeFoldable<'tcx>,
+          U : Repr<'tcx> + TypeFoldable<'tcx>,
+{
+    fn repr(&self, tcx: &ctxt<'tcx>) -> String {
+        format!("OutlivesPredicate({}, {})",
+                self.0.repr(tcx),
+                self.1.repr(tcx))
+    }
+}
+
+impl<'tcx, T, U> UserString<'tcx> for ty::OutlivesPredicate<T,U>
+    where T : UserString<'tcx> + TypeFoldable<'tcx>,
+          U : UserString<'tcx> + TypeFoldable<'tcx>,
+{
+    fn user_string(&self, tcx: &ctxt<'tcx>) -> String {
+        format!("{} : {}",
+                self.0.user_string(tcx),
+                self.1.user_string(tcx))
+    }
+}
+
+impl<'tcx> Repr<'tcx> for ty::EquatePredicate<'tcx> {
+    fn repr(&self, tcx: &ctxt<'tcx>) -> String {
+        format!("EquatePredicate({}, {})",
+                self.0.repr(tcx),
+                self.1.repr(tcx))
+    }
+}
+
+impl<'tcx> UserString<'tcx> for ty::EquatePredicate<'tcx> {
+    fn user_string(&self, tcx: &ctxt<'tcx>) -> String {
+        format!("{} == {}",
+                self.0.user_string(tcx),
+                self.1.user_string(tcx))
+    }
+}
+
+impl<'tcx> UserString<'tcx> for ty::Predicate<'tcx> {
+    fn user_string(&self, tcx: &ctxt<'tcx>) -> String {
+        match *self {
+            ty::Predicate::Trait(ref trait_ref) => {
+                format!("{} : {}",
+                        trait_ref.self_ty().user_string(tcx),
+                        trait_ref.user_string(tcx))
+            }
+            ty::Predicate::Equate(ref predicate) => predicate.user_string(tcx),
+            ty::Predicate::RegionOutlives(ref predicate) => predicate.user_string(tcx),
+            ty::Predicate::TypeOutlives(ref predicate) => predicate.user_string(tcx),
+        }
+    }
+}

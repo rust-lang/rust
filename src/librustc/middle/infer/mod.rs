@@ -717,11 +717,40 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn leak_check(&self,
                       skol_map: &SkolemizationMap,
                       snapshot: &CombinedSnapshot)
-                      -> Result<(),(ty::BoundRegion,ty::Region)>
+                      -> ures<'tcx>
     {
         /*! See `higher_ranked::leak_check` */
 
-        higher_ranked::leak_check(self, skol_map, snapshot)
+        match higher_ranked::leak_check(self, skol_map, snapshot) {
+            Ok(()) => Ok(()),
+            Err((br, r)) => Err(ty::terr_regions_insufficiently_polymorphic(br, r))
+        }
+    }
+
+    pub fn equality_predicate(&self,
+                              span: Span,
+                              predicate: &ty::PolyEquatePredicate<'tcx>)
+                              -> ures<'tcx> {
+        self.try(|snapshot| {
+            let (ty::EquatePredicate(a, b), skol_map) =
+                self.skolemize_late_bound_regions(predicate, snapshot);
+            let origin = EquatePredicate(span);
+            let () = try!(mk_eqty(self, false, origin, a, b));
+            self.leak_check(&skol_map, snapshot)
+        })
+    }
+
+    pub fn region_outlives_predicate(&self,
+                                     span: Span,
+                                     predicate: &ty::PolyRegionOutlivesPredicate)
+                                     -> ures<'tcx> {
+        self.try(|snapshot| {
+            let (ty::OutlivesPredicate(r_a, r_b), skol_map) =
+                self.skolemize_late_bound_regions(predicate, snapshot);
+            let origin = RelateRegionParamBound(span);
+            let () = mk_subr(self, origin, r_b, r_a); // `b : a` ==> `a <= b`
+            self.leak_check(&skol_map, snapshot)
+        })
     }
 
     pub fn next_ty_var_id(&self, diverging: bool) -> TyVid {

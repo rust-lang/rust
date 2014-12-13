@@ -315,36 +315,13 @@ pub fn report_selection_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     match *error {
         Overflow => {
             // We could track the stack here more precisely if we wanted, I imagine.
-            match obligation.trait_ref {
-                ty::Predicate::Trait(ref trait_ref) => {
-                    let trait_ref =
-                        fcx.infcx().resolve_type_vars_if_possible(&**trait_ref);
-                    fcx.tcx().sess.span_err(
-                        obligation.cause.span,
-                        format!(
-                            "overflow evaluating the trait `{}` for the type `{}`",
-                            trait_ref.user_string(fcx.tcx()),
-                            trait_ref.self_ty().user_string(fcx.tcx())).as_slice());
-                }
-
-                ty::Predicate::Equate(a, b) => {
-                    let a = fcx.infcx().resolve_type_vars_if_possible(&a);
-                    let b = fcx.infcx().resolve_type_vars_if_possible(&b);
-                    fcx.tcx().sess.span_err(
-                        obligation.cause.span,
-                        format!(
-                            "overflow checking whether the types `{}` and `{}` are equal",
-                            a.user_string(fcx.tcx()),
-                            b.user_string(fcx.tcx())).as_slice());
-                }
-
-                ty::Predicate::TypeOutlives(..) |
-                ty::Predicate::RegionOutlives(..) => {
-                    fcx.tcx().sess.span_err(
-                        obligation.cause.span,
-                        format!("overflow evaluating lifetime predicate").as_slice());
-                }
-            }
+            let predicate =
+                fcx.infcx().resolve_type_vars_if_possible(&obligation.trait_ref);
+            fcx.tcx().sess.span_err(
+                obligation.cause.span,
+                format!(
+                    "overflow evaluating the requirement `{}`",
+                    predicate.user_string(fcx.tcx())).as_slice());
 
             let current_limit = fcx.tcx().sess.recursion_limit.get();
             let suggested_limit = current_limit * 2;
@@ -359,8 +336,7 @@ pub fn report_selection_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         Unimplemented => {
             match obligation.trait_ref {
                 ty::Predicate::Trait(ref trait_ref) => {
-                    let trait_ref =
-                        fcx.infcx().resolve_type_vars_if_possible(&**trait_ref);
+                    let trait_ref = fcx.infcx().resolve_type_vars_if_possible(&**trait_ref);
                     if !ty::type_is_error(trait_ref.self_ty()) {
                         fcx.tcx().sess.span_err(
                             obligation.cause.span,
@@ -368,34 +344,44 @@ pub fn report_selection_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                 "the trait `{}` is not implemented for the type `{}`",
                                 trait_ref.user_string(fcx.tcx()),
                                 trait_ref.self_ty().user_string(fcx.tcx())).as_slice());
-                        note_obligation_cause(fcx, obligation);
                     }
                 }
 
-                ty::Predicate::Equate(a, b) => {
-                    let a = fcx.infcx().resolve_type_vars_if_possible(&a);
-                    let b = fcx.infcx().resolve_type_vars_if_possible(&b);
-                    let err = infer::can_mk_eqty(fcx.infcx(), a, b).unwrap_err();
+                ty::Predicate::Equate(ref predicate) => {
+                    let predicate = fcx.infcx().resolve_type_vars_if_possible(predicate);
+                    let err = fcx.infcx().equality_predicate(obligation.cause.span,
+                                                             &predicate).unwrap_err();
                     fcx.tcx().sess.span_err(
                         obligation.cause.span,
                         format!(
-                            "mismatched types: the types `{}` and `{}` are not equal ({})",
-                            a.user_string(fcx.tcx()),
-                            b.user_string(fcx.tcx()),
+                            "the requirement `{}` is not satisfied (`{}`)",
+                            predicate.user_string(fcx.tcx()),
                             ty::type_err_to_str(fcx.tcx(), &err)).as_slice());
                 }
 
-                ty::Predicate::TypeOutlives(..) |
-                ty::Predicate::RegionOutlives(..) => {
-                    // these kinds of predicates turn into
-                    // constraints, and hence errors show up in region
-                    // inference.
-                    fcx.tcx().sess.span_bug(
+                ty::Predicate::RegionOutlives(ref predicate) => {
+                    let predicate = fcx.infcx().resolve_type_vars_if_possible(predicate);
+                    let err = fcx.infcx().region_outlives_predicate(obligation.cause.span,
+                                                                    &predicate).unwrap_err();
+                    fcx.tcx().sess.span_err(
                         obligation.cause.span,
-                        format!("region predicate error {}",
-                                obligation.repr(fcx.tcx())).as_slice());
+                        format!(
+                            "the requirement `{}` is not satisfied (`{}`)",
+                            predicate.user_string(fcx.tcx()),
+                            ty::type_err_to_str(fcx.tcx(), &err)).as_slice());
+                }
+
+                ty::Predicate::TypeOutlives(ref predicate) => {
+                    let predicate = fcx.infcx().resolve_type_vars_if_possible(predicate);
+                    fcx.tcx().sess.span_err(
+                        obligation.cause.span,
+                        format!(
+                            "the requirement `{}` is not satisfied",
+                            predicate.user_string(fcx.tcx())).as_slice());
                 }
             }
+
+            note_obligation_cause(fcx, obligation);
         }
         OutputTypeParameterMismatch(ref expected_trait_ref, ref actual_trait_ref, ref e) => {
             let expected_trait_ref =

@@ -21,7 +21,7 @@ pub use self::DefIdSource::*;
 use middle::region;
 use middle::subst;
 use middle::subst::VecPerParamSpace;
-use middle::ty::{mod, Ty};
+use middle::ty::{mod, AsPredicate, Ty};
 
 use std::rc::Rc;
 use std::str;
@@ -669,13 +669,13 @@ pub fn parse_predicate<'a,'tcx>(st: &mut PState<'a, 'tcx>,
                                 -> ty::Predicate<'tcx>
 {
     match next(st) {
-        't' => ty::Predicate::Trait(Rc::new(ty::Binder(parse_trait_ref(st, conv)))),
-        'e' => ty::Predicate::Equate(parse_ty(st, |x,y| conv(x,y)),
-                                     parse_ty(st, |x,y| conv(x,y))),
-        'r' => ty::Predicate::RegionOutlives(parse_region(st, |x,y| conv(x,y)),
-                                             parse_region(st, |x,y| conv(x,y))),
-        'o' => ty::Predicate::TypeOutlives(parse_ty(st, |x,y| conv(x,y)),
-                                           parse_region(st, |x,y| conv(x,y))),
+        't' => Rc::new(ty::Binder(parse_trait_ref(st, conv))).as_predicate(),
+        'e' => ty::Binder(ty::EquatePredicate(parse_ty(st, |x,y| conv(x,y)),
+                                              parse_ty(st, |x,y| conv(x,y)))).as_predicate(),
+        'r' => ty::Binder(ty::OutlivesPredicate(parse_region(st, |x,y| conv(x,y)),
+                                                parse_region(st, |x,y| conv(x,y)))).as_predicate(),
+        'o' => ty::Binder(ty::OutlivesPredicate(parse_ty(st, |x,y| conv(x,y)),
+                                                parse_region(st, |x,y| conv(x,y)))).as_predicate(),
         c => panic!("Encountered invalid character in metadata: {}", c)
     }
 }
