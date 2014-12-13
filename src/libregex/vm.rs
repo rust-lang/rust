@@ -116,8 +116,10 @@ impl<'r, 't> Nfa<'r, 't> {
         };
         let mut matched = false;
         let ninsts = self.prog.insts.len();
-        let mut clist = &mut Threads::new(self.which, ninsts, ncaps);
-        let mut nlist = &mut Threads::new(self.which, ninsts, ncaps);
+        let mut cthread = Threads::new(self.which, ninsts, ncaps);
+        let mut nthread = Threads::new(self.which, ninsts, ncaps);
+        let mut clist = &mut cthread;
+        let mut nlist = &mut nthread;
 
         let mut groups = Vec::from_elem(ncaps * 2, None);
 
