@@ -17,13 +17,13 @@ use core::prelude::*;
 use core::borrow::{Cow, IntoCow};
 use core::default::Default;
 use core::fmt;
+use core::hash;
 use core::mem;
 use core::ptr;
 use core::ops;
 // FIXME: ICE's abound if you import the `Slice` type while importing `Slice` trait
 use core::raw::Slice as RawSlice;
 
-use hash;
 use slice::CloneSliceExt;
 use str;
 use str::{CharRange, CowString, FromStr, StrAllocating, Owned};

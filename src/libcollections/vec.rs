@@ -20,6 +20,7 @@ use core::borrow::{Cow, IntoCow};
 use core::cmp::max;
 use core::default::Default;
 use core::fmt;
+use core::hash::{mod, Hash};
 use core::kinds::marker::{ContravariantLifetime, InvariantType};
 use core::kinds::Sized;
 use core::mem;
@@ -616,6 +617,13 @@ impl<T: Ord> Ord for Vec<T> {
     #[inline]
     fn cmp(&self, other: &Vec<T>) -> Ordering {
         self.as_slice().cmp(other.as_slice())
+    }
+}
+
+impl<S: hash::Writer, T: Hash<S>> Hash<S> for Vec<T> {
+    #[inline]
+    fn hash(&self, state: &mut S) {
+        self.as_slice().hash(state);
     }
 }
 

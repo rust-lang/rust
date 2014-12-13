@@ -24,9 +24,8 @@
 //! As such, all cryptographic uses of this implementation are strongly
 //! discouraged.
 
-use core::prelude::*;
-
-use core::default::Default;
+use prelude::*;
+use default::Default;
 
 use super::{Hash, Hasher, Writer};
 
