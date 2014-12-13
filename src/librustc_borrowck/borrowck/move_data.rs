@@ -13,24 +13,24 @@
 
 pub use self::MoveKind::*;
 
+use borrowck::*;
+use borrowck::LoanPathKind::{LpVar, LpUpvar, LpDowncast, LpExtend};
+use borrowck::LoanPathElem::{LpInterior};
+use rustc::middle::cfg;
+use rustc::middle::dataflow::DataFlowContext;
+use rustc::middle::dataflow::BitwiseOperator;
+use rustc::middle::dataflow::DataFlowOperator;
+use rustc::middle::expr_use_visitor as euv;
+use rustc::middle::mem_categorization as mc;
+use rustc::middle::ty;
+use rustc::util::nodemap::{FnvHashMap, NodeSet};
+use rustc::util::ppaux::Repr;
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::uint;
-use middle::borrowck::*;
-use middle::borrowck::LoanPathKind::{LpVar, LpUpvar, LpDowncast, LpExtend};
-use middle::borrowck::LoanPathElem::{LpInterior};
-use middle::cfg;
-use middle::dataflow::DataFlowContext;
-use middle::dataflow::BitwiseOperator;
-use middle::dataflow::DataFlowOperator;
-use middle::expr_use_visitor as euv;
-use middle::mem_categorization as mc;
-use middle::ty;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::codemap::Span;
-use util::nodemap::{FnvHashMap, NodeSet};
-use util::ppaux::Repr;
 
 #[path="fragments.rs"]
 pub mod fragments;
@@ -217,37 +217,6 @@ fn loan_path_is_precise(loan_path: &LoanPath) -> bool {
         LpExtend(ref lp_base, _, _) => {
             loan_path_is_precise(&**lp_base)
         }
-    }
-}
-
-impl Move {
-    pub fn to_string<'tcx>(&self, move_data: &MoveData<'tcx>, tcx: &ty::ctxt<'tcx>) -> String {
-        format!("Move{} path: {}, id: {}, kind: {} {}",
-                "{",
-                move_data.path_loan_path(self.path).repr(tcx),
-                self.id,
-                self.kind,
-                "}")
-    }
-}
-
-impl Assignment {
-    pub fn to_string<'tcx>(&self, move_data: &MoveData<'tcx>, tcx: &ty::ctxt<'tcx>) -> String {
-        format!("Assignment{} path: {}, id: {} {}",
-                "{",
-                move_data.path_loan_path(self.path).repr(tcx),
-                self.id,
-                "}")
-    }
-}
-
-impl VariantMatch {
-    pub fn to_string<'tcx>(&self, move_data: &MoveData<'tcx>, tcx: &ty::ctxt<'tcx>) -> String {
-        format!("VariantMatch{} path: {}, id: {} {}",
-                "{",
-                move_data.path_loan_path(self.path).repr(tcx),
-                self.id,
-                "}")
     }
 }
 

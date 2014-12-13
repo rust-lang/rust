@@ -16,16 +16,14 @@
 // their associated scopes.  In phase two, checking loans, we will then make
 // sure that all of these loans are honored.
 
-use middle::borrowck::*;
-use middle::borrowck::LoanPathKind::*;
-use middle::borrowck::move_data::MoveData;
-use middle::expr_use_visitor as euv;
-use middle::mem_categorization as mc;
-use middle::region;
-use middle::ty::ParameterEnvironment;
-use middle::ty;
-use util::ppaux::{Repr};
-
+use borrowck::*;
+use borrowck::LoanPathKind::*;
+use borrowck::move_data::MoveData;
+use rustc::middle::expr_use_visitor as euv;
+use rustc::middle::mem_categorization as mc;
+use rustc::middle::region;
+use rustc::middle::ty;
+use rustc::util::ppaux::{Repr};
 use syntax::ast;
 use syntax::codemap::Span;
 use syntax::visit;
@@ -51,7 +49,7 @@ pub fn gather_loans_in_fn<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
         move_error_collector: move_error::MoveErrorCollector::new(),
     };
 
-    let param_env = ParameterEnvironment::for_item(bccx.tcx, fn_id);
+    let param_env = ty::ParameterEnvironment::for_item(bccx.tcx, fn_id);
 
     {
         let mut euv = euv::ExprUseVisitor::new(&mut glcx,

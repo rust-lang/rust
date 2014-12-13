@@ -10,19 +10,18 @@
 
 //! Computes moves.
 
-use middle::borrowck::*;
-use middle::borrowck::LoanPathKind::*;
-use middle::borrowck::gather_loans::move_error::MoveSpanAndPath;
-use middle::borrowck::gather_loans::move_error::{MoveError, MoveErrorCollector};
-use middle::borrowck::move_data::*;
-use middle::expr_use_visitor as euv;
-use middle::mem_categorization as mc;
-use middle::ty;
+use borrowck::*;
+use borrowck::LoanPathKind::*;
+use borrowck::gather_loans::move_error::MoveSpanAndPath;
+use borrowck::gather_loans::move_error::{MoveError, MoveErrorCollector};
+use borrowck::move_data::*;
+use rustc::middle::expr_use_visitor as euv;
+use rustc::middle::mem_categorization as mc;
+use rustc::middle::ty;
+use rustc::util::ppaux::Repr;
+use std::rc::Rc;
 use syntax::ast;
 use syntax::codemap::Span;
-use util::ppaux::Repr;
-
-use std::rc::Rc;
 
 struct GatherMoveInfo<'tcx> {
     id: ast::NodeId,

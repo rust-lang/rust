@@ -53,7 +53,7 @@ TARGET_CRATES := libc std flate arena term \
                  serialize getopts collections test time rand \
                  log regex graphviz core rbml alloc rustrt \
                  unicode
-RUSTC_CRATES := rustc rustc_typeck rustc_driver rustc_trans rustc_back rustc_llvm 
+RUSTC_CRATES := rustc rustc_typeck rustc_borrowck rustc_driver rustc_trans rustc_back rustc_llvm 
 HOST_CRATES := syntax $(RUSTC_CRATES) rustdoc regex_macros fmt_macros
 CRATES := $(TARGET_CRATES) $(HOST_CRATES)
 TOOLS := compiletest rustdoc rustc
@@ -67,11 +67,12 @@ DEPS_std := core libc rand alloc collections rustrt unicode \
 	native:rust_builtin native:backtrace
 DEPS_graphviz := std
 DEPS_syntax := std term serialize log fmt_macros arena libc
-DEPS_rustc_driver := arena flate getopts graphviz libc rustc rustc_back \
+DEPS_rustc_driver := arena flate getopts graphviz libc rustc rustc_back rustc_borrowck \
                      rustc_typeck log syntax serialize rustc_llvm rustc_trans
 DEPS_rustc_trans := arena flate getopts graphviz libc rustc rustc_back \
 	                log syntax serialize rustc_llvm
 DEPS_rustc_typeck := rustc syntax
+DEPS_rustc_borrowck := rustc log graphviz syntax
 DEPS_rustc := syntax flate arena serialize getopts rbml \
               time log graphviz rustc_llvm rustc_back
 DEPS_rustc_llvm := native:rustllvm libc std
@@ -117,9 +118,10 @@ ONLY_RLIB_unicode := 1
 DOC_CRATES := $(filter-out rustc, \
               $(filter-out rustc_trans, \
               $(filter-out rustc_typeck, \
+              $(filter-out rustc_borrowck, \
               $(filter-out rustc_driver, \
-              $(filter-out syntax, $(CRATES))))))
-COMPILER_DOC_CRATES := rustc rustc_trans rustc_typeck rustc_driver syntax
+              $(filter-out syntax, $(CRATES)))))))
+COMPILER_DOC_CRATES := rustc rustc_trans rustc_borrowck rustc_typeck rustc_driver syntax
 
 # This macro creates some simple definitions for each crate being built, just
 # some munging of all of the parameters above.
