@@ -492,8 +492,8 @@ long tradition for blocking IO, but they are still surprisingly subtle
   parsing/formatting/(de)serialization framework that works seamlessly
   with `Reader` and `Writer`.
 
-  Such a framework is out of scope for this RFC, however, so the
-  endian-sensitive functionality will likely be provided elsewhere
+  Such a framework is out of scope for this RFC, but the
+  endian-sensitive functionality will be provided elsewhere
   (likely out of tree).
 
 * **The error type**. The traits currently use `IoResult` in their
