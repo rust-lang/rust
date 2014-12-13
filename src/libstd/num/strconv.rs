@@ -74,31 +74,25 @@ pub enum SignFormat {
 
 impl Copy for SignFormat {}
 
-/**
- * Converts an integral number to its string representation as a byte vector.
- * This is meant to be a common base implementation for all integral string
- * conversion functions like `to_string()` or `to_str_radix()`.
- *
- * # Arguments
- * - `num`           - The number to convert. Accepts any number that
- *                     implements the numeric traits.
- * - `radix`         - Base to use. Accepts only the values 2-36.
- * - `sign`          - How to emit the sign. Options are:
- *     - `SignNone`: No sign at all. Basically emits `abs(num)`.
- *     - `SignNeg`:  Only `-` on negative values.
- *     - `SignAll`:  Both `+` on positive, and `-` on negative numbers.
- * - `f`             - a callback which will be invoked for each ascii character
- *                     which composes the string representation of this integer
- *
- * # Return value
- * A tuple containing the byte vector, and a boolean flag indicating
- * whether it represents a special value like `inf`, `-inf`, `NaN` or not.
- * It returns a tuple because there can be ambiguity between a special value
- * and a number representation at higher bases.
- *
- * # Failure
- * - Fails if `radix` < 2 or `radix` > 36.
- */
+/// Converts an integral number to its string representation as a byte vector.
+/// This is meant to be a common base implementation for all integral string
+/// conversion functions like `to_string()` or `to_str_radix()`.
+///
+/// # Arguments
+///
+/// - `num`           - The number to convert. Accepts any number that
+///                     implements the numeric traits.
+/// - `radix`         - Base to use. Accepts only the values 2-36.
+/// - `sign`          - How to emit the sign. Options are:
+///     - `SignNone`: No sign at all. Basically emits `abs(num)`.
+///     - `SignNeg`:  Only `-` on negative values.
+///     - `SignAll`:  Both `+` on positive, and `-` on negative numbers.
+/// - `f`             - a callback which will be invoked for each ascii character
+///                     which composes the string representation of this integer
+///
+/// # Panics
+///
+/// - Panics if `radix` < 2 or `radix` > 36.
 fn int_to_str_bytes_common<T: Int>(num: T, radix: uint, sign: SignFormat, f: |u8|) {
     assert!(2 <= radix && radix <= 36);
 
@@ -415,10 +409,8 @@ pub fn float_to_str_bytes_common<T: Float>(
     (buf, false)
 }
 
-/**
- * Converts a number to its string representation. This is a wrapper for
- * `to_str_bytes_common()`, for details see there.
- */
+/// Converts a number to its string representation. This is a wrapper for
+/// `to_str_bytes_common()`, for details see there.
 #[inline]
 pub fn float_to_str_common<T: Float>(
         num: T, radix: uint, negative_zero: bool,
