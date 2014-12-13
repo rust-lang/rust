@@ -288,9 +288,8 @@ on will eventually be usable directly within an async IO programing model and/or
 with nonblocking APIs. This is the case for most existing languages, which offer
 multiple interoperating IO models.
 
-The *long term* intent is certainly to support async IO in some form, which is
-needed for some kinds of high-performance servers among other things. But doing
-so will require new research and experimentation.
+The *long term* intent is certainly to support async IO in some form,
+but doing so will require new research and experimentation.
 
 ### Design principles
 [Design principles]: #design-principles
