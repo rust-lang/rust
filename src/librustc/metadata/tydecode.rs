@@ -348,6 +348,10 @@ fn parse_scope(st: &mut PState) -> region::CodeExtent {
             let node_id = parse_uint(st) as ast::NodeId;
             region::CodeExtent::Closure(node_id)
         }
+        'D' => {
+            let node_id = parse_uint(st) as ast::NodeId;
+            region::CodeExtent::DestructionScope(node_id)
+        }
         'B' => {
             let node_id = parse_uint(st) as ast::NodeId;
             let first_stmt_index = parse_uint(st);

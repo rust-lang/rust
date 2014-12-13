@@ -44,12 +44,28 @@ use syntax::visit::{Visitor, FnKind};
 #[deriving(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, Encodable, Decodable, Show)]
 pub enum CodeExtent {
     Misc(ast::NodeId),
+    DestructionScope(ast::NodeId), // extent of destructors for temporaries of node-id
     Closure(ast::NodeId),
     Remainder(BlockRemainder),
 }
 
-/// Represents a subscope of `block` that starts at
-/// `block.stmts[first_statement_index]` (inclusive).
+/// Represents a subscope of `block` for a binding that is introduced
+/// by `block.stmts[first_statement_index]`. Such subscopes represent
+/// a suffix of the block. Note that each subscope does not include
+/// the initializer expression, if any, for the statement indexed by
+/// `first_statement_index`.
+///
+/// For example, given `{ let (a, b) = EXPR_1; let c = EXPR_2; ... }`:
+///
+/// * the subscope with `first_statement_index == 0` is scope of both
+///   `a` and `b`; it does not include EXPR_1, but does include
+///   everything after that first `let`. (If you want a scope that
+///   includes EXPR_1 as well, then do not use `CodeExtent::Remainder`,
+///   but instead another `CodeExtent` that encompasses the whole block,
+///   e.g. `CodeExtent::Misc`.
+///
+/// * the subscope with `first_statement_index == 1` is scope of `c`,
+///   and thus does not include EXPR_2, but covers the `...`.
 #[deriving(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, Encodable, Decodable, Show)]
 pub struct BlockRemainder {
     pub block: ast::NodeId,
@@ -72,6 +88,8 @@ impl CodeExtent {
             CodeExtent::Misc(node_id) => node_id,
             CodeExtent::Closure(node_id) => node_id,
             CodeExtent::Remainder(br) => br.block,
+            // FIXME (pnkfelix): very sketchy here.
+            CodeExtent::DestructionScope(node_id) => node_id,
         }
     }
 
@@ -83,6 +101,8 @@ impl CodeExtent {
             CodeExtent::Closure(node_id) => CodeExtent::Closure(f_id(node_id)),
             CodeExtent::Remainder(br) =>
                 CodeExtent::Remainder(BlockRemainder { block: f_id(br.block), ..br }),
+            CodeExtent::DestructionScope(node_id) =>
+                CodeExtent::DestructionScope(f_id(node_id)),
         }
     }
 }
