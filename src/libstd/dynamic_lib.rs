@@ -290,6 +290,7 @@ pub mod dl {
     use c_str::ToCStr;
     use iter::IteratorExt;
     use libc;
+    use ops::FnOnce;
     use os;
     use ptr;
     use result::Result;
