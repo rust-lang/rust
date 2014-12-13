@@ -51,7 +51,12 @@
 //! See the documentation for each trait for a minimum implementation that prints
 //! something to the screen.
 
+use clone::Clone;
+use cmp::Ord;
+use iter::{Iterator,DoubleEndedIterator};
 use kinds::Sized;
+use kinds::Copy;
+use option::Option::{mod, Some, None};
 
 /// The `Drop` trait is used to run some code when a value goes out of scope. This
 /// is sometimes called a 'destructor'.
@@ -832,6 +837,114 @@ pub trait SliceMut<Sized? Idx, Sized? Result> for Sized? {
     /// The method for the slicing operation foo[from..to]
     fn slice_or_fail_mut<'a>(&'a mut self, from: &Idx, to: &Idx) -> &'a mut Result;
 }
+
+
+
+/// REVIEW could be in a better module
+/// The `Countable` trait identifies objects which are countable, i.e., are
+/// analogous to the natural numbers. A countable object can be incremented and
+/// and decremented and ordered. The `difference` function provides a way to
+/// compare two Countable objects (it could be provided using increment and Ord,
+/// but the implementation would be so inefficient as to be useless).
+#[unstable = "Trait is unstable."]
+pub trait Countable: Ord {
+    // FIXME(#19391) needs a snapshot
+    //type T;
+
+    /// Change self to the next object.
+    fn increment(&mut self);
+    /// Change self to the previous object.
+    fn decrement(&mut self);
+    /// The difference between two countable objects.
+    /// Temporarily a uint, should be an associated type, but
+    // FIXME(#19391) needs a snapshot
+    fn difference(a: &Self, b: &Self) -> uint;
+    //fn difference(a: &Self, b: &Self) -> <Self as Countable>::T;
+}
+
+macro_rules! countable_impl(
+    ($($t:ty)*) => ($(
+        #[unstable = "Trait is unstable."]
+        impl Countable for $t {
+            // FIXME(#19391) needs a snapshot
+            //type T = uint;
+
+            #[inline]
+            fn increment(&mut self) { *self += 1; }
+            #[inline]
+            fn decrement(&mut self) { *self -= 1; }
+            #[inline]
+            fn difference(a: &$t, b: &$t) -> uint { (*a - *b) as uint }
+        }
+    )*)
+)
+
+countable_impl!(uint u8 u16 u32 u64 int i8 i16 i32 i64)
+
+/// An unbounded range.
+pub struct FullRange;
+
+/// A range which i bounded at both ends.
+pub struct Range<Idx> {
+    /// The lower bound of the range (inclusive).
+    pub start: Idx,
+    /// The upper bound of the range (exclusive).
+    pub end: Idx,
+}
+
+// FIXME(#19391) needs a snapshot
+//impl<Idx: Clone + Countable<T=uint>> Iterator<Idx> for Range<Idx> {
+impl<Idx: Clone + Countable> Iterator<Idx> for Range<Idx> {
+    #[inline]
+    fn next(&mut self) -> Option<Idx> {
+        if self.start < self.end {
+            let result = self.start.clone();
+            self.start.increment();
+            return Some(result);
+        }
+
+        return None;
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        let hint = Countable::difference(&self.end, &self.start);
+        (hint, Some(hint))
+    }
+}
+
+impl<Idx: Clone + Countable> DoubleEndedIterator<Idx> for Range<Idx> {
+    #[inline]
+    fn next_back(&mut self) -> Option<Idx> {
+        if self.start < self.end {
+            self.end.decrement();
+            return Some(self.end.clone());
+        }
+
+        return None;
+    }
+}
+
+/// A range which is only bounded below.
+pub struct RangeFrom<Idx> {
+    /// The lower bound of the range (inclusive).
+    pub start: Idx,
+}
+
+impl<Idx: Clone + Countable> Iterator<Idx> for RangeFrom<Idx> {
+    #[inline]
+    fn next(&mut self) -> Option<Idx> {
+        // Deliberately overflow so we loop forever.
+        let result = self.start.clone();
+        self.start.increment();
+        return Some(result);
+    }
+}
+
+impl<Idx: Copy> Copy for Range<Idx> {}
+impl<Idx: Copy> Copy for RangeFrom<Idx> {}
+impl Copy for FullRange {}
+
 
 /// The `Deref` trait is used to specify the functionality of dereferencing
 /// operations like `*v`.

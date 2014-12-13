@@ -59,7 +59,7 @@
 #![allow(unknown_features, raw_pointer_deriving)]
 #![feature(globs, intrinsics, lang_items, macro_rules, phase)]
 #![feature(simd, unsafe_destructor, slicing_syntax)]
-#![feature(default_type_params, unboxed_closures)]
+#![feature(default_type_params, unboxed_closures, associated_types)]
 #![deny(missing_docs)]
 
 mod macros;
