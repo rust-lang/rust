@@ -9,8 +9,7 @@
 // except according to those terms.
 
 //! Maps are collections of unique keys with corresponding values, and sets are
-//! just unique keys without a corresponding value. The `Map` and `Set` traits in
-//! `std::container` define the basic interface.
+//! just unique keys without a corresponding value.
 //!
 //! This crate defines `TrieMap` and `TrieSet`, which require `uint` keys.
 //!
