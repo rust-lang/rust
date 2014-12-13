@@ -129,7 +129,10 @@ pub enum TypeOrigin {
     IfExpression(Span),
 
     // Computing common supertype of an if expression with no else counter-part
-    IfExpressionWithNoElse(Span)
+    IfExpressionWithNoElse(Span),
+
+    // `where a == b`
+    EquatePredicate(Span),
 }
 
 impl Copy for TypeOrigin {}
@@ -1017,7 +1020,8 @@ impl TypeOrigin {
             RelateOutputImplTypes(span) => span,
             MatchExpressionArm(match_span, _) => match_span,
             IfExpression(span) => span,
-            IfExpressionWithNoElse(span) => span
+            IfExpressionWithNoElse(span) => span,
+            EquatePredicate(span) => span,
         }
     }
 }
@@ -1049,6 +1053,9 @@ impl<'tcx> Repr<'tcx> for TypeOrigin {
             }
             IfExpressionWithNoElse(a) => {
                 format!("IfExpressionWithNoElse({})", a.repr(tcx))
+            }
+            EquatePredicate(a) => {
+                format!("EquatePredicate({})", a.repr(tcx))
             }
         }
     }

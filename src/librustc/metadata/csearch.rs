@@ -21,7 +21,6 @@ use middle::def;
 use middle::lang_items;
 use middle::resolve;
 use middle::ty;
-use middle::subst::VecPerParamSpace;
 
 use rbml;
 use rbml::reader;
@@ -250,9 +249,8 @@ pub fn get_field_type<'tcx>(tcx: &ty::ctxt<'tcx>, class_id: ast::DefId,
         });
     let ty = decoder::item_type(def, the_field, tcx, &*cdata);
     ty::Polytype {
-        generics: ty::Generics {types: VecPerParamSpace::empty(),
-                                regions: VecPerParamSpace::empty()},
-        ty: ty
+        generics: ty::Generics::empty(),
+        ty: ty,
     }
 }
 

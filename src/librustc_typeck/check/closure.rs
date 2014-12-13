@@ -232,16 +232,24 @@ fn deduce_unboxed_closure_expectations_from_obligations<'a,'tcx>(
     -> Option<(ty::FnSig<'tcx>, ty::UnboxedClosureKind)>
 {
     // Here `expected_ty` is known to be a type inference variable.
-    for obligation in fcx.inh.fulfillment_cx.borrow().pending_trait_obligations().iter() {
-        let obligation_self_ty = fcx.infcx().shallow_resolve(obligation.self_ty());
-        match obligation_self_ty.sty {
-            ty::ty_infer(ty::TyVar(v)) if expected_vid == v => { }
-            _ => { continue; }
-        }
+    for obligation in fcx.inh.fulfillment_cx.borrow().pending_obligations().iter() {
+        match obligation.trait_ref {
+            ty::Predicate::Trait(ref trait_ref) => {
+                let self_ty = fcx.infcx().shallow_resolve(trait_ref.self_ty());
+                match self_ty.sty {
+                    ty::ty_infer(ty::TyVar(v)) if expected_vid == v => { }
+                    _ => { continue; }
+                }
 
-        match deduce_unboxed_closure_expectations_from_trait_ref(fcx, &*obligation.trait_ref) {
-            Some(e) => { return Some(e); }
-            None => { }
+                match deduce_unboxed_closure_expectations_from_trait_ref(fcx, &**trait_ref) {
+                    Some(e) => { return Some(e); }
+                    None => { }
+                }
+            }
+            ty::Predicate::Equate(..) |
+            ty::Predicate::RegionOutlives(..) |
+            ty::Predicate::TypeOutlives(..) => {
+            }
         }
     }
 

@@ -462,8 +462,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                method_bounds.repr(self.tcx()));
 
         self.fcx.add_obligations_for_parameters(
-            traits::ObligationCause::misc(self.span),
-            method_bounds_substs,
+            traits::ObligationCause::misc(self.span, self.fcx.body_id),
             method_bounds);
 
         self.fcx.add_default_region_param_bounds(

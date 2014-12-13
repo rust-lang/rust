@@ -137,11 +137,6 @@ pub trait TypeFolder<'tcx> {
     fn fold_item_substs(&mut self, i: ty::ItemSubsts<'tcx>) -> ty::ItemSubsts<'tcx> {
         super_fold_item_substs(self, i)
     }
-
-    fn fold_obligation(&mut self, o: &traits::Obligation<'tcx>)
-                       -> traits::Obligation<'tcx> {
-        super_fold_obligation(self, o)
-    }
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -404,6 +399,25 @@ impl<'tcx> TypeFoldable<'tcx> for ty::Generics<'tcx> {
         ty::Generics {
             types: self.types.fold_with(folder),
             regions: self.regions.fold_with(folder),
+            predicates: self.predicates.fold_with(folder),
+        }
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for ty::Predicate<'tcx> {
+    fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> ty::Predicate<'tcx> {
+        match *self {
+            ty::Predicate::Trait(ref a) =>
+                ty::Predicate::Trait(a.fold_with(folder)),
+            ty::Predicate::Equate(ref a, ref b) =>
+                ty::Predicate::Equate(a.fold_with(folder),
+                                        b.fold_with(folder)),
+            ty::Predicate::RegionOutlives(ref a, ref b) =>
+                ty::Predicate::RegionOutlives(a.fold_with(folder),
+                                                b.fold_with(folder)),
+            ty::Predicate::TypeOutlives(ref a, ref b) =>
+                ty::Predicate::TypeOutlives(a.fold_with(folder),
+                                              b.fold_with(folder)),
         }
     }
 }
@@ -411,8 +425,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::Generics<'tcx> {
 impl<'tcx> TypeFoldable<'tcx> for ty::GenericBounds<'tcx> {
     fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> ty::GenericBounds<'tcx> {
         ty::GenericBounds {
-            types: self.types.fold_with(folder),
-            regions: self.regions.fold_with(folder),
+            predicates: self.predicates.fold_with(folder),
         }
     }
 }
@@ -434,9 +447,15 @@ impl<'tcx> TypeFoldable<'tcx> for ty::UnsizeKind<'tcx> {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for traits::Obligation<'tcx> {
-    fn fold_with<F:TypeFolder<'tcx>>(&self, folder: &mut F) -> traits::Obligation<'tcx> {
-        folder.fold_obligation(self)
+impl<'tcx,O> TypeFoldable<'tcx> for traits::Obligation<'tcx,O>
+    where O : TypeFoldable<'tcx>
+{
+    fn fold_with<F:TypeFolder<'tcx>>(&self, folder: &mut F) -> traits::Obligation<'tcx, O> {
+        traits::Obligation {
+            cause: self.cause,
+            recursion_depth: self.recursion_depth,
+            trait_ref: self.trait_ref.fold_with(folder),
+        }
     }
 }
 
@@ -684,17 +703,6 @@ pub fn super_fold_item_substs<'tcx, T: TypeFolder<'tcx>>(this: &mut T,
 {
     ty::ItemSubsts {
         substs: substs.substs.fold_with(this),
-    }
-}
-
-pub fn super_fold_obligation<'tcx, T:TypeFolder<'tcx>>(this: &mut T,
-                                                       obligation: &traits::Obligation<'tcx>)
-                                                       -> traits::Obligation<'tcx>
-{
-    traits::Obligation {
-        cause: obligation.cause,
-        recursion_depth: obligation.recursion_depth,
-        trait_ref: obligation.trait_ref.fold_with(this),
     }
 }
 

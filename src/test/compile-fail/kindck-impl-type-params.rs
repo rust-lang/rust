@@ -34,6 +34,7 @@ fn g<T>(val: T) {
 fn foo<'a>() {
     let t: S<&'a int> = S;
     let a = &t as &Gettable<&'a int>;
+    //~^ ERROR declared lifetime bound not satisfied
 }
 
 fn foo2<'a>() {
