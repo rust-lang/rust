@@ -3106,6 +3106,8 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
             tc | TC::Managed
         } else if Some(did) == cx.lang_items.unsafe_type() {
             tc | TC::InteriorUnsafe
+        } else if Some(did) == cx.lang_items.manually_drop() {
+            tc - TC::OwnsDtor
         } else {
             tc
         }

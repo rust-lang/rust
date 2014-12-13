@@ -92,6 +92,7 @@ pub mod prelude;
 /* Core modules for ownership management */
 
 pub mod intrinsics;
+pub mod manually_drop;
 pub mod mem;
 pub mod ptr;
 

@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -255,6 +255,8 @@ lets_do_this! {
     SliceMutTraitLangItem,           "slice_mut",               slice_mut_trait;
 
     UnsafeTypeLangItem,              "unsafe",                  unsafe_type;
+
+    ManuallyDropLangItem,            "manually_drop",           manually_drop;
 
     DerefTraitLangItem,              "deref",                   deref_trait;
     DerefMutTraitLangItem,           "deref_mut",               deref_mut_trait;
