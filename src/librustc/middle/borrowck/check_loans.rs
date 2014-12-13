@@ -239,6 +239,10 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
 
         let tcx = self.tcx();
         self.each_issued_loan(scope, |loan| {
+            debug!("each_in_scope_loan scope: {} loan: {} loan.kill_scope: {}",
+                   scope.repr(self.tcx()),
+                   loan.repr(self.tcx()),
+                   loan.kill_scope.repr(self.tcx()));
             if tcx.region_maps.is_subscope_of(scope, loan.kill_scope) {
                 op(loan)
             } else {
@@ -265,6 +269,11 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
         let loan_path = owned_ptr_base_path(loan_path);
         let cont = self.each_in_scope_loan(scope, |loan| {
             let mut ret = true;
+            debug!("each_in_scope_loan_affecting_path \
+                    scope: {} loan_path: {} restricted_paths: {}",
+                   scope.repr(self.tcx()),
+                   loan_path.repr(self.tcx()),
+                   loan.restricted_paths.repr(self.tcx()));
             for restr_path in loan.restricted_paths.iter() {
                 if **restr_path == *loan_path {
                     if !op(loan) {
@@ -304,6 +313,12 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
             }
 
             let cont = self.each_in_scope_loan(scope, |loan| {
+                debug!("each_in_scope_loan_affecting_path \
+                        scope: {} loan_path: {} loan: {}",
+                       scope.repr(self.tcx()),
+                       loan_path.repr(self.tcx()),
+                       loan.repr(self.tcx()));
+
                 if *loan.loan_path == *loan_path {
                     op(loan)
                 } else {
