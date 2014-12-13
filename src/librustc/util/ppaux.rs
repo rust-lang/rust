@@ -12,6 +12,7 @@
 use middle::def;
 use middle::subst::{VecPerParamSpace,Subst};
 use middle::subst;
+use middle::region::{mod, CodeExtent};
 use middle::ty::{BoundRegion, BrAnon, BrNamed};
 use middle::ty::{ReEarlyBound, BrFresh, ctxt};
 use middle::ty::{ReFree, ReScope, ReInfer, ReStatic, Region, ReEmpty};
@@ -84,35 +85,74 @@ fn item_scope_tag(item: &ast::Item) -> &'static str {
 pub fn explain_region_and_span(cx: &ctxt, region: ty::Region)
                             -> (String, Option<Span>) {
     return match region {
-      ReScope(scope) => {
-        match cx.map.find(scope.node_id()) {
+        ReScope(scope @ CodeExtent::Misc(_)) |
+        ReScope(scope @ CodeExtent::Closure(_)) |
+        ReScope(scope @ CodeExtent::DestructionScope(_)) => {
+        let node_id = scope.node_id();
+        let prefix = if let CodeExtent::DestructionScope(dtor_id) = scope {
+            "destruction scope surrounding"
+        } else {
+            ""
+        };
+        match cx.map.find(node_id) {
           Some(ast_map::NodeBlock(ref blk)) => {
-            explain_span(cx, "block", blk.span)
+            let place = format!("{}{}", prefix, "block");
+            explain_span(cx, place.as_slice(), blk.span)
           }
           Some(ast_map::NodeExpr(expr)) => {
             match expr.node {
-              ast::ExprCall(..) => explain_span(cx, "call", expr.span),
+              ast::ExprCall(..) => {
+                let place = format!("{}{}", prefix, "call");
+                explain_span(cx, place.as_slice(), expr.span)
+              },
               ast::ExprMethodCall(..) => {
-                explain_span(cx, "method call", expr.span)
+                let place = format!("{}{}", prefix, "method call");
+                explain_span(cx, place.as_slice(), expr.span)
               },
-              ast::ExprMatch(_, _, ast::MatchIfLetDesugar) => explain_span(cx, "if let", expr.span),
+              ast::ExprMatch(_, _, ast::MatchIfLetDesugar) => {
+                  let place = format!("{}{}", prefix, "if let");
+                  explain_span(cx, place.as_slice(), expr.span)
+              },
               ast::ExprMatch(_, _, ast::MatchWhileLetDesugar) => {
-                  explain_span(cx, "while let", expr.span)
+                  let place = format!("{}{}", prefix, "while let");
+                  explain_span(cx, place.as_slice(), expr.span)
               },
-              ast::ExprMatch(..) => explain_span(cx, "match", expr.span),
-              _ => explain_span(cx, "expression", expr.span)
+              ast::ExprMatch(..) => {
+                  let place = format!("{}{}", prefix, "match");
+                  explain_span(cx, place.as_slice(), expr.span)
+              },
+              _ => {
+                  let place = format!("{}{}", prefix, "expression");
+                  explain_span(cx, place.as_slice(), expr.span)
+              }
             }
           }
           Some(ast_map::NodeStmt(stmt)) => {
-              explain_span(cx, "statement", stmt.span)
+              let place = format!("{}{}", prefix, "statement");
+              explain_span(cx, place.as_slice(), stmt.span)
           }
           Some(ast_map::NodeItem(it)) => {
               let tag = item_scope_tag(&*it);
-              explain_span(cx, tag, it.span)
+              let place = format!("{}{}", prefix, tag);
+              explain_span(cx, place.as_slice(), it.span)
           }
           Some(_) | None => {
             // this really should not happen
             (format!("unknown scope: {}.  Please report a bug.", scope), None)
+          }
+        }
+      }
+
+      ReScope(CodeExtent::Remainder(
+          region::BlockRemainder { block: block_id, first_statement_index })) => {
+        match cx.map.find(block_id) {
+          Some(ast_map::NodeBlock(ref blk)) => {
+            let stmt_span = blk.stmts[first_statement_index].span;
+            let place = "block suffix";
+            explain_span(cx, place, Span { lo: stmt_span.hi, ..blk.span })
+          }
+          _ => {
+            cx.sess.bug("failed to find block for BlockRemainder") 
           }
         }
       }
@@ -879,8 +919,24 @@ impl<'tcx> UserString<'tcx> for ty::Region {
 impl<'tcx> Repr<'tcx> for ty::FreeRegion {
     fn repr(&self, tcx: &ctxt) -> String {
         format!("ReFree({}, {})",
-                self.scope.node_id(),
+                self.scope.repr(tcx),
                 self.bound_region.repr(tcx))
+    }
+}
+
+impl<'tcx> Repr<'tcx> for region::CodeExtent {
+    fn repr(&self, tcx: &ctxt) -> String {
+        match *self {
+            region::CodeExtent::Misc(node_id) =>
+                format!("Misc({})", node_id),
+            region::CodeExtent::DestructionScope(node_id) =>
+                format!("DestructionScope({})", node_id),
+            region::CodeExtent::Closure(node_id) =>
+                format!("Closure({})", node_id),
+            region::CodeExtent::Remainder(region::BlockRemainder {
+                block: node_id, first_statement_index, }) =>
+                format!("Remainder({}, {})", node_id, first_statement_index),
+        }
     }
 }
 
