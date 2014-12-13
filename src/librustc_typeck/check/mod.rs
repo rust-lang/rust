@@ -5143,8 +5143,9 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             }
 
             ast::ParenthesizedParameters(ref data) => {
-                span_err!(fcx.tcx().sess, span, E0173,
-                          "parenthesized parameters may only be used with a trait");
+                fcx.tcx().sess.span_err(
+                    span,
+                    "parenthesized parameters may only be used with a trait");
                 push_explicit_parenthesized_parameters_from_segment_to_substs(
                     fcx, space, span, type_defs, data, substs);
             }

@@ -235,8 +235,9 @@ fn ast_path_substs_for_ty<'tcx,AC,RS>(
             convert_angle_bracketed_parameters(this, rscope, data)
         }
         ast::ParenthesizedParameters(ref data) => {
-            span_err!(tcx.sess, path.span, E0173,
-                      "parenthesized parameters may only be used with a trait");
+            tcx.sess.span_err(
+                path.span,
+                "parenthesized parameters may only be used with a trait");
             (Vec::new(), convert_parenthesized_parameters(this, data), Vec::new())
         }
     };

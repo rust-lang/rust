@@ -67,6 +67,5 @@ register_diagnostics!(
     E0173,
     E0174,
     E0177,
-    E0178,
-    E0179 // parenthesized params may only be used with a trait
+    E0178
 )
