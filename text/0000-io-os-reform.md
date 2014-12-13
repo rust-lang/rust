@@ -1043,7 +1043,7 @@ impl<'a, W: Writer> Writer for ByRef<'a, W> {
     fn write(&mut self, buf: &[u8]) -> Result<uint, W::Err> { self.inner.write(buf) }
 
     #[inline]
-    fn flush(&mut self) -> IoResult<()> { self.inner.flush() }
+    fn flush(&mut self) -> Result<(), W::Err> { self.inner.flush() }
 }
 ```
 
@@ -1078,8 +1078,9 @@ signature is refactored with more precise types:
 
 ```rust
 pub trait Seek {
-    fn position(&self) -> IoResult<u64>;
-    fn seek(&mut self, pos: SeekPos) -> IoResult<()>;
+    type Err;
+    fn position(&self) -> Result<u64, Err>;
+    fn seek(&mut self, pos: SeekPos) -> Result<(), Err>;
 }
 
 pub enum SeekPos {
