@@ -171,6 +171,12 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                   item: &ast::Item)
     {
         self.with_fcx(item, |this, fcx| {
+            // FIXME (pnkfelix): what is the "extent" of an item impl?
+            // This seems fundamentally different from the dynamic
+            // extent represented by a block or a function body.
+            //
+            // For now, just leaving as the default you get via
+            // `fn CodeExtent::from_node_id`.
             let item_scope = region::CodeExtent::from_node_id(item.id);
 
             let mut bounds_checker = BoundsChecker::new(fcx,
@@ -262,8 +268,11 @@ impl<'cx,'tcx> BoundsChecker<'cx,'tcx> {
                scope: region::CodeExtent,
                cache: Option<&'cx mut HashSet<Ty<'tcx>>>)
                -> BoundsChecker<'cx,'tcx> {
-        BoundsChecker { fcx: fcx, span: span, scope: scope,
-                        cache: cache, binding_count: 0 }
+        let ret = BoundsChecker { fcx: fcx, span: span, scope: scope,
+                                  cache: cache, binding_count: 0 };
+                   debug!("BoundsChecker::new returns b with: b.scope: {} b.binding_count: {}",
+                          ret.scope, ret.binding_count);
+        ret
     }
 
     pub fn check_trait_ref(&mut self, trait_ref: &ty::TraitRef<'tcx>) {
