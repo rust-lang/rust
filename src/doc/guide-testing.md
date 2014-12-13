@@ -1,283 +1,515 @@
 % The Rust Testing Guide
 
-# Quick start
+> Program testing can be a very effective way to show the presence of bugs, but
+> it is hopelessly inadequate for showing their absence. 
+>
+> Edsger W. Dijkstra, "The Humble Programmer" (1972)
 
-To create test functions, add a `#[test]` attribute like this:
+Let's talk about how to test Rust code. What we will not be talking about is
+the right way to test Rust code. There are many schools of thought regarding
+the right and wrong way to write tests. All of these approaches use the same
+basic tools, and so we'll show you the syntax for using them.
 
-~~~test_harness
-fn return_two() -> int {
-    2
-}
+# The `test` attribute
 
+At its simplest, a test in Rust is a function that's annotated with the `test`
+attribute. Let's make a new project with Cargo called `adder`:
+
+```bash
+$ cargo new adder
+$ cd adder
+```
+
+Cargo will automatically generate a simple test when you make a new project.
+Here's the contents of `src/lib.rs`:
+
+```rust
 #[test]
-fn return_two_test() {
-    let x = return_two();
-    assert!(x == 2);
+fn it_works() {
 }
-~~~
+```
 
-To run these tests, compile with `rustc --test` and run the resulting
-binary:
+Note the `#[test]`. This attribute indicates that this is a test function. It
+currently has no body. That's good enough to pass! We can run the tests with
+`cargo test`:
 
-~~~console
-$ rustc --test foo.rs
-$ ./foo
+```bash
+$ cargo test
+   Compiling adder v0.0.1 (file:///home/you/projects/adder)
+     Running target/adder-91b3e234d4ed382a
+
 running 1 test
-test return_two_test ... ok
+test it_works ... ok
 
 test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured
-~~~
 
-`rustc foo.rs` will *not* compile the tests, since `#[test]` implies
-`#[cfg(test)]`. The `--test` flag to `rustc` implies `--cfg test`.
+   Doc-tests adder
 
+running 0 tests
 
-# Unit testing in Rust
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured
+```
 
-Rust has built in support for simple unit testing. Functions can be
-marked as unit tests using the `test` attribute.
+Cargo compiled and ran our tests. There are two sets of output here: one
+for the test we wrote, and another for documentation tests. We'll talk about
+those later. For now, see this line:
 
-~~~test_harness
+```text
+test it_works ... ok
+```
+
+Note the `it_works`. This comes from the name of our function:
+
+```rust
+fn it_works() {
+# }
+```
+
+We also get a summary line:
+
+```text
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured
+```
+
+So why does our do-nothing test pass? Any test which doesn't `panic!` passes,
+and any test that does `panic!` fails. Let's make our test fail:
+
+```rust
 #[test]
-fn return_none_if_empty() {
-    // ... test code ...
+fn it_works() {
+    assert!(false);
 }
-~~~
+```
 
-A test function's signature must have no arguments and no return
-value. To run the tests in a crate, it must be compiled with the
-`--test` flag: `rustc myprogram.rs --test -o myprogram-tests`. Running
-the resulting executable will run all the tests in the crate. A test
-is considered successful if its function returns; if the task running
-the test fails, through a call to `panic!`, a failed `assert`, or some
-other (`assert_eq`, ...) means, then the test fails.
+`assert!` is a macro provided by Rust which takes one argument: if the argument
+is `true`, nothing happens. If the argument is false, it `panic!`s. Let's run
+our tests again:
 
-When compiling a crate with the `--test` flag `--cfg test` is also
-implied, so that tests can be conditionally compiled.
+```bash
+$ cargo test
+   Compiling adder v0.0.1 (file:///home/you/projects/adder)
+     Running target/adder-91b3e234d4ed382a
 
-~~~test_harness
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn return_none_if_empty() {
-      // ... test code ...
-    }
-}
-~~~
+running 1 test
+test it_works ... FAILED
 
-Additionally `#[test]` items behave as if they also have the
-`#[cfg(test)]` attribute, and will not be compiled when the `--test` flag
-is not used.
+failures:
 
-Tests that should not be run can be annotated with the `ignore`
-attribute. The existence of these tests will be noted in the test
-runner output, but the test will not be run. Tests can also be ignored
-by configuration using the `cfg_attr` attribute so, for example, to ignore a
-test on windows you can write `#[cfg_attr(windows, ignore)]`.
+---- it_works stdout ----
+        task 'it_works' panicked at 'assertion failed: false', /home/steve/tmp/adder/src/lib.rs:3
 
-Tests that are intended to fail can be annotated with the
-`should_fail` attribute. The test will be run, and if it causes its
-task to panic then the test will be counted as successful; otherwise it
-will be counted as a failure. For example:
 
-~~~test_harness
+
+failures:
+    it_works
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured
+
+task '<main>' panicked at 'Some tests failed', /home/steve/src/rust/src/libtest/lib.rs:247
+```
+
+Rust indicates that our test failed:
+
+```text
+test it_works ... FAILED
+```
+
+And that's reflected in the summary line:
+
+```text
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured
+```
+
+We also get a non-zero status code:
+
+```bash
+$ echo $?
+101
+```
+
+This is useful if you want to integrate `cargo test` into other tooling.
+
+We can invert our test's failure with another attribute: `should_fail`:
+
+```rust
 #[test]
 #[should_fail]
-fn test_out_of_bounds_failure() {
-    let v: &[int] = &[];
-    v[0];
+fn it_works() {
+    assert!(false);
 }
-~~~
+```
 
-`#[should_fail]` tests can be fragile as it's hard to guarantee that the test
+This test will now succeed if we `panic!` and fail if we complete. Let's try it:
+
+```bash
+$ cargo test
+   Compiling adder v0.0.1 (file:///home/you/projects/adder)
+     Running target/adder-91b3e234d4ed382a
+
+running 1 test
+test it_works ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured
+
+   Doc-tests adder
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured
+```
+
+Rust provides another macro, `assert_eq!`, that compares two arguments for
+equality:
+
+```rust
+#[test]
+#[should_fail]
+fn it_works() {
+    assert_eq!("Hello", "world");
+}
+```
+
+Does this test pass or fail? Because of the `should_fail` attribute, it
+passes:
+
+```bash
+$ cargo test
+   Compiling adder v0.0.1 (file:///home/you/projects/adder)
+     Running target/adder-91b3e234d4ed382a
+
+running 1 test
+test it_works ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured
+
+   Doc-tests adder
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured
+```
+
+`should_fail` tests can be fragile, as it's hard to guarantee that the test
 didn't fail for an unexpected reason. To help with this, an optional `expected`
 parameter can be added to the `should_fail` attribute. The test harness will
 make sure that the failure message contains the provided text. A safer version
 of the example above would be:
 
-~~~test_harness
+```
 #[test]
-#[should_fail(expected = "index out of bounds")]
-fn test_out_of_bounds_failure() {
-    let v: &[int] = &[];
-    v[0];
+#[should_fail(expected = "assertion failed")]
+fn it_works() {
+    assert_eq!("Hello", "world");
 }
-~~~
+```
 
-A test runner built with the `--test` flag supports a limited set of
-arguments to control which tests are run:
+That's all there is to the basics! Let's write one 'real' test:
 
-- the first free argument passed to a test runner is interpreted as a
-  regular expression
-  ([syntax reference](regex/index.html#syntax))
-  and is used to narrow down the set of tests being run. Note: a plain
-  string is a valid regular expression that matches itself.
-- the `--ignored` flag tells the test runner to run only tests with the
-  `ignore` attribute.
+```{rust,ignore}
+pub fn add_two(a: i32) -> i32 {
+    a + 2
+}
 
-## Parallelism
+#[test]
+fn it_works() {
+    assert_eq!(4, add_two(2));
+}
+```
 
-By default, tests are run in parallel, which can make interpreting
-failure output difficult. In these cases you can set the
-`RUST_TEST_TASKS` environment variable to 1 to make the tests run
-sequentially.
+This is a very common use of `assert_eq!`: call some function with
+some known arguments and compare it to the expected output.
 
-## Examples
+# The `test` module
 
-### Typical test run
+There is one way in which our existing example is not idiomatic: it's
+missing the test module. The idiomatic way of writing our example
+looks like this:
 
-~~~console
-$ mytests
+```{rust,ignore}
+pub fn add_two(a: i32) -> i32 {
+    a + 2
+}
 
-running 30 tests
-running driver::tests::mytest1 ... ok
-running driver::tests::mytest2 ... ignored
-... snip ...
-running driver::tests::mytest30 ... ok
+#[cfg(test)]
+mod tests {
+    use super::add_two;
 
-result: ok. 28 passed; 0 failed; 2 ignored
-~~~
+    #[test]
+    fn it_works() {
+        assert_eq!(4, add_two(2));
+    }
+}
+```
 
-### Test run with failures
+There's a few changes here. The first is the introduction of a `mod tests` with
+a `cfg` attribute. The module allows us to group all of our tests together, and
+to also define helper functions if needed, that don't become a part of the rest
+of our crate. The `cfg` attribute only compiles our test code if we're
+currently trying to run the tests. This can save compile time, and also ensures
+that our tests are entirely left out of a normal build.
 
-~~~console
-$ mytests
+The second change is the `use` declaration. Because we're in an inner module,
+we need to bring our test function into scope. This can be annoying if you have
+a large module, and so this is a common use of the `glob` feature. Let's change
+our `src/lib.rs` to make use of it:
 
-running 30 tests
-running driver::tests::mytest1 ... ok
-running driver::tests::mytest2 ... ignored
-... snip ...
-running driver::tests::mytest30 ... FAILED
+```{rust,ignore}
+#![feature(globs)]
 
-result: FAILED. 27 passed; 1 failed; 2 ignored
-~~~
+pub fn add_two(a: i32) -> i32 {
+    a + 2
+}
 
-### Running ignored tests
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-~~~console
-$ mytests --ignored
+    #[test]
+    fn it_works() {
+        assert_eq!(4, add_two(2));
+    }
+}
+```
+
+Note the `feature` attribute, as well as the different `use` line. Now we run
+our tests:
+
+```bash
+$ cargo test
+    Updating registry `https://github.com/rust-lang/crates.io-index`
+   Compiling adder v0.0.1 (file:///home/you/projects/adder)
+     Running target/adder-91b3e234d4ed382a
+
+running 1 test
+test test::it_works ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured
+
+   Doc-tests adder
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured
+```
+
+It works!
+
+The current convention is to use the `test` module to hold your "unit"-style
+tests. Anything that just tests one small bit of functionality makes sense to
+go here. But what about "integration"-style tests instead? For that, we have
+the `tests` directory
+
+# The `tests` directory
+
+To write an integration test, let's make a `tests` directory, and
+put a `tests/lib.rs` file inside, with this as its contents:
+
+```{rust,ignore}
+extern crate adder;
+
+#[test]
+fn it_works() {
+    assert_eq(4, adder::add_two(2));
+}   
+```
+
+This looks similar to our previous tests, but slightly different. We now have
+an `extern crate adder` at the top. This is because the tests in the `tests`
+directory are an entirely separate crate, and so we need to import our library.
+This is also why `tests` is a suitable place to write integration-style tests:
+they use the library like any other consumer of it would.
+
+Let's run them:
+
+```bash
+$ cargo test
+   Compiling adder v0.0.1 (file:///home/you/projects/adder)
+     Running target/adder-91b3e234d4ed382a
+
+running 1 test
+test test::it_works ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured
+
+     Running target/lib-c18e7d3494509e74
+
+running 1 test
+test it_works ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured
+
+   Doc-tests adder
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured
+```
+
+Now we have three sections: our previous test is also run, as well as our new
+one.
+
+That's all there is to the `tests` directory. The `test` module isn't needed
+here, since the whole thing is focused on tests.
+
+Let's finally check out that third section: documentation tests.
+
+# Documentation tests
+
+Nothing is better than documentation with examples. Nothing is worse than
+examples that don't actually work, because the code has changed since the
+documentation has been written. To this end, Rust supports automaticaly
+running examples in your documentation. Here's a fleshed-out `src/lib.rs`
+with examples:
+
+```{rust,ignore}
+//! The `adder` crate provides functions that add numbers to other numbers.
+//!
+//! # Examples
+//!
+//! ```
+//! assert_eq!(4, adder::add_two(2));
+//! ```
+
+#![feature(globs)]
+
+/// This function adds two to its argument.
+///
+/// # Examples
+///
+/// ```
+/// use adder::add_two;
+///
+/// assert_eq!(4, add_two(2));
+/// ```
+pub fn add_two(a: i32) -> i32 {
+    a + 2
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn it_works() {
+        assert_eq!(4, add_two(2));
+    }
+}
+```
+
+Note the module-level documentation with `//!` and the function-level
+documentation with `///`. Rust's documentation supports Markdown in comments,
+and so triple graves mark code blocks. It is conventional to include the
+`# Examples` section, exactly like that, with examples following.
+
+Let's run the tests again:
+
+```bash
+$ cargo test
+   Compiling adder v0.0.1 (file:///home/steve/tmp/adder)
+     Running target/adder-91b3e234d4ed382a
+
+running 1 test
+test test::it_works ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured
+
+     Running target/lib-c18e7d3494509e74
+
+running 1 test
+test it_works ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured
+
+   Doc-tests adder
 
 running 2 tests
-running driver::tests::mytest2 ... failed
-running driver::tests::mytest10 ... ok
+test add_two_0 ... ok
+test _0 ... ok
 
-result: FAILED. 1 passed; 1 failed; 0 ignored
-~~~
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured
+```
 
-### Running a subset of tests
+Now we have all three kinds of tests running! Note the names of the
+documentation tests: the `_0` is generated for the module test, and `add_two_0`
+for the function test. These will auto increment with names like `add_two_1` as
+you add more examples.
 
-Using a plain string:
+# Benchmark tests
 
-~~~console
-$ mytests mytest23
+Rust also supports benchmark tests, which can test the performance of your
+code. Let's make our `src/lib.rs` look like this (comments elided):
 
-running 1 tests
-running driver::tests::mytest23 ... ok
+```{rust,ignore}
+#![feature(globs)]
 
-result: ok. 1 passed; 0 failed; 0 ignored
-~~~
-
-Using some regular expression features:
-
-~~~console
-$ mytests 'mytest[145]'
-
-running 13 tests
-running driver::tests::mytest1 ... ok
-running driver::tests::mytest4 ... ok
-running driver::tests::mytest5 ... ok
-running driver::tests::mytest10 ... ignored
-... snip ...
-running driver::tests::mytest19 ... ok
-
-result: ok. 13 passed; 0 failed; 1 ignored
-~~~
-
-# Microbenchmarking
-
-The test runner also understands a simple form of benchmark execution.
-Benchmark functions are marked with the `#[bench]` attribute, rather
-than `#[test]`, and have a different form and meaning. They are
-compiled along with `#[test]` functions when a crate is compiled with
-`--test`, but they are not run by default. To run the benchmark
-component of your testsuite, pass `--bench` to the compiled test
-runner.
-
-The type signature of a benchmark function differs from a unit test:
-it takes a mutable reference to type
-`test::Bencher`. Inside the benchmark function, any
-time-variable or "setup" code should execute first, followed by a call
-to `iter` on the benchmark harness, passing a closure that contains
-the portion of the benchmark you wish to actually measure the
-per-iteration speed of.
-
-For benchmarks relating to processing/generating data, one can set the
-`bytes` field to the number of bytes consumed/produced in each
-iteration; this will be used to show the throughput of the benchmark.
-This must be the amount used in each iteration, *not* the total
-amount.
-
-For example:
-
-~~~test_harness
 extern crate test;
 
-use test::Bencher;
-
-#[bench]
-fn bench_sum_1024_ints(b: &mut Bencher) {
-    let v = Vec::from_fn(1024, |n| n);
-    b.iter(|| v.iter().fold(0, |old, new| old + *new));
+pub fn add_two(a: i32) -> i32 {
+    a + 2
 }
 
-#[bench]
-fn initialise_a_vector(b: &mut Bencher) {
-    b.iter(|| Vec::from_elem(1024, 0u64));
-    b.bytes = 1024 * 8;
-}
-~~~
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use test::Bencher;
 
-The benchmark runner will calibrate measurement of the benchmark
-function to run the `iter` block "enough" times to get a reliable
-measure of the per-iteration speed.
+    #[test]
+    fn it_works() {
+        assert_eq!(4, add_two(2));
+    }
+
+    #[bench]
+    fn bench_add_two(b: &mut Bencher) {
+        b.iter(|| add_two(2));
+    }
+}
+```
+
+We've imported the `test` crate, which contains our benchmarking support.
+We have a new function as well, with the `bench` attribute. Unlike regular
+tests, which take no arguments, benchmark tests take a `&mut Bencher`. This
+`Bencher` provides an `iter` method, which takes a closure. This closure
+contains the code we'd like to benchmark.
+
+We can run benchmark tests with `cargo bench`:
+
+```bash
+$ cargo bench
+   Compiling adder v0.0.1 (file:///home/steve/tmp/adder)
+     Running target/release/adder-91b3e234d4ed382a
+
+running 2 tests
+test tests::it_works ... ignored
+test tests::bench_add_two ... bench:         1 ns/iter (+/- 0)
+
+test result: ok. 0 passed; 0 failed; 1 ignored; 1 measured
+```
+
+Our non-benchmark test was ignored. You may have noticed that `cargo bench`
+takes a bit longer than `cargo test`. This is because Rust runs our benchmark
+a number of times, and then takes the average. Because we're doing so little
+work in this example, we have a `1 ns/iter (+/- 0)`, but this would show
+the variance if there was one.
 
 Advice on writing benchmarks:
 
-  - Move setup code outside the `iter` loop; only put the part you
-    want to measure inside
-  - Make the code do "the same thing" on each iteration; do not
-    accumulate or change state
-  - Make the outer function idempotent too; the benchmark runner is
-    likely to run it many times
-  - Make the inner `iter` loop short and fast so benchmark runs are
-    fast and the calibrator can adjust the run-length at fine
-    resolution
-  - Make the code in the `iter` loop do something simple, to assist in
-    pinpointing performance improvements (or regressions)
 
-To run benchmarks, pass the `--bench` flag to the compiled
-test-runner. Benchmarks are compiled-in but not executed by default.
+* Move setup code outside the `iter` loop; only put the part you want to measure inside
+* Make the code do "the same thing" on each iteration; do not accumulate or change state
+* Make the outer function idempotent too; the benchmark runner is likely to run
+  it many times
+*  Make the inner `iter` loop short and fast so benchmark runs are fast and the
+   calibrator can adjust the run-length at fine resolution
+* Make the code in the `iter` loop do something simple, to assist in pinpointing
+  performance improvements (or regressions)
 
-~~~console
-$ rustc mytests.rs -O --test
-$ mytests --bench
+There's another tricky part to writing benchmarks: benchmarks compiled with
+optimizations activated can be dramatically changed by the optimizer so that
+the benchmark is no longer benchmarking what one expects. For example, the
+compiler might recognize that some calculation has no external effects and
+remove it entirely.
 
-running 2 tests
-test bench_sum_1024_ints ... bench: 709 ns/iter (+/- 82)
-test initialise_a_vector ... bench: 424 ns/iter (+/- 99) = 19320 MB/s
-
-test result: ok. 0 passed; 0 failed; 0 ignored; 2 measured
-~~~
-
-## Benchmarks and the optimizer
-
-Benchmarks compiled with optimizations activated can be dramatically
-changed by the optimizer so that the benchmark is no longer
-benchmarking what one expects. For example, the compiler might
-recognize that some calculation has no external effects and remove
-it entirely.
-
-~~~test_harness
+```{rust,ignore}
 extern crate test;
 use test::Bencher;
 
@@ -287,36 +519,36 @@ fn bench_xor_1000_ints(b: &mut Bencher) {
         range(0u, 1000).fold(0, |old, new| old ^ new);
     });
 }
-~~~
+```
 
 gives the following results
 
-~~~console
+```text
 running 1 test
 test bench_xor_1000_ints ... bench:         0 ns/iter (+/- 0)
 
 test result: ok. 0 passed; 0 failed; 0 ignored; 1 measured
-~~~
+```
 
-The benchmarking runner offers two ways to avoid this. Either, the
-closure that the `iter` method receives can return an arbitrary value
-which forces the optimizer to consider the result used and ensures it
-cannot remove the computation entirely. This could be done for the
-example above by adjusting the `b.iter` call to
+The benchmarking runner offers two ways to avoid this. Either, the closure that
+the `iter` method receives can return an arbitrary value which forces the
+optimizer to consider the result used and ensures it cannot remove the
+computation entirely. This could be done for the example above by adjusting the
+`b.iter` call to
 
-~~~
+```rust
 # struct X; impl X { fn iter<T>(&self, _: || -> T) {} } let b = X;
 b.iter(|| {
     // note lack of `;` (could also use an explicit `return`).
     range(0u, 1000).fold(0, |old, new| old ^ new)
 });
-~~~
+```
 
-Or, the other option is to call the generic `test::black_box`
-function, which is an opaque "black box" to the optimizer and so
-forces it to consider any argument as used.
+Or, the other option is to call the generic `test::black_box` function, which
+is an opaque "black box" to the optimizer and so forces it to consider any
+argument as used.
 
-~~~
+```rust
 extern crate test;
 
 # fn main() {
@@ -325,54 +557,17 @@ b.iter(|| {
     test::black_box(range(0u, 1000).fold(0, |old, new| old ^ new));
 });
 # }
-~~~
+```
 
-Neither of these read or modify the value, and are very cheap for
-small values. Larger values can be passed indirectly to reduce
-overhead (e.g. `black_box(&huge_struct)`).
+Neither of these read or modify the value, and are very cheap for small values.
+Larger values can be passed indirectly to reduce overhead (e.g.
+`black_box(&huge_struct)`).
 
-Performing either of the above changes gives the following
-benchmarking results
+Performing either of the above changes gives the following benchmarking results
 
-~~~console
+```text
 running 1 test
-test bench_xor_1000_ints ... bench:       375 ns/iter (+/- 148)
+test bench_xor_1000_ints ... bench:       1 ns/iter (+/- 0)
 
 test result: ok. 0 passed; 0 failed; 0 ignored; 1 measured
-~~~
-
-However, the optimizer can still modify a testcase in an undesirable
-manner even when using either of the above. Benchmarks can be checked
-by hand by looking at the output of the compiler using the `--emit=ir`
-(for LLVM IR), `--emit=asm` (for assembly) or compiling normally and
-using any method for examining object code.
-
-## Saving and ratcheting metrics
-
-When running benchmarks or other tests, the test runner can record
-per-test "metrics". Each metric is a scalar `f64` value, plus a noise
-value which represents uncertainty in the measurement. By default, all
-`#[bench]` benchmarks are recorded as metrics, which can be saved as
-JSON in an external file for further reporting.
-
-In addition, the test runner supports _ratcheting_ against a metrics
-file. Ratcheting is like saving metrics, except that after each run,
-if the output file already exists the results of the current run are
-compared against the contents of the existing file, and any regression
-_causes the testsuite to fail_. If the comparison passes -- if all
-metrics stayed the same (within noise) or improved -- then the metrics
-file is overwritten with the new values. In this way, a metrics file
-in your workspace can be used to ensure your work does not regress
-performance.
-
-Test runners take 3 options that are relevant to metrics:
-
-  - `--save-metrics=<file.json>` will save the metrics from a test run
-    to `file.json`
-  - `--ratchet-metrics=<file.json>` will ratchet the metrics against
-    the `file.json`
-  - `--ratchet-noise-percent=N` will override the noise measurements
-    in `file.json`, and consider a metric change less than `N%` to be
-    noise. This can be helpful if you are testing in a noisy
-    environment where the benchmark calibration loop cannot acquire a
-    clear enough signal.
+```
