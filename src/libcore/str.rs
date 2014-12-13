@@ -18,7 +18,6 @@
 
 pub use self::Utf16Item::*;
 pub use self::Searcher::{Naive, TwoWay, TwoWayLong};
-
 use char::Char;
 use char;
 use cmp::{Eq, mod};
@@ -2242,7 +2241,7 @@ impl StrPrelude for str {
 
     #[inline]
     fn char_at_reverse(&self, i: uint) -> char {
-        self.char_range_at_reverse(i).ch
+        self.char_range_at_reverse(self.len() - i + 1).ch
     }
 
     #[inline]
