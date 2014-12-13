@@ -124,7 +124,10 @@ pub fn probe<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     // it ride, although it's really not great, and in fact could I
     // think cause spurious errors. Really though this part should
     // take place in the `fcx.infcx().probe` below.
-    let steps = create_steps(fcx, span, self_ty);
+    let steps = match create_steps(fcx, span, self_ty) {
+        Some(steps) => steps,
+        None => return Err(NoMatch(Vec::new())),
+    };
 
     // Create a list of simplified self types, if we can.
     let mut simplified_steps = Vec::new();
@@ -160,7 +163,7 @@ pub fn probe<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 fn create_steps<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                           span: Span,
                           self_ty: Ty<'tcx>)
-                          -> Vec<CandidateStep<'tcx>> {
+                          -> Option<Vec<CandidateStep<'tcx>>> {
     let mut steps = Vec::new();
 
     let (fully_dereferenced_ty, dereferences, _) =
@@ -179,11 +182,11 @@ fn create_steps<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 adjustment: AutoUnsizeLength(dereferences, len),
             });
         }
-        _ => {
-        }
+        ty::ty_err => return None,
+        _ => (),
     }
 
-    return steps;
+    Some(steps)
 }
 
 impl<'a,'tcx> ProbeContext<'a,'tcx> {
