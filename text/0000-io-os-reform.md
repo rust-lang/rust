@@ -1230,7 +1230,7 @@ and the signatures will be updated to follow this RFC's
 * `set_var` (renamed from `setenv`): takes two `IntoOsStrBuf`-bounded values.
 * `remove_var` (renamed from `unsetenv`): takes a `IntoOsStrBuf`-bounded value.
 
-* `join_paths`: take an `IntoIterator<T>` where `T: IntoOsStrBuf`, yield a `Result<OsString, JoinPathsError>`.
+* `join_paths`: take an `IntoIterator<T>` where `T: IntoOsStrBuf`, yield a `Result<OsStrBuf, JoinPathsError>`.
 * `split_paths` take a `IntoOsStrBuf`, yield an `Iterator<Path>`.
 
 **Working directory**:
