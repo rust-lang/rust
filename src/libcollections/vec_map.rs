@@ -20,6 +20,7 @@ use core::fmt;
 use core::iter;
 use core::iter::{Enumerate, FilterMap};
 use core::mem::replace;
+use core::ops::FnOnce;
 
 use hash::{Hash, Writer};
 use {vec, slice};
@@ -141,14 +142,18 @@ impl<V> VecMap<V> {
     /// The iterator's element type is `uint`.
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn keys<'r>(&'r self) -> Keys<'r, V> {
-        self.iter().map(|(k, _v)| k)
+        fn first<A, B>((a, _): (A, B)) -> A { a }
+
+        self.iter().map(first)
     }
 
     /// Returns an iterator visiting all values in ascending order by the keys.
     /// The iterator's element type is `&'r V`.
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn values<'r>(&'r self) -> Values<'r, V> {
-        self.iter().map(|(_k, v)| v)
+        fn second<A, B>((_, b): (A, B)) -> B { b }
+
+        self.iter().map(second)
     }
 
     /// Returns an iterator visiting all key-value pairs in ascending order by the keys.
@@ -230,10 +235,12 @@ impl<V> VecMap<V> {
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn into_iter(&mut self) -> MoveItems<V> {
-        let values = replace(&mut self.v, vec!());
-        values.into_iter().enumerate().filter_map(|(i, v)| {
+        fn filter<A>((i, v): (uint, Option<A>)) -> Option<(uint, A)> {
             v.map(|v| (i, v))
-        })
+        }
+
+        let values = replace(&mut self.v, vec!());
+        values.into_iter().enumerate().filter_map(filter)
     }
 
     /// Return the number of elements in the map.
@@ -446,8 +453,8 @@ impl<V:Clone> VecMap<V> {
     /// assert!(!map.update(1, vec![3i, 4], |mut old, new| { old.extend(new.into_iter()); old }));
     /// assert_eq!(map[1], vec![1i, 2, 3, 4]);
     /// ```
-    pub fn update(&mut self, key: uint, newval: V, ff: |V, V| -> V) -> bool {
-        self.update_with_key(key, newval, |_k, v, v1| ff(v,v1))
+    pub fn update<F>(&mut self, key: uint, newval: V, ff: F) -> bool where F: FnOnce(V, V) -> V {
+        self.update_with_key(key, newval, move |_k, v, v1| ff(v,v1))
     }
 
     /// Updates a value in the map. If the key already exists in the map,
@@ -470,11 +477,9 @@ impl<V:Clone> VecMap<V> {
     /// assert!(!map.update_with_key(7, 20, |key, old, new| (old + new) % key));
     /// assert_eq!(map[7], 2);
     /// ```
-    pub fn update_with_key(&mut self,
-                           key: uint,
-                           val: V,
-                           ff: |uint, V, V| -> V)
-                           -> bool {
+    pub fn update_with_key<F>(&mut self, key: uint, val: V, ff: F) -> bool where
+        F: FnOnce(uint, V, V) -> V
+    {
         let new_val = match self.get(&key) {
             None => val,
             Some(orig) => ff(key, (*orig).clone(), val)
@@ -620,16 +625,18 @@ iterator!(impl MutEntries -> (uint, &'a mut V), as_mut)
 double_ended_iterator!(impl MutEntries -> (uint, &'a mut V), as_mut)
 
 /// Forward iterator over the keys of a map
-pub type Keys<'a, V> =
-    iter::Map<'static, (uint, &'a V), uint, Entries<'a, V>>;
+pub type Keys<'a, V> = iter::Map<(uint, &'a V), uint, Entries<'a, V>, fn((uint, &'a V)) -> uint>;
 
 /// Forward iterator over the values of a map
 pub type Values<'a, V> =
-    iter::Map<'static, (uint, &'a V), &'a V, Entries<'a, V>>;
+    iter::Map<(uint, &'a V), &'a V, Entries<'a, V>, fn((uint, &'a V)) -> &'a V>;
 
 /// Iterator over the key-value pairs of a map, the iterator consumes the map
-pub type MoveItems<V> =
-    FilterMap<'static, (uint, Option<V>), (uint, V), Enumerate<vec::MoveItems<Option<V>>>>;
+pub type MoveItems<V> = FilterMap<
+    (uint, Option<V>),
+    (uint, V),
+    Enumerate<vec::MoveItems<Option<V>>>,
+    fn((uint, Option<V>)) -> Option<(uint, V)>>;
 
 #[cfg(test)]
 mod test_map {

@@ -333,11 +333,13 @@ pub fn combine_substructure<'a>(f: CombineSubstructureFunc<'a>)
 
 
 impl<'a> TraitDef<'a> {
-    pub fn expand(&self,
-                  cx: &mut ExtCtxt,
-                  mitem: &ast::MetaItem,
-                  item: &ast::Item,
-                  push: |P<ast::Item>|) {
+    pub fn expand<F>(&self,
+                     cx: &mut ExtCtxt,
+                     mitem: &ast::MetaItem,
+                     item: &ast::Item,
+                     push: F) where
+        F: FnOnce(P<ast::Item>),
+    {
         let newitem = match item.node {
             ast::ItemStruct(ref struct_def, ref generics) => {
                 self.expand_struct_def(cx,
@@ -1309,14 +1311,16 @@ impl<'a> TraitDef<'a> {
 
 /// Fold the fields. `use_foldl` controls whether this is done
 /// left-to-right (`true`) or right-to-left (`false`).
-pub fn cs_fold(use_foldl: bool,
-               f: |&mut ExtCtxt, Span, P<Expr>, P<Expr>, &[P<Expr>]| -> P<Expr>,
-               base: P<Expr>,
-               enum_nonmatch_f: EnumNonMatchCollapsedFunc,
-               cx: &mut ExtCtxt,
-               trait_span: Span,
-               substructure: &Substructure)
-               -> P<Expr> {
+pub fn cs_fold<F>(use_foldl: bool,
+                  mut f: F,
+                  base: P<Expr>,
+                  enum_nonmatch_f: EnumNonMatchCollapsedFunc,
+                  cx: &mut ExtCtxt,
+                  trait_span: Span,
+                  substructure: &Substructure)
+                  -> P<Expr> where
+    F: FnMut(&mut ExtCtxt, Span, P<Expr>, P<Expr>, &[P<Expr>]) -> P<Expr>,
+{
     match *substructure.fields {
         EnumMatching(_, _, ref all_fields) | Struct(ref all_fields) => {
             if use_foldl {
@@ -1355,12 +1359,14 @@ pub fn cs_fold(use_foldl: bool,
 ///              self_2.method(__arg_1_2, __arg_2_2)])
 /// ```
 #[inline]
-pub fn cs_same_method(f: |&mut ExtCtxt, Span, Vec<P<Expr>>| -> P<Expr>,
-                      enum_nonmatch_f: EnumNonMatchCollapsedFunc,
-                      cx: &mut ExtCtxt,
-                      trait_span: Span,
-                      substructure: &Substructure)
-                      -> P<Expr> {
+pub fn cs_same_method<F>(f: F,
+                         enum_nonmatch_f: EnumNonMatchCollapsedFunc,
+                         cx: &mut ExtCtxt,
+                         trait_span: Span,
+                         substructure: &Substructure)
+                         -> P<Expr> where
+    F: FnOnce(&mut ExtCtxt, Span, Vec<P<Expr>>) -> P<Expr>,
+{
     match *substructure.fields {
         EnumMatching(_, _, ref all_fields) | Struct(ref all_fields) => {
             // call self_n.method(other_1_n, other_2_n, ...)
@@ -1388,14 +1394,16 @@ pub fn cs_same_method(f: |&mut ExtCtxt, Span, Vec<P<Expr>>| -> P<Expr>,
 /// fields. `use_foldl` controls whether this is done left-to-right
 /// (`true`) or right-to-left (`false`).
 #[inline]
-pub fn cs_same_method_fold(use_foldl: bool,
-                           f: |&mut ExtCtxt, Span, P<Expr>, P<Expr>| -> P<Expr>,
-                           base: P<Expr>,
-                           enum_nonmatch_f: EnumNonMatchCollapsedFunc,
-                           cx: &mut ExtCtxt,
-                           trait_span: Span,
-                           substructure: &Substructure)
-                           -> P<Expr> {
+pub fn cs_same_method_fold<F>(use_foldl: bool,
+                              mut f: F,
+                              base: P<Expr>,
+                              enum_nonmatch_f: EnumNonMatchCollapsedFunc,
+                              cx: &mut ExtCtxt,
+                              trait_span: Span,
+                              substructure: &Substructure)
+                              -> P<Expr> where
+    F: FnMut(&mut ExtCtxt, Span, P<Expr>, P<Expr>) -> P<Expr>,
+{
     cs_same_method(
         |cx, span, vals| {
             if use_foldl {

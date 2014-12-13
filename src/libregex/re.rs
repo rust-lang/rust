@@ -429,10 +429,11 @@ impl Regex {
     ///
     /// ```rust
     /// # #![feature(phase)]
+    /// # #![feature(unboxed_closures)]
     /// # extern crate regex; #[phase(plugin)] extern crate regex_macros;
     /// # use regex::Captures; fn main() {
     /// let re = regex!(r"([^,\s]+),\s+(\S+)");
-    /// let result = re.replace("Springsteen, Bruce", |caps: &Captures| {
+    /// let result = re.replace("Springsteen, Bruce", |&: caps: &Captures| {
     ///     format!("{} {}", caps.at(2), caps.at(1))
     /// });
     /// assert_eq!(result.as_slice(), "Bruce Springsteen");
@@ -585,7 +586,7 @@ impl<'t> Replacer for &'t str {
     }
 }
 
-impl<'t> Replacer for |&Captures|: 't -> String {
+impl<F> Replacer for F where F: FnMut(&Captures) -> String {
     fn reg_replace<'a>(&'a mut self, caps: &Captures) -> CowString<'a> {
         (*self)(caps).into_cow()
     }
@@ -767,7 +768,7 @@ impl<'t> Captures<'t> {
         // How evil can you get?
         // FIXME: Don't use regexes for this. It's completely unnecessary.
         let re = Regex::new(r"(^|[^$]|\b)\$(\w+)").unwrap();
-        let text = re.replace_all(text, |refs: &Captures| -> String {
+        let text = re.replace_all(text, |&mut: refs: &Captures| -> String {
             let (pre, name) = (refs.at(1), refs.at(2));
             format!("{}{}", pre,
                     match from_str::<uint>(name.as_slice()) {

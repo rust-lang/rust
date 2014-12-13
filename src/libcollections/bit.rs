@@ -174,7 +174,7 @@ impl<'a> Iterator<(uint, u32)> for MaskWords<'a> {
 
 impl Bitv {
     #[inline]
-    fn process(&mut self, other: &Bitv, op: |u32, u32| -> u32) -> bool {
+    fn process<F>(&mut self, other: &Bitv, mut op: F) -> bool where F: FnMut(u32, u32) -> u32 {
         let len = other.storage.len();
         assert_eq!(self.storage.len(), len);
         let mut changed = false;
@@ -816,7 +816,7 @@ pub fn from_bytes(bytes: &[u8]) -> Bitv {
 /// let bv = from_fn(5, |i| { i % 2 == 0 });
 /// assert!(bv.eq_vec(&[true, false, true, false, true]));
 /// ```
-pub fn from_fn(len: uint, f: |index: uint| -> bool) -> Bitv {
+pub fn from_fn<F>(len: uint, mut f: F) -> Bitv where F: FnMut(uint) -> bool {
     let mut bitv = Bitv::with_capacity(len, false);
     for i in range(0u, len) {
         bitv.set(i, f(i));
@@ -1182,7 +1182,7 @@ impl BitvSet {
     }
 
     #[inline]
-    fn other_op(&mut self, other: &BitvSet, f: |u32, u32| -> u32) {
+    fn other_op<F>(&mut self, other: &BitvSet, mut f: F) where F: FnMut(u32, u32) -> u32 {
         // Expand the vector if necessary
         self.reserve(other.capacity());
 
@@ -1277,10 +1277,12 @@ impl BitvSet {
     #[inline]
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn union<'a>(&'a self, other: &'a BitvSet) -> TwoBitPositions<'a> {
+        fn or(w1: u32, w2: u32) -> u32 { w1 | w2 }
+
         TwoBitPositions {
             set: self,
             other: other,
-            merge: |w1, w2| w1 | w2,
+            merge: or,
             current_word: 0u32,
             next_idx: 0u
         }
@@ -1306,11 +1308,13 @@ impl BitvSet {
     #[inline]
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn intersection<'a>(&'a self, other: &'a BitvSet) -> Take<TwoBitPositions<'a>> {
+        fn bitand(w1: u32, w2: u32) -> u32 { w1 & w2 }
+
         let min = cmp::min(self.capacity(), other.capacity());
         TwoBitPositions {
             set: self,
             other: other,
-            merge: |w1, w2| w1 & w2,
+            merge: bitand,
             current_word: 0u32,
             next_idx: 0
         }.take(min)
@@ -1343,10 +1347,12 @@ impl BitvSet {
     #[inline]
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn difference<'a>(&'a self, other: &'a BitvSet) -> TwoBitPositions<'a> {
+        fn diff(w1: u32, w2: u32) -> u32 { w1 & !w2 }
+
         TwoBitPositions {
             set: self,
             other: other,
-            merge: |w1, w2| w1 & !w2,
+            merge: diff,
             current_word: 0u32,
             next_idx: 0
         }
@@ -1373,10 +1379,12 @@ impl BitvSet {
     #[inline]
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn symmetric_difference<'a>(&'a self, other: &'a BitvSet) -> TwoBitPositions<'a> {
+        fn bitxor(w1: u32, w2: u32) -> u32 { w1 ^ w2 }
+
         TwoBitPositions {
             set: self,
             other: other,
-            merge: |w1, w2| w1 ^ w2,
+            merge: bitxor,
             current_word: 0u32,
             next_idx: 0
         }
@@ -1614,7 +1622,7 @@ pub struct BitPositions<'a> {
 pub struct TwoBitPositions<'a> {
     set: &'a BitvSet,
     other: &'a BitvSet,
-    merge: |u32, u32|: 'a -> u32,
+    merge: fn(u32, u32) -> u32,
     current_word: u32,
     next_idx: uint
 }

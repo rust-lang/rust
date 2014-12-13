@@ -113,15 +113,16 @@ pub fn immediate_rvalue_bcx<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 /// it. The memory will be dropped upon exit from `scope`. The callback `populate` should
 /// initialize the memory. If `zero` is true, the space will be zeroed when it is allocated; this
 /// is not necessary unless `bcx` does not dominate the end of `scope`.
-pub fn lvalue_scratch_datum<'blk, 'tcx, A>(bcx: Block<'blk, 'tcx>,
-                                           ty: Ty<'tcx>,
-                                           name: &str,
-                                           zero: bool,
-                                           scope: cleanup::ScopeId,
-                                           arg: A,
-                                           populate: |A, Block<'blk, 'tcx>, ValueRef|
-                                                      -> Block<'blk, 'tcx>)
-                                          -> DatumBlock<'blk, 'tcx, Lvalue> {
+pub fn lvalue_scratch_datum<'blk, 'tcx, A, F>(bcx: Block<'blk, 'tcx>,
+                                              ty: Ty<'tcx>,
+                                              name: &str,
+                                              zero: bool,
+                                              scope: cleanup::ScopeId,
+                                              arg: A,
+                                              populate: F)
+                                              -> DatumBlock<'blk, 'tcx, Lvalue> where
+    F: FnOnce(A, Block<'blk, 'tcx>, ValueRef) -> Block<'blk, 'tcx>,
+{
     let scratch = if zero {
         alloca_zeroed(bcx, ty, name)
     } else {
@@ -339,10 +340,10 @@ impl<'tcx> Datum<'tcx, Rvalue> {
 /// here since we can `match self.kind` rather than having to implement
 /// generic methods in `KindOps`.)
 impl<'tcx> Datum<'tcx, Expr> {
-    fn match_kind<R>(self,
-                     if_lvalue: |Datum<'tcx, Lvalue>| -> R,
-                     if_rvalue: |Datum<'tcx, Rvalue>| -> R)
-                     -> R {
+    fn match_kind<R, F, G>(self, if_lvalue: F, if_rvalue: G) -> R where
+        F: FnOnce(Datum<'tcx, Lvalue>) -> R,
+        G: FnOnce(Datum<'tcx, Rvalue>) -> R,
+    {
         let Datum { val, ty, kind } = self;
         match kind {
             LvalueExpr => if_lvalue(Datum::new(val, ty, Lvalue)),
@@ -455,9 +456,11 @@ impl<'tcx> Datum<'tcx, Lvalue> {
     // datum may also be unsized _without the size information_. It is the
     // callers responsibility to package the result in some way to make a valid
     // datum in that case (e.g., by making a fat pointer or opened pair).
-    pub fn get_element<'blk>(&self, bcx: Block<'blk, 'tcx>, ty: Ty<'tcx>,
-                             gep: |ValueRef| -> ValueRef)
-                             -> Datum<'tcx, Lvalue> {
+    pub fn get_element<'blk, F>(&self, bcx: Block<'blk, 'tcx>, ty: Ty<'tcx>,
+                                gep: F)
+                                -> Datum<'tcx, Lvalue> where
+        F: FnOnce(ValueRef) -> ValueRef,
+    {
         let val = match self.ty.sty {
             _ if ty::type_is_sized(bcx.tcx(), self.ty) => gep(self.val),
             ty::ty_open(_) => {

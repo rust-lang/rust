@@ -40,7 +40,7 @@ use kinds::Copy;
 use libc::{c_void, c_int};
 use libc;
 use boxed::Box;
-use ops::Drop;
+use ops::{Drop, FnOnce};
 use option::Option;
 use option::Option::{Some, None};
 use os;
@@ -163,6 +163,7 @@ pub fn getcwd() -> IoResult<Path> {
 pub mod windoze {
     use libc::types::os::arch::extra::DWORD;
     use libc;
+    use ops::FnMut;
     use option::Option;
     use option::Option::None;
     use option;
@@ -172,8 +173,9 @@ pub mod windoze {
     use str::StrPrelude;
     use vec::Vec;
 
-    pub fn fill_utf16_buf_and_decode(f: |*mut u16, DWORD| -> DWORD)
-        -> Option<String> {
+    pub fn fill_utf16_buf_and_decode<F>(mut f: F) -> Option<String> where
+        F: FnMut(*mut u16, DWORD) -> DWORD,
+    {
 
         unsafe {
             let mut n = TMPBUF_SZ as DWORD;
@@ -212,7 +214,9 @@ pub mod windoze {
 Accessing environment variables is not generally threadsafe.
 Serialize access through a global lock.
 */
-fn with_env_lock<T>(f: || -> T) -> T {
+fn with_env_lock<T, F>(f: F) -> T where
+    F: FnOnce() -> T,
+{
     use sync::{StaticMutex, MUTEX_INIT};
 
     static LOCK: StaticMutex = MUTEX_INIT;

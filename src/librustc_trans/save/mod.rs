@@ -79,7 +79,9 @@ struct DxrVisitor<'l, 'tcx: 'l> {
 }
 
 impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
-    fn nest(&mut self, scope_id: NodeId, f: |&mut DxrVisitor<'l, 'tcx>|) {
+    fn nest<F>(&mut self, scope_id: NodeId, f: F) where
+        F: FnOnce(&mut DxrVisitor<'l, 'tcx>),
+    {
         let parent_scope = self.cur_scope;
         self.cur_scope = scope_id;
         f(self);

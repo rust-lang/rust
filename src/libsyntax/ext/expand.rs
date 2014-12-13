@@ -238,11 +238,13 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
 /// of expansion and the mark which must be applied to the result.
 /// Our current interface doesn't allow us to apply the mark to the
 /// result until after calling make_expr, make_items, etc.
-fn expand_mac_invoc<T>(mac: ast::Mac, span: codemap::Span,
-                       parse_thunk: |Box<MacResult>|->Option<T>,
-                       mark_thunk: |T,Mrk|->T,
-                       fld: &mut MacroExpander)
-                       -> Option<T>
+fn expand_mac_invoc<T, F, G>(mac: ast::Mac, span: codemap::Span,
+                             parse_thunk: F,
+                             mark_thunk: G,
+                             fld: &mut MacroExpander)
+                             -> Option<T> where
+    F: FnOnce(Box<MacResult>) -> Option<T>,
+    G: FnOnce(T, Mrk) -> T,
 {
     match mac.node {
         // it would almost certainly be cleaner to pass the whole

@@ -17,11 +17,13 @@ use ext::deriving::generic::ty::*;
 use parse::token::InternedString;
 use ptr::P;
 
-pub fn expand_deriving_hash(cx: &mut ExtCtxt,
-                            span: Span,
-                            mitem: &MetaItem,
-                            item: &Item,
-                            push: |P<Item>|) {
+pub fn expand_deriving_hash<F>(cx: &mut ExtCtxt,
+                               span: Span,
+                               mitem: &MetaItem,
+                               item: &Item,
+                               push: F) where
+    F: FnOnce(P<Item>),
+{
 
     let (path, generics, args) = if cx.ecfg.deriving_hash_type_parameter {
         (Path::new_(vec!("std", "hash", "Hash"), None,

@@ -165,7 +165,9 @@ impl<'a> State<'a> {
     }
 }
 
-pub fn to_string(f: |&mut State| -> IoResult<()>) -> String {
+pub fn to_string<F>(f: F) -> String where
+    F: FnOnce(&mut State) -> IoResult<()>,
+{
     use std::raw::TraitObject;
     let mut s = rust_printer(box Vec::new());
     f(&mut s).unwrap();
@@ -426,8 +428,10 @@ pub mod with_hygiene {
 
     // This function is the trick that all the rest of the routines
     // hang on.
-    pub fn to_string_hyg(f: |&mut super::State| -> IoResult<()>) -> String {
-        super::to_string(|s| {
+    pub fn to_string_hyg<F>(f: F) -> String where
+        F: FnOnce(&mut super::State) -> IoResult<()>,
+    {
+        super::to_string(move |s| {
             s.encode_idents_with_hygiene = true;
             f(s)
         })
@@ -580,9 +584,9 @@ impl<'a> State<'a> {
         word(&mut self.s, "*/")
     }
 
-    pub fn commasep<T>(&mut self, b: Breaks, elts: &[T],
-                       op: |&mut State, &T| -> IoResult<()>)
-        -> IoResult<()> {
+    pub fn commasep<T, F>(&mut self, b: Breaks, elts: &[T], mut op: F) -> IoResult<()> where
+        F: FnMut(&mut State, &T) -> IoResult<()>,
+    {
         try!(self.rbox(0u, b));
         let mut first = true;
         for elt in elts.iter() {
@@ -593,12 +597,14 @@ impl<'a> State<'a> {
     }
 
 
-    pub fn commasep_cmnt<T>(
-                         &mut self,
-                         b: Breaks,
-                         elts: &[T],
-                         op: |&mut State, &T| -> IoResult<()>,
-                         get_span: |&T| -> codemap::Span) -> IoResult<()> {
+    pub fn commasep_cmnt<T, F, G>(&mut self,
+                                  b: Breaks,
+                                  elts: &[T],
+                                  mut op: F,
+                                  mut get_span: G) -> IoResult<()> where
+        F: FnMut(&mut State, &T) -> IoResult<()>,
+        G: FnMut(&T) -> codemap::Span,
+    {
         try!(self.rbox(0u, b));
         let len = elts.len();
         let mut i = 0u;

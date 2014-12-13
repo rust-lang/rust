@@ -286,11 +286,8 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
         }
     }
 
-    fn extract_trait_ref<R>(&mut self,
-                            self_ty: Ty<'tcx>,
-                            closure: |&mut ConfirmContext<'a,'tcx>,
-                                      Ty<'tcx>, &ty::TyTrait<'tcx>| -> R)
-                            -> R
+    fn extract_trait_ref<R, F>(&mut self, self_ty: Ty<'tcx>, mut closure: F) -> R where
+        F: FnMut(&mut ConfirmContext<'a, 'tcx>, Ty<'tcx>, &ty::TyTrait<'tcx>) -> R,
     {
         // If we specified that this is an object method, then the
         // self-type ought to be something that can be dereferenced to
@@ -665,9 +662,11 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
     }
 }
 
-fn wrap_autoref<'tcx>(mut deref: ty::AutoDerefRef<'tcx>,
-                      base_fn: |Option<Box<ty::AutoRef<'tcx>>>| -> ty::AutoRef<'tcx>)
-                      -> ty::AutoDerefRef<'tcx> {
+fn wrap_autoref<'tcx, F>(mut deref: ty::AutoDerefRef<'tcx>,
+                         base_fn: F)
+                         -> ty::AutoDerefRef<'tcx> where
+    F: FnOnce(Option<Box<ty::AutoRef<'tcx>>>) -> ty::AutoRef<'tcx>,
+{
     let autoref = mem::replace(&mut deref.autoref, None);
     let autoref = autoref.map(|r| box r);
     deref.autoref = Some(base_fn(autoref));

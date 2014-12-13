@@ -156,7 +156,7 @@ use result::Result::{Ok, Err};
 use slice;
 use slice::AsSlice;
 use clone::Clone;
-use ops::Deref;
+use ops::{Deref, FnOnce};
 
 // Note that this is not a lang item per se, but it has a hidden dependency on
 // `Iterator`, which is one. The compiler assumes that the `next` method of
@@ -389,7 +389,7 @@ impl<T> Option<T> {
     /// ```
     #[inline]
     #[unstable = "waiting for conventions"]
-    pub fn unwrap_or_else(self, f: || -> T) -> T {
+    pub fn unwrap_or_else<F: FnOnce() -> T>(self, f: F) -> T {
         match self {
             Some(x) => x,
             None => f()
@@ -413,7 +413,7 @@ impl<T> Option<T> {
     /// ```
     #[inline]
     #[unstable = "waiting for unboxed closures"]
-    pub fn map<U>(self, f: |T| -> U) -> Option<U> {
+    pub fn map<U, F: FnOnce(T) -> U>(self, f: F) -> Option<U> {
         match self {
             Some(x) => Some(f(x)),
             None => None
@@ -433,7 +433,7 @@ impl<T> Option<T> {
     /// ```
     #[inline]
     #[unstable = "waiting for unboxed closures"]
-    pub fn map_or<U>(self, def: U, f: |T| -> U) -> U {
+    pub fn map_or<U, F: FnOnce(T) -> U>(self, def: U, f: F) -> U {
         match self {
             Some(t) => f(t),
             None => def
@@ -455,7 +455,7 @@ impl<T> Option<T> {
     /// ```
     #[inline]
     #[unstable = "waiting for unboxed closures"]
-    pub fn map_or_else<U>(self, def: || -> U, f: |T| -> U) -> U {
+    pub fn map_or_else<U, D: FnOnce() -> U, F: FnOnce(T) -> U>(self, def: D, f: F) -> U {
         match self {
             Some(t) => f(t),
             None => def()
@@ -497,7 +497,7 @@ impl<T> Option<T> {
     /// ```
     #[inline]
     #[experimental]
-    pub fn ok_or_else<E>(self, err: || -> E) -> Result<T, E> {
+    pub fn ok_or_else<E, F: FnOnce() -> E>(self, err: F) -> Result<T, E> {
         match self {
             Some(v) => Ok(v),
             None => Err(err()),
@@ -615,7 +615,7 @@ impl<T> Option<T> {
     /// ```
     #[inline]
     #[unstable = "waiting for unboxed closures"]
-    pub fn and_then<U>(self, f: |T| -> Option<U>) -> Option<U> {
+    pub fn and_then<U, F: FnOnce(T) -> Option<U>>(self, f: F) -> Option<U> {
         match self {
             Some(x) => f(x),
             None => None,
@@ -667,7 +667,7 @@ impl<T> Option<T> {
     /// ```
     #[inline]
     #[unstable = "waiting for unboxed closures"]
-    pub fn or_else(self, f: || -> Option<T>) -> Option<T> {
+    pub fn or_else<F: FnOnce() -> Option<T>>(self, f: F) -> Option<T> {
         match self {
             Some(_) => self,
             None => f()

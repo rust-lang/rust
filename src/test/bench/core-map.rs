@@ -8,13 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(unboxed_closures)]
+
 use std::collections::{TrieMap, TreeMap, HashMap, HashSet};
 use std::os;
 use std::rand::{Rng, IsaacRng, SeedableRng};
 use std::time::Duration;
 use std::uint;
 
-fn timed(label: &str, f: ||) {
+fn timed<F>(label: &str, f: F) where F: FnMut() {
     println!("  {}: {}", label, Duration::span(f));
 }
 

@@ -22,6 +22,7 @@ use core::atomic::{AtomicUint, SeqCst};
 use core::iter::{IteratorExt, Take};
 use core::kinds::marker;
 use core::mem;
+use core::ops::FnMut;
 use core::prelude::{Clone, Drop, Err, Iterator, None, Ok, Option, Send, Some};
 use core::prelude::{drop};
 
@@ -297,9 +298,9 @@ impl Task {
     // `awoken` field which indicates whether we were actually woken up via some
     // invocation of `reawaken`. This flag is only ever accessed inside the
     // lock, so there's no need to make it atomic.
-    pub fn deschedule(mut self: Box<Task>,
-                      times: uint,
-                      f: |BlockedTask| -> ::core::result::Result<(), BlockedTask>) {
+    pub fn deschedule<F>(mut self: Box<Task>, times: uint, mut f: F) where
+        F: FnMut(BlockedTask) -> ::core::result::Result<(), BlockedTask>,
+    {
         unsafe {
             let me = &mut *self as *mut Task;
             let task = BlockedTask::block(self);

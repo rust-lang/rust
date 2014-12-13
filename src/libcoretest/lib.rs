@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 #![feature(globs, unsafe_destructor, macro_rules, slicing_syntax)]
+#![feature(unboxed_closures)]
 
 extern crate core;
 extern crate test;

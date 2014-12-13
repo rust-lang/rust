@@ -29,11 +29,11 @@ use vec::Vec;
 use super::{BytesContainer, GenericPath, GenericPathUnsafe};
 
 /// Iterator that yields successive components of a Path as &[u8]
-pub type Components<'a> = Splits<'a, u8>;
+pub type Components<'a> = Splits<'a, u8, fn(&u8) -> bool>;
 
 /// Iterator that yields successive components of a Path as Option<&str>
-pub type StrComponents<'a> = Map<'a, &'a [u8], Option<&'a str>,
-                                       Components<'a>>;
+pub type StrComponents<'a> =
+    Map<&'a [u8], Option<&'a str>, Components<'a>, fn(&[u8]) -> Option<&str>>;
 
 /// Represents a POSIX file path
 #[deriving(Clone)]

@@ -781,15 +781,15 @@ pub fn trans_lang_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 ///
 /// For non-lang items, `dest` is always Some, and hence the result is written into memory
 /// somewhere. Nonetheless we return the actual return value of the function.
-pub fn trans_call_inner<'a, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                        call_info: Option<NodeInfo>,
-                                        callee_ty: Ty<'tcx>,
-                                        get_callee: |bcx: Block<'blk, 'tcx>,
-                                                     arg_cleanup_scope: cleanup::ScopeId|
-                                                     -> Callee<'blk, 'tcx>,
-                                        args: CallArgs<'a, 'tcx>,
-                                        dest: Option<expr::Dest>)
-                                        -> Result<'blk, 'tcx> {
+pub fn trans_call_inner<'a, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
+                                           call_info: Option<NodeInfo>,
+                                           callee_ty: Ty<'tcx>,
+                                           get_callee: F,
+                                           args: CallArgs<'a, 'tcx>,
+                                           dest: Option<expr::Dest>)
+                                           -> Result<'blk, 'tcx> where
+    F: FnOnce(Block<'blk, 'tcx>, cleanup::ScopeId) -> Callee<'blk, 'tcx>,
+{
     // Introduce a temporary cleanup scope that will contain cleanups
     // for the arguments while they are being evaluated. The purpose
     // this cleanup is to ensure that, should a panic occur while

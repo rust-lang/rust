@@ -710,10 +710,12 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                                                mutbl: m }))
     }
 
-    fn search_mutabilities(&mut self,
-                           mk_adjustment: |ast::Mutability| -> PickAdjustment,
-                           mk_autoref_ty: |ast::Mutability, ty::Region| -> Ty<'tcx>)
-                           -> Option<PickResult<'tcx>>
+    fn search_mutabilities<F, G>(&mut self,
+                                 mut mk_adjustment: F,
+                                 mut mk_autoref_ty: G)
+                                 -> Option<PickResult<'tcx>> where
+        F: FnMut(ast::Mutability) -> PickAdjustment,
+        G: FnMut(ast::Mutability, ty::Region) -> Ty<'tcx>,
     {
         // In general, during probing we erase regions. See
         // `impl_self_ty()` for an explanation.

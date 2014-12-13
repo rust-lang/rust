@@ -45,7 +45,7 @@ fn test_fail() {
 
 #[test]
 fn test_retval() {
-    let mut closure: || -> int = || 10;
+    let mut closure = |&mut:| 10i;
     let i = closure.finally(|| { });
     assert_eq!(i, 10);
 }

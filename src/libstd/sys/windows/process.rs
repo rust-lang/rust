@@ -418,9 +418,8 @@ fn make_command_line(prog: &CString, args: &[CString]) -> String {
     }
 }
 
-fn with_envp<K, V, T>(env: Option<&collections::HashMap<K, V>>,
-                      cb: |*mut c_void| -> T) -> T
-    where K: BytesContainer + Eq + Hash, V: BytesContainer
+fn with_envp<K, V, T, F>(env: Option<&collections::HashMap<K, V>>, cb: F) -> T where
+    K: BytesContainer + Eq + Hash, V: BytesContainer, F: FnOnce(*mut c_void) -> T,
 {
     // On Windows we pass an "environment block" which is not a char**, but
     // rather a concatenation of null-terminated k=v\0 sequences, with a final
@@ -445,7 +444,9 @@ fn with_envp<K, V, T>(env: Option<&collections::HashMap<K, V>>,
     }
 }
 
-fn with_dirp<T>(d: Option<&CString>, cb: |*const u16| -> T) -> T {
+fn with_dirp<T, F>(d: Option<&CString>, cb: F) -> T where
+    F: FnOnce(*const u16) -> T,
+{
     match d {
       Some(dir) => {
           let dir_str = dir.as_str()

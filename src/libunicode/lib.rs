@@ -29,6 +29,7 @@
        html_playground_url = "http://play.rust-lang.org/")]
 #![no_std]
 #![feature(globs)]
+#![feature(unboxed_closures)]
 
 extern crate core;
 

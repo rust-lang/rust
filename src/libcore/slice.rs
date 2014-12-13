@@ -43,7 +43,7 @@ use default::Default;
 use iter::*;
 use kinds::Copy;
 use num::Int;
-use ops;
+use ops::{FnMut, mod};
 use option::Option;
 use option::Option::{None, Some};
 use ptr;
@@ -105,20 +105,23 @@ pub trait SlicePrelude<T> for Sized? {
     /// Returns an iterator over subslices separated by elements that match
     /// `pred`.  The matched element is not contained in the subslices.
     #[unstable = "iterator type may change, waiting on unboxed closures"]
-    fn split<'a>(&'a self, pred: |&T|: 'a -> bool) -> Splits<'a, T>;
+    fn split<'a, P>(&'a self, pred: P) -> Splits<'a, T, P> where
+        P: FnMut(&T) -> bool;
 
     /// Returns an iterator over subslices separated by elements that match
     /// `pred`, limited to splitting at most `n` times.  The matched element is
     /// not contained in the subslices.
     #[unstable = "iterator type may change"]
-    fn splitn<'a>(&'a self, n: uint, pred: |&T|: 'a -> bool) -> SplitsN<Splits<'a, T>>;
+    fn splitn<'a, P>(&'a self, n: uint, pred: P) -> SplitsN<Splits<'a, T, P>> where
+        P: FnMut(&T) -> bool;
 
     /// Returns an iterator over subslices separated by elements that match
     /// `pred` limited to splitting at most `n` times. This starts at the end of
     /// the slice and works backwards.  The matched element is not contained in
     /// the subslices.
     #[unstable = "iterator type may change"]
-    fn rsplitn<'a>(&'a self,  n: uint, pred: |&T|: 'a -> bool) -> SplitsN<Splits<'a, T>>;
+    fn rsplitn<'a, P>(&'a self,  n: uint, pred: P) -> SplitsN<Splits<'a, T, P>> where
+        P: FnMut(&T) -> bool;
 
     /// Returns an iterator over all contiguous windows of length
     /// `size`. The windows overlap. If the slice is shorter than
@@ -235,7 +238,7 @@ pub trait SlicePrelude<T> for Sized? {
     /// assert!(match r { Found(1...4) => true, _ => false, });
     /// ```
     #[unstable = "waiting on unboxed closures"]
-    fn binary_search(&self, f: |&T| -> Ordering) -> BinarySearchResult;
+    fn binary_search<F>(&self, f: F) -> BinarySearchResult where F: FnMut(&T) -> Ordering;
 
     /// Return the number of elements in the slice
     ///
@@ -316,20 +319,23 @@ pub trait SlicePrelude<T> for Sized? {
     /// Returns an iterator over mutable subslices separated by elements that
     /// match `pred`.  The matched element is not contained in the subslices.
     #[unstable = "waiting on unboxed closures, iterator type name conventions"]
-    fn split_mut<'a>(&'a mut self, pred: |&T|: 'a -> bool) -> MutSplits<'a, T>;
+    fn split_mut<'a, P>(&'a mut self, pred: P) -> MutSplits<'a, T, P> where
+        P: FnMut(&T) -> bool;
 
     /// Returns an iterator over subslices separated by elements that match
     /// `pred`, limited to splitting at most `n` times.  The matched element is
     /// not contained in the subslices.
     #[unstable = "waiting on unboxed closures, iterator type name conventions"]
-    fn splitn_mut<'a>(&'a mut self, n: uint, pred: |&T|: 'a -> bool) -> SplitsN<MutSplits<'a, T>>;
+    fn splitn_mut<'a, P>(&'a mut self, n: uint, pred: P) -> SplitsN<MutSplits<'a, T, P>> where
+        P: FnMut(&T) -> bool;
 
     /// Returns an iterator over subslices separated by elements that match
     /// `pred` limited to splitting at most `n` times. This starts at the end of
     /// the slice and works backwards.  The matched element is not contained in
     /// the subslices.
     #[unstable = "waiting on unboxed closures, iterator type name conventions"]
-    fn rsplitn_mut<'a>(&'a mut self,  n: uint, pred: |&T|: 'a -> bool) -> SplitsN<MutSplits<'a, T>>;
+    fn rsplitn_mut<'a, P>(&'a mut self,  n: uint, pred: P) -> SplitsN<MutSplits<'a, T, P>> where
+        P: FnMut(&T) -> bool;
 
     /// Returns an iterator over `chunk_size` elements of the slice at a time.
     /// The chunks are mutable and do not overlap. If `chunk_size` does
@@ -470,7 +476,7 @@ impl<T> SlicePrelude<T> for [T] {
     }
 
     #[inline]
-    fn split<'a>(&'a self, pred: |&T|: 'a -> bool) -> Splits<'a, T> {
+    fn split<'a, P>(&'a self, pred: P) -> Splits<'a, T, P> where P: FnMut(&T) -> bool {
         Splits {
             v: self,
             pred: pred,
@@ -479,7 +485,9 @@ impl<T> SlicePrelude<T> for [T] {
     }
 
     #[inline]
-    fn splitn<'a>(&'a self, n: uint, pred: |&T|: 'a -> bool) -> SplitsN<Splits<'a, T>> {
+    fn splitn<'a, P>(&'a self, n: uint, pred: P) -> SplitsN<Splits<'a, T, P>> where
+        P: FnMut(&T) -> bool,
+    {
         SplitsN {
             iter: self.split(pred),
             count: n,
@@ -488,7 +496,9 @@ impl<T> SlicePrelude<T> for [T] {
     }
 
     #[inline]
-    fn rsplitn<'a>(&'a self, n: uint, pred: |&T|: 'a -> bool) -> SplitsN<Splits<'a, T>> {
+    fn rsplitn<'a, P>(&'a self, n: uint, pred: P) -> SplitsN<Splits<'a, T, P>> where
+        P: FnMut(&T) -> bool,
+    {
         SplitsN {
             iter: self.split(pred),
             count: n,
@@ -542,7 +552,7 @@ impl<T> SlicePrelude<T> for [T] {
     }
 
     #[unstable]
-    fn binary_search(&self, f: |&T| -> Ordering) -> BinarySearchResult {
+    fn binary_search<F>(&self, mut f: F) -> BinarySearchResult where F: FnMut(&T) -> Ordering {
         let mut base : uint = 0;
         let mut lim : uint = self.len();
 
@@ -637,12 +647,14 @@ impl<T> SlicePrelude<T> for [T] {
     }
 
     #[inline]
-    fn split_mut<'a>(&'a mut self, pred: |&T|: 'a -> bool) -> MutSplits<'a, T> {
+    fn split_mut<'a, P>(&'a mut self, pred: P) -> MutSplits<'a, T, P> where P: FnMut(&T) -> bool {
         MutSplits { v: self, pred: pred, finished: false }
     }
 
     #[inline]
-    fn splitn_mut<'a>(&'a mut self, n: uint, pred: |&T|: 'a -> bool) -> SplitsN<MutSplits<'a, T>> {
+    fn splitn_mut<'a, P>(&'a mut self, n: uint, pred: P) -> SplitsN<MutSplits<'a, T, P>> where
+        P: FnMut(&T) -> bool
+    {
         SplitsN {
             iter: self.split_mut(pred),
             count: n,
@@ -651,7 +663,9 @@ impl<T> SlicePrelude<T> for [T] {
     }
 
     #[inline]
-    fn rsplitn_mut<'a>(&'a mut self, n: uint, pred: |&T|: 'a -> bool) -> SplitsN<MutSplits<'a, T>> {
+    fn rsplitn_mut<'a, P>(&'a mut self, n: uint, pred: P) -> SplitsN<MutSplits<'a, T, P>> where
+        P: FnMut(&T) -> bool,
+    {
         SplitsN {
             iter: self.split_mut(pred),
             count: n,
@@ -1271,14 +1285,14 @@ trait SplitsIter<E>: DoubleEndedIterator<E> {
 /// An iterator over subslices separated by elements that match a predicate
 /// function.
 #[experimental = "needs review"]
-pub struct Splits<'a, T:'a> {
+pub struct Splits<'a, T:'a, P> where P: FnMut(&T) -> bool {
     v: &'a [T],
-    pred: |t: &T|: 'a -> bool,
+    pred: P,
     finished: bool
 }
 
 #[experimental = "needs review"]
-impl<'a, T> Iterator<&'a [T]> for Splits<'a, T> {
+impl<'a, T, P> Iterator<&'a [T]> for Splits<'a, T, P> where P: FnMut(&T) -> bool {
     #[inline]
     fn next(&mut self) -> Option<&'a [T]> {
         if self.finished { return None; }
@@ -1304,7 +1318,7 @@ impl<'a, T> Iterator<&'a [T]> for Splits<'a, T> {
 }
 
 #[experimental = "needs review"]
-impl<'a, T> DoubleEndedIterator<&'a [T]> for Splits<'a, T> {
+impl<'a, T, P> DoubleEndedIterator<&'a [T]> for Splits<'a, T, P> where P: FnMut(&T) -> bool {
     #[inline]
     fn next_back(&mut self) -> Option<&'a [T]> {
         if self.finished { return None; }
@@ -1320,7 +1334,7 @@ impl<'a, T> DoubleEndedIterator<&'a [T]> for Splits<'a, T> {
     }
 }
 
-impl<'a, T> SplitsIter<&'a [T]> for Splits<'a, T> {
+impl<'a, T, P> SplitsIter<&'a [T]> for Splits<'a, T, P> where P: FnMut(&T) -> bool {
     #[inline]
     fn finish(&mut self) -> Option<&'a [T]> {
         if self.finished { None } else { self.finished = true; Some(self.v) }
@@ -1330,13 +1344,13 @@ impl<'a, T> SplitsIter<&'a [T]> for Splits<'a, T> {
 /// An iterator over the subslices of the vector which are separated
 /// by elements that match `pred`.
 #[experimental = "needs review"]
-pub struct MutSplits<'a, T:'a> {
+pub struct MutSplits<'a, T:'a, P> where P: FnMut(&T) -> bool {
     v: &'a mut [T],
-    pred: |t: &T|: 'a -> bool,
+    pred: P,
     finished: bool
 }
 
-impl<'a, T> SplitsIter<&'a mut [T]> for MutSplits<'a, T> {
+impl<'a, T, P> SplitsIter<&'a mut [T]> for MutSplits<'a, T, P> where P: FnMut(&T) -> bool {
     #[inline]
     fn finish(&mut self) -> Option<&'a mut [T]> {
         if self.finished {
@@ -1349,7 +1363,7 @@ impl<'a, T> SplitsIter<&'a mut [T]> for MutSplits<'a, T> {
 }
 
 #[experimental = "needs review"]
-impl<'a, T> Iterator<&'a mut [T]> for MutSplits<'a, T> {
+impl<'a, T, P> Iterator<&'a mut [T]> for MutSplits<'a, T, P> where P: FnMut(&T) -> bool {
     #[inline]
     fn next(&mut self) -> Option<&'a mut [T]> {
         if self.finished { return None; }
@@ -1382,7 +1396,9 @@ impl<'a, T> Iterator<&'a mut [T]> for MutSplits<'a, T> {
 }
 
 #[experimental = "needs review"]
-impl<'a, T> DoubleEndedIterator<&'a mut [T]> for MutSplits<'a, T> {
+impl<'a, T, P> DoubleEndedIterator<&'a mut [T]> for MutSplits<'a, T, P> where
+    P: FnMut(&T) -> bool,
+{
     #[inline]
     fn next_back(&mut self) -> Option<&'a mut [T]> {
         if self.finished { return None; }
@@ -1709,6 +1725,7 @@ pub mod raw {
     use mem::transmute;
     use ptr::RawPtr;
     use raw::Slice;
+    use ops::FnOnce;
     use option::Option;
     use option::Option::{None, Some};
 
@@ -1716,8 +1733,9 @@ pub mod raw {
     /// not bytes).
     #[inline]
     #[deprecated = "renamed to slice::from_raw_buf"]
-    pub unsafe fn buf_as_slice<T,U>(p: *const T, len: uint, f: |v: &[T]| -> U)
-                               -> U {
+    pub unsafe fn buf_as_slice<T, U, F>(p: *const T, len: uint, f: F) -> U where
+        F: FnOnce(&[T]) -> U,
+    {
         f(transmute(Slice {
             data: p,
             len: len
@@ -1728,12 +1746,9 @@ pub mod raw {
     /// not bytes).
     #[inline]
     #[deprecated = "renamed to slice::from_raw_mut_buf"]
-    pub unsafe fn mut_buf_as_slice<T,
-                                   U>(
-                                   p: *mut T,
-                                   len: uint,
-                                   f: |v: &mut [T]| -> U)
-                                   -> U {
+    pub unsafe fn mut_buf_as_slice<T, U, F>(p: *mut T, len: uint, f: F) -> U where
+        F: FnOnce(&mut [T]) -> U,
+    {
         f(transmute(Slice {
             data: p as *const T,
             len: len

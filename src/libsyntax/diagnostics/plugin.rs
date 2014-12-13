@@ -25,14 +25,18 @@ thread_local!(static USED_DIAGNOSTICS: RefCell<HashMap<Name, Span>> = {
     RefCell::new(HashMap::new())
 })
 
-fn with_registered_diagnostics<T>(f: |&mut HashMap<Name, Option<Name>>| -> T) -> T {
-    REGISTERED_DIAGNOSTICS.with(|slot| {
+fn with_registered_diagnostics<T, F>(f: F) -> T where
+    F: FnOnce(&mut HashMap<Name, Option<Name>>) -> T,
+{
+    REGISTERED_DIAGNOSTICS.with(move |slot| {
         f(&mut *slot.borrow_mut())
     })
 }
 
-fn with_used_diagnostics<T>(f: |&mut HashMap<Name, Span>| -> T) -> T {
-    USED_DIAGNOSTICS.with(|slot| {
+fn with_used_diagnostics<T, F>(f: F) -> T where
+    F: FnOnce(&mut HashMap<Name, Span>) -> T,
+{
+    USED_DIAGNOSTICS.with(move |slot| {
         f(&mut *slot.borrow_mut())
     })
 }

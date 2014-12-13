@@ -25,6 +25,7 @@
 #![feature(default_type_params, globs, import_shadowing, macro_rules, phase, quote)]
 #![feature(slicing_syntax, unsafe_destructor)]
 #![feature(rustc_diagnostic_macros)]
+#![feature(unboxed_closures)]
 
 extern crate arena;
 extern crate flate;
