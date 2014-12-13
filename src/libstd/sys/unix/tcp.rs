@@ -21,6 +21,7 @@ use sys::{set_nonblocking, wouldblock};
 use sys;
 use sys_common;
 use sys_common::net;
+use sys_common::net::SocketStatus::Readable;
 
 pub use sys_common::net::TcpStream;
 
@@ -124,7 +125,7 @@ impl TcpAcceptor {
                 fd => return Ok(TcpStream::new(fd as sock_t)),
             }
             try!(net::await(&[self.fd(), self.inner.reader.fd()],
-                       deadline, net::Readable));
+                       deadline, Readable));
         }
 
         Err(sys_common::eof())

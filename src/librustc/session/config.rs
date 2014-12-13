@@ -33,7 +33,7 @@ use syntax::parse;
 use syntax::parse::token::InternedString;
 
 use std::collections::HashMap;
-use std::collections::hash_map::{Occupied, Vacant};
+use std::collections::hash_map::Entry::{Occupied, Vacant};
 use getopts::{optopt, optmulti, optflag, optflagopt};
 use getopts;
 use std::cell::{RefCell};

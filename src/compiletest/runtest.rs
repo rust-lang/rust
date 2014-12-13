@@ -1609,7 +1609,7 @@ fn _arm_exec_compiled_test(config: &Config,
                 stderr_out.as_slice());
 
     ProcRes {
-        status: process::ExitStatus(exitcode),
+        status: process::ProcessExit::ExitStatus(exitcode),
         stdout: stdout_out,
         stderr: stderr_out,
         cmdline: cmdline

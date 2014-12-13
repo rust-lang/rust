@@ -23,7 +23,7 @@ use plugin::load::PluginMetadata;
 use util::nodemap::FnvHashMap;
 
 use std::rc::Rc;
-use std::collections::hash_map::{Occupied, Vacant};
+use std::collections::hash_map::Entry::{Occupied, Vacant};
 use syntax::ast;
 use syntax::abi;
 use syntax::attr;
