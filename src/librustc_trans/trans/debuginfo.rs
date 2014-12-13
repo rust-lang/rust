@@ -3494,6 +3494,11 @@ fn populate_scope_map(cx: &CrateContext,
                 end.as_ref().map(|x| walk_expr(cx, &**x, scope_stack, scope_map));
             }
 
+            ast::ExprRange(..) => {
+                cx.sess().span_bug(exp.span, "debuginfo::populate_scope_map() - \
+                                              Found unexpanded range.");
+            }
+
             ast::ExprVec(ref init_expressions) |
             ast::ExprTup(ref init_expressions) => {
                 for ie in init_expressions.iter() {

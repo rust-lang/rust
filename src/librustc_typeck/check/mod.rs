@@ -4278,6 +4278,10 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
               }
           }
        }
+       ast::ExprRange(..) => {
+         tcx.sess.span_bug(expr.span, "non-desugared range");
+       }
+
     }
 
     debug!("type of expr({}) {} is...", expr.id,

@@ -1390,6 +1390,10 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span}: Expr, folder: &mut T) ->
                           e2.map(|x| folder.fold_expr(x)),
                           m)
             }
+            ExprRange(e1, e2) => {
+                ExprRange(folder.fold_expr(e1),
+                          e2.map(|x| folder.fold_expr(x)))
+            }
             ExprPath(pth) => ExprPath(folder.fold_path(pth)),
             ExprBreak(opt_ident) => ExprBreak(opt_ident.map(|x| folder.fold_ident(x))),
             ExprAgain(opt_ident) => ExprAgain(opt_ident.map(|x| folder.fold_ident(x))),

@@ -559,6 +559,9 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
           ast::ExprWhileLet(..) => {
             self.tcx().sess.span_bug(expr.span, "non-desugared ExprWhileLet");
           }
+          ast::ExprRange(..) => {
+            self.tcx().sess.span_bug(expr.span, "non-desugared range");
+          }
         }
     }
 

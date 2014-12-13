@@ -871,6 +871,10 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
             walk_expr_opt(visitor, start);
             walk_expr_opt(visitor, end)
         }
+        ExprRange(ref start, ref end) => {
+            visitor.visit_expr(&**start);
+            walk_expr_opt(visitor, end)
+        }
         ExprPath(ref path) => {
             visitor.visit_path(path, expression.id)
         }

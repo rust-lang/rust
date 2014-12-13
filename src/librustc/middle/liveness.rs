@@ -486,6 +486,9 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
       ast::ExprWhileLet(..) => {
           ir.tcx.sess.span_bug(expr.span, "non-desugared ExprWhileLet");
       }
+      ast::ExprRange(..) => {
+          ir.tcx.sess.span_bug(expr.span, "non-desugared range");
+      }
       ast::ExprForLoop(ref pat, _, _, _) => {
         pat_util::pat_bindings(&ir.tcx.def_map, &**pat, |bm, p_id, sp, path1| {
             debug!("adding local variable {} from for loop with bm {}",
@@ -1197,6 +1200,10 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             self.propagate_through_expr(&**e1, succ)
           }
 
+          ast::ExprRange(..) => {
+              self.ir.tcx.sess.span_bug(expr.span, "non-desugared range");
+          }
+
           ast::ExprBox(None, ref e) |
           ast::ExprAddrOf(_, ref e) |
           ast::ExprCast(ref e, _) |
@@ -1497,6 +1504,9 @@ fn check_expr(this: &mut Liveness, expr: &Expr) {
       }
       ast::ExprWhileLet(..) => {
         this.ir.tcx.sess.span_bug(expr.span, "non-desugared ExprWhileLet");
+      }
+      ast::ExprRange(..) => {
+        this.ir.tcx.sess.span_bug(expr.span, "non-desugared range");
       }
     }
 }

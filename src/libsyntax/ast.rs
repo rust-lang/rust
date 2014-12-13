@@ -724,6 +724,7 @@ pub enum Expr_ {
     ExprTupField(P<Expr>, Spanned<uint>),
     ExprIndex(P<Expr>, P<Expr>),
     ExprSlice(P<Expr>, Option<P<Expr>>, Option<P<Expr>>, Mutability),
+    ExprRange(P<Expr>, Option<P<Expr>>),
 
     /// Variable reference, possibly containing `::` and/or
     /// type parameters, e.g. foo::bar::<baz>
