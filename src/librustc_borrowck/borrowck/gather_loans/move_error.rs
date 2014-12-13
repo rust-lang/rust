@@ -8,15 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use middle::mem_categorization as mc;
-use middle::borrowck::BorrowckCtxt;
-use middle::ty;
-
+use borrowck::BorrowckCtxt;
+use rustc::middle::mem_categorization as mc;
+use rustc::middle::ty;
+use rustc::util::ppaux::UserString;
 use std::cell::RefCell;
 use syntax::ast;
 use syntax::codemap;
 use syntax::print::pprust;
-use util::ppaux::UserString;
 
 pub struct MoveErrorCollector<'tcx> {
     errors: RefCell<Vec<MoveError<'tcx>>>
