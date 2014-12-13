@@ -797,8 +797,8 @@ pub mod os {
         impl OsStrBufExt for os_str::OsStrBuf { ... }
 
         trait OsStrExt {
-            fn as_bytes(&self) -> &[u8];
-            fn from_bytes(&[u8]) -> &Self;
+            fn as_byte_slice(&self) -> &[u8];
+            fn from_byte_slice(&[u8]) -> &Self;
         }
 
         impl OsStrExt for os_str::OsStr { ... }
@@ -811,14 +811,13 @@ pub mod os {
         // The following extension traits provide a UCS-2 view of OS strings
 
         trait OsStrBufExt {
-            fn from_vec(Vec<u16>) -> Self;
-            fn into_vec(Self) -> Vec<u16>;
+            fn from_wide_slice(&[u16]) -> Self;
         }
 
         impl OsStrBufExt for os_str::OsStrBuf { ... }
 
         trait OsStrExt {
-            fn to_wide(&self) -> &[u16];
+            fn to_wide_slice(&self) -> Vec<u16>;
         }
 
         impl OsStrExt for os_str::OsStr { ... }
