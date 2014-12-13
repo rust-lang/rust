@@ -439,6 +439,10 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                           start.iter().chain(end.iter()).map(|x| &**x))
             }
 
+            ast::ExprRange(..) => {
+                self.tcx.sess.span_bug(expr.span, "non-desugared range");
+            }
+
             ast::ExprUnary(_, ref e) if self.is_method_call(expr) => {
                 self.call(expr, pred, &**e, None::<ast::Expr>.iter())
             }
