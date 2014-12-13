@@ -12,7 +12,7 @@ fn is_static<T: 'static>() {}
 
 fn foo<'a>() {
     is_static::<proc():'a>();
-    //~^ ERROR does not fulfill the required lifetime
+    //~^ ERROR declared lifetime bound not satisfied
 
     is_static::<proc():'static>();
 }

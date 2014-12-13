@@ -169,7 +169,9 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
     let trait_ref = Rc::new(ty::TraitRef::new(trait_def_id, substs));
 
     // Construct an obligation
-    let obligation = traits::Obligation::misc(span, trait_ref.clone());
+    let obligation = traits::Obligation::misc(span,
+                                              fcx.body_id,
+                                              ty::Predicate::Trait(trait_ref.clone()));
 
     // Now we want to know if this can be matched
     let mut selcx = traits::SelectionContext::new(fcx.infcx(),
@@ -186,6 +188,9 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
     let (method_num, method_ty) = trait_method(tcx, trait_def_id, m_name).unwrap();
     assert_eq!(method_ty.generics.types.len(subst::FnSpace), 0);
     assert_eq!(method_ty.generics.regions.len(subst::FnSpace), 0);
+
+    debug!("lookup_in_trait_adjusted: method_num={} method_ty={}",
+           method_num, method_ty.repr(fcx.tcx()));
 
     // Substitute the trait parameters into the method type and
     // instantiate late-bound regions to get the actual method type.
@@ -204,7 +209,7 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
         abi: bare_fn_ty.abi.clone(),
     });
 
-    debug!("matched method fty={} obligation={}",
+    debug!("lookup_in_trait_adjusted: matched method fty={} obligation={}",
            fty.repr(fcx.tcx()),
            obligation.repr(fcx.tcx()));
 
@@ -219,8 +224,7 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
     let method_bounds = method_ty.generics.to_bounds(fcx.tcx(), &trait_ref.substs);
     assert!(!method_bounds.has_escaping_regions());
     fcx.add_obligations_for_parameters(
-        traits::ObligationCause::misc(span),
-        &trait_ref.substs,
+        traits::ObligationCause::misc(span, fcx.body_id),
         &method_bounds);
 
     // FIXME(#18653) -- Try to resolve obligations, giving us more
@@ -233,8 +237,8 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
         None => { }
 
         Some(self_expr) => {
-            debug!("inserting adjustment if needed (self-id = {}, \
-                   base adjustment = {}, explicit self = {})",
+            debug!("lookup_in_trait_adjusted: inserting adjustment if needed \
+                   (self-id={}, base adjustment={}, explicit_self={})",
                    self_expr.id, autoderefref, method_ty.explicit_self);
 
             match method_ty.explicit_self {

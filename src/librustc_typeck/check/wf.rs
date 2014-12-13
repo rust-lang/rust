@@ -91,7 +91,6 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
         let polytype = ty::lookup_item_type(ccx.tcx, item_def_id);
         let param_env =
             ty::construct_parameter_environment(ccx.tcx,
-                                                item.span,
                                                 &polytype.generics,
                                                 item.id);
         let inh = Inherited::new(ccx.tcx, param_env);
@@ -122,14 +121,12 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                 // For DST, all intermediate types must be sized.
                 if variant.fields.len() > 0 {
                     for field in variant.fields.init().iter() {
-                        let cause = traits::ObligationCause::new(field.span, traits::FieldSized);
-                        let obligation = traits::obligation_for_builtin_bound(fcx.tcx(),
-                                                                              cause,
-                                                                              field.ty,
-                                                                              ty::BoundSized);
-                        if let Ok(obligation) = obligation {
-                            fcx.register_obligation(obligation);
-                        }
+                        fcx.register_builtin_bound(
+                            field.ty,
+                            ty::BoundSized,
+                            traits::ObligationCause::new(field.span,
+                                                         fcx.body_id,
+                                                         traits::FieldSized));
                     }
                 }
             }
@@ -218,33 +215,16 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
             // the same way as we treat the self-type.
             bounds_checker.check_trait_ref(&trait_ref);
 
-            let trait_def = ty::lookup_trait_def(fcx.tcx(), trait_ref.def_id);
-
             let cause =
                 traits::ObligationCause::new(
                     item.span,
+                    fcx.body_id,
                     traits::ItemObligation(trait_ref.def_id));
 
             // Find the supertrait bounds. This will add `int:Bar`.
-            //
-            // FIXME -- This is a bit ill-factored. There is very similar
-            // code in traits::util::obligations_for_generics.
-            fcx.add_region_obligations_for_type_parameter(item.span,
-                                                          &trait_def.bounds,
-                                                          trait_ref.self_ty());
-            for builtin_bound in trait_def.bounds.builtin_bounds.iter() {
-                let obligation = traits::obligation_for_builtin_bound(fcx.tcx(),
-                                                                      cause,
-                                                                      trait_ref.self_ty(),
-                                                                      builtin_bound);
-                if let Ok(obligation) = obligation {
-                    fcx.register_obligation(obligation);
-                }
-            }
-            for trait_bound in trait_def.bounds.trait_bounds.iter() {
-                let trait_bound = trait_bound.subst(fcx.tcx(), &trait_ref.substs);
-                fcx.register_obligation(
-                    traits::Obligation::new(cause, trait_bound));
+            let predicates = ty::predicates_for_trait_ref(fcx.tcx(), &trait_ref);
+            for predicate in predicates.into_iter() {
+                fcx.register_predicate(traits::Obligation::new(cause, predicate));
             }
         });
     }
@@ -291,8 +271,8 @@ impl<'cx,'tcx> BoundsChecker<'cx,'tcx> {
         self.fcx.add_obligations_for_parameters(
             traits::ObligationCause::new(
                 self.span,
+                self.fcx.body_id,
                 traits::ItemObligation(trait_ref.def_id)),
-            &trait_ref.substs,
             &bounds);
 
         for &ty in trait_ref.substs.types.iter() {
@@ -341,8 +321,8 @@ impl<'cx,'tcx> TypeFolder<'tcx> for BoundsChecker<'cx,'tcx> {
                 if self.binding_count == 0 {
                     self.fcx.add_obligations_for_parameters(
                         traits::ObligationCause::new(self.span,
+                                                     self.fcx.body_id,
                                                      traits::ItemObligation(type_id)),
-                        substs,
                         &polytype.generics.to_bounds(self.tcx(), substs));
                 } else {
                     // There are two circumstances in which we ignore
@@ -367,11 +347,13 @@ impl<'cx,'tcx> TypeFolder<'tcx> for BoundsChecker<'cx,'tcx> {
                     //
                     // (I believe we should do the same for traits, but
                     // that will require an RFC. -nmatsakis)
-                    self.fcx.add_trait_obligations_for_generics(
+                    let bounds = polytype.generics.to_bounds(self.tcx(), substs);
+                    let bounds = filter_to_trait_obligations(bounds);
+                    self.fcx.add_obligations_for_parameters(
                         traits::ObligationCause::new(self.span,
+                                                     self.fcx.body_id,
                                                      traits::ItemObligation(type_id)),
-                        substs,
-                        &polytype.generics.to_bounds(self.tcx(), substs));
+                        &bounds);
                 }
 
                 self.fold_substs(substs);
@@ -458,6 +440,24 @@ fn enum_variants<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         .collect()
 }
 
+fn filter_to_trait_obligations<'tcx>(bounds: ty::GenericBounds<'tcx>)
+                                     -> ty::GenericBounds<'tcx>
+{
+    let mut result = ty::GenericBounds::empty();
+    for (space, _, predicate) in bounds.predicates.iter_enumerated() {
+        match *predicate {
+            ty::Predicate::Trait(..) => {
+                result.predicates.push(space, predicate.clone())
+            }
+            ty::Predicate::Equate(..) |
+            ty::Predicate::TypeOutlives(..) |
+            ty::Predicate::RegionOutlives(..) => {
+            }
+        }
+    }
+    result
+}
+
 ///////////////////////////////////////////////////////////////////////////
 // Special drop trait checking
 
@@ -469,14 +469,8 @@ fn check_struct_safe_for_destructor<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     if !struct_tpt.generics.has_type_params(subst::TypeSpace)
         && !struct_tpt.generics.has_region_params(subst::TypeSpace)
     {
-        let cause = traits::ObligationCause::new(span, traits::DropTrait);
-        let obligation = traits::obligation_for_builtin_bound(fcx.tcx(),
-                                                              cause,
-                                                              self_ty,
-                                                              ty::BoundSend);
-        if let Ok(obligation) = obligation {
-            fcx.register_obligation(obligation);
-        }
+        let cause = traits::ObligationCause::new(span, fcx.body_id, traits::DropTrait);
+        fcx.register_builtin_bound(self_ty, ty::BoundSend, cause);
     } else {
         span_err!(fcx.tcx().sess, span, E0141,
                   "cannot implement a destructor on a structure \

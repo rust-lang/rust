@@ -793,7 +793,8 @@ pub fn fulfill_obligation<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     // Do the initial selection for the obligation. This yields the
     // shallow result we are looking for -- that is, what specific impl.
     let mut selcx = traits::SelectionContext::new(&infcx, &param_env, tcx);
-    let obligation = traits::Obligation::misc(span, trait_ref.clone());
+    let obligation = traits::Obligation::new(traits::ObligationCause::dummy(),
+                                             trait_ref.clone());
     let selection = match selcx.select(&obligation) {
         Ok(Some(selection)) => selection,
         Ok(None) => {
@@ -826,8 +827,8 @@ pub fn fulfill_obligation<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     // fully bound. It could be a slight optimization to stop
     // iterating early.
     let mut fulfill_cx = traits::FulfillmentContext::new();
-    let vtable = selection.map_move_nested(|obligation| {
-        fulfill_cx.register_obligation(tcx, obligation);
+    let vtable = selection.map_move_nested(|predicate| {
+        fulfill_cx.register_predicate(infcx.tcx, predicate);
     });
     match fulfill_cx.select_all_or_error(&infcx, &param_env, tcx) {
         Ok(()) => { }

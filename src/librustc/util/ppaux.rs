@@ -914,17 +914,17 @@ impl<'tcx> Repr<'tcx> for ty::Polytype<'tcx> {
 
 impl<'tcx> Repr<'tcx> for ty::Generics<'tcx> {
     fn repr(&self, tcx: &ctxt<'tcx>) -> String {
-        format!("Generics(types: {}, regions: {})",
+        format!("Generics(types: {}, regions: {}, predicates: {})",
                 self.types.repr(tcx),
-                self.regions.repr(tcx))
+                self.regions.repr(tcx),
+                self.predicates.repr(tcx))
     }
 }
 
 impl<'tcx> Repr<'tcx> for ty::GenericBounds<'tcx> {
     fn repr(&self, tcx: &ctxt<'tcx>) -> String {
-        format!("GenericBounds(types: {}, regions: {})",
-                self.types.repr(tcx),
-                self.regions.repr(tcx))
+        format!("GenericBounds({})",
+                self.predicates.repr(tcx))
     }
 }
 
