@@ -392,6 +392,9 @@ impl<'a> LifetimeContext<'a> {
         match search_result {
             Some((_depth, decl_id)) => {
                 let def = DefFreeRegion(scope_data, decl_id);
+                debug!("resolve_free_lifetime_ref: \
+                        insert_lifetime(lifetime_ref: {} def: {})",
+                       lifetime_ref, def);
                 self.insert_lifetime(lifetime_ref, def);
             }
 
