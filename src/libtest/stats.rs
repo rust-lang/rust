@@ -11,7 +11,7 @@
 #![allow(missing_docs)]
 
 use std::collections::hash_map;
-use std::collections::hash_map::{Occupied, Vacant};
+use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::fmt::Show;
 use std::hash::Hash;
 use std::io;
