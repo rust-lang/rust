@@ -32,7 +32,7 @@ fn constrain_region_for_destructor_safety(rcx: &mut Rcx,
     // Ignore bound regions.
     match region {
         ty::ReEarlyBound(..) | ty::ReLateBound(..) => return,
-        ty::ReFunction | ty::ReFree(_) | ty::ReScope(_) | ty::ReStatic |
+        ty::ReFree(_) | ty::ReScope(_) | ty::ReStatic |
         ty::ReInfer(_) | ty::ReEmpty => {}
     }
 
@@ -40,7 +40,9 @@ fn constrain_region_for_destructor_safety(rcx: &mut Rcx,
     let mut could_have_been_re_function = false;
     let parent_inner_region =
         match rcx.tcx().region_maps.opt_encl_scope(inner_scope) {
-            None => ty::ReFunction,
+            None => rcx.tcx().sess.span_bug(
+                span, format!("no enclosing scope found for inner_scope: {}",
+                              inner_scope).as_slice()),
             // FIXME (onkfelix): if closures need not be handled specially,
             // then perhaps I can/should do away with ReFunction entirely.
             Some(parent_inner_scope @ region::CodeExtent::Closure(_)) => {
