@@ -87,7 +87,7 @@ use middle::{const_eval, def, traits};
 use middle::lang_items::IteratorItem;
 use middle::mem_categorization::{mod, McResult};
 use middle::pat_util::{mod, pat_id_map};
-use middle::region::CodeExtent;
+use middle::region::{mod, CodeExtent};
 use middle::subst::{mod, Subst, Substs, VecPerParamSpace, ParamSpace};
 use middle::ty::{FnSig, VariantInfo, Polytype};
 use middle::ty::{Disr, ParamTy, ParameterEnvironment};
@@ -511,7 +511,7 @@ fn check_fn<'a, 'tcx>(ccx: &'a CrateCtxt<'a, 'tcx>,
 
     // First, we have to replace any bound regions in the fn type with free ones.
     // The free region references will be bound the node_id of the body block.
-    let fn_sig = liberate_late_bound_regions(tcx, CodeExtent::from_node_id(body.id), fn_sig);
+    let fn_sig = liberate_late_bound_regions(tcx, CodeExtent::DestructionScope(body.id), fn_sig);
 
     let arg_tys = fn_sig.inputs.as_slice();
     let ret_ty = fn_sig.output;
@@ -725,7 +725,7 @@ fn check_method_body<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
     let body_id = method.pe_body().id;
     let fty = liberate_late_bound_regions(
-        ccx.tcx, CodeExtent::from_node_id(body_id), &ty::bind(fty)).value;
+        ccx.tcx, CodeExtent::DestructionScope(body_id), &ty::bind(fty)).value;
     debug!("fty (liberated): {}", fty.repr(ccx.tcx));
 
     check_bare_fn(ccx,
@@ -920,7 +920,7 @@ fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
     debug!("compare_impl_method(impl_trait_ref={})",
            impl_trait_ref.repr(tcx));
 
-    let impl_m_body_scope = CodeExtent::from_node_id(impl_m_body_id);
+    let impl_m_body_scope = CodeExtent::DestructionScope(impl_m_body_id);
 
     // The impl's trait ref may bind late-bound regions from the impl.
     // Liberate them and assign them the scope of the method body.
@@ -1067,7 +1067,7 @@ fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
             |d| ty::mk_param_from_def(tcx, d));
     let skol_regions =
         impl_m.generics.regions.map(
-            |l| ty::free_region_from_def(impl_m_body_id, l));
+            |l| ty::free_region_from_def(impl_m_body_scope, l));
     let impl_to_skol_substs =
         subst::Substs::new(skol_tps.clone(), skol_regions.clone());
 

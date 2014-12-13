@@ -22,7 +22,7 @@ use self::ScopeChain::*;
 
 use session::Session;
 use middle::def;
-use middle::region;
+use middle::region::{mod, CodeExtent};
 use middle::resolve::DefMap;
 use middle::subst;
 use middle::ty;
@@ -310,7 +310,13 @@ impl<'a> LifetimeContext<'a> {
         loop {
             match *scope {
                 BlockScope(blk_scope, s) => {
-                    return self.resolve_free_lifetime_ref(blk_scope, lifetime_ref, s);
+                    if let CodeExtent::Misc(node_id) = blk_scope {
+                        let d = CodeExtent::DestructionScope(node_id);
+                        return self.resolve_free_lifetime_ref(d, lifetime_ref, s);
+                    } else {
+                        self.sess.bug(
+                            "found unexpected CodeExtent associated with blk_scope")
+                    }
                 }
 
                 RootScope => {
