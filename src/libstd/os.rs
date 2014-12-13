@@ -163,6 +163,7 @@ pub fn getcwd() -> IoResult<Path> {
 pub mod windoze {
     use libc::types::os::arch::extra::DWORD;
     use libc;
+    use ops::FnMut;
     use option::Option;
     use option::Option::None;
     use option;
