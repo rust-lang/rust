@@ -817,7 +817,7 @@ pub mod os {
         impl OsStrBufExt for os_str::OsStrBuf { ... }
 
         trait OsStrExt {
-            fn to_wide_slice(&self) -> Vec<u16>;
+            fn to_wide_vec(&self) -> Vec<u16>;
         }
 
         impl OsStrExt for os_str::OsStr { ... }
