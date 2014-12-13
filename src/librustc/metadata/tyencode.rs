@@ -413,3 +413,30 @@ pub fn enc_type_param_def<'a, 'tcx>(w: &mut SeekableMemWriter, cx: &ctxt<'a, 'tc
     enc_bounds(w, cx, &v.bounds);
     enc_opt(w, v.default, |w, t| enc_ty(w, cx, t));
 }
+
+pub fn enc_predicate<'a, 'tcx>(w: &mut SeekableMemWriter,
+                               cx: &ctxt<'a, 'tcx>,
+                               p: &ty::Predicate<'tcx>)
+{
+    match *p {
+        ty::Predicate::Trait(ref trait_ref) => {
+            mywrite!(w, "t");
+            enc_trait_ref(w, cx, &**trait_ref);
+        }
+        ty::Predicate::Equate(a, b) => {
+            mywrite!(w, "e");
+            enc_ty(w, cx, a);
+            enc_ty(w, cx, b);
+        }
+        ty::Predicate::RegionOutlives(a, b) => {
+            mywrite!(w, "r");
+            enc_region(w, cx, a);
+            enc_region(w, cx, b);
+        }
+        ty::Predicate::TypeOutlives(a, b) => {
+            mywrite!(w, "o");
+            enc_ty(w, cx, a);
+            enc_region(w, cx, b);
+        }
+    }
+}

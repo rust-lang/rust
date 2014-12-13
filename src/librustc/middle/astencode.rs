@@ -830,6 +830,8 @@ trait rbml_writer_helpers<'tcx> {
     fn emit_tys<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>, tys: &[Ty<'tcx>]);
     fn emit_type_param_def<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>,
                                type_param_def: &ty::TypeParameterDef<'tcx>);
+    fn emit_predicate<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>,
+                          predicate: &ty::Predicate<'tcx>);
     fn emit_trait_ref<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>,
                           ty: &ty::TraitRef<'tcx>);
     fn emit_polytype<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>,
@@ -936,6 +938,15 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
         });
     }
 
+    fn emit_predicate<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>,
+                          predicate: &ty::Predicate<'tcx>) {
+        self.emit_opaque(|this| {
+            Ok(tyencode::enc_predicate(this.writer,
+                                       &ecx.ty_str_ctxt(),
+                                       predicate))
+        });
+    }
+
     fn emit_polytype<'a>(&mut self,
                          ecx: &e::EncodeContext<'a, 'tcx>,
                          pty: ty::Polytype<'tcx>) {
@@ -953,6 +964,11 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
                         Ok(encode_vec_per_param_space(
                             this, &pty.generics.regions,
                             |this, def| def.encode(this).unwrap()))
+                    });
+                    this.emit_struct_field("predicates", 2, |this| {
+                        Ok(encode_vec_per_param_space(
+                            this, &pty.generics.predicates,
+                            |this, def| this.emit_predicate(ecx, def)))
                     })
                 })
             });
@@ -1336,6 +1352,8 @@ trait rbml_decoder_decoder_helpers<'tcx> {
                               -> Rc<ty::TraitRef<'tcx>>;
     fn read_type_param_def<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
                                    -> ty::TypeParameterDef<'tcx>;
+    fn read_predicate<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
+                              -> ty::Predicate<'tcx>;
     fn read_polytype<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
                              -> ty::Polytype<'tcx>;
     fn read_existential_bounds<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
@@ -1536,6 +1554,15 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
         }).unwrap()
     }
 
+    fn read_predicate<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
+                              -> ty::Predicate<'tcx>
+    {
+        self.read_opaque(|this, doc| {
+            Ok(tydecode::parse_predicate_data(doc.data, doc.start, dcx.cdata.cnum, dcx.tcx,
+                                              |s, a| this.convert_def_id(dcx, s, a)))
+        }).unwrap()
+    }
+
     fn read_polytype<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
                              -> ty::Polytype<'tcx> {
         self.read_struct("Polytype", 2, |this| {
@@ -1553,7 +1580,13 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
                             this.read_struct_field("regions", 1, |this| {
                                 Ok(this.read_vec_per_param_space(
                                     |this| Decodable::decode(this).unwrap()))
-                            }).unwrap()
+                            }).unwrap(),
+
+                            predicates:
+                            this.read_struct_field("predicates", 2, |this| {
+                                Ok(this.read_vec_per_param_space(
+                                    |this| this.read_predicate(dcx)))
+                            }).unwrap(),
                         })
                     })
                 }).unwrap(),

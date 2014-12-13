@@ -251,3 +251,7 @@ pub const tag_type_param_def: uint = 0xa5;
 
 pub const tag_item_generics: uint = 0xa6;
 pub const tag_method_ty_generics: uint = 0xa7;
+
+pub const tag_predicate: uint = 0xa8;
+pub const tag_predicate_space: uint = 0xa9;
+pub const tag_predicate_data: uint = 0xb0;

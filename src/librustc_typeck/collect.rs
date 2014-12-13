@@ -1407,14 +1407,15 @@ pub fn trait_def_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                     .collect();
 
         // ...and also create generics synthesized from the associated types.
+        let mut index = 0;
         let assoc_types: Vec<_> =
             items.iter()
             .flat_map(|item| match *item {
                 ast::TypeTraitItem(ref trait_item) => {
-                    let index = types.len();
+                    index += 1;
                     Some(ty::mk_param(ccx.tcx,
                                       subst::AssocSpace,
-                                      index,
+                                      index - 1,
                                       local_def(trait_item.ty_param.id))).into_iter()
                 }
                 ast::RequiredMethod(_) | ast::ProvidedMethod(_) => {
@@ -1596,7 +1597,8 @@ fn ty_generics_for_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                    substs: &subst::Substs<'tcx>,
                                    ast_generics: &ast::Generics,
                                    items: &[ast::TraitItem])
-                                   -> ty::Generics<'tcx> {
+                                   -> ty::Generics<'tcx>
+{
     let mut generics =
         ty_generics(ccx,
                     subst::TypeSpace,
@@ -1644,7 +1646,7 @@ fn ty_generics_for_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         bounds: ty::ParamBounds {
             region_bounds: vec!(),
             builtin_bounds: ty::empty_builtin_bounds(),
-            trait_bounds: vec!(self_trait_ref),
+            trait_bounds: vec!(self_trait_ref.clone()),
         },
         associated_with: None,
         default: None
@@ -1653,6 +1655,9 @@ fn ty_generics_for_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     ccx.tcx.ty_param_defs.borrow_mut().insert(param_id, def.clone());
 
     generics.types.push(subst::SelfSpace, def);
+
+    generics.predicates.push(subst::SelfSpace,
+                             ty::Predicate::Trait(self_trait_ref));
 
     generics
 }
@@ -1806,6 +1811,10 @@ fn ty_generics<'tcx,AC>(this: &AC,
         result.types.push(space, (*associated_type_param).clone());
     }
 
+    // Just for fun, also push the bounds from the type parameters
+    // into the predicates list. This is currently kind of non-DRY.
+    create_predicates(this.tcx(), &mut result, space);
+
     return result;
 
     fn create_type_parameters_for_associated_types<'tcx, AC>(
@@ -1889,6 +1898,27 @@ fn ty_generics<'tcx,AC>(this: &AC,
                     associated_types_generics.types.push(space, def);
                     index += 1;
                 }
+            }
+        }
+    }
+
+    fn create_predicates<'tcx>(
+        tcx: &ty::ctxt<'tcx>,
+        result: &mut ty::Generics<'tcx>,
+        space: subst::ParamSpace)
+    {
+        for type_param_def in result.types.get_slice(space).iter() {
+            let param_ty = ty::mk_param_from_def(tcx, type_param_def);
+            for predicate in ty::predicates(tcx, param_ty, &type_param_def.bounds).into_iter() {
+                result.predicates.push(space, predicate);
+            }
+        }
+
+        for region_param_def in result.regions.get_slice(space).iter() {
+            let region = region_param_def.to_early_bound_region();
+            for &bound_region in region_param_def.bounds.iter() {
+                result.predicates.push(space, ty::Predicate::RegionOutlives(region,
+                                                                            bound_region));
             }
         }
     }
@@ -2145,8 +2175,7 @@ pub fn mk_item_substs<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
     let regions =
         ty_generics.regions.map(
-            |def| ty::ReEarlyBound(def.def_id.node, def.space,
-                                   def.index, def.name));
+            |def| def.to_early_bound_region());
 
     subst::Substs::new(types, regions)
 }
