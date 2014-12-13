@@ -61,7 +61,7 @@
 
 #![experimental]
 
-pub use core_collections::hash::{Hash, Hasher, Writer, hash, sip};
+pub use core::hash::{Hash, Hasher, Writer, hash, sip};
 
 use core::kinds::Sized;
 use default::Default;

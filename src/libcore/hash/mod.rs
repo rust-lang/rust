@@ -61,16 +61,12 @@
 
 #![allow(unused_must_use)]
 
-use core::prelude::*;
+use prelude::*;
 
-use alloc::boxed::Box;
-use alloc::rc::Rc;
-use core::borrow::{Cow, ToOwned};
-use core::intrinsics::TypeId;
-use core::mem;
-use core::num::Int;
-
-use vec::Vec;
+use borrow::{Cow, ToOwned};
+use intrinsics::TypeId;
+use mem;
+use num::Int;
 
 /// Reexport the `sip::hash` function as our default hasher.
 pub use self::sip::hash as hash;
@@ -92,6 +88,7 @@ pub trait Hasher<S> {
     fn hash<Sized? T: Hash<S>>(&self, value: &T) -> u64;
 }
 
+#[allow(missing_docs)]
 pub trait Writer {
     fn write(&mut self, bytes: &[u8]);
 }
@@ -103,7 +100,7 @@ macro_rules! impl_hash {
         impl<S: Writer> Hash<S> for $ty {
             #[inline]
             fn hash(&self, state: &mut S) {
-                let a: [u8, ..::core::$ty::BYTES] = unsafe {
+                let a: [u8, ..::$ty::BYTES] = unsafe {
                     mem::transmute((*self as $uty).to_le() as $ty)
                 };
                 state.write(a.as_slice())
@@ -197,13 +194,6 @@ impl<S: Writer, T: Hash<S>> Hash<S> for [T] {
 }
 
 
-impl<S: Writer, T: Hash<S>> Hash<S> for Vec<T> {
-    #[inline]
-    fn hash(&self, state: &mut S) {
-        self.as_slice().hash(state);
-    }
-}
-
 impl<'a, S: Writer, Sized? T: Hash<S>> Hash<S> for &'a T {
     #[inline]
     fn hash(&self, state: &mut S) {
@@ -215,36 +205,6 @@ impl<'a, S: Writer, Sized? T: Hash<S>> Hash<S> for &'a mut T {
     #[inline]
     fn hash(&self, state: &mut S) {
         (**self).hash(state);
-    }
-}
-
-impl<S: Writer, Sized? T: Hash<S>> Hash<S> for Box<T> {
-    #[inline]
-    fn hash(&self, state: &mut S) {
-        (**self).hash(state);
-    }
-}
-
-// FIXME (#18248) Make `T` `Sized?`
-impl<S: Writer, T: Hash<S>> Hash<S> for Rc<T> {
-    #[inline]
-    fn hash(&self, state: &mut S) {
-        (**self).hash(state);
-    }
-}
-
-impl<S: Writer, T: Hash<S>> Hash<S> for Option<T> {
-    #[inline]
-    fn hash(&self, state: &mut S) {
-        match *self {
-            Some(ref x) => {
-                0u8.hash(state);
-                x.hash(state);
-            }
-            None => {
-                1u8.hash(state);
-            }
-        }
     }
 }
 
@@ -273,119 +233,9 @@ impl<S: Writer> Hash<S> for TypeId {
     }
 }
 
-impl<S: Writer, T: Hash<S>, U: Hash<S>> Hash<S> for Result<T, U> {
-    #[inline]
-    fn hash(&self, state: &mut S) {
-        match *self {
-            Ok(ref t) => { 1u.hash(state); t.hash(state); }
-            Err(ref t) => { 2u.hash(state); t.hash(state); }
-        }
-    }
-}
-
 impl<'a, T, Sized? B, S> Hash<S> for Cow<'a, T, B> where B: Hash<S> + ToOwned<T> {
     #[inline]
     fn hash(&self, state: &mut S) {
         Hash::hash(&**self, state)
-    }
-}
-
-//////////////////////////////////////////////////////////////////////////////
-
-#[cfg(test)]
-mod tests {
-    use core::kinds::Sized;
-    use std::mem;
-
-    use slice::SliceExt;
-    use super::{Hash, Hasher, Writer};
-
-    struct MyWriterHasher;
-
-    impl Hasher<MyWriter> for MyWriterHasher {
-        fn hash<Sized? T: Hash<MyWriter>>(&self, value: &T) -> u64 {
-            let mut state = MyWriter { hash: 0 };
-            value.hash(&mut state);
-            state.hash
-        }
-    }
-
-    struct MyWriter {
-        hash: u64,
-    }
-
-    impl Writer for MyWriter {
-        // Most things we'll just add up the bytes.
-        fn write(&mut self, buf: &[u8]) {
-            for byte in buf.iter() {
-                self.hash += *byte as u64;
-            }
-        }
-    }
-
-    #[test]
-    fn test_writer_hasher() {
-        use alloc::boxed::Box;
-
-        let hasher = MyWriterHasher;
-
-        assert_eq!(hasher.hash(&()), 0);
-
-        assert_eq!(hasher.hash(&5u8), 5);
-        assert_eq!(hasher.hash(&5u16), 5);
-        assert_eq!(hasher.hash(&5u32), 5);
-        assert_eq!(hasher.hash(&5u64), 5);
-        assert_eq!(hasher.hash(&5u), 5);
-
-        assert_eq!(hasher.hash(&5i8), 5);
-        assert_eq!(hasher.hash(&5i16), 5);
-        assert_eq!(hasher.hash(&5i32), 5);
-        assert_eq!(hasher.hash(&5i64), 5);
-        assert_eq!(hasher.hash(&5i), 5);
-
-        assert_eq!(hasher.hash(&false), 0);
-        assert_eq!(hasher.hash(&true), 1);
-
-        assert_eq!(hasher.hash(&'a'), 97);
-
-        let s: &str = "a";
-        assert_eq!(hasher.hash(& s), 97 + 0xFF);
-        // FIXME (#18283) Enable test
-        //let s: Box<str> = box "a";
-        //assert_eq!(hasher.hash(& s), 97 + 0xFF);
-        let cs: &[u8] = &[1u8, 2u8, 3u8];
-        assert_eq!(hasher.hash(& cs), 9);
-        let cs: Box<[u8]> = box [1u8, 2u8, 3u8];
-        assert_eq!(hasher.hash(& cs), 9);
-
-        // FIXME (#18248) Add tests for hashing Rc<str> and Rc<[T]>
-
-        unsafe {
-            let ptr: *const int = mem::transmute(5i);
-            assert_eq!(hasher.hash(&ptr), 5);
-        }
-
-        unsafe {
-            let ptr: *mut int = mem::transmute(5i);
-            assert_eq!(hasher.hash(&ptr), 5);
-        }
-    }
-
-    struct Custom {
-        hash: u64
-    }
-
-    impl Hash<u64> for Custom {
-        fn hash(&self, state: &mut u64) {
-            *state = self.hash;
-        }
-    }
-
-    #[test]
-    fn test_custom_state() {
-        let custom = Custom { hash: 5 };
-        let mut state = 0;
-        custom.hash(&mut state);
-        assert_eq!(state, 5);
     }
 }

@@ -15,6 +15,7 @@ use core::clone::Clone;
 use core::cmp::{PartialEq, PartialOrd, Eq, Ord, Ordering};
 use core::default::Default;
 use core::fmt;
+use core::hash::{mod, Hash};
 use core::kinds::Sized;
 use core::mem;
 use core::option::Option;
@@ -92,6 +93,14 @@ impl<Sized? T: Ord> Ord for Box<T> {
     }
 }
 impl<Sized? T: Eq> Eq for Box<T> {}
+
+impl<S: hash::Writer, Sized? T: Hash<S>> Hash<S> for Box<T> {
+    #[inline]
+    fn hash(&self, state: &mut S) {
+        (**self).hash(state);
+    }
+}
+
 
 /// Extension methods for an owning `Any` trait object.
 #[unstable = "post-DST and coherence changes, this will not be a trait but \
