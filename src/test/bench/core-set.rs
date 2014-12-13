@@ -68,7 +68,7 @@ impl Results {
                      rand_cap: uint,
                      f: || -> T) { {
             let mut set = f();
-            timed(&mut self.sequential_ints, move || {
+            timed(&mut self.sequential_ints, || {
                 for i in range(0u, num_keys) {
                     set.insert(i);
                 }
@@ -81,7 +81,7 @@ impl Results {
 
         {
             let mut set = f();
-            timed(&mut self.random_ints, move || {
+            timed(&mut self.random_ints, || {
                 for _ in range(0, num_keys) {
                     set.insert(rng.gen::<uint>() % rand_cap);
                 }
@@ -94,7 +94,7 @@ impl Results {
                 set.insert(i);
             }
 
-            timed(&mut self.delete_ints, move || {
+            timed(&mut self.delete_ints, || {
                 for i in range(0u, num_keys) {
                     assert!(set.remove(&i));
                 }
@@ -110,7 +110,7 @@ impl Results {
                      f: || -> T) {
         {
             let mut set = f();
-            timed(&mut self.sequential_strings, move || {
+            timed(&mut self.sequential_strings, || {
                 for i in range(0u, num_keys) {
                     set.insert(i.to_string());
                 }
@@ -123,7 +123,7 @@ impl Results {
 
         {
             let mut set = f();
-            timed(&mut self.random_strings, move || {
+            timed(&mut self.random_strings, || {
                 for _ in range(0, num_keys) {
                     let s = rng.gen::<uint>().to_string();
                     set.insert(s);
@@ -136,7 +136,7 @@ impl Results {
             for i in range(0u, num_keys) {
                 set.insert(i.to_string());
             }
-            timed(&mut self.delete_strings, move || {
+            timed(&mut self.delete_strings, || {
                 for i in range(0u, num_keys) {
                     assert!(set.remove(&i.to_string()));
                 }
