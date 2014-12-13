@@ -1149,6 +1149,15 @@ other hand, it's rare to want to write into a mutable slice on the
 stack, as opposed to an owned vector. So these two readers and writers
 cover the vast majority of in-memory readers/writers for Rust.
 
+In addition to these, however, we will have the following `impl`s
+directly on slice/vector types:
+
+* `impl Writer for Vec<u8>`
+* `impl Writer for &mut [u8]`
+* `impl Reader for &[u8]`
+
+These `impls` are convenient and efficient, but do not implement `Seek`.
+
 ### The `std::io` facade
 [The std::io facade]: #the-stdio-facade
 
