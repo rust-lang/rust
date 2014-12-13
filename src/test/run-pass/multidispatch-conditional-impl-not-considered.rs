@@ -29,5 +29,5 @@ impl Bar {
 
 fn main() {
     let b = RefCell::new(Bar);
-    b.borrow().foo()
+    b.borrow().foo();
 }
