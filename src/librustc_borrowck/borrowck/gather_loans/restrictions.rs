@@ -12,14 +12,14 @@
 
 pub use self::RestrictionResult::*;
 
-use middle::borrowck::*;
-use middle::borrowck::LoanPathElem::*;
-use middle::borrowck::LoanPathKind::*;
-use middle::expr_use_visitor as euv;
-use middle::mem_categorization as mc;
-use middle::ty;
+use borrowck::*;
+use borrowck::LoanPathElem::*;
+use borrowck::LoanPathKind::*;
+use rustc::middle::expr_use_visitor as euv;
+use rustc::middle::mem_categorization as mc;
+use rustc::middle::ty;
+use rustc::util::ppaux::Repr;
 use syntax::codemap::Span;
-use util::ppaux::Repr;
 
 use std::rc::Rc;
 
