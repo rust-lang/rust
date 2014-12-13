@@ -24,6 +24,7 @@
        html_playground_url = "http://play.rust-lang.org/")]
 
 #![feature(macro_rules, phase, globs)]
+#![feature(unboxed_closures)]
 #![no_std]
 #![experimental]
 

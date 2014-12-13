@@ -36,7 +36,8 @@ pub struct BTreeSet<T>{
 pub type Items<'a, T> = Keys<'a, T, ()>;
 
 /// An owning iterator over a BTreeSet's items.
-pub type MoveItems<T> = iter::Map<'static, (T, ()), T, MoveEntries<T, ()>>;
+pub type MoveItems<T> =
+    iter::Map<(T, ()), T, MoveEntries<T, ()>, fn((T, ())) -> T>;
 
 /// A lazy iterator producing elements in the set difference (in-order).
 pub struct DifferenceItems<'a, T:'a> {
@@ -87,7 +88,9 @@ impl<T> BTreeSet<T> {
     /// Gets an iterator for moving out the BtreeSet's contents.
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn into_iter(self) -> MoveItems<T> {
-        self.map.into_iter().map(|(k, _)| k)
+        fn first<A, B>((a, _): (A, B)) -> A { a }
+
+        self.map.into_iter().map(first)
     }
 }
 
@@ -600,10 +603,23 @@ mod test {
       assert!(hash::hash(&x) == hash::hash(&y));
     }
 
-    fn check(a: &[int],
-             b: &[int],
-             expected: &[int],
-             f: |&BTreeSet<int>, &BTreeSet<int>, f: |&int| -> bool| -> bool) {
+    struct Counter<'a, 'b> {
+        i: &'a mut uint,
+        expected: &'b [int],
+    }
+
+    impl<'a, 'b> FnMut(&int) -> bool for Counter<'a, 'b> {
+        extern "rust-call" fn call_mut(&mut self, (&x,): (&int,)) -> bool {
+            assert_eq!(x, self.expected[*self.i]);
+            *self.i += 1;
+            true
+        }
+    }
+
+    fn check<F>(a: &[int], b: &[int], expected: &[int], f: F) where
+        // FIXME Replace Counter with `Box<FnMut(_) -> _>`
+        F: FnOnce(&BTreeSet<int>, &BTreeSet<int>, Counter) -> bool,
+    {
         let mut set_a = BTreeSet::new();
         let mut set_b = BTreeSet::new();
 
@@ -611,11 +627,7 @@ mod test {
         for y in b.iter() { assert!(set_b.insert(*y)) }
 
         let mut i = 0;
-        f(&set_a, &set_b, |x| {
-            assert_eq!(*x, expected[i]);
-            i += 1;
-            true
-        });
+        f(&set_a, &set_b, Counter { i: &mut i, expected: expected });
         assert_eq!(i, expected.len());
     }
 

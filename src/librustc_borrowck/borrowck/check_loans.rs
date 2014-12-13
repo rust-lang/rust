@@ -232,8 +232,9 @@ fn compatible_borrow_kinds(borrow_kind1: ty::BorrowKind,
 impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
     pub fn tcx(&self) -> &'a ty::ctxt<'tcx> { self.bccx.tcx }
 
-    pub fn each_issued_loan(&self, scope: region::CodeExtent, op: |&Loan<'tcx>| -> bool)
-                            -> bool {
+    pub fn each_issued_loan<F>(&self, scope: region::CodeExtent, mut op: F) -> bool where
+        F: FnMut(&Loan<'tcx>) -> bool,
+    {
         //! Iterates over each loan that has been issued
         //! on entrance to `scope`, regardless of whether it is
         //! actually *in scope* at that point.  Sometimes loans
@@ -246,10 +247,9 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
         })
     }
 
-    pub fn each_in_scope_loan(&self,
-                              scope: region::CodeExtent,
-                              op: |&Loan<'tcx>| -> bool)
-                              -> bool {
+    pub fn each_in_scope_loan<F>(&self, scope: region::CodeExtent, mut op: F) -> bool where
+        F: FnMut(&Loan<'tcx>) -> bool,
+    {
         //! Like `each_issued_loan()`, but only considers loans that are
         //! currently in scope.
 
@@ -263,11 +263,13 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
         })
     }
 
-    fn each_in_scope_loan_affecting_path(&self,
-                                         scope: region::CodeExtent,
-                                         loan_path: &LoanPath<'tcx>,
-                                         op: |&Loan<'tcx>| -> bool)
-                                         -> bool {
+    fn each_in_scope_loan_affecting_path<F>(&self,
+                                            scope: region::CodeExtent,
+                                            loan_path: &LoanPath<'tcx>,
+                                            mut op: F)
+                                            -> bool where
+        F: FnMut(&Loan<'tcx>) -> bool,
+    {
         //! Iterates through all of the in-scope loans affecting `loan_path`,
         //! calling `op`, and ceasing iteration if `false` is returned.
 

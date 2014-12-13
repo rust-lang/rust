@@ -142,7 +142,7 @@ impl<'a,T:Clone> CloneSliceAllocPrelude<T> for MaybeOwnedVector<'a,T> {
         self.as_slice().to_vec()
     }
 
-    fn partitioned(&self, f: |&T| -> bool) -> (Vec<T>, Vec<T>) {
+    fn partitioned<F>(&self, f: F) -> (Vec<T>, Vec<T>) where F: FnMut(&T) -> bool {
         self.as_slice().partitioned(f)
     }
 

@@ -370,6 +370,7 @@
 
 #![allow(unknown_features)]
 #![feature(macro_rules, phase, slicing_syntax, globs)]
+#![feature(unboxed_closures)]
 #![deny(missing_docs)]
 
 #[cfg(test)]

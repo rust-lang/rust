@@ -3212,13 +3212,13 @@ fn populate_scope_map(cx: &CrateContext,
     });
 
     // local helper functions for walking the AST.
-    fn with_new_scope(cx: &CrateContext,
-                      scope_span: Span,
-                      scope_stack: &mut Vec<ScopeStackEntry> ,
-                      scope_map: &mut NodeMap<DIScope>,
-                      inner_walk: |&CrateContext,
-                                   &mut Vec<ScopeStackEntry> ,
-                                   &mut NodeMap<DIScope>|) {
+    fn with_new_scope<F>(cx: &CrateContext,
+                         scope_span: Span,
+                         scope_stack: &mut Vec<ScopeStackEntry> ,
+                         scope_map: &mut NodeMap<DIScope>,
+                         inner_walk: F) where
+        F: FnOnce(&CrateContext, &mut Vec<ScopeStackEntry>, &mut NodeMap<DIScope>),
+    {
         // Create a new lexical scope and push it onto the stack
         let loc = cx.sess().codemap().lookup_char_pos(scope_span.lo);
         let file_metadata = file_metadata(cx, loc.file.name.as_slice());

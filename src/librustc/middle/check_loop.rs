@@ -64,7 +64,9 @@ impl<'a, 'v> Visitor<'v> for CheckLoopVisitor<'a> {
 }
 
 impl<'a> CheckLoopVisitor<'a> {
-    fn with_context(&mut self, cx: Context, f: |&mut CheckLoopVisitor<'a>|) {
+    fn with_context<F>(&mut self, cx: Context, f: F) where
+        F: FnOnce(&mut CheckLoopVisitor<'a>),
+    {
         let old_cx = self.cx;
         self.cx = cx;
         f(self);

@@ -32,11 +32,11 @@ use std::rc::Rc;
 
 // This could have a better place to live.
 pub trait MoveMap<T> {
-    fn move_map(self, f: |T| -> T) -> Self;
+    fn move_map<F>(self, f: F) -> Self where F: FnMut(T) -> T;
 }
 
 impl<T> MoveMap<T> for Vec<T> {
-    fn move_map(mut self, f: |T| -> T) -> Vec<T> {
+    fn move_map<F>(mut self, mut f: F) -> Vec<T> where F: FnMut(T) -> T {
         for p in self.iter_mut() {
             unsafe {
                 // FIXME(#5016) this shouldn't need to zero to be safe.
@@ -48,7 +48,7 @@ impl<T> MoveMap<T> for Vec<T> {
 }
 
 impl<T> MoveMap<T> for OwnedSlice<T> {
-    fn move_map(self, f: |T| -> T) -> OwnedSlice<T> {
+    fn move_map<F>(self, f: F) -> OwnedSlice<T> where F: FnMut(T) -> T {
         OwnedSlice::from_vec(self.into_vec().move_map(f))
     }
 }

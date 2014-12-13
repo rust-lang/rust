@@ -743,12 +743,14 @@ impl<'tcx, T:HigherRankedFoldable<'tcx>> HigherRankedFoldable<'tcx> for Rc<T> {
 ///////////////////////////////////////////////////////////////////////////
 // Some sample folders
 
-pub struct BottomUpFolder<'a, 'tcx: 'a> {
+pub struct BottomUpFolder<'a, 'tcx: 'a, F> where F: FnMut(Ty<'tcx>) -> Ty<'tcx> {
     pub tcx: &'a ty::ctxt<'tcx>,
-    pub fldop: |Ty<'tcx>|: 'a -> Ty<'tcx>,
+    pub fldop: F,
 }
 
-impl<'a, 'tcx> TypeFolder<'tcx> for BottomUpFolder<'a, 'tcx> {
+impl<'a, 'tcx, F> TypeFolder<'tcx> for BottomUpFolder<'a, 'tcx, F> where
+    F: FnMut(Ty<'tcx>) -> Ty<'tcx>,
+{
     fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx> { self.tcx }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
@@ -772,15 +774,14 @@ impl<'a, 'tcx> TypeFolder<'tcx> for BottomUpFolder<'a, 'tcx> {
 /// (The distinction between "free" and "bound" is represented by
 /// keeping track of each `FnSig` in the lexical context of the
 /// current position of the fold.)
-pub struct RegionFolder<'a, 'tcx: 'a> {
+pub struct RegionFolder<'a, 'tcx: 'a, F> where F: FnMut(ty::Region, uint) -> ty::Region {
     tcx: &'a ty::ctxt<'tcx>,
     current_depth: uint,
-    fld_r: |ty::Region, uint|: 'a -> ty::Region,
+    fld_r: F,
 }
 
-impl<'a, 'tcx> RegionFolder<'a, 'tcx> {
-    pub fn new(tcx: &'a ty::ctxt<'tcx>, fld_r: |ty::Region, uint|: 'a -> ty::Region)
-               -> RegionFolder<'a, 'tcx> {
+impl<'a, 'tcx, F> RegionFolder<'a, 'tcx, F> where F: FnMut(ty::Region, uint) -> ty::Region {
+    pub fn new(tcx: &'a ty::ctxt<'tcx>, fld_r: F) -> RegionFolder<'a, 'tcx, F> {
         RegionFolder {
             tcx: tcx,
             current_depth: 1,
@@ -789,7 +790,9 @@ impl<'a, 'tcx> RegionFolder<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> TypeFolder<'tcx> for RegionFolder<'a, 'tcx> {
+impl<'a, 'tcx, F> TypeFolder<'tcx> for RegionFolder<'a, 'tcx, F> where
+    F: FnMut(ty::Region, uint) -> ty::Region,
+{
     fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx> { self.tcx }
 
     fn enter_region_binder(&mut self) {

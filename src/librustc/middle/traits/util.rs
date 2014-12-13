@@ -306,10 +306,11 @@ pub fn predicate_for_builtin_bound<'tcx>(
 /// of caller obligations), search through the trait and supertraits to find one where `test(d)` is
 /// true, where `d` is the def-id of the trait/supertrait. If any is found, return `Some(p)` where
 /// `p` is the path to that trait/supertrait. Else `None`.
-pub fn search_trait_and_supertraits_from_bound<'tcx>(tcx: &ty::ctxt<'tcx>,
-                                                     caller_bound: Rc<ty::TraitRef<'tcx>>,
-                                                     test: |ast::DefId| -> bool)
-                                                     -> Option<VtableParamData<'tcx>>
+pub fn search_trait_and_supertraits_from_bound<'tcx, F>(tcx: &ty::ctxt<'tcx>,
+                                                        caller_bound: Rc<ty::TraitRef<'tcx>>,
+                                                        mut test: F)
+                                                        -> Option<VtableParamData<'tcx>> where
+    F: FnMut(ast::DefId) -> bool,
 {
     for bound in transitive_bounds(tcx, &[caller_bound]) {
         if test(bound.def_id) {

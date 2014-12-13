@@ -97,11 +97,13 @@ use ext::deriving::generic::ty::*;
 use parse::token;
 use ptr::P;
 
-pub fn expand_deriving_encodable(cx: &mut ExtCtxt,
-                                 span: Span,
-                                 mitem: &MetaItem,
-                                 item: &Item,
-                                 push: |P<Item>|) {
+pub fn expand_deriving_encodable<F>(cx: &mut ExtCtxt,
+                                    span: Span,
+                                    mitem: &MetaItem,
+                                    item: &Item,
+                                    push: F) where
+    F: FnOnce(P<Item>),
+{
     let trait_def = TraitDef {
         span: span,
         attributes: Vec::new(),

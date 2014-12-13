@@ -197,14 +197,18 @@ impl<T> TrieMap<T> {
     /// The iterator's element type is `uint`.
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn keys<'r>(&'r self) -> Keys<'r, T> {
-        self.iter().map(|(k, _v)| k)
+        fn first<A, B>((a, _): (A, B)) -> A { a }
+
+        self.iter().map(first)
     }
 
     /// Gets an iterator visiting all values in ascending order by the keys.
     /// The iterator's element type is `&'r T`.
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn values<'r>(&'r self) -> Values<'r, T> {
-        self.iter().map(|(_k, v)| v)
+        fn second<A, B>((_, b): (A, B)) -> B { b }
+
+        self.iter().map(second)
     }
 
     /// Gets an iterator over the key-value pairs in the map, ordered by keys.
@@ -1091,12 +1095,11 @@ pub struct MutEntries<'a, T:'a> {
 }
 
 /// A forward iterator over the keys of a map.
-pub type Keys<'a, T> =
-    iter::Map<'static, (uint, &'a T), uint, Entries<'a, T>>;
+pub type Keys<'a, T> = iter::Map<(uint, &'a T), uint, Entries<'a, T>, fn((uint, &'a T)) -> uint>;
 
 /// A forward iterator over the values of a map.
 pub type Values<'a, T> =
-    iter::Map<'static, (uint, &'a T), &'a T, Entries<'a, T>>;
+    iter::Map<(uint, &'a T), &'a T, Entries<'a, T>, fn((uint, &'a T)) -> &'a T>;
 
 // FIXME #5846: see `addr!` above.
 macro_rules! item { ($i:item) => {$i}}

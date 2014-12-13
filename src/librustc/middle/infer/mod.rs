@@ -477,14 +477,17 @@ pub fn resolve_region(cx: &InferCtxt, r: ty::Region, modes: uint)
 }
 
 trait then<'tcx> {
-    fn then<T:Clone>(&self, f: || -> Result<T,ty::type_err<'tcx>>)
-        -> Result<T,ty::type_err<'tcx>>;
+    fn then<T, F>(&self, f: F) -> Result<T, ty::type_err<'tcx>> where
+        T: Clone,
+        F: FnOnce() -> Result<T, ty::type_err<'tcx>>;
 }
 
 impl<'tcx> then<'tcx> for ures<'tcx> {
-    fn then<T:Clone>(&self, f: || -> Result<T,ty::type_err<'tcx>>)
-        -> Result<T,ty::type_err<'tcx>> {
-        self.and_then(|_i| f())
+    fn then<T, F>(&self, f: F) -> Result<T, ty::type_err<'tcx>> where
+        T: Clone,
+        F: FnOnce() -> Result<T, ty::type_err<'tcx>>,
+    {
+        self.and_then(move |_| f())
     }
 }
 
@@ -502,12 +505,15 @@ impl<'tcx, T> ToUres<'tcx> for cres<'tcx, T> {
 }
 
 trait CresCompare<'tcx, T> {
-    fn compare(&self, t: T, f: || -> ty::type_err<'tcx>) -> cres<'tcx, T>;
+    fn compare<F>(&self, t: T, f: F) -> cres<'tcx, T> where
+        F: FnOnce() -> ty::type_err<'tcx>;
 }
 
 impl<'tcx, T:Clone + PartialEq> CresCompare<'tcx, T> for cres<'tcx, T> {
-    fn compare(&self, t: T, f: || -> ty::type_err<'tcx>) -> cres<'tcx, T> {
-        (*self).clone().and_then(|s| {
+    fn compare<F>(&self, t: T, f: F) -> cres<'tcx, T> where
+        F: FnOnce() -> ty::type_err<'tcx>,
+    {
+        (*self).clone().and_then(move |s| {
             if s == t {
                 (*self).clone()
             } else {
@@ -616,7 +622,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     /// Execute `f` and commit the bindings
-    pub fn commit_unconditionally<R>(&self, f: || -> R) -> R {
+    pub fn commit_unconditionally<R, F>(&self, f: F) -> R where
+        F: FnOnce() -> R,
+    {
         debug!("commit()");
         let snapshot = self.start_snapshot();
         let r = f();
@@ -625,12 +633,16 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     /// Execute `f` and commit the bindings if successful
-    pub fn commit_if_ok<T,E>(&self, f: || -> Result<T,E>) -> Result<T,E> {
-        self.commit_unconditionally(|| self.try(|| f()))
+    pub fn commit_if_ok<T, E, F>(&self, f: F) -> Result<T, E> where
+        F: FnOnce() -> Result<T, E>
+    {
+        self.commit_unconditionally(move || self.try(move || f()))
     }
 
     /// Execute `f`, unroll bindings on panic
-    pub fn try<T,E>(&self, f: || -> Result<T,E>) -> Result<T,E> {
+    pub fn try<T, E, F>(&self, f: F) -> Result<T, E> where
+        F: FnOnce() -> Result<T, E>
+    {
         debug!("try()");
         let snapshot = self.start_snapshot();
         let r = f();
@@ -647,7 +659,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     /// Execute `f` then unroll any bindings it creates
-    pub fn probe<R>(&self, f: || -> R) -> R {
+    pub fn probe<R, F>(&self, f: F) -> R where
+        F: FnOnce() -> R,
+    {
         debug!("probe()");
         let snapshot = self.start_snapshot();
         let r = f();
@@ -902,22 +916,24 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     // in this case. The typechecker should only ever report type errors involving mismatched
     // types using one of these four methods, and should not call span_err directly for such
     // errors.
-    pub fn type_error_message_str(&self,
-                                  sp: Span,
-                                  mk_msg: |Option<String>, String| -> String,
-                                  actual_ty: String,
-                                  err: Option<&ty::type_err<'tcx>>) {
+    pub fn type_error_message_str<M>(&self,
+                                     sp: Span,
+                                     mk_msg: M,
+                                     actual_ty: String,
+                                     err: Option<&ty::type_err<'tcx>>) where
+        M: FnOnce(Option<String>, String) -> String,
+    {
         self.type_error_message_str_with_expected(sp, mk_msg, None, actual_ty, err)
     }
 
-    pub fn type_error_message_str_with_expected(&self,
-                                                sp: Span,
-                                                mk_msg: |Option<String>,
-                                                         String|
-                                                         -> String,
-                                                expected_ty: Option<Ty<'tcx>>,
-                                                actual_ty: String,
-                                                err: Option<&ty::type_err<'tcx>>) {
+    pub fn type_error_message_str_with_expected<M>(&self,
+                                                   sp: Span,
+                                                   mk_msg: M,
+                                                   expected_ty: Option<Ty<'tcx>>,
+                                                   actual_ty: String,
+                                                   err: Option<&ty::type_err<'tcx>>) where
+        M: FnOnce(Option<String>, String) -> String,
+    {
         debug!("hi! expected_ty = {}, actual_ty = {}", expected_ty, actual_ty);
 
         let resolved_expected = expected_ty.map(|e_ty| {
@@ -942,11 +958,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn type_error_message(&self,
-                              sp: Span,
-                              mk_msg: |String| -> String,
-                              actual_ty: Ty<'tcx>,
-                              err: Option<&ty::type_err<'tcx>>) {
+    pub fn type_error_message<M>(&self,
+                                 sp: Span,
+                                 mk_msg: M,
+                                 actual_ty: Ty<'tcx>,
+                                 err: Option<&ty::type_err<'tcx>>) where
+        M: FnOnce(String) -> String,
+    {
         let actual_ty = self.resolve_type_vars_if_possible(actual_ty);
 
         // Don't report an error if actual type is ty_err.
@@ -954,7 +972,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             return;
         }
 
-        self.type_error_message_str(sp, |_e, a| { mk_msg(a) }, self.ty_to_string(actual_ty), err);
+        self.type_error_message_str(sp,
+            move |_e, a| { mk_msg(a) },
+            self.ty_to_string(actual_ty), err);
     }
 
     pub fn report_mismatched_types(&self,

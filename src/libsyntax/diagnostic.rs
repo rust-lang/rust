@@ -581,7 +581,9 @@ fn print_macro_backtrace(w: &mut EmitterWriter,
     cs.map_or(Ok(()), |call_site| print_macro_backtrace(w, cm, call_site))
 }
 
-pub fn expect<T>(diag: &SpanHandler, opt: Option<T>, msg: || -> String) -> T {
+pub fn expect<T, M>(diag: &SpanHandler, opt: Option<T>, msg: M) -> T where
+    M: FnOnce() -> String,
+{
     match opt {
         Some(t) => t,
         None => diag.handler().bug(msg().as_slice()),

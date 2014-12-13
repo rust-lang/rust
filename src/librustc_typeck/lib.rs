@@ -74,6 +74,7 @@ This API is completely unstable and subject to change.
 #![feature(default_type_params, globs, import_shadowing, macro_rules, phase, quote)]
 #![feature(slicing_syntax, unsafe_destructor)]
 #![feature(rustc_diagnostic_macros)]
+#![feature(unboxed_closures)]
 #![allow(non_camel_case_types)]
 
 #[phase(plugin, link)] extern crate log;
@@ -169,14 +170,16 @@ fn no_params<'tcx>(t: Ty<'tcx>) -> ty::Polytype<'tcx> {
     }
 }
 
-fn require_same_types<'a, 'tcx>(tcx: &ty::ctxt<'tcx>,
-                                    maybe_infcx: Option<&infer::InferCtxt<'a, 'tcx>>,
-                                    t1_is_expected: bool,
-                                    span: Span,
-                                    t1: Ty<'tcx>,
-                                    t2: Ty<'tcx>,
-                                    msg: || -> String)
-                                    -> bool {
+fn require_same_types<'a, 'tcx, M>(tcx: &ty::ctxt<'tcx>,
+                                   maybe_infcx: Option<&infer::InferCtxt<'a, 'tcx>>,
+                                   t1_is_expected: bool,
+                                   span: Span,
+                                   t1: Ty<'tcx>,
+                                   t2: Ty<'tcx>,
+                                   msg: M)
+                                   -> bool where
+    M: FnOnce() -> String,
+{
     let result = match maybe_infcx {
         None => {
             let infcx = infer::new_infer_ctxt(tcx);

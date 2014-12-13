@@ -208,14 +208,14 @@ mod ziggurat_tables;
 // the perf improvement (25-50%) is definitely worth the extra code
 // size from force-inlining.
 #[inline(always)]
-fn ziggurat<R:Rng>(
+fn ziggurat<R: Rng, P, Z>(
             rng: &mut R,
             symmetric: bool,
             x_tab: ziggurat_tables::ZigTable,
             f_tab: ziggurat_tables::ZigTable,
-            pdf: |f64|: 'static -> f64,
-            zero_case: |&mut R, f64|: 'static -> f64)
-            -> f64 {
+            mut pdf: P,
+            mut zero_case: Z)
+            -> f64 where P: FnMut(f64) -> f64, Z: FnMut(&mut R, f64) -> f64 {
     static SCALE: f64 = (1u64 << 53) as f64;
     loop {
         // reimplement the f64 generation as an optimisation suggested

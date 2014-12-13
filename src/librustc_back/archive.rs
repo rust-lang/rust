@@ -279,8 +279,9 @@ impl<'a> ArchiveBuilder<'a> {
         self.archive
     }
 
-    fn add_archive(&mut self, archive: &Path, name: &str,
-                   skip: |&str| -> bool) -> io::IoResult<()> {
+    fn add_archive<F>(&mut self, archive: &Path, name: &str, mut skip: F) -> io::IoResult<()> where
+        F: FnMut(&str) -> bool,
+    {
         let loc = TempDir::new("rsar").unwrap();
 
         // First, extract the contents of the archive to a temporary directory.

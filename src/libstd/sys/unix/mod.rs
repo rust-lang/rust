@@ -125,7 +125,10 @@ pub fn decode_error_detailed(errno: i32) -> IoError {
 }
 
 #[inline]
-pub fn retry<T: SignedInt> (f: || -> T) -> T {
+pub fn retry<T, F> (mut f: F) -> T where
+    T: SignedInt,
+    F: FnMut() -> T,
+{
     let one: T = Int::one();
     loop {
         let n = f();

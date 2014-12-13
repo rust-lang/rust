@@ -79,8 +79,7 @@ pub trait DocFolder {
                     StructVariant(mut j) => {
                         let mut foo = Vec::new(); swap(&mut foo, &mut j.fields);
                         let num_fields = foo.len();
-                        let c = |x| self.fold_item(x);
-                        j.fields.extend(foo.into_iter().filter_map(c));
+                        j.fields.extend(foo.into_iter().filter_map(|x| self.fold_item(x)));
                         j.fields_stripped |= num_fields != j.fields.len();
                         VariantItem(Variant {kind: StructVariant(j), ..i2})
                     },

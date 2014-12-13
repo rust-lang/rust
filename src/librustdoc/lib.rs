@@ -19,6 +19,7 @@
 
 #![allow(unknown_features)]
 #![feature(globs, macro_rules, phase, slicing_syntax)]
+#![feature(unboxed_closures)]
 
 extern crate arena;
 extern crate getopts;

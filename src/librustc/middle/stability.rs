@@ -43,7 +43,9 @@ struct Annotator {
 impl Annotator {
     // Determine the stability for a node based on its attributes and inherited
     // stability. The stability is recorded in the index and used as the parent.
-    fn annotate(&mut self, id: NodeId, attrs: &Vec<Attribute>, f: |&mut Annotator|) {
+    fn annotate<F>(&mut self, id: NodeId, attrs: &Vec<Attribute>, f: F) where
+        F: FnOnce(&mut Annotator),
+    {
         match attr::find_stability(attrs.as_slice()) {
             Some(stab) => {
                 self.index.local.insert(id, stab.clone());

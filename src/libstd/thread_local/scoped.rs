@@ -135,7 +135,9 @@ impl<T> Key<T> {
     ///     assert_eq!(val, 100);
     /// });
     /// ```
-    pub fn set<R>(&'static self, t: &T, cb: || -> R) -> R {
+    pub fn set<R, F>(&'static self, t: &T, cb: F) -> R where
+        F: FnOnce() -> R,
+    {
         struct Reset<'a, T: 'a> {
             key: &'a KeyInner<T>,
             val: *mut T,
@@ -175,7 +177,9 @@ impl<T> Key<T> {
     ///     // work with `slot`
     /// });
     /// ```
-    pub fn with<R>(&'static self, cb: |&T| -> R) -> R {
+    pub fn with<R, F>(&'static self, cb: F) -> R where
+        F: FnOnce(&T) -> R
+    {
         unsafe {
             let ptr = self.inner.get();
             assert!(!ptr.is_null(), "cannot access a scoped thread local \

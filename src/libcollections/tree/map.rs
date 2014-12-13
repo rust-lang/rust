@@ -234,7 +234,9 @@ impl<K: Ord, V> TreeMap<K, V> {
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn keys<'a>(&'a self) -> Keys<'a, K, V> {
-        self.iter().map(|(k, _v)| k)
+        fn first<A, B>((a, _): (A, B)) -> A { a }
+
+        self.iter().map(first)
     }
 
     /// Gets a lazy iterator over the values in the map, in ascending order
@@ -256,7 +258,9 @@ impl<K: Ord, V> TreeMap<K, V> {
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn values<'a>(&'a self) -> Values<'a, K, V> {
-        self.iter().map(|(_k, v)| v)
+        fn second<A, B>((_, b): (A, B)) -> B { b }
+
+        self.iter().map(second)
     }
 
     /// Gets a lazy iterator over the key-value pairs in the map, in ascending order.
@@ -612,7 +616,7 @@ impl<K, V> TreeMap<K, V> {
     /// ```
     #[inline]
     #[experimental = "likely to be renamed, may be removed"]
-    pub fn find_with(&self, f:|&K| -> Ordering) -> Option<&V> {
+    pub fn find_with<F>(&self, f: F) -> Option<&V> where F: FnMut(&K) -> Ordering {
         tree_find_with(&self.root, f)
     }
 
@@ -637,7 +641,9 @@ impl<K, V> TreeMap<K, V> {
     /// ```
     #[inline]
     #[experimental = "likely to be renamed, may be removed"]
-    pub fn find_with_mut<'a>(&'a mut self, f:|&K| -> Ordering) -> Option<&'a mut V> {
+    pub fn find_with_mut<'a, F>(&'a mut self, f: F) -> Option<&'a mut V> where
+        F: FnMut(&K) -> Ordering
+    {
         tree_find_with_mut(&mut self.root, f)
     }
 }
@@ -863,11 +869,11 @@ pub struct RevMutEntries<'a, K:'a, V:'a> {
 
 /// TreeMap keys iterator.
 pub type Keys<'a, K, V> =
-    iter::Map<'static, (&'a K, &'a V), &'a K, Entries<'a, K, V>>;
+    iter::Map<(&'a K, &'a V), &'a K, Entries<'a, K, V>, fn((&'a K, &'a V)) -> &'a K>;
 
 /// TreeMap values iterator.
 pub type Values<'a, K, V> =
-    iter::Map<'static, (&'a K, &'a V), &'a V, Entries<'a, K, V>>;
+    iter::Map<(&'a K, &'a V), &'a V, Entries<'a, K, V>, fn((&'a K, &'a V)) -> &'a V>;
 
 
 // FIXME #5846 we want to be able to choose between &x and &mut x
@@ -1125,8 +1131,12 @@ fn split<K: Ord, V>(node: &mut Box<TreeNode<K, V>>) {
 // Next 2 functions have the same convention: comparator gets
 // at input current key and returns search_key cmp cur_key
 // (i.e. search_key.cmp(&cur_key))
-fn tree_find_with<'r, K, V>(node: &'r Option<Box<TreeNode<K, V>>>,
-                            f: |&K| -> Ordering) -> Option<&'r V> {
+fn tree_find_with<'r, K, V, F>(
+    node: &'r Option<Box<TreeNode<K, V>>>,
+    mut f: F,
+) -> Option<&'r V> where
+    F: FnMut(&K) -> Ordering,
+{
     let mut current: &'r Option<Box<TreeNode<K, V>>> = node;
     loop {
         match *current {
@@ -1143,8 +1153,12 @@ fn tree_find_with<'r, K, V>(node: &'r Option<Box<TreeNode<K, V>>>,
 }
 
 // See comments above tree_find_with
-fn tree_find_with_mut<'r, K, V>(node: &'r mut Option<Box<TreeNode<K, V>>>,
-                                f: |&K| -> Ordering) -> Option<&'r mut V> {
+fn tree_find_with_mut<'r, K, V, F>(
+    node: &'r mut Option<Box<TreeNode<K, V>>>,
+    mut f: F,
+) -> Option<&'r mut V> where
+    F: FnMut(&K) -> Ordering,
+{
 
     let mut current = node;
     loop {

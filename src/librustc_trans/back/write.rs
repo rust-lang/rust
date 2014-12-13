@@ -488,8 +488,12 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
     // pass manager passed to the closure should be ensured to not
     // escape the closure itself, and the manager should only be
     // used once.
-    unsafe fn with_codegen(tm: TargetMachineRef, llmod: ModuleRef,
-                    no_builtins: bool, f: |PassManagerRef|) {
+    unsafe fn with_codegen<F>(tm: TargetMachineRef,
+                              llmod: ModuleRef,
+                              no_builtins: bool,
+                              f: F) where
+        F: FnOnce(PassManagerRef),
+    {
         let cpm = llvm::LLVMCreatePassManager();
         llvm::LLVMRustAddAnalysisPasses(tm, cpm, llmod);
         llvm::LLVMRustAddLibraryInfo(cpm, llmod, no_builtins);

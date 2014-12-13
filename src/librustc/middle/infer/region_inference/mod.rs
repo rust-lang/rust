@@ -569,15 +569,15 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         }
     }
 
-    pub fn combine_vars(&self,
-                        t: CombineMapType,
-                        a: Region,
-                        b: Region,
-                        origin: SubregionOrigin<'tcx>,
-                        relate: |this: &RegionVarBindings<'a, 'tcx>,
-                                 old_r: Region,
-                                 new_r: Region|)
-                        -> Region {
+    pub fn combine_vars<F>(&self,
+                           t: CombineMapType,
+                           a: Region,
+                           b: Region,
+                           origin: SubregionOrigin<'tcx>,
+                           mut relate: F)
+                           -> Region where
+        F: FnMut(&RegionVarBindings<'a, 'tcx>, Region, Region),
+    {
         let vars = TwoRegions { a: a, b: b };
         match self.combine_map(t).borrow().get(&vars) {
             Some(&c) => {
@@ -1539,9 +1539,9 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         }
     }
 
-    fn iterate_until_fixed_point(&self,
-                                 tag: &str,
-                                 body: |constraint: &Constraint| -> bool) {
+    fn iterate_until_fixed_point<F>(&self, tag: &str, mut body: F) where
+        F: FnMut(&Constraint) -> bool,
+    {
         let mut iteration = 0u;
         let mut changed = true;
         while changed {

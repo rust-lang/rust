@@ -107,9 +107,11 @@ thread_local!(static TASK_LOCAL_INSN_KEY: RefCell<Option<Vec<&'static str>>> = {
     RefCell::new(None)
 })
 
-pub fn with_insn_ctxt(blk: |&[&'static str]|) {
-    TASK_LOCAL_INSN_KEY.with(|slot| {
-        slot.borrow().as_ref().map(|s| blk(s.as_slice()));
+pub fn with_insn_ctxt<F>(blk: F) where
+    F: FnOnce(&[&'static str]),
+{
+    TASK_LOCAL_INSN_KEY.with(move |slot| {
+        slot.borrow().as_ref().map(move |s| blk(s.as_slice()));
     })
 }
 
@@ -841,12 +843,15 @@ pub fn cast_shift_const_rhs(op: ast::BinOp,
                    |a, b| unsafe { llvm::LLVMConstZExt(a, b.to_ref()) })
 }
 
-pub fn cast_shift_rhs(op: ast::BinOp,
-                      lhs: ValueRef,
-                      rhs: ValueRef,
-                      trunc: |ValueRef, Type| -> ValueRef,
-                      zext: |ValueRef, Type| -> ValueRef)
-                      -> ValueRef {
+pub fn cast_shift_rhs<F, G>(op: ast::BinOp,
+                            lhs: ValueRef,
+                            rhs: ValueRef,
+                            trunc: F,
+                            zext: G)
+                            -> ValueRef where
+    F: FnOnce(ValueRef, Type) -> ValueRef,
+    G: FnOnce(ValueRef, Type) -> ValueRef,
+{
     // Shifts may have any size int on the rhs
     unsafe {
         if ast_util::is_shift_binop(op) {
@@ -1101,10 +1106,12 @@ pub fn raw_block<'blk, 'tcx>(fcx: &'blk FunctionContext<'blk, 'tcx>,
     common::BlockS::new(llbb, is_lpad, None, fcx)
 }
 
-pub fn with_cond<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                             val: ValueRef,
-                             f: |Block<'blk, 'tcx>| -> Block<'blk, 'tcx>)
-                             -> Block<'blk, 'tcx> {
+pub fn with_cond<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
+                                val: ValueRef,
+                                f: F)
+                                -> Block<'blk, 'tcx> where
+    F: FnOnce(Block<'blk, 'tcx>) -> Block<'blk, 'tcx>,
+{
     let _icx = push_ctxt("with_cond");
     let fcx = bcx.fcx;
     let next_cx = fcx.new_temp_block("next");

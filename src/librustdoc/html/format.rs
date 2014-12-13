@@ -218,10 +218,14 @@ fn resolved_path(w: &mut fmt::Formatter, did: ast::DefId, p: &clean::Path,
         })
 }
 
-fn path(w: &mut fmt::Formatter, path: &clean::Path, print_all: bool,
-        root: |&render::Cache, &[String]| -> Option<String>,
-        info: |&render::Cache| -> Option<(Vec<String> , ItemType)>)
-    -> fmt::Result
+fn path<F, G>(w: &mut fmt::Formatter,
+              path: &clean::Path,
+              print_all: bool,
+              root: F,
+              info: G)
+              -> fmt::Result where
+    F: FnOnce(&render::Cache, &[String]) -> Option<String>,
+    G: FnOnce(&render::Cache) -> Option<(Vec<String>, ItemType)>,
 {
     // The generics will get written to both the title and link
     let mut generics = String::new();

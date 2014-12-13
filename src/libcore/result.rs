@@ -239,6 +239,7 @@ use slice::AsSlice;
 use iter::{Iterator, IteratorExt, DoubleEndedIterator, FromIterator, ExactSizeIterator};
 use option::Option;
 use option::Option::{None, Some};
+use ops::{FnMut, FnOnce};
 
 /// `Result` is a type that represents either success (`Ok`) or failure (`Err`).
 ///
@@ -466,7 +467,7 @@ impl<T, E> Result<T, E> {
     /// ```
     #[inline]
     #[unstable = "waiting for unboxed closures"]
-    pub fn map<U>(self, op: |T| -> U) -> Result<U,E> {
+    pub fn map<U, F: FnOnce(T) -> U>(self, op: F) -> Result<U,E> {
         match self {
           Ok(t) => Ok(op(t)),
           Err(e) => Err(e)
@@ -492,7 +493,7 @@ impl<T, E> Result<T, E> {
     /// ```
     #[inline]
     #[unstable = "waiting for unboxed closures"]
-    pub fn map_err<F>(self, op: |E| -> F) -> Result<T,F> {
+    pub fn map_err<F, O: FnOnce(E) -> F>(self, op: O) -> Result<T,F> {
         match self {
           Ok(t) => Ok(t),
           Err(e) => Err(op(e))
@@ -612,7 +613,7 @@ impl<T, E> Result<T, E> {
     /// ```
     #[inline]
     #[unstable = "waiting for unboxed closures"]
-    pub fn and_then<U>(self, op: |T| -> Result<U, E>) -> Result<U, E> {
+    pub fn and_then<U, F: FnOnce(T) -> Result<U, E>>(self, op: F) -> Result<U, E> {
         match self {
             Ok(t) => op(t),
             Err(e) => Err(e),
@@ -666,7 +667,7 @@ impl<T, E> Result<T, E> {
     /// ```
     #[inline]
     #[unstable = "waiting for unboxed closures"]
-    pub fn or_else<F>(self, op: |E| -> Result<T, F>) -> Result<T, F> {
+    pub fn or_else<F, O: FnOnce(E) -> Result<T, F>>(self, op: O) -> Result<T, F> {
         match self {
             Ok(t) => Ok(t),
             Err(e) => op(e),
@@ -708,7 +709,7 @@ impl<T, E> Result<T, E> {
     /// ```
     #[inline]
     #[unstable = "waiting for conventions"]
-    pub fn unwrap_or_else(self, op: |E| -> T) -> T {
+    pub fn unwrap_or_else<F: FnOnce(E) -> T>(self, op: F) -> T {
         match self {
             Ok(t) => t,
             Err(e) => op(e)
@@ -904,10 +905,11 @@ impl<A, E, V: FromIterator<A>> FromIterator<Result<A, E>> for Result<V, E> {
 pub fn fold<T,
             V,
             E,
+            F: FnMut(V, T) -> V,
             Iter: Iterator<Result<T, E>>>(
             mut iterator: Iter,
             mut init: V,
-            f: |V, T| -> V)
+            mut f: F)
             -> Result<V, E> {
     for t in iterator {
         match t {

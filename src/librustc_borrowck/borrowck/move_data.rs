@@ -523,8 +523,9 @@ impl<'tcx> MoveData<'tcx> {
         }
     }
 
-    fn each_base_path(&self, index: MovePathIndex, f: |MovePathIndex| -> bool)
-                      -> bool {
+    fn each_base_path<F>(&self, index: MovePathIndex, mut f: F) -> bool where
+        F: FnMut(MovePathIndex) -> bool,
+    {
         let mut p = index;
         while p != InvalidMovePathIndex {
             if !f(p) {
@@ -535,10 +536,8 @@ impl<'tcx> MoveData<'tcx> {
         return true;
     }
 
-    fn each_extending_path(&self,
-                           index: MovePathIndex,
-                           f: |MovePathIndex| -> bool)
-                           -> bool {
+    // FIXME(#19596) unbox `f`
+    fn each_extending_path(&self, index: MovePathIndex, f: |MovePathIndex| -> bool) -> bool {
         if !f(index) {
             return false;
         }
@@ -554,10 +553,9 @@ impl<'tcx> MoveData<'tcx> {
         return true;
     }
 
-    fn each_applicable_move(&self,
-                            index0: MovePathIndex,
-                            f: |MoveIndex| -> bool)
-                            -> bool {
+    fn each_applicable_move<F>(&self, index0: MovePathIndex, mut f: F) -> bool where
+        F: FnMut(MoveIndex) -> bool,
+    {
         let mut ret = true;
         self.each_extending_path(index0, |index| {
             let mut p = self.path_first_move(index);
@@ -660,11 +658,13 @@ impl<'a, 'tcx> FlowedMoveData<'a, 'tcx> {
     /// Iterates through each move of `loan_path` (or some base path of `loan_path`) that *may*
     /// have occurred on entry to `id` without an intervening assignment. In other words, any moves
     /// that would invalidate a reference to `loan_path` at location `id`.
-    pub fn each_move_of(&self,
-                        id: ast::NodeId,
-                        loan_path: &Rc<LoanPath<'tcx>>,
-                        f: |&Move, &LoanPath<'tcx>| -> bool)
-                        -> bool {
+    pub fn each_move_of<F>(&self,
+                           id: ast::NodeId,
+                           loan_path: &Rc<LoanPath<'tcx>>,
+                           mut f: F)
+                           -> bool where
+        F: FnMut(&Move, &LoanPath<'tcx>) -> bool,
+    {
         // Bad scenarios:
         //
         // 1. Move of `a.b.c`, use of `a.b.c`
@@ -715,11 +715,13 @@ impl<'a, 'tcx> FlowedMoveData<'a, 'tcx> {
 
     /// Iterates through every assignment to `loan_path` that may have occurred on entry to `id`.
     /// `loan_path` must be a single variable.
-    pub fn each_assignment_of(&self,
-                              id: ast::NodeId,
-                              loan_path: &Rc<LoanPath<'tcx>>,
-                              f: |&Assignment| -> bool)
-                              -> bool {
+    pub fn each_assignment_of<F>(&self,
+                                 id: ast::NodeId,
+                                 loan_path: &Rc<LoanPath<'tcx>>,
+                                 mut f: F)
+                                 -> bool where
+        F: FnMut(&Assignment) -> bool,
+    {
         let loan_path_index = {
             match self.move_data.existing_move_path(loan_path) {
                 Some(i) => i,
