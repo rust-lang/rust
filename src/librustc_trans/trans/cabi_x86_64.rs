@@ -342,11 +342,13 @@ pub fn compute_abi_info(ccx: &CrateContext,
                         atys: &[Type],
                         rty: Type,
                         ret_def: bool) -> FnType {
-    fn x86_64_ty(ccx: &CrateContext,
-                 ty: Type,
-                 is_mem_cls: |cls: &[RegClass]| -> bool,
-                 ind_attr: Attribute)
-                 -> ArgType {
+    fn x86_64_ty<F>(ccx: &CrateContext,
+                    ty: Type,
+                    is_mem_cls: F,
+                    ind_attr: Attribute)
+                    -> ArgType where
+        F: FnOnce(&[RegClass]) -> bool,
+    {
         if !ty.is_reg_ty() {
             let cls = classify_ty(ty);
             if is_mem_cls(cls.as_slice()) {

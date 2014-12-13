@@ -15,6 +15,7 @@
 
 use int;
 use mem::drop;
+use ops::FnOnce;
 use sync::atomic;
 use sync::{StaticMutex, MUTEX_INIT};
 
@@ -57,7 +58,7 @@ impl Once {
     ///
     /// When this function returns, it is guaranteed that some initialization
     /// has run and completed (it may not be the closure specified).
-    pub fn doit(&'static self, f: ||) {
+    pub fn doit<F>(&'static self, f: F) where F: FnOnce() {
         // Optimize common path: load is much cheaper than fetch_add.
         if self.cnt.load(atomic::SeqCst) < 0 {
             return

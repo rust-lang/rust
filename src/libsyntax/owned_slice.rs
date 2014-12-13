@@ -49,7 +49,7 @@ impl<T> OwnedSlice<T> {
         self.into_vec().into_iter()
     }
 
-    pub fn map<U>(&self, f: |&T| -> U) -> OwnedSlice<U> {
+    pub fn map<U, F: FnMut(&T) -> U>(&self, f: F) -> OwnedSlice<U> {
         self.iter().map(f).collect()
     }
 }

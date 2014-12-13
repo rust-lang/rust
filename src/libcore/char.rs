@@ -16,6 +16,7 @@
 #![doc(primitive = "char")]
 
 use mem::transmute;
+use ops::FnMut;
 use option::Option;
 use option::Option::{None, Some};
 use iter::{range_step, Iterator, RangeStep};
@@ -165,7 +166,7 @@ pub fn from_digit(num: uint, radix: uint) -> Option<char> {
 /// - chars above 0x10000 get 8-digit escapes: `\\u{{NNN}NNNNN}`
 ///
 #[deprecated = "use the Char::escape_unicode method"]
-pub fn escape_unicode(c: char, f: |char|) {
+pub fn escape_unicode<F>(c: char, mut f: F) where F: FnMut(char) {
     for char in c.escape_unicode() {
         f(char);
     }
@@ -184,7 +185,7 @@ pub fn escape_unicode(c: char, f: |char|) {
 /// - Any other chars are given hex Unicode escapes; see `escape_unicode`.
 ///
 #[deprecated = "use the Char::escape_default method"]
-pub fn escape_default(c: char, f: |char|) {
+pub fn escape_default<F>(c: char, mut f: F) where F: FnMut(char) {
     for c in c.escape_default() {
         f(c);
     }

@@ -1142,12 +1142,11 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
         })
     }
 
+    // FIXME(#19596) unbox `op`
     pub fn cat_pattern(&self,
                        cmt: cmt<'tcx>,
                        pat: &ast::Pat,
-                       op: |&MemCategorizationContext<'t,TYPER>,
-                            cmt<'tcx>,
-                            &ast::Pat|)
+                       op: |&MemCategorizationContext<'t, TYPER>, cmt<'tcx>, &ast::Pat|)
                        -> McResult<()> {
         // Here, `cmt` is the categorization for the value being
         // matched and pat is the pattern it is being matched against.

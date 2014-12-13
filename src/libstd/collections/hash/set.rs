@@ -19,7 +19,7 @@ use fmt;
 use hash::{Hash, Hasher, RandomSipHasher};
 use iter::{Iterator, IteratorExt, FromIterator, FilterMap, Chain, Repeat, Zip, Extend, repeat};
 use iter;
-use option::Option::{Some, None};
+use option::Option::{Some, None, mod};
 use result::Result::{Ok, Err};
 
 use super::map::{HashMap, Entries, MoveEntries, INITIAL_CAPACITY};
@@ -277,7 +277,9 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn into_iter(self) -> SetMoveItems<T> {
-        self.map.into_iter().map(|(k, _)| k)
+        fn first<A, B>((a, _): (A, B)) -> A { a }
+
+        self.map.into_iter().map(first)
     }
 
     /// Visit the values representing the difference.
@@ -304,10 +306,13 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn difference<'a>(&'a self, other: &'a HashSet<T, H>) -> SetAlgebraItems<'a, T, H> {
-        repeat(other).zip(self.iter())
-            .filter_map(|(other, elt)| {
-                if !other.contains(elt) { Some(elt) } else { None }
-            })
+        fn filter<'a, T, S, H>((other, elt): (&HashSet<T, H>, &'a T)) -> Option<&'a T> where
+            T: Eq + Hash<S>, H: Hasher<S>
+        {
+            if !other.contains(elt) { Some(elt) } else { None }
+        }
+
+        repeat(other).zip(self.iter()).filter_map(filter)
     }
 
     /// Visit the values representing the symmetric difference.
@@ -354,12 +359,14 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     /// assert_eq!(diff, [2i, 3].iter().map(|&x| x).collect());
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn intersection<'a>(&'a self, other: &'a HashSet<T, H>)
-        -> SetAlgebraItems<'a, T, H> {
-        repeat(other).zip(self.iter())
-            .filter_map(|(other, elt)| {
-                if other.contains(elt) { Some(elt) } else { None }
-            })
+    pub fn intersection<'a>(&'a self, other: &'a HashSet<T, H>) -> SetAlgebraItems<'a, T, H> {
+        fn filter<'a, T, S, H>((other, elt): (&HashSet<T, H>, &'a T)) -> Option<&'a T> where
+            T: Eq + Hash<S>, H: Hasher<S>
+        {
+            if other.contains(elt) { Some(elt) } else { None }
+        }
+
+        repeat(other).zip(self.iter()).filter_map(filter)
     }
 
     /// Visit the values representing the union.
@@ -611,18 +618,20 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S> + Default> Default for HashSet<T, H> {
 
 /// HashSet iterator
 pub type SetItems<'a, K> =
-    iter::Map<'static, (&'a K, &'a ()), &'a K, Entries<'a, K, ()>>;
+    iter::Map<(&'a K, &'a ()), &'a K, Entries<'a, K, ()>, fn((&'a K, &'a ())) -> &'a K>;
 
 /// HashSet move iterator
-pub type SetMoveItems<K> =
-    iter::Map<'static, (K, ()), K, MoveEntries<K, ()>>;
+pub type SetMoveItems<K> = iter::Map<(K, ()), K, MoveEntries<K, ()>, fn((K, ())) -> K>;
 
 // `Repeat` is used to feed the filter closure an explicit capture
 // of a reference to the other set
 /// Set operations iterator
-pub type SetAlgebraItems<'a, T, H> =
-    FilterMap<'static, (&'a HashSet<T, H>, &'a T), &'a T,
-              Zip<Repeat<&'a HashSet<T, H>>, SetItems<'a, T>>>;
+pub type SetAlgebraItems<'a, T, H> = FilterMap<
+    (&'a HashSet<T, H>, &'a T),
+    &'a T,
+    Zip<Repeat<&'a HashSet<T, H>>, SetItems<'a, T>>,
+    for<'b> fn((&HashSet<T, H>, &'b T)) -> Option<&'b T>,
+>;
 
 #[cfg(test)]
 mod test_set {

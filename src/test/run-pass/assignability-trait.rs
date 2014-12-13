@@ -12,19 +12,20 @@
 // making method calls, but only if there aren't any matches without
 // it.
 
+#![feature(unboxed_closures)]
 
 trait iterable<A> {
-    fn iterate(&self, blk: |x: &A| -> bool) -> bool;
+    fn iterate<F>(&self, blk: F) -> bool where F: FnMut(&A) -> bool;
 }
 
 impl<'a,A> iterable<A> for &'a [A] {
-    fn iterate(&self, f: |x: &A| -> bool) -> bool {
+    fn iterate<F>(&self, f: F) -> bool where F: FnMut(&A) -> bool {
         self.iter().all(f)
     }
 }
 
 impl<A> iterable<A> for Vec<A> {
-    fn iterate(&self, f: |x: &A| -> bool) -> bool {
+    fn iterate<F>(&self, f: F) -> bool where F: FnMut(&A) -> bool {
         self.iter().all(f)
     }
 }

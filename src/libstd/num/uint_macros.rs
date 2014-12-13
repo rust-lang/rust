@@ -32,7 +32,9 @@ macro_rules! uint_module (($T:ty) => (
 /// ```
 #[inline]
 #[deprecated = "just use .to_string(), or a BufWriter with write! if you mustn't allocate"]
-pub fn to_str_bytes<U>(n: $T, radix: uint, f: |v: &[u8]| -> U) -> U {
+pub fn to_str_bytes<U, F>(n: $T, radix: uint, f: F) -> U where
+    F: FnOnce(&[u8]) -> U,
+{
     use io::{Writer, Seek};
     // The radix can be as low as 2, so we need at least 64 characters for a
     // base 2 number, and then we need another for a possible '-' character.

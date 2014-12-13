@@ -21,11 +21,13 @@ use parse::token::InternedString;
 use parse::token;
 use ptr::P;
 
-pub fn expand_deriving_decodable(cx: &mut ExtCtxt,
-                                 span: Span,
-                                 mitem: &MetaItem,
-                                 item: &Item,
-                                 push: |P<Item>|) {
+pub fn expand_deriving_decodable<F>(cx: &mut ExtCtxt,
+                                    span: Span,
+                                    mitem: &MetaItem,
+                                    item: &Item,
+                                    push: F) where
+    F: FnOnce(P<Item>),
+{
     let trait_def = TraitDef {
         span: span,
         attributes: Vec::new(),
@@ -155,12 +157,14 @@ fn decodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
 /// Create a decoder for a single enum variant/struct:
 /// - `outer_pat_path` is the path to this enum variant/struct
 /// - `getarg` should retrieve the `uint`-th field with name `@str`.
-fn decode_static_fields(cx: &mut ExtCtxt,
-                        trait_span: Span,
-                        outer_pat_path: ast::Path,
-                        fields: &StaticFields,
-                        getarg: |&mut ExtCtxt, Span, InternedString, uint| -> P<Expr>)
-                        -> P<Expr> {
+fn decode_static_fields<F>(cx: &mut ExtCtxt,
+                           trait_span: Span,
+                           outer_pat_path: ast::Path,
+                           fields: &StaticFields,
+                           mut getarg: F)
+                           -> P<Expr> where
+    F: FnMut(&mut ExtCtxt, Span, InternedString, uint) -> P<Expr>,
+{
     match *fields {
         Unnamed(ref fields) => {
             let path_expr = cx.expr_path(outer_pat_path);

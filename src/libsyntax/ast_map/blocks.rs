@@ -181,22 +181,23 @@ impl<'a> FnLikeNode<'a> {
     }
 
     pub fn kind(self) -> visit::FnKind<'a> {
-        let item = |p: ItemFnParts<'a>| -> visit::FnKind<'a> {
+        let item = |: p: ItemFnParts<'a>| -> visit::FnKind<'a> {
             visit::FkItemFn(p.ident, p.generics, p.style, p.abi)
         };
-        let closure = |_: ClosureParts| {
+        let closure = |: _: ClosureParts| {
             visit::FkFnBlock
         };
-        let method = |m: &'a ast::Method| {
+        let method = |: m: &'a ast::Method| {
             visit::FkMethod(m.pe_ident(), m.pe_generics(), m)
         };
         self.handle(item, method, closure)
     }
 
-    fn handle<A>(self,
-                 item_fn: |ItemFnParts<'a>| -> A,
-                 method: |&'a ast::Method| -> A,
-                 closure: |ClosureParts<'a>| -> A) -> A {
+    fn handle<A, I, M, C>(self, item_fn: I, method: M, closure: C) -> A where
+        I: FnOnce(ItemFnParts<'a>) -> A,
+        M: FnOnce(&'a ast::Method) -> A,
+        C: FnOnce(ClosureParts<'a>) -> A,
+    {
         match self.node {
             ast_map::NodeItem(i) => match i.node {
                 ast::ItemFn(ref decl, style, abi, ref generics, ref block) =>

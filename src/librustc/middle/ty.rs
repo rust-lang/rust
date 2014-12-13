@@ -2420,10 +2420,13 @@ pub fn mk_param_from_def<'tcx>(cx: &ctxt<'tcx>, def: &TypeParameterDef) -> Ty<'t
 
 pub fn mk_open<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> { mk_t(cx, ty_open(ty)) }
 
-pub fn walk_ty<'tcx>(ty: Ty<'tcx>, f: |Ty<'tcx>|) {
+pub fn walk_ty<'tcx, F>(ty: Ty<'tcx>, mut f: F) where
+    F: FnMut(Ty<'tcx>),
+{
     maybe_walk_ty(ty, |ty| { f(ty); true });
 }
 
+// FIXME(#19596) unbox `f`
 pub fn maybe_walk_ty<'tcx>(ty: Ty<'tcx>, f: |Ty<'tcx>| -> bool) {
     if !f(ty) {
         return;
@@ -2464,9 +2467,11 @@ pub fn maybe_walk_ty<'tcx>(ty: Ty<'tcx>, f: |Ty<'tcx>| -> bool) {
 }
 
 // Folds types from the bottom up.
-pub fn fold_ty<'tcx>(cx: &ctxt<'tcx>, t0: Ty<'tcx>,
-                     fldop: |Ty<'tcx>| -> Ty<'tcx>)
-                     -> Ty<'tcx> {
+pub fn fold_ty<'tcx, F>(cx: &ctxt<'tcx>, t0: Ty<'tcx>,
+                        fldop: F)
+                        -> Ty<'tcx> where
+    F: FnMut(Ty<'tcx>) -> Ty<'tcx>,
+{
     let mut f = ty_fold::BottomUpFolder {tcx: cx, fldop: fldop};
     f.fold_ty(t0)
 }
@@ -2843,7 +2848,9 @@ impl TypeContents {
         *self & TC::ReachesAll
     }
 
-    pub fn union<T>(v: &[T], f: |&T| -> TypeContents) -> TypeContents {
+    pub fn union<T, F>(v: &[T], mut f: F) -> TypeContents where
+        F: FnMut(&T) -> TypeContents,
+    {
         v.iter().fold(TC::None, |tc, ty| tc | f(ty))
     }
 
@@ -3162,10 +3169,12 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
 
         // Iterates over all builtin bounds on the type parameter def, including
         // those inherited from traits with builtin-kind-supertraits.
-        fn each_inherited_builtin_bound<'tcx>(cx: &ctxt<'tcx>,
-                                              bounds: BuiltinBounds,
-                                              traits: &[Rc<TraitRef<'tcx>>],
-                                              f: |BuiltinBound|) {
+        fn each_inherited_builtin_bound<'tcx, F>(cx: &ctxt<'tcx>,
+                                                 bounds: BuiltinBounds,
+                                                 traits: &[Rc<TraitRef<'tcx>>],
+                                                 mut f: F) where
+            F: FnMut(BuiltinBound),
+        {
             for bound in bounds.iter() {
                 f(bound);
             }
@@ -3959,14 +3968,15 @@ pub fn local_var_name_str(cx: &ctxt, id: NodeId) -> InternedString {
 }
 
 /// See `expr_ty_adjusted`
-pub fn adjust_ty<'tcx>(cx: &ctxt<'tcx>,
-                       span: Span,
-                       expr_id: ast::NodeId,
-                       unadjusted_ty: Ty<'tcx>,
-                       adjustment: Option<&AutoAdjustment<'tcx>>,
-                       method_type: |MethodCall| -> Option<Ty<'tcx>>)
-                       -> Ty<'tcx> {
-
+pub fn adjust_ty<'tcx, F>(cx: &ctxt<'tcx>,
+                          span: Span,
+                          expr_id: ast::NodeId,
+                          unadjusted_ty: Ty<'tcx>,
+                          adjustment: Option<&AutoAdjustment<'tcx>>,
+                          mut method_type: F)
+                          -> Ty<'tcx> where
+    F: FnMut(MethodCall) -> Option<Ty<'tcx>>,
+{
     if let ty_err = unadjusted_ty.sty {
         return unadjusted_ty;
     }
@@ -4604,11 +4614,13 @@ pub fn provided_trait_methods<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
 /// id is local, it should have been loaded into the map by the `typeck::collect` phase.  If the
 /// def-id is external, then we have to go consult the crate loading code (and cache the result for
 /// the future).
-fn lookup_locally_or_in_crate_store<V:Clone>(
-                                    descr: &str,
-                                    def_id: ast::DefId,
-                                    map: &mut DefIdMap<V>,
-                                    load_external: || -> V) -> V {
+fn lookup_locally_or_in_crate_store<V, F>(descr: &str,
+                                          def_id: ast::DefId,
+                                          map: &mut DefIdMap<V>,
+                                          load_external: F) -> V where
+    V: Clone,
+    F: FnOnce() -> V,
+{
     match map.get(&def_id).cloned() {
         Some(v) => { return v; }
         None => { }
@@ -4916,7 +4928,9 @@ pub fn has_dtor(cx: &ctxt, struct_id: DefId) -> bool {
     cx.destructor_for_type.borrow().contains_key(&struct_id)
 }
 
-pub fn with_path<T>(cx: &ctxt, id: ast::DefId, f: |ast_map::PathElems| -> T) -> T {
+pub fn with_path<T, F>(cx: &ctxt, id: ast::DefId, f: F) -> T where
+    F: FnOnce(ast_map::PathElems) -> T,
+{
     if id.krate == ast::LOCAL_CRATE {
         cx.map.with_path(id.node, f)
     } else {
@@ -5162,7 +5176,9 @@ pub fn predicates<'tcx>(
 /// Iterate over attributes of a definition.
 // (This should really be an iterator, but that would require csearch and
 // decoder to use iterators instead of higher-order functions.)
-pub fn each_attr(tcx: &ctxt, did: DefId, f: |&ast::Attribute| -> bool) -> bool {
+pub fn each_attr<F>(tcx: &ctxt, did: DefId, mut f: F) -> bool where
+    F: FnMut(&ast::Attribute) -> bool,
+{
     if is_local(did) {
         let item = tcx.map.expect_item(did.node);
         item.attrs.iter().all(|attr| f(attr))
@@ -5501,10 +5517,11 @@ pub fn eval_repeat_count(tcx: &ctxt, count_expr: &ast::Expr) -> uint {
 // Here, the supertraits are the transitive closure of the supertrait
 // relation on the supertraits from each bounded trait's constraint
 // list.
-pub fn each_bound_trait_and_supertraits<'tcx>(tcx: &ctxt<'tcx>,
-                                              bounds: &[Rc<TraitRef<'tcx>>],
-                                              f: |Rc<TraitRef<'tcx>>| -> bool)
-                                              -> bool
+pub fn each_bound_trait_and_supertraits<'tcx, F>(tcx: &ctxt<'tcx>,
+                                                 bounds: &[Rc<TraitRef<'tcx>>],
+                                                 mut f: F)
+                                                 -> bool where
+    F: FnMut(Rc<TraitRef<'tcx>>) -> bool,
 {
     for bound_trait_ref in traits::transitive_bounds(tcx, bounds) {
         if !f(bound_trait_ref) {
@@ -6192,7 +6209,9 @@ pub type FreevarMap = NodeMap<Vec<Freevar>>;
 
 pub type CaptureModeMap = NodeMap<ast::CaptureClause>;
 
-pub fn with_freevars<T>(tcx: &ty::ctxt, fid: ast::NodeId, f: |&[Freevar]| -> T) -> T {
+pub fn with_freevars<T, F>(tcx: &ty::ctxt, fid: ast::NodeId, f: F) -> T where
+    F: FnOnce(&[Freevar]) -> T,
+{
     match tcx.freevars.borrow().get(&fid) {
         None => f(&[]),
         Some(d) => f(d.as_slice())
@@ -6240,12 +6259,13 @@ pub fn erase_late_bound_regions<'tcx, HR>(
 }
 
 /// Replaces the late-bound-regions in `value` that are bound by `value`.
-pub fn replace_late_bound_regions<'tcx, HR>(
+pub fn replace_late_bound_regions<'tcx, HR, F>(
     tcx: &ty::ctxt<'tcx>,
     value: &HR,
-    mapf: |BoundRegion, DebruijnIndex| -> ty::Region)
-    -> (HR, FnvHashMap<ty::BoundRegion,ty::Region>)
-    where HR : HigherRankedFoldable<'tcx>
+    mut mapf: F)
+-> (HR, FnvHashMap<ty::BoundRegion, ty::Region>) where
+    HR : HigherRankedFoldable<'tcx>,
+    F: FnMut(BoundRegion, DebruijnIndex) -> ty::Region,
 {
     debug!("replace_late_bound_regions({})", value.repr(tcx));
 

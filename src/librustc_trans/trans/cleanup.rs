@@ -527,7 +527,7 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
         self.scopes.borrow_mut().pop().unwrap()
     }
 
-    fn top_scope<R>(&self, f: |&CleanupScope<'blk, 'tcx>| -> R) -> R {
+    fn top_scope<R, F>(&self, f: F) -> R where F: FnOnce(&CleanupScope<'blk, 'tcx>) -> R {
         f(self.scopes.borrow().last().unwrap())
     }
 
@@ -1145,5 +1145,5 @@ trait CleanupHelperMethods<'blk, 'tcx> {
     fn scopes_len(&self) -> uint;
     fn push_scope(&self, scope: CleanupScope<'blk, 'tcx>);
     fn pop_scope(&self) -> CleanupScope<'blk, 'tcx>;
-    fn top_scope<R>(&self, f: |&CleanupScope<'blk, 'tcx>| -> R) -> R;
+    fn top_scope<R, F>(&self, f: F) -> R where F: FnOnce(&CleanupScope<'blk, 'tcx>) -> R;
 }

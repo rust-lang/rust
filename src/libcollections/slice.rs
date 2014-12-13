@@ -94,6 +94,7 @@ use core::cmp;
 use core::kinds::{Copy, Sized};
 use core::mem::size_of;
 use core::mem;
+use core::ops::FnMut;
 use core::prelude::{Clone, Greater, Iterator, IteratorExt, Less, None, Option};
 use core::prelude::{Ord, Ordering, RawPtr, Some, range};
 use core::ptr;
@@ -296,7 +297,7 @@ pub trait CloneSliceAllocPrelude<T> for Sized? {
 
     /// Partitions the vector into two vectors `(a, b)`, where all
     /// elements of `a` satisfy `f` and all elements of `b` do not.
-    fn partitioned(&self, f: |&T| -> bool) -> (Vec<T>, Vec<T>);
+    fn partitioned<F>(&self, f: F) -> (Vec<T>, Vec<T>) where F: FnMut(&T) -> bool;
 
     /// Creates an iterator that yields every possible permutation of the
     /// vector in succession.
@@ -336,7 +337,7 @@ impl<T: Clone> CloneSliceAllocPrelude<T> for [T] {
 
 
     #[inline]
-    fn partitioned(&self, f: |&T| -> bool) -> (Vec<T>, Vec<T>) {
+    fn partitioned<F>(&self, mut f: F) -> (Vec<T>, Vec<T>) where F: FnMut(&T) -> bool {
         let mut lefts  = Vec::new();
         let mut rights = Vec::new();
 
@@ -361,7 +362,7 @@ impl<T: Clone> CloneSliceAllocPrelude<T> for [T] {
 
 }
 
-fn insertion_sort<T>(v: &mut [T], compare: |&T, &T| -> Ordering) {
+fn insertion_sort<T, F>(v: &mut [T], mut compare: F) where F: FnMut(&T, &T) -> Ordering {
     let len = v.len() as int;
     let buf_v = v.as_mut_ptr();
 
@@ -403,7 +404,7 @@ fn insertion_sort<T>(v: &mut [T], compare: |&T, &T| -> Ordering) {
     }
 }
 
-fn merge_sort<T>(v: &mut [T], compare: |&T, &T| -> Ordering) {
+fn merge_sort<T, F>(v: &mut [T], mut compare: F) where F: FnMut(&T, &T) -> Ordering {
     // warning: this wildly uses unsafe.
     static BASE_INSERTION: uint = 32;
     static LARGE_INSERTION: uint = 16;
@@ -611,7 +612,7 @@ pub trait SliceAllocPrelude<T> for Sized? {
     /// v.sort_by(|a, b| b.cmp(a));
     /// assert!(v == [5, 4, 3, 2, 1]);
     /// ```
-    fn sort_by(&mut self, compare: |&T, &T| -> Ordering);
+    fn sort_by<F>(&mut self, compare: F) where F: FnMut(&T, &T) -> Ordering;
 
     /// Consumes `src` and moves as many elements as it can into `self`
     /// from the range [start,end).
@@ -639,7 +640,7 @@ pub trait SliceAllocPrelude<T> for Sized? {
 
 impl<T> SliceAllocPrelude<T> for [T] {
     #[inline]
-    fn sort_by(&mut self, compare: |&T, &T| -> Ordering) {
+    fn sort_by<F>(&mut self, compare: F) where F: FnMut(&T, &T) -> Ordering {
         merge_sort(self, compare)
     }
 

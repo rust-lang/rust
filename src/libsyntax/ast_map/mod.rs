@@ -424,7 +424,9 @@ impl<'ast> Map<'ast> {
         }
     }
 
-    pub fn with_path<T>(&self, id: NodeId, f: |PathElems| -> T) -> T {
+    pub fn with_path<T, F>(&self, id: NodeId, f: F) -> T where
+        F: FnOnce(PathElems) -> T,
+    {
         self.with_path_next(id, None, f)
     }
 
@@ -438,7 +440,9 @@ impl<'ast> Map<'ast> {
         })
     }
 
-    fn with_path_next<T>(&self, id: NodeId, next: LinkedPath, f: |PathElems| -> T) -> T {
+    fn with_path_next<T, F>(&self, id: NodeId, next: LinkedPath, f: F) -> T where
+        F: FnOnce(PathElems) -> T,
+    {
         let parent = self.get_parent(id);
         let parent = match self.find_entry(id) {
             Some(EntryForeignItem(..)) | Some(EntryVariant(..)) => {
@@ -470,7 +474,9 @@ impl<'ast> Map<'ast> {
 
     /// Given a node ID and a closure, apply the closure to the array
     /// of attributes associated with the AST corresponding to the Node ID
-    pub fn with_attrs<T>(&self, id: NodeId, f: |Option<&[Attribute]>| -> T) -> T {
+    pub fn with_attrs<T, F>(&self, id: NodeId, f: F) -> T where
+        F: FnOnce(Option<&[Attribute]>) -> T,
+    {
         let attrs = match self.get(id) {
             NodeItem(i) => Some(i.attrs.as_slice()),
             NodeForeignItem(fi) => Some(fi.attrs.as_slice()),

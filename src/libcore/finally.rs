@@ -19,40 +19,34 @@
 //! # Example
 //!
 //! ```
+//! # #![feature(unboxed_closures)]
+//!
 //! use std::finally::Finally;
 //!
-//! (|| {
+//! # fn main() {
+//! (|&mut:| {
 //!     // ...
 //! }).finally(|| {
 //!     // this code is always run
 //! })
+//! # }
 //! ```
 
 #![experimental]
 
-use ops::Drop;
+use ops::{Drop, FnMut, FnOnce};
 
 /// A trait for executing a destructor unconditionally after a block of code,
 /// regardless of whether the blocked fails.
 pub trait Finally<T> {
     /// Executes this object, unconditionally running `dtor` after this block of
     /// code has run.
-    fn finally(&mut self, dtor: ||) -> T;
+    fn finally<F>(&mut self, dtor: F) -> T where F: FnMut();
 }
 
-impl<'a,T> Finally<T> for ||: 'a -> T {
-    fn finally(&mut self, dtor: ||) -> T {
-        try_finally(&mut (), self,
-                    |_, f| (*f)(),
-                    |_| dtor())
-    }
-}
-
-impl<T> Finally<T> for fn() -> T {
-    fn finally(&mut self, dtor: ||) -> T {
-        try_finally(&mut (), (),
-                    |_, _| (*self)(),
-                    |_| dtor())
+impl<T, F> Finally<T> for F where F: FnMut() -> T {
+    fn finally<G>(&mut self, mut dtor: G) -> T where G: FnMut() {
+        try_finally(&mut (), self, |_, f| (*f)(), |_| dtor())
     }
 }
 
@@ -86,11 +80,10 @@ impl<T> Finally<T> for fn() -> T {
 ///         // use state.buffer, state.len to cleanup
 ///     })
 /// ```
-pub fn try_finally<T,U,R>(mutate: &mut T,
-                          drop: U,
-                          try_fn: |&mut T, U| -> R,
-                          finally_fn: |&mut T|)
-                          -> R {
+pub fn try_finally<T, U, R, F, G>(mutate: &mut T, drop: U, try_fn: F, finally_fn: G) -> R where
+    F: FnOnce(&mut T, U) -> R,
+    G: FnMut(&mut T),
+{
     let f = Finallyalizer {
         mutate: mutate,
         dtor: finally_fn,
@@ -98,13 +91,13 @@ pub fn try_finally<T,U,R>(mutate: &mut T,
     try_fn(&mut *f.mutate, drop)
 }
 
-struct Finallyalizer<'a,A:'a> {
+struct Finallyalizer<'a, A:'a, F> where F: FnMut(&mut A) {
     mutate: &'a mut A,
-    dtor: |&mut A|: 'a
+    dtor: F,
 }
 
 #[unsafe_destructor]
-impl<'a,A> Drop for Finallyalizer<'a,A> {
+impl<'a, A, F> Drop for Finallyalizer<'a, A, F> where F: FnMut(&mut A) {
     #[inline]
     fn drop(&mut self) {
         (self.dtor)(self.mutate);

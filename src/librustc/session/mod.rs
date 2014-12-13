@@ -288,7 +288,9 @@ pub fn build_session_(sopts: config::Options,
 }
 
 // Seems out of place, but it uses session, so I'm putting it here
-pub fn expect<T>(sess: &Session, opt: Option<T>, msg: || -> String) -> T {
+pub fn expect<T, M>(sess: &Session, opt: Option<T>, msg: M) -> T where
+    M: FnOnce() -> String,
+{
     diagnostic::expect(sess.diagnostic(), opt, msg)
 }
 

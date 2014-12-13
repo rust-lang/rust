@@ -25,6 +25,7 @@
 #![allow(unknown_features)]
 #![feature(macro_rules, globs, default_type_params, phase, slicing_syntax)]
 #![feature(quote, unsafe_destructor, import_shadowing)]
+#![feature(unboxed_closures)]
 
 extern crate arena;
 extern crate fmt_macros;

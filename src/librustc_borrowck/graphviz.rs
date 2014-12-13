@@ -75,11 +75,13 @@ impl<'a, 'tcx> DataflowLabeller<'a, 'tcx> {
         }
     }
 
-    fn build_set<O:DataFlowOperator>(&self,
-                                     e: EntryOrExit,
-                                     cfgidx: CFGIndex,
-                                     dfcx: &DataFlowContext<'a, 'tcx, O>,
-                                     to_lp: |uint| -> Rc<LoanPath<'tcx>>) -> String {
+    fn build_set<O:DataFlowOperator, F>(&self,
+                                        e: EntryOrExit,
+                                        cfgidx: CFGIndex,
+                                        dfcx: &DataFlowContext<'a, 'tcx, O>,
+                                        mut to_lp: F) -> String where
+        F: FnMut(uint) -> Rc<LoanPath<'tcx>>,
+    {
         let mut saw_some = false;
         let mut set = "{".to_string();
         dfcx.each_bit_for_node(e, cfgidx, |index| {
@@ -98,7 +100,7 @@ impl<'a, 'tcx> DataflowLabeller<'a, 'tcx> {
 
     fn dataflow_loans_for(&self, e: EntryOrExit, cfgidx: CFGIndex) -> String {
         let dfcx = &self.analysis_data.loans;
-        let loan_index_to_path = |loan_index| {
+        let loan_index_to_path = |&mut: loan_index| {
             let all_loans = &self.analysis_data.all_loans;
             all_loans[loan_index].loan_path()
         };
@@ -107,7 +109,7 @@ impl<'a, 'tcx> DataflowLabeller<'a, 'tcx> {
 
     fn dataflow_moves_for(&self, e: EntryOrExit, cfgidx: CFGIndex) -> String {
         let dfcx = &self.analysis_data.move_data.dfcx_moves;
-        let move_index_to_path = |move_index| {
+        let move_index_to_path = |&mut: move_index| {
             let move_data = &self.analysis_data.move_data.move_data;
             let moves = move_data.moves.borrow();
             let the_move = &(*moves)[move_index];
@@ -118,7 +120,7 @@ impl<'a, 'tcx> DataflowLabeller<'a, 'tcx> {
 
     fn dataflow_assigns_for(&self, e: EntryOrExit, cfgidx: CFGIndex) -> String {
         let dfcx = &self.analysis_data.move_data.dfcx_assign;
-        let assign_index_to_path = |assign_index| {
+        let assign_index_to_path = |&mut: assign_index| {
             let move_data = &self.analysis_data.move_data.move_data;
             let assignments = move_data.var_assignments.borrow();
             let assignment = &(*assignments)[assign_index];

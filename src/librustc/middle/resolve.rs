@@ -1837,10 +1837,12 @@ impl<'a> Resolver<'a> {
     }
 
     /// Constructs the reduced graph for one foreign item.
-    fn build_reduced_graph_for_foreign_item(&mut self,
-                                            foreign_item: &ForeignItem,
-                                            parent: ReducedGraphParent,
-                                            f: |&mut Resolver|) {
+    fn build_reduced_graph_for_foreign_item<F>(&mut self,
+                                               foreign_item: &ForeignItem,
+                                               parent: ReducedGraphParent,
+                                               f: F) where
+        F: FnOnce(&mut Resolver),
+    {
         let name = foreign_item.ident.name;
         let is_public = foreign_item.vis == ast::Public;
         let modifiers = if is_public { PUBLIC } else { DefModifiers::empty() } | IMPORTABLE;
@@ -3970,7 +3972,9 @@ impl<'a> Resolver<'a> {
     // generate a fake "implementation scope" containing all the
     // implementations thus found, for compatibility with old resolve pass.
 
-    fn with_scope(&mut self, name: Option<Name>, f: |&mut Resolver|) {
+    fn with_scope<F>(&mut self, name: Option<Name>, f: F) where
+        F: FnOnce(&mut Resolver),
+    {
         let orig_module = self.current_module.clone();
 
         // Move down in the graph.
@@ -4373,9 +4377,9 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    fn with_type_parameter_rib(&mut self,
-                               type_parameters: TypeParameters,
-                               f: |&mut Resolver|) {
+    fn with_type_parameter_rib<F>(&mut self, type_parameters: TypeParameters, f: F) where
+        F: FnOnce(&mut Resolver),
+    {
         match type_parameters {
             HasTypeParameters(generics, space, node_id, rib_kind) => {
                 let mut function_type_rib = Rib::new(rib_kind);
@@ -4422,13 +4426,17 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    fn with_label_rib(&mut self, f: |&mut Resolver|) {
+    fn with_label_rib<F>(&mut self, f: F) where
+        F: FnOnce(&mut Resolver),
+    {
         self.label_ribs.push(Rib::new(NormalRibKind));
         f(self);
         self.label_ribs.pop();
     }
 
-    fn with_constant_rib(&mut self, f: |&mut Resolver|) {
+    fn with_constant_rib<F>(&mut self, f: F) where
+        F: FnOnce(&mut Resolver),
+    {
         self.value_ribs.push(Rib::new(ConstantItemRibKind));
         self.type_ribs.push(Rib::new(ConstantItemRibKind));
         f(self);
@@ -4676,7 +4684,9 @@ impl<'a> Resolver<'a> {
                               method.pe_body());
     }
 
-    fn with_current_self_type<T>(&mut self, self_type: &Ty, f: |&mut Resolver| -> T) -> T {
+    fn with_current_self_type<T, F>(&mut self, self_type: &Ty, f: F) -> T where
+        F: FnOnce(&mut Resolver) -> T,
+    {
         // Handle nested impls (inside fn bodies)
         let previous_value = replace(&mut self.current_self_type, Some(self_type.clone()));
         let result = f(self);
@@ -4684,9 +4694,11 @@ impl<'a> Resolver<'a> {
         result
     }
 
-    fn with_optional_trait_ref<T>(&mut self, id: NodeId,
-                                  opt_trait_ref: &Option<TraitRef>,
-                                  f: |&mut Resolver| -> T) -> T {
+    fn with_optional_trait_ref<T, F>(&mut self, id: NodeId,
+                                     opt_trait_ref: &Option<TraitRef>,
+                                     f: F) -> T where
+        F: FnOnce(&mut Resolver) -> T,
+    {
         let new_val = match *opt_trait_ref {
             Some(ref trait_ref) => {
                 self.resolve_trait_reference(id, trait_ref, TraitImplementation);
@@ -5620,7 +5632,9 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    fn with_no_errors<T>(&mut self, f: |&mut Resolver| -> T) -> T {
+    fn with_no_errors<T, F>(&mut self, f: F) -> T where
+        F: FnOnce(&mut Resolver) -> T,
+    {
         self.emit_errors = false;
         let rs = f(self);
         self.emit_errors = true;

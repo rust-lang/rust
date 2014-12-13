@@ -602,6 +602,7 @@ pub fn compute_id_range_for_fn_body(fk: visit::FnKind,
     id_visitor.operation.result
 }
 
+// FIXME(#19596) unbox `it`
 pub fn walk_pat(pat: &Pat, it: |&Pat| -> bool) -> bool {
     if !it(pat) {
         return false;
@@ -632,21 +633,21 @@ pub fn walk_pat(pat: &Pat, it: |&Pat| -> bool) -> bool {
 }
 
 pub trait EachViewItem {
-    fn each_view_item(&self, f: |&ast::ViewItem| -> bool) -> bool;
+    fn each_view_item<F>(&self, f: F) -> bool where F: FnMut(&ast::ViewItem) -> bool;
 }
 
-struct EachViewItemData<'a> {
-    callback: |&ast::ViewItem|: 'a -> bool,
+struct EachViewItemData<F> where F: FnMut(&ast::ViewItem) -> bool {
+    callback: F,
 }
 
-impl<'a, 'v> Visitor<'v> for EachViewItemData<'a> {
+impl<'v, F> Visitor<'v> for EachViewItemData<F> where F: FnMut(&ast::ViewItem) -> bool {
     fn visit_view_item(&mut self, view_item: &ast::ViewItem) {
         let _ = (self.callback)(view_item);
     }
 }
 
 impl EachViewItem for ast::Crate {
-    fn each_view_item(&self, f: |&ast::ViewItem| -> bool) -> bool {
+    fn each_view_item<F>(&self, f: F) -> bool where F: FnMut(&ast::ViewItem) -> bool {
         let mut visit = EachViewItemData {
             callback: f,
         };

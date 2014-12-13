@@ -194,8 +194,9 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         }
     }
 
-    pub fn unpack_actual_value<T>(&self, a: Ty<'tcx>, f: |&ty::sty<'tcx>| -> T)
-                                  -> T {
+    pub fn unpack_actual_value<T, F>(&self, a: Ty<'tcx>, f: F) -> T where
+        F: FnOnce(&ty::sty<'tcx>) -> T,
+    {
         match resolve_type(self.get_ref().infcx, None,
                            a, try_resolve_tvar_shallow) {
             Ok(t) => {
@@ -458,13 +459,15 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                            || AutoUnsafe(b_mutbl, None))
     }
 
-    fn coerce_object(&self,
-                     a: Ty<'tcx>,
-                     sty_a: &ty::sty<'tcx>,
-                     b: Ty<'tcx>,
-                     b_mutbl: ast::Mutability,
-                     mk_ty: |Ty<'tcx>| -> Ty<'tcx>,
-                     mk_adjust: || -> ty::AutoRef<'tcx>) -> CoerceResult<'tcx>
+    fn coerce_object<F, G>(&self,
+                           a: Ty<'tcx>,
+                           sty_a: &ty::sty<'tcx>,
+                           b: Ty<'tcx>,
+                           b_mutbl: ast::Mutability,
+                           mk_ty: F,
+                           mk_adjust: G) -> CoerceResult<'tcx> where
+        F: FnOnce(Ty<'tcx>) -> Ty<'tcx>,
+        G: FnOnce() -> ty::AutoRef<'tcx>,
     {
         let tcx = self.get_ref().infcx.tcx;
 

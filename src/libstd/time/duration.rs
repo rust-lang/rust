@@ -14,7 +14,7 @@
 
 use {fmt, i64};
 use kinds::Copy;
-use ops::{Add, Sub, Mul, Div, Neg};
+use ops::{Add, Sub, Mul, Div, Neg, FnOnce};
 use option::Option;
 use option::Option::{Some, None};
 use num::Int;
@@ -141,7 +141,7 @@ impl Duration {
 
     /// Runs a closure, returning the duration of time it took to run the
     /// closure.
-    pub fn span(f: ||) -> Duration {
+    pub fn span<F>(f: F) -> Duration where F: FnOnce() {
         let before = super::precise_time_ns();
         f();
         Duration::nanoseconds((super::precise_time_ns() - before) as i64)

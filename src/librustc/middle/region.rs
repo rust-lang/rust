@@ -62,7 +62,9 @@ impl CodeExtent {
 
     /// Maps this scope to a potentially new one according to the
     /// NodeId transformer `f_id`.
-    pub fn map_id(&self, f_id: |ast::NodeId| -> ast::NodeId) -> CodeExtent {
+    pub fn map_id<F>(&self, f_id: F) -> CodeExtent where
+        F: FnOnce(ast::NodeId) -> ast::NodeId,
+    {
         match *self {
             CodeExtent::Misc(node_id) => CodeExtent::Misc(f_id(node_id)),
         }

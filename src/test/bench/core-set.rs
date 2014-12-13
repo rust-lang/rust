@@ -10,6 +10,8 @@
 
 // ignore-pretty very bad with line comments
 
+#![feature(unboxed_closures)]
+
 extern crate collections;
 extern crate rand;
 
@@ -31,7 +33,7 @@ struct Results {
     delete_strings: Duration,
 }
 
-fn timed(result: &mut Duration, op: ||) {
+fn timed<F>(result: &mut Duration, op: F) where F: FnOnce() {
     *result = Duration::span(op);
 }
 

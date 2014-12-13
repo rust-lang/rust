@@ -19,8 +19,8 @@ use util::small_vector::SmallVector;
 
 /// A folder that strips out items that do not belong in the current
 /// configuration.
-struct Context<'a> {
-    in_cfg: |attrs: &[ast::Attribute]|: 'a -> bool,
+struct Context<F> where F: FnMut(&[ast::Attribute]) -> bool {
+    in_cfg: F,
 }
 
 // Support conditional compilation by transforming the AST, stripping out
@@ -30,7 +30,7 @@ pub fn strip_unconfigured_items(diagnostic: &SpanHandler, krate: ast::Crate) -> 
     strip_items(krate, |attrs| in_cfg(diagnostic, config.as_slice(), attrs))
 }
 
-impl<'a> fold::Folder for Context<'a> {
+impl<F> fold::Folder for Context<F> where F: FnMut(&[ast::Attribute]) -> bool {
     fn fold_mod(&mut self, module: ast::Mod) -> ast::Mod {
         fold_mod(self, module)
     }
@@ -54,16 +54,20 @@ impl<'a> fold::Folder for Context<'a> {
     }
 }
 
-pub fn strip_items(krate: ast::Crate,
-                   in_cfg: |attrs: &[ast::Attribute]| -> bool)
-                   -> ast::Crate {
+pub fn strip_items<F>(krate: ast::Crate, in_cfg: F) -> ast::Crate where
+    F: FnMut(&[ast::Attribute]) -> bool,
+{
     let mut ctxt = Context {
         in_cfg: in_cfg,
     };
     ctxt.fold_crate(krate)
 }
 
-fn filter_view_item(cx: &mut Context, view_item: ast::ViewItem) -> Option<ast::ViewItem> {
+fn filter_view_item<F>(cx: &mut Context<F>,
+                       view_item: ast::ViewItem)
+                       -> Option<ast::ViewItem> where
+    F: FnMut(&[ast::Attribute]) -> bool
+{
     if view_item_in_cfg(cx, &view_item) {
         Some(view_item)
     } else {
@@ -71,7 +75,11 @@ fn filter_view_item(cx: &mut Context, view_item: ast::ViewItem) -> Option<ast::V
     }
 }
 
-fn fold_mod(cx: &mut Context, ast::Mod {inner, view_items, items}: ast::Mod) -> ast::Mod {
+fn fold_mod<F>(cx: &mut Context<F>,
+               ast::Mod {inner,
+               view_items, items}: ast::Mod) -> ast::Mod where
+    F: FnMut(&[ast::Attribute]) -> bool
+{
     ast::Mod {
         inner: inner,
         view_items: view_items.into_iter().filter_map(|a| {
@@ -83,8 +91,11 @@ fn fold_mod(cx: &mut Context, ast::Mod {inner, view_items, items}: ast::Mod) -> 
     }
 }
 
-fn filter_foreign_item(cx: &mut Context, item: P<ast::ForeignItem>)
-                       -> Option<P<ast::ForeignItem>> {
+fn filter_foreign_item<F>(cx: &mut Context<F>,
+                          item: P<ast::ForeignItem>)
+                          -> Option<P<ast::ForeignItem>> where
+    F: FnMut(&[ast::Attribute]) -> bool
+{
     if foreign_item_in_cfg(cx, &*item) {
         Some(item)
     } else {
@@ -92,8 +103,11 @@ fn filter_foreign_item(cx: &mut Context, item: P<ast::ForeignItem>)
     }
 }
 
-fn fold_foreign_mod(cx: &mut Context, ast::ForeignMod {abi, view_items, items}: ast::ForeignMod)
-                    -> ast::ForeignMod {
+fn fold_foreign_mod<F>(cx: &mut Context<F>,
+                       ast::ForeignMod {abi, view_items, items}: ast::ForeignMod)
+                       -> ast::ForeignMod where
+    F: FnMut(&[ast::Attribute]) -> bool
+{
     ast::ForeignMod {
         abi: abi,
         view_items: view_items.into_iter().filter_map(|a| {
@@ -105,7 +119,9 @@ fn fold_foreign_mod(cx: &mut Context, ast::ForeignMod {abi, view_items, items}: 
     }
 }
 
-fn fold_item(cx: &mut Context, item: P<ast::Item>) -> SmallVector<P<ast::Item>> {
+fn fold_item<F>(cx: &mut Context<F>, item: P<ast::Item>) -> SmallVector<P<ast::Item>> where
+    F: FnMut(&[ast::Attribute]) -> bool
+{
     if item_in_cfg(cx, &*item) {
         SmallVector::one(item.map(|i| cx.fold_item_simple(i)))
     } else {
@@ -113,7 +129,9 @@ fn fold_item(cx: &mut Context, item: P<ast::Item>) -> SmallVector<P<ast::Item>> 
     }
 }
 
-fn fold_item_underscore(cx: &mut Context, item: ast::Item_) -> ast::Item_ {
+fn fold_item_underscore<F>(cx: &mut Context<F>, item: ast::Item_) -> ast::Item_ where
+    F: FnMut(&[ast::Attribute]) -> bool
+{
     let item = match item {
         ast::ItemImpl(a, b, c, impl_items) => {
             let impl_items = impl_items.into_iter()
@@ -166,7 +184,9 @@ fn fold_item_underscore(cx: &mut Context, item: ast::Item_) -> ast::Item_ {
     fold::noop_fold_item_underscore(item, cx)
 }
 
-fn fold_struct(cx: &mut Context, def: P<ast::StructDef>) -> P<ast::StructDef> {
+fn fold_struct<F>(cx: &mut Context<F>, def: P<ast::StructDef>) -> P<ast::StructDef> where
+    F: FnMut(&[ast::Attribute]) -> bool
+{
     def.map(|ast::StructDef { fields, ctor_id }| {
         ast::StructDef {
             fields: fields.into_iter().filter(|m| {
@@ -177,7 +197,9 @@ fn fold_struct(cx: &mut Context, def: P<ast::StructDef>) -> P<ast::StructDef> {
     })
 }
 
-fn retain_stmt(cx: &mut Context, stmt: &ast::Stmt) -> bool {
+fn retain_stmt<F>(cx: &mut Context<F>, stmt: &ast::Stmt) -> bool where
+    F: FnMut(&[ast::Attribute]) -> bool
+{
     match stmt.node {
         ast::StmtDecl(ref decl, _) => {
             match decl.node {
@@ -191,7 +213,9 @@ fn retain_stmt(cx: &mut Context, stmt: &ast::Stmt) -> bool {
     }
 }
 
-fn fold_block(cx: &mut Context, b: P<ast::Block>) -> P<ast::Block> {
+fn fold_block<F>(cx: &mut Context<F>, b: P<ast::Block>) -> P<ast::Block> where
+    F: FnMut(&[ast::Attribute]) -> bool
+{
     b.map(|ast::Block {id, view_items, stmts, expr, rules, span}| {
         let resulting_stmts: Vec<P<ast::Stmt>> =
             stmts.into_iter().filter(|a| retain_stmt(cx, &**a)).collect();
@@ -212,7 +236,9 @@ fn fold_block(cx: &mut Context, b: P<ast::Block>) -> P<ast::Block> {
     })
 }
 
-fn fold_expr(cx: &mut Context, expr: P<ast::Expr>) -> P<ast::Expr> {
+fn fold_expr<F>(cx: &mut Context<F>, expr: P<ast::Expr>) -> P<ast::Expr> where
+    F: FnMut(&[ast::Attribute]) -> bool
+{
     expr.map(|ast::Expr {id, span, node}| {
         fold::noop_fold_expr(ast::Expr {
             id: id,
@@ -229,19 +255,27 @@ fn fold_expr(cx: &mut Context, expr: P<ast::Expr>) -> P<ast::Expr> {
     })
 }
 
-fn item_in_cfg(cx: &mut Context, item: &ast::Item) -> bool {
+fn item_in_cfg<F>(cx: &mut Context<F>, item: &ast::Item) -> bool where
+    F: FnMut(&[ast::Attribute]) -> bool
+{
     return (cx.in_cfg)(item.attrs.as_slice());
 }
 
-fn foreign_item_in_cfg(cx: &mut Context, item: &ast::ForeignItem) -> bool {
+fn foreign_item_in_cfg<F>(cx: &mut Context<F>, item: &ast::ForeignItem) -> bool where
+    F: FnMut(&[ast::Attribute]) -> bool
+{
     return (cx.in_cfg)(item.attrs.as_slice());
 }
 
-fn view_item_in_cfg(cx: &mut Context, item: &ast::ViewItem) -> bool {
+fn view_item_in_cfg<F>(cx: &mut Context<F>, item: &ast::ViewItem) -> bool where
+    F: FnMut(&[ast::Attribute]) -> bool
+{
     return (cx.in_cfg)(item.attrs.as_slice());
 }
 
-fn trait_method_in_cfg(cx: &mut Context, meth: &ast::TraitItem) -> bool {
+fn trait_method_in_cfg<F>(cx: &mut Context<F>, meth: &ast::TraitItem) -> bool where
+    F: FnMut(&[ast::Attribute]) -> bool
+{
     match *meth {
         ast::RequiredMethod(ref meth) => (cx.in_cfg)(meth.attrs.as_slice()),
         ast::ProvidedMethod(ref meth) => (cx.in_cfg)(meth.attrs.as_slice()),
@@ -249,7 +283,9 @@ fn trait_method_in_cfg(cx: &mut Context, meth: &ast::TraitItem) -> bool {
     }
 }
 
-fn impl_item_in_cfg(cx: &mut Context, impl_item: &ast::ImplItem) -> bool {
+fn impl_item_in_cfg<F>(cx: &mut Context<F>, impl_item: &ast::ImplItem) -> bool where
+    F: FnMut(&[ast::Attribute]) -> bool
+{
     match *impl_item {
         ast::MethodImplItem(ref meth) => (cx.in_cfg)(meth.attrs.as_slice()),
         ast::TypeImplItem(ref typ) => (cx.in_cfg)(typ.attrs.as_slice()),
