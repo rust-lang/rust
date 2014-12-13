@@ -25,6 +25,15 @@ static OS_TABLE: &'static [(&'static str, &'static str)] = &[
     ("dragonfly", "dragonfly"),
 ];
 
+/// Table to help extracting architecture from triple
+static ARCH_TABLE: &'static [&'static str] = &[
+    "arm",
+    "mips",
+    "mipsel",
+    "x86",
+    "x86_64",
+];
+
 pub fn get_os(triple: &str) -> &'static str {
     for &(triple_os, os) in OS_TABLE.iter() {
         if triple.contains(triple_os) {
@@ -32,6 +41,15 @@ pub fn get_os(triple: &str) -> &'static str {
         }
     }
     panic!("Cannot determine OS from triple");
+}
+
+pub fn get_arch(triple: &str) -> &'static str {
+    for &triple_arch in ARCH_TABLE.iter() {
+        if triple.contains(triple_arch) {
+            return triple_arch
+        }
+    }
+    panic!("Cannot determine architecture from triple");
 }
 
 #[cfg(target_os = "windows")]

@@ -144,8 +144,11 @@ pub fn load_props(testfile: &Path) -> TestProps {
 }
 
 pub fn is_test_ignored(config: &Config, testfile: &Path) -> bool {
-    fn ignore_target(config: &Config) -> String {
+    fn ignore_os(config: &Config) -> String {
         format!("ignore-{}", util::get_os(config.target.as_slice()))
+    }
+    fn ignore_arch(config: &Config) -> String {
+        format!("ignore-{}", util::get_arch(config.target.as_slice()))
     }
     fn ignore_stage(config: &Config) -> String {
         format!("ignore-{}",
@@ -209,7 +212,8 @@ pub fn is_test_ignored(config: &Config, testfile: &Path) -> bool {
 
     let val = iter_header(testfile, |ln| {
         !parse_name_directive(ln, "ignore-test") &&
-        !parse_name_directive(ln, ignore_target(config).as_slice()) &&
+        !parse_name_directive(ln, ignore_os(config).as_slice()) &&
+        !parse_name_directive(ln, ignore_arch(config).as_slice()) &&
         !parse_name_directive(ln, ignore_stage(config).as_slice()) &&
         !(config.mode == common::Pretty && parse_name_directive(ln, "ignore-pretty")) &&
         !(config.target != config.host && parse_name_directive(ln, "ignore-cross-compile")) &&
