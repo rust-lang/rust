@@ -42,10 +42,9 @@ use middle::region;
 use middle::resolve_lifetime;
 use middle::subst;
 use middle::subst::{Substs};
-use middle::ty::{ImplContainer, ImplOrTraitItemContainer, TraitContainer};
-use middle::ty::{Polytype};
-use middle::ty::{mod, Ty};
-use middle::ty_fold::TypeFolder;
+use middle::ty::{AsPredicate, ImplContainer, ImplOrTraitItemContainer, TraitContainer};
+use middle::ty::{mod, Ty, Polytype};
+use middle::ty_fold::{mod, TypeFolder};
 use middle::infer;
 use rscope::*;
 use {CrateCtxt, lookup_def_tcx, no_params, write_ty_to_tcx};
@@ -1920,8 +1919,12 @@ fn ty_generics<'tcx,AC>(this: &AC,
         for region_param_def in result.regions.get_slice(space).iter() {
             let region = region_param_def.to_early_bound_region();
             for &bound_region in region_param_def.bounds.iter() {
-                result.predicates.push(space, ty::Predicate::RegionOutlives(region,
-                                                                            bound_region));
+                // account for new binder introduced in the predicate below; no need
+                // to shift `region` because it is never a late-bound region
+                let bound_region = ty_fold::shift_region(bound_region, 1);
+                result.predicates.push(
+                    space,
+                    ty::Binder(ty::OutlivesPredicate(region, bound_region)).as_predicate());
             }
         }
     }

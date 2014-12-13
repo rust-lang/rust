@@ -1689,23 +1689,60 @@ pub enum Predicate<'tcx> {
     Trait(Rc<PolyTraitRef<'tcx>>),
 
     /// where `T1 == T2`.
-    Equate(/* T1 */ Ty<'tcx>, /* T2 */ Ty<'tcx>),
+    Equate(PolyEquatePredicate<'tcx>),
 
     /// where 'a : 'b
-    RegionOutlives(/* 'a */ Region, /* 'b */ Region),
+    RegionOutlives(PolyRegionOutlivesPredicate),
 
     /// where T : 'a
-    TypeOutlives(Ty<'tcx>, Region),
+    TypeOutlives(PolyTypeOutlivesPredicate<'tcx>),
+}
+
+#[deriving(Clone, PartialEq, Eq, Hash, Show)]
+pub struct EquatePredicate<'tcx>(pub Ty<'tcx>, pub Ty<'tcx>); // `0 == 1`
+pub type PolyEquatePredicate<'tcx> = ty::Binder<EquatePredicate<'tcx>>;
+
+#[deriving(Clone, PartialEq, Eq, Hash, Show)]
+pub struct OutlivesPredicate<A,B>(pub A, pub B); // `A : B`
+pub type PolyOutlivesPredicate<A,B> = ty::Binder<OutlivesPredicate<A,B>>;
+pub type PolyRegionOutlivesPredicate = PolyOutlivesPredicate<ty::Region, ty::Region>;
+pub type PolyTypeOutlivesPredicate<'tcx> = PolyOutlivesPredicate<Ty<'tcx>, ty::Region>;
+
+pub trait AsPredicate<'tcx> {
+    fn as_predicate(&self) -> Predicate<'tcx>;
+}
+
+impl<'tcx> AsPredicate<'tcx> for Rc<PolyTraitRef<'tcx>> {
+    fn as_predicate(&self) -> Predicate<'tcx> {
+        Predicate::Trait(self.clone())
+    }
+}
+
+impl<'tcx> AsPredicate<'tcx> for PolyEquatePredicate<'tcx> {
+    fn as_predicate(&self) -> Predicate<'tcx> {
+        Predicate::Equate(self.clone())
+    }
+}
+
+impl<'tcx> AsPredicate<'tcx> for PolyRegionOutlivesPredicate {
+    fn as_predicate(&self) -> Predicate<'tcx> {
+        Predicate::RegionOutlives(self.clone())
+    }
+}
+
+impl<'tcx> AsPredicate<'tcx> for PolyTypeOutlivesPredicate<'tcx> {
+    fn as_predicate(&self) -> Predicate<'tcx> {
+        Predicate::TypeOutlives(self.clone())
+    }
 }
 
 impl<'tcx> Predicate<'tcx> {
     pub fn has_escaping_regions(&self) -> bool {
         match *self {
             Predicate::Trait(ref trait_ref) => trait_ref.has_escaping_regions(),
-            Predicate::Equate(a, b) => (ty::type_has_escaping_regions(a) ||
-                                        ty::type_has_escaping_regions(b)),
-            Predicate::RegionOutlives(a, b) => a.escapes_depth(0) || b.escapes_depth(0),
-            Predicate::TypeOutlives(a, b) => ty::type_has_escaping_regions(a) || b.escapes_depth(0),
+            Predicate::Equate(ref p) => p.has_escaping_regions(),
+            Predicate::RegionOutlives(ref p) => p.has_escaping_regions(),
+            Predicate::TypeOutlives(ref p) => p.has_escaping_regions(),
         }
     }
 
@@ -5208,17 +5245,20 @@ pub fn predicates<'tcx>(
 
     for builtin_bound in bounds.builtin_bounds.iter() {
         match traits::poly_trait_ref_for_builtin_bound(tcx, builtin_bound, param_ty) {
-            Ok(trait_ref) => { vec.push(Predicate::Trait(trait_ref)); }
+            Ok(trait_ref) => { vec.push(trait_ref.as_predicate()); }
             Err(ErrorReported) => { }
         }
     }
 
     for &region_bound in bounds.region_bounds.iter() {
-        vec.push(Predicate::TypeOutlives(param_ty, region_bound));
+        // account for the binder being introduced below; no need to shift `param_ty`
+        // because, at present at least, it can only refer to early-bound regions
+        let region_bound = ty_fold::shift_region(region_bound, 1);
+        vec.push(ty::Binder(ty::OutlivesPredicate(param_ty, region_bound)).as_predicate());
     }
 
     for bound_trait_ref in bounds.trait_bounds.iter() {
-        vec.push(Predicate::Trait((*bound_trait_ref).clone()));
+        vec.push(bound_trait_ref.as_predicate());
     }
 
     vec
@@ -5595,18 +5635,26 @@ pub fn object_region_bounds<'tcx>(tcx: &ctxt<'tcx>,
     ty::required_region_bounds(tcx, open_ty, predicates)
 }
 
-/// Given a type which must meet the builtin bounds and trait bounds, returns a set of lifetimes
-/// which the type must outlive.
+/// Given a set of predicates that apply to an object type, returns
+/// the region bounds that the (erased) `Self` type must
+/// outlive. Precisely *because* the `Self` type is erased, the
+/// parameter `erased_self_ty` must be supplied to indicate what type
+/// has been used to represent `Self` in the predicates
+/// themselves. This should really be a unique type; `FreshTy(0)` is a
+/// popular choice (see `object_region_bounds` above).
 ///
-/// Requires that trait definitions have been processed.
+/// Requires that trait definitions have been processed so that we can
+/// elaborate predicates and walk supertraits.
 pub fn required_region_bounds<'tcx>(tcx: &ctxt<'tcx>,
-                                    param_ty: Ty<'tcx>,
+                                    erased_self_ty: Ty<'tcx>,
                                     predicates: Vec<ty::Predicate<'tcx>>)
                                     -> Vec<ty::Region>
 {
-    debug!("required_region_bounds(param_ty={}, predicates={})",
-           param_ty.repr(tcx),
+    debug!("required_region_bounds(erased_self_ty={}, predicates={})",
+           erased_self_ty.repr(tcx),
            predicates.repr(tcx));
+
+    assert!(!erased_self_ty.has_escaping_regions());
 
     traits::elaborate_predicates(tcx, predicates)
         .filter_map(|predicate| {
@@ -5616,9 +5664,22 @@ pub fn required_region_bounds<'tcx>(tcx: &ctxt<'tcx>,
                 ty::Predicate::RegionOutlives(..) => {
                     None
                 }
-                ty::Predicate::TypeOutlives(t, r) => {
-                    if t == param_ty {
-                        Some(r)
+                ty::Predicate::TypeOutlives(ty::Binder(ty::OutlivesPredicate(t, r))) => {
+                    // Search for a bound of the form `erased_self_ty
+                    // : 'a`, but be wary of something like `for<'a>
+                    // erased_self_ty : 'a` (we interpret a
+                    // higher-ranked bound like that as 'static,
+                    // though at present the code in `fulfill.rs`
+                    // considers such bounds to be unsatisfiable, so
+                    // it's kind of a moot point since you could never
+                    // construct such an object, but this seems
+                    // correct even if that code changes).
+                    if t == erased_self_ty && !r.has_escaping_regions() {
+                        if r.has_escaping_regions() {
+                            Some(ty::ReStatic)
+                        } else {
+                            Some(r)
+                        }
                     } else {
                         None
                     }
@@ -6100,16 +6161,20 @@ pub fn construct_parameter_environment<'tcx>(
                 Predicate::Trait(..) | Predicate::Equate(..) | Predicate::TypeOutlives(..) => {
                     // No region bounds here
                 }
-                Predicate::RegionOutlives(ty::ReFree(fr_a), ty::ReFree(fr_b)) => {
-                    // Record that `'a:'b`. Or, put another way, `'b <= 'a`.
-                    tcx.region_maps.relate_free_regions(fr_b, fr_a);
-                }
-                Predicate::RegionOutlives(r_a, r_b) => {
-                    // All named regions are instantiated with free regions.
-                    tcx.sess.bug(
-                        format!("record_region_bounds: non free region: {} / {}",
-                                r_a.repr(tcx),
-                                r_b.repr(tcx)).as_slice());
+                Predicate::RegionOutlives(ty::Binder(ty::OutlivesPredicate(r_a, r_b))) => {
+                    match (r_a, r_b) {
+                        (ty::ReFree(fr_a), ty::ReFree(fr_b)) => {
+                            // Record that `'a:'b`. Or, put another way, `'b <= 'a`.
+                            tcx.region_maps.relate_free_regions(fr_b, fr_a);
+                        }
+                        _ => {
+                            // All named regions are instantiated with free regions.
+                            tcx.sess.bug(
+                                format!("record_region_bounds: non free region: {} / {}",
+                                        r_a.repr(tcx),
+                                        r_b.repr(tcx)).as_slice());
+                        }
+                    }
                 }
             }
         }
@@ -6313,6 +6378,16 @@ pub fn liberate_late_bound_regions<'tcx, T>(
         |br, _| ty::ReFree(ty::FreeRegion{scope: scope, bound_region: br})).0
 }
 
+pub fn count_late_bound_regions<'tcx, T>(
+    tcx: &ty::ctxt<'tcx>,
+    value: &Binder<T>)
+    -> uint
+    where T : TypeFoldable<'tcx> + Repr<'tcx>
+{
+    let (_, skol_map) = replace_late_bound_regions(tcx, value, |_, _| ty::ReStatic);
+    skol_map.len()
+}
+
 /// Replace any late-bound regions bound in `value` with `'static`. Useful in trans but also
 /// method lookup and a few other places where precise region relationships are not required.
 pub fn erase_late_bound_regions<'tcx, T>(
@@ -6454,9 +6529,9 @@ impl<'tcx> Repr<'tcx> for ty::Predicate<'tcx> {
     fn repr(&self, tcx: &ctxt<'tcx>) -> String {
         match *self {
             Predicate::Trait(ref a) => a.repr(tcx),
-            Predicate::Equate(a, b) => format!("Equate({},{})", a.repr(tcx), b.repr(tcx)),
-            Predicate::RegionOutlives(a, b) => format!("Outlives({}:{})", a.repr(tcx), b.repr(tcx)),
-            Predicate::TypeOutlives(a, b) => format!("Outlives({}:{})", a.repr(tcx), b.repr(tcx)),
+            Predicate::Equate(ref pair) => format!("Equate({})", pair.repr(tcx)),
+            Predicate::RegionOutlives(ref pair) => format!("Outlives({})", pair.repr(tcx)),
+            Predicate::TypeOutlives(ref pair) => format!("Outlives({})", pair.repr(tcx)),
         }
     }
 }
@@ -6586,9 +6661,15 @@ impl<'tcx,T:RegionEscape> RegionEscape for Binder<T> {
     }
 }
 
-impl<T:RegionEscape> Binder<T> {
-    pub fn has_bound_regions(&self) -> bool {
-        self.0.has_regions_escaping_depth(0)
+impl<'tcx> RegionEscape for EquatePredicate<'tcx> {
+    fn has_regions_escaping_depth(&self, depth: uint) -> bool {
+        self.0.has_regions_escaping_depth(depth) || self.1.has_regions_escaping_depth(depth)
+    }
+}
+
+impl<T:RegionEscape,U:RegionEscape> RegionEscape for OutlivesPredicate<T,U> {
+    fn has_regions_escaping_depth(&self, depth: uint) -> bool {
+        self.0.has_regions_escaping_depth(depth) || self.1.has_regions_escaping_depth(depth)
     }
 }
 

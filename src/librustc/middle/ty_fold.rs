@@ -409,15 +409,12 @@ impl<'tcx> TypeFoldable<'tcx> for ty::Predicate<'tcx> {
         match *self {
             ty::Predicate::Trait(ref a) =>
                 ty::Predicate::Trait(a.fold_with(folder)),
-            ty::Predicate::Equate(ref a, ref b) =>
-                ty::Predicate::Equate(a.fold_with(folder),
-                                        b.fold_with(folder)),
-            ty::Predicate::RegionOutlives(ref a, ref b) =>
-                ty::Predicate::RegionOutlives(a.fold_with(folder),
-                                                b.fold_with(folder)),
-            ty::Predicate::TypeOutlives(ref a, ref b) =>
-                ty::Predicate::TypeOutlives(a.fold_with(folder),
-                                              b.fold_with(folder)),
+            ty::Predicate::Equate(ref binder) =>
+                ty::Predicate::Equate(binder.fold_with(folder)),
+            ty::Predicate::RegionOutlives(ref binder) =>
+                ty::Predicate::RegionOutlives(binder.fold_with(folder)),
+            ty::Predicate::TypeOutlives(ref binder) =>
+                ty::Predicate::TypeOutlives(binder.fold_with(folder)),
         }
     }
 }
@@ -498,6 +495,23 @@ impl<'tcx> TypeFoldable<'tcx> for traits::VtableParamData<'tcx> {
         traits::VtableParamData {
             bound: self.bound.fold_with(folder),
         }
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for ty::EquatePredicate<'tcx> {
+    fn fold_with<F:TypeFolder<'tcx>>(&self, folder: &mut F) -> ty::EquatePredicate<'tcx> {
+        ty::EquatePredicate(self.0.fold_with(folder),
+                            self.1.fold_with(folder))
+    }
+}
+
+impl<'tcx,T,U> TypeFoldable<'tcx> for ty::OutlivesPredicate<T,U>
+    where T : TypeFoldable<'tcx>,
+          U : TypeFoldable<'tcx>,
+{
+    fn fold_with<F:TypeFolder<'tcx>>(&self, folder: &mut F) -> ty::OutlivesPredicate<T,U> {
+        ty::OutlivesPredicate(self.0.fold_with(folder),
+                              self.1.fold_with(folder))
     }
 }
 

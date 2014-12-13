@@ -427,17 +427,17 @@ pub fn enc_predicate<'a, 'tcx>(w: &mut SeekableMemWriter,
             mywrite!(w, "t");
             enc_trait_ref(w, cx, &trait_ref.0);
         }
-        ty::Predicate::Equate(a, b) => {
+        ty::Predicate::Equate(ty::Binder(ty::EquatePredicate(a, b))) => {
             mywrite!(w, "e");
             enc_ty(w, cx, a);
             enc_ty(w, cx, b);
         }
-        ty::Predicate::RegionOutlives(a, b) => {
+        ty::Predicate::RegionOutlives(ty::Binder(ty::OutlivesPredicate(a, b))) => {
             mywrite!(w, "r");
             enc_region(w, cx, a);
             enc_region(w, cx, b);
         }
-        ty::Predicate::TypeOutlives(a, b) => {
+        ty::Predicate::TypeOutlives(ty::Binder(ty::OutlivesPredicate(a, b))) => {
             mywrite!(w, "o");
             enc_ty(w, cx, a);
             enc_region(w, cx, b);

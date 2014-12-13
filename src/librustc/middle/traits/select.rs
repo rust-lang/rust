@@ -28,7 +28,7 @@ use super::{util};
 use middle::fast_reject;
 use middle::mem_categorization::Typer;
 use middle::subst::{Subst, Substs, VecPerParamSpace};
-use middle::ty::{mod, Ty, RegionEscape};
+use middle::ty::{mod, AsPredicate, RegionEscape, Ty};
 use middle::infer;
 use middle::infer::{InferCtxt, TypeFreshener};
 use middle::ty_fold::TypeFoldable;
@@ -288,8 +288,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 self.evaluate_obligation_recursively(previous_stack, &obligation)
             }
 
-            ty::Predicate::Equate(a, b) => {
-                match infer::can_mk_eqty(self.infcx, a, b) {
+            ty::Predicate::Equate(ref p) => {
+                let result = self.infcx.probe(|| {
+                    self.infcx.equality_predicate(obligation.cause.span, p)
+                });
+                match result {
                     Ok(()) => EvaluatedToOk,
                     Err(_) => EvaluatedToErr(Unimplemented),
                 }
@@ -1447,8 +1450,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             obligations.push(Obligation {
                 cause: obligation.cause,
                 recursion_depth: obligation.recursion_depth+1,
-                trait_ref: ty::Predicate::TypeOutlives(obligation.self_ty(),
-                                                       ty::ReStatic)
+                trait_ref: ty::Binder(ty::OutlivesPredicate(obligation.self_ty(),
+                                                            ty::ReStatic)).as_predicate(),
             });
         }
 
