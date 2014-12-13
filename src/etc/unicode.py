@@ -348,7 +348,6 @@ def emit_conversions_module(f, lowerupper, upperlower):
     f.write("""
     use core::cmp::Ordering::{Equal, Less, Greater};
     use core::slice::SlicePrelude;
-    use core::tuple::Tuple2;
     use core::option::Option;
     use core::option::Option::{Some, None};
     use core::slice;
@@ -356,14 +355,14 @@ def emit_conversions_module(f, lowerupper, upperlower):
     pub fn to_lower(c: char) -> char {
         match bsearch_case_table(c, LuLl_table) {
           None        => c,
-          Some(index) => LuLl_table[index].val1()
+          Some(index) => LuLl_table[index].1
         }
     }
 
     pub fn to_upper(c: char) -> char {
         match bsearch_case_table(c, LlLu_table) {
             None        => c,
-            Some(index) => LlLu_table[index].val1()
+            Some(index) => LlLu_table[index].1
         }
     }
 
