@@ -23,8 +23,8 @@ use tree_map::{TreeMap, Entries, RevEntries, MoveEntries};
 // FIXME(conventions): implement bounded iterators
 // FIXME(conventions): replace rev_iter(_mut) by making iter(_mut) DoubleEnded
 
-/// An implementation of the `Set` trait on top of the `TreeMap` container. The
-/// only requirement is that the type of the elements contained ascribes to the
+/// An implementation of a set on top of the `TreeMap` container. The only
+/// requirement is that the type of the elements contained ascribes to the
 /// `Ord` trait.
 ///
 /// ## Examples
