@@ -1367,7 +1367,8 @@ This trait will essentially remain stay as it is (renamed from
   cross-platform function, when we have grown a notion of time in
   `std` and have a good compatibility story across all platforms.
 
-* `lstat` will move to `os::unix` since it is unsupported by Windows.
+* `lstat` will move to `os::unix` since it is not yet implemented for
+  Windows.
 
 * `chown` will move to `os::unix` (it currently does *nothing* on
   Windows), and eventually `os::windows` will grow support for
