@@ -750,7 +750,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
             // at least as big as the block fr.scope_id".  So, we can
             // reasonably compare free regions and scopes:
             match self.tcx.region_maps.nearest_common_ancestor(fr.scope, s_id) {
-              // if the free region's scope `fr.scope_id` is bigger than
+              // if the free region's scope `fr.scope` is bigger than
               // the scope region `s_id`, then the LUB is the free
               // region itself:
               Some(r_id) if r_id == fr.scope => f,
