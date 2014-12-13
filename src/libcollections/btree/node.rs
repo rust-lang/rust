@@ -1334,10 +1334,14 @@ struct ElemsAndEdges<Elems, Edges>(Elems, Edges);
 impl<K, V, E, Elems: DoubleEndedIterator<(K, V)>, Edges: DoubleEndedIterator<E>>
         TraversalImpl<K, V, E> for ElemsAndEdges<Elems, Edges> {
 
+    #[inline]
     fn next_kv(&mut self) -> Option<(K, V)> { self.0.next() }
+    #[inline]
     fn next_kv_back(&mut self) -> Option<(K, V)> { self.0.next_back() }
 
+    #[inline]
     fn next_edge(&mut self) -> Option<E> { self.1.next() }
+    #[inline]
     fn next_edge_back(&mut self) -> Option<E> { self.1.next_back() }
 }
 
@@ -1354,6 +1358,7 @@ struct MoveTraversalImpl<K, V> {
 }
 
 impl<K, V> TraversalImpl<K, V, Node<K, V>> for MoveTraversalImpl<K, V> {
+    #[inline]
     fn next_kv(&mut self) -> Option<(K, V)> {
         match (self.keys.next(), self.vals.next()) {
             (Some(k), Some(v)) => Some((k, v)),
@@ -1361,6 +1366,7 @@ impl<K, V> TraversalImpl<K, V, Node<K, V>> for MoveTraversalImpl<K, V> {
         }
     }
 
+    #[inline]
     fn next_kv_back(&mut self) -> Option<(K, V)> {
         match (self.keys.next_back(), self.vals.next_back()) {
             (Some(k), Some(v)) => Some((k, v)),
@@ -1368,12 +1374,14 @@ impl<K, V> TraversalImpl<K, V, Node<K, V>> for MoveTraversalImpl<K, V> {
         }
     }
 
+    #[inline]
     fn next_edge(&mut self) -> Option<Node<K, V>> {
         // Necessary for correctness, but in a private module
         debug_assert!(!self.is_leaf);
         self.edges.next()
     }
 
+    #[inline]
     fn next_edge_back(&mut self) -> Option<Node<K, V>> {
         // Necessary for correctness, but in a private module
         debug_assert!(!self.is_leaf);
@@ -1427,6 +1435,7 @@ pub type MoveTraversal<K, V> = AbsTraversal<MoveTraversalImpl<K, V>>;
 impl<K, V, E, Impl: TraversalImpl<K, V, E>>
         Iterator<TraversalItem<K, V, E>> for AbsTraversal<Impl> {
 
+    #[inline]
     fn next(&mut self) -> Option<TraversalItem<K, V, E>> {
         let head_is_edge = self.head_is_edge;
         self.head_is_edge = !head_is_edge;
@@ -1442,6 +1451,7 @@ impl<K, V, E, Impl: TraversalImpl<K, V, E>>
 impl<K, V, E, Impl: TraversalImpl<K, V, E>>
         DoubleEndedIterator<TraversalItem<K, V, E>> for AbsTraversal<Impl> {
 
+    #[inline]
     fn next_back(&mut self) -> Option<TraversalItem<K, V, E>> {
         let tail_is_edge = self.tail_is_edge;
         self.tail_is_edge = !tail_is_edge;

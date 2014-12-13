@@ -937,6 +937,7 @@ impl<K, V, E, T: Traverse<E> + DoubleEndedIterator<TraversalItem<K, V, E>>>
     // making these arbitrary sub-range iterators. However the logic to construct these paths
     // efficiently is fairly involved, so this is a FIXME. The sub-range iterators also wouldn't be
     // able to accurately predict size, so those iterators can't implement ExactSizeIterator.
+    #[inline]
     fn next(&mut self) -> Option<(K, V)> {
         loop {
             // We want the smallest element, so try to get the top of the left stack
@@ -1030,6 +1031,7 @@ impl<K, V, E, T: Traverse<E> + DoubleEndedIterator<TraversalItem<K, V, E>>>
 }
 
 impl<'a, K, V> Iterator<(&'a K, &'a V)> for Entries<'a, K, V> {
+    #[inline]
     fn next(&mut self) -> Option<(&'a K, &'a V)> { self.inner.next() }
     fn size_hint(&self) -> (uint, Option<uint>) { self.inner.size_hint() }
 }
@@ -1040,20 +1042,24 @@ impl<'a, K, V> ExactSizeIterator<(&'a K, &'a V)> for Entries<'a, K, V> {}
 
 
 impl<'a, K, V> Iterator<(&'a K, &'a mut V)> for MutEntries<'a, K, V> {
+    #[inline]
     fn next(&mut self) -> Option<(&'a K, &'a mut V)> { self.inner.next() }
     fn size_hint(&self) -> (uint, Option<uint>) { self.inner.size_hint() }
 }
 impl<'a, K, V> DoubleEndedIterator<(&'a K, &'a mut V)> for MutEntries<'a, K, V> {
+    #[inline]
     fn next_back(&mut self) -> Option<(&'a K, &'a mut V)> { self.inner.next_back() }
 }
 impl<'a, K, V> ExactSizeIterator<(&'a K, &'a mut V)> for MutEntries<'a, K, V> {}
 
 
 impl<K, V> Iterator<(K, V)> for MoveEntries<K, V> {
+    #[inline]
     fn next(&mut self) -> Option<(K, V)> { self.inner.next() }
     fn size_hint(&self) -> (uint, Option<uint>) { self.inner.size_hint() }
 }
 impl<K, V> DoubleEndedIterator<(K, V)> for MoveEntries<K, V> {
+    #[inline]
     fn next_back(&mut self) -> Option<(K, V)> { self.inner.next_back() }
 }
 impl<K, V> ExactSizeIterator<(K, V)> for MoveEntries<K, V> {}
@@ -1130,6 +1136,25 @@ impl<K, V> BTreeMap<K, V> {
         }
     }
 
+    /// An intrusive version of `.iter()`. The closure will be called once with
+    /// every key/value pair in the tree.
+    ///
+    /// This is faster than calling `.iter()`, but is far less composable.
+    #[inline]
+    #[experimental = "relies on unboxed closures"]
+    pub fn intrusive_iter<F: FnMut(&K, &V)>(&self, mut f: F) {
+        fn intrusive_iter_impl<K, V, F: FnMut(&K, &V)>(node: &Node<K, V>, f: &mut F) {
+            for ti in node.iter() {
+                match ti {
+                    Elem(k, v) => (*f)(k, v),
+                    Edge(e) => intrusive_iter_impl(e, f),
+                }
+            }
+        }
+
+        intrusive_iter_impl(&self.root, &mut f);
+    }
+
     /// Gets a mutable iterator over the entries of the map.
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn iter_mut<'a>(&'a mut self) -> MutEntries<'a, K, V> {
@@ -1144,6 +1169,25 @@ impl<K, V> BTreeMap<K, V> {
         }
     }
 
+    /// An intrusive version of `.iter_mut()`. The closure will be called once
+    /// with every key/value pair in the tree.
+    ///
+    /// This is faster than calling `.iter_mut()`, but is far less composable.
+    #[inline]
+    #[experimental = "relies on unboxed closures"]
+    pub fn intrusive_iter_mut<F: FnMut(&K, &mut V)>(&mut self, mut f: F) {
+        fn intrusive_iter_mut_impl<K, V, F: FnMut(&K, &mut V)>(node: &mut Node<K, V>, f: &mut F) {
+            for ti in node.iter_mut() {
+                match ti {
+                    Elem(k, v) => (*f)(k, v),
+                    Edge(e) => intrusive_iter_mut_impl(e, f),
+                }
+            }
+        }
+
+        intrusive_iter_mut_impl(&mut self.root, &mut f);
+    }
+
     /// Gets an owning iterator over the entries of the map.
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn into_iter(self) -> MoveEntries<K, V> {
@@ -1156,6 +1200,25 @@ impl<K, V> BTreeMap<K, V> {
                 size: len,
             }
         }
+    }
+
+    /// An intrusive version of `.into_iter()`. The closure will be called once
+    /// with every key/value pair in the tree.
+    ///
+    /// This is faster than calling `.into_iter()`, but is far less composable.
+    #[inline]
+    #[experimental = "relies on unboxed closures"]
+    pub fn intrusive_into_iter<F: FnMut(K, V)>(self, mut f: F) {
+        fn intrusive_into_iter_impl<K, V, F: FnMut(K, V)>(node: Node<K, V>, f: &mut F) {
+            for ti in node.into_iter() {
+                match ti {
+                    Elem(k, v) => (*f)(k, v),
+                    Edge(e) => intrusive_into_iter_impl(e, f),
+                }
+            }
+        }
+
+        intrusive_into_iter_impl(self.root, &mut f);
     }
 
     /// Gets an iterator over the keys of the map.
@@ -1579,5 +1642,35 @@ mod bench {
     #[bench]
     pub fn iter_100000(b: &mut Bencher) {
         bench_iter(b, 100000);
+    }
+
+    fn bench_intrusive_iter(b: &mut Bencher, size: uint) {
+        let mut map = BTreeMap::<uint, uint>::new();
+        let mut rng = weak_rng();
+
+        for _ in range(0, size) {
+            map.insert(rng.gen(), rng.gen());
+        }
+
+        b.iter(|| {
+            map.intrusive_iter(|&mut: k, v| {
+                black_box(k); black_box(v);
+            });
+        });
+    }
+
+    #[bench]
+    pub fn intrusive_iter_20(b: &mut Bencher) {
+        bench_intrusive_iter(b, 20);
+    }
+
+    #[bench]
+    pub fn intrusive_iter_1000(b: &mut Bencher) {
+        bench_intrusive_iter(b, 1000);
+    }
+
+    #[bench]
+    pub fn intrusive_iter_100000(b: &mut Bencher) {
+        bench_intrusive_iter(b, 100000);
     }
 }
