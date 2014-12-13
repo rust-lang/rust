@@ -874,17 +874,25 @@ The proposed solution is to instead offer a `with_deadline` method
 an object, creates a *wrapper* object with the given deadline.
 
 ```rust
+struct Deadline {
+    ... // to be determined
+}
+
+trait IntoDeadine {
+    fn into_deadline(self) -> Deadline;
+}
+
 struct Deadlined<T> {
-    deadline: Duration,
+    deadline: Deadline,
     inner: T,
 }
 
 impl<T> Deadlined<T> {
-    pub fn new(inner: T, deadline: Duration) -> Deadlined<T> {
+    pub fn new<D: IntoDeadline>(inner: T, deadline: D) -> Deadlined<T> {
         Deadlined { deadline: deadline, inner: inner }
     }
 
-    pub fn deadline(&self) -> Duration {
+    pub fn deadline(&self) -> Deadline {
         self.deadline
     }
 
@@ -902,7 +910,9 @@ impl<T> Deadlined<T> {
 }
 
 impl TcpStream {
-    fn with_deadline(&mut self, deadline: Duration) -> Deadlined<&mut TcpStream> {
+    fn with_deadline<D>(&mut self, deadline: D) -> Deadlined<&mut TcpStream> where
+        D: IntoDeadline
+    {
         Deadlined::new(self, deadline)
     }
 }
@@ -916,6 +926,11 @@ impl<'a> Reader for Deadlined<&'a mut TcpStream> {
 
 // And so on for other traits and concrete types
 ```
+
+The exact details of `Deadline` and the `impl`s for `IntoDeadline` are
+left unspecified, as they will depend on what notions of time are
+available in `std`, but they will at least include a way to specify an
+absolute time.
 
 ### Timeouts versus deadlines
 [Timeouts versus deadlines]: #timeouts-versus-deadlines
@@ -1407,7 +1422,8 @@ For `TcpStream`, the changes are most easily expressed by giving the signatures 
 
 impl TcpStream {
     fn connect<A: ToSocketAddr>(addr: A) -> IoResult<TcpStreama>;
-    fn connect_deadline<A: ToSocketAddr>(addr: A, deadline: Duration) -> IoResult<TcpStreama>;
+    fn connect_deadline<A, D>(addr: A, deadline: D) -> IoResult<TcpStreama> where
+        A: ToSocketAddr, D: IntoDeadline;
 
     fn reader(&mut self) -> &mut TcpReader;
     fn writer(&mut self) -> &mut TcpWriter;
