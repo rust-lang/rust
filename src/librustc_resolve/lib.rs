@@ -90,7 +90,7 @@ use syntax::owned_slice::OwnedSlice;
 use syntax::visit::{mod, Visitor};
 
 use std::collections::{HashMap, HashSet};
-use std::collections::hash_map::{Occupied, Vacant};
+use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::cell::{Cell, RefCell};
 use std::mem::replace;
 use std::rc::{Rc, Weak};

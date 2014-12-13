@@ -20,7 +20,7 @@
 //! Other than that, the implementation is pretty straightforward in terms of
 //! the other two implementations of timers with nothing *that* new showing up.
 
-pub use self::Req::*;
+use self::Req::*;
 
 use libc;
 use ptr;

@@ -28,9 +28,9 @@
 #![allow(non_snake_case)]
 #![allow(unused_imports)]
 
-pub use self::MemoryMapKind::*;
-pub use self::MapOption::*;
-pub use self::MapError::*;
+use self::MemoryMapKind::*;
+use self::MapOption::*;
+use self::MapError::*;
 
 use clone::Clone;
 use error::{FromError, Error};
@@ -1617,8 +1617,8 @@ mod tests {
         use result::Result::{Ok, Err};
 
         let chunk = match os::MemoryMap::new(16, &[
-            os::MapReadable,
-            os::MapWritable
+            os::MapOption::MapReadable,
+            os::MapOption::MapWritable
         ]) {
             Ok(chunk) => chunk,
             Err(msg) => panic!("{}", msg)
@@ -1660,10 +1660,10 @@ mod tests {
         file.write_u8(0);
 
         let chunk = MemoryMap::new(size / 2, &[
-            MapReadable,
-            MapWritable,
-            MapFd(get_fd(&file)),
-            MapOffset(size / 2)
+            MapOption::MapReadable,
+            MapOption::MapWritable,
+            MapOption::MapFd(get_fd(&file)),
+            MapOption::MapOffset(size / 2)
         ]).unwrap();
         assert!(chunk.len > 0);
 

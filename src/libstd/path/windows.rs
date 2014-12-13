@@ -12,7 +12,7 @@
 
 //! Windows file path handling
 
-pub use self::PathPrefix::*;
+use self::PathPrefix::*;
 
 use ascii::AsciiCast;
 use c_str::{CString, ToCStr};
@@ -1117,6 +1117,7 @@ fn prefix_len(p: Option<PathPrefix>) -> uint {
 mod tests {
     use prelude::*;
     use super::*;
+    use super::PathPrefix::*;
     use super::parse_prefix;
 
     macro_rules! t {

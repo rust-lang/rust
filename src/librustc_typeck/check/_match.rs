@@ -21,7 +21,7 @@ use util::nodemap::FnvHashMap;
 use util::ppaux::Repr;
 
 use std::cmp;
-use std::collections::hash_map::{Occupied, Vacant};
+use std::collections::hash_map::Entry::{Occupied, Vacant};
 use syntax::ast;
 use syntax::ast_util;
 use syntax::codemap::{Span, Spanned};

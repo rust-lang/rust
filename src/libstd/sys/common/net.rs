@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub use self::SocketStatus::*;
-pub use self::InAddr::*;
+use self::SocketStatus::*;
+use self::InAddr::*;
 
 use alloc::arc::Arc;
 use libc::{mod, c_char, c_int};
