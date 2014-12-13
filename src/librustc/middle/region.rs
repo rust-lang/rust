@@ -32,6 +32,7 @@ use syntax::codemap::Span;
 use syntax::{ast, visit};
 use syntax::ast::{Block, Item, FnDecl, NodeId, Arm, Pat, Stmt, Expr, Local};
 use syntax::ast_util::{stmt_id};
+use syntax::ptr::P;
 use syntax::visit::{Visitor, FnKind};
 
 /// CodeExtent represents a statically-describable extent that can be
@@ -163,17 +164,73 @@ pub struct RegionMaps {
 #[deriving(PartialEq, Eq, Show)]
 enum InnermostDeclaringBlock {
     None,
-    Some(ast::NodeId),
+    Block(ast::NodeId),
+    Statement(DeclaringStatementContext),
+    Match(ast::NodeId),
+}
+
+impl InnermostDeclaringBlock {
+    fn to_code_extent(&self) -> Option<CodeExtent> {
+        let extent = match *self {
+            InnermostDeclaringBlock::None => {
+                return Option::None;
+            }
+            InnermostDeclaringBlock::Block(id) |
+            InnermostDeclaringBlock::Match(id) => CodeExtent::from_node_id(id),
+            InnermostDeclaringBlock::Statement(s) =>  s.to_code_extent(),
+        };
+        Option::Some(extent)
+    }
+}
+
+/// Contextual information for declarations introduced by a statement
+/// (i.e. `let`). It carries node-id's for statement and enclosing
+/// block both, as well as the statement's index within the block.
+#[deriving(PartialEq, Eq, Show)]
+struct DeclaringStatementContext {
+    stmt_id: ast::NodeId,
+    block_id: ast::NodeId,
+    stmt_index: uint,
+}
+
+impl DeclaringStatementContext {
+    fn to_code_extent(&self) -> CodeExtent {
+        CodeExtent::Remainder(BlockRemainder {
+            block: self.block_id,
+            first_statement_index: self.stmt_index,
+        })
+    }
 }
 
 #[deriving(PartialEq, Eq, Show)]
 enum InnermostEnclosingExpr {
     None,
     Some(ast::NodeId),
+    DestructionScope(ast::NodeId),
+    Statement(DeclaringStatementContext),
     /// A closure is treated as a separate case, because a closure and
     /// its enclosed block do not have the same relationship with
     /// respect to control-flow that most other expressions do.
     Closure(ast::NodeId),
+}
+
+impl InnermostEnclosingExpr {
+    fn to_code_extent(&self) -> Option<CodeExtent> {
+        let extent = match *self {
+            InnermostEnclosingExpr::None => {
+                return Option::None;
+            }
+            InnermostEnclosingExpr::Statement(s) =>
+                s.to_code_extent(),
+            InnermostEnclosingExpr::Some(parent_id) =>
+                CodeExtent::from_node_id(parent_id),
+            InnermostEnclosingExpr::Closure(closure_id) =>
+                CodeExtent::Closure(closure_id),
+            InnermostEnclosingExpr::DestructionScope(parent_id) =>
+                CodeExtent::DestructionScope(parent_id),
+        };
+        Some(extent)
+    }
 }
 
 #[deriving(PartialEq, Eq, Show)]
@@ -343,7 +400,8 @@ impl RegionMaps {
         return true;
     }
 
-    pub fn sub_free_region(&self, sub: FreeRegion, sup: FreeRegion) -> bool {
+    pub fn sub_free_region(&self, sub:
+                           FreeRegion, sup: FreeRegion) -> bool {
         /*!
          * Determines whether two free regions have a subregion relationship
          * by walking the graph encoded in `free_region_map`.  Note that
@@ -467,21 +525,19 @@ impl RegionMaps {
 fn record_superlifetime(visitor: &mut RegionResolutionVisitor,
                         child_scope: CodeExtent,
                         _sp: Span) {
-    // FIXME (pnkfelix): currently this is redundantly adding entries
-    // for both a specific variant (Closure in this case) as well as
-    // the catch-all `CodeExtent::Misc`. This bloats the hashtable and
-    // is ugly to boot; we should instead consistently select the
-    // specific variant in all necessary contexts.
-    match visitor.cx.parent {
-        InnermostEnclosingExpr::Some(parent_id) => {
-            let parent_scope = CodeExtent::from_node_id(parent_id);
+    // FIXME (pnkfelix): this may need to redundantly add entries for
+    // both a specific variant (Closure in this case) as well as the
+    // catch-all `CodeExtent::Misc`. (At least, it needed that on one
+    // path of development that I followed). But doing this would
+    // bloat the hashtable and is ugly to boot; we should instead
+    // consistently select the specific variant in all necessary
+    // contexts.
+
+    match visitor.cx.parent.to_code_extent() {
+        Option::None => {}
+        Option::Some(parent_scope) => {
             visitor.region_maps.record_encl_scope(child_scope, parent_scope);
         }
-        InnermostEnclosingExpr::Closure(closure_id) => {
-            let parent_scope = CodeExtent::Closure(closure_id);
-            visitor.region_maps.record_encl_scope(child_scope, parent_scope);
-        }
-        InnermostEnclosingExpr::None => {}
     }
 }
 
@@ -490,12 +546,12 @@ fn record_var_lifetime(visitor: &mut RegionResolutionVisitor,
                        var_id: ast::NodeId,
                        _sp: Span) {
     debug!("record_var_lifetime var_id: {}", var_id);
-    match visitor.cx.var_parent {
-        InnermostDeclaringBlock::Some(parent_id) => {
-            let parent_scope = CodeExtent::from_node_id(parent_id);
+
+    match visitor.cx.var_parent.to_code_extent() {
+        Some(parent_scope) => {
             visitor.region_maps.record_var_scope(var_id, parent_scope);
         }
-        InnermostDeclaringBlock::None => {
+        None => {
             // this can happen in extern fn declarations like
             //
             // extern fn isalnum(c: c_int) -> c_int
@@ -506,24 +562,106 @@ fn record_var_lifetime(visitor: &mut RegionResolutionVisitor,
 fn resolve_block(visitor: &mut RegionResolutionVisitor, blk: &ast::Block) {
     debug!("resolve_block(blk.id={})", blk.id);
 
-    // Record the parent of this block.
-    record_superlifetime(visitor, CodeExtent::Misc(blk.id), blk.span);
+    let prev_cx = visitor.cx;
+
+    // FIXME (pnkfelix): Hack: introduce a separate destruction scope
+    // around each block, to ensure that a (tightly enclosing)
+    // immediate parent always exists to represent the extent where
+    // user code of the block is done but destructors of the block are
+    // still running.
+    //
+    // FIXME (pnkfelix): I now think this is unnecessary since I am
+    // handling DestructionScopes by making a 1:1 mapping between
+    // entries in terminating_scopes and DestructionScope instances.
+    if false {
+        record_superlifetime(visitor, CodeExtent::DestructionScope(blk.id), blk.span);
+
+        visitor.cx = Context {
+            parent: InnermostEnclosingExpr::DestructionScope(blk.id),
+            ..visitor.cx
+        };
+    }
+
+    // If block was previously marked as a terminating scope during
+    // the recursive visit of its parent node in the AST, then we need
+    // to account for the destruction scope representing the extent of
+    // the destructors that run immediately after the the block itself
+    // completes.
+    let blk_scope = CodeExtent::Misc(blk.id);
+    if visitor.region_maps.terminating_scopes.borrow().contains(&blk_scope) {
+        let dtor_scope = CodeExtent::DestructionScope(blk.id);
+        record_superlifetime(visitor, dtor_scope, blk.span);
+        visitor.region_maps.record_encl_scope(blk_scope, dtor_scope);
+    } else {
+        record_superlifetime(visitor, blk_scope, blk.span);
+    }
 
     // We treat the tail expression in the block (if any) somewhat
     // differently from the statements. The issue has to do with
-    // temporary lifetimes. If the user writes:
+    // temporary lifetimes. Consider the following:
     //
-    //   {
-    //     ... (&foo()) ...
-    //   }
+    //  quux({
+    //      let inner = ... (&bar()) ...;
+    //      ... (&foo()) ...
+    //  }, other_argument());
     //
+    //  Here, the tail expression evaluates to a value that will be
+    //  assigned to `outer`.
+    //
+    //  Each of the statements within the block is a terminating
+    //  scope, and thus a temporaries like the result of calling
+    //  `bar()` in the initalizer expression for `let inner = ...;`
+    //  will be cleaned up immediately after `let inner = ...;`
+    //  executes.
+    //
+    //  On the other hand, temporaries associated with evaluating the
+    //  tail expression for the block are assigned lifetimes so that
+    //  they will be cleaned up as part of the terminating scope
+    //  *surrounding* the block expression. Here, the terminating
+    //  scope for the block expression is the `quux(..)` call; so
+    //  those temporaries will only be cleaned up *after* both
+    //  `other_argument()` has run and also the call to `quux(..)`
+    //  itself has returned.
 
-    let prev_cx = visitor.cx;
     visitor.cx = Context {
-        var_parent: InnermostDeclaringBlock::Some(blk.id),
+        var_parent: InnermostDeclaringBlock::Block(blk.id),
         parent: InnermostEnclosingExpr::Some(blk.id)
     };
-    visit::walk_block(visitor, blk);
+
+    {
+        // This block should be kept approximately in sync with
+        // `visit::walk_block`. (We manually walk the block, rather
+        // than call `walk_block`, in order to maintain precise
+        // `InnermostDeclaringBlock` information.)
+
+        for view_item in blk.view_items.iter() {
+            visitor.visit_view_item(view_item)
+        }
+        for (i, statement) in blk.stmts.iter().enumerate() {
+            if let ast::StmtDecl(_, stmt_id) = statement.node {
+                // Each StmtDecl introduces a subscope for bindings
+                // introduced by the declaration; this subscope covers
+                // a suffix of the block . Each subscope in a block
+                // has the previous subscope in the block as a parent,
+                // except for the first such subscope, which has the
+                // block itself as a parent.
+                let declaring = DeclaringStatementContext {
+                    stmt_id: stmt_id,
+                    block_id: blk.id,
+                    stmt_index: i,
+                };
+                record_superlifetime(
+                    visitor, declaring.to_code_extent(), statement.span);
+                visitor.cx = Context {
+                    var_parent: InnermostDeclaringBlock::Statement(declaring),
+                    parent: InnermostEnclosingExpr::Statement(declaring),
+                };
+            }
+            visitor.visit_stmt(&**statement)
+        }
+        visit::walk_expr_opt(visitor, &blk.expr)
+    }
+
     visitor.cx = prev_cx;
 }
 
@@ -564,8 +702,16 @@ fn resolve_stmt(visitor: &mut RegionResolutionVisitor, stmt: &ast::Stmt) {
     debug!("resolve_stmt(stmt.id={})", stmt_id);
 
     let stmt_scope = CodeExtent::from_node_id(stmt_id);
+
+    // Every statement will clean up the temporaries created during
+    // execution of that statement. Therefore each statement has an
+    // associated destruction scope that represents the extent of the
+    // statement plus its destructors, and thus the extent for which
+    // regions referenced by the destructors need to survive.
     visitor.region_maps.mark_as_terminating_scope(stmt_scope);
-    record_superlifetime(visitor, CodeExtent::Misc(stmt_id), stmt.span);
+    let dtor_scope = CodeExtent::DestructionScope(stmt_id);
+    visitor.region_maps.record_encl_scope(stmt_scope, dtor_scope);
+    record_superlifetime(visitor, dtor_scope, stmt.span);
 
     let prev_parent = visitor.cx.parent;
     visitor.cx.parent = InnermostEnclosingExpr::Some(stmt_id);
@@ -576,14 +722,30 @@ fn resolve_stmt(visitor: &mut RegionResolutionVisitor, stmt: &ast::Stmt) {
 fn resolve_expr(visitor: &mut RegionResolutionVisitor, expr: &ast::Expr) {
     debug!("resolve_expr(expr.id={})", expr.id);
 
-    record_superlifetime(visitor, CodeExtent::Misc(expr.id), expr.span);
+    // If expr was previously marked as a terminating scope during the
+    // recursive visit of its parent node in the AST, then we need to
+    // account for the destruction scope representing the extent of
+    // the destructors that run immediately after the the expression
+    // itself completes.
+    let expr_scope = CodeExtent::Misc(expr.id);
+    if visitor.region_maps.terminating_scopes.borrow().contains(&expr_scope) {
+        let dtor_scope = CodeExtent::DestructionScope(expr.id);
+        record_superlifetime(visitor, dtor_scope, expr.span);
+        visitor.region_maps.record_encl_scope(expr_scope, dtor_scope);
+    } else {
+        record_superlifetime(visitor, expr_scope, expr.span);
+    }
 
     let prev_cx = visitor.cx;
     visitor.cx.parent = InnermostEnclosingExpr::Some(expr.id);
     {
         let region_maps = &mut visitor.region_maps;
-        let terminating = |id| {
-            let scope = CodeExtent::from_node_id(id);
+        let terminating = |e: &P<ast::Expr>| {
+            let scope = CodeExtent::from_node_id(e.id);
+            region_maps.mark_as_terminating_scope(scope)
+        };
+        let terminating_block = |b: &P<ast::Block>| {
+            let scope = CodeExtent::from_node_id(b.id);
             region_maps.mark_as_terminating_scope(scope)
         };
         match expr.node {
@@ -595,38 +757,38 @@ fn resolve_expr(visitor: &mut RegionResolutionVisitor, expr: &ast::Expr) {
             ast::ExprBinary(ast::BiOr, _, ref r) => {
                 // For shortcircuiting operators, mark the RHS as a terminating
                 // scope since it only executes conditionally.
-                terminating(r.id);
+                terminating(r);
             }
 
             ast::ExprIf(_, ref then, Some(ref otherwise)) => {
-                terminating(then.id);
-                terminating(otherwise.id);
+                terminating_block(then);
+                terminating(otherwise);
             }
 
             ast::ExprIf(ref expr, ref then, None) => {
-                terminating(expr.id);
-                terminating(then.id);
+                terminating(expr);
+                terminating_block(then);
             }
 
             ast::ExprLoop(ref body, _) => {
-                terminating(body.id);
+                terminating_block(body);
             }
 
             ast::ExprWhile(ref expr, ref body, _) => {
-                terminating(expr.id);
-                terminating(body.id);
+                terminating(expr);
+                terminating_block(body);
             }
 
             ast::ExprForLoop(ref _pat, ref _head, ref body, _) => {
-                terminating(body.id);
+                terminating_block(body);
 
                 // The variable parent of everything inside (most importantly, the
                 // pattern) is the body.
-                visitor.cx.var_parent = InnermostDeclaringBlock::Some(body.id);
+                visitor.cx.var_parent = InnermostDeclaringBlock::Block(body.id);
             }
 
             ast::ExprMatch(..) => {
-                visitor.cx.var_parent = InnermostDeclaringBlock::Some(expr.id);
+                visitor.cx.var_parent = InnermostDeclaringBlock::Match(expr.id);
             }
 
             ast::ExprAssignOp(..) | ast::ExprIndex(..) |
@@ -663,19 +825,13 @@ fn resolve_local(visitor: &mut RegionResolutionVisitor, local: &ast::Local) {
     debug!("resolve_local(local.id={},local.init={})",
            local.id,local.init.is_some());
 
-    let blk_id = match visitor.cx.var_parent {
-        InnermostDeclaringBlock::Some(id) => id,
-        InnermostDeclaringBlock::None => {
-            visitor.sess.span_bug(
-                local.span,
-                "local without enclosing block");
-        }
-    };
-
     // For convenience in trans, associate with the local-id the var
     // scope that will be used for any bindings declared in this
     // pattern.
-    let blk_scope = CodeExtent::from_node_id(blk_id);
+    let blk_scope = visitor.cx.var_parent.to_code_extent()
+        .unwrap_or_else(|| visitor.sess.span_bug(
+            local.span, "local without enclosing block"));
+
     visitor.region_maps.record_var_scope(local.id, blk_scope);
 
     // As an exception to the normal rules governing temporary
@@ -951,11 +1107,14 @@ fn resolve_fn(visitor: &mut RegionResolutionVisitor,
 
     let body_scope = CodeExtent::from_node_id(body.id);
     visitor.region_maps.mark_as_terminating_scope(body_scope);
+    let dtor_scope = CodeExtent::DestructionScope(body.id);
+    visitor.region_maps.record_encl_scope(body_scope, dtor_scope);
+    record_superlifetime(visitor, dtor_scope, body.span);
 
     // The arguments and `self` are parented to the body of the fn.
     visitor.cx = Context {
         parent: InnermostEnclosingExpr::Some(body.id),
-        var_parent: InnermostDeclaringBlock::Some(body.id)
+        var_parent: InnermostDeclaringBlock::Block(body.id)
     };
     visit::walk_fn_decl(visitor, decl);
 
