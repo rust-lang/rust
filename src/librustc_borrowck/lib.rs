@@ -19,6 +19,7 @@
 #![feature(default_type_params, globs, if_let, import_shadowing, macro_rules, phase, quote)]
 #![feature(slicing_syntax, tuple_indexing, unsafe_destructor)]
 #![feature(rustc_diagnostic_macros)]
+#![feature(unboxed_closures)]
 #![allow(non_camel_case_types)]
 
 #[phase(plugin, link)] extern crate log;
