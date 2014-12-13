@@ -393,7 +393,7 @@ fn extract_gdb_version(full_version_line: Option<String>) -> Option<String> {
 
             match re.captures(full_version_line) {
                 Some(captures) => {
-                    Some(captures.at(2).to_string())
+                    Some(captures.at(2).unwrap_or("").to_string())
                 }
                 None => {
                     println!("Could not extract GDB version from line '{}'",
@@ -427,7 +427,7 @@ fn extract_lldb_version(full_version_line: Option<String>) -> Option<String> {
 
             match re.captures(full_version_line) {
                 Some(captures) => {
-                    Some(captures.at(1).to_string())
+                    Some(captures.at(1).unwrap_or("").to_string())
                 }
                 None => {
                     println!("Could not extract LLDB version from line '{}'",

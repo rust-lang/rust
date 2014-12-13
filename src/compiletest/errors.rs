@@ -66,10 +66,10 @@ fn parse_expected(last_nonfollow_error: Option<uint>,
                   line: &str,
                   re: &Regex) -> Option<(WhichLine, ExpectedError)> {
     re.captures(line).and_then(|caps| {
-        let adjusts = caps.name("adjusts").len();
-        let kind = caps.name("kind").to_ascii_lower();
-        let msg = caps.name("msg").trim().to_string();
-        let follow = caps.name("follow").len() > 0;
+        let adjusts = caps.name("adjusts").unwrap_or("").len();
+        let kind = caps.name("kind").unwrap_or("").to_ascii_lower();
+        let msg = caps.name("msg").unwrap_or("").trim().to_string();
+        let follow = caps.name("follow").unwrap_or("").len() > 0;
 
         let (which, line) = if follow {
             assert!(adjusts == 0, "use either //~| or //~^, not both.");

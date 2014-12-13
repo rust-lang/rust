@@ -103,7 +103,9 @@
 //! let re = regex!(r"(\d{4})-(\d{2})-(\d{2})");
 //! let text = "2012-03-14, 2013-01-01 and 2014-07-05";
 //! for cap in re.captures_iter(text) {
-//!     println!("Month: {} Day: {} Year: {}", cap.at(2), cap.at(3), cap.at(1));
+//!     println!("Month: {} Day: {} Year: {}",
+//!              cap.at(2).unwrap_or(""), cap.at(3).unwrap_or(""),
+//!              cap.at(1).unwrap_or(""));
 //! }
 //! // Output:
 //! // Month: 03 Day: 14 Year: 2012
@@ -285,7 +287,7 @@
 //! # fn main() {
 //! let re = regex!(r"(?i)a+(?-i)b+");
 //! let cap = re.captures("AaAaAbbBBBb").unwrap();
-//! assert_eq!(cap.at(0), "AaAaAbb");
+//! assert_eq!(cap.at(0), Some("AaAaAbb"));
 //! # }
 //! ```
 //!
