@@ -882,9 +882,11 @@ macro_rules! countable_impl(
 countable_impl!(uint u8 u16 u32 u64 int i8 i16 i32 i64)
 
 /// An unbounded range.
+#[lang="full_range"]
 pub struct FullRange;
 
 /// A range which i bounded at both ends.
+#[lang="range"]
 pub struct Range<Idx> {
     /// The lower bound of the range (inclusive).
     pub start: Idx,
@@ -926,6 +928,7 @@ impl<Idx: Clone + Countable> DoubleEndedIterator<Idx> for Range<Idx> {
 }
 
 /// A range which is only bounded below.
+#[lang="range_from"]
 pub struct RangeFrom<Idx> {
     /// The lower bound of the range (inclusive).
     pub start: Idx,
