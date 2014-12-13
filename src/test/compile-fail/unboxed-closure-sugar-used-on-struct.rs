@@ -15,7 +15,7 @@ struct Bar<A,R> {
 }
 
 fn foo(b: Box<Bar()>) {
-    //~^ ERROR E0169
+    //~^ ERROR parenthesized parameters may only be used with a trait
 }
 
 fn main() { }
