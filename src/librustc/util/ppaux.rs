@@ -259,16 +259,16 @@ pub fn trait_ref_to_string<'tcx>(cx: &ctxt<'tcx>,
 
 pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
     fn bare_fn_to_string<'tcx>(cx: &ctxt<'tcx>,
-                               fn_style: ast::FnStyle,
+                               unsafety: ast::Unsafety,
                                abi: abi::Abi,
                                ident: Option<ast::Ident>,
                                sig: &ty::FnSig<'tcx>)
                                -> String {
         let mut s = String::new();
-        match fn_style {
-            ast::NormalFn => {}
-            _ => {
-                s.push_str(fn_style.to_string().as_slice());
+        match unsafety {
+            ast::Unsafety::Normal => {}
+            ast::Unsafety::Unsafe => {
+                s.push_str(unsafety.to_string().as_slice());
                 s.push(' ');
             }
         };
@@ -302,10 +302,10 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
             }
         }
 
-        match cty.fn_style {
-            ast::NormalFn => {}
-            _ => {
-                s.push_str(cty.fn_style.to_string().as_slice());
+        match cty.unsafety {
+            ast::Unsafety::Normal => {}
+            ast::Unsafety::Unsafe => {
+                s.push_str(cty.unsafety.to_string().as_slice());
                 s.push(' ');
             }
         };
@@ -414,7 +414,7 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
             closure_to_string(cx, &**f)
         }
         ty_bare_fn(ref f) => {
-            bare_fn_to_string(cx, f.fn_style, f.abi, None, &f.sig)
+            bare_fn_to_string(cx, f.unsafety, f.abi, None, &f.sig)
         }
         ty_infer(infer_ty) => infer_ty_to_string(cx, infer_ty),
         ty_err => "[type error]".to_string(),
@@ -1001,8 +1001,8 @@ impl<'tcx> Repr<'tcx> for ast::Visibility {
 
 impl<'tcx> Repr<'tcx> for ty::BareFnTy<'tcx> {
     fn repr(&self, tcx: &ctxt<'tcx>) -> String {
-        format!("BareFnTy {{fn_style: {}, abi: {}, sig: {}}}",
-                self.fn_style,
+        format!("BareFnTy {{unsafety: {}, abi: {}, sig: {}}}",
+                self.unsafety,
                 self.abi.to_string(),
                 self.sig.repr(tcx))
     }

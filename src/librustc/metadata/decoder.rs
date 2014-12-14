@@ -361,6 +361,15 @@ fn item_to_def_like(item: rbml::Doc, did: ast::DefId, cnum: ast::CrateNum)
     }
 }
 
+fn parse_unsafety(item_doc: rbml::Doc) -> ast::Unsafety {
+    let unsafety_doc = reader::get_doc(item_doc, tag_unsafety);
+    if reader::doc_as_u8(unsafety_doc) != 0 {
+        ast::Unsafety::Unsafe
+    } else {
+        ast::Unsafety::Normal
+    }
+}
+
 pub fn get_trait_def<'tcx>(cdata: Cmd,
                            item_id: ast::NodeId,
                            tcx: &ty::ctxt<'tcx>) -> ty::TraitDef<'tcx>
@@ -368,8 +377,10 @@ pub fn get_trait_def<'tcx>(cdata: Cmd,
     let item_doc = lookup_item(item_id, cdata.data());
     let generics = doc_generics(item_doc, tcx, cdata, tag_item_generics);
     let bounds = trait_def_bounds(item_doc, tcx, cdata);
+    let unsafety = parse_unsafety(item_doc);
 
     ty::TraitDef {
+        unsafety: unsafety,
         generics: generics,
         bounds: bounds,
         trait_ref: Rc::new(item_trait_ref(item_doc, tcx, cdata))

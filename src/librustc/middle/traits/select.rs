@@ -791,7 +791,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             // provide an impl, but only for suitable `fn` pointers
             ty::ty_bare_fn(ty::BareFnTy {
-                fn_style: ast::NormalFn,
+                unsafety: ast::Unsafety::Normal,
                 abi: abi::Rust,
                 sig: ty::FnSig {
                     inputs: _,
@@ -1505,7 +1505,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let self_ty = self.infcx.shallow_resolve(obligation.self_ty());
         let sig = match self_ty.sty {
             ty::ty_bare_fn(ty::BareFnTy {
-                fn_style: ast::NormalFn,
+                unsafety: ast::Unsafety::Normal,
                 abi: abi::Rust,
                 ref sig
             }) => {

@@ -157,7 +157,7 @@ trait ErrorReportingHelpers<'tcx> {
 
     fn give_expl_lifetime_param(&self,
                                 decl: &ast::FnDecl,
-                                fn_style: ast::FnStyle,
+                                unsafety: ast::Unsafety,
                                 ident: ast::Ident,
                                 opt_explicit_self: Option<&ast::ExplicitSelf_>,
                                 generics: &ast::Generics,
@@ -828,7 +828,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                         ast::MethodImplItem(ref m) => {
                             Some((m.pe_fn_decl(),
                                   m.pe_generics(),
-                                  m.pe_fn_style(),
+                                  m.pe_unsafety(),
                                   m.pe_ident(),
                                   Some(&m.pe_explicit_self().node),
                                   m.span))
@@ -841,7 +841,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                         ast::ProvidedMethod(ref m) => {
                             Some((m.pe_fn_decl(),
                                   m.pe_generics(),
-                                  m.pe_fn_style(),
+                                  m.pe_unsafety(),
                                   m.pe_ident(),
                                   Some(&m.pe_explicit_self().node),
                                   m.span))
@@ -853,14 +853,14 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
             },
             None => None
         };
-        let (fn_decl, generics, fn_style, ident, expl_self, span)
+        let (fn_decl, generics, unsafety, ident, expl_self, span)
                                     = node_inner.expect("expect item fn");
         let taken = lifetimes_in_scope(self.tcx, scope_id);
         let life_giver = LifeGiver::with_taken(taken.as_slice());
         let rebuilder = Rebuilder::new(self.tcx, fn_decl, expl_self,
                                        generics, same_regions, &life_giver);
         let (fn_decl, expl_self, generics) = rebuilder.rebuild();
-        self.give_expl_lifetime_param(&fn_decl, fn_style, ident,
+        self.give_expl_lifetime_param(&fn_decl, unsafety, ident,
                                       expl_self.as_ref(), &generics, span);
     }
 }
@@ -1407,12 +1407,12 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
 impl<'a, 'tcx> ErrorReportingHelpers<'tcx> for InferCtxt<'a, 'tcx> {
     fn give_expl_lifetime_param(&self,
                                 decl: &ast::FnDecl,
-                                fn_style: ast::FnStyle,
+                                unsafety: ast::Unsafety,
                                 ident: ast::Ident,
                                 opt_explicit_self: Option<&ast::ExplicitSelf_>,
                                 generics: &ast::Generics,
                                 span: codemap::Span) {
-        let suggested_fn = pprust::fun_to_string(decl, fn_style, ident,
+        let suggested_fn = pprust::fun_to_string(decl, unsafety, ident,
                                               opt_explicit_self, generics);
         let msg = format!("consider using an explicit lifetime \
                            parameter as shown: {}", suggested_fn);
@@ -1690,7 +1690,7 @@ fn lifetimes_in_scope(tcx: &ty::ctxt,
         match tcx.map.find(parent) {
             Some(node) => match node {
                 ast_map::NodeItem(item) => match item.node {
-                    ast::ItemImpl(ref gen, _, _, _) => {
+                    ast::ItemImpl(_, ref gen, _, _, _) => {
                         taken.push_all(gen.lifetimes.as_slice());
                     }
                     _ => ()

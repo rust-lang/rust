@@ -32,7 +32,7 @@ use html::render::{cache, CURRENT_LOCATION_KEY};
 pub struct VisSpace(pub Option<ast::Visibility>);
 /// Similarly to VisSpace, this structure is used to render a function style with a
 /// space after it.
-pub struct FnStyleSpace(pub ast::FnStyle);
+pub struct UnsafetySpace(pub ast::Unsafety);
 /// Wrapper struct for properly emitting a method declaration.
 pub struct Method<'a>(pub &'a clean::SelfTy, pub &'a clean::FnDecl);
 /// Similar to VisSpace, but used for mutability
@@ -49,7 +49,7 @@ pub struct WhereClause<'a>(pub &'a clean::Generics);
 pub struct TyParamBounds<'a>(pub &'a [clean::TyParamBound]);
 
 impl Copy for VisSpace {}
-impl Copy for FnStyleSpace {}
+impl Copy for UnsafetySpace {}
 impl Copy for MutableSpace {}
 impl Copy for RawMutableSpace {}
 
@@ -59,9 +59,9 @@ impl VisSpace {
     }
 }
 
-impl FnStyleSpace {
-    pub fn get(&self) -> ast::FnStyle {
-        let FnStyleSpace(v) = *self; v
+impl UnsafetySpace {
+    pub fn get(&self) -> ast::Unsafety {
+        let UnsafetySpace(v) = *self; v
     }
 }
 
@@ -404,7 +404,7 @@ impl fmt::Show for clean::Type {
             clean::Primitive(prim) => primitive_link(f, prim, prim.to_string()),
             clean::Closure(ref decl) => {
                 write!(f, "{style}{lifetimes}|{args}|{bounds}{arrow}",
-                       style = FnStyleSpace(decl.fn_style),
+                       style = UnsafetySpace(decl.unsafety),
                        lifetimes = if decl.lifetimes.len() == 0 {
                            "".to_string()
                        } else {
@@ -433,7 +433,7 @@ impl fmt::Show for clean::Type {
             }
             clean::Proc(ref decl) => {
                 write!(f, "{style}{lifetimes}proc({args}){bounds}{arrow}",
-                       style = FnStyleSpace(decl.fn_style),
+                       style = UnsafetySpace(decl.unsafety),
                        lifetimes = if decl.lifetimes.len() == 0 {
                            "".to_string()
                        } else {
@@ -454,7 +454,7 @@ impl fmt::Show for clean::Type {
             }
             clean::BareFunction(ref decl) => {
                 write!(f, "{}{}fn{}{}",
-                       FnStyleSpace(decl.fn_style),
+                       UnsafetySpace(decl.unsafety),
                        match decl.abi.as_slice() {
                            "" => " extern ".to_string(),
                            "\"Rust\"" => "".to_string(),
@@ -584,11 +584,11 @@ impl fmt::Show for VisSpace {
     }
 }
 
-impl fmt::Show for FnStyleSpace {
+impl fmt::Show for UnsafetySpace {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.get() {
-            ast::UnsafeFn => write!(f, "unsafe "),
-            ast::NormalFn => Ok(())
+            ast::Unsafety::Unsafe => write!(f, "unsafe "),
+            ast::Unsafety::Normal => Ok(())
         }
     }
 }

@@ -1432,7 +1432,7 @@ impl<'a> Resolver<'a> {
                 parent
             }
 
-            ItemImpl(_, None, ref ty, ref impl_items) => {
+            ItemImpl(_, _, None, ref ty, ref impl_items) => {
                 // If this implements an anonymous trait, then add all the
                 // methods within to a new module, if the type was defined
                 // within this module.
@@ -1581,9 +1581,9 @@ impl<'a> Resolver<'a> {
                 parent
             }
 
-            ItemImpl(_, Some(_), _, _) => parent,
+            ItemImpl(_, _, Some(_), _, _) => parent,
 
-            ItemTrait(_, _, _, ref items) => {
+            ItemTrait(_, _, _, _, ref items) => {
                 let name_bindings =
                     self.add_child(name,
                                    parent.clone(),
@@ -4230,7 +4230,8 @@ impl<'a> Resolver<'a> {
                 });
             }
 
-            ItemImpl(ref generics,
+            ItemImpl(_,
+                     ref generics,
                      ref implemented_traits,
                      ref self_type,
                      ref impl_items) => {
@@ -4241,7 +4242,7 @@ impl<'a> Resolver<'a> {
                                             impl_items.as_slice());
             }
 
-            ItemTrait(ref generics, ref unbound, ref bounds, ref trait_items) => {
+            ItemTrait(_, ref generics, ref unbound, ref bounds, ref trait_items) => {
                 // Create a new rib for the self type.
                 let mut self_type_rib = Rib::new(ItemRibKind);
 

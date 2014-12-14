@@ -80,7 +80,7 @@ use std::rc::Rc;
 use std::collections::enum_set::{EnumSet, CLike};
 use std::collections::hash_map::{HashMap, Occupied, Vacant};
 use syntax::abi;
-use syntax::ast::{CrateNum, DefId, DUMMY_NODE_ID, FnStyle, Ident, ItemTrait, LOCAL_CRATE};
+use syntax::ast::{CrateNum, DefId, DUMMY_NODE_ID, Ident, ItemTrait, LOCAL_CRATE};
 use syntax::ast::{MutImmutable, MutMutable, Name, NamedField, NodeId};
 use syntax::ast::{Onceness, StmtExpr, StmtSemi, StructField, UnnamedField};
 use syntax::ast::{Visibility};
@@ -908,14 +908,14 @@ pub fn type_escapes_depth(ty: Ty, depth: uint) -> bool {
 
 #[deriving(Clone, PartialEq, Eq, Hash, Show)]
 pub struct BareFnTy<'tcx> {
-    pub fn_style: ast::FnStyle,
+    pub unsafety: ast::Unsafety,
     pub abi: abi::Abi,
     pub sig: FnSig<'tcx>,
 }
 
 #[deriving(Clone, PartialEq, Eq, Hash, Show)]
 pub struct ClosureTy<'tcx> {
-    pub fn_style: ast::FnStyle,
+    pub unsafety: ast::Unsafety,
     pub onceness: ast::Onceness,
     pub store: TraitStore,
     pub bounds: ExistentialBounds,
@@ -1380,7 +1380,7 @@ impl<T:Copy> Copy for expected_found<T> {}
 #[deriving(Clone, Show)]
 pub enum type_err<'tcx> {
     terr_mismatch,
-    terr_fn_style_mismatch(expected_found<FnStyle>),
+    terr_unsafety_mismatch(expected_found<ast::Unsafety>),
     terr_onceness_mismatch(expected_found<Onceness>),
     terr_abi_mismatch(expected_found<abi::Abi>),
     terr_mutability,
@@ -1915,6 +1915,8 @@ pub struct Polytype<'tcx> {
 
 /// As `Polytype` but for a trait ref.
 pub struct TraitDef<'tcx> {
+    pub unsafety: ast::Unsafety,
+
     /// Generic type definitions. Note that `Self` is listed in here
     /// as having a single bound, the trait itself (e.g., in the trait
     /// `Eq`, there is a single bound `Self : Eq`). This is so that
@@ -2354,7 +2356,7 @@ pub fn mk_ctor_fn<'tcx>(cx: &ctxt<'tcx>,
     let input_args = input_tys.iter().map(|ty| *ty).collect();
     mk_bare_fn(cx,
                BareFnTy {
-                   fn_style: ast::NormalFn,
+                   unsafety: ast::Unsafety::Normal,
                    abi: abi::Rust,
                    sig: FnSig {
                     inputs: input_args,
@@ -3994,7 +3996,7 @@ pub fn adjust_ty<'tcx, F>(cx: &ctxt<'tcx>,
 
                             ty::mk_closure(
                                 cx,
-                                ty::ClosureTy {fn_style: b.fn_style,
+                                ty::ClosureTy {unsafety: b.unsafety,
                                                onceness: ast::Many,
                                                store: store,
                                                bounds: bounds,
@@ -4404,7 +4406,7 @@ pub fn type_err_to_str<'tcx>(cx: &ctxt<'tcx>, err: &type_err<'tcx>) -> String {
     match *err {
         terr_cyclic_ty => "cyclic type of infinite size".to_string(),
         terr_mismatch => "types differ".to_string(),
-        terr_fn_style_mismatch(values) => {
+        terr_unsafety_mismatch(values) => {
             format!("expected {} fn, found {} fn",
                     values.expected.to_string(),
                     values.found.to_string())
@@ -4572,7 +4574,7 @@ pub fn provided_trait_methods<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
         match cx.map.find(id.node) {
             Some(ast_map::NodeItem(item)) => {
                 match item.node {
-                    ItemTrait(_, _, _, ref ms) => {
+                    ItemTrait(_, _, _, _, ref ms) => {
                         let (_, p) =
                             ast_util::split_trait_methods(ms.as_slice());
                         p.iter()
@@ -4739,7 +4741,7 @@ pub fn impl_trait_ref<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
             match cx.map.find(id.node) {
                 Some(ast_map::NodeItem(item)) => {
                     match item.node {
-                        ast::ItemImpl(_, ref opt_trait, _, _) => {
+                        ast::ItemImpl(_, _, ref opt_trait, _, _) => {
                             match opt_trait {
                                 &Some(ref t) => {
                                     Some(ty::node_id_to_trait_ref(cx, t.ref_id))
@@ -5720,7 +5722,7 @@ pub fn trait_id_of_impl(tcx: &ctxt,
     match node {
         ast_map::NodeItem(item) => {
             match item.node {
-                ast::ItemImpl(_, Some(ref trait_ref), _, _) => {
+                ast::ItemImpl(_, _, Some(ref trait_ref), _, _) => {
                     Some(node_id_to_trait_ref(tcx, trait_ref.ref_id).def_id)
                 }
                 _ => None
@@ -5871,12 +5873,12 @@ pub fn hash_crate_independent(tcx: &ctxt, ty: Ty, svh: &Svh) -> u64 {
             }
             ty_bare_fn(ref b) => {
                 byte!(14);
-                hash!(b.fn_style);
+                hash!(b.unsafety);
                 hash!(b.abi);
             }
             ty_closure(ref c) => {
                 byte!(15);
-                hash!(c.fn_style);
+                hash!(c.unsafety);
                 hash!(c.onceness);
                 hash!(c.bounds);
                 match c.store {

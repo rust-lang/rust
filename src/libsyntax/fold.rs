@@ -415,9 +415,9 @@ pub fn noop_fold_ty<T: Folder>(t: P<Ty>, fld: &mut T) -> P<Ty> {
                 TyRptr(fld.fold_opt_lifetime(region), fld.fold_mt(mt))
             }
             TyClosure(f) => {
-                TyClosure(f.map(|ClosureTy {fn_style, onceness, bounds, decl, lifetimes}| {
+                TyClosure(f.map(|ClosureTy {unsafety, onceness, bounds, decl, lifetimes}| {
                     ClosureTy {
-                        fn_style: fn_style,
+                        unsafety: unsafety,
                         onceness: onceness,
                         bounds: fld.fold_bounds(bounds),
                         decl: fld.fold_fn_decl(decl),
@@ -426,9 +426,9 @@ pub fn noop_fold_ty<T: Folder>(t: P<Ty>, fld: &mut T) -> P<Ty> {
                 }))
             }
             TyBareFn(f) => {
-                TyBareFn(f.map(|BareFnTy {lifetimes, fn_style, abi, decl}| BareFnTy {
+                TyBareFn(f.map(|BareFnTy {lifetimes, unsafety, abi, decl}| BareFnTy {
                     lifetimes: fld.fold_lifetime_defs(lifetimes),
-                    fn_style: fn_style,
+                    unsafety: unsafety,
                     abi: abi,
                     decl: fld.fold_fn_decl(decl)
                 }))
@@ -983,10 +983,10 @@ pub fn noop_fold_item_underscore<T: Folder>(i: Item_, folder: &mut T) -> Item_ {
         ItemConst(t, e) => {
             ItemConst(folder.fold_ty(t), folder.fold_expr(e))
         }
-        ItemFn(decl, fn_style, abi, generics, body) => {
+        ItemFn(decl, unsafety, abi, generics, body) => {
             ItemFn(
                 folder.fold_fn_decl(decl),
-                fn_style,
+                unsafety,
                 abi,
                 folder.fold_generics(generics),
                 folder.fold_block(body)
@@ -1008,7 +1008,7 @@ pub fn noop_fold_item_underscore<T: Folder>(i: Item_, folder: &mut T) -> Item_ {
             let struct_def = folder.fold_struct_def(struct_def);
             ItemStruct(struct_def, folder.fold_generics(generics))
         }
-        ItemImpl(generics, ifce, ty, impl_items) => {
+        ItemImpl(unsafety, generics, ifce, ty, impl_items) => {
             let mut new_impl_items = Vec::new();
             for impl_item in impl_items.iter() {
                 match *impl_item {
@@ -1030,12 +1030,13 @@ pub fn noop_fold_item_underscore<T: Folder>(i: Item_, folder: &mut T) -> Item_ {
                     Some(folder.fold_trait_ref((*trait_ref).clone()))
                 }
             };
-            ItemImpl(folder.fold_generics(generics),
+            ItemImpl(unsafety,
+                     folder.fold_generics(generics),
                      ifce,
                      folder.fold_ty(ty),
                      new_impl_items)
         }
-        ItemTrait(generics, unbound, bounds, methods) => {
+        ItemTrait(unsafety, generics, unbound, bounds, methods) => {
             let bounds = folder.fold_bounds(bounds);
             let methods = methods.into_iter().flat_map(|method| {
                 let r = match method {
@@ -1063,7 +1064,8 @@ pub fn noop_fold_item_underscore<T: Folder>(i: Item_, folder: &mut T) -> Item_ {
                 };
                 r
             }).collect();
-            ItemTrait(folder.fold_generics(generics),
+            ItemTrait(unsafety,
+                      folder.fold_generics(generics),
                       unbound,
                       bounds,
                       methods)
@@ -1077,7 +1079,7 @@ pub fn noop_fold_type_method<T: Folder>(m: TypeMethod, fld: &mut T) -> TypeMetho
         id,
         ident,
         attrs,
-        fn_style,
+        unsafety,
         abi,
         decl,
         generics,
@@ -1089,7 +1091,7 @@ pub fn noop_fold_type_method<T: Folder>(m: TypeMethod, fld: &mut T) -> TypeMetho
         id: fld.new_id(id),
         ident: fld.fold_ident(ident),
         attrs: attrs.move_map(|a| fld.fold_attribute(a)),
-        fn_style: fn_style,
+        unsafety: unsafety,
         abi: abi,
         decl: fld.fold_fn_decl(decl),
         generics: fld.fold_generics(generics),
@@ -1159,7 +1161,7 @@ pub fn noop_fold_item_simple<T: Folder>(Item {id, ident, attrs, node, vis, span}
     let node = folder.fold_item_underscore(node);
     let ident = match node {
         // The node may have changed, recompute the "pretty" impl name.
-        ItemImpl(_, ref maybe_trait, ref ty, _) => {
+        ItemImpl(_, _, ref maybe_trait, ref ty, _) => {
             ast_util::impl_pretty_name(maybe_trait, &**ty)
         }
         _ => ident
@@ -1211,7 +1213,7 @@ pub fn noop_fold_method<T: Folder>(m: P<Method>, folder: &mut T) -> SmallVector<
                      generics,
                      abi,
                      explicit_self,
-                     fn_style,
+                     unsafety,
                      decl,
                      body,
                      vis) => {
@@ -1219,7 +1221,7 @@ pub fn noop_fold_method<T: Folder>(m: P<Method>, folder: &mut T) -> SmallVector<
                          folder.fold_generics(generics),
                          abi,
                          folder.fold_explicit_self(explicit_self),
-                         fn_style,
+                         unsafety,
                          folder.fold_fn_decl(decl),
                          folder.fold_block(body),
                          vis)

@@ -1205,7 +1205,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
             None => {}
         }
       }
-      ast::ItemImpl(_, ref opt_trait, ref ty, ref ast_items) => {
+      ast::ItemImpl(unsafety, _, ref opt_trait, ref ty, ref ast_items) => {
         // We need to encode information about the default methods we
         // have inherited, so we drive this based on the impl structure.
         let impl_items = tcx.impl_items.borrow();
@@ -1218,6 +1218,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_bounds_and_type(rbml_w, ecx, &lookup_item_type(tcx, def_id));
         encode_name(rbml_w, item.ident.name);
         encode_attributes(rbml_w, item.attrs.as_slice());
+        encode_unsafety(rbml_w, unsafety);
         match ty.node {
             ast::TyPath(ref path, _) if path.segments
                                                         .len() == 1 => {
@@ -1308,13 +1309,14 @@ fn encode_info_for_item(ecx: &EncodeContext,
             }
         }
       }
-      ast::ItemTrait(_, _, _, ref ms) => {
+      ast::ItemTrait(_, _, _, _, ref ms) => {
         add_to_index(item, rbml_w, index);
         rbml_w.start_tag(tag_items_data_item);
         encode_def_id(rbml_w, def_id);
         encode_family(rbml_w, 'I');
         encode_item_variances(rbml_w, ecx, item.id);
         let trait_def = ty::lookup_trait_def(tcx, def_id);
+        encode_unsafety(rbml_w, trait_def.unsafety);
         encode_generics(rbml_w, ecx, &trait_def.generics, tag_item_generics);
         encode_trait_ref(rbml_w, ecx, &*trait_def.trait_ref, tag_item_trait_ref);
         encode_name(rbml_w, item.ident.name);
@@ -1674,6 +1676,14 @@ fn encode_attributes(rbml_w: &mut Encoder, attrs: &[ast::Attribute]) {
     rbml_w.end_tag();
 }
 
+fn encode_unsafety(rbml_w: &mut Encoder, unsafety: ast::Unsafety) {
+    let byte: u8 = match unsafety {
+        ast::Unsafety::Normal => 0,
+        ast::Unsafety::Unsafe => 1,
+    };
+    rbml_w.wr_tagged_u8(tag_unsafety, byte);
+}
+
 fn encode_crate_deps(rbml_w: &mut Encoder, cstore: &cstore::CStore) {
     fn get_ordered_deps(cstore: &cstore::CStore) -> Vec<decoder::CrateDep> {
         // Pull the cnums and name,vers,hash out of cstore
@@ -1855,7 +1865,7 @@ struct ImplVisitor<'a, 'b:'a, 'c:'a, 'tcx:'b> {
 
 impl<'a, 'b, 'c, 'tcx, 'v> Visitor<'v> for ImplVisitor<'a, 'b, 'c, 'tcx> {
     fn visit_item(&mut self, item: &ast::Item) {
-        if let ast::ItemImpl(_, Some(ref trait_ref), _, _) = item.node {
+        if let ast::ItemImpl(_, _, Some(ref trait_ref), _, _) = item.node {
             let def_map = &self.ecx.tcx.def_map;
             let trait_def = def_map.borrow()[trait_ref.ref_id].clone();
             let def_id = trait_def.def_id();
