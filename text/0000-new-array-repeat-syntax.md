@@ -16,7 +16,7 @@ would be changed to `[N of x]`.
 an expression with the form `[x, ..N]` would unambiguously refer to an array
 containing `N` identical elements, since there would be no other meaning that
 could be assigned to `..N`. However, under RFC 439, `..N` should now desugar to
-an object of type `RangeTo`.
+an object of type `RangeTo<T>`, with `T` being the type of `N`.
 
 In order to resolve this ambiguity, there must be a change to either the syntax
 for creating an array of repeated values, or the new range syntax. This RFC
@@ -47,11 +47,11 @@ which has the value `x`.
 
 The effect will be to convert uses of arrays such as this:
 
-    let a: [uint, ..2] = [0u, ..2]
+    let a: [uint, ..2] = [0u, ..2];
 
 to this:
 
-    let a: [2 of uint] = [2 of 0u]
+    let a: [2 of uint] = [2 of 0u];
 
 ## Match patterns
 
@@ -118,16 +118,17 @@ but there is a drawback:
   the type, the syntax becomes somewhat less consistent. In effect such a change
   would replace this:
 
-        let a: [uint, ..2] = [0u, ..2]
+        let a: [uint, ..2] = [0u, ..2];
 
   with this:
 
-        let a: [uint, ..2] = [2 of 0u]
+        let a: [uint, ..2] = [2 of 0u];
 
 ## Different array repeat syntax
 
-The comments in pull request #498 mentioned many candidates for new syntax other
-than the `[N of x]` form in this RFC.
+The comments in [pull request #498](https://github.com/rust-lang/rfcs/pull/498)
+mentioned many candidates for new syntax other than the `[N of x]` form in this
+RFC.
 
 - Instead of using `[N of x]`, we could use `[x for N]`.
 
@@ -163,11 +164,12 @@ possibility of using expressions such as `for i in 1..10` for looping.
 
 ## Remove `RangeTo` from RFC 439
 
-The proposal in pull request #498 is to remove the sugar for `RangeTo` (`..j`)
-while retaining other features of RFC 439. This is the simplest resolution, but
-removes some convenience from the language. It is also counterintuitive, because
-`RangeFrom` (`i..`) is retained, and because `..` still has several different
-meanings in the language (ranges, repitition, and pattern wildcards).
+The proposal in pull request #498 is to remove the sugar for `RangeTo` (i.e.,
+`..j`) while retaining other features of RFC 439. This is the simplest
+resolution, but removes some convenience from the language. It is also
+counterintuitive, because `RangeFrom` (i.e. `i..`) is retained, and because `..`
+still has several different meanings in the language (ranges, repitition, and
+pattern wildcards).
 
 # Unresolved questions
 
