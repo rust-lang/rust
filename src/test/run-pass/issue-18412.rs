@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(tuple_indexing)]
-
 // Test that non-static methods can be assigned to local variables as
 // function pointers.
 
