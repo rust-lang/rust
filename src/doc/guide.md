@@ -1091,9 +1091,9 @@ time. Here's an example:
 
 ```{rust}
 fn cmp(a: int, b: int) -> Ordering {
-    if a < b { Less }
-    else if a > b { Greater }
-    else { Equal }
+    if a < b { Ordering::Less }
+    else if a > b { Ordering::Greater }
+    else { Ordering::Equal }
 }
 
 fn main() {
@@ -1104,16 +1104,16 @@ fn main() {
 
     if ordering == Less {
         println!("less");
-    } else if ordering == Greater {
+    } else if ordering == Ordering::Greater {
         println!("greater");
-    } else if ordering == Equal {
+    } else if ordering == Ordering::Equal {
         println!("equal");
     }
 }
 ```
 
 `cmp` is a function that compares two things, and returns an `Ordering`. We
-return either `Less`, `Greater`, or `Equal`, depending on if the two values
+return either `Ordering::Less`, `Ordering::Greater`, or `Ordring::Equal`, depending on if the two values
 are greater, less, or equal.
 
 The `ordering` variable has the type `Ordering`, and so contains one of the
@@ -1160,8 +1160,7 @@ Where a `StringResult` is either an `StringOK`, with the result of a computation
 `ErrorReason` with a `String` explaining what caused the computation to fail. These kinds of
 `enum`s are actually very useful and are even part of the standard library.
 
-Enum variants are namespaced under the enum names. For example, here is an example of using
-our `StringResult`:
+Enum variants are namespaced under the enum names. Lets look at another example using our `StringResult` enum:
 
 ```rust
 # enum StringResult {
@@ -1177,10 +1176,8 @@ fn respond(greeting: &str) -> StringResult {
 }
 ```
 
-Notice that we need both the enum name and the variant name: `StringResult::StringOK`, but
-we didn't need to with `Ordering`, we just said `Greater` rather than `Ordering::Greater`.
-There's a reason: the Rust prelude imports the variants of `Ordering` as well as the enum
-itself. We can use the `use` keyword to do something similar with `StringResult`:
+Notice that we need both the enum name and the variant name: `StringResult::StringOK` in this example. 
+Alternatively, we can just use the varient name `StringOK` with the help of the `use` key word. Lets look at an example of that!
 
 ```rust
 use StringResult::StringOK;
