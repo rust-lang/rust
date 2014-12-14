@@ -1176,7 +1176,8 @@ fn respond(greeting: &str) -> StringResult {
 }
 ```
 
-Notice that we need both the enum name and the variant name: `StringResult::StringOK`, but we can use the `use` keyword to prevent having to call `StringResult::StringOK` every time we want to use the `StringOK` variant:
+Notice that we need both the enum name and the variant name: `StringResult::StringOK` in this example. 
+Alternatively, we can just use the varient name `StringOK` with the help of the `use` key word. Lets look at an example of that!
 
 ```rust
 use StringResult::StringOK;
