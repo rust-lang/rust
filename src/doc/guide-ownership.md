@@ -341,7 +341,7 @@ fn main() {
     {                         //  |
         let y = &5i;          // ---+ y goes into scope
         let f = Foo { x: y }; // ---+ f goes into scope
-	x = &f.x;	      //  | | error here
+        x = &f.x;             //  | | error here
     }                         // ---+ f & y go out of scope
                               //  |
     println!("{}", x);        //  |
