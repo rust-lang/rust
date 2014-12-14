@@ -259,6 +259,8 @@ pub mod marker {
     #[deriving(Clone, PartialEq, Eq, PartialOrd, Ord)]
     pub struct InvariantLifetime<'a>;
 
+    impl<'a> Copy for InvariantLifetime<'a> {}
+
     /// A type which is considered "not sendable", meaning that it cannot
     /// be safely sent between tasks, even if it is owned. This is
     /// typically embedded in other types, such as `Gc`, to ensure that
