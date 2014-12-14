@@ -518,6 +518,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                 llvm::SequentiallyConsistent
             } else {
                 match split[2] {
+                    "unordered" => llvm::Unordered,
                     "relaxed" => llvm::Monotonic,
                     "acq"     => llvm::Acquire,
                     "rel"     => llvm::Release,
