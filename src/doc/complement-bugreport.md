@@ -46,8 +46,13 @@ host: i686-apple-darwin
 release: 0.12.0
 ```
 
-Finally, if you can run the offending command under gdb, pasting a stack trace can be
-useful; to do so, you will need to set a breakpoint on `rust_panic`.
+Finally, if you can also provide a backtrace, that'd be great. You can get a
+backtrace by setting the `RUST_BACKTRACE` environment variable to `1`, like
+this: 
+
+```bash
+$ RUST_BACKTRACE=1 rustc ...
+```
 
 # I submitted a bug, but nobody has commented on it!
 
