@@ -208,7 +208,7 @@ the function is over, and `num` goes out of scope, the borrow is over.
 Lending out a reference to a resource that someone else owns can be
 complicated, however. For example, imagine this set of operations:
 
-1. I aquire a handle to some kind of resource.
+1. I acquire a handle to some kind of resource.
 2. I lend you a reference to the resource.
 3. I decide I'm done with the resource, and deallocate it, while you still have
    your reference.
