@@ -92,7 +92,7 @@ While not required by this RFC, one suggested transition plan is as follows:
 This proposal is submitted very close to the anticipated release of Rust
 1.0. Changing the array repeat syntax is likely to require more work than
 changing the range syntax specified in RFC 439, because the latter has not yet
-implemented.
+been implemented.
 
 However, this decision cannot be reasonably postponed. Many users have expressed
 a preference for implementing the RFC 439 slicing syntax as currently specified
