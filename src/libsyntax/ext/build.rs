@@ -969,7 +969,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                   name,
                   Vec::new(),
                   ast::ItemFn(self.fn_decl(inputs, output),
-                              ast::NormalFn,
+                              ast::Unsafety::Normal,
                               abi::Rust,
                               generics,
                               body))

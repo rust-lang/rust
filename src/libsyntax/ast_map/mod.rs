@@ -755,7 +755,7 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
         let parent = self.parent;
         self.parent = i.id;
         match i.node {
-            ItemImpl(_, _, _, ref impl_items) => {
+            ItemImpl(_, _, _, _, ref impl_items) => {
                 for impl_item in impl_items.iter() {
                     match *impl_item {
                         MethodImplItem(ref m) => {
@@ -786,7 +786,7 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
                     None => {}
                 }
             }
-            ItemTrait(_, _, ref bounds, ref trait_items) => {
+            ItemTrait(_, _, _, ref bounds, ref trait_items) => {
                 for b in bounds.iter() {
                     if let TraitTyParamBound(ref t) = *b {
                         self.insert(t.trait_ref.ref_id, NodeItem(i));

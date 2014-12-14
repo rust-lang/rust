@@ -258,7 +258,7 @@ fn collect_trait_methods<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                    trait_def: &ty::TraitDef<'tcx>) {
     let tcx = ccx.tcx;
     if let ast_map::NodeItem(item) = tcx.map.get(trait_id) {
-        if let ast::ItemTrait(_, _, _, ref trait_items) = item.node {
+        if let ast::ItemTrait(_, _, _, _, ref trait_items) = item.node {
             // For each method, construct a suitable ty::Method and
             // store it into the `tcx.impl_or_trait_items` table:
             for trait_item in trait_items.iter() {
@@ -277,7 +277,7 @@ fn collect_trait_methods<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                     &m.explicit_self,
                                     m.abi,
                                     &m.generics,
-                                    &m.fn_style,
+                                    &m.unsafety,
                                     &*m.decl)
                             }
                             ast::ProvidedMethod(ref m) => {
@@ -291,7 +291,7 @@ fn collect_trait_methods<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                     m.pe_explicit_self(),
                                     m.pe_abi(),
                                     m.pe_generics(),
-                                    &m.pe_fn_style(),
+                                    &m.pe_unsafety(),
                                     &*m.pe_fn_decl())
                             }
                             ast::TypeTraitItem(ref at) => {
@@ -366,7 +366,7 @@ fn collect_trait_methods<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                            m_explicit_self: &ast::ExplicitSelf,
                                            m_abi: abi::Abi,
                                            m_generics: &ast::Generics,
-                                           m_fn_style: &ast::FnStyle,
+                                           m_unsafety: &ast::Unsafety,
                                            m_decl: &ast::FnDecl)
                                            -> ty::Method<'tcx> {
         let ty_generics =
@@ -386,7 +386,7 @@ fn collect_trait_methods<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             let trait_self_ty = ty::mk_self_type(tmcx.tcx(),
                                                  local_def(trait_id));
             astconv::ty_of_method(&tmcx,
-                                  *m_fn_style,
+                                  *m_unsafety,
                                   trait_self_ty,
                                   m_explicit_self,
                                   m_decl,
@@ -572,7 +572,7 @@ fn convert_methods<'a,'tcx,'i,I>(ccx: &CrateCtxt<'a, 'tcx>,
                     method_generics: &m_ty_generics,
                 };
                 astconv::ty_of_method(&imcx,
-                                      m.pe_fn_style(),
+                                      m.pe_unsafety(),
                                       untransformed_rcvr_ty,
                                       m.pe_explicit_self(),
                                       &*m.pe_fn_decl(),
@@ -586,7 +586,7 @@ fn convert_methods<'a,'tcx,'i,I>(ccx: &CrateCtxt<'a, 'tcx>,
                     method_generics: &m_ty_generics,
                 };
                 astconv::ty_of_method(&tmcx,
-                                      m.pe_fn_style(),
+                                      m.pe_unsafety(),
                                       untransformed_rcvr_ty,
                                       m.pe_explicit_self(),
                                       &*m.pe_fn_decl(),
@@ -1045,7 +1045,8 @@ pub fn convert(ccx: &CrateCtxt, it: &ast::Item) {
                                    enum_definition.variants.as_slice(),
                                    generics);
         },
-        ast::ItemImpl(ref generics,
+        ast::ItemImpl(_,
+                      ref generics,
                       ref opt_trait_ref,
                       ref selfty,
                       ref impl_items) => {
@@ -1144,7 +1145,7 @@ pub fn convert(ccx: &CrateCtxt, it: &ast::Item) {
                                                AllowEqConstraints::DontAllow);
             }
         },
-        ast::ItemTrait(_, _, _, ref trait_methods) => {
+        ast::ItemTrait(_, _, _, _, ref trait_methods) => {
             let trait_def = trait_def_of_item(ccx, it);
 
             debug!("trait_def: ident={} trait_def={}",
@@ -1335,12 +1336,13 @@ pub fn trait_def_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         return def.clone();
     }
 
-    let (generics, unbound, bounds, items) = match it.node {
-        ast::ItemTrait(ref generics,
+    let (unsafety, generics, unbound, bounds, items) = match it.node {
+        ast::ItemTrait(unsafety,
+                       ref generics,
                        ref unbound,
                        ref supertraits,
                        ref items) => {
-            (generics, unbound, supertraits, items.as_slice())
+            (unsafety, generics, unbound, supertraits, items.as_slice())
         }
         ref s => {
             tcx.sess.span_bug(
@@ -1369,6 +1371,7 @@ pub fn trait_def_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
     let substs = mk_item_substs(ccx, &ty_generics);
     let trait_def = Rc::new(ty::TraitDef {
+        unsafety: unsafety,
         generics: ty_generics,
         bounds: bounds,
         trait_ref: Rc::new(ty::TraitRef {
@@ -1446,7 +1449,7 @@ pub fn ty_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, it: &ast::Item)
             tcx.tcache.borrow_mut().insert(local_def(it.id), pty.clone());
             return pty;
         }
-        ast::ItemFn(ref decl, fn_style, abi, ref generics, _) => {
+        ast::ItemFn(ref decl, unsafety, abi, ref generics, _) => {
             let ty_generics = ty_generics_for_fn_or_method(
                 ccx,
                 generics,
@@ -1457,7 +1460,7 @@ pub fn ty_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, it: &ast::Item)
                     ccx: ccx,
                     generics: &ty_generics,
                 };
-                astconv::ty_of_bare_fn(&fcx, fn_style, abi, &**decl)
+                astconv::ty_of_bare_fn(&fcx, unsafety, abi, &**decl)
             };
             let pty = Polytype {
                 generics: ty_generics,
@@ -2151,7 +2154,7 @@ pub fn ty_of_foreign_fn_decl<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         ccx.tcx,
         ty::BareFnTy {
             abi: abi,
-            fn_style: ast::UnsafeFn,
+            unsafety: ast::Unsafety::Unsafe,
             sig: ty::FnSig {inputs: input_tys,
                             output: output,
                             variadic: decl.variadic}

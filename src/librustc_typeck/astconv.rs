@@ -924,7 +924,7 @@ pub fn ast_ty_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                     tcx.sess.span_err(ast_ty.span,
                                       "variadic function must have C calling convention");
                 }
-                ty::mk_bare_fn(tcx, ty_of_bare_fn(this, bf.fn_style, bf.abi, &*bf.decl))
+                ty::mk_bare_fn(tcx, ty_of_bare_fn(this, bf.unsafety, bf.abi, &*bf.decl))
             }
             ast::TyClosure(ref f) => {
                 // Use corresponding trait store to figure out default bounds
@@ -935,7 +935,7 @@ pub fn ast_ty_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                                                      None,
                                                      f.bounds.as_slice());
                 let fn_decl = ty_of_closure(this,
-                                            f.fn_style,
+                                            f.unsafety,
                                             f.onceness,
                                             bounds,
                                             ty::RegionTraitStore(
@@ -1082,7 +1082,7 @@ struct SelfInfo<'a, 'tcx> {
 
 pub fn ty_of_method<'tcx, AC: AstConv<'tcx>>(
                     this: &AC,
-                    fn_style: ast::FnStyle,
+                    unsafety: ast::Unsafety,
                     untransformed_self_ty: Ty<'tcx>,
                     explicit_self: &ast::ExplicitSelf,
                     decl: &ast::FnDecl,
@@ -1094,22 +1094,22 @@ pub fn ty_of_method<'tcx, AC: AstConv<'tcx>>(
     });
     let (bare_fn_ty, optional_explicit_self_category) =
         ty_of_method_or_bare_fn(this,
-                                fn_style,
+                                unsafety,
                                 abi,
                                 self_info,
                                 decl);
     (bare_fn_ty, optional_explicit_self_category.unwrap())
 }
 
-pub fn ty_of_bare_fn<'tcx, AC: AstConv<'tcx>>(this: &AC, fn_style: ast::FnStyle, abi: abi::Abi,
+pub fn ty_of_bare_fn<'tcx, AC: AstConv<'tcx>>(this: &AC, unsafety: ast::Unsafety, abi: abi::Abi,
                                               decl: &ast::FnDecl) -> ty::BareFnTy<'tcx> {
-    let (bare_fn_ty, _) = ty_of_method_or_bare_fn(this, fn_style, abi, None, decl);
+    let (bare_fn_ty, _) = ty_of_method_or_bare_fn(this, unsafety, abi, None, decl);
     bare_fn_ty
 }
 
 fn ty_of_method_or_bare_fn<'a, 'tcx, AC: AstConv<'tcx>>(
                            this: &AC,
-                           fn_style: ast::FnStyle,
+                           unsafety: ast::Unsafety,
                            abi: abi::Abi,
                            opt_self_info: Option<SelfInfo<'a, 'tcx>>,
                            decl: &ast::FnDecl)
@@ -1207,7 +1207,7 @@ fn ty_of_method_or_bare_fn<'a, 'tcx, AC: AstConv<'tcx>>(
     };
 
     (ty::BareFnTy {
-        fn_style: fn_style,
+        unsafety: unsafety,
         abi: abi,
         sig: ty::FnSig {
             inputs: self_and_input_tys,
@@ -1301,7 +1301,7 @@ fn determine_explicit_self_category<'a, 'tcx, AC: AstConv<'tcx>,
 
 pub fn ty_of_closure<'tcx, AC: AstConv<'tcx>>(
     this: &AC,
-    fn_style: ast::FnStyle,
+    unsafety: ast::Unsafety,
     onceness: ast::Onceness,
     bounds: ty::ExistentialBounds,
     store: ty::TraitStore,
@@ -1346,7 +1346,7 @@ pub fn ty_of_closure<'tcx, AC: AstConv<'tcx>>(
     debug!("ty_of_closure: output_ty={}", output_ty.repr(this.tcx()));
 
     ty::ClosureTy {
-        fn_style: fn_style,
+        unsafety: unsafety,
         onceness: onceness,
         store: store,
         bounds: bounds,

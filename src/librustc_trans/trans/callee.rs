@@ -278,7 +278,7 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
     // which is the fn pointer, and `args`, which is the arguments tuple.
     let (input_tys, output_ty) =
         match bare_fn_ty.sty {
-            ty::ty_bare_fn(ty::BareFnTy { fn_style: ast::NormalFn,
+            ty::ty_bare_fn(ty::BareFnTy { unsafety: ast::Unsafety::Normal,
                                           abi: synabi::Rust,
                                           sig: ty::FnSig { inputs: ref input_tys,
                                                            output: output_ty,
@@ -294,7 +294,7 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
         };
     let tuple_input_ty = ty::mk_tup(tcx, input_tys.to_vec());
     let tuple_fn_ty = ty::mk_bare_fn(tcx,
-                                     ty::BareFnTy { fn_style: ast::NormalFn,
+                                     ty::BareFnTy { unsafety: ast::Unsafety::Normal,
                                                     abi: synabi::RustCall,
                                                     sig: ty::FnSig {
                                                         inputs: vec![bare_fn_ty_ref,

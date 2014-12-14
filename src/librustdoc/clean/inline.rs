@@ -161,6 +161,7 @@ pub fn build_external_trait(cx: &DocContext, tcx: &ty::ctxt,
     let trait_def = ty::lookup_trait_def(tcx, did);
     let (bounds, default_unbound) = trait_def.bounds.clean(cx);
     clean::Trait {
+        unsafety: def.unsafety,
         generics: (&def.generics, subst::TypeSpace).clean(cx),
         items: items.collect(),
         bounds: bounds,
@@ -171,13 +172,13 @@ pub fn build_external_trait(cx: &DocContext, tcx: &ty::ctxt,
 fn build_external_function(cx: &DocContext, tcx: &ty::ctxt, did: ast::DefId) -> clean::Function {
     let t = ty::lookup_item_type(tcx, did);
     let (decl, style) = match t.ty.sty {
-        ty::ty_bare_fn(ref f) => ((did, &f.sig).clean(cx), f.fn_style),
+        ty::ty_bare_fn(ref f) => ((did, &f.sig).clean(cx), f.unsafety),
         _ => panic!("bad function"),
     };
     clean::Function {
         decl: decl,
         generics: (&t.generics, subst::FnSpace).clean(cx),
-        fn_style: style,
+        unsafety: style,
     }
 }
 
@@ -299,10 +300,10 @@ fn build_impl(cx: &DocContext, tcx: &ty::ctxt,
                 let mut item = method.clean(cx);
                 item.inner = match item.inner.clone() {
                     clean::TyMethodItem(clean::TyMethod {
-                        fn_style, decl, self_, generics
+                        unsafety, decl, self_, generics
                     }) => {
                         clean::MethodItem(clean::Method {
-                            fn_style: fn_style,
+                            unsafety: unsafety,
                             decl: decl,
                             self_: self_,
                             generics: generics,

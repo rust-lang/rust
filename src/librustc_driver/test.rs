@@ -270,7 +270,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
                      -> Ty<'tcx>
     {
         ty::mk_closure(self.infcx.tcx, ty::ClosureTy {
-            fn_style: ast::NormalFn,
+            unsafety: ast::Unsafety::Normal,
             onceness: ast::Many,
             store: ty::RegionTraitStore(region_bound, ast::MutMutable),
             bounds: ty::region_existential_bound(region_bound),

@@ -89,7 +89,7 @@ fn check_unboxed_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
 
     let mut fn_ty = astconv::ty_of_closure(
         fcx,
-        ast::NormalFn,
+        ast::Unsafety::Normal,
         ast::Many,
 
         // The `RegionTraitStore` and region_existential_bounds
@@ -119,7 +119,7 @@ fn check_unboxed_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
     fcx.write_ty(expr.id, closure_type);
 
     check_fn(fcx.ccx,
-             ast::NormalFn,
+             ast::Unsafety::Normal,
              expr.id,
              &fn_ty.sig,
              decl,
@@ -304,7 +304,7 @@ fn check_boxed_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
 
     // construct the function type
     let fn_ty = astconv::ty_of_closure(fcx,
-                                       ast::NormalFn,
+                                       ast::Unsafety::Normal,
                                        expected_onceness,
                                        expected_bounds,
                                        store,
@@ -321,9 +321,9 @@ fn check_boxed_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
     // style inferred for it, then check it under its parent's style.
     // Otherwise, use its own
     let (inherited_style, inherited_style_id) = match store {
-        ty::RegionTraitStore(..) => (fcx.ps.borrow().fn_style,
+        ty::RegionTraitStore(..) => (fcx.ps.borrow().unsafety,
                                      fcx.ps.borrow().def),
-        ty::UniqTraitStore => (ast::NormalFn, expr.id)
+        ty::UniqTraitStore => (ast::Unsafety::Normal, expr.id)
     };
 
     check_fn(fcx.ccx,

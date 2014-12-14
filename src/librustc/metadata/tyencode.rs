@@ -313,10 +313,10 @@ fn enc_sty<'a, 'tcx>(w: &mut SeekableMemWriter, cx: &ctxt<'a, 'tcx>,
     }
 }
 
-fn enc_fn_style(w: &mut SeekableMemWriter, p: ast::FnStyle) {
+fn enc_unsafety(w: &mut SeekableMemWriter, p: ast::Unsafety) {
     match p {
-        ast::NormalFn => mywrite!(w, "n"),
-        ast::UnsafeFn => mywrite!(w, "u"),
+        ast::Unsafety::Normal => mywrite!(w, "n"),
+        ast::Unsafety::Unsafe => mywrite!(w, "u"),
     }
 }
 
@@ -335,14 +335,14 @@ fn enc_onceness(w: &mut SeekableMemWriter, o: ast::Onceness) {
 
 pub fn enc_bare_fn_ty<'a, 'tcx>(w: &mut SeekableMemWriter, cx: &ctxt<'a, 'tcx>,
                                 ft: &ty::BareFnTy<'tcx>) {
-    enc_fn_style(w, ft.fn_style);
+    enc_unsafety(w, ft.unsafety);
     enc_abi(w, ft.abi);
     enc_fn_sig(w, cx, &ft.sig);
 }
 
 pub fn enc_closure_ty<'a, 'tcx>(w: &mut SeekableMemWriter, cx: &ctxt<'a, 'tcx>,
                                 ft: &ty::ClosureTy<'tcx>) {
-    enc_fn_style(w, ft.fn_style);
+    enc_unsafety(w, ft.unsafety);
     enc_onceness(w, ft.onceness);
     enc_trait_store(w, cx, ft.store);
     enc_existential_bounds(w, cx, &ft.bounds);
