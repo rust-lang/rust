@@ -119,7 +119,7 @@
 //!     for stream in acceptor.incoming() {
 //!         match stream {
 //!             Err(e) => { /* connection failed */ }
-//!             Ok(stream) => spawn(proc() {
+//!             Ok(stream) => spawn(move|| {
 //!                 // connection succeeded
 //!                 handle_client(stream)
 //!             })

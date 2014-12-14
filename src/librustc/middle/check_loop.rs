@@ -52,8 +52,7 @@ impl<'a, 'v> Visitor<'v> for CheckLoopVisitor<'a> {
                 self.visit_expr(&**e);
                 self.with_context(Loop, |v| v.visit_block(&**b));
             }
-            ast::ExprClosure(_, _, _, ref b) |
-            ast::ExprProc(_, ref b) => {
+            ast::ExprClosure(_, _, _, ref b) => {
                 self.with_context(Closure, |v| v.visit_block(&**b));
             }
             ast::ExprBreak(_) => self.require_loop("break", e.span),

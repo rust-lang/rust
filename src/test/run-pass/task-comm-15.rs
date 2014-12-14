@@ -25,7 +25,7 @@ pub fn main() {
     // the child's point of view the receiver may die. We should
     // drop messages on the floor in this case, and not crash!
     let (tx, rx) = channel();
-    task::spawn(proc() {
+    task::spawn(move|| {
         start(&tx, 10)
     });
     rx.recv();

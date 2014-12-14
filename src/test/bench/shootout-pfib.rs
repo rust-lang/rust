@@ -34,15 +34,15 @@ fn fib(n: int) -> int {
         } else {
             let (tx1, rx) = channel();
             let tx2 = tx1.clone();
-            task::spawn(proc() pfib(&tx2, n - 1));
+            task::spawn(move|| pfib(&tx2, n - 1));
             let tx2 = tx1.clone();
-            task::spawn(proc() pfib(&tx2, n - 2));
+            task::spawn(move|| pfib(&tx2, n - 2));
             tx.send(rx.recv() + rx.recv());
         }
     }
 
     let (tx, rx) = channel();
-    spawn(proc() pfib(&tx, n) );
+    spawn(move|| pfib(&tx, n) );
     rx.recv()
 }
 
@@ -77,7 +77,7 @@ fn stress_task(id: int) {
 fn stress(num_tasks: int) {
     let mut results = Vec::new();
     for i in range(0, num_tasks) {
-        results.push(task::try_future(proc() {
+        results.push(task::try_future(move|| {
             stress_task(i);
         }));
     }

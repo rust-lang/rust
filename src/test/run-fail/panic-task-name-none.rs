@@ -13,7 +13,7 @@
 use std::task;
 
 fn main() {
-    let r: Result<int,_> = task::try(proc() {
+    let r: Result<int,_> = task::try(move|| {
         panic!("test");
         1i
     });

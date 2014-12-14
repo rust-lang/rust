@@ -175,19 +175,12 @@ pub enum SubregionOrigin<'tcx> {
     // Closure bound must not outlive captured free variables
     FreeVariable(Span, ast::NodeId),
 
-    // Proc upvars must be 'static
-    ProcCapture(Span, ast::NodeId),
-
     // Index into slice must be within its lifetime
     IndexSlice(Span),
 
     // When casting `&'a T` to an `&'b Trait` object,
     // relating `'a` to `'b`
     RelateObjectBound(Span),
-
-    // When closing over a variable in a closure/proc, ensure that the
-    // type of the variable outlives the lifetime bound.
-    RelateProcBound(Span, ast::NodeId, Ty<'tcx>),
 
     // Some type parameter was instantiated with the given type,
     // and that type must outlive some region.
@@ -1089,10 +1082,8 @@ impl<'tcx> SubregionOrigin<'tcx> {
             InvokeClosure(a) => a,
             DerefPointer(a) => a,
             FreeVariable(a, _) => a,
-            ProcCapture(a, _) => a,
             IndexSlice(a) => a,
             RelateObjectBound(a) => a,
-            RelateProcBound(a, _, _) => a,
             RelateParamBound(a, _) => a,
             RelateRegionParamBound(a) => a,
             RelateDefaultParamBound(a, _) => a,
@@ -1128,20 +1119,11 @@ impl<'tcx> Repr<'tcx> for SubregionOrigin<'tcx> {
             FreeVariable(a, b) => {
                 format!("FreeVariable({}, {})", a.repr(tcx), b)
             }
-            ProcCapture(a, b) => {
-                format!("ProcCapture({}, {})", a.repr(tcx), b)
-            }
             IndexSlice(a) => {
                 format!("IndexSlice({})", a.repr(tcx))
             }
             RelateObjectBound(a) => {
                 format!("RelateObjectBound({})", a.repr(tcx))
-            }
-            RelateProcBound(a, b, c) => {
-                format!("RelateProcBound({},{},{})",
-                        a.repr(tcx),
-                        b,
-                        c.repr(tcx))
             }
             RelateParamBound(a, b) => {
                 format!("RelateParamBound({},{})",

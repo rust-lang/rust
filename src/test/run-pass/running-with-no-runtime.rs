@@ -14,6 +14,7 @@ use std::io::process::{Command, ProcessOutput};
 use std::os;
 use std::str;
 use std::rt;
+use std::thunk::Thunk;
 
 use rustrt::unwind::try;
 
@@ -26,7 +27,7 @@ fn start(argc: int, argv: *const *const u8) -> int {
                 2 => println!("foo"),
                 3 => assert!(try(|| {}).is_ok()),
                 4 => assert!(try(|| panic!()).is_err()),
-                5 => assert!(try(|| spawn(proc() {})).is_err()),
+                5 => assert!(try(|| spawn(move|| {})).is_err()),
                 6 => assert!(Command::new("test").spawn().is_err()),
                 _ => panic!()
             }
@@ -34,7 +35,7 @@ fn start(argc: int, argv: *const *const u8) -> int {
         return 0
     }
 
-    rt::start(argc, argv, main)
+    rt::start(argc, argv, Thunk::new(main))
 }
 
 fn main() {

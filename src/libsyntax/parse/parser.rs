@@ -27,10 +27,10 @@ use ast::{ExprAssign, ExprAssignOp, ExprBinary, ExprBlock, ExprBox};
 use ast::{ExprBreak, ExprCall, ExprCast};
 use ast::{ExprField, ExprTupField, ExprClosure, ExprIf, ExprIfLet, ExprIndex, ExprSlice};
 use ast::{ExprLit, ExprLoop, ExprMac};
-use ast::{ExprMethodCall, ExprParen, ExprPath, ExprProc};
+use ast::{ExprMethodCall, ExprParen, ExprPath};
 use ast::{ExprRepeat, ExprRet, ExprStruct, ExprTup, ExprUnary};
 use ast::{ExprVec, ExprWhile, ExprWhileLet, ExprForLoop, Field, FnDecl};
-use ast::{Once, Many};
+use ast::{Many};
 use ast::{FnUnboxedClosureKind, FnMutUnboxedClosureKind};
 use ast::{FnOnceUnboxedClosureKind};
 use ast::{ForeignItem, ForeignItemStatic, ForeignItemFn, ForeignMod, FunctionRetTy};
@@ -54,7 +54,7 @@ use ast::{SelfExplicit, SelfRegion, SelfStatic, SelfValue};
 use ast::{Delimited, SequenceRepetition, TokenTree, TraitItem, TraitRef};
 use ast::{TtDelimited, TtSequence, TtToken};
 use ast::{TupleVariantKind, Ty, Ty_, TypeBinding};
-use ast::{TypeField, TyFixedLengthVec, TyClosure, TyProc, TyBareFn};
+use ast::{TypeField, TyFixedLengthVec, TyClosure, TyBareFn};
 use ast::{TyTypeof, TyInfer, TypeMethod};
 use ast::{TyParam, TyParamBound, TyParen, TyPath, TyPolyTraitRef, TyPtr, TyQPath};
 use ast::{TyRptr, TyTup, TyU32, TyVec, UnUniq};
@@ -1064,7 +1064,6 @@ impl<'a> Parser<'a> {
         Deprecated:
 
         - for <'lt> |S| -> T
-        - for <'lt> proc(S) -> T
 
         Eventually:
 
@@ -1158,26 +1157,21 @@ impl<'a> Parser<'a> {
          |     |    |    Bounds
          |     |  Argument types
          |   Legacy lifetimes
-        the `proc` keyword
+        the `proc` keyword (already consumed)
 
         */
 
-        let lifetime_defs = self.parse_legacy_lifetime_defs(lifetime_defs);
-        let (inputs, variadic) = self.parse_fn_args(false, false);
-        let bounds = self.parse_colon_then_ty_param_bounds();
-        let ret_ty = self.parse_ret_ty();
-        let decl = P(FnDecl {
-            inputs: inputs,
-            output: ret_ty,
-            variadic: variadic
-        });
-        TyProc(P(ClosureTy {
-            fn_style: NormalFn,
-            onceness: Once,
-            bounds: bounds,
-            decl: decl,
-            lifetimes: lifetime_defs,
-        }))
+        let proc_span = self.last_span;
+
+        // To be helpful, parse the proc as ever
+        let _ = self.parse_legacy_lifetime_defs(lifetime_defs);
+        let _ = self.parse_fn_args(false, false);
+        let _ = self.parse_colon_then_ty_param_bounds();
+        let _ = self.parse_ret_ty();
+
+        self.obsolete(proc_span, ObsoleteProcType);
+
+        TyInfer
     }
 
     /// Parses an optional unboxed closure kind (`&:`, `&mut:`, or `:`).
@@ -2294,17 +2288,10 @@ impl<'a> Parser<'a> {
                     return self.parse_lambda_expr(CaptureByValue);
                 }
                 if self.eat_keyword(keywords::Proc) {
-                    let decl = self.parse_proc_decl();
-                    let body = self.parse_expr();
-                    let fakeblock = P(ast::Block {
-                            id: ast::DUMMY_NODE_ID,
-                            view_items: Vec::new(),
-                            stmts: Vec::new(),
-                            rules: DefaultBlock,
-                            span: body.span,
-                            expr: Some(body),
-                        });
-                    return self.mk_expr(lo, fakeblock.span.hi, ExprProc(decl, fakeblock));
+                    let span = self.last_span;
+                    let _ = self.parse_proc_decl();
+                    let _ = self.parse_expr();
+                    return self.obsolete_expr(span, ObsoleteProcExpr);
                 }
                 if self.eat_keyword(keywords::If) {
                     return self.parse_if_expr();

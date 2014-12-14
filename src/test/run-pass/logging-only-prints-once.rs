@@ -27,7 +27,7 @@ impl fmt::Show for Foo {
 
 pub fn main() {
     let (tx, rx) = channel();
-    spawn(proc() {
+    spawn(move|| {
         let mut f = Foo(Cell::new(0));
         println!("{}", f);
         let Foo(ref mut f) = f;

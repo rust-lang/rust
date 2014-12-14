@@ -51,7 +51,7 @@ use util::nodemap::{NodeMap, NodeSet, DefIdSet, FnvHashMap};
 use syntax::ast::{Arm, BindByRef, BindByValue, BindingMode, Block, Crate, CrateNum};
 use syntax::ast::{DeclItem, DefId, Expr, ExprAgain, ExprBreak, ExprField};
 use syntax::ast::{ExprClosure, ExprForLoop, ExprLoop, ExprWhile, ExprMethodCall};
-use syntax::ast::{ExprPath, ExprProc, ExprStruct, FnDecl};
+use syntax::ast::{ExprPath, ExprStruct, FnDecl};
 use syntax::ast::{ForeignItem, ForeignItemFn, ForeignItemStatic, Generics};
 use syntax::ast::{Ident, ImplItem, Item, ItemEnum, ItemFn, ItemForeignMod};
 use syntax::ast::{ItemImpl, ItemMac, ItemMod, ItemStatic, ItemStruct};
@@ -64,7 +64,7 @@ use syntax::ast::{RegionTyParamBound, StmtDecl, StructField};
 use syntax::ast::{StructVariantKind, TraitRef, TraitTyParamBound};
 use syntax::ast::{TupleVariantKind, Ty, TyBool, TyChar, TyClosure, TyF32};
 use syntax::ast::{TyF64, TyFloat, TyI, TyI8, TyI16, TyI32, TyI64, TyInt, TyObjectSum};
-use syntax::ast::{TyParam, TyParamBound, TyPath, TyPtr, TyPolyTraitRef, TyProc, TyQPath};
+use syntax::ast::{TyParam, TyParamBound, TyPath, TyPtr, TyPolyTraitRef, TyQPath};
 use syntax::ast::{TyRptr, TyStr, TyU, TyU8, TyU16, TyU32, TyU64, TyUint};
 use syntax::ast::{TypeImplItem, UnnamedField};
 use syntax::ast::{Variant, ViewItem, ViewItemExternCrate};
@@ -5027,7 +5027,7 @@ impl<'a> Resolver<'a> {
                 self.resolve_trait_reference(ty.id, &*qpath.trait_ref, TraitQPath);
             }
 
-            TyClosure(ref c) | TyProc(ref c) => {
+            TyClosure(ref c) => {
                 self.resolve_type_parameter_bounds(
                     ty.id,
                     &c.bounds,
@@ -5912,13 +5912,6 @@ impl<'a> Resolver<'a> {
             ExprClosure(capture_clause, _, ref fn_decl, ref block) => {
                 self.capture_mode_map.insert(expr.id, capture_clause);
                 self.resolve_function(ClosureRibKind(expr.id, ast::DUMMY_NODE_ID),
-                                      Some(&**fn_decl), NoTypeParameters,
-                                      &**block);
-            }
-
-            ExprProc(ref fn_decl, ref block) => {
-                self.capture_mode_map.insert(expr.id, ast::CaptureByValue);
-                self.resolve_function(ClosureRibKind(expr.id, block.id),
                                       Some(&**fn_decl), NoTypeParameters,
                                       &**block);
             }

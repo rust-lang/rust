@@ -27,7 +27,7 @@ fn test(f: int) -> test {
 pub fn main() {
     let (tx, rx) = channel();
 
-    task::spawn(proc() {
+    task::spawn(move|| {
         let (tx2, rx2) = channel();
         tx.send(tx2);
 

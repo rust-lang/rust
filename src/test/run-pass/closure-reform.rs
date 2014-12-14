@@ -11,10 +11,14 @@
 /* Any copyright is dedicated to the Public Domain.
  * http://creativecommons.org/publicdomain/zero/1.0/ */
 
+#![feature(unboxed_closures)]
+
 use std::mem;
 use std::io::stdio::println;
 
-fn call_it(f: proc(String) -> String) {
+fn call_it<F>(f: F)
+    where F : FnOnce(String) -> String
+{
     println!("{}", f("Fred".to_string()))
 }
 
@@ -49,15 +53,15 @@ pub fn main() {
     // Procs
 
     let greeting = "Hello ".to_string();
-    call_it(proc(s) {
+    call_it(|s| {
         format!("{}{}", greeting, s)
     });
 
     let greeting = "Goodbye ".to_string();
-    call_it(proc(s) format!("{}{}", greeting, s));
+    call_it(|s| format!("{}{}", greeting, s));
 
     let greeting = "How's life, ".to_string();
-    call_it(proc(s: String) -> String {
+    call_it(|s: String| -> String {
         format!("{}{}", greeting, s)
     });
 

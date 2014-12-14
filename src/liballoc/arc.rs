@@ -46,7 +46,7 @@ use heap::deallocate;
 ///     for _ in range(0u, 10) {
 ///         let child_numbers = shared_numbers.clone();
 ///
-///         spawn(proc() {
+///         spawn(move || {
 ///             let local_numbers = child_numbers.as_slice();
 ///
 ///             // Work with the local numbers
@@ -358,7 +358,7 @@ mod tests {
 
         let (tx, rx) = channel();
 
-        task::spawn(proc() {
+        task::spawn(move || {
             let arc_v: Arc<Vec<int>> = rx.recv();
             assert_eq!((*arc_v)[3], 4);
         });

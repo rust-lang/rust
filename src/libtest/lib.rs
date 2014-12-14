@@ -32,7 +32,7 @@
        html_root_url = "http://doc.rust-lang.org/nightly/")]
 
 #![feature(asm, macro_rules, phase, globs, slicing_syntax)]
-#![feature(unboxed_closures)]
+#![feature(unboxed_closures, default_type_params)]
 
 extern crate getopts;
 extern crate regex;
@@ -71,6 +71,7 @@ use std::str::FromStr;
 use std::string::String;
 use std::task::TaskBuilder;
 use std::time::Duration;
+use std::thunk::{Thunk, Invoke};
 
 // to be used by rustc to compile tests in libtest
 pub mod test {
@@ -149,9 +150,9 @@ pub trait TDynBenchFn {
 pub enum TestFn {
     StaticTestFn(fn()),
     StaticBenchFn(fn(&mut Bencher)),
-    StaticMetricFn(proc(&mut MetricMap):'static),
-    DynTestFn(proc():Send),
-    DynMetricFn(proc(&mut MetricMap):'static),
+    StaticMetricFn(fn(&mut MetricMap)),
+    DynTestFn(Thunk),
+    DynMetricFn(Box<for<'a> Invoke<&'a mut MetricMap>+'static>),
     DynBenchFn(Box<TDynBenchFn+'static>)
 }
 
@@ -1119,8 +1120,8 @@ pub fn run_test(opts: &TestOpts,
     fn run_test_inner(desc: TestDesc,
                       monitor_ch: Sender<MonitorMsg>,
                       nocapture: bool,
-                      testfn: proc():Send) {
-        spawn(proc() {
+                      testfn: Thunk) {
+        spawn(move || {
             let (tx, rx) = channel();
             let mut reader = ChanReader::new(rx);
             let stdout = ChanWriter::new(tx.clone());
@@ -1135,7 +1136,7 @@ pub fn run_test(opts: &TestOpts,
                 task = task.stdout(box stdout as Box<Writer + Send>);
                 task = task.stderr(box stderr as Box<Writer + Send>);
             }
-            let result_future = task.try_future(testfn);
+            let result_future = task.try_future(move || testfn.invoke(()));
 
             let stdout = reader.read_to_end().unwrap().into_iter().collect();
             let task_result = result_future.into_inner();
@@ -1157,7 +1158,7 @@ pub fn run_test(opts: &TestOpts,
         }
         DynMetricFn(f) => {
             let mut mm = MetricMap::new();
-            f(&mut mm);
+            f.invoke(&mut mm);
             monitor_ch.send((desc, TrMetrics(mm), Vec::new()));
             return;
         }
@@ -1169,7 +1170,7 @@ pub fn run_test(opts: &TestOpts,
         }
         DynTestFn(f) => run_test_inner(desc, monitor_ch, opts.nocapture, f),
         StaticTestFn(f) => run_test_inner(desc, monitor_ch, opts.nocapture,
-                                          proc() f())
+                                          Thunk::new(move|| f()))
     }
 }
 
@@ -1467,6 +1468,7 @@ mod tests {
                Improvement, Regression, LikelyNoise,
                StaticTestName, DynTestName, DynTestFn, ShouldFail};
     use std::io::TempDir;
+    use std::thunk::Thunk;
 
     #[test]
     pub fn do_not_run_ignored_tests() {
@@ -1477,7 +1479,7 @@ mod tests {
                 ignore: true,
                 should_fail: ShouldFail::No,
             },
-            testfn: DynTestFn(proc() f()),
+            testfn: DynTestFn(Thunk::new(move|| f())),
         };
         let (tx, rx) = channel();
         run_test(&TestOpts::new(), false, desc, tx);
@@ -1494,7 +1496,7 @@ mod tests {
                 ignore: true,
                 should_fail: ShouldFail::No,
             },
-            testfn: DynTestFn(proc() f()),
+            testfn: DynTestFn(Thunk::new(move|| f())),
         };
         let (tx, rx) = channel();
         run_test(&TestOpts::new(), false, desc, tx);
@@ -1511,7 +1513,7 @@ mod tests {
                 ignore: false,
                 should_fail: ShouldFail::Yes(None)
             },
-            testfn: DynTestFn(proc() f()),
+            testfn: DynTestFn(Thunk::new(move|| f())),
         };
         let (tx, rx) = channel();
         run_test(&TestOpts::new(), false, desc, tx);
@@ -1528,7 +1530,7 @@ mod tests {
                 ignore: false,
                 should_fail: ShouldFail::Yes(Some("error message"))
             },
-            testfn: DynTestFn(proc() f()),
+            testfn: DynTestFn(Thunk::new(move|| f())),
         };
         let (tx, rx) = channel();
         run_test(&TestOpts::new(), false, desc, tx);
@@ -1545,7 +1547,7 @@ mod tests {
                 ignore: false,
                 should_fail: ShouldFail::Yes(Some("foobar"))
             },
-            testfn: DynTestFn(proc() f()),
+            testfn: DynTestFn(Thunk::new(move|| f())),
         };
         let (tx, rx) = channel();
         run_test(&TestOpts::new(), false, desc, tx);
@@ -1562,7 +1564,7 @@ mod tests {
                 ignore: false,
                 should_fail: ShouldFail::Yes(None)
             },
-            testfn: DynTestFn(proc() f()),
+            testfn: DynTestFn(Thunk::new(move|| f())),
         };
         let (tx, rx) = channel();
         run_test(&TestOpts::new(), false, desc, tx);
@@ -1608,7 +1610,7 @@ mod tests {
                     ignore: true,
                     should_fail: ShouldFail::No,
                 },
-                testfn: DynTestFn(proc() {}),
+                testfn: DynTestFn(Thunk::new(move|| {})),
             },
             TestDescAndFn {
                 desc: TestDesc {
@@ -1616,7 +1618,7 @@ mod tests {
                     ignore: false,
                     should_fail: ShouldFail::No,
                 },
-                testfn: DynTestFn(proc() {}),
+                testfn: DynTestFn(Thunk::new(move|| {})),
             });
         let filtered = filter_tests(&opts, tests);
 
@@ -1652,7 +1654,7 @@ mod tests {
                         ignore: false,
                         should_fail: ShouldFail::No,
                     },
-                    testfn: DynTestFn(testfn),
+                    testfn: DynTestFn(Thunk::new(testfn)),
                 };
                 tests.push(test);
             }
@@ -1693,7 +1695,7 @@ mod tests {
                     ignore: false,
                     should_fail: ShouldFail::No,
                 },
-                testfn: DynTestFn(test_fn)
+                testfn: DynTestFn(Thunk::new(test_fn))
             }
         }).collect();
         let filtered = filter_tests(&opts, tests);

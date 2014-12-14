@@ -14,7 +14,7 @@ use std::task::TaskBuilder;
 
 fn main() {
     let r: Result<int,_> = TaskBuilder::new().named("owned name".to_string())
-                                             .try(proc() {
+                                             .try(move|| {
         panic!("test");
         1i
     });

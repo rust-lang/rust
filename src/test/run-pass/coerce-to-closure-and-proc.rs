@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(unboxed_closures)]
+
 fn id<T>(x: T) -> T {
     x
 }
@@ -24,24 +26,12 @@ pub fn main() {
     let f: |int| -> int = id;
     assert_eq!(f(5), 5);
 
-    let f: proc(int) -> int = id;
-    assert_eq!(f(5), 5);
-
     let f: |int| -> Foo<int> = Foo;
-    assert_eq!(f(5), Foo(5));
-
-    let f: proc(int) -> Foo<int> = Foo;
     assert_eq!(f(5), Foo(5));
 
     let f: |int| -> Bar<int> = Bar::Baz;
     assert_eq!(f(5), Bar::Baz(5));
 
-    let f: proc(int) -> Bar<int> = Bar::Baz;
-    assert_eq!(f(5), Bar::Baz(5));
-
     let f: |int| -> Option<int> = Some;
-    assert_eq!(f(5), Some(5));
-
-    let f: proc(int) -> Option<int> = Some;
     assert_eq!(f(5), Some(5));
 }

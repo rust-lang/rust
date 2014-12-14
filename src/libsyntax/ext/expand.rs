@@ -217,13 +217,6 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
             P(ast::Expr{id:id, node: new_node, span: fld.new_span(span)})
         }
 
-        ast::ExprProc(fn_decl, block) => {
-            let (rewritten_fn_decl, rewritten_block)
-                = expand_and_rename_fn_decl_and_block(fn_decl, block, fld);
-            let new_node = ast::ExprProc(rewritten_fn_decl, rewritten_block);
-            P(ast::Expr{id:id, node: new_node, span: fld.new_span(span)})
-        }
-
         _ => {
             P(noop_fold_expr(ast::Expr {
                 id: id,
@@ -1571,17 +1564,6 @@ mod test {
         run_renaming_test(
             &("macro_rules! inject_x (()=>(x))
             fn f(){(|x : int| {(inject_x!() + x)})(3);}",
-              vec!(vec!(1)),
-              true),
-            0)
-    }
-
-    // closure arg hygiene (ExprProc)
-    // expands to fn f(){(proc(x_1 : int) {(x_2 + x_1)})(3);}
-    #[test] fn closure_arg_hygiene_2(){
-        run_renaming_test(
-            &("macro_rules! inject_x (()=>(x))
-              fn f(){ (proc(x : int){(inject_x!() + x)})(3); }",
               vec!(vec!(1)),
               true),
             0)

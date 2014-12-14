@@ -4235,36 +4235,16 @@ fn main() {
 }
 ```
 
-## Procs
+## Moving closures
 
-Rust has a second type of closure, called a **proc**. Procs are created
-with the `proc` keyword:
-
-```{rust}
-let x = 5i;
-
-let p = proc() { x * x };
-println!("{}", p()); // prints 25
-```
-
-There is a big difference between procs and closures: procs may only be called once. This
-will error when we try to compile:
-
-```{rust,ignore}
-let x = 5i;
-
-let p = proc() { x * x };
-println!("{}", p());
-println!("{}", p()); // error: use of moved value `p`
-```
-
-This restriction is important. Procs are allowed to consume values that they
-capture, and thus have to be restricted to being called once for soundness
-reasons: any value consumed would be invalid on a second call.
-
-Procs are most useful with Rust's concurrency features, and so we'll just leave
-it at this for now. We'll talk about them more in the "Tasks" section of the
-guide.
+Rust has a second type of closure, called a **moving closure**. Moving
+closures are indicated using the `move` keyword (e.g., `move || x *
+x`). The difference between a moving closure and an ordinary closure
+is that a moving closure always takes ownership of all variables that
+it uses. Ordinary closures, in contrast, just create a reference into
+the enclosing stack frame. Moving closures are most useful with Rust's
+concurrency features, and so we'll just leave it at this for
+now. We'll talk about them more in the "Tasks" section of the guide.
 
 ## Accepting closures as arguments
 
@@ -5231,28 +5211,30 @@ concurrency libraries can be written for Rust to help in specific scenarios.
 Here's an example of creating a task:
 
 ```{rust}
-spawn(proc() {
+spawn(move || {
     println!("Hello from a task!");
 });
 ```
 
-The `spawn` function takes a proc as an argument, and runs that proc in a new
-task. A proc takes ownership of its entire environment, and so any variables
-that you use inside the proc will not be usable afterward:
+The `spawn` function takes a closure as an argument, and runs that
+closure in a new task. Typically, you will want to use a moving
+closure, so that the closure takes ownership of any variables that it
+touches.  This implies that those variables are not usable from the
+parent task after the child task is spawned:
 
 ```{rust,ignore}
 let mut x = vec![1i, 2i, 3i];
 
-spawn(proc() {
+spawn(move || {
     println!("The value of x[0] is: {}", x[0]);
 });
 
 println!("The value of x[0] is: {}", x[0]); // error: use of moved value: `x`
 ```
 
-`x` is now owned by the proc, and so we can't use it anymore. Many other
-languages would let us do this, but it's not safe to do so. Rust's borrow
-checker catches the error.
+`x` is now owned by the closure, and so we can't use it anymore. Many
+other languages would let us do this, but it's not safe to do
+so. Rust's borrow checker catches the error.
 
 If tasks were only able to capture these values, they wouldn't be very useful.
 Luckily, tasks can communicate with each other through **channel**s. Channels
@@ -5261,7 +5243,7 @@ work like this:
 ```{rust}
 let (tx, rx) = channel();
 
-spawn(proc() {
+spawn(move || {
     tx.send("Hello from a task!".to_string());
 });
 
@@ -5281,7 +5263,7 @@ If you want to send messages to the task as well, create two channels!
 let (tx1, rx1) = channel();
 let (tx2, rx2) = channel();
 
-spawn(proc() {
+spawn(move || {
     tx1.send("Hello from a task!".to_string());
     let message = rx2.recv();
     println!("{}", message);
@@ -5293,8 +5275,9 @@ println!("{}", message);
 tx2.send("Goodbye from main!".to_string());
 ```
 
-The proc has one sending end and one receiving end, and the main task has one
-of each as well. Now they can talk back and forth in whatever way they wish.
+The closure has one sending end and one receiving end, and the main
+task has one of each as well. Now they can talk back and forth in
+whatever way they wish.
 
 Notice as well that because `Sender` and `Receiver` are generic, while you can
 pass any kind of information through the channel, the ends are strongly typed.
@@ -5310,7 +5293,7 @@ a useful thing to use:
 ```{rust}
 use std::sync::Future;
 
-let mut delayed_value = Future::spawn(proc() {
+let mut delayed_value = Future::spawn(move || {
     // just return anything for examples' sake
 
     12345i
@@ -5318,18 +5301,18 @@ let mut delayed_value = Future::spawn(proc() {
 println!("value = {}", delayed_value.get());
 ```
 
-Calling `Future::spawn` works just like `spawn()`: it takes a proc. In this
-case, though, you don't need to mess with the channel: just have the proc
-return the value.
+Calling `Future::spawn` works just like `spawn()`: it takes a
+closure. In this case, though, you don't need to mess with the
+channel: just have the closure return the value.
 
 `Future::spawn` will return a value which we can bind with `let`. It needs
 to be mutable, because once the value is computed, it saves a copy of the
 value, and if it were immutable, it couldn't update itself.
 
-The proc will go on processing in the background, and when we need the final
-value, we can call `get()` on it. This will block until the result is done,
-but if it's finished computing in the background, we'll just get the value
-immediately.
+The future will go on processing in the background, and when we need
+the final value, we can call `get()` on it. This will block until the
+result is done, but if it's finished computing in the background,
+we'll just get the value immediately.
 
 ## Success and failure
 
@@ -5337,7 +5320,7 @@ Tasks don't always succeed, they can also panic. A task that wishes to panic
 can call the `panic!` macro, passing a message:
 
 ```{rust}
-spawn(proc() {
+spawn(move || {
     panic!("Nope.");
 });
 ```
@@ -5349,7 +5332,7 @@ notify other tasks that it has panicked. We can do this with `task::try`:
 use std::task;
 use std::rand;
 
-let result = task::try(proc() {
+let result = task::try(move || {
     if rand::random() {
         println!("OK");
     } else {

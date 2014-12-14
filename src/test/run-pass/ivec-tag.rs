@@ -18,7 +18,7 @@ fn producer(tx: &Sender<Vec<u8>>) {
 
 pub fn main() {
     let (tx, rx) = channel::<Vec<u8>>();
-    let _prod = task::spawn(proc() {
+    let _prod = task::spawn(move|| {
         producer(&tx)
     });
 

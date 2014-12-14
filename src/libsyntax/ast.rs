@@ -719,7 +719,6 @@ pub enum Expr_ {
     ExprLoop(P<Block>, Option<Ident>),
     ExprMatch(P<Expr>, Vec<Arm>, MatchSource),
     ExprClosure(CaptureClause, Option<UnboxedClosureKind>, P<FnDecl>, P<Block>),
-    ExprProc(P<FnDecl>, P<Block>),
     ExprBlock(P<Block>),
 
     ExprAssign(P<Expr>, P<Expr>),
@@ -1225,8 +1224,6 @@ pub enum Ty_ {
     TyRptr(Option<Lifetime>, MutTy),
     /// A closure (e.g. `|uint| -> bool`)
     TyClosure(P<ClosureTy>),
-    /// A procedure (e.g `proc(uint) -> bool`)
-    TyProc(P<ClosureTy>),
     /// A bare function (e.g. `fn(uint) -> bool`)
     TyBareFn(P<BareFnTy>),
     /// A tuple (`(A, B, C, D,...)`)

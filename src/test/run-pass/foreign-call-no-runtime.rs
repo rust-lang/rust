@@ -22,7 +22,7 @@ extern {
 
 pub fn main() {
     unsafe {
-        Thread::start(proc() {
+        Thread::start(move|| {
             let i = &100i;
             rust_dbg_call(callback, mem::transmute(i));
         }).join();

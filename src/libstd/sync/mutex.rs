@@ -47,7 +47,7 @@ use sys_common::mutex as sys;
 /// let (tx, rx) = channel();
 /// for _ in range(0u, 10) {
 ///     let (data, tx) = (data.clone(), tx.clone());
-///     spawn(proc() {
+///     spawn(move|| {
 ///         // The shared static can only be accessed once the lock is held.
 ///         // Our non-atomic increment is safe because we're the only thread
 ///         // which can access the shared state when the lock is held.
@@ -313,9 +313,9 @@ mod test {
         let (tx, rx) = channel();
         for _ in range(0, K) {
             let tx2 = tx.clone();
-            spawn(proc() { inc(); tx2.send(()); });
+            spawn(move|| { inc(); tx2.send(()); });
             let tx2 = tx.clone();
-            spawn(proc() { inc(); tx2.send(()); });
+            spawn(move|| { inc(); tx2.send(()); });
         }
 
         drop(tx);
@@ -339,7 +339,7 @@ mod test {
         let arc = Arc::new((Mutex::new(false), Condvar::new()));
         let arc2 = arc.clone();
         let (tx, rx) = channel();
-        spawn(proc() {
+        spawn(move|| {
             // wait until parent gets in
             rx.recv();
             let &(ref lock, ref cvar) = &*arc2;
@@ -364,7 +364,7 @@ mod test {
         let arc2 = arc.clone();
         let (tx, rx) = channel();
 
-        spawn(proc() {
+        spawn(move|| {
             rx.recv();
             let &(ref lock, ref cvar) = &*arc2;
             let _g = lock.lock();
@@ -386,7 +386,7 @@ mod test {
     fn test_mutex_arc_poison() {
         let arc = Arc::new(Mutex::new(1i));
         let arc2 = arc.clone();
-        let _ = task::try(proc() {
+        let _ = task::try(move|| {
             let lock = arc2.lock();
             assert_eq!(*lock, 2);
         });
@@ -401,7 +401,7 @@ mod test {
         let arc = Arc::new(Mutex::new(1i));
         let arc2 = Arc::new(Mutex::new(arc));
         let (tx, rx) = channel();
-        spawn(proc() {
+        spawn(move|| {
             let lock = arc2.lock();
             let lock2 = lock.deref().lock();
             assert_eq!(*lock2, 1);
@@ -414,7 +414,7 @@ mod test {
     fn test_mutex_arc_access_in_unwind() {
         let arc = Arc::new(Mutex::new(1i));
         let arc2 = arc.clone();
-        let _ = task::try::<()>(proc() {
+        let _ = task::try(move|| -> () {
             struct Unwinder {
                 i: Arc<Mutex<int>>,
             }

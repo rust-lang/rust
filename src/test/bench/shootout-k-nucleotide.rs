@@ -303,11 +303,11 @@ fn main() {
 
     let nb_freqs: Vec<(uint, Future<Table>)> = range(1u, 3).map(|i| {
         let input = input.clone();
-        (i, Future::spawn(proc() generate_frequencies(input.as_slice(), i)))
+        (i, Future::spawn(move|| generate_frequencies(input.as_slice(), i)))
     }).collect();
     let occ_freqs: Vec<Future<Table>> = OCCURRENCES.iter().map(|&occ| {
         let input = input.clone();
-        Future::spawn(proc() generate_frequencies(input.as_slice(), occ.len()))
+        Future::spawn(move|| generate_frequencies(input.as_slice(), occ.len()))
     }).collect();
 
     for (i, freq) in nb_freqs.into_iter() {

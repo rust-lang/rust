@@ -188,42 +188,35 @@ fn deduce_unboxed_closure_expectations_from_trait_ref<'a,'tcx>(
     debug!("deduce_unboxed_closure_expectations_from_object_type({})",
            trait_ref.repr(tcx));
 
-    let def_id_kinds = [
-        (tcx.lang_items.fn_trait(), ty::FnUnboxedClosureKind),
-        (tcx.lang_items.fn_mut_trait(), ty::FnMutUnboxedClosureKind),
-        (tcx.lang_items.fn_once_trait(), ty::FnOnceUnboxedClosureKind),
-    ];
+    let kind = match tcx.lang_items.fn_trait_kind(trait_ref.def_id) {
+        Some(k) => k,
+        None => { return None; }
+    };
 
-    for &(def_id, kind) in def_id_kinds.iter() {
-        if Some(trait_ref.def_id) == def_id {
-            debug!("found object type {}", kind);
+    debug!("found object type {}", kind);
 
-            let arg_param_ty = *trait_ref.substs.types.get(subst::TypeSpace, 0);
-            let arg_param_ty = fcx.infcx().resolve_type_vars_if_possible(arg_param_ty);
-            debug!("arg_param_ty {}", arg_param_ty.repr(tcx));
+    let arg_param_ty = *trait_ref.substs.types.get(subst::TypeSpace, 0);
+    let arg_param_ty = fcx.infcx().resolve_type_vars_if_possible(arg_param_ty);
+    debug!("arg_param_ty {}", arg_param_ty.repr(tcx));
 
-            let input_tys = match arg_param_ty.sty {
-                ty::ty_tup(ref tys) => { (*tys).clone() }
-                _ => { continue; }
-            };
-            debug!("input_tys {}", input_tys.repr(tcx));
+    let input_tys = match arg_param_ty.sty {
+        ty::ty_tup(ref tys) => { (*tys).clone() }
+        _ => { return None; }
+    };
+    debug!("input_tys {}", input_tys.repr(tcx));
 
-            let ret_param_ty = *trait_ref.substs.types.get(subst::TypeSpace, 1);
-            let ret_param_ty = fcx.infcx().resolve_type_vars_if_possible(ret_param_ty);
-            debug!("ret_param_ty {}", ret_param_ty.repr(tcx));
+    let ret_param_ty = *trait_ref.substs.types.get(subst::TypeSpace, 1);
+    let ret_param_ty = fcx.infcx().resolve_type_vars_if_possible(ret_param_ty);
+    debug!("ret_param_ty {}", ret_param_ty.repr(tcx));
 
-            let fn_sig = ty::FnSig {
-                inputs: input_tys,
-                output: ty::FnConverging(ret_param_ty),
-                variadic: false
-            };
-            debug!("fn_sig {}", fn_sig.repr(tcx));
+    let fn_sig = ty::FnSig {
+        inputs: input_tys,
+        output: ty::FnConverging(ret_param_ty),
+        variadic: false
+    };
+    debug!("fn_sig {}", fn_sig.repr(tcx));
 
-            return Some((fn_sig, kind));
-        }
-    }
-
-    None
+    return Some((fn_sig, kind));
 }
 
 fn deduce_unboxed_closure_expectations_from_obligations<'a,'tcx>(
@@ -257,12 +250,12 @@ fn deduce_unboxed_closure_expectations_from_obligations<'a,'tcx>(
 }
 
 
-pub fn check_boxed_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
-                                    expr: &ast::Expr,
-                                    store: ty::TraitStore,
-                                    decl: &ast::FnDecl,
-                                    body: &ast::Block,
-                                    expected: Expectation<'tcx>) {
+fn check_boxed_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
+                                expr: &ast::Expr,
+                                store: ty::TraitStore,
+                                decl: &ast::FnDecl,
+                                body: &ast::Block,
+                                expected: Expectation<'tcx>) {
     let tcx = fcx.ccx.tcx;
 
     // Find the expected input/output types (if any). Substitute
@@ -300,18 +293,10 @@ pub fn check_boxed_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
             }
             _ => {
                 // Not an error! Means we're inferring the closure type
-                let (bounds, onceness) = match expr.node {
-                    ast::ExprProc(..) => {
-                        let mut bounds = ty::region_existential_bound(ty::ReStatic);
-                        bounds.builtin_bounds.insert(ty::BoundSend); // FIXME
-                        (bounds, ast::Once)
-                    }
-                    _ => {
-                        let region = fcx.infcx().next_region_var(
-                            infer::AddrOfRegion(expr.span));
-                        (ty::region_existential_bound(region), ast::Many)
-                    }
-                };
+                let region = fcx.infcx().next_region_var(
+                    infer::AddrOfRegion(expr.span));
+                let bounds = ty::region_existential_bound(region);
+                let onceness = ast::Many;
                 (None, onceness, bounds)
             }
         }

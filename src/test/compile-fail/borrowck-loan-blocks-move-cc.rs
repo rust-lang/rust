@@ -17,7 +17,7 @@ fn borrow(v: &int, f: |x: &int|) {
 fn box_imm() {
     let v = box 3i;
     let _w = &v;
-    task::spawn(proc() {
+    task::spawn(move|| {
         println!("v={}", *v);
         //~^ ERROR cannot move `v` into closure
     });
@@ -26,7 +26,7 @@ fn box_imm() {
 fn box_imm_explicit() {
     let v = box 3i;
     let _w = &v;
-    task::spawn(proc() {
+    task::spawn(move|| {
         println!("v={}", *v);
         //~^ ERROR cannot move
     });

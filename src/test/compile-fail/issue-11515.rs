@@ -9,10 +9,10 @@
 // except according to those terms.
 
 struct Test<'s> {
-    func: ||: 's,
+    func: Box<FnMut()+'static>
 }
 
 fn main() {
-    let test = box Test { func: proc() {} };
-    //~^ ERROR: expected `||`, found `proc()`
+    let closure: Box<Fn()+'static> = box || ();
+    let test = box Test { func: closure }; //~ ERROR mismatched types
 }

@@ -15,7 +15,7 @@ extern crate "weak-lang-items" as other;
 use std::task;
 
 fn main() {
-    let _ = task::try(proc() {
+    let _ = task::try(move|| {
         other::foo()
     });
 }

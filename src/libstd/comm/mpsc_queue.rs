@@ -178,7 +178,7 @@ mod tests {
         for _ in range(0, nthreads) {
             let tx = tx.clone();
             let q = q.clone();
-            spawn(proc() {
+            spawn(move|| {
                 for i in range(0, nmsgs) {
                     q.push(i);
                 }

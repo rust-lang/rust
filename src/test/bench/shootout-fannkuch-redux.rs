@@ -168,7 +168,7 @@ fn fannkuch(n: i32) -> (i32, i32) {
     for (i, j) in range(0, N).zip(iter::count(0, k)) {
         let max = cmp::min(j+k, perm.max());
 
-        futures.push(Future::spawn(proc() {
+        futures.push(Future::spawn(move|| {
             work(perm, j as uint, max as uint)
         }))
     }
