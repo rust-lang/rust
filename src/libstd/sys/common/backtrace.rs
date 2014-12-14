@@ -10,8 +10,8 @@
 
 use io::{IoResult, Writer};
 use iter::{Iterator, IteratorExt};
-use option::{Some, None};
-use result::{Ok, Err};
+use option::Option::{Some, None};
+use result::Result::{Ok, Err};
 use str::{StrPrelude, from_str};
 use unicode::char::UnicodeChar;
 

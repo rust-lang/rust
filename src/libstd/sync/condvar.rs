@@ -36,17 +36,18 @@ use time::Duration;
 ///
 /// ```
 /// use std::sync::{Arc, Mutex, Condvar};
+/// use std::thread::Thread;
 ///
 /// let pair = Arc::new((Mutex::new(false), Condvar::new()));
 /// let pair2 = pair.clone();
 ///
 /// // Inside of our lock, spawn a new thread, and then wait for it to start
-/// spawn(move|| {
+/// Thread::spawn(move|| {
 ///     let &(ref lock, ref cvar) = &*pair2;
 ///     let mut started = lock.lock();
 ///     *started = true;
 ///     cvar.notify_one();
-/// });
+/// }).detach();
 ///
 /// // wait for the thread to start up
 /// let &(ref lock, ref cvar) = &*pair;
@@ -362,4 +363,3 @@ mod tests {
 
     }
 }
-

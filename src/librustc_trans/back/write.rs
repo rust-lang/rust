@@ -900,7 +900,7 @@ fn run_work_multithreaded(sess: &Session,
         let mut tx = Some(tx);
         futures.push(rx);
 
-        thread::cfg().name(format!("codegen-{}", i)).spawn(move |:| {
+        thread::Builder::new().name(format!("codegen-{}", i)).spawn(move |:| {
             let diag_handler = mk_handler(box diag_emitter);
 
             // Must construct cgcx inside the proc because it has non-Send
@@ -927,7 +927,7 @@ fn run_work_multithreaded(sess: &Session,
             }
 
             tx.take().unwrap().send(());
-        });
+        }).detach();
     }
 
     let mut panicked = false;

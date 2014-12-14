@@ -5217,6 +5217,8 @@ the same function, so our binary is a little bit larger.
 
 # Tasks
 
+**NOTE**: this section is currently out of date and will be rewritten soon.
+
 Concurrency and parallelism are topics that are of increasing interest to a
 broad subsection of software developers. Modern computers are often multi-core,
 to the point that even embedded devices like cell phones have more than one
@@ -5231,7 +5233,7 @@ library, and not part of the language. This means that in the future, other
 concurrency libraries can be written for Rust to help in specific scenarios.
 Here's an example of creating a task:
 
-```{rust}
+```{rust,ignore}
 spawn(move || {
     println!("Hello from a task!");
 });
@@ -5261,7 +5263,7 @@ If tasks were only able to capture these values, they wouldn't be very useful.
 Luckily, tasks can communicate with each other through **channel**s. Channels
 work like this:
 
-```{rust}
+```{rust,ignore}
 let (tx, rx) = channel();
 
 spawn(move || {
@@ -5280,7 +5282,7 @@ which returns an `Result<T, TryRecvError>` and does not block.
 
 If you want to send messages to the task as well, create two channels!
 
-```{rust}
+```{rust,ignore}
 let (tx1, rx1) = channel();
 let (tx2, rx2) = channel();
 
@@ -5340,7 +5342,7 @@ we'll just get the value immediately.
 Tasks don't always succeed, they can also panic. A task that wishes to panic
 can call the `panic!` macro, passing a message:
 
-```{rust}
+```{rust,ignore}
 spawn(move || {
     panic!("Nope.");
 });
@@ -5349,7 +5351,7 @@ spawn(move || {
 If a task panics, it is not possible for it to recover. However, it can
 notify other tasks that it has panicked. We can do this with `task::try`:
 
-```{rust}
+```{rust,ignore}
 use std::task;
 use std::rand;
 

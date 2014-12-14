@@ -409,7 +409,7 @@ mod tests {
     fn test_rw_arc_poison_wr() {
         let arc = Arc::new(RWLock::new(1i));
         let arc2 = arc.clone();
-        let _ = Thread::with_join(move|| {
+        let _ = Thread::spawn(move|| {
             let lock = arc2.write();
             assert_eq!(*lock, 2);
         }).join();
@@ -422,7 +422,7 @@ mod tests {
     fn test_rw_arc_poison_ww() {
         let arc = Arc::new(RWLock::new(1i));
         let arc2 = arc.clone();
-        let _ = Thread::with_join(move|| {
+        let _ = Thread::spawn(move|| {
             let lock = arc2.write();
             assert_eq!(*lock, 2);
         }).join();
@@ -434,7 +434,7 @@ mod tests {
     fn test_rw_arc_no_poison_rr() {
         let arc = Arc::new(RWLock::new(1i));
         let arc2 = arc.clone();
-        let _ = Thread::with_join(move|| {
+        let _ = Thread::spawn(move|| {
             let lock = arc2.read();
             assert_eq!(*lock, 2);
         }).join();
@@ -445,7 +445,7 @@ mod tests {
     fn test_rw_arc_no_poison_rw() {
         let arc = Arc::new(RWLock::new(1i));
         let arc2 = arc.clone();
-        let _ = Thread::with_join(move|| {
+        let _ = Thread::spawn(move|| {
             let lock = arc2.read();
             assert_eq!(*lock, 2);
         }).join();
@@ -468,13 +468,13 @@ mod tests {
                 *lock = tmp + 1;
             }
             tx.send(());
-        });
+        }).detach();
 
         // Readers try to catch the writer in the act
         let mut children = Vec::new();
         for _ in range(0u, 5) {
             let arc3 = arc.clone();
-            children.push(Thread::with_join(move|| {
+            children.push(Thread::spawn(move|| {
                 let lock = arc3.read();
                 assert!(*lock >= 0);
             }));
@@ -495,11 +495,7 @@ mod tests {
     fn test_rw_arc_access_in_unwind() {
         let arc = Arc::new(RWLock::new(1i));
         let arc2 = arc.clone();
-<<<<<<< HEAD
-        let _ = task::try(move|| -> () {
-=======
-        let _ = Thread::with_join::<()>(proc() {
->>>>>>> Fallout from new thread API
+        let _ = Thread::spawn(move|| -> () {
             struct Unwinder {
                 i: Arc<RWLock<int>>,
             }

@@ -11,7 +11,7 @@
 extern crate libc;
 
 use std::mem;
-use std::rt::thread::Thread;
+use std::thread::Thread;
 
 #[link(name = "rust_test_helpers")]
 extern {
@@ -21,7 +21,7 @@ extern {
 
 pub fn main() {
     unsafe {
-        Thread::start(move|| {
+        Thread::spawn(move|| {
             let i = &100i;
             rust_dbg_call(callback, mem::transmute(i));
         }).join();

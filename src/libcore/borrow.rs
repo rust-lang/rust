@@ -92,7 +92,7 @@ impl<'a, T, Sized? B> BorrowFrom<Cow<'a, T, B>> for B where B: ToOwned<T> {
 
 /// Trait for moving into a `Cow`
 pub trait IntoCow<'a, T, Sized? B> {
-    /// Moves `serlf` into `Cow`
+    /// Moves `self` into `Cow`
     fn into_cow(self) -> Cow<'a, T, B>;
 }
 

@@ -45,5 +45,5 @@ pub fn fails() {
 }
 
 pub fn main() {
-    Thread::with_join(fails).join();
+    Thread::spawn(fails).join();
 }

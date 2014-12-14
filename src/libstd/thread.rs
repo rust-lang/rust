@@ -15,13 +15,12 @@
 //! An executing Rust program consists of a collection of native OS threads,
 //! each with their own stack and local state.
 //!
-//! Threads generally have their memory *isolated* from each other by virtue of
-//! Rust's owned types (which of course may only be owned by a single thread at
-//! a time). Communication between threads can be done through
-//! [channels](../../std/comm/index.html), Rust's message-passing types, along
-//! with [other forms of thread synchronization](../../std/sync/index.html) and
-//! shared-memory data structures. In particular, types that are guaranteed to
-//! be threadsafe are easily shared between threads using the
+//! Communication between threads can be done through
+//! [channels](../../std/comm/index.html), Rust's message-passing
+//! types, along with [other forms of thread
+//! synchronization](../../std/sync/index.html) and shared-memory data
+//! structures. In particular, types that are guaranteed to be
+//! threadsafe are easily shared between threads using the
 //! atomically-reference-counted container,
 //! [`Arc`](../../std/sync/struct.Arc.html).
 //!
@@ -54,52 +53,43 @@
 //!
 //! ## Spawning a thread
 //!
-//! There are a few different ways to spawn a new thread, depending on how it
-//! should relate to the parent thread.
-//!
-//! ### Simple detached threads
-//!
-//! The simplest case just spawns a completely independent (detached) thread,
-//! returning a new `Thread` handle to it:
+//! A new thread can be spawned using the `Thread::spawn` function:
 //!
 //! ```rust
 //! use std::thread::Thread;
 //!
-//! Thread::spawn(proc() {
+//! let guard = Thread::spawn(move || {
 //!     println!("Hello, World!");
-//! })
+//!     // some computation here
+//! });
+//! let result = guard.join();
 //! ```
 //!
-//! The spawned thread may outlive its parent.
+//! The `spawn` function doesn't return a `Thread` directly; instead, it returns
+//! a *join guard* from which a `Thread` can be extracted. The join guard is an
+//! RAII-style guard that will automatically join the child thread (block until
+//! it terminates) when it is dropped. You can join the child thread in advance
+//! by calling the `join` method on the guard, which will also return the result
+//! produced by the thread.
 //!
-//! ### Joining
+//! If you instead wish to *detach* the child thread, allowing it to outlive its
+//! parent, you can use the `detach` method on the guard,
 //!
-//! Alternatively, the `with_join` constructor spawns a new thread and returns a
-//! `JoinGuard` which can be used to wait until the child thread completes,
-//! returning its result (or `Err` if the child thread panicked):
+//! A handle to the thread itself is available via the `thread` method on the
+//! join guard.
 //!
-//! ```rust
-//! use std::thread::Thread;
+//! ## Configuring threads
 //!
-//! let guard = Thread::with_join(proc() { panic!() };
-//! assert!(guard.join().is_err());
-//! ```
-//!
-//! The guard works in RAII style, meaning that the child thread is
-//! automatically joined when the guard is dropped. A handle to the thread
-//! itself is available via the `thread` method on the guard.
-//!
-//! ### Configured threads
-//!
-//! Finally, a new thread can be configured independently of how it is
-//! spawned. Configuration is available via the `Cfg` builder, which currently
-//! allows you to set the name, stack size, and writers for `println!` and
-//! `panic!` for the child thread:
+//! A new thread can be configured before it is spawned via the `Builder` type,
+//! which currently allows you to set the name, stack size, and writers for
+//! `println!` and `panic!` for the child thread:
 //!
 //! ```rust
 //! use std::thread;
 //!
-//! thread::cfg().name("child1").spawn(proc() { println!("Hello, world!") });
+//! thread::Builder::new().name("child1".to_string()).spawn(move || {
+//!     println!("Hello, world!")
+//! }).detach();
 //! ```
 //!
 //! ## Blocking support: park and unpark
@@ -139,18 +129,19 @@ use core::prelude::*;
 use any::Any;
 use borrow::IntoCow;
 use boxed::Box;
-use mem;
+use cell::UnsafeCell;
 use sync::{Mutex, Condvar, Arc};
 use string::String;
 use rt::{mod, unwind};
 use io::{Writer, stdio};
+use thunk::Thunk;
 
 use sys::thread as imp;
 use sys_common::{stack, thread_info};
 
 /// Thread configuation. Provides detailed control over the properties
 /// and behavior of new threads.
-pub struct Cfg {
+pub struct Builder {
     // A name for the thread-to-be, for identification in panic messages
     name: Option<String>,
     // The size of the stack for the spawned thread
@@ -161,11 +152,11 @@ pub struct Cfg {
     stderr: Option<Box<Writer + Send>>,
 }
 
-impl Cfg {
+impl Builder {
     /// Generate the base configuration for spawning a thread, from which
     /// configuration methods can be chained.
-    pub fn new() -> Cfg {
-        Cfg {
+    pub fn new() -> Builder {
+        Builder {
             name: None,
             stack_size: None,
             stdout: None,
@@ -175,41 +166,51 @@ impl Cfg {
 
     /// Name the thread-to-be. Currently the name is used for identification
     /// only in panic messages.
-    pub fn name(mut self, name: String) -> Cfg {
+    pub fn name(mut self, name: String) -> Builder {
         self.name = Some(name);
         self
     }
 
     /// Deprecated: use `name` instead
     #[deprecated = "use name instead"]
-    pub fn named<T: IntoCow<'static, String, str>>(self, name: T) -> Cfg {
+    pub fn named<T: IntoCow<'static, String, str>>(self, name: T) -> Builder {
         self.name(name.into_cow().into_owned())
     }
 
     /// Set the size of the stack for the new thread.
-    pub fn stack_size(mut self, size: uint) -> Cfg {
+    pub fn stack_size(mut self, size: uint) -> Builder {
         self.stack_size = Some(size);
         self
     }
 
     /// Redirect thread-local stdout.
     #[experimental = "Will likely go away after proc removal"]
-    pub fn stdout(mut self, stdout: Box<Writer + Send>) -> Cfg {
+    pub fn stdout(mut self, stdout: Box<Writer + Send>) -> Builder {
         self.stdout = Some(stdout);
         self
     }
 
     /// Redirect thread-local stderr.
     #[experimental = "Will likely go away after proc removal"]
-    pub fn stderr(mut self, stderr: Box<Writer + Send>) -> Cfg {
+    pub fn stderr(mut self, stderr: Box<Writer + Send>) -> Builder {
         self.stderr = Some(stderr);
         self
     }
 
-    fn core_spawn<T: Send>(self, f: proc():Send -> T, after: proc(Result<T>):Send)
-                           -> (imp::rust_thread, Thread)
+    /// Spawn a new joinable thread, and return a JoinGuard guard for it.
+    ///
+    /// See `Thead::spawn` and the module doc for more details.
+    pub fn spawn<T, F>(self, f: F) -> JoinGuard<T> where
+        T: Send, F: FnOnce() -> T, F: Send
     {
-        let Cfg { name, stack_size, stdout, stderr } = self;
+        self.spawn_inner(Thunk::new(f))
+    }
+
+    fn spawn_inner<T: Send>(self, f: Thunk<(), T>) -> JoinGuard<T> {
+        let my_packet = Arc::new(UnsafeCell::new(None));
+        let their_packet = my_packet.clone();
+
+        let Builder { name, stack_size, stdout, stderr } = self;
 
         let stack_size = stack_size.unwrap_or(rt::min_stack());
         let my_thread = Thread::new(name);
@@ -221,7 +222,7 @@ impl Cfg {
         // because by the time that this function is executing we've already
         // consumed at least a little bit of stack (we don't know the exact byte
         // address at which our stack started).
-        let main = proc() {
+        let main = move |:| {
             let something_around_the_top_of_the_stack = 1;
             let addr = &something_around_the_top_of_the_stack as *const int;
             let my_stack_top = addr as uint;
@@ -235,73 +236,48 @@ impl Cfg {
                 their_thread
             );
 
-            // There are two primary reasons that general try/catch is
-            // unsafe. The first is that we do not support nested try/catch. The
-            // fact that this is happening in a newly-spawned thread
-            // suffices. The second is that unwinding while unwinding is not
-            // defined.  We take care of that by having an 'unwinding' flag in
-            // the thread itself. For these reasons, this unsafety should be ok.
-            unsafe {
-                let mut output = None;
-                let f = if stdout.is_some() || stderr.is_some() {
-                    proc() {
-                        let _ = stdout.map(stdio::set_stdout);
-                        let _ = stderr.map(stdio::set_stderr);
-                        f()
-                    }
-                } else {
-                    f
-                };
+            let mut output = None;
+            let f: Thunk<(), T> = if stdout.is_some() || stderr.is_some() {
+                Thunk::new(move |:| {
+                    let _ = stdout.map(stdio::set_stdout);
+                    let _ = stderr.map(stdio::set_stderr);
+                    f.invoke(())
+                })
+            } else {
+                f
+            };
 
-                let try_result = {
-                    let ptr = &mut output;
-                    unwind::try(move || *ptr = Some(f()))
-                };
-                match (output, try_result) {
-                    (Some(data), Ok(_)) => after(Ok(data)),
-                    (None, Err(cause)) => after(Err(cause)),
-                    _ => unreachable!()
+            let try_result = {
+                let ptr = &mut output;
+
+                // There are two primary reasons that general try/catch is
+                // unsafe. The first is that we do not support nested
+                // try/catch. The fact that this is happening in a newly-spawned
+                // thread suffices. The second is that unwinding while unwinding
+                // is not defined.  We take care of that by having an
+                // 'unwinding' flag in the thread itself. For these reasons,
+                // this unsafety should be ok.
+                unsafe {
+                    unwind::try(move || *ptr = Some(f.invoke(())))
                 }
+            };
+            unsafe {
+                *their_packet.get() = Some(match (output, try_result) {
+                    (Some(data), Ok(_)) => Ok(data),
+                    (None, Err(cause)) => Err(cause),
+                    _ => unreachable!()
+                });
             }
         };
-        (unsafe { imp::create(stack_size, box main) }, my_thread)
-    }
-
-    /// Spawn a detached thread, and return a handle to it.
-    ///
-    /// The new child thread may outlive its parent.
-    pub fn spawn(self, f: proc():Send) -> Thread {
-        let (native, thread) = self.core_spawn(f, proc(_) {});
-        unsafe { imp::detach(native) };
-        thread
-    }
-
-    /// Spawn a joinable thread, and return an RAII guard for it.
-    pub fn with_join<T: Send>(self, f: proc():Send -> T) -> JoinGuard<T> {
-        // We need the address of the packet to fill in to be stable so when
-        // `main` fills it in it's still valid, so allocate an extra box to do
-        // so.
-        let any: Box<Any+Send> = box 0u8; // sentinel value
-        let my_packet = box Err(any);
-        let their_packet: *mut Result<T> = unsafe {
-            *mem::transmute::<&Box<Result<T>>, *const *mut Result<T>>(&my_packet)
-        };
-
-        let (native, thread) = self.core_spawn(f, proc(result) {
-            unsafe { *their_packet = result; }
-        });
 
         JoinGuard {
-            native: native,
+            native: unsafe { imp::create(stack_size, Thunk::new(main)) },
             joined: false,
-            packet: Some(my_packet),
-            thread: thread,
+            packet: my_packet,
+            thread: my_thread,
         }
     }
 }
-
-/// A convenience function for creating configurations.
-pub fn cfg() -> Cfg { Cfg::new() }
 
 struct Inner {
     name: Option<String>,
@@ -316,6 +292,7 @@ pub struct Thread {
 }
 
 impl Thread {
+    // Used only internally to construct a thread object without spawning
     fn new(name: Option<String>) -> Thread {
         Thread {
             inner: Arc::new(Inner {
@@ -326,16 +303,16 @@ impl Thread {
         }
     }
 
-    /// Spawn a detached thread, and return a handle to it.
+    /// Spawn a new joinable thread, returning a `JoinGuard` for it.
     ///
-    /// The new child thread may outlive its parent.
-    pub fn spawn(f: proc():Send) -> Thread {
-        Cfg::new().spawn(f)
-    }
-
-    /// Spawn a joinable thread, and return an RAII guard for it.
-    pub fn with_join<T: Send>(f: proc():Send -> T) -> JoinGuard<T> {
-        Cfg::new().with_join(f)
+    /// The join guard can be used to explicitly join the child thead (via
+    /// `join`), returning `Result<T>`, or it will implicitly join the child
+    /// upon being dropped. To detach the child, allowing it to outlive the
+    /// current thread, use `detach`.  See the module documentation for additional details.
+    pub fn spawn<T, F>(f: F) -> JoinGuard<T> where
+        T: Send, F: FnOnce() -> T, F: Send
+    {
+        Builder::new().spawn(f)
     }
 
     /// Gets a handle to the thread that invokes it.
@@ -353,10 +330,15 @@ impl Thread {
         thread_info::panicking()
     }
 
-    // http://cr.openjdk.java.net/~stefank/6989984.1/raw_files/new/src/os/linux/vm/os_linux.cpp
     /// Block unless or until the current thread's token is made available (may wake spuriously).
     ///
     /// See the module doc for more detail.
+    //
+    // The implementation currently uses the trivial strategy of a Mutex+Condvar
+    // with wakeup flag, which does not actually allow spurious wakeups. In the
+    // future, this will be implemented in a more efficient way, perhaps along the lines of
+    //   http://cr.openjdk.java.net/~stefank/6989984.1/raw_files/new/src/os/linux/vm/os_linux.cpp
+    // or futuxes, and in either case may allow spurious wakeups.
     pub fn park() {
         let thread = Thread::current();
         let mut guard = thread.inner.lock.lock();
@@ -394,43 +376,52 @@ impl thread_info::NewThread for Thread {
 pub type Result<T> = ::result::Result<T, Box<Any + Send>>;
 
 #[must_use]
-/// An RAII guard that will block until thread termination when dropped.
+/// An RAII-style guard that will block until thread termination when dropped.
+///
+/// The type `T` is the return type for the thread's main function.
 pub struct JoinGuard<T> {
     native: imp::rust_thread,
     thread: Thread,
     joined: bool,
-    packet: Option<Box<Result<T>>>,
+    packet: Arc<UnsafeCell<Option<Result<T>>>>,
 }
 
 impl<T: Send> JoinGuard<T> {
     /// Extract a handle to the thread this guard will join on.
-    pub fn thread(&self) -> Thread {
-        self.thread.clone()
+    pub fn thread(&self) -> &Thread {
+        &self.thread
     }
 
     /// Wait for the associated thread to finish, returning the result of the thread's
     /// calculation.
+    ///
+    /// If the child thread panics, `Err` is returned with the parameter given
+    /// to `panic`.
     pub fn join(mut self) -> Result<T> {
         assert!(!self.joined);
         unsafe { imp::join(self.native) };
         self.joined = true;
-        let box res =  self.packet.take().unwrap();
-        res
+        unsafe {
+            (*self.packet.get()).take().unwrap()
+        }
+    }
+
+    /// Detaches the child thread, allowing it to outlive its parent.
+    pub fn detach(mut self) {
+        unsafe { imp::detach(self.native) };
+        self.joined = true; // avoid joining in the destructor
     }
 }
 
 #[unsafe_destructor]
 impl<T: Send> Drop for JoinGuard<T> {
     fn drop(&mut self) {
-        // This is required for correctness. If this is not done then the thread
-        // would fill in a return box which no longer exists.
         if !self.joined {
             unsafe { imp::join(self.native) };
         }
     }
 }
 
-// TODO: fix tests
 #[cfg(test)]
 mod test {
     use any::{Any, AnyRefExt};
@@ -440,21 +431,22 @@ mod test {
     use result;
     use std::io::{ChanReader, ChanWriter};
     use string::String;
-    use super::{Thread, cfg};
+    use thunk::Thunk;
+    use super::{Thread, Builder};
 
     // !!! These tests are dangerous. If something is buggy, they will hang, !!!
     // !!! instead of exiting cleanly. This might wedge the buildbots.       !!!
 
     #[test]
     fn test_unnamed_thread() {
-        Thread::with_join(proc() {
+        Thread::spawn(move|| {
             assert!(Thread::current().name().is_none());
         }).join().map_err(|_| ()).unwrap();
     }
 
     #[test]
     fn test_named_thread() {
-        cfg().name("ada lovelace".to_string()).with_join(proc() {
+        Builder::new().name("ada lovelace".to_string()).spawn(move|| {
             assert!(Thread::current().name().unwrap() == "ada lovelace".to_string());
         }).join().map_err(|_| ()).unwrap();
     }
@@ -462,15 +454,15 @@ mod test {
     #[test]
     fn test_run_basic() {
         let (tx, rx) = channel();
-        Thread::spawn(proc() {
+        Thread::spawn(move|| {
             tx.send(());
-        });
+        }).detach();
         rx.recv();
     }
 
     #[test]
     fn test_join_success() {
-        match Thread::with_join::<String>(proc() {
+        match Thread::spawn(move|| -> String {
             "Success!".to_string()
         }).join().as_ref().map(|s| s.as_slice()) {
             result::Result::Ok("Success!") => (),
@@ -480,7 +472,7 @@ mod test {
 
     #[test]
     fn test_join_panic() {
-        match Thread::with_join(proc() {
+        match Thread::spawn(move|| {
             panic!()
         }).join() {
             result::Result::Err(_) => (),
@@ -496,13 +488,13 @@ mod test {
 
         fn f(i: int, tx: Sender<()>) {
             let tx = tx.clone();
-            Thread::spawn(proc() {
+            Thread::spawn(move|| {
                 if i == 0 {
                     tx.send(());
                 } else {
                     f(i - 1, tx);
                 }
-            });
+            }).detach();
 
         }
         f(10, tx);
@@ -513,25 +505,25 @@ mod test {
     fn test_spawn_sched_childs_on_default_sched() {
         let (tx, rx) = channel();
 
-        Thread::spawn(proc() {
-            Thread::spawn(proc() {
+        Thread::spawn(move|| {
+            Thread::spawn(move|| {
                 tx.send(());
-            });
-        });
+            }).detach();
+        }).detach();
 
         rx.recv();
     }
 
-    fn avoid_copying_the_body(spawnfn: |v: proc():Send|) {
+    fn avoid_copying_the_body<F>(spawnfn: F) where F: FnOnce(Thunk) {
         let (tx, rx) = channel::<uint>();
 
         let x = box 1;
         let x_in_parent = (&*x) as *const int as uint;
 
-        spawnfn(proc() {
+        spawnfn(Thunk::new(move|| {
             let x_in_child = (&*x) as *const int as uint;
             tx.send(x_in_child);
-        });
+        }));
 
         let x_in_child = rx.recv();
         assert_eq!(x_in_parent, x_in_child);
@@ -539,24 +531,25 @@ mod test {
 
     #[test]
     fn test_avoid_copying_the_body_spawn() {
-        avoid_copying_the_body(|v| { Thread::spawn(v); });
+        avoid_copying_the_body(|v| {
+            Thread::spawn(move || v.invoke(())).detach();
+        });
     }
 
     #[test]
     fn test_avoid_copying_the_body_thread_spawn() {
         avoid_copying_the_body(|f| {
-            let builder = cfg();
-            builder.spawn(proc() {
-                f();
-            });
+            Thread::spawn(move|| {
+                f.invoke(());
+            }).detach();
         })
     }
 
     #[test]
     fn test_avoid_copying_the_body_join() {
         avoid_copying_the_body(|f| {
-            let _ = Thread::with_join(proc() {
-                f()
+            let _ = Thread::spawn(move|| {
+                f.invoke(())
             }).join();
         })
     }
@@ -568,24 +561,24 @@ mod test {
         // (well, it would if the constant were 8000+ - I lowered it to be more
         // valgrind-friendly. try this at home, instead..!)
         static GENERATIONS: uint = 16;
-        fn child_no(x: uint) -> proc(): Send {
-            return proc() {
+        fn child_no(x: uint) -> Thunk {
+            return Thunk::new(move|| {
                 if x < GENERATIONS {
-                    Thread::spawn(child_no(x+1));
+                    Thread::spawn(move|| child_no(x+1).invoke(())).detach();
                 }
-            }
+            });
         }
-        Thread::spawn(child_no(0));
+        Thread::spawn(|| child_no(0).invoke(())).detach();
     }
 
     #[test]
     fn test_simple_newsched_spawn() {
-        Thread::spawn(proc()());
+        Thread::spawn(move || {}).detach();
     }
 
     #[test]
     fn test_try_panic_message_static_str() {
-        match Thread::with_join(proc() {
+        match Thread::spawn(move|| {
             panic!("static string");
         }).join() {
             Err(e) => {
@@ -599,7 +592,7 @@ mod test {
 
     #[test]
     fn test_try_panic_message_owned_str() {
-        match Thread::with_join(proc() {
+        match Thread::spawn(move|| {
             panic!("owned string".to_string());
         }).join() {
             Err(e) => {
@@ -613,7 +606,7 @@ mod test {
 
     #[test]
     fn test_try_panic_message_any() {
-        match Thread::with_join(proc() {
+        match Thread::spawn(move|| {
             panic!(box 413u16 as Box<Any + Send>);
         }).join() {
             Err(e) => {
@@ -631,7 +624,7 @@ mod test {
     fn test_try_panic_message_unit_struct() {
         struct Juju;
 
-        match Thread::with_join(proc() {
+        match Thread::spawn(move|| {
             panic!(Juju)
         }).join() {
             Err(ref e) if e.is::<Juju>() => {}
@@ -645,9 +638,9 @@ mod test {
         let mut reader = ChanReader::new(rx);
         let stdout = ChanWriter::new(tx);
 
-        let r = cfg().stdout(box stdout as Box<Writer + Send>).with_join(proc() {
-                print!("Hello, world!");
-            }).join();
+        let r = Builder::new().stdout(box stdout as Box<Writer + Send>).spawn(move|| {
+            print!("Hello, world!");
+        }).join();
         assert!(r.is_ok());
 
         let output = reader.read_to_string().unwrap();

@@ -16,7 +16,7 @@ fn main() {
     let mut reader = ChanReader::new(rx);
     let stderr = ChanWriter::new(tx);
 
-    let res = thread::cfg().stderr(box stderr as Box<Writer + Send>).with_join(move|| -> () {
+    let res = thread::Builder::new().stderr(box stderr as Box<Writer + Send>).spawn(move|| -> () {
         panic!("Hello, world!")
     }).join();
     assert!(res.is_err());

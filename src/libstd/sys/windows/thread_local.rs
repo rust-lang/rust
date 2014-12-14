@@ -14,8 +14,7 @@ use libc::types::os::arch::extra::{DWORD, LPVOID, BOOL};
 
 use mem;
 use rt;
-use rt::exclusive::Exclusive;
-use sync::{ONCE_INIT, Once};
+use sync::{ONCE_INIT, Once, Mutex};
 
 pub type Key = DWORD;
 pub type Dtor = unsafe extern fn(*mut u8);
@@ -55,7 +54,7 @@ pub type Dtor = unsafe extern fn(*mut u8);
 //                        /threading/thread_local_storage_win.cc#L42
 
 static INIT_DTORS: Once = ONCE_INIT;
-static mut DTORS: *mut Exclusive<Vec<(Key, Dtor)>> = 0 as *mut _;
+static mut DTORS: *mut Mutex<Vec<(Key, Dtor)>> = 0 as *mut _;
 
 // -------------------------------------------------------------------------
 // Native bindings
@@ -126,13 +125,13 @@ extern "system" {
 // FIXME: This could probably be at least a little faster with a BTree.
 
 fn init_dtors() {
-    let dtors = box Exclusive::new(Vec::<(Key, Dtor)>::new());
+    let dtors = box Mutex::new(Vec::<(Key, Dtor)>::new());
     unsafe {
         DTORS = mem::transmute(dtors);
     }
 
     rt::at_exit(move|| unsafe {
-        mem::transmute::<_, Box<Exclusive<Vec<(Key, Dtor)>>>>(DTORS);
+        mem::transmute::<_, Box<Mutex<Vec<(Key, Dtor)>>>>(DTORS);
         DTORS = 0 as *mut _;
     });
 }

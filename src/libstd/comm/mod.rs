@@ -59,26 +59,30 @@
 //! Simple usage:
 //!
 //! ```
+//! use std::thread::Thread;
+//!
 //! // Create a simple streaming channel
 //! let (tx, rx) = channel();
-//! spawn(move|| {
+//! Thread::spawn(move|| {
 //!     tx.send(10i);
-//! });
+//! }).detach();
 //! assert_eq!(rx.recv(), 10i);
 //! ```
 //!
 //! Shared usage:
 //!
 //! ```
-//! // Create a shared channel that can be sent along from many tasks
+//! use std::thread::Thread;
+//!
+//! // Create a shared channel that can be sent along from many threads
 //! // where tx is the sending half (tx for transmission), and rx is the receiving
 //! // half (rx for receiving).
 //! let (tx, rx) = channel();
 //! for i in range(0i, 10i) {
 //!     let tx = tx.clone();
-//!     spawn(move|| {
+//!     Thread::spawn(move|| {
 //!         tx.send(i);
-//!     })
+//!     }).detach()
 //! }
 //!
 //! for _ in range(0i, 10i) {
@@ -100,11 +104,13 @@
 //! Synchronous channels:
 //!
 //! ```
+//! use std::thread::Thread;
+//!
 //! let (tx, rx) = sync_channel::<int>(0);
-//! spawn(move|| {
+//! Thread::spawn(move|| {
 //!     // This will wait for the parent task to start receiving
 //!     tx.send(53);
-//! });
+//! }).detach();
 //! rx.recv();
 //! ```
 //!
@@ -451,15 +457,17 @@ impl<T> UnsafeFlavor<T> for Receiver<T> {
 /// # Example
 ///
 /// ```
+/// use std::thread::Thread;
+///
 /// // tx is is the sending half (tx for transmission), and rx is the receiving
 /// // half (rx for receiving).
 /// let (tx, rx) = channel();
 ///
 /// // Spawn off an expensive computation
-/// spawn(move|| {
+/// Thread::spawn(move|| {
 /// #   fn expensive_computation() {}
 ///     tx.send(expensive_computation());
-/// });
+/// }).detach();
 ///
 /// // Do some useful work for awhile
 ///
@@ -490,15 +498,17 @@ pub fn channel<T: Send>() -> (Sender<T>, Receiver<T>) {
 /// # Example
 ///
 /// ```
+/// use std::thread::Thread;
+///
 /// let (tx, rx) = sync_channel(1);
 ///
 /// // this returns immediately
 /// tx.send(1i);
 ///
-/// spawn(move|| {
+/// Thread::spawn(move|| {
 ///     // this will block until the previous message has been received
 ///     tx.send(2i);
-/// });
+/// }).detach();
 ///
 /// assert_eq!(rx.recv(), 1i);
 /// assert_eq!(rx.recv(), 2i);
@@ -1242,7 +1252,7 @@ mod test {
 
     test! { fn oneshot_single_thread_recv_chan_close() {
         // Receiving on a closed chan will panic
-        let res = Thread::with_join(move|| {
+        let res = Thread::spawn(move|| {
             let (tx, rx) = channel::<int>();
             drop(tx);
             rx.recv();
@@ -1314,7 +1324,7 @@ mod test {
         spawn(move|| {
             drop(tx);
         });
-        let res = Thread::with_join(move|| {
+        let res = Thread::spawn(move|| {
             assert!(rx.recv() == box 10);
         }).join();
         assert!(res.is_err());
@@ -1336,7 +1346,7 @@ mod test {
             spawn(move|| {
                 drop(rx);
             });
-            let _ = Thread::with_join(move|| {
+            let _ = Thread::spawn(move|| {
                 tx.send(1);
             }).join();
         }
@@ -1345,8 +1355,8 @@ mod test {
     test! { fn oneshot_multi_thread_recv_close_stress() {
         for _ in range(0, stress_factor()) {
             let (tx, rx) = channel::<int>();
-            spawn(proc() {
-                let res = Thread::with_join(move|| {
+            spawn(move|| {
+                let res = Thread::spawn(move|| {
                     rx.recv();
                 }).join();
                 assert!(res.is_err());
@@ -1664,7 +1674,7 @@ mod sync_tests {
 
     test! { fn oneshot_single_thread_recv_chan_close() {
         // Receiving on a closed chan will panic
-        let res = Thread::with_join(move|| {
+        let res = Thread::spawn(move|| {
             let (tx, rx) = sync_channel::<int>(0);
             drop(tx);
             rx.recv();
@@ -1741,7 +1751,7 @@ mod sync_tests {
         spawn(move|| {
             drop(tx);
         });
-        let res = Thread::with_join(move|| {
+        let res = Thread::spawn(move|| {
             assert!(rx.recv() == box 10);
         }).join();
         assert!(res.is_err());
@@ -1763,7 +1773,7 @@ mod sync_tests {
             spawn(move|| {
                 drop(rx);
             });
-            let _ = Thread::with_join(move || {
+            let _ = Thread::spawn(move || {
                 tx.send(1);
             }).join();
         }
@@ -1772,8 +1782,8 @@ mod sync_tests {
     test! { fn oneshot_multi_thread_recv_close_stress() {
         for _ in range(0, stress_factor()) {
             let (tx, rx) = sync_channel::<int>(0);
-            spawn(proc() {
-                let res = Thread::with_join(move|| {
+            spawn(move|| {
+                let res = Thread::spawn(move|| {
                     rx.recv();
                 }).join();
                 assert!(res.is_err());

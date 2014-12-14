@@ -445,7 +445,7 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
             loop {
                 //waiting 1 second for gdbserver start
                 timer::sleep(Duration::milliseconds(1000));
-                let result = Thread::with_join(move || {
+                let result = Thread::spawn(move || {
                     tcp::TcpStream::connect("127.0.0.1:5039").unwrap();
                 }).join();
                 if result.is_err() {

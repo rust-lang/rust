@@ -13,7 +13,7 @@
 use thread::Thread;
 use sync::atomic::{AtomicBool, INIT_ATOMIC_BOOL, Ordering};
 use sync::Arc;
-use kinds::marker::NoSend;
+use kinds::marker::{NoSend, NoSync};
 use mem;
 use clone::Clone;
 
@@ -30,6 +30,7 @@ pub struct SignalToken {
 pub struct WaitToken {
     inner: Arc<Inner>,
     no_send: NoSend,
+    no_sync: NoSync,
 }
 
 pub fn tokens() -> (WaitToken, SignalToken) {
@@ -40,6 +41,7 @@ pub fn tokens() -> (WaitToken, SignalToken) {
     let wait_token = WaitToken {
         inner: inner.clone(),
         no_send: NoSend,
+        no_sync: NoSync,
     };
     let signal_token = SignalToken {
         inner: inner

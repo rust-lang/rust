@@ -45,7 +45,7 @@ pub fn cleanup() {
             let queue: Box<Queue> = mem::transmute(queue);
             let v = mem::replace(&mut *queue.lock(), Vec::new());
             for to_run in v.into_iter() {
-                to_run.invoke();
+                to_run.invoke(());
             }
         }
     }

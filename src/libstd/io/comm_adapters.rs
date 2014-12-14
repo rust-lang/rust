@@ -167,7 +167,7 @@ mod test {
           tx.send(vec![3u8, 4u8]);
           tx.send(vec![5u8, 6u8]);
           tx.send(vec![7u8, 8u8]);
-        });
+        }).detach();
 
         let mut reader = ChanReader::new(rx);
         let mut buf = [0u8, ..3];
@@ -210,7 +210,7 @@ mod test {
           tx.send(b"rld\nhow ".to_vec());
           tx.send(b"are you?".to_vec());
           tx.send(b"".to_vec());
-        });
+        }).detach();
 
         let mut reader = ChanReader::new(rx);
 
@@ -229,11 +229,7 @@ mod test {
         writer.write_be_u32(42).unwrap();
 
         let wanted = vec![0u8, 0u8, 0u8, 42u8];
-<<<<<<< HEAD
-        let got = match task::try(move|| { rx.recv() }) {
-=======
-        let got = match Thread::with_join(proc() { rx.recv() }).join() {
->>>>>>> Fallout from new thread API
+        let got = match Thread::spawn(move|| { rx.recv() }).join() {
             Ok(got) => got,
             Err(_) => panic!(),
         };

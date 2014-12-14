@@ -42,14 +42,15 @@
 //! ```
 //! use std::sync::Arc;
 //! use std::sync::atomic::{AtomicUint, SeqCst};
+//! use std::thread::Thread;
 //!
 //! fn main() {
 //!     let spinlock = Arc::new(AtomicUint::new(1));
 //!
 //!     let spinlock_clone = spinlock.clone();
-//!     spawn(move|| {
+//!     Thread::spawn(move|| {
 //!         spinlock_clone.store(0, SeqCst);
-//!     });
+//!     }).detach();
 //!
 //!     // Wait for the other task to release the lock
 //!     while spinlock.load(SeqCst) != 0 {}
@@ -61,6 +62,7 @@
 //! ```
 //! use std::sync::Arc;
 //! use std::sync::atomic::{AtomicOption, SeqCst};
+//! use std::thread::Thread;
 //!
 //! fn main() {
 //!     struct BigObject;
@@ -68,14 +70,14 @@
 //!     let shared_big_object = Arc::new(AtomicOption::empty());
 //!
 //!     let shared_big_object_clone = shared_big_object.clone();
-//!     spawn(move|| {
+//!     Thread::spawn(move|| {
 //!         let unwrapped_big_object = shared_big_object_clone.take(SeqCst);
 //!         if unwrapped_big_object.is_some() {
 //!             println!("got a big object from another task");
 //!         } else {
 //!             println!("other task hasn't sent big object yet");
 //!         }
-//!     });
+//!     }).detach();
 //!
 //!     shared_big_object.swap(box BigObject, SeqCst);
 //! }

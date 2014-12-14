@@ -17,21 +17,24 @@ use boxed::Box;
 use thread;
 use kinds::Send;
 use result::Result;
+use ops::FnOnce;
 
-/// Deprecate: use `std::thread::Cfg` instead.
-#[deprecated = "use std::thread::Cfg instead"]
-pub type TaskBuilder = thread::Cfg;
+/// Deprecate: use `std::thread::Builder` instead.
+#[deprecated = "use std::thread::Builder instead"]
+pub type TaskBuilder = thread::Builder;
 
-/// Deprecated: use `std::thread::Thread::spawn` instead.
-#[deprecated = "use std::thread::Thread::spawn instead"]
-pub fn spawn(f: proc(): Send) {
-    thread::Thread::spawn(f);
+/// Deprecated: use `std::thread::Thread::spawn` and `detach` instead.
+#[deprecated = "use std::thread::Thread::spawn and detach instead"]
+pub fn spawn<F>(f: F) where F: FnOnce(), F: Send {
+    thread::Thread::spawn(f).detach();
 }
 
-/// Deprecated: use `std::thread::Thread::with_join instead`.
-#[deprecated = "use std::thread::Thread::with_join instead"]
-pub fn try<T: Send>(f: proc(): Send -> T) -> Result<T, Box<Any + Send>> {
-    thread::Thread::with_join(f).join()
+/// Deprecated: use `std::thread::Thread::spawn` and `join` instead.
+#[deprecated = "use std::thread::Thread::spawn and join instead"]
+pub fn try<T, F>(f: F) -> Result<T, Box<Any + Send>> where
+    T: Send, F: FnOnce() -> T, F: Send
+{
+    thread::Thread::spawn(f).join()
 }
 
 /// Deprecated: use `std::thread::Thread::yield_now instead`.
