@@ -230,7 +230,6 @@ pub mod hash;
 /* Threads and communication */
 
 pub mod task;
-#[allow(missing_docs)]
 pub mod thread;
 pub mod sync;
 pub mod comm;

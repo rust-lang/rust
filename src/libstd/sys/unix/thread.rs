@@ -16,6 +16,7 @@ use mem;
 use ptr;
 use libc::consts::os::posix01::{PTHREAD_CREATE_JOINABLE, PTHREAD_STACK_MIN};
 use libc;
+use thunk::Thunk;
 
 use sys_common::stack::RED_ZONE;
 use sys_common::thread::*;
@@ -153,7 +154,7 @@ pub mod guard {
     }
 }
 
-pub unsafe fn create(stack: uint, p: Box<proc():Send>) -> rust_thread {
+pub unsafe fn create(stack: uint, p: Thunk) -> rust_thread {
     let mut native: libc::pthread_t = mem::zeroed();
     let mut attr: libc::pthread_attr_t = mem::zeroed();
     assert_eq!(pthread_attr_init(&mut attr), 0);
@@ -181,13 +182,13 @@ pub unsafe fn create(stack: uint, p: Box<proc():Send>) -> rust_thread {
         },
     };
 
-    let arg: *mut libc::c_void = mem::transmute(p);
+    let arg: *mut libc::c_void = mem::transmute(box p); // must box since sizeof(p)=2*uint
     let ret = pthread_create(&mut native, &attr, thread_start, arg);
     assert_eq!(pthread_attr_destroy(&mut attr), 0);
 
     if ret != 0 {
         // be sure to not leak the closure
-        let _p: Box<proc():Send> = mem::transmute(arg);
+        let _p: Box<Box<FnOnce()+Send>> = mem::transmute(arg);
         panic!("failed to spawn native thread: {}", ret);
     }
     native

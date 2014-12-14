@@ -1126,7 +1126,7 @@ pub fn run_test(opts: &TestOpts,
             let mut reader = ChanReader::new(rx);
             let stdout = ChanWriter::new(tx.clone());
             let stderr = ChanWriter::new(tx);
-            let mut cfg = thread::cfg().name(match desc.name {
+            let mut cfg = thread::Builder::new().name(match desc.name {
                 DynTestName(ref name) => name.clone().to_string(),
                 StaticTestName(name) => name.to_string(),
             });
@@ -1137,11 +1137,11 @@ pub fn run_test(opts: &TestOpts,
                 cfg = cfg.stderr(box stderr as Box<Writer + Send>);
             }
 
-            let result_guard = cfg.with_join(testfn);
+            let result_guard = cfg.spawn(move || { testfn.invoke(()) });
             let stdout = reader.read_to_end().unwrap().into_iter().collect();
             let test_result = calc_result(&desc, result_guard.join());
             monitor_ch.send((desc.clone(), test_result, stdout));
-        });
+        }).detach();
     }
 
     match testfn {

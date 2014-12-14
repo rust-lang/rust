@@ -27,6 +27,7 @@ use os;
 use thunk::Thunk;
 use kinds::Send;
 use thread::Thread;
+use ops::FnOnce;
 use sys;
 use sys_common;
 use sys_common::thread_info::{mod, NewThread};
@@ -145,8 +146,8 @@ fn lang_start(main: *const u8, argc: int, argv: *const *const u8) -> int {
 ///
 /// It is forbidden for procedures to register more `at_exit` handlers when they
 /// are running, and doing so will lead to a process abort.
-pub fn at_exit(f: proc():Send) {
-    at_exit_imp::push(f);
+pub fn at_exit<F:FnOnce()+Send>(f: F) {
+    at_exit_imp::push(Thunk::new(f));
 }
 
 /// One-time runtime cleanup.

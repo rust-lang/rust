@@ -14,6 +14,7 @@ use boxed::Box;
 use mem;
 use uint;
 use libc;
+use thunk::Thunk;
 use sys_common::stack;
 use sys::{thread, stack_overflow};
 
@@ -26,8 +27,8 @@ pub fn start_thread(main: *mut libc::c_void) -> thread::rust_thread_return {
     unsafe {
         stack::record_os_managed_stack_bounds(0, uint::MAX);
         let handler = stack_overflow::Handler::new();
-        let f: Box<proc()> = mem::transmute(main);
-        (*f)();
+        let f: Box<Thunk> = mem::transmute(main);
+        f.invoke(());
         drop(handler);
         mem::transmute(0 as thread::rust_thread_return)
     }

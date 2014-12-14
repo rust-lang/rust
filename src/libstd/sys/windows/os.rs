@@ -24,6 +24,9 @@ use path::{Path, GenericPath, BytesContainer};
 use ptr::{mod, RawPtr};
 use sync::atomic::{AtomicInt, INIT_ATOMIC_INT, SeqCst};
 use sys::fs::FileDesc;
+use option::Option;
+use option::Option::{Some, None};
+use slice;
 
 use os::TMPBUF_SZ;
 use libc::types::os::arch::extra::DWORD;
@@ -138,7 +141,7 @@ pub fn fill_utf16_buf_and_decode(f: |*mut u16, DWORD| -> DWORD) -> Option<String
                 // set `res` to None and continue.
                 let s = String::from_utf16(sub)
                     .expect("fill_utf16_buf_and_decode: closure created invalid UTF-16");
-                res = option::Some(s)
+                res = Some(s)
             }
         }
         return res;

@@ -34,7 +34,7 @@ impl Drop for Handler {
 // It returns the guard page of the current task or 0 if that
 // guard page doesn't exist. None is returned if there's currently
 // no local task.
-unsafe fn get_task_guard_page() -> Option<uint> {
+unsafe fn get_task_guard_page() -> uint {
     thread_info::stack_guard()
 }
 
@@ -55,9 +55,7 @@ extern "system" fn vectored_handler(ExceptionInfo: *mut EXCEPTION_POINTERS) -> L
         // however stack checks by limit should be disabled on Windows
         stack::record_sp_limit(0);
 
-        if get_task_guard_page().is_some() {
-           report_overflow();
-        }
+        report_overflow();
 
         EXCEPTION_CONTINUE_SEARCH
     }

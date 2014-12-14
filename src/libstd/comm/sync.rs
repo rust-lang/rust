@@ -108,20 +108,18 @@ fn wait<'a, 'b, T: Send>(lock: &'a Mutex<State<T>>,
                          f: fn(SignalToken) -> Blocker)
                          -> MutexGuard<'a, State<T>>
 {
-    let me: Box<Task> = Local::take();
-    me.deschedule(1, |task| {
-        match mem::replace(&mut guard.blocker, f(task)) {
-            NoneBlocked => {}
-            _ => unreachable!(),
-        }
-        mem::drop(guard);
-        Ok(())
-    });
-    lock.lock()
+    let (wait_token, signal_token) = blocking::tokens();
+    match mem::replace(&mut guard.blocker, f(signal_token)) {
+        NoneBlocked => {}
+        _ => unreachable!(),
+    }
+    drop(guard);        // unlock
+    wait_token.wait();  // block
+    lock.lock()         // relock
 }
 
-/// Wakes up a task, dropping the lock at the correct time
-fn wakeup<T>(task: BlockedTask, guard: MutexGuard<State<T>>) {
+/// Wakes up a thread, dropping the lock at the correct time
+fn wakeup<T>(token: SignalToken, guard: MutexGuard<State<T>>) {
     // We need to be careful to wake up the waiting task *outside* of the mutex
     // in case it incurs a context switch.
     drop(guard);

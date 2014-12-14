@@ -26,6 +26,7 @@
 
 #![allow(missing_docs)]
 #![allow(non_snake_case)]
+#![allow(unused_imports)]
 
 pub use self::MemoryMapKind::*;
 pub use self::MapOption::*;
@@ -37,7 +38,7 @@ use fmt;
 use io::{IoResult, IoError};
 use iter::{Iterator, IteratorExt};
 use kinds::Copy;
-use libc::{c_void, c_int};
+use libc::{c_void, c_int, c_char};
 use libc;
 use boxed::Box;
 use ops::{Drop, FnOnce};

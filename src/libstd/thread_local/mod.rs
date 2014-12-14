@@ -68,6 +68,7 @@ pub mod scoped;
 ///
 /// ```
 /// use std::cell::RefCell;
+/// use std::thread::Thread;
 ///
 /// thread_local!(static FOO: RefCell<uint> = RefCell::new(1));
 ///
@@ -77,12 +78,12 @@ pub mod scoped;
 /// });
 ///
 /// // each thread starts out with the initial value of 1
-/// spawn(move|| {
+/// Thread::spawn(move|| {
 ///     FOO.with(|f| {
 ///         assert_eq!(*f.borrow(), 1);
 ///         *f.borrow_mut() = 3;
 ///     });
-/// });
+/// }).detach();
 ///
 /// // we retain our original value of 2 despite the child thread
 /// FOO.with(|f| {
@@ -533,7 +534,7 @@ mod tests {
             }
         }
 
-        Thread::with_join(move|| {
+        Thread::spawn(move|| {
             drop(S1);
         }).join();
     }
@@ -551,7 +552,7 @@ mod tests {
             }
         }
 
-        Thread::with_join(move|| unsafe {
+        Thread::spawn(move|| unsafe {
             K1.with(|s| *s.get() = Some(S1));
         }).join();
     }

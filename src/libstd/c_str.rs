@@ -637,7 +637,7 @@ mod tests {
 
     #[test]
     fn test_to_c_str_fail() {
-        assert!(Thread::with_join(move|| { "he\x00llo".to_c_str() }).join().is_err());
+        assert!(Thread::spawn(move|| { "he\x00llo".to_c_str() }).join().is_err());
     }
 
     #[test]

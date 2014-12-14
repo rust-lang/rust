@@ -1344,6 +1344,7 @@ pub mod raw {
 
 #[cfg(test)]
 mod tests {
+    use std::boxed::Box;
     use std::cell::Cell;
     use std::default::Default;
     use std::mem;
@@ -1627,7 +1628,10 @@ mod tests {
     #[test]
     fn test_swap_remove_noncopyable() {
         // Tests that we don't accidentally run destructors twice.
-        let mut v = vec![Box::new(()), Box::new(()), Box::new(())];
+        let mut v = Vec::new();
+        v.push(box 0u8);
+        v.push(box 0u8);
+        v.push(box 0u8);
         let mut _e = v.swap_remove(0);
         assert_eq!(v.len(), 2);
         _e = v.swap_remove(1);

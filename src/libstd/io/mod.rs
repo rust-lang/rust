@@ -105,6 +105,7 @@
 //!     # #![allow(dead_code)]
 //!     use std::io::{TcpListener, TcpStream};
 //!     use std::io::{Acceptor, Listener};
+//!     use std::thread::Thread;
 //!
 //!     let listener = TcpListener::bind("127.0.0.1:80");
 //!
@@ -119,10 +120,10 @@
 //!     for stream in acceptor.incoming() {
 //!         match stream {
 //!             Err(e) => { /* connection failed */ }
-//!             Ok(stream) => spawn(move|| {
+//!             Ok(stream) => Thread::spawn(move|| {
 //!                 // connection succeeded
 //!                 handle_client(stream)
-//!             })
+//!             }).detach()
 //!         }
 //!     }
 //!

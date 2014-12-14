@@ -17,6 +17,7 @@ use ptr;
 use libc;
 use libc::types::os::arch::extra::{LPSECURITY_ATTRIBUTES, SIZE_T, BOOL,
                                    LPVOID, DWORD, LPDWORD, HANDLE};
+use thunk::Thunk;
 use sys_common::stack::RED_ZONE;
 use sys_common::thread::*;
 
@@ -43,8 +44,8 @@ pub mod guard {
     }
 }
 
-pub unsafe fn create(stack: uint, p: Box<proc():Send>) -> rust_thread {
-    let arg: *mut libc::c_void = mem::transmute(p);
+pub unsafe fn create(stack: uint, p: Thunk) -> rust_thread {
+    let arg: *mut libc::c_void = mem::transmute(box p);
     // FIXME On UNIX, we guard against stack sizes that are too small but
     // that's because pthreads enforces that stacks are at least
     // PTHREAD_STACK_MIN bytes big.  Windows has no such lower limit, it's
@@ -60,7 +61,7 @@ pub unsafe fn create(stack: uint, p: Box<proc():Send>) -> rust_thread {
 
     if ret as uint == 0 {
         // be sure to not leak the closure
-        let _p: Box<proc():Send> = mem::transmute(arg);
+        let _p: Box<Thunk> = mem::transmute(arg);
         panic!("failed to spawn native thread: {}", ret);
     }
     return ret;

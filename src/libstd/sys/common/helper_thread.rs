@@ -82,16 +82,12 @@ impl<M: Send> Helper<M> {
                 *self.signal.get() = send as uint;
 
                 let t = f();
-<<<<<<< HEAD
-                task::spawn(move |:| {
-=======
-                Thread::spawn(proc() {
->>>>>>> Fallout from new thread API
+                Thread::spawn(move |:| {
                     helper(receive, rx, t);
                     let _g = self.lock.lock();
                     *self.shutdown.get() = true;
                     self.cond.notify_one()
-                });
+                }).detach();
 
                 rt::at_exit(move|:| { self.shutdown() });
                 *self.initialized.get() = true;
