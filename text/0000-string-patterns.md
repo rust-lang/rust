@@ -4,14 +4,10 @@
 
 # Summary
 
-> One para explanation of the feature.
-
 Stabilize all string functions working with search patterns around a new
-generic API that provides a unfied way to define and use those patterns.
+generic API that provides a unified way to define and use those patterns.
 
 # Motivation
-
-> Why are we doing this? What use cases does it support? What is the expected outcome?
 
 Right now, string slices define a couple of methods for string
 manipulation that work with user provided values that act as
@@ -31,9 +27,7 @@ This presents a couple of issues:
 - The API does not provide all operations for all types. (No `rsplit` for `&str` patterns)
 - The API is not extensible, eg to allow splitting at regex matches.
 - The API offers no way to statically decide between different basic search algorithms
-  for the same pattern, for example to use Boojer Moore string searching
-
-> TODO: Spelling above
+  for the same pattern, for example to use Boyer-Moore string searching.
 
 At the moment, the full set of relevant string methods roughly looks like this:
 
@@ -73,15 +67,7 @@ As an additional design goal, the new abstractions should also not pose a proble
 for optimization - like for iterators, a concrete instance should produce similar
 machine code to a hardcoded optimized loop written in C.
 
-> Idea: Parallel trait hierachy not using unsafe, that will use checks
-
 # Detailed design
-
-> This is the bulk of the RFC. Explain the design in enough detail for somebody familiar
-with the language to understand, and for somebody familiar with the compiler to implement.
-This should get into specifics and corner-cases, and include examples of how the feature is used.
-
-> Goal: A working draft with lifetimes
 
 ## New traits
 
@@ -118,7 +104,7 @@ impl<'a, F>  Pattern<'a> for F where F: FnOnce(char) -> bool { /* ... */ }
 impl<'a, 'b> Pattern<'a> for &'b Regex  { /* ... */ }
 ```
 
-The lifetime paramter on `Pattern` exists in order to allow threading the lifetime
+The lifetime parameter on `Pattern` exists in order to allow threading the lifetime
 of the haystack (the string to be searched through) through the API, and is a workaround
 for not having associated higher kinded types yet.
 
@@ -138,14 +124,12 @@ unsafe trait ReverseMatcher<'a>: Matcher<'a> {
 trait DoubleEndedMatcher<'a>: ReverseMatcher<'a> {}
 ```
 
-> TODO: Better name for the last trait
-
 The basic idea of a `Matcher` is to expose a `Iterator`-like interface for
 iterating through all matches of a pattern in the given haystack.
 
 Similar to iterators, depending on the concrete implementation a matcher can have
 additional capabilities that build on each other, which is why they will be
-defined in terms of a three-tier hierachy:
+defined in terms of a three-tier hierarchy:
 
 - `Matcher<'a>` is the basic trait that all matchers need to implement.
   It contains a `next_match()` method that returns the `start` and `end` indices of
@@ -168,7 +152,7 @@ defined in terms of a three-tier hierachy:
 As an important last detail, both
 `Matcher` and `ReverseMatcher` are marked as `unsafe` traits, even though the actual methods
 aren't. This is because every implementation of these traits need to ensure that all
-indices returned by `next_match` and `next_match_back` lie on valid utf8 boundaries
+indices returned by `next_match` and `next_match_back` lay on valid utf8 boundaries
 in the used haystack.
 
 Without that guarantee, every single match returned by a matcher would need to be
@@ -206,7 +190,7 @@ With the `Pattern` and `Matcher` traits defined and implemented, the actual `str
 methods will be changed to make use of them:
 
 ```rust
-pub trait StrExt {
+pub trait StrExt for ?Sized {
     fn contains<'a, P>(&'a self, pat: P) -> bool where P: Pattern<'a>;
 
     fn split<'a, P>(&'a self, pat: P) -> Splits<P> where P: Pattern<'a>;
@@ -241,6 +225,7 @@ pub trait StrExt {
 
 These are mainly the same pattern-using methods as currently existing, only
 changed to uniformly use the new pattern API. The main differences are:
+
 - Duplicates like `contains(char)` and `contains_str(&str)` got merged into single generic methods.
 - `CharEq`-centric naming got changed to `Pattern`-centric naming by changing `chars`
   to `matches` in a few method names.
@@ -328,18 +313,19 @@ the `prelude` (which would be unneeded anyway).
 
 ## Primary alternatives in details of this proposal
 
-The author identified two alternatives that might still give the same desired API long-term.
-The biggest wart is the lifetime parameter on the two trait families, so both try to avoid it:
+The author identified a primary alternative that might still give the same desired API long-term.
+The biggest wart is the lifetime parameter on the two trait families, so it tries to avoid it:
 
 - Stabilize on a variant around `CharEq` - This would mean hardcoded `_str` methods,
   generic `CharEq` methods, and no extensibility to types like `Regex`, but has a
   upgrade path for later upgrading `CharEq` to a full-fledged, HKT-using `Pattern` API, by providing
   back-comp generic impls.
-- Remove the lifetimes on `Matcher` and `Pattern` by requiring users of the API to store the haystack slice
-  themselves, duplicating it in the in-memory representation.
 
 ## Other alternatives in details of this proposal
 
+- Remove the lifetimes on `Matcher` and `Pattern` by requiring users of the API to store the haystack slice
+  themselves, duplicating it in the in-memory representation.
+  However, this still runs into HKT issues with the impl of `Pattern`.
 - Remove the lifetime parameter on `Pattern` and `Matcher` by making them fully unsafe API's,
   and require implementations to unsafely transmuting away and back the lifetime of the haystack slice.
 - Remove `unsafe` from the API by not marking the `Matcher` traits as `unsafe`, requiring users of the API
