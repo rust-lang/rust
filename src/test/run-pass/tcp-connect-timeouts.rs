@@ -34,7 +34,7 @@ fn eventual_timeout() {
 
     let (tx1, rx1) = channel();
     let (_tx2, rx2) = channel::<()>();
-    std::task::spawn(proc() {
+    std::task::spawn(move|| {
         let _l = TcpListener::bind(addr).unwrap().listen();
         tx1.send(());
         let _ = rx2.recv_opt();

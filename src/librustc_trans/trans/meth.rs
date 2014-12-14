@@ -550,67 +550,11 @@ pub fn get_vtable<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 emit_vtable_methods(bcx, id, substs).into_iter()
             }
             traits::VtableUnboxedClosure(closure_def_id, substs) => {
-                // Look up closure type
-                let self_ty = ty::node_id_to_type(bcx.tcx(), closure_def_id.node);
-                // Apply substitutions from closure param environment.
-                // The substitutions should have no type parameters
-                // remaining after passing through fulfill_obligation
-                let self_ty = self_ty.subst(bcx.tcx(), &substs);
-
-                let mut llfn = trans_fn_ref_with_substs(
+                let llfn = trans_fn_ref_with_substs(
                     bcx,
                     closure_def_id,
                     ExprId(0),
                     substs.clone());
-
-                {
-                    let unboxed_closures = bcx.tcx()
-                                              .unboxed_closures
-                                              .borrow();
-                    let closure_info =
-                        unboxed_closures.get(&closure_def_id)
-                                        .expect("get_vtable(): didn't find \
-                                                 unboxed closure");
-                    if closure_info.kind == ty::FnOnceUnboxedClosureKind {
-                        // Untuple the arguments and create an unboxing shim.
-                        let (new_inputs, new_output) = match self_ty.sty {
-                            ty::ty_unboxed_closure(_, _, ref substs) => {
-                                let mut new_inputs = vec![self_ty.clone()];
-                                match closure_info.closure_type.sig.inputs[0].sty {
-                                    ty::ty_tup(ref elements) => {
-                                        for element in elements.iter() {
-                                            new_inputs.push(element.subst(bcx.tcx(), substs));
-                                        }
-                                    }
-                                    _ => {
-                                        bcx.tcx().sess.bug("get_vtable(): closure \
-                                                            type wasn't a tuple")
-                                    }
-                                }
-                                (new_inputs,
-                                 closure_info.closure_type.sig.output.subst(bcx.tcx(), substs))
-                            },
-                            _ => bcx.tcx().sess.bug("get_vtable(): def wasn't an unboxed closure")
-                        };
-
-                        let closure_type = ty::BareFnTy {
-                            fn_style: closure_info.closure_type.fn_style,
-                            abi: Rust,
-                            sig: ty::FnSig {
-                                inputs: new_inputs,
-                                output: new_output,
-                                variadic: false,
-                            },
-                        };
-                        debug!("get_vtable(): closure type is {}",
-                               closure_type.repr(bcx.tcx()));
-                        llfn = trans_unboxing_shim(bcx,
-                                                   llfn,
-                                                   &closure_type,
-                                                   closure_def_id,
-                                                   &substs);
-                    }
-                }
 
                 (vec!(llfn)).into_iter()
             }
@@ -701,18 +645,15 @@ fn emit_vtable_methods<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                            token::get_name(name));
                     Some(C_null(Type::nil(ccx).ptr_to())).into_iter()
                 } else {
-                    let mut fn_ref = trans_fn_ref_with_substs(
+                    let fn_ref = trans_fn_ref_with_substs(
                         bcx,
                         m_id,
                         ExprId(0),
                         substs.clone());
-                    if m.explicit_self == ty::ByValueExplicitSelfCategory {
-                        fn_ref = trans_unboxing_shim(bcx,
-                                                     fn_ref,
-                                                     &m.fty,
-                                                     m_id,
-                                                     &substs);
-                    }
+
+                    // currently, at least, by-value self is not object safe
+                    assert!(m.explicit_self != ty::ByValueExplicitSelfCategory);
+
                     Some(fn_ref).into_iter()
                 }
             }

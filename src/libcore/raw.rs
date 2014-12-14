@@ -40,15 +40,6 @@ pub struct Closure {
 
 impl Copy for Closure {}
 
-/// The representation of a Rust procedure (`proc()`)
-#[repr(C)]
-pub struct Procedure {
-    pub code: *mut (),
-    pub env: *mut (),
-}
-
-impl Copy for Procedure {}
-
 /// The representation of a Rust trait object.
 ///
 /// This struct does not have a `Repr` implementation

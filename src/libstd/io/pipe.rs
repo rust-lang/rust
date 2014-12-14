@@ -123,7 +123,7 @@ mod test {
         let out = PipeStream::open(writer);
         let mut input = PipeStream::open(reader);
         let (tx, rx) = channel();
-        spawn(proc() {
+        spawn(move|| {
             let mut out = out;
             out.write(&[10]).unwrap();
             rx.recv(); // don't close the pipe until the other read has finished

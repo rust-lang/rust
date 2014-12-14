@@ -746,8 +746,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             _ => { return Ok(()); }
         };
 
-        debug!("assemble_unboxed_candidates: self_ty={} obligation={}",
+        debug!("assemble_unboxed_candidates: self_ty={} kind={} obligation={}",
                self_ty.repr(self.tcx()),
+               kind,
                obligation.repr(self.tcx()));
 
         let closure_kind = match self.typer.unboxed_closures().borrow().get(&closure_def_id) {
@@ -759,6 +760,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             closure_def_id.repr(self.tcx())).as_slice());
             }
         };
+
+        debug!("closure_kind = {}", closure_kind);
 
         if closure_kind == kind {
             candidates.vec.push(UnboxedClosureCandidate(closure_def_id, substs.clone()));
@@ -842,14 +845,24 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             candidate: &Candidate<'tcx>)
                             -> EvaluationResult<'tcx>
     {
-        debug!("winnow_candidate: candidate={}", candidate.repr(self.tcx()));
-        self.infcx.probe(|| {
+        /*!
+         * Further evaluate `candidate` to decide whether all type parameters match
+         * and whether nested obligations are met. Returns true if `candidate` remains
+         * viable after this further scrutiny.
+         */
+
+        debug!("winnow_candidate: depth={} candidate={}",
+               stack.obligation.recursion_depth, candidate.repr(self.tcx()));
+        let result = self.infcx.probe(|| {
             let candidate = (*candidate).clone();
             match self.confirm_candidate(stack.obligation, candidate) {
                 Ok(selection) => self.winnow_selection(Some(stack), selection),
                 Err(error) => EvaluatedToErr(error),
             }
-        })
+        });
+        debug!("winnow_candidate depth={} result={}",
+               stack.obligation.recursion_depth, result);
+        result
     }
 
     fn winnow_selection<'o>(&mut self,
@@ -1561,6 +1574,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             def_id: obligation.trait_ref.def_id,
             substs: substs,
         });
+
+        debug!("confirm_unboxed_closure_candidate(closure_def_id={}, trait_ref={})",
+               closure_def_id.repr(self.tcx()),
+               trait_ref.repr(self.tcx()));
 
         self.confirm(obligation.cause,
                      obligation.trait_ref.clone(),

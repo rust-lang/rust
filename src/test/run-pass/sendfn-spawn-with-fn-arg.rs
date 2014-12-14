@@ -12,17 +12,17 @@ use std::task;
 
 pub fn main() { test05(); }
 
-fn test05_start(f: proc(int)) {
+fn test05_start<F:FnOnce(int)>(f: F) {
     f(22);
 }
 
 fn test05() {
     let three = box 3;
-    let fn_to_send: proc(int):Send = proc(n) {
+    let fn_to_send = move|: n:int| {
         println!("{}", *three + n); // will copy x into the closure
         assert_eq!(*three, 3);
     };
-    task::spawn(proc() {
+    task::spawn(move|| {
         test05_start(fn_to_send);
     });
 }

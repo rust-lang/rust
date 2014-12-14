@@ -235,8 +235,9 @@ fn ast_path_substs_for_ty<'tcx,AC,RS>(
             convert_angle_bracketed_parameters(this, rscope, data)
         }
         ast::ParenthesizedParameters(ref data) => {
-            span_err!(tcx.sess, path.span, E0169,
-                      "parenthesized parameters may only be used with a trait");
+            tcx.sess.span_err(
+                path.span,
+                "parenthesized parameters may only be used with a trait");
             (Vec::new(), convert_parenthesized_parameters(this, data), Vec::new())
         }
     };
@@ -581,6 +582,19 @@ fn ast_path_to_trait_ref<'tcx,AC,RS>(
             convert_angle_bracketed_parameters(this, &shifted_rscope, data)
         }
         ast::ParenthesizedParameters(ref data) => {
+            // For now, require that parenthetical notation be used
+            // only with `Fn()` etc.
+            if !this.tcx().sess.features.borrow().unboxed_closures &&
+                this.tcx().lang_items.fn_trait_kind(trait_def_id).is_none()
+            {
+                this.tcx().sess.span_err(path.span,
+                                         "parenthetical notation is only stable when \
+                                         used with the `Fn` family of traits");
+                span_help!(this.tcx().sess, path.span,
+                           "add `#![feature(unboxed_closures)]` to \
+                            the crate attributes to enable");
+            }
+
             (Vec::new(), convert_parenthesized_parameters(this, data), Vec::new())
         }
     };
@@ -932,26 +946,6 @@ pub fn ast_ty_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                                             None);
                 ty::mk_closure(tcx, fn_decl)
             }
-            ast::TyProc(ref f) => {
-                // Use corresponding trait store to figure out default bounds
-                // if none were specified.
-                let bounds = conv_existential_bounds(this,
-                                                     rscope,
-                                                     ast_ty.span,
-                                                     None,
-                                                     f.bounds.as_slice());
-
-                let fn_decl = ty_of_closure(this,
-                                            f.fn_style,
-                                            f.onceness,
-                                            bounds,
-                                            ty::UniqTraitStore,
-                                            &*f.decl,
-                                            abi::Rust,
-                                            None);
-
-                ty::mk_closure(tcx, fn_decl)
-            }
             ast::TyPolyTraitRef(ref bounds) => {
                 conv_ty_poly_trait_ref(this, rscope, ast_ty.span, bounds.as_slice())
             }
@@ -1058,7 +1052,7 @@ pub fn ast_ty_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
             }
             ast::TyInfer => {
                 // TyInfer also appears as the type of arguments or return
-                // values in a ExprClosure or ExprProc, or as
+                // values in a ExprClosure, or as
                 // the type of local variables. Both of these cases are
                 // handled specially and will not descend into this routine.
                 this.ty_infer(ast_ty.span)

@@ -1052,8 +1052,7 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         ast::ExprVec(..) | ast::ExprRepeat(..) => {
             tvec::trans_fixed_vstore(bcx, expr, dest)
         }
-        ast::ExprClosure(_, _, ref decl, ref body) |
-        ast::ExprProc(ref decl, ref body) => {
+        ast::ExprClosure(_, _, ref decl, ref body) => {
             // Check the side-table to see whether this is an unboxed
             // closure or an older, legacy style closure. Store this
             // into a variable to ensure the the RefCell-lock is

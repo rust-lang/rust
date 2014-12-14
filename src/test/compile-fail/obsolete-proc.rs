@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Test that we generate obsolete syntax errors around usages of `proc`.
 
-// check that the &int here does not cause us to think that `foo`
-// contains region pointers
-struct foo(proc(x: &int):'static);
+fn foo(p: proc()) { } //~ ERROR obsolete syntax: the `proc` type
 
-fn take_foo(x: foo<'static>) {} //~ ERROR wrong number of lifetime parameters
+fn bar() { proc() 1; } //~ ERROR obsolete syntax: `proc` expression
 
-fn main() {
-}
+fn main() { }

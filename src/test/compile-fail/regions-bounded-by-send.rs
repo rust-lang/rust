@@ -66,11 +66,6 @@ fn object_with_send_bound_not_ok<'a>() {
     //~^ ERROR declared lifetime bound not satisfied
 }
 
-fn proc_with_lifetime_not_ok<'a>() {
-    assert_send::<proc():'a>();
-    //~^ ERROR not implemented
-}
-
 fn closure_with_lifetime_not_ok<'a>() {
     assert_send::<||:'a>();
     //~^ ERROR not implemented

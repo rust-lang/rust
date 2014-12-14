@@ -390,6 +390,16 @@ impl fmt::Show for clean::Type {
                 try!(resolved_path(f, did, path, false));
                 tybounds(f, typarams)
             }
+            clean::PolyTraitRef(ref bounds) => {
+                for (i, bound) in bounds.iter().enumerate() {
+                    if i != 0 {
+                        try!(write!(f, " + "));
+                    }
+                    try!(write!(f, "{}", *bound));
+                }
+                Ok(())
+            }
+            clean::Infer => write!(f, "_"),
             clean::Self(..) => f.write("Self".as_bytes()),
             clean::Primitive(prim) => primitive_link(f, prim, prim.to_string()),
             clean::Closure(ref decl) => {

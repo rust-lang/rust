@@ -17,5 +17,5 @@ use std::task::TaskBuilder;
 
 pub fn main() {
     let mut t = TaskBuilder::new();
-    t.spawn(proc() ());
+    t.spawn(move|| ());
 }

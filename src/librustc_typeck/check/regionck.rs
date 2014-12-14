@@ -714,7 +714,6 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
             visit::walk_expr(rcx, expr);
         }
 
-        ast::ExprProc(_, ref body) |
         ast::ExprClosure(_, _, _, ref body) => {
             check_expr_fn_block(rcx, expr, &**body);
         }
@@ -936,8 +935,9 @@ fn check_expr_fn_block(rcx: &mut Rcx,
                 let cause = traits::ObligationCause::new(freevar.span, rcx.fcx.body_id, code);
                 rcx.fcx.register_builtin_bound(var_ty, builtin_bound, cause);
             }
+
             type_must_outlive(
-                rcx, infer::RelateProcBound(expr.span, var_node_id, var_ty),
+                rcx, infer::FreeVariable(expr.span, var_node_id),
                 var_ty, bounds.region_bound);
         }
     }

@@ -37,7 +37,7 @@ mod map_reduce {
         for i in inputs.iter() {
             let ctrl = ctrl.clone();
             let i = i.clone();
-            task::spawn(proc() map_task(ctrl.clone(), i.clone()) );
+            task::spawn(move|| map_task(ctrl.clone(), i.clone()) );
         }
     }
 

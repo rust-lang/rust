@@ -47,7 +47,7 @@
 //!     let spinlock = Arc::new(AtomicUint::new(1));
 //!
 //!     let spinlock_clone = spinlock.clone();
-//!     spawn(proc() {
+//!     spawn(move|| {
 //!         spinlock_clone.store(0, SeqCst);
 //!     });
 //!
@@ -68,7 +68,7 @@
 //!     let shared_big_object = Arc::new(AtomicOption::empty());
 //!
 //!     let shared_big_object_clone = shared_big_object.clone();
-//!     spawn(proc() {
+//!     spawn(move|| {
 //!         let unwrapped_big_object = shared_big_object_clone.take(SeqCst);
 //!         if unwrapped_big_object.is_some() {
 //!             println!("got a big object from another task");

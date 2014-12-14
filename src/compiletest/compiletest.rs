@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #![crate_type = "bin"]
-#![feature(phase, slicing_syntax, globs)]
+#![feature(phase, slicing_syntax, globs, unboxed_closures)]
 
 #![deny(warnings)]
 
@@ -23,6 +23,7 @@ use std::os;
 use std::io;
 use std::io::fs;
 use std::str::FromStr;
+use std::thunk::{Thunk};
 use getopts::{optopt, optflag, reqopt};
 use common::Config;
 use common::{Pretty, DebugInfoGdb, DebugInfoLldb, Codegen};
@@ -369,16 +370,16 @@ pub fn make_test_closure(config: &Config, testfile: &Path) -> test::TestFn {
     let config = (*config).clone();
     // FIXME (#9639): This needs to handle non-utf8 paths
     let testfile = testfile.as_str().unwrap().to_string();
-    test::DynTestFn(proc() {
+    test::DynTestFn(Thunk::new(move || {
         runtest::run(config, testfile)
-    })
+    }))
 }
 
 pub fn make_metrics_test_closure(config: &Config, testfile: &Path) -> test::TestFn {
     let config = (*config).clone();
     // FIXME (#9639): This needs to handle non-utf8 paths
     let testfile = testfile.as_str().unwrap().to_string();
-    test::DynMetricFn(proc(mm) {
+    test::DynMetricFn(box move |: mm: &mut test::MetricMap| {
         runtest::run_metrics(config, testfile, mm)
     })
 }

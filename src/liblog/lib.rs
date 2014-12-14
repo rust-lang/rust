@@ -165,7 +165,7 @@
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/nightly/",
        html_playground_url = "http://play.rust-lang.org/")]
-#![feature(macro_rules)]
+#![feature(macro_rules, unboxed_closures)]
 #![deny(missing_docs)]
 
 extern crate regex;
@@ -422,7 +422,7 @@ fn init() {
         DIRECTIVES = mem::transmute(box directives);
 
         // Schedule the cleanup for the globals for when the runtime exits.
-        rt::at_exit(proc() {
+        rt::at_exit(move |:| {
             assert!(!DIRECTIVES.is_null());
             let _directives: Box<Vec<directive::LogDirective>> =
                 mem::transmute(DIRECTIVES);

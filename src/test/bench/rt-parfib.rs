@@ -21,7 +21,7 @@ fn parfib(n: uint) -> uint {
     }
 
     let (tx, rx) = channel();
-    spawn(proc() {
+    spawn(move|| {
         tx.send(parfib(n-1));
     });
     let m2 = parfib(n-2);

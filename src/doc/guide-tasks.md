@@ -29,10 +29,11 @@ with a closure argument. `spawn` executes the closure in the new task.
 fn print_message() { println!("I am running in a different task!"); }
 spawn(print_message);
 
-// Alternatively, use a `proc` expression instead of a named function.
-// The `proc` expression evaluates to an (unnamed) proc.
-// That proc will call `println!(...)` when the spawned task runs.
-spawn(proc() println!("I am also running in a different task!") );
+// Alternatively, use a `move ||` expression instead of a named function.
+// `||` expressions evaluate to an unnamed closure. The `move` keyword
+// indicates that the closure should take ownership of any variables it
+// touches.
+spawn(move || println!("I am also running in a different task!"));
 ```
 
 In Rust, a task is not a concept that appears in the language semantics.
@@ -40,11 +41,13 @@ Instead, Rust's type system provides all the tools necessary to implement safe
 concurrency: particularly, ownership. The language leaves the implementation
 details to the standard library.
 
-The `spawn` function has a very simple type signature: `fn spawn(f: proc():
-Send)`. Because it accepts only procs, and procs contain only owned data,
-`spawn` can safely move the entire proc and all its associated state into an
-entirely different task for execution. Like any closure, the function passed to
-`spawn` may capture an environment that it carries across tasks.
+The `spawn` function has the type signature: `fn
+spawn<F:FnOnce()+Send>(f: F)`.  This indicates that it takes as
+argument a closure (of type `F`) that it will run exactly once. This
+closure is limited to capturing `Send`-able data from its environment
+(that is, data which is deeply owned). Limiting the closure to `Send`
+ensures that `spawn` can safely move the entire closure and all its
+associated state into an entirely different task for execution.
 
 ```{rust}
 # use std::task::spawn;
@@ -52,8 +55,11 @@ entirely different task for execution. Like any closure, the function passed to
 // Generate some state locally
 let child_task_number = generate_task_number();
 
-spawn(proc() {
-    // Capture it in the remote task
+spawn(move || {
+    // Capture it in the remote task. The `move` keyword indicates
+    // that this closure should move `child_task_number` into its
+    // environment, rather than capturing a reference into the
+    // enclosing stack frame.
     println!("I am child number {}", child_task_number);
 });
 ```
@@ -74,7 +80,7 @@ example of calculating two results concurrently:
 
 let (tx, rx): (Sender<int>, Receiver<int>) = channel();
 
-spawn(proc() {
+spawn(move || {
     let result = some_expensive_computation();
     tx.send(result);
 });
@@ -102,7 +108,7 @@ task.
 # use std::task::spawn;
 # fn some_expensive_computation() -> int { 42 }
 # let (tx, rx) = channel();
-spawn(proc() {
+spawn(move || {
     let result = some_expensive_computation();
     tx.send(result);
 });
@@ -135,13 +141,13 @@ results across a number of tasks? The following program is ill-typed:
 # fn some_expensive_computation() -> int { 42 }
 let (tx, rx) = channel();
 
-spawn(proc() {
+spawn(move || {
     tx.send(some_expensive_computation());
 });
 
 // ERROR! The previous spawn statement already owns the sender,
 // so the compiler will not allow it to be captured again
-spawn(proc() {
+spawn(move || {
     tx.send(some_expensive_computation());
 });
 ```
@@ -154,7 +160,7 @@ let (tx, rx) = channel();
 for init_val in range(0u, 3) {
     // Create a new channel handle to distribute to the child task
     let child_tx = tx.clone();
-    spawn(proc() {
+    spawn(move || {
         child_tx.send(some_expensive_computation(init_val));
     });
 }
@@ -179,7 +185,7 @@ reference, written with multiple streams, it might look like the example below.
 // Create a vector of ports, one for each child task
 let rxs = Vec::from_fn(3, |init_val| {
     let (tx, rx) = channel();
-    spawn(proc() {
+    spawn(move || {
         tx.send(some_expensive_computation(init_val));
     });
     rx
@@ -207,7 +213,7 @@ fn fib(n: u64) -> u64 {
     12586269025
 }
 
-let mut delayed_fib = Future::spawn(proc() fib(50));
+let mut delayed_fib = Future::spawn(move || fib(50));
 make_a_sandwich();
 println!("fib(50) = {}", delayed_fib.get())
 # }
@@ -236,7 +242,7 @@ fn partial_sum(start: uint) -> f64 {
 }
 
 fn main() {
-    let mut futures = Vec::from_fn(200, |ind| Future::spawn( proc() { partial_sum(ind) }));
+    let mut futures = Vec::from_fn(200, |ind| Future::spawn(move || partial_sum(ind)));
 
     let mut final_res = 0f64;
     for ft in futures.iter_mut()  {
@@ -278,7 +284,7 @@ fn main() {
     for num in range(1u, 10) {
         let task_numbers = numbers_arc.clone();
 
-        spawn(proc() {
+        spawn(move || {
             println!("{}-norm = {}", num, pnorm(task_numbers.as_slice(), num));
         });
     }
@@ -312,7 +318,7 @@ if it were local.
 # let numbers_arc = Arc::new(numbers);
 # let num = 4;
 let task_numbers = numbers_arc.clone();
-spawn(proc() {
+spawn(move || {
     // Capture task_numbers and use it as if it was the underlying vector
     println!("{}-norm = {}", num, pnorm(task_numbers.as_slice(), num));
 });
@@ -344,7 +350,7 @@ result with an `int` field (representing a successful result) or an `Err` result
 # use std::task;
 # fn some_condition() -> bool { false }
 # fn calculate_result() -> int { 0 }
-let result: Result<int, Box<std::any::Any + Send>> = task::try(proc() {
+let result: Result<int, Box<std::any::Any + Send>> = task::try(move || {
     if some_condition() {
         calculate_result()
     } else {

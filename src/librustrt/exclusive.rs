@@ -99,7 +99,7 @@ mod tests {
                 let (tx, rx) = channel();
                 futures.push(rx);
 
-                task::spawn(proc() {
+                task::spawn(move || {
                     for _ in range(0u, count) {
                         **total.lock() += 1;
                     }
