@@ -63,6 +63,10 @@ This RFC proposes to fix those issues by providing a unified `Pattern` trait
 that all "string pattern" types would implement, and that would be used by the string API
 exclusively.
 
+This fixes the duplication, consistency, and extensibility problems, and also allows to define
+newtype wrappers for the same pattern types that use different or specific
+search implementations.
+
 As an additional design goal, the new abstractions should also not pose a problem
 for optimization - like for iterators, a concrete instance should produce similar
 machine code to a hardcoded optimized loop written in C.
