@@ -675,12 +675,9 @@ fn test_random_access_inspect() {
 #[test]
 fn test_random_access_map() {
     let xs = [1i, 2, 3, 4, 5];
-
-    let mut it = xs.iter().map(|x| *x);
-    assert_eq!(xs.len(), it.indexable());
-    for (i, elt) in xs.iter().enumerate() {
-        assert_eq!(Some(*elt), it.idx(i));
-    }
+    fn negate(x: &int) -> int { -*x }
+    let mut it = xs.iter().map(negate);
+    check_randacc_iter(it, xs.len());
 }
 
 #[test]
