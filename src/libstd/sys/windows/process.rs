@@ -430,8 +430,8 @@ fn with_envp<K, V, T, F>(env: Option<&collections::HashMap<K, V>>, cb: F) -> T w
 
             for pair in env.iter() {
                 let kv = format!("{}={}",
-                                 pair.ref0().container_as_str().unwrap(),
-                                 pair.ref1().container_as_str().unwrap());
+                                 pair.0.container_as_str().unwrap(),
+                                 pair.1.container_as_str().unwrap());
                 blk.extend(kv.utf16_units());
                 blk.push(0);
             }

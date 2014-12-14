@@ -1740,8 +1740,8 @@ impl<'a> Parser<'a> {
             }
             token::Literal(lit, suf) => {
                 let (suffix_illegal, out) = match lit {
-                    token::Byte(i) => (true, LitByte(parse::byte_lit(i.as_str()).val0())),
-                    token::Char(i) => (true, LitChar(parse::char_lit(i.as_str()).val0())),
+                    token::Byte(i) => (true, LitByte(parse::byte_lit(i.as_str()).0)),
+                    token::Char(i) => (true, LitChar(parse::char_lit(i.as_str()).0)),
 
                     // there are some valid suffixes for integer and
                     // float literals, so all the handling is done

@@ -38,9 +38,12 @@
 //! Using methods:
 //!
 //! ```
+//! #[allow(deprecated)]
+//! # fn main() {
 //! let pair = ("pi", 3.14f64);
 //! assert_eq!(pair.val0(), "pi");
 //! assert_eq!(pair.val1(), 3.14f64);
+//! # }
 //! ```
 //!
 //! Using traits implemented for tuples:
@@ -72,25 +75,28 @@ use default::Default;
 use option::Option;
 use option::Option::Some;
 
+// FIXME(#19630) Remove this work-around
+macro_rules! e {
+    ($e:expr) => { $e }
+}
+
 // macro for implementing n-ary tuple functions and operations
 macro_rules! tuple_impls {
     ($(
         $Tuple:ident {
-            $(($valN:ident, $refN:ident, $mutN:ident) -> $T:ident {
-                ($($x:ident),+) => $ret:expr
-            })+
+            $(($valN:ident, $refN:ident, $mutN:ident, $idx:tt) -> $T:ident)+
         }
     )+) => {
         $(
             #[allow(missing_docs)]
-            #[stable]
+            #[deprecated]
             pub trait $Tuple<$($T),+> {
                 $(
-                    #[unstable = "may rename pending accessor naming conventions"]
+                    #[deprecated = "use tuple indexing: `tuple.N`"]
                     fn $valN(self) -> $T;
-                    #[unstable = "may rename pending accessor naming conventions"]
+                    #[deprecated = "use tuple indexing: `&tuple.N`"]
                     fn $refN<'a>(&'a self) -> &'a $T;
-                    #[unstable = "may rename pending accessor naming conventions"]
+                    #[deprecated = "use tuple indexing: `&mut tuple.N`"]
                     fn $mutN<'a>(&'a mut self) -> &'a mut $T;
                  )+
             }
@@ -99,23 +105,23 @@ macro_rules! tuple_impls {
                 $(
                     #[inline]
                     #[allow(unused_variables)]
-                    #[unstable = "may rename pending accessor naming conventions"]
+                    #[deprecated = "use tuple indexing: `tuple.N`"]
                     fn $valN(self) -> $T {
-                        let ($($x,)+) = self; $ret
+                        e!(self.$idx)
                     }
 
                     #[inline]
                     #[allow(unused_variables)]
-                    #[unstable = "may rename pending accessor naming conventions"]
+                    #[deprecated = "use tuple indexing: `&tuple.N`"]
                     fn $refN<'a>(&'a self) -> &'a $T {
-                        let ($(ref $x,)+) = *self; $ret
+                        e!(&self.$idx)
                     }
 
                     #[inline]
                     #[allow(unused_variables)]
-                    #[unstable = "may rename pending accessor naming conventions"]
+                    #[deprecated = "use tuple indexing: &mut tuple.N"]
                     fn $mutN<'a>(&'a mut self) -> &'a mut $T {
-                        let ($(ref mut $x,)+) = *self; $ret
+                        e!(&mut self.$idx)
                     }
                 )+
             }
@@ -123,7 +129,7 @@ macro_rules! tuple_impls {
             #[unstable = "waiting for Clone to stabilize"]
             impl<$($T:Clone),+> Clone for ($($T,)+) {
                 fn clone(&self) -> ($($T,)+) {
-                    ($(self.$refN().clone(),)+)
+                    ($(e!(self.$idx.clone()),)+)
                 }
             }
 
@@ -131,11 +137,11 @@ macro_rules! tuple_impls {
             impl<$($T:PartialEq),+> PartialEq for ($($T,)+) {
                 #[inline]
                 fn eq(&self, other: &($($T,)+)) -> bool {
-                    $(*self.$refN() == *other.$refN())&&+
+                    e!($(self.$idx == other.$idx)&&+)
                 }
                 #[inline]
                 fn ne(&self, other: &($($T,)+)) -> bool {
-                    $(*self.$refN() != *other.$refN())||+
+                    e!($(self.$idx != other.$idx)||+)
                 }
             }
 
@@ -146,23 +152,23 @@ macro_rules! tuple_impls {
             impl<$($T:PartialOrd + PartialEq),+> PartialOrd for ($($T,)+) {
                 #[inline]
                 fn partial_cmp(&self, other: &($($T,)+)) -> Option<Ordering> {
-                    lexical_partial_cmp!($(self.$refN(), other.$refN()),+)
+                    lexical_partial_cmp!($(self.$idx, other.$idx),+)
                 }
                 #[inline]
                 fn lt(&self, other: &($($T,)+)) -> bool {
-                    lexical_ord!(lt, $(self.$refN(), other.$refN()),+)
+                    lexical_ord!(lt, $(self.$idx, other.$idx),+)
                 }
                 #[inline]
                 fn le(&self, other: &($($T,)+)) -> bool {
-                    lexical_ord!(le, $(self.$refN(), other.$refN()),+)
+                    lexical_ord!(le, $(self.$idx, other.$idx),+)
                 }
                 #[inline]
                 fn ge(&self, other: &($($T,)+)) -> bool {
-                    lexical_ord!(ge, $(self.$refN(), other.$refN()),+)
+                    lexical_ord!(ge, $(self.$idx, other.$idx),+)
                 }
                 #[inline]
                 fn gt(&self, other: &($($T,)+)) -> bool {
-                    lexical_ord!(gt, $(self.$refN(), other.$refN()),+)
+                    lexical_ord!(gt, $(self.$idx, other.$idx),+)
                 }
             }
 
@@ -170,7 +176,7 @@ macro_rules! tuple_impls {
             impl<$($T:Ord),+> Ord for ($($T,)+) {
                 #[inline]
                 fn cmp(&self, other: &($($T,)+)) -> Ordering {
-                    lexical_cmp!($(self.$refN(), other.$refN()),+)
+                    lexical_cmp!($(self.$idx, other.$idx),+)
                 }
             }
 
@@ -191,134 +197,134 @@ macro_rules! tuple_impls {
 // a3, b3)` (and similarly for `lexical_cmp`)
 macro_rules! lexical_ord {
     ($rel: ident, $a:expr, $b:expr, $($rest_a:expr, $rest_b:expr),+) => {
-        if *$a != *$b { lexical_ord!($rel, $a, $b) }
+        if $a != $b { lexical_ord!($rel, $a, $b) }
         else { lexical_ord!($rel, $($rest_a, $rest_b),+) }
     };
-    ($rel: ident, $a:expr, $b:expr) => { (*$a) . $rel ($b) };
+    ($rel: ident, $a:expr, $b:expr) => { ($a) . $rel (& $b) };
 }
 
 macro_rules! lexical_partial_cmp {
     ($a:expr, $b:expr, $($rest_a:expr, $rest_b:expr),+) => {
-        match ($a).partial_cmp($b) {
+        match ($a).partial_cmp(&$b) {
             Some(Equal) => lexical_partial_cmp!($($rest_a, $rest_b),+),
             ordering   => ordering
         }
     };
-    ($a:expr, $b:expr) => { ($a).partial_cmp($b) };
+    ($a:expr, $b:expr) => { ($a).partial_cmp(&$b) };
 }
 
 macro_rules! lexical_cmp {
     ($a:expr, $b:expr, $($rest_a:expr, $rest_b:expr),+) => {
-        match ($a).cmp($b) {
+        match ($a).cmp(&$b) {
             Equal => lexical_cmp!($($rest_a, $rest_b),+),
             ordering   => ordering
         }
     };
-    ($a:expr, $b:expr) => { ($a).cmp($b) };
+    ($a:expr, $b:expr) => { ($a).cmp(&$b) };
 }
 
 tuple_impls! {
     Tuple1 {
-        (val0, ref0, mut0) -> A { (a) => a }
+        (val0, ref0, mut0, 0) -> A
     }
     Tuple2 {
-        (val0, ref0, mut0) -> A { (a, b) => a }
-        (val1, ref1, mut1) -> B { (a, b) => b }
+        (val0, ref0, mut0, 0) -> A
+        (val1, ref1, mut1, 1) -> B
     }
     Tuple3 {
-        (val0, ref0, mut0) -> A { (a, b, c) => a }
-        (val1, ref1, mut1) -> B { (a, b, c) => b }
-        (val2, ref2, mut2) -> C { (a, b, c) => c }
+        (val0, ref0, mut0, 0) -> A
+        (val1, ref1, mut1, 1) -> B
+        (val2, ref2, mut2, 2) -> C
     }
     Tuple4 {
-        (val0, ref0, mut0) -> A { (a, b, c, d) => a }
-        (val1, ref1, mut1) -> B { (a, b, c, d) => b }
-        (val2, ref2, mut2) -> C { (a, b, c, d) => c }
-        (val3, ref3, mut3) -> D { (a, b, c, d) => d }
+        (val0, ref0, mut0, 0) -> A
+        (val1, ref1, mut1, 1) -> B
+        (val2, ref2, mut2, 2) -> C
+        (val3, ref3, mut3, 3) -> D
     }
     Tuple5 {
-        (val0, ref0, mut0) -> A { (a, b, c, d, e) => a }
-        (val1, ref1, mut1) -> B { (a, b, c, d, e) => b }
-        (val2, ref2, mut2) -> C { (a, b, c, d, e) => c }
-        (val3, ref3, mut3) -> D { (a, b, c, d, e) => d }
-        (val4, ref4, mut4) -> E { (a, b, c, d, e) => e }
+        (val0, ref0, mut0, 0) -> A
+        (val1, ref1, mut1, 1) -> B
+        (val2, ref2, mut2, 2) -> C
+        (val3, ref3, mut3, 3) -> D
+        (val4, ref4, mut4, 4) -> E
     }
     Tuple6 {
-        (val0, ref0, mut0) -> A { (a, b, c, d, e, f) => a }
-        (val1, ref1, mut1) -> B { (a, b, c, d, e, f) => b }
-        (val2, ref2, mut2) -> C { (a, b, c, d, e, f) => c }
-        (val3, ref3, mut3) -> D { (a, b, c, d, e, f) => d }
-        (val4, ref4, mut4) -> E { (a, b, c, d, e, f) => e }
-        (val5, ref5, mut5) -> F { (a, b, c, d, e, f) => f }
+        (val0, ref0, mut0, 0) -> A
+        (val1, ref1, mut1, 1) -> B
+        (val2, ref2, mut2, 2) -> C
+        (val3, ref3, mut3, 3) -> D
+        (val4, ref4, mut4, 4) -> E
+        (val5, ref5, mut5, 5) -> F
     }
     Tuple7 {
-        (val0, ref0, mut0) -> A { (a, b, c, d, e, f, g) => a }
-        (val1, ref1, mut1) -> B { (a, b, c, d, e, f, g) => b }
-        (val2, ref2, mut2) -> C { (a, b, c, d, e, f, g) => c }
-        (val3, ref3, mut3) -> D { (a, b, c, d, e, f, g) => d }
-        (val4, ref4, mut4) -> E { (a, b, c, d, e, f, g) => e }
-        (val5, ref5, mut5) -> F { (a, b, c, d, e, f, g) => f }
-        (val6, ref6, mut6) -> G { (a, b, c, d, e, f, g) => g }
+        (val0, ref0, mut0, 0) -> A
+        (val1, ref1, mut1, 1) -> B
+        (val2, ref2, mut2, 2) -> C
+        (val3, ref3, mut3, 3) -> D
+        (val4, ref4, mut4, 4) -> E
+        (val5, ref5, mut5, 5) -> F
+        (val6, ref6, mut6, 6) -> G
     }
     Tuple8 {
-        (val0, ref0, mut0) -> A { (a, b, c, d, e, f, g, h) => a }
-        (val1, ref1, mut1) -> B { (a, b, c, d, e, f, g, h) => b }
-        (val2, ref2, mut2) -> C { (a, b, c, d, e, f, g, h) => c }
-        (val3, ref3, mut3) -> D { (a, b, c, d, e, f, g, h) => d }
-        (val4, ref4, mut4) -> E { (a, b, c, d, e, f, g, h) => e }
-        (val5, ref5, mut5) -> F { (a, b, c, d, e, f, g, h) => f }
-        (val6, ref6, mut6) -> G { (a, b, c, d, e, f, g, h) => g }
-        (val7, ref7, mut7) -> H { (a, b, c, d, e, f, g, h) => h }
+        (val0, ref0, mut0, 0) -> A
+        (val1, ref1, mut1, 1) -> B
+        (val2, ref2, mut2, 2) -> C
+        (val3, ref3, mut3, 3) -> D
+        (val4, ref4, mut4, 4) -> E
+        (val5, ref5, mut5, 5) -> F
+        (val6, ref6, mut6, 6) -> G
+        (val7, ref7, mut7, 7) -> H
     }
     Tuple9 {
-        (val0, ref0, mut0) -> A { (a, b, c, d, e, f, g, h, i) => a }
-        (val1, ref1, mut1) -> B { (a, b, c, d, e, f, g, h, i) => b }
-        (val2, ref2, mut2) -> C { (a, b, c, d, e, f, g, h, i) => c }
-        (val3, ref3, mut3) -> D { (a, b, c, d, e, f, g, h, i) => d }
-        (val4, ref4, mut4) -> E { (a, b, c, d, e, f, g, h, i) => e }
-        (val5, ref5, mut5) -> F { (a, b, c, d, e, f, g, h, i) => f }
-        (val6, ref6, mut6) -> G { (a, b, c, d, e, f, g, h, i) => g }
-        (val7, ref7, mut7) -> H { (a, b, c, d, e, f, g, h, i) => h }
-        (val8, ref8, mut8) -> I { (a, b, c, d, e, f, g, h, i) => i }
+        (val0, ref0, mut0, 0) -> A
+        (val1, ref1, mut1, 1) -> B
+        (val2, ref2, mut2, 2) -> C
+        (val3, ref3, mut3, 3) -> D
+        (val4, ref4, mut4, 4) -> E
+        (val5, ref5, mut5, 5) -> F
+        (val6, ref6, mut6, 6) -> G
+        (val7, ref7, mut7, 7) -> H
+        (val8, ref8, mut8, 8) -> I
     }
     Tuple10 {
-        (val0, ref0, mut0) -> A { (a, b, c, d, e, f, g, h, i, j) => a }
-        (val1, ref1, mut1) -> B { (a, b, c, d, e, f, g, h, i, j) => b }
-        (val2, ref2, mut2) -> C { (a, b, c, d, e, f, g, h, i, j) => c }
-        (val3, ref3, mut3) -> D { (a, b, c, d, e, f, g, h, i, j) => d }
-        (val4, ref4, mut4) -> E { (a, b, c, d, e, f, g, h, i, j) => e }
-        (val5, ref5, mut5) -> F { (a, b, c, d, e, f, g, h, i, j) => f }
-        (val6, ref6, mut6) -> G { (a, b, c, d, e, f, g, h, i, j) => g }
-        (val7, ref7, mut7) -> H { (a, b, c, d, e, f, g, h, i, j) => h }
-        (val8, ref8, mut8) -> I { (a, b, c, d, e, f, g, h, i, j) => i }
-        (val9, ref9, mut9) -> J { (a, b, c, d, e, f, g, h, i, j) => j }
+        (val0, ref0, mut0, 0) -> A
+        (val1, ref1, mut1, 1) -> B
+        (val2, ref2, mut2, 2) -> C
+        (val3, ref3, mut3, 3) -> D
+        (val4, ref4, mut4, 4) -> E
+        (val5, ref5, mut5, 5) -> F
+        (val6, ref6, mut6, 6) -> G
+        (val7, ref7, mut7, 7) -> H
+        (val8, ref8, mut8, 8) -> I
+        (val9, ref9, mut9, 9) -> J
     }
     Tuple11 {
-        (val0,  ref0,  mut0)  -> A { (a, b, c, d, e, f, g, h, i, j, k) => a }
-        (val1,  ref1,  mut1)  -> B { (a, b, c, d, e, f, g, h, i, j, k) => b }
-        (val2,  ref2,  mut2)  -> C { (a, b, c, d, e, f, g, h, i, j, k) => c }
-        (val3,  ref3,  mut3)  -> D { (a, b, c, d, e, f, g, h, i, j, k) => d }
-        (val4,  ref4,  mut4)  -> E { (a, b, c, d, e, f, g, h, i, j, k) => e }
-        (val5,  ref5,  mut5)  -> F { (a, b, c, d, e, f, g, h, i, j, k) => f }
-        (val6,  ref6,  mut6)  -> G { (a, b, c, d, e, f, g, h, i, j, k) => g }
-        (val7,  ref7,  mut7)  -> H { (a, b, c, d, e, f, g, h, i, j, k) => h }
-        (val8,  ref8,  mut8)  -> I { (a, b, c, d, e, f, g, h, i, j, k) => i }
-        (val9,  ref9,  mut9)  -> J { (a, b, c, d, e, f, g, h, i, j, k) => j }
-        (val10, ref10, mut10) -> K { (a, b, c, d, e, f, g, h, i, j, k) => k }
+        (val0, ref0, mut0, 0) -> A
+        (val1, ref1, mut1, 1) -> B
+        (val2, ref2, mut2, 2) -> C
+        (val3, ref3, mut3, 3) -> D
+        (val4, ref4, mut4, 4) -> E
+        (val5, ref5, mut5, 5) -> F
+        (val6, ref6, mut6, 6) -> G
+        (val7, ref7, mut7, 7) -> H
+        (val8, ref8, mut8, 8) -> I
+        (val9, ref9, mut9, 9) -> J
+        (val10, ref10, mut10, 10) -> K
     }
     Tuple12 {
-        (val0,  ref0,  mut0)  -> A { (a, b, c, d, e, f, g, h, i, j, k, l) => a }
-        (val1,  ref1,  mut1)  -> B { (a, b, c, d, e, f, g, h, i, j, k, l) => b }
-        (val2,  ref2,  mut2)  -> C { (a, b, c, d, e, f, g, h, i, j, k, l) => c }
-        (val3,  ref3,  mut3)  -> D { (a, b, c, d, e, f, g, h, i, j, k, l) => d }
-        (val4,  ref4,  mut4)  -> E { (a, b, c, d, e, f, g, h, i, j, k, l) => e }
-        (val5,  ref5,  mut5)  -> F { (a, b, c, d, e, f, g, h, i, j, k, l) => f }
-        (val6,  ref6,  mut6)  -> G { (a, b, c, d, e, f, g, h, i, j, k, l) => g }
-        (val7,  ref7,  mut7)  -> H { (a, b, c, d, e, f, g, h, i, j, k, l) => h }
-        (val8,  ref8,  mut8)  -> I { (a, b, c, d, e, f, g, h, i, j, k, l) => i }
-        (val9,  ref9,  mut9)  -> J { (a, b, c, d, e, f, g, h, i, j, k, l) => j }
-        (val10, ref10, mut10) -> K { (a, b, c, d, e, f, g, h, i, j, k, l) => k }
-        (val11, ref11, mut11) -> L { (a, b, c, d, e, f, g, h, i, j, k, l) => l }
+        (val0, ref0, mut0, 0) -> A
+        (val1, ref1, mut1, 1) -> B
+        (val2, ref2, mut2, 2) -> C
+        (val3, ref3, mut3, 3) -> D
+        (val4, ref4, mut4, 4) -> E
+        (val5, ref5, mut5, 5) -> F
+        (val6, ref6, mut6, 6) -> G
+        (val7, ref7, mut7, 7) -> H
+        (val8, ref8, mut8, 8) -> I
+        (val9, ref9, mut9, 9) -> J
+        (val10, ref10, mut10, 10) -> K
+        (val11, ref11, mut11, 11) -> L
     }
 }
 

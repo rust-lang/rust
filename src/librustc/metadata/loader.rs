@@ -364,7 +364,7 @@ impl<'a> Context<'a> {
         let dypair = self.dylibname();
 
         // want: crate_name.dir_part() + prefix + crate_name.file_part + "-"
-        let dylib_prefix = format!("{}{}", dypair.ref0(), self.crate_name);
+        let dylib_prefix = format!("{}{}", dypair.0, self.crate_name);
         let rlib_prefix = format!("lib{}", self.crate_name);
 
         let mut candidates = HashMap::new();
@@ -392,8 +392,8 @@ impl<'a> Context<'a> {
                 (file.slice(rlib_prefix.len(), file.len() - ".rlib".len()),
                  true)
             } else if file.starts_with(dylib_prefix.as_slice()) &&
-                      file.ends_with(dypair.ref1().as_slice()) {
-                (file.slice(dylib_prefix.len(), file.len() - dypair.ref1().len()),
+                      file.ends_with(dypair.1.as_slice()) {
+                (file.slice(dylib_prefix.len(), file.len() - dypair.1.len()),
                  false)
             } else {
                 return FileDoesntMatch
