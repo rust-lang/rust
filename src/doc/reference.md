@@ -1317,10 +1317,10 @@ let fptr: extern "C" fn() -> int = new_int;
 Extern functions may be called directly from Rust code as Rust uses large,
 contiguous stack segments like C.
 
-### Type definitions
+### Type aliases
 
-A _type definition_ defines a new name for an existing [type](#types). Type
-definitions are declared with the keyword `type`. Every value has a single,
+A _type alias_ defines a new name for an existing [type](#types). Type
+aliases are declared with the keyword `type`. Every value has a single,
 specific type; the type-specified aspects of a value include:
 
 * Whether the value is composed of sub-values or is indivisible.
