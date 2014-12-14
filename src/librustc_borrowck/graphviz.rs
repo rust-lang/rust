@@ -53,7 +53,7 @@ pub struct DataflowLabeller<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx> DataflowLabeller<'a, 'tcx> {
     fn dataflow_for(&self, e: EntryOrExit, n: &Node<'a>) -> String {
-        let id = n.val1().data.id;
+        let id = n.1.data.id;
         debug!("dataflow_for({}, id={}) {}", e, id, self.variants);
         let mut sets = "".to_string();
         let mut seen_one = false;
@@ -67,7 +67,7 @@ impl<'a, 'tcx> DataflowLabeller<'a, 'tcx> {
     }
 
     fn dataflow_for_variant(&self, e: EntryOrExit, n: &Node, v: Variant) -> String {
-        let cfgidx = n.val0();
+        let cfgidx = n.0;
         match v {
             Loans   => self.dataflow_loans_for(e, cfgidx),
             Moves   => self.dataflow_moves_for(e, cfgidx),

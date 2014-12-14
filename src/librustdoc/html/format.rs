@@ -346,7 +346,7 @@ fn primitive_link(f: &mut fmt::Formatter,
                 Some(root) => {
                     try!(write!(f, "<a href='{}{}/primitive.{}.html'>",
                                 root,
-                                path.ref0().head().unwrap(),
+                                path.0.head().unwrap(),
                                 prim.to_url_str()));
                     needs_termination = true;
                 }

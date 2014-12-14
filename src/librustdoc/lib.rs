@@ -400,7 +400,7 @@ fn rust_input(cratefile: &str, externs: core::Externs, matches: &getopts::Matche
                                  .position(|&(p, _, _)| {
                                      p == *pass
                                  }) {
-            Some(i) => PASSES[i].val1(),
+            Some(i) => PASSES[i].1,
             None => {
                 error!("unknown pass {}, skipping", *pass);
                 continue

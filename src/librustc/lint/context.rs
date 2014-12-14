@@ -34,7 +34,6 @@ use lint::builtin;
 use util::nodemap::FnvHashMap;
 
 use std::cell::RefCell;
-use std::tuple::Tuple2;
 use std::mem;
 use syntax::ast_util::IdVisitingOperation;
 use syntax::attr::AttrMetaMethods;
@@ -87,7 +86,7 @@ impl LintStore {
     }
 
     fn set_level(&mut self, lint: LintId, lvlsrc: LevelSource) {
-        if lvlsrc.val0() == Allow {
+        if lvlsrc.0 == Allow {
             self.levels.remove(&lint);
         } else {
             self.levels.insert(lint, lvlsrc);
@@ -110,8 +109,8 @@ impl LintStore {
 
     pub fn get_lint_groups<'t>(&'t self) -> Vec<(&'static str, Vec<LintId>, bool)> {
         self.lint_groups.iter().map(|(k, v)| (*k,
-                                              v.ref0().clone(),
-                                              *v.ref1())).collect()
+                                              v.0.clone(),
+                                              v.1)).collect()
     }
 
     pub fn register_pass(&mut self, sess: Option<&Session>,
@@ -275,7 +274,7 @@ impl LintStore {
             match self.find_lint(lint_name.as_slice(), sess, None) {
                 Some(lint_id) => self.set_level(lint_id, (level, CommandLine)),
                 None => {
-                    match self.lint_groups.iter().map(|(&x, pair)| (x, pair.ref0().clone()))
+                    match self.lint_groups.iter().map(|(&x, pair)| (x, pair.0.clone()))
                                                  .collect::<FnvHashMap<&'static str,
                                                                        Vec<LintId>>>()
                                                  .get(lint_name.as_slice()) {
@@ -443,7 +442,7 @@ impl<'a, 'tcx> Context<'a, 'tcx> {
             None => return,
             Some(&(Warn, src)) => {
                 let lint_id = LintId::of(builtin::WARNINGS);
-                (self.lints.get_level_source(lint_id).val0(), src)
+                (self.lints.get_level_source(lint_id).0, src)
             }
             Some(&pair) => pair,
         };
@@ -503,7 +502,7 @@ impl<'a, 'tcx> Context<'a, 'tcx> {
             };
 
             for (lint_id, level, span) in v.into_iter() {
-                let now = self.lints.get_level_source(lint_id).val0();
+                let now = self.lints.get_level_source(lint_id).0;
                 if now == Forbid && level != Forbid {
                     let lint_name = lint_id.as_str();
                     self.tcx.sess.span_err(span,
@@ -511,7 +510,7 @@ impl<'a, 'tcx> Context<'a, 'tcx> {
                                                    level.as_str(), lint_name,
                                                    lint_name).as_slice());
                 } else if now != level {
-                    let src = self.lints.get_level_source(lint_id).val1();
+                    let src = self.lints.get_level_source(lint_id).1;
                     self.level_stack.push((lint_id, (now, src)));
                     pushed += 1;
                     self.lints.set_level(lint_id, (level, Node(span)));
