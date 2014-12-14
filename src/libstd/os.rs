@@ -378,7 +378,7 @@ pub fn getenv_as_bytes(n: &str) -> Option<Vec<u8>> {
             if s.is_null() {
                 None
             } else {
-                Some(CString::new(s as *const i8, false).as_bytes_no_nul().to_vec())
+                Some(CString::new(s as *const libc::c_char, false).as_bytes_no_nul().to_vec())
             }
         })
     }
