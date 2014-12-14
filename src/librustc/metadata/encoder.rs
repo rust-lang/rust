@@ -1056,6 +1056,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_bounds_and_type(rbml_w, ecx, &lookup_item_type(tcx, def_id));
         encode_name(rbml_w, item.ident.name);
         encode_path(rbml_w, path);
+        encode_attributes(rbml_w, item.attrs.as_slice());
         encode_inlined_item(ecx, rbml_w, IIItemRef(item));
         encode_visibility(rbml_w, vis);
         encode_stability(rbml_w, stab);
