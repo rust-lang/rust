@@ -255,7 +255,7 @@ pub use string::IntoString;
 // will be removed from the prelude (and soon moved to std::sync as well).
 //
 // Additionally, while spawning a new thread is a common operation in concurrent
-// programming, it is nota frequent operation in code in general. For example
+// programming, it is not a frequent operation in code in general. For example
 // even highly concurrent applications may end up only calling `spawn` in one or
 // two locations which does not necessarily justify its inclusion in the prelude
 // for all Rust code in existence.
