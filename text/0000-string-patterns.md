@@ -295,6 +295,9 @@ unsafe impl<'a, M> Matcher<'a> for M<'a> where M: NewMatcher {
 Based on coherency experiments and assumptions about how future HKT will work,
 the author is assuming that the above implementation will work, but can not experimentally prove it.
 
+> Note: There might be still an issue with this upgrade path on the concrete iterator types.
+  That is, `Split<P>` might turn into `Split<'a, P>`... Maybe require the `'a` from the beginning?
+
 In order for these new traits to fully replace the old ones without getting in their way,
 the old ones need to not be defined in a way that makes them "final".
 That is, they should be defined in their own submodule, like `str::pattern` that can grow
