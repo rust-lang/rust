@@ -104,6 +104,10 @@ fn try_inline_def(cx: &DocContext, tcx: &ty::ctxt,
             record_extern_fqn(cx, did, clean::TypeStatic);
             clean::StaticItem(build_static(cx, tcx, did, mtbl))
         }
+        def::DefConst(did) => {
+            record_extern_fqn(cx, did, clean::TypeConst);
+            clean::ConstantItem(build_const(cx, tcx, did))
+        }
         _ => return None,
     };
     let fqn = csearch::get_item_path(tcx, did);
@@ -385,6 +389,24 @@ fn build_module(cx: &DocContext, tcx: &ty::ctxt,
                 decoder::DlField => panic!("unimplemented field"),
             }
         });
+    }
+}
+
+fn build_const(cx: &DocContext, tcx: &ty::ctxt,
+               did: ast::DefId) -> clean::Constant {
+    use rustc::middle::const_eval;
+    use syntax::print::pprust;
+
+    let expr = const_eval::lookup_const_by_id(tcx, did).unwrap_or_else(|| {
+        panic!("expected lookup_const_by_id to succeed for {}", did);
+    });
+    debug!("converting constant expr {} to snippet", expr);
+    let sn = pprust::expr_to_string(expr);
+    debug!("got snippet {}", sn);
+
+    clean::Constant {
+        type_: ty::lookup_item_type(tcx, did).ty.clean(cx),
+        expr: sn
     }
 }
 
