@@ -65,6 +65,14 @@ pub struct UnionItems<'a, T:'a> {
 
 impl<T: Ord> BTreeSet<T> {
     /// Makes a new BTreeSet with a reasonable choice of B.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::BTreeSet;
+    ///
+    /// let mut set: BTreeSet<int> = BTreeSet::new();
+    /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn new() -> BTreeSet<T> {
         BTreeSet { map: BTreeMap::new() }
