@@ -1441,6 +1441,15 @@ impl<A, B, I, F> RandomAccessIterator<B> for Map<A, B, I, F> where
     }
 }
 
+impl<A, B, I, F> Clone for Map<A, B, I, F> where
+    I: Clone + Iterator<A>,
+    F: Clone + FnMut(A) -> B,
+{
+    fn clone(&self) -> Map<A, B, I, F> {
+        Map{iter: self.iter.clone(), f: self.f.clone()}
+    }
+}
+
 /// An iterator which filters the elements of `iter` with `predicate`
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 #[stable]
@@ -1483,6 +1492,15 @@ impl<A, I, P> DoubleEndedIterator<A> for Filter<A, I, P> where
             }
         }
         None
+    }
+}
+
+impl<A, I, P> Clone for Filter<A, I, P> where
+    I: Clone + Iterator<A>,
+    P: Clone + FnMut(&A) -> bool,
+{
+    fn clone(&self) -> Filter<A, I, P> {
+        Filter{iter: self.iter.clone(), predicate: self.predicate.clone()}
     }
 }
 
@@ -1531,6 +1549,15 @@ impl<A, B, I, F> DoubleEndedIterator<B> for FilterMap<A, B, I, F> where
             }
         }
         None
+    }
+}
+
+impl<A, B, I, F> Clone for FilterMap<A, B, I, F> where
+    I: Clone + Iterator<A>,
+    F: Clone + FnMut(A) -> Option<B>,
+{
+    fn clone(&self) -> FilterMap<A, B, I, F> {
+        FilterMap{iter: self.iter.clone(), f: self.f.clone()}
     }
 }
 
@@ -1677,6 +1704,19 @@ impl<A, I, P> Iterator<A> for SkipWhile<A, I, P> where I: Iterator<A>, P: FnMut(
     }
 }
 
+impl<A, I, P> Clone for SkipWhile<A, I, P> where
+    I: Clone + Iterator<A>,
+    P: Clone + FnMut(&A) -> bool,
+{
+    fn clone(&self) -> SkipWhile<A, I, P> {
+        SkipWhile {
+            iter: self.iter.clone(),
+            flag: self.flag,
+            predicate: self.predicate.clone()
+        }
+    }
+}
+
 /// An iterator which only accepts elements while `predicate` is true
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 #[stable]
@@ -1711,6 +1751,19 @@ impl<A, I, P> Iterator<A> for TakeWhile<A, I, P> where I: Iterator<A>, P: FnMut(
     fn size_hint(&self) -> (uint, Option<uint>) {
         let (_, upper) = self.iter.size_hint();
         (0, upper) // can't know a lower bound, due to the predicate
+    }
+}
+
+impl<A, I, P> Clone for TakeWhile<A, I, P> where
+    I: Clone + Iterator<A>,
+    P: Clone + FnMut(&A) -> bool,
+{
+    fn clone(&self) -> TakeWhile<A, I, P> {
+        TakeWhile {
+            iter: self.iter.clone(),
+            flag: self.flag,
+            predicate: self.predicate.clone()
+        }
     }
 }
 
@@ -1864,6 +1917,20 @@ impl<A, B, I, St, F> Iterator<B> for Scan<A, B, I, St, F> where
     }
 }
 
+impl<A, B, I, St, F> Clone for Scan<A, B, I, St, F> where
+    I: Clone + Iterator<A>,
+    F: Clone + FnMut(&mut St, A) -> Option<B>,
+    St: Clone
+{
+    fn clone(&self) -> Scan<A, B, I, St, F> {
+        Scan {
+            iter: self.iter.clone(),
+            f: self.f.clone(),
+            state: self.state.clone()
+        }
+    }
+}
+
 /// An iterator that maps each element to an iterator,
 /// and yields the elements of the produced iterators
 ///
@@ -1928,6 +1995,21 @@ impl<A, B, I, U, F> DoubleEndedIterator<B> for FlatMap<A, B, I, U, F> where
                 None => return self.frontiter.as_mut().and_then(|it| it.next_back()),
                 next => self.backiter = next,
             }
+        }
+    }
+}
+
+impl<A, B, I, U, F> Clone for FlatMap<A, B, I, U, F> where
+    I: Clone + Iterator<A>,
+    U: Clone + Iterator<B>,
+    F: Clone + FnMut(A) -> U,
+{
+    fn clone(&self) -> FlatMap<A, B, I, U, F> {
+        FlatMap {
+            iter: self.iter.clone(),
+            f: self.f.clone(),
+            frontiter: self.frontiter.clone(),
+            backiter: self.backiter.clone(),
         }
     }
 }
@@ -2075,6 +2157,18 @@ impl<A, I, F> RandomAccessIterator<A> for Inspect<A, I, F> where
     }
 }
 
+impl<A, I, F> Clone for Inspect<A, I, F> where
+    I: Iterator<A> + Clone,
+    F: FnMut(&A) + Clone,
+{
+    fn clone(&self) -> Inspect<A, I, F> {
+        Inspect {
+            iter: self.iter.clone(),
+            f: self.f.clone()
+        }
+    }
+}
+
 /// An iterator which passes mutable state to a closure and yields the result.
 ///
 /// # Example: The Fibonacci Sequence
@@ -2138,6 +2232,18 @@ impl<A, St, F> Iterator<A> for Unfold<A, St, F> where F: FnMut(&mut St) -> Optio
     fn size_hint(&self) -> (uint, Option<uint>) {
         // no possible known bounds at this point
         (0, None)
+    }
+}
+
+impl<A, St, F> Clone for Unfold<A, St, F> where
+    St: Clone,
+    F: Clone + FnMut(&mut St) -> Option<A>
+{
+    fn clone(&self) -> Unfold<A, St, F> {
+        Unfold {
+            f: self.f.clone(),
+            state: self.state.clone()
+        }
     }
 }
 
