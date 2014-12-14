@@ -256,10 +256,8 @@ pub mod marker {
     /// and this pointer is itself stored in an inherently mutable
     /// location (such as a `Cell`).
     #[lang="invariant_lifetime"]
-    #[deriving(Clone, PartialEq, Eq, PartialOrd, Ord)]
+    #[deriving(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
     pub struct InvariantLifetime<'a>;
-
-    impl<'a> Copy for InvariantLifetime<'a> {}
 
     /// A type which is considered "not sendable", meaning that it cannot
     /// be safely sent between tasks, even if it is owned. This is
