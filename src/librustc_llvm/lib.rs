@@ -150,7 +150,6 @@ bitflags! {
     }
 }
 
-impl Copy for Attribute {}
 
 #[repr(u64)]
 pub enum OtherAttribute {

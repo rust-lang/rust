@@ -33,8 +33,6 @@
 ///     }
 /// }
 ///
-/// impl Copy for Flags {}
-///
 /// fn main() {
 ///     let e1 = FLAG_A | FLAG_C;
 ///     let e2 = FLAG_B | FLAG_C;
@@ -56,8 +54,6 @@
 ///         const FLAG_B   = 0x00000010,
 ///     }
 /// }
-///
-/// impl Copy for Flags {}
 ///
 /// impl Flags {
 ///     pub fn clear(&mut self) {
@@ -121,7 +117,7 @@ macro_rules! bitflags {
     ($(#[$attr:meta])* flags $BitFlags:ident: $T:ty {
         $($(#[$Flag_attr:meta])* const $Flag:ident = $value:expr),+
     }) => {
-        #[deriving(PartialEq, Eq, Clone, PartialOrd, Ord, Hash)]
+        #[deriving(Copy, PartialEq, Eq, Clone, PartialOrd, Ord, Hash)]
         $(#[$attr])*
         pub struct $BitFlags {
             bits: $T,
@@ -288,15 +284,11 @@ mod tests {
         }
     }
 
-    impl Copy for Flags {}
-
     bitflags! {
         flags AnotherSetOfFlags: i8 {
             const AnotherFlag = -1_i8,
         }
     }
-
-    impl Copy for AnotherSetOfFlags {}
 
     #[test]
     fn test_bits(){
