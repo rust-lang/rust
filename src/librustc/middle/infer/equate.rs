@@ -21,7 +21,7 @@ use middle::infer::{TypeTrace, Subtype};
 use middle::infer::type_variable::{EqTo};
 use util::ppaux::{Repr};
 
-use syntax::ast::{Onceness, FnStyle};
+use syntax::ast::{Onceness, Unsafety};
 
 pub struct Equate<'f, 'tcx: 'f> {
     fields: CombineFields<'f, 'tcx>
@@ -70,9 +70,9 @@ impl<'f, 'tcx> Combine<'tcx> for Equate<'f, 'tcx> {
         Ok(ty::mt { mutbl: a.mutbl, ty: t })
     }
 
-    fn fn_styles(&self, a: FnStyle, b: FnStyle) -> cres<'tcx, FnStyle> {
+    fn unsafeties(&self, a: Unsafety, b: Unsafety) -> cres<'tcx, Unsafety> {
         if a != b {
-            Err(ty::terr_fn_style_mismatch(expected_found(self, a, b)))
+            Err(ty::terr_unsafety_mismatch(expected_found(self, a, b)))
         } else {
             Ok(a)
         }

@@ -129,7 +129,7 @@ pub struct Function {
     pub name: Ident,
     pub vis: ast::Visibility,
     pub stab: Option<attr::Stability>,
-    pub fn_style: ast::FnStyle,
+    pub unsafety: ast::Unsafety,
     pub whence: Span,
     pub generics: ast::Generics,
 }
@@ -170,6 +170,7 @@ pub struct Constant {
 }
 
 pub struct Trait {
+    pub unsafety: ast::Unsafety,
     pub name: Ident,
     pub items: Vec<ast::TraitItem>, //should be TraitItem
     pub generics: ast::Generics,
@@ -183,6 +184,7 @@ pub struct Trait {
 }
 
 pub struct Impl {
+    pub unsafety: ast::Unsafety,
     pub generics: ast::Generics,
     pub trait_: Option<ast::TraitRef>,
     pub for_: P<ast::Ty>,

@@ -50,6 +50,7 @@ use util::ppaux::Repr;
 
 mod orphan;
 mod overlap;
+mod unsafety;
 
 fn get_base_type<'a, 'tcx>(inference_context: &InferCtxt<'a, 'tcx>,
                            span: Span,
@@ -145,7 +146,7 @@ impl<'a, 'tcx, 'v> visit::Visitor<'v> for CoherenceCheckVisitor<'a, 'tcx> {
         //debug!("(checking coherence) item '{}'", token::get_ident(item.ident));
 
         match item.node {
-            ItemImpl(_, ref opt_trait, _, _) => {
+            ItemImpl(_, _, ref opt_trait, _, _) => {
                 match opt_trait.clone() {
                     Some(opt_trait) => {
                         self.cc.check_implementation(item, &[opt_trait]);
@@ -325,7 +326,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
     // Converts an implementation in the AST to a vector of items.
     fn create_impl_from_item(&self, item: &Item) -> Vec<ImplOrTraitItemId> {
         match item.node {
-            ItemImpl(_, ref trait_refs, _, ref ast_items) => {
+            ItemImpl(_, _, ref trait_refs, _, ref ast_items) => {
                 let mut items: Vec<ImplOrTraitItemId> =
                         ast_items.iter()
                                  .map(|ast_item| {
@@ -620,6 +621,7 @@ pub fn check_coherence(crate_context: &CrateCtxt) {
         inference_context: new_infer_ctxt(crate_context.tcx),
         inherent_impls: RefCell::new(FnvHashMap::new()),
     }.check(crate_context.tcx.map.krate());
+    unsafety::check(crate_context.tcx);
     orphan::check(crate_context.tcx);
     overlap::check(crate_context.tcx);
 }

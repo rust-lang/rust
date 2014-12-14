@@ -1062,7 +1062,7 @@ mod test {
                                                   span:sp(15,15)})), // not sure
                                 variadic: false
                             }),
-                                    ast::NormalFn,
+                                    ast::Unsafety::Normal,
                                     abi::Rust,
                                     ast::Generics{ // no idea on either of these:
                                         lifetimes: Vec::new(),

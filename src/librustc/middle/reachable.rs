@@ -55,7 +55,7 @@ fn item_might_be_inlined(item: &ast::Item) -> bool {
     }
 
     match item.node {
-        ast::ItemImpl(ref generics, _, _, _) |
+        ast::ItemImpl(_, ref generics, _, _, _) |
         ast::ItemFn(_, _, _, ref generics, _) => {
             generics_require_inlining(generics)
         }
@@ -216,7 +216,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                                       .map
                                       .expect_item(impl_did.node)
                                       .node {
-                                ast::ItemImpl(ref generics, _, _, _) => {
+                                ast::ItemImpl(_, ref generics, _, _, _) => {
                                     generics_require_inlining(generics)
                                 }
                                 _ => false

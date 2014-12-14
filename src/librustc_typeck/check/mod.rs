@@ -180,35 +180,33 @@ enum Expectation<'tcx> {
 
 impl<'tcx> Copy for Expectation<'tcx> {}
 
-#[deriving(Clone)]
-pub struct FnStyleState {
+#[deriving(Copy, Clone)]
+pub struct UnsafetyState {
     pub def: ast::NodeId,
-    pub fn_style: ast::FnStyle,
+    pub unsafety: ast::Unsafety,
     from_fn: bool
 }
 
-impl Copy for FnStyleState {}
-
-impl FnStyleState {
-    pub fn function(fn_style: ast::FnStyle, def: ast::NodeId) -> FnStyleState {
-        FnStyleState { def: def, fn_style: fn_style, from_fn: true }
+impl UnsafetyState {
+    pub fn function(unsafety: ast::Unsafety, def: ast::NodeId) -> UnsafetyState {
+        UnsafetyState { def: def, unsafety: unsafety, from_fn: true }
     }
 
-    pub fn recurse(&mut self, blk: &ast::Block) -> FnStyleState {
-        match self.fn_style {
+    pub fn recurse(&mut self, blk: &ast::Block) -> UnsafetyState {
+        match self.unsafety {
             // If this unsafe, then if the outer function was already marked as
             // unsafe we shouldn't attribute the unsafe'ness to the block. This
             // way the block can be warned about instead of ignoring this
             // extraneous block (functions are never warned about).
-            ast::UnsafeFn if self.from_fn => *self,
+            ast::Unsafety::Unsafe if self.from_fn => *self,
 
-            fn_style => {
-                let (fn_style, def) = match blk.rules {
-                    ast::UnsafeBlock(..) => (ast::UnsafeFn, blk.id),
-                    ast::DefaultBlock => (fn_style, self.def),
+            unsafety => {
+                let (unsafety, def) = match blk.rules {
+                    ast::UnsafeBlock(..) => (ast::Unsafety::Unsafe, blk.id),
+                    ast::DefaultBlock => (unsafety, self.def),
                 };
-                FnStyleState{ def: def,
-                             fn_style: fn_style,
+                UnsafetyState{ def: def,
+                             unsafety: unsafety,
                              from_fn: false }
             }
         }
@@ -240,7 +238,7 @@ pub struct FnCtxt<'a, 'tcx: 'a> {
 
     ret_ty: ty::FnOutput<'tcx>,
 
-    ps: RefCell<FnStyleState>,
+    ps: RefCell<UnsafetyState>,
 
     inh: &'a Inherited<'a, 'tcx>,
 
@@ -312,7 +310,7 @@ pub fn blank_fn_ctxt<'a, 'tcx>(ccx: &'a CrateCtxt<'a, 'tcx>,
         writeback_errors: Cell::new(false),
         err_count_on_creation: ccx.tcx.sess.err_count(),
         ret_ty: rty,
-        ps: RefCell::new(FnStyleState::function(ast::NormalFn, 0)),
+        ps: RefCell::new(UnsafetyState::function(ast::Unsafety::Normal, 0)),
         inh: inh,
         ccx: ccx
     }
@@ -374,7 +372,7 @@ fn check_bare_fn<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     match fty.sty {
         ty::ty_bare_fn(ref fn_ty) => {
             let inh = Inherited::new(ccx.tcx, param_env);
-            let fcx = check_fn(ccx, fn_ty.fn_style, id, &fn_ty.sig,
+            let fcx = check_fn(ccx, fn_ty.unsafety, id, &fn_ty.sig,
                                decl, id, body, &inh);
 
             vtable::select_all_fcx_obligations_or_error(&fcx);
@@ -476,8 +474,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for GatherLocalsVisitor<'a, 'tcx> {
 /// * ...
 /// * inherited: other fields inherited from the enclosing fn (if any)
 fn check_fn<'a, 'tcx>(ccx: &'a CrateCtxt<'a, 'tcx>,
-                      fn_style: ast::FnStyle,
-                      fn_style_id: ast::NodeId,
+                      unsafety: ast::Unsafety,
+                      unsafety_id: ast::NodeId,
                       fn_sig: &ty::FnSig<'tcx>,
                       decl: &ast::FnDecl,
                       fn_id: ast::NodeId,
@@ -506,7 +504,7 @@ fn check_fn<'a, 'tcx>(ccx: &'a CrateCtxt<'a, 'tcx>,
         writeback_errors: Cell::new(false),
         err_count_on_creation: err_count_on_creation,
         ret_ty: ret_ty,
-        ps: RefCell::new(FnStyleState::function(fn_style, fn_style_id)),
+        ps: RefCell::new(UnsafetyState::function(unsafety, unsafety_id)),
         inh: inherited,
         ccx: ccx
     };
@@ -597,7 +595,7 @@ pub fn check_item(ccx: &CrateCtxt, it: &ast::Item) {
         let param_env = ParameterEnvironment::for_item(ccx.tcx, it.id);
         check_bare_fn(ccx, &**decl, &**body, it.id, fn_pty.ty, param_env);
       }
-      ast::ItemImpl(_, ref opt_trait_ref, _, ref impl_items) => {
+      ast::ItemImpl(_, _, ref opt_trait_ref, _, ref impl_items) => {
         debug!("ItemImpl {} with id {}", token::get_ident(it.ident), it.id);
 
         let impl_pty = ty::lookup_item_type(ccx.tcx, ast_util::local_def(it.id));
@@ -627,7 +625,7 @@ pub fn check_item(ccx: &CrateCtxt, it: &ast::Item) {
         }
 
       }
-      ast::ItemTrait(_, _, _, ref trait_methods) => {
+      ast::ItemTrait(_, _, _, _, ref trait_methods) => {
         let trait_def = ty::lookup_trait_def(ccx.tcx, local_def(it.id));
         for trait_method in trait_methods.iter() {
             match *trait_method {
@@ -4493,8 +4491,8 @@ fn check_block_with_expected<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                        expected: Expectation<'tcx>) {
     let prev = {
         let mut fcx_ps = fcx.ps.borrow_mut();
-        let fn_style_state = fcx_ps.recurse(blk);
-        replace(&mut *fcx_ps, fn_style_state)
+        let unsafety_state = fcx_ps.recurse(blk);
+        replace(&mut *fcx_ps, unsafety_state)
     };
 
     let mut warned = false;
@@ -5696,7 +5694,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
         (n_tps, inputs, ty::FnConverging(output))
     };
     let fty = ty::mk_bare_fn(tcx, ty::BareFnTy {
-        fn_style: ast::UnsafeFn,
+        unsafety: ast::Unsafety::Unsafe,
         abi: abi::RustIntrinsic,
         sig: FnSig {
             inputs: inputs,

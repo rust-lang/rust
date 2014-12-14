@@ -521,7 +521,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             debug!("coerce_from_bare_fn(a={}, b={})",
                    a.repr(self.get_ref().infcx.tcx), b.repr(self.get_ref().infcx.tcx));
 
-            if fn_ty_a.abi != abi::Rust || fn_ty_a.fn_style != ast::NormalFn {
+            if fn_ty_a.abi != abi::Rust || fn_ty_a.unsafety != ast::Unsafety::Normal {
                 return self.subtype(a, b);
             }
 
