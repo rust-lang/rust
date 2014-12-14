@@ -334,7 +334,7 @@ The biggest wart is the lifetime parameter on the two trait families, so it trie
   match, that wraps the haystack and the
   current match as a `(*start, *match_start, *match_end, *end)` pointer quad. It is unclear whether
   those two additional words per match end up being an issue after monomorphization, but two of them
-  will be constant for the duration of the iteration, so changes are good.
+  will be constant for the duration of the iteration, so changes are they won't matter.
   The `haystack()` could also be removed that way, as each match already returns the haystack.
   However, this still prevents removal of the lifetime parameters without HKT.
 - Remove the lifetimes on `Matcher` and `Pattern` by requiring users of the API to store the haystack slice
