@@ -111,8 +111,9 @@ In theory, it seems that the type syntax `[T, ..N]` could be retained, while
 getting rid of the expression syntax `[x, ..N]`. This seems easier to implement,
 but there is a drawback:
 
-- Currently, it seems to be possible to create a macro that adequately replaces
-  the repeat syntax when `N` is an arbitrary constant expression.
+- Currently, it seems to be impossible to create a macro that adequately
+  replaces the repeat syntax, specifically when `N` is an arbitrary constant
+  expression.
 
 - If `[N of x]` becomes the new array expression syntax, but `[T, ..N]` remains
   the type, the syntax becomes somewhat less consistent. In effect such a change
@@ -130,7 +131,7 @@ The comments in [pull request #498](https://github.com/rust-lang/rfcs/pull/498)
 mentioned many candidates for new syntax other than the `[N of x]` form in this
 RFC.
 
-- Instead of using `[N of x]`, we could use `[x for N]`.
+- Instead of using `[N of x]`, use `[x for N]`.
 
     - One benefit of this is that it is not necessary to introduce a new
       keyword.
@@ -147,7 +148,7 @@ RFC.
 - Introduce a different keyword than `of`. There are many other options, e.g.
   `[x by N]`.
 
-- Use a new symbol for repetition, e.g. `[T # N]`/`[x # N]`.
+- Introduce a new symbol to specify array sizes, e.g. `[T # N]`/`[x # N]`.
 
 ## Change the range syntax
 
@@ -156,11 +157,11 @@ clear and ergonomic as `i..j`. The most common alternative for slicing in other
 languages is `i:j`, but in Rust this simply causes an ambiguity with a different
 feature, namely type ascription.
 
-## Limit range syntax to indexes (use `i..j` for slicing only)
+## Limit range syntax to the interior of an index (use `i..j` for slicing only)
 
 This resolves the issue since indices can be distinguished from arrays. However,
 it removes some of the benefits of RFC 439. For instance, it removes the
-possibility of using expressions such as `for i in 1..10` for looping.
+possibility of using `for i in 1..10` to loop.
 
 ## Remove `RangeTo` from RFC 439
 
