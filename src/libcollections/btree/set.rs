@@ -80,12 +80,38 @@ impl<T: Ord> BTreeSet<T> {
 
 impl<T> BTreeSet<T> {
     /// Gets an iterator over the BTreeSet's contents.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::BTreeSet;
+    ///
+    /// let set: BTreeSet<uint> = [1u, 2, 3, 4].iter().map(|&x| x).collect();
+    ///
+    /// for x in set.iter() {
+    ///     println!("{}", x);
+    /// }
+    ///
+    /// let v: Vec<uint> = set.iter().map(|&x| x).collect();
+    /// assert_eq!(v, vec![1u,2,3,4]);
+    /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn iter<'a>(&'a self) -> Items<'a, T> {
         self.map.keys()
     }
 
     /// Gets an iterator for moving out the BtreeSet's contents.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::BTreeSet;
+    ///
+    /// let set: BTreeSet<uint> = [1u, 2, 3, 4].iter().map(|&x| x).collect();
+    ///
+    /// let v: Vec<uint> = set.into_iter().collect();
+    /// assert_eq!(v, vec![1u,2,3,4]);
+    /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn into_iter(self) -> MoveItems<T> {
         fn first<A, B>((a, _): (A, B)) -> A { a }
