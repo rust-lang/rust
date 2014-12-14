@@ -155,13 +155,13 @@ when you have unrestricted access to memory. As an example, here's some Ruby
 code:
 
 ```{ruby}
-v = [];
+v = []
 
-v.push("Hello");
+v.push("Hello")
 
-x = v[0];
+x = v[0]
 
-v.push("world");
+v.push("world")
 
 puts x
 ```
