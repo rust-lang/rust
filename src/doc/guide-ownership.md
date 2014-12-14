@@ -130,7 +130,7 @@ fn add_one(mut num: Box<int>) {
 
 This does not compile, and gives us an error:
 
-```{notrust}
+```text
 error: use of moved value: `x`
    println!("{}", x);
                   ^
@@ -406,7 +406,7 @@ fn main() {
 We try to make four `Wheel`s, each with a `Car` that it's attached to. But the
 compiler knows that on the second iteration of the loop, there's a problem:
 
-```{notrust}
+```text
 error: use of moved value: `car`
     Wheel { size: 360, owner: car };
                               ^~~
