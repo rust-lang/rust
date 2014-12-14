@@ -62,7 +62,7 @@ use core::iter::AdditiveIterator;
 use core::kinds::Sized;
 use core::prelude::{Char, Clone, Eq, Equiv};
 use core::prelude::{Iterator, IteratorExt, SlicePrelude, None, Option, Ord, Ordering};
-use core::prelude::{PartialEq, PartialOrd, Result, AsSlice, Some, Tuple2};
+use core::prelude::{PartialEq, PartialOrd, Result, AsSlice, Some};
 use core::prelude::{range};
 
 use hash;
@@ -185,8 +185,8 @@ fn canonical_sort(comb: &mut [(char, u8)]) {
     for i in range(0, len) {
         let mut swapped = false;
         for j in range(1, len-i) {
-            let class_a = *comb[j-1].ref1();
-            let class_b = *comb[j].ref1();
+            let class_a = comb[j-1].1;
+            let class_b = comb[j].1;
             if class_a != 0 && class_b != 0 && class_a > class_b {
                 comb.swap(j-1, j);
                 swapped = true;

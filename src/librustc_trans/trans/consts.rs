@@ -91,7 +91,7 @@ fn const_vec(cx: &CrateContext, e: &ast::Expr,
     let vec_ty = ty::expr_ty(cx.tcx(), e);
     let unit_ty = ty::sequence_element_type(cx.tcx(), vec_ty);
     let llunitty = type_of::type_of(cx, unit_ty);
-    let vs = es.iter().map(|e| const_expr(cx, &**e).val0())
+    let vs = es.iter().map(|e| const_expr(cx, &**e).0)
                       .collect::<Vec<_>>();
     // If the vector contains enums, an LLVM array won't work.
     let v = if vs.iter().any(|vi| val_ty(*vi) != llunitty) {
@@ -302,7 +302,7 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, e: &ast::Expr)
 // if it's assigned to a static.
 fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr) -> ValueRef {
     let map_list = |exprs: &[P<ast::Expr>]| {
-        exprs.iter().map(|e| const_expr(cx, &**e).val0())
+        exprs.iter().map(|e| const_expr(cx, &**e).0)
              .fold(Vec::new(), |mut l, val| { l.push(val); l })
     };
     unsafe {
@@ -575,7 +575,7 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr) -> ValueRef {
                   let cs = field_tys.iter().enumerate()
                                     .map(|(ix, &field_ty)| {
                       match fs.iter().find(|f| field_ty.name == f.ident.node.name) {
-                          Some(ref f) => const_expr(cx, &*f.expr).val0(),
+                          Some(ref f) => const_expr(cx, &*f.expr).0,
                           None => {
                               match base_val {
                                   Some((bv, _)) => {
@@ -594,7 +594,7 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr) -> ValueRef {
               })
           }
           ast::ExprVec(ref es) => {
-            const_vec(cx, e, es.as_slice()).val0()
+            const_vec(cx, e, es.as_slice()).0
           }
           ast::ExprRepeat(ref elem, ref count) => {
             let vec_ty = ty::expr_ty(cx.tcx(), e);
@@ -605,7 +605,7 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr) -> ValueRef {
                 const_eval::const_uint(i) => i as uint,
                 _ => cx.sess().span_bug(count.span, "count must be integral const expression.")
             };
-            let vs = Vec::from_elem(n, const_expr(cx, &**elem).val0());
+            let vs = Vec::from_elem(n, const_expr(cx, &**elem).0);
             if vs.iter().any(|vi| val_ty(*vi) != llunitty) {
                 C_struct(cx, vs.as_slice(), false)
             } else {
@@ -673,10 +673,10 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr) -> ValueRef {
                   _ => cx.sess().span_bug(e.span, "expected a struct or variant def")
               }
           }
-          ast::ExprParen(ref e) => const_expr(cx, &**e).val0(),
+          ast::ExprParen(ref e) => const_expr(cx, &**e).0,
           ast::ExprBlock(ref block) => {
             match block.expr {
-                Some(ref expr) => const_expr(cx, &**expr).val0(),
+                Some(ref expr) => const_expr(cx, &**expr).0,
                 None => C_nil(cx)
             }
           }
