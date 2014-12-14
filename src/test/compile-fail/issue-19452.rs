@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-enum Foo {
-    Variant { x: uint }
+enum Homura {
+    Madoka { age: u32 }
 }
 
 fn main() {
-    let f = Foo::Variant(42u); //~ ERROR uses it like a function
+    let homura = Homura::Madoka; //~ ERROR uses it like a function
 }
