@@ -189,7 +189,7 @@ use self::MemberOffset::*;
 use self::MemberDescriptionFactory::*;
 use self::RecursiveTypeDescription::*;
 use self::EnumDiscriminantInfo::*;
-use self::DebugLocation::*;
+use self::InternalDebugLocation::*;
 
 use llvm;
 use llvm::{ModuleRef, ContextRef, ValueRef};
@@ -650,7 +650,7 @@ macro_rules! return_if_metadata_created_in_meantime(
 pub struct CrateDebugContext<'tcx> {
     llcontext: ContextRef,
     builder: DIBuilderRef,
-    current_debug_location: Cell<DebugLocation>,
+    current_debug_location: Cell<InternalDebugLocation>,
     created_files: RefCell<FnvHashMap<String, DIFile>>,
     created_enum_disr_types: RefCell<DefIdMap<DIType>>,
 
@@ -1111,6 +1111,29 @@ pub fn get_cleanup_debug_loc_for_ast_node<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     }
 }
 
+#[deriving(Copy, Clone, PartialEq, Eq)]
+pub enum SourceLocation {
+    SourceLoc(ast::NodeId, Span),
+    NoSourceLoc
+}
+
+impl SourceLocation {
+    pub fn from_expr(expr: &ast::Expr) -> SourceLocation {
+        SourceLocation::SourceLoc(expr.id, expr.span)
+    }
+
+    pub fn apply(&self, fcx: &FunctionContext) {
+        match *self {
+            SourceLocation::SourceLoc(node_id, span) => {
+                set_source_location(fcx, node_id, span);
+            }
+            SourceLocation::NoSourceLoc => {
+                clear_source_location(fcx);
+            }
+        }
+    }
+}
+
 /// Sets the current debug location at the beginning of the span.
 ///
 /// Maps to a call to llvm::LLVMSetCurrentDebugLocation(...). The node_id
@@ -1134,9 +1157,9 @@ pub fn set_source_location(fcx: &FunctionContext,
                 let loc = span_start(cx, span);
                 let scope = scope_metadata(fcx, node_id, span);
 
-                set_debug_location(cx, DebugLocation::new(scope,
-                                                          loc.line,
-                                                          loc.col.to_uint()));
+                set_debug_location(cx, InternalDebugLocation::new(scope,
+                                                                  loc.line,
+                                                                  loc.col.to_uint()));
             } else {
                 set_debug_location(cx, UnknownLocation);
             }
@@ -1656,9 +1679,9 @@ fn declare_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }
     });
 
-    set_debug_location(cx, DebugLocation::new(scope_metadata,
-                                              loc.line,
-                                              loc.col.to_uint()));
+    set_debug_location(cx, InternalDebugLocation::new(scope_metadata,
+                                                      loc.line,
+                                                      loc.col.to_uint()));
     unsafe {
         let instr = llvm::LLVMDIBuilderInsertDeclareAtEnd(
             DIB(cx),
@@ -3048,16 +3071,14 @@ impl MetadataCreationResult {
     }
 }
 
-#[deriving(PartialEq)]
-enum DebugLocation {
+#[deriving(Copy, PartialEq)]
+enum InternalDebugLocation {
     KnownLocation { scope: DIScope, line: uint, col: uint },
     UnknownLocation
 }
 
-impl Copy for DebugLocation {}
-
-impl DebugLocation {
-    fn new(scope: DIScope, line: uint, col: uint) -> DebugLocation {
+impl InternalDebugLocation {
+    fn new(scope: DIScope, line: uint, col: uint) -> InternalDebugLocation {
         KnownLocation {
             scope: scope,
             line: line,
@@ -3066,7 +3087,7 @@ impl DebugLocation {
     }
 }
 
-fn set_debug_location(cx: &CrateContext, debug_location: DebugLocation) {
+fn set_debug_location(cx: &CrateContext, debug_location: InternalDebugLocation) {
     if debug_location == debug_context(cx).current_debug_location.get() {
         return;
     }

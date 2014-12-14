@@ -23,6 +23,7 @@ use trans::callee;
 use trans::common;
 use trans::common::{Block, FunctionContext, ExprId, NodeInfo};
 use trans::debuginfo;
+use trans::debuginfo::SourceLocation::NoSourceLoc;
 use trans::glue;
 use middle::region;
 use trans::type_::Type;
@@ -671,7 +672,7 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
                                                 scope.debug_loc);
                     }
                 }
-                build::Br(bcx_out, prev_llbb);
+                build::Br(bcx_out, prev_llbb, NoSourceLoc);
                 prev_llbb = bcx_in.llbb;
             } else {
                 debug!("no suitable cleanups in {}",
@@ -770,7 +771,7 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
 
         // Generate the cleanup block and branch to it.
         let cleanup_llbb = self.trans_cleanups_to_exit_scope(UnwindExit);
-        build::Br(pad_bcx, cleanup_llbb);
+        build::Br(pad_bcx, cleanup_llbb, NoSourceLoc);
 
         return pad_bcx.llbb;
     }

@@ -39,6 +39,7 @@ use trans::closure;
 use trans::common;
 use trans::common::*;
 use trans::datum::*;
+use trans::debuginfo::SourceLocation::NoSourceLoc;
 use trans::expr;
 use trans::glue;
 use trans::inline;
@@ -350,7 +351,7 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
                            ArgVals(llargs.as_slice()),
                            dest).bcx;
 
-    finish_fn(&fcx, bcx, output_ty);
+    finish_fn(&fcx, bcx, output_ty, NoSourceLoc);
 
     ccx.fn_pointer_shims().borrow_mut().insert(bare_fn_ty, llfn);
 
@@ -499,7 +500,7 @@ pub fn trans_unboxing_shim<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                            dest).bcx;
 
     bcx = fcx.pop_and_trans_custom_cleanup_scope(bcx, arg_scope);
-    finish_fn(&fcx, bcx, return_type);
+    finish_fn(&fcx, bcx, return_type, NoSourceLoc);
 
     llfn
 }

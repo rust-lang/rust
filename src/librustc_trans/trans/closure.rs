@@ -22,6 +22,7 @@ use trans::cleanup::{CleanupMethods, ScopeId};
 use trans::common::*;
 use trans::datum::{Datum, DatumBlock, Expr, Lvalue, rvalue_scratch_datum};
 use trans::debuginfo;
+use trans::debuginfo::SourceLocation::NoSourceLoc;
 use trans::expr;
 use trans::monomorphize::MonoId;
 use trans::type_of::*;
@@ -675,17 +676,17 @@ pub fn get_wrapper_for_bare_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     }
     llargs.extend(args.iter().map(|arg| arg.val));
 
-    let retval = Call(bcx, fn_ptr, llargs.as_slice(), None);
+    let retval = Call(bcx, fn_ptr, llargs.as_slice(), None, NoSourceLoc);
     match f.sig.output {
         ty::FnConverging(output_type) => {
             if return_type_is_void(ccx, output_type) || fcx.llretslotptr.get().is_some() {
-                RetVoid(bcx);
+                RetVoid(bcx, NoSourceLoc);
             } else {
-                Ret(bcx, retval);
+                Ret(bcx, retval, NoSourceLoc);
             }
         }
         ty::FnDiverging => {
-            RetVoid(bcx);
+            RetVoid(bcx, NoSourceLoc);
         }
     }
 

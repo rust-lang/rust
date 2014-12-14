@@ -30,6 +30,7 @@ use trans::build;
 use trans::cleanup;
 use trans::datum;
 use trans::debuginfo;
+use trans::debuginfo::SourceLocation::NoSourceLoc;
 use trans::machine;
 use trans::type_::Type;
 use trans::type_of;
@@ -354,7 +355,7 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
         let mut reachable = false;
         for bcx in in_cxs.iter() {
             if !bcx.unreachable.get() {
-                build::Br(*bcx, out.llbb);
+                build::Br(*bcx, out.llbb, NoSourceLoc);
                 reachable = true;
             }
         }

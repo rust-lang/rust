@@ -28,7 +28,7 @@ use trans::cleanup;
 use trans::cleanup::CleanupMethods;
 use trans::common::*;
 use trans::datum;
-use trans::debuginfo;
+use trans::debuginfo::SourceLocation::{SourceLoc, NoSourceLoc};
 use trans::expr;
 use trans::machine::*;
 use trans::tvec;
@@ -120,12 +120,12 @@ pub fn drop_ty<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             v
         };
 
-        match source_location {
-            Some(sl) => debuginfo::set_source_location(bcx.fcx, sl.id, sl.span),
-            None => debuginfo::clear_source_location(bcx.fcx)
+        let source_location = match source_location {
+            Some(sl) => SourceLoc(sl.id, sl.span),
+            None => NoSourceLoc
         };
 
-        Call(bcx, glue, &[ptr], None);
+        Call(bcx, glue, &[ptr], None, source_location);
     }
     bcx
 }
@@ -327,7 +327,7 @@ fn size_and_align_of_dst<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, info: 
             let (unsized_size, unsized_align) = size_and_align_of_dst(bcx, field_ty, info);
 
             // Return the sum of sizes and max of aligns.
-            let size = Add(bcx, sized_size, unsized_size);
+            let size = Add(bcx, sized_size, unsized_size, NoSourceLoc);
             let align = Select(bcx,
                                ICmp(bcx, llvm::IntULT, sized_align, unsized_align),
                                sized_align,
@@ -347,7 +347,8 @@ fn size_and_align_of_dst<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, info: 
             // times the unit size.
             let llunit_ty = sizing_type_of(bcx.ccx(), unit_ty);
             let unit_size = llsize_of_alloc(bcx.ccx(), llunit_ty);
-            (Mul(bcx, info, C_uint(bcx.ccx(), unit_size)), C_uint(bcx.ccx(), 8u))
+            (Mul(bcx, info, C_uint(bcx.ccx(), unit_size), NoSourceLoc),
+             C_uint(bcx.ccx(), 8u))
         }
         _ => bcx.sess().bug(format!("Unexpected unsized type, found {}",
                                     bcx.ty_to_string(t)).as_slice())
@@ -378,7 +379,8 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, t: Ty<'tcx>)
                         Call(bcx,
                              dtor,
                              &[PointerCast(bcx, lluniquevalue, Type::i8p(bcx.ccx()))],
-                             None);
+                             None,
+                             NoSourceLoc);
                         bcx
                     })
                 }
@@ -447,7 +449,11 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, t: Ty<'tcx>)
             with_cond(bcx, IsNotNull(bcx, env), |bcx| {
                 let dtor_ptr = GEPi(bcx, env, &[0u, abi::BOX_FIELD_DROP_GLUE]);
                 let dtor = Load(bcx, dtor_ptr);
-                Call(bcx, dtor, &[PointerCast(bcx, box_cell_v, Type::i8p(bcx.ccx()))], None);
+                Call(bcx,
+                     dtor,
+                     &[PointerCast(bcx, box_cell_v, Type::i8p(bcx.ccx()))],
+                     None,
+                     NoSourceLoc);
                 bcx
             })
         }
@@ -462,7 +468,8 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, t: Ty<'tcx>)
             Call(bcx,
                  dtor,
                  &[PointerCast(bcx, Load(bcx, lluniquevalue), Type::i8p(bcx.ccx()))],
-                 None);
+                 None,
+                 NoSourceLoc);
             bcx
         }
         ty::ty_vec(ty, None) => tvec::make_drop_glue_unboxed(bcx, v0, ty, false),
@@ -561,7 +568,7 @@ fn make_generic_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     let llrawptr0 = get_param(llfn, fcx.arg_pos(0) as c_uint);
     let bcx = helper(bcx, llrawptr0, t);
-    finish_fn(&fcx, bcx, ty::FnConverging(ty::mk_nil(ccx.tcx())));
+    finish_fn(&fcx, bcx, ty::FnConverging(ty::mk_nil(ccx.tcx())), NoSourceLoc);
 
     llfn
 }

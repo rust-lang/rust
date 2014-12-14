@@ -46,7 +46,8 @@ use trans::build::*;
 use trans::cleanup::{mod, CleanupMethods};
 use trans::common::*;
 use trans::datum::*;
-use trans::debuginfo;
+use trans::debuginfo::{mod, SourceLocation};
+use trans::debuginfo::SourceLocation::NoSourceLoc;
 use trans::glue;
 use trans::machine;
 use trans::meth;
@@ -811,7 +812,8 @@ fn trans_index<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let expected = Call(bcx,
                                 expect,
                                 &[bounds_check, C_bool(ccx, false)],
-                                None);
+                                None,
+                                SourceLocation::from_expr(index_expr));
             bcx = with_cond(bcx, expected, |bcx| {
                 controlflow::trans_fail_bounds_check(bcx,
                                                      index_expr.span,
@@ -920,16 +922,16 @@ fn trans_rvalue_stmt_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             trans_into(bcx, &**e, Ignore)
         }
         ast::ExprBreak(label_opt) => {
-            controlflow::trans_break(bcx, expr.id, label_opt)
+            controlflow::trans_break(bcx, expr, label_opt)
         }
         ast::ExprAgain(label_opt) => {
-            controlflow::trans_cont(bcx, expr.id, label_opt)
+            controlflow::trans_cont(bcx, expr, label_opt)
         }
         ast::ExprRet(ref ex) => {
-            controlflow::trans_ret(bcx, ex.as_ref().map(|e| &**e))
+            controlflow::trans_ret(bcx, expr, ex.as_ref().map(|e| &**e))
         }
         ast::ExprWhile(ref cond, ref body, _) => {
-            controlflow::trans_while(bcx, expr.id, &**cond, &**body)
+            controlflow::trans_while(bcx, expr, &**cond, &**body)
         }
         ast::ExprForLoop(ref pat, ref head, ref body, _) => {
             controlflow::trans_for(bcx,
@@ -939,7 +941,7 @@ fn trans_rvalue_stmt_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                    &**body)
         }
         ast::ExprLoop(ref body, _) => {
-            controlflow::trans_loop(bcx, expr.id, &**body)
+            controlflow::trans_loop(bcx, expr, &**body)
         }
         ast::ExprAssign(ref dst, ref src) => {
             let src_datum = unpack_datum!(bcx, trans(bcx, &**src));
@@ -1531,10 +1533,12 @@ fn trans_unary<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     let un_ty = expr_ty(bcx, expr);
 
+    let source_loc = SourceLocation::from_expr(expr);
+
     match op {
         ast::UnNot => {
             let datum = unpack_datum!(bcx, trans(bcx, sub_expr));
-            let llresult = Not(bcx, datum.to_llscalarish(bcx));
+            let llresult = Not(bcx, datum.to_llscalarish(bcx), source_loc);
             immediate_rvalue_bcx(bcx, llresult, un_ty).to_expr_datumblock()
         }
         ast::UnNeg => {
@@ -1542,9 +1546,9 @@ fn trans_unary<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let val = datum.to_llscalarish(bcx);
             let llneg = {
                 if ty::type_is_fp(un_ty) {
-                    FNeg(bcx, val)
+                    FNeg(bcx, val, source_loc)
                 } else {
-                    Neg(bcx, val)
+                    Neg(bcx, val, source_loc)
                 }
             };
             immediate_rvalue_bcx(bcx, llneg, un_ty).to_expr_datumblock()
@@ -1643,56 +1647,69 @@ fn trans_eager_binop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     let rhs = base::cast_shift_expr_rhs(bcx, op, lhs, rhs);
 
+    let binop_source_loc = SourceLocation::from_expr(binop_expr);
+
     let mut bcx = bcx;
     let val = match op {
       ast::BiAdd => {
-        if is_float { FAdd(bcx, lhs, rhs) }
-        else { Add(bcx, lhs, rhs) }
+        if is_float {
+            FAdd(bcx, lhs, rhs, binop_source_loc)
+        } else {
+            Add(bcx, lhs, rhs, binop_source_loc)
+        }
       }
       ast::BiSub => {
-        if is_float { FSub(bcx, lhs, rhs) }
-        else { Sub(bcx, lhs, rhs) }
+        if is_float {
+            FSub(bcx, lhs, rhs, binop_source_loc)
+        } else {
+            Sub(bcx, lhs, rhs, binop_source_loc)
+        }
       }
       ast::BiMul => {
-        if is_float { FMul(bcx, lhs, rhs) }
-        else { Mul(bcx, lhs, rhs) }
+        if is_float {
+            FMul(bcx, lhs, rhs, binop_source_loc)
+        } else {
+            Mul(bcx, lhs, rhs, binop_source_loc)
+        }
       }
       ast::BiDiv => {
         if is_float {
-            FDiv(bcx, lhs, rhs)
+            FDiv(bcx, lhs, rhs, binop_source_loc)
         } else {
             // Only zero-check integers; fp /0 is NaN
             bcx = base::fail_if_zero_or_overflows(bcx, binop_expr.span,
                                                   op, lhs, rhs, rhs_t);
             if is_signed {
-                SDiv(bcx, lhs, rhs)
+                SDiv(bcx, lhs, rhs, binop_source_loc)
             } else {
-                UDiv(bcx, lhs, rhs)
+                UDiv(bcx, lhs, rhs, binop_source_loc)
             }
         }
       }
       ast::BiRem => {
         if is_float {
-            FRem(bcx, lhs, rhs)
+            FRem(bcx, lhs, rhs, binop_source_loc)
         } else {
             // Only zero-check integers; fp %0 is NaN
             bcx = base::fail_if_zero_or_overflows(bcx, binop_expr.span,
                                                   op, lhs, rhs, rhs_t);
             if is_signed {
-                SRem(bcx, lhs, rhs)
+                SRem(bcx, lhs, rhs, binop_source_loc)
             } else {
-                URem(bcx, lhs, rhs)
+                URem(bcx, lhs, rhs, binop_source_loc)
             }
         }
       }
-      ast::BiBitOr => Or(bcx, lhs, rhs),
-      ast::BiBitAnd => And(bcx, lhs, rhs),
-      ast::BiBitXor => Xor(bcx, lhs, rhs),
-      ast::BiShl => Shl(bcx, lhs, rhs),
+      ast::BiBitOr => Or(bcx, lhs, rhs, binop_source_loc),
+      ast::BiBitAnd => And(bcx, lhs, rhs, binop_source_loc),
+      ast::BiBitXor => Xor(bcx, lhs, rhs, binop_source_loc),
+      ast::BiShl => Shl(bcx, lhs, rhs, binop_source_loc),
       ast::BiShr => {
         if is_signed {
-            AShr(bcx, lhs, rhs)
-        } else { LShr(bcx, lhs, rhs) }
+            AShr(bcx, lhs, rhs, binop_source_loc)
+        } else {
+            LShr(bcx, lhs, rhs, binop_source_loc)
+        }
       }
       ast::BiEq | ast::BiNe | ast::BiLt | ast::BiGe | ast::BiLe | ast::BiGt => {
         if ty::type_is_scalar(rhs_t) {
@@ -1738,8 +1755,8 @@ fn trans_lazy_binop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let before_rhs = fcx.new_id_block("before_rhs", b.id);
 
     match op {
-      lazy_and => CondBr(past_lhs, lhs, before_rhs.llbb, join.llbb),
-      lazy_or => CondBr(past_lhs, lhs, join.llbb, before_rhs.llbb)
+      lazy_and => CondBr(past_lhs, lhs, before_rhs.llbb, join.llbb, NoSourceLoc),
+      lazy_or => CondBr(past_lhs, lhs, join.llbb, before_rhs.llbb, NoSourceLoc)
     }
 
     let DatumBlock {bcx: past_rhs, datum: rhs} = trans(before_rhs, b);
@@ -1749,7 +1766,7 @@ fn trans_lazy_binop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         return immediate_rvalue_bcx(join, lhs, binop_ty).to_expr_datumblock();
     }
 
-    Br(past_rhs, join.llbb);
+    Br(past_rhs, join.llbb, NoSourceLoc);
     let phi = Phi(join, Type::i1(bcx.ccx()), &[lhs, rhs],
                   &[past_lhs.llbb, past_rhs.llbb]);
 

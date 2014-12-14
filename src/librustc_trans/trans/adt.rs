@@ -59,6 +59,7 @@ use trans::cleanup;
 use trans::cleanup::CleanupMethods;
 use trans::common::*;
 use trans::datum;
+use trans::debuginfo::SourceLocation::NoSourceLoc;
 use trans::machine;
 use trans::type_::Type;
 use trans::type_of;
@@ -892,7 +893,7 @@ pub fn fold_variants<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
                 let variant_value = PointerCast(variant_cx, value, real_ty.ptr_to());
 
                 variant_cx = f(variant_cx, case, variant_value);
-                Br(variant_cx, bcx_next.llbb);
+                Br(variant_cx, bcx_next.llbb, NoSourceLoc);
             }
 
             bcx_next

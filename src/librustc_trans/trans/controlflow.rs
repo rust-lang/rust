@@ -22,6 +22,7 @@ use trans::common::*;
 use trans::consts;
 use trans::datum;
 use trans::debuginfo;
+use trans::debuginfo::SourceLocation::{mod, NoSourceLoc};
 use trans::expr;
 use trans::meth;
 use trans::type_::Type;
@@ -183,6 +184,8 @@ pub fn trans_if<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let then_bcx_out = trans_block(then_bcx_in, &*thn, dest);
     trans::debuginfo::clear_source_location(bcx.fcx);
 
+    let cond_source_loc = SourceLocation::from_expr(cond);
+
     let next_bcx;
     match els {
         Some(elexpr) => {
@@ -190,13 +193,13 @@ pub fn trans_if<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let else_bcx_out = expr::trans_into(else_bcx_in, &*elexpr, dest);
             next_bcx = bcx.fcx.join_blocks(if_id,
                                            &[then_bcx_out, else_bcx_out]);
-            CondBr(bcx, cond_val, then_bcx_in.llbb, else_bcx_in.llbb);
+            CondBr(bcx, cond_val, then_bcx_in.llbb, else_bcx_in.llbb, cond_source_loc);
         }
 
         None => {
             next_bcx = bcx.fcx.new_id_block("next-block", if_id);
-            Br(then_bcx_out, next_bcx.llbb);
-            CondBr(bcx, cond_val, then_bcx_in.llbb, next_bcx.llbb);
+            Br(then_bcx_out, next_bcx.llbb, NoSourceLoc);
+            CondBr(bcx, cond_val, then_bcx_in.llbb, next_bcx.llbb, cond_source_loc);
         }
     }
 
@@ -208,7 +211,7 @@ pub fn trans_if<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 }
 
 pub fn trans_while<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                               loop_id: ast::NodeId,
+                               loop_expr: &ast::Expr,
                                cond: &ast::Expr,
                                body: &ast::Block)
                                -> Block<'blk, 'tcx> {
@@ -226,27 +229,28 @@ pub fn trans_while<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     //    |           body_bcx_out --+
     // next_bcx_in
 
-    let next_bcx_in = fcx.new_id_block("while_exit", loop_id);
+    let next_bcx_in = fcx.new_id_block("while_exit", loop_expr.id);
     let cond_bcx_in = fcx.new_id_block("while_cond", cond.id);
     let body_bcx_in = fcx.new_id_block("while_body", body.id);
 
-    fcx.push_loop_cleanup_scope(loop_id, [next_bcx_in, cond_bcx_in]);
+    fcx.push_loop_cleanup_scope(loop_expr.id, [next_bcx_in, cond_bcx_in]);
 
-    Br(bcx, cond_bcx_in.llbb);
+    Br(bcx, cond_bcx_in.llbb, SourceLocation::from_expr(loop_expr));
 
     // compile the block where we will handle loop cleanups
-    let cleanup_llbb = fcx.normal_exit_block(loop_id, cleanup::EXIT_BREAK);
+    let cleanup_llbb = fcx.normal_exit_block(loop_expr.id, cleanup::EXIT_BREAK);
 
     // compile the condition
     let Result {bcx: cond_bcx_out, val: cond_val} =
         expr::trans(cond_bcx_in, cond).to_llbool();
-    CondBr(cond_bcx_out, cond_val, body_bcx_in.llbb, cleanup_llbb);
+    let cond_source_loc = SourceLocation::from_expr(cond);
+    CondBr(cond_bcx_out, cond_val, body_bcx_in.llbb, cleanup_llbb, cond_source_loc);
 
     // loop body:
     let body_bcx_out = trans_block(body_bcx_in, body, expr::Ignore);
-    Br(body_bcx_out, cond_bcx_in.llbb);
+    Br(body_bcx_out, cond_bcx_in.llbb, NoSourceLoc);
 
-    fcx.pop_loop_cleanup_scope(loop_id);
+    fcx.pop_loop_cleanup_scope(loop_expr.id);
     return next_bcx_in;
 }
 
@@ -285,7 +289,7 @@ pub fn trans_for<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     let body_bcx_in = bcx.fcx.new_id_block("for_body", body.id);
     bcx.fcx.push_loop_cleanup_scope(loop_info.id,
                                     [next_bcx_in, loopback_bcx_in]);
-    Br(bcx, loopback_bcx_in.llbb);
+    Br(bcx, loopback_bcx_in.llbb, NoSourceLoc);
     let cleanup_llbb = bcx.fcx.normal_exit_block(loop_info.id,
                                                  cleanup::EXIT_BREAK);
 
@@ -338,7 +342,7 @@ pub fn trans_for<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                               None);
     let i1_type = Type::i1(loopback_bcx_out.ccx());
     let llcondition = Trunc(loopback_bcx_out, lldiscriminant, i1_type);
-    CondBr(loopback_bcx_out, llcondition, body_bcx_in.llbb, cleanup_llbb);
+    CondBr(loopback_bcx_out, llcondition, body_bcx_in.llbb, cleanup_llbb, NoSourceLoc);
 
     // Now we're in the body. Unpack the `Option` value into the programmer-
     // supplied pattern.
@@ -366,7 +370,7 @@ pub fn trans_for<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         body_bcx_out.fcx
                     .pop_and_trans_custom_cleanup_scope(body_bcx_out,
                                                         option_cleanup_scope);
-    Br(body_bcx_out, loopback_bcx_in.llbb);
+    Br(body_bcx_out, loopback_bcx_in.llbb, NoSourceLoc);
 
     // Codegen cleanups and leave.
     next_bcx_in.fcx.pop_loop_cleanup_scope(loop_info.id);
@@ -374,7 +378,7 @@ pub fn trans_for<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
 }
 
 pub fn trans_loop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                              loop_id: ast::NodeId,
+                              loop_expr: &ast::Expr,
                               body: &ast::Block)
                               -> Block<'blk, 'tcx> {
     let _icx = push_ctxt("trans_loop");
@@ -391,22 +395,22 @@ pub fn trans_loop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     // Links between body_bcx_in and next_bcx are created by
     // break statements.
 
-    let next_bcx_in = bcx.fcx.new_id_block("loop_exit", loop_id);
+    let next_bcx_in = bcx.fcx.new_id_block("loop_exit", loop_expr.id);
     let body_bcx_in = bcx.fcx.new_id_block("loop_body", body.id);
 
-    fcx.push_loop_cleanup_scope(loop_id, [next_bcx_in, body_bcx_in]);
+    fcx.push_loop_cleanup_scope(loop_expr.id, [next_bcx_in, body_bcx_in]);
 
-    Br(bcx, body_bcx_in.llbb);
+    Br(bcx, body_bcx_in.llbb, SourceLocation::from_expr(loop_expr));
     let body_bcx_out = trans_block(body_bcx_in, body, expr::Ignore);
-    Br(body_bcx_out, body_bcx_in.llbb);
+    Br(body_bcx_out, body_bcx_in.llbb, NoSourceLoc);
 
-    fcx.pop_loop_cleanup_scope(loop_id);
+    fcx.pop_loop_cleanup_scope(loop_expr.id);
 
     return next_bcx_in;
 }
 
 pub fn trans_break_cont<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                    expr_id: ast::NodeId,
+                                    expr: &ast::Expr,
                                     opt_label: Option<Ident>,
                                     exit: uint)
                                     -> Block<'blk, 'tcx> {
@@ -421,7 +425,7 @@ pub fn trans_break_cont<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let loop_id = match opt_label {
         None => fcx.top_loop_scope(),
         Some(_) => {
-            match bcx.tcx().def_map.borrow().get(&expr_id) {
+            match bcx.tcx().def_map.borrow().get(&expr.id) {
                 Some(&def::DefLabel(loop_id)) => loop_id,
                 ref r => {
                     bcx.tcx().sess.bug(format!("{} in def-map for label",
@@ -433,39 +437,40 @@ pub fn trans_break_cont<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     // Generate appropriate cleanup code and branch
     let cleanup_llbb = fcx.normal_exit_block(loop_id, exit);
-    Br(bcx, cleanup_llbb);
+    Br(bcx, cleanup_llbb, SourceLocation::from_expr(expr));
     Unreachable(bcx); // anything afterwards should be ignored
     return bcx;
 }
 
 pub fn trans_break<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                               expr_id: ast::NodeId,
+                               expr: &ast::Expr,
                                label_opt: Option<Ident>)
                                -> Block<'blk, 'tcx> {
-    return trans_break_cont(bcx, expr_id, label_opt, cleanup::EXIT_BREAK);
+    return trans_break_cont(bcx, expr, label_opt, cleanup::EXIT_BREAK);
 }
 
 pub fn trans_cont<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                              expr_id: ast::NodeId,
+                              expr: &ast::Expr,
                               label_opt: Option<Ident>)
                               -> Block<'blk, 'tcx> {
-    return trans_break_cont(bcx, expr_id, label_opt, cleanup::EXIT_LOOP);
+    return trans_break_cont(bcx, expr, label_opt, cleanup::EXIT_LOOP);
 }
 
 pub fn trans_ret<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                             e: Option<&ast::Expr>)
+                             return_expr: &ast::Expr,
+                             retval_expr: Option<&ast::Expr>)
                              -> Block<'blk, 'tcx> {
     let _icx = push_ctxt("trans_ret");
     let fcx = bcx.fcx;
     let mut bcx = bcx;
-    let dest = match (fcx.llretslotptr.get(), e) {
-        (Some(_), Some(e)) => {
-            let ret_ty = expr_ty(bcx, &*e);
+    let dest = match (fcx.llretslotptr.get(), retval_expr) {
+        (Some(_), Some(retval_expr)) => {
+            let ret_ty = expr_ty(bcx, &*retval_expr);
             expr::SaveIn(fcx.get_ret_slot(bcx, ty::FnConverging(ret_ty), "ret_slot"))
         }
         _ => expr::Ignore,
     };
-    if let Some(x) = e {
+    if let Some(x) = retval_expr {
         bcx = expr::trans_into(bcx, &*x, dest);
         match dest {
             expr::SaveIn(slot) if fcx.needs_ret_allocas => {
@@ -475,7 +480,7 @@ pub fn trans_ret<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }
     }
     let cleanup_llbb = fcx.return_exit_block();
-    Br(bcx, cleanup_llbb);
+    Br(bcx, cleanup_llbb, SourceLocation::from_expr(return_expr));
     Unreachable(bcx);
     return bcx;
 }
