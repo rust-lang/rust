@@ -730,14 +730,17 @@ impl<'a, 'tcx, F> TypeFolder<'tcx> for BottomUpFolder<'a, 'tcx, F> where
 /// regions (aka "lifetimes") that are bound within a type are not
 /// visited by this folder; only regions that occur free will be
 /// visited by `fld_r`.
-pub struct RegionFolder<'a, 'tcx: 'a, F> where F: FnMut(ty::Region, uint) -> ty::Region {
+
+pub struct RegionFolder<'a, 'tcx: 'a> {
     tcx: &'a ty::ctxt<'tcx>,
     current_depth: uint,
-    fld_r: F,
+    fld_r: &'a mut (FnMut(ty::Region, uint) -> ty::Region + 'a),
 }
 
-impl<'a, 'tcx, F> RegionFolder<'a, 'tcx, F> where F: FnMut(ty::Region, uint) -> ty::Region {
-    pub fn new(tcx: &'a ty::ctxt<'tcx>, fld_r: F) -> RegionFolder<'a, 'tcx, F> {
+impl<'a, 'tcx> RegionFolder<'a, 'tcx> {
+    pub fn new<F>(tcx: &'a ty::ctxt<'tcx>, fld_r: &'a mut F) -> RegionFolder<'a, 'tcx>
+        where F : FnMut(ty::Region, uint) -> ty::Region
+    {
         RegionFolder {
             tcx: tcx,
             current_depth: 1,
@@ -750,15 +753,21 @@ pub fn collect_regions<'tcx,T>(tcx: &ty::ctxt<'tcx>, value: &T) -> Vec<ty::Regio
     where T : TypeFoldable<'tcx>
 {
     let mut vec = Vec::new();
-    {
-        let mut folder = RegionFolder::new(tcx, |r, _| { vec.push(r); r });
-        value.fold_with(&mut folder);
-    }
+    fold_regions(tcx, value, |r, _| { vec.push(r); r });
     vec
 }
 
-impl<'a, 'tcx, F> TypeFolder<'tcx> for RegionFolder<'a, 'tcx, F> where
-    F: FnMut(ty::Region, uint) -> ty::Region,
+pub fn fold_regions<'tcx,T,F>(tcx: &ty::ctxt<'tcx>,
+                              value: &T,
+                              mut f: F)
+                              -> T
+    where F : FnMut(ty::Region, uint) -> ty::Region,
+          T : TypeFoldable<'tcx>,
+{
+    value.fold_with(&mut RegionFolder::new(tcx, &mut f))
+}
+
+impl<'a, 'tcx> TypeFolder<'tcx> for RegionFolder<'a, 'tcx>
 {
     fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx> { self.tcx }
 
@@ -780,7 +789,7 @@ impl<'a, 'tcx, F> TypeFolder<'tcx> for RegionFolder<'a, 'tcx, F> where
             _ => {
                 debug!("RegionFolder.fold_region({}) folding free region (current_depth={})",
                        r.repr(self.tcx()), self.current_depth);
-                (self.fld_r)(r, self.current_depth)
+                self.fld_r.call_mut((r, self.current_depth))
             }
         }
     }
@@ -836,7 +845,7 @@ pub fn shift_regions<'tcx, T:TypeFoldable<'tcx>+Repr<'tcx>>(tcx: &ty::ctxt<'tcx>
     debug!("shift_regions(value={}, amount={})",
            value.repr(tcx), amount);
 
-    value.fold_with(&mut RegionFolder::new(tcx, |region, _current_depth| {
+    value.fold_with(&mut RegionFolder::new(tcx, &mut |region, _current_depth| {
         shift_region(region, amount)
     }))
 }

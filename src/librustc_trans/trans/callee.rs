@@ -421,12 +421,11 @@ pub fn trans_fn_ref_with_substs<'blk, 'tcx>(
             let impl_or_trait_item = ty::impl_or_trait_item(tcx, source_id);
             match impl_or_trait_item {
                 ty::MethodTraitItem(method) => {
-                    let poly_trait_ref = ty::impl_trait_ref(tcx, impl_id).unwrap();
-                    let trait_ref = ty::erase_late_bound_regions(tcx, &*poly_trait_ref);
+                    let trait_ref = ty::impl_trait_ref(tcx, impl_id).unwrap();
 
                     // Compute the first substitution
                     let first_subst =
-                        ty::make_substs_for_receiver_types(tcx, &trait_ref, &*method)
+                        ty::make_substs_for_receiver_types(tcx, &*trait_ref, &*method)
                         .erase_regions();
 
                     // And compose them

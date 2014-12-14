@@ -133,14 +133,14 @@ pub fn trans_method_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             method_num
         }) => {
             let trait_ref =
-                Rc::new(trait_ref.subst(bcx.tcx(), bcx.fcx.param_substs));
+                Rc::new(ty::Binder((**trait_ref).subst(bcx.tcx(), bcx.fcx.param_substs)));
             let span = bcx.tcx().map.span(method_call.expr_id);
             debug!("method_call={} trait_ref={}",
                    method_call,
                    trait_ref.repr(bcx.tcx()));
             let origin = fulfill_obligation(bcx.ccx(),
                                             span,
-                                            (*trait_ref).clone());
+                                            trait_ref.clone());
             debug!("origin = {}", origin.repr(bcx.tcx()));
             trans_monomorphized_callee(bcx, method_call, trait_ref.def_id(),
                                        method_num, origin)
@@ -618,7 +618,7 @@ fn emit_vtable_methods<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let tcx = ccx.tcx();
 
     let trt_id = match ty::impl_trait_ref(tcx, impl_id) {
-        Some(t_id) => t_id.def_id(),
+        Some(t_id) => t_id.def_id,
         None       => ccx.sess().bug("make_impl_vtable: don't know how to \
                                       make a vtable for a type impl!")
     };

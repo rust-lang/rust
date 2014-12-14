@@ -425,11 +425,11 @@ pub fn get_repr_attrs(cdata: Cmd, id: ast::NodeId) -> Vec<attr::ReprAttr> {
 pub fn get_impl_trait<'tcx>(cdata: Cmd,
                             id: ast::NodeId,
                             tcx: &ty::ctxt<'tcx>)
-                            -> Option<Rc<ty::PolyTraitRef<'tcx>>>
+                            -> Option<Rc<ty::TraitRef<'tcx>>>
 {
     let item_doc = lookup_item(id, cdata.data());
     reader::maybe_get_doc(item_doc, tag_item_trait_ref).map(|tp| {
-        Rc::new(ty::Binder(doc_trait_ref(tp, tcx, cdata)))
+        Rc::new(doc_trait_ref(tp, tcx, cdata))
     })
 }
 

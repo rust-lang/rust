@@ -166,11 +166,9 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
 
             // Find the impl self type as seen from the "inside" --
             // that is, with all type parameters converted from bound
-            // to free, and any late-bound regions on the impl
-            // liberated.
+            // to free.
             let self_ty = ty::node_id_to_type(fcx.tcx(), item.id);
             let self_ty = self_ty.subst(fcx.tcx(), &fcx.inh.param_env.free_substs);
-            let self_ty = liberate_late_bound_regions(fcx.tcx(), item_scope, &ty::Binder(self_ty));
 
             bounds_checker.check_traits_in_ty(self_ty);
 
@@ -181,7 +179,6 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                 Some(t) => { t }
             };
             let trait_ref = (*trait_ref).subst(fcx.tcx(), &fcx.inh.param_env.free_substs);
-            let trait_ref = liberate_late_bound_regions(fcx.tcx(), item_scope, &trait_ref);
 
             // There are special rules that apply to drop.
             if

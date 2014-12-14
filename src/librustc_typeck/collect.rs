@@ -43,8 +43,8 @@ use middle::resolve_lifetime;
 use middle::subst;
 use middle::subst::{Substs};
 use middle::ty::{AsPredicate, ImplContainer, ImplOrTraitItemContainer, TraitContainer};
-use middle::ty::{mod, Ty, Polytype};
-use middle::ty_fold::{mod, TypeFolder};
+use middle::ty::{mod, RegionEscape, Ty, Polytype};
+use middle::ty_fold::{mod, TypeFolder, TypeFoldable};
 use middle::infer;
 use rscope::*;
 use {CrateCtxt, lookup_def_tcx, no_params, write_ty_to_tcx};
@@ -226,7 +226,7 @@ pub fn get_enum_variant_types<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
             ast::StructVariantKind(ref struct_def) => {
                 let pty = Polytype {
-                    generics: ty_generics_for_type(
+                    generics: ty_generics_for_type_or_impl(
                         ccx,
                         generics,
                         DontCreateTypeParametersForAssociatedTypes),
@@ -239,7 +239,7 @@ pub fn get_enum_variant_types<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         };
 
         let pty = Polytype {
-            generics: ty_generics_for_type(
+            generics: ty_generics_for_type_or_impl(
                           ccx,
                           generics,
                           DontCreateTypeParametersForAssociatedTypes),
@@ -1050,7 +1050,7 @@ pub fn convert(ccx: &CrateCtxt, it: &ast::Item) {
                       ref selfty,
                       ref impl_items) => {
             // Create generics from the generics specified in the impl head.
-            let ty_generics = ty_generics_for_impl(
+            let ty_generics = ty_generics_for_type_or_impl(
                     ccx,
                     generics,
                     CreateTypeParametersForAssociatedTypes);
@@ -1482,7 +1482,7 @@ pub fn ty_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, it: &ast::Item)
             let pty = {
                 let ty = ccx.to_ty(&ExplicitRscope, &**t);
                 Polytype {
-                    generics: ty_generics_for_type(
+                    generics: ty_generics_for_type_or_impl(
                                   ccx,
                                   generics,
                                   DontCreateTypeParametersForAssociatedTypes),
@@ -1495,7 +1495,7 @@ pub fn ty_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, it: &ast::Item)
         }
         ast::ItemEnum(_, ref generics) => {
             // Create a new generic polytype.
-            let ty_generics = ty_generics_for_type(
+            let ty_generics = ty_generics_for_type_or_impl(
                 ccx,
                 generics,
                 DontCreateTypeParametersForAssociatedTypes);
@@ -1513,7 +1513,7 @@ pub fn ty_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, it: &ast::Item)
             tcx.sess.span_bug(it.span, "invoked ty_of_item on trait");
         }
         ast::ItemStruct(_, ref generics) => {
-            let ty_generics = ty_generics_for_type(
+            let ty_generics = ty_generics_for_type_or_impl(
                 ccx,
                 generics,
                 DontCreateTypeParametersForAssociatedTypes);
@@ -1580,11 +1580,11 @@ fn ty_of_trait_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     }
 }
 
-fn ty_generics_for_type<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
-                                  generics: &ast::Generics,
-                                  create_type_parameters_for_associated_types:
-                                      CreateTypeParametersForAssociatedTypesFlag)
-                                  -> ty::Generics<'tcx> {
+fn ty_generics_for_type_or_impl<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
+                                          generics: &ast::Generics,
+                                          create_type_parameters_for_associated_types:
+                                          CreateTypeParametersForAssociatedTypesFlag)
+                                          -> ty::Generics<'tcx> {
     ty_generics(ccx,
                 subst::TypeSpace,
                 generics.lifetimes.as_slice(),
@@ -1662,24 +1662,6 @@ fn ty_generics_for_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                              ty::Predicate::Trait(self_trait_ref));
 
     generics
-}
-
-fn ty_generics_for_impl<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
-                                  generics: &ast::Generics,
-                                  create_type_parameters_for_associated_types:
-                                      CreateTypeParametersForAssociatedTypesFlag)
-                                  -> ty::Generics<'tcx>
-{
-    let early_lifetimes = resolve_lifetime::early_bound_lifetimes(generics);
-    debug!("ty_generics_for_impl: early_lifetimes={}",
-           early_lifetimes);
-    ty_generics(ccx,
-                subst::TypeSpace,
-                early_lifetimes.as_slice(),
-                generics.ty_params.as_slice(),
-                ty::Generics::empty(),
-                &generics.where_clause,
-                create_type_parameters_for_associated_types)
 }
 
 fn ty_generics_for_fn_or_method<'tcx,AC>(
@@ -2186,8 +2168,12 @@ pub fn mk_item_substs<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     subst::Substs::new(types, regions)
 }
 
-/// Verifies that the explicit self type of a method matches the impl or
-/// trait.
+/// Verifies that the explicit self type of a method matches the impl
+/// or trait. This is a bit weird but basically because right now we
+/// don't handle the general case, but instead map it to one of
+/// several pre-defined options using various heuristics, this method
+/// comes back to check after the fact that explicit type the user
+/// wrote actually matches what the pre-defined option said.
 fn check_method_self_type<'a, 'tcx, RS:RegionScope>(
     crate_context: &CrateCtxt<'a, 'tcx>,
     rs: &RS,
@@ -2209,19 +2195,21 @@ fn check_method_self_type<'a, 'tcx, RS:RegionScope>(
         // contain late-bound regions from the method, but not the
         // trait (since traits only have early-bound region
         // parameters).
-        assert!(!ty::type_escapes_depth(required_type, 1));
+        assert!(!base_type.has_regions_escaping_depth(1));
         let required_type_free =
-            ty::liberate_late_bound_regions(
-                crate_context.tcx, body_scope, &ty::Binder(required_type));
-
-        // The "base type" comes from the impl. It may have late-bound
-        // regions from the impl or the method.
-        let base_type_free =
-            ty::liberate_late_bound_regions( // liberate impl regions:
+            liberate_early_bound_regions(
                 crate_context.tcx, body_scope,
-                &ty::liberate_late_bound_regions( // liberate method regions:
-                    crate_context.tcx, body_scope,
-                    &ty::Binder(ty::Binder(base_type))));
+                &ty::liberate_late_bound_regions(
+                    crate_context.tcx, body_scope, &ty::Binder(required_type)));
+
+        // The "base type" comes from the impl. It too may have late-bound
+        // regions from the method.
+        assert!(!base_type.has_regions_escaping_depth(1));
+        let base_type_free =
+            liberate_early_bound_regions(
+                crate_context.tcx, body_scope,
+                &ty::liberate_late_bound_regions(
+                    crate_context.tcx, body_scope, &ty::Binder(base_type)));
 
         debug!("required_type={} required_type_free={} \
                 base_type={} base_type_free={}",
@@ -2241,5 +2229,31 @@ fn check_method_self_type<'a, 'tcx, RS:RegionScope>(
                         ppaux::ty_to_string(crate_context.tcx, required_type))
         }));
         infcx.resolve_regions_and_report_errors(body_id);
+    }
+
+    fn liberate_early_bound_regions<'tcx,T>(
+        tcx: &ty::ctxt<'tcx>,
+        scope: region::CodeExtent,
+        value: &T)
+        -> T
+        where T : TypeFoldable<'tcx> + Repr<'tcx>
+    {
+        /*!
+         * Convert early-bound regions into free regions; normally this is done by
+         * applying the `free_substs` from the `ParameterEnvironment`, but this particular
+         * method-self-type check is kind of hacky and done very early in the process,
+         * before we really have a `ParameterEnvironment` to check.
+         */
+
+        ty_fold::fold_regions(tcx, value, |region, _| {
+            match region {
+                ty::ReEarlyBound(id, _, _, name) => {
+                    let def_id = local_def(id);
+                    ty::ReFree(ty::FreeRegion { scope: scope,
+                                                bound_region: ty::BrNamed(def_id, name) })
+                }
+                _ => region
+            }
+        })
     }
 }

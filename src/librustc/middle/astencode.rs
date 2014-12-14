@@ -887,7 +887,7 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
                     this.emit_enum_variant("MethodTypeParam", 2, 1, |this| {
                         this.emit_struct("MethodParam", 2, |this| {
                             try!(this.emit_struct_field("trait_ref", 0, |this| {
-                                Ok(this.emit_trait_ref(ecx, &p.trait_ref.0))
+                                Ok(this.emit_trait_ref(ecx, &*p.trait_ref))
                             }));
                             try!(this.emit_struct_field("method_num", 0, |this| {
                                 this.emit_uint(p.method_num)
@@ -901,7 +901,7 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
                     this.emit_enum_variant("MethodTraitObject", 3, 1, |this| {
                         this.emit_struct("MethodObject", 2, |this| {
                             try!(this.emit_struct_field("trait_ref", 0, |this| {
-                                Ok(this.emit_trait_ref(ecx, &o.trait_ref.0))
+                                Ok(this.emit_trait_ref(ecx, &*o.trait_ref))
                             }));
                             try!(this.emit_struct_field("object_trait_id", 0, |this| {
                                 Ok(this.emit_def_id(o.object_trait_id))
@@ -1457,7 +1457,7 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
                                 ty::MethodParam {
                                     trait_ref: {
                                         this.read_struct_field("trait_ref", 0, |this| {
-                                            Ok(this.read_poly_trait_ref(dcx))
+                                            Ok(this.read_trait_ref(dcx))
                                         }).unwrap()
                                     },
                                     method_num: {
@@ -1475,7 +1475,7 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
                                 ty::MethodObject {
                                     trait_ref: {
                                         this.read_struct_field("trait_ref", 0, |this| {
-                                            Ok(this.read_poly_trait_ref(dcx))
+                                            Ok(this.read_trait_ref(dcx))
                                         }).unwrap()
                                     },
                                     object_trait_id: {

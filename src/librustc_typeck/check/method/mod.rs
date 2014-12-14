@@ -166,12 +166,13 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
 
     // Construct a trait-reference `self_ty : Trait<input_tys>`
     let substs = subst::Substs::new_trait(input_types, Vec::new(), assoc_types, self_ty);
-    let trait_ref = Rc::new(ty::Binder(ty::TraitRef::new(trait_def_id, substs)));
+    let trait_ref = Rc::new(ty::TraitRef::new(trait_def_id, substs));
 
     // Construct an obligation
+    let poly_trait_ref = Rc::new(ty::Binder((*trait_ref).clone()));
     let obligation = traits::Obligation::misc(span,
                                               fcx.body_id,
-                                              ty::Predicate::Trait(trait_ref.clone()));
+                                              poly_trait_ref.as_predicate());
 
     // Now we want to know if this can be matched
     let mut selcx = traits::SelectionContext::new(fcx.infcx(),
@@ -194,11 +195,8 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
 
     // Substitute the trait parameters into the method type and
     // instantiate late-bound regions to get the actual method type.
-    //
-    // Note that as the method comes from a trait, it can only have
-    // late-bound regions from the fn itself, not the impl.
     let ref bare_fn_ty = method_ty.fty;
-    let fn_sig = bare_fn_ty.sig.subst(tcx, trait_ref.substs());
+    let fn_sig = bare_fn_ty.sig.subst(tcx, &trait_ref.substs);
     let fn_sig = fcx.infcx().replace_late_bound_regions_with_fresh_var(span,
                                                                        infer::FnCall,
                                                                        &fn_sig).0;
@@ -221,7 +219,7 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
     //
     // Note that as the method comes from a trait, it should not have
     // any late-bound regions appearing in its bounds.
-    let method_bounds = method_ty.generics.to_bounds(fcx.tcx(), trait_ref.substs());
+    let method_bounds = method_ty.generics.to_bounds(fcx.tcx(), &trait_ref.substs);
     assert!(!method_bounds.has_escaping_regions());
     fcx.add_obligations_for_parameters(
         traits::ObligationCause::misc(span, fcx.body_id),
@@ -293,7 +291,7 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
         origin: MethodTypeParam(MethodParam{trait_ref: trait_ref.clone(),
                                             method_num: method_num}),
         ty: fty,
-        substs: trait_ref.substs().clone()
+        substs: trait_ref.substs.clone()
     };
 
     debug!("callee = {}", callee.repr(fcx.tcx()));
@@ -379,7 +377,7 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                         None => format!(""),
                         Some(trait_ref) => format!(" of the trait `{}`",
                                                    ty::item_path_str(fcx.tcx(),
-                                                                     trait_ref.def_id())),
+                                                                     trait_ref.def_id)),
                     };
 
                     span_note!(fcx.sess(), method_span,

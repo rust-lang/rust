@@ -137,7 +137,8 @@ impl Copy for TypeOrigin {}
 #[deriving(Clone, Show)]
 pub enum ValuePairs<'tcx> {
     Types(ty::expected_found<Ty<'tcx>>),
-    TraitRefs(ty::expected_found<Rc<ty::PolyTraitRef<'tcx>>>),
+    TraitRefs(ty::expected_found<Rc<ty::TraitRef<'tcx>>>),
+    PolyTraitRefs(ty::expected_found<Rc<ty::PolyTraitRef<'tcx>>>),
 }
 
 /// The trace designates the path through inference that we took to
@@ -349,7 +350,7 @@ pub fn can_mk_subty<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
                               b: Ty<'tcx>)
                               -> ures<'tcx> {
     debug!("can_mk_subty({} <: {})", a.repr(cx.tcx), b.repr(cx.tcx));
-    cx.probe(|| {
+    cx.probe(|_| {
         let trace = TypeTrace {
             origin: Misc(codemap::DUMMY_SP),
             values: Types(expected_found(true, a, b))
@@ -362,7 +363,7 @@ pub fn can_mk_eqty<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
                              a: Ty<'tcx>, b: Ty<'tcx>)
                              -> ures<'tcx> {
     debug!("can_mk_subty({} <: {})", a.repr(cx.tcx), b.repr(cx.tcx));
-    cx.probe(|| {
+    cx.probe(|_| {
         let trace = TypeTrace {
             origin: Misc(codemap::DUMMY_SP),
             values: Types(expected_found(true, a, b))
@@ -634,11 +635,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
     /// Execute `f` then unroll any bindings it creates
     pub fn probe<R, F>(&self, f: F) -> R where
-        F: FnOnce() -> R,
+        F: FnOnce(&CombinedSnapshot) -> R,
     {
         debug!("probe()");
         let snapshot = self.start_snapshot();
-        let r = f();
+        let r = f(&snapshot);
         self.rollback_to(snapshot);
         r
     }
@@ -683,12 +684,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         })
     }
 
-    pub fn sub_poly_trait_refs(&self,
-                               a_is_expected: bool,
-                               origin: TypeOrigin,
-                               a: Rc<ty::PolyTraitRef<'tcx>>,
-                               b: Rc<ty::PolyTraitRef<'tcx>>)
-                               -> ures<'tcx>
+    pub fn sub_trait_refs(&self,
+                          a_is_expected: bool,
+                          origin: TypeOrigin,
+                          a: Rc<ty::TraitRef<'tcx>>,
+                          b: Rc<ty::TraitRef<'tcx>>)
+                          -> ures<'tcx>
     {
         debug!("sub_trait_refs({} <: {})",
                a.repr(self.tcx),
@@ -696,8 +697,26 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         self.commit_if_ok(|| {
             let trace = TypeTrace {
                 origin: origin,
-                values: TraitRefs(expected_found(a_is_expected,
-                                                 a.clone(), b.clone()))
+                values: TraitRefs(expected_found(a_is_expected, a.clone(), b.clone()))
+            };
+            self.sub(a_is_expected, trace).trait_refs(&*a, &*b).to_ures()
+        })
+    }
+
+    pub fn sub_poly_trait_refs(&self,
+                               a_is_expected: bool,
+                               origin: TypeOrigin,
+                               a: Rc<ty::PolyTraitRef<'tcx>>,
+                               b: Rc<ty::PolyTraitRef<'tcx>>)
+                               -> ures<'tcx>
+    {
+        debug!("sub_poly_trait_refs({} <: {})",
+               a.repr(self.tcx),
+               b.repr(self.tcx));
+        self.commit_if_ok(|| {
+            let trace = TypeTrace {
+                origin: origin,
+                values: PolyTraitRefs(expected_found(a_is_expected, a.clone(), b.clone()))
             };
             self.sub(a_is_expected, trace).binders(&*a, &*b).to_ures()
         })
@@ -725,6 +744,18 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             Ok(()) => Ok(()),
             Err((br, r)) => Err(ty::terr_regions_insufficiently_polymorphic(br, r))
         }
+    }
+
+    pub fn plug_leaks<T>(&self,
+                         skol_map: SkolemizationMap,
+                         snapshot: &CombinedSnapshot,
+                         value: &T)
+                         -> T
+        where T : TypeFoldable<'tcx> + Repr<'tcx>
+    {
+        /*! See `higher_ranked::leak_check` */
+
+        higher_ranked::plug_leaks(self, skol_map, snapshot, value)
     }
 
     pub fn equality_predicate(&self,

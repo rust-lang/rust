@@ -19,7 +19,6 @@ use middle::subst;
 use middle::subst::Subst;
 use middle::traits;
 use middle::ty::{mod, Ty};
-use middle::ty::{MethodObject};
 use middle::ty_fold::TypeFoldable;
 use middle::infer;
 use middle::infer::InferCtxt;
@@ -58,8 +57,8 @@ struct Candidate<'tcx> {
 
 enum CandidateKind<'tcx> {
     InherentImplCandidate(/* Impl */ ast::DefId, subst::Substs<'tcx>),
-    ObjectCandidate(MethodObject<'tcx>),
-    ExtensionImplCandidate(/* Impl */ ast::DefId, Rc<ty::PolyTraitRef<'tcx>>,
+    ObjectCandidate(/* Trait */ ast::DefId, /* method_num */ uint, /* real_index */ uint),
+    ExtensionImplCandidate(/* Impl */ ast::DefId, Rc<ty::TraitRef<'tcx>>,
                            subst::Substs<'tcx>, MethodIndex),
     UnboxedClosureCandidate(/* Trait */ ast::DefId, MethodIndex),
     WhereClauseCandidate(Rc<ty::PolyTraitRef<'tcx>>, MethodIndex),
@@ -149,7 +148,7 @@ pub fn probe<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     // this creates one big transaction so that all type variables etc
     // that we create during the probe process are removed later
     let mut dummy = Some((steps, opt_simplified_steps)); // FIXME(#18101) need once closures
-    fcx.infcx().probe(|| {
+    fcx.infcx().probe(|_| {
         let (steps, opt_simplified_steps) = dummy.take().unwrap();
         let mut probe_cx = ProbeContext::new(fcx, span, method_name, steps, opt_simplified_steps);
         probe_cx.assemble_inherent_candidates();
@@ -313,12 +312,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             this.inherent_candidates.push(Candidate {
                 xform_self_ty: xform_self_ty,
                 method_ty: m,
-                kind: ObjectCandidate(MethodObject {
-                    trait_ref: new_trait_ref,
-                    object_trait_id: trait_ref.def_id(),
-                    method_num: method_num,
-                    real_index: vtable_index
-                })
+                kind: ObjectCandidate(new_trait_ref.def_id(), method_num, vtable_index)
             });
         });
     }
@@ -502,7 +496,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
 
             // Determine the receiver type that the method itself expects.
             let xform_self_ty =
-                self.xform_self_ty(&method, impl_trait_ref.substs());
+                self.xform_self_ty(&method, &impl_trait_ref.substs);
 
             debug!("xform_self_ty={}", xform_self_ty.repr(self.tcx()));
 
@@ -748,7 +742,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                self_ty.repr(self.tcx()),
                probe.repr(self.tcx()));
 
-        self.infcx().probe(|| {
+        self.infcx().probe(|_| {
             // First check that the self type can be related.
             match self.make_sub_ty(self_ty, probe.xform_self_ty) {
                 Ok(()) => { }
@@ -1033,8 +1027,8 @@ impl<'tcx> Candidate<'tcx> {
                 InherentImplCandidate(def_id, _) => {
                     InherentImplPick(def_id)
                 }
-                ObjectCandidate(ref data) => {
-                    ObjectPick(data.trait_ref.def_id(), data.method_num, data.real_index)
+                ObjectCandidate(def_id, method_num, real_index) => {
+                    ObjectPick(def_id, method_num, real_index)
                 }
                 ExtensionImplCandidate(def_id, _, _, index) => {
                     ExtensionImplPick(def_id, index)
@@ -1059,7 +1053,7 @@ impl<'tcx> Candidate<'tcx> {
     fn to_source(&self) -> CandidateSource {
         match self.kind {
             InherentImplCandidate(def_id, _) => ImplSource(def_id),
-            ObjectCandidate(ref obj) => TraitSource(obj.trait_ref.def_id()),
+            ObjectCandidate(def_id, _, _) => TraitSource(def_id),
             ExtensionImplCandidate(def_id, _, _, _) => ImplSource(def_id),
             UnboxedClosureCandidate(trait_def_id, _) => TraitSource(trait_def_id),
             WhereClauseCandidate(ref trait_ref, _) => TraitSource(trait_ref.def_id()),
@@ -1075,7 +1069,9 @@ impl<'tcx> Candidate<'tcx> {
             UnboxedClosureCandidate(trait_def_id, method_num) => {
                 Some((trait_def_id, method_num))
             }
-            ExtensionImplCandidate(_, ref trait_ref, _, method_num) |
+            ExtensionImplCandidate(_, ref trait_ref, _, method_num) => {
+                Some((trait_ref.def_id, method_num))
+            }
             WhereClauseCandidate(ref trait_ref, method_num) => {
                 Some((trait_ref.def_id(), method_num))
             }
@@ -1096,8 +1092,8 @@ impl<'tcx> Repr<'tcx> for CandidateKind<'tcx> {
         match *self {
             InherentImplCandidate(ref a, ref b) =>
                 format!("InherentImplCandidate({},{})", a.repr(tcx), b.repr(tcx)),
-            ObjectCandidate(ref a) =>
-                format!("ObjectCandidate({})", a.repr(tcx)),
+            ObjectCandidate(a, b, c) =>
+                format!("ObjectCandidate({},{},{})", a.repr(tcx), b, c),
             ExtensionImplCandidate(ref a, ref b, ref c, ref d) =>
                 format!("ExtensionImplCandidate({},{},{},{})", a.repr(tcx), b.repr(tcx),
                         c.repr(tcx), d),
