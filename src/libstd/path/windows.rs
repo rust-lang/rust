@@ -1299,17 +1299,17 @@ mod tests {
     #[test]
     fn test_null_byte() {
         use task;
-        let result = task::try(proc() {
+        let result = task::try(move|| {
             Path::new(b"foo/bar\0")
         });
         assert!(result.is_err());
 
-        let result = task::try(proc() {
+        let result = task::try(move|| {
             Path::new("test").set_filename(b"f\0o")
         });
         assert!(result.is_err());
 
-        let result = task::try(proc() {
+        let result = task::try(move|| {
             Path::new("test").push(b"f\0o");
         });
         assert!(result.is_err());

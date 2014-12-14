@@ -142,7 +142,7 @@ mod test {
         let (tx, rx) = channel();
         for _ in range(0u, 10) {
             let tx = tx.clone();
-            spawn(proc() {
+            spawn(move|| {
                 for _ in range(0u, 4) { task::deschedule() }
                 unsafe {
                     O.doit(|| {

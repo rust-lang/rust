@@ -20,7 +20,7 @@
 
 pub fn main() {
     let mut stdin = std::io::stdin();
-    spawn(proc() {
+    spawn(move|| {
         let _ = stdin.read_to_end();
     });
 }

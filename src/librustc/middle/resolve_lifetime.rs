@@ -141,7 +141,7 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
 
     fn visit_ty(&mut self, ty: &ast::Ty) {
         match ty.node {
-            ast::TyClosure(ref c) | ast::TyProc(ref c) => {
+            ast::TyClosure(ref c)  => {
                 // Careful, the bounds on a closure/proc are *not* within its binder.
                 visit::walk_ty_param_bounds_helper(self, &c.bounds);
                 visit::walk_lifetime_decls_helper(self, &c.lifetimes);

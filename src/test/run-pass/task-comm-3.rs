@@ -41,7 +41,7 @@ fn test00() {
         let tx = tx.clone();
         results.push(task::try_future({
             let i = i;
-            proc() {
+            move|| {
                 test00_start(&tx, i, number_of_messages)
             }
         }));

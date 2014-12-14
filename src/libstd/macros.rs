@@ -358,8 +358,8 @@ macro_rules! vec[
 /// # fn long_running_task() {}
 /// # fn calculate_the_answer() -> int { 42i }
 ///
-/// spawn(proc() { long_running_task(); tx1.send(()) });
-/// spawn(proc() { tx2.send(calculate_the_answer()) });
+/// spawn(move|| { long_running_task(); tx1.send(()) });
+/// spawn(move|| { tx2.send(calculate_the_answer()) });
 ///
 /// select! (
 ///     () = rx1.recv() => println!("the long running task finished first"),

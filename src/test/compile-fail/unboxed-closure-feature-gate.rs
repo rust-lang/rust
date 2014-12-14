@@ -8,12 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(unboxed_closures)]
+// Check that parenthetical notation is feature-gated except with the
+// `Fn` traits.
 
-use std::ops::FnOnce;
-
-fn main() {
-    let task: Box<FnOnce(int) -> int> = box |: x| x;
-    assert!(task.call_once((1234i,)) == 1234i);
+trait Foo<A,R> {
 }
 
+fn main() {
+    let x: Box<Foo(int)>;
+    //~^ ERROR parenthetical notation is only stable when used with the `Fn` family
+
+    // No errors with these:
+    let x: Box<Fn(int)>;
+    let x: Box<FnMut(int)>;
+    let x: Box<FnOnce(int)>;
+}

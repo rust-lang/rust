@@ -21,7 +21,7 @@
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/nightly/")]
-#![feature(phase)]
+#![feature(phase, unboxed_closures)]
 
 #[cfg(test)] #[phase(plugin, link)] extern crate log;
 
@@ -59,7 +59,7 @@ fn deflate_bytes_internal(bytes: &[u8], flags: c_int) -> Option<CVec<u8>> {
                                              &mut outsz,
                                              flags);
         if !res.is_null() {
-            Some(CVec::new_with_dtor(res as *mut u8, outsz as uint, proc() libc::free(res)))
+            Some(CVec::new_with_dtor(res as *mut u8, outsz as uint, move|:| libc::free(res)))
         } else {
             None
         }
@@ -84,7 +84,7 @@ fn inflate_bytes_internal(bytes: &[u8], flags: c_int) -> Option<CVec<u8>> {
                                                &mut outsz,
                                                flags);
         if !res.is_null() {
-            Some(CVec::new_with_dtor(res as *mut u8, outsz as uint, proc() libc::free(res)))
+            Some(CVec::new_with_dtor(res as *mut u8, outsz as uint, move|:| libc::free(res)))
         } else {
             None
         }

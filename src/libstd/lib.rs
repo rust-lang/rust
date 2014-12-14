@@ -171,6 +171,8 @@ pub use rustrt::c_str;
 
 pub use unicode::char;
 
+pub use rustrt::thunk;
+
 /* Exported macros */
 
 pub mod macros;

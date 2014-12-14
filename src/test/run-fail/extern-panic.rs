@@ -42,7 +42,7 @@ fn count(n: uint) -> uint {
 
 fn main() {
     for _ in range(0, 10u) {
-        task::spawn(proc() {
+        task::spawn(move|| {
             let result = count(5u);
             println!("result = %?", result);
             panic!();

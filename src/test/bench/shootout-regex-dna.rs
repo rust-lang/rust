@@ -72,7 +72,7 @@ fn main() {
     let seq_arc = Arc::new(seq.clone()); // copy before it moves
     let clen = seq.len();
 
-    let mut seqlen = Future::spawn(proc() {
+    let mut seqlen = Future::spawn(move|| {
         let substs = vec![
             (regex!("B"), "(c|g|t)"),
             (regex!("D"), "(a|g|t)"),
@@ -108,7 +108,7 @@ fn main() {
     for variant in variants.into_iter() {
         let seq_arc_copy = seq_arc.clone();
         variant_strs.push(variant.to_string());
-        counts.push(Future::spawn(proc() {
+        counts.push(Future::spawn(move|| {
             count_matches(seq_arc_copy.as_slice(), &variant)
         }));
     }

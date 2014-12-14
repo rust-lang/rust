@@ -84,7 +84,7 @@ pub fn test_destroy_actually_kills(force: bool) {
     let (tx, rx1) = channel();
     let mut t = timer::Timer::new().unwrap();
     let rx2 = t.oneshot(Duration::milliseconds(1000));
-    spawn(proc() {
+    spawn(move|| {
         select! {
             () = rx2.recv() => unsafe { libc::exit(1) },
             () = rx1.recv() => {}

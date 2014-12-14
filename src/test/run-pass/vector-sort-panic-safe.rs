@@ -77,7 +77,7 @@ pub fn main() {
 
                 let v = main.clone();
 
-                let _ = task::try(proc() {
+                let _ = task::try(move|| {
                         let mut v = v;
                         let mut panic_countdown = panic_countdown;
                         v.as_mut_slice().sort_by(|a, b| {

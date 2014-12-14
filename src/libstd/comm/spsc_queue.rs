@@ -316,7 +316,7 @@ mod test {
 
             let (tx, rx) = channel();
             let q2 = q.clone();
-            spawn(proc() {
+            spawn(move|| {
                 for _ in range(0u, 100000) {
                     loop {
                         match q2.pop() {

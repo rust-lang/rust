@@ -124,7 +124,7 @@ fn parallel<'a, T, F>(v: &'a mut [T], f: F)
         // boundary.
         let f = &f as *const _ as *const uint;
         let raw = chunk.repr();
-        spawn(proc() {
+        spawn(move|| {
             let f = f as *const F;
             unsafe { (*f)(i * size, mem::transmute(raw)) }
             drop(tx)

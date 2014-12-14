@@ -12,12 +12,13 @@
 #![crate_type="dylib"]
 
 use std::rt;
+use std::thunk::Thunk;
 
 #[no_mangle] // this needs to get called from C
 pub extern "C" fn foo(argc: int, argv: *const *const u8) -> int {
-    rt::start(argc, argv, proc() {
-        spawn(proc() {
+    rt::start(argc, argv, Thunk::new(move|| {
+        spawn(move|| {
             println!("hello");
         });
-    })
+    }))
 }

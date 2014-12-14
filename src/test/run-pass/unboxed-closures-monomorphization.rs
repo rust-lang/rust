@@ -14,26 +14,26 @@
 #![feature(unboxed_closures)]
 
 fn main(){
-    fn bar<'a, T:'a> (t: T) -> Box<FnOnce<(),T> + 'a> {
-        box move |:| t
+    fn bar<'a, T:Clone+'a> (t: T) -> Box<FnMut<(),T> + 'a> {
+        box move |&mut:| t.clone()
     }
 
-    let f = bar(42u);
-    assert_eq!(f.call_once(()), 42);
+    let mut f = bar(42u);
+    assert_eq!(f.call_mut(()), 42);
 
-    let f = bar("forty-two");
-    assert_eq!(f.call_once(()), "forty-two");
+    let mut f = bar("forty-two");
+    assert_eq!(f.call_mut(()), "forty-two");
 
     let x = 42u;
-    let f = bar(&x);
-    assert_eq!(f.call_once(()), &x);
+    let mut f = bar(&x);
+    assert_eq!(f.call_mut(()), &x);
 
-    #[deriving(Show, PartialEq)]
+    #[deriving(Clone, Show, PartialEq)]
     struct Foo(uint, &'static str);
 
     impl Copy for Foo {}
 
     let x = Foo(42, "forty-two");
-    let f = bar(x);
-    assert_eq!(f.call_once(()), x);
+    let mut f = bar(x);
+    assert_eq!(f.call_mut(()), x);
 }

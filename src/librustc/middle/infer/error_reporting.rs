@@ -587,19 +587,6 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                     sub,
                     "");
             }
-            infer::ProcCapture(span, id) => {
-                self.tcx.sess.span_err(
-                    span,
-                    format!("captured variable `{}` must be 'static \
-                             to be captured in a proc",
-                            ty::local_var_name_str(self.tcx, id).get())
-                        .as_slice());
-                note_and_explain_region(
-                    self.tcx,
-                    "captured variable is only valid for ",
-                    sup,
-                    "");
-            }
             infer::IndexSlice(span) => {
                 self.tcx.sess.span_err(span,
                                        "index of slice outside its lifetime");
@@ -622,28 +609,6 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                 note_and_explain_region(
                     self.tcx,
                     "source pointer is only valid for ",
-                    sup,
-                    "");
-            }
-            infer::RelateProcBound(span, var_node_id, ty) => {
-                self.tcx.sess.span_err(
-                    span,
-                    format!(
-                        "the type `{}` of captured variable `{}` \
-                         outlives the `proc()` it \
-                         is captured in",
-                        self.ty_to_string(ty),
-                        ty::local_var_name_str(self.tcx,
-                                               var_node_id)).as_slice());
-                note_and_explain_region(
-                    self.tcx,
-                    "`proc()` is valid for ",
-                    sub,
-                    "");
-                note_and_explain_region(
-                    self.tcx,
-                    format!("the type `{}` is only valid for ",
-                            self.ty_to_string(ty)).as_slice(),
                     sup,
                     "");
             }
@@ -1587,15 +1552,6 @@ impl<'a, 'tcx> ErrorReportingHelpers<'tcx> for InferCtxt<'a, 'tcx> {
                                 self.tcx,
                                 id).get().to_string()).as_slice());
             }
-            infer::ProcCapture(span, id) => {
-                self.tcx.sess.span_note(
-                    span,
-                    format!("...so that captured variable `{}` \
-                            is 'static",
-                            ty::local_var_name_str(
-                                self.tcx,
-                                id).get()).as_slice());
-            }
             infer::IndexSlice(span) => {
                 self.tcx.sess.span_note(
                     span,
@@ -1605,15 +1561,6 @@ impl<'a, 'tcx> ErrorReportingHelpers<'tcx> for InferCtxt<'a, 'tcx> {
                 self.tcx.sess.span_note(
                     span,
                     "...so that it can be closed over into an object");
-            }
-            infer::RelateProcBound(span, var_node_id, _ty) => {
-                self.tcx.sess.span_note(
-                    span,
-                    format!(
-                        "...so that the variable `{}` can be captured \
-                         into a proc",
-                        ty::local_var_name_str(self.tcx,
-                                               var_node_id)).as_slice());
             }
             infer::CallRcvr(span) => {
                 self.tcx.sess.span_note(

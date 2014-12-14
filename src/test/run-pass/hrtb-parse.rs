@@ -43,7 +43,5 @@ fn foo23(t: for<'a> unsafe extern "C" fn(int) -> int) { }
 fn foo30(t: for<'a> |int| -> int) { }
 fn foo31(t: for<'a> unsafe |int| -> int) { }
 
-//fn foo40(t: for<'a> proc(int) -> int) { }
-
 fn main() {
 }

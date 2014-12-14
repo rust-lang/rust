@@ -15,6 +15,6 @@ pub fn main() { test00(); }
 fn start() { println!("Started / Finished task."); }
 
 fn test00() {
-    task::try(proc() start() );
+    task::try(move|| start() );
     println!("Completing.");
 }

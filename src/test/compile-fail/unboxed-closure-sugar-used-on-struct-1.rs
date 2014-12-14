@@ -8,12 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that we don't ICE due to encountering unsubstituted type
-// parameters when untupling FnOnce parameters during translation of
-// an unboxing shim.
 
-#![feature(unboxed_closures)]
+// Test that parentheses form doesn't work with struct types appearing in local variables.
 
-fn main() {
-    let _: Box<FnOnce<(),()>> = box move |&mut:| {};
+struct Bar<A,R> {
+    f: A, r: R
 }
+
+fn bar() {
+    let x: Box<Bar()> = panic!();
+    //~^ ERROR parenthesized parameters may only be used with a trait
+}
+
+fn main() { }
+

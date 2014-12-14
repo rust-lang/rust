@@ -34,7 +34,7 @@ fn ping_pong_bench(n: uint, m: uint) {
         // Create a stream B->A
         let (btx, brx) = channel::<()>();
 
-        spawn(proc() {
+        spawn(move|| {
             let (tx, rx) = (atx, brx);
             for _ in range(0, n) {
                 tx.send(());
@@ -42,7 +42,7 @@ fn ping_pong_bench(n: uint, m: uint) {
             }
         });
 
-        spawn(proc() {
+        spawn(move|| {
             let (tx, rx) = (btx, arx);
             for _ in range(0, n) {
                 rx.recv();

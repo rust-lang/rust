@@ -22,13 +22,13 @@ fn test_ret() { let _x: Box<int> = return; }
 
 fn test_panic() {
     fn f() { let _x: Box<int> = panic!(); }
-    task::try(proc() f() );
+    task::try(move|| f() );
 }
 
 fn test_panic_indirect() {
     fn f() -> ! { panic!(); }
     fn g() { let _x: Box<int> = f(); }
-    task::try(proc() g() );
+    task::try(move|| g() );
 }
 
 pub fn main() {

@@ -168,7 +168,7 @@ fn main() {
 
         let (to_child, from_parent) = channel();
 
-        spawn(proc() {
+        spawn(move|| {
             make_sequence_processor(sz, &from_parent, &to_parent_);
         });
 

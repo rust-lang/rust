@@ -859,7 +859,7 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
 
     fn visit_ty(&mut self, ty: &'ast Ty) {
         match ty.node {
-            TyClosure(ref fd) | TyProc(ref fd) => {
+            TyClosure(ref fd) => {
                 self.visit_fn_decl(&*fd.decl);
             }
             TyBareFn(ref fd) => {
