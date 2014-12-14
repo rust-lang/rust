@@ -719,12 +719,7 @@ fn check_method_body<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     let param_env = ParameterEnvironment::for_item(ccx.tcx, method.id);
 
     let fty = ty::node_id_to_type(ccx.tcx, method.id);
-    debug!("fty (raw): {}", fty.repr(ccx.tcx));
-
-    let body_id = method.pe_body().id;
-    let fty = liberate_late_bound_regions(
-        ccx.tcx, CodeExtent::from_node_id(body_id), &ty::Binder(fty));
-    debug!("fty (liberated): {}", fty.repr(ccx.tcx));
+    debug!("check_method_body: fty={}", fty.repr(ccx.tcx));
 
     check_bare_fn(ccx,
                   &*method.pe_fn_decl(),
@@ -736,11 +731,11 @@ fn check_method_body<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
 fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                             impl_span: Span,
-                                            impl_trait_ref: &ty::PolyTraitRef<'tcx>,
+                                            impl_trait_ref: &ty::TraitRef<'tcx>,
                                             impl_items: &[ast::ImplItem]) {
     // Locate trait methods
     let tcx = ccx.tcx;
-    let trait_items = ty::trait_items(tcx, impl_trait_ref.def_id());
+    let trait_items = ty::trait_items(tcx, impl_trait_ref.def_id);
 
     // Check existing impl methods to see if they are both present in trait
     // and compatible with trait signature
@@ -834,8 +829,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     }
 
     // Check for missing items from trait
-    let provided_methods = ty::provided_trait_methods(tcx,
-                                                      impl_trait_ref.def_id());
+    let provided_methods = ty::provided_trait_methods(tcx, impl_trait_ref.def_id);
     let mut missing_methods = Vec::new();
     for trait_item in trait_items.iter() {
         match *trait_item {
@@ -894,37 +888,16 @@ fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
                              impl_m_span: Span,
                              impl_m_body_id: ast::NodeId,
                              trait_m: &ty::Method<'tcx>,
-                             impl_trait_ref: &ty::PolyTraitRef<'tcx>) {
+                             impl_trait_ref: &ty::TraitRef<'tcx>) {
     debug!("compare_impl_method(impl_trait_ref={})",
            impl_trait_ref.repr(tcx));
-
-    let impl_m_body_scope = CodeExtent::from_node_id(impl_m_body_id);
-
-    // The impl's trait ref may bind late-bound regions from the impl.
-    // Liberate them and assign them the scope of the method body.
-    //
-    // An example would be:
-    //
-    //     impl<'a> Foo<&'a T> for &'a U { ... }
-    //
-    // Here, the region parameter `'a` is late-bound, so the
-    // trait reference associated with the impl will be
-    //
-    //     for<'a> Foo<&'a T>
-    //
-    // liberating will convert this into:
-    //
-    //     Foo<&'A T>
-    //
-    // where `'A` is the `ReFree` version of `'a`.
-    let impl_trait_ref = liberate_late_bound_regions(tcx, impl_m_body_scope, impl_trait_ref);
 
     debug!("impl_trait_ref (liberated) = {}",
            impl_trait_ref.repr(tcx));
 
     let infcx = infer::new_infer_ctxt(tcx);
 
-    let trait_to_impl_substs = impl_trait_ref.substs;
+    let trait_to_impl_substs = &impl_trait_ref.substs;
 
     // Try to give more informative error messages about self typing
     // mismatches.  Note that any mismatch will also be detected
@@ -1060,7 +1033,6 @@ fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
     if !check_region_bounds_on_impl_method(tcx,
                                            impl_m_span,
                                            impl_m,
-                                           impl_m_body_scope,
                                            &trait_m.generics,
                                            &impl_m.generics,
                                            &trait_to_skol_substs,
@@ -1099,11 +1071,7 @@ fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
         .map(|trait_param_def| &trait_param_def.bounds);
     let impl_bounds =
         impl_m.generics.types.get_slice(subst::FnSpace).iter()
-        .map(|impl_param_def|
-             liberate_late_bound_regions(
-                 tcx,
-                 impl_m_body_scope,
-                 &ty::Binder(ty::Binder(impl_param_def.bounds.clone()))).0);
+        .map(|impl_param_def| &impl_param_def.bounds);
     for (i, (trait_param_bounds, impl_param_bounds)) in
         trait_bounds.zip(impl_bounds).enumerate()
     {
@@ -1164,12 +1132,9 @@ fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
         }
     }
 
-    // Compute skolemized form of impl and trait method tys. Note
-    // that we must liberate the late-bound regions from the impl.
+    // Compute skolemized form of impl and trait method tys.
     let impl_fty = ty::mk_bare_fn(tcx, impl_m.fty.clone());
     let impl_fty = impl_fty.subst(tcx, &impl_to_skol_substs);
-    let impl_fty = liberate_late_bound_regions(
-        tcx, impl_m_body_scope, &ty::Binder(impl_fty));
     let trait_fty = ty::mk_bare_fn(tcx, trait_m.fty.clone());
     let trait_fty = trait_fty.subst(tcx, &trait_to_skol_substs);
 
@@ -1231,7 +1196,6 @@ fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
     fn check_region_bounds_on_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
                                                 span: Span,
                                                 impl_m: &ty::Method<'tcx>,
-                                                impl_m_body_scope: CodeExtent,
                                                 trait_generics: &ty::Generics<'tcx>,
                                                 impl_generics: &ty::Generics<'tcx>,
                                                 trait_to_skol_substs: &Substs<'tcx>,
@@ -1280,16 +1244,6 @@ fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
                 trait_param.bounds.subst(tcx, trait_to_skol_substs);
             let impl_bounds =
                 impl_param.bounds.subst(tcx, impl_to_skol_substs);
-
-            // The bounds may reference late-bound regions from the
-            // impl declaration. In that case, we want to replace
-            // those with the liberated variety so as to match the
-            // versions appearing in the `trait_to_skol_substs`.
-            // There are two-levels of binder to be aware of: the
-            // impl, and the method.
-            let impl_bounds =
-                ty::liberate_late_bound_regions(
-                    tcx, impl_m_body_scope, &ty::Binder(ty::Binder(impl_bounds))).0;
 
             debug!("check_region_bounds_on_impl_method: \
                    trait_param={} \

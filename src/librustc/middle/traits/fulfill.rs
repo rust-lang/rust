@@ -360,10 +360,7 @@ fn process_predicate<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
             // For now, we just check that there are no higher-ranked
             // regions.  If there are, we will call this obligation an
             // error. Eventually we should be able to support some
-            // cases here, I imagine (e.g., `for<'a> &'a int : 'a`).
-            //
-            // TODO This is overly conservative, but good enough for
-            // now.
+            // cases here, I imagine (e.g., `for<'a> int : 'a`).
             if ty::count_late_bound_regions(selcx.tcx(), binder) != 0 {
                 errors.push(
                     FulfillmentError::new(

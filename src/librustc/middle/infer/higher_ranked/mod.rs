@@ -219,7 +219,7 @@ impl<'tcx,C> HigherRankedRelations<'tcx> for C
                 self.infcx().resolve_type_vars_if_possible(&result0);
             debug!("glb result0 = {}", result0.repr(self.tcx()));
 
-            // Generalize the regions appearing in fn_ty0 if possible
+            // Generalize the regions appearing in result0 if possible
             let new_vars = self.infcx().region_vars_confined_to_snapshot(snapshot);
             let span = self.trace().origin.span();
             let result1 =
@@ -358,7 +358,7 @@ fn fold_regions_in<'tcx, T, F>(tcx: &ty::ctxt<'tcx>,
     where T : Combineable<'tcx>,
           F : FnMut(ty::Region, ty::DebruijnIndex) -> ty::Region,
 {
-    unbound_value.fold_with(&mut ty_fold::RegionFolder::new(tcx, |region, current_depth| {
+    unbound_value.fold_with(&mut ty_fold::RegionFolder::new(tcx, &mut |region, current_depth| {
         // we should only be encountering "escaping" late-bound regions here,
         // because the ones at the current level should have been replaced
         // with fresh variables
@@ -414,11 +414,11 @@ impl<'a,'tcx> InferCtxtExt<'tcx> for InferCtxt<'a,'tcx> {
          *
          * The reason is that when we walk through the subtyping
          * algorith, we begin by replacing `'a` with a skolemized
-         * variable `'0`. We then have `fn(_#0t) <: fn(&'0 int)`. This
-         * can be made true by unifying `_#0t` with `&'0 int`. In the
+         * variable `'1`. We then have `fn(_#0t) <: fn(&'1 int)`. This
+         * can be made true by unifying `_#0t` with `&'1 int`. In the
          * process, we create a fresh variable for the skolemized
-         * region, `'$0`, and hence we have that `_#0t == &'$0
-         * int`. However, because `'$0` was created during the sub
+         * region, `'$2`, and hence we have that `_#0t == &'$2
+         * int`. However, because `'$2` was created during the sub
          * computation, if we're not careful we will erroneously
          * assume it is one of the transient region variables
          * representing a lub/glb internally. Not good.
@@ -521,4 +521,94 @@ pub fn leak_check<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
         }
     }
     Ok(())
+}
+
+/// This code converts from skolemized regions back to late-bound
+/// regions. It works by replacing each region in the taint set of a
+/// skolemized region with a bound-region. The bound region will be bound
+/// by the outer-most binder in `value`; the caller must ensure that there is
+/// such a binder and it is the right place.
+///
+/// This routine is only intended to be used when the leak-check has
+/// passed; currently, it's used in the trait matching code to create
+/// a set of nested obligations frmo an impl that matches against
+/// something higher-ranked.  More details can be found in
+/// `middle::traits::doc.rs`.
+///
+/// As a brief example, consider the obligation `for<'a> Fn(&'a int)
+/// -> &'a int`, and the impl:
+///
+///     impl<A,R> Fn<A,R> for SomethingOrOther
+///         where A : Clone
+///     { ... }
+///
+/// Here we will have replaced `'a` with a skolemized region
+/// `'0`. This means that our substitution will be `{A=>&'0
+/// int, R=>&'0 int}`.
+///
+/// When we apply the substitution to the bounds, we will wind up with
+/// `&'0 int : Clone` as a predicate. As a last step, we then go and
+/// replace `'0` with a late-bound region `'a`.  The depth is matched
+/// to the depth of the predicate, in this case 1, so that the final
+/// predicate is `for<'a> &'a int : Clone`.
+pub fn plug_leaks<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,
+                             skol_map: SkolemizationMap,
+                             snapshot: &CombinedSnapshot,
+                             value: &T)
+                             -> T
+    where T : TypeFoldable<'tcx> + Repr<'tcx>
+{
+    debug_assert!(leak_check(infcx, &skol_map, snapshot).is_ok());
+
+    debug!("plug_leaks(skol_map={}, value={})",
+           skol_map.repr(infcx.tcx),
+           value.repr(infcx.tcx));
+
+    // Compute a mapping from the "taint set" of each skolemized
+    // region back to the `ty::BoundRegion` that it originally
+    // represented. Because `leak_check` passed, we know that that
+    // these taint sets are mutually disjoint.
+    let inv_skol_map: FnvHashMap<ty::Region, ty::BoundRegion> =
+        skol_map
+        .into_iter()
+        .flat_map(|(skol_br, skol)| {
+            infcx.tainted_regions(snapshot, skol)
+                .into_iter()
+                .map(move |tainted_region| (tainted_region, skol_br))
+        })
+        .collect();
+
+    debug!("plug_leaks: inv_skol_map={}",
+           inv_skol_map.repr(infcx.tcx));
+
+    // Remove any instantiated type variables from `value`; those can hide
+    // references to regions from the `fold_regions` code below.
+    let value = infcx.resolve_type_vars_if_possible(value);
+
+    // Map any skolemization byproducts back to a late-bound
+    // region. Put that late-bound region at whatever the outermost
+    // binder is that we encountered in `value`. The caller is
+    // responsible for ensuring that (a) `value` contains at least one
+    // binder and (b) that binder is the one we want to use.
+    let result = ty_fold::fold_regions(infcx.tcx, &value, |r, current_depth| {
+        match inv_skol_map.get(&r) {
+            None => r,
+            Some(br) => {
+                // It is the responsibility of the caller to ensure
+                // that each skolemized region appears within a
+                // binder. In practice, this routine is only used by
+                // trait checking, and all of the skolemized regions
+                // appear inside predicates, which always have
+                // binders, so this assert is satisfied.
+                assert!(current_depth > 1);
+
+                ty::ReLateBound(ty::DebruijnIndex::new(current_depth - 1), br.clone())
+            }
+        }
+    });
+
+    debug!("plug_leaks: result={}",
+           result.repr(infcx.tcx));
+
+    result
 }

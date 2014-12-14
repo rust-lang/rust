@@ -18,8 +18,8 @@
 
 use metadata::csearch::{each_impl, get_impl_trait};
 use metadata::csearch;
-use middle::region;
 use middle::subst::{mod, Subst};
+use middle::ty::RegionEscape;
 use middle::ty::{ImplContainer, ImplOrTraitItemId, MethodTraitItemId};
 use middle::ty::{ParameterEnvironment, TypeTraitItemId, lookup_item_type};
 use middle::ty::{Ty, ty_bool, ty_char, ty_closure, ty_enum, ty_err};
@@ -339,7 +339,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
 
         // Record all the trait items.
         for trait_ref in associated_traits.iter() {
-            self.add_trait_impl(trait_ref.def_id(), impl_def_id);
+            self.add_trait_impl(trait_ref.def_id, impl_def_id);
         }
 
         // For any methods that use a default implementation, add them to
@@ -459,6 +459,9 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
         let trait_impls = trait_impls.borrow().clone();
 
         for &impl_did in trait_impls.iter() {
+            debug!("check_implementations_of_copy: impl_did={}",
+                   impl_did.repr(tcx));
+
             if impl_did.krate != ast::LOCAL_CRATE {
                 debug!("check_implementations_of_copy(): impl not in this \
                         crate");
@@ -466,20 +469,15 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
             }
 
             let self_type = self.get_self_type_for_implementation(impl_did);
+            debug!("check_implementations_of_copy: self_type={} (bound)",
+                   self_type.repr(tcx));
+
             let span = tcx.map.span(impl_did.node);
-            let param_env = ParameterEnvironment::for_item(tcx,
-                                                           impl_did.node);
+            let param_env = ParameterEnvironment::for_item(tcx, impl_did.node);
             let self_type = self_type.ty.subst(tcx, &param_env.free_substs);
+            assert!(!self_type.has_escaping_regions());
 
-            // the self-type may have late-bound regions bound in the
-            // impl; liberate them.
-            let item_scope = region::CodeExtent::from_node_id(impl_did.node);
-            let self_type =
-                ty::liberate_late_bound_regions(tcx,
-                                                item_scope,
-                                                &ty::Binder(self_type));
-
-            debug!("can_type_implement_copy(self_type={})",
+            debug!("check_implementations_of_copy: self_type={} (free)",
                    self_type.repr(tcx));
 
             match ty::can_type_implement_copy(tcx, self_type, &param_env) {

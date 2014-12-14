@@ -17,7 +17,7 @@ use super::util;
 use middle::subst;
 use middle::subst::Subst;
 use middle::ty::{mod, Ty};
-use middle::infer::{mod, InferCtxt};
+use middle::infer::InferCtxt;
 use std::rc::Rc;
 use syntax::ast;
 use syntax::codemap::DUMMY_SP;
@@ -38,12 +38,7 @@ pub fn impl_can_satisfy(infcx: &InferCtxt,
     let impl1_substs =
         util::fresh_substs_for_impl(infcx, DUMMY_SP, impl1_def_id);
     let impl1_trait_ref =
-        ty::impl_trait_ref(infcx.tcx, impl1_def_id).unwrap()
-                                                   .subst(infcx.tcx, &impl1_substs);
-    let impl1_trait_ref =
-        infcx.replace_late_bound_regions_with_fresh_var(DUMMY_SP,
-                                                        infer::FnCall,
-                                                        &*impl1_trait_ref).0;
+        (*ty::impl_trait_ref(infcx.tcx, impl1_def_id).unwrap()).subst(infcx.tcx, &impl1_substs);
 
     // Determine whether `impl2` can provide an implementation for those
     // same types.
@@ -67,15 +62,15 @@ pub fn impl_is_local(tcx: &ty::ctxt,
     debug!("trait_ref={}", trait_ref.repr(tcx));
 
     // If the trait is local to the crate, ok.
-    if trait_ref.def_id().krate == ast::LOCAL_CRATE {
+    if trait_ref.def_id.krate == ast::LOCAL_CRATE {
         debug!("trait {} is local to current crate",
-               trait_ref.def_id().repr(tcx));
+               trait_ref.def_id.repr(tcx));
         return true;
     }
 
     // Otherwise, at least one of the input types must be local to the
     // crate.
-    trait_ref.0.input_types().iter().any(|&t| ty_is_local(tcx, t))
+    trait_ref.input_types().iter().any(|&t| ty_is_local(tcx, t))
 }
 
 pub fn ty_is_local<'tcx>(tcx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> bool {

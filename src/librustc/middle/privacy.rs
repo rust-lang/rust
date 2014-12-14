@@ -257,8 +257,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
                 };
                 let tr = ty::impl_trait_ref(self.tcx, local_def(item.id));
                 let public_trait = tr.clone().map_or(false, |tr| {
-                    !is_local(tr.def_id()) ||
-                     self.exported_items.contains(&tr.def_id().node)
+                    !is_local(tr.def_id) ||
+                     self.exported_items.contains(&tr.def_id.node)
                 });
 
                 if public_ty || public_trait {
@@ -407,7 +407,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
                             match ty::impl_trait_ref(self.tcx, id) {
                                 Some(t) => {
                                     debug!("privacy - impl of trait {}", id);
-                                    self.def_privacy(t.def_id())
+                                    self.def_privacy(t.def_id)
                                 }
                                 None => {
                                     debug!("privacy - found a method {}",
@@ -432,7 +432,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
                             match ty::impl_trait_ref(self.tcx, id) {
                                 Some(t) => {
                                     debug!("privacy - impl of trait {}", id);
-                                    self.def_privacy(t.def_id())
+                                    self.def_privacy(t.def_id)
                                 }
                                 None => {
                                     debug!("privacy - found a typedef {}",
@@ -811,7 +811,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
             // is whether the trait itself is accessible or not.
             MethodTypeParam(MethodParam { ref trait_ref, .. }) |
             MethodTraitObject(MethodObject { ref trait_ref, .. }) => {
-                self.report_error(self.ensure_public(span, trait_ref.def_id(),
+                self.report_error(self.ensure_public(span, trait_ref.def_id,
                                                      None, "source trait"));
             }
         }

@@ -478,8 +478,10 @@ pub enum MethodOrigin<'tcx> {
 #[deriving(Clone, Show)]
 pub struct MethodParam<'tcx> {
     // the precise trait reference that occurs as a bound -- this may
-    // be a supertrait of what the user actually typed.
-    pub trait_ref: Rc<ty::PolyTraitRef<'tcx>>,
+    // be a supertrait of what the user actually typed. Note that it
+    // never contains bound regions; those regions should have been
+    // instantiated with fresh variables at this point.
+    pub trait_ref: Rc<ty::TraitRef<'tcx>>,
 
     // index of uint in the list of methods for the trait
     pub method_num: uint,
@@ -489,7 +491,7 @@ pub struct MethodParam<'tcx> {
 #[deriving(Clone, Show)]
 pub struct MethodObject<'tcx> {
     // the (super)trait containing the method to be invoked
-    pub trait_ref: Rc<ty::PolyTraitRef<'tcx>>,
+    pub trait_ref: Rc<ty::TraitRef<'tcx>>,
 
     // the actual base trait id of the object
     pub object_trait_id: ast::DefId,
@@ -665,7 +667,7 @@ pub struct ctxt<'tcx> {
     /// A cache for the trait_items() routine
     pub trait_items_cache: RefCell<DefIdMap<Rc<Vec<ImplOrTraitItem<'tcx>>>>>,
 
-    pub impl_trait_cache: RefCell<DefIdMap<Option<Rc<ty::PolyTraitRef<'tcx>>>>>,
+    pub impl_trait_cache: RefCell<DefIdMap<Option<Rc<ty::TraitRef<'tcx>>>>>,
 
     pub trait_refs: RefCell<NodeMap<Rc<TraitRef<'tcx>>>>,
     pub trait_defs: RefCell<DefIdMap<Rc<TraitDef<'tcx>>>>,
@@ -1306,7 +1308,7 @@ pub enum sty<'tcx> {
 #[deriving(Clone, PartialEq, Eq, Hash, Show)]
 pub struct TyTrait<'tcx> {
     // Principal trait reference.
-    pub principal: PolyTraitRef<'tcx>, // would use Rc<TraitRef>, but it runs afoul of some static rules
+    pub principal: PolyTraitRef<'tcx>,
     pub bounds: ExistentialBounds
 }
 
@@ -1315,7 +1317,9 @@ impl<'tcx> TyTrait<'tcx> {
     /// we convert the principal trait-ref into a normal trait-ref,
     /// you must give *some* self-type. A common choice is `mk_err()`
     /// or some skolemized type.
-    pub fn principal_trait_ref_with_self_ty(&self, self_ty: Ty<'tcx>) -> Rc<ty::PolyTraitRef<'tcx>> {
+    pub fn principal_trait_ref_with_self_ty(&self, self_ty: Ty<'tcx>)
+                                            -> Rc<ty::PolyTraitRef<'tcx>>
+    {
         Rc::new(ty::Binder(ty::TraitRef {
             def_id: self.principal.def_id(),
             substs: self.principal.substs().with_self_ty(self_ty),
@@ -4818,7 +4822,7 @@ pub fn trait_item_def_ids(cx: &ctxt, id: ast::DefId)
 }
 
 pub fn impl_trait_ref<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
-                            -> Option<Rc<PolyTraitRef<'tcx>>> {
+                            -> Option<Rc<TraitRef<'tcx>>> {
     memoized(&cx.impl_trait_cache, id, |id: ast::DefId| {
         if id.krate == ast::LOCAL_CRATE {
             debug!("(impl_trait_ref) searching for trait impl {}", id);
@@ -4828,9 +4832,8 @@ pub fn impl_trait_ref<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
                         ast::ItemImpl(_, _, ref opt_trait, _, _) => {
                             match opt_trait {
                                 &Some(ref t) => {
-                                    let trait_ref =
-                                        (*ty::node_id_to_trait_ref(cx, t.ref_id)).clone();
-                                    Some(Rc::new(ty::Binder(trait_ref)))
+                                    let trait_ref = ty::node_id_to_trait_ref(cx, t.ref_id);
+                                    Some(trait_ref)
                                 }
                                 &None => None
                             }
@@ -5736,7 +5739,7 @@ pub fn populate_implementations_for_type_if_necessary(tcx: &ctxt,
         // Record the trait->implementation mappings, if applicable.
         let associated_traits = csearch::get_impl_trait(tcx, impl_def_id);
         for trait_ref in associated_traits.iter() {
-            record_trait_implementation(tcx, trait_ref.def_id(), impl_def_id);
+            record_trait_implementation(tcx, trait_ref.def_id, impl_def_id);
         }
 
         // For any methods that use a default implementation, add them to
@@ -6432,26 +6435,24 @@ pub fn replace_late_bound_regions<'tcx, T, F>(
     debug!("replace_late_bound_regions({})", binder.repr(tcx));
 
     let mut map = FnvHashMap::new();
-    let value = {
-        let mut f = ty_fold::RegionFolder::new(tcx, |region, current_depth| {
-            debug!("region={}", region.repr(tcx));
-            match region {
-                ty::ReLateBound(debruijn, br) if debruijn.depth == current_depth => {
-                    * match map.entry(br) {
-                        Vacant(entry) => entry.set(mapf(br, debruijn)),
-                        Occupied(entry) => entry.into_mut(),
-                    }
-                }
-                _ => {
-                    region
+
+    // Note: fold the field `0`, not the binder, so that late-bound
+    // regions bound by `binder` are considered free.
+    let value = ty_fold::fold_regions(tcx, &binder.0, |region, current_depth| {
+        debug!("region={}", region.repr(tcx));
+        match region {
+            ty::ReLateBound(debruijn, br) if debruijn.depth == current_depth => {
+                * match map.entry(br) {
+                    Vacant(entry) => entry.set(mapf(br, debruijn)),
+                    Occupied(entry) => entry.into_mut(),
                 }
             }
-        });
+            _ => {
+                region
+            }
+        }
+    });
 
-        // Note: fold the field `0`, not the binder, so that late-bound
-        // regions bound by `binder` are considered free.
-        binder.0.fold_with(&mut f)
-    };
     debug!("resulting map: {} value: {}", map, value.repr(tcx));
     (value, map)
 }
