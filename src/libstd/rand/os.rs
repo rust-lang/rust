@@ -186,9 +186,8 @@ mod imp {
     ///   service provider with the `PROV_RSA_FULL` type.
     /// - iOS: calls SecRandomCopyBytes as /dev/(u)random is sandboxed
     /// This does not block.
-    pub struct OsRng {
-        marker: marker::NoCopy
-    }
+    #[allow(missing_copy_implementations)]
+    pub struct OsRng;
 
     #[repr(C)]
     struct SecRandom;
@@ -205,7 +204,7 @@ mod imp {
     impl OsRng {
         /// Create a new `OsRng`.
         pub fn new() -> IoResult<OsRng> {
-            Ok(OsRng {marker: marker::NoCopy} )
+            Ok(OsRng)
         }
     }
 
