@@ -47,20 +47,22 @@ which has the value `x`.
 
 The effect will be to convert uses of arrays such as this:
 
-    let a: [uint, ..2] = [0u, ..2];
+```rust
+let a: [uint, ..2] = [0u, ..2];
+```
 
 to this:
 
-    let a: [2 of uint] = [2 of 0u];
+```rust
+let a: [2 of uint] = [2 of 0u];
+```
 
 ## Match patterns
 
 In match patterns, `..` is always interpreted as a wildcard for constructor
 arguments (or for slice patterns under the `advanced_slice_patterns` feature
 gate). This RFC does not change that. In a match pattern, `..` will always be
-interpreted as a wildcard, and never as sugar for a range constructor. This
-restriction may be lifted backwards-compatibly in the future, if it becomes
-apparent that doing so is useful and does not introduce ambiguity.
+interpreted as a wildcard, and never as sugar for a range constructor.
 
 ## Suggested implementation
 
@@ -119,11 +121,15 @@ but there is a drawback:
   the type, the syntax becomes somewhat less consistent. In effect such a change
   would replace this:
 
-        let a: [uint, ..2] = [0u, ..2];
+```rust
+let a: [uint, ..2] = [0u, ..2];
+```
 
   with this:
 
-        let a: [uint, ..2] = [2 of 0u];
+```rust
+let a: [uint, ..2] = [2 of 0u];
+```
 
 ## Different array repeat syntax
 
@@ -169,7 +175,7 @@ The proposal in pull request #498 is to remove the sugar for `RangeTo` (i.e.,
 `..j`) while retaining other features of RFC 439. This is the simplest
 resolution, but removes some convenience from the language. It is also
 counterintuitive, because `RangeFrom` (i.e. `i..`) is retained, and because `..`
-still has several different meanings in the language (ranges, repitition, and
+still has several different meanings in the language (ranges, repetition, and
 pattern wildcards).
 
 # Unresolved questions
