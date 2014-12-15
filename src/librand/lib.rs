@@ -501,6 +501,7 @@ pub struct Closed01<F>(pub F);
 #[cfg(not(test))]
 mod std {
     pub use core::{option, fmt}; // panic!()
+    pub use core::kinds;
 }
 
 #[cfg(test)]
