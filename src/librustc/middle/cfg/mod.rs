@@ -49,4 +49,11 @@ impl CFG {
                blk: &ast::Block) -> CFG {
         construct::construct(tcx, blk)
     }
+
+    pub fn node_is_reachable(&self, id: ast::NodeId) -> bool {
+        for node in self.graph.depth_traverse(self.entry) {
+            if node.id == id { return true }
+        }
+        return false;
+    }
 }
