@@ -164,8 +164,13 @@ impl<'a, 'tcx> dot::Labeller<'a, Node, Edge> for ConstraintGraph<'a, 'tcx> {
         dot::Id::new(format!("node_{}", self.node_ids.get(n).unwrap())).unwrap()
     }
     fn node_label(&self, n: &Node) -> dot::LabelText {
-        dot::LabelText::label(format!("{}", n))
-}
+        match *n {
+            Node::RegionVid(n_vid) =>
+                dot::LabelText::label(format!("{}", n_vid)),
+            Node::Region(n_rgn) =>
+                dot::LabelText::label(format!("{}", n_rgn.repr(self.tcx))),
+        }
+    }
     fn edge_label(&self, e: &Edge) -> dot::LabelText {
         dot::LabelText::label(format!("{}", self.map.get(e).unwrap().repr(self.tcx)))
     }
