@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test what an impl with only one bound region `'a` cannot be used to
-// satisfy a constraint whre there are two bound regions.
+// Test that an impl with only one bound region `'a` cannot be used to
+// satisfy a constraint where there are two bound regions.
 
 trait Foo<X> {
     fn foo(&self, x: X) { }
