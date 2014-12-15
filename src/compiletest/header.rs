@@ -148,7 +148,8 @@ pub fn is_test_ignored(config: &Config, testfile: &Path) -> bool {
         format!("ignore-{}", util::get_os(config.target.as_slice()))
     }
     fn ignore_arch(config: &Config) -> String {
-        format!("ignore-{}", util::get_arch(config.target.as_slice()))
+        format!("ignore-{}",
+                config.target.as_slice().split('-').next().unwrap())
     }
     fn ignore_stage(config: &Config) -> String {
         format!("ignore-{}",
