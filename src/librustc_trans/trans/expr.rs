@@ -39,7 +39,7 @@ use back::abi;
 use llvm::{mod, ValueRef};
 use middle::def;
 use middle::mem_categorization::Typer;
-use middle::subst::{mod, Subst};
+use middle::subst::{mod, Subst, Substs};
 use trans::{_match, adt, asm, base, callee, closure, consts, controlflow};
 use trans::base::*;
 use trans::build::*;
@@ -66,6 +66,7 @@ use trans::type_::Type;
 use syntax::{ast, ast_util, codemap};
 use syntax::print::pprust::{expr_to_string};
 use syntax::ptr::P;
+use syntax::parse::token;
 use std::rc::Rc;
 
 // Destinations
@@ -1048,7 +1049,48 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                          base.as_ref().map(|e| &**e),
                          expr.span,
                          expr.id,
+                         node_id_type(bcx, expr.id),
                          dest)
+        }
+        ast::ExprRange(ref start, ref end) => {
+            // FIXME it is just not right that we are synthesising ast nodes in
+            // trans. Shudder.
+            fn make_field(field_name: &str, expr: P<ast::Expr>) -> ast::Field {
+                ast::Field {
+                    ident: codemap::dummy_spanned(token::str_to_ident(field_name)),
+                    expr: expr,
+                    span: codemap::DUMMY_SP,
+                }
+            }
+
+            // A range just desugars into a struct.
+            let (did, fields) = match end {
+                &Some(ref end) => {
+                    // Desugar to Range
+                    let fields = vec!(make_field("start", start.clone()),
+                                      make_field("end", end.clone()));
+                    (tcx.lang_items.range_struct(), fields)
+                }
+                &None => {
+                    // Desugar to RangeFrom
+                    let fields = vec!(make_field("start", start.clone()));
+                    (tcx.lang_items.range_from_struct(), fields)
+                }
+            };
+
+            if let Some(did) = did {
+                let substs = Substs::new_type(vec![node_id_type(bcx, start.id)], vec![]);
+                trans_struct(bcx,
+                             fields.as_slice(),
+                             None,
+                             expr.span,
+                             expr.id,
+                             ty::mk_struct(tcx, did, substs),
+                             dest)
+            } else {
+                tcx.sess.span_bug(expr.span,
+                                  "No lang item for ranges (how did we get this far?)")
+            }
         }
         ast::ExprTup(ref args) => {
             let numbered_fields: Vec<(uint, &ast::Expr)> =
@@ -1347,10 +1389,10 @@ fn trans_struct<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                             base: Option<&ast::Expr>,
                             expr_span: codemap::Span,
                             expr_id: ast::NodeId,
+                            ty: Ty<'tcx>,
                             dest: Dest) -> Block<'blk, 'tcx> {
     let _icx = push_ctxt("trans_rec");
 
-    let ty = node_id_type(bcx, expr_id);
     let tcx = bcx.tcx();
     with_field_tys(tcx, ty, Some(expr_id), |discr, field_tys| {
         let mut need_base = Vec::from_elem(field_tys.len(), true);

@@ -486,9 +486,6 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
       ast::ExprWhileLet(..) => {
           ir.tcx.sess.span_bug(expr.span, "non-desugared ExprWhileLet");
       }
-      ast::ExprRange(..) => {
-          ir.tcx.sess.span_bug(expr.span, "non-desugared range");
-      }
       ast::ExprForLoop(ref pat, _, _, _) => {
         pat_util::pat_bindings(&ir.tcx.def_map, &**pat, |bm, p_id, sp, path1| {
             debug!("adding local variable {} from for loop with bm {}",
@@ -517,7 +514,7 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
       ast::ExprBlock(..) | ast::ExprAssign(..) | ast::ExprAssignOp(..) |
       ast::ExprMac(..) | ast::ExprStruct(..) | ast::ExprRepeat(..) |
       ast::ExprParen(..) | ast::ExprInlineAsm(..) | ast::ExprBox(..) |
-      ast::ExprSlice(..) => {
+      ast::ExprSlice(..) | ast::ExprRange(..) => {
           visit::walk_expr(ir, expr);
       }
     }
@@ -1200,8 +1197,9 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             self.propagate_through_expr(&**e1, succ)
           }
 
-          ast::ExprRange(..) => {
-              self.ir.tcx.sess.span_bug(expr.span, "non-desugared range");
+          ast::ExprRange(ref e1, ref e2) => {
+            let succ = e2.as_ref().map_or(succ, |e| self.propagate_through_expr(&**e, succ));
+            self.propagate_through_expr(&**e1, succ)
           }
 
           ast::ExprBox(None, ref e) |
@@ -1496,7 +1494,8 @@ fn check_expr(this: &mut Liveness, expr: &Expr) {
       ast::ExprBreak(..) | ast::ExprAgain(..) | ast::ExprLit(_) |
       ast::ExprBlock(..) | ast::ExprMac(..) | ast::ExprAddrOf(..) |
       ast::ExprStruct(..) | ast::ExprRepeat(..) | ast::ExprParen(..) |
-      ast::ExprClosure(..) | ast::ExprPath(..) | ast::ExprBox(..) | ast::ExprSlice(..) => {
+      ast::ExprClosure(..) | ast::ExprPath(..) | ast::ExprBox(..) |
+      ast::ExprSlice(..) | ast::ExprRange(..) => {
         visit::walk_expr(this, expr);
       }
       ast::ExprIfLet(..) => {
@@ -1504,9 +1503,6 @@ fn check_expr(this: &mut Liveness, expr: &Expr) {
       }
       ast::ExprWhileLet(..) => {
         this.ir.tcx.sess.span_bug(expr.span, "non-desugared ExprWhileLet");
-      }
-      ast::ExprRange(..) => {
-        this.ir.tcx.sess.span_bug(expr.span, "non-desugared range");
       }
     }
 }

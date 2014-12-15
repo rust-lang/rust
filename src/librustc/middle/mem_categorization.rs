@@ -541,7 +541,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
           ast::ExprAddrOf(..) | ast::ExprCall(..) |
           ast::ExprAssign(..) | ast::ExprAssignOp(..) |
           ast::ExprClosure(..) | ast::ExprRet(..) |
-          ast::ExprUnary(..) | ast::ExprSlice(..) |
+          ast::ExprUnary(..) | ast::ExprSlice(..) | ast::ExprRange(..) |
           ast::ExprMethodCall(..) | ast::ExprCast(..) |
           ast::ExprVec(..) | ast::ExprTup(..) | ast::ExprIf(..) |
           ast::ExprBinary(..) | ast::ExprWhile(..) |
@@ -558,9 +558,6 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
           }
           ast::ExprWhileLet(..) => {
             self.tcx().sess.span_bug(expr.span, "non-desugared ExprWhileLet");
-          }
-          ast::ExprRange(..) => {
-            self.tcx().sess.span_bug(expr.span, "non-desugared range");
           }
         }
     }
