@@ -377,7 +377,7 @@ impl<T> RingBuf<T> {
         }
     }
 
-    /// Returns a front-to-back iterator which returns mutable references.
+    /// Returns a front-to-back iterator that returns mutable references.
     ///
     /// # Examples
     ///
