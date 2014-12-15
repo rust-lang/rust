@@ -101,7 +101,7 @@ pub enum categorization<'tcx> {
 }
 
 // Represents any kind of upvar
-#[deriving(Clone, PartialEq, Show)]
+#[deriving(Clone, Copy, PartialEq, Show)]
 pub struct Upvar {
     pub id: ty::UpvarId,
     // Unboxed closure kinds are used even for old-style closures for simplicity
@@ -110,10 +110,8 @@ pub struct Upvar {
     pub is_unboxed: bool
 }
 
-impl Copy for Upvar {}
-
 // different kinds of pointers:
-#[deriving(Clone, PartialEq, Eq, Hash, Show)]
+#[deriving(Clone, Copy, PartialEq, Eq, Hash, Show)]
 pub enum PointerKind {
     OwnedPtr,
     BorrowedPtr(ty::BorrowKind, ty::Region),
@@ -121,56 +119,44 @@ pub enum PointerKind {
     UnsafePtr(ast::Mutability)
 }
 
-impl Copy for PointerKind {}
-
 // We use the term "interior" to mean "something reachable from the
 // base without a pointer dereference", e.g. a field
-#[deriving(Clone, PartialEq, Eq, Hash, Show)]
+#[deriving(Clone, Copy, PartialEq, Eq, Hash, Show)]
 pub enum InteriorKind {
     InteriorField(FieldName),
     InteriorElement(ElementKind),
 }
 
-impl Copy for InteriorKind {}
-
-#[deriving(Clone, PartialEq, Eq, Hash, Show)]
+#[deriving(Clone, Copy, PartialEq, Eq, Hash, Show)]
 pub enum FieldName {
     NamedField(ast::Name),
     PositionalField(uint)
 }
 
-impl Copy for FieldName {}
-
-#[deriving(Clone, PartialEq, Eq, Hash, Show)]
+#[deriving(Clone, Copy, PartialEq, Eq, Hash, Show)]
 pub enum ElementKind {
     VecElement,
     OtherElement,
 }
 
-impl Copy for ElementKind {}
-
-#[deriving(Clone, PartialEq, Eq, Hash, Show)]
+#[deriving(Clone, Copy, PartialEq, Eq, Hash, Show)]
 pub enum MutabilityCategory {
     McImmutable, // Immutable.
     McDeclared,  // Directly declared as mutable.
     McInherited, // Inherited from the fact that owner is mutable.
 }
 
-impl Copy for MutabilityCategory {}
-
 // A note about the provenance of a `cmt`.  This is used for
 // special-case handling of upvars such as mutability inference.
 // Upvar categorization can generate a variable number of nested
 // derefs.  The note allows detecting them without deep pattern
 // matching on the categorization.
-#[deriving(Clone, PartialEq, Show)]
+#[deriving(Clone, Copy, PartialEq, Show)]
 pub enum Note {
     NoteClosureEnv(ty::UpvarId), // Deref through closure env
     NoteUpvarRef(ty::UpvarId),   // Deref through by-ref upvar
     NoteNone                     // Nothing special
 }
-
-impl Copy for Note {}
 
 // `cmt`: "Category, Mutability, and Type".
 //
@@ -200,12 +186,11 @@ pub type cmt<'tcx> = Rc<cmt_<'tcx>>;
 
 // We pun on *T to mean both actual deref of a ptr as well
 // as accessing of components:
+#[deriving(Copy)]
 pub enum deref_kind {
     deref_ptr(PointerKind),
     deref_interior(InteriorKind),
 }
-
-impl Copy for deref_kind {}
 
 // Categorizes a derefable type.  Note that we include vectors and strings as
 // derefable (we model an index as the combination of a deref and then a
@@ -1394,13 +1379,13 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
     }
 }
 
+#[deriving(Copy)]
 pub enum InteriorSafety {
     InteriorUnsafe,
     InteriorSafe
 }
 
-impl Copy for InteriorSafety {}
-
+#[deriving(Copy)]
 pub enum AliasableReason {
     AliasableBorrowed,
     AliasableClosure(ast::NodeId), // Aliasable due to capture Fn closure env
@@ -1408,8 +1393,6 @@ pub enum AliasableReason {
     AliasableStatic(InteriorSafety),
     AliasableStaticMut(InteriorSafety),
 }
-
-impl Copy for AliasableReason {}
 
 impl<'tcx> cmt_<'tcx> {
     pub fn guarantor(&self) -> cmt<'tcx> {

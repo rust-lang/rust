@@ -97,7 +97,7 @@ pub type SkolemizationMap = FnvHashMap<ty::BoundRegion,ty::Region>;
 /// Why did we require that the two types be related?
 ///
 /// See `error_reporting.rs` for more details
-#[deriving(Clone, Show)]
+#[deriving(Clone, Copy, Show)]
 pub enum TypeOrigin {
     // Not yet categorized in a better way
     Misc(Span),
@@ -130,8 +130,6 @@ pub enum TypeOrigin {
     // `where a == b`
     EquatePredicate(Span),
 }
-
-impl Copy for TypeOrigin {}
 
 /// See `error_reporting.rs` for more details
 #[deriving(Clone, Show)]
@@ -223,7 +221,7 @@ pub enum SubregionOrigin<'tcx> {
 }
 
 /// Times when we replace late-bound regions with variables:
-#[deriving(Clone, Show)]
+#[deriving(Clone, Copy, Show)]
 pub enum LateBoundRegionConversionTime {
     /// when a fn is called
     FnCall,
@@ -231,8 +229,6 @@ pub enum LateBoundRegionConversionTime {
     /// when two higher-ranked types are compared
     HigherRankedType,
 }
-
-impl Copy for LateBoundRegionConversionTime {}
 
 /// Reasons to create a region inference variable
 ///
@@ -270,14 +266,12 @@ pub enum RegionVariableOrigin<'tcx> {
     BoundRegionInCoherence(ast::Name),
 }
 
-#[deriving(Show)]
+#[deriving(Copy, Show)]
 pub enum fixup_err {
     unresolved_int_ty(IntVid),
     unresolved_float_ty(FloatVid),
     unresolved_ty(TyVid)
 }
-
-impl Copy for fixup_err {}
 
 pub fn fixup_err_to_string(f: fixup_err) -> String {
     match f {

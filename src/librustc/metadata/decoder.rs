@@ -450,14 +450,12 @@ pub fn get_symbol(data: &[u8], id: ast::NodeId) -> String {
 }
 
 // Something that a name can resolve to.
-#[deriving(Clone,Show)]
+#[deriving(Copy, Clone, Show)]
 pub enum DefLike {
     DlDef(def::Def),
     DlImpl(ast::DefId),
     DlField
 }
-
-impl Copy for DefLike {}
 
 /// Iterates over the language items in the given crate.
 pub fn each_lang_item<F>(cdata: Cmd, mut f: F) -> bool where

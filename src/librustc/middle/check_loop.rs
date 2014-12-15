@@ -16,19 +16,16 @@ use syntax::codemap::Span;
 use syntax::visit::Visitor;
 use syntax::visit;
 
-#[deriving(Clone, PartialEq)]
+#[deriving(Clone, Copy, PartialEq)]
 enum Context {
     Normal, Loop, Closure
 }
 
-impl Copy for Context {}
-
+#[deriving(Copy)]
 struct CheckLoopVisitor<'a> {
     sess: &'a Session,
     cx: Context
 }
-
-impl<'a> Copy for CheckLoopVisitor<'a> {}
 
 pub fn check_crate(sess: &Session, krate: &ast::Crate) {
     visit::walk_crate(&mut CheckLoopVisitor { sess: sess, cx: Normal }, krate)

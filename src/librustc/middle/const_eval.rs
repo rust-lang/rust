@@ -62,13 +62,12 @@ use std::collections::hash_map::Vacant;
 //   - Non-constants: everything else.
 //
 
+#[deriving(Copy)]
 pub enum constness {
     integral_const,
     general_const,
     non_const
 }
-
-impl Copy for constness {}
 
 type constness_cache = DefIdMap<constness>;
 

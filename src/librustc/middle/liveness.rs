@@ -135,15 +135,11 @@ enum LoopKind<'a> {
     ForLoop(&'a ast::Pat),
 }
 
-#[deriving(PartialEq)]
+#[deriving(Copy, PartialEq)]
 struct Variable(uint);
 
-impl Copy for Variable {}
-
-#[deriving(PartialEq)]
+#[deriving(Copy, PartialEq)]
 struct LiveNode(uint);
-
-impl Copy for LiveNode {}
 
 impl Variable {
     fn get(&self) -> uint { let Variable(v) = *self; v }
@@ -159,15 +155,13 @@ impl Clone for LiveNode {
     }
 }
 
-#[deriving(PartialEq, Show)]
+#[deriving(Copy, PartialEq, Show)]
 enum LiveNodeKind {
     FreeVarNode(Span),
     ExprNode(Span),
     VarDefNode(Span),
     ExitNode
 }
-
-impl Copy for LiveNodeKind {}
 
 fn live_node_kind_to_string(lnk: LiveNodeKind, cx: &ty::ctxt) -> String {
     let cm = cx.sess.codemap();
@@ -247,23 +241,19 @@ struct CaptureInfo {
     var_nid: NodeId
 }
 
-#[deriving(Show)]
+#[deriving(Copy, Show)]
 struct LocalInfo {
     id: NodeId,
     ident: ast::Ident
 }
 
-impl Copy for LocalInfo {}
-
-#[deriving(Show)]
+#[deriving(Copy, Show)]
 enum VarKind {
     Arg(NodeId, ast::Ident),
     Local(LocalInfo),
     ImplicitRet,
     CleanExit
 }
-
-impl Copy for VarKind {}
 
 struct IrMaps<'a, 'tcx: 'a> {
     tcx: &'a ty::ctxt<'tcx>,
@@ -536,14 +526,12 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
 // Actually we compute just a bit more than just liveness, but we use
 // the same basic propagation framework in all cases.
 
-#[deriving(Clone)]
+#[deriving(Clone, Copy)]
 struct Users {
     reader: LiveNode,
     writer: LiveNode,
     used: bool
 }
-
-impl Copy for Users {}
 
 fn invalid_users() -> Users {
     Users {
@@ -553,14 +541,13 @@ fn invalid_users() -> Users {
     }
 }
 
+#[deriving(Copy)]
 struct Specials {
     exit_ln: LiveNode,
     fallthrough_ln: LiveNode,
     no_ret_var: Variable,
     clean_exit_var: Variable
 }
-
-impl Copy for Specials {}
 
 static ACC_READ: uint = 1u;
 static ACC_WRITE: uint = 2u;

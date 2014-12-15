@@ -27,13 +27,11 @@ use syntax::visit;
 use syntax::print::{pp, pprust};
 use util::nodemap::NodeMap;
 
-#[deriving(Show)]
+#[deriving(Copy, Show)]
 pub enum EntryOrExit {
     Entry,
     Exit,
 }
-
-impl Copy for EntryOrExit {}
 
 #[deriving(Clone)]
 pub struct DataFlowContext<'a, 'tcx: 'a, O> {

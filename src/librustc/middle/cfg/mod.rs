@@ -26,11 +26,10 @@ pub struct CFG {
     pub exit: CFGIndex,
 }
 
+#[deriving(Copy)]
 pub struct CFGNodeData {
     pub id: ast::NodeId
 }
-
-impl Copy for CFGNodeData {}
 
 pub struct CFGEdgeData {
     pub exiting_scopes: Vec<ast::NodeId>

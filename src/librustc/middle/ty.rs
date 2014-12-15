@@ -107,21 +107,17 @@ pub struct CrateAnalysis<'tcx> {
     pub name: String,
 }
 
-#[deriving(PartialEq, Eq, Hash)]
+#[deriving(Copy, PartialEq, Eq, Hash)]
 pub struct field<'tcx> {
     pub name: ast::Name,
     pub mt: mt<'tcx>
 }
 
-impl<'tcx> Copy for field<'tcx> {}
-
-#[deriving(Clone, Show)]
+#[deriving(Clone, Copy, Show)]
 pub enum ImplOrTraitItemContainer {
     TraitContainer(ast::DefId),
     ImplContainer(ast::DefId),
 }
-
-impl Copy for ImplOrTraitItemContainer {}
 
 impl ImplOrTraitItemContainer {
     pub fn id(&self) -> ast::DefId {
@@ -177,13 +173,11 @@ impl<'tcx> ImplOrTraitItem<'tcx> {
     }
 }
 
-#[deriving(Clone)]
+#[deriving(Clone, Copy)]
 pub enum ImplOrTraitItemId {
     MethodTraitItemId(ast::DefId),
     TypeTraitItemId(ast::DefId),
 }
-
-impl Copy for ImplOrTraitItemId {}
 
 impl ImplOrTraitItemId {
     pub fn def_id(&self) -> ast::DefId {
@@ -238,7 +232,7 @@ impl<'tcx> Method<'tcx> {
     }
 }
 
-#[deriving(Clone)]
+#[deriving(Clone, Copy)]
 pub struct AssociatedType {
     pub name: ast::Name,
     pub vis: ast::Visibility,
@@ -246,17 +240,13 @@ pub struct AssociatedType {
     pub container: ImplOrTraitItemContainer,
 }
 
-impl Copy for AssociatedType {}
-
-#[deriving(Clone, PartialEq, Eq, Hash, Show)]
+#[deriving(Clone, Copy, PartialEq, Eq, Hash, Show)]
 pub struct mt<'tcx> {
     pub ty: Ty<'tcx>,
     pub mutbl: ast::Mutability,
 }
 
-impl<'tcx> Copy for mt<'tcx> {}
-
-#[deriving(Clone, PartialEq, Eq, Hash, Encodable, Decodable, Show)]
+#[deriving(Clone, Copy, PartialEq, Eq, Hash, Encodable, Decodable, Show)]
 pub enum TraitStore {
     /// Box<Trait>
     UniqTraitStore,
@@ -264,9 +254,7 @@ pub enum TraitStore {
     RegionTraitStore(Region, ast::Mutability),
 }
 
-impl Copy for TraitStore {}
-
-#[deriving(Clone, Show)]
+#[deriving(Clone, Copy, Show)]
 pub struct field_ty {
     pub name: Name,
     pub id: DefId,
@@ -274,25 +262,20 @@ pub struct field_ty {
     pub origin: ast::DefId,  // The DefId of the struct in which the field is declared.
 }
 
-impl Copy for field_ty {}
-
 // Contains information needed to resolve types and (in the future) look up
 // the types of AST nodes.
-#[deriving(PartialEq, Eq, Hash)]
+#[deriving(Copy, PartialEq, Eq, Hash)]
 pub struct creader_cache_key {
     pub cnum: CrateNum,
     pub pos: uint,
     pub len: uint
 }
 
-impl Copy for creader_cache_key {}
-
+#[deriving(Copy)]
 pub enum ast_ty_to_ty_cache_entry<'tcx> {
     atttce_unresolved,  /* not resolved yet */
     atttce_resolved(Ty<'tcx>)  /* resolved to a type, irrespective of region */
 }
-
-impl<'tcx> Copy for ast_ty_to_ty_cache_entry<'tcx> {}
 
 #[deriving(Clone, PartialEq, Decodable, Encodable)]
 pub struct ItemVariances {
@@ -300,15 +283,13 @@ pub struct ItemVariances {
     pub regions: VecPerParamSpace<Variance>,
 }
 
-#[deriving(Clone, PartialEq, Decodable, Encodable, Show)]
+#[deriving(Clone, Copy, PartialEq, Decodable, Encodable, Show)]
 pub enum Variance {
     Covariant,      // T<A> <: T<B> iff A <: B -- e.g., function return type
     Invariant,      // T<A> <: T<B> iff B == A -- e.g., type of mutable cell
     Contravariant,  // T<A> <: T<B> iff B <: A -- e.g., function param type
     Bivariant,      // T<A> <: T<B>            -- e.g., unused type parameter
 }
-
-impl Copy for Variance {}
 
 #[deriving(Clone, Show)]
 pub enum AutoAdjustment<'tcx> {
@@ -449,13 +430,11 @@ pub fn type_of_adjust<'tcx>(cx: &ctxt<'tcx>, adj: &AutoAdjustment<'tcx>) -> Opti
     }
 }
 
-#[deriving(Clone, Encodable, Decodable, PartialEq, PartialOrd, Show)]
+#[deriving(Clone, Copy, Encodable, Decodable, PartialEq, PartialOrd, Show)]
 pub struct param_index {
     pub space: subst::ParamSpace,
     pub index: uint
 }
-
-impl Copy for param_index {}
 
 #[deriving(Clone, Show)]
 pub enum MethodOrigin<'tcx> {
@@ -513,8 +492,6 @@ pub struct MethodCallee<'tcx> {
     pub substs: subst::Substs<'tcx>
 }
 
-impl Copy for MethodCall {}
-
 /// With method calls, we store some extra information in
 /// side tables (i.e method_map). We use
 /// MethodCall as a key to index into these tables instead of
@@ -527,20 +504,18 @@ impl Copy for MethodCall {}
 /// needed to add to the side tables. Thus to disambiguate
 /// we also keep track of whether there's an adjustment in
 /// our key.
-#[deriving(Clone, PartialEq, Eq, Hash, Show)]
+#[deriving(Clone, Copy, PartialEq, Eq, Hash, Show)]
 pub struct MethodCall {
     pub expr_id: ast::NodeId,
     pub adjustment: ExprAdjustment
 }
 
-#[deriving(Clone, PartialEq, Eq, Hash, Show, Encodable, Decodable)]
+#[deriving(Clone, Copy, PartialEq, Eq, Hash, Show, Encodable, Decodable)]
 pub enum ExprAdjustment {
     NoAdjustment,
     AutoDeref(uint),
     AutoObject
 }
-
-impl Copy for ExprAdjustment {}
 
 impl MethodCall {
     pub fn expr(id: ast::NodeId) -> MethodCall {
@@ -615,6 +590,7 @@ pub type ObjectCastMap<'tcx> = RefCell<NodeMap<Rc<ty::PolyTraitRef<'tcx>>>>;
 
 /// A restriction that certain types must be the same size. The use of
 /// `transmute` gives rise to these restrictions.
+#[deriving(Copy)]
 pub struct TransmuteRestriction<'tcx> {
     /// The span from whence the restriction comes.
     pub span: Span,
@@ -625,8 +601,6 @@ pub struct TransmuteRestriction<'tcx> {
     /// NodeIf of the transmute intrinsic.
     pub id: ast::NodeId,
 }
-
-impl<'tcx> Copy for TransmuteRestriction<'tcx> {}
 
 /// The data structure to keep track of all the information that typechecker
 /// generates so that so that it can be reused and doesn't have to be redone
@@ -923,7 +897,7 @@ pub struct ClosureTy<'tcx> {
     pub abi: abi::Abi,
 }
 
-#[deriving(Clone, PartialEq, Eq, Hash)]
+#[deriving(Clone, Copy, PartialEq, Eq, Hash)]
 pub enum FnOutput<'tcx> {
     FnConverging(Ty<'tcx>),
     FnDiverging
@@ -937,8 +911,6 @@ impl<'tcx> FnOutput<'tcx> {
         }
     }
 }
-
-impl<'tcx> Copy for FnOutput<'tcx> {}
 
 /// Signature of a function type, which I have arbitrarily
 /// decided to use to refer to the input/output types.
@@ -955,14 +927,12 @@ pub struct FnSig<'tcx> {
 
 pub type PolyFnSig<'tcx> = Binder<FnSig<'tcx>>;
 
-#[deriving(Clone, PartialEq, Eq, Hash, Show)]
+#[deriving(Clone, Copy, PartialEq, Eq, Hash, Show)]
 pub struct ParamTy {
     pub space: subst::ParamSpace,
     pub idx: uint,
     pub def_id: DefId
 }
-
-impl Copy for ParamTy {}
 
 /// A [De Bruijn index][dbi] is a standard means of representing
 /// regions (and perhaps later types) in a higher-ranked setting. In
@@ -1003,7 +973,7 @@ impl Copy for ParamTy {}
 /// is the outer fn.
 ///
 /// [dbi]: http://en.wikipedia.org/wiki/De_Bruijn_index
-#[deriving(Clone, PartialEq, Eq, Hash, Encodable, Decodable, Show)]
+#[deriving(Clone, Copy, PartialEq, Eq, Hash, Encodable, Decodable, Show)]
 pub struct DebruijnIndex {
     // We maintain the invariant that this is never 0. So 1 indicates
     // the innermost binder. To ensure this, create with `DebruijnIndex::new`.
@@ -1011,7 +981,7 @@ pub struct DebruijnIndex {
 }
 
 /// Representation of regions:
-#[deriving(Clone, PartialEq, Eq, Hash, Encodable, Decodable, Show)]
+#[deriving(Clone, Copy, PartialEq, Eq, Hash, Encodable, Decodable, Show)]
 pub enum Region {
     // Region bound in a type or fn declaration which will be
     // substituted 'early' -- that is, at the same time when type
@@ -1052,15 +1022,13 @@ pub enum Region {
 /// Upvars do not get their own node-id. Instead, we use the pair of
 /// the original var id (that is, the root variable that is referenced
 /// by the upvar) and the id of the closure expression.
-#[deriving(Clone, PartialEq, Eq, Hash, Show)]
+#[deriving(Clone, Copy, PartialEq, Eq, Hash, Show)]
 pub struct UpvarId {
     pub var_id: ast::NodeId,
     pub closure_expr_id: ast::NodeId,
 }
 
-impl Copy for UpvarId {}
-
-#[deriving(Clone, PartialEq, Eq, Hash, Show, Encodable, Decodable)]
+#[deriving(Clone, Copy, PartialEq, Eq, Hash, Show, Encodable, Decodable)]
 pub enum BorrowKind {
     /// Data must be immutable and is aliasable.
     ImmBorrow,
@@ -1105,8 +1073,6 @@ pub enum BorrowKind {
     /// Data is mutable and not aliasable.
     MutBorrow
 }
-
-impl Copy for BorrowKind {}
 
 /// Information describing the borrowing of an upvar. This is computed
 /// during `typeck`, specifically by `regionck`. The general idea is
@@ -1155,15 +1121,13 @@ impl Copy for BorrowKind {}
 /// - Through mutation, the borrowed upvars can actually escape
 ///   the closure, so sometimes it is necessary for them to be larger
 ///   than the closure lifetime itself.
-#[deriving(PartialEq, Clone, Encodable, Decodable, Show)]
+#[deriving(Copy, PartialEq, Clone, Encodable, Decodable, Show)]
 pub struct UpvarBorrow {
     pub kind: BorrowKind,
     pub region: ty::Region,
 }
 
 pub type UpvarBorrowMap = FnvHashMap<UpvarId, UpvarBorrow>;
-
-impl Copy for UpvarBorrow {}
 
 impl Region {
     pub fn is_bound(&self) -> bool {
@@ -1182,9 +1146,7 @@ impl Region {
     }
 }
 
-impl Copy for Region {}
-
-#[deriving(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, Encodable, Decodable, Show)]
+#[deriving(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash, Encodable, Decodable, Show)]
 /// A "free" region `fr` can be interpreted as "some region
 /// at least as big as the scope `fr.scope`".
 pub struct FreeRegion {
@@ -1192,9 +1154,7 @@ pub struct FreeRegion {
     pub bound_region: BoundRegion
 }
 
-impl Copy for FreeRegion {}
-
-#[deriving(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, Encodable, Decodable, Show)]
+#[deriving(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash, Encodable, Decodable, Show)]
 pub enum BoundRegion {
     /// An anonymous region parameter for a given fn (&T)
     BrAnon(uint),
@@ -1212,8 +1172,6 @@ pub enum BoundRegion {
     // to a closure
     BrEnv
 }
-
-impl Copy for BoundRegion {}
 
 #[inline]
 pub fn mk_prim_t<'tcx>(primitive: &'tcx TyS<'static>) -> Ty<'tcx> {
@@ -1378,15 +1336,13 @@ impl<'tcx> PolyTraitRef<'tcx> {
 #[deriving(Clone, PartialEq, Eq, Hash, Show)]
 pub struct Binder<T>(pub T);
 
-#[deriving(Clone, PartialEq)]
+#[deriving(Clone, Copy, PartialEq)]
 pub enum IntVarValue {
     IntType(ast::IntTy),
     UintType(ast::UintTy),
 }
 
-impl Copy for IntVarValue {}
-
-#[deriving(Clone, Show)]
+#[deriving(Clone, Copy, Show)]
 pub enum terr_vstore_kind {
     terr_vec,
     terr_str,
@@ -1394,18 +1350,14 @@ pub enum terr_vstore_kind {
     terr_trait
 }
 
-impl Copy for terr_vstore_kind {}
-
-#[deriving(Clone, Show)]
+#[deriving(Clone, Copy, Show)]
 pub struct expected_found<T> {
     pub expected: T,
     pub found: T
 }
 
-impl<T:Copy> Copy for expected_found<T> {}
-
 // Data structures used in type unification
-#[deriving(Clone, Show)]
+#[deriving(Clone, Copy, Show)]
 pub enum type_err<'tcx> {
     terr_mismatch,
     terr_unsafety_mismatch(expected_found<ast::Unsafety>),
@@ -1438,8 +1390,6 @@ pub enum type_err<'tcx> {
     terr_convergence_mismatch(expected_found<bool>)
 }
 
-impl<'tcx> Copy for type_err<'tcx> {}
-
 /// Bounds suitable for a named type parameter like `A` in `fn foo<A>`
 /// as well as the existential type parameter in an object type.
 #[deriving(PartialEq, Eq, Hash, Clone, Show)]
@@ -1454,17 +1404,15 @@ pub struct ParamBounds<'tcx> {
 /// major difference between this case and `ParamBounds` is that
 /// general purpose trait bounds are omitted and there must be
 /// *exactly one* region.
-#[deriving(PartialEq, Eq, Hash, Clone, Show)]
+#[deriving(Copy, PartialEq, Eq, Hash, Clone, Show)]
 pub struct ExistentialBounds {
     pub region_bound: ty::Region,
     pub builtin_bounds: BuiltinBounds
 }
 
-impl Copy for ExistentialBounds {}
-
 pub type BuiltinBounds = EnumSet<BuiltinBound>;
 
-#[deriving(Clone, Encodable, PartialEq, Eq, Decodable, Hash, Show)]
+#[deriving(Copy, Clone, Encodable, PartialEq, Eq, Decodable, Hash, Show)]
 #[repr(uint)]
 pub enum BuiltinBound {
     BoundSend,
@@ -1472,8 +1420,6 @@ pub enum BuiltinBound {
     BoundCopy,
     BoundSync,
 }
-
-impl Copy for BuiltinBound {}
 
 pub fn empty_builtin_bounds() -> BuiltinBounds {
     EnumSet::new()
@@ -1502,35 +1448,27 @@ impl CLike for BuiltinBound {
     }
 }
 
-#[deriving(Clone, PartialEq, Eq, Hash)]
+#[deriving(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TyVid {
     pub index: uint
 }
 
-impl Copy for TyVid {}
-
-#[deriving(Clone, PartialEq, Eq, Hash)]
+#[deriving(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct IntVid {
     pub index: uint
 }
 
-impl Copy for IntVid {}
-
-#[deriving(Clone, PartialEq, Eq, Hash)]
+#[deriving(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct FloatVid {
     pub index: uint
 }
 
-impl Copy for FloatVid {}
-
-#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash)]
+#[deriving(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash)]
 pub struct RegionVid {
     pub index: uint
 }
 
-impl Copy for RegionVid {}
-
-#[deriving(Clone, PartialEq, Eq, Hash)]
+#[deriving(Clone, Copy, PartialEq, Eq, Hash)]
 pub enum InferTy {
     TyVar(TyVid),
     IntVar(IntVid),
@@ -1547,15 +1485,11 @@ pub enum InferTy {
     FreshIntTy(uint),
 }
 
-impl Copy for InferTy {}
-
-#[deriving(Clone, Encodable, Decodable, Eq, Hash, Show)]
+#[deriving(Clone, Copy, Encodable, Decodable, Eq, Hash, Show)]
 pub enum InferRegion {
     ReVar(RegionVid),
     ReSkolemized(uint, BoundRegion)
 }
-
-impl Copy for InferRegion {}
 
 impl cmp::PartialEq for InferRegion {
     fn eq(&self, other: &InferRegion) -> bool {
@@ -2006,14 +1940,12 @@ pub struct UnboxedClosure<'tcx> {
     pub kind: UnboxedClosureKind,
 }
 
-#[deriving(Clone, PartialEq, Eq, Show)]
+#[deriving(Clone, Copy, PartialEq, Eq, Show)]
 pub enum UnboxedClosureKind {
     FnUnboxedClosureKind,
     FnMutUnboxedClosureKind,
     FnOnceUnboxedClosureKind,
 }
-
-impl Copy for UnboxedClosureKind {}
 
 impl UnboxedClosureKind {
     pub fn trait_did(&self, cx: &ctxt) -> ast::DefId {
@@ -2795,12 +2727,10 @@ pub fn type_needs_unwind_cleanup<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
 /// The reason we compute type contents and not kinds is that it is
 /// easier for me (nmatsakis) to think about what is contained within
 /// a type than to think about what is *not* contained within a type.
-#[deriving(Clone)]
+#[deriving(Clone, Copy)]
 pub struct TypeContents {
     pub bits: u64
 }
-
-impl Copy for TypeContents {}
 
 macro_rules! def_type_content_sets {
     (mod $mname:ident { $($name:ident = $bits:expr),+ }) => {
@@ -3443,14 +3373,12 @@ pub fn is_instantiable<'tcx>(cx: &ctxt<'tcx>, r_ty: Ty<'tcx>) -> bool {
 ///
 /// The ordering of the cases is significant. They are sorted so that cmp::max
 /// will keep the "more erroneous" of two values.
-#[deriving(PartialOrd, Ord, Eq, PartialEq, Show)]
+#[deriving(Copy, PartialOrd, Ord, Eq, PartialEq, Show)]
 pub enum Representability {
     Representable,
     ContainsRecursive,
     SelfRecursive,
 }
-
-impl Copy for Representability {}
 
 /// Check whether a type is representable. This means it cannot contain unboxed
 /// structural recursion. This check is needed for structs and enums.
@@ -4228,14 +4156,13 @@ pub fn expr_is_lval(tcx: &ctxt, e: &ast::Expr) -> bool {
 /// two kinds of rvalues is an artifact of trans which reflects how we will
 /// generate code for that kind of expression.  See trans/expr.rs for more
 /// information.
+#[deriving(Copy)]
 pub enum ExprKind {
     LvalueExpr,
     RvalueDpsExpr,
     RvalueDatumExpr,
     RvalueStmtExpr
 }
-
-impl Copy for ExprKind {}
 
 pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
     if tcx.method_map.borrow().contains_key(&MethodCall::expr(expr.id)) {
@@ -4791,14 +4718,12 @@ pub fn associated_type_parameter_index(cx: &ctxt,
     cx.sess.bug("couldn't find associated type parameter index")
 }
 
-#[deriving(PartialEq, Eq)]
+#[deriving(Copy, PartialEq, Eq)]
 pub struct AssociatedTypeInfo {
     pub def_id: ast::DefId,
     pub index: uint,
     pub name: ast::Name,
 }
-
-impl Copy for AssociatedTypeInfo {}
 
 impl PartialOrd for AssociatedTypeInfo {
     fn partial_cmp(&self, other: &AssociatedTypeInfo) -> Option<Ordering> {
@@ -4979,12 +4904,11 @@ pub fn item_path_str(cx: &ctxt, id: ast::DefId) -> String {
     with_path(cx, id, |path| ast_map::path_to_string(path)).to_string()
 }
 
+#[deriving(Copy)]
 pub enum DtorKind {
     NoDtor,
     TraitDtor(DefId, bool)
 }
-
-impl Copy for DtorKind {}
 
 impl DtorKind {
     pub fn is_present(&self) -> bool {
@@ -5403,13 +5327,12 @@ pub fn tup_fields<'tcx>(v: &[Ty<'tcx>]) -> Vec<field<'tcx>> {
     }).collect()
 }
 
+#[deriving(Copy)]
 pub struct UnboxedClosureUpvar<'tcx> {
     pub def: def::Def,
     pub span: Span,
     pub ty: Ty<'tcx>,
 }
-
-impl<'tcx> Copy for UnboxedClosureUpvar<'tcx> {}
 
 // Returns a list of `UnboxedClosureUpvar`s for each upvar.
 pub fn unboxed_closure_upvars<'tcx>(tcx: &ctxt<'tcx>, closure_id: ast::DefId, substs: &Substs<'tcx>)
@@ -6259,15 +6182,13 @@ impl<'tcx> mc::Typer<'tcx> for ty::ctxt<'tcx> {
 }
 
 /// The category of explicit self.
-#[deriving(Clone, Eq, PartialEq, Show)]
+#[deriving(Clone, Copy, Eq, PartialEq, Show)]
 pub enum ExplicitSelfCategory {
     StaticExplicitSelfCategory,
     ByValueExplicitSelfCategory,
     ByReferenceExplicitSelfCategory(Region, ast::Mutability),
     ByBoxExplicitSelfCategory,
 }
-
-impl Copy for ExplicitSelfCategory {}
 
 /// Pushes all the lifetimes in the given type onto the given list. A
 /// "lifetime in a type" is a lifetime specified by a reference or a lifetime
@@ -6329,7 +6250,7 @@ pub fn accumulate_lifetimes_in_type(accumulator: &mut Vec<ty::Region>,
 }
 
 /// A free variable referred to in a function.
-#[deriving(Encodable, Decodable)]
+#[deriving(Copy, Encodable, Decodable)]
 pub struct Freevar {
     /// The variable being accessed free.
     pub def: def::Def,
@@ -6337,8 +6258,6 @@ pub struct Freevar {
     // First span where it is accessed (there can be multiple).
     pub span: Span
 }
-
-impl Copy for Freevar {}
 
 pub type FreevarMap = NodeMap<Vec<Freevar>>;
 
@@ -6469,8 +6388,6 @@ impl DebruijnIndex {
     }
 }
 
-impl Copy for DebruijnIndex {}
-
 impl<'tcx> Repr<'tcx> for AutoAdjustment<'tcx> {
     fn repr(&self, tcx: &ctxt<'tcx>) -> String {
         match *self {
@@ -6589,13 +6506,12 @@ pub fn make_substs_for_receiver_types<'tcx>(tcx: &ty::ctxt<'tcx>,
     trait_ref.substs.clone().with_method(meth_tps, meth_regions)
 }
 
+#[deriving(Copy)]
 pub enum CopyImplementationError {
     FieldDoesNotImplementCopy(ast::Name),
     VariantDoesNotImplementCopy(ast::Name),
     TypeIsStructural,
 }
-
-impl Copy for CopyImplementationError {}
 
 pub fn can_type_implement_copy<'tcx>(tcx: &ctxt<'tcx>,
                                      self_type: Ty<'tcx>,

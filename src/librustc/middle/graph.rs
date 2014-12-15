@@ -60,29 +60,23 @@ impl<E: Show> Show for Edge<E> {
     }
 }
 
-#[deriving(Clone, PartialEq, Show)]
+#[deriving(Clone, Copy, PartialEq, Show)]
 pub struct NodeIndex(pub uint);
 #[allow(non_upper_case_globals)]
 pub const InvalidNodeIndex: NodeIndex = NodeIndex(uint::MAX);
 
-impl Copy for NodeIndex {}
-
-#[deriving(PartialEq, Show)]
+#[deriving(Copy, PartialEq, Show)]
 pub struct EdgeIndex(pub uint);
 #[allow(non_upper_case_globals)]
 pub const InvalidEdgeIndex: EdgeIndex = EdgeIndex(uint::MAX);
 
-impl Copy for EdgeIndex {}
-
 // Use a private field here to guarantee no more instances are created:
-#[deriving(Show)]
+#[deriving(Copy, Show)]
 pub struct Direction { repr: uint }
 #[allow(non_upper_case_globals)]
 pub const Outgoing: Direction = Direction { repr: 0 };
 #[allow(non_upper_case_globals)]
 pub const Incoming: Direction = Direction { repr: 1 };
-
-impl Copy for Direction {}
 
 impl NodeIndex {
     fn get(&self) -> uint { let NodeIndex(v) = *self; v }

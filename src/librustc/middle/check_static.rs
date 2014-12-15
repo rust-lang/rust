@@ -39,15 +39,13 @@ use syntax::visit::Visitor;
 use syntax::codemap::Span;
 use syntax::visit;
 
-#[deriving(Eq, PartialEq)]
+#[deriving(Copy, Eq, PartialEq)]
 enum Mode {
     InConstant,
     InStatic,
     InStaticMut,
     InNothing,
 }
-
-impl Copy for Mode {}
 
 struct CheckStaticVisitor<'a, 'tcx: 'a> {
     tcx: &'a ty::ctxt<'tcx>,
