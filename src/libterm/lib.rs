@@ -165,13 +165,13 @@ pub mod color {
 /// Terminal attributes
 pub mod attr {
     pub use self::Attr::*;
-    use std::kinds::Copy;
 
     /// Terminal attributes for use with term.attr().
     ///
     /// Most attributes can only be turned on and must be turned off with term.reset().
     /// The ones that can be turned off explicitly take a boolean value.
     /// Color is also represented as an attribute for convenience.
+    #[deriving(Copy)]
     pub enum Attr {
         /// Bold (or possibly bright) mode
         Bold,
@@ -194,8 +194,6 @@ pub mod attr {
         /// Convenience attribute to set the background color
         BackgroundColor(super::color::Color)
     }
-
-    impl Copy for Attr {}
 }
 
 /// A terminal with similar capabilities to an ANSI Terminal
