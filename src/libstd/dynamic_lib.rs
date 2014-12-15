@@ -215,7 +215,6 @@ pub mod dl {
 
     use c_str::{CString, ToCStr};
     use libc;
-    use kinds::Copy;
     use ops::FnOnce;
     use ptr;
     use result::*;
@@ -265,14 +264,13 @@ pub mod dl {
         dlclose(handle as *mut libc::c_void); ()
     }
 
+    #[deriving(Copy)]
     pub enum Rtld {
         Lazy = 1,
         Now = 2,
         Global = 256,
         Local = 0,
     }
-
-    impl Copy for Rtld {}
 
     #[link_name = "dl"]
     extern {
