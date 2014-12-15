@@ -487,7 +487,7 @@ pub fn trans_fn_ref_with_substs<'blk, 'tcx>(
 
         let opt_ref_id = match node {
             ExprId(id) => if id != 0 { Some(id) } else { None },
-            MethodCall(_) => None,
+            MethodCallKey(_) => None,
         };
 
         let (val, must_cast) =
@@ -498,7 +498,7 @@ pub fn trans_fn_ref_with_substs<'blk, 'tcx>(
             // are subst'd)
             let ref_ty = match node {
                 ExprId(id) => node_id_type(bcx, id),
-                MethodCall(method_call) => {
+                MethodCallKey(method_call) => {
                     let t = (*bcx.tcx().method_map.borrow())[method_call].ty;
                     monomorphize_type(bcx, t)
                 }

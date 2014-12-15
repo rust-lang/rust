@@ -18,13 +18,10 @@ use io;
 use prelude::*;
 
 use io::{FilePermission, Write, UnstableFileStat, Open, FileAccess, FileMode};
-use io::{IoResult, FileStat, SeekStyle, Reader};
+use io::{IoResult, FileStat, SeekStyle};
 use io::{Read, Truncate, SeekCur, SeekSet, ReadWrite, SeekEnd, Append};
-use result::Result::{Ok, Err};
 use sys::retry;
 use sys_common::{keep_going, eof, mkerr_libc};
-
-pub use path::PosixPath as Path;
 
 pub type fd_t = libc::c_int;
 

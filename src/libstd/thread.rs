@@ -124,13 +124,17 @@
 //!
 //! * It can be implemented highly efficiently on many platforms.
 
-use core::prelude::*;
-
 use any::Any;
 use borrow::IntoCow;
 use boxed::Box;
 use cell::UnsafeCell;
+use clone::Clone;
+use kinds::Send;
+use ops::{Drop, FnOnce};
+use option::Option::{mod, Some, None};
+use result::Result::{Err, Ok};
 use sync::{Mutex, Condvar, Arc};
+use str::Str;
 use string::String;
 use rt::{mod, unwind};
 use io::{Writer, stdio};
