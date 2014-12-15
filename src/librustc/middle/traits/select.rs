@@ -1209,6 +1209,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // is reserve judgement and then intertwine this
                 // analysis with closure inference.
                 assert_eq!(def_id.krate, ast::LOCAL_CRATE);
+
+                // Unboxed closures shouldn't be
+                // implicitly copyable
+                if bound == ty::BoundCopy {
+                    return Ok(ParameterBuiltin);
+                }
+
                 match self.tcx().freevars.borrow().get(&def_id.node) {
                     None => {
                         // No upvars.
