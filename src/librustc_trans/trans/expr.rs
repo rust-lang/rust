@@ -1101,11 +1101,11 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                 vec![(rhs_datum, rhs.id)], Some(dest),
                                 !ast_util::is_by_value_binop(op)).bcx
         }
-        ast::ExprUnary(_, ref subexpr) => {
+        ast::ExprUnary(op, ref subexpr) => {
             // if not overloaded, would be RvalueDatumExpr
             let arg = unpack_datum!(bcx, trans(bcx, &**subexpr));
             trans_overloaded_op(bcx, expr, MethodCall::expr(expr.id),
-                                arg, Vec::new(), Some(dest), true).bcx
+                                arg, Vec::new(), Some(dest), !ast_util::is_by_value_unop(op)).bcx
         }
         ast::ExprIndex(ref base, ref idx) => {
             // if not overloaded, would be RvalueDatumExpr
