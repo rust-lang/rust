@@ -465,8 +465,9 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                 assert!(overloaded);
             }
 
-            ast::ExprRange(..) => {
-                self.tcx().sess.span_bug(expr.span, "non-desugared range");
+            ast::ExprRange(ref start, ref end) => {
+                self.consume_expr(&**start);
+                end.as_ref().map(|e| self.consume_expr(&**e));
             }
 
             ast::ExprCall(ref callee, ref args) => {    // callee(args)

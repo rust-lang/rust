@@ -4238,7 +4238,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                   check_expr(fcx, e);
                   let e_t = fcx.expr_ty(e);
                   if ty::type_is_error(e_t) {
-                    fcx.write_ty(id, e_t);
+                    fcx.write_ty(e.id, e_t);
                     some_err = true;
                   }
               };
@@ -4278,8 +4278,45 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
               }
           }
        }
-       ast::ExprRange(..) => {
-         tcx.sess.span_bug(expr.span, "non-desugared range");
+       ast::ExprRange(ref start, ref end) => {
+          let mut some_err = false;
+
+          check_expr(fcx, &**start);
+          let t_start = fcx.expr_ty(&**start);
+          if ty::type_is_error(t_start) {
+            fcx.write_ty(start.id, t_start);
+            some_err = true;
+          }
+
+          if let &Some(ref e) = end {
+              check_expr_has_type(fcx, &**e, t_start);
+              let t_end = fcx.expr_ty(&**e);
+              if ty::type_is_error(t_end) {
+                fcx.write_ty(e.id, t_end);
+                some_err = true;
+              }
+          }
+
+          // Note that we don't check the type of the start/end satisfy any
+          // bounds because right the range structs do not have any. If we add
+          // some bounds, then we'll need to check `t_start` against them here.
+
+          if !some_err {
+            // Find the did from the appropriate lang item.
+            let did = if end.is_some() {
+                // Range
+                fcx.tcx().lang_items.range_struct()
+            } else {
+                // RangeFrom
+                fcx.tcx().lang_items.range_from_struct()
+            };
+            if let Some(did) = did {
+                let substs = Substs::new_type(vec![t_start], vec![]);
+                fcx.write_ty(id, ty::mk_struct(tcx, did, substs));
+            } else {
+                fcx.write_ty(id, ty::mk_err());
+            }
+          }
        }
 
     }
