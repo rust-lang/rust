@@ -452,7 +452,7 @@ fn main() {
 
 Rust will give us a compile-time error:
 
-```{notrust}
+```text
    Compiling phrases v0.0.1 (file:///home/you/projects/phrases)
 /home/you/projects/phrases/src/main.rs:4:5: 4:40 error: a value named `hello` has already been imported in this module
 /home/you/projects/phrases/src/main.rs:4 use phrases::japanese::greetings::hello;

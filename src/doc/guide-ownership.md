@@ -130,7 +130,7 @@ fn add_one(mut num: Box<int>) {
 
 This does not compile, and gives us an error:
 
-```{notrust}
+```text
 error: use of moved value: `x`
    println!("{}", x);
                   ^
@@ -208,7 +208,7 @@ the function is over, and `num` goes out of scope, the borrow is over.
 Lending out a reference to a resource that someone else owns can be
 complicated, however. For example, imagine this set of operations:
 
-1. I aquire a handle to some kind of resource.
+1. I acquire a handle to some kind of resource.
 2. I lend you a reference to the resource.
 3. I decide I'm done with the resource, and deallocate it, while you still have
    your reference.
@@ -406,7 +406,7 @@ fn main() {
 We try to make four `Wheel`s, each with a `Car` that it's attached to. But the
 compiler knows that on the second iteration of the loop, there's a problem:
 
-```{notrust}
+```text
 error: use of moved value: `car`
     Wheel { size: 360, owner: car };
                               ^~~

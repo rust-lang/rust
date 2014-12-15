@@ -29,7 +29,7 @@
 //! }
 //! ```
 //!
-//! ## Stability Note
+//! # Stability Note
 //!
 //! These are all experimental. The interface may change entirely, without
 //! warning.

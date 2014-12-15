@@ -16,7 +16,7 @@
 //! [terminfo][ti] database, and `WinConsole`, which uses the [Win32 Console
 //! API][win].
 //!
-//! ## Example
+//! # Examples
 //!
 //! ```no_run
 //! extern crate term;

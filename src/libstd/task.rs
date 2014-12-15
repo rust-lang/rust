@@ -32,7 +32,7 @@
 //! the main task panics the application will exit with a non-zero
 //! exit code.
 //!
-//! ## Example
+//! # Examples
 //!
 //! ```rust
 //! spawn(move|| {

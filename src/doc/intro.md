@@ -155,13 +155,13 @@ when you have unrestricted access to memory. As an example, here's some Ruby
 code:
 
 ```{ruby}
-v = [];
+v = []
 
-v.push("Hello");
+v.push("Hello")
 
-x = v[0];
+x = v[0]
 
-v.push("world");
+v.push("world")
 
 puts x
 ```
@@ -313,7 +313,7 @@ print `"Hello"`, or does Rust crash?
 
 Neither. It refuses to compile:
 
-```{notrust}
+```bash
 $ cargo run
    Compiling hello_world v0.0.1 (file:///Users/you/src/hello_world)
 main.rs:8:5: 8:6 error: cannot borrow `v` as mutable because it is also borrowed as immutable
@@ -431,7 +431,7 @@ fn main() {
 
 It gives us this error:
 
-```{notrust}
+```text
 6:71 error: capture of moved value: `numbers`
     for j in range(0, 3) { numbers[j] += 1 }
                ^~~~~~~

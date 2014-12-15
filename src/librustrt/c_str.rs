@@ -603,7 +603,7 @@ mod tests {
             assert_eq!(*buf.offset(0), 'f' as libc::c_char);
             assert_eq!(*buf.offset(1), 'o' as libc::c_char);
             assert_eq!(*buf.offset(2), 'o' as libc::c_char);
-            assert_eq!(*buf.offset(3), 0xffu8 as i8);
+            assert_eq!(*buf.offset(3), 0xffu8 as libc::c_char);
             assert_eq!(*buf.offset(4), 0);
         }
     }

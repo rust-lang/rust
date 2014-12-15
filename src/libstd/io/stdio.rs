@@ -127,7 +127,7 @@ impl StdinReader {
     ///
     /// This provides access to methods like `chars` and `lines`.
     ///
-    /// ## Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::io;

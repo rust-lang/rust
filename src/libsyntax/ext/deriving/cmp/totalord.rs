@@ -66,6 +66,7 @@ pub fn cs_cmp(cx: &mut ExtCtxt, span: Span,
     let equals_path = cx.path_global(span,
                                      vec!(cx.ident_of("std"),
                                           cx.ident_of("cmp"),
+                                          cx.ident_of("Ordering"),
                                           cx.ident_of("Equal")));
 
     let cmp_path = vec![
