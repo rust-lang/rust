@@ -397,14 +397,13 @@ pub mod eabi {
     pub struct DISPATCHER_CONTEXT;
 
     #[repr(C)]
+    #[deriving(Copy)]
     pub enum EXCEPTION_DISPOSITION {
         ExceptionContinueExecution,
         ExceptionContinueSearch,
         ExceptionNestedException,
         ExceptionCollidedUnwind
     }
-
-    impl Copy for EXCEPTION_DISPOSITION {}
 
     type _Unwind_Personality_Fn =
         extern "C" fn(
