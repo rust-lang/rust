@@ -59,7 +59,6 @@ pub use self::MinMaxResult::*;
 use clone::Clone;
 use cmp;
 use cmp::Ord;
-use kinds::Copy;
 use mem;
 use num::{ToPrimitive, Int};
 use ops::{Add, Deref, FnMut};
@@ -1168,15 +1167,13 @@ impl<A, I> CloneIteratorExt for I where I: Iterator<A> + Clone {
 }
 
 /// An iterator that repeats endlessly
-#[deriving(Clone)]
+#[deriving(Clone, Copy)]
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 #[stable]
 pub struct Cycle<T> {
     orig: T,
     iter: T,
 }
-
-impl<T:Copy> Copy for Cycle<T> {}
 
 impl<A, T: Clone + Iterator<A>> Iterator<A> for Cycle<T> {
     #[inline]
@@ -1635,12 +1632,11 @@ impl<A, T: RandomAccessIterator<A>> RandomAccessIterator<(uint, A)> for Enumerat
 /// An iterator with a `peek()` that returns an optional reference to the next element.
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 #[stable]
+#[deriving(Copy)]
 pub struct Peekable<A, T> {
     iter: T,
     peeked: Option<A>,
 }
-
-impl<T:Copy,A:Copy> Copy for Peekable<A,T> {}
 
 impl<A, T: Iterator<A>> Iterator<A> for Peekable<A, T> {
     #[inline]
@@ -2267,7 +2263,7 @@ impl<A, St, F> Iterator<A> for Unfold<A, St, F> where F: FnMut(&mut St) -> Optio
 
 /// An infinite iterator starting at `start` and advancing by `step` with each
 /// iteration
-#[deriving(Clone)]
+#[deriving(Clone, Copy)]
 #[unstable = "may be renamed"]
 pub struct Counter<A> {
     /// The current state the counter is at (next value to be yielded)
@@ -2275,8 +2271,6 @@ pub struct Counter<A> {
     /// The amount that this iterator is stepping by
     step: A,
 }
-
-impl<A:Copy> Copy for Counter<A> {}
 
 /// Creates a new counter with the specified start/step
 #[inline]
@@ -2301,15 +2295,13 @@ impl<A: Add<A, A> + Clone> Iterator<A> for Counter<A> {
 }
 
 /// An iterator over the range [start, stop)
-#[deriving(Clone)]
+#[deriving(Clone, Copy)]
 #[unstable = "may be refactored due to numerics reform or ops reform"]
 pub struct Range<A> {
     state: A,
     stop: A,
     one: A,
 }
-
-impl<A:Copy> Copy for Range<A> {}
 
 /// Returns an iterator over the given range [start, stop) (that is, starting
 /// at start (inclusive), and ending at stop (exclusive)).

@@ -1229,7 +1229,7 @@ impl<'a, T> DoubleEndedIterator<&'a mut [T]> for MutChunks<'a, T> {
 /// index of the matching element. `NotFound` means the search
 /// succeeded, and the contained value is an index where a matching
 /// value could be inserted while maintaining sort order.
-#[deriving(PartialEq, Show)]
+#[deriving(Copy, PartialEq, Show)]
 #[experimental = "needs review"]
 pub enum BinarySearchResult {
     /// The index of the found value.
@@ -1237,8 +1237,6 @@ pub enum BinarySearchResult {
     /// The index where the value should have been found.
     NotFound(uint)
 }
-
-impl Copy for BinarySearchResult {}
 
 #[experimental = "needs review"]
 impl BinarySearchResult {
