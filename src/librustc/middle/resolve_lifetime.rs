@@ -361,17 +361,40 @@ impl<'a> LifetimeContext<'a> {
                                  scope_data: region::CodeExtent,
                                  lifetime_ref: &ast::Lifetime,
                                  scope: Scope) {
+        debug!("resolve_free_lifetime_ref \
+                scope_data: {} lifetime_ref: {} scope: {}",
+               scope_data, lifetime_ref, scope);
+
         // Walk up the scope chain, tracking the outermost free scope,
         // until we encounter a scope that contains the named lifetime
         // or we run out of scopes.
         let mut scope_data = scope_data;
         let mut scope = scope;
         let mut search_result = None;
+        let mut loop_count = 0u;
         loop {
+            debug!("resolve_free_lifetime_ref loop: {} \
+                    scope_data: {} scope: {} search_result: {}",
+                   loop_count, scope_data, scope, search_result);
             match *scope {
                 BlockScope(blk_scope_data, s) => {
-                    scope_data = blk_scope_data;
-                    scope = s;
+                    // FIXME (pnkfelix): I still need to work through
+                    // the theoretical justification for this
+                    // transition from the block itself to its
+                    // enclosing destruction scope. (In particular,
+                    // perhaps athis *actually* belongs as part of the
+                    // `RootScope` case, or maybe following the loop
+                    // (either of which I think would resolve my
+                    // problem), but not here, where it has a broad
+                    // effect.
+                    if let CodeExtent::Misc(node_id) = blk_scope_data {
+                        let d = CodeExtent::DestructionScope(node_id);
+                        scope_data = d;
+                        scope = s;
+                    } else {
+                        self.sess.bug(
+                            "found unexpected CodeExtent associated with blk_scope")
+                    }
                 }
 
                 RootScope => {
@@ -393,8 +416,9 @@ impl<'a> LifetimeContext<'a> {
             Some((_depth, decl_id)) => {
                 let def = DefFreeRegion(scope_data, decl_id);
                 debug!("resolve_free_lifetime_ref: \
+                        from parent scope {} \
                         insert_lifetime(lifetime_ref: {} def: {})",
-                       lifetime_ref, def);
+                       lifetime_ref, *scope, def);
                 self.insert_lifetime(lifetime_ref, def);
             }
 
