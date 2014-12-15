@@ -20,7 +20,7 @@ use sys::fs::FileDesc;
 use sys::{set_nonblocking, wouldblock};
 use sys;
 use sys_common;
-use sys_common::net::*;
+use sys_common::net;
 
 pub use sys_common::net::TcpStream;
 
@@ -34,17 +34,19 @@ pub struct TcpListener {
 
 impl TcpListener {
     pub fn bind(addr: ip::SocketAddr) -> IoResult<TcpListener> {
-        let fd = try!(socket(addr, libc::SOCK_STREAM));
+        let fd = try!(net::socket(addr, libc::SOCK_STREAM));
         let ret = TcpListener { inner: FileDesc::new(fd, true) };
 
         let mut storage = unsafe { mem::zeroed() };
-        let len = addr_to_sockaddr(addr, &mut storage);
+        let len = net::addr_to_sockaddr(addr, &mut storage);
         let addrp = &storage as *const _ as *const libc::sockaddr;
 
         // On platforms with Berkeley-derived sockets, this allows
         // to quickly rebind a socket, without needing to wait for
         // the OS to clean up the previous one.
-        try!(setsockopt(fd, libc::SOL_SOCKET, libc::SO_REUSEADDR, 1 as libc::c_int));
+        try!(net::setsockopt(fd, libc::SOL_SOCKET,
+                             libc::SO_REUSEADDR,
+                             1 as libc::c_int));
 
 
         match unsafe { libc::bind(fd, addrp, len) } {
@@ -77,7 +79,7 @@ impl TcpListener {
     }
 
     pub fn socket_name(&mut self) -> IoResult<ip::SocketAddr> {
-        sockname(self.fd(), libc::getsockname)
+        net::sockname(self.fd(), libc::getsockname)
     }
 }
 
@@ -121,15 +123,15 @@ impl TcpAcceptor {
                 -1 => return Err(last_net_error()),
                 fd => return Ok(TcpStream::new(fd as sock_t)),
             }
-            try!(await(&[self.fd(), self.inner.reader.fd()],
-                       deadline, Readable));
+            try!(net::await(&[self.fd(), self.inner.reader.fd()],
+                       deadline, net::Readable));
         }
 
         Err(sys_common::eof())
     }
 
     pub fn socket_name(&mut self) -> IoResult<ip::SocketAddr> {
-        sockname(self.fd(), libc::getsockname)
+        net::sockname(self.fd(), libc::getsockname)
     }
 
     pub fn set_timeout(&mut self, timeout: Option<u64>) {

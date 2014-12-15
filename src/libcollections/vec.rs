@@ -54,7 +54,6 @@ use core::default::Default;
 use core::fmt;
 use core::hash::{mod, Hash};
 use core::kinds::marker::{ContravariantLifetime, InvariantType};
-use core::kinds::Sized;
 use core::mem;
 use core::num::{Int, UnsignedInt};
 use core::ops;

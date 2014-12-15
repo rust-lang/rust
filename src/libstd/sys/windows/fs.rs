@@ -26,10 +26,9 @@ use sys;
 use sys_common::{keep_going, eof, mkerr_libc};
 
 use io::{FilePermission, Write, UnstableFileStat, Open, FileAccess, FileMode};
-use io::{IoResult, IoError, FileStat, SeekStyle, Seek, Writer, Reader};
+use io::{IoResult, IoError, FileStat, SeekStyle};
 use io::{Read, Truncate, SeekCur, SeekSet, ReadWrite, SeekEnd, Append};
 
-pub use path::WindowsPath as Path;
 pub type fd_t = libc::c_int;
 
 pub struct FileDesc {

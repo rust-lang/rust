@@ -21,7 +21,6 @@ use core::hash::{Hash, Writer};
 use core::iter;
 use core::iter::{Enumerate, FilterMap, Map};
 use core::mem::replace;
-use core::ops::FnOnce;
 
 use {vec, slice};
 use vec::Vec;

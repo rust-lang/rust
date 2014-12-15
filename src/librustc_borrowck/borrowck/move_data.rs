@@ -14,8 +14,6 @@
 pub use self::MoveKind::*;
 
 use borrowck::*;
-use borrowck::LoanPathKind::{LpVar, LpUpvar, LpDowncast, LpExtend};
-use borrowck::LoanPathElem::{LpInterior};
 use rustc::middle::cfg;
 use rustc::middle::dataflow::DataFlowContext;
 use rustc::middle::dataflow::BitwiseOperator;
