@@ -166,6 +166,7 @@ pub struct Inherited<'a, 'tcx: 'a> {
 
 /// When type-checking an expression, we propagate downward
 /// whatever type hint we are able in the form of an `Expectation`.
+#[deriving(Copy)]
 enum Expectation<'tcx> {
     /// We know nothing about what type this expression should have.
     NoExpectation,
@@ -176,8 +177,6 @@ enum Expectation<'tcx> {
     /// This expression will be cast to the `Ty`
     ExpectCastableToType(Ty<'tcx>),
 }
-
-impl<'tcx> Copy for Expectation<'tcx> {}
 
 impl<'tcx> Expectation<'tcx> {
     // Disregard "castable to" expectations because they
@@ -1976,13 +1975,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 }
 
-#[deriving(Show)]
+#[deriving(Copy, Show)]
 pub enum LvaluePreference {
     PreferMutLvalue,
     NoPreference
 }
-
-impl Copy for LvaluePreference {}
 
 /// Executes an autoderef loop for the type `t`. At each step, invokes `should_stop` to decide
 /// whether to terminate the loop. Returns the final type and number of derefs that it performed.
@@ -2856,13 +2853,11 @@ pub fn lookup_tup_field_ty<'tcx>(tcx: &ty::ctxt<'tcx>,
 
 // Controls whether the arguments are automatically referenced. This is useful
 // for overloaded binary and unary operators.
-#[deriving(PartialEq)]
+#[deriving(Copy, PartialEq)]
 pub enum AutorefArgs {
     Yes,
     No,
 }
-
-impl Copy for AutorefArgs {}
 
 /// Controls whether the arguments are tupled. This is used for the call
 /// operator.
