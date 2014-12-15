@@ -1079,27 +1079,33 @@ impl<'a> State<'a> {
             try!(self.end());
             self.end() // close the outer-box
         } else {
-            try!(self.nbsp());
-            try!(self.bopen());
-            try!(self.hardbreak_if_not_bol());
+            if struct_def.fields.len() > 0 {
+                try!(self.nbsp());
+                try!(self.bopen());
+                try!(self.hardbreak_if_not_bol());
 
-            for field in struct_def.fields.iter() {
-                match field.node.kind {
-                    ast::UnnamedField(..) => panic!("unexpected unnamed field"),
-                    ast::NamedField(ident, visibility) => {
-                        try!(self.hardbreak_if_not_bol());
-                        try!(self.maybe_print_comment(field.span.lo));
-                        try!(self.print_outer_attributes(field.node.attrs.as_slice()));
-                        try!(self.print_visibility(visibility));
-                        try!(self.print_ident(ident));
-                        try!(self.word_nbsp(":"));
-                        try!(self.print_type(&*field.node.ty));
-                        try!(word(&mut self.s, ","));
+                for field in struct_def.fields.iter() {
+                    match field.node.kind {
+                        ast::UnnamedField(..) => panic!("unexpected unnamed field"),
+                        ast::NamedField(ident, visibility) => {
+                            try!(self.hardbreak_if_not_bol());
+                            try!(self.maybe_print_comment(field.span.lo));
+                            try!(self.print_outer_attributes(field.node.attrs.as_slice()));
+                            try!(self.print_visibility(visibility));
+                            try!(self.print_ident(ident));
+                            try!(self.word_nbsp(":"));
+                            try!(self.print_type(&*field.node.ty));
+                            try!(word(&mut self.s, ","));
+                        }
                     }
                 }
-            }
 
-            self.bclose(span)
+                self.bclose(span)
+            } else {
+                try!(word(&mut self.s, ";"))
+                try!(self.end());
+                self.end()
+            }
         }
     }
 
