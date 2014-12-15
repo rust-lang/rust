@@ -814,8 +814,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         self.region_vars.new_bound(debruijn)
     }
 
-    pub fn resolve_regions_and_report_errors(&self) {
-        let errors = self.region_vars.resolve_regions();
+    pub fn resolve_regions_and_report_errors(&self, subject_node_id: ast::NodeId) {
+        let errors = self.region_vars.resolve_regions(subject_node_id);
         self.report_region_errors(&errors); // see error_reporting.rs
     }
 
