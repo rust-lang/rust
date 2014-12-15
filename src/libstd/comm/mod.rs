@@ -81,7 +81,7 @@
 //! Shared usage:
 //!
 //! ```
-//! // Create a shared channel which can be sent along from many tasks
+//! // Create a shared channel that can be sent along from many tasks
 //! // where tx is the sending half (tx for transmission), and rx is the receiving
 //! // half (rx for receiving).
 //! let (tx, rx) = channel();
@@ -176,7 +176,7 @@
 // The choice of implementation of all channels is to be built on lock-free data
 // structures. The channels themselves are then consequently also lock-free data
 // structures. As always with lock-free code, this is a very "here be dragons"
-// territory, especially because I'm unaware of any academic papers which have
+// territory, especially because I'm unaware of any academic papers that have
 // gone into great length about channels of these flavors.
 //
 // ## Flavors of channels
@@ -190,7 +190,7 @@
 //              They contain as few atomics as possible and involve one and
 //              exactly one allocation.
 // * Streams - these channels are optimized for the non-shared use case. They
-//             use a different concurrent queue which is more tailored for this
+//             use a different concurrent queue that is more tailored for this
 //             use case. The initial allocation of this flavor of channel is not
 //             optimized.
 // * Shared - this is the most general form of channel that this module offers,
@@ -205,7 +205,7 @@
 // shared and concurrent queue holding all of the actual data.
 //
 // With two flavors of channels, two flavors of queues are also used. We have
-// chosen to use queues from a well-known author which are abbreviated as SPSC
+// chosen to use queues from a well-known author that are abbreviated as SPSC
 // and MPSC (single producer, single consumer and multiple producer, single
 // consumer). SPSC queues are used for streams while MPSC queues are used for
 // shared channels.
@@ -309,7 +309,7 @@
 //
 // Sadly this current implementation requires multiple allocations, so I have
 // seen the throughput of select() be much worse than it should be. I do not
-// believe that there is anything fundamental which needs to change about these
+// believe that there is anything fundamental that needs to change about these
 // channels, however, in order to support a more efficient select().
 //
 // # Conclusion
@@ -910,7 +910,7 @@ impl<T: Send> Receiver<T> {
         }
     }
 
-    /// Returns an iterator which will block waiting for messages, but never
+    /// Returns an iterator that will block waiting for messages, but never
     /// `panic!`. It will return `None` when the channel has hung up.
     #[unstable]
     pub fn iter<'a>(&'a self) -> Messages<'a, T> {

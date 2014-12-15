@@ -200,7 +200,7 @@ impl File {
              .update_desc("couldn't create file")
     }
 
-    /// Returns the original path which was used to open this file.
+    /// Returns the original path that was used to open this file.
     pub fn path<'a>(&'a self) -> &'a Path {
         &self.path
     }
@@ -215,7 +215,7 @@ impl File {
     }
 
     /// This function is similar to `fsync`, except that it may not synchronize
-    /// file metadata to the filesystem. This is intended for use case which
+    /// file metadata to the filesystem. This is intended for use cases that
     /// must synchronize content, but don't need the metadata on disk. The goal
     /// of this method is to reduce disk operations.
     pub fn datasync(&mut self) -> IoResult<()> {
@@ -456,7 +456,7 @@ pub fn symlink(src: &Path, dst: &Path) -> IoResult<()> {
 /// # Error
 ///
 /// This function will return an error on failure. Failure conditions include
-/// reading a file that does not exist or reading a file which is not a symlink.
+/// reading a file that does not exist or reading a file that is not a symlink.
 pub fn readlink(path: &Path) -> IoResult<Path> {
     fs_imp::readlink(path)
            .update_err("couldn't resolve symlink for path", |e|
@@ -546,7 +546,7 @@ pub fn readdir(path: &Path) -> IoResult<Vec<Path>> {
                        |e| format!("{}; path={}", e, path.display()))
 }
 
-/// Returns an iterator which will recursively walk the directory structure
+/// Returns an iterator that will recursively walk the directory structure
 /// rooted at `path`. The path given will not be iterated over, and this will
 /// perform iteration in some top-down order.  The contents of unreadable
 /// subdirectories are ignored.
@@ -557,7 +557,7 @@ pub fn walk_dir(path: &Path) -> IoResult<Directories> {
     })
 }
 
-/// An iterator which walks over a directory
+/// An iterator that walks over a directory
 pub struct Directories {
     stack: Vec<Path>,
 }
