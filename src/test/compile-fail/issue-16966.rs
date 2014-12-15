@@ -8,8 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// error-pattern:type annotations required
 fn main() {
     panic!(
-        1.2 //~ ERROR cannot determine a type for this expression
+        std::default::Default::default()
     );
 }

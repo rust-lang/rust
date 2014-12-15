@@ -8,28 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that if there is one impl we can infer everything.
-
-use std::mem;
-
-trait Convert<Target> {
-    fn convert(&self) -> Target;
-}
-
-impl Convert<u32> for i16 {
-    fn convert(&self) -> u32 {
-        *self as u32
-    }
-}
-
-fn test<T,U>(_: T, _: U, t_size: uint, u_size: uint)
-where T : Convert<U>
-{
-    assert_eq!(mem::size_of::<T>(), t_size);
-    assert_eq!(mem::size_of::<U>(), u_size);
-}
+#![feature(slicing_syntax)]
 
 fn main() {
-    // T = i16, U = u32
-    test(22, 44,  2, 4);
+    let mut array = [1, 2, 3];
+    let pie_slice = array[1..2];
 }

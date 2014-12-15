@@ -407,6 +407,9 @@ pub fn register_object_cast_obligations<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 pub fn select_all_fcx_obligations_or_error(fcx: &FnCtxt) {
     debug!("select_all_fcx_obligations_or_error");
 
+    select_fcx_obligations_where_possible(fcx);
+    fcx.default_type_parameters();
+
     let mut fulfillment_cx = fcx.inh.fulfillment_cx.borrow_mut();
     let r = fulfillment_cx.select_all_or_error(fcx.infcx(),
                                                &fcx.inh.param_env,
