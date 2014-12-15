@@ -421,6 +421,14 @@ pub trait Labeller<'a,N,E> {
 }
 
 impl<'a> LabelText<'a> {
+    pub fn label<S:IntoMaybeOwned<'a>>(s: S) -> LabelText<'a> {
+        LabelStr(s.into_maybe_owned())
+    }
+
+    pub fn escaped<S:IntoMaybeOwned<'a>>(s: S) -> LabelText<'a> {
+        EscStr(s.into_maybe_owned())
+    }
+
     fn escape_char<F>(c: char, mut f: F) where F: FnMut(char) {
         match c {
             // not escaping \\, since Graphviz escString needs to
