@@ -57,12 +57,11 @@ use syntax::ast;
 use syntax::ast_map;
 use syntax::ptr::P;
 
+#[deriving(Copy)]
 pub struct MethodData {
     pub llfn: ValueRef,
     pub llself: ValueRef,
 }
-
-impl Copy for MethodData {}
 
 pub enum CalleeData<'tcx> {
     Closure(Datum<'tcx, Lvalue>),
@@ -1049,12 +1048,11 @@ pub fn trans_args<'a, 'blk, 'tcx>(cx: Block<'blk, 'tcx>,
     bcx
 }
 
+#[deriving(Copy)]
 pub enum AutorefArg {
     DontAutorefArg,
     DoAutorefArg(ast::NodeId)
 }
-
-impl Copy for AutorefArg {}
 
 pub fn trans_arg_datum<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                    formal_arg_ty: Ty<'tcx>,

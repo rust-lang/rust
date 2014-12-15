@@ -13,9 +13,8 @@ use llvm::{BasicBlockRef};
 use trans::value::{Users, Value};
 use std::iter::{Filter, Map};
 
+#[deriving(Copy)]
 pub struct BasicBlock(pub BasicBlockRef);
-
-impl Copy for BasicBlock {}
 
 pub type Preds = Map<
     Value,

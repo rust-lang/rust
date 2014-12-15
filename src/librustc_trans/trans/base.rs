@@ -565,9 +565,8 @@ pub fn maybe_name_value(cx: &CrateContext, v: ValueRef, s: &str) {
 
 
 // Used only for creating scalar comparison glue.
+#[deriving(Copy)]
 pub enum scalar_type { nil_type, signed_int, unsigned_int, floating_point, }
-
-impl Copy for scalar_type {}
 
 pub fn compare_scalar_types<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                                         lhs: ValueRef,
@@ -1792,13 +1791,11 @@ pub fn build_return_block<'blk, 'tcx>(fcx: &FunctionContext<'blk, 'tcx>,
     }
 }
 
-#[deriving(Clone, Eq, PartialEq)]
+#[deriving(Clone, Copy, Eq, PartialEq)]
 pub enum IsUnboxedClosureFlag {
     NotUnboxedClosure,
     IsUnboxedClosure,
 }
-
-impl Copy for IsUnboxedClosureFlag {}
 
 // trans_closure: Builds an LLVM function out of a source function.
 // If the function closes over its environment a closure will be
@@ -2194,6 +2191,7 @@ pub fn llvm_linkage_by_name(name: &str) -> Option<Linkage> {
 
 
 /// Enum describing the origin of an LLVM `Value`, for linkage purposes.
+#[deriving(Copy)]
 pub enum ValueOrigin {
     /// The LLVM `Value` is in this context because the corresponding item was
     /// assigned to the current compilation unit.
@@ -2203,8 +2201,6 @@ pub enum ValueOrigin {
     /// item is marked `#[inline]`.
     InlinedCopy,
 }
-
-impl Copy for ValueOrigin {}
 
 /// Set the appropriate linkage for an LLVM `ValueRef` (function or global).
 /// If the `llval` is the direct translation of a specific Rust item, `id`
