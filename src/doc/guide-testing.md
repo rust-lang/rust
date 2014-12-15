@@ -503,6 +503,8 @@ Advice on writing benchmarks:
 * Make the code in the `iter` loop do something simple, to assist in pinpointing
   performance improvements (or regressions)
 
+## Gotcha: optimizations
+
 There's another tricky part to writing benchmarks: benchmarks compiled with
 optimizations activated can be dramatically changed by the optimizer so that
 the benchmark is no longer benchmarking what one expects. For example, the
