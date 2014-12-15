@@ -27,7 +27,7 @@ fn give_any() {
     want_hrtb::<AnyInt>()
 }
 
-// StaticInt only implements Foo<&'a int> for 'a, so it is an error.
+// StaticInt only implements Foo<&'static int>, so it is an error.
 struct StaticInt;
 impl Foo<&'static int> for StaticInt { }
 fn give_static() {
