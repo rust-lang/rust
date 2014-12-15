@@ -81,9 +81,8 @@ impl<R: Buffer> Buffer for LimitReader<R> {
 }
 
 /// A `Writer` which ignores bytes written to it, like /dev/null.
+#[deriving(Copy)]
 pub struct NullWriter;
-
-impl Copy for NullWriter {}
 
 impl Writer for NullWriter {
     #[inline]
@@ -91,9 +90,8 @@ impl Writer for NullWriter {
 }
 
 /// A `Reader` which returns an infinite stream of 0 bytes, like /dev/zero.
+#[deriving(Copy)]
 pub struct ZeroReader;
-
-impl Copy for ZeroReader {}
 
 impl Reader for ZeroReader {
     #[inline]
@@ -113,9 +111,8 @@ impl Buffer for ZeroReader {
 }
 
 /// A `Reader` which is always at EOF, like /dev/null.
+#[deriving(Copy)]
 pub struct NullReader;
-
-impl Copy for NullReader {}
 
 impl Reader for NullReader {
     #[inline]

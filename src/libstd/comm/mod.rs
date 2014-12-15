@@ -391,7 +391,7 @@ pub struct SyncSender<T> {
 
 /// This enumeration is the list of the possible reasons that try_recv could not
 /// return data when called.
-#[deriving(PartialEq, Clone, Show)]
+#[deriving(PartialEq, Clone, Copy, Show)]
 #[experimental = "this is likely to be removed in changing try_recv()"]
 pub enum TryRecvError {
     /// This channel is currently empty, but the sender(s) have not yet
@@ -401,8 +401,6 @@ pub enum TryRecvError {
     /// never be any more data received on this channel
     Disconnected,
 }
-
-impl Copy for TryRecvError {}
 
 /// This enumeration is the list of the possible error outcomes for the
 /// `SyncSender::try_send` method.
