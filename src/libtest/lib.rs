@@ -110,14 +110,12 @@ impl Show for TestName {
     }
 }
 
-#[deriving(Clone)]
+#[deriving(Clone, Copy)]
 enum NamePadding {
     PadNone,
     PadOnLeft,
     PadOnRight,
 }
-
-impl Copy for NamePadding {}
 
 impl TestDesc {
     fn padded_name(&self, column_count: uint, align: NamePadding) -> String {
@@ -215,13 +213,11 @@ pub struct TestDescAndFn {
     pub testfn: TestFn,
 }
 
-#[deriving(Clone, Encodable, Decodable, PartialEq, Show)]
+#[deriving(Clone, Copy, Encodable, Decodable, PartialEq, Show)]
 pub struct Metric {
     value: f64,
     noise: f64
 }
-
-impl Copy for Metric {}
 
 impl Metric {
     pub fn new(value: f64, noise: f64) -> Metric {
@@ -240,7 +236,7 @@ impl Clone for MetricMap {
 }
 
 /// Analysis of a single change in metric
-#[deriving(PartialEq, Show)]
+#[deriving(Copy, PartialEq, Show)]
 pub enum MetricChange {
     LikelyNoise,
     MetricAdded,
@@ -248,8 +244,6 @@ pub enum MetricChange {
     Improvement(f64),
     Regression(f64)
 }
-
-impl Copy for MetricChange {}
 
 pub type MetricDiff = BTreeMap<String,MetricChange>;
 
@@ -287,13 +281,12 @@ pub fn test_main_static(args: &[String], tests: &[TestDescAndFn]) {
     test_main(args, owned_tests)
 }
 
+#[deriving(Copy)]
 pub enum ColorConfig {
     AutoColor,
     AlwaysColor,
     NeverColor,
 }
-
-impl Copy for ColorConfig {}
 
 pub struct TestOpts {
     pub filter: Option<Regex>,
