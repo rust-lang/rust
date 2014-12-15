@@ -73,13 +73,11 @@ use std::rc::Rc;
 // These are passed around by the code generating functions to track the
 // destination of a computation's value.
 
-#[deriving(PartialEq)]
+#[deriving(Copy, PartialEq)]
 pub enum Dest {
     SaveIn(ValueRef),
     Ignore,
 }
-
-impl Copy for Dest {}
 
 impl Dest {
     pub fn to_string(&self, ccx: &CrateContext) -> String {
@@ -1889,7 +1887,7 @@ fn float_cast(bcx: Block,
     } else { llsrc };
 }
 
-#[deriving(PartialEq, Show)]
+#[deriving(Copy, PartialEq, Show)]
 pub enum cast_kind {
     cast_pointer,
     cast_integral,
@@ -1897,8 +1895,6 @@ pub enum cast_kind {
     cast_enum,
     cast_other,
 }
-
-impl Copy for cast_kind {}
 
 pub fn cast_type_kind<'tcx>(tcx: &ty::ctxt<'tcx>, t: Ty<'tcx>) -> cast_kind {
     match t.sty {

@@ -33,7 +33,7 @@ use syntax::ast;
 /// describes where the value is stored, what Rust type the value has,
 /// whether it is addressed by reference, and so forth. Please refer
 /// the section on datums in `doc.rs` for more details.
-#[deriving(Clone)]
+#[deriving(Clone, Copy)]
 pub struct Datum<'tcx, K> {
     /// The llvm value.  This is either a pointer to the Rust value or
     /// the value itself, depending on `kind` below.
@@ -45,8 +45,6 @@ pub struct Datum<'tcx, K> {
     /// Indicates whether this is by-ref or by-value.
     pub kind: K,
 }
-
-impl<'tcx,K:Copy> Copy for Datum<'tcx,K> {}
 
 pub struct DatumBlock<'blk, 'tcx: 'blk, K> {
     pub bcx: Block<'blk, 'tcx>,
@@ -65,10 +63,8 @@ pub enum Expr {
     LvalueExpr,
 }
 
-#[deriving(Clone, Show)]
+#[deriving(Clone, Copy, Show)]
 pub struct Lvalue;
-
-impl Copy for Lvalue {}
 
 #[deriving(Show)]
 pub struct Rvalue {
@@ -86,7 +82,7 @@ impl Drop for Rvalue {
     fn drop(&mut self) { }
 }
 
-#[deriving(PartialEq, Eq, Hash, Show)]
+#[deriving(Copy, PartialEq, Eq, Hash, Show)]
 pub enum RvalueMode {
     /// `val` is a pointer to the actual value (and thus has type *T)
     ByRef,
@@ -94,8 +90,6 @@ pub enum RvalueMode {
     /// `val` is the actual value (*only used for immediates* like ints, ptrs)
     ByValue,
 }
-
-impl Copy for RvalueMode {}
 
 pub fn immediate_rvalue<'tcx>(val: ValueRef, ty: Ty<'tcx>) -> Datum<'tcx, Rvalue> {
     return Datum::new(val, ty, Rvalue::new(ByValue));

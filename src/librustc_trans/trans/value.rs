@@ -14,9 +14,8 @@ use trans::basic_block::BasicBlock;
 use trans::common::Block;
 use libc::c_uint;
 
+#[deriving(Copy)]
 pub struct Value(pub ValueRef);
-
-impl Copy for Value {}
 
 macro_rules! opt_val { ($e:expr) => (
     unsafe {
@@ -126,9 +125,8 @@ impl Value {
 }
 
 /// Wrapper for LLVM UseRef
+#[deriving(Copy)]
 pub struct Use(UseRef);
-
-impl Copy for Use {}
 
 impl Use {
     pub fn get(&self) -> UseRef {

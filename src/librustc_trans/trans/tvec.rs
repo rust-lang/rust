@@ -89,14 +89,13 @@ pub fn make_drop_glue_unboxed<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     })
 }
 
+#[deriving(Copy)]
 pub struct VecTypes<'tcx> {
     pub unit_ty: Ty<'tcx>,
     pub llunit_ty: Type,
     pub llunit_size: ValueRef,
     pub llunit_alloc_size: u64
 }
-
-impl<'tcx> Copy for VecTypes<'tcx> {}
 
 impl<'tcx> VecTypes<'tcx> {
     pub fn to_string<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> String {
