@@ -120,12 +120,12 @@ pub trait Decoder<E> {
         F: FnOnce(&mut Self) -> Result<T, E>;
 
     fn read_enum_variant<T, F>(&mut self, names: &[&str], f: F) -> Result<T, E> where
-        F: FnOnce(&mut Self, uint) -> Result<T, E>;
+        F: FnMut(&mut Self, uint) -> Result<T, E>;
     fn read_enum_variant_arg<T, F>(&mut self, a_idx: uint, f: F) -> Result<T, E> where
         F: FnOnce(&mut Self) -> Result<T, E>;
 
     fn read_enum_struct_variant<T, F>(&mut self, names: &[&str], f: F) -> Result<T, E> where
-        F: FnOnce(&mut Self, uint) -> Result<T, E>;
+        F: FnMut(&mut Self, uint) -> Result<T, E>;
     fn read_enum_struct_variant_field<T, F>(&mut self,
                                             &f_name: &str,
                                             f_idx: uint,
@@ -154,7 +154,7 @@ pub trait Decoder<E> {
 
     // Specialized types:
     fn read_option<T, F>(&mut self, f: F) -> Result<T, E> where
-        F: FnOnce(&mut Self, bool) -> Result<T, E>;
+        F: FnMut(&mut Self, bool) -> Result<T, E>;
 
     fn read_seq<T, F>(&mut self, f: F) -> Result<T, E> where
         F: FnOnce(&mut Self, uint) -> Result<T, E>;
