@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -28,10 +28,10 @@ static OS_TABLE: &'static [(&'static str, &'static str)] = &[
 /// Table to help extracting architecture from triple
 static ARCH_TABLE: &'static [&'static str] = &[
     "arm",
-    "mips",
     "mipsel",
-    "x86",
+    "mips",
     "x86_64",
+    "x86",
 ];
 
 pub fn get_os(triple: &str) -> &'static str {
