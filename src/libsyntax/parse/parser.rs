@@ -98,7 +98,6 @@ bitflags! {
     }
 }
 
-impl Copy for Restrictions {}
 
 type ItemInfo = (Ident, Item_, Option<Vec<Attribute> >);
 
