@@ -85,6 +85,16 @@ pub fn is_shift_binop(b: BinOp) -> bool {
     }
 }
 
+/// Returns `true` is the binary operator takes its arguments by value
+pub fn is_by_value_binop(b: BinOp) -> bool {
+    match b {
+        BiAdd | BiSub | BiMul | BiDiv | BiRem | BiBitXor | BiBitAnd | BiBitOr | BiShl | BiShr => {
+            true
+        }
+        _ => false
+    }
+}
+
 pub fn unop_to_string(op: UnOp) -> &'static str {
     match op {
       UnUniq => "box() ",

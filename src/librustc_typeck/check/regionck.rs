@@ -131,7 +131,7 @@ use middle::pat_util;
 use util::nodemap::{DefIdMap, NodeMap, FnvHashMap};
 use util::ppaux::{ty_to_string, Repr};
 
-use syntax::ast;
+use syntax::{ast, ast_util};
 use syntax::codemap::Span;
 use syntax::visit;
 use syntax::visit::Visitor;
@@ -637,14 +637,22 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
             visit::walk_expr(rcx, expr);
         }
 
-        ast::ExprIndex(ref lhs, ref rhs) |
-        ast::ExprBinary(_, ref lhs, ref rhs) if has_method_map => {
+        ast::ExprIndex(ref lhs, ref rhs) if has_method_map => {
+            constrain_call(rcx, expr, Some(&**lhs),
+                           Some(&**rhs).into_iter(), true);
+
+            visit::walk_expr(rcx, expr);
+        },
+
+        ast::ExprBinary(op, ref lhs, ref rhs) if has_method_map => {
+            let implicitly_ref_args = !ast_util::is_by_value_binop(op);
+
             // As `expr_method_call`, but the call is via an
             // overloaded op.  Note that we (sadly) currently use an
             // implicit "by ref" sort of passing style here.  This
             // should be converted to an adjustment!
             constrain_call(rcx, expr, Some(&**lhs),
-                           Some(&**rhs).into_iter(), true);
+                           Some(&**rhs).into_iter(), implicitly_ref_args);
 
             visit::walk_expr(rcx, expr);
         }

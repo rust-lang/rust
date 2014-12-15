@@ -52,14 +52,32 @@ impl Pos for BytePos {
     fn to_uint(&self) -> uint { let BytePos(n) = *self; n as uint }
 }
 
+// NOTE(stage0): Remove impl after a snapshot
+#[cfg(stage0)]
 impl Add<BytePos, BytePos> for BytePos {
     fn add(&self, rhs: &BytePos) -> BytePos {
         BytePos((self.to_uint() + rhs.to_uint()) as u32)
     }
 }
 
+#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
+impl Add<BytePos, BytePos> for BytePos {
+    fn add(self, rhs: BytePos) -> BytePos {
+        BytePos((self.to_uint() + rhs.to_uint()) as u32)
+    }
+}
+
+// NOTE(stage0): Remove impl after a snapshot
+#[cfg(stage0)]
 impl Sub<BytePos, BytePos> for BytePos {
     fn sub(&self, rhs: &BytePos) -> BytePos {
+        BytePos((self.to_uint() - rhs.to_uint()) as u32)
+    }
+}
+
+#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
+impl Sub<BytePos, BytePos> for BytePos {
+    fn sub(self, rhs: BytePos) -> BytePos {
         BytePos((self.to_uint() - rhs.to_uint()) as u32)
     }
 }
@@ -69,14 +87,32 @@ impl Pos for CharPos {
     fn to_uint(&self) -> uint { let CharPos(n) = *self; n }
 }
 
+// NOTE(stage0): Remove impl after a snapshot
+#[cfg(stage0)]
 impl Add<CharPos,CharPos> for CharPos {
     fn add(&self, rhs: &CharPos) -> CharPos {
         CharPos(self.to_uint() + rhs.to_uint())
     }
 }
 
+#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
+impl Add<CharPos, CharPos> for CharPos {
+    fn add(self, rhs: CharPos) -> CharPos {
+        CharPos(self.to_uint() + rhs.to_uint())
+    }
+}
+
+// NOTE(stage0): Remove impl after a snapshot
+#[cfg(stage0)]
 impl Sub<CharPos,CharPos> for CharPos {
     fn sub(&self, rhs: &CharPos) -> CharPos {
+        CharPos(self.to_uint() - rhs.to_uint())
+    }
+}
+
+#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
+impl Sub<CharPos, CharPos> for CharPos {
+    fn sub(self, rhs: CharPos) -> CharPos {
         CharPos(self.to_uint() - rhs.to_uint())
     }
 }

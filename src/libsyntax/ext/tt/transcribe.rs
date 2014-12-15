@@ -106,6 +106,8 @@ enum LockstepIterSize {
     LisContradiction(String),
 }
 
+// NOTE(stage0): Remove impl after a snapshot
+#[cfg(stage0)]
 impl Add<LockstepIterSize, LockstepIterSize> for LockstepIterSize {
     fn add(&self, other: &LockstepIterSize) -> LockstepIterSize {
         match *self {
@@ -117,6 +119,28 @@ impl Add<LockstepIterSize, LockstepIterSize> for LockstepIterSize {
                 LisConstraint(r_len, _) if l_len == r_len => self.clone(),
                 LisConstraint(r_len, r_id) => {
                     let l_n = token::get_ident(l_id);
+                    let r_n = token::get_ident(r_id);
+                    LisContradiction(format!("inconsistent lockstep iteration: \
+                                              '{}' has {} items, but '{}' has {}",
+                                              l_n, l_len, r_n, r_len).to_string())
+                }
+            },
+        }
+    }
+}
+
+#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
+impl Add<LockstepIterSize, LockstepIterSize> for LockstepIterSize {
+    fn add(self, other: LockstepIterSize) -> LockstepIterSize {
+        match self {
+            LisUnconstrained => other,
+            LisContradiction(_) => self,
+            LisConstraint(l_len, ref l_id) => match other {
+                LisUnconstrained => self.clone(),
+                LisContradiction(_) => other,
+                LisConstraint(r_len, _) if l_len == r_len => self.clone(),
+                LisConstraint(r_len, r_id) => {
+                    let l_n = token::get_ident(l_id.clone());
                     let r_n = token::get_ident(r_id);
                     LisContradiction(format!("inconsistent lockstep iteration: \
                                               '{}' has {} items, but '{}' has {}",

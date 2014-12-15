@@ -20,13 +20,13 @@ struct Point {
 }
 
 impl ops::Add<Point,Point> for Point {
-    fn add(&self, other: &Point) -> Point {
-        Point {x: self.x + (*other).x, y: self.y + (*other).y}
+    fn add(self, other: Point) -> Point {
+        Point {x: self.x + other.x, y: self.y + other.y}
     }
 }
 
 impl ops::Add<int,Point> for Point {
-    fn add(&self, &other: &int) -> Point {
+    fn add(self, other: int) -> Point {
         Point {x: self.x + other,
                y: self.y + other}
     }

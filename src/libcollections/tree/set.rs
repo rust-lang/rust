@@ -668,6 +668,8 @@ impl<'a, T: Ord> Iterator<&'a T> for UnionItems<'a, T> {
 }
 
 #[unstable = "matches collection reform specification, waiting for dust to settle"]
+// NOTE(stage0): Remove impl after a snapshot
+#[cfg(stage0)]
 impl<T: Ord + Clone> BitOr<TreeSet<T>, TreeSet<T>> for TreeSet<T> {
     /// Returns the union of `self` and `rhs` as a new `TreeSet<T>`.
     ///
@@ -689,6 +691,30 @@ impl<T: Ord + Clone> BitOr<TreeSet<T>, TreeSet<T>> for TreeSet<T> {
 }
 
 #[unstable = "matches collection reform specification, waiting for dust to settle"]
+#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
+impl<'a, 'b, T: Ord + Clone> BitOr<&'b TreeSet<T>, TreeSet<T>> for &'a TreeSet<T> {
+    /// Returns the union of `self` and `rhs` as a new `TreeSet<T>`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::TreeSet;
+    ///
+    /// let a: TreeSet<int> = vec![1, 2, 3].into_iter().collect();
+    /// let b: TreeSet<int> = vec![3, 4, 5].into_iter().collect();
+    ///
+    /// let set: TreeSet<int> = &a | &b;
+    /// let v: Vec<int> = set.into_iter().collect();
+    /// assert_eq!(v, vec![1, 2, 3, 4, 5]);
+    /// ```
+    fn bitor(self, rhs: &TreeSet<T>) -> TreeSet<T> {
+        self.union(rhs).cloned().collect()
+    }
+}
+
+#[unstable = "matches collection reform specification, waiting for dust to settle"]
+// NOTE(stage0): Remove impl after a snapshot
+#[cfg(stage0)]
 impl<T: Ord + Clone> BitAnd<TreeSet<T>, TreeSet<T>> for TreeSet<T> {
     /// Returns the intersection of `self` and `rhs` as a new `TreeSet<T>`.
     ///
@@ -710,6 +736,30 @@ impl<T: Ord + Clone> BitAnd<TreeSet<T>, TreeSet<T>> for TreeSet<T> {
 }
 
 #[unstable = "matches collection reform specification, waiting for dust to settle"]
+#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
+impl<'a, 'b, T: Ord + Clone> BitAnd<&'b TreeSet<T>, TreeSet<T>> for &'a TreeSet<T> {
+    /// Returns the intersection of `self` and `rhs` as a new `TreeSet<T>`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::TreeSet;
+    ///
+    /// let a: TreeSet<int> = vec![1, 2, 3].into_iter().collect();
+    /// let b: TreeSet<int> = vec![2, 3, 4].into_iter().collect();
+    ///
+    /// let set: TreeSet<int> = &a & &b;
+    /// let v: Vec<int> = set.into_iter().collect();
+    /// assert_eq!(v, vec![2, 3]);
+    /// ```
+    fn bitand(self, rhs: &TreeSet<T>) -> TreeSet<T> {
+        self.intersection(rhs).cloned().collect()
+    }
+}
+
+#[unstable = "matches collection reform specification, waiting for dust to settle"]
+// NOTE(stage0): Remove impl after a snapshot
+#[cfg(stage0)]
 impl<T: Ord + Clone> BitXor<TreeSet<T>, TreeSet<T>> for TreeSet<T> {
     /// Returns the symmetric difference of `self` and `rhs` as a new `TreeSet<T>`.
     ///
@@ -731,6 +781,30 @@ impl<T: Ord + Clone> BitXor<TreeSet<T>, TreeSet<T>> for TreeSet<T> {
 }
 
 #[unstable = "matches collection reform specification, waiting for dust to settle"]
+#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
+impl<'a, 'b, T: Ord + Clone> BitXor<&'b TreeSet<T>, TreeSet<T>> for &'a TreeSet<T> {
+    /// Returns the symmetric difference of `self` and `rhs` as a new `TreeSet<T>`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::TreeSet;
+    ///
+    /// let a: TreeSet<int> = vec![1, 2, 3].into_iter().collect();
+    /// let b: TreeSet<int> = vec![3, 4, 5].into_iter().collect();
+    ///
+    /// let set: TreeSet<int> = &a ^ &b;
+    /// let v: Vec<int> = set.into_iter().collect();
+    /// assert_eq!(v, vec![1, 2, 4, 5]);
+    /// ```
+    fn bitxor(self, rhs: &TreeSet<T>) -> TreeSet<T> {
+        self.symmetric_difference(rhs).cloned().collect()
+    }
+}
+
+#[unstable = "matches collection reform specification, waiting for dust to settle"]
+// NOTE(stage0): Remove impl after a snapshot
+#[cfg(stage0)]
 impl<T: Ord + Clone> Sub<TreeSet<T>, TreeSet<T>> for TreeSet<T> {
     /// Returns the difference of `self` and `rhs` as a new `TreeSet<T>`.
     ///
@@ -747,6 +821,28 @@ impl<T: Ord + Clone> Sub<TreeSet<T>, TreeSet<T>> for TreeSet<T> {
     /// assert_eq!(v, vec![1, 2]);
     /// ```
     fn sub(&self, rhs: &TreeSet<T>) -> TreeSet<T> {
+        self.difference(rhs).cloned().collect()
+    }
+}
+
+#[unstable = "matches collection reform specification, waiting for dust to settle"]
+#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
+impl<'a, 'b, T: Ord + Clone> Sub<&'b TreeSet<T>, TreeSet<T>> for &'a TreeSet<T> {
+    /// Returns the difference of `self` and `rhs` as a new `TreeSet<T>`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::TreeSet;
+    ///
+    /// let a: TreeSet<int> = vec![1, 2, 3].into_iter().collect();
+    /// let b: TreeSet<int> = vec![3, 4, 5].into_iter().collect();
+    ///
+    /// let set: TreeSet<int> = &a - &b;
+    /// let v: Vec<int> = set.into_iter().collect();
+    /// assert_eq!(v, vec![1, 2]);
+    /// ```
+    fn sub(self, rhs: &TreeSet<T>) -> TreeSet<T> {
         self.difference(rhs).cloned().collect()
     }
 }
@@ -1032,7 +1128,7 @@ mod test {
         let a: TreeSet<int> = vec![1, 3, 5, 9, 11, 16, 19, 24].into_iter().collect();
         let b: TreeSet<int> = vec![-2, 1, 5, 9, 13, 19].into_iter().collect();
 
-        let set: TreeSet<int> = a | b;
+        let set: TreeSet<int> = &a | &b;
         let v: Vec<int> = set.into_iter().collect();
         assert_eq!(v, vec![-2, 1, 3, 5, 9, 11, 13, 16, 19, 24]);
     }
@@ -1042,7 +1138,7 @@ mod test {
         let a: TreeSet<int> = vec![11, 1, 3, 77, 103, 5, -5].into_iter().collect();
         let b: TreeSet<int> = vec![2, 11, 77, -9, -42, 5, 3].into_iter().collect();
 
-        let set: TreeSet<int> = a & b;
+        let set: TreeSet<int> = &a & &b;
         let v: Vec<int> = set.into_iter().collect();
         assert_eq!(v, vec![3, 5, 11, 77]);
     }
@@ -1052,7 +1148,7 @@ mod test {
         let a: TreeSet<int> = vec![1, 3, 5, 9, 11].into_iter().collect();
         let b: TreeSet<int> = vec![-2, 3, 9, 14, 22].into_iter().collect();
 
-        let set: TreeSet<int> = a ^ b;
+        let set: TreeSet<int> = &a ^ &b;
         let v: Vec<int> = set.into_iter().collect();
         assert_eq!(v, vec![-2, 1, 5, 11, 14, 22]);
     }
@@ -1062,7 +1158,7 @@ mod test {
         let a: TreeSet<int> = vec![-5, 11, 22, 33, 40, 42].into_iter().collect();
         let b: TreeSet<int> = vec![-12, -5, 14, 23, 34, 38, 39, 50].into_iter().collect();
 
-        let set: TreeSet<int> = a - b;
+        let set: TreeSet<int> = &a - &b;
         let v: Vec<int> = set.into_iter().collect();
         assert_eq!(v, vec![11, 22, 33, 40, 42]);
     }

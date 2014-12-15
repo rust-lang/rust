@@ -183,26 +183,62 @@ impl<E:CLike> EnumSet<E> {
     }
 }
 
+// NOTE(stage0): Remove impl after a snapshot
+#[cfg(stage0)]
 impl<E:CLike> Sub<EnumSet<E>, EnumSet<E>> for EnumSet<E> {
     fn sub(&self, e: &EnumSet<E>) -> EnumSet<E> {
         EnumSet {bits: self.bits & !e.bits}
     }
 }
 
+#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
+impl<E:CLike> Sub<EnumSet<E>, EnumSet<E>> for EnumSet<E> {
+    fn sub(self, e: EnumSet<E>) -> EnumSet<E> {
+        EnumSet {bits: self.bits & !e.bits}
+    }
+}
+
+// NOTE(stage0): Remove impl after a snapshot
+#[cfg(stage0)]
 impl<E:CLike> BitOr<EnumSet<E>, EnumSet<E>> for EnumSet<E> {
     fn bitor(&self, e: &EnumSet<E>) -> EnumSet<E> {
         EnumSet {bits: self.bits | e.bits}
     }
 }
 
+#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
+impl<E:CLike> BitOr<EnumSet<E>, EnumSet<E>> for EnumSet<E> {
+    fn bitor(self, e: EnumSet<E>) -> EnumSet<E> {
+        EnumSet {bits: self.bits | e.bits}
+    }
+}
+
+// NOTE(stage0): Remove impl after a snapshot
+#[cfg(stage0)]
 impl<E:CLike> BitAnd<EnumSet<E>, EnumSet<E>> for EnumSet<E> {
     fn bitand(&self, e: &EnumSet<E>) -> EnumSet<E> {
         EnumSet {bits: self.bits & e.bits}
     }
 }
 
+#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
+impl<E:CLike> BitAnd<EnumSet<E>, EnumSet<E>> for EnumSet<E> {
+    fn bitand(self, e: EnumSet<E>) -> EnumSet<E> {
+        EnumSet {bits: self.bits & e.bits}
+    }
+}
+
+// NOTE(stage0): Remove impl after a snapshot
+#[cfg(stage0)]
 impl<E:CLike> BitXor<EnumSet<E>, EnumSet<E>> for EnumSet<E> {
     fn bitxor(&self, e: &EnumSet<E>) -> EnumSet<E> {
+        EnumSet {bits: self.bits ^ e.bits}
+    }
+}
+
+#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
+impl<E:CLike> BitXor<EnumSet<E>, EnumSet<E>> for EnumSet<E> {
+    fn bitxor(self, e: EnumSet<E>) -> EnumSet<E> {
         EnumSet {bits: self.bits ^ e.bits}
     }
 }

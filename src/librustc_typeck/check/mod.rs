@@ -77,7 +77,6 @@ type parameter).
 */
 
 pub use self::LvaluePreference::*;
-pub use self::DerefArgs::*;
 pub use self::Expectation::*;
 use self::IsBinopAssignment::*;
 use self::TupleArgumentsFlag::*;
@@ -2115,7 +2114,7 @@ fn try_overloaded_call<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                                       method_callee.ty,
                                                       call_expression,
                                                       args,
-                                                      DontDerefArgs,
+                                                      AutorefArgs::No,
                                                       TupleArguments);
         fcx.inh.method_map.borrow_mut().insert(method_call, method_callee);
         write_call(fcx, call_expression, output_type);
@@ -2264,7 +2263,7 @@ fn try_overloaded_slice<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                 method_ty_or_err,
                                 expr,
                                 args.as_slice(),
-                                DoDerefArgs,
+                                AutorefArgs::Yes,
                                 DontTupleArguments);
 
     opt_method_ty.map(|method_ty| {
@@ -2470,7 +2469,7 @@ fn lookup_method_for_for_loop<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                                   method_type,
                                                   iterator_expr,
                                                   &[],
-                                                  DontDerefArgs,
+                                                  AutorefArgs::No,
                                                   DontTupleArguments);
 
     match method {
@@ -2512,7 +2511,7 @@ fn check_method_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                          method_fn_ty: Ty<'tcx>,
                                          callee_expr: &ast::Expr,
                                          args_no_rcvr: &[&P<ast::Expr>],
-                                         deref_args: DerefArgs,
+                                         autoref_args: AutorefArgs,
                                          tuple_arguments: TupleArgumentsFlag)
                                          -> ty::FnOutput<'tcx> {
     if ty::type_is_error(method_fn_ty) {
@@ -2528,7 +2527,7 @@ fn check_method_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                              err_inputs.as_slice(),
                              callee_expr,
                              args_no_rcvr,
-                             deref_args,
+                             autoref_args,
                              false,
                              tuple_arguments);
         ty::FnConverging(ty::mk_err())
@@ -2541,7 +2540,7 @@ fn check_method_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                      fty.sig.inputs.slice_from(1),
                                      callee_expr,
                                      args_no_rcvr,
-                                     deref_args,
+                                     autoref_args,
                                      fty.sig.variadic,
                                      tuple_arguments);
                 fty.sig.output
@@ -2561,7 +2560,7 @@ fn check_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                   fn_inputs: &[Ty<'tcx>],
                                   _callee_expr: &ast::Expr,
                                   args: &[&P<ast::Expr>],
-                                  deref_args: DerefArgs,
+                                  autoref_args: AutorefArgs,
                                   variadic: bool,
                                   tuple_arguments: TupleArgumentsFlag) {
     let tcx = fcx.ccx.tcx;
@@ -2664,8 +2663,8 @@ fn check_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 debug!("checking the argument");
                 let mut formal_ty = formal_tys[i];
 
-                match deref_args {
-                    DoDerefArgs => {
+                match autoref_args {
+                    AutorefArgs::Yes => {
                         match formal_ty.sty {
                             ty::ty_rptr(_, mt) => formal_ty = mt.ty,
                             ty::ty_err => (),
@@ -2680,7 +2679,7 @@ fn check_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                             }
                         }
                     }
-                    DontDerefArgs => {}
+                    AutorefArgs::No => {}
                 }
 
                 check_expr_coercable_to_type(fcx, &***arg, formal_ty);
@@ -2894,12 +2893,13 @@ pub fn lookup_tup_field_ty<'tcx>(tcx: &ty::ctxt<'tcx>,
 
 // Controls whether the arguments are automatically referenced. This is useful
 // for overloaded binary and unary operators.
-pub enum DerefArgs {
-    DontDerefArgs,
-    DoDerefArgs
+#[deriving(PartialEq)]
+pub enum AutorefArgs {
+    Yes,
+    No,
 }
 
-impl Copy for DerefArgs {}
+impl Copy for AutorefArgs {}
 
 /// Controls whether the arguments are tupled. This is used for the call
 /// operator.
@@ -2987,7 +2987,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                              fn_sig.inputs.as_slice(),
                              f,
                              args,
-                             DontDerefArgs,
+                             AutorefArgs::No,
                              fn_sig.variadic,
                              DontTupleArguments);
 
@@ -3037,7 +3037,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                                  fn_ty,
                                                  expr,
                                                  args.as_slice(),
-                                                 DontDerefArgs,
+                                                 AutorefArgs::No,
                                                  DontTupleArguments);
 
         write_call(fcx, expr, ret_ty);
@@ -3120,7 +3120,8 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                      trait_did: Option<ast::DefId>,
                                      lhs: &'a ast::Expr,
                                      rhs: Option<&P<ast::Expr>>,
-                                     unbound_method: F) -> Ty<'tcx> where
+                                     unbound_method: F,
+                                     autoref_args: AutorefArgs) -> Ty<'tcx> where
         F: FnOnce(),
     {
         let method = match trait_did {
@@ -3173,7 +3174,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                             method_ty,
                                             op_ex,
                                             args.as_slice(),
-                                            DoDerefArgs,
+                                            autoref_args,
                                             DontTupleArguments) {
                     ty::FnConverging(result_type) => result_type,
                     ty::FnDiverging => ty::mk_err()
@@ -3189,7 +3190,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                             expected_ty,
                                             op_ex,
                                             args.as_slice(),
-                                            DoDerefArgs,
+                                            autoref_args,
                                             DontTupleArguments);
                 ty::mk_err()
             }
@@ -3337,7 +3338,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                         ast_util::binop_to_string(op),
                         actual)
             }, lhs_resolved_t, None)
-        })
+        }, if ast_util::is_by_value_binop(op) { AutorefArgs::No } else { AutorefArgs::Yes })
     }
 
     fn check_user_unop<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
@@ -3353,7 +3354,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                 format!("cannot apply unary operator `{}` to type `{}`",
                         op_str, actual)
             }, rhs_t, None);
-        })
+        }, AutorefArgs::Yes)
     }
 
     // Check field access expressions
