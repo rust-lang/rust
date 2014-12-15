@@ -3363,7 +3363,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                 format!("cannot apply unary operator `{}` to type `{}`",
                         op_str, actual)
             }, rhs_t, None);
-        }, AutorefArgs::Yes)
+        }, AutorefArgs::No)
     }
 
     // Check field access expressions
