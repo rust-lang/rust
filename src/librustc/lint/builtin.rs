@@ -56,9 +56,8 @@ declare_lint! {
     "suggest using `loop { }` instead of `while true { }`"
 }
 
+#[deriving(Copy)]
 pub struct WhileTrue;
-
-impl Copy for WhileTrue {}
 
 impl LintPass for WhileTrue {
     fn get_lints(&self) -> LintArray {
@@ -83,9 +82,8 @@ declare_lint! {
     "detects unnecessary type casts that can be removed"
 }
 
+#[deriving(Copy)]
 pub struct UnusedCasts;
-
-impl Copy for UnusedCasts {}
 
 impl LintPass for UnusedCasts {
     fn get_lints(&self) -> LintArray {
@@ -126,12 +124,11 @@ declare_lint! {
     "shift exceeds the type's number of bits"
 }
 
+#[deriving(Copy)]
 pub struct TypeLimits {
     /// Id of the last visited negated expression
     negated_expr_id: ast::NodeId,
 }
-
-impl Copy for TypeLimits {}
 
 impl TypeLimits {
     pub fn new() -> TypeLimits {
@@ -442,9 +439,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ImproperCTypesVisitor<'a, 'tcx> {
     }
 }
 
+#[deriving(Copy)]
 pub struct ImproperCTypes;
-
-impl Copy for ImproperCTypes {}
 
 impl LintPass for ImproperCTypes {
     fn get_lints(&self) -> LintArray {
@@ -486,9 +482,8 @@ declare_lint! {
     "use of owned (Box type) heap memory"
 }
 
+#[deriving(Copy)]
 pub struct BoxPointers;
-
-impl Copy for BoxPointers {}
 
 impl BoxPointers {
     fn check_heap_type<'a, 'tcx>(&self, cx: &Context<'a, 'tcx>,
@@ -627,9 +622,8 @@ declare_lint! {
     "detects attributes that were not used by the compiler"
 }
 
+#[deriving(Copy)]
 pub struct UnusedAttributes;
-
-impl Copy for UnusedAttributes {}
 
 impl LintPass for UnusedAttributes {
     fn get_lints(&self) -> LintArray {
@@ -711,9 +705,8 @@ declare_lint! {
     "path statements with no effect"
 }
 
+#[deriving(Copy)]
 pub struct PathStatements;
-
-impl Copy for PathStatements {}
 
 impl LintPass for PathStatements {
     fn get_lints(&self) -> LintArray {
@@ -746,9 +739,8 @@ declare_lint! {
     "unused result of an expression in a statement"
 }
 
+#[deriving(Copy)]
 pub struct UnusedResults;
-
-impl Copy for UnusedResults {}
 
 impl LintPass for UnusedResults {
     fn get_lints(&self) -> LintArray {
@@ -815,9 +807,8 @@ declare_lint! {
     "types, variants, traits and type parameters should have camel case names"
 }
 
+#[deriving(Copy)]
 pub struct NonCamelCaseTypes;
-
-impl Copy for NonCamelCaseTypes {}
 
 impl NonCamelCaseTypes {
     fn check_case(&self, cx: &Context, sort: &str, ident: ast::Ident, span: Span) {
@@ -939,9 +930,8 @@ declare_lint! {
     "methods, functions, lifetime parameters and modules should have snake case names"
 }
 
+#[deriving(Copy)]
 pub struct NonSnakeCase;
-
-impl Copy for NonSnakeCase {}
 
 impl NonSnakeCase {
     fn check_snake_case(&self, cx: &Context, sort: &str, ident: ast::Ident, span: Span) {
@@ -1053,9 +1043,8 @@ declare_lint! {
     "static constants should have uppercase identifiers"
 }
 
+#[deriving(Copy)]
 pub struct NonUpperCaseGlobals;
-
-impl Copy for NonUpperCaseGlobals {}
 
 impl LintPass for NonUpperCaseGlobals {
     fn get_lints(&self) -> LintArray {
@@ -1107,9 +1096,8 @@ declare_lint! {
     "`if`, `match`, `while` and `return` do not need parentheses"
 }
 
+#[deriving(Copy)]
 pub struct UnusedParens;
-
-impl Copy for UnusedParens {}
 
 impl UnusedParens {
     fn check_unused_parens_core(&self, cx: &Context, value: &ast::Expr, msg: &str,
@@ -1202,9 +1190,8 @@ declare_lint! {
     "unnecessary braces around an imported item"
 }
 
+#[deriving(Copy)]
 pub struct UnusedImportBraces;
-
-impl Copy for UnusedImportBraces {}
 
 impl LintPass for UnusedImportBraces {
     fn get_lints(&self) -> LintArray {
@@ -1242,9 +1229,8 @@ declare_lint! {
     "using `Struct { x: x }` instead of `Struct { x }`"
 }
 
+#[deriving(Copy)]
 pub struct NonShorthandFieldPatterns;
-
-impl Copy for NonShorthandFieldPatterns {}
 
 impl LintPass for NonShorthandFieldPatterns {
     fn get_lints(&self) -> LintArray {
@@ -1276,9 +1262,8 @@ declare_lint! {
     "unnecessary use of an `unsafe` block"
 }
 
+#[deriving(Copy)]
 pub struct UnusedUnsafe;
-
-impl Copy for UnusedUnsafe {}
 
 impl LintPass for UnusedUnsafe {
     fn get_lints(&self) -> LintArray {
@@ -1302,9 +1287,8 @@ declare_lint! {
     "usage of an `unsafe` block"
 }
 
+#[deriving(Copy)]
 pub struct UnsafeBlocks;
-
-impl Copy for UnsafeBlocks {}
 
 impl LintPass for UnsafeBlocks {
     fn get_lints(&self) -> LintArray {
@@ -1327,9 +1311,8 @@ declare_lint! {
     "detect mut variables which don't need to be mutable"
 }
 
+#[deriving(Copy)]
 pub struct UnusedMut;
-
-impl Copy for UnusedMut {}
 
 impl UnusedMut {
     fn check_unused_mut_pat(&self, cx: &Context, pats: &[P<ast::Pat>]) {
@@ -1397,9 +1380,8 @@ declare_lint! {
     "detects unnecessary allocations that can be eliminated"
 }
 
+#[deriving(Copy)]
 pub struct UnusedAllocation;
-
-impl Copy for UnusedAllocation {}
 
 impl LintPass for UnusedAllocation {
     fn get_lints(&self) -> LintArray {
@@ -1589,9 +1571,8 @@ impl LintPass for MissingDoc {
     }
 }
 
+#[deriving(Copy)]
 pub struct MissingCopyImplementations;
-
-impl Copy for MissingCopyImplementations {}
 
 impl LintPass for MissingCopyImplementations {
     fn get_lints(&self) -> LintArray {
@@ -1665,9 +1646,8 @@ declare_lint! {
 
 /// Checks for use of items with `#[deprecated]`, `#[experimental]` and
 /// `#[unstable]` attributes, or no stability attribute.
+#[deriving(Copy)]
 pub struct Stability;
-
-impl Copy for Stability {}
 
 impl Stability {
     fn lint(&self, cx: &Context, id: ast::DefId, span: Span) {
@@ -1903,9 +1883,8 @@ declare_lint!{
 
 /// Does nothing as a lint pass, but registers some `Lint`s
 /// which are used by other parts of the compiler.
+#[deriving(Copy)]
 pub struct HardwiredLints;
-
-impl Copy for HardwiredLints {}
 
 impl LintPass for HardwiredLints {
     fn get_lints(&self) -> LintArray {

@@ -33,13 +33,12 @@ use syntax::parse::token;
 
 use std::collections::hash_map::HashMap;
 
+#[deriving(Copy)]
 pub struct MethodInfo {
     pub name: ast::Name,
     pub def_id: ast::DefId,
     pub vis: ast::Visibility,
 }
-
-impl Copy for MethodInfo {}
 
 pub fn get_symbol(cstore: &cstore::CStore, def: ast::DefId) -> String {
     let cdata = cstore.get_crate_data(def.krate);

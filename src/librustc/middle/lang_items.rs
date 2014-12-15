@@ -45,12 +45,10 @@ macro_rules! lets_do_this {
         $( $variant:ident, $name:expr, $method:ident; )*
     ) => {
 
-#[deriving(FromPrimitive, PartialEq, Eq, Hash)]
+#[deriving(Copy, FromPrimitive, PartialEq, Eq, Hash)]
 pub enum LangItem {
     $($variant),*
 }
-
-impl Copy for LangItem {}
 
 pub struct LanguageItems {
     pub items: Vec<Option<ast::DefId>>,

@@ -42,6 +42,7 @@ use syntax::ast;
 pub use lint::context::{Context, LintStore, raw_emit_lint, check_crate, gather_attrs};
 
 /// Specification of a single lint.
+#[deriving(Copy)]
 pub struct Lint {
     /// A string identifier for the lint.
     ///
@@ -63,8 +64,6 @@ pub struct Lint {
     /// e.g. "imports that are never used"
     pub desc: &'static str,
 }
-
-impl Copy for Lint {}
 
 impl Lint {
     /// Get the lint's name, with ASCII letters converted to lowercase.
@@ -175,13 +174,11 @@ pub trait LintPass {
 pub type LintPassObject = Box<LintPass + 'static>;
 
 /// Identifies a lint known to the compiler.
-#[deriving(Clone)]
+#[deriving(Clone, Copy)]
 pub struct LintId {
     // Identity is based on pointer equality of this field.
     lint: &'static Lint,
 }
-
-impl Copy for LintId {}
 
 impl PartialEq for LintId {
     fn eq(&self, other: &LintId) -> bool {
@@ -213,12 +210,10 @@ impl LintId {
 }
 
 /// Setting for how to handle a lint.
-#[deriving(Clone, PartialEq, PartialOrd, Eq, Ord)]
+#[deriving(Clone, Copy, PartialEq, PartialOrd, Eq, Ord)]
 pub enum Level {
     Allow, Warn, Deny, Forbid
 }
-
-impl Copy for Level {}
 
 impl Level {
     /// Convert a level to a lower-case string.
@@ -244,7 +239,7 @@ impl Level {
 }
 
 /// How a lint level was set.
-#[deriving(Clone, PartialEq, Eq)]
+#[deriving(Clone, Copy, PartialEq, Eq)]
 pub enum LintSource {
     /// Lint is at the default level as declared
     /// in rustc or a plugin.
@@ -256,8 +251,6 @@ pub enum LintSource {
     /// Lint level was set by a command-line flag.
     CommandLine,
 }
-
-impl Copy for LintSource {}
 
 pub type LevelSource = (Level, LintSource);
 
