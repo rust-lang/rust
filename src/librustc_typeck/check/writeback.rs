@@ -343,6 +343,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 // Resolution reason.
 
+#[deriving(Copy)]
 enum ResolveReason {
     ResolvingExpr(Span),
     ResolvingLocal(Span),
@@ -350,8 +351,6 @@ enum ResolveReason {
     ResolvingUpvar(ty::UpvarId),
     ResolvingUnboxedClosure(ast::DefId),
 }
-
-impl Copy for ResolveReason {}
 
 impl ResolveReason {
     fn span(&self, tcx: &ty::ctxt) -> Span {

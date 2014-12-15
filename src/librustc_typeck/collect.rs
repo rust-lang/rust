@@ -490,6 +490,7 @@ fn convert_associated_type<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     }
 }
 
+#[deriving(Copy)]
 enum ConvertMethodContext<'a> {
     /// Used when converting implementation methods.
     ImplConvertMethodContext,
@@ -497,8 +498,6 @@ enum ConvertMethodContext<'a> {
     /// the trait we're translating.
     TraitConvertMethodContext(ast::DefId, &'a [ast::TraitItem]),
 }
-
-impl<'a> Copy for ConvertMethodContext<'a> {}
 
 fn convert_methods<'a,'tcx,'i,I>(ccx: &CrateCtxt<'a, 'tcx>,
                                  convert_method_context: ConvertMethodContext,
