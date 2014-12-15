@@ -78,10 +78,8 @@ pub struct FlowedMoveData<'a, 'tcx: 'a> {
 }
 
 /// Index into `MoveData.paths`, used like a pointer
-#[deriving(PartialEq, Eq, PartialOrd, Ord, Show)]
+#[deriving(Copy, PartialEq, Eq, PartialOrd, Ord, Show)]
 pub struct MovePathIndex(uint);
-
-impl Copy for MovePathIndex {}
 
 impl MovePathIndex {
     fn get(&self) -> uint {
@@ -100,10 +98,8 @@ static InvalidMovePathIndex: MovePathIndex =
     MovePathIndex(uint::MAX);
 
 /// Index into `MoveData.moves`, used like a pointer
-#[deriving(PartialEq)]
+#[deriving(Copy, PartialEq)]
 pub struct MoveIndex(uint);
-
-impl Copy for MoveIndex {}
 
 impl MoveIndex {
     fn get(&self) -> uint {
@@ -134,7 +130,7 @@ pub struct MovePath<'tcx> {
     pub next_sibling: MovePathIndex,
 }
 
-#[deriving(PartialEq, Show)]
+#[deriving(Copy, PartialEq, Show)]
 pub enum MoveKind {
     Declared,   // When declared, variables start out "moved".
     MoveExpr,   // Expression or binding that moves a variable
@@ -142,8 +138,7 @@ pub enum MoveKind {
     Captured    // Closure creation that moves a value
 }
 
-impl Copy for MoveKind {}
-
+#[deriving(Copy)]
 pub struct Move {
     /// Path being moved.
     pub path: MovePathIndex,
@@ -158,8 +153,7 @@ pub struct Move {
     pub next_move: MoveIndex
 }
 
-impl Copy for Move {}
-
+#[deriving(Copy)]
 pub struct Assignment {
     /// Path being assigned.
     pub path: MovePathIndex,
@@ -171,8 +165,7 @@ pub struct Assignment {
     pub span: Span,
 }
 
-impl Copy for Assignment {}
-
+#[deriving(Copy)]
 pub struct VariantMatch {
     /// downcast to the variant.
     pub path: MovePathIndex,
@@ -187,19 +180,13 @@ pub struct VariantMatch {
     pub mode: euv::MatchMode
 }
 
-impl Copy for VariantMatch {}
-
-#[deriving(Clone)]
+#[deriving(Clone, Copy)]
 pub struct MoveDataFlowOperator;
-
-impl Copy for MoveDataFlowOperator {}
 
 pub type MoveDataFlow<'a, 'tcx> = DataFlowContext<'a, 'tcx, MoveDataFlowOperator>;
 
-#[deriving(Clone)]
+#[deriving(Clone, Copy)]
 pub struct AssignDataFlowOperator;
-
-impl Copy for AssignDataFlowOperator {}
 
 pub type AssignDataFlow<'a, 'tcx> = DataFlowContext<'a, 'tcx, AssignDataFlowOperator>;
 
