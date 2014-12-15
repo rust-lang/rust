@@ -1201,6 +1201,7 @@ pub enum TypeKind {
     TypeEnum,
     TypeFunction,
     TypeModule,
+    TypeConst,
     TypeStatic,
     TypeStruct,
     TypeTrait,
@@ -1841,7 +1842,7 @@ impl Clean<Item> for doctree::Static {
     }
 }
 
-#[deriving(Clone, Encodable, Decodable)]
+#[deriving(Clone, Encodable, Decodable, Show)]
 pub struct Constant {
     pub type_: Type,
     pub expr: String,

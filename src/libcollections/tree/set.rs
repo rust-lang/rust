@@ -27,7 +27,7 @@ use tree_map::{TreeMap, Entries, RevEntries, MoveEntries};
 /// requirement is that the type of the elements contained ascribes to the
 /// `Ord` trait.
 ///
-/// ## Examples
+/// # Examples
 ///
 /// ```{rust}
 /// use std::collections::TreeSet;

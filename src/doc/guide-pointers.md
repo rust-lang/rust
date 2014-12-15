@@ -84,7 +84,7 @@ println!("{}", x + z);
 
 This gives us an error:
 
-```{notrust}
+```text
 hello.rs:6:24: 6:25 error: mismatched types: expected `int` but found `&int` (expected int but found &-ptr)
 hello.rs:6     println!("{}", x + z);
                                   ^
@@ -132,7 +132,7 @@ Pointers are useful in languages that are pass-by-value, rather than
 pass-by-reference. Basically, languages can make two choices (this is made
 up syntax, it's not Rust):
 
-```{ignore}
+```text
 func foo(x) {
     x = 5
 }
@@ -152,7 +152,7 @@ and therefore, can change its value. At the comment, `i` will be `5`.
 So what do pointers have to do with this? Well, since pointers point to a
 location in memory...
 
-```{ignore}
+```text
 func foo(&int x) {
     *x = 5
 }
@@ -191,7 +191,7 @@ knows. This might be harmless, and it might be catastrophic.
 When you combine pointers and functions, it's easy to accidentally invalidate
 the memory the pointer is pointing to. For example:
 
-```{ignore}
+```text
 func make_pointer(): &int {
     x = 5;
 
@@ -213,7 +213,7 @@ As one last example of a big problem with pointers, **aliasing** can be an
 issue. Two pointers are said to alias when they point at the same location
 in memory. Like this:
 
-```{ignore}
+```text
 func mutate(&int i, int j) {
     *i = j;
 }
@@ -398,7 +398,7 @@ fn main() {
 
 It gives this error:
 
-```{notrust}
+```text
 test.rs:5:8: 5:10 error: cannot assign to `*x` because it is borrowed
 test.rs:5         *x -= 1;
                   ^~
@@ -522,7 +522,7 @@ boxes, though. As a rough approximation, you can treat this Rust code:
 
 As being similar to this C code:
 
-```{ignore}
+```c
 {
     int *x;
     x = (int *)malloc(sizeof(int));
@@ -626,7 +626,7 @@ fn main() {
 
 This prints:
 
-```{ignore}
+```text
 Cons(1, box Cons(2, box Cons(3, box Nil)))
 ```
 
