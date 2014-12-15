@@ -1190,7 +1190,7 @@ fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
 
     // Finally, resolve all regions. This catches wily misuses of lifetime
     // parameters.
-    infcx.resolve_regions_and_report_errors();
+    infcx.resolve_regions_and_report_errors(impl_m_body_id);
 
     /// Check that region bounds on impl method are the same as those on the trait. In principle,
     /// it could be ok for there to be fewer region bounds on the impl method, but this leads to an
