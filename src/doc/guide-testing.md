@@ -556,8 +556,12 @@ extern crate test;
 # fn main() {
 # struct X; impl X { fn iter<T>(&self, _: || -> T) {} } let b = X;
 b.iter(|| {
-    test::black_box(range(0u, 1000).fold(0, |old, new| old ^ new));
-});
+    let mut n = 1000_u32;
+
+    test::black_box(&mut n); // pretend to modify `n`
+
+    range(0, n).fold(0, |a, b| a ^ b)
+})
 # }
 ```
 
@@ -573,3 +577,6 @@ test bench_xor_1000_ints ... bench:       1 ns/iter (+/- 0)
 
 test result: ok. 0 passed; 0 failed; 0 ignored; 1 measured
 ```
+
+However, the optimizer can still modify a testcase in an undesirable manner
+even when using either of the above.
