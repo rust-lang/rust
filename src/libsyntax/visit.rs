@@ -32,6 +32,7 @@ use codemap::Span;
 use ptr::P;
 use owned_slice::OwnedSlice;
 
+#[deriving(Copy)]
 pub enum FnKind<'a> {
     /// fn foo() or extern "Abi" fn foo()
     FkItemFn(Ident, &'a Generics, Unsafety, Abi),
@@ -43,8 +44,6 @@ pub enum FnKind<'a> {
     /// proc(x, y) ...
     FkFnBlock,
 }
-
-impl<'a> Copy for FnKind<'a> {}
 
 /// Each method of the Visitor trait is a hook to be potentially
 /// overridden.  Each method's default implementation recursively visits

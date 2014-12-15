@@ -24,7 +24,7 @@ use std::str;
 use std::string::String;
 use std::uint;
 
-#[deriving(Clone, PartialEq)]
+#[deriving(Clone, Copy, PartialEq)]
 pub enum CommentStyle {
     /// No code on either side of each line of the comment
     Isolated,
@@ -35,8 +35,6 @@ pub enum CommentStyle {
     /// Just a manual blank line "\n\n", for layout
     BlankLine,
 }
-
-impl Copy for CommentStyle {}
 
 #[deriving(Clone)]
 pub struct Comment {

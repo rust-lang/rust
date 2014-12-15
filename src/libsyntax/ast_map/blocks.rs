@@ -41,9 +41,8 @@ use visit;
 ///   - The default implementation for a trait method.
 ///
 /// To construct one, use the `Code::from_node` function.
+#[deriving(Copy)]
 pub struct FnLikeNode<'a> { node: ast_map::Node<'a> }
-
-impl<'a> Copy for FnLikeNode<'a> {}
 
 /// MaybeFnLike wraps a method that indicates if an object
 /// corresponds to some FnLikeNode.
@@ -82,12 +81,11 @@ impl MaybeFnLike for ast::Expr {
 /// Carries either an FnLikeNode or a Block, as these are the two
 /// constructs that correspond to "code" (as in, something from which
 /// we can construct a control-flow graph).
+#[deriving(Copy)]
 pub enum Code<'a> {
     FnLikeCode(FnLikeNode<'a>),
     BlockCode(&'a Block),
 }
-
-impl<'a> Copy for Code<'a> {}
 
 impl<'a> Code<'a> {
     pub fn id(&self) -> ast::NodeId {
