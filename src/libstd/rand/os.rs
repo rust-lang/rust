@@ -187,7 +187,10 @@ mod imp {
     /// - iOS: calls SecRandomCopyBytes as /dev/(u)random is sandboxed
     /// This does not block.
     #[allow(missing_copy_implementations)]
-    pub struct OsRng;
+    pub struct OsRng {
+        // dummy field to ensure that this struct cannot be constructed outside of this module
+        _dummy: (),
+    }
 
     #[repr(C)]
     struct SecRandom;
@@ -204,7 +207,7 @@ mod imp {
     impl OsRng {
         /// Create a new `OsRng`.
         pub fn new() -> IoResult<OsRng> {
-            Ok(OsRng)
+            Ok(OsRng { _dummy: () })
         }
     }
 
