@@ -31,13 +31,13 @@ impl ops::Sub<Point,Point> for Point {
 }
 
 impl ops::Neg<Point> for Point {
-    fn neg(&self) -> Point {
+    fn neg(self) -> Point {
         Point {x: -self.x, y: -self.y}
     }
 }
 
 impl ops::Not<Point> for Point {
-    fn not(&self) -> Point {
+    fn not(self) -> Point {
         Point {x: !self.x, y: !self.y }
     }
 }
