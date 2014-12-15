@@ -20,8 +20,7 @@ pub fn opts() -> TargetOptions {
         has_rpath: true,
         pre_link_args: vec!(
             "-L/usr/local/lib".to_string(),
-            "-L/usr/local/lib/gcc47".to_string(),
-            "-L/usr/local/lib/gcc44".to_string(),
+            "-L/usr/local/lib/gcc48".to_string(),
         ),
 
         .. Default::default()
