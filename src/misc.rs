@@ -2,6 +2,7 @@ use syntax::ptr::P;
 use syntax::ast;
 use syntax::ast::*;
 use rustc::lint::{Context, LintPass, LintArray, Lint, Level};
+use rustc::middle::ty::{mod, expr_ty, ty_str, ty_ptr, ty_rptr};
 use syntax::codemap::Span;
 
 use types::span_note_and_lint;
@@ -40,6 +41,42 @@ impl LintPass for MiscPass {
                         );                        
                     }
                 }
+            }
+        }
+    }
+}
+
+
+declare_lint!(CLIPPY_STR_TO_STRING, Warn, "Warn when a String could use into_string() instead of to_string()")
+
+pub struct StrToStringPass;
+
+impl LintPass for StrToStringPass {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(CLIPPY_STR_TO_STRING)
+    }
+
+    fn check_expr(&mut self, cx: &Context, expr: &ast::Expr) {
+        match expr.node {
+            ast::ExprMethodCall(ref method, _, ref args)
+                if method.node.as_str() == "to_string"
+                && is_str(cx, &*args[0]) => {
+                cx.span_lint(CLIPPY_STR_TO_STRING, expr.span, "str.into_string() is faster");
+            },
+            _ => ()
+        }
+
+        fn is_str(cx: &Context, expr: &ast::Expr) -> bool {
+            fn walk_ty<'t>(ty: ty::Ty<'t>) -> ty::Ty<'t> {
+                //println!("{}: -> {}", depth, ty);
+                match ty.sty {
+                    ty_ptr(ref tm) | ty_rptr(_, ref tm) => walk_ty(tm.ty),
+                    _ => ty
+                }
+            }
+            match walk_ty(expr_ty(cx.tcx, expr)).sty {
+                ty_str => true,
+                _ => false
             }
         }
     }

@@ -20,4 +20,5 @@ pub mod misc;
 pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_lint_pass(box types::TypePass as LintPassObject);
     reg.register_lint_pass(box misc::MiscPass as LintPassObject);
+    reg.register_lint_pass(box misc::StrToStringPass as LintPassObject);
 }
