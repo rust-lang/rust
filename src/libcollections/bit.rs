@@ -91,7 +91,7 @@ use core::num::Int;
 use core::slice::{Items, MutItems};
 use core::{u8, u32, uint};
 
-use hash;
+use core::hash;
 use Vec;
 
 type Blocks<'a> = Cloned<Items<'a, u32>>;
@@ -922,7 +922,7 @@ pub fn from_bytes(bytes: &[u8]) -> Bitv {
 
 /// Deprecated: Now a static method on Bitv.
 #[deprecated = "Now a static method on Bitv"]
-pub fn from_fn<F>(len: uint, mut f: F) -> Bitv where F: FnMut(uint) -> bool {
+pub fn from_fn<F>(len: uint, f: F) -> Bitv where F: FnMut(uint) -> bool {
     Bitv::from_fn(len, f)
 }
 
@@ -1226,12 +1226,12 @@ impl BitvSet {
         self.bitv.capacity()
     }
 
-    /// Reserves capacity for an element to be inserted at `index` in the given
-    /// `Bitv`. The collection may reserve more space to avoid frequent reallocations.
+    /// Reserves capacity for the given `BitvSet` to contain `len` distinct elements. In the case
+    /// of `BitvSet` this means reallocations will not occur as long as all inserted elements
+    /// are less than `len`.
     ///
-    /// # Panics
+    /// The collection may reserve more space to avoid frequent reallocations.
     ///
-    /// Panics if the new capacity overflows `uint`.
     ///
     /// # Examples
     ///
@@ -1239,27 +1239,25 @@ impl BitvSet {
     /// use std::collections::BitvSet;
     ///
     /// let mut s = BitvSet::new();
-    /// s.reserve_index(10);
-    /// assert!(s.capacity() >= 11);
+    /// s.reserve_len(10);
+    /// assert!(s.capacity() >= 10);
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn reserve_index(&mut self, index: uint) {
-        let len = self.bitv.len();
-        if index >= len {
-            self.bitv.reserve(index - len + 1);
+    pub fn reserve_len(&mut self, len: uint) {
+        let cur_len = self.bitv.len();
+        if len >= cur_len {
+            self.bitv.reserve(len - cur_len);
         }
     }
 
-    /// Reserves the minimum capacity for an element to be inserted at `index`
-    /// in the given `BitvSet`. Does nothing if the capacity is already sufficient.
+    /// Reserves the minimum capacity for the given `BitvSet` to contain `len` distinct elements.
+    /// In the case of `BitvSet` this means reallocations will not occur as long as all inserted
+    /// elements are less than `len`.
     ///
     /// Note that the allocator may give the collection more space than it requests. Therefore
-    /// capacity can not be relied upon to be precisely minimal. Prefer `reserve_index` if future
+    /// capacity can not be relied upon to be precisely minimal. Prefer `reserve_len` if future
     /// insertions are expected.
     ///
-    /// # Panics
-    ///
-    /// Panics if the new capacity overflows `uint`.
     ///
     /// # Examples
     ///
@@ -1267,14 +1265,14 @@ impl BitvSet {
     /// use std::collections::BitvSet;
     ///
     /// let mut s = BitvSet::new();
-    /// s.reserve_index_exact(10);
-    /// assert!(s.capacity() >= 11);
+    /// s.reserve_len_exact(10);
+    /// assert!(s.capacity() >= 10);
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn reserve_index_exact(&mut self, index: uint) {
-        let len = self.bitv.len();
-        if index >= len {
-            self.bitv.reserve_exact(index - len + 1);
+    pub fn reserve_len_exact(&mut self, len: uint) {
+        let cur_len = self.bitv.len();
+        if len >= cur_len {
+            self.bitv.reserve_exact(len - cur_len);
         }
     }
 
@@ -2234,35 +2232,6 @@ mod tests {
     }
 
     #[test]
-    fn test_bitv_set_iterator() {
-        let bools = [true, false, true, true];
-        let bitv: BitvSet = bools.iter().map(|n| *n).collect();
-
-        let idxs: Vec<uint> = bitv.iter().collect();
-        assert_eq!(idxs, vec!(0, 2, 3));
-
-        let long: BitvSet = range(0u, 10000).map(|n| n % 2 == 0).collect();
-        let real = range_step(0, 10000, 2).collect::<Vec<uint>>();
-
-        let idxs: Vec<uint> = long.iter().collect();
-        assert_eq!(idxs, real);
-    }
-
-    #[test]
-    fn test_bitv_set_frombitv_init() {
-        let bools = [true, false];
-        let lengths = [10, 64, 100];
-        for &b in bools.iter() {
-            for &l in lengths.iter() {
-                let bitset = BitvSet::from_bitv(Bitv::with_capacity(l, b));
-                assert_eq!(bitset.contains(&1u), b);
-                assert_eq!(bitset.contains(&(l-1u)), b);
-                assert!(!bitset.contains(&l))
-            }
-        }
-    }
-
-    #[test]
     fn test_small_difference() {
         let mut b1 = Bitv::from_elem(3, false);
         let mut b2 = Bitv::from_elem(3, false);
@@ -2587,11 +2556,10 @@ mod bitv_bench {
 
 #[cfg(test)]
 mod bitv_set_test {
-    use std::prelude::*;
+    use prelude::*;
     use std::iter::range_step;
 
     use super::{Bitv, BitvSet};
-    use vec::Vec;
 
     #[test]
     fn test_bitv_set_show() {
@@ -2636,9 +2604,9 @@ mod bitv_set_test {
         for &b in bools.iter() {
             for &l in lengths.iter() {
                 let bitset = BitvSet::from_bitv(Bitv::from_elem(l, b));
-                assert_eq!(bitset.contains(&1u), b)
-                assert_eq!(bitset.contains(&(l-1u)), b)
-                assert!(!bitset.contains(&l))
+                assert_eq!(bitset.contains(&1u), b);
+                assert_eq!(bitset.contains(&(l-1u)), b);
+                assert!(!bitset.contains(&l));
             }
         }
     }
