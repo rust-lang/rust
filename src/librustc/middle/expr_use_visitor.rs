@@ -30,7 +30,7 @@ use middle::ty::{MethodStatic, MethodStaticUnboxedClosure};
 use util::ppaux::Repr;
 
 use std::kinds;
-use syntax::ast;
+use syntax::{ast, ast_util};
 use syntax::ptr::P;
 use syntax::codemap::Span;
 
@@ -329,6 +329,12 @@ macro_rules! return_if_err(
     )
 )
 
+/// Whether the elements of an overloaded operation are passed by value or by reference
+enum PassArgs {
+    ByValue,
+    ByRef,
+}
+
 impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
     pub fn new(delegate: &'d mut Delegate<'tcx>,
                typer: &'t TYPER,
@@ -438,7 +444,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
             ast::ExprPath(..) => { }
 
             ast::ExprUnary(ast::UnDeref, ref base) => {      // *base
-                if !self.walk_overloaded_operator(expr, &**base, Vec::new()) {
+                if !self.walk_overloaded_operator(expr, &**base, Vec::new(), PassArgs::ByRef) {
                     self.select_from_expr(&**base);
                 }
             }
@@ -452,7 +458,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
             }
 
             ast::ExprIndex(ref lhs, ref rhs) => {       // lhs[rhs]
-                if !self.walk_overloaded_operator(expr, &**lhs, vec![&**rhs]) {
+                if !self.walk_overloaded_operator(expr, &**lhs, vec![&**rhs], PassArgs::ByRef) {
                     self.select_from_expr(&**lhs);
                     self.consume_expr(&**rhs);
                 }
@@ -465,7 +471,8 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                     (&None, &Some(ref e)) => vec![&**e],
                     (&None, &None) => Vec::new()
                 };
-                let overloaded = self.walk_overloaded_operator(expr, &**base, args);
+                let overloaded =
+                    self.walk_overloaded_operator(expr, &**base, args, PassArgs::ByRef);
                 assert!(overloaded);
             }
 
@@ -570,13 +577,19 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
             }
 
             ast::ExprUnary(_, ref lhs) => {
-                if !self.walk_overloaded_operator(expr, &**lhs, Vec::new()) {
+                if !self.walk_overloaded_operator(expr, &**lhs, Vec::new(), PassArgs::ByRef) {
                     self.consume_expr(&**lhs);
                 }
             }
 
-            ast::ExprBinary(_, ref lhs, ref rhs) => {
-                if !self.walk_overloaded_operator(expr, &**lhs, vec![&**rhs]) {
+            ast::ExprBinary(op, ref lhs, ref rhs) => {
+                let pass_args = if ast_util::is_by_value_binop(op) {
+                    PassArgs::ByValue
+                } else {
+                    PassArgs::ByRef
+                };
+
+                if !self.walk_overloaded_operator(expr, &**lhs, vec![&**rhs], pass_args) {
                     self.consume_expr(&**lhs);
                     self.consume_expr(&**rhs);
                 }
@@ -910,11 +923,22 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
     fn walk_overloaded_operator(&mut self,
                                 expr: &ast::Expr,
                                 receiver: &ast::Expr,
-                                rhs: Vec<&ast::Expr>)
+                                rhs: Vec<&ast::Expr>,
+                                pass_args: PassArgs)
                                 -> bool
     {
         if !self.typer.is_method_call(expr.id) {
             return false;
+        }
+
+        match pass_args {
+            PassArgs::ByValue => {
+                self.consume_expr(receiver);
+                self.consume_expr(rhs[0]);
+
+                return true;
+            },
+            PassArgs::ByRef => {},
         }
 
         self.walk_expr(receiver);

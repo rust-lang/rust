@@ -12,6 +12,7 @@ use core::cmp::PartialEq;
 use core::fmt::Show;
 use core::num::{NumCast, cast};
 use core::ops::{Add, Sub, Mul, Div, Rem};
+use core::kinds::Copy;
 
 mod int_macros;
 mod i8;
@@ -32,18 +33,19 @@ pub fn test_num<T>(ten: T, two: T) where
      + Add<T, T> + Sub<T, T>
      + Mul<T, T> + Div<T, T>
      + Rem<T, T> + Show
+     + Copy
 {
-    assert_eq!(ten.add(&two),  cast(12i).unwrap());
-    assert_eq!(ten.sub(&two),  cast(8i).unwrap());
-    assert_eq!(ten.mul(&two),  cast(20i).unwrap());
-    assert_eq!(ten.div(&two),  cast(5i).unwrap());
-    assert_eq!(ten.rem(&two),  cast(0i).unwrap());
+    assert_eq!(ten.add(two),  cast(12i).unwrap());
+    assert_eq!(ten.sub(two),  cast(8i).unwrap());
+    assert_eq!(ten.mul(two),  cast(20i).unwrap());
+    assert_eq!(ten.div(two),  cast(5i).unwrap());
+    assert_eq!(ten.rem(two),  cast(0i).unwrap());
 
-    assert_eq!(ten.add(&two),  ten + two);
-    assert_eq!(ten.sub(&two),  ten - two);
-    assert_eq!(ten.mul(&two),  ten * two);
-    assert_eq!(ten.div(&two),  ten / two);
-    assert_eq!(ten.rem(&two),  ten % two);
+    assert_eq!(ten.add(two),  ten + two);
+    assert_eq!(ten.sub(two),  ten - two);
+    assert_eq!(ten.mul(two),  ten * two);
+    assert_eq!(ten.div(two),  ten / two);
+    assert_eq!(ten.rem(two),  ten % two);
 }
 
 #[cfg(test)]
