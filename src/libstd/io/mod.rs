@@ -1910,7 +1910,6 @@ bitflags! {
     }
 }
 
-impl Copy for FilePermission {}
 
 impl Default for FilePermission {
     #[inline]
