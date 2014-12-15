@@ -47,12 +47,6 @@ pub fn compile_input(sess: Session,
                      outdir: &Option<Path>,
                      output: &Option<Path>,
                      addl_plugins: Option<Plugins>) {
-    // These may be left in an incoherent state after a previous compile.
-    // `clear_tables` and `get_ident_interner().clear()` can be used to free
-    // memory, but they do not restore the initial state.
-    syntax::ext::mtwt::reset_tables();
-    token::reset_ident_interner();
-
     // We need nested scopes here, because the intermediate results can keep
     // large chunks of memory alive and we want to free them as soon as
     // possible to keep the peak memory usage low
@@ -116,6 +110,12 @@ pub fn source_name(input: &Input) -> String {
 
 pub fn phase_1_parse_input(sess: &Session, cfg: ast::CrateConfig, input: &Input)
     -> ast::Crate {
+    // These may be left in an incoherent state after a previous compile.
+    // `clear_tables` and `get_ident_interner().clear()` can be used to free
+    // memory, but they do not restore the initial state.
+    syntax::ext::mtwt::reset_tables();
+    token::reset_ident_interner();
+
     let krate = time(sess.time_passes(), "parsing", (), |_| {
         match *input {
             Input::File(ref file) => {

@@ -72,6 +72,7 @@ typedef struct OpaqueRustString *RustStringRef;
 typedef struct LLVMOpaqueTwine *LLVMTwineRef;
 typedef struct LLVMOpaqueDebugLoc *LLVMDebugLocRef;
 typedef struct LLVMOpaqueSMDiagnostic *LLVMSMDiagnosticRef;
+typedef struct LLVMOpaqueRustJITMemoryManager *LLVMRustJITMemoryManagerRef;
 
 extern "C" void
 rust_llvm_string_write_impl(RustStringRef str, const char *ptr, size_t size);
