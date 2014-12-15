@@ -272,13 +272,6 @@ nested obligation `int : Bar<U>` to find out that `U=uint`.
 It would be good to only do *just as much* nested resolution as
 necessary. Currently, though, we just do a full resolution.
 
-## Method matching
-
-Method dispach follows a slightly different path than normal trait
-selection. This is because it must account for the transformed self
-type of the receiver and various other complications. The procedure is
-described in `select.rs` in the "METHOD MATCHING" section.
-
 # Caching and subtle considerations therewith
 
 In general we attempt to cache the results of trait selection.  This
