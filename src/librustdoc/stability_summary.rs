@@ -27,6 +27,7 @@ use html::render::cache;
 
 #[deriving(Zero, Encodable, Decodable, PartialEq, Eq)]
 /// The counts for each stability level.
+#[deriving(Copy)]
 pub struct Counts {
     pub deprecated: uint,
     pub experimental: uint,
@@ -38,8 +39,6 @@ pub struct Counts {
     /// No stability level, inherited or otherwise.
     pub unmarked: uint,
 }
-
-impl Copy for Counts {}
 
 impl Add<Counts, Counts> for Counts {
     fn add(self, other: Counts) -> Counts {
