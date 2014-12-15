@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,10 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foo(_: *const ()) {}
+// error-pattern:explicit panic
 
-fn main() {
-    let a = 3;  //~ ERROR cannot determine a type for this local variable
-    foo(&a as *const _ as *const ());
-}
-
+fn foo<T>(t: T) {}
+fn main() { foo(panic!()) }

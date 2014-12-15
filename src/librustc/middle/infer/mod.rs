@@ -23,7 +23,7 @@ pub use self::freshen::TypeFreshener;
 
 use middle::subst;
 use middle::subst::Substs;
-use middle::ty::{TyVid, IntVid, FloatVid, RegionVid};
+use middle::ty::{TyVid, IntVid, FloatVid, RegionVid, UnconstrainedNumeric};
 use middle::ty::replace_late_bound_regions;
 use middle::ty::{mod, Ty};
 use middle::ty_fold::{TypeFolder, TypeFoldable};
@@ -523,6 +523,25 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
     pub fn freshener<'b>(&'b self) -> TypeFreshener<'b, 'tcx> {
         freshen::TypeFreshener::new(self)
+    }
+
+    pub fn type_is_unconstrained_numeric(&'a self, ty: Ty) -> UnconstrainedNumeric {
+        use middle::ty::UnconstrainedNumeric::{Neither, UnconstrainedInt, UnconstrainedFloat};
+        match ty.sty {
+            ty::ty_infer(ty::IntVar(vid)) => {
+                match self.int_unification_table.borrow_mut().get(self.tcx, vid).value {
+                    None => UnconstrainedInt,
+                    _ => Neither,
+                }
+            },
+            ty::ty_infer(ty::FloatVar(vid)) => {
+                match self.float_unification_table.borrow_mut().get(self.tcx, vid).value {
+                    None => return UnconstrainedFloat,
+                    _ => Neither,
+                }
+            },
+            _ => Neither,
+        }
     }
 
     pub fn combine_fields<'b>(&'b self, a_is_expected: bool, trace: TypeTrace<'tcx>)
