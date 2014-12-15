@@ -98,6 +98,14 @@ type Blocks<'a> = Cloned<Items<'a, u32>>;
 type MutBlocks<'a> = MutItems<'a, u32>;
 type MatchWords<'a> = Chain<Enumerate<Blocks<'a>>, Skip<Take<Enumerate<Repeat<u32>>>>>;
 
+fn reverse_bits(byte: u8) -> u8 {
+    let mut result = 0;
+    for i in range(0, u8::BITS) {
+        result |= ((byte >> i) & 1) << (u8::BITS - 1 - i);
+    }
+    result
+}
+
 // Take two BitV's, and return iterators of their words, where the shorter one
 // has been padded with 0's
 fn match_words <'a,'b>(a: &'a Bitv, b: &'b Bitv) -> (MatchWords<'a>, MatchWords<'b>) {
@@ -303,19 +311,21 @@ impl Bitv {
         let complete_words = bytes.len() / 4;
         let extra_bytes = bytes.len() % 4;
 
+        bitv.nbits = len;
+
         for i in range(0, complete_words) {
             bitv.storage.push(
-                (bytes[i * 4 + 0] as u32 << 0) |
-                (bytes[i * 4 + 1] as u32 << 8) |
-                (bytes[i * 4 + 2] as u32 << 16) |
-                (bytes[i * 4 + 3] as u32 << 24)
+                (reverse_bits(bytes[i * 4 + 0]) as u32 << 0) |
+                (reverse_bits(bytes[i * 4 + 1]) as u32 << 8) |
+                (reverse_bits(bytes[i * 4 + 2]) as u32 << 16) |
+                (reverse_bits(bytes[i * 4 + 3]) as u32 << 24)
             );
         }
 
         if extra_bytes > 0 {
             let mut last_word = 0u32;
             for (i, &byte) in bytes[complete_words*4..].iter().enumerate() {
-                last_word |= byte as u32 << (i * 8);
+                last_word |= reverse_bits(byte) as u32 << (i * 8);
             }
             bitv.storage.push(last_word);
         }
@@ -1102,18 +1112,20 @@ impl Default for BitvSet {
     fn default() -> BitvSet { BitvSet::new() }
 }
 
-impl FromIterator<bool> for BitvSet {
-    fn from_iter<I:Iterator<bool>>(iterator: I) -> BitvSet {
+impl FromIterator<uint> for BitvSet {
+    fn from_iter<I:Iterator<uint>>(iterator: I) -> BitvSet {
         let mut ret = BitvSet::new();
         ret.extend(iterator);
         ret
     }
 }
 
-impl Extend<bool> for BitvSet {
+impl Extend<uint> for BitvSet {
     #[inline]
-    fn extend<I: Iterator<bool>>(&mut self, iterator: I) {
-        self.bitv.extend(iterator);
+    fn extend<I: Iterator<uint>>(&mut self, mut iterator: I) {
+        for i in iterator {
+            self.insert(i);
+        }
     }
 }
 
@@ -2592,9 +2604,9 @@ mod bitv_set_test {
     }
 
     #[test]
-    fn test_bitv_set_from_bools() {
-        let bools = vec![true, false, true, true];
-        let a: BitvSet = bools.iter().map(|n| *n).collect();
+    fn test_bitv_set_from_uints() {
+        let uints = vec![0, 2, 2, 3];
+        let a: BitvSet = uints.into_iter().collect();
         let mut b = BitvSet::new();
         b.insert(0);
         b.insert(2);
@@ -2604,13 +2616,13 @@ mod bitv_set_test {
 
     #[test]
     fn test_bitv_set_iterator() {
-        let bools = [true, false, true, true];
-        let bitv: BitvSet = bools.iter().map(|n| *n).collect();
+        let uints = vec![0, 2, 2, 3];
+        let bitv: BitvSet = uints.into_iter().collect();
 
         let idxs: Vec<uint> = bitv.iter().collect();
-        assert_eq!(idxs, vec!(0, 2, 3));
+        assert_eq!(idxs, vec![0, 2, 3]);
 
-        let long: BitvSet = range(0u, 10000).map(|n| n % 2 == 0).collect();
+        let long: BitvSet = range(0u, 10000).filter(|&n| n % 2 == 0).collect();
         let real = range_step(0, 10000, 2).collect::<Vec<uint>>();
 
         let idxs: Vec<uint> = long.iter().collect();
