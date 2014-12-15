@@ -88,9 +88,8 @@ pub trait Drop {
 /// calling `add`, and therefore, `main` prints `Adding!`.
 ///
 /// ```rust
+/// #[deriving(Copy)]
 /// struct Foo;
-///
-/// impl Copy for Foo {}
 ///
 /// impl Add<Foo, Foo> for Foo {
 ///     fn add(&self, _rhs: &Foo) -> Foo {
@@ -170,9 +169,8 @@ add_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64 }
 /// calling `sub`, and therefore, `main` prints `Subtracting!`.
 ///
 /// ```rust
+/// #[deriving(Copy)]
 /// struct Foo;
-///
-/// impl Copy for Foo {}
 ///
 /// impl Sub<Foo, Foo> for Foo {
 ///     fn sub(&self, _rhs: &Foo) -> Foo {
@@ -252,9 +250,8 @@ sub_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64 }
 /// calling `mul`, and therefore, `main` prints `Multiplying!`.
 ///
 /// ```rust
+/// #[deriving(Copy)]
 /// struct Foo;
-///
-/// impl Copy for Foo {}
 ///
 /// impl Mul<Foo, Foo> for Foo {
 ///     fn mul(&self, _rhs: &Foo) -> Foo {
@@ -334,9 +331,8 @@ mul_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64 }
 /// calling `div`, and therefore, `main` prints `Dividing!`.
 ///
 /// ```
+/// #[deriving(Copy)]
 /// struct Foo;
-///
-/// impl Copy for Foo {}
 ///
 /// impl Div<Foo, Foo> for Foo {
 ///     fn div(&self, _rhs: &Foo) -> Foo {
@@ -416,9 +412,8 @@ div_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64 }
 /// calling `rem`, and therefore, `main` prints `Remainder-ing!`.
 ///
 /// ```
+/// #[deriving(Copy)]
 /// struct Foo;
-///
-/// impl Copy for Foo {}
 ///
 /// impl Rem<Foo, Foo> for Foo {
 ///     fn rem(&self, _rhs: &Foo) -> Foo {
@@ -527,9 +522,8 @@ rem_float_impl! { f64, fmod }
 /// `neg`, and therefore, `main` prints `Negating!`.
 ///
 /// ```
+/// #[deriving(Copy)]
 /// struct Foo;
-///
-/// impl Copy for Foo {}
 ///
 /// impl Neg<Foo> for Foo {
 ///     fn neg(&self) -> Foo {
@@ -639,9 +633,8 @@ neg_uint_impl! { u64, i64 }
 /// `not`, and therefore, `main` prints `Not-ing!`.
 ///
 /// ```
+/// #[deriving(Copy)]
 /// struct Foo;
-///
-/// impl Copy for Foo {}
 ///
 /// impl Not<Foo> for Foo {
 ///     fn not(&self) -> Foo {
@@ -724,9 +717,8 @@ not_impl! { bool uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 /// calling `bitand`, and therefore, `main` prints `Bitwise And-ing!`.
 ///
 /// ```
+/// #[deriving(Copy)]
 /// struct Foo;
-///
-/// impl Copy for Foo {}
 ///
 /// impl BitAnd<Foo, Foo> for Foo {
 ///     fn bitand(&self, _rhs: &Foo) -> Foo {
@@ -806,9 +798,8 @@ bitand_impl! { bool uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 /// calling `bitor`, and therefore, `main` prints `Bitwise Or-ing!`.
 ///
 /// ```
+/// #[deriving(Copy)]
 /// struct Foo;
-///
-/// impl Copy for Foo {}
 ///
 /// impl BitOr<Foo, Foo> for Foo {
 ///     fn bitor(&self, _rhs: &Foo) -> Foo {
@@ -888,9 +879,8 @@ bitor_impl! { bool uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 /// calling `bitxor`, and therefore, `main` prints `Bitwise Xor-ing!`.
 ///
 /// ```
+/// #[deriving(Copy)]
 /// struct Foo;
-///
-/// impl Copy for Foo {}
 ///
 /// impl BitXor<Foo, Foo> for Foo {
 ///     fn bitxor(&self, _rhs: &Foo) -> Foo {
@@ -970,9 +960,8 @@ bitxor_impl! { bool uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 /// calling `shl`, and therefore, `main` prints `Shifting left!`.
 ///
 /// ```
+/// #[deriving(Copy)]
 /// struct Foo;
-///
-/// impl Copy for Foo {}
 ///
 /// impl Shl<Foo, Foo> for Foo {
 ///     fn shl(&self, _rhs: &Foo) -> Foo {
@@ -1056,9 +1045,8 @@ shl_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 /// calling `shr`, and therefore, `main` prints `Shifting right!`.
 ///
 /// ```
+/// #[deriving(Copy)]
 /// struct Foo;
-///
-/// impl Copy for Foo {}
 ///
 /// impl Shr<Foo, Foo> for Foo {
 ///     fn shr(&self, _rhs: &Foo) -> Foo {
@@ -1139,9 +1127,8 @@ shr_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 /// calling `index`, and therefore, `main` prints `Indexing!`.
 ///
 /// ```
+/// #[deriving(Copy)]
 /// struct Foo;
-///
-/// impl Copy for Foo {}
 ///
 /// impl Index<Foo, Foo> for Foo {
 ///     fn index<'a>(&'a self, _index: &Foo) -> &'a Foo {
@@ -1169,9 +1156,8 @@ pub trait Index<Sized? Index, Sized? Result> for Sized? {
 /// calling `index_mut`, and therefore, `main` prints `Indexing!`.
 ///
 /// ```
+/// #[deriving(Copy)]
 /// struct Foo;
-///
-/// impl Copy for Foo {}
 ///
 /// impl IndexMut<Foo, Foo> for Foo {
 ///     fn index_mut<'a>(&'a mut self, _index: &Foo) -> &'a mut Foo {
@@ -1199,9 +1185,8 @@ pub trait IndexMut<Sized? Index, Sized? Result> for Sized? {
 /// calling `slice_to`, and therefore, `main` prints `Slicing!`.
 ///
 /// ```ignore
+/// #[deriving(Copy)]
 /// struct Foo;
-///
-/// impl Copy for Foo {}
 ///
 /// impl Slice<Foo, Foo> for Foo {
 ///     fn as_slice_<'a>(&'a self) -> &'a Foo {
@@ -1247,9 +1232,8 @@ pub trait Slice<Sized? Idx, Sized? Result> for Sized? {
 /// calling `slice_from_mut`, and therefore, `main` prints `Slicing!`.
 ///
 /// ```ignore
+/// #[deriving(Copy)]
 /// struct Foo;
-///
-/// impl Copy for Foo {}
 ///
 /// impl SliceMut<Foo, Foo> for Foo {
 ///     fn as_mut_slice_<'a>(&'a mut self) -> &'a mut Foo {

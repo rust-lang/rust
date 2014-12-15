@@ -43,7 +43,7 @@
 
 pub use self::Ordering::*;
 
-use kinds::{Copy, Sized};
+use kinds::Sized;
 use option::Option::{mod, Some, None};
 
 /// Trait for values that can be compared for equality and inequality.
@@ -94,7 +94,7 @@ pub trait Eq<Sized? Rhs = Self> for Sized?: PartialEq<Rhs> {
 }
 
 /// An ordering is, e.g, a result of a comparison between two values.
-#[deriving(Clone, PartialEq, Show)]
+#[deriving(Clone, Copy, PartialEq, Show)]
 #[stable]
 pub enum Ordering {
    /// An ordering where a compared value is less [than another].
@@ -104,8 +104,6 @@ pub enum Ordering {
    /// An ordering where a compared value is greater [than another].
    Greater = 1i,
 }
-
-impl Copy for Ordering {}
 
 impl Ordering {
     /// Reverse the `Ordering`, so that `Less` becomes `Greater` and
