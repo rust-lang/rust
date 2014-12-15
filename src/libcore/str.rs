@@ -2101,6 +2101,7 @@ impl StrPrelude for str {
             else { line }
         }
 
+        let f: fn(&str) -> &str = f; // coerce to fn pointer
         self.lines().map(f)
     }
 

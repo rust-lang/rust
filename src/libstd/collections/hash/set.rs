@@ -277,6 +277,7 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn into_iter(self) -> IntoIter<T> {
         fn first<A, B>((a, _): (A, B)) -> A { a }
+        let first: fn((T, ())) -> T = first;
 
         IntoIter { iter: self.map.into_iter().map(first) }
     }
@@ -419,6 +420,8 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn drain(&mut self) -> Drain<T> {
         fn first<A, B>((a, _): (A, B)) -> A { a }
+        let first: fn((T, ())) -> T = first; // coerce to fn pointer
+
         Drain { iter: self.map.drain().map(first) }
     }
 

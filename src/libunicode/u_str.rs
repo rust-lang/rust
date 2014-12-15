@@ -143,7 +143,10 @@ impl UnicodeStrPrelude for str {
     #[inline]
     fn words(&self) -> Words {
         fn is_not_empty(s: &&str) -> bool { !s.is_empty() }
+        let is_not_empty: fn(&&str) -> bool = is_not_empty; // coerce to fn pointer
+
         fn is_whitespace(c: char) -> bool { c.is_whitespace() }
+        let is_whitespace: fn(char) -> bool = is_whitespace; // coerce to fn pointer
 
         self.split(is_whitespace).filter(is_not_empty)
     }

@@ -838,8 +838,9 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// }
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn keys(&self) -> Keys<K, V> {
+    pub fn keys<'a>(&'a self) -> Keys<'a, K, V> {
         fn first<A, B>((a, _): (A, B)) -> A { a }
+        let first: fn((&'a K,&'a V)) -> &'a K = first; // coerce to fn ptr
 
         Keys { inner: self.iter().map(first) }
     }
@@ -862,8 +863,9 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// }
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn values(&self) -> Values<K, V> {
+    pub fn values<'a>(&'a self) -> Values<'a, K, V> {
         fn second<A, B>((_, b): (A, B)) -> B { b }
+        let second: fn((&'a K,&'a V)) -> &'a V = second; // coerce to fn ptr
 
         Values { inner: self.iter().map(second) }
     }
@@ -938,6 +940,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn into_iter(self) -> MoveEntries<K, V> {
         fn last_two<A, B, C>((_, b, c): (A, B, C)) -> (B, C) { (b, c) }
+        let last_two: fn((SafeHash, K, V)) -> (K, V) = last_two;
 
         MoveEntries {
             inner: self.table.into_iter().map(last_two)
@@ -1007,6 +1010,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn drain(&mut self) -> Drain<K, V> {
         fn last_two<A, B, C>((_, b, c): (A, B, C)) -> (B, C) { (b, c) }
+        let last_two: fn((SafeHash, K, V)) -> (K, V) = last_two; // coerce to fn pointer
 
         Drain {
             inner: self.table.drain().map(last_two),
