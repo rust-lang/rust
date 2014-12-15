@@ -32,13 +32,11 @@ use std::slice;
 
 pub mod blocks;
 
-#[deriving(Clone, PartialEq)]
+#[deriving(Clone, Copy, PartialEq)]
 pub enum PathElem {
     PathMod(Name),
     PathName(Name)
 }
-
-impl Copy for PathElem {}
 
 impl PathElem {
     pub fn name(&self) -> Name {
@@ -102,7 +100,7 @@ pub fn path_to_string<PI: Iterator<PathElem>>(path: PI) -> String {
     }).to_string()
 }
 
-#[deriving(Show)]
+#[deriving(Copy, Show)]
 pub enum Node<'ast> {
     NodeItem(&'ast Item),
     NodeForeignItem(&'ast ForeignItem),
@@ -122,11 +120,9 @@ pub enum Node<'ast> {
     NodeLifetime(&'ast Lifetime),
 }
 
-impl<'ast> Copy for Node<'ast> {}
-
 /// Represents an entry and its parent Node ID
 /// The odd layout is to bring down the total size.
-#[deriving(Show)]
+#[deriving(Copy, Show)]
 enum MapEntry<'ast> {
     /// Placeholder for holes in the map.
     NotPresent,
@@ -150,8 +146,6 @@ enum MapEntry<'ast> {
     RootCrate,
     RootInlinedParent(&'ast InlinedParent)
 }
-
-impl<'ast> Copy for MapEntry<'ast> {}
 
 impl<'ast> Clone for MapEntry<'ast> {
     fn clone(&self) -> MapEntry<'ast> {
