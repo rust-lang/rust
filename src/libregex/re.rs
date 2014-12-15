@@ -126,6 +126,7 @@ pub struct ExDynamic {
 }
 
 #[doc(hidden)]
+#[deriving(Copy)]
 pub struct ExNative {
     #[doc(hidden)]
     pub original: &'static str,
@@ -134,8 +135,6 @@ pub struct ExNative {
     #[doc(hidden)]
     pub prog: fn(MatchKind, &str, uint, uint) -> Vec<Option<uint>>
 }
-
-impl Copy for ExNative {}
 
 impl Clone for ExNative {
     fn clone(&self) -> ExNative {

@@ -77,13 +77,11 @@ pub enum Repeater {
     OneMore,
 }
 
-#[deriving(Show, Clone)]
+#[deriving(Copy, Show, Clone)]
 pub enum Greed {
     Greedy,
     Ungreedy,
 }
-
-impl Copy for Greed {}
 
 impl Greed {
     pub fn is_greedy(&self) -> bool {
