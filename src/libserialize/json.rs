@@ -226,7 +226,7 @@ pub type Array = Vec<Json>;
 pub type Object = BTreeMap<string::String, Json>;
 
 /// The errors that can arise while parsing a JSON stream.
-#[deriving(Clone, PartialEq)]
+#[deriving(Clone, Copy, PartialEq)]
 pub enum ErrorCode {
     InvalidSyntax,
     InvalidNumber,
@@ -247,16 +247,12 @@ pub enum ErrorCode {
     NotUtf8,
 }
 
-impl Copy for ErrorCode {}
-
-#[deriving(Clone, PartialEq, Show)]
+#[deriving(Clone, Copy, PartialEq, Show)]
 pub enum ParserError {
     /// msg, line, col
     SyntaxError(ErrorCode, uint, uint),
     IoError(io::IoErrorKind, &'static str),
 }
-
-impl Copy for ParserError {}
 
 // Builder and Parser have the same errors.
 pub type BuilderError = ParserError;
