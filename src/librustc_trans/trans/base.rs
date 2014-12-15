@@ -1393,6 +1393,16 @@ fn build_cfg(tcx: &ty::ctxt, id: ast::NodeId) -> (ast::NodeId, Option<cfg::CFG>)
     (blk.id, Some(cfg::CFG::new(tcx, &**blk)))
 }
 
+// Checks for the presence of "nested returns" in a function.
+// Nested returns are when the inner expression of a return expression
+// (the 'expr' in 'return expr') contains a return expression. Only cases
+// where the outer return is actually reachable are considered. Implicit
+// returns from the end of blocks are considered as well.
+//
+// This check is needed to handle the case where the inner expression is
+// part of a larger expression that may have already partially-filled the
+// return slot alloca. This can cause errors related to clean-up due to
+// the clobbering of the existing value in the return slot.
 fn has_nested_returns(tcx: &ty::ctxt, cfg: &cfg::CFG, blk_id: ast::NodeId) -> bool {
     for n in cfg.graph.depth_traverse(cfg.entry) {
         match tcx.map.find(n.id) {
