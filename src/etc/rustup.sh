@@ -231,6 +231,7 @@ validate_opt() {
 
 probe_need CFG_CURL  curl
 probe_need CFG_TAR   tar
+probe_need CFG_FILE  file
 
 CFG_SRC_DIR="$(cd $(dirname $0) && pwd)/"
 CFG_SELF="$0"
@@ -359,7 +360,7 @@ esac
 # Detect 64 bit linux systems with 32 bit userland and force 32 bit compilation
 if [ $CFG_OSTYPE = unknown-linux-gnu -a $CFG_CPUTYPE = x86_64 ]
 then
-    file -L "$SHELL" | grep -q "x86[_-]64"
+    "${CFG_FILE}" -L "$SHELL" | grep -q "x86[_-]64"
     if [ $? != 0 ]; then
         CFG_CPUTYPE=i686
     fi
