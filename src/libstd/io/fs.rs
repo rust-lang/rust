@@ -64,7 +64,7 @@ use option::Option::{Some, None};
 use path::{Path, GenericPath};
 use path;
 use result::Result::{Err, Ok};
-use slice::SlicePrelude;
+use slice::SliceExt;
 use string::String;
 use vec::Vec;
 

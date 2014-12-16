@@ -16,13 +16,11 @@ pub use self::ExponentFormat::*;
 pub use self::SignificantDigits::*;
 pub use self::SignFormat::*;
 
-use char;
-use char::Char;
+use char::{mod, Char};
 use kinds::Copy;
-use num;
-use num::{Int, Float, FPNaN, FPInfinite, ToPrimitive};
+use num::{mod, Int, Float, FPNaN, FPInfinite, ToPrimitive};
 use ops::FnMut;
-use slice::{SlicePrelude, CloneSliceAllocPrelude};
+use slice::{SliceExt, CloneSliceExt};
 use str::StrPrelude;
 use string::String;
 use vec::Vec;

@@ -14,7 +14,7 @@ use comm::{Sender, Receiver};
 use io;
 use option::Option::{None, Some};
 use result::Result::{Ok, Err};
-use slice::{bytes, CloneSliceAllocPrelude, SlicePrelude};
+use slice::{bytes, CloneSliceExt, SliceExt};
 use super::{Buffer, Reader, Writer, IoResult};
 use vec::Vec;
 

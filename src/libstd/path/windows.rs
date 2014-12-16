@@ -26,7 +26,7 @@ use kinds::Copy;
 use mem;
 use option::Option;
 use option::Option::{Some, None};
-use slice::{AsSlice, SlicePrelude};
+use slice::{AsSlice, SliceExt};
 use str::{CharSplits, FromStr, Str, StrAllocating, StrVector, StrPrelude};
 use string::String;
 use unicode::char::UnicodeChar;

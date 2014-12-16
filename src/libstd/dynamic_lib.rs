@@ -26,7 +26,7 @@ use os;
 use path::{Path,GenericPath};
 use result::*;
 use result::Result::{Err, Ok};
-use slice::{AsSlice,SlicePrelude};
+use slice::{AsSlice,SliceExt};
 use str;
 use string::String;
 use vec::Vec;
@@ -295,7 +295,7 @@ pub mod dl {
     use ptr;
     use result::Result;
     use result::Result::{Ok, Err};
-    use slice::SlicePrelude;
+    use slice::SliceExt;
     use str::StrPrelude;
     use str;
     use string::String;
