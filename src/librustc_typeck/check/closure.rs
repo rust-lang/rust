@@ -261,44 +261,43 @@ fn check_boxed_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
     // Find the expected input/output types (if any). Substitute
     // fresh bound regions for any bound regions we find in the
     // expected types so as to avoid capture.
-    let expected_sty = expected.map_to_option(fcx, |x| Some((*x).clone()));
-    let (expected_sig,
-         expected_onceness,
-         expected_bounds) = {
-        match expected_sty {
-            Some(ty::ty_closure(ref cenv)) => {
-                let (sig, _) =
-                    ty::replace_late_bound_regions(
-                        tcx,
-                        &cenv.sig,
-                        |_, debruijn| fcx.inh.infcx.fresh_bound_region(debruijn));
-                let onceness = match (&store, &cenv.store) {
-                    // As the closure type and onceness go, only three
-                    // combinations are legit:
-                    //      once closure
-                    //      many closure
-                    //      once proc
-                    // If the actual and expected closure type disagree with
-                    // each other, set expected onceness to be always Once or
-                    // Many according to the actual type. Otherwise, it will
-                    // yield either an illegal "many proc" or a less known
-                    // "once closure" in the error message.
-                    (&ty::UniqTraitStore, &ty::UniqTraitStore) |
-                    (&ty::RegionTraitStore(..), &ty::RegionTraitStore(..)) =>
-                        cenv.onceness,
-                    (&ty::UniqTraitStore, _) => ast::Once,
-                    (&ty::RegionTraitStore(..), _) => ast::Many,
-                };
-                (Some(sig), onceness, cenv.bounds)
-            }
-            _ => {
-                // Not an error! Means we're inferring the closure type
-                let region = fcx.infcx().next_region_var(
-                    infer::AddrOfRegion(expr.span));
-                let bounds = ty::region_existential_bound(region);
-                let onceness = ast::Many;
-                (None, onceness, bounds)
-            }
+    let expected_cenv = expected.map_to_option(fcx, |ty| match ty.sty {
+        ty::ty_closure(ref cenv) => Some(cenv),
+        _ => None
+    });
+    let (expected_sig, expected_onceness, expected_bounds) = match expected_cenv {
+        Some(cenv) => {
+            let (sig, _) =
+                ty::replace_late_bound_regions(
+                    tcx,
+                    &cenv.sig,
+                    |_, debruijn| fcx.inh.infcx.fresh_bound_region(debruijn));
+            let onceness = match (&store, &cenv.store) {
+                // As the closure type and onceness go, only three
+                // combinations are legit:
+                //      once closure
+                //      many closure
+                //      once proc
+                // If the actual and expected closure type disagree with
+                // each other, set expected onceness to be always Once or
+                // Many according to the actual type. Otherwise, it will
+                // yield either an illegal "many proc" or a less known
+                // "once closure" in the error message.
+                (&ty::UniqTraitStore, &ty::UniqTraitStore) |
+                (&ty::RegionTraitStore(..), &ty::RegionTraitStore(..)) =>
+                    cenv.onceness,
+                (&ty::UniqTraitStore, _) => ast::Once,
+                (&ty::RegionTraitStore(..), _) => ast::Many,
+            };
+            (Some(sig), onceness, cenv.bounds)
+        }
+        _ => {
+            // Not an error! Means we're inferring the closure type
+            let region = fcx.infcx().next_region_var(
+                infer::AddrOfRegion(expr.span));
+            let bounds = ty::region_existential_bound(region);
+            let onceness = ast::Many;
+            (None, onceness, bounds)
         }
     };
 
