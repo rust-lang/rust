@@ -407,7 +407,7 @@ impl fmt::Show for clean::Type {
                        lifetimes = if decl.lifetimes.len() == 0 {
                            "".to_string()
                        } else {
-                           format!("&lt;{:#}&gt;", decl.lifetimes)
+                           format!("for &lt;{:#}&gt;", decl.lifetimes)
                        },
                        args = decl.decl.inputs,
                        arrow = decl.decl.output,
@@ -436,7 +436,7 @@ impl fmt::Show for clean::Type {
                        lifetimes = if decl.lifetimes.len() == 0 {
                            "".to_string()
                        } else {
-                           format!("&lt;{:#}&gt;", decl.lifetimes)
+                           format!("for &lt;{:#}&gt;", decl.lifetimes)
                        },
                        args = decl.decl.inputs,
                        bounds = if decl.bounds.len() == 0 {
