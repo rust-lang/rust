@@ -12,7 +12,7 @@ all:
 	rm $(TMPDIR)/$(call BIN,bar)
 	[ "$$(ls -1 $(TMPDIR) | wc -l)" -eq "0" ]
 
-	$(RUSTC) foo.rs --emit=asm,ir,bc,obj,link
+	$(RUSTC) foo.rs --emit=asm,llvm-ir,llvm-bc,obj,link
 	rm $(TMPDIR)/bar.ll
 	rm $(TMPDIR)/bar.bc
 	rm $(TMPDIR)/bar.s
@@ -24,11 +24,11 @@ all:
 	rm $(TMPDIR)/foo
 	[ "$$(ls -1 $(TMPDIR) | wc -l)" -eq "0" ]
 
-	$(RUSTC) foo.rs --emit=bc -o $(TMPDIR)/foo
+	$(RUSTC) foo.rs --emit=llvm-bc -o $(TMPDIR)/foo
 	rm $(TMPDIR)/foo
 	[ "$$(ls -1 $(TMPDIR) | wc -l)" -eq "0" ]
 
-	$(RUSTC) foo.rs --emit=ir -o $(TMPDIR)/foo
+	$(RUSTC) foo.rs --emit=llvm-ir -o $(TMPDIR)/foo
 	rm $(TMPDIR)/foo
 	[ "$$(ls -1 $(TMPDIR) | wc -l)" -eq "0" ]
 
@@ -56,7 +56,7 @@ all:
 	rm $(TMPDIR)/$(call BIN,foo)
 	[ "$$(ls -1 $(TMPDIR) | wc -l)" -eq "0" ]
 
-	$(RUSTC) foo.rs --emit=asm,ir,bc,obj,link --crate-type=staticlib
+	$(RUSTC) foo.rs --emit=asm,llvm-ir,llvm-bc,obj,link --crate-type=staticlib
 	rm $(TMPDIR)/bar.ll
 	rm $(TMPDIR)/bar.s
 	rm $(TMPDIR)/bar.o
@@ -65,7 +65,7 @@ all:
 	# Don't check that the $(TMPDIR) is empty - we left `foo.bc` for later
 	# comparison.
 
-	$(RUSTC) foo.rs --emit=bc,link --crate-type=rlib
+	$(RUSTC) foo.rs --emit=llvm-bc,link --crate-type=rlib
 	cmp $(TMPDIR)/foo.bc $(TMPDIR)/bar.bc
 	rm $(TMPDIR)/bar.bc
 	rm $(TMPDIR)/foo.bc

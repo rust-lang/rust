@@ -1666,7 +1666,7 @@ fn compile_test_and_save_bitcode(config: &Config, props: &TestProps,
     // FIXME (#9639): This needs to handle non-utf8 paths
     let mut link_args = vec!("-L".to_string(),
                              aux_dir.as_str().unwrap().to_string());
-    let llvm_args = vec!("--emit=bc,obj".to_string(),
+    let llvm_args = vec!("--emit=llvm-bc,obj".to_string(),
                          "--crate-type=lib".to_string());
     link_args.extend(llvm_args.into_iter());
     let args = make_compile_args(config,

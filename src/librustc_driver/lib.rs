@@ -46,7 +46,7 @@ pub use syntax::diagnostic;
 
 use rustc_trans::back::link;
 use rustc::session::{config, Session, build_session};
-use rustc::session::config::Input;
+use rustc::session::config::{Input, PrintRequest};
 use rustc::lint::Lint;
 use rustc::lint;
 use rustc::metadata;
@@ -101,6 +101,8 @@ fn run_compiler(args: &[String]) {
     }
 
     let sopts = config::build_session_options(&matches);
+    let odir = matches.opt_str("out-dir").map(|o| Path::new(o));
+    let ofile = matches.opt_str("o").map(|o| Path::new(o));
     let (input, input_file_path) = match matches.free.len() {
         0u => {
             if sopts.describe_lints {
@@ -109,13 +111,10 @@ fn run_compiler(args: &[String]) {
                 describe_lints(&ls, false);
                 return;
             }
-
             let sess = build_session(sopts, None, descriptions);
-            if sess.debugging_opt(config::PRINT_SYSROOT) {
-                println!("{}", sess.sysroot().display());
+            if print_crate_info(&sess, None, &odir, &ofile) {
                 return;
             }
-
             early_error("no input filename given");
         }
         1u => {
@@ -133,13 +132,14 @@ fn run_compiler(args: &[String]) {
 
     let sess = build_session(sopts, input_file_path, descriptions);
     let cfg = config::build_configuration(&sess);
-    let odir = matches.opt_str("out-dir").map(|o| Path::new(o));
-    let ofile = matches.opt_str("o").map(|o| Path::new(o));
+    if print_crate_info(&sess, Some(&input), &odir, &ofile) {
+        return
+    }
 
     let pretty = matches.opt_default("pretty", "normal").map(|a| {
         pretty::parse_pretty(&sess, a.as_slice())
     });
-    match pretty {
+    match pretty.into_iter().next() {
         Some((ppm, opt_uii)) => {
             pretty::pretty_print_input(sess, cfg, &input, ppm, opt_uii, ofile);
             return;
@@ -158,10 +158,6 @@ fn run_compiler(args: &[String]) {
                 early_error("can not list metadata for stdin");
             }
         }
-        return;
-    }
-
-    if print_crate_info(&sess, &input, &odir, &ofile) {
         return;
     }
 
@@ -185,12 +181,8 @@ pub fn commit_date_str() -> Option<&'static str> {
 
 /// Prints version information and returns None on success or an error
 /// message on panic.
-pub fn version(binary: &str, matches: &getopts::Matches) -> Option<String> {
-    let verbose = match matches.opt_str("version").as_ref().map(|s| s.as_slice()) {
-        None => false,
-        Some("verbose") => true,
-        Some(s) => return Some(format!("Unrecognized argument: {}", s))
-    };
+pub fn version(binary: &str, matches: &getopts::Matches) {
+    let verbose = matches.opt_present("verbose");
 
     println!("{} {}", binary, option_env!("CFG_VERSION").unwrap_or("unknown version"));
     if verbose {
@@ -201,18 +193,27 @@ pub fn version(binary: &str, matches: &getopts::Matches) -> Option<String> {
         println!("host: {}", config::host_triple());
         println!("release: {}", unw(release_str()));
     }
-    None
 }
 
-fn usage() {
+fn usage(verbose: bool) {
+    let groups = if verbose {
+        config::optgroups()
+    } else {
+        config::short_optgroups()
+    };
     let message = format!("Usage: rustc [OPTIONS] INPUT");
+    let extra_help = if verbose {
+        ""
+    } else {
+        "\n    --help -v           Print the full set of options rustc accepts"
+    };
     println!("{}\n\
 Additional help:
     -C help             Print codegen options
     -W help             Print 'lint' options and default settings
-    -Z help             Print internal options for debugging rustc\n",
-              getopts::usage(message.as_slice(),
-                             config::optgroups().as_slice()));
+    -Z help             Print internal options for debugging rustc{}\n",
+              getopts::usage(message.as_slice(), groups.as_slice()),
+              extra_help);
 }
 
 fn describe_lints(lint_store: &lint::LintStore, loaded_plugins: bool) {
@@ -360,7 +361,7 @@ pub fn handle_options(mut args: Vec<String>) -> Option<getopts::Matches> {
     let _binary = args.remove(0).unwrap();
 
     if args.is_empty() {
-        usage();
+        usage(false);
         return None;
     }
 
@@ -373,7 +374,7 @@ pub fn handle_options(mut args: Vec<String>) -> Option<getopts::Matches> {
         };
 
     if matches.opt_present("h") || matches.opt_present("help") {
-        usage();
+        usage(matches.opt_present("verbose"));
         return None;
     }
 
@@ -397,49 +398,55 @@ pub fn handle_options(mut args: Vec<String>) -> Option<getopts::Matches> {
     }
 
     if matches.opt_present("version") {
-        match version("rustc", &matches) {
-            Some(err) => early_error(err.as_slice()),
-            None => return None
-        }
+        version("rustc", &matches);
+        return None;
     }
 
     Some(matches)
 }
 
 fn print_crate_info(sess: &Session,
-                    input: &Input,
+                    input: Option<&Input>,
                     odir: &Option<Path>,
                     ofile: &Option<Path>)
                     -> bool {
-    let (crate_name, crate_file_name) = sess.opts.print_metas;
-    // these nasty nested conditions are to avoid doing extra work
-    if crate_name || crate_file_name {
-        let attrs = parse_crate_attrs(sess, input);
-        let t_outputs = driver::build_output_filenames(input,
-                                                       odir,
-                                                       ofile,
-                                                       attrs.as_slice(),
-                                                       sess);
-        let id = link::find_crate_name(Some(sess), attrs.as_slice(), input);
+    if sess.opts.prints.len() == 0 { return false }
 
-        if crate_name {
-            println!("{}", id);
-        }
-        if crate_file_name {
-            let crate_types = driver::collect_crate_types(sess, attrs.as_slice());
-            let metadata = driver::collect_crate_metadata(sess, attrs.as_slice());
-            *sess.crate_metadata.borrow_mut() = metadata;
-            for &style in crate_types.iter() {
-                let fname = link::filename_for_input(sess, style, id.as_slice(),
-                                                     &t_outputs.with_extension(""));
-                println!("{}", fname.filename_display());
+    let attrs = input.map(|input| parse_crate_attrs(sess, input));
+    for req in sess.opts.prints.iter() {
+        match *req {
+            PrintRequest::Sysroot => println!("{}", sess.sysroot().display()),
+            PrintRequest::FileNames |
+            PrintRequest::CrateName => {
+                let input = match input {
+                    Some(input) => input,
+                    None => early_error("no input file provided"),
+                };
+                let attrs = attrs.as_ref().unwrap().as_slice();
+                let t_outputs = driver::build_output_filenames(input,
+                                                               odir,
+                                                               ofile,
+                                                               attrs,
+                                                               sess);
+                let id = link::find_crate_name(Some(sess), attrs.as_slice(),
+                                               input);
+                if *req == PrintRequest::CrateName {
+                    println!("{}", id);
+                    continue
+                }
+                let crate_types = driver::collect_crate_types(sess, attrs);
+                let metadata = driver::collect_crate_metadata(sess, attrs);
+                *sess.crate_metadata.borrow_mut() = metadata;
+                for &style in crate_types.iter() {
+                    let fname = link::filename_for_input(sess, style,
+                                                         id.as_slice(),
+                                                         &t_outputs.with_extension(""));
+                    println!("{}", fname.filename_display());
+                }
             }
         }
-
-        true
-    } else {
-        false
     }
+    return true;
 }
 
 fn parse_crate_attrs(sess: &Session, input: &Input) ->
