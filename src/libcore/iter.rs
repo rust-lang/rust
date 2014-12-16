@@ -2542,6 +2542,64 @@ impl<A: Int> Iterator<A> for RangeStepInclusive<A> {
     }
 }
 
+
+/// The `Step` trait identifies objects which can be stepped over in both
+/// directions. The `steps_between` function provides a way to
+/// compare two Step objects (it could be provided using `step()` and `Ord`,
+/// but the implementation would be so inefficient as to be useless).
+#[unstable = "Trait is unstable."]
+pub trait Step: Ord {
+    /// Change self to the next object.
+    fn step(&mut self);
+    /// Change self to the previous object.
+    fn step_back(&mut self);
+    /// The steps_between two step objects.
+    /// a should always be less than b, so the result should never be negative.
+    /// Return None if it is not possible to calculate steps_between without
+    /// overflow.
+    fn steps_between(a: &Self, b: &Self) -> Option<uint>;
+}
+
+macro_rules! step_impl {
+    ($($t:ty)*) => ($(
+        #[unstable = "Trait is unstable."]
+        impl Step for $t {
+            #[inline]
+            fn step(&mut self) { *self += 1; }
+            #[inline]
+            fn step_back(&mut self) { *self -= 1; }
+            #[inline]
+            fn steps_between(a: &$t, b: &$t) -> Option<uint> {
+                debug_assert!(a < b);
+                Some((*a - *b) as uint)
+            }
+        }
+    )*)
+}
+
+macro_rules! step_impl_no_between {
+    ($($t:ty)*) => ($(
+        #[unstable = "Trait is unstable."]
+        impl Step for $t {
+            #[inline]
+            fn step(&mut self) { *self += 1; }
+            #[inline]
+            fn step_back(&mut self) { *self -= 1; }
+            #[inline]
+            fn steps_between(_a: &$t, _b: &$t) -> Option<uint> {
+                None
+            }
+        }
+    )*)
+}
+
+step_impl!(uint u8 u16 u32 int i8 i16 i32);
+#[cfg(target_word_size = "64")]
+step_impl!(u64 i64);
+#[cfg(target_word_size = "32")]
+step_impl_no_between!(u64 i64);
+
+
 /// An iterator that repeats an element endlessly
 #[deriving(Clone)]
 #[stable]

@@ -34,19 +34,25 @@ fn alloc_obj_with_dtor(b: &mut Bencher) {
 #[test]
 fn test_range() {
     let r = Range { start: 2u, end: 10 };
+    let mut count = 0u;
     for (i, ri) in r.enumerate() {
         assert!(ri == i + 2);
         assert!(ri >= 2u && ri < 10u);
+        count += 1;
     }
+    assert!(count == 8);
 }
 
 #[test]
 fn test_range_from() {
     let r = RangeFrom { start: 2u };
+    let mut count = 0u;
     for (i, ri) in r.take(10).enumerate() {
         assert!(ri == i + 2);
         assert!(ri >= 2u && ri < 12u);
+        count += 1;
     }
+    assert!(count == 10);
 }
 
 #[test]
