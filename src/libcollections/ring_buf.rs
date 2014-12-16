@@ -443,6 +443,27 @@ impl<T> RingBuf<T> {
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn is_empty(&self) -> bool { self.len() == 0 }
 
+    /// Creates a draining iterator that clears the `RingBuf` and iterates over
+    /// the removed items from start to end.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::RingBuf;
+    ///
+    /// let mut v = RingBuf::new();
+    /// v.push_back(1i);
+    /// assert_eq!(v.drain().next(), Some(1));
+    /// assert!(v.is_empty());
+    /// ```
+    #[inline]
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    pub fn drain<'a>(&'a mut self) -> Drain<'a, T> {
+        Drain {
+            inner: self,
+        }
+    }
+
     /// Clears the buffer, removing all values.
     ///
     /// # Examples
@@ -456,10 +477,9 @@ impl<T> RingBuf<T> {
     /// assert!(v.is_empty());
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    #[inline]
     pub fn clear(&mut self) {
-        while self.pop_front().is_some() {}
-        self.head = 0;
-        self.tail = 0;
+        self.drain();
     }
 
     /// Provides a reference to the front element, or `None` if the sequence is
@@ -1177,8 +1197,43 @@ impl<T> DoubleEndedIterator<T> for MoveItems<T> {
     }
 }
 
-
 impl<T> ExactSizeIterator<T> for MoveItems<T> {}
+
+/// A draining RingBuf iterator
+pub struct Drain<'a, T: 'a> {
+    inner: &'a mut RingBuf<T>,
+}
+
+#[unsafe_destructor]
+impl<'a, T: 'a> Drop for Drain<'a, T> {
+    fn drop(&mut self) {
+        for _ in *self {}
+        self.inner.head = 0;
+        self.inner.tail = 0;
+    }
+}
+
+impl<'a, T: 'a> Iterator<T> for Drain<'a, T> {
+    #[inline]
+    fn next(&mut self) -> Option<T> {
+        self.inner.pop_front()
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        let len = self.inner.len();
+        (len, Some(len))
+    }
+}
+
+impl<'a, T: 'a> DoubleEndedIterator<T> for Drain<'a, T> {
+    #[inline]
+    fn next_back(&mut self) -> Option<T> {
+        self.inner.pop_back()
+    }
+}
+
+impl<'a, T: 'a> ExactSizeIterator<T> for Drain<'a, T> {}
 
 impl<A: PartialEq> PartialEq for RingBuf<A> {
     fn eq(&self, other: &RingBuf<A>) -> bool {
@@ -1786,6 +1841,73 @@ mod tests {
             assert_eq!(it.size_hint(), (6, Some(6)));
             assert_eq!(it.next(), Some(7));
             assert_eq!(it.size_hint(), (5, Some(5)));
+        }
+    }
+
+    #[test]
+    fn test_drain() {
+
+        // Empty iter
+        {
+            let mut d: RingBuf<int> = RingBuf::new();
+
+            {
+                let mut iter = d.drain();
+
+                assert_eq!(iter.size_hint(), (0, Some(0)));
+                assert_eq!(iter.next(), None);
+                assert_eq!(iter.size_hint(), (0, Some(0)));
+            }
+
+            assert!(d.is_empty());
+        }
+
+        // simple iter
+        {
+            let mut d = RingBuf::new();
+            for i in range(0i, 5) {
+                d.push_back(i);
+            }
+
+            assert_eq!(d.drain().collect::<Vec<int>>(), [0, 1, 2, 3, 4]);
+            assert!(d.is_empty());
+        }
+
+        // wrapped iter
+        {
+            let mut d = RingBuf::new();
+            for i in range(0i, 5) {
+                d.push_back(i);
+            }
+            for i in range(6, 9) {
+                d.push_front(i);
+            }
+
+            assert_eq!(d.drain().collect::<Vec<int>>(), [8,7,6,0,1,2,3,4]);
+            assert!(d.is_empty());
+        }
+
+        // partially used
+        {
+            let mut d = RingBuf::new();
+            for i in range(0i, 5) {
+                d.push_back(i);
+            }
+            for i in range(6, 9) {
+                d.push_front(i);
+            }
+
+            {
+                let mut it = d.drain();
+                assert_eq!(it.size_hint(), (8, Some(8)));
+                assert_eq!(it.next(), Some(8));
+                assert_eq!(it.size_hint(), (7, Some(7)));
+                assert_eq!(it.next_back(), Some(4));
+                assert_eq!(it.size_hint(), (6, Some(6)));
+                assert_eq!(it.next(), Some(7));
+                assert_eq!(it.size_hint(), (5, Some(5)));
+            }
+            assert!(d.is_empty());
         }
     }
 
