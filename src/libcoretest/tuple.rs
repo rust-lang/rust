@@ -18,27 +18,27 @@ fn test_clone() {
 #[test]
 fn test_getters() {
     macro_rules! test_getter(
-        ($x:expr, $valN:ident, $refN:ident, $mutN:ident,
-         $init:expr, $incr:expr, $result:expr) => ({
-            assert_eq!($x.$valN(), $init);
-            assert_eq!(*$x.$refN(), $init);
-            *$x.$mutN() += $incr;
-            assert_eq!(*$x.$refN(), $result);
+        ($val:expr, $init:expr plus $incr:expr makes $result:expr) => ({
+            assert_eq!($val, $init);
+            assert_eq!(*&$val, $init);
+            *&mut $val += $incr;
+            assert_eq!(*&$val, $result);
         })
     )
+
     let mut x = (0u8, 1u16, 2u32, 3u64, 4u, 5i8, 6i16, 7i32, 8i64, 9i, 10f32, 11f64);
-    test_getter!(x, val0,  ref0,  mut0,  0,    1,   1);
-    test_getter!(x, val1,  ref1,  mut1,  1,    1,   2);
-    test_getter!(x, val2,  ref2,  mut2,  2,    1,   3);
-    test_getter!(x, val3,  ref3,  mut3,  3,    1,   4);
-    test_getter!(x, val4,  ref4,  mut4,  4,    1,   5);
-    test_getter!(x, val5,  ref5,  mut5,  5,    1,   6);
-    test_getter!(x, val6,  ref6,  mut6,  6,    1,   7);
-    test_getter!(x, val7,  ref7,  mut7,  7,    1,   8);
-    test_getter!(x, val8,  ref8,  mut8,  8,    1,   9);
-    test_getter!(x, val9,  ref9,  mut9,  9,    1,   10);
-    test_getter!(x, val10, ref10, mut10, 10.0, 1.0, 11.0);
-    test_getter!(x, val11, ref11, mut11, 11.0, 1.0, 12.0);
+    test_getter!(x.0, 0 plus 1 makes 1);
+    test_getter!(x.1, 1 plus 1 makes 2);
+    test_getter!(x.2, 2 plus 1 makes 3);
+    test_getter!(x.3, 3 plus 1 makes 4);
+    test_getter!(x.4, 4 plus 1 makes 5);
+    test_getter!(x.5, 5 plus 1 makes 6);
+    test_getter!(x.6, 6 plus 1 makes 7);
+    test_getter!(x.7, 7 plus 1 makes 8);
+    test_getter!(x.8, 8 plus 1 makes 9);
+    test_getter!(x.9, 9 plus 1 makes 10);
+    test_getter!(x.10, 10.0 plus 1.0 makes 11.0);
+    test_getter!(x.11, 11.0 plus 1.0 makes 12.0);
 }
 
 #[test]
