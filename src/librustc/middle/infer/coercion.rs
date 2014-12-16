@@ -507,7 +507,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
          */
 
         self.unpack_actual_value(b, |b| {
-            debug!("coerce_from_bare_fn(a={}, b={})",
+            debug!("coerce_from_fn_item(a={}, b={})",
                    a.repr(self.tcx()), b.repr(self.tcx()));
 
             match b.sty {
