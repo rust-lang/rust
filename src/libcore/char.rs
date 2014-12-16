@@ -141,7 +141,7 @@ pub fn to_digit(c: char, radix: uint) -> Option<uint> {
 #[unstable = "pending decisions about costructors for primitives"]
 pub fn from_digit(num: uint, radix: uint) -> Option<char> {
     if radix > 36 {
-        panic!("from_digit: radix is to high (maximum 36)");
+        panic!("from_digit: radix is too high (maximum 36)");
     }
     if num < radix {
         unsafe {
