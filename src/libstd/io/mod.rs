@@ -1911,7 +1911,9 @@ bitflags! {
 }
 
 
+#[stable]
 impl Default for FilePermission {
+    #[stable]
     #[inline]
     fn default() -> FilePermission { FilePermission::empty() }
 }

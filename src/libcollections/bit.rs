@@ -824,8 +824,10 @@ pub fn from_fn<F>(len: uint, mut f: F) -> Bitv where F: FnMut(uint) -> bool {
     bitv
 }
 
+#[stable]
 impl Default for Bitv {
     #[inline]
+    #[stable]
     fn default() -> Bitv { Bitv::new() }
 }
 

@@ -97,6 +97,7 @@
 ///     bar: f32,
 /// }
 /// ```
+#[stable]
 pub trait Default {
     /// Returns the "default value" for a type.
     ///
@@ -130,13 +131,16 @@ pub trait Default {
     ///     fn default() -> Kind { Kind::A }
     /// }
     /// ```
+    #[stable]
     fn default() -> Self;
 }
 
 macro_rules! default_impl(
     ($t:ty, $v:expr) => {
+        #[stable]
         impl Default for $t {
             #[inline]
+            #[stable]
             fn default() -> $t { $v }
         }
     }
