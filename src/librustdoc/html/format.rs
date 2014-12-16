@@ -142,6 +142,22 @@ impl fmt::Show for clean::Lifetime {
     }
 }
 
+impl fmt::Show for clean::PolyTrait {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if self.lifetimes.len() > 0 {
+            try!(f.write("for&lt;".as_bytes()));
+            for (i, lt) in self.lifetimes.iter().enumerate() {
+                if i > 0 {
+                    try!(f.write(", ".as_bytes()));
+                }
+                try!(write!(f, "{}", lt));
+            }
+            try!(f.write("&gt; ".as_bytes()));
+        }
+        write!(f, "{}", self.trait_)
+    }
+}
+
 impl fmt::Show for clean::TyParamBound {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
@@ -389,15 +405,6 @@ impl fmt::Show for clean::Type {
                 try!(resolved_path(f, did, path, false));
                 tybounds(f, typarams)
             }
-            clean::PolyTraitRef(ref bounds) => {
-                for (i, bound) in bounds.iter().enumerate() {
-                    if i != 0 {
-                        try!(write!(f, " + "));
-                    }
-                    try!(write!(f, "{}", *bound));
-                }
-                Ok(())
-            }
             clean::Infer => write!(f, "_"),
             clean::Self(..) => f.write("Self".as_bytes()),
             clean::Primitive(prim) => primitive_link(f, prim, prim.to_string()),
@@ -504,6 +511,15 @@ impl fmt::Show for clean::Type {
                         write!(f, "&amp;{}{}{}", lt, m, **ty)
                     }
                 }
+            }
+            clean::PolyTraitRef(ref bounds) => {
+                for (i, bound) in bounds.iter().enumerate() {
+                    if i != 0 {
+                        try!(write!(f, " + "));
+                    }
+                    try!(write!(f, "{}", *bound));
+                }
+                Ok(())
             }
             clean::QPath { ref name, ref self_type, ref trait_ } => {
                 write!(f, "&lt;{} as {}&gt;::{}", self_type, trait_, name)
