@@ -684,6 +684,19 @@ impl<K, V> RawTable<K, V> {
         }
     }
 
+    pub fn drain(&mut self) -> Drain<K, V> {
+        let RawBuckets { raw, hashes_end, .. } = self.raw_buckets();
+        // Replace the marker regardless of lifetime bounds on parameters.
+        Drain {
+            iter: RawBuckets {
+                raw: raw,
+                hashes_end: hashes_end,
+                marker: marker::ContravariantLifetime::<'static>,
+            },
+            table: self,
+        }
+    }
+
     /// Returns an iterator that copies out each entry. Used while the table
     /// is being dropped.
     unsafe fn rev_move_buckets(&mut self) -> RevMoveBuckets<K, V> {
@@ -774,6 +787,12 @@ pub struct MoveEntries<K, V> {
     iter: RawBuckets<'static, K, V>
 }
 
+/// Iterator over the entries in a table, clearing the table.
+pub struct Drain<'a, K: 'a, V: 'a> {
+    table: &'a mut RawTable<K, V>,
+    iter: RawBuckets<'static, K, V>,
+}
+
 impl<'a, K, V> Iterator<(&'a K, &'a V)> for Entries<'a, K, V> {
     fn next(&mut self) -> Option<(&'a K, &'a V)> {
         self.iter.next().map(|bucket| {
@@ -825,6 +844,36 @@ impl<K, V> Iterator<(SafeHash, K, V)> for MoveEntries<K, V> {
     fn size_hint(&self) -> (uint, Option<uint>) {
         let size = self.table.size();
         (size, Some(size))
+    }
+}
+
+impl<'a, K: 'a, V: 'a> Iterator<(SafeHash, K, V)> for Drain<'a, K, V> {
+    #[inline]
+    fn next(&mut self) -> Option<(SafeHash, K, V)> {
+        self.iter.next().map(|bucket| {
+            self.table.size -= 1;
+            unsafe {
+                (
+                    SafeHash {
+                        hash: ptr::replace(bucket.hash, EMPTY_BUCKET),
+                    },
+                    ptr::read(bucket.key as *const K),
+                    ptr::read(bucket.val as *const V)
+                )
+            }
+        })
+    }
+
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        let size = self.table.size();
+        (size, Some(size))
+    }
+}
+
+#[unsafe_destructor]
+impl<'a, K: 'a, V: 'a> Drop for Drain<'a, K, V> {
+    fn drop(&mut self) {
+        for _ in *self {}
     }
 }
 
