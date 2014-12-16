@@ -165,10 +165,10 @@
 //!     fn node_id(&'a self, n: &Nd) -> dot::Id<'a> {
 //!         dot::Id::new(format!("N{}", n)).unwrap()
 //!     }
-//!     fn node_label<'a>(&'a self, n: &Nd) -> dot::LabelText<'a> {
+//!     fn node_label<'b>(&'b self, n: &Nd) -> dot::LabelText<'b> {
 //!         dot::LabelStr(self.nodes[*n].as_slice().into_cow())
 //!     }
-//!     fn edge_label<'a>(&'a self, _: &Ed) -> dot::LabelText<'a> {
+//!     fn edge_label<'b>(&'b self, _: &Ed) -> dot::LabelText<'b> {
 //!         dot::LabelStr("&sube;".into_cow())
 //!     }
 //! }
@@ -220,11 +220,11 @@
 //!     fn node_id(&'a self, n: &Nd<'a>) -> dot::Id<'a> {
 //!         dot::Id::new(format!("N{}", n.0)).unwrap()
 //!     }
-//!     fn node_label<'a>(&'a self, n: &Nd<'a>) -> dot::LabelText<'a> {
+//!     fn node_label<'b>(&'b self, n: &Nd<'b>) -> dot::LabelText<'b> {
 //!         let &(i, _) = n;
 //!         dot::LabelStr(self.nodes[i].as_slice().into_cow())
 //!     }
-//!     fn edge_label<'a>(&'a self, _: &Ed<'a>) -> dot::LabelText<'a> {
+//!     fn edge_label<'b>(&'b self, _: &Ed<'b>) -> dot::LabelText<'b> {
 //!         dot::LabelStr("&sube;".into_cow())
 //!     }
 //! }

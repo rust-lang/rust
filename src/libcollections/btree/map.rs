@@ -561,7 +561,7 @@ mod stack {
     impl<'a, K, V> PartialSearchStack<'a, K, V> {
         /// Creates a new PartialSearchStack from a BTreeMap by initializing the stack with the
         /// root of the tree.
-        pub fn new<'a>(map: &'a mut BTreeMap<K, V>) -> PartialSearchStack<'a, K, V> {
+        pub fn new(map: &'a mut BTreeMap<K, V>) -> PartialSearchStack<'a, K, V> {
             let depth = map.depth;
 
             PartialSearchStack {

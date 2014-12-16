@@ -52,14 +52,14 @@ pub fn bar() {
              ((::std::fmt::format as
                   fn(&core::fmt::Arguments<'_>) -> collections::string::String)((&((::std::fmt::Arguments::new
                                                                                        as
-                                                                                       fn(&'a [&'a str], &'a [core::fmt::Argument<'a>]) -> core::fmt::Arguments<'a>)((__STATIC_FMTSTR
-                                                                                                                                                                         as
-                                                                                                                                                                         &'static [&'static str]),
-                                                                                                                                                                     (&([]
-                                                                                                                                                                           as
-                                                                                                                                                                           [core::fmt::Argument<'_>, ..0])
-                                                                                                                                                                         as
-                                                                                                                                                                         &[core::fmt::Argument<'_>, ..0]))
+                                                                                       fn(&[&str], &[core::fmt::Argument<'_>]) -> core::fmt::Arguments<'_>)((__STATIC_FMTSTR
+                                                                                                                                                                as
+                                                                                                                                                                &'static [&'static str]),
+                                                                                                                                                            (&([]
+                                                                                                                                                                  as
+                                                                                                                                                                  [core::fmt::Argument<'_>, ..0])
+                                                                                                                                                                as
+                                                                                                                                                                &[core::fmt::Argument<'_>, ..0]))
                                                                                       as
                                                                                       core::fmt::Arguments<'_>)
                                                                                     as

@@ -561,8 +561,8 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         }
     }
 
-    fn combine_map<'a>(&'a self, t: CombineMapType)
-                   -> &'a RefCell<CombineMap> {
+    fn combine_map(&self, t: CombineMapType)
+                   -> &RefCell<CombineMap> {
         match t {
             Glb => &self.glbs,
             Lub => &self.lubs,

@@ -539,29 +539,29 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn skolemizer<'a>(&'a self) -> TypeSkolemizer<'a, 'tcx> {
+    pub fn skolemizer<'b>(&'b self) -> TypeSkolemizer<'b, 'tcx> {
         skolemize::TypeSkolemizer::new(self)
     }
 
-    pub fn combine_fields<'a>(&'a self, a_is_expected: bool, trace: TypeTrace<'tcx>)
-                              -> CombineFields<'a, 'tcx> {
+    pub fn combine_fields<'b>(&'b self, a_is_expected: bool, trace: TypeTrace<'tcx>)
+                              -> CombineFields<'b, 'tcx> {
         CombineFields {infcx: self,
                        a_is_expected: a_is_expected,
                        trace: trace}
     }
 
-    pub fn equate<'a>(&'a self, a_is_expected: bool, trace: TypeTrace<'tcx>)
-                      -> Equate<'a, 'tcx> {
+    pub fn equate<'b>(&'b self, a_is_expected: bool, trace: TypeTrace<'tcx>)
+                      -> Equate<'b, 'tcx> {
         Equate(self.combine_fields(a_is_expected, trace))
     }
 
-    pub fn sub<'a>(&'a self, a_is_expected: bool, trace: TypeTrace<'tcx>)
-                   -> Sub<'a, 'tcx> {
+    pub fn sub<'b>(&'b self, a_is_expected: bool, trace: TypeTrace<'tcx>)
+                   -> Sub<'b, 'tcx> {
         Sub(self.combine_fields(a_is_expected, trace))
     }
 
-    pub fn lub<'a>(&'a self, a_is_expected: bool, trace: TypeTrace<'tcx>)
-                   -> Lub<'a, 'tcx> {
+    pub fn lub<'b>(&'b self, a_is_expected: bool, trace: TypeTrace<'tcx>)
+                   -> Lub<'b, 'tcx> {
         Lub(self.combine_fields(a_is_expected, trace))
     }
 
