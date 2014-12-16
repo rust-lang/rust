@@ -157,7 +157,7 @@ As an important last detail, both
 `Matcher` and `ReverseMatcher` are marked as `unsafe` traits, even though the actual methods
 aren't. This is because every implementation of these traits need to ensure that all
 indices returned by `next_match` and `next_match_back` lay on valid utf8 boundaries
-in the used haystack.
+in the haystack.
 
 Without that guarantee, every single match returned by a matcher would need to be
 double-checked for validity, which would be unnecessary and most likely
@@ -187,6 +187,40 @@ However, the same algorithm searching from the right would find these matches:
 This discrepancy can not be avoided without additional overhead or even
 allocations for caching in the reverse matcher, and thus "matching from the front" needs to
 be considered a different operation than "matching from the back".
+
+### Why `(uint, uint)` instead of `&str`
+
+It would be possible to define `next_match` and `next_match_back` to return an `&str`
+to the match instead of `(uint, uint)`.
+
+A concrete matcher impl could then make use of unsafe code to construct such an slice cheaply,
+and by its very nature it is guaranteed to lie on utf8 boundaries,
+which would also allow not marking the traits as unsafe.
+
+However, this approach has a couple of issues. For one, not every consumer of
+this API cares about only the matched slice itself:
+
+- The `split()` family of operations cares about the slices _between_ matches.
+- Operations like `match_indices()` and `find()` need to actually return the offset
+  to the start of the string as part of their definition.
+- The `trim()` and `Xs_with()` family of operations need to compare individual match
+  offsets with each other and the start and end of the string.
+
+In order for these use cases to work with a `&str` match, the concrete adapters
+would need to unsafely calculate the offset of a match `&str` to the start of the haystack `&str`.
+
+But that in turn would require matcher implementors to only return actual sub slices into
+the haystack, and not random `static` string slices, as the API defined with `&str` would allow.
+
+In order to resolve that issue, you'd have to do one of:
+
+- Add the uncheckable API constraint of only requiring true subslices, which would make the traits
+  unsafe again, negating much of the benefit.
+- Return a more complex custom slice type that still contains the haystack offset.
+  (This is listed as an alternative at the end of this RFC.)
+
+In both cases, the API does not really improve significantly, so `uint` indices have been chosen
+as the "simple" default design.
 
 ## New methods on `StrExt`
 
@@ -312,23 +346,36 @@ the `prelude` (which would be unneeded anyway).
 
 # Alternatives
 
-## Alternatives in general
+In general:
 
 - Keep status quo, with all issues listed at the beginning.
 - Stabilize on hardcoded variants, eg providing both `contains` and `contains_str`.
   Similar to status quo, but no `CharEq` and thus no generics.
 
-## Primary alternatives in details of this proposal
-
-The author identified a primary alternative that might still give the same desired API long-term.
-The biggest wart is the lifetime parameter on the two trait families, so it tries to avoid it:
+Under the assumption that the lifetime parameter on the traits in this proposal
+is too big a wart to have in the release string API, there is an primary alternative
+that would avoid it:
 
 - Stabilize on a variant around `CharEq` - This would mean hardcoded `_str` methods,
   generic `CharEq` methods, and no extensibility to types like `Regex`, but has a
   upgrade path for later upgrading `CharEq` to a full-fledged, HKT-using `Pattern` API, by providing
   back-comp generic impls.
 
-## Other alternatives in details of this proposal
+Next, there are alternatives that might make a positive difference in the authors opinion, but still have
+some negative trade-of:
+
+- With the `Matcher` traits having the unsafe constraint of returning results unique to the
+  current haystack already, they could just directly return a `(*const u8, *const u8)` pointing into it.
+  This would allow a few more micro-optimizations, as now the `matcher -> match -> final slice`
+  pipeline would no longer need to keep adding and subtracting the start address of the haystack
+  for immediate results.
+- Extend `Pattern` into `Pattern` and `ReversePattern`, starting the forward-reverse split at the level of
+  patterns directly. The two would still be in a inherits-from relationship like
+  `Matcher` and `ReverseMatcher`, and be interchangeable if the later also implement `DoubleEndedMatcher`,
+  but on the `str` API where clauses like `where P: Pattern<'a>, P::MatcherImpl: ReverseMatcher<'a>`
+  would turn into `where P: ReversePattern<'a>`.
+
+Lastly, there are alternatives that don't seem very favorable, but are listed for completeness sake:
 
 - Remove `unsafe` from the API by returning a special `SubSlice<'a>` type instead of `(uint, uint)` in each
   match, that wraps the haystack and the
@@ -341,16 +388,11 @@ The biggest wart is the lifetime parameter on the two trait families, so it trie
   themselves, duplicating it in the in-memory representation.
   However, this still runs into HKT issues with the impl of `Pattern`.
 - Remove the lifetime parameter on `Pattern` and `Matcher` by making them fully unsafe API's,
-  and require implementations to unsafely transmuting away and back the lifetime of the haystack slice.
+  and require implementations to unsafely transmuting back the lifetime of the haystack slice.
 - Remove `unsafe` from the API by not marking the `Matcher` traits as `unsafe`, requiring users of the API
   to explicitly check every match on validity in regard to utf8 boundaries.
 - Allow to opt-in the `unsafe` traits by providing parallel safe and unsafe `Matcher` traits or methods,
   with the one per default implemented in terms of the other.
-- Turn `Pattern` into `Pattern` and `ReversePattern`, starting the forward-reverse split at the level of
-  patterns directly. The two would still be in a inherits-from relationship like
-  `Matcher` and `ReverseMatcher`, and be interchangeable if the later also implement `DoubleEndedMatcher`,
-  but on the `str` API `where` clauses like `where P: Pattern<'a>, P::MatcherImpl: ReverseMatcher<'a>`
-  would turn into `where P: ReversePattern<'a>`.
 
 # Unresolved questions
 
@@ -360,6 +402,7 @@ The biggest wart is the lifetime parameter on the two trait families, so it trie
   In the first case, iterators like `Matches` and `RMatches` could both implement `DoubleEndedIterator` if a
   `DoubleEndedMatcher` exists, in the latter only `Matches` would, with `RMatches` only providing the
   minimum to support reverse operation.
+  A ruling in favor of symmetry would also speak for the `ReversePattern` alternative.
 
 # Additional extensions
 
