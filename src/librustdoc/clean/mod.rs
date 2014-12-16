@@ -43,8 +43,7 @@ use rustc::metadata::cstore;
 use rustc::metadata::csearch;
 use rustc::metadata::decoder;
 use rustc::middle::def;
-use rustc::middle::subst;
-use rustc::middle::subst::VecPerParamSpace;
+use rustc::middle::subst::{mod, ParamSpace, VecPerParamSpace};
 use rustc::middle::ty;
 use rustc::middle::stability;
 use rustc::session::config;
@@ -493,7 +492,7 @@ impl<'tcx> Clean<TyParam> for ty::TypeParameterDef<'tcx> {
 #[deriving(Clone, RustcEncodable, RustcDecodable, PartialEq)]
 pub enum TyParamBound {
     RegionBound(Lifetime),
-    TraitBound(Type)
+    TraitBound(PolyTrait)
 }
 
 impl Clean<TyParamBound> for ast::TyParamBound {
@@ -558,10 +557,13 @@ impl Clean<TyParamBound> for ty::BuiltinBound {
         let fqn = fqn.into_iter().map(|i| i.to_string()).collect();
         cx.external_paths.borrow_mut().as_mut().unwrap().insert(did,
                                                                 (fqn, TypeTrait));
-        TraitBound(ResolvedPath {
-            path: path,
-            typarams: None,
-            did: did,
+        TraitBound(PolyTrait {
+            trait_: ResolvedPath {
+                path: path,
+                typarams: None,
+                did: did,
+            },
+            lifetimes: vec![]
         })
     }
 }
@@ -585,10 +587,31 @@ impl<'tcx> Clean<TyParamBound> for ty::TraitRef<'tcx> {
                                  &self.substs);
         cx.external_paths.borrow_mut().as_mut().unwrap().insert(self.def_id,
                                                             (fqn, TypeTrait));
-        TraitBound(ResolvedPath {
-            path: path,
-            typarams: None,
-            did: self.def_id,
+
+        debug!("ty::TraitRef\n  substs.types(TypeSpace): {}\n",
+               self.substs.types.get_slice(ParamSpace::TypeSpace));
+
+        // collect any late bound regions
+        let mut late_bounds = vec![];
+        for &ty_s in self.substs.types.get_slice(ParamSpace::TypeSpace).iter() {
+            use rustc::middle::ty::{Region, sty};
+            if let sty::ty_tup(ref ts) = ty_s.sty {
+                for &ty_s in ts.iter() {
+                    if let sty::ty_rptr(ref reg, _) = ty_s.sty {
+                        if let &Region::ReLateBound(_, _) = reg {
+                            debug!("  hit an ReLateBound {}", reg);
+                            if let Some(lt) = reg.clean(cx) {
+                                late_bounds.push(lt)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        TraitBound(PolyTrait {
+            trait_: ResolvedPath { path: path, typarams: None, did: self.def_id, },
+            lifetimes: late_bounds
         })
     }
 }
@@ -615,7 +638,7 @@ impl<'tcx> Clean<(Vec<TyParamBound>, Option<Type>)> for ty::ParamBounds<'tcx> {
             (v, None)
         } else {
             let ty = match ty::BoundSized.clean(cx) {
-                TraitBound(ty) => ty,
+                TraitBound(polyt) => polyt.trait_,
                 _ => unreachable!()
             };
             (v, Some(ty))
@@ -627,7 +650,10 @@ impl<'tcx> Clean<Option<Vec<TyParamBound>>> for subst::Substs<'tcx> {
     fn clean(&self, cx: &DocContext) -> Option<Vec<TyParamBound>> {
         let mut v = Vec::new();
         v.extend(self.regions().iter().filter_map(|r| r.clean(cx)).map(RegionBound));
-        v.extend(self.types.iter().map(|t| TraitBound(t.clean(cx))));
+        v.extend(self.types.iter().map(|t| TraitBound(PolyTrait {
+            trait_: t.clean(cx),
+            lifetimes: vec![]
+        })));
         if v.len() > 0 {Some(v)} else {None}
     }
 }
@@ -1006,9 +1032,12 @@ impl Clean<Type> for ast::TraitRef {
     }
 }
 
-impl Clean<Type> for ast::PolyTraitRef {
-    fn clean(&self, cx: &DocContext) -> Type {
-        self.trait_ref.clean(cx)
+impl Clean<PolyTrait> for ast::PolyTraitRef {
+    fn clean(&self, cx: &DocContext) -> PolyTrait {
+        PolyTrait {
+            trait_: self.trait_ref.clean(cx),
+            lifetimes: self.bound_lifetimes.clean(cx)
+        }
     }
 }
 
@@ -1127,6 +1156,13 @@ impl<'tcx> Clean<Item> for ty::ImplOrTraitItem<'tcx> {
             ty::TypeTraitItem(ref tti) => tti.clean(cx),
         }
     }
+}
+
+/// A trait reference, which may have higher ranked lifetimes.
+#[deriving(Clone, RustcEncodable, RustcDecodable, PartialEq)]
+pub struct PolyTrait {
+    pub trait_: Type,
+    pub lifetimes: Vec<Lifetime>
 }
 
 /// A representation of a Type suitable for hyperlinking purposes. Ideally one can get the original
