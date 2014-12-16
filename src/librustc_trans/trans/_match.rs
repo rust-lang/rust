@@ -1263,7 +1263,7 @@ fn is_discr_reassigned(bcx: Block, discr: &ast::Expr, body: &ast::Expr) -> bool 
     };
     {
         let param_env = ty::empty_parameter_environment();
-        let mut visitor = euv::ExprUseVisitor::new(&mut rc, bcx, param_env);
+        let mut visitor = euv::ExprUseVisitor::new(&mut rc, bcx, &param_env);
         visitor.walk_expr(body);
     }
     rc.reassigned
