@@ -264,6 +264,24 @@ pub use comm::{SyncSender, Sender, Receiver};
 pub use task::spawn;
 ```
 
+## Move to an inner `v1` module
+
+This RFC also proposes moving all reexports to `std::prelude::v1` module instead
+of just inside `std::prelude`. The compiler will then start injecting `use
+std::prelude::v1::*`.
+
+This is a pre-emptive move to help provide room to grow the prelude module over
+time. It is unlikely that any reexports could ever be added to the prelude
+backwards-compatibly, so newer preludes (which may happen over time) will have
+to live in new modules. If the standard library grows multiple preludes over
+time, then it is expected for crates to be able to specify which prelude they
+would like to be compiled with. This feature is left as an open question,
+however, and movement to an inner `v1` module is simply preparation for this
+possible move happening in the future.
+
+The versioning scheme for the prelude over time (if it happens) is also left as
+an open question by this RFC.
+
 # Drawbacks
 
 A fairly large amount of functionality was removed from the prelude in order to
