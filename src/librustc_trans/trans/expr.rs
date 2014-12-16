@@ -944,7 +944,7 @@ fn trans_rvalue_stmt_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 // it won't actually be used anyway.
                 if let &Some(ref x) = ex {
                     bcx = trans_into(bcx, &**x, Ignore);
-                } 
+                }
                 bcx
             }
         }

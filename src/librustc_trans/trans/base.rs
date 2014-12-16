@@ -1381,7 +1381,8 @@ fn build_cfg(tcx: &ty::ctxt, id: ast::NodeId) -> (ast::NodeId, Option<cfg::CFG>)
                 _ => tcx.sess.bug("unexpected expr variant in has_nested_returns")
             }
         }
-        Some(ast_map::NodeVariant(..)) | Some(ast_map::NodeStructCtor(..)) => return (ast::DUMMY_NODE_ID, None),
+        Some(ast_map::NodeVariant(..)) |
+        Some(ast_map::NodeStructCtor(..)) => return (ast::DUMMY_NODE_ID, None),
 
         // glue, shims, etc
         None if id == ast::DUMMY_NODE_ID => return (ast::DUMMY_NODE_ID, None),

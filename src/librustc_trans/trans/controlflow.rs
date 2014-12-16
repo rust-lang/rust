@@ -112,7 +112,7 @@ pub fn trans_block<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     if dest != expr::Ignore {
         let block_ty = node_id_type(bcx, b.id);
-        
+
         if b.expr.is_none() || type_is_zero_size(bcx.ccx(), block_ty) {
             dest = expr::Ignore;
         } else if b.expr.is_some() {
