@@ -20,8 +20,8 @@ use graphviz as dot;
 
 use middle::ty;
 use super::Constraint;
-use middle::typeck::infer::SubregionOrigin;
-use middle::typeck::infer::region_inference::RegionVarBindings;
+use middle::infer::SubregionOrigin;
+use middle::infer::region_inference::RegionVarBindings;
 use session::config;
 use util::nodemap::{FnvHashMap, FnvHashSet};
 use util::ppaux::Repr;
