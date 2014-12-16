@@ -428,17 +428,19 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
         ty_enum(did, ref substs) | ty_struct(did, ref substs) => {
             let base = ty::item_path_str(cx, did);
             let generics = ty::lookup_item_type(cx, did).generics;
-            parameterized(cx, base.as_slice(), substs, &generics)
+            parameterized(cx, base.as_slice(), substs, &generics, did)
         }
         ty_trait(box ty::TyTrait {
             ref principal, ref bounds
         }) => {
             let base = ty::item_path_str(cx, principal.def_id);
             let trait_def = ty::lookup_trait_def(cx, principal.def_id);
+            let did = trait_def.trait_ref.def_id;
             let ty = parameterized(cx, base.as_slice(),
-                                   &principal.substs, &trait_def.generics);
+                                   &principal.substs, &trait_def.generics,
+                                   did);
             let bound_str = bounds.user_string(cx);
-            let bound_sep = if bound_str.is_empty() { "" } else { "+" };
+            let bound_sep = if bound_str.is_empty() { "" } else { " + " };
             format!("{}{}{}",
                     ty,
                     bound_sep,
@@ -484,7 +486,8 @@ pub fn explicit_self_category_to_str(category: &ty::ExplicitSelfCategory)
 pub fn parameterized<'tcx>(cx: &ctxt<'tcx>,
                            base: &str,
                            substs: &subst::Substs<'tcx>,
-                           generics: &ty::Generics<'tcx>)
+                           generics: &ty::Generics<'tcx>,
+                           did: ast::DefId)
                            -> String
 {
     if cx.sess.verbose() {
@@ -537,7 +540,12 @@ pub fn parameterized<'tcx>(cx: &ctxt<'tcx>,
         strs.push(ty_to_string(cx, *t))
     }
 
-    if strs.len() > 0u {
+    if cx.lang_items.fn_trait_kind(did).is_some() {
+        format!("{}({}){}",
+                base,
+                strs[0][1 .. strs[0].len() - (strs[0].ends_with(",)") as uint+1)],
+                if &*strs[1] == "()" { String::new() } else { format!(" -> {}", strs[1]) })
+    } else if strs.len() > 0 {
         format!("{}<{}>", base, strs.connect(", "))
     } else {
         format!("{}", base)
@@ -743,7 +751,7 @@ impl<'tcx> Repr<'tcx> for ty::TraitRef<'tcx> {
         let trait_def = ty::lookup_trait_def(tcx, self.def_id);
         format!("<{} : {}>",
                 self.substs.self_ty().repr(tcx),
-                parameterized(tcx, base.as_slice(), &self.substs, &trait_def.generics))
+                parameterized(tcx, base.as_slice(), &self.substs, &trait_def.generics, self.def_id))
     }
 }
 
@@ -1116,7 +1124,7 @@ impl<'tcx> UserString<'tcx> for ty::ParamBounds<'tcx> {
         for n in self.trait_bounds.iter() {
             result.push(n.user_string(tcx));
         }
-        result.connect("+")
+        result.connect(" + ")
     }
 }
 
@@ -1189,7 +1197,8 @@ impl<'tcx> UserString<'tcx> for ty::TraitRef<'tcx> {
             };
 
         let trait_def = ty::lookup_trait_def(tcx, self.def_id);
-        parameterized(tcx, base.as_slice(), &trait_ref.substs, &trait_def.generics)
+        let did = trait_def.trait_ref.def_id;
+        parameterized(tcx, base.as_slice(), &trait_ref.substs, &trait_def.generics, did)
     }
 }
 
