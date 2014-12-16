@@ -635,8 +635,8 @@ impl<'a> ::Encoder<io::IoError> for Encoder<'a> {
         write!(self.writer, "}}")
     }
 
-    fn emit_map_elt_key<F>(&mut self, idx: uint, mut f: F) -> EncodeResult where
-        F: FnMut(&mut Encoder<'a>) -> EncodeResult,
+    fn emit_map_elt_key<F>(&mut self, idx: uint, f: F) -> EncodeResult where
+        F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
         if idx != 0 { try!(write!(self.writer, ",")) }
         self.emitting_map_key = EmittingMapKeyState::Emitting;
@@ -901,8 +901,8 @@ impl<'a> ::Encoder<io::IoError> for PrettyEncoder<'a> {
         }
     }
 
-    fn emit_map_elt_key<F>(&mut self, idx: uint, mut f: F) -> EncodeResult where
-        F: FnMut(&mut PrettyEncoder<'a>) -> EncodeResult,
+    fn emit_map_elt_key<F>(&mut self, idx: uint, f: F) -> EncodeResult where
+        F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
     {
         if idx == 0 {
             try!(write!(self.writer, "\n"));
