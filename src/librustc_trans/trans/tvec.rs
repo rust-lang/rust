@@ -62,7 +62,7 @@ pub fn make_drop_glue_unboxed<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         let _icx = push_ctxt("tvec::make_drop_glue_unboxed");
 
         let dataptr = get_dataptr(bcx, vptr);
-        let bcx = if ty::type_needs_drop(tcx, unit_ty) {
+        let bcx = if type_needs_drop(tcx, unit_ty) {
             let len = get_len(bcx, vptr);
             iter_vec_raw(bcx, dataptr, unit_ty, len, |bb, vv, tt| glue::drop_ty(bb, vv, tt, None))
         } else {
