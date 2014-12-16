@@ -40,7 +40,7 @@ impl<'a, 'tcx, 'v> visit::Visitor<'v> for RvalueContext<'a, 'tcx> {
                 fn_id: ast::NodeId) {
         {
             let param_env = ParameterEnvironment::for_item(self.tcx, fn_id);
-            let mut euv = euv::ExprUseVisitor::new(self, self.tcx, param_env);
+            let mut euv = euv::ExprUseVisitor::new(self, self.tcx, &param_env);
             euv.walk_fn(fd, b);
         }
         visit::walk_fn(self, fk, fd, b, s)
