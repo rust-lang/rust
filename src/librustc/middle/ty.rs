@@ -827,6 +827,9 @@ pub struct ctxt<'tcx> {
     /// parameters are never placed into this cache, because their
     /// results are dependent on the parameter environment.
     pub type_impls_sized_cache: RefCell<HashMap<Ty<'tcx>,bool>>,
+
+    /// Caches whether traits are object safe
+    pub object_safety_cache: RefCell<DefIdMap<bool>>,
 }
 
 // Flags that we track on types. These flags are propagated upwards
@@ -2384,6 +2387,7 @@ pub fn mk_ctxt<'tcx>(s: Session,
         repr_hint_cache: RefCell::new(DefIdMap::new()),
         type_impls_copy_cache: RefCell::new(HashMap::new()),
         type_impls_sized_cache: RefCell::new(HashMap::new()),
+        object_safety_cache: RefCell::new(DefIdMap::new()),
    }
 }
 

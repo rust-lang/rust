@@ -8,11 +8,24 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Check that we correctly prevent users from making trait objects
+// from traits with generic methods.
 
-trait Foo : Sized {
-    fn foo(self: Box<Self>) { bar(self as Box<Foo>); }
+trait Bar {
+    fn bar<T>(&self, t: T);
 }
 
-fn bar(_b: Box<Foo>) { }
+fn make_bar<T:Bar>(t: &T) -> &Bar {
+    t
+        //~^ ERROR `Bar` is not object-safe
+        //~| NOTE method `bar` has generic type parameters
+}
 
-fn main() {}
+fn make_bar_explicit<T:Bar>(t: &T) -> &Bar {
+    t as &Bar
+        //~^ ERROR `Bar` is not object-safe
+        //~| NOTE method `bar` has generic type parameters
+}
+
+fn main() {
+}
