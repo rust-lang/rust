@@ -66,7 +66,9 @@ pub struct VecMap<V> {
     v: Vec<Option<V>>,
 }
 
+#[stable]
 impl<V> Default for VecMap<V> {
+    #[stable]
     #[inline]
     fn default() -> VecMap<V> { VecMap::new() }
 }

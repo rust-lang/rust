@@ -1044,8 +1044,9 @@ impl<'a, T, Sized? U: AsSlice<T>> AsSlice<T> for &'a mut U {
     fn as_slice<'a>(&'a self) -> &'a [T] { AsSlice::as_slice(*self) }
 }
 
-#[unstable = "waiting for DST"]
+#[stable]
 impl<'a, T> Default for &'a [T] {
+    #[stable]
     fn default() -> &'a [T] { &[] }
 }
 

@@ -44,11 +44,15 @@ pub static HEAP: () = ();
 #[unstable = "custom allocators will add an additional type parameter (with default)"]
 pub struct Box<T>(*mut T);
 
+#[stable]
 impl<T: Default> Default for Box<T> {
+    #[stable]
     fn default() -> Box<T> { box Default::default() }
 }
 
+#[stable]
 impl<T> Default for Box<[T]> {
+    #[stable]
     fn default() -> Box<[T]> { box [] }
 }
 

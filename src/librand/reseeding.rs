@@ -142,7 +142,9 @@ impl<R: Rng + Default> Reseeder<R> for ReseedWithDefault {
         *rng = Default::default();
     }
 }
+#[stable]
 impl Default for ReseedWithDefault {
+    #[stable]
     fn default() -> ReseedWithDefault { ReseedWithDefault }
 }
 

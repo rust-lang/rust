@@ -192,8 +192,10 @@ impl<T> DList<T> {
     }
 }
 
+#[stable]
 impl<T> Default for DList<T> {
     #[inline]
+    #[stable]
     fn default() -> DList<T> { DList::new() }
 }
 

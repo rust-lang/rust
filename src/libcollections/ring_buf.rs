@@ -68,7 +68,9 @@ impl<T> Drop for RingBuf<T> {
     }
 }
 
+#[stable]
 impl<T> Default for RingBuf<T> {
+    #[stable]
     #[inline]
     fn default() -> RingBuf<T> { RingBuf::new() }
 }
