@@ -682,7 +682,6 @@ pub struct ctxt<'tcx> {
     pub tcache: RefCell<DefIdMap<Polytype<'tcx>>>,
     pub rcache: RefCell<FnvHashMap<creader_cache_key, Ty<'tcx>>>,
     pub short_names_cache: RefCell<FnvHashMap<Ty<'tcx>, String>>,
-    pub needs_unwind_cleanup_cache: RefCell<FnvHashMap<Ty<'tcx>, bool>>,
     pub tc_cache: RefCell<FnvHashMap<Ty<'tcx>, TypeContents>>,
     pub ast_ty_to_ty_cache: RefCell<NodeMap<ast_ty_to_ty_cache_entry<'tcx>>>,
     pub enum_var_cache: RefCell<DefIdMap<Rc<Vec<Rc<VariantInfo<'tcx>>>>>>,
@@ -2108,7 +2107,6 @@ pub fn mk_ctxt<'tcx>(s: Session,
         tcache: RefCell::new(DefIdMap::new()),
         rcache: RefCell::new(FnvHashMap::new()),
         short_names_cache: RefCell::new(FnvHashMap::new()),
-        needs_unwind_cleanup_cache: RefCell::new(FnvHashMap::new()),
         tc_cache: RefCell::new(FnvHashMap::new()),
         ast_ty_to_ty_cache: RefCell::new(NodeMap::new()),
         enum_var_cache: RefCell::new(DefIdMap::new()),
@@ -2821,48 +2819,6 @@ pub fn type_is_floating_point(ty: Ty) -> bool {
     match ty.sty {
         ty_float(_) => true,
         _ => false,
-    }
-}
-
-pub fn type_needs_drop<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
-    type_contents(cx, ty).needs_drop(cx)
-}
-
-// Some things don't need cleanups during unwinding because the
-// task can free them all at once later. Currently only things
-// that only contain scalars and shared boxes can avoid unwind
-// cleanups.
-pub fn type_needs_unwind_cleanup<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
-    return memoized(&cx.needs_unwind_cleanup_cache, ty, |ty| {
-        type_needs_unwind_cleanup_(cx, ty, &mut FnvHashSet::new())
-    });
-
-    fn type_needs_unwind_cleanup_<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>,
-                                        tycache: &mut FnvHashSet<Ty<'tcx>>) -> bool {
-        // Prevent infinite recursion
-        if !tycache.insert(ty) {
-            return false;
-        }
-
-        let mut needs_unwind_cleanup = false;
-        maybe_walk_ty(ty, |ty| {
-            needs_unwind_cleanup |= match ty.sty {
-                ty_bool | ty_int(_) | ty_uint(_) |
-                ty_float(_) | ty_tup(_) | ty_ptr(_) => false,
-
-                ty_enum(did, substs) =>
-                    enum_variants(cx, did).iter().any(|v|
-                        v.args.iter().any(|aty| {
-                            let t = aty.subst(cx, substs);
-                            type_needs_unwind_cleanup_(cx, t, tycache)
-                        })
-                    ),
-
-                _ => true
-            };
-            !needs_unwind_cleanup
-        });
-        needs_unwind_cleanup
     }
 }
 

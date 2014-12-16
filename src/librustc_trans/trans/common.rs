@@ -53,8 +53,57 @@ use syntax::ast_map::{PathElem, PathName};
 use syntax::codemap::Span;
 use syntax::parse::token::InternedString;
 use syntax::parse::token;
+use util::common::memoized;
+use util::nodemap::FnvHashSet;
 
 pub use trans::context::CrateContext;
+
+// Some things don't need cleanups during unwinding because the
+// task can free them all at once later. Currently only things
+// that only contain scalars and shared boxes can avoid unwind
+// cleanups.
+pub fn type_needs_unwind_cleanup<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
+    return memoized(ccx.needs_unwind_cleanup_cache(), ty, |ty| {
+        type_needs_unwind_cleanup_(ccx.tcx(), ty, &mut FnvHashSet::new())
+    });
+
+    fn type_needs_unwind_cleanup_<'tcx>(tcx: &ty::ctxt<'tcx>,
+                                        ty: Ty<'tcx>,
+                                        tycache: &mut FnvHashSet<Ty<'tcx>>)
+                                        -> bool
+    {
+        // Prevent infinite recursion
+        if !tycache.insert(ty) {
+            return false;
+        }
+
+        let mut needs_unwind_cleanup = false;
+        ty::maybe_walk_ty(ty, |ty| {
+            needs_unwind_cleanup |= match ty.sty {
+                ty::ty_bool | ty::ty_int(_) | ty::ty_uint(_) |
+                ty::ty_float(_) | ty::ty_tup(_) | ty::ty_ptr(_) => false,
+
+                ty::ty_enum(did, substs) =>
+                    ty::enum_variants(tcx, did).iter().any(|v|
+                        v.args.iter().any(|aty| {
+                            let t = aty.subst(tcx, substs);
+                            type_needs_unwind_cleanup_(tcx, t, tycache)
+                        })
+                    ),
+
+                _ => true
+            };
+            !needs_unwind_cleanup
+        });
+        needs_unwind_cleanup
+    }
+}
+
+pub fn type_needs_drop<'tcx>(cx: &ty::ctxt<'tcx>,
+                             ty: Ty<'tcx>)
+                             -> bool {
+    ty::type_contents(cx, ty).needs_drop(cx)
+}
 
 fn type_is_newtype_immediate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                        ty: Ty<'tcx>) -> bool {
