@@ -11,6 +11,7 @@ pub use self::MaybeTyped::*;
 
 use rustc_driver::driver;
 use rustc::session::{mod, config};
+use rustc::session::search_paths::SearchPaths;
 use rustc::middle::{privacy, ty};
 use rustc::lint;
 use rustc_trans::back::link;
@@ -77,7 +78,7 @@ pub struct CrateAnalysis {
 
 pub type Externs = HashMap<String, Vec<String>>;
 
-pub fn run_core(libs: Vec<Path>, cfgs: Vec<String>, externs: Externs,
+pub fn run_core(search_paths: SearchPaths, cfgs: Vec<String>, externs: Externs,
                 cpath: &Path, triple: Option<String>)
                 -> (clean::Crate, CrateAnalysis) {
 
@@ -89,7 +90,7 @@ pub fn run_core(libs: Vec<Path>, cfgs: Vec<String>, externs: Externs,
 
     let sessopts = config::Options {
         maybe_sysroot: None,
-        addl_lib_search_paths: RefCell::new(libs),
+        search_paths: search_paths,
         crate_types: vec!(config::CrateTypeRlib),
         lint_opts: vec!((warning_lint, lint::Allow)),
         externs: externs,

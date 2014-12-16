@@ -9,11 +9,11 @@
 // except according to those terms.
 
 use std::io;
-use std::string::String;
 
 use core;
 use getopts;
 use testing;
+use rustc::session::search_paths::SearchPaths;
 
 use externalfiles::ExternalHtml;
 
@@ -135,7 +135,7 @@ pub fn render(input: &str, mut output: Path, matches: &getopts::Matches,
 }
 
 /// Run any tests/code examples in the markdown file `input`.
-pub fn test(input: &str, libs: Vec<Path>, externs: core::Externs,
+pub fn test(input: &str, libs: SearchPaths, externs: core::Externs,
             mut test_args: Vec<String>) -> int {
     let input_str = load_or_return!(input, 1, 2);
 
