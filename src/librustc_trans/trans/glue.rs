@@ -84,11 +84,11 @@ pub fn get_drop_glue_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     if !ty::type_is_sized(tcx, t) {
         return t
     }
-    if !ty::type_needs_drop(tcx, t) {
+    if !type_needs_drop(tcx, t) {
         return ty::mk_i8();
     }
     match t.sty {
-        ty::ty_uniq(typ) if !ty::type_needs_drop(tcx, typ)
+        ty::ty_uniq(typ) if !type_needs_drop(tcx, typ)
                          && ty::type_is_sized(tcx, typ) => {
             let llty = sizing_type_of(ccx, typ);
             // `Box<ZeroSizeType>` does not allocate.
@@ -110,7 +110,7 @@ pub fn drop_ty<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     // NB: v is an *alias* of type t here, not a direct value.
     debug!("drop_ty(t={})", t.repr(bcx.tcx()));
     let _icx = push_ctxt("drop_ty");
-    if ty::type_needs_drop(bcx.tcx(), t) {
+    if type_needs_drop(bcx.tcx(), t) {
         let ccx = bcx.ccx();
         let glue = get_drop_glue(ccx, t);
         let glue_type = get_drop_glue_type(ccx, t);
@@ -469,7 +469,7 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, t: Ty<'tcx>)
         ty::ty_vec(ty, None) => tvec::make_drop_glue_unboxed(bcx, v0, ty, false),
         _ => {
             assert!(ty::type_is_sized(bcx.tcx(), t));
-            if ty::type_needs_drop(bcx.tcx(), t) &&
+            if type_needs_drop(bcx.tcx(), t) &&
                 ty::type_is_structural(t) {
                 iter_structural_ty(bcx, v0, t, |bb, vv, tt| drop_ty(bb, vv, tt, None))
             } else {
