@@ -295,11 +295,11 @@ impl OverloadedCallType {
 // supplies types from the tree. After type checking is complete, you
 // can just use the tcx as the typer.
 
-pub struct ExprUseVisitor<'d,'t,'tcx,TYPER:'t> {
+pub struct ExprUseVisitor<'d,'t,'tcx:'t,TYPER:'t> {
     typer: &'t TYPER,
     mc: mc::MemCategorizationContext<'t,TYPER>,
     delegate: &'d mut (Delegate<'tcx>+'d),
-    param_env: ParameterEnvironment<'tcx>,
+    param_env: &'t ParameterEnvironment<'tcx>,
 }
 
 /// Whether the elements of an overloaded operation are passed by value or by reference
@@ -311,7 +311,7 @@ enum PassArgs {
 impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
     pub fn new(delegate: &'d mut Delegate<'tcx>,
                typer: &'t TYPER,
-               param_env: ParameterEnvironment<'tcx>)
+               param_env: &'t ParameterEnvironment<'tcx>)
                -> ExprUseVisitor<'d,'t,'tcx,TYPER> {
         ExprUseVisitor {
             typer: typer,
@@ -355,7 +355,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                         cmt: mc::cmt<'tcx>) {
         let mode = copy_or_move(self.tcx(),
                                 cmt.ty,
-                                &self.param_env,
+                                self.param_env,
                                 DirectRefMove);
         self.delegate.consume(consume_id, consume_span, cmt, mode);
     }
@@ -998,7 +998,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                     ast::PatIdent(ast::BindByValue(_), _, _) => {
                         match copy_or_move(tcx,
                                            cmt_pat.ty,
-                                           &self.param_env,
+                                           self.param_env,
                                            PatBindingMove) {
                             Copy => mode.lub(CopyingMatch),
                             Move(_) => mode.lub(MovingMatch),
@@ -1028,8 +1028,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
         let typer = self.typer;
         let def_map = &self.typer.tcx().def_map;
         let delegate = &mut self.delegate;
-        let param_env = &mut self.param_env;
-
+        let param_env = self.param_env;
         mc.cat_pattern(cmt_discr.clone(), pat, |mc, cmt_pat, pat| {
             if pat_util::pat_is_binding(def_map, pat) {
                 let tcx = typer.tcx();
@@ -1249,7 +1248,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                                                 closure_expr.span,
                                                 freevar.def);
             let mode = copy_or_move(self.tcx(), cmt_var.ty,
-                                    &self.param_env, CaptureMove);
+                                    self.param_env, CaptureMove);
             self.delegate.consume(closure_expr.id, freevar.span, cmt_var, mode);
         }
     }
