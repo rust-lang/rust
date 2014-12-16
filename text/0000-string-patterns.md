@@ -103,7 +103,7 @@ impl<'a>     Pattern<'a> for char       { /* ... */ }
 impl<'a, 'b> Pattern<'a> for &'b str    { /* ... */ }
 
 impl<'a, 'b> Pattern<'a> for &'b [char] { /* ... */ }
-impl<'a, F>  Pattern<'a> for F where F: FnOnce(char) -> bool { /* ... */ }
+impl<'a, F>  Pattern<'a> for F where F: FnMut(char) -> bool { /* ... */ }
 
 impl<'a, 'b> Pattern<'a> for &'b Regex  { /* ... */ }
 ```
