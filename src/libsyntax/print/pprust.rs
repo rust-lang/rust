@@ -1495,7 +1495,7 @@ impl<'a> State<'a> {
             ast::ExprBox(ref p, ref e) => {
                 try!(word(&mut self.s, "box"));
                 try!(word(&mut self.s, "("));
-                try!(self.print_expr(&**p));
+                try!(p.as_ref().map_or(Ok(()), |e|self.print_expr(&**e)));
                 try!(self.word_space(")"));
                 try!(self.print_expr(&**e));
             }
