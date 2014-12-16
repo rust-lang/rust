@@ -711,7 +711,7 @@ pub struct BottomUpFolder<'a, 'tcx: 'a, F> where F: FnMut(Ty<'tcx>) -> Ty<'tcx> 
 impl<'a, 'tcx, F> TypeFolder<'tcx> for BottomUpFolder<'a, 'tcx, F> where
     F: FnMut(Ty<'tcx>) -> Ty<'tcx>,
 {
-    fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx> { self.tcx }
+    fn tcx(&self) -> &ty::ctxt<'tcx> { self.tcx }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
         let t1 = super_fold_ty(self, ty);
@@ -769,7 +769,7 @@ pub fn fold_regions<'tcx,T,F>(tcx: &ty::ctxt<'tcx>,
 
 impl<'a, 'tcx> TypeFolder<'tcx> for RegionFolder<'a, 'tcx>
 {
-    fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx> { self.tcx }
+    fn tcx(&self) -> &ty::ctxt<'tcx> { self.tcx }
 
     fn enter_region_binder(&mut self) {
         self.current_depth += 1;
