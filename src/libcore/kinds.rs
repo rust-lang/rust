@@ -266,8 +266,7 @@ pub mod marker {
     /// typically embedded in other types, such as `Gc`, to ensure that
     /// their instances remain thread-local.
     #[lang="no_send_bound"]
-    #[deriving(Clone, PartialEq, Eq, PartialOrd, Ord)]
-    #[allow(missing_copy_implementations)]
+    #[deriving(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
     pub struct NoSend;
 
     /// A type which is considered "not POD", meaning that it is not
@@ -282,8 +281,7 @@ pub mod marker {
     /// its contents are not threadsafe, hence they cannot be
     /// shared between tasks.
     #[lang="no_sync_bound"]
-    #[deriving(Clone, PartialEq, Eq, PartialOrd, Ord)]
-    #[allow(missing_copy_implementations)]
+    #[deriving(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
     pub struct NoSync;
 
     /// A type which is considered managed by the GC. This is typically
