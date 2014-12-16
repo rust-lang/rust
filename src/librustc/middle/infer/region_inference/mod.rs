@@ -40,7 +40,7 @@ mod doc;
 mod graphviz;
 
 // A constraint that influences the inference process.
-#[deriving(PartialEq, Eq, Hash, Show)]
+#[deriving(Clone, PartialEq, Eq, Hash, Show)]
 pub enum Constraint {
     // One region variable is subregion of another
     ConstrainVarSubVar(RegionVid, RegionVid),
