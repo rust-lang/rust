@@ -436,7 +436,7 @@ fn trans_trait_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let self_datum = unpack_datum!(
         bcx, expr::trans(bcx, self_expr));
 
-    let llval = if ty::type_needs_drop(bcx.tcx(), self_datum.ty) {
+    let llval = if type_needs_drop(bcx.tcx(), self_datum.ty) {
         let self_datum = unpack_datum!(
             bcx, self_datum.to_rvalue_datum(bcx, "trait_callee"));
 

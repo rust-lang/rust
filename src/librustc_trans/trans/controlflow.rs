@@ -87,7 +87,7 @@ pub fn trans_stmt_semi<'blk, 'tcx>(cx: Block<'blk, 'tcx>, e: &ast::Expr)
                                    -> Block<'blk, 'tcx> {
     let _icx = push_ctxt("trans_stmt_semi");
     let ty = expr_ty(cx, e);
-    if ty::type_needs_drop(cx.tcx(), ty) {
+    if type_needs_drop(cx.tcx(), ty) {
         expr::trans_to_lvalue(cx, e, "stmt").bcx
     } else {
         expr::trans_into(cx, e, expr::Ignore)

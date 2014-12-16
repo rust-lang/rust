@@ -84,6 +84,7 @@ pub struct LocalCrateContext<'tcx> {
     tn: TypeNames,
     externs: RefCell<ExternMap>,
     item_vals: RefCell<NodeMap<ValueRef>>,
+    needs_unwind_cleanup_cache: RefCell<FnvHashMap<Ty<'tcx>, bool>>,
     fn_pointer_shims: RefCell<FnvHashMap<Ty<'tcx>, ValueRef>>,
     drop_glues: RefCell<FnvHashMap<Ty<'tcx>, ValueRef>>,
     tydescs: RefCell<FnvHashMap<Ty<'tcx>, Rc<tydesc_info<'tcx>>>>,
@@ -389,6 +390,7 @@ impl<'tcx> LocalCrateContext<'tcx> {
                 tn: TypeNames::new(),
                 externs: RefCell::new(FnvHashMap::new()),
                 item_vals: RefCell::new(NodeMap::new()),
+                needs_unwind_cleanup_cache: RefCell::new(FnvHashMap::new()),
                 fn_pointer_shims: RefCell::new(FnvHashMap::new()),
                 drop_glues: RefCell::new(FnvHashMap::new()),
                 tydescs: RefCell::new(FnvHashMap::new()),
@@ -567,6 +569,10 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
 
     pub fn link_meta<'a>(&'a self) -> &'a LinkMeta {
         &self.shared.link_meta
+    }
+
+    pub fn needs_unwind_cleanup_cache(&self) -> &RefCell<FnvHashMap<Ty<'tcx>, bool>> {
+        &self.local.needs_unwind_cleanup_cache
     }
 
     pub fn fn_pointer_shims(&self) -> &RefCell<FnvHashMap<Ty<'tcx>, ValueRef>> {
