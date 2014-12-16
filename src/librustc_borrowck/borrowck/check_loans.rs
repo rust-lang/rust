@@ -210,7 +210,7 @@ pub fn check_loans<'a, 'b, 'c, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
     {
         let mut euv = euv::ExprUseVisitor::new(&mut clcx,
                                                bccx.tcx,
-                                               param_env.clone());
+                                               &param_env);
         euv.walk_fn(decl, body);
     }
 }
