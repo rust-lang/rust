@@ -526,8 +526,10 @@ fn external_path(cx: &DocContext, name: &str, substs: &subst::Substs) -> Path {
         global: false,
         segments: vec![PathSegment {
             name: name.to_string(),
-            lifetimes: lifetimes,
-            types: types,
+            params: PathParameters::AngleBracketed {
+                lifetimes: lifetimes,
+                types: types,
+            }
         }],
     }
 }
@@ -1744,31 +1746,48 @@ impl Clean<Path> for ast::Path {
 }
 
 #[deriving(Clone, RustcEncodable, RustcDecodable, PartialEq)]
+pub enum PathParameters {
+    AngleBracketed {
+        lifetimes: Vec<Lifetime>,
+        types: Vec<Type>,
+    },
+    Parenthesized {
+        inputs: Vec<Type>,
+        output: Option<Type>
+    }
+}
+
+impl Clean<PathParameters> for ast::PathParameters {
+    fn clean(&self, cx: &DocContext) -> PathParameters {
+        match *self {
+            ast::AngleBracketedParameters(ref data) => {
+                PathParameters::AngleBracketed {
+                    lifetimes: data.lifetimes.clean(cx),
+                    types: data.types.clean(cx)
+                }
+            }
+
+            ast::ParenthesizedParameters(ref data) => {
+                PathParameters::Parenthesized {
+                    inputs: data.inputs.clean(cx),
+                    output: data.output.clean(cx)
+                }
+            }
+        }
+    }
+}
+
+#[deriving(Clone, RustcEncodable, RustcDecodable, PartialEq)]
 pub struct PathSegment {
     pub name: String,
-    pub lifetimes: Vec<Lifetime>,
-    pub types: Vec<Type>,
+    pub params: PathParameters
 }
 
 impl Clean<PathSegment> for ast::PathSegment {
     fn clean(&self, cx: &DocContext) -> PathSegment {
-        let (lifetimes, types) = match self.parameters {
-            ast::AngleBracketedParameters(ref data) => {
-                (data.lifetimes.clean(cx), data.types.clean(cx))
-            }
-
-            ast::ParenthesizedParameters(ref data) => {
-                // FIXME -- rustdoc should be taught about Foo() notation
-                let inputs = Tuple(data.inputs.clean(cx));
-                let output = data.output.as_ref().map(|t| t.clean(cx)).unwrap_or(Tuple(Vec::new()));
-                (Vec::new(), vec![inputs, output])
-            }
-        };
-
         PathSegment {
             name: self.identifier.clean(cx),
-            lifetimes: lifetimes,
-            types: types,
+            params: self.parameters.clean(cx)
         }
     }
 }
@@ -2399,8 +2418,10 @@ fn lang_struct(cx: &DocContext, did: Option<ast::DefId>,
             global: false,
             segments: vec![PathSegment {
                 name: name.to_string(),
-                lifetimes: vec![],
-                types: vec![t.clean(cx)],
+                params: PathParameters::AngleBracketed {
+                    lifetimes: vec![],
+                    types: vec![t.clean(cx)],
+                }
             }],
         },
     }
