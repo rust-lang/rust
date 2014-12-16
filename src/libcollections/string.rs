@@ -859,6 +859,16 @@ impl<'a, S: Str> Equiv<S> for String {
 #[cfg(stage0)]
 #[experimental = "waiting on Add stabilization"]
 impl<S: Str> Add<S, String> for String {
+    /// Concatenates `self` and `other` as a new mutable `String`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let string1 = "foo".to_string();
+    /// let string2 = "bar".to_string();
+    /// let string3 = string1 + string2;
+    /// assert_eq!(string3, "foobar".to_string());
+    /// ```
     fn add(&self, other: &S) -> String {
         let mut s = String::from_str(self.as_slice());
         s.push_str(other.as_slice());
