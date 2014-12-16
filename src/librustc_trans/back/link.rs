@@ -16,9 +16,11 @@ use super::svh::Svh;
 use session::config;
 use session::config::NoDebugInfo;
 use session::config::{OutputFilenames, Input, OutputTypeBitcode, OutputTypeExe, OutputTypeObject};
+use session::search_paths::PathKind;
 use session::Session;
 use metadata::common::LinkMeta;
 use metadata::{encoder, cstore, filesearch, csearch, creader};
+use metadata::filesearch::FileDoesntMatch;
 use trans::{CrateContext, CrateTranslation, gensym_name};
 use middle::ty::{mod, Ty};
 use util::common::time;
@@ -504,10 +506,11 @@ fn link_binary_output(sess: &Session,
 }
 
 fn archive_search_paths(sess: &Session) -> Vec<Path> {
-    let mut rustpath = filesearch::rust_path();
-    rustpath.push(sess.target_filesearch().get_lib_path());
-    let mut search: Vec<Path> = sess.opts.addl_lib_search_paths.borrow().clone();
-    search.push_all(rustpath[]);
+    let mut search = Vec::new();
+    sess.target_filesearch(PathKind::Native).for_each_lib_search_path(|path| {
+        search.push(path.clone());
+        FileDoesntMatch
+    });
     return search;
 }
 
@@ -832,7 +835,7 @@ fn link_args(cmd: &mut Command,
 
     // The default library location, we need this to find the runtime.
     // The location of crates will be determined as needed.
-    let lib_path = sess.target_filesearch().get_lib_path();
+    let lib_path = sess.target_filesearch(PathKind::All).get_lib_path();
 
     // target descriptor
     let t = &sess.target.target;
@@ -1040,14 +1043,10 @@ fn link_args(cmd: &mut Command,
 // in the current crate. Upstream crates with native library dependencies
 // may have their native library pulled in above.
 fn add_local_native_libraries(cmd: &mut Command, sess: &Session) {
-    for path in sess.opts.addl_lib_search_paths.borrow().iter() {
+    sess.target_filesearch(PathKind::All).for_each_lib_search_path(|path| {
         cmd.arg("-L").arg(path);
-    }
-
-    let rustpath = filesearch::rust_path();
-    for path in rustpath.iter() {
-        cmd.arg("-L").arg(path);
-    }
+        FileDoesntMatch
+    });
 
     // Some platforms take hints about whether a library is static or dynamic.
     // For those that support this, we ensure we pass the option if the library

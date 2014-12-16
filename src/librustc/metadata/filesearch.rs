@@ -12,13 +12,13 @@
 
 pub use self::FileMatch::*;
 
-use std::cell::RefCell;
 use std::collections::HashSet;
 use std::io::fs::PathExtensions;
 use std::io::fs;
 use std::os;
 
 use util::fs as myfs;
+use session::search_paths::{SearchPaths, PathKind};
 
 #[deriving(Copy)]
 pub enum FileMatch {
@@ -36,8 +36,9 @@ pub type pick<'a> = |path: &Path|: 'a -> FileMatch;
 
 pub struct FileSearch<'a> {
     pub sysroot: &'a Path,
-    pub addl_lib_search_paths: &'a RefCell<Vec<Path>>,
+    pub search_paths: &'a SearchPaths,
     pub triple: &'a str,
+    pub kind: PathKind,
 }
 
 impl<'a> FileSearch<'a> {
@@ -47,9 +48,7 @@ impl<'a> FileSearch<'a> {
         let mut visited_dirs = HashSet::new();
         let mut found = false;
 
-        debug!("filesearch: searching additional lib search paths [{}]",
-               self.addl_lib_search_paths.borrow().len());
-        for path in self.addl_lib_search_paths.borrow().iter() {
+        for path in self.search_paths.iter(self.kind) {
             match f(path) {
                 FileMatches => found = true,
                 FileDoesntMatch => ()
@@ -133,12 +132,14 @@ impl<'a> FileSearch<'a> {
 
     pub fn new(sysroot: &'a Path,
                triple: &'a str,
-               addl_lib_search_paths: &'a RefCell<Vec<Path>>) -> FileSearch<'a> {
+               search_paths: &'a SearchPaths,
+               kind: PathKind) -> FileSearch<'a> {
         debug!("using sysroot = {}, triple = {}", sysroot.display(), triple);
         FileSearch {
             sysroot: sysroot,
-            addl_lib_search_paths: addl_lib_search_paths,
+            search_paths: search_paths,
             triple: triple,
+            kind: kind,
         }
     }
 

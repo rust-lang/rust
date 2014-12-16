@@ -43,6 +43,7 @@ use std::rc::Rc;
 use externalfiles::ExternalHtml;
 use serialize::{Decodable, Encodable};
 use serialize::json::{mod, Json};
+use rustc::session::search_paths::SearchPaths;
 
 // reexported from `clean` so it can be easily updated with the mod itself
 pub use clean::SCHEMA_VERSION;
@@ -200,7 +201,10 @@ pub fn main_args(args: &[String]) -> int {
     }
     let input = matches.free[0].as_slice();
 
-    let libs = matches.opt_strs("L").iter().map(|s| Path::new(s.as_slice())).collect();
+    let mut libs = SearchPaths::new();
+    for s in matches.opt_strs("L").iter() {
+        libs.add_path(s.as_slice());
+    }
     let externs = match parse_externs(&matches) {
         Ok(ex) => ex,
         Err(err) => {
@@ -334,10 +338,10 @@ fn rust_input(cratefile: &str, externs: core::Externs, matches: &getopts::Matche
     let mut plugins = matches.opt_strs("plugins");
 
     // First, parse the crate and extract all relevant information.
-    let libs: Vec<Path> = matches.opt_strs("L")
-                                 .iter()
-                                 .map(|s| Path::new(s.as_slice()))
-                                 .collect();
+    let mut paths = SearchPaths::new();
+    for s in matches.opt_strs("L").iter() {
+        paths.add_path(s.as_slice());
+    }
     let cfgs = matches.opt_strs("cfg");
     let triple = matches.opt_str("target");
 
@@ -346,7 +350,7 @@ fn rust_input(cratefile: &str, externs: core::Externs, matches: &getopts::Matche
 
     let (mut krate, analysis) = std::thread::Thread::spawn(move |:| {
         let cr = cr;
-        core::run_core(libs, cfgs, externs, &cr, triple)
+        core::run_core(paths, cfgs, externs, &cr, triple)
     }).join().map_err(|_| "rustc failed").unwrap();
     info!("finished with rustc");
     let mut analysis = Some(analysis);
