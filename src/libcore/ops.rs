@@ -52,10 +52,8 @@
 //! something to the screen.
 
 use clone::Clone;
-use cmp::Ord;
-use iter::{Iterator,DoubleEndedIterator};
+use iter::{Step, Iterator,DoubleEndedIterator,ExactSizeIterator};
 use kinds::Sized;
-use kinds::Copy;
 use option::Option::{mod, Some, None};
 
 /// The `Drop` trait is used to run some code when a value goes out of scope. This
@@ -839,53 +837,13 @@ pub trait SliceMut<Sized? Idx, Sized? Result> for Sized? {
 }
 
 
-
-/// REVIEW could be in a better module
-/// The `Countable` trait identifies objects which are countable, i.e., are
-/// analogous to the natural numbers. A countable object can be incremented and
-/// and decremented and ordered. The `difference` function provides a way to
-/// compare two Countable objects (it could be provided using increment and Ord,
-/// but the implementation would be so inefficient as to be useless).
-#[unstable = "Trait is unstable."]
-pub trait Countable: Ord {
-    // FIXME(#19391) needs a snapshot
-    //type T;
-
-    /// Change self to the next object.
-    fn increment(&mut self);
-    /// Change self to the previous object.
-    fn decrement(&mut self);
-    /// The difference between two countable objects.
-    /// Temporarily a uint, should be an associated type, but
-    // FIXME(#19391) needs a snapshot
-    fn difference(a: &Self, b: &Self) -> uint;
-    //fn difference(a: &Self, b: &Self) -> <Self as Countable>::T;
-}
-
-macro_rules! countable_impl(
-    ($($t:ty)*) => ($(
-        #[unstable = "Trait is unstable."]
-        impl Countable for $t {
-            // FIXME(#19391) needs a snapshot
-            //type T = uint;
-
-            #[inline]
-            fn increment(&mut self) { *self += 1; }
-            #[inline]
-            fn decrement(&mut self) { *self -= 1; }
-            #[inline]
-            fn difference(a: &$t, b: &$t) -> uint { (*a - *b) as uint }
-        }
-    )*)
-)
-
-countable_impl!(uint u8 u16 u32 u64 int i8 i16 i32 i64)
-
 /// An unbounded range.
+#[deriving(Copy)]
 #[lang="full_range"]
 pub struct FullRange;
 
-/// A range which i bounded at both ends.
+/// A (half-open) range which is bounded at both ends.
+#[deriving(Copy)]
 #[lang="range"]
 pub struct Range<Idx> {
     /// The lower bound of the range (inclusive).
@@ -895,13 +853,13 @@ pub struct Range<Idx> {
 }
 
 // FIXME(#19391) needs a snapshot
-//impl<Idx: Clone + Countable<T=uint>> Iterator<Idx> for Range<Idx> {
-impl<Idx: Clone + Countable> Iterator<Idx> for Range<Idx> {
+//impl<Idx: Clone + Step<T=uint>> Iterator<Idx> for Range<Idx> {
+impl<Idx: Clone + Step> Iterator<Idx> for Range<Idx> {
     #[inline]
     fn next(&mut self) -> Option<Idx> {
         if self.start < self.end {
             let result = self.start.clone();
-            self.start.increment();
+            self.start.step();
             return Some(result);
         }
 
@@ -910,16 +868,19 @@ impl<Idx: Clone + Countable> Iterator<Idx> for Range<Idx> {
 
     #[inline]
     fn size_hint(&self) -> (uint, Option<uint>) {
-        let hint = Countable::difference(&self.end, &self.start);
-        (hint, Some(hint))
+        if let Some(hint) = Step::steps_between(&self.end, &self.start) {
+            (hint, Some(hint))
+        } else {
+            (0, None)
+        }
     }
 }
 
-impl<Idx: Clone + Countable> DoubleEndedIterator<Idx> for Range<Idx> {
+impl<Idx: Clone + Step> DoubleEndedIterator<Idx> for Range<Idx> {
     #[inline]
     fn next_back(&mut self) -> Option<Idx> {
         if self.start < self.end {
-            self.end.decrement();
+            self.end.step_back();
             return Some(self.end.clone());
         }
 
@@ -927,26 +888,25 @@ impl<Idx: Clone + Countable> DoubleEndedIterator<Idx> for Range<Idx> {
     }
 }
 
+impl<Idx: Clone + Step> ExactSizeIterator<Idx> for Range<Idx> {}
+
 /// A range which is only bounded below.
+#[deriving(Copy)]
 #[lang="range_from"]
 pub struct RangeFrom<Idx> {
     /// The lower bound of the range (inclusive).
     pub start: Idx,
 }
 
-impl<Idx: Clone + Countable> Iterator<Idx> for RangeFrom<Idx> {
+impl<Idx: Clone + Step> Iterator<Idx> for RangeFrom<Idx> {
     #[inline]
     fn next(&mut self) -> Option<Idx> {
         // Deliberately overflow so we loop forever.
         let result = self.start.clone();
-        self.start.increment();
+        self.start.step();
         return Some(result);
     }
 }
-
-impl<Idx: Copy> Copy for Range<Idx> {}
-impl<Idx: Copy> Copy for RangeFrom<Idx> {}
-impl Copy for FullRange {}
 
 
 /// The `Deref` trait is used to specify the functionality of dereferencing

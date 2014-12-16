@@ -13,7 +13,7 @@
 pub fn main() {
     // Mixed types.
     let _ = 0u..10i;
-    //~^ ERROR mismatched types: expected `uint`, found `int`
+    //~^ ERROR start and end of range have incompatible types
 
     // Float => does not implement iterator.
     for i in 0f32..42f32 {}

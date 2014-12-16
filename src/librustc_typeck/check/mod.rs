@@ -4279,44 +4279,59 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
           }
        }
        ast::ExprRange(ref start, ref end) => {
-          let mut some_err = false;
-
           check_expr(fcx, &**start);
           let t_start = fcx.expr_ty(&**start);
-          if ty::type_is_error(t_start) {
-            fcx.write_ty(start.id, t_start);
-            some_err = true;
-          }
 
-          if let &Some(ref e) = end {
-              check_expr_has_type(fcx, &**e, t_start);
-              let t_end = fcx.expr_ty(&**e);
-              if ty::type_is_error(t_end) {
-                fcx.write_ty(e.id, t_end);
-                some_err = true;
-              }
-          }
+          let idx_type = if let &Some(ref e) = end {
+            check_expr(fcx, &**e);
+            let t_end = fcx.expr_ty(&**e);
+            if ty::type_is_error(t_end) {
+                ty::mk_err()
+            } else if t_start == ty::mk_err() {
+                ty::mk_err()
+            } else {
+                infer::common_supertype(fcx.infcx(),
+                                        infer::RangeExpression(expr.span),
+                                        true,
+                                        t_start,
+                                        t_end)
+            }
+          } else {
+            t_start
+          };
 
-          // Note that we don't check the type of the start/end satisfy any
+          // Note that we don't check the type of start/end satisfy any
           // bounds because right the range structs do not have any. If we add
           // some bounds, then we'll need to check `t_start` against them here.
 
-          if !some_err {
+          let range_type = if idx_type == ty::mk_err() {
+            ty::mk_err()
+          } else {
             // Find the did from the appropriate lang item.
             let did = if end.is_some() {
                 // Range
-                fcx.tcx().lang_items.range_struct()
+                tcx.lang_items.range_struct()
             } else {
                 // RangeFrom
-                fcx.tcx().lang_items.range_from_struct()
+                tcx.lang_items.range_from_struct()
             };
+
             if let Some(did) = did {
-                let substs = Substs::new_type(vec![t_start], vec![]);
-                fcx.write_ty(id, ty::mk_struct(tcx, did, substs));
+                let polytype = ty::lookup_item_type(tcx, did);
+                let substs = Substs::new_type(vec![idx_type], vec![]);
+                let bounds = polytype.generics.to_bounds(tcx, &substs);
+                fcx.add_obligations_for_parameters(
+                    traits::ObligationCause::new(expr.span,
+                                                 fcx.body_id,
+                                                 traits::ItemObligation(did)),
+                    &bounds);
+
+                ty::mk_struct(tcx, did, substs)
             } else {
-                fcx.write_ty(id, ty::mk_err());
+                ty::mk_err()
             }
-          }
+          };
+          fcx.write_ty(id, range_type);
        }
 
     }

@@ -11,13 +11,6 @@
 // Test range syntax - borrow errors.
 
 pub fn main() {
-    let x = &42i;
-    {
-        let y = 42i;
-        let r = x..&y;
-        //~^ ERROR `y` does not live long enough
-    }
-
     let r = {
         (&42i)..&42
         //~^ ERROR borrowed value does not live long enough
