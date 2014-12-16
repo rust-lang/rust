@@ -277,7 +277,7 @@ changed to uniformly use the new pattern API. The main differences are:
   implementations, as the different results would break the requirement for double ended iterators
   to behave like a double ended queues where you just pop elements from both sides.
 
-_However_, all iterators will still implement `DoubleEndedIterator` if the underling
+_However_, all iterators will still implement `DoubleEndedIterator` if the underlying
 matcher implements `DoubleEndedMatcher`, to keep the ability to do things like `foo.split('a').rev()`.
 
 ## Transition and deprecation plans
@@ -362,7 +362,7 @@ that would avoid it:
   back-comp generic impls.
 
 Next, there are alternatives that might make a positive difference in the authors opinion, but still have
-some negative trade-of:
+some negative trade-offs:
 
 - With the `Matcher` traits having the unsafe constraint of returning results unique to the
   current haystack already, they could just directly return a `(*const u8, *const u8)` pointing into it.
