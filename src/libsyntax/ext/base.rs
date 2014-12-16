@@ -468,8 +468,8 @@ pub struct ExtCtxt<'a> {
 }
 
 impl<'a> ExtCtxt<'a> {
-    pub fn new<'a>(parse_sess: &'a parse::ParseSess, cfg: ast::CrateConfig,
-                   ecfg: expand::ExpansionConfig) -> ExtCtxt<'a> {
+    pub fn new(parse_sess: &'a parse::ParseSess, cfg: ast::CrateConfig,
+               ecfg: expand::ExpansionConfig) -> ExtCtxt<'a> {
         let env = initial_syntax_expander_table(&ecfg);
         ExtCtxt {
             parse_sess: parse_sess,

@@ -114,7 +114,7 @@ impl<'a, T: Clone> WeightedChoice<'a, T> {
     /// - `v` is empty
     /// - the total weight is 0
     /// - the total weight is larger than a `uint` can contain.
-    pub fn new<'a>(items: &'a mut [Weighted<T>]) -> WeightedChoice<'a, T> {
+    pub fn new(items: &'a mut [Weighted<T>]) -> WeightedChoice<'a, T> {
         // strictly speaking, this is subsumed by the total weight == 0 case
         assert!(!items.is_empty(), "WeightedChoice::new called with no items");
 

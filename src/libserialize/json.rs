@@ -627,13 +627,13 @@ pub struct PrettyEncoder<'a> {
 
 impl<'a> PrettyEncoder<'a> {
     /// Creates a new encoder whose output will be written to the specified writer
-    pub fn new<'a>(writer: &'a mut io::Writer) -> PrettyEncoder<'a> {
+    pub fn new(writer: &'a mut io::Writer) -> PrettyEncoder<'a> {
         PrettyEncoder { writer: writer, curr_indent: 0, indent: 2, }
     }
 
     /// Set the number of spaces to indent for each level.
     /// This is safe to set during encoding.
-    pub fn set_indent<'a>(&mut self, indent: uint) {
+    pub fn set_indent(&mut self, indent: uint) {
         // self.indent very well could be 0 so we need to use checked division.
         let level = self.curr_indent.checked_div(self.indent).unwrap_or(0);
         self.indent = indent;
@@ -1103,7 +1103,7 @@ impl Json {
 }
 
 impl<'a> ops::Index<&'a str, Json>  for Json {
-    fn index<'a>(&'a self, idx: & &str) -> &'a Json {
+    fn index(&self, idx: & &str) -> &Json {
         self.find(*idx).unwrap()
     }
 }

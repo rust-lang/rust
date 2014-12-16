@@ -35,17 +35,17 @@ fn test<'a,'b>() {
     // Test that anonymous regions in `()` form are equivalent
     // to fresh bound regions, and that we can intermingle
     // named and anonymous as we choose:
-    eq::< for<'a,'b> Foo<(&'a int,&'b uint),uint>,
-          for<'a,'b> Foo(&'a int,&'b uint) -> uint            >();
-    eq::< for<'a,'b> Foo<(&'a int,&'b uint),uint>,
-          for<'a> Foo(&'a int,&uint) -> uint                  >();
-    eq::< for<'a,'b> Foo<(&'a int,&'b uint),uint>,
-          for<'b> Foo(&int,&'b uint) -> uint                  >();
-    eq::< for<'a,'b> Foo<(&'a int,&'b uint),uint>,
+    eq::< for<'x,'y> Foo<(&'x int,&'y uint),uint>,
+          for<'x,'y> Foo(&'x int,&'y uint) -> uint            >();
+    eq::< for<'x,'y> Foo<(&'x int,&'y uint),uint>,
+          for<'x> Foo(&'x int,&uint) -> uint                  >();
+    eq::< for<'x,'y> Foo<(&'x int,&'y uint),uint>,
+          for<'y> Foo(&int,&'y uint) -> uint                  >();
+    eq::< for<'x,'y> Foo<(&'x int,&'y uint),uint>,
           Foo(&int,&uint) -> uint                             >();
 
     // lifetime elision
-    eq::< for<'a,'b> Foo<(&'a int,), &'a int>,
+    eq::< for<'x> Foo<(&'x int,), &'x int>,
           Foo(&int) -> &int                                   >();
 
     // Errors expected:

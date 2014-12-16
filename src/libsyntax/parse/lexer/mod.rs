@@ -275,8 +275,8 @@ impl<'a> StringReader<'a> {
     }
 
     /// Converts CRLF to LF in the given string, raising an error on bare CR.
-    fn translate_crlf<'a>(&self, start: BytePos,
-                          s: &'a str, errmsg: &'a str) -> str::CowString<'a> {
+    fn translate_crlf<'b>(&self, start: BytePos,
+                          s: &'b str, errmsg: &'b str) -> str::CowString<'b> {
         let mut i = 0u;
         while i < s.len() {
             let str::CharRange { ch, next } = s.char_range_at(i);

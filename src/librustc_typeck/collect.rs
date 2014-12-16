@@ -153,7 +153,7 @@ impl<'a,'tcx> ToTy<'tcx> for CrateCtxt<'a,'tcx> {
 }
 
 impl<'a, 'tcx> AstConv<'tcx> for CrateCtxt<'a, 'tcx> {
-    fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx> { self.tcx }
+    fn tcx(&self) -> &ty::ctxt<'tcx> { self.tcx }
 
     fn get_item_ty(&self, id: ast::DefId) -> ty::Polytype<'tcx> {
         if id.krate != ast::LOCAL_CRATE {
@@ -719,7 +719,7 @@ struct ImplCtxt<'a,'tcx:'a> {
 }
 
 impl<'a,'tcx> AstConv<'tcx> for ImplCtxt<'a,'tcx> {
-    fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx> {
+    fn tcx(&self) -> &ty::ctxt<'tcx> {
         self.ccx.tcx
     }
 
@@ -808,7 +808,7 @@ struct FnCtxt<'a,'tcx:'a> {
 }
 
 impl<'a,'tcx> AstConv<'tcx> for FnCtxt<'a,'tcx> {
-    fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx> {
+    fn tcx(&self) -> &ty::ctxt<'tcx> {
         self.ccx.tcx
     }
 
@@ -857,7 +857,7 @@ struct ImplMethodCtxt<'a,'tcx:'a> {
 }
 
 impl<'a,'tcx> AstConv<'tcx> for ImplMethodCtxt<'a,'tcx> {
-    fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx> {
+    fn tcx(&self) -> &ty::ctxt<'tcx> {
         self.ccx.tcx
     }
 
@@ -906,7 +906,7 @@ struct TraitMethodCtxt<'a,'tcx:'a> {
 }
 
 impl<'a,'tcx> AstConv<'tcx> for TraitMethodCtxt<'a,'tcx> {
-    fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx> {
+    fn tcx(&self) -> &ty::ctxt<'tcx> {
         self.ccx.tcx
     }
 
@@ -986,7 +986,7 @@ struct GenericsCtxt<'a,'tcx:'a,AC:'a> {
 }
 
 impl<'a,'tcx,AC:AstConv<'tcx>> AstConv<'tcx> for GenericsCtxt<'a,'tcx,AC> {
-    fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx> {
+    fn tcx(&self) -> &ty::ctxt<'tcx> {
         self.chain.tcx()
     }
 

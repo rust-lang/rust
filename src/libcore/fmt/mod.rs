@@ -115,7 +115,7 @@ impl<'a> Argument<'a> {
         Show::fmt(x, f)
     }
 
-    fn new<'a, T>(x: &'a T, f: fn(&T, &mut Formatter) -> Result) -> Argument<'a> {
+    fn new<'b, T>(x: &'b T, f: fn(&T, &mut Formatter) -> Result) -> Argument<'b> {
         unsafe {
             Argument {
                 formatter: mem::transmute(f),
@@ -124,7 +124,7 @@ impl<'a> Argument<'a> {
         }
     }
 
-    fn from_uint<'a>(x: &'a uint) -> Argument<'a> {
+    fn from_uint(x: &uint) -> Argument {
         Argument::new(x, Argument::show_uint)
     }
 
@@ -144,8 +144,8 @@ impl<'a> Arguments<'a> {
     /// Arguments structure.
     #[doc(hidden)] #[inline]
     #[experimental = "implementation detail of the `format_args!` macro"]
-    pub fn new<'a>(pieces: &'a [&'a str],
-                   args: &'a [Argument<'a>]) -> Arguments<'a> {
+    pub fn new(pieces: &'a [&'a str],
+               args: &'a [Argument<'a>]) -> Arguments<'a> {
         Arguments {
             pieces: pieces,
             fmt: None,
@@ -161,9 +161,9 @@ impl<'a> Arguments<'a> {
     /// unsafety, but will ignore invalid .
     #[doc(hidden)] #[inline]
     #[experimental = "implementation detail of the `format_args!` macro"]
-    pub fn with_placeholders<'a>(pieces: &'a [&'a str],
-                                 fmt: &'a [rt::Argument<'a>],
-                                 args: &'a [Argument<'a>]) -> Arguments<'a> {
+    pub fn with_placeholders(pieces: &'a [&'a str],
+                             fmt: &'a [rt::Argument<'a>],
+                             args: &'a [Argument<'a>]) -> Arguments<'a> {
         Arguments {
             pieces: pieces,
             fmt: Some(fmt),
