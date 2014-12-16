@@ -4239,8 +4239,8 @@ fn main() {
 ## Moving closures
 
 Rust has a second type of closure, called a **moving closure**. Moving
-closures are indicated using the `move` keyword (e.g., `move || x *
-x`). The difference between a moving closure and an ordinary closure
+closures are indicated using the `move` keyword (e.g., `move || { x *
+x }`). The difference between a moving closure and an ordinary closure
 is that a moving closure always takes ownership of all variables that
 it uses. Ordinary closures, in contrast, just create a reference into
 the enclosing stack frame. Moving closures are most useful with Rust's
