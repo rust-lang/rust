@@ -44,7 +44,7 @@ use result::Result::{Ok, Err};
 use rustrt;
 use rustrt::local::Local;
 use rustrt::task::Task;
-use slice::SlicePrelude;
+use slice::SliceExt;
 use str::StrPrelude;
 use string::String;
 use sys::{fs, tty};

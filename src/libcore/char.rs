@@ -20,7 +20,7 @@ use ops::FnMut;
 use option::Option;
 use option::Option::{None, Some};
 use iter::{range_step, Iterator, RangeStep};
-use slice::SlicePrelude;
+use slice::SliceExt;
 
 // UTF-8 ranges and tags for encoding characters
 static TAG_CONT: u8    = 0b1000_0000u8;
