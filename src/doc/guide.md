@@ -450,7 +450,7 @@ mutation, then the solution is quite easy: add `mut`.
 There are other good reasons to avoid mutable state when possible, but they're
 out of the scope of this guide. In general, you can often avoid explicit
 mutation, and so it is preferable in Rust. That said, sometimes, mutation is
-what you need, so it's not verboten.
+what you need, so it's not prohibited.
 
 Let's get back to bindings. Rust variable bindings have one more aspect that
 differs from other languages: bindings are required to be initialized with a
