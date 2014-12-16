@@ -1026,6 +1026,12 @@ unsafe fn configure_llvm(sess: &Session) {
         llvm::LLVMInitializeARMAsmPrinter();
         llvm::LLVMInitializeARMAsmParser();
 
+        llvm::LLVMInitializeAArch64TargetInfo();
+        llvm::LLVMInitializeAArch64Target();
+        llvm::LLVMInitializeAArch64TargetMC();
+        llvm::LLVMInitializeAArch64AsmPrinter();
+        llvm::LLVMInitializeAArch64AsmParser();
+
         llvm::LLVMInitializeMipsTargetInfo();
         llvm::LLVMInitializeMipsTarget();
         llvm::LLVMInitializeMipsTargetMC();

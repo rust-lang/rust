@@ -29,7 +29,8 @@ fn size_of_32() {
 }
 
 #[test]
-#[cfg(target_arch = "x86_64")]
+#[cfg(any(target_arch = "x86_64",
+          target_arch = "aarch64"))]
 fn size_of_64() {
     assert_eq!(size_of::<uint>(), 8u);
     assert_eq!(size_of::<*const uint>(), 8u);
@@ -61,7 +62,8 @@ fn align_of_32() {
 }
 
 #[test]
-#[cfg(target_arch = "x86_64")]
+#[cfg(any(target_arch = "x86_64",
+          target_arch = "aarch64"))]
 fn align_of_64() {
     assert_eq!(align_of::<uint>(), 8u);
     assert_eq!(align_of::<*const uint>(), 8u);

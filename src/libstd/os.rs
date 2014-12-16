@@ -1414,6 +1414,11 @@ mod arch_consts {
     pub const ARCH: &'static str = "arm";
 }
 
+#[cfg(target_arch = "aarch64")]
+mod arch_consts {
+    pub const ARCH: &'static str = "aarch64";
+}
+
 #[cfg(target_arch = "mips")]
 mod arch_consts {
     pub const ARCH: &'static str = "mips";
