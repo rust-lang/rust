@@ -29,6 +29,10 @@ pub use self::fulfill::{FulfillmentContext, RegionObligation};
 pub use self::project::MismatchedProjectionTypes;
 pub use self::project::normalize;
 pub use self::project::Normalized;
+pub use self::object_safety::is_object_safe;
+pub use self::object_safety::object_safety_violations;
+pub use self::object_safety::ObjectSafetyViolation;
+pub use self::object_safety::MethodViolationCode;
 pub use self::select::SelectionContext;
 pub use self::select::SelectionCache;
 pub use self::select::{MethodMatchResult, MethodMatched, MethodAmbiguous, MethodDidNotMatch};
@@ -45,6 +49,7 @@ mod coherence;
 mod error_reporting;
 mod fulfill;
 mod project;
+mod object_safety;
 mod select;
 mod util;
 
