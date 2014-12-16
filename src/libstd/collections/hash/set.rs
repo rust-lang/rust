@@ -608,7 +608,9 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S> + Default> Extend<T> for HashSet<T, H> {
     }
 }
 
+#[stable]
 impl<T: Eq + Hash<S>, S, H: Hasher<S> + Default> Default for HashSet<T, H> {
+    #[stable]
     fn default() -> HashSet<T, H> {
         HashSet::with_hasher(Default::default())
     }

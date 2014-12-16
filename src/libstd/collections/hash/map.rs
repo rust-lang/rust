@@ -1288,7 +1288,9 @@ impl<K: Eq + Hash<S> + Show, V: Show, S, H: Hasher<S>> Show for HashMap<K, V, H>
     }
 }
 
+#[stable]
 impl<K: Eq + Hash<S>, V, S, H: Hasher<S> + Default> Default for HashMap<K, V, H> {
+    #[stable]
     fn default() -> HashMap<K, V, H> {
         HashMap::with_hasher(Default::default())
     }
