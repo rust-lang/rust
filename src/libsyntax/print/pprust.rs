@@ -1786,11 +1786,7 @@ impl<'a> State<'a> {
                 }
             }
             ast::ExprInlineAsm(ref a) => {
-                if a.volatile {
-                    try!(word(&mut self.s, "__volatile__ asm!"));
-                } else {
-                    try!(word(&mut self.s, "asm!"));
-                }
+                try!(word(&mut self.s, "asm!"));
                 try!(self.popen());
                 try!(self.print_string(a.asm.get(), a.asm_str_style));
                 try!(self.word_space(":"));
@@ -1828,6 +1824,28 @@ impl<'a> State<'a> {
                     try!(s.print_string(co.get(), ast::CookedStr));
                     Ok(())
                 }));
+
+                let mut options = vec!();
+                if a.volatile {
+                    options.push("volatile");
+                }
+                if a.alignstack {
+                    options.push("alignstack");
+                }
+                if a.dialect == ast::AsmDialect::AsmIntel {
+                    options.push("intel");
+                }
+
+                if options.len() > 0 {
+                    try!(space(&mut self.s));
+                    try!(self.word_space(":"));
+                    try!(self.commasep(Inconsistent, &*options,
+                                       |s, &co| {
+                        try!(s.print_string(co, ast::CookedStr));
+                        Ok(())
+                    }));
+                }
+
                 try!(self.pclose());
             }
             ast::ExprMac(ref m) => try!(self.print_mac(m, token::Paren)),
