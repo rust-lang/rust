@@ -357,7 +357,7 @@ Let's finally check out that third section: documentation tests.
 
 Nothing is better than documentation with examples. Nothing is worse than
 examples that don't actually work, because the code has changed since the
-documentation has been written. To this end, Rust supports automaticaly
+documentation has been written. To this end, Rust supports automatically
 running examples in your documentation. Here's a fleshed-out `src/lib.rs`
 with examples:
 

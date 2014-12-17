@@ -19,7 +19,6 @@ pub use self::TraversalItem::*;
 use core::prelude::*;
 
 use core::{slice, mem, ptr, cmp, num, raw};
-use core::kinds::marker;
 use core::iter::Zip;
 use core::borrow::BorrowFrom;
 use alloc::heap;
@@ -176,7 +175,6 @@ fn calculate_offsets_generic<K, V>(capacity: uint, is_leaf: bool) -> (uint, uint
 struct RawItems<T> {
     head: *const T,
     tail: *const T,
-    marker: marker::NoCopy
 }
 
 impl<T> RawItems<T> {
@@ -189,13 +187,11 @@ impl<T> RawItems<T> {
             RawItems {
                 head: ptr,
                 tail: (ptr as uint + len) as *const T,
-                marker: marker::NoCopy
             }
         } else {
             RawItems {
                 head: ptr,
                 tail: ptr.offset(len as int),
-                marker: marker::NoCopy
             }
         }
     }

@@ -20,7 +20,6 @@ use alloc::boxed::Box;
 use core::any::Any;
 use core::atomic::{AtomicUint, SeqCst};
 use core::iter::{IteratorExt, Take};
-use core::kinds::marker;
 use core::ops::FnOnce;
 use core::mem;
 use core::ops::FnMut;
@@ -95,7 +94,6 @@ pub enum BlockedTask {
 /// Per-task state related to task death, killing, panic, etc.
 pub struct Death {
     pub on_exit: Option<Thunk<Result>>,
-    marker: marker::NoCopy,
 }
 
 pub struct BlockedTasks {
@@ -499,7 +497,7 @@ impl BlockedTask {
 
 impl Death {
     pub fn new() -> Death {
-        Death { on_exit: None, marker: marker::NoCopy }
+        Death { on_exit: None }
     }
 }
 

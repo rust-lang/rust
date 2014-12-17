@@ -292,13 +292,11 @@ impl<T> SliceExt<T> for [T] {
             if mem::size_of::<T>() == 0 {
                 MutItems{ptr: p,
                          end: (p as uint + self.len()) as *mut T,
-                         marker: marker::ContravariantLifetime::<'a>,
-                         marker2: marker::NoCopy}
+                         marker: marker::ContravariantLifetime::<'a>}
             } else {
                 MutItems{ptr: p,
                          end: p.offset(self.len() as int),
-                         marker: marker::ContravariantLifetime::<'a>,
-                         marker2: marker::NoCopy}
+                         marker: marker::ContravariantLifetime::<'a>}
             }
         }
     }
@@ -647,8 +645,9 @@ impl<'a, T, Sized? U: AsSlice<T>> AsSlice<T> for &'a mut U {
     fn as_slice(&self) -> &[T] { AsSlice::as_slice(*self) }
 }
 
-#[unstable = "waiting for DST"]
+#[stable]
 impl<'a, T> Default for &'a [T] {
+    #[stable]
     fn default() -> &'a [T] { &[] }
 }
 
@@ -818,7 +817,6 @@ pub struct MutItems<'a, T: 'a> {
     ptr: *mut T,
     end: *mut T,
     marker: marker::ContravariantLifetime<'a>,
-    marker2: marker::NoCopy
 }
 
 #[experimental]
@@ -892,6 +890,17 @@ pub struct Splits<'a, T:'a, P> where P: FnMut(&T) -> bool {
     v: &'a [T],
     pred: P,
     finished: bool
+}
+
+// FIXME(#19839) Remove in favor of `#[deriving(Clone)]`
+impl<'a, T, P> Clone for Splits<'a, T, P> where P: Clone + FnMut(&T) -> bool {
+    fn clone(&self) -> Splits<'a, T, P> {
+        Splits {
+            v: self.v,
+            pred: self.pred.clone(),
+            finished: self.finished,
+        }
+    }
 }
 
 #[experimental = "needs review"]

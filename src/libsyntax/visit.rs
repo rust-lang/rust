@@ -555,14 +555,18 @@ pub fn walk_ty_param_bound<'v, V: Visitor<'v>>(visitor: &mut V,
     }
 }
 
+pub fn walk_ty_param<'v, V: Visitor<'v>>(visitor: &mut V, param: &'v TyParam) {
+    visitor.visit_ident(param.span, param.ident);
+    walk_ty_param_bounds_helper(visitor, &param.bounds);
+    match param.default {
+        Some(ref ty) => visitor.visit_ty(&**ty),
+        None => {}
+    }
+}
+
 pub fn walk_generics<'v, V: Visitor<'v>>(visitor: &mut V, generics: &'v Generics) {
     for type_parameter in generics.ty_params.iter() {
-        visitor.visit_ident(type_parameter.span, type_parameter.ident);
-        walk_ty_param_bounds_helper(visitor, &type_parameter.bounds);
-        match type_parameter.default {
-            Some(ref ty) => visitor.visit_ty(&**ty),
-            None => {}
-        }
+        walk_ty_param(visitor, type_parameter);
     }
     walk_lifetime_decls_helper(visitor, &generics.lifetimes);
     for predicate in generics.where_clause.predicates.iter() {
@@ -665,8 +669,7 @@ pub fn walk_trait_item<'v, V: Visitor<'v>>(visitor: &mut V, trait_method: &'v Tr
         RequiredMethod(ref method_type) => visitor.visit_ty_method(method_type),
         ProvidedMethod(ref method) => walk_method_helper(visitor, &**method),
         TypeTraitItem(ref associated_type) => {
-            visitor.visit_ident(associated_type.ty_param.span,
-                                associated_type.ty_param.ident)
+            walk_ty_param(visitor, &associated_type.ty_param);
         }
     }
 }
@@ -739,7 +742,7 @@ pub fn walk_mac<'v, V: Visitor<'v>>(_: &mut V, _: &'v Mac) {
 pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
     match expression.node {
         ExprBox(ref place, ref subexpression) => {
-            visitor.visit_expr(&**place);
+            place.as_ref().map(|e|visitor.visit_expr(&**e));
             visitor.visit_expr(&**subexpression)
         }
         ExprVec(ref subexpressions) => {

@@ -134,8 +134,10 @@ impl<T: Ord + Show> Show for TreeSet<T> {
     }
 }
 
+#[stable]
 impl<T: Ord> Default for TreeSet<T> {
     #[inline]
+    #[stable]
     fn default() -> TreeSet<T> { TreeSet::new() }
 }
 

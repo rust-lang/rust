@@ -185,7 +185,6 @@ macro_rules! __thread_local_inner(
                 inner: ::std::cell::UnsafeCell { value: $init },
                 dtor_registered: ::std::cell::UnsafeCell { value: false },
                 dtor_running: ::std::cell::UnsafeCell { value: false },
-                marker: ::std::kinds::marker::NoCopy,
             }
         };
 
@@ -247,7 +246,6 @@ mod imp {
 
     use cell::UnsafeCell;
     use intrinsics;
-    use kinds::marker;
     use ptr;
 
     #[doc(hidden)]
@@ -264,9 +262,6 @@ mod imp {
         // these variables are thread-local, not global.
         pub dtor_registered: UnsafeCell<bool>, // should be Cell
         pub dtor_running: UnsafeCell<bool>, // should be Cell
-
-        // These shouldn't be copied around.
-        pub marker: marker::NoCopy,
     }
 
     #[doc(hidden)]

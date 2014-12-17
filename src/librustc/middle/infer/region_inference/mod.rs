@@ -37,9 +37,10 @@ use std::uint;
 use syntax::ast;
 
 mod doc;
+mod graphviz;
 
 // A constraint that influences the inference process.
-#[deriving(PartialEq, Eq, Hash)]
+#[deriving(Clone, PartialEq, Eq, Hash, Show)]
 pub enum Constraint {
     // One region variable is subregion of another
     ConstrainVarSubVar(RegionVid, RegionVid),
@@ -706,10 +707,10 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
     /// fixed-point iteration to find region values which satisfy all
     /// constraints, assuming such values can be found; if they cannot,
     /// errors are reported.
-    pub fn resolve_regions(&self) -> Vec<RegionResolutionError<'tcx>> {
+    pub fn resolve_regions(&self, subject_node: ast::NodeId) -> Vec<RegionResolutionError<'tcx>> {
         debug!("RegionVarBindings: resolve_regions()");
         let mut errors = vec!();
-        let v = self.infer_variable_values(&mut errors);
+        let v = self.infer_variable_values(&mut errors, subject_node);
         *self.values.borrow_mut() = Some(v);
         errors
     }
@@ -958,14 +959,15 @@ type RegionGraph = graph::Graph<(), Constraint>;
 
 impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
     fn infer_variable_values(&self,
-                             errors: &mut Vec<RegionResolutionError<'tcx>>)
-                             -> Vec<VarValue>
+                             errors: &mut Vec<RegionResolutionError<'tcx>>,
+                             subject: ast::NodeId) -> Vec<VarValue>
     {
         let mut var_data = self.construct_var_data();
 
         // Dorky hack to cause `dump_constraints` to only get called
         // if debug mode is enabled:
         debug!("----() End constraint listing {}---", self.dump_constraints());
+        graphviz::maybe_print_constraints_for(self, subject);
 
         self.expansion(var_data.as_mut_slice());
         self.contraction(var_data.as_mut_slice());

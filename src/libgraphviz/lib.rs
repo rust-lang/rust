@@ -421,6 +421,14 @@ pub trait Labeller<'a,N,E> {
 }
 
 impl<'a> LabelText<'a> {
+    pub fn label<S:IntoCow<'a, String, str>>(s: S) -> LabelText<'a> {
+        LabelStr(s.into_cow())
+    }
+
+    pub fn escaped<S:IntoCow<'a, String, str>>(s: S) -> LabelText<'a> {
+        EscStr(s.into_cow())
+    }
+
     fn escape_char<F>(c: char, mut f: F) where F: FnMut(char) {
         match c {
             // not escaping \\, since Graphviz escString needs to
@@ -505,11 +513,29 @@ pub trait GraphWalk<'a, N, E> {
     fn target(&'a self, edge: &E) -> N;
 }
 
+#[deriving(Copy, PartialEq, Eq, Show)]
+pub enum RenderOption {
+    NoEdgeLabels,
+    NoNodeLabels,
+}
+
+/// Returns vec holding all the default render options.
+pub fn default_options() -> Vec<RenderOption> { vec![] }
+
 /// Renders directed graph `g` into the writer `w` in DOT syntax.
-/// (Main entry point for the library.)
+/// (Simple wrapper around `render_opts` that passes a default set of options.)
 pub fn render<'a, N:Clone+'a, E:Clone+'a, G:Labeller<'a,N,E>+GraphWalk<'a,N,E>, W:Writer>(
               g: &'a G,
-              w: &mut W) -> io::IoResult<()>
+              w: &mut W) -> io::IoResult<()> {
+    render_opts(g, w, &[])
+}
+
+/// Renders directed graph `g` into the writer `w` in DOT syntax.
+/// (Main entry point for the library.)
+pub fn render_opts<'a, N:Clone+'a, E:Clone+'a, G:Labeller<'a,N,E>+GraphWalk<'a,N,E>, W:Writer>(
+              g: &'a G,
+              w: &mut W,
+              options: &[RenderOption]) -> io::IoResult<()>
 {
     fn writeln<W:Writer>(w: &mut W, arg: &[&str]) -> io::IoResult<()> {
         for &s in arg.iter() { try!(w.write_str(s)); }
@@ -524,9 +550,13 @@ pub fn render<'a, N:Clone+'a, E:Clone+'a, G:Labeller<'a,N,E>+GraphWalk<'a,N,E>, 
     for n in g.nodes().iter() {
         try!(indent(w));
         let id = g.node_id(n);
-        let escaped = g.node_label(n).escape();
-        try!(writeln(w, &[id.as_slice(),
-                          "[label=\"", escaped.as_slice(), "\"];"]));
+        if options.contains(&RenderOption::NoNodeLabels) {
+            try!(writeln(w, &[id.as_slice(), ";"]));
+        } else {
+            let escaped = g.node_label(n).escape();
+            try!(writeln(w, &[id.as_slice(),
+                              "[label=\"", escaped.as_slice(), "\"];"]));
+        }
     }
 
     for e in g.edges().iter() {
@@ -536,8 +566,14 @@ pub fn render<'a, N:Clone+'a, E:Clone+'a, G:Labeller<'a,N,E>+GraphWalk<'a,N,E>, 
         let target = g.target(e);
         let source_id = g.node_id(&source);
         let target_id = g.node_id(&target);
-        try!(writeln(w, &[source_id.as_slice(), " -> ", target_id.as_slice(),
-                          "[label=\"", escaped_label.as_slice(), "\"];"]));
+        if options.contains(&RenderOption::NoEdgeLabels) {
+            try!(writeln(w, &[source_id.as_slice(),
+                              " -> ", target_id.as_slice(), ";"]));
+        } else {
+            try!(writeln(w, &[source_id.as_slice(),
+                              " -> ", target_id.as_slice(),
+                              "[label=\"", escaped_label.as_slice(), "\"];"]));
+        }
     }
 
     writeln(w, &["}"])

@@ -3472,7 +3472,8 @@ fn populate_scope_map(cx: &CrateContext,
                 walk_expr(cx, &**sub_exp, scope_stack, scope_map),
 
             ast::ExprBox(ref place, ref sub_expr) => {
-                walk_expr(cx, &**place, scope_stack, scope_map);
+                place.as_ref().map(
+                    |e| walk_expr(cx, &**e, scope_stack, scope_map));
                 walk_expr(cx, &**sub_expr, scope_stack, scope_map);
             }
 

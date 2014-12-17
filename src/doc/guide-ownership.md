@@ -341,7 +341,7 @@ fn main() {
     {                         //  |
         let y = &5i;          // ---+ y goes into scope
         let f = Foo { x: y }; // ---+ f goes into scope
-	x = &f.x;	      //  | | error here
+        x = &f.x;             //  | | error here
     }                         // ---+ f & y go out of scope
                               //  |
     println!("{}", x);        //  |
@@ -416,7 +416,7 @@ note: `car` moved here because it has type `Car`, which is non-copyable
 ```
 
 We need our `Car` to be pointed to by multiple `Wheel`s. We can't do that with
-`Box<T>`, because it has a single owner. We can do t with `Rc<T>` instead:
+`Box<T>`, because it has a single owner. We can do it with `Rc<T>` instead:
 
 ```rust
 use std::rc::Rc;

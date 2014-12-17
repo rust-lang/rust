@@ -273,9 +273,9 @@ impl Regex {
     /// let re = regex!(r"'([^']+)'\s+\((\d{4})\)");
     /// let text = "Not my favorite movie: 'Citizen Kane' (1941).";
     /// let caps = re.captures(text).unwrap();
-    /// assert_eq!(caps.at(1), "Citizen Kane");
-    /// assert_eq!(caps.at(2), "1941");
-    /// assert_eq!(caps.at(0), "'Citizen Kane' (1941)");
+    /// assert_eq!(caps.at(1), Some("Citizen Kane"));
+    /// assert_eq!(caps.at(2), Some("1941"));
+    /// assert_eq!(caps.at(0), Some("'Citizen Kane' (1941)"));
     /// # }
     /// ```
     ///
@@ -291,9 +291,9 @@ impl Regex {
     /// let re = regex!(r"'(?P<title>[^']+)'\s+\((?P<year>\d{4})\)");
     /// let text = "Not my favorite movie: 'Citizen Kane' (1941).";
     /// let caps = re.captures(text).unwrap();
-    /// assert_eq!(caps.name("title"), "Citizen Kane");
-    /// assert_eq!(caps.name("year"), "1941");
-    /// assert_eq!(caps.at(0), "'Citizen Kane' (1941)");
+    /// assert_eq!(caps.name("title"), Some("Citizen Kane"));
+    /// assert_eq!(caps.name("year"), Some("1941"));
+    /// assert_eq!(caps.at(0), Some("'Citizen Kane' (1941)"));
     /// # }
     /// ```
     ///
@@ -434,7 +434,7 @@ impl Regex {
     /// # use regex::Captures; fn main() {
     /// let re = regex!(r"([^,\s]+),\s+(\S+)");
     /// let result = re.replace("Springsteen, Bruce", |&: caps: &Captures| {
-    ///     format!("{} {}", caps.at(2), caps.at(1))
+    ///     format!("{} {}", caps.at(2).unwrap_or(""), caps.at(1).unwrap_or(""))
     /// });
     /// assert_eq!(result.as_slice(), "Bruce Springsteen");
     /// # }
@@ -712,27 +712,25 @@ impl<'t> Captures<'t> {
         Some((self.locs[s].unwrap(), self.locs[e].unwrap()))
     }
 
-    /// Returns the matched string for the capture group `i`.
-    /// If `i` isn't a valid capture group or didn't match anything, then the
-    /// empty string is returned.
-    pub fn at(&self, i: uint) -> &'t str {
+    /// Returns the matched string for the capture group `i`.  If `i` isn't
+    /// a valid capture group or didn't match anything, then `None` is
+    /// returned.
+    pub fn at(&self, i: uint) -> Option<&'t str> {
         match self.pos(i) {
-            None => "",
-            Some((s, e)) => {
-                self.text.slice(s, e)
-            }
+            None => None,
+            Some((s, e)) => Some(self.text.slice(s, e))
         }
     }
 
-    /// Returns the matched string for the capture group named `name`.
-    /// If `name` isn't a valid capture group or didn't match anything, then
-    /// the empty string is returned.
-    pub fn name(&self, name: &str) -> &'t str {
+    /// Returns the matched string for the capture group named `name`.  If
+    /// `name` isn't a valid capture group or didn't match anything, then
+    /// `None` is returned.
+    pub fn name(&self, name: &str) -> Option<&'t str> {
         match self.named {
-            None => "",
+            None => None,
             Some(ref h) => {
                 match h.get(name) {
-                    None => "",
+                    None => None,
                     Some(i) => self.at(*i),
                 }
             }
@@ -769,11 +767,12 @@ impl<'t> Captures<'t> {
         // FIXME: Don't use regexes for this. It's completely unnecessary.
         let re = Regex::new(r"(^|[^$]|\b)\$(\w+)").unwrap();
         let text = re.replace_all(text, |&mut: refs: &Captures| -> String {
-            let (pre, name) = (refs.at(1), refs.at(2));
+            let pre = refs.at(1).unwrap_or("");
+            let name = refs.at(2).unwrap_or("");
             format!("{}{}", pre,
                     match from_str::<uint>(name.as_slice()) {
-                None => self.name(name).to_string(),
-                Some(i) => self.at(i).to_string(),
+                None => self.name(name).unwrap_or("").to_string(),
+                Some(i) => self.at(i).unwrap_or("").to_string(),
             })
         });
         let re = Regex::new(r"\$\$").unwrap();
@@ -802,7 +801,7 @@ impl<'t> Iterator<&'t str> for SubCaptures<'t> {
     fn next(&mut self) -> Option<&'t str> {
         if self.idx < self.caps.len() {
             self.idx += 1;
-            Some(self.caps.at(self.idx - 1))
+            Some(self.caps.at(self.idx - 1).unwrap_or(""))
         } else {
             None
         }

@@ -696,7 +696,7 @@ pub struct Expr {
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum Expr_ {
     /// First expr is the place; second expr is the value.
-    ExprBox(P<Expr>, P<Expr>),
+    ExprBox(Option<P<Expr>>, P<Expr>),
     ExprVec(Vec<P<Expr>>),
     ExprCall(P<Expr>, Vec<P<Expr>>),
     ExprMethodCall(SpannedIdent, Vec<P<Ty>>, Vec<P<Expr>>),

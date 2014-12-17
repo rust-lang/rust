@@ -58,7 +58,6 @@
 
 use prelude::*;
 
-use kinds::marker;
 use rustrt::exclusive::Exclusive;
 use sync::atomic::{mod, AtomicUint};
 use sync::{Once, ONCE_INIT};
@@ -100,7 +99,6 @@ pub struct StaticKey {
 /// Inner contents of `StaticKey`, created by the `INIT_INNER` constant.
 pub struct StaticKeyInner {
     key: AtomicUint,
-    nc: marker::NoCopy,
 }
 
 /// A type for a safely managed OS-based TLS slot.
@@ -141,7 +139,6 @@ pub const INIT: StaticKey = StaticKey {
 /// This value allows specific configuration of the destructor for a TLS key.
 pub const INIT_INNER: StaticKeyInner = StaticKeyInner {
     key: atomic::INIT_ATOMIC_UINT,
-    nc: marker::NoCopy,
 };
 
 static INIT_KEYS: Once = ONCE_INIT;

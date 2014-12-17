@@ -14,6 +14,7 @@
 //! between tasks.
 
 use core::atomic;
+use core::borrow::BorrowFrom;
 use core::clone::Clone;
 use core::fmt::{mod, Show};
 use core::cmp::{Eq, Ord, PartialEq, PartialOrd, Ordering};
@@ -152,6 +153,12 @@ impl<T> Clone for Arc<T> {
         // [1]: (www.boost.org/doc/libs/1_55_0/doc/html/atomic/usage_examples.html)
         self.inner().strong.fetch_add(1, atomic::Relaxed);
         Arc { _ptr: self._ptr }
+    }
+}
+
+impl<T> BorrowFrom<Arc<T>> for T {
+    fn borrow_from(owned: &Arc<T>) -> &T {
+        &**owned
     }
 }
 
@@ -316,7 +323,9 @@ impl<T: fmt::Show> fmt::Show for Arc<T> {
     }
 }
 
+#[stable]
 impl<T: Default + Sync + Send> Default for Arc<T> {
+    #[stable]
     fn default() -> Arc<T> { Arc::new(Default::default()) }
 }
 

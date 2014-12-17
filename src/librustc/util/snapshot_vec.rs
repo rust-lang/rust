@@ -20,7 +20,6 @@
 //! those changes.
 use self::UndoLog::*;
 
-use std::kinds::marker;
 use std::mem;
 
 #[deriving(PartialEq)]
@@ -47,10 +46,9 @@ pub struct SnapshotVec<T,U,D> {
     delegate: D
 }
 
+// Snapshots are tokens that should be created/consumed linearly.
+#[allow(missing_copy_implementations)]
 pub struct Snapshot {
-    // Snapshots are tokens that should be created/consumed linearly.
-    marker: marker::NoCopy,
-
     // Length of the undo log at the time the snapshot was taken.
     length: uint,
 }
@@ -112,8 +110,7 @@ impl<T,U,D:SnapshotVecDelegate<T,U>> SnapshotVec<T,U,D> {
     pub fn start_snapshot(&mut self) -> Snapshot {
         let length = self.undo_log.len();
         self.undo_log.push(OpenSnapshot);
-        Snapshot { length: length,
-                   marker: marker::NoCopy }
+        Snapshot { length: length }
     }
 
     fn assert_open_snapshot(&self, snapshot: &Snapshot) {

@@ -13,9 +13,13 @@
 //! This module contains functions for querying the size and alignment of
 //! types, initializing and manipulating memory.
 
+#![stable]
+
+use kinds::Sized;
 use intrinsics;
 use ptr;
 
+#[stable]
 pub use intrinsics::transmute;
 
 /// Moves a thing into the void.
@@ -29,6 +33,14 @@ pub use intrinsics::transmute;
 pub use intrinsics::forget;
 
 /// Returns the size of a type in bytes.
+///
+/// # Examples
+///
+/// ```
+/// use std::mem;
+///
+/// assert_eq!(4, mem::size_of::<i32>());
+/// ```
 #[inline]
 #[stable]
 pub fn size_of<T>() -> uint {
@@ -36,6 +48,14 @@ pub fn size_of<T>() -> uint {
 }
 
 /// Returns the size of the type that `_val` points to in bytes.
+///
+/// # Examples
+///
+/// ```
+/// use std::mem;
+///
+/// assert_eq!(4, mem::size_of_val(&5i32));
+/// ```
 #[inline]
 #[stable]
 pub fn size_of_val<T>(_val: &T) -> uint {
@@ -44,16 +64,30 @@ pub fn size_of_val<T>(_val: &T) -> uint {
 
 /// Returns the ABI-required minimum alignment of a type
 ///
-/// This is the alignment used for struct fields. It may be smaller
-/// than the preferred alignment.
+/// This is the alignment used for struct fields. It may be smaller than the preferred alignment.
+///
+/// # Examples
+///
+/// ```
+/// use std::mem;
+///
+/// assert_eq!(4, mem::min_align_of::<i32>());
+/// ```
 #[inline]
 #[stable]
 pub fn min_align_of<T>() -> uint {
     unsafe { intrinsics::min_align_of::<T>() }
 }
 
-/// Returns the ABI-required minimum alignment of the type of the value that
-/// `_val` points to
+/// Returns the ABI-required minimum alignment of the type of the value that `_val` points to
+///
+/// # Examples
+///
+/// ```
+/// use std::mem;
+///
+/// assert_eq!(4, mem::min_align_of_val(&5i32));
+/// ```
 #[inline]
 #[stable]
 pub fn min_align_of_val<T>(_val: &T) -> uint {
@@ -62,9 +96,16 @@ pub fn min_align_of_val<T>(_val: &T) -> uint {
 
 /// Returns the alignment in memory for a type.
 ///
-/// This function will return the alignment, in bytes, of a type in memory. If
-/// the alignment returned is adhered to, then the type is guaranteed to
-/// function properly.
+/// This function will return the alignment, in bytes, of a type in memory. If the alignment
+/// returned is adhered to, then the type is guaranteed to function properly.
+///
+/// # Examples
+///
+/// ```
+/// use std::mem;
+///
+/// assert_eq!(4, mem::align_of::<i32>());
+/// ```
 #[inline]
 #[stable]
 pub fn align_of<T>() -> uint {
@@ -77,9 +118,16 @@ pub fn align_of<T>() -> uint {
 
 /// Returns the alignment of the type of the value that `_val` points to.
 ///
-/// This is similar to `align_of`, but function will properly handle types such
-/// as trait objects (in the future), returning the alignment for an arbitrary
-/// value at runtime.
+/// This is similar to `align_of`, but function will properly handle types such as trait objects
+/// (in the future), returning the alignment for an arbitrary value at runtime.
+///
+/// # Examples
+///
+/// ```
+/// use std::mem;
+///
+/// assert_eq!(4, mem::align_of_val(&5i32));
+/// ```
 #[inline]
 #[stable]
 pub fn align_of_val<T>(_val: &T) -> uint {
@@ -88,15 +136,22 @@ pub fn align_of_val<T>(_val: &T) -> uint {
 
 /// Create a value initialized to zero.
 ///
-/// This function is similar to allocating space for a local variable and
-/// zeroing it out (an unsafe operation).
+/// This function is similar to allocating space for a local variable and zeroing it out (an unsafe
+/// operation).
 ///
-/// Care must be taken when using this function, if the type `T` has a
-/// destructor and the value falls out of scope (due to unwinding or returning)
-/// before being initialized, then the destructor will run on zeroed
-/// data, likely leading to crashes.
+/// Care must be taken when using this function, if the type `T` has a destructor and the value
+/// falls out of scope (due to unwinding or returning) before being initialized, then the
+/// destructor will run on zeroed data, likely leading to crashes.
 ///
 /// This is useful for FFI functions sometimes, but should generally be avoided.
+///
+/// # Examples
+///
+/// ```
+/// use std::mem;
+///
+/// let x: int = unsafe { mem::zeroed() };
+/// ```
 #[inline]
 #[stable]
 pub unsafe fn zeroed<T>() -> T {
@@ -105,20 +160,41 @@ pub unsafe fn zeroed<T>() -> T {
 
 /// Create an uninitialized value.
 ///
-/// Care must be taken when using this function, if the type `T` has a
-/// destructor and the value falls out of scope (due to unwinding or returning)
-/// before being initialized, then the destructor will run on uninitialized
-/// data, likely leading to crashes.
+/// Care must be taken when using this function, if the type `T` has a destructor and the value
+/// falls out of scope (due to unwinding or returning) before being initialized, then the
+/// destructor will run on uninitialized data, likely leading to crashes.
 ///
 /// This is useful for FFI functions sometimes, but should generally be avoided.
+///
+/// # Examples
+///
+/// ```
+/// use std::mem;
+///
+/// let x: int = unsafe { mem::uninitialized() };
+/// ```
 #[inline]
 #[stable]
 pub unsafe fn uninitialized<T>() -> T {
     intrinsics::uninit()
 }
 
-/// Swap the values at two mutable locations of the same type, without
-/// deinitialising or copying either one.
+/// Swap the values at two mutable locations of the same type, without deinitialising or copying
+/// either one.
+///
+/// # Examples
+///
+/// ```
+/// use std::mem;
+///
+/// let x = &mut 5i;
+/// let y = &mut 42i;
+///
+/// mem::swap(x, y);
+///
+/// assert_eq!(42i, *x);
+/// assert_eq!(5i, *y);
+/// ```
 #[inline]
 #[stable]
 pub fn swap<T>(x: &mut T, y: &mut T) {
@@ -137,13 +213,26 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
     }
 }
 
-/// Replace the value at a mutable location with a new one, returning the old
-/// value, without deinitialising or copying either one.
+/// Replace the value at a mutable location with a new one, returning the old value, without
+/// deinitialising or copying either one.
 ///
-/// This is primarily used for transferring and swapping ownership of a value
-/// in a mutable location. For example, this function allows consumption of
-/// one field of a struct by replacing it with another value. The normal approach
-/// doesn't always work:
+/// This is primarily used for transferring and swapping ownership of a value in a mutable
+/// location.
+///
+/// # Examples
+///
+/// A simple example:
+///
+/// ```
+/// use std::mem;
+///
+/// let mut v: Vec<i32> = Vec::new();
+///
+/// mem::replace(&mut v, Vec::new());
+/// ```
+///
+/// This function allows consumption of one field of a struct by replacing it with another value.
+/// The normal approach doesn't always work:
 ///
 /// ```rust,ignore
 /// struct Buffer<T> { buf: Vec<T> }
@@ -158,16 +247,16 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
 /// }
 /// ```
 ///
-/// Note that `T` does not necessarily implement `Clone`, so it can't even
-/// clone and reset `self.buf`. But `replace` can be used to disassociate
-/// the original value of `self.buf` from `self`, allowing it to be returned:
+/// Note that `T` does not necessarily implement `Clone`, so it can't even clone and reset
+/// `self.buf`. But `replace` can be used to disassociate the original value of `self.buf` from
+/// `self`, allowing it to be returned:
 ///
 /// ```rust
+/// use std::mem;
 /// # struct Buffer<T> { buf: Vec<T> }
 /// impl<T> Buffer<T> {
 ///     fn get_and_reset(&mut self) -> Vec<T> {
-///         use std::mem::replace;
-///         replace(&mut self.buf, Vec::new())
+///         mem::replace(&mut self.buf, Vec::new())
 ///     }
 /// }
 /// ```
@@ -180,10 +269,10 @@ pub fn replace<T>(dest: &mut T, mut src: T) -> T {
 
 /// Disposes of a value.
 ///
-/// This function can be used to destroy any value by allowing `drop` to take
-/// ownership of its argument.
+/// This function can be used to destroy any value by allowing `drop` to take ownership of its
+/// argument.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use std::cell::RefCell;
@@ -192,6 +281,7 @@ pub fn replace<T>(dest: &mut T, mut src: T) -> T {
 ///
 /// let mut mutable_borrow = x.borrow_mut();
 /// *mutable_borrow = 1;
+///
 /// drop(mutable_borrow); // relinquish the mutable borrow on this slot
 ///
 /// let borrow = x.borrow();
@@ -201,18 +291,25 @@ pub fn replace<T>(dest: &mut T, mut src: T) -> T {
 #[stable]
 pub fn drop<T>(_x: T) { }
 
-/// Interprets `src` as `&U`, and then reads `src` without moving the contained
-/// value.
+/// Interprets `src` as `&U`, and then reads `src` without moving the contained value.
 ///
-/// This function will unsafely assume the pointer `src` is valid for
-/// `sizeof(U)` bytes by transmuting `&T` to `&U` and then reading the `&U`. It
-/// will also unsafely create a copy of the contained value instead of moving
-/// out of `src`.
+/// This function will unsafely assume the pointer `src` is valid for `sizeof(U)` bytes by
+/// transmuting `&T` to `&U` and then reading the `&U`. It will also unsafely create a copy of the
+/// contained value instead of moving out of `src`.
 ///
-/// It is not a compile-time error if `T` and `U` have different sizes, but it
-/// is highly encouraged to only invoke this function where `T` and `U` have the
-/// same size. This function triggers undefined behavior if `U` is larger than
-/// `T`.
+/// It is not a compile-time error if `T` and `U` have different sizes, but it is highly encouraged
+/// to only invoke this function where `T` and `U` have the same size. This function triggers
+/// undefined behavior if `U` is larger than `T`.
+///
+/// # Examples
+///
+/// ```
+/// use std::mem;
+///
+/// let one = unsafe { mem::transmute_copy(&1i) };
+///
+/// assert_eq!(1u, one);
+/// ```
 #[inline]
 #[stable]
 pub unsafe fn transmute_copy<T, U>(src: &T) -> U {
@@ -223,7 +320,8 @@ pub unsafe fn transmute_copy<T, U>(src: &T) -> U {
 #[inline]
 #[unstable = "this function may be removed in the future due to its \
               questionable utility"]
-pub unsafe fn copy_lifetime<'a, S, T:'a>(_ptr: &'a S, ptr: &T) -> &'a T {
+pub unsafe fn copy_lifetime<'a, Sized? S, Sized? T: 'a>(_ptr: &'a S,
+                                                        ptr: &T) -> &'a T {
     transmute(ptr)
 }
 
@@ -231,7 +329,8 @@ pub unsafe fn copy_lifetime<'a, S, T:'a>(_ptr: &'a S, ptr: &T) -> &'a T {
 #[inline]
 #[unstable = "this function may be removed in the future due to its \
               questionable utility"]
-pub unsafe fn copy_mut_lifetime<'a, S, T:'a>(_ptr: &'a mut S,
-                                          ptr: &mut T) -> &'a mut T {
+pub unsafe fn copy_mut_lifetime<'a, Sized? S, Sized? T: 'a>(_ptr: &'a mut S,
+                                                            ptr: &mut T)
+                                                            -> &'a mut T {
     transmute(ptr)
 }

@@ -215,8 +215,9 @@ impl<T:Copy> Clone for Cell<T> {
     }
 }
 
-#[unstable]
+#[stable]
 impl<T:Default + Copy> Default for Cell<T> {
+    #[stable]
     fn default() -> Cell<T> {
         Cell::new(Default::default())
     }
@@ -234,7 +235,6 @@ impl<T:PartialEq + Copy> PartialEq for Cell<T> {
 pub struct RefCell<T> {
     value: UnsafeCell<T>,
     borrow: Cell<BorrowFlag>,
-    nocopy: marker::NoCopy,
     noshare: marker::NoSync,
 }
 
@@ -251,7 +251,6 @@ impl<T> RefCell<T> {
         RefCell {
             value: UnsafeCell::new(value),
             borrow: Cell::new(UNUSED),
-            nocopy: marker::NoCopy,
             noshare: marker::NoSync,
         }
     }
@@ -349,8 +348,9 @@ impl<T: Clone> Clone for RefCell<T> {
     }
 }
 
-#[unstable]
+#[stable]
 impl<T:Default> Default for RefCell<T> {
+    #[stable]
     fn default() -> RefCell<T> {
         RefCell::new(Default::default())
     }
