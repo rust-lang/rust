@@ -316,7 +316,9 @@ impl<T: fmt::Show> fmt::Show for Arc<T> {
     }
 }
 
+#[stable]
 impl<T: Default + Sync + Send> Default for Arc<T> {
+    #[stable]
     fn default() -> Arc<T> { Arc::new(Default::default()) }
 }
 

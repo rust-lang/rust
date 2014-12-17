@@ -448,6 +448,7 @@ impl<T: Default> Default for Rc<T> {
     /// let x: Rc<int> = Default::default();
     /// ```
     #[inline]
+    #[stable]
     fn default() -> Rc<T> {
         Rc::new(Default::default())
     }

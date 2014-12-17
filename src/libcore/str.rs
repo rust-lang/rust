@@ -2349,7 +2349,9 @@ impl StrPrelude for str {
     fn len(&self) -> uint { self.repr().len }
 }
 
+#[stable]
 impl<'a> Default for &'a str {
+    #[stable]
     fn default() -> &'a str { "" }
 }
 

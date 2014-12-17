@@ -182,6 +182,7 @@ macro_rules! tuple_impls {
 
             #[stable]
             impl<$($T:Default),+> Default for ($($T,)+) {
+                #[stable]
                 #[inline]
                 fn default() -> ($($T,)+) {
                     ($({ let x: $T = Default::default(); x},)+)

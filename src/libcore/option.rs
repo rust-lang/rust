@@ -763,6 +763,7 @@ impl<T> AsSlice<T> for Option<T> {
 
 #[stable]
 impl<T> Default for Option<T> {
+    #[stable]
     #[inline]
     #[stable]
     fn default() -> Option<T> { None }

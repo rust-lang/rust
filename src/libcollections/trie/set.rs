@@ -69,8 +69,10 @@ impl Show for TrieSet {
     }
 }
 
+#[stable]
 impl Default for TrieSet {
     #[inline]
+    #[stable]
     fn default() -> TrieSet { TrieSet::new() }
 }
 
