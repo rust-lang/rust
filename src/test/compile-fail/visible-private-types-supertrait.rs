@@ -10,7 +10,6 @@
 
 trait Foo {}
 
-pub trait Bar : Foo {}  //~ ERROR private type in exported type
+pub trait Bar : Foo {} //~ ERROR private trait in exported type
 
 fn main() {}
-

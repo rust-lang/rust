@@ -10,17 +10,14 @@
 
 trait Foo {}
 
-pub fn f<T:Foo>() {}    //~ ERROR private type in exported type
+pub fn f<
+    T
+    : Foo //~ ERROR private trait in exported type parameter bound
+>() {}
 
-pub fn g<T>() where T: Foo {}   //~ ERROR private type in exported type
-
-pub struct H<T:Foo> {   //~ ERROR private type in exported type
-    x: T,
-}
-
-pub struct I<T> where T: Foo {  //~ ERROR private type in exported type
-    x: T,
-}
+pub fn g<T>() where
+    T
+    : Foo //~ ERROR private trait in exported type parameter bound
+{}
 
 fn main() {}
-
