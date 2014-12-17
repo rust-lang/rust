@@ -418,6 +418,19 @@ let x: int = 5;
 If I asked you to read this out loud to the rest of the class, you'd say "`x`
 is a binding with the type `int` and the value `five`."
 
+In future examples, we may annotate the type in a comment. The examples will
+look like this:
+
+```{rust}
+fn main() {
+    let x = 5i; // x: int
+}
+```
+
+Note the similarities between this annotation and the syntax you use with `let`.
+Including these kinds of comments is not idiomatic Rust, but we'll occasionally
+include them to help you understand what the types that Rust infers are.
+
 By default, bindings are **immutable**. This code will not compile:
 
 ```{ignore}
@@ -436,7 +449,7 @@ error: re-assignment of immutable variable `x`
 If you want a binding to be mutable, you can use `mut`:
 
 ```{rust}
-let mut x = 5i;
+let mut x = 5i; // mut x: int
 x = 10i;
 ```
 
@@ -584,7 +597,7 @@ let y = if x == 5i {
     10i
 } else {
     15i
-};
+}; // y: int
 ```
 
 Which we can (and probably should) write like this:
@@ -592,7 +605,7 @@ Which we can (and probably should) write like this:
 ```{rust}
 let x = 5i;
 
-let y = if x == 5i { 10i } else { 15i };
+let y = if x == 5i { 10i } else { 15i }; // y: int
 ```
 
 This reveals two interesting things about Rust: it is an expression-based
@@ -928,8 +941,8 @@ destructuring. You can assign one tuple into another, if they have the same
 arity and contained types.
 
 ```rust
-let mut x = (1i, 2i);
-let y = (2i, 3i);
+let mut x = (1i, 2i); // x: (int, int)
+let y = (2i, 3i);     // y: (int, int)
 
 x = y;
 ```
@@ -981,7 +994,7 @@ struct Point {
 }
 
 fn main() {
-    let origin = Point { x: 0i, y: 0i };
+    let origin = Point { x: 0i, y: 0i }; // origin: Point
 
     println!("The origin is at ({}, {})", origin.x, origin.y);
 }
@@ -1101,7 +1114,7 @@ fn main() {
     let x = 5i;
     let y = 10i;
 
-    let ordering = cmp(x, y);
+    let ordering = cmp(x, y); // ordering: Ordering
 
     if ordering == Less {
         println!("less");
@@ -1388,7 +1401,7 @@ Instead, it looks like this:
 
 ```{rust}
 for x in range(0i, 10i) {
-    println!("{}", x);
+    println!("{}", x); // x: int
 }
 ```
 
@@ -1423,8 +1436,8 @@ The other kind of looping construct in Rust is the `while` loop. It looks like
 this:
 
 ```{rust}
-let mut x = 5u;
-let mut done = false;
+let mut x = 5u;       // mut x: uint
+let mut done = false; // mut done: bool
 
 while !done {
     x += x - 3;
@@ -1520,7 +1533,7 @@ The first kind is a `&str`. This is pronounced a 'string slice.' String literals
 are of the type `&str`:
 
 ```{rust}
-let string = "Hello there.";
+let string = "Hello there."; // string: &str
 ```
 
 This string is statically allocated, meaning that it's saved inside our
@@ -1532,7 +1545,7 @@ A `String`, on the other hand, is an in-memory string.  This string is
 growable, and is also guaranteed to be UTF-8.
 
 ```{rust}
-let mut s = "Hello".to_string();
+let mut s = "Hello".to_string(); // mut s: String
 println!("{}", s);
 
 s.push_str(", world.");
@@ -1588,16 +1601,19 @@ things. The most basic is the **array**, a fixed-size list of elements of the
 same type. By default, arrays are immutable.
 
 ```{rust}
-let a = [1i, 2i, 3i];
-let mut m = [1i, 2i, 3i];
+let a = [1i, 2i, 3i];     // a: [int, ..3]
+let mut m = [1i, 2i, 3i]; // mut m: [int, ..3]
 ```
 
 You can create an array with a given number of elements, all initialized to the
 same value, with `[val, ..N]` syntax. The compiler ensures that arrays are
 always initialized.
 
+There's a shorthand for initializing each element of an array to the same
+value. In this example, each element of `a` will be initialized to `0i`:
+
 ```{rust}
-let a = [0i, ..20];  // Shorthand for array of 20 elements all initialized to 0
+let a = [0i, ..20]; // a: [int, ..20]
 ```
 
 Arrays have type `[T,..N]`. We'll talk about this `T` notation later, when we
@@ -1608,7 +1624,7 @@ You can get the number of elements in an array `a` with `a.len()`, and use
 number in order:
 
 ```{rust}
-let a = [1i, 2, 3];     // Only the first item needs a type suffix
+let a = [1i, 2, 3]; // Only the first item needs a type suffix
 
 println!("a has {} elements", a.len());
 for e in a.iter() {
@@ -1619,7 +1635,7 @@ for e in a.iter() {
 You can access a particular element of an array with **subscript notation**:
 
 ```{rust}
-let names = ["Graydon", "Brian", "Niko"];
+let names = ["Graydon", "Brian", "Niko"]; // names: [&str, 3]
 
 println!("The second name is: {}", names[1]);
 ```
@@ -1637,7 +1653,7 @@ later). Vectors are to arrays what `String` is to `&str`. You can create them
 with the `vec!` macro:
 
 ```{rust}
-let v = vec![1i, 2, 3];
+let v = vec![1i, 2, 3]; // v: Vec<int>
 ```
 
 (Notice that unlike the `println!` macro we've used in the past, we use square
@@ -1648,8 +1664,10 @@ You can get the length of, iterate over, and subscript vectors just like
 arrays. In addition, (mutable) vectors can grow automatically:
 
 ```{rust}
-let mut nums = vec![1i, 2, 3];
+let mut nums = vec![1i, 2, 3]; // mut nums: Vec<int>
+
 nums.push(4);
+
 println!("The length of nums is now {}", nums.len());   // Prints 4
 ```
 
@@ -1823,10 +1841,12 @@ use std::io;
 fn main() {
     println!("Type something!");
 
-    let input = io::stdin()
-                  .read_line()
-                  .ok()
-                  .expect("Failed to read line");
+                                                  // here, we'll show the types at each step
+
+    let input = io::stdin()                       // std::io::stdio::StdinReader
+                  .read_line()                    // IoResult<String>
+                  .ok()                           // Option<String>
+                  .expect("Failed to read line"); // String
 
     println!("{}", input);
 }
@@ -1969,7 +1989,7 @@ use std::rand;
 fn main() {
     println!("Guess the number!");
 
-    let secret_number = (rand::random() % 100i) + 1i;
+    let secret_number = (rand::random() % 100i) + 1i; // secret_number: int
 
     println!("The secret number is: {}", secret_number);
 
@@ -2262,8 +2282,8 @@ In this case, we say `x` is a `uint` explicitly, so Rust is able to properly
 tell `random()` what to generate. In a similar fashion, both of these work:
 
 ```{rust,ignore}
-let input_num = from_str::<uint>("5");
-let input_num: Option<uint> = from_str("5");
+let input_num = from_str::<uint>("5");       // input_num: Option<uint>
+let input_num: Option<uint> = from_str("5"); // input_num: Option<uint>
 ```
 
 Anyway, with us now converting our input to a number, our code looks like this:
