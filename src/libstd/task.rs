@@ -251,7 +251,40 @@ pub fn try_future<T,F>(f: F) -> Future<Result<T, Box<Any + Send>>>
 
 /* Lifecycle functions */
 
-/// Read the name of the current task.
+/// Returns the name of the current task.
+///
+/// Returns `None` if the task has no name.
+///
+/// # Examples
+///
+/// With a name:
+///
+/// ```
+/// use std::task;
+///
+/// fn main() {
+///     let name = task::name();
+///     let main = Some("<main>".to_string());
+///
+///     assert_eq!(main, name);
+/// }
+/// ```
+///
+/// Without a name:
+///
+/// ```
+/// use std::task;
+///
+/// fn main() {
+///     let anon = None;
+///
+///     spawn(move || {
+///         let name = task::name();
+///
+///         assert_eq!(anon, name);
+///     });
+/// }
+/// ```
 #[stable]
 pub fn name() -> Option<String> {
     use rustrt::task::Task;
