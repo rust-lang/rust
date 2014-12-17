@@ -126,7 +126,7 @@ impl<'tcx> FulfillmentContext<'tcx> {
 
         let trait_obligation = Obligation { cause: cause,
                                             recursion_depth: 0,
-                                            trait_ref: ty::Predicate::Trait(trait_ref) };
+                                            predicate: ty::Predicate::Trait(trait_ref) };
         self.register_predicate(tcx, trait_obligation)
     }
 
@@ -141,15 +141,15 @@ impl<'tcx> FulfillmentContext<'tcx> {
 
     pub fn register_predicate<'a>(&mut self,
                                   tcx: &ty::ctxt<'tcx>,
-                                  predicate: PredicateObligation<'tcx>)
+                                  obligation: PredicateObligation<'tcx>)
     {
-        if !self.duplicate_set.insert(predicate.trait_ref.clone()) {
-            debug!("register_predicate({}) -- already seen, skip", predicate.repr(tcx));
+        if !self.duplicate_set.insert(obligation.predicate.clone()) {
+            debug!("register_predicate({}) -- already seen, skip", obligation.repr(tcx));
             return;
         }
 
-        debug!("register_predicate({})", predicate.repr(tcx));
-        self.predicates.push(predicate);
+        debug!("register_predicate({})", obligation.repr(tcx));
+        self.predicates.push(obligation);
     }
 
     pub fn region_obligations(&self,
@@ -289,7 +289,7 @@ impl<'tcx> FulfillmentContext<'tcx> {
 }
 
 fn process_predicate<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
-                              predicate: &PredicateObligation<'tcx>,
+                              obligation: &PredicateObligation<'tcx>,
                               selections: &mut Vec<Selection<'tcx>>,
                               errors: &mut Vec<FulfillmentError<'tcx>>,
                               region_obligations: &mut NodeMap<Vec<RegionObligation<'tcx>>>)
@@ -303,11 +303,9 @@ fn process_predicate<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
      */
 
     let tcx = selcx.tcx();
-    match predicate.trait_ref {
+    match obligation.predicate {
         ty::Predicate::Trait(ref trait_ref) => {
-            let trait_obligation = Obligation { cause: predicate.cause.clone(),
-                                                recursion_depth: predicate.recursion_depth,
-                                                trait_ref: trait_ref.clone() };
+            let trait_obligation = obligation.with(trait_ref.clone());
             match selcx.select(&trait_obligation) {
                 Ok(None) => {
                     false
@@ -318,11 +316,11 @@ fn process_predicate<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
                 }
                 Err(selection_err) => {
                     debug!("predicate: {} error: {}",
-                           predicate.repr(tcx),
+                           obligation.repr(tcx),
                            selection_err.repr(tcx));
                     errors.push(
                         FulfillmentError::new(
-                            predicate.clone(),
+                            obligation.clone(),
                             CodeSelectionError(selection_err)));
                     true
                 }
@@ -330,12 +328,12 @@ fn process_predicate<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
         }
 
         ty::Predicate::Equate(ref binder) => {
-            match selcx.infcx().equality_predicate(predicate.cause.span, binder) {
+            match selcx.infcx().equality_predicate(obligation.cause.span, binder) {
                 Ok(()) => { }
                 Err(_) => {
                     errors.push(
                         FulfillmentError::new(
-                            predicate.clone(),
+                            obligation.clone(),
                             CodeSelectionError(Unimplemented)));
                 }
             }
@@ -343,12 +341,12 @@ fn process_predicate<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
         }
 
         ty::Predicate::RegionOutlives(ref binder) => {
-            match selcx.infcx().region_outlives_predicate(predicate.cause.span, binder) {
+            match selcx.infcx().region_outlives_predicate(obligation.cause.span, binder) {
                 Ok(()) => { }
                 Err(_) => {
                     errors.push(
                         FulfillmentError::new(
-                            predicate.clone(),
+                            obligation.clone(),
                             CodeSelectionError(Unimplemented)));
                 }
             }
@@ -364,12 +362,12 @@ fn process_predicate<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
             if ty::count_late_bound_regions(selcx.tcx(), binder) != 0 {
                 errors.push(
                     FulfillmentError::new(
-                        predicate.clone(),
+                        obligation.clone(),
                         CodeSelectionError(Unimplemented)));
             } else {
                 let ty::OutlivesPredicate(t_a, r_b) = binder.0;
                 register_region_obligation(tcx, t_a, r_b,
-                                           predicate.cause.clone(),
+                                           obligation.cause.clone(),
                                            region_obligations);
             }
             true
