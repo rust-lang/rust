@@ -4439,7 +4439,7 @@ for i in range(0u, nums.len()) {
 ```
 
 This is strictly worse than using an actual iterator. The `.iter()` method on
-vectors returns an iterator which iterates through a reference to each element
+vectors returns an iterator that iterates through a reference to each element
 of the vector in turn. So write this:
 
 ```{rust}
