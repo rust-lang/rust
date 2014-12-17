@@ -551,7 +551,7 @@ format in a more detailed manner, there are a [wide number of options
 available](std/fmt/index.html). For now, we'll just stick to the default:
 integers aren't very complicated to print.
 
-# If
+# `if`
 
 Rust's take on `if` is not particularly complex, but it's much more like the
 `if` you'll find in a dynamically typed language than in a more traditional
