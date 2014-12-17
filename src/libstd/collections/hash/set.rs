@@ -593,7 +593,7 @@ impl<T: Eq + Hash<S> + fmt::Show, S, H: Hasher<S>> fmt::Show for HashSet<T, H> {
 
 impl<T: Eq + Hash<S>, S, H: Hasher<S> + Default> FromIterator<T> for HashSet<T, H> {
     fn from_iter<I: Iterator<T>>(iter: I) -> HashSet<T, H> {
-        let (lower, _) = iter.size_hint();
+        let lower = iter.size_hint().0;
         let mut set = HashSet::with_capacity_and_hasher(lower, Default::default());
         set.extend(iter);
         set
