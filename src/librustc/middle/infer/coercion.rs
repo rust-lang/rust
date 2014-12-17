@@ -552,17 +552,18 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                b.repr(self.get_ref().infcx.tcx));
 
         let mt_a = match *sty_a {
-            ty::ty_rptr(_, mt) => mt,
+            ty::ty_rptr(_, mt) | ty::ty_ptr(mt) => mt,
             _ => {
                 return self.subtype(a, b);
             }
         };
 
         // Check that the types which they point at are compatible.
-        // Note that we don't adjust the mutability here. We cannot change
-        // the mutability and the kind of pointer in a single coercion.
-        let a_unsafe = ty::mk_ptr(self.get_ref().infcx.tcx, mt_a);
+        let a_unsafe = ty::mk_ptr(self.get_ref().infcx.tcx, ty::mt{ mutbl: mutbl_b, ty: mt_a.ty });
         try!(self.subtype(a_unsafe, b));
+        if !can_coerce_mutbls(mt_a.mutbl, mutbl_b) {
+            return Err(ty::terr_mutability);
+        }
 
         // Although references and unsafe ptrs have the same
         // representation, we still register an AutoDerefRef so that
