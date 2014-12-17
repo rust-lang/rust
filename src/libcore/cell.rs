@@ -234,7 +234,6 @@ impl<T:PartialEq + Copy> PartialEq for Cell<T> {
 pub struct RefCell<T> {
     value: UnsafeCell<T>,
     borrow: Cell<BorrowFlag>,
-    nocopy: marker::NoCopy,
     noshare: marker::NoSync,
 }
 
@@ -251,7 +250,6 @@ impl<T> RefCell<T> {
         RefCell {
             value: UnsafeCell::new(value),
             borrow: Cell::new(UNUSED),
-            nocopy: marker::NoCopy,
             noshare: marker::NoSync,
         }
     }
