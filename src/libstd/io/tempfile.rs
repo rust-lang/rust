@@ -26,9 +26,7 @@ use sync::atomic;
 ///
 /// # Examples
 ///
-/// ```
-/// # fn main() {}
-/// # fn foo () {
+/// ```no_run
 /// use std::io::TempDir;
 ///
 /// {
@@ -41,7 +39,7 @@ use sync::atomic;
 ///     // get the path of the temporary directory without affecting the wrapper
 ///     let tmppath = tmpdir.path();
 ///
-///     println!("The path of temporary directory is {}", tmppath.as_str().unwrap());
+///     println!("The path of temporary directory is {}", tmppath.display());
 ///
 ///     // the temporary directory is automatically removed when tmpdir goes
 ///     // out of scope at the end of the block
@@ -56,7 +54,7 @@ use sync::atomic;
 ///     // get the path of the temporary directory and disable automatic deletion in the wrapper
 ///     let tmppath = tmpdir.into_inner();
 ///
-///     println!("The path of the not-so-temporary directory is {}", tmppath.as_str().unwrap());
+///     println!("The path of the not-so-temporary directory is {}", tmppath.display());
 ///
 ///     // the temporary directory is not removed here
 ///     // because the directory is detached from the wrapper
@@ -74,7 +72,6 @@ use sync::atomic;
 ///         Err(e) => panic!("couldn't remove temporary directory: {}", e)
 ///     };
 /// }
-/// # }
 /// ```
 pub struct TempDir {
     path: Option<Path>,
