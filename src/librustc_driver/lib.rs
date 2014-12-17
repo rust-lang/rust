@@ -138,8 +138,19 @@ fn run_compiler(args: &[String]) {
     }
 
     let pretty = matches.opt_default("pretty", "normal").map(|a| {
-        pretty::parse_pretty(&sess, a.as_slice())
+        // stable pretty-print variants only
+        pretty::parse_pretty(&sess, a.as_slice(), false)
     });
+    let pretty = if pretty.is_none() &&
+        sess.debugging_opt(config::UNSTABLE_OPTIONS) {
+            matches.opt_str("xpretty").map(|a| {
+                // extended with unstable pretty-print variants
+                pretty::parse_pretty(&sess, a.as_slice(), true)
+            })
+        } else {
+            pretty
+        };
+
     match pretty.into_iter().next() {
         Some((ppm, opt_uii)) => {
             pretty::pretty_print_input(sess, cfg, &input, ppm, opt_uii, ofile);

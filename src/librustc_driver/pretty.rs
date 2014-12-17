@@ -59,24 +59,33 @@ pub enum PpMode {
     PpmFlowGraph,
 }
 
-pub fn parse_pretty(sess: &Session, name: &str) -> (PpMode, Option<UserIdentifiedItem>) {
+pub fn parse_pretty(sess: &Session,
+                    name: &str,
+                    extended: bool) -> (PpMode, Option<UserIdentifiedItem>) {
     let mut split = name.splitn(1, '=');
     let first = split.next().unwrap();
     let opt_second = split.next();
-    let first = match first {
-        "normal"       => PpmSource(PpmNormal),
-        "everybody_loops" => PpmSource(PpmEveryBodyLoops),
-        "expanded"     => PpmSource(PpmExpanded),
-        "typed"        => PpmSource(PpmTyped),
-        "expanded,identified" => PpmSource(PpmExpandedIdentified),
-        "expanded,hygiene" => PpmSource(PpmExpandedHygiene),
-        "identified"   => PpmSource(PpmIdentified),
-        "flowgraph"    => PpmFlowGraph,
+    let first = match (first, extended) {
+        ("normal", _)       => PpmSource(PpmNormal),
+        ("everybody_loops", true) => PpmSource(PpmEveryBodyLoops),
+        ("expanded", _)     => PpmSource(PpmExpanded),
+        ("typed", _)        => PpmSource(PpmTyped),
+        ("expanded,identified", _) => PpmSource(PpmExpandedIdentified),
+        ("expanded,hygiene", _) => PpmSource(PpmExpandedHygiene),
+        ("identified", _)   => PpmSource(PpmIdentified),
+        ("flowgraph", true)    => PpmFlowGraph,
         _ => {
-            sess.fatal(format!(
-                "argument to `pretty` must be one of `normal`, \
-                 `expanded`, `flowgraph=<nodeid>`, `typed`, `identified`, \
-                 or `expanded,identified`; got {}", name).as_slice());
+            if extended {
+                sess.fatal(format!(
+                    "argument to `xpretty` must be one of `normal`, \
+                     `expanded`, `flowgraph=<nodeid>`, `typed`, `identified`, \
+                     `expanded,identified`, or `everybody_loops`; got {}", name).as_slice());
+            } else {
+                sess.fatal(format!(
+                    "argument to `pretty` must be one of `normal`, \
+                     `expanded`, `typed`, `identified`, \
+                     or `expanded,identified`; got {}", name).as_slice());
+            }
         }
     };
     let opt_second = opt_second.and_then::<UserIdentifiedItem, _>(from_str);
