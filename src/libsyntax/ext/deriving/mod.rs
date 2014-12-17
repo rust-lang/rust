@@ -84,7 +84,7 @@ pub fn expand_meta_deriving(cx: &mut ExtCtxt,
 
                                 expand!(encodable::expand_deriving_encodable)
                             }
-                            "Decodable" =>
+                            "Decodable" => {
                                 // NOTE: uncomment after a stage0 snap
                                 // cx.span_warn(titem.span,
                                 //              "deriving(Decodable) is deprecated \
