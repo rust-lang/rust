@@ -251,7 +251,7 @@ pub enum MetricChange {
 
 impl Copy for MetricChange {}
 
-pub type MetricDiff = TreeMap<String,MetricChange>;
+pub type MetricDiff = BTreeMap<String,MetricChange>;
 
 // The default console test runner. It accepts the command line
 // arguments and a vector of test_descs.
@@ -1227,7 +1227,7 @@ impl MetricMap {
     /// map.
     pub fn compare_to_old(&self, old: &MetricMap,
                           noise_pct: Option<f64>) -> MetricDiff {
-        let mut diff : MetricDiff = TreeMap::new();
+        let mut diff : MetricDiff = BTreeMap::new();
         let MetricMap(ref selfmap) = *self;
         let MetricMap(ref old) = *old;
         for (k, vold) in old.iter() {

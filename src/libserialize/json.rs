@@ -151,7 +151,7 @@
 //!
 //! ```rust
 //! extern crate serialize;
-//! use std::collections::TreeMap;
+//! use std::collections::BTreeMap;
 //! use serialize::json::{mod, Json, ToJson};
 //!
 //! // Only generate `Decodable` trait implementation
@@ -165,7 +165,7 @@
 //! // Specify encoding method manually
 //! impl ToJson for TestStruct {
 //!     fn to_json(&self) -> Json {
-//!         let mut d = TreeMap::new();
+//!         let mut d = BTreeMap::new();
 //!         // All standard types implement `to_json()`, so use it
 //!         d.insert("data_int".to_string(), self.data_int.to_json());
 //!         d.insert("data_str".to_string(), self.data_str.to_json());
@@ -198,7 +198,7 @@ use self::ParserState::*;
 use self::InternalStackElement::*;
 
 use std;
-use std::collections::{HashMap, TreeMap};
+use std::collections::{HashMap, BTreeMap};
 use std::{char, f64, fmt, io, num, str};
 use std::mem::{swap, transmute};
 use std::num::{Float, FPNaN, FPInfinite, Int};
@@ -223,7 +223,7 @@ pub enum Json {
 }
 
 pub type Array = Vec<Json>;
-pub type Object = TreeMap<string::String, Json>;
+pub type Object = BTreeMap<string::String, Json>;
 
 /// The errors that can arise while parsing a JSON stream.
 #[deriving(Clone, PartialEq)]
@@ -973,7 +973,7 @@ impl Json {
         self.as_object().is_some()
     }
 
-    /// If the Json value is an Object, returns the associated TreeMap.
+    /// If the Json value is an Object, returns the associated BTreeMap.
     /// Returns None otherwise.
     pub fn as_object<'a>(&'a self) -> Option<&'a Object> {
         match self {
@@ -1909,7 +1909,7 @@ impl<T: Iterator<char>> Builder<T> {
     fn build_object(&mut self) -> Result<Json, BuilderError> {
         self.bump();
 
-        let mut values = TreeMap::new();
+        let mut values = BTreeMap::new();
 
         loop {
             match self.token {
@@ -2391,9 +2391,9 @@ impl<A: ToJson> ToJson for Vec<A> {
     fn to_json(&self) -> Json { Json::Array(self.iter().map(|elt| elt.to_json()).collect()) }
 }
 
-impl<A: ToJson> ToJson for TreeMap<string::String, A> {
+impl<A: ToJson> ToJson for BTreeMap<string::String, A> {
     fn to_json(&self) -> Json {
-        let mut d = TreeMap::new();
+        let mut d = BTreeMap::new();
         for (key, value) in self.iter() {
             d.insert((*key).clone(), value.to_json());
         }
@@ -2403,7 +2403,7 @@ impl<A: ToJson> ToJson for TreeMap<string::String, A> {
 
 impl<A: ToJson> ToJson for HashMap<string::String, A> {
     fn to_json(&self) -> Json {
-        let mut d = TreeMap::new();
+        let mut d = BTreeMap::new();
         for (key, value) in self.iter() {
             d.insert((*key).clone(), value.to_json());
         }
@@ -2451,7 +2451,7 @@ mod tests {
     use super::{PrettyEncoder, Json, from_str, DecodeResult, DecoderError, JsonEvent, Parser,
                 StackElement, Stack, Encoder, Decoder};
     use std::{i64, u64, f32, f64, io};
-    use std::collections::TreeMap;
+    use std::collections::BTreeMap;
     use std::num::Float;
     use std::string;
 
@@ -2501,7 +2501,7 @@ mod tests {
     }
 
     fn mk_object(items: &[(string::String, Json)]) -> Json {
-        let mut d = TreeMap::new();
+        let mut d = BTreeMap::new();
 
         for item in items.iter() {
             match *item {
@@ -3075,7 +3075,7 @@ mod tests {
     fn test_decode_map() {
         let s = "{\"a\": \"Dog\", \"b\": {\"variant\":\"Frog\",\
                   \"fields\":[\"Henry\", 349]}}";
-        let mut map: TreeMap<string::String, Animal> = super::decode(s).unwrap();
+        let mut map: BTreeMap<string::String, Animal> = super::decode(s).unwrap();
 
         assert_eq!(map.remove(&"a".into_string()), Some(Dog));
         assert_eq!(map.remove(&"b".into_string()), Some(Frog("Henry".into_string(), 349)));
@@ -3350,9 +3350,9 @@ mod tests {
     #[test]
     fn test_prettyencoder_indent_level_param() {
         use std::str::from_utf8;
-        use std::collections::TreeMap;
+        use std::collections::BTreeMap;
 
-        let mut tree = TreeMap::new();
+        let mut tree = BTreeMap::new();
 
         tree.insert("hello".into_string(), String("guten tag".into_string()));
         tree.insert("goodbye".into_string(), String("sayonara".into_string()));
@@ -3719,13 +3719,13 @@ mod tests {
 
     #[test]
     fn test_to_json() {
-        use std::collections::{HashMap,TreeMap};
+        use std::collections::{HashMap,BTreeMap};
         use super::ToJson;
 
         let array2 = Array(vec!(U64(1), U64(2)));
         let array3 = Array(vec!(U64(1), U64(2), U64(3)));
         let object = {
-            let mut tree_map = TreeMap::new();
+            let mut tree_map = BTreeMap::new();
             tree_map.insert("a".into_string(), U64(1));
             tree_map.insert("b".into_string(), U64(2));
             Object(tree_map)
@@ -3758,7 +3758,7 @@ mod tests {
         assert_eq!((&[1u, 2, 3]).to_json(), array3);
         assert_eq!((vec![1u, 2]).to_json(), array2);
         assert_eq!(vec!(1u, 2, 3).to_json(), array3);
-        let mut tree_map = TreeMap::new();
+        let mut tree_map = BTreeMap::new();
         tree_map.insert("a".into_string(), 1u);
         tree_map.insert("b".into_string(), 2);
         assert_eq!(tree_map.to_json(), object);
