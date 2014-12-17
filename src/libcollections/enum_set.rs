@@ -24,7 +24,7 @@ use core::num::Int;
 pub struct EnumSet<E> {
     // We must maintain the invariant that no bits are set
     // for which no variant exists
-    bits: uint
+    bits: u32,
 }
 
 impl<E> Copy for EnumSet<E> {}
@@ -44,38 +44,39 @@ impl<E:CLike+fmt::Show> fmt::Show for EnumSet<E> {
     }
 }
 
-/// An interface for casting C-like enum to uint and back.
+/// An interface for casting C-like enum to u32 and back.
 /// A typically implementation is as below.
 ///
 /// ```{rust,ignore}
-/// #[repr(uint)]
+/// #[repr(u32)]
 /// enum Foo {
 ///     A, B, C
 /// }
 ///
 /// impl CLike for Foo {
-///     fn to_uint(&self) -> uint {
-///         *self as uint
+///     fn to_u32(&self) -> u32 {
+///         *self as u32
 ///     }
 ///
-///     fn from_uint(v: uint) -> Foo {
+///     unsafe fn from_u32(v: u32) -> Foo {
 ///         unsafe { mem::transmute(v) }
 ///     }
 /// }
 /// ```
 pub trait CLike {
-    /// Converts a C-like enum to a `uint`.
-    fn to_uint(&self) -> uint;
-    /// Converts a `uint` to a C-like enum.
-    fn from_uint(uint) -> Self;
+    /// Converts a C-like enum to a `u32`.
+    fn to_u32(&self) -> u32;
+    /// Converts a `u32` to a C-like enum. This method only needs to work
+    /// correctly for possible return values of `to_u32` of this trait.
+    unsafe fn from_u32(u32) -> Self;
 }
 
-fn bit<E:CLike>(e: &E) -> uint {
-    use core::uint;
-    let value = e.to_uint();
-    assert!(value < uint::BITS,
-            "EnumSet only supports up to {} variants.", uint::BITS - 1);
-    1 << value
+fn bit<E:CLike>(e: &E) -> u32 {
+    use core::u32;
+    let value = e.to_u32();
+    assert!(value < u32::BITS as u32,
+            "EnumSet only supports up to {} variants.", u32::BITS - 1);
+    1 << value as uint
 }
 
 impl<E:CLike> EnumSet<E> {
@@ -88,7 +89,7 @@ impl<E:CLike> EnumSet<E> {
     /// Returns an empty `EnumSet`.
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn new() -> EnumSet<E> {
-        EnumSet {bits: 0}
+        EnumSet { bits: 0 }
     }
 
     /// Returns the number of elements in the given `EnumSet`.
@@ -134,12 +135,12 @@ impl<E:CLike> EnumSet<E> {
 
     /// Returns the union of both `EnumSets`.
     pub fn union(&self, e: EnumSet<E>) -> EnumSet<E> {
-        EnumSet {bits: self.bits | e.bits}
+        EnumSet { bits: self.bits | e.bits }
     }
 
     /// Returns the intersection of both `EnumSets`.
     pub fn intersection(&self, e: EnumSet<E>) -> EnumSet<E> {
-        EnumSet {bits: self.bits & e.bits}
+        EnumSet { bits: self.bits & e.bits }
     }
 
     /// Deprecated: Use `insert`.
@@ -187,7 +188,7 @@ impl<E:CLike> EnumSet<E> {
 #[cfg(stage0)]
 impl<E:CLike> Sub<EnumSet<E>, EnumSet<E>> for EnumSet<E> {
     fn sub(&self, e: &EnumSet<E>) -> EnumSet<E> {
-        EnumSet {bits: self.bits & !e.bits}
+        EnumSet { bits: self.bits & !e.bits }
     }
 }
 
@@ -202,7 +203,7 @@ impl<E:CLike> Sub<EnumSet<E>, EnumSet<E>> for EnumSet<E> {
 #[cfg(stage0)]
 impl<E:CLike> BitOr<EnumSet<E>, EnumSet<E>> for EnumSet<E> {
     fn bitor(&self, e: &EnumSet<E>) -> EnumSet<E> {
-        EnumSet {bits: self.bits | e.bits}
+        EnumSet { bits: self.bits | e.bits }
     }
 }
 
@@ -217,7 +218,7 @@ impl<E:CLike> BitOr<EnumSet<E>, EnumSet<E>> for EnumSet<E> {
 #[cfg(stage0)]
 impl<E:CLike> BitAnd<EnumSet<E>, EnumSet<E>> for EnumSet<E> {
     fn bitand(&self, e: &EnumSet<E>) -> EnumSet<E> {
-        EnumSet {bits: self.bits & e.bits}
+        EnumSet { bits: self.bits & e.bits }
     }
 }
 
@@ -232,7 +233,7 @@ impl<E:CLike> BitAnd<EnumSet<E>, EnumSet<E>> for EnumSet<E> {
 #[cfg(stage0)]
 impl<E:CLike> BitXor<EnumSet<E>, EnumSet<E>> for EnumSet<E> {
     fn bitxor(&self, e: &EnumSet<E>) -> EnumSet<E> {
-        EnumSet {bits: self.bits ^ e.bits}
+        EnumSet { bits: self.bits ^ e.bits }
     }
 }
 
@@ -245,12 +246,12 @@ impl<E:CLike> BitXor<EnumSet<E>, EnumSet<E>> for EnumSet<E> {
 
 /// An iterator over an EnumSet
 pub struct Items<E> {
-    index: uint,
-    bits: uint,
+    index: u32,
+    bits: u32,
 }
 
 impl<E:CLike> Items<E> {
-    fn new(bits: uint) -> Items<E> {
+    fn new(bits: u32) -> Items<E> {
         Items { index: 0, bits: bits }
     }
 }
@@ -265,7 +266,9 @@ impl<E:CLike> Iterator<E> for Items<E> {
             self.index += 1;
             self.bits >>= 1;
         }
-        let elem = CLike::from_uint(self.index);
+        // Safe because of the invariant that only valid bits are set (see
+        // comment on the `bit` member of this struct).
+        let elem = unsafe { CLike::from_u32(self.index) };
         self.index += 1;
         self.bits >>= 1;
         Some(elem)
@@ -302,7 +305,7 @@ mod test {
     use super::{EnumSet, CLike};
 
     #[deriving(PartialEq, Show)]
-    #[repr(uint)]
+    #[repr(u32)]
     enum Foo {
         A, B, C
     }
@@ -310,12 +313,12 @@ mod test {
     impl Copy for Foo {}
 
     impl CLike for Foo {
-        fn to_uint(&self) -> uint {
-            *self as uint
+        fn to_u32(&self) -> u32 {
+            *self as u32
         }
 
-        fn from_uint(v: uint) -> Foo {
-            unsafe { mem::transmute(v) }
+        unsafe fn from_u32(v: u32) -> Foo {
+            mem::transmute(v)
         }
     }
 
@@ -507,7 +510,7 @@ mod test {
     #[should_fail]
     fn test_overflow() {
         #[allow(dead_code)]
-        #[repr(uint)]
+        #[repr(u32)]
         enum Bar {
             V00, V01, V02, V03, V04, V05, V06, V07, V08, V09,
             V10, V11, V12, V13, V14, V15, V16, V17, V18, V19,
@@ -521,12 +524,12 @@ mod test {
         impl Copy for Bar {}
 
         impl CLike for Bar {
-            fn to_uint(&self) -> uint {
-                *self as uint
+            fn to_u32(&self) -> u32 {
+                *self as u32
             }
 
-            fn from_uint(v: uint) -> Bar {
-                unsafe { mem::transmute(v) }
+            unsafe fn from_u32(v: u32) -> Bar {
+                mem::transmute(v)
             }
         }
         let mut set = EnumSet::new();

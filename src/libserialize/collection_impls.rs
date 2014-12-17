@@ -10,7 +10,6 @@
 
 //! Implementations of serialization for structures found in libcollections
 
-use std::uint;
 use std::default::Default;
 use std::hash::{Hash, Hasher};
 
@@ -38,7 +37,7 @@ impl<E, D:Decoder<E>,T:Decodable<D, E>> Decodable<D, E> for DList<T> {
     fn decode(d: &mut D) -> Result<DList<T>, E> {
         d.read_seq(|d, len| {
             let mut list = DList::new();
-            for i in range(0u, len) {
+            for i in range(0, len) {
                 list.push_back(try!(d.read_seq_elt(i, |d| Decodable::decode(d))));
             }
             Ok(list)
@@ -65,7 +64,7 @@ impl<E, D:Decoder<E>,T:Decodable<D, E>> Decodable<D, E> for RingBuf<T> {
     fn decode(d: &mut D) -> Result<RingBuf<T>, E> {
         d.read_seq(|d, len| {
             let mut deque: RingBuf<T> = RingBuf::new();
-            for i in range(0u, len) {
+            for i in range(0, len) {
                 deque.push_back(try!(d.read_seq_elt(i, |d| Decodable::decode(d))));
             }
             Ok(deque)
@@ -101,7 +100,7 @@ impl<
     fn decode(d: &mut D) -> Result<TreeMap<K, V>, E> {
         d.read_map(|d, len| {
             let mut map = TreeMap::new();
-            for i in range(0u, len) {
+            for i in range(0, len) {
                 let key = try!(d.read_map_elt_key(i, |d| Decodable::decode(d)));
                 let val = try!(d.read_map_elt_val(i, |d| Decodable::decode(d)));
                 map.insert(key, val);
@@ -136,7 +135,7 @@ impl<
     fn decode(d: &mut D) -> Result<TreeSet<T>, E> {
         d.read_seq(|d, len| {
             let mut set = TreeSet::new();
-            for i in range(0u, len) {
+            for i in range(0, len) {
                 set.insert(try!(d.read_seq_elt(i, |d| Decodable::decode(d))));
             }
             Ok(set)
@@ -152,26 +151,9 @@ impl<
     fn encode(&self, s: &mut S) -> Result<(), E> {
         let mut bits = 0;
         for item in self.iter() {
-            bits |= item.to_uint();
+            bits |= item.to_u32();
         }
-        s.emit_uint(bits)
-    }
-}
-
-impl<
-    E,
-    D: Decoder<E>,
-    T: Decodable<D, E> + CLike
-> Decodable<D, E> for EnumSet<T> {
-    fn decode(d: &mut D) -> Result<EnumSet<T>, E> {
-        let bits = try!(d.read_uint());
-        let mut set = EnumSet::new();
-        for bit in range(0, uint::BITS) {
-            if bits & (1 << bit) != 0 {
-                set.insert(CLike::from_uint(1 << bit));
-            }
-        }
-        Ok(set)
+        s.emit_u32(bits)
     }
 }
 
@@ -208,7 +190,7 @@ impl<
         d.read_map(|d, len| {
             let hasher = Default::default();
             let mut map = HashMap::with_capacity_and_hasher(len, hasher);
-            for i in range(0u, len) {
+            for i in range(0, len) {
                 let key = try!(d.read_map_elt_key(i, |d| Decodable::decode(d)));
                 let val = try!(d.read_map_elt_val(i, |d| Decodable::decode(d)));
                 map.insert(key, val);
@@ -247,7 +229,7 @@ impl<
     fn decode(d: &mut D) -> Result<HashSet<T, H>, E> {
         d.read_seq(|d, len| {
             let mut set = HashSet::with_capacity_and_hasher(len, Default::default());
-            for i in range(0u, len) {
+            for i in range(0, len) {
                 set.insert(try!(d.read_seq_elt(i, |d| Decodable::decode(d))));
             }
             Ok(set)
@@ -279,7 +261,7 @@ impl<
     fn decode(d: &mut D) -> Result<TrieMap<V>, E> {
         d.read_map(|d, len| {
             let mut map = TrieMap::new();
-            for i in range(0u, len) {
+            for i in range(0, len) {
                 let key = try!(d.read_map_elt_key(i, |d| Decodable::decode(d)));
                 let val = try!(d.read_map_elt_val(i, |d| Decodable::decode(d)));
                 map.insert(key, val);
@@ -304,7 +286,7 @@ impl<E, D: Decoder<E>> Decodable<D, E> for TrieSet {
     fn decode(d: &mut D) -> Result<TrieSet, E> {
         d.read_seq(|d, len| {
             let mut set = TrieSet::new();
-            for i in range(0u, len) {
+            for i in range(0, len) {
                 set.insert(try!(d.read_seq_elt(i, |d| Decodable::decode(d))));
             }
             Ok(set)
@@ -336,7 +318,7 @@ impl<
     fn decode(d: &mut D) -> Result<VecMap<V>, E> {
         d.read_map(|d, len| {
             let mut map = VecMap::new();
-            for i in range(0u, len) {
+            for i in range(0, len) {
                 let key = try!(d.read_map_elt_key(i, |d| Decodable::decode(d)));
                 let val = try!(d.read_map_elt_val(i, |d| Decodable::decode(d)));
                 map.insert(key, val);
