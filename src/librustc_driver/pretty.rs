@@ -325,7 +325,7 @@ impl FromStr for UserIdentifiedItem {
 }
 
 enum NodesMatchingUII<'a, 'ast: 'a> {
-    NodesMatchingDirect(option::Item<ast::NodeId>),
+    NodesMatchingDirect(option::IntoIter<ast::NodeId>),
     NodesMatchingSuffix(ast_map::NodesMatchingSuffix<'a, 'ast, String>),
 }
 
