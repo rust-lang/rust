@@ -49,7 +49,7 @@ use self::NamePadding::*;
 use self::OutputLocation::*;
 
 use std::any::{Any, AnyRefExt};
-use std::collections::TreeMap;
+use std::collections::BTreeMap;
 use stats::Stats;
 use getopts::{OptGroup, optflag, optopt};
 use regex::Regex;
@@ -230,7 +230,7 @@ impl Metric {
 }
 
 #[deriving(PartialEq)]
-pub struct MetricMap(TreeMap<String,Metric>);
+pub struct MetricMap(BTreeMap<String,Metric>);
 
 impl Clone for MetricMap {
     fn clone(&self) -> MetricMap {
@@ -1191,7 +1191,7 @@ fn calc_result(desc: &TestDesc, task_result: Result<(), Box<Any+Send>>) -> TestR
 impl MetricMap {
 
     pub fn new() -> MetricMap {
-        MetricMap(TreeMap::new())
+        MetricMap(BTreeMap::new())
     }
 
     /// Load MetricDiff from a file.

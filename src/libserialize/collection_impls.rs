@@ -15,9 +15,8 @@ use std::default::Default;
 use std::hash::{Hash, Hasher};
 
 use {Decodable, Encodable, Decoder, Encoder};
-use std::collections::{DList, RingBuf, BTreeMap, BTreeSet, HashMap, HashSet,
-                       TrieMap, TrieSet, VecMap};
-use std::collections::enum_set::{EnumSet, CLike};
+use std::collections::{DList, RingBuf, BTreeMap, BTreeSet, HashMap, HashSet, VecMap};
+use collections::enum_set::{EnumSet, CLike};
 
 impl<
     E,
@@ -98,7 +97,7 @@ impl<
     K: Decodable<D, E> + PartialEq + Ord,
     V: Decodable<D, E> + PartialEq
 > Decodable<D, E> for BTreeMap<K, V> {
-    fn decode(d: &mut D) -> Result<TreeMap<K, V>, E> {
+    fn decode(d: &mut D) -> Result<BTreeMap<K, V>, E> {
         d.read_map(|d, len| {
             let mut map = BTreeMap::new();
             for i in range(0u, len) {
@@ -133,7 +132,7 @@ impl<
     D: Decoder<E>,
     T: Decodable<D, E> + PartialEq + Ord
 > Decodable<D, E> for BTreeSet<T> {
-    fn decode(d: &mut D) -> Result<TreeSet<T>, E> {
+    fn decode(d: &mut D) -> Result<BTreeSet<T>, E> {
         d.read_seq(|d, len| {
             let mut set = BTreeSet::new();
             for i in range(0u, len) {
@@ -247,63 +246,6 @@ impl<
     fn decode(d: &mut D) -> Result<HashSet<T, H>, E> {
         d.read_seq(|d, len| {
             let mut set = HashSet::with_capacity_and_hasher(len, Default::default());
-            for i in range(0u, len) {
-                set.insert(try!(d.read_seq_elt(i, |d| Decodable::decode(d))));
-            }
-            Ok(set)
-        })
-    }
-}
-
-impl<
-    E,
-    S: Encoder<E>,
-    V: Encodable<S, E>
-> Encodable<S, E> for TrieMap<V> {
-    fn encode(&self, e: &mut S) -> Result<(), E> {
-        e.emit_map(self.len(), |e| {
-                for (i, (key, val)) in self.iter().enumerate() {
-                    try!(e.emit_map_elt_key(i, |e| key.encode(e)));
-                    try!(e.emit_map_elt_val(i, |e| val.encode(e)));
-                }
-                Ok(())
-            })
-    }
-}
-
-impl<
-    E,
-    D: Decoder<E>,
-    V: Decodable<D, E>
-> Decodable<D, E> for TrieMap<V> {
-    fn decode(d: &mut D) -> Result<TrieMap<V>, E> {
-        d.read_map(|d, len| {
-            let mut map = TrieMap::new();
-            for i in range(0u, len) {
-                let key = try!(d.read_map_elt_key(i, |d| Decodable::decode(d)));
-                let val = try!(d.read_map_elt_val(i, |d| Decodable::decode(d)));
-                map.insert(key, val);
-            }
-            Ok(map)
-        })
-    }
-}
-
-impl<E, S: Encoder<E>> Encodable<S, E> for TrieSet {
-    fn encode(&self, s: &mut S) -> Result<(), E> {
-        s.emit_seq(self.len(), |s| {
-                for (i, e) in self.iter().enumerate() {
-                    try!(s.emit_seq_elt(i, |s| e.encode(s)));
-                }
-                Ok(())
-            })
-    }
-}
-
-impl<E, D: Decoder<E>> Decodable<D, E> for TrieSet {
-    fn decode(d: &mut D) -> Result<TrieSet, E> {
-        d.read_seq(|d, len| {
-            let mut set = TrieSet::new();
             for i in range(0u, len) {
                 set.insert(try!(d.read_seq_elt(i, |d| Decodable::decode(d))));
             }

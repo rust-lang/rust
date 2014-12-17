@@ -33,6 +33,8 @@ extern crate test;
 #[phase(plugin, link)]
 extern crate log;
 
+extern crate collections;
+
 pub use self::serialize::{Decoder, Encoder, Decodable, Encodable,
                           DecoderHelpers, EncoderHelpers};
 

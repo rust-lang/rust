@@ -36,6 +36,7 @@ extern crate rustc_llvm;
 extern crate rustc_back;
 extern crate serialize;
 extern crate rbml;
+extern crate collections;
 #[phase(plugin, link)] extern crate log;
 #[phase(plugin, link)] extern crate syntax;
 
