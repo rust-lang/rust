@@ -164,7 +164,7 @@ use ops::{Deref, FnOnce};
 // which basically means it must be `Option`.
 
 /// The `Option` type.
-#[deriving(Clone, PartialEq, PartialOrd, Eq, Ord, Show)]
+#[deriving(Clone, PartialEq, PartialOrd, Eq, Ord, Show, Hash)]
 #[stable]
 pub enum Option<T> {
     /// No value

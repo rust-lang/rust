@@ -17,12 +17,12 @@ use core::prelude::*;
 
 use core::default::Default;
 use core::fmt;
+use core::hash::{Hash, Writer};
 use core::iter;
 use core::iter::{Enumerate, FilterMap};
 use core::mem::replace;
 use core::ops::FnOnce;
 
-use hash::{Hash, Writer};
 use {vec, slice};
 use vec::Vec;
 
@@ -642,7 +642,7 @@ pub type MoveItems<V> = FilterMap<
 mod test_map {
     use std::prelude::*;
     use vec::Vec;
-    use hash::hash;
+    use core::hash::hash;
 
     use super::VecMap;
 
