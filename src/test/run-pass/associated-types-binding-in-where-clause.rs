@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test equality constraints on associated types.
+// Test equality constraints on associated types in a where clause.
 
 #![feature(associated_types)]
 
@@ -17,39 +17,31 @@ pub trait Foo {
     fn boo(&self) -> <Self as Foo>::A;
 }
 
+#[deriving(PartialEq)]
 struct Bar;
 
 impl Foo for int {
     type A = uint;
     fn boo(&self) -> uint { 42 }
 }
-impl Foo for Bar {
-    type A = int;
-    fn boo(&self) -> int { 43 }
-}
+
 impl Foo for char {
     type A = Bar;
     fn boo(&self) -> Bar { Bar }
 }
 
-fn foo1<I: Foo<A=Bar>>(x: I) -> Bar {
+fn foo_bar<I: Foo<A=Bar>>(x: I) -> Bar {
     x.boo()
 }
-fn foo2<I: Foo>(x: I) -> <I as Foo>::A {
-    x.boo()
-}
-fn baz(x: &Foo<A=Bar>) -> Bar {
+
+fn foo_uint<I: Foo<A=uint>>(x: I) -> uint {
     x.boo()
 }
 
 pub fn main() {
     let a = 42i;
-    assert!(foo2(a) == 42u);
-
-    let a = Bar;
-    assert!(foo2(a) == 43i);
+    foo_uint(a);
 
     let a = 'a';
-    foo1(a);
-    baz(&a);
+    foo_bar(a);
 }

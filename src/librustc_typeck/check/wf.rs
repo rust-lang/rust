@@ -13,7 +13,6 @@ use check::{FnCtxt, Inherited, blank_fn_ctxt, vtable, regionck};
 use CrateCtxt;
 use middle::region;
 use middle::subst;
-use middle::subst::{Subst};
 use middle::traits;
 use middle::ty::{mod, Ty};
 use middle::ty::liberate_late_bound_regions;
@@ -148,7 +147,9 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                                                         region::CodeExtent::from_node_id(item.id),
                                                         Some(&mut this.cache));
             let type_scheme = ty::lookup_item_type(fcx.tcx(), local_def(item.id));
-            let item_ty = type_scheme.ty.subst(fcx.tcx(), &fcx.inh.param_env.free_substs);
+            let item_ty = fcx.instantiate_type_scheme(item.span,
+                                                      &fcx.inh.param_env.free_substs,
+                                                      &type_scheme.ty);
             bounds_checker.check_traits_in_ty(item_ty);
         });
     }
@@ -168,7 +169,9 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
             // that is, with all type parameters converted from bound
             // to free.
             let self_ty = ty::node_id_to_type(fcx.tcx(), item.id);
-            let self_ty = self_ty.subst(fcx.tcx(), &fcx.inh.param_env.free_substs);
+            let self_ty = fcx.instantiate_type_scheme(item.span,
+                                                      &fcx.inh.param_env.free_substs,
+                                                      &self_ty);
 
             bounds_checker.check_traits_in_ty(self_ty);
 
@@ -178,7 +181,9 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                 None => { return; }
                 Some(t) => { t }
             };
-            let trait_ref = (*trait_ref).subst(fcx.tcx(), &fcx.inh.param_env.free_substs);
+            let trait_ref = fcx.instantiate_type_scheme(item.span,
+                                                        &fcx.inh.param_env.free_substs,
+                                                        &trait_ref);
 
             // There are special rules that apply to drop.
             if
@@ -209,7 +214,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
             // trait reference. Instead, this is done at the impl site.
             // Arguably this is wrong and we should treat the trait-reference
             // the same way as we treat the self-type.
-            bounds_checker.check_trait_ref(&trait_ref);
+            bounds_checker.check_trait_ref(&*trait_ref);
 
             let cause =
                 traits::ObligationCause::new(
@@ -344,7 +349,8 @@ impl<'cx,'tcx> TypeFolder<'tcx> for BoundsChecker<'cx,'tcx> {
                     //
                     // (I believe we should do the same for traits, but
                     // that will require an RFC. -nmatsakis)
-                    let bounds = type_scheme.generics.to_bounds(self.tcx(), substs);
+                    let bounds = type_scheme
+.generics.to_bounds(self.tcx(), substs);
                     let bounds = filter_to_trait_obligations(bounds);
                     self.fcx.add_obligations_for_parameters(
                         traits::ObligationCause::new(self.span,
@@ -397,7 +403,9 @@ fn struct_variant<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         .iter()
         .map(|field| {
             let field_ty = ty::node_id_to_type(fcx.tcx(), field.node.id);
-            let field_ty = field_ty.subst(fcx.tcx(), &fcx.inh.param_env.free_substs);
+            let field_ty = fcx.instantiate_type_scheme(field.span,
+                                                       &fcx.inh.param_env.free_substs,
+                                                       &field_ty);
             AdtField { ty: field_ty, span: field.span }
         })
         .collect();
@@ -416,7 +424,10 @@ fn enum_variants<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                     AdtVariant {
                         fields: args.iter().enumerate().map(|(index, arg)| {
                             let arg_ty = arg_tys[index];
-                            let arg_ty = arg_ty.subst(fcx.tcx(), &fcx.inh.param_env.free_substs);
+                            let arg_ty =
+                                fcx.instantiate_type_scheme(variant.span,
+                                                            &fcx.inh.param_env.free_substs,
+                                                            &arg_ty);
                             AdtField {
                                 ty: arg_ty,
                                 span: arg.ty.span
@@ -443,7 +454,8 @@ fn filter_to_trait_obligations<'tcx>(bounds: ty::GenericBounds<'tcx>)
     let mut result = ty::GenericBounds::empty();
     for (space, _, predicate) in bounds.predicates.iter_enumerated() {
         match *predicate {
-            ty::Predicate::Trait(..) => {
+            ty::Predicate::Trait(..) |
+            ty::Predicate::Projection(..) => {
                 result.predicates.push(space, predicate.clone())
             }
             ty::Predicate::Equate(..) |

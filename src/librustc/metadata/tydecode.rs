@@ -504,6 +504,12 @@ fn parse_ty<'a, 'tcx>(st: &mut PState<'a, 'tcx>, conv: conv_did) -> Ty<'tcx> {
           return ty::mk_unboxed_closure(st.tcx, did,
                   st.tcx.mk_region(region), st.tcx.mk_substs(substs));
       }
+      'P' => {
+          assert_eq!(next(st), '[');
+          let trait_ref = parse_trait_ref(st, |x,y| conv(x,y));
+          let name = token::str_to_ident(parse_str(st, ']').as_slice()).name;
+          return ty::mk_projection(tcx, trait_ref, name);
+      }
       'e' => {
           return tcx.types.err;
       }
@@ -683,14 +689,29 @@ pub fn parse_predicate<'a,'tcx>(st: &mut PState<'a, 'tcx>,
                                 -> ty::Predicate<'tcx>
 {
     match next(st) {
-        't' => Rc::new(ty::Binder(parse_trait_ref(st, conv))).as_predicate(),
+        't' => ty::Binder(Rc::new(parse_trait_ref(st, conv))).as_predicate(),
         'e' => ty::Binder(ty::EquatePredicate(parse_ty(st, |x,y| conv(x,y)),
                                               parse_ty(st, |x,y| conv(x,y)))).as_predicate(),
         'r' => ty::Binder(ty::OutlivesPredicate(parse_region(st, |x,y| conv(x,y)),
                                                 parse_region(st, |x,y| conv(x,y)))).as_predicate(),
         'o' => ty::Binder(ty::OutlivesPredicate(parse_ty(st, |x,y| conv(x,y)),
                                                 parse_region(st, |x,y| conv(x,y)))).as_predicate(),
+        'p' => ty::Binder(parse_projection_predicate(st, conv)).as_predicate(),
         c => panic!("Encountered invalid character in metadata: {}", c)
+    }
+}
+
+fn parse_projection_predicate<'a,'tcx>(
+    st: &mut PState<'a, 'tcx>,
+    conv: conv_did)
+     -> ty::ProjectionPredicate<'tcx>
+{
+    ty::ProjectionPredicate {
+        projection_ty: ty::ProjectionTy {
+            trait_ref: Rc::new(parse_trait_ref(st, |x,y| conv(x,y))),
+            item_name: token::str_to_ident(parse_str(st, '|').as_slice()).name,
+        },
+        ty: parse_ty(st, |x,y| conv(x,y)),
     }
 }
 
@@ -710,10 +731,6 @@ fn parse_type_param_def<'a, 'tcx>(st: &mut PState<'a, 'tcx>, conv: conv_did)
     assert_eq!(next(st), '|');
     let index = parse_u32(st);
     assert_eq!(next(st), '|');
-    let associated_with = parse_opt(st, |st| {
-        parse_def(st, NominalType, |x,y| conv(x,y))
-    });
-    assert_eq!(next(st), '|');
     let bounds = parse_bounds(st, |x,y| conv(x,y));
     let default = parse_opt(st, |st| parse_ty(st, |x,y| conv(x,y)));
 
@@ -722,7 +739,6 @@ fn parse_type_param_def<'a, 'tcx>(st: &mut PState<'a, 'tcx>, conv: conv_did)
         def_id: def_id,
         space: space,
         index: index,
-        associated_with: associated_with,
         bounds: bounds,
         default: default
     }
@@ -768,7 +784,8 @@ fn parse_bounds<'a, 'tcx>(st: &mut PState<'a, 'tcx>, conv: conv_did)
     let mut param_bounds = ty::ParamBounds {
         region_bounds: Vec::new(),
         builtin_bounds: builtin_bounds,
-        trait_bounds: Vec::new()
+        trait_bounds: Vec::new(),
+        projection_bounds: Vec::new(),
     };
     loop {
         match next(st) {
@@ -778,7 +795,11 @@ fn parse_bounds<'a, 'tcx>(st: &mut PState<'a, 'tcx>, conv: conv_did)
             }
             'I' => {
                 param_bounds.trait_bounds.push(
-                    Rc::new(ty::Binder(parse_trait_ref(st, |x,y| conv(x,y)))));
+                    ty::Binder(Rc::new(parse_trait_ref(st, |x,y| conv(x,y)))));
+            }
+            'P' => {
+                param_bounds.projection_bounds.push(
+                    ty::Binder(parse_projection_predicate(st, |x,y| conv(x,y))));
             }
             '.' => {
                 return param_bounds;

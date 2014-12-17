@@ -1284,7 +1284,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
         rbml_w.tag(c::tag_table_object_cast_map, |rbml_w| {
             rbml_w.id(id);
             rbml_w.tag(c::tag_table_val, |rbml_w| {
-                rbml_w.emit_trait_ref(ecx, &trait_ref.0);
+                rbml_w.emit_trait_ref(ecx, &*trait_ref.0);
             })
         })
     }
@@ -1364,7 +1364,7 @@ trait rbml_decoder_decoder_helpers<'tcx> {
     fn read_trait_ref<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
                               -> Rc<ty::TraitRef<'tcx>>;
     fn read_poly_trait_ref<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
-                                   -> Rc<ty::PolyTraitRef<'tcx>>;
+                                   -> ty::PolyTraitRef<'tcx>;
     fn read_type_param_def<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
                                    -> ty::TypeParameterDef<'tcx>;
     fn read_predicate<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
@@ -1558,8 +1558,8 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
     }
 
     fn read_poly_trait_ref<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
-                                   -> Rc<ty::PolyTraitRef<'tcx>> {
-        Rc::new(ty::Binder(self.read_opaque(|this, doc| {
+                                   -> ty::PolyTraitRef<'tcx> {
+        ty::Binder(Rc::new(self.read_opaque(|this, doc| {
             let ty = tydecode::parse_trait_ref_data(
                 doc.data,
                 dcx.cdata.cnum,
@@ -1786,7 +1786,7 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
                                 Ok(this.read_poly_trait_ref(dcx))
                             }));
                             Ok(ty::TyTrait {
-                                principal: (*principal).clone(),
+                                principal: ty::Binder((*principal.0).clone()),
                                 bounds: try!(this.read_struct_field("bounds", 1, |this| {
                                     Ok(this.read_existential_bounds(dcx))
                                 })),

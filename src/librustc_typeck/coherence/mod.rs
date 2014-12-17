@@ -27,6 +27,7 @@ use middle::ty::{ty_param, TypeScheme, ty_ptr};
 use middle::ty::{ty_rptr, ty_struct, ty_trait, ty_tup};
 use middle::ty::{ty_str, ty_vec, ty_float, ty_infer, ty_int, ty_open};
 use middle::ty::{ty_uint, ty_unboxed_closure, ty_uniq, ty_bare_fn};
+use middle::ty::{ty_projection};
 use middle::ty;
 use CrateCtxt;
 use middle::infer::combine::Combine;
@@ -64,13 +65,13 @@ fn get_base_type_def_id<'a, 'tcx>(inference_context: &InferCtxt<'a, 'tcx>,
         }
 
         ty_trait(ref t) => {
-            Some(t.principal.def_id())
+            Some(t.principal_def_id())
         }
 
         ty_bool | ty_char | ty_int(..) | ty_uint(..) | ty_float(..) |
         ty_str(..) | ty_vec(..) | ty_bare_fn(..) | ty_closure(..) | ty_tup(..) |
         ty_param(..) | ty_err | ty_open(..) | ty_uniq(_) |
-        ty_ptr(_) | ty_rptr(_, _) => {
+        ty_ptr(_) | ty_rptr(_, _) | ty_projection(..) => {
             None
         }
 

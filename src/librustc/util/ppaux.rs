@@ -448,6 +448,12 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
                     bound_sep,
                     bound_str)
         }
+        ty::ty_projection(ref data) => {
+            format!("<{} as {}>::{}",
+                    data.trait_ref.self_ty().user_string(cx),
+                    data.trait_ref.user_string(cx),
+                    data.item_name.user_string(cx))
+        }
         ty_str => "str".to_string(),
         ty_unboxed_closure(ref did, _, substs) => {
             let unboxed_closures = cx.unboxed_closures.borrow();
@@ -1408,17 +1414,55 @@ impl<'tcx> UserString<'tcx> for ty::EquatePredicate<'tcx> {
     }
 }
 
+impl<'tcx> Repr<'tcx> for ty::TraitPredicate<'tcx> {
+    fn repr(&self, tcx: &ctxt<'tcx>) -> String {
+        format!("TraitPredicate({})",
+                self.trait_ref.repr(tcx))
+    }
+}
+
+impl<'tcx> UserString<'tcx> for ty::TraitPredicate<'tcx> {
+    fn user_string(&self, tcx: &ctxt<'tcx>) -> String {
+        format!("{} : {}",
+                self.trait_ref.self_ty().user_string(tcx),
+                self.trait_ref.user_string(tcx))
+    }
+}
+
+impl<'tcx> UserString<'tcx> for ty::ProjectionPredicate<'tcx> {
+    fn user_string(&self, tcx: &ctxt<'tcx>) -> String {
+        format!("{} == {}",
+                self.projection_ty.user_string(tcx),
+                self.ty.user_string(tcx))
+    }
+}
+
+impl<'tcx> Repr<'tcx> for ty::ProjectionTy<'tcx> {
+    fn repr(&self, tcx: &ctxt<'tcx>) -> String {
+        format!("<{} as {}>::{}",
+                self.trait_ref.self_ty().repr(tcx),
+                self.trait_ref.repr(tcx),
+                self.item_name.repr(tcx))
+    }
+}
+
+impl<'tcx> UserString<'tcx> for ty::ProjectionTy<'tcx> {
+    fn user_string(&self, tcx: &ctxt<'tcx>) -> String {
+        format!("<{} as {}>::{}",
+                self.trait_ref.self_ty().user_string(tcx),
+                self.trait_ref.user_string(tcx),
+                self.item_name.user_string(tcx))
+    }
+}
+
 impl<'tcx> UserString<'tcx> for ty::Predicate<'tcx> {
     fn user_string(&self, tcx: &ctxt<'tcx>) -> String {
         match *self {
-            ty::Predicate::Trait(ref trait_ref) => {
-                format!("{} : {}",
-                        trait_ref.self_ty().user_string(tcx),
-                        trait_ref.user_string(tcx))
-            }
+            ty::Predicate::Trait(ref data) => data.user_string(tcx),
             ty::Predicate::Equate(ref predicate) => predicate.user_string(tcx),
             ty::Predicate::RegionOutlives(ref predicate) => predicate.user_string(tcx),
             ty::Predicate::TypeOutlives(ref predicate) => predicate.user_string(tcx),
+            ty::Predicate::Projection(ref predicate) => predicate.user_string(tcx),
         }
     }
 }

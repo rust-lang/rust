@@ -15,13 +15,9 @@ trait Get {
     fn get(&self) -> <Self as Get>::Value;
 }
 
-struct Struct {
-    x: int,
-}
-
-impl Struct {
-    fn uhoh<T>(foo: <T as Get>::Value) {}
-    //~^ ERROR no suitable bound on `T`
+trait Other {
+    fn uhoh<U:Get>(&self, foo: U, bar: <Self as Get>::Value) {}
+    //~^ ERROR the trait `Get` is not implemented for the type `Self`
 }
 
 fn main() {

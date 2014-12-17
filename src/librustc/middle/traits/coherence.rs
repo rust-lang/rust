@@ -45,7 +45,9 @@ pub fn impl_can_satisfy(infcx: &InferCtxt,
     let param_env = ty::empty_parameter_environment();
     let mut selcx = SelectionContext::intercrate(infcx, &param_env, infcx.tcx);
     let obligation = Obligation::new(ObligationCause::dummy(),
-                                     Rc::new(ty::Binder(impl1_trait_ref)));
+                                     ty::Binder(ty::TraitPredicate {
+                                         trait_ref: Rc::new(impl1_trait_ref),
+                                     }));
     debug!("impl_can_satisfy(obligation={})", obligation.repr(infcx.tcx));
     selcx.evaluate_impl(impl2_def_id, &obligation)
 }
@@ -140,12 +142,17 @@ pub fn ty_is_local<'tcx>(tcx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
         }
 
         ty::ty_trait(ref tt) => {
-            tt.principal.def_id().krate == ast::LOCAL_CRATE
+            tt.principal_def_id().krate == ast::LOCAL_CRATE
         }
 
         // Type parameters may be bound to types that are not local to
         // the crate.
         ty::ty_param(..) => {
+            false
+        }
+
+        // Associated types could be anything, I guess.
+        ty::ty_projection(..) => {
             false
         }
 

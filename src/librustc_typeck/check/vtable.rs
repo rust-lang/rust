@@ -13,7 +13,7 @@ use middle::subst::{FnSpace};
 use middle::traits;
 use middle::traits::{Obligation, ObligationCause};
 use middle::traits::report_fulfillment_errors;
-use middle::ty::{mod, Ty};
+use middle::ty::{mod, Ty, AsPredicate, ToPolyTraitRef};
 use middle::infer;
 use std::rc::Rc;
 use syntax::ast;
@@ -136,7 +136,7 @@ pub fn check_object_safety<'tcx>(tcx: &ty::ctxt<'tcx>,
     let object_trait_ref =
         object_trait.principal_trait_ref_with_self_ty(tcx, tcx.types.err);
     for tr in traits::supertraits(tcx, object_trait_ref) {
-        check_object_safety_inner(tcx, &*tr, span);
+        check_object_safety_inner(tcx, &tr, span);
     }
 }
 
@@ -231,7 +231,7 @@ pub fn register_object_cast_obligations<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                                   span: Span,
                                                   object_trait: &ty::TyTrait<'tcx>,
                                                   referent_ty: Ty<'tcx>)
-                                                  -> Rc<ty::PolyTraitRef<'tcx>>
+                                                  -> ty::PolyTraitRef<'tcx>
 {
     // We can only make objects from sized types.
     fcx.register_builtin_bound(
@@ -258,7 +258,7 @@ pub fn register_object_cast_obligations<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             ObligationCause::new(span,
                                  fcx.body_id,
                                  traits::ObjectCastObligation(object_trait_ty)),
-            ty::Predicate::Trait(object_trait_ref.clone()));
+            object_trait_ref.as_predicate());
     fcx.register_predicate(object_obligation);
 
     // Create additional obligations for all the various builtin
@@ -314,3 +314,4 @@ pub fn select_new_fcx_obligations(fcx: &FnCtxt) {
         Err(errors) => { report_fulfillment_errors(fcx.infcx(), &errors); }
     }
 }
+

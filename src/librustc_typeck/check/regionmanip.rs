@@ -121,6 +121,15 @@ impl<'a, 'tcx> Wf<'a, 'tcx> {
                 self.push_param_constraint_from_top(p);
             }
 
+            ty::ty_projection(ref data) => {
+                // `<T as TraitRef<..>>::Name`
+
+                // TODO What region constraints are necessary here, if any??
+
+                // this seems like a minimal requirement:
+                self.accumulate_from_ty(data.trait_ref.self_ty());
+            }
+
             ty::ty_tup(ref tuptys) => {
                 for &tupty in tuptys.iter() {
                     self.accumulate_from_ty(tupty);

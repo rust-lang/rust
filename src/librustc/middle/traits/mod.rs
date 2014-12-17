@@ -18,28 +18,32 @@ pub use self::ObligationCauseCode::*;
 use middle::subst;
 use middle::ty::{mod, Ty};
 use middle::infer::InferCtxt;
-use std::rc::Rc;
 use std::slice::Iter;
+use std::rc::Rc;
 use syntax::ast;
 use syntax::codemap::{Span, DUMMY_SP};
 use util::ppaux::Repr;
 
 pub use self::error_reporting::report_fulfillment_errors;
 pub use self::fulfill::{FulfillmentContext, RegionObligation};
+pub use self::project::MismatchedProjectionTypes;
+pub use self::project::project_type;
+pub use self::project::ProjectionResult;
 pub use self::select::SelectionContext;
 pub use self::select::SelectionCache;
 pub use self::select::{MethodMatchResult, MethodMatched, MethodAmbiguous, MethodDidNotMatch};
 pub use self::select::{MethodMatchedData}; // intentionally don't export variants
 pub use self::util::elaborate_predicates;
+pub use self::util::trait_ref_for_builtin_bound;
 pub use self::util::supertraits;
 pub use self::util::Supertraits;
 pub use self::util::search_trait_and_supertraits_from_bound;
 pub use self::util::transitive_bounds;
-pub use self::util::poly_trait_ref_for_builtin_bound;
 
 mod coherence;
 mod error_reporting;
 mod fulfill;
+mod project;
 mod select;
 mod util;
 
@@ -57,7 +61,7 @@ pub struct Obligation<'tcx, T> {
 }
 
 pub type PredicateObligation<'tcx> = Obligation<'tcx, ty::Predicate<'tcx>>;
-pub type TraitObligation<'tcx> = Obligation<'tcx, Rc<ty::PolyTraitRef<'tcx>>>;
+pub type TraitObligation<'tcx> = Obligation<'tcx, ty::PolyTraitPredicate<'tcx>>;
 
 /// Why did we incur this obligation? Used for error reporting.
 #[deriving(Clone)]
@@ -107,9 +111,18 @@ pub enum ObligationCauseCode<'tcx> {
     // static items must have `Sync` type
     SharedStatic,
 
-    BuiltinDerivedObligation(Rc<ty::PolyTraitRef<'tcx>>, Rc<ObligationCauseCode<'tcx>>),
+    BuiltinDerivedObligation(DerivedObligationCause<'tcx>),
 
-    ImplDerivedObligation(Rc<ty::PolyTraitRef<'tcx>>, Rc<ObligationCauseCode<'tcx>>),
+    ImplDerivedObligation(DerivedObligationCause<'tcx>),
+}
+
+#[deriving(Clone)]
+pub struct DerivedObligationCause<'tcx> {
+    /// Resolving this trait led to the current obligation
+    parent_trait_ref: ty::PolyTraitRef<'tcx>,
+
+    /// The parent trait had this cause
+    parent_code: Rc<ObligationCauseCode<'tcx>>
 }
 
 pub type Obligations<'tcx, O> = subst::VecPerParamSpace<Obligation<'tcx, O>>;
@@ -122,8 +135,8 @@ pub type Selection<'tcx> = Vtable<'tcx, PredicateObligation<'tcx>>;
 pub enum SelectionError<'tcx> {
     Unimplemented,
     Overflow,
-    OutputTypeParameterMismatch(Rc<ty::PolyTraitRef<'tcx>>,
-                                Rc<ty::PolyTraitRef<'tcx>>,
+    OutputTypeParameterMismatch(ty::PolyTraitRef<'tcx>,
+                                ty::PolyTraitRef<'tcx>,
                                 ty::type_err<'tcx>),
 }
 
@@ -135,6 +148,7 @@ pub struct FulfillmentError<'tcx> {
 #[deriving(Clone)]
 pub enum FulfillmentErrorCode<'tcx> {
     CodeSelectionError(SelectionError<'tcx>),
+    CodeProjectionError(MismatchedProjectionTypes<'tcx>),
     CodeAmbiguity,
 }
 
@@ -235,7 +249,7 @@ pub struct VtableBuiltinData<N> {
 #[deriving(PartialEq,Eq,Clone)]
 pub struct VtableParamData<'tcx> {
     // In the above example, this would `Eq`
-    pub bound: Rc<ty::PolyTraitRef<'tcx>>,
+    pub bound: ty::PolyTraitRef<'tcx>,
 }
 
 /// True if neither the trait nor self type is local. Note that `impl_def_id` must refer to an impl
@@ -321,12 +335,6 @@ impl<'tcx,O> Obligation<'tcx,O> {
         Obligation { cause: self.cause.clone(),
                      recursion_depth: self.recursion_depth,
                      predicate: value }
-    }
-}
-
-impl<'tcx> TraitObligation<'tcx> {
-    pub fn self_ty(&self) -> Ty<'tcx> {
-        self.predicate.self_ty()
     }
 }
 
@@ -441,6 +449,13 @@ impl<'tcx> FulfillmentError<'tcx> {
             CodeAmbiguity => false,
             CodeSelectionError(Overflow) => true,
             CodeSelectionError(_) => false,
+            CodeProjectionError(_) => false,
         }
+    }
+}
+
+impl<'tcx> TraitObligation<'tcx> {
+    fn self_ty(&self) -> Ty<'tcx> {
+        self.predicate.0.self_ty()
     }
 }
