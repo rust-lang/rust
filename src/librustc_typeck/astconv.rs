@@ -74,6 +74,14 @@ pub trait AstConv<'tcx> {
     fn get_item_ty(&self, id: ast::DefId) -> ty::Polytype<'tcx>;
     fn get_trait_def(&self, id: ast::DefId) -> Rc<ty::TraitDef<'tcx>>;
 
+    /// Return an (optional) substitution to convert bound type parameters that
+    /// are in scope into free ones. This function should only return Some
+    /// within a fn body.
+    /// See ParameterEnvironment::free_substs for more information.
+    fn get_free_substs(&self) -> Option<&Substs<'tcx>> {
+        None
+    }
+
     /// What type should we use when a type is omitted?
     fn ty_infer(&self, span: Span) -> Ty<'tcx>;
 
@@ -517,9 +525,9 @@ fn convert_parenthesized_parameters<'tcx,AC>(this: &AC,
 }
 
 
-/// Instantiates the path for the given trait reference, assuming that it's bound to a valid trait
-/// type. Returns the def_id for the defining trait. Fails if the type is a type other than a trait
-/// type.
+/// Instantiates the path for the given trait reference, assuming that it's
+/// bound to a valid trait type. Returns the def_id for the defining trait.
+/// Fails if the type is a type other than a trait type.
 pub fn instantiate_trait_ref<'tcx,AC,RS>(this: &AC,
                                          rscope: &RS,
                                          ast_trait_ref: &ast::TraitRef,
@@ -846,18 +854,29 @@ fn qpath_to_ty<'tcx,AC,RS>(this: &AC,
 
     debug!("qpath_to_ty: trait_ref={}", trait_ref.repr(this.tcx()));
 
-    let trait_def = this.get_trait_def(trait_ref.def_id);
-
-    for ty_param_def in trait_def.generics.types.get_slice(AssocSpace).iter() {
-        if ty_param_def.name == qpath.item_name.name {
-            debug!("qpath_to_ty: corresponding ty_param_def={}", ty_param_def);
-            return trait_ref.substs.type_for_def(ty_param_def);
-        }
+    if let Some(ty) = find_assoc_ty(this, &*trait_ref, qpath.item_name) {
+        return ty;
     }
 
     this.tcx().sess.span_bug(ast_ty.span,
                              "this associated type didn't get added \
                               as a parameter for some reason")
+}
+
+fn find_assoc_ty<'tcx, AC>(this: &AC,
+                           trait_ref: &ty::TraitRef<'tcx>,
+                           type_name: ast::Ident)
+                           -> Option<Ty<'tcx>>
+where AC: AstConv<'tcx> {
+    let trait_def = this.get_trait_def(trait_ref.def_id);
+
+    for ty_param_def in trait_def.generics.types.get_slice(AssocSpace).iter() {
+        if ty_param_def.name == type_name.name {
+            return Some(trait_ref.substs.type_for_def(ty_param_def));
+        }
+    }
+
+    None
 }
 
 // Parses the programmer's textual representation of a type into our
@@ -1010,6 +1029,45 @@ pub fn ast_ty_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                                                           .identifier)
                                                   .get()).as_slice());
                         ty::mk_err()
+                    }
+                    def::DefAssociatedPath(typ, assoc_ident) => {
+                        // FIXME(#19541): in both branches we should consider
+                        // associated types in super-traits.
+                        let (assoc_tys, tp_name): (Vec<_>, _) = match typ {
+                            def::TyParamProvenance::FromParam(did) |
+                            def::TyParamProvenance::FromSelf(did) => {
+                                let ty_param_defs = tcx.ty_param_defs.borrow();
+                                let tp_def = &(*ty_param_defs)[did.node];
+                                let assoc_tys = tp_def.bounds.trait_bounds.iter()
+                                    .filter_map(|b| find_assoc_ty(this, &**b, assoc_ident))
+                                    .collect();
+                                (assoc_tys, token::get_name(tp_def.name).to_string())
+                            }
+                        };
+
+                        if assoc_tys.len() == 0 {
+                            tcx.sess.span_err(ast_ty.span,
+                                              format!("associated type `{}` not \
+                                                       found for type parameter `{}`",
+                                                      token::get_ident(assoc_ident),
+                                                      tp_name).as_slice());
+                            return ty::mk_err()
+                        }
+
+                        if assoc_tys.len() > 1 {
+                            tcx.sess.span_err(ast_ty.span,
+                                              format!("ambiguous associated type \
+                                                       `{}` in bounds of `{}`",
+                                                      token::get_ident(assoc_ident),
+                                                      tp_name).as_slice());
+                        }
+
+                        let mut result_ty = assoc_tys[0];
+                        if let Some(substs) = this.get_free_substs() {
+                            result_ty = result_ty.subst(tcx, substs);
+                        }
+
+                        result_ty
                     }
                     _ => {
                         tcx.sess.span_fatal(ast_ty.span,
