@@ -1322,6 +1322,7 @@ impl<T> Drop for Vec<T> {
 
 #[stable]
 impl<T> Default for Vec<T> {
+    #[stable]
     fn default() -> Vec<T> {
         Vec::new()
     }

@@ -204,8 +204,10 @@ impl Clone for SipState {
     }
 }
 
+#[stable]
 impl Default for SipState {
     #[inline]
+    #[stable]
     fn default() -> SipState {
         SipState::new()
     }

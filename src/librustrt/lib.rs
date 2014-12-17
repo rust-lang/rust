@@ -128,5 +128,5 @@ pub mod shouldnt_be_public {
 
 #[cfg(not(test))]
 mod std {
-    pub use core::{fmt, option, cmp};
+    pub use core::{fmt, option, cmp, kinds};
 }

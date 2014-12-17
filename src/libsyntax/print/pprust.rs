@@ -1005,8 +1005,13 @@ impl<'a> State<'a> {
     fn print_poly_trait_ref(&mut self, t: &ast::PolyTraitRef) -> IoResult<()> {
         if !t.bound_lifetimes.is_empty() {
             try!(word(&mut self.s, "for<"));
+            let mut comma = false;
             for lifetime_def in t.bound_lifetimes.iter() {
+                if comma {
+                    try!(self.word_space(","))
+                }
                 try!(self.print_lifetime_def(lifetime_def));
+                comma = true;
             }
             try!(word(&mut self.s, ">"));
         }
@@ -1057,6 +1062,7 @@ impl<'a> State<'a> {
                         span: codemap::Span) -> IoResult<()> {
         try!(self.print_ident(ident));
         try!(self.print_generics(generics));
+        try!(self.print_where_clause(generics));
         if ast_util::struct_def_is_tuple_like(struct_def) {
             if !struct_def.fields.is_empty() {
                 try!(self.popen());

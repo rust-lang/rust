@@ -68,7 +68,9 @@ impl<T> Drop for RingBuf<T> {
     }
 }
 
+#[stable]
 impl<T> Default for RingBuf<T> {
+    #[stable]
     #[inline]
     fn default() -> RingBuf<T> { RingBuf::new() }
 }
@@ -377,7 +379,7 @@ impl<T> RingBuf<T> {
         }
     }
 
-    /// Returns a front-to-back iterator which returns mutable references.
+    /// Returns a front-to-back iterator that returns mutable references.
     ///
     /// # Examples
     ///

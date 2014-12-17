@@ -367,8 +367,8 @@ fn escape_str(writer: &mut io::Writer, v: &str) -> Result<(), io::IoError> {
 
 fn escape_char(writer: &mut io::Writer, v: char) -> Result<(), io::IoError> {
     let mut buf = [0, .. 4];
-    v.encode_utf8(&mut buf);
-    escape_bytes(writer, &mut buf)
+    let len = v.encode_utf8(&mut buf).unwrap();
+    escape_bytes(writer, buf[mut ..len])
 }
 
 fn spaces(wr: &mut io::Writer, mut n: uint) -> Result<(), io::IoError> {
@@ -2082,8 +2082,9 @@ impl ::Decoder<DecoderError> for Decoder {
         f(self)
     }
 
-    fn read_enum_variant<T, F>(&mut self, names: &[&str], f: F) -> DecodeResult<T> where
-        F: FnOnce(&mut Decoder, uint) -> DecodeResult<T>,
+    fn read_enum_variant<T, F>(&mut self, names: &[&str],
+                               mut f: F) -> DecodeResult<T>
+        where F: FnMut(&mut Decoder, uint) -> DecodeResult<T>,
     {
         debug!("read_enum_variant(names={})", names);
         let name = match self.pop() {
@@ -2133,7 +2134,7 @@ impl ::Decoder<DecoderError> for Decoder {
     }
 
     fn read_enum_struct_variant<T, F>(&mut self, names: &[&str], f: F) -> DecodeResult<T> where
-        F: FnOnce(&mut Decoder, uint) -> DecodeResult<T>,
+        F: FnMut(&mut Decoder, uint) -> DecodeResult<T>,
     {
         debug!("read_enum_struct_variant(names={})", names);
         self.read_enum_variant(names, f)
@@ -2230,8 +2231,8 @@ impl ::Decoder<DecoderError> for Decoder {
         self.read_tuple_arg(idx, f)
     }
 
-    fn read_option<T, F>(&mut self, f: F) -> DecodeResult<T> where
-        F: FnOnce(&mut Decoder, bool) -> DecodeResult<T>,
+    fn read_option<T, F>(&mut self, mut f: F) -> DecodeResult<T> where
+        F: FnMut(&mut Decoder, bool) -> DecodeResult<T>,
     {
         debug!("read_option()");
         match self.pop() {
@@ -2729,37 +2730,39 @@ mod tests {
         );
     }
 
+    macro_rules! check_encoder_for_simple(
+        ($value:expr, $expected:expr) => ({
+            let s = with_str_writer(|writer| {
+                let mut encoder = Encoder::new(writer);
+                $value.encode(&mut encoder).unwrap();
+            });
+            assert_eq!(s, $expected);
+
+            let s = with_str_writer(|writer| {
+                let mut encoder = PrettyEncoder::new(writer);
+                $value.encode(&mut encoder).unwrap();
+            });
+            assert_eq!(s, $expected);
+        })
+    )
+
     #[test]
     fn test_write_some() {
-        let value = Some("jodhpurs".into_string());
-        let s = with_str_writer(|writer| {
-            let mut encoder = Encoder::new(writer);
-            value.encode(&mut encoder).unwrap();
-        });
-        assert_eq!(s, "\"jodhpurs\"");
-
-        let value = Some("jodhpurs".into_string());
-        let s = with_str_writer(|writer| {
-            let mut encoder = PrettyEncoder::new(writer);
-            value.encode(&mut encoder).unwrap();
-        });
-        assert_eq!(s, "\"jodhpurs\"");
+        check_encoder_for_simple!(Some("jodhpurs".to_string()), "\"jodhpurs\"");
     }
 
     #[test]
     fn test_write_none() {
-        let value: Option<string::String> = None;
-        let s = with_str_writer(|writer| {
-            let mut encoder = Encoder::new(writer);
-            value.encode(&mut encoder).unwrap();
-        });
-        assert_eq!(s, "null");
+        check_encoder_for_simple!(None::<string::String>, "null");
+    }
 
-        let s = with_str_writer(|writer| {
-            let mut encoder = Encoder::new(writer);
-            value.encode(&mut encoder).unwrap();
-        });
-        assert_eq!(s, "null");
+    #[test]
+    fn test_write_char() {
+        check_encoder_for_simple!('a', "\"a\"");
+        check_encoder_for_simple!('\t', "\"\\t\"");
+        check_encoder_for_simple!('\u00a0', "\"\u00a0\"");
+        check_encoder_for_simple!('\uabcd', "\"\uabcd\"");
+        check_encoder_for_simple!('\U0010ffff', "\"\U0010ffff\"");
     }
 
     #[test]
