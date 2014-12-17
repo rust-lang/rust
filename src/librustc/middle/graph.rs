@@ -313,12 +313,10 @@ pub struct DepthFirstTraversal<'g, N:'g, E:'g> {
 
 impl<'g, N, E> Iterator<&'g N> for DepthFirstTraversal<'g, N, E> {
     fn next(&mut self) -> Option<&'g N> {
-        while self.stack.len() > 0 {
-            let idx = self.stack.pop().unwrap();
-            if self.visited.contains(&idx.node_id()) {
+        while let Some(idx) = self.stack.pop() {
+            if self.visited.insert(idx.node_id()) {
                 continue;
             }
-            self.visited.insert(idx.node_id());
             self.graph.each_outgoing_edge(idx, |_, e| -> bool {
                 if !self.visited.contains(&e.target().node_id()) {
                     self.stack.push(e.target());

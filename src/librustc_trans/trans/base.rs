@@ -1468,7 +1468,7 @@ pub fn new_fn_ctxt<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
     let debug_context = debuginfo::create_function_debug_context(ccx, id, param_substs, llfndecl);
     let (blk_id, cfg) = build_cfg(ccx.tcx(), id);
     let nested_returns = if let Some(ref cfg) = cfg {
-       has_nested_returns(ccx.tcx(), cfg, blk_id)
+        has_nested_returns(ccx.tcx(), cfg, blk_id)
     } else {
         false
     };
