@@ -34,7 +34,6 @@ use syntax::parse::token::InternedString;
 
 use std::collections::HashMap;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
-use getopts::{optopt, optmulti, optflag, optflagopt};
 use getopts;
 use std::cell::{RefCell};
 use std::fmt;
@@ -278,7 +277,8 @@ debugging_opts! {
         PRINT_REGION_GRAPH,
         PARSE_ONLY,
         NO_TRANS,
-        NO_ANALYSIS
+        NO_ANALYSIS,
+        UNSTABLE_OPTIONS
     ]
     0
 }
@@ -330,7 +330,8 @@ pub fn debugging_opts_map() -> Vec<(&'static str, &'static str, u64)> {
      ("no-trans", "Run all passes except translation; no output", NO_TRANS),
      ("no-analysis", "Parse and expand the source, but run no analysis and",
       NO_TRANS),
-    ]
+     ("unstable-options", "Adds unstable command line options to rustc interface",
+      UNSTABLE_OPTIONS)]
 }
 
 #[deriving(Clone)]
@@ -653,80 +654,160 @@ pub fn build_target_config(opts: &Options, sp: &SpanHandler) -> Config {
     }
 }
 
+/// Returns the "short" subset of the stable rustc command line options.
 pub fn short_optgroups() -> Vec<getopts::OptGroup> {
+    rustc_short_optgroups().into_iter()
+        .filter(|g|g.is_stable())
+        .map(|g|g.opt_group)
+        .collect()
+}
+
+/// Returns all of the stable rustc command line options.
+pub fn optgroups() -> Vec<getopts::OptGroup> {
+    rustc_optgroups().into_iter()
+        .filter(|g|g.is_stable())
+        .map(|g|g.opt_group)
+        .collect()
+}
+
+#[deriving(Copy, Clone, PartialEq, Eq, Show)]
+pub enum OptionStability { Stable, Unstable }
+
+#[deriving(Clone, PartialEq, Eq)]
+pub struct RustcOptGroup {
+    pub opt_group: getopts::OptGroup,
+    pub stability: OptionStability,
+}
+
+impl RustcOptGroup {
+    pub fn is_stable(&self) -> bool {
+        self.stability == OptionStability::Stable
+    }
+
+    fn stable(g: getopts::OptGroup) -> RustcOptGroup {
+        RustcOptGroup { opt_group: g, stability: OptionStability::Stable }
+    }
+
+    fn unstable(g: getopts::OptGroup) -> RustcOptGroup {
+        RustcOptGroup { opt_group: g, stability: OptionStability::Unstable }
+    }
+}
+
+// The `opt` local module holds wrappers around the `getopts` API that
+// adds extra rustc-specific metadata to each option; such metadata
+// is exposed by .  The public
+// functions below ending with `_u` are the functions that return
+// *unstable* options, i.e. options that are only enabled when the
+// user also passes the `-Z unstable-options` debugging flag.
+mod opt {
+    // The `fn opt_u` etc below are written so that we can use them
+    // in the future; do not warn about them not being used right now.
+    #![allow(dead_code)]
+
+    use getopts;
+    use super::RustcOptGroup;
+
+    type R = RustcOptGroup;
+    type S<'a> = &'a str;
+
+    fn stable(g: getopts::OptGroup) -> R { RustcOptGroup::stable(g) }
+    fn unstable(g: getopts::OptGroup) -> R { RustcOptGroup::unstable(g) }
+
+    // FIXME (pnkfelix): We default to stable since the current set of
+    // options is defacto stable.  However, it would be good to revise the
+    // code so that a stable option is the thing that takes extra effort
+    // to encode.
+
+    pub fn     opt(a: S, b: S, c: S, d: S) -> R { stable(getopts::optopt(a, b, c, d)) }
+    pub fn   multi(a: S, b: S, c: S, d: S) -> R { stable(getopts::optmulti(a, b, c, d)) }
+    pub fn    flag(a: S, b: S, c: S)       -> R { stable(getopts::optflag(a, b, c)) }
+    pub fn flagopt(a: S, b: S, c: S, d: S) -> R { stable(getopts::optflagopt(a, b, c, d)) }
+
+    pub fn     opt_u(a: S, b: S, c: S, d: S) -> R { unstable(getopts::optopt(a, b, c, d)) }
+    pub fn   multi_u(a: S, b: S, c: S, d: S) -> R { unstable(getopts::optmulti(a, b, c, d)) }
+    pub fn    flag_u(a: S, b: S, c: S)       -> R { unstable(getopts::optflag(a, b, c)) }
+    pub fn flagopt_u(a: S, b: S, c: S, d: S) -> R { unstable(getopts::optflagopt(a, b, c, d)) }
+}
+
+/// Returns the "short" subset of the rustc command line options,
+/// including metadata for each option, such as whether the option is
+/// part of the stable long-term interface for rustc.
+pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
     vec![
-        optflag("h", "help", "Display this message"),
-        optmulti("", "cfg", "Configure the compilation environment", "SPEC"),
-        optmulti("L", "",   "Add a directory to the library search path", "PATH"),
-        optmulti("l", "",   "Link the generated crate(s) to the specified native
+        opt::flag("h", "help", "Display this message"),
+        opt::multi("", "cfg", "Configure the compilation environment", "SPEC"),
+        opt::multi("L", "",   "Add a directory to the library search path", "PATH"),
+        opt::multi("l", "",   "Link the generated crate(s) to the specified native
                              library NAME. The optional KIND can be one of,
                              static, dylib, or framework. If omitted, dylib is
                              assumed.", "NAME[:KIND]"),
-        optmulti("", "crate-type", "Comma separated list of types of crates
+        opt::multi("", "crate-type", "Comma separated list of types of crates
                                     for the compiler to emit",
                  "[bin|lib|rlib|dylib|staticlib|dep-info]"),
-        optopt("", "crate-name", "Specify the name of the crate being built",
+        opt::opt("", "crate-name", "Specify the name of the crate being built",
                "NAME"),
-        optmulti("", "emit", "Comma separated list of types of output for \
+        opt::multi("", "emit", "Comma separated list of types of output for \
                               the compiler to emit",
                  "[asm|llvm-bc|llvm-ir|obj|link]"),
-        optmulti("", "print", "Comma separated list of compiler information to \
+        opt::multi("", "print", "Comma separated list of compiler information to \
                                print on stdout",
                  "[crate-name|output-file-names|sysroot]"),
-        optflag("g",  "",  "Equivalent to --debuginfo=2"),
-        optflag("O", "", "Equivalent to --opt-level=2"),
-        optopt("o", "", "Write output to <filename>", "FILENAME"),
-        optopt("",  "out-dir", "Write output to compiler-chosen filename \
+        opt::flag("g",  "",  "Equivalent to --debuginfo=2"),
+        opt::flag("O", "", "Equivalent to --opt-level=2"),
+        opt::opt("o", "", "Write output to <filename>", "FILENAME"),
+        opt::opt("",  "out-dir", "Write output to compiler-chosen filename \
                                 in <dir>", "DIR"),
-        optopt("", "explain", "Provide a detailed explanation of an error \
+        opt::opt("", "explain", "Provide a detailed explanation of an error \
                                message", "OPT"),
-        optflag("", "test", "Build a test harness"),
-        optopt("", "target", "Target triple cpu-manufacturer-kernel[-os] \
+        opt::flag("", "test", "Build a test harness"),
+        opt::opt("", "target", "Target triple cpu-manufacturer-kernel[-os] \
                               to compile for (see chapter 3.4 of \
                               http://www.sourceware.org/autobook/
                               for details)",
                "TRIPLE"),
-        optmulti("W", "warn", "Set lint warnings", "OPT"),
-        optmulti("A", "allow", "Set lint allowed", "OPT"),
-        optmulti("D", "deny", "Set lint denied", "OPT"),
-        optmulti("F", "forbid", "Set lint forbidden", "OPT"),
-        optmulti("C", "codegen", "Set a codegen option", "OPT[=VALUE]"),
-        optflag("V", "version", "Print version info and exit"),
-        optflag("v", "verbose", "Use verbose output"),
+        opt::multi("W", "warn", "Set lint warnings", "OPT"),
+        opt::multi("A", "allow", "Set lint allowed", "OPT"),
+        opt::multi("D", "deny", "Set lint denied", "OPT"),
+        opt::multi("F", "forbid", "Set lint forbidden", "OPT"),
+        opt::multi("C", "codegen", "Set a codegen option", "OPT[=VALUE]"),
+        opt::flag("V", "version", "Print version info and exit"),
+        opt::flag("v", "verbose", "Use verbose output"),
     ]
 }
 
-// rustc command line options
-pub fn optgroups() -> Vec<getopts::OptGroup> {
-    let mut opts = short_optgroups();
+/// Returns all rustc command line options, including metadata for
+/// each option, such as whether the option is part of the stable
+/// long-term interface for rustc.
+pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
+    let mut opts = rustc_short_optgroups();
     opts.push_all(&[
-        optmulti("", "extern", "Specify where an external rust library is \
+        opt::multi("", "extern", "Specify where an external rust library is \
                                 located",
                  "NAME=PATH"),
-        optopt("", "opt-level", "Optimize with possible levels 0-3", "LEVEL"),
-        optopt("", "sysroot", "Override the system root", "PATH"),
-        optmulti("Z", "", "Set internal debugging options", "FLAG"),
-        optopt("", "color", "Configure coloring of output:
+        opt::opt("", "opt-level", "Optimize with possible levels 0-3", "LEVEL"),
+        opt::opt("", "sysroot", "Override the system root", "PATH"),
+        opt::multi("Z", "", "Set internal debugging options", "FLAG"),
+        opt::opt("", "color", "Configure coloring of output:
             auto   = colorize, if output goes to a tty (default);
             always = always colorize output;
             never  = never colorize output", "auto|always|never"),
 
         // DEPRECATED
-        optflag("", "print-crate-name", "Output the crate name and exit"),
-        optflag("", "print-file-name", "Output the file(s) that would be \
+        opt::flag("", "print-crate-name", "Output the crate name and exit"),
+        opt::flag("", "print-file-name", "Output the file(s) that would be \
                                         written if compilation \
                                         continued and exit"),
-        optopt("",  "debuginfo",  "Emit DWARF debug info to the objects created:
+        opt::opt("",  "debuginfo",  "Emit DWARF debug info to the objects created:
              0 = no debug info,
              1 = line-tables only (for stacktraces and breakpoints),
              2 = full debug info with variable and type information \
                     (same as -g)", "LEVEL"),
-        optflag("", "no-trans", "Run all passes except translation; no output"),
-        optflag("", "no-analysis", "Parse and expand the source, but run no \
+        opt::flag("", "no-trans", "Run all passes except translation; no output"),
+        opt::flag("", "no-analysis", "Parse and expand the source, but run no \
                                     analysis and produce no output"),
-        optflag("", "parse-only", "Parse only; do not compile, assemble, \
+        opt::flag("", "parse-only", "Parse only; do not compile, assemble, \
                                    or link"),
-        optflagopt("", "pretty",
+        opt::flagopt("", "pretty",
                    "Pretty-print the input instead of compiling;
                    valid types are: `normal` (un-annotated source),
                    `expanded` (crates expanded),
@@ -734,13 +815,12 @@ pub fn optgroups() -> Vec<getopts::OptGroup> {
                    `expanded,identified` (fully parenthesized, AST nodes with IDs), or
                    `flowgraph=<nodeid>` (graphviz formatted flowgraph for node)",
                  "TYPE"),
-        optflagopt("", "dep-info",
+        opt::flagopt("", "dep-info",
                  "Output dependency info to <filename> after compiling, \
                   in a format suitable for use by Makefiles", "FILENAME"),
     ]);
     opts
 }
-
 
 // Convert strings provided as --cfg [cfgspec] into a crate_cfg
 pub fn parse_cfgspecs(cfgspecs: Vec<String> ) -> ast::CrateConfig {

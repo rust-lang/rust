@@ -196,12 +196,16 @@ pub fn version(binary: &str, matches: &getopts::Matches) {
     }
 }
 
-fn usage(verbose: bool) {
+fn usage(verbose: bool, include_unstable_options: bool) {
     let groups = if verbose {
-        config::optgroups()
+        config::rustc_optgroups()
     } else {
-        config::short_optgroups()
+        config::rustc_short_optgroups()
     };
+    let groups : Vec<_> = groups.into_iter()
+        .filter(|x| include_unstable_options || x.is_stable())
+        .map(|x|x.opt_group)
+        .collect();
     let message = format!("Usage: rustc [OPTIONS] INPUT");
     let extra_help = if verbose {
         ""
@@ -362,20 +366,45 @@ pub fn handle_options(mut args: Vec<String>) -> Option<getopts::Matches> {
     let _binary = args.remove(0).unwrap();
 
     if args.is_empty() {
-        usage(false);
+        // user did not write `-v` nor `-Z unstable-options`, so do not
+        // include that extra information.
+        usage(false, false);
         return None;
     }
 
     let matches =
         match getopts::getopts(args.as_slice(), config::optgroups().as_slice()) {
             Ok(m) => m,
-            Err(f) => {
-                early_error(f.to_string().as_slice());
+            Err(f_stable_attempt) => {
+                // redo option parsing, including unstable options this time,
+                // in anticipation that the mishandled option was one of the
+                // unstable ones.
+                let all_groups : Vec<getopts::OptGroup>
+                    = config::rustc_optgroups().into_iter().map(|x|x.opt_group).collect();
+                match getopts::getopts(args.as_slice(), all_groups.as_slice()) {
+                    Ok(m_unstable) => {
+                        let r = m_unstable.opt_strs("Z");
+                        let include_unstable_options = r.iter().any(|x| *x == "unstable-options");
+                        if include_unstable_options {
+                            m_unstable
+                        } else {
+                            early_error(f_stable_attempt.to_string().as_slice());
+                        }
+                    }
+                    Err(_) => {
+                        // ignore the error from the unstable attempt; just
+                        // pass the error we got from the first try.
+                        early_error(f_stable_attempt.to_string().as_slice());
+                    }
+                }
             }
         };
 
+    let r = matches.opt_strs("Z");
+    let include_unstable_options = r.iter().any(|x| *x == "unstable-options");
+
     if matches.opt_present("h") || matches.opt_present("help") {
-        usage(matches.opt_present("verbose"));
+        usage(matches.opt_present("verbose"), include_unstable_options);
         return None;
     }
 
