@@ -49,7 +49,7 @@ use boxed::Box;
 use comm::channel;
 use core::ops::FnOnce;
 use io::{Writer, stdio};
-use kinds::{Send, marker};
+use kinds::Send;
 use option::Option;
 use option::Option::{None, Some};
 use result::Result;
@@ -83,7 +83,6 @@ pub struct TaskBuilder {
     stderr: Option<Box<Writer + Send>>,
     // Optionally wrap the eventual task body
     gen_body: Option<Thunk<Thunk, Thunk>>,
-    nocopy: marker::NoCopy,
 }
 
 impl TaskBuilder {
@@ -96,7 +95,6 @@ impl TaskBuilder {
             stdout: None,
             stderr: None,
             gen_body: None,
-            nocopy: marker::NoCopy,
         }
     }
 }
@@ -137,7 +135,7 @@ impl TaskBuilder {
         on_exit: Option<Thunk<task::Result>>)
     {
         let TaskBuilder {
-            name, stack_size, stdout, stderr, mut gen_body, nocopy: _
+            name, stack_size, stdout, stderr, mut gen_body
         } = self;
 
         let f = match gen_body.take() {

@@ -292,13 +292,11 @@ impl<T> SliceExt<T> for [T] {
             if mem::size_of::<T>() == 0 {
                 MutItems{ptr: p,
                          end: (p as uint + self.len()) as *mut T,
-                         marker: marker::ContravariantLifetime::<'a>,
-                         marker2: marker::NoCopy}
+                         marker: marker::ContravariantLifetime::<'a>}
             } else {
                 MutItems{ptr: p,
                          end: p.offset(self.len() as int),
-                         marker: marker::ContravariantLifetime::<'a>,
-                         marker2: marker::NoCopy}
+                         marker: marker::ContravariantLifetime::<'a>}
             }
         }
     }
@@ -818,7 +816,6 @@ pub struct MutItems<'a, T: 'a> {
     ptr: *mut T,
     end: *mut T,
     marker: marker::ContravariantLifetime<'a>,
-    marker2: marker::NoCopy
 }
 
 #[experimental]

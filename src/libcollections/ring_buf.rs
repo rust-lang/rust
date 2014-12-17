@@ -402,7 +402,6 @@ impl<T> RingBuf<T> {
             cap: self.cap,
             ptr: self.ptr,
             marker: marker::ContravariantLifetime::<'a>,
-            marker2: marker::NoCopy
         }
     }
 
@@ -952,7 +951,6 @@ pub struct MutItems<'a, T:'a> {
     head: uint,
     cap: uint,
     marker: marker::ContravariantLifetime<'a>,
-    marker2: marker::NoCopy
 }
 
 impl<'a, T> Iterator<&'a mut T> for MutItems<'a, T> {
