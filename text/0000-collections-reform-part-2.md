@@ -108,6 +108,8 @@ pub fn as_slices(&'a self) -> (&'a [T], &'a [T])
 This provides some amount of support for viewing the RingBuf like a slice. Unfortunately
 the RingBuf may be wrapped, making this impossible. See Alternatives for other designs.
 
+There is an implementation of this at rust-lang/rust#19903.
+
 * For Vec:
 ```
 /// Resizes the `Vec` in-place so that `len()` equals to `new_len`.
@@ -119,6 +121,18 @@ pub fn resize(&mut self, new_len: uint, value: T) where T: Clone
 
 This is actually easy to implement out-of-tree on top of the current Vec API, but it has
 been frequently requested.
+
+* For HashMap and HashSet:
+```
+/// Clears the map, returning all key-value pairs as an iterator. Keeps the
+/// allocated memory for reuse.
+pub fn drain(&mut self) -> DrainEntries<K, V>;
+```
+
+This provides a way to grab elements out of a HashMap by value, without
+deallocating the storage for the map itself.
+
+There is an implementation of this at rust-lang/rust#19946.
 
 ==============
 ## Deprecate
