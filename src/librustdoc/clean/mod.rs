@@ -515,21 +515,55 @@ impl Clean<Vec<TyParamBound>> for ty::ExistentialBounds {
     }
 }
 
-fn external_path(cx: &DocContext, name: &str, substs: &subst::Substs) -> Path {
+fn external_path_params(cx: &DocContext, trait_did: Option<ast::DefId>,
+                        substs: &subst::Substs) -> PathParameters {
+    use rustc::middle::ty::sty;
     let lifetimes = substs.regions().get_slice(subst::TypeSpace)
                     .iter()
                     .filter_map(|v| v.clean(cx))
                     .collect();
     let types = substs.types.get_slice(subst::TypeSpace).to_vec();
-    let types = types.clean(cx);
+
+    match (trait_did, cx.tcx_opt()) {
+        // Attempt to sugar an external path like Fn<(A, B,), C> to Fn(A, B) -> C
+        (Some(did), Some(ref tcx)) if tcx.lang_items.fn_trait_kind(did).is_some() => {
+            assert_eq!(types.len(), 2);
+            let inputs = match types[0].sty {
+                sty::ty_tup(ref tys) => tys.iter().map(|t| t.clean(cx)).collect(),
+                _ => {
+                    return PathParameters::AngleBracketed {
+                        lifetimes: lifetimes,
+                        types: types.clean(cx)
+                    }
+                }
+            };
+            let output = match types[1].sty {
+                sty::ty_tup(ref v) if v.is_empty() => None, // -> ()
+                _ => Some(types[1].clean(cx))
+            };
+            PathParameters::Parenthesized {
+                inputs: inputs,
+                output: output
+            }
+        },
+        (_, _) => {
+            PathParameters::AngleBracketed {
+                lifetimes: lifetimes,
+                types: types.clean(cx),
+            }
+        }
+    }
+}
+
+// trait_did should be set to a trait's DefId if called on a TraitRef, in order to sugar
+// from Fn<(A, B,), C> to Fn(A, B) -> C
+fn external_path(cx: &DocContext, name: &str, trait_did: Option<ast::DefId>,
+                 substs: &subst::Substs) -> Path {
     Path {
         global: false,
         segments: vec![PathSegment {
             name: name.to_string(),
-            params: PathParameters::AngleBracketed {
-                lifetimes: lifetimes,
-                types: types,
-            }
+            params: external_path_params(cx, trait_did, substs)
         }],
     }
 }
@@ -544,16 +578,16 @@ impl Clean<TyParamBound> for ty::BuiltinBound {
         let (did, path) = match *self {
             ty::BoundSend =>
                 (tcx.lang_items.send_trait().unwrap(),
-                 external_path(cx, "Send", &empty)),
+                 external_path(cx, "Send", None, &empty)),
             ty::BoundSized =>
                 (tcx.lang_items.sized_trait().unwrap(),
-                 external_path(cx, "Sized", &empty)),
+                 external_path(cx, "Sized", None, &empty)),
             ty::BoundCopy =>
                 (tcx.lang_items.copy_trait().unwrap(),
-                 external_path(cx, "Copy", &empty)),
+                 external_path(cx, "Copy", None, &empty)),
             ty::BoundSync =>
                 (tcx.lang_items.sync_trait().unwrap(),
-                 external_path(cx, "Sync", &empty)),
+                 external_path(cx, "Sync", None, &empty)),
         };
         let fqn = csearch::get_item_path(tcx, did);
         let fqn = fqn.into_iter().map(|i| i.to_string()).collect();
@@ -586,7 +620,7 @@ impl<'tcx> Clean<TyParamBound> for ty::TraitRef<'tcx> {
         let fqn = fqn.into_iter().map(|i| i.to_string())
                      .collect::<Vec<String>>();
         let path = external_path(cx, fqn.last().unwrap().as_slice(),
-                                 &self.substs);
+                                 Some(self.def_id), &self.substs);
         cx.external_paths.borrow_mut().as_mut().unwrap().insert(self.def_id,
                                                             (fqn, TypeTrait));
 
@@ -1437,7 +1471,7 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
                     _ => TypeEnum,
                 };
                 let path = external_path(cx, fqn.last().unwrap().to_string().as_slice(),
-                                         substs);
+                                         None, substs);
                 cx.external_paths.borrow_mut().as_mut().unwrap().insert(did, (fqn, kind));
                 ResolvedPath {
                     path: path,
