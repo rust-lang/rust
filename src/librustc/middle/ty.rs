@@ -4320,12 +4320,13 @@ pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
 
         ast::ExprLit(_) | // Note: LitStr is carved out above
         ast::ExprUnary(..) |
+        ast::ExprBox(None, _) |
         ast::ExprAddrOf(..) |
         ast::ExprBinary(..) => {
             RvalueDatumExpr
         }
 
-        ast::ExprBox(ref place, _) => {
+        ast::ExprBox(Some(ref place), _) => {
             // Special case `Box<T>` for now:
             let definition = match tcx.def_map.borrow().get(&place.id) {
                 Some(&def) => def,
@@ -5825,126 +5826,153 @@ pub fn trait_item_of_item(tcx: &ctxt, def_id: ast::DefId)
 /// context it's calculated within. This is used by the `type_id` intrinsic.
 pub fn hash_crate_independent(tcx: &ctxt, ty: Ty, svh: &Svh) -> u64 {
     let mut state = sip::SipState::new();
-    macro_rules! byte( ($b:expr) => { ($b as u8).hash(&mut state) } );
-    macro_rules! hash( ($e:expr) => { $e.hash(&mut state) } );
+    helper(tcx, ty, svh, &mut state);
+    return state.result();
 
-    let region = |_state: &mut sip::SipState, r: Region| {
-        match r {
-            ReStatic => {}
+    fn helper(tcx: &ctxt, ty: Ty, svh: &Svh, state: &mut sip::SipState) {
+        macro_rules! byte( ($b:expr) => { ($b as u8).hash(state) } );
+        macro_rules! hash( ($e:expr) => { $e.hash(state) } );
 
-            ReEmpty |
-            ReEarlyBound(..) |
-            ReLateBound(..) |
-            ReFree(..) |
-            ReScope(..) |
-            ReInfer(..) => {
-                tcx.sess.bug("non-static region found when hashing a type")
-            }
-        }
-    };
-    let did = |state: &mut sip::SipState, did: DefId| {
-        let h = if ast_util::is_local(did) {
-            svh.clone()
-        } else {
-            tcx.sess.cstore.get_crate_hash(did.krate)
-        };
-        h.as_str().hash(state);
-        did.node.hash(state);
-    };
-    let mt = |state: &mut sip::SipState, mt: mt| {
-        mt.mutbl.hash(state);
-    };
-    ty::walk_ty(ty, |ty| {
-        match ty.sty {
-            ty_bool => byte!(2),
-            ty_char => byte!(3),
-            ty_int(i) => {
-                byte!(4);
-                hash!(i);
-            }
-            ty_uint(u) => {
-                byte!(5);
-                hash!(u);
-            }
-            ty_float(f) => {
-                byte!(6);
-                hash!(f);
-            }
-            ty_str => {
-                byte!(7);
-            }
-            ty_enum(d, _) => {
-                byte!(8);
-                did(&mut state, d);
-            }
-            ty_uniq(_) => {
-                byte!(9);
-            }
-            ty_vec(_, Some(n)) => {
-                byte!(10);
-                n.hash(&mut state);
-            }
-            ty_vec(_, None) => {
-                byte!(11);
-            }
-            ty_ptr(m) => {
-                byte!(12);
-                mt(&mut state, m);
-            }
-            ty_rptr(r, m) => {
-                byte!(13);
-                region(&mut state, r);
-                mt(&mut state, m);
-            }
-            ty_bare_fn(ref b) => {
-                byte!(14);
-                hash!(b.unsafety);
-                hash!(b.abi);
-            }
-            ty_closure(ref c) => {
-                byte!(15);
-                hash!(c.unsafety);
-                hash!(c.onceness);
-                hash!(c.bounds);
-                match c.store {
-                    UniqTraitStore => byte!(0),
-                    RegionTraitStore(r, m) => {
-                        byte!(1)
-                        region(&mut state, r);
-                        assert_eq!(m, ast::MutMutable);
-                    }
+        let region = |state: &mut sip::SipState, r: Region| {
+            match r {
+                ReStatic => {}
+                ReLateBound(db, BrAnon(i)) => {
+                    db.hash(state);
+                    i.hash(state);
+                }
+                ReEmpty |
+                ReEarlyBound(..) |
+                ReLateBound(..) |
+                ReFree(..) |
+                ReScope(..) |
+                ReInfer(..) => {
+                    tcx.sess.bug("unexpected region found when hashing a type")
                 }
             }
-            ty_trait(box TyTrait { ref principal, bounds }) => {
-                byte!(17);
-                did(&mut state, principal.def_id);
-                hash!(bounds);
+        };
+        let did = |state: &mut sip::SipState, did: DefId| {
+            let h = if ast_util::is_local(did) {
+                svh.clone()
+            } else {
+                tcx.sess.cstore.get_crate_hash(did.krate)
+            };
+            h.as_str().hash(state);
+            did.node.hash(state);
+        };
+        let mt = |state: &mut sip::SipState, mt: mt| {
+            mt.mutbl.hash(state);
+        };
+        let fn_sig = |state: &mut sip::SipState, sig: &FnSig| {
+            let sig = anonymize_late_bound_regions(tcx, sig);
+            for a in sig.inputs.iter() { helper(tcx, *a, svh, state); }
+            if let ty::FnConverging(output) = sig.output {
+                helper(tcx, output, svh, state);
             }
-            ty_struct(d, _) => {
-                byte!(18);
-                did(&mut state, d);
-            }
-            ty_tup(ref inner) => {
-                byte!(19);
-                hash!(inner.len());
-            }
-            ty_param(p) => {
-                byte!(20);
-                hash!(p.idx);
-                did(&mut state, p.def_id);
-            }
-            ty_open(_) => byte!(22),
-            ty_infer(_) => unreachable!(),
-            ty_err => byte!(23),
-            ty_unboxed_closure(d, r, _) => {
-                byte!(24);
-                did(&mut state, d);
-                region(&mut state, r);
-            }
-        }
-    });
+        };
+        maybe_walk_ty(ty, |ty| {
+            match ty.sty {
+                ty_bool => byte!(2),
+                ty_char => byte!(3),
+                ty_int(i) => {
+                    byte!(4);
+                    hash!(i);
+                }
+                ty_uint(u) => {
+                    byte!(5);
+                    hash!(u);
+                }
+                ty_float(f) => {
+                    byte!(6);
+                    hash!(f);
+                }
+                ty_str => {
+                    byte!(7);
+                }
+                ty_enum(d, _) => {
+                    byte!(8);
+                    did(state, d);
+                }
+                ty_uniq(_) => {
+                    byte!(9);
+                }
+                ty_vec(_, Some(n)) => {
+                    byte!(10);
+                    n.hash(state);
+                }
+                ty_vec(_, None) => {
+                    byte!(11);
+                }
+                ty_ptr(m) => {
+                    byte!(12);
+                    mt(state, m);
+                }
+                ty_rptr(r, m) => {
+                    byte!(13);
+                    region(state, r);
+                    mt(state, m);
+                }
+                ty_bare_fn(ref b) => {
+                    byte!(14);
+                    hash!(b.unsafety);
+                    hash!(b.abi);
+                    fn_sig(state, &b.sig);
+                    return false;
+                }
+                ty_closure(ref c) => {
+                    byte!(15);
+                    hash!(c.unsafety);
+                    hash!(c.onceness);
+                    hash!(c.bounds);
+                    match c.store {
+                        UniqTraitStore => byte!(0),
+                        RegionTraitStore(r, m) => {
+                            byte!(1);
+                            region(state, r);
+                            assert_eq!(m, ast::MutMutable);
+                        }
+                    }
 
-    state.result()
+                    fn_sig(state, &c.sig);
+
+                    return false;
+                }
+                ty_trait(box TyTrait { ref principal, bounds }) => {
+                    byte!(17);
+                    did(state, principal.def_id);
+                    hash!(bounds);
+
+                    let principal = anonymize_late_bound_regions(tcx, principal);
+                    for subty in principal.substs.types.iter() {
+                        helper(tcx, *subty, svh, state);
+                    }
+
+                    return false;
+                }
+                ty_struct(d, _) => {
+                    byte!(18);
+                    did(state, d);
+                }
+                ty_tup(ref inner) => {
+                    byte!(19);
+                    hash!(inner.len());
+                }
+                ty_param(p) => {
+                    byte!(20);
+                    hash!(p.idx);
+                    did(state, p.def_id);
+                }
+                ty_open(_) => byte!(22),
+                ty_infer(_) => unreachable!(),
+                ty_err => byte!(23),
+                ty_unboxed_closure(d, r, _) => {
+                    byte!(24);
+                    did(state, d);
+                    region(state, r);
+                }
+            }
+            true
+        });
+    }
 }
 
 impl Variance {
@@ -6282,6 +6310,23 @@ pub fn erase_late_bound_regions<'tcx, HR>(
     where HR : HigherRankedFoldable<'tcx>
 {
     replace_late_bound_regions(tcx, value, |_, _| ty::ReStatic).0
+}
+
+/// Rewrite any late-bound regions so that they are anonymous.  Region numbers are
+/// assigned starting at 1 and increasing monotonically in the order traversed
+/// by the fold operation.
+///
+/// The chief purpose of this function is to canonicalize regions so that two
+/// `FnSig`s or `TraitRef`s which are equivalent up to region naming will become
+/// structurally identical.  For example, `for<'a, 'b> fn(&'a int, &'b int)` and
+/// `for<'a, 'b> fn(&'b int, &'a int)` will become identical after anonymization.
+pub fn anonymize_late_bound_regions<'tcx, HR>(tcx: &ctxt<'tcx>, sig: &HR) -> HR
+                                              where HR: HigherRankedFoldable<'tcx> {
+    let mut counter = 0;
+    replace_late_bound_regions(tcx, sig, |_, db| {
+        counter += 1;
+        ReLateBound(db, BrAnon(counter))
+    }).0
 }
 
 /// Replaces the late-bound-regions in `value` that are bound by `value`.

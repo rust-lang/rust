@@ -139,7 +139,7 @@ fn test_env<F>(source_string: &str,
                           stability_index);
     let infcx = infer::new_infer_ctxt(&tcx);
     body(Env { infcx: &infcx });
-    infcx.resolve_regions_and_report_errors();
+    infcx.resolve_regions_and_report_errors(ast::CRATE_NODE_ID);
     assert_eq!(tcx.sess.err_count(), expected_err_count);
 }
 

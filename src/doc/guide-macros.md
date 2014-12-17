@@ -195,7 +195,7 @@ early_return!(input_2, [T::SpecialB]);
 As the above example demonstrates, `$(...)*` is also valid on the right-hand
 side of a macro definition. The behavior of `*` in transcription,
 especially in cases where multiple `*`s are nested, and multiple different
-names are involved, can seem somewhat magical and intuitive at first. The
+names are involved, can seem somewhat magical and unintuitive at first. The
 system that interprets them is called "Macro By Example". The two rules to
 keep in mind are (1) the behavior of `$(...)*` is to walk through one "layer"
 of repetitions for all of the `$name`s it contains in lockstep, and (2) each

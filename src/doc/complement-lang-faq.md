@@ -24,7 +24,7 @@ Some examples that demonstrate different aspects of the language:
 [HashMap]: https://github.com/rust-lang/rust/blob/master/src/libcollections/hashmap.rs
 [json]: https://github.com/rust-lang/rust/blob/master/src/libserialize/json.rs
 
-You may also be interested in browsing [GitHub's Rust][github-rust] page.
+You may also be interested in browsing [trending Rust repositories][github-rust] on GitHub.
 
 [github-rust]: https://github.com/trending?l=rust
 
@@ -42,7 +42,7 @@ Let the fact that this is an easily countable number be a warning.
 
 ## Does it run on Windows?
 
-Yes. All development happens in lock-step on all 3 target platforms. Using MinGW, not Cygwin. Note that the windows implementation currently has some limitations: in particular 64-bit build is [not fully supported yet][win64], and all executables created by rustc [depend on libgcc DLL at runtime][libgcc].
+Yes. All development happens in lockstep on all 3 target platforms (using MinGW, not Cygwin). Note that the Windows implementation currently has some limitations; in particular, the 64-bit build is [not fully supported yet][win64], and all executables created by rustc [depend on libgcc DLL at runtime][libgcc].
 
 [win64]: https://github.com/rust-lang/rust/issues/1237
 [libgcc]: https://github.com/rust-lang/rust/issues/11782
@@ -104,7 +104,7 @@ Similar to the reasoning about default-sync: it wires fewer assumptions into the
 
 ## Why are strings UTF-8 by default? Why not UCS2 or UCS4?
 
-The `str` type is UTF-8 because we observe more text in the wild in this encoding -- particularly in network transmissions, which are endian-agnostic -- and we think it's best that the default treatment of I/O not involve having to recode codepoints in each direction.
+The `str` type is UTF-8 because we observe more text in the wild in this encoding – particularly in network transmissions, which are endian-agnostic – and we think it's best that the default treatment of I/O not involve having to recode codepoints in each direction.
 
 This does mean that indexed access to a Unicode codepoint inside a `str` value is an O(n) operation. On the one hand, this is clearly undesirable; on the other hand, this problem is full of trade-offs and we'd like to point a few important qualifications:
 
@@ -145,7 +145,7 @@ For simplicity, we do not plan to do so. Implementing automatic semicolon insert
 
 ## How do I get my program to display the output of logging macros?
 
-**Short answer** set the RUST_LOG environment variable to the name of your source file, sans extension.
+**Short Answer**: Set the `RUST_LOG` environment variable to the name of your source file, sans extension.
 
 ```sh
 rustc hello.rs
@@ -153,15 +153,19 @@ export RUST_LOG=hello
 ./hello
 ```
 
-**Long answer** RUST_LOG takes a 'logging spec' that consists of a
+**Long Answer**: `RUST_LOG` takes a 'logging spec' that consists of a
 comma-separated list of paths, where a path consists of the crate name and
-sequence of module names, each separated by double-colons. For standalone .rs
-files the crate is implicitly named after the source file, so in the above
-example we were setting RUST_LOG to the name of the hello crate. Multiple paths
+sequence of module names, each separated by double-colons. For standalone `.rs`
+files, the crate is implicitly named after the source file, so in the above
+example we were setting `RUST_LOG` to the name of the hello crate. Multiple paths
 can be combined to control the exact logging you want to see. For example, when
-debugging linking in the compiler you might set
-`RUST_LOG=rustc::metadata::creader,rustc::util::filesearch,rustc::back::rpath`
-For a full description see [the logging crate][1].
+debugging linking in the compiler, you might set the following:
+
+```sh
+RUST_LOG=rustc::metadata::creader,rustc::util::filesearch,rustc::back::rpath
+```
+
+For a full description, see [the logging crate][1].
 
 ## How fast is Rust?
 
@@ -172,6 +176,6 @@ performance.
 That said, it is an explicit goal of Rust to be as fast as C++ for most things.
 Language decisions are made with performance in mind, and we want Rust to be as
 fast as possible. Given that Rust is built on top of LLVM, any performance
-improvements in it also help us be faster.
+improvements in it also help Rust become faster.
 
 [1]:log/index.html

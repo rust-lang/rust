@@ -557,11 +557,12 @@ mod test {
         let addr1 = next_test_ip4();
         let addr2 = next_test_ip4();
         let mut a = UdpSocket::bind(addr1).unwrap();
+        let a2 = UdpSocket::bind(addr2).unwrap();
 
         let (tx, rx) = channel();
         let (tx2, rx2) = channel();
         spawn(move|| {
-            let mut a = UdpSocket::bind(addr2).unwrap();
+            let mut a = a2;
             assert_eq!(a.recv_from(&mut [0]), Ok((1, addr1)));
             assert_eq!(a.send_to(&[0], addr1), Ok(()));
             rx.recv();

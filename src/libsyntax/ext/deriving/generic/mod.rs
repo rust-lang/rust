@@ -388,7 +388,7 @@ impl<'a> TraitDef<'a> {
                            methods: Vec<P<ast::Method>>) -> P<ast::Item> {
         let trait_path = self.path.to_path(cx, self.span, type_ident, generics);
 
-        let Generics { mut lifetimes, ty_params, where_clause: _ } =
+        let Generics { mut lifetimes, ty_params, mut where_clause } =
             self.generics.to_generics(cx, self.span, type_ident, generics);
         let mut ty_params = ty_params.into_vec();
 
@@ -420,13 +420,33 @@ impl<'a> TraitDef<'a> {
                        ty_param.unbound.clone(),
                        None)
         }));
+
+        // and similarly for where clauses
+        where_clause.predicates.extend(generics.where_clause.predicates.iter().map(|clause| {
+            match *clause {
+                ast::WherePredicate::BoundPredicate(ref wb) => {
+                    ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate {
+                        id: ast::DUMMY_NODE_ID,
+                        span: self.span,
+                        ident: wb.ident,
+                        bounds: OwnedSlice::from_vec(wb.bounds.iter().map(|b| b.clone()).collect())
+                    })
+                }
+                ast::WherePredicate::EqPredicate(ref we) => {
+                    ast::WherePredicate::EqPredicate(ast::WhereEqPredicate {
+                        id: ast::DUMMY_NODE_ID,
+                        span: self.span,
+                        path: we.path.clone(),
+                        ty: we.ty.clone()
+                    })
+                }
+            }
+        }));
+
         let trait_generics = Generics {
             lifetimes: lifetimes,
             ty_params: OwnedSlice::from_vec(ty_params),
-            where_clause: ast::WhereClause {
-                id: ast::DUMMY_NODE_ID,
-                predicates: Vec::new(),
-            },
+            where_clause: where_clause
         };
 
         // Create the reference to the trait.

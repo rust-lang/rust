@@ -172,8 +172,10 @@ pub struct BinaryHeap<T> {
     data: Vec<T>,
 }
 
+#[stable]
 impl<T: Ord> Default for BinaryHeap<T> {
     #[inline]
+    #[stable]
     fn default() -> BinaryHeap<T> { BinaryHeap::new() }
 }
 

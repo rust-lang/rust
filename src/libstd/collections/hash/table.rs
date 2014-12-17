@@ -124,7 +124,7 @@ struct GapThenFull<K, V, M> {
 
 /// A hash that is not zero, since we use a hash of zero to represent empty
 /// buckets.
-#[deriving(PartialEq)]
+#[deriving(PartialEq, Copy)]
 pub struct SafeHash {
     hash: u64,
 }
@@ -211,7 +211,7 @@ impl<K, V, M> Bucket<K, V, M> {
 }
 
 impl<K, V, M: Deref<RawTable<K, V>>> Bucket<K, V, M> {
-    pub fn new(table: M, hash: &SafeHash) -> Bucket<K, V, M> {
+    pub fn new(table: M, hash: SafeHash) -> Bucket<K, V, M> {
         Bucket::at_index(table, hash.inspect() as uint)
     }
 

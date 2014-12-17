@@ -68,7 +68,9 @@ impl<T> Drop for RingBuf<T> {
     }
 }
 
+#[stable]
 impl<T> Default for RingBuf<T> {
+    #[stable]
     #[inline]
     fn default() -> RingBuf<T> { RingBuf::new() }
 }
@@ -102,17 +104,15 @@ impl<T> RingBuf<T> {
 
     /// Copies a contiguous block of memory len long from src to dst
     #[inline]
-    fn copy(&self, dst: uint, src: uint, len: uint) {
-        unsafe {
-            debug_assert!(dst + len <= self.cap, "dst={} src={} len={} cap={}", dst, src, len,
-                          self.cap);
-            debug_assert!(src + len <= self.cap, "dst={} src={} len={} cap={}", dst, src, len,
-                          self.cap);
-            ptr::copy_memory(
-                self.ptr.offset(dst as int),
-                self.ptr.offset(src as int) as *const T,
-                len);
-        }
+    unsafe fn copy(&self, dst: uint, src: uint, len: uint) {
+        debug_assert!(dst + len <= self.cap, "dst={} src={} len={} cap={}", dst, src, len,
+                      self.cap);
+        debug_assert!(src + len <= self.cap, "dst={} src={} len={} cap={}", dst, src, len,
+                      self.cap);
+        ptr::copy_memory(
+            self.ptr.offset(dst as int),
+            self.ptr.offset(src as int) as *const T,
+            len);
     }
 }
 
@@ -377,7 +377,7 @@ impl<T> RingBuf<T> {
         }
     }
 
-    /// Returns a front-to-back iterator which returns mutable references.
+    /// Returns a front-to-back iterator that returns mutable references.
     ///
     /// # Examples
     ///
@@ -402,7 +402,6 @@ impl<T> RingBuf<T> {
             cap: self.cap,
             ptr: self.ptr,
             marker: marker::ContravariantLifetime::<'a>,
-            marker2: marker::NoCopy
         }
     }
 
@@ -732,7 +731,7 @@ impl<T> RingBuf<T> {
 
                 self.tail = self.wrap_index(self.tail - 1);
             },
-            (true, true, _) => {
+            (true, true, _) => unsafe {
                 // contiguous, insert closer to tail:
                 //
                 //             T   I         H
@@ -752,13 +751,15 @@ impl<T> RingBuf<T> {
                 //      [o I A o o o o o . . . . . . . o]
                 //       M                             M
 
-                let old_tail = self.tail;
-                self.tail = self.wrap_index(self.tail - 1);
+                let new_tail = self.wrap_index(self.tail - 1);
 
-                self.copy(self.tail, old_tail, 1);
-                self.copy(old_tail, old_tail + 1, i);
+                self.copy(new_tail, self.tail, 1);
+                // Already moved the tail, so we only copy `i - 1` elements.
+                self.copy(self.tail, self.tail + 1, i - 1);
+
+                self.tail = new_tail;
             },
-            (true, false, _) => {
+            (true, false, _) => unsafe {
                 //  contiguous, insert closer to head:
                 //
                 //             T       I     H
@@ -768,12 +769,11 @@ impl<T> RingBuf<T> {
                 //      [. . . o o o o I A o o . . . . .]
                 //                       M M M
 
-                let old_head = self.head;
+                self.copy(idx + 1, idx, self.head - idx);
                 self.head = self.wrap_index(self.head + 1);
-                self.copy(idx + 1, idx, old_head - idx);
             },
-            (false, true, true) => {
-                // discontiguous, tail section, insert closer to tail:
+            (false, true, true) => unsafe {
+                // discontiguous, insert closer to tail, tail section:
                 //
                 //                   H         T   I
                 //      [o o o o o o . . . . . o o A o o]
@@ -782,12 +782,11 @@ impl<T> RingBuf<T> {
                 //      [o o o o o o . . . . o o I A o o]
                 //                           M M
 
-                let old_tail = self.tail;
-                self.tail = self.tail - 1;
-                self.copy(self.tail, old_tail, i);
+                self.copy(self.tail - 1, self.tail, i);
+                self.tail -= 1;
             },
-            (false, false, true) => {
-                // discontiguous, tail section, insert closer to head:
+            (false, false, true) => unsafe {
+                // discontiguous, insert closer to head, tail section:
                 //
                 //           H             T         I
                 //      [o o . . . . . . . o o o o o A o]
@@ -796,20 +795,19 @@ impl<T> RingBuf<T> {
                 //      [o o o . . . . . . o o o o o I A]
                 //       M M M                         M
 
-                let old_head = self.head;
-                self.head = self.head + 1;
-
                 // copy elements up to new head
-                self.copy(1, 0, old_head);
+                self.copy(1, 0, self.head);
 
                 // copy last element into empty spot at bottom of buffer
                 self.copy(0, self.cap - 1, 1);
 
                 // move elements from idx to end forward not including ^ element
                 self.copy(idx + 1, idx, self.cap - 1 - idx);
+
+                self.head += 1;
             },
-            (false, true, false) if idx == 0 => {
-                // discontiguous, head section, insert is closer to tail,
+            (false, true, false) if idx == 0 => unsafe {
+                // discontiguous, insert is closer to tail, head section,
                 // and is at index zero in the internal buffer:
                 //
                 //       I                   H     T
@@ -819,16 +817,16 @@ impl<T> RingBuf<T> {
                 //      [A o o o o o o o o o . . o o o I]
                 //                               M M M
 
-                let old_tail = self.tail;
-                self.tail = self.tail - 1;
                 // copy elements up to new tail
-                self.copy(old_tail - 1, old_tail, i);
+                self.copy(self.tail - 1, self.tail, self.cap - self.tail);
 
                 // copy last element into empty spot at bottom of buffer
                 self.copy(self.cap - 1, 0, 1);
+
+                self.tail -= 1;
             },
-            (false, true, false) => {
-                // discontiguous, head section, insert closer to tail:
+            (false, true, false) => unsafe {
+                // discontiguous, insert closer to tail, head section:
                 //
                 //             I             H     T
                 //      [o o o A o o o o o o . . . o o o]
@@ -837,19 +835,19 @@ impl<T> RingBuf<T> {
                 //      [o o I A o o o o o o . . o o o o]
                 //       M M                     M M M M
 
-                let old_tail = self.tail;
-                self.tail = self.tail - 1;
                 // copy elements up to new tail
-                self.copy(old_tail - 1, old_tail, i);
+                self.copy(self.tail - 1, self.tail, self.cap - self.tail);
 
                 // copy last element into empty spot at bottom of buffer
                 self.copy(self.cap - 1, 0, 1);
 
                 // move elements from idx-1 to end forward not including ^ element
                 self.copy(0, 1, idx - 1);
-            }
-            (false, false, false) => {
-                // discontiguous, head section, insert closer to head:
+
+                self.tail -= 1;
+            },
+            (false, false, false) => unsafe {
+                // discontiguous, insert closer to head, head section:
                 //
                 //               I     H           T
                 //      [o o o o A o o . . . . . . o o o]
@@ -858,9 +856,8 @@ impl<T> RingBuf<T> {
                 //      [o o o o I A o o . . . . . o o o]
                 //                 M M M
 
-                let old_head = self.head;
-                self.head = self.head + 1;
-                self.copy(idx + 1, idx, old_head - idx);
+                self.copy(idx + 1, idx, self.head - idx);
+                self.head += 1;
             }
         }
 
@@ -869,6 +866,170 @@ impl<T> RingBuf<T> {
         unsafe {
             self.buffer_write(new_idx, t);
         }
+    }
+
+    /// Removes and returns the element at position `i` from the ringbuf.
+    /// Whichever end is closer to the removal point will be moved to make
+    /// room, and all the affected elements will be moved to new positions.
+    /// Returns `None` if `i` is out of bounds.
+    ///
+    /// # Example
+    /// ```rust
+    /// use std::collections::RingBuf;
+    ///
+    /// let mut buf = RingBuf::new();
+    /// buf.push_back(5i);
+    /// buf.push_back(10i);
+    /// buf.push_back(12i);
+    /// buf.push_back(15);
+    /// buf.remove(2);
+    /// assert_eq!(Some(&15), buf.get(2));
+    /// ```
+    #[unstable = "matches collection reform specification; waiting on panic semantics"]
+    pub fn remove(&mut self, i: uint) -> Option<T> {
+        if self.is_empty() || self.len() <= i {
+            return None;
+        }
+
+        // There are three main cases:
+        //  Elements are contiguous
+        //  Elements are discontiguous and the removal is in the tail section
+        //  Elements are discontiguous and the removal is in the head section
+        //      - special case when elements are technically contiguous,
+        //        but self.head = 0
+        //
+        // For each of those there are two more cases:
+        //  Insert is closer to tail
+        //  Insert is closer to head
+        //
+        // Key: H - self.head
+        //      T - self.tail
+        //      o - Valid element
+        //      x - Element marked for removal
+        //      R - Indicates element that is being removed
+        //      M - Indicates element was moved
+
+        let idx = self.wrap_index(self.tail + i);
+
+        let elem = unsafe {
+            Some(self.buffer_read(idx))
+        };
+
+        let distance_to_tail = i;
+        let distance_to_head = self.len() - i;
+
+        let contiguous = self.tail <= self.head;
+
+        match (contiguous, distance_to_tail <= distance_to_head, idx >= self.tail) {
+            (true, true, _) => unsafe {
+                // contiguous, remove closer to tail:
+                //
+                //             T   R         H
+                //      [. . . o o x o o o o . . . . . .]
+                //
+                //               T           H
+                //      [. . . . o o o o o o . . . . . .]
+                //               M M
+
+                self.copy(self.tail + 1, self.tail, i);
+                self.tail += 1;
+            },
+            (true, false, _) => unsafe {
+                // contiguous, remove closer to head:
+                //
+                //             T       R     H
+                //      [. . . o o o o x o o . . . . . .]
+                //
+                //             T           H
+                //      [. . . o o o o o o . . . . . . .]
+                //                     M M
+
+                self.copy(idx, idx + 1, self.head - idx - 1);
+                self.head -= 1;
+            },
+            (false, true, true) => unsafe {
+                // discontiguous, remove closer to tail, tail section:
+                //
+                //                   H         T   R
+                //      [o o o o o o . . . . . o o x o o]
+                //
+                //                   H           T
+                //      [o o o o o o . . . . . . o o o o]
+                //                               M M
+
+                self.copy(self.tail + 1, self.tail, i);
+                self.tail = self.wrap_index(self.tail + 1);
+            },
+            (false, false, false) => unsafe {
+                // discontiguous, remove closer to head, head section:
+                //
+                //               R     H           T
+                //      [o o o o x o o . . . . . . o o o]
+                //
+                //                   H             T
+                //      [o o o o o o . . . . . . . o o o]
+                //               M M
+
+                self.copy(idx, idx + 1, self.head - idx - 1);
+                self.head -= 1;
+            },
+            (false, false, true) => unsafe {
+                // discontiguous, remove closer to head, tail section:
+                //
+                //             H           T         R
+                //      [o o o . . . . . . o o o o o x o]
+                //
+                //           H             T
+                //      [o o . . . . . . . o o o o o o o]
+                //       M M                         M M
+                //
+                // or quasi-discontiguous, remove next to head, tail section:
+                //
+                //       H                 T         R
+                //      [. . . . . . . . . o o o o o x o]
+                //
+                //                         T           H
+                //      [. . . . . . . . . o o o o o o .]
+                //                                   M
+
+                // draw in elements in the tail section
+                self.copy(idx, idx + 1, self.cap - idx - 1);
+
+                // Prevents underflow.
+                if self.head != 0 {
+                    // copy first element into empty spot
+                    self.copy(self.cap - 1, 0, 1);
+
+                    // move elements in the head section backwards
+                    self.copy(0, 1, self.head - 1);
+                }
+
+                self.head = self.wrap_index(self.head - 1);
+            },
+            (false, true, false) => unsafe {
+                // discontiguous, remove closer to tail, head section:
+                //
+                //           R               H     T
+                //      [o o x o o o o o o o . . . o o o]
+                //
+                //                           H       T
+                //      [o o o o o o o o o o . . . . o o]
+                //       M M M                       M M
+
+                // draw in elements up to idx
+                self.copy(1, 0, idx);
+
+                // copy last element into empty spot
+                self.copy(0, self.cap - 1, 1);
+
+                // move elements from tail to end forward, excluding the last one
+                self.copy(self.tail + 1, self.tail, self.cap - self.tail - 1);
+
+                self.tail = self.wrap_index(self.tail + 1);
+            }
+        }
+
+        return elem;
     }
 }
 
@@ -952,7 +1113,6 @@ pub struct MutItems<'a, T:'a> {
     head: uint,
     cap: uint,
     marker: marker::ContravariantLifetime<'a>,
-    marker2: marker::NoCopy
 }
 
 impl<'a, T> Iterator<&'a mut T> for MutItems<'a, T> {
@@ -1103,6 +1263,7 @@ mod tests {
     use core::iter;
     use self::Taggy::*;
     use self::Taggypar::*;
+    use std::cmp;
     use std::fmt::Show;
     use std::prelude::*;
     use std::hash;
@@ -1892,11 +2053,11 @@ mod tests {
     #[test]
     fn test_insert() {
         // This test checks that every single combination of tail position, length, and
-        // insertion position is tested. Capacity 7 should be large enough to cover every case.
+        // insertion position is tested. Capacity 15 should be large enough to cover every case.
 
-        let mut tester = RingBuf::with_capacity(7);
-        // can't guarantee we got 7, so have to get what we got.
-        // 7 would be great, but we will definitely get 2^k - 1, for k >= 3, or else
+        let mut tester = RingBuf::with_capacity(15);
+        // can't guarantee we got 15, so have to get what we got.
+        // 15 would be great, but we will definitely get 2^k - 1, for k >= 4, or else
         // this test isn't covering what it wants to
         let cap = tester.capacity();
 
@@ -1915,6 +2076,45 @@ mod tests {
                         }
                     }
                     tester.insert(to_insert, to_insert);
+                    assert!(tester.tail < tester.cap);
+                    assert!(tester.head < tester.cap);
+                    assert_eq!(tester, expected);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_remove() {
+        // This test checks that every single combination of tail position, length, and
+        // removal position is tested. Capacity 15 should be large enough to cover every case.
+
+        let mut tester = RingBuf::with_capacity(15);
+        // can't guarantee we got 15, so have to get what we got.
+        // 15 would be great, but we will definitely get 2^k - 1, for k >= 4, or else
+        // this test isn't covering what it wants to
+        let cap = tester.capacity();
+
+        // len is the length *after* removal
+        for len in range(0, cap - 1) {
+            // 0, 1, 2, .., len - 1
+            let expected = iter::count(0, 1).take(len).collect();
+            for tail_pos in range(0, cap) {
+                for to_remove in range(0, len + 1) {
+                    tester.tail = tail_pos;
+                    tester.head = tail_pos;
+                    for i in range(0, len) {
+                        if i == to_remove {
+                            tester.push_back(1234);
+                        }
+                        tester.push_back(i);
+                    }
+                    if to_remove == len {
+                        tester.push_back(1234);
+                    }
+                    tester.remove(to_remove);
+                    assert!(tester.tail < tester.cap);
+                    assert!(tester.head < tester.cap);
                     assert_eq!(tester, expected);
                 }
             }

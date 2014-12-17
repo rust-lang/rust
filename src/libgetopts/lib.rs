@@ -78,7 +78,7 @@
 //! ```
 
 #![crate_name = "getopts"]
-#![experimental]
+#![experimental = "use the crates.io `getopts` library instead"]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",

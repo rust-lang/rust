@@ -117,7 +117,8 @@ mod imp {
     ///   `/dev/urandom`, or from `getrandom(2)` system call if available.
     /// - Windows: calls `CryptGenRandom`, using the default cryptographic
     ///   service provider with the `PROV_RSA_FULL` type.
-    /// - iOS: calls SecRandomCopyBytes as /dev/(u)random is sandboxed
+    /// - iOS: calls SecRandomCopyBytes as /dev/(u)random is sandboxed.
+    ///
     /// This does not block.
     pub struct OsRng {
         inner: OsRngInner,
@@ -184,10 +185,13 @@ mod imp {
     ///   `/dev/urandom`, or from `getrandom(2)` system call if available.
     /// - Windows: calls `CryptGenRandom`, using the default cryptographic
     ///   service provider with the `PROV_RSA_FULL` type.
-    /// - iOS: calls SecRandomCopyBytes as /dev/(u)random is sandboxed
+    /// - iOS: calls SecRandomCopyBytes as /dev/(u)random is sandboxed.
+    ///
     /// This does not block.
+    #[allow(missing_copy_implementations)]
     pub struct OsRng {
-        marker: marker::NoCopy
+        // dummy field to ensure that this struct cannot be constructed outside of this module
+        _dummy: (),
     }
 
     #[repr(C)]
@@ -205,7 +209,7 @@ mod imp {
     impl OsRng {
         /// Create a new `OsRng`.
         pub fn new() -> IoResult<OsRng> {
-            Ok(OsRng {marker: marker::NoCopy} )
+            Ok(OsRng { _dummy: () })
         }
     }
 
@@ -254,7 +258,8 @@ mod imp {
     ///   `/dev/urandom`, or from `getrandom(2)` system call if available.
     /// - Windows: calls `CryptGenRandom`, using the default cryptographic
     ///   service provider with the `PROV_RSA_FULL` type.
-    /// - iOS: calls SecRandomCopyBytes as /dev/(u)random is sandboxed
+    /// - iOS: calls SecRandomCopyBytes as /dev/(u)random is sandboxed.
+    ///
     /// This does not block.
     pub struct OsRng {
         hcryptprov: HCRYPTPROV
