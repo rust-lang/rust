@@ -241,7 +241,7 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
             Type::struct_(cx, &[Type::i8p(cx), Type::i8p(cx)], false)
         }
 
-        ty::ty_infer(..) | ty::ty_param(..) | ty::ty_err(..) => {
+        ty::ty_projection(..) | ty::ty_infer(..) | ty::ty_param(..) | ty::ty_err(..) => {
             cx.sess().bug(format!("fictitious type {} in sizing_type_of()",
                                   ppaux::ty_to_string(cx.tcx(), t))[])
         }
@@ -414,6 +414,7 @@ pub fn type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
       },
 
       ty::ty_infer(..) => cx.sess().bug("type_of with ty_infer"),
+      ty::ty_projection(..) => cx.sess().bug("type_of with ty_projection"),
       ty::ty_param(..) => cx.sess().bug("type_of with ty_param"),
       ty::ty_err(..) => cx.sess().bug("type_of with ty_err"),
     };

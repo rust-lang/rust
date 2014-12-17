@@ -369,6 +369,17 @@ fn parse_unsafety(item_doc: rbml::Doc) -> ast::Unsafety {
     }
 }
 
+fn parse_associated_type_names(item_doc: rbml::Doc) -> Vec<ast::Name> {
+    let names_doc = reader::get_doc(item_doc, tag_associated_type_names);
+    let mut names = Vec::new();
+    reader::tagged_docs(names_doc, tag_associated_type_name, |name_doc| {
+        let name = token::intern(name_doc.as_str_slice());
+        names.push(name);
+        true
+    });
+    names
+}
+
 pub fn get_trait_def<'tcx>(cdata: Cmd,
                            item_id: ast::NodeId,
                            tcx: &ty::ctxt<'tcx>) -> ty::TraitDef<'tcx>
@@ -377,12 +388,14 @@ pub fn get_trait_def<'tcx>(cdata: Cmd,
     let generics = doc_generics(item_doc, tcx, cdata, tag_item_generics);
     let bounds = trait_def_bounds(item_doc, tcx, cdata);
     let unsafety = parse_unsafety(item_doc);
+    let associated_type_names = parse_associated_type_names(item_doc);
 
     ty::TraitDef {
         unsafety: unsafety,
         generics: generics,
         bounds: bounds,
-        trait_ref: Rc::new(item_trait_ref(item_doc, tcx, cdata))
+        trait_ref: Rc::new(item_trait_ref(item_doc, tcx, cdata)),
+        associated_type_names: associated_type_names,
     }
 }
 

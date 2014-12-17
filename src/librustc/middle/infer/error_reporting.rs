@@ -1437,6 +1437,11 @@ impl<'a, 'tcx> ErrorReportingHelpers<'tcx> for InferCtxt<'a, 'tcx> {
                 format!(" for {}in generic type",
                         bound_region_to_string(self.tcx, "lifetime parameter ", true, br))
             }
+            infer::LateBoundRegion(_, br, infer::AssocTypeProjection(type_name)) => {
+                format!(" for {}in trait containing associated type `{}`",
+                        bound_region_to_string(self.tcx, "lifetime parameter ", true, br),
+                        token::get_name(type_name))
+            }
             infer::EarlyBoundRegion(_, name) => {
                 format!(" for lifetime parameter `{}`",
                         token::get_name(name).get())
@@ -1661,13 +1666,16 @@ impl<'tcx> Resolvable<'tcx> for Rc<ty::TraitRef<'tcx>> {
     }
 }
 
-impl<'tcx> Resolvable<'tcx> for Rc<ty::PolyTraitRef<'tcx>> {
-    fn resolve<'a>(&self, infcx: &InferCtxt<'a, 'tcx>)
-                   -> Rc<ty::PolyTraitRef<'tcx>> {
-        Rc::new(infcx.resolve_type_vars_if_possible(&**self))
+impl<'tcx> Resolvable<'tcx> for ty::PolyTraitRef<'tcx> {
+    fn resolve<'a>(&self,
+                   infcx: &InferCtxt<'a, 'tcx>)
+                   -> ty::PolyTraitRef<'tcx>
+    {
+        infcx.resolve_type_vars_if_possible(self)
     }
+
     fn contains_error(&self) -> bool {
-        ty::trait_ref_contains_error(&self.0)
+        ty::trait_ref_contains_error(&*self.0)
     }
 }
 

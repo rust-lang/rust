@@ -51,6 +51,7 @@ use middle::ty_fold;
 use middle::ty_fold::{TypeFoldable};
 use util::ppaux::Repr;
 
+use std::rc::Rc;
 use syntax::ast::{Onceness, Unsafety};
 use syntax::ast;
 use syntax::abi;
@@ -358,6 +359,18 @@ pub trait Combineable<'tcx> : Repr<'tcx> + TypeFoldable<'tcx> {
     fn combine<C:Combine<'tcx>>(combiner: &C, a: &Self, b: &Self) -> cres<'tcx, Self>;
 }
 
+impl<'tcx,T> Combineable<'tcx> for Rc<T>
+    where T : Combineable<'tcx>
+{
+    fn combine<C:Combine<'tcx>>(combiner: &C,
+                                a: &Rc<T>,
+                                b: &Rc<T>)
+                                -> cres<'tcx, Rc<T>>
+    {
+        Ok(Rc::new(try!(Combineable::combine(combiner, &**a, &**b))))
+    }
+}
+
 impl<'tcx> Combineable<'tcx> for ty::TraitRef<'tcx> {
     fn combine<C:Combine<'tcx>>(combiner: &C,
                                 a: &ty::TraitRef<'tcx>,
@@ -579,6 +592,15 @@ pub fn super_tys<'tcx, C: Combine<'tcx>>(this: &C,
         this.closure_tys(&**a_fty, &**b_fty).and_then(|fty| {
             Ok(ty::mk_closure(tcx, fty))
         })
+      }
+
+      (&ty::ty_projection(ref a_data), &ty::ty_projection(ref b_data)) => {
+          if a_data.item_name == b_data.item_name {
+              let trait_ref = try!(this.trait_refs(&a_data.trait_ref, &b_data.trait_ref));
+              Ok(ty::mk_projection(tcx, trait_ref, a_data.item_name))
+          } else {
+              Err(ty::terr_sorts(expected_found(this, a, b)))
+          }
       }
 
       _ => Err(ty::terr_sorts(expected_found(this, a, b)))

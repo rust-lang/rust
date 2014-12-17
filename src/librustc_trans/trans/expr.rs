@@ -39,7 +39,7 @@ use back::abi;
 use llvm::{mod, ValueRef};
 use middle::def;
 use middle::mem_categorization::Typer;
-use middle::subst::{mod, Subst, Substs};
+use middle::subst::{mod, Substs};
 use trans::{_match, adt, asm, base, callee, closure, consts, controlflow};
 use trans::base::*;
 use trans::build::*;
@@ -319,11 +319,13 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                           bcx.ty_to_string(unadjusted_ty))[])
             },
             &ty::UnsizeVtable(ty::TyTrait { ref principal, .. }, _) => {
-                let substs = principal.substs().with_self_ty(unadjusted_ty).erase_regions();
+                // Note that we preserve binding levels here:
+                let substs = principal.0.substs.with_self_ty(unadjusted_ty).erase_regions();
+                let substs = tcx.tcx().mk_substs(substs);
                 let trait_ref =
-                    Rc::new(ty::Binder(ty::TraitRef { def_id: principal.def_id(),
-                                                      substs: bcx.tcx().mk_substs(substs) }));
-                let trait_ref = trait_ref.subst(bcx.tcx(), bcx.fcx.param_substs);
+                    ty::Binder(Rc::new(ty::TraitRef { def_id: principal.def_id(),
+                                                      substs: substs }));
+                let trait_ref = bcx.monomorphize(&trait_ref);
                 let box_ty = mk_ty(unadjusted_ty);
                 PointerCast(bcx,
                             meth::get_vtable(bcx, box_ty, trait_ref),
@@ -1204,7 +1206,7 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                              .get(&expr.id)
                                              .map(|t| (*t).clone())
                                              .unwrap();
-                let trait_ref = trait_ref.subst(bcx.tcx(), bcx.fcx.param_substs);
+                let trait_ref = bcx.monomorphize(&trait_ref);
                 let datum = unpack_datum!(bcx, trans(bcx, &**val));
                 meth::trans_trait_cast(bcx, datum, expr.id,
                                        trait_ref, dest)

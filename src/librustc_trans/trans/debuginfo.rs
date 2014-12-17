@@ -198,6 +198,7 @@ use middle::subst::{mod, Subst, Substs};
 use trans::{mod, adt, machine, type_of};
 use trans::common::*;
 use trans::_match::{BindingInfo, TrByCopy, TrByMove, TrByRef};
+use trans::monomorphize;
 use trans::type_::Type;
 use middle::ty::{mod, Ty};
 use middle::pat_util;
@@ -426,8 +427,8 @@ impl<'tcx> TypeMap<'tcx> {
 
                 from_def_id_and_substs(self,
                                        cx,
-                                       trait_data.principal.def_id(),
-                                       trait_data.principal.substs(),
+                                       trait_data.principal_def_id(),
+                                       &trait_data.principal.0.substs,
                                        &mut unique_type_id);
             },
             ty::ty_bare_fn(_, &ty::BareFnTy{ unsafety, abi, ref sig } ) => {
@@ -1438,7 +1439,9 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 assert_type_for_node_id(cx, fn_ast_id, error_reporting_span);
 
                 let return_type = ty::node_id_to_type(cx.tcx(), fn_ast_id);
-                let return_type = return_type.subst(cx.tcx(), param_substs);
+                let return_type = monomorphize::apply_param_substs(cx.tcx(),
+                                                                   param_substs,
+                                                                   &return_type);
                 signature.push(type_metadata(cx, return_type, codemap::DUMMY_SP));
             }
         }
@@ -1447,7 +1450,9 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         for arg in fn_decl.inputs.iter() {
             assert_type_for_node_id(cx, arg.pat.id, arg.pat.span);
             let arg_type = ty::node_id_to_type(cx.tcx(), arg.pat.id);
-            let arg_type = arg_type.subst(cx.tcx(), param_substs);
+            let arg_type = monomorphize::apply_param_substs(cx.tcx(),
+                                                            param_substs,
+                                                            &arg_type);
             signature.push(type_metadata(cx, arg_type, codemap::DUMMY_SP));
         }
 
@@ -1459,8 +1464,10 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                          param_substs: &Substs<'tcx>,
                                          file_metadata: DIFile,
                                          name_to_append_suffix_to: &mut String)
-                                         -> DIArray {
+                                         -> DIArray
+    {
         let self_type = param_substs.self_ty();
+        let self_type = monomorphize::normalize_associated_type(cx.tcx(), &self_type);
 
         // Only true for static default methods:
         let has_self_type = self_type.is_some();
@@ -2878,7 +2885,7 @@ fn trait_pointer_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     // But it does not describe the trait's methods.
 
     let def_id = match trait_type.sty {
-        ty::ty_trait(box ty::TyTrait { ref principal, .. }) => principal.def_id(),
+        ty::ty_trait(ref data) => data.principal_def_id(),
         _ => {
             let pp_type_name = ppaux::ty_to_string(cx.tcx(), trait_type);
             cx.sess().bug(format!("debuginfo: Unexpected trait-object type in \
@@ -3811,8 +3818,8 @@ fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             output.push(']');
         },
         ty::ty_trait(ref trait_data) => {
-            push_item_name(cx, trait_data.principal.def_id(), false, output);
-            push_type_params(cx, trait_data.principal.substs(), output);
+            push_item_name(cx, trait_data.principal_def_id(), false, output);
+            push_type_params(cx, &trait_data.principal.0.substs, output);
         },
         ty::ty_bare_fn(_, &ty::BareFnTy{ unsafety, abi, ref sig } ) => {
             if unsafety == ast::Unsafety::Unsafe {
@@ -3920,9 +3927,10 @@ fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         ty::ty_unboxed_closure(..) => {
             output.push_str("closure");
         }
-        ty::ty_err      |
+        ty::ty_err |
         ty::ty_infer(_) |
         ty::ty_open(_) |
+        ty::ty_projection(..) |
         ty::ty_param(_) => {
             cx.sess().bug(format!("debuginfo: Trying to create type name for \
                 unexpected type: {}", ppaux::ty_to_string(cx.tcx(), t))[]);

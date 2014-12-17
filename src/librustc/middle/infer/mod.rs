@@ -139,7 +139,7 @@ pub enum TypeOrigin {
 pub enum ValuePairs<'tcx> {
     Types(ty::expected_found<Ty<'tcx>>),
     TraitRefs(ty::expected_found<Rc<ty::TraitRef<'tcx>>>),
-    PolyTraitRefs(ty::expected_found<Rc<ty::PolyTraitRef<'tcx>>>),
+    PolyTraitRefs(ty::expected_found<ty::PolyTraitRef<'tcx>>),
 }
 
 /// The trace designates the path through inference that we took to
@@ -231,6 +231,9 @@ pub enum LateBoundRegionConversionTime {
 
     /// when two higher-ranked types are compared
     HigherRankedType,
+
+    /// when projecting an associated type
+    AssocTypeProjection(ast::Name),
 }
 
 /// Reasons to create a region inference variable
@@ -407,8 +410,8 @@ pub fn mk_eqty<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
 pub fn mk_sub_poly_trait_refs<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
                                    a_is_expected: bool,
                                    origin: TypeOrigin,
-                                   a: Rc<ty::PolyTraitRef<'tcx>>,
-                                   b: Rc<ty::PolyTraitRef<'tcx>>)
+                                   a: ty::PolyTraitRef<'tcx>,
+                                   b: ty::PolyTraitRef<'tcx>)
                                    -> ures<'tcx>
 {
     debug!("mk_sub_trait_refs({} <: {})",
@@ -703,8 +706,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn sub_poly_trait_refs(&self,
                                a_is_expected: bool,
                                origin: TypeOrigin,
-                               a: Rc<ty::PolyTraitRef<'tcx>>,
-                               b: Rc<ty::PolyTraitRef<'tcx>>)
+                               a: ty::PolyTraitRef<'tcx>,
+                               b: ty::PolyTraitRef<'tcx>)
                                -> ures<'tcx>
     {
         debug!("sub_poly_trait_refs({} <: {})",
@@ -715,7 +718,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 origin: origin,
                 values: PolyTraitRefs(expected_found(a_is_expected, a.clone(), b.clone()))
             };
-            self.sub(a_is_expected, trace).binders(&*a, &*b).to_ures()
+            self.sub(a_is_expected, trace).binders(&a, &b).to_ures()
         })
     }
 
@@ -750,7 +753,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                          -> T
         where T : TypeFoldable<'tcx> + Repr<'tcx>
     {
-        /*! See `higher_ranked::leak_check` */
+        /*! See `higher_ranked::plug_leaks` */
 
         higher_ranked::plug_leaks(self, skol_map, snapshot, value)
     }
