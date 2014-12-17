@@ -5,9 +5,9 @@
 # Summary
 
 Under this RFC, the syntax to specify the type of a fixed-length array
-containing `N` elements of type `T` would be changed to `[N of T]`. Similarly,
-the syntax to construct an array containing `N` duplicated elements of value `x`
-would be changed to `[N of x]`.
+containing `N` elements of type `T` would be changed to `[T; N]`. Similarly, the
+syntax to construct an array containing `N` duplicated elements of value `x`
+would be changed to `[x, N]`.
 
 # Motivation
 
@@ -23,25 +23,17 @@ for creating an array of repeated values, or the new range syntax. This RFC
 proposes the former, in order to preserve existing functionality while avoiding
 modifications that would make the range syntax less intuitive.
 
-The use of the keyword `of` also seems to be at least as clear and economical as
-the existing syntax. Arguably the proposal in this RFC is clearer than the
-existing syntax, except for some adjustment time for users that already know the
-old syntax.
-
 # Detailed design
 
-The word `of` will become a reserved keyword, used for specification of array
-sizes.
-
 The syntax `[T, ..N]` for specifying array types will be replaced by the new
-syntax `[N of T]`.
+syntax `[T; N]`.
 
 In the expression `[x, ..N]`, the `..N` will refer to an expression of type
 `RangeTo<T>` (where `T` is the type of `N`). As with any other array of two
 elements, `x` will have to be of the same type, and the array expression will be
-of type `[2 of RangeTo<T>]`.
+of type `[RangeTo<T>; 2]`.
 
-The expression `[N of x]` will be equivalent to the old meaning of the syntax
+The expression `[x; N]` will be equivalent to the old meaning of the syntax
 `[x, ..N]`. Specifically, it will create an array of length `N`, each element of
 which has the value `x`.
 
@@ -54,7 +46,7 @@ let a: [uint, ..2] = [0u, ..2];
 to this:
 
 ```rust
-let a: [2 of uint] = [2 of 0u];
+let a: [uint; 2] = [0u; 2];
 ```
 
 ## Match patterns
@@ -68,9 +60,7 @@ interpreted as a wildcard, and never as sugar for a range constructor.
 
 While not required by this RFC, one suggested transition plan is as follows:
 
-- Implement the new syntax for `[N of T`]/`[N of x]` proposed above. This
-  requires reserving `of` as a keyword. It is believed that this will impact
-  little existing code, because `of` is not frequently used as an identifier.
+- Implement the new syntax for `[T; N]`/`[x; N]` proposed above.
 
 - Issue deprecation warnings for code that uses `[T, ..N]`/`[x, ..N]`, allowing
   easier identification of code that needs to be transitioned.
@@ -82,12 +72,9 @@ While not required by this RFC, one suggested transition plan is as follows:
 
 ## Backwards incompatibility
 
-- Removal of the existing meaning of `..` to specify an array size will impact a
-  large amount of existing code. Code conversion can probably be readily
-  automated, but will still require some labor.
-
-- Although `of` is probably not a common identifier, reserving it as a keyword
-  is also a backwards-incompatible change.
+- Changing the method for specifying an array size will impact a large amount of
+  existing code. Code conversion can probably be readily automated, but will
+  still require some labor.
 
 ## Implementation time
 
@@ -110,40 +97,25 @@ stabilized.
 ## Retain the type syntax only
 
 In theory, it seems that the type syntax `[T, ..N]` could be retained, while
-getting rid of the expression syntax `[x, ..N]`. This seems easier to implement,
-but there is a drawback:
+getting rid of the expression syntax `[x, ..N]`. The problem with this is that,
+if this syntax was removed, there is currently no way to define a macro to
+replace it.
 
-- Currently, it seems to be impossible to create a macro that adequately
-  replaces the repeat syntax, specifically when `N` is an arbitrary constant
-  expression.
-
-- If `[N of x]` becomes the new array expression syntax, but `[T, ..N]` remains
-  the type, the syntax becomes somewhat less consistent. In effect such a change
-  would replace this:
-
-```rust
-let a: [uint, ..2] = [0u, ..2];
-```
-
-  with this:
-
-```rust
-let a: [uint, ..2] = [2 of 0u];
-```
+Retaining the current type syntax, but changing the expression syntax, would
+make the language somewhat more complex and inconsistent overall. There seem to
+be no advocates of this alternative so far.
 
 ## Different array repeat syntax
 
 The comments in [pull request #498](https://github.com/rust-lang/rfcs/pull/498)
-mentioned many candidates for new syntax other than the `[N of x]` form in this
-RFC.
+mentioned many candidates for new syntax other than the `[x; N]` form in this
+RFC. The comments on the pull request of this RFC mentioned many more.
 
-- Instead of using `[N of x]`, use `[x for N]`.
+- Instead of using `[x; N]`, use `[x for N]`.
 
-    - One benefit of this is that it is not necessary to introduce a new
-      keyword.
-    - However, this use of `for` would not be exactly analogous to existing
-      `for` loops, because those accept an iterator rather than an integer. To a
-      new user, the expression `[x for N]` would resemble a list comprehension
+    - This use of `for` would not be exactly analogous to existing `for` loops,
+      because those accept an iterator rather than an integer. To a new user,
+      the expression `[x for N]` would resemble a list comprehension
       (e.g. Python's syntax is `[expr for i in iter]`), but in fact it does
       something much simpler.
     - It may be better to avoid uses of `for` that could complicate future
@@ -151,10 +123,15 @@ RFC.
       some other syntactic sugar related to iterators. However, the risk of
       actual ambiguity is not that high.
 
-- Introduce a different keyword than `of`. There are many other options, e.g.
-  `[x by N]`.
+- Introduce a different symbol to specify array sizes, e.g. `[T # N]`,
+  `[T @ N]`, and so forth.
 
-- Introduce a new symbol to specify array sizes, e.g. `[T # N]`/`[x # N]`.
+- Introduce a keyword rather than a symbol. There are many other options, e.g.
+  `[x by N]`. The original version of this proposal was for `[N of x]`, but this
+  was deemed to complicate parsing too much, since the parser would not know
+  whether to expect a type or an expression after the opening bracket.
+
+- Any of several more radical changes.
 
 ## Change the range syntax
 
@@ -183,14 +160,17 @@ pattern wildcards).
 ## Match patterns
 
 There will still be two semantically distinct uses of `..`, for the RFC 439
-range syntax and for wildcard patterns. This could be considered harmful enough
-to introduce further changes to separate the two. Or this could be considered
-innocuous enough to introduce some additional range-related meaning for `..` in
-certain match patterns.
+range syntax and for wildcards in patterns. This could be considered harmful
+enough to introduce further changes to separate the two. Or this could be
+considered innocuous enough to introduce some additional range-related meaning
+for `..` in certain patterns.
 
-This RFC does not attempt to address any issues with match patterns, because
-retaining the current match pattern wildcard behavior does not result in an
-ambiguity.
+It is possible that the new syntax `[x; N]` could itself be used within
+patterns.
+
+This RFC does not attempt to address any of these issues, because the current
+pattern syntax does not allow use of the repeated array syntax, and does not
+contain an ambiguity.
 
 ## Behavior of `for` in array expressions
 
