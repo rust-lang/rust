@@ -30,7 +30,10 @@ use rustc_borrowck::graphviz as borrowck_dot;
 
 use syntax::ast;
 use syntax::ast_map::{mod, blocks, NodePrinter};
+use syntax::codemap;
+use syntax::fold::{mod, Folder};
 use syntax::print::{pp, pprust};
+use syntax::ptr::P;
 
 use graphviz as dot;
 
@@ -42,6 +45,7 @@ use arena::TypedArena;
 #[deriving(Copy, PartialEq, Show)]
 pub enum PpSourceMode {
     PpmNormal,
+    PpmEveryBodyLoops,
     PpmExpanded,
     PpmTyped,
     PpmIdentified,
@@ -61,6 +65,7 @@ pub fn parse_pretty(sess: &Session, name: &str) -> (PpMode, Option<UserIdentifie
     let opt_second = split.next();
     let first = match first {
         "normal"       => PpmSource(PpmNormal),
+        "everybody_loops" => PpmSource(PpmEveryBodyLoops),
         "expanded"     => PpmSource(PpmExpanded),
         "typed"        => PpmSource(PpmTyped),
         "expanded,identified" => PpmSource(PpmExpandedIdentified),
@@ -105,7 +110,7 @@ impl PpSourceMode {
         F: FnOnce(&PrinterSupport, B) -> A,
     {
         match *self {
-            PpmNormal | PpmExpanded => {
+            PpmNormal | PpmEveryBodyLoops | PpmExpanded => {
                 let annotation = NoAnn { sess: sess, ast_map: ast_map };
                 f(&annotation, payload)
             }
@@ -384,6 +389,7 @@ impl UserIdentifiedItem {
 fn needs_ast_map(ppm: &PpMode, opt_uii: &Option<UserIdentifiedItem>) -> bool {
     match *ppm {
         PpmSource(PpmNormal) |
+        PpmSource(PpmEveryBodyLoops) |
         PpmSource(PpmIdentified) => opt_uii.is_some(),
 
         PpmSource(PpmExpanded) |
@@ -397,6 +403,7 @@ fn needs_ast_map(ppm: &PpMode, opt_uii: &Option<UserIdentifiedItem>) -> bool {
 fn needs_expansion(ppm: &PpMode) -> bool {
     match *ppm {
         PpmSource(PpmNormal) |
+        PpmSource(PpmEveryBodyLoops) |
         PpmSource(PpmIdentified) => false,
 
         PpmSource(PpmExpanded) |
@@ -407,6 +414,64 @@ fn needs_expansion(ppm: &PpMode) -> bool {
     }
 }
 
+struct ReplaceBodyWithLoop {
+    within_static_or_const: bool,
+}
+
+impl ReplaceBodyWithLoop {
+    fn new() -> ReplaceBodyWithLoop {
+        ReplaceBodyWithLoop { within_static_or_const: false }
+    }
+}
+
+impl fold::Folder for ReplaceBodyWithLoop {
+    fn fold_item_underscore(&mut self, i: ast::Item_) -> ast::Item_ {
+        match i {
+            ast::ItemStatic(..) | ast::ItemConst(..) => {
+                self.within_static_or_const = true;
+                let ret = fold::noop_fold_item_underscore(i, self);
+                self.within_static_or_const = false;
+                return ret;
+            }
+            _ => {
+                fold::noop_fold_item_underscore(i, self)
+            }
+        }
+    }
+
+
+    fn fold_block(&mut self, b: P<ast::Block>) -> P<ast::Block> {
+        fn expr_to_block(rules: ast::BlockCheckMode,
+                         e: Option<P<ast::Expr>>) -> P<ast::Block> {
+            P(ast::Block {
+                expr: e,
+                view_items: vec![], stmts: vec![], rules: rules,
+                id: ast::DUMMY_NODE_ID, span: codemap::DUMMY_SP,
+            })
+        }
+
+        if !self.within_static_or_const {
+
+            let empty_block = expr_to_block(ast::DefaultBlock, None);
+            let loop_expr = P(ast::Expr {
+                node: ast::ExprLoop(empty_block, None),
+                id: ast::DUMMY_NODE_ID, span: codemap::DUMMY_SP
+            });
+
+            expr_to_block(b.rules, Some(loop_expr))
+
+        } else {
+            fold::noop_fold_block(b, self)
+        }
+    }
+
+    // in general the pretty printer processes unexpanded code, so
+    // we override the default `fold_mac` method which panics.
+    fn fold_mac(&mut self, _macro: ast::Mac) -> ast::Mac {
+        fold::noop_fold_mac(_macro, self)
+    }
+}
+
 pub fn pretty_print_input(sess: Session,
                           cfg: ast::CrateConfig,
                           input: &Input,
@@ -414,6 +479,14 @@ pub fn pretty_print_input(sess: Session,
                           opt_uii: Option<UserIdentifiedItem>,
                           ofile: Option<Path>) {
     let krate = driver::phase_1_parse_input(&sess, cfg, input);
+
+    let krate = if let PpmSource(PpmEveryBodyLoops) = ppm {
+        let mut fold = ReplaceBodyWithLoop::new();
+        fold.fold_crate(krate)
+    } else {
+        krate
+    };
+
     let id = link::find_crate_name(Some(&sess), krate.attrs.as_slice(), input);
 
     let is_expanded = needs_expansion(&ppm);
