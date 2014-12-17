@@ -832,7 +832,9 @@ impl<S: Writer, K: Hash<S>, V: Hash<S>> Hash<S> for BTreeMap<K, V> {
     }
 }
 
+#[stable]
 impl<K: Ord, V> Default for BTreeMap<K, V> {
+    #[stable]
     fn default() -> BTreeMap<K, V> {
         BTreeMap::new()
     }

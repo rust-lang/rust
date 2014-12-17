@@ -95,7 +95,9 @@ impl Hasher<sip::SipState> for RandomSipHasher {
     }
 }
 
+#[stable]
 impl Default for RandomSipHasher {
+    #[stable]
     #[inline]
     fn default() -> RandomSipHasher {
         RandomSipHasher::new()

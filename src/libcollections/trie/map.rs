@@ -150,8 +150,10 @@ impl<T: Show> Show for TrieMap<T> {
     }
 }
 
+#[stable]
 impl<T> Default for TrieMap<T> {
     #[inline]
+    #[stable]
     fn default() -> TrieMap<T> { TrieMap::new() }
 }
 

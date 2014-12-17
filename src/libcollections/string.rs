@@ -826,6 +826,7 @@ impl StrAllocating for String {
 
 #[stable]
 impl Default for String {
+    #[stable]
     fn default() -> String {
         String::new()
     }

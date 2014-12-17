@@ -185,8 +185,10 @@ impl<K: Ord + Show, V: Show> Show for TreeMap<K, V> {
     }
 }
 
+#[stable]
 impl<K: Ord, V> Default for TreeMap<K,V> {
     #[inline]
+    #[stable]
     fn default() -> TreeMap<K, V> { TreeMap::new() }
 }
 

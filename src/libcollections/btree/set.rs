@@ -439,7 +439,9 @@ impl<T: Ord> Extend<T> for BTreeSet<T> {
     }
 }
 
+#[stable]
 impl<T: Ord> Default for BTreeSet<T> {
+    #[stable]
     fn default() -> BTreeSet<T> {
         BTreeSet::new()
     }
