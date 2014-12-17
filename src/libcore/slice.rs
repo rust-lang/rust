@@ -894,6 +894,17 @@ pub struct Splits<'a, T:'a, P> where P: FnMut(&T) -> bool {
     finished: bool
 }
 
+// FIXME(#19839) Remove in favor of `#[deriving(Clone)]`
+impl<'a, T, P> Clone for Splits<'a, T, P> where P: Clone + FnMut(&T) -> bool {
+    fn clone(&self) -> Splits<'a, T, P> {
+        Splits {
+            v: self.v,
+            pred: self.pred.clone(),
+            finished: self.finished,
+        }
+    }
+}
+
 #[experimental = "needs review"]
 impl<'a, T, P> Iterator<&'a [T]> for Splits<'a, T, P> where P: FnMut(&T) -> bool {
     #[inline]
