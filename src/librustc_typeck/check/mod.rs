@@ -1534,6 +1534,10 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
         ty::lookup_trait_def(self.tcx(), id)
     }
 
+    fn get_free_substs(&self) -> Option<&Substs<'tcx>> {
+        Some(&self.inh.param_env.free_substs)
+    }
+
     fn ty_infer(&self, _span: Span) -> Ty<'tcx> {
         self.infcx().next_ty_var()
     }
@@ -4865,6 +4869,7 @@ pub fn polytype_for_def<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
       def::DefTrait(_) |
       def::DefTy(..) |
       def::DefAssociatedTy(..) |
+      def::DefAssociatedPath(..) |
       def::DefPrimTy(_) |
       def::DefTyParam(..)=> {
         fcx.ccx.tcx.sess.span_bug(sp, "expected value, found type");
@@ -4973,6 +4978,7 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         def::DefTyParamBinder(..) |
         def::DefTy(..) |
         def::DefAssociatedTy(..) |
+        def::DefAssociatedPath(..) |
         def::DefTrait(..) |
         def::DefPrimTy(..) |
         def::DefTyParam(..) => {

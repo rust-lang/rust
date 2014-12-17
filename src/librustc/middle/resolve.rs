@@ -2027,7 +2027,7 @@ impl<'a> Resolver<'a> {
                                                   is_public,
                                                   DUMMY_SP)
           }
-          DefTy(..) | DefAssociatedTy(..) => {
+          DefTy(..) | DefAssociatedTy(..) | DefAssociatedPath(..) => {
               debug!("(building reduced graph for external \
                       crate) building type {}", final_ident);
 
@@ -3361,8 +3361,7 @@ impl<'a> Resolver<'a> {
         let module_path_len = module_path.len();
         assert!(module_path_len > 0);
 
-        debug!("(resolving module path for import) processing `{}` rooted at \
-               `{}`",
+        debug!("(resolving module path for import) processing `{}` rooted at `{}`",
                self.names_to_string(module_path),
                self.module_to_string(&*module_));
 
@@ -4960,14 +4959,10 @@ impl<'a> Resolver<'a> {
                             result_def =
                                 Some((DefPrimTy(primitive_type), LastMod(AllPublic)));
 
-                            if path.segments
-                                   .iter()
-                                   .any(|s| s.parameters.has_lifetimes()) {
+                            if path.segments[0].parameters.has_lifetimes() {
                                 span_err!(self.session, path.span, E0157,
                                     "lifetime parameters are not allowed on this type");
-                            } else if path.segments
-                                          .iter()
-                                          .any(|s| !s.parameters.is_empty()) {
+                            } else if !path.segments[0].parameters.is_empty() {
                                 span_err!(self.session, path.span, E0153,
                                     "type parameters are not allowed on this type");
                             }
@@ -5309,6 +5304,34 @@ impl<'a> Resolver<'a> {
             self.resolve_type(&*binding.ty);
         }
 
+        // A special case for sugared associated type paths `T::A` where `T` is
+        // a type parameter and `A` is an associated type on some bound of `T`.
+        if namespace == TypeNS && path.segments.len() == 2 {
+            match self.resolve_identifier(path.segments[0].identifier,
+                                          TypeNS,
+                                          true,
+                                          path.span) {
+                Some((def, last_private)) => {
+                    match def {
+                        DefTyParam(_, did, _) => {
+                            let def = DefAssociatedPath(TyParamProvenance::FromParam(did),
+                                                        path.segments.last()
+                                                            .unwrap().identifier);
+                            return Some((def, last_private));
+                        }
+                        DefSelfTy(nid) => {
+                            let def = DefAssociatedPath(TyParamProvenance::FromSelf(local_def(nid)),
+                                                        path.segments.last()
+                                                            .unwrap().identifier);
+                            return Some((def, last_private));
+                        }
+                        _ => {}
+                    }
+                }
+                _ => {}
+            }
+        }
+
         if path.global {
             return self.resolve_crate_relative_path(path, namespace);
         }
@@ -5561,8 +5584,7 @@ impl<'a> Resolver<'a> {
         let search_result = match namespace {
             ValueNS => {
                 let renamed = mtwt::resolve(ident);
-                self.search_ribs(self.value_ribs.as_slice(),
-                                 renamed, span)
+                self.search_ribs(self.value_ribs.as_slice(), renamed, span)
             }
             TypeNS => {
                 let name = ident.name;

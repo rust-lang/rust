@@ -443,6 +443,10 @@ impl tr for def::Def {
           def::DefTrait(did) => def::DefTrait(did.tr(dcx)),
           def::DefTy(did, is_enum) => def::DefTy(did.tr(dcx), is_enum),
           def::DefAssociatedTy(did) => def::DefAssociatedTy(did.tr(dcx)),
+          def::DefAssociatedPath(def::TyParamProvenance::FromSelf(did), ident) =>
+              def::DefAssociatedPath(def::TyParamProvenance::FromSelf(did.tr(dcx)), ident),
+          def::DefAssociatedPath(def::TyParamProvenance::FromParam(did), ident) =>
+              def::DefAssociatedPath(def::TyParamProvenance::FromParam(did.tr(dcx)), ident),
           def::DefPrimTy(p) => def::DefPrimTy(p),
           def::DefTyParam(s, did, v) => def::DefTyParam(s, did.tr(dcx), v),
           def::DefUse(did) => def::DefUse(did.tr(dcx)),

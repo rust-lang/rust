@@ -8,18 +8,39 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test equality constraints on associated types. Check that unsupported syntax
-// does not ICE.
+// Test paths to associated types using the type-parameter-only sugar.
 
 #![feature(associated_types)]
 
 pub trait Foo {
     type A;
-    fn boo(&self) -> <Self as Foo>::A;
+    fn boo(&self) -> Self::A;
 }
 
-fn foo2<I: Foo>(x: I) {
-    let _: A = x.boo(); //~ERROR use of undeclared
+impl Foo for int {
+    type A = uint;
+    fn boo(&self) -> uint {
+        5
+    }
 }
 
-pub fn main() {}
+// Using a type via a function.
+pub fn bar<T: Foo>(a: T, x: T::A) -> T::A {
+    let _: T::A = a.boo();
+    x
+}
+
+// Using a type via an impl.
+trait C {
+    fn f();
+}
+struct B<X>;
+impl<T: Foo> C for B<T> {
+    fn f() {
+        let x: T::A = panic!();
+    }
+}
+
+pub fn main() {
+    let z: uint = bar(2i, 4u);
+}
