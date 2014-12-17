@@ -364,12 +364,12 @@ fn encode_enum_variant_info(ecx: &EncodeContext,
     }
 }
 
-fn encode_path<PI: Iterator<PathElem> + Clone>(rbml_w: &mut Encoder,
-                                               mut path: PI) {
+fn encode_path<PI: Iterator<PathElem>>(rbml_w: &mut Encoder, path: PI) {
+    let path = path.collect::<Vec<_>>();
     rbml_w.start_tag(tag_path);
-    rbml_w.wr_tagged_u32(tag_path_len, path.clone().count() as u32);
-    for pe in path {
-        let tag = match pe {
+    rbml_w.wr_tagged_u32(tag_path_len, path.len() as u32);
+    for pe in path.iter() {
+        let tag = match *pe {
             ast_map::PathMod(_) => tag_path_elem_mod,
             ast_map::PathName(_) => tag_path_elem_name
         };
