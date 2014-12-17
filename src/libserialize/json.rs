@@ -2082,8 +2082,9 @@ impl ::Decoder<DecoderError> for Decoder {
         f(self)
     }
 
-    fn read_enum_variant<T, F>(&mut self, names: &[&str], f: F) -> DecodeResult<T> where
-        F: FnOnce(&mut Decoder, uint) -> DecodeResult<T>,
+    fn read_enum_variant<T, F>(&mut self, names: &[&str],
+                               mut f: F) -> DecodeResult<T>
+        where F: FnMut(&mut Decoder, uint) -> DecodeResult<T>,
     {
         debug!("read_enum_variant(names={})", names);
         let name = match self.pop() {
@@ -2133,7 +2134,7 @@ impl ::Decoder<DecoderError> for Decoder {
     }
 
     fn read_enum_struct_variant<T, F>(&mut self, names: &[&str], f: F) -> DecodeResult<T> where
-        F: FnOnce(&mut Decoder, uint) -> DecodeResult<T>,
+        F: FnMut(&mut Decoder, uint) -> DecodeResult<T>,
     {
         debug!("read_enum_struct_variant(names={})", names);
         self.read_enum_variant(names, f)
@@ -2230,8 +2231,8 @@ impl ::Decoder<DecoderError> for Decoder {
         self.read_tuple_arg(idx, f)
     }
 
-    fn read_option<T, F>(&mut self, f: F) -> DecodeResult<T> where
-        F: FnOnce(&mut Decoder, bool) -> DecodeResult<T>,
+    fn read_option<T, F>(&mut self, mut f: F) -> DecodeResult<T> where
+        F: FnMut(&mut Decoder, bool) -> DecodeResult<T>,
     {
         debug!("read_option()");
         match self.pop() {
