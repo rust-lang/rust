@@ -60,6 +60,7 @@
 use prelude::*;
 
 use any::Any;
+use cell::Cell;
 use cmp;
 use failure;
 use fmt;
@@ -69,7 +70,6 @@ use mem;
 use sync::atomic;
 use sync::{Once, ONCE_INIT};
 
-use sys_common::thread_info;
 use rt::libunwind as uw;
 
 struct Exception {
@@ -94,6 +94,8 @@ static CALLBACKS: [atomic::AtomicUint, ..MAX_CALLBACKS] =
          atomic::INIT_ATOMIC_UINT, atomic::INIT_ATOMIC_UINT];
 static CALLBACK_CNT: atomic::AtomicUint = atomic::INIT_ATOMIC_UINT;
 
+thread_local!(static PANICKING: Cell<bool> = Cell::new(false))
+
 /// Invoke a closure, capturing the cause of panic if one occurs.
 ///
 /// This function will return `None` if the closure did not panic, and will
@@ -116,7 +118,11 @@ static CALLBACK_CNT: atomic::AtomicUint = atomic::INIT_ATOMIC_UINT;
 ///   run.
 pub unsafe fn try<F: FnOnce()>(f: F) -> Result<(), Box<Any + Send>> {
     let mut f = Some(f);
+
+    let prev = PANICKING.with(|s| s.get());
+    PANICKING.with(|s| s.set(false));
     let ep = rust_try(try_fn::<F>, &mut f as *mut _ as *mut c_void);
+    PANICKING.with(|s| s.set(prev));
     return if ep.is_null() {
         Ok(())
     } else {
@@ -144,6 +150,11 @@ pub unsafe fn try<F: FnOnce()>(f: F) -> Result<(), Box<Any + Send>> {
         fn rust_try(f: extern fn(*mut c_void),
                     data: *mut c_void) -> *mut uw::_Unwind_Exception;
     }
+}
+
+/// Test if the current thread is currently panicking.
+pub fn panicking() -> bool {
+    PANICKING.with(|s| s.get())
 }
 
 // An uninlined, unmangled function upon which to slap yer breakpoints
@@ -561,15 +572,15 @@ fn begin_unwind_inner(msg: Box<Any + Send>, file_line: &(&'static str, uint)) ->
 
     // Now that we've run all the necessary unwind callbacks, we actually
     // perform the unwinding.
-    if thread_info::panicking() {
+    if panicking() {
         // If a thread panics while it's already unwinding then we
         // have limited options. Currently our preference is to
         // just abort. In the future we may consider resuming
         // unwinding or otherwise exiting the task cleanly.
-        rterrln!("task failed during unwinding. aborting.");
+        rterrln!("thread panicked while panicking. aborting.");
         unsafe { intrinsics::abort() }
     }
-    thread_info::set_unwinding(true);
+    PANICKING.with(|s| s.set(true));
     rust_panic(msg);
 }
 
