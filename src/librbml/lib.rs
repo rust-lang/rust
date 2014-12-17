@@ -499,8 +499,9 @@ pub mod reader {
             Ok(result)
         }
 
-        fn read_enum_variant<T, F>(&mut self, _: &[&str], f: F) -> DecodeResult<T> where
-            F: FnOnce(&mut Decoder<'doc>, uint) -> DecodeResult<T>,
+        fn read_enum_variant<T, F>(&mut self, _: &[&str],
+                                   mut f: F) -> DecodeResult<T>
+            where F: FnMut(&mut Decoder<'doc>, uint) -> DecodeResult<T>,
         {
             debug!("read_enum_variant()");
             let idx = try!(self._next_uint(EsEnumVid));
@@ -526,8 +527,9 @@ pub mod reader {
             f(self)
         }
 
-        fn read_enum_struct_variant<T, F>(&mut self, _: &[&str], f: F) -> DecodeResult<T> where
-            F: FnOnce(&mut Decoder<'doc>, uint) -> DecodeResult<T>,
+        fn read_enum_struct_variant<T, F>(&mut self, _: &[&str],
+                                          mut f: F) -> DecodeResult<T>
+            where F: FnMut(&mut Decoder<'doc>, uint) -> DecodeResult<T>,
         {
             debug!("read_enum_struct_variant()");
             let idx = try!(self._next_uint(EsEnumVid));
@@ -610,8 +612,8 @@ pub mod reader {
             self.read_tuple_arg(idx, f)
         }
 
-        fn read_option<T, F>(&mut self, f: F) -> DecodeResult<T> where
-            F: FnOnce(&mut Decoder<'doc>, bool) -> DecodeResult<T>,
+        fn read_option<T, F>(&mut self, mut f: F) -> DecodeResult<T> where
+            F: FnMut(&mut Decoder<'doc>, bool) -> DecodeResult<T>,
         {
             debug!("read_option()");
             self.read_enum("Option", move |this| {
