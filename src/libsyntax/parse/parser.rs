@@ -2888,7 +2888,7 @@ impl<'a> Parser<'a> {
                     }
                     let subexpression = self.parse_prefix_expr();
                     hi = subexpression.span.hi;
-                    ex = ExprBox(place, subexpression);
+                    ex = ExprBox(Some(place), subexpression);
                     return self.mk_expr(lo, hi, ex);
                 }
             }
@@ -2896,6 +2896,9 @@ impl<'a> Parser<'a> {
             // Otherwise, we use the unique pointer default.
             let subexpression = self.parse_prefix_expr();
             hi = subexpression.span.hi;
+            // FIXME (pnkfelix): After working out kinks with box
+            // desugaring, should be `ExprBox(None, subexpression)`
+            // instead.
             ex = self.mk_unary(UnUniq, subexpression);
           }
           _ => return self.parse_dot_or_call_expr()

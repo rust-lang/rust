@@ -631,7 +631,10 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
             }
 
             ast::ExprBox(ref place, ref base) => {
-                self.consume_expr(&**place);
+                match *place {
+                    Some(ref place) => self.consume_expr(&**place),
+                    None => {}
+                }
                 self.consume_expr(&**base);
             }
 
