@@ -770,33 +770,38 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                     variance);
             }
 
-            ty::ty_trait(box ty::TyTrait { ref principal, bounds }) => {
-                let trait_def = ty::lookup_trait_def(self.tcx(), principal.def_id());
+            ty::ty_projection(ref data) => {
+                let trait_ref = &data.trait_ref;
+                let trait_def = ty::lookup_trait_def(self.tcx(), trait_ref.def_id);
+                let generics = &trait_def.generics;
+                self.add_constraints_from_substs(
+                    trait_ref.def_id,
+                    generics.types.as_slice(),
+                    generics.regions.as_slice(),
+                    &trait_ref.substs,
+                    variance);
+            }
+
+            ty::ty_trait(ref data) => {
+                let trait_ref = data.principal_trait_ref_with_self_ty(self.tcx().types.err);
+                let trait_def = ty::lookup_trait_def(self.tcx(), trait_ref.def_id());
                 let generics = &trait_def.generics;
 
-                // Traits DO have a Self type parameter, but it is
-                // erased from object types.
-                assert!(!generics.types.is_empty_in(subst::SelfSpace) &&
-                        principal.substs().types.is_empty_in(subst::SelfSpace));
-
                 // Traits never declare region parameters in the self
-                // space.
+                // space nor anything in the fn space.
                 assert!(generics.regions.is_empty_in(subst::SelfSpace));
-
-                // Traits never declare type/region parameters in the
-                // fn space.
                 assert!(generics.types.is_empty_in(subst::FnSpace));
                 assert!(generics.regions.is_empty_in(subst::FnSpace));
 
                 // The type `Foo<T+'a>` is contravariant w/r/t `'a`:
                 let contra = self.contravariant(variance);
-                self.add_constraints_from_region(bounds.region_bound, contra);
+                self.add_constraints_from_region(data.bounds.region_bound, contra);
 
                 self.add_constraints_from_substs(
-                    principal.def_id(),
+                    trait_ref.def_id(),
                     generics.types.get_slice(subst::TypeSpace),
                     generics.regions.get_slice(subst::TypeSpace),
-                    principal.substs(),
+                    trait_ref.substs(),
                     variance);
             }
 

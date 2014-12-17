@@ -15,7 +15,7 @@ use super::{check_fn, Expectation, FnCtxt};
 use astconv;
 use middle::infer;
 use middle::subst;
-use middle::ty::{mod, Ty};
+use middle::ty::{mod, ToPolyTraitRef, Ty};
 use rscope::RegionScope;
 use syntax::abi;
 use syntax::ast;
@@ -168,7 +168,8 @@ fn deduce_unboxed_closure_expectations_from_expected_type<'a,'tcx>(
 {
     match expected_ty.sty {
         ty::ty_trait(ref object_type) => {
-            deduce_unboxed_closure_expectations_from_trait_ref(fcx, &object_type.principal)
+            let trait_ref = object_type.principal_trait_ref_with_self_ty(fcx.tcx().types.err);
+            deduce_unboxed_closure_expectations_from_trait_ref(fcx, &trait_ref)
         }
         ty::ty_infer(ty::TyVar(vid)) => {
             deduce_unboxed_closure_expectations_from_obligations(fcx, vid)
@@ -227,23 +228,21 @@ fn deduce_unboxed_closure_expectations_from_obligations<'a,'tcx>(
 {
     // Here `expected_ty` is known to be a type inference variable.
     for obligation in fcx.inh.fulfillment_cx.borrow().pending_obligations().iter() {
-        match obligation.trait_ref {
-            ty::Predicate::Trait(ref trait_ref) => {
+        match obligation.predicate {
+            ty::Predicate::Trait(ref trait_predicate) => {
+                let trait_ref = trait_predicate.to_poly_trait_ref();
                 let self_ty = fcx.infcx().shallow_resolve(trait_ref.self_ty());
                 match self_ty.sty {
                     ty::ty_infer(ty::TyVar(v)) if expected_vid == v => { }
                     _ => { continue; }
                 }
 
-                match deduce_unboxed_closure_expectations_from_trait_ref(fcx, &**trait_ref) {
+                match deduce_unboxed_closure_expectations_from_trait_ref(fcx, &trait_ref) {
                     Some(e) => { return Some(e); }
                     None => { }
                 }
             }
-            ty::Predicate::Equate(..) |
-            ty::Predicate::RegionOutlives(..) |
-            ty::Predicate::TypeOutlives(..) => {
-            }
+            _ => { }
         }
     }
 

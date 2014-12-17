@@ -281,6 +281,8 @@ pub fn kind_for_unboxed_closure(ccx: &CrateContext, closure_id: ast::DefId)
 
 pub fn decl_rust_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                               fn_ty: Ty<'tcx>, name: &str) -> ValueRef {
+    let fn_ty = monomorphize::normalize_associated_type(ccx.tcx(), &fn_ty);
+
     let (inputs, output, abi, env) = match fn_ty.sty {
         ty::ty_bare_fn(_, ref f) => {
             (f.sig.0.inputs.clone(), f.sig.0.output, f.abi, None)
@@ -1453,7 +1455,8 @@ pub fn new_fn_ctxt<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
 
     let uses_outptr = match output_type {
         ty::FnConverging(output_type) => {
-            let substd_output_type = output_type.subst(ccx.tcx(), param_substs);
+            let substd_output_type =
+                monomorphize::apply_param_substs(ccx.tcx(), param_substs, &output_type);
             type_of::return_uses_outptr(ccx, substd_output_type)
         }
         ty::FnDiverging => false
@@ -1512,7 +1515,7 @@ pub fn init_function<'a, 'tcx>(fcx: &'a FunctionContext<'a, 'tcx>,
     if let ty::FnConverging(output_type) = output {
         // This shouldn't need to recompute the return type,
         // as new_fn_ctxt did it already.
-        let substd_output_type = output_type.subst(fcx.ccx.tcx(), fcx.param_substs);
+        let substd_output_type = fcx.monomorphize(&output_type);
         if !return_type_is_void(fcx.ccx, substd_output_type) {
             // If the function returns nil/bot, there is no real return
             // value, so do not set `llretslotptr`.
@@ -1732,7 +1735,7 @@ pub fn finish_fn<'blk, 'tcx>(fcx: &'blk FunctionContext<'blk, 'tcx>,
 
     // This shouldn't need to recompute the return type,
     // as new_fn_ctxt did it already.
-    let substd_retty = retty.subst(fcx.ccx.tcx(), fcx.param_substs);
+    let substd_retty = fcx.monomorphize(&retty);
     build_return_block(fcx, ret_cx, substd_retty);
 
     debuginfo::clear_source_location(fcx);
@@ -2074,7 +2077,7 @@ fn trans_enum_variant_or_tuple_like_struct<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx
                                                      param_substs: &Substs<'tcx>,
                                                      llfndecl: ValueRef) {
     let ctor_ty = ty::node_id_to_type(ccx.tcx(), ctor_id);
-    let ctor_ty = ctor_ty.subst(ccx.tcx(), param_substs);
+    let ctor_ty = monomorphize::apply_param_substs(ccx.tcx(), param_substs, &ctor_ty);
 
     let result_ty = match ctor_ty.sty {
         ty::ty_bare_fn(_, ref bft) => bft.sig.0.output,
@@ -2764,6 +2767,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
     }
 
     let item = ccx.tcx().map.get(id);
+    debug!("get_item_val: id={} item={}", id, item);
     let val = match item {
         ast_map::NodeItem(i) => {
             let ty = ty::node_id_to_type(ccx.tcx(), i.id);

@@ -10,20 +10,33 @@
 
 #![feature(associated_types)]
 
-trait Get {
-    type Value;
-    fn get(&self) -> <Self as Get>::Value;
+trait SignedUnsigned {
+    type Opposite;
+    fn convert(self) -> Self::Opposite;
 }
 
-struct Struct {
-    x: int,
+impl SignedUnsigned for int {
+    type Opposite = uint;
+
+    fn convert(self) -> uint {
+        self as uint
+    }
 }
 
-impl Struct {
-    fn uhoh<T>(foo: <T as Get>::Value) {}
-    //~^ ERROR no suitable bound on `T`
+impl SignedUnsigned for uint {
+    type Opposite = int;
+
+    fn convert(self) -> int {
+        self as int
+    }
+}
+
+fn get(x: int) -> <int as SignedUnsigned>::Opposite {
+    x.convert()
 }
 
 fn main() {
+    let x = get(22);
+    assert_eq!(22u, x);
 }
 

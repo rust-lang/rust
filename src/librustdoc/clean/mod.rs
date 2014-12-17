@@ -1466,6 +1466,18 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
             }
             ty::ty_tup(ref t) => Tuple(t.clean(cx)),
 
+            ty::ty_projection(ref data) => {
+                let trait_ref = match data.trait_ref.clean(cx) {
+                    TyParamBound::TraitBound(t) => t,
+                    TyParamBound::RegionBound(_) => panic!("cleaning a trait got a region??"),
+                };
+                Type::QPath {
+                    name: data.item_name.clean(cx),
+                    self_type: box data.trait_ref.self_ty().clean(cx),
+                    trait_: box trait_ref,
+                }
+            }
+
             ty::ty_param(ref p) => {
                 if p.space == subst::SelfSpace {
                     Self(p.def_id)

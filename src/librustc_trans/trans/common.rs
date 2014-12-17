@@ -24,20 +24,20 @@ use middle::infer;
 use middle::lang_items::LangItem;
 use middle::mem_categorization as mc;
 use middle::region;
-use middle::subst;
-use middle::subst::{Subst, Substs};
+use middle::subst::{mod, Subst, Substs};
 use trans::base;
 use trans::build;
 use trans::cleanup;
 use trans::datum;
 use trans::debuginfo;
 use trans::machine;
+use trans::monomorphize;
 use trans::type_::Type;
 use trans::type_of;
 use middle::traits;
-use middle::ty::{mod, Ty};
+use middle::ty::{mod, HasProjectionTypes, Ty};
 use middle::ty_fold;
-use middle::ty_fold::TypeFoldable;
+use middle::ty_fold::{TypeFolder, TypeFoldable};
 use util::ppaux::Repr;
 use util::nodemap::{DefIdMap, FnvHashMap, NodeMap};
 
@@ -45,7 +45,6 @@ use arena::TypedArena;
 use libc::{c_uint, c_char};
 use std::c_str::ToCStr;
 use std::cell::{Cell, RefCell};
-use std::rc::Rc;
 use std::vec::Vec;
 use syntax::ast::Ident;
 use syntax::ast;
@@ -137,7 +136,7 @@ pub fn type_needs_unwind_cleanup<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<
 
                 ty::ty_enum(did, substs) =>
                     ty::enum_variants(tcx, did).iter().any(|v|
-                        v.args.iter().any(|aty| {
+                        v.args.iter().any(|&aty| {
                             let t = aty.subst(tcx, substs);
                             type_needs_unwind_cleanup_(tcx, t, tycache)
                         })
@@ -465,6 +464,14 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
         }
         return out;
     }
+
+    pub fn monomorphize<T>(&self, value: &T) -> T
+        where T : TypeFoldable<'tcx> + Repr<'tcx> + HasProjectionTypes + Clone
+    {
+        monomorphize::apply_param_substs(self.ccx.tcx(),
+                                         self.param_substs,
+                                         value)
+    }
 }
 
 // Basic block context.  We create a block context for each basic block
@@ -556,6 +563,14 @@ impl<'blk, 'tcx> BlockS<'blk, 'tcx> {
 
     pub fn to_str(&self) -> String {
         format!("[block {:p}]", self)
+    }
+
+    pub fn monomorphize<T>(&self, value: &T) -> T
+        where T : TypeFoldable<'tcx> + Repr<'tcx> + HasProjectionTypes + Clone
+    {
+        monomorphize::apply_param_substs(self.tcx(),
+                                         self.fcx.param_substs,
+                                         value)
     }
 }
 
@@ -859,7 +874,7 @@ pub fn is_null(val: ValueRef) -> bool {
 }
 
 pub fn monomorphize_type<'blk, 'tcx>(bcx: &BlockS<'blk, 'tcx>, t: Ty<'tcx>) -> Ty<'tcx> {
-    t.subst(bcx.tcx(), bcx.fcx.param_substs)
+    bcx.fcx.monomorphize(&t)
 }
 
 pub fn node_id_type<'blk, 'tcx>(bcx: &BlockS<'blk, 'tcx>, id: ast::NodeId) -> Ty<'tcx> {
@@ -881,7 +896,7 @@ pub fn expr_ty_adjusted<'blk, 'tcx>(bcx: &BlockS<'blk, 'tcx>, ex: &ast::Expr) ->
 /// guarantee to us that all nested obligations *could be* resolved if we wanted to.
 pub fn fulfill_obligation<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                     span: Span,
-                                    trait_ref: Rc<ty::PolyTraitRef<'tcx>>)
+                                    trait_ref: ty::PolyTraitRef<'tcx>)
                                     -> traits::Vtable<'tcx, ()>
 {
     let tcx = ccx.tcx();
@@ -911,7 +926,7 @@ pub fn fulfill_obligation<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     // shallow result we are looking for -- that is, what specific impl.
     let mut selcx = traits::SelectionContext::new(&infcx, &param_env, tcx);
     let obligation = traits::Obligation::new(traits::ObligationCause::dummy(),
-                                             trait_ref.clone());
+                                             trait_ref.to_poly_trait_predicate());
     let selection = match selcx.select(&obligation) {
         Ok(Some(selection)) => selection,
         Ok(None) => {
@@ -991,7 +1006,8 @@ pub enum ExprOrMethodCall {
 
 pub fn node_id_substs<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                   node: ExprOrMethodCall)
-                                  -> subst::Substs<'tcx> {
+                                  -> subst::Substs<'tcx>
+{
     let tcx = bcx.tcx();
 
     let substs = match node {
@@ -1012,7 +1028,7 @@ pub fn node_id_substs<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 
     let substs = substs.erase_regions();
-    substs.subst(tcx, bcx.fcx.param_substs)
+    bcx.monomorphize(&substs)
 }
 
 pub fn langcall(bcx: Block,

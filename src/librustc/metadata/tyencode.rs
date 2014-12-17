@@ -149,6 +149,11 @@ pub fn enc_ty<'a, 'tcx>(w: &mut SeekableMemWriter, cx: &ctxt<'a, 'tcx>, t: Ty<'t
             enc_substs(w, cx, substs);
             mywrite!(w, "]");
         }
+        ty::ty_projection(ref data) => {
+            mywrite!(w, "P[");
+            enc_trait_ref(w, cx, &data.trait_ref);
+            mywrite!(w, "{}]", token::get_name(data.item_name));
+        }
         ty::ty_err => {
             mywrite!(w, "e");
         }
@@ -403,7 +408,12 @@ pub fn enc_bounds<'a, 'tcx>(w: &mut SeekableMemWriter, cx: &ctxt<'a, 'tcx>,
 
     for tp in bs.trait_bounds.iter() {
         mywrite!(w, "I");
-        enc_trait_ref(w, cx, &tp.0);
+        enc_trait_ref(w, cx, &*tp.0);
+    }
+
+    for tp in bs.projection_bounds.iter() {
+        mywrite!(w, "P");
+        enc_projection_predicate(w, cx, &tp.0);
     }
 
     mywrite!(w, ".");
@@ -414,8 +424,6 @@ pub fn enc_type_param_def<'a, 'tcx>(w: &mut SeekableMemWriter, cx: &ctxt<'a, 'tc
     mywrite!(w, "{}:{}|{}|{}|",
              token::get_name(v.name), (cx.ds)(v.def_id),
              v.space.to_uint(), v.index);
-    enc_opt(w, v.associated_with, |w, did| mywrite!(w, "{}", (cx.ds)(did)));
-    mywrite!(w, "|");
     enc_bounds(w, cx, &v.bounds);
     enc_opt(w, v.default, |w, t| enc_ty(w, cx, t));
 }
@@ -427,7 +435,7 @@ pub fn enc_predicate<'a, 'tcx>(w: &mut SeekableMemWriter,
     match *p {
         ty::Predicate::Trait(ref trait_ref) => {
             mywrite!(w, "t");
-            enc_trait_ref(w, cx, &trait_ref.0);
+            enc_trait_ref(w, cx, &*trait_ref.0.trait_ref);
         }
         ty::Predicate::Equate(ty::Binder(ty::EquatePredicate(a, b))) => {
             mywrite!(w, "e");
@@ -444,5 +452,17 @@ pub fn enc_predicate<'a, 'tcx>(w: &mut SeekableMemWriter,
             enc_ty(w, cx, a);
             enc_region(w, cx, b);
         }
+        ty::Predicate::Projection(ty::Binder(ref data)) => {
+            mywrite!(w, "p");
+            enc_projection_predicate(w, cx, data)
+        }
     }
+}
+
+fn enc_projection_predicate<'a, 'tcx>(w: &mut SeekableMemWriter,
+                                      cx: &ctxt<'a, 'tcx>,
+                                      data: &ty::ProjectionPredicate<'tcx>) {
+    enc_trait_ref(w, cx, &*data.projection_ty.trait_ref);
+    mywrite!(w, "{}|", token::get_name(data.projection_ty.item_name));
+    enc_ty(w, cx, data.ty);
 }

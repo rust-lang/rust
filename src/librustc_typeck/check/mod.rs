@@ -93,10 +93,10 @@ use middle::subst::{mod, Subst, Substs, VecPerParamSpace, ParamSpace};
 use middle::traits;
 use middle::ty::{FnSig, VariantInfo, TypeScheme};
 use middle::ty::{Disr, ParamTy, ParameterEnvironment};
-use middle::ty::{mod, Ty};
+use middle::ty::{mod, HasProjectionTypes, Ty};
 use middle::ty::liberate_late_bound_regions;
 use middle::ty::{MethodCall, MethodCallee, MethodMap, ObjectCastMap};
-use middle::ty_fold::TypeFolder;
+use middle::ty_fold::{TypeFolder, TypeFoldable};
 use rscope::RegionScope;
 use session::Session;
 use {CrateCtxt, lookup_def_ccx, no_params, require_same_types};
@@ -120,6 +120,7 @@ use syntax::print::pprust;
 use syntax::ptr::P;
 use syntax::visit::{mod, Visitor};
 
+mod assoc;
 pub mod _match;
 pub mod vtable;
 pub mod writeback;
@@ -348,6 +349,17 @@ impl<'a, 'tcx> Inherited<'a, 'tcx> {
             fulfillment_cx: RefCell::new(traits::FulfillmentContext::new()),
         }
     }
+
+    fn normalize_associated_types_in<T>(&self, span: Span, body_id: ast::NodeId, value: &T) -> T
+        where T : TypeFoldable<'tcx> + Clone + HasProjectionTypes
+    {
+        let mut fulfillment_cx = self.fulfillment_cx.borrow_mut();
+        assoc::normalize_associated_types_in(&self.infcx,
+                                             &mut *fulfillment_cx, span,
+                                             body_id,
+                                             value)
+    }
+
 }
 
 // Used by check_const and check_enum_variants
@@ -414,15 +426,18 @@ fn check_bare_fn<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                            decl: &ast::FnDecl,
                            body: &ast::Block,
                            id: ast::NodeId,
-                           fty: Ty<'tcx>,
+                           raw_fty: Ty<'tcx>,
                            param_env: ty::ParameterEnvironment<'tcx>) {
-    // Compute the fty from point of view of inside fn
-    // (replace any type-scheme with a type)
-    let fty = fty.subst(ccx.tcx, &param_env.free_substs);
-
-    match fty.sty {
+    match raw_fty.sty {
         ty::ty_bare_fn(_, ref fn_ty) => {
             let inh = Inherited::new(ccx.tcx, param_env);
+
+            // Compute the fty from point of view of inside fn
+            // (replace any type-scheme with a type, and normalize
+            // associated types appearing in the fn signature).
+            let fn_ty = fn_ty.subst(ccx.tcx, &inh.param_env.free_substs);
+            let fn_ty = inh.normalize_associated_types_in(body.span, body.id, &fn_ty);
+
             let fcx = check_fn(ccx, fn_ty.unsafety, id, &fn_ty.sig,
                                decl, id, body, &inh);
 
@@ -532,7 +547,8 @@ fn check_fn<'a, 'tcx>(ccx: &'a CrateCtxt<'a, 'tcx>,
                       fn_id: ast::NodeId,
                       body: &ast::Block,
                       inherited: &'a Inherited<'a, 'tcx>)
-                      -> FnCtxt<'a, 'tcx> {
+                      -> FnCtxt<'a, 'tcx>
+{
     let tcx = ccx.tcx;
     let err_count_on_creation = tcx.sess.err_count();
 
@@ -771,9 +787,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                 // corresponding method definition in the trait.
                 let opt_trait_method_ty =
                     trait_items.iter()
-                               .find(|ti| {
-                                   ti.name() == impl_item_ty.name()
-                               });
+                               .find(|ti| ti.name() == impl_item_ty.name());
                 match opt_trait_method_ty {
                     Some(trait_method_ty) => {
                         match (trait_method_ty, &impl_item_ty) {
@@ -917,6 +931,7 @@ fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
            impl_trait_ref.repr(tcx));
 
     let infcx = infer::new_infer_ctxt(tcx);
+    let mut fulfillment_cx = traits::FulfillmentContext::new();
 
     let trait_to_impl_substs = &impl_trait_ref.substs;
 
@@ -1034,21 +1049,15 @@ fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
     // this kind of equivalency just fine.
 
     // Create mapping from impl to skolemized.
-    let skol_tps =
-        impl_m.generics.types.map(
-            |d| ty::mk_param_from_def(tcx, d));
-    let skol_regions =
-        impl_m.generics.regions.map(
-            |l| ty::free_region_from_def(impl_m_body_id, l));
-    let impl_to_skol_substs =
-        subst::Substs::new(skol_tps.clone(), skol_regions.clone());
+    let impl_param_env = ty::construct_parameter_environment(tcx, &impl_m.generics, impl_m_body_id);
+    let impl_to_skol_substs = &impl_param_env.free_substs;
 
     // Create mapping from trait to skolemized.
     let trait_to_skol_substs =
         trait_to_impl_substs
-        .subst(tcx, &impl_to_skol_substs)
-        .with_method(skol_tps.get_slice(subst::FnSpace).to_vec(),
-                     skol_regions.get_slice(subst::FnSpace).to_vec());
+        .subst(tcx, impl_to_skol_substs)
+        .with_method(impl_to_skol_substs.types.get_slice(subst::FnSpace).to_vec(),
+                     impl_to_skol_substs.regions().get_slice(subst::FnSpace).to_vec());
 
     // Check region bounds.
     if !check_region_bounds_on_impl_method(tcx,
@@ -1057,7 +1066,7 @@ fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
                                            &trait_m.generics,
                                            &impl_m.generics,
                                            &trait_to_skol_substs,
-                                           &impl_to_skol_substs) {
+                                           impl_to_skol_substs) {
         return;
     }
 
@@ -1120,7 +1129,7 @@ fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
         for impl_trait_bound in impl_param_bounds.trait_bounds.iter() {
             debug!("compare_impl_method(): impl-trait-bound subst");
             let impl_trait_bound =
-                impl_trait_bound.subst(tcx, &impl_to_skol_substs);
+                impl_trait_bound.subst(tcx, impl_to_skol_substs);
 
             // There may be late-bound regions from the impl in the
             // impl's bound, so "liberate" those. Note that the
@@ -1134,7 +1143,6 @@ fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
                     debug!("compare_impl_method(): trait-bound subst");
                     let trait_bound =
                         trait_bound.subst(tcx, &trait_to_skol_substs);
-                    let infcx = infer::new_infer_ctxt(tcx);
                     infer::mk_sub_poly_trait_refs(&infcx,
                                                   true,
                                                   infer::Misc(impl_m_span),
@@ -1155,9 +1163,15 @@ fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
 
     // Compute skolemized form of impl and trait method tys.
     let impl_fty = ty::mk_bare_fn(tcx, None, tcx.mk_bare_fn(impl_m.fty.clone()));
-    let impl_fty = impl_fty.subst(tcx, &impl_to_skol_substs);
+    let impl_fty = impl_fty.subst(tcx, impl_to_skol_substs);
     let trait_fty = ty::mk_bare_fn(tcx, None, tcx.mk_bare_fn(trait_m.fty.clone()));
     let trait_fty = trait_fty.subst(tcx, &trait_to_skol_substs);
+    let trait_fty =
+        assoc::normalize_associated_types_in(&infcx,
+                                             &mut fulfillment_cx,
+                                             impl_m_span,
+                                             impl_m_body_id,
+                                             &trait_fty);
 
     // Check the impl method type IM is a subtype of the trait method
     // type TM. To see why this makes sense, think of a vtable. The
@@ -1180,6 +1194,15 @@ fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
                 token::get_name(trait_m.name),
                 ty::type_err_to_str(tcx, terr));
             ty::note_and_explain_type_err(tcx, terr);
+        }
+    }
+
+    // Run the fulfillment context to completion to accommodate any
+    // associated type normalizations that may have occurred.
+    match fulfillment_cx.select_all_or_error(&infcx, &impl_param_env, tcx) {
+        Ok(()) => { }
+        Err(errors) => {
+            traits::report_fulfillment_errors(&infcx, &errors);
         }
     }
 
@@ -1526,19 +1549,28 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
         self.infcx().next_ty_var()
     }
 
-    fn associated_types_of_trait_are_valid(&self, _: Ty, _: ast::DefId)
-                                           -> bool {
-        false
+    fn projected_ty_from_poly_trait_ref(&self,
+                                        span: Span,
+                                        poly_trait_ref: ty::PolyTraitRef<'tcx>,
+                                        item_name: ast::Name)
+                                        -> Ty<'tcx>
+    {
+        let (trait_ref, _) =
+            self.infcx().replace_late_bound_regions_with_fresh_var(
+                span,
+                infer::LateBoundRegionConversionTime::AssocTypeProjection(item_name),
+                &poly_trait_ref);
+
+        self.normalize_associated_type(span, trait_ref, item_name)
     }
 
-    fn associated_type_binding(&self,
-                               span: Span,
-                               _: Option<Ty<'tcx>>,
-                               _: ast::DefId,
-                               _: ast::DefId)
-                               -> Option<Ty<'tcx>> {
-        self.tcx().sess.span_err(span, "unsupported associated type binding");
-        Some(ty::mk_err())
+    fn projected_ty(&self,
+                    span: Span,
+                    trait_ref: Rc<ty::TraitRef<'tcx>>,
+                    item_name: ast::Name)
+                    -> Ty<'tcx>
+    {
+        self.normalize_associated_type(span, trait_ref, item_name)
     }
 }
 
@@ -1560,22 +1592,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn err_count_since_creation(&self) -> uint {
         self.ccx.tcx.sess.err_count() - self.err_count_on_creation
     }
-}
 
-impl<'a, 'tcx> RegionScope for infer::InferCtxt<'a, 'tcx> {
-    fn default_region_bound(&self, span: Span) -> Option<ty::Region> {
-        Some(self.next_region_var(infer::MiscVariable(span)))
-    }
-
-    fn anon_regions(&self, span: Span, count: uint)
-                    -> Result<Vec<ty::Region>, Option<Vec<(String, uint)>>> {
-        Ok(Vec::from_fn(count, |_| {
-            self.next_region_var(infer::MiscVariable(span))
-        }))
-    }
-}
-
-impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn tag(&self) -> String {
         format!("{}", self as *const FnCtxt)
     }
@@ -1609,7 +1626,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub fn write_object_cast(&self,
                              key: ast::NodeId,
-                             trait_ref: Rc<ty::PolyTraitRef<'tcx>>) {
+                             trait_ref: ty::PolyTraitRef<'tcx>) {
         debug!("write_object_cast key={} trait_ref={}",
                key, trait_ref.repr(self.tcx()));
         self.inh.object_cast_map.borrow_mut().insert(key, trait_ref);
@@ -1658,6 +1675,48 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // obligation out here.
         self.register_adjustment_obligations(span, &adj);
         self.inh.adjustments.borrow_mut().insert(node_id, adj);
+    }
+
+    /// Basically whenever we are converting from a type scheme into
+    /// the fn body space, we always want to normalize associated
+    /// types as well. This function combines the two.
+    fn instantiate_type_scheme<T>(&self,
+                                  span: Span,
+                                  substs: &Substs<'tcx>,
+                                  value: &T)
+                                  -> T
+        where T : TypeFoldable<'tcx> + Clone + HasProjectionTypes + Repr<'tcx>
+    {
+        let value = value.subst(self.tcx(), substs);
+        let result = self.normalize_associated_types_in(span, &value);
+        debug!("instantiate_type_scheme(value={}, substs={}) = {}",
+               value.repr(self.tcx()),
+               substs.repr(self.tcx()),
+               result.repr(self.tcx()));
+        result
+    }
+
+    fn normalize_associated_types_in<T>(&self, span: Span, value: &T) -> T
+        where T : TypeFoldable<'tcx> + Clone + HasProjectionTypes
+    {
+        self.inh.normalize_associated_types_in(span, self.body_id, value)
+    }
+
+    fn normalize_associated_type(&self,
+                                 span: Span,
+                                 trait_ref: Rc<ty::TraitRef<'tcx>>,
+                                 item_name: ast::Name)
+                                 -> Ty<'tcx>
+    {
+        let cause = traits::ObligationCause::new(span,
+                                                 self.body_id,
+                                                 traits::ObligationCauseCode::MiscObligation);
+        self.inh.fulfillment_cx
+            .borrow_mut()
+            .normalize_associated_type(self.infcx(),
+                                       trait_ref,
+                                       item_name,
+                                       cause)
     }
 
     fn register_adjustment_obligations(&self,
@@ -1754,7 +1813,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 traits::ItemObligation(def_id)),
             &bounds);
         let monotype =
-            type_scheme.ty.subst(self.tcx(), &substs);
+            self.instantiate_type_scheme(span, &substs, &type_scheme.ty);
 
         TypeAndSubsts {
             ty: monotype,
@@ -2017,7 +2076,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 }
 
-#[deriving(Copy, Show,PartialEq,Eq)]
+//impl<'a, 'tcx> RegionScope for infer::InferCtxt<'a, 'tcx> {
+//    fn default_region_bound(&self, span: Span) -> Option<ty::Region> {
+//        Some(self.next_region_var(infer::MiscVariable(span)))
+//    }
+//
+//    fn anon_regions(&self, span: Span, count: uint)
+//                    -> Result<Vec<ty::Region>, Option<Vec<(String, uint)>>> {
+//        Ok(Vec::from_fn(count, |_| {
+//            self.next_region_var(infer::MiscVariable(span))
+//        }))
+//    }
+//}
+
+#[deriving(Copy, Show, PartialEq, Eq)]
 pub enum LvaluePreference {
     PreferMutLvalue,
     NoPreference
@@ -2879,7 +2951,7 @@ pub fn impl_self_ty<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     let rps = fcx.inh.infcx.region_vars_for_defs(span, rps);
     let tps = fcx.inh.infcx.next_ty_vars(n_tps);
     let substs = subst::Substs::new_type(tps, rps);
-    let substd_ty = raw_ty.subst(tcx, &substs);
+    let substd_ty = fcx.instantiate_type_scheme(span, &substs, &raw_ty);
 
     TypeAndSubsts { substs: substs, ty: substd_ty }
 }
@@ -5219,9 +5291,7 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
     // Substitute the values for the type parameters into the type of
     // the referenced item.
-    let ty_substituted = ty_late_bound.subst(fcx.tcx(), &substs);
-
-    debug!("ty_substituted: ty_substituted={}", ty_substituted.repr(fcx.tcx()));
+    let ty_substituted = fcx.instantiate_type_scheme(span, &substs, &ty_late_bound);
 
     fcx.write_ty(node_id, ty_substituted);
     fcx.write_substs(node_id, ty::ItemSubsts { substs: substs });

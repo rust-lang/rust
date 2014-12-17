@@ -11,7 +11,7 @@
 use middle::def;
 use middle::infer;
 use middle::pat_util::{PatIdMap, pat_id_map, pat_is_binding, pat_is_const};
-use middle::subst::{Subst, Substs};
+use middle::subst::{Substs};
 use middle::ty::{mod, Ty};
 use check::{check_expr, check_expr_has_type, check_expr_with_expectation};
 use check::{check_expr_coercable_to_type, demand, FnCtxt, Expectation};
@@ -410,17 +410,24 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>, pat: &ast::Pat,
     demand::eqtype(fcx, pat.span, expected, pat_ty);
 
     let real_path_ty = fcx.node_ty(pat.id);
-    let (arg_tys, kind_name) = match real_path_ty.sty {
+    let (arg_tys, kind_name): (Vec<_>, &'static str) = match real_path_ty.sty {
         ty::ty_enum(enum_def_id, expected_substs)
-            if def == def::DefVariant(enum_def_id, def.def_id(), false) => {
+            if def == def::DefVariant(enum_def_id, def.def_id(), false) =>
+        {
             let variant = ty::enum_variant_with_id(tcx, enum_def_id, def.def_id());
-            (variant.args.iter().map(|t| t.subst(tcx, expected_substs)).collect::<Vec<_>>(),
-                "variant")
+            (variant.args.iter()
+                         .map(|t| fcx.instantiate_type_scheme(pat.span, expected_substs, t))
+                         .collect(),
+             "variant")
         }
         ty::ty_struct(struct_def_id, expected_substs) => {
             let struct_fields = ty::struct_fields(tcx, struct_def_id, expected_substs);
-            (struct_fields.iter().map(|field| field.mt.ty).collect::<Vec<_>>(),
-                "struct")
+            (struct_fields.iter()
+                          .map(|field| fcx.instantiate_type_scheme(pat.span,
+                                                                   expected_substs,
+                                                                   &field.mt.ty))
+                          .collect(),
+             "struct")
         }
         _ => {
             let name = pprust::path_to_string(path);

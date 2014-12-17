@@ -516,6 +516,7 @@ pub fn trans_fn_ref_with_substs<'blk, 'tcx>(
 
     // Type scheme of the function item (may have type params)
     let fn_type_scheme = ty::lookup_item_type(tcx, def_id);
+    let fn_type = monomorphize::normalize_associated_type(tcx, &fn_type_scheme.ty);
 
     // Find the actual function pointer.
     let mut val = {
@@ -524,7 +525,7 @@ pub fn trans_fn_ref_with_substs<'blk, 'tcx>(
             get_item_val(ccx, def_id.node)
         } else {
             // External reference.
-            trans_external_path(ccx, def_id, fn_type_scheme.ty)
+            trans_external_path(ccx, def_id, fn_type)
         }
     };
 
@@ -551,7 +552,7 @@ pub fn trans_fn_ref_with_substs<'blk, 'tcx>(
     // This can occur on either a crate-local or crate-external
     // reference. It also occurs when testing libcore and in some
     // other weird situations. Annoying.
-    let llty = type_of::type_of_fn_from_ty(ccx, fn_type_scheme.ty);
+    let llty = type_of::type_of_fn_from_ty(ccx, fn_type);
     let llptrty = llty.ptr_to();
     if val_ty(val) != llptrty {
         debug!("trans_fn_ref_with_vtables(): casting pointer!");

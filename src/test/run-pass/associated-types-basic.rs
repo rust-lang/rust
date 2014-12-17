@@ -10,20 +10,17 @@
 
 #![feature(associated_types)]
 
-trait Get {
-    type Value;
-    fn get(&self) -> <Self as Get>::Value;
+trait Foo {
+    type T;
 }
 
-struct Struct {
-    x: int,
-}
-
-impl Struct {
-    fn uhoh<T>(foo: <T as Get>::Value) {}
-    //~^ ERROR no suitable bound on `T`
+impl Foo for i32 {
+    type T = int;
 }
 
 fn main() {
+    let x: <i32 as Foo>::T = 22;
+    let y: int = 44;
+    assert_eq!(x * 2, y);
 }
 
