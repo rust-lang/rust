@@ -261,7 +261,7 @@ pub fn predicates_for_generics<'tcx>(tcx: &ty::ctxt<'tcx>,
     generic_bounds.predicates.map(|predicate| {
         Obligation { cause: cause.clone(),
                      recursion_depth: recursion_depth,
-                     trait_ref: predicate.clone() }
+                     predicate: predicate.clone() }
     })
 }
 
@@ -297,7 +297,7 @@ pub fn predicate_for_builtin_bound<'tcx>(
     Ok(Obligation {
         cause: cause,
         recursion_depth: recursion_depth,
-        trait_ref: ty::Predicate::Trait(trait_ref),
+        predicate: ty::Predicate::Trait(trait_ref),
     })
 }
 
@@ -323,8 +323,8 @@ pub fn search_trait_and_supertraits_from_bound<'tcx,F>(tcx: &ty::ctxt<'tcx>,
 
 impl<'tcx,O:Repr<'tcx>> Repr<'tcx> for super::Obligation<'tcx, O> {
     fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
-        format!("Obligation(trait_ref={},depth={})",
-                self.trait_ref.repr(tcx),
+        format!("Obligation(predicate={},depth={})",
+                self.predicate.repr(tcx),
                 self.recursion_depth)
     }
 }
@@ -387,6 +387,12 @@ impl<'tcx> Repr<'tcx> for super::SelectionError<'tcx> {
 
             super::OutputTypeParameterMismatch(ref a, ref b, ref c) =>
                 format!("OutputTypeParameterMismatch({},{},{})",
+                        a.repr(tcx),
+                        b.repr(tcx),
+                        c.repr(tcx)),
+
+            super::ProjectionMismatch(ref a, ref b, ref c) =>
+                format!("PrjectionMismatch({},{},{})",
                         a.repr(tcx),
                         b.repr(tcx),
                         c.repr(tcx)),

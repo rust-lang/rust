@@ -53,7 +53,7 @@ mod util;
 pub struct Obligation<'tcx, T> {
     pub cause: ObligationCause<'tcx>,
     pub recursion_depth: uint,
-    pub trait_ref: T,
+    pub predicate: T,
 }
 
 pub type PredicateObligation<'tcx> = Obligation<'tcx, ty::Predicate<'tcx>>;
@@ -310,7 +310,7 @@ impl<'tcx,O> Obligation<'tcx,O> {
     {
         Obligation { cause: cause,
                      recursion_depth: 0,
-                     trait_ref: trait_ref }
+                     predicate: trait_ref }
     }
 
     pub fn misc(span: Span, body_id: ast::NodeId, trait_ref: O) -> Obligation<'tcx, O> {
@@ -320,13 +320,13 @@ impl<'tcx,O> Obligation<'tcx,O> {
     pub fn with<P>(&self, value: P) -> Obligation<'tcx,P> {
         Obligation { cause: self.cause.clone(),
                      recursion_depth: self.recursion_depth,
-                     trait_ref: value }
+                     predicate: value }
     }
 }
 
 impl<'tcx> TraitObligation<'tcx> {
     pub fn self_ty(&self) -> Ty<'tcx> {
-        self.trait_ref.self_ty()
+        self.predicate.self_ty()
     }
 }
 
