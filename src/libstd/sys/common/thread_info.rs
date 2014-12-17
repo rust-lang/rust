@@ -20,7 +20,6 @@ struct ThreadInfo {
     // hence this is optional.
     stack_bounds: (uint, uint),
     stack_guard: uint,
-    unwinding: bool,
     thread: Thread,
 }
 
@@ -38,7 +37,6 @@ impl ThreadInfo {
                 *c.borrow_mut() = Some(ThreadInfo {
                     stack_bounds: (0, 0),
                     stack_guard: 0,
-                    unwinding: false,
                     thread: NewThread::new(None),
                 })
             }
@@ -51,16 +49,8 @@ pub fn current_thread() -> Thread {
     ThreadInfo::with(|info| info.thread.clone())
 }
 
-pub fn panicking() -> bool {
-    ThreadInfo::with(|info| info.unwinding)
-}
-
 pub fn stack_guard() -> uint {
     ThreadInfo::with(|info| info.stack_guard)
-}
-
-pub fn set_unwinding(unwinding: bool) {
-    ThreadInfo::with(|info| info.unwinding = unwinding)
 }
 
 pub fn set(stack_bounds: (uint, uint), stack_guard: uint, thread: Thread) {
@@ -68,7 +58,6 @@ pub fn set(stack_bounds: (uint, uint), stack_guard: uint, thread: Thread) {
     THREAD_INFO.with(move |c| *c.borrow_mut() = Some(ThreadInfo{
         stack_bounds: stack_bounds,
         stack_guard: stack_guard,
-        unwinding: false,
         thread: thread,
     }));
 }

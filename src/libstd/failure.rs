@@ -10,21 +10,15 @@
 
 #![experimental]
 
-use alloc::boxed::Box;
+use prelude::*;
+
 use any::{Any, AnyRefExt};
 use cell::RefCell;
 use fmt;
-use io::{Writer, IoResult};
-use kinds::Send;
-use option::Option;
-use option::Option::{Some, None};
-use result::Result::Ok;
-use rt::backtrace;
+use io::IoResult;
+use rt::{backtrace, unwind};
 use rt::util::{Stderr, Stdio};
-use str::Str;
-use string::String;
 use thread::Thread;
-use sys_common::thread_info;
 
 // Defined in this module instead of io::stdio so that the unwinding
 thread_local! {
@@ -80,7 +74,7 @@ pub fn on_fail(obj: &(Any+Send), file: &'static str, line: uint) {
 
     // If this is a double panic, make sure that we printed a backtrace
     // for this panic.
-    if thread_info::panicking() && !backtrace::log_enabled() {
+    if unwind::panicking() && !backtrace::log_enabled() {
         let _ = backtrace::write(&mut err);
     }
 }

@@ -327,7 +327,7 @@ impl Thread {
 
     /// Determines whether the current thread is panicking.
     pub fn panicking() -> bool {
-        thread_info::panicking()
+        unwind::panicking()
     }
 
     /// Block unless or until the current thread's token is made available (may wake spuriously).
