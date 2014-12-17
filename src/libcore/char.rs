@@ -19,7 +19,7 @@ use mem::transmute;
 use ops::FnMut;
 use option::Option;
 use option::Option::{None, Some};
-use iter::{range_step, Iterator, RangeStep};
+use iter::Iterator;
 use slice::SliceExt;
 
 // UTF-8 ranges and tags for encoding characters
@@ -459,7 +459,9 @@ pub struct UnicodeEscapedChars {
 enum UnicodeEscapedCharsState {
     Backslash,
     Type,
-    Value(RangeStep<i32>),
+    Open,
+    Value(i32),
+    Close,
 }
 
 impl Iterator<char> for UnicodeEscapedChars {
@@ -468,25 +470,44 @@ impl Iterator<char> for UnicodeEscapedChars {
             UnicodeEscapedCharsState::Backslash => {
                 self.state = UnicodeEscapedCharsState::Type;
                 Some('\\')
-            }
+            },
             UnicodeEscapedCharsState::Type => {
-                let (typechar, pad) = if self.c <= '\x7f' { ('x', 2) }
-                                      else if self.c <= '\u{ffff}' { ('u', 4) }
-                                      else { ('U', 8) };
-                self.state = UnicodeEscapedCharsState::Value(range_step(4 * (pad - 1), -1, -4i32));
-                Some(typechar)
-            }
-            UnicodeEscapedCharsState::Value(ref mut range_step) => match range_step.next() {
-                Some(offset) => {
-                    let offset = offset as uint;
-                    let v = match ((self.c as i32) >> offset) & 0xf {
-                        i @ 0 ... 9 => '0' as i32 + i,
-                        i => 'a' as i32 + (i - 10)
+                self.state = UnicodeEscapedCharsState::Open;
+                Some('u')
+            },
+            UnicodeEscapedCharsState::Open => {
+                let len = match self.c as u32 {
+                           0x0...0xf => 1,
+                          0x10...0xff => 2,
+                         0x100...0xfff => 3,
+                        0x1000...0xffff => 4,
+                       0x10000...0xfffff => 5,
+                      0x100000...0xffffff => 6,
+                     0x1000000...0xfffffff => 7,
+                    0x10000000...0xffffffff => 8,
+                    _ => unreachable!(), // FIXME - Exhaustiveness check
+                };
+                self.state = UnicodeEscapedCharsState::Value(len);
+                Some('{')
+            },
+            UnicodeEscapedCharsState::Value(index) => match index {
+                0 => {
+                    self.state = UnicodeEscapedCharsState::Close;
+                    Some('}')
+                },
+                index => {
+                    let offset = ((index - 1) * 4) as uint;
+                    let v = match ((self.c as u32) >> offset) & 0xf {
+                        i @ 0...9 => '0' as u32 + i,
+                        i => 'a' as u32 + (i - 10),
                     };
+                    self.state = UnicodeEscapedCharsState::Value(index - 1);
                     Some(unsafe { transmute(v) })
-                }
-                None => None
-            }
+                },
+            },
+            UnicodeEscapedCharsState::Close => {
+                None
+            },
         }
     }
 }
