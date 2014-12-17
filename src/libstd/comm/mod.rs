@@ -1516,7 +1516,7 @@ mod test {
 
         // wait for the child task to exit before we exit
         rx2.recv();
-    })
+    }}
 }
 
 #[cfg(test)]

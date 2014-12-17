@@ -41,6 +41,7 @@ use option::Option;
 use option::Option::{Some, None};
 use ops::{Deref, DerefMut, FnOnce};
 use result::Result::{Ok, Err};
+use rt;
 use slice::SliceExt;
 use str::StrPrelude;
 use string::String;
