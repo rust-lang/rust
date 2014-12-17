@@ -31,7 +31,6 @@ below.)
 
 If you're on Windows, please download either the [32-bit
 installer](https://static.rust-lang.org/dist/rust-nightly-i686-pc-windows-gnu.exe)
-
 or the [64-bit
 installer](https://static.rust-lang.org/dist/rust-nightly-x86_64-pc-windows-gnu.exe)
 and run it.
