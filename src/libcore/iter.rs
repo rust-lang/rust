@@ -1388,6 +1388,19 @@ pub struct Map<A, B, I: Iterator<A>, F: FnMut(A) -> B> {
     f: F,
 }
 
+// FIXME(#19839) Remove in favor of `#[deriving(Clone)]`
+impl<A, B, I, F> Clone for Map<A, B, I, F> where
+    I: Clone + Iterator<A>,
+    F: Clone + FnMut(A) -> B,
+{
+    fn clone(&self) -> Map<A, B, I, F> {
+        Map {
+            iter: self.iter.clone(),
+            f: self.f.clone(),
+        }
+    }
+}
+
 impl<A, B, I, F> Map<A, B, I, F> where I: Iterator<A>, F: FnMut(A) -> B {
     #[inline]
     fn do_map(&mut self, elt: Option<A>) -> Option<B> {
@@ -1449,6 +1462,19 @@ pub struct Filter<A, I, P> where I: Iterator<A>, P: FnMut(&A) -> bool {
     predicate: P,
 }
 
+// FIXME(#19839) Remove in favor of `#[deriving(Clone)]`
+impl<A, I, P> Clone for Filter<A, I, P> where
+    I: Clone + Iterator<A>,
+    P: Clone + FnMut(&A) -> bool,
+{
+    fn clone(&self) -> Filter<A, I, P> {
+        Filter {
+            iter: self.iter.clone(),
+            predicate: self.predicate.clone(),
+        }
+    }
+}
+
 #[unstable = "trait is unstable"]
 impl<A, I, P> Iterator<A> for Filter<A, I, P> where I: Iterator<A>, P: FnMut(&A) -> bool {
     #[inline]
@@ -1492,6 +1518,19 @@ impl<A, I, P> DoubleEndedIterator<A> for Filter<A, I, P> where
 pub struct FilterMap<A, B, I, F> where I: Iterator<A>, F: FnMut(A) -> Option<B> {
     iter: I,
     f: F,
+}
+
+// FIXME(#19839) Remove in favor of `#[deriving(Clone)]`
+impl<A, B, I, F> Clone for FilterMap<A, B, I, F> where
+    I: Clone + Iterator<A>,
+    F: Clone + FnMut(A) -> Option<B>,
+{
+    fn clone(&self) -> FilterMap<A, B, I, F> {
+        FilterMap {
+            iter: self.iter.clone(),
+            f: self.f.clone(),
+        }
+    }
 }
 
 #[unstable = "trait is unstable"]
@@ -1657,6 +1696,20 @@ pub struct SkipWhile<A, I, P> where I: Iterator<A>, P: FnMut(&A) -> bool {
     predicate: P,
 }
 
+// FIXME(#19839) Remove in favor of `#[deriving(Clone)]`
+impl<A, I, P> Clone for SkipWhile<A, I, P> where
+    I: Clone + Iterator<A>,
+    P: Clone + FnMut(&A) -> bool,
+{
+    fn clone(&self) -> SkipWhile<A, I, P> {
+        SkipWhile {
+            iter: self.iter.clone(),
+            flag: self.flag,
+            predicate: self.predicate.clone(),
+        }
+    }
+}
+
 #[unstable = "trait is unstable"]
 impl<A, I, P> Iterator<A> for SkipWhile<A, I, P> where I: Iterator<A>, P: FnMut(&A) -> bool {
     #[inline]
@@ -1684,6 +1737,20 @@ pub struct TakeWhile<A, I, P> where I: Iterator<A>, P: FnMut(&A) -> bool {
     iter: I,
     flag: bool,
     predicate: P,
+}
+
+// FIXME(#19839) Remove in favor of `#[deriving(Clone)]`
+impl<A, I, P> Clone for TakeWhile<A, I, P> where
+    I: Clone + Iterator<A>,
+    P: Clone + FnMut(&A) -> bool,
+{
+    fn clone(&self) -> TakeWhile<A, I, P> {
+        TakeWhile {
+            iter: self.iter.clone(),
+            flag: self.flag,
+            predicate: self.predicate.clone(),
+        }
+    }
 }
 
 #[unstable = "trait is unstable"]
@@ -1847,6 +1914,21 @@ pub struct Scan<A, B, I, St, F> where I: Iterator<A>, F: FnMut(&mut St, A) -> Op
     pub state: St,
 }
 
+// FIXME(#19839) Remove in favor of `#[deriving(Clone)]`
+impl<A, B, I, St, F> Clone for Scan<A, B, I, St, F> where
+    I: Clone + Iterator<A>,
+    St: Clone,
+    F: Clone + FnMut(&mut St, A) -> Option<B>,
+{
+    fn clone(&self) -> Scan<A, B, I, St, F> {
+        Scan {
+            iter: self.iter.clone(),
+            f: self.f.clone(),
+            state: self.state.clone(),
+        }
+    }
+}
+
 #[unstable = "trait is unstable"]
 impl<A, B, I, St, F> Iterator<B> for Scan<A, B, I, St, F> where
     I: Iterator<A>,
@@ -1874,6 +1956,22 @@ pub struct FlatMap<A, B, I, U, F> where I: Iterator<A>, U: Iterator<B>, F: FnMut
     f: F,
     frontiter: Option<U>,
     backiter: Option<U>,
+}
+
+// FIXME(#19839) Remove in favor of `#[deriving(Clone)]`
+impl<A, B, I, U, F> Clone for FlatMap<A, B, I, U, F> where
+    I: Clone + Iterator<A>,
+    U: Clone + Iterator<B>,
+    F: Clone + FnMut(A) -> U,
+{
+    fn clone(&self) -> FlatMap<A, B, I, U, F> {
+        FlatMap {
+            iter: self.iter.clone(),
+            f: self.f.clone(),
+            frontiter: self.frontiter.clone(),
+            backiter: self.backiter.clone(),
+        }
+    }
 }
 
 #[unstable = "trait is unstable"]
@@ -2020,6 +2118,19 @@ pub struct Inspect<A, I, F> where I: Iterator<A>, F: FnMut(&A) {
     f: F,
 }
 
+// FIXME(#19839) Remove in favor of `#[deriving(Clone)]`
+impl<A, I, F> Clone for Inspect<A, I, F> where
+    I: Clone + Iterator<A>,
+    F: Clone + FnMut(&A),
+{
+    fn clone(&self) -> Inspect<A, I, F> {
+        Inspect {
+            iter: self.iter.clone(),
+            f: self.f.clone(),
+        }
+    }
+}
+
 impl<A, I, F> Inspect<A, I, F> where I: Iterator<A>, F: FnMut(&A) {
     #[inline]
     fn do_inspect(&mut self, elt: Option<A>) -> Option<A> {
@@ -2112,6 +2223,19 @@ pub struct Unfold<A, St, F> where F: FnMut(&mut St) -> Option<A> {
     f: F,
     /// Internal state that will be passed to the closure on the next iteration
     pub state: St,
+}
+
+// FIXME(#19839) Remove in favor of `#[deriving(Clone)]`
+impl<A, St, F> Clone for Unfold<A, St, F> where
+    F: Clone + FnMut(&mut St) -> Option<A>,
+    St: Clone,
+{
+    fn clone(&self) -> Unfold<A, St, F> {
+        Unfold {
+            f: self.f.clone(),
+            state: self.state.clone(),
+        }
+    }
 }
 
 #[experimental]
