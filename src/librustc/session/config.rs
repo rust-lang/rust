@@ -811,10 +811,15 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
                    "Pretty-print the input instead of compiling;
                    valid types are: `normal` (un-annotated source),
                    `expanded` (crates expanded),
-                   `typed` (crates expanded, with type annotations),
-                   `expanded,identified` (fully parenthesized, AST nodes with IDs), or
-                   `flowgraph=<nodeid>` (graphviz formatted flowgraph for node)",
+                   `typed` (crates expanded, with type annotations), or
+                   `expanded,identified` (fully parenthesized, AST nodes with IDs).",
                  "TYPE"),
+        opt::flagopt_u("", "xpretty",
+                     "Pretty-print the input instead of compiling, unstable variants;
+                      valid types are any of the types for `--pretty`, as well as:
+                      `flowgraph=<nodeid>` (graphviz formatted flowgraph for node), or
+                      `everybody_loops` (all function bodies replaced with `loop {}`).",
+                     "TYPE"),
         opt::flagopt("", "dep-info",
                  "Output dependency info to <filename> after compiling, \
                   in a format suitable for use by Makefiles", "FILENAME"),
