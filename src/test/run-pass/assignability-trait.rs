@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-4 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -51,8 +51,6 @@ pub fn main() {
 
     // Now try it with a type that *needs* to be borrowed
     let z = [0,1,2,3];
-    // Call a method
-    z.iterate(|y| { assert!(z[*y as uint] == *y); true });
     // Call a parameterized function
     assert_eq!(length::<int, &[int]>(&z), z.len());
 }

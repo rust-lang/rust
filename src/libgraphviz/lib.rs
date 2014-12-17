@@ -440,7 +440,7 @@ impl<'a> LabelText<'a> {
     /// Renders text as string suitable for a label in a .dot file.
     pub fn escape(&self) -> String {
         match self {
-            &LabelStr(ref s) => s.escape_default(),
+            &LabelStr(ref s) => (&**s).escape_default(),
             &EscStr(ref s) => LabelText::escape_str(s.as_slice()),
         }
     }
@@ -453,7 +453,7 @@ impl<'a> LabelText<'a> {
         match self {
             EscStr(s) => s,
             LabelStr(s) => if s.contains_char('\\') {
-                s.escape_default().into_cow()
+                (&*s).escape_default().into_cow()
             } else {
                 s
             },
