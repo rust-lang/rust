@@ -10,7 +10,7 @@
 
 extern crate collections;
 
-use self::collections::TreeMap;
+use self::collections::BTreeMap;
 use std::option::Option::Some;
 use std::str::SendStr;
 use std::string::ToString;
