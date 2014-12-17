@@ -46,10 +46,6 @@ pub use dlist::DList;
 pub use enum_set::EnumSet;
 pub use ring_buf::RingBuf;
 pub use string::String;
-pub use tree_map::TreeMap;
-pub use tree_set::TreeSet;
-pub use trie_map::TrieMap;
-pub use trie_set::TrieSet;
 pub use vec::Vec;
 pub use vec_map::VecMap;
 
@@ -61,8 +57,6 @@ mod btree;
 pub mod dlist;
 pub mod enum_set;
 pub mod ring_buf;
-mod tree;
-mod trie;
 pub mod slice;
 pub mod str;
 pub mod string;
@@ -75,22 +69,6 @@ pub mod bitv {
 
 pub mod bitv_set {
     pub use bit::{BitvSet, BitPositions, TwoBitPositions};
-}
-
-pub mod tree_map {
-    pub use tree::map::*;
-}
-
-pub mod tree_set {
-    pub use tree::set::*;
-}
-
-pub mod trie_map {
-    pub use trie::map::*;
-}
-
-pub mod trie_set {
-    pub use trie::set::*;
 }
 
 pub mod btree_map {
