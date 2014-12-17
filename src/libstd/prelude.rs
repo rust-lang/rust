@@ -66,7 +66,7 @@
 #[doc(no_inline)] pub use iter::{FromIterator, Extend, ExactSizeIterator};
 #[doc(no_inline)] pub use iter::{Iterator, IteratorExt, DoubleEndedIterator};
 #[doc(no_inline)] pub use iter::{DoubleEndedIteratorExt, CloneIteratorExt};
-#[doc(no_inline)] pub use iter::{RandomAccessIterator, IteratorCloneExt};
+#[doc(no_inline)] pub use iter::{RandomAccessIterator, IteratorCloneExt, IteratorPairExt};
 #[doc(no_inline)] pub use iter::{IteratorOrdExt, MutableDoubleEndedIterator};
 #[doc(no_inline)] pub use num::{ToPrimitive, FromPrimitive};
 #[doc(no_inline)] pub use boxed::Box;

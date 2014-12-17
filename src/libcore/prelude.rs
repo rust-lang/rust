@@ -52,7 +52,7 @@ pub use cmp::{Ordering, Equiv};
 pub use cmp::Ordering::{Less, Equal, Greater};
 pub use iter::{FromIterator, Extend, IteratorExt};
 pub use iter::{Iterator, DoubleEndedIterator, DoubleEndedIteratorExt, RandomAccessIterator};
-pub use iter::{IteratorCloneExt, CloneIteratorExt};
+pub use iter::{IteratorCloneExt, CloneIteratorExt, IteratorPairExt};
 pub use iter::{IteratorOrdExt, MutableDoubleEndedIterator, ExactSizeIterator};
 pub use num::{ToPrimitive, FromPrimitive};
 pub use option::Option;
