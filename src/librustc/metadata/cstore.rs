@@ -238,13 +238,17 @@ impl MetadataBlob {
             MetadataArchive(ref ar) => ar.as_slice(),
         };
         if slice.len() < 4 {
-            &[]
+            &[] // corrupt metadata
         } else {
-            let len = ((slice[0] as u32) << 24) |
-                      ((slice[1] as u32) << 16) |
-                      ((slice[2] as u32) << 8) |
-                      ((slice[3] as u32) << 0);
-            slice.slice(4, len as uint + 4)
+            let len = (((slice[0] as u32) << 24) |
+                       ((slice[1] as u32) << 16) |
+                       ((slice[2] as u32) << 8) |
+                       ((slice[3] as u32) << 0)) as uint;
+            if len + 4 <= slice.len() {
+                slice.slice(4, len + 4)
+            } else {
+                &[] // corrupt or old metadata
+            }
         }
     }
 }
