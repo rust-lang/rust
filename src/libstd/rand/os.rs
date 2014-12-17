@@ -117,7 +117,8 @@ mod imp {
     ///   `/dev/urandom`, or from `getrandom(2)` system call if available.
     /// - Windows: calls `CryptGenRandom`, using the default cryptographic
     ///   service provider with the `PROV_RSA_FULL` type.
-    /// - iOS: calls SecRandomCopyBytes as /dev/(u)random is sandboxed
+    /// - iOS: calls SecRandomCopyBytes as /dev/(u)random is sandboxed.
+    ///
     /// This does not block.
     pub struct OsRng {
         inner: OsRngInner,
@@ -184,7 +185,8 @@ mod imp {
     ///   `/dev/urandom`, or from `getrandom(2)` system call if available.
     /// - Windows: calls `CryptGenRandom`, using the default cryptographic
     ///   service provider with the `PROV_RSA_FULL` type.
-    /// - iOS: calls SecRandomCopyBytes as /dev/(u)random is sandboxed
+    /// - iOS: calls SecRandomCopyBytes as /dev/(u)random is sandboxed.
+    ///
     /// This does not block.
     #[allow(missing_copy_implementations)]
     pub struct OsRng {
@@ -256,7 +258,8 @@ mod imp {
     ///   `/dev/urandom`, or from `getrandom(2)` system call if available.
     /// - Windows: calls `CryptGenRandom`, using the default cryptographic
     ///   service provider with the `PROV_RSA_FULL` type.
-    /// - iOS: calls SecRandomCopyBytes as /dev/(u)random is sandboxed
+    /// - iOS: calls SecRandomCopyBytes as /dev/(u)random is sandboxed.
+    ///
     /// This does not block.
     pub struct OsRng {
         hcryptprov: HCRYPTPROV
