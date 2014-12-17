@@ -20,7 +20,7 @@ use cmp::{max, Eq, Equiv, PartialEq};
 use default::Default;
 use fmt::{mod, Show};
 use hash::{Hash, Hasher, RandomSipHasher};
-use iter::{mod, Iterator, IteratorExt, FromIterator, Extend};
+use iter::{mod, Iterator, IteratorExt, FromIterator, Extend, Map};
 use kinds::Sized;
 use mem::{mod, replace};
 use num::{Int, UnsignedInt};
@@ -859,7 +859,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     pub fn keys(&self) -> Keys<K, V> {
         fn first<A, B>((a, _): (A, B)) -> A { a }
 
-        self.iter().map(first)
+        Keys { inner: self.iter().map(first) }
     }
 
     /// An iterator visiting all values in arbitrary order.
@@ -883,7 +883,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     pub fn values(&self) -> Values<K, V> {
         fn second<A, B>((_, b): (A, B)) -> B { b }
 
-        self.iter().map(second)
+        Values { inner: self.iter().map(second) }
     }
 
     /// An iterator visiting all key-value pairs in arbitrary order.
@@ -1335,6 +1335,16 @@ pub struct MoveEntries<K, V> {
     >
 }
 
+/// HashMap keys iterator
+pub struct Keys<'a, K: 'a, V: 'a> {
+    inner: Map<(&'a K, &'a V), &'a K, Entries<'a, K, V>, fn((&'a K, &'a V)) -> &'a K>
+}
+
+/// HashMap values iterator
+pub struct Values<'a, K: 'a, V: 'a> {
+    inner: Map<(&'a K, &'a V), &'a V, Entries<'a, K, V>, fn((&'a K, &'a V)) -> &'a V>
+}
+
 /// A view into a single occupied location in a HashMap
 pub struct OccupiedEntry<'a, K:'a, V:'a> {
     elem: FullBucket<K, V, &'a mut RawTable<K, V>>,
@@ -1365,36 +1375,28 @@ enum VacantEntryState<K, V, M> {
 }
 
 impl<'a, K, V> Iterator<(&'a K, &'a V)> for Entries<'a, K, V> {
-    #[inline]
-    fn next(&mut self) -> Option<(&'a K, &'a V)> {
-        self.inner.next()
-    }
-    #[inline]
-    fn size_hint(&self) -> (uint, Option<uint>) {
-        self.inner.size_hint()
-    }
+    #[inline] fn next(&mut self) -> Option<(&'a K, &'a V)> { self.inner.next() }
+    #[inline] fn size_hint(&self) -> (uint, Option<uint>) { self.inner.size_hint() }
 }
 
 impl<'a, K, V> Iterator<(&'a K, &'a mut V)> for MutEntries<'a, K, V> {
-    #[inline]
-    fn next(&mut self) -> Option<(&'a K, &'a mut V)> {
-        self.inner.next()
-    }
-    #[inline]
-    fn size_hint(&self) -> (uint, Option<uint>) {
-        self.inner.size_hint()
-    }
+    #[inline] fn next(&mut self) -> Option<(&'a K, &'a mut V)> { self.inner.next() }
+    #[inline] fn size_hint(&self) -> (uint, Option<uint>) { self.inner.size_hint() }
 }
 
 impl<K, V> Iterator<(K, V)> for MoveEntries<K, V> {
-    #[inline]
-    fn next(&mut self) -> Option<(K, V)> {
-        self.inner.next()
-    }
-    #[inline]
-    fn size_hint(&self) -> (uint, Option<uint>) {
-        self.inner.size_hint()
-    }
+    #[inline] fn next(&mut self) -> Option<(K, V)> { self.inner.next() }
+    #[inline] fn size_hint(&self) -> (uint, Option<uint>) { self.inner.size_hint() }
+}
+
+impl<'a, K, V> Iterator<&'a K> for Keys<'a, K, V> {
+    #[inline] fn next(&mut self) -> Option<(&'a K)> { self.inner.next() }
+    #[inline] fn size_hint(&self) -> (uint, Option<uint>) { self.inner.size_hint() }
+}
+
+impl<'a, K, V> Iterator<&'a V> for Values<'a, K, V> {
+    #[inline] fn next(&mut self) -> Option<(&'a V)> { self.inner.next() }
+    #[inline] fn size_hint(&self) -> (uint, Option<uint>) { self.inner.size_hint() }
 }
 
 impl<'a, K, V> OccupiedEntry<'a, K, V> {
@@ -1447,14 +1449,6 @@ impl<'a, K, V> VacantEntry<'a, K, V> {
         }
     }
 }
-
-/// HashMap keys iterator
-pub type Keys<'a, K, V> =
-    iter::Map<(&'a K, &'a V), &'a K, Entries<'a, K, V>, fn((&'a K, &'a V)) -> &'a K>;
-
-/// HashMap values iterator
-pub type Values<'a, K, V> =
-    iter::Map<(&'a K, &'a V), &'a V, Entries<'a, K, V>, fn((&'a K, &'a V)) -> &'a V>;
 
 impl<K: Eq + Hash<S>, V, S, H: Hasher<S> + Default> FromIterator<(K, V)> for HashMap<K, V, H> {
     fn from_iter<T: Iterator<(K, V)>>(iter: T) -> HashMap<K, V, H> {

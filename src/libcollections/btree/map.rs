@@ -29,6 +29,7 @@ use std::hash::{Writer, Hash};
 use core::default::Default;
 use core::{iter, fmt, mem};
 use core::fmt::Show;
+use core::iter::Map;
 
 use ring_buf::RingBuf;
 
@@ -110,12 +111,14 @@ pub struct MoveEntries<K, V> {
 }
 
 /// An iterator over a BTreeMap's keys.
-pub type Keys<'a, K, V> =
-    iter::Map<(&'a K, &'a V), &'a K, Entries<'a, K, V>, fn((&'a K, &'a V)) -> &'a K>;
+pub struct Keys<'a, K: 'a, V: 'a> {
+    inner: Map<(&'a K, &'a V), &'a K, Entries<'a, K, V>, fn((&'a K, &'a V)) -> &'a K>
+}
 
 /// An iterator over a BTreeMap's values.
-pub type Values<'a, K, V> =
-    iter::Map<(&'a K, &'a V), &'a V, Entries<'a, K, V>, fn((&'a K, &'a V)) -> &'a V>;
+pub struct Values<'a, K: 'a, V: 'a> {
+    inner: Map<(&'a K, &'a V), &'a V, Entries<'a, K, V>, fn((&'a K, &'a V)) -> &'a V>
+}
 
 /// A view into a single entry in a map, which may either be vacant or occupied.
 pub enum Entry<'a, K:'a, V:'a> {
@@ -1054,6 +1057,25 @@ impl<K, V> DoubleEndedIterator<(K, V)> for MoveEntries<K, V> {
 impl<K, V> ExactSizeIterator<(K, V)> for MoveEntries<K, V> {}
 
 
+impl<'a, K, V> Iterator<&'a K> for Keys<'a, K, V> {
+    fn next(&mut self) -> Option<(&'a K)> { self.inner.next() }
+    fn size_hint(&self) -> (uint, Option<uint>) { self.inner.size_hint() }
+}
+impl<'a, K, V> DoubleEndedIterator<&'a K> for Keys<'a, K, V> {
+    fn next_back(&mut self) -> Option<(&'a K)> { self.inner.next_back() }
+}
+impl<'a, K, V> ExactSizeIterator<&'a K> for Keys<'a, K, V> {}
+
+
+impl<'a, K, V> Iterator<&'a V> for Values<'a, K, V> {
+    fn next(&mut self) -> Option<(&'a V)> { self.inner.next() }
+    fn size_hint(&self) -> (uint, Option<uint>) { self.inner.size_hint() }
+}
+impl<'a, K, V> DoubleEndedIterator<&'a V> for Values<'a, K, V> {
+    fn next_back(&mut self) -> Option<(&'a V)> { self.inner.next_back() }
+}
+impl<'a, K, V> ExactSizeIterator<&'a V> for Values<'a, K, V> {}
+
 
 impl<'a, K: Ord, V> VacantEntry<'a, K, V> {
     /// Sets the value of the entry with the VacantEntry's key,
@@ -1204,7 +1226,7 @@ impl<K, V> BTreeMap<K, V> {
     pub fn keys<'a>(&'a self) -> Keys<'a, K, V> {
         fn first<A, B>((a, _): (A, B)) -> A { a }
 
-        self.iter().map(first)
+        Keys { inner: self.iter().map(first) }
     }
 
     /// Gets an iterator over the values of the map.
@@ -1225,7 +1247,7 @@ impl<K, V> BTreeMap<K, V> {
     pub fn values<'a>(&'a self) -> Values<'a, K, V> {
         fn second<A, B>((_, b): (A, B)) -> B { b }
 
-        self.iter().map(second)
+        Values { inner: self.iter().map(second) }
     }
 
     /// Return the number of elements in the map.
