@@ -4320,12 +4320,13 @@ pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
 
         ast::ExprLit(_) | // Note: LitStr is carved out above
         ast::ExprUnary(..) |
+        ast::ExprBox(None, _) |
         ast::ExprAddrOf(..) |
         ast::ExprBinary(..) => {
             RvalueDatumExpr
         }
 
-        ast::ExprBox(ref place, _) => {
+        ast::ExprBox(Some(ref place), _) => {
             // Special case `Box<T>` for now:
             let definition = match tcx.def_map.borrow().get(&place.id) {
                 Some(&def) => def,
