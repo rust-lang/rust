@@ -276,7 +276,8 @@ debugging_opts!(
         FLOWGRAPH_PRINT_MOVES,
         FLOWGRAPH_PRINT_ASSIGNS,
         FLOWGRAPH_PRINT_ALL,
-        PRINT_SYSROOT
+        PRINT_SYSROOT,
+        PRINT_REGION_GRAPH
     ]
     0
 )
@@ -322,7 +323,10 @@ pub fn debugging_opts_map() -> Vec<(&'static str, &'static str, u64)> {
      ("flowgraph-print-all", "Include all dataflow analysis data in \
                        --pretty flowgraph output", FLOWGRAPH_PRINT_ALL),
      ("print-sysroot", "Print the sysroot as used by this rustc invocation",
-      PRINT_SYSROOT)]
+      PRINT_SYSROOT),
+     ("print-region-graph", "Prints region inference graph. \
+                             Use with RUST_REGION_GRAPH=help for more info",
+      PRINT_REGION_GRAPH)]
 }
 
 #[deriving(Clone)]
