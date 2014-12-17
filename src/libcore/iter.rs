@@ -110,8 +110,8 @@ pub trait Iterator<A> {
 #[unstable = "new convention for extension traits"]
 /// An extension trait providing numerous methods applicable to all iterators.
 pub trait IteratorExt<A>: Iterator<A> {
-    /// Chain this iterator with another, returning a new iterator which will
-    /// finish iterating over the current iterator, and then it will iterate
+    /// Chain this iterator with another, returning a new iterator that will
+    /// finish iterating over the current iterator, and then iterate
     /// over the other specified iterator.
     ///
     /// # Example
@@ -130,7 +130,7 @@ pub trait IteratorExt<A>: Iterator<A> {
         Chain{a: self, b: other, flag: false}
     }
 
-    /// Creates an iterator which iterates over both this and the specified
+    /// Creates an iterator that iterates over both this and the specified
     /// iterators simultaneously, yielding the two elements as pairs. When
     /// either iterator returns None, all further invocations of next() will
     /// return None.
@@ -151,7 +151,7 @@ pub trait IteratorExt<A>: Iterator<A> {
         Zip{a: self, b: other}
     }
 
-    /// Creates a new iterator which will apply the specified function to each
+    /// Creates a new iterator that will apply the specified function to each
     /// element returned by the first, yielding the mapped element instead.
     ///
     /// # Example
@@ -169,8 +169,8 @@ pub trait IteratorExt<A>: Iterator<A> {
         Map{iter: self, f: f}
     }
 
-    /// Creates an iterator which applies the predicate to each element returned
-    /// by this iterator. Only elements which have the predicate evaluate to
+    /// Creates an iterator that applies the predicate to each element returned
+    /// by this iterator. Only elements that have the predicate evaluate to
     /// `true` will be yielded.
     ///
     /// # Example
@@ -187,7 +187,7 @@ pub trait IteratorExt<A>: Iterator<A> {
         Filter{iter: self, predicate: predicate}
     }
 
-    /// Creates an iterator which both filters and maps elements.
+    /// Creates an iterator that both filters and maps elements.
     /// If the specified function returns None, the element is skipped.
     /// Otherwise the option is unwrapped and the new value is yielded.
     ///
@@ -205,7 +205,7 @@ pub trait IteratorExt<A>: Iterator<A> {
         FilterMap { iter: self, f: f }
     }
 
-    /// Creates an iterator which yields a pair of the value returned by this
+    /// Creates an iterator that yields a pair of the value returned by this
     /// iterator plus the current index of iteration.
     ///
     /// # Example
@@ -248,7 +248,7 @@ pub trait IteratorExt<A>: Iterator<A> {
         Peekable{iter: self, peeked: None}
     }
 
-    /// Creates an iterator which invokes the predicate on elements until it
+    /// Creates an iterator that invokes the predicate on elements until it
     /// returns false. Once the predicate returns false, all further elements are
     /// yielded.
     ///
@@ -268,7 +268,7 @@ pub trait IteratorExt<A>: Iterator<A> {
         SkipWhile{iter: self, flag: false, predicate: predicate}
     }
 
-    /// Creates an iterator which yields elements so long as the predicate
+    /// Creates an iterator that yields elements so long as the predicate
     /// returns true. After the predicate returns false for the first time, no
     /// further elements will be yielded.
     ///
@@ -287,8 +287,8 @@ pub trait IteratorExt<A>: Iterator<A> {
         TakeWhile{iter: self, flag: false, predicate: predicate}
     }
 
-    /// Creates an iterator which skips the first `n` elements of this iterator,
-    /// and then it yields all further items.
+    /// Creates an iterator that skips the first `n` elements of this iterator,
+    /// and then yields all further items.
     ///
     /// # Example
     ///
@@ -305,8 +305,8 @@ pub trait IteratorExt<A>: Iterator<A> {
         Skip{iter: self, n: n}
     }
 
-    /// Creates an iterator which yields the first `n` elements of this
-    /// iterator, and then it will always return None.
+    /// Creates an iterator that yields the first `n` elements of this
+    /// iterator, and then will always return None.
     ///
     /// # Example
     ///
@@ -324,7 +324,7 @@ pub trait IteratorExt<A>: Iterator<A> {
         Take{iter: self, n: n}
     }
 
-    /// Creates a new iterator which behaves in a similar fashion to fold.
+    /// Creates a new iterator that behaves in a similar fashion to fold.
     /// There is a state which is passed between each iteration and can be
     /// mutated as necessary. The yielded values from the closure are yielded
     /// from the Scan instance when not None.
@@ -1223,7 +1223,7 @@ impl<A, T: Clone + RandomAccessIterator<A>> RandomAccessIterator<A> for Cycle<T>
     }
 }
 
-/// An iterator which strings two iterators together
+/// An iterator that strings two iterators together
 #[deriving(Clone)]
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 #[stable]
@@ -1297,7 +1297,7 @@ for Chain<T, U> {
     }
 }
 
-/// An iterator which iterates two other iterators simultaneously
+/// An iterator that iterates two other iterators simultaneously
 #[deriving(Clone)]
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 #[stable]
@@ -1380,7 +1380,7 @@ RandomAccessIterator<(A, B)> for Zip<T, U> {
     }
 }
 
-/// An iterator which maps the values of `iter` with `f`
+/// An iterator that maps the values of `iter` with `f`
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 #[stable]
 pub struct Map<A, B, I: Iterator<A>, F: FnMut(A) -> B> {
@@ -1454,7 +1454,7 @@ impl<A, B, I, F> RandomAccessIterator<B> for Map<A, B, I, F> where
     }
 }
 
-/// An iterator which filters the elements of `iter` with `predicate`
+/// An iterator that filters the elements of `iter` with `predicate`
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 #[stable]
 pub struct Filter<A, I, P> where I: Iterator<A>, P: FnMut(&A) -> bool {
@@ -1512,7 +1512,7 @@ impl<A, I, P> DoubleEndedIterator<A> for Filter<A, I, P> where
     }
 }
 
-/// An iterator which uses `f` to both filter and map elements from `iter`
+/// An iterator that uses `f` to both filter and map elements from `iter`
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 #[stable]
 pub struct FilterMap<A, B, I, F> where I: Iterator<A>, F: FnMut(A) -> Option<B> {
@@ -1573,7 +1573,7 @@ impl<A, B, I, F> DoubleEndedIterator<B> for FilterMap<A, B, I, F> where
     }
 }
 
-/// An iterator which yields the current count and the element during iteration
+/// An iterator that yields the current count and the element during iteration
 #[deriving(Clone)]
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 #[stable]
@@ -1687,7 +1687,7 @@ impl<'a, A, T: Iterator<A>> Peekable<A, T> {
     }
 }
 
-/// An iterator which rejects elements while `predicate` is true
+/// An iterator that rejects elements while `predicate` is true
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 #[stable]
 pub struct SkipWhile<A, I, P> where I: Iterator<A>, P: FnMut(&A) -> bool {
@@ -1730,7 +1730,7 @@ impl<A, I, P> Iterator<A> for SkipWhile<A, I, P> where I: Iterator<A>, P: FnMut(
     }
 }
 
-/// An iterator which only accepts elements while `predicate` is true
+/// An iterator that only accepts elements while `predicate` is true
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 #[stable]
 pub struct TakeWhile<A, I, P> where I: Iterator<A>, P: FnMut(&A) -> bool {
@@ -1781,7 +1781,7 @@ impl<A, I, P> Iterator<A> for TakeWhile<A, I, P> where I: Iterator<A>, P: FnMut(
     }
 }
 
-/// An iterator which skips over `n` elements of `iter`.
+/// An iterator that skips over `n` elements of `iter`.
 #[deriving(Clone)]
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 #[stable]
@@ -1849,7 +1849,7 @@ impl<A, T: RandomAccessIterator<A>> RandomAccessIterator<A> for Skip<T> {
     }
 }
 
-/// An iterator which only iterates over the first `n` iterations of `iter`.
+/// An iterator that only iterates over the first `n` iterations of `iter`.
 #[deriving(Clone)]
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 #[stable]
@@ -2186,7 +2186,7 @@ impl<A, I, F> RandomAccessIterator<A> for Inspect<A, I, F> where
     }
 }
 
-/// An iterator which passes mutable state to a closure and yields the result.
+/// An iterator that passes mutable state to a closure and yields the result.
 ///
 /// # Example: The Fibonacci Sequence
 ///
