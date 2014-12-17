@@ -1050,7 +1050,7 @@ mod test {
 
     #[test]
     fn demangle_windows() {
-        t!("yZN4testE", "test");
+        t!("ZN4testE", "test");
         t!("ZN12test$x20test4foobE", "test test::foob");
         t!("ZN12test$UP$test4foobE", "testBoxtest::foob");
     }
