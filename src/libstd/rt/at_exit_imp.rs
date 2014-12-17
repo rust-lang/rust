@@ -16,35 +16,49 @@ use core::prelude::*;
 
 use boxed::Box;
 use vec::Vec;
-use sync::{Mutex, atomic, Once, ONCE_INIT};
 use mem;
 use thunk::Thunk;
+use sys_common::mutex::{Mutex, MUTEX_INIT};
 
-type Queue = Mutex<Vec<Thunk>>;
+type Queue = Vec<Thunk>;
 
-static INIT: Once = ONCE_INIT;
-static QUEUE: atomic::AtomicUint = atomic::INIT_ATOMIC_UINT;
+// NB these are specifically not types from `std::sync` as they currently rely
+// on poisoning and this module needs to operate at a lower level than requiring
+// the thread infrastructure to be in place (useful on the borders of
+// initialization/destruction).
+static LOCK: Mutex = MUTEX_INIT;
+static mut QUEUE: *mut Queue = 0 as *mut Queue;
 
-fn init() {
-    let state: Box<Queue> = box Mutex::new(Vec::new());
-    unsafe {
-        QUEUE.store(mem::transmute(state), atomic::SeqCst);
-
-        // FIXME: switch this to use atexit as below. Currently this
-        // segfaults (the queue's memory is mysteriously gone), so
-        // instead the cleanup is tied to the `std::rt` entry point.
-        //
-        // ::libc::atexit(cleanup);
+unsafe fn init() {
+    if QUEUE.is_null() {
+        let state: Box<Queue> = box Vec::new();
+        QUEUE = mem::transmute(state);
+    } else {
+        // can't re-init after a cleanup
+        rtassert!(QUEUE as uint != 1);
     }
+
+    // FIXME: switch this to use atexit as below. Currently this
+    // segfaults (the queue's memory is mysteriously gone), so
+    // instead the cleanup is tied to the `std::rt` entry point.
+    //
+    // ::libc::atexit(cleanup);
 }
 
 pub fn cleanup() {
     unsafe {
-        let queue = QUEUE.swap(0, atomic::SeqCst);
-        if queue != 0 {
+        LOCK.lock();
+        let queue = QUEUE;
+        QUEUE = 1 as *mut _;
+        LOCK.unlock();
+
+        // make sure we're not recursively cleaning up
+        rtassert!(queue as uint != 1);
+
+        // If we never called init, not need to cleanup!
+        if queue as uint != 0 {
             let queue: Box<Queue> = mem::transmute(queue);
-            let v = mem::replace(&mut *queue.lock(), Vec::new());
-            for to_run in v.into_iter() {
+            for to_run in queue.into_iter() {
                 to_run.invoke(());
             }
         }
@@ -52,14 +66,10 @@ pub fn cleanup() {
 }
 
 pub fn push(f: Thunk) {
-    INIT.doit(init);
     unsafe {
-        // Note that the check against 0 for the queue pointer is not atomic at
-        // all with respect to `run`, meaning that this could theoretically be a
-        // use-after-free. There's not much we can do to protect against that,
-        // however. Let's just assume a well-behaved runtime and go from there!
-        let queue = QUEUE.load(atomic::SeqCst);
-        rtassert!(queue != 0);
-        (*(queue as *const Queue)).lock().push(f);
+        LOCK.lock();
+        init();
+        (*QUEUE).push(f);
+        LOCK.unlock();
     }
 }
