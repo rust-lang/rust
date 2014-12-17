@@ -64,7 +64,7 @@
        html_root_url = "http://doc.rust-lang.org/nightly/")]
 
 #![no_std]
-#![feature(lang_items, phase, unsafe_destructor)]
+#![feature(lang_items, phase, unsafe_destructor, default_type_params)]
 
 #[phase(plugin, link)]
 extern crate core;

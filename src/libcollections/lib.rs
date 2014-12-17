@@ -67,7 +67,6 @@ pub mod slice;
 pub mod str;
 pub mod string;
 pub mod vec;
-pub mod hash;
 pub mod vec_map;
 
 pub mod bitv {
@@ -116,5 +115,5 @@ mod std {
     pub use core::clone;    // deriving(Clone)
     pub use core::cmp;      // deriving(Eq, Ord, etc.)
     pub use core::kinds;    // deriving(Copy)
-    pub use hash;           // deriving(Hash)
+    pub use core::hash;     // deriving(Hash)
 }

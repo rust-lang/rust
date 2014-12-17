@@ -244,7 +244,7 @@ use ops::{FnMut, FnOnce};
 /// `Result` is a type that represents either success (`Ok`) or failure (`Err`).
 ///
 /// See the [`std::result`](index.html) module documentation for details.
-#[deriving(Clone, PartialEq, PartialOrd, Eq, Ord, Show)]
+#[deriving(Clone, PartialEq, PartialOrd, Eq, Ord, Show, Hash)]
 #[must_use]
 #[stable]
 pub enum Result<T, E> {
