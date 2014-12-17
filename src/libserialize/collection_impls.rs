@@ -15,7 +15,7 @@ use std::default::Default;
 use std::hash::{Hash, Hasher};
 
 use {Decodable, Encodable, Decoder, Encoder};
-use std::collections::{DList, RingBuf, TreeMap, TreeSet, HashMap, HashSet,
+use std::collections::{DList, RingBuf, BTreeMap, BTreeSet, HashMap, HashSet,
                        TrieMap, TrieSet, VecMap};
 use std::collections::enum_set::{EnumSet, CLike};
 
@@ -78,7 +78,7 @@ impl<
     S: Encoder<E>,
     K: Encodable<S, E> + PartialEq + Ord,
     V: Encodable<S, E> + PartialEq
-> Encodable<S, E> for TreeMap<K, V> {
+> Encodable<S, E> for BTreeMap<K, V> {
     fn encode(&self, e: &mut S) -> Result<(), E> {
         e.emit_map(self.len(), |e| {
             let mut i = 0;
@@ -97,10 +97,10 @@ impl<
     D: Decoder<E>,
     K: Decodable<D, E> + PartialEq + Ord,
     V: Decodable<D, E> + PartialEq
-> Decodable<D, E> for TreeMap<K, V> {
+> Decodable<D, E> for BTreeMap<K, V> {
     fn decode(d: &mut D) -> Result<TreeMap<K, V>, E> {
         d.read_map(|d, len| {
-            let mut map = TreeMap::new();
+            let mut map = BTreeMap::new();
             for i in range(0u, len) {
                 let key = try!(d.read_map_elt_key(i, |d| Decodable::decode(d)));
                 let val = try!(d.read_map_elt_val(i, |d| Decodable::decode(d)));
@@ -115,7 +115,7 @@ impl<
     E,
     S: Encoder<E>,
     T: Encodable<S, E> + PartialEq + Ord
-> Encodable<S, E> for TreeSet<T> {
+> Encodable<S, E> for BTreeSet<T> {
     fn encode(&self, s: &mut S) -> Result<(), E> {
         s.emit_seq(self.len(), |s| {
             let mut i = 0;
@@ -132,10 +132,10 @@ impl<
     E,
     D: Decoder<E>,
     T: Decodable<D, E> + PartialEq + Ord
-> Decodable<D, E> for TreeSet<T> {
+> Decodable<D, E> for BTreeSet<T> {
     fn decode(d: &mut D) -> Result<TreeSet<T>, E> {
         d.read_seq(|d, len| {
-            let mut set = TreeSet::new();
+            let mut set = BTreeSet::new();
             for i in range(0u, len) {
                 set.insert(try!(d.read_seq_elt(i, |d| Decodable::decode(d))));
             }

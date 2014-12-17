@@ -16,7 +16,7 @@ use std::str::SendStr;
 use std::string::ToString;
 
 pub fn main() {
-    let mut map: TreeMap<SendStr, uint> = TreeMap::new();
+    let mut map: BTreeMap<SendStr, uint> = BTreeMap::new();
     assert!(map.insert("foo".into_cow(), 42).is_none());
     assert!(map.insert("foo".to_string().into_cow(), 42).is_some());
     assert!(map.insert("foo".into_cow(), 42).is_some());
