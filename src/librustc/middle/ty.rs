@@ -1368,12 +1368,13 @@ impl<'tcx> PolyTraitRef<'tcx> {
     }
 }
 
-/// Binder serves as a synthetic binder for lifetimes. It is used when
-/// we wish to replace the escaping higher-ranked lifetimes in a type
-/// or something else that is not itself a binder (this is because the
-/// `replace_late_bound_regions` function replaces all lifetimes bound
-/// by the binder supplied to it; but a type is not a binder, so you
-/// must introduce an artificial one).
+/// Binder is a binder for higher-ranked lifetimes. It is part of the
+/// compiler's representation for things like `for<'a> Fn(&'a int)`
+/// (which would be represented by the type `PolyTraitRef ==
+/// Binder<TraitRef>`). Note that when we skolemize, instantiate,
+/// erase, or otherwise "discharge" these bound reons, we change the
+/// type from `Binder<T>` to just `T` (see
+/// e.g. `liberate_late_bound_regions`).
 #[deriving(Clone, PartialEq, Eq, Hash, Show)]
 pub struct Binder<T>(pub T);
 
