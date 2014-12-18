@@ -21,10 +21,10 @@ use metadata::common::*;
 use metadata::cstore;
 use metadata::decoder;
 use metadata::tyencode;
+use middle::def;
 use middle::ty::{lookup_item_type};
 use middle::ty::{mod, Ty};
 use middle::stability;
-use middle;
 use util::nodemap::{FnvHashMap, NodeMap, NodeSet};
 
 use serialize::Encodable;
@@ -66,7 +66,7 @@ pub type EncodeInlinedItem<'a> = |ecx: &EncodeContext,
 pub struct EncodeParams<'a, 'tcx: 'a> {
     pub diag: &'a SpanHandler,
     pub tcx: &'a ty::ctxt<'tcx>,
-    pub reexports: &'a middle::resolve::ExportMap,
+    pub reexports: &'a def::ExportMap,
     pub item_symbols: &'a RefCell<NodeMap<String>>,
     pub link_meta: &'a LinkMeta,
     pub cstore: &'a cstore::CStore,
@@ -77,7 +77,7 @@ pub struct EncodeParams<'a, 'tcx: 'a> {
 pub struct EncodeContext<'a, 'tcx: 'a> {
     pub diag: &'a SpanHandler,
     pub tcx: &'a ty::ctxt<'tcx>,
-    pub reexports: &'a middle::resolve::ExportMap,
+    pub reexports: &'a def::ExportMap,
     pub item_symbols: &'a RefCell<NodeMap<String>>,
     pub link_meta: &'a LinkMeta,
     pub cstore: &'a cstore::CStore,
@@ -379,7 +379,7 @@ fn encode_path<PI: Iterator<PathElem>>(rbml_w: &mut Encoder, path: PI) {
 }
 
 fn encode_reexported_static_method(rbml_w: &mut Encoder,
-                                   exp: &middle::resolve::Export,
+                                   exp: &def::Export,
                                    method_def_id: DefId,
                                    method_name: ast::Name) {
     debug!("(encode reexported static method) {}::{}",
@@ -398,7 +398,7 @@ fn encode_reexported_static_method(rbml_w: &mut Encoder,
 
 fn encode_reexported_static_base_methods(ecx: &EncodeContext,
                                          rbml_w: &mut Encoder,
-                                         exp: &middle::resolve::Export)
+                                         exp: &def::Export)
                                          -> bool {
     let impl_items = ecx.tcx.impl_items.borrow();
     match ecx.tcx.inherent_impls.borrow().get(&exp.def_id) {
@@ -428,7 +428,7 @@ fn encode_reexported_static_base_methods(ecx: &EncodeContext,
 
 fn encode_reexported_static_trait_methods(ecx: &EncodeContext,
                                           rbml_w: &mut Encoder,
-                                          exp: &middle::resolve::Export)
+                                          exp: &def::Export)
                                           -> bool {
     match ecx.tcx.trait_items_cache.borrow().get(&exp.def_id) {
         Some(trait_items) => {
@@ -449,7 +449,7 @@ fn encode_reexported_static_trait_methods(ecx: &EncodeContext,
 fn encode_reexported_static_methods(ecx: &EncodeContext,
                                     rbml_w: &mut Encoder,
                                     mod_path: PathElems,
-                                    exp: &middle::resolve::Export) {
+                                    exp: &def::Export) {
     if let Some(ast_map::NodeItem(item)) = ecx.tcx.map.find(exp.def_id.node) {
         let path_differs = ecx.tcx.map.with_path(exp.def_id.node, |path| {
             let (mut a, mut b) = (path, mod_path.clone());

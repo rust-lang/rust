@@ -13,7 +13,7 @@ use llvm::{ContextRef, ModuleRef, ValueRef, BuilderRef};
 use llvm::{TargetData};
 use llvm::mk_target_data;
 use metadata::common::LinkMeta;
-use middle::resolve;
+use middle::def::ExportMap;
 use middle::traits;
 use trans::adt;
 use trans::base;
@@ -61,7 +61,7 @@ pub struct SharedCrateContext<'tcx> {
     metadata_llmod: ModuleRef,
     metadata_llcx: ContextRef,
 
-    export_map: resolve::ExportMap,
+    export_map: ExportMap,
     reachable: NodeSet,
     item_symbols: RefCell<NodeMap<String>>,
     link_meta: LinkMeta,
@@ -238,7 +238,7 @@ impl<'tcx> SharedCrateContext<'tcx> {
     pub fn new(crate_name: &str,
                local_count: uint,
                tcx: ty::ctxt<'tcx>,
-               export_map: resolve::ExportMap,
+               export_map: ExportMap,
                symbol_hasher: Sha256,
                link_meta: LinkMeta,
                reachable: NodeSet)
@@ -329,7 +329,7 @@ impl<'tcx> SharedCrateContext<'tcx> {
         self.metadata_llcx
     }
 
-    pub fn export_map<'a>(&'a self) -> &'a resolve::ExportMap {
+    pub fn export_map<'a>(&'a self) -> &'a ExportMap {
         &self.export_map
     }
 
@@ -553,7 +553,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         &self.local.item_vals
     }
 
-    pub fn export_map<'a>(&'a self) -> &'a resolve::ExportMap {
+    pub fn export_map<'a>(&'a self) -> &'a ExportMap {
         &self.shared.export_map
     }
 

@@ -61,6 +61,15 @@ pub enum Def {
 
 // Definition mapping
 pub type DefMap = RefCell<NodeMap<Def>>;
+// This is the replacement export map. It maps a module to all of the exports
+// within.
+pub type ExportMap = NodeMap<Vec<Export>>;
+
+#[deriving(Copy)]
+pub struct Export {
+    pub name: ast::Name,    // The name of the target.
+    pub def_id: ast::DefId, // The definition of the target.
+}
 
 #[deriving(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum MethodProvenance {

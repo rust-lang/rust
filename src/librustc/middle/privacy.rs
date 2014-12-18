@@ -29,7 +29,7 @@ use syntax::codemap::Span;
 use syntax::parse::token;
 use syntax::visit::{mod, Visitor};
 
-type Context<'a, 'tcx> = (&'a MethodMap<'tcx>, &'a resolve::ExportMap);
+type Context<'a, 'tcx> = (&'a MethodMap<'tcx>, &'a def::ExportMap);
 
 /// A set of AST nodes exported by the crate.
 pub type ExportedItems = NodeSet;
@@ -136,7 +136,7 @@ impl<'v> Visitor<'v> for ParentVisitor {
 
 struct EmbargoVisitor<'a, 'tcx: 'a> {
     tcx: &'a ty::ctxt<'tcx>,
-    export_map: &'a resolve::ExportMap,
+    export_map: &'a def::ExportMap,
 
     // This flag is an indicator of whether the previous item in the
     // hierarchical chain was exported or not. This is the indicator of whether
@@ -1520,7 +1520,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
 }
 
 pub fn check_crate(tcx: &ty::ctxt,
-                   export_map: &resolve::ExportMap,
+                   export_map: &def::ExportMap,
                    external_exports: resolve::ExternalExports,
                    last_private_map: resolve::LastPrivateMap)
                    -> (ExportedItems, PublicItems) {
