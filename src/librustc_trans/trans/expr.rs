@@ -280,7 +280,7 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                expr.repr(bcx.tcx()),
                datum.to_string(bcx.ccx()));
 
-        if !ty::type_is_sized(bcx.tcx(), datum.ty) {
+        if !type_is_sized(bcx.tcx(), datum.ty) {
             debug!("Taking address of unsized type {}",
                    bcx.ty_to_string(datum.ty));
             ref_fat_ptr(bcx, expr, datum)
@@ -693,7 +693,7 @@ fn trans_field<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
             field_tys[ix].mt.ty,
             |srcval| adt::trans_field_ptr(bcx, &*repr, srcval, discr, ix));
 
-        if ty::type_is_sized(bcx.tcx(), d.ty) {
+        if type_is_sized(bcx.tcx(), d.ty) {
             DatumBlock { datum: d.to_expr_datum(), bcx: bcx }
         } else {
             let scratch = rvalue_scratch_datum(bcx, ty::mk_open(bcx.tcx(), d.ty), "");
@@ -773,7 +773,7 @@ fn trans_index<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                                Some(SaveIn(scratch.val)),
                                                true));
             let datum = scratch.to_expr_datum();
-            if ty::type_is_sized(bcx.tcx(), elt_ty) {
+            if type_is_sized(bcx.tcx(), elt_ty) {
                 Datum::new(datum.to_llscalarish(bcx), elt_ty, LvalueExpr)
             } else {
                 Datum::new(datum.val, ty::mk_open(bcx.tcx(), elt_ty), LvalueExpr)
@@ -1522,7 +1522,7 @@ pub fn trans_adt<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                 for &(i, t) in base.fields.iter() {
                     let datum = base_datum.get_element(
                             bcx, t, |srcval| adt::trans_field_ptr(bcx, &*repr, srcval, discr, i));
-                    assert!(ty::type_is_sized(bcx.tcx(), datum.ty));
+                    assert!(type_is_sized(bcx.tcx(), datum.ty));
                     let dest = adt::trans_field_ptr(bcx, &*repr, addr, discr, i);
                     bcx = datum.store_to(bcx, dest);
                 }
@@ -1650,7 +1650,7 @@ fn trans_uniq_expr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                -> DatumBlock<'blk, 'tcx, Expr> {
     let _icx = push_ctxt("trans_uniq_expr");
     let fcx = bcx.fcx;
-    assert!(ty::type_is_sized(bcx.tcx(), contents_ty));
+    assert!(type_is_sized(bcx.tcx(), contents_ty));
     let llty = type_of::type_of(bcx.ccx(), contents_ty);
     let size = llsize_of(bcx.ccx(), llty);
     let align = C_uint(bcx.ccx(), type_of::align_of(bcx.ccx(), contents_ty));
@@ -1985,7 +1985,7 @@ pub fn cast_type_kind<'tcx>(tcx: &ty::ctxt<'tcx>, t: Ty<'tcx>) -> cast_kind {
         ty::ty_char        => cast_integral,
         ty::ty_float(..)   => cast_float,
         ty::ty_rptr(_, mt) | ty::ty_ptr(mt) => {
-            if ty::type_is_sized(tcx, mt.ty) {
+            if type_is_sized(tcx, mt.ty) {
                 cast_pointer
             } else {
                 cast_other
@@ -2217,7 +2217,7 @@ fn deref_once<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     let r = match datum.ty.sty {
         ty::ty_uniq(content_ty) => {
-            if ty::type_is_sized(bcx.tcx(), content_ty) {
+            if type_is_sized(bcx.tcx(), content_ty) {
                 deref_owned_pointer(bcx, expr, datum, content_ty)
             } else {
                 // A fat pointer and an opened DST value have the same
@@ -2236,7 +2236,7 @@ fn deref_once<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
         ty::ty_ptr(ty::mt { ty: content_ty, .. }) |
         ty::ty_rptr(_, ty::mt { ty: content_ty, .. }) => {
-            if ty::type_is_sized(bcx.tcx(), content_ty) {
+            if type_is_sized(bcx.tcx(), content_ty) {
                 let ptr = datum.to_llscalarish(bcx);
 
                 // Always generate an lvalue datum, even if datum.mode is

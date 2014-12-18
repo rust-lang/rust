@@ -22,6 +22,7 @@ use std::rc::Rc;
 use std::slice::Iter;
 use syntax::ast;
 use syntax::codemap::{Span, DUMMY_SP};
+use util::ppaux::Repr;
 
 pub use self::error_reporting::report_fulfillment_errors;
 pub use self::fulfill::{FulfillmentContext, RegionObligation};
@@ -263,6 +264,43 @@ pub fn predicates_for_generics<'tcx>(tcx: &ty::ctxt<'tcx>,
                                      -> PredicateObligations<'tcx>
 {
     util::predicates_for_generics(tcx, cause, 0, generic_bounds)
+}
+
+/// Determines whether the type `ty` is known to meet `bound` and
+/// returns true if so. Returns false if `ty` either does not meet
+/// `bound` or is not known to meet bound (note that this is
+/// conservative towards *no impl*, which is the opposite of the
+/// `evaluate` methods).
+pub fn type_known_to_meet_builtin_bound<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
+                                                 param_env: &ty::ParameterEnvironment<'tcx>,
+                                                 ty: Ty<'tcx>,
+                                                 bound: ty::BuiltinBound)
+                                                 -> bool
+{
+    debug!("type_known_to_meet_builtin_bound(ty={}, bound={})",
+           ty.repr(infcx.tcx),
+           bound);
+
+    let mut fulfill_cx = FulfillmentContext::new();
+
+    // We can use dummy values here because we won't report any errors
+    // that result nor will we pay any mind to region obligations that arise
+    // (there shouldn't really be any anyhow).
+    let cause = ObligationCause::misc(DUMMY_SP, ast::DUMMY_NODE_ID);
+
+    fulfill_cx.register_builtin_bound(infcx.tcx, ty, bound, cause);
+
+    // Note: we only assume something is `Copy` if we can
+    // *definitively* show that it implements `Copy`. Otherwise,
+    // assume it is move; linear is always ok.
+    let result = fulfill_cx.select_all_or_error(infcx, param_env, infcx.tcx).is_ok();
+
+    debug!("type_known_to_meet_builtin_bound: ty={} bound={} result={}",
+           ty.repr(infcx.tcx),
+           bound,
+           result);
+
+    result
 }
 
 impl<'tcx,O> Obligation<'tcx,O> {
