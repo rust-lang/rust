@@ -1,6 +1,6 @@
-- Start Date: (fill me in with today's date, YYYY-MM-DD)
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- Start Date: 2014-12-18
+- RFC PR: https://github.com/rust-lang/rfcs/pull/509
+- Rust Issue: https://github.com/rust-lang/rust/issues/19986
 
 # Summary
 
@@ -124,13 +124,13 @@ been frequently requested.
 
 * For Vec, RingBuf, BinaryHeap, HashMap and HashSet:
 ```
-/// Clears the map, returning all key-value pairs as an iterator. Keeps the
+/// Clears the container, returning its owned contents as an iterator, but keeps the
 /// allocated memory for reuse.
-pub fn drain(&mut self) -> DrainEntries<K, V>;
+pub fn drain(&mut self) -> Drain<T>;
 ```
 
-This provides a way to grab elements out of a HashMap by value, without
-deallocating the storage for the map itself.
+This provides a way to grab elements out of a collection by value, without
+deallocating the storage for the collection itself.
 
 There is a partial implementation of this at rust-lang/rust#19946.
 
