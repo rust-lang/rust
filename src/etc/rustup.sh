@@ -230,7 +230,7 @@ validate_opt() {
 }
 
 create_tmp_dir() {
-    local TMP_DIR=./rustup-tmp-install
+    local TMP_DIR=`pwd`/rustup-tmp-install
 
     rm -Rf "${TMP_DIR}"
     need_ok "failed to remove temporary installation directory"
@@ -271,6 +271,8 @@ VAL_OPTIONS=""
 flag uninstall "only uninstall from the installation prefix"
 valopt prefix "" "set installation prefix"
 opt cargo 1 "install cargo with rust"
+valopt date "" "use the YYYY-MM-DD nightly instead of the current nightly"
+flag save "save the downloaded nightlies to ~/.rustup"
 
 if [ $HELP -eq 1 ]
 then
@@ -418,6 +420,21 @@ CFG_TMP_DIR=$(mktemp -d 2>/dev/null \
            || mktemp -d -t 'rustup-tmp-install' 2>/dev/null \
            || create_tmp_dir)
 
+# If we're saving nightlies and we didn't specify which one, grab todays.
+# Otherwise we'll use the latest version.
+if [ -n "${CFG_SAVE}" -a -z "${CFG_DATE}" ];
+then
+    CFG_DATE=`date "+%Y-%m-%d"`
+fi
+
+# If we're saving our nightlies, put them in $HOME/.rustup.
+if [ -n "${CFG_SAVE}" ]
+then
+    CFG_DOWNLOAD_DIR="${HOME}/.rustup/${CFG_DATE}"
+else
+    CFG_DOWNLOAD_DIR="${CFG_TMP_DIR}"
+fi
+
 RUST_URL="https://static.rust-lang.org/dist"
 RUST_PACKAGE_NAME=rust-nightly
 RUST_PACKAGE_NAME_AND_TRIPLE="${RUST_PACKAGE_NAME}-${HOST_TRIPLE}"
@@ -431,6 +448,13 @@ CARGO_PACKAGE_NAME_AND_TRIPLE="${CARGO_PACKAGE_NAME}-${HOST_TRIPLE}"
 CARGO_TARBALL_NAME="${CARGO_PACKAGE_NAME_AND_TRIPLE}.tar.gz"
 CARGO_LOCAL_INSTALL_DIR="${CFG_TMP_DIR}/${CARGO_PACKAGE_NAME_AND_TRIPLE}"
 CARGO_LOCAL_INSTALL_SCRIPT="${CARGO_LOCAL_INSTALL_DIR}/install.sh"
+
+# add a date suffix if we want a particular nighly.
+if [ -n "${CFG_DATE}" ];
+then
+    RUST_URL="${RUST_URL}/${CFG_DATE}"
+    CARGO_URL="${CARGO_URL}/${CFG_DATE}"
+fi
 
 verify_hash() {
     remote_sha256="$1"
@@ -460,19 +484,25 @@ verify_hash() {
     fi
 }
 
-# Fetch the package.
+# Fetch the package. Optionally caches the tarballs.
 download_package() {
     remote_tarball="$1"
     local_tarball="$2"
     remote_sha256="${remote_tarball}.sha256"
 
-    msg "Downloading ${remote_tarball} to ${local_tarball}"
+    # Check if we've already downloaded this file.
+    if [ ! -e "${local_tarball}" ]; then
+        msg "Downloading ${remote_tarball} to ${local_tarball}"
 
-    "${CFG_CURL}" -f -o "${local_tarball}" "${remote_tarball}"
-    if [ $? -ne 0 ]
-    then
-        rm -Rf "${CFG_TMP_DIR}"
-        err "failed to download installer"
+        mkdir -p "${CFG_DOWNLOAD_DIR}"
+        need_ok "failed to create create download directory"
+
+        "${CFG_CURL}" -f -o "${local_tarball} "${remote_tarball}"
+        if [ $? -ne 0 ]
+        then
+            rm -Rf "${CFG_TMP_DIR}"
+            err "failed to download installer"
+        fi
     fi
 
     verify_hash "${remote_sha256}" "${local_tarball}"
@@ -482,9 +512,10 @@ download_package() {
 install_package() {
     tarball_name="$1"
     install_script="$2"
+    local_tarball="${CFG_DOWNLOAD_DIR}/${tarball_name}"
 
     msg "Extracting ${tarball_name}"
-    (cd "${CFG_TMP_DIR}" && "${CFG_TAR}" -xzf "${tarball_name}")
+    (cd "${CFG_TMP_DIR}" && "${CFG_TAR}" -xvf "${local_tarball}")
     if [ $? -ne 0 ]; then
         rm -Rf "${CFG_TMP_DIR}"
         err "failed to unpack installer"
