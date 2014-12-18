@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // Test range syntax - type errors.
+#![feature(slicing_syntax)]
 
 pub fn main() {
     // Mixed types.

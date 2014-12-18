@@ -15,5 +15,6 @@
 fn main() {
     let x: &[int] = &[1, 2, 3, 4, 5];
     // Can't mutably slice an immutable slice
-    let y = x[mut 2..4]; //~ ERROR cannot borrow
+    let slice: &mut [int] = &mut [0, 1];
+    x[2..4] = slice; //~ ERROR cannot borrow
 }

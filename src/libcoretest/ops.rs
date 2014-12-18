@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use test::Bencher;
-use core::ops::{Range, FullRange, RangeFrom};
+use core::ops::{Range, FullRange, RangeFrom, RangeTo};
 
 // Overhead of dtors
 

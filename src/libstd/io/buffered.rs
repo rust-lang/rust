@@ -104,7 +104,7 @@ impl<R: Reader> BufferedReader<R> {
 impl<R: Reader> Buffer for BufferedReader<R> {
     fn fill_buf<'a>(&'a mut self) -> IoResult<&'a [u8]> {
         if self.pos == self.cap {
-            self.cap = try!(self.inner.read(self.buf[mut]));
+            self.cap = try!(self.inner.read(self.buf.as_mut_slice()));
             self.pos = 0;
         }
         Ok(self.buf[self.pos..self.cap])
@@ -219,7 +219,7 @@ impl<W: Writer> Writer for BufferedWriter<W> {
         if buf.len() > self.buf.len() {
             self.inner.as_mut().unwrap().write(buf)
         } else {
-            let dst = self.buf[mut self.pos..];
+            let dst = self.buf.slice_from_mut(self.pos);
             slice::bytes::copy_memory(dst, buf);
             self.pos += buf.len();
             Ok(())

@@ -250,7 +250,7 @@ impl<'a> Parser<'a> {
             assert!(head.len() + tail.len() <= 8);
             let mut gs = [0u16, ..8];
             gs.clone_from_slice(head);
-            gs[mut 8 - tail.len() .. 8].clone_from_slice(tail);
+            gs.slice_mut(8 - tail.len(), 8).clone_from_slice(tail);
             Ipv6Addr(gs[0], gs[1], gs[2], gs[3], gs[4], gs[5], gs[6], gs[7])
         }
 
