@@ -80,7 +80,7 @@ invocation of one of the following traits:
     }
 
     trait FnOnce<A,R> {
-        fn call_once(&self, args: A) -> R;
+        fn call_once(self, args: A) -> R;
     }
 
 Essentially, `a(b, c, d)` becomes sugar for one of the following:
@@ -199,8 +199,8 @@ more programs successfully typecheck.
 ### By-reference closures
 
 A *by-reference* closure is a convenience form in which values used in
-the closure are converted into references before being captured.  By
-reference closures are always rewritable into by value closures if
+the closure are converted into references before being captured. 
+By-reference closures are always rewritable into by-value closures if
 desired, but the rewrite can often be cumbersome and annoying.
 
 Here is a (rather artificial) example of a by-reference closure in
@@ -368,7 +368,7 @@ TBD. pcwalton is working furiously as we speak.
 
 # Unresolved questions
 
-**What if any relationship should there be between the closure
+**What relationship should there be between the closure
 traits?** On the one hand, there is clearly a relationship between the
 traits.  For example, given a `FnShare`, one can easily implement
 `Fn`:
