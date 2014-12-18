@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(non_camel_case_types)]
-
 pub use self::PrivateDep::*;
 pub use self::ImportUse::*;
 pub use self::TraitItemKind::*;
@@ -90,13 +88,13 @@ use std::uint;
 pub type DefMap = RefCell<NodeMap<Def>>;
 
 #[deriving(Copy)]
-struct binding_info {
+struct BindingInfo {
     span: Span,
     binding_mode: BindingMode,
 }
 
 // Map from the name in a pattern to its binding mode.
-type BindingMap = HashMap<Name,binding_info>;
+type BindingMap = HashMap<Name, BindingInfo>;
 
 // Trait method resolution
 pub type TraitMap = NodeMap<Vec<DefId> >;
@@ -4809,9 +4807,10 @@ impl<'a> Resolver<'a> {
         let mut result = HashMap::new();
         pat_bindings(&self.def_map, pat, |binding_mode, _id, sp, path1| {
             let name = mtwt::resolve(path1.node);
-            result.insert(name,
-                          binding_info {span: sp,
-                                        binding_mode: binding_mode});
+            result.insert(name, BindingInfo {
+                span: sp,
+                binding_mode: binding_mode
+            });
         });
         return result;
     }
