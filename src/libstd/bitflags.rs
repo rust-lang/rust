@@ -205,17 +205,6 @@ macro_rules! bitflags {
             }
         }
 
-        // NOTE(stage0): Remove impl after a snapshot
-        #[cfg(stage0)]
-        impl BitOr<$BitFlags, $BitFlags> for $BitFlags {
-            /// Returns the union of the two sets of flags.
-            #[inline]
-            fn bitor(&self, other: &$BitFlags) -> $BitFlags {
-                $BitFlags { bits: self.bits | other.bits }
-            }
-        }
-
-        #[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
         impl BitOr<$BitFlags, $BitFlags> for $BitFlags {
             /// Returns the union of the two sets of flags.
             #[inline]
@@ -224,17 +213,6 @@ macro_rules! bitflags {
             }
         }
 
-        // NOTE(stage0): Remove impl after a snapshot
-        #[cfg(stage0)]
-        impl BitXor<$BitFlags, $BitFlags> for $BitFlags {
-            /// Returns the left flags, but with all the right flags toggled.
-            #[inline]
-            fn bitxor(&self, other: &$BitFlags) -> $BitFlags {
-                $BitFlags { bits: self.bits ^ other.bits }
-            }
-        }
-
-        #[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
         impl BitXor<$BitFlags, $BitFlags> for $BitFlags {
             /// Returns the left flags, but with all the right flags toggled.
             #[inline]
@@ -243,17 +221,6 @@ macro_rules! bitflags {
             }
         }
 
-        // NOTE(stage0): Remove impl after a snapshot
-        #[cfg(stage0)]
-        impl BitAnd<$BitFlags, $BitFlags> for $BitFlags {
-            /// Returns the intersection between the two sets of flags.
-            #[inline]
-            fn bitand(&self, other: &$BitFlags) -> $BitFlags {
-                $BitFlags { bits: self.bits & other.bits }
-            }
-        }
-
-        #[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
         impl BitAnd<$BitFlags, $BitFlags> for $BitFlags {
             /// Returns the intersection between the two sets of flags.
             #[inline]
@@ -262,17 +229,6 @@ macro_rules! bitflags {
             }
         }
 
-        // NOTE(stage0): Remove impl after a snapshot
-        #[cfg(stage0)]
-        impl Sub<$BitFlags, $BitFlags> for $BitFlags {
-            /// Returns the set difference of the two sets of flags.
-            #[inline]
-            fn sub(&self, other: &$BitFlags) -> $BitFlags {
-                $BitFlags { bits: self.bits & !other.bits }
-            }
-        }
-
-        #[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
         impl Sub<$BitFlags, $BitFlags> for $BitFlags {
             /// Returns the set difference of the two sets of flags.
             #[inline]

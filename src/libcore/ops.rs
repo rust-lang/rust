@@ -93,46 +93,6 @@ pub trait Drop {
 /// impl Copy for Foo {}
 ///
 /// impl Add<Foo, Foo> for Foo {
-///     fn add(&self, _rhs: &Foo) -> Foo {
-///       println!("Adding!");
-///       *self
-///   }
-/// }
-///
-/// fn main() {
-///   Foo + Foo;
-/// }
-/// ```
-// NOTE(stage0): Remove trait after a snapshot
-#[cfg(stage0)]
-#[lang="add"]
-pub trait Add<Sized? RHS,Result> for Sized? {
-    /// The method for the `+` operator
-    fn add(&self, rhs: &RHS) -> Result;
-}
-
-// NOTE(stage0): Remove macro after a snapshot
-#[cfg(stage0)]
-macro_rules! add_impl {
-    ($($t:ty)*) => ($(
-        impl Add<$t, $t> for $t {
-            #[inline]
-            fn add(&self, other: &$t) -> $t { (*self) + (*other) }
-        }
-    )*)
-}
-
-/// The `Add` trait is used to specify the functionality of `+`.
-///
-/// # Example
-///
-/// A trivial implementation of `Add`. When `Foo + Foo` happens, it ends up
-/// calling `add`, and therefore, `main` prints `Adding!`.
-///
-/// ```rust
-/// struct Foo;
-///
-/// impl Add<Foo, Foo> for Foo {
 ///     fn add(self, _rhs: Foo) -> Foo {
 ///       println!("Adding!");
 ///       self
@@ -143,14 +103,12 @@ macro_rules! add_impl {
 ///   Foo + Foo;
 /// }
 /// ```
-#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
 #[lang="add"]
 pub trait Add<RHS, Result> {
     /// The method for the `+` operator
     fn add(self, rhs: RHS) -> Result;
 }
 
-#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
 macro_rules! add_impl {
     ($($t:ty)*) => ($(
         impl Add<$t, $t> for $t {
@@ -175,46 +133,6 @@ add_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64 }
 /// impl Copy for Foo {}
 ///
 /// impl Sub<Foo, Foo> for Foo {
-///     fn sub(&self, _rhs: &Foo) -> Foo {
-///         println!("Subtracting!");
-///         *self
-///     }
-/// }
-///
-/// fn main() {
-///     Foo - Foo;
-/// }
-/// ```
-// NOTE(stage0): Remove trait after a snapshot
-#[cfg(stage0)]
-#[lang="sub"]
-pub trait Sub<Sized? RHS, Result> for Sized? {
-    /// The method for the `-` operator
-    fn sub(&self, rhs: &RHS) -> Result;
-}
-
-// NOTE(stage0): Remove macro after a snapshot
-#[cfg(stage0)]
-macro_rules! sub_impl {
-    ($($t:ty)*) => ($(
-        impl Sub<$t, $t> for $t {
-            #[inline]
-            fn sub(&self, other: &$t) -> $t { (*self) - (*other) }
-        }
-    )*)
-}
-
-/// The `Sub` trait is used to specify the functionality of `-`.
-///
-/// # Example
-///
-/// A trivial implementation of `Sub`. When `Foo - Foo` happens, it ends up
-/// calling `sub`, and therefore, `main` prints `Subtracting!`.
-///
-/// ```rust
-/// struct Foo;
-///
-/// impl Sub<Foo, Foo> for Foo {
 ///     fn sub(self, _rhs: Foo) -> Foo {
 ///         println!("Subtracting!");
 ///         self
@@ -225,14 +143,12 @@ macro_rules! sub_impl {
 ///     Foo - Foo;
 /// }
 /// ```
-#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
 #[lang="sub"]
 pub trait Sub<RHS, Result> {
     /// The method for the `-` operator
     fn sub(self, rhs: RHS) -> Result;
 }
 
-#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
 macro_rules! sub_impl {
     ($($t:ty)*) => ($(
         impl Sub<$t, $t> for $t {
@@ -257,46 +173,6 @@ sub_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64 }
 /// impl Copy for Foo {}
 ///
 /// impl Mul<Foo, Foo> for Foo {
-///     fn mul(&self, _rhs: &Foo) -> Foo {
-///         println!("Multiplying!");
-///         *self
-///     }
-/// }
-///
-/// fn main() {
-///     Foo * Foo;
-/// }
-/// ```
-// NOTE(stage0): Remove trait after a snapshot
-#[cfg(stage0)]
-#[lang="mul"]
-pub trait Mul<Sized? RHS, Result>  for Sized? {
-    /// The method for the `*` operator
-    fn mul(&self, rhs: &RHS) -> Result;
-}
-
-// NOTE(stage0): Remove macro after a snapshot
-#[cfg(stage0)]
-macro_rules! mul_impl {
-    ($($t:ty)*) => ($(
-        impl Mul<$t, $t> for $t {
-            #[inline]
-            fn mul(&self, other: &$t) -> $t { (*self) * (*other) }
-        }
-    )*)
-}
-
-/// The `Mul` trait is used to specify the functionality of `*`.
-///
-/// # Example
-///
-/// A trivial implementation of `Mul`. When `Foo * Foo` happens, it ends up
-/// calling `mul`, and therefore, `main` prints `Multiplying!`.
-///
-/// ```rust
-/// struct Foo;
-///
-/// impl Mul<Foo, Foo> for Foo {
 ///     fn mul(self, _rhs: Foo) -> Foo {
 ///         println!("Multiplying!");
 ///         self
@@ -307,14 +183,12 @@ macro_rules! mul_impl {
 ///     Foo * Foo;
 /// }
 /// ```
-#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
 #[lang="mul"]
 pub trait Mul<RHS, Result> {
     /// The method for the `*` operator
     fn mul(self, rhs: RHS) -> Result;
 }
 
-#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
 macro_rules! mul_impl {
     ($($t:ty)*) => ($(
         impl Mul<$t, $t> for $t {
@@ -339,46 +213,6 @@ mul_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64 }
 /// impl Copy for Foo {}
 ///
 /// impl Div<Foo, Foo> for Foo {
-///     fn div(&self, _rhs: &Foo) -> Foo {
-///         println!("Dividing!");
-///         *self
-///     }
-/// }
-///
-/// fn main() {
-///     Foo / Foo;
-/// }
-/// ```
-// NOTE(stage0): Remove trait after a snapshot
-#[cfg(stage0)]
-#[lang="div"]
-pub trait Div<Sized? RHS, Result> for Sized? {
-    /// The method for the `/` operator
-    fn div(&self, rhs: &RHS) -> Result;
-}
-
-// NOTE(stage0): Remove macro after a snapshot
-#[cfg(stage0)]
-macro_rules! div_impl {
-    ($($t:ty)*) => ($(
-        impl Div<$t, $t> for $t {
-            #[inline]
-            fn div(&self, other: &$t) -> $t { (*self) / (*other) }
-        }
-    )*)
-}
-
-/// The `Div` trait is used to specify the functionality of `/`.
-///
-/// # Example
-///
-/// A trivial implementation of `Div`. When `Foo / Foo` happens, it ends up
-/// calling `div`, and therefore, `main` prints `Dividing!`.
-///
-/// ```
-/// struct Foo;
-///
-/// impl Div<Foo, Foo> for Foo {
 ///     fn div(self, _rhs: Foo) -> Foo {
 ///         println!("Dividing!");
 ///         self
@@ -389,14 +223,12 @@ macro_rules! div_impl {
 ///     Foo / Foo;
 /// }
 /// ```
-#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
 #[lang="div"]
 pub trait Div<RHS, Result> {
     /// The method for the `/` operator
     fn div(self, rhs: RHS) -> Result;
 }
 
-#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
 macro_rules! div_impl {
     ($($t:ty)*) => ($(
         impl Div<$t, $t> for $t {
@@ -421,60 +253,6 @@ div_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64 }
 /// impl Copy for Foo {}
 ///
 /// impl Rem<Foo, Foo> for Foo {
-///     fn rem(&self, _rhs: &Foo) -> Foo {
-///         println!("Remainder-ing!");
-///         *self
-///     }
-/// }
-///
-/// fn main() {
-///     Foo % Foo;
-/// }
-/// ```
-// NOTE(stage0): Remove trait after a snapshot
-#[cfg(stage0)]
-#[lang="rem"]
-pub trait Rem<Sized? RHS, Result>  for Sized? {
-    /// The method for the `%` operator
-    fn rem(&self, rhs: &RHS) -> Result;
-}
-
-// NOTE(stage0): Remove macro after a snapshot
-#[cfg(stage0)]
-macro_rules! rem_impl {
-    ($($t:ty)*) => ($(
-        impl Rem<$t, $t> for $t {
-            #[inline]
-            fn rem(&self, other: &$t) -> $t { (*self) % (*other) }
-        }
-    )*)
-}
-
-// NOTE(stage0): Remove macro after a snapshot
-#[cfg(stage0)]
-macro_rules! rem_float_impl {
-    ($t:ty, $fmod:ident) => {
-        impl Rem<$t, $t> for $t {
-            #[inline]
-            fn rem(&self, other: &$t) -> $t {
-                extern { fn $fmod(a: $t, b: $t) -> $t; }
-                unsafe { $fmod(*self, *other) }
-            }
-        }
-    }
-}
-
-/// The `Rem` trait is used to specify the functionality of `%`.
-///
-/// # Example
-///
-/// A trivial implementation of `Rem`. When `Foo % Foo` happens, it ends up
-/// calling `rem`, and therefore, `main` prints `Remainder-ing!`.
-///
-/// ```
-/// struct Foo;
-///
-/// impl Rem<Foo, Foo> for Foo {
 ///     fn rem(self, _rhs: Foo) -> Foo {
 ///         println!("Remainder-ing!");
 ///         self
@@ -485,14 +263,12 @@ macro_rules! rem_float_impl {
 ///     Foo % Foo;
 /// }
 /// ```
-#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
 #[lang="rem"]
 pub trait Rem<RHS, Result> {
     /// The method for the `%` operator
     fn rem(self, rhs: RHS) -> Result;
 }
 
-#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
 macro_rules! rem_impl {
     ($($t:ty)*) => ($(
         impl Rem<$t, $t> for $t {
@@ -502,7 +278,6 @@ macro_rules! rem_impl {
     )*)
 }
 
-#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
 macro_rules! rem_float_impl {
     ($t:ty, $fmod:ident) => {
         impl Rem<$t, $t> for $t {
@@ -729,46 +504,6 @@ not_impl! { bool uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 /// impl Copy for Foo {}
 ///
 /// impl BitAnd<Foo, Foo> for Foo {
-///     fn bitand(&self, _rhs: &Foo) -> Foo {
-///         println!("Bitwise And-ing!");
-///         *self
-///     }
-/// }
-///
-/// fn main() {
-///     Foo & Foo;
-/// }
-/// ```
-// NOTE(stage0): Remove trait after a snapshot
-#[cfg(stage0)]
-#[lang="bitand"]
-pub trait BitAnd<Sized? RHS, Result> for Sized? {
-    /// The method for the `&` operator
-    fn bitand(&self, rhs: &RHS) -> Result;
-}
-
-// NOTE(stage0): Remove macro after a snapshot
-#[cfg(stage0)]
-macro_rules! bitand_impl {
-    ($($t:ty)*) => ($(
-        impl BitAnd<$t, $t> for $t {
-            #[inline]
-            fn bitand(&self, rhs: &$t) -> $t { (*self) & (*rhs) }
-        }
-    )*)
-}
-
-/// The `BitAnd` trait is used to specify the functionality of `&`.
-///
-/// # Example
-///
-/// A trivial implementation of `BitAnd`. When `Foo & Foo` happens, it ends up
-/// calling `bitand`, and therefore, `main` prints `Bitwise And-ing!`.
-///
-/// ```
-/// struct Foo;
-///
-/// impl BitAnd<Foo, Foo> for Foo {
 ///     fn bitand(self, _rhs: Foo) -> Foo {
 ///         println!("Bitwise And-ing!");
 ///         self
@@ -779,14 +514,12 @@ macro_rules! bitand_impl {
 ///     Foo & Foo;
 /// }
 /// ```
-#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
 #[lang="bitand"]
 pub trait BitAnd<RHS, Result> {
     /// The method for the `&` operator
     fn bitand(self, rhs: RHS) -> Result;
 }
 
-#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
 macro_rules! bitand_impl {
     ($($t:ty)*) => ($(
         impl BitAnd<$t, $t> for $t {
@@ -811,46 +544,6 @@ bitand_impl! { bool uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 /// impl Copy for Foo {}
 ///
 /// impl BitOr<Foo, Foo> for Foo {
-///     fn bitor(&self, _rhs: &Foo) -> Foo {
-///         println!("Bitwise Or-ing!");
-///         *self
-///     }
-/// }
-///
-/// fn main() {
-///     Foo | Foo;
-/// }
-/// ```
-// NOTE(stage0): Remove trait after a snapshot
-#[cfg(stage0)]
-#[lang="bitor"]
-pub trait BitOr<Sized? RHS, Result> for Sized? {
-    /// The method for the `|` operator
-    fn bitor(&self, rhs: &RHS) -> Result;
-}
-
-// NOTE(stage0): Remove macro after a snapshot
-#[cfg(stage0)]
-macro_rules! bitor_impl {
-    ($($t:ty)*) => ($(
-        impl BitOr<$t,$t> for $t {
-            #[inline]
-            fn bitor(&self, rhs: &$t) -> $t { (*self) | (*rhs) }
-        }
-    )*)
-}
-
-/// The `BitOr` trait is used to specify the functionality of `|`.
-///
-/// # Example
-///
-/// A trivial implementation of `BitOr`. When `Foo | Foo` happens, it ends up
-/// calling `bitor`, and therefore, `main` prints `Bitwise Or-ing!`.
-///
-/// ```
-/// struct Foo;
-///
-/// impl BitOr<Foo, Foo> for Foo {
 ///     fn bitor(self, _rhs: Foo) -> Foo {
 ///         println!("Bitwise Or-ing!");
 ///         self
@@ -861,14 +554,12 @@ macro_rules! bitor_impl {
 ///     Foo | Foo;
 /// }
 /// ```
-#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
 #[lang="bitor"]
 pub trait BitOr<RHS, Result> {
     /// The method for the `|` operator
     fn bitor(self, rhs: RHS) -> Result;
 }
 
-#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
 macro_rules! bitor_impl {
     ($($t:ty)*) => ($(
         impl BitOr<$t,$t> for $t {
@@ -893,46 +584,6 @@ bitor_impl! { bool uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 /// impl Copy for Foo {}
 ///
 /// impl BitXor<Foo, Foo> for Foo {
-///     fn bitxor(&self, _rhs: &Foo) -> Foo {
-///         println!("Bitwise Xor-ing!");
-///         *self
-///     }
-/// }
-///
-/// fn main() {
-///     Foo ^ Foo;
-/// }
-/// ```
-// NOTE(stage0): Remove trait after a snapshot
-#[cfg(stage0)]
-#[lang="bitxor"]
-pub trait BitXor<Sized? RHS, Result> for Sized? {
-    /// The method for the `^` operator
-    fn bitxor(&self, rhs: &RHS) -> Result;
-}
-
-// NOTE(stage0): Remove macro after a snapshot
-#[cfg(stage0)]
-macro_rules! bitxor_impl {
-    ($($t:ty)*) => ($(
-        impl BitXor<$t, $t> for $t {
-            #[inline]
-            fn bitxor(&self, other: &$t) -> $t { (*self) ^ (*other) }
-        }
-    )*)
-}
-
-/// The `BitXor` trait is used to specify the functionality of `^`.
-///
-/// # Example
-///
-/// A trivial implementation of `BitXor`. When `Foo ^ Foo` happens, it ends up
-/// calling `bitxor`, and therefore, `main` prints `Bitwise Xor-ing!`.
-///
-/// ```
-/// struct Foo;
-///
-/// impl BitXor<Foo, Foo> for Foo {
 ///     fn bitxor(self, _rhs: Foo) -> Foo {
 ///         println!("Bitwise Xor-ing!");
 ///         self
@@ -943,14 +594,12 @@ macro_rules! bitxor_impl {
 ///     Foo ^ Foo;
 /// }
 /// ```
-#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
 #[lang="bitxor"]
 pub trait BitXor<RHS, Result> {
     /// The method for the `^` operator
     fn bitxor(self, rhs: RHS) -> Result;
 }
 
-#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
 macro_rules! bitxor_impl {
     ($($t:ty)*) => ($(
         impl BitXor<$t, $t> for $t {
@@ -975,48 +624,6 @@ bitxor_impl! { bool uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 /// impl Copy for Foo {}
 ///
 /// impl Shl<Foo, Foo> for Foo {
-///     fn shl(&self, _rhs: &Foo) -> Foo {
-///         println!("Shifting left!");
-///         *self
-///     }
-/// }
-///
-/// fn main() {
-///     Foo << Foo;
-/// }
-/// ```
-// NOTE(stage0): Remove trait after a snapshot
-#[cfg(stage0)]
-#[lang="shl"]
-pub trait Shl<Sized? RHS, Result> for Sized? {
-    /// The method for the `<<` operator
-    fn shl(&self, rhs: &RHS) -> Result;
-}
-
-// NOTE(stage0): Remove macro after a snapshot
-#[cfg(stage0)]
-macro_rules! shl_impl {
-    ($($t:ty)*) => ($(
-        impl Shl<uint, $t> for $t {
-            #[inline]
-            fn shl(&self, other: &uint) -> $t {
-                (*self) << (*other)
-            }
-        }
-    )*)
-}
-
-/// The `Shl` trait is used to specify the functionality of `<<`.
-///
-/// # Example
-///
-/// A trivial implementation of `Shl`. When `Foo << Foo` happens, it ends up
-/// calling `shl`, and therefore, `main` prints `Shifting left!`.
-///
-/// ```
-/// struct Foo;
-///
-/// impl Shl<Foo, Foo> for Foo {
 ///     fn shl(self, _rhs: Foo) -> Foo {
 ///         println!("Shifting left!");
 ///         self
@@ -1027,14 +634,12 @@ macro_rules! shl_impl {
 ///     Foo << Foo;
 /// }
 /// ```
-#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
 #[lang="shl"]
 pub trait Shl<RHS, Result> {
     /// The method for the `<<` operator
     fn shl(self, rhs: RHS) -> Result;
 }
 
-#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
 macro_rules! shl_impl {
     ($($t:ty)*) => ($(
         impl Shl<uint, $t> for $t {
@@ -1061,46 +666,6 @@ shl_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 /// impl Copy for Foo {}
 ///
 /// impl Shr<Foo, Foo> for Foo {
-///     fn shr(&self, _rhs: &Foo) -> Foo {
-///         println!("Shifting right!");
-///         *self
-///     }
-/// }
-///
-/// fn main() {
-///     Foo >> Foo;
-/// }
-/// ```
-// NOTE(stage0): Remove trait after a snapshot
-#[cfg(stage0)]
-#[lang="shr"]
-pub trait Shr<Sized? RHS, Result> for Sized? {
-    /// The method for the `>>` operator
-    fn shr(&self, rhs: &RHS) -> Result;
-}
-
-// NOTE(stage0): Remove macro after a snapshot
-#[cfg(stage0)]
-macro_rules! shr_impl {
-    ($($t:ty)*) => ($(
-        impl Shr<uint, $t> for $t {
-            #[inline]
-            fn shr(&self, other: &uint) -> $t { (*self) >> (*other) }
-        }
-    )*)
-}
-
-/// The `Shr` trait is used to specify the functionality of `>>`.
-///
-/// # Example
-///
-/// A trivial implementation of `Shr`. When `Foo >> Foo` happens, it ends up
-/// calling `shr`, and therefore, `main` prints `Shifting right!`.
-///
-/// ```
-/// struct Foo;
-///
-/// impl Shr<Foo, Foo> for Foo {
 ///     fn shr(self, _rhs: Foo) -> Foo {
 ///         println!("Shifting right!");
 ///         self
@@ -1111,14 +676,12 @@ macro_rules! shr_impl {
 ///     Foo >> Foo;
 /// }
 /// ```
-#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
 #[lang="shr"]
 pub trait Shr<RHS, Result> {
     /// The method for the `>>` operator
     fn shr(self, rhs: RHS) -> Result;
 }
 
-#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
 macro_rules! shr_impl {
     ($($t:ty)*) => ($(
         impl Shr<uint, $t> for $t {
