@@ -2016,7 +2016,6 @@ macro_rules! read_primitive {
 
 impl ::Decoder<DecoderError> for Decoder {
     fn read_nil(&mut self) -> DecodeResult<()> {
-        debug!("read_nil");
         expect!(self.pop(), Null)
     }
 
@@ -2034,7 +2033,6 @@ impl ::Decoder<DecoderError> for Decoder {
     fn read_f32(&mut self) -> DecodeResult<f32> { self.read_f64().map(|x| x as f32) }
 
     fn read_f64(&mut self) -> DecodeResult<f64> {
-        debug!("read_f64");
         match self.pop() {
             Json::I64(f) => Ok(f as f64),
             Json::U64(f) => Ok(f as f64),
@@ -2053,7 +2051,6 @@ impl ::Decoder<DecoderError> for Decoder {
     }
 
     fn read_bool(&mut self) -> DecodeResult<bool> {
-        debug!("read_bool");
         expect!(self.pop(), Boolean)
     }
 
@@ -2071,14 +2068,12 @@ impl ::Decoder<DecoderError> for Decoder {
     }
 
     fn read_str(&mut self) -> DecodeResult<string::String> {
-        debug!("read_str");
         expect!(self.pop(), String)
     }
 
     fn read_enum<T, F>(&mut self, name: &str, f: F) -> DecodeResult<T> where
         F: FnOnce(&mut Decoder) -> DecodeResult<T>,
     {
-        debug!("read_enum({})", name);
         f(self)
     }
 
@@ -2086,7 +2081,6 @@ impl ::Decoder<DecoderError> for Decoder {
                                mut f: F) -> DecodeResult<T>
         where F: FnMut(&mut Decoder, uint) -> DecodeResult<T>,
     {
-        debug!("read_enum_variant(names={})", names);
         let name = match self.pop() {
             Json::String(s) => s,
             Json::Object(mut o) => {
@@ -2129,14 +2123,12 @@ impl ::Decoder<DecoderError> for Decoder {
     fn read_enum_variant_arg<T, F>(&mut self, idx: uint, f: F) -> DecodeResult<T> where
         F: FnOnce(&mut Decoder) -> DecodeResult<T>,
     {
-        debug!("read_enum_variant_arg(idx={})", idx);
         f(self)
     }
 
     fn read_enum_struct_variant<T, F>(&mut self, names: &[&str], f: F) -> DecodeResult<T> where
         F: FnMut(&mut Decoder, uint) -> DecodeResult<T>,
     {
-        debug!("read_enum_struct_variant(names={})", names);
         self.read_enum_variant(names, f)
     }
 
@@ -2148,14 +2140,12 @@ impl ::Decoder<DecoderError> for Decoder {
                                          -> DecodeResult<T> where
         F: FnOnce(&mut Decoder) -> DecodeResult<T>,
     {
-        debug!("read_enum_struct_variant_field(name={}, idx={})", name, idx);
         self.read_enum_variant_arg(idx, f)
     }
 
     fn read_struct<T, F>(&mut self, name: &str, len: uint, f: F) -> DecodeResult<T> where
         F: FnOnce(&mut Decoder) -> DecodeResult<T>,
     {
-        debug!("read_struct(name={}, len={})", name, len);
         let value = try!(f(self));
         self.pop();
         Ok(value)
@@ -2168,7 +2158,6 @@ impl ::Decoder<DecoderError> for Decoder {
                                -> DecodeResult<T> where
         F: FnOnce(&mut Decoder) -> DecodeResult<T>,
     {
-        debug!("read_struct_field(name={}, idx={})", name, idx);
         let mut obj = try!(expect!(self.pop(), Object));
 
         let value = match obj.remove(&name.to_string()) {
@@ -2193,7 +2182,6 @@ impl ::Decoder<DecoderError> for Decoder {
     fn read_tuple<T, F>(&mut self, tuple_len: uint, f: F) -> DecodeResult<T> where
         F: FnOnce(&mut Decoder) -> DecodeResult<T>,
     {
-        debug!("read_tuple()");
         self.read_seq(move |d, len| {
             if len == tuple_len {
                 f(d)
@@ -2206,7 +2194,6 @@ impl ::Decoder<DecoderError> for Decoder {
     fn read_tuple_arg<T, F>(&mut self, idx: uint, f: F) -> DecodeResult<T> where
         F: FnOnce(&mut Decoder) -> DecodeResult<T>,
     {
-        debug!("read_tuple_arg(idx={})", idx);
         self.read_seq_elt(idx, f)
     }
 
@@ -2217,7 +2204,6 @@ impl ::Decoder<DecoderError> for Decoder {
                                -> DecodeResult<T> where
         F: FnOnce(&mut Decoder) -> DecodeResult<T>,
     {
-        debug!("read_tuple_struct(name={})", name);
         self.read_tuple(len, f)
     }
 
@@ -2227,14 +2213,12 @@ impl ::Decoder<DecoderError> for Decoder {
                                    -> DecodeResult<T> where
         F: FnOnce(&mut Decoder) -> DecodeResult<T>,
     {
-        debug!("read_tuple_struct_arg(idx={})", idx);
         self.read_tuple_arg(idx, f)
     }
 
     fn read_option<T, F>(&mut self, mut f: F) -> DecodeResult<T> where
         F: FnMut(&mut Decoder, bool) -> DecodeResult<T>,
     {
-        debug!("read_option()");
         match self.pop() {
             Json::Null => f(self, false),
             value => { self.stack.push(value); f(self, true) }
@@ -2244,7 +2228,6 @@ impl ::Decoder<DecoderError> for Decoder {
     fn read_seq<T, F>(&mut self, f: F) -> DecodeResult<T> where
         F: FnOnce(&mut Decoder, uint) -> DecodeResult<T>,
     {
-        debug!("read_seq()");
         let array = try!(expect!(self.pop(), Array));
         let len = array.len();
         for v in array.into_iter().rev() {
@@ -2256,14 +2239,12 @@ impl ::Decoder<DecoderError> for Decoder {
     fn read_seq_elt<T, F>(&mut self, idx: uint, f: F) -> DecodeResult<T> where
         F: FnOnce(&mut Decoder) -> DecodeResult<T>,
     {
-        debug!("read_seq_elt(idx={})", idx);
         f(self)
     }
 
     fn read_map<T, F>(&mut self, f: F) -> DecodeResult<T> where
         F: FnOnce(&mut Decoder, uint) -> DecodeResult<T>,
     {
-        debug!("read_map()");
         let obj = try!(expect!(self.pop(), Object));
         let len = obj.len();
         for (key, value) in obj.into_iter() {
@@ -2276,14 +2257,12 @@ impl ::Decoder<DecoderError> for Decoder {
     fn read_map_elt_key<T, F>(&mut self, idx: uint, f: F) -> DecodeResult<T> where
        F: FnOnce(&mut Decoder) -> DecodeResult<T>,
     {
-        debug!("read_map_elt_key(idx={})", idx);
         f(self)
     }
 
     fn read_map_elt_val<T, F>(&mut self, idx: uint, f: F) -> DecodeResult<T> where
        F: FnOnce(&mut Decoder) -> DecodeResult<T>,
     {
-        debug!("read_map_elt_val(idx={})", idx);
         f(self)
     }
 
@@ -2445,9 +2424,7 @@ mod tests {
     use super::ParserError::*;
     use super::DecoderError::*;
     use super::JsonEvent::*;
-    use super::ParserState::*;
     use super::StackElement::*;
-    use super::InternalStackElement::*;
     use super::{PrettyEncoder, Json, from_str, DecodeResult, DecoderError, JsonEvent, Parser,
                 StackElement, Stack, Encoder, Decoder};
     use std::{i64, u64, f32, f64, io};
@@ -2682,8 +2659,6 @@ mod tests {
     }
 
     fn with_str_writer<F>(f: F) -> string::String where F: FnOnce(&mut io::Writer){
-        use std::str;
-
         let mut m = Vec::new();
         f(&mut m as &mut io::Writer);
         string::String::from_utf8(m).unwrap()
@@ -2760,9 +2735,9 @@ mod tests {
     fn test_write_char() {
         check_encoder_for_simple!('a', "\"a\"");
         check_encoder_for_simple!('\t', "\"\\t\"");
-        check_encoder_for_simple!('\u00a0', "\"\u00a0\"");
-        check_encoder_for_simple!('\uabcd', "\"\uabcd\"");
-        check_encoder_for_simple!('\U0010ffff', "\"\U0010ffff\"");
+        check_encoder_for_simple!('\u{00a0}', "\"\u{00a0}\"");
+        check_encoder_for_simple!('\u{abcd}', "\"\u{abcd}\"");
+        check_encoder_for_simple!('\u{10ffff}', "\"\u{10ffff}\"");
     }
 
     #[test]
