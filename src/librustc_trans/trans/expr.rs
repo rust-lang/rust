@@ -945,6 +945,10 @@ fn trans_rvalue_stmt_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 if let &Some(ref x) = ex {
                     bcx = trans_into(bcx, &**x, Ignore);
                 }
+                // Mark the end of the block as unreachable. Once we get to
+                // a return expression, there's no more we should be doing
+                // after this.
+                Unreachable(bcx);
                 bcx
             }
         }
