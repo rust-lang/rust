@@ -1403,7 +1403,8 @@ impl<'a> Resolver<'a> {
                         // a trait and the name of an impl of that trait.
                         let mod_name = path.segments.last().unwrap().identifier.name;
 
-                        let parent_opt = parent.module().children.borrow()
+                        let parent_mod = parent.module();
+                        let parent_opt = parent_mod.children.borrow()
                                                .get(&mod_name).cloned();
                         let new_parent = match parent_opt {
                             // It already exists
@@ -1767,11 +1768,12 @@ impl<'a> Resolver<'a> {
                                                               true));
                     debug!("(build reduced graph for item) found extern `{}`",
                             self.module_to_string(&*external_module));
+                    let parent_mod = parent.module();
                     self.check_for_conflicts_between_external_crates(
-                        &*parent.module(),
+                        &*parent_mod,
                         name.name,
                         view_item.span);
-                    parent.module().external_module_children.borrow_mut()
+                    parent_mod.external_module_children.borrow_mut()
                                    .insert(name.name, external_module.clone());
                     self.build_reduced_graph_for_external_crate(external_module);
                 }
@@ -2301,7 +2303,8 @@ impl<'a> Resolver<'a> {
             }
         }
 
-        for (_, child_module) in module_.anonymous_children.borrow().iter() {
+        let children = module_.anonymous_children.borrow();
+        for (_, child_module) in children.iter() {
             self.resolve_imports_for_module_subtree(child_module.clone());
         }
     }
@@ -3458,7 +3461,8 @@ impl<'a> Resolver<'a> {
 
         // Search for external modules.
         if namespace == TypeNS {
-            match module_.external_module_children.borrow().get(&name).cloned() {
+            let children = module_.external_module_children.borrow().get(&name).cloned();
+            match children {
                 None => {}
                 Some(module) => {
                     let name_bindings =
@@ -3743,7 +3747,8 @@ impl<'a> Resolver<'a> {
 
         // Finally, search through external children.
         if namespace == TypeNS {
-            match module_.external_module_children.borrow().get(&name).cloned() {
+            let children = module_.external_module_children.borrow().get(&name).cloned();
+            match children {
                 None => {}
                 Some(module) => {
                     let name_bindings =
@@ -3795,7 +3800,8 @@ impl<'a> Resolver<'a> {
             }
         }
 
-        for (_, module_) in module_.anonymous_children.borrow().iter() {
+        let children = module_.anonymous_children.borrow();
+        for (_, module_) in children.iter() {
             self.report_unresolved_imports(module_.clone());
         }
     }
@@ -3855,7 +3861,8 @@ impl<'a> Resolver<'a> {
             }
         }
 
-        for (_, child_module) in module_.anonymous_children.borrow().iter() {
+        let children = module_.anonymous_children.borrow();
+        for (_, child_module) in children.iter() {
             self.record_exports_for_module_subtree(child_module.clone());
         }
     }
