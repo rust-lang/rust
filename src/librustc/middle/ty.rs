@@ -4322,9 +4322,6 @@ pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
             // the index method invoked for `a[i]` always yields an `&T`
             ast::ExprIndex(..) => LvalueExpr,
 
-            // the slice method invoked for `a[..]` always yields an `&T`
-            ast::ExprSlice(..) => LvalueExpr,
-
             // `for` loops are statements
             ast::ExprForLoop(..) => RvalueStmtExpr,
 
@@ -4389,8 +4386,7 @@ pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
         ast::ExprUnary(ast::UnDeref, _) |
         ast::ExprField(..) |
         ast::ExprTupField(..) |
-        ast::ExprIndex(..) |
-        ast::ExprSlice(..) => {
+        ast::ExprIndex(..) => {
             LvalueExpr
         }
 

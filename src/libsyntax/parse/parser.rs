@@ -25,7 +25,7 @@ use ast::{DeclLocal, DefaultBlock, UnDeref, BiDiv, EMPTY_CTXT, EnumDef, Explicit
 use ast::{Expr, Expr_, ExprAddrOf, ExprMatch, ExprAgain};
 use ast::{ExprAssign, ExprAssignOp, ExprBinary, ExprBlock, ExprBox};
 use ast::{ExprBreak, ExprCall, ExprCast};
-use ast::{ExprField, ExprTupField, ExprClosure, ExprIf, ExprIfLet, ExprIndex, ExprSlice};
+use ast::{ExprField, ExprTupField, ExprClosure, ExprIf, ExprIfLet, ExprIndex};
 use ast::{ExprLit, ExprLoop, ExprMac, ExprRange};
 use ast::{ExprMethodCall, ExprParen, ExprPath};
 use ast::{ExprRepeat, ExprRet, ExprStruct, ExprTup, ExprUnary};
@@ -66,7 +66,7 @@ use ast::{ViewPath, ViewPathGlob, ViewPathList, ViewPathSimple};
 use ast::{Visibility, WhereClause};
 use ast;
 use ast_util::{mod, as_prec, ident_to_path, operator_prec};
-use codemap::{mod, Span, BytePos, Spanned, spanned, mk_sp};
+use codemap::{mod, Span, BytePos, Spanned, spanned, mk_sp, DUMMY_SP};
 use diagnostic;
 use ext::tt::macro_parser;
 use parse;
@@ -2135,9 +2135,16 @@ impl<'a> Parser<'a> {
                     expr: P<Expr>,
                     start: Option<P<Expr>>,
                     end: Option<P<Expr>>,
-                    mutbl: Mutability)
+                    _mutbl: Mutability)
                     -> ast::Expr_ {
-        ExprSlice(expr, start, end, mutbl)
+        // FIXME: we could give more accurate span info here.
+        let (lo, hi) = match (&start, &end) {
+            (&Some(ref s), &Some(ref e)) => (s.span.lo, e.span.hi),
+            (&Some(ref s), &None) => (s.span.lo, s.span.hi),
+            (&None, &Some(ref e)) => (e.span.lo, e.span.hi),
+            (&None, &None) => (DUMMY_SP.lo, DUMMY_SP.hi),
+        };
+        ExprIndex(expr, self.mk_expr(lo, hi, ExprRange(start, end)))
     }
 
     pub fn mk_range(&mut self,

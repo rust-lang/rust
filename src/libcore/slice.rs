@@ -990,7 +990,7 @@ impl<'a, T, P> Iterator<&'a mut [T]> for MutSplits<'a, T, P> where P: FnMut(&T) 
             Some(idx) => {
                 let tmp = mem::replace(&mut self.v, &mut []);
                 let (head, tail) = tmp.split_at_mut(idx);
-                self.v = tail[mut 1..];
+                self.v = tail.slice_from_mut(1);
                 Some(head)
             }
         }
@@ -1026,7 +1026,7 @@ impl<'a, T, P> DoubleEndedIterator<&'a mut [T]> for MutSplits<'a, T, P> where
                 let tmp = mem::replace(&mut self.v, &mut []);
                 let (head, tail) = tmp.split_at_mut(idx);
                 self.v = head;
-                Some(tail[mut 1..])
+                Some(tail.slice_from_mut(1))
             }
         }
     }

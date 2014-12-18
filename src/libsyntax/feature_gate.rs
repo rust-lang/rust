@@ -307,10 +307,10 @@ impl<'a, 'v> Visitor<'v> for Context<'a> {
 
     fn visit_expr(&mut self, e: &ast::Expr) {
         match e.node {
-            ast::ExprSlice(..) => {
+            ast::ExprRange(..) => {
                 self.gate_feature("slicing_syntax",
                                   e.span,
-                                  "slicing syntax is experimental");
+                                  "range syntax is experimental");
             }
             _ => {}
         }
