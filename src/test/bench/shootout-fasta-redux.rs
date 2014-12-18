@@ -128,7 +128,7 @@ impl<'a, W: Writer> RepeatFasta<'a, W> {
 
         copy_memory(buf.as_mut_slice(), alu);
         let buf_len = buf.len();
-        copy_memory(buf[mut alu_len..buf_len],
+        copy_memory(buf.slice_mut(alu_len, buf_len),
                     alu[..LINE_LEN]);
 
         let mut pos = 0;

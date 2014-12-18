@@ -513,7 +513,7 @@ pub trait Reader {
         while read < min {
             let mut zeroes = 0;
             loop {
-                match self.read(buf[mut read..]) {
+                match self.read(buf.slice_from_mut(read)) {
                     Ok(0) => {
                         zeroes += 1;
                         if zeroes >= NO_PROGRESS_LIMIT {
@@ -1123,7 +1123,7 @@ pub trait Writer {
     #[inline]
     fn write_char(&mut self, c: char) -> IoResult<()> {
         let mut buf = [0u8, ..4];
-        let n = c.encode_utf8(buf[mut]).unwrap_or(0);
+        let n = c.encode_utf8(buf.as_mut_slice()).unwrap_or(0);
         self.write(buf[..n])
     }
 
@@ -1555,7 +1555,7 @@ pub trait Buffer: Reader {
         {
             let mut start = 1;
             while start < width {
-                match try!(self.read(buf[mut start..width])) {
+                match try!(self.read(buf.slice_mut(start, width))) {
                     n if n == width - start => break,
                     n if n < width - start => { start += n; }
                     _ => return Err(standard_error(InvalidInput)),
