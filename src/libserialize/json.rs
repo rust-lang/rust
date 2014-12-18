@@ -2071,7 +2071,7 @@ impl ::Decoder<DecoderError> for Decoder {
         expect!(self.pop(), String)
     }
 
-    fn read_enum<T, F>(&mut self, name: &str, f: F) -> DecodeResult<T> where
+    fn read_enum<T, F>(&mut self, _name: &str, f: F) -> DecodeResult<T> where
         F: FnOnce(&mut Decoder) -> DecodeResult<T>,
     {
         f(self)
@@ -2120,7 +2120,7 @@ impl ::Decoder<DecoderError> for Decoder {
         f(self, idx)
     }
 
-    fn read_enum_variant_arg<T, F>(&mut self, idx: uint, f: F) -> DecodeResult<T> where
+    fn read_enum_variant_arg<T, F>(&mut self, _idx: uint, f: F) -> DecodeResult<T> where
         F: FnOnce(&mut Decoder) -> DecodeResult<T>,
     {
         f(self)
@@ -2134,7 +2134,7 @@ impl ::Decoder<DecoderError> for Decoder {
 
 
     fn read_enum_struct_variant_field<T, F>(&mut self,
-                                         name: &str,
+                                         _name: &str,
                                          idx: uint,
                                          f: F)
                                          -> DecodeResult<T> where
@@ -2143,7 +2143,7 @@ impl ::Decoder<DecoderError> for Decoder {
         self.read_enum_variant_arg(idx, f)
     }
 
-    fn read_struct<T, F>(&mut self, name: &str, len: uint, f: F) -> DecodeResult<T> where
+    fn read_struct<T, F>(&mut self, _name: &str, _len: uint, f: F) -> DecodeResult<T> where
         F: FnOnce(&mut Decoder) -> DecodeResult<T>,
     {
         let value = try!(f(self));
@@ -2153,7 +2153,7 @@ impl ::Decoder<DecoderError> for Decoder {
 
     fn read_struct_field<T, F>(&mut self,
                                name: &str,
-                               idx: uint,
+                               _idx: uint,
                                f: F)
                                -> DecodeResult<T> where
         F: FnOnce(&mut Decoder) -> DecodeResult<T>,
@@ -2198,7 +2198,7 @@ impl ::Decoder<DecoderError> for Decoder {
     }
 
     fn read_tuple_struct<T, F>(&mut self,
-                               name: &str,
+                               _name: &str,
                                len: uint,
                                f: F)
                                -> DecodeResult<T> where
@@ -2236,7 +2236,7 @@ impl ::Decoder<DecoderError> for Decoder {
         f(self, len)
     }
 
-    fn read_seq_elt<T, F>(&mut self, idx: uint, f: F) -> DecodeResult<T> where
+    fn read_seq_elt<T, F>(&mut self, _idx: uint, f: F) -> DecodeResult<T> where
         F: FnOnce(&mut Decoder) -> DecodeResult<T>,
     {
         f(self)
@@ -2254,13 +2254,13 @@ impl ::Decoder<DecoderError> for Decoder {
         f(self, len)
     }
 
-    fn read_map_elt_key<T, F>(&mut self, idx: uint, f: F) -> DecodeResult<T> where
+    fn read_map_elt_key<T, F>(&mut self, _idx: uint, f: F) -> DecodeResult<T> where
        F: FnOnce(&mut Decoder) -> DecodeResult<T>,
     {
         f(self)
     }
 
-    fn read_map_elt_val<T, F>(&mut self, idx: uint, f: F) -> DecodeResult<T> where
+    fn read_map_elt_val<T, F>(&mut self, _idx: uint, f: F) -> DecodeResult<T> where
        F: FnOnce(&mut Decoder) -> DecodeResult<T>,
     {
         f(self)
