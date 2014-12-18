@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub use self::PrivateDep::*;
-pub use self::ImportUse::*;
-pub use self::LastPrivate::*;
 use self::PatternBindingMode::*;
 use self::Namespace::*;
 use self::NamespaceError::*;
@@ -40,6 +37,7 @@ use metadata::decoder::{DefLike, DlDef, DlField, DlImpl};
 use middle::def::*;
 use middle::lang_items::LanguageItems;
 use middle::pat_util::pat_bindings;
+use middle::privacy::*;
 use middle::subst::{ParamSpace, FnSpace, TypeSpace};
 use middle::ty::{CaptureModeMap, Freevar, FreevarMap, TraitMap};
 use util::nodemap::{NodeMap, NodeSet, DefIdSet, FnvHashMap};
@@ -90,49 +88,6 @@ struct BindingInfo {
 
 // Map from the name in a pattern to its binding mode.
 type BindingMap = HashMap<Name, BindingInfo>;
-
-// This set contains all exported definitions from external crates. The set does
-// not contain any entries from local crates.
-pub type ExternalExports = DefIdSet;
-
-// FIXME: dox
-pub type LastPrivateMap = NodeMap<LastPrivate>;
-
-#[deriving(Copy, Show)]
-pub enum LastPrivate {
-    LastMod(PrivateDep),
-    // `use` directives (imports) can refer to two separate definitions in the
-    // type and value namespaces. We record here the last private node for each
-    // and whether the import is in fact used for each.
-    // If the Option<PrivateDep> fields are None, it means there is no definition
-    // in that namespace.
-    LastImport{value_priv: Option<PrivateDep>,
-               value_used: ImportUse,
-               type_priv: Option<PrivateDep>,
-               type_used: ImportUse},
-}
-
-#[deriving(Copy, Show)]
-pub enum PrivateDep {
-    AllPublic,
-    DependsOn(DefId),
-}
-
-// How an import is used.
-#[deriving(Copy, PartialEq, Show)]
-pub enum ImportUse {
-    Unused,       // The import is not used.
-    Used,         // The import is used.
-}
-
-impl LastPrivate {
-    fn or(self, other: LastPrivate) -> LastPrivate {
-        match (self, other) {
-            (me, LastMod(AllPublic)) => me,
-            (_, other) => other,
-        }
-    }
-}
 
 #[deriving(Copy, PartialEq)]
 enum PatternBindingMode {
