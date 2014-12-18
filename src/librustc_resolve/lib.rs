@@ -8,6 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![crate_name = "rustc_resolve"]
+#![experimental]
+#![crate_type = "dylib"]
+#![crate_type = "rlib"]
+#![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
+      html_favicon_url = "http://www.rust-lang.org/favicon.ico",
+      html_root_url = "http://doc.rust-lang.org/nightly/")]
+
+#![feature(globs, phase, slicing_syntax)]
+#![feature(rustc_diagnostic_macros)]
+
+#[phase(plugin, link)] extern crate log;
+#[phase(plugin, link)] extern crate syntax;
+
+extern crate rustc;
+
 use self::PatternBindingMode::*;
 use self::Namespace::*;
 use self::NamespaceError::*;
@@ -30,17 +46,17 @@ use self::ModuleKind::*;
 use self::TraitReferenceType::*;
 use self::FallbackChecks::*;
 
-use session::Session;
-use lint;
-use metadata::csearch;
-use metadata::decoder::{DefLike, DlDef, DlField, DlImpl};
-use middle::def::*;
-use middle::lang_items::LanguageItems;
-use middle::pat_util::pat_bindings;
-use middle::privacy::*;
-use middle::subst::{ParamSpace, FnSpace, TypeSpace};
-use middle::ty::{CaptureModeMap, Freevar, FreevarMap, TraitMap};
-use util::nodemap::{NodeMap, NodeSet, DefIdSet, FnvHashMap};
+use rustc::session::Session;
+use rustc::lint;
+use rustc::metadata::csearch;
+use rustc::metadata::decoder::{DefLike, DlDef, DlField, DlImpl};
+use rustc::middle::def::*;
+use rustc::middle::lang_items::LanguageItems;
+use rustc::middle::pat_util::pat_bindings;
+use rustc::middle::privacy::*;
+use rustc::middle::subst::{ParamSpace, FnSpace, TypeSpace};
+use rustc::middle::ty::{CaptureModeMap, Freevar, FreevarMap, TraitMap};
+use rustc::util::nodemap::{NodeMap, NodeSet, DefIdSet, FnvHashMap};
 
 use syntax::ast::{Arm, BindByRef, BindByValue, BindingMode, Block, Crate, CrateNum};
 use syntax::ast::{DeclItem, DefId, Expr, ExprAgain, ExprBreak, ExprField};

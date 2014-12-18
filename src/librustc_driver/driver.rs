@@ -20,6 +20,7 @@ use rustc::plugin::registry::Registry;
 use rustc::plugin;
 use rustc::util::common::time;
 use rustc_borrowck as borrowck;
+use rustc_resolve as resolve;
 use rustc_trans::back::link;
 use rustc_trans::back::write;
 use rustc_trans::save;
@@ -341,7 +342,7 @@ pub fn phase_3_run_analysis_passes<'tcx>(sess: Session,
     let lang_items = time(time_passes, "language item collection", (), |_|
                           middle::lang_items::collect_language_items(krate, &sess));
 
-    let middle::resolve::CrateMap {
+    let resolve::CrateMap {
         def_map,
         freevars,
         capture_mode_map,
@@ -350,8 +351,8 @@ pub fn phase_3_run_analysis_passes<'tcx>(sess: Session,
         external_exports,
         last_private_map
     } =
-        time(time_passes, "resolution", (), |_|
-             middle::resolve::resolve_crate(&sess, &lang_items, krate));
+        time(time_passes, "resolution", (),
+             |_| resolve::resolve_crate(&sess, &lang_items, krate));
 
     // Discard MTWT tables that aren't required past resolution.
     syntax::ext::mtwt::clear_tables();
