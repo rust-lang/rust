@@ -267,6 +267,12 @@ pub enum DecoderError {
     ApplicationError(string::String)
 }
 
+#[deriving(Clone, PartialEq, Show)]
+pub enum EncoderError {
+    IoError(io::IoError),
+    BadHashmapKey
+}
+
 /// Returns a readable error string for a given error code.
 pub fn error_str(error: ErrorCode) -> &'static str {
     match error {
@@ -302,7 +308,7 @@ pub fn decode<T: ::Decodable<Decoder, DecoderError>>(s: &str) -> DecodeResult<T>
 }
 
 /// Shortcut function to encode a `T` into a JSON `String`
-pub fn encode<'a, T: Encodable<Encoder<'a>, io::IoError>>(object: &T) -> string::String {
+pub fn encode<'a, T: Encodable<Encoder<'a>, EncoderError>>(object: &T) -> string::String {
     let buff = Encoder::buffer_encode(object);
     string::String::from_utf8(buff).unwrap()
 }
@@ -322,10 +328,19 @@ impl std::error::Error for DecoderError {
     fn detail(&self) -> Option<std::string::String> { Some(self.to_string()) }
 }
 
-pub type EncodeResult = io::IoResult<()>;
+impl std::error::Error for EncoderError {
+    fn description(&self) -> &str { "encoder error" }
+    fn detail(&self) -> Option<std::string::String> { Some(self.to_string()) }
+}
+
+impl std::error::FromError<io::IoError> for EncoderError {
+    fn from_error(err: io::IoError) -> EncoderError { EncoderError::IoError(err) }
+}
+
+pub type EncodeResult = Result<(), EncoderError>;
 pub type DecodeResult<T> = Result<T, DecoderError>;
 
-pub fn escape_bytes(wr: &mut io::Writer, bytes: &[u8]) -> Result<(), io::IoError> {
+pub fn escape_bytes(wr: &mut io::Writer, bytes: &[u8]) -> EncodeResult {
     try!(wr.write_str("\""));
 
     let mut start = 0;
@@ -383,20 +398,21 @@ pub fn escape_bytes(wr: &mut io::Writer, bytes: &[u8]) -> Result<(), io::IoError
         try!(wr.write(bytes[start..]));
     }
 
-    wr.write_str("\"")
+    try!(wr.write_str("\""));
+    Ok(())
 }
 
-fn escape_str(writer: &mut io::Writer, v: &str) -> Result<(), io::IoError> {
+fn escape_str(writer: &mut io::Writer, v: &str) -> EncodeResult {
     escape_bytes(writer, v.as_bytes())
 }
 
-fn escape_char(writer: &mut io::Writer, v: char) -> Result<(), io::IoError> {
+fn escape_char(writer: &mut io::Writer, v: char) -> EncodeResult {
     let mut buf = [0, .. 4];
     let len = v.encode_utf8(&mut buf).unwrap();
     escape_bytes(writer, buf[mut ..len])
 }
 
-fn spaces(wr: &mut io::Writer, mut n: uint) -> Result<(), io::IoError> {
+fn spaces(wr: &mut io::Writer, mut n: uint) -> EncodeResult {
     const LEN: uint = 16;
     static BUF: [u8, ..LEN] = [b' ', ..LEN];
 
@@ -406,10 +422,9 @@ fn spaces(wr: &mut io::Writer, mut n: uint) -> Result<(), io::IoError> {
     }
 
     if n > 0 {
-        wr.write(BUF[..n])
-    } else {
-        Ok(())
+        try!(wr.write(BUF[..n]));
     }
+    Ok(())
 }
 
 fn fmt_number_or_null(v: f64) -> string::String {
@@ -441,7 +456,7 @@ impl<'a> Encoder<'a> {
     }
 
     /// Encode the specified struct into a json [u8]
-    pub fn buffer_encode<T: Encodable<Encoder<'a>, io::IoError>>(object: &T) -> Vec<u8>  {
+    pub fn buffer_encode<T: Encodable<Encoder<'a>, EncoderError>>(object: &T) -> Vec<u8> {
         //Serialize the object in a string using a writer
         let mut m = Vec::new();
         // FIXME(14302) remove the transmute and unsafe block.
@@ -458,15 +473,17 @@ macro_rules! emit_enquoted_if_mapkey {
     ($enc:ident,$e:expr) => {
         if $enc.emitting_map_key == EmittingMapKeyState::Emitting {
             $enc.emitting_map_key = EmittingMapKeyState::EmittedValidMapKey;
-            write!($enc.writer, "\"{}\"", $e)
+            try!(write!($enc.writer, "\"{}\"", $e));
+            Ok(())
         } else {
-            write!($enc.writer, "{}", $e)
+            try!(write!($enc.writer, "{}", $e));
+            Ok(())
         }
     }
 }
 
-impl<'a> ::Encoder<io::IoError> for Encoder<'a> {
-    fn emit_nil(&mut self) -> EncodeResult { write!(self.writer, "null") }
+impl<'a> ::Encoder<EncoderError> for Encoder<'a> {
+    fn emit_nil(&mut self) -> EncodeResult { try!(write!(self.writer, "null")); Ok(()) }
 
     fn emit_uint(&mut self, v: uint) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
     fn emit_u64(&mut self, v: u64) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
@@ -482,10 +499,11 @@ impl<'a> ::Encoder<io::IoError> for Encoder<'a> {
 
     fn emit_bool(&mut self, v: bool) -> EncodeResult {
         if v {
-            write!(self.writer, "true")
+            try!(write!(self.writer, "true"));
         } else {
-            write!(self.writer, "false")
+            try!(write!(self.writer, "false"));
         }
+        Ok(())
     }
 
     fn emit_f64(&mut self, v: f64) -> EncodeResult {
@@ -527,7 +545,8 @@ impl<'a> ::Encoder<io::IoError> for Encoder<'a> {
             try!(escape_str(self.writer, name));
             try!(write!(self.writer, ",\"fields\":["));
             try!(f(self));
-            write!(self.writer, "]}}")
+            try!(write!(self.writer, "]}}"));
+            Ok(())
         }
     }
 
@@ -564,7 +583,8 @@ impl<'a> ::Encoder<io::IoError> for Encoder<'a> {
     {
         try!(write!(self.writer, "{{"));
         try!(f(self));
-        write!(self.writer, "}}")
+        try!(write!(self.writer, "}}"));
+        Ok(())
     }
 
     fn emit_struct_field<F>(&mut self, name: &str, idx: uint, f: F) -> EncodeResult where
@@ -615,7 +635,8 @@ impl<'a> ::Encoder<io::IoError> for Encoder<'a> {
     {
         try!(write!(self.writer, "["));
         try!(f(self));
-        write!(self.writer, "]")
+        try!(write!(self.writer, "]"));
+        Ok(())
     }
 
     fn emit_seq_elt<F>(&mut self, idx: uint, f: F) -> EncodeResult where
@@ -632,7 +653,8 @@ impl<'a> ::Encoder<io::IoError> for Encoder<'a> {
     {
         try!(write!(self.writer, "{{"));
         try!(f(self));
-        write!(self.writer, "}}")
+        try!(write!(self.writer, "}}"));
+        Ok(())
     }
 
     fn emit_map_elt_key<F>(&mut self, idx: uint, f: F) -> EncodeResult where
@@ -643,10 +665,10 @@ impl<'a> ::Encoder<io::IoError> for Encoder<'a> {
         try!(f(self));
         if self.emitting_map_key == EmittingMapKeyState::EmittedValidMapKey {
             self.emitting_map_key = EmittingMapKeyState::NotEmitting;
+            Ok(())
         } else {
-            panic!("did not emit a valid map key, aborting encoding");
+            Err(EncoderError::BadHashmapKey)
         }
-        Ok(())
     }
 
     fn emit_map_elt_val<F>(&mut self, _idx: uint, f: F) -> EncodeResult where
@@ -687,8 +709,8 @@ impl<'a> PrettyEncoder<'a> {
     }
 }
 
-impl<'a> ::Encoder<io::IoError> for PrettyEncoder<'a> {
-    fn emit_nil(&mut self) -> EncodeResult { write!(self.writer, "null") }
+impl<'a> ::Encoder<EncoderError> for PrettyEncoder<'a> {
+    fn emit_nil(&mut self) -> EncodeResult { try!(write!(self.writer, "null")); Ok(()) }
 
     fn emit_uint(&mut self, v: uint) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
     fn emit_u64(&mut self, v: u64) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
@@ -704,10 +726,11 @@ impl<'a> ::Encoder<io::IoError> for PrettyEncoder<'a> {
 
     fn emit_bool(&mut self, v: bool) -> EncodeResult {
         if v {
-            write!(self.writer, "true")
+            try!(write!(self.writer, "true"));
         } else {
-            write!(self.writer, "false")
+            try!(write!(self.writer, "false"));
         }
+        Ok(())
     }
 
     fn emit_f64(&mut self, v: f64) -> EncodeResult {
@@ -759,7 +782,8 @@ impl<'a> ::Encoder<io::IoError> for PrettyEncoder<'a> {
             self.curr_indent -= self.indent;
             try!(write!(self.writer, "]\n"));
             try!(spaces(self.writer, self.curr_indent));
-            write!(self.writer, "}}")
+            try!(write!(self.writer, "}}"));
+            Ok(())
         }
     }
 
@@ -797,7 +821,7 @@ impl<'a> ::Encoder<io::IoError> for PrettyEncoder<'a> {
         F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
     {
         if len == 0 {
-            write!(self.writer, "{{}}")
+            try!(write!(self.writer, "{{}}"));
         } else {
             try!(write!(self.writer, "{{"));
             self.curr_indent += self.indent;
@@ -805,8 +829,9 @@ impl<'a> ::Encoder<io::IoError> for PrettyEncoder<'a> {
             self.curr_indent -= self.indent;
             try!(write!(self.writer, "\n"));
             try!(spaces(self.writer, self.curr_indent));
-            write!(self.writer, "}}")
+            try!(write!(self.writer, "}}"));
         }
+        Ok(())
     }
 
     fn emit_struct_field<F>(&mut self, name: &str, idx: uint, f: F) -> EncodeResult where
@@ -861,7 +886,7 @@ impl<'a> ::Encoder<io::IoError> for PrettyEncoder<'a> {
         F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
     {
         if len == 0 {
-            write!(self.writer, "[]")
+            try!(write!(self.writer, "[]"));
         } else {
             try!(write!(self.writer, "["));
             self.curr_indent += self.indent;
@@ -869,8 +894,9 @@ impl<'a> ::Encoder<io::IoError> for PrettyEncoder<'a> {
             self.curr_indent -= self.indent;
             try!(write!(self.writer, "\n"));
             try!(spaces(self.writer, self.curr_indent));
-            write!(self.writer, "]")
+            try!(write!(self.writer, "]"));
         }
+        Ok(())
     }
 
     fn emit_seq_elt<F>(&mut self, idx: uint, f: F) -> EncodeResult where
@@ -889,7 +915,7 @@ impl<'a> ::Encoder<io::IoError> for PrettyEncoder<'a> {
         F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
     {
         if len == 0 {
-            write!(self.writer, "{{}}")
+            try!(write!(self.writer, "{{}}"));
         } else {
             try!(write!(self.writer, "{{"));
             self.curr_indent += self.indent;
@@ -897,8 +923,9 @@ impl<'a> ::Encoder<io::IoError> for PrettyEncoder<'a> {
             self.curr_indent -= self.indent;
             try!(write!(self.writer, "\n"));
             try!(spaces(self.writer, self.curr_indent));
-            write!(self.writer, "}}")
+            try!(write!(self.writer, "}}"));
         }
+        Ok(())
     }
 
     fn emit_map_elt_key<F>(&mut self, idx: uint, f: F) -> EncodeResult where
@@ -914,10 +941,10 @@ impl<'a> ::Encoder<io::IoError> for PrettyEncoder<'a> {
         try!(f(self));
         if self.emitting_map_key == EmittingMapKeyState::EmittedValidMapKey {
             self.emitting_map_key = EmittingMapKeyState::NotEmitting;
+            Ok(())
         } else {
-            panic!("did not emit a valid map key, aborting encoding");
+            Err(EncoderError::BadHashmapKey)
         }
-        Ok(())
     }
 
     fn emit_map_elt_val<F>(&mut self, _idx: uint, f: F) -> EncodeResult where
