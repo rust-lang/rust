@@ -56,6 +56,12 @@ fn test_range_from() {
 }
 
 #[test]
+fn test_range_to() {
+    // Not much to test.
+    let _ = RangeTo { end: 42u };
+}
+
+#[test]
 fn test_full_range() {
     // Not much to test.
     let _ = FullRange;

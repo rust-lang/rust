@@ -4308,46 +4308,58 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
           }
        }
        ast::ExprRange(ref start, ref end) => {
-          check_expr(fcx, &**start);
-          let t_start = fcx.expr_ty(&**start);
-
-          let idx_type = if let &Some(ref e) = end {
+          let t_start = start.as_ref().map(|e| {
             check_expr(fcx, &**e);
-            let t_end = fcx.expr_ty(&**e);
-            if ty::type_is_error(t_end) {
-                ty::mk_err()
-            } else if t_start == ty::mk_err() {
-                ty::mk_err()
-            } else {
-                infer::common_supertype(fcx.infcx(),
-                                        infer::RangeExpression(expr.span),
-                                        true,
-                                        t_start,
-                                        t_end)
+            fcx.expr_ty(&**e)
+          });
+          let t_end = end.as_ref().map(|e| {
+            check_expr(fcx, &**e);
+            fcx.expr_ty(&**e)
+          });
+
+          let idx_type = match (t_start, t_end) {
+            (Some(ty), None) | (None, Some(ty)) => Some(ty),
+            (Some(t_start), Some(t_end)) if t_start == ty::mk_err() || t_end == ty::mk_err() => {
+                Some(ty::mk_err())
             }
-          } else {
-            t_start
+            (Some(t_start), Some(t_end)) => {
+                Some(infer::common_supertype(fcx.infcx(),
+                                             infer::RangeExpression(expr.span),
+                                             true,
+                                             t_start,
+                                             t_end))
+            }
+            _ => None
           };
 
           // Note that we don't check the type of start/end satisfy any
           // bounds because right the range structs do not have any. If we add
           // some bounds, then we'll need to check `t_start` against them here.
 
-          let range_type = if idx_type == ty::mk_err() {
+          let range_type = if idx_type == Some(ty::mk_err()) {
             ty::mk_err()
+          } else if idx_type.is_none() {
+            // Neither start nor end => FullRange
+            if let Some(did) = tcx.lang_items.full_range_struct() {
+                let substs = Substs::new_type(vec![], vec![]);
+                ty::mk_struct(tcx, did, substs)
+            } else {
+                ty::mk_err()
+            }
           } else {
             // Find the did from the appropriate lang item.
-            let did = if end.is_some() {
-                // Range
-                tcx.lang_items.range_struct()
-            } else {
-                // RangeFrom
-                tcx.lang_items.range_from_struct()
+            let did = match (start, end) {
+                (&Some(_), &Some(_)) => tcx.lang_items.range_struct(),
+                (&Some(_), &None) => tcx.lang_items.range_from_struct(),
+                (&None, &Some(_)) => tcx.lang_items.range_to_struct(),
+                (&None, &None) => {
+                    tcx.sess.span_bug(expr.span,"full range should be dealt with above")
+                }
             };
 
             if let Some(did) = did {
                 let polytype = ty::lookup_item_type(tcx, did);
-                let substs = Substs::new_type(vec![idx_type], vec![]);
+                let substs = Substs::new_type(vec![idx_type.unwrap()], vec![]);
                 let bounds = polytype.generics.to_bounds(tcx, &substs);
                 fcx.add_obligations_for_parameters(
                     traits::ObligationCause::new(expr.span,

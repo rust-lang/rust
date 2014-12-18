@@ -2144,7 +2144,7 @@ impl<'a> Parser<'a> {
                     start: P<Expr>,
                     end: Option<P<Expr>>)
                     -> ast::Expr_ {
-        ExprRange(start, end)
+        ExprRange(Some(start), end)
     }
 
     pub fn mk_field(&mut self, expr: P<Expr>, ident: ast::SpannedIdent) -> ast::Expr_ {

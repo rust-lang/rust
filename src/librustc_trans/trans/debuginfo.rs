@@ -3546,7 +3546,7 @@ fn create_scope_map(cx: &CrateContext,
             }
 
             ast::ExprRange(ref start, ref end) => {
-                walk_expr(cx, &**start, scope_stack, scope_map);
+                start.as_ref().map(|e| walk_expr(cx, &**e, scope_stack, scope_map));
                 end.as_ref().map(|e| walk_expr(cx, &**e, scope_stack, scope_map));
             }
 

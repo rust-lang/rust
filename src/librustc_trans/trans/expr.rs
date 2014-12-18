@@ -1064,22 +1064,34 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             }
 
             // A range just desugars into a struct.
-            let (did, fields) = match end {
-                &Some(ref end) => {
+            // Note that the type of the start and end may not be the same, but
+            // they should only differ in their lifetime, which should not matter
+            // in trans.
+            let (did, fields, ty_params) = match (start, end) {
+                (&Some(ref start), &Some(ref end)) => {
                     // Desugar to Range
                     let fields = vec!(make_field("start", start.clone()),
                                       make_field("end", end.clone()));
-                    (tcx.lang_items.range_struct(), fields)
+                    (tcx.lang_items.range_struct(), fields, vec![node_id_type(bcx, start.id)])
                 }
-                &None => {
+                (&Some(ref start), &None) => {
                     // Desugar to RangeFrom
                     let fields = vec!(make_field("start", start.clone()));
-                    (tcx.lang_items.range_from_struct(), fields)
+                    (tcx.lang_items.range_from_struct(), fields, vec![node_id_type(bcx, start.id)])
+                }
+                (&None, &Some(ref end)) => {
+                    // Desugar to RangeTo
+                    let fields = vec!(make_field("end", end.clone()));
+                    (tcx.lang_items.range_to_struct(), fields, vec![node_id_type(bcx, end.id)])
+                }
+                _ => {
+                    // Desugar to FullRange
+                    (tcx.lang_items.full_range_struct(), vec![], vec![])
                 }
             };
 
             if let Some(did) = did {
-                let substs = Substs::new_type(vec![node_id_type(bcx, start.id)], vec![]);
+                let substs = Substs::new_type(ty_params, vec![]);
                 trans_struct(bcx,
                              fields.as_slice(),
                              None,

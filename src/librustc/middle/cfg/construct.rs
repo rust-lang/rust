@@ -440,7 +440,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
             }
 
             ast::ExprRange(ref start, ref end) => {
-                let fields = Some(&**start).into_iter()
+                let fields = start.as_ref().map(|e| &**e).into_iter()
                     .chain(end.as_ref().map(|e| &**e).into_iter());
                 self.straightline(expr, pred, fields)
             }
