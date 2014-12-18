@@ -420,16 +420,24 @@ fn fmt_number_or_null(v: f64) -> string::String {
     }
 }
 
+#[deriving(PartialEq)]
+enum EmittingMapKeyState {
+    NotEmitting,
+    Emitting,
+    EmittedValidMapKey,
+}
+
 /// A structure for implementing serialization to JSON.
 pub struct Encoder<'a> {
     writer: &'a mut (io::Writer+'a),
+    emitting_map_key: EmittingMapKeyState,
 }
 
 impl<'a> Encoder<'a> {
     /// Creates a new JSON encoder whose output will be written to the writer
     /// specified.
     pub fn new(writer: &'a mut io::Writer) -> Encoder<'a> {
-        Encoder { writer: writer }
+        Encoder { writer: writer, emitting_map_key: EmittingMapKeyState::NotEmitting, }
     }
 
     /// Encode the specified struct into a json [u8]
@@ -446,20 +454,31 @@ impl<'a> Encoder<'a> {
     }
 }
 
+macro_rules! emit_enquoted_if_mapkey {
+    ($enc:ident,$e:expr) => {
+        if $enc.emitting_map_key == EmittingMapKeyState::Emitting {
+            $enc.emitting_map_key = EmittingMapKeyState::EmittedValidMapKey;
+            write!($enc.writer, "\"{}\"", $e)
+        } else {
+            write!($enc.writer, "{}", $e)
+        }
+    }
+}
+
 impl<'a> ::Encoder<io::IoError> for Encoder<'a> {
     fn emit_nil(&mut self) -> EncodeResult { write!(self.writer, "null") }
 
-    fn emit_uint(&mut self, v: uint) -> EncodeResult { write!(self.writer, "{}", v) }
-    fn emit_u64(&mut self, v: u64) -> EncodeResult { write!(self.writer, "{}", v) }
-    fn emit_u32(&mut self, v: u32) -> EncodeResult { write!(self.writer, "{}", v) }
-    fn emit_u16(&mut self, v: u16) -> EncodeResult { write!(self.writer, "{}", v) }
-    fn emit_u8(&mut self, v: u8) -> EncodeResult { write!(self.writer, "{}", v) }
+    fn emit_uint(&mut self, v: uint) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
+    fn emit_u64(&mut self, v: u64) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
+    fn emit_u32(&mut self, v: u32) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
+    fn emit_u16(&mut self, v: u16) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
+    fn emit_u8(&mut self, v: u8) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
 
-    fn emit_int(&mut self, v: int) -> EncodeResult { write!(self.writer, "{}", v) }
-    fn emit_i64(&mut self, v: i64) -> EncodeResult { write!(self.writer, "{}", v) }
-    fn emit_i32(&mut self, v: i32) -> EncodeResult { write!(self.writer, "{}", v) }
-    fn emit_i16(&mut self, v: i16) -> EncodeResult { write!(self.writer, "{}", v) }
-    fn emit_i8(&mut self, v: i8) -> EncodeResult { write!(self.writer, "{}", v) }
+    fn emit_int(&mut self, v: int) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
+    fn emit_i64(&mut self, v: i64) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
+    fn emit_i32(&mut self, v: i32) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
+    fn emit_i16(&mut self, v: i16) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
+    fn emit_i8(&mut self, v: i8) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
 
     fn emit_bool(&mut self, v: bool) -> EncodeResult {
         if v {
@@ -470,16 +489,18 @@ impl<'a> ::Encoder<io::IoError> for Encoder<'a> {
     }
 
     fn emit_f64(&mut self, v: f64) -> EncodeResult {
-        write!(self.writer, "{}", fmt_number_or_null(v))
+        emit_enquoted_if_mapkey!(self, fmt_number_or_null(v))
     }
     fn emit_f32(&mut self, v: f32) -> EncodeResult {
         self.emit_f64(v as f64)
     }
 
     fn emit_char(&mut self, v: char) -> EncodeResult {
+        self.emitting_map_key = EmittingMapKeyState::EmittedValidMapKey;
         escape_char(self.writer, v)
     }
     fn emit_str(&mut self, v: &str) -> EncodeResult {
+        self.emitting_map_key = EmittingMapKeyState::EmittedValidMapKey;
         escape_str(self.writer, v)
     }
 
@@ -618,19 +639,13 @@ impl<'a> ::Encoder<io::IoError> for Encoder<'a> {
         F: FnMut(&mut Encoder<'a>) -> EncodeResult,
     {
         if idx != 0 { try!(write!(self.writer, ",")) }
-        // ref #12967, make sure to wrap a key in double quotes,
-        // in the event that its of a type that omits them (eg numbers)
-        let mut buf = Vec::new();
-        // FIXME(14302) remove the transmute and unsafe block.
-        unsafe {
-            let mut check_encoder = Encoder::new(&mut buf);
-            try!(f(transmute(&mut check_encoder)));
-        }
-        let out = str::from_utf8(buf[]).unwrap();
-        let needs_wrapping = out.char_at(0) != '"' && out.char_at_reverse(out.len()) != '"';
-        if needs_wrapping { try!(write!(self.writer, "\"")); }
+        self.emitting_map_key = EmittingMapKeyState::Emitting;
         try!(f(self));
-        if needs_wrapping { try!(write!(self.writer, "\"")); }
+        if self.emitting_map_key == EmittingMapKeyState::EmittedValidMapKey {
+            self.emitting_map_key = EmittingMapKeyState::NotEmitting;
+        } else {
+            panic!("did not emit a valid map key, aborting encoding");
+        }
         Ok(())
     }
 
@@ -648,12 +663,18 @@ pub struct PrettyEncoder<'a> {
     writer: &'a mut (io::Writer+'a),
     curr_indent: uint,
     indent: uint,
+    emitting_map_key: EmittingMapKeyState,
 }
 
 impl<'a> PrettyEncoder<'a> {
     /// Creates a new encoder whose output will be written to the specified writer
     pub fn new(writer: &'a mut io::Writer) -> PrettyEncoder<'a> {
-        PrettyEncoder { writer: writer, curr_indent: 0, indent: 2, }
+        PrettyEncoder {
+            writer: writer,
+            curr_indent: 0,
+            indent: 2,
+            emitting_map_key: EmittingMapKeyState::NotEmitting,
+        }
     }
 
     /// Set the number of spaces to indent for each level.
@@ -669,17 +690,17 @@ impl<'a> PrettyEncoder<'a> {
 impl<'a> ::Encoder<io::IoError> for PrettyEncoder<'a> {
     fn emit_nil(&mut self) -> EncodeResult { write!(self.writer, "null") }
 
-    fn emit_uint(&mut self, v: uint) -> EncodeResult { write!(self.writer, "{}", v) }
-    fn emit_u64(&mut self, v: u64) -> EncodeResult { write!(self.writer, "{}", v) }
-    fn emit_u32(&mut self, v: u32) -> EncodeResult { write!(self.writer, "{}", v) }
-    fn emit_u16(&mut self, v: u16) -> EncodeResult { write!(self.writer, "{}", v) }
-    fn emit_u8(&mut self, v: u8) -> EncodeResult { write!(self.writer, "{}", v) }
+    fn emit_uint(&mut self, v: uint) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
+    fn emit_u64(&mut self, v: u64) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
+    fn emit_u32(&mut self, v: u32) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
+    fn emit_u16(&mut self, v: u16) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
+    fn emit_u8(&mut self, v: u8) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
 
-    fn emit_int(&mut self, v: int) -> EncodeResult { write!(self.writer, "{}", v) }
-    fn emit_i64(&mut self, v: i64) -> EncodeResult { write!(self.writer, "{}", v) }
-    fn emit_i32(&mut self, v: i32) -> EncodeResult { write!(self.writer, "{}", v) }
-    fn emit_i16(&mut self, v: i16) -> EncodeResult { write!(self.writer, "{}", v) }
-    fn emit_i8(&mut self, v: i8) -> EncodeResult { write!(self.writer, "{}", v) }
+    fn emit_int(&mut self, v: int) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
+    fn emit_i64(&mut self, v: i64) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
+    fn emit_i32(&mut self, v: i32) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
+    fn emit_i16(&mut self, v: i16) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
+    fn emit_i8(&mut self, v: i8) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
 
     fn emit_bool(&mut self, v: bool) -> EncodeResult {
         if v {
@@ -690,16 +711,18 @@ impl<'a> ::Encoder<io::IoError> for PrettyEncoder<'a> {
     }
 
     fn emit_f64(&mut self, v: f64) -> EncodeResult {
-        write!(self.writer, "{}", fmt_number_or_null(v))
+        emit_enquoted_if_mapkey!(self, fmt_number_or_null(v))
     }
     fn emit_f32(&mut self, v: f32) -> EncodeResult {
         self.emit_f64(v as f64)
     }
 
     fn emit_char(&mut self, v: char) -> EncodeResult {
+        self.emitting_map_key = EmittingMapKeyState::EmittedValidMapKey;
         escape_char(self.writer, v)
     }
     fn emit_str(&mut self, v: &str) -> EncodeResult {
+        self.emitting_map_key = EmittingMapKeyState::EmittedValidMapKey;
         escape_str(self.writer, v)
     }
 
@@ -887,19 +910,13 @@ impl<'a> ::Encoder<io::IoError> for PrettyEncoder<'a> {
             try!(write!(self.writer, ",\n"));
         }
         try!(spaces(self.writer, self.curr_indent));
-        // ref #12967, make sure to wrap a key in double quotes,
-        // in the event that its of a type that omits them (eg numbers)
-        let mut buf = Vec::new();
-        // FIXME(14302) remove the transmute and unsafe block.
-        unsafe {
-            let mut check_encoder = PrettyEncoder::new(&mut buf);
-            try!(f(transmute(&mut check_encoder)));
-        }
-        let out = str::from_utf8(buf[]).unwrap();
-        let needs_wrapping = out.char_at(0) != '"' && out.char_at_reverse(out.len()) != '"';
-        if needs_wrapping { try!(write!(self.writer, "\"")); }
+        self.emitting_map_key = EmittingMapKeyState::Emitting;
         try!(f(self));
-        if needs_wrapping { try!(write!(self.writer, "\"")); }
+        if self.emitting_map_key == EmittingMapKeyState::EmittedValidMapKey {
+            self.emitting_map_key = EmittingMapKeyState::NotEmitting;
+        } else {
+            panic!("did not emit a valid map key, aborting encoding");
+        }
         Ok(())
     }
 
