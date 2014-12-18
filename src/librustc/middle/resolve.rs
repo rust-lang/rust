@@ -93,15 +93,6 @@ struct BindingInfo {
 // Map from the name in a pattern to its binding mode.
 type BindingMap = HashMap<Name, BindingInfo>;
 
-// This is the replacement export map. It maps a module to all of the exports
-// within.
-pub type ExportMap = NodeMap<Vec<Export>>;
-
-pub struct Export {
-    pub name: Name,          // The name of the target.
-    pub def_id: DefId,       // The definition of the target.
-}
-
 // This set contains all exported definitions from external crates. The set does
 // not contain any entries from local crates.
 pub type ExternalExports = DefIdSet;

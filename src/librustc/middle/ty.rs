@@ -46,7 +46,7 @@ use lint;
 use metadata::csearch;
 use middle;
 use middle::const_eval;
-use middle::def::{mod, DefMap};
+use middle::def::{mod, DefMap, ExportMap};
 use middle::dependency_format;
 use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem};
 use middle::lang_items::{FnOnceTraitLangItem, TyDescStructLangItem};
@@ -98,7 +98,7 @@ pub const INITIAL_DISCRIMINANT_VALUE: Disr = 0;
 /// The complete set of all analyses described in this module. This is
 /// produced by the driver and fed to trans and later passes.
 pub struct CrateAnalysis<'tcx> {
-    pub export_map: middle::resolve::ExportMap,
+    pub export_map: ExportMap,
     pub exported_items: middle::privacy::ExportedItems,
     pub public_items: middle::privacy::PublicItems,
     pub ty_cx: ty::ctxt<'tcx>,
