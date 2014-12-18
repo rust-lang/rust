@@ -19,9 +19,8 @@ pub use self::DefRegion::*;
 use self::ScopeChain::*;
 
 use session::Session;
-use middle::def;
+use middle::def::{mod, DefMap};
 use middle::region;
-use middle::resolve::DefMap;
 use middle::subst;
 use middle::ty;
 use std::fmt;

@@ -12,8 +12,11 @@ pub use self::Def::*;
 pub use self::MethodProvenance::*;
 
 use middle::subst::ParamSpace;
+use util::nodemap::NodeMap;
 use syntax::ast;
 use syntax::ast_util::local_def;
+
+use std::cell::RefCell;
 
 #[deriving(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum Def {
@@ -55,6 +58,9 @@ pub enum Def {
     DefLabel(ast::NodeId),
     DefMethod(ast::DefId /* method */, Option<ast::DefId> /* trait */, MethodProvenance),
 }
+
+// Definition mapping
+pub type DefMap = RefCell<NodeMap<Def>>;
 
 #[deriving(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum MethodProvenance {

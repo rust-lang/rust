@@ -84,9 +84,6 @@ use std::mem::replace;
 use std::rc::{Rc, Weak};
 use std::uint;
 
-// Definition mapping
-pub type DefMap = RefCell<NodeMap<Def>>;
-
 #[deriving(Copy)]
 struct BindingInfo {
     span: Span,
