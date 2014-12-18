@@ -6262,6 +6262,9 @@ pub type FreevarMap = NodeMap<Vec<Freevar>>;
 
 pub type CaptureModeMap = NodeMap<ast::CaptureClause>;
 
+// Trait method resolution
+pub type TraitMap = NodeMap<Vec<DefId>>;
+
 pub fn with_freevars<T, F>(tcx: &ty::ctxt, fid: ast::NodeId, f: F) -> T where
     F: FnOnce(&[Freevar]) -> T,
 {
