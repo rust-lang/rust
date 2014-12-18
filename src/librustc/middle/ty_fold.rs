@@ -56,7 +56,7 @@ pub trait TypeFoldable<'tcx> {
 /// default implementation that does an "identity" fold. Within each
 /// identity fold, it should invoke `foo.fold_with(self)` to fold each
 /// sub-item.
-pub trait TypeFolder<'tcx> {
+pub trait TypeFolder<'tcx> : Sized {
     fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx>;
 
     /// Invoked by the `super_*` routines when we enter a region

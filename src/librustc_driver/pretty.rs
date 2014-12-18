@@ -141,7 +141,7 @@ impl PpSourceMode {
     }
 }
 
-trait PrinterSupport<'ast>: pprust::PpAnn {
+trait PrinterSupport<'ast>: pprust::PpAnn + Sized {
     /// Provides a uniform interface for re-extracting a reference to a
     /// `Session` from a value that now owns it.
     fn sess<'a>(&'a self) -> &'a Session;

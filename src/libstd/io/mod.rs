@@ -232,6 +232,7 @@ use error::{FromError, Error};
 use fmt;
 use int;
 use iter::{Iterator, IteratorExt};
+use kinds::Sized;
 use mem::transmute;
 use ops::{BitOr, BitXor, BitAnd, Sub, Not, FnOnce};
 use option::Option;
@@ -1030,11 +1031,25 @@ pub trait Writer {
     fn write_fmt(&mut self, fmt: fmt::Arguments) -> IoResult<()> {
         // Create a shim which translates a Writer to a FormatWriter and saves
         // off I/O errors. instead of discarding them
-        struct Adaptor<'a, T:'a> {
+        struct Adaptor<'a, Sized? T:'a> {
             inner: &'a mut T,
             error: IoResult<()>,
         }
 
+        #[cfg(not(stage0))]
+        impl<'a, Sized? T: Writer> fmt::FormatWriter for Adaptor<'a, T> {
+            fn write(&mut self, bytes: &[u8]) -> fmt::Result {
+                match self.inner.write(bytes) {
+                    Ok(()) => Ok(()),
+                    Err(e) => {
+                        self.error = Err(e);
+                        Err(fmt::Error)
+                    }
+                }
+            }
+        }
+
+        #[cfg(stage0)]
         impl<'a, T: Writer> fmt::FormatWriter for Adaptor<'a, T> {
             fn write(&mut self, bytes: &[u8]) -> fmt::Result {
                 match self.inner.write(bytes) {
@@ -1629,11 +1644,19 @@ pub trait Acceptor<T> {
 /// `Some`. The `Some` contains the `IoResult` representing whether the
 /// connection attempt was successful.  A successful connection will be wrapped
 /// in `Ok`. A failed connection is represented as an `Err`.
-pub struct IncomingConnections<'a, A:'a> {
+pub struct IncomingConnections<'a, Sized? A:'a> {
     inc: &'a mut A,
 }
 
+#[cfg(stage0)]
 impl<'a, T, A: Acceptor<T>> Iterator<IoResult<T>> for IncomingConnections<'a, A> {
+    fn next(&mut self) -> Option<IoResult<T>> {
+        Some(self.inc.accept())
+    }
+}
+
+#[cfg(not(stage0))]
+impl<'a, T, Sized? A: Acceptor<T>> Iterator<IoResult<T>> for IncomingConnections<'a, A> {
     fn next(&mut self) -> Option<IoResult<T>> {
         Some(self.inc.accept())
     }
