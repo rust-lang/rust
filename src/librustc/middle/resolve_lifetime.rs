@@ -373,6 +373,7 @@ impl<'a> LifetimeContext<'a> {
         let mut search_result = None;
         let mut loop_count = 0u;
         loop {
+            loop_count += 1;
             debug!("resolve_free_lifetime_ref loop: {} \
                     scope_data: {} scope: {} search_result: {}",
                    loop_count, scope_data, scope, search_result);
