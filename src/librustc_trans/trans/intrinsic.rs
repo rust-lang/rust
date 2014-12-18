@@ -120,8 +120,8 @@ pub fn check_intrinsics(ccx: &CrateContext) {
                             "s"
                         })[]);
         }
-        if ty::type_is_fat_ptr(ccx.tcx(), transmute_restriction.to) ||
-           ty::type_is_fat_ptr(ccx.tcx(), transmute_restriction.from) {
+        if type_is_fat_ptr(ccx.tcx(), transmute_restriction.to) ||
+           type_is_fat_ptr(ccx.tcx(), transmute_restriction.from) {
             ccx.sess()
                .add_lint(::lint::builtin::FAT_PTR_TRANSMUTES,
                          transmute_restriction.id,
