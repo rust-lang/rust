@@ -17,4 +17,4 @@ pub use core::uint::{BITS, BYTES, MIN, MAX};
 
 use ops::FnOnce;
 
-uint_module!(uint)
+uint_module! { uint }

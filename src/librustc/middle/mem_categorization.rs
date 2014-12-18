@@ -389,14 +389,14 @@ impl MutabilityCategory {
     }
 }
 
-macro_rules! if_ok(
+macro_rules! if_ok {
     ($inp: expr) => (
         match $inp {
             Ok(v) => { v }
             Err(e) => { return Err(e); }
         }
     )
-)
+}
 
 impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
     pub fn new(typer: &'t TYPER) -> MemCategorizationContext<'t,TYPER> {

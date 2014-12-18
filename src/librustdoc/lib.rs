@@ -93,7 +93,7 @@ static DEFAULT_PASSES: &'static [&'static str] = &[
 
 thread_local!(pub static ANALYSISKEY: Rc<RefCell<Option<core::CrateAnalysis>>> = {
     Rc::new(RefCell::new(None))
-})
+});
 
 struct Output {
     krate: clean::Crate,

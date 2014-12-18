@@ -15,7 +15,7 @@
 
 #[phase(plugin)] extern crate issue_16723_multiple_items_syntax_ext;
 
-multiple_items!()
+multiple_items!();
 
 impl Struct1 {
     fn foo() {}

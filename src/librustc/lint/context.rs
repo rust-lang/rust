@@ -171,17 +171,17 @@ impl LintStore {
             {$(
                 self.register_pass($sess, false, box builtin::$name as LintPassObject);
             )*}
-        ))
+        ));
 
         macro_rules! add_builtin_with_new ( ( $sess:ident, $($name:ident),*, ) => (
             {$(
                 self.register_pass($sess, false, box builtin::$name::new() as LintPassObject);
             )*}
-        ))
+        ));
 
         macro_rules! add_lint_group ( ( $sess:ident, $name:expr, $($lint:ident),* ) => (
             self.register_group($sess, false, $name, vec![$(LintId::of(builtin::$lint)),*]);
-        ))
+        ));
 
         add_builtin!(sess,
                      HardwiredLints,
@@ -204,21 +204,21 @@ impl LintStore {
                      UnusedAllocation,
                      Stability,
                      MissingCopyImplementations,
-        )
+        );
 
         add_builtin_with_new!(sess,
                               TypeLimits,
                               RawPointerDeriving,
                               MissingDoc,
-        )
+        );
 
         add_lint_group!(sess, "bad_style",
-                        NON_CAMEL_CASE_TYPES, NON_SNAKE_CASE, NON_UPPER_CASE_GLOBALS)
+                        NON_CAMEL_CASE_TYPES, NON_SNAKE_CASE, NON_UPPER_CASE_GLOBALS);
 
         add_lint_group!(sess, "unused",
                         UNUSED_IMPORTS, UNUSED_VARIABLES, UNUSED_ASSIGNMENTS, DEAD_CODE,
                         UNUSED_MUT, UNREACHABLE_CODE, UNUSED_MUST_USE,
-                        UNUSED_UNSAFE, PATH_STATEMENTS)
+                        UNUSED_UNSAFE, PATH_STATEMENTS);
 
         // We have one lint pass defined in this module.
         self.register_pass(sess, false, box GatherNodeLevels as LintPassObject);
@@ -318,7 +318,7 @@ pub struct Context<'a, 'tcx: 'a> {
 }
 
 /// Convenience macro for calling a `LintPass` method on every pass in the context.
-macro_rules! run_lints ( ($cx:expr, $f:ident, $($args:expr),*) => ({
+macro_rules! run_lints { ($cx:expr, $f:ident, $($args:expr),*) => ({
     // Move the vector of passes out of `$cx` so that we can
     // iterate over it mutably while passing `$cx` to the methods.
     let mut passes = $cx.lints.passes.take().unwrap();
@@ -326,7 +326,7 @@ macro_rules! run_lints ( ($cx:expr, $f:ident, $($args:expr),*) => ({
         obj.$f($cx, $($args),*);
     }
     $cx.lints.passes = Some(passes);
-}))
+}) }
 
 /// Parse the lint attributes into a vector, with `Err`s for malformed lint
 /// attributes. Writing this as an iterator is an enormous mess.

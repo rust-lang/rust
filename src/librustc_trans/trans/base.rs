@@ -103,9 +103,11 @@ use syntax::visit::Visitor;
 use syntax::visit;
 use syntax::{ast, ast_util, ast_map};
 
-thread_local!(static TASK_LOCAL_INSN_KEY: RefCell<Option<Vec<&'static str>>> = {
-    RefCell::new(None)
-})
+thread_local! {
+    static TASK_LOCAL_INSN_KEY: RefCell<Option<Vec<&'static str>>> = {
+        RefCell::new(None)
+    }
+}
 
 pub fn with_insn_ctxt<F>(blk: F) where
     F: FnOnce(&[&'static str]),

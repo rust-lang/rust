@@ -749,10 +749,10 @@ fn declare_intrinsic(ccx: &CrateContext, key: & &'static str) -> Option<ValueRef
                 return Some(f);
             }
         )
-    )
+    );
     macro_rules! mk_struct (
         ($($field_ty:expr),*) => (Type::struct_(ccx, &[$($field_ty),*], false))
-    )
+    );
 
     let i8p = Type::i8p(ccx);
     let void = Type::void(ccx);
@@ -886,7 +886,7 @@ fn declare_intrinsic(ccx: &CrateContext, key: & &'static str) -> Option<ValueRef
                 return Some(f);
             }
         )
-    )
+    );
 
     compatible_ifn!("llvm.copysign.f32", copysignf(t_f32, t_f32) -> t_f32);
     compatible_ifn!("llvm.copysign.f64", copysign(t_f64, t_f64) -> t_f64);

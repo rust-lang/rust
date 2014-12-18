@@ -124,4 +124,4 @@ mod tests {
         assert!(5u.checked_div(0) == None);
     }
 }
-))
+));

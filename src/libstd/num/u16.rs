@@ -17,4 +17,4 @@ pub use core::u16::{BITS, BYTES, MIN, MAX};
 
 use ops::FnOnce;
 
-uint_module!(u16)
+uint_module! { u16 }

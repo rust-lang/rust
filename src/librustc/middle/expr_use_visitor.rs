@@ -320,14 +320,14 @@ pub struct ExprUseVisitor<'d,'t,'tcx,TYPER:'t> {
 //
 // Note that this macro appears similar to try!(), but, unlike try!(),
 // it does not propagate the error.
-macro_rules! return_if_err(
+macro_rules! return_if_err {
     ($inp: expr) => (
         match $inp {
             Ok(v) => v,
             Err(()) => return
         }
     )
-)
+}
 
 /// Whether the elements of an overloaded operation are passed by value or by reference
 enum PassArgs {

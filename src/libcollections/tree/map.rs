@@ -900,7 +900,7 @@ macro_rules! define_iterator {
      ) => {
         // private methods on the forward iterator (item!() for the
         // addr_mut in the next_ return value)
-        item!(impl<'a, K, V> $name<'a, K, V> {
+        item! { impl<'a, K, V> $name<'a, K, V> {
             #[inline(always)]
             fn next_(&mut self, forward: bool) -> Option<(&'a K, &'a $($addr_mut)* V)> {
                 while !self.stack.is_empty() || !self.node.is_null() {
@@ -968,10 +968,10 @@ macro_rules! define_iterator {
                     self.node = ptr::RawPtr::null();
                 }
             }
-        })
+        } }
 
         // the forward Iterator impl.
-        item!(impl<'a, K, V> Iterator<(&'a K, &'a $($addr_mut)* V)> for $name<'a, K, V> {
+        item! { impl<'a, K, V> Iterator<(&'a K, &'a $($addr_mut)* V)> for $name<'a, K, V> {
             /// Advances the iterator to the next node (in order) and return a
             /// tuple with a reference to the key and value. If there are no
             /// more nodes, return `None`.
@@ -983,10 +983,10 @@ macro_rules! define_iterator {
             fn size_hint(&self) -> (uint, Option<uint>) {
                 (self.remaining_min, Some(self.remaining_max))
             }
-        })
+        } }
 
         // the reverse Iterator impl.
-        item!(impl<'a, K, V> Iterator<(&'a K, &'a $($addr_mut)* V)> for $rev_name<'a, K, V> {
+        item! { impl<'a, K, V> Iterator<(&'a K, &'a $($addr_mut)* V)> for $rev_name<'a, K, V> {
             fn next(&mut self) -> Option<(&'a K, &'a $($addr_mut)* V)> {
                 self.iter.next_(false)
             }
@@ -995,7 +995,7 @@ macro_rules! define_iterator {
             fn size_hint(&self) -> (uint, Option<uint>) {
                 self.iter.size_hint()
             }
-        })
+        } }
     }
 } // end of define_iterator
 

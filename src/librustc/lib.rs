@@ -121,7 +121,7 @@ pub mod lib {
     pub use llvm;
 }
 
-__build_diagnostic_array!(DIAGNOSTICS)
+__build_diagnostic_array! { DIAGNOSTICS }
 
 // A private module so that macro-expanded idents like
 // `::rustc::lint::Lint` will also work in `rustc` itself.

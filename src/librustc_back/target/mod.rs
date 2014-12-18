@@ -256,7 +256,7 @@ impl Target {
                         )
                     );
             } );
-        )
+        );
 
         key!(cpu);
         key!(linker);
@@ -325,7 +325,7 @@ impl Target {
                     }
                 }
             )
-        )
+        );
 
         load_specific!(
             x86_64_unknown_linux_gnu,
@@ -348,7 +348,7 @@ impl Target {
 
             x86_64_pc_windows_gnu,
             i686_pc_windows_gnu
-        )
+        );
 
 
         let path = Path::new(target);

@@ -779,7 +779,7 @@ The counts do not include methods or trait
 implementations that are visible only through a re-exported type.",
 stable, unstable, experimental, deprecated, unmarked,
 name=self.name));
-        try!(write!(f, "<table>"))
+        try!(write!(f, "<table>"));
         try!(fmt_inner(f, &mut context, self));
         write!(f, "</table>")
     }

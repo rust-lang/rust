@@ -224,7 +224,7 @@ impl<'a> Parser<'a> {
                 },
                 '(' => {
                     if self.peek_is(1, '?') {
-                        try!(self.expect('?'))
+                        try!(self.expect('?'));
                         try!(self.parse_group_opts())
                     } else {
                         self.caps += 1;
@@ -373,7 +373,7 @@ impl<'a> Parser<'a> {
     fn parse_class(&mut self) -> Result<(), Error> {
         let negated =
             if self.peek_is(1, '^') {
-                try!(self.expect('^'))
+                try!(self.expect('^'));
                 FLAG_NEGATED
             } else {
                 FLAG_EMPTY
@@ -597,7 +597,7 @@ impl<'a> Parser<'a> {
     // Parses all escape sequences.
     // Assumes that '\' is the current character.
     fn parse_escape(&mut self) -> Result<Ast, Error> {
-        try!(self.noteof("an escape sequence following a '\\'"))
+        try!(self.noteof("an escape sequence following a '\\'"));
 
         let c = self.cur();
         if is_punct(c) {
@@ -639,7 +639,7 @@ impl<'a> Parser<'a> {
         let negated = if self.cur() == 'P' { FLAG_NEGATED } else { FLAG_EMPTY };
         let mut name: String;
         if self.peek_is(1, '{') {
-            try!(self.expect('{'))
+            try!(self.expect('{'));
             let closer =
                 match self.pos('}') {
                     Some(i) => i,
@@ -677,10 +677,10 @@ impl<'a> Parser<'a> {
         let mut end = start + 1;
         let (d2, d3) = (self.peek(1), self.peek(2));
         if d2 >= Some('0') && d2 <= Some('7') {
-            try!(self.noteof("expected octal character in [0-7]"))
+            try!(self.noteof("expected octal character in [0-7]"));
             end += 1;
             if d3 >= Some('0') && d3 <= Some('7') {
-                try!(self.noteof("expected octal character in [0-7]"))
+                try!(self.noteof("expected octal character in [0-7]"));
                 end += 1;
             }
         }
@@ -698,7 +698,7 @@ impl<'a> Parser<'a> {
     // Assumes that \x has been read.
     fn parse_hex(&mut self) -> Result<Ast, Error> {
         if !self.peek_is(1, '{') {
-            try!(self.expect('{'))
+            try!(self.expect('{'));
             return self.parse_hex_two()
         }
         let start = self.chari + 2;
@@ -723,7 +723,7 @@ impl<'a> Parser<'a> {
         let (start, end) = (self.chari, self.chari + 2);
         let bad = self.slice(start - 2, self.chars.len());
         try!(self.noteof(format!("Invalid hex escape sequence '{}'",
-                                 bad).as_slice()))
+                                 bad).as_slice()));
         self.parse_hex_digits(self.slice(start, end).as_slice())
     }
 
@@ -743,7 +743,7 @@ impl<'a> Parser<'a> {
     // is '<'.
     // When done, parser will be at the closing '>' character.
     fn parse_named_capture(&mut self) -> Result<(), Error> {
-        try!(self.noteof("a capture name"))
+        try!(self.noteof("a capture name"));
         let closer =
             match self.pos('>') {
                 Some(i) => i,
@@ -773,7 +773,8 @@ impl<'a> Parser<'a> {
     // character.
     fn parse_group_opts(&mut self) -> Result<(), Error> {
         if self.peek_is(1, 'P') && self.peek_is(2, '<') {
-            try!(self.expect('P')) try!(self.expect('<'))
+            try!(self.expect('P'));
+            try!(self.expect('<'));
             return self.parse_named_capture()
         }
         let start = self.chari;
@@ -781,7 +782,8 @@ impl<'a> Parser<'a> {
         let mut sign = 1i;
         let mut saw_flag = false;
         loop {
-            try!(self.noteof("expected non-empty set of flags or closing ')'"))
+            try!(self.noteof(
+                    "expected non-empty set of flags or closing ')'"));
             match self.cur() {
                 'i' => { flags = flags | FLAG_NOCASE;     saw_flag = true},
                 'm' => { flags = flags | FLAG_MULTI;      saw_flag = true},
@@ -823,7 +825,7 @@ impl<'a> Parser<'a> {
     // If it is, then the next character is consumed.
     fn get_next_greedy(&mut self) -> Result<Greed, Error> {
         Ok(if self.peek_is(1, '?') {
-            try!(self.expect('?'))
+            try!(self.expect('?'));
             Ungreedy
         } else {
             Greedy

@@ -199,14 +199,14 @@ pub fn regionck_ensure_component_tys_wf<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 // check failed (or will fail, when the error is uncovered and
 // reported during writeback). In this case, we just ignore this part
 // of the code and don't try to add any more region constraints.
-macro_rules! ignore_err(
+macro_rules! ignore_err {
     ($inp: expr) => (
         match $inp {
             Ok(v) => v,
             Err(()) => return
         }
     )
-)
+}
 
 // Stores parameters for a potential call to link_region()
 // to perform if an upvar reference is marked unique/mutable after

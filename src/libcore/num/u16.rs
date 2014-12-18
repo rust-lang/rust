@@ -13,4 +13,4 @@
 #![stable]
 #![doc(primitive = "u16")]
 
-uint_module!(u16, i16, 16)
+uint_module! { u16, i16, 16 }

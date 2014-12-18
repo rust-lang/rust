@@ -224,7 +224,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
         for error in errors.iter() {
             match error.clone() {
                 ConcreteFailure(origin, sub, sup) => {
-                    debug!("processing ConcreteFailure")
+                    debug!("processing ConcreteFailure");
                     let trace = match origin {
                         infer::Subtype(trace) => Some(trace),
                         _ => None,
@@ -241,7 +241,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                     }
                 }
                 SubSupConflict(var_origin, _, sub_r, _, sup_r) => {
-                    debug!("processing SubSupConflict")
+                    debug!("processing SubSupConflict");
                     match free_regions_from_same_fn(self.tcx, sub_r, sup_r) {
                         Some(ref same_frs) => {
                             var_origins.push(var_origin);
@@ -324,7 +324,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                     _ => None
                 },
                 None => {
-                    debug!("no parent node of scope_id {}", scope_id)
+                    debug!("no parent node of scope_id {}", scope_id);
                     None
                 }
             }

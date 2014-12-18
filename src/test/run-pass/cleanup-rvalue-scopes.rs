@@ -74,7 +74,7 @@ macro_rules! end_of_block(
             check_flags(1);
         }
     )
-)
+);
 
 macro_rules! end_of_stmt(
     ($pat:pat, $expr:expr) => (
@@ -91,7 +91,7 @@ macro_rules! end_of_stmt(
             check_flags(0);
         }
     )
-)
+);
 
 pub fn main() {
 

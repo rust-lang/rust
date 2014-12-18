@@ -753,16 +753,20 @@ macro_rules! mf_method{
 
 
 impl PostExpansionMethod for Method {
-    mf_method!(pe_ident,ast::Ident,MethDecl(ident,_,_,_,_,_,_,_),ident)
-    mf_method!(pe_generics,&'a ast::Generics,
-               MethDecl(_,ref generics,_,_,_,_,_,_),generics)
-    mf_method!(pe_abi,Abi,MethDecl(_,_,abi,_,_,_,_,_),abi)
-    mf_method!(pe_explicit_self,&'a ast::ExplicitSelf,
-               MethDecl(_,_,_,ref explicit_self,_,_,_,_),explicit_self)
-    mf_method!(pe_unsafety,ast::Unsafety,MethDecl(_,_,_,_,unsafety,_,_,_),unsafety)
-    mf_method!(pe_fn_decl,&'a ast::FnDecl,MethDecl(_,_,_,_,_,ref decl,_,_),&**decl)
-    mf_method!(pe_body,&'a ast::Block,MethDecl(_,_,_,_,_,_,ref body,_),&**body)
-    mf_method!(pe_vis,ast::Visibility,MethDecl(_,_,_,_,_,_,_,vis),vis)
+    mf_method! { pe_ident,ast::Ident,MethDecl(ident,_,_,_,_,_,_,_),ident }
+    mf_method! {
+        pe_generics,&'a ast::Generics,
+        MethDecl(_,ref generics,_,_,_,_,_,_),generics
+    }
+    mf_method! { pe_abi,Abi,MethDecl(_,_,abi,_,_,_,_,_),abi }
+    mf_method! {
+        pe_explicit_self,&'a ast::ExplicitSelf,
+        MethDecl(_,_,_,ref explicit_self,_,_,_,_),explicit_self
+    }
+    mf_method! { pe_unsafety,ast::Unsafety,MethDecl(_,_,_,_,unsafety,_,_,_),unsafety }
+    mf_method! { pe_fn_decl,&'a ast::FnDecl,MethDecl(_,_,_,_,_,ref decl,_,_),&**decl }
+    mf_method! { pe_body,&'a ast::Block,MethDecl(_,_,_,_,_,_,ref body,_),&**body }
+    mf_method! { pe_vis,ast::Visibility,MethDecl(_,_,_,_,_,_,_,vis),vis }
 }
 
 #[cfg(test)]
