@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use middle::region;
-use middle::subst;
 use middle::subst::{Subst};
 use middle::traits;
 use middle::ty::{mod, Ty};
@@ -23,7 +22,6 @@ use util::ppaux::Repr;
 use std::collections::HashSet;
 use syntax::ast;
 use syntax::ast_util::{local_def};
-use syntax::attr;
 use syntax::codemap::Span;
 use syntax::visit;
 use syntax::visit::Visitor;

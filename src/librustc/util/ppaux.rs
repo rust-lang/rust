@@ -89,8 +89,8 @@ pub fn explain_region_and_span(cx: &ctxt, region: ty::Region)
         ReScope(scope @ CodeExtent::Closure(_)) |
         ReScope(scope @ CodeExtent::DestructionScope(_)) => {
         let node_id = scope.node_id();
-        let prefix = if let CodeExtent::DestructionScope(dtor_id) = scope {
-            "destruction scope surrounding"
+        let prefix = if let CodeExtent::DestructionScope(_) = scope {
+            "destruction scope surrounding "
         } else {
             ""
         };
@@ -925,7 +925,7 @@ impl<'tcx> Repr<'tcx> for ty::FreeRegion {
 }
 
 impl<'tcx> Repr<'tcx> for region::CodeExtent {
-    fn repr(&self, tcx: &ctxt) -> String {
+    fn repr(&self, _: &ctxt) -> String {
         match *self {
             region::CodeExtent::Misc(node_id) =>
                 format!("Misc({})", node_id),

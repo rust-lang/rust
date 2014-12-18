@@ -87,7 +87,7 @@ use middle::{const_eval, def, traits};
 use middle::lang_items::IteratorItem;
 use middle::mem_categorization::{mod, McResult};
 use middle::pat_util::{mod, pat_id_map};
-use middle::region::{mod, CodeExtent};
+use middle::region::{CodeExtent};
 use middle::subst::{mod, Subst, Substs, VecPerParamSpace, ParamSpace};
 use middle::ty::{FnSig, VariantInfo, Polytype};
 use middle::ty::{Disr, ParamTy, ParameterEnvironment};
