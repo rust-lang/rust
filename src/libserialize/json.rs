@@ -2760,9 +2760,9 @@ mod tests {
     fn test_write_char() {
         check_encoder_for_simple!('a', "\"a\"");
         check_encoder_for_simple!('\t', "\"\\t\"");
-        check_encoder_for_simple!('\u00a0', "\"\u00a0\"");
-        check_encoder_for_simple!('\uabcd', "\"\uabcd\"");
-        check_encoder_for_simple!('\U0010ffff', "\"\U0010ffff\"");
+        check_encoder_for_simple!('\u{00a0}', "\"\u{00a0}\"");
+        check_encoder_for_simple!('\u{abcd}', "\"\u{abcd}\"");
+        check_encoder_for_simple!('\u{10ffff}', "\"\u{10ffff}\"");
     }
 
     #[test]
