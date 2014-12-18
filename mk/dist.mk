@@ -229,7 +229,7 @@ dist-install-dir-$(1): prepare-base-dir-$(1) docs compiler-docs
 	$$(Q)$$(PREPARE_MAN_CMD) $$(S)LICENSE-APACHE $$(PREPARE_DEST_DIR)
 	$$(Q)$$(PREPARE_MAN_CMD) $$(S)LICENSE-MIT $$(PREPARE_DEST_DIR)
 	$$(Q)$$(PREPARE_MAN_CMD) $$(S)README.md $$(PREPARE_DEST_DIR)
-	$$(Q)cp -r doc $$(PREPARE_DEST_DIR)
+	$$(Q)[ ! -d doc ] || cp -r doc $$(PREPARE_DEST_DIR)
 
 dist/$$(PKG_NAME)-$(1).tar.gz: dist-install-dir-$(1)
 	@$(call E, build: $$@)
@@ -312,9 +312,17 @@ MAYBE_DIST_TAR_SRC=dist-tar-src
 MAYBE_DISTCHECK_TAR_SRC=distcheck-tar-src
 endif
 
-dist: $(MAYBE_DIST_TAR_SRC) dist-osx dist-tar-bins dist-docs
+ifneq ($(CFG_DISABLE_DOCS),)
+MAYBE_DIST_DOCS=
+MAYBE_DISTCHECK_DOCS=
+else
+MAYBE_DIST_DOCS=dist-docs
+MAYBE_DISTCHECK_DOCS=distcheck-docs
+endif
 
-distcheck: $(MAYBE_DISTCHECK_TAR_SRC) distcheck-osx distcheck-tar-bins distcheck-docs
+dist: $(MAYBE_DIST_TAR_SRC) dist-osx dist-tar-bins $(MAYBE_DIST_DOCS)
+
+distcheck: $(MAYBE_DISTCHECK_TAR_SRC) distcheck-osx distcheck-tar-bins $(MAYBE_DISTCHECK_DOCS)
 	$(Q)rm -Rf tmp/distcheck
 	@echo
 	@echo -----------------------------------------------
