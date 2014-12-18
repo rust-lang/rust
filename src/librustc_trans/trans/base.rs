@@ -2938,7 +2938,7 @@ pub fn crate_ctxt_to_encode_parms<'a, 'tcx>(cx: &'a SharedCrateContext<'tcx>,
     encoder::EncodeParams {
         diag: cx.sess().diagnostic(),
         tcx: cx.tcx(),
-        reexports2: cx.exp_map2(),
+        reexports: cx.export_map(),
         item_symbols: cx.item_symbols(),
         link_meta: cx.link_meta(),
         cstore: &cx.sess().cstore,
@@ -3071,7 +3071,7 @@ fn internalize_symbols(cx: &SharedCrateContext, reachable: &HashSet<String>) {
 
 pub fn trans_crate<'tcx>(analysis: ty::CrateAnalysis<'tcx>)
                          -> (ty::ctxt<'tcx>, CrateTranslation) {
-    let ty::CrateAnalysis { ty_cx: tcx, exp_map2, reachable, name, .. } = analysis;
+    let ty::CrateAnalysis { ty_cx: tcx, export_map, reachable, name, .. } = analysis;
     let krate = tcx.map.krate();
 
     // Before we touch LLVM, make sure that multithreading is enabled.
@@ -3098,7 +3098,7 @@ pub fn trans_crate<'tcx>(analysis: ty::CrateAnalysis<'tcx>)
     let shared_ccx = SharedCrateContext::new(link_meta.crate_name.as_slice(),
                                              codegen_units,
                                              tcx,
-                                             exp_map2,
+                                             export_map,
                                              Sha256::new(),
                                              link_meta.clone(),
                                              reachable);
