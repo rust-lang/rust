@@ -119,7 +119,7 @@ fn with_env_lock<T, F>(f: F) -> T where
 /// Returns a vector of (variable, value) pairs, for all the environment
 /// variables of the current process.
 ///
-/// Invalid UTF-8 bytes are replaced with \uFFFD. See `String::from_utf8_lossy()`
+/// Invalid UTF-8 bytes are replaced with \u{FFFD}. See `String::from_utf8_lossy()`
 /// for details.
 ///
 /// # Example
@@ -166,7 +166,7 @@ pub fn env_as_bytes() -> Vec<(Vec<u8>,Vec<u8>)> {
 /// Fetches the environment variable `n` from the current process, returning
 /// None if the variable isn't set.
 ///
-/// Any invalid UTF-8 bytes in the value are replaced by \uFFFD. See
+/// Any invalid UTF-8 bytes in the value are replaced by \u{FFFD}. See
 /// `String::from_utf8_lossy()` for details.
 ///
 /// # Panics
@@ -768,7 +768,7 @@ extern "system" {
 /// set to arbitrary text, and it may not even exist, so this property should not
 /// be relied upon for security purposes.
 ///
-/// The arguments are interpreted as utf-8, with invalid bytes replaced with \uFFFD.
+/// The arguments are interpreted as utf-8, with invalid bytes replaced with \u{FFFD}.
 /// See `String::from_utf8_lossy` for details.
 /// # Example
 ///
