@@ -17,7 +17,7 @@
 //!
 //! There are no restrictions on what types can be placed into a scoped
 //! variable, but all scoped variables are initialized to the equivalent of
-//! null. Scoped thread local stor is useful when a value is present for a known
+//! null. Scoped thread local storage is useful when a value is present for a known
 //! period of time and it is not required to relinquish ownership of the
 //! contents.
 //!

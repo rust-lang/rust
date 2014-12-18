@@ -82,7 +82,7 @@ impl UdpSocket {
     /// Sends data on the socket to the given address. Returns nothing on
     /// success.
     ///
-    /// Address type can be any implementor of `ToSocketAddr` trait. See its
+    /// Address type can be any implementer of `ToSocketAddr` trait. See its
     /// documentation for concrete examples.
     pub fn send_to<A: ToSocketAddr>(&mut self, buf: &[u8], addr: A) -> IoResult<()> {
         super::with_addresses(addr, |addr| self.inner.send_to(buf, addr))
