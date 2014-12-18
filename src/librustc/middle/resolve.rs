@@ -43,7 +43,7 @@ use middle::lang_items::LanguageItems;
 use middle::pat_util::pat_bindings;
 use middle::subst::{ParamSpace, FnSpace, TypeSpace};
 use middle::ty::{ExplicitSelfCategory, StaticExplicitSelfCategory};
-use middle::ty::{CaptureModeMap, Freevar, FreevarMap};
+use middle::ty::{CaptureModeMap, Freevar, FreevarMap, TraitMap};
 use util::nodemap::{NodeMap, NodeSet, DefIdSet, FnvHashMap};
 
 use syntax::ast::{Arm, BindByRef, BindByValue, BindingMode, Block, Crate, CrateNum};
@@ -92,9 +92,6 @@ struct BindingInfo {
 
 // Map from the name in a pattern to its binding mode.
 type BindingMap = HashMap<Name, BindingInfo>;
-
-// Trait method resolution
-pub type TraitMap = NodeMap<Vec<DefId>>;
 
 // This is the replacement export map. It maps a module to all of the exports
 // within.
