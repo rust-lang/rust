@@ -1335,15 +1335,6 @@ impl<'a, T: Clone> Add<&'a [T], Vec<T>> for Vec<T> {
     }
 }
 
-#[cfg(not(stage0))]  // NOTE(stage0): Remove impl after a snapshot
-impl<'a, T: Clone> Add<Vec<T>, Vec<T>> for &'a [T] {
-    #[inline]
-    fn add(self, mut rhs: Vec<T>) -> Vec<T> {
-        rhs.push_all(self);
-        rhs
-    }
-}
-
 #[unsafe_destructor]
 impl<T> Drop for Vec<T> {
     fn drop(&mut self) {
