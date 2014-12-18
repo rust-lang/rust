@@ -1356,7 +1356,7 @@ fn check_cast(fcx: &FnCtxt,
         return
     }
 
-    if !ty::type_is_sized(fcx.tcx(), t_1) {
+    if !fcx.type_is_known_to_be_sized(t_1) {
         let tstr = fcx.infcx().ty_to_string(t_1);
         fcx.type_error_message(span, |actual| {
             format!("cast to unsized type: `{}` as `{}`", actual, tstr)
@@ -1545,8 +1545,12 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn tcx(&self) -> &ty::ctxt<'tcx> { self.ccx.tcx }
 
-    pub fn infcx<'b>(&'b self) -> &'b infer::InferCtxt<'a, 'tcx> {
+    pub fn infcx(&self) -> &infer::InferCtxt<'a, 'tcx> {
         &self.inh.infcx
+    }
+
+    pub fn param_env(&self) -> &ty::ParameterEnvironment<'tcx> {
+        &self.inh.param_env
     }
 
     pub fn sess(&self) -> &Session {
@@ -1790,6 +1794,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         code: traits::ObligationCauseCode<'tcx>)
     {
         self.require_type_is_sized(self.expr_ty(expr), expr.span, code);
+    }
+
+    pub fn type_is_known_to_be_sized(&self,
+                                     ty: Ty<'tcx>)
+                                     -> bool
+    {
+        traits::type_known_to_meet_builtin_bound(self.infcx(),
+                                                 self.param_env(),
+                                                 ty,
+                                                 ty::BoundSized)
     }
 
     pub fn register_builtin_bound(&self,

@@ -58,6 +58,58 @@ use util::nodemap::FnvHashSet;
 
 pub use trans::context::CrateContext;
 
+// Is the type's representation size known at compile time?
+pub fn type_is_sized<'tcx>(cx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
+    ty::type_contents(cx, ty).is_sized(cx)
+}
+
+pub fn lltype_is_sized<'tcx>(cx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
+    match ty.sty {
+        ty::ty_open(_) => true,
+        _ => type_is_sized(cx, ty),
+    }
+}
+
+pub fn type_is_fat_ptr<'tcx>(cx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
+    match ty.sty {
+        ty::ty_ptr(ty::mt{ty, ..}) |
+        ty::ty_rptr(_, ty::mt{ty, ..}) |
+        ty::ty_uniq(ty) => {
+            !type_is_sized(cx, ty)
+        }
+        _ => {
+            false
+        }
+    }
+}
+
+// Return the smallest part of `ty` which is unsized. Fails if `ty` is sized.
+// 'Smallest' here means component of the static representation of the type; not
+// the size of an object at runtime.
+pub fn unsized_part_of_type<'tcx>(cx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
+    match ty.sty {
+        ty::ty_str | ty::ty_trait(..) | ty::ty_vec(..) => ty,
+        ty::ty_struct(def_id, substs) => {
+            let unsized_fields: Vec<_> =
+                ty::struct_fields(cx, def_id, substs)
+                .iter()
+                .map(|f| f.mt.ty)
+                .filter(|ty| !type_is_sized(cx, *ty))
+                .collect();
+
+            // Exactly one of the fields must be unsized.
+            assert!(unsized_fields.len() == 1);
+
+            unsized_part_of_type(cx, unsized_fields[0])
+        }
+        _ => {
+            assert!(type_is_sized(cx, ty),
+                    "unsized_part_of_type failed even though ty is unsized");
+            panic!("called unsized_part_of_type with sized ty");
+        }
+    }
+}
+
 // Some things don't need cleanups during unwinding because the
 // task can free them all at once later. Currently only things
 // that only contain scalars and shared boxes can avoid unwind
@@ -128,10 +180,10 @@ pub fn type_is_immediate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -
         ty::type_is_unique(ty) || ty::type_is_region_ptr(ty) ||
         type_is_newtype_immediate(ccx, ty) ||
         ty::type_is_simd(tcx, ty);
-    if simple && !ty::type_is_fat_ptr(tcx, ty) {
+    if simple && !type_is_fat_ptr(tcx, ty) {
         return true;
     }
-    if !ty::type_is_sized(tcx, ty) {
+    if !type_is_sized(tcx, ty) {
         return false;
     }
     match ty.sty {

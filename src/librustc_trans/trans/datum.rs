@@ -398,7 +398,7 @@ impl<'tcx> Datum<'tcx, Expr> {
                                  -> DatumBlock<'blk, 'tcx, Lvalue> {
         debug!("to_lvalue_datum self: {}", self.to_string(bcx.ccx()));
 
-        assert!(ty::lltype_is_sized(bcx.tcx(), self.ty),
+        assert!(lltype_is_sized(bcx.tcx(), self.ty),
                 "Trying to convert unsized value to lval");
         self.match_kind(
             |l| DatumBlock::new(bcx, l),
@@ -456,7 +456,7 @@ impl<'tcx> Datum<'tcx, Lvalue> {
         F: FnOnce(ValueRef) -> ValueRef,
     {
         let val = match self.ty.sty {
-            _ if ty::type_is_sized(bcx.tcx(), self.ty) => gep(self.val),
+            _ if type_is_sized(bcx.tcx(), self.ty) => gep(self.val),
             ty::ty_open(_) => {
                 let base = Load(bcx, expr::get_dataptr(bcx, self.val));
                 gep(base)
