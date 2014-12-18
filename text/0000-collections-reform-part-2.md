@@ -253,13 +253,12 @@ impl<'a, K, V> VacantEntry<'a, K, V> {
 }
 
 impl<'a, K, V> OccupiedEntry<'a, K, V> {
+    fn get(&self) -> &V
+    fn get_mut(&mut self) -> &mut V
     fn into_mut(self) -> &'a mut V
     fn insert(&mut self, value: V) -> V
     fn remove(self) -> V
 }
-
-impl Deref<V> for OccupiedEntry<'a, O, V>
-impl DerefMut<V> for OccupiedEntry<'a, O, V>
 ```
 
 Replacing get/get_mut with Deref is simply a nice ergonomic improvement. Renaming `set` and `take`
