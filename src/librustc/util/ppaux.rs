@@ -543,7 +543,11 @@ pub fn parameterized<'tcx>(cx: &ctxt<'tcx>,
     if cx.lang_items.fn_trait_kind(did).is_some() {
         format!("{}({}){}",
                 base,
-                strs[0][1 .. strs[0].len() - (strs[0].ends_with(",)") as uint+1)],
+                if strs[0].starts_with("(") && strs[0].ends_with(",)") {
+                    strs[0][1 .. strs[0].len() - 2] // Remove '(' and ',)'
+                } else {
+                    strs[0][]
+                },
                 if &*strs[1] == "()" { String::new() } else { format!(" -> {}", strs[1]) })
     } else if strs.len() > 0 {
         format!("{}<{}>", base, strs.connect(", "))
