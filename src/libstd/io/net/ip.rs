@@ -383,8 +383,8 @@ impl FromStr for SocketAddr {
 ///    expected by its `FromStr` implementation or a string like `<host_name>:<port>` pair
 ///    where `<port>` is a `u16` value.
 ///
-///    For the former, `to_socker_addr_all` returns a vector with a single element corresponding
-///    to that socker address.
+///    For the former, `to_socket_addr_all` returns a vector with a single element corresponding
+///    to that socket address.
 ///
 ///    For the latter, it tries to resolve the host name and returns a vector of all IP addresses
 ///    for the host name, each joined with the port.
@@ -443,7 +443,7 @@ pub trait ToSocketAddr {
 
     /// Converts this object to all available socket address values.
     ///
-    /// Some values like host name string naturally corrrespond to multiple IP addresses.
+    /// Some values like host name string naturally correspond to multiple IP addresses.
     /// This method tries to return all available addresses corresponding to this object.
     ///
     /// By default this method delegates to `to_socket_addr` method, creating a singleton
