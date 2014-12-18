@@ -250,9 +250,10 @@ impl fmt::Show for LogLevel {
 impl Logger for DefaultLogger {
     fn log(&mut self, record: &LogRecord) {
         match writeln!(&mut self.handle,
-                       "{}:{}: {}",
+                       "{}:{}:{}: {}",
                        record.level,
                        record.module_path,
+                       record.task_name,
                        record.args) {
             Err(e) => panic!("failed to log: {}", e),
             Ok(()) => {}
@@ -278,7 +279,7 @@ impl Drop for DefaultLogger {
 /// It is not recommended to call this function directly, rather it should be
 /// invoked through the logging family of macros.
 #[doc(hidden)]
-pub fn log(level: u32, loc: &'static LogLocation, args: &fmt::Arguments) {
+pub fn log(level: u32, loc: LogLocation, args: &fmt::Arguments) {
     // Test the literal string from args against the current filter, if there
     // is one.
     match unsafe { FILTER.as_ref() } {
@@ -300,6 +301,9 @@ pub fn log(level: u32, loc: &'static LogLocation, args: &fmt::Arguments) {
         file: loc.file,
         module_path: loc.module_path,
         line: loc.line,
+        task_name: loc.task_name
+                       .as_ref().map(|s| &**s)
+                       .unwrap_or("<unnamed>"),
     });
     set_logger(logger);
 }
@@ -338,6 +342,9 @@ pub struct LogRecord<'a> {
 
     /// The line number of where the LogRecord originated.
     pub line: uint,
+
+    /// The task name of the task where the LogRecord originated.
+    pub task_name: &'a str
 }
 
 #[doc(hidden)]
@@ -345,6 +352,7 @@ pub struct LogLocation {
     pub module_path: &'static str,
     pub file: &'static str,
     pub line: uint,
+    pub task_name: Option<String>
 }
 
 impl Copy for LogLocation {}
