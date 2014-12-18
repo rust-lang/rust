@@ -29,9 +29,9 @@ macro_rules! test(
             }
         }
     )
-)
+);
 
-test!(y, 10 + (y as int))
+test!(y, 10 + (y as int));
 
 pub fn main() {
     foo(T::A(20));

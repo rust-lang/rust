@@ -222,7 +222,7 @@
 //! # #![feature(macro_rules)]
 //! macro_rules! try(
 //!     ($e:expr) => (match $e { Ok(e) => e, Err(e) => return Err(e) })
-//! )
+//! );
 //! # fn main() { }
 //! ```
 //!

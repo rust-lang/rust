@@ -62,9 +62,9 @@ mod test {
         let s : Option<i16> = from_str_radix("80000", 10);
         assert_eq!(s, None);
         let f : Option<f32> = from_str_radix("10000000000000000000000000000000000000000", 10);
-        assert_eq!(f, Some(Float::infinity()))
+        assert_eq!(f, Some(Float::infinity()));
         let fe : Option<f32> = from_str_radix("1e40", 10);
-        assert_eq!(fe, Some(Float::infinity()))
+        assert_eq!(fe, Some(Float::infinity()));
     }
 
     #[test]

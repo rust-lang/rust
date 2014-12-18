@@ -349,7 +349,7 @@ impl Engine256State {
         macro_rules! schedule_round( ($t:expr) => (
                 w[$t] = sigma1(w[$t - 2]) + w[$t - 7] + sigma0(w[$t - 15]) + w[$t - 16];
                 )
-        )
+        );
 
         macro_rules! sha2_round(
             ($A:ident, $B:ident, $C:ident, $D:ident,
@@ -360,7 +360,7 @@ impl Engine256State {
                     $H += sum0($A) + maj($A, $B, $C);
                 }
              )
-        )
+        );
 
         read_u32v_be(w[mut 0..16], data);
 
@@ -454,7 +454,7 @@ impl Engine256 {
     }
 
     fn input(&mut self, input: &[u8]) {
-        assert!(!self.finished)
+        assert!(!self.finished);
         // Assumes that input.len() can be converted to u64 without overflow
         self.length_bits = add_bytes_to_bits(self.length_bits, input.len() as u64);
         let self_state = &mut self.state;

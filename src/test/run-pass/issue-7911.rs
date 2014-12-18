@@ -37,9 +37,9 @@ macro_rules! generate_test(($type_:path, $slf:ident, $field:expr) => (
             &mut $field as &mut FooBar
         }
     }
-))
+));
 
-generate_test!(Foo, self, self.bar)
+generate_test!(Foo, self, self.bar);
 
 pub fn main() {
     let mut foo: Foo = Foo { bar: Bar(42) };

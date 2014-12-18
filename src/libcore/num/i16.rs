@@ -13,4 +13,4 @@
 #![stable]
 #![doc(primitive = "i16")]
 
-int_module!(i16, 16)
+int_module! { i16, 16 }

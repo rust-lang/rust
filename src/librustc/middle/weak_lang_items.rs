@@ -23,7 +23,8 @@ use syntax::visit;
 
 use std::collections::HashSet;
 
-macro_rules! weak_lang_items( ($($name:ident, $item:ident, $sym:ident;)*) => (
+macro_rules! weak_lang_items {
+    ($($name:ident, $item:ident, $sym:ident;)*) => (
 
 struct Context<'a> {
     sess: &'a Session,
@@ -115,10 +116,10 @@ impl<'a, 'v> Visitor<'v> for Context<'a> {
     }
 }
 
-) )
+) }
 
-weak_lang_items!(
+weak_lang_items! {
     panic_fmt,          PanicFmtLangItem,            rust_begin_unwind;
     stack_exhausted,    StackExhaustedLangItem,     rust_stack_exhausted;
     eh_personality,     EhPersonalityLangItem,      rust_eh_personality;
-)
+}

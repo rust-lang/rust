@@ -582,8 +582,8 @@ macro_rules! impl_eq {
     }
 }
 
-impl_eq!(Vec<A>, &'b [B])
-impl_eq!(Vec<A>, &'b mut [B])
+impl_eq! { Vec<A>, &'b [B] }
+impl_eq! { Vec<A>, &'b mut [B] }
 
 impl<'a, A, B> PartialEq<Vec<B>> for CowVec<'a, A> where A: PartialEq<B> + Clone {
     #[inline]
@@ -617,8 +617,8 @@ macro_rules! impl_eq_for_cowvec {
     }
 }
 
-impl_eq_for_cowvec!(&'b [B])
-impl_eq_for_cowvec!(&'b mut [B])
+impl_eq_for_cowvec! { &'b [B] }
+impl_eq_for_cowvec! { &'b mut [B] }
 
 #[unstable = "waiting on PartialOrd stability"]
 impl<T: PartialOrd> PartialOrd for Vec<T> {
@@ -2065,7 +2065,7 @@ mod tests {
 
     #[test]
     fn test_partitioned() {
-        assert_eq!(vec![].partitioned(|x: &int| *x < 3), (vec![], vec![]))
+        assert_eq!(vec![].partitioned(|x: &int| *x < 3), (vec![], vec![]));
         assert_eq!(vec![1i, 2, 3].partitioned(|x: &int| *x < 4), (vec![1, 2, 3], vec![]));
         assert_eq!(vec![1i, 2, 3].partitioned(|x: &int| *x < 2), (vec![1], vec![2, 3]));
         assert_eq!(vec![1i, 2, 3].partitioned(|x: &int| *x < 0), (vec![], vec![1, 2, 3]));

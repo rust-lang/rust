@@ -15,4 +15,4 @@
 
 pub use core::i8::{BITS, BYTES, MIN, MAX};
 
-int_module!(i8)
+int_module! { i8 }

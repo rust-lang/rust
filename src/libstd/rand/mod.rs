@@ -350,7 +350,7 @@ pub fn task_rng() -> TaskRng {
                                                TASK_RNG_RESEED_THRESHOLD,
                                                TaskRngReseeder);
         Rc::new(RefCell::new(rng))
-    })
+    });
 
     TaskRng { rng: TASK_RNG_KEY.with(|t| t.clone()) }
 }

@@ -1141,7 +1141,7 @@ macro_rules! iterator_impl {
             }
         }
 
-        item!(impl<'a, T> Iterator<(uint, &'a $($mut_)* T)> for $name<'a, T> {
+        item! { impl<'a, T> Iterator<(uint, &'a $($mut_)* T)> for $name<'a, T> {
                 // you might wonder why we're not even trying to act within the
                 // rules, and are just manipulating raw pointers like there's no
                 // such thing as invalid pointers and memory unsafety. The
@@ -1213,7 +1213,7 @@ macro_rules! iterator_impl {
                 fn size_hint(&self) -> (uint, Option<uint>) {
                     (self.remaining_min, Some(self.remaining_max))
                 }
-            })
+            } }
     }
 }
 

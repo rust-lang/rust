@@ -474,7 +474,9 @@ impl<E, D:Decoder<E>,T:Decodable<D, E>> Decodable<D, E> for Option<T> {
     }
 }
 
-macro_rules! peel(($name:ident, $($other:ident,)*) => (tuple!($($other,)*)))
+macro_rules! peel {
+    ($name:ident, $($other:ident,)*) => (tuple! { $($other,)* })
+}
 
 /// Evaluates to the number of identifiers passed to it, for example: `count_idents!(a, b, c) == 3
 macro_rules! count_idents {
@@ -482,7 +484,7 @@ macro_rules! count_idents {
     ($_i:ident $(, $rest:ident)*) => { 1 + count_idents!($($rest),*) }
 }
 
-macro_rules! tuple (
+macro_rules! tuple {
     () => ();
     ( $($name:ident,)+ ) => (
         impl<E, D:Decoder<E>,$($name:Decodable<D, E>),*> Decodable<D,E> for ($($name,)*) {
@@ -511,9 +513,9 @@ macro_rules! tuple (
                 })
             }
         }
-        peel!($($name,)*)
+        peel! { $($name,)* }
     )
-)
+}
 
 tuple! { T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, }
 

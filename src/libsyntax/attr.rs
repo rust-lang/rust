@@ -29,7 +29,7 @@ use std::cell::{RefCell, Cell};
 use std::collections::BitvSet;
 use std::collections::HashSet;
 
-thread_local!(static USED_ATTRS: RefCell<BitvSet> = RefCell::new(BitvSet::new()))
+thread_local! { static USED_ATTRS: RefCell<BitvSet> = RefCell::new(BitvSet::new()) }
 
 pub fn mark_used(attr: &Attribute) {
     let AttrId(id) = attr.node.id;
@@ -169,7 +169,7 @@ pub fn mk_word_item(name: InternedString) -> P<MetaItem> {
     P(dummy_spanned(MetaWord(name)))
 }
 
-thread_local!(static NEXT_ATTR_ID: Cell<uint> = Cell::new(0))
+thread_local! { static NEXT_ATTR_ID: Cell<uint> = Cell::new(0) }
 
 pub fn mk_attr_id() -> AttrId {
     let id = NEXT_ATTR_ID.with(|slot| {

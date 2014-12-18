@@ -2083,7 +2083,7 @@ mod tests {
         let bools = vec![true, false, true, true];
         let bitv: Bitv = bools.iter().map(|n| *n).collect();
 
-        assert_eq!(bitv.iter().collect::<Vec<bool>>(), bools)
+        assert_eq!(bitv.iter().collect::<Vec<bool>>(), bools);
 
         let long = Vec::from_fn(10000, |i| i % 2 == 0);
         let bitv: Bitv = long.iter().map(|n| *n).collect();
@@ -2112,8 +2112,8 @@ mod tests {
         for &b in bools.iter() {
             for &l in lengths.iter() {
                 let bitset = BitvSet::from_bitv(Bitv::with_capacity(l, b));
-                assert_eq!(bitset.contains(&1u), b)
-                assert_eq!(bitset.contains(&(l-1u)), b)
+                assert_eq!(bitset.contains(&1u), b);
+                assert_eq!(bitset.contains(&(l-1u)), b);
                 assert!(!bitset.contains(&l))
             }
         }
@@ -2321,12 +2321,12 @@ mod tests {
         assert!(!a.is_disjoint(&d));
         assert!(!d.is_disjoint(&a));
 
-        assert!(a.is_disjoint(&b))
-        assert!(a.is_disjoint(&c))
-        assert!(b.is_disjoint(&a))
-        assert!(b.is_disjoint(&c))
-        assert!(c.is_disjoint(&a))
-        assert!(c.is_disjoint(&b))
+        assert!(a.is_disjoint(&b));
+        assert!(a.is_disjoint(&c));
+        assert!(b.is_disjoint(&a));
+        assert!(b.is_disjoint(&c));
+        assert!(c.is_disjoint(&a));
+        assert!(c.is_disjoint(&b));
     }
 
     #[test]

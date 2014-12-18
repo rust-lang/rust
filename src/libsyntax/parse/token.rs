@@ -570,7 +570,7 @@ pub type IdentInterner = StrInterner;
 pub fn get_ident_interner() -> Rc<IdentInterner> {
     thread_local!(static KEY: Rc<::parse::token::IdentInterner> = {
         Rc::new(mk_fresh_ident_interner())
-    })
+    });
     KEY.with(|k| k.clone())
 }
 

@@ -1540,16 +1540,16 @@ macro_rules! impl_mut_int_slice {
 
 macro_rules! impl_int_slice {
     ($u:ty, $s:ty) => {
-        impl_immut_int_slice!($u, $s, $u)
-        impl_immut_int_slice!($u, $s, $s)
-        impl_mut_int_slice!($u, $s, $u)
-        impl_mut_int_slice!($u, $s, $s)
+        impl_immut_int_slice! { $u, $s, $u }
+        impl_immut_int_slice! { $u, $s, $s }
+        impl_mut_int_slice! { $u, $s, $u }
+        impl_mut_int_slice! { $u, $s, $s }
     }
 }
 
-impl_int_slice!(u8,   i8)
-impl_int_slice!(u16,  i16)
-impl_int_slice!(u32,  i32)
-impl_int_slice!(u64,  i64)
-impl_int_slice!(uint, int)
+impl_int_slice! { u8,   i8 }
+impl_int_slice! { u16,  i16 }
+impl_int_slice! { u32,  i32 }
+impl_int_slice! { u64,  i64 }
+impl_int_slice! { uint, int }
 

@@ -33,9 +33,9 @@ pub struct Type {
 
 impl Copy for Type {}
 
-macro_rules! ty (
+macro_rules! ty {
     ($e:expr) => ( Type::from_ref(unsafe { $e }))
-)
+}
 
 /// Wrapper for LLVM TypeRef
 impl Type {

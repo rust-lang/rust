@@ -139,7 +139,7 @@ pub mod reader {
     pub type DecodeResult<T> = Result<T, Error>;
     // rbml reading
 
-    macro_rules! try_or(
+    macro_rules! try_or {
         ($e:expr, $r:expr) => (
             match $e {
                 Ok(e) => e,
@@ -149,7 +149,7 @@ pub mod reader {
                 }
             }
         )
-    )
+    }
 
     pub struct Res {
         pub val: uint,

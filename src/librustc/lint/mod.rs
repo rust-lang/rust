@@ -75,7 +75,7 @@ impl Lint {
 
 /// Build a `Lint` initializer.
 #[macro_export]
-macro_rules! lint_initializer (
+macro_rules! lint_initializer {
     ($name:ident, $level:ident, $desc:expr) => (
         ::rustc::lint::Lint {
             name: stringify!($name),
@@ -83,11 +83,11 @@ macro_rules! lint_initializer (
             desc: $desc,
         }
     )
-)
+}
 
 /// Declare a static item of type `&'static Lint`.
 #[macro_export]
-macro_rules! declare_lint (
+macro_rules! declare_lint {
     // FIXME(#14660): deduplicate
     (pub $name:ident, $level:ident, $desc:expr) => (
         pub static $name: &'static ::rustc::lint::Lint
@@ -97,17 +97,17 @@ macro_rules! declare_lint (
         static $name: &'static ::rustc::lint::Lint
             = &lint_initializer!($name, $level, $desc);
     );
-)
+}
 
 /// Declare a static `LintArray` and return it as an expression.
 #[macro_export]
-macro_rules! lint_array ( ($( $lint:expr ),*) => (
+macro_rules! lint_array { ($( $lint:expr ),*) => (
     {
         #[allow(non_upper_case_globals)]
         static array: LintArray = &[ $( &$lint ),* ];
         array
     }
-))
+) }
 
 pub type LintArray = &'static [&'static &'static Lint];
 

@@ -167,7 +167,7 @@ impl String {
                     subseqidx = i;
                     res.as_mut_vec().push_all(REPLACEMENT);
                 }
-            }))
+            }));
 
             if byte < 128u8 {
                 // subseqidx handles this
@@ -788,8 +788,8 @@ macro_rules! impl_eq {
     }
 }
 
-impl_eq!(String, &'a str)
-impl_eq!(CowString<'a>, String)
+impl_eq! { String, &'a str }
+impl_eq! { CowString<'a>, String }
 
 impl<'a, 'b> PartialEq<&'b str> for CowString<'a> {
     #[inline]

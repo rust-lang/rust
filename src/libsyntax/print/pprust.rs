@@ -409,12 +409,12 @@ pub fn arg_to_string(arg: &ast::Arg) -> String {
 }
 
 pub fn mac_to_string(arg: &ast::Mac) -> String {
-    $to_string(|s| s.print_mac(arg))
+    $to_string(|s| s.print_mac(arg, ::parse::token::Paren))
 }
 
 } }
 
-thing_to_string_impls!(to_string)
+thing_to_string_impls! { to_string }
 
 // FIXME (Issue #16472): the whole `with_hygiene` mod should go away
 // after we revise the syntax::ext::quote::ToToken impls to go directly
@@ -437,7 +437,7 @@ pub mod with_hygiene {
         })
     }
 
-    thing_to_string_impls!(to_string_hyg)
+    thing_to_string_impls! { to_string_hyg }
 }
 
 pub fn visibility_qualified(vis: ast::Visibility, s: &str) -> String {
@@ -992,6 +992,7 @@ impl<'a> State<'a> {
                 try!(self.popen());
                 try!(self.print_tts(tts.as_slice()));
                 try!(self.pclose());
+                try!(word(&mut self.s, ";"));
                 try!(self.end());
             }
         }
@@ -1258,6 +1259,7 @@ impl<'a> State<'a> {
                 try!(self.popen());
                 try!(self.print_tts(tts.as_slice()));
                 try!(self.pclose());
+                try!(word(&mut self.s, ";"));
                 self.end()
             }
         }
@@ -1330,11 +1332,16 @@ impl<'a> State<'a> {
                 try!(self.print_expr(&**expr));
                 try!(word(&mut self.s, ";"));
             }
-            ast::StmtMac(ref mac, semi) => {
+            ast::StmtMac(ref mac, style) => {
                 try!(self.space_if_not_bol());
-                try!(self.print_mac(mac));
-                if semi {
-                    try!(word(&mut self.s, ";"));
+                let delim = match style {
+                    ast::MacStmtWithBraces => token::Brace,
+                    _ => token::Paren
+                };
+                try!(self.print_mac(mac, delim));
+                match style {
+                    ast::MacStmtWithBraces => {}
+                    _ => try!(word(&mut self.s, ";")),
                 }
             }
         }
@@ -1461,15 +1468,24 @@ impl<'a> State<'a> {
         self.print_else(elseopt)
     }
 
-    pub fn print_mac(&mut self, m: &ast::Mac) -> IoResult<()> {
+    pub fn print_mac(&mut self, m: &ast::Mac, delim: token::DelimToken)
+                     -> IoResult<()> {
         match m.node {
             // I think it's reasonable to hide the ctxt here:
             ast::MacInvocTT(ref pth, ref tts, _) => {
                 try!(self.print_path(pth, false));
                 try!(word(&mut self.s, "!"));
-                try!(self.popen());
+                match delim {
+                    token::Paren => try!(self.popen()),
+                    token::Bracket => try!(word(&mut self.s, "[")),
+                    token::Brace => try!(self.bopen()),
+                }
                 try!(self.print_tts(tts.as_slice()));
-                self.pclose()
+                match delim {
+                    token::Paren => self.pclose(),
+                    token::Bracket => word(&mut self.s, "]"),
+                    token::Brace => self.bclose(m.span),
+                }
             }
         }
     }
@@ -1817,7 +1833,7 @@ impl<'a> State<'a> {
                 }));
                 try!(self.pclose());
             }
-            ast::ExprMac(ref m) => try!(self.print_mac(m)),
+            ast::ExprMac(ref m) => try!(self.print_mac(m, token::Paren)),
             ast::ExprParen(ref e) => {
                 try!(self.popen());
                 try!(self.print_expr(&**e));
@@ -2098,7 +2114,7 @@ impl<'a> State<'a> {
                                    |s, p| s.print_pat(&**p)));
                 try!(word(&mut self.s, "]"));
             }
-            ast::PatMac(ref m) => try!(self.print_mac(m)),
+            ast::PatMac(ref m) => try!(self.print_mac(m, token::Paren)),
         }
         self.ann.post(self, NodePat(pat))
     }
@@ -2187,7 +2203,7 @@ impl<'a> State<'a> {
         try!(self.nbsp());
         try!(self.print_ident(name));
         try!(self.print_generics(generics));
-        try!(self.print_fn_args_and_ret(decl, opt_explicit_self))
+        try!(self.print_fn_args_and_ret(decl, opt_explicit_self));
         self.print_where_clause(generics)
     }
 

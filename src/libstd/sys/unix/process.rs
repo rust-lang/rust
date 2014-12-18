@@ -28,7 +28,7 @@ use sys_common::{AsInner, mkerr_libc, timeout};
 
 pub use sys_common::ProcessConfig;
 
-helper_init!(static HELPER: Helper<Req>)
+helper_init! { static HELPER: Helper<Req> }
 
 /// The unique id of the process (this should never be negative).
 pub struct Process {

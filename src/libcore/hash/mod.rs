@@ -109,16 +109,16 @@ macro_rules! impl_hash {
     }
 }
 
-impl_hash!(u8, u8)
-impl_hash!(u16, u16)
-impl_hash!(u32, u32)
-impl_hash!(u64, u64)
-impl_hash!(uint, uint)
-impl_hash!(i8, u8)
-impl_hash!(i16, u16)
-impl_hash!(i32, u32)
-impl_hash!(i64, u64)
-impl_hash!(int, uint)
+impl_hash! { u8, u8 }
+impl_hash! { u16, u16 }
+impl_hash! { u32, u32 }
+impl_hash! { u64, u64 }
+impl_hash! { uint, uint }
+impl_hash! { i8, u8 }
+impl_hash! { i16, u16 }
+impl_hash! { i32, u32 }
+impl_hash! { i64, u64 }
+impl_hash! { int, uint }
 
 impl<S: Writer> Hash<S> for bool {
     #[inline]
@@ -142,7 +142,7 @@ impl<S: Writer> Hash<S> for str {
     }
 }
 
-macro_rules! impl_hash_tuple(
+macro_rules! impl_hash_tuple {
     () => (
         impl<S: Writer> Hash<S> for () {
             #[inline]
@@ -167,21 +167,21 @@ macro_rules! impl_hash_tuple(
             }
         }
     );
-)
+}
 
-impl_hash_tuple!()
-impl_hash_tuple!(A)
-impl_hash_tuple!(A B)
-impl_hash_tuple!(A B C)
-impl_hash_tuple!(A B C D)
-impl_hash_tuple!(A B C D E)
-impl_hash_tuple!(A B C D E F)
-impl_hash_tuple!(A B C D E F G)
-impl_hash_tuple!(A B C D E F G H)
-impl_hash_tuple!(A B C D E F G H I)
-impl_hash_tuple!(A B C D E F G H I J)
-impl_hash_tuple!(A B C D E F G H I J K)
-impl_hash_tuple!(A B C D E F G H I J K L)
+impl_hash_tuple! {}
+impl_hash_tuple! { A }
+impl_hash_tuple! { A B }
+impl_hash_tuple! { A B C }
+impl_hash_tuple! { A B C D }
+impl_hash_tuple! { A B C D E }
+impl_hash_tuple! { A B C D E F }
+impl_hash_tuple! { A B C D E F G }
+impl_hash_tuple! { A B C D E F G H }
+impl_hash_tuple! { A B C D E F G H I }
+impl_hash_tuple! { A B C D E F G H I J }
+impl_hash_tuple! { A B C D E F G H I J K }
+impl_hash_tuple! { A B C D E F G H I J K L }
 
 impl<S: Writer, T: Hash<S>> Hash<S> for [T] {
     #[inline]

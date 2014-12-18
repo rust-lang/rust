@@ -213,9 +213,11 @@ pub const WARN: u32 = 2;
 /// Error log level
 pub const ERROR: u32 = 1;
 
-thread_local!(static LOCAL_LOGGER: RefCell<Option<Box<Logger + Send>>> = {
-    RefCell::new(None)
-})
+thread_local! {
+    static LOCAL_LOGGER: RefCell<Option<Box<Logger + Send>>> = {
+        RefCell::new(None)
+    }
+}
 
 /// A trait used to represent an interface to a task-local logger. Each task
 /// can have its own custom logger which can respond to logging messages

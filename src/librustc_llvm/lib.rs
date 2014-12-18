@@ -2290,5 +2290,5 @@ pub unsafe fn static_link_hack_this_sucks() {
 // Works to the above fix for #15460 to ensure LLVM dependencies that
 // are only used by rustllvm don't get stripped by the linker.
 mod llvmdeps {
-    include!(env!("CFG_LLVM_LINKAGE_FILE"))
+    include! { env!("CFG_LLVM_LINKAGE_FILE") }
 }

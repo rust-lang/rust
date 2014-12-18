@@ -671,8 +671,8 @@ mod tests {
         let inf: f32 = Float::infinity();
         let neg_inf: f32 = Float::neg_infinity();
         let nan: f32 = Float::nan();
-        assert_eq!(match inf.frexp() { (x, _) => x }, inf)
-        assert_eq!(match neg_inf.frexp() { (x, _) => x }, neg_inf)
+        assert_eq!(match inf.frexp() { (x, _) => x }, inf);
+        assert_eq!(match neg_inf.frexp() { (x, _) => x }, neg_inf);
         assert!(match nan.frexp() { (x, _) => x.is_nan() })
     }
 
