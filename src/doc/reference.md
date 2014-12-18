@@ -934,7 +934,7 @@ kinds of view items:
 
 ```{.ebnf .gram}
 extern_crate_decl : "extern" "crate" crate_name
-crate_name: ident | ( string_lit as ident )
+crate_name: ident | ( string_lit "as" ident )
 ```
 
 An _`extern crate` declaration_ specifies a dependency on an external crate.
