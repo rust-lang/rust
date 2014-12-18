@@ -63,7 +63,6 @@ struct Context<'a, 'b:'a> {
     all_pieces_simple: bool,
 
     name_positions: HashMap<string::String, uint>,
-    method_statics: Vec<P<ast::Item>>,
 
     /// Updated as arguments are consumed or methods are entered
     nest_level: uint,
@@ -495,20 +494,12 @@ impl<'a, 'b> Context<'a, 'b> {
     /// Actually builds the expression which the iformat! block will be expanded
     /// to
     fn to_expr(mut self, invocation: Invocation) -> P<ast::Expr> {
-        let mut lets = Vec::new();
         let mut locals = Vec::new();
         let mut names = Vec::from_fn(self.name_positions.len(), |_| None);
         let mut pats = Vec::new();
         let mut heads = Vec::new();
 
-        // First, declare all of our methods that are statics
-        for method in self.method_statics.into_iter() {
-            let decl = respan(self.fmtsp, ast::DeclItem(method));
-            lets.push(P(respan(self.fmtsp,
-                               ast::StmtDecl(P(decl), ast::DUMMY_NODE_ID))));
-        }
-
-        // Next, build up the static array which will become our precompiled
+        // First, build up the static array which will become our precompiled
         // format "string"
         let static_str_name = self.ecx.ident_of("__STATIC_FMTSTR");
         let static_lifetime = self.ecx.lifetime(self.fmtsp, self.ecx.ident_of("'static").name);
@@ -517,10 +508,9 @@ impl<'a, 'b> Context<'a, 'b> {
                 self.ecx.ty_ident(self.fmtsp, self.ecx.ident_of("str")),
                 Some(static_lifetime),
                 ast::MutImmutable);
-        lets.push(Context::item_static_array(self.ecx,
-                                             static_str_name,
-                                             piece_ty,
-                                             self.str_pieces));
+        let mut lets = vec![
+            Context::item_static_array(self.ecx, static_str_name, piece_ty, self.str_pieces)
+        ];
 
         // Then, build up the static array which will store our precompiled
         // nonstandard placeholders, if there are any.
@@ -728,7 +718,6 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt, sp: Span,
         pieces: Vec::new(),
         str_pieces: Vec::new(),
         all_pieces_simple: true,
-        method_statics: Vec::new(),
         fmtsp: sp,
     };
     cx.fmtsp = efmt.span;
