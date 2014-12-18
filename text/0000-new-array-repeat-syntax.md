@@ -7,7 +7,7 @@
 Under this RFC, the syntax to specify the type of a fixed-length array
 containing `N` elements of type `T` would be changed to `[T; N]`. Similarly, the
 syntax to construct an array containing `N` duplicated elements of value `x`
-would be changed to `[x, N]`.
+would be changed to `[x; N]`.
 
 # Motivation
 
