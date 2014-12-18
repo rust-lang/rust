@@ -67,18 +67,18 @@
 //! }
 //! ```
 
-use string::String;
-use hash;
+use core::prelude::*;
+use libc;
+
 use fmt;
+use hash;
 use kinds::marker;
 use mem;
-use core::prelude::*;
-
 use ptr;
-use raw::Slice;
-use slice;
+use slice::{mod, ImmutableIntSlice};
 use str;
-use libc;
+use string::String;
+
 
 /// The representation of a C String.
 ///
@@ -210,7 +210,7 @@ impl CString {
     #[inline]
     pub fn as_bytes<'a>(&'a self) -> &'a [u8] {
         unsafe {
-            mem::transmute(Slice { data: self.buf, len: self.len() + 1 })
+            slice::from_raw_buf(&self.buf, self.len() + 1).as_unsigned()
         }
     }
 
@@ -219,7 +219,7 @@ impl CString {
     #[inline]
     pub fn as_bytes_no_nul<'a>(&'a self) -> &'a [u8] {
         unsafe {
-            mem::transmute(Slice { data: self.buf, len: self.len() })
+            slice::from_raw_buf(&self.buf, self.len()).as_unsigned()
         }
     }
 

@@ -51,18 +51,21 @@
 
 #![doc(primitive = "str")]
 
-use core::prelude::*;
-
 pub use self::MaybeOwned::*;
 use self::RecompositionState::*;
 use self::DecompositionType::*;
 
 use core::borrow::{BorrowFrom, Cow, ToOwned};
+use core::clone::Clone;
 use core::default::Default;
 use core::fmt;
 use core::hash;
-use core::cmp;
-use core::iter::AdditiveIterator;
+use core::char::Char;
+use core::cmp::{mod, Eq, Equiv, Ord, Ordering, PartialEq, PartialOrd};
+use core::iter::{range, AdditiveIterator, Iterator, IteratorExt};
+use core::kinds::Sized;
+use core::option::Option::{mod, Some, None};
+use core::slice::{AsSlice, SliceExt};
 
 use ring_buf::RingBuf;
 use string::String;
