@@ -314,7 +314,7 @@ pub struct DepthFirstTraversal<'g, N:'g, E:'g> {
 impl<'g, N, E> Iterator<&'g N> for DepthFirstTraversal<'g, N, E> {
     fn next(&mut self) -> Option<&'g N> {
         while let Some(idx) = self.stack.pop() {
-            if self.visited.insert(idx.node_id()) {
+            if !self.visited.insert(idx.node_id()) {
                 continue;
             }
             self.graph.each_outgoing_edge(idx, |_, e| -> bool {
