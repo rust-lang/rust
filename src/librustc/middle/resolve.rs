@@ -98,7 +98,7 @@ type BindingMap = HashMap<Name, BindingInfo>;
 pub type ExportMap = NodeMap<Vec<Export>>;
 
 pub struct Export {
-    pub name: String,        // The name of the target.
+    pub name: Name,          // The name of the target.
     pub def_id: DefId,       // The definition of the target.
 }
 
@@ -3873,11 +3873,10 @@ impl<'a> Resolver<'a> {
                                    ns: Namespace) {
         match namebindings.def_for_namespace(ns) {
             Some(d) => {
-                let name = token::get_name(name);
                 debug!("(computing exports) YES: export '{}' => {}",
                        name, d.def_id());
                 exports.push(Export {
-                    name: name.get().to_string(),
+                    name: name,
                     def_id: d.def_id()
                 });
             }
