@@ -450,7 +450,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
             }
 
             ast::ExprRange(ref start, ref end) => {
-                self.consume_expr(&**start);
+                start.as_ref().map(|e| self.consume_expr(&**e));
                 end.as_ref().map(|e| self.consume_expr(&**e));
             }
 

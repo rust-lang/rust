@@ -1199,7 +1199,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
           ast::ExprRange(ref e1, ref e2) => {
             let succ = e2.as_ref().map_or(succ, |e| self.propagate_through_expr(&**e, succ));
-            self.propagate_through_expr(&**e1, succ)
+            e1.as_ref().map_or(succ, |e| self.propagate_through_expr(&**e, succ))
           }
 
           ast::ExprBox(None, ref e) |
