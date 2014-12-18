@@ -451,8 +451,6 @@ fn encode_reexported_static_methods(ecx: &EncodeContext,
                                     mod_path: PathElems,
                                     exp: &middle::resolve::Export) {
     if let Some(ast_map::NodeItem(item)) = ecx.tcx.map.find(exp.def_id.node) {
-        let original_name = token::get_ident(item.ident);
-
         let path_differs = ecx.tcx.map.with_path(exp.def_id.node, |path| {
             let (mut a, mut b) = (path, mod_path.clone());
             loop {
@@ -474,16 +472,16 @@ fn encode_reexported_static_methods(ecx: &EncodeContext,
         // encoded metadata for static methods relative to Bar,
         // but not yet for Foo.
         //
-        if path_differs || original_name.get() != exp.name {
+        if path_differs || item.ident.name != exp.name {
             if !encode_reexported_static_base_methods(ecx, rbml_w, exp) {
                 if encode_reexported_static_trait_methods(ecx, rbml_w, exp) {
                     debug!("(encode reexported static methods) {} [trait]",
-                           original_name);
+                           item.ident.name);
                 }
             }
             else {
                 debug!("(encode reexported static methods) {} [base]",
-                       original_name);
+                       item.ident.name);
             }
         }
     }
@@ -534,7 +532,7 @@ fn encode_reexports(ecx: &EncodeContext,
                 rbml_w.wr_str(def_to_string(exp.def_id).as_slice());
                 rbml_w.end_tag();
                 rbml_w.start_tag(tag_items_data_item_reexport_name);
-                rbml_w.wr_str(exp.name.as_slice());
+                rbml_w.wr_str(exp.name.as_str());
                 rbml_w.end_tag();
                 rbml_w.end_tag();
                 encode_reexported_static_methods(ecx, rbml_w, path.clone(), exp);
