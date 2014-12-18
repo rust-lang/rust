@@ -32,6 +32,14 @@ fn test_tempdir() {
         p.clone()
     };
     assert!(!path.exists());
+
+    let path2 = {
+        let p = TempDir::new_in(&Path::new("."), "foobar".as_bytes()).unwrap();
+        let p = p.path();
+        assert!(p.as_vec().ends_with(b"foobar"));
+        p.clone()
+    };
+    assert!(!path2.exists());
 }
 
 fn test_rm_tempdir() {

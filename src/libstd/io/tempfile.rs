@@ -17,7 +17,7 @@ use ops::Drop;
 use option::Option;
 use option::Option::{None, Some};
 use os;
-use path::{Path, GenericPath};
+use path::{Path, GenericPath, BytesContainer};
 use result::Result::{Ok, Err};
 use sync::atomic;
 
@@ -34,7 +34,7 @@ impl TempDir {
     /// deleted once the returned wrapper is destroyed.
     ///
     /// If no directory can be created, `Err` is returned.
-    pub fn new_in(tmpdir: &Path, suffix: &str) -> IoResult<TempDir> {
+    pub fn new_in<T: BytesContainer>(tmpdir: &Path, suffix: T) -> IoResult<TempDir> {
         if !tmpdir.is_absolute() {
             let abs_tmpdir = try!(os::make_absolute(tmpdir));
             return TempDir::new_in(&abs_tmpdir, suffix);
@@ -44,11 +44,13 @@ impl TempDir {
 
         let mut attempts = 0u;
         loop {
-            let filename =
-                format!("rs-{}-{}-{}",
+            let prefix =
+                format!("rs-{}-{}-",
                         unsafe { libc::getpid() },
-                        CNT.fetch_add(1, atomic::SeqCst),
-                        suffix);
+                        CNT.fetch_add(1, atomic::SeqCst));
+
+            let mut filename = prefix.into_bytes();
+            filename.push_all(suffix.container_as_bytes());
             let p = tmpdir.join(filename);
             match fs::mkdir(&p, io::USER_RWX) {
                 Err(error) => {
@@ -67,7 +69,7 @@ impl TempDir {
     /// deleted once the returned wrapper is destroyed.
     ///
     /// If no directory can be created, `Err` is returned.
-    pub fn new(suffix: &str) -> IoResult<TempDir> {
+    pub fn new<T: BytesContainer>(suffix: T) -> IoResult<TempDir> {
         TempDir::new_in(&os::tmpdir(), suffix)
     }
 
