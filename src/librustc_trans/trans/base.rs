@@ -581,7 +581,7 @@ pub fn compare_scalar_types<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
     match t.sty {
         ty::ty_tup(ref tys) if tys.is_empty() => f(nil_type),
         ty::ty_bool | ty::ty_uint(_) | ty::ty_char => f(unsigned_int),
-        ty::ty_ptr(mt) if ty::type_is_sized(cx.tcx(), mt.ty) => f(unsigned_int),
+        ty::ty_ptr(mt) if common::type_is_sized(cx.tcx(), mt.ty) => f(unsigned_int),
         ty::ty_int(_) => f(signed_int),
         ty::ty_float(_) => f(floating_point),
             // Should never get here, because t is scalar.
@@ -719,7 +719,7 @@ pub fn iter_structural_ty<'a, 'blk, 'tcx>(cx: Block<'blk, 'tcx>,
         return cx;
     }
 
-    let (data_ptr, info) = if ty::type_is_sized(cx.tcx(), t) {
+    let (data_ptr, info) = if common::type_is_sized(cx.tcx(), t) {
         (av, None)
     } else {
         let data = GEPi(cx, av, &[0, abi::FAT_PTR_ADDR]);
@@ -736,7 +736,7 @@ pub fn iter_structural_ty<'a, 'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                   let field_ty = field_ty.mt.ty;
                   let llfld_a = adt::trans_field_ptr(cx, &*repr, data_ptr, discr, i);
 
-                  let val = if ty::type_is_sized(cx.tcx(), field_ty) {
+                  let val = if common::type_is_sized(cx.tcx(), field_ty) {
                       llfld_a
                   } else {
                       let boxed_ty = ty::mk_open(cx.tcx(), field_ty);
@@ -2522,7 +2522,7 @@ pub fn get_fn_llvm_attributes<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_ty: Ty<
             match ret_ty.sty {
                 // `~` pointer return values never alias because ownership
                 // is transferred
-                ty::ty_uniq(it) if !ty::type_is_sized(ccx.tcx(), it) => {}
+                ty::ty_uniq(it) if !common::type_is_sized(ccx.tcx(), it) => {}
                 ty::ty_uniq(_) => {
                     attrs.ret(llvm::NoAliasAttribute);
                 }
@@ -2533,7 +2533,7 @@ pub fn get_fn_llvm_attributes<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_ty: Ty<
             match ret_ty.sty {
                 // These are not really pointers but pairs, (pointer, len)
                 ty::ty_uniq(it) |
-                ty::ty_rptr(_, ty::mt { ty: it, .. }) if !ty::type_is_sized(ccx.tcx(), it) => {}
+                ty::ty_rptr(_, ty::mt { ty: it, .. }) if !common::type_is_sized(ccx.tcx(), it) => {}
                 ty::ty_uniq(inner) | ty::ty_rptr(_, ty::mt { ty: inner, .. }) => {
                     let llret_sz = llsize_of_real(ccx, type_of::type_of(ccx, inner));
                     attrs.ret(llvm::DereferenceableAttribute(llret_sz));

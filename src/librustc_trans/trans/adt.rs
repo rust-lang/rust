@@ -343,7 +343,7 @@ fn find_discr_field_candidate<'tcx>(tcx: &ty::ctxt<'tcx>,
                                     mut path: DiscrField) -> Option<DiscrField> {
     match ty.sty {
         // Fat &T/&mut T/Box<T> i.e. T is [T], str, or Trait
-        ty::ty_rptr(_, ty::mt { ty, .. }) | ty::ty_uniq(ty) if !ty::type_is_sized(tcx, ty) => {
+        ty::ty_rptr(_, ty::mt { ty, .. }) | ty::ty_uniq(ty) if !type_is_sized(tcx, ty) => {
             path.push(FAT_PTR_ADDR);
             Some(path)
         },
@@ -447,12 +447,12 @@ fn mk_struct<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                        tys: &[Ty<'tcx>], packed: bool,
                        scapegoat: Ty<'tcx>)
                        -> Struct<'tcx> {
-    let sized = tys.iter().all(|&ty| ty::type_is_sized(cx.tcx(), ty));
+    let sized = tys.iter().all(|&ty| type_is_sized(cx.tcx(), ty));
     let lltys : Vec<Type> = if sized {
         tys.iter()
            .map(|&ty| type_of::sizing_type_of(cx, ty)).collect()
     } else {
-        tys.iter().filter(|&ty| ty::type_is_sized(cx.tcx(), *ty))
+        tys.iter().filter(|&ty| type_is_sized(cx.tcx(), *ty))
            .map(|&ty| type_of::sizing_type_of(cx, ty)).collect()
     };
 
@@ -704,7 +704,7 @@ fn generic_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 fn struct_llfields<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, st: &Struct<'tcx>,
                              sizing: bool, dst: bool) -> Vec<Type> {
     if sizing {
-        st.fields.iter().filter(|&ty| !dst || ty::type_is_sized(cx.tcx(), *ty))
+        st.fields.iter().filter(|&ty| !dst || type_is_sized(cx.tcx(), *ty))
             .map(|&ty| type_of::sizing_type_of(cx, ty)).collect()
     } else {
         st.fields.iter().map(|&ty| type_of::type_of(cx, ty)).collect()
