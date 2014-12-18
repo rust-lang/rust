@@ -215,22 +215,7 @@ mod test {
     }
 
     #[test]
-    #[cfg(target_os = "freebsd")]
-    fn test_rpath_relative() {
-        let config = &mut RPathConfig {
-            used_crates: Vec::new(),
-            has_rpath: true,
-            is_like_osx: false,
-            out_filename: Path::new("bin/rustc"),
-            get_install_prefix_lib_path: || panic!(),
-            realpath: |p| Ok(p.clone())
-        };
-        let res = get_rpath_relative_to_output(config, &Path::new("lib/libstd.so"));
-        assert_eq!(res, "$ORIGIN/../lib");
-    }
-
-    #[test]
-    #[cfg(target_os = "dragonfly")]
+    #[cfg(any(target_os = "freebsd", target_os = "dragonfly"))]
     fn test_rpath_relative() {
         let config = &mut RPathConfig {
             used_crates: Vec::new(),

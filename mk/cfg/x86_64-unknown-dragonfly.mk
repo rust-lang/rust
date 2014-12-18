@@ -7,9 +7,9 @@ CFG_LIB_NAME_x86_64-unknown-dragonfly=lib$(1).so
 CFG_STATIC_LIB_NAME_x86_64-unknown-dragonfly=lib$(1).a
 CFG_LIB_GLOB_x86_64-unknown-dragonfly=lib$(1)-*.so
 CFG_LIB_DSYM_GLOB_x86_64-unknown-dragonfly=$(1)-*.dylib.dSYM
-CFG_JEMALLOC_CFLAGS_x86_64-unknown-dragonfly := -I/usr/include -I/usr/local/include $(CFLAGS)
-CFG_GCCISH_CFLAGS_x86_64-unknown-dragonfly := -Wall -Werror -g -fPIC -I/usr/include -I/usr/local/include $(CFLAGS)
-CFG_GCCISH_LINK_FLAGS_x86_64-unknown-dragonfly := -shared -fPIC -g -pthread  -lrt
+CFG_JEMALLOC_CFLAGS_x86_64-unknown-dragonfly := -m64 -I/usr/include -I/usr/local/include $(CFLAGS)
+CFG_GCCISH_CFLAGS_x86_64-unknown-dragonfly := -Wall -Werror -g -fPIC -m64 -I/usr/include -I/usr/local/include $(CFLAGS)
+CFG_GCCISH_LINK_FLAGS_x86_64-unknown-dragonfly := -shared -fPIC -g -pthread  -lrt -m64
 CFG_GCCISH_DEF_FLAG_x86_64-unknown-dragonfly := -Wl,--export-dynamic,--dynamic-list=
 CFG_GCCISH_PRE_LIB_FLAGS_x86_64-unknown-dragonfly := -Wl,-whole-archive
 CFG_GCCISH_POST_LIB_FLAGS_x86_64-unknown-dragonfly := -Wl,-no-whole-archive

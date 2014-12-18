@@ -37,6 +37,7 @@ snapshot_files = {
     "macos": ["bin/rustc"],
     "winnt": ["bin/rustc.exe"],
     "freebsd": ["bin/rustc"],
+    "dragonfly": ["bin/rustc"],
     }
 
 winnt_runtime_deps_32 = ["libgcc_s_dw2-1.dll",
@@ -86,6 +87,8 @@ def get_kernel(triple):
         return "macos"
     if os_name == "freebsd":
         return "freebsd"
+    if os_name == "dragonfly":
+        return "dragonfly"
     return "linux"
 
 def get_cpu(triple):
