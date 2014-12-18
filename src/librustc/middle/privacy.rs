@@ -29,7 +29,7 @@ use syntax::codemap::Span;
 use syntax::parse::token;
 use syntax::visit::{mod, Visitor};
 
-type Context<'a, 'tcx> = (&'a MethodMap<'tcx>, &'a resolve::ExportMap2);
+type Context<'a, 'tcx> = (&'a MethodMap<'tcx>, &'a resolve::ExportMap);
 
 /// A set of AST nodes exported by the crate.
 pub type ExportedItems = NodeSet;
@@ -136,7 +136,7 @@ impl<'v> Visitor<'v> for ParentVisitor {
 
 struct EmbargoVisitor<'a, 'tcx: 'a> {
     tcx: &'a ty::ctxt<'tcx>,
-    exp_map2: &'a resolve::ExportMap2,
+    export_map: &'a resolve::ExportMap,
 
     // This flag is an indicator of whether the previous item in the
     // hierarchical chain was exported or not. This is the indicator of whether
@@ -342,8 +342,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
         // This code is here instead of in visit_item so that the
         // crate module gets processed as well.
         if self.prev_exported {
-            assert!(self.exp_map2.contains_key(&id), "wut {}", id);
-            for export in self.exp_map2[id].iter() {
+            assert!(self.export_map.contains_key(&id), "wut {}", id);
+            for export in self.export_map[id].iter() {
                 if is_local(export.def_id) {
                     self.reexports.insert(export.def_id.node);
                 }
@@ -1520,7 +1520,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
 }
 
 pub fn check_crate(tcx: &ty::ctxt,
-                   exp_map2: &resolve::ExportMap2,
+                   export_map: &resolve::ExportMap,
                    external_exports: resolve::ExternalExports,
                    last_private_map: resolve::LastPrivateMap)
                    -> (ExportedItems, PublicItems) {
@@ -1561,7 +1561,7 @@ pub fn check_crate(tcx: &ty::ctxt,
         exported_items: NodeSet::new(),
         public_items: NodeSet::new(),
         reexports: NodeSet::new(),
-        exp_map2: exp_map2,
+        export_map: export_map,
         prev_exported: true,
         prev_public: true,
     };

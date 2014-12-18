@@ -97,13 +97,13 @@ struct BindingInfo {
 type BindingMap = HashMap<Name, BindingInfo>;
 
 // Trait method resolution
-pub type TraitMap = NodeMap<Vec<DefId> >;
+pub type TraitMap = NodeMap<Vec<DefId>>;
 
 // This is the replacement export map. It maps a module to all of the exports
 // within.
-pub type ExportMap2 = NodeMap<Vec<Export2>>;
+pub type ExportMap = NodeMap<Vec<Export>>;
 
-pub struct Export2 {
+pub struct Export {
     pub name: String,        // The name of the target.
     pub def_id: DefId,       // The definition of the target.
 }
@@ -946,7 +946,7 @@ struct Resolver<'a> {
     freevars: RefCell<FreevarMap>,
     freevars_seen: RefCell<NodeMap<NodeSet>>,
     capture_mode_map: CaptureModeMap,
-    export_map2: ExportMap2,
+    export_map: ExportMap,
     trait_map: TraitMap,
     external_exports: ExternalExports,
     last_private: LastPrivateMap,
@@ -1061,7 +1061,7 @@ impl<'a> Resolver<'a> {
             freevars: RefCell::new(NodeMap::new()),
             freevars_seen: RefCell::new(NodeMap::new()),
             capture_mode_map: NodeMap::new(),
-            export_map2: NodeMap::new(),
+            export_map: NodeMap::new(),
             trait_map: NodeMap::new(),
             used_imports: HashSet::new(),
             used_crates: HashSet::new(),
@@ -3859,12 +3859,12 @@ impl<'a> Resolver<'a> {
     }
 
     fn record_exports_for_module(&mut self, module_: &Module) {
-        let mut exports2 = Vec::new();
+        let mut exports = Vec::new();
 
-        self.add_exports_for_module(&mut exports2, module_);
+        self.add_exports_for_module(&mut exports, module_);
         match module_.def_id.get() {
             Some(def_id) => {
-                self.export_map2.insert(def_id.node, exports2);
+                self.export_map.insert(def_id.node, exports);
                 debug!("(computing exports) writing exports for {} (some)",
                        def_id.node);
             }
@@ -3873,7 +3873,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn add_exports_of_namebindings(&mut self,
-                                   exports2: &mut Vec<Export2> ,
+                                   exports: &mut Vec<Export>,
                                    name: Name,
                                    namebindings: &NameBindings,
                                    ns: Namespace) {
@@ -3882,7 +3882,7 @@ impl<'a> Resolver<'a> {
                 let name = token::get_name(name);
                 debug!("(computing exports) YES: export '{}' => {}",
                        name, d.def_id());
-                exports2.push(Export2 {
+                exports.push(Export {
                     name: name.get().to_string(),
                     def_id: d.def_id()
                 });
@@ -3894,7 +3894,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn add_exports_for_module(&mut self,
-                              exports2: &mut Vec<Export2> ,
+                              exports: &mut Vec<Export>,
                               module_: &Module) {
         for (name, importresolution) in module_.import_resolutions.borrow().iter() {
             if !importresolution.is_public {
@@ -3906,7 +3906,7 @@ impl<'a> Resolver<'a> {
                     Some(target) => {
                         debug!("(computing exports) maybe export '{}'",
                                token::get_name(*name));
-                        self.add_exports_of_namebindings(exports2,
+                        self.add_exports_of_namebindings(exports,
                                                          *name,
                                                          &*target.bindings,
                                                          ns)
@@ -6322,7 +6322,7 @@ pub struct CrateMap {
     pub def_map: DefMap,
     pub freevars: RefCell<FreevarMap>,
     pub capture_mode_map: RefCell<CaptureModeMap>,
-    pub exp_map2: ExportMap2,
+    pub export_map: ExportMap,
     pub trait_map: TraitMap,
     pub external_exports: ExternalExports,
     pub last_private_map: LastPrivateMap,
@@ -6339,7 +6339,7 @@ pub fn resolve_crate(session: &Session,
         def_map: resolver.def_map,
         freevars: resolver.freevars,
         capture_mode_map: RefCell::new(resolver.capture_mode_map),
-        exp_map2: resolver.export_map2,
+        export_map: resolver.export_map,
         trait_map: resolver.trait_map,
         external_exports: resolver.external_exports,
         last_private_map: resolver.last_private,
