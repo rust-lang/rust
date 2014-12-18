@@ -21,6 +21,18 @@ use marker::Copy;
 use ops::{Deref, FullRange};
 use option::Option;
 
+macro_rules! fmt_array {
+    ($N:expr, $($Trait:ident),*) => {
+        $(
+            impl<T:fmt::$Trait> fmt::$Trait for [T; $N] {
+                fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                    fmt::$Trait::fmt(&&self[], f)
+                }
+            }
+        )*
+    }
+}
+
 // macro for implementing n-ary tuple functions and operations
 macro_rules! array_impls {
     ($($N:expr)+) => {
@@ -32,12 +44,7 @@ macro_rules! array_impls {
                 }
             }
 
-            #[unstable = "waiting for Show to stabilize"]
-            impl<T:fmt::Show> fmt::Show for [T; $N] {
-                fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                    fmt::Show::fmt(&&self[], f)
-                }
-            }
+            fmt_array! { $N, Show, String, Octal, Binary, UpperHex, LowerHex, UpperExp, LowerExp }
 
             #[stable]
             impl<A, B> PartialEq<[B; $N]> for [A; $N] where A: PartialEq<B> {

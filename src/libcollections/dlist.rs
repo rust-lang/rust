@@ -660,19 +660,26 @@ impl<A: Clone> Clone for DList<A> {
     }
 }
 
-#[stable]
-impl<A: fmt::Show> fmt::Show for DList<A> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(f, "DList ["));
+macro_rules! fmt_dlist {
+    ($($Trait:ident),*) => {
+        $(
+            impl<A: fmt::$Trait> fmt::$Trait for DList<A> {
+                fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                    try!(write!(f, "DList ["));
 
-        for (i, e) in self.iter().enumerate() {
-            if i != 0 { try!(write!(f, ", ")); }
-            try!(write!(f, "{:?}", *e));
-        }
+                    for (i, e) in self.iter().enumerate() {
+                        if i != 0 { try!(write!(f, ", ")); }
+                        try!(fmt::$Trait::fmt(e, f));
+                    }
 
-        write!(f, "]")
+                    write!(f, "]")
+                }
+            }
+        )*
     }
 }
+
+fmt_dlist! { Show, String, Octal, Binary, UpperHex, LowerHex, UpperExp, LowerExp }
 
 #[stable]
 impl<S: Writer + Hasher, A: Hash<S>> Hash<S> for DList<A> {

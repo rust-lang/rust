@@ -486,19 +486,27 @@ impl<V: Ord> Ord for VecMap<V> {
     }
 }
 
-#[stable]
-impl<V: fmt::Show> fmt::Show for VecMap<V> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(f, "VecMap {{"));
+macro_rules! fmt_vec_map {
+    ($($Trait:ident),*) => {
+        $(
+            impl<V: fmt::$Trait> fmt::$Trait for VecMap<V> {
+                fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                    try!(write!(f, "VecMap {{"));
 
-        for (i, (k, v)) in self.iter().enumerate() {
-            if i != 0 { try!(write!(f, ", ")); }
-            try!(write!(f, "{}: {:?}", k, *v));
-        }
+                    for (i, (k, v)) in self.iter().enumerate() {
+                        if i != 0 { try!(write!(f, ", ")); }
+                        try!(write!(f, "{}: ", k));
+                        try!(fmt::$Trait::fmt(v, f));
+                    }
 
-        write!(f, "}}")
+                    write!(f, "}}")
+                }
+            }
+        )*
     }
 }
+
+fmt_vec_map! { Show, String, Octal, Binary, UpperHex, LowerHex, UpperExp, LowerExp }
 
 #[stable]
 impl<V> FromIterator<(uint, V)> for VecMap<V> {
