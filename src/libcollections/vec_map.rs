@@ -27,6 +27,7 @@ use core::ops::{Index, IndexMut};
 
 use {vec, slice};
 use vec::Vec;
+use format_helpers::*;
 
 /// A map optimized for small integer keys.
 ///
@@ -742,18 +743,14 @@ impl<V: Ord> Ord for VecMap<V> {
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<V: fmt::Debug> fmt::Debug for VecMap<V> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(f, "{{"));
-
-        for (i, (k, v)) in self.iter().enumerate() {
-            if i != 0 { try!(write!(f, ", ")); }
-            try!(write!(f, "{}: {:?}", k, *v));
-        }
-
-        write!(f, "}}")
-    }
+impl_set_fmt! {
+    VecMap,
+    Debug    => vec_map_fmt_debug,
+    Display  => vec_map_fmt_display,
+    Octal    => vec_map_fmt_octal,
+    Binary   => vec_map_fmt_binary,
+    LowerHex => vec_map_fmt_lower_hex,
+    UpperHex => vec_map_fmt_upper_hex
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

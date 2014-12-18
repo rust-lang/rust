@@ -29,6 +29,7 @@ use Bound::{self, Included, Excluded, Unbounded};
 
 use borrow::Borrow;
 use vec_deque::VecDeque;
+use format_helpers::*;
 
 use self::Continuation::{Continue, Finished};
 use self::StackOp::*;
@@ -928,6 +929,17 @@ impl<K: Debug, V: Debug> Debug for BTreeMap<K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.iter().fold(f.debug_map(), |b, (k, v)| b.entry(k, v)).finish()
     }
+}
+
+impl_map_fmt! {
+    BTreeMap,
+    Display  => map_fmt_display,
+    Octal    => map_fmt_octal,
+    Binary   => map_fmt_binary,
+    LowerHex => map_fmt_lower_hex,
+    UpperHex => map_fmt_upper_hex,
+    LowerExp => map_fmt_lower_exp,
+    UpperExp => map_fmt_upper_exp
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

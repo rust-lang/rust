@@ -31,6 +31,7 @@ use core::iter::{self, FromIterator};
 use core::mem;
 use core::ptr;
 
+use format_helpers::*;
 /// A doubly-linked list.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct LinkedList<T> {
@@ -919,6 +920,17 @@ impl<A: fmt::Debug> fmt::Debug for LinkedList<A> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.iter().fold(f.debug_list(), |b, e| b.entry(e)).finish()
     }
+}
+
+impl_seq_fmt! {
+    LinkedList,
+    Display  => seq_fmt_display,
+    Octal    => seq_fmt_octal,
+    Binary   => seq_fmt_binary,
+    LowerHex => seq_fmt_lower_hex,
+    UpperHex => seq_fmt_upper_hex,
+    LowerExp => seq_fmt_lower_exp,
+    UpperExp => seq_fmt_upper_exp
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

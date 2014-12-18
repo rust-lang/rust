@@ -82,6 +82,8 @@ use super::range::RangeArgument;
 // FIXME- fix places which assume the max vector allowed has memory usize::MAX.
 static MAX_MEMORY_SIZE: usize = isize::MAX as usize;
 
+use format_helpers::*;
+
 /// A growable list type, written `Vec<T>` but pronounced 'vector.'
 ///
 /// # Examples
@@ -1651,6 +1653,17 @@ impl<T: fmt::Debug> fmt::Debug for Vec<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Debug::fmt(&**self, f)
     }
+}
+
+impl_seq_fmt! {
+    Vec,
+    Display  => seq_fmt_display,
+    Octal    => seq_fmt_octal,
+    Binary   => seq_fmt_binary,
+    LowerHex => seq_fmt_lower_hex,
+    UpperHex => seq_fmt_upper_hex,
+    LowerExp => seq_fmt_lower_exp,
+    UpperExp => seq_fmt_upper_exp
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

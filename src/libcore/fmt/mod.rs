@@ -1124,6 +1124,39 @@ impl<T: Debug> Debug for [T] {
     }
 }
 
+macro_rules! fmt_dst {
+    ($($Trait:ident => $fmt_char:expr),*) => {
+        $(
+            impl<T: $Trait> $Trait for [T] {
+                fn fmt(&self, f: &mut Formatter) -> Result {
+                    try!(write!(f, "["));
+                    let mut is_first = true;
+                    for x in self.iter() {
+                        if is_first {
+                            is_first = false;
+                        } else {
+                            try!(write!(f, ", "));
+                        }
+                        try!(write!(f, $fmt_char, *x));
+                    }
+                    write!(f, "]")
+                }
+            }
+        )*
+    }
+}
+
+fmt_dst! {
+    Display => "{}",
+    Octal => "{:o}",
+    Binary => "{:b}",
+    UpperHex => "{:X}",
+    LowerHex => "{:x}",
+    UpperExp => "{:E}",
+    LowerExp => "{:e}"
+}
+
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Debug for () {
     fn fmt(&self, f: &mut Formatter) -> Result {
