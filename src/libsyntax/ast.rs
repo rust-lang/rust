@@ -723,7 +723,6 @@ pub enum Expr_ {
     ExprField(P<Expr>, SpannedIdent),
     ExprTupField(P<Expr>, Spanned<uint>),
     ExprIndex(P<Expr>, P<Expr>),
-    ExprSlice(P<Expr>, Option<P<Expr>>, Option<P<Expr>>, Mutability),
     ExprRange(Option<P<Expr>>, Option<P<Expr>>),
 
     /// Variable reference, possibly containing `::` and/or

@@ -432,13 +432,6 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 self.call(expr, pred, &**l, Some(&**r).into_iter())
             }
 
-            ast::ExprSlice(ref base, ref start, ref end, _) => {
-                self.call(expr,
-                          pred,
-                          &**base,
-                          start.iter().chain(end.iter()).map(|x| &**x))
-            }
-
             ast::ExprRange(ref start, ref end) => {
                 let fields = start.as_ref().map(|e| &**e).into_iter()
                     .chain(end.as_ref().map(|e| &**e).into_iter());
