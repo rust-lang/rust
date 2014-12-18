@@ -46,13 +46,12 @@ use lint;
 use metadata::csearch;
 use middle;
 use middle::const_eval;
-use middle::def;
+use middle::def::{mod, DefMap};
 use middle::dependency_format;
 use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem};
 use middle::lang_items::{FnOnceTraitLangItem, TyDescStructLangItem};
 use middle::mem_categorization as mc;
 use middle::region;
-use middle::resolve;
 use middle::resolve_lifetime;
 use middle::infer;
 use middle::stability;
@@ -615,7 +614,7 @@ pub struct ctxt<'tcx> {
     // queried from a HashSet.
     interner: RefCell<FnvHashMap<InternedTy<'tcx>, Ty<'tcx>>>,
     pub sess: Session,
-    pub def_map: resolve::DefMap,
+    pub def_map: DefMap,
 
     pub named_region_map: resolve_lifetime::NamedRegionMap,
 
@@ -1967,7 +1966,7 @@ impl UnboxedClosureKind {
 
 pub fn mk_ctxt<'tcx>(s: Session,
                      type_arena: &'tcx TypedArena<TyS<'tcx>>,
-                     dm: resolve::DefMap,
+                     dm: DefMap,
                      named_region_map: resolve_lifetime::NamedRegionMap,
                      map: ast_map::Map<'tcx>,
                      freevars: RefCell<FreevarMap>,
