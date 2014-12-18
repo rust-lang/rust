@@ -27,7 +27,6 @@ use metadata::tydecode::{parse_ty_data, parse_region_data, parse_def_id,
                          parse_predicate_data};
 use middle::def;
 use middle::lang_items;
-use middle::resolve::{TraitItemKind, TypeTraitItemKind};
 use middle::subst;
 use middle::ty::{ImplContainer, TraitContainer};
 use middle::ty::{mod, Ty};
@@ -785,15 +784,15 @@ pub fn get_impl_items(cdata: Cmd, impl_id: ast::NodeId)
 pub fn get_trait_item_name_and_kind(intr: Rc<IdentInterner>,
                                     cdata: Cmd,
                                     id: ast::NodeId)
-                                    -> (ast::Name, TraitItemKind) {
+                                    -> (ast::Name, def::TraitItemKind) {
     let doc = lookup_item(id, cdata.data());
     let name = item_name(&*intr, doc);
     match item_sort(doc) {
         'r' | 'p' => {
             let explicit_self = get_explicit_self(doc);
-            (name, TraitItemKind::from_explicit_self_category(explicit_self))
+            (name, def::TraitItemKind::from_explicit_self_category(explicit_self))
         }
-        't' => (name, TypeTraitItemKind),
+        't' => (name, def::TypeTraitItemKind),
         c => {
             panic!("get_trait_item_name_and_kind(): unknown trait item kind \
                    in metadata: `{}`", c)

@@ -19,7 +19,6 @@ use metadata::cstore;
 use metadata::decoder;
 use middle::def;
 use middle::lang_items;
-use middle::resolve;
 use middle::ty;
 
 use rbml;
@@ -148,7 +147,7 @@ pub fn get_impl_or_trait_item<'tcx>(tcx: &ty::ctxt<'tcx>, def: ast::DefId)
 }
 
 pub fn get_trait_item_name_and_kind(cstore: &cstore::CStore, def: ast::DefId)
-                                    -> (ast::Name, resolve::TraitItemKind) {
+                                    -> (ast::Name, def::TraitItemKind) {
     let cdata = cstore.get_crate_data(def.krate);
     decoder::get_trait_item_name_and_kind(cstore.intr.clone(),
                                           &*cdata,

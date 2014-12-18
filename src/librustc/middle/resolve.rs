@@ -10,7 +10,6 @@
 
 pub use self::PrivateDep::*;
 pub use self::ImportUse::*;
-pub use self::TraitItemKind::*;
 pub use self::LastPrivate::*;
 use self::PatternBindingMode::*;
 use self::Namespace::*;
@@ -42,7 +41,6 @@ use middle::def::*;
 use middle::lang_items::LanguageItems;
 use middle::pat_util::pat_bindings;
 use middle::subst::{ParamSpace, FnSpace, TypeSpace};
-use middle::ty::{ExplicitSelfCategory, StaticExplicitSelfCategory};
 use middle::ty::{CaptureModeMap, Freevar, FreevarMap, TraitMap};
 use util::nodemap::{NodeMap, NodeSet, DefIdSet, FnvHashMap};
 
@@ -321,25 +319,6 @@ enum UseLexicalScopeFlag {
 enum ModulePrefixResult {
     NoPrefixFound,
     PrefixFound(Rc<Module>, uint)
-}
-
-#[deriving(Clone, Copy, Eq, PartialEq)]
-pub enum TraitItemKind {
-    NonstaticMethodTraitItemKind,
-    StaticMethodTraitItemKind,
-    TypeTraitItemKind,
-}
-
-impl TraitItemKind {
-    pub fn from_explicit_self_category(explicit_self_category:
-                                       ExplicitSelfCategory)
-                                       -> TraitItemKind {
-        if explicit_self_category == StaticExplicitSelfCategory {
-            StaticMethodTraitItemKind
-        } else {
-            NonstaticMethodTraitItemKind
-        }
-    }
 }
 
 #[deriving(Copy, PartialEq)]

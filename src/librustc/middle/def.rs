@@ -10,8 +10,10 @@
 
 pub use self::Def::*;
 pub use self::MethodProvenance::*;
+pub use self::TraitItemKind::*;
 
 use middle::subst::ParamSpace;
+use middle::ty::{ExplicitSelfCategory, StaticExplicitSelfCategory};
 use util::nodemap::NodeMap;
 use syntax::ast;
 use syntax::ast_util::local_def;
@@ -103,6 +105,25 @@ impl TyParamProvenance {
     }
 }
 
+#[deriving(Clone, Copy, Eq, PartialEq)]
+pub enum TraitItemKind {
+    NonstaticMethodTraitItemKind,
+    StaticMethodTraitItemKind,
+    TypeTraitItemKind,
+}
+
+impl TraitItemKind {
+    pub fn from_explicit_self_category(explicit_self_category:
+                                       ExplicitSelfCategory)
+                                       -> TraitItemKind {
+        if explicit_self_category == StaticExplicitSelfCategory {
+            StaticMethodTraitItemKind
+        } else {
+            NonstaticMethodTraitItemKind
+        }
+    }
+}
+
 impl Def {
     pub fn def_id(&self) -> ast::DefId {
         match *self {
@@ -137,4 +158,3 @@ impl Def {
         }
     }
 }
-
