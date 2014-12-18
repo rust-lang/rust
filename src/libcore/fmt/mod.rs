@@ -904,28 +904,6 @@ impl<'a> Debug for &'a (any::Any+'a) {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Debug> Debug for [T] {
-    fn fmt(&self, f: &mut Formatter) -> Result {
-        if f.flags & (1 << (rt::FlagAlternate as uint)) == 0 {
-            try!(write!(f, "["));
-        }
-        let mut is_first = true;
-        for x in self.iter() {
-            if is_first {
-                is_first = false;
-            } else {
-                try!(write!(f, ", "));
-            }
-            try!(write!(f, "{:?}", *x))
-        }
-        if f.flags & (1 << (rt::FlagAlternate as uint)) == 0 {
-            try!(write!(f, "]"));
-        }
-        Ok(())
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
 impl Debug for () {
     fn fmt(&self, f: &mut Formatter) -> Result {
         f.pad("()")
@@ -962,6 +940,35 @@ impl<'b, T: Debug> Debug for RefMut<'b, T> {
         Debug::fmt(&*(self.deref()), f)
     }
 }
+
+macro_rules! fmt_dst {
+    ($($Trait:ident),*) => {
+        $(
+            impl<T: $Trait> $Trait for [T] {
+                fn fmt(&self, f: &mut Formatter) -> Result {
+                    if f.flags & (1 << (rt::FlagAlternate as uint)) == 0 {
+                        try!(write!(f, "["));
+                    }
+                    let mut is_first = true;
+                    for x in self.iter() {
+                        if is_first {
+                            is_first = false;
+                        } else {
+                            try!(write!(f, ", "));
+                        }
+                        try!($Trait::fmt(x, f));
+                    }
+                    if f.flags & (1 << (rt::FlagAlternate as uint)) == 0 {
+                        try!(write!(f, "]"));
+                    }
+                    Ok(())
+                }
+            }
+        )*
+    }
+}
+
+fmt_dst! { Debug, Display, Octal, Binary, UpperHex, LowerHex, UpperExp, LowerExp }
 
 // If you expected tests to be here, look instead at the run-pass/ifmt.rs test,
 // it's a lot easier than creating all of the rt::Piece structures here.

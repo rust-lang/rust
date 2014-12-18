@@ -1539,12 +1539,19 @@ impl<T> Default for Vec<T> {
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<T: fmt::Debug> fmt::Debug for Vec<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Debug::fmt(self.as_slice(), f)
+macro_rules! fmt_vec {
+    ($($Trait:ident),*) => {
+        $(
+            impl<T: fmt::$Trait> fmt::$Trait for Vec<T> {
+                fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                    fmt::$Trait::fmt(self.as_slice(), f)
+                }
+            }
+        )*
     }
 }
+
+fmt_vec! { Debug, Display, Octal, Binary, UpperHex, LowerHex, UpperExp, LowerExp }
 
 impl<'a> fmt::Writer for Vec<u8> {
     fn write_str(&mut self, s: &str) -> fmt::Result {

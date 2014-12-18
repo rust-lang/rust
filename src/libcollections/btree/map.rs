@@ -873,19 +873,29 @@ impl<K: Ord, V: Ord> Ord for BTreeMap<K, V> {
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<K: Debug, V: Debug> Debug for BTreeMap<K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(f, "BTreeMap {{"));
+macro_rules! fmt_btree_map {
+    ($($Trait:ident),*) => {
+        $(
+            impl<K: fmt::$Trait, V: fmt::$Trait> fmt::$Trait for BTreeMap<K, V> {
+                fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                    try!(write!(f, "BTreeMap {{"));
 
-        for (i, (k, v)) in self.iter().enumerate() {
-            if i != 0 { try!(write!(f, ", ")); }
-            try!(write!(f, "{:?}: {:?}", *k, *v));
-        }
+                    for (i, (k, v)) in self.iter().enumerate() {
+                        if i != 0 { try!(write!(f, ", ")); }
+                        try!(fmt::$Trait::fmt(k, f));
+                        try!(write!(f, ": "));
+                        try!(fmt::$Trait::fmt(v, f));
+                    }
 
-        write!(f, "}}")
+                    write!(f, "}}")
+                }
+            }
+        )*
     }
 }
+
+
+fmt_btree_map! { Debug, Display, Octal, Binary, UpperHex, LowerHex, UpperExp, LowerExp }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K: Ord, Q: ?Sized, V> Index<Q> for BTreeMap<K, V>

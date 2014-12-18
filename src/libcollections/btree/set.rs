@@ -590,19 +590,26 @@ impl<'a, 'b, T: Ord + Clone> BitOr<&'b BTreeSet<T>> for &'a BTreeSet<T> {
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Debug> Debug for BTreeSet<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(f, "BTreeSet {{"));
+macro_rules! fmt_btree_set {
+    ($($Trait:ident),*) => {
+        $(
+            impl<T: fmt::$Trait> fmt::$Trait for BTreeSet<T> {
+                fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                    try!(write!(f, "BTreeSet {{"));
 
-        for (i, x) in self.iter().enumerate() {
-            if i != 0 { try!(write!(f, ", ")); }
-            try!(write!(f, "{:?}", *x));
-        }
+                    for (i, x) in self.iter().enumerate() {
+                        if i != 0 { try!(write!(f, ", ")); }
+                        try!(fmt::$Trait::fmt(x, f));
+                    }
 
-        write!(f, "}}")
+                    write!(f, "}}")
+                }
+            }
+        )*
     }
 }
+
+fmt_btree_set! { Debug, Display, Octal, Binary, UpperHex, LowerHex, UpperExp, LowerExp }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Iterator for Iter<'a, T> {

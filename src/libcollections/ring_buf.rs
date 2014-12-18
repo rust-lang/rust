@@ -1618,19 +1618,26 @@ impl<A> Extend<A> for RingBuf<A> {
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<T: fmt::Debug> fmt::Debug for RingBuf<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(f, "RingBuf ["));
+macro_rules! fmt_ring_buf {
+    ($($Trait:ident),*) => {
+        $(
+            impl<T: fmt::$Trait> fmt::$Trait for RingBuf<T> {
+                fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                    try!(write!(f, "RingBuf ["));
 
-        for (i, e) in self.iter().enumerate() {
-            if i != 0 { try!(write!(f, ", ")); }
-            try!(write!(f, "{:?}", *e));
-        }
+                    for (i, e) in self.iter().enumerate() {
+                        if i != 0 { try!(write!(f, ", ")); }
+                        try!(fmt::$Trait::fmt(e, f));
+                    }
 
-        write!(f, "]")
+                    write!(f, "]")
+                }
+            }
+        )*
     }
 }
+
+fmt_ring_buf! { Debug, Display, Octal, Binary, UpperHex, LowerHex, UpperExp, LowerExp }
 
 #[cfg(test)]
 mod tests {

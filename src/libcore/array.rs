@@ -22,6 +22,18 @@ use marker::Copy;
 use ops::{Deref, FullRange};
 use option::Option;
 
+macro_rules! fmt_array {
+    ($N:expr, $($Trait:ident),*) => {
+        $(
+            impl<T:fmt::$Trait> fmt::$Trait for [T; $N] {
+                fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                    fmt::$Trait::fmt(&&self[], f)
+                }
+            }
+        )*
+    }
+}
+
 // macro for implementing n-ary tuple functions and operations
 macro_rules! array_impls {
     ($($N:expr)+) => {
@@ -38,13 +50,8 @@ macro_rules! array_impls {
                     Hash::hash(&self[], state)
                 }
             }
-
-            #[stable(feature = "rust1", since = "1.0.0")]
-            impl<T: fmt::Debug> fmt::Debug for [T; $N] {
-                fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                    fmt::Debug::fmt(&&self[], f)
-                }
-            }
+	    
+            fmt_array! { $N, Debug, Display, Octal, Binary, UpperHex, LowerHex, UpperExp, LowerExp }
 
             #[stable(feature = "rust1", since = "1.0.0")]
             impl<A, B> PartialEq<[B; $N]> for [A; $N] where A: PartialEq<B> {
