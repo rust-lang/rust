@@ -19,8 +19,7 @@ use middle::subst;
 use middle::subst::Subst;
 use middle::traits;
 use middle::ty::{mod, Ty};
-use middle::ty::{MethodObject};
-use middle::ty_fold::HigherRankedFoldable;
+use middle::ty_fold::TypeFoldable;
 use middle::infer;
 use middle::infer::InferCtxt;
 use syntax::ast;
@@ -58,11 +57,11 @@ struct Candidate<'tcx> {
 
 enum CandidateKind<'tcx> {
     InherentImplCandidate(/* Impl */ ast::DefId, subst::Substs<'tcx>),
-    ObjectCandidate(MethodObject<'tcx>),
+    ObjectCandidate(/* Trait */ ast::DefId, /* method_num */ uint, /* real_index */ uint),
     ExtensionImplCandidate(/* Impl */ ast::DefId, Rc<ty::TraitRef<'tcx>>,
                            subst::Substs<'tcx>, MethodIndex),
     UnboxedClosureCandidate(/* Trait */ ast::DefId, MethodIndex),
-    WhereClauseCandidate(Rc<ty::TraitRef<'tcx>>, MethodIndex),
+    WhereClauseCandidate(Rc<ty::PolyTraitRef<'tcx>>, MethodIndex),
 }
 
 pub struct Pick<'tcx> {
@@ -77,7 +76,7 @@ pub enum PickKind<'tcx> {
     ObjectPick(/* Trait */ ast::DefId, /* method_num */ uint, /* real_index */ uint),
     ExtensionImplPick(/* Impl */ ast::DefId, MethodIndex),
     TraitPick(/* Trait */ ast::DefId, MethodIndex),
-    WhereClausePick(/* Trait */ Rc<ty::TraitRef<'tcx>>, MethodIndex),
+    WhereClausePick(/* Trait */ Rc<ty::PolyTraitRef<'tcx>>, MethodIndex),
 }
 
 pub type PickResult<'tcx> = Result<Pick<'tcx>, MethodError>;
@@ -149,7 +148,7 @@ pub fn probe<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     // this creates one big transaction so that all type variables etc
     // that we create during the probe process are removed later
     let mut dummy = Some((steps, opt_simplified_steps)); // FIXME(#18101) need once closures
-    fcx.infcx().probe(|| {
+    fcx.infcx().probe(|_| {
         let (steps, opt_simplified_steps) = dummy.take().unwrap();
         let mut probe_cx = ProbeContext::new(fcx, span, method_name, steps, opt_simplified_steps);
         probe_cx.assemble_inherent_candidates();
@@ -231,9 +230,9 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                self_ty.repr(self.tcx()));
 
         match self_ty.sty {
-            ty::ty_trait(box ty::TyTrait { ref principal, bounds, .. }) => {
-                self.assemble_inherent_candidates_from_object(self_ty, &*principal, bounds);
-                self.assemble_inherent_impl_candidates_for_type(principal.def_id);
+            ty::ty_trait(box ref data) => {
+                self.assemble_inherent_candidates_from_object(self_ty, data);
+                self.assemble_inherent_impl_candidates_for_type(data.principal.def_id());
             }
             ty::ty_enum(did, _) |
             ty::ty_struct(did, _) |
@@ -290,8 +289,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
 
     fn assemble_inherent_candidates_from_object(&mut self,
                                                 self_ty: Ty<'tcx>,
-                                                principal: &ty::TraitRef<'tcx>,
-                                                _bounds: ty::ExistentialBounds) {
+                                                data: &ty::TyTrait<'tcx>) {
         debug!("assemble_inherent_candidates_from_object(self_ty={})",
                self_ty.repr(self.tcx()));
 
@@ -304,29 +302,17 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         // a substitution that replaces `Self` with the object type
         // itself. Hence, a `&self` method will wind up with an
         // argument type like `&Trait`.
-        let rcvr_substs = principal.substs.clone().with_self_ty(self_ty);
-        let trait_ref = Rc::new(ty::TraitRef {
-            def_id: principal.def_id,
-            substs: rcvr_substs.clone()
-        });
-
+        let trait_ref = data.principal_trait_ref_with_self_ty(self_ty);
         self.elaborate_bounds(&[trait_ref.clone()], false, |this, new_trait_ref, m, method_num| {
             let vtable_index =
-                get_method_index(tcx, &*new_trait_ref,
-                                 trait_ref.clone(), method_num);
+                get_method_index(tcx, &*new_trait_ref, trait_ref.clone(), method_num);
 
-            let xform_self_ty =
-                this.xform_self_ty(&m, &new_trait_ref.substs);
+            let xform_self_ty = this.xform_self_ty(&m, new_trait_ref.substs());
 
             this.inherent_candidates.push(Candidate {
                 xform_self_ty: xform_self_ty,
                 method_ty: m,
-                kind: ObjectCandidate(MethodObject {
-                    trait_ref: new_trait_ref,
-                    object_trait_id: principal.def_id,
-                    method_num: method_num,
-                    real_index: vtable_index
-                })
+                kind: ObjectCandidate(new_trait_ref.def_id(), method_num, vtable_index)
             });
         });
     }
@@ -358,27 +344,27 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
 
         self.elaborate_bounds(bounds.as_slice(), true, |this, trait_ref, m, method_num| {
             let xform_self_ty =
-                this.xform_self_ty(&m, &trait_ref.substs);
+                this.xform_self_ty(&m, trait_ref.substs());
 
             debug!("found match: trait_ref={} substs={} m={}",
                    trait_ref.repr(this.tcx()),
-                   trait_ref.substs.repr(this.tcx()),
+                   trait_ref.substs().repr(this.tcx()),
                    m.repr(this.tcx()));
             assert_eq!(m.generics.types.get_slice(subst::TypeSpace).len(),
-                       trait_ref.substs.types.get_slice(subst::TypeSpace).len());
+                       trait_ref.substs().types.get_slice(subst::TypeSpace).len());
             assert_eq!(m.generics.regions.get_slice(subst::TypeSpace).len(),
-                       trait_ref.substs.regions().get_slice(subst::TypeSpace).len());
+                       trait_ref.substs().regions().get_slice(subst::TypeSpace).len());
             assert_eq!(m.generics.types.get_slice(subst::SelfSpace).len(),
-                       trait_ref.substs.types.get_slice(subst::SelfSpace).len());
+                       trait_ref.substs().types.get_slice(subst::SelfSpace).len());
             assert_eq!(m.generics.regions.get_slice(subst::SelfSpace).len(),
-                       trait_ref.substs.regions().get_slice(subst::SelfSpace).len());
+                       trait_ref.substs().regions().get_slice(subst::SelfSpace).len());
 
             // Because this trait derives from a where-clause, it
             // should not contain any inference variables or other
             // artifacts. This means it is safe to put into the
             // `WhereClauseCandidate` and (eventually) into the
             // `WhereClausePick`.
-            assert!(trait_ref.substs.types.iter().all(|&t| !ty::type_needs_infer(t)));
+            assert!(trait_ref.substs().types.iter().all(|&t| !ty::type_needs_infer(t)));
 
             this.inherent_candidates.push(Candidate {
                 xform_self_ty: xform_self_ty,
@@ -392,10 +378,10 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
     // create the candidates.
     fn elaborate_bounds(
         &mut self,
-        bounds: &[Rc<ty::TraitRef<'tcx>>],
+        bounds: &[Rc<ty::PolyTraitRef<'tcx>>],
         num_includes_types: bool,
         mk_cand: for<'b> |this: &mut ProbeContext<'b, 'tcx>,
-                          tr: Rc<ty::TraitRef<'tcx>>,
+                          tr: Rc<ty::PolyTraitRef<'tcx>>,
                           m: Rc<ty::Method<'tcx>>,
                           method_num: uint|)
     {
@@ -405,12 +391,12 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         let mut cache = HashSet::new();
         for bound_trait_ref in traits::transitive_bounds(tcx, bounds) {
             // Already visited this trait, skip it.
-            if !cache.insert(bound_trait_ref.def_id) {
+            if !cache.insert(bound_trait_ref.def_id()) {
                 continue;
             }
 
             let (pos, method) = match trait_method(tcx,
-                                                   bound_trait_ref.def_id,
+                                                   bound_trait_ref.def_id(),
                                                    self.method_name,
                                                    num_includes_types) {
                 Some(v) => v,
@@ -418,7 +404,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             };
 
             if !self.has_applicable_self(&*method) {
-                self.record_static_candidate(TraitSource(bound_trait_ref.def_id));
+                self.record_static_candidate(TraitSource(bound_trait_ref.def_id()));
             } else {
                 mk_cand(self, bound_trait_ref, method, pos);
             }
@@ -756,7 +742,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                self_ty.repr(self.tcx()),
                probe.repr(self.tcx()));
 
-        self.infcx().probe(|| {
+        self.infcx().probe(|_| {
             // First check that the self type can be related.
             match self.make_sub_ty(self_ty, probe.xform_self_ty) {
                 Ok(()) => { }
@@ -779,7 +765,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
 
                     // Erase any late-bound regions bound in the impl
                     // which appear in the bounds.
-                    let impl_bounds = self.erase_late_bound_regions(&ty::bind(impl_bounds)).value;
+                    let impl_bounds = self.erase_late_bound_regions(&ty::Binder(impl_bounds));
 
                     // Convert the bounds into obligations.
                     let obligations =
@@ -881,9 +867,10 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
     fn xform_self_ty(&self,
                      method: &Rc<ty::Method<'tcx>>,
                      substs: &subst::Substs<'tcx>)
-                     -> Ty<'tcx> {
+                     -> Ty<'tcx>
+    {
         debug!("xform_self_ty(self_ty={}, substs={})",
-               method.fty.sig.inputs[0].repr(self.tcx()),
+               method.fty.sig.0.inputs[0].repr(self.tcx()),
                substs.repr(self.tcx()));
 
         // It is possible for type parameters or early-bound lifetimes
@@ -916,15 +903,13 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         }
 
         // Replace early-bound regions and types.
-        let xform_self_ty = method.fty.sig.inputs[0].subst(self.tcx(), substs);
+        let xform_self_ty = method.fty.sig.0.inputs[0].subst(self.tcx(), substs);
 
         // Replace late-bound regions bound in the impl or
-        // where-clause (2 levels of binding).
-        let xform_self_ty =
-            self.erase_late_bound_regions(&ty::bind(ty::bind(xform_self_ty))).value.value;
-
-        // Replace late-bound regions bound in the method (1 level of binding).
-        self.erase_late_bound_regions(&ty::bind(xform_self_ty)).value
+        // where-clause (2 levels of binding) and method (1 level of binding).
+        self.erase_late_bound_regions(
+            &self.erase_late_bound_regions(
+                &ty::Binder(ty::Binder(xform_self_ty))))
     }
 
     fn impl_substs(&self,
@@ -962,8 +947,8 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
     ///    region got replaced with the same variable, which requires a bit more coordination
     ///    and/or tracking the substitution and
     ///    so forth.
-    fn erase_late_bound_regions<T>(&self, value: &T) -> T
-        where T : HigherRankedFoldable<'tcx>
+    fn erase_late_bound_regions<T>(&self, value: &ty::Binder<T>) -> T
+        where T : TypeFoldable<'tcx> + Repr<'tcx>
     {
         ty::erase_late_bound_regions(self.tcx(), value)
     }
@@ -1007,8 +992,8 @@ fn trait_method<'tcx>(tcx: &ty::ctxt<'tcx>,
 // Determine the index of a method in the list of all methods belonging
 // to a trait and its supertraits.
 fn get_method_index<'tcx>(tcx: &ty::ctxt<'tcx>,
-                          trait_ref: &ty::TraitRef<'tcx>,
-                          subtrait: Rc<ty::TraitRef<'tcx>>,
+                          trait_ref: &ty::PolyTraitRef<'tcx>,
+                          subtrait: Rc<ty::PolyTraitRef<'tcx>>,
                           n_method: uint) -> uint {
     // We need to figure the "real index" of the method in a
     // listing of all the methods of an object. We do this by
@@ -1017,10 +1002,10 @@ fn get_method_index<'tcx>(tcx: &ty::ctxt<'tcx>,
     // methods from them.
     let mut method_count = n_method;
     ty::each_bound_trait_and_supertraits(tcx, &[subtrait], |bound_ref| {
-        if bound_ref.def_id == trait_ref.def_id {
+        if bound_ref.def_id() == trait_ref.def_id() {
             false
         } else {
-            let trait_items = ty::trait_items(tcx, bound_ref.def_id);
+            let trait_items = ty::trait_items(tcx, bound_ref.def_id());
             for trait_item in trait_items.iter() {
                 match *trait_item {
                     ty::MethodTraitItem(_) => method_count += 1,
@@ -1042,8 +1027,8 @@ impl<'tcx> Candidate<'tcx> {
                 InherentImplCandidate(def_id, _) => {
                     InherentImplPick(def_id)
                 }
-                ObjectCandidate(ref data) => {
-                    ObjectPick(data.trait_ref.def_id, data.method_num, data.real_index)
+                ObjectCandidate(def_id, method_num, real_index) => {
+                    ObjectPick(def_id, method_num, real_index)
                 }
                 ExtensionImplCandidate(def_id, _, _, index) => {
                     ExtensionImplPick(def_id, index)
@@ -1057,7 +1042,7 @@ impl<'tcx> Candidate<'tcx> {
                     // inference variables or other artifacts. This
                     // means they are safe to put into the
                     // `WhereClausePick`.
-                    assert!(trait_ref.substs.types.iter().all(|&t| !ty::type_needs_infer(t)));
+                    assert!(trait_ref.substs().types.iter().all(|&t| !ty::type_needs_infer(t)));
 
                     WhereClausePick((*trait_ref).clone(), index)
                 }
@@ -1068,10 +1053,10 @@ impl<'tcx> Candidate<'tcx> {
     fn to_source(&self) -> CandidateSource {
         match self.kind {
             InherentImplCandidate(def_id, _) => ImplSource(def_id),
-            ObjectCandidate(ref obj) => TraitSource(obj.trait_ref.def_id),
+            ObjectCandidate(def_id, _, _) => TraitSource(def_id),
             ExtensionImplCandidate(def_id, _, _, _) => ImplSource(def_id),
             UnboxedClosureCandidate(trait_def_id, _) => TraitSource(trait_def_id),
-            WhereClauseCandidate(ref trait_ref, _) => TraitSource(trait_ref.def_id),
+            WhereClauseCandidate(ref trait_ref, _) => TraitSource(trait_ref.def_id()),
         }
     }
 
@@ -1084,9 +1069,11 @@ impl<'tcx> Candidate<'tcx> {
             UnboxedClosureCandidate(trait_def_id, method_num) => {
                 Some((trait_def_id, method_num))
             }
-            ExtensionImplCandidate(_, ref trait_ref, _, method_num) |
-            WhereClauseCandidate(ref trait_ref, method_num) => {
+            ExtensionImplCandidate(_, ref trait_ref, _, method_num) => {
                 Some((trait_ref.def_id, method_num))
+            }
+            WhereClauseCandidate(ref trait_ref, method_num) => {
+                Some((trait_ref.def_id(), method_num))
             }
         }
     }
@@ -1105,8 +1092,8 @@ impl<'tcx> Repr<'tcx> for CandidateKind<'tcx> {
         match *self {
             InherentImplCandidate(ref a, ref b) =>
                 format!("InherentImplCandidate({},{})", a.repr(tcx), b.repr(tcx)),
-            ObjectCandidate(ref a) =>
-                format!("ObjectCandidate({})", a.repr(tcx)),
+            ObjectCandidate(a, b, c) =>
+                format!("ObjectCandidate({},{},{})", a.repr(tcx), b, c),
             ExtensionImplCandidate(ref a, ref b, ref c, ref d) =>
                 format!("ExtensionImplCandidate({},{},{},{})", a.repr(tcx), b.repr(tcx),
                         c.repr(tcx), d),

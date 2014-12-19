@@ -762,8 +762,8 @@ mod test {
         expected: &'b [int],
     }
 
-    impl<'a, 'b> FnMut(&int) -> bool for Counter<'a, 'b> {
-        extern "rust-call" fn call_mut(&mut self, (&x,): (&int,)) -> bool {
+    impl<'a, 'b, 'c> FnMut(&'c int) -> bool for Counter<'a, 'b> {
+        extern "rust-call" fn call_mut(&mut self, (&x,): (&'c int,)) -> bool {
             assert_eq!(x, self.expected[*self.i]);
             *self.i += 1;
             true

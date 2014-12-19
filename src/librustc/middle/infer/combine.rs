@@ -195,7 +195,7 @@ pub trait Combine<'tcx> {
                    b: &ty::BareFnTy<'tcx>) -> cres<'tcx, ty::BareFnTy<'tcx>> {
         let unsafety = try!(self.unsafeties(a.unsafety, b.unsafety));
         let abi = try!(self.abi(a.abi, b.abi));
-        let sig = try!(self.fn_sigs(&a.sig, &b.sig));
+        let sig = try!(self.binders(&a.sig, &b.sig));
         Ok(ty::BareFnTy {unsafety: unsafety,
                          abi: abi,
                          sig: sig})
@@ -222,7 +222,7 @@ pub trait Combine<'tcx> {
         let unsafety = try!(self.unsafeties(a.unsafety, b.unsafety));
         let onceness = try!(self.oncenesses(a.onceness, b.onceness));
         let bounds = try!(self.existential_bounds(a.bounds, b.bounds));
-        let sig = try!(self.fn_sigs(&a.sig, &b.sig));
+        let sig = try!(self.binders(&a.sig, &b.sig));
         let abi = try!(self.abi(a.abi, b.abi));
         Ok(ty::ClosureTy {
             unsafety: unsafety,
@@ -234,7 +234,43 @@ pub trait Combine<'tcx> {
         })
     }
 
-    fn fn_sigs(&self, a: &ty::FnSig<'tcx>, b: &ty::FnSig<'tcx>) -> cres<'tcx, ty::FnSig<'tcx>>;
+    fn fn_sigs(&self, a: &ty::FnSig<'tcx>, b: &ty::FnSig<'tcx>) -> cres<'tcx, ty::FnSig<'tcx>> {
+        if a.variadic != b.variadic {
+            return Err(ty::terr_variadic_mismatch(expected_found(self, a.variadic, b.variadic)));
+        }
+
+        let inputs = try!(argvecs(self,
+                                  a.inputs.as_slice(),
+                                  b.inputs.as_slice()));
+
+        let output = try!(match (a.output, b.output) {
+            (ty::FnConverging(a_ty), ty::FnConverging(b_ty)) =>
+                Ok(ty::FnConverging(try!(self.tys(a_ty, b_ty)))),
+            (ty::FnDiverging, ty::FnDiverging) =>
+                Ok(ty::FnDiverging),
+            (a, b) =>
+                Err(ty::terr_convergence_mismatch(
+                    expected_found(self, a != ty::FnDiverging, b != ty::FnDiverging))),
+        });
+
+        return Ok(ty::FnSig {inputs: inputs,
+                             output: output,
+                             variadic: a.variadic});
+
+
+        fn argvecs<'tcx, C: Combine<'tcx>>(combiner: &C,
+                                           a_args: &[Ty<'tcx>],
+                                           b_args: &[Ty<'tcx>])
+                                           -> cres<'tcx, Vec<Ty<'tcx>>>
+        {
+            if a_args.len() == b_args.len() {
+                a_args.iter().zip(b_args.iter())
+                    .map(|(a, b)| combiner.args(*a, *b)).collect()
+            } else {
+                Err(ty::terr_arg_count)
+            }
+        }
+    }
 
     fn args(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> cres<'tcx, Ty<'tcx>> {
         self.contratys(a, b).and_then(|t| Ok(t))
@@ -301,9 +337,45 @@ pub trait Combine<'tcx> {
     fn trait_refs(&self,
                   a: &ty::TraitRef<'tcx>,
                   b: &ty::TraitRef<'tcx>)
-                  -> cres<'tcx, ty::TraitRef<'tcx>>;
+                  -> cres<'tcx, ty::TraitRef<'tcx>>
+    {
+        // Different traits cannot be related
+        if a.def_id != b.def_id {
+            Err(ty::terr_traits(expected_found(self, a.def_id, b.def_id)))
+        } else {
+            let substs = try!(self.substs(a.def_id, &a.substs, &b.substs));
+            Ok(ty::TraitRef { def_id: a.def_id, substs: substs })
+        }
+    }
+
+    fn binders<T>(&self, a: &ty::Binder<T>, b: &ty::Binder<T>) -> cres<'tcx, ty::Binder<T>>
+        where T : Combineable<'tcx>;
     // this must be overridden to do correctly, so as to account for higher-ranked
     // behavior
+}
+
+pub trait Combineable<'tcx> : Repr<'tcx> + TypeFoldable<'tcx> {
+    fn combine<C:Combine<'tcx>>(combiner: &C, a: &Self, b: &Self) -> cres<'tcx, Self>;
+}
+
+impl<'tcx> Combineable<'tcx> for ty::TraitRef<'tcx> {
+    fn combine<C:Combine<'tcx>>(combiner: &C,
+                                a: &ty::TraitRef<'tcx>,
+                                b: &ty::TraitRef<'tcx>)
+                                -> cres<'tcx, ty::TraitRef<'tcx>>
+    {
+        combiner.trait_refs(a, b)
+    }
+}
+
+impl<'tcx> Combineable<'tcx> for ty::FnSig<'tcx> {
+    fn combine<C:Combine<'tcx>>(combiner: &C,
+                                a: &ty::FnSig<'tcx>,
+                                b: &ty::FnSig<'tcx>)
+                                -> cres<'tcx, ty::FnSig<'tcx>>
+    {
+        combiner.fn_sigs(a, b)
+    }
 }
 
 #[deriving(Clone)]
@@ -410,7 +482,7 @@ pub fn super_tys<'tcx, C: Combine<'tcx>>(this: &C,
       (&ty::ty_trait(ref a_),
        &ty::ty_trait(ref b_)) => {
           debug!("Trying to match traits {} and {}", a, b);
-          let principal = try!(this.trait_refs(&a_.principal, &b_.principal));
+          let principal = try!(this.binders(&a_.principal, &b_.principal));
           let bounds = try!(this.existential_bounds(a_.bounds, b_.bounds));
           Ok(ty::mk_trait(tcx, principal, bounds))
       }
@@ -706,14 +778,38 @@ impl<'cx, 'tcx> ty_fold::TypeFolder<'tcx> for Generalizer<'cx, 'tcx> {
 
     fn fold_region(&mut self, r: ty::Region) -> ty::Region {
         match r {
-            ty::ReLateBound(..) | ty::ReEarlyBound(..) => r,
-            _ if self.make_region_vars => {
-                // FIXME: This is non-ideal because we don't give a
-                // very descriptive origin for this region variable.
-                self.infcx.next_region_var(MiscVariable(self.span))
+            // Never make variables for regions bound within the type itself.
+            ty::ReLateBound(..) => { return r; }
+
+            // Early-bound regions should really have been substituted away before
+            // we get to this point.
+            ty::ReEarlyBound(..) => {
+                self.tcx().sess.span_bug(
+                    self.span,
+                    format!("Encountered early bound region when generalizing: {}",
+                            r.repr(self.tcx()))[]);
             }
-            _ => r,
+
+            // Always make a fresh region variable for skolemized regions;
+            // the higher-ranked decision procedures rely on this.
+            ty::ReInfer(ty::ReSkolemized(..)) => { }
+
+            // For anything else, we make a region variable, unless we
+            // are *equating*, in which case it's just wasteful.
+            ty::ReEmpty |
+            ty::ReStatic |
+            ty::ReScope(..) |
+            ty::ReInfer(ty::ReVar(..)) |
+            ty::ReFree(..) => {
+                if !self.make_region_vars {
+                    return r;
+                }
+            }
         }
+
+        // FIXME: This is non-ideal because we don't give a
+        // very descriptive origin for this region variable.
+        self.infcx.next_region_var(MiscVariable(self.span))
     }
 }
 

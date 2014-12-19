@@ -33,7 +33,7 @@ pub use self::util::supertraits;
 pub use self::util::Supertraits;
 pub use self::util::search_trait_and_supertraits_from_bound;
 pub use self::util::transitive_bounds;
-pub use self::util::trait_ref_for_builtin_bound;
+pub use self::util::poly_trait_ref_for_builtin_bound;
 
 mod coherence;
 mod fulfill;
@@ -54,7 +54,7 @@ pub struct Obligation<'tcx, T> {
 }
 
 pub type PredicateObligation<'tcx> = Obligation<'tcx, ty::Predicate<'tcx>>;
-pub type TraitObligation<'tcx> = Obligation<'tcx, Rc<ty::TraitRef<'tcx>>>;
+pub type TraitObligation<'tcx> = Obligation<'tcx, Rc<ty::PolyTraitRef<'tcx>>>;
 
 /// Why did we incur this obligation? Used for error reporting.
 #[deriving(Copy, Clone)]
@@ -115,7 +115,9 @@ pub type Selection<'tcx> = Vtable<'tcx, PredicateObligation<'tcx>>;
 pub enum SelectionError<'tcx> {
     Unimplemented,
     Overflow,
-    OutputTypeParameterMismatch(Rc<ty::TraitRef<'tcx>>, Rc<ty::TraitRef<'tcx>>, ty::type_err<'tcx>),
+    OutputTypeParameterMismatch(Rc<ty::PolyTraitRef<'tcx>>,
+                                Rc<ty::PolyTraitRef<'tcx>>,
+                                ty::type_err<'tcx>),
 }
 
 pub struct FulfillmentError<'tcx> {
@@ -226,7 +228,7 @@ pub struct VtableBuiltinData<N> {
 #[deriving(PartialEq,Eq,Clone)]
 pub struct VtableParamData<'tcx> {
     // In the above example, this would `Eq`
-    pub bound: Rc<ty::TraitRef<'tcx>>,
+    pub bound: Rc<ty::PolyTraitRef<'tcx>>,
 }
 
 /// True if neither the trait nor self type is local. Note that `impl_def_id` must refer to an impl
@@ -278,7 +280,7 @@ impl<'tcx,O> Obligation<'tcx,O> {
     }
 }
 
-impl<'tcx> Obligation<'tcx,Rc<ty::TraitRef<'tcx>>> {
+impl<'tcx> TraitObligation<'tcx> {
     pub fn self_ty(&self) -> Ty<'tcx> {
         self.trait_ref.self_ty()
     }

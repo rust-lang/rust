@@ -13,7 +13,9 @@ type Transducer<'t, R, T, U> = |Step<'t, R, U>|: 't -> Step<'t, R, T>;
 
 fn mapping<'f, R, T, U>(f: |T|: 'f -> U) -> &'f Transducer<'f, R, T, U> {
     |step| |r, x|
-        step(r, f(x)) //~ ERROR the type of this value must be known in this context
+        step(r, f(x))
+        //~^ ERROR the type of this value must be known in this context
+        //~| ERROR this function takes 1 parameter but 2 parameters were supplied
 }
 
 fn main() {}

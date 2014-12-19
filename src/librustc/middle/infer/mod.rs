@@ -19,21 +19,14 @@ pub use self::TypeOrigin::*;
 pub use self::ValuePairs::*;
 pub use self::fixup_err::*;
 pub use middle::ty::IntVarValue;
-pub use self::resolve::resolve_and_force_all_but_regions;
-pub use self::resolve::{force_all, not_regions};
-pub use self::resolve::{force_ivar};
-pub use self::resolve::{force_tvar, force_rvar};
-pub use self::resolve::{resolve_ivar, resolve_all};
-pub use self::resolve::{resolve_nested_tvar};
-pub use self::resolve::{resolve_rvar};
-pub use self::skolemize::TypeSkolemizer;
+pub use self::freshen::TypeFreshener;
 
 use middle::subst;
 use middle::subst::Substs;
 use middle::ty::{TyVid, IntVid, FloatVid, RegionVid};
 use middle::ty::replace_late_bound_regions;
 use middle::ty::{mod, Ty};
-use middle::ty_fold::{HigherRankedFoldable, TypeFolder, TypeFoldable};
+use middle::ty_fold::{TypeFolder, TypeFoldable};
 use std::cell::{RefCell};
 use std::rc::Rc;
 use syntax::ast;
@@ -42,12 +35,11 @@ use syntax::codemap::Span;
 use util::common::indent;
 use util::nodemap::FnvHashMap;
 use util::ppaux::{ty_to_string};
-use util::ppaux::{trait_ref_to_string, Repr};
+use util::ppaux::{Repr, UserString};
 
 use self::coercion::Coerce;
 use self::combine::{Combine, CombineFields};
 use self::region_inference::{RegionVarBindings, RegionSnapshot};
-use self::resolve::{resolver};
 use self::equate::Equate;
 use self::sub::Sub;
 use self::lub::Lub;
@@ -60,12 +52,12 @@ pub mod doc;
 pub mod equate;
 pub mod error_reporting;
 pub mod glb;
-pub mod higher_ranked;
+mod higher_ranked;
 pub mod lattice;
 pub mod lub;
 pub mod region_inference;
 pub mod resolve;
-mod skolemize;
+mod freshen;
 pub mod sub;
 pub mod type_variable;
 pub mod unify;
@@ -97,6 +89,10 @@ pub struct InferCtxt<'a, 'tcx: 'a> {
     region_vars:
         RegionVarBindings<'a, 'tcx>,
 }
+
+/// A map returned by `skolemize_late_bound_regions()` indicating the skolemized
+/// region that each late-bound region was replaced with.
+pub type SkolemizationMap = FnvHashMap<ty::BoundRegion,ty::Region>;
 
 /// Why did we require that the two types be related?
 ///
@@ -142,6 +138,7 @@ impl Copy for TypeOrigin {}
 pub enum ValuePairs<'tcx> {
     Types(ty::expected_found<Ty<'tcx>>),
     TraitRefs(ty::expected_found<Rc<ty::TraitRef<'tcx>>>),
+    PolyTraitRefs(ty::expected_found<Rc<ty::PolyTraitRef<'tcx>>>),
 }
 
 /// The trace designates the path through inference that we took to
@@ -353,7 +350,7 @@ pub fn can_mk_subty<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
                               b: Ty<'tcx>)
                               -> ures<'tcx> {
     debug!("can_mk_subty({} <: {})", a.repr(cx.tcx), b.repr(cx.tcx));
-    cx.probe(|| {
+    cx.probe(|_| {
         let trace = TypeTrace {
             origin: Misc(codemap::DUMMY_SP),
             values: Types(expected_found(true, a, b))
@@ -366,7 +363,7 @@ pub fn can_mk_eqty<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
                              a: Ty<'tcx>, b: Ty<'tcx>)
                              -> ures<'tcx> {
     debug!("can_mk_subty({} <: {})", a.repr(cx.tcx), b.repr(cx.tcx));
-    cx.probe(|| {
+    cx.probe(|_| {
         let trace = TypeTrace {
             origin: Misc(codemap::DUMMY_SP),
             values: Types(expected_found(true, a, b))
@@ -410,17 +407,17 @@ pub fn mk_eqty<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
         || cx.eq_types(a_is_expected, origin, a, b))
 }
 
-pub fn mk_sub_trait_refs<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
+pub fn mk_sub_poly_trait_refs<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
                                    a_is_expected: bool,
                                    origin: TypeOrigin,
-                                   a: Rc<ty::TraitRef<'tcx>>,
-                                   b: Rc<ty::TraitRef<'tcx>>)
+                                   a: Rc<ty::PolyTraitRef<'tcx>>,
+                                   b: Rc<ty::PolyTraitRef<'tcx>>)
                                    -> ures<'tcx>
 {
     debug!("mk_sub_trait_refs({} <: {})",
            a.repr(cx.tcx), b.repr(cx.tcx));
     cx.commit_if_ok(
-        || cx.sub_trait_refs(a_is_expected, origin, a.clone(), b.clone()))
+        || cx.sub_poly_trait_refs(a_is_expected, origin, a.clone(), b.clone()))
 }
 
 fn expected_found<T>(a_is_expected: bool,
@@ -451,22 +448,6 @@ pub fn mk_coercety<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
             Coerce(cx.combine_fields(a_is_expected, trace)).tys(a, b)
         })
     })
-}
-
-// See comment on the type `resolve_state` below
-pub fn resolve_type<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
-                              span: Option<Span>,
-                              a: Ty<'tcx>,
-                              modes: uint)
-                              -> fres<Ty<'tcx>> {
-    let mut resolver = resolver(cx, modes, span);
-    cx.commit_unconditionally(|| resolver.resolve_type_chk(a))
-}
-
-pub fn resolve_region(cx: &InferCtxt, r: ty::Region, modes: uint)
-                      -> fres<ty::Region> {
-    let mut resolver = resolver(cx, modes, None);
-    resolver.resolve_region_chk(r)
 }
 
 trait then<'tcx> {
@@ -520,6 +501,7 @@ pub fn uok<'tcx>() -> ures<'tcx> {
     Ok(())
 }
 
+#[must_use = "once you start a snapshot, you should always consume it"]
 pub struct CombinedSnapshot {
     type_snapshot: type_variable::Snapshot,
     int_snapshot: unify::Snapshot<ty::IntVid>,
@@ -528,8 +510,8 @@ pub struct CombinedSnapshot {
 }
 
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
-    pub fn skolemize<T:TypeFoldable<'tcx>>(&self, t: T) -> T {
-        t.fold_with(&mut self.skolemizer())
+    pub fn freshen<T:TypeFoldable<'tcx>>(&self, t: T) -> T {
+        t.fold_with(&mut self.freshener())
     }
 
     pub fn type_var_diverges(&'a self, ty: Ty) -> bool {
@@ -539,8 +521,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn skolemizer<'b>(&'b self) -> TypeSkolemizer<'b, 'tcx> {
-        skolemize::TypeSkolemizer::new(self)
+    pub fn freshener<'b>(&'b self) -> TypeFreshener<'b, 'tcx> {
+        freshen::TypeFreshener::new(self)
     }
 
     pub fn combine_fields<'b>(&'b self, a_is_expected: bool, trace: TypeTrace<'tcx>)
@@ -629,16 +611,16 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn commit_if_ok<T, E, F>(&self, f: F) -> Result<T, E> where
         F: FnOnce() -> Result<T, E>
     {
-        self.commit_unconditionally(move || self.try(move || f()))
+        self.commit_unconditionally(move || self.try(move |_| f()))
     }
 
     /// Execute `f`, unroll bindings on panic
     pub fn try<T, E, F>(&self, f: F) -> Result<T, E> where
-        F: FnOnce() -> Result<T, E>
+        F: FnOnce(&CombinedSnapshot) -> Result<T, E>
     {
         debug!("try()");
         let snapshot = self.start_snapshot();
-        let r = f();
+        let r = f(&snapshot);
         debug!("try() -- r.is_ok() = {}", r.is_ok());
         match r {
             Ok(_) => {
@@ -653,11 +635,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
     /// Execute `f` then unroll any bindings it creates
     pub fn probe<R, F>(&self, f: F) -> R where
-        F: FnOnce() -> R,
+        F: FnOnce(&CombinedSnapshot) -> R,
     {
         debug!("probe()");
         let snapshot = self.start_snapshot();
-        let r = f();
+        let r = f(&snapshot);
         self.rollback_to(snapshot);
         r
     }
@@ -715,15 +697,93 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         self.commit_if_ok(|| {
             let trace = TypeTrace {
                 origin: origin,
-                values: TraitRefs(expected_found(a_is_expected,
-                                                 a.clone(), b.clone()))
+                values: TraitRefs(expected_found(a_is_expected, a.clone(), b.clone()))
             };
             self.sub(a_is_expected, trace).trait_refs(&*a, &*b).to_ures()
         })
     }
-}
 
-impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
+    pub fn sub_poly_trait_refs(&self,
+                               a_is_expected: bool,
+                               origin: TypeOrigin,
+                               a: Rc<ty::PolyTraitRef<'tcx>>,
+                               b: Rc<ty::PolyTraitRef<'tcx>>)
+                               -> ures<'tcx>
+    {
+        debug!("sub_poly_trait_refs({} <: {})",
+               a.repr(self.tcx),
+               b.repr(self.tcx));
+        self.commit_if_ok(|| {
+            let trace = TypeTrace {
+                origin: origin,
+                values: PolyTraitRefs(expected_found(a_is_expected, a.clone(), b.clone()))
+            };
+            self.sub(a_is_expected, trace).binders(&*a, &*b).to_ures()
+        })
+    }
+
+    pub fn skolemize_late_bound_regions<T>(&self,
+                                           value: &ty::Binder<T>,
+                                           snapshot: &CombinedSnapshot)
+                                           -> (T, SkolemizationMap)
+        where T : TypeFoldable<'tcx> + Repr<'tcx>
+    {
+        /*! See `higher_ranked::skolemize_late_bound_regions` */
+
+        higher_ranked::skolemize_late_bound_regions(self, value, snapshot)
+    }
+
+    pub fn leak_check(&self,
+                      skol_map: &SkolemizationMap,
+                      snapshot: &CombinedSnapshot)
+                      -> ures<'tcx>
+    {
+        /*! See `higher_ranked::leak_check` */
+
+        match higher_ranked::leak_check(self, skol_map, snapshot) {
+            Ok(()) => Ok(()),
+            Err((br, r)) => Err(ty::terr_regions_insufficiently_polymorphic(br, r))
+        }
+    }
+
+    pub fn plug_leaks<T>(&self,
+                         skol_map: SkolemizationMap,
+                         snapshot: &CombinedSnapshot,
+                         value: &T)
+                         -> T
+        where T : TypeFoldable<'tcx> + Repr<'tcx>
+    {
+        /*! See `higher_ranked::leak_check` */
+
+        higher_ranked::plug_leaks(self, skol_map, snapshot, value)
+    }
+
+    pub fn equality_predicate(&self,
+                              span: Span,
+                              predicate: &ty::PolyEquatePredicate<'tcx>)
+                              -> ures<'tcx> {
+        self.try(|snapshot| {
+            let (ty::EquatePredicate(a, b), skol_map) =
+                self.skolemize_late_bound_regions(predicate, snapshot);
+            let origin = EquatePredicate(span);
+            let () = try!(mk_eqty(self, false, origin, a, b));
+            self.leak_check(&skol_map, snapshot)
+        })
+    }
+
+    pub fn region_outlives_predicate(&self,
+                                     span: Span,
+                                     predicate: &ty::PolyRegionOutlivesPredicate)
+                                     -> ures<'tcx> {
+        self.try(|snapshot| {
+            let (ty::OutlivesPredicate(r_a, r_b), skol_map) =
+                self.skolemize_late_bound_regions(predicate, snapshot);
+            let origin = RelateRegionParamBound(span);
+            let () = mk_subr(self, origin, r_b, r_a); // `b : a` ==> `a <= b`
+            self.leak_check(&skol_map, snapshot)
+        })
+    }
+
     pub fn next_ty_var_id(&self, diverging: bool) -> TyVid {
         self.type_variables
             .borrow_mut()
@@ -821,7 +881,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
     pub fn ty_to_string(&self, t: Ty<'tcx>) -> String {
         ty_to_string(self.tcx,
-                     self.resolve_type_vars_if_possible(t))
+                     self.resolve_type_vars_if_possible(&t))
     }
 
     pub fn tys_to_string(&self, ts: &[Ty<'tcx>]) -> String {
@@ -830,24 +890,25 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     pub fn trait_ref_to_string(&self, t: &Rc<ty::TraitRef<'tcx>>) -> String {
-        let t = self.resolve_type_vars_in_trait_ref_if_possible(&**t);
-        trait_ref_to_string(self.tcx, &t)
-    }
-
-    pub fn contains_unbound_type_variables(&self, typ: Ty<'tcx>) -> Ty<'tcx> {
-        match resolve_type(self,
-                           None,
-                           typ, resolve_nested_tvar | resolve_ivar) {
-          Ok(new_type) => new_type,
-          Err(_) => typ
-        }
+        let t = self.resolve_type_vars_if_possible(&**t);
+        t.user_string(self.tcx)
     }
 
     pub fn shallow_resolve(&self, typ: Ty<'tcx>) -> Ty<'tcx> {
         match typ.sty {
             ty::ty_infer(ty::TyVar(v)) => {
+                // Not entirely obvious: if `typ` is a type variable,
+                // it can be resolved to an int/float variable, which
+                // can then be recursively resolved, hence the
+                // recursion. Note though that we prevent type
+                // variables from unifying to other type variables
+                // directly (though they may be embedded
+                // structurally), and we prevent cycles in any case,
+                // so this recursion should always be of very limited
+                // depth.
                 self.type_variables.borrow()
                     .probe(v)
+                    .map(|t| self.shallow_resolve(t))
                     .unwrap_or(typ)
             }
 
@@ -867,35 +928,32 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn resolve_type_vars_if_possible(&self, typ: Ty<'tcx>) -> Ty<'tcx> {
-        match resolve_type(self,
-                           None,
-                           typ, resolve_nested_tvar | resolve_ivar) {
-          Ok(new_type) => new_type,
-          Err(_) => typ
-        }
+    pub fn resolve_type_vars_if_possible<T:TypeFoldable<'tcx>>(&self, value: &T) -> T {
+        /*!
+         * Where possible, replaces type/int/float variables in
+         * `value` with their final value. Note that region variables
+         * are unaffected. If a type variable has not been unified, it
+         * is left as is.  This is an idempotent operation that does
+         * not affect inference state in any way and so you can do it
+         * at will.
+         */
+
+        let mut r = resolve::OpportunisticTypeResolver::new(self);
+        value.fold_with(&mut r)
     }
 
-    pub fn resolve_type_vars_in_trait_ref_if_possible(&self,
-                                                      trait_ref: &ty::TraitRef<'tcx>)
-                                                      -> ty::TraitRef<'tcx> {
-        // make up a dummy type just to reuse/abuse the resolve machinery
-        let dummy0 = ty::mk_trait(self.tcx,
-                                  (*trait_ref).clone(),
-                                  ty::region_existential_bound(ty::ReStatic));
-        let dummy1 = self.resolve_type_vars_if_possible(dummy0);
-        match dummy1.sty {
-            ty::ty_trait(box ty::TyTrait { ref principal, .. }) => {
-                (*principal).clone()
-            }
-            _ => {
-                self.tcx.sess.bug(
-                    format!("resolve_type_vars_if_possible() yielded {} \
-                             when supplied with {}",
-                            self.ty_to_string(dummy0),
-                            self.ty_to_string(dummy1)).as_slice());
-            }
-        }
+    pub fn fully_resolve<T:TypeFoldable<'tcx>>(&self, value: &T) -> fres<T> {
+        /*!
+         * Attempts to resolve all type/region variables in
+         * `value`. Region inference must have been run already (e.g.,
+         * by calling `resolve_regions_and_report_errors`).  If some
+         * variable was never unified, an `Err` results.
+         *
+         * This method is idempotent, but it not typically not invoked
+         * except during the writeback phase.
+         */
+
+        resolve::fully_resolve(self, value)
     }
 
     // [Note-Type-error-reporting]
@@ -929,9 +987,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     {
         debug!("hi! expected_ty = {}, actual_ty = {}", expected_ty, actual_ty);
 
-        let resolved_expected = expected_ty.map(|e_ty| {
-            self.resolve_type_vars_if_possible(e_ty)
-        });
+        let resolved_expected = expected_ty.map(|e_ty| self.resolve_type_vars_if_possible(&e_ty));
 
         match resolved_expected {
             Some(t) if ty::type_is_error(t) => (),
@@ -958,7 +1014,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                  err: Option<&ty::type_err<'tcx>>) where
         M: FnOnce(String) -> String,
     {
-        let actual_ty = self.resolve_type_vars_if_possible(actual_ty);
+        let actual_ty = self.resolve_type_vars_if_possible(&actual_ty);
 
         // Don't report an error if actual type is ty_err.
         if ty::type_is_error(actual_ty) {
@@ -989,9 +1045,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         &self,
         span: Span,
         lbrct: LateBoundRegionConversionTime,
-        value: &T)
+        value: &ty::Binder<T>)
         -> (T, FnvHashMap<ty::BoundRegion,ty::Region>)
-        where T : HigherRankedFoldable<'tcx>
+        where T : TypeFoldable<'tcx> + Repr<'tcx>
     {
         ty::replace_late_bound_regions(
             self.tcx,

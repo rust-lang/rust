@@ -23,7 +23,10 @@ use middle::ty::{ty_param, ty_ptr, ty_rptr, ty_tup, ty_open};
 use middle::ty::{ty_unboxed_closure};
 use middle::ty::{ty_uniq, ty_trait, ty_int, ty_uint, ty_infer};
 use middle::ty;
+use middle::ty_fold::TypeFoldable;
 
+use std::collections::HashMap;
+use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 use syntax::abi;
 use syntax::ast_map;
@@ -40,7 +43,7 @@ pub trait Repr<'tcx> for Sized? {
 }
 
 /// Produces a string suitable for showing to the user.
-pub trait UserString<'tcx> {
+pub trait UserString<'tcx> : Repr<'tcx> {
     fn user_string(&self, tcx: &ctxt<'tcx>) -> String;
 }
 
@@ -248,21 +251,12 @@ pub fn vec_map_to_string<T, F>(ts: &[T], f: F) -> String where
     format!("[{}]", tstrs.connect(", "))
 }
 
-pub fn fn_sig_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::FnSig<'tcx>) -> String {
-    format!("fn{} -> {}", typ.inputs.repr(cx), typ.output.repr(cx))
-}
-
-pub fn trait_ref_to_string<'tcx>(cx: &ctxt<'tcx>,
-                                 trait_ref: &ty::TraitRef<'tcx>) -> String {
-    trait_ref.user_string(cx).to_string()
-}
-
 pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
     fn bare_fn_to_string<'tcx>(cx: &ctxt<'tcx>,
                                unsafety: ast::Unsafety,
                                abi: abi::Abi,
                                ident: Option<ast::Ident>,
-                               sig: &ty::FnSig<'tcx>)
+                               sig: &ty::PolyFnSig<'tcx>)
                                -> String {
         let mut s = String::new();
         match unsafety {
@@ -336,15 +330,15 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
                                 s: &mut String,
                                 bra: char,
                                 ket: char,
-                                sig: &ty::FnSig<'tcx>,
+                                sig: &ty::PolyFnSig<'tcx>,
                                 bounds: &str) {
         s.push(bra);
-        let strs = sig.inputs
+        let strs = sig.0.inputs
             .iter()
             .map(|a| ty_to_string(cx, *a))
             .collect::<Vec<_>>();
         s.push_str(strs.connect(", ").as_slice());
-        if sig.variadic {
+        if sig.0.variadic {
             s.push_str(", ...");
         }
         s.push(ket);
@@ -354,7 +348,7 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
             s.push_str(bounds);
         }
 
-        match sig.output {
+        match sig.0.output {
             ty::FnConverging(t) => {
                 if !ty::type_is_nil(t) {
                    s.push_str(" -> ");
@@ -374,8 +368,8 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
             ty::IntVar(ref vid) if print_var_ids => vid.repr(cx),
             ty::FloatVar(ref vid) if print_var_ids => vid.repr(cx),
             ty::TyVar(_) | ty::IntVar(_) | ty::FloatVar(_) => format!("_"),
-            ty::SkolemizedTy(v) => format!("SkolemizedTy({})", v),
-            ty::SkolemizedIntTy(v) => format!("SkolemizedIntTy({})", v)
+            ty::FreshTy(v) => format!("FreshTy({})", v),
+            ty::FreshIntTy(v) => format!("FreshIntTy({})", v)
         }
     }
 
@@ -433,16 +427,11 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
         ty_trait(box ty::TyTrait {
             ref principal, ref bounds
         }) => {
-            let base = ty::item_path_str(cx, principal.def_id);
-            let trait_def = ty::lookup_trait_def(cx, principal.def_id);
-            let did = trait_def.trait_ref.def_id;
-            let ty = parameterized(cx, base.as_slice(),
-                                   &principal.substs, &trait_def.generics,
-                                   did);
+            let principal = principal.user_string(cx);
             let bound_str = bounds.user_string(cx);
             let bound_sep = if bound_str.is_empty() { "" } else { " + " };
             format!("{}{}{}",
-                    ty,
+                    principal,
                     bound_sep,
                     bound_str)
         }
@@ -749,7 +738,7 @@ impl<'tcx> Repr<'tcx> for ty::TraitRef<'tcx> {
         // tells you everything you need to know.
         let base = ty::item_path_str(tcx, self.def_id);
         let trait_def = ty::lookup_trait_def(tcx, self.def_id);
-        format!("<{} : {}>",
+        format!("TraitRef({}, {})",
                 self.substs.self_ty().repr(tcx),
                 parameterized(tcx, base.as_slice(), &self.substs, &trait_def.generics, self.def_id))
     }
@@ -1018,7 +1007,7 @@ impl<'tcx> Repr<'tcx> for ty::BareFnTy<'tcx> {
 
 impl<'tcx> Repr<'tcx> for ty::FnSig<'tcx> {
     fn repr(&self, tcx: &ctxt<'tcx>) -> String {
-        fn_sig_to_string(tcx, self)
+        format!("fn{} -> {}", self.inputs.repr(tcx), self.output.repr(tcx))
     }
 }
 
@@ -1161,7 +1150,9 @@ impl<'tcx> UserString<'tcx> for ty::BuiltinBounds {
     }
 }
 
-impl<'tcx> UserString<'tcx> for ty::TraitRef<'tcx> {
+impl<'tcx, T> UserString<'tcx> for ty::Binder<T>
+    where T : UserString<'tcx> + TypeFoldable<'tcx>
+{
     fn user_string(&self, tcx: &ctxt<'tcx>) -> String {
         // Replace any anonymous late-bound regions with named
         // variants, using gensym'd identifiers, so that we can
@@ -1169,7 +1160,7 @@ impl<'tcx> UserString<'tcx> for ty::TraitRef<'tcx> {
         // the output. We'll probably want to tweak this over time to
         // decide just how much information to give.
         let mut names = Vec::new();
-        let (trait_ref, _) = ty::replace_late_bound_regions(tcx, self, |br, debruijn| {
+        let (unbound_value, _) = ty::replace_late_bound_regions(tcx, self, |br, debruijn| {
             ty::ReLateBound(debruijn, match br {
                 ty::BrNamed(_, name) => {
                     names.push(token::get_name(name));
@@ -1178,7 +1169,7 @@ impl<'tcx> UserString<'tcx> for ty::TraitRef<'tcx> {
                 ty::BrAnon(_) |
                 ty::BrFresh(_) |
                 ty::BrEnv => {
-                    let name = token::gensym("r");
+                    let name = token::gensym("'r");
                     names.push(token::get_name(name));
                     ty::BrNamed(ast_util::local_def(ast::DUMMY_NODE_ID), name)
                 }
@@ -1186,19 +1177,21 @@ impl<'tcx> UserString<'tcx> for ty::TraitRef<'tcx> {
         });
         let names: Vec<_> = names.iter().map(|s| s.get()).collect();
 
-        // Let the base string be either `SomeTrait` for `for<'a,'b> SomeTrait`,
-        // depending on whether there are bound regions.
-        let path_str = ty::item_path_str(tcx, self.def_id);
-        let base =
-            if names.is_empty() {
-                path_str
-            } else {
-                format!("for<{}> {}", names.connect(","), path_str)
-            };
+        let value_str = unbound_value.user_string(tcx);
+        if names.len() == 0 {
+            value_str
+        } else {
+            format!("for<{}> {}", names.connect(","), value_str)
+        }
+    }
+}
 
+impl<'tcx> UserString<'tcx> for ty::TraitRef<'tcx> {
+    fn user_string(&self, tcx: &ctxt<'tcx>) -> String {
+        let path_str = ty::item_path_str(tcx, self.def_id);
         let trait_def = ty::lookup_trait_def(tcx, self.def_id);
-        let did = trait_def.trait_ref.def_id;
-        parameterized(tcx, base.as_slice(), &trait_ref.substs, &trait_def.generics, did)
+        parameterized(tcx, path_str.as_slice(), &self.substs,
+                      &trait_def.generics, self.def_id)
     }
 }
 
@@ -1340,6 +1333,73 @@ impl<'tcx, A:Repr<'tcx>, B:Repr<'tcx>> Repr<'tcx> for (A,B) {
 
 impl<'tcx, T:Repr<'tcx>> Repr<'tcx> for ty::Binder<T> {
     fn repr(&self, tcx: &ctxt<'tcx>) -> String {
-        format!("Binder({})", self.value.repr(tcx))
+        format!("Binder({})", self.0.repr(tcx))
+    }
+}
+
+impl<'tcx, S, H, K, V> Repr<'tcx> for HashMap<K,V,H>
+    where K : Hash<S> + Eq + Repr<'tcx>,
+          V : Repr<'tcx>,
+          H : Hasher<S>
+{
+    fn repr(&self, tcx: &ctxt<'tcx>) -> String {
+        format!("HashMap({})",
+                self.iter()
+                    .map(|(k,v)| format!("{} => {}", k.repr(tcx), v.repr(tcx)))
+                    .collect::<Vec<String>>()
+                    .connect(", "))
+    }
+}
+
+impl<'tcx, T, U> Repr<'tcx> for ty::OutlivesPredicate<T,U>
+    where T : Repr<'tcx> + TypeFoldable<'tcx>,
+          U : Repr<'tcx> + TypeFoldable<'tcx>,
+{
+    fn repr(&self, tcx: &ctxt<'tcx>) -> String {
+        format!("OutlivesPredicate({}, {})",
+                self.0.repr(tcx),
+                self.1.repr(tcx))
+    }
+}
+
+impl<'tcx, T, U> UserString<'tcx> for ty::OutlivesPredicate<T,U>
+    where T : UserString<'tcx> + TypeFoldable<'tcx>,
+          U : UserString<'tcx> + TypeFoldable<'tcx>,
+{
+    fn user_string(&self, tcx: &ctxt<'tcx>) -> String {
+        format!("{} : {}",
+                self.0.user_string(tcx),
+                self.1.user_string(tcx))
+    }
+}
+
+impl<'tcx> Repr<'tcx> for ty::EquatePredicate<'tcx> {
+    fn repr(&self, tcx: &ctxt<'tcx>) -> String {
+        format!("EquatePredicate({}, {})",
+                self.0.repr(tcx),
+                self.1.repr(tcx))
+    }
+}
+
+impl<'tcx> UserString<'tcx> for ty::EquatePredicate<'tcx> {
+    fn user_string(&self, tcx: &ctxt<'tcx>) -> String {
+        format!("{} == {}",
+                self.0.user_string(tcx),
+                self.1.user_string(tcx))
+    }
+}
+
+impl<'tcx> UserString<'tcx> for ty::Predicate<'tcx> {
+    fn user_string(&self, tcx: &ctxt<'tcx>) -> String {
+        match *self {
+            ty::Predicate::Trait(ref trait_ref) => {
+                format!("{} : {}",
+                        trait_ref.self_ty().user_string(tcx),
+                        trait_ref.user_string(tcx))
+            }
+            ty::Predicate::Equate(ref predicate) => predicate.user_string(tcx),
+            ty::Predicate::RegionOutlives(ref predicate) => predicate.user_string(tcx),
+            ty::Predicate::TypeOutlives(ref predicate) => predicate.user_string(tcx),
+        }
     }
 }

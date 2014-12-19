@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use middle::infer::InferCtxt;
 use middle::mem_categorization::Typer;
 use middle::ty::{mod, Ty};
-use middle::infer::{mod, InferCtxt};
 use std::collections::HashSet;
 use std::collections::hash_map::{Occupied, Vacant};
 use std::default::Default;
@@ -28,7 +28,7 @@ use super::ObligationCause;
 use super::PredicateObligation;
 use super::Selection;
 use super::select::SelectionContext;
-use super::trait_ref_for_builtin_bound;
+use super::poly_trait_ref_for_builtin_bound;
 use super::Unimplemented;
 
 /// The fulfillment context is used to drive trait resolution.  It
@@ -107,7 +107,7 @@ impl<'tcx> FulfillmentContext<'tcx> {
                                   builtin_bound: ty::BuiltinBound,
                                   cause: ObligationCause<'tcx>)
     {
-        match trait_ref_for_builtin_bound(tcx, builtin_bound, ty) {
+        match poly_trait_ref_for_builtin_bound(tcx, builtin_bound, ty) {
             Ok(trait_ref) => {
                 self.register_trait_ref(tcx, trait_ref, cause);
             }
@@ -117,7 +117,7 @@ impl<'tcx> FulfillmentContext<'tcx> {
 
     pub fn register_trait_ref<'a>(&mut self,
                                   tcx: &ty::ctxt<'tcx>,
-                                  trait_ref: Rc<ty::TraitRef<'tcx>>,
+                                  trait_ref: Rc<ty::PolyTraitRef<'tcx>>,
                                   cause: ObligationCause<'tcx>)
     {
         /*!
@@ -329,30 +329,47 @@ fn process_predicate<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
             }
         }
 
-        ty::Predicate::Equate(a, b) => {
-            let origin = infer::EquatePredicate(predicate.cause.span);
-            match infer::mk_eqty(selcx.infcx(), false, origin, a, b) {
-                Ok(()) => {
-                    true
-                }
+        ty::Predicate::Equate(ref binder) => {
+            match selcx.infcx().equality_predicate(predicate.cause.span, binder) {
+                Ok(()) => { }
                 Err(_) => {
                     errors.push(
                         FulfillmentError::new(
                             predicate.clone(),
                             CodeSelectionError(Unimplemented)));
-                    true
                 }
             }
-        }
-
-        ty::Predicate::RegionOutlives(r_a, r_b) => {
-            let origin = infer::RelateRegionParamBound(predicate.cause.span);
-            let () = infer::mk_subr(selcx.infcx(), origin, r_b, r_a); // `b : a` ==> `a <= b`
             true
         }
 
-        ty::Predicate::TypeOutlives(t_a, r_b) => {
-            register_region_obligation(tcx, t_a, r_b, predicate.cause, region_obligations);
+        ty::Predicate::RegionOutlives(ref binder) => {
+            match selcx.infcx().region_outlives_predicate(predicate.cause.span, binder) {
+                Ok(()) => { }
+                Err(_) => {
+                    errors.push(
+                        FulfillmentError::new(
+                            predicate.clone(),
+                            CodeSelectionError(Unimplemented)));
+                }
+            }
+
+            true
+        }
+
+        ty::Predicate::TypeOutlives(ref binder) => {
+            // For now, we just check that there are no higher-ranked
+            // regions.  If there are, we will call this obligation an
+            // error. Eventually we should be able to support some
+            // cases here, I imagine (e.g., `for<'a> int : 'a`).
+            if ty::count_late_bound_regions(selcx.tcx(), binder) != 0 {
+                errors.push(
+                    FulfillmentError::new(
+                        predicate.clone(),
+                        CodeSelectionError(Unimplemented)));
+            } else {
+                let ty::OutlivesPredicate(t_a, r_b) = binder.0;
+                register_region_obligation(tcx, t_a, r_b, predicate.cause, region_obligations);
+            }
             true
         }
     }
@@ -385,3 +402,4 @@ fn register_region_obligation<'tcx>(tcx: &ty::ctxt<'tcx>,
     }
 
 }
+

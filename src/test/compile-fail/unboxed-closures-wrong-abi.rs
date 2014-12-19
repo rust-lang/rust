@@ -20,9 +20,17 @@ fn call_it<F:Fn(&int)->int>(_: &F, _: int) -> int { 0 }
 fn call_it_mut<F:FnMut(&int)->int>(_: &mut F, _: int) -> int { 0 }
 fn call_it_once<F:FnOnce(&int)->int>(_: F, _: int) -> int { 0 }
 
-fn main() {
+fn a() {
     let x = call_it(&square, 22); //~ ERROR not implemented
+}
+
+fn b() {
     let y = call_it_mut(&mut square, 22); //~ ERROR not implemented
+}
+
+fn c() {
     let z = call_it_once(square, 22); //~ ERROR not implemented
 }
+
+fn main() { }
 

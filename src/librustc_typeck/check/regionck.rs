@@ -124,8 +124,6 @@ use middle::region::CodeExtent;
 use middle::traits;
 use middle::ty::{ReScope};
 use middle::ty::{mod, Ty, MethodCall};
-use middle::infer::resolve_and_force_all_but_regions;
-use middle::infer::resolve_type;
 use middle::infer;
 use middle::pat_util;
 use util::nodemap::{DefIdMap, NodeMap, FnvHashMap};
@@ -307,11 +305,7 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
     /// of b will be `&<R0>.int` and then `*b` will require that `<R0>` be bigger than the let and
     /// the `*b` expression, so we will effectively resolve `<R0>` to be the block B.
     pub fn resolve_type(&self, unresolved_ty: Ty<'tcx>) -> Ty<'tcx> {
-        match resolve_type(self.fcx.infcx(), None, unresolved_ty,
-                           resolve_and_force_all_but_regions) {
-            Ok(t) => t,
-            Err(_) => ty::mk_err()
-        }
+        self.fcx.infcx().resolve_type_vars_if_possible(&unresolved_ty)
     }
 
     /// Try to resolve the type for the given node.
@@ -1187,7 +1181,7 @@ fn constrain_autoderefs<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
                 // Treat overloaded autoderefs as if an AutoRef adjustment
                 // was applied on the base type, as that is always the case.
                 let fn_sig = ty::ty_fn_sig(method.ty);
-                let self_ty = fn_sig.inputs[0];
+                let self_ty = fn_sig.0.inputs[0];
                 let (m, r) = match self_ty.sty {
                     ty::ty_rptr(r, ref m) => (m.mutbl, r),
                     _ => rcx.tcx().sess.span_bug(deref_expr.span,
@@ -1204,7 +1198,7 @@ fn constrain_autoderefs<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
                 // Specialized version of constrain_call.
                 type_must_outlive(rcx, infer::CallRcvr(deref_expr.span),
                                   self_ty, r_deref_expr);
-                match fn_sig.output {
+                match fn_sig.0.output {
                     ty::FnConverging(return_type) => {
                         type_must_outlive(rcx, infer::CallReturn(deref_expr.span),
                                           return_type, r_deref_expr);

@@ -777,13 +777,13 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             }
 
             ty::ty_trait(box ty::TyTrait { ref principal, bounds }) => {
-                let trait_def = ty::lookup_trait_def(self.tcx(), principal.def_id);
+                let trait_def = ty::lookup_trait_def(self.tcx(), principal.def_id());
                 let generics = &trait_def.generics;
 
                 // Traits DO have a Self type parameter, but it is
                 // erased from object types.
                 assert!(!generics.types.is_empty_in(subst::SelfSpace) &&
-                        principal.substs.types.is_empty_in(subst::SelfSpace));
+                        principal.substs().types.is_empty_in(subst::SelfSpace));
 
                 // Traits never declare region parameters in the self
                 // space.
@@ -799,10 +799,10 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 self.add_constraints_from_region(bounds.region_bound, contra);
 
                 self.add_constraints_from_substs(
-                    principal.def_id,
+                    principal.def_id(),
                     generics.types.get_slice(subst::TypeSpace),
                     generics.regions.get_slice(subst::TypeSpace),
-                    &principal.substs,
+                    principal.substs(),
                     variance);
             }
 
@@ -878,13 +878,13 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
     /// Adds constraints appropriate for a function with signature
     /// `sig` appearing in a context with ambient variance `variance`
     fn add_constraints_from_sig(&mut self,
-                                sig: &ty::FnSig<'tcx>,
+                                sig: &ty::PolyFnSig<'tcx>,
                                 variance: VarianceTermPtr<'a>) {
         let contra = self.contravariant(variance);
-        for &input in sig.inputs.iter() {
+        for &input in sig.0.inputs.iter() {
             self.add_constraints_from_ty(input, contra);
         }
-        if let ty::FnConverging(result_type) = sig.output {
+        if let ty::FnConverging(result_type) = sig.0.output {
             self.add_constraints_from_ty(result_type, variance);
         }
     }

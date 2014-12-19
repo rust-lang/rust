@@ -1113,7 +1113,7 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
                     this.emit_enum_variant("UnsizeVtable", 2, 4, |this| {
                         this.emit_enum_variant_arg(0, |this| {
                             try!(this.emit_struct_field("principal", 0, |this| {
-                                Ok(this.emit_trait_ref(ecx, &*principal))
+                                Ok(this.emit_trait_ref(ecx, &principal.0))
                             }));
                             this.emit_struct_field("bounds", 1, |this| {
                                 Ok(this.emit_existential_bounds(ecx, b))
@@ -1277,7 +1277,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
         rbml_w.tag(c::tag_table_object_cast_map, |rbml_w| {
             rbml_w.id(id);
             rbml_w.tag(c::tag_table_val, |rbml_w| {
-                rbml_w.emit_trait_ref(ecx, &**trait_ref);
+                rbml_w.emit_trait_ref(ecx, &trait_ref.0);
             })
         })
     }
@@ -1356,6 +1356,8 @@ trait rbml_decoder_decoder_helpers<'tcx> {
     fn read_tys<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>) -> Vec<Ty<'tcx>>;
     fn read_trait_ref<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
                               -> Rc<ty::TraitRef<'tcx>>;
+    fn read_poly_trait_ref<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
+                                   -> Rc<ty::PolyTraitRef<'tcx>>;
     fn read_type_param_def<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
                                    -> ty::TypeParameterDef<'tcx>;
     fn read_predicate<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
@@ -1546,6 +1548,19 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
                 |s, a| this.convert_def_id(dcx, s, a));
             Ok(ty)
         }).unwrap())
+    }
+
+    fn read_poly_trait_ref<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
+                                   -> Rc<ty::PolyTraitRef<'tcx>> {
+        Rc::new(ty::Binder(self.read_opaque(|this, doc| {
+            let ty = tydecode::parse_trait_ref_data(
+                doc.data,
+                dcx.cdata.cnum,
+                doc.start,
+                dcx.tcx,
+                |s, a| this.convert_def_id(dcx, s, a));
+            Ok(ty)
+        }).unwrap()))
     }
 
     fn read_type_param_def<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
@@ -1753,7 +1768,7 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
                     2 => {
                         let ty_trait = try!(this.read_enum_variant_arg(0, |this| {
                             let principal = try!(this.read_struct_field("principal", 0, |this| {
-                                Ok(this.read_trait_ref(dcx))
+                                Ok(this.read_poly_trait_ref(dcx))
                             }));
                             Ok(ty::TyTrait {
                                 principal: (*principal).clone(),
@@ -1926,7 +1941,7 @@ fn decode_side_tables(dcx: &DecodeContext,
                         dcx.tcx.method_map.borrow_mut().insert(method_call, method);
                     }
                     c::tag_table_object_cast_map => {
-                        let trait_ref = val_dsr.read_trait_ref(dcx);
+                        let trait_ref = val_dsr.read_poly_trait_ref(dcx);
                         dcx.tcx.object_cast_map.borrow_mut()
                                                .insert(id, trait_ref);
                     }

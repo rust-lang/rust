@@ -99,7 +99,7 @@ pub struct LocalCrateContext<'tcx> {
     monomorphized: RefCell<FnvHashMap<MonoId<'tcx>, ValueRef>>,
     monomorphizing: RefCell<DefIdMap<uint>>,
     /// Cache generated vtables
-    vtables: RefCell<FnvHashMap<(Ty<'tcx>, Rc<ty::TraitRef<'tcx>>), ValueRef>>,
+    vtables: RefCell<FnvHashMap<(Ty<'tcx>, Rc<ty::PolyTraitRef<'tcx>>), ValueRef>>,
     /// Cache of constant strings,
     const_cstr_cache: RefCell<FnvHashMap<InternedString, ValueRef>>,
 
@@ -150,7 +150,7 @@ pub struct LocalCrateContext<'tcx> {
     /// contexts around the same size.
     n_llvm_insns: Cell<uint>,
 
-    trait_cache: RefCell<FnvHashMap<Rc<ty::TraitRef<'tcx>>,
+    trait_cache: RefCell<FnvHashMap<Rc<ty::PolyTraitRef<'tcx>>,
                                     traits::Vtable<'tcx, ()>>>,
 }
 
@@ -601,7 +601,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         &self.local.monomorphizing
     }
 
-    pub fn vtables<'a>(&'a self) -> &'a RefCell<FnvHashMap<(Ty<'tcx>, Rc<ty::TraitRef<'tcx>>),
+    pub fn vtables<'a>(&'a self) -> &'a RefCell<FnvHashMap<(Ty<'tcx>, Rc<ty::PolyTraitRef<'tcx>>),
                                                             ValueRef>> {
         &self.local.vtables
     }
@@ -699,7 +699,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         self.local.n_llvm_insns.set(self.local.n_llvm_insns.get() + 1);
     }
 
-    pub fn trait_cache(&self) -> &RefCell<FnvHashMap<Rc<ty::TraitRef<'tcx>>,
+    pub fn trait_cache(&self) -> &RefCell<FnvHashMap<Rc<ty::PolyTraitRef<'tcx>>,
                                                      traits::Vtable<'tcx, ()>>> {
         &self.local.trait_cache
     }

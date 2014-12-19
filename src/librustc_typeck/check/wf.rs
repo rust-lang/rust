@@ -166,12 +166,9 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
 
             // Find the impl self type as seen from the "inside" --
             // that is, with all type parameters converted from bound
-            // to free, and any late-bound regions on the impl
-            // liberated.
+            // to free.
             let self_ty = ty::node_id_to_type(fcx.tcx(), item.id);
             let self_ty = self_ty.subst(fcx.tcx(), &fcx.inh.param_env.free_substs);
-            let self_ty = liberate_late_bound_regions(
-                fcx.tcx(), item_scope, &ty::bind(self_ty)).value;
 
             bounds_checker.check_traits_in_ty(self_ty);
 
@@ -182,7 +179,6 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                 Some(t) => { t }
             };
             let trait_ref = (*trait_ref).subst(fcx.tcx(), &fcx.inh.param_env.free_substs);
-            let trait_ref = liberate_late_bound_regions(fcx.tcx(), item_scope, &trait_ref);
 
             // There are special rules that apply to drop.
             if
@@ -222,7 +218,8 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                     traits::ItemObligation(trait_ref.def_id));
 
             // Find the supertrait bounds. This will add `int:Bar`.
-            let predicates = ty::predicates_for_trait_ref(fcx.tcx(), &trait_ref);
+            let poly_trait_ref = ty::Binder(trait_ref);
+            let predicates = ty::predicates_for_trait_ref(fcx.tcx(), &poly_trait_ref);
             for predicate in predicates.into_iter() {
                 fcx.register_predicate(traits::Obligation::new(cause, predicate));
             }

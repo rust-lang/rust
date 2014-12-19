@@ -100,7 +100,7 @@ pub fn lookup<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
            call_expr.repr(fcx.tcx()),
            self_expr.repr(fcx.tcx()));
 
-    let self_ty = fcx.infcx().resolve_type_vars_if_possible(self_ty);
+    let self_ty = fcx.infcx().resolve_type_vars_if_possible(&self_ty);
     let pick = try!(probe::probe(fcx, span, method_name, self_ty, call_expr.id));
     Ok(confirm::confirm(fcx, span, self_expr, call_expr, self_ty, pick, supplied_method_types))
 }
@@ -169,9 +169,10 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
     let trait_ref = Rc::new(ty::TraitRef::new(trait_def_id, substs));
 
     // Construct an obligation
+    let poly_trait_ref = Rc::new(ty::Binder((*trait_ref).clone()));
     let obligation = traits::Obligation::misc(span,
                                               fcx.body_id,
-                                              ty::Predicate::Trait(trait_ref.clone()));
+                                              poly_trait_ref.as_predicate());
 
     // Now we want to know if this can be matched
     let mut selcx = traits::SelectionContext::new(fcx.infcx(),
@@ -194,9 +195,6 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
 
     // Substitute the trait parameters into the method type and
     // instantiate late-bound regions to get the actual method type.
-    //
-    // Note that as the method comes from a trait, it can only have
-    // late-bound regions from the fn itself, not the impl.
     let ref bare_fn_ty = method_ty.fty;
     let fn_sig = bare_fn_ty.sig.subst(tcx, &trait_ref.substs);
     let fn_sig = fcx.infcx().replace_late_bound_regions_with_fresh_var(span,
@@ -204,7 +202,7 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
                                                                        &fn_sig).0;
     let transformed_self_ty = fn_sig.inputs[0];
     let fty = ty::mk_bare_fn(tcx, ty::BareFnTy {
-        sig: fn_sig,
+        sig: ty::Binder(fn_sig),
         unsafety: bare_fn_ty.unsafety,
         abi: bare_fn_ty.abi.clone(),
     });
