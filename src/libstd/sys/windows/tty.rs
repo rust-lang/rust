@@ -26,7 +26,6 @@
 //! to working in raw UTF-16, with such a wrapper around it.
 
 use super::c::{ReadConsoleW, WriteConsoleW, GetConsoleMode, SetConsoleMode};
-use super::c::{ERROR_ILLEGAL_CHARACTER};
 use super::c::{ENABLE_ECHO_INPUT, ENABLE_EXTENDED_FLAGS};
 use super::c::{ENABLE_INSERT_MODE, ENABLE_LINE_INPUT};
 use super::c::{ENABLE_PROCESSED_INPUT, ENABLE_QUICK_EDIT_MODE};
@@ -37,6 +36,8 @@ use io::{mod, IoError, IoResult, MemReader};
 use prelude::*;
 use ptr;
 use str::from_utf8;
+
+use sys_common::unimpl;
 
 fn invalid_encoding() -> IoError {
     IoError {
@@ -149,11 +150,8 @@ impl TTY {
         // Make a CONSOLE_SCREEN_BUFFER_INFO
         // Call GetConsoleScreenBufferInfo
         // Maybe call GetLargestConsoleWindowSize instead?
-        Err(super::unimpl())
+        Err(unimpl())
     }
-
-    // Let us magically declare this as a TTY
-    pub fn isatty(&self) -> bool { true }
 }
 
 impl Drop for TTY {

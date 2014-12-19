@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #![allow(missing_docs)]
-#![allow(dead_code)]
+#![macro_escape]
 
 use io::{mod, IoError, IoResult};
 use prelude::*;

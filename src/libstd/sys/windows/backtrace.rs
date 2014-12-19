@@ -7,19 +7,22 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-/// As always, windows has something very different than unix, we mainly want
-/// to avoid having to depend too much on libunwind for windows.
-///
-/// If you google around, you'll find a fair bit of references to built-in
-/// functions to get backtraces on windows. It turns out that most of these are
-/// in an external library called dbghelp. I was unable to find this library
-/// via `-ldbghelp`, but it is apparently normal to do the `dlopen` equivalent
-/// of it.
-///
-/// You'll also find that there's a function called CaptureStackBackTrace
-/// mentioned frequently (which is also easy to use), but sadly I didn't have a
-/// copy of that function in my mingw install (maybe it was broken?). Instead,
-/// this takes the route of using StackWalk64 in order to walk the stack.
+
+//! As always, windows has something very different than unix, we mainly want
+//! to avoid having to depend too much on libunwind for windows.
+//!
+//! If you google around, you'll find a fair bit of references to built-in
+//! functions to get backtraces on windows. It turns out that most of these are
+//! in an external library called dbghelp. I was unable to find this library
+//! via `-ldbghelp`, but it is apparently normal to do the `dlopen` equivalent
+//! of it.
+//!
+//! You'll also find that there's a function called CaptureStackBackTrace
+//! mentioned frequently (which is also easy to use), but sadly I didn't have a
+//! copy of that function in my mingw install (maybe it was broken?). Instead,
+//! this takes the route of using StackWalk64 in order to walk the stack.
+
+#![allow(dead_code)] // constants/fields aren't always used on all platforms
 
 use c_str::CString;
 use intrinsics;
@@ -294,7 +297,7 @@ pub fn write(w: &mut Writer) -> IoResult<()> {
     // According to windows documentation, all dbghelp functions are
     // single-threaded.
     static LOCK: StaticMutex = MUTEX_INIT;
-    let _g = unsafe { LOCK.lock() };
+    let _g = LOCK.lock();
 
     // Open up dbghelp.dll, we don't link to it explicitly because it can't
     // always be found. Additionally, it's nice having fewer dependencies.

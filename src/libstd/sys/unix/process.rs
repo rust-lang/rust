@@ -11,7 +11,7 @@ use self::Req::*;
 
 use libc::{mod, pid_t, c_void, c_int};
 use c_str::CString;
-use io::{mod, IoResult, IoError, EndOfFile};
+use io::{IoResult, EndOfFile};
 use mem;
 use os;
 use ptr;
@@ -327,7 +327,7 @@ impl Process {
         // The actual communication between the helper thread and this thread is
         // quite simple, just a channel moving data around.
 
-        unsafe { HELPER.boot(register_sigchld, waitpid_helper) }
+        HELPER.boot(register_sigchld, waitpid_helper);
 
         match self.try_wait() {
             Some(ret) => return Ok(ret),
@@ -335,7 +335,7 @@ impl Process {
         }
 
         let (tx, rx) = channel();
-        unsafe { HELPER.send(NewChild(self.pid, tx, deadline)); }
+        HELPER.send(NewChild(self.pid, tx, deadline));
         return match rx.recv_opt() {
             Ok(e) => Ok(e),
             Err(()) => Err(timeout("wait timed out")),
@@ -419,8 +419,15 @@ impl Process {
                             Ok(NewChild(pid, tx, deadline)) => {
                                 active.push((pid, tx, deadline));
                             }
+                            // Once we've been disconnected it means the main
+                            // thread is exiting (at_exit has run). We could
+                            // still have active waiter for other threads, so
+                            // we're just going to drop them all on the floor.
+                            // This means that they won't receive a "you're
+                            // done" message in which case they'll be considered
+                            // as timed out, but more generally errors will
+                            // start propagating.
                             Err(comm::Disconnected) => {
-                                assert!(active.len() == 0);
                                 break 'outer;
                             }
                             Err(comm::Empty) => break,
