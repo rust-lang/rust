@@ -450,8 +450,7 @@ pub fn expand_quote_ty(cx: &mut ExtCtxt,
                        sp: Span,
                        tts: &[ast::TokenTree])
                        -> Box<base::MacResult+'static> {
-    let expanded = expand_parse_call(cx, sp, "parse_ty",
-                                     vec![], tts);
+    let expanded = expand_parse_call(cx, sp, "parse_ty", vec!(), tts);
     base::MacExpr::new(expanded)
 }
 
