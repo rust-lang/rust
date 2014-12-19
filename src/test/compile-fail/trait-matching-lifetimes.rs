@@ -16,7 +16,7 @@ struct Foo<'a,'b> {
     y: &'b int,
 }
 
-trait Tr {
+trait Tr : Sized {
     fn foo(x: Self) {}
 }
 

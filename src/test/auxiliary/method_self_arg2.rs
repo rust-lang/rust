@@ -32,7 +32,7 @@ impl Foo {
     }
 }
 
-pub trait Bar {
+pub trait Bar : Sized {
     fn foo1(&self);
     fn foo2(self);
     fn foo3(self: Box<Self>);
