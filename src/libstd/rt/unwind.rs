@@ -384,7 +384,6 @@ pub mod eabi {
     pub use self::EXCEPTION_DISPOSITION::*;
     use rt::libunwind as uw;
     use libc::{c_void, c_int};
-    use kinds::Copy;
 
     #[repr(C)]
     #[allow(missing_copy_implementations)]
