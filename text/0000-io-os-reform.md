@@ -1660,6 +1660,53 @@ making the library more Windows-friendly will only increase its appeal.
 More radically different designs (in terms of different design
 principles or visions) are outside the scope of this RFC.
 
+## Wide string representation
+
+(Text from @SimonSapin)
+
+Rather than WTF-8, `OsStr` and `OsStrBuf` on Windows could use
+potentially-ill-formed UTF-16 (a.k.a. "wide" strings), with a
+different cost trade off.
+
+Upside:
+* No conversion between `OsStr` / `OsStrBuf` and OS calls.
+
+Downsides:
+* More expensive conversions between `OsStr` / `OsStrBuf` and `str` / `String`.
+* These conversions have inconsistent performance characteristics between platforms. (Need to allocate on Windows, but not on Unix.)
+* Some of them return `Cow`, which has some ergonomic hit.
+
+The API (only parts that differ) could look like:
+```rust
+pub mod os_str {
+    #[cfg(windows)]
+    mod imp {
+        type Buf = Vec<u16>;
+        type Slice = [u16];
+        ...
+    }
+
+    impl OsStr {
+        pub fn from_str(&str) -> Cow<OsStrBuf, OsStr>;
+        pub fn to_string(&self) -> Option<CowString>;
+        pub fn to_string_lossy(&self) -> CowString;
+    }
+
+    #[cfg(windows)]
+    pub mod windows{
+        trait OsStrBufExt {
+            fn from_wide_slice(&[u16]) -> Self;
+            fn from_wide_vec(Vec<u16>) -> Self;
+            fn into_wide_vec(self) -> Vec<u16>;
+        }
+
+        trait OsStrExt {
+            fn from_wide_slice(&[u16]) -> Self;
+            fn as_wide_slice(&self) -> &[u16];
+        }
+    }
+}
+
 # Unresolved questions
 [Unresolved questions]: #unresolved-questions
 
