@@ -3356,14 +3356,15 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                  trait_did: Option<ast::DefId>,
                                  ex: &ast::Expr,
                                  rhs_expr: &ast::Expr,
-                                 rhs_t: Ty<'tcx>) -> Ty<'tcx> {
+                                 rhs_t: Ty<'tcx>,
+                                 op: ast::UnOp) -> Ty<'tcx> {
        lookup_op_method(fcx, ex, rhs_t, token::intern(mname),
                         trait_did, rhs_expr, None, || {
             fcx.type_error_message(ex.span, |actual| {
                 format!("cannot apply unary operator `{}` to type `{}`",
                         op_str, actual)
             }, rhs_t, None);
-        }, AutorefArgs::Yes)
+        }, if ast_util::is_by_value_unop(op) { AutorefArgs::No } else { AutorefArgs::Yes })
     }
 
     // Check field access expressions
@@ -3803,7 +3804,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                          oprnd_t.sty == ty::ty_bool) {
                         oprnd_t = check_user_unop(fcx, "!", "not",
                                                   tcx.lang_items.not_trait(),
-                                                  expr, &**oprnd, oprnd_t);
+                                                  expr, &**oprnd, oprnd_t, unop);
                     }
                 }
                 ast::UnNeg => {
@@ -3813,7 +3814,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                          ty::type_is_fp(oprnd_t)) {
                         oprnd_t = check_user_unop(fcx, "-", "neg",
                                                   tcx.lang_items.neg_trait(),
-                                                  expr, &**oprnd, oprnd_t);
+                                                  expr, &**oprnd, oprnd_t, unop);
                     }
                 }
             }

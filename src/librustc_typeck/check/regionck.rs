@@ -682,10 +682,12 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
             visit::walk_expr(rcx, expr);
         }
 
-        ast::ExprUnary(_, ref lhs) if has_method_map => {
+        ast::ExprUnary(op, ref lhs) if has_method_map => {
+            let implicitly_ref_args = !ast_util::is_by_value_unop(op);
+
             // As above.
             constrain_call(rcx, expr, Some(&**lhs),
-                           None::<ast::Expr>.iter(), true);
+                           None::<ast::Expr>.iter(), implicitly_ref_args);
 
             visit::walk_expr(rcx, expr);
         }
