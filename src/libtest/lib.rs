@@ -49,7 +49,7 @@ use self::NamePadding::*;
 use self::OutputLocation::*;
 
 use std::any::{Any, AnyRefExt};
-use std::collections::TreeMap;
+use std::collections::BTreeMap;
 use stats::Stats;
 use getopts::{OptGroup, optflag, optopt};
 use regex::Regex;
@@ -230,7 +230,7 @@ impl Metric {
 }
 
 #[deriving(PartialEq)]
-pub struct MetricMap(TreeMap<String,Metric>);
+pub struct MetricMap(BTreeMap<String,Metric>);
 
 impl Clone for MetricMap {
     fn clone(&self) -> MetricMap {
@@ -251,7 +251,7 @@ pub enum MetricChange {
 
 impl Copy for MetricChange {}
 
-pub type MetricDiff = TreeMap<String,MetricChange>;
+pub type MetricDiff = BTreeMap<String,MetricChange>;
 
 // The default console test runner. It accepts the command line
 // arguments and a vector of test_descs.
@@ -1191,7 +1191,7 @@ fn calc_result(desc: &TestDesc, task_result: Result<(), Box<Any+Send>>) -> TestR
 impl MetricMap {
 
     pub fn new() -> MetricMap {
-        MetricMap(TreeMap::new())
+        MetricMap(BTreeMap::new())
     }
 
     /// Load MetricDiff from a file.
@@ -1227,7 +1227,7 @@ impl MetricMap {
     /// map.
     pub fn compare_to_old(&self, old: &MetricMap,
                           noise_pct: Option<f64>) -> MetricDiff {
-        let mut diff : MetricDiff = TreeMap::new();
+        let mut diff : MetricDiff = BTreeMap::new();
         let MetricMap(ref selfmap) = *self;
         let MetricMap(ref old) = *old;
         for (k, vold) in old.iter() {
