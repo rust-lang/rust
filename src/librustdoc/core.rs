@@ -119,9 +119,9 @@ pub fn run_core(libs: Vec<Path>, cfgs: Vec<String>, externs: Externs,
                     .expect("phase_2_configure_and_expand aborted in rustdoc!");
 
     let mut forest = ast_map::Forest::new(krate);
+    let type_arena = TypedArena::new();
     let ast_map = driver::assign_node_ids_and_map(&sess, &mut forest);
 
-    let type_arena = TypedArena::new();
     let driver::CrateAnalysis {
         exported_items, public_items, ty_cx, ..
     } = driver::phase_3_run_analysis_passes(sess, ast_map, &type_arena, name);
