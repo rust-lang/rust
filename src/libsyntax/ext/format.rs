@@ -473,22 +473,27 @@ impl<'a, 'b> Context<'a, 'b> {
         }
     }
 
-    fn item_static_array(ecx: &mut ExtCtxt,
-                         name: ast::Ident,
-                         piece_ty: P<ast::Ty>,
-                         pieces: Vec<P<ast::Expr>>)
-                         -> P<ast::Stmt> {
+    fn static_array(ecx: &mut ExtCtxt,
+                    name: &str,
+                    piece_ty: P<ast::Ty>,
+                    pieces: Vec<P<ast::Expr>>)
+                    -> P<ast::Expr> {
         let fmtsp = piece_ty.span;
-        let fmt = ecx.expr_vec(fmtsp, pieces);
-        let fmt = ecx.expr_addr_of(fmtsp, fmt);
-        let ty = ast::TyVec(piece_ty);
-        let ty = ast::TyRptr(Some(ecx.lifetime(fmtsp, special_idents::static_lifetime.name)),
-                             ast::MutTy{ mutbl: ast::MutImmutable, ty: ecx.ty(fmtsp, ty) });
-        let ty = ecx.ty(fmtsp, ty);
-        let st = ast::ItemStatic(ty, ast::MutImmutable, fmt);
+        let ty = ecx.ty_rptr(fmtsp,
+            ecx.ty(fmtsp, ast::TyVec(piece_ty)),
+            Some(ecx.lifetime(fmtsp, special_idents::static_lifetime.name)),
+            ast::MutImmutable);
+        let slice = ecx.expr_vec_slice(fmtsp, pieces);
+        let st = ast::ItemStatic(ty, ast::MutImmutable, slice);
+
+        let name = ecx.ident_of(name);
         let item = ecx.item(fmtsp, name, Context::static_attrs(ecx, fmtsp), st);
         let decl = respan(fmtsp, ast::DeclItem(item));
-        P(respan(fmtsp, ast::StmtDecl(P(decl), ast::DUMMY_NODE_ID)))
+
+        // Wrap the declaration in a block so that it forms a single expression.
+        ecx.expr_block(ecx.block(fmtsp,
+            vec![P(respan(fmtsp, ast::StmtDecl(P(decl), ast::DUMMY_NODE_ID)))],
+            Some(ecx.expr_ident(fmtsp, name))))
     }
 
     /// Actually builds the expression which the iformat! block will be expanded
@@ -501,33 +506,17 @@ impl<'a, 'b> Context<'a, 'b> {
 
         // First, build up the static array which will become our precompiled
         // format "string"
-        let static_str_name = self.ecx.ident_of("__STATIC_FMTSTR");
-        let static_lifetime = self.ecx.lifetime(self.fmtsp, self.ecx.ident_of("'static").name);
+        let static_lifetime = self.ecx.lifetime(self.fmtsp, special_idents::static_lifetime.name);
         let piece_ty = self.ecx.ty_rptr(
                 self.fmtsp,
                 self.ecx.ty_ident(self.fmtsp, self.ecx.ident_of("str")),
                 Some(static_lifetime),
                 ast::MutImmutable);
-        let mut lets = vec![
-            Context::item_static_array(self.ecx, static_str_name, piece_ty, self.str_pieces)
-        ];
+        let pieces = Context::static_array(self.ecx,
+                                           "__STATIC_FMTSTR",
+                                           piece_ty,
+                                           self.str_pieces);
 
-        // Then, build up the static array which will store our precompiled
-        // nonstandard placeholders, if there are any.
-        let static_args_name = self.ecx.ident_of("__STATIC_FMTARGS");
-        if !self.all_pieces_simple {
-            let piece_ty = self.ecx.ty_path(self.ecx.path_all(
-                    self.fmtsp,
-                    true, Context::rtpath(self.ecx, "Argument"),
-                    vec![static_lifetime],
-                    vec![],
-                    vec![]
-                ));
-            lets.push(Context::item_static_array(self.ecx,
-                                                 static_args_name,
-                                                 piece_ty,
-                                                 self.pieces));
-        }
 
         // Right now there is a bug such that for the expression:
         //      foo(bar(&1))
@@ -571,13 +560,25 @@ impl<'a, 'b> Context<'a, 'b> {
         let args = locals.into_iter().chain(names.into_iter().map(|a| a.unwrap()));
 
         // Now create the fmt::Arguments struct with all our locals we created.
-        let pieces = self.ecx.expr_ident(self.fmtsp, static_str_name);
         let args_slice = self.ecx.expr_vec_slice(self.fmtsp, args.collect());
 
         let (fn_name, fn_args) = if self.all_pieces_simple {
             ("new", vec![pieces, args_slice])
         } else {
-            let fmt = self.ecx.expr_ident(self.fmtsp, static_args_name);
+            // Build up the static array which will store our precompiled
+            // nonstandard placeholders, if there are any.
+            let piece_ty = self.ecx.ty_path(self.ecx.path_all(
+                    self.fmtsp,
+                    true, Context::rtpath(self.ecx, "Argument"),
+                    vec![static_lifetime],
+                    vec![],
+                    vec![]
+                ));
+            let fmt = Context::static_array(self.ecx,
+                                            "__STATIC_FMTARGS",
+                                            piece_ty,
+                                            self.pieces);
+
             ("with_placeholders", vec![pieces, fmt, args_slice])
         };
 
@@ -587,7 +588,7 @@ impl<'a, 'b> Context<'a, 'b> {
                 self.ecx.ident_of("Arguments"),
                 self.ecx.ident_of(fn_name)), fn_args);
 
-        let result = match invocation {
+        let body = match invocation {
             Call(e) => {
                 let span = e.span;
                 self.ecx.expr_call(span, e, vec![
@@ -601,8 +602,6 @@ impl<'a, 'b> Context<'a, 'b> {
                 ])
             }
         };
-        let body = self.ecx.expr_block(self.ecx.block(self.fmtsp, lets,
-                                                      Some(result)));
 
         // Constructs an AST equivalent to:
         //
