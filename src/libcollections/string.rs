@@ -879,6 +879,15 @@ impl<S: Str> Add<S, String> for String {
 
 #[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
 impl<'a> Add<&'a str, String> for String {
+    /// Concatenates a String, `self`, with a string slice, `other`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut string1 = "foo".to_string();
+    /// let string2 = "bar";
+    /// assert_eq!(string1 + string2, "foobar".to_string());
+    /// ```
     fn add(mut self, other: &str) -> String {
         self.push_str(other);
         self
@@ -887,6 +896,15 @@ impl<'a> Add<&'a str, String> for String {
 
 #[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
 impl<'a> Add<String, String> for &'a str {
+    /// Concatenates a String, `other`, with another String, `self`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let string1 = "foo".to_string();
+    /// let mut string2 = "bar".to_string();
+    /// assert_eq!(string1 + string2, "foobar".to_string());
+    /// ```
     fn add(self, mut other: String) -> String {
         other.push_str(self);
         other
