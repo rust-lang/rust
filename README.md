@@ -59,6 +59,7 @@ the direction the language is evolving in.
 * [0463-future-proof-literal-suffixes.md](text/0463-future-proof-literal-suffixes.md)
 * [0490-dst-syntax.md](text/0490-dst-syntax.md)
 * [0509-collections-reform-part-2.md](text/0509-collections-reform-part-2.md)
+* [0520-new-array-repeat-syntax.md](text/0520-new-array-repeat-syntax.md)
 
 ## Table of Contents
 [Table of Contents]: #table-of-contents
