@@ -76,13 +76,13 @@ pub fn compile_input(sess: Session,
         };
 
         let mut forest = ast_map::Forest::new(expanded_crate);
+        let type_arena = TypedArena::new();
         let ast_map = assign_node_ids_and_map(&sess, &mut forest);
 
         write_out_deps(&sess, input, &outputs, id.as_slice());
 
         if stop_after_phase_2(&sess) { return; }
 
-        let type_arena = TypedArena::new();
         let analysis = phase_3_run_analysis_passes(sess, ast_map, &type_arena, id);
         phase_save_analysis(&analysis.ty_cx.sess, analysis.ty_cx.map.krate(), &analysis, outdir);
         if stop_after_phase_3(&analysis.ty_cx.sess) { return; }
