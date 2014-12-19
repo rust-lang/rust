@@ -170,7 +170,9 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
             arms.extend(else_if_arms.into_iter());
             arms.push(else_arm);
 
-            let match_expr = fld.cx.expr(span, ast::ExprMatch(expr, arms, ast::MatchIfLetDesugar));
+            let match_expr = fld.cx.expr(span, ast::ExprMatch(expr,
+                                                              arms,
+                                                    ast::MatchIfLetDesugar(elseopt.is_some())));
             fld.fold_expr(match_expr)
         }
 
