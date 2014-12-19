@@ -754,7 +754,7 @@ pub struct QPath {
 #[deriving(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum MatchSource {
     MatchNormal,
-    MatchIfLetDesugar,
+    MatchIfLetDesugar(bool /* contains_else_arm */),
     MatchWhileLetDesugar,
 }
 
