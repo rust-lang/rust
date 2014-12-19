@@ -21,6 +21,7 @@ pub use self::Searcher::{Naive, TwoWay, TwoWayLong};
 
 use char::Char;
 use char;
+use clone::Clone;
 use cmp::{Eq, mod};
 use default::Default;
 use iter::{Map, Iterator, IteratorExt, DoubleEndedIterator};
@@ -31,7 +32,7 @@ use mem;
 use num::Int;
 use option::Option;
 use option::Option::{None, Some};
-use ops::FnMut;
+use ops::{Fn, FnMut};
 use ptr::RawPtr;
 use raw::{Repr, Slice};
 use slice::{mod, SliceExt};
@@ -316,7 +317,23 @@ impl<'a> DoubleEndedIterator<(uint, char)> for CharOffsets<'a> {
 
 /// External iterator for a string's bytes.
 /// Use with the `std::iter` module.
-pub type Bytes<'a> = Map<&'a u8, u8, slice::Items<'a, u8>, fn(&u8) -> u8>;
+pub type Bytes<'a> = Map<&'a u8, u8, slice::Items<'a, u8>, BytesFn>;
+
+/// A temporary new type wrapper that ensures that the `Bytes` iterator
+/// is cloneable.
+#[deriving(Copy)]
+#[experimental = "iterator type instability"]
+pub struct BytesFn(fn(&u8) -> u8);
+
+impl<'a> Fn(&'a u8) -> u8 for BytesFn {
+    extern "rust-call" fn call(&self, (ptr,): (&'a u8,)) -> u8 {
+        (self.0)(ptr)
+    }
+}
+
+impl Clone for BytesFn {
+    fn clone(&self) -> BytesFn { *self }
+}
 
 /// An iterator over the substrings of a string, separated by `sep`.
 #[deriving(Clone)]
@@ -2009,7 +2026,7 @@ impl StrPrelude for str {
     fn bytes(&self) -> Bytes {
         fn deref(&x: &u8) -> u8 { x }
 
-        self.as_bytes().iter().map(deref)
+        self.as_bytes().iter().map(BytesFn(deref))
     }
 
     #[inline]
