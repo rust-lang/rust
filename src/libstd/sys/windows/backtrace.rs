@@ -304,12 +304,12 @@ pub fn write(w: &mut Writer) -> IoResult<()> {
         Err(..) => return Ok(()),
     };
 
-    macro_rules! sym( ($e:expr, $t:ident) => (unsafe {
+    macro_rules! sym{ ($e:expr, $t:ident) => (unsafe {
         match lib.symbol($e) {
             Ok(f) => mem::transmute::<*mut u8, $t>(f),
             Err(..) => return Ok(())
         }
-    }) )
+    }) }
 
     // Fetch the symbols necessary from dbghelp.dll
     let SymFromAddr = sym!("SymFromAddr", SymFromAddrFn);

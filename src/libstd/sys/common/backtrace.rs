@@ -40,8 +40,18 @@ pub fn demangle(writer: &mut Writer, s: &str) -> IoResult<()> {
     // expecting, we just print it literally. Note that we must handle non-rust
     // symbols because we could have any function in the backtrace.
     let mut valid = true;
+    let mut inner = s;
     if s.len() > 4 && s.starts_with("_ZN") && s.ends_with("E") {
-        let mut chars = s.slice(3, s.len() - 1).chars();
+        inner = s.slice(3, s.len() - 1);
+    // On Windows, dbghelp strips leading underscores, so we accept "ZN...E" form too.
+    } else if s.len() > 3 && s.starts_with("ZN") && s.ends_with("E") {
+        inner = s.slice(2, s.len() - 1);
+    } else {
+        valid = false;
+    }
+
+    if valid {
+        let mut chars = inner.chars();
         while valid {
             let mut i = 0;
             for c in chars {
@@ -58,32 +68,29 @@ pub fn demangle(writer: &mut Writer, s: &str) -> IoResult<()> {
                 valid = false;
             }
         }
-    } else {
-        valid = false;
     }
 
     // Alright, let's do this.
     if !valid {
         try!(writer.write_str(s));
     } else {
-        let mut s = s.slice_from(3);
         let mut first = true;
-        while s.len() > 1 {
+        while inner.len() > 0 {
             if !first {
                 try!(writer.write_str("::"));
             } else {
                 first = false;
             }
-            let mut rest = s;
+            let mut rest = inner;
             while rest.char_at(0).is_numeric() {
                 rest = rest.slice_from(1);
             }
-            let i: uint = from_str(s.slice_to(s.len() - rest.len())).unwrap();
-            s = rest.slice_from(i);
+            let i: uint = from_str(inner.slice_to(inner.len() - rest.len())).unwrap();
+            inner = rest.slice_from(i);
             rest = rest.slice_to(i);
             while rest.len() > 0 {
                 if rest.starts_with("$") {
-                    macro_rules! demangle(
+                    macro_rules! demangle {
                         ($($pat:expr => $demangled:expr),*) => ({
                             $(if rest.starts_with($pat) {
                                 try!(writer.write_str($demangled));
@@ -95,7 +102,8 @@ pub fn demangle(writer: &mut Writer, s: &str) -> IoResult<()> {
                             }
 
                         })
-                    )
+                    }
+
                     // see src/librustc/back/link.rs for these mappings
                     demangle! (
                         "$SP$" => "@",

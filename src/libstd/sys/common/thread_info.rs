@@ -23,7 +23,7 @@ struct ThreadInfo {
     thread: Thread,
 }
 
-thread_local!(static THREAD_INFO: RefCell<Option<ThreadInfo>> = RefCell::new(None))
+thread_local! { static THREAD_INFO: RefCell<Option<ThreadInfo>> = RefCell::new(None) }
 
 impl ThreadInfo {
     fn with<R>(f: |&mut ThreadInfo| -> R) -> R {
