@@ -54,10 +54,10 @@ As described in the motivation section, the intended use cases for the current
 `Show` trait are actually motivations for two separate formatting traits. One
 trait will be intended for all Rust types to implement in order to easily allow
 debugging values for macros such as `assert_eq!` or general `println!`
-statements. A separate trait will be intended for Rust types which are "round
-trippable" from a string. These types can be represented as a string in a
-non-lossy fashion and are intended for general consumption by more than just
-developers.
+statements. A separate trait will be intended for Rust types which are
+faithfully represented as a string. These types can be represented as a string
+in a non-lossy fashion and are intended for general consumption by more than
+just developers.
 
 This RFC proposes naming these two traits `Show` and `String`, respectively.
 
@@ -77,7 +77,8 @@ the default specifier for Rust.
 
 An implementation of the `String` trait is an assertion that the type can be
 faithfully represented as a UTF-8 string at all times. If the type can be
-reconstructed from a string, then the following relation must be true:
+reconstructed from a string, then it is recommended, but not required, that the
+following relation be true:
 
 ```rust
 assert_eq!(foo, from_str(format!("{}", foo).as_slice()).unwrap());
