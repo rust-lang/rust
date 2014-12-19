@@ -162,5 +162,8 @@ pub fn at_exit<F:FnOnce()+Send>(f: F) {
 pub unsafe fn cleanup() {
     args::cleanup();
     sys::stack_overflow::cleanup();
-    at_exit_imp::cleanup();
+    // FIXME: (#20012): the resources being cleaned up by at_exit
+    // currently are not prepared for cleanup to happen asynchronously
+    // with detached threads using the resources; for now, we leak.
+    // at_exit_imp::cleanup();
 }
