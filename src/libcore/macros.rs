@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![macro_escape]
-
 /// Entry point of task panic, for details, see std::macros
 #[macro_export]
 macro_rules! panic {

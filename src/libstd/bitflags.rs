@@ -9,7 +9,6 @@
 // except according to those terms.
 
 #![experimental]
-#![macro_escape]
 
 //! A typesafe bitmask flag generator.
 

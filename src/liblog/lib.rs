@@ -183,7 +183,9 @@ use regex::Regex;
 
 use directive::LOG_LEVEL_NAMES;
 
+#[macro_escape]
 pub mod macros;
+
 mod directive;
 
 /// Maximum logging level of a module that can be specified. Common logging

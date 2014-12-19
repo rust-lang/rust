@@ -49,11 +49,12 @@ use rustc::session::search_paths::SearchPaths;
 // reexported from `clean` so it can be easily updated with the mod itself
 pub use clean::SCHEMA_VERSION;
 
+#[macro_escape]
+pub mod externalfiles;
+
 pub mod clean;
 pub mod core;
 pub mod doctree;
-#[macro_escape]
-pub mod externalfiles;
 pub mod fold;
 pub mod html {
     pub mod highlight;

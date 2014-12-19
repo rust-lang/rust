@@ -24,8 +24,10 @@ use std::num::Int;
 use std::str;
 use std::iter;
 
-pub mod lexer;
+#[macro_escape]
 pub mod parser;
+
+pub mod lexer;
 pub mod token;
 pub mod attr;
 

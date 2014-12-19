@@ -15,7 +15,6 @@
 //! library.
 
 #![experimental]
-#![macro_escape]
 
 /// The entry point for panic of Rust tasks.
 ///

@@ -10,8 +10,6 @@
 
 //! Various utility functions useful for writing I/O tests
 
-#![macro_escape]
-
 use prelude::v1::*;
 
 use libc;
