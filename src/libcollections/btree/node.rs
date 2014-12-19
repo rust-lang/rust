@@ -1382,14 +1382,14 @@ pub enum TraversalItem<K, V, E> {
 }
 
 /// A traversal over a node's entries and edges
-pub type Traversal<'a, K, V> = AbsTraversal<ElemsAndEdges<Zip<slice::Items<'a, K>,
-                                                              slice::Items<'a, V>>,
-                                                              slice::Items<'a, Node<K, V>>>>;
+pub type Traversal<'a, K, V> = AbsTraversal<ElemsAndEdges<Zip<slice::Iter<'a, K>,
+                                                              slice::Iter<'a, V>>,
+                                                              slice::Iter<'a, Node<K, V>>>>;
 
 /// A mutable traversal over a node's entries and edges
-pub type MutTraversal<'a, K, V> = AbsTraversal<ElemsAndEdges<Zip<slice::Items<'a, K>,
-                                                                 slice::MutItems<'a, V>>,
-                                                                 slice::MutItems<'a, Node<K, V>>>>;
+pub type MutTraversal<'a, K, V> = AbsTraversal<ElemsAndEdges<Zip<slice::Iter<'a, K>,
+                                                                 slice::IterMut<'a, V>>,
+                                                                 slice::IterMut<'a, Node<K, V>>>>;
 
 /// An owning traversal over a node's entries and edges
 pub type MoveTraversal<K, V> = AbsTraversal<MoveTraversalImpl<K, V>>;

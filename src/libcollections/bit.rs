@@ -145,7 +145,7 @@ impl Index<uint,bool> for Bitv {
 }
 
 struct MaskWords<'a> {
-    iter: slice::Items<'a, u32>,
+    iter: slice::Iter<'a, u32>,
     next_word: Option<&'a u32>,
     last_word_mask: u32,
     offset: uint

@@ -370,7 +370,7 @@ pub fn mod_enabled(level: u32, module: &str) -> bool {
 
 fn enabled(level: u32,
            module: &str,
-           iter: slice::Items<directive::LogDirective>)
+           iter: slice::Iter<directive::LogDirective>)
            -> bool {
     // Search for the longest match, the vector is assumed to be pre-sorted.
     for directive in iter.rev() {

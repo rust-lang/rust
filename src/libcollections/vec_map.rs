@@ -235,13 +235,13 @@ impl<V> VecMap<V> {
     /// assert_eq!(vec, vec![(1, "a"), (2, "b"), (3, "c")]);
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn into_iter(&mut self) -> MoveItems<V> {
+    pub fn into_iter(&mut self) -> IntoIter<V> {
         fn filter<A>((i, v): (uint, Option<A>)) -> Option<(uint, A)> {
             v.map(|v| (i, v))
         }
 
         let values = replace(&mut self.v, vec!());
-        MoveItems { iter: values.into_iter().enumerate().filter_map(filter) }
+        IntoIter { iter: values.into_iter().enumerate().filter_map(filter) }
     }
 
     /// Return the number of elements in the map.
@@ -608,7 +608,7 @@ macro_rules! double_ended_iterator {
 pub struct Entries<'a, V:'a> {
     front: uint,
     back: uint,
-    iter: slice::Items<'a, Option<V>>
+    iter: slice::Iter<'a, Option<V>>
 }
 
 iterator! { impl Entries -> (uint, &'a V), as_ref }
@@ -619,7 +619,7 @@ double_ended_iterator! { impl Entries -> (uint, &'a V), as_ref }
 pub struct MutEntries<'a, V:'a> {
     front: uint,
     back: uint,
-    iter: slice::MutItems<'a, Option<V>>
+    iter: slice::IterMut<'a, Option<V>>
 }
 
 iterator! { impl MutEntries -> (uint, &'a mut V), as_mut }
@@ -636,11 +636,11 @@ pub struct Values<'a, V: 'a> {
 }
 
 /// A consuming iterator over the key-value pairs of a map.
-pub struct MoveItems<V> {
+pub struct IntoIter<V> {
     iter: FilterMap<
     (uint, Option<V>),
     (uint, V),
-    Enumerate<vec::MoveItems<Option<V>>>,
+    Enumerate<vec::IntoIter<Option<V>>>,
     fn((uint, Option<V>)) -> Option<(uint, V)>>
 }
 
@@ -662,11 +662,11 @@ impl<'a, V> DoubleEndedIterator<&'a V> for Values<'a, V> {
 }
 
 
-impl<V> Iterator<(uint, V)> for MoveItems<V> {
+impl<V> Iterator<(uint, V)> for IntoIter<V> {
     fn next(&mut self) -> Option<(uint, V)> { self.iter.next() }
     fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
 }
-impl<V> DoubleEndedIterator<(uint, V)> for MoveItems<V> {
+impl<V> DoubleEndedIterator<(uint, V)> for IntoIter<V> {
     fn next_back(&mut self) -> Option<(uint, V)> { self.iter.next_back() }
 }
 

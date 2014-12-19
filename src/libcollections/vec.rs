@@ -888,7 +888,7 @@ impl<T> Vec<T> {
     /// ```
     #[inline]
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn into_iter(self) -> MoveItems<T> {
+    pub fn into_iter(self) -> IntoIter<T> {
         unsafe {
             let ptr = self.ptr;
             let cap = self.cap;
@@ -899,7 +899,7 @@ impl<T> Vec<T> {
                 ptr.offset(self.len() as int) as *const T
             };
             mem::forget(self);
-            MoveItems { allocation: ptr, cap: cap, ptr: begin, end: end }
+            IntoIter { allocation: ptr, cap: cap, ptr: begin, end: end }
         }
     }
 
@@ -1402,21 +1402,21 @@ impl<T:fmt::Show> fmt::Show for Vec<T> {
 }
 
 /// An iterator that moves out of a vector.
-pub struct MoveItems<T> {
+pub struct IntoIter<T> {
     allocation: *mut T, // the block of memory allocated for the vector
     cap: uint, // the capacity of the vector
     ptr: *const T,
     end: *const T
 }
 
-impl<T> MoveItems<T> {
+impl<T> IntoIter<T> {
     /// Drops all items that have not yet been moved and returns the empty vector.
     #[inline]
     #[unstable]
     pub fn into_inner(mut self) -> Vec<T> {
         unsafe {
             for _x in self { }
-            let MoveItems { allocation, cap, ptr: _ptr, end: _end } = self;
+            let IntoIter { allocation, cap, ptr: _ptr, end: _end } = self;
             mem::forget(self);
             Vec { ptr: allocation, cap: cap, len: 0 }
         }
@@ -1427,7 +1427,7 @@ impl<T> MoveItems<T> {
     pub fn unwrap(self) -> Vec<T> { self.into_inner() }
 }
 
-impl<T> Iterator<T> for MoveItems<T> {
+impl<T> Iterator<T> for IntoIter<T> {
     #[inline]
     fn next<'a>(&'a mut self) -> Option<T> {
         unsafe {
@@ -1461,7 +1461,7 @@ impl<T> Iterator<T> for MoveItems<T> {
     }
 }
 
-impl<T> DoubleEndedIterator<T> for MoveItems<T> {
+impl<T> DoubleEndedIterator<T> for IntoIter<T> {
     #[inline]
     fn next_back<'a>(&'a mut self) -> Option<T> {
         unsafe {
@@ -1484,10 +1484,10 @@ impl<T> DoubleEndedIterator<T> for MoveItems<T> {
     }
 }
 
-impl<T> ExactSizeIterator<T> for MoveItems<T> {}
+impl<T> ExactSizeIterator<T> for IntoIter<T> {}
 
 #[unsafe_destructor]
-impl<T> Drop for MoveItems<T> {
+impl<T> Drop for IntoIter<T> {
     fn drop(&mut self) {
         // destroy the remaining elements
         if self.cap != 0 {

@@ -73,9 +73,9 @@ impl<'a> Iterator<PathElem> for LinkedPath<'a> {
     }
 }
 
-// HACK(eddyb) move this into libstd (value wrapper for slice::Items).
+// HACK(eddyb) move this into libstd (value wrapper for slice::Iter).
 #[deriving(Clone)]
-pub struct Values<'a, T:'a>(pub slice::Items<'a, T>);
+pub struct Values<'a, T:'a>(pub slice::Iter<'a, T>);
 
 impl<'a, T: Copy> Iterator<T> for Values<'a, T> {
     fn next(&mut self) -> Option<T> {
