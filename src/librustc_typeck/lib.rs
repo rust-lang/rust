@@ -228,11 +228,11 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
             let se_ty = ty::mk_bare_fn(tcx, ty::BareFnTy {
                 unsafety: ast::Unsafety::Normal,
                 abi: abi::Rust,
-                sig: ty::FnSig {
+                sig: ty::Binder(ty::FnSig {
                     inputs: Vec::new(),
                     output: ty::FnConverging(ty::mk_nil(tcx)),
                     variadic: false
-                }
+                })
             });
 
             require_same_types(tcx, None, false, main_span, main_t, se_ty,
@@ -276,14 +276,14 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
             let se_ty = ty::mk_bare_fn(tcx, ty::BareFnTy {
                 unsafety: ast::Unsafety::Normal,
                 abi: abi::Rust,
-                sig: ty::FnSig {
+                sig: ty::Binder(ty::FnSig {
                     inputs: vec!(
                         ty::mk_int(),
                         ty::mk_imm_ptr(tcx, ty::mk_imm_ptr(tcx, ty::mk_u8()))
                     ),
                     output: ty::FnConverging(ty::mk_int()),
                     variadic: false
-                }
+                }),
             });
 
             require_same_types(tcx, None, false, start_span, start_t, se_ty,

@@ -21,7 +21,7 @@ pub use self::DefIdSource::*;
 use middle::region;
 use middle::subst;
 use middle::subst::VecPerParamSpace;
-use middle::ty::{mod, Ty};
+use middle::ty::{mod, AsPredicate, Ty};
 
 use std::rc::Rc;
 use std::str;
@@ -414,7 +414,7 @@ fn parse_ty<'a, 'tcx>(st: &mut PState<'a, 'tcx>, conv: conv_did) -> Ty<'tcx> {
       }
       'x' => {
         assert_eq!(next(st), '[');
-        let trait_ref = parse_trait_ref(st, |x,y| conv(x,y));
+        let trait_ref = ty::Binder(parse_trait_ref(st, |x,y| conv(x,y)));
         let bounds = parse_existential_bounds(st, |x,y| conv(x,y));
         assert_eq!(next(st), ']');
         return ty::mk_trait(st.tcx, trait_ref, bounds);
@@ -603,7 +603,7 @@ fn parse_bare_fn_ty<'a, 'tcx>(st: &mut PState<'a, 'tcx>,
     }
 }
 
-fn parse_sig<'a, 'tcx>(st: &mut PState<'a, 'tcx>, conv: conv_did) -> ty::FnSig<'tcx> {
+fn parse_sig<'a, 'tcx>(st: &mut PState<'a, 'tcx>, conv: conv_did) -> ty::PolyFnSig<'tcx> {
     assert_eq!(next(st), '[');
     let mut inputs = Vec::new();
     while peek(st) != ']' {
@@ -622,9 +622,9 @@ fn parse_sig<'a, 'tcx>(st: &mut PState<'a, 'tcx>, conv: conv_did) -> ty::FnSig<'
         }
         _ => ty::FnConverging(parse_ty(st, |x,y| conv(x,y)))
     };
-    ty::FnSig {inputs: inputs,
-               output: output,
-               variadic: variadic}
+    ty::Binder(ty::FnSig {inputs: inputs,
+                        output: output,
+                        variadic: variadic})
 }
 
 // Rust metadata parsing
@@ -669,13 +669,13 @@ pub fn parse_predicate<'a,'tcx>(st: &mut PState<'a, 'tcx>,
                                 -> ty::Predicate<'tcx>
 {
     match next(st) {
-        't' => ty::Predicate::Trait(Rc::new(parse_trait_ref(st, conv))),
-        'e' => ty::Predicate::Equate(parse_ty(st, |x,y| conv(x,y)),
-                                     parse_ty(st, |x,y| conv(x,y))),
-        'r' => ty::Predicate::RegionOutlives(parse_region(st, |x,y| conv(x,y)),
-                                             parse_region(st, |x,y| conv(x,y))),
-        'o' => ty::Predicate::TypeOutlives(parse_ty(st, |x,y| conv(x,y)),
-                                           parse_region(st, |x,y| conv(x,y))),
+        't' => Rc::new(ty::Binder(parse_trait_ref(st, conv))).as_predicate(),
+        'e' => ty::Binder(ty::EquatePredicate(parse_ty(st, |x,y| conv(x,y)),
+                                              parse_ty(st, |x,y| conv(x,y)))).as_predicate(),
+        'r' => ty::Binder(ty::OutlivesPredicate(parse_region(st, |x,y| conv(x,y)),
+                                                parse_region(st, |x,y| conv(x,y)))).as_predicate(),
+        'o' => ty::Binder(ty::OutlivesPredicate(parse_ty(st, |x,y| conv(x,y)),
+                                                parse_region(st, |x,y| conv(x,y)))).as_predicate(),
         c => panic!("Encountered invalid character in metadata: {}", c)
     }
 }
@@ -759,10 +759,12 @@ fn parse_bounds<'a, 'tcx>(st: &mut PState<'a, 'tcx>, conv: conv_did)
     loop {
         match next(st) {
             'R' => {
-                param_bounds.region_bounds.push(parse_region(st, |x, y| conv (x, y)));
+                param_bounds.region_bounds.push(
+                    parse_region(st, |x, y| conv (x, y)));
             }
             'I' => {
-                param_bounds.trait_bounds.push(Rc::new(parse_trait_ref(st, |x,y| conv(x,y))));
+                param_bounds.trait_bounds.push(
+                    Rc::new(ty::Binder(parse_trait_ref(st, |x,y| conv(x,y)))));
             }
             '.' => {
                 return param_bounds;

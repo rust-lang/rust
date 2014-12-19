@@ -12,8 +12,6 @@
 use check::FnCtxt;
 use middle::ty::{mod, Ty};
 use middle::infer;
-use middle::infer::resolve_type;
-use middle::infer::resolve::try_resolve_tvar_shallow;
 
 use std::result::Result::{Err, Ok};
 use syntax::ast;
@@ -63,12 +61,7 @@ pub fn coerce<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>, sp: Span,
     debug!("demand::coerce(expected = {}, expr_ty = {})",
            expected.repr(fcx.ccx.tcx),
            expr_ty.repr(fcx.ccx.tcx));
-    let expected = if ty::type_needs_infer(expected) {
-        resolve_type(fcx.infcx(),
-                     None,
-                     expected,
-                     try_resolve_tvar_shallow).unwrap_or(expected)
-    } else { expected };
+    let expected = fcx.infcx().resolve_type_vars_if_possible(&expected);
     match fcx.mk_assignty(expr, expr_ty, expected) {
       Ok(()) => { /* ok */ }
       Err(ref err) => {

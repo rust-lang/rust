@@ -22,7 +22,6 @@ use trans::machine;
 use trans::type_::Type;
 use trans::type_of::*;
 use trans::type_of;
-use middle::ty::FnSig;
 use middle::ty::{mod, Ty};
 use middle::subst::{Subst, Substs};
 use std::cmp;
@@ -41,7 +40,7 @@ use util::ppaux::Repr;
 
 struct ForeignTypes<'tcx> {
     /// Rust signature of the function
-    fn_sig: ty::FnSig<'tcx>,
+    fn_sig: ty::PolyFnSig<'tcx>,
 
     /// Adapter object for handling native ABI rules (trust me, you
     /// don't want to know)
@@ -179,7 +178,7 @@ pub fn register_foreign_item_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     // Make sure the calling convention is right for variadic functions
     // (should've been caught if not in typeck)
-    if tys.fn_sig.variadic {
+    if tys.fn_sig.0.variadic {
         assert!(cc == llvm::CCallConv);
     }
 
@@ -386,7 +385,7 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         debug!("llforeign_ret_ty={}", ccx.tn().type_to_string(llforeign_ret_ty));
 
         if llrust_ret_ty == llforeign_ret_ty {
-            match fn_sig.output {
+            match fn_sig.0.output {
                 ty::FnConverging(result_ty) => {
                     base::store_ty(bcx, llforeign_retval, llretptr, result_ty)
                 }
@@ -632,7 +631,7 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         };
 
         // Push Rust return pointer, using null if it will be unused.
-        let rust_uses_outptr = match tys.fn_sig.output {
+        let rust_uses_outptr = match tys.fn_sig.0.output {
             ty::FnConverging(ret_ty) => type_of::return_uses_outptr(ccx, ret_ty),
             ty::FnDiverging => false
         };
@@ -665,7 +664,7 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                             return_ty={}",
                            ccx.tn().val_to_string(slot),
                            ccx.tn().type_to_string(llrust_ret_ty),
-                           tys.fn_sig.output.repr(tcx));
+                           tys.fn_sig.0.output.repr(tcx));
                     llrust_args.push(slot);
                     return_alloca = Some(slot);
                 }
@@ -680,8 +679,8 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         // Build up the arguments to the call to the rust function.
         // Careful to adapt for cases where the native convention uses
         // a pointer and Rust does not or vice versa.
-        for i in range(0, tys.fn_sig.inputs.len()) {
-            let rust_ty = tys.fn_sig.inputs[i];
+        for i in range(0, tys.fn_sig.0.inputs.len()) {
+            let rust_ty = tys.fn_sig.0.inputs[i];
             let llrust_ty = tys.llsig.llarg_tys[i];
             let rust_indirect = type_of::arg_is_indirect(ccx, rust_ty);
             let llforeign_arg_ty = tys.fn_ty.arg_tys[i];
@@ -826,10 +825,10 @@ pub fn link_name(i: &ast::ForeignItem) -> InternedString {
 /// because foreign functions just plain ignore modes. They also don't pass aggregate values by
 /// pointer like we do.
 fn foreign_signature<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                               fn_sig: &ty::FnSig<'tcx>, arg_tys: &[Ty<'tcx>])
+                               fn_sig: &ty::PolyFnSig<'tcx>, arg_tys: &[Ty<'tcx>])
                                -> LlvmSignature {
     let llarg_tys = arg_tys.iter().map(|&arg| arg_type_of(ccx, arg)).collect();
-    let (llret_ty, ret_def) = match fn_sig.output {
+    let (llret_ty, ret_def) = match fn_sig.0.output {
         ty::FnConverging(ret_ty) =>
             (type_of::arg_type_of(ccx, ret_ty), !return_type_is_void(ccx, ret_ty)),
         ty::FnDiverging =>
@@ -853,7 +852,7 @@ fn foreign_types_for_fn_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         ty::ty_bare_fn(ref fn_ty) => fn_ty.sig.clone(),
         _ => ccx.sess().bug("foreign_types_for_fn_ty called on non-function type")
     };
-    let llsig = foreign_signature(ccx, &fn_sig, fn_sig.inputs.as_slice());
+    let llsig = foreign_signature(ccx, &fn_sig, fn_sig.0.inputs.as_slice());
     let fn_ty = cabi::compute_abi_info(ccx,
                                        llsig.llarg_tys.as_slice(),
                                        llsig.llret_ty,
@@ -913,7 +912,7 @@ fn lltype_for_fn_from_foreign_types(ccx: &CrateContext, tys: &ForeignTypes) -> T
         llargument_tys.push(llarg_ty);
     }
 
-    if tys.fn_sig.variadic {
+    if tys.fn_sig.0.variadic {
         Type::variadic_func(llargument_tys.as_slice(), &llreturn_ty)
     } else {
         Type::func(llargument_tys.as_slice(), &llreturn_ty)

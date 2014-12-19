@@ -16,9 +16,9 @@ use middle::traits;
 use middle::ty::{mod, Ty};
 use middle::ty::{MethodCall, MethodCallee, MethodObject, MethodOrigin,
                  MethodParam, MethodStatic, MethodTraitObject, MethodTypeParam};
+use middle::ty_fold::TypeFoldable;
 use middle::infer;
 use middle::infer::InferCtxt;
-use middle::ty_fold::HigherRankedFoldable;
 use syntax::ast;
 use syntax::codemap::Span;
 use std::rc::Rc;
@@ -114,7 +114,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
 
         // Create the final `MethodCallee`.
         let fty = ty::mk_bare_fn(self.tcx(), ty::BareFnTy {
-            sig: method_sig,
+            sig: ty::Binder(method_sig),
             unsafety: pick.method_ty.fty.unsafety,
             abi: pick.method_ty.fty.abi.clone(),
         });
@@ -222,17 +222,19 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                     // argument type), but those cases have already
                     // been ruled out when we deemed the trait to be
                     // "object safe".
-                    let substs = data.principal.substs.clone().with_self_ty(object_ty);
-                    let original_trait_ref =
-                        Rc::new(ty::TraitRef::new(data.principal.def_id, substs));
-                    let upcast_trait_ref = this.upcast(original_trait_ref.clone(), trait_def_id);
-                    debug!("original_trait_ref={} upcast_trait_ref={} target_trait={}",
-                           original_trait_ref.repr(this.tcx()),
+                    let original_poly_trait_ref =
+                        data.principal_trait_ref_with_self_ty(object_ty);
+                    let upcast_poly_trait_ref =
+                        this.upcast(original_poly_trait_ref.clone(), trait_def_id);
+                    let upcast_trait_ref =
+                        this.replace_late_bound_regions_with_fresh_var(&*upcast_poly_trait_ref);
+                    debug!("original_poly_trait_ref={} upcast_trait_ref={} target_trait={}",
+                           original_poly_trait_ref.repr(this.tcx()),
                            upcast_trait_ref.repr(this.tcx()),
                            trait_def_id.repr(this.tcx()));
                     let substs = upcast_trait_ref.substs.clone();
                     let origin = MethodTraitObject(MethodObject {
-                        trait_ref: upcast_trait_ref,
+                        trait_ref: Rc::new(upcast_trait_ref),
                         object_trait_id: trait_def_id,
                         method_num: method_num,
                         real_index: real_index,
@@ -272,16 +274,21 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                                                                  &trait_def.generics,
                                                                  self.infcx().next_ty_var());
 
-                let trait_ref = Rc::new(ty::TraitRef::new(trait_def_id, substs.clone()));
+                let trait_ref =
+                    Rc::new(ty::TraitRef::new(trait_def_id, substs.clone()));
                 let origin = MethodTypeParam(MethodParam { trait_ref: trait_ref,
                                                            method_num: method_num });
                 (substs, origin)
             }
 
-            probe::WhereClausePick(ref trait_ref, method_num) => {
-                let origin = MethodTypeParam(MethodParam { trait_ref: (*trait_ref).clone(),
+            probe::WhereClausePick(ref poly_trait_ref, method_num) => {
+                // Where clauses can have bound regions in them. We need to instantiate
+                // those to convert from a poly-trait-ref to a trait-ref.
+                let trait_ref = self.replace_late_bound_regions_with_fresh_var(&**poly_trait_ref);
+                let substs = trait_ref.substs.clone();
+                let origin = MethodTypeParam(MethodParam { trait_ref: Rc::new(trait_ref),
                                                            method_num: method_num });
-                (trait_ref.substs.clone(), origin)
+                (substs, origin)
             }
         }
     }
@@ -378,25 +385,9 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                               all_substs: subst::Substs<'tcx>)
                               -> InstantiatedMethodSig<'tcx>
     {
-        // If this method comes from an impl (as opposed to a trait),
-        // it may have late-bound regions from the impl that appear in
-        // the substitutions, method signature, and
-        // bounds. Instantiate those at this point. (If it comes from
-        // a trait, this step has no effect, as there are no
-        // late-bound regions to instantiate.)
-        //
-        // The binder level here corresponds to the impl.
-        let (all_substs, (method_sig, method_generics)) =
-            self.replace_late_bound_regions_with_fresh_var(
-                &ty::bind((all_substs,
-                           (pick.method_ty.fty.sig.clone(),
-                            pick.method_ty.generics.clone())))).value;
-
-        debug!("late-bound lifetimes from impl instantiated, \
-                all_substs={} method_sig={} method_generics={}",
-               all_substs.repr(self.tcx()),
-               method_sig.repr(self.tcx()),
-               method_generics.repr(self.tcx()));
+        debug!("instantiate_method_sig(pick={}, all_substs={})",
+               pick.repr(self.tcx()),
+               all_substs.repr(self.tcx()));
 
         // Instantiate the bounds on the method with the
         // type/early-bound-regions substitutions performed.  The only
@@ -426,8 +417,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                 all_substs.clone()
             }
         };
-        let method_bounds =
-            method_generics.to_bounds(self.tcx(), &method_bounds_substs);
+        let method_bounds = pick.method_ty.generics.to_bounds(self.tcx(), &method_bounds_substs);
 
         debug!("method_bounds after subst = {}",
                method_bounds.repr(self.tcx()));
@@ -435,7 +425,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
         // Substitute the type/early-bound-regions into the method
         // signature. In addition, the method signature may bind
         // late-bound regions, so instantiate those.
-        let method_sig = method_sig.subst(self.tcx(), &all_substs);
+        let method_sig = pick.method_ty.fty.sig.subst(self.tcx(), &all_substs);
         let method_sig = self.replace_late_bound_regions_with_fresh_var(&method_sig);
 
         debug!("late-bound lifetimes from method instantiated, method_sig={}",
@@ -481,7 +471,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
             _ => return,
         };
 
-        match sig.inputs[0].sty {
+        match sig.0.inputs[0].sty {
             ty::ty_rptr(_, ty::mt {
                 ty: _,
                 mutbl: ast::MutMutable,
@@ -637,12 +627,12 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
     }
 
     fn upcast(&mut self,
-              source_trait_ref: Rc<ty::TraitRef<'tcx>>,
+              source_trait_ref: Rc<ty::PolyTraitRef<'tcx>>,
               target_trait_def_id: ast::DefId)
-              -> Rc<ty::TraitRef<'tcx>>
+              -> Rc<ty::PolyTraitRef<'tcx>>
     {
         for super_trait_ref in traits::supertraits(self.tcx(), source_trait_ref.clone()) {
-            if super_trait_ref.def_id == target_trait_def_id {
+            if super_trait_ref.def_id() == target_trait_def_id {
                 return super_trait_ref;
             }
         }
@@ -654,8 +644,8 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                     target_trait_def_id.repr(self.tcx()))[]);
     }
 
-    fn replace_late_bound_regions_with_fresh_var<T>(&self, value: &T) -> T
-        where T : HigherRankedFoldable<'tcx>
+    fn replace_late_bound_regions_with_fresh_var<T>(&self, value: &ty::Binder<T>) -> T
+        where T : TypeFoldable<'tcx> + Repr<'tcx>
     {
         self.infcx().replace_late_bound_regions_with_fresh_var(
             self.span, infer::FnCall, value).0

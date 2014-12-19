@@ -227,8 +227,8 @@ fn trans_struct_drop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let fty = ty::lookup_item_type(bcx.tcx(), dtor_did).ty.subst(bcx.tcx(), substs);
     let self_ty = match fty.sty {
         ty::ty_bare_fn(ref f) => {
-            assert!(f.sig.inputs.len() == 1);
-            f.sig.inputs[0]
+            assert!(f.sig.0.inputs.len() == 1);
+            f.sig.0.inputs[0]
         }
         _ => bcx.sess().bug(format!("Expected function type, found {}",
                                     bcx.ty_to_string(fty)).as_slice())

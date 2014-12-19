@@ -506,7 +506,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for GatherLocalsVisitor<'a, 'tcx> {
 fn check_fn<'a, 'tcx>(ccx: &'a CrateCtxt<'a, 'tcx>,
                       unsafety: ast::Unsafety,
                       unsafety_id: ast::NodeId,
-                      fn_sig: &ty::FnSig<'tcx>,
+                      fn_sig: &ty::PolyFnSig<'tcx>,
                       decl: &ast::FnDecl,
                       fn_id: ast::NodeId,
                       body: &ast::Block,
@@ -625,23 +625,20 @@ pub fn check_item(ccx: &CrateCtxt, it: &ast::Item) {
         let param_env = ParameterEnvironment::for_item(ccx.tcx, it.id);
         check_bare_fn(ccx, &**decl, &**body, it.id, fn_pty.ty, param_env);
       }
-      ast::ItemImpl(_, _, ref opt_trait_ref, _, ref impl_items) => {
+      ast::ItemImpl(_, _, _, _, ref impl_items) => {
         debug!("ItemImpl {} with id {}", token::get_ident(it.ident), it.id);
 
         let impl_pty = ty::lookup_item_type(ccx.tcx, ast_util::local_def(it.id));
 
-        match *opt_trait_ref {
-            Some(ref ast_trait_ref) => {
-                let impl_trait_ref =
-                    ty::node_id_to_trait_ref(ccx.tcx, ast_trait_ref.ref_id);
+          match ty::impl_trait_ref(ccx.tcx, local_def(it.id)) {
+              Some(impl_trait_ref) => {
                 check_impl_items_against_trait(ccx,
                                                it.span,
-                                               ast_trait_ref,
                                                &*impl_trait_ref,
                                                impl_items.as_slice());
-            }
-            None => { }
-        }
+              }
+              None => { }
+          }
 
         for impl_item in impl_items.iter() {
             match *impl_item {
@@ -722,12 +719,7 @@ fn check_method_body<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     let param_env = ParameterEnvironment::for_item(ccx.tcx, method.id);
 
     let fty = ty::node_id_to_type(ccx.tcx, method.id);
-    debug!("fty (raw): {}", fty.repr(ccx.tcx));
-
-    let body_id = method.pe_body().id;
-    let fty = liberate_late_bound_regions(
-        ccx.tcx, CodeExtent::from_node_id(body_id), &ty::bind(fty)).value;
-    debug!("fty (liberated): {}", fty.repr(ccx.tcx));
+    debug!("check_method_body: fty={}", fty.repr(ccx.tcx));
 
     check_bare_fn(ccx,
                   &*method.pe_fn_decl(),
@@ -739,7 +731,6 @@ fn check_method_body<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
 fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                             impl_span: Span,
-                                            ast_trait_ref: &ast::TraitRef,
                                             impl_trait_ref: &ty::TraitRef<'tcx>,
                                             impl_items: &[ast::ImplItem]) {
     // Locate trait methods
@@ -772,21 +763,16 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                                     impl_method.span,
                                                     impl_method.pe_body().id,
                                                     &**trait_method_ty,
-                                                    impl_trait_ref);
+                                                    &*impl_trait_ref);
                             }
                             _ => {
                                 // This is span_bug as it should have already been
                                 // caught in resolve.
-                                tcx.sess
-                                   .span_bug(impl_method.span,
-                                             format!("item `{}` is of a \
-                                                      different kind from \
-                                                      its trait `{}`",
-                                                     token::get_name(
-                                                        impl_item_ty.name()),
-                                                     pprust::path_to_string(
-                                                        &ast_trait_ref.path))
-                                             .as_slice());
+                                tcx.sess.span_bug(
+                                    impl_method.span,
+                                    format!("item `{}` is of a different kind from its trait `{}`",
+                                            token::get_name(impl_item_ty.name()),
+                                            impl_trait_ref.repr(tcx)).as_slice());
                             }
                         }
                     }
@@ -795,11 +781,9 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                         // caught in resolve.
                         tcx.sess.span_bug(
                             impl_method.span,
-                            format!(
-                                "method `{}` is not a member of trait `{}`",
-                                token::get_name(impl_item_ty.name()),
-                                pprust::path_to_string(
-                                    &ast_trait_ref.path)).as_slice());
+                            format!("method `{}` is not a member of trait `{}`",
+                                    token::get_name(impl_item_ty.name()),
+                                    impl_trait_ref.repr(tcx)).as_slice());
                     }
                 }
             }
@@ -812,27 +796,19 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                 // corresponding type definition in the trait.
                 let opt_associated_type =
                     trait_items.iter()
-                               .find(|ti| {
-                                   ti.name() == typedef_ty.name()
-                               });
+                               .find(|ti| ti.name() == typedef_ty.name());
                 match opt_associated_type {
                     Some(associated_type) => {
                         match (associated_type, &typedef_ty) {
-                            (&ty::TypeTraitItem(_),
-                             &ty::TypeTraitItem(_)) => {}
+                            (&ty::TypeTraitItem(_), &ty::TypeTraitItem(_)) => {}
                             _ => {
                                 // This is `span_bug` as it should have
                                 // already been caught in resolve.
-                                tcx.sess
-                                   .span_bug(typedef.span,
-                                             format!("item `{}` is of a \
-                                                      different kind from \
-                                                      its trait `{}`",
-                                                     token::get_name(
-                                                        typedef_ty.name()),
-                                                     pprust::path_to_string(
-                                                        &ast_trait_ref.path))
-                                             .as_slice());
+                                tcx.sess.span_bug(
+                                    typedef.span,
+                                    format!("item `{}` is of a different kind from its trait `{}`",
+                                            token::get_name(typedef_ty.name()),
+                                            impl_trait_ref.repr(tcx)).as_slice());
                             }
                         }
                     }
@@ -845,8 +821,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                 "associated type `{}` is not a member of \
                                  trait `{}`",
                                 token::get_name(typedef_ty.name()),
-                                pprust::path_to_string(
-                                    &ast_trait_ref.path)).as_slice());
+                                impl_trait_ref.repr(tcx)).as_slice());
                     }
                 }
             }
@@ -854,8 +829,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     }
 
     // Check for missing items from trait
-    let provided_methods = ty::provided_trait_methods(tcx,
-                                                      impl_trait_ref.def_id);
+    let provided_methods = ty::provided_trait_methods(tcx, impl_trait_ref.def_id);
     let mut missing_methods = Vec::new();
     for trait_item in trait_items.iter() {
         match *trait_item {
@@ -870,8 +844,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                         }
                     });
                 let is_provided =
-                    provided_methods.iter().any(
-                        |m| m.name == trait_method.name);
+                    provided_methods.iter().any(|m| m.name == trait_method.name);
                 if !is_implemented && !is_provided {
                     missing_methods.push(format!("`{}`", token::get_name(trait_method.name)));
                 }
@@ -918,27 +891,6 @@ fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
                              impl_trait_ref: &ty::TraitRef<'tcx>) {
     debug!("compare_impl_method(impl_trait_ref={})",
            impl_trait_ref.repr(tcx));
-
-    let impl_m_body_scope = CodeExtent::from_node_id(impl_m_body_id);
-
-    // The impl's trait ref may bind late-bound regions from the impl.
-    // Liberate them and assign them the scope of the method body.
-    //
-    // An example would be:
-    //
-    //     impl<'a> Foo<&'a T> for &'a U { ... }
-    //
-    // Here, the region parameter `'a` is late-bound, so the
-    // trait reference associated with the impl will be
-    //
-    //     for<'a> Foo<&'a T>
-    //
-    // liberating will convert this into:
-    //
-    //     Foo<&'A T>
-    //
-    // where `'A` is the `ReFree` version of `'a`.
-    let impl_trait_ref = liberate_late_bound_regions(tcx, impl_m_body_scope, impl_trait_ref);
 
     debug!("impl_trait_ref (liberated) = {}",
            impl_trait_ref.repr(tcx));
@@ -996,15 +948,15 @@ fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
         return;
     }
 
-    if impl_m.fty.sig.inputs.len() != trait_m.fty.sig.inputs.len() {
+    if impl_m.fty.sig.0.inputs.len() != trait_m.fty.sig.0.inputs.len() {
         span_err!(tcx.sess, impl_m_span, E0050,
             "method `{}` has {} parameter{} \
              but the declaration in trait `{}` has {}",
             token::get_name(trait_m.name),
-            impl_m.fty.sig.inputs.len(),
-            if impl_m.fty.sig.inputs.len() == 1 {""} else {"s"},
+            impl_m.fty.sig.0.inputs.len(),
+            if impl_m.fty.sig.0.inputs.len() == 1 {""} else {"s"},
             ty::item_path_str(tcx, trait_m.def_id),
-            trait_m.fty.sig.inputs.len());
+            trait_m.fty.sig.0.inputs.len());
         return;
     }
 
@@ -1081,7 +1033,6 @@ fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
     if !check_region_bounds_on_impl_method(tcx,
                                            impl_m_span,
                                            impl_m,
-                                           impl_m_body_scope,
                                            &trait_m.generics,
                                            &impl_m.generics,
                                            &trait_to_skol_substs,
@@ -1106,7 +1057,7 @@ fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
     // `Bound<&'a T>`, the lifetime `'a` will be late-bound with a
     // depth of 3 (it is nested within 3 binders: the impl, method,
     // and trait-ref itself). So when we do the liberation, we have
-    // two introduce two `ty::bind` scopes, one for the impl and one
+    // two introduce two `ty::Binder` scopes, one for the impl and one
     // the method.
     //
     // The only late-bounded regions that can possibly appear here are
@@ -1120,11 +1071,7 @@ fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
         .map(|trait_param_def| &trait_param_def.bounds);
     let impl_bounds =
         impl_m.generics.types.get_slice(subst::FnSpace).iter()
-        .map(|impl_param_def|
-             liberate_late_bound_regions(
-                 tcx,
-                 impl_m_body_scope,
-                 &ty::bind(ty::bind(impl_param_def.bounds.clone()))).value.value);
+        .map(|impl_param_def| &impl_param_def.bounds);
     for (i, (trait_param_bounds, impl_param_bounds)) in
         trait_bounds.zip(impl_bounds).enumerate()
     {
@@ -1167,30 +1114,27 @@ fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
                     let trait_bound =
                         trait_bound.subst(tcx, &trait_to_skol_substs);
                     let infcx = infer::new_infer_ctxt(tcx);
-                    infer::mk_sub_trait_refs(&infcx,
-                                             true,
-                                             infer::Misc(impl_m_span),
-                                             trait_bound,
-                                             impl_trait_bound.clone()).is_ok()
+                    infer::mk_sub_poly_trait_refs(&infcx,
+                                                  true,
+                                                  infer::Misc(impl_m_span),
+                                                  trait_bound,
+                                                  impl_trait_bound.clone()).is_ok()
                 });
 
             if !found_match_in_trait {
                 span_err!(tcx.sess, impl_m_span, E0052,
-                    "in method `{}`, type parameter {} requires bound `{}`, which is not \
-                     required by the corresponding type parameter in the trait declaration",
-                    token::get_name(trait_m.name),
-                    i,
-                    ppaux::trait_ref_to_string(tcx, &*impl_trait_bound));
+                          "in method `{}`, type parameter {} requires bound `{}`, which is not \
+                           required by the corresponding type parameter in the trait declaration",
+                          token::get_name(trait_m.name),
+                          i,
+                          impl_trait_bound.user_string(tcx));
             }
         }
     }
 
-    // Compute skolemized form of impl and trait method tys. Note
-    // that we must liberate the late-bound regions from the impl.
+    // Compute skolemized form of impl and trait method tys.
     let impl_fty = ty::mk_bare_fn(tcx, impl_m.fty.clone());
     let impl_fty = impl_fty.subst(tcx, &impl_to_skol_substs);
-    let impl_fty = liberate_late_bound_regions(
-        tcx, impl_m_body_scope, &ty::bind(impl_fty)).value;
     let trait_fty = ty::mk_bare_fn(tcx, trait_m.fty.clone());
     let trait_fty = trait_fty.subst(tcx, &trait_to_skol_substs);
 
@@ -1252,7 +1196,6 @@ fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
     fn check_region_bounds_on_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
                                                 span: Span,
                                                 impl_m: &ty::Method<'tcx>,
-                                                impl_m_body_scope: CodeExtent,
                                                 trait_generics: &ty::Generics<'tcx>,
                                                 impl_generics: &ty::Generics<'tcx>,
                                                 trait_to_skol_substs: &Substs<'tcx>,
@@ -1301,16 +1244,6 @@ fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
                 trait_param.bounds.subst(tcx, trait_to_skol_substs);
             let impl_bounds =
                 impl_param.bounds.subst(tcx, impl_to_skol_substs);
-
-            // The bounds may reference late-bound regions from the
-            // impl declaration. In that case, we want to replace
-            // those with the liberated variety so as to match the
-            // versions appearing in the `trait_to_skol_substs`.
-            // There are two-levels of binder to be aware of: the
-            // impl, and the method.
-            let impl_bounds =
-                ty::liberate_late_bound_regions(
-                    tcx, impl_m_body_scope, &ty::bind(ty::bind(impl_bounds))).value.value;
 
             debug!("check_region_bounds_on_impl_method: \
                    trait_param={} \
@@ -1390,13 +1323,7 @@ fn check_cast(fcx: &FnCtxt,
     let t_1 = fcx.to_ty(t);
     let t_1 = structurally_resolved_type(fcx, span, t_1);
 
-    if ty::type_is_scalar(t_1) {
-        // Supply the type as a hint so as to influence integer
-        // literals and other things that might care.
-        check_expr_with_expectation(fcx, e, ExpectCastableToType(t_1))
-    } else {
-        check_expr(fcx, e)
-    }
+    check_expr_with_expectation(fcx, e, ExpectCastableToType(t_1));
 
     let t_e = fcx.expr_ty(e);
 
@@ -1638,7 +1565,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub fn default_diverging_type_variables_to_nil(&self) {
         for (_, &ref ty) in self.inh.node_types.borrow_mut().iter_mut() {
-            if self.infcx().type_var_diverges(self.infcx().resolve_type_vars_if_possible(*ty)) {
+            if self.infcx().type_var_diverges(self.infcx().resolve_type_vars_if_possible(ty)) {
                 demand::eqtype(self, codemap::DUMMY_SP, *ty, ty::mk_nil(self.tcx()));
             }
         }
@@ -1653,7 +1580,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub fn write_object_cast(&self,
                              key: ast::NodeId,
-                             trait_ref: Rc<ty::TraitRef<'tcx>>) {
+                             trait_ref: Rc<ty::PolyTraitRef<'tcx>>) {
         debug!("write_object_cast key={} trait_ref={}",
                key, trait_ref.repr(self.tcx()));
         self.inh.object_cast_map.borrow_mut().insert(key, trait_ref);
@@ -1751,7 +1678,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.register_unsize_obligations(span, &**u)
             }
             ty::UnsizeVtable(ref ty_trait, self_ty) => {
-                vtable::check_object_safety(self.tcx(), &ty_trait.principal, span);
+                vtable::check_object_safety(self.tcx(), ty_trait, span);
+
                 // If the type is `Foo+'a`, ensures that the type
                 // being cast to `Foo+'a` implements `Foo`:
                 vtable::register_object_cast_obligations(self,
@@ -2486,7 +2414,7 @@ fn lookup_method_for_for_loop<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     let method_type = match method {
         Some(ref method) => method.ty,
         None => {
-            let true_expr_type = fcx.infcx().resolve_type_vars_if_possible(expr_type);
+            let true_expr_type = fcx.infcx().resolve_type_vars_if_possible(&expr_type);
 
             if !ty::type_is_error(true_expr_type) {
                 let ty_string = fcx.infcx().ty_to_string(true_expr_type);
@@ -2572,13 +2500,13 @@ fn check_method_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 // HACK(eddyb) ignore self in the definition (see above).
                 check_argument_types(fcx,
                                      sp,
-                                     fty.sig.inputs.slice_from(1),
+                                     fty.sig.0.inputs.slice_from(1),
                                      callee_expr,
                                      args_no_rcvr,
                                      autoref_args,
-                                     fty.sig.variadic,
+                                     fty.sig.0.variadic,
                                      tuple_arguments);
-                fty.sig.output
+                fty.sig.0.output
             }
             _ => {
                 fcx.tcx().sess.span_bug(callee_expr.span,
@@ -2992,11 +2920,11 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         // This is the "default" function signature, used in case of error.
         // In that case, we check each argument against "error" in order to
         // set up all the node type bindings.
-        let error_fn_sig = FnSig {
+        let error_fn_sig = ty::Binder(FnSig {
             inputs: err_args(args.len()),
             output: ty::FnConverging(ty::mk_err()),
             variadic: false
-        };
+        });
 
         let fn_sig = match *fn_sty {
             ty::ty_bare_fn(ty::BareFnTy {ref sig, ..}) |
@@ -3976,7 +3904,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         vtable::select_new_fcx_obligations(fcx);
 
         debug!("ExprForLoop each item has type {}",
-               fcx.infcx().resolve_type_vars_if_possible(typ).repr(fcx.tcx()));
+               fcx.infcx().resolve_type_vars_if_possible(&typ).repr(fcx.tcx()));
 
         let pcx = pat_ctxt {
             fcx: fcx,
@@ -4371,11 +4299,11 @@ impl<'tcx> Expectation<'tcx> {
             }
             ExpectCastableToType(t) => {
                 ExpectCastableToType(
-                    fcx.infcx().resolve_type_vars_if_possible(t))
+                    fcx.infcx().resolve_type_vars_if_possible(&t))
             }
             ExpectHasType(t) => {
                 ExpectHasType(
-                    fcx.infcx().resolve_type_vars_if_possible(t))
+                    fcx.infcx().resolve_type_vars_if_possible(&t))
             }
         }
     }
@@ -5096,7 +5024,7 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         fcx.infcx().replace_late_bound_regions_with_fresh_var(
             span,
             infer::FnCall,
-            &ty::bind((polytype.ty, bounds))).0.value;
+            &ty::Binder((polytype.ty, bounds))).0;
 
     debug!("after late-bounds have been replaced: ty_late_bound={}", ty_late_bound.repr(fcx.tcx()));
     debug!("after late-bounds have been replaced: bounds={}", bounds.repr(fcx.tcx()));
@@ -5712,11 +5640,11 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
     let fty = ty::mk_bare_fn(tcx, ty::BareFnTy {
         unsafety: ast::Unsafety::Unsafe,
         abi: abi::RustIntrinsic,
-        sig: FnSig {
+        sig: ty::Binder(FnSig {
             inputs: inputs,
             output: output,
             variadic: false,
-        }
+        }),
     });
     let i_ty = ty::lookup_item_type(ccx.tcx, local_def(it.id));
     let i_n_tps = i_ty.generics.types.len(subst::FnSpace);

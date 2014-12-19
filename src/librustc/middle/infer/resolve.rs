@@ -8,253 +8,108 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Resolution is the process of removing type variables and replacing
-// them with their inferred values.  Unfortunately our inference has
-// become fairly complex and so there are a number of options to
-// control *just how much* you want to resolve and how you want to do
-// it.
-//
-// # Controlling the scope of resolution
-//
-// The options resolve_* determine what kinds of variables get
-// resolved.  Generally resolution starts with a top-level type
-// variable; we will always resolve this.  However, once we have
-// resolved that variable, we may end up with a type that still
-// contains type variables.  For example, if we resolve `<T0>` we may
-// end up with something like `[<T1>]`.  If the option
-// `resolve_nested_tvar` is passed, we will then go and recursively
-// resolve `<T1>`.
-//
-// The options `resolve_rvar` controls whether we resolve region
-// variables. The options `resolve_fvar` and `resolve_ivar` control
-// whether we resolve floating point and integral variables,
-// respectively.
-//
-// # What do if things are unconstrained
-//
-// Sometimes we will encounter a variable that has no constraints, and
-// therefore cannot sensibly be mapped to any particular result.  By
-// default, we will leave such variables as is (so you will get back a
-// variable in your result).  The options force_* will cause the
-// resolution to fail in this case instead, except for the case of
-// integral variables, which resolve to `int` if forced.
-//
-// # resolve_all and force_all
-//
-// The options are a bit set, so you can use the *_all to resolve or
-// force all kinds of variables (including those we may add in the
-// future).  If you want to resolve everything but one type, you are
-// probably better off writing `resolve_all - resolve_ivar`.
-
-#![allow(non_upper_case_globals)]
-
-use super::{fixup_err, fres, InferCtxt};
-use super::{unresolved_int_ty,unresolved_float_ty,unresolved_ty};
-
-use middle::ty::{FloatVar, FloatVid, IntVar, IntVid, RegionVid, TyVar, TyVid};
-use middle::ty::{IntType, UintType};
+use super::{InferCtxt, fixup_err, fres, unresolved_ty, unresolved_int_ty, unresolved_float_ty};
 use middle::ty::{mod, Ty};
-use middle::ty_fold;
-use syntax::codemap::Span;
-use util::ppaux::{Repr, ty_to_string};
+use middle::ty_fold::{mod, TypeFoldable};
+use util::ppaux::Repr;
 
-pub const resolve_nested_tvar: uint = 0b0000000001;
-pub const resolve_rvar: uint        = 0b0000000010;
-pub const resolve_ivar: uint        = 0b0000000100;
-pub const resolve_fvar: uint        = 0b0000001000;
-pub const resolve_all: uint         = 0b0000001111;
-pub const force_tvar: uint          = 0b0000100000;
-pub const force_rvar: uint          = 0b0001000000;
-pub const force_ivar: uint          = 0b0010000000;
-pub const force_fvar: uint          = 0b0100000000;
-pub const force_all: uint           = 0b0111100000;
+///////////////////////////////////////////////////////////////////////////
+// OPPORTUNISTIC TYPE RESOLVER
 
-pub const not_regions: uint         = !(force_rvar | resolve_rvar);
-
-pub const try_resolve_tvar_shallow: uint = 0;
-pub const resolve_and_force_all_but_regions: uint =
-    (resolve_all | force_all) & not_regions;
-
-pub struct ResolveState<'a, 'tcx: 'a> {
+/// The opportunistic type resolver can be used at any time. It simply replaces
+/// type variables that have been unified with the things they have
+/// been unified with (similar to `shallow_resolve`, but deep). This is
+/// useful for printing messages etc but also required at various
+/// points for correctness.
+pub struct OpportunisticTypeResolver<'a, 'tcx:'a> {
     infcx: &'a InferCtxt<'a, 'tcx>,
-    modes: uint,
-    err: Option<fixup_err>,
-    type_depth: uint,
 }
 
-pub fn resolver<'a, 'tcx>(infcx: &'a InferCtxt<'a, 'tcx>,
-                          modes: uint,
-                          _: Option<Span>)
-                          -> ResolveState<'a, 'tcx> {
-    ResolveState {
-        infcx: infcx,
-        modes: modes,
-        err: None,
-        type_depth: 0,
+impl<'a, 'tcx> OpportunisticTypeResolver<'a, 'tcx> {
+    pub fn new(infcx: &'a InferCtxt<'a, 'tcx>) -> OpportunisticTypeResolver<'a, 'tcx> {
+        OpportunisticTypeResolver { infcx: infcx }
     }
 }
 
-impl<'a, 'tcx> ty_fold::TypeFolder<'tcx> for ResolveState<'a, 'tcx> {
+impl<'a, 'tcx> ty_fold::TypeFolder<'tcx> for OpportunisticTypeResolver<'a, 'tcx> {
     fn tcx(&self) -> &ty::ctxt<'tcx> {
         self.infcx.tcx
     }
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-        self.resolve_type(t)
+        if !ty::type_has_ty_infer(t) {
+            t // micro-optimize -- if there is nothing in this type that this fold affects...
+        } else {
+            let t0 = self.infcx.shallow_resolve(t);
+            ty_fold::super_fold_ty(self, t0)
+        }
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////
+// FULL TYPE RESOLUTION
+
+/// Full type resolution replaces all type and region variables with
+/// their concrete results. If any variable cannot be replaced (never unified, etc)
+/// then an `Err` result is returned.
+pub fn fully_resolve<'a, 'tcx, T>(infcx: &InferCtxt<'a,'tcx>, value: &T) -> fres<T>
+    where T : TypeFoldable<'tcx>
+{
+    let mut full_resolver = FullTypeResolver { infcx: infcx, err: None };
+    let result = value.fold_with(&mut full_resolver);
+    match full_resolver.err {
+        None => Ok(result),
+        Some(e) => Err(e),
+    }
+}
+
+// N.B. This type is not public because the protocol around checking the
+// `err` field is not enforcable otherwise.
+struct FullTypeResolver<'a, 'tcx:'a> {
+    infcx: &'a InferCtxt<'a, 'tcx>,
+    err: Option<fixup_err>,
+}
+
+impl<'a, 'tcx> ty_fold::TypeFolder<'tcx> for FullTypeResolver<'a, 'tcx> {
+    fn tcx(&self) -> &ty::ctxt<'tcx> {
+        self.infcx.tcx
+    }
+
+    fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
+        if !ty::type_needs_infer(t) {
+            t // micro-optimize -- if there is nothing in this type that this fold affects...
+        } else {
+            let t = self.infcx.shallow_resolve(t);
+            match t.sty {
+                ty::ty_infer(ty::TyVar(vid)) => {
+                    self.err = Some(unresolved_ty(vid));
+                    ty::mk_err()
+                }
+                ty::ty_infer(ty::IntVar(vid)) => {
+                    self.err = Some(unresolved_int_ty(vid));
+                    ty::mk_err()
+                }
+                ty::ty_infer(ty::FloatVar(vid)) => {
+                    self.err = Some(unresolved_float_ty(vid));
+                    ty::mk_err()
+                }
+                ty::ty_infer(_) => {
+                    self.infcx.tcx.sess.bug(
+                        format!("Unexpected type in full type resolver: {}",
+                                t.repr(self.infcx.tcx))[]);
+                }
+                _ => {
+                    ty_fold::super_fold_ty(self, t)
+                }
+            }
+        }
     }
 
     fn fold_region(&mut self, r: ty::Region) -> ty::Region {
-        self.resolve_region(r)
-    }
-}
-
-impl<'a, 'tcx> ResolveState<'a, 'tcx> {
-    pub fn should(&mut self, mode: uint) -> bool {
-        (self.modes & mode) == mode
-    }
-
-    pub fn resolve_type_chk(&mut self, typ: Ty<'tcx>) -> fres<Ty<'tcx>> {
-        self.err = None;
-
-        debug!("Resolving {} (modes={:x})",
-               ty_to_string(self.infcx.tcx, typ),
-               self.modes);
-
-        // n.b. This is a hokey mess because the current fold doesn't
-        // allow us to pass back errors in any useful way.
-
-        let rty = self.resolve_type(typ);
-        match self.err {
-            None => {
-                debug!("Resolved {} to {} (modes={:x})",
-                       ty_to_string(self.infcx.tcx, typ),
-                       ty_to_string(self.infcx.tcx, rty),
-                       self.modes);
-                return Ok(rty);
-            }
-            Some(e) => {
-                return Err(e);
-            }
-        }
-    }
-
-    pub fn resolve_region_chk(&mut self,
-                              orig: ty::Region)
-                              -> fres<ty::Region> {
-        self.err = None;
-        let resolved = self.resolve_region(orig);
-        match self.err {
-          None => Ok(resolved),
-          Some(e) => Err(e)
-        }
-    }
-
-    pub fn resolve_type(&mut self, typ: Ty<'tcx>) -> Ty<'tcx> {
-        debug!("resolve_type({})", typ.repr(self.infcx.tcx));
-
-        if !ty::type_needs_infer(typ) {
-            return typ;
-        }
-
-        if self.type_depth > 0 && !self.should(resolve_nested_tvar) {
-            return typ;
-        }
-
-        match typ.sty {
-            ty::ty_infer(TyVar(vid)) => {
-                self.resolve_ty_var(vid)
-            }
-            ty::ty_infer(IntVar(vid)) => {
-                self.resolve_int_var(vid)
-            }
-            ty::ty_infer(FloatVar(vid)) => {
-                self.resolve_float_var(vid)
-            }
-            _ => {
-                if self.modes & resolve_all == 0 {
-                    // if we are only resolving top-level type
-                    // variables, and this is not a top-level type
-                    // variable, then shortcircuit for efficiency
-                    typ
-                } else {
-                    self.type_depth += 1;
-                    let result = ty_fold::super_fold_ty(self, typ);
-                    self.type_depth -= 1;
-                    result
-                }
-            }
-        }
-    }
-
-    pub fn resolve_region(&mut self, orig: ty::Region) -> ty::Region {
-        debug!("Resolve_region({})", orig.repr(self.infcx.tcx));
-        match orig {
-          ty::ReInfer(ty::ReVar(rid)) => self.resolve_region_var(rid),
-          _ => orig
-        }
-    }
-
-    pub fn resolve_region_var(&mut self, rid: RegionVid) -> ty::Region {
-        if !self.should(resolve_rvar) {
-            return ty::ReInfer(ty::ReVar(rid));
-        }
-        self.infcx.region_vars.resolve_var(rid)
-    }
-
-    pub fn resolve_ty_var(&mut self, vid: TyVid) -> Ty<'tcx> {
-        let tcx = self.infcx.tcx;
-        let tv = self.infcx.type_variables.borrow();
-        match tv.probe(vid) {
-            Some(t) => {
-                self.resolve_type(t)
-            }
-            None => {
-                if self.should(force_tvar) {
-                    self.err = Some(unresolved_ty(vid));
-                }
-                ty::mk_var(tcx, vid)
-            }
-        }
-    }
-
-    pub fn resolve_int_var(&mut self, vid: IntVid) -> Ty<'tcx> {
-        if !self.should(resolve_ivar) {
-            return ty::mk_int_var(self.infcx.tcx, vid);
-        }
-
-        let tcx = self.infcx.tcx;
-        let table = &self.infcx.int_unification_table;
-        let node = table.borrow_mut().get(tcx, vid);
-        match node.value {
-          Some(IntType(t)) => ty::mk_mach_int(t),
-          Some(UintType(t)) => ty::mk_mach_uint(t),
-          None => {
-            if self.should(force_ivar) {
-                // As a last resort, emit an error.
-                self.err = Some(unresolved_int_ty(vid));
-            }
-            ty::mk_int_var(self.infcx.tcx, vid)
-          }
-        }
-    }
-
-    pub fn resolve_float_var(&mut self, vid: FloatVid) -> Ty<'tcx> {
-        if !self.should(resolve_fvar) {
-            return ty::mk_float_var(self.infcx.tcx, vid);
-        }
-
-        let tcx = self.infcx.tcx;
-        let table = &self.infcx.float_unification_table;
-        let node = table.borrow_mut().get(tcx, vid);
-        match node.value {
-          Some(t) => ty::mk_mach_float(t),
-          None => {
-            if self.should(force_fvar) {
-                // As a last resort, emit an error.
-                self.err = Some(unresolved_float_ty(vid));
-            }
-            ty::mk_float_var(self.infcx.tcx, vid)
-          }
+        match r {
+          ty::ReInfer(ty::ReVar(rid)) => self.infcx.region_vars.resolve_var(rid),
+          _ => r,
         }
     }
 }
+

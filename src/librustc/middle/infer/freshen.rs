@@ -8,21 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Skolemization is the process of replacing unknown variables with fresh types. The idea is that
-//! the type, after skolemization, contains no inference variables but instead contains either a
+//! Freshening is the process of replacing unknown variables with fresh types. The idea is that
+//! the type, after freshening, contains no inference variables but instead contains either a
 //! value for each variable or fresh "arbitrary" types wherever a variable would have been.
 //!
-//! Skolemization is used primarily to get a good type for inserting into a cache. The result
+//! Freshening is used primarily to get a good type for inserting into a cache. The result
 //! summarizes what the type inferencer knows "so far". The primary place it is used right now is
 //! in the trait matching algorithm, which needs to be able to cache whether an `impl` self type
 //! matches some other type X -- *without* affecting `X`. That means if that if the type `X` is in
 //! fact an unbound type variable, we want the match to be regarded as ambiguous, because depending
 //! on what type that type variable is ultimately assigned, the match may or may not succeed.
 //!
-//! Note that you should be careful not to allow the output of skolemization to leak to the user in
-//! error messages or in any other form. Skolemization is only really useful as an internal detail.
+//! Note that you should be careful not to allow the output of freshening to leak to the user in
+//! error messages or in any other form. Freshening is only really useful as an internal detail.
 //!
-//! __An important detail concerning regions.__ The skolemizer also replaces *all* regions with
+//! __An important detail concerning regions.__ The freshener also replaces *all* regions with
 //! 'static. The reason behind this is that, in general, we do not take region relationships into
 //! account when making type-overloaded decisions. This is important because of the design of the
 //! region inferencer, which is not based on unification but rather on accumulating and then
@@ -39,26 +39,26 @@ use std::collections::hash_map;
 use super::InferCtxt;
 use super::unify::InferCtxtMethodsForSimplyUnifiableTypes;
 
-pub struct TypeSkolemizer<'a, 'tcx:'a> {
+pub struct TypeFreshener<'a, 'tcx:'a> {
     infcx: &'a InferCtxt<'a, 'tcx>,
-    skolemization_count: uint,
-    skolemization_map: hash_map::HashMap<ty::InferTy, Ty<'tcx>>,
+    freshen_count: uint,
+    freshen_map: hash_map::HashMap<ty::InferTy, Ty<'tcx>>,
 }
 
-impl<'a, 'tcx> TypeSkolemizer<'a, 'tcx> {
-    pub fn new(infcx: &'a InferCtxt<'a, 'tcx>) -> TypeSkolemizer<'a, 'tcx> {
-        TypeSkolemizer {
+impl<'a, 'tcx> TypeFreshener<'a, 'tcx> {
+    pub fn new(infcx: &'a InferCtxt<'a, 'tcx>) -> TypeFreshener<'a, 'tcx> {
+        TypeFreshener {
             infcx: infcx,
-            skolemization_count: 0,
-            skolemization_map: hash_map::HashMap::new(),
+            freshen_count: 0,
+            freshen_map: hash_map::HashMap::new(),
         }
     }
 
-    fn skolemize<F>(&mut self,
-                    opt_ty: Option<Ty<'tcx>>,
-                    key: ty::InferTy,
-                    skolemizer: F)
-                    -> Ty<'tcx> where
+    fn freshen<F>(&mut self,
+                  opt_ty: Option<Ty<'tcx>>,
+                  key: ty::InferTy,
+                  freshener: F)
+                  -> Ty<'tcx> where
         F: FnOnce(uint) -> ty::InferTy,
     {
         match opt_ty {
@@ -66,12 +66,12 @@ impl<'a, 'tcx> TypeSkolemizer<'a, 'tcx> {
             None => { }
         }
 
-        match self.skolemization_map.entry(key) {
+        match self.freshen_map.entry(key) {
             hash_map::Occupied(entry) => *entry.get(),
             hash_map::Vacant(entry) => {
-                let index = self.skolemization_count;
-                self.skolemization_count += 1;
-                let t = ty::mk_infer(self.infcx.tcx, skolemizer(index));
+                let index = self.freshen_count;
+                self.freshen_count += 1;
+                let t = ty::mk_infer(self.infcx.tcx, freshener(index));
                 entry.set(t);
                 t
             }
@@ -79,7 +79,7 @@ impl<'a, 'tcx> TypeSkolemizer<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> TypeFolder<'tcx> for TypeSkolemizer<'a, 'tcx> {
+impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
     fn tcx<'b>(&'b self) -> &'b ty::ctxt<'tcx> {
         self.infcx.tcx
     }
@@ -106,37 +106,37 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeSkolemizer<'a, 'tcx> {
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
         match t.sty {
             ty::ty_infer(ty::TyVar(v)) => {
-                self.skolemize(self.infcx.type_variables.borrow().probe(v),
+                self.freshen(self.infcx.type_variables.borrow().probe(v),
                                ty::TyVar(v),
-                               ty::SkolemizedTy)
+                               ty::FreshTy)
             }
 
             ty::ty_infer(ty::IntVar(v)) => {
-                self.skolemize(self.infcx.probe_var(v),
-                               ty::IntVar(v),
-                               ty::SkolemizedIntTy)
+                self.freshen(self.infcx.probe_var(v),
+                             ty::IntVar(v),
+                             ty::FreshIntTy)
             }
 
             ty::ty_infer(ty::FloatVar(v)) => {
-                self.skolemize(self.infcx.probe_var(v),
-                               ty::FloatVar(v),
-                               ty::SkolemizedIntTy)
+                self.freshen(self.infcx.probe_var(v),
+                             ty::FloatVar(v),
+                             ty::FreshIntTy)
             }
 
-            ty::ty_infer(ty::SkolemizedTy(c)) |
-            ty::ty_infer(ty::SkolemizedIntTy(c)) => {
-                if c >= self.skolemization_count {
+            ty::ty_infer(ty::FreshTy(c)) |
+            ty::ty_infer(ty::FreshIntTy(c)) => {
+                if c >= self.freshen_count {
                     self.tcx().sess.bug(
-                        format!("Encountered a skolemized type with id {} \
+                        format!("Encountered a freshend type with id {} \
                                  but our counter is only at {}",
                                 c,
-                                self.skolemization_count).as_slice());
+                                self.freshen_count).as_slice());
                 }
                 t
             }
 
             ty::ty_open(..) => {
-                self.tcx().sess.bug("Cannot skolemize an open existential type");
+                self.tcx().sess.bug("Cannot freshen an open existential type");
             }
 
             ty::ty_bool |

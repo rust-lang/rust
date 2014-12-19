@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use check::{FnCtxt, structurally_resolved_type};
-use middle::subst::{SelfSpace, FnSpace};
+use middle::subst::{FnSpace};
 use middle::traits;
 use middle::traits::{SelectionError, OutputTypeParameterMismatch, Overflow, Unimplemented};
 use middle::traits::{Obligation, ObligationCause};
@@ -44,7 +44,7 @@ pub fn check_object_cast<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
             // Ensure that if ~T is cast to ~Trait, then T : Trait
             push_cast_obligation(fcx, cast_expr, object_trait, referent_ty);
-            check_object_safety(fcx.tcx(), &object_trait.principal, source_expr.span);
+            check_object_safety(fcx.tcx(), object_trait, source_expr.span);
         }
 
         (&ty::ty_rptr(referent_region, ty::mt { ty: referent_ty,
@@ -68,7 +68,7 @@ pub fn check_object_cast<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                target_region,
                                referent_region);
 
-                check_object_safety(fcx.tcx(), &object_trait.principal, source_expr.span);
+                check_object_safety(fcx.tcx(), object_trait, source_expr.span);
             }
         }
 
@@ -132,24 +132,19 @@ pub fn check_object_cast<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 // self by value, has no type parameters and does not use the `Self` type, except
 // in self position.
 pub fn check_object_safety<'tcx>(tcx: &ty::ctxt<'tcx>,
-                                 object_trait: &ty::TraitRef<'tcx>,
-                                 span: Span) {
-
-    let mut object = object_trait.clone();
-    if object.substs.types.len(SelfSpace) == 0 {
-        object.substs.types.push(SelfSpace, ty::mk_err());
-    }
-
-    let object = Rc::new(object);
-    for tr in traits::supertraits(tcx, object) {
+                                 object_trait: &ty::TyTrait<'tcx>,
+                                 span: Span)
+{
+    let object_trait_ref = object_trait.principal_trait_ref_with_self_ty(ty::mk_err());
+    for tr in traits::supertraits(tcx, object_trait_ref) {
         check_object_safety_inner(tcx, &*tr, span);
     }
 }
 
 fn check_object_safety_inner<'tcx>(tcx: &ty::ctxt<'tcx>,
-                                 object_trait: &ty::TraitRef<'tcx>,
+                                 object_trait: &ty::PolyTraitRef<'tcx>,
                                  span: Span) {
-    let trait_items = ty::trait_items(tcx, object_trait.def_id);
+    let trait_items = ty::trait_items(tcx, object_trait.def_id());
 
     let mut errors = Vec::new();
     for item in trait_items.iter() {
@@ -163,7 +158,7 @@ fn check_object_safety_inner<'tcx>(tcx: &ty::ctxt<'tcx>,
 
     let mut errors = errors.iter().flat_map(|x| x.iter()).peekable();
     if errors.peek().is_some() {
-        let trait_name = ty::item_path_str(tcx, object_trait.def_id);
+        let trait_name = ty::item_path_str(tcx, object_trait.def_id());
         span_err!(tcx.sess, span, E0038,
             "cannot convert to a trait object because trait `{}` is not object-safe",
             trait_name);
@@ -212,12 +207,12 @@ fn check_object_safety_inner<'tcx>(tcx: &ty::ctxt<'tcx>,
             }
         };
         let ref sig = method.fty.sig;
-        for &input_ty in sig.inputs[1..].iter() {
+        for &input_ty in sig.0.inputs[1..].iter() {
             if let Some(msg) = check_for_self_ty(input_ty) {
                 msgs.push(msg);
             }
         }
-        if let ty::FnConverging(result_type) = sig.output {
+        if let ty::FnConverging(result_type) = sig.0.output {
             if let Some(msg) = check_for_self_ty(result_type) {
                 msgs.push(msg);
             }
@@ -237,7 +232,7 @@ pub fn register_object_cast_obligations<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                                   span: Span,
                                                   object_trait: &ty::TyTrait<'tcx>,
                                                   referent_ty: Ty<'tcx>)
-                                                  -> Rc<ty::TraitRef<'tcx>>
+                                                  -> Rc<ty::PolyTraitRef<'tcx>>
 {
     // We can only make objects from sized types.
     fcx.register_builtin_bound(
@@ -256,17 +251,9 @@ pub fn register_object_cast_obligations<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
            referent_ty.repr(fcx.tcx()),
            object_trait_ty.repr(fcx.tcx()));
 
-    // Take the type parameters from the object type, but set
-    // the Self type (which is unknown, for the object type)
-    // to be the type we are casting from.
-    let mut object_substs = object_trait.principal.substs.clone();
-    assert!(object_substs.self_ty().is_none());
-    object_substs.types.push(SelfSpace, referent_ty);
-
     // Create the obligation for casting from T to Trait.
     let object_trait_ref =
-        Rc::new(ty::TraitRef { def_id: object_trait.principal.def_id,
-                               substs: object_substs });
+        object_trait.principal_trait_ref_with_self_ty(referent_ty);
     let object_obligation =
         Obligation::new(
             ObligationCause::new(span,
@@ -328,36 +315,13 @@ pub fn report_selection_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     match *error {
         Overflow => {
             // We could track the stack here more precisely if we wanted, I imagine.
-            match obligation.trait_ref {
-                ty::Predicate::Trait(ref trait_ref) => {
-                    let trait_ref =
-                        fcx.infcx().resolve_type_vars_in_trait_ref_if_possible(&**trait_ref);
-                    fcx.tcx().sess.span_err(
-                        obligation.cause.span,
-                        format!(
-                            "overflow evaluating the trait `{}` for the type `{}`",
-                            trait_ref.user_string(fcx.tcx()),
-                            trait_ref.self_ty().user_string(fcx.tcx())).as_slice());
-                }
-
-                ty::Predicate::Equate(a, b) => {
-                    let a = fcx.infcx().resolve_type_vars_if_possible(a);
-                    let b = fcx.infcx().resolve_type_vars_if_possible(b);
-                    fcx.tcx().sess.span_err(
-                        obligation.cause.span,
-                        format!(
-                            "overflow checking whether the types `{}` and `{}` are equal",
-                            a.user_string(fcx.tcx()),
-                            b.user_string(fcx.tcx())).as_slice());
-                }
-
-                ty::Predicate::TypeOutlives(..) |
-                ty::Predicate::RegionOutlives(..) => {
-                    fcx.tcx().sess.span_err(
-                        obligation.cause.span,
-                        format!("overflow evaluating lifetime predicate").as_slice());
-                }
-            }
+            let predicate =
+                fcx.infcx().resolve_type_vars_if_possible(&obligation.trait_ref);
+            fcx.tcx().sess.span_err(
+                obligation.cause.span,
+                format!(
+                    "overflow evaluating the requirement `{}`",
+                    predicate.user_string(fcx.tcx())).as_slice());
 
             let current_limit = fcx.tcx().sess.recursion_limit.get();
             let suggested_limit = current_limit * 2;
@@ -372,9 +336,7 @@ pub fn report_selection_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         Unimplemented => {
             match obligation.trait_ref {
                 ty::Predicate::Trait(ref trait_ref) => {
-                    let trait_ref =
-                        fcx.infcx().resolve_type_vars_in_trait_ref_if_possible(
-                            &**trait_ref);
+                    let trait_ref = fcx.infcx().resolve_type_vars_if_possible(&**trait_ref);
                     if !ty::type_is_error(trait_ref.self_ty()) {
                         fcx.tcx().sess.span_err(
                             obligation.cause.span,
@@ -382,41 +344,51 @@ pub fn report_selection_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                 "the trait `{}` is not implemented for the type `{}`",
                                 trait_ref.user_string(fcx.tcx()),
                                 trait_ref.self_ty().user_string(fcx.tcx())).as_slice());
-                        note_obligation_cause(fcx, obligation);
                     }
                 }
 
-                ty::Predicate::Equate(a, b) => {
-                    let a = fcx.infcx().resolve_type_vars_if_possible(a);
-                    let b = fcx.infcx().resolve_type_vars_if_possible(b);
-                    let err = infer::can_mk_eqty(fcx.infcx(), a, b).unwrap_err();
+                ty::Predicate::Equate(ref predicate) => {
+                    let predicate = fcx.infcx().resolve_type_vars_if_possible(predicate);
+                    let err = fcx.infcx().equality_predicate(obligation.cause.span,
+                                                             &predicate).unwrap_err();
                     fcx.tcx().sess.span_err(
                         obligation.cause.span,
                         format!(
-                            "mismatched types: the types `{}` and `{}` are not equal ({})",
-                            a.user_string(fcx.tcx()),
-                            b.user_string(fcx.tcx()),
+                            "the requirement `{}` is not satisfied (`{}`)",
+                            predicate.user_string(fcx.tcx()),
                             ty::type_err_to_str(fcx.tcx(), &err)).as_slice());
                 }
 
-                ty::Predicate::TypeOutlives(..) |
-                ty::Predicate::RegionOutlives(..) => {
-                    // these kinds of predicates turn into
-                    // constraints, and hence errors show up in region
-                    // inference.
-                    fcx.tcx().sess.span_bug(
+                ty::Predicate::RegionOutlives(ref predicate) => {
+                    let predicate = fcx.infcx().resolve_type_vars_if_possible(predicate);
+                    let err = fcx.infcx().region_outlives_predicate(obligation.cause.span,
+                                                                    &predicate).unwrap_err();
+                    fcx.tcx().sess.span_err(
                         obligation.cause.span,
-                        format!("region predicate error {}",
-                                obligation.repr(fcx.tcx())).as_slice());
+                        format!(
+                            "the requirement `{}` is not satisfied (`{}`)",
+                            predicate.user_string(fcx.tcx()),
+                            ty::type_err_to_str(fcx.tcx(), &err)).as_slice());
+                }
+
+                ty::Predicate::TypeOutlives(ref predicate) => {
+                    let predicate = fcx.infcx().resolve_type_vars_if_possible(predicate);
+                    fcx.tcx().sess.span_err(
+                        obligation.cause.span,
+                        format!(
+                            "the requirement `{}` is not satisfied",
+                            predicate.user_string(fcx.tcx())).as_slice());
                 }
             }
+
+            note_obligation_cause(fcx, obligation);
         }
         OutputTypeParameterMismatch(ref expected_trait_ref, ref actual_trait_ref, ref e) => {
             let expected_trait_ref =
-                fcx.infcx().resolve_type_vars_in_trait_ref_if_possible(
+                fcx.infcx().resolve_type_vars_if_possible(
                     &**expected_trait_ref);
             let actual_trait_ref =
-                fcx.infcx().resolve_type_vars_in_trait_ref_if_possible(
+                fcx.infcx().resolve_type_vars_if_possible(
                     &**actual_trait_ref);
             if !ty::type_is_error(actual_trait_ref.self_ty()) {
                 fcx.tcx().sess.span_err(
@@ -443,7 +415,7 @@ pub fn maybe_report_ambiguity<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
     let trait_ref = match obligation.trait_ref {
         ty::Predicate::Trait(ref trait_ref) => {
-            fcx.infcx().resolve_type_vars_in_trait_ref_if_possible(&**trait_ref)
+            fcx.infcx().resolve_type_vars_if_possible(&**trait_ref)
         }
         _ => {
             fcx.tcx().sess.span_bug(
@@ -458,7 +430,7 @@ pub fn maybe_report_ambiguity<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
            trait_ref.repr(fcx.tcx()),
            self_ty.repr(fcx.tcx()),
            obligation.repr(fcx.tcx()));
-    let all_types = &trait_ref.substs.types;
+    let all_types = &trait_ref.substs().types;
     if all_types.iter().any(|&t| ty::type_is_error(t)) {
     } else if all_types.iter().any(|&t| ty::type_needs_infer(t)) {
         // This is kind of a hack: it frequently happens that some earlier
@@ -477,7 +449,7 @@ pub fn maybe_report_ambiguity<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         // anyway. In that case, why inundate the user.
         if !fcx.tcx().sess.has_errors() {
             if fcx.ccx.tcx.lang_items.sized_trait()
-                  .map_or(false, |sized_id| sized_id == trait_ref.def_id) {
+                  .map_or(false, |sized_id| sized_id == trait_ref.def_id()) {
                 fcx.tcx().sess.span_err(
                     obligation.cause.span,
                     format!(

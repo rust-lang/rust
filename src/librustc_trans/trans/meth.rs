@@ -133,16 +133,16 @@ pub fn trans_method_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             method_num
         }) => {
             let trait_ref =
-                Rc::new(trait_ref.subst(bcx.tcx(), bcx.fcx.param_substs));
+                Rc::new(ty::Binder((**trait_ref).subst(bcx.tcx(), bcx.fcx.param_substs)));
             let span = bcx.tcx().map.span(method_call.expr_id);
             debug!("method_call={} trait_ref={}",
                    method_call,
                    trait_ref.repr(bcx.tcx()));
             let origin = fulfill_obligation(bcx.ccx(),
                                             span,
-                                            (*trait_ref).clone());
+                                            trait_ref.clone());
             debug!("origin = {}", origin.repr(bcx.tcx()));
-            trans_monomorphized_callee(bcx, method_call, trait_ref.def_id,
+            trans_monomorphized_callee(bcx, method_call, trait_ref.def_id(),
                                        method_num, origin)
         }
 
@@ -239,8 +239,8 @@ pub fn trans_static_method_callee(bcx: Block,
                                              rcvr_assoc,
                                              Vec::new()));
     debug!("trait_substs={}", trait_substs.repr(bcx.tcx()));
-    let trait_ref = Rc::new(ty::TraitRef { def_id: trait_id,
-                                           substs: trait_substs });
+    let trait_ref = Rc::new(ty::Binder(ty::TraitRef { def_id: trait_id,
+                                                      substs: trait_substs }));
     let vtbl = fulfill_obligation(bcx.ccx(),
                                   DUMMY_SP,
                                   trait_ref);
@@ -480,8 +480,8 @@ pub fn trans_trait_callee_from_llval<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         ty::ty_bare_fn(ref f) if f.abi == Rust || f.abi == RustCall => {
             type_of_rust_fn(ccx,
                             Some(Type::i8p(ccx)),
-                            f.sig.inputs.slice_from(1),
-                            f.sig.output,
+                            f.sig.0.inputs.slice_from(1),
+                            f.sig.0.output,
                             f.abi)
         }
         _ => {
@@ -515,7 +515,7 @@ pub fn trans_trait_callee_from_llval<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 /// This will hopefully change now that DST is underway.
 pub fn get_vtable<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                               box_ty: Ty<'tcx>,
-                              trait_ref: Rc<ty::TraitRef<'tcx>>)
+                              trait_ref: Rc<ty::PolyTraitRef<'tcx>>)
                               -> ValueRef
 {
     debug!("get_vtable(box_ty={}, trait_ref={})",
@@ -670,7 +670,7 @@ fn emit_vtable_methods<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 pub fn trans_trait_cast<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                     datum: Datum<'tcx, Expr>,
                                     id: ast::NodeId,
-                                    trait_ref: Rc<ty::TraitRef<'tcx>>,
+                                    trait_ref: Rc<ty::PolyTraitRef<'tcx>>,
                                     dest: expr::Dest)
                                     -> Block<'blk, 'tcx> {
     let mut bcx = bcx;

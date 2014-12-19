@@ -395,7 +395,8 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
     fn values_str(&self, values: &ValuePairs<'tcx>) -> Option<String> {
         match *values {
             infer::Types(ref exp_found) => self.expected_found_str(exp_found),
-            infer::TraitRefs(ref exp_found) => self.expected_found_str(exp_found)
+            infer::TraitRefs(ref exp_found) => self.expected_found_str(exp_found),
+            infer::PolyTraitRefs(ref exp_found) => self.expected_found_str(exp_found)
         }
     }
 
@@ -1640,7 +1641,7 @@ pub trait Resolvable<'tcx> {
 
 impl<'tcx> Resolvable<'tcx> for Ty<'tcx> {
     fn resolve<'a>(&self, infcx: &InferCtxt<'a, 'tcx>) -> Ty<'tcx> {
-        infcx.resolve_type_vars_if_possible(*self)
+        infcx.resolve_type_vars_if_possible(self)
     }
     fn contains_error(&self) -> bool {
         ty::type_is_error(*self)
@@ -1650,10 +1651,20 @@ impl<'tcx> Resolvable<'tcx> for Ty<'tcx> {
 impl<'tcx> Resolvable<'tcx> for Rc<ty::TraitRef<'tcx>> {
     fn resolve<'a>(&self, infcx: &InferCtxt<'a, 'tcx>)
                    -> Rc<ty::TraitRef<'tcx>> {
-        Rc::new(infcx.resolve_type_vars_in_trait_ref_if_possible(&**self))
+        Rc::new(infcx.resolve_type_vars_if_possible(&**self))
     }
     fn contains_error(&self) -> bool {
         ty::trait_ref_contains_error(&**self)
+    }
+}
+
+impl<'tcx> Resolvable<'tcx> for Rc<ty::PolyTraitRef<'tcx>> {
+    fn resolve<'a>(&self, infcx: &InferCtxt<'a, 'tcx>)
+                   -> Rc<ty::PolyTraitRef<'tcx>> {
+        Rc::new(infcx.resolve_type_vars_if_possible(&**self))
+    }
+    fn contains_error(&self) -> bool {
+        ty::trait_ref_contains_error(&self.0)
     }
 }
 

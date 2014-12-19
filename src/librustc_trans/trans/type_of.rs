@@ -146,16 +146,16 @@ pub fn type_of_fn_from_ty<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, fty: Ty<'tcx>) 
         ty::ty_closure(ref f) => {
             type_of_rust_fn(cx,
                             Some(Type::i8p(cx)),
-                            f.sig.inputs.as_slice(),
-                            f.sig.output,
+                            f.sig.0.inputs.as_slice(),
+                            f.sig.0.output,
                             f.abi)
         }
         ty::ty_bare_fn(ref f) => {
             if f.abi == abi::Rust || f.abi == abi::RustCall {
                 type_of_rust_fn(cx,
                                 None,
-                                f.sig.inputs.as_slice(),
-                                f.sig.output,
+                                f.sig.0.inputs.as_slice(),
+                                f.sig.0.output,
                                 f.abi)
             } else {
                 foreign::lltype_for_foreign_fn(cx, fty)
