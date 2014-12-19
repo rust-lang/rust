@@ -11,13 +11,18 @@
 use target::Target;
 
 pub fn target() -> Target {
+    let mut base = super::dragonfly_base::opts();
+    base.pre_link_args.push("-m64".to_string());
+
     Target {
-        data_layout: "e-p:32:32-f64:32:64-i64:32:64-f80:32:32-n8:16:32".to_string(),
+        data_layout: "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-\
+                     f32:32:32-f64:64:64-v64:64:64-v128:128:128-a0:0:64-\
+                     s0:64:64-f80:128:128-n8:16:32:64-S128".to_string(),
         llvm_target: "x86_64-unknown-dragonfly".to_string(),
         target_endian: "little".to_string(),
-        target_word_size: "32".to_string(),
+        target_word_size: "64".to_string(),
         arch: "x86_64".to_string(),
         target_os: "dragonfly".to_string(),
-        options: super::dragonfly_base::opts()
+        options: base,
     }
 }
