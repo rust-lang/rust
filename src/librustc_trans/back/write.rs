@@ -30,7 +30,7 @@ use std::ptr;
 use std::str;
 use std::mem;
 use std::sync::{Arc, Mutex};
-use std::task::TaskBuilder;
+use std::thread;
 use libc::{c_uint, c_int, c_void};
 
 #[deriving(Clone, PartialEq, PartialOrd, Ord, Eq)]
@@ -896,7 +896,11 @@ fn run_work_multithreaded(sess: &Session,
         let diag_emitter = diag_emitter.clone();
         let remark = sess.opts.cg.remark.clone();
 
-        let future = TaskBuilder::new().named(format!("codegen-{}", i)).try_future(move |:| {
+        let (tx, rx) = channel();
+        let mut tx = Some(tx);
+        futures.push(rx);
+
+        thread::Builder::new().name(format!("codegen-{}", i)).spawn(move |:| {
             let diag_handler = mk_handler(box diag_emitter);
 
             // Must construct cgcx inside the proc because it has non-Send
@@ -921,13 +925,14 @@ fn run_work_multithreaded(sess: &Session,
                     None => break,
                 }
             }
-        });
-        futures.push(future);
+
+            tx.take().unwrap().send(());
+        }).detach();
     }
 
     let mut panicked = false;
-    for future in futures.into_iter() {
-        match future.into_inner() {
+    for rx in futures.into_iter() {
+        match rx.recv_opt() {
             Ok(()) => {},
             Err(_) => {
                 panicked = true;

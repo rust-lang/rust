@@ -12,11 +12,11 @@
 ; When f(...) returns normally, the return value is null.
 ; When f(...) throws, the return value is a pointer to the caught exception object.
 
-; See also: librustrt/unwind.rs
+; See also: libstd/rt/unwind.rs
 
-define i8* @rust_try(void (i8*,i8*)* %f, i8* %fptr, i8* %env) {
+define i8* @rust_try(void (i8*)* %f, i8* %env) {
 
-    %1 = invoke i8* @rust_try_inner(void (i8*,i8*)* %f, i8* %fptr, i8* %env)
+    %1 = invoke i8* @rust_try_inner(void (i8*)* %f, i8* %env)
         to label %normal
         unwind label %catch
 
@@ -30,9 +30,9 @@ catch:
     ret i8* null
 }
 
-define internal i8* @rust_try_inner(void (i8*,i8*)* %f, i8* %fptr, i8* %env) {
+define internal i8* @rust_try_inner(void (i8*)* %f, i8* %env) {
 
-    invoke void %f(i8* %fptr, i8* %env)
+    invoke void %f(i8* %env)
         to label %normal
         unwind label %catch
 

@@ -57,30 +57,20 @@
 //!
 //! Currently Rust uses unwind runtime provided by libgcc.
 
-use core::prelude::*;
+use prelude::*;
 
-use alloc::boxed::Box;
-use collections::string::String;
-use collections::str::StrAllocating;
-use collections::vec::Vec;
-use core::any::Any;
-use core::atomic;
-use core::cmp;
-use core::fmt;
-use core::intrinsics;
-use core::mem;
-use core::raw::Closure;
+use any::Any;
+use cell::Cell;
+use cmp;
+use failure;
+use fmt;
+use intrinsics;
 use libc::c_void;
+use mem;
+use sync::atomic;
+use sync::{Once, ONCE_INIT};
 
-use local::Local;
-use task::Task;
-
-use libunwind as uw;
-
-#[allow(missing_copy_implementations)]
-pub struct Unwinder {
-    unwinding: bool,
-}
+use rt::libunwind as uw;
 
 struct Exception {
     uwe: uw::_Unwind_Exception,
@@ -104,17 +94,7 @@ static CALLBACKS: [atomic::AtomicUint, ..MAX_CALLBACKS] =
          atomic::INIT_ATOMIC_UINT, atomic::INIT_ATOMIC_UINT];
 static CALLBACK_CNT: atomic::AtomicUint = atomic::INIT_ATOMIC_UINT;
 
-impl Unwinder {
-    pub fn new() -> Unwinder {
-        Unwinder {
-            unwinding: false,
-        }
-    }
-
-    pub fn unwinding(&self) -> bool {
-        self.unwinding
-    }
-}
+thread_local! { static PANICKING: Cell<bool> = Cell::new(false) }
 
 /// Invoke a closure, capturing the cause of panic if one occurs.
 ///
@@ -136,10 +116,13 @@ impl Unwinder {
 ///   guaranteed that a rust task is in place when invoking this function.
 ///   Unwinding twice can lead to resource leaks where some destructors are not
 ///   run.
-pub unsafe fn try(f: ||) -> ::core::result::Result<(), Box<Any + Send>> {
-    let closure: Closure = mem::transmute(f);
-    let ep = rust_try(try_fn, closure.code as *mut c_void,
-                      closure.env as *mut c_void);
+pub unsafe fn try<F: FnOnce()>(f: F) -> Result<(), Box<Any + Send>> {
+    let mut f = Some(f);
+
+    let prev = PANICKING.with(|s| s.get());
+    PANICKING.with(|s| s.set(false));
+    let ep = rust_try(try_fn::<F>, &mut f as *mut _ as *mut c_void);
+    PANICKING.with(|s| s.set(prev));
     return if ep.is_null() {
         Ok(())
     } else {
@@ -150,14 +133,9 @@ pub unsafe fn try(f: ||) -> ::core::result::Result<(), Box<Any + Send>> {
         Err(cause.unwrap())
     };
 
-    extern fn try_fn(code: *mut c_void, env: *mut c_void) {
-        unsafe {
-            let closure: || = mem::transmute(Closure {
-                code: code as *mut (),
-                env: env as *mut (),
-            });
-            closure();
-        }
+    extern fn try_fn<F: FnOnce()>(opt_closure: *mut c_void) {
+        let opt_closure = opt_closure as *mut Option<F>;
+        unsafe { (*opt_closure).take().unwrap()(); }
     }
 
     #[link(name = "rustrt_native", kind = "static")]
@@ -169,10 +147,14 @@ pub unsafe fn try(f: ||) -> ::core::result::Result<(), Box<Any + Send>> {
         // When f(...) returns normally, the return value is null.
         // When f(...) throws, the return value is a pointer to the caught
         // exception object.
-        fn rust_try(f: extern "C" fn(*mut c_void, *mut c_void),
-                    code: *mut c_void,
+        fn rust_try(f: extern fn(*mut c_void),
                     data: *mut c_void) -> *mut uw::_Unwind_Exception;
     }
+}
+
+/// Test if the current thread is currently panicking.
+pub fn panicking() -> bool {
+    PANICKING.with(|s| s.get())
 }
 
 // An uninlined, unmangled function upon which to slap yer breakpoints
@@ -241,7 +223,7 @@ fn rust_exception_class() -> uw::_Unwind_Exception_Class {
           not(test)))]
 #[doc(hidden)]
 pub mod eabi {
-    use libunwind as uw;
+    use rt::libunwind as uw;
     use libc::c_int;
 
     extern "C" {
@@ -294,7 +276,7 @@ pub mod eabi {
 #[cfg(all(target_os = "ios", target_arch = "arm", not(test)))]
 #[doc(hidden)]
 pub mod eabi {
-    use libunwind as uw;
+    use rt::libunwind as uw;
     use libc::c_int;
 
     extern "C" {
@@ -349,7 +331,7 @@ pub mod eabi {
 #[cfg(all(target_arch = "arm", not(target_os = "ios"), not(test)))]
 #[doc(hidden)]
 pub mod eabi {
-    use libunwind as uw;
+    use rt::libunwind as uw;
     use libc::c_int;
 
     extern "C" {
@@ -400,9 +382,9 @@ pub mod eabi {
 #[allow(non_camel_case_types, non_snake_case)]
 pub mod eabi {
     pub use self::EXCEPTION_DISPOSITION::*;
-    use core::prelude::*;
-    use libunwind as uw;
+    use rt::libunwind as uw;
     use libc::{c_void, c_int};
+    use kinds::Copy;
 
     #[repr(C)]
     #[allow(missing_copy_implementations)]
@@ -513,7 +495,7 @@ pub extern fn rust_begin_unwind(msg: &fmt::Arguments,
 /// the actual formatting into this shared place.
 #[inline(never)] #[cold]
 pub fn begin_unwind_fmt(msg: &fmt::Arguments, file_line: &(&'static str, uint)) -> ! {
-    use core::fmt::FormatWriter;
+    use fmt::FormatWriter;
 
     // We do two allocations here, unfortunately. But (a) they're
     // required with the current scheme, and (b) we don't handle
@@ -557,10 +539,15 @@ pub fn begin_unwind<M: Any + Send>(msg: M, file_line: &(&'static str, uint)) -> 
 /// we need the `Any` object anyway, we're not just creating it to
 /// avoid being generic.)
 ///
-/// Do this split took the LLVM IR line counts of `fn main() { panic!()
+/// Doing this split took the LLVM IR line counts of `fn main() { panic!()
 /// }` from ~1900/3700 (-O/no opts) to 180/590.
 #[inline(never)] #[cold] // this is the slow path, please never inline this
 fn begin_unwind_inner(msg: Box<Any + Send>, file_line: &(&'static str, uint)) -> ! {
+    // Make sure the default failure handler is registered before we look at the
+    // callbacks.
+    static INIT: Once = ONCE_INIT;
+    INIT.doit(|| unsafe { register(failure::on_fail); });
+
     // First, invoke call the user-defined callbacks triggered on task panic.
     //
     // By the time that we see a callback has been registered (by reading
@@ -584,27 +571,16 @@ fn begin_unwind_inner(msg: Box<Any + Send>, file_line: &(&'static str, uint)) ->
     };
 
     // Now that we've run all the necessary unwind callbacks, we actually
-    // perform the unwinding. If we don't have a task, then it's time to die
-    // (hopefully someone printed something about this).
-    let mut task: Box<Task> = match Local::try_take() {
-        Some(task) => task,
-        None => rust_panic(msg),
-    };
-
-    if task.unwinder.unwinding {
-        // If a task panics while it's already unwinding then we
+    // perform the unwinding.
+    if panicking() {
+        // If a thread panics while it's already unwinding then we
         // have limited options. Currently our preference is to
         // just abort. In the future we may consider resuming
         // unwinding or otherwise exiting the task cleanly.
-        rterrln!("task failed during unwinding. aborting.");
+        rterrln!("thread panicked while panicking. aborting.");
         unsafe { intrinsics::abort() }
     }
-    task.unwinder.unwinding = true;
-
-    // Put the task back in TLS because the unwinding process may run code which
-    // requires the task. We need a handle to its unwinder, however, so after
-    // this we unsafely extract it and continue along.
-    Local::put(task);
+    PANICKING.with(|s| s.set(true));
     rust_panic(msg);
 }
 

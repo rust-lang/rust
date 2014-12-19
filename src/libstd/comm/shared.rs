@@ -22,15 +22,15 @@ pub use self::Failure::*;
 
 use core::prelude::*;
 
-use alloc::boxed::Box;
 use core::cmp;
 use core::int;
-use rustrt::local::Local;
-use rustrt::task::{Task, BlockedTask};
-use rustrt::thread::Thread;
 
 use sync::{atomic, Mutex, MutexGuard};
 use comm::mpsc_queue as mpsc;
+use comm::blocking::{mod, SignalToken};
+use comm::select::StartResult;
+use comm::select::StartResult::*;
+use thread::Thread;
 
 const DISCONNECTED: int = int::MIN;
 const FUDGE: int = 1024;
@@ -43,7 +43,7 @@ pub struct Packet<T> {
     queue: mpsc::Queue<T>,
     cnt: atomic::AtomicInt, // How many items are on this channel
     steals: int, // How many times has a port received without blocking?
-    to_wake: atomic::AtomicUint, // Task to wake up
+    to_wake: atomic::AtomicUint, // SignalToken for wake up
 
     // The number of channels which are currently using this packet.
     channels: atomic::AtomicInt,
@@ -95,41 +95,34 @@ impl<T: Send> Packet<T> {
     //
     // This can only be called at channel-creation time
     pub fn inherit_blocker(&mut self,
-                           task: Option<BlockedTask>,
+                           token: Option<SignalToken>,
                            guard: MutexGuard<()>) {
-        match task {
-            Some(task) => {
-                assert_eq!(self.cnt.load(atomic::SeqCst), 0);
-                assert_eq!(self.to_wake.load(atomic::SeqCst), 0);
-                self.to_wake.store(unsafe { task.cast_to_uint() },
-                                   atomic::SeqCst);
-                self.cnt.store(-1, atomic::SeqCst);
+        token.map(|token| {
+            assert_eq!(self.cnt.load(atomic::SeqCst), 0);
+            assert_eq!(self.to_wake.load(atomic::SeqCst), 0);
+            self.to_wake.store(unsafe { token.cast_to_uint() }, atomic::SeqCst);
+            self.cnt.store(-1, atomic::SeqCst);
 
-                // This store is a little sketchy. What's happening here is
-                // that we're transferring a blocker from a oneshot or stream
-                // channel to this shared channel. In doing so, we never
-                // spuriously wake them up and rather only wake them up at the
-                // appropriate time. This implementation of shared channels
-                // assumes that any blocking recv() will undo the increment of
-                // steals performed in try_recv() once the recv is complete.
-                // This thread that we're inheriting, however, is not in the
-                // middle of recv. Hence, the first time we wake them up,
-                // they're going to wake up from their old port, move on to the
-                // upgraded port, and then call the block recv() function.
-                //
-                // When calling this function, they'll find there's data
-                // immediately available, counting it as a steal. This in fact
-                // wasn't a steal because we appropriately blocked them waiting
-                // for data.
-                //
-                // To offset this bad increment, we initially set the steal
-                // count to -1. You'll find some special code in
-                // abort_selection() as well to ensure that this -1 steal count
-                // doesn't escape too far.
-                self.steals = -1;
-            }
-            None => {}
-        }
+            // This store is a little sketchy. What's happening here is that
+            // we're transferring a blocker from a oneshot or stream channel to
+            // this shared channel. In doing so, we never spuriously wake them
+            // up and rather only wake them up at the appropriate time. This
+            // implementation of shared channels assumes that any blocking
+            // recv() will undo the increment of steals performed in try_recv()
+            // once the recv is complete.  This thread that we're inheriting,
+            // however, is not in the middle of recv. Hence, the first time we
+            // wake them up, they're going to wake up from their old port, move
+            // on to the upgraded port, and then call the block recv() function.
+            //
+            // When calling this function, they'll find there's data immediately
+            // available, counting it as a steal. This in fact wasn't a steal
+            // because we appropriately blocked them waiting for data.
+            //
+            // To offset this bad increment, we initially set the steal count to
+            // -1. You'll find some special code in abort_selection() as well to
+            // ensure that this -1 steal count doesn't escape too far.
+            self.steals = -1;
+        });
 
         // When the shared packet is constructed, we grabbed this lock. The
         // purpose of this lock is to ensure that abort_selection() doesn't
@@ -175,7 +168,7 @@ impl<T: Send> Packet<T> {
         self.queue.push(t);
         match self.cnt.fetch_add(1, atomic::SeqCst) {
             -1 => {
-                self.take_to_wake().wake().map(|t| t.reawaken());
+                self.take_to_wake().signal();
             }
 
             // In this case, we have possibly failed to send our data, and
@@ -232,10 +225,10 @@ impl<T: Send> Packet<T> {
             data => return data,
         }
 
-        let task: Box<Task> = Local::take();
-        task.deschedule(1, |task| {
-            self.decrement(task)
-        });
+        let (wait_token, signal_token) = blocking::tokens();
+        if self.decrement(signal_token) == Installed {
+            wait_token.wait()
+        }
 
         match self.try_recv() {
             data @ Ok(..) => { self.steals -= 1; data }
@@ -244,10 +237,11 @@ impl<T: Send> Packet<T> {
     }
 
     // Essentially the exact same thing as the stream decrement function.
-    fn decrement(&mut self, task: BlockedTask) -> Result<(), BlockedTask> {
+    // Returns true if blocking should proceed.
+    fn decrement(&mut self, token: SignalToken) -> StartResult {
         assert_eq!(self.to_wake.load(atomic::SeqCst), 0);
-        let n = unsafe { task.cast_to_uint() };
-        self.to_wake.store(n, atomic::SeqCst);
+        let ptr = unsafe { token.cast_to_uint() };
+        self.to_wake.store(ptr, atomic::SeqCst);
 
         let steals = self.steals;
         self.steals = 0;
@@ -258,12 +252,13 @@ impl<T: Send> Packet<T> {
             // data, we successfully sleep
             n => {
                 assert!(n >= 0);
-                if n - steals <= 0 { return Ok(()) }
+                if n - steals <= 0 { return Installed }
             }
         }
 
         self.to_wake.store(0, atomic::SeqCst);
-        Err(unsafe { BlockedTask::cast_from_uint(n) })
+        drop(unsafe { SignalToken::cast_from_uint(ptr) });
+        Abort
     }
 
     pub fn try_recv(&mut self) -> Result<T, Failure> {
@@ -271,20 +266,19 @@ impl<T: Send> Packet<T> {
             mpsc::Data(t) => Some(t),
             mpsc::Empty => None,
 
-            // This is a bit of an interesting case. The channel is
-            // reported as having data available, but our pop() has
-            // failed due to the queue being in an inconsistent state.
-            // This means that there is some pusher somewhere which has
-            // yet to complete, but we are guaranteed that a pop will
-            // eventually succeed. In this case, we spin in a yield loop
-            // because the remote sender should finish their enqueue
+            // This is a bit of an interesting case. The channel is reported as
+            // having data available, but our pop() has failed due to the queue
+            // being in an inconsistent state.  This means that there is some
+            // pusher somewhere which has yet to complete, but we are guaranteed
+            // that a pop will eventually succeed. In this case, we spin in a
+            // yield loop because the remote sender should finish their enqueue
             // operation "very quickly".
             //
             // Avoiding this yield loop would require a different queue
-            // abstraction which provides the guarantee that after M
-            // pushes have succeeded, at least M pops will succeed. The
-            // current queues guarantee that if there are N active
-            // pushes, you can pop N times once all N have finished.
+            // abstraction which provides the guarantee that after M pushes have
+            // succeeded, at least M pops will succeed. The current queues
+            // guarantee that if there are N active pushes, you can pop N times
+            // once all N have finished.
             mpsc::Inconsistent => {
                 let data;
                 loop {
@@ -354,7 +348,7 @@ impl<T: Send> Packet<T> {
         }
 
         match self.cnt.swap(DISCONNECTED, atomic::SeqCst) {
-            -1 => { self.take_to_wake().wake().map(|t| t.reawaken()); }
+            -1 => { self.take_to_wake().signal(); }
             DISCONNECTED => {}
             n => { assert!(n >= 0); }
         }
@@ -366,8 +360,7 @@ impl<T: Send> Packet<T> {
         self.port_dropped.store(true, atomic::SeqCst);
         let mut steals = self.steals;
         while {
-            let cnt = self.cnt.compare_and_swap(
-                            steals, DISCONNECTED, atomic::SeqCst);
+            let cnt = self.cnt.compare_and_swap(steals, DISCONNECTED, atomic::SeqCst);
             cnt != DISCONNECTED && cnt != steals
         } {
             // See the discussion in 'try_recv' for why we yield
@@ -382,11 +375,11 @@ impl<T: Send> Packet<T> {
     }
 
     // Consumes ownership of the 'to_wake' field.
-    fn take_to_wake(&mut self) -> BlockedTask {
-        let task = self.to_wake.load(atomic::SeqCst);
+    fn take_to_wake(&mut self) -> SignalToken {
+        let ptr = self.to_wake.load(atomic::SeqCst);
         self.to_wake.store(0, atomic::SeqCst);
-        assert!(task != 0);
-        unsafe { BlockedTask::cast_from_uint(task) }
+        assert!(ptr != 0);
+        unsafe { SignalToken::cast_from_uint(ptr) }
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -414,19 +407,18 @@ impl<T: Send> Packet<T> {
         }
     }
 
-    // Inserts the blocked task for selection on this port, returning it back if
-    // the port already has data on it.
+    // Inserts the signal token for selection on this port, returning true if
+    // blocking should proceed.
     //
     // The code here is the same as in stream.rs, except that it doesn't need to
     // peek at the channel to see if an upgrade is pending.
-    pub fn start_selection(&mut self,
-                           task: BlockedTask) -> Result<(), BlockedTask> {
-        match self.decrement(task) {
-            Ok(()) => Ok(()),
-            Err(task) => {
+    pub fn start_selection(&mut self, token: SignalToken) -> StartResult {
+        match self.decrement(token) {
+            Installed => Installed,
+            Abort => {
                 let prev = self.bump(1);
                 assert!(prev == DISCONNECTED || prev >= 0);
-                return Err(task);
+                Abort
             }
         }
     }
@@ -464,7 +456,7 @@ impl<T: Send> Packet<T> {
             let cur = prev + steals + 1;
             assert!(cur >= 0);
             if prev < 0 {
-                self.take_to_wake().trash();
+                drop(self.take_to_wake());
             } else {
                 while self.to_wake.load(atomic::SeqCst) != 0 {
                     Thread::yield_now();

@@ -356,7 +356,7 @@ mod tests {
     use prelude::*;
 
     use rand::{mod, Rng};
-    use task;
+    use thread::Thread;
     use sync::{Arc, RWLock, StaticRWLock, RWLOCK_INIT};
 
     #[test]
@@ -409,10 +409,10 @@ mod tests {
     fn test_rw_arc_poison_wr() {
         let arc = Arc::new(RWLock::new(1i));
         let arc2 = arc.clone();
-        let _ = task::try(move|| {
+        let _ = Thread::spawn(move|| {
             let lock = arc2.write();
             assert_eq!(*lock, 2);
-        });
+        }).join();
         let lock = arc.read();
         assert_eq!(*lock, 1);
     }
@@ -422,10 +422,10 @@ mod tests {
     fn test_rw_arc_poison_ww() {
         let arc = Arc::new(RWLock::new(1i));
         let arc2 = arc.clone();
-        let _ = task::try(move|| {
+        let _ = Thread::spawn(move|| {
             let lock = arc2.write();
             assert_eq!(*lock, 2);
-        });
+        }).join();
         let lock = arc.write();
         assert_eq!(*lock, 1);
     }
@@ -434,10 +434,10 @@ mod tests {
     fn test_rw_arc_no_poison_rr() {
         let arc = Arc::new(RWLock::new(1i));
         let arc2 = arc.clone();
-        let _ = task::try(move|| {
+        let _ = Thread::spawn(move|| {
             let lock = arc2.read();
             assert_eq!(*lock, 2);
-        });
+        }).join();
         let lock = arc.read();
         assert_eq!(*lock, 1);
     }
@@ -445,10 +445,10 @@ mod tests {
     fn test_rw_arc_no_poison_rw() {
         let arc = Arc::new(RWLock::new(1i));
         let arc2 = arc.clone();
-        let _ = task::try(move|| {
+        let _ = Thread::spawn(move|| {
             let lock = arc2.read();
             assert_eq!(*lock, 2);
-        });
+        }).join();
         let lock = arc.write();
         assert_eq!(*lock, 1);
     }
@@ -459,30 +459,30 @@ mod tests {
         let arc2 = arc.clone();
         let (tx, rx) = channel();
 
-        task::spawn(move|| {
+        Thread::spawn(move|| {
             let mut lock = arc2.write();
             for _ in range(0u, 10) {
                 let tmp = *lock;
                 *lock = -1;
-                task::deschedule();
+                Thread::yield_now();
                 *lock = tmp + 1;
             }
             tx.send(());
-        });
+        }).detach();
 
         // Readers try to catch the writer in the act
         let mut children = Vec::new();
         for _ in range(0u, 5) {
             let arc3 = arc.clone();
-            children.push(task::try_future(move|| {
+            children.push(Thread::spawn(move|| {
                 let lock = arc3.read();
                 assert!(*lock >= 0);
             }));
         }
 
         // Wait for children to pass their asserts
-        for r in children.iter_mut() {
-            assert!(r.get_ref().is_ok());
+        for r in children.into_iter() {
+            assert!(r.join().is_ok());
         }
 
         // Wait for writer to finish
@@ -495,7 +495,7 @@ mod tests {
     fn test_rw_arc_access_in_unwind() {
         let arc = Arc::new(RWLock::new(1i));
         let arc2 = arc.clone();
-        let _ = task::try(move|| -> () {
+        let _ = Thread::spawn(move|| -> () {
             struct Unwinder {
                 i: Arc<RWLock<int>>,
             }
@@ -507,7 +507,7 @@ mod tests {
             }
             let _u = Unwinder { i: arc2 };
             panic!();
-        });
+        }).join();
         let lock = arc.read();
         assert_eq!(*lock, 2);
     }

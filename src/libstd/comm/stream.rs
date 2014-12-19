@@ -24,16 +24,14 @@ use self::Message::*;
 
 use core::prelude::*;
 
-use alloc::boxed::Box;
 use core::cmp;
 use core::int;
-use rustrt::local::Local;
-use rustrt::task::{Task, BlockedTask};
-use rustrt::thread::Thread;
+use thread::Thread;
 
 use sync::atomic;
 use comm::spsc_queue as spsc;
 use comm::Receiver;
+use comm::blocking::{mod, SignalToken};
 
 const DISCONNECTED: int = int::MIN;
 #[cfg(test)]
@@ -46,7 +44,7 @@ pub struct Packet<T> {
 
     cnt: atomic::AtomicInt, // How many items are on this channel
     steals: int, // How many times has a port received without blocking?
-    to_wake: atomic::AtomicUint, // Task to wake up
+    to_wake: atomic::AtomicUint, // SignalToken for the blocked thread to wake up
 
     port_dropped: atomic::AtomicBool, // flag if the channel has been destroyed.
 }
@@ -60,13 +58,13 @@ pub enum Failure<T> {
 pub enum UpgradeResult {
     UpSuccess,
     UpDisconnected,
-    UpWoke(BlockedTask),
+    UpWoke(SignalToken),
 }
 
 pub enum SelectionResult<T> {
     SelSuccess,
-    SelCanceled(BlockedTask),
-    SelUpgraded(BlockedTask, Receiver<T>),
+    SelCanceled,
+    SelUpgraded(SignalToken, Receiver<T>),
 }
 
 // Any message could contain an "upgrade request" to a new shared port, so the
@@ -89,7 +87,6 @@ impl<T: Send> Packet<T> {
         }
     }
 
-
     pub fn send(&mut self, t: T) -> Result<(), T> {
         // If the other port has deterministically gone away, then definitely
         // must return the data back up the stack. Otherwise, the data is
@@ -98,10 +95,11 @@ impl<T: Send> Packet<T> {
 
         match self.do_send(Data(t)) {
             UpSuccess | UpDisconnected => {},
-            UpWoke(task) => { task.wake().map(|t| t.reawaken()); }
+            UpWoke(token) => { token.signal(); }
         }
         Ok(())
     }
+
     pub fn upgrade(&mut self, up: Receiver<T>) -> UpgradeResult {
         // If the port has gone away, then there's no need to proceed any
         // further.
@@ -144,20 +142,20 @@ impl<T: Send> Packet<T> {
     }
 
     // Consumes ownership of the 'to_wake' field.
-    fn take_to_wake(&mut self) -> BlockedTask {
-        let task = self.to_wake.load(atomic::SeqCst);
+    fn take_to_wake(&mut self) -> SignalToken {
+        let ptr = self.to_wake.load(atomic::SeqCst);
         self.to_wake.store(0, atomic::SeqCst);
-        assert!(task != 0);
-        unsafe { BlockedTask::cast_from_uint(task) }
+        assert!(ptr != 0);
+        unsafe { SignalToken::cast_from_uint(ptr) }
     }
 
     // Decrements the count on the channel for a sleeper, returning the sleeper
     // back if it shouldn't sleep. Note that this is the location where we take
     // steals into account.
-    fn decrement(&mut self, task: BlockedTask) -> Result<(), BlockedTask> {
+    fn decrement(&mut self, token: SignalToken) -> Result<(), SignalToken> {
         assert_eq!(self.to_wake.load(atomic::SeqCst), 0);
-        let n = unsafe { task.cast_to_uint() };
-        self.to_wake.store(n, atomic::SeqCst);
+        let ptr = unsafe { token.cast_to_uint() };
+        self.to_wake.store(ptr, atomic::SeqCst);
 
         let steals = self.steals;
         self.steals = 0;
@@ -173,7 +171,7 @@ impl<T: Send> Packet<T> {
         }
 
         self.to_wake.store(0, atomic::SeqCst);
-        Err(unsafe { BlockedTask::cast_from_uint(n) })
+        Err(unsafe { SignalToken::cast_from_uint(ptr) })
     }
 
     pub fn recv(&mut self) -> Result<T, Failure<T>> {
@@ -185,10 +183,10 @@ impl<T: Send> Packet<T> {
 
         // Welp, our channel has no data. Deschedule the current task and
         // initiate the blocking protocol.
-        let task: Box<Task> = Local::take();
-        task.deschedule(1, |task| {
-            self.decrement(task)
-        });
+        let (wait_token, signal_token) = blocking::tokens();
+        if self.decrement(signal_token).is_ok() {
+            wait_token.wait()
+        }
 
         match self.try_recv() {
             // Messages which actually popped from the queue shouldn't count as
@@ -269,7 +267,7 @@ impl<T: Send> Packet<T> {
         // Dropping a channel is pretty simple, we just flag it as disconnected
         // and then wakeup a blocker if there is one.
         match self.cnt.swap(DISCONNECTED, atomic::SeqCst) {
-            -1 => { self.take_to_wake().wake().map(|t| t.reawaken()); }
+            -1 => { self.take_to_wake().signal(); }
             DISCONNECTED => {}
             n => { assert!(n >= 0); }
         }
@@ -364,19 +362,19 @@ impl<T: Send> Packet<T> {
 
     // Attempts to start selecting on this port. Like a oneshot, this can fail
     // immediately because of an upgrade.
-    pub fn start_selection(&mut self, task: BlockedTask) -> SelectionResult<T> {
-        match self.decrement(task) {
+    pub fn start_selection(&mut self, token: SignalToken) -> SelectionResult<T> {
+        match self.decrement(token) {
             Ok(()) => SelSuccess,
-            Err(task) => {
+            Err(token) => {
                 let ret = match self.queue.peek() {
                     Some(&GoUp(..)) => {
                         match self.queue.pop() {
-                            Some(GoUp(port)) => SelUpgraded(task, port),
+                            Some(GoUp(port)) => SelUpgraded(token, port),
                             _ => unreachable!(),
                         }
                     }
-                    Some(..) => SelCanceled(task),
-                    None => SelCanceled(task),
+                    Some(..) => SelCanceled,
+                    None => SelCanceled,
                 };
                 // Undo our decrement above, and we should be guaranteed that the
                 // previous value is positive because we're not going to sleep
@@ -439,7 +437,7 @@ impl<T: Send> Packet<T> {
             // final solution but rather out of necessity for now to get
             // something working.
             if prev < 0 {
-                self.take_to_wake().trash();
+                drop(self.take_to_wake());
             } else {
                 while self.to_wake.load(atomic::SeqCst) != 0 {
                     Thread::yield_now();

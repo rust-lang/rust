@@ -13,9 +13,8 @@ use prelude::*;
 use libc::types::os::arch::extra::{DWORD, LPVOID, BOOL};
 
 use mem;
-use rustrt;
-use rustrt::exclusive::Exclusive;
-use sync::{ONCE_INIT, Once};
+use rt;
+use sys_common::mutex::{MUTEX_INIT, Mutex};
 
 pub type Key = DWORD;
 pub type Dtor = unsafe extern fn(*mut u8);
@@ -54,8 +53,12 @@ pub type Dtor = unsafe extern fn(*mut u8);
 // [2]: https://github.com/ChromiumWebApps/chromium/blob/master/base
 //                        /threading/thread_local_storage_win.cc#L42
 
-static INIT_DTORS: Once = ONCE_INIT;
-static mut DTORS: *mut Exclusive<Vec<(Key, Dtor)>> = 0 as *mut _;
+// NB these are specifically not types from `std::sync` as they currently rely
+// on poisoning and this module needs to operate at a lower level than requiring
+// the thread infrastructure to be in place (useful on the borders of
+// initialization/destruction).
+static DTOR_LOCK: Mutex = MUTEX_INIT;
+static mut DTORS: *mut Vec<(Key, Dtor)> = 0 as *mut _;
 
 // -------------------------------------------------------------------------
 // Native bindings
@@ -125,30 +128,40 @@ extern "system" {
 //
 // FIXME: This could probably be at least a little faster with a BTree.
 
-fn init_dtors() {
-    let dtors = box Exclusive::new(Vec::<(Key, Dtor)>::new());
-    unsafe {
-        DTORS = mem::transmute(dtors);
-    }
+unsafe fn init_dtors() {
+    if !DTORS.is_null() { return }
 
-    rustrt::at_exit(move|| unsafe {
-        mem::transmute::<_, Box<Exclusive<Vec<(Key, Dtor)>>>>(DTORS);
+    let dtors = box Vec::<(Key, Dtor)>::new();
+    DTORS = mem::transmute(dtors);
+
+    rt::at_exit(move|| {
+        DTOR_LOCK.lock();
+        let dtors = DTORS;
         DTORS = 0 as *mut _;
+        mem::transmute::<_, Box<Vec<(Key, Dtor)>>>(dtors);
+        assert!(DTORS.is_null()); // can't re-init after destructing
+        DTOR_LOCK.unlock();
     });
 }
 
 unsafe fn register_dtor(key: Key, dtor: Dtor) {
-    INIT_DTORS.doit(init_dtors);
-    let mut dtors = (*DTORS).lock();
-    dtors.push((key, dtor));
+    DTOR_LOCK.lock();
+    init_dtors();
+    (*DTORS).push((key, dtor));
+    DTOR_LOCK.unlock();
 }
 
 unsafe fn unregister_dtor(key: Key) -> bool {
-    if DTORS.is_null() { return false }
-    let mut dtors = (*DTORS).lock();
-    let before = dtors.len();
-    dtors.retain(|&(k, _)| k != key);
-    dtors.len() != before
+    DTOR_LOCK.lock();
+    init_dtors();
+    let ret = {
+        let dtors = &mut *DTORS;
+        let before = dtors.len();
+        dtors.retain(|&(k, _)| k != key);
+        dtors.len() != before
+    };
+    DTOR_LOCK.unlock();
+    ret
 }
 
 // -------------------------------------------------------------------------
@@ -220,12 +233,20 @@ unsafe extern "system" fn on_tls_callback(h: LPVOID,
 }
 
 unsafe fn run_dtors() {
-    if DTORS.is_null() { return }
     let mut any_run = true;
     for _ in range(0, 5i) {
         if !any_run { break }
         any_run = false;
-        let dtors = (*DTORS).lock().iter().map(|p| *p).collect::<Vec<_>>();
+        let dtors = {
+            DTOR_LOCK.lock();
+            let ret = if DTORS.is_null() {
+                Vec::new()
+            } else {
+                (*DTORS).iter().map(|s| *s).collect()
+            };
+            DTOR_LOCK.unlock();
+            ret
+        };
         for &(key, dtor) in dtors.iter() {
             let ptr = TlsGetValue(key);
             if !ptr.is_null() {

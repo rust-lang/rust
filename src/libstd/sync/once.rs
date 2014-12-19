@@ -121,7 +121,7 @@ impl Once {
 mod test {
     use prelude::*;
 
-    use task;
+    use thread::Thread;
     use super::{ONCE_INIT, Once};
 
     #[test]
@@ -143,7 +143,7 @@ mod test {
         for _ in range(0u, 10) {
             let tx = tx.clone();
             spawn(move|| {
-                for _ in range(0u, 4) { task::deschedule() }
+                for _ in range(0u, 4) { Thread::yield_now() }
                 unsafe {
                     O.doit(|| {
                         assert!(!run);

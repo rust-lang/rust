@@ -55,7 +55,7 @@ use rustc::DIAGNOSTICS;
 use std::any::AnyRefExt;
 use std::io;
 use std::os;
-use std::task::TaskBuilder;
+use std::thread;
 
 use rustc::session::early_error;
 
@@ -478,15 +478,15 @@ pub fn monitor<F:FnOnce()+Send>(f: F) {
     let w = io::ChanWriter::new(tx);
     let mut r = io::ChanReader::new(rx);
 
-    let mut task = TaskBuilder::new().named("rustc").stderr(box w);
+    let mut cfg = thread::Builder::new().name("rustc".to_string());
 
     // FIXME: Hacks on hacks. If the env is trying to override the stack size
     // then *don't* set it explicitly.
     if os::getenv("RUST_MIN_STACK").is_none() {
-        task = task.stack_size(STACK_SIZE);
+        cfg = cfg.stack_size(STACK_SIZE);
     }
 
-    match task.try(f) {
+    match cfg.spawn(move || { std::io::stdio::set_stderr(box w); f() }).join() {
         Ok(()) => { /* fallthrough */ }
         Err(value) => {
             // Task panicked without emitting a fatal diagnostic
@@ -540,4 +540,3 @@ pub fn main() {
     let result = run(args);
     std::os::set_exit_status(result);
 }
-

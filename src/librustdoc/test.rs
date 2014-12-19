@@ -16,6 +16,7 @@ use std::os;
 use std::str;
 use std::string::String;
 use std::thunk::Thunk;
+use std::thread::Thread;
 
 use std::collections::{HashSet, HashMap};
 use testing;
@@ -143,7 +144,7 @@ fn runtest(test: &str, cratename: &str, libs: Vec<Path>, externs: core::Externs,
     let w1 = io::ChanWriter::new(tx);
     let w2 = w1.clone();
     let old = io::stdio::set_stderr(box w1);
-    spawn(move |:| {
+    Thread::spawn(move |:| {
         let mut p = io::ChanReader::new(rx);
         let mut err = match old {
             Some(old) => {
@@ -154,7 +155,7 @@ fn runtest(test: &str, cratename: &str, libs: Vec<Path>, externs: core::Externs,
             None => box io::stderr() as Box<Writer>,
         };
         io::util::copy(&mut p, &mut err).unwrap();
-    });
+    }).detach();
     let emitter = diagnostic::EmitterWriter::new(box w2, None);
 
     // Compile the code

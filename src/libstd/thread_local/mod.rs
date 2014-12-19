@@ -68,6 +68,7 @@ pub mod scoped;
 ///
 /// ```
 /// use std::cell::RefCell;
+/// use std::thread::Thread;
 ///
 /// thread_local!(static FOO: RefCell<uint> = RefCell::new(1));
 ///
@@ -77,12 +78,12 @@ pub mod scoped;
 /// });
 ///
 /// // each thread starts out with the initial value of 1
-/// spawn(move|| {
+/// Thread::spawn(move|| {
 ///     FOO.with(|f| {
 ///         assert_eq!(*f.borrow(), 1);
 ///         *f.borrow_mut() = 3;
 ///     });
-/// });
+/// }).detach();
 ///
 /// // we retain our original value of 2 despite the child thread
 /// FOO.with(|f| {
@@ -217,9 +218,8 @@ impl<T: 'static> Key<T> {
     /// This function will `panic!()` if the key currently has its
     /// destructor running, and it **may** panic if the destructor has
     /// previously been run for this thread.
-    pub fn with<R, F>(&'static self, f: F) -> R where
-        F: FnOnce(&T) -> R,
-    {
+    pub fn with<F, R>(&'static self, f: F) -> R
+                      where F: FnOnce(&T) -> R {
         let slot = (self.inner)();
         unsafe {
             let slot = slot.get().expect("cannot access a TLS value during or \
@@ -446,7 +446,7 @@ mod tests {
     use prelude::*;
 
     use cell::UnsafeCell;
-    use rustrt::thread::Thread;
+    use thread::Thread;
 
     struct Foo(Sender<()>);
 
@@ -534,7 +534,7 @@ mod tests {
             }
         }
 
-        Thread::start(move|| {
+        Thread::spawn(move|| {
             drop(S1);
         }).join();
     }
@@ -552,7 +552,7 @@ mod tests {
             }
         }
 
-        Thread::start(move|| unsafe {
+        Thread::spawn(move|| unsafe {
             K1.with(|s| *s.get() = Some(S1));
         }).join();
     }

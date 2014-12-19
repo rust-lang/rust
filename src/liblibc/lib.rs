@@ -138,7 +138,7 @@ pub use funcs::c95::stdio::{fread, freopen, fseek, fsetpos, ftell};
 pub use funcs::c95::stdio::{fwrite, perror, puts, remove, rename, rewind};
 pub use funcs::c95::stdio::{setbuf, setvbuf, tmpfile, ungetc};
 
-pub use funcs::c95::stdlib::{abs, atof, atoi, calloc, exit, _exit};
+pub use funcs::c95::stdlib::{abs, atof, atoi, calloc, exit, _exit, atexit};
 pub use funcs::c95::stdlib::{free, getenv, labs, malloc, rand};
 pub use funcs::c95::stdlib::{realloc, srand, strtod, strtol};
 pub use funcs::c95::stdlib::{strtoul, system};
@@ -4102,7 +4102,7 @@ pub mod funcs {
                 pub fn free(p: *mut c_void);
                 pub fn exit(status: c_int) -> !;
                 pub fn _exit(status: c_int) -> !;
-                // Omitted: atexit.
+                pub fn atexit(cb: extern fn()) -> c_int;
                 pub fn system(s: *const c_char) -> c_int;
                 pub fn getenv(s: *const c_char) -> *mut c_char;
                 // Omitted: bsearch, qsort

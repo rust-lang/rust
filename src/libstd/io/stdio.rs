@@ -42,9 +42,6 @@ use option::Option::{Some, None};
 use ops::{Deref, DerefMut, FnOnce};
 use result::Result::{Ok, Err};
 use rt;
-use rustrt;
-use rustrt::local::Local;
-use rustrt::task::Task;
 use slice::SliceExt;
 use str::StrPrelude;
 use string::String;
@@ -329,25 +326,17 @@ pub fn set_stderr(stderr: Box<Writer + Send>) -> Option<Box<Writer + Send>> {
 //          // io1 aliases io2
 //      })
 //  })
-fn with_task_stdout<F>(f: F) where
-    F: FnOnce(&mut Writer) -> IoResult<()>,
-{
-    let result = if Local::exists(None::<Task>) {
-        let mut my_stdout = LOCAL_STDOUT.with(|slot| {
-            slot.borrow_mut().take()
-        }).unwrap_or_else(|| {
-            box stdout() as Box<Writer + Send>
-        });
-        let result = f(&mut *my_stdout);
-        let mut var = Some(my_stdout);
-        LOCAL_STDOUT.with(|slot| {
-            *slot.borrow_mut() = var.take();
-        });
-        result
-    } else {
-        let mut io = rustrt::Stdout;
-        f(&mut io as &mut Writer)
-    };
+fn with_task_stdout(f: |&mut Writer| -> IoResult<()>) {
+    let mut my_stdout = LOCAL_STDOUT.with(|slot| {
+        slot.borrow_mut().take()
+    }).unwrap_or_else(|| {
+        box stdout() as Box<Writer + Send>
+    });
+    let result = f(&mut *my_stdout);
+    let mut var = Some(my_stdout);
+    LOCAL_STDOUT.with(|slot| {
+        *slot.borrow_mut() = var.take();
+    });
     match result {
         Ok(()) => {}
         Err(e) => panic!("failed printing to stdout: {}", e),
@@ -546,13 +535,12 @@ mod tests {
 
     #[test]
     fn capture_stderr() {
-        use realstd::comm::channel;
-        use realstd::io::{ChanReader, ChanWriter, Reader};
+        use io::{ChanReader, ChanWriter, Reader};
 
         let (tx, rx) = channel();
         let (mut r, w) = (ChanReader::new(rx), ChanWriter::new(tx));
         spawn(move|| {
-            ::realstd::io::stdio::set_stderr(box w);
+            set_stderr(box w);
             panic!("my special message");
         });
         let s = r.read_to_string().unwrap();

@@ -54,15 +54,13 @@
 
 use core::prelude::*;
 
-use alloc::boxed::Box;
 use core::cell::Cell;
 use core::kinds::marker;
 use core::mem;
 use core::uint;
-use rustrt::local::Local;
-use rustrt::task::{Task, BlockedTask};
 
 use comm::Receiver;
+use comm::blocking::{mod, SignalToken};
 
 /// The "receiver set" of the select interface. This structure is used to manage
 /// a set of receivers which are being selected over.
@@ -94,9 +92,16 @@ pub struct Handle<'rx, T:'rx> {
 struct Packets { cur: *mut Handle<'static, ()> }
 
 #[doc(hidden)]
+#[deriving(PartialEq)]
+pub enum StartResult {
+    Installed,
+    Abort,
+}
+
+#[doc(hidden)]
 pub trait Packet {
     fn can_recv(&self) -> bool;
-    fn start_selection(&self, task: BlockedTask) -> Result<(), BlockedTask>;
+    fn start_selection(&self, token: SignalToken) -> StartResult;
     fn abort_selection(&self) -> bool;
 }
 
@@ -165,36 +170,39 @@ impl Select {
         // Most notably, the iterations over all of the receivers shouldn't be
         // necessary.
         unsafe {
-            let mut amt = 0;
-            for p in self.iter() {
-                amt += 1;
-                if do_preflight_checks && (*p).packet.can_recv() {
-                    return (*p).id;
-                }
-            }
-            assert!(amt > 0);
-
-            let mut ready_index = amt;
-            let mut ready_id = uint::MAX;
-            let mut iter = self.iter().enumerate();
-
-            // Acquire a number of blocking contexts, and block on each one
-            // sequentially until one fails. If one fails, then abort
-            // immediately so we can go unblock on all the other receivers.
-            let task: Box<Task> = Local::take();
-            task.deschedule(amt, |task| {
-                // Prepare for the block
-                let (i, handle) = iter.next().unwrap();
-                match (*handle).packet.start_selection(task) {
-                    Ok(()) => Ok(()),
-                    Err(task) => {
-                        ready_index = i;
-                        ready_id = (*handle).id;
-                        Err(task)
+            // Stage 1: preflight checks. Look for any packets ready to receive
+            if do_preflight_checks {
+                for handle in self.iter() {
+                    if (*handle).packet.can_recv() {
+                        return (*handle).id();
                     }
                 }
-            });
+            }
 
+            // Stage 2: begin the blocking process
+            //
+            // Create a number of signal tokens, and install each one
+            // sequentially until one fails. If one fails, then abort the
+            // selection on the already-installed tokens.
+            let (wait_token, signal_token) = blocking::tokens();
+            for (i, handle) in self.iter().enumerate() {
+                match (*handle).packet.start_selection(signal_token.clone()) {
+                    StartResult::Installed => {}
+                    StartResult::Abort => {
+                        // Go back and abort the already-begun selections
+                        for handle in self.iter().take(i) {
+                            (*handle).packet.abort_selection();
+                        }
+                        return (*handle).id;
+                    }
+                }
+            }
+
+            // Stage 3: no messages available, actually block
+            wait_token.wait();
+
+            // Stage 4: there *must* be message available; find it.
+            //
             // Abort the selection process on each receiver. If the abort
             // process returns `true`, then that means that the receiver is
             // ready to receive some data. Note that this also means that the
@@ -216,12 +224,14 @@ impl Select {
             // A rewrite should focus on avoiding a yield loop, and for now this
             // implementation is tying us over to a more efficient "don't
             // iterate over everything every time" implementation.
-            for handle in self.iter().take(ready_index) {
+            let mut ready_id = uint::MAX;
+            for handle in self.iter() {
                 if (*handle).packet.abort_selection() {
                     ready_id = (*handle).id;
                 }
             }
 
+            // We must have found a ready receiver
             assert!(ready_id != uint::MAX);
             return ready_id;
         }
@@ -404,10 +414,10 @@ mod test {
         let (tx3, rx3) = channel::<int>();
 
         spawn(move|| {
-            for _ in range(0u, 20) { task::deschedule(); }
+            for _ in range(0u, 20) { Thread::yield_now(); }
             tx1.send(1);
             rx3.recv();
-            for _ in range(0u, 20) { task::deschedule(); }
+            for _ in range(0u, 20) { Thread::yield_now(); }
         });
 
         select! {
@@ -427,7 +437,7 @@ mod test {
         let (tx3, rx3) = channel::<()>();
 
         spawn(move|| {
-            for _ in range(0u, 20) { task::deschedule(); }
+            for _ in range(0u, 20) { Thread::yield_now(); }
             tx1.send(1);
             tx2.send(2);
             rx3.recv();
@@ -528,7 +538,7 @@ mod test {
             tx3.send(());
         });
 
-        for _ in range(0u, 1000) { task::deschedule(); }
+        for _ in range(0u, 1000) { Thread::yield_now(); }
         drop(tx1.clone());
         tx2.send(());
         rx3.recv();
@@ -631,7 +641,7 @@ mod test {
             tx2.send(());
         });
 
-        for _ in range(0u, 100) { task::deschedule() }
+        for _ in range(0u, 100) { Thread::yield_now() }
         tx1.send(());
         rx2.recv();
     } }
@@ -650,7 +660,7 @@ mod test {
             tx2.send(());
         });
 
-        for _ in range(0u, 100) { task::deschedule() }
+        for _ in range(0u, 100) { Thread::yield_now() }
         tx1.send(());
         rx2.recv();
     } }
@@ -668,7 +678,7 @@ mod test {
             tx2.send(());
         });
 
-        for _ in range(0u, 100) { task::deschedule() }
+        for _ in range(0u, 100) { Thread::yield_now() }
         tx1.send(());
         rx2.recv();
     } }
@@ -684,7 +694,7 @@ mod test {
     test! { fn sync2() {
         let (tx, rx) = sync_channel::<int>(0);
         spawn(move|| {
-            for _ in range(0u, 100) { task::deschedule() }
+            for _ in range(0u, 100) { Thread::yield_now() }
             tx.send(1);
         });
         select! {

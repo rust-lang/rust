@@ -10,8 +10,8 @@
 
 use core::prelude::*;
 
-use core::cell::UnsafeCell;
-use mutex;
+use cell::UnsafeCell;
+use rt::mutex;
 
 /// An OS mutex over some data.
 ///
@@ -79,10 +79,10 @@ impl<'a, T: Send> DerefMut<T> for ExclusiveGuard<'a, T> {
 
 #[cfg(test)]
 mod tests {
-    use std::prelude::*;
-    use alloc::arc::Arc;
+    use prelude::*;
+    use sync::Arc;
     use super::Exclusive;
-    use std::task;
+    use task;
 
     #[test]
     fn exclusive_new_arc() {

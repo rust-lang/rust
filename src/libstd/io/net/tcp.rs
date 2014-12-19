@@ -136,16 +136,17 @@ impl TcpStream {
     /// use std::io::timer;
     /// use std::io::TcpStream;
     /// use std::time::Duration;
+    /// use std::thread::Thread;
     ///
     /// let mut stream = TcpStream::connect("127.0.0.1:34254").unwrap();
     /// let stream2 = stream.clone();
     ///
-    /// spawn(move|| {
+    /// Thread::spawn(move|| {
     ///     // close this stream after one second
     ///     timer::sleep(Duration::seconds(1));
     ///     let mut stream = stream2;
     ///     stream.close_read();
-    /// });
+    /// }).detach();
     ///
     /// // wait for some data, will get canceled after one second
     /// let mut buf = [0];
@@ -279,6 +280,7 @@ impl sys_common::AsInner<TcpStreamImp> for TcpStream {
 /// # #![allow(dead_code)]
 /// use std::io::{TcpListener, TcpStream};
 /// use std::io::{Acceptor, Listener};
+/// use std::thread::Thread;
 ///
 /// let listener = TcpListener::bind("127.0.0.1:80");
 ///
@@ -293,10 +295,10 @@ impl sys_common::AsInner<TcpStreamImp> for TcpStream {
 /// for stream in acceptor.incoming() {
 ///     match stream {
 ///         Err(e) => { /* connection failed */ }
-///         Ok(stream) => spawn(move|| {
+///         Ok(stream) => Thread::spawn(move|| {
 ///             // connection succeeded
 ///             handle_client(stream)
-///         })
+///         }).detach()
 ///     }
 /// }
 ///
@@ -416,11 +418,12 @@ impl TcpAcceptor {
     /// ```
     /// # #![allow(experimental)]
     /// use std::io::{TcpListener, Listener, Acceptor, EndOfFile};
+    /// use std::thread::Thread;
     ///
     /// let mut a = TcpListener::bind("127.0.0.1:8482").listen().unwrap();
     /// let a2 = a.clone();
     ///
-    /// spawn(move|| {
+    /// Thread::spawn(move|| {
     ///     let mut a2 = a2;
     ///     for socket in a2.incoming() {
     ///         match socket {
@@ -429,7 +432,7 @@ impl TcpAcceptor {
     ///             Err(e) => panic!("unexpected error: {}", e),
     ///         }
     ///     }
-    /// });
+    /// }).detach();
     ///
     /// # fn wait_for_sigint() {}
     /// // Now that our accept loop is running, wait for the program to be
@@ -1155,7 +1158,7 @@ mod test {
                     Err(ref e) if e.kind == TimedOut => {}
                     Err(e) => panic!("error: {}", e),
                 }
-                ::task::deschedule();
+                ::thread::Thread::yield_now();
                 if i == 1000 { panic!("should have a pending connection") }
             }
         }
@@ -1378,7 +1381,7 @@ mod test {
 
         // Try to ensure that the reading clone is indeed reading
         for _ in range(0i, 50) {
-            ::task::deschedule();
+            ::thread::Thread::yield_now();
         }
 
         // clone the handle again while it's reading, then let it finish the

@@ -54,42 +54,35 @@
 //! There are methods on both of senders and receivers to perform their
 //! respective operations without panicking, however.
 //!
-//! ## Runtime Requirements
-//!
-//! The channel types defined in this module generally have very few runtime
-//! requirements in order to operate. The major requirement they have is for a
-//! local rust `Task` to be available if any *blocking* operation is performed.
-//!
-//! If a local `Task` is not available (for example an FFI callback), then the
-//! `send` operation is safe on a `Sender` (as well as a `send_opt`) as well as
-//! the `try_send` method on a `SyncSender`, but no other operations are
-//! guaranteed to be safe.
-//!
 //! # Example
 //!
 //! Simple usage:
 //!
 //! ```
+//! use std::thread::Thread;
+//!
 //! // Create a simple streaming channel
 //! let (tx, rx) = channel();
-//! spawn(move|| {
+//! Thread::spawn(move|| {
 //!     tx.send(10i);
-//! });
+//! }).detach();
 //! assert_eq!(rx.recv(), 10i);
 //! ```
 //!
 //! Shared usage:
 //!
 //! ```
-//! // Create a shared channel that can be sent along from many tasks
+//! use std::thread::Thread;
+//!
+//! // Create a shared channel that can be sent along from many threads
 //! // where tx is the sending half (tx for transmission), and rx is the receiving
 //! // half (rx for receiving).
 //! let (tx, rx) = channel();
 //! for i in range(0i, 10i) {
 //!     let tx = tx.clone();
-//!     spawn(move|| {
+//!     Thread::spawn(move|| {
 //!         tx.send(i);
-//!     })
+//!     }).detach()
 //! }
 //!
 //! for _ in range(0i, 10i) {
@@ -111,11 +104,13 @@
 //! Synchronous channels:
 //!
 //! ```
+//! use std::thread::Thread;
+//!
 //! let (tx, rx) = sync_channel::<int>(0);
-//! spawn(move|| {
+//! Thread::spawn(move|| {
 //!     // This will wait for the parent task to start receiving
 //!     tx.send(53);
-//! });
+//! }).detach();
 //! rx.recv();
 //! ```
 //!
@@ -327,28 +322,30 @@ use alloc::arc::Arc;
 use core::kinds::marker;
 use core::mem;
 use core::cell::UnsafeCell;
-use rustrt::task::BlockedTask;
 
-pub use comm::select::{Select, Handle};
+pub use self::select::{Select, Handle};
+use self::select::StartResult;
+use self::select::StartResult::*;
+use self::blocking::SignalToken;
 
 macro_rules! test {
     { fn $name:ident() $b:block $(#[$a:meta])*} => (
         mod $name {
             #![allow(unused_imports)]
 
-            extern crate rustrt;
-
             use prelude::*;
+            use rt;
 
             use comm::*;
             use super::*;
-            use task;
+            use thread::Thread;
 
             $(#[$a])* #[test] fn f() { $b }
         }
     )
 }
 
+mod blocking;
 mod oneshot;
 mod select;
 mod shared;
@@ -460,15 +457,17 @@ impl<T> UnsafeFlavor<T> for Receiver<T> {
 /// # Example
 ///
 /// ```
+/// use std::thread::Thread;
+///
 /// // tx is is the sending half (tx for transmission), and rx is the receiving
 /// // half (rx for receiving).
 /// let (tx, rx) = channel();
 ///
 /// // Spawn off an expensive computation
-/// spawn(move|| {
+/// Thread::spawn(move|| {
 /// #   fn expensive_computation() {}
 ///     tx.send(expensive_computation());
-/// });
+/// }).detach();
 ///
 /// // Do some useful work for awhile
 ///
@@ -499,15 +498,17 @@ pub fn channel<T: Send>() -> (Sender<T>, Receiver<T>) {
 /// # Example
 ///
 /// ```
+/// use std::thread::Thread;
+///
 /// let (tx, rx) = sync_channel(1);
 ///
 /// // this returns immediately
 /// tx.send(1i);
 ///
-/// spawn(move|| {
+/// Thread::spawn(move|| {
 ///     // this will block until the previous message has been received
 ///     tx.send(2i);
-/// });
+/// }).detach();
 ///
 /// assert_eq!(rx.recv(), 1i);
 /// assert_eq!(rx.recv(), 2i);
@@ -604,12 +605,12 @@ impl<T: Send> Sender<T> {
                                 (a, ret)
                             }
                             oneshot::UpDisconnected => (a, Err(t)),
-                            oneshot::UpWoke(task) => {
-                                // This send cannot panic because the task is
+                            oneshot::UpWoke(token) => {
+                                // This send cannot panic because the thread is
                                 // asleep (we're looking at it), so the receiver
                                 // can't go away.
                                 (*a.get()).send(t).ok().unwrap();
-                                task.wake().map(|t| t.reawaken());
+                                token.signal();
                                 (a, Ok(()))
                             }
                         }
@@ -948,34 +949,33 @@ impl<T: Send> select::Packet for Receiver<T> {
         }
     }
 
-    fn start_selection(&self, mut task: BlockedTask) -> Result<(), BlockedTask>{
+    fn start_selection(&self, mut token: SignalToken) -> StartResult {
         loop {
             let (t, new_port) = match *unsafe { self.inner() } {
                 Oneshot(ref p) => {
-                    match unsafe { (*p.get()).start_selection(task) } {
-                        oneshot::SelSuccess => return Ok(()),
-                        oneshot::SelCanceled(task) => return Err(task),
+                    match unsafe { (*p.get()).start_selection(token) } {
+                        oneshot::SelSuccess => return Installed,
+                        oneshot::SelCanceled => return Abort,
                         oneshot::SelUpgraded(t, rx) => (t, rx),
                     }
                 }
                 Stream(ref p) => {
-                    match unsafe { (*p.get()).start_selection(task) } {
-                        stream::SelSuccess => return Ok(()),
-                        stream::SelCanceled(task) => return Err(task),
+                    match unsafe { (*p.get()).start_selection(token) } {
+                        stream::SelSuccess => return Installed,
+                        stream::SelCanceled => return Abort,
                         stream::SelUpgraded(t, rx) => (t, rx),
                     }
                 }
                 Shared(ref p) => {
-                    return unsafe { (*p.get()).start_selection(task) };
+                    return unsafe { (*p.get()).start_selection(token) };
                 }
                 Sync(ref p) => {
-                    return unsafe { (*p.get()).start_selection(task) };
+                    return unsafe { (*p.get()).start_selection(token) };
                 }
             };
-            task = t;
+            token = t;
             unsafe {
-                mem::swap(self.inner_mut(),
-                          new_port.inner_mut());
+                mem::swap(self.inner_mut(), new_port.inner_mut());
             }
         }
     }
@@ -1252,11 +1252,11 @@ mod test {
 
     test! { fn oneshot_single_thread_recv_chan_close() {
         // Receiving on a closed chan will panic
-        let res = task::try(move|| {
+        let res = Thread::spawn(move|| {
             let (tx, rx) = channel::<int>();
             drop(tx);
             rx.recv();
-        });
+        }).join();
         // What is our res?
         assert!(res.is_err());
     } }
@@ -1324,9 +1324,9 @@ mod test {
         spawn(move|| {
             drop(tx);
         });
-        let res = task::try(move|| {
+        let res = Thread::spawn(move|| {
             assert!(rx.recv() == box 10);
-        });
+        }).join();
         assert!(res.is_err());
     } }
 
@@ -1346,9 +1346,9 @@ mod test {
             spawn(move|| {
                 drop(rx);
             });
-            let _ = task::try(move|| {
+            let _ = Thread::spawn(move|| {
                 tx.send(1);
-            });
+            }).join();
         }
     } }
 
@@ -1356,9 +1356,9 @@ mod test {
         for _ in range(0, stress_factor()) {
             let (tx, rx) = channel::<int>();
             spawn(move|| {
-                let res = task::try(move|| {
+                let res = Thread::spawn(move|| {
                     rx.recv();
-                });
+                }).join();
                 assert!(res.is_err());
             });
             spawn(move|| {
@@ -1507,7 +1507,7 @@ mod test {
             tx2.send(());
         });
         // make sure the other task has gone to sleep
-        for _ in range(0u, 5000) { task::deschedule(); }
+        for _ in range(0u, 5000) { Thread::yield_now(); }
 
         // upgrade to a shared chan and send a message
         let t = tx.clone();
@@ -1516,45 +1516,7 @@ mod test {
 
         // wait for the child task to exit before we exit
         rx2.recv();
-    } }
-
-    test! { fn sends_off_the_runtime() {
-        use rustrt::thread::Thread;
-
-        let (tx, rx) = channel();
-        let t = Thread::start(move|| {
-            for _ in range(0u, 1000) {
-                tx.send(());
-            }
-        });
-        for _ in range(0u, 1000) {
-            rx.recv();
-        }
-        t.join();
-    } }
-
-    test! { fn try_recvs_off_the_runtime() {
-        use rustrt::thread::Thread;
-
-        let (tx, rx) = channel();
-        let (cdone, pdone) = channel();
-        let t = Thread::start(move|| {
-            let mut hits = 0u;
-            while hits < 10 {
-                match rx.try_recv() {
-                    Ok(()) => { hits += 1; }
-                    Err(Empty) => { Thread::yield_now(); }
-                    Err(Disconnected) => return,
-                }
-            }
-            cdone.send(());
-        });
-        for _ in range(0u, 10) {
-            tx.send(());
-        }
-        t.join();
-        pdone.recv();
-    } }
+    }}
 }
 
 #[cfg(test)]
@@ -1712,11 +1674,11 @@ mod sync_tests {
 
     test! { fn oneshot_single_thread_recv_chan_close() {
         // Receiving on a closed chan will panic
-        let res = task::try(move|| {
+        let res = Thread::spawn(move|| {
             let (tx, rx) = sync_channel::<int>(0);
             drop(tx);
             rx.recv();
-        });
+        }).join();
         // What is our res?
         assert!(res.is_err());
     } }
@@ -1789,9 +1751,9 @@ mod sync_tests {
         spawn(move|| {
             drop(tx);
         });
-        let res = task::try(move|| {
+        let res = Thread::spawn(move|| {
             assert!(rx.recv() == box 10);
-        });
+        }).join();
         assert!(res.is_err());
     } }
 
@@ -1811,9 +1773,9 @@ mod sync_tests {
             spawn(move|| {
                 drop(rx);
             });
-            let _ = task::try(move|| {
+            let _ = Thread::spawn(move || {
                 tx.send(1);
-            });
+            }).join();
         }
     } }
 
@@ -1821,9 +1783,9 @@ mod sync_tests {
         for _ in range(0, stress_factor()) {
             let (tx, rx) = sync_channel::<int>(0);
             spawn(move|| {
-                let res = task::try(move|| {
+                let res = Thread::spawn(move|| {
                     rx.recv();
-                });
+                }).join();
                 assert!(res.is_err());
             });
             spawn(move|| {
@@ -1972,7 +1934,7 @@ mod sync_tests {
             tx2.send(());
         });
         // make sure the other task has gone to sleep
-        for _ in range(0u, 5000) { task::deschedule(); }
+        for _ in range(0u, 5000) { Thread::yield_now(); }
 
         // upgrade to a shared chan and send a message
         let t = tx.clone();
@@ -1981,29 +1943,6 @@ mod sync_tests {
 
         // wait for the child task to exit before we exit
         rx2.recv();
-    } }
-
-    test! { fn try_recvs_off_the_runtime() {
-        use rustrt::thread::Thread;
-
-        let (tx, rx) = sync_channel::<()>(0);
-        let (cdone, pdone) = channel();
-        let t = Thread::start(move|| {
-            let mut hits = 0u;
-            while hits < 10 {
-                match rx.try_recv() {
-                    Ok(()) => { hits += 1; }
-                    Err(Empty) => { Thread::yield_now(); }
-                    Err(Disconnected) => return,
-                }
-            }
-            cdone.send(());
-        });
-        for _ in range(0u, 10) {
-            tx.send(());
-        }
-        t.join();
-        pdone.recv();
     } }
 
     test! { fn send_opt1() {
@@ -2064,7 +2003,7 @@ mod sync_tests {
     test! { fn try_send4() {
         let (tx, rx) = sync_channel::<int>(0);
         spawn(move|| {
-            for _ in range(0u, 1000) { task::deschedule(); }
+            for _ in range(0u, 1000) { Thread::yield_now(); }
             assert_eq!(tx.try_send(1), Ok(()));
         });
         assert_eq!(rx.recv(), 1);

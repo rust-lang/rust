@@ -29,8 +29,8 @@ use core::mem::replace;
 
 use self::FutureState::*;
 use comm::{Receiver, channel};
-use task::spawn;
 use thunk::{Thunk};
+use thread::Thread;
 
 /// A type encapsulating the result of a computation which may not be complete
 pub struct Future<A> {
@@ -139,10 +139,10 @@ impl<A:Send> Future<A> {
 
         let (tx, rx) = channel();
 
-        spawn(move |:| {
+        Thread::spawn(move |:| {
             // Don't panic if the other end has hung up
             let _ = tx.send_opt(blk());
-        });
+        }).detach();
 
         Future::from_receiver(rx)
     }

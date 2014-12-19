@@ -32,7 +32,7 @@ use std::io;
 use std::os;
 use std::str;
 use std::string::String;
-use std::task;
+use std::thread::Thread;
 use std::time::Duration;
 use test::MetricMap;
 
@@ -445,9 +445,9 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
             loop {
                 //waiting 1 second for gdbserver start
                 timer::sleep(Duration::milliseconds(1000));
-                let result = task::try(move || {
+                let result = Thread::spawn(move || {
                     tcp::TcpStream::connect("127.0.0.1:5039").unwrap();
-                });
+                }).join();
                 if result.is_err() {
                     continue;
                 }

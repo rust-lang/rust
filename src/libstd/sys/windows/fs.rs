@@ -15,7 +15,7 @@ use libc::{mod, c_int};
 
 use c_str::CString;
 use mem;
-use os::windoze::fill_utf16_buf_and_decode;
+use sys::os::fill_utf16_buf_and_decode;
 use path;
 use ptr;
 use str;

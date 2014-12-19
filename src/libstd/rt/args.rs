@@ -20,7 +20,7 @@
 //! FIXME #7756: Would be nice for this to not exist.
 
 use core::prelude::*;
-use collections::vec::Vec;
+use vec::Vec;
 
 /// One-time global initialization.
 pub unsafe fn init(argc: int, argv: *const *const u8) { imp::init(argc, argv) }
@@ -46,15 +46,15 @@ pub fn clone() -> Option<Vec<Vec<u8>>> { imp::clone() }
 mod imp {
     use core::prelude::*;
 
-    use alloc::boxed::Box;
-    use collections::vec::Vec;
-    use collections::string::String;
-    use core::mem;
+    use boxed::Box;
+    use vec::Vec;
+    use string::String;
+    use mem;
 
-    use mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
+    use sync::{StaticMutex, MUTEX_INIT};
 
     static mut GLOBAL_ARGS_PTR: uint = 0;
-    static LOCK: StaticNativeMutex = NATIVE_MUTEX_INIT;
+    static LOCK: StaticMutex = MUTEX_INIT;
 
     pub unsafe fn init(argc: int, argv: *const *const u8) {
         let args = load_argc_and_argv(argc, argv);
@@ -62,37 +62,33 @@ mod imp {
     }
 
     pub unsafe fn cleanup() {
-        rtassert!(take().is_some());
+        take();
         LOCK.destroy();
     }
 
     pub fn take() -> Option<Vec<Vec<u8>>> {
-        with_lock(|| unsafe {
+        let _guard = LOCK.lock();
+        unsafe {
             let ptr = get_global_ptr();
             let val = mem::replace(&mut *ptr, None);
             val.as_ref().map(|s: &Box<Vec<Vec<u8>>>| (**s).clone())
-        })
+        }
     }
 
     pub fn put(args: Vec<Vec<u8>>) {
-        with_lock(|| unsafe {
+        let _guard = LOCK.lock();
+        unsafe {
             let ptr = get_global_ptr();
             rtassert!((*ptr).is_none());
             (*ptr) = Some(box args.clone());
-        })
+        }
     }
 
     pub fn clone() -> Option<Vec<Vec<u8>>> {
-        with_lock(|| unsafe {
+        let _guard = LOCK.lock();
+        unsafe {
             let ptr = get_global_ptr();
             (*ptr).as_ref().map(|s: &Box<Vec<Vec<u8>>>| (**s).clone())
-        })
-    }
-
-    fn with_lock<T, F>(f: F) -> T where F: FnOnce() -> T {
-        unsafe {
-            let _guard = LOCK.lock();
-            f()
         }
     }
 
@@ -108,8 +104,8 @@ mod imp {
 
     #[cfg(test)]
     mod tests {
-        use std::prelude::*;
-        use std::finally::Finally;
+        use prelude::*;
+        use finally::Finally;
 
         use super::*;
 
@@ -145,7 +141,7 @@ mod imp {
           target_os = "windows"))]
 mod imp {
     use core::prelude::*;
-    use collections::vec::Vec;
+    use vec::Vec;
 
     pub unsafe fn init(_argc: int, _argv: *const *const u8) {
     }

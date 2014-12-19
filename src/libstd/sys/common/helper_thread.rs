@@ -24,12 +24,11 @@ use prelude::*;
 
 use cell::UnsafeCell;
 use mem;
-use rustrt::bookkeeping;
-use rustrt;
 use sync::{StaticMutex, StaticCondvar};
+use rt;
 use sys::helper_signal;
 
-use task;
+use thread::Thread;
 
 /// A structure for management of a helper thread.
 ///
@@ -83,15 +82,14 @@ impl<M: Send> Helper<M> {
                 *self.signal.get() = send as uint;
 
                 let t = f();
-                task::spawn(move |:| {
-                    bookkeeping::decrement();
+                Thread::spawn(move |:| {
                     helper(receive, rx, t);
                     let _g = self.lock.lock();
                     *self.shutdown.get() = true;
                     self.cond.notify_one()
-                });
+                }).detach();
 
-                rustrt::at_exit(move|:| { self.shutdown() });
+                rt::at_exit(move|:| { self.shutdown() });
                 *self.initialized.get() = true;
             }
         }

@@ -19,11 +19,15 @@ use num::Int;
 use path::BytesContainer;
 use collections;
 
+pub mod backtrace;
 pub mod condvar;
 pub mod helper_thread;
 pub mod mutex;
 pub mod net;
 pub mod rwlock;
+pub mod stack;
+pub mod thread;
+pub mod thread_info;
 pub mod thread_local;
 
 // common error constructors

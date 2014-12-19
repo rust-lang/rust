@@ -8,15 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate rustrt;
-
 use std::io::process::{Command, ProcessOutput};
 use std::os;
 use std::str;
 use std::rt;
 use std::thunk::Thunk;
 
-use rustrt::unwind::try;
+use std::rt::unwind::try;
 
 #[start]
 fn start(argc: int, argv: *const *const u8) -> int {
@@ -35,11 +33,11 @@ fn start(argc: int, argv: *const *const u8) -> int {
         return 0
     }
 
-    rt::start(argc, argv, Thunk::new(main))
-}
-
-fn main() {
-    let args = os::args();
+    let args = unsafe {
+        Vec::from_fn(argc as uint, |i| {
+            String::from_raw_buf(*argv.offset(i as int)).into_bytes()
+        })
+    };
     let me = args[0].as_slice();
 
     let x: &[u8] = &[1u8];
@@ -54,6 +52,8 @@ fn main() {
     pass(Command::new(me).arg(x).output().unwrap());
     let x: &[u8] = &[6u8];
     pass(Command::new(me).arg(x).output().unwrap());
+
+    0
 }
 
 fn pass(output: ProcessOutput) {
