@@ -823,10 +823,6 @@ mod test {
     use io;
     use str;
     use io::fs::*;
-    use path::Path;
-    use io;
-    use ops::Drop;
-    use str::StrPrelude;
 
     macro_rules! check { ($e:expr) => (
         match $e {

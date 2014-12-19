@@ -157,7 +157,7 @@ pub use core::unit;
 pub use core::result;
 pub use core::option;
 
-pub use alloc::boxed;
+#[cfg(not(test))] pub use alloc::boxed;
 pub use alloc::rc;
 
 pub use core_collections::slice;

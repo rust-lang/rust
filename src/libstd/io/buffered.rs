@@ -409,7 +409,6 @@ mod test {
     use super::super::{IoResult, EndOfFile};
     use super::super::mem::MemReader;
     use self::test::Bencher;
-    use str::StrPrelude;
 
     /// A type, free to create, primarily intended for benchmarking creation of
     /// wrappers that, just for construction, don't need a Reader/Writer that

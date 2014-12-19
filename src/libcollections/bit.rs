@@ -1686,16 +1686,15 @@ impl<'a> Iterator<uint> for TwoBitPositions<'a> {
 
 #[cfg(test)]
 mod tests {
-    use std::prelude::*;
-    use std::iter::range_step;
+    use prelude::*;
+    use core::iter::range_step;
+    use core::u32;
     use std::rand;
     use std::rand::Rng;
-    use std::u32;
     use test::{Bencher, black_box};
 
     use super::{Bitv, BitvSet, from_fn, from_bytes};
     use bitv;
-    use vec::Vec;
 
     static BENCH_BITS : uint = 1 << 14;
 
@@ -2038,7 +2037,7 @@ mod tests {
     #[test]
     fn test_from_bytes() {
         let bitv = from_bytes(&[0b10110110, 0b00000000, 0b11111111]);
-        let str = format!("{}{}{}", "10110110", "00000000", "11111111");
+        let str = concat!("10110110", "00000000", "11111111");
         assert_eq!(bitv.to_string(), str);
     }
 

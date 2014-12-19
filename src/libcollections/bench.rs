@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::prelude::*;
+use prelude::*;
 use std::rand;
 use std::rand::Rng;
 use test::Bencher;

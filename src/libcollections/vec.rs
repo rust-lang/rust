@@ -1805,12 +1805,10 @@ impl<'a> fmt::FormatWriter for Vec<u8> {
 
 #[cfg(test)]
 mod tests {
-    extern crate test;
-
-    use std::prelude::*;
-    use std::mem::size_of;
+    use prelude::*;
+    use core::mem::size_of;
     use test::Bencher;
-    use super::{as_vec, unzip, raw, Vec};
+    use super::{as_vec, unzip, raw};
 
     struct DropCounter<'a> {
         count: &'a mut int

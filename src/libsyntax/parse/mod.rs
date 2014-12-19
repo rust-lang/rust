@@ -745,8 +745,7 @@ mod test {
     use owned_slice::OwnedSlice;
     use ast;
     use abi;
-    use attr;
-    use attr::AttrMetaMethods;
+    use attr::{first_attr_value_str_by_name, AttrMetaMethods};
     use parse::parser::Parser;
     use parse::token::{str_to_ident};
     use print::pprust::view_item_to_string;
@@ -1195,7 +1194,7 @@ mod test {
         let name = "<source>".to_string();
         let source = "/// doc comment\r\nfn foo() {}".to_string();
         let item = parse_item_from_source_str(name.clone(), source, Vec::new(), &sess).unwrap();
-        let doc = attr::first_attr_value_str_by_name(item.attrs.as_slice(), "doc").unwrap();
+        let doc = first_attr_value_str_by_name(item.attrs.as_slice(), "doc").unwrap();
         assert_eq!(doc.get(), "/// doc comment");
 
         let source = "/// doc comment\r\n/// line 2\r\nfn foo() {}".to_string();
@@ -1207,7 +1206,7 @@ mod test {
 
         let source = "/** doc comment\r\n *  with CRLF */\r\nfn foo() {}".to_string();
         let item = parse_item_from_source_str(name, source, Vec::new(), &sess).unwrap();
-        let doc = attr::first_attr_value_str_by_name(item.attrs.as_slice(), "doc").unwrap();
+        let doc = first_attr_value_str_by_name(item.attrs.as_slice(), "doc").unwrap();
         assert_eq!(doc.get(), "/** doc comment\n *  with CRLF */");
     }
 }

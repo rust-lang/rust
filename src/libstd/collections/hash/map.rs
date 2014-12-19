@@ -1428,9 +1428,8 @@ mod test_map {
 
     use super::HashMap;
     use super::{Occupied, Vacant};
-    use cmp::Equiv;
     use hash;
-    use iter::{Iterator,range_inclusive,range_step_inclusive};
+    use iter::{range_inclusive, range_step_inclusive};
     use cell::RefCell;
     use rand::{weak_rng, Rng};
 

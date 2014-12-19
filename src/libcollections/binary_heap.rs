@@ -617,10 +617,9 @@ impl<T: Ord> Extend<T> for BinaryHeap<T> {
 
 #[cfg(test)]
 mod tests {
-    use std::prelude::*;
+    use prelude::*;
 
     use super::BinaryHeap;
-    use vec::Vec;
 
     #[test]
     fn test_iterator() {

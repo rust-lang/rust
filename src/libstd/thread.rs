@@ -428,13 +428,11 @@ impl<T: Send> Drop for JoinGuard<T> {
 
 #[cfg(test)]
 mod test {
+    use prelude::*;
     use any::{Any, AnyRefExt};
     use boxed::BoxAny;
-    use prelude::*;
-    use result::Result::{Ok, Err};
     use result;
     use std::io::{ChanReader, ChanWriter};
-    use string::String;
     use thunk::Thunk;
     use super::{Thread, Builder};
 

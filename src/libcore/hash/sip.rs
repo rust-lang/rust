@@ -271,13 +271,8 @@ pub fn hash_with_keys<Sized? T: Hash<SipState>>(k0: u64, k1: u64, value: &T) -> 
 #[cfg(test)]
 mod tests {
     use test::Bencher;
-    use std::prelude::*;
+    use prelude::*;
     use std::fmt;
-
-    use str::Str;
-    use string::String;
-    use slice::{AsSlice, SliceExt};
-    use vec::Vec;
 
     use super::super::{Hash, Writer};
     use super::{SipState, hash, hash_with_keys};

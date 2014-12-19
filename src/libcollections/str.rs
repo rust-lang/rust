@@ -837,25 +837,12 @@ impl<'a> StrAllocating for &'a str {
 
 #[cfg(test)]
 mod tests {
-    use std::iter::AdditiveIterator;
-    use std::iter::range;
-    use std::default::Default;
-    use std::char::Char;
-    use std::clone::Clone;
-    use std::cmp::{Ord, PartialOrd, Equiv};
-    use std::cmp::Ordering::{Equal, Greater, Less};
-    use std::option::Option;
-    use std::option::Option::{Some, None};
-    use std::ptr::RawPtr;
-    use std::iter::{Iterator, IteratorExt, DoubleEndedIteratorExt};
-
-    use super::*;
-    use std::slice::{AsSlice, SliceExt};
-    use string::String;
-    use vec::Vec;
-    use slice::CloneSliceExt;
-
-    use unicode::char::UnicodeChar;
+    use prelude::*;
+    use core::default::Default;
+    use core::iter::AdditiveIterator;
+    use super::{eq_slice, from_utf8, is_utf8, is_utf16, raw};
+    use super::truncate_utf16_at_nul;
+    use super::{Owned, Slice};
 
     #[test]
     fn test_eq_slice() {
@@ -1829,7 +1816,7 @@ mod tests {
 
     #[test]
     fn test_lev_distance() {
-        use std::char::{ from_u32, MAX };
+        use core::char::{ from_u32, MAX };
         // Test bytelength agnosticity
         for c in range(0u32, MAX as u32)
                  .filter_map(|i| from_u32(i))
@@ -1939,7 +1926,7 @@ mod tests {
 
     #[test]
     fn test_graphemes() {
-        use std::iter::order;
+        use core::iter::order;
         // official Unicode test data
         // from http://www.unicode.org/Public/UCD/latest/ucd/auxiliary/GraphemeBreakTest.txt
         let test_same: [(_, &[_]), .. 325] = [
@@ -2370,7 +2357,7 @@ mod tests {
 
     #[test]
     fn test_str_default() {
-        use std::default::Default;
+        use core::default::Default;
         fn t<S: Default + Str>() {
             let s: S = Default::default();
             assert_eq!(s.as_slice(), "");
@@ -2470,12 +2457,10 @@ mod tests {
 
 #[cfg(test)]
 mod bench {
+    use prelude::*;
     use test::Bencher;
     use test::black_box;
     use super::*;
-    use std::iter::{IteratorExt, DoubleEndedIteratorExt};
-    use std::str::StrPrelude;
-    use std::slice::SliceExt;
 
     #[bench]
     fn char_iterator(b: &mut Bencher) {

@@ -1335,7 +1335,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
 
 #[cfg(test)]
 mod test {
-    use std::prelude::*;
+    use prelude::*;
 
     use super::{BTreeMap, Occupied, Vacant};
 
@@ -1537,7 +1537,7 @@ mod test {
 
 #[cfg(test)]
 mod bench {
-    use std::prelude::*;
+    use prelude::*;
     use std::rand::{weak_rng, Rng};
     use test::{Bencher, black_box};
 

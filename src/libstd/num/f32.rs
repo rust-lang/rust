@@ -349,7 +349,6 @@ pub fn to_str_exp_digits(num: f32, dig: uint, upper: bool) -> String {
 mod tests {
     use f32::*;
     use num::*;
-    use num;
 
     #[test]
     fn test_min_nan() {
@@ -364,8 +363,8 @@ mod tests {
     }
 
     #[test]
-    fn test_num() {
-        num::test_num(10f32, 2f32);
+    fn test_num_f32() {
+        test_num(10f32, 2f32);
     }
 
     #[test]
