@@ -13,7 +13,7 @@ pub struct MiscPass;
 
 
 declare_lint!(CLIPPY_SINGLE_MATCH, Warn,
-              "Warn on usage of matches with a single nontrivial arm")
+              "Warn on usage of matches with a single nontrivial arm");
 
 impl LintPass for MiscPass {
     fn get_lints(&self) -> LintArray {
@@ -47,7 +47,7 @@ impl LintPass for MiscPass {
 }
 
 
-declare_lint!(CLIPPY_STR_TO_STRING, Warn, "Warn when a String could use into_string() instead of to_string()")
+declare_lint!(CLIPPY_STR_TO_STRING, Warn, "Warn when a String could use into_string() instead of to_string()");
 
 pub struct StrToStringPass;
 

@@ -10,9 +10,9 @@ use syntax::codemap::Span;
 pub struct TypePass;
 
 declare_lint!(CLIPPY_BOX_VEC, Warn,
-              "Warn on usage of Box<Vec<T>>")
+              "Warn on usage of Box<Vec<T>>");
 declare_lint!(CLIPPY_DLIST, Warn,
-              "Warn on usage of DList")
+              "Warn on usage of DList");
 
 /// Matches a type with a provided string, and returns its type parameters if successful
 pub fn match_ty_unwrap<'a>(ty: &'a Ty, segments: &[&str]) -> Option<&'a [P<Ty>]> {
