@@ -40,6 +40,8 @@ extern crate collections;
 #[phase(plugin, link)] extern crate log;
 #[phase(plugin, link)] extern crate syntax;
 
+extern crate "serialize" as rustc_serialize; // used by deriving
+
 #[cfg(test)]
 extern crate test;
 

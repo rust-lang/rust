@@ -70,7 +70,7 @@ impl Module {
     }
 }
 
-#[deriving(Copy, Show, Clone, Encodable, Decodable)]
+#[deriving(Show, Clone, RustcEncodable, RustcDecodable, Copy)]
 pub enum StructType {
     /// A normal struct
     Plain,

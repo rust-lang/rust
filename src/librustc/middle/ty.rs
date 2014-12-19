@@ -246,7 +246,7 @@ pub struct mt<'tcx> {
     pub mutbl: ast::Mutability,
 }
 
-#[deriving(Clone, Copy, PartialEq, Eq, Hash, Encodable, Decodable, Show)]
+#[deriving(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Show)]
 pub enum TraitStore {
     /// Box<Trait>
     UniqTraitStore,
@@ -277,13 +277,13 @@ pub enum ast_ty_to_ty_cache_entry<'tcx> {
     atttce_resolved(Ty<'tcx>)  /* resolved to a type, irrespective of region */
 }
 
-#[deriving(Clone, PartialEq, Decodable, Encodable)]
+#[deriving(Clone, PartialEq, RustcDecodable, RustcEncodable)]
 pub struct ItemVariances {
     pub types: VecPerParamSpace<Variance>,
     pub regions: VecPerParamSpace<Variance>,
 }
 
-#[deriving(Clone, Copy, PartialEq, Decodable, Encodable, Show)]
+#[deriving(Clone, PartialEq, RustcDecodable, RustcEncodable, Show, Copy)]
 pub enum Variance {
     Covariant,      // T<A> <: T<B> iff A <: B -- e.g., function return type
     Invariant,      // T<A> <: T<B> iff B == A -- e.g., type of mutable cell
@@ -430,7 +430,7 @@ pub fn type_of_adjust<'tcx>(cx: &ctxt<'tcx>, adj: &AutoAdjustment<'tcx>) -> Opti
     }
 }
 
-#[deriving(Clone, Copy, Encodable, Decodable, PartialEq, PartialOrd, Show)]
+#[deriving(Clone, Copy, RustcEncodable, RustcDecodable, PartialEq, PartialOrd, Show)]
 pub struct param_index {
     pub space: subst::ParamSpace,
     pub index: uint
@@ -510,7 +510,7 @@ pub struct MethodCall {
     pub adjustment: ExprAdjustment
 }
 
-#[deriving(Clone, Copy, PartialEq, Eq, Hash, Show, Encodable, Decodable)]
+#[deriving(Clone, PartialEq, Eq, Hash, Show, RustcEncodable, RustcDecodable, Copy)]
 pub enum ExprAdjustment {
     NoAdjustment,
     AutoDeref(uint),
@@ -973,7 +973,7 @@ pub struct ParamTy {
 /// is the outer fn.
 ///
 /// [dbi]: http://en.wikipedia.org/wiki/De_Bruijn_index
-#[deriving(Clone, Copy, PartialEq, Eq, Hash, Encodable, Decodable, Show)]
+#[deriving(Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Show, Copy)]
 pub struct DebruijnIndex {
     // We maintain the invariant that this is never 0. So 1 indicates
     // the innermost binder. To ensure this, create with `DebruijnIndex::new`.
@@ -981,7 +981,7 @@ pub struct DebruijnIndex {
 }
 
 /// Representation of regions:
-#[deriving(Clone, Copy, PartialEq, Eq, Hash, Encodable, Decodable, Show)]
+#[deriving(Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Show, Copy)]
 pub enum Region {
     // Region bound in a type or fn declaration which will be
     // substituted 'early' -- that is, at the same time when type
@@ -1028,7 +1028,7 @@ pub struct UpvarId {
     pub closure_expr_id: ast::NodeId,
 }
 
-#[deriving(Clone, Copy, PartialEq, Eq, Hash, Show, Encodable, Decodable)]
+#[deriving(Clone, PartialEq, Eq, Hash, Show, RustcEncodable, RustcDecodable, Copy)]
 pub enum BorrowKind {
     /// Data must be immutable and is aliasable.
     ImmBorrow,
@@ -1121,7 +1121,7 @@ pub enum BorrowKind {
 /// - Through mutation, the borrowed upvars can actually escape
 ///   the closure, so sometimes it is necessary for them to be larger
 ///   than the closure lifetime itself.
-#[deriving(Copy, PartialEq, Clone, Encodable, Decodable, Show)]
+#[deriving(PartialEq, Clone, RustcEncodable, RustcDecodable, Show, Copy)]
 pub struct UpvarBorrow {
     pub kind: BorrowKind,
     pub region: ty::Region,
@@ -1146,7 +1146,8 @@ impl Region {
     }
 }
 
-#[deriving(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash, Encodable, Decodable, Show)]
+#[deriving(Clone, PartialEq, PartialOrd, Eq, Ord, Hash,
+           RustcEncodable, RustcDecodable, Show, Copy)]
 /// A "free" region `fr` can be interpreted as "some region
 /// at least as big as the scope `fr.scope`".
 pub struct FreeRegion {
@@ -1154,7 +1155,8 @@ pub struct FreeRegion {
     pub bound_region: BoundRegion
 }
 
-#[deriving(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash, Encodable, Decodable, Show)]
+#[deriving(Clone, PartialEq, PartialOrd, Eq, Ord, Hash,
+           RustcEncodable, RustcDecodable, Show, Copy)]
 pub enum BoundRegion {
     /// An anonymous region parameter for a given fn (&T)
     BrAnon(uint),
@@ -1412,7 +1414,8 @@ pub struct ExistentialBounds {
 
 pub type BuiltinBounds = EnumSet<BuiltinBound>;
 
-#[deriving(Copy, Clone, Encodable, PartialEq, Eq, Decodable, Hash, Show)]
+#[deriving(Clone, RustcEncodable, PartialEq, Eq, RustcDecodable, Hash,
+           Show, Copy)]
 #[repr(uint)]
 pub enum BuiltinBound {
     BoundSend,
@@ -1463,7 +1466,7 @@ pub struct FloatVid {
     pub index: uint
 }
 
-#[deriving(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash)]
+#[deriving(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy)]
 pub struct RegionVid {
     pub index: uint
 }
@@ -1485,7 +1488,7 @@ pub enum InferTy {
     FreshIntTy(uint),
 }
 
-#[deriving(Clone, Copy, Encodable, Decodable, Eq, Hash, Show)]
+#[deriving(Clone, RustcEncodable, RustcDecodable, Eq, Hash, Show, Copy)]
 pub enum InferRegion {
     ReVar(RegionVid),
     ReSkolemized(uint, BoundRegion)
@@ -1571,7 +1574,7 @@ pub struct TypeParameterDef<'tcx> {
     pub default: Option<Ty<'tcx>>,
 }
 
-#[deriving(Encodable, Decodable, Clone, Show)]
+#[deriving(RustcEncodable, RustcDecodable, Clone, Show)]
 pub struct RegionParameterDef {
     pub name: ast::Name,
     pub def_id: ast::DefId,
@@ -6223,7 +6226,7 @@ pub fn accumulate_lifetimes_in_type(accumulator: &mut Vec<ty::Region>,
 }
 
 /// A free variable referred to in a function.
-#[deriving(Copy, Encodable, Decodable)]
+#[deriving(Copy, RustcEncodable, RustcDecodable)]
 pub struct Freevar {
     /// The variable being accessed free.
     pub def: def::Def,

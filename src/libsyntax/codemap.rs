@@ -92,7 +92,7 @@ pub struct Span {
 
 pub const DUMMY_SP: Span = Span { lo: BytePos(0), hi: BytePos(0), expn_id: NO_EXPANSION };
 
-#[deriving(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+#[deriving(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Show, Copy)]
 pub struct Spanned<T> {
     pub node: T,
     pub span: Span,
@@ -218,7 +218,7 @@ pub struct ExpnInfo {
     pub callee: NameAndSpan
 }
 
-#[deriving(Copy, PartialEq, Eq, Clone, Show, Hash, Encodable, Decodable)]
+#[deriving(PartialEq, Eq, Clone, Show, Hash, RustcEncodable, RustcDecodable, Copy)]
 pub struct ExpnId(u32);
 
 pub const NO_EXPANSION: ExpnId = ExpnId(-1);
