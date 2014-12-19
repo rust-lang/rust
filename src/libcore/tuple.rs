@@ -62,12 +62,10 @@
 //! assert_eq!(d, (0u32, 0.0f32));
 //! ```
 
-#![doc(primitive = "tuple")]
 #![stable]
 
 #[unstable = "this is just a documentation module and should not be part \
               of the public api"]
-pub use unit;
 
 use clone::Clone;
 use cmp::*;

@@ -107,7 +107,6 @@ pub mod default;
 
 pub mod any;
 pub mod atomic;
-pub mod bool;
 pub mod borrow;
 pub mod cell;
 pub mod char;
@@ -120,15 +119,11 @@ pub mod result;
 pub mod simd;
 pub mod slice;
 pub mod str;
-pub mod tuple;
 pub mod hash;
-// FIXME #15320: primitive documentation needs top-level modules, this
-// should be `core::tuple::unit`.
-#[path = "tuple/unit.rs"]
-pub mod unit;
 pub mod fmt;
 
 // note: does not need to be public
+mod tuple;
 mod array;
 
 #[doc(hidden)]
