@@ -85,13 +85,21 @@ pub fn is_shift_binop(b: BinOp) -> bool {
     }
 }
 
-/// Returns `true` is the binary operator takes its arguments by value
+/// Returns `true` if the binary operator takes its arguments by value
 pub fn is_by_value_binop(b: BinOp) -> bool {
     match b {
         BiAdd | BiSub | BiMul | BiDiv | BiRem | BiBitXor | BiBitAnd | BiBitOr | BiShl | BiShr => {
             true
         }
         _ => false
+    }
+}
+
+/// Returns `true` if the unary operator takes its argument by value
+pub fn is_by_value_unop(u: UnOp) -> bool {
+    match u {
+        UnNeg | UnNot => true,
+        _ => false,
     }
 }
 
