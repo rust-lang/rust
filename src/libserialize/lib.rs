@@ -15,7 +15,7 @@ Core encoding and decoding interfaces.
 */
 
 #![crate_name = "serialize"]
-#![experimental]
+#![unstable = "deprecated in favor of rustc-serialize on crates.io"]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
@@ -44,3 +44,7 @@ mod collection_impls;
 pub mod base64;
 pub mod hex;
 pub mod json;
+
+mod rustc_serialize {
+    pub use serialize::*;
+}

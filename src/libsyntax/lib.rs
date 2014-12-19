@@ -34,6 +34,8 @@ extern crate serialize;
 extern crate term;
 extern crate libc;
 
+extern crate "serialize" as rustc_serialize; // used by deriving
+
 pub mod util {
     pub mod interner;
     #[cfg(test)]

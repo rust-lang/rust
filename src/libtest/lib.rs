@@ -37,6 +37,7 @@
 extern crate getopts;
 extern crate regex;
 extern crate serialize;
+extern crate "serialize" as rustc_serialize;
 extern crate term;
 
 pub use self::TestFn::*;
@@ -213,7 +214,7 @@ pub struct TestDescAndFn {
     pub testfn: TestFn,
 }
 
-#[deriving(Clone, Copy, Encodable, Decodable, PartialEq, Show)]
+#[deriving(Clone, RustcEncodable, RustcDecodable, PartialEq, Show, Copy)]
 pub struct Metric {
     value: f64,
     noise: f64

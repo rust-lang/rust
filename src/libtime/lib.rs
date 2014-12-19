@@ -24,7 +24,9 @@
 
 #[cfg(test)] #[phase(plugin, link)] extern crate log;
 
+#[cfg(stage0)]
 extern crate serialize;
+extern crate "serialize" as rustc_serialize;
 extern crate libc;
 
 pub use self::ParseError::*;
@@ -76,7 +78,8 @@ mod imp {
 }
 
 /// A record specifying a time value in seconds and nanoseconds.
-#[deriving(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Encodable, Decodable, Show)]
+#[deriving(Clone, PartialEq, Eq, PartialOrd, Ord, RustcEncodable,
+           RustcDecodable, Show, Copy)]
 pub struct Timespec {
     pub sec: i64,
     pub nsec: i32,
