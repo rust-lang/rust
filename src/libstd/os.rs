@@ -26,6 +26,7 @@
 
 #![allow(missing_docs)]
 #![allow(non_snake_case)]
+#![allow(unused_imports)]
 
 pub use self::MemoryMapKind::*;
 pub use self::MapOption::*;
@@ -37,21 +38,19 @@ use fmt;
 use io::{IoResult, IoError};
 use iter::{Iterator, IteratorExt};
 use kinds::Copy;
-use libc::{c_void, c_int};
+use libc::{c_void, c_int, c_char};
 use libc;
 use boxed::Box;
 use ops::{Drop, FnOnce};
 use option::Option;
 use option::Option::{Some, None};
-use os;
 use path::{Path, GenericPath, BytesContainer};
 use sys;
-use sys::os as os_imp;
 use ptr::RawPtr;
 use ptr;
 use result::Result;
 use result::Result::{Err, Ok};
-use slice::{AsSlice, SliceExt, PartialEqSliceExt};
+use slice::{AsSlice, SliceExt};
 use slice::CloneSliceExt;
 use str::{Str, StrPrelude, StrAllocating};
 use string::{String, ToString};
@@ -59,7 +58,6 @@ use sync::atomic::{AtomicInt, INIT_ATOMIC_INT, SeqCst};
 use vec::Vec;
 
 #[cfg(unix)] use c_str::ToCStr;
-#[cfg(unix)] use libc::c_char;
 
 #[cfg(unix)]
 pub use sys::ext as unix;
@@ -78,7 +76,6 @@ pub fn num_cpus() -> uint {
 }
 
 pub const TMPBUF_SZ : uint = 1000u;
-const BUF_BYTES : uint = 2048u;
 
 /// Returns the current working directory as a `Path`.
 ///
@@ -96,118 +93,12 @@ const BUF_BYTES : uint = 2048u;
 /// ```rust
 /// use std::os;
 ///
-/// // We assume that we are in a valid directory like "/home".
+/// // We assume that we are in a valid directory.
 /// let current_working_directory = os::getcwd().unwrap();
 /// println!("The current directory is {}", current_working_directory.display());
-/// // /home
 /// ```
-#[cfg(unix)]
 pub fn getcwd() -> IoResult<Path> {
-    use c_str::CString;
-
-    let mut buf = [0 as c_char, ..BUF_BYTES];
-    unsafe {
-        if libc::getcwd(buf.as_mut_ptr(), buf.len() as libc::size_t).is_null() {
-            Err(IoError::last_error())
-        } else {
-            Ok(Path::new(CString::new(buf.as_ptr(), false)))
-        }
-    }
-}
-
-/// Returns the current working directory as a `Path`.
-///
-/// # Errors
-///
-/// Returns an `Err` if the current working directory value is invalid.
-/// Possible cases:
-///
-/// * Current directory does not exist.
-/// * There are insufficient permissions to access the current directory.
-/// * The internal buffer is not large enough to hold the path.
-///
-/// # Example
-///
-/// ```rust
-/// use std::os;
-///
-/// // We assume that we are in a valid directory like "C:\\Windows".
-/// let current_working_directory = os::getcwd().unwrap();
-/// println!("The current directory is {}", current_working_directory.display());
-/// // C:\\Windows
-/// ```
-#[cfg(windows)]
-pub fn getcwd() -> IoResult<Path> {
-    use libc::DWORD;
-    use libc::GetCurrentDirectoryW;
-    use io::OtherIoError;
-
-    let mut buf = [0 as u16, ..BUF_BYTES];
-    unsafe {
-        if libc::GetCurrentDirectoryW(buf.len() as DWORD, buf.as_mut_ptr()) == 0 as DWORD {
-            return Err(IoError::last_error());
-        }
-    }
-
-    match String::from_utf16(::str::truncate_utf16_at_nul(&buf)) {
-        Some(ref cwd) => Ok(Path::new(cwd)),
-        None => Err(IoError {
-            kind: OtherIoError,
-            desc: "GetCurrentDirectoryW returned invalid UTF-16",
-            detail: None,
-        }),
-    }
-}
-
-#[cfg(windows)]
-pub mod windoze {
-    use libc::types::os::arch::extra::DWORD;
-    use libc;
-    use ops::FnMut;
-    use option::Option;
-    use option::Option::None;
-    use option;
-    use os::TMPBUF_SZ;
-    use slice::SliceExt;
-    use string::String;
-    use str::StrPrelude;
-    use vec::Vec;
-
-    pub fn fill_utf16_buf_and_decode<F>(mut f: F) -> Option<String> where
-        F: FnMut(*mut u16, DWORD) -> DWORD,
-    {
-
-        unsafe {
-            let mut n = TMPBUF_SZ as DWORD;
-            let mut res = None;
-            let mut done = false;
-            while !done {
-                let mut buf = Vec::from_elem(n as uint, 0u16);
-                let k = f(buf.as_mut_ptr(), n);
-                if k == (0 as DWORD) {
-                    done = true;
-                } else if k == n &&
-                          libc::GetLastError() ==
-                          libc::ERROR_INSUFFICIENT_BUFFER as DWORD {
-                    n *= 2 as DWORD;
-                } else if k >= n {
-                    n = k;
-                } else {
-                    done = true;
-                }
-                if k != 0 && done {
-                    let sub = buf.slice(0, k as uint);
-                    // We want to explicitly catch the case when the
-                    // closure returned invalid UTF-16, rather than
-                    // set `res` to None and continue.
-                    let s = String::from_utf16(sub)
-                        .expect("fill_utf16_buf_and_decode: closure created invalid UTF-16");
-                    res = option::Option::Some(s)
-                }
-            }
-            return res;
-        }
-    }
+    sys::os::getcwd()
 }
 
 /*
@@ -253,71 +144,6 @@ pub fn env() -> Vec<(String,String)> {
 /// environment variables of the current process.
 pub fn env_as_bytes() -> Vec<(Vec<u8>,Vec<u8>)> {
     unsafe {
-        #[cfg(windows)]
-        unsafe fn get_env_pairs() -> Vec<Vec<u8>> {
-            use slice;
-
-            use libc::funcs::extra::kernel32::{
-                GetEnvironmentStringsW,
-                FreeEnvironmentStringsW
-            };
-            let ch = GetEnvironmentStringsW();
-            if ch as uint == 0 {
-                panic!("os::env() failure getting env string from OS: {}",
-                       os::last_os_error());
-            }
-            // Here, we lossily decode the string as UTF16.
-            //
-            // The docs suggest that the result should be in Unicode, but
-            // Windows doesn't guarantee it's actually UTF16 -- it doesn't
-            // validate the environment string passed to CreateProcess nor
-            // SetEnvironmentVariable.  Yet, it's unlikely that returning a
-            // raw u16 buffer would be of practical use since the result would
-            // be inherently platform-dependent and introduce additional
-            // complexity to this code.
-            //
-            // Using the non-Unicode version of GetEnvironmentStrings is even
-            // worse since the result is in an OEM code page.  Characters that
-            // can't be encoded in the code page would be turned into question
-            // marks.
-            let mut result = Vec::new();
-            let mut i = 0;
-            while *ch.offset(i) != 0 {
-                let p = &*ch.offset(i);
-                let mut len = 0;
-                while *(p as *const _).offset(len) != 0 {
-                    len += 1;
-                }
-                let p = p as *const u16;
-                let s = slice::from_raw_buf(&p, len as uint);
-                result.push(String::from_utf16_lossy(s).into_bytes());
-                i += len as int + 1;
-            }
-            FreeEnvironmentStringsW(ch);
-            result
-        }
-        #[cfg(unix)]
-        unsafe fn get_env_pairs() -> Vec<Vec<u8>> {
-            use c_str::CString;
-
-            extern {
-                fn rust_env_pairs() -> *const *const c_char;
-            }
-            let mut environ = rust_env_pairs();
-            if environ as uint == 0 {
-                panic!("os::env() failure getting env string from OS: {}",
-                       os::last_os_error());
-            }
-            let mut result = Vec::new();
-            while *environ != 0 as *const _ {
-                let env_pair =
-                    CString::new(*environ, false).as_bytes_no_nul().to_vec();
-                result.push(env_pair);
-                environ = environ.offset(1);
-            }
-            result
-        }
-
         fn env_convert(input: Vec<Vec<u8>>) -> Vec<(Vec<u8>, Vec<u8>)> {
             let mut pairs = Vec::new();
             for p in input.iter() {
@@ -330,7 +156,7 @@ pub fn env_as_bytes() -> Vec<(Vec<u8>,Vec<u8>)> {
             pairs
         }
         with_env_lock(|| {
-            let unparsed_environ = get_env_pairs();
+            let unparsed_environ = sys::os::get_env_pairs();
             env_convert(unparsed_environ)
         })
     }
@@ -390,7 +216,7 @@ pub fn getenv_as_bytes(n: &str) -> Option<Vec<u8>> {
 pub fn getenv(n: &str) -> Option<String> {
     unsafe {
         with_env_lock(|| {
-            use os::windoze::{fill_utf16_buf_and_decode};
+            use sys::os::fill_utf16_buf_and_decode;
             let mut n: Vec<u16> = n.utf16_units().collect();
             n.push(0);
             fill_utf16_buf_and_decode(|buf, sz| {
@@ -506,52 +332,7 @@ pub fn unsetenv(n: &str) {
 /// }
 /// ```
 pub fn split_paths<T: BytesContainer>(unparsed: T) -> Vec<Path> {
-    #[cfg(unix)]
-    fn _split_paths<T: BytesContainer>(unparsed: T) -> Vec<Path> {
-        unparsed.container_as_bytes()
-                .split(|b| *b == b':')
-                .map(Path::new)
-                .collect()
-    }
-
-    #[cfg(windows)]
-    fn _split_paths<T: BytesContainer>(unparsed: T) -> Vec<Path> {
-        // On Windows, the PATH environment variable is semicolon separated.  Double
-        // quotes are used as a way of introducing literal semicolons (since
-        // c:\some;dir is a valid Windows path). Double quotes are not themselves
-        // permitted in path names, so there is no way to escape a double quote.
-        // Quoted regions can appear in arbitrary locations, so
-        //
-        //   c:\foo;c:\som"e;di"r;c:\bar
-        //
-        // Should parse as [c:\foo, c:\some;dir, c:\bar].
-        //
-        // (The above is based on testing; there is no clear reference available
-        // for the grammar.)
-
-        let mut parsed = Vec::new();
-        let mut in_progress = Vec::new();
-        let mut in_quote = false;
-
-        for b in unparsed.container_as_bytes().iter() {
-            match *b {
-                b';' if !in_quote => {
-                    parsed.push(Path::new(in_progress.as_slice()));
-                    in_progress.truncate(0)
-                }
-                b'"' => {
-                    in_quote = !in_quote;
-                }
-                _  => {
-                    in_progress.push(*b);
-                }
-            }
-        }
-        parsed.push(Path::new(in_progress));
-        parsed
-    }
-
-    _split_paths(unparsed)
+    sys::os::split_paths(unparsed.container_as_bytes())
 }
 
 /// Joins a collection of `Path`s appropriately for the `PATH`
@@ -576,42 +357,7 @@ pub fn split_paths<T: BytesContainer>(unparsed: T) -> Vec<Path> {
 /// os::setenv(key, os::join_paths(paths.as_slice()).unwrap());
 /// ```
 pub fn join_paths<T: BytesContainer>(paths: &[T]) -> Result<Vec<u8>, &'static str> {
-    #[cfg(windows)]
-    fn _join_paths<T: BytesContainer>(paths: &[T]) -> Result<Vec<u8>, &'static str> {
-        let mut joined = Vec::new();
-        let sep = b';';
-
-        for (i, path) in paths.iter().map(|p| p.container_as_bytes()).enumerate() {
-            if i > 0 { joined.push(sep) }
-            if path.contains(&b'"') {
-                return Err("path segment contains `\"`");
-            } else if path.contains(&sep) {
-                joined.push(b'"');
-                joined.push_all(path);
-                joined.push(b'"');
-            } else {
-                joined.push_all(path);
-            }
-        }
-
-        Ok(joined)
-    }
-
-    #[cfg(unix)]
-    fn _join_paths<T: BytesContainer>(paths: &[T]) -> Result<Vec<u8>, &'static str> {
-        let mut joined = Vec::new();
-        let sep = b':';
-
-        for (i, path) in paths.iter().map(|p| p.container_as_bytes()).enumerate() {
-            if i > 0 { joined.push(sep) }
-            if path.contains(&sep) { return Err("path segment contains separator `:`") }
-            joined.push_all(path);
-        }
-
-        Ok(joined)
-    }
-
-    _join_paths(paths)
+    sys::os::join_paths(paths)
 }
 
 /// A low-level OS in-memory pipe.
@@ -664,69 +410,7 @@ pub fn dll_filename(base: &str) -> String {
 /// };
 /// ```
 pub fn self_exe_name() -> Option<Path> {
-
-    #[cfg(any(target_os = "freebsd", target_os = "dragonfly"))]
-    fn load_self() -> Option<Vec<u8>> {
-        unsafe {
-            use libc::funcs::bsd44::*;
-            use libc::consts::os::extra::*;
-            let mut mib = vec![CTL_KERN as c_int,
-                               KERN_PROC as c_int,
-                               KERN_PROC_PATHNAME as c_int,
-                               -1 as c_int];
-            let mut sz: libc::size_t = 0;
-            let err = sysctl(mib.as_mut_ptr(), mib.len() as ::libc::c_uint,
-                             ptr::null_mut(), &mut sz, ptr::null_mut(),
-                             0u as libc::size_t);
-            if err != 0 { return None; }
-            if sz == 0 { return None; }
-            let mut v: Vec<u8> = Vec::with_capacity(sz as uint);
-            let err = sysctl(mib.as_mut_ptr(), mib.len() as ::libc::c_uint,
-                             v.as_mut_ptr() as *mut c_void, &mut sz,
-                             ptr::null_mut(), 0u as libc::size_t);
-            if err != 0 { return None; }
-            if sz == 0 { return None; }
-            v.set_len(sz as uint - 1); // chop off trailing NUL
-            Some(v)
-        }
-    }
-
-    #[cfg(any(target_os = "linux", target_os = "android"))]
-    fn load_self() -> Option<Vec<u8>> {
-        use std::io;
-
-        match io::fs::readlink(&Path::new("/proc/self/exe")) {
-            Ok(path) => Some(path.into_vec()),
-            Err(..) => None
-        }
-    }
-
-    #[cfg(any(target_os = "macos", target_os = "ios"))]
-    fn load_self() -> Option<Vec<u8>> {
-        unsafe {
-            use libc::funcs::extra::_NSGetExecutablePath;
-            let mut sz: u32 = 0;
-            _NSGetExecutablePath(ptr::null_mut(), &mut sz);
-            if sz == 0 { return None; }
-            let mut v: Vec<u8> = Vec::with_capacity(sz as uint);
-            let err = _NSGetExecutablePath(v.as_mut_ptr() as *mut i8, &mut sz);
-            if err != 0 { return None; }
-            v.set_len(sz as uint - 1); // chop off trailing NUL
-            Some(v)
-        }
-    }
-
-    #[cfg(windows)]
-    fn load_self() -> Option<Vec<u8>> {
-        unsafe {
-            use os::windoze::fill_utf16_buf_and_decode;
-            fill_utf16_buf_and_decode(|buf, sz| {
-                libc::GetModuleFileNameW(0u as libc::DWORD, buf, sz)
-            }).map(|s| s.into_string().into_bytes())
-        }
-    }
-
-    load_self().and_then(Path::new_opt)
+    sys::os::load_self().and_then(Path::new_opt)
 }
 
 /// Optionally returns the filesystem path to the current executable which is
@@ -842,7 +526,6 @@ pub fn tmpdir() -> Path {
     }
 }
 
-///
 /// Convert a relative path to an absolute path
 ///
 /// If the given path is relative, return it prepended with the current working
@@ -887,37 +570,12 @@ pub fn make_absolute(p: &Path) -> IoResult<Path> {
 /// println!("Successfully changed working directory to {}!", root.display());
 /// ```
 pub fn change_dir(p: &Path) -> IoResult<()> {
-    return chdir(p);
-
-    #[cfg(windows)]
-    fn chdir(p: &Path) -> IoResult<()> {
-        let mut p = p.as_str().unwrap().utf16_units().collect::<Vec<u16>>();
-        p.push(0);
-
-        unsafe {
-            match libc::SetCurrentDirectoryW(p.as_ptr()) != (0 as libc::BOOL) {
-                true => Ok(()),
-                false => Err(IoError::last_error()),
-            }
-        }
-    }
-
-    #[cfg(unix)]
-    fn chdir(p: &Path) -> IoResult<()> {
-        p.with_c_str(|buf| {
-            unsafe {
-                match libc::chdir(buf) == (0 as c_int) {
-                    true => Ok(()),
-                    false => Err(IoError::last_error()),
-                }
-            }
-        })
-    }
+    return sys::os::chdir(p);
 }
 
 /// Returns the platform-specific value of errno
 pub fn errno() -> uint {
-    os_imp::errno() as uint
+    sys::os::errno() as uint
 }
 
 /// Return the string corresponding to an `errno()` value of `errnum`.
@@ -930,7 +588,7 @@ pub fn errno() -> uint {
 /// println!("{}", os::error_string(os::errno() as uint));
 /// ```
 pub fn error_string(errnum: uint) -> String {
-    return os_imp::error_string(errnum as i32);
+    return sys::os::error_string(errnum as i32);
 }
 
 /// Get a string representing the platform-dependent last error
@@ -1042,12 +700,8 @@ fn real_args_as_bytes() -> Vec<Vec<u8>> {
           target_os = "freebsd",
           target_os = "dragonfly"))]
 fn real_args_as_bytes() -> Vec<Vec<u8>> {
-    use rustrt;
-
-    match rustrt::args::clone() {
-        Some(args) => args,
-        None => panic!("process arguments not initialized")
-    }
+    use rt;
+    rt::args::clone().unwrap_or_else(|| vec![])
 }
 
 #[cfg(not(windows))]
@@ -1144,38 +798,9 @@ extern {
     pub fn _NSGetArgv() -> *mut *mut *mut c_char;
 }
 
-// Round up `from` to be divisible by `to`
-fn round_up(from: uint, to: uint) -> uint {
-    let r = if from % to == 0 {
-        from
-    } else {
-        from + to - (from % to)
-    };
-    if r == 0 {
-        to
-    } else {
-        r
-    }
-}
-
 /// Returns the page size of the current architecture in bytes.
-#[cfg(unix)]
 pub fn page_size() -> uint {
-    unsafe {
-        libc::sysconf(libc::_SC_PAGESIZE) as uint
-    }
-}
-
-/// Returns the page size of the current architecture in bytes.
-#[cfg(windows)]
-pub fn page_size() -> uint {
-    use mem;
-    unsafe {
-        let mut info = mem::zeroed();
-        libc::GetSystemInfo(&mut info);
-
-        return info.dwPageSize as uint;
-    }
+    sys::os::page_size()
 }
 
 /// A memory mapped file or chunk of memory. This is a very system-specific
@@ -1322,6 +947,20 @@ impl Error for MapError {
 impl FromError<MapError> for Box<Error> {
     fn from_error(err: MapError) -> Box<Error> {
         box err
+    }
+}
+
+// Round up `from` to be divisible by `to`
+fn round_up(from: uint, to: uint) -> uint {
+    let r = if from % to == 0 {
+        from
+    } else {
+        from + to - (from % to)
+    };
+    if r == 0 {
+        to
+    } else {
+        r
     }
 }
 

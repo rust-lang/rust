@@ -15,26 +15,26 @@
 pub use self::BlockedTask::*;
 use self::TaskState::*;
 
-use alloc::arc::Arc;
-use alloc::boxed::Box;
-use core::any::Any;
-use core::atomic::{AtomicUint, SeqCst};
-use core::iter::{IteratorExt, Take};
-use core::ops::FnOnce;
-use core::mem;
-use core::ops::FnMut;
+use any::Any;
+use boxed::Box;
+use sync::Arc;
+use sync::atomic::{AtomicUint, SeqCst};
+use iter::{IteratorExt, Take};
+use kinds::marker;
+use mem;
+use ops::FnMut;
 use core::prelude::{Clone, Drop, Err, Iterator, None, Ok, Option, Send, Some};
 use core::prelude::{drop};
-
-use bookkeeping;
-use mutex::NativeMutex;
-use local::Local;
-use thread::{mod, Thread};
-use stack;
-use unwind;
-use unwind::Unwinder;
-use collections::str::SendStr;
+use str::SendStr;
 use thunk::Thunk;
+
+use rt;
+use rt::mutex::NativeMutex;
+use rt::local::Local;
+use rt::thread::{mod, Thread};
+use sys_common::stack;
+use rt::unwind;
+use rt::unwind::Unwinder;
 
 /// State associated with Rust tasks.
 ///
@@ -129,14 +129,7 @@ impl Task {
         task.name = name;
         task.death.on_exit = on_exit;
 
-        // FIXME: change this back after moving rustrt into std
-        // let stack = stack_size.unwrap_or(rt::min_stack());
-        let stack = stack_size.unwrap_or(2 * 1024 * 1024);
-
-        // Note that this increment must happen *before* the spawn in order to
-        // guarantee that if this task exits it will always end up waiting for
-        // the spawned task to exit.
-        let token = bookkeeping::increment();
+        let stack = stack_size.unwrap_or(rt::min_stack());
 
         // Spawning a new OS thread guarantees that __morestack will never get
         // triggered, but we must manually set up the actual stack bounds once
@@ -157,7 +150,6 @@ impl Task {
 
             let mut f = Some(f);
             drop(task.run(|| { f.take().unwrap().invoke(()) }).destroy());
-            drop(token);
         })
     }
 
@@ -504,8 +496,9 @@ impl Death {
 #[cfg(test)]
 mod test {
     use super::*;
-    use std::prelude::*;
-    use std::task;
+    use prelude::*;
+    use task;
+    use rt::unwind;
 
     #[test]
     fn unwind() {
@@ -519,7 +512,7 @@ mod test {
 
     #[test]
     fn rng() {
-        use std::rand::{StdRng, Rng};
+        use rand::{StdRng, Rng};
         let mut r = StdRng::new().ok().unwrap();
         let _ = r.next_u32();
     }
@@ -541,7 +534,7 @@ mod test {
     #[test]
     #[should_fail]
     fn test_begin_unwind() {
-        use unwind::begin_unwind;
+        use rt::unwind::begin_unwind;
         begin_unwind("cause", &(file!(), line!()))
     }
 

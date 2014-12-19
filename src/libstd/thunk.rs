@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Because this module is temporary...
+#![allow(missing_docs)]
+
 use alloc::boxed::Box;
 use core::kinds::Send;
 use core::ops::FnOnce;

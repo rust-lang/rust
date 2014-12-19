@@ -104,9 +104,9 @@
        html_playground_url = "http://play.rust-lang.org/")]
 
 #![allow(unknown_features)]
-#![feature(macro_rules, globs, linkage)]
+#![feature(macro_rules, globs, linkage, thread_local, asm)]
 #![feature(default_type_params, phase, lang_items, unsafe_destructor)]
-#![feature(import_shadowing, slicing_syntax)]
+#![feature(import_shadowing, slicing_syntax, tuple_indexing)]
 #![feature(unboxed_closures)]
 
 // Don't link to std. We are std.
@@ -124,7 +124,6 @@ extern crate core;
 extern crate "collections" as core_collections;
 extern crate "rand" as core_rand;
 extern crate libc;
-extern crate rustrt;
 
 // Make std testable by not duplicating lang items. See #2912
 #[cfg(test)] extern crate "std" as realstd;
@@ -167,11 +166,7 @@ pub use core_collections::str;
 pub use core_collections::string;
 pub use core_collections::vec;
 
-pub use rustrt::c_str;
-
 pub use unicode::char;
-
-pub use rustrt::thunk;
 
 /* Exported macros */
 
@@ -207,6 +202,7 @@ pub mod prelude;
 #[path = "num/f64.rs"]   pub mod f64;
 
 pub mod ascii;
+pub mod thunk;
 
 /* Common traits */
 
@@ -216,6 +212,7 @@ pub mod num;
 /* Runtime and platform support */
 
 pub mod thread_local;
+pub mod c_str;
 pub mod c_vec;
 pub mod dynamic_lib;
 pub mod fmt;
@@ -230,9 +227,10 @@ pub mod time;
 pub mod collections;
 pub mod hash;
 
-/* Tasks and communication */
+/* Threads and communication */
 
 pub mod task;
+pub mod thread;
 pub mod sync;
 pub mod comm;
 

@@ -156,18 +156,18 @@ mod test {
     use prelude::*;
     use super::*;
     use io;
-    use task;
+    use thread::Thread;
 
     #[test]
     fn test_rx_reader() {
         let (tx, rx) = channel();
-        task::spawn(move|| {
+        Thread::spawn(move|| {
           tx.send(vec![1u8, 2u8]);
           tx.send(vec![]);
           tx.send(vec![3u8, 4u8]);
           tx.send(vec![5u8, 6u8]);
           tx.send(vec![7u8, 8u8]);
-        });
+        }).detach();
 
         let mut reader = ChanReader::new(rx);
         let mut buf = [0u8, ..3];
@@ -203,14 +203,14 @@ mod test {
     #[test]
     fn test_rx_buffer() {
         let (tx, rx) = channel();
-        task::spawn(move|| {
+        Thread::spawn(move|| {
           tx.send(b"he".to_vec());
           tx.send(b"llo wo".to_vec());
           tx.send(b"".to_vec());
           tx.send(b"rld\nhow ".to_vec());
           tx.send(b"are you?".to_vec());
           tx.send(b"".to_vec());
-        });
+        }).detach();
 
         let mut reader = ChanReader::new(rx);
 
@@ -229,7 +229,7 @@ mod test {
         writer.write_be_u32(42).unwrap();
 
         let wanted = vec![0u8, 0u8, 0u8, 42u8];
-        let got = match task::try(move|| { rx.recv() }) {
+        let got = match Thread::spawn(move|| { rx.recv() }).join() {
             Ok(got) => got,
             Err(_) => panic!(),
         };

@@ -35,6 +35,7 @@ use sys_common::mutex as sys;
 ///
 /// ```rust
 /// use std::sync::{Arc, Mutex};
+/// use std::thread::Thread;
 /// const N: uint = 10;
 ///
 /// // Spawn a few threads to increment a shared variable (non-atomically), and
@@ -47,7 +48,7 @@ use sys_common::mutex as sys;
 /// let (tx, rx) = channel();
 /// for _ in range(0u, 10) {
 ///     let (data, tx) = (data.clone(), tx.clone());
-///     spawn(move|| {
+///     Thread::spawn(move|| {
 ///         // The shared static can only be accessed once the lock is held.
 ///         // Our non-atomic increment is safe because we're the only thread
 ///         // which can access the shared state when the lock is held.
@@ -57,7 +58,7 @@ use sys_common::mutex as sys;
 ///             tx.send(());
 ///         }
 ///         // the lock is unlocked here when `data` goes out of scope.
-///     });
+///     }).detach();
 /// }
 ///
 /// rx.recv();
@@ -274,7 +275,7 @@ impl Drop for StaticMutexGuard {
 mod test {
     use prelude::*;
 
-    use task;
+    use thread::Thread;
     use sync::{Arc, Mutex, StaticMutex, MUTEX_INIT, Condvar};
 
     #[test]
@@ -386,10 +387,10 @@ mod test {
     fn test_mutex_arc_poison() {
         let arc = Arc::new(Mutex::new(1i));
         let arc2 = arc.clone();
-        let _ = task::try(move|| {
+        let _ = Thread::spawn(move|| {
             let lock = arc2.lock();
             assert_eq!(*lock, 2);
-        });
+        }).join();
         let lock = arc.lock();
         assert_eq!(*lock, 1);
     }
@@ -414,7 +415,7 @@ mod test {
     fn test_mutex_arc_access_in_unwind() {
         let arc = Arc::new(Mutex::new(1i));
         let arc2 = arc.clone();
-        let _ = task::try(move|| -> () {
+        let _ = Thread::spawn(move|| -> () {
             struct Unwinder {
                 i: Arc<Mutex<int>>,
             }
@@ -425,7 +426,7 @@ mod test {
             }
             let _u = Unwinder { i: arc2 };
             panic!();
-        });
+        }).join();
         let lock = arc.lock();
         assert_eq!(*lock, 2);
     }

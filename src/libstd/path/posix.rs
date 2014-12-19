@@ -514,20 +514,20 @@ mod tests {
 
     #[test]
     fn test_null_byte() {
-        use task;
-        let result = task::try(move|| {
+        use thread::Thread;
+        let result = Thread::spawn(move|| {
             Path::new(b"foo/bar\0")
-        });
+        }).join();
         assert!(result.is_err());
 
-        let result = task::try(move|| {
+        let result = Thread::spawn(move|| {
             Path::new("test").set_filename(b"f\0o")
-        });
+        }).join();
         assert!(result.is_err());
 
-        let result = task::try(move|| {
+        let result = Thread::spawn(move|| {
             Path::new("test").push(b"f\0o");
-        });
+        }).join();
         assert!(result.is_err());
     }
 

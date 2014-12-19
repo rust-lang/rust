@@ -8,20 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(non_camel_case_types)]
-
-use core::prelude::*;
 use libc;
-use local::Local;
-use task::Task;
+use core::prelude::*;
+use self::imp::{make_handler, drop_handler};
 
-pub unsafe fn init() {
-    imp::init();
-}
-
-pub unsafe fn cleanup() {
-    imp::cleanup();
-}
+pub use self::imp::{init, cleanup};
 
 pub struct Handler {
     _data: *mut libc::c_void
@@ -29,146 +20,28 @@ pub struct Handler {
 
 impl Handler {
     pub unsafe fn new() -> Handler {
-        imp::make_handler()
+        make_handler()
     }
 }
 
 impl Drop for Handler {
     fn drop(&mut self) {
         unsafe {
-            imp::drop_handler(self);
+            drop_handler(self);
         }
-    }
-}
-
-pub unsafe fn report() {
-    // See the message below for why this is not emitted to the
-    // ^ Where did the message below go?
-    // task's logger. This has the additional conundrum of the
-    // logger may not be initialized just yet, meaning that an FFI
-    // call would happen to initialized it (calling out to libuv),
-    // and the FFI call needs 2MB of stack when we just ran out.
-
-    let task: Option<*mut Task> = Local::try_unsafe_borrow();
-
-    let name = task.and_then(|task| {
-        (*task).name.as_ref().map(|n| n.as_slice())
-    });
-
-    rterrln!("\ntask '{}' has overflowed its stack", name.unwrap_or("<unknown>"));
-}
-
-// get_task_info is called from an exception / signal handler.
-// It returns the guard page of the current task or 0 if that
-// guard page doesn't exist. None is returned if there's currently
-// no local task.
-#[cfg(any(windows, target_os = "linux", target_os = "macos"))]
-unsafe fn get_task_guard_page() -> Option<uint> {
-    let task: Option<*mut Task> = Local::try_unsafe_borrow();
-    task.map(|task| (&*task).stack_guard().unwrap_or(0))
-}
-
-#[cfg(windows)]
-#[allow(non_snake_case)]
-mod imp {
-    use core::ptr;
-    use core::mem;
-    use libc;
-    use libc::types::os::arch::extra::{LPVOID, DWORD, LONG, BOOL};
-    use stack;
-    use super::{Handler, get_task_guard_page, report};
-
-    // This is initialized in init() and only read from after
-    static mut PAGE_SIZE: uint = 0;
-
-    #[no_stack_check]
-    extern "system" fn vectored_handler(ExceptionInfo: *mut EXCEPTION_POINTERS) -> LONG {
-        unsafe {
-            let rec = &(*(*ExceptionInfo).ExceptionRecord);
-            let code = rec.ExceptionCode;
-
-            if code != EXCEPTION_STACK_OVERFLOW {
-                return EXCEPTION_CONTINUE_SEARCH;
-            }
-
-            // We're calling into functions with stack checks,
-            // however stack checks by limit should be disabled on Windows
-            stack::record_sp_limit(0);
-
-            if get_task_guard_page().is_some() {
-               report();
-            }
-
-            EXCEPTION_CONTINUE_SEARCH
-        }
-    }
-
-    pub unsafe fn init() {
-        let mut info = mem::zeroed();
-        libc::GetSystemInfo(&mut info);
-        PAGE_SIZE = info.dwPageSize as uint;
-
-        if AddVectoredExceptionHandler(0, vectored_handler) == ptr::null_mut() {
-            panic!("failed to install exception handler");
-        }
-
-        mem::forget(make_handler());
-    }
-
-    pub unsafe fn cleanup() {
-    }
-
-    pub unsafe fn make_handler() -> Handler {
-        if SetThreadStackGuarantee(&mut 0x5000) == 0 {
-            panic!("failed to reserve stack space for exception handling");
-        }
-
-        super::Handler { _data: 0i as *mut libc::c_void }
-    }
-
-    pub unsafe fn drop_handler(_handler: &mut Handler) {
-    }
-
-    pub struct EXCEPTION_RECORD {
-        pub ExceptionCode: DWORD,
-        pub ExceptionFlags: DWORD,
-        pub ExceptionRecord: *mut EXCEPTION_RECORD,
-        pub ExceptionAddress: LPVOID,
-        pub NumberParameters: DWORD,
-        pub ExceptionInformation: [LPVOID, ..EXCEPTION_MAXIMUM_PARAMETERS]
-    }
-
-    pub struct EXCEPTION_POINTERS {
-        pub ExceptionRecord: *mut EXCEPTION_RECORD,
-        pub ContextRecord: LPVOID
-    }
-
-    pub type PVECTORED_EXCEPTION_HANDLER = extern "system"
-            fn(ExceptionInfo: *mut EXCEPTION_POINTERS) -> LONG;
-
-    pub type ULONG = libc::c_ulong;
-
-    const EXCEPTION_CONTINUE_SEARCH: LONG = 0;
-    const EXCEPTION_MAXIMUM_PARAMETERS: uint = 15;
-    const EXCEPTION_STACK_OVERFLOW: DWORD = 0xc00000fd;
-
-    extern "system" {
-        fn AddVectoredExceptionHandler(FirstHandler: ULONG,
-                                       VectoredHandler: PVECTORED_EXCEPTION_HANDLER)
-                                      -> LPVOID;
-        fn SetThreadStackGuarantee(StackSizeInBytes: *mut ULONG) -> BOOL;
     }
 }
 
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 mod imp {
     use core::prelude::*;
-    use stack;
+    use sys_common::stack;
 
-    use super::{Handler, get_task_guard_page, report};
-    use core::mem;
-    use core::ptr;
-    use core::intrinsics;
+    use super::Handler;
+    use rt::util::report_overflow;
+    use mem;
+    use ptr;
+    use intrinsics;
     use self::signal::{siginfo, sigaction, SIGBUS, SIG_DFL,
                        SA_SIGINFO, SA_ONSTACK, sigaltstack,
                        SIGSTKSZ};
@@ -180,6 +53,8 @@ mod imp {
                                     MAP_PRIVATE,
                                     MAP_ANON,
                                     MAP_FAILED};
+
+    use sys_common::thread_info;
 
 
     // This is initialized in init() and only read from after
@@ -204,20 +79,16 @@ mod imp {
         // We're calling into functions with stack checks
         stack::record_sp_limit(0);
 
-        match get_task_guard_page() {
-            Some(guard) => {
-                let addr = (*info).si_addr as uint;
+        let guard = thread_info::stack_guard();
+        let addr = (*info).si_addr as uint;
 
-                if guard == 0 || addr < guard - PAGE_SIZE || addr >= guard {
-                    term(signum);
-                }
-
-                report();
-
-                intrinsics::abort()
-            }
-            None => term(signum)
+        if guard == 0 || addr < guard - PAGE_SIZE || addr >= guard {
+            term(signum);
         }
+
+        report_overflow();
+
+        intrinsics::abort()
     }
 
     static mut MAIN_ALTSTACK: *mut libc::c_void = 0 as *mut libc::c_void;
@@ -387,8 +258,7 @@ mod imp {
 }
 
 #[cfg(not(any(target_os = "linux",
-              target_os = "macos",
-              windows)))]
+              target_os = "macos")))]
 mod imp {
     use libc;
 

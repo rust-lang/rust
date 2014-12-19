@@ -39,18 +39,20 @@ use self::MyUpgrade::*;
 
 use core::prelude::*;
 
-use alloc::boxed::Box;
-use core::mem;
-use rustrt::local::Local;
-use rustrt::task::{Task, BlockedTask};
-
-use sync::atomic;
 use comm::Receiver;
+use comm::blocking::{mod, SignalToken};
+use core::mem;
+use sync::atomic;
 
 // Various states you can find a port in.
-const EMPTY: uint = 0;
-const DATA: uint = 1;
-const DISCONNECTED: uint = 2;
+const EMPTY: uint = 0;          // initial state: no data, no blocked reciever
+const DATA: uint = 1;           // data ready for receiver to take
+const DISCONNECTED: uint = 2;   // channel is disconnected OR upgraded
+// Any other value represents a pointer to a SignalToken value. The
+// protocol ensures that when the state moves *to* a pointer,
+// ownership of the token is given to the packet, and when the state
+// moves *from* a pointer, ownership of the token is transferred to
+// whoever changed the state.
 
 pub struct Packet<T> {
     // Internal state of the chan/port pair (stores the blocked task as well)
@@ -71,12 +73,12 @@ pub enum Failure<T> {
 pub enum UpgradeResult {
     UpSuccess,
     UpDisconnected,
-    UpWoke(BlockedTask),
+    UpWoke(SignalToken),
 }
 
 pub enum SelectionResult<T> {
-    SelCanceled(BlockedTask),
-    SelUpgraded(BlockedTask, Receiver<T>),
+    SelCanceled,
+    SelUpgraded(SignalToken, Receiver<T>),
     SelSuccess,
 }
 
@@ -118,12 +120,10 @@ impl<T: Send> Packet<T> {
             // Not possible, these are one-use channels
             DATA => unreachable!(),
 
-            // Anything else means that there was a task waiting on the other
-            // end. We leave the 'DATA' state inside so it'll pick it up on the
-            // other end.
-            n => unsafe {
-                let t = BlockedTask::cast_from_uint(n);
-                t.wake().map(|t| t.reawaken());
+            // There is a thread waiting on the other end. We leave the 'DATA'
+            // state inside so it'll pick it up on the other end.
+            ptr => unsafe {
+                SignalToken::cast_from_uint(ptr).signal();
                 Ok(())
             }
         }
@@ -142,23 +142,17 @@ impl<T: Send> Packet<T> {
         // Attempt to not block the task (it's a little expensive). If it looks
         // like we're not empty, then immediately go through to `try_recv`.
         if self.state.load(atomic::SeqCst) == EMPTY {
-            let t: Box<Task> = Local::take();
-            t.deschedule(1, |task| {
-                let n = unsafe { task.cast_to_uint() };
-                match self.state.compare_and_swap(EMPTY, n, atomic::SeqCst) {
-                    // Nothing on the channel, we legitimately block
-                    EMPTY => Ok(()),
+            let (wait_token, signal_token) = blocking::tokens();
+            let ptr = unsafe { signal_token.cast_to_uint() };
 
-                    // If there's data or it's a disconnected channel, then we
-                    // failed the cmpxchg, so we just wake ourselves back up
-                    DATA | DISCONNECTED => {
-                        unsafe { Err(BlockedTask::cast_from_uint(n)) }
-                    }
-
-                    // Only one thread is allowed to sleep on this port
-                    _ => unreachable!()
-                }
-            });
+            // race with senders to enter the blocking state
+            if self.state.compare_and_swap(EMPTY, ptr, atomic::SeqCst) == EMPTY {
+                wait_token.wait();
+                debug_assert!(self.state.load(atomic::SeqCst) != EMPTY);
+            } else {
+                // drop the signal token, since we never blocked
+                drop(unsafe { SignalToken::cast_from_uint(ptr) });
+            }
         }
 
         self.try_recv()
@@ -197,6 +191,9 @@ impl<T: Send> Packet<T> {
                     }
                 }
             }
+
+            // We are the sole receiver; there cannot be a blocking
+            // receiver already.
             _ => unreachable!()
         }
     }
@@ -223,7 +220,7 @@ impl<T: Send> Packet<T> {
             DISCONNECTED => { self.upgrade = prev; UpDisconnected }
 
             // If someone's waiting, we gotta wake them up
-            n => UpWoke(unsafe { BlockedTask::cast_from_uint(n) })
+            ptr => UpWoke(unsafe { SignalToken::cast_from_uint(ptr) })
         }
     }
 
@@ -232,9 +229,8 @@ impl<T: Send> Packet<T> {
             DATA | DISCONNECTED | EMPTY => {}
 
             // If someone's waiting, we gotta wake them up
-            n => unsafe {
-                let t = BlockedTask::cast_from_uint(n);
-                t.wake().map(|t| t.reawaken());
+            ptr => unsafe {
+                SignalToken::cast_from_uint(ptr).signal();
             }
         }
     }
@@ -286,13 +282,17 @@ impl<T: Send> Packet<T> {
 
     // Attempts to start selection on this port. This can either succeed, fail
     // because there is data, or fail because there is an upgrade pending.
-    pub fn start_selection(&mut self, task: BlockedTask) -> SelectionResult<T> {
-        let n = unsafe { task.cast_to_uint() };
-        match self.state.compare_and_swap(EMPTY, n, atomic::SeqCst) {
+    pub fn start_selection(&mut self, token: SignalToken) -> SelectionResult<T> {
+        let ptr = unsafe { token.cast_to_uint() };
+        match self.state.compare_and_swap(EMPTY, ptr, atomic::SeqCst) {
             EMPTY => SelSuccess,
-            DATA => SelCanceled(unsafe { BlockedTask::cast_from_uint(n) }),
+            DATA => {
+                drop(unsafe { SignalToken::cast_from_uint(ptr) });
+                SelCanceled
+            }
             DISCONNECTED if self.data.is_some() => {
-                SelCanceled(unsafe { BlockedTask::cast_from_uint(n) })
+                drop(unsafe { SignalToken::cast_from_uint(ptr) });
+                SelCanceled
             }
             DISCONNECTED => {
                 match mem::replace(&mut self.upgrade, SendUsed) {
@@ -300,8 +300,7 @@ impl<T: Send> Packet<T> {
                     // propagate upwards whether the upgrade can receive
                     // data
                     GoUp(upgrade) => {
-                        SelUpgraded(unsafe { BlockedTask::cast_from_uint(n) },
-                                    upgrade)
+                        SelUpgraded(unsafe { SignalToken::cast_from_uint(ptr) }, upgrade)
                     }
 
                     // If the other end disconnected without sending an
@@ -309,7 +308,8 @@ impl<T: Send> Packet<T> {
                     // disconnected).
                     up => {
                         self.upgrade = up;
-                        SelCanceled(unsafe { BlockedTask::cast_from_uint(n) })
+                        drop(unsafe { SignalToken::cast_from_uint(ptr) });
+                        SelCanceled
                     }
                 }
             }
@@ -331,7 +331,7 @@ impl<T: Send> Packet<T> {
 
             // If we've got a blocked task, then use an atomic to gain ownership
             // of it (may fail)
-            n => self.state.compare_and_swap(n, EMPTY, atomic::SeqCst)
+            ptr => self.state.compare_and_swap(ptr, EMPTY, atomic::SeqCst)
         };
 
         // Now that we've got ownership of our state, figure out what to do
@@ -358,11 +358,9 @@ impl<T: Send> Packet<T> {
                 }
             }
 
-            // We woke ourselves up from select. Assert that the task should be
-            // trashed and returned that we don't have any data.
-            n => {
-                let t = unsafe { BlockedTask::cast_from_uint(n) };
-                t.trash();
+            // We woke ourselves up from select.
+            ptr => unsafe {
+                drop(SignalToken::cast_from_uint(ptr));
                 Ok(false)
             }
         }

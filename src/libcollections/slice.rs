@@ -1344,8 +1344,7 @@ pub mod raw {
 
 #[cfg(test)]
 mod tests {
-    extern crate rustrt;
-
+    use std::boxed::Box;
     use std::cell::Cell;
     use std::default::Default;
     use std::mem;
@@ -1629,9 +1628,10 @@ mod tests {
     #[test]
     fn test_swap_remove_noncopyable() {
         // Tests that we don't accidentally run destructors twice.
-        let mut v = vec![rustrt::exclusive::Exclusive::new(()),
-                         rustrt::exclusive::Exclusive::new(()),
-                         rustrt::exclusive::Exclusive::new(())];
+        let mut v = Vec::new();
+        v.push(box 0u8);
+        v.push(box 0u8);
+        v.push(box 0u8);
         let mut _e = v.swap_remove(0);
         assert_eq!(v.len(), 2);
         _e = v.swap_remove(1);
@@ -1736,7 +1736,7 @@ mod tests {
         v2.dedup();
         /*
          * If the boxed pointers were leaked or otherwise misused, valgrind
-         * and/or rustrt should raise errors.
+         * and/or rt should raise errors.
          */
     }
 
@@ -1750,7 +1750,7 @@ mod tests {
         v2.dedup();
         /*
          * If the pointers were leaked or otherwise misused, valgrind and/or
-         * rustrt should raise errors.
+         * rt should raise errors.
          */
     }
 

@@ -8,38 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Runtime services, including the task scheduler and I/O dispatcher
+//! Runtime services
 //!
-//! The `rt` module provides the private runtime infrastructure necessary to support core language
-//! features like the exchange and local heap, logging, local data and unwinding. It also
-//! implements the default task scheduler and task model. Initialization routines are provided for
-//! setting up runtime resources in common configurations, including that used by `rustc` when
-//! generating executables.
-//!
-//! It is intended that the features provided by `rt` can be factored in a way such that the core
-//! library can be built with different 'profiles' for different use cases, e.g. excluding the task
-//! scheduler. A number of runtime features though are critical to the functioning of the language
-//! and an implementation must be provided regardless of the execution environment.
-//!
-//! Of foremost importance is the global exchange heap, in the module `heap`. Very little practical
-//! Rust code can be written without access to the global heap. Unlike most of `rt` the global heap
-//! is truly a global resource and generally operates independently of the rest of the runtime.
-//!
-//! All other runtime features are task-local, including the local heap, local storage, logging and
-//! the stack unwinder.
-//!
-//! The relationship between `rt` and the rest of the core library is not entirely clear yet and
-//! some modules will be moving into or out of `rt` as development proceeds.
-//!
-//! Several modules in `core` are clients of `rt`:
-//!
-//! * `std::task` - The user-facing interface to the Rust task model.
-//! * `std::local_data` - The interface to local data.
-//! * `std::unstable::lang` - Miscellaneous lang items, some of which rely on `std::rt`.
-//! * `std::cleanup` - Local heap destruction.
-//! * `std::io` - In the future `std::io` will use an `rt` implementation.
-//! * `std::logging`
-//! * `std::comm`
+//! The `rt` module provides a narrow set of runtime services,
+//! including the global heap (exported in `heap`) and unwinding and
+//! backtrace support. The APIs in this module are highly unstable,
+//! and should be considered as private implementation details for the
+//! time being.
 
 #![experimental]
 
@@ -48,65 +23,51 @@
 
 #![allow(dead_code)]
 
-use borrow::IntoCow;
-use failure;
-use rustrt;
 use os;
 use thunk::Thunk;
+use kinds::Send;
+use thread::Thread;
+use ops::FnOnce;
+use sys;
+use sys_common;
+use sys_common::thread_info::{mod, NewThread};
 
 // Reexport some of our utilities which are expected by other crates.
 pub use self::util::{default_sched_threads, min_stack, running_on_valgrind};
+pub use self::unwind::{begin_unwind, begin_unwind_fmt};
 
-// Reexport functionality from librustrt and other crates underneath the
-// standard library which work together to create the entire runtime.
+// Reexport some functionality from liballoc.
 pub use alloc::heap;
-pub use rustrt::{begin_unwind, begin_unwind_fmt, at_exit};
 
 // Simple backtrace functionality (to print on panic)
 pub mod backtrace;
 
-// Just stuff
-mod util;
+// Internals
+mod macros;
 
-/// One-time runtime initialization.
-///
-/// Initializes global state, including frobbing
-/// the crate's logging flags, registering GC
-/// metadata, and storing the process arguments.
-#[allow(experimental)]
-pub fn init(argc: int, argv: *const *const u8) {
-    rustrt::init(argc, argv);
-    unsafe { rustrt::unwind::register(failure::on_fail); }
-}
+// These should be refactored/moved/made private over time
+pub mod util;
+pub mod unwind;
+pub mod args;
+
+mod at_exit_imp;
+mod libunwind;
+
+/// The default error code of the rust runtime if the main task panics instead
+/// of exiting cleanly.
+pub const DEFAULT_ERROR_CODE: int = 101;
 
 #[cfg(any(windows, android))]
-static OS_DEFAULT_STACK_ESTIMATE: uint = 1 << 20;
+const OS_DEFAULT_STACK_ESTIMATE: uint = 1 << 20;
 #[cfg(all(unix, not(android)))]
-static OS_DEFAULT_STACK_ESTIMATE: uint = 2 * (1 << 20);
+const OS_DEFAULT_STACK_ESTIMATE: uint = 2 * (1 << 20);
 
 #[cfg(not(test))]
 #[lang = "start"]
 fn lang_start(main: *const u8, argc: int, argv: *const *const u8) -> int {
     use mem;
-    start(argc, argv, Thunk::new(move|| {
-        let main: extern "Rust" fn() = unsafe { mem::transmute(main) };
-        main();
-    }))
-}
-
-/// Executes the given procedure after initializing the runtime with the given
-/// argc/argv.
-///
-/// This procedure is guaranteed to run on the thread calling this function, but
-/// the stack bounds for this rust task will *not* be set. Care must be taken
-/// for this function to not overflow its stack.
-///
-/// This function will only return once *all* native threads in the system have
-/// exited.
-pub fn start(argc: int, argv: *const *const u8, main: Thunk) -> int {
     use prelude::*;
     use rt;
-    use rustrt::task::Task;
 
     let something_around_the_top_of_the_stack = 1;
     let addr = &something_around_the_top_of_the_stack as *const int;
@@ -117,40 +78,76 @@ pub fn start(argc: int, argv: *const *const u8, main: Thunk) -> int {
     // frames above our current position.
     let my_stack_bottom = my_stack_top + 20000 - OS_DEFAULT_STACK_ESTIMATE;
 
-    // When using libgreen, one of the first things that we do is to turn off
-    // the SIGPIPE signal (set it to ignore). By default, some platforms will
-    // send a *signal* when a EPIPE error would otherwise be delivered. This
-    // runtime doesn't install a SIGPIPE handler, causing it to kill the
-    // program, which isn't exactly what we want!
-    //
-    // Hence, we set SIGPIPE to ignore when the program starts up in order to
-    // prevent this problem.
-    #[cfg(windows)] fn ignore_sigpipe() {}
-    #[cfg(unix)] fn ignore_sigpipe() {
-        use libc;
-        use libc::funcs::posix01::signal::signal;
-        unsafe {
-            assert!(signal(libc::SIGPIPE, libc::SIG_IGN) != -1);
-        }
-    }
-    ignore_sigpipe();
+    let failed = unsafe {
+        // First, make sure we don't trigger any __morestack overflow checks,
+        // and next set up our stack to have a guard page and run through our
+        // own fault handlers if we hit it.
+        sys_common::stack::record_os_managed_stack_bounds(my_stack_bottom,
+                                                          my_stack_top);
+        sys::thread::guard::init();
+        sys::stack_overflow::init();
 
-    init(argc, argv);
-    let mut exit_code = None;
-    let mut main = Some(main);
-    let mut task = box Task::new(Some((my_stack_bottom, my_stack_top)),
-                                 Some(rustrt::thread::main_guard_page()));
-    task.name = Some("<main>".into_cow());
-    drop(task.run(|| {
-        unsafe {
-            rustrt::stack::record_os_managed_stack_bounds(my_stack_bottom, my_stack_top);
+        // Next, set up the current Thread with the guard information we just
+        // created. Note that this isn't necessary in general for new threads,
+        // but we just do this to name the main thread and to give it correct
+        // info about the stack bounds.
+        let thread: Thread = NewThread::new(Some("<main>".into_string()));
+        thread_info::set((my_stack_bottom, my_stack_top),
+                         sys::thread::guard::main(),
+                         thread);
+
+        // By default, some platforms will send a *signal* when a EPIPE error
+        // would otherwise be delivered. This runtime doesn't install a SIGPIPE
+        // handler, causing it to kill the program, which isn't exactly what we
+        // want!
+        //
+        // Hence, we set SIGPIPE to ignore when the program starts up in order
+        // to prevent this problem.
+        #[cfg(windows)] fn ignore_sigpipe() {}
+        #[cfg(unix)] fn ignore_sigpipe() {
+            use libc;
+            use libc::funcs::posix01::signal::signal;
+            unsafe {
+                assert!(signal(libc::SIGPIPE, libc::SIG_IGN) != -1);
+            }
         }
-        (main.take().unwrap()).invoke(());
-        exit_code = Some(os::get_exit_status());
-    }).destroy());
-    unsafe { rt::cleanup(); }
-    // If the exit code wasn't set, then the task block must have panicked.
-    return exit_code.unwrap_or(rustrt::DEFAULT_ERROR_CODE);
+        ignore_sigpipe();
+
+        // Store our args if necessary in a squirreled away location
+        args::init(argc, argv);
+
+        // And finally, let's run some code!
+        let res = unwind::try(|| {
+            let main: fn() = mem::transmute(main);
+            main();
+        });
+        cleanup();
+        res.is_err()
+    };
+
+    // If the exit code wasn't set, then the try block must have panicked.
+    if failed {
+        rt::DEFAULT_ERROR_CODE
+    } else {
+        os::get_exit_status()
+    }
+}
+
+/// Enqueues a procedure to run when the runtime is cleaned up
+///
+/// The procedure passed to this function will be executed as part of the
+/// runtime cleanup phase. For normal rust programs, this means that it will run
+/// after all other tasks have exited.
+///
+/// The procedure is *not* executed with a local `Task` available to it, so
+/// primitives like logging, I/O, channels, spawning, etc, are *not* available.
+/// This is meant for "bare bones" usage to clean up runtime details, this is
+/// not meant as a general-purpose "let's clean everything up" function.
+///
+/// It is forbidden for procedures to register more `at_exit` handlers when they
+/// are running, and doing so will lead to a process abort.
+pub fn at_exit<F:FnOnce()+Send>(f: F) {
+    at_exit_imp::push(Thunk::new(f));
 }
 
 /// One-time runtime cleanup.
@@ -163,5 +160,10 @@ pub fn start(argc: int, argv: *const *const u8, main: Thunk) -> int {
 /// Invoking cleanup while portions of the runtime are still in use may cause
 /// undefined behavior.
 pub unsafe fn cleanup() {
-    rustrt::cleanup();
+    args::cleanup();
+    sys::stack_overflow::cleanup();
+    // FIXME: (#20012): the resources being cleaned up by at_exit
+    // currently are not prepared for cleanup to happen asynchronously
+    // with detached threads using the resources; for now, we leak.
+    // at_exit_imp::cleanup();
 }

@@ -69,7 +69,7 @@ use std::num::{Float, FloatMath, Int};
 use std::os;
 use std::str::FromStr;
 use std::string::String;
-use std::task::TaskBuilder;
+use std::thread::{mod, Thread};
 use std::time::Duration;
 use std::thunk::{Thunk, Invoke};
 
@@ -1121,28 +1121,27 @@ pub fn run_test(opts: &TestOpts,
                       monitor_ch: Sender<MonitorMsg>,
                       nocapture: bool,
                       testfn: Thunk) {
-        spawn(move || {
+        Thread::spawn(move || {
             let (tx, rx) = channel();
             let mut reader = ChanReader::new(rx);
             let stdout = ChanWriter::new(tx.clone());
             let stderr = ChanWriter::new(tx);
-            let mut task = TaskBuilder::new().named(match desc.name {
+            let mut cfg = thread::Builder::new().name(match desc.name {
                 DynTestName(ref name) => name.clone().to_string(),
                 StaticTestName(name) => name.to_string(),
             });
             if nocapture {
                 drop((stdout, stderr));
             } else {
-                task = task.stdout(box stdout as Box<Writer + Send>);
-                task = task.stderr(box stderr as Box<Writer + Send>);
+                cfg = cfg.stdout(box stdout as Box<Writer + Send>);
+                cfg = cfg.stderr(box stderr as Box<Writer + Send>);
             }
-            let result_future = task.try_future(move || testfn.invoke(()));
 
+            let result_guard = cfg.spawn(move || { testfn.invoke(()) });
             let stdout = reader.read_to_end().unwrap().into_iter().collect();
-            let task_result = result_future.into_inner();
-            let test_result = calc_result(&desc, task_result);
+            let test_result = calc_result(&desc, result_guard.join());
             monitor_ch.send((desc.clone(), test_result, stdout));
-        })
+        }).detach();
     }
 
     match testfn {

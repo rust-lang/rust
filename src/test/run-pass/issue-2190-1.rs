@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::task::TaskBuilder;
+use std::thread::Builder;
 use std::thunk::Thunk;
 
 static generations: uint = 1024+256+128+49;
 
 fn spawn(f: Thunk) {
-    TaskBuilder::new().stack_size(32 * 1024).spawn(move|| f.invoke(()))
+    Builder::new().stack_size(32 * 1024).spawn(move|| f.invoke(())).detach()
 }
 
 fn child_no(x: uint) -> Thunk {

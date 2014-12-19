@@ -67,17 +67,17 @@
 //! }
 //! ```
 
+use string::String;
+use hash;
+use fmt;
+use kinds::marker;
+use mem;
 use core::prelude::*;
 
-use collections::string::String;
-use core::hash;
-use core::fmt;
-use core::kinds::{Sized, marker};
-use core::mem;
-use core::ptr;
-use core::raw::Slice;
-use core::slice;
-use core::str;
+use ptr;
+use raw::Slice;
+use slice;
+use str;
 use libc;
 
 /// The representation of a C String.
@@ -534,9 +534,9 @@ pub unsafe fn from_c_multistring<F>(buf: *const libc::c_char,
 
 #[cfg(test)]
 mod tests {
-    use std::prelude::*;
-    use std::ptr;
-    use std::task;
+    use prelude::*;
+    use ptr;
+    use thread::Thread;
     use libc;
 
     use super::*;
@@ -637,7 +637,7 @@ mod tests {
 
     #[test]
     fn test_to_c_str_fail() {
-        assert!(task::try(move|| { "he\x00llo".to_c_str() }).is_err());
+        assert!(Thread::spawn(move|| { "he\x00llo".to_c_str() }).join().is_err());
     }
 
     #[test]
@@ -726,9 +726,11 @@ mod tests {
 
 #[cfg(test)]
 mod bench {
-    use test::Bencher;
+    extern crate test;
+
+    use self::test::Bencher;
     use libc;
-    use std::prelude::*;
+    use prelude::*;
 
     #[inline]
     fn check(s: &str, c_str: *const libc::c_char) {

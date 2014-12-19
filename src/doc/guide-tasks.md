@@ -1,5 +1,7 @@
 % The Rust Tasks and Communication Guide
 
+**NOTE** This guide is badly out of date an needs to be rewritten.
+
 # Introduction
 
 Rust provides safe concurrent abstractions through a number of core library
@@ -22,7 +24,7 @@ from shared mutable state.
 At its simplest, creating a task is a matter of calling the `spawn` function
 with a closure argument. `spawn` executes the closure in the new task.
 
-```{rust}
+```{rust,ignore}
 # use std::task::spawn;
 
 // Print something profound in a different task using a named function
@@ -49,7 +51,7 @@ closure is limited to capturing `Send`-able data from its environment
 ensures that `spawn` can safely move the entire closure and all its
 associated state into an entirely different task for execution.
 
-```{rust}
+```{rust,ignore}
 # use std::task::spawn;
 # fn generate_task_number() -> int { 0 }
 // Generate some state locally
@@ -75,7 +77,7 @@ The simplest way to create a channel is to use the `channel` function to create 
 of a channel, and a **receiver** is the receiving endpoint. Consider the following
 example of calculating two results concurrently:
 
-```{rust}
+```{rust,ignore}
 # use std::task::spawn;
 
 let (tx, rx): (Sender<int>, Receiver<int>) = channel();
@@ -96,7 +98,7 @@ stream for sending and receiving integers (the left-hand side of the `let`,
 `(tx, rx)`, is an example of a destructuring let: the pattern separates a tuple
 into its component parts).
 
-```{rust}
+```{rust,ignore}
 let (tx, rx): (Sender<int>, Receiver<int>) = channel();
 ```
 
@@ -104,7 +106,7 @@ The child task will use the sender to send data to the parent task, which will
 wait to receive the data on the receiver. The next statement spawns the child
 task.
 
-```{rust}
+```{rust,ignore}
 # use std::task::spawn;
 # fn some_expensive_computation() -> int { 42 }
 # let (tx, rx) = channel();
@@ -123,7 +125,7 @@ computation, then sends the result over the captured channel.
 Finally, the parent continues with some other expensive computation, then waits
 for the child's result to arrive on the receiver:
 
-```{rust}
+```{rust,ignore}
 # fn some_other_expensive_computation() {}
 # let (tx, rx) = channel::<int>();
 # tx.send(0);
@@ -154,7 +156,7 @@ spawn(move || {
 
 Instead we can clone the `tx`, which allows for multiple senders.
 
-```{rust}
+```{rust,ignore}
 let (tx, rx) = channel();
 
 for init_val in range(0u, 3) {
@@ -179,7 +181,7 @@ Note that the above cloning example is somewhat contrived since you could also
 simply use three `Sender` pairs, but it serves to illustrate the point. For
 reference, written with multiple streams, it might look like the example below.
 
-```{rust}
+```{rust,ignore}
 # use std::task::spawn;
 
 // Create a vector of ports, one for each child task
@@ -203,7 +205,7 @@ getting the result later.
 
 The basic example below illustrates this.
 
-```{rust}
+```{rust,ignore}
 use std::sync::Future;
 
 # fn main() {
@@ -230,7 +232,7 @@ called.
 Here is another example showing how futures allow you to background
 computations. The workload will be distributed on the available cores.
 
-```{rust}
+```{rust,ignore}
 # use std::num::Float;
 # use std::sync::Future;
 fn partial_sum(start: uint) -> f64 {
@@ -268,7 +270,7 @@ Here is a small example showing how to use Arcs. We wish to run concurrently
 several computations on a single large vector of floats. Each task needs the
 full vector to perform its duty.
 
-```{rust}
+```{rust,ignore}
 use std::num::Float;
 use std::rand;
 use std::sync::Arc;
@@ -295,7 +297,7 @@ The function `pnorm` performs a simple computation on the vector (it computes
 the sum of its items at the power given as argument and takes the inverse power
 of this value). The Arc on the vector is created by the line:
 
-```{rust}
+```{rust,ignore}
 # use std::rand;
 # use std::sync::Arc;
 # fn main() {
@@ -309,7 +311,7 @@ the wrapper and not its contents. Within the task's procedure, the captured
 Arc reference can be used as a shared reference to the underlying vector as
 if it were local.
 
-```{rust}
+```{rust,ignore}
 # use std::rand;
 # use std::sync::Arc;
 # fn pnorm(nums: &[f64], p: uint) -> f64 { 4.0 }
@@ -346,17 +348,17 @@ and `()`, callers can pattern-match on a result to check whether it's an `Ok`
 result with an `int` field (representing a successful result) or an `Err` result
 (representing termination with an error).
 
-```{rust}
-# use std::task;
+```{rust,ignore}
+# use std::thread::Thread;
 # fn some_condition() -> bool { false }
 # fn calculate_result() -> int { 0 }
-let result: Result<int, Box<std::any::Any + Send>> = task::try(move || {
+let result: Result<int, Box<std::any::Any + Send>> = Thread::spawn(move || {
     if some_condition() {
         calculate_result()
     } else {
         panic!("oops!");
     }
-});
+}).join();
 assert!(result.is_err());
 ```
 

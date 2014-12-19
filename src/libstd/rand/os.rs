@@ -340,7 +340,7 @@ mod test {
 
     use super::OsRng;
     use rand::Rng;
-    use task;
+    use thread::Thread;
 
     #[test]
     fn test_os_rng() {
@@ -360,25 +360,26 @@ mod test {
         for _ in range(0u, 20) {
             let (tx, rx) = channel();
             txs.push(tx);
-            task::spawn(move|| {
+
+            Thread::spawn(move|| {
                 // wait until all the tasks are ready to go.
                 rx.recv();
 
                 // deschedule to attempt to interleave things as much
                 // as possible (XXX: is this a good test?)
                 let mut r = OsRng::new().unwrap();
-                task::deschedule();
+                Thread::yield_now();
                 let mut v = [0u8, .. 1000];
 
                 for _ in range(0u, 100) {
                     r.next_u32();
-                    task::deschedule();
+                    Thread::yield_now();
                     r.next_u64();
-                    task::deschedule();
+                    Thread::yield_now();
                     r.fill_bytes(&mut v);
-                    task::deschedule();
+                    Thread::yield_now();
                 }
-            })
+            }).detach();
         }
 
         // start all the tasks

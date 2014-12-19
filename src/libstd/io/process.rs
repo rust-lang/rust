@@ -30,6 +30,7 @@ use hash::Hash;
 use std::hash::sip::SipState;
 use io::pipe::{PipeStream, PipePair};
 use path::BytesContainer;
+use thread::Thread;
 
 use sys;
 use sys::fs::FileDesc;
@@ -693,10 +694,12 @@ impl Process {
         fn read(stream: Option<io::PipeStream>) -> Receiver<IoResult<Vec<u8>>> {
             let (tx, rx) = channel();
             match stream {
-                Some(stream) => spawn(move |:| {
-                    let mut stream = stream;
-                    tx.send(stream.read_to_end())
-                }),
+                Some(stream) => {
+                    Thread::spawn(move |:| {
+                        let mut stream = stream;
+                        tx.send(stream.read_to_end())
+                    }).detach();
+                }
                 None => tx.send(Ok(Vec::new()))
             }
             rx

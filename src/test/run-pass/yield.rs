@@ -8,18 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::task;
+use std::thread::Thread;
 
 pub fn main() {
-    let mut result = task::try_future(child);
+    let mut result = Thread::spawn(child);
     println!("1");
-    task::deschedule();
+    Thread::yield_now();
     println!("2");
-    task::deschedule();
+    Thread::yield_now();
     println!("3");
-    result.unwrap();
+    result.join();
 }
 
 fn child() {
-    println!("4"); task::deschedule(); println!("5"); task::deschedule(); println!("6");
+    println!("4"); Thread::yield_now(); println!("5"); Thread::yield_now(); println!("6");
 }

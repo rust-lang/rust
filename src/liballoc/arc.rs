@@ -39,6 +39,7 @@ use heap::deallocate;
 ///
 /// ```rust
 /// use std::sync::Arc;
+/// use std::thread::Thread;
 ///
 /// fn main() {
 ///     let numbers = Vec::from_fn(100, |i| i as f32);
@@ -47,11 +48,11 @@ use heap::deallocate;
 ///     for _ in range(0u, 10) {
 ///         let child_numbers = shared_numbers.clone();
 ///
-///         spawn(move || {
+///         Thread::spawn(move || {
 ///             let local_numbers = child_numbers.as_slice();
 ///
 ///             // Work with the local numbers
-///         });
+///         }).detach();
 ///     }
 /// }
 /// ```

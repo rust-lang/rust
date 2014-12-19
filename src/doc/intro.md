@@ -389,11 +389,13 @@ safe concurrent programs.
 Here's an example of a concurrent Rust program:
 
 ```{rust}
+use std::thread::Thread;
+
 fn main() {
     for _ in range(0u, 10u) {
-        spawn(move || {
+        Thread::spawn(move || {
             println!("Hello, world!");
-        });
+        }).detach();
     }
 }
 ```
@@ -403,7 +405,8 @@ This program creates ten threads, who all print `Hello, world!`. The
 double bars `||`. (The `move` keyword indicates that the closure takes
 ownership of any data it uses; we'll have more on the significance of
 this shortly.) This closure is executed in a new thread created by
-`spawn`.
+`spawn`. The `detach` method means that the child thread is allowed to
+outlive its parent.
 
 One common form of problem in concurrent programs is a 'data race.'
 This occurs when two different threads attempt to access the same
@@ -418,13 +421,15 @@ problem.
 Let's see an example. This Rust code will not compile:
 
 ```{rust,ignore}
+use std::thread::Thread;
+
 fn main() {
     let mut numbers = vec![1i, 2i, 3i];
 
     for i in range(0u, 3u) {
-        spawn(move || {
+        Thread::spawn(move || {
             for j in range(0, 3) { numbers[j] += 1 }
-        });
+        }).detach();
     }
 }
 ```
@@ -469,6 +474,7 @@ mutation doesn't cause a data race.
 Here's what using an Arc with a Mutex looks like:
 
 ```{rust}
+use std::thread::Thread;
 use std::sync::{Arc,Mutex};
 
 fn main() {
@@ -476,13 +482,13 @@ fn main() {
 
     for i in range(0u, 3u) {
         let number = numbers.clone();
-        spawn(move || {
+        Thread::spawn(move || {
             let mut array = number.lock();
 
             (*array)[i] += 1;
 
             println!("numbers[{}] is {}", i, (*array)[i]);
-        });
+        }).detach();
     }
 }
 ```
@@ -532,13 +538,15 @@ As an example, Rust's ownership system is _entirely_ at compile time. The
 safety check that makes this an error about moved values:
 
 ```{rust,ignore}
+use std::thread::Thread;
+
 fn main() {
     let vec = vec![1i, 2, 3];
 
     for i in range(1u, 3) {
-        spawn(move || {
+        Thread::spawn(move || {
             println!("{}", vec[i]);
-        });
+        }).detach();
     }
 }
 ```

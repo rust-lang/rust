@@ -353,13 +353,15 @@ macro_rules! vec {
 /// # Example
 ///
 /// ```
+/// use std::thread::Thread;
+///
 /// let (tx1, rx1) = channel();
 /// let (tx2, rx2) = channel();
 /// # fn long_running_task() {}
 /// # fn calculate_the_answer() -> int { 42i }
 ///
-/// spawn(move|| { long_running_task(); tx1.send(()) });
-/// spawn(move|| { tx2.send(calculate_the_answer()) });
+/// Thread::spawn(move|| { long_running_task(); tx1.send(()) }).detach();
+/// Thread::spawn(move|| { tx2.send(calculate_the_answer()) }).detach();
 ///
 /// select! (
 ///     () = rx1.recv() => println!("the long running task finished first"),

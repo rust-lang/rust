@@ -22,7 +22,7 @@ extern crate getopts;
 
 use std::os;
 use std::result::Result::{Ok, Err};
-use std::task;
+use std::thread::Thread;
 use std::time::Duration;
 
 fn fib(n: int) -> int {
@@ -34,15 +34,15 @@ fn fib(n: int) -> int {
         } else {
             let (tx1, rx) = channel();
             let tx2 = tx1.clone();
-            task::spawn(move|| pfib(&tx2, n - 1));
+            Thread::spawn(move|| pfib(&tx2, n - 1)).detach();
             let tx2 = tx1.clone();
-            task::spawn(move|| pfib(&tx2, n - 2));
+            Thread::spawn(move|| pfib(&tx2, n - 2)).detach();
             tx.send(rx.recv() + rx.recv());
         }
     }
 
     let (tx, rx) = channel();
-    spawn(move|| pfib(&tx, n) );
+    Thread::spawn(move|| pfib(&tx, n) ).detach();
     rx.recv()
 }
 
@@ -77,12 +77,12 @@ fn stress_task(id: int) {
 fn stress(num_tasks: int) {
     let mut results = Vec::new();
     for i in range(0, num_tasks) {
-        results.push(task::try_future(move|| {
+        results.push(Thread::spawn(move|| {
             stress_task(i);
         }));
     }
     for r in results.into_iter() {
-        r.unwrap();
+        let _ = r.join();
     }
 }
 

@@ -15,17 +15,18 @@ use sync::{Mutex, Condvar};
 ///
 /// ```rust
 /// use std::sync::{Arc, Barrier};
+/// use std::thread::Thread;
 ///
 /// let barrier = Arc::new(Barrier::new(10));
 /// for _ in range(0u, 10) {
 ///     let c = barrier.clone();
 ///     // The same messages will be printed together.
 ///     // You will NOT see any interleaving.
-///     spawn(move|| {
+///     Thread::spawn(move|| {
 ///         println!("before wait");
 ///         c.wait();
 ///         println!("after wait");
-///     });
+///     }).detach();
 /// }
 /// ```
 pub struct Barrier {

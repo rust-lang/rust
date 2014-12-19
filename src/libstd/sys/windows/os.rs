@@ -8,17 +8,30 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! Implementation of `std::os` functionality for Windows
+
 // FIXME: move various extern bindings from here into liblibc or
 // something similar
 
-use libc;
-use libc::{c_int, c_char, c_void};
 use prelude::*;
+
+use fmt;
 use io::{IoResult, IoError};
+use libc::{c_int, c_char, c_void};
+use libc;
+use os;
+use path::{Path, GenericPath, BytesContainer};
+use ptr::{mod, RawPtr};
+use sync::atomic::{AtomicInt, INIT_ATOMIC_INT, SeqCst};
 use sys::fs::FileDesc;
-use ptr;
+use option::Option;
+use option::Option::{Some, None};
+use slice;
 
 use os::TMPBUF_SZ;
+use libc::types::os::arch::extra::DWORD;
+
+const BUF_BYTES : uint = 2048u;
 
 pub fn errno() -> uint {
     use libc::types::os::arch::extra::DWORD;
@@ -99,5 +112,187 @@ pub unsafe fn pipe() -> IoResult<(FileDesc, FileDesc)> {
             Ok((FileDesc::new(fds[0], true), FileDesc::new(fds[1], true)))
         }
         _ => Err(IoError::last_error()),
+    }
+}
+
+pub fn fill_utf16_buf_and_decode(f: |*mut u16, DWORD| -> DWORD) -> Option<String> {
+    unsafe {
+        let mut n = TMPBUF_SZ as DWORD;
+        let mut res = None;
+        let mut done = false;
+        while !done {
+            let mut buf = Vec::from_elem(n as uint, 0u16);
+            let k = f(buf.as_mut_ptr(), n);
+            if k == (0 as DWORD) {
+                done = true;
+            } else if k == n &&
+                      libc::GetLastError() ==
+                      libc::ERROR_INSUFFICIENT_BUFFER as DWORD {
+                n *= 2 as DWORD;
+            } else if k >= n {
+                n = k;
+            } else {
+                done = true;
+            }
+            if k != 0 && done {
+                let sub = buf.slice(0, k as uint);
+                // We want to explicitly catch the case when the
+                // closure returned invalid UTF-16, rather than
+                // set `res` to None and continue.
+                let s = String::from_utf16(sub)
+                    .expect("fill_utf16_buf_and_decode: closure created invalid UTF-16");
+                res = Some(s)
+            }
+        }
+        return res;
+    }
+}
+
+pub fn getcwd() -> IoResult<Path> {
+    use libc::DWORD;
+    use libc::GetCurrentDirectoryW;
+    use io::OtherIoError;
+
+    let mut buf = [0 as u16, ..BUF_BYTES];
+    unsafe {
+        if libc::GetCurrentDirectoryW(buf.len() as DWORD, buf.as_mut_ptr()) == 0 as DWORD {
+            return Err(IoError::last_error());
+        }
+    }
+
+    match String::from_utf16(::str::truncate_utf16_at_nul(&buf)) {
+        Some(ref cwd) => Ok(Path::new(cwd)),
+        None => Err(IoError {
+            kind: OtherIoError,
+            desc: "GetCurrentDirectoryW returned invalid UTF-16",
+            detail: None,
+        }),
+    }
+}
+
+pub unsafe fn get_env_pairs() -> Vec<Vec<u8>> {
+    use libc::funcs::extra::kernel32::{
+        GetEnvironmentStringsW,
+        FreeEnvironmentStringsW
+    };
+    let ch = GetEnvironmentStringsW();
+    if ch as uint == 0 {
+        panic!("os::env() failure getting env string from OS: {}",
+               os::last_os_error());
+    }
+    // Here, we lossily decode the string as UTF16.
+    //
+    // The docs suggest that the result should be in Unicode, but
+    // Windows doesn't guarantee it's actually UTF16 -- it doesn't
+    // validate the environment string passed to CreateProcess nor
+    // SetEnvironmentVariable.  Yet, it's unlikely that returning a
+    // raw u16 buffer would be of practical use since the result would
+    // be inherently platform-dependent and introduce additional
+    // complexity to this code.
+    //
+    // Using the non-Unicode version of GetEnvironmentStrings is even
+    // worse since the result is in an OEM code page.  Characters that
+    // can't be encoded in the code page would be turned into question
+    // marks.
+    let mut result = Vec::new();
+    let mut i = 0;
+    while *ch.offset(i) != 0 {
+        let p = &*ch.offset(i);
+        let mut len = 0;
+        while *(p as *const _).offset(len) != 0 {
+            len += 1;
+        }
+        let p = p as *const u16;
+        let s = slice::from_raw_buf(&p, len as uint);
+        result.push(String::from_utf16_lossy(s).into_bytes());
+        i += len as int + 1;
+    }
+    FreeEnvironmentStringsW(ch);
+    result
+}
+
+pub fn split_paths(unparsed: &[u8]) -> Vec<Path> {
+    // On Windows, the PATH environment variable is semicolon separated.  Double
+    // quotes are used as a way of introducing literal semicolons (since
+    // c:\some;dir is a valid Windows path). Double quotes are not themselves
+    // permitted in path names, so there is no way to escape a double quote.
+    // Quoted regions can appear in arbitrary locations, so
+    //
+    //   c:\foo;c:\som"e;di"r;c:\bar
+    //
+    // Should parse as [c:\foo, c:\some;dir, c:\bar].
+    //
+    // (The above is based on testing; there is no clear reference available
+    // for the grammar.)
+
+    let mut parsed = Vec::new();
+    let mut in_progress = Vec::new();
+    let mut in_quote = false;
+
+    for b in unparsed.iter() {
+        match *b {
+            b';' if !in_quote => {
+                parsed.push(Path::new(in_progress.as_slice()));
+                in_progress.truncate(0)
+            }
+            b'"' => {
+                in_quote = !in_quote;
+            }
+            _  => {
+                in_progress.push(*b);
+            }
+        }
+    }
+    parsed.push(Path::new(in_progress));
+    parsed
+}
+
+pub fn join_paths<T: BytesContainer>(paths: &[T]) -> Result<Vec<u8>, &'static str> {
+    let mut joined = Vec::new();
+    let sep = b';';
+
+    for (i, path) in paths.iter().map(|p| p.container_as_bytes()).enumerate() {
+        if i > 0 { joined.push(sep) }
+        if path.contains(&b'"') {
+            return Err("path segment contains `\"`");
+        } else if path.contains(&sep) {
+            joined.push(b'"');
+            joined.push_all(path);
+            joined.push(b'"');
+        } else {
+            joined.push_all(path);
+        }
+    }
+
+    Ok(joined)
+}
+
+pub fn load_self() -> Option<Vec<u8>> {
+    unsafe {
+        fill_utf16_buf_and_decode(|buf, sz| {
+            libc::GetModuleFileNameW(0u as libc::DWORD, buf, sz)
+        }).map(|s| s.into_string().into_bytes())
+    }
+}
+
+pub fn chdir(p: &Path) -> IoResult<()> {
+    let mut p = p.as_str().unwrap().utf16_units().collect::<Vec<u16>>();
+    p.push(0);
+
+    unsafe {
+        match libc::SetCurrentDirectoryW(p.as_ptr()) != (0 as libc::BOOL) {
+            true => Ok(()),
+            false => Err(IoError::last_error()),
+        }
+    }
+}
+
+pub fn page_size() -> uint {
+    use mem;
+    unsafe {
+        let mut info = mem::zeroed();
+        libc::GetSystemInfo(&mut info);
+
+        return info.dwPageSize as uint;
     }
 }

@@ -12,7 +12,7 @@
 
 use core::prelude::*;
 
-use task::{spawn};
+use thread::Thread;
 use comm::{channel, Sender, Receiver};
 use sync::{Arc, Mutex};
 use thunk::Thunk;
@@ -105,7 +105,7 @@ impl TaskPool {
 }
 
 fn spawn_in_pool(jobs: Arc<Mutex<Receiver<Thunk>>>) {
-    spawn(move |:| {
+    Thread::spawn(move |:| {
         // Will spawn a new task on panic unless it is cancelled.
         let sentinel = Sentinel::new(&jobs);
 
@@ -126,7 +126,7 @@ fn spawn_in_pool(jobs: Arc<Mutex<Receiver<Thunk>>>) {
         }
 
         sentinel.cancel();
-    })
+    }).detach();
 }
 
 #[cfg(test)]
@@ -206,4 +206,3 @@ mod test {
         waiter.wait();
     }
 }
-

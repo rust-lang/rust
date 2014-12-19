@@ -34,6 +34,7 @@ macro_rules! helper_init { (static $name:ident: Helper<$m:ty>) => (
     };
 ) }
 
+pub mod backtrace;
 pub mod c;
 pub mod ext;
 pub mod condvar;
@@ -44,8 +45,10 @@ pub mod os;
 pub mod pipe;
 pub mod process;
 pub mod rwlock;
+pub mod stack_overflow;
 pub mod sync;
 pub mod tcp;
+pub mod thread;
 pub mod thread_local;
 pub mod timer;
 pub mod tty;
