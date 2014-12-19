@@ -29,13 +29,12 @@ const CHACHA_ROUNDS: uint = 20; // Cryptographically secure from 8 upwards as of
 /// [1]: D. J. Bernstein, [*ChaCha, a variant of
 /// Salsa20*](http://cr.yp.to/chacha.html)
 
+#[deriving(Copy)]
 pub struct ChaChaRng {
     buffer:  [u32, ..STATE_WORDS], // Internal buffer of output
     state:   [u32, ..STATE_WORDS], // Initial state
     index:   uint,                 // Index into state
 }
-
-impl Copy for ChaChaRng {}
 
 static EMPTY: ChaChaRng = ChaChaRng {
     buffer:  [0, ..STATE_WORDS],

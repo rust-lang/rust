@@ -232,7 +232,6 @@
 
 use self::Result::*;
 
-use kinds::Copy;
 use std::fmt::Show;
 use slice;
 use slice::AsSlice;
@@ -244,7 +243,7 @@ use ops::{FnMut, FnOnce};
 /// `Result` is a type that represents either success (`Ok`) or failure (`Err`).
 ///
 /// See the [`std::result`](index.html) module documentation for details.
-#[deriving(Clone, PartialEq, PartialOrd, Eq, Ord, Show, Hash)]
+#[deriving(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Show, Hash)]
 #[must_use]
 #[stable]
 pub enum Result<T, E> {
@@ -919,6 +918,3 @@ pub fn fold<T,
     }
     Ok(init)
 }
-
-impl<T:Copy,U:Copy> Copy for Result<T,U> {}
-

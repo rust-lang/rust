@@ -36,9 +36,8 @@ pub trait RegionScope {
 
 // A scope in which all regions must be explicitly named. This is used
 // for types that appear in structs and so on.
+#[deriving(Copy)]
 pub struct ExplicitRscope;
-
-impl Copy for ExplicitRscope {}
 
 impl RegionScope for ExplicitRscope {
     fn default_region_bound(&self, _span: Span) -> Option<ty::Region> {

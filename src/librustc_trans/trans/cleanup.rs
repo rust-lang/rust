@@ -50,12 +50,10 @@ pub struct CleanupScope<'blk, 'tcx: 'blk> {
     cached_landing_pad: Option<BasicBlockRef>,
 }
 
-#[deriving(Show)]
+#[deriving(Copy, Show)]
 pub struct CustomScopeIndex {
     index: uint
 }
-
-impl Copy for CustomScopeIndex {}
 
 pub const EXIT_BREAK: uint = 0;
 pub const EXIT_LOOP: uint = 1;
@@ -83,21 +81,18 @@ impl<'blk, 'tcx: 'blk> fmt::Show for CleanupScopeKind<'blk, 'tcx> {
     }
 }
 
-#[deriving(PartialEq, Show)]
+#[deriving(Copy, PartialEq, Show)]
 pub enum EarlyExitLabel {
     UnwindExit,
     ReturnExit,
     LoopExit(ast::NodeId, uint)
 }
 
-impl Copy for EarlyExitLabel {}
-
+#[deriving(Copy)]
 pub struct CachedEarlyExit {
     label: EarlyExitLabel,
     cleanup_block: BasicBlockRef,
 }
-
-impl Copy for CachedEarlyExit {}
 
 pub trait Cleanup<'tcx> {
     fn must_unwind(&self) -> bool;
@@ -111,13 +106,11 @@ pub trait Cleanup<'tcx> {
 
 pub type CleanupObj<'tcx> = Box<Cleanup<'tcx>+'tcx>;
 
-#[deriving(Show)]
+#[deriving(Copy, Show)]
 pub enum ScopeId {
     AstScope(ast::NodeId),
     CustomScope(CustomScopeIndex)
 }
-
-impl Copy for ScopeId {}
 
 impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
     /// Invoked when we start to trans the code contained within a new cleanup scope.
@@ -876,6 +869,7 @@ impl EarlyExitLabel {
 ///////////////////////////////////////////////////////////////////////////
 // Cleanup types
 
+#[deriving(Copy)]
 pub struct DropValue<'tcx> {
     is_immediate: bool,
     must_unwind: bool,
@@ -883,8 +877,6 @@ pub struct DropValue<'tcx> {
     ty: Ty<'tcx>,
     zero: bool
 }
-
-impl<'tcx> Copy for DropValue<'tcx> {}
 
 impl<'tcx> Cleanup<'tcx> for DropValue<'tcx> {
     fn must_unwind(&self) -> bool {
@@ -915,20 +907,17 @@ impl<'tcx> Cleanup<'tcx> for DropValue<'tcx> {
     }
 }
 
-#[deriving(Show)]
+#[deriving(Copy, Show)]
 pub enum Heap {
     HeapExchange
 }
 
-impl Copy for Heap {}
-
+#[deriving(Copy)]
 pub struct FreeValue<'tcx> {
     ptr: ValueRef,
     heap: Heap,
     content_ty: Ty<'tcx>
 }
-
-impl<'tcx> Copy for FreeValue<'tcx> {}
 
 impl<'tcx> Cleanup<'tcx> for FreeValue<'tcx> {
     fn must_unwind(&self) -> bool {
@@ -957,14 +946,13 @@ impl<'tcx> Cleanup<'tcx> for FreeValue<'tcx> {
     }
 }
 
+#[deriving(Copy)]
 pub struct FreeSlice {
     ptr: ValueRef,
     size: ValueRef,
     align: ValueRef,
     heap: Heap,
 }
-
-impl Copy for FreeSlice {}
 
 impl<'tcx> Cleanup<'tcx> for FreeSlice {
     fn must_unwind(&self) -> bool {
@@ -993,11 +981,10 @@ impl<'tcx> Cleanup<'tcx> for FreeSlice {
     }
 }
 
+#[deriving(Copy)]
 pub struct LifetimeEnd {
     ptr: ValueRef,
 }
-
-impl Copy for LifetimeEnd {}
 
 impl<'tcx> Cleanup<'tcx> for LifetimeEnd {
     fn must_unwind(&self) -> bool {

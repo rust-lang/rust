@@ -119,6 +119,7 @@ pub fn gensym_name(name: &str) -> PathElem {
     PathName(token::gensym(format!("{}:{}", name, num).as_slice()))
 }
 
+#[deriving(Copy)]
 pub struct tydesc_info<'tcx> {
     pub ty: Ty<'tcx>,
     pub tydesc: ValueRef,
@@ -126,8 +127,6 @@ pub struct tydesc_info<'tcx> {
     pub align: ValueRef,
     pub name: ValueRef,
 }
-
-impl<'tcx> Copy for tydesc_info<'tcx> {}
 
 /*
  * A note on nomenclature of linking: "extern", "foreign", and "upcall".
@@ -155,12 +154,11 @@ impl<'tcx> Copy for tydesc_info<'tcx> {}
  *
  */
 
+#[deriving(Copy)]
 pub struct NodeInfo {
     pub id: ast::NodeId,
     pub span: Span,
 }
-
-impl Copy for NodeInfo {}
 
 pub fn expr_info(expr: &ast::Expr) -> NodeInfo {
     NodeInfo { id: expr.id, span: expr.span }
@@ -863,7 +861,7 @@ pub fn fulfill_obligation<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 }
 
 // Key used to lookup values supplied for type parameters in an expr.
-#[deriving(PartialEq, Show)]
+#[deriving(Copy, PartialEq, Show)]
 pub enum ExprOrMethodCall {
     // Type parameters for a path like `None::<int>`
     ExprId(ast::NodeId),
@@ -871,8 +869,6 @@ pub enum ExprOrMethodCall {
     // Type parameters for a method call like `a.foo::<int>()`
     MethodCall(ty::MethodCall)
 }
-
-impl Copy for ExprOrMethodCall {}
 
 pub fn node_id_substs<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                   node: ExprOrMethodCall)

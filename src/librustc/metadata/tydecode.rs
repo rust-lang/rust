@@ -44,7 +44,7 @@ use syntax::parse::token;
 // def-id will depend on where it originated from.  Therefore, the conversion
 // function is given an indicator of the source of the def-id.  See
 // astencode.rs for more information.
-#[deriving(Show)]
+#[deriving(Copy, Show)]
 pub enum DefIdSource {
     // Identifies a struct, trait, enum, etc.
     NominalType,
@@ -62,7 +62,6 @@ pub enum DefIdSource {
     UnboxedClosureSource
 }
 
-impl Copy for DefIdSource {}
 pub type conv_did<'a> =
     |source: DefIdSource, ast::DefId|: 'a -> ast::DefId;
 

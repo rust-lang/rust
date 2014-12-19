@@ -16,7 +16,6 @@ pub use self::Ordering::*;
 
 use intrinsics;
 use cell::UnsafeCell;
-use kinds::Copy;
 
 /// A boolean type which can be safely shared between threads.
 #[stable]
@@ -53,6 +52,7 @@ pub struct AtomicPtr<T> {
 /// Rust's memory orderings are [the same as
 /// C++'s](http://gcc.gnu.org/wiki/Atomic/GCCMM/AtomicSync).
 #[stable]
+#[deriving(Copy)]
 pub enum Ordering {
     /// No ordering constraints, only atomic operations.
     #[stable]
@@ -76,8 +76,6 @@ pub enum Ordering {
     #[stable]
     SeqCst,
 }
-
-impl Copy for Ordering {}
 
 /// An `AtomicBool` initialized to `false`.
 #[unstable = "may be renamed, pending conventions for static initalizers"]

@@ -47,7 +47,7 @@ pub struct Config {
     pub uint_type: UintTy,
 }
 
-#[deriving(Clone, PartialEq)]
+#[deriving(Clone, Copy, PartialEq)]
 pub enum OptLevel {
     No, // -O0
     Less, // -O1
@@ -55,18 +55,14 @@ pub enum OptLevel {
     Aggressive // -O3
 }
 
-impl Copy for OptLevel {}
-
-#[deriving(Clone, PartialEq)]
+#[deriving(Clone, Copy, PartialEq)]
 pub enum DebugInfoLevel {
     NoDebugInfo,
     LimitedDebugInfo,
     FullDebugInfo,
 }
 
-impl Copy for DebugInfoLevel {}
-
-#[deriving(Clone, PartialEq, PartialOrd, Ord, Eq)]
+#[deriving(Clone, Copy, PartialEq, PartialOrd, Ord, Eq)]
 pub enum OutputType {
     OutputTypeBitcode,
     OutputTypeAssembly,
@@ -74,8 +70,6 @@ pub enum OutputType {
     OutputTypeObject,
     OutputTypeExe,
 }
-
-impl Copy for OutputType {}
 
 #[deriving(Clone)]
 pub struct Options {
@@ -220,24 +214,20 @@ pub fn basic_options() -> Options {
 // users can have their own entry
 // functions that don't start a
 // scheduler
-#[deriving(PartialEq)]
+#[deriving(Copy, PartialEq)]
 pub enum EntryFnType {
     EntryMain,
     EntryStart,
     EntryNone,
 }
 
-impl Copy for EntryFnType {}
-
-#[deriving(PartialEq, PartialOrd, Clone, Ord, Eq, Hash)]
+#[deriving(Copy, PartialEq, PartialOrd, Clone, Ord, Eq, Hash)]
 pub enum CrateType {
     CrateTypeExecutable,
     CrateTypeDylib,
     CrateTypeRlib,
     CrateTypeStaticlib,
 }
-
-impl Copy for CrateType {}
 
 macro_rules! debugging_opts {
     ([ $opt:ident ] $cnt:expr ) => (

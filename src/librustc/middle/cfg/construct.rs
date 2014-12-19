@@ -26,13 +26,12 @@ struct CFGBuilder<'a, 'tcx: 'a> {
     loop_scopes: Vec<LoopScope>,
 }
 
+#[deriving(Copy)]
 struct LoopScope {
     loop_id: ast::NodeId,     // id of loop/while node
     continue_index: CFGIndex, // where to go on a `loop`
     break_index: CFGIndex,    // where to go on a `break
 }
-
-impl Copy for LoopScope {}
 
 pub fn construct(tcx: &ty::ctxt,
                  blk: &ast::Block) -> CFG {

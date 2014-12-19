@@ -25,14 +25,12 @@ use rustc::middle::dataflow::{DataFlowOperator, DataFlowContext, EntryOrExit};
 use rustc::middle::dataflow;
 use std::rc::Rc;
 
-#[deriving(Show)]
+#[deriving(Show, Copy)]
 pub enum Variant {
     Loans,
     Moves,
     Assigns,
 }
-
-impl Copy for Variant {}
 
 impl Variant {
     pub fn short_name(&self) -> &'static str {

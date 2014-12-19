@@ -443,13 +443,12 @@ pub fn align_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>)
 }
 
 // Want refinements! (Or case classes, I guess
+#[deriving(Copy)]
 pub enum named_ty {
     a_struct,
     an_enum,
     an_unboxed_closure,
 }
-
-impl Copy for named_ty {}
 
 pub fn llvm_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                 what: named_ty,

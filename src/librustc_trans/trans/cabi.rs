@@ -20,7 +20,7 @@ use trans::cabi_arm;
 use trans::cabi_mips;
 use trans::type_::Type;
 
-#[deriving(Clone, PartialEq)]
+#[deriving(Clone, Copy, PartialEq)]
 pub enum ArgKind {
     /// Pass the argument directly using the normal converted
     /// LLVM type or by coercing to another specified type
@@ -31,13 +31,11 @@ pub enum ArgKind {
     Ignore,
 }
 
-impl Copy for ArgKind {}
-
 /// Information about how a specific C type
 /// should be passed to or returned from a function
 ///
 /// This is borrowed from clang's ABIInfo.h
-#[deriving(Clone)]
+#[deriving(Clone, Copy)]
 pub struct ArgType {
     pub kind: ArgKind,
     /// Original LLVM type
@@ -49,8 +47,6 @@ pub struct ArgType {
     /// LLVM attribute of argument
     pub attr: option::Option<Attribute>
 }
-
-impl Copy for ArgType {}
 
 impl ArgType {
     pub fn direct(ty: Type, cast: option::Option<Type>,

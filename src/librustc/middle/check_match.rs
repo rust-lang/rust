@@ -127,12 +127,11 @@ enum Usefulness {
     NotUseful
 }
 
+#[deriving(Copy)]
 enum WitnessPreference {
     ConstructWitness,
     LeaveOutWitness
 }
-
-impl Copy for WitnessPreference {}
 
 impl<'a, 'tcx, 'v> Visitor<'v> for MatchCheckCtxt<'a, 'tcx> {
     fn visit_expr(&mut self, ex: &ast::Expr) {

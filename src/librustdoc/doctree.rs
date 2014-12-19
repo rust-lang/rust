@@ -70,7 +70,7 @@ impl Module {
     }
 }
 
-#[deriving(Show, Clone, Encodable, Decodable)]
+#[deriving(Copy, Show, Clone, Encodable, Decodable)]
 pub enum StructType {
     /// A normal struct
     Plain,
@@ -81,8 +81,6 @@ pub enum StructType {
     /// A unit struct
     Unit
 }
-
-impl Copy for StructType {}
 
 pub enum TypeBound {
     RegionBound,

@@ -25,13 +25,11 @@ use std::cell::RefCell;
 
 use libc::c_uint;
 
-#[deriving(Clone, PartialEq, Show)]
+#[deriving(Clone, Copy, PartialEq, Show)]
 #[repr(C)]
 pub struct Type {
     rf: TypeRef
 }
-
-impl Copy for Type {}
 
 macro_rules! ty {
     ($e:expr) => ( Type::from_ref(unsafe { $e }))

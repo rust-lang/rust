@@ -91,7 +91,7 @@ use alloc::boxed::Box;
 use core::borrow::{BorrowFrom, BorrowFromMut, ToOwned};
 use core::cmp;
 use core::iter::{range_step, MultiplicativeIterator};
-use core::kinds::{Copy, Sized};
+use core::kinds::Sized;
 use core::mem::size_of;
 use core::mem;
 use core::ops::FnMut;
@@ -177,17 +177,15 @@ impl ElementSwaps {
     }
 }
 
+#[deriving(Copy)]
 enum Direction { Pos, Neg }
 
-impl Copy for Direction {}
-
 /// An `Index` and `Direction` together.
+#[deriving(Copy)]
 struct SizeDirection {
     size: uint,
     dir: Direction,
 }
-
-impl Copy for SizeDirection {}
 
 impl Iterator<(uint, uint)> for ElementSwaps {
     #[inline]

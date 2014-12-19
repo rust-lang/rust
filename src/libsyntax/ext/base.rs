@@ -223,12 +223,11 @@ impl MacResult for MacItems {
 
 /// Fill-in macro expansion result, to allow compilation to continue
 /// after hitting errors.
+#[deriving(Copy)]
 pub struct DummyResult {
     expr_only: bool,
     span: Span
 }
-
-impl Copy for DummyResult {}
 
 impl DummyResult {
     /// Create a default MacResult that can be anything.

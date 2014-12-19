@@ -41,14 +41,12 @@ use std::str;
 pub mod io;
 
 /// Common data structures
-#[deriving(Clone)]
+#[deriving(Clone, Copy)]
 pub struct Doc<'a> {
     pub data: &'a [u8],
     pub start: uint,
     pub end: uint,
 }
-
-impl<'doc> Copy for Doc<'doc> {}
 
 impl<'doc> Doc<'doc> {
     pub fn new(data: &'doc [u8]) -> Doc<'doc> {
@@ -73,7 +71,7 @@ pub struct TaggedDoc<'a> {
     pub doc: Doc<'a>,
 }
 
-#[deriving(Show)]
+#[deriving(Copy, Show)]
 pub enum EbmlEncoderTag {
     EsUint,     // 0
     EsU64,      // 1
@@ -106,8 +104,6 @@ pub enum EbmlEncoderTag {
 
     EsLabel, // Used only when debugging
 }
-
-impl Copy for EbmlEncoderTag {}
 
 #[deriving(Show)]
 pub enum Error {
@@ -151,12 +147,11 @@ pub mod reader {
         )
     }
 
+    #[deriving(Copy)]
     pub struct Res {
         pub val: uint,
         pub next: uint
     }
-
-    impl Copy for Res {}
 
     #[inline(never)]
     fn vuint_at_slow(data: &[u8], start: uint) -> DecodeResult<Res> {

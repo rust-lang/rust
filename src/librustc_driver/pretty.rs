@@ -39,7 +39,7 @@ use std::option;
 use std::str::FromStr;
 use arena::TypedArena;
 
-#[deriving(PartialEq, Show)]
+#[deriving(Copy, PartialEq, Show)]
 pub enum PpSourceMode {
     PpmNormal,
     PpmExpanded,
@@ -49,15 +49,11 @@ pub enum PpSourceMode {
     PpmExpandedHygiene,
 }
 
-impl Copy for PpSourceMode {}
-
-#[deriving(PartialEq, Show)]
+#[deriving(Copy, PartialEq, Show)]
 pub enum PpMode {
     PpmSource(PpSourceMode),
     PpmFlowGraph,
 }
-
-impl Copy for PpMode {}
 
 pub fn parse_pretty(sess: &Session, name: &str) -> (PpMode, Option<UserIdentifiedItem>) {
     let mut split = name.splitn(1, '=');

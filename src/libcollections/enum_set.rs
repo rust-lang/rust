@@ -301,13 +301,11 @@ mod test {
 
     use super::{EnumSet, CLike};
 
-    #[deriving(PartialEq, Show)]
+    #[deriving(Copy, PartialEq, Show)]
     #[repr(uint)]
     enum Foo {
         A, B, C
     }
-
-    impl Copy for Foo {}
 
     impl CLike for Foo {
         fn to_uint(&self) -> uint {
@@ -507,6 +505,7 @@ mod test {
     #[should_fail]
     fn test_overflow() {
         #[allow(dead_code)]
+        #[deriving(Copy)]
         #[repr(uint)]
         enum Bar {
             V00, V01, V02, V03, V04, V05, V06, V07, V08, V09,
@@ -517,8 +516,6 @@ mod test {
             V50, V51, V52, V53, V54, V55, V56, V57, V58, V59,
             V60, V61, V62, V63, V64, V65, V66, V67, V68, V69,
         }
-
-        impl Copy for Bar {}
 
         impl CLike for Bar {
             fn to_uint(&self) -> uint {

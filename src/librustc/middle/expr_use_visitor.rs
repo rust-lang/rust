@@ -95,7 +95,7 @@ pub trait Delegate<'tcx> {
               mode: MutateMode);
 }
 
-#[deriving(PartialEq, Show)]
+#[deriving(Copy, PartialEq, Show)]
 pub enum LoanCause {
     ClosureCapture(Span),
     AddrOf,
@@ -107,34 +107,26 @@ pub enum LoanCause {
     MatchDiscriminant
 }
 
-impl kinds::Copy for LoanCause {}
-
-#[deriving(PartialEq, Show)]
+#[deriving(Copy, PartialEq, Show)]
 pub enum ConsumeMode {
     Copy,                // reference to x where x has a type that copies
     Move(MoveReason),    // reference to x where x has a type that moves
 }
 
-impl kinds::Copy for ConsumeMode {}
-
-#[deriving(PartialEq,Show)]
+#[deriving(Copy, PartialEq, Show)]
 pub enum MoveReason {
     DirectRefMove,
     PatBindingMove,
     CaptureMove,
 }
 
-impl kinds::Copy for MoveReason {}
-
-#[deriving(PartialEq,Show)]
+#[deriving(Copy, PartialEq, Show)]
 pub enum MatchMode {
     NonBindingMatch,
     BorrowingMatch,
     CopyingMatch,
     MovingMatch,
 }
-
-impl kinds::Copy for MatchMode {}
 
 #[deriving(PartialEq,Show)]
 enum TrackMatchMode<T> {
@@ -205,22 +197,19 @@ impl<T> TrackMatchMode<T> {
     }
 }
 
-#[deriving(PartialEq,Show)]
+#[deriving(Copy, PartialEq, Show)]
 pub enum MutateMode {
     Init,
     JustWrite,    // x = y
     WriteAndRead, // x += y
 }
 
-impl kinds::Copy for MutateMode {}
-
+#[deriving(Copy)]
 enum OverloadedCallType {
     FnOverloadedCall,
     FnMutOverloadedCall,
     FnOnceOverloadedCall,
 }
-
-impl kinds::Copy for OverloadedCallType {}
 
 impl OverloadedCallType {
     fn from_trait_id(tcx: &ty::ctxt, trait_id: ast::DefId)

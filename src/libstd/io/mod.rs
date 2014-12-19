@@ -232,7 +232,6 @@ use error::{FromError, Error};
 use fmt;
 use int;
 use iter::{Iterator, IteratorExt};
-use kinds::Copy;
 use mem::transmute;
 use ops::{BitOr, BitXor, BitAnd, Sub, Not, FnOnce};
 use option::Option;
@@ -367,7 +366,7 @@ impl FromError<IoError> for Box<Error> {
 }
 
 /// A list specifying general categories of I/O error.
-#[deriving(PartialEq, Eq, Clone, Show)]
+#[deriving(Copy, PartialEq, Eq, Clone, Show)]
 pub enum IoErrorKind {
     /// Any I/O error not part of this list.
     OtherIoError,
@@ -421,8 +420,6 @@ pub enum IoErrorKind {
     /// The Reader returned 0 bytes from `read()` too many times.
     NoProgress,
 }
-
-impl Copy for IoErrorKind {}
 
 /// A trait that lets you add a `detail` to an IoError easily
 trait UpdateIoError<T> {
@@ -1561,6 +1558,7 @@ impl<T: Buffer> BufferPrelude for T {
 
 /// When seeking, the resulting cursor is offset from a base by the offset given
 /// to the `seek` function. The base used is specified by this enumeration.
+#[deriving(Copy)]
 pub enum SeekStyle {
     /// Seek from the beginning of the stream
     SeekSet,
@@ -1569,8 +1567,6 @@ pub enum SeekStyle {
     /// Seek from the current position
     SeekCur,
 }
-
-impl Copy for SeekStyle {}
 
 /// An object implementing `Seek` internally has some form of cursor which can
 /// be moved within a stream of bytes. The stream typically has a fixed size,
@@ -1685,6 +1681,7 @@ pub fn standard_error(kind: IoErrorKind) -> IoError {
 /// A mode specifies how a file should be opened or created. These modes are
 /// passed to `File::open_mode` and are used to control where the file is
 /// positioned when it is initially opened.
+#[deriving(Copy)]
 pub enum FileMode {
     /// Opens a file positioned at the beginning.
     Open,
@@ -1694,10 +1691,9 @@ pub enum FileMode {
     Truncate,
 }
 
-impl Copy for FileMode {}
-
 /// Access permissions with which the file should be opened. `File`s
 /// opened with `Read` will return an error if written to.
+#[deriving(Copy)]
 pub enum FileAccess {
     /// Read-only access, requests to write will result in an error
     Read,
@@ -1707,10 +1703,8 @@ pub enum FileAccess {
     ReadWrite,
 }
 
-impl Copy for FileAccess {}
-
 /// Different kinds of files which can be identified by a call to stat
-#[deriving(PartialEq, Show, Hash, Clone)]
+#[deriving(Copy, PartialEq, Show, Hash, Clone)]
 pub enum FileType {
     /// This is a normal file, corresponding to `S_IFREG`
     RegularFile,
@@ -1731,8 +1725,6 @@ pub enum FileType {
     Unknown,
 }
 
-impl Copy for FileType {}
-
 /// A structure used to describe metadata information about a file. This
 /// structure is created through the `stat` method on a `Path`.
 ///
@@ -1750,7 +1742,7 @@ impl Copy for FileType {}
 /// println!("byte size: {}", info.size);
 /// # }
 /// ```
-#[deriving(Hash)]
+#[deriving(Copy, Hash)]
 pub struct FileStat {
     /// The size of the file, in bytes
     pub size: u64,
@@ -1784,14 +1776,12 @@ pub struct FileStat {
     pub unstable: UnstableFileStat,
 }
 
-impl Copy for FileStat {}
-
 /// This structure represents all of the possible information which can be
 /// returned from a `stat` syscall which is not contained in the `FileStat`
 /// structure. This information is not necessarily platform independent, and may
 /// have different meanings or no meaning at all on some platforms.
 #[unstable]
-#[deriving(Hash)]
+#[deriving(Copy, Hash)]
 pub struct UnstableFileStat {
     /// The ID of the device containing the file.
     pub device: u64,
@@ -1814,8 +1804,6 @@ pub struct UnstableFileStat {
     /// The file generation number.
     pub gen: u64,
 }
-
-impl Copy for UnstableFileStat {}
 
 bitflags! {
     #[doc = "A set of permissions for a file or directory is represented"]

@@ -33,7 +33,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use libc::{c_uint, c_int, c_void};
 
-#[deriving(Clone, PartialEq, PartialOrd, Ord, Eq)]
+#[deriving(Clone, Copy, PartialEq, PartialOrd, Ord, Eq)]
 pub enum OutputType {
     OutputTypeBitcode,
     OutputTypeAssembly,
@@ -41,8 +41,6 @@ pub enum OutputType {
     OutputTypeObject,
     OutputTypeExe,
 }
-
-impl Copy for OutputType {}
 
 pub fn llvm_err(handler: &diagnostic::Handler, msg: String) -> ! {
     unsafe {

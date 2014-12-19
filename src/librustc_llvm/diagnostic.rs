@@ -17,14 +17,13 @@ use libc::c_char;
 
 use {ValueRef, TwineRef, DebugLocRef, DiagnosticInfoRef};
 
+#[deriving(Copy)]
 pub enum OptimizationDiagnosticKind {
     OptimizationRemark,
     OptimizationMissed,
     OptimizationAnalysis,
     OptimizationFailure,
 }
-
-impl Copy for OptimizationDiagnosticKind {}
 
 impl OptimizationDiagnosticKind {
     pub fn describe(self) -> &'static str {
@@ -69,14 +68,13 @@ impl OptimizationDiagnostic {
     }
 }
 
+#[deriving(Copy)]
 pub enum Diagnostic {
     Optimization(OptimizationDiagnostic),
 
     /// LLVM has other types that we do not wrap here.
     UnknownDiagnostic(DiagnosticInfoRef),
 }
-
-impl Copy for Diagnostic {}
 
 impl Diagnostic {
     pub unsafe fn unpack(di: DiagnosticInfoRef) -> Diagnostic {

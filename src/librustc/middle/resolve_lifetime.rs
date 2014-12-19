@@ -34,7 +34,7 @@ use syntax::visit;
 use syntax::visit::Visitor;
 use util::nodemap::NodeMap;
 
-#[deriving(Clone, PartialEq, Eq, Hash, Encodable, Decodable, Show)]
+#[deriving(Clone, Copy, PartialEq, Eq, Hash, Encodable, Decodable, Show)]
 pub enum DefRegion {
     DefStaticRegion,
     DefEarlyBoundRegion(/* space */ subst::ParamSpace,
@@ -45,8 +45,6 @@ pub enum DefRegion {
     DefFreeRegion(/* block scope */ region::CodeExtent,
                   /* lifetime decl */ ast::NodeId),
 }
-
-impl Copy for DefRegion {}
 
 // maps the id of each lifetime reference to the lifetime decl
 // that it corresponds to

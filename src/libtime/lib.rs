@@ -76,13 +76,11 @@ mod imp {
 }
 
 /// A record specifying a time value in seconds and nanoseconds.
-#[deriving(Clone, PartialEq, Eq, PartialOrd, Ord, Encodable, Decodable, Show)]
+#[deriving(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Encodable, Decodable, Show)]
 pub struct Timespec {
     pub sec: i64,
     pub nsec: i32,
 }
-
-impl Copy for Timespec {}
 
 /*
  * Timespec assumes that pre-epoch Timespecs have negative sec and positive
@@ -268,7 +266,7 @@ pub fn tzset() {
 /// also called a broken-down time value.
 // FIXME: use c_int instead of i32?
 #[repr(C)]
-#[deriving(Clone, PartialEq, Eq, Show)]
+#[deriving(Clone, Copy, PartialEq, Eq, Show)]
 pub struct Tm {
     /// Seconds after the minute - [0, 60]
     pub tm_sec: i32,
@@ -308,8 +306,6 @@ pub struct Tm {
     /// Nanoseconds after the second - [0, 10<sup>9</sup> - 1]
     pub tm_nsec: i32,
 }
-
-impl Copy for Tm {}
 
 pub fn empty_tm() -> Tm {
     Tm {
@@ -452,7 +448,7 @@ impl Tm {
     }
 }
 
-#[deriving(PartialEq)]
+#[deriving(Copy, PartialEq)]
 pub enum ParseError {
     InvalidSecond,
     InvalidMinute,
@@ -469,8 +465,6 @@ pub enum ParseError {
     InvalidFormatSpecifier(char),
     UnexpectedCharacter(char, char),
 }
-
-impl Copy for ParseError {}
 
 impl Show for ParseError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

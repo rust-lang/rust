@@ -46,12 +46,10 @@ struct Delegate;
 
 type Relation = (RelationDir, ty::TyVid);
 
-#[deriving(PartialEq,Show)]
+#[deriving(Copy, PartialEq, Show)]
 pub enum RelationDir {
     SubtypeOf, SupertypeOf, EqTo
 }
-
-impl Copy for RelationDir {}
 
 impl RelationDir {
     fn opposite(self) -> RelationDir {

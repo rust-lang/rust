@@ -33,24 +33,22 @@ impl<T> Copy for Slice<T> {}
 
 /// The representation of a Rust closure
 #[repr(C)]
+#[deriving(Copy)]
 pub struct Closure {
     pub code: *mut (),
     pub env: *mut (),
 }
-
-impl Copy for Closure {}
 
 /// The representation of a Rust trait object.
 ///
 /// This struct does not have a `Repr` implementation
 /// because there is no way to refer to all trait objects generically.
 #[repr(C)]
+#[deriving(Copy)]
 pub struct TraitObject {
     pub data: *mut (),
     pub vtable: *mut (),
 }
-
-impl Copy for TraitObject {}
 
 /// This trait is meant to map equivalences between raw structs and their
 /// corresponding rust values.

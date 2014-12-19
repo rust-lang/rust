@@ -48,22 +48,18 @@ pub struct crate_metadata {
     pub span: Span,
 }
 
-#[deriving(Show, PartialEq, Clone)]
+#[deriving(Copy, Show, PartialEq, Clone)]
 pub enum LinkagePreference {
     RequireDynamic,
     RequireStatic,
 }
 
-impl Copy for LinkagePreference {}
-
-#[deriving(Clone, PartialEq, FromPrimitive)]
+#[deriving(Copy, Clone, PartialEq, FromPrimitive)]
 pub enum NativeLibraryKind {
     NativeStatic,    // native static library (.a archive)
     NativeFramework, // OSX-specific
     NativeUnknown,   // default way to specify a dynamic library
 }
-
-impl Copy for NativeLibraryKind {}
 
 // Where a crate came from on the local filesystem. One of these two options
 // must be non-None.

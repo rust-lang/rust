@@ -24,7 +24,7 @@ use trans::type_::Type;
 
 use std::cmp;
 
-#[deriving(Clone, PartialEq)]
+#[deriving(Clone, Copy, PartialEq)]
 enum RegClass {
     NoClass,
     Int,
@@ -39,8 +39,6 @@ enum RegClass {
     ComplexX87,
     Memory
 }
-
-impl Copy for RegClass {}
 
 trait TypeMethods {
     fn is_reg_ty(&self) -> bool;

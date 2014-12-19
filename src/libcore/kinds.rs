@@ -225,10 +225,8 @@ pub mod marker {
     /// For more information about variance, refer to this Wikipedia
     /// article <http://en.wikipedia.org/wiki/Variance_%28computer_science%29>.
     #[lang="covariant_lifetime"]
-    #[deriving(Clone, PartialEq, Eq, PartialOrd, Ord)]
+    #[deriving(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
     pub struct CovariantLifetime<'a>;
-
-    impl<'a> Copy for CovariantLifetime<'a> {}
 
     /// As `ContravariantType`, but for lifetime parameters. Using
     /// `ContravariantLifetime<'a>` indicates that it is ok to
@@ -243,10 +241,8 @@ pub mod marker {
     /// For more information about variance, refer to this Wikipedia
     /// article <http://en.wikipedia.org/wiki/Variance_%28computer_science%29>.
     #[lang="contravariant_lifetime"]
-    #[deriving(Clone, PartialEq, Eq, PartialOrd, Ord)]
+    #[deriving(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
     pub struct ContravariantLifetime<'a>;
-
-    impl<'a> Copy for ContravariantLifetime<'a> {}
 
     /// As `InvariantType`, but for lifetime parameters. Using
     /// `InvariantLifetime<'a>` indicates that it is not ok to

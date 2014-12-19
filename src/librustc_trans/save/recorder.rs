@@ -61,6 +61,7 @@ macro_rules! svec {
     })
 }
 
+#[deriving(Copy)]
 pub enum Row {
     Variable,
     Enum,
@@ -86,8 +87,6 @@ pub enum Row {
     StructRef,
     FnRef,
 }
-
-impl Copy for Row {}
 
 impl<'a> FmtStrs<'a> {
     pub fn new(rec: Box<Recorder>, span: SpanUtils<'a>, krate: String) -> FmtStrs<'a> {
