@@ -239,9 +239,8 @@ impl<T: Ord> BinaryHeap<T> {
     /// }
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn iter(&self) -> Items<T> {
-        Items { iter: self.data.iter() }
-    }
+    pub fn iter(&self) -> Iter<T> {
+        Iter { iter: self.data.iter() } }
 
     /// Creates a consuming iterator, that is, one that moves each value out of
     /// the binary heap in arbitrary order.  The binary heap cannot be used
@@ -260,8 +259,8 @@ impl<T: Ord> BinaryHeap<T> {
     /// }
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn into_iter(self) -> MoveItems<T> {
-        MoveItems { iter: self.data.into_iter() }
+    pub fn into_iter(self) -> IntoIter<T> {
+        IntoIter { iter: self.data.into_iter() }
     }
 
     /// Returns the greatest item in a queue, or `None` if it is empty.
@@ -571,11 +570,11 @@ impl<T: Ord> BinaryHeap<T> {
 }
 
 /// `BinaryHeap` iterator.
-pub struct Items<'a, T: 'a> {
-    iter: slice::Items<'a, T>,
+pub struct Iter <'a, T: 'a> {
+    iter: slice::Iter<'a, T>,
 }
 
-impl<'a, T> Iterator<&'a T> for Items<'a, T> {
+impl<'a, T> Iterator<&'a T> for Iter<'a, T> {
     #[inline]
     fn next(&mut self) -> Option<&'a T> { self.iter.next() }
 
@@ -583,19 +582,19 @@ impl<'a, T> Iterator<&'a T> for Items<'a, T> {
     fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
 }
 
-impl<'a, T> DoubleEndedIterator<&'a T> for Items<'a, T> {
+impl<'a, T> DoubleEndedIterator<&'a T> for Iter<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a T> { self.iter.next_back() }
 }
 
-impl<'a, T> ExactSizeIterator<&'a T> for Items<'a, T> {}
+impl<'a, T> ExactSizeIterator<&'a T> for Iter<'a, T> {}
 
 /// An iterator that moves out of a `BinaryHeap`.
-pub struct MoveItems<T> {
-    iter: vec::MoveItems<T>,
+pub struct IntoIter<T> {
+    iter: vec::IntoIter<T>,
 }
 
-impl<T> Iterator<T> for MoveItems<T> {
+impl<T> Iterator<T> for IntoIter<T> {
     #[inline]
     fn next(&mut self) -> Option<T> { self.iter.next() }
 
@@ -603,12 +602,12 @@ impl<T> Iterator<T> for MoveItems<T> {
     fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
 }
 
-impl<T> DoubleEndedIterator<T> for MoveItems<T> {
+impl<T> DoubleEndedIterator<T> for IntoIter<T> {
     #[inline]
     fn next_back(&mut self) -> Option<T> { self.iter.next_back() }
 }
 
-impl<T> ExactSizeIterator<T> for MoveItems<T> {}
+impl<T> ExactSizeIterator<T> for IntoIter<T> {}
 
 /// An iterator that drains a `BinaryHeap`.
 pub struct Drain<'a, T: 'a> {

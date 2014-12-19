@@ -33,37 +33,37 @@ pub struct BTreeSet<T>{
 }
 
 /// An iterator over a BTreeSet's items.
-pub struct Items<'a, T: 'a> {
+pub struct Iter<'a, T: 'a> {
     iter: Keys<'a, T, ()>
 }
 
 /// An owning iterator over a BTreeSet's items.
-pub struct MoveItems<T> {
+pub struct IntoIter<T> {
     iter: Map<(T, ()), T, MoveEntries<T, ()>, fn((T, ())) -> T>
 }
 
 /// A lazy iterator producing elements in the set difference (in-order).
 pub struct DifferenceItems<'a, T:'a> {
-    a: Peekable<&'a T, Items<'a, T>>,
-    b: Peekable<&'a T, Items<'a, T>>,
+    a: Peekable<&'a T, Iter<'a, T>>,
+    b: Peekable<&'a T, Iter<'a, T>>,
 }
 
 /// A lazy iterator producing elements in the set symmetric difference (in-order).
 pub struct SymDifferenceItems<'a, T:'a> {
-    a: Peekable<&'a T, Items<'a, T>>,
-    b: Peekable<&'a T, Items<'a, T>>,
+    a: Peekable<&'a T, Iter<'a, T>>,
+    b: Peekable<&'a T, Iter<'a, T>>,
 }
 
 /// A lazy iterator producing elements in the set intersection (in-order).
 pub struct IntersectionItems<'a, T:'a> {
-    a: Peekable<&'a T, Items<'a, T>>,
-    b: Peekable<&'a T, Items<'a, T>>,
+    a: Peekable<&'a T, Iter<'a, T>>,
+    b: Peekable<&'a T, Iter<'a, T>>,
 }
 
 /// A lazy iterator producing elements in the set union (in-order).
 pub struct UnionItems<'a, T:'a> {
-    a: Peekable<&'a T, Items<'a, T>>,
-    b: Peekable<&'a T, Items<'a, T>>,
+    a: Peekable<&'a T, Iter<'a, T>>,
+    b: Peekable<&'a T, Iter<'a, T>>,
 }
 
 impl<T: Ord> BTreeSet<T> {
@@ -107,8 +107,8 @@ impl<T> BTreeSet<T> {
     /// assert_eq!(v, vec![1u,2,3,4]);
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn iter<'a>(&'a self) -> Items<'a, T> {
-        Items { iter: self.map.keys() }
+    pub fn iter<'a>(&'a self) -> Iter<'a, T> {
+        Iter { iter: self.map.keys() }
     }
 
     /// Gets an iterator for moving out the BtreeSet's contents.
@@ -124,10 +124,10 @@ impl<T> BTreeSet<T> {
     /// assert_eq!(v, vec![1u,2,3,4]);
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn into_iter(self) -> MoveItems<T> {
+    pub fn into_iter(self) -> IntoIter<T> {
         fn first<A, B>((a, _): (A, B)) -> A { a }
 
-        MoveItems { iter: self.map.into_iter().map(first) }
+        IntoIter { iter: self.map.into_iter().map(first) }
     }
 }
 
@@ -544,24 +544,24 @@ impl<T: Show> Show for BTreeSet<T> {
     }
 }
 
-impl<'a, T> Iterator<&'a T> for Items<'a, T> {
+impl<'a, T> Iterator<&'a T> for Iter<'a, T> {
     fn next(&mut self) -> Option<&'a T> { self.iter.next() }
     fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
 }
-impl<'a, T> DoubleEndedIterator<&'a T> for Items<'a, T> {
+impl<'a, T> DoubleEndedIterator<&'a T> for Iter<'a, T> {
     fn next_back(&mut self) -> Option<&'a T> { self.iter.next_back() }
 }
-impl<'a, T> ExactSizeIterator<&'a T> for Items<'a, T> {}
+impl<'a, T> ExactSizeIterator<&'a T> for Iter<'a, T> {}
 
 
-impl<T> Iterator<T> for MoveItems<T> {
+impl<T> Iterator<T> for IntoIter<T> {
     fn next(&mut self) -> Option<T> { self.iter.next() }
     fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
 }
-impl<T> DoubleEndedIterator<T> for MoveItems<T> {
+impl<T> DoubleEndedIterator<T> for IntoIter<T> {
     fn next_back(&mut self) -> Option<T> { self.iter.next_back() }
 }
-impl<T> ExactSizeIterator<T> for MoveItems<T> {}
+impl<T> ExactSizeIterator<T> for IntoIter<T> {}
 
 /// Compare `x` and `y`, but return `short` if x is None and `long` if y is None
 fn cmp_opt<T: Ord>(x: Option<&T>, y: Option<&T>,

@@ -167,7 +167,7 @@ Section: Iterators
 /// Created with the method `.chars()`.
 #[deriving(Clone, Copy)]
 pub struct Chars<'a> {
-    iter: slice::Items<'a, u8>
+    iter: slice::Iter<'a, u8>
 }
 
 // Return the initial codepoint accumulator for the first byte.
@@ -315,7 +315,7 @@ impl<'a> DoubleEndedIterator<(uint, char)> for CharOffsets<'a> {
 
 /// External iterator for a string's bytes.
 /// Use with the `std::iter` module.
-pub type Bytes<'a> = Map<&'a u8, u8, slice::Items<'a, u8>, BytesFn>;
+pub type Bytes<'a> = Map<&'a u8, u8, slice::Iter<'a, u8>, BytesFn>;
 
 /// A temporary new type wrapper that ensures that the `Bytes` iterator
 /// is cloneable.
@@ -893,7 +893,7 @@ Section: Misc
 /// `iter` reset such that it is pointing at the first byte in the
 /// invalid sequence.
 #[inline(always)]
-fn run_utf8_validation_iterator(iter: &mut slice::Items<u8>) -> bool {
+fn run_utf8_validation_iterator(iter: &mut slice::Iter<u8>) -> bool {
     loop {
         // save the current thing we're pointing at.
         let old = *iter;
@@ -993,7 +993,7 @@ pub fn is_utf16(v: &[u16]) -> bool {
 /// of `u16`s.
 #[deriving(Clone)]
 pub struct Utf16Items<'a> {
-    iter: slice::Items<'a, u16>
+    iter: slice::Iter<'a, u16>
 }
 /// The possibilities for values decoded from a `u16` stream.
 #[deriving(Copy, PartialEq, Eq, Clone, Show)]
@@ -2366,4 +2366,3 @@ impl<'a> Default for &'a str {
     #[stable]
     fn default() -> &'a str { "" }
 }
-
