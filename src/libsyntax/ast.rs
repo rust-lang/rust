@@ -32,7 +32,6 @@ pub use self::LitIntType::*;
 pub use self::LocalSource::*;
 pub use self::Mac_::*;
 pub use self::MacStmtStyle::*;
-pub use self::MatchSource::*;
 pub use self::MetaItem_::*;
 pub use self::Method_::*;
 pub use self::Mutability::*;
@@ -753,9 +752,9 @@ pub struct QPath {
 
 #[deriving(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum MatchSource {
-    MatchNormal,
-    MatchIfLetDesugar(bool /* contains_else_arm */),
-    MatchWhileLetDesugar,
+    Normal,
+    IfLetDesugar { contains_else_clause: bool },
+    WhileLetDesugar,
 }
 
 #[deriving(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Show)]

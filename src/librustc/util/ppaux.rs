@@ -93,8 +93,9 @@ pub fn explain_region_and_span(cx: &ctxt, region: ty::Region)
               ast::ExprMethodCall(..) => {
                 explain_span(cx, "method call", expr.span)
               },
-              ast::ExprMatch(_, _, ast::MatchIfLetDesugar) => explain_span(cx, "if let", expr.span),
-              ast::ExprMatch(_, _, ast::MatchWhileLetDesugar) => {
+              ast::ExprMatch(_, _, ast::MatchSource::IfLetDesugar { .. }) =>
+                  explain_span(cx, "if let", expr.span),
+              ast::ExprMatch(_, _, ast::MatchSource::WhileLetDesugar) => {
                   explain_span(cx, "while let", expr.span)
               },
               ast::ExprMatch(..) => explain_span(cx, "match", expr.span),

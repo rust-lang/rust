@@ -293,7 +293,8 @@ pub fn check_match<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         } else {
             let (origin, expected, found) = match match_src {
                 /* if-let construct without an else block */
-                ast::MatchIfLetDesugar(contains_else_arm) if !contains_else_arm => (
+                ast::MatchSource::IfLetDesugar { contains_else_clause }
+                if !contains_else_clause => (
                     infer::IfExpressionWithNoElse(expr.span),
                     bty,
                     result_ty,
