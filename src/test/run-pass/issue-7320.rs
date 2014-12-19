@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-trait Foo {
+trait Foo : Sized {
     fn foo(self: Box<Self>) { bar(self as Box<Foo>); }
 }
 

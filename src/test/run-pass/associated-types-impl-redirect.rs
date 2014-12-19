@@ -19,6 +19,7 @@
 #![feature(associated_types, lang_items, unboxed_closures)]
 #![no_implicit_prelude]
 
+use std::kinds::Sized;
 use std::option::Option::{None, Some, mod};
 
 trait Iterator {
@@ -27,7 +28,7 @@ trait Iterator {
     fn next(&mut self) -> Option<Self::Item>;
 }
 
-trait IteratorExt: Iterator {
+trait IteratorExt: Iterator + Sized {
     fn by_ref(&mut self) -> ByRef<Self> {
         ByRef(self)
     }

@@ -11,7 +11,7 @@
 // Tests the ability for the Self type in default methods to use
 // capabilities granted by builtin kinds as supertraits.
 
-trait Foo : Send {
+trait Foo : Send + Sized {
     fn foo(self, tx: Sender<Self>) {
         tx.send(self);
     }
