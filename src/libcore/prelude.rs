@@ -57,7 +57,7 @@ pub use iter::{IteratorOrdExt, MutableDoubleEndedIterator, ExactSizeIterator};
 pub use num::{ToPrimitive, FromPrimitive};
 pub use option::Option;
 pub use option::Option::{Some, None};
-pub use ptr::RawPtr;
+pub use ptr::{PtrExt, MutPtrExt};
 pub use result::Result;
 pub use result::Result::{Ok, Err};
 pub use str::{Str, StrExt};

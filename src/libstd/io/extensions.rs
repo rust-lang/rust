@@ -22,7 +22,7 @@ use num::Int;
 use ops::FnOnce;
 use option::Option;
 use option::Option::{Some, None};
-use ptr::RawPtr;
+use ptr::PtrExt;
 use result::Result::{Ok, Err};
 use slice::{SliceExt, AsSlice};
 

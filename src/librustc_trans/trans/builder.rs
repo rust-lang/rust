@@ -501,7 +501,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         debug!("Store {} -> {}",
                self.ccx.tn().val_to_string(val),
                self.ccx.tn().val_to_string(ptr));
-        assert!(self.llbuilder.is_not_null());
+        assert!(!self.llbuilder.is_null());
         self.count_insn("store");
         unsafe {
             llvm::LLVMBuildStore(self.llbuilder, val, ptr);
@@ -512,7 +512,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         debug!("Store {} -> {}",
                self.ccx.tn().val_to_string(val),
                self.ccx.tn().val_to_string(ptr));
-        assert!(self.llbuilder.is_not_null());
+        assert!(!self.llbuilder.is_null());
         self.count_insn("store.volatile");
         unsafe {
             let insn = llvm::LLVMBuildStore(self.llbuilder, val, ptr);
