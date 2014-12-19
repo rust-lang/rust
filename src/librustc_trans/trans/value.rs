@@ -20,7 +20,7 @@ pub struct Value(pub ValueRef);
 macro_rules! opt_val { ($e:expr) => (
     unsafe {
         match $e {
-            p if p.is_not_null() => Some(Value(p)),
+            p if !p.is_null() => Some(Value(p)),
             _ => None
         }
     }
@@ -37,7 +37,7 @@ impl Value {
     pub fn get_parent(self) -> Option<BasicBlock> {
         unsafe {
             match llvm::LLVMGetInstructionParent(self.get()) {
-                p if p.is_not_null() => Some(BasicBlock(p)),
+                p if !p.is_null() => Some(BasicBlock(p)),
                 _ => None
             }
         }
@@ -77,7 +77,7 @@ impl Value {
     pub fn get_first_use(self) -> Option<Use> {
         unsafe {
             match llvm::LLVMGetFirstUse(self.get()) {
-                u if u.is_not_null() => Some(Use(u)),
+                u if !u.is_null() => Some(Use(u)),
                 _ => None
             }
         }
@@ -119,7 +119,7 @@ impl Value {
     /// Tests if this value is a terminator instruction
     pub fn is_a_terminator_inst(self) -> bool {
         unsafe {
-            llvm::LLVMIsATerminatorInst(self.get()).is_not_null()
+            !llvm::LLVMIsATerminatorInst(self.get()).is_null()
         }
     }
 }
@@ -142,7 +142,7 @@ impl Use {
     pub fn get_next_use(self) -> Option<Use> {
         unsafe {
             match llvm::LLVMGetNextUse(self.get()) {
-                u if u.is_not_null() => Some(Use(u)),
+                u if !u.is_null() => Some(Use(u)),
                 _ => None
             }
         }
