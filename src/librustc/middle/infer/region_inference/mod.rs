@@ -40,7 +40,7 @@ mod doc;
 mod graphviz;
 
 // A constraint that influences the inference process.
-#[deriving(Clone, PartialEq, Eq, Hash, Show)]
+#[deriving(Clone, Copy, PartialEq, Eq, Hash, Show)]
 pub enum Constraint {
     // One region variable is subregion of another
     ConstrainVarSubVar(RegionVid, RegionVid),
@@ -51,8 +51,6 @@ pub enum Constraint {
     // Region variable is subregion of concrete region
     ConstrainVarSubReg(RegionVid, Region),
 }
-
-impl Copy for Constraint {}
 
 // Something we have to verify after region inference is done, but
 // which does not directly influence the inference process
@@ -69,15 +67,13 @@ pub enum Verify<'tcx> {
     VerifyParamBound(ty::ParamTy, SubregionOrigin<'tcx>, Region, Vec<Region>),
 }
 
-#[deriving(PartialEq, Eq, Hash)]
+#[deriving(Copy, PartialEq, Eq, Hash)]
 pub struct TwoRegions {
     a: Region,
     b: Region,
 }
 
-impl Copy for TwoRegions {}
-
-#[deriving(PartialEq)]
+#[deriving(Copy, PartialEq)]
 pub enum UndoLogEntry {
     OpenSnapshot,
     CommitedSnapshot,
@@ -88,14 +84,10 @@ pub enum UndoLogEntry {
     AddCombination(CombineMapType, TwoRegions)
 }
 
-impl Copy for UndoLogEntry {}
-
-#[deriving(PartialEq)]
+#[deriving(Copy, PartialEq)]
 pub enum CombineMapType {
     Lub, Glb
 }
-
-impl Copy for CombineMapType {}
 
 #[deriving(Clone, Show)]
 pub enum RegionResolutionError<'tcx> {
@@ -940,14 +932,11 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
 
 // ______________________________________________________________________
 
-#[deriving(PartialEq, Show)]
+#[deriving(Copy, PartialEq, Show)]
 enum Classification { Expanding, Contracting }
 
-impl Copy for Classification {}
-
+#[deriving(Copy)]
 pub enum VarValue { NoValue, Value(Region), ErrorValue }
-
-impl Copy for VarValue {}
 
 struct VarData {
     classification: Classification,

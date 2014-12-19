@@ -28,7 +28,7 @@ use std::path::BytesContainer;
 use std::rc::Rc;
 
 #[allow(non_camel_case_types)]
-#[deriving(Clone, Encodable, Decodable, PartialEq, Eq, Hash, Show)]
+#[deriving(Clone, Copy, Encodable, Decodable, PartialEq, Eq, Hash, Show)]
 pub enum BinOpToken {
     Plus,
     Minus,
@@ -42,10 +42,8 @@ pub enum BinOpToken {
     Shr,
 }
 
-impl Copy for BinOpToken {}
-
 /// A delimeter token
-#[deriving(Clone, Encodable, Decodable, PartialEq, Eq, Hash, Show)]
+#[deriving(Clone, Copy, Encodable, Decodable, PartialEq, Eq, Hash, Show)]
 pub enum DelimToken {
     /// A round parenthesis: `(` or `)`
     Paren,
@@ -55,16 +53,14 @@ pub enum DelimToken {
     Brace,
 }
 
-impl Copy for DelimToken {}
-
-#[deriving(Clone, Encodable, Decodable, PartialEq, Eq, Hash, Show)]
+#[deriving(Clone, Copy, Encodable, Decodable, PartialEq, Eq, Hash, Show)]
 pub enum IdentStyle {
     /// `::` follows the identifier with no whitespace in-between.
     ModName,
     Plain,
 }
 
-#[deriving(Clone, Encodable, Decodable, PartialEq, Eq, Hash, Show)]
+#[deriving(Clone, Copy, Encodable, Decodable, PartialEq, Eq, Hash, Show)]
 pub enum Lit {
     Byte(ast::Name),
     Char(ast::Name),
@@ -88,10 +84,6 @@ impl Lit {
         }
     }
 }
-
-impl Copy for Lit {}
-
-impl Copy for IdentStyle {}
 
 #[allow(non_camel_case_types)]
 #[deriving(Clone, Encodable, Decodable, PartialEq, Eq, Hash, Show)]
@@ -438,12 +430,11 @@ macro_rules! declare_special_idents_and_keywords {(
         pub use self::Keyword::*;
         use ast;
 
+        #[deriving(Copy)]
         pub enum Keyword {
             $( $sk_variant, )*
             $( $rk_variant, )*
         }
-
-        impl Copy for Keyword {}
 
         impl Keyword {
             pub fn to_name(&self) -> ast::Name {

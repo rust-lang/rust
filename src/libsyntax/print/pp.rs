@@ -66,29 +66,23 @@ pub use self::Token::*;
 use std::io;
 use std::string;
 
-#[deriving(Clone, PartialEq)]
+#[deriving(Clone, Copy, PartialEq)]
 pub enum Breaks {
     Consistent,
     Inconsistent,
 }
 
-impl Copy for Breaks {}
-
-#[deriving(Clone)]
+#[deriving(Clone, Copy)]
 pub struct BreakToken {
     offset: int,
     blank_space: int
 }
 
-impl Copy for BreakToken {}
-
-#[deriving(Clone)]
+#[deriving(Clone, Copy)]
 pub struct BeginToken {
     offset: int,
     breaks: Breaks
 }
-
-impl Copy for BeginToken {}
 
 #[deriving(Clone)]
 pub enum Token {
@@ -153,19 +147,17 @@ pub fn buf_str(toks: Vec<Token>,
     return s.into_string();
 }
 
+#[deriving(Copy)]
 pub enum PrintStackBreak {
     Fits,
     Broken(Breaks),
 }
 
-impl Copy for PrintStackBreak {}
-
+#[deriving(Copy)]
 pub struct PrintStackElem {
     offset: int,
     pbreak: PrintStackBreak
 }
-
-impl Copy for PrintStackElem {}
 
 static SIZE_INFINITY: int = 0xffff;
 

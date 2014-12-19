@@ -1188,7 +1188,7 @@ pub enum Type {
     PolyTraitRef(Vec<TyParamBound>),
 }
 
-#[deriving(Clone, Encodable, Decodable, PartialEq, Eq, Hash)]
+#[deriving(Clone, Copy, Encodable, Decodable, PartialEq, Eq, Hash)]
 pub enum PrimitiveType {
     Int, I8, I16, I32, I64,
     Uint, U8, U16, U32, U64,
@@ -1200,9 +1200,7 @@ pub enum PrimitiveType {
     PrimitiveTuple,
 }
 
-impl Copy for PrimitiveType {}
-
-#[deriving(Clone, Encodable, Decodable)]
+#[deriving(Clone, Copy, Encodable, Decodable)]
 pub enum TypeKind {
     TypeEnum,
     TypeFunction,
@@ -1214,8 +1212,6 @@ pub enum TypeKind {
     TypeVariant,
     TypeTypedef,
 }
-
-impl Copy for TypeKind {}
 
 impl PrimitiveType {
     fn from_str(s: &str) -> Option<PrimitiveType> {
@@ -1873,13 +1869,11 @@ impl Clean<Item> for doctree::Constant {
     }
 }
 
-#[deriving(Show, Clone, Encodable, Decodable, PartialEq)]
+#[deriving(Copy, Show, Clone, Encodable, Decodable, PartialEq)]
 pub enum Mutability {
     Mutable,
     Immutable,
 }
-
-impl Copy for Mutability {}
 
 impl Clean<Mutability> for ast::Mutability {
     fn clean(&self, _: &DocContext) -> Mutability {

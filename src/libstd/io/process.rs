@@ -461,7 +461,7 @@ pub struct ProcessOutput {
 }
 
 /// Describes what to do with a standard io stream for a child process.
-#[deriving(Clone)]
+#[deriving(Clone, Copy)]
 pub enum StdioContainer {
     /// This stream will be ignored. This is the equivalent of attaching the
     /// stream to `/dev/null`
@@ -481,11 +481,9 @@ pub enum StdioContainer {
     CreatePipe(bool /* readable */, bool /* writable */),
 }
 
-impl Copy for StdioContainer {}
-
 /// Describes the result of a process after it has terminated.
 /// Note that Windows have no signals, so the result is usually ExitStatus.
-#[deriving(PartialEq, Eq, Clone)]
+#[deriving(PartialEq, Eq, Clone, Copy)]
 pub enum ProcessExit {
     /// Normal termination with an exit status.
     ExitStatus(int),
@@ -493,8 +491,6 @@ pub enum ProcessExit {
     /// Termination by signal, with the signal number.
     ExitSignal(int),
 }
-
-impl Copy for ProcessExit {}
 
 impl fmt::Show for ProcessExit {
     /// Format a ProcessExit enum, to nicely present the information.

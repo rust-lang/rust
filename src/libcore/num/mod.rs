@@ -1225,7 +1225,7 @@ impl_num_cast! { f32,   to_f32 }
 impl_num_cast! { f64,   to_f64 }
 
 /// Used for representing the classification of floating point numbers
-#[deriving(PartialEq, Show)]
+#[deriving(Copy, PartialEq, Show)]
 #[unstable = "may be renamed"]
 pub enum FPCategory {
     /// "Not a Number", often obtained by dividing by zero
@@ -1239,8 +1239,6 @@ pub enum FPCategory {
     /// A regular floating point number
     FPNormal,
 }
-
-impl Copy for FPCategory {}
 
 /// A built-in floating point number.
 // FIXME(#5527): In a future version of Rust, many of these functions will

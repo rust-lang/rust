@@ -83,11 +83,10 @@ pub fn expand_deriving_ord<F>(cx: &mut ExtCtxt,
     trait_def.expand(cx, mitem, item, push)
 }
 
+#[deriving(Copy)]
 pub enum OrderingOp {
     PartialCmpOp, LtOp, LeOp, GtOp, GeOp,
 }
-
-impl Copy for OrderingOp {}
 
 pub fn some_ordering_collapsed(cx: &mut ExtCtxt,
                                span: Span,

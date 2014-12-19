@@ -281,13 +281,11 @@ struct Case<'tcx> {
 }
 
 
-#[deriving(Eq, PartialEq, Show)]
+#[deriving(Copy, Eq, PartialEq, Show)]
 pub enum PointerField {
     ThinPointer(uint),
     FatPointer(uint)
 }
-
-impl Copy for PointerField {}
 
 impl<'tcx> Case<'tcx> {
     fn is_zerolen<'a>(&self, cx: &CrateContext<'a, 'tcx>, scapegoat: Ty<'tcx>)

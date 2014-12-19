@@ -102,12 +102,11 @@ use syntax::ast_util;
 //
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+#[deriving(Copy)]
 pub struct EnvValue<'tcx> {
     action: ast::CaptureClause,
     datum: Datum<'tcx, Lvalue>
 }
-
-impl<'tcx> Copy for EnvValue<'tcx> {}
 
 impl<'tcx> EnvValue<'tcx> {
     pub fn to_string<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> String {

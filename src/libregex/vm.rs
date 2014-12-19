@@ -50,6 +50,7 @@ use unicode::regex::PERLW;
 pub type CaptureLocs = Vec<Option<uint>>;
 
 /// Indicates the type of match to be performed by the VM.
+#[deriving(Copy)]
 pub enum MatchKind {
     /// Only checks if a match exists or not. Does not return location.
     Exists,
@@ -59,8 +60,6 @@ pub enum MatchKind {
     /// Returns the start and end indices of each submatch in the input given.
     Submatches,
 }
-
-impl Copy for MatchKind {}
 
 /// Runs an NFA simulation on the compiled expression given on the search text
 /// `input`. The search begins at byte index `start` and ends at byte index
@@ -96,6 +95,7 @@ struct Nfa<'r, 't> {
 
 /// Indicates the next action to take after a single non-empty instruction
 /// is processed.
+#[deriving(Copy)]
 pub enum StepState {
     /// This is returned if and only if a Match instruction is reached and
     /// we only care about the existence of a match. It instructs the VM to
@@ -108,8 +108,6 @@ pub enum StepState {
     /// No match was found. Continue with the next state in the queue.
     StepContinue,
 }
-
-impl Copy for StepState {}
 
 impl<'r, 't> Nfa<'r, 't> {
     fn run(&mut self) -> CaptureLocs {

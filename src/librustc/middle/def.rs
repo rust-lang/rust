@@ -15,7 +15,7 @@ use middle::subst::ParamSpace;
 use syntax::ast;
 use syntax::ast_util::local_def;
 
-#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+#[deriving(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum Def {
     DefFn(ast::DefId, bool /* is_ctor */),
     DefStaticMethod(/* method */ ast::DefId, MethodProvenance),
@@ -56,15 +56,13 @@ pub enum Def {
     DefMethod(ast::DefId /* method */, Option<ast::DefId> /* trait */, MethodProvenance),
 }
 
-impl Copy for Def {}
-
-#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+#[deriving(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum MethodProvenance {
     FromTrait(ast::DefId),
     FromImpl(ast::DefId),
 }
 
-#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+#[deriving(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum TyParamProvenance {
     FromSelf(ast::DefId),
     FromParam(ast::DefId),
@@ -81,8 +79,6 @@ impl MethodProvenance {
     }
 }
 
-impl Copy for MethodProvenance {}
-
 impl TyParamProvenance {
     pub fn def_id(&self) -> ast::DefId {
         match *self {
@@ -91,8 +87,6 @@ impl TyParamProvenance {
         }
     }
 }
-
-impl Copy for TyParamProvenance {}
 
 impl Def {
     pub fn def_id(&self) -> ast::DefId {

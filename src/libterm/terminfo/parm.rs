@@ -16,7 +16,7 @@ use self::FormatState::*;
 use self::FormatOp::*;
 use std::mem::replace;
 
-#[deriving(PartialEq)]
+#[deriving(Copy, PartialEq)]
 enum States {
     Nothing,
     Percent,
@@ -33,16 +33,12 @@ enum States {
     SeekIfEndPercent(int)
 }
 
-impl Copy for States {}
-
-#[deriving(PartialEq)]
+#[deriving(Copy, PartialEq)]
 enum FormatState {
     FormatStateFlags,
     FormatStateWidth,
     FormatStatePrecision
 }
-
-impl Copy for FormatState {}
 
 /// Types of parameters a capability can use
 #[allow(missing_docs)]
@@ -446,7 +442,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
     Ok(output)
 }
 
-#[deriving(PartialEq)]
+#[deriving(Copy, PartialEq)]
 struct Flags {
     width: uint,
     precision: uint,
@@ -456,8 +452,6 @@ struct Flags {
     space: bool
 }
 
-impl Copy for Flags {}
-
 impl Flags {
     fn new() -> Flags {
         Flags{ width: 0, precision: 0, alternate: false,
@@ -465,6 +459,7 @@ impl Flags {
     }
 }
 
+#[deriving(Copy)]
 enum FormatOp {
     FormatDigit,
     FormatOctal,
@@ -472,8 +467,6 @@ enum FormatOp {
     FormatHEX,
     FormatString
 }
-
-impl Copy for FormatOp {}
 
 impl FormatOp {
     fn from_char(c: char) -> FormatOp {

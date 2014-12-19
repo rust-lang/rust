@@ -19,7 +19,7 @@ use clean;
 /// discriminants. JavaScript then is used to decode them into the original value.
 /// Consequently, every change to this type should be synchronized to
 /// the `itemTypes` mapping table in `static/main.js`.
-#[deriving(PartialEq, Clone)]
+#[deriving(Copy, PartialEq, Clone)]
 pub enum ItemType {
     Module          = 0,
     Struct          = 1,
@@ -40,8 +40,6 @@ pub enum ItemType {
     AssociatedType  = 17,
     Constant        = 18,
 }
-
-impl Copy for ItemType {}
 
 impl ItemType {
     pub fn from_item(item: &clean::Item) -> ItemType {

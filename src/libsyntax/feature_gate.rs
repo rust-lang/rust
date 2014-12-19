@@ -97,6 +97,7 @@ enum Status {
 }
 
 /// A set of features to be used by later passes.
+#[deriving(Copy)]
 pub struct Features {
     pub default_type_params: bool,
     pub unboxed_closures: bool,
@@ -106,8 +107,6 @@ pub struct Features {
     pub quote: bool,
     pub opt_out_copy: bool,
 }
-
-impl Copy for Features {}
 
 impl Features {
     pub fn new() -> Features {

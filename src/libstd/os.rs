@@ -361,6 +361,7 @@ pub fn join_paths<T: BytesContainer>(paths: &[T]) -> Result<Vec<u8>, &'static st
 }
 
 /// A low-level OS in-memory pipe.
+#[deriving(Copy)]
 pub struct Pipe {
     /// A file descriptor representing the reading end of the pipe. Data written
     /// on the `out` file descriptor can be read from this file descriptor.
@@ -369,8 +370,6 @@ pub struct Pipe {
     /// to this file descriptor can be read from the `input` file descriptor.
     pub writer: c_int,
 }
-
-impl Copy for Pipe {}
 
 /// Creates a new low-level OS in-memory pipe.
 ///
@@ -861,6 +860,7 @@ pub enum MapOption {
 impl Copy for MapOption {}
 
 /// Possible errors when creating a map.
+#[deriving(Copy)]
 pub enum MapError {
     /// # The following are POSIX-specific
     ///
@@ -904,8 +904,6 @@ pub enum MapError {
     /// value of `GetLastError`.
     ErrMapViewOfFile(uint)
 }
-
-impl Copy for MapError {}
 
 impl fmt::Show for MapError {
     fn fmt(&self, out: &mut fmt::Formatter) -> fmt::Result {

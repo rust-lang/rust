@@ -229,18 +229,15 @@ pub fn infer_variance(tcx: &ty::ctxt) {
 
 type VarianceTermPtr<'a> = &'a VarianceTerm<'a>;
 
-#[deriving(Show)]
+#[deriving(Copy, Show)]
 struct InferredIndex(uint);
 
-impl Copy for InferredIndex {}
-
+#[deriving(Copy)]
 enum VarianceTerm<'a> {
     ConstantTerm(ty::Variance),
     TransformTerm(VarianceTermPtr<'a>, VarianceTermPtr<'a>),
     InferredTerm(InferredIndex),
 }
-
-impl<'a> Copy for VarianceTerm<'a> {}
 
 impl<'a> fmt::Show for VarianceTerm<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -268,13 +265,11 @@ struct TermsContext<'a, 'tcx: 'a> {
     inferred_infos: Vec<InferredInfo<'a>> ,
 }
 
-#[deriving(Show, PartialEq)]
+#[deriving(Copy, Show, PartialEq)]
 enum ParamKind {
     TypeParam,
     RegionParam
 }
-
-impl Copy for ParamKind {}
 
 struct InferredInfo<'a> {
     item_id: ast::NodeId,
@@ -427,12 +422,11 @@ struct ConstraintContext<'a, 'tcx: 'a> {
 
 /// Declares that the variable `decl_id` appears in a location with
 /// variance `variance`.
+#[deriving(Copy)]
 struct Constraint<'a> {
     inferred: InferredIndex,
     variance: &'a VarianceTerm<'a>,
 }
-
-impl<'a> Copy for Constraint<'a> {}
 
 fn add_constraints_from_crate<'a, 'tcx>(terms_cx: TermsContext<'a, 'tcx>,
                                         krate: &ast::Crate)

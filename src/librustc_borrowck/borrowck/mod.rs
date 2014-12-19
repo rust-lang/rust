@@ -56,10 +56,8 @@ pub mod gather_loans;
 
 pub mod move_data;
 
-#[deriving(Clone)]
+#[deriving(Clone, Copy)]
 pub struct LoanDataFlowOperator;
-
-impl Copy for LoanDataFlowOperator {}
 
 pub type LoanDataFlow<'a, 'tcx> = DataFlowContext<'a, 'tcx, LoanDataFlowOperator>;
 
@@ -325,13 +323,11 @@ impl<'tcx> LoanPath<'tcx> {
 //     b2b39e8700e37ad32b486b9a8409b50a8a53aa51#commitcomment-7892003
 static DOWNCAST_PRINTED_OPERATOR : &'static str = " as ";
 
-#[deriving(PartialEq, Eq, Hash, Show)]
+#[deriving(Copy, PartialEq, Eq, Hash, Show)]
 pub enum LoanPathElem {
     LpDeref(mc::PointerKind),    // `*LV` in doc.rs
     LpInterior(mc::InteriorKind) // `LV.f` in doc.rs
 }
-
-impl Copy for LoanPathElem {}
 
 pub fn closure_to_block(closure_id: ast::NodeId,
                         tcx: &ty::ctxt) -> ast::NodeId {
@@ -494,20 +490,17 @@ pub struct BckError<'tcx> {
     code: bckerr_code
 }
 
+#[deriving(Copy)]
 pub enum AliasableViolationKind {
     MutabilityViolation,
     BorrowViolation(euv::LoanCause)
 }
 
-impl Copy for AliasableViolationKind {}
-
-#[deriving(Show)]
+#[deriving(Copy, Show)]
 pub enum MovedValueUseKind {
     MovedInUse,
     MovedInCapture,
 }
-
-impl Copy for MovedValueUseKind {}
 
 ///////////////////////////////////////////////////////////////////////////
 // Misc

@@ -187,7 +187,7 @@ impl RegionSubsts {
 ///////////////////////////////////////////////////////////////////////////
 // ParamSpace
 
-#[deriving(PartialOrd, Ord, PartialEq, Eq,
+#[deriving(Copy, PartialOrd, Ord, PartialEq, Eq,
            Clone, Hash, Encodable, Decodable, Show)]
 pub enum ParamSpace {
     TypeSpace,  // Type parameters attached to a type definition, trait, or impl
@@ -195,8 +195,6 @@ pub enum ParamSpace {
     AssocSpace, // Assoc types defined in a trait/impl
     FnSpace,    // Type parameters attached to a method or fn
 }
-
-impl Copy for ParamSpace {}
 
 impl ParamSpace {
     pub fn all() -> [ParamSpace, ..4] {

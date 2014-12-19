@@ -384,7 +384,6 @@ pub mod eabi {
     pub use self::EXCEPTION_DISPOSITION::*;
     use rt::libunwind as uw;
     use libc::{c_void, c_int};
-    use kinds::Copy;
 
     #[repr(C)]
     #[allow(missing_copy_implementations)]
@@ -397,14 +396,13 @@ pub mod eabi {
     pub struct DISPATCHER_CONTEXT;
 
     #[repr(C)]
+    #[deriving(Copy)]
     pub enum EXCEPTION_DISPOSITION {
         ExceptionContinueExecution,
         ExceptionContinueSearch,
         ExceptionNestedException,
         ExceptionCollidedUnwind
     }
-
-    impl Copy for EXCEPTION_DISPOSITION {}
 
     type _Unwind_Personality_Fn =
         extern "C" fn(

@@ -16,7 +16,6 @@
 
 use fmt;
 use iter::DoubleEndedIteratorExt;
-use kinds::Copy;
 use num::{Int, cast};
 use slice::SliceExt;
 
@@ -109,13 +108,11 @@ radix! { UpperHex, 16, "0x", x @  0 ...  9 => b'0' + x,
                              x @ 10 ... 15 => b'A' + (x - 10) }
 
 /// A radix with in the range of `2..36`.
-#[deriving(Clone, PartialEq)]
+#[deriving(Clone, Copy, PartialEq)]
 #[unstable = "may be renamed or move to a different module"]
 pub struct Radix {
     base: u8,
 }
-
-impl Copy for Radix {}
 
 impl Radix {
     fn new(base: u8) -> Radix {
@@ -137,9 +134,8 @@ impl GenericRadix for Radix {
 
 /// A helper type for formatting radixes.
 #[unstable = "may be renamed or move to a different module"]
+#[deriving(Copy)]
 pub struct RadixFmt<T, R>(T, R);
-
-impl<T,R> Copy for RadixFmt<T,R> where T: Copy, R: Copy {}
 
 /// Constructs a radix formatter in the range of `2..36`.
 ///

@@ -23,14 +23,12 @@ use syntax::codemap::Span;
 use syntax::visit;
 use syntax::visit::Visitor;
 
-#[deriving(PartialEq)]
+#[deriving(Copy, PartialEq)]
 enum UnsafeContext {
     SafeContext,
     UnsafeFn,
     UnsafeBlock(ast::NodeId),
 }
-
-impl Copy for UnsafeContext {}
 
 fn type_is_unsafe_function(ty: Ty) -> bool {
     match ty.sty {

@@ -54,12 +54,11 @@ mod basic_block;
 mod llrepr;
 mod cleanup;
 
+#[deriving(Copy)]
 pub struct ModuleTranslation {
     pub llcx: ContextRef,
     pub llmod: ModuleRef,
 }
-
-impl Copy for ModuleTranslation {}
 
 pub struct CrateTranslation {
     pub modules: Vec<ModuleTranslation>,

@@ -89,12 +89,11 @@ use std::uint;
 // Definition mapping
 pub type DefMap = RefCell<NodeMap<Def>>;
 
+#[deriving(Copy)]
 struct binding_info {
     span: Span,
     binding_mode: BindingMode,
 }
-
-impl Copy for binding_info {}
 
 // Map from the name in a pattern to its binding mode.
 type BindingMap = HashMap<Name,binding_info>;
@@ -118,7 +117,7 @@ pub type ExternalExports = DefIdSet;
 // FIXME: dox
 pub type LastPrivateMap = NodeMap<LastPrivate>;
 
-#[deriving(Show)]
+#[deriving(Copy, Show)]
 pub enum LastPrivate {
     LastMod(PrivateDep),
     // `use` directives (imports) can refer to two separate definitions in the
@@ -132,24 +131,18 @@ pub enum LastPrivate {
                type_used: ImportUse},
 }
 
-impl Copy for LastPrivate {}
-
-#[deriving(Show)]
+#[deriving(Copy, Show)]
 pub enum PrivateDep {
     AllPublic,
     DependsOn(DefId),
 }
 
-impl Copy for PrivateDep {}
-
 // How an import is used.
-#[deriving(PartialEq, Show)]
+#[deriving(Copy, PartialEq, Show)]
 pub enum ImportUse {
     Unused,       // The import is not used.
     Used,         // The import is used.
 }
-
-impl Copy for ImportUse {}
 
 impl LastPrivate {
     fn or(self, other: LastPrivate) -> LastPrivate {
@@ -160,32 +153,26 @@ impl LastPrivate {
     }
 }
 
-#[deriving(PartialEq)]
+#[deriving(Copy, PartialEq)]
 enum PatternBindingMode {
     RefutableMode,
     LocalIrrefutableMode,
     ArgumentIrrefutableMode,
 }
 
-impl Copy for PatternBindingMode {}
-
-#[deriving(PartialEq, Eq, Hash, Show)]
+#[deriving(Copy, PartialEq, Eq, Hash, Show)]
 enum Namespace {
     TypeNS,
     ValueNS
 }
 
-impl Copy for Namespace {}
-
-#[deriving(PartialEq)]
+#[deriving(Copy, PartialEq)]
 enum NamespaceError {
     NoError,
     ModuleError,
     TypeError,
     ValueError
 }
-
-impl Copy for NamespaceError {}
 
 /// A NamespaceResult represents the result of resolving an import in
 /// a particular namespace. The result is either definitely-resolved,
@@ -247,12 +234,11 @@ impl<'a, 'v> Visitor<'v> for Resolver<'a> {
 }
 
 /// Contains data for specific types of import directives.
+#[deriving(Copy)]
 enum ImportDirectiveSubclass {
     SingleImport(Name /* target */, Name /* source */),
     GlobImport
 }
-
-impl Copy for ImportDirectiveSubclass {}
 
 /// The context that we thread through while building the reduced graph.
 #[deriving(Clone)]
@@ -293,6 +279,7 @@ enum FallbackSuggestion {
     TraitMethod(String),
 }
 
+#[deriving(Copy)]
 enum TypeParameters<'a> {
     NoTypeParameters,
     HasTypeParameters(
@@ -310,11 +297,9 @@ enum TypeParameters<'a> {
         RibKind)
 }
 
-impl<'a> Copy for TypeParameters<'a> {}
-
 // The rib kind controls the translation of local
 // definitions (`DefLocal`) to upvars (`DefUpvar`).
-#[deriving(Show)]
+#[deriving(Copy, Show)]
 enum RibKind {
     // No translation needs to be applied.
     NormalRibKind,
@@ -337,37 +322,30 @@ enum RibKind {
     ConstantItemRibKind
 }
 
-impl Copy for RibKind {}
-
 // Methods can be required or provided. RequiredMethod methods only occur in traits.
-#[deriving(Show)]
+#[deriving(Copy, Show)]
 enum MethodSort {
     RequiredMethod,
     ProvidedMethod(NodeId)
 }
 
-impl Copy for MethodSort {}
-
+#[deriving(Copy)]
 enum UseLexicalScopeFlag {
     DontUseLexicalScope,
     UseLexicalScope
 }
-
-impl Copy for UseLexicalScopeFlag {}
 
 enum ModulePrefixResult {
     NoPrefixFound,
     PrefixFound(Rc<Module>, uint)
 }
 
-#[deriving(Clone, Eq, PartialEq)]
+#[deriving(Clone, Copy, Eq, PartialEq)]
 pub enum TraitItemKind {
     NonstaticMethodTraitItemKind,
     StaticMethodTraitItemKind,
     TypeTraitItemKind,
 }
-
-impl Copy for TraitItemKind {}
 
 impl TraitItemKind {
     pub fn from_explicit_self_category(explicit_self_category:
@@ -381,7 +359,7 @@ impl TraitItemKind {
     }
 }
 
-#[deriving(PartialEq)]
+#[deriving(Copy, PartialEq)]
 enum NameSearchType {
     /// We're doing a name search in order to resolve a `use` directive.
     ImportSearch,
@@ -391,19 +369,16 @@ enum NameSearchType {
     PathSearch,
 }
 
-impl Copy for NameSearchType {}
-
+#[deriving(Copy)]
 enum BareIdentifierPatternResolution {
     FoundStructOrEnumVariant(Def, LastPrivate),
     FoundConst(Def, LastPrivate),
     BareIdentifierPatternUnresolved
 }
 
-impl Copy for BareIdentifierPatternResolution {}
-
 // Specifies how duplicates should be handled when adding a child item if
 // another item exists with the same name in some namespace.
-#[deriving(PartialEq)]
+#[deriving(Copy, PartialEq)]
 enum DuplicateCheckingMode {
     ForbidDuplicateModules,
     ForbidDuplicateTypesAndModules,
@@ -411,8 +386,6 @@ enum DuplicateCheckingMode {
     ForbidDuplicateTypesAndValues,
     OverwriteDuplicates
 }
-
-impl Copy for DuplicateCheckingMode {}
 
 /// One local scope.
 #[deriving(Show)]
@@ -543,7 +516,7 @@ enum ParentLink {
 }
 
 /// The type of module this is.
-#[deriving(PartialEq)]
+#[deriving(Copy, PartialEq)]
 enum ModuleKind {
     NormalModuleKind,
     TraitModuleKind,
@@ -551,8 +524,6 @@ enum ModuleKind {
     EnumModuleKind,
     AnonymousModuleKind,
 }
-
-impl Copy for ModuleKind {}
 
 /// One node in the tree of modules.
 struct Module {
@@ -645,14 +616,12 @@ struct TypeNsDef {
 }
 
 // Records a possibly-private value definition.
-#[deriving(Clone, Show)]
+#[deriving(Clone, Copy, Show)]
 struct ValueNsDef {
     modifiers: DefModifiers, // see note in ImportResolution about how to use this
     def: Def,
     value_span: Option<Span>,
 }
-
-impl Copy for ValueNsDef {}
 
 // Records the definitions (at most one for each namespace) that a name is
 // bound to.
@@ -662,6 +631,7 @@ struct NameBindings {
 }
 
 /// Ways in which a trait can be referenced
+#[deriving(Copy)]
 enum TraitReferenceType {
     TraitImplementation,             // impl SomeTrait for T { ... }
     TraitDerivation,                 // trait T : SomeTrait { ... }
@@ -669,8 +639,6 @@ enum TraitReferenceType {
     TraitObject,                     // Box<for<'a> SomeTrait>
     TraitQPath,                      // <T as SomeTrait>::
 }
-
-impl Copy for TraitReferenceType {}
 
 impl NameBindings {
     fn new() -> NameBindings {

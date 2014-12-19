@@ -61,14 +61,13 @@ pub trait FromHex for Sized? {
 }
 
 /// Errors that can occur when decoding a hex encoded string
+#[deriving(Copy)]
 pub enum FromHexError {
     /// The input contained a character not part of the hex format
     InvalidHexCharacter(char, uint),
     /// The input had an invalid length
     InvalidHexLength,
 }
-
-impl Copy for FromHexError {}
 
 impl fmt::Show for FromHexError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

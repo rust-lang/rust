@@ -13,7 +13,6 @@
 #![experimental]
 
 use {fmt, i64};
-use kinds::Copy;
 use ops::{Add, Sub, Mul, Div, Neg, FnOnce};
 use option::Option;
 use option::Option::{Some, None};
@@ -47,7 +46,7 @@ macro_rules! try_opt {
 
 /// ISO 8601 time duration with nanosecond precision.
 /// This also allows for the negative duration; see individual methods for details.
-#[deriving(Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[deriving(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Duration {
     secs: i64,
     nanos: i32, // Always 0 <= nanos < NANOS_PER_SEC
@@ -64,8 +63,6 @@ pub const MAX: Duration = Duration {
     secs: i64::MAX / MILLIS_PER_SEC,
     nanos: (i64::MAX % MILLIS_PER_SEC) as i32 * NANOS_PER_MILLI
 };
-
-impl Copy for Duration {}
 
 impl Duration {
     /// Makes a new `Duration` with given number of weeks.

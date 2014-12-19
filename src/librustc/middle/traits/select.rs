@@ -91,7 +91,7 @@ pub enum MethodMatchResult {
     MethodDidNotMatch,
 }
 
-#[deriving(Show)]
+#[deriving(Copy, Show)]
 pub enum MethodMatchedData {
     // In the case of a precise match, we don't really need to store
     // how the match was found. So don't.
@@ -101,8 +101,6 @@ pub enum MethodMatchedData {
     // that we can determine the type to which things were coerced.
     CoerciveMethodMatch(/* impl we matched */ ast::DefId)
 }
-
-impl Copy for MethodMatchedData {}
 
 /// The selection process begins by considering all impls, where
 /// clauses, and so forth that might resolve an obligation.  Sometimes

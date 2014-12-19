@@ -45,18 +45,16 @@ pub trait PpAnn {
     fn post(&self, _state: &mut State, _node: AnnNode) -> IoResult<()> { Ok(()) }
 }
 
+#[deriving(Copy)]
 pub struct NoAnn;
-
-impl Copy for NoAnn {}
 
 impl PpAnn for NoAnn {}
 
+#[deriving(Copy)]
 pub struct CurrentCommentAndLiteral {
     cur_cmnt: uint,
     cur_lit: uint,
 }
-
-impl Copy for CurrentCommentAndLiteral {}
 
 pub struct State<'a> {
     pub s: pp::Printer,
