@@ -199,7 +199,7 @@ pub fn load_self() -> Option<Vec<u8>> {
 }
 
 #[cfg(target_os = "dragonfly")]
-fn load_self() -> Option<Vec<u8>> {
+pub fn load_self() -> Option<Vec<u8>> {
     use std::io;
 
     match io::fs::readlink(&Path::new("/proc/curproc/file")) {
