@@ -55,6 +55,7 @@ the direction the language is evolving in.
 * [0439-cmp-ops-reform.md](text/0439-cmp-ops-reform.md)
 * [0446--es6-unicode-escapes.md](text/0446-es6-unicode-escapes.md)
 * [0450-un-feature-gate-some-more-gates.md](text/0450-un-feature-gate-some-more-gates.md)
+* [0453-macro-reform.md](text/0453-macro-reform.md)
 * [0459-disallow-shadowing.md](text/0459-disallow-shadowing.md)
 * [0463-future-proof-literal-suffixes.md](text/0463-future-proof-literal-suffixes.md)
 * [0490-dst-syntax.md](text/0490-dst-syntax.md)
