@@ -49,7 +49,8 @@ use rustc::session::search_paths::SearchPaths;
 // reexported from `clean` so it can be easily updated with the mod itself
 pub use clean::SCHEMA_VERSION;
 
-#[macro_escape]
+#[cfg_attr(stage0, macro_escape)]
+#[cfg_attr(not(stage0), macro_use)]
 pub mod externalfiles;
 
 pub mod clean;

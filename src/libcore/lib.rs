@@ -62,19 +62,23 @@
 #![feature(default_type_params, unboxed_closures, associated_types)]
 #![deny(missing_docs)]
 
-#[macro_escape]
+#[cfg_attr(stage0, macro_escape)]
+#[cfg_attr(not(stage0), macro_use)]
 mod macros;
 
 #[path = "num/float_macros.rs"]
-#[macro_escape]
+#[cfg_attr(stage0, macro_escape)]
+#[cfg_attr(not(stage0), macro_use)]
 mod float_macros;
 
 #[path = "num/int_macros.rs"]
-#[macro_escape]
+#[cfg_attr(stage0, macro_escape)]
+#[cfg_attr(not(stage0), macro_use)]
 mod int_macros;
 
 #[path = "num/uint_macros.rs"]
-#[macro_escape]
+#[cfg_attr(stage0, macro_escape)]
+#[cfg_attr(not(stage0), macro_use)]
 mod uint_macros;
 
 #[path = "num/int.rs"]  pub mod int;

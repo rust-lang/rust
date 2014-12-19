@@ -183,7 +183,8 @@ use regex::Regex;
 
 use directive::LOG_LEVEL_NAMES;
 
-#[macro_escape]
+#[cfg_attr(stage0, macro_escape)]
+#[cfg_attr(not(stage0), macro_use)]
 pub mod macros;
 
 mod directive;
