@@ -77,7 +77,7 @@ use std::hash::{Hash, sip, Writer};
 use std::mem;
 use std::ops;
 use std::rc::Rc;
-use std::collections::enum_set::{EnumSet, CLike};
+use collections::enum_set::{EnumSet, CLike};
 use std::collections::hash_map::{HashMap, Occupied, Vacant};
 use syntax::abi;
 use syntax::ast::{CrateNum, DefId, DUMMY_NODE_ID, Ident, ItemTrait, LOCAL_CRATE};
