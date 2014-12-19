@@ -94,7 +94,7 @@ static CALLBACKS: [atomic::AtomicUint, ..MAX_CALLBACKS] =
          atomic::INIT_ATOMIC_UINT, atomic::INIT_ATOMIC_UINT];
 static CALLBACK_CNT: atomic::AtomicUint = atomic::INIT_ATOMIC_UINT;
 
-thread_local!(static PANICKING: Cell<bool> = Cell::new(false))
+thread_local! { static PANICKING: Cell<bool> = Cell::new(false) }
 
 /// Invoke a closure, capturing the cause of panic if one occurs.
 ///
