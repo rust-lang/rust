@@ -315,7 +315,6 @@ macro_rules! bitflags {
 #[cfg(test)]
 #[allow(non_upper_case_globals)]
 mod tests {
-    use kinds::Copy;
     use hash;
     use option::Option::{Some, None};
     use ops::{BitOr, BitAnd, BitXor, Sub, Not};

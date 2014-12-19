@@ -1343,16 +1343,13 @@ pub mod raw {
 #[cfg(test)]
 mod tests {
     use std::boxed::Box;
-    use std::cell::Cell;
-    use std::default::Default;
-    use std::mem;
-    use std::prelude::*;
+    use prelude::*;
+    use core::cell::Cell;
+    use core::default::Default;
+    use core::mem;
     use std::rand::{Rng, task_rng};
     use std::rc::Rc;
-    use std::rt;
-    use slice::*;
-
-    use vec::Vec;
+    use super::ElementSwaps;
 
     fn square(n: uint) -> uint { n * n }
 
@@ -2764,13 +2761,11 @@ mod tests {
 
 #[cfg(test)]
 mod bench {
-    use std::prelude::*;
+    use prelude::*;
+    use core::mem;
+    use core::ptr;
     use std::rand::{weak_rng, Rng};
-    use std::mem;
-    use std::ptr;
     use test::{Bencher, black_box};
-
-    use vec::Vec;
 
     #[bench]
     fn iterator(b: &mut Bencher) {

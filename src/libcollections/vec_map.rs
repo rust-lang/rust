@@ -672,8 +672,7 @@ impl<V> DoubleEndedIterator<(uint, V)> for MoveItems<V> {
 
 #[cfg(test)]
 mod test_map {
-    use std::prelude::*;
-    use vec::Vec;
+    use prelude::*;
     use core::hash::hash;
 
     use super::VecMap;
@@ -1046,8 +1045,7 @@ mod test_map {
 
 #[cfg(test)]
 mod bench {
-    extern crate test;
-    use self::test::Bencher;
+    use test::Bencher;
     use super::VecMap;
     use bench::{insert_rand_n, insert_seq_n, find_rand_n, find_seq_n};
 

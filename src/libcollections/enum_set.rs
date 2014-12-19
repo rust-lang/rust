@@ -295,9 +295,9 @@ impl<E:CLike> Extend<E> for EnumSet<E> {
 
 #[cfg(test)]
 mod test {
-    use std::prelude::*;
     use self::Foo::*;
-    use std::mem;
+    use prelude::*;
+    use core::mem;
 
     use super::{EnumSet, CLike};
 

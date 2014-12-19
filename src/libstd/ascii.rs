@@ -633,7 +633,6 @@ mod tests {
     use prelude::*;
     use super::*;
     use char::from_u32;
-    use str::StrPrelude;
 
     macro_rules! v2ascii {
         ( [$($e:expr),*]) => (&[$(Ascii{chr:$e}),*]);
