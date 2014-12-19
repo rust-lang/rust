@@ -1554,7 +1554,8 @@ pub fn store_for_loop_binding<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                           -> Block<'blk, 'tcx> {
     let _icx = push_ctxt("match::store_for_loop_binding");
 
-    if simple_identifier(&*pat).is_some() {
+    if simple_identifier(&*pat).is_some() &&
+       bcx.sess().opts.debuginfo != FullDebugInfo {
         // Generate nicer LLVM for the common case of a `for` loop pattern
         // like `for x in blahblah { ... }`.
         let binding_type = node_id_type(bcx, pat.id);
