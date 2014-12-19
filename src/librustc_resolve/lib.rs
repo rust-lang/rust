@@ -63,9 +63,9 @@ use syntax::ast::{DeclItem, DefId, Expr, ExprAgain, ExprBreak, ExprField};
 use syntax::ast::{ExprClosure, ExprForLoop, ExprLoop, ExprWhile, ExprMethodCall};
 use syntax::ast::{ExprPath, ExprStruct, FnDecl};
 use syntax::ast::{ForeignItem, ForeignItemFn, ForeignItemStatic, Generics};
-use syntax::ast::{Ident, ImplItem, Item, ItemEnum, ItemFn, ItemForeignMod};
-use syntax::ast::{ItemImpl, ItemMac, ItemMod, ItemStatic, ItemStruct};
-use syntax::ast::{ItemTrait, ItemTy, LOCAL_CRATE, Local, ItemConst};
+use syntax::ast::{Ident, ImplItem, Item, ItemConst, ItemEnum, ItemFn};
+use syntax::ast::{ItemForeignMod, ItemImpl, ItemMac, ItemMod, ItemStatic};
+use syntax::ast::{ItemStruct, ItemTrait, ItemTy, Local};
 use syntax::ast::{MethodImplItem, Mod, Name, NamedField, NodeId};
 use syntax::ast::{Pat, PatEnum, PatIdent, PatLit};
 use syntax::ast::{PatRange, PatStruct, Path, PathListIdent, PathListMod};
@@ -97,6 +97,7 @@ use std::rc::{Rc, Weak};
 use std::uint;
 
 mod check_unused;
+mod record_exports;
 
 #[deriving(Copy)]
 struct BindingInfo {
@@ -3708,124 +3709,6 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    // Export recording
-    //
-    // This pass simply determines what all "export" keywords refer to and
-    // writes the results into the export map.
-    //
-    // FIXME #4953 This pass will be removed once exports change to per-item.
-    // Then this operation can simply be performed as part of item (or import)
-    // processing.
-
-    fn record_exports(&mut self) {
-        let root_module = self.graph_root.get_module();
-        self.record_exports_for_module_subtree(root_module);
-    }
-
-    fn record_exports_for_module_subtree(&mut self,
-                                             module_: Rc<Module>) {
-        // If this isn't a local krate, then bail out. We don't need to record
-        // exports for nonlocal crates.
-
-        match module_.def_id.get() {
-            Some(def_id) if def_id.krate == LOCAL_CRATE => {
-                // OK. Continue.
-                debug!("(recording exports for module subtree) recording \
-                        exports for local module `{}`",
-                       self.module_to_string(&*module_));
-            }
-            None => {
-                // Record exports for the root module.
-                debug!("(recording exports for module subtree) recording \
-                        exports for root module `{}`",
-                       self.module_to_string(&*module_));
-            }
-            Some(_) => {
-                // Bail out.
-                debug!("(recording exports for module subtree) not recording \
-                        exports for `{}`",
-                       self.module_to_string(&*module_));
-                return;
-            }
-        }
-
-        self.record_exports_for_module(&*module_);
-        self.populate_module_if_necessary(&module_);
-
-        for (_, child_name_bindings) in module_.children.borrow().iter() {
-            match child_name_bindings.get_module_if_available() {
-                None => {
-                    // Nothing to do.
-                }
-                Some(child_module) => {
-                    self.record_exports_for_module_subtree(child_module);
-                }
-            }
-        }
-
-        for (_, child_module) in module_.anonymous_children.borrow().iter() {
-            self.record_exports_for_module_subtree(child_module.clone());
-        }
-    }
-
-    fn record_exports_for_module(&mut self, module_: &Module) {
-        let mut exports = Vec::new();
-
-        self.add_exports_for_module(&mut exports, module_);
-        match module_.def_id.get() {
-            Some(def_id) => {
-                self.export_map.insert(def_id.node, exports);
-                debug!("(computing exports) writing exports for {} (some)",
-                       def_id.node);
-            }
-            None => {}
-        }
-    }
-
-    fn add_exports_of_namebindings(&mut self,
-                                   exports: &mut Vec<Export>,
-                                   name: Name,
-                                   namebindings: &NameBindings,
-                                   ns: Namespace) {
-        match namebindings.def_for_namespace(ns) {
-            Some(d) => {
-                debug!("(computing exports) YES: export '{}' => {}",
-                       name, d.def_id());
-                exports.push(Export {
-                    name: name,
-                    def_id: d.def_id()
-                });
-            }
-            d_opt => {
-                debug!("(computing exports) NO: {}", d_opt);
-            }
-        }
-    }
-
-    fn add_exports_for_module(&mut self,
-                              exports: &mut Vec<Export>,
-                              module_: &Module) {
-        for (name, importresolution) in module_.import_resolutions.borrow().iter() {
-            if !importresolution.is_public {
-                continue
-            }
-            let xs = [TypeNS, ValueNS];
-            for &ns in xs.iter() {
-                match importresolution.target_for_namespace(ns) {
-                    Some(target) => {
-                        debug!("(computing exports) maybe export '{}'",
-                               token::get_name(*name));
-                        self.add_exports_of_namebindings(exports,
-                                                         *name,
-                                                         &*target.bindings,
-                                                         ns)
-                    }
-                    _ => ()
-                }
-            }
-        }
-    }
-
     // AST resolution
     //
     // We maintain a list of value ribs and type ribs.
@@ -6137,7 +6020,7 @@ pub fn resolve_crate(session: &Session,
     resolver.resolve_imports();
     session.abort_if_errors();
 
-    resolver.record_exports();
+    record_exports::record(&mut resolver);
     session.abort_if_errors();
 
     resolver.resolve_crate(krate);
