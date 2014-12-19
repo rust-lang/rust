@@ -20,4 +20,46 @@ pub fn g<T>() where
     : Foo //~ ERROR private trait in exported type parameter bound
 {}
 
+pub struct S;
+
+impl S {
+    pub fn f<
+        T
+        : Foo //~ ERROR private trait in exported type parameter bound
+    >() {}
+
+    pub fn g<T>() where
+        T
+        : Foo //~ ERROR private trait in exported type parameter bound
+    {}
+}
+
+pub struct S1<
+    T
+    : Foo //~ ERROR private trait in exported type parameter bound
+> {
+    x: T
+}
+
+pub struct S2<T> where
+    T
+    : Foo //~ ERROR private trait in exported type parameter bound
+{
+    x: T
+}
+
+pub enum E1<
+    T
+    : Foo //~ ERROR private trait in exported type parameter bound
+> {
+    V1(T)
+}
+
+pub enum E2<T> where
+    T
+    : Foo //~ ERROR private trait in exported type parameter bound
+{
+    V2(T)
+}
+
 fn main() {}
