@@ -8,29 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: --cfg foo
-
-// check that cfg correctly chooses between the macro impls (see also
-// cfg-macros-notfoo.rs)
-
-#![feature(macro_rules)]
-
-#[cfg(foo)]
-#[macro_use]
+#[macro_use(foo, bar)] //~ ERROR arguments to macro_use are not allowed here
 mod foo {
-    macro_rules! bar {
-        () => { true }
-    }
 }
 
-#[cfg(not(foo))]
-#[macro_use]
-mod foo {
-    macro_rules! bar {
-        () => { false }
-    }
-}
-
-pub fn main() {
-    assert!(bar!())
+fn main() {
 }

@@ -173,14 +173,17 @@ pub use unicode::char;
 /* Exported macros */
 
 #[cfg(stage0)]
-#[macro_escape]
+#[cfg_attr(stage0, macro_escape)]
+#[cfg_attr(not(stage0), macro_use)]
 pub mod macros_stage0;
 
 #[cfg(not(stage0))]
-#[macro_escape]
+#[cfg_attr(stage0, macro_escape)]
+#[cfg_attr(not(stage0), macro_use)]
 pub mod macros;
 
-#[macro_escape]
+#[cfg_attr(stage0, macro_escape)]
+#[cfg_attr(not(stage0), macro_use)]
 pub mod bitflags;
 
 mod rtdeps;
@@ -193,15 +196,18 @@ pub mod prelude;
 /* Primitive types */
 
 #[path = "num/float_macros.rs"]
-#[macro_escape]
+#[cfg_attr(stage0, macro_escape)]
+#[cfg_attr(not(stage0), macro_use)]
 mod float_macros;
 
 #[path = "num/int_macros.rs"]
-#[macro_escape]
+#[cfg_attr(stage0, macro_escape)]
+#[cfg_attr(not(stage0), macro_use)]
 mod int_macros;
 
 #[path = "num/uint_macros.rs"]
-#[macro_escape]
+#[cfg_attr(stage0, macro_escape)]
+#[cfg_attr(not(stage0), macro_use)]
 mod uint_macros;
 
 #[path = "num/int.rs"]  pub mod int;
@@ -229,7 +235,8 @@ pub mod num;
 
 /* Runtime and platform support */
 
-#[macro_escape]
+#[cfg_attr(stage0, macro_escape)]
+#[cfg_attr(not(stage0), macro_use)]
 pub mod thread_local;
 
 pub mod c_str;

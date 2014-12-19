@@ -24,7 +24,8 @@ use std::num::Int;
 use std::str;
 use std::iter;
 
-#[macro_escape]
+#[cfg_attr(stage0, macro_escape)]
+#[cfg_attr(not(stage0), macro_use)]
 pub mod parser;
 
 pub mod lexer;

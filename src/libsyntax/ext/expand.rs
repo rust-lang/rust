@@ -440,9 +440,9 @@ pub fn expand_item(it: P<ast::Item>, fld: &mut MacroExpander)
             if valid_ident {
                 fld.cx.mod_push(it.ident);
             }
-            let macro_escape = contains_macro_escape(new_attrs[]);
+            let macro_use = contains_macro_use(fld, new_attrs[]);
             let result = with_exts_frame!(fld.cx.syntax_env,
-                                          macro_escape,
+                                          macro_use,
                                           noop_fold_item(it, fld));
             if valid_ident {
                 fld.cx.mod_pop();
@@ -522,9 +522,28 @@ fn expand_item_underscore(item: ast::Item_, fld: &mut MacroExpander) -> ast::Ite
     }
 }
 
-// does this attribute list contain "macro_escape" ?
-fn contains_macro_escape(attrs: &[ast::Attribute]) -> bool {
-    attr::contains_name(attrs, "macro_escape")
+// does this attribute list contain "macro_use" ?
+fn contains_macro_use(fld: &mut MacroExpander, attrs: &[ast::Attribute]) -> bool {
+    for attr in attrs.iter() {
+        let mut is_use = attr.check_name("macro_use");
+        if attr.check_name("macro_escape") {
+            fld.cx.span_warn(attr.span, "macro_escape is a deprecated synonym for macro_use");
+            is_use = true;
+            if let ast::AttrInner = attr.node.style {
+                fld.cx.span_help(attr.span, "consider an outer attribute, \
+                                             #[macro_use] mod ...");
+            }
+        };
+
+        if is_use {
+            match attr.node.value.node {
+                ast::MetaWord(..) => (),
+                _ => fld.cx.span_err(attr.span, "arguments to macro_use are not allowed here"),
+            }
+            return true;
+        }
+    }
+    false
 }
 
 // Support for item-position macro invocations, exactly the same
@@ -1299,7 +1318,7 @@ impl<'a, 'v> Visitor<'v> for MacroExterminator<'a> {
 
 #[cfg(test)]
 mod test {
-    use super::{pattern_bindings, expand_crate, contains_macro_escape};
+    use super::{pattern_bindings, expand_crate, contains_macro_use};
     use super::{PatIdentFinder, IdentRenamer, PatIdentRenamer, ExpansionConfig};
     use ast;
     use ast::{Attribute_, AttrOuter, MetaWord, Name};
@@ -1396,9 +1415,9 @@ mod test {
         expand_crate(&sess,test_ecfg(),vec!(),vec!(),crate_ast);
     }
 
-    // macro_escape modules should allow macros to escape
+    // macro_use modules should allow macros to escape
     #[test] fn macros_can_escape_flattened_mods_test () {
-        let src = "#[macro_escape] mod foo {macro_rules! z (() => (3+4));}\
+        let src = "#[macro_use] mod foo {macro_rules! z (() => (3+4));}\
                    fn inty() -> int { z!() }".to_string();
         let sess = parse::new_parse_sess();
         let crate_ast = parse::parse_crate_from_source_str(
@@ -1406,16 +1425,6 @@ mod test {
             src,
             Vec::new(), &sess);
         expand_crate(&sess, test_ecfg(), vec!(), vec!(), crate_ast);
-    }
-
-    #[test] fn test_contains_flatten (){
-        let attr1 = make_dummy_attr ("foo");
-        let attr2 = make_dummy_attr ("bar");
-        let escape_attr = make_dummy_attr ("macro_escape");
-        let attrs1 = vec!(attr1.clone(), escape_attr, attr2.clone());
-        assert_eq!(contains_macro_escape(attrs1[]),true);
-        let attrs2 = vec!(attr1,attr2);
-        assert_eq!(contains_macro_escape(attrs2[]),false);
     }
 
     // make a MetaWord outer attribute with the given name

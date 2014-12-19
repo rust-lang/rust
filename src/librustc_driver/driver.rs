@@ -182,7 +182,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
     // strip before expansion to allow macros to depend on
     // configuration variables e.g/ in
     //
-    //   #[macro_escape] #[cfg(foo)]
+    //   #[macro_use] #[cfg(foo)]
     //   mod bar { macro_rules! baz!(() => {{}}) }
     //
     // baz! should not use this definition unless foo is enabled.

@@ -54,7 +54,8 @@ pub use vec_map::VecMap;
 // Needed for the vec! macro
 pub use alloc::boxed;
 
-#[macro_escape]
+#[cfg_attr(stage0, macro_escape)]
+#[cfg_attr(not(stage0), macro_use)]
 mod macros;
 
 pub mod binary_heap;

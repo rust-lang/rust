@@ -16,7 +16,7 @@
 #![feature(macro_rules)]
 
 #[cfg(foo)]
-#[macro_escape]
+#[macro_use]
 mod foo {
     macro_rules! bar {
         () => { true }
@@ -24,7 +24,7 @@ mod foo {
 }
 
 #[cfg(not(foo))]
-#[macro_escape]
+#[macro_use]
 mod foo {
     macro_rules! bar {
         () => { false }

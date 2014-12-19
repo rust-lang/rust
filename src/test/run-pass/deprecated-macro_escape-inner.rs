@@ -8,29 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: --cfg foo
+// ignore-pretty
 
-// check that cfg correctly chooses between the macro impls (see also
-// cfg-macros-notfoo.rs)
-
-#![feature(macro_rules)]
-
-#[cfg(foo)]
-#[macro_use]
 mod foo {
-    macro_rules! bar {
-        () => { true }
-    }
+    #![macro_escape] //~ WARNING macro_escape is a deprecated synonym for macro_use
+    //~^ HELP consider an outer attribute
 }
 
-#[cfg(not(foo))]
-#[macro_use]
-mod foo {
-    macro_rules! bar {
-        () => { false }
-    }
-}
-
-pub fn main() {
-    assert!(bar!())
+fn main() {
 }
