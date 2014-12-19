@@ -54,6 +54,7 @@ pub use vec_map::VecMap;
 // Needed for the vec! macro
 pub use alloc::boxed;
 
+#[macro_escape]
 mod macros;
 
 pub mod binary_heap;

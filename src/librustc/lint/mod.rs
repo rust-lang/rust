@@ -28,8 +28,6 @@
 //! example) requires more effort. See `emit_lint` and `GatherNodeLevels`
 //! in `context.rs`.
 
-#![macro_escape]
-
 pub use self::Level::*;
 pub use self::LintSource::*;
 

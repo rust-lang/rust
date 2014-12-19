@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![macro_escape]
-
 /// Creates a `std::vec::Vec` containing the arguments.
 // NOTE: remove after the next snapshot
 #[cfg(stage0)]

@@ -62,11 +62,20 @@
 #![feature(default_type_params, unboxed_closures, associated_types)]
 #![deny(missing_docs)]
 
+#[macro_escape]
 mod macros;
 
-#[path = "num/float_macros.rs"] mod float_macros;
-#[path = "num/int_macros.rs"]   mod int_macros;
-#[path = "num/uint_macros.rs"]  mod uint_macros;
+#[path = "num/float_macros.rs"]
+#[macro_escape]
+mod float_macros;
+
+#[path = "num/int_macros.rs"]
+#[macro_escape]
+mod int_macros;
+
+#[path = "num/uint_macros.rs"]
+#[macro_escape]
+mod uint_macros;
 
 #[path = "num/int.rs"]  pub mod int;
 #[path = "num/i8.rs"]   pub mod i8;

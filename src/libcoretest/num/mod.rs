@@ -14,13 +14,18 @@ use core::num::{NumCast, cast};
 use core::ops::{Add, Sub, Mul, Div, Rem};
 use core::kinds::Copy;
 
+#[macro_escape]
 mod int_macros;
+
 mod i8;
 mod i16;
 mod i32;
 mod i64;
 mod int;
+
+#[macro_escape]
 mod uint_macros;
+
 mod u8;
 mod u16;
 mod u32;

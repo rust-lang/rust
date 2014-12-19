@@ -11,7 +11,6 @@
 #![crate_type = "lib"]
 
 #![feature(macro_rules)]
-#![macro_escape]
 
 #[deprecated]
 pub fn deprecated() {}

@@ -10,8 +10,6 @@
 
 //! Logging macros
 
-#![macro_escape]
-
 /// The standard logging macro
 ///
 /// This macro will generically log over a provided level (of type u32) with a

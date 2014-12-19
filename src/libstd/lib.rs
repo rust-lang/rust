@@ -172,8 +172,15 @@ pub use unicode::char;
 
 /* Exported macros */
 
-#[cfg(stage0)] pub mod macros_stage0;
-#[cfg(not(stage0))] pub mod macros;
+#[cfg(stage0)]
+#[macro_escape]
+pub mod macros_stage0;
+
+#[cfg(not(stage0))]
+#[macro_escape]
+pub mod macros;
+
+#[macro_escape]
 pub mod bitflags;
 
 mod rtdeps;
@@ -185,9 +192,17 @@ pub mod prelude;
 
 /* Primitive types */
 
-#[path = "num/float_macros.rs"] mod float_macros;
-#[path = "num/int_macros.rs"]   mod int_macros;
-#[path = "num/uint_macros.rs"]  mod uint_macros;
+#[path = "num/float_macros.rs"]
+#[macro_escape]
+mod float_macros;
+
+#[path = "num/int_macros.rs"]
+#[macro_escape]
+mod int_macros;
+
+#[path = "num/uint_macros.rs"]
+#[macro_escape]
+mod uint_macros;
 
 #[path = "num/int.rs"]  pub mod int;
 #[path = "num/i8.rs"]   pub mod i8;
@@ -214,7 +229,9 @@ pub mod num;
 
 /* Runtime and platform support */
 
+#[macro_escape]
 pub mod thread_local;
+
 pub mod c_str;
 pub mod c_vec;
 pub mod dynamic_lib;

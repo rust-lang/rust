@@ -34,13 +34,13 @@
 //! will want to make use of some form of **interior mutability** through the
 //! `Cell` or `RefCell` types.
 
-#![macro_escape]
 #![stable]
 
 use prelude::v1::*;
 
 use cell::UnsafeCell;
 
+#[macro_escape]
 pub mod scoped;
 
 // Sure wish we had macro hygiene, no?

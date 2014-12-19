@@ -38,7 +38,6 @@
 //! });
 //! ```
 
-#![macro_escape]
 #![unstable = "scoped TLS has yet to have wide enough use to fully consider \
                stabilizing its interface"]
 

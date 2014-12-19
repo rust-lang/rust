@@ -16,8 +16,10 @@ pub use self::base::trans_crate;
 pub use self::context::CrateContext;
 pub use self::common::gensym_name;
 
-mod doc;
+#[macro_escape]
 mod macros;
+
+mod doc;
 mod inline;
 mod monomorphize;
 mod controlflow;

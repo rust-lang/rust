@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![macro_escape]
-
 macro_rules! int_module (($T:ty, $T_i:ident) => (
 #[cfg(test)]
 mod tests {
