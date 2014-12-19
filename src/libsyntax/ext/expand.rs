@@ -97,7 +97,7 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
             // `match <expr> { ... }`
             let arms = vec![pat_arm, break_arm];
             let match_expr = fld.cx.expr(span,
-                                         ast::ExprMatch(expr, arms, ast::MatchWhileLetDesugar));
+                                    ast::ExprMatch(expr, arms, ast::MatchSource::WhileLetDesugar));
 
             // `[opt_ident]: loop { ... }`
             let loop_block = fld.cx.block_expr(match_expr);
@@ -158,6 +158,8 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
                 arms
             };
 
+            let contains_else_clause = elseopt.is_some();
+
             // `_ => [<elseopt> | ()]`
             let else_arm = {
                 let pat_under = fld.cx.pat_wild(span);
@@ -170,9 +172,11 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
             arms.extend(else_if_arms.into_iter());
             arms.push(else_arm);
 
-            let match_expr = fld.cx.expr(span, ast::ExprMatch(expr,
-                                                              arms,
-                                                    ast::MatchIfLetDesugar(elseopt.is_some())));
+            let match_expr = fld.cx.expr(span,
+                                         ast::ExprMatch(expr, arms,
+                                                ast::MatchSource::IfLetDesugar {
+                                                    contains_else_clause: contains_else_clause,
+                                                }));
             fld.fold_expr(match_expr)
         }
 

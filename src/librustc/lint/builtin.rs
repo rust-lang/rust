@@ -1157,9 +1157,9 @@ impl LintPass for UnusedParens {
             ast::ExprIf(ref cond, _, _) => (cond, "`if` condition", true),
             ast::ExprWhile(ref cond, _, _) => (cond, "`while` condition", true),
             ast::ExprMatch(ref head, _, source) => match source {
-                ast::MatchNormal => (head, "`match` head expression", true),
-                ast::MatchIfLetDesugar => (head, "`if let` head expression", true),
-                ast::MatchWhileLetDesugar => (head, "`while let` head expression", true),
+                ast::MatchSource::Normal => (head, "`match` head expression", true),
+                ast::MatchSource::IfLetDesugar { .. } => (head, "`if let` head expression", true),
+                ast::MatchSource::WhileLetDesugar => (head, "`while let` head expression", true),
             },
             ast::ExprRet(Some(ref value)) => (value, "`return` value", false),
             ast::ExprAssign(_, ref value) => (value, "assigned value", false),
