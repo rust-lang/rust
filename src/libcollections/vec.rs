@@ -412,6 +412,33 @@ impl<T: Clone> Vec<T> {
         }
     }
 
+    /// Resizes the `Vec` in-place so that `len()` is equal to `new_len`.
+    ///
+    /// Calls either `extend()` or `truncate()` depending on whether `new_len`
+    /// is larger than the current value of `len()` or not.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut vec = vec!["hello"];
+    /// vec.resize(3, "world");
+    /// assert_eq!(vec, vec!["hello", "world", "world"]);
+    ///
+    /// let mut vec = vec![1i, 2, 3, 4];
+    /// vec.resize(2, 0);
+    /// assert_eq!(vec, vec![1, 2]);
+    /// ```
+    #[unstable = "matches collection reform specification; waiting for dust to settle"]
+    pub fn resize(&mut self, new_len: uint, value: T) {
+        let len = self.len();
+
+        if new_len > len {
+            self.extend(repeat(value).take(new_len - len));
+        } else {
+            self.truncate(new_len);
+        }
+    }
+
     /// Partitions a vector based on a predicate.
     ///
     /// Clones the elements of the vector, partitioning them into two `Vec<T>`s
