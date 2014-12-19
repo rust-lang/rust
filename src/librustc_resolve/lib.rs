@@ -96,6 +96,8 @@ use std::mem::replace;
 use std::rc::{Rc, Weak};
 use std::uint;
 
+mod check_unused;
+
 #[deriving(Copy)]
 struct BindingInfo {
     span: Span,
@@ -935,17 +937,6 @@ impl<'a, 'b, 'v> Visitor<'v> for BuildReducedGraphVisitor<'a, 'b> {
 
 }
 
-struct UnusedImportCheckVisitor<'a, 'b:'a> {
-    resolver: &'a mut Resolver<'b>
-}
-
-impl<'a, 'b, 'v> Visitor<'v> for UnusedImportCheckVisitor<'a, 'b> {
-    fn visit_view_item(&mut self, vi: &ViewItem) {
-        self.resolver.check_for_item_unused_imports(vi);
-        visit::walk_view_item(self, vi);
-    }
-}
-
 #[deriving(PartialEq)]
 enum FallbackChecks {
     Everything,
@@ -1005,22 +996,6 @@ impl<'a> Resolver<'a> {
 
             emit_errors: true,
         }
-    }
-    /// The main name resolution procedure.
-    fn resolve(&mut self, krate: &ast::Crate) {
-        self.build_reduced_graph(krate);
-        self.session.abort_if_errors();
-
-        self.resolve_imports();
-        self.session.abort_if_errors();
-
-        self.record_exports();
-        self.session.abort_if_errors();
-
-        self.resolve_crate(krate);
-        self.session.abort_if_errors();
-
-        self.check_for_unused_imports(krate);
     }
 
     //
@@ -6069,119 +6044,6 @@ impl<'a> Resolver<'a> {
     }
 
     //
-    // Unused import checking
-    //
-    // Although this is mostly a lint pass, it lives in here because it depends on
-    // resolve data structures and because it finalises the privacy information for
-    // `use` directives.
-    //
-
-    fn check_for_unused_imports(&mut self, krate: &ast::Crate) {
-        let mut visitor = UnusedImportCheckVisitor{ resolver: self };
-        visit::walk_crate(&mut visitor, krate);
-    }
-
-    fn check_for_item_unused_imports(&mut self, vi: &ViewItem) {
-        // Ignore is_public import statements because there's no way to be sure
-        // whether they're used or not. Also ignore imports with a dummy span
-        // because this means that they were generated in some fashion by the
-        // compiler and we don't need to consider them.
-        if vi.vis == Public { return }
-        if vi.span == DUMMY_SP { return }
-
-        match vi.node {
-            ViewItemExternCrate(_, _, id) => {
-                if let Some(crate_num) = self.session.cstore.find_extern_mod_stmt_cnum(id) {
-                    if !self.used_crates.contains(&crate_num) {
-                        self.session.add_lint(lint::builtin::UNUSED_EXTERN_CRATES,
-                                              id,
-                                              vi.span,
-                                              "unused extern crate".to_string());
-                    }
-                }
-            },
-            ViewItemUse(ref p) => {
-                match p.node {
-                    ViewPathSimple(_, _, id) => self.finalize_import(id, p.span),
-
-                    ViewPathList(_, ref list, _) => {
-                        for i in list.iter() {
-                            self.finalize_import(i.node.id(), i.span);
-                        }
-                    },
-                    ViewPathGlob(_, id) => {
-                        if !self.used_imports.contains(&(id, TypeNS)) &&
-                           !self.used_imports.contains(&(id, ValueNS)) {
-                            self.session
-                                .add_lint(lint::builtin::UNUSED_IMPORTS,
-                                          id,
-                                          p.span,
-                                          "unused import".to_string());
-                        }
-                    },
-                }
-            }
-        }
-    }
-
-    // We have information about whether `use` (import) directives are actually used now.
-    // If an import is not used at all, we signal a lint error. If an import is only used
-    // for a single namespace, we remove the other namespace from the recorded privacy
-    // information. That means in privacy.rs, we will only check imports and namespaces
-    // which are used. In particular, this means that if an import could name either a
-    // public or private item, we will check the correct thing, dependent on how the import
-    // is used.
-    fn finalize_import(&mut self, id: NodeId, span: Span) {
-        debug!("finalizing import uses for {}",
-               self.session.codemap().span_to_snippet(span));
-
-        if !self.used_imports.contains(&(id, TypeNS)) &&
-           !self.used_imports.contains(&(id, ValueNS)) {
-            self.session.add_lint(lint::builtin::UNUSED_IMPORTS,
-                                  id,
-                                  span,
-                                  "unused import".to_string());
-        }
-
-        let (v_priv, t_priv) = match self.last_private.get(&id) {
-            Some(&LastImport {
-                value_priv: v,
-                value_used: _,
-                type_priv: t,
-                type_used: _
-            }) => (v, t),
-            Some(_) => {
-                panic!("we should only have LastImport for `use` directives")
-            }
-            _ => return,
-        };
-
-        let mut v_used = if self.used_imports.contains(&(id, ValueNS)) {
-            Used
-        } else {
-            Unused
-        };
-        let t_used = if self.used_imports.contains(&(id, TypeNS)) {
-            Used
-        } else {
-            Unused
-        };
-
-        match (v_priv, t_priv) {
-            // Since some items may be both in the value _and_ type namespaces (e.g., structs)
-            // we might have two LastPrivates pointing at the same thing. There is no point
-            // checking both, so lets not check the value one.
-            (Some(DependsOn(def_v)), Some(DependsOn(def_t))) if def_v == def_t => v_used = Unused,
-            _ => {},
-        }
-
-        self.last_private.insert(id, LastImport{value_priv: v_priv,
-                                                value_used: v_used,
-                                                type_priv: t_priv,
-                                                type_used: t_used});
-    }
-
-    //
     // Diagnostics
     //
     // Diagnostics are not particularly efficient, because they're rarely
@@ -6268,7 +6130,21 @@ pub fn resolve_crate(session: &Session,
                      krate: &Crate)
                   -> CrateMap {
     let mut resolver = Resolver::new(session, krate.span);
-    resolver.resolve(krate);
+
+    resolver.build_reduced_graph(krate);
+    session.abort_if_errors();
+
+    resolver.resolve_imports();
+    session.abort_if_errors();
+
+    resolver.record_exports();
+    session.abort_if_errors();
+
+    resolver.resolve_crate(krate);
+    session.abort_if_errors();
+
+    check_unused::check_crate(&mut resolver, krate);
+
     CrateMap {
         def_map: resolver.def_map,
         freevars: resolver.freevars,
