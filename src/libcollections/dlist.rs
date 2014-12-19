@@ -451,7 +451,7 @@ impl<T> DList<T> {
     /// Provides a reference to the front element, or `None` if the list is
     /// empty.
     #[inline]
-    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    #[stable]
     pub fn front(&self) -> Option<&T> {
         self.list_head.as_ref().map(|head| &head.value)
     }
@@ -459,7 +459,7 @@ impl<T> DList<T> {
     /// Provides a mutable reference to the front element, or `None` if the list
     /// is empty.
     #[inline]
-    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    #[stable]
     pub fn front_mut(&mut self) -> Option<&mut T> {
         self.list_head.as_mut().map(|head| &mut head.value)
     }
@@ -467,7 +467,7 @@ impl<T> DList<T> {
     /// Provides a reference to the back element, or `None` if the list is
     /// empty.
     #[inline]
-    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    #[stable]
     pub fn back(&self) -> Option<&T> {
         self.list_tail.resolve_immut().as_ref().map(|tail| &tail.value)
     }
@@ -475,7 +475,7 @@ impl<T> DList<T> {
     /// Provides a mutable reference to the back element, or `None` if the list
     /// is empty.
     #[inline]
-    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    #[stable]
     pub fn back_mut(&mut self) -> Option<&mut T> {
         self.list_tail.resolve().map(|tail| &mut tail.value)
     }
