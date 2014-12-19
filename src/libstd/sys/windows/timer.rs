@@ -26,8 +26,6 @@ use libc;
 use ptr;
 use comm;
 
-use sys::c;
-use sys::fs::FileDesc;
 use sys_common::helper_thread::Helper;
 use prelude::*;
 use io::IoResult;
@@ -80,9 +78,10 @@ fn helper(input: libc::HANDLE, messages: Receiver<Req>, _: ()) {
                             None => {}
                         }
                     }
+                    // See the comment in unix::timer for why we don't have any
+                    // asserts here and why we're likely just leaving timers on
+                    // the floor as we exit.
                     Err(comm::Disconnected) => {
-                        assert_eq!(objs.len(), 1);
-                        assert_eq!(chans.len(), 0);
                         break 'outer;
                     }
                     Err(..) => break

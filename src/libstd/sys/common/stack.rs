@@ -121,37 +121,6 @@ pub unsafe fn record_os_managed_stack_bounds(stack_lo: uint, _stack_hi: uint) {
     record_sp_limit(stack_lo + RED_ZONE);
 }
 
-#[inline(always)]
-pub unsafe fn record_rust_managed_stack_bounds(stack_lo: uint, stack_hi: uint) {
-    // When the old runtime had segmented stacks, it used a calculation that was
-    // "limit + RED_ZONE + FUDGE". The red zone was for things like dynamic
-    // symbol resolution, llvm function calls, etc. In theory this red zone
-    // value is 0, but it matters far less when we have gigantic stacks because
-    // we don't need to be so exact about our stack budget. The "fudge factor"
-    // was because LLVM doesn't emit a stack check for functions < 256 bytes in
-    // size. Again though, we have giant stacks, so we round all these
-    // calculations up to the nice round number of 20k.
-    record_sp_limit(stack_lo + RED_ZONE);
-
-    return target_record_stack_bounds(stack_lo, stack_hi);
-
-    #[cfg(not(windows))] #[inline(always)]
-    unsafe fn target_record_stack_bounds(_stack_lo: uint, _stack_hi: uint) {}
-
-    #[cfg(all(windows, target_arch = "x86"))] #[inline(always)]
-    unsafe fn target_record_stack_bounds(stack_lo: uint, stack_hi: uint) {
-        // stack range is at TIB: %fs:0x04 (top) and %fs:0x08 (bottom)
-        asm!("mov $0, %fs:0x04" :: "r"(stack_hi) :: "volatile");
-        asm!("mov $0, %fs:0x08" :: "r"(stack_lo) :: "volatile");
-    }
-    #[cfg(all(windows, target_arch = "x86_64"))] #[inline(always)]
-    unsafe fn target_record_stack_bounds(stack_lo: uint, stack_hi: uint) {
-        // stack range is at TIB: %gs:0x08 (top) and %gs:0x10 (bottom)
-        asm!("mov $0, %gs:0x08" :: "r"(stack_hi) :: "volatile");
-        asm!("mov $0, %gs:0x10" :: "r"(stack_lo) :: "volatile");
-    }
-}
-
 /// Records the current limit of the stack as specified by `end`.
 ///
 /// This is stored in an OS-dependent location, likely inside of the thread

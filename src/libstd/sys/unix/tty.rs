@@ -43,5 +43,4 @@ impl TTY {
     pub fn get_winsize(&mut self) -> IoResult<(int, int)> {
         Err(sys_common::unimpl())
     }
-    pub fn isatty(&self) -> bool { false }
 }

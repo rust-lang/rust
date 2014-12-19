@@ -26,6 +26,7 @@ impl RWLock {
     /// Usage of an RWLock is undefined if it is moved after its first use (any
     /// function calls below).
     #[inline]
+    #[allow(dead_code)] // sys is not exported yet
     pub unsafe fn new() -> RWLock { RWLock(imp::RWLock::new()) }
 
     /// Acquire shared access to the underlying lock, blocking the current
