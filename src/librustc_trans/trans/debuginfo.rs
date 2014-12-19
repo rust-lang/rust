@@ -881,7 +881,7 @@ pub fn create_local_var_metadata(bcx: Block, local: &ast::Local) {
 /// Creates debug information for a variable captured in a closure.
 ///
 /// Adds the created metadata nodes directly to the crate's IR.
-pub fn create_captured_var_metadata<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+pub fn create_captured_var_metadata<'fcx, 'blk, 'tcx>(bcx: Block<'fcx, 'blk, 'tcx>,
                                                 node_id: ast::NodeId,
                                                 env_data_type: Ty<'tcx>,
                                                 env_pointer: ValueRef,
@@ -968,7 +968,7 @@ pub fn create_captured_var_metadata<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 /// match-statement arm.
 ///
 /// Adds the created metadata nodes directly to the crate's IR.
-pub fn create_match_binding_metadata<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+pub fn create_match_binding_metadata<'fcx, 'blk, 'tcx>(bcx: Block<'fcx, 'blk, 'tcx>,
                                                  variable_ident: ast::Ident,
                                                  binding: BindingInfo<'tcx>) {
     if fn_should_be_ignored(bcx.fcx) {
@@ -1586,7 +1586,7 @@ fn compile_unit_metadata(cx: &CrateContext) {
     }
 }
 
-fn declare_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+fn declare_local<'fcx, 'blk, 'tcx>(bcx: Block<'fcx, 'blk, 'tcx>,
                              variable_ident: ast::Ident,
                              variable_type: Ty<'tcx>,
                              scope_metadata: DIScope,
@@ -1653,7 +1653,7 @@ fn declare_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             DIB(cx),
             var_alloca,
             var_metadata,
-            bcx.llbb);
+            bcx.data.llbb);
 
         llvm::LLVMSetInstDebugLocation(trans::build::B(bcx).llbuilder, instr);
     }

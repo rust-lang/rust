@@ -23,7 +23,7 @@ use trans::base;
 use trans::build;
 use trans::callee;
 use trans::common;
-use trans::common::{Block, FunctionContext, ExprId, NodeInfo};
+use trans::common::{Block, BlockS, FunctionContext, ExprId, NodeInfo};
 use trans::debuginfo;
 use trans::glue;
 use middle::region;
@@ -33,13 +33,13 @@ use std::fmt;
 use syntax::ast;
 use util::ppaux::Repr;
 
-pub struct CleanupScope<'blk, 'tcx: 'blk> {
+pub struct CleanupScope<'blk, 'tcx> {
     // The id of this cleanup scope. If the id is None,
     // this is a *temporary scope* that is pushed during trans to
     // cleanup miscellaneous garbage that trans may generate whose
     // lifetime is a subset of some expression.  See module doc for
     // more details.
-    kind: CleanupScopeKind<'blk, 'tcx>,
+    kind: CleanupScopeKind<'blk>,
 
     // Cleanups to run upon scope exit.
     cleanups: Vec<CleanupObj<'tcx>>,
@@ -61,13 +61,13 @@ pub const EXIT_BREAK: uint = 0;
 pub const EXIT_LOOP: uint = 1;
 pub const EXIT_MAX: uint = 2;
 
-pub enum CleanupScopeKind<'blk, 'tcx: 'blk> {
+pub enum CleanupScopeKind<'blk> {
     CustomScopeKind,
     AstScopeKind(ast::NodeId),
-    LoopScopeKind(ast::NodeId, [Block<'blk, 'tcx>, ..EXIT_MAX])
+    LoopScopeKind(ast::NodeId, [&'blk BlockS, ..EXIT_MAX])
 }
 
-impl<'blk, 'tcx: 'blk> fmt::Show for CleanupScopeKind<'blk, 'tcx> {
+impl<'blk> fmt::Show for CleanupScopeKind<'blk> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             CustomScopeKind => write!(f, "CustomScopeKind"),
@@ -99,10 +99,10 @@ pub trait Cleanup<'tcx> {
     fn must_unwind(&self) -> bool;
     fn clean_on_unwind(&self) -> bool;
     fn is_lifetime_end(&self) -> bool;
-    fn trans<'blk>(&self,
-                   bcx: Block<'blk, 'tcx>,
+    fn trans<'fcx, 'blk>(&self,
+                   bcx: Block<'fcx, 'blk, 'tcx>,
                    debug_loc: Option<NodeInfo>)
-                   -> Block<'blk, 'tcx>;
+                   -> Block<'fcx, 'blk, 'tcx>;
 }
 
 pub type CleanupObj<'tcx> = Box<Cleanup<'tcx>+'tcx>;
@@ -154,7 +154,7 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
 
     fn push_loop_cleanup_scope(&self,
                                id: ast::NodeId,
-                               exits: [Block<'blk, 'tcx>, ..EXIT_MAX]) {
+                               exits: [&'blk BlockS, ..EXIT_MAX]) {
         debug!("push_loop_cleanup_scope({})",
                self.ccx.tcx().map.node_to_string(id));
         assert_eq!(Some(id), self.top_ast_scope());
@@ -194,10 +194,10 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
         CustomScopeIndex { index: index }
     }
 
-    fn pop_and_trans_ast_cleanup_scope(&self,
-                                       bcx: Block<'blk, 'tcx>,
+    fn pop_and_trans_ast_cleanup_scope<'fcx>(&self,
+                                       bcx: Block<'fcx, 'blk, 'tcx>,
                                        cleanup_scope: ast::NodeId)
-                                       -> Block<'blk, 'tcx> {
+                                       -> Block<'fcx, 'blk, 'tcx> {
         /*!
          * Removes the cleanup scope for id `cleanup_scope`, which
          * must be at the top of the cleanup stack, and generates the
@@ -243,10 +243,10 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
         let _ = self.pop_scope();
     }
 
-    fn pop_and_trans_custom_cleanup_scope(&self,
-                                          bcx: Block<'blk, 'tcx>,
+    fn pop_and_trans_custom_cleanup_scope<'fcx>(&self,
+                                          bcx: Block<'fcx, 'blk, 'tcx>,
                                           custom_scope: CustomScopeIndex)
-                                          -> Block<'blk, 'tcx> {
+                                          -> Block<'fcx, 'blk, 'tcx> {
         /*!
          * Removes the top cleanup scope from the stack, which must be
          * a temporary scope, and generates the code to do its
@@ -276,7 +276,7 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
         self.ccx.sess().bug("no loop scope found");
     }
 
-    fn normal_exit_block(&'blk self,
+    fn normal_exit_block(&self,
                          cleanup_scope: ast::NodeId,
                          exit: uint) -> BasicBlockRef {
         /*!
@@ -288,7 +288,7 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
         self.trans_cleanups_to_exit_scope(LoopExit(cleanup_scope, exit))
     }
 
-    fn return_exit_block(&'blk self) -> BasicBlockRef {
+    fn return_exit_block(&self) -> BasicBlockRef {
         /*!
          * Returns a block to branch to which will perform all pending
          * cleanups and then return from this function
@@ -495,7 +495,7 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
         self.scopes.borrow().iter().rev().any(|s| s.needs_invoke())
     }
 
-    fn get_landing_pad(&'blk self) -> BasicBlockRef {
+    fn get_landing_pad(&self) -> BasicBlockRef {
         /*!
          * Returns a basic block to branch to in the event of a panic.
          * This block will run the panic cleanups and eventually
@@ -564,13 +564,13 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
             (*scopes)[custom_scope.index].kind.is_temp()
     }
 
-    fn trans_scope_cleanups(&self, // cannot borrow self, will recurse
-                            bcx: Block<'blk, 'tcx>,
-                            scope: &CleanupScope<'blk, 'tcx>) -> Block<'blk, 'tcx> {
+    fn trans_scope_cleanups<'fcx>(&self, // cannot borrow self, will recurse
+                            bcx: Block<'fcx, 'blk, 'tcx>,
+                            scope: &CleanupScope<'blk, 'tcx>) -> Block<'fcx, 'blk, 'tcx> {
         /*! Generates the cleanups for `scope` into `bcx` */
 
         let mut bcx = bcx;
-        if !bcx.unreachable.get() {
+        if !bcx.data.unreachable.get() {
             for cleanup in scope.cleanups.iter().rev() {
                 bcx = cleanup.trans(bcx, scope.debug_loc);
             }
@@ -598,7 +598,7 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
         f(self.scopes.borrow().last().unwrap())
     }
 
-    fn trans_cleanups_to_exit_scope(&'blk self,
+    fn trans_cleanups_to_exit_scope(&self,
                                     label: EarlyExitLabel)
                                     -> BasicBlockRef {
         /*!
@@ -654,7 +654,7 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
                             "create_landing_pad() should have set this");
                         build::Resume(prev_bcx,
                                       build::Load(prev_bcx, personality));
-                        prev_llbb = prev_bcx.llbb;
+                        prev_llbb = prev_bcx.data.llbb;
                         break;
                     }
 
@@ -745,7 +745,7 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
                     }
                 }
                 build::Br(bcx_out, prev_llbb);
-                prev_llbb = bcx_in.llbb;
+                prev_llbb = bcx_in.data.llbb;
             } else {
                 debug!("no suitable cleanups in {}",
                        scope.block_name("clean"));
@@ -761,7 +761,7 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
         prev_llbb
     }
 
-    fn get_or_create_landing_pad(&'blk self) -> BasicBlockRef {
+    fn get_or_create_landing_pad(&self) -> BasicBlockRef {
         /*!
          * Creates a landing pad for the top scope, if one does not
          * exist.  The landing pad will perform all cleanups necessary
@@ -788,7 +788,7 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
                 None => {
                     let name = last_scope.block_name("unwind");
                     pad_bcx = self.new_block(true, name.as_slice(), None);
-                    last_scope.cached_landing_pad = Some(pad_bcx.llbb);
+                    last_scope.cached_landing_pad = Some(pad_bcx.data.llbb);
                 }
             }
         }
@@ -850,12 +850,12 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
         let cleanup_llbb = self.trans_cleanups_to_exit_scope(UnwindExit);
         build::Br(pad_bcx, cleanup_llbb);
 
-        return pad_bcx.llbb;
+        return pad_bcx.data.llbb;
     }
 }
 
 impl<'blk, 'tcx> CleanupScope<'blk, 'tcx> {
-    fn new(kind: CleanupScopeKind<'blk, 'tcx>,
+    fn new(kind: CleanupScopeKind<'blk>,
            debug_loc: Option<NodeInfo>)
         -> CleanupScope<'blk, 'tcx> {
         CleanupScope {
@@ -913,7 +913,7 @@ impl<'blk, 'tcx> CleanupScope<'blk, 'tcx> {
     }
 }
 
-impl<'blk, 'tcx> CleanupScopeKind<'blk, 'tcx> {
+impl<'blk> CleanupScopeKind<'blk> {
     fn is_temp(&self) -> bool {
         match *self {
             CustomScopeKind => true,
@@ -983,10 +983,10 @@ impl<'tcx> Cleanup<'tcx> for DropValue<'tcx> {
         false
     }
 
-    fn trans<'blk>(&self,
-                   bcx: Block<'blk, 'tcx>,
+    fn trans<'fcx, 'blk>(&self,
+                   bcx: Block<'fcx, 'blk, 'tcx>,
                    debug_loc: Option<NodeInfo>)
-                   -> Block<'blk, 'tcx> {
+                   -> Block<'fcx, 'blk, 'tcx> {
         let bcx = if self.is_immediate {
             glue::drop_ty_immediate(bcx, self.val, self.ty, debug_loc)
         } else {
@@ -1023,10 +1023,10 @@ impl<'tcx> Cleanup<'tcx> for FreeValue<'tcx> {
         false
     }
 
-    fn trans<'blk>(&self,
-                   bcx: Block<'blk, 'tcx>,
+    fn trans<'fcx, 'blk>(&self,
+                   bcx: Block<'fcx, 'blk, 'tcx>,
                    debug_loc: Option<NodeInfo>)
-                   -> Block<'blk, 'tcx> {
+                   -> Block<'fcx, 'blk, 'tcx> {
         apply_debug_loc(bcx.fcx, debug_loc);
 
         match self.heap {
@@ -1057,10 +1057,10 @@ impl<'tcx> Cleanup<'tcx> for FreeSlice {
         false
     }
 
-    fn trans<'blk, 'tcx>(&self,
-                         bcx: Block<'blk, 'tcx>,
+    fn trans<'fcx, 'blk, 'tcx>(&self,
+                         bcx: Block<'fcx, 'blk, 'tcx>,
                          debug_loc: Option<NodeInfo>)
-                      -> Block<'blk, 'tcx> {
+                      -> Block<'fcx, 'blk, 'tcx> {
         apply_debug_loc(bcx.fcx, debug_loc);
 
         match self.heap {
@@ -1088,10 +1088,10 @@ impl<'tcx> Cleanup<'tcx> for LifetimeEnd {
         true
     }
 
-    fn trans<'blk, 'tcx>(&self,
-                         bcx: Block<'blk, 'tcx>,
+    fn trans<'fcx, 'blk, 'tcx>(&self,
+                         bcx: Block<'fcx, 'blk, 'tcx>,
                          debug_loc: Option<NodeInfo>)
-                      -> Block<'blk, 'tcx> {
+                      -> Block<'fcx, 'blk, 'tcx> {
         apply_debug_loc(bcx.fcx, debug_loc);
         base::call_lifetime_end(bcx, self.ptr);
         bcx
@@ -1145,28 +1145,28 @@ pub trait CleanupMethods<'blk, 'tcx> {
     fn push_ast_cleanup_scope(&self, id: NodeInfo);
     fn push_loop_cleanup_scope(&self,
                                id: ast::NodeId,
-                               exits: [Block<'blk, 'tcx>, ..EXIT_MAX]);
+                               exits: [&'blk BlockS, ..EXIT_MAX]);
     fn push_custom_cleanup_scope(&self) -> CustomScopeIndex;
     fn push_custom_cleanup_scope_with_debug_loc(&self,
                                                 debug_loc: NodeInfo)
                                                 -> CustomScopeIndex;
-    fn pop_and_trans_ast_cleanup_scope(&self,
-                                              bcx: Block<'blk, 'tcx>,
+    fn pop_and_trans_ast_cleanup_scope<'fcx>(&self,
+                                              bcx: Block<'fcx, 'blk, 'tcx>,
                                               cleanup_scope: ast::NodeId)
-                                              -> Block<'blk, 'tcx>;
+                                              -> Block<'fcx, 'blk, 'tcx>;
     fn pop_loop_cleanup_scope(&self,
                               cleanup_scope: ast::NodeId);
     fn pop_custom_cleanup_scope(&self,
                                 custom_scope: CustomScopeIndex);
-    fn pop_and_trans_custom_cleanup_scope(&self,
-                                          bcx: Block<'blk, 'tcx>,
+    fn pop_and_trans_custom_cleanup_scope<'fcx>(&self,
+                                          bcx: Block<'fcx, 'blk, 'tcx>,
                                           custom_scope: CustomScopeIndex)
-                                          -> Block<'blk, 'tcx>;
+                                          -> Block<'fcx, 'blk, 'tcx>;
     fn top_loop_scope(&self) -> ast::NodeId;
-    fn normal_exit_block(&'blk self,
+    fn normal_exit_block(&self,
                          cleanup_scope: ast::NodeId,
                          exit: uint) -> BasicBlockRef;
-    fn return_exit_block(&'blk self) -> BasicBlockRef;
+    fn return_exit_block(&self) -> BasicBlockRef;
     fn schedule_lifetime_end(&self,
                          cleanup_scope: ScopeId,
                          val: ValueRef);
@@ -1203,7 +1203,7 @@ pub trait CleanupMethods<'blk, 'tcx> {
                                     custom_scope: CustomScopeIndex,
                                     cleanup: CleanupObj<'tcx>);
     fn needs_invoke(&self) -> bool;
-    fn get_landing_pad(&'blk self) -> BasicBlockRef;
+    fn get_landing_pad(&self) -> BasicBlockRef;
 }
 
 trait CleanupHelperMethods<'blk, 'tcx> {
@@ -1211,13 +1211,13 @@ trait CleanupHelperMethods<'blk, 'tcx> {
     fn top_nonempty_cleanup_scope(&self) -> Option<uint>;
     fn is_valid_to_pop_custom_scope(&self, custom_scope: CustomScopeIndex) -> bool;
     fn is_valid_custom_scope(&self, custom_scope: CustomScopeIndex) -> bool;
-    fn trans_scope_cleanups(&self,
-                            bcx: Block<'blk, 'tcx>,
-                            scope: &CleanupScope<'blk, 'tcx>) -> Block<'blk, 'tcx>;
-    fn trans_cleanups_to_exit_scope(&'blk self,
+    fn trans_scope_cleanups<'fcx>(&self,
+                            bcx: Block<'fcx, 'blk, 'tcx>,
+                            scope: &CleanupScope<'blk, 'tcx>) -> Block<'fcx, 'blk, 'tcx>;
+    fn trans_cleanups_to_exit_scope(&self,
                                     label: EarlyExitLabel)
                                     -> BasicBlockRef;
-    fn get_or_create_landing_pad(&'blk self) -> BasicBlockRef;
+    fn get_or_create_landing_pad(&self) -> BasicBlockRef;
     fn scopes_len(&self) -> uint;
     fn push_scope(&self, scope: CleanupScope<'blk, 'tcx>);
     fn pop_scope(&self) -> CleanupScope<'blk, 'tcx>;

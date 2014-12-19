@@ -144,7 +144,7 @@ pub struct Struct<'tcx> {
  * these, for places in trans where the `Ty` isn't directly
  * available.
  */
-pub fn represent_node<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+pub fn represent_node<'fcx, 'blk, 'tcx>(bcx: Block<'fcx, 'blk, 'tcx>,
                                   node: ast::NodeId) -> Rc<Repr<'tcx>> {
     represent_type(bcx.ccx(), node_id_type(bcx, node))
 }
@@ -626,7 +626,7 @@ fn struct_llfields<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, st: &Struct<'tcx>,
  *
  * This should ideally be less tightly tied to `_match`.
  */
-pub fn trans_switch<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+pub fn trans_switch<'fcx, 'blk, 'tcx>(bcx: Block<'fcx, 'blk, 'tcx>,
                                 r: &Repr<'tcx>, scrutinee: ValueRef)
                                 -> (_match::BranchKind, Option<ValueRef>) {
     match *r {
@@ -643,7 +643,7 @@ pub fn trans_switch<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
 
 /// Obtain the actual discriminant of a value.
-pub fn trans_get_discr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr<'tcx>,
+pub fn trans_get_discr<'fcx, 'blk, 'tcx>(bcx: Block<'fcx, 'blk, 'tcx>, r: &Repr<'tcx>,
                                    scrutinee: ValueRef, cast_to: Option<Type>)
     -> ValueRef {
     let signed;
@@ -719,8 +719,8 @@ fn load_discr(bcx: Block, ity: IntType, ptr: ValueRef, min: Disr, max: Disr)
  *
  * This should ideally be less tightly tied to `_match`.
  */
-pub fn trans_case<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr, discr: Disr)
-                              -> _match::OptResult<'blk, 'tcx> {
+pub fn trans_case<'fcx, 'blk, 'tcx>(bcx: Block<'fcx, 'blk, 'tcx>, r: &Repr, discr: Disr)
+                              -> _match::OptResult<'fcx, 'blk, 'tcx> {
     match *r {
         CEnum(ity, _, _) => {
             _match::SingleResult(Result::new(bcx, C_integral(ll_inttype(bcx.ccx(), ity),
@@ -745,7 +745,7 @@ pub fn trans_case<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr, discr: Disr)
  * Set the discriminant for a new value of the given case of the given
  * representation.
  */
-pub fn trans_set_discr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr<'tcx>,
+pub fn trans_set_discr<'fcx, 'blk, 'tcx>(bcx: Block<'fcx, 'blk, 'tcx>, r: &Repr<'tcx>,
                                    val: ValueRef, discr: Disr) {
     match *r {
         CEnum(ity, min, max) => {
@@ -824,7 +824,7 @@ pub fn num_args(r: &Repr, discr: Disr) -> uint {
 }
 
 /// Access a field, at a point when the value's case is known.
-pub fn trans_field_ptr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr<'tcx>,
+pub fn trans_field_ptr<'fcx, 'blk, 'tcx>(bcx: Block<'fcx, 'blk, 'tcx>, r: &Repr<'tcx>,
                                    val: ValueRef, discr: Disr, ix: uint) -> ValueRef {
     // Note: if this ever needs to generate conditionals (e.g., if we
     // decide to do some kind of cdr-coding-like non-unique repr
@@ -863,7 +863,7 @@ pub fn trans_field_ptr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr<'tcx>,
     }
 }
 
-pub fn struct_field_ptr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, st: &Struct<'tcx>, val: ValueRef,
+pub fn struct_field_ptr<'fcx, 'blk, 'tcx>(bcx: Block<'fcx, 'blk, 'tcx>, st: &Struct<'tcx>, val: ValueRef,
                                     ix: uint, needs_cast: bool) -> ValueRef {
     let val = if needs_cast {
         let ccx = bcx.ccx();
@@ -877,10 +877,10 @@ pub fn struct_field_ptr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, st: &Struct<'tcx>, v
     GEPi(bcx, val, &[0, ix])
 }
 
-pub fn fold_variants<'blk, 'tcx>(
-        bcx: Block<'blk, 'tcx>, r: &Repr<'tcx>, value: ValueRef,
-        f: |Block<'blk, 'tcx>, &Struct<'tcx>, ValueRef| -> Block<'blk, 'tcx>)
-        -> Block<'blk, 'tcx> {
+pub fn fold_variants<'fcx, 'blk, 'tcx>(
+        bcx: Block<'fcx, 'blk, 'tcx>, r: &Repr<'tcx>, value: ValueRef,
+        f: |Block<'fcx, 'blk, 'tcx>, &Struct<'tcx>, ValueRef| -> Block<'fcx, 'blk, 'tcx>)
+        -> Block<'fcx, 'blk, 'tcx> {
     let fcx = bcx.fcx;
     match *r {
         Univariant(ref st, _) => {
@@ -892,7 +892,7 @@ pub fn fold_variants<'blk, 'tcx>(
             Unreachable(unr_cx);
 
             let discr_val = trans_get_discr(bcx, r, value, None);
-            let llswitch = Switch(bcx, discr_val, unr_cx.llbb, cases.len());
+            let llswitch = Switch(bcx, discr_val, unr_cx.data.llbb, cases.len());
             let bcx_next = fcx.new_temp_block("enum-variant-iter-next");
 
             for (discr, case) in cases.iter().enumerate() {
@@ -900,7 +900,7 @@ pub fn fold_variants<'blk, 'tcx>(
                     format!("enum-variant-iter-{}", discr.to_string()).as_slice()
                 );
                 let rhs_val = C_integral(ll_inttype(ccx, ity), discr as u64, true);
-                AddCase(llswitch, rhs_val, variant_cx.llbb);
+                AddCase(llswitch, rhs_val, variant_cx.data.llbb);
 
                 let fields = case.fields.iter().map(|&ty|
                     type_of::type_of(bcx.ccx(), ty)).collect::<Vec<_>>();
@@ -908,7 +908,7 @@ pub fn fold_variants<'blk, 'tcx>(
                 let variant_value = PointerCast(variant_cx, value, real_ty.ptr_to());
 
                 variant_cx = f(variant_cx, case, variant_value);
-                Br(variant_cx, bcx_next.llbb);
+                Br(variant_cx, bcx_next.data.llbb);
             }
 
             bcx_next
@@ -918,8 +918,8 @@ pub fn fold_variants<'blk, 'tcx>(
 }
 
 /// Access the struct drop flag, if present.
-pub fn trans_drop_flag_ptr<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>, r: &Repr<'tcx>, val: ValueRef)
-                                       -> datum::DatumBlock<'blk, 'tcx, datum::Expr> {
+pub fn trans_drop_flag_ptr<'fcx, 'blk, 'tcx>(mut bcx: Block<'fcx, 'blk, 'tcx>, r: &Repr<'tcx>, val: ValueRef)
+                                       -> datum::DatumBlock<'fcx, 'blk, 'tcx, datum::Expr> {
     let ptr_ty = ty::mk_imm_ptr(bcx.tcx(), ty::mk_bool());
     match *r {
         Univariant(ref st, true) => {

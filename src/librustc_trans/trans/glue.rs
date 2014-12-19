@@ -44,9 +44,9 @@ use libc::c_uint;
 use syntax::ast;
 use syntax::parse::token;
 
-pub fn trans_exchange_free_dyn<'blk, 'tcx>(cx: Block<'blk, 'tcx>, v: ValueRef,
-                                           size: ValueRef, align: ValueRef)
-                                           -> Block<'blk, 'tcx> {
+pub fn trans_exchange_free_dyn<'fcx, 'blk, 'tcx>(cx: Block<'fcx, 'blk, 'tcx>, v: ValueRef,
+                                                 size: ValueRef, align: ValueRef)
+                                                 -> Block<'fcx, 'blk, 'tcx> {
     let _icx = push_ctxt("trans_exchange_free");
     let ccx = cx.ccx();
     callee::trans_lang_call(cx,
@@ -55,14 +55,14 @@ pub fn trans_exchange_free_dyn<'blk, 'tcx>(cx: Block<'blk, 'tcx>, v: ValueRef,
         Some(expr::Ignore)).bcx
 }
 
-pub fn trans_exchange_free<'blk, 'tcx>(cx: Block<'blk, 'tcx>, v: ValueRef,
-                                       size: u64, align: u32) -> Block<'blk, 'tcx> {
+pub fn trans_exchange_free<'fcx, 'blk, 'tcx>(cx: Block<'fcx, 'blk, 'tcx>, v: ValueRef,
+                                       size: u64, align: u32) -> Block<'fcx, 'blk, 'tcx> {
     trans_exchange_free_dyn(cx, v, C_uint(cx.ccx(), size),
                                    C_uint(cx.ccx(), align))
 }
 
-pub fn trans_exchange_free_ty<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ptr: ValueRef,
-                                          content_ty: Ty<'tcx>) -> Block<'blk, 'tcx> {
+pub fn trans_exchange_free_ty<'fcx, 'blk, 'tcx>(bcx: Block<'fcx, 'blk, 'tcx>, ptr: ValueRef,
+                                          content_ty: Ty<'tcx>) -> Block<'fcx, 'blk, 'tcx> {
     assert!(ty::type_is_sized(bcx.ccx().tcx(), content_ty));
     let sizing_type = sizing_type_of(bcx.ccx(), content_ty);
     let content_size = llsize_of_alloc(bcx.ccx(), sizing_type);
@@ -102,11 +102,11 @@ pub fn get_drop_glue_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     }
 }
 
-pub fn drop_ty<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+pub fn drop_ty<'fcx, 'blk, 'tcx>(bcx: Block<'fcx, 'blk, 'tcx>,
                            v: ValueRef,
                            t: Ty<'tcx>,
                            source_location: Option<NodeInfo>)
-                           -> Block<'blk, 'tcx> {
+                           -> Block<'fcx, 'blk, 'tcx> {
     // NB: v is an *alias* of type t here, not a direct value.
     debug!("drop_ty(t={})", t.repr(bcx.tcx()));
     let _icx = push_ctxt("drop_ty");
@@ -130,11 +130,11 @@ pub fn drop_ty<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     bcx
 }
 
-pub fn drop_ty_immediate<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+pub fn drop_ty_immediate<'fcx, 'blk, 'tcx>(bcx: Block<'fcx, 'blk, 'tcx>,
                                      v: ValueRef,
                                      t: Ty<'tcx>,
                                      source_location: Option<NodeInfo>)
-                                     -> Block<'blk, 'tcx> {
+                                     -> Block<'fcx, 'blk, 'tcx> {
     let _icx = push_ctxt("drop_ty_immediate");
     let vp = alloca(bcx, type_of(bcx.ccx(), t), "");
     Store(bcx, v, vp);
@@ -185,13 +185,13 @@ pub fn get_drop_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Val
     glue
 }
 
-fn trans_struct_drop_flag<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
+fn trans_struct_drop_flag<'fcx, 'blk, 'tcx>(mut bcx: Block<'fcx, 'blk, 'tcx>,
                                       t: Ty<'tcx>,
                                       v0: ValueRef,
                                       dtor_did: ast::DefId,
                                       class_did: ast::DefId,
                                       substs: &subst::Substs<'tcx>)
-                                      -> Block<'blk, 'tcx> {
+                                      -> Block<'fcx, 'blk, 'tcx> {
     let repr = adt::represent_type(bcx.ccx(), t);
     let struct_data = if ty::type_is_sized(bcx.tcx(), t) {
         v0
@@ -205,13 +205,13 @@ fn trans_struct_drop_flag<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     })
 }
 
-fn trans_struct_drop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+fn trans_struct_drop<'fcx, 'blk, 'tcx>(bcx: Block<'fcx, 'blk, 'tcx>,
                                  t: Ty<'tcx>,
                                  v0: ValueRef,
                                  dtor_did: ast::DefId,
                                  class_did: ast::DefId,
                                  substs: &subst::Substs<'tcx>)
-                                 -> Block<'blk, 'tcx> {
+                                 -> Block<'fcx, 'blk, 'tcx> {
     let repr = adt::represent_type(bcx.ccx(), t);
 
     // Find and call the actual destructor
@@ -298,7 +298,7 @@ fn trans_struct_drop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     })
 }
 
-fn size_and_align_of_dst<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, info: ValueRef)
+fn size_and_align_of_dst<'fcx, 'blk, 'tcx>(bcx: Block<'fcx, 'blk, 'tcx>, t: Ty<'tcx>, info: ValueRef)
                                      -> (ValueRef, ValueRef) {
     debug!("calculate size of DST: {}; with lost info: {}",
            bcx.ty_to_string(t), bcx.val_to_string(info));
@@ -354,8 +354,8 @@ fn size_and_align_of_dst<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, info: 
     }
 }
 
-fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, t: Ty<'tcx>)
-                              -> Block<'blk, 'tcx> {
+fn make_drop_glue<'fcx, 'blk, 'tcx>(bcx: Block<'fcx, 'blk, 'tcx>, v0: ValueRef, t: Ty<'tcx>)
+                              -> Block<'fcx, 'blk, 'tcx> {
     // NB: v0 is an *alias* of type t here, not a direct value.
     let _icx = push_ctxt("make_drop_glue");
     match t.sty {
@@ -532,8 +532,8 @@ fn declare_generic_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>,
 fn make_generic_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                t: Ty<'tcx>,
                                llfn: ValueRef,
-                               helper: for<'blk> |Block<'blk, 'tcx>, ValueRef, Ty<'tcx>|
-                                                  -> Block<'blk, 'tcx>,
+                               helper: for<'fcx, 'blk> |Block<'fcx, 'blk, 'tcx>, ValueRef, Ty<'tcx>|
+                                                        -> Block<'fcx, 'blk, 'tcx>,
                                name: &str)
                                -> ValueRef {
     let _icx = push_ctxt("make_generic_glue");
