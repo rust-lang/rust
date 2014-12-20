@@ -308,7 +308,10 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         let trait_ref = data.principal_trait_ref_with_self_ty(self.tcx(), self_ty);
         self.elaborate_bounds(&[trait_ref.clone()], false, |this, new_trait_ref, m, method_num| {
             let vtable_index =
-                get_method_index(tcx, &new_trait_ref, trait_ref.clone(), method_num);
+                traits::get_vtable_index_of_object_method(tcx,
+                                                          trait_ref.clone(),
+                                                          new_trait_ref.def_id(),
+                                                          method_num);
 
             let xform_self_ty = this.xform_self_ty(&m, new_trait_ref.substs());
 
@@ -994,35 +997,6 @@ fn trait_method<'tcx>(tcx: &ty::ctxt<'tcx>,
         .enumerate()
         .find(|&(_, ref item)| item.name() == method_name)
         .and_then(|(idx, item)| item.as_opt_method().map(|m| (idx, m)))
-}
-
-// Determine the index of a method in the list of all methods belonging
-// to a trait and its supertraits.
-fn get_method_index<'tcx>(tcx: &ty::ctxt<'tcx>,
-                          trait_ref: &ty::PolyTraitRef<'tcx>,
-                          subtrait: ty::PolyTraitRef<'tcx>,
-                          n_method: uint) -> uint {
-    // We need to figure the "real index" of the method in a
-    // listing of all the methods of an object. We do this by
-    // iterating down the supertraits of the object's trait until
-    // we find the trait the method came from, counting up the
-    // methods from them.
-    let mut method_count = n_method;
-    ty::each_bound_trait_and_supertraits(tcx, &[subtrait], |bound_ref| {
-        if bound_ref.def_id() == trait_ref.def_id() {
-            false
-        } else {
-            let trait_items = ty::trait_items(tcx, bound_ref.def_id());
-            for trait_item in trait_items.iter() {
-                match *trait_item {
-                    ty::MethodTraitItem(_) => method_count += 1,
-                    ty::TypeTraitItem(_) => {}
-                }
-            }
-            true
-        }
-    });
-    method_count
 }
 
 impl<'tcx> Candidate<'tcx> {
