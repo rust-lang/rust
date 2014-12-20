@@ -413,7 +413,7 @@ impl<T> Drop for Rc<T> {
     }
 }
 
-#[unstable = "Clone is unstable."]
+#[stable]
 impl<T> Clone for Rc<T> {
     /// Makes a clone of the `Rc<T>`.
     ///

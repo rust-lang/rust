@@ -19,13 +19,15 @@
 //! explicitly, by convention implementing the `Clone` trait and calling
 //! the `clone` method.
 
-#![unstable]
+#![stable]
 
 use kinds::Sized;
 
 /// A common trait for cloning an object.
+#[stable]
 pub trait Clone {
     /// Returns a copy of the value.
+    #[stable]
     fn clone(&self) -> Self;
 
     /// Perform copy-assignment from `source`.
@@ -34,12 +36,13 @@ pub trait Clone {
     /// but can be overridden to reuse the resources of `a` to avoid unnecessary
     /// allocations.
     #[inline(always)]
-    #[experimental = "this function is mostly unused"]
+    #[unstable = "this function rarely unused"]
     fn clone_from(&mut self, source: &Self) {
         *self = source.clone()
     }
 }
 
+#[stable]
 impl<'a, Sized? T> Clone for &'a T {
     /// Return a shallow copy of the reference.
     #[inline]
@@ -48,6 +51,7 @@ impl<'a, Sized? T> Clone for &'a T {
 
 macro_rules! clone_impl {
     ($t:ty) => {
+        #[stable]
         impl Clone for $t {
             /// Return a deep copy of the value.
             #[inline]
@@ -95,4 +99,3 @@ extern_fn_clone! { A, B, C, D, E }
 extern_fn_clone! { A, B, C, D, E, F }
 extern_fn_clone! { A, B, C, D, E, F, G }
 extern_fn_clone! { A, B, C, D, E, F, G, H }
-

@@ -781,7 +781,7 @@ iterator!{struct Items -> *const T, &'a T}
 #[experimental = "needs review"]
 impl<'a, T> ExactSizeIterator<&'a T> for Items<'a, T> {}
 
-#[experimental = "needs review"]
+#[stable]
 impl<'a, T> Clone for Items<'a, T> {
     fn clone(&self) -> Items<'a, T> { *self }
 }
@@ -893,6 +893,7 @@ pub struct Splits<'a, T:'a, P> where P: FnMut(&T) -> bool {
 }
 
 // FIXME(#19839) Remove in favor of `#[deriving(Clone)]`
+#[stable]
 impl<'a, T, P> Clone for Splits<'a, T, P> where P: Clone + FnMut(&T) -> bool {
     fn clone(&self) -> Splits<'a, T, P> {
         Splits {
@@ -1550,4 +1551,3 @@ impl_int_slice! { u16,  i16 }
 impl_int_slice! { u32,  i32 }
 impl_int_slice! { u64,  i64 }
 impl_int_slice! { uint, int }
-
