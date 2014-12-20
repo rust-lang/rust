@@ -824,12 +824,12 @@ pub fn noop_fold_where_predicate<T: Folder>(
             })
         }
         ast::WherePredicate::RegionPredicate(ast::WhereRegionPredicate{lifetime,
-                                                                       bound,
+                                                                       bounds,
                                                                        span}) => {
             ast::WherePredicate::RegionPredicate(ast::WhereRegionPredicate {
                 span: fld.new_span(span),
                 lifetime: fld.fold_lifetime(lifetime),
-                bound: fld.fold_lifetime(bound)
+                bounds: bounds.move_map(|bound| fld.fold_lifetime(bound))
             })
         }
         ast::WherePredicate::EqPredicate(ast::WhereEqPredicate{id,

@@ -590,10 +590,13 @@ pub fn walk_generics<'v, V: Visitor<'v>>(visitor: &mut V, generics: &'v Generics
                 walk_ty_param_bounds_helper(visitor, bounds);
             }
             &ast::WherePredicate::RegionPredicate(ast::WhereRegionPredicate{ref lifetime,
-                                                                            ref bound,
+                                                                            ref bounds,
                                                                             ..}) => {
                 visitor.visit_lifetime_ref(lifetime);
-                visitor.visit_lifetime_ref(bound);
+
+                for bound in bounds.iter() { 
+                    visitor.visit_lifetime_ref(bound);
+                }
             }
             &ast::WherePredicate::EqPredicate(ast::WhereEqPredicate{id,
                                                                     ref path,

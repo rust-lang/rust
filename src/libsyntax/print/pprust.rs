@@ -2444,11 +2444,18 @@ impl<'a> State<'a> {
                     try!(self.print_bounds(":", bounds.as_slice()));
                 }
                 &ast::WherePredicate::RegionPredicate(ast::WhereRegionPredicate{ref lifetime,
-                                                                                ref bound,
+                                                                                ref bounds,
                                                                                 ..}) => {
                     try!(self.print_lifetime(lifetime));
                     try!(word(&mut self.s, ":"));
-                    try!(self.print_lifetime(bound));
+
+                    for (i, bound) in bounds.iter().enumerate() {
+                        try!(self.print_lifetime(bound));
+                        
+                        if i != 0 {
+                            try!(word(&mut self.s, ":"));
+                        } 
+                    }
                 }
                 &ast::WherePredicate::EqPredicate(ast::WhereEqPredicate{ref path, ref ty, ..}) => {
                     try!(self.print_path(path, false));

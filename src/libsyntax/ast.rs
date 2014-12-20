@@ -430,10 +430,8 @@ pub struct WhereBoundPredicate {
 pub struct WhereRegionPredicate {
     pub span: Span,
     pub lifetime: Lifetime,
-    pub bound: Lifetime
+    pub bounds: Vec<Lifetime>,
 }
-
-impl Copy for WhereRegionPredicate {}
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub struct WhereEqPredicate {

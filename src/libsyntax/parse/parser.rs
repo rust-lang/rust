@@ -4199,9 +4199,8 @@ impl<'a> Parser<'a> {
 
                     self.eat(&token::Colon);
 
-                    // FIXME(#20049)
-                    let bounding_lifetime =
-                        self.parse_lifetime();
+                    let bounds =
+                        self.parse_lifetimes(token::BinOp(token::Plus));
 
                     let hi = self.span.hi;
                     let span = mk_sp(lo, hi);
@@ -4210,7 +4209,7 @@ impl<'a> Parser<'a> {
                         ast::WhereRegionPredicate {
                             span: span,
                             lifetime: bounded_lifetime,
-                            bound: bounding_lifetime
+                            bounds: bounds 
                         }
                     ));
 
