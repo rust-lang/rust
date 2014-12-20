@@ -111,6 +111,10 @@ impl<'v> Visitor<'v> for Annotator {
     fn visit_struct_field(&mut self, s: &StructField) {
         self.annotate(s.node.id, &s.node.attrs, |v| visit::walk_struct_field(v, s));
     }
+
+    fn visit_foreign_item(&mut self, i: &ast::ForeignItem) {
+        self.annotate(i.id, &i.attrs, |_| {});
+    }
 }
 
 impl Index {

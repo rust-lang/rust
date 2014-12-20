@@ -1479,6 +1479,8 @@ fn encode_info_for_foreign_item(ecx: &EncodeContext,
             encode_inlined_item(ecx, rbml_w, IIForeignRef(nitem));
         }
         encode_attributes(rbml_w, &*nitem.attrs);
+        let stab = stability::lookup(ecx.tcx, ast_util::local_def(nitem.id));
+        encode_stability(rbml_w, stab);
         encode_symbol(ecx, rbml_w, nitem.id);
       }
       ast::ForeignItemStatic(_, mutbl) => {
@@ -1490,6 +1492,8 @@ fn encode_info_for_foreign_item(ecx: &EncodeContext,
         encode_bounds_and_type(rbml_w, ecx,
                                &lookup_item_type(ecx.tcx,local_def(nitem.id)));
         encode_attributes(rbml_w, &*nitem.attrs);
+        let stab = stability::lookup(ecx.tcx, ast_util::local_def(nitem.id));
+        encode_stability(rbml_w, stab);
         encode_symbol(ecx, rbml_w, nitem.id);
         encode_name(rbml_w, nitem.ident.name);
       }
