@@ -1,3 +1,7 @@
+- Start Date: 2014-12-20
+- RFC PR: https://github.com/rust-lang/rfcs/pull/503
+- Rust Issue: https://github.com/rust-lang/rust/issues/20068
+
 # Summary
 
 Stabilize the `std::prelude` module by removing some of the less commonly used
