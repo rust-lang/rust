@@ -78,7 +78,13 @@ impl<T> Default for RingBuf<T> {
 impl<T> RingBuf<T> {
     /// Turn ptr into a slice
     #[inline]
-    unsafe fn buffer_as_slice(&self) -> &[T] {
+    unsafe fn buffer_as_slice<'a>(&'a self) -> &'a [T] {
+        mem::transmute(RawSlice { data: self.ptr as *const T, len: self.cap })
+    }
+
+    /// Turn ptr into a mut slice
+    #[inline]
+    unsafe fn buffer_as_mut_slice<'a>(&'a mut self) -> &'a mut [T] {
         mem::transmute(RawSlice { data: self.ptr as *const T, len: self.cap })
     }
 
@@ -413,6 +419,48 @@ impl<T> RingBuf<T> {
         }
     }
 
+    /// Returns a pair of slices which contain, in order, the contents of the
+    /// `RingBuf`.
+    #[inline]
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    pub fn as_slices<'a>(&'a self) -> (&'a [T], &'a [T]) {
+        unsafe {
+            let contiguous = self.is_contiguous();
+            let buf = self.buffer_as_slice();
+            if contiguous {
+                let (empty, buf) = buf.split_at(0);
+                (buf[self.tail..self.head], empty)
+            } else {
+                let (mid, right) = buf.split_at(self.tail);
+                let (left, _) = mid.split_at(self.head);
+                (right, left)
+            }
+        }
+    }
+
+    /// Returns a pair of slices which contain, in order, the contents of the
+    /// `RingBuf`.
+    #[inline]
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    pub fn as_mut_slices<'a>(&'a mut self) -> (&'a mut [T], &'a mut [T]) {
+        unsafe {
+            let contiguous = self.is_contiguous();
+            let head = self.head;
+            let tail = self.tail;
+            let buf = self.buffer_as_mut_slice();
+
+            if contiguous {
+                let (empty, buf) = buf.split_at_mut(0);
+                (buf[mut tail..head], empty)
+            } else {
+                let (mid, right) = buf.split_at_mut(tail);
+                let (left, _) = mid.split_at_mut(head);
+
+                (right, left)
+            }
+        }
+    }
+
     /// Returns the number of elements in the `RingBuf`.
     ///
     /// # Examples
@@ -663,6 +711,11 @@ impl<T> RingBuf<T> {
         }
     }
 
+    #[inline]
+    fn is_contiguous(&self) -> bool {
+        self.tail <= self.head
+    }
+
     /// Inserts an element at position `i` within the ringbuf. Whichever
     /// end is closer to the insertion point will be moved to make room,
     /// and all the affected elements will be moved to new positions.
@@ -715,7 +768,7 @@ impl<T> RingBuf<T> {
         let distance_to_tail = i;
         let distance_to_head = self.len() - i;
 
-        let contiguous = self.tail <= self.head;
+        let contiguous = self.is_contiguous();
 
         match (contiguous, distance_to_tail <= distance_to_head, idx >= self.tail) {
             (true, true, _) if i == 0 => {
@@ -2130,5 +2183,61 @@ mod tests {
         assert_eq!(ring.front(), Some(&20));
         ring.pop_front();
         assert_eq!(ring.front(), None);
+    }
+
+    #[test]
+    fn test_as_slices() {
+        let mut ring: RingBuf<int> = RingBuf::with_capacity(127);
+        let cap = ring.capacity() as int;
+        let first = cap/2;
+        let last  = cap - first;
+        for i in range(0, first) {
+            ring.push_back(i);
+
+            let (left, right) = ring.as_slices();
+            let expected: Vec<_> = range(0, i+1).collect();
+            assert_eq!(left, expected);
+            assert_eq!(right, []);
+        }
+
+        for j in range(-last, 0) {
+            ring.push_front(j);
+            let (left, right) = ring.as_slices();
+            let expected_left: Vec<_> = range(-last, j+1).rev().collect();
+            let expected_right: Vec<_> = range(0, first).collect();
+            assert_eq!(left, expected_left);
+            assert_eq!(right, expected_right);
+        }
+
+        assert_eq!(ring.len() as int, cap);
+        assert_eq!(ring.capacity() as int, cap);
+    }
+
+    #[test]
+    fn test_as_mut_slices() {
+        let mut ring: RingBuf<int> = RingBuf::with_capacity(127);
+        let cap = ring.capacity() as int;
+        let first = cap/2;
+        let last  = cap - first;
+        for i in range(0, first) {
+            ring.push_back(i);
+
+            let (left, right) = ring.as_mut_slices();
+            let expected: Vec<_> = range(0, i+1).collect();
+            assert_eq!(left, expected);
+            assert_eq!(right, []);
+        }
+
+        for j in range(-last, 0) {
+            ring.push_front(j);
+            let (left, right) = ring.as_mut_slices();
+            let expected_left: Vec<_> = range(-last, j+1).rev().collect();
+            let expected_right: Vec<_> = range(0, first).collect();
+            assert_eq!(left, expected_left);
+            assert_eq!(right, expected_right);
+        }
+
+        assert_eq!(ring.len() as int, cap);
+        assert_eq!(ring.capacity() as int, cap);
     }
 }
