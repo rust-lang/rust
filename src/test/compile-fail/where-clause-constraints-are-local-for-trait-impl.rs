@@ -8,17 +8,26 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct A;
+fn require_copy<T: Copy>(x: T) {}
 
-trait U {}
+struct Bar<T> { x: T }
 
-// impl U for A {}
-
-fn equal<T>(_: &T, _: &T) -> bool where A : U {
-    true
+trait Foo<T> {
+    fn needs_copy(self) where T: Copy;
+    fn fails_copy(self);
 }
 
-fn main() {
-    equal(&0i, &0i);
-    //~^ ERROR the trait `U` is not implemented for the type `A`
+// Ensure constraints are only attached to methods locally
+impl<T> Foo<T> for Bar<T> {
+    fn needs_copy(self) where T: Copy {
+        require_copy(self.x);
+
+    }
+
+    fn fails_copy(self) {
+        require_copy(self.x);
+        //~^ ERROR the trait `core::kinds::Copy` is not implemented for the type `T`
+    }
 }
+
+fn main() {}

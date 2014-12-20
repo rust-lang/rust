@@ -8,17 +8,23 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct A;
+trait Foo<T> {}
 
-trait U {}
+trait Bar<A> {
+    fn method<B>(&self) where A: Foo<B>;
+}
 
-// impl U for A {}
+struct S;
+struct X;
 
-fn equal<T>(_: &T, _: &T) -> bool where A : U {
-    true
+impl Foo<S> for X {}
+
+impl Bar<X> for int {
+    fn method<U>(&self) where X: Foo<U> {
+    }
 }
 
 fn main() {
-    equal(&0i, &0i);
-    //~^ ERROR the trait `U` is not implemented for the type `A`
+    1.method::<S>();
 }
+

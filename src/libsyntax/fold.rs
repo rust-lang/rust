@@ -814,15 +814,22 @@ pub fn noop_fold_where_predicate<T: Folder>(
                                  fld: &mut T)
                                  -> WherePredicate {
     match pred {
-        ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate{id,
-                                                                     ident,
+        ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate{bounded_ty,
                                                                      bounds,
                                                                      span}) => {
             ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate {
-                id: fld.new_id(id),
-                ident: fld.fold_ident(ident),
+                bounded_ty: fld.fold_ty(bounded_ty),
                 bounds: bounds.move_map(|x| fld.fold_ty_param_bound(x)),
                 span: fld.new_span(span)
+            })
+        }
+        ast::WherePredicate::RegionPredicate(ast::WhereRegionPredicate{lifetime,
+                                                                       bounds,
+                                                                       span}) => {
+            ast::WherePredicate::RegionPredicate(ast::WhereRegionPredicate {
+                span: fld.new_span(span),
+                lifetime: fld.fold_lifetime(lifetime),
+                bounds: bounds.move_map(|bound| fld.fold_lifetime(bound))
             })
         }
         ast::WherePredicate::EqPredicate(ast::WhereEqPredicate{id,

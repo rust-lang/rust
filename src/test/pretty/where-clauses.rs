@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,17 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct A;
+// pp-exact
 
-trait U {}
+fn f<'a, 'b, T>(t: T) -> int where T: 'a, 'a:'b, T: Eq { 0 }
 
-// impl U for A {}
+fn main() { }
 
-fn equal<T>(_: &T, _: &T) -> bool where A : U {
-    true
-}
-
-fn main() {
-    equal(&0i, &0i);
-    //~^ ERROR the trait `U` is not implemented for the type `A`
-}

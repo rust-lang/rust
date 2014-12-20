@@ -426,10 +426,16 @@ impl<'a> TraitDef<'a> {
             match *clause {
                 ast::WherePredicate::BoundPredicate(ref wb) => {
                     ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate {
-                        id: ast::DUMMY_NODE_ID,
                         span: self.span,
-                        ident: wb.ident,
+                        bounded_ty: wb.bounded_ty.clone(),
                         bounds: OwnedSlice::from_vec(wb.bounds.iter().map(|b| b.clone()).collect())
+                    })
+                }
+                ast::WherePredicate::RegionPredicate(ref rb) => {
+                    ast::WherePredicate::RegionPredicate(ast::WhereRegionPredicate {
+                        span: self.span,
+                        lifetime: rb.lifetime,
+                        bounds: rb.bounds.iter().map(|b| b.clone()).collect()
                     })
                 }
                 ast::WherePredicate::EqPredicate(ref we) => {
