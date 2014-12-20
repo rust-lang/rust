@@ -459,7 +459,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// # #[cfg(unix)] fn foo() {
     /// let mut p = Path::new("abc/def.txt");
     /// p.set_extension("csv");
-    /// assert!(p == Path::new("abc/def.csv"));
+    /// assert_eq!(p, Path::new("abc/def.csv"));
     /// # }
     /// ```
     ///
@@ -508,7 +508,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// # #[cfg(windows)] fn foo() {}
     /// # #[cfg(unix)] fn foo() {
     /// let mut p = Path::new("abc/def.txt");
-    /// assert!(p.with_filename("foo.dat") == Path::new("abc/foo.dat"));
+    /// assert_eq!(p.with_filename("foo.dat"), Path::new("abc/foo.dat"));
     /// # }
     /// ```
     ///
@@ -533,7 +533,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// # #[cfg(windows)] fn foo() {}
     /// # #[cfg(unix)] fn foo() {
     /// let mut p = Path::new("abc/def.txt");
-    /// assert!(p.with_extension("csv") == Path::new("abc/def.csv"));
+    /// assert_eq!(p.with_extension("csv"), Path::new("abc/def.csv"));
     /// # }
     /// ```
     ///
@@ -557,7 +557,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// # #[cfg(windows)] fn foo() {}
     /// # #[cfg(unix)] fn foo() {
     /// let p = Path::new("abc/def/ghi");
-    /// assert!(p.dir_path() == Path::new("abc/def"));
+    /// assert_eq!(p.dir_path(), Path::new("abc/def"));
     /// # }
     /// ```
     fn dir_path(&self) -> Self {
@@ -575,8 +575,8 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// # foo();
     /// # #[cfg(windows)] fn foo() {}
     /// # #[cfg(unix)] fn foo() {
-    /// assert!(Path::new("abc/def").root_path() == None);
-    /// assert!(Path::new("/abc/def").root_path() == Some(Path::new("/")));
+    /// assert_eq!(Path::new("abc/def").root_path(), None);
+    /// assert_eq!(Path::new("/abc/def").root_path(), Some(Path::new("/")));
     /// # }
     /// ```
     fn root_path(&self) -> Option<Self>;
@@ -592,7 +592,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// # #[cfg(unix)] fn foo() {
     /// let mut p = Path::new("foo/bar");
     /// p.push("baz.txt");
-    /// assert!(p == Path::new("foo/bar/baz.txt"));
+    /// assert_eq!(p, Path::new("foo/bar/baz.txt"));
     /// # }
     /// ```
     ///
@@ -616,7 +616,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// # #[cfg(unix)] fn foo() {
     /// let mut p = Path::new("foo");
     /// p.push_many(&["bar", "baz.txt"]);
-    /// assert!(p == Path::new("foo/bar/baz.txt"));
+    /// assert_eq!(p, Path::new("foo/bar/baz.txt"));
     /// # }
     /// ```
     #[inline]
@@ -645,7 +645,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// # #[cfg(unix)] fn foo() {
     /// let mut p = Path::new("foo/bar/baz.txt");
     /// p.pop();
-    /// assert!(p == Path::new("foo/bar"));
+    /// assert_eq!(p, Path::new("foo/bar"));
     /// # }
     /// ```
     fn pop(&mut self) -> bool;
@@ -661,7 +661,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// # #[cfg(windows)] fn foo() {}
     /// # #[cfg(unix)] fn foo() {
     /// let p = Path::new("/foo");
-    /// assert!(p.join("bar.txt") == Path::new("/foo/bar.txt"));
+    /// assert_eq!(p.join("bar.txt"), Path::new("/foo/bar.txt"));
     /// # }
     /// ```
     ///
@@ -687,7 +687,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// # #[cfg(unix)] fn foo() {
     /// let p = Path::new("foo");
     /// let fbbq = Path::new("foo/bar/baz/quux.txt");
-    /// assert!(p.join_many(&["bar", "baz", "quux.txt"]) == fbbq);
+    /// assert_eq!(p.join_many(&["bar", "baz", "quux.txt"]), fbbq);
     /// # }
     /// ```
     #[inline]
@@ -764,7 +764,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// let p = Path::new("foo/bar/baz/quux.txt");
     /// let fb = Path::new("foo/bar");
     /// let bq = Path::new("baz/quux.txt");
-    /// assert!(p.path_relative_from(&fb) == Some(bq));
+    /// assert_eq!(p.path_relative_from(&fb), Some(bq));
     /// # }
     /// ```
     fn path_relative_from(&self, base: &Self) -> Option<Self>;
@@ -822,7 +822,14 @@ pub struct Display<'a, P:'a> {
     filename: bool
 }
 
+//NOTE(stage0): replace with deriving(Show) after snapshot
 impl<'a, P: GenericPath> fmt::Show for Display<'a, P> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::String::fmt(self, f)
+    }
+}
+
+impl<'a, P: GenericPath> fmt::String for Display<'a, P> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.as_cow().fmt(f)
     }

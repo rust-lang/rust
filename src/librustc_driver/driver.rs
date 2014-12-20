@@ -726,7 +726,7 @@ pub fn collect_crate_types(session: &Session,
         let res = !link::invalid_output_for_target(session, *crate_type);
 
         if !res {
-            session.warn(format!("dropping unsupported crate type `{}` \
+            session.warn(format!("dropping unsupported crate type `{:?}` \
                                    for target `{}`",
                                  *crate_type, session.opts.target_triple)[]);
         }

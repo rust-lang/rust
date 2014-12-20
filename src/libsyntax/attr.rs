@@ -28,6 +28,7 @@ use ptr::P;
 use std::cell::{RefCell, Cell};
 use std::collections::BitvSet;
 use std::collections::HashSet;
+use std::fmt;
 
 thread_local! { static USED_ATTRS: RefCell<BitvSet> = RefCell::new(BitvSet::new()) }
 
@@ -355,6 +356,12 @@ pub enum StabilityLevel {
     Stable,
     Frozen,
     Locked
+}
+
+impl fmt::String for StabilityLevel {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Show::fmt(self, f)
+    }
 }
 
 pub fn find_stability_generic<'a,

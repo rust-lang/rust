@@ -48,7 +48,7 @@ macro_rules! try_opt {
 
 /// ISO 8601 time duration with nanosecond precision.
 /// This also allows for the negative duration; see individual methods for details.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Show)]
 pub struct Duration {
     secs: i64,
     nanos: i32, // Always 0 <= nanos < NANOS_PER_SEC
@@ -337,7 +337,7 @@ impl Div<i32> for Duration {
     }
 }
 
-impl fmt::Show for Duration {
+impl fmt::String for Duration {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // technically speaking, negative duration is not valid ISO 8601,
         // but we need to print it anyway.

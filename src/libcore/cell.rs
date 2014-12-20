@@ -160,7 +160,6 @@
 use clone::Clone;
 use cmp::PartialEq;
 use default::Default;
-use fmt;
 use kinds::{Copy, Send};
 use ops::{Deref, DerefMut, Drop};
 use option::Option;
@@ -361,16 +360,6 @@ impl<T:Default> Default for RefCell<T> {
 impl<T: PartialEq> PartialEq for RefCell<T> {
     fn eq(&self, other: &RefCell<T>) -> bool {
         *self.borrow() == *other.borrow()
-    }
-}
-
-#[unstable]
-impl<T:fmt::Show> fmt::Show for RefCell<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self.try_borrow() {
-            Some(val) => write!(f, "{}", val),
-            None => write!(f, "<borrowed RefCell>")
-        }
     }
 }
 

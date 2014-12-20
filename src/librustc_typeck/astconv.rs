@@ -570,7 +570,7 @@ fn ast_path_to_trait_ref<'a,'tcx>(
     mut projections: Option<&mut Vec<ty::ProjectionPredicate<'tcx>>>)
     -> Rc<ty::TraitRef<'tcx>>
 {
-    debug!("ast_path_to_trait_ref {}", path);
+    debug!("ast_path_to_trait_ref {:?}", path);
     let trait_def = this.get_trait_def(trait_def_id);
 
     // the trait reference introduces a binding level here, so
@@ -1180,7 +1180,7 @@ pub fn ast_ty_to_ty<'tcx>(
                     _ => {
                         tcx.sess.span_fatal(ast_ty.span,
                                             format!("found value name used \
-                                                     as a type: {}",
+                                                     as a type: {:?}",
                                                     a_def)[]);
                     }
                 }
@@ -1626,7 +1626,7 @@ fn compute_opt_region_bound<'tcx>(tcx: &ty::ctxt<'tcx>,
                                   builtin_bounds: ty::BuiltinBounds)
                                   -> Option<ty::Region>
 {
-    debug!("compute_opt_region_bound(explicit_region_bounds={}, \
+    debug!("compute_opt_region_bound(explicit_region_bounds={:?}, \
            principal_trait_ref={}, builtin_bounds={})",
            explicit_region_bounds,
            principal_trait_ref.repr(tcx),

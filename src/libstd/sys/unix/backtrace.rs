@@ -370,7 +370,7 @@ fn print(w: &mut Writer, idx: int, addr: *mut libc::c_void) -> IoResult<()> {
 // Finally, after all that work above, we can emit a symbol.
 fn output(w: &mut Writer, idx: int, addr: *mut libc::c_void,
           s: Option<&[u8]>) -> IoResult<()> {
-    try!(write!(w, "  {:2}: {:2$} - ", idx, addr, HEX_WIDTH));
+    try!(write!(w, "  {:2}: {:2$?} - ", idx, addr, HEX_WIDTH));
     match s.and_then(|s| str::from_utf8(s).ok()) {
         Some(string) => try!(demangle(w, string)),
         None => try!(write!(w, "<unknown>")),

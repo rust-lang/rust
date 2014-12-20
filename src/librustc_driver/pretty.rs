@@ -548,7 +548,7 @@ pub fn pretty_print_input(sess: Session,
         (PpmSource(s), None) =>
             s.call_with_pp_support(
                 sess, ast_map, &arenas, id, out, |annotation, out| {
-                    debug!("pretty printing source code {}", s);
+                    debug!("pretty printing source code {:?}", s);
                     let sess = annotation.sess();
                     pprust::print_crate(sess.codemap(),
                                         sess.diagnostic(),
@@ -563,7 +563,7 @@ pub fn pretty_print_input(sess: Session,
         (PpmSource(s), Some(uii)) =>
             s.call_with_pp_support(
                 sess, ast_map, &arenas, id, (out,uii), |annotation, (out,uii)| {
-                    debug!("pretty printing source code {}", s);
+                    debug!("pretty printing source code {:?}", s);
                     let sess = annotation.sess();
                     let ast_map = annotation.ast_map()
                         .expect("--pretty missing ast_map");
@@ -586,7 +586,7 @@ pub fn pretty_print_input(sess: Session,
                 }),
 
         (PpmFlowGraph, opt_uii) => {
-            debug!("pretty printing flow graph for {}", opt_uii);
+            debug!("pretty printing flow graph for {:?}", opt_uii);
             let uii = opt_uii.unwrap_or_else(|| {
                 sess.fatal(format!("`pretty flowgraph=..` needs NodeId (int) or
                                      unique path suffix (b::c::d)")[])
@@ -609,7 +609,7 @@ pub fn pretty_print_input(sess: Session,
                 }
                 None => {
                     let message = format!("--pretty=flowgraph needs \
-                                           block, fn, or method; got {}",
+                                           block, fn, or method; got {:?}",
                                           node);
 
                     // point to what was found, if there's an

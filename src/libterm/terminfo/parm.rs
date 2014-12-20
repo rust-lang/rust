@@ -290,7 +290,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
                     ';' => (),
 
                     _ => {
-                        return Err(format!("unrecognized format option {}", cur))
+                        return Err(format!("unrecognized format option {:?}", cur))
                     }
                 }
             },
@@ -552,7 +552,7 @@ fn format(val: Param, op: FormatOp, flags: Flags) -> Result<Vec<u8> ,String> {
                     s
                 }
                 _ => {
-                    return Err(format!("non-string on stack with %{}",
+                    return Err(format!("non-string on stack with %{:?}",
                                        op.to_char()))
                 }
             }
@@ -636,7 +636,7 @@ mod test {
                     "Binop {} succeeded incorrectly with 1 stack entry", cap);
             let res = get_res("%{1}%{2}", cap, &[], vars);
             assert!(res.is_ok(),
-                    "Binop {} failed with 2 stack entries: {}", cap, res.unwrap_err());
+                    "Binop {} failed with 2 stack entries: {:?}", cap, res.unwrap_err());
         }
     }
 

@@ -289,7 +289,7 @@ impl<'a, 'tcx> IrMaps<'a, 'tcx> {
         self.lnks.push(lnk);
         self.num_live_nodes += 1;
 
-        debug!("{} is of kind {}", ln.to_string(),
+        debug!("{:?} is of kind {}", ln,
                live_node_kind_to_string(lnk, self.tcx));
 
         ln
@@ -299,7 +299,7 @@ impl<'a, 'tcx> IrMaps<'a, 'tcx> {
         let ln = self.add_live_node(lnk);
         self.live_node_map.insert(node_id, ln);
 
-        debug!("{} is node {}", ln.to_string(), node_id);
+        debug!("{:?} is node {}", ln, node_id);
     }
 
     fn add_variable(&mut self, vk: VarKind) -> Variable {
@@ -314,7 +314,7 @@ impl<'a, 'tcx> IrMaps<'a, 'tcx> {
             ImplicitRet | CleanExit => {}
         }
 
-        debug!("{} is {}", v.to_string(), vk);
+        debug!("{:?} is {:?}", v, vk);
 
         v
     }
@@ -377,7 +377,7 @@ fn visit_fn(ir: &mut IrMaps,
     // swap in a new set of IR maps for this function body:
     let mut fn_maps = IrMaps::new(ir.tcx);
 
-    debug!("creating fn_maps: {}", &fn_maps as *const IrMaps);
+    debug!("creating fn_maps: {:?}", &fn_maps as *const IrMaps);
 
     for arg in decl.inputs.iter() {
         pat_util::pat_bindings(&ir.tcx.def_map,
@@ -430,7 +430,7 @@ fn visit_local(ir: &mut IrMaps, local: &ast::Local) {
 fn visit_arm(ir: &mut IrMaps, arm: &ast::Arm) {
     for pat in arm.pats.iter() {
         pat_util::pat_bindings(&ir.tcx.def_map, &**pat, |bm, p_id, sp, path1| {
-            debug!("adding local variable {} from match with bm {}",
+            debug!("adding local variable {} from match with bm {:?}",
                    p_id, bm);
             let name = path1.node;
             ir.add_live_node_for_node(p_id, VarDefNode(sp));
@@ -448,7 +448,7 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
       // live nodes required for uses or definitions of variables:
       ast::ExprPath(_) => {
         let def = ir.tcx.def_map.borrow()[expr.id].clone();
-        debug!("expr {}: path that leads to {}", expr.id, def);
+        debug!("expr {}: path that leads to {:?}", expr.id, def);
         if let DefLocal(..) = def {
             ir.add_live_node_for_node(expr.id, ExprNode(expr.span));
         }
@@ -491,7 +491,7 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
       }
       ast::ExprForLoop(ref pat, _, _, _) => {
         pat_util::pat_bindings(&ir.tcx.def_map, &**pat, |bm, p_id, sp, path1| {
-            debug!("adding local variable {} from for loop with bm {}",
+            debug!("adding local variable {} from for loop with bm {:?}",
                    p_id, bm);
             let name = path1.node;
             ir.add_live_node_for_node(p_id, VarDefNode(sp));
@@ -702,7 +702,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         for var_idx in range(0u, self.ir.num_vars) {
             let idx = node_base_idx + var_idx;
             if test(idx).is_valid() {
-                try!(write!(wr, " {}", Variable(var_idx).to_string()));
+                try!(write!(wr, " {:?}", Variable(var_idx)));
             }
         }
         Ok(())
@@ -740,11 +740,11 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         let mut wr = Vec::new();
         {
             let wr = &mut wr as &mut io::Writer;
-            write!(wr, "[ln({}) of kind {} reads", ln.get(), self.ir.lnk(ln));
+            write!(wr, "[ln({:?}) of kind {:?} reads", ln.get(), self.ir.lnk(ln));
             self.write_vars(wr, ln, |idx| self.users[idx].reader);
             write!(wr, "  writes");
             self.write_vars(wr, ln, |idx| self.users[idx].writer);
-            write!(wr, "  precedes {}]", self.successors[ln.get()].to_string());
+            write!(wr, "  precedes {:?}]", self.successors[ln.get()]);
         }
         String::from_utf8(wr).unwrap()
     }
@@ -792,8 +792,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             }
         });
 
-        debug!("merge_from_succ(ln={}, succ={}, first_merge={}, changed={})",
-               ln.to_string(), self.ln_str(succ_ln), first_merge, changed);
+        debug!("merge_from_succ(ln={:?}, succ={}, first_merge={}, changed={})",
+               ln, self.ln_str(succ_ln), first_merge, changed);
         return changed;
 
         fn copy_if_invalid(src: LiveNode, dst: &mut LiveNode) -> bool {
@@ -814,14 +814,14 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         self.users[idx].reader = invalid_node();
         self.users[idx].writer = invalid_node();
 
-        debug!("{} defines {} (idx={}): {}", writer.to_string(), var.to_string(),
+        debug!("{:?} defines {:?} (idx={}): {}", writer, var,
                idx, self.ln_str(writer));
     }
 
     // Either read, write, or both depending on the acc bitset
     fn acc(&mut self, ln: LiveNode, var: Variable, acc: uint) {
-        debug!("{} accesses[{:x}] {}: {}",
-               ln.to_string(), acc, var.to_string(), self.ln_str(ln));
+        debug!("{:?} accesses[{:x}] {:?}: {}",
+               ln, acc, var, self.ln_str(ln));
 
         let idx = self.idx(ln, var);
         let user = &mut self.users[idx];
@@ -857,14 +857,14 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
               |this| this.propagate_through_fn_block(decl, body));
 
         // hack to skip the loop unless debug! is enabled:
-        debug!("^^ liveness computation results for body {} (entry={})",
+        debug!("^^ liveness computation results for body {} (entry={:?})",
                {
                    for ln_idx in range(0u, self.ir.num_live_nodes) {
-                       debug!("{}", self.ln_str(LiveNode(ln_idx)));
+                       debug!("{:?}", self.ln_str(LiveNode(ln_idx)));
                    }
                    body.id
                },
-               entry_ln.to_string());
+               entry_ln);
 
         entry_ln
     }

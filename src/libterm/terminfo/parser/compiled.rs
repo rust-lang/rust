@@ -163,7 +163,7 @@ pub fn parse(file: &mut io::Reader, longnames: bool)
     macro_rules! try { ($e:expr) => (
         match $e {
             Ok(e) => e,
-            Err(e) => return Err(format!("{}", e))
+            Err(e) => return Err(format!("{:?}", e))
         }
     ) }
 

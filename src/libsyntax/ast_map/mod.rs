@@ -46,7 +46,14 @@ impl PathElem {
     }
 }
 
+//NOTE(stage0): replace with deriving(Show) after snapshot
 impl fmt::Show for PathElem {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::String::fmt(self, f)
+    }
+}
+
+impl fmt::String for PathElem {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let slot = token::get_name(self.name());
         write!(f, "{}", slot)
@@ -396,7 +403,7 @@ impl<'ast> Map<'ast> {
                                 PathName(ident.name)
                             }
                             MethMac(_) => {
-                                panic!("no path elem for {}", node)
+                                panic!("no path elem for {:?}", node)
                             }
                         }
                     }
@@ -410,7 +417,7 @@ impl<'ast> Map<'ast> {
                         MethDecl(ident, _, _, _, _, _, _, _) => {
                             PathName(ident.name)
                         }
-                        MethMac(_) => panic!("no path elem for {}", node),
+                        MethMac(_) => panic!("no path elem for {:?}", node),
                     }
                 }
                 TypeTraitItem(ref m) => {
@@ -418,7 +425,7 @@ impl<'ast> Map<'ast> {
                 }
             },
             NodeVariant(v) => PathName(v.node.name.name),
-            _ => panic!("no path elem for {}", node)
+            _ => panic!("no path elem for {:?}", node)
         }
     }
 
@@ -549,7 +556,7 @@ impl<'ast> Map<'ast> {
 
     pub fn span(&self, id: NodeId) -> Span {
         self.opt_span(id)
-            .unwrap_or_else(|| panic!("AstMap.span: could not find span for id {}", id))
+            .unwrap_or_else(|| panic!("AstMap.span: could not find span for id {:?}", id))
     }
 
     pub fn def_id_span(&self, def_id: DefId, fallback: Span) -> Span {
@@ -729,7 +736,7 @@ struct NodeCollector<'ast> {
 
 impl<'ast> NodeCollector<'ast> {
     fn insert_entry(&mut self, id: NodeId, entry: MapEntry<'ast>) {
-        debug!("ast_map: {} => {}", id, entry);
+        debug!("ast_map: {:?} => {:?}", id, entry);
         let len = self.map.len();
         if id as uint >= len {
             self.map.extend(repeat(NotPresent).take(id as uint - len + 1));

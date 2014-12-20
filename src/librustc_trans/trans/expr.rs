@@ -306,7 +306,7 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         // FIXME(#19596) workaround: `|t| t` causes monomorphization recursion
         fn identity<T>(t: T) -> T { t }
 
-        debug!("unsized_info(kind={}, id={}, unadjusted_ty={})",
+        debug!("unsized_info(kind={:?}, id={}, unadjusted_ty={})",
                kind, id, unadjusted_ty.repr(bcx.tcx()));
         match kind {
             &ty::UnsizeLength(len) => C_uint(bcx.ccx(), len),
@@ -656,7 +656,7 @@ fn trans_datum_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             bcx.tcx().sess.span_bug(
                 expr.span,
                 format!("trans_rvalue_datum_unadjusted reached \
-                         fall-through case: {}",
+                         fall-through case: {:?}",
                         expr.node)[]);
         }
     }
@@ -1005,7 +1005,7 @@ fn trans_rvalue_stmt_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             bcx.tcx().sess.span_bug(
                 expr.span,
                 format!("trans_rvalue_stmt_unadjusted reached \
-                         fall-through case: {}",
+                         fall-through case: {:?}",
                         expr.node)[]);
         }
     }
@@ -1210,7 +1210,7 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             bcx.tcx().sess.span_bug(
                 expr.span,
                 format!("trans_rvalue_dps_unadjusted reached fall-through \
-                         case: {}",
+                         case: {:?}",
                         expr.node)[]);
         }
     }
@@ -1260,7 +1260,7 @@ fn trans_def_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }
         _ => {
             bcx.tcx().sess.span_bug(ref_expr.span, format!(
-                "Non-DPS def {} referened by {}",
+                "Non-DPS def {:?} referened by {}",
                 def, bcx.node_id_to_string(ref_expr.id))[]);
         }
     }
@@ -1288,7 +1288,7 @@ pub fn trans_def_fn_unadjusted<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         }
         _ => {
             ccx.tcx().sess.span_bug(ref_expr.span, format!(
-                    "trans_def_fn_unadjusted invoked on: {} for {}",
+                    "trans_def_fn_unadjusted invoked on: {:?} for {}",
                     def,
                     ref_expr.repr(ccx.tcx()))[]);
         }
@@ -1329,7 +1329,7 @@ pub fn trans_local_var<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }
         _ => {
             bcx.sess().unimpl(format!(
-                "unsupported def type in trans_local_var: {}",
+                "unsupported def type in trans_local_var: {:?}",
                 def)[]);
         }
     }
@@ -2074,7 +2074,7 @@ fn trans_imm_cast<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 cast_float => SIToFP(bcx, lldiscrim_a, ll_t_out),
                 _ => {
                     ccx.sess().bug(format!("translating unsupported cast: \
-                                            {} ({}) -> {} ({})",
+                                            {} ({:?}) -> {} ({:?})",
                                             t_in.repr(bcx.tcx()),
                                             k_in,
                                             t_out.repr(bcx.tcx()),
@@ -2083,7 +2083,7 @@ fn trans_imm_cast<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             }
         }
         _ => ccx.sess().bug(format!("translating unsupported cast: \
-                                    {} ({}) -> {} ({})",
+                                    {} ({:?}) -> {} ({:?})",
                                     t_in.repr(bcx.tcx()),
                                     k_in,
                                     t_out.repr(bcx.tcx()),
@@ -2169,7 +2169,7 @@ fn deref_once<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                           -> DatumBlock<'blk, 'tcx, Expr> {
     let ccx = bcx.ccx();
 
-    debug!("deref_once(expr={}, datum={}, method_call={})",
+    debug!("deref_once(expr={}, datum={}, method_call={:?})",
            expr.repr(bcx.tcx()),
            datum.to_string(ccx),
            method_call);
@@ -2253,7 +2253,7 @@ fn deref_once<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }
     };
 
-    debug!("deref_once(expr={}, method_call={}, result={})",
+    debug!("deref_once(expr={}, method_call={:?}, result={})",
            expr.id, method_call, r.datum.to_string(ccx));
 
     return r;

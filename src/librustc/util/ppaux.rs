@@ -111,7 +111,7 @@ pub fn explain_region_and_span(cx: &ctxt, region: ty::Region)
           }
           Some(_) | None => {
             // this really should not happen
-            (format!("unknown scope: {}.  Please report a bug.", scope), None)
+            (format!("unknown scope: {:?}.  Please report a bug.", scope), None)
           }
         }
       }
@@ -140,7 +140,7 @@ pub fn explain_region_and_span(cx: &ctxt, region: ty::Region)
           }
           Some(_) | None => {
               // this really should not happen
-              (format!("{} unknown free region bounded by scope {}", prefix, fr.scope), None)
+              (format!("{} unknown free region bounded by scope {:?}", prefix, fr.scope), None)
           }
         }
       }
@@ -156,7 +156,7 @@ pub fn explain_region_and_span(cx: &ctxt, region: ty::Region)
       // I believe these cases should not occur (except when debugging,
       // perhaps)
       ty::ReInfer(_) | ty::ReLateBound(..) => {
-        (format!("lifetime {}", region), None)
+        (format!("lifetime {:?}", region), None)
       }
     };
 
@@ -653,13 +653,13 @@ impl<'tcx, T:UserString<'tcx>> UserString<'tcx> for Vec<T> {
 
 impl<'tcx> Repr<'tcx> for def::Def {
     fn repr(&self, _tcx: &ctxt) -> String {
-        format!("{}", *self)
+        format!("{:?}", *self)
     }
 }
 
 impl<'tcx> Repr<'tcx> for ty::TypeParameterDef<'tcx> {
     fn repr(&self, tcx: &ctxt<'tcx>) -> String {
-        format!("TypeParameterDef({}, {}, {}/{})",
+        format!("TypeParameterDef({:?}, {}, {:?}/{})",
                 self.def_id,
                 self.bounds.repr(tcx),
                 self.space,
@@ -854,7 +854,7 @@ impl<'tcx> Repr<'tcx> for ty::Region {
     fn repr(&self, tcx: &ctxt) -> String {
         match *self {
             ty::ReEarlyBound(id, space, index, name) => {
-                format!("ReEarlyBound({}, {}, {}, {})",
+                format!("ReEarlyBound({}, {:?}, {}, {})",
                                id,
                                space,
                                index,
@@ -862,7 +862,7 @@ impl<'tcx> Repr<'tcx> for ty::Region {
             }
 
             ty::ReLateBound(binder_id, ref bound_region) => {
-                format!("ReLateBound({}, {})",
+                format!("ReLateBound({:?}, {})",
                         binder_id,
                         bound_region.repr(tcx))
             }
@@ -870,7 +870,7 @@ impl<'tcx> Repr<'tcx> for ty::Region {
             ty::ReFree(ref fr) => fr.repr(tcx),
 
             ty::ReScope(id) => {
-                format!("ReScope({})", id)
+                format!("ReScope({:?})", id)
             }
 
             ty::ReStatic => {
@@ -878,7 +878,7 @@ impl<'tcx> Repr<'tcx> for ty::Region {
             }
 
             ty::ReInfer(ReVar(ref vid)) => {
-                format!("{}", vid)
+                format!("{:?}", vid)
             }
 
             ty::ReInfer(ReSkolemized(id, ref bound_region)) => {
@@ -920,14 +920,14 @@ impl<'tcx> Repr<'tcx> for ast::DefId {
                 Some(ast_map::NodeVariant(..)) |
                 Some(ast_map::NodeStructCtor(..)) => {
                     return format!(
-                                "{}:{}",
+                                "{:?}:{}",
                                 *self,
                                 ty::item_path_str(tcx, *self))
                 }
                 _ => {}
             }
         }
-        return format!("{}", *self)
+        return format!("{:?}", *self)
     }
 }
 
@@ -1007,13 +1007,13 @@ impl<'tcx> Repr<'tcx> for ast::Ident {
 
 impl<'tcx> Repr<'tcx> for ast::ExplicitSelf_ {
     fn repr(&self, _tcx: &ctxt) -> String {
-        format!("{}", *self)
+        format!("{:?}", *self)
     }
 }
 
 impl<'tcx> Repr<'tcx> for ast::Visibility {
     fn repr(&self, _tcx: &ctxt) -> String {
-        format!("{}", *self)
+        format!("{:?}", *self)
     }
 }
 
@@ -1025,6 +1025,7 @@ impl<'tcx> Repr<'tcx> for ty::BareFnTy<'tcx> {
                 self.sig.repr(tcx))
     }
 }
+
 
 impl<'tcx> Repr<'tcx> for ty::FnSig<'tcx> {
     fn repr(&self, tcx: &ctxt<'tcx>) -> String {
@@ -1096,7 +1097,7 @@ impl<'tcx> Repr<'tcx> for ty::TraitStore {
 
 impl<'tcx> Repr<'tcx> for ty::BuiltinBound {
     fn repr(&self, _tcx: &ctxt) -> String {
-        format!("{}", *self)
+        format!("{:?}", *self)
     }
 }
 
@@ -1251,13 +1252,13 @@ impl<'tcx> Repr<'tcx> for ty::UpvarId {
 
 impl<'tcx> Repr<'tcx> for ast::Mutability {
     fn repr(&self, _tcx: &ctxt) -> String {
-        format!("{}", *self)
+        format!("{:?}", *self)
     }
 }
 
 impl<'tcx> Repr<'tcx> for ty::BorrowKind {
     fn repr(&self, _tcx: &ctxt) -> String {
-        format!("{}", *self)
+        format!("{:?}", *self)
     }
 }
 
@@ -1271,49 +1272,49 @@ impl<'tcx> Repr<'tcx> for ty::UpvarBorrow {
 
 impl<'tcx> Repr<'tcx> for ty::IntVid {
     fn repr(&self, _tcx: &ctxt) -> String {
-        format!("{}", self)
+        format!("{:?}", self)
     }
 }
 
 impl<'tcx> Repr<'tcx> for ty::FloatVid {
     fn repr(&self, _tcx: &ctxt) -> String {
-        format!("{}", self)
+        format!("{:?}", self)
     }
 }
 
 impl<'tcx> Repr<'tcx> for ty::RegionVid {
     fn repr(&self, _tcx: &ctxt) -> String {
-        format!("{}", self)
+        format!("{:?}", self)
     }
 }
 
 impl<'tcx> Repr<'tcx> for ty::TyVid {
     fn repr(&self, _tcx: &ctxt) -> String {
-        format!("{}", self)
+        format!("{:?}", self)
     }
 }
 
 impl<'tcx> Repr<'tcx> for ty::IntVarValue {
     fn repr(&self, _tcx: &ctxt) -> String {
-        format!("{}", *self)
+        format!("{:?}", *self)
     }
 }
 
 impl<'tcx> Repr<'tcx> for ast::IntTy {
     fn repr(&self, _tcx: &ctxt) -> String {
-        format!("{}", *self)
+        format!("{:?}", *self)
     }
 }
 
 impl<'tcx> Repr<'tcx> for ast::UintTy {
     fn repr(&self, _tcx: &ctxt) -> String {
-        format!("{}", *self)
+        format!("{:?}", *self)
     }
 }
 
 impl<'tcx> Repr<'tcx> for ast::FloatTy {
     fn repr(&self, _tcx: &ctxt) -> String {
-        format!("{}", *self)
+        format!("{:?}", *self)
     }
 }
 
@@ -1332,7 +1333,7 @@ impl<'tcx> UserString<'tcx> for ParamTy {
 impl<'tcx> Repr<'tcx> for ParamTy {
     fn repr(&self, tcx: &ctxt) -> String {
         let ident = self.user_string(tcx);
-        format!("{}/{}.{}", ident, self.space, self.idx)
+        format!("{}/{:?}.{}", ident, self.space, self.idx)
     }
 }
 

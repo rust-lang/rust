@@ -206,7 +206,7 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
             def::DefSelfTy(..) | def::DefAssociatedPath(..) => {
                 bcx.tcx().sess.span_bug(
                     ref_expr.span,
-                    format!("cannot translate def {} \
+                    format!("cannot translate def {:?} \
                              to a callable thing!", def)[]);
             }
         }
@@ -223,7 +223,7 @@ pub fn trans_fn_ref<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let _icx = push_ctxt("trans_fn_ref");
 
     let substs = node_id_substs(ccx, node, param_substs);
-    debug!("trans_fn_ref(def_id={}, node={}, substs={})",
+    debug!("trans_fn_ref(def_id={}, node={:?}, substs={})",
            def_id.repr(ccx.tcx()),
            node,
            substs.repr(ccx.tcx()));
@@ -386,7 +386,7 @@ pub fn trans_fn_ref_with_substs<'a, 'tcx>(
     let _icx = push_ctxt("trans_fn_ref_with_substs");
     let tcx = ccx.tcx();
 
-    debug!("trans_fn_ref_with_substs(def_id={}, node={}, \
+    debug!("trans_fn_ref_with_substs(def_id={}, node={:?}, \
             param_substs={}, substs={})",
            def_id.repr(tcx),
            node,

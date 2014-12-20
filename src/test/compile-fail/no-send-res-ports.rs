@@ -39,6 +39,6 @@ fn main() {
         //~^ ERROR `core::kinds::Send` is not implemented
         //~^^ ERROR `core::kinds::Send` is not implemented
         let y = x;
-        println!("{}", y);
+        println!("{:?}", y);
     });
 }

@@ -19,7 +19,7 @@ struct S {
 
 impl T for S {
     fn print(&self) {
-        println!("{}", self);
+        println!("{:?}", self);
     }
 }
 

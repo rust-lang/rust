@@ -32,7 +32,7 @@ fn main() {
     let mut buff = [0u8; 16];
     match f.read(&mut buff) {
         Ok(cnt) => println!("read this many bytes: {}", cnt),
-        Err(IoError{ kind: EndOfFile, .. }) => println!("Got end of file: {}", EndOfFile.to_string()),
+        Err(IoError{ kind: EndOfFile, .. }) => println!("Got end of file: {:?}", EndOfFile),
 //~^ ERROR variable `EndOfFile` should have a snake case name such as `end_of_file`
 //~^^ WARN `EndOfFile` is named the same as one of the variants of the type `std::io::IoErrorKind`
     }

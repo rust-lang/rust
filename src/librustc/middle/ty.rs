@@ -1710,8 +1710,8 @@ impl fmt::Show for InferTy {
             TyVar(ref v) => v.fmt(f),
             IntVar(ref v) => v.fmt(f),
             FloatVar(ref v) => v.fmt(f),
-            FreshTy(v) => write!(f, "FreshTy({})", v),
-            FreshIntTy(v) => write!(f, "FreshIntTy({})", v),
+            FreshTy(v) => write!(f, "FreshTy({:?})", v),
+            FreshIntTy(v) => write!(f, "FreshIntTy({:?})", v),
         }
     }
 }
@@ -2471,7 +2471,7 @@ fn intern_ty<'tcx>(type_arena: &'tcx TypedArena<TyS<'tcx>>,
         region_depth: flags.depth,
     });
 
-    debug!("Interned type: {} Pointer: {}",
+    debug!("Interned type: {:?} Pointer: {:?}",
            ty, ty as *const _);
 
     interner.insert(InternedTy { ty: ty }, ty);
@@ -3533,7 +3533,7 @@ fn type_impls_bound<'a,'tcx>(param_env: &ParameterEnvironment<'a,'tcx>,
         match cache.borrow().get(&ty) {
             None => {}
             Some(&result) => {
-                debug!("type_impls_bound({}, {}) = {} (cached)",
+                debug!("type_impls_bound({}, {:?}) = {:?} (cached)",
                        ty.repr(param_env.tcx),
                        bound,
                        result);
@@ -3546,7 +3546,7 @@ fn type_impls_bound<'a,'tcx>(param_env: &ParameterEnvironment<'a,'tcx>,
 
     let is_impld = traits::type_known_to_meet_builtin_bound(&infcx, param_env, ty, bound, span);
 
-    debug!("type_impls_bound({}, {}) = {}",
+    debug!("type_impls_bound({}, {:?}) = {:?}",
            ty.repr(param_env.tcx),
            bound,
            is_impld);
@@ -3585,13 +3585,13 @@ pub fn is_ffi_safe<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
 pub fn is_instantiable<'tcx>(cx: &ctxt<'tcx>, r_ty: Ty<'tcx>) -> bool {
     fn type_requires<'tcx>(cx: &ctxt<'tcx>, seen: &mut Vec<DefId>,
                            r_ty: Ty<'tcx>, ty: Ty<'tcx>) -> bool {
-        debug!("type_requires({}, {})?",
+        debug!("type_requires({:?}, {:?})?",
                ::util::ppaux::ty_to_string(cx, r_ty),
                ::util::ppaux::ty_to_string(cx, ty));
 
         let r = r_ty == ty || subtypes_require(cx, seen, r_ty, ty);
 
-        debug!("type_requires({}, {})? {}",
+        debug!("type_requires({:?}, {:?})? {:?}",
                ::util::ppaux::ty_to_string(cx, r_ty),
                ::util::ppaux::ty_to_string(cx, ty),
                r);
@@ -3600,7 +3600,7 @@ pub fn is_instantiable<'tcx>(cx: &ctxt<'tcx>, r_ty: Ty<'tcx>) -> bool {
 
     fn subtypes_require<'tcx>(cx: &ctxt<'tcx>, seen: &mut Vec<DefId>,
                               r_ty: Ty<'tcx>, ty: Ty<'tcx>) -> bool {
-        debug!("subtypes_require({}, {})?",
+        debug!("subtypes_require({:?}, {:?})?",
                ::util::ppaux::ty_to_string(cx, r_ty),
                ::util::ppaux::ty_to_string(cx, ty));
 
@@ -3655,7 +3655,7 @@ pub fn is_instantiable<'tcx>(cx: &ctxt<'tcx>, r_ty: Ty<'tcx>) -> bool {
             ty_unboxed_closure(..) => {
                 // this check is run on type definitions, so we don't expect to see
                 // inference by-products or unboxed closure types
-                cx.sess.bug(format!("requires check invoked on inapplicable type: {}", ty)[])
+                cx.sess.bug(format!("requires check invoked on inapplicable type: {:?}", ty)[])
             }
 
             ty_tup(ref ts) => {
@@ -3680,7 +3680,7 @@ pub fn is_instantiable<'tcx>(cx: &ctxt<'tcx>, r_ty: Ty<'tcx>) -> bool {
             }
         };
 
-        debug!("subtypes_require({}, {})? {}",
+        debug!("subtypes_require({:?}, {:?})? {:?}",
                ::util::ppaux::ty_to_string(cx, r_ty),
                ::util::ppaux::ty_to_string(cx, ty),
                r);
@@ -3748,7 +3748,7 @@ pub fn is_type_representable<'tcx>(cx: &ctxt<'tcx>, sp: Span, ty: Ty<'tcx>)
             ty_unboxed_closure(..) => {
                 // this check is run on type definitions, so we don't expect to see
                 // unboxed closure types
-                cx.sess.bug(format!("requires check invoked on inapplicable type: {}", ty)[])
+                cx.sess.bug(format!("requires check invoked on inapplicable type: {:?}", ty)[])
             }
             _ => Representable,
         }
@@ -3789,7 +3789,7 @@ pub fn is_type_representable<'tcx>(cx: &ctxt<'tcx>, sp: Span, ty: Ty<'tcx>)
     fn is_type_structurally_recursive<'tcx>(cx: &ctxt<'tcx>, sp: Span,
                                             seen: &mut Vec<Ty<'tcx>>,
                                             ty: Ty<'tcx>) -> Representability {
-        debug!("is_type_structurally_recursive: {}",
+        debug!("is_type_structurally_recursive: {:?}",
                ::util::ppaux::ty_to_string(cx, ty));
 
         match ty.sty {
@@ -3809,7 +3809,7 @@ pub fn is_type_representable<'tcx>(cx: &ctxt<'tcx>, sp: Span, ty: Ty<'tcx>)
                     match iter.next() {
                         Some(&seen_type) => {
                             if same_struct_or_enum_def_id(seen_type, did) {
-                                debug!("SelfRecursive: {} contains {}",
+                                debug!("SelfRecursive: {:?} contains {:?}",
                                        ::util::ppaux::ty_to_string(cx, seen_type),
                                        ::util::ppaux::ty_to_string(cx, ty));
                                 return SelfRecursive;
@@ -3829,7 +3829,7 @@ pub fn is_type_representable<'tcx>(cx: &ctxt<'tcx>, sp: Span, ty: Ty<'tcx>)
 
                     for &seen_type in iter {
                         if same_type(ty, seen_type) {
-                            debug!("ContainsRecursive: {} contains {}",
+                            debug!("ContainsRecursive: {:?} contains {:?}",
                                    ::util::ppaux::ty_to_string(cx, seen_type),
                                    ::util::ppaux::ty_to_string(cx, ty));
                             return ContainsRecursive;
@@ -3851,7 +3851,7 @@ pub fn is_type_representable<'tcx>(cx: &ctxt<'tcx>, sp: Span, ty: Ty<'tcx>)
         }
     }
 
-    debug!("is_type_representable: {}",
+    debug!("is_type_representable: {:?}",
            ::util::ppaux::ty_to_string(cx, ty));
 
     // To avoid a stack overflow when checking an enum variant or struct that
@@ -3859,7 +3859,7 @@ pub fn is_type_representable<'tcx>(cx: &ctxt<'tcx>, sp: Span, ty: Ty<'tcx>)
     // of seen types and check recursion for each of them (issues #3008, #3779).
     let mut seen: Vec<Ty> = Vec::new();
     let r = is_type_structurally_recursive(cx, sp, &mut seen, ty);
-    debug!("is_type_representable: {} is {}",
+    debug!("is_type_representable: {:?} is {:?}",
            ::util::ppaux::ty_to_string(cx, ty), r);
     r
 }
@@ -4122,7 +4122,7 @@ pub fn fn_is_variadic(fty: Ty) -> bool {
     match fty.sty {
         ty_bare_fn(_, ref f) => f.sig.0.variadic,
         ref s => {
-            panic!("fn_is_variadic() called on non-fn type: {}", s)
+            panic!("fn_is_variadic() called on non-fn type: {:?}", s)
         }
     }
 }
@@ -4131,7 +4131,7 @@ pub fn ty_fn_sig<'tcx>(fty: Ty<'tcx>) -> &'tcx PolyFnSig<'tcx> {
     match fty.sty {
         ty_bare_fn(_, ref f) => &f.sig,
         ref s => {
-            panic!("ty_fn_sig() called on non-fn type: {}", s)
+            panic!("ty_fn_sig() called on non-fn type: {:?}", s)
         }
     }
 }
@@ -4157,7 +4157,7 @@ pub fn ty_closure_store(fty: Ty) -> TraitStore {
             UniqTraitStore
         }
         ref s => {
-            panic!("ty_closure_store() called on non-closure type: {}", s)
+            panic!("ty_closure_store() called on non-closure type: {:?}", s)
         }
     }
 }
@@ -4166,7 +4166,7 @@ pub fn ty_fn_ret<'tcx>(fty: Ty<'tcx>) -> FnOutput<'tcx> {
     match fty.sty {
         ty_bare_fn(_, ref f) => f.sig.0.output,
         ref s => {
-            panic!("ty_fn_ret() called on non-fn type: {}", s)
+            panic!("ty_fn_ret() called on non-fn type: {:?}", s)
         }
     }
 }
@@ -4186,7 +4186,7 @@ pub fn ty_region(tcx: &ctxt,
         ref s => {
             tcx.sess.span_bug(
                 span,
-                format!("ty_region() invoked on an inappropriate ty: {}",
+                format!("ty_region() invoked on an inappropriate ty: {:?}",
                         s)[]);
         }
     }
@@ -4246,7 +4246,7 @@ pub fn expr_span(cx: &ctxt, id: NodeId) -> Span {
             e.span
         }
         Some(f) => {
-            cx.sess.bug(format!("Node id {} is not an expr: {}",
+            cx.sess.bug(format!("Node id {} is not an expr: {:?}",
                                 id,
                                 f)[]);
         }
@@ -4266,14 +4266,14 @@ pub fn local_var_name_str(cx: &ctxt, id: NodeId) -> InternedString {
                 }
                 _ => {
                     cx.sess.bug(
-                        format!("Variable id {} maps to {}, not local",
+                        format!("Variable id {} maps to {:?}, not local",
                                 id,
                                 pat)[]);
                 }
             }
         }
         r => {
-            cx.sess.bug(format!("Variable id {} maps to {}, not local",
+            cx.sess.bug(format!("Variable id {} maps to {:?}, not local",
                                 id,
                                 r)[]);
         }
@@ -4297,7 +4297,7 @@ pub fn adjust_ty<'tcx, F>(cx: &ctxt<'tcx>,
     return match adjustment {
         Some(adjustment) => {
             match *adjustment {
-                AdjustReifyFnPointer(_) => {
+               AdjustReifyFnPointer(_) => {
                     match unadjusted_ty.sty {
                         ty::ty_bare_fn(Some(_), b) => {
                             ty::mk_bare_fn(cx, None, b)
@@ -4305,7 +4305,7 @@ pub fn adjust_ty<'tcx, F>(cx: &ctxt<'tcx>,
                         ref b => {
                             cx.sess.bug(
                                 format!("AdjustReifyFnPointer adjustment on non-fn-item: \
-                                         {}",
+                                         {:?}",
                                         b)[]);
                         }
                     }
@@ -4396,7 +4396,7 @@ pub fn unsize_ty<'tcx>(cx: &ctxt<'tcx>,
                 mk_vec(cx, ty, None)
             }
             _ => cx.sess.span_bug(span,
-                                  format!("UnsizeLength with bad sty: {}",
+                                  format!("UnsizeLength with bad sty: {:?}",
                                           ty_to_string(cx, ty))[])
         },
         &UnsizeStruct(box ref k, tp_index) => match ty.sty {
@@ -4408,7 +4408,7 @@ pub fn unsize_ty<'tcx>(cx: &ctxt<'tcx>,
                 mk_struct(cx, did, cx.mk_substs(unsized_substs))
             }
             _ => cx.sess.span_bug(span,
-                                  format!("UnsizeStruct with bad sty: {}",
+                                  format!("UnsizeStruct with bad sty: {:?}",
                                           ty_to_string(cx, ty))[])
         },
         &UnsizeVtable(TyTrait { ref principal, ref bounds }, _) => {
@@ -4515,7 +4515,7 @@ pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
                 def => {
                     tcx.sess.span_bug(
                         expr.span,
-                        format!("uncategorized def for expr {}: {}",
+                        format!("uncategorized def for expr {}: {:?}",
                                 expr.id,
                                 def)[]);
                 }
@@ -4638,7 +4638,7 @@ pub fn field_idx_strict(tcx: &ctxt, name: ast::Name, fields: &[field])
     let mut i = 0u;
     for f in fields.iter() { if f.name == name { return i; } i += 1u; }
     tcx.sess.bug(format!(
-        "no field named `{}` found in the list of fields `{}`",
+        "no field named `{}` found in the list of fields `{:?}`",
         token::get_name(name),
         fields.iter()
               .map(|f| token::get_name(f.name).get().to_string())
@@ -4715,18 +4715,18 @@ pub fn type_err_to_str<'tcx>(cx: &ctxt<'tcx>, err: &type_err<'tcx>) -> String {
         terr_mismatch => "types differ".to_string(),
         terr_unsafety_mismatch(values) => {
             format!("expected {} fn, found {} fn",
-                    values.expected.to_string(),
-                    values.found.to_string())
+                    values.expected,
+                    values.found)
         }
         terr_abi_mismatch(values) => {
             format!("expected {} fn, found {} fn",
-                    values.expected.to_string(),
-                    values.found.to_string())
+                    values.expected,
+                    values.found)
         }
         terr_onceness_mismatch(values) => {
             format!("expected {} fn, found {} fn",
-                    values.expected.to_string(),
-                    values.found.to_string())
+                    values.expected,
+                    values.found)
         }
         terr_sigil_mismatch(values) => {
             format!("expected {}, found {}",
@@ -4818,14 +4818,14 @@ pub fn type_err_to_str<'tcx>(cx: &ctxt<'tcx>, err: &type_err<'tcx>) -> String {
             "expected an integral type, found `char`".to_string()
         }
         terr_int_mismatch(ref values) => {
-            format!("expected `{}`, found `{}`",
-                    values.expected.to_string(),
-                    values.found.to_string())
+            format!("expected `{:?}`, found `{:?}`",
+                    values.expected,
+                    values.found)
         }
         terr_float_mismatch(ref values) => {
-            format!("expected `{}`, found `{}`",
-                    values.expected.to_string(),
-                    values.found.to_string())
+            format!("expected `{:?}`, found `{:?}`",
+                    values.expected,
+                    values.found)
         }
         terr_variadic_mismatch(ref values) => {
             format!("expected {} fn, found {} function",
@@ -4914,14 +4914,14 @@ pub fn provided_trait_methods<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
                          }).collect()
                     }
                     _ => {
-                        cx.sess.bug(format!("provided_trait_methods: `{}` is \
+                        cx.sess.bug(format!("provided_trait_methods: `{:?}` is \
                                              not a trait",
                                             id)[])
                     }
                 }
             }
             _ => {
-                cx.sess.bug(format!("provided_trait_methods: `{}` is not a \
+                cx.sess.bug(format!("provided_trait_methods: `{:?}` is not a \
                                      trait",
                                     id)[])
             }
@@ -4950,7 +4950,7 @@ fn lookup_locally_or_in_crate_store<V, F>(descr: &str,
     }
 
     if def_id.krate == ast::LOCAL_CRATE {
-        panic!("No def'n found for {} in tcx.{}", def_id, descr);
+        panic!("No def'n found for {:?} in tcx.{}", def_id, descr);
     }
     let v = load_external();
     map.insert(def_id, v.clone());
@@ -5057,7 +5057,7 @@ pub fn impl_trait_ref<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
                             -> Option<Rc<TraitRef<'tcx>>> {
     memoized(&cx.impl_trait_cache, id, |id: ast::DefId| {
         if id.krate == ast::LOCAL_CRATE {
-            debug!("(impl_trait_ref) searching for trait impl {}", id);
+            debug!("(impl_trait_ref) searching for trait impl {:?}", id);
             match cx.map.find(id.node) {
                 Some(ast_map::NodeItem(item)) => {
                     match item.node {
@@ -5377,7 +5377,7 @@ pub fn predicates_for_trait_ref<'tcx>(tcx: &ctxt<'tcx>,
 {
     let trait_def = lookup_trait_def(tcx, trait_ref.def_id());
 
-    debug!("bounds_for_trait_ref(trait_def={}, trait_ref={})",
+    debug!("bounds_for_trait_ref(trait_def={:?}, trait_ref={:?})",
            trait_def.repr(tcx), trait_ref.repr(tcx));
 
     // The interaction between HRTB and supertraits is not entirely
@@ -5929,7 +5929,7 @@ pub fn required_region_bounds<'tcx>(tcx: &ctxt<'tcx>,
                                     predicates: Vec<ty::Predicate<'tcx>>)
                                     -> Vec<ty::Region>
 {
-    debug!("required_region_bounds(erased_self_ty={}, predicates={})",
+    debug!("required_region_bounds(erased_self_ty={:?}, predicates={:?})",
            erased_self_ty.repr(tcx),
            predicates.repr(tcx));
 
@@ -6007,7 +6007,7 @@ pub fn populate_implementations_for_type_if_necessary(tcx: &ctxt,
         return
     }
 
-    debug!("populate_implementations_for_type_if_necessary: searching for {}", type_id);
+    debug!("populate_implementations_for_type_if_necessary: searching for {:?}", type_id);
 
     let mut inherent_impls = Vec::new();
     csearch::each_implementation_for_type(&tcx.sess.cstore, type_id,
@@ -6368,7 +6368,7 @@ pub fn construct_parameter_environment<'a,'tcx>(
 
     record_region_bounds(tcx, &bounds);
 
-    debug!("construct_parameter_environment: free_id={} free_subst={} bounds={}",
+    debug!("construct_parameter_environment: free_id={:?} free_subst={:?} bounds={:?}",
            free_id,
            free_substs.repr(tcx),
            bounds.repr(tcx));
@@ -6394,15 +6394,15 @@ pub fn construct_parameter_environment<'a,'tcx>(
                                   types: &mut VecPerParamSpace<Ty<'tcx>>,
                                   defs: &[TypeParameterDef<'tcx>]) {
         for def in defs.iter() {
-            debug!("construct_parameter_environment(): push_types_from_defs: def={}",
+            debug!("construct_parameter_environment(): push_types_from_defs: def={:?}",
                    def.repr(tcx));
             let ty = ty::mk_param_from_def(tcx, def);
             types.push(def.space, ty);
-        }
+       }
     }
 
     fn record_region_bounds<'tcx>(tcx: &ty::ctxt<'tcx>, bounds: &GenericBounds<'tcx>) {
-        debug!("record_region_bounds(bounds={})", bounds.repr(tcx));
+        debug!("record_region_bounds(bounds={:?})", bounds.repr(tcx));
 
         for predicate in bounds.predicates.iter() {
             match *predicate {
@@ -6756,7 +6756,7 @@ pub fn replace_late_bound_regions<'tcx, T, F>(
         }
     });
 
-    debug!("resulting map: {} value: {}", map, value.repr(tcx));
+    debug!("resulting map: {:?} value: {:?}", map, value.repr(tcx));
     (value, map)
 }
 
@@ -6804,7 +6804,7 @@ impl<'tcx> Repr<'tcx> for AutoRef<'tcx> {
     fn repr(&self, tcx: &ctxt<'tcx>) -> String {
         match *self {
             AutoPtr(a, b, ref c) => {
-                format!("AutoPtr({},{},{})", a.repr(tcx), b, c.repr(tcx))
+                format!("AutoPtr({},{:?},{})", a.repr(tcx), b, c.repr(tcx))
             }
             AutoUnsize(ref a) => {
                 format!("AutoUnsize({})", a.repr(tcx))
@@ -6813,7 +6813,7 @@ impl<'tcx> Repr<'tcx> for AutoRef<'tcx> {
                 format!("AutoUnsizeUniq({})", a.repr(tcx))
             }
             AutoUnsafe(ref a, ref b) => {
-                format!("AutoUnsafe({},{})", a, b.repr(tcx))
+                format!("AutoUnsafe({:?},{})", a, b.repr(tcx))
             }
         }
     }
@@ -6843,7 +6843,7 @@ impl<'tcx> Repr<'tcx> for vtable_origin<'tcx> {
     fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
         match *self {
             vtable_static(def_id, ref tys, ref vtable_res) => {
-                format!("vtable_static({}:{}, {}, {})",
+                format!("vtable_static({:?}:{}, {}, {})",
                         def_id,
                         ty::item_path_str(tcx, def_id),
                         tys.repr(tcx),
@@ -6851,11 +6851,11 @@ impl<'tcx> Repr<'tcx> for vtable_origin<'tcx> {
             }
 
             vtable_param(x, y) => {
-                format!("vtable_param({}, {})", x, y)
+                format!("vtable_param({:?}, {})", x, y)
             }
 
             vtable_unboxed_closure(def_id) => {
-                format!("vtable_unboxed_closure({})", def_id)
+                format!("vtable_unboxed_closure({:?})", def_id)
             }
 
             vtable_error => {
@@ -7286,7 +7286,7 @@ impl ReferencesError for Region
 
 impl<'tcx> Repr<'tcx> for ClosureTy<'tcx> {
     fn repr(&self, tcx: &ctxt<'tcx>) -> String {
-        format!("ClosureTy({},{},{},{},{},{})",
+        format!("ClosureTy({},{},{:?},{},{},{})",
                 self.unsafety,
                 self.onceness,
                 self.store,

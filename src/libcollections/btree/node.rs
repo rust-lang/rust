@@ -493,7 +493,7 @@ impl<K: Clone, V: Clone> Clone for Node<K, V> {
 ///     // Now the handle still points at index 75, but on the small node, which has no index 75.
 ///     flag.set(true);
 ///
-///     println!("Uninitialized memory: {}", handle.into_kv());
+///     println!("Uninitialized memory: {:?}", handle.into_kv());
 /// }
 /// ```
 #[derive(Copy)]

@@ -32,7 +32,7 @@ use syntax::ptr::P;
 pub fn const_lit(cx: &CrateContext, e: &ast::Expr, lit: &ast::Lit)
     -> ValueRef {
     let _icx = push_ctxt("trans_lit");
-    debug!("const_lit: {}", lit);
+    debug!("const_lit: {:?}", lit);
     match lit.node {
         ast::LitByte(b) => C_integral(Type::uint_from_ty(cx, ast::TyU8), b as u64, false),
         ast::LitChar(i) => C_integral(Type::char(cx), i as u64, false),
@@ -187,7 +187,7 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, e: &ast::Expr)
         None => { }
         Some(adj) => {
             match adj {
-                ty::AdjustReifyFnPointer(_def_id) => {
+               ty::AdjustReifyFnPointer(_def_id) => {
                     // FIXME(#19925) once fn item types are
                     // zero-sized, we'll need to do something here
                 }
@@ -259,7 +259,7 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, e: &ast::Expr)
                                     cx.sess()
                                       .span_bug(e.span,
                                                 format!("unimplemented const \
-                                                         autoref {}",
+                                                         autoref {:?}",
                                                         autoref)[])
                                 }
                             }

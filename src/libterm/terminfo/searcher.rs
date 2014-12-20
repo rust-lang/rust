@@ -82,11 +82,11 @@ pub fn open(term: &str) -> Result<File, String> {
         Some(x) => {
             match File::open(&*x) {
                 Ok(file) => Ok(file),
-                Err(e) => Err(format!("error opening file: {}", e)),
+                Err(e) => Err(format!("error opening file: {:?}", e)),
             }
         }
         None => {
-            Err(format!("could not find terminfo entry for {}", term))
+            Err(format!("could not find terminfo entry for {:?}", term))
         }
     }
 }

@@ -20,7 +20,7 @@ impl T<int> for Empty {
 }
 
 fn do_something_with(a : &mut T<int>) {
-    println!("{}", a.next())
+    println!("{:?}", a.next())
 }
 
 pub fn main() {

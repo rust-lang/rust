@@ -254,7 +254,7 @@ pub fn file_to_filemap(sess: &ParseSess, path: &Path, spanopt: Option<Span>)
     let bytes = match File::open(path).read_to_end() {
         Ok(bytes) => bytes,
         Err(e) => {
-            err(format!("couldn't read {}: {}",
+            err(format!("couldn't read {:?}: {:?}",
                         path.display(),
                         e)[]);
             unreachable!()
@@ -266,7 +266,7 @@ pub fn file_to_filemap(sess: &ParseSess, path: &Path, spanopt: Option<Span>)
                                      path.as_str().unwrap().to_string())
         }
         None => {
-            err(format!("{} is not UTF-8 encoded", path.display())[])
+            err(format!("{:?} is not UTF-8 encoded", path.display())[])
         }
     }
     unreachable!()
@@ -539,7 +539,7 @@ fn looks_like_width_suffix(first_chars: &[char], s: &str) -> bool {
 
 fn filtered_float_lit(data: token::InternedString, suffix: Option<&str>,
                       sd: &SpanHandler, sp: Span) -> ast::Lit_ {
-    debug!("filtered_float_lit: {}, {}", data, suffix);
+    debug!("filtered_float_lit: {}, {:?}", data, suffix);
     match suffix {
         Some("f32") => ast::LitFloat(data, ast::TyF32),
         Some("f64") => ast::LitFloat(data, ast::TyF64),
@@ -559,7 +559,7 @@ fn filtered_float_lit(data: token::InternedString, suffix: Option<&str>,
     }
 }
 pub fn float_lit(s: &str, suffix: Option<&str>, sd: &SpanHandler, sp: Span) -> ast::Lit_ {
-    debug!("float_lit: {}, {}", s, suffix);
+    debug!("float_lit: {:?}, {:?}", s, suffix);
     // FIXME #2252: bounds checking float literals is defered until trans
     let s = s.chars().filter(|&c| c != '_').collect::<String>();
     let data = token::intern_and_get_ident(&*s);
@@ -664,7 +664,7 @@ pub fn integer_lit(s: &str, suffix: Option<&str>, sd: &SpanHandler, sp: Span) ->
     let s2 = s.chars().filter(|&c| c != '_').collect::<String>();
     let mut s = s2[];
 
-    debug!("integer_lit: {}, {}", s, suffix);
+    debug!("integer_lit: {}, {:?}", s, suffix);
 
     let mut base = 10;
     let orig = s;
@@ -727,8 +727,8 @@ pub fn integer_lit(s: &str, suffix: Option<&str>, sd: &SpanHandler, sp: Span) ->
         }
     }
 
-    debug!("integer_lit: the type is {}, base {}, the new string is {}, the original \
-           string was {}, the original suffix was {}", ty, base, s, orig, suffix);
+    debug!("integer_lit: the type is {:?}, base {:?}, the new string is {:?}, the original \
+           string was {:?}, the original suffix was {:?}", ty, base, s, orig, suffix);
 
     let res: u64 = match ::std::num::from_str_radix(s, base) {
         Some(r) => r,

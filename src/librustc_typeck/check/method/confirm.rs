@@ -200,7 +200,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
         match pick.kind {
             probe::InherentImplPick(impl_def_id) => {
                 assert!(ty::impl_trait_ref(self.tcx(), impl_def_id).is_none(),
-                        "impl {} is not an inherent impl", impl_def_id);
+                        "impl {:?} is not an inherent impl", impl_def_id);
                 let impl_polytype = check::impl_self_ty(self.fcx, self.span, impl_def_id);
 
                 (impl_polytype.substs, MethodStatic(pick.method_ty.def_id))

@@ -548,7 +548,7 @@ impl Module {
 
 impl fmt::Show for Module {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}, kind: {}, {}",
+        write!(f, "{:?}, kind: {:?}, {}",
                self.def_id,
                self.kind,
                if self.is_public { "public" } else { "private" } )
@@ -689,7 +689,7 @@ impl NameBindings {
 
     /// Records a type definition.
     fn define_type(&self, def: Def, sp: Span, modifiers: DefModifiers) {
-        debug!("defining type for def {} with modifiers {}", def, modifiers);
+        debug!("defining type for def {:?} with modifiers {:?}", def, modifiers);
         // Merges the type with the existing type def or creates a new one.
         let type_def = self.type_def.borrow().clone();
         match type_def {
@@ -714,7 +714,7 @@ impl NameBindings {
 
     /// Records a value definition.
     fn define_value(&self, def: Def, sp: Span, modifiers: DefModifiers) {
-        debug!("defining value for def {} with modifiers {}", def, modifiers);
+        debug!("defining value for def {:?} with modifiers {:?}", def, modifiers);
         *self.value_def.borrow_mut() = Some(ValueNsDef {
             def: def,
             value_span: Some(sp),
@@ -1272,7 +1272,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                              lp: LastPrivate)
                                  -> ResolveResult<()> {
         debug!("(resolving single import) resolving `{}` = `{}::{}` from \
-                `{}` id {}, last private {}",
+                `{}` id {}, last private {:?}",
                token::get_name(target),
                self.module_to_string(&*containing_module),
                token::get_name(source),
@@ -1375,7 +1375,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                     shadowable: _
                                 }) => {
                                     debug!("(resolving single import) found \
-                                            import in ns {}", namespace);
+                                            import in ns {:?}", namespace);
                                     let id = import_resolution.id(namespace);
                                     // track used imports and extern crates as well
                                     this.used_imports.insert((id, namespace));
@@ -1484,7 +1484,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
                 match *result {
                     BoundResult(ref target_module, ref name_bindings) => {
-                        debug!("(resolving single import) found {} target: {}",
+                        debug!("(resolving single import) found {:?} target: {:?}",
                                namespace_name,
                                name_bindings.def_for_namespace(namespace));
                         self.check_for_conflicting_import(
@@ -1508,7 +1508,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     }
                     UnboundResult => { /* Continue. */ }
                     UnknownResult => {
-                        panic!("{} result should be known at this point", namespace_name);
+                        panic!("{:?} result should be known at this point", namespace_name);
                     }
                 }
             };
@@ -2165,7 +2165,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                      namespace: Namespace)
                                     -> ResolveResult<(Target, bool)> {
         debug!("(resolving item in lexical scope) resolving `{}` in \
-                namespace {} in `{}`",
+                namespace {:?} in `{}`",
                token::get_name(name),
                namespace,
                self.module_to_string(&*module_));
@@ -2195,7 +2195,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 None => {
                     // Not found; continue.
                     debug!("(resolving item in lexical scope) found \
-                            import resolution, but not in namespace {}",
+                            import resolution, but not in namespace {:?}",
                            namespace);
                 }
                 Some(target) => {
@@ -2475,7 +2475,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 match import_resolution.target_for_namespace(namespace) {
                     None => {
                         debug!("(resolving name in module) name found, \
-                                but not in namespace {}",
+                                but not in namespace {:?}",
                                namespace);
                     }
                     Some(target) => {
@@ -2620,7 +2620,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         match def_like {
             DlDef(d @ DefUpvar(..)) => {
                 self.session.span_bug(span,
-                    format!("unexpected {} in bindings", d)[])
+                    format!("unexpected {:?} in bindings", d)[])
             }
             DlDef(d @ DefLocal(_)) => {
                 let node_id = d.def_id().node;
@@ -3187,7 +3187,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             Some(def) => {
                 match def {
                     (DefTrait(_), _) => {
-                        debug!("(resolving trait) found trait def: {}", def);
+                        debug!("(resolving trait) found trait def: {:?}", def);
                         self.record_def(trait_reference.ref_id, def);
                     }
                     (def, _) => {
@@ -3578,8 +3578,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     None => {
                         match self.resolve_path(ty.id, path, TypeNS, true) {
                             Some(def) => {
-                                debug!("(resolving type) resolved `{}` to \
-                                        type {}",
+                                debug!("(resolving type) resolved `{:?}` to \
+                                        type {:?}",
                                        token::get_ident(path.segments.last().unwrap() .identifier),
                                        def);
                                 result_def = Some(def);
@@ -3797,7 +3797,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         }
                         result => {
                             debug!("(resolving pattern) didn't find struct \
-                                    def: {}", result);
+                                    def: {:?}", result);
                             let msg = format!("`{}` does not name a structure",
                                               self.path_names_to_string(path));
                             self.resolve_error(path.span, msg[]);
@@ -3821,7 +3821,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                                  ValueNS) {
             Success((target, _)) => {
                 debug!("(resolve bare identifier pattern) succeeded in \
-                         finding {} at {}",
+                         finding {} at {:?}",
                         token::get_name(name),
                         target.bindings.value_def.borrow());
                 match *target.bindings.value_def.borrow() {
@@ -4179,7 +4179,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         match search_result {
             Some(DlDef(def)) => {
                 debug!("(resolving path in local ribs) resolved `{}` to \
-                        local: {}",
+                        local: {:?}",
                        token::get_ident(ident),
                        def);
                 return Some(def);
@@ -4530,7 +4530,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     Some(definition) => self.record_def(expr.id, definition),
                     result => {
                         debug!("(resolving expression) didn't find struct \
-                                def: {}", result);
+                                def: {:?}", result);
                         let msg = format!("`{}` does not name a structure",
                                           self.path_names_to_string(path));
                         self.resolve_error(path.span, msg[]);
@@ -4717,7 +4717,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     }
 
     fn record_def(&mut self, node_id: NodeId, (def, lp): (Def, LastPrivate)) {
-        debug!("(recording def) recording {} for {}, last private {}",
+        debug!("(recording def) recording {:?} for {}, last private {:?}",
                 def, node_id, lp);
         assert!(match lp {LastImport{..} => false, _ => true},
                 "Import should only be used for `use` directives");
@@ -4729,8 +4729,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             // the same conclusion! - nmatsakis
             Occupied(entry) => if def != *entry.get() {
                 self.session
-                    .bug(format!("node_id {} resolved first to {} and \
-                                  then {}",
+                    .bug(format!("node_id {} resolved first to {:?} and \
+                                  then {:?}",
                                  node_id,
                                  *entry.get(),
                                  def)[]);

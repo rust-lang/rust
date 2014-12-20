@@ -26,5 +26,5 @@ fn do_stuff<R: Repro>(r: R) -> String {
 }
 
 pub fn main() {
-  assert_eq!("MyStruct".to_string(), do_stuff(|: s: MyStruct| format!("{}", s)));
+  assert_eq!("MyStruct".to_string(), do_stuff(|: s: MyStruct| format!("{:?}", s)));
 }

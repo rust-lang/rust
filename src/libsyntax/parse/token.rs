@@ -652,6 +652,12 @@ impl BytesContainer for InternedString {
 
 impl fmt::Show for InternedString {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::String::fmt(self, f)
+    }
+}
+
+impl fmt::String for InternedString {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.string[])
     }
 }

@@ -552,7 +552,7 @@ impl<'tcx, K: KindOps + fmt::Show> Datum<'tcx, K> {
 
     #[allow(dead_code)] // useful for debugging
     pub fn to_string<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> String {
-        format!("Datum({}, {}, {})",
+        format!("Datum({}, {}, {:?})",
                 ccx.tn().val_to_string(self.val),
                 ty_to_string(ccx.tcx(), self.ty),
                 self.kind)

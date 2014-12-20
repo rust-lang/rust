@@ -607,7 +607,7 @@ impl<'a, 'b> Context<'a, 'b> {
         let trait_ = match *ty {
             Known(ref tyname) => {
                 match tyname[] {
-                    ""  => "Show",
+                    ""  => "String",
                     "?" => "Show",
                     "e" => "LowerExp",
                     "E" => "UpperExp",

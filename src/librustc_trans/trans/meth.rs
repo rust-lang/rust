@@ -135,7 +135,7 @@ pub fn trans_method_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }) => {
             let trait_ref = ty::Binder(bcx.monomorphize(trait_ref));
             let span = bcx.tcx().map.span(method_call.expr_id);
-            debug!("method_call={} trait_ref={}",
+            debug!("method_call={:?} trait_ref={}",
                    method_call,
                    trait_ref.repr(bcx.tcx()));
             let origin = fulfill_obligation(bcx.ccx(),
@@ -177,7 +177,7 @@ pub fn trans_static_method_callee<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let _icx = push_ctxt("meth::trans_static_method_callee");
     let tcx = ccx.tcx();
 
-    debug!("trans_static_method_callee(method_id={}, trait_id={}, \
+    debug!("trans_static_method_callee(method_id={:?}, trait_id={}, \
             expr_id={})",
            method_id,
            ty::item_path_str(tcx, trait_id),
@@ -201,7 +201,7 @@ pub fn trans_static_method_callee<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     } else {
         csearch::get_item_path(tcx, method_id).last().unwrap().name()
     };
-    debug!("trans_static_method_callee: method_id={}, expr_id={}, \
+    debug!("trans_static_method_callee: method_id={:?}, expr_id={}, \
             name={}", method_id, expr_id, token::get_name(mname));
 
     // Find the substitutions for the fn itself. This includes

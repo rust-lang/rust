@@ -171,7 +171,7 @@ pub fn build_link_meta(sess: &Session, krate: &ast::Crate,
         crate_name: name,
         crate_hash: Svh::calculate(&sess.opts.cg.metadata, krate),
     };
-    info!("{}", r);
+    info!("{:?}", r);
     return r;
 }
 
@@ -373,7 +373,7 @@ pub fn link_binary(sess: &Session,
     let mut out_filenames = Vec::new();
     for &crate_type in sess.crate_types.borrow().iter() {
         if invalid_output_for_target(sess, crate_type) {
-            sess.bug(format!("invalid output type `{}` for target os `{}`",
+            sess.bug(format!("invalid output type `{:?}` for target os `{}`",
                              crate_type, sess.opts.target_triple)[]);
         }
         let out_file = link_binary_output(sess, trans, crate_type, outputs,

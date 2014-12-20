@@ -1035,7 +1035,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
             if pat_util::pat_is_binding(def_map, pat) {
                 let tcx = typer.tcx();
 
-                debug!("binding cmt_pat={} pat={} match_mode={}",
+                debug!("binding cmt_pat={} pat={} match_mode={:?}",
                        cmt_pat.repr(tcx),
                        pat.repr(tcx),
                        match_mode);
@@ -1171,7 +1171,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                             // pattern.
 
                             if !tcx.sess.has_errors() {
-                                let msg = format!("Pattern has unexpected type: {} and type {}",
+                                let msg = format!("Pattern has unexpected type: {:?} and type {}",
                                                   def,
                                                   cmt_pat.ty.repr(tcx));
                                 tcx.sess.span_bug(pat.span, msg[])
@@ -1188,7 +1188,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                             // reported.
 
                             if !tcx.sess.has_errors() {
-                                let msg = format!("Pattern has unexpected def: {} and type {}",
+                                let msg = format!("Pattern has unexpected def: {:?} and type {}",
                                                   def,
                                                   cmt_pat.ty.repr(tcx));
                                 tcx.sess.span_bug(pat.span, msg[])

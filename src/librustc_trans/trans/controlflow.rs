@@ -436,7 +436,7 @@ pub fn trans_break_cont<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             match bcx.tcx().def_map.borrow().get(&expr_id) {
                 Some(&def::DefLabel(loop_id)) => loop_id,
                 ref r => {
-                    bcx.tcx().sess.bug(format!("{} in def-map for label",
+                    bcx.tcx().sess.bug(format!("{:?} in def-map for label",
                                                r)[])
                 }
             }
