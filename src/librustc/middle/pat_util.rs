@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use middle::def::*;
-use middle::resolve;
 use middle::ty;
 use util::nodemap::FnvHashMap;
 
@@ -21,7 +20,7 @@ pub type PatIdMap = FnvHashMap<ast::Ident, ast::NodeId>;
 
 // This is used because same-named variables in alternative patterns need to
 // use the NodeId of their namesake in the first pattern.
-pub fn pat_id_map(dm: &resolve::DefMap, pat: &ast::Pat) -> PatIdMap {
+pub fn pat_id_map(dm: &DefMap, pat: &ast::Pat) -> PatIdMap {
     let mut map = FnvHashMap::new();
     pat_bindings(dm, pat, |_bm, p_id, _s, path1| {
         map.insert(path1.node, p_id);
@@ -29,7 +28,7 @@ pub fn pat_id_map(dm: &resolve::DefMap, pat: &ast::Pat) -> PatIdMap {
     map
 }
 
-pub fn pat_is_refutable(dm: &resolve::DefMap, pat: &ast::Pat) -> bool {
+pub fn pat_is_refutable(dm: &DefMap, pat: &ast::Pat) -> bool {
     match pat.node {
         ast::PatLit(_) | ast::PatRange(_, _) => true,
         ast::PatEnum(_, _) |
@@ -45,7 +44,7 @@ pub fn pat_is_refutable(dm: &resolve::DefMap, pat: &ast::Pat) -> bool {
     }
 }
 
-pub fn pat_is_variant_or_struct(dm: &resolve::DefMap, pat: &ast::Pat) -> bool {
+pub fn pat_is_variant_or_struct(dm: &DefMap, pat: &ast::Pat) -> bool {
     match pat.node {
         ast::PatEnum(_, _) |
         ast::PatIdent(_, _, None) |
@@ -59,7 +58,7 @@ pub fn pat_is_variant_or_struct(dm: &resolve::DefMap, pat: &ast::Pat) -> bool {
     }
 }
 
-pub fn pat_is_const(dm: &resolve::DefMap, pat: &ast::Pat) -> bool {
+pub fn pat_is_const(dm: &DefMap, pat: &ast::Pat) -> bool {
     match pat.node {
         ast::PatIdent(_, _, None) | ast::PatEnum(..) => {
             match dm.borrow().get(&pat.id) {
@@ -71,7 +70,7 @@ pub fn pat_is_const(dm: &resolve::DefMap, pat: &ast::Pat) -> bool {
     }
 }
 
-pub fn pat_is_binding(dm: &resolve::DefMap, pat: &ast::Pat) -> bool {
+pub fn pat_is_binding(dm: &DefMap, pat: &ast::Pat) -> bool {
     match pat.node {
         ast::PatIdent(..) => {
             !pat_is_variant_or_struct(dm, pat) &&
@@ -81,7 +80,7 @@ pub fn pat_is_binding(dm: &resolve::DefMap, pat: &ast::Pat) -> bool {
     }
 }
 
-pub fn pat_is_binding_or_wild(dm: &resolve::DefMap, pat: &ast::Pat) -> bool {
+pub fn pat_is_binding_or_wild(dm: &DefMap, pat: &ast::Pat) -> bool {
     match pat.node {
         ast::PatIdent(..) => pat_is_binding(dm, pat),
         ast::PatWild(_) => true,
@@ -91,7 +90,7 @@ pub fn pat_is_binding_or_wild(dm: &resolve::DefMap, pat: &ast::Pat) -> bool {
 
 /// Call `it` on every "binding" in a pattern, e.g., on `a` in
 /// `match foo() { Some(a) => (), None => () }`
-pub fn pat_bindings<I>(dm: &resolve::DefMap, pat: &ast::Pat, mut it: I) where
+pub fn pat_bindings<I>(dm: &DefMap, pat: &ast::Pat, mut it: I) where
     I: FnMut(ast::BindingMode, ast::NodeId, Span, &ast::SpannedIdent),
 {
     walk_pat(pat, |p| {
@@ -107,7 +106,7 @@ pub fn pat_bindings<I>(dm: &resolve::DefMap, pat: &ast::Pat, mut it: I) where
 
 /// Checks if the pattern contains any patterns that bind something to
 /// an ident, e.g. `foo`, or `Foo(foo)` or `foo @ Bar(..)`.
-pub fn pat_contains_bindings(dm: &resolve::DefMap, pat: &ast::Pat) -> bool {
+pub fn pat_contains_bindings(dm: &DefMap, pat: &ast::Pat) -> bool {
     let mut contains_bindings = false;
     walk_pat(pat, |p| {
         if pat_is_binding(dm, p) {

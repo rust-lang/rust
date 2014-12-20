@@ -12,8 +12,7 @@
 // recursively.
 
 use session::Session;
-use middle::resolve;
-use middle::def::{DefStatic, DefConst};
+use middle::def::{DefStatic, DefConst, DefMap};
 
 use syntax::ast;
 use syntax::{ast_util, ast_map};
@@ -22,7 +21,7 @@ use syntax::visit;
 
 struct CheckCrateVisitor<'a, 'ast: 'a> {
     sess: &'a Session,
-    def_map: &'a resolve::DefMap,
+    def_map: &'a DefMap,
     ast_map: &'a ast_map::Map<'ast>
 }
 
@@ -34,7 +33,7 @@ impl<'v, 'a, 'ast> Visitor<'v> for CheckCrateVisitor<'a, 'ast> {
 
 pub fn check_crate<'ast>(sess: &Session,
                          krate: &ast::Crate,
-                         def_map: &resolve::DefMap,
+                         def_map: &DefMap,
                          ast_map: &ast_map::Map<'ast>) {
     let mut visitor = CheckCrateVisitor {
         sess: sess,
@@ -60,7 +59,7 @@ struct CheckItemRecursionVisitor<'a, 'ast: 'a> {
     root_it: &'a ast::Item,
     sess: &'a Session,
     ast_map: &'a ast_map::Map<'ast>,
-    def_map: &'a resolve::DefMap,
+    def_map: &'a DefMap,
     idstack: Vec<ast::NodeId>
 }
 
@@ -68,7 +67,7 @@ struct CheckItemRecursionVisitor<'a, 'ast: 'a> {
 // FIXME: Should use the dependency graph when it's available (#1356)
 pub fn check_item_recursion<'a>(sess: &'a Session,
                                 ast_map: &'a ast_map::Map,
-                                def_map: &'a resolve::DefMap,
+                                def_map: &'a DefMap,
                                 it: &'a ast::Item) {
 
     let mut visitor = CheckItemRecursionVisitor {

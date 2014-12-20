@@ -13,7 +13,7 @@ use llvm::{ContextRef, ModuleRef, ValueRef, BuilderRef};
 use llvm::{TargetData};
 use llvm::mk_target_data;
 use metadata::common::LinkMeta;
-use middle::resolve;
+use middle::def::ExportMap;
 use middle::traits;
 use trans::adt;
 use trans::base;
@@ -61,7 +61,7 @@ pub struct SharedCrateContext<'tcx> {
     metadata_llmod: ModuleRef,
     metadata_llcx: ContextRef,
 
-    exp_map2: resolve::ExportMap2,
+    export_map: ExportMap,
     reachable: NodeSet,
     item_symbols: RefCell<NodeMap<String>>,
     link_meta: LinkMeta,
@@ -238,7 +238,7 @@ impl<'tcx> SharedCrateContext<'tcx> {
     pub fn new(crate_name: &str,
                local_count: uint,
                tcx: ty::ctxt<'tcx>,
-               emap2: resolve::ExportMap2,
+               export_map: ExportMap,
                symbol_hasher: Sha256,
                link_meta: LinkMeta,
                reachable: NodeSet)
@@ -251,7 +251,7 @@ impl<'tcx> SharedCrateContext<'tcx> {
             local_ccxs: Vec::with_capacity(local_count),
             metadata_llmod: metadata_llmod,
             metadata_llcx: metadata_llcx,
-            exp_map2: emap2,
+            export_map: export_map,
             reachable: reachable,
             item_symbols: RefCell::new(NodeMap::new()),
             link_meta: link_meta,
@@ -329,8 +329,8 @@ impl<'tcx> SharedCrateContext<'tcx> {
         self.metadata_llcx
     }
 
-    pub fn exp_map2<'a>(&'a self) -> &'a resolve::ExportMap2 {
-        &self.exp_map2
+    pub fn export_map<'a>(&'a self) -> &'a ExportMap {
+        &self.export_map
     }
 
     pub fn reachable<'a>(&'a self) -> &'a NodeSet {
@@ -553,8 +553,8 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         &self.local.item_vals
     }
 
-    pub fn exp_map2<'a>(&'a self) -> &'a resolve::ExportMap2 {
-        &self.shared.exp_map2
+    pub fn export_map<'a>(&'a self) -> &'a ExportMap {
+        &self.shared.export_map
     }
 
     pub fn reachable<'a>(&'a self) -> &'a NodeSet {
