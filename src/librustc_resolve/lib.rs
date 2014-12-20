@@ -4360,27 +4360,14 @@ impl<'a> Resolver<'a> {
         for predicate in where_clause.predicates.iter() {
             match predicate {
                 &ast::WherePredicate::BoundPredicate(ref bound_pred) => {
-                    match self.resolve_identifier(bound_pred.ident,
-                                                  TypeNS,
-                                                  true,
-                                                  bound_pred.span) {
-                        Some((def @ DefTyParam(..), last_private)) => {
-                            self.record_def(bound_pred.id, (def, last_private));
-                        }
-                        _ => {
-                            self.resolve_error(
-                                bound_pred.span,
-                                format!("undeclared type parameter `{}`",
-                                        token::get_ident(
-                                            bound_pred.ident)).as_slice());
-                        }
-                    }
+                    self.resolve_type(&*bound_pred.bounded_ty);
 
                     for bound in bound_pred.bounds.iter() {
-                        self.resolve_type_parameter_bound(bound_pred.id, bound,
+                        self.resolve_type_parameter_bound(bound_pred.bounded_ty.id, bound,
                                                           TraitBoundingTypeParameter);
                     }
                 }
+                &ast::WherePredicate::RegionPredicate(_) => {}
                 &ast::WherePredicate::EqPredicate(ref eq_pred) => {
                     match self.resolve_path(eq_pred.id, &eq_pred.path, TypeNS, true) {
                         Some((def @ DefTyParam(..), last_private)) => {

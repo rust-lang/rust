@@ -2437,11 +2437,18 @@ impl<'a> State<'a> {
             }
 
             match predicate {
-                &ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate{ident,
+                &ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate{ref bounded_ty,
                                                                               ref bounds,
                                                                               ..}) => {
-                    try!(self.print_ident(ident));
+                    try!(self.print_type(&**bounded_ty));
                     try!(self.print_bounds(":", bounds.as_slice()));
+                }
+                &ast::WherePredicate::RegionPredicate(ast::WhereRegionPredicate{ref lifetime,
+                                                                                ref bound,
+                                                                                ..}) => {
+                    try!(self.print_lifetime(lifetime));
+                    try!(word(&mut self.s, ":"));
+                    try!(self.print_lifetime(bound));
                 }
                 &ast::WherePredicate::EqPredicate(ast::WhereEqPredicate{ref path, ref ty, ..}) => {
                     try!(self.print_path(path, false));
