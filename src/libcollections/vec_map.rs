@@ -176,8 +176,8 @@ impl<V> VecMap<V> {
     /// }
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn iter<'r>(&'r self) -> Entries<'r, V> {
-        Entries {
+    pub fn iter<'r>(&'r self) -> Iter<'r, V> {
+        Iter {
             front: 0,
             back: self.v.len(),
             iter: self.v.iter()
@@ -207,8 +207,8 @@ impl<V> VecMap<V> {
     /// }
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn iter_mut<'r>(&'r mut self) -> MutEntries<'r, V> {
-        MutEntries {
+    pub fn iter_mut<'r>(&'r mut self) -> IterMut<'r, V> {
+        IterMut {
             front: 0,
             back: self.v.len(),
             iter: self.v.iter_mut()
@@ -605,34 +605,34 @@ macro_rules! double_ended_iterator {
 }
 
 /// An iterator over the key-value pairs of a map.
-pub struct Entries<'a, V:'a> {
+pub struct Iter<'a, V:'a> {
     front: uint,
     back: uint,
     iter: slice::Iter<'a, Option<V>>
 }
 
-iterator! { impl Entries -> (uint, &'a V), as_ref }
-double_ended_iterator! { impl Entries -> (uint, &'a V), as_ref }
+iterator! { impl Iter -> (uint, &'a V), as_ref }
+double_ended_iterator! { impl Iter -> (uint, &'a V), as_ref }
 
 /// An iterator over the key-value pairs of a map, with the
 /// values being mutable.
-pub struct MutEntries<'a, V:'a> {
+pub struct IterMut<'a, V:'a> {
     front: uint,
     back: uint,
     iter: slice::IterMut<'a, Option<V>>
 }
 
-iterator! { impl MutEntries -> (uint, &'a mut V), as_mut }
-double_ended_iterator! { impl MutEntries -> (uint, &'a mut V), as_mut }
+iterator! { impl IterMut -> (uint, &'a mut V), as_mut }
+double_ended_iterator! { impl IterMut -> (uint, &'a mut V), as_mut }
 
 /// An iterator over the keys of a map.
 pub struct Keys<'a, V: 'a> {
-    iter: Map<(uint, &'a V), uint, Entries<'a, V>, fn((uint, &'a V)) -> uint>
+    iter: Map<(uint, &'a V), uint, Iter<'a, V>, fn((uint, &'a V)) -> uint>
 }
 
 /// An iterator over the values of a map.
 pub struct Values<'a, V: 'a> {
-    iter: Map<(uint, &'a V), &'a V, Entries<'a, V>, fn((uint, &'a V)) -> &'a V>
+    iter: Map<(uint, &'a V), &'a V, Iter<'a, V>, fn((uint, &'a V)) -> &'a V>
 }
 
 /// A consuming iterator over the key-value pairs of a map.

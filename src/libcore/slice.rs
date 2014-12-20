@@ -781,7 +781,7 @@ iterator!{struct Iter -> *const T, &'a T}
 #[experimental = "needs review"]
 impl<'a, T> ExactSizeIterator<&'a T> for Iter<'a, T> {}
 
-    #[experimental = "needs review"]
+#[stable]
 impl<'a, T> Clone for Iter<'a, T> {
     fn clone(&self) -> Iter<'a, T> { *self }
 }
