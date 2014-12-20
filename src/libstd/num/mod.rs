@@ -664,11 +664,32 @@ mod tests {
         assert_eq!(third.checked_mul(4), None);
     }
 
+    macro_rules! test_is_power_of_two {
+        ($test_name:ident, $T:ident) => (
+            fn $test_name() {
+                #![test]
+                assert_eq!((0 as $T).is_power_of_two(), false);
+                assert_eq!((1 as $T).is_power_of_two(), true);
+                assert_eq!((2 as $T).is_power_of_two(), true);
+                assert_eq!((3 as $T).is_power_of_two(), false);
+                assert_eq!((4 as $T).is_power_of_two(), true);
+                assert_eq!((5 as $T).is_power_of_two(), false);
+                assert!(($T::MAX / 2 + 1).is_power_of_two(), true);
+            }
+        )
+    }
+
+    test_is_power_of_two!{ test_is_power_of_two_u8, u8 }
+    test_is_power_of_two!{ test_is_power_of_two_u16, u16 }
+    test_is_power_of_two!{ test_is_power_of_two_u32, u32 }
+    test_is_power_of_two!{ test_is_power_of_two_u64, u64 }
+    test_is_power_of_two!{ test_is_power_of_two_uint, uint }
+
     macro_rules! test_next_power_of_two {
         ($test_name:ident, $T:ident) => (
             fn $test_name() {
                 #![test]
-                assert_eq!((0 as $T).next_power_of_two(), 0);
+                assert_eq!((0 as $T).next_power_of_two(), 1);
                 let mut next_power = 1;
                 for i in range::<$T>(1, 40) {
                      assert_eq!(i.next_power_of_two(), next_power);
@@ -688,15 +709,15 @@ mod tests {
         ($test_name:ident, $T:ident) => (
             fn $test_name() {
                 #![test]
-                assert_eq!((0 as $T).checked_next_power_of_two(), None);
+                assert_eq!((0 as $T).checked_next_power_of_two(), Some(1));
+                assert!(($T::MAX / 2).checked_next_power_of_two().is_some());
+                assert_eq!(($T::MAX - 1).checked_next_power_of_two(), None);
+                assert_eq!($T::MAX.checked_next_power_of_two(), None);
                 let mut next_power = 1;
                 for i in range::<$T>(1, 40) {
                      assert_eq!(i.checked_next_power_of_two(), Some(next_power));
                      if i == next_power { next_power *= 2 }
                 }
-                assert!(($T::MAX / 2).checked_next_power_of_two().is_some());
-                assert_eq!(($T::MAX - 1).checked_next_power_of_two(), None);
-                assert_eq!($T::MAX.checked_next_power_of_two(), None);
             }
         )
     }
