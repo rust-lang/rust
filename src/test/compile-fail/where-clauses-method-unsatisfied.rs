@@ -8,17 +8,23 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct A;
+// Test that a where clause attached to a method allows us to add
+// additional constraints to a parameter out of scope.
 
-trait U {}
+struct Foo<T> {
+    value: T
+}
 
-// impl U for A {}
+struct Bar; // does not implement Eq
 
-fn equal<T>(_: &T, _: &T) -> bool where A : U {
-    true
+impl<T> Foo<T> {
+    fn equals(&self, u: &Foo<T>) -> bool where T : Eq {
+        self.value == u.value
+    }
 }
 
 fn main() {
-    equal(&0i, &0i);
-    //~^ ERROR the trait `U` is not implemented for the type `A`
+    let x = Foo { value: Bar };
+    x.equals(&x);
+    //~^ ERROR the trait `core::cmp::Eq` is not implemented for the type `Bar`
 }

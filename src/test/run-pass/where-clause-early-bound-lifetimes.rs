@@ -8,17 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct A;
+trait TheTrait { }
 
-trait U {}
+impl TheTrait for &'static int { }
 
-// impl U for A {}
+fn foo<'a,T>(_: &'a T) where &'a T : TheTrait { }
 
-fn equal<T>(_: &T, _: &T) -> bool where A : U {
-    true
-}
+fn bar<T>(_: &'static T) where &'static T : TheTrait { }
 
 fn main() {
-    equal(&0i, &0i);
-    //~^ ERROR the trait `U` is not implemented for the type `A`
+    static x: int = 1;
+    foo(&x);
+    bar(&x);
 }
