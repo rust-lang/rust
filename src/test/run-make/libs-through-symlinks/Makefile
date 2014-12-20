@@ -4,7 +4,7 @@ ifdef IS_WINDOWS
 all:
 else
 
-NAME := $(shell $(RUSTC) --crate-file-name foo.rs)
+NAME := $(shell $(RUSTC) --print file-names foo.rs)
 
 all:
 	mkdir -p $(TMPDIR)/outdir
