@@ -528,6 +528,29 @@ impl String {
         }
     }
 
+    #[inline]
+    fn push_with_ascii_fast_path(&mut self, ch: char) {
+        if (ch as u32) < 0x80 {
+            self.vec.push(ch as u8);
+            return;
+        }
+
+        let cur_len = self.len();
+        // This may use up to 4 bytes.
+        self.vec.reserve(4);
+
+        unsafe {
+            // Attempt to not use an intermediate buffer by just pushing bytes
+            // directly onto this string.
+            let slice = RawSlice {
+                data: self.vec.as_ptr().offset(cur_len as int),
+                len: 4,
+            };
+            let used = ch.encode_utf8(mem::transmute(slice)).unwrap_or(0);
+            self.vec.set_len(cur_len + used);
+        }
+    }
+
     /// Works with the underlying buffer as a byte slice.
     ///
     /// # Examples
@@ -1405,6 +1428,63 @@ mod tests {
         b.iter(|| {
             let mut r = String::new();
             r.push_str(s);
+        });
+    }
+
+    const REPETITIONS: u64 = 10_000;
+
+    #[bench]
+    fn bench_push_str_one_byte(b: &mut Bencher) {
+        b.bytes = REPETITIONS;
+        b.iter(|| {
+            let mut r = String::new();
+            for _ in range(0, REPETITIONS) {
+                r.push_str("a")
+            }
+        });
+    }
+
+    #[bench]
+    fn bench_push_char_one_byte(b: &mut Bencher) {
+        b.bytes = REPETITIONS;
+        b.iter(|| {
+            let mut r = String::new();
+            for _ in range(0, REPETITIONS) {
+                r.push('a')
+            }
+        });
+    }
+
+    #[bench]
+    fn bench_push_char_one_byte_with_fast_path(b: &mut Bencher) {
+        b.bytes = REPETITIONS;
+        b.iter(|| {
+            let mut r = String::new();
+            for _ in range(0, REPETITIONS) {
+                r.push_with_ascii_fast_path('a')
+            }
+        });
+    }
+
+    #[bench]
+    fn bench_push_char_two_bytes(b: &mut Bencher) {
+        b.bytes = REPETITIONS * 2;
+        b.iter(|| {
+            let mut r = String::new();
+            for _ in range(0, REPETITIONS) {
+                r.push('â')
+            }
+        });
+    }
+
+    #[bench]
+    fn bench_push_char_two_bytes_with_slow_path(b: &mut Bencher) {
+        b.bytes = REPETITIONS * 2;
+        b.iter(|| {
+            let mut r = String::new();
+            for _ in range(0, REPETITIONS) {
+                r.push_with_ascii_fast_path('â')
+            }
         });
     }
 
