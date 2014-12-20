@@ -497,8 +497,8 @@ impl<'a> CrateReader<'a> {
         let register = should_link && self.existing_match(info.name.as_slice(), None).is_none();
         let metadata = if register {
             // Register crate now to avoid double-reading metadata
-            let (_, cmd, _) = self.register_crate(&None, info.ident[],
-                                info.name[], span, library);
+            let (_, cmd, _) = self.register_crate(&None, &info.ident[],
+                                &info.name[], span, library);
             PMDSource::Registered(cmd)
         } else {
             // Not registering the crate; just hold on to the metadata
