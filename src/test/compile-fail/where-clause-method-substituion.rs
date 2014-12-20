@@ -26,5 +26,5 @@ impl Bar<X> for int {
 
 fn main() {
     1.method::<X>();
-    //~^ ERROR the trait `Foo<_>` is not implemented for the type `X`
+    //~^ ERROR the trait `Foo<X>` is not implemented for the type `X`
 }

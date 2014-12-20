@@ -435,7 +435,7 @@ impl<'a> TraitDef<'a> {
                     ast::WherePredicate::RegionPredicate(ast::WhereRegionPredicate {
                         span: self.span,
                         lifetime: rb.lifetime,
-                        bound: rb.bound
+                        bounds: rb.bounds.iter().map(|b| b.clone()).collect()
                     })
                 }
                 ast::WherePredicate::EqPredicate(ref we) => {
