@@ -726,7 +726,7 @@ impl<'a, T: Ord> Iterator<&'a T> for UnionItems<'a, T> {
 
 #[cfg(test)]
 mod test {
-    use std::prelude::*;
+    use prelude::*;
 
     use super::BTreeSet;
     use std::hash;

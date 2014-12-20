@@ -153,7 +153,6 @@ mod test {
     use prelude::*;
     use sync::Future;
     use task;
-    use comm::channel;
 
     #[test]
     fn test_from_value() {

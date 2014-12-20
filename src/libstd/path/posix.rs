@@ -445,7 +445,6 @@ mod tests {
     use prelude::*;
     use super::*;
     use str;
-    use str::StrPrelude;
 
     macro_rules! t {
         (s: $path:expr, $exp:expr) => (

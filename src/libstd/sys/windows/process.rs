@@ -29,7 +29,6 @@ use sys_common::helper_thread::Helper;
 use sys_common::{AsInner, mkerr_libc, timeout};
 
 use io::fs::PathExtensions;
-use string::String;
 
 pub use sys_common::ProcessConfig;
 

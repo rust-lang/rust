@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub use sys::mutex::raw;
-
 use sys::mutex as imp;
 
 /// An OS-based mutual exclusion lock.

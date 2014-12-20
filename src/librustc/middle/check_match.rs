@@ -22,7 +22,7 @@ use middle::expr_use_visitor as euv;
 use middle::mem_categorization::cmt;
 use middle::pat_util::*;
 use middle::ty::*;
-use middle::ty::{mod, Ty};
+use middle::ty;
 use std::fmt;
 use std::iter::AdditiveIterator;
 use std::iter::range_inclusive;

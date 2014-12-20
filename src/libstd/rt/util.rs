@@ -20,7 +20,6 @@ use core::str;
 
 use libc::{mod, uintptr_t};
 use os;
-use str::{FromStr, from_str, Str};
 use sync::atomic;
 
 /// Dynamically inquire about whether we're running under V.
@@ -66,7 +65,7 @@ pub fn min_stack() -> uint {
 pub fn default_sched_threads() -> uint {
     match os::getenv("RUST_THREADS") {
         Some(nstr) => {
-            let opt_n: Option<uint> = FromStr::from_str(nstr.as_slice());
+            let opt_n: Option<uint> = from_str(nstr.as_slice());
             match opt_n {
                 Some(n) if n > 0 => n,
                 _ => panic!("`RUST_THREADS` is `{}`, should be a positive integer", nstr)
