@@ -129,7 +129,7 @@ impl<'a> fmt::Show for WhereClause<'a> {
                 try!(f.write(", ".as_bytes()));
             }
             let bounds = pred.bounds.as_slice();
-            try!(write!(f, "{}: {}", pred.name, TyParamBounds(bounds)));
+            try!(write!(f, "{}: {}", pred.ty, TyParamBounds(bounds)));
         }
         Ok(())
     }

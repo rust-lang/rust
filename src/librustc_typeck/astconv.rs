@@ -1437,11 +1437,8 @@ pub fn conv_existential_bounds<'tcx, AC: AstConv<'tcx>, RS:RegionScope>(
     ast_bounds: &[ast::TyParamBound])
     -> ty::ExistentialBounds
 {
-    let ast_bound_refs: Vec<&ast::TyParamBound> =
-        ast_bounds.iter().collect();
-
     let partitioned_bounds =
-        partition_bounds(this.tcx(), span, ast_bound_refs.as_slice());
+        partition_bounds(this.tcx(), span, ast_bounds);
 
     conv_existential_bounds_from_partitioned_bounds(
         this, rscope, span, principal_trait_ref, partitioned_bounds)
@@ -1455,7 +1452,6 @@ fn conv_ty_poly_trait_ref<'tcx, AC, RS>(
     -> Ty<'tcx>
     where AC: AstConv<'tcx>, RS:RegionScope
 {
-    let ast_bounds: Vec<&ast::TyParamBound> = ast_bounds.iter().collect();
     let mut partitioned_bounds = partition_bounds(this.tcx(), span, ast_bounds[]);
 
     let main_trait_bound = match partitioned_bounds.trait_bounds.remove(0) {
@@ -1620,14 +1616,14 @@ pub struct PartitionedBounds<'a> {
 /// general trait bounds, and region bounds.
 pub fn partition_bounds<'a>(tcx: &ty::ctxt,
                             _span: Span,
-                            ast_bounds: &'a [&ast::TyParamBound])
+                            ast_bounds: &'a [ast::TyParamBound])
                             -> PartitionedBounds<'a>
 {
     let mut builtin_bounds = ty::empty_builtin_bounds();
     let mut region_bounds = Vec::new();
     let mut trait_bounds = Vec::new();
     let mut trait_def_ids = DefIdMap::new();
-    for &ast_bound in ast_bounds.iter() {
+    for ast_bound in ast_bounds.iter() {
         match *ast_bound {
             ast::TraitTyParamBound(ref b) => {
                 match ::lookup_def_tcx(tcx, b.trait_ref.path.span, b.trait_ref.ref_id) {

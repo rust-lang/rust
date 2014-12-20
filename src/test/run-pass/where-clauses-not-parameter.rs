@@ -8,18 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct A;
-
-trait U {}
-
-// impl U for A {}
-
-fn equal<T>(_: &T, _: &T) -> bool where A : U {
+fn equal<T>(_: &T, _: &T) -> bool where int : Eq {
     true
 }
 
 fn main() {
     equal(&0i, &0i);
-    //~^ ERROR the trait `U` is not implemented for the type `A`
 }
-
