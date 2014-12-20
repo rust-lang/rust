@@ -1827,9 +1827,11 @@ fn ty_generics<'tcx,AC>(this: &AC,
 
             &ast::WherePredicate::RegionPredicate(ref region_pred) => {
                 let r1 = ast_region_to_region(this.tcx(), &region_pred.lifetime);
-                let r2 = ast_region_to_region(this.tcx(), &region_pred.bound);
-                let pred = ty::Binder(ty::OutlivesPredicate(r1, r2));
-                result.predicates.push(space, ty::Predicate::RegionOutlives(pred))
+                for bound in region_pred.bounds.iter() {
+                    let r2 = ast_region_to_region(this.tcx(), bound);
+                    let pred = ty::Binder(ty::OutlivesPredicate(r1, r2));
+                    result.predicates.push(space, ty::Predicate::RegionOutlives(pred))
+                }
             }
 
             &ast::WherePredicate::EqPredicate(ref eq_pred) => {
