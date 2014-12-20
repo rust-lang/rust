@@ -120,7 +120,7 @@ pub fn main() {
     assert!((*f2)[1] == 2);
 
     // Nested Box.
-    let f1 : Box<Fat<[int, ..3]>> = box Fat { f1: 5, f2: "some str", ptr: [1, 2, 3] };
+    let f1 : Box<Fat<[int; 3]>> = box Fat { f1: 5, f2: "some str", ptr: [1, 2, 3] };
     foo(&*f1);
     let f2 : Box<Fat<[int]>> = f1;
     foo(&*f2);

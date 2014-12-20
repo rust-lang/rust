@@ -13,6 +13,6 @@
 pub fn main() {
 
     const FOO: uint = 2;
-    let _v = [0i, ..FOO*3*2/2];
+    let _v = [0i; FOO*3*2/2];
 
 }

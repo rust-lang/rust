@@ -64,7 +64,7 @@ fn issue_6533() {
 }
 
 fn issue_13626() {
-    const VAL: [u8, ..1] = [0];
+    const VAL: [u8; 1] = [0];
     match [1] {
         VAL => unreachable!(),
         _ => ()

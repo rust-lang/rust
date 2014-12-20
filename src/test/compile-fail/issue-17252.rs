@@ -11,10 +11,10 @@
 static FOO: uint = FOO; //~ ERROR recursive constant
 
 fn main() {
-    let _x: [u8, ..FOO]; // caused stack overflow prior to fix
+    let _x: [u8; FOO]; // caused stack overflow prior to fix
     let _y: uint = 1 + {
         static BAR: uint = BAR; //~ ERROR recursive constant
-        let _z: [u8, ..BAR]; // caused stack overflow prior to fix
+        let _z: [u8; BAR]; // caused stack overflow prior to fix
         1
     };
 }

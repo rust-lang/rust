@@ -755,7 +755,7 @@ impl<'a> State<'a> {
             ast::TyFixedLengthVec(ref ty, ref v) => {
                 try!(word(&mut self.s, "["));
                 try!(self.print_type(&**ty));
-                try!(word(&mut self.s, ", .."));
+                try!(word(&mut self.s, "; "));
                 try!(self.print_expr(&**v));
                 try!(word(&mut self.s, "]"));
             }
@@ -1531,8 +1531,7 @@ impl<'a> State<'a> {
                 try!(self.ibox(indent_unit));
                 try!(word(&mut self.s, "["));
                 try!(self.print_expr(&**element));
-                try!(word(&mut self.s, ","));
-                try!(word(&mut self.s, ".."));
+                try!(self.word_space(";"));
                 try!(self.print_expr(&**count));
                 try!(word(&mut self.s, "]"));
                 try!(self.end());
