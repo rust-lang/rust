@@ -311,18 +311,20 @@ macro_rules! options {
                 if !setter(&mut op, value) {
                     match (value, opt_type_desc) {
                         (Some(..), None) => {
-                            early_error(format!("{} option `{}` takes no \
+                            early_error(&format!("{} option `{}` takes no \
                                                  value", $outputname, key)[])
                         }
                         (None, Some(type_desc)) => {
-                            early_error(format!("{0} option `{1}` requires \
+                            early_error(&format!("{0} option `{1}` requires \
                                                  {2} ({3} {1}=<value>)",
-                                                $outputname, key, type_desc, $prefix)[])
+                                                $outputname, key,
+                                                type_desc, $prefix)[])
                         }
                         (Some(value), Some(type_desc)) => {
-                            early_error(format!("incorrect value `{}` for {} \
+                            early_error(&format!("incorrect value `{}` for {} \
                                                  option `{}` - {} was expected",
-                                                 value, $outputname, key, type_desc)[])
+                                                 value, $outputname,
+                                                 key, type_desc)[])
                         }
                         (None, None) => unreachable!()
                     }
@@ -331,7 +333,7 @@ macro_rules! options {
                 break;
             }
             if !found {
-                early_error(format!("unknown codegen option: `{}`",
+                early_error(&format!("unknown codegen option: `{}`",
                                     key)[]);
             }
         }
