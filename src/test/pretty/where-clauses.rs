@@ -10,6 +10,7 @@
 
 // pp-exact
 
-fn f<T, 'a, 'b) -> int where T : 'a, 'a: 'b, T: Eq {
-    0
-}
+fn f<'a, 'b, T>(t: T) -> int where T: 'a, 'a:'b, T: Eq { 0 }
+
+fn main() { }
+
