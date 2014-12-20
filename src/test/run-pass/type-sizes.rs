@@ -18,6 +18,16 @@ struct w {a: int, b: ()}
 struct x {a: int, b: (), c: ()}
 struct y {x: int}
 
+enum e1 {
+    a(u8, u32), b(u32), c
+}
+enum e2 {
+    a(u32), b
+}
+enum e3 {
+    a([u64, ..0], u32), b
+}
+
 pub fn main() {
     assert_eq!(size_of::<u8>(), 1 as uint);
     assert_eq!(size_of::<u32>(), 4 as uint);
@@ -34,4 +44,10 @@ pub fn main() {
     assert_eq!(size_of::<w>(), size_of::<int>());
     assert_eq!(size_of::<x>(), size_of::<int>());
     assert_eq!(size_of::<int>(), size_of::<y>());
+
+    // Make sure enum types are the appropriate size, mostly
+    // around ensuring alignment is handled properly
+    assert_eq!(size_of::<e1>(), 8 as uint);
+    assert_eq!(size_of::<e2>(), 8 as uint);
+    assert_eq!(size_of::<e3>(), 16 as uint);
 }
