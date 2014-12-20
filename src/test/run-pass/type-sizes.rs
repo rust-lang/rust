@@ -24,6 +24,7 @@ enum e1 {
 enum e2 {
     a(u32), b
 }
+
 enum e3 {
     a([u64, ..0], u32), b
 }
@@ -47,6 +48,7 @@ pub fn main() {
 
     // Make sure enum types are the appropriate size, mostly
     // around ensuring alignment is handled properly
+
     assert_eq!(size_of::<e1>(), 8 as uint);
     assert_eq!(size_of::<e2>(), 8 as uint);
     assert_eq!(size_of::<e3>(), 16 as uint);
