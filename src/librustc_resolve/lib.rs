@@ -1748,10 +1748,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                     import_span: Span,
                                     name: Name,
                                     namespace: Namespace) {
-        if self.session.features.borrow().import_shadowing {
-            return
-        }
-
         debug!("check_for_conflicting_import: {}; target exists: {}",
                token::get_name(name).get(),
                target.is_some());
@@ -1791,10 +1787,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                                      &ImportResolution,
                                                      import_span: Span,
                                                      name: Name) {
-        if self.session.features.borrow().import_shadowing {
-            return
-        }
-
         // First, check for conflicts between imports and `extern crate`s.
         if module.external_module_children
                  .borrow()
@@ -1888,10 +1880,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                                    module: &Module,
                                                    name: Name,
                                                    span: Span) {
-        if self.session.features.borrow().import_shadowing {
-            return
-        }
-
         if module.external_module_children.borrow().contains_key(&name) {
             self.session
                 .span_err(span,
@@ -1906,10 +1894,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                                              module: &Module,
                                                              name: Name,
                                                              span: Span) {
-        if self.session.features.borrow().import_shadowing {
-            return
-        }
-
         if module.external_module_children.borrow().contains_key(&name) {
             self.session
                 .span_err(span,
