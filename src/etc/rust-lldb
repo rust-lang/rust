@@ -19,7 +19,7 @@ TMPFILE=`mktemp /tmp/rust-lldb-commands.XXXXXX`
 trap "rm -f $TMPFILE; exit" INT TERM EXIT
 
 # Find out where to look for the pretty printer Python module
-RUSTC_SYSROOT=`rustc -Zprint-sysroot`
+RUSTC_SYSROOT=`rustc --print sysroot`
 
 # Write the LLDB script to the tempfile
 echo "command script import \"$RUSTC_SYSROOT/lib/rustlib/etc/lldb_rust_formatters.py\"" >> $TMPFILE

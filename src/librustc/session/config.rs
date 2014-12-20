@@ -18,7 +18,7 @@ pub use self::OptLevel::*;
 pub use self::OutputType::*;
 pub use self::DebugInfoLevel::*;
 
-use session::{early_error, early_warn, Session};
+use session::{early_error, Session};
 
 use rustc_back::target::Target;
 use lint;
@@ -69,6 +69,7 @@ pub enum OutputType {
     OutputTypeLlvmAssembly,
     OutputTypeObject,
     OutputTypeExe,
+    OutputTypeDepInfo,
 }
 
 #[deriving(Clone)]
@@ -102,8 +103,7 @@ pub struct Options {
     pub debugging_opts: u64,
     /// Whether to write dependency files. It's (enabled, optional filename).
     pub write_dependency_info: (bool, Option<Path>),
-    /// Crate id-related things to maybe print. It's (crate_name, crate_file_name).
-    pub print_metas: (bool, bool),
+    pub prints: Vec<PrintRequest>,
     pub cg: CodegenOptions,
     pub color: ColorConfig,
     pub externs: HashMap<String, Vec<String>>,
@@ -112,6 +112,14 @@ pub struct Options {
     /// written `extern crate std = "name"`. Default to "std". Used by
     /// out-of-tree drivers.
     pub alt_std_name: Option<String>
+}
+
+#[deriving(Clone, PartialEq, Eq)]
+#[allow(missing_copy_implementations)]
+pub enum PrintRequest {
+    FileNames,
+    Sysroot,
+    CrateName,
 }
 
 pub enum Input {
@@ -154,6 +162,7 @@ impl OutputFilenames {
             OutputTypeAssembly => base.with_extension("s"),
             OutputTypeLlvmAssembly => base.with_extension("ll"),
             OutputTypeObject => base.with_extension("o"),
+            OutputTypeDepInfo => base.with_extension("d"),
             OutputTypeExe => base,
         }
     }
@@ -200,7 +209,7 @@ pub fn basic_options() -> Options {
         no_analysis: false,
         debugging_opts: 0,
         write_dependency_info: (false, None),
-        print_metas: (false, false),
+        prints: Vec::new(),
         cg: basic_codegen_options(),
         color: Auto,
         externs: HashMap::new(),
@@ -266,8 +275,10 @@ debugging_opts! {
         FLOWGRAPH_PRINT_MOVES,
         FLOWGRAPH_PRINT_ASSIGNS,
         FLOWGRAPH_PRINT_ALL,
-        PRINT_SYSROOT,
-        PRINT_REGION_GRAPH
+        PRINT_REGION_GRAPH,
+        PARSE_ONLY,
+        NO_TRANS,
+        NO_ANALYSIS
     ]
     0
 }
@@ -312,11 +323,14 @@ pub fn debugging_opts_map() -> Vec<(&'static str, &'static str, u64)> {
                        --pretty flowgraph output", FLOWGRAPH_PRINT_ASSIGNS),
      ("flowgraph-print-all", "Include all dataflow analysis data in \
                        --pretty flowgraph output", FLOWGRAPH_PRINT_ALL),
-     ("print-sysroot", "Print the sysroot as used by this rustc invocation",
-      PRINT_SYSROOT),
      ("print-region-graph", "Prints region inference graph. \
                              Use with RUST_REGION_GRAPH=help for more info",
-      PRINT_REGION_GRAPH)]
+      PRINT_REGION_GRAPH),
+     ("parse-only", "Parse only; do not compile, assemble, or link", PARSE_ONLY),
+     ("no-trans", "Run all passes except translation; no output", NO_TRANS),
+     ("no-analysis", "Parse and expand the source, but run no analysis and",
+      NO_TRANS),
+    ]
 }
 
 #[deriving(Clone)]
@@ -370,6 +384,8 @@ macro_rules! cgoptions {
         pub const parse_uint: Option<&'static str> = Some("a number");
         pub const parse_passes: Option<&'static str> =
             Some("a space-separated list of passes, or `all`");
+        pub const parse_opt_uint: Option<&'static str> =
+            Some("a number");
     }
 
     mod cgsetters {
@@ -438,6 +454,13 @@ macro_rules! cgoptions {
             match v.and_then(from_str) {
                 Some(i) => { *slot = i; true },
                 None => false
+            }
+        }
+
+        fn parse_opt_uint(slot: &mut Option<uint>, v: Option<&str>) -> bool {
+            match v {
+                Some(s) => { *slot = from_str(s); slot.is_some() }
+                None => { *slot = None; true }
             }
         }
 
@@ -510,6 +533,11 @@ cgoptions! {
         "print remarks for these optimization passes (space separated, or \"all\")"),
     no_stack_check: bool = (false, parse_bool,
         "disable checks for stack exhaustion (a memory-safety hazard!)"),
+    debuginfo: Option<uint> = (None, parse_opt_uint,
+        "debug info emission level, 0 = no debug info, 1 = line tables only, \
+         2 = full debug info with variable and type information"),
+    opt_level: Option<uint> = (None, parse_opt_uint,
+        "Optimize with possible levels 0-3"),
 }
 
 pub fn build_codegen_options(matches: &getopts::Matches) -> CodegenOptions
@@ -625,9 +653,8 @@ pub fn build_target_config(opts: &Options, sp: &SpanHandler) -> Config {
     }
 }
 
-// rustc command line options
-pub fn optgroups() -> Vec<getopts::OptGroup> {
-    vec!(
+pub fn short_optgroups() -> Vec<getopts::OptGroup> {
+    vec![
         optflag("h", "help", "Display this message"),
         optmulti("", "cfg", "Configure the compilation environment", "SPEC"),
         optmulti("L", "",   "Add a directory to the library search path", "PATH"),
@@ -637,29 +664,68 @@ pub fn optgroups() -> Vec<getopts::OptGroup> {
                              assumed.", "NAME[:KIND]"),
         optmulti("", "crate-type", "Comma separated list of types of crates
                                     for the compiler to emit",
-                 "[bin|lib|rlib|dylib|staticlib]"),
-        optmulti("", "emit", "Comma separated list of types of output for the compiler to emit",
-                 "[asm|bc|ir|obj|link]"),
+                 "[bin|lib|rlib|dylib|staticlib|dep-info]"),
         optopt("", "crate-name", "Specify the name of the crate being built",
                "NAME"),
-        optflag("", "print-crate-name", "Output the crate name and exit"),
-        optflag("", "print-file-name", "Output the file(s) that would be written if compilation \
-              continued and exit"),
-        optflag("", "crate-file-name", "deprecated in favor of --print-file-name"),
+        optmulti("", "emit", "Comma separated list of types of output for \
+                              the compiler to emit",
+                 "[asm|llvm-bc|llvm-ir|obj|link]"),
+        optmulti("", "print", "Comma separated list of compiler information to \
+                               print on stdout",
+                 "[crate-name|output-file-names|sysroot]"),
         optflag("g",  "",  "Equivalent to --debuginfo=2"),
+        optflag("O", "", "Equivalent to --opt-level=2"),
+        optopt("o", "", "Write output to <filename>", "FILENAME"),
+        optopt("",  "out-dir", "Write output to compiler-chosen filename \
+                                in <dir>", "DIR"),
+        optopt("", "explain", "Provide a detailed explanation of an error \
+                               message", "OPT"),
+        optflag("", "test", "Build a test harness"),
+        optopt("", "target", "Target triple cpu-manufacturer-kernel[-os] \
+                              to compile for (see chapter 3.4 of \
+                              http://www.sourceware.org/autobook/
+                              for details)",
+               "TRIPLE"),
+        optmulti("W", "warn", "Set lint warnings", "OPT"),
+        optmulti("A", "allow", "Set lint allowed", "OPT"),
+        optmulti("D", "deny", "Set lint denied", "OPT"),
+        optmulti("F", "forbid", "Set lint forbidden", "OPT"),
+        optmulti("C", "codegen", "Set a codegen option", "OPT[=VALUE]"),
+        optflag("V", "version", "Print version info and exit"),
+        optflag("v", "verbose", "Use verbose output"),
+    ]
+}
+
+// rustc command line options
+pub fn optgroups() -> Vec<getopts::OptGroup> {
+    let mut opts = short_optgroups();
+    opts.push_all(&[
+        optmulti("", "extern", "Specify where an external rust library is \
+                                located",
+                 "NAME=PATH"),
+        optopt("", "opt-level", "Optimize with possible levels 0-3", "LEVEL"),
+        optopt("", "sysroot", "Override the system root", "PATH"),
+        optmulti("Z", "", "Set internal debugging options", "FLAG"),
+        optopt("", "color", "Configure coloring of output:
+            auto   = colorize, if output goes to a tty (default);
+            always = always colorize output;
+            never  = never colorize output", "auto|always|never"),
+
+        // DEPRECATED
+        optflag("", "print-crate-name", "Output the crate name and exit"),
+        optflag("", "print-file-name", "Output the file(s) that would be \
+                                        written if compilation \
+                                        continued and exit"),
         optopt("",  "debuginfo",  "Emit DWARF debug info to the objects created:
              0 = no debug info,
              1 = line-tables only (for stacktraces and breakpoints),
-             2 = full debug info with variable and type information (same as -g)", "LEVEL"),
+             2 = full debug info with variable and type information \
+                    (same as -g)", "LEVEL"),
         optflag("", "no-trans", "Run all passes except translation; no output"),
-        optflag("", "no-analysis",
-              "Parse and expand the source, but run no analysis and produce no output"),
-        optflag("O", "", "Equivalent to --opt-level=2"),
-        optopt("o", "", "Write output to <filename>", "FILENAME"),
-        optopt("", "opt-level", "Optimize with possible levels 0-3", "LEVEL"),
-        optopt( "",  "out-dir", "Write output to compiler-chosen filename in <dir>", "DIR"),
-        optflag("", "parse-only", "Parse only; do not compile, assemble, or link"),
-        optopt("", "explain", "Provide a detailed explanation of an error message", "OPT"),
+        optflag("", "no-analysis", "Parse and expand the source, but run no \
+                                    analysis and produce no output"),
+        optflag("", "parse-only", "Parse only; do not compile, assemble, \
+                                   or link"),
         optflagopt("", "pretty",
                    "Pretty-print the input instead of compiling;
                    valid types are: `normal` (un-annotated source),
@@ -671,25 +737,8 @@ pub fn optgroups() -> Vec<getopts::OptGroup> {
         optflagopt("", "dep-info",
                  "Output dependency info to <filename> after compiling, \
                   in a format suitable for use by Makefiles", "FILENAME"),
-        optopt("", "sysroot", "Override the system root", "PATH"),
-        optflag("", "test", "Build a test harness"),
-        optopt("", "target", "Target triple cpu-manufacturer-kernel[-os]
-                            to compile for (see chapter 3.4 of http://www.sourceware.org/autobook/
-                            for details)", "TRIPLE"),
-        optmulti("W", "warn", "Set lint warnings", "OPT"),
-        optmulti("A", "allow", "Set lint allowed", "OPT"),
-        optmulti("D", "deny", "Set lint denied", "OPT"),
-        optmulti("F", "forbid", "Set lint forbidden", "OPT"),
-        optmulti("C", "codegen", "Set a codegen option", "OPT[=VALUE]"),
-        optmulti("Z", "", "Set internal debugging options", "FLAG"),
-        optflagopt("v", "version", "Print version info and exit", "verbose"),
-        optopt("", "color", "Configure coloring of output:
-            auto   = colorize, if output goes to a tty (default);
-            always = always colorize output;
-            never  = never colorize output", "auto|always|never"),
-        optmulti("", "extern", "Specify where an external rust library is located",
-                 "NAME=PATH"),
-    )
+    ]);
+    opts
 }
 
 
@@ -708,10 +757,6 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
     let unparsed_crate_types = matches.opt_strs("crate-type");
     let crate_types = parse_crate_types_from_list(unparsed_crate_types)
         .unwrap_or_else(|e| early_error(e.as_slice()));
-
-    let parse_only = matches.opt_present("parse-only");
-    let no_trans = matches.opt_present("no-trans");
-    let no_analysis = matches.opt_present("no-analysis");
 
     let mut lint_opts = vec!();
     let mut describe_lints = false;
@@ -744,6 +789,28 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         debugging_opts |= this_bit;
     }
 
+    let parse_only = if matches.opt_present("parse-only") {
+        // FIXME(acrichto) uncomment deprecation warning
+        // early_warn("--parse-only is deprecated in favor of -Z parse-only");
+        true
+    } else {
+        debugging_opts & PARSE_ONLY != 0
+    };
+    let no_trans = if matches.opt_present("no-trans") {
+        // FIXME(acrichto) uncomment deprecation warning
+        // early_warn("--no-trans is deprecated in favor of -Z no-trans");
+        true
+    } else {
+        debugging_opts & NO_TRANS != 0
+    };
+    let no_analysis = if matches.opt_present("no-analysis") {
+        // FIXME(acrichto) uncomment deprecation warning
+        // early_warn("--no-analysis is deprecated in favor of -Z no-analysis");
+        true
+    } else {
+        debugging_opts & NO_ANALYSIS != 0
+    };
+
     if debugging_opts & DEBUG_LLVM != 0 {
         unsafe { llvm::LLVMSetDebug(1); }
     }
@@ -754,11 +821,12 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         for unparsed_output_type in unparsed_output_types.iter() {
             for part in unparsed_output_type.split(',') {
                 let output_type = match part.as_slice() {
-                    "asm"  => OutputTypeAssembly,
-                    "ir"   => OutputTypeLlvmAssembly,
-                    "bc"   => OutputTypeBitcode,
-                    "obj"  => OutputTypeObject,
+                    "asm" => OutputTypeAssembly,
+                    "llvm-ir" => OutputTypeLlvmAssembly,
+                    "llvm-bc" => OutputTypeBitcode,
+                    "obj" => OutputTypeObject,
                     "link" => OutputTypeExe,
+                    "dep-info" => OutputTypeDepInfo,
                     _ => {
                         early_error(format!("unknown emission type: `{}`",
                                             part).as_slice())
@@ -774,6 +842,8 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         output_types.push(OutputTypeExe);
     }
 
+    let cg = build_codegen_options(matches);
+
     let sysroot_opt = matches.opt_str("sysroot").map(|m| Path::new(m));
     let target = matches.opt_str("target").unwrap_or(
         host_triple().to_string());
@@ -782,8 +852,13 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
             if matches.opt_present("opt-level") {
                 early_error("-O and --opt-level both provided");
             }
+            if cg.opt_level.is_some() {
+                early_error("-O and -C opt-level both provided");
+            }
             Default
         } else if matches.opt_present("opt-level") {
+            // FIXME(acrichto) uncomment deprecation warning
+            // early_warn("--opt-level=N is deprecated in favor of -C opt-level=N");
             match matches.opt_str("opt-level").as_ref().map(|s| s.as_slice()) {
                 None      |
                 Some("0") => No,
@@ -797,7 +872,18 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
                 }
             }
         } else {
-            No
+            match cg.opt_level {
+                None => No,
+                Some(0) => No,
+                Some(1) => Less,
+                Some(2) => Default,
+                Some(3) => Aggressive,
+                Some(arg) => {
+                    early_error(format!("optimization level needs to be \
+                                         between 0-3 (instead was `{}`)",
+                                        arg).as_slice());
+                }
+            }
         }
     };
     let gc = debugging_opts & GC != 0;
@@ -805,8 +891,13 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         if matches.opt_present("debuginfo") {
             early_error("-g and --debuginfo both provided");
         }
+        if cg.debuginfo.is_some() {
+            early_error("-g and -C debuginfo both provided");
+        }
         FullDebugInfo
     } else if matches.opt_present("debuginfo") {
+        // FIXME(acrichto) uncomment deprecation warning
+        // early_warn("--debuginfo=N is deprecated in favor of -C debuginfo=N");
         match matches.opt_str("debuginfo").as_ref().map(|s| s.as_slice()) {
             Some("0") => NoDebugInfo,
             Some("1") => LimitedDebugInfo,
@@ -819,7 +910,16 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
             }
         }
     } else {
-        NoDebugInfo
+        match cg.debuginfo {
+            None | Some(0) => NoDebugInfo,
+            Some(1) => LimitedDebugInfo,
+            Some(2) => FullDebugInfo,
+            Some(arg) => {
+                early_error(format!("debug info level needs to be between \
+                                     0-2 (instead was `{}`)",
+                                    arg).as_slice());
+            }
+        }
     };
 
     let addl_lib_search_paths = matches.opt_strs("L").iter().map(|s| {
@@ -845,21 +945,41 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
 
     let cfg = parse_cfgspecs(matches.opt_strs("cfg"));
     let test = matches.opt_present("test");
-    let write_dependency_info = (matches.opt_present("dep-info"),
-                                 matches.opt_str("dep-info")
-                                        .map(|p| Path::new(p)));
+    let write_dependency_info = if matches.opt_present("dep-info") {
+        // FIXME(acrichto) uncomment deprecation warning
+        // early_warn("--dep-info has been deprecated in favor of --emit");
+        (true, matches.opt_str("dep-info").map(|p| Path::new(p)))
+    } else {
+        (output_types.contains(&OutputTypeDepInfo), None)
+    };
 
-    let print_metas = (matches.opt_present("print-crate-name"),
-                       matches.opt_present("print-file-name") ||
-                       matches.opt_present("crate-file-name"));
-    if matches.opt_present("crate-file-name") {
-        early_warn("the --crate-file-name argument has been renamed to \
-                    --print-file-name");
+    let mut prints = matches.opt_strs("print").into_iter().map(|s| {
+        match s.as_slice() {
+            "crate-name" => PrintRequest::CrateName,
+            "file-names" => PrintRequest::FileNames,
+            "sysroot" => PrintRequest::Sysroot,
+            req => {
+                early_error(format!("unknown print request `{}`", req).as_slice())
+            }
+        }
+    }).collect::<Vec<_>>();
+    if matches.opt_present("print-crate-name") {
+        // FIXME(acrichto) uncomment deprecation warning
+        // early_warn("--print-crate-name has been deprecated in favor of \
+        //             --print crate-name");
+        prints.push(PrintRequest::CrateName);
     }
-    let cg = build_codegen_options(matches);
+    if matches.opt_present("print-file-name") {
+        // FIXME(acrichto) uncomment deprecation warning
+        // early_warn("--print-file-name has been deprecated in favor of \
+        //             --print file-names");
+        prints.push(PrintRequest::FileNames);
+    }
 
     if !cg.remark.is_empty() && debuginfo == NoDebugInfo {
-        early_warn("-C remark will not show source locations without --debuginfo");
+        // FIXME(acrichto) uncomment deprecation warning
+        // early_warn("-C remark will not show source locations without \
+        //             --debuginfo");
     }
 
     let color = match matches.opt_str("color").as_ref().map(|s| s.as_slice()) {
@@ -914,7 +1034,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         no_analysis: no_analysis,
         debugging_opts: debugging_opts,
         write_dependency_info: write_dependency_info,
-        print_metas: print_metas,
+        prints: prints,
         cg: cg,
         color: color,
         externs: externs,
