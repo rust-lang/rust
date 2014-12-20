@@ -415,16 +415,25 @@ pub struct WhereClause {
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum WherePredicate {
     BoundPredicate(WhereBoundPredicate),
+    RegionPredicate(WhereRegionPredicate),
     EqPredicate(WhereEqPredicate)
 }
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub struct WhereBoundPredicate {
-    pub id: NodeId,
     pub span: Span,
-    pub ident: Ident,
+    pub bounded_ty: P<Ty>,
     pub bounds: OwnedSlice<TyParamBound>,
 }
+
+#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+pub struct WhereRegionPredicate {
+    pub span: Span,
+    pub lifetime: Lifetime,
+    pub bound: Lifetime
+}
+
+impl Copy for WhereRegionPredicate {}
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub struct WhereEqPredicate {
