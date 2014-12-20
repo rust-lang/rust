@@ -13,9 +13,9 @@
 use diagnostic;
 use diagnostic::Emitter;
 use driver;
+use rustc_resolve as resolve;
 use rustc_typeck::middle::lang_items;
 use rustc_typeck::middle::region::{mod, CodeExtent};
-use rustc_typeck::middle::resolve;
 use rustc_typeck::middle::resolve_lifetime;
 use rustc_typeck::middle::stability;
 use rustc_typeck::middle::subst;

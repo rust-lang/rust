@@ -21,10 +21,10 @@ use metadata::common::*;
 use metadata::cstore;
 use metadata::decoder;
 use metadata::tyencode;
+use middle::def;
 use middle::ty::{lookup_item_type};
 use middle::ty::{mod, Ty};
 use middle::stability;
-use middle;
 use util::nodemap::{FnvHashMap, NodeMap, NodeSet};
 
 use serialize::Encodable;
@@ -66,7 +66,7 @@ pub type EncodeInlinedItem<'a> = |ecx: &EncodeContext,
 pub struct EncodeParams<'a, 'tcx: 'a> {
     pub diag: &'a SpanHandler,
     pub tcx: &'a ty::ctxt<'tcx>,
-    pub reexports2: &'a middle::resolve::ExportMap2,
+    pub reexports: &'a def::ExportMap,
     pub item_symbols: &'a RefCell<NodeMap<String>>,
     pub link_meta: &'a LinkMeta,
     pub cstore: &'a cstore::CStore,
@@ -77,7 +77,7 @@ pub struct EncodeParams<'a, 'tcx: 'a> {
 pub struct EncodeContext<'a, 'tcx: 'a> {
     pub diag: &'a SpanHandler,
     pub tcx: &'a ty::ctxt<'tcx>,
-    pub reexports2: &'a middle::resolve::ExportMap2,
+    pub reexports: &'a def::ExportMap,
     pub item_symbols: &'a RefCell<NodeMap<String>>,
     pub link_meta: &'a LinkMeta,
     pub cstore: &'a cstore::CStore,
@@ -379,7 +379,7 @@ fn encode_path<PI: Iterator<PathElem>>(rbml_w: &mut Encoder, path: PI) {
 }
 
 fn encode_reexported_static_method(rbml_w: &mut Encoder,
-                                   exp: &middle::resolve::Export2,
+                                   exp: &def::Export,
                                    method_def_id: DefId,
                                    method_name: ast::Name) {
     debug!("(encode reexported static method) {}::{}",
@@ -398,7 +398,7 @@ fn encode_reexported_static_method(rbml_w: &mut Encoder,
 
 fn encode_reexported_static_base_methods(ecx: &EncodeContext,
                                          rbml_w: &mut Encoder,
-                                         exp: &middle::resolve::Export2)
+                                         exp: &def::Export)
                                          -> bool {
     let impl_items = ecx.tcx.impl_items.borrow();
     match ecx.tcx.inherent_impls.borrow().get(&exp.def_id) {
@@ -428,7 +428,7 @@ fn encode_reexported_static_base_methods(ecx: &EncodeContext,
 
 fn encode_reexported_static_trait_methods(ecx: &EncodeContext,
                                           rbml_w: &mut Encoder,
-                                          exp: &middle::resolve::Export2)
+                                          exp: &def::Export)
                                           -> bool {
     match ecx.tcx.trait_items_cache.borrow().get(&exp.def_id) {
         Some(trait_items) => {
@@ -449,10 +449,8 @@ fn encode_reexported_static_trait_methods(ecx: &EncodeContext,
 fn encode_reexported_static_methods(ecx: &EncodeContext,
                                     rbml_w: &mut Encoder,
                                     mod_path: PathElems,
-                                    exp: &middle::resolve::Export2) {
+                                    exp: &def::Export) {
     if let Some(ast_map::NodeItem(item)) = ecx.tcx.map.find(exp.def_id.node) {
-        let original_name = token::get_ident(item.ident);
-
         let path_differs = ecx.tcx.map.with_path(exp.def_id.node, |path| {
             let (mut a, mut b) = (path, mod_path.clone());
             loop {
@@ -474,16 +472,16 @@ fn encode_reexported_static_methods(ecx: &EncodeContext,
         // encoded metadata for static methods relative to Bar,
         // but not yet for Foo.
         //
-        if path_differs || original_name.get() != exp.name {
+        if path_differs || item.ident.name != exp.name {
             if !encode_reexported_static_base_methods(ecx, rbml_w, exp) {
                 if encode_reexported_static_trait_methods(ecx, rbml_w, exp) {
                     debug!("(encode reexported static methods) {} [trait]",
-                           original_name);
+                           item.ident.name);
                 }
             }
             else {
                 debug!("(encode reexported static methods) {} [base]",
-                       original_name);
+                       item.ident.name);
             }
         }
     }
@@ -519,7 +517,7 @@ fn encode_reexports(ecx: &EncodeContext,
                     id: NodeId,
                     path: PathElems) {
     debug!("(encoding info for module) encoding reexports for {}", id);
-    match ecx.reexports2.get(&id) {
+    match ecx.reexports.get(&id) {
         Some(ref exports) => {
             debug!("(encoding info for module) found reexports for {}", id);
             for exp in exports.iter() {
@@ -534,7 +532,7 @@ fn encode_reexports(ecx: &EncodeContext,
                 rbml_w.wr_str(def_to_string(exp.def_id).as_slice());
                 rbml_w.end_tag();
                 rbml_w.start_tag(tag_items_data_item_reexport_name);
-                rbml_w.wr_str(exp.name.as_slice());
+                rbml_w.wr_str(exp.name.as_str());
                 rbml_w.end_tag();
                 rbml_w.end_tag();
                 encode_reexported_static_methods(ecx, rbml_w, path.clone(), exp);
@@ -2071,7 +2069,7 @@ fn encode_metadata_inner(wr: &mut SeekableMemWriter,
         item_symbols,
         diag,
         tcx,
-        reexports2,
+        reexports,
         cstore,
         encode_inlined_item,
         link_meta,
@@ -2081,7 +2079,7 @@ fn encode_metadata_inner(wr: &mut SeekableMemWriter,
     let ecx = EncodeContext {
         diag: diag,
         tcx: tcx,
-        reexports2: reexports2,
+        reexports: reexports,
         item_symbols: item_symbols,
         link_meta: link_meta,
         cstore: cstore,

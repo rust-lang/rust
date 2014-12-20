@@ -10,10 +10,15 @@
 
 pub use self::Def::*;
 pub use self::MethodProvenance::*;
+pub use self::TraitItemKind::*;
 
 use middle::subst::ParamSpace;
+use middle::ty::{ExplicitSelfCategory, StaticExplicitSelfCategory};
+use util::nodemap::NodeMap;
 use syntax::ast;
 use syntax::ast_util::local_def;
+
+use std::cell::RefCell;
 
 #[deriving(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum Def {
@@ -56,6 +61,18 @@ pub enum Def {
     DefMethod(ast::DefId /* method */, Option<ast::DefId> /* trait */, MethodProvenance),
 }
 
+// Definition mapping
+pub type DefMap = RefCell<NodeMap<Def>>;
+// This is the replacement export map. It maps a module to all of the exports
+// within.
+pub type ExportMap = NodeMap<Vec<Export>>;
+
+#[deriving(Copy)]
+pub struct Export {
+    pub name: ast::Name,    // The name of the target.
+    pub def_id: ast::DefId, // The definition of the target.
+}
+
 #[deriving(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum MethodProvenance {
     FromTrait(ast::DefId),
@@ -84,6 +101,25 @@ impl TyParamProvenance {
         match *self {
             TyParamProvenance::FromSelf(ref did) => did.clone(),
             TyParamProvenance::FromParam(ref did) => did.clone(),
+        }
+    }
+}
+
+#[deriving(Clone, Copy, Eq, PartialEq)]
+pub enum TraitItemKind {
+    NonstaticMethodTraitItemKind,
+    StaticMethodTraitItemKind,
+    TypeTraitItemKind,
+}
+
+impl TraitItemKind {
+    pub fn from_explicit_self_category(explicit_self_category:
+                                       ExplicitSelfCategory)
+                                       -> TraitItemKind {
+        if explicit_self_category == StaticExplicitSelfCategory {
+            StaticMethodTraitItemKind
+        } else {
+            NonstaticMethodTraitItemKind
         }
     }
 }
@@ -122,4 +158,3 @@ impl Def {
         }
     }
 }
-

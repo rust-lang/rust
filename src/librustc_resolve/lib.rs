@@ -8,12 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(non_camel_case_types)]
+#![crate_name = "rustc_resolve"]
+#![experimental]
+#![crate_type = "dylib"]
+#![crate_type = "rlib"]
+#![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
+      html_favicon_url = "http://www.rust-lang.org/favicon.ico",
+      html_root_url = "http://doc.rust-lang.org/nightly/")]
 
-pub use self::PrivateDep::*;
-pub use self::ImportUse::*;
-pub use self::TraitItemKind::*;
-pub use self::LastPrivate::*;
+#![feature(globs, phase, slicing_syntax)]
+#![feature(rustc_diagnostic_macros)]
+
+#[phase(plugin, link)] extern crate log;
+#[phase(plugin, link)] extern crate syntax;
+
+extern crate rustc;
+
 use self::PatternBindingMode::*;
 use self::Namespace::*;
 use self::NamespaceError::*;
@@ -36,26 +46,26 @@ use self::ModuleKind::*;
 use self::TraitReferenceType::*;
 use self::FallbackChecks::*;
 
-use session::Session;
-use lint;
-use metadata::csearch;
-use metadata::decoder::{DefLike, DlDef, DlField, DlImpl};
-use middle::def::*;
-use middle::lang_items::LanguageItems;
-use middle::pat_util::pat_bindings;
-use middle::subst::{ParamSpace, FnSpace, TypeSpace};
-use middle::ty::{ExplicitSelfCategory, StaticExplicitSelfCategory};
-use middle::ty::{CaptureModeMap, Freevar, FreevarMap};
-use util::nodemap::{NodeMap, NodeSet, DefIdSet, FnvHashMap};
+use rustc::session::Session;
+use rustc::lint;
+use rustc::metadata::csearch;
+use rustc::metadata::decoder::{DefLike, DlDef, DlField, DlImpl};
+use rustc::middle::def::*;
+use rustc::middle::lang_items::LanguageItems;
+use rustc::middle::pat_util::pat_bindings;
+use rustc::middle::privacy::*;
+use rustc::middle::subst::{ParamSpace, FnSpace, TypeSpace};
+use rustc::middle::ty::{CaptureModeMap, Freevar, FreevarMap, TraitMap};
+use rustc::util::nodemap::{NodeMap, NodeSet, DefIdSet, FnvHashMap};
 
 use syntax::ast::{Arm, BindByRef, BindByValue, BindingMode, Block, Crate, CrateNum};
 use syntax::ast::{DeclItem, DefId, Expr, ExprAgain, ExprBreak, ExprField};
 use syntax::ast::{ExprClosure, ExprForLoop, ExprLoop, ExprWhile, ExprMethodCall};
 use syntax::ast::{ExprPath, ExprStruct, FnDecl};
 use syntax::ast::{ForeignItem, ForeignItemFn, ForeignItemStatic, Generics};
-use syntax::ast::{Ident, ImplItem, Item, ItemEnum, ItemFn, ItemForeignMod};
-use syntax::ast::{ItemImpl, ItemMac, ItemMod, ItemStatic, ItemStruct};
-use syntax::ast::{ItemTrait, ItemTy, LOCAL_CRATE, Local, ItemConst};
+use syntax::ast::{Ident, ImplItem, Item, ItemConst, ItemEnum, ItemFn};
+use syntax::ast::{ItemForeignMod, ItemImpl, ItemMac, ItemMod, ItemStatic};
+use syntax::ast::{ItemStruct, ItemTrait, ItemTy, Local};
 use syntax::ast::{MethodImplItem, Mod, Name, NamedField, NodeId};
 use syntax::ast::{Pat, PatEnum, PatIdent, PatLit};
 use syntax::ast::{PatRange, PatStruct, Path, PathListIdent, PathListMod};
@@ -86,72 +96,17 @@ use std::mem::replace;
 use std::rc::{Rc, Weak};
 use std::uint;
 
-// Definition mapping
-pub type DefMap = RefCell<NodeMap<Def>>;
+mod check_unused;
+mod record_exports;
 
 #[deriving(Copy)]
-struct binding_info {
+struct BindingInfo {
     span: Span,
     binding_mode: BindingMode,
 }
 
 // Map from the name in a pattern to its binding mode.
-type BindingMap = HashMap<Name,binding_info>;
-
-// Trait method resolution
-pub type TraitMap = NodeMap<Vec<DefId> >;
-
-// This is the replacement export map. It maps a module to all of the exports
-// within.
-pub type ExportMap2 = NodeMap<Vec<Export2>>;
-
-pub struct Export2 {
-    pub name: String,        // The name of the target.
-    pub def_id: DefId,       // The definition of the target.
-}
-
-// This set contains all exported definitions from external crates. The set does
-// not contain any entries from local crates.
-pub type ExternalExports = DefIdSet;
-
-// FIXME: dox
-pub type LastPrivateMap = NodeMap<LastPrivate>;
-
-#[deriving(Copy, Show)]
-pub enum LastPrivate {
-    LastMod(PrivateDep),
-    // `use` directives (imports) can refer to two separate definitions in the
-    // type and value namespaces. We record here the last private node for each
-    // and whether the import is in fact used for each.
-    // If the Option<PrivateDep> fields are None, it means there is no definition
-    // in that namespace.
-    LastImport{value_priv: Option<PrivateDep>,
-               value_used: ImportUse,
-               type_priv: Option<PrivateDep>,
-               type_used: ImportUse},
-}
-
-#[deriving(Copy, Show)]
-pub enum PrivateDep {
-    AllPublic,
-    DependsOn(DefId),
-}
-
-// How an import is used.
-#[deriving(Copy, PartialEq, Show)]
-pub enum ImportUse {
-    Unused,       // The import is not used.
-    Used,         // The import is used.
-}
-
-impl LastPrivate {
-    fn or(self, other: LastPrivate) -> LastPrivate {
-        match (self, other) {
-            (me, LastMod(AllPublic)) => me,
-            (_, other) => other,
-        }
-    }
-}
+type BindingMap = HashMap<Name, BindingInfo>;
 
 #[deriving(Copy, PartialEq)]
 enum PatternBindingMode {
@@ -338,25 +293,6 @@ enum UseLexicalScopeFlag {
 enum ModulePrefixResult {
     NoPrefixFound,
     PrefixFound(Rc<Module>, uint)
-}
-
-#[deriving(Clone, Copy, Eq, PartialEq)]
-pub enum TraitItemKind {
-    NonstaticMethodTraitItemKind,
-    StaticMethodTraitItemKind,
-    TypeTraitItemKind,
-}
-
-impl TraitItemKind {
-    pub fn from_explicit_self_category(explicit_self_category:
-                                       ExplicitSelfCategory)
-                                       -> TraitItemKind {
-        if explicit_self_category == StaticExplicitSelfCategory {
-            StaticMethodTraitItemKind
-        } else {
-            NonstaticMethodTraitItemKind
-        }
-    }
 }
 
 #[deriving(Copy, PartialEq)]
@@ -948,7 +884,7 @@ struct Resolver<'a> {
     freevars: RefCell<FreevarMap>,
     freevars_seen: RefCell<NodeMap<NodeSet>>,
     capture_mode_map: CaptureModeMap,
-    export_map2: ExportMap2,
+    export_map: ExportMap,
     trait_map: TraitMap,
     external_exports: ExternalExports,
     last_private: LastPrivateMap,
@@ -1002,17 +938,6 @@ impl<'a, 'b, 'v> Visitor<'v> for BuildReducedGraphVisitor<'a, 'b> {
 
 }
 
-struct UnusedImportCheckVisitor<'a, 'b:'a> {
-    resolver: &'a mut Resolver<'b>
-}
-
-impl<'a, 'b, 'v> Visitor<'v> for UnusedImportCheckVisitor<'a, 'b> {
-    fn visit_view_item(&mut self, vi: &ViewItem) {
-        self.resolver.check_for_item_unused_imports(vi);
-        visit::walk_view_item(self, vi);
-    }
-}
-
 #[deriving(PartialEq)]
 enum FallbackChecks {
     Everything,
@@ -1063,7 +988,7 @@ impl<'a> Resolver<'a> {
             freevars: RefCell::new(NodeMap::new()),
             freevars_seen: RefCell::new(NodeMap::new()),
             capture_mode_map: NodeMap::new(),
-            export_map2: NodeMap::new(),
+            export_map: NodeMap::new(),
             trait_map: NodeMap::new(),
             used_imports: HashSet::new(),
             used_crates: HashSet::new(),
@@ -1072,22 +997,6 @@ impl<'a> Resolver<'a> {
 
             emit_errors: true,
         }
-    }
-    /// The main name resolution procedure.
-    fn resolve(&mut self, krate: &ast::Crate) {
-        self.build_reduced_graph(krate);
-        self.session.abort_if_errors();
-
-        self.resolve_imports();
-        self.session.abort_if_errors();
-
-        self.record_exports();
-        self.session.abort_if_errors();
-
-        self.resolve_crate(krate);
-        self.session.abort_if_errors();
-
-        self.check_for_unused_imports(krate);
     }
 
     //
@@ -3800,125 +3709,6 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    // Export recording
-    //
-    // This pass simply determines what all "export" keywords refer to and
-    // writes the results into the export map.
-    //
-    // FIXME #4953 This pass will be removed once exports change to per-item.
-    // Then this operation can simply be performed as part of item (or import)
-    // processing.
-
-    fn record_exports(&mut self) {
-        let root_module = self.graph_root.get_module();
-        self.record_exports_for_module_subtree(root_module);
-    }
-
-    fn record_exports_for_module_subtree(&mut self,
-                                             module_: Rc<Module>) {
-        // If this isn't a local krate, then bail out. We don't need to record
-        // exports for nonlocal crates.
-
-        match module_.def_id.get() {
-            Some(def_id) if def_id.krate == LOCAL_CRATE => {
-                // OK. Continue.
-                debug!("(recording exports for module subtree) recording \
-                        exports for local module `{}`",
-                       self.module_to_string(&*module_));
-            }
-            None => {
-                // Record exports for the root module.
-                debug!("(recording exports for module subtree) recording \
-                        exports for root module `{}`",
-                       self.module_to_string(&*module_));
-            }
-            Some(_) => {
-                // Bail out.
-                debug!("(recording exports for module subtree) not recording \
-                        exports for `{}`",
-                       self.module_to_string(&*module_));
-                return;
-            }
-        }
-
-        self.record_exports_for_module(&*module_);
-        self.populate_module_if_necessary(&module_);
-
-        for (_, child_name_bindings) in module_.children.borrow().iter() {
-            match child_name_bindings.get_module_if_available() {
-                None => {
-                    // Nothing to do.
-                }
-                Some(child_module) => {
-                    self.record_exports_for_module_subtree(child_module);
-                }
-            }
-        }
-
-        for (_, child_module) in module_.anonymous_children.borrow().iter() {
-            self.record_exports_for_module_subtree(child_module.clone());
-        }
-    }
-
-    fn record_exports_for_module(&mut self, module_: &Module) {
-        let mut exports2 = Vec::new();
-
-        self.add_exports_for_module(&mut exports2, module_);
-        match module_.def_id.get() {
-            Some(def_id) => {
-                self.export_map2.insert(def_id.node, exports2);
-                debug!("(computing exports) writing exports for {} (some)",
-                       def_id.node);
-            }
-            None => {}
-        }
-    }
-
-    fn add_exports_of_namebindings(&mut self,
-                                   exports2: &mut Vec<Export2> ,
-                                   name: Name,
-                                   namebindings: &NameBindings,
-                                   ns: Namespace) {
-        match namebindings.def_for_namespace(ns) {
-            Some(d) => {
-                let name = token::get_name(name);
-                debug!("(computing exports) YES: export '{}' => {}",
-                       name, d.def_id());
-                exports2.push(Export2 {
-                    name: name.get().to_string(),
-                    def_id: d.def_id()
-                });
-            }
-            d_opt => {
-                debug!("(computing exports) NO: {}", d_opt);
-            }
-        }
-    }
-
-    fn add_exports_for_module(&mut self,
-                              exports2: &mut Vec<Export2> ,
-                              module_: &Module) {
-        for (name, importresolution) in module_.import_resolutions.borrow().iter() {
-            if !importresolution.is_public {
-                continue
-            }
-            let xs = [TypeNS, ValueNS];
-            for &ns in xs.iter() {
-                match importresolution.target_for_namespace(ns) {
-                    Some(target) => {
-                        debug!("(computing exports) maybe export '{}'",
-                               token::get_name(*name));
-                        self.add_exports_of_namebindings(exports2,
-                                                         *name,
-                                                         &*target.bindings,
-                                                         ns)
-                    }
-                    _ => ()
-                }
-            }
-        }
-    }
-
     // AST resolution
     //
     // We maintain a list of value ribs and type ribs.
@@ -4809,9 +4599,10 @@ impl<'a> Resolver<'a> {
         let mut result = HashMap::new();
         pat_bindings(&self.def_map, pat, |binding_mode, _id, sp, path1| {
             let name = mtwt::resolve(path1.node);
-            result.insert(name,
-                          binding_info {span: sp,
-                                        binding_mode: binding_mode});
+            result.insert(name, BindingInfo {
+                span: sp,
+                binding_mode: binding_mode
+            });
         });
         return result;
     }
@@ -6136,119 +5927,6 @@ impl<'a> Resolver<'a> {
     }
 
     //
-    // Unused import checking
-    //
-    // Although this is mostly a lint pass, it lives in here because it depends on
-    // resolve data structures and because it finalises the privacy information for
-    // `use` directives.
-    //
-
-    fn check_for_unused_imports(&mut self, krate: &ast::Crate) {
-        let mut visitor = UnusedImportCheckVisitor{ resolver: self };
-        visit::walk_crate(&mut visitor, krate);
-    }
-
-    fn check_for_item_unused_imports(&mut self, vi: &ViewItem) {
-        // Ignore is_public import statements because there's no way to be sure
-        // whether they're used or not. Also ignore imports with a dummy span
-        // because this means that they were generated in some fashion by the
-        // compiler and we don't need to consider them.
-        if vi.vis == Public { return }
-        if vi.span == DUMMY_SP { return }
-
-        match vi.node {
-            ViewItemExternCrate(_, _, id) => {
-                if let Some(crate_num) = self.session.cstore.find_extern_mod_stmt_cnum(id) {
-                    if !self.used_crates.contains(&crate_num) {
-                        self.session.add_lint(lint::builtin::UNUSED_EXTERN_CRATES,
-                                              id,
-                                              vi.span,
-                                              "unused extern crate".to_string());
-                    }
-                }
-            },
-            ViewItemUse(ref p) => {
-                match p.node {
-                    ViewPathSimple(_, _, id) => self.finalize_import(id, p.span),
-
-                    ViewPathList(_, ref list, _) => {
-                        for i in list.iter() {
-                            self.finalize_import(i.node.id(), i.span);
-                        }
-                    },
-                    ViewPathGlob(_, id) => {
-                        if !self.used_imports.contains(&(id, TypeNS)) &&
-                           !self.used_imports.contains(&(id, ValueNS)) {
-                            self.session
-                                .add_lint(lint::builtin::UNUSED_IMPORTS,
-                                          id,
-                                          p.span,
-                                          "unused import".to_string());
-                        }
-                    },
-                }
-            }
-        }
-    }
-
-    // We have information about whether `use` (import) directives are actually used now.
-    // If an import is not used at all, we signal a lint error. If an import is only used
-    // for a single namespace, we remove the other namespace from the recorded privacy
-    // information. That means in privacy.rs, we will only check imports and namespaces
-    // which are used. In particular, this means that if an import could name either a
-    // public or private item, we will check the correct thing, dependent on how the import
-    // is used.
-    fn finalize_import(&mut self, id: NodeId, span: Span) {
-        debug!("finalizing import uses for {}",
-               self.session.codemap().span_to_snippet(span));
-
-        if !self.used_imports.contains(&(id, TypeNS)) &&
-           !self.used_imports.contains(&(id, ValueNS)) {
-            self.session.add_lint(lint::builtin::UNUSED_IMPORTS,
-                                  id,
-                                  span,
-                                  "unused import".to_string());
-        }
-
-        let (v_priv, t_priv) = match self.last_private.get(&id) {
-            Some(&LastImport {
-                value_priv: v,
-                value_used: _,
-                type_priv: t,
-                type_used: _
-            }) => (v, t),
-            Some(_) => {
-                panic!("we should only have LastImport for `use` directives")
-            }
-            _ => return,
-        };
-
-        let mut v_used = if self.used_imports.contains(&(id, ValueNS)) {
-            Used
-        } else {
-            Unused
-        };
-        let t_used = if self.used_imports.contains(&(id, TypeNS)) {
-            Used
-        } else {
-            Unused
-        };
-
-        match (v_priv, t_priv) {
-            // Since some items may be both in the value _and_ type namespaces (e.g., structs)
-            // we might have two LastPrivates pointing at the same thing. There is no point
-            // checking both, so lets not check the value one.
-            (Some(DependsOn(def_v)), Some(DependsOn(def_t))) if def_v == def_t => v_used = Unused,
-            _ => {},
-        }
-
-        self.last_private.insert(id, LastImport{value_priv: v_priv,
-                                                value_used: v_used,
-                                                type_priv: t_priv,
-                                                type_used: t_used});
-    }
-
-    //
     // Diagnostics
     //
     // Diagnostics are not particularly efficient, because they're rarely
@@ -6323,7 +6001,7 @@ pub struct CrateMap {
     pub def_map: DefMap,
     pub freevars: RefCell<FreevarMap>,
     pub capture_mode_map: RefCell<CaptureModeMap>,
-    pub exp_map2: ExportMap2,
+    pub export_map: ExportMap,
     pub trait_map: TraitMap,
     pub external_exports: ExternalExports,
     pub last_private_map: LastPrivateMap,
@@ -6335,12 +6013,26 @@ pub fn resolve_crate(session: &Session,
                      krate: &Crate)
                   -> CrateMap {
     let mut resolver = Resolver::new(session, krate.span);
-    resolver.resolve(krate);
+
+    resolver.build_reduced_graph(krate);
+    session.abort_if_errors();
+
+    resolver.resolve_imports();
+    session.abort_if_errors();
+
+    record_exports::record(&mut resolver);
+    session.abort_if_errors();
+
+    resolver.resolve_crate(krate);
+    session.abort_if_errors();
+
+    check_unused::check_crate(&mut resolver, krate);
+
     CrateMap {
         def_map: resolver.def_map,
         freevars: resolver.freevars,
         capture_mode_map: RefCell::new(resolver.capture_mode_map),
-        exp_map2: resolver.export_map2,
+        export_map: resolver.export_map,
         trait_map: resolver.trait_map,
         external_exports: resolver.external_exports,
         last_private_map: resolver.last_private,

@@ -46,13 +46,12 @@ use lint;
 use metadata::csearch;
 use middle;
 use middle::const_eval;
-use middle::def;
+use middle::def::{mod, DefMap, ExportMap};
 use middle::dependency_format;
 use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem};
 use middle::lang_items::{FnOnceTraitLangItem, TyDescStructLangItem};
 use middle::mem_categorization as mc;
 use middle::region;
-use middle::resolve;
 use middle::resolve_lifetime;
 use middle::infer;
 use middle::stability;
@@ -99,7 +98,7 @@ pub const INITIAL_DISCRIMINANT_VALUE: Disr = 0;
 /// The complete set of all analyses described in this module. This is
 /// produced by the driver and fed to trans and later passes.
 pub struct CrateAnalysis<'tcx> {
-    pub exp_map2: middle::resolve::ExportMap2,
+    pub export_map: ExportMap,
     pub exported_items: middle::privacy::ExportedItems,
     pub public_items: middle::privacy::PublicItems,
     pub ty_cx: ty::ctxt<'tcx>,
@@ -615,7 +614,7 @@ pub struct ctxt<'tcx> {
     // queried from a HashSet.
     interner: RefCell<FnvHashMap<InternedTy<'tcx>, Ty<'tcx>>>,
     pub sess: Session,
-    pub def_map: resolve::DefMap,
+    pub def_map: DefMap,
 
     pub named_region_map: resolve_lifetime::NamedRegionMap,
 
@@ -1967,7 +1966,7 @@ impl UnboxedClosureKind {
 
 pub fn mk_ctxt<'tcx>(s: Session,
                      type_arena: &'tcx TypedArena<TyS<'tcx>>,
-                     dm: resolve::DefMap,
+                     dm: DefMap,
                      named_region_map: resolve_lifetime::NamedRegionMap,
                      map: ast_map::Map<'tcx>,
                      freevars: RefCell<FreevarMap>,
@@ -6262,6 +6261,9 @@ pub struct Freevar {
 pub type FreevarMap = NodeMap<Vec<Freevar>>;
 
 pub type CaptureModeMap = NodeMap<ast::CaptureClause>;
+
+// Trait method resolution
+pub type TraitMap = NodeMap<Vec<DefId>>;
 
 pub fn with_freevars<T, F>(tcx: &ty::ctxt, fid: ast::NodeId, f: F) -> T where
     F: FnOnce(&[Freevar]) -> T,
