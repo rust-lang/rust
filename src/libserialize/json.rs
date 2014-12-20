@@ -331,13 +331,14 @@ pub fn escape_bytes(wr: &mut io::Writer, bytes: &[u8]) -> Result<(), io::IoError
 
     for (i, byte) in bytes.iter().enumerate() {
         let escaped = match *byte {
-            b'"' => "\\\"",
-            b'\\' => "\\\\",
-            b'\x08' => "\\b",
-            b'\x0c' => "\\f",
-            b'\n' => "\\n",
-            b'\r' => "\\r",
-            b'\t' => "\\t",
+            b'"' => "\\\"".into_cow(),
+            b'\\' => "\\\\".into_cow(),
+            b'\x08' => "\\b".into_cow(),
+            b'\x0c' => "\\f".into_cow(),
+            b'\n' => "\\n".into_cow(),
+            b'\r' => "\\r".into_cow(),
+            b'\t' => "\\t".into_cow(),
+            b'\x00'...b'\x1f' | b'\x7f' => format!("\\u00{:0>2x}", *byte).into_cow(),
             _ => { continue; }
         };
 
@@ -345,7 +346,7 @@ pub fn escape_bytes(wr: &mut io::Writer, bytes: &[u8]) -> Result<(), io::IoError
             try!(wr.write(bytes[start..i]));
         }
 
-        try!(wr.write_str(escaped));
+        try!(wr.write_str(escaped.deref()));
 
         start = i + 1;
     }
@@ -2731,6 +2732,9 @@ mod tests {
     fn test_write_char() {
         check_encoder_for_simple!('a', "\"a\"");
         check_encoder_for_simple!('\t', "\"\\t\"");
+        check_encoder_for_simple!('\u{0000}', "\"\\u0000\"");
+        check_encoder_for_simple!('\u{001b}', "\"\\u001b\"");
+        check_encoder_for_simple!('\u{007f}', "\"\\u007f\"");
         check_encoder_for_simple!('\u{00a0}', "\"\u{00a0}\"");
         check_encoder_for_simple!('\u{abcd}', "\"\u{abcd}\"");
         check_encoder_for_simple!('\u{10ffff}', "\"\u{10ffff}\"");
