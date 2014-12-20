@@ -678,7 +678,6 @@ mod test_set {
     use prelude::*;
 
     use super::HashSet;
-    use slice::PartialEqSliceExt;
 
     #[test]
     fn test_disjoint() {

@@ -931,8 +931,6 @@ fn contains_nul<T: BytesContainer>(v: &T) -> bool {
 #[cfg(test)]
 mod tests {
     use prelude::*;
-    use super::{GenericPath, PosixPath, WindowsPath};
-    use c_str::ToCStr;
 
     #[test]
     fn test_cstring() {

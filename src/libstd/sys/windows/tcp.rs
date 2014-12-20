@@ -18,8 +18,7 @@ use super::{last_error, last_net_error, retry, sock_t};
 use sync::{Arc, atomic};
 use sys::fs::FileDesc;
 use sys::{mod, c, set_nonblocking, wouldblock, timer};
-use sys_common::{mod, timeout, eof};
-use sys_common::net::*;
+use sys_common::{mod, timeout, eof, net};
 
 pub use sys_common::net::TcpStream;
 
@@ -54,11 +53,11 @@ impl TcpListener {
     pub fn bind(addr: ip::SocketAddr) -> IoResult<TcpListener> {
         sys::init_net();
 
-        let sock = try!(socket(addr, libc::SOCK_STREAM));
+        let sock = try!(net::socket(addr, libc::SOCK_STREAM));
         let ret = TcpListener { sock: sock };
 
         let mut storage = unsafe { mem::zeroed() };
-        let len = addr_to_sockaddr(addr, &mut storage);
+        let len = net::addr_to_sockaddr(addr, &mut storage);
         let addrp = &storage as *const _ as *const libc::sockaddr;
 
         match unsafe { libc::bind(sock, addrp, len) } {
@@ -95,7 +94,7 @@ impl TcpListener {
     }
 
     pub fn socket_name(&mut self) -> IoResult<ip::SocketAddr> {
-        sockname(self.socket(), libc::getsockname)
+        net::sockname(self.socket(), libc::getsockname)
     }
 }
 
@@ -195,7 +194,7 @@ impl TcpAcceptor {
     }
 
     pub fn socket_name(&mut self) -> IoResult<ip::SocketAddr> {
-        sockname(self.socket(), libc::getsockname)
+        net::sockname(self.socket(), libc::getsockname)
     }
 
     pub fn set_timeout(&mut self, timeout: Option<u64>) {

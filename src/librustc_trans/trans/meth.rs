@@ -124,7 +124,7 @@ pub fn trans_method_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 bcx: bcx,
                 data: Fn(callee::trans_fn_ref(bcx,
                                               did,
-                                              MethodCall(method_call))),
+                                              MethodCallKey(method_call))),
             }
         }
 
@@ -344,12 +344,12 @@ fn trans_monomorphized_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             // those from the impl and those from the method:
             let callee_substs =
                 combine_impl_and_methods_tps(
-                    bcx, MethodCall(method_call), vtable_impl.substs);
+                    bcx, MethodCallKey(method_call), vtable_impl.substs);
 
             // translate the function
             let llfn = trans_fn_ref_with_substs(bcx,
                                                 mth_id,
-                                                MethodCall(method_call),
+                                                MethodCallKey(method_call),
                                                 callee_substs);
 
             Callee { bcx: bcx, data: Fn(llfn) }
@@ -359,7 +359,7 @@ fn trans_monomorphized_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             // after passing through fulfill_obligation
             let llfn = trans_fn_ref_with_substs(bcx,
                                                 closure_def_id,
-                                                MethodCall(method_call),
+                                                MethodCallKey(method_call),
                                                 substs);
 
             Callee {

@@ -124,13 +124,17 @@
 //!
 //! * It can be implemented highly efficiently on many platforms.
 
-use core::prelude::*;
-
 use any::Any;
 use borrow::IntoCow;
 use boxed::Box;
 use cell::UnsafeCell;
+use clone::Clone;
+use kinds::Send;
+use ops::{Drop, FnOnce};
+use option::Option::{mod, Some, None};
+use result::Result::{Err, Ok};
 use sync::{Mutex, Condvar, Arc};
+use str::Str;
 use string::String;
 use rt::{mod, unwind};
 use io::{Writer, stdio};
@@ -424,13 +428,11 @@ impl<T: Send> Drop for JoinGuard<T> {
 
 #[cfg(test)]
 mod test {
+    use prelude::*;
     use any::{Any, AnyRefExt};
     use boxed::BoxAny;
-    use prelude::*;
-    use result::Result::{Ok, Err};
     use result;
     use std::io::{ChanReader, ChanWriter};
-    use string::String;
     use thunk::Thunk;
     use super::{Thread, Builder};
 

@@ -20,12 +20,10 @@ use io::{IoResult, IoError};
 use libc::{c_int, c_char, c_void};
 use libc;
 use os;
-use path::{Path, GenericPath, BytesContainer};
-use ptr::{mod, RawPtr};
+use path::BytesContainer;
+use ptr;
 use sync::atomic::{AtomicInt, INIT_ATOMIC_INT, SeqCst};
 use sys::fs::FileDesc;
-use option::Option;
-use option::Option::{Some, None};
 use slice;
 
 use os::TMPBUF_SZ;

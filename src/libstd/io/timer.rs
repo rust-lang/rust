@@ -225,10 +225,10 @@ fn in_ms_u64(d: Duration) -> u64 {
 
 #[cfg(test)]
 mod test {
-    use super::*;
-    use time::Duration;
-    use task::spawn;
     use prelude::*;
+
+    use super::Timer;
+    use time::Duration;
 
     #[test]
     fn test_io_timer_sleep_simple() {

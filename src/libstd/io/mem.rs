@@ -398,13 +398,12 @@ impl<'a> Buffer for BufReader<'a> {
 
 #[cfg(test)]
 mod test {
-    extern crate test;
+    extern crate "test" as test_crate;
     use prelude::*;
     use super::*;
     use io::*;
     use io;
-    use self::test::Bencher;
-    use str::StrPrelude;
+    use self::test_crate::Bencher;
 
     #[test]
     fn test_vec_writer() {

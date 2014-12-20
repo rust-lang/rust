@@ -867,7 +867,7 @@ pub enum ExprOrMethodCall {
     ExprId(ast::NodeId),
 
     // Type parameters for a method call like `a.foo::<int>()`
-    MethodCall(ty::MethodCall)
+    MethodCallKey(ty::MethodCall)
 }
 
 pub fn node_id_substs<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
@@ -879,7 +879,7 @@ pub fn node_id_substs<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         ExprId(id) => {
             ty::node_id_item_substs(tcx, id).substs
         }
-        MethodCall(method_call) => {
+        MethodCallKey(method_call) => {
             (*tcx.method_map.borrow())[method_call].substs.clone()
         }
     };

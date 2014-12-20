@@ -1260,18 +1260,17 @@ impl<T: fmt::Show> fmt::Show for RingBuf<T> {
 
 #[cfg(test)]
 mod tests {
-    use core::iter;
     use self::Taggy::*;
     use self::Taggypar::*;
-    use std::cmp;
+    use prelude::*;
+    use core::cmp;
+    use core::iter;
     use std::fmt::Show;
-    use std::prelude::*;
     use std::hash;
     use test::Bencher;
     use test;
 
     use super::RingBuf;
-    use vec::Vec;
 
     #[test]
     #[allow(deprecated)]
@@ -1791,7 +1790,7 @@ mod tests {
 
     #[test]
     fn test_from_iter() {
-        use std::iter;
+        use core::iter;
         let v = vec!(1i,2,3,4,5,6,7);
         let deq: RingBuf<int> = v.iter().map(|&x| x).collect();
         let u: Vec<int> = deq.iter().map(|&x| x).collect();

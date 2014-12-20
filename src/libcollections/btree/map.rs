@@ -131,12 +131,12 @@ pub enum Entry<'a, K:'a, V:'a> {
 /// A vacant Entry.
 pub struct VacantEntry<'a, K:'a, V:'a> {
     key: K,
-    stack: stack::SearchStack<'a, K, V, node::Edge, node::Leaf>,
+    stack: stack::SearchStack<'a, K, V, node::handle::Edge, node::handle::Leaf>,
 }
 
 /// An occupied Entry.
 pub struct OccupiedEntry<'a, K:'a, V:'a> {
-    stack: stack::SearchStack<'a, K, V, node::KV, node::LeafOrInternal>,
+    stack: stack::SearchStack<'a, K, V, node::handle::KV, node::handle::LeafOrInternal>,
 }
 
 impl<K: Ord, V> BTreeMap<K, V> {
@@ -496,7 +496,8 @@ mod stack {
     use core::kinds::marker;
     use core::mem;
     use super::BTreeMap;
-    use super::super::node::{mod, Node, Fit, Split, KV, Edge, Internal, Leaf, LeafOrInternal};
+    use super::super::node::{mod, Node, Fit, Split, Internal, Leaf};
+    use super::super::node::handle;
     use vec::Vec;
 
     /// A generic mutable reference, identical to `&mut` except for the fact that its lifetime
@@ -520,7 +521,7 @@ mod stack {
         }
     }
 
-    type StackItem<K, V> = node::Handle<*mut Node<K, V>, Edge, Internal>;
+    type StackItem<K, V> = node::Handle<*mut Node<K, V>, handle::Edge, handle::Internal>;
     type Stack<K, V> = Vec<StackItem<K, V>>;
 
     /// A `PartialSearchStack` handles the construction of a search stack.
@@ -595,7 +596,9 @@ mod stack {
         /// Pushes the requested child of the stack's current top on top of the stack. If the child
         /// exists, then a new PartialSearchStack is yielded. Otherwise, a VacantSearchStack is
         /// yielded.
-        pub fn push(mut self, mut edge: node::Handle<IdRef<'id, Node<K, V>>, Edge, Internal>)
+        pub fn push(mut self, mut edge: node::Handle<IdRef<'id, Node<K, V>>,
+                                                     handle::Edge,
+                                                     handle::Internal>)
                     -> PartialSearchStack<'a, K, V> {
             self.stack.push(edge.as_raw());
             PartialSearchStack {
@@ -617,7 +620,7 @@ mod stack {
         }
     }
 
-    impl<'a, K, V, NodeType> SearchStack<'a, K, V, KV, NodeType> {
+    impl<'a, K, V, NodeType> SearchStack<'a, K, V, handle::KV, NodeType> {
         /// Gets a reference to the value the stack points to.
         pub fn peek(&self) -> &V {
             unsafe { self.top.from_raw().into_kv().1 }
@@ -640,7 +643,7 @@ mod stack {
         }
     }
 
-    impl<'a, K, V> SearchStack<'a, K, V, KV, Leaf> {
+    impl<'a, K, V> SearchStack<'a, K, V, handle::KV, handle::Leaf> {
         /// Removes the key and value in the top element of the stack, then handles underflows as
         /// described in BTree's pop function.
         fn remove_leaf(mut self) -> V {
@@ -686,7 +689,7 @@ mod stack {
         }
     }
 
-    impl<'a, K, V> SearchStack<'a, K, V, KV, LeafOrInternal> {
+    impl<'a, K, V> SearchStack<'a, K, V, handle::KV, handle::LeafOrInternal> {
         /// Removes the key and value in the top element of the stack, then handles underflows as
         /// described in BTree's pop function.
         pub fn remove(self) -> V {
@@ -703,7 +706,7 @@ mod stack {
         /// leaves the tree in an inconsistent state that must be repaired by the caller by
         /// removing the entry in question. Specifically the key-value pair and its successor will
         /// become swapped.
-        fn into_leaf(mut self) -> SearchStack<'a, K, V, KV, Leaf> {
+        fn into_leaf(mut self) -> SearchStack<'a, K, V, handle::KV, handle::Leaf> {
             unsafe {
                 let mut top_raw = self.top;
                 let mut top = top_raw.from_raw_mut();
@@ -757,7 +760,7 @@ mod stack {
         }
     }
 
-    impl<'a, K, V> SearchStack<'a, K, V, Edge, Leaf> {
+    impl<'a, K, V> SearchStack<'a, K, V, handle::Edge, handle::Leaf> {
         /// Inserts the key and value into the top element in the stack, and if that node has to
         /// split recursively inserts the split contents into the next element stack until
         /// splits stop.
@@ -1332,7 +1335,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
 
 #[cfg(test)]
 mod test {
-    use std::prelude::*;
+    use prelude::*;
 
     use super::{BTreeMap, Occupied, Vacant};
 
@@ -1534,7 +1537,7 @@ mod test {
 
 #[cfg(test)]
 mod bench {
-    use std::prelude::*;
+    use prelude::*;
     use std::rand::{weak_rng, Rng};
     use test::{Bencher, black_box};
 

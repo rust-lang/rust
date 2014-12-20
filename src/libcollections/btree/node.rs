@@ -34,9 +34,9 @@ pub enum InsertionResult<K, V> {
 /// Represents the result of a search for a key in a single node
 pub enum SearchResult<NodeRef> {
     /// The element was found at the given index
-    Found(Handle<NodeRef, KV, LeafOrInternal>),
+    Found(Handle<NodeRef, handle::KV, handle::LeafOrInternal>),
     /// The element wasn't found, but if it's anywhere, it must be beyond this edge
-    GoDown(Handle<NodeRef, Edge, LeafOrInternal>),
+    GoDown(Handle<NodeRef, handle::Edge, handle::LeafOrInternal>),
 }
 
 /// A B-Tree Node. We keep keys/edges/values separate to optimize searching for keys.
@@ -494,12 +494,16 @@ pub struct Handle<NodeRef, Type, NodeType> {
     index: uint
 }
 
-pub enum KV {}
-pub enum Edge {}
+pub mod handle {
+    // Handle types.
+    pub enum KV {}
+    pub enum Edge {}
 
-pub enum LeafOrInternal {}
-pub enum Leaf {}
-pub enum Internal {}
+    // Handle node types.
+    pub enum LeafOrInternal {}
+    pub enum Leaf {}
+    pub enum Internal {}
+}
 
 impl<K: Ord, V> Node<K, V> {
     /// Searches for the given key in the node. If it finds an exact match,
@@ -625,7 +629,7 @@ impl<K, V, Type, NodeType> Handle<*mut Node<K, V>, Type, NodeType> {
     }
 }
 
-impl<'a, K: 'a, V: 'a> Handle<&'a Node<K, V>, Edge, Internal> {
+impl<'a, K: 'a, V: 'a> Handle<&'a Node<K, V>, handle::Edge, handle::Internal> {
     /// Turns the handle into a reference to the edge it points at. This is necessary because the
     /// returned pointer has a larger lifetime than what would be returned by `edge` or `edge_mut`,
     /// making it more suitable for moving down a chain of nodes.
@@ -636,7 +640,7 @@ impl<'a, K: 'a, V: 'a> Handle<&'a Node<K, V>, Edge, Internal> {
     }
 }
 
-impl<'a, K: 'a, V: 'a> Handle<&'a mut Node<K, V>, Edge, Internal> {
+impl<'a, K: 'a, V: 'a> Handle<&'a mut Node<K, V>, handle::Edge, handle::Internal> {
     /// Turns the handle into a mutable reference to the edge it points at. This is necessary
     /// because the returned pointer has a larger lifetime than what would be returned by
     /// `edge_mut`, making it more suitable for moving down a chain of nodes.
@@ -647,7 +651,7 @@ impl<'a, K: 'a, V: 'a> Handle<&'a mut Node<K, V>, Edge, Internal> {
     }
 }
 
-impl<K, V, NodeRef: Deref<Node<K, V>>> Handle<NodeRef, Edge, Internal> {
+impl<K, V, NodeRef: Deref<Node<K, V>>> Handle<NodeRef, handle::Edge, handle::Internal> {
     // This doesn't exist because there are no uses for it,
     // but is fine to add, analagous to edge_mut.
     //
@@ -657,11 +661,11 @@ impl<K, V, NodeRef: Deref<Node<K, V>>> Handle<NodeRef, Edge, Internal> {
 }
 
 pub enum ForceResult<NodeRef, Type> {
-    Leaf(Handle<NodeRef, Type, Leaf>),
-    Internal(Handle<NodeRef, Type, Internal>)
+    Leaf(Handle<NodeRef, Type, handle::Leaf>),
+    Internal(Handle<NodeRef, Type, handle::Internal>)
 }
 
-impl<K, V, NodeRef: Deref<Node<K, V>>, Type> Handle<NodeRef, Type, LeafOrInternal> {
+impl<K, V, NodeRef: Deref<Node<K, V>>, Type> Handle<NodeRef, Type, handle::LeafOrInternal> {
     /// Figure out whether this handle is pointing to something in a leaf node or to something in
     /// an internal node, clarifying the type according to the result.
     pub fn force(self) -> ForceResult<NodeRef, Type> {
@@ -679,7 +683,7 @@ impl<K, V, NodeRef: Deref<Node<K, V>>, Type> Handle<NodeRef, Type, LeafOrInterna
     }
 }
 
-impl<K, V, NodeRef: DerefMut<Node<K, V>>> Handle<NodeRef, Edge, Leaf> {
+impl<K, V, NodeRef: DerefMut<Node<K, V>>> Handle<NodeRef, handle::Edge, handle::Leaf> {
     /// Tries to insert this key-value pair at the given index in this leaf node
     /// If the node is full, we have to split it.
     ///
@@ -711,7 +715,7 @@ impl<K, V, NodeRef: DerefMut<Node<K, V>>> Handle<NodeRef, Edge, Leaf> {
     }
 }
 
-impl<K, V, NodeRef: DerefMut<Node<K, V>>> Handle<NodeRef, Edge, Internal> {
+impl<K, V, NodeRef: DerefMut<Node<K, V>>> Handle<NodeRef, handle::Edge, handle::Internal> {
     /// Returns a mutable reference to the edge pointed-to by this handle. This should not be
     /// confused with `node`, which references the parent node of what is returned here.
     pub fn edge_mut(&mut self) -> &mut Node<K, V> {
@@ -794,11 +798,11 @@ impl<K, V, NodeRef: DerefMut<Node<K, V>>> Handle<NodeRef, Edge, Internal> {
     }
 }
 
-impl<K, V, NodeRef: DerefMut<Node<K, V>>, NodeType> Handle<NodeRef, Edge, NodeType> {
+impl<K, V, NodeRef: DerefMut<Node<K, V>>, NodeType> Handle<NodeRef, handle::Edge, NodeType> {
     /// Gets the handle pointing to the key/value pair just to the left of the pointed-to edge.
     /// This is unsafe because the handle might point to the first edge in the node, which has no
     /// pair to its left.
-    unsafe fn left_kv<'a>(&'a mut self) -> Handle<&'a mut Node<K, V>, KV, NodeType> {
+    unsafe fn left_kv<'a>(&'a mut self) -> Handle<&'a mut Node<K, V>, handle::KV, NodeType> {
         Handle {
             node: &mut *self.node,
             index: self.index - 1
@@ -808,7 +812,7 @@ impl<K, V, NodeRef: DerefMut<Node<K, V>>, NodeType> Handle<NodeRef, Edge, NodeTy
     /// Gets the handle pointing to the key/value pair just to the right of the pointed-to edge.
     /// This is unsafe because the handle might point to the last edge in the node, which has no
     /// pair to its right.
-    unsafe fn right_kv<'a>(&'a mut self) -> Handle<&'a mut Node<K, V>, KV, NodeType> {
+    unsafe fn right_kv<'a>(&'a mut self) -> Handle<&'a mut Node<K, V>, handle::KV, NodeType> {
         Handle {
             node: &mut *self.node,
             index: self.index
@@ -816,7 +820,7 @@ impl<K, V, NodeRef: DerefMut<Node<K, V>>, NodeType> Handle<NodeRef, Edge, NodeTy
     }
 }
 
-impl<'a, K: 'a, V: 'a, NodeType> Handle<&'a Node<K, V>, KV, NodeType> {
+impl<'a, K: 'a, V: 'a, NodeType> Handle<&'a Node<K, V>, handle::KV, NodeType> {
     /// Turns the handle into references to the key and value it points at. This is necessary
     /// because the returned pointers have larger lifetimes than what would be returned by `key`
     /// or `val`.
@@ -831,7 +835,7 @@ impl<'a, K: 'a, V: 'a, NodeType> Handle<&'a Node<K, V>, KV, NodeType> {
     }
 }
 
-impl<'a, K: 'a, V: 'a, NodeType> Handle<&'a mut Node<K, V>, KV, NodeType> {
+impl<'a, K: 'a, V: 'a, NodeType> Handle<&'a mut Node<K, V>, handle::KV, NodeType> {
     /// Turns the handle into mutable references to the key and value it points at. This is
     /// necessary because the returned pointers have larger lifetimes than what would be returned
     /// by `key_mut` or `val_mut`.
@@ -848,7 +852,7 @@ impl<'a, K: 'a, V: 'a, NodeType> Handle<&'a mut Node<K, V>, KV, NodeType> {
     /// Convert this handle into one pointing at the edge immediately to the left of the key/value
     /// pair pointed-to by this handle. This is useful because it returns a reference with larger
     /// lifetime than `left_edge`.
-    pub fn into_left_edge(self) -> Handle<&'a mut Node<K, V>, Edge, NodeType> {
+    pub fn into_left_edge(self) -> Handle<&'a mut Node<K, V>, handle::Edge, NodeType> {
         Handle {
             node: &mut *self.node,
             index: self.index
@@ -856,7 +860,8 @@ impl<'a, K: 'a, V: 'a, NodeType> Handle<&'a mut Node<K, V>, KV, NodeType> {
     }
 }
 
-impl<'a, K: 'a, V: 'a, NodeRef: Deref<Node<K, V>> + 'a, NodeType> Handle<NodeRef, KV, NodeType> {
+impl<'a, K: 'a, V: 'a, NodeRef: Deref<Node<K, V>> + 'a, NodeType> Handle<NodeRef, handle::KV,
+                                                                         NodeType> {
     // These are fine to include, but are currently unneeded.
     //
     // /// Returns a reference to the key pointed-to by this handle. This doesn't return a
@@ -874,7 +879,8 @@ impl<'a, K: 'a, V: 'a, NodeRef: Deref<Node<K, V>> + 'a, NodeType> Handle<NodeRef
     // }
 }
 
-impl<'a, K: 'a, V: 'a, NodeRef: DerefMut<Node<K, V>> + 'a, NodeType> Handle<NodeRef, KV, NodeType> {
+impl<'a, K: 'a, V: 'a, NodeRef: DerefMut<Node<K, V>> + 'a, NodeType> Handle<NodeRef, handle::KV,
+                                                                            NodeType> {
     /// Returns a mutable reference to the key pointed-to by this handle. This doesn't return a
     /// reference with a lifetime as large as `into_kv_mut`, but it also does not consume the
     /// handle.
@@ -890,10 +896,10 @@ impl<'a, K: 'a, V: 'a, NodeRef: DerefMut<Node<K, V>> + 'a, NodeType> Handle<Node
     }
 }
 
-impl<K, V, NodeRef: DerefMut<Node<K, V>>, NodeType> Handle<NodeRef, KV, NodeType> {
+impl<K, V, NodeRef: DerefMut<Node<K, V>>, NodeType> Handle<NodeRef, handle::KV, NodeType> {
     /// Gets the handle pointing to the edge immediately to the left of the key/value pair pointed
     /// to by this handle.
-    pub fn left_edge<'a>(&'a mut self) -> Handle<&'a mut Node<K, V>, Edge, NodeType> {
+    pub fn left_edge<'a>(&'a mut self) -> Handle<&'a mut Node<K, V>, handle::Edge, NodeType> {
         Handle {
             node: &mut *self.node,
             index: self.index
@@ -902,7 +908,7 @@ impl<K, V, NodeRef: DerefMut<Node<K, V>>, NodeType> Handle<NodeRef, KV, NodeType
 
     /// Gets the handle pointing to the edge immediately to the right of the key/value pair pointed
     /// to by this handle.
-    pub fn right_edge<'a>(&'a mut self) -> Handle<&'a mut Node<K, V>, Edge, NodeType> {
+    pub fn right_edge<'a>(&'a mut self) -> Handle<&'a mut Node<K, V>, handle::Edge, NodeType> {
         Handle {
             node: &mut *self.node,
             index: self.index + 1
@@ -910,7 +916,7 @@ impl<K, V, NodeRef: DerefMut<Node<K, V>>, NodeType> Handle<NodeRef, KV, NodeType
     }
 }
 
-impl<K, V, NodeRef: DerefMut<Node<K, V>>> Handle<NodeRef, KV, Leaf> {
+impl<K, V, NodeRef: DerefMut<Node<K, V>>> Handle<NodeRef, handle::KV, handle::Leaf> {
     /// Removes the key/value pair at the handle's location.
     ///
     /// # Panics (in debug build)
@@ -921,7 +927,7 @@ impl<K, V, NodeRef: DerefMut<Node<K, V>>> Handle<NodeRef, KV, Leaf> {
     }
 }
 
-impl<K, V, NodeRef: DerefMut<Node<K, V>>> Handle<NodeRef, KV, Internal> {
+impl<K, V, NodeRef: DerefMut<Node<K, V>>> Handle<NodeRef, handle::KV, handle::Internal> {
     /// Steal! Stealing is roughly analogous to a binary tree rotation.
     /// In this case, we're "rotating" right.
     unsafe fn steal_rightward(&mut self) {
@@ -1004,7 +1010,8 @@ impl<K, V> Node<K, V> {
     /// # Panics (in debug build)
     ///
     /// Panics if the given index is out of bounds.
-    pub fn kv_handle(&mut self, index: uint) -> Handle<&mut Node<K, V>, KV, LeafOrInternal> {
+    pub fn kv_handle(&mut self, index: uint) -> Handle<&mut Node<K, V>, handle::KV,
+                                                       handle::LeafOrInternal> {
         // Necessary for correctness, but in a private module
         debug_assert!(index < self.len(), "kv_handle index out of bounds");
         Handle {

@@ -23,7 +23,7 @@
 
 #![allow(unknown_features)]
 #![feature(macro_rules, default_type_params, phase, globs)]
-#![feature(unsafe_destructor, import_shadowing, slicing_syntax)]
+#![feature(unsafe_destructor, slicing_syntax)]
 #![feature(unboxed_closures)]
 #![no_std]
 
@@ -94,4 +94,42 @@ mod std {
     pub use core::cmp;      // deriving(Eq, Ord, etc.)
     pub use core::kinds;    // deriving(Copy)
     pub use core::hash;     // deriving(Hash)
+}
+
+#[cfg(test)]
+mod prelude {
+    // from core.
+    pub use core::borrow::IntoCow;
+    pub use core::char::Char;
+    pub use core::clone::Clone;
+    pub use core::cmp::{PartialEq, Eq, Equiv, PartialOrd, Ord};
+    pub use core::cmp::Ordering::{Less, Equal, Greater};
+    pub use core::iter::range;
+    pub use core::iter::{FromIterator, Extend, IteratorExt};
+    pub use core::iter::{Iterator, DoubleEndedIterator, RandomAccessIterator};
+    pub use core::iter::{IteratorCloneExt, CloneIteratorExt, DoubleEndedIteratorExt};
+    pub use core::iter::{IteratorOrdExt, MutableDoubleEndedIterator, ExactSizeIterator};
+    pub use core::kinds::{Copy, Send, Sized, Sync};
+    pub use core::mem::drop;
+    pub use core::ops::{Drop, Fn, FnMut, FnOnce};
+    pub use core::option::Option;
+    pub use core::option::Option::{Some, None};
+    pub use core::ptr::RawPtr;
+    pub use core::result::Result;
+    pub use core::result::Result::{Ok, Err};
+
+    // in core and collections (may differ).
+    pub use slice::{PartialEqSliceExt, OrdSliceExt};
+    pub use slice::{AsSlice, SliceExt};
+    pub use str::{from_str, Str, StrPrelude};
+
+    // from other crates.
+    pub use alloc::boxed::Box;
+    pub use unicode::char::UnicodeChar;
+
+    // from collections.
+    pub use slice::{CloneSliceExt, VectorVector};
+    pub use str::{IntoMaybeOwned, UnicodeStrPrelude, StrAllocating, StrVector};
+    pub use string::{String, ToString};
+    pub use vec::Vec;
 }

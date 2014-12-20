@@ -131,10 +131,8 @@ fn spawn_in_pool(jobs: Arc<Mutex<Receiver<Thunk>>>) {
 
 #[cfg(test)]
 mod test {
-    use core::prelude::*;
+    use prelude::*;
     use super::*;
-    use comm::channel;
-    use iter::range;
 
     const TEST_TASKS: uint = 4u;
 

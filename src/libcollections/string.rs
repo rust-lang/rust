@@ -1040,14 +1040,11 @@ pub mod raw {
 
 #[cfg(test)]
 mod tests {
-    use std::prelude::*;
+    use prelude::*;
     use test::Bencher;
 
-    use slice::CloneSliceExt;
-    use str::{Str, StrPrelude};
     use str;
-    use super::{as_string, String, ToString};
-    use vec::Vec;
+    use super::as_string;
 
     #[test]
     fn test_as_string() {
