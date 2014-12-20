@@ -340,6 +340,7 @@ impl<T> Equiv<*const T> for *mut T {
     }
 }
 
+#[stable]
 impl<T> Clone for *const T {
     #[inline]
     fn clone(&self) -> *const T {
@@ -347,6 +348,7 @@ impl<T> Clone for *const T {
     }
 }
 
+#[stable]
 impl<T> Clone for *mut T {
     #[inline]
     fn clone(&self) -> *mut T {
@@ -451,4 +453,3 @@ impl<T> PartialOrd for *mut T {
     #[inline]
     fn ge(&self, other: &*mut T) -> bool { *self >= *other }
 }
-

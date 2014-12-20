@@ -819,6 +819,7 @@ impl<'a, A> DoubleEndedIterator<&'a A> for Iter<'a, A> {
 
 impl<'a, A> ExactSizeIterator<&'a A> for Iter<'a, A> {}
 
+#[stable]
 impl<'a, A> Clone for Iter<'a, A> {
     fn clone(&self) -> Iter<'a, A> {
         Iter { inner: self.inner.clone() }

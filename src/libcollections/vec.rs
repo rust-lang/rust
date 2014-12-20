@@ -443,7 +443,7 @@ impl<T: Clone> Vec<T> {
     }
 }
 
-#[unstable]
+#[stable]
 impl<T:Clone> Clone for Vec<T> {
     fn clone(&self) -> Vec<T> { self.as_slice().to_vec() }
 

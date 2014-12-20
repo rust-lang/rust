@@ -851,6 +851,7 @@ impl Extend<bool> for Bitv {
     }
 }
 
+#[stable]
 impl Clone for Bitv {
     #[inline]
     fn clone(&self) -> Bitv {
