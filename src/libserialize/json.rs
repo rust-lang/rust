@@ -373,7 +373,7 @@ pub fn escape_bytes(wr: &mut io::Writer, bytes: &[u8]) -> Result<(), io::IoError
             try!(wr.write(bytes[start..i]));
         }
 
-        try!(wr.write_str(escaped.deref()));
+        try!(wr.write_str(escaped));
 
         start = i + 1;
     }
