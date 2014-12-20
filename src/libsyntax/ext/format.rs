@@ -559,9 +559,43 @@ impl<'a, 'b> Context<'a, 'b> {
         // Now create a vector containing all the arguments
         let args = locals.into_iter().chain(names.into_iter().map(|a| a.unwrap()));
 
-        // Now create the fmt::Arguments struct with all our locals we created.
-        let args_slice = self.ecx.expr_vec_slice(self.fmtsp, args.collect());
+        let args_array = self.ecx.expr_vec(self.fmtsp, args.collect());
 
+        // Constructs an AST equivalent to:
+        //
+        //      match (&arg0, &arg1) {
+        //          (tmp0, tmp1) => args_array
+        //      }
+        //
+        // It was:
+        //
+        //      let tmp0 = &arg0;
+        //      let tmp1 = &arg1;
+        //      args_array
+        //
+        // Because of #11585 the new temporary lifetime rule, the enclosing
+        // statements for these temporaries become the let's themselves.
+        // If one or more of them are RefCell's, RefCell borrow() will also
+        // end there; they don't last long enough for args_array to use them.
+        // The match expression solves the scope problem.
+        //
+        // Note, it may also very well be transformed to:
+        //
+        //      match arg0 {
+        //          ref tmp0 => {
+        //              match arg1 => {
+        //                  ref tmp1 => args_array } } }
+        //
+        // But the nested match expression is proved to perform not as well
+        // as series of let's; the first approach does.
+        let pat = self.ecx.pat_tuple(self.fmtsp, pats);
+        let arm = self.ecx.arm(self.fmtsp, vec!(pat), args_array);
+        let head = self.ecx.expr(self.fmtsp, ast::ExprTup(heads));
+        let result = self.ecx.expr_match(self.fmtsp, head, vec!(arm));
+
+        let args_slice = self.ecx.expr_addr_of(self.fmtsp, result);
+
+        // Now create the fmt::Arguments struct with all our locals we created.
         let (fn_name, fn_args) = if self.all_pieces_simple {
             ("new", vec![pieces, args_slice])
         } else {
@@ -582,58 +616,26 @@ impl<'a, 'b> Context<'a, 'b> {
             ("with_placeholders", vec![pieces, fmt, args_slice])
         };
 
-        let result = self.ecx.expr_call_global(self.fmtsp, vec!(
+        let body = self.ecx.expr_call_global(self.fmtsp, vec!(
                 self.ecx.ident_of("std"),
                 self.ecx.ident_of("fmt"),
                 self.ecx.ident_of("Arguments"),
                 self.ecx.ident_of(fn_name)), fn_args);
 
-        let body = match invocation {
+        match invocation {
             Call(e) => {
                 let span = e.span;
                 self.ecx.expr_call(span, e, vec![
-                    self.ecx.expr_addr_of(span, result)
+                    self.ecx.expr_addr_of(span, body)
                 ])
             }
             MethodCall(e, m) => {
                 let span = e.span;
                 self.ecx.expr_method_call(span, e, m, vec![
-                    self.ecx.expr_addr_of(span, result)
+                    self.ecx.expr_addr_of(span, body)
                 ])
             }
-        };
-
-        // Constructs an AST equivalent to:
-        //
-        //      match (&arg0, &arg1) {
-        //          (tmp0, tmp1) => body
-        //      }
-        //
-        // It was:
-        //
-        //      let tmp0 = &arg0;
-        //      let tmp1 = &arg1;
-        //      body
-        //
-        // Because of #11585 the new temporary lifetime rule, the enclosing
-        // statements for these temporaries become the let's themselves.
-        // If one or more of them are RefCell's, RefCell borrow() will also
-        // end there; they don't last long enough for body to use them. The
-        // match expression solves the scope problem.
-        //
-        // Note, it may also very well be transformed to:
-        //
-        //      match arg0 {
-        //          ref tmp0 => {
-        //              match arg1 => {
-        //                  ref tmp1 => body } } }
-        //
-        // But the nested match expression is proved to perform not as well
-        // as series of let's; the first approach does.
-        let pat = self.ecx.pat_tuple(self.fmtsp, pats);
-        let arm = self.ecx.arm(self.fmtsp, vec!(pat), body);
-        let head = self.ecx.expr(self.fmtsp, ast::ExprTup(heads));
-        self.ecx.expr_match(self.fmtsp, head, vec!(arm))
+        }
     }
 
     fn format_arg(ecx: &ExtCtxt, sp: Span,
