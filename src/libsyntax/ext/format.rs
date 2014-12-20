@@ -23,17 +23,16 @@ use parse::token;
 use ptr::P;
 
 use std::collections::HashMap;
-use std::string;
 
 #[deriving(PartialEq)]
 enum ArgumentType {
-    Known(string::String),
+    Known(String),
     Unsigned
 }
 
 enum Position {
     Exact(uint),
-    Named(string::String),
+    Named(String),
 }
 
 struct Context<'a, 'b:'a> {
@@ -48,12 +47,12 @@ struct Context<'a, 'b:'a> {
     /// Note that we keep a side-array of the ordering of the named arguments
     /// found to be sure that we can translate them in the same order that they
     /// were declared in.
-    names: HashMap<string::String, P<ast::Expr>>,
-    name_types: HashMap<string::String, ArgumentType>,
-    name_ordering: Vec<string::String>,
+    names: HashMap<String, P<ast::Expr>>,
+    name_types: HashMap<String, ArgumentType>,
+    name_ordering: Vec<String>,
 
     /// The latest consecutive literal strings, or empty if there weren't any.
-    literal: string::String,
+    literal: String,
 
     /// Collection of the compiled `rt::Argument` structures
     pieces: Vec<P<ast::Expr>>,
@@ -62,7 +61,7 @@ struct Context<'a, 'b:'a> {
     /// Stays `true` if all formatting parameters are default (as in "{}{}").
     all_pieces_simple: bool,
 
-    name_positions: HashMap<string::String, uint>,
+    name_positions: HashMap<String, uint>,
 
     /// Updated as arguments are consumed or methods are entered
     nest_level: uint,
@@ -84,10 +83,10 @@ pub enum Invocation {
 ///           named arguments))
 fn parse_args(ecx: &mut ExtCtxt, sp: Span, allow_method: bool,
               tts: &[ast::TokenTree])
-    -> (Invocation, Option<(P<ast::Expr>, Vec<P<ast::Expr>>, Vec<string::String>,
-                            HashMap<string::String, P<ast::Expr>>)>) {
+    -> (Invocation, Option<(P<ast::Expr>, Vec<P<ast::Expr>>, Vec<String>,
+                            HashMap<String, P<ast::Expr>>)>) {
     let mut args = Vec::new();
-    let mut names = HashMap::<string::String, P<ast::Expr>>::new();
+    let mut names = HashMap::<String, P<ast::Expr>>::new();
     let mut order = Vec::new();
 
     let mut p = ecx.new_parser_from_tts(tts);
@@ -224,7 +223,7 @@ impl<'a, 'b> Context<'a, 'b> {
         }
     }
 
-    fn describe_num_args(&self) -> string::String {
+    fn describe_num_args(&self) -> String {
         match self.args.len() {
             0 => "no arguments given".to_string(),
             1 => "there is 1 argument".to_string(),
@@ -715,7 +714,7 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt, sp: Span,
         name_ordering: name_ordering,
         nest_level: 0,
         next_arg: 0,
-        literal: string::String::new(),
+        literal: String::new(),
         pieces: Vec::new(),
         str_pieces: Vec::new(),
         all_pieces_simple: true,
