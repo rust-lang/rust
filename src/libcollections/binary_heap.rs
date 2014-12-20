@@ -240,7 +240,8 @@ impl<T: Ord> BinaryHeap<T> {
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn iter(&self) -> Iter<T> {
-        Iter { iter: self.data.iter() } }
+        Iter { iter: self.data.iter() }
+    }
 
     /// Creates a consuming iterator, that is, one that moves each value out of
     /// the binary heap in arbitrary order.  The binary heap cannot be used

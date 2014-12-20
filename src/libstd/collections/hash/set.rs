@@ -21,7 +21,7 @@ use iter::{Iterator, IteratorExt, FromIterator, Map, Chain, Extend};
 use option::Option::{Some, None, mod};
 use result::Result::{Ok, Err};
 
-use super::map::{mod, HashMap, MoveEntries, Keys, INITIAL_CAPACITY};
+use super::map::{mod, HashMap, Keys, INITIAL_CAPACITY};
 
 // FIXME(conventions): implement BitOr, BitAnd, BitXor, and Sub
 
@@ -625,7 +625,7 @@ pub struct Iter<'a, K: 'a> {
 
 /// HashSet move iterator
 pub struct IntoIter<K> {
-    iter: Map<(K, ()), K, MoveEntries<K, ()>, fn((K, ())) -> K>
+    iter: Map<(K, ()), K, map::IntoIter<K, ()>, fn((K, ())) -> K>
 }
 
 /// HashSet drain iterator
