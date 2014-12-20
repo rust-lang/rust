@@ -51,7 +51,7 @@ fn cat(in_x : uint, in_y : int, in_name: String) -> cat {
     }
 }
 
-impl fmt::Show for cat {
+impl fmt::String for cat {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.name)
     }

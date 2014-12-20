@@ -866,7 +866,7 @@ pub fn const_get_elt(cx: &CrateContext, v: ValueRef, us: &[c_uint])
     unsafe {
         let r = llvm::LLVMConstExtractValue(v, us.as_ptr(), us.len() as c_uint);
 
-        debug!("const_get_elt(v={}, us={}, r={})",
+        debug!("const_get_elt(v={}, us={:?}, r={})",
                cx.tn().val_to_string(v), us, cx.tn().val_to_string(r));
 
         return r;
@@ -1108,7 +1108,7 @@ pub fn node_id_substs<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     };
 
     if substs.types.any(|t| ty::type_needs_infer(*t)) {
-        tcx.sess.bug(format!("type parameters for node {} include inference types: {}",
+        tcx.sess.bug(format!("type parameters for node {:?} include inference types: {}",
                              node, substs.repr(tcx))[]);
     }
 

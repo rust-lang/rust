@@ -295,7 +295,7 @@ impl<'tcx> Repr<'tcx> for ObjectSafetyViolation<'tcx> {
             ObjectSafetyViolation::SizedSelf =>
                 format!("SizedSelf"),
             ObjectSafetyViolation::Method(ref m, code) =>
-                format!("Method({},{})", m.repr(tcx), code),
+                format!("Method({},{:?})", m.repr(tcx), code),
         }
     }
 }

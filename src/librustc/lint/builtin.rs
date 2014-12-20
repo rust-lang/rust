@@ -1629,7 +1629,6 @@ declare_lint! {
     Warn,
     "detects use of #[deprecated] items"
 }
-
 // FIXME #6875: Change to Warn after std library stabilization is complete
 declare_lint! {
     EXPERIMENTAL,
@@ -1848,7 +1847,7 @@ declare_lint! {
     "detects transmutes of fat pointers"
 }
 
-declare_lint!{
+declare_lint! {
     pub MISSING_COPY_IMPLEMENTATIONS,
     Warn,
     "detects potentially-forgotten implementations of `Copy`"

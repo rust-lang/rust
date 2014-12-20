@@ -118,7 +118,7 @@ fn check_expr(v: &mut CheckCrateVisitor, e: &ast::Expr) {
                 DefStruct(_) | DefVariant(_, _, _) => {}
 
                 def => {
-                    debug!("(checking const) found bad def: {}", def);
+                    debug!("(checking const) found bad def: {:?}", def);
                     span_err!(v.tcx.sess, e.span, E0014,
                               "paths in constants may only refer to constants \
                                or functions");

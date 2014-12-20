@@ -39,7 +39,7 @@ pub struct Error {
 
 impl fmt::Show for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Regex syntax error near position {}: {}",
+        write!(f, "Regex syntax error near position {}: {:?}",
                self.pos, self.msg)
     }
 }
@@ -121,7 +121,7 @@ impl BuildAst {
     fn flags(&self) -> Flags {
         match *self {
             Paren(flags, _, _) => flags,
-            _ => panic!("Cannot get flags from {}", self),
+            _ => panic!("Cannot get flags from {:?}", self),
         }
     }
 
@@ -129,7 +129,7 @@ impl BuildAst {
         match *self {
             Paren(_, 0, _) => None,
             Paren(_, c, _) => Some(c),
-            _ => panic!("Cannot get capture group from {}", self),
+            _ => panic!("Cannot get capture group from {:?}", self),
         }
     }
 
@@ -143,7 +143,7 @@ impl BuildAst {
                     Some(name.clone())
                 }
             }
-            _ => panic!("Cannot get capture name from {}", self),
+            _ => panic!("Cannot get capture name from {:?}", self),
         }
     }
 
@@ -157,7 +157,7 @@ impl BuildAst {
     fn unwrap(self) -> Result<Ast, Error> {
         match self {
             Expr(x) => Ok(x),
-            _ => panic!("Tried to unwrap non-AST item: {}", self),
+            _ => panic!("Tried to unwrap non-AST item: {:?}", self),
         }
     }
 }
@@ -284,7 +284,7 @@ impl<'a> Parser<'a> {
         match self.next_char() {
             true => Ok(()),
             false => {
-                self.err(format!("Expected {} but got EOF.",
+                self.err(format!("Expected {:?} but got EOF.",
                                  expected)[])
             }
         }
@@ -293,10 +293,10 @@ impl<'a> Parser<'a> {
     fn expect(&mut self, expected: char) -> Result<(), Error> {
         match self.next_char() {
             true if self.cur() == expected => Ok(()),
-            true => self.err(format!("Expected '{}' but got '{}'.",
+            true => self.err(format!("Expected '{:?}' but got '{:?}'.",
                                      expected, self.cur())[]),
             false => {
-                self.err(format!("Expected '{}' but got EOF.",
+                self.err(format!("Expected '{:?}' but got EOF.",
                                  expected)[])
             }
         }
@@ -394,7 +394,7 @@ impl<'a> Parser<'a> {
                             continue
                         }
                         Some(ast) =>
-                            panic!("Expected Class AST but got '{}'", ast),
+                            panic!("Expected Class AST but got '{:?}'", ast),
                         // Just drop down and try to add as a regular character.
                         None => {},
                     },
@@ -409,7 +409,7 @@ impl<'a> Parser<'a> {
                             return self.err(
                                 "\\A, \\z, \\b and \\B are not valid escape \
                                  sequences inside a character class."),
-                        ast => panic!("Unexpected AST item '{}'", ast),
+                        ast => panic!("Unexpected AST item '{:?}'", ast),
                     }
                 }
                 ']' if ranges.len() > 0 || alts.len() > 0 => {
@@ -442,7 +442,7 @@ impl<'a> Parser<'a> {
                     match try!(self.parse_escape()) {
                         Literal(c3, _) => c2 = c3, // allow literal escapes below
                         ast =>
-                            return self.err(format!("Expected a literal, but got {}.",
+                            return self.err(format!("Expected a literal, but got {:?}.",
                                                     ast)[]),
                     }
                 }
@@ -512,7 +512,7 @@ impl<'a> Parser<'a> {
                 None => {
                     return self.err(format!("No closing brace for counted \
                                              repetition starting at position \
-                                             {}.",
+                                             {:?}.",
                                             start)[])
                 }
             };
@@ -685,7 +685,7 @@ impl<'a> Parser<'a> {
         match num::from_str_radix::<u32>(s[], 8) {
             Some(n) => Ok(Literal(try!(self.char_from_u32(n)), FLAG_EMPTY)),
             None => {
-                self.err(format!("Could not parse '{}' as octal number.",
+                self.err(format!("Could not parse {:?} as octal number.",
                                  s)[])
             }
         }

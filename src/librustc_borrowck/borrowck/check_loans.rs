@@ -96,7 +96,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for CheckLoanCtxt<'a, 'tcx> {
                consume_span: Span,
                cmt: mc::cmt<'tcx>,
                mode: euv::ConsumeMode) {
-        debug!("consume(consume_id={}, cmt={}, mode={})",
+        debug!("consume(consume_id={}, cmt={}, mode={:?})",
                consume_id, cmt.repr(self.tcx()), mode);
 
         self.consume_common(consume_id, consume_span, cmt, mode);
@@ -111,7 +111,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for CheckLoanCtxt<'a, 'tcx> {
                    consume_pat: &ast::Pat,
                    cmt: mc::cmt<'tcx>,
                    mode: euv::ConsumeMode) {
-        debug!("consume_pat(consume_pat={}, cmt={}, mode={})",
+        debug!("consume_pat(consume_pat={}, cmt={}, mode={:?})",
                consume_pat.repr(self.tcx()),
                cmt.repr(self.tcx()),
                mode);
@@ -127,8 +127,8 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for CheckLoanCtxt<'a, 'tcx> {
               bk: ty::BorrowKind,
               loan_cause: euv::LoanCause)
     {
-        debug!("borrow(borrow_id={}, cmt={}, loan_region={}, \
-               bk={}, loan_cause={})",
+        debug!("borrow(borrow_id={}, cmt={}, loan_region={:?}, \
+               bk={:?}, loan_cause={:?})",
                borrow_id, cmt.repr(self.tcx()), loan_region,
                bk, loan_cause);
 
@@ -355,10 +355,10 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
         //! (Note that some loans can be *issued* without necessarily
         //! taking effect yet.)
 
-        debug!("check_for_conflicting_loans(scope={})", scope);
+        debug!("check_for_conflicting_loans(scope={:?})", scope);
 
         let new_loan_indices = self.loans_generated_by(scope);
-        debug!("new_loan_indices = {}", new_loan_indices);
+        debug!("new_loan_indices = {:?}", new_loan_indices);
 
         self.each_issued_loan(scope, |issued_loan| {
             for &new_loan_index in new_loan_indices.iter() {
@@ -696,7 +696,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                               span: Span,
                               use_kind: MovedValueUseKind,
                               lp: &Rc<LoanPath<'tcx>>) {
-        debug!("check_if_path_is_moved(id={}, use_kind={}, lp={})",
+        debug!("check_if_path_is_moved(id={}, use_kind={:?}, lp={})",
                id, use_kind, lp.repr(self.bccx.tcx));
         let base_lp = owned_ptr_base_path_rc(lp);
         self.move_data.each_move_of(id, &base_lp, |the_move, moved_lp| {

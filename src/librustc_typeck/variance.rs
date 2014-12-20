@@ -243,8 +243,8 @@ enum VarianceTerm<'a> {
 impl<'a> fmt::Show for VarianceTerm<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            ConstantTerm(c1) => write!(f, "{}", c1),
-            TransformTerm(v1, v2) => write!(f, "({} \u{00D7} {})", v1, v2),
+            ConstantTerm(c1) => write!(f, "{:?}", c1),
+            TransformTerm(v1, v2) => write!(f, "({:?} \u{00D7} {:?})", v1, v2),
             InferredTerm(id) => write!(f, "[{}]", { let InferredIndex(i) = id; i })
         }
     }
@@ -323,10 +323,10 @@ impl<'a, 'tcx> TermsContext<'a, 'tcx> {
         assert!(newly_added);
 
         debug!("add_inferred(item_id={}, \
-                kind={}, \
+                kind={:?}, \
                 index={}, \
                 param_id={},
-                inf_index={})",
+                inf_index={:?})",
                 item_id, kind, index, param_id, inf_index);
     }
 
@@ -673,8 +673,8 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
     fn add_constraint(&mut self,
                       InferredIndex(index): InferredIndex,
                       variance: VarianceTermPtr<'a>) {
-        debug!("add_constraint(index={}, variance={})",
-                index, variance.to_string());
+        debug!("add_constraint(index={}, variance={:?})",
+                index, variance);
         self.constraints.push(Constraint { inferred: InferredIndex(index),
                                            variance: variance });
     }
@@ -854,7 +854,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                                    region_param_defs: &[ty::RegionParameterDef],
                                    substs: &subst::Substs<'tcx>,
                                    variance: VarianceTermPtr<'a>) {
-        debug!("add_constraints_from_substs(def_id={})", def_id);
+        debug!("add_constraints_from_substs(def_id={:?})", def_id);
 
         for p in type_param_defs.iter() {
             let variance_decl =
@@ -988,14 +988,14 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
                 let new_value = glb(variance, old_value);
                 if old_value != new_value {
                     debug!("Updating inferred {} (node {}) \
-                            from {} to {} due to {}",
+                            from {:?} to {:?} due to {:?}",
                             inferred,
                             self.terms_cx
                                 .inferred_infos[inferred]
                                 .param_id,
                             old_value,
                             new_value,
-                            term.to_string());
+                            term);
 
                     self.solutions[inferred] = new_value;
                     changed = true;
@@ -1028,7 +1028,7 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
                   inferred_infos[index].item_id == item_id {
                 let info = &inferred_infos[index];
                 let variance = solutions[index];
-                debug!("Index {} Info {} / {} / {} Variance {}",
+                debug!("Index {} Info {} / {:?} / {:?} Variance {:?}",
                        index, info.index, info.kind, info.space, variance);
                 match info.kind {
                     TypeParam => {

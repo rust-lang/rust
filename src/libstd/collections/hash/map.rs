@@ -292,7 +292,7 @@ fn test_resize_policy() {
 ///
 /// // Use derived implementation to print the status of the vikings.
 /// for (viking, health) in vikings.iter() {
-///     println!("{} has {} hp", viking, health);
+///     println!("{:?} has {} hp", viking, health);
 /// }
 /// ```
 #[derive(Clone)]
@@ -1207,11 +1207,11 @@ impl<K: Eq + Hash<S>, V: Eq, S, H: Hasher<S>> Eq for HashMap<K, V, H> {}
 #[stable]
 impl<K: Eq + Hash<S> + Show, V: Show, S, H: Hasher<S>> Show for HashMap<K, V, H> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(f, "{{"));
+        try!(write!(f, "HashMap {{"));
 
         for (i, (k, v)) in self.iter().enumerate() {
             if i != 0 { try!(write!(f, ", ")); }
-            try!(write!(f, "{}: {}", *k, *v));
+            try!(write!(f, "{:?}: {:?}", *k, *v));
         }
 
         write!(f, "}}")
@@ -1891,10 +1891,10 @@ mod test_map {
         map.insert(1i, 2i);
         map.insert(3i, 4i);
 
-        let map_str = format!("{}", map);
+        let map_str = format!("{:?}", map);
 
-        assert!(map_str == "{1: 2, 3: 4}" || map_str == "{3: 4, 1: 2}");
-        assert_eq!(format!("{}", empty), "{}");
+        assert!(map_str == "HashMap {1i: 2i, 3i: 4i}" || map_str == "{3i: 4i, 1i: 2i}");
+        assert_eq!(format!("{:?}", empty), "HashMap {}");
     }
 
     #[test]

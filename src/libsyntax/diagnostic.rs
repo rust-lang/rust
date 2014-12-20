@@ -222,7 +222,7 @@ pub fn mk_handler(e: Box<Emitter + Send>) -> Handler {
     }
 }
 
-#[derive(Copy, PartialEq, Clone)]
+#[derive(Copy, PartialEq, Clone, Show)]
 pub enum Level {
     Bug,
     Fatal,
@@ -232,9 +232,9 @@ pub enum Level {
     Help,
 }
 
-impl fmt::Show for Level {
+impl fmt::String for Level {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use std::fmt::Show;
+        use std::fmt::String;
 
         match *self {
             Bug => "error: internal compiler error".fmt(f),
@@ -374,7 +374,7 @@ impl Emitter for EmitterWriter {
 
         match error {
             Ok(()) => {}
-            Err(e) => panic!("failed to print diagnostics: {}", e),
+            Err(e) => panic!("failed to print diagnostics: {:?}", e),
         }
     }
 
@@ -382,7 +382,7 @@ impl Emitter for EmitterWriter {
                    sp: RenderSpan, msg: &str, lvl: Level) {
         match emit(self, cm, sp, msg, None, lvl, true) {
             Ok(()) => {}
-            Err(e) => panic!("failed to print diagnostics: {}", e),
+            Err(e) => panic!("failed to print diagnostics: {:?}", e),
         }
     }
 }

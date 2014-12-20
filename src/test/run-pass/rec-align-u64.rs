@@ -82,11 +82,11 @@ pub fn main() {
     unsafe {
         let x = Outer {c8: 22u8, t: Inner {c64: 44u64}};
 
-        let y = format!("{}", x);
+        let y = format!("{:?}", x);
 
-        println!("align inner = {}", rusti::min_align_of::<Inner>());
-        println!("size outer = {}", mem::size_of::<Outer>());
-        println!("y = {}", y);
+        println!("align inner = {:?}", rusti::min_align_of::<Inner>());
+        println!("size outer = {:?}", mem::size_of::<Outer>());
+        println!("y = {:?}", y);
 
         // per clang/gcc the alignment of `Inner` is 4 on x86.
         assert_eq!(rusti::min_align_of::<Inner>(), m::m::align());
@@ -95,6 +95,6 @@ pub fn main() {
         // because `Inner`s alignment was 4.
         assert_eq!(mem::size_of::<Outer>(), m::m::size());
 
-        assert_eq!(y, "Outer { c8: 22, t: Inner { c64: 44 } }".to_string());
+        assert_eq!(y, "Outer { c8: 22u8, t: Inner { c64: 44u64 } }".to_string());
     }
 }

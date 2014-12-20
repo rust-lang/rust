@@ -145,7 +145,7 @@ pub fn represent_type<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     }
 
     let repr = Rc::new(represent_type_uncached(cx, t));
-    debug!("Represented as: {}", repr);
+    debug!("Represented as: {:?}", repr);
     cx.adt_reprs().borrow_mut().insert(t, repr.clone());
     repr
 }
@@ -482,7 +482,7 @@ fn mk_cenum<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 }
 
 fn range_to_inttype(cx: &CrateContext, hint: Hint, bounds: &IntBounds) -> IntType {
-    debug!("range_to_inttype: {} {}", hint, bounds);
+    debug!("range_to_inttype: {:?} {:?}", hint, bounds);
     // Lists of sizes to try.  u64 is always allowed as a fallback.
     #[allow(non_upper_case_globals)]
     static choose_shortest: &'static[IntType] = &[
@@ -533,7 +533,7 @@ pub fn ll_inttype(cx: &CrateContext, ity: IntType) -> Type {
 }
 
 fn bounds_usable(cx: &CrateContext, ity: IntType, bounds: &IntBounds) -> bool {
-    debug!("bounds_usable: {} {}", ity, bounds);
+    debug!("bounds_usable: {:?} {:?}", ity, bounds);
     match ity {
         attr::SignedInt(_) => {
             let lllo = C_integral(ll_inttype(cx, ity), bounds.slo as u64, true);
@@ -731,7 +731,7 @@ pub fn trans_get_discr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr<'tcx>,
     -> ValueRef {
     let signed;
     let val;
-    debug!("trans_get_discr r: {}", r);
+    debug!("trans_get_discr r: {:?}", r);
     match *r {
         CEnum(ity, min, max) => {
             val = load_discr(bcx, ity, scrutinee, min, max);

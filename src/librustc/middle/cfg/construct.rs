@@ -480,12 +480,12 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 let inputs = inline_asm.inputs.iter();
                 let outputs = inline_asm.outputs.iter();
                 let post_inputs = self.exprs(inputs.map(|a| {
-                    debug!("cfg::construct InlineAsm id:{} input:{}", expr.id, a);
+                    debug!("cfg::construct InlineAsm id:{} input:{:?}", expr.id, a);
                     let &(_, ref expr) = a;
                     &**expr
                 }), pred);
                 let post_outputs = self.exprs(outputs.map(|a| {
-                    debug!("cfg::construct InlineAsm id:{} output:{}", expr.id, a);
+                    debug!("cfg::construct InlineAsm id:{} output:{:?}", expr.id, a);
                     let &(_, ref expr, _) = a;
                     &**expr
                 }), post_inputs);
@@ -622,7 +622,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                     r => {
                         self.tcx.sess.span_bug(
                             expr.span,
-                            format!("bad entry `{}` in def_map for label",
+                            format!("bad entry `{:?}` in def_map for label",
                                     r)[]);
                     }
                 }

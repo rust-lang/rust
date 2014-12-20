@@ -31,6 +31,6 @@ pub fn main() {
     let sa = A { a: 100 };
     let sb = B { b: 200, pa: &sa };
 
-    println!("sa is {}", sa);
-    println!("sb is {}", sb);
+    println!("sa is {:?}", sa);
+    println!("sb is {:?}", sb);
 }

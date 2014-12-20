@@ -1051,7 +1051,7 @@ impl Context {
         F: FnOnce(&mut Context) -> T,
     {
         if s.len() == 0 {
-            panic!("Unexpected empty destination: {}", self.current);
+            panic!("Unexpected empty destination: {:?}", self.current);
         }
         let prev = self.dst.clone();
         self.dst.push(s.as_slice());
@@ -1351,8 +1351,15 @@ impl<'a> Item<'a> {
 }
 
 
-
+//NOTE(stage0): remove impl after snapshot
+#[cfg(stage0)]
 impl<'a> fmt::Show for Item<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::String::fmt(self, f)
+    }
+}
+
+impl<'a> fmt::String for Item<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         // Write the breadcrumb trail header for the top
         try!(write!(fmt, "\n<h1 class='fqn'><span class='in-band'>"));
@@ -1542,7 +1549,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
 
     indices.sort_by(|&i1, &i2| cmp(&items[i1], &items[i2], i1, i2));
 
-    debug!("{}", indices);
+    debug!("{:?}", indices);
     let mut curty = None;
     for &idx in indices.iter() {
         let myitem = &items[idx];
@@ -1626,7 +1633,16 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
 }
 
 struct Initializer<'a>(&'a str);
+
+//NOTE(stage0): remove impl after snapshot
+#[cfg(stage0)]
 impl<'a> fmt::Show for Initializer<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::String::fmt(self, f)
+    }
+}
+
+impl<'a> fmt::String for Initializer<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let Initializer(s) = *self;
         if s.len() == 0 { return Ok(()); }
@@ -2127,7 +2143,7 @@ fn render_impl(w: &mut fmt::Formatter, i: &Impl) -> fmt::Result {
                 try!(assoc_type(w, item, typaram));
                 try!(write!(w, "</code></h4>\n"));
             }
-            _ => panic!("can't make docs for trait item with name {}", item.name)
+            _ => panic!("can't make docs for trait item with name {:?}", item.name)
         }
         match item.doc_value() {
             Some(s) if dox => {
@@ -2188,7 +2204,15 @@ fn item_typedef(w: &mut fmt::Formatter, it: &clean::Item,
     document(w, it)
 }
 
+//NOTE(stage0): remove impl after snapshot
+#[cfg(stage0)]
 impl<'a> fmt::Show for Sidebar<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::String::fmt(self, f)
+    }
+}
+
+impl<'a> fmt::String for Sidebar<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         let cx = self.cx;
         let it = self.item;
@@ -2243,7 +2267,15 @@ impl<'a> fmt::Show for Sidebar<'a> {
     }
 }
 
+//NOTE(stage0): remove impl after snapshot
+#[cfg(stage0)]
 impl<'a> fmt::Show for Source<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::String::fmt(self, f)
+    }
+}
+
+impl<'a> fmt::String for Source<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         let Source(s) = *self;
         let lines = s.lines().count();

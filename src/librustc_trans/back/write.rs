@@ -174,7 +174,7 @@ fn create_target_machine(sess: &Session) -> TargetMachineRef {
         "default" => llvm::RelocDefault,
         "dynamic-no-pic" => llvm::RelocDynamicNoPic,
         _ => {
-            sess.err(format!("{} is not a valid relocation mode",
+            sess.err(format!("{:?} is not a valid relocation mode",
                              sess.opts
                                  .cg
                                  .relocation_model)[]);
@@ -209,7 +209,7 @@ fn create_target_machine(sess: &Session) -> TargetMachineRef {
         "medium" => llvm::CodeModelMedium,
         "large" => llvm::CodeModelLarge,
         _ => {
-            sess.err(format!("{} is not a valid code model",
+            sess.err(format!("{:?} is not a valid code model",
                              sess.opts
                                  .cg
                                  .code_model)[]);

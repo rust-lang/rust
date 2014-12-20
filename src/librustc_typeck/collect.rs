@@ -169,8 +169,8 @@ impl<'a, 'tcx> AstConv<'tcx> for CollectCtxt<'a, 'tcx> {
             }
             x => {
                 self.tcx.sess.bug(format!("unexpected sort of node \
-                                           in get_item_type_scheme(): {}",
-                                          x).as_slice());
+                                           in get_item_type_scheme(): {:?}",
+                                          x)[]);
             }
         }
     }
@@ -475,7 +475,7 @@ fn convert_methods<'a,'tcx,'i,I>(ccx: &CollectCtxt<'a, 'tcx>,
 
         write_ty_to_tcx(tcx, m.id, fty);
 
-        debug!("writing method type: def_id={} mty={}",
+        debug!("writing method type: def_id={:?} mty={}",
                mty.def_id, mty.repr(ccx.tcx));
 
         tcx.impl_or_trait_items
@@ -840,7 +840,7 @@ fn trait_def_of_item<'a, 'tcx>(ccx: &CollectCtxt<'a, 'tcx>,
         ref s => {
             tcx.sess.span_bug(
                 it.span,
-                format!("trait_def_of_item invoked on {}", s)[]);
+                format!("trait_def_of_item invoked on {:?}", s)[]);
         }
     };
 
@@ -1201,7 +1201,7 @@ fn ty_generics<'a,'tcx>(ccx: &CollectCtxt<'a,'tcx>,
                                            index: i as u32,
                                            def_id: local_def(l.lifetime.id),
                                            bounds: bounds };
-        debug!("ty_generics: def for region param: {}", def);
+        debug!("ty_generics: def for region param: {:?}", def);
         result.regions.push(space, def);
     }
 
@@ -1213,7 +1213,7 @@ fn ty_generics<'a,'tcx>(ccx: &CollectCtxt<'a,'tcx>,
                                                    space,
                                                    param,
                                                    i as u32);
-        debug!("ty_generics: def for type param: {}, {}",
+        debug!("ty_generics: def for type param: {}, {:?}",
                def.repr(ccx.tcx),
                space);
         result.types.push(space, def);

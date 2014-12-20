@@ -212,12 +212,12 @@ impl<'a> Parser<'a> {
                 self.cur.next();
             }
             Some((_, other)) => {
-                self.err(format!("expected `{}`, found `{}`", c, other)[]);
+                self.err(format!("expected `{:?}`, found `{:?}`", c, other)[]);
             }
             None => {
-                self.err(format!("expected `{}` but string was terminated",
+                self.err(format!("expected `{:?}` but string was terminated",
                                  c)[]);
-            }
+           }
         }
     }
 

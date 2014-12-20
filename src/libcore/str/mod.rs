@@ -143,7 +143,7 @@ Section: Creating a string
 */
 
 /// Errors which can occur when attempting to interpret a byte slice as a `str`.
-#[derive(Copy, Eq, PartialEq, Clone)]
+#[derive(Copy, Eq, PartialEq, Clone, Show)]
 #[unstable = "error enumeration recently added and definitions may be refined"]
 pub enum Utf8Error {
     /// An invalid byte was detected at the byte offset given.

@@ -976,7 +976,7 @@ pub fn invoke<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 
     if need_invoke(bcx) {
-        debug!("invoking {} at {}", bcx.val_to_string(llfn), bcx.llbb);
+        debug!("invoking {} at {:?}", bcx.val_to_string(llfn), bcx.llbb);
         for &llarg in llargs.iter() {
             debug!("arg: {}", bcx.val_to_string(llarg));
         }
@@ -996,7 +996,7 @@ pub fn invoke<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                               Some(attributes));
         return (llresult, normal_bcx);
     } else {
-        debug!("calling {} at {}", bcx.val_to_string(llfn), bcx.llbb);
+        debug!("calling {} at {:?}", bcx.val_to_string(llfn), bcx.llbb);
         for &llarg in llargs.iter() {
             debug!("arg: {}", bcx.val_to_string(llarg));
         }
@@ -2738,7 +2738,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
     }
 
     let item = ccx.tcx().map.get(id);
-    debug!("get_item_val: id={} item={}", id, item);
+    debug!("get_item_val: id={} item={:?}", id, item);
     let val = match item {
         ast_map::NodeItem(i) => {
             let ty = ty::node_id_to_type(ccx.tcx(), i.id);
@@ -2913,7 +2913,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
         }
 
         ref variant => {
-            ccx.sess().bug(format!("get_item_val(): unexpected variant: {}",
+            ccx.sess().bug(format!("get_item_val(): unexpected variant: {:?}",
                                    variant)[])
         }
     };

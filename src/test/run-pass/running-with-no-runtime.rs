@@ -57,7 +57,7 @@ fn start(argc: int, argv: *const *const u8) -> int {
 
 fn pass(output: ProcessOutput) {
     if !output.status.success() {
-        println!("{}", str::from_utf8(output.output.as_slice()));
-        println!("{}", str::from_utf8(output.error.as_slice()));
+        println!("{:?}", str::from_utf8(output.output.as_slice()));
+        println!("{:?}", str::from_utf8(output.error.as_slice()));
     }
 }

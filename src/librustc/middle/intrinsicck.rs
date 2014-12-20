@@ -209,7 +209,7 @@ impl<'a, 'tcx> IntrinsicCheckingVisitor<'a, 'tcx> {
             }
 
             Some((space, index, &param_ty)) => {
-                debug!("with_each_combination: space={}, index={}, param_ty={}",
+                debug!("with_each_combination: space={:?}, index={}, param_ty={}",
                        space, index, param_ty.repr(self.tcx));
 
                 if !ty::type_is_sized(param_env, span, param_ty) {

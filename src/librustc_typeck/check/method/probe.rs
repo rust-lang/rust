@@ -267,7 +267,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             return; // already visited
         }
 
-        debug!("assemble_inherent_impl_probe {}", impl_def_id);
+        debug!("assemble_inherent_impl_probe {:?}", impl_def_id);
 
         let method = match impl_method(self.tcx(), impl_def_id, self.method_name) {
             Some(m) => m,
@@ -1024,7 +1024,7 @@ fn trait_method<'tcx>(tcx: &ty::ctxt<'tcx>,
                       -> Option<(uint, Rc<ty::Method<'tcx>>)>
 {
     let trait_items = ty::trait_items(tcx, trait_def_id);
-    debug!("trait_method; items: {}", trait_items);
+    debug!("trait_method; items: {:?}", trait_items);
     trait_items
         .iter()
         .filter(|item|
@@ -1126,7 +1126,7 @@ impl<'tcx> Repr<'tcx> for CandidateKind<'tcx> {
 
 impl<'tcx> Repr<'tcx> for CandidateStep<'tcx> {
     fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
-        format!("CandidateStep({},{})",
+        format!("CandidateStep({},{:?})",
                 self.self_ty.repr(tcx),
                 self.adjustment)
     }
@@ -1134,19 +1134,19 @@ impl<'tcx> Repr<'tcx> for CandidateStep<'tcx> {
 
 impl<'tcx> Repr<'tcx> for PickAdjustment {
     fn repr(&self, _tcx: &ty::ctxt) -> String {
-        format!("{}", self)
+        format!("{:?}", self)
     }
 }
 
 impl<'tcx> Repr<'tcx> for PickKind<'tcx> {
     fn repr(&self, _tcx: &ty::ctxt) -> String {
-        format!("{}", self)
+        format!("{:?}", self)
     }
 }
 
 impl<'tcx> Repr<'tcx> for Pick<'tcx> {
     fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
-        format!("Pick(method_ty={}, adjustment={}, kind={})",
+        format!("Pick(method_ty={}, adjustment={:?}, kind={:?})",
                 self.method_ty.repr(tcx),
                 self.adjustment,
                 self.kind)

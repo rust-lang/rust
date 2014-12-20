@@ -488,7 +488,7 @@ impl CodeMap {
         let mut total_extra_bytes = 0;
 
         for mbc in map.multibyte_chars.borrow().iter() {
-            debug!("{}-byte char at {}", mbc.bytes, mbc.pos);
+            debug!("{}-byte char at {:?}", mbc.bytes, mbc.pos);
             if mbc.pos < bpos {
                 // every character is at least one byte, so we only
                 // count the actual extra bytes.
@@ -566,9 +566,9 @@ impl CodeMap {
         let chpos = self.bytepos_to_file_charpos(pos);
         let linebpos = (*f.lines.borrow())[a];
         let linechpos = self.bytepos_to_file_charpos(linebpos);
-        debug!("byte pos {} is on the line at byte pos {}",
+        debug!("byte pos {:?} is on the line at byte pos {:?}",
                pos, linebpos);
-        debug!("char pos {} is on the line at char pos {}",
+        debug!("char pos {:?} is on the line at char pos {:?}",
                chpos, linechpos);
         debug!("byte is on line: {}", line);
         assert!(chpos >= linechpos);

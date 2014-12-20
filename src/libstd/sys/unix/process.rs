@@ -125,7 +125,7 @@ impl Process {
                     return match input.read(&mut bytes) {
                         Ok(8) => {
                             assert!(combine(CLOEXEC_MSG_FOOTER) == combine(bytes.slice(4, 8)),
-                                "Validation on the CLOEXEC pipe failed: {}", bytes);
+                                "Validation on the CLOEXEC pipe failed: {:?}", bytes);
                             let errno = combine(bytes.slice(0, 4));
                             assert!(p.wait(0).is_ok(), "wait(0) should either return Ok or panic");
                             Err(super::decode_error(errno))
@@ -133,7 +133,7 @@ impl Process {
                         Err(ref e) if e.kind == EndOfFile => Ok(p),
                         Err(e) => {
                             assert!(p.wait(0).is_ok(), "wait(0) should either return Ok or panic");
-                            panic!("the CLOEXEC pipe failed: {}", e)
+                            panic!("the CLOEXEC pipe failed: {:?}", e)
                         },
                         Ok(..) => { // pipe I/O up to PIPE_BUF bytes should be atomic
                             assert!(p.wait(0).is_ok(), "wait(0) should either return Ok or panic");
@@ -285,7 +285,7 @@ impl Process {
         let mut status = 0 as c_int;
         if deadline == 0 {
             return match retry(|| unsafe { c::waitpid(self.pid, &mut status, 0) }) {
-                -1 => panic!("unknown waitpid error: {}", super::last_error()),
+                -1 => panic!("unknown waitpid error: {:?}", super::last_error()),
                 _ => Ok(translate_status(status)),
             }
         }
@@ -410,7 +410,7 @@ impl Process {
                         continue
                     }
 
-                    n => panic!("error in select {} ({})", os::errno(), n),
+                    n => panic!("error in select {:?} ({:?})", os::errno(), n),
                 }
 
                 // Process any pending messages
@@ -491,7 +491,7 @@ impl Process {
                     n if n > 0 => { ret = true; }
                     0 => return true,
                     -1 if wouldblock() => return ret,
-                    n => panic!("bad read {} ({})", os::last_os_error(), n),
+                    n => panic!("bad read {:?} ({:?})", os::last_os_error(), n),
                 }
             }
         }
@@ -514,7 +514,7 @@ impl Process {
             } {
                 1 => {}
                 -1 if wouldblock() => {} // see above comments
-                n => panic!("bad error on write fd: {} {}", n, os::errno()),
+                n => panic!("bad error on write fd: {:?} {:?}", n, os::errno()),
             }
         }
     }
@@ -526,7 +526,7 @@ impl Process {
         }) {
             n if n == self.pid => Some(translate_status(status)),
             0 => None,
-            n => panic!("unknown waitpid error `{}`: {}", n,
+            n => panic!("unknown waitpid error `{:?}`: {:?}", n,
                        super::last_error()),
         }
     }

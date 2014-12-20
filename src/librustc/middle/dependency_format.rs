@@ -149,7 +149,7 @@ fn calculate_type(sess: &session::Session,
             add_library(sess, cnum, cstore::RequireDynamic, &mut formats);
             let deps = csearch::get_dylib_dependency_formats(&sess.cstore, cnum);
             for &(depnum, style) in deps.iter() {
-                debug!("adding {}: {}", style,
+                debug!("adding {:?}: {}", style,
                        sess.cstore.get_crate_data(depnum).name.clone());
                 add_library(sess, depnum, style, &mut formats);
             }

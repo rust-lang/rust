@@ -277,7 +277,7 @@ pub fn type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
         None => ()
     }
 
-    debug!("type_of {} {}", t.repr(cx.tcx()), t.sty);
+    debug!("type_of {} {:?}", t.repr(cx.tcx()), t.sty);
 
     // Replace any typedef'd types with their equivalent non-typedef
     // type. This ensures that all LLVM nominal types that contain
@@ -288,7 +288,7 @@ pub fn type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
 
     if t != t_norm {
         let llty = type_of(cx, t_norm);
-        debug!("--> normalized {} {} to {} {} llty={}",
+        debug!("--> normalized {} {:?} to {} {:?} llty={}",
                 t.repr(cx.tcx()),
                 t,
                 t_norm.repr(cx.tcx()),
@@ -407,7 +407,7 @@ pub fn type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
       ty::ty_err(..) => cx.sess().bug("type_of with ty_err"),
     };
 
-    debug!("--> mapped t={} {} to llty={}",
+    debug!("--> mapped t={} {:?} to llty={}",
             t.repr(cx.tcx()),
             t,
             cx.tn().type_to_string(llty));
@@ -457,7 +457,7 @@ pub fn llvm_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     let tstr = if strings.is_empty() {
         base
     } else {
-        format!("{}<{}>", base, strings)
+        format!("{}<{:?}>", base, strings)
     };
 
     if did.krate == 0 {

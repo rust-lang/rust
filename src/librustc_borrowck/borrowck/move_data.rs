@@ -311,7 +311,7 @@ impl<'tcx> MoveData<'tcx> {
             }
         };
 
-        debug!("move_path(lp={}, index={})",
+        debug!("move_path(lp={}, index={:?})",
                lp.repr(tcx),
                index);
 
@@ -362,7 +362,7 @@ impl<'tcx> MoveData<'tcx> {
                     lp: Rc<LoanPath<'tcx>>,
                     id: ast::NodeId,
                     kind: MoveKind) {
-        debug!("add_move(lp={}, id={}, kind={})",
+        debug!("add_move(lp={}, id={}, kind={:?})",
                lp.repr(tcx),
                id,
                kind);
@@ -413,12 +413,12 @@ impl<'tcx> MoveData<'tcx> {
         };
 
         if self.is_var_path(path_index) {
-            debug!("add_assignment[var](lp={}, assignment={}, path_index={})",
+            debug!("add_assignment[var](lp={}, assignment={}, path_index={:?})",
                    lp.repr(tcx), self.var_assignments.borrow().len(), path_index);
 
             self.var_assignments.borrow_mut().push(assignment);
         } else {
-            debug!("add_assignment[path](lp={}, path_index={})",
+            debug!("add_assignment[path](lp={}, path_index={:?})",
                    lp.repr(tcx), path_index);
 
             self.path_assignments.borrow_mut().push(assignment);

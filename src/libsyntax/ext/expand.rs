@@ -36,7 +36,7 @@ pub fn expand_type(t: P<ast::Ty>,
                    fld: &mut MacroExpander,
                    impl_ty: Option<P<ast::Ty>>)
                    -> P<ast::Ty> {
-    debug!("expanding type {} with impl_ty {}", t, impl_ty);
+    debug!("expanding type {:?} with impl_ty {:?}", t, impl_ty);
     let t = match (t.node.clone(), impl_ty) {
         // Expand uses of `Self` in impls to the concrete type.
         (ast::Ty_::TyPath(ref path, _), Some(ref impl_ty)) => {

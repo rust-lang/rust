@@ -581,7 +581,7 @@ impl<T: Eq> Eq for Arc<T> {}
 
 impl<T: fmt::Show> fmt::Show for Arc<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        (**self).fmt(f)
+        write!(f, "Arc({:?})", (**self))
     }
 }
 
@@ -794,7 +794,7 @@ mod tests {
     #[test]
     fn show_arc() {
         let a = Arc::new(5u32);
-        assert!(format!("{}", a) == "5")
+        assert!(format!("{:?}", a) == "Arc(5u32)")
     }
 
     // Make sure deriving works with Arc<T>

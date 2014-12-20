@@ -188,7 +188,7 @@ fn region_of_def(fcx: &FnCtxt, def: def::Def) -> ty::Region {
             }
         }
         _ => {
-            tcx.sess.bug(format!("unexpected def in region_of_def: {}",
+            tcx.sess.bug(format!("unexpected def in region_of_def: {:?}",
                                  def)[])
         }
     }
@@ -484,7 +484,7 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
 
     // Check any autoderefs or autorefs that appear.
     for &adjustment in rcx.fcx.inh.adjustments.borrow().get(&expr.id).iter() {
-        debug!("adjustment={}", adjustment);
+        debug!("adjustment={:?}", adjustment);
         match *adjustment {
             ty::AdjustDerefRef(ty::AutoDerefRef {autoderefs, autoref: ref opt_autoref}) => {
                 let expr_ty = rcx.resolve_node_type(expr.id);
@@ -828,7 +828,7 @@ fn check_expr_fn_block(rcx: &mut Rcx,
         debug!("constrain_free_variables({}, {})",
                region_bound.repr(tcx), expr.repr(tcx));
         for freevar in freevars.iter() {
-            debug!("freevar def is {}", freevar.def);
+            debug!("freevar def is {:?}", freevar.def);
 
             // Identify the variable being closed over and its node-id.
             let def = freevar.def;
@@ -1038,7 +1038,7 @@ fn type_of_node_must_outlive<'a, 'tcx>(
                            rcx.fcx.inh.adjustments.borrow().get(&id),
                            |method_call| rcx.resolve_method_type(method_call));
     debug!("constrain_regions_in_type_of_node(\
-            ty={}, ty0={}, id={}, minimum_lifetime={})",
+            ty={}, ty0={}, id={}, minimum_lifetime={:?})",
            ty_to_string(tcx, ty), ty_to_string(tcx, ty0),
            id, minimum_lifetime);
     type_must_outlive(rcx, origin, ty, minimum_lifetime);
@@ -1090,7 +1090,7 @@ fn link_match(rcx: &Rcx, discr: &ast::Expr, arms: &[ast::Arm]) {
 /// then ensures that the lifetime of the resulting pointer is
 /// linked to the lifetime of its guarantor (if any).
 fn link_fn_args(rcx: &Rcx, body_scope: CodeExtent, args: &[ast::Arg]) {
-    debug!("regionck::link_fn_args(body_scope={})", body_scope);
+    debug!("regionck::link_fn_args(body_scope={:?})", body_scope);
     let mc = mc::MemCategorizationContext::new(rcx.fcx);
     for arg in args.iter() {
         let arg_ty = rcx.fcx.node_ty(arg.id);
@@ -1144,7 +1144,7 @@ fn link_autoref(rcx: &Rcx,
                 autoderefs: uint,
                 autoref: &ty::AutoRef) {
 
-    debug!("link_autoref(autoref={})", autoref);
+    debug!("link_autoref(autoref={:?})", autoref);
     let mc = mc::MemCategorizationContext::new(rcx.fcx);
     let expr_cmt = ignore_err!(mc.cat_expr_autoderefd(expr, autoderefs));
     debug!("expr_cmt={}", expr_cmt.repr(rcx.tcx()));
@@ -1165,7 +1165,7 @@ fn link_by_ref(rcx: &Rcx,
                expr: &ast::Expr,
                callee_scope: CodeExtent) {
     let tcx = rcx.tcx();
-    debug!("link_by_ref(expr={}, callee_scope={})",
+    debug!("link_by_ref(expr={}, callee_scope={:?})",
            expr.repr(tcx), callee_scope);
     let mc = mc::MemCategorizationContext::new(rcx.fcx);
     let expr_cmt = ignore_err!(mc.cat_expr(expr));

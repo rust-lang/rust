@@ -64,7 +64,7 @@ fn run_ar(handler: &ErrorHandler, maybe_ar_prog: &Option<String>,
     match cwd {
         Some(p) => {
             cmd.cwd(p);
-            debug!("inside {}", p.display());
+            debug!("inside {:?}", p.display());
         }
         None => {}
     }
@@ -105,7 +105,7 @@ pub fn find_library(name: &str, osprefix: &str, ossuffix: &str,
     let unixlibname = format!("lib{}.a", name);
 
     for path in search_paths.iter() {
-        debug!("looking for {} inside {}", name, path.display());
+        debug!("looking for {} inside {:?}", name, path.display());
         let test = path.join(oslibname[]);
         if test.exists() { return test }
         if oslibname != unixlibname {

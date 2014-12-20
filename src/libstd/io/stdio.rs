@@ -349,7 +349,7 @@ fn with_task_stdout<F>(f: F) where F: FnOnce(&mut Writer) -> IoResult<()> {
     });
     match result {
         Ok(()) => {}
-        Err(e) => panic!("failed printing to stdout: {}", e),
+        Err(e) => panic!("failed printing to stdout: {:?}", e),
     }
 }
 

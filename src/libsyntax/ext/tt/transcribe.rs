@@ -128,7 +128,7 @@ impl Add for LockstepIterSize {
                     let l_n = token::get_ident(l_id.clone());
                     let r_n = token::get_ident(r_id);
                     LisContradiction(format!("inconsistent lockstep iteration: \
-                                              '{}' has {} items, but '{}' has {}",
+                                              '{:?}' has {} items, but '{:?}' has {}",
                                               l_n, l_len, r_n, r_len).to_string())
                 }
             },
@@ -296,7 +296,7 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
                             MatchedSeq(..) => {
                                 r.sp_diag.span_fatal(
                                     r.cur_span, /* blame the macro writer */
-                                    format!("variable '{}' is still repeating at this depth",
+                                    format!("variable '{:?}' is still repeating at this depth",
                                             token::get_ident(ident))[]);
                             }
                         }

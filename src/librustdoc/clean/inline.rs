@@ -397,9 +397,9 @@ fn build_const(cx: &DocContext, tcx: &ty::ctxt,
     use syntax::print::pprust;
 
     let expr = const_eval::lookup_const_by_id(tcx, did).unwrap_or_else(|| {
-        panic!("expected lookup_const_by_id to succeed for {}", did);
+        panic!("expected lookup_const_by_id to succeed for {:?}", did);
     });
-    debug!("converting constant expr {} to snippet", expr);
+    debug!("converting constant expr {:?} to snippet", expr);
     let sn = pprust::expr_to_string(expr);
     debug!("got snippet {}", sn);
 

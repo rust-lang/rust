@@ -37,5 +37,5 @@ impl Index<uint> for T {
 
 fn main() {
     assert_eq!(&S[0], "hello");
-    assert_eq!(format!("{}", &T[0]).as_slice(), "42");
+    assert_eq!(format!("{:?}", &T[0]), "42u");
 }

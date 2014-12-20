@@ -231,7 +231,7 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
 
         Some(self_expr) => {
             debug!("lookup_in_trait_adjusted: inserting adjustment if needed \
-                   (self-id={}, base adjustment={}, explicit_self={})",
+                   (self-id={}, base adjustment={:?}, explicit_self={:?})",
                    self_expr.id, autoderefref, method_ty.explicit_self);
 
             match method_ty.explicit_self {
@@ -275,7 +275,7 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
                     fcx.tcx().sess.span_bug(
                         span,
                         format!(
-                            "unexpected explicit self type in operator method: {}",
+                            "unexpected explicit self type in operator method: {:?}",
                             method_ty.explicit_self)[]);
                 }
             }
