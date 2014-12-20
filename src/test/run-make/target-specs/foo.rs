@@ -21,7 +21,7 @@ trait Sized { }
 fn start(_main: *const u8, _argc: int, _argv: *const *const u8) -> int { 0 }
 
 extern {
-    fn _foo() -> [u8, ..16];
+    fn _foo() -> [u8; 16];
 }
 
 fn _main() {

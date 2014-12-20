@@ -99,10 +99,10 @@
 
 // VECTORS
 // gdb-command:whatis fixed_size_vec1
-// gdb-check:type = struct ([type-names::Struct1, ..3], i16)
+// gdb-check:type = struct ([type-names::Struct1; 3], i16)
 
 // gdb-command:whatis fixed_size_vec2
-// gdb-check:type = struct ([uint, ..3], i16)
+// gdb-check:type = struct ([uint; 3], i16)
 
 // gdb-command:whatis slice1
 // gdb-check:type = struct &[uint]

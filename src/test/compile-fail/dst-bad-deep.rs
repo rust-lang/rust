@@ -18,7 +18,7 @@ struct Fat<Sized? T> {
 }
 
 pub fn main() {
-    let f: Fat<[int, ..3]> = Fat { ptr: [5i, 6, 7] };
+    let f: Fat<[int; 3]> = Fat { ptr: [5i, 6, 7] };
     let g: &Fat<[int]> = &f;
     let h: &Fat<Fat<[int]>> = &Fat { ptr: *g };
     //~^ ERROR the trait `core::kinds::Sized` is not implemented

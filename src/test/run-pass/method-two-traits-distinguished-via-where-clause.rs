@@ -28,7 +28,7 @@ impl<T> B for *const [T] {
 }
 
 fn main() {
-    let x: [int, ..4] = [1,2,3,4];
+    let x: [int; 4] = [1,2,3,4];
     let xptr = x.as_slice() as *const _;
     xptr.foo();
 }

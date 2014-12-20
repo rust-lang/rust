@@ -14,6 +14,6 @@
 pub fn main() {
 
     const FOO: uint = 2;
-    let _v: [int, ..FOO*3];
+    let _v: [int; FOO*3];
 
 }

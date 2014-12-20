@@ -334,7 +334,7 @@ impl<'tcx> TypeMap<'tcx> {
         // mut ptr (*mut)       -> {*mut :pointee-uid:}
         // unique ptr (~)       -> {~ :pointee-uid:}
         // @-ptr (@)            -> {@ :pointee-uid:}
-        // sized vec ([T, ..x]) -> {[:size:] :element-uid:}
+        // sized vec ([T; x])   -> {[:size:] :element-uid:}
         // unsized vec ([T])    -> {[] :element-uid:}
         // trait (T)            -> {trait_:svh: / :node-id:_<(:param-uid:),*> }
         // closure              -> {<unsafe_> <once_> :store-sigil: |(:param-uid:),* <,_...>| -> \
@@ -3752,7 +3752,7 @@ fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
             match optional_length {
                 Some(len) => {
-                    output.push_str(format!(", ..{}", len).as_slice());
+                    output.push_str(format!("; {}", len).as_slice());
                 }
                 None => { /* nothing to do */ }
             };

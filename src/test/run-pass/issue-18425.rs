@@ -12,5 +12,5 @@
 // expression with a count of 1 and a non-Copy element type.
 
 fn main() {
-    let _ = [box 1u, ..1];
+    let _ = [box 1u; 1];
 }
