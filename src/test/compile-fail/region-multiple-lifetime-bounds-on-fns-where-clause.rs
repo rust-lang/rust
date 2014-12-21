@@ -16,8 +16,8 @@ fn a<'a, 'b, 'c>(x: &mut &'a int, y: &mut &'b int, z: &mut &'c int) where 'b: 'a
 
 fn b<'a, 'b, 'c>(x: &mut &'a int, y: &mut &'b int, z: &mut &'c int) {
     // Illegal now because there is no `'b:'a` declaration.
-    *x = *y; //~ ERROR mismatched types
-    *z = *y; //~ ERROR mismatched types
+    *x = *y; //~ ERROR cannot infer
+    *z = *y; //~ ERROR cannot infer
 }
 
 fn c<'a,'b, 'c>(x: &mut &'a int, y: &mut &'b int, z: &mut &'c int) {
