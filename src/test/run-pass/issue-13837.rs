@@ -12,7 +12,7 @@ struct TestStruct {
     x: *const [int; 2]
 }
 
-impl Sync for TestStruct {}
+unsafe impl Sync for TestStruct {}
 
 static TEST_VALUE : TestStruct = TestStruct{x: 0x1234 as *const [int; 2]};
 

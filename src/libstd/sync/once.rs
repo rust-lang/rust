@@ -14,6 +14,7 @@
 //! example use case would be for initializing an FFI library.
 
 use int;
+use kinds::Sync;
 use mem::drop;
 use ops::FnOnce;
 use sync::atomic;
@@ -35,12 +36,13 @@ use sync::{StaticMutex, MUTEX_INIT};
 ///     // run initialization here
 /// });
 /// ```
-#[deriving(Sync)]
 pub struct Once {
     mutex: StaticMutex,
     cnt: atomic::AtomicInt,
     lock_cnt: atomic::AtomicInt,
 }
+
+unsafe impl Sync for Once {}
 
 /// Initialization value for static `Once` values.
 pub const ONCE_INIT: Once = Once {

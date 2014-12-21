@@ -283,18 +283,21 @@ impl Builder {
     }
 }
 
-#[deriving(Sync)]
 struct Inner {
     name: Option<String>,
     lock: Mutex<bool>,          // true when there is a buffered unpark
     cvar: Condvar,
 }
 
-#[deriving(Clone, Sync)]
+unsafe impl Sync for Inner {}
+
+#[deriving(Clone)]
 /// A handle to a thread.
 pub struct Thread {
     inner: Arc<Inner>,
 }
+
+unsafe impl Sync for Thread {}
 
 impl Thread {
     // Used only internally to construct a thread object without spawning

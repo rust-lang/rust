@@ -46,7 +46,7 @@ pub mod pipes {
         payload: Option<T>
     }
 
-    impl<T:Send> Send for packet<T> {}
+    unsafe impl<T:Send> Send for packet<T> {}
 
     pub fn packet<T:Send>() -> *const packet<T> {
         unsafe {

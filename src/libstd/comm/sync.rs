@@ -53,11 +53,10 @@ pub struct Packet<T> {
     lock: Mutex<State<T>>,
 }
 
-impl<T:Send> Send for Packet<T> { }
+unsafe impl<T:Send> Send for Packet<T> { }
 
-impl<T:Send> Sync for Packet<T> { }
+unsafe impl<T:Send> Sync for Packet<T> { }
 
-#[deriving(Send)]
 struct State<T> {
     disconnected: bool, // Is the channel disconnected yet?
     queue: Queue,       // queue of senders waiting to send data
@@ -73,6 +72,8 @@ struct State<T> {
     /// value.
     canceled: Option<&'static mut bool>,
 }
+
+unsafe impl<T: Send> Send for State<T> {}
 
 /// Possible flavors of threads who can be blocked on this channel.
 enum Blocker {
@@ -93,7 +94,7 @@ struct Node {
     next: *mut Node,
 }
 
-impl Send for Node {}
+unsafe impl Send for Node {}
 
 /// A simple ring-buffer
 struct Buffer<T> {

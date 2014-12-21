@@ -210,11 +210,12 @@ impl Clone for UnixStream {
 // Unix Listener
 ////////////////////////////////////////////////////////////////////////////////
 
-#[deriving(Sync)]
 pub struct UnixListener {
     inner: Inner,
     path: CString,
 }
+
+unsafe impl Sync for UnixListener {}
 
 impl UnixListener {
     pub fn bind(addr: &CString) -> IoResult<UnixListener> {
@@ -253,13 +254,14 @@ pub struct UnixAcceptor {
     deadline: u64,
 }
 
-#[deriving(Sync)]
 struct AcceptorInner {
     listener: UnixListener,
     reader: FileDesc,
     writer: FileDesc,
     closed: atomic::AtomicBool,
 }
+
+unsafe impl Sync for AcceptorInner {}
 
 impl UnixAcceptor {
     pub fn fd(&self) -> fd_t { self.inner.listener.fd() }

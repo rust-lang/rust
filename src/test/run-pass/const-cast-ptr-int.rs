@@ -14,7 +14,7 @@ struct TestStruct {
     x: *const u8
 }
 
-impl Sync for TestStruct {}
+unsafe impl Sync for TestStruct {}
 
 static a: TestStruct = TestStruct{x: 0 as *const u8};
 

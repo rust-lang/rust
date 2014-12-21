@@ -202,7 +202,7 @@ mod imp {
     #[doc(hidden)]
     pub struct KeyInner<T> { pub inner: UnsafeCell<*mut T> }
 
-    #[cfg(not(stage0))] impl<T> ::kinds::Sync for KeyInner<T> { }
+    unsafe impl<T> ::kinds::Sync for KeyInner<T> { }
 
     #[doc(hidden)]
     impl<T> KeyInner<T> {
@@ -224,7 +224,7 @@ mod imp {
         pub marker: marker::InvariantType<T>,
     }
 
-    #[cfg(not(stage0))] impl<T> ::kinds::Sync for KeyInner<T> { }
+    unsafe impl<T> ::kinds::Sync for KeyInner<T> { }
 
     #[doc(hidden)]
     impl<T> KeyInner<T> {

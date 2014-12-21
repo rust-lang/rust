@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use kinds::Sync;
 use cell::{UnsafeCell, RacyCell};
 use sys::sync as ffi;
 use sys_common::mutex;
 
-#[deriving(Sync)]
 pub struct Mutex { inner: RacyCell<ffi::pthread_mutex_t> }
 
 #[inline]
@@ -23,6 +23,8 @@ pub unsafe fn raw(m: &Mutex) -> *mut ffi::pthread_mutex_t {
 pub const MUTEX_INIT: Mutex = Mutex {
     inner: RacyCell(UnsafeCell { value: ffi::PTHREAD_MUTEX_INITIALIZER }),
 };
+
+unsafe impl Sync for Mutex {}
 
 impl Mutex {
     #[inline]
