@@ -10,7 +10,7 @@
 
 //! Operations and constants for architecture-sized unsigned integers (`uint` type)
 
-#![unstable]
+#![stable]
 #![doc(primitive = "uint")]
 
 pub use core::uint::{BITS, BYTES, MIN, MAX};
