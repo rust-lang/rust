@@ -17,7 +17,7 @@ use middle::subst::{Subst};
 use middle::traits;
 use middle::ty::{mod, Ty};
 use middle::ty::liberate_late_bound_regions;
-use middle::ty_fold::{TypeFolder, TypeFoldable};
+use middle::ty_fold::{TypeFolder, TypeFoldable, super_fold_ty};
 use util::ppaux::Repr;
 
 use std::collections::HashSet;
@@ -368,8 +368,8 @@ impl<'cx,'tcx> TypeFolder<'tcx> for BoundsChecker<'cx,'tcx> {
 
                 self.binding_count -= 1;
             }
-            ref sty => {
-                self.fold_sty(sty);
+            _ => {
+                super_fold_ty(self, t);
             }
         }
 

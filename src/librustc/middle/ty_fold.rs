@@ -82,10 +82,6 @@ pub trait TypeFolder<'tcx> {
         super_fold_trait_ref(self, t)
     }
 
-    fn fold_sty(&mut self, sty: &ty::sty<'tcx>) -> ty::sty<'tcx> {
-        super_fold_sty(self, sty)
-    }
-
     fn fold_substs(&mut self,
                    substs: &subst::Substs<'tcx>)
                    -> subst::Substs<'tcx> {
@@ -257,12 +253,6 @@ impl<'tcx> TypeFoldable<'tcx> for ty::FnOutput<'tcx> {
 impl<'tcx> TypeFoldable<'tcx> for ty::FnSig<'tcx> {
     fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> ty::FnSig<'tcx> {
         folder.fold_fn_sig(self)
-    }
-}
-
-impl<'tcx> TypeFoldable<'tcx> for ty::sty<'tcx> {
-    fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> ty::sty<'tcx> {
-        folder.fold_sty(self)
     }
 }
 
@@ -521,9 +511,55 @@ impl<'tcx,T,U> TypeFoldable<'tcx> for ty::OutlivesPredicate<T,U>
 // They should invoke `foo.fold_with()` to do recursive folding.
 
 pub fn super_fold_ty<'tcx, T: TypeFolder<'tcx>>(this: &mut T,
-                                                t: Ty<'tcx>)
+                                                ty: Ty<'tcx>)
                                                 -> Ty<'tcx> {
-    let sty = t.sty.fold_with(this);
+    let sty = match ty.sty {
+        ty::ty_uniq(typ) => {
+            ty::ty_uniq(typ.fold_with(this))
+        }
+        ty::ty_ptr(ref tm) => {
+            ty::ty_ptr(tm.fold_with(this))
+        }
+        ty::ty_vec(typ, sz) => {
+            ty::ty_vec(typ.fold_with(this), sz)
+        }
+        ty::ty_open(typ) => {
+            ty::ty_open(typ.fold_with(this))
+        }
+        ty::ty_enum(tid, ref substs) => {
+            ty::ty_enum(tid, substs.fold_with(this))
+        }
+        ty::ty_trait(box ty::TyTrait { ref principal, bounds }) => {
+            ty::ty_trait(box ty::TyTrait {
+                principal: (*principal).fold_with(this),
+                bounds: bounds.fold_with(this),
+            })
+        }
+        ty::ty_tup(ref ts) => {
+            ty::ty_tup(ts.fold_with(this))
+        }
+        ty::ty_bare_fn(ref f) => {
+            ty::ty_bare_fn(f.fold_with(this))
+        }
+        ty::ty_closure(ref f) => {
+            ty::ty_closure(box f.fold_with(this))
+        }
+        ty::ty_rptr(r, ref tm) => {
+            ty::ty_rptr(r.fold_with(this), tm.fold_with(this))
+        }
+        ty::ty_struct(did, ref substs) => {
+            ty::ty_struct(did, substs.fold_with(this))
+        }
+        ty::ty_unboxed_closure(did, ref region, ref substs) => {
+            ty::ty_unboxed_closure(did, region.fold_with(this), substs.fold_with(this))
+        }
+        ty::ty_bool | ty::ty_char | ty::ty_str |
+        ty::ty_int(_) | ty::ty_uint(_) | ty::ty_float(_) |
+        ty::ty_err | ty::ty_infer(_) |
+        ty::ty_param(..) => {
+            ty.sty.clone()
+        }
+    };
     ty::mk_t(this.tcx(), sty)
 }
 
@@ -599,58 +635,6 @@ pub fn super_fold_mt<'tcx, T: TypeFolder<'tcx>>(this: &mut T,
                                                 -> ty::mt<'tcx> {
     ty::mt {ty: mt.ty.fold_with(this),
             mutbl: mt.mutbl}
-}
-
-pub fn super_fold_sty<'tcx, T: TypeFolder<'tcx>>(this: &mut T,
-                                                 sty: &ty::sty<'tcx>)
-                                                 -> ty::sty<'tcx> {
-    match *sty {
-        ty::ty_uniq(typ) => {
-            ty::ty_uniq(typ.fold_with(this))
-        }
-        ty::ty_ptr(ref tm) => {
-            ty::ty_ptr(tm.fold_with(this))
-        }
-        ty::ty_vec(typ, sz) => {
-            ty::ty_vec(typ.fold_with(this), sz)
-        }
-        ty::ty_open(typ) => {
-            ty::ty_open(typ.fold_with(this))
-        }
-        ty::ty_enum(tid, ref substs) => {
-            ty::ty_enum(tid, substs.fold_with(this))
-        }
-        ty::ty_trait(box ty::TyTrait { ref principal, bounds }) => {
-            ty::ty_trait(box ty::TyTrait {
-                principal: (*principal).fold_with(this),
-                bounds: bounds.fold_with(this),
-            })
-        }
-        ty::ty_tup(ref ts) => {
-            ty::ty_tup(ts.fold_with(this))
-        }
-        ty::ty_bare_fn(ref f) => {
-            ty::ty_bare_fn(f.fold_with(this))
-        }
-        ty::ty_closure(ref f) => {
-            ty::ty_closure(box f.fold_with(this))
-        }
-        ty::ty_rptr(r, ref tm) => {
-            ty::ty_rptr(r.fold_with(this), tm.fold_with(this))
-        }
-        ty::ty_struct(did, ref substs) => {
-            ty::ty_struct(did, substs.fold_with(this))
-        }
-        ty::ty_unboxed_closure(did, ref region, ref substs) => {
-            ty::ty_unboxed_closure(did, region.fold_with(this), substs.fold_with(this))
-        }
-        ty::ty_bool | ty::ty_char | ty::ty_str |
-        ty::ty_int(_) | ty::ty_uint(_) | ty::ty_float(_) |
-        ty::ty_err | ty::ty_infer(_) |
-        ty::ty_param(..) => {
-            (*sty).clone()
-        }
-    }
 }
 
 pub fn super_fold_trait_store<'tcx, T: TypeFolder<'tcx>>(this: &mut T,
