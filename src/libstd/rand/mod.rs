@@ -45,7 +45,7 @@
 //!     so the "quality" of `/dev/random` is not better than `/dev/urandom` in most cases.
 //!     However, this means that `/dev/urandom` can yield somewhat predictable randomness
 //!     if the entropy pool is very small, such as immediately after first booting.
-//!     Linux 3,17 added `getrandom(2)` system call which solves the issue: it blocks if entropy
+//!     Linux 3.17 added the `getrandom(2)` system call which solves the issue: it blocks if entropy
 //!     pool is not initialized yet, but it does not block once initialized.
 //!     `OsRng` tries to use `getrandom(2)` if available, and use `/dev/urandom` fallback if not.
 //!     If an application does not have `getrandom` and likely to be run soon after first booting,
@@ -126,7 +126,7 @@
 //! > Is it to your advantage to switch your choice?
 //!
 //! The rather unintuitive answer is that you will have a 2/3 chance of winning if
-//! you switch and a 1/3 chance of winning of you don't, so it's better to switch.
+//! you switch and a 1/3 chance of winning if you don't, so it's better to switch.
 //!
 //! This program will simulate the game show and with large enough simulation steps
 //! it will indeed confirm that it is better to switch.
