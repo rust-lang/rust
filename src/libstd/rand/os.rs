@@ -170,7 +170,6 @@ mod imp {
     extern crate libc;
 
     use io::{IoResult};
-    use kinds::marker;
     use mem;
     use os;
     use rand::Rng;
