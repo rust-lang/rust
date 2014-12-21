@@ -926,7 +926,29 @@ fn trans_rvalue_stmt_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             controlflow::trans_cont(bcx, expr.id, label_opt)
         }
         ast::ExprRet(ref ex) => {
-            controlflow::trans_ret(bcx, ex.as_ref().map(|e| &**e))
+            // Check to see if the return expression itself is reachable.
+            // This can occur when the inner expression contains a return
+            let reachable = if let Some(ref cfg) = bcx.fcx.cfg {
+                cfg.node_is_reachable(expr.id)
+            } else {
+                true
+            };
+
+            if reachable {
+                controlflow::trans_ret(bcx, ex.as_ref().map(|e| &**e))
+            } else {
+                // If it's not reachable, just translate the inner expression
+                // directly. This avoids having to manage a return slot when
+                // it won't actually be used anyway.
+                if let &Some(ref x) = ex {
+                    bcx = trans_into(bcx, &**x, Ignore);
+                }
+                // Mark the end of the block as unreachable. Once we get to
+                // a return expression, there's no more we should be doing
+                // after this.
+                Unreachable(bcx);
+                bcx
+            }
         }
         ast::ExprWhile(ref cond, ref body, _) => {
             controlflow::trans_while(bcx, expr.id, &**cond, &**body)
