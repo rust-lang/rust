@@ -135,7 +135,6 @@ extern crate libc;
 // NB: These reexports are in the order they should be listed in rustdoc
 
 pub use core::any;
-pub use core::bool;
 pub use core::borrow;
 pub use core::cell;
 pub use core::clone;
@@ -150,10 +149,6 @@ pub use core::mem;
 pub use core::ptr;
 pub use core::raw;
 pub use core::simd;
-pub use core::tuple;
-// FIXME #15320: primitive documentation needs top-level modules, this
-// should be `std::tuple::unit`.
-pub use core::unit;
 pub use core::result;
 pub use core::option;
 
@@ -242,6 +237,12 @@ pub mod comm;
 
 pub mod rt;
 mod failure;
+
+// Documentation for primitive types
+
+mod bool;
+mod unit;
+mod tuple;
 
 // A curious inner-module that's not exported that contains the binding
 // 'std' so that macro-expanded references to std::error and such
