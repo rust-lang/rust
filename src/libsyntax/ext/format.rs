@@ -654,6 +654,7 @@ impl<'a, 'b> Context<'a, 'b> {
             Known(ref tyname) => {
                 match tyname.as_slice() {
                     ""  => "Show",
+                    "?" => "Show",
                     "e" => "LowerExp",
                     "E" => "UpperExp",
                     "o" => "Octal",
