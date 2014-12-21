@@ -239,7 +239,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// }
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn iter<'a>(&'a self) -> Items<'a, T> {
+    pub fn iter(&self) -> Items<T> {
         Items { iter: self.data.iter() }
     }
 
@@ -280,8 +280,8 @@ impl<T: Ord> BinaryHeap<T> {
     /// assert_eq!(heap.top(), Some(&5i));
     ///
     /// ```
-    pub fn top<'a>(&'a self) -> Option<&'a T> {
-        if self.is_empty() { None } else { Some(&self.data[0]) }
+    pub fn top(&self) -> Option<&T> {
+        self.data.get(0)
     }
 
     /// Returns the number of elements the queue can hold without reallocating.
@@ -392,9 +392,9 @@ impl<T: Ord> BinaryHeap<T> {
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn push(&mut self, item: T) {
+        let old_len = self.len();
         self.data.push(item);
-        let new_len = self.len() - 1;
-        self.siftup(0, new_len);
+        self.siftup(0, old_len);
     }
 
     /// Pushes an item onto a queue then pops the greatest item off the queue in
@@ -415,10 +415,16 @@ impl<T: Ord> BinaryHeap<T> {
     /// assert_eq!(heap.top(), Some(&3i));
     /// ```
     pub fn push_pop(&mut self, mut item: T) -> T {
-        if !self.is_empty() && *self.top().unwrap() > item {
-            swap(&mut item, &mut self.data[0]);
-            self.siftdown(0);
+        match self.data.get_mut(0) {
+            None => return item,
+            Some(top) => if *top > item {
+                swap(&mut item, top);
+            } else {
+                return item;
+            },
         }
+
+        self.siftdown(0);
         item
     }
 
@@ -465,7 +471,7 @@ impl<T: Ord> BinaryHeap<T> {
     ///     println!("{}", x);
     /// }
     /// ```
-    pub fn into_vec(self) -> Vec<T> { let BinaryHeap{data: v} = self; v }
+    pub fn into_vec(self) -> Vec<T> { self.data }
 
     /// Consumes the `BinaryHeap` and returns a vector in sorted
     /// (ascending) order.
@@ -482,15 +488,14 @@ impl<T: Ord> BinaryHeap<T> {
     /// let vec = heap.into_sorted_vec();
     /// assert_eq!(vec, vec![1i, 2, 3, 4, 5, 6, 7]);
     /// ```
-    pub fn into_sorted_vec(self) -> Vec<T> {
-        let mut q = self;
-        let mut end = q.len();
+    pub fn into_sorted_vec(mut self) -> Vec<T> {
+        let mut end = self.len();
         while end > 1 {
             end -= 1;
-            q.data.swap(0, end);
-            q.siftdown_range(0, end)
+            self.data.swap(0, end);
+            self.siftdown_range(0, end)
         }
-        q.into_vec()
+        self.into_vec()
     }
 
     // The implementations of siftup and siftdown use unsafe blocks in
@@ -566,13 +571,13 @@ impl<T: Ord> BinaryHeap<T> {
 }
 
 /// `BinaryHeap` iterator.
-pub struct Items <'a, T:'a> {
+pub struct Items<'a, T: 'a> {
     iter: slice::Items<'a, T>,
 }
 
 impl<'a, T> Iterator<&'a T> for Items<'a, T> {
     #[inline]
-    fn next(&mut self) -> Option<(&'a T)> { self.iter.next() }
+    fn next(&mut self) -> Option<&'a T> { self.iter.next() }
 
     #[inline]
     fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
@@ -580,7 +585,7 @@ impl<'a, T> Iterator<&'a T> for Items<'a, T> {
 
 impl<'a, T> DoubleEndedIterator<&'a T> for Items<'a, T> {
     #[inline]
-    fn next_back(&mut self) -> Option<(&'a T)> { self.iter.next_back() }
+    fn next_back(&mut self) -> Option<&'a T> { self.iter.next_back() }
 }
 
 impl<'a, T> ExactSizeIterator<&'a T> for Items<'a, T> {}
@@ -627,8 +632,7 @@ impl<'a, T: 'a> ExactSizeIterator<T> for Drain<'a, T> {}
 
 impl<T: Ord> FromIterator<T> for BinaryHeap<T> {
     fn from_iter<Iter: Iterator<T>>(iter: Iter) -> BinaryHeap<T> {
-        let vec: Vec<T> = iter.collect();
-        BinaryHeap::from_vec(vec)
+        BinaryHeap::from_vec(iter.collect())
     }
 }
 
@@ -822,20 +826,20 @@ mod tests {
 
     #[test]
     fn test_empty_pop() {
-        let mut heap: BinaryHeap<int> = BinaryHeap::new();
+        let mut heap = BinaryHeap::<int>::new();
         assert!(heap.pop().is_none());
     }
 
     #[test]
     fn test_empty_top() {
-        let empty: BinaryHeap<int> = BinaryHeap::new();
+        let empty = BinaryHeap::<int>::new();
         assert!(empty.top().is_none());
     }
 
     #[test]
     fn test_empty_replace() {
-        let mut heap: BinaryHeap<int> = BinaryHeap::new();
-        heap.replace(5).is_none();
+        let mut heap = BinaryHeap::<int>::new();
+        assert!(heap.replace(5).is_none());
     }
 
     #[test]
