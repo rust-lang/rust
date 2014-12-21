@@ -17,7 +17,7 @@ use default::Default;
 use fmt::Show;
 use fmt;
 use hash::{Hash, Hasher, RandomSipHasher};
-use iter::{Iterator, IteratorExt, FromIterator, Map, FilterMap, Chain, Repeat, Zip, Extend, repeat};
+use iter::{Iterator, IteratorExt, FromIterator, Map, Chain, Extend};
 use option::Option::{Some, None, mod};
 use result::Result::{Ok, Err};
 
@@ -250,8 +250,8 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     /// }
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn iter<'a>(&'a self) -> SetItems<'a, T> {
-        SetItems { iter: self.map.keys() }
+    pub fn iter<'a>(&'a self) -> Iter<'a, T> {
+        Iter { iter: self.map.keys() }
     }
 
     /// Creates a consuming iterator, that is, one that moves each value out
@@ -275,10 +275,10 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     /// }
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn into_iter(self) -> SetMoveItems<T> {
+    pub fn into_iter(self) -> IntoIter<T> {
         fn first<A, B>((a, _): (A, B)) -> A { a }
 
-        SetMoveItems { iter: self.map.into_iter().map(first) }
+        IntoIter { iter: self.map.into_iter().map(first) }
     }
 
     /// Visit the values representing the difference.
@@ -304,14 +304,11 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     /// assert_eq!(diff, [4i].iter().map(|&x| x).collect());
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn difference<'a>(&'a self, other: &'a HashSet<T, H>) -> SetAlgebraItems<'a, T, H> {
-        fn filter<'a, T, S, H>((other, elt): (&HashSet<T, H>, &'a T)) -> Option<&'a T> where
-            T: Eq + Hash<S>, H: Hasher<S>
-        {
-            if !other.contains(elt) { Some(elt) } else { None }
+    pub fn difference<'a>(&'a self, other: &'a HashSet<T, H>) -> Difference<'a, T, H> {
+        Difference {
+            iter: self.iter(),
+            other: other,
         }
-
-        SetAlgebraItems { iter: repeat(other).zip(self.iter()).filter_map(filter) }
     }
 
     /// Visit the values representing the symmetric difference.
@@ -336,8 +333,8 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn symmetric_difference<'a>(&'a self, other: &'a HashSet<T, H>)
-        -> SymDifferenceItems<'a, T, H> {
-        SymDifferenceItems { iter: self.difference(other).chain(other.difference(self)) }
+        -> SymmetricDifference<'a, T, H> {
+        SymmetricDifference { iter: self.difference(other).chain(other.difference(self)) }
     }
 
     /// Visit the values representing the intersection.
@@ -358,14 +355,11 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     /// assert_eq!(diff, [2i, 3].iter().map(|&x| x).collect());
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn intersection<'a>(&'a self, other: &'a HashSet<T, H>) -> SetAlgebraItems<'a, T, H> {
-        fn filter<'a, T, S, H>((other, elt): (&HashSet<T, H>, &'a T)) -> Option<&'a T> where
-            T: Eq + Hash<S>, H: Hasher<S>
-        {
-            if other.contains(elt) { Some(elt) } else { None }
+    pub fn intersection<'a>(&'a self, other: &'a HashSet<T, H>) -> Intersection<'a, T, H> {
+        Intersection {
+            iter: self.iter(),
+            other: other,
         }
-
-        SetAlgebraItems { iter: repeat(other).zip(self.iter()).filter_map(filter) }
     }
 
     /// Visit the values representing the union.
@@ -386,8 +380,8 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     /// assert_eq!(diff, [1i, 2, 3, 4].iter().map(|&x| x).collect());
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn union<'a>(&'a self, other: &'a HashSet<T, H>) -> UnionItems<'a, T, H> {
-        UnionItems { iter: self.iter().chain(other.difference(self)) }
+    pub fn union<'a>(&'a self, other: &'a HashSet<T, H>) -> Union<'a, T, H> {
+        Union { iter: self.iter().chain(other.difference(self)) }
     }
 
     /// Return the number of elements in the set
@@ -625,12 +619,12 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S> + Default> Default for HashSet<T, H> {
 }
 
 /// HashSet iterator
-pub struct SetItems<'a, K: 'a> {
+pub struct Iter<'a, K: 'a> {
     iter: Keys<'a, K, ()>
 }
 
 /// HashSet move iterator
-pub struct SetMoveItems<K> {
+pub struct IntoIter<K> {
     iter: Map<(K, ()), K, MoveEntries<K, ()>, fn((K, ())) -> K>
 }
 
@@ -639,34 +633,38 @@ pub struct Drain<'a, K: 'a> {
     iter: Map<(K, ()), K, map::Drain<'a, K, ()>, fn((K, ())) -> K>,
 }
 
-// `Repeat` is used to feed the filter closure an explicit capture
-// of a reference to the other set
-/// Set operations iterator, used directly for intersection and difference
-pub struct SetAlgebraItems<'a, T: 'a, H: 'a> {
-    iter: FilterMap<
-        (&'a HashSet<T, H>, &'a T),
-        &'a T,
-        Zip<Repeat<&'a HashSet<T, H>>, SetItems<'a, T>>,
-        for<'b> fn((&HashSet<T, H>, &'b T)) -> Option<&'b T>,
-    >
+/// Intersection iterator
+pub struct Intersection<'a, T: 'a, H: 'a> {
+    // iterator of the first set
+    iter: Iter<'a, T>,
+    // the second set
+    other: &'a HashSet<T, H>,
+}
+
+/// Difference iterator
+pub struct Difference<'a, T: 'a, H: 'a> {
+    // iterator of the first set
+    iter: Iter<'a, T>,
+    // the second set
+    other: &'a HashSet<T, H>,
 }
 
 /// Symmetric difference iterator.
-pub struct SymDifferenceItems<'a, T: 'a, H: 'a> {
-    iter: Chain<SetAlgebraItems<'a, T, H>, SetAlgebraItems<'a, T, H>>
+pub struct SymmetricDifference<'a, T: 'a, H: 'a> {
+    iter: Chain<Difference<'a, T, H>, Difference<'a, T, H>>
 }
 
 /// Set union iterator.
-pub struct UnionItems<'a, T: 'a, H: 'a> {
-    iter: Chain<SetItems<'a, T>, SetAlgebraItems<'a, T, H>>
+pub struct Union<'a, T: 'a, H: 'a> {
+    iter: Chain<Iter<'a, T>, Difference<'a, T, H>>
 }
 
-impl<'a, K> Iterator<&'a K> for SetItems<'a, K> {
+impl<'a, K> Iterator<&'a K> for Iter<'a, K> {
     fn next(&mut self) -> Option<&'a K> { self.iter.next() }
     fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
 }
 
-impl<K> Iterator<K> for SetMoveItems<K> {
+impl<K> Iterator<K> for IntoIter<K> {
     fn next(&mut self) -> Option<K> { self.iter.next() }
     fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
 }
@@ -676,17 +674,56 @@ impl<'a, K: 'a> Iterator<K> for Drain<'a, K> {
     fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
 }
 
-impl<'a, T, H> Iterator<&'a T> for SetAlgebraItems<'a, T, H> {
+impl<'a, T, S, H> Iterator<&'a T> for Intersection<'a, T, H>
+    where T: Eq + Hash<S>, H: Hasher<S>
+{
+    fn next(&mut self) -> Option<&'a T> {
+        loop {
+            match self.iter.next() {
+                None => return None,
+                Some(elt) => if self.other.contains(elt) {
+                    return Some(elt)
+                },
+            }
+        }
+    }
+
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        let (_, upper) = self.iter.size_hint();
+        (0, upper)
+    }
+}
+
+impl<'a, T, S, H> Iterator<&'a T> for Difference<'a, T, H>
+    where T: Eq + Hash<S>, H: Hasher<S>
+{
+    fn next(&mut self) -> Option<&'a T> {
+        loop {
+            match self.iter.next() {
+                None => return None,
+                Some(elt) => if !self.other.contains(elt) {
+                    return Some(elt)
+                },
+            }
+        }
+    }
+
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        let (_, upper) = self.iter.size_hint();
+        (0, upper)
+    }
+}
+
+impl<'a, T, S, H> Iterator<&'a T> for SymmetricDifference<'a, T, H>
+    where T: Eq + Hash<S>, H: Hasher<S>
+{
     fn next(&mut self) -> Option<&'a T> { self.iter.next() }
     fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
 }
 
-impl<'a, T, H> Iterator<&'a T> for SymDifferenceItems<'a, T, H> {
-    fn next(&mut self) -> Option<&'a T> { self.iter.next() }
-    fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
-}
-
-impl<'a, T, H> Iterator<&'a T> for UnionItems<'a, T, H> {
+impl<'a, T, S, H> Iterator<&'a T> for Union<'a, T, H>
+    where T: Eq + Hash<S>, H: Hasher<S>
+{
     fn next(&mut self) -> Option<&'a T> { self.iter.next() }
     fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
 }
