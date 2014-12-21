@@ -21,7 +21,7 @@ use iter::{Iterator, IteratorExt, FromIterator, Map, FilterMap, Chain, Repeat, Z
 use option::Option::{Some, None, mod};
 use result::Result::{Ok, Err};
 
-use super::map::{HashMap, MoveEntries, Keys, INITIAL_CAPACITY};
+use super::map::{mod, HashMap, MoveEntries, Keys, INITIAL_CAPACITY};
 
 // FIXME(conventions): implement BitOr, BitAnd, BitXor, and Sub
 
@@ -420,6 +420,14 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn is_empty(&self) -> bool { self.map.len() == 0 }
 
+    /// Clears the set, returning all elements in an iterator.
+    #[inline]
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    pub fn drain(&mut self) -> Drain<T> {
+        fn first<A, B>((a, _): (A, B)) -> A { a }
+        Drain { iter: self.map.drain().map(first) }
+    }
+
     /// Clears the set, removing all values.
     ///
     /// # Example
@@ -626,6 +634,11 @@ pub struct SetMoveItems<K> {
     iter: Map<(K, ()), K, MoveEntries<K, ()>, fn((K, ())) -> K>
 }
 
+/// HashSet drain iterator
+pub struct Drain<'a, K: 'a> {
+    iter: Map<(K, ()), K, map::Drain<'a, K, ()>, fn((K, ())) -> K>,
+}
+
 // `Repeat` is used to feed the filter closure an explicit capture
 // of a reference to the other set
 /// Set operations iterator, used directly for intersection and difference
@@ -654,6 +667,11 @@ impl<'a, K> Iterator<&'a K> for SetItems<'a, K> {
 }
 
 impl<K> Iterator<K> for SetMoveItems<K> {
+    fn next(&mut self) -> Option<K> { self.iter.next() }
+    fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
+}
+
+impl<'a, K: 'a> Iterator<K> for Drain<'a, K> {
     fn next(&mut self) -> Option<K> { self.iter.next() }
     fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
 }
@@ -912,5 +930,42 @@ mod test_set {
 
         assert!(set_str == "{1, 2}" || set_str == "{2, 1}");
         assert_eq!(format!("{}", empty), "{}");
+    }
+
+    #[test]
+    fn test_trivial_drain() {
+        let mut s = HashSet::<int>::new();
+        for _ in s.drain() {}
+        assert!(s.is_empty());
+        drop(s);
+
+        let mut s = HashSet::<int>::new();
+        drop(s.drain());
+        assert!(s.is_empty());
+    }
+
+    #[test]
+    fn test_drain() {
+        let mut s: HashSet<int> = range(1, 100).collect();
+
+        // try this a bunch of times to make sure we don't screw up internal state.
+        for _ in range(0i, 20) {
+            assert_eq!(s.len(), 99);
+
+            {
+                let mut last_i = 0;
+                let mut d = s.drain();
+                for (i, x) in d.by_ref().take(50).enumerate() {
+                    last_i = i;
+                    assert!(x != 0);
+                }
+                assert_eq!(last_i, 49);
+            }
+
+            for _ in s.iter() { panic!("s should be empty!"); }
+
+            // reset to try again.
+            s.extend(range(1, 100));
+        }
     }
 }
