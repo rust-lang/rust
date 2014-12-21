@@ -216,36 +216,6 @@ endef
 $(foreach docname,$(DOCS),$(eval $(call DEF_DOC,$(docname))))
 
 
-# Localized documentation
-
-# FIXME: I (huonw) haven't actually been able to test properly, since
-# e.g. (by default) I'm doing an out-of-tree build (#12763), but even
-# adjusting for that, the files are too old(?) and are rejected by
-# po4a.
-#
-# As such, I've attempted to get it working as much as possible (and
-# switching from pandoc to rustdoc), but preserving the old behaviour
-# (e.g. only running on the guide)
-.PHONY: l10n-mds
-l10n-mds: $(D)/po4a.conf \
-		$(foreach lang,$(L10N_LANG),$(D)/po/$(lang)/*.md.po)
-	$(warning WARNING: localized documentation is experimental)
-	po4a --copyright-holder="The Rust Project Developers" \
-		--package-name="Rust" \
-		--package-version="$(CFG_RELEASE)" \
-		-M UTF-8 -L UTF-8 \
-		$(D)/po4a.conf
-
-define DEF_L10N_DOC
-DOC_L10N_TARGETS += doc/l10n/$(1)/$(2).html
-doc/l10n/$(1)/$(2).html: l10n-mds $$(HTML_DEPS) $$(RUSTDOC_DEPS_$(2))
-	@$$(call E, rustdoc: $$@)
-	$$(RUSTDOC) $$(RUSTDOC_HTML_OPTS) $$(RUSTDOC_FLAGS_$(1)) doc/l10n/$(1)/$(2).md
-endef
-
-$(foreach lang,$(L10N_LANGS),$(eval $(call DEF_L10N_DOC,$(lang),guide)))
-
-
 ######################################################################
 # Rustdoc (libstd/extra)
 ######################################################################
@@ -294,7 +264,3 @@ endif
 
 docs: $(DOC_TARGETS)
 compiler-docs: $(COMPILER_DOC_TARGETS)
-
-docs-l10n: $(DOC_L10N_TARGETS)
-
-.PHONY: docs-l10n
