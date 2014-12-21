@@ -38,6 +38,7 @@ use llvm::{BasicBlockRef, Linkage, ValueRef, Vector, get_param};
 use llvm;
 use metadata::{csearch, encoder, loader};
 use middle::astencode;
+use middle::cfg;
 use middle::lang_items::{LangItem, ExchangeMallocFnLangItem, StartFnLangItem};
 use middle::subst;
 use middle::weak_lang_items;
@@ -1306,47 +1307,33 @@ pub fn make_return_slot_pointer<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
     }
 }
 
-struct CheckForNestedReturnsVisitor {
+struct FindNestedReturn {
     found: bool,
-    in_return: bool
 }
 
-impl CheckForNestedReturnsVisitor {
-    fn explicit() -> CheckForNestedReturnsVisitor {
-        CheckForNestedReturnsVisitor { found: false, in_return: false }
-    }
-    fn implicit() -> CheckForNestedReturnsVisitor {
-        CheckForNestedReturnsVisitor { found: false, in_return: true }
+impl FindNestedReturn {
+    fn new() -> FindNestedReturn {
+        FindNestedReturn { found: false }
     }
 }
 
-impl<'v> Visitor<'v> for CheckForNestedReturnsVisitor {
+impl<'v> Visitor<'v> for FindNestedReturn {
     fn visit_expr(&mut self, e: &ast::Expr) {
         match e.node {
             ast::ExprRet(..) => {
-                if self.in_return {
-                    self.found = true;
-                } else {
-                    self.in_return = true;
-                    visit::walk_expr(self, e);
-                    self.in_return = false;
-                }
+                self.found = true;
             }
             _ => visit::walk_expr(self, e)
         }
     }
 }
 
-fn has_nested_returns(tcx: &ty::ctxt, id: ast::NodeId) -> bool {
-    match tcx.map.find(id) {
+fn build_cfg(tcx: &ty::ctxt, id: ast::NodeId) -> (ast::NodeId, Option<cfg::CFG>) {
+    let blk = match tcx.map.find(id) {
         Some(ast_map::NodeItem(i)) => {
             match i.node {
                 ast::ItemFn(_, _, _, _, ref blk) => {
-                    let mut explicit = CheckForNestedReturnsVisitor::explicit();
-                    let mut implicit = CheckForNestedReturnsVisitor::implicit();
-                    visit::walk_item(&mut explicit, &*i);
-                    visit::walk_expr_opt(&mut implicit, &blk.expr);
-                    explicit.found || implicit.found
+                    blk
                 }
                 _ => tcx.sess.bug("unexpected item variant in has_nested_returns")
             }
@@ -1356,11 +1343,7 @@ fn has_nested_returns(tcx: &ty::ctxt, id: ast::NodeId) -> bool {
                 ast::ProvidedMethod(ref m) => {
                     match m.node {
                         ast::MethDecl(_, _, _, _, _, _, ref blk, _) => {
-                            let mut explicit = CheckForNestedReturnsVisitor::explicit();
-                            let mut implicit = CheckForNestedReturnsVisitor::implicit();
-                            visit::walk_method_helper(&mut explicit, &**m);
-                            visit::walk_expr_opt(&mut implicit, &blk.expr);
-                            explicit.found || implicit.found
+                            blk
                         }
                         ast::MethMac(_) => tcx.sess.bug("unexpanded macro")
                     }
@@ -1380,11 +1363,7 @@ fn has_nested_returns(tcx: &ty::ctxt, id: ast::NodeId) -> bool {
                 ast::MethodImplItem(ref m) => {
                     match m.node {
                         ast::MethDecl(_, _, _, _, _, _, ref blk, _) => {
-                            let mut explicit = CheckForNestedReturnsVisitor::explicit();
-                            let mut implicit = CheckForNestedReturnsVisitor::implicit();
-                            visit::walk_method_helper(&mut explicit, &**m);
-                            visit::walk_expr_opt(&mut implicit, &blk.expr);
-                            explicit.found || implicit.found
+                            blk
                         }
                         ast::MethMac(_) => tcx.sess.bug("unexpanded macro")
                     }
@@ -1398,24 +1377,58 @@ fn has_nested_returns(tcx: &ty::ctxt, id: ast::NodeId) -> bool {
         Some(ast_map::NodeExpr(e)) => {
             match e.node {
                 ast::ExprClosure(_, _, _, ref blk) => {
-                    let mut explicit = CheckForNestedReturnsVisitor::explicit();
-                    let mut implicit = CheckForNestedReturnsVisitor::implicit();
-                    visit::walk_expr(&mut explicit, e);
-                    visit::walk_expr_opt(&mut implicit, &blk.expr);
-                    explicit.found || implicit.found
+                    blk
                 }
                 _ => tcx.sess.bug("unexpected expr variant in has_nested_returns")
             }
         }
-
-        Some(ast_map::NodeVariant(..)) | Some(ast_map::NodeStructCtor(..)) => false,
+        Some(ast_map::NodeVariant(..)) |
+        Some(ast_map::NodeStructCtor(..)) => return (ast::DUMMY_NODE_ID, None),
 
         // glue, shims, etc
-        None if id == ast::DUMMY_NODE_ID => false,
+        None if id == ast::DUMMY_NODE_ID => return (ast::DUMMY_NODE_ID, None),
 
         _ => tcx.sess.bug(format!("unexpected variant in has_nested_returns: {}",
                                   tcx.map.path_to_string(id)).as_slice())
+    };
+
+    (blk.id, Some(cfg::CFG::new(tcx, &**blk)))
+}
+
+// Checks for the presence of "nested returns" in a function.
+// Nested returns are when the inner expression of a return expression
+// (the 'expr' in 'return expr') contains a return expression. Only cases
+// where the outer return is actually reachable are considered. Implicit
+// returns from the end of blocks are considered as well.
+//
+// This check is needed to handle the case where the inner expression is
+// part of a larger expression that may have already partially-filled the
+// return slot alloca. This can cause errors related to clean-up due to
+// the clobbering of the existing value in the return slot.
+fn has_nested_returns(tcx: &ty::ctxt, cfg: &cfg::CFG, blk_id: ast::NodeId) -> bool {
+    for n in cfg.graph.depth_traverse(cfg.entry) {
+        match tcx.map.find(n.id) {
+            Some(ast_map::NodeExpr(ex)) => {
+                if let ast::ExprRet(Some(ref ret_expr)) = ex.node {
+                    let mut visitor = FindNestedReturn::new();
+                    visit::walk_expr(&mut visitor, &**ret_expr);
+                    if visitor.found {
+                        return true;
+                    }
+                }
+            }
+            Some(ast_map::NodeBlock(blk)) if blk.id == blk_id => {
+                let mut visitor = FindNestedReturn::new();
+                visit::walk_expr_opt(&mut visitor, &blk.expr);
+                if visitor.found {
+                    return true;
+                }
+            }
+            _ => {}
+        }
     }
+
+    return false;
 }
 
 // NB: must keep 4 fns in sync:
@@ -1454,7 +1467,12 @@ pub fn new_fn_ctxt<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
         ty::FnDiverging => false
     };
     let debug_context = debuginfo::create_function_debug_context(ccx, id, param_substs, llfndecl);
-    let nested_returns = has_nested_returns(ccx.tcx(), id);
+    let (blk_id, cfg) = build_cfg(ccx.tcx(), id);
+    let nested_returns = if let Some(ref cfg) = cfg {
+        has_nested_returns(ccx.tcx(), cfg, blk_id)
+    } else {
+        false
+    };
 
     let mut fcx = FunctionContext {
           llfn: llfndecl,
@@ -1473,7 +1491,8 @@ pub fn new_fn_ctxt<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
           block_arena: block_arena,
           ccx: ccx,
           debug_context: debug_context,
-          scopes: RefCell::new(Vec::new())
+          scopes: RefCell::new(Vec::new()),
+          cfg: cfg
     };
 
     if has_env {
