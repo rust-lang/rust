@@ -104,7 +104,7 @@ pub struct StdinReader {
     inner: Arc<Mutex<BufferedReader<StdReader>>>,
 }
 
-/// A guard for exlusive access to `StdinReader`'s internal `BufferedReader`.
+/// A guard for exclusive access to `StdinReader`'s internal `BufferedReader`.
 pub struct StdinReaderGuard<'a> {
     inner: MutexGuard<'a, BufferedReader<StdReader>>,
 }
