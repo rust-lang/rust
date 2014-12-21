@@ -32,7 +32,7 @@ fn main() {
     println!("ov3 0x%x",  x.as_slice()[idx]);
 }
 
-#[cfg(target_arch="x86_64")]
+#[cfg(any(target_arch="x86_64", target_arch = "aarch64"))]
 fn main() {
     // This version just panics anyways, for symmetry on 64-bit hosts.
     let x = vec!(1u,2u,3u);

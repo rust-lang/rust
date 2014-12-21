@@ -12,6 +12,6 @@
 
 fn main() {
     unsafe {
-        asm!("nowayisthisavalidinstruction"); //~ ERROR invalid instruction
+        asm!("nowayisthisavalidinstruction"); //~ ERROR instruction
     }
 }
