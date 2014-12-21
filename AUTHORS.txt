@@ -498,6 +498,7 @@ Robert Irelan <rirelan@gmail.com>
 Robert Knight <robertknight@gmail.com>
 Robert Millar <robert.millar@cantab.net>
 Roland Tanglao <roland@rolandtanglao.com>
+Rolf Timmermans <r.w.timmermans@gmail.com>
 Ron Dahlgren <ronald.dahlgren@gmail.com>
 Roy Frostig <rfrostig@mozilla.com>
 Russell <rpjohnst@gmail.com>
