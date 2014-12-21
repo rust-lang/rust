@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-windows currently windows requires UTF-8 for spawning processes
+
 use std::io::Command;
 use std::os;
 

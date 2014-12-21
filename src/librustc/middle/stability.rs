@@ -131,7 +131,7 @@ impl<'v> Visitor<'v> for Annotator {
     }
 
     fn visit_foreign_item(&mut self, i: &ast::ForeignItem) {
-        self.annotate(i.id, &i.attrs, |_| {});
+        self.annotate(i.id, true, &i.attrs, |_| {});
     }
 }
 

@@ -33,36 +33,37 @@
 //!
 //! ```
 //! use std::sync::Arc;
+//! use std::thread::Thread;
 //!
 //! let five = Arc::new(5i);
 //!
 //! for i in range(0u, 10) {
 //!     let five = five.clone();
 //!
-//!     spawn(move || {
+//!     Thread::spawn(move || {
 //!         println!("{}", five);
-//!     });
+//!     }).detach();
 //! }
 //! ```
 //!
 //! Sharing mutable data safely between tasks with a `Mutex`:
 //!
 //! ```
-//! use std::sync::Arc;
-//! use std::sync::Mutex;
+//! use std::sync::{Arc, Mutex};
+//! use std::thread::Thread;
 //!
 //! let five = Arc::new(Mutex::new(5i));
 //!
 //! for _ in range(0u, 10) {
 //!     let five = five.clone();
 //!
-//!     spawn(move || {
+//!     Thread::spawn(move || {
 //!         let mut number = five.lock();
 //!
-//!         number += 1;
+//!         *number += 1;
 //!
 //!         println!("{}", *number); // prints 6
-//!     });
+//!     }).detach();
 //! }
 //! ```
 
