@@ -44,12 +44,10 @@ pub fn clone() -> Option<Vec<Vec<u8>>> { imp::clone() }
           target_os = "freebsd",
           target_os = "dragonfly"))]
 mod imp {
-    use core::prelude::*;
+    use prelude::*;
 
-    use boxed::Box;
-    use vec::Vec;
-    use string::String;
     use mem;
+    use slice;
 
     use sync::{StaticMutex, MUTEX_INIT};
 
@@ -98,7 +96,12 @@ mod imp {
 
     unsafe fn load_argc_and_argv(argc: int, argv: *const *const u8) -> Vec<Vec<u8>> {
         Vec::from_fn(argc as uint, |i| {
-            String::from_raw_buf(*argv.offset(i as int)).into_bytes()
+            let arg = *argv.offset(i as int);
+            let mut len = 0u;
+            while *arg.offset(len as int) != 0 {
+                len += 1u;
+            }
+            slice::from_raw_buf(&arg, len).to_vec()
         })
     }
 
