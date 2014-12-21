@@ -98,7 +98,7 @@ use ptr::P;
 use std::mem;
 use std::rc::Rc;
 use std::collections::HashMap;
-use std::collections::hash_map::{Vacant, Occupied};
+use std::collections::hash_map::Entry::{Vacant, Occupied};
 
 // To avoid costly uniqueness checks, we require that `MatchSeq` always has
 // a nonempty body.

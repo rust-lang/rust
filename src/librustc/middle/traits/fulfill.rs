@@ -12,7 +12,7 @@ use middle::infer::InferCtxt;
 use middle::mem_categorization::Typer;
 use middle::ty::{mod, Ty};
 use std::collections::HashSet;
-use std::collections::hash_map::{Occupied, Vacant};
+use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::default::Default;
 use std::rc::Rc;
 use syntax::ast;

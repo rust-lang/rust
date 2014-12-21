@@ -135,7 +135,7 @@ use syntax::visit;
 use syntax::visit::Visitor;
 
 use std::cell::{RefCell};
-use std::collections::hash_map::{Vacant, Occupied};
+use std::collections::hash_map::Entry::{Vacant, Occupied};
 
 use self::RepeatingScope::Repeating;
 use self::SubjectNode::Subject;

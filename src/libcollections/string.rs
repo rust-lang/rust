@@ -26,7 +26,8 @@ use core::raw::Slice as RawSlice;
 
 use slice::CloneSliceExt;
 use str;
-use str::{CharRange, CowString, FromStr, StrAllocating, Owned};
+use str::{CharRange, CowString, FromStr, StrAllocating};
+use str::MaybeOwned::Owned;
 use vec::{DerefVec, Vec, as_vec};
 
 /// A growable string stored as a UTF-8 encoded buffer.
