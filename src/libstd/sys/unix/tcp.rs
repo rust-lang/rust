@@ -29,10 +29,11 @@ pub use sys_common::net::TcpStream;
 // TCP listeners
 ////////////////////////////////////////////////////////////////////////////////
 
-#[deriving(Sync)]
 pub struct TcpListener {
     pub inner: FileDesc,
 }
+
+unsafe impl Sync for TcpListener {}
 
 impl TcpListener {
     pub fn bind(addr: ip::SocketAddr) -> IoResult<TcpListener> {
@@ -90,13 +91,14 @@ pub struct TcpAcceptor {
     deadline: u64,
 }
 
-#[deriving(Sync)]
 struct AcceptorInner {
     listener: TcpListener,
     reader: FileDesc,
     writer: FileDesc,
     closed: atomic::AtomicBool,
 }
+
+unsafe impl Sync for AcceptorInner {}
 
 impl TcpAcceptor {
     pub fn fd(&self) -> sock_t { self.inner.listener.fd() }

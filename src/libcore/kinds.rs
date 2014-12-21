@@ -19,7 +19,7 @@
 
 /// Types able to be transferred across task boundaries.
 #[lang="send"]
-pub trait Send for Sized? : 'static {
+pub unsafe trait Send for Sized? : 'static {
     // empty.
 }
 
@@ -81,7 +81,7 @@ pub trait Copy for Sized? {
 /// reference; not doing this is undefined behaviour (for example,
 /// `transmute`-ing from `&T` to `&mut T` is illegal).
 #[lang="sync"]
-pub trait Sync for Sized? {
+pub unsafe trait Sync for Sized? {
     // Empty
 }
 

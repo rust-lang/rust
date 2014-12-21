@@ -36,7 +36,7 @@ struct Wrap<T> {
     value: T
 }
 
-impl<T: Send> Sync for Wrap<T> {}
+unsafe impl<T: Send> Sync for Wrap<T> {}
 
 static UNSAFE: RacyCell<int> = RacyCell(UnsafeCell{value: 1});
 static WRAPPED_UNSAFE: Wrap<&'static RacyCell<int>> = Wrap { value: &UNSAFE };

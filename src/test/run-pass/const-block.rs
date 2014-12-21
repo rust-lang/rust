@@ -18,7 +18,7 @@ struct Foo {
     b: *const ()
 }
 
-impl Sync for Foo {}
+unsafe impl Sync for Foo {}
 
 fn foo<T>(a: T) -> T {
     a

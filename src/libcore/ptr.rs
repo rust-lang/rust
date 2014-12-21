@@ -515,13 +515,13 @@ pub struct UniquePtr<T>(pub *mut T);
 /// reference is unaliased. Note that this aliasing invariant is
 /// unenforced by the type system; the abstraction using the
 /// `UniquePtr` must enforce it.
-impl<T:Send> Send for UniquePtr<T> { }
+unsafe impl<T:Send> Send for UniquePtr<T> { }
 
 /// `UniquePtr` pointers are `Sync` if `T` is `Sync` because the data they
 /// reference is unaliased. Note that this aliasing invariant is
 /// unenforced by the type system; the abstraction using the
 /// `UniquePtr` must enforce it.
-impl<T:Sync> Sync for UniquePtr<T> { }
+unsafe impl<T:Sync> Sync for UniquePtr<T> { }
 
 impl<T> UniquePtr<T> {
     /// Returns a null UniquePtr.

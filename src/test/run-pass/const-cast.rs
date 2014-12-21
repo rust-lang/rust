@@ -14,7 +14,7 @@ struct TestStruct {
     x: *const libc::c_void
 }
 
-impl Sync for TestStruct {}
+unsafe impl Sync for TestStruct {}
 
 extern fn foo() {}
 const x: extern "C" fn() = foo;

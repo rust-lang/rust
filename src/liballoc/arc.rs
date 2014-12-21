@@ -129,9 +129,9 @@ pub struct Weak<T> {
     _ptr: *mut ArcInner<T>,
 }
 
-impl<T: Sync + Send> Send for Arc<T> { }
+unsafe impl<T: Sync + Send> Send for Arc<T> { }
 
-impl<T: Sync + Send> Sync for Arc<T> { }
+unsafe impl<T: Sync + Send> Sync for Arc<T> { }
 
 struct ArcInner<T> {
     strong: atomic::AtomicUint,

@@ -15,7 +15,7 @@ struct TestStruct {
     x: *const int
 }
 
-impl Sync for TestStruct {}
+unsafe impl Sync for TestStruct {}
 
 static CONSTEXPR: TestStruct = TestStruct{x: &413 as *const _};
 

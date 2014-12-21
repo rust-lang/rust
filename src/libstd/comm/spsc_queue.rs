@@ -73,9 +73,9 @@ pub struct Queue<T> {
     cache_subtractions: AtomicUint,
 }
 
-impl<T: Send> Send for Queue<T> { }
+unsafe impl<T: Send> Send for Queue<T> { }
 
-impl<T: Send> Sync for Queue<T> { }
+unsafe impl<T: Send> Sync for Queue<T> { }
 
 impl<T: Send> Node<T> {
     fn new() -> *mut Node<T> {

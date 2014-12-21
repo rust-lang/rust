@@ -11,7 +11,7 @@
 use prelude::*;
 
 use cell::{UnsafeCell, RacyCell};
-use kinds::marker;
+use kinds::{marker, Sync};
 use sync::{poison, AsMutexGuard};
 use sys_common::mutex as sys;
 
@@ -73,9 +73,9 @@ pub struct Mutex<T> {
     data: RacyCell<T>,
 }
 
-impl<T:Send> Send for Mutex<T> { }
+unsafe impl<T:Send> Send for Mutex<T> { }
 
-impl<T:Send> Sync for Mutex<T> { }
+unsafe impl<T:Send> Sync for Mutex<T> { }
 
 /// The static mutex type is provided to allow for static allocation of mutexes.
 ///
@@ -98,11 +98,12 @@ impl<T:Send> Sync for Mutex<T> { }
 /// }
 /// // lock is unlocked here.
 /// ```
-#[deriving(Sync)]
 pub struct StaticMutex {
     lock: sys::Mutex,
     poison: RacyCell<poison::Flag>,
 }
+
+unsafe impl Sync for StaticMutex {}
 
 /// An RAII implementation of a "scoped lock" of a mutex. When this structure is
 /// dropped (falls out of scope), the lock will be unlocked.

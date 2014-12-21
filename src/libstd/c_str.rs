@@ -89,8 +89,8 @@ pub struct CString {
     owns_buffer_: bool,
 }
 
-impl Send for CString { }
-impl Sync for CString { }
+unsafe impl Send for CString { }
+unsafe impl Sync for CString { }
 
 impl Clone for CString {
     /// Clone this CString into a new, uniquely owned CString. For safety

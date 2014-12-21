@@ -162,8 +162,8 @@ mod signal {
         sa_restorer: *mut libc::c_void,
     }
 
-    impl ::kinds::Send for sigaction { }
-    impl ::kinds::Sync for sigaction { }
+    unsafe impl ::kinds::Send for sigaction { }
+    unsafe impl ::kinds::Sync for sigaction { }
 
     #[repr(C)]
     #[cfg(target_word_size = "32")]

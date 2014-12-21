@@ -976,7 +976,7 @@ enum TestEvent {
 
 pub type MonitorMsg = (TestDesc, TestResult, Vec<u8> );
 
-impl Send for MonitorMsg {}
+unsafe impl Send for MonitorMsg {}
 
 fn run_tests<F>(opts: &TestOpts,
                 tests: Vec<TestDescAndFn> ,

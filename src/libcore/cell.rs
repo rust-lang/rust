@@ -577,6 +577,6 @@ impl<T> RacyCell<T> {
     }
 }
 
-impl<T:Send> Send for RacyCell<T> { }
+unsafe impl<T:Send> Send for RacyCell<T> { }
 
-impl<T> Sync for RacyCell<T> { } // Oh dear
+unsafe impl<T> Sync for RacyCell<T> { } // Oh dear
