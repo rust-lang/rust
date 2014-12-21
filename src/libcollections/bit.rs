@@ -2232,35 +2232,6 @@ mod tests {
     }
 
     #[test]
-    fn test_bitv_set_iterator() {
-        let bools = [true, false, true, true];
-        let bitv: BitvSet = bools.iter().map(|n| *n).collect();
-
-        let idxs: Vec<uint> = bitv.iter().collect();
-        assert_eq!(idxs, vec!(0, 2, 3));
-
-        let long: BitvSet = range(0u, 10000).map(|n| n % 2 == 0).collect();
-        let real = range_step(0, 10000, 2).collect::<Vec<uint>>();
-
-        let idxs: Vec<uint> = long.iter().collect();
-        assert_eq!(idxs, real);
-    }
-
-    #[test]
-    fn test_bitv_set_frombitv_init() {
-        let bools = [true, false];
-        let lengths = [10, 64, 100];
-        for &b in bools.iter() {
-            for &l in lengths.iter() {
-                let bitset = BitvSet::from_bitv(Bitv::with_capacity(l, b));
-                assert_eq!(bitset.contains(&1u), b);
-                assert_eq!(bitset.contains(&(l-1u)), b);
-                assert!(!bitset.contains(&l))
-            }
-        }
-    }
-
-    #[test]
     fn test_small_difference() {
         let mut b1 = Bitv::from_elem(3, false);
         let mut b2 = Bitv::from_elem(3, false);
