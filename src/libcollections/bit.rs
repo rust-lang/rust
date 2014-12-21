@@ -2556,7 +2556,7 @@ mod bitv_bench {
 
 #[cfg(test)]
 mod bitv_set_test {
-    use std::prelude::*;
+    use prelude::*;
     use std::iter::range_step;
 
     use super::{Bitv, BitvSet};
