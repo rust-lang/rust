@@ -2589,7 +2589,6 @@ mod bitv_set_test {
     use std::iter::range_step;
 
     use super::{Bitv, BitvSet};
-    use vec::Vec;
 
     #[test]
     fn test_bitv_set_show() {
