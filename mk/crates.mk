@@ -122,7 +122,12 @@ DOC_CRATES := $(filter-out rustc, \
               $(filter-out rustc_borrowck, \
               $(filter-out rustc_resolve, \
               $(filter-out rustc_driver, \
-              $(filter-out syntax, $(CRATES))))))))
+              $(filter-out log, \
+              $(filter-out regex, \
+              $(filter-out regex_macros, \
+              $(filter-out getopts, \
+              $(filter-out time, \
+              $(filter-out syntax, $(CRATES)))))))))))))
 COMPILER_DOC_CRATES := rustc rustc_trans rustc_borrowck rustc_resolve \
                        rustc_typeck rustc_driver syntax
 
