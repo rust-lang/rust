@@ -107,7 +107,7 @@ impl<'a, 'tcx> RestrictionsContext<'a, 'tcx> {
 
             mc::cat_deref(cmt_base, _, pk) => {
                 match pk {
-                    mc::OwnedPtr => {
+                    mc::UniquePtr => {
                         // R-Deref-Send-Pointer
                         //
                         // When we borrow the interior of an owned pointer, we

@@ -1460,7 +1460,7 @@ fn link_region<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
             }
 
             mc::cat_downcast(cmt_base, _) |
-            mc::cat_deref(cmt_base, _, mc::OwnedPtr) |
+            mc::cat_deref(cmt_base, _, mc::UniquePtr) |
             mc::cat_interior(cmt_base, _) => {
                 // Borrowing interior or owned data requires the base
                 // to be valid and borrowable in the same fashion.
@@ -1684,7 +1684,7 @@ fn adjust_upvar_borrow_kind_for_mut<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
                cmt.repr(rcx.tcx()));
 
         match cmt.cat.clone() {
-            mc::cat_deref(base, _, mc::OwnedPtr) |
+            mc::cat_deref(base, _, mc::UniquePtr) |
             mc::cat_interior(base, _) |
             mc::cat_downcast(base, _) => {
                 // Interior or owned data is mutable if base is
@@ -1731,7 +1731,7 @@ fn adjust_upvar_borrow_kind_for_unique<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>, cmt: mc::c
                cmt.repr(rcx.tcx()));
 
         match cmt.cat.clone() {
-            mc::cat_deref(base, _, mc::OwnedPtr) |
+            mc::cat_deref(base, _, mc::UniquePtr) |
             mc::cat_interior(base, _) |
             mc::cat_downcast(base, _) => {
                 // Interior or owned data is unique if base is
