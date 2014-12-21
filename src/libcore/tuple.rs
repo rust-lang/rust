@@ -124,7 +124,7 @@ macro_rules! tuple_impls {
                 )+
             }
 
-            #[unstable = "waiting for Clone to stabilize"]
+            #[stable]
             impl<$($T:Clone),+> Clone for ($($T,)+) {
                 fn clone(&self) -> ($($T,)+) {
                     ($(e!(self.$idx.clone()),)+)
@@ -326,4 +326,3 @@ tuple_impls! {
         (val11, ref11, mut11, 11) -> L
     }
 }
-

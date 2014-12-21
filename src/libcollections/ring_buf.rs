@@ -48,6 +48,7 @@ pub struct RingBuf<T> {
     ptr: *mut T
 }
 
+#[stable]
 impl<T: Clone> Clone for RingBuf<T> {
     fn clone(&self) -> RingBuf<T> {
         self.iter().map(|t| t.clone()).collect()

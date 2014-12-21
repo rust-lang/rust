@@ -197,7 +197,7 @@ pub fn weak_count<T>(this: &Arc<T>) -> uint { this.inner().weak.load(atomic::Seq
 #[experimental]
 pub fn strong_count<T>(this: &Arc<T>) -> uint { this.inner().strong.load(atomic::SeqCst) }
 
-#[unstable = "waiting on stability of Clone"]
+#[stable]
 impl<T> Clone for Arc<T> {
     /// Makes a clone of the `Arc<T>`.
     ///

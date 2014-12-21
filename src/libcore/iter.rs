@@ -1386,6 +1386,7 @@ pub struct Map<A, B, I: Iterator<A>, F: FnMut(A) -> B> {
 }
 
 // FIXME(#19839) Remove in favor of `#[deriving(Clone)]`
+#[stable]
 impl<A, B, I, F> Clone for Map<A, B, I, F> where
     I: Clone + Iterator<A>,
     F: Clone + FnMut(A) -> B,
@@ -1460,6 +1461,7 @@ pub struct Filter<A, I, P> where I: Iterator<A>, P: FnMut(&A) -> bool {
 }
 
 // FIXME(#19839) Remove in favor of `#[deriving(Clone)]`
+#[stable]
 impl<A, I, P> Clone for Filter<A, I, P> where
     I: Clone + Iterator<A>,
     P: Clone + FnMut(&A) -> bool,
@@ -1518,6 +1520,7 @@ pub struct FilterMap<A, B, I, F> where I: Iterator<A>, F: FnMut(A) -> Option<B> 
 }
 
 // FIXME(#19839) Remove in favor of `#[deriving(Clone)]`
+#[stable]
 impl<A, B, I, F> Clone for FilterMap<A, B, I, F> where
     I: Clone + Iterator<A>,
     F: Clone + FnMut(A) -> Option<B>,
@@ -1693,6 +1696,7 @@ pub struct SkipWhile<A, I, P> where I: Iterator<A>, P: FnMut(&A) -> bool {
 }
 
 // FIXME(#19839) Remove in favor of `#[deriving(Clone)]`
+#[stable]
 impl<A, I, P> Clone for SkipWhile<A, I, P> where
     I: Clone + Iterator<A>,
     P: Clone + FnMut(&A) -> bool,
@@ -1736,6 +1740,7 @@ pub struct TakeWhile<A, I, P> where I: Iterator<A>, P: FnMut(&A) -> bool {
 }
 
 // FIXME(#19839) Remove in favor of `#[deriving(Clone)]`
+#[stable]
 impl<A, I, P> Clone for TakeWhile<A, I, P> where
     I: Clone + Iterator<A>,
     P: Clone + FnMut(&A) -> bool,
@@ -1911,6 +1916,7 @@ pub struct Scan<A, B, I, St, F> where I: Iterator<A>, F: FnMut(&mut St, A) -> Op
 }
 
 // FIXME(#19839) Remove in favor of `#[deriving(Clone)]`
+#[stable]
 impl<A, B, I, St, F> Clone for Scan<A, B, I, St, F> where
     I: Clone + Iterator<A>,
     St: Clone,
@@ -1955,6 +1961,7 @@ pub struct FlatMap<A, B, I, U, F> where I: Iterator<A>, U: Iterator<B>, F: FnMut
 }
 
 // FIXME(#19839) Remove in favor of `#[deriving(Clone)]`
+#[stable]
 impl<A, B, I, U, F> Clone for FlatMap<A, B, I, U, F> where
     I: Clone + Iterator<A>,
     U: Clone + Iterator<B>,
@@ -2115,6 +2122,7 @@ pub struct Inspect<A, I, F> where I: Iterator<A>, F: FnMut(&A) {
 }
 
 // FIXME(#19839) Remove in favor of `#[deriving(Clone)]`
+#[stable]
 impl<A, I, F> Clone for Inspect<A, I, F> where
     I: Clone + Iterator<A>,
     F: Clone + FnMut(&A),
@@ -2222,6 +2230,7 @@ pub struct Unfold<A, St, F> where F: FnMut(&mut St) -> Option<A> {
 }
 
 // FIXME(#19839) Remove in favor of `#[deriving(Clone)]`
+#[stable]
 impl<A, St, F> Clone for Unfold<A, St, F> where
     F: Clone + FnMut(&mut St) -> Option<A>,
     St: Clone,

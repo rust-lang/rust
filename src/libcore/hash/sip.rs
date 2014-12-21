@@ -195,6 +195,7 @@ impl Writer for SipState {
     }
 }
 
+#[stable]
 impl Clone for SipState {
     #[inline]
     fn clone(&self) -> SipState {

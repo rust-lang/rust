@@ -208,7 +208,7 @@ impl<T:Copy> Cell<T> {
     }
 }
 
-#[unstable = "waiting for `Clone` trait to become stable"]
+#[stable]
 impl<T:Copy> Clone for Cell<T> {
     fn clone(&self) -> Cell<T> {
         Cell::new(self.get())
@@ -341,7 +341,7 @@ impl<T> RefCell<T> {
     }
 }
 
-#[unstable = "waiting for `Clone` to become stable"]
+#[stable]
 impl<T: Clone> Clone for RefCell<T> {
     fn clone(&self) -> RefCell<T> {
         RefCell::new(self.borrow().clone())
