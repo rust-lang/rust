@@ -886,14 +886,6 @@ impl<'a> Add<&'a str, String> for String {
     }
 }
 
-#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
-impl<'a> Add<String, String> for &'a str {
-    fn add(self, mut other: String) -> String {
-        other.push_str(self);
-        other
-    }
-}
-
 impl ops::Slice<uint, str> for String {
     #[inline]
     fn as_slice_<'a>(&'a self) -> &'a str {
