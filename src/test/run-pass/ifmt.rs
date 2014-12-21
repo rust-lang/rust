@@ -60,6 +60,7 @@ pub fn main() {
     t!(format!("{}", 10i), "10");
     t!(format!("{}", 10i), "10");
     t!(format!("{}", 10u), "10");
+    t!(format!("{:?}", true), "true");
     t!(format!("{:o}", 10u), "12");
     t!(format!("{:x}", 10u), "a");
     t!(format!("{:X}", 10u), "A");
