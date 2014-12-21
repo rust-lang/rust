@@ -442,6 +442,9 @@ fn initial_syntax_expander_table(ecfg: &expand::ExpansionConfig) -> SyntaxEnv {
     syntax_expanders.insert(intern("include_bin"),
                             builtin_normal_expander(
                                     ext::source_util::expand_include_bin));
+    syntax_expanders.insert(intern("include_bytes"),
+                            builtin_normal_expander(
+                                    ext::source_util::expand_include_bytes));
     syntax_expanders.insert(intern("module_path"),
                             builtin_normal_expander(
                                     ext::source_util::expand_mod));

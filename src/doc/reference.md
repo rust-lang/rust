@@ -640,7 +640,7 @@ names, and invoked through a consistent syntax: `name!(...)`. Examples include:
 * `stringify!` : pretty-print the Rust expression given as an argument
 * `include!` : include the Rust expression in the given file
 * `include_str!` : include the contents of the given file as a string
-* `include_bin!` : include the contents of the given file as a binary blob
+* `include_bytes!` : include the contents of the given file as a binary blob
 * `error!`, `warn!`, `info!`, `debug!` : provide diagnostic information.
 
 All of the above extensions are expressions with values.
