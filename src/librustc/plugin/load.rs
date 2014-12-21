@@ -11,7 +11,7 @@
 //! Used by `rustc` when loading a plugin.
 
 use session::Session;
-use metadata::creader::PluginMetadataReader;
+use metadata::creader::CrateReader;
 use plugin::registry::Registry;
 
 use std::mem;
@@ -48,7 +48,7 @@ pub struct Plugins {
 
 struct PluginLoader<'a> {
     sess: &'a Session,
-    reader: PluginMetadataReader<'a>,
+    reader: CrateReader<'a>,
     plugins: Plugins,
 }
 
@@ -56,7 +56,7 @@ impl<'a> PluginLoader<'a> {
     fn new(sess: &'a Session) -> PluginLoader<'a> {
         PluginLoader {
             sess: sess,
-            reader: PluginMetadataReader::new(sess),
+            reader: CrateReader::new(sess),
             plugins: Plugins {
                 macros: vec!(),
                 registrars: vec!(),

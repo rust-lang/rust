@@ -37,32 +37,12 @@ use syntax::visit;
 use util::fs;
 use log;
 
-struct Env<'a> {
+pub struct CrateReader<'a> {
     sess: &'a Session,
     next_crate_num: ast::CrateNum,
 }
 
-// Traverses an AST, reading all the information about use'd crates and extern
-// libraries necessary for later resolving, typechecking, linking, etc.
-pub fn read_crates(sess: &Session,
-                   krate: &ast::Crate) {
-    let mut e = Env {
-        sess: sess,
-        next_crate_num: sess.cstore.next_crate_num(),
-    };
-    e.visit_crate(krate);
-    visit::walk_crate(&mut e, krate);
-    if log_enabled!(log::DEBUG) {
-        dump_crates(&sess.cstore);
-    }
-    warn_if_multiple_versions(sess.diagnostic(), &sess.cstore);
-
-    for &(ref name, kind) in sess.opts.libs.iter() {
-        register_native_lib(sess, None, name.clone(), kind);
-    }
-}
-
-impl<'a, 'v> visit::Visitor<'v> for Env<'a> {
+impl<'a, 'v> visit::Visitor<'v> for CrateReader<'a> {
     fn visit_view_item(&mut self, a: &ast::ViewItem) {
         self.process_view_item(a);
         visit::walk_view_item(self, a);
@@ -173,8 +153,31 @@ fn register_native_lib(sess: &Session,
     sess.cstore.add_used_library(name, kind);
 }
 
-impl<'a> Env<'a> {
-    fn visit_crate(&self, c: &ast::Crate) {
+impl<'a> CrateReader<'a> {
+    pub fn new(sess: &'a Session) -> CrateReader<'a> {
+        CrateReader {
+            sess: sess,
+            next_crate_num: sess.cstore.next_crate_num(),
+        }
+    }
+
+    // Traverses an AST, reading all the information about use'd crates and extern
+    // libraries necessary for later resolving, typechecking, linking, etc.
+    pub fn read_crates(&mut self, krate: &ast::Crate) {
+        self.process_crate(krate);
+        visit::walk_crate(self, krate);
+
+        if log_enabled!(log::DEBUG) {
+            dump_crates(&self.sess.cstore);
+        }
+        warn_if_multiple_versions(self.sess.diagnostic(), &self.sess.cstore);
+
+        for &(ref name, kind) in self.sess.opts.libs.iter() {
+            register_native_lib(self.sess, None, name.clone(), kind);
+        }
+    }
+
+    fn process_crate(&self, c: &ast::Crate) {
         for a in c.attrs.iter().filter(|m| m.name() == "link_args") {
             match a.value_str() {
                 Some(ref linkarg) => self.sess.cstore.add_used_link_args(linkarg.get()),
@@ -445,35 +448,20 @@ impl<'a> Env<'a> {
             (dep.cnum, local_cnum)
         }).collect()
     }
-}
-
-pub struct PluginMetadataReader<'a> {
-    env: Env<'a>,
-}
-
-impl<'a> PluginMetadataReader<'a> {
-    pub fn new(sess: &'a Session) -> PluginMetadataReader<'a> {
-        PluginMetadataReader {
-            env: Env {
-                sess: sess,
-                next_crate_num: sess.cstore.next_crate_num(),
-            }
-        }
-    }
 
     pub fn read_plugin_metadata(&mut self,
                                 krate: &ast::ViewItem) -> PluginMetadata {
-        let info = self.env.extract_crate_info(krate).unwrap();
-        let target_triple = self.env.sess.opts.target_triple[];
+        let info = self.extract_crate_info(krate).unwrap();
+        let target_triple = self.sess.opts.target_triple[];
         let is_cross = target_triple != config::host_triple();
         let mut should_link = info.should_link && !is_cross;
         let mut load_ctxt = loader::Context {
-            sess: self.env.sess,
+            sess: self.sess,
             span: krate.span,
             ident: info.ident[],
             crate_name: info.name[],
             hash: None,
-            filesearch: self.env.sess.host_filesearch(PathKind::Crate),
+            filesearch: self.sess.host_filesearch(PathKind::Crate),
             triple: config::host_triple(),
             root: &None,
             rejected_via_hash: vec!(),
@@ -486,17 +474,17 @@ impl<'a> PluginMetadataReader<'a> {
                 // try loading from target crates (only valid if there are
                 // no syntax extensions)
                 load_ctxt.triple = target_triple;
-                load_ctxt.filesearch = self.env.sess.target_filesearch(PathKind::Crate);
+                load_ctxt.filesearch = self.sess.target_filesearch(PathKind::Crate);
                 let lib = load_ctxt.load_library_crate();
                 if decoder::get_plugin_registrar_fn(lib.metadata.as_slice()).is_some() {
                     let message = format!("crate `{}` contains a plugin_registrar fn but \
-                                  only a version for triple `{}` could be found (need {})",
-                                  info.ident, target_triple, config::host_triple());
-                    self.env.sess.span_err(krate.span, message[]);
+                                           only a version for triple `{}` could be found (need {})",
+                                           info.ident, target_triple, config::host_triple());
+                    self.sess.span_err(krate.span, message[]);
                     // need to abort now because the syntax expansion
                     // code will shortly attempt to load and execute
                     // code from the found library.
-                    self.env.sess.abort_if_errors();
+                    self.sess.abort_if_errors();
                 }
                 should_link = info.should_link;
                 lib
@@ -510,8 +498,8 @@ impl<'a> PluginMetadataReader<'a> {
         if library.dylib.is_none() && registrar.is_some() {
             let message = format!("plugin crate `{}` only found in rlib format, \
                                    but must be available in dylib format",
-                                  info.ident);
-            self.env.sess.span_err(krate.span, message[]);
+                                   info.ident);
+            self.sess.span_err(krate.span, message[]);
             // No need to abort because the loading code will just ignore this
             // empty dylib.
         }
@@ -520,10 +508,10 @@ impl<'a> PluginMetadataReader<'a> {
             macros: macros,
             registrar_symbol: registrar,
         };
-        if should_link && self.env.existing_match(info.name[], None).is_none() {
+        if should_link && self.existing_match(info.name[], None).is_none() {
             // register crate now to avoid double-reading metadata
-            self.env.register_crate(&None, info.ident[],
-                                    info.name[], krate.span, library);
+            self.register_crate(&None, info.ident[],
+                                info.name[], krate.span, library);
         }
         pc
     }

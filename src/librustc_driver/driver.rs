@@ -12,7 +12,7 @@ use rustc::session::Session;
 use rustc::session::config::{self, Input, OutputFilenames};
 use rustc::session::search_paths::PathKind;
 use rustc::lint;
-use rustc::metadata::creader;
+use rustc::metadata::creader::CrateReader;
 use rustc::middle::{stability, ty, reachable};
 use rustc::middle::dependency_format;
 use rustc::middle;
@@ -354,7 +354,7 @@ pub fn phase_3_run_analysis_passes<'tcx>(sess: Session,
     let krate = ast_map.krate();
 
     time(time_passes, "external crate/lib resolution", (), |_|
-         creader::read_crates(&sess, krate));
+         CrateReader::new(&sess).read_crates(krate));
 
     let lang_items = time(time_passes, "language item collection", (), |_|
                           middle::lang_items::collect_language_items(krate, &sess));
