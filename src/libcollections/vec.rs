@@ -1361,20 +1361,6 @@ impl<T> AsSlice<T> for Vec<T> {
     }
 }
 
-// NOTE(stage0): Remove impl after a snapshot
-#[cfg(stage0)]
-impl<T: Clone, Sized? V: AsSlice<T>> Add<V, Vec<T>> for Vec<T> {
-    #[inline]
-    fn add(&self, rhs: &V) -> Vec<T> {
-        let mut res = Vec::with_capacity(self.len() + rhs.as_slice().len());
-        res.push_all(self.as_slice());
-        res.push_all(rhs.as_slice());
-        res
-    }
-}
-
-
-#[cfg(not(stage0))]  // NOTE(stage0): Remove impl after a snapshot
 impl<'a, T: Clone> Add<&'a [T], Vec<T>> for Vec<T> {
     #[inline]
     fn add(mut self, rhs: &[T]) -> Vec<T> {
