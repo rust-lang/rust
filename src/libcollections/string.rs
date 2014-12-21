@@ -513,6 +513,11 @@ impl String {
     #[inline]
     #[stable = "function just renamed from push_char"]
     pub fn push(&mut self, ch: char) {
+        if (ch as u32) < 0x80 {
+            self.vec.push(ch as u8);
+            return;
+        }
+
         let cur_len = self.len();
         // This may use up to 4 bytes.
         self.vec.reserve(4);
@@ -1398,6 +1403,41 @@ mod tests {
         b.iter(|| {
             let mut r = String::new();
             r.push_str(s);
+        });
+    }
+
+    const REPETITIONS: u64 = 10_000;
+
+    #[bench]
+    fn bench_push_str_one_byte(b: &mut Bencher) {
+        b.bytes = REPETITIONS;
+        b.iter(|| {
+            let mut r = String::new();
+            for _ in range(0, REPETITIONS) {
+                r.push_str("a")
+            }
+        });
+    }
+
+    #[bench]
+    fn bench_push_char_one_byte(b: &mut Bencher) {
+        b.bytes = REPETITIONS;
+        b.iter(|| {
+            let mut r = String::new();
+            for _ in range(0, REPETITIONS) {
+                r.push('a')
+            }
+        });
+    }
+
+    #[bench]
+    fn bench_push_char_two_bytes(b: &mut Bencher) {
+        b.bytes = REPETITIONS * 2;
+        b.iter(|| {
+            let mut r = String::new();
+            for _ in range(0, REPETITIONS) {
+                r.push('â')
+            }
         });
     }
 
