@@ -1011,8 +1011,8 @@ in the original declaration.
 Finally, because fields have names, we can access the field through dot
 notation: `origin.x`.
 
-The values in structs are immutable, like other bindings in Rust. However, you
-can use `mut` to make them mutable:
+The values in structs are immutable by default, like other bindings in Rust.
+Use `mut` to make them mutable:
 
 ```{rust}
 struct Point {
