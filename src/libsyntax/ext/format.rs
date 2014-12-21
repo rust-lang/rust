@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub use self::Invocation::*;
 use self::ArgumentType::*;
 use self::Position::*;
 
@@ -68,54 +67,33 @@ struct Context<'a, 'b:'a> {
     next_arg: uint,
 }
 
-pub enum Invocation {
-    Call(P<ast::Expr>),
-    MethodCall(P<ast::Expr>, ast::Ident),
-}
-
 /// Parses the arguments from the given list of tokens, returning None
 /// if there's a parse error so we can continue parsing other format!
 /// expressions.
 ///
-/// If parsing succeeds, the second return value is:
+/// If parsing succeeds, the return value is:
 ///
 ///     Some((fmtstr, unnamed arguments, ordering of named arguments,
 ///           named arguments))
-fn parse_args(ecx: &mut ExtCtxt, sp: Span, allow_method: bool,
-              tts: &[ast::TokenTree])
-    -> (Invocation, Option<(P<ast::Expr>, Vec<P<ast::Expr>>, Vec<String>,
-                            HashMap<String, P<ast::Expr>>)>) {
+fn parse_args(ecx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
+              -> Option<(P<ast::Expr>, Vec<P<ast::Expr>>, Vec<String>,
+                         HashMap<String, P<ast::Expr>>)> {
     let mut args = Vec::new();
     let mut names = HashMap::<String, P<ast::Expr>>::new();
     let mut order = Vec::new();
 
     let mut p = ecx.new_parser_from_tts(tts);
-    // Parse the leading function expression (maybe a block, maybe a path)
-    let invocation = if allow_method {
-        let e = p.parse_expr();
-        if !p.eat(&token::Comma) {
-            ecx.span_err(sp, "expected token: `,`");
-            return (Call(e), None);
-        }
-        MethodCall(e, p.parse_ident())
-    } else {
-        Call(p.parse_expr())
-    };
-    if !p.eat(&token::Comma) {
-        ecx.span_err(sp, "expected token: `,`");
-        return (invocation, None);
-    }
 
     if p.token == token::Eof {
         ecx.span_err(sp, "requires at least a format string argument");
-        return (invocation, None);
+        return None;
     }
     let fmtstr = p.parse_expr();
     let mut named = false;
     while p.token != token::Eof {
         if !p.eat(&token::Comma) {
             ecx.span_err(sp, "expected token: `,`");
-            return (invocation, None);
+            return None;
         }
         if p.token == token::Eof { break } // accept trailing commas
         if named || (p.token.is_ident() && p.look_ahead(1, |t| *t == token::Eq)) {
@@ -129,13 +107,13 @@ fn parse_args(ecx: &mut ExtCtxt, sp: Span, allow_method: bool,
                     ecx.span_err(p.span,
                                  "expected ident, positional arguments \
                                  cannot follow named arguments");
-                    return (invocation, None);
+                    return None;
                 }
                 _ => {
                     ecx.span_err(p.span,
                                  format!("expected ident for named argument, found `{}`",
                                          p.this_token_to_string())[]);
-                    return (invocation, None);
+                    return None;
                 }
             };
             let interned_name = token::get_ident(ident);
@@ -158,7 +136,7 @@ fn parse_args(ecx: &mut ExtCtxt, sp: Span, allow_method: bool,
             args.push(p.parse_expr());
         }
     }
-    return (invocation, Some((fmtstr, args, order, names)));
+    Some((fmtstr, args, order, names))
 }
 
 impl<'a, 'b> Context<'a, 'b> {
@@ -497,7 +475,7 @@ impl<'a, 'b> Context<'a, 'b> {
 
     /// Actually builds the expression which the iformat! block will be expanded
     /// to
-    fn to_expr(mut self, invocation: Invocation) -> P<ast::Expr> {
+    fn into_expr(mut self) -> P<ast::Expr> {
         let mut locals = Vec::new();
         let mut names = Vec::from_fn(self.name_positions.len(), |_| None);
         let mut pats = Vec::new();
@@ -615,26 +593,11 @@ impl<'a, 'b> Context<'a, 'b> {
             ("with_placeholders", vec![pieces, fmt, args_slice])
         };
 
-        let body = self.ecx.expr_call_global(self.fmtsp, vec!(
+        self.ecx.expr_call_global(self.fmtsp, vec!(
                 self.ecx.ident_of("std"),
                 self.ecx.ident_of("fmt"),
                 self.ecx.ident_of("Arguments"),
-                self.ecx.ident_of(fn_name)), fn_args);
-
-        match invocation {
-            Call(e) => {
-                let span = e.span;
-                self.ecx.expr_call(span, e, vec![
-                    self.ecx.expr_addr_of(span, body)
-                ])
-            }
-            MethodCall(e, m) => {
-                let span = e.span;
-                self.ecx.expr_method_call(span, e, m, vec![
-                    self.ecx.expr_addr_of(span, body)
-                ])
-            }
-        }
+                self.ecx.ident_of(fn_name)), fn_args)
     }
 
     fn format_arg(ecx: &ExtCtxt, sp: Span,
@@ -684,24 +647,22 @@ pub fn expand_format_args<'cx>(ecx: &'cx mut ExtCtxt, sp: Span,
                                tts: &[ast::TokenTree])
                                -> Box<base::MacResult+'cx> {
 
-    match parse_args(ecx, sp, false, tts) {
-        (invocation, Some((efmt, args, order, names))) => {
-            MacExpr::new(expand_preparsed_format_args(ecx, sp, invocation, efmt,
+    match parse_args(ecx, sp, tts) {
+        Some((efmt, args, order, names)) => {
+            MacExpr::new(expand_preparsed_format_args(ecx, sp, efmt,
                                                       args, order, names))
         }
-        (_, None) => MacExpr::new(ecx.expr_uint(sp, 2))
+        None => DummyResult::expr(sp)
     }
 }
 
-/// Take the various parts of `format_args!(extra, efmt, args...,
-/// name=names...)` and construct the appropriate formatting
-/// expression.
+/// Take the various parts of `format_args!(efmt, args..., name=names...)`
+/// and construct the appropriate formatting expression.
 pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt, sp: Span,
-                                    invocation: Invocation,
                                     efmt: P<ast::Expr>,
                                     args: Vec<P<ast::Expr>>,
-                                    name_ordering: Vec<string::String>,
-                                    names: HashMap<string::String, P<ast::Expr>>)
+                                    name_ordering: Vec<String>,
+                                    names: HashMap<String, P<ast::Expr>>)
                                     -> P<ast::Expr> {
     let arg_types = Vec::from_fn(args.len(), |_| None);
     let mut cx = Context {
@@ -722,8 +683,8 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt, sp: Span,
     };
     cx.fmtsp = efmt.span;
     let fmt = match expr_to_string(cx.ecx,
-                                efmt,
-                                "format argument must be a string literal.") {
+                                   efmt,
+                                   "format argument must be a string literal.") {
         Some((fmt, _)) => fmt,
         None => return DummyResult::raw_expr(sp)
     };
@@ -771,5 +732,5 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt, sp: Span,
         }
     }
 
-    cx.to_expr(invocation)
+    cx.into_expr()
 }
