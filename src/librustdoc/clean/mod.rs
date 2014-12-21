@@ -163,33 +163,24 @@ impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
             };
             let mut tmp = Vec::new();
             for child in m.items.iter_mut() {
-                let inner = match child.inner {
-                    ModuleItem(ref mut m) => m,
+                match child.inner {
+                    ModuleItem(..) => {}
                     _ => continue,
-                };
+                }
                 let prim = match PrimitiveType::find(child.attrs.as_slice()) {
                     Some(prim) => prim,
                     None => continue,
                 };
                 primitives.push(prim);
-                let mut i = Item {
+                tmp.push(Item {
                     source: Span::empty(),
                     name: Some(prim.to_url_str().to_string()),
-                    attrs: Vec::new(),
-                    visibility: None,
+                    attrs: child.attrs.clone(),
+                    visibility: Some(ast::Public),
                     stability: None,
                     def_id: ast_util::local_def(prim.to_node_id()),
                     inner: PrimitiveItem(prim),
-                };
-                // Push one copy to get indexed for the whole crate, and push a
-                // another copy in the proper location which will actually get
-                // documented. The first copy will also serve as a redirect to
-                // the other copy.
-                tmp.push(i.clone());
-                i.visibility = Some(ast::Public);
-                i.attrs = child.attrs.clone();
-                inner.items.push(i);
-
+                });
             }
             m.items.extend(tmp.into_iter());
         }
