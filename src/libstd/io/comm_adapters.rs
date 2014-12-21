@@ -132,6 +132,7 @@ impl ChanWriter {
     }
 }
 
+#[stable]
 impl Clone for ChanWriter {
     fn clone(&self) -> ChanWriter {
         ChanWriter { tx: self.tx.clone() }

@@ -628,7 +628,7 @@ impl<T: Send> Sender<T> {
     }
 }
 
-#[unstable]
+#[stable]
 impl<T: Send> Clone for Sender<T> {
     fn clone(&self) -> Sender<T> {
         let (packet, sleeper, guard) = match *unsafe { self.inner() } {
@@ -756,7 +756,7 @@ impl<T: Send> SyncSender<T> {
     }
 }
 
-#[unstable]
+#[stable]
 impl<T: Send> Clone for SyncSender<T> {
     fn clone(&self) -> SyncSender<T> {
         unsafe { (*self.inner.get()).clone_chan(); }
