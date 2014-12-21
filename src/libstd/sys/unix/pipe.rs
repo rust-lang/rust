@@ -19,6 +19,7 @@ use prelude::*;
 use sys::{mod, timer, retry, c, set_nonblocking, wouldblock};
 use sys::fs::{fd_t, FileDesc};
 use sys_common::net::*;
+use sys_common::net::SocketStatus::*;
 use sys_common::{eof, mkerr_libc};
 
 fn unix_socket(ty: libc::c_int) -> IoResult<fd_t> {

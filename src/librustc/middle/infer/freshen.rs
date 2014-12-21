@@ -34,7 +34,7 @@ use middle::ty::{mod, Ty};
 use middle::ty_fold;
 use middle::ty_fold::TypeFoldable;
 use middle::ty_fold::TypeFolder;
-use std::collections::hash_map;
+use std::collections::hash_map::{mod, Entry};
 
 use super::InferCtxt;
 use super::unify::InferCtxtMethodsForSimplyUnifiableTypes;
@@ -67,8 +67,8 @@ impl<'a, 'tcx> TypeFreshener<'a, 'tcx> {
         }
 
         match self.freshen_map.entry(key) {
-            hash_map::Occupied(entry) => *entry.get(),
-            hash_map::Vacant(entry) => {
+            Entry::Occupied(entry) => *entry.get(),
+            Entry::Vacant(entry) => {
                 let index = self.freshen_count;
                 self.freshen_count += 1;
                 let t = ty::mk_infer(self.infcx.tcx, freshener(index));

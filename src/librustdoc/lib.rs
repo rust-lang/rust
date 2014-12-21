@@ -34,7 +34,7 @@ extern crate "test" as testing;
 
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::collections::hash_map::{Occupied, Vacant};
+use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::io::File;
 use std::io;
 use std::rc::Rc;

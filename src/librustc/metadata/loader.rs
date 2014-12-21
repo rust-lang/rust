@@ -228,7 +228,7 @@ use util::fs;
 
 use std::c_str::ToCStr;
 use std::cmp;
-use std::collections::hash_map::{Occupied, Vacant};
+use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::collections::{HashMap, HashSet};
 use std::io::fs::PathExtensions;
 use std::io;
