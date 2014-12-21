@@ -77,18 +77,16 @@ pub fn expand_meta_deriving(cx: &mut ExtCtxt,
                                 expand!(decodable::expand_deriving_decodable)
                             }
                             "Encodable" => {
-                                // NOTE: uncomment after a stage0 snap
-                                // cx.span_warn(titem.span,
-                                //              "deriving(Encodable) is deprecated \
-                                //               in favor of deriving(RustcEncodable)");
+                                cx.span_warn(titem.span,
+                                             "deriving(Encodable) is deprecated \
+                                              in favor of deriving(RustcEncodable)");
 
                                 expand!(encodable::expand_deriving_encodable)
                             }
                             "Decodable" => {
-                                // NOTE: uncomment after a stage0 snap
-                                // cx.span_warn(titem.span,
-                                //              "deriving(Decodable) is deprecated \
-                                //               in favor of deriving(RustcDecodable)");
+                                cx.span_warn(titem.span,
+                                             "deriving(Decodable) is deprecated \
+                                              in favor of deriving(RustcDecodable)");
 
                                 expand!(decodable::expand_deriving_decodable)
                             }
