@@ -4577,6 +4577,10 @@ pub fn note_and_explain_type_err(cx: &ctxt, err: &type_err) {
                                     "concrete lifetime that was found is ",
                                     conc_region, "");
         }
+        terr_regions_overly_polymorphic(_, ty::ReInfer(ty::ReVar(_))) => {
+            // don't bother to print out the message below for
+            // inference variables, it's not very illuminating.
+        }
         terr_regions_overly_polymorphic(_, conc_region) => {
             note_and_explain_region(cx,
                                     "expected concrete lifetime is ",
