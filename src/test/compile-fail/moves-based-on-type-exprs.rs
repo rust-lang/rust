@@ -89,7 +89,7 @@ fn f100() {
 
 fn f110() {
     let x = vec!("hi".to_string());
-    let _y = [x.into_iter().next().unwrap(), ..1];
+    let _y = [x.into_iter().next().unwrap(); 1];
     touch(&x); //~ ERROR use of moved value: `x`
 }
 

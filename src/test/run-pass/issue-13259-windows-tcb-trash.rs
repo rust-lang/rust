@@ -27,7 +27,7 @@ mod imp {
     }
 
     pub fn test() {
-        let mut buf: [u16, ..50] = [0, ..50];
+        let mut buf: [u16; 50] = [0; 50];
         let ret = unsafe {
             FormatMessageW(0x1000, 0 as *mut c_void, 1, 0x400,
                            buf.as_mut_ptr(), buf.len() as u32, 0 as *const c_void)

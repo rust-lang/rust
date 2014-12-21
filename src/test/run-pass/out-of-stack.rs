@@ -22,7 +22,7 @@ use std::os;
 pub fn black_box<T>(dummy: T) { unsafe { asm!("" : : "r"(&dummy)) } }
 
 fn silent_recurse() {
-    let buf = [0i, ..1000];
+    let buf = [0i; 1000];
     black_box(buf);
     silent_recurse();
 }

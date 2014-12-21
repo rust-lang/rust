@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-static A: [u8, ..1] = ['h' as u8];
+static A: [u8; 1] = ['h' as u8];
 static B: u8 = (&A)[0];
-static C: &'static &'static &'static &'static [u8, ..1] = & & & &A;
+static C: &'static &'static &'static &'static [u8; 1] = & & & &A;
 static D: u8 = (&C)[0];
 
 pub fn main() {

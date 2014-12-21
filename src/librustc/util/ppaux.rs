@@ -453,7 +453,7 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
         ty_vec(t, sz) => {
             let inner_str = ty_to_string(cx, t);
             match sz {
-                Some(n) => format!("[{}, ..{}]", inner_str, n),
+                Some(n) => format!("[{}; {}]", inner_str, n),
                 None => format!("[{}]", inner_str),
             }
         }

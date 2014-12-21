@@ -19,6 +19,6 @@ extern {
 
 pub unsafe fn foo() {
     // Make sure we use the stack
-    let x: [u8, ..50] = [0, ..50];
+    let x: [u8; 50] = [0; 50];
     black_box(x.as_ptr());
 }

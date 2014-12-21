@@ -13,7 +13,7 @@
 
 ...should print &[1, 2, 3] but instead prints something like
 &[4492532864, 24]. It is pretty evident that the compiler messed up
-with the representation of [int, ..n] and [int] somehow, or at least
+with the representation of [int; n] and [int] somehow, or at least
 failed to typecheck correctly.
 */
 

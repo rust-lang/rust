@@ -10,6 +10,6 @@
 
 use std::iter::AdditiveIterator;
 fn main() {
-    let x: [u64, ..3] = [1, 2, 3];
+    let x: [u64; 3] = [1, 2, 3];
     assert_eq!(6, range(0, 3).map(|i| x[i]).sum());
 }

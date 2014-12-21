@@ -10,4 +10,4 @@
 
 type v = [mut int];
     //~^  ERROR expected identifier, found keyword `mut`
-    //~^^ ERROR expected one of `(`, `+`, `,`, `::`, or `]`, found `int`
+    //~^^ ERROR expected one of `(`, `+`, `,`, `::`, `;`, or `]`, found `int`
