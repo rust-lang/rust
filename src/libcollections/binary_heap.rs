@@ -551,9 +551,18 @@ impl<T: Ord> BinaryHeap<T> {
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn is_empty(&self) -> bool { self.len() == 0 }
 
+    /// Clears the queue, returning an iterator over the removed elements.
+    #[inline]
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    pub fn drain<'a>(&'a mut self) -> Drain<'a, T> {
+        Drain {
+            iter: self.data.drain(),
+        }
+    }
+
     /// Drops all items from the queue.
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn clear(&mut self) { self.data.truncate(0) }
+    pub fn clear(&mut self) { self.drain(); }
 }
 
 /// `BinaryHeap` iterator.
@@ -595,6 +604,26 @@ impl<T> DoubleEndedIterator<T> for MoveItems<T> {
 }
 
 impl<T> ExactSizeIterator<T> for MoveItems<T> {}
+
+/// An iterator that drains a `BinaryHeap`.
+pub struct Drain<'a, T: 'a> {
+    iter: vec::Drain<'a, T>,
+}
+
+impl<'a, T: 'a> Iterator<T> for Drain<'a, T> {
+    #[inline]
+    fn next(&mut self) -> Option<T> { self.iter.next() }
+
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
+}
+
+impl<'a, T: 'a> DoubleEndedIterator<T> for Drain<'a, T> {
+    #[inline]
+    fn next_back(&mut self) -> Option<T> { self.iter.next_back() }
+}
+
+impl<'a, T: 'a> ExactSizeIterator<T> for Drain<'a, T> {}
 
 impl<T: Ord> FromIterator<T> for BinaryHeap<T> {
     fn from_iter<Iter: Iterator<T>>(iter: Iter) -> BinaryHeap<T> {
@@ -818,5 +847,15 @@ mod tests {
         for &x in xs.iter() {
             assert_eq!(q.pop().unwrap(), x);
         }
+    }
+
+    #[test]
+    fn test_drain() {
+        let mut q: BinaryHeap<_> =
+            [9u, 8, 7, 6, 5, 4, 3, 2, 1].iter().cloned().collect();
+
+        assert_eq!(q.drain().take(5).count(), 5);
+
+        assert!(q.is_empty());
     }
 }

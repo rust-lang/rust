@@ -1117,6 +1117,38 @@ impl<T> Vec<T> {
         }
     }
 
+    /// Creates a draining iterator that clears the `Vec` and iterates over
+    /// the removed items from start to end.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut v = vec!["a".to_string(), "b".to_string()];
+    /// for s in v.drain() {
+    ///     // s has type String, not &String
+    ///     println!("{}", s);
+    /// }
+    /// assert!(v.is_empty());
+    /// ```
+    #[inline]
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    pub fn drain<'a>(&'a mut self) -> Drain<'a, T> {
+        unsafe {
+            let begin = self.ptr as *const T;
+            let end = if mem::size_of::<T>() == 0 {
+                (self.ptr as uint + self.len()) as *const T
+            } else {
+                self.ptr.offset(self.len() as int) as *const T
+            };
+            self.set_len(0);
+            Drain {
+                ptr: begin,
+                end: end,
+                marker: ContravariantLifetime,
+            }
+        }
+    }
+
     /// Clears the vector, removing all values.
     ///
     /// # Examples
@@ -1373,8 +1405,9 @@ pub struct MoveItems<T> {
 }
 
 impl<T> MoveItems<T> {
-    #[inline]
     /// Drops all items that have not yet been moved and returns the empty vector.
+    #[inline]
+    #[unstable]
     pub fn into_inner(mut self) -> Vec<T> {
         unsafe {
             for _x in self { }
@@ -1384,8 +1417,8 @@ impl<T> MoveItems<T> {
         }
     }
 
-    /// Deprecated, use into_inner() instead
-    #[deprecated = "renamed to into_inner()"]
+    /// Deprecated, use .into_inner() instead
+    #[deprecated = "use .into_inner() instead"]
     pub fn unwrap(self) -> Vec<T> { self.into_inner() }
 }
 
@@ -1458,6 +1491,84 @@ impl<T> Drop for MoveItems<T> {
                 dealloc(self.allocation, self.cap);
             }
         }
+    }
+}
+
+/// An iterator that drains a vector.
+#[unsafe_no_drop_flag]
+pub struct Drain<'a, T> {
+    ptr: *const T,
+    end: *const T,
+    marker: ContravariantLifetime<'a>,
+}
+
+impl<'a, T> Iterator<T> for Drain<'a, T> {
+    #[inline]
+    fn next(&mut self) -> Option<T> {
+        unsafe {
+            if self.ptr == self.end {
+                None
+            } else {
+                if mem::size_of::<T>() == 0 {
+                    // purposefully don't use 'ptr.offset' because for
+                    // vectors with 0-size elements this would return the
+                    // same pointer.
+                    self.ptr = mem::transmute(self.ptr as uint + 1);
+
+                    // Use a non-null pointer value
+                    Some(ptr::read(mem::transmute(1u)))
+                } else {
+                    let old = self.ptr;
+                    self.ptr = self.ptr.offset(1);
+
+                    Some(ptr::read(old))
+                }
+            }
+        }
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        let diff = (self.end as uint) - (self.ptr as uint);
+        let size = mem::size_of::<T>();
+        let exact = diff / (if size == 0 {1} else {size});
+        (exact, Some(exact))
+    }
+}
+
+impl<'a, T> DoubleEndedIterator<T> for Drain<'a, T> {
+    #[inline]
+    fn next_back(&mut self) -> Option<T> {
+        unsafe {
+            if self.end == self.ptr {
+                None
+            } else {
+                if mem::size_of::<T>() == 0 {
+                    // See above for why 'ptr.offset' isn't used
+                    self.end = mem::transmute(self.end as uint - 1);
+
+                    // Use a non-null pointer value
+                    Some(ptr::read(mem::transmute(1u)))
+                } else {
+                    self.end = self.end.offset(-1);
+
+                    Some(ptr::read(self.end))
+                }
+            }
+        }
+    }
+}
+
+impl<'a, T> ExactSizeIterator<T> for Drain<'a, T> {}
+
+#[unsafe_destructor]
+impl<'a, T> Drop for Drain<'a, T> {
+    fn drop(&mut self) {
+        // self.ptr == self.end == null if drop has already been called,
+        // so we can use #[unsafe_no_drop_flag].
+
+        // destroy the remaining elements
+        for _x in *self {}
     }
 }
 
@@ -2265,6 +2376,39 @@ mod tests {
             vec2.push(i);
         }
         assert!(vec2 == vec![(), (), ()]);
+    }
+
+    #[test]
+    fn test_drain_items() {
+        let mut vec = vec![1, 2, 3];
+        let mut vec2: Vec<i32> = vec![];
+        for i in vec.drain() {
+            vec2.push(i);
+        }
+        assert_eq!(vec, []);
+        assert_eq!(vec2, [ 1, 2, 3 ]);
+    }
+
+    #[test]
+    fn test_drain_items_reverse() {
+        let mut vec = vec![1, 2, 3];
+        let mut vec2: Vec<i32> = vec![];
+        for i in vec.drain().rev() {
+            vec2.push(i);
+        }
+        assert_eq!(vec, []);
+        assert_eq!(vec2, [ 3, 2, 1 ]);
+    }
+
+    #[test]
+    fn test_drain_items_zero_sized() {
+        let mut vec = vec![(), (), ()];
+        let mut vec2: Vec<()> = vec![];
+        for i in vec.drain() {
+            vec2.push(i);
+        }
+        assert_eq!(vec, []);
+        assert_eq!(vec2, [(), (), ()]);
     }
 
     #[test]
