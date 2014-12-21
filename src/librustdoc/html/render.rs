@@ -491,26 +491,26 @@ fn write_shared(cx: &Context,
     // Add all the static files. These may already exist, but we just
     // overwrite them anyway to make sure that they're fresh and up-to-date.
     try!(write(cx.dst.join("jquery.js"),
-               include_bin!("static/jquery-2.1.0.min.js")));
-    try!(write(cx.dst.join("main.js"), include_bin!("static/main.js")));
-    try!(write(cx.dst.join("playpen.js"), include_bin!("static/playpen.js")));
-    try!(write(cx.dst.join("main.css"), include_bin!("static/main.css")));
+               include_bytes!("static/jquery-2.1.0.min.js")));
+    try!(write(cx.dst.join("main.js"), include_bytes!("static/main.js")));
+    try!(write(cx.dst.join("playpen.js"), include_bytes!("static/playpen.js")));
+    try!(write(cx.dst.join("main.css"), include_bytes!("static/main.css")));
     try!(write(cx.dst.join("normalize.css"),
-               include_bin!("static/normalize.css")));
+               include_bytes!("static/normalize.css")));
     try!(write(cx.dst.join("FiraSans-Regular.woff"),
-               include_bin!("static/FiraSans-Regular.woff")));
+               include_bytes!("static/FiraSans-Regular.woff")));
     try!(write(cx.dst.join("FiraSans-Medium.woff"),
-               include_bin!("static/FiraSans-Medium.woff")));
+               include_bytes!("static/FiraSans-Medium.woff")));
     try!(write(cx.dst.join("Heuristica-Italic.woff"),
-               include_bin!("static/Heuristica-Italic.woff")));
+               include_bytes!("static/Heuristica-Italic.woff")));
     try!(write(cx.dst.join("SourceSerifPro-Regular.woff"),
-               include_bin!("static/SourceSerifPro-Regular.woff")));
+               include_bytes!("static/SourceSerifPro-Regular.woff")));
     try!(write(cx.dst.join("SourceSerifPro-Bold.woff"),
-               include_bin!("static/SourceSerifPro-Bold.woff")));
+               include_bytes!("static/SourceSerifPro-Bold.woff")));
     try!(write(cx.dst.join("SourceCodePro-Regular.woff"),
-               include_bin!("static/SourceCodePro-Regular.woff")));
+               include_bytes!("static/SourceCodePro-Regular.woff")));
     try!(write(cx.dst.join("SourceCodePro-Semibold.woff"),
-               include_bin!("static/SourceCodePro-Semibold.woff")));
+               include_bytes!("static/SourceCodePro-Semibold.woff")));
 
     fn collect(path: &Path, krate: &str,
                key: &str) -> io::IoResult<Vec<String>> {
