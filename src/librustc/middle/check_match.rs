@@ -307,7 +307,7 @@ fn check_arms(cx: &MatchCheckCtxt,
             match is_useful(cx, &seen, v.as_slice(), LeaveOutWitness) {
                 NotUseful => {
                     match source {
-                        ast::MatchIfLetDesugar => {
+                        ast::MatchSource::IfLetDesugar { .. } => {
                             if printed_if_let_err {
                                 // we already printed an irrefutable if-let pattern error.
                                 // We don't want two, that's just confusing.
@@ -321,7 +321,7 @@ fn check_arms(cx: &MatchCheckCtxt,
                             }
                         },
 
-                        ast::MatchWhileLetDesugar => {
+                        ast::MatchSource::WhileLetDesugar => {
                             // find the first arm pattern so we can use its span
                             let &(ref first_arm_pats, _) = &arms[0];
                             let first_pat = &first_arm_pats[0];
@@ -329,7 +329,7 @@ fn check_arms(cx: &MatchCheckCtxt,
                             span_err!(cx.tcx.sess, span, E0165, "irrefutable while-let pattern");
                         },
 
-                        ast::MatchNormal => {
+                        ast::MatchSource::Normal => {
                             span_err!(cx.tcx.sess, pat.span, E0001, "unreachable pattern")
                         },
                     }
