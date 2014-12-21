@@ -482,6 +482,7 @@ pub mod eabi {
 #[cfg(not(test))]
 /// Entry point of panic from the libcore crate.
 #[lang = "panic_fmt"]
+#[allow(improper_ctypes)] // FIXME(tomjakubowski)
 pub extern fn rust_begin_unwind(msg: fmt::Arguments,
                                 file: &'static str, line: uint) -> ! {
     begin_unwind_fmt(msg, &(file, line))
@@ -492,6 +493,7 @@ pub extern fn rust_begin_unwind(msg: fmt::Arguments,
 #[cfg(not(test))]
 /// Entry point of panic from the libcore crate.
 #[lang = "panic_fmt"]
+#[allow(improper_ctypes)] // FIXME(tomjakubowski)
 pub extern fn rust_begin_unwind(msg: &fmt::Arguments,
                                 file: &'static str, line: uint) -> ! {
     begin_unwind_fmt(msg, &(file, line))

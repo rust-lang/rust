@@ -405,15 +405,17 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         match self.cx.tcx.def_map.borrow()[path_id].clone() {
             def::DefPrimTy(ast::TyInt(ast::TyI)) => {
                 self.cx.span_lint(IMPROPER_CTYPES, sp,
-                                  "found rust type `int` in foreign module, while \
-                                   libc::c_int or libc::c_long should be used");
+                                  "found rust type `int` in foreign module or \
+                                  extern fn, while libc::c_int or libc::c_long \
+                                  should be used");
             }
             def::DefPrimTy(ast::TyUint(ast::TyU)) => {
                 self.cx.span_lint(IMPROPER_CTYPES, sp,
-                                  "found rust type `uint` in foreign module, while \
-                                   libc::c_uint or libc::c_ulong should be used");
+                                  "found rust type `uint` in foreign module or \
+                                  extern fn, while libc::c_uint or libc::c_ulong \
+                                  should be used");
             }
-            def::DefTy(..) => {
+            def::DefTy(..) | def::DefStruct(..) => {
                 let tty = match self.cx.tcx.ast_ty_to_ty_cache.borrow().get(&ty_id) {
                     Some(&ty::atttce_resolved(t)) => t,
                     _ => panic!("ast_ty_to_ty_cache was incomplete after typeck!")
@@ -422,8 +424,9 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 if !ty::is_ffi_safe(self.cx.tcx, tty) {
                     self.cx.span_lint(IMPROPER_CTYPES, sp,
                                       "found type without foreign-function-safe
-                                      representation annotation in foreign module, consider \
-                                      adding a #[repr(...)] attribute to the type");
+                                      representation annotation in foreign module or \
+                                      extern fn, consider adding a #[repr(...)] \
+                                      attribute to the type");
                 }
             }
             _ => ()
@@ -455,7 +458,7 @@ impl LintPass for ImproperCTypes {
             vis.visit_ty(ty);
         }
 
-        fn check_foreign_fn(cx: &Context, decl: &ast::FnDecl) {
+        fn check_fn(cx: &Context, decl: &ast::FnDecl) {
             for input in decl.inputs.iter() {
                 check_ty(cx, &*input.ty);
             }
@@ -468,9 +471,15 @@ impl LintPass for ImproperCTypes {
             ast::ItemForeignMod(ref nmod) if nmod.abi != abi::RustIntrinsic => {
                 for ni in nmod.items.iter() {
                     match ni.node {
-                        ast::ForeignItemFn(ref decl, _) => check_foreign_fn(cx, &**decl),
+                        ast::ForeignItemFn(ref decl, _) => check_fn(cx, &**decl),
                         ast::ForeignItemStatic(ref t, _) => check_ty(cx, &**t)
                     }
+                }
+            }
+            ast::ItemFn(ref decl, _, abi, _, _) => {
+                match abi {
+                    abi::Rust | abi::RustIntrinsic | abi::RustCall => (),
+                    _ => check_fn(cx, &**decl)
                 }
             }
             _ => (),
