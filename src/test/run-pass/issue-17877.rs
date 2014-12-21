@@ -9,11 +9,11 @@
 // except according to those terms.
 
 fn main() {
-    assert_eq!(match [0u8, ..1024] {
+    assert_eq!(match [0u8; 1024] {
         _ => 42u,
     }, 42u);
 
-    assert_eq!(match [0u8, ..1024] {
+    assert_eq!(match [0u8; 1024] {
         [1, _..] => 0u,
         [0, _..] => 1u,
         _ => 2u

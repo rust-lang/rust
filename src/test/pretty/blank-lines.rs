@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // pp-exact
-fn f() -> [int, ..3] {
+fn f() -> [int; 3] {
     let picard = 0;
 
     let data = 1;

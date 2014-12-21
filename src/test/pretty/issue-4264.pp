@@ -21,26 +21,26 @@ use std::prelude::*;
 
 // #4264 fixed-length vector types
 
-pub fn foo(_: [int, ..(3 as uint)]) { }
+pub fn foo(_: [int; (3 as uint)]) { }
 
 pub fn bar() {
     const FOO: uint = ((5u as uint) - (4u as uint) as uint);
-    let _: [(), ..(FOO as uint)] = ([(() as ())] as [(), ..1]);
+    let _: [(); (FOO as uint)] = ([(() as ())] as [(); 1]);
 
-    let _: [(), ..(1u as uint)] = ([(() as ())] as [(), ..1]);
+    let _: [(); (1u as uint)] = ([(() as ())] as [(); 1]);
 
     let _ =
-        (((&((([(1i as int), (2 as int), (3 as int)] as [int, ..3])) as
-                [int, ..3]) as &[int, ..3]) as *const _ as *const [int, ..3])
-            as *const [int, ..(3u as uint)] as *const [int, ..3]);
+        (((&((([(1i as int), (2 as int), (3 as int)] as [int; 3])) as
+                [int; 3]) as &[int; 3]) as *const _ as *const [int; 3]) as
+            *const [int; (3u as uint)] as *const [int; 3]);
 
     (match (() as ()) {
          () => {
              #[inline]
              #[allow(dead_code)]
              static __STATIC_FMTSTR: &'static [&'static str] =
-                 (&([("test" as &'static str)] as [&'static str, ..1]) as
-                     &'static [&'static str, ..1]);
+                 (&([("test" as &'static str)] as [&'static str; 1]) as
+                     &'static [&'static str; 1]);
 
 
 
@@ -57,9 +57,9 @@ pub fn bar() {
                                                                                                                                                                 &'static [&'static str]),
                                                                                                                                                             (&([]
                                                                                                                                                                   as
-                                                                                                                                                                  [core::fmt::Argument<'_>, ..0])
+                                                                                                                                                                  [core::fmt::Argument<'_>; 0])
                                                                                                                                                                 as
-                                                                                                                                                                &[core::fmt::Argument<'_>, ..0]))
+                                                                                                                                                                &[core::fmt::Argument<'_>; 0]))
                                                                                       as
                                                                                       core::fmt::Arguments<'_>)
                                                                                     as
@@ -68,18 +68,17 @@ pub fn bar() {
          }
      } as collections::string::String);
 }
-pub type Foo = [int, ..(3u as uint)];
+pub type Foo = [int; (3u as uint)];
 pub struct Bar {
-    pub x: [int, ..(3u as uint)],
+    pub x: [int; (3u as uint)],
 }
-pub struct TupleBar([int, ..(4u as uint)]);
-pub enum Baz { BazVariant([int, ..(5u as uint)]), }
+pub struct TupleBar([int; (4u as uint)]);
+pub enum Baz { BazVariant([int; (5u as uint)]), }
 pub fn id<T>(x: T) -> T { (x as T) }
 pub fn use_id() {
     let _ =
-        ((id::<[int, ..(3u as uint)]> as
-             fn([int, ..3]) -> [int, ..3])(([(1 as int), (2 as int),
-                                             (3 as int)] as [int, ..3])) as
-            [int, ..3]);
+        ((id::<[int; (3u as uint)]> as
+             fn([int; 3]) -> [int; 3])(([(1 as int), (2 as int), (3 as int)]
+                                           as [int; 3])) as [int; 3]);
 }
 fn main() { }

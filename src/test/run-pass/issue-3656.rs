@@ -16,7 +16,7 @@ extern crate libc;
 use libc::{c_uint, uint32_t, c_void};
 
 pub struct KEYGEN {
-    hash_algorithm: [c_uint, ..2],
+    hash_algorithm: [c_uint; 2],
     count: uint32_t,
     salt: *const c_void,
     salt_size: uint32_t,

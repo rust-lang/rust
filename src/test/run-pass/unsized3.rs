@@ -60,7 +60,7 @@ pub fn main() {
 
     unsafe {
         struct Foo_<T> {
-            f: [T, ..3]
+            f: [T; 3]
         }
 
         let data = box Foo_{f: [1i32, 2, 3] };
@@ -72,7 +72,7 @@ pub fn main() {
 
         struct Baz_ {
             f1: uint,
-            f2: [u8, ..5],
+            f2: [u8; 5],
         }
 
         let data = box Baz_{ f1: 42, f2: ['a' as u8, 'b' as u8, 'c' as u8, 'd' as u8, 'e' as u8] };

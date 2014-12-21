@@ -28,7 +28,7 @@ impl<T> Foo {
 pub struct Parser<T>;
 impl<T: std::iter::Iterator<char>> Parser<T> {
     fn in_doctype(&mut self) {
-        static DOCTYPEPattern: [char, ..6] = ['O', 'C', 'T', 'Y', 'P', 'E'];
+        static DOCTYPEPattern: [char; 6] = ['O', 'C', 'T', 'Y', 'P', 'E'];
     }
 }
 

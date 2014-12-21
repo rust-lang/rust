@@ -30,7 +30,7 @@
 
 #![allow(unused_variables)]
 
-static mut VECT: [i32, ..3] = [1, 2, 3];
+static mut VECT: [i32; 3] = [1, 2, 3];
 
 fn main() {
     let a = [1i, 2, 3];

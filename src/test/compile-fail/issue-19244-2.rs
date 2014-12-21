@@ -12,6 +12,6 @@ struct MyStruct { field: uint }
 const STRUCT: MyStruct = MyStruct { field: 42 };
 
 fn main() {
-    let a: [int, ..STRUCT.nonexistent_field];
+    let a: [int; STRUCT.nonexistent_field];
     //~^ ERROR expected constant expr for array length: nonexistent struct field
 }

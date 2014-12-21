@@ -37,20 +37,20 @@ fn gradient(orig: Vec2, grad: Vec2, p: Vec2) -> f32 {
 }
 
 struct Noise2DContext {
-    rgradients: [Vec2, ..256],
-    permutations: [i32, ..256],
+    rgradients: [Vec2; 256],
+    permutations: [i32; 256],
 }
 
 impl Noise2DContext {
     fn new() -> Noise2DContext {
         let mut rng = StdRng::new().unwrap();
 
-        let mut rgradients = [Vec2 { x: 0.0, y: 0.0 }, ..256];
+        let mut rgradients = [Vec2 { x: 0.0, y: 0.0 }; 256];
         for x in rgradients.iter_mut() {
             *x = random_gradient(&mut rng);
         }
 
-        let mut permutations = [0i32, ..256];
+        let mut permutations = [0i32; 256];
         for (i, x) in permutations.iter_mut().enumerate() {
             *x = i as i32;
         }
@@ -65,7 +65,7 @@ impl Noise2DContext {
         self.rgradients[(idx & 255) as uint]
     }
 
-    fn get_gradients(&self, x: f32, y: f32) -> ([Vec2, ..4], [Vec2, ..4]) {
+    fn get_gradients(&self, x: f32, y: f32) -> ([Vec2; 4], [Vec2; 4]) {
         let x0f = x.floor();
         let y0f = y.floor();
         let x1f = x0f + 1.0;
@@ -102,7 +102,7 @@ impl Noise2DContext {
 
 fn main() {
     let symbols = [' ', '░', '▒', '▓', '█', '█'];
-    let mut pixels = [0f32, ..256*256];
+    let mut pixels = [0f32; 256*256];
     let n2d = Noise2DContext::new();
 
     for _ in range(0u, 100) {
