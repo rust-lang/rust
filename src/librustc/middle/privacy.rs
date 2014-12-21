@@ -1307,13 +1307,13 @@ impl<'a, 'tcx> VisiblePrivateTypesVisitor<'a, 'tcx> {
     }
 
     fn check_ty_param_bound(&self,
-                            span: Span,
                             ty_param_bound: &ast::TyParamBound) {
         if let ast::TraitTyParamBound(ref trait_ref) = *ty_param_bound {
             if !self.tcx.sess.features.borrow().visible_private_types &&
                 self.path_is_private_type(trait_ref.trait_ref.ref_id) {
+                    let span = trait_ref.trait_ref.path.span;
                     self.tcx.sess.span_err(span,
-                                           "private type in exported type \
+                                           "private trait in exported type \
                                             parameter bound");
             }
         }
@@ -1357,7 +1357,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
                 }
 
                 for bound in bounds.iter() {
-                    self.check_ty_param_bound(item.span, bound)
+                    self.check_ty_param_bound(bound)
                 }
             }
 
@@ -1495,14 +1495,14 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
     fn visit_generics(&mut self, generics: &ast::Generics) {
         for ty_param in generics.ty_params.iter() {
             for bound in ty_param.bounds.iter() {
-                self.check_ty_param_bound(ty_param.span, bound)
+                self.check_ty_param_bound(bound)
             }
         }
         for predicate in generics.where_clause.predicates.iter() {
             match predicate {
                 &ast::WherePredicate::BoundPredicate(ref bound_pred) => {
                     for bound in bound_pred.bounds.iter() {
-                        self.check_ty_param_bound(bound_pred.span, bound)
+                        self.check_ty_param_bound(bound)
                     }
                 }
                 &ast::WherePredicate::RegionPredicate(_) => {}
