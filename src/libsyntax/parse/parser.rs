@@ -41,7 +41,7 @@ use ast::{LifetimeDef, Lit, Lit_};
 use ast::{LitBool, LitChar, LitByte, LitBinary};
 use ast::{LitStr, LitInt, Local, LocalLet};
 use ast::{MacStmtWithBraces, MacStmtWithSemicolon, MacStmtWithoutBraces};
-use ast::{MutImmutable, MutMutable, Mac_, MacInvocTT, MatchNormal};
+use ast::{MutImmutable, MutMutable, Mac_, MacInvocTT, MatchSource};
 use ast::{Method, MutTy, BiMul, Mutability};
 use ast::{MethodImplItem, NamedField, UnNeg, NoReturn, NodeId, UnNot};
 use ast::{Pat, PatEnum, PatIdent, PatLit, PatRange, PatRegion, PatStruct};
@@ -3111,7 +3111,7 @@ impl<'a> Parser<'a> {
         }
         let hi = self.span.hi;
         self.bump();
-        return self.mk_expr(lo, hi, ExprMatch(discriminant, arms, MatchNormal));
+        return self.mk_expr(lo, hi, ExprMatch(discriminant, arms, MatchSource::Normal));
     }
 
     pub fn parse_arm(&mut self) -> Arm {
