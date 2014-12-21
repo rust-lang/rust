@@ -73,13 +73,19 @@ macro_rules! scoped_thread_local {
 #[doc(hidden)]
 macro_rules! __scoped_thread_local_inner {
     (static $name:ident: $t:ty) => (
-        #[cfg_attr(not(any(windows, target_os = "android", target_os = "ios")),
+        #[cfg_attr(not(any(windows,
+                           target_os = "android",
+                           target_os = "ios",
+                           target_arch = "aarch64")),
                    thread_local)]
         static $name: ::std::thread_local::scoped::Key<$t> =
             __scoped_thread_local_inner!($t);
     );
     (pub static $name:ident: $t:ty) => (
-        #[cfg_attr(not(any(windows, target_os = "android", target_os = "ios")),
+        #[cfg_attr(not(any(windows,
+                           target_os = "android",
+                           target_os = "ios",
+                           target_arch = "aarch64")),
                    thread_local)]
         pub static $name: ::std::thread_local::scoped::Key<$t> =
             __scoped_thread_local_inner!($t);
@@ -87,14 +93,14 @@ macro_rules! __scoped_thread_local_inner {
     ($t:ty) => ({
         use std::thread_local::scoped::Key as __Key;
 
-        #[cfg(not(any(windows, target_os = "android", target_os = "ios")))]
+        #[cfg(not(any(windows, target_os = "android", target_os = "ios", target_arch = "aarch64")))]
         const INIT: __Key<$t> = __Key {
             inner: ::std::thread_local::scoped::KeyInner {
                 inner: ::std::cell::UnsafeCell { value: 0 as *mut _ },
             }
         };
 
-        #[cfg(any(windows, target_os = "android", target_os = "ios"))]
+        #[cfg(any(windows, target_os = "android", target_os = "ios", target_arch = "aarch64"))]
         const INIT: __Key<$t> = __Key {
             inner: ::std::thread_local::scoped::KeyInner {
                 inner: ::std::thread_local::scoped::OS_INIT,
@@ -194,7 +200,7 @@ impl<T> Key<T> {
     }
 }
 
-#[cfg(not(any(windows, target_os = "android", target_os = "ios")))]
+#[cfg(not(any(windows, target_os = "android", target_os = "ios", target_arch = "aarch64")))]
 mod imp {
     use std::cell::UnsafeCell;
 
@@ -211,7 +217,7 @@ mod imp {
     }
 }
 
-#[cfg(any(windows, target_os = "android", target_os = "ios"))]
+#[cfg(any(windows, target_os = "android", target_os = "ios", target_arch = "aarch64"))]
 mod imp {
     use kinds::marker;
     use sys_common::thread_local::StaticKey as OsStaticKey;

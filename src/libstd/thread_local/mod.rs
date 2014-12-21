@@ -170,17 +170,21 @@ macro_rules! thread_local {
 #[macro_export]
 macro_rules! __thread_local_inner {
     (static $name:ident: $t:ty = $init:expr) => (
-        #[cfg_attr(any(target_os = "macos", target_os = "linux"), thread_local)]
+        #[cfg_attr(all(any(target_os = "macos", target_os = "linux"),
+                       not(target_arch = "aarch64")),
+                   thread_local)]
         static $name: ::std::thread_local::KeyInner<$t> =
             __thread_local_inner!($init, $t);
     );
     (pub static $name:ident: $t:ty = $init:expr) => (
-        #[cfg_attr(any(target_os = "macos", target_os = "linux"), thread_local)]
+        #[cfg_attr(all(any(target_os = "macos", target_os = "linux"),
+                       not(target_arch = "aarch64")),
+                   thread_local)]
         pub static $name: ::std::thread_local::KeyInner<$t> =
             __thread_local_inner!($init, $t);
     );
     ($init:expr, $t:ty) => ({
-        #[cfg(any(target_os = "macos", target_os = "linux"))]
+        #[cfg(all(any(target_os = "macos", target_os = "linux"), not(target_arch = "aarch64")))]
         const INIT: ::std::thread_local::KeyInner<$t> = {
             ::std::thread_local::KeyInner {
                 inner: ::std::cell::UnsafeCell { value: $init },
@@ -189,7 +193,7 @@ macro_rules! __thread_local_inner {
             }
         };
 
-        #[cfg(not(any(target_os = "macos", target_os = "linux")))]
+        #[cfg(any(not(any(target_os = "macos", target_os = "linux")), target_arch = "aarch64"))]
         const INIT: ::std::thread_local::KeyInner<$t> = {
             unsafe extern fn __destroy(ptr: *mut u8) {
                 ::std::thread_local::destroy_value::<$t>(ptr);
@@ -240,7 +244,7 @@ impl<T: 'static> Key<T> {
     }
 }
 
-#[cfg(any(target_os = "macos", target_os = "linux"))]
+#[cfg(all(any(target_os = "macos", target_os = "linux"), not(target_arch = "aarch64")))]
 mod imp {
     use prelude::*;
 
@@ -370,7 +374,7 @@ mod imp {
     }
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "linux")))]
+#[cfg(any(not(any(target_os = "macos", target_os = "linux")), target_arch = "aarch64"))]
 mod imp {
     use prelude::*;
 

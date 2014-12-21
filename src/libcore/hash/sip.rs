@@ -418,6 +418,12 @@ mod tests {
         }
     }
 
+    #[test] #[cfg(target_arch = "aarch64")]
+    fn test_hash_uint() {
+        let val = 0xdeadbeef_deadbeef_u64;
+        assert_eq!(hash(&(val as u64)), hash(&(val as uint)));
+        assert!(hash(&(val as u32)) != hash(&(val as uint)));
+    }
     #[test] #[cfg(target_arch = "arm")]
     fn test_hash_uint() {
         let val = 0xdeadbeef_deadbeef_u64;
