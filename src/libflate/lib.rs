@@ -29,7 +29,7 @@ extern crate libc;
 
 use libc::{c_void, size_t, c_int};
 use std::c_vec::CVec;
-use std::ptr::OwnedPtr;
+use std::ptr::UniquePtr;
 
 #[link(name = "miniz", kind = "static")]
 extern {
@@ -60,7 +60,7 @@ fn deflate_bytes_internal(bytes: &[u8], flags: c_int) -> Option<CVec<u8>> {
                                              &mut outsz,
                                              flags);
         if !res.is_null() {
-            let res = OwnedPtr(res);
+            let res = UniquePtr(res);
             Some(CVec::new_with_dtor(res.0 as *mut u8, outsz as uint, move|:| libc::free(res.0)))
         } else {
             None
@@ -86,7 +86,7 @@ fn inflate_bytes_internal(bytes: &[u8], flags: c_int) -> Option<CVec<u8>> {
                                                &mut outsz,
                                                flags);
         if !res.is_null() {
-            let res = OwnedPtr(res);
+            let res = UniquePtr(res);
             Some(CVec::new_with_dtor(res.0 as *mut u8, outsz as uint, move|:| libc::free(res.0)))
         } else {
             None

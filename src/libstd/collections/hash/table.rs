@@ -23,7 +23,7 @@ use num::{Int, UnsignedInt};
 use ops::{Deref, DerefMut, Drop};
 use option::Option;
 use option::Option::{Some, None};
-use ptr::{OwnedPtr, RawPtr, copy_nonoverlapping_memory, zero_memory};
+use ptr::{UniquePtr, RawPtr, copy_nonoverlapping_memory, zero_memory};
 use ptr;
 use rt::heap::{allocate, deallocate};
 
@@ -69,7 +69,7 @@ const EMPTY_BUCKET: u64 = 0u64;
 pub struct RawTable<K, V> {
     capacity: uint,
     size:     uint,
-    hashes:   OwnedPtr<u64>,
+    hashes:   UniquePtr<u64>,
     // Because K/V do not appear directly in any of the types in the struct,
     // inform rustc that in fact instances of K and V are reachable from here.
     marker:   marker::CovariantType<(K,V)>,
@@ -563,7 +563,7 @@ impl<K, V> RawTable<K, V> {
             return RawTable {
                 size: 0,
                 capacity: 0,
-                hashes: OwnedPtr::null(),
+                hashes: UniquePtr::null(),
                 marker: marker::CovariantType,
             };
         }
@@ -602,7 +602,7 @@ impl<K, V> RawTable<K, V> {
         RawTable {
             capacity: capacity,
             size:     0,
-            hashes:   OwnedPtr(hashes),
+            hashes:   UniquePtr(hashes),
             marker:   marker::CovariantType,
         }
     }

@@ -190,7 +190,7 @@ fn check_and_get_illegal_move_origin<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
             }
         }
 
-        mc::cat_deref(ref b, _, mc::OwnedPtr) => {
+        mc::cat_deref(ref b, _, mc::UniquePtr) => {
             check_and_get_illegal_move_origin(bccx, b)
         }
     }
