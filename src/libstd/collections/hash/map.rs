@@ -1473,7 +1473,6 @@ mod test_map {
 
     use super::HashMap;
     use super::Entry::{Occupied, Vacant};
-    use cmp::Equiv;
     use hash;
     use iter::{range_inclusive, range_step_inclusive};
     use cell::RefCell;
