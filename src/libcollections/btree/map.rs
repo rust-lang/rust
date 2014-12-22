@@ -1288,6 +1288,30 @@ impl<K, V> BTreeMap<K, V> {
 
 impl<K: Ord, V> BTreeMap<K, V> {
     /// Gets the given key's corresponding entry in the map for in-place manipulation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::BTreeMap;
+    /// use std::collections::btree_map::Entry;
+    ///
+    /// let mut count: BTreeMap<&str, uint> = BTreeMap::new();
+    ///
+    /// // count the number of occurrences of letters in the vec
+    /// for x in vec!["a","b","a","c","a","b"].iter() {
+    ///     match count.entry(*x) {
+    ///         Entry::Vacant(view) => {
+    ///             view.set(1);
+    ///         },
+    ///         Entry::Occupied(mut view) => {
+    ///             let v = view.get_mut();
+    ///             *v += 1;
+    ///         },
+    ///     }
+    /// }
+    ///
+    /// assert_eq!(count["a"], 3u);
+    /// ```
     pub fn entry<'a>(&'a mut self, mut key: K) -> Entry<'a, K, V> {
         // same basic logic of `swap` and `pop`, blended together
         let mut stack = stack::PartialSearchStack::new(self);
