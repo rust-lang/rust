@@ -15,5 +15,5 @@ macro_rules! four (
 );
 
 fn main() {
-    let _x: [u16, ..four!()];
+    let _x: [u16; four!()];
 }

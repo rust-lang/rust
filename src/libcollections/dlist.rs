@@ -758,6 +758,7 @@ impl<A: Ord> Ord for DList<A> {
     }
 }
 
+#[stable]
 impl<A: Clone> Clone for DList<A> {
     fn clone(&self) -> DList<A> {
         self.iter().map(|x| x.clone()).collect()

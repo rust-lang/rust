@@ -41,7 +41,7 @@ use ast::{LifetimeDef, Lit, Lit_};
 use ast::{LitBool, LitChar, LitByte, LitBinary};
 use ast::{LitStr, LitInt, Local, LocalLet};
 use ast::{MacStmtWithBraces, MacStmtWithSemicolon, MacStmtWithoutBraces};
-use ast::{MutImmutable, MutMutable, Mac_, MacInvocTT, MatchNormal};
+use ast::{MutImmutable, MutMutable, Mac_, MacInvocTT, MatchSource};
 use ast::{Method, MutTy, BiMul, Mutability};
 use ast::{MethodImplItem, NamedField, UnNeg, NoReturn, NodeId, UnNot};
 use ast::{Pat, PatEnum, PatIdent, PatLit, PatRange, PatRegion, PatStruct};
@@ -1545,7 +1545,7 @@ impl<'a> Parser<'a> {
             self.expect(&token::OpenDelim(token::Bracket));
             let t = self.parse_ty_sum();
 
-            // Parse the `, ..e` in `[ int, ..e ]`
+            // Parse the `; e` in `[ int; e ]`
             // where `e` is a const expression
             let t = match self.maybe_parse_fixed_vstore() {
                 None => TyVec(t),
@@ -1711,6 +1711,9 @@ impl<'a> Parser<'a> {
         if self.check(&token::Comma) &&
                 self.look_ahead(1, |t| *t == token::DotDot) {
             self.bump();
+            self.bump();
+            Some(self.parse_expr())
+        } else if self.check(&token::Semi) {
             self.bump();
             Some(self.parse_expr())
         } else {
@@ -2255,6 +2258,12 @@ impl<'a> Parser<'a> {
                         self.look_ahead(1, |t| *t == token::DotDot) {
                         // Repeating vector syntax: [ 0, ..512 ]
                         self.bump();
+                        self.bump();
+                        let count = self.parse_expr();
+                        self.expect(&token::CloseDelim(token::Bracket));
+                        ex = ExprRepeat(first_expr, count);
+                    } else if self.check(&token::Semi) {
+                        // Repeating vector syntax: [ 0; 512 ]
                         self.bump();
                         let count = self.parse_expr();
                         self.expect(&token::CloseDelim(token::Bracket));
@@ -3111,7 +3120,7 @@ impl<'a> Parser<'a> {
         }
         let hi = self.span.hi;
         self.bump();
-        return self.mk_expr(lo, hi, ExprMatch(discriminant, arms, MatchNormal));
+        return self.mk_expr(lo, hi, ExprMatch(discriminant, arms, MatchSource::Normal));
     }
 
     pub fn parse_arm(&mut self) -> Arm {

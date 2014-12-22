@@ -77,7 +77,8 @@ use std::mem;
 use std::ops;
 use std::rc::Rc;
 use collections::enum_set::{EnumSet, CLike};
-use std::collections::hash_map::{HashMap, Occupied, Vacant};
+use std::collections::hash_map::HashMap;
+use std::collections::hash_map::Entry::{Occupied, Vacant};
 use syntax::abi;
 use syntax::ast::{CrateNum, DefId, DUMMY_NODE_ID, Ident, ItemTrait, LOCAL_CRATE};
 use syntax::ast::{MutImmutable, MutMutable, Name, NamedField, NodeId};
@@ -2851,45 +2852,18 @@ impl TypeContents {
     }
 }
 
-// NOTE(stage0): Remove impl after a snapshot
-#[cfg(stage0)]
-impl ops::BitOr<TypeContents,TypeContents> for TypeContents {
-    fn bitor(&self, other: &TypeContents) -> TypeContents {
-        TypeContents {bits: self.bits | other.bits}
-    }
-}
-
-#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
 impl ops::BitOr<TypeContents,TypeContents> for TypeContents {
     fn bitor(self, other: TypeContents) -> TypeContents {
         TypeContents {bits: self.bits | other.bits}
     }
 }
 
-// NOTE(stage0): Remove impl after a snapshot
-#[cfg(stage0)]
-impl ops::BitAnd<TypeContents,TypeContents> for TypeContents {
-    fn bitand(&self, other: &TypeContents) -> TypeContents {
-        TypeContents {bits: self.bits & other.bits}
-    }
-}
-
-#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
 impl ops::BitAnd<TypeContents, TypeContents> for TypeContents {
     fn bitand(self, other: TypeContents) -> TypeContents {
         TypeContents {bits: self.bits & other.bits}
     }
 }
 
-// NOTE(stage0): Remove impl after a snapshot
-#[cfg(stage0)]
-impl ops::Sub<TypeContents,TypeContents> for TypeContents {
-    fn sub(&self, other: &TypeContents) -> TypeContents {
-        TypeContents {bits: self.bits & !other.bits}
-    }
-}
-
-#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
 impl ops::Sub<TypeContents, TypeContents> for TypeContents {
     fn sub(self, other: TypeContents) -> TypeContents {
         TypeContents {bits: self.bits & !other.bits}

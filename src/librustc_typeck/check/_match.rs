@@ -21,7 +21,7 @@ use util::nodemap::FnvHashMap;
 use util::ppaux::Repr;
 
 use std::cmp;
-use std::collections::hash_map::{Occupied, Vacant};
+use std::collections::hash_map::Entry::{Occupied, Vacant};
 use syntax::ast;
 use syntax::ast_util;
 use syntax::codemap::{Span, Spanned};
@@ -238,7 +238,8 @@ pub fn check_match<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                              expr: &ast::Expr,
                              discrim: &ast::Expr,
                              arms: &[ast::Arm],
-                             expected: Expectation<'tcx>) {
+                             expected: Expectation<'tcx>,
+                             match_src: ast::MatchSource) {
     let tcx = fcx.ccx.tcx;
 
     let discrim_ty = fcx.infcx().next_ty_var();
@@ -290,12 +291,27 @@ pub fn check_match<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         if ty::type_is_error(result_ty) || ty::type_is_error(bty) {
             ty::mk_err()
         } else {
+            let (origin, expected, found) = match match_src {
+                /* if-let construct without an else block */
+                ast::MatchSource::IfLetDesugar { contains_else_clause }
+                if !contains_else_clause => (
+                    infer::IfExpressionWithNoElse(expr.span),
+                    bty,
+                    result_ty,
+                ),
+                _ => (
+                    infer::MatchExpressionArm(expr.span, arm.body.span),
+                    result_ty,
+                    bty,
+                ),
+            };
+
             infer::common_supertype(
                 fcx.infcx(),
-                infer::MatchExpressionArm(expr.span, arm.body.span),
-                true, // result_ty is "expected" here
-                result_ty,
-                bty
+                origin,
+                true,
+                expected,
+                found,
             )
         }
     });

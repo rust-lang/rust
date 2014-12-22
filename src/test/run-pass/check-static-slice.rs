@@ -11,11 +11,11 @@
 // Check that the various ways of getting to a reference to a vec (both sized
 // and unsized) work properly.
 
-const aa: [int, ..3] = [1, 2, 3];
-const ab: &'static [int, ..3] = &aa;
+const aa: [int; 3] = [1, 2, 3];
+const ab: &'static [int; 3] = &aa;
 const ac: &'static [int] = ab;
 const ad: &'static [int] = &aa;
-const ae: &'static [int, ..3] = &[1, 2, 3];
+const ae: &'static [int; 3] = &[1, 2, 3];
 const af: &'static [int] = &[1, 2, 3];
 
 static ca: int = aa[0];

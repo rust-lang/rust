@@ -18,6 +18,7 @@ use session::Session;
 use llvm;
 use llvm::{ValueRef, BasicBlockRef, BuilderRef, ContextRef};
 use llvm::{True, False, Bool};
+use middle::cfg;
 use middle::def;
 use middle::infer;
 use middle::lang_items::LangItem;
@@ -262,6 +263,8 @@ pub struct FunctionContext<'a, 'tcx: 'a> {
 
     // Cleanup scopes.
     pub scopes: RefCell<Vec<cleanup::CleanupScope<'a, 'tcx>>>,
+
+    pub cfg: Option<cfg::CFG>,
 }
 
 impl<'a, 'tcx> FunctionContext<'a, 'tcx> {

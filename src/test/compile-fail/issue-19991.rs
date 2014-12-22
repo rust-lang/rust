@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,9 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! The boolean type
+// Test if the sugared if-let construct correctly prints "missing an else clause" when an else
+// clause does not exist, instead of the unsympathetic "match arms have incompatible types"
 
-#![doc(primitive = "bool")]
-#![unstable = "this module is purely for documentation and it will likely be \
-               removed from the public api"]
-
+fn main() {
+    if let Some(homura) = Some("madoka") { //~ ERROR missing an else clause: expected `()`
+        765i32
+    };
+}

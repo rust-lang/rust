@@ -14,7 +14,7 @@ use std::rand::{task_rng, Rng, Rand};
 
 const REPEATS: uint = 5;
 const MAX_LEN: uint = 32;
-static drop_counts: [AtomicUint, .. MAX_LEN] =
+static drop_counts: [AtomicUint;  MAX_LEN] =
     // FIXME #5244: AtomicUint is not Copy.
     [
         INIT_ATOMIC_UINT, INIT_ATOMIC_UINT, INIT_ATOMIC_UINT, INIT_ATOMIC_UINT,

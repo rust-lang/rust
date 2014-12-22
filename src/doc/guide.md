@@ -31,7 +31,6 @@ below.)
 
 If you're on Windows, please download either the [32-bit
 installer](https://static.rust-lang.org/dist/rust-nightly-i686-pc-windows-gnu.exe)
-
 or the [64-bit
 installer](https://static.rust-lang.org/dist/rust-nightly-x86_64-pc-windows-gnu.exe)
 and run it.
@@ -1170,7 +1169,7 @@ enum StringResult {
     ErrorReason(String),
 }
 ```
-Where a `StringResult` is either an `StringOK`, with the result of a computation, or an
+Where a `StringResult` is either a `StringOK`, with the result of a computation, or an
 `ErrorReason` with a `String` explaining what caused the computation to fail. These kinds of
 `enum`s are actually very useful and are even part of the standard library.
 
@@ -1192,7 +1191,7 @@ fn respond(greeting: &str) -> StringResult {
 ```
 
 Notice that we need both the enum name and the variant name: `StringResult::StringOK`, but
-we didn't need to with `Ordering`, we just said `Greater` rather than `Ordering::Greater`.
+we didn't need to with `Ordering` – we just said `Greater` rather than `Ordering::Greater`.
 There's a reason: the Rust prelude imports the variants of `Ordering` as well as the enum
 itself. We can use the `use` keyword to do something similar with `StringResult`:
 
@@ -1223,16 +1222,16 @@ now, rather than the full `StringResult::StringOK`. Importing variants can be co
 also cause name conflicts, so do this with caution. It's considered good style to rarely import
 variants for this reason.
 
-As you can see `enum`s with values are quite a powerful tool for data representation,
-and can be even more useful when they're generic across types. But before we get to
-generics, let's talk about how to use them with pattern matching, a tool that will
+As you can see, `enum`s with values are quite a powerful tool for data representation,
+and can be even more useful when they're generic across types. Before we get to generics,
+though, let's talk about how to use them with pattern matching, a tool that will
 let us deconstruct this sum type (the type theory term for enums) in a very elegant
 way and avoid all these messy `if`/`else`s.
 
 # Match
 
 Often, a simple `if`/`else` isn't enough, because you have more than two
-possible options. And `else` conditions can get incredibly complicated. So
+possible options. Also, `else` conditions can get incredibly complicated, so
 what's the solution?
 
 Rust has a keyword, `match`, that allows you to replace complicated `if`/`else`
@@ -1251,13 +1250,13 @@ match x {
 }
 ```
 
-`match` takes an expression, and then branches based on its value. Each 'arm' of
+`match` takes an expression and then branches based on its value. Each 'arm' of
 the branch is of the form `val => expression`. When the value matches, that arm's
 expression will be evaluated. It's called `match` because of the term 'pattern
-matching,' which `match` is an implementation of.
+matching', which `match` is an implementation of.
 
 So what's the big advantage here? Well, there are a few. First of all, `match`
-enforces 'exhaustiveness checking.' Do you see that last arm, the one with the
+enforces 'exhaustiveness checking'. Do you see that last arm, the one with the
 underscore (`_`)? If we remove that arm, Rust will give us an error:
 
 ```text
@@ -1265,11 +1264,11 @@ error: non-exhaustive patterns: `_` not covered
 ```
 
 In other words, Rust is trying to tell us we forgot a value. Because `x` is an
-integer, Rust knows that it can have a number of different values. For example,
-`6i`. But without the `_`, there is no arm that could match, and so Rust refuses
-to compile. `_` is sort of like a catch-all arm. If none of the other arms match,
-the arm with `_` will. And since we have this catch-all arm, we now have an arm
-for every possible value of `x`, and so our program will now compile.
+integer, Rust knows that it can have a number of different values – for example,
+`6i`. Without the `_`, however, there is no arm that could match, and so Rust refuses
+to compile. `_` acts like a 'catch-all arm'. If none of the other arms match,
+the arm with `_` will, and since we have this catch-all arm, we now have an arm
+for every possible value of `x`, and so our program will compile successfully.
 
 `match` statements also destructure enums, as well. Remember this code from the
 section on enums?
@@ -1350,14 +1349,14 @@ fn main() {
 ```
 
 That is how you can get and use the values contained in `enum`s.
-It can also allow us to treat errors or unexpected computations, for example, a
-function that is not guaranteed to be able to compute a result (an `int` here),
+It can also allow us to handle errors or unexpected computations; for example, a
+function that is not guaranteed to be able to compute a result (an `int` here)
 could return an `OptionalInt`, and we would handle that value with a `match`.
 As you can see, `enum` and `match` used together are quite useful!
 
-`match` is also an expression, which means we can use it on the right
-hand side of a `let` binding or directly where an expression is
-used. We could also implement the previous line like this:
+`match` is also an expression, which means we can use it on the right-hand
+side of a `let` binding or directly where an expression is used. We could
+also implement the previous line like this:
 
 ```{rust}
 fn cmp(a: int, b: int) -> Ordering {
@@ -1389,7 +1388,7 @@ two main looping constructs: `for` and `while`.
 
 The `for` loop is used to loop a particular number of times. Rust's `for` loops
 work a bit differently than in other systems languages, however. Rust's `for`
-loop doesn't look like this "C style" `for` loop:
+loop doesn't look like this "C-style" `for` loop:
 
 ```{c}
 for (x = 0; x < 10; x++) {
@@ -1424,7 +1423,7 @@ In our example, `range` is a function that takes a start and an end position,
 and gives an iterator over those values. The upper bound is exclusive, though,
 so our loop will print `0` through `9`, not `10`.
 
-Rust does not have the "C style" `for` loop on purpose. Manually controlling
+Rust does not have the "C-style" `for` loop on purpose. Manually controlling
 each element of the loop is complicated and error prone, even for experienced C
 developers.
 
@@ -1455,7 +1454,7 @@ If you need an infinite loop, you may be tempted to write this:
 while true {
 ```
 
-Rust has a dedicated keyword, `loop`, to handle this case:
+However, Rust has a dedicated keyword, `loop`, to handle this case:
 
 ```{rust,ignore}
 loop {
@@ -1465,7 +1464,7 @@ Rust's control-flow analysis treats this construct differently than a
 `while true`, since we know that it will always loop. The details of what
 that _means_ aren't super important to understand at this stage, but in
 general, the more information we can give to the compiler, the better it
-can do with safety and code generation. So you should always prefer
+can do with safety and code generation, so you should always prefer
 `loop` when you plan to loop infinitely.
 
 ## Ending iteration early
@@ -1484,7 +1483,7 @@ while !done {
 ```
 
 We had to keep a dedicated `mut` boolean variable binding, `done`, to know
-when we should skip out of the loop. Rust has two keywords to help us with
+when we should exit out of the loop. Rust has two keywords to help us with
 modifying iteration: `break` and `continue`.
 
 In this case, we can write the loop in a better way with `break`:
@@ -1499,10 +1498,10 @@ loop {
 }
 ```
 
-We now loop forever with `loop`, and use `break` to break out early.
+We now loop forever with `loop` and use `break` to break out early.
 
 `continue` is similar, but instead of ending the loop, goes to the next
-iteration: This will only print the odd numbers:
+iteration. This will only print the odd numbers:
 
 ```{rust}
 for x in range(0i, 10i) {
@@ -1519,8 +1518,8 @@ Both `continue` and `break` are valid in both kinds of loops.
 Strings are an important concept for any programmer to master. Rust's string
 handling system is a bit different from other languages, due to its systems
 focus. Any time you have a data structure of variable size, things can get
-tricky, and strings are a re-sizable data structure. That said, Rust's strings
-also work differently than in some other systems languages, such as C.
+tricky, and strings are a re-sizable data structure. That being said, Rust's
+strings also work differently than in some other systems languages, such as C.
 
 Let's dig into the details. A **string** is a sequence of Unicode scalar values
 encoded as a stream of UTF-8 bytes. All strings are guaranteed to be
@@ -1793,22 +1792,22 @@ fn main() {
 }
 ```
 
-We had to match each time, to see if we had a value or not. In this case,
-though, we _know_ that `x` has a `Value`. But `match` forces us to handle
+We had to match each time to see if we had a value or not. In this case,
+though, we _know_ that `x` has a `Value`, but `match` forces us to handle
 the `missing` case. This is what we want 99% of the time, but sometimes, we
 know better than the compiler.
 
 Likewise, `read_line()` does not return a line of input. It _might_ return a
-line of input. It might also fail to do so. This could happen if our program
+line of input, though it might also fail to do so. This could happen if our program
 isn't running in a terminal, but as part of a cron job, or some other context
 where there's no standard input. Because of this, `read_line` returns a type
 very similar to our `OptionalInt`: an `IoResult<T>`. We haven't talked about
 `IoResult<T>` yet because it is the **generic** form of our `OptionalInt`.
-Until then, you can think of it as being the same thing, just for any type, not
-just `int`s.
+Until then, you can think of it as being the same thing, just for any type –
+not just `int`s.
 
 Rust provides a method on these `IoResult<T>`s called `ok()`, which does the
-same thing as our `match` statement, but assuming that we have a valid value.
+same thing as our `match` statement but assumes that we have a valid value.
 We then call `expect()` on the result, which will terminate our program if we
 don't have a valid value. In this case, if we can't get input, our program
 doesn't work, so we're okay with that. In most cases, we would want to handle
@@ -1852,7 +1851,7 @@ fn main() {
 }
 ```
 
-Sometimes, this makes things more readable. Sometimes, less. Use your judgment
+Sometimes, this makes things more readable – sometimes, less. Use your judgement
 here.
 
 That's all you need to get basic input from the standard input! It's not too
@@ -1972,10 +1971,8 @@ You can find that page [here](std/index.html). There's a lot of information on
 that page, but the best part is the search bar. Right up at the top, there's
 a box that you can enter in a search term. The search is pretty primitive
 right now, but is getting better all the time. If you type 'random' in that
-box, the page will update to [this
-one](std/index.html?search=random). The very first
-result is a link to
-[std::rand::random](std/rand/fn.random.html). If we
+box, the page will update to [this one](std/index.html?search=random). The very
+first result is a link to [`std::rand::random`](std/rand/fn.random.html). If we
 click on that result, we'll be taken to its documentation page.
 
 This page shows us a few things: the type signature of the function, some
@@ -2039,7 +2036,7 @@ rand::random::<int>();
 ```
 
 This says "please give me a random `int` value." We can change our code to use
-this hint...
+this hint:
 
 ```{rust,no_run}
 use std::io;
@@ -2380,7 +2377,7 @@ fn cmp(a: uint, b: uint) -> Ordering {
 }
 ```
 
-We use a `match` to either give us the `uint` inside of the `Option`, or we
+We use a `match` to either give us the `uint` inside of the `Option`, or else
 print an error message and return. Let's give this a shot:
 
 ```bash
@@ -2398,8 +2395,8 @@ Uh, what? But we did!
 
 ... actually, we didn't. See, when you get a line of input from `stdin()`,
 you get all the input. Including the `\n` character from you pressing Enter.
-So, `from_str()` sees the string `"5\n"` and says "nope, that's not a number,
-there's non-number stuff in there!" Luckily for us, `&str`s have an easy
+Therefore, `from_str()` sees the string `"5\n"` and says "nope, that's not a
+number; there's non-number stuff in there!" Luckily for us, `&str`s have an easy
 method we can use defined on them: `trim()`. One small modification, and our
 code looks like this:
 
@@ -2465,7 +2462,7 @@ out that I guessed 76. Run the program a few times, and verify that guessing
 the number works, as well as guessing a number too small.
 
 The Rust compiler helped us out quite a bit there! This technique is called
-"lean on the compiler," and it's often useful when working on some code. Let
+"lean on the compiler", and it's often useful when working on some code. Let
 the error messages help guide you towards the correct types.
 
 Now we've got most of the game working, but we can only make one guess. Let's
@@ -2473,8 +2470,8 @@ change that by adding loops!
 
 ## Looping
 
-As we already discussed, the `loop` keyword gives us an infinite loop. So
-let's add that in:
+As we already discussed, the `loop` keyword gives us an infinite loop.
+Let's add that in:
 
 ```{rust,no_run}
 use std::io;
@@ -2780,12 +2777,11 @@ $ cargo run
 Hello, world!
 ```
 
-Excellent! So, we already have a single crate here: our `src/main.rs` is a crate.
+Excellent! We already have a single crate here: our `src/main.rs` is a crate.
 Everything in that file is in the crate root. A crate that generates an executable
 defines a `main` function inside its root, as we've done here.
 
-Let's define a new module inside our crate. Edit `src/main.rs` to look
-like this:
+Let's define a new module inside our crate. Edit `src/main.rs` to look like this:
 
 ```
 fn main() {
@@ -2803,7 +2799,7 @@ We now have a module named `hello` inside of our crate root. Modules use
 `snake_case` naming, like functions and variable bindings.
 
 Inside the `hello` module, we've defined a `print_hello` function. This will
-also print out our hello world message. Modules allow you to split up your
+also print out our "hello world" message. Modules allow you to split up your
 program into nice neat boxes of functionality, grouping common things together,
 and keeping different things apart. It's kinda like having a set of shelves:
 a place for everything and everything in its place.
@@ -2963,7 +2959,7 @@ You'll get a warning if you use something marked unstable.
 
 You may have noticed an exclamation point in the `warn` attribute declaration.
 The `!` in this attribute means that this attribute applies to the enclosing
-item, rather than to the item that follows the attribute. So this `warn`
+item, rather than to the item that follows the attribute. This `warn`
 attribute declaration applies to the enclosing crate itself, rather than
 to whatever item statement follows it:
 
@@ -3003,9 +2999,9 @@ Hello, world!
 Great. Rust's infrastructure supports tests in two sorts of places, and they're
 for two kinds of tests: you include **unit test**s inside of the crate itself,
 and you place **integration test**s inside a `tests` directory. "Unit tests"
-are small tests that test one focused unit, "integration tests" tests multiple
-units in integration. That said, this is a social convention, they're no different
-in syntax. Let's make a `tests` directory:
+are small tests that test one focused unit; "integration tests" test multiple
+units in integration. That being said, this is a social convention – they're no
+different in syntax. Let's make a `tests` directory:
 
 ```{bash,ignore}
 $ mkdir tests
@@ -3085,7 +3081,7 @@ test foo ... FAILED
 
 Now we're getting somewhere. Remember when we talked about naming our tests
 with good names? This is why. Here, it says 'test foo' because we called our
-test 'foo.' If we had given it a good name, it'd be more clear which test
+test 'foo'. If we had given it a good name, it'd be more clear which test
 failed, especially as we accumulate more tests.
 
 ```text
@@ -3156,7 +3152,7 @@ our tests, it sets things up so that `cfg(test)` is true. But we want to only
 include `main` when it's _not_ true. So we use `not` to negate things:
 `cfg(not(test))` will only compile our code when the `cfg(test)` is false.
 
-With this attribute we won't get the warning (even
+With this attribute, we won't get the warning (even
 though `src/main.rs` gets recompiled this time):
 
 ```bash
@@ -3200,7 +3196,7 @@ error: aborting due to previous error
 Build failed, waiting for other jobs to finish...
 Could not compile `testing`.
 
-To learn more, run the command again with --verbose.
+To learn more, run the command again with `--verbose`.
 ```
 
 Rust can't find this function. That makes sense, as we didn't write it yet!
@@ -3208,7 +3204,7 @@ Rust can't find this function. That makes sense, as we didn't write it yet!
 In order to share this code with our tests, we'll need to make a library crate.
 This is also just good software design: as we mentioned before, it's a good idea
 to put most of your functionality into a library crate, and have your executable
-crate use that library. This allows for code re-use.
+crate use that library. This allows for code reuse.
 
 To do that, we'll need to make a new module. Make a new file, `src/lib.rs`,
 and put this in it:
@@ -3282,8 +3278,8 @@ test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured
 Great! One test passed. We've got an integration test showing that our public
 method works, but maybe we want to test some of the internal logic as well.
 While this function is simple, if it were more complicated, you can imagine
-we'd need more tests. So let's break it up into two helper functions, and
-write some unit tests to test those.
+we'd need more tests. Let's break it up into two helper functions and write
+some unit tests to test those.
 
 Change your `src/lib.rs` to look like this:
 
@@ -3532,7 +3528,7 @@ error: cannot borrow immutable local variable `x` as mutable
 ```
 
 We don't want a mutable reference to immutable data! This error message uses a
-term we haven't talked about yet, 'borrow.' We'll get to that in just a moment.
+term we haven't talked about yet, 'borrow'. We'll get to that in just a moment.
 
 This simple example actually illustrates a lot of Rust's power: Rust has
 prevented us, at compile time, from breaking our own rules. Because Rust's
@@ -3653,9 +3649,10 @@ all of Rust. Let's see this syntax in action:
 fn foo(x: &int) -> &int { x }
 
 {
-    let x = 5i; // x is the owner of this integer, which is memory on the stack.
+    // x is the owner of the integer, which is memory on the stack.
+    let x = 5i;
 
-    // privilege 2: you may lend that resource, to as many borrowers as you'd like
+    // privilege 2: you may lend that resource to as many borrowers as you like
     let y = &x;
     let z = &x;
 
@@ -3665,10 +3662,11 @@ fn foo(x: &int) -> &int { x }
 }
 
 {
-    let mut x = 5i; // x is the owner of this integer, which is memory on the stack.
+    // x is the owner of this integer, which is memory on the stack.
+    let mut x = 5i;
 
-    let y = &mut x; // privilege 3: you may lend that resource to a single borrower,
-                    // mutably
+    // privilege 3: you may lend that resource to a single borrower, mutably
+    let y = &mut x;
 }
 ```
 
@@ -3684,7 +3682,7 @@ This last requirement can seem odd, but it also makes sense. If you have to
 return something, and you've lent it to someone, they need to give it back to
 you for you to give it back! If we didn't, then the owner could deallocate
 the memory, and the person we've loaned it out to would have a pointer to
-invalid memory. This is called a 'dangling pointer.'
+invalid memory. This is called a 'dangling pointer'.
 
 Let's re-examine the error that led us to talk about all of this, which was a
 violation of the restrictions placed on owners who lend something out mutably.
@@ -3807,8 +3805,8 @@ an integer `5` and makes `x` a pointer to it:
 ```
 
 The great thing about boxes is that we don't have to manually free this
-allocation! Instead, when `x` reaches the end of its lifetime -- in this case,
-when it goes out of scope at the end of the block -- Rust `free`s `x`. This
+allocation! Instead, when `x` reaches the end of its lifetime – in this case,
+when it goes out of scope at the end of the block – Rust `free`s `x`. This
 isn't because Rust has a garbage collector (it doesn't). Instead, by tracking
 the ownership and lifetime of a variable (with a little help from you, the
 programmer), the compiler knows precisely when it is no longer used.
@@ -3873,12 +3871,12 @@ Sometimes you need a variable that is referenced from multiple places
 (immutably!), lasting as long as any of those places, and disappearing when it
 is no longer referenced. For instance, in a graph-like data structure, a node
 might be referenced from all of its neighbors. In this case, it is not possible
-for the compiler to determine ahead of time when the value can be freed -- it
+for the compiler to determine ahead of time when the value can be freed – it
 needs a little run-time support.
 
 Rust's **Rc** type provides shared ownership of a dynamically allocated value
 that is automatically freed at the end of its last owner's lifetime. (`Rc`
-stands for 'reference counted,' referring to the way these library types are
+stands for 'reference counted', referring to the way these library types are
 implemented.) This provides more flexibility than single-owner boxes, but has
 some runtime overhead.
 
@@ -4300,7 +4298,7 @@ This line is more interesting. Here, we call our function, `twice`, and we pass
 it two arguments: an integer, `5`, and our closure, `square`. This is just like
 passing any other two variable bindings to a function, but if you've never
 worked with closures before, it can seem a little complex. Just think: "I'm
-passing two variables, one is an int, and one is a function."
+passing two variables: one is an int, and one is a function."
 
 Next, let's look at how `twice` is defined:
 
@@ -4336,7 +4334,7 @@ fn twice(x: int, f: |int| -> int) -> int {
 ```
 
 Since our closure is named `f`, we can call it just like we called our closures
-before. And we pass in our `x` argument to each one. Hence 'twice.'
+before, and we pass in our `x` argument to each one, hence the name `twice`.
 
 If you do the math, `(5 * 5) + (5 * 5) == 50`, so that's the output we get.
 
@@ -4807,7 +4805,7 @@ enum Result<H, N> {
 ```
 
 if we wanted to. Convention says that the first generic parameter should be
-`T`, for 'type,' and that we use `E` for 'error.' Rust doesn't care, however.
+`T`, for 'type,' and that we use `E` for 'error'. Rust doesn't care, however.
 
 The `Result<T, E>` type is intended to
 be used to return the result of a computation, and to have the ability to
@@ -5212,7 +5210,7 @@ fn main() {
 
 The names don't actually change to this, it's just for illustration. But
 as you can see, there's no overhead of deciding which version to call here,
-hence 'statically dispatched.' The downside is that we have two copies of
+hence 'statically dispatched'. The downside is that we have two copies of
 the same function, so our binary is a little bit larger.
 
 # Tasks
@@ -5412,7 +5410,7 @@ fn main() {
 }
 ```
 
-You can have the macros expanded like this: `rustc print.rs --pretty=expanded` – which will
+You can have the macros expanded like this: `rustc print.rs --pretty=expanded`, which will
 give us this huge result:
 
 ```{rust,ignore}
@@ -5498,7 +5496,6 @@ We covered a lot of ground here. When you've mastered everything in this Guide,
 you will have a firm grasp of basic Rust development. There's a whole lot more
 out there, we've just covered the surface. There's tons of topics that you can
 dig deeper into, and we've built specialized guides for many of them. To learn
-more, dig into the [full documentation
-index](index.html).
+more, dig into the [full documentation index](index.html).
 
 Happy hacking!

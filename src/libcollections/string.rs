@@ -26,7 +26,8 @@ use core::raw::Slice as RawSlice;
 
 use slice::CloneSliceExt;
 use str;
-use str::{CharRange, CowString, FromStr, StrAllocating, Owned};
+use str::{CharRange, CowString, FromStr, StrAllocating};
+use str::MaybeOwned::Owned;
 use vec::{DerefVec, Vec, as_vec};
 
 /// A growable string stored as a UTF-8 encoded buffer.
@@ -512,6 +513,11 @@ impl String {
     #[inline]
     #[stable = "function just renamed from push_char"]
     pub fn push(&mut self, ch: char) {
+        if (ch as u32) < 0x80 {
+            self.vec.push(ch as u8);
+            return;
+        }
+
         let cur_len = self.len();
         // This may use up to 4 bytes.
         self.vec.reserve(4);
@@ -856,40 +862,11 @@ impl<'a, S: Str> Equiv<S> for String {
     }
 }
 
-// NOTE(stage0): Remove impl after a snapshot
-#[cfg(stage0)]
 #[experimental = "waiting on Add stabilization"]
-impl<S: Str> Add<S, String> for String {
-    /// Concatenates `self` and `other` as a new mutable `String`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let string1 = "foo".to_string();
-    /// let string2 = "bar".to_string();
-    /// let string3 = string1 + string2;
-    /// assert_eq!(string3, "foobar".to_string());
-    /// ```
-    fn add(&self, other: &S) -> String {
-        let mut s = String::from_str(self.as_slice());
-        s.push_str(other.as_slice());
-        return s;
-    }
-}
-
-#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
 impl<'a> Add<&'a str, String> for String {
     fn add(mut self, other: &str) -> String {
         self.push_str(other);
         self
-    }
-}
-
-#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
-impl<'a> Add<String, String> for &'a str {
-    fn add(self, mut other: String) -> String {
-        other.push_str(self);
-        other
     }
 }
 
@@ -1405,6 +1382,41 @@ mod tests {
         b.iter(|| {
             let mut r = String::new();
             r.push_str(s);
+        });
+    }
+
+    const REPETITIONS: u64 = 10_000;
+
+    #[bench]
+    fn bench_push_str_one_byte(b: &mut Bencher) {
+        b.bytes = REPETITIONS;
+        b.iter(|| {
+            let mut r = String::new();
+            for _ in range(0, REPETITIONS) {
+                r.push_str("a")
+            }
+        });
+    }
+
+    #[bench]
+    fn bench_push_char_one_byte(b: &mut Bencher) {
+        b.bytes = REPETITIONS;
+        b.iter(|| {
+            let mut r = String::new();
+            for _ in range(0, REPETITIONS) {
+                r.push('a')
+            }
+        });
+    }
+
+    #[bench]
+    fn bench_push_char_two_bytes(b: &mut Bencher) {
+        b.bytes = REPETITIONS * 2;
+        b.iter(|| {
+            let mut r = String::new();
+            for _ in range(0, REPETITIONS) {
+                r.push('â')
+            }
         });
     }
 

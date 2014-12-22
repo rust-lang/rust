@@ -24,9 +24,9 @@
 /// ```{.rust}
 /// bitflags! {
 ///     flags Flags: u32 {
-///         const FLAG_A       = 0x00000001,
-///         const FLAG_B       = 0x00000010,
-///         const FLAG_C       = 0x00000100,
+///         const FLAG_A       = 0b00000001,
+///         const FLAG_B       = 0b00000010,
+///         const FLAG_C       = 0b00000100,
 ///         const FLAG_ABC     = FLAG_A.bits
 ///                            | FLAG_B.bits
 ///                            | FLAG_C.bits,
@@ -50,8 +50,8 @@
 ///
 /// bitflags! {
 ///     flags Flags: u32 {
-///         const FLAG_A   = 0x00000001,
-///         const FLAG_B   = 0x00000010,
+///         const FLAG_A   = 0b00000001,
+///         const FLAG_B   = 0b00000010,
 ///     }
 /// }
 ///
@@ -205,17 +205,6 @@ macro_rules! bitflags {
             }
         }
 
-        // NOTE(stage0): Remove impl after a snapshot
-        #[cfg(stage0)]
-        impl BitOr<$BitFlags, $BitFlags> for $BitFlags {
-            /// Returns the union of the two sets of flags.
-            #[inline]
-            fn bitor(&self, other: &$BitFlags) -> $BitFlags {
-                $BitFlags { bits: self.bits | other.bits }
-            }
-        }
-
-        #[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
         impl BitOr<$BitFlags, $BitFlags> for $BitFlags {
             /// Returns the union of the two sets of flags.
             #[inline]
@@ -224,17 +213,6 @@ macro_rules! bitflags {
             }
         }
 
-        // NOTE(stage0): Remove impl after a snapshot
-        #[cfg(stage0)]
-        impl BitXor<$BitFlags, $BitFlags> for $BitFlags {
-            /// Returns the left flags, but with all the right flags toggled.
-            #[inline]
-            fn bitxor(&self, other: &$BitFlags) -> $BitFlags {
-                $BitFlags { bits: self.bits ^ other.bits }
-            }
-        }
-
-        #[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
         impl BitXor<$BitFlags, $BitFlags> for $BitFlags {
             /// Returns the left flags, but with all the right flags toggled.
             #[inline]
@@ -243,17 +221,6 @@ macro_rules! bitflags {
             }
         }
 
-        // NOTE(stage0): Remove impl after a snapshot
-        #[cfg(stage0)]
-        impl BitAnd<$BitFlags, $BitFlags> for $BitFlags {
-            /// Returns the intersection between the two sets of flags.
-            #[inline]
-            fn bitand(&self, other: &$BitFlags) -> $BitFlags {
-                $BitFlags { bits: self.bits & other.bits }
-            }
-        }
-
-        #[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
         impl BitAnd<$BitFlags, $BitFlags> for $BitFlags {
             /// Returns the intersection between the two sets of flags.
             #[inline]
@@ -262,17 +229,6 @@ macro_rules! bitflags {
             }
         }
 
-        // NOTE(stage0): Remove impl after a snapshot
-        #[cfg(stage0)]
-        impl Sub<$BitFlags, $BitFlags> for $BitFlags {
-            /// Returns the set difference of the two sets of flags.
-            #[inline]
-            fn sub(&self, other: &$BitFlags) -> $BitFlags {
-                $BitFlags { bits: self.bits & !other.bits }
-            }
-        }
-
-        #[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
         impl Sub<$BitFlags, $BitFlags> for $BitFlags {
             /// Returns the set difference of the two sets of flags.
             #[inline]
@@ -325,10 +281,10 @@ mod tests {
         #[doc = "> "]
         #[doc = "> - Richard Feynman"]
         flags Flags: u32 {
-            const FlagA       = 0x00000001,
+            const FlagA       = 0b00000001,
             #[doc = "<pcwalton> macros are way better at generating code than trans is"]
-            const FlagB       = 0x00000010,
-            const FlagC       = 0x00000100,
+            const FlagB       = 0b00000010,
+            const FlagC       = 0b00000100,
             #[doc = "* cmr bed"]
             #[doc = "* strcat table"]
             #[doc = "<strcat> wait what?"]
@@ -346,21 +302,21 @@ mod tests {
 
     #[test]
     fn test_bits(){
-        assert_eq!(Flags::empty().bits(), 0x00000000);
-        assert_eq!(FlagA.bits(), 0x00000001);
-        assert_eq!(FlagABC.bits(), 0x00000111);
+        assert_eq!(Flags::empty().bits(), 0b00000000);
+        assert_eq!(FlagA.bits(), 0b00000001);
+        assert_eq!(FlagABC.bits(), 0b00000111);
 
-        assert_eq!(AnotherSetOfFlags::empty().bits(), 0x00);
+        assert_eq!(AnotherSetOfFlags::empty().bits(), 0b00);
         assert_eq!(AnotherFlag.bits(), !0_i8);
     }
 
     #[test]
     fn test_from_bits() {
         assert!(Flags::from_bits(0) == Some(Flags::empty()));
-        assert!(Flags::from_bits(0x1) == Some(FlagA));
-        assert!(Flags::from_bits(0x10) == Some(FlagB));
-        assert!(Flags::from_bits(0x11) == Some(FlagA | FlagB));
-        assert!(Flags::from_bits(0x1000) == None);
+        assert!(Flags::from_bits(0b1) == Some(FlagA));
+        assert!(Flags::from_bits(0b10) == Some(FlagB));
+        assert!(Flags::from_bits(0b11) == Some(FlagA | FlagB));
+        assert!(Flags::from_bits(0b1000) == None);
 
         assert!(AnotherSetOfFlags::from_bits(!0_i8) == Some(AnotherFlag));
     }
@@ -368,11 +324,11 @@ mod tests {
     #[test]
     fn test_from_bits_truncate() {
         assert!(Flags::from_bits_truncate(0) == Flags::empty());
-        assert!(Flags::from_bits_truncate(0x1) == FlagA);
-        assert!(Flags::from_bits_truncate(0x10) == FlagB);
-        assert!(Flags::from_bits_truncate(0x11) == (FlagA | FlagB));
-        assert!(Flags::from_bits_truncate(0x1000) == Flags::empty());
-        assert!(Flags::from_bits_truncate(0x1001) == FlagA);
+        assert!(Flags::from_bits_truncate(0b1) == FlagA);
+        assert!(Flags::from_bits_truncate(0b10) == FlagB);
+        assert!(Flags::from_bits_truncate(0b11) == (FlagA | FlagB));
+        assert!(Flags::from_bits_truncate(0b1000) == Flags::empty());
+        assert!(Flags::from_bits_truncate(0b1001) == FlagA);
 
         assert!(AnotherSetOfFlags::from_bits_truncate(0_i8) == AnotherSetOfFlags::empty());
     }

@@ -105,7 +105,7 @@ use sys_common::backtrace::*;
 #[cfg(all(target_os = "ios", target_arch = "arm"))]
 #[inline(never)]
 pub fn write(w: &mut Writer) -> IoResult<()> {
-    use iter::{Iterator, range};
+    use iter::{IteratorExt, range};
     use result;
     use slice::SliceExt;
 
@@ -117,7 +117,7 @@ pub fn write(w: &mut Writer) -> IoResult<()> {
     // while it doesn't requires lock for work as everything is
     // local, it still displays much nicer backtraces when a
     // couple of tasks panic simultaneously
-    static LOCK: StaticNativeMutex = NATIVE_MUTEX_INIT;
+    static LOCK: StaticMutex = MUTEX_INIT;
     let _g = unsafe { LOCK.lock() };
 
     try!(writeln!(w, "stack backtrace:"));

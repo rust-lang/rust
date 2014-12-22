@@ -868,7 +868,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
 
     fn expr_match(&self, span: Span, arg: P<ast::Expr>, arms: Vec<ast::Arm>) -> P<Expr> {
-        self.expr(span, ast::ExprMatch(arg, arms, ast::MatchNormal))
+        self.expr(span, ast::ExprMatch(arg, arms, ast::MatchSource::Normal))
     }
 
     fn expr_if(&self, span: Span, cond: P<ast::Expr>,

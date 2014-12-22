@@ -91,7 +91,8 @@ pub trait Sync for Sized? {
 /// implemented using unsafe code. In that case, you may want to embed
 /// some of the marker types below into your type.
 pub mod marker {
-    use super::Copy;
+    use super::{Copy,Sized};
+    use clone::Clone;
 
     /// A marker type whose type parameter `T` is considered to be
     /// covariant with respect to the type itself. This is (typically)
@@ -131,10 +132,13 @@ pub mod marker {
     /// (for example, `S<&'static int>` is a subtype of `S<&'a int>`
     /// for some lifetime `'a`, but not the other way around).
     #[lang="covariant_type"]
-    #[deriving(Clone, PartialEq, Eq, PartialOrd, Ord)]
-    pub struct CovariantType<T>;
+    #[deriving(PartialEq, Eq, PartialOrd, Ord)]
+    pub struct CovariantType<Sized? T>;
 
-    impl<T> Copy for CovariantType<T> {}
+    impl<Sized? T> Copy for CovariantType<T> {}
+    impl<Sized? T> Clone for CovariantType<T> {
+        fn clone(&self) -> CovariantType<T> { *self }
+    }
 
     /// A marker type whose type parameter `T` is considered to be
     /// contravariant with respect to the type itself. This is (typically)
@@ -176,10 +180,13 @@ pub mod marker {
     /// function requires arguments of type `T`, it must also accept
     /// arguments of type `U`, hence such a conversion is safe.
     #[lang="contravariant_type"]
-    #[deriving(Clone, PartialEq, Eq, PartialOrd, Ord)]
-    pub struct ContravariantType<T>;
+    #[deriving(PartialEq, Eq, PartialOrd, Ord)]
+    pub struct ContravariantType<Sized? T>;
 
-    impl<T> Copy for ContravariantType<T> {}
+    impl<Sized? T> Copy for ContravariantType<T> {}
+    impl<Sized? T> Clone for ContravariantType<T> {
+        fn clone(&self) -> ContravariantType<T> { *self }
+    }
 
     /// A marker type whose type parameter `T` is considered to be
     /// invariant with respect to the type itself. This is (typically)
@@ -203,10 +210,13 @@ pub mod marker {
     /// never written, but in fact `Cell` uses unsafe code to achieve
     /// interior mutability.
     #[lang="invariant_type"]
-    #[deriving(Clone, PartialEq, Eq, PartialOrd, Ord)]
-    pub struct InvariantType<T>;
+    #[deriving(PartialEq, Eq, PartialOrd, Ord)]
+    pub struct InvariantType<Sized? T>;
 
-    impl<T> Copy for InvariantType<T> {}
+    impl<Sized? T> Copy for InvariantType<T> {}
+    impl<Sized? T> Clone for InvariantType<T> {
+        fn clone(&self) -> InvariantType<T> { *self }
+    }
 
     /// As `CovariantType`, but for lifetime parameters. Using
     /// `CovariantLifetime<'a>` indicates that it is ok to substitute
@@ -252,10 +262,8 @@ pub mod marker {
     /// and this pointer is itself stored in an inherently mutable
     /// location (such as a `Cell`).
     #[lang="invariant_lifetime"]
-    #[deriving(Clone, PartialEq, Eq, PartialOrd, Ord)]
+    #[deriving(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
     pub struct InvariantLifetime<'a>;
-
-    impl<'a> Copy for InvariantLifetime<'a> {}
 
     /// A type which is considered "not sendable", meaning that it cannot
     /// be safely sent between tasks, even if it is owned. This is

@@ -35,7 +35,7 @@
 pub use self::ExternalLocation::*;
 
 use std::cell::RefCell;
-use std::collections::hash_map::{Occupied, Vacant};
+use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::collections::{HashMap, HashSet};
 use std::default::Default;
 use std::fmt;

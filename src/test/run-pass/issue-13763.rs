@@ -12,9 +12,9 @@ use std::u8;
 
 const NUM: uint = u8::BITS as uint;
 
-struct MyStruct { nums: [uint, ..8] }
+struct MyStruct { nums: [uint; 8] }
 
 
 fn main() {
-    let _s = MyStruct { nums: [0, ..NUM] };
+    let _s = MyStruct { nums: [0; NUM] };
 }

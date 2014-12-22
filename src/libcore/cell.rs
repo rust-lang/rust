@@ -164,7 +164,7 @@ use option::Option;
 use option::Option::{None, Some};
 
 /// A mutable memory location that admits only `Copy` data.
-#[unstable = "likely to be renamed; otherwise stable"]
+#[stable]
 pub struct Cell<T> {
     value: UnsafeCell<T>,
     noshare: marker::NoSync,
@@ -208,7 +208,7 @@ impl<T:Copy> Cell<T> {
     }
 }
 
-#[unstable = "waiting for `Clone` trait to become stable"]
+#[stable]
 impl<T:Copy> Clone for Cell<T> {
     fn clone(&self) -> Cell<T> {
         Cell::new(self.get())
@@ -231,7 +231,7 @@ impl<T:PartialEq + Copy> PartialEq for Cell<T> {
 }
 
 /// A mutable memory location with dynamically checked borrow rules
-#[unstable = "likely to be renamed; otherwise stable"]
+#[stable]
 pub struct RefCell<T> {
     value: UnsafeCell<T>,
     borrow: Cell<BorrowFlag>,
@@ -256,7 +256,7 @@ impl<T> RefCell<T> {
     }
 
     /// Consumes the `RefCell`, returning the wrapped value.
-    #[unstable = "recently renamed per RFC 430"]
+    #[stable]
     pub fn into_inner(self) -> T {
         // Since this function takes `self` (the `RefCell`) by value, the
         // compiler statically verifies that it is not currently borrowed.
@@ -275,7 +275,7 @@ impl<T> RefCell<T> {
     /// immutable borrows can be taken out at the same time.
     ///
     /// Returns `None` if the value is currently mutably borrowed.
-    #[unstable = "may be renamed, depending on global conventions"]
+    #[unstable = "may be renamed or removed"]
     pub fn try_borrow<'a>(&'a self) -> Option<Ref<'a, T>> {
         match BorrowRef::new(&self.borrow) {
             Some(b) => Some(Ref { _value: unsafe { &*self.value.get() }, _borrow: b }),
@@ -291,7 +291,7 @@ impl<T> RefCell<T> {
     /// # Panics
     ///
     /// Panics if the value is currently mutably borrowed.
-    #[unstable]
+    #[stable]
     pub fn borrow<'a>(&'a self) -> Ref<'a, T> {
         match self.try_borrow() {
             Some(ptr) => ptr,
@@ -305,7 +305,7 @@ impl<T> RefCell<T> {
     /// cannot be borrowed while this borrow is active.
     ///
     /// Returns `None` if the value is currently borrowed.
-    #[unstable = "may be renamed, depending on global conventions"]
+    #[unstable = "may be renamed or removed"]
     pub fn try_borrow_mut<'a>(&'a self) -> Option<RefMut<'a, T>> {
         match BorrowRefMut::new(&self.borrow) {
             Some(b) => Some(RefMut { _value: unsafe { &mut *self.value.get() }, _borrow: b }),
@@ -321,7 +321,7 @@ impl<T> RefCell<T> {
     /// # Panics
     ///
     /// Panics if the value is currently borrowed.
-    #[unstable]
+    #[stable]
     pub fn borrow_mut<'a>(&'a self) -> RefMut<'a, T> {
         match self.try_borrow_mut() {
             Some(ptr) => ptr,
@@ -341,7 +341,7 @@ impl<T> RefCell<T> {
     }
 }
 
-#[unstable = "waiting for `Clone` to become stable"]
+#[stable]
 impl<T: Clone> Clone for RefCell<T> {
     fn clone(&self) -> RefCell<T> {
         RefCell::new(self.borrow().clone())
@@ -400,7 +400,7 @@ impl<'b> Clone for BorrowRef<'b> {
 }
 
 /// Wraps a borrowed reference to a value in a `RefCell` box.
-#[unstable]
+#[stable]
 pub struct Ref<'b, T:'b> {
     // FIXME #12808: strange name to try to avoid interfering with
     // field accesses of the contained type via Deref
@@ -456,7 +456,7 @@ impl<'b> BorrowRefMut<'b> {
 }
 
 /// Wraps a mutable borrowed reference to a value in a `RefCell` box.
-#[unstable]
+#[stable]
 pub struct RefMut<'b, T:'b> {
     // FIXME #12808: strange name to try to avoid interfering with
     // field accesses of the contained type via Deref
@@ -517,7 +517,7 @@ impl<'b, T> DerefMut<T> for RefMut<'b, T> {
 /// is not recommended to access its fields directly, `get` should be used
 /// instead.
 #[lang="unsafe"]
-#[unstable = "this type may be renamed in the future"]
+#[stable]
 pub struct UnsafeCell<T> {
     /// Wrapped value
     ///
@@ -539,22 +539,16 @@ impl<T> UnsafeCell<T> {
     }
 
     /// Gets a mutable pointer to the wrapped value.
-    ///
-    /// This function is unsafe as the pointer returned is an unsafe pointer and
-    /// no guarantees are made about the aliasing of the pointers being handed
-    /// out in this or other tasks.
     #[inline]
-    #[unstable = "conventions around acquiring an inner reference are still \
-                  under development"]
-    pub unsafe fn get(&self) -> *mut T { &self.value as *const T as *mut T }
+    #[stable]
+    pub fn get(&self) -> *mut T { &self.value as *const T as *mut T }
 
     /// Unwraps the value
     ///
     /// This function is unsafe because there is no guarantee that this or other
     /// tasks are currently inspecting the inner value.
     #[inline]
-    #[unstable = "conventions around the name `unwrap` are still under \
-                  development"]
+    #[stable]
     pub unsafe fn into_inner(self) -> T { self.value }
 
     /// Deprecated, use into_inner() instead

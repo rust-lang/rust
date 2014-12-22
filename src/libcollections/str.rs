@@ -51,7 +51,7 @@
 
 #![doc(primitive = "str")]
 
-pub use self::MaybeOwned::*;
+use self::MaybeOwned::*;
 use self::RecompositionState::*;
 use self::DecompositionType::*;
 
@@ -842,7 +842,7 @@ mod tests {
     use core::iter::AdditiveIterator;
     use super::{eq_slice, from_utf8, is_utf8, is_utf16, raw};
     use super::truncate_utf16_at_nul;
-    use super::{Owned, Slice};
+    use super::MaybeOwned::{Owned, Slice};
 
     #[test]
     fn test_eq_slice() {

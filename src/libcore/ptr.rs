@@ -97,13 +97,20 @@ use cmp::{PartialEq, Eq, Ord, PartialOrd, Equiv};
 use cmp::Ordering;
 use cmp::Ordering::{Less, Equal, Greater};
 
-pub use intrinsics::copy_memory;
+// FIXME #19649: instrinsic docs don't render, so these have no docs :(
+
+#[unstable]
 pub use intrinsics::copy_nonoverlapping_memory;
+
+#[unstable]
+pub use intrinsics::copy_memory;
+
+#[experimental = "uncertain about naming and semantics"]
 pub use intrinsics::set_memory;
 
-/// Create a null pointer.
+/// Creates a null raw pointer.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use std::ptr;
@@ -115,9 +122,9 @@ pub use intrinsics::set_memory;
 #[unstable = "may need a different name after pending changes to pointer types"]
 pub fn null<T>() -> *const T { 0 as *const T }
 
-/// Create an unsafe mutable null pointer.
+/// Creates a null mutable raw pointer.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use std::ptr;
@@ -129,7 +136,12 @@ pub fn null<T>() -> *const T { 0 as *const T }
 #[unstable = "may need a different name after pending changes to pointer types"]
 pub fn null_mut<T>() -> *mut T { 0 as *mut T }
 
-/// Zeroes out `count * size_of::<T>` bytes of memory at `dst`
+/// Zeroes out `count * size_of::<T>` bytes of memory at `dst`. `count` may be `0`.
+///
+/// # Safety
+///
+/// Beyond accepting a raw pointer, this is unsafe because it will not drop the contents of `dst`,
+/// and may be used to create invalid instances of `T`.
 #[inline]
 #[experimental = "uncertain about naming and semantics"]
 #[allow(experimental)]
@@ -137,8 +149,13 @@ pub unsafe fn zero_memory<T>(dst: *mut T, count: uint) {
     set_memory(dst, 0, count);
 }
 
-/// Swap the values at two mutable locations of the same type, without
-/// deinitialising either. They may overlap.
+/// Swaps the values at two mutable locations of the same type, without
+/// deinitialising either. They may overlap, unlike `mem::swap` which is otherwise
+/// equivalent.
+///
+/// # Safety
+///
+/// This is only unsafe because it accepts a raw pointer.
 #[inline]
 #[unstable]
 pub unsafe fn swap<T>(x: *mut T, y: *mut T) {
@@ -156,8 +173,13 @@ pub unsafe fn swap<T>(x: *mut T, y: *mut T) {
     mem::forget(tmp);
 }
 
-/// Replace the value at a mutable location with a new one, returning the old
-/// value, without deinitialising either.
+/// Replaces the value at `dest` with `src`, returning the old
+/// value, without dropping either.
+///
+/// # Safety
+///
+/// This is only unsafe because it accepts a raw pointer.
+/// Otherwise, this operation is identical to `mem::replace`.
 #[inline]
 #[unstable]
 pub unsafe fn replace<T>(dest: *mut T, mut src: T) -> T {
@@ -165,7 +187,17 @@ pub unsafe fn replace<T>(dest: *mut T, mut src: T) -> T {
     src
 }
 
-/// Reads the value from `*src` and returns it.
+/// Reads the value from `src` without dropping it. This leaves the
+/// memory in `src` unchanged.
+///
+/// # Safety
+///
+/// Beyond accepting a raw pointer, this is unsafe because it semantically
+/// moves the value out of `src` without preventing further usage of `src`.
+/// If `T` is not `Copy`, then care must be taken to ensure that the value at
+/// `src` is not used before the data is overwritten again (e.g. with `write`,
+/// `zero_memory`, or `copy_memory`). Note that `*src = foo` counts as a use
+/// because it will attempt to drop the value previously at `*src`.
 #[inline(always)]
 #[unstable]
 pub unsafe fn read<T>(src: *const T) -> T {
@@ -174,8 +206,11 @@ pub unsafe fn read<T>(src: *const T) -> T {
     tmp
 }
 
-/// Reads the value from `*src` and nulls it out.
-/// This currently prevents destructors from executing.
+/// Reads the value from `src` and nulls it out without dropping it.
+///
+/// # Safety
+///
+/// This is unsafe for the same reasons that `read` is unsafe.
 #[inline(always)]
 #[experimental]
 #[allow(experimental)]
@@ -189,12 +224,17 @@ pub unsafe fn read_and_zero<T>(dest: *mut T) -> T {
     tmp
 }
 
-/// Unsafely overwrite a memory location with the given value without destroying
+/// Overwrites a memory location with the given value without reading or dropping
 /// the old value.
 ///
-/// This operation is unsafe because it does not destroy the previous value
-/// contained at the location `dst`. This could leak allocations or resources,
-/// so care must be taken to previously deallocate the value at `dst`.
+/// # Safety
+///
+/// Beyond accepting a raw pointer, this operation is unsafe because it does
+/// not drop the contents of `dst`. This could leak allocations or resources,
+/// so care must be taken not to overwrite an object that should be dropped.
+///
+/// This is appropriate for initializing uninitialized memory, or overwritting memory
+/// that has previously been `read` from.
 #[inline]
 #[unstable]
 pub unsafe fn write<T>(dst: *mut T, src: T) {
@@ -203,39 +243,47 @@ pub unsafe fn write<T>(dst: *mut T, src: T) {
 
 /// Methods on raw pointers
 pub trait RawPtr<T> {
-    /// Returns the null pointer.
+    /// Returns a null raw pointer.
     fn null() -> Self;
 
-    /// Returns true if the pointer is equal to the null pointer.
+    /// Returns true if the pointer is null.
     fn is_null(&self) -> bool;
 
-    /// Returns true if the pointer is not equal to the null pointer.
+    /// Returns true if the pointer is not null.
     fn is_not_null(&self) -> bool { !self.is_null() }
 
-    /// Returns the value of this pointer (ie, the address it points to)
+    /// Returns the address of the pointer.
     fn to_uint(&self) -> uint;
 
     /// Returns `None` if the pointer is null, or else returns a reference to the
     /// value wrapped in `Some`.
     ///
-    /// # Safety Notes
+    /// # Safety
     ///
     /// While this method and its mutable counterpart are useful for null-safety,
     /// it is important to note that this is still an unsafe operation because
     /// the returned value could be pointing to invalid memory.
     unsafe fn as_ref<'a>(&self) -> Option<&'a T>;
 
-    /// Calculates the offset from a pointer. The offset *must* be in-bounds of
-    /// the object, or one-byte-past-the-end.  `count` is in units of T; e.g. a
+    /// Calculates the offset from a pointer. `count` is in units of T; e.g. a
     /// `count` of 3 represents a pointer offset of `3 * sizeof::<T>()` bytes.
+    ///
+    /// # Safety
+    ///
+    /// The offset must be in-bounds of the object, or one-byte-past-the-end. Otherwise
+    /// `offset` invokes Undefined Behaviour, regardless of whether the pointer is used.
     unsafe fn offset(self, count: int) -> Self;
 }
 
 /// Methods on mutable raw pointers
 pub trait RawMutPtr<T>{
     /// Returns `None` if the pointer is null, or else returns a mutable reference
-    /// to the value wrapped in `Some`. As with `as_ref`, this is unsafe because
-    /// it cannot verify the validity of the returned pointer.
+    /// to the value wrapped in `Some`.
+    ///
+    /// # Safety
+    ///
+    /// As with `as_ref`, this is unsafe because it cannot verify the validity
+    /// of the returned pointer.
     unsafe fn as_mut<'a>(&self) -> Option<&'a mut T>;
 }
 
@@ -340,6 +388,7 @@ impl<T> Equiv<*const T> for *mut T {
     }
 }
 
+#[stable]
 impl<T> Clone for *const T {
     #[inline]
     fn clone(&self) -> *const T {
@@ -347,6 +396,7 @@ impl<T> Clone for *const T {
     }
 }
 
+#[stable]
 impl<T> Clone for *mut T {
     #[inline]
     fn clone(&self) -> *mut T {
@@ -451,4 +501,3 @@ impl<T> PartialOrd for *mut T {
     #[inline]
     fn ge(&self, other: &*mut T) -> bool { *self >= *other }
 }
-

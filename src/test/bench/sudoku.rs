@@ -46,7 +46,7 @@ impl Sudoku {
         return Sudoku { grid: g }
     }
 
-    pub fn from_vec(vec: &[[u8, ..9], ..9]) -> Sudoku {
+    pub fn from_vec(vec: &[[u8;9];9]) -> Sudoku {
         let g = Vec::from_fn(9u, |i| {
             Vec::from_fn(9u, |j| { vec[i][j] })
         });
@@ -198,7 +198,7 @@ impl Colors {
     }
 }
 
-static DEFAULT_SUDOKU: [[u8, ..9], ..9] = [
+static DEFAULT_SUDOKU: [[u8;9];9] = [
          /* 0    1    2    3    4    5    6    7    8    */
   /* 0 */  [0u8, 4u8, 0u8, 6u8, 0u8, 0u8, 0u8, 3u8, 2u8],
   /* 1 */  [0u8, 0u8, 8u8, 0u8, 2u8, 0u8, 0u8, 0u8, 0u8],
@@ -212,7 +212,7 @@ static DEFAULT_SUDOKU: [[u8, ..9], ..9] = [
 ];
 
 #[cfg(test)]
-static DEFAULT_SOLUTION: [[u8, ..9], ..9] = [
+static DEFAULT_SOLUTION: [[u8;9];9] = [
          /* 0    1    2    3    4    5    6    7    8    */
   /* 0 */  [1u8, 4u8, 9u8, 6u8, 7u8, 5u8, 8u8, 3u8, 2u8],
   /* 1 */  [5u8, 3u8, 8u8, 1u8, 2u8, 9u8, 7u8, 4u8, 6u8],

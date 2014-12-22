@@ -89,7 +89,7 @@ fn make_fasta<W: Writer, I: Iterator<u8>>(
     -> std::io::IoResult<()>
 {
     try!(wr.write(header.as_bytes()));
-    let mut line = [0u8, .. LINE_LENGTH + 1];
+    let mut line = [0u8; LINE_LENGTH + 1];
     while n > 0 {
         let nb = min(LINE_LENGTH, n);
         for i in range(0, nb) {

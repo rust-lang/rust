@@ -64,7 +64,7 @@ const ALU: &'static str = "GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTG\
 
 const NULL_AMINO_ACID: AminoAcid = AminoAcid { c: ' ' as u8, p: 0.0 };
 
-static IUB: [AminoAcid, ..15] = [
+static IUB: [AminoAcid;15] = [
     AminoAcid { c: 'a' as u8, p: 0.27 },
     AminoAcid { c: 'c' as u8, p: 0.12 },
     AminoAcid { c: 'g' as u8, p: 0.12 },
@@ -82,7 +82,7 @@ static IUB: [AminoAcid, ..15] = [
     AminoAcid { c: 'Y' as u8, p: 0.02 },
 ];
 
-static HOMO_SAPIENS: [AminoAcid, ..4] = [
+static HOMO_SAPIENS: [AminoAcid;4] = [
     AminoAcid { c: 'a' as u8, p: 0.3029549426680 },
     AminoAcid { c: 'c' as u8, p: 0.1979883004921 },
     AminoAcid { c: 'g' as u8, p: 0.1975473066391 },
@@ -148,8 +148,8 @@ impl<'a, W: Writer> RepeatFasta<'a, W> {
     }
 }
 
-fn make_lookup(a: &[AminoAcid]) -> [AminoAcid, ..LOOKUP_SIZE] {
-    let mut lookup = [ NULL_AMINO_ACID, ..LOOKUP_SIZE ];
+fn make_lookup(a: &[AminoAcid]) -> [AminoAcid;LOOKUP_SIZE] {
+    let mut lookup = [ NULL_AMINO_ACID;LOOKUP_SIZE ];
     let mut j = 0;
     for (i, slot) in lookup.iter_mut().enumerate() {
         while a[j].p < (i as f32) {
@@ -162,7 +162,7 @@ fn make_lookup(a: &[AminoAcid]) -> [AminoAcid, ..LOOKUP_SIZE] {
 
 struct RandomFasta<'a, W:'a> {
     seed: u32,
-    lookup: [AminoAcid, ..LOOKUP_SIZE],
+    lookup: [AminoAcid;LOOKUP_SIZE],
     out: &'a mut W,
 }
 
@@ -193,7 +193,7 @@ impl<'a, W: Writer> RandomFasta<'a, W> {
     fn make(&mut self, n: uint) -> IoResult<()> {
         let lines = n / LINE_LEN;
         let chars_left = n % LINE_LEN;
-        let mut buf = [0, ..LINE_LEN + 1];
+        let mut buf = [0;LINE_LEN + 1];
 
         for _ in range(0, lines) {
             for i in range(0u, LINE_LEN) {

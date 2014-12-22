@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-static FOO: [int, ..3] = [1, 2, 3];
+static FOO: [int; 3] = [1, 2, 3];
 
 pub fn main() {
     println!("{} {} {}", FOO[0], FOO[1], FOO[2]);

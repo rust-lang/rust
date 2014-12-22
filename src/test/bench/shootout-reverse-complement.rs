@@ -50,17 +50,17 @@ use std::ptr::{copy_memory};
 use std::io::{IoResult, EndOfFile};
 
 struct Tables {
-    table8: [u8, ..1 << 8],
-    table16: [u16, ..1 << 16]
+    table8: [u8;1 << 8],
+    table16: [u16;1 << 16]
 }
 
 impl Tables {
     fn new() -> Tables {
-        let mut table8 = [0, ..1 << 8];
+        let mut table8 = [0;1 << 8];
         for (i, v) in table8.iter_mut().enumerate() {
             *v = Tables::computed_cpl8(i as u8);
         }
-        let mut table16 = [0, ..1 << 16];
+        let mut table16 = [0;1 << 16];
         for (i, v) in table16.iter_mut().enumerate() {
             *v = table8[i & 255] as u16 << 8 |
                  table8[i >> 8]  as u16;

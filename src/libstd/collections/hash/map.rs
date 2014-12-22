@@ -10,7 +10,7 @@
 //
 // ignore-lexer-test FIXME #15883
 
-pub use self::Entry::*;
+use self::Entry::*;
 use self::SearchResult::*;
 use self::VacantEntryState::*;
 
@@ -30,17 +30,19 @@ use option::Option::{Some, None};
 use result::Result;
 use result::Result::{Ok, Err};
 
-use super::table;
 use super::table::{
+    mod,
     Bucket,
-    Empty,
     EmptyBucket,
-    Full,
     FullBucket,
     FullBucketImm,
     FullBucketMut,
     RawTable,
     SafeHash
+};
+use super::table::BucketState::{
+    Empty,
+    Full,
 };
 
 const INITIAL_LOG2_CAP: uint = 5;
@@ -379,7 +381,7 @@ fn robin_hood<'a, K: 'a, V: 'a>(mut bucket: FullBucketMut<'a, K, V>,
             assert!(probe.index() != idx_end);
 
             let full_bucket = match probe.peek() {
-                table::Empty(bucket) => {
+                Empty(bucket) => {
                     // Found a hole!
                     let b = bucket.put(old_hash, old_key, old_val);
                     // Now that it's stolen, just read the value's pointer
@@ -390,7 +392,7 @@ fn robin_hood<'a, K: 'a, V: 'a>(mut bucket: FullBucketMut<'a, K, V>,
                                .into_mut_refs()
                                .1;
                 },
-                table::Full(bucket) => bucket
+                Full(bucket) => bucket
             };
 
             let probe_ib = full_bucket.index() - full_bucket.distance();
@@ -1470,7 +1472,7 @@ mod test_map {
     use prelude::*;
 
     use super::HashMap;
-    use super::{Occupied, Vacant};
+    use super::Entry::{Occupied, Vacant};
     use hash;
     use iter::{range_inclusive, range_step_inclusive};
     use cell::RefCell;

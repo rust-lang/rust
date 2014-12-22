@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: ..1518599999
+// error-pattern:; 1518599999
 
 fn generic<T: Copy>(t: T) {
-    let s: [T, ..1518600000] = [t, ..1518600000];
+    let s: [T; 1518600000] = [t; 1518600000];
 }
 
 fn main() {
-    let x: [u8, ..1518599999] = [0, ..1518599999];
-    generic::<[u8, ..1518599999]>(x);
+    let x: [u8; 1518599999] = [0; 1518599999];
+    generic::<[u8; 1518599999]>(x);
 }

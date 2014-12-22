@@ -222,7 +222,7 @@ extern "rust-intrinsic" {
     /// Both types must have the same size and alignment, and this guarantee
     /// is enforced at compile-time.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::mem;
@@ -253,14 +253,20 @@ extern "rust-intrinsic" {
     /// integer, since the conversion would throw away aliasing information.
     pub fn offset<T>(dst: *const T, offset: int) -> *const T;
 
-    /// Copies data from one location to another.
-    ///
-    /// Copies `count` elements (not bytes) from `src` to `dst`. The source
+    /// Copies `count * size_of<T>` bytes from `src` to `dst`. The source
     /// and destination may *not* overlap.
     ///
     /// `copy_nonoverlapping_memory` is semantically equivalent to C's `memcpy`.
     ///
-    /// # Example
+    /// # Safety
+    ///
+    /// Beyond requiring that both regions of memory be allocated, it is Undefined Behaviour
+    /// for source and destination to overlap. Care must also be taken with the ownership of
+    /// `src` and `dst`. This method semantically moves the values of `src` into `dst`.
+    /// However it does not drop the contents of `dst`, or prevent the contents of `src`
+    /// from being dropped or used.
+    ///
+    /// # Examples
     ///
     /// A safe swap function:
     ///
@@ -284,22 +290,22 @@ extern "rust-intrinsic" {
     ///     }
     /// }
     /// ```
-    ///
-    /// # Safety Note
-    ///
-    /// If the source and destination overlap then the behavior of this
-    /// function is undefined.
     #[unstable]
     pub fn copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: uint);
 
-    /// Copies data from one location to another.
-    ///
-    /// Copies `count` elements (not bytes) from `src` to `dst`. The source
+    /// Copies `count * size_of<T>` bytes from `src` to `dst`. The source
     /// and destination may overlap.
     ///
     /// `copy_memory` is semantically equivalent to C's `memmove`.
     ///
-    /// # Example
+    /// # Safety
+    ///
+    /// Care must be taken with the ownership of `src` and `dst`.
+    /// This method semantically moves the values of `src` into `dst`.
+    /// However it does not drop the contents of `dst`, or prevent the contents of `src`
+    /// from being dropped or used.
+    ///
+    /// # Examples
     ///
     /// Efficiently create a Rust vector from an unsafe buffer:
     ///
