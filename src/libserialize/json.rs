@@ -334,11 +334,39 @@ pub fn escape_bytes(wr: &mut io::Writer, bytes: &[u8]) -> Result<(), io::IoError
         let escaped = match *byte {
             b'"' => "\\\"",
             b'\\' => "\\\\",
+            b'\x00' => "\\u0000",
+            b'\x01' => "\\u0001",
+            b'\x02' => "\\u0002",
+            b'\x03' => "\\u0003",
+            b'\x04' => "\\u0004",
+            b'\x05' => "\\u0005",
+            b'\x06' => "\\u0006",
+            b'\x07' => "\\u0007",
             b'\x08' => "\\b",
-            b'\x0c' => "\\f",
-            b'\n' => "\\n",
-            b'\r' => "\\r",
             b'\t' => "\\t",
+            b'\n' => "\\n",
+            b'\x0b' => "\\u000b",
+            b'\x0c' => "\\f",
+            b'\r' => "\\r",
+            b'\x0e' => "\\u000e",
+            b'\x0f' => "\\u000f",
+            b'\x10' => "\\u0010",
+            b'\x11' => "\\u0011",
+            b'\x12' => "\\u0012",
+            b'\x13' => "\\u0013",
+            b'\x14' => "\\u0014",
+            b'\x15' => "\\u0015",
+            b'\x16' => "\\u0016",
+            b'\x17' => "\\u0017",
+            b'\x18' => "\\u0018",
+            b'\x19' => "\\u0019",
+            b'\x1a' => "\\u001a",
+            b'\x1b' => "\\u001b",
+            b'\x1c' => "\\u001c",
+            b'\x1d' => "\\u001d",
+            b'\x1e' => "\\u001e",
+            b'\x1f' => "\\u001f",
+            b'\x7f' => "\\u007f",
             _ => { continue; }
         };
 
@@ -2731,7 +2759,10 @@ mod tests {
     fn test_write_char() {
         check_encoder_for_simple!('a', "\"a\"");
         check_encoder_for_simple!('\t', "\"\\t\"");
-        check_encoder_for_simple!('\u{a0}', "\"\u{a0}\"");
+        check_encoder_for_simple!('\u{0000}', "\"\\u0000\"");
+        check_encoder_for_simple!('\u{001b}', "\"\\u001b\"");
+        check_encoder_for_simple!('\u{007f}', "\"\\u007f\"");
+        check_encoder_for_simple!('\u{00a0}', "\"\u{00a0}\"");
         check_encoder_for_simple!('\u{abcd}', "\"\u{abcd}\"");
         check_encoder_for_simple!('\u{10ffff}', "\"\u{10ffff}\"");
     }
