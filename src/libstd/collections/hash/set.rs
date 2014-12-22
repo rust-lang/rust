@@ -23,7 +23,7 @@ use ops::{BitOr, BitAnd, BitXor, Sub};
 use option::Option::{Some, None, mod};
 use result::Result::{Ok, Err};
 
-use super::map::{mod, HashMap, MoveEntries, Keys, INITIAL_CAPACITY};
+use super::map::{mod, HashMap, Keys, INITIAL_CAPACITY};
 
 // Future Optimization (FIXME!)
 // =============================
@@ -736,7 +736,7 @@ pub struct Iter<'a, K: 'a> {
 
 /// HashSet move iterator
 pub struct IntoIter<K> {
-    iter: Map<(K, ()), K, MoveEntries<K, ()>, fn((K, ())) -> K>
+    iter: Map<(K, ()), K, map::IntoIter<K, ()>, fn((K, ())) -> K>
 }
 
 /// HashSet drain iterator

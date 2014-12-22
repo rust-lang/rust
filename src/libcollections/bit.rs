@@ -186,7 +186,6 @@ fn blocks_for_bits(bits: uint) -> uint {
     } else {
         bits / u32::BITS + 1
     }
-
 }
 
 /// Computes the bitmask for the final word of the vector

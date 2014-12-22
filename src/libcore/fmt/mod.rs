@@ -89,7 +89,7 @@ pub struct Formatter<'a> {
     precision: Option<uint>,
 
     buf: &'a mut (FormatWriter+'a),
-    curarg: slice::Items<'a, Argument<'a>>,
+    curarg: slice::Iter<'a, Argument<'a>>,
     args: &'a [Argument<'a>],
 }
 

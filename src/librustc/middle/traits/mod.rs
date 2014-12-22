@@ -19,7 +19,7 @@ use middle::subst;
 use middle::ty::{mod, Ty};
 use middle::infer::InferCtxt;
 use std::rc::Rc;
-use std::slice::Items;
+use std::slice::Iter;
 use syntax::ast;
 use syntax::codemap::{Span, DUMMY_SP};
 
@@ -304,7 +304,7 @@ impl<'tcx> ObligationCause<'tcx> {
 }
 
 impl<'tcx, N> Vtable<'tcx, N> {
-    pub fn iter_nested(&self) -> Items<N> {
+    pub fn iter_nested(&self) -> Iter<N> {
         match *self {
             VtableImpl(ref i) => i.iter_nested(),
             VtableFnPointer(..) => (&[]).iter(),
@@ -338,7 +338,7 @@ impl<'tcx, N> Vtable<'tcx, N> {
 }
 
 impl<'tcx, N> VtableImplData<'tcx, N> {
-    pub fn iter_nested(&self) -> Items<N> {
+    pub fn iter_nested(&self) -> Iter<N> {
         self.nested.iter()
     }
 
@@ -365,7 +365,7 @@ impl<'tcx, N> VtableImplData<'tcx, N> {
 }
 
 impl<N> VtableBuiltinData<N> {
-    pub fn iter_nested(&self) -> Items<N> {
+    pub fn iter_nested(&self) -> Iter<N> {
         self.nested.iter()
     }
 
