@@ -410,7 +410,7 @@ impl<S: Stream> Writer for BufferedStream<S> {
 mod test {
     extern crate test;
     use io;
-    use prelude::*;
+    use prelude::v1::*;
     use super::*;
     use super::super::{IoResult, EndOfFile};
     use super::super::mem::MemReader;

@@ -18,8 +18,10 @@
 // different scalability characteristics compared to the select
 // version.
 
+use std::comm::{channel, Sender, Receiver};
 use std::comm;
 use std::os;
+use std::str::from_str;
 use std::thread::Thread;
 use std::time::Duration;
 use std::uint;

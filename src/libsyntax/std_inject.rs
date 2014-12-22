@@ -152,7 +152,7 @@ impl<'a> fold::Folder for PreludeInjector<'a> {
         let prelude_path = ast::Path {
             span: DUMMY_SP,
             global: false,
-            segments: vec!(
+            segments: vec![
                 ast::PathSegment {
                     identifier: token::str_to_ident("std"),
                     parameters: ast::PathParameters::none(),
@@ -160,7 +160,12 @@ impl<'a> fold::Folder for PreludeInjector<'a> {
                 ast::PathSegment {
                     identifier: token::str_to_ident("prelude"),
                     parameters: ast::PathParameters::none(),
-                }),
+                },
+                ast::PathSegment {
+                    identifier: token::str_to_ident("v1"),
+                    parameters: ast::PathParameters::none(),
+                },
+            ],
         };
 
         let (crates, uses): (Vec<_>, _) = view_items.iter().cloned().partition(|x| {

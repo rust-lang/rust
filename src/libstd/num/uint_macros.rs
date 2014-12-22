@@ -49,8 +49,9 @@ pub fn to_str_bytes<U, F>(n: $T, radix: uint, f: F) -> U where
 
 #[cfg(test)]
 mod tests {
-    use prelude::*;
+    use prelude::v1::*;
     use num::FromStrRadix;
+    use str::from_str;
 
     #[test]
     pub fn test_from_str() {

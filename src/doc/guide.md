@@ -26,7 +26,7 @@ in the `$`s, they just indicate the start of each command):
 curl -L https://static.rust-lang.org/rustup.sh | sudo sh
 ```
 
-If you're concerned about the [potential insecurity](http://curlpipesh.tumblr.com/) of using `curl | sudo sh`, 
+If you're concerned about the [potential insecurity](http://curlpipesh.tumblr.com/) of using `curl | sudo sh`,
 please keep reading and see our disclaimer below. And feel free to use a two-step version of the installation and examine our installation script:
 
 ```bash
@@ -1109,10 +1109,11 @@ An `Ordering` can only be _one_ of `Less`, `Equal`, or `Greater` at any given
 time. Here's an example:
 
 ```{rust}
+# use std::cmp::Ordering;
 fn cmp(a: int, b: int) -> Ordering {
-    if a < b { Less }
-    else if a > b { Greater }
-    else { Equal }
+    if a < b { Ordering::Less }
+    else if a > b { Ordering::Greater }
+    else { Ordering::Equal }
 }
 
 fn main() {
@@ -1121,11 +1122,11 @@ fn main() {
 
     let ordering = cmp(x, y); // ordering: Ordering
 
-    if ordering == Less {
+    if ordering == Ordering::Less {
         println!("less");
-    } else if ordering == Greater {
+    } else if ordering == Ordering::Greater {
         println!("greater");
-    } else if ordering == Equal {
+    } else if ordering == Ordering::Equal {
         println!("equal");
     }
 }
@@ -1280,10 +1281,11 @@ for every possible value of `x`, and so our program will compile successfully.
 section on enums?
 
 ```{rust}
+# use std::cmp::Ordering;
 fn cmp(a: int, b: int) -> Ordering {
-    if a < b { Less }
-    else if a > b { Greater }
-    else { Equal }
+    if a < b { Ordering::Less }
+    else if a > b { Ordering::Greater }
+    else { Ordering::Equal }
 }
 
 fn main() {
@@ -1292,11 +1294,11 @@ fn main() {
 
     let ordering = cmp(x, y);
 
-    if ordering == Less {
+    if ordering == Ordering::Less {
         println!("less");
-    } else if ordering == Greater {
+    } else if ordering == Ordering::Greater {
         println!("greater");
-    } else if ordering == Equal {
+    } else if ordering == Ordering::Equal {
         println!("equal");
     }
 }
@@ -1305,10 +1307,11 @@ fn main() {
 We can re-write this as a `match`:
 
 ```{rust}
+# use std::cmp::Ordering;
 fn cmp(a: int, b: int) -> Ordering {
-    if a < b { Less }
-    else if a > b { Greater }
-    else { Equal }
+    if a < b { Ordering::Less }
+    else if a > b { Ordering::Greater }
+    else { Ordering::Equal }
 }
 
 fn main() {
@@ -1316,9 +1319,9 @@ fn main() {
     let y = 10i;
 
     match cmp(x, y) {
-        Less    => println!("less"),
-        Greater => println!("greater"),
-        Equal   => println!("equal"),
+        Ordering::Less    => println!("less"),
+        Ordering::Greater => println!("greater"),
+        Ordering::Equal   => println!("equal"),
     }
 }
 ```
@@ -1365,10 +1368,11 @@ side of a `let` binding or directly where an expression is used. We could
 also implement the previous line like this:
 
 ```{rust}
+# use std::cmp::Ordering;
 fn cmp(a: int, b: int) -> Ordering {
-    if a < b { Less }
-    else if a > b { Greater }
-    else { Equal }
+    if a < b { Ordering::Less }
+    else if a > b { Ordering::Greater }
+    else { Ordering::Equal }
 }
 
 fn main() {
@@ -1376,9 +1380,9 @@ fn main() {
     let y = 10i;
 
     println!("{}", match cmp(x, y) {
-        Less    => "less",
-        Greater => "greater",
-        Equal   => "equal",
+        Ordering::Less    => "less",
+        Ordering::Greater => "greater",
+        Ordering::Equal   => "equal",
     });
 }
 ```
@@ -2139,6 +2143,7 @@ guess to the secret number:
 ```{rust,ignore}
 use std::io;
 use std::rand;
+use std::cmp::Ordering;
 
 fn main() {
     println!("Guess the number!");
@@ -2157,16 +2162,16 @@ fn main() {
     println!("You guessed: {}", input);
 
     match cmp(input, secret_number) {
-        Less    => println!("Too small!"),
-        Greater => println!("Too big!"),
-        Equal   => println!("You win!"),
+        Ordering::Less    => println!("Too small!"),
+        Ordering::Greater => println!("Too big!"),
+        Ordering::Equal   => println!("You win!"),
     }
 }
 
 fn cmp(a: int, b: int) -> Ordering {
-    if a < b { Less }
-    else if a > b { Greater }
-    else { Equal }
+    if a < b { Ordering::Less }
+    else if a > b { Ordering::Greater }
+    else { Ordering::Equal }
 }
 ```
 
@@ -2193,6 +2198,7 @@ we wrote the `cmp` function! Let's change it to take `uint`s:
 ```{rust,ignore}
 use std::io;
 use std::rand;
+use std::cmp::Ordering;
 
 fn main() {
     println!("Guess the number!");
@@ -2211,16 +2217,16 @@ fn main() {
     println!("You guessed: {}", input);
 
     match cmp(input, secret_number) {
-        Less    => println!("Too small!"),
-        Greater => println!("Too big!"),
-        Equal   => println!("You win!"),
+        Ordering::Less    => println!("Too small!"),
+        Ordering::Greater => println!("Too big!"),
+        Ordering::Equal   => println!("You win!"),
     }
 }
 
 fn cmp(a: uint, b: uint) -> Ordering {
-    if a < b { Less }
-    else if a > b { Greater }
-    else { Equal }
+    if a < b { Ordering::Less }
+    else if a > b { Ordering::Greater }
+    else { Ordering::Equal }
 }
 ```
 
@@ -2290,6 +2296,7 @@ Anyway, with us now converting our input to a number, our code looks like this:
 ```{rust,ignore}
 use std::io;
 use std::rand;
+use std::cmp::Ordering;
 
 fn main() {
     println!("Guess the number!");
@@ -2308,16 +2315,16 @@ fn main() {
     println!("You guessed: {}", input_num);
 
     match cmp(input_num, secret_number) {
-        Less    => println!("Too small!"),
-        Greater => println!("Too big!"),
-        Equal   => println!("You win!"),
+        Ordering::Less    => println!("Too small!"),
+        Ordering::Greater => println!("Too big!"),
+        Ordering::Equal   => println!("You win!"),
     }
 }
 
 fn cmp(a: uint, b: uint) -> Ordering {
-    if a < b { Less }
-    else if a > b { Greater }
-    else { Equal }
+    if a < b { Ordering::Less }
+    else if a > b { Ordering::Greater }
+    else { Ordering::Equal }
 }
 ```
 
@@ -2339,6 +2346,7 @@ to do that. Try this code:
 ```{rust,no_run}
 use std::io;
 use std::rand;
+use std::cmp::Ordering;
 
 fn main() {
     println!("Guess the number!");
@@ -2366,16 +2374,16 @@ fn main() {
     println!("You guessed: {}", num);
 
     match cmp(num, secret_number) {
-        Less    => println!("Too small!"),
-        Greater => println!("Too big!"),
-        Equal   => println!("You win!"),
+        Ordering::Less    => println!("Too small!"),
+        Ordering::Greater => println!("Too big!"),
+        Ordering::Equal   => println!("You win!"),
     }
 }
 
 fn cmp(a: uint, b: uint) -> Ordering {
-    if a < b { Less }
-    else if a > b { Greater }
-    else { Equal }
+    if a < b { Ordering::Less }
+    else if a > b { Ordering::Greater }
+    else { Ordering::Equal }
 }
 ```
 
@@ -2405,6 +2413,7 @@ code looks like this:
 ```{rust,no_run}
 use std::io;
 use std::rand;
+use std::cmp::Ordering;
 
 fn main() {
     println!("Guess the number!");
@@ -2432,16 +2441,16 @@ fn main() {
     println!("You guessed: {}", num);
 
     match cmp(num, secret_number) {
-        Less    => println!("Too small!"),
-        Greater => println!("Too big!"),
-        Equal   => println!("You win!"),
+        Ordering::Less    => println!("Too small!"),
+        Ordering::Greater => println!("Too big!"),
+        Ordering::Equal   => println!("You win!"),
     }
 }
 
 fn cmp(a: uint, b: uint) -> Ordering {
-    if a < b { Less }
-    else if a > b { Greater }
-    else { Equal }
+    if a < b { Ordering::Less }
+    else if a > b { Ordering::Greater }
+    else { Ordering::Equal }
 }
 ```
 
@@ -2478,6 +2487,7 @@ Let's add that in:
 ```{rust,no_run}
 use std::io;
 use std::rand;
+use std::cmp::Ordering;
 
 fn main() {
     println!("Guess the number!");
@@ -2507,17 +2517,17 @@ fn main() {
         println!("You guessed: {}", num);
 
         match cmp(num, secret_number) {
-            Less    => println!("Too small!"),
-            Greater => println!("Too big!"),
-            Equal   => println!("You win!"),
+            Ordering::Less    => println!("Too small!"),
+            Ordering::Greater => println!("Too big!"),
+            Ordering::Equal   => println!("You win!"),
         }
     }
 }
 
 fn cmp(a: uint, b: uint) -> Ordering {
-    if a < b { Less }
-    else if a > b { Greater }
-    else { Equal }
+    if a < b { Ordering::Less }
+    else if a > b { Ordering::Greater }
+    else { Ordering::Equal }
 }
 ```
 
@@ -2553,6 +2563,7 @@ suboptimal to say the least. First, let's actually quit when you win the game:
 ```{rust,no_run}
 use std::io;
 use std::rand;
+use std::cmp::Ordering;
 
 fn main() {
     println!("Guess the number!");
@@ -2582,9 +2593,9 @@ fn main() {
         println!("You guessed: {}", num);
 
         match cmp(num, secret_number) {
-            Less    => println!("Too small!"),
-            Greater => println!("Too big!"),
-            Equal   => {
+            Ordering::Less    => println!("Too small!"),
+            Ordering::Greater => println!("Too big!"),
+            Ordering::Equal   => {
                 println!("You win!");
                 return;
             },
@@ -2593,9 +2604,9 @@ fn main() {
 }
 
 fn cmp(a: uint, b: uint) -> Ordering {
-    if a < b { Less }
-    else if a > b { Greater }
-    else { Equal }
+    if a < b { Ordering::Less }
+    else if a > b { Ordering::Greater }
+    else { Ordering::Equal }
 }
 ```
 
@@ -2608,6 +2619,7 @@ we don't want to quit, we just want to ignore it. Change that `return` to
 ```{rust,no_run}
 use std::io;
 use std::rand;
+use std::cmp::Ordering;
 
 fn main() {
     println!("Guess the number!");
@@ -2637,9 +2649,9 @@ fn main() {
         println!("You guessed: {}", num);
 
         match cmp(num, secret_number) {
-            Less    => println!("Too small!"),
-            Greater => println!("Too big!"),
-            Equal   => {
+            Ordering::Less    => println!("Too small!"),
+            Ordering::Greater => println!("Too big!"),
+            Ordering::Equal   => {
                 println!("You win!");
                 return;
             },
@@ -2648,9 +2660,9 @@ fn main() {
 }
 
 fn cmp(a: uint, b: uint) -> Ordering {
-    if a < b { Less }
-    else if a > b { Greater }
-    else { Equal }
+    if a < b { Ordering::Less }
+    else if a > b { Ordering::Greater }
+    else { Ordering::Equal }
 }
 ```
 
@@ -2686,6 +2698,7 @@ It was good for testing, but it kind of ruins the game. Here's our final source:
 ```{rust,no_run}
 use std::io;
 use std::rand;
+use std::cmp::Ordering;
 
 fn main() {
     println!("Guess the number!");
@@ -2713,9 +2726,9 @@ fn main() {
         println!("You guessed: {}", num);
 
         match cmp(num, secret_number) {
-            Less    => println!("Too small!"),
-            Greater => println!("Too big!"),
-            Equal   => {
+            Ordering::Less    => println!("Too small!"),
+            Ordering::Greater => println!("Too big!"),
+            Ordering::Equal   => {
                 println!("You win!");
                 return;
             },
@@ -2724,9 +2737,9 @@ fn main() {
 }
 
 fn cmp(a: uint, b: uint) -> Ordering {
-    if a < b { Less }
-    else if a > b { Greater }
-    else { Equal }
+    if a < b { Ordering::Less }
+    else if a > b { Ordering::Greater }
+    else { Ordering::Equal }
 }
 ```
 
@@ -5217,7 +5230,7 @@ as you can see, there's no overhead of deciding which version to call here,
 hence 'statically dispatched'. The downside is that we have two copies of
 the same function, so our binary is a little bit larger.
 
-# Threads 
+# Threads
 
 Concurrency and parallelism are topics that are of increasing interest to a
 broad subsection of software developers. Modern computers are often multi-core,

@@ -10,6 +10,8 @@
 
 // Test that move restrictions are enforced on overloaded binary operations
 
+use std::ops::Add;
+
 fn double_move<T: Add<T, ()>>(x: T) {
     x
     +

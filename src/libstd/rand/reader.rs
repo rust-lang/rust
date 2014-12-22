@@ -74,7 +74,7 @@ impl<R: Reader> Rng for ReaderRng<R> {
 
 #[cfg(test)]
 mod test {
-    use prelude::*;
+    use prelude::v1::*;
 
     use super::ReaderRng;
     use io::MemReader;

@@ -16,25 +16,25 @@
 pub use self::StdioContainer::*;
 pub use self::ProcessExit::*;
 
-use prelude::*;
+use prelude::v1::*;
 
+use c_str::{CString, ToCStr};
+use collections::HashMap;
+use comm::{channel, Receiver};
 use fmt;
-use os;
+use hash::Hash;
+use io::pipe::{PipeStream, PipePair};
 use io::{IoResult, IoError};
 use io;
 use libc;
-use c_str::CString;
-use collections::HashMap;
-use hash::Hash;
-#[cfg(windows)]
-use std::hash::sip::SipState;
-use io::pipe::{PipeStream, PipePair};
+use os;
 use path::BytesContainer;
-use thread::Thread;
-
-use sys;
 use sys::fs::FileDesc;
 use sys::process::Process as ProcessImp;
+use sys;
+use thread::Thread;
+
+#[cfg(windows)] use std::hash::sip::SipState;
 
 /// Signal a process to exit, without forcibly killing it. Corresponds to
 /// SIGTERM on unix platforms.
@@ -741,18 +741,17 @@ impl Drop for Process {
 
 #[cfg(test)]
 mod tests {
-    #![allow(unused_imports)]
+    use prelude::v1::*;
 
-    use super::*;
+    use comm::channel;
+    use io::fs::PathExtensions;
     use io::timer::*;
     use io::{Truncate, Write, TimedOut, timer, process, FileNotFound};
-    use prelude::{Ok, Err, spawn, range, drop, Box, Some, None, Option, Vec, Buffer};
-    use prelude::{from_str, Path, String, channel, Reader, Writer, Clone, Slice};
-    use prelude::{SliceExt, Str, StrExt, AsSlice, ToString, GenericPath};
-    use io::fs::PathExtensions;
-    use time::Duration;
-    use str;
     use rt::running_on_valgrind;
+    use str;
+    use super::*;
+    use thread::Thread;
+    use time::Duration;
 
     // FIXME(#10380) these tests should not all be ignored on android.
 
@@ -1156,14 +1155,14 @@ mod tests {
     fn wait_timeout2() {
         let (tx, rx) = channel();
         let tx2 = tx.clone();
-        spawn(move|| {
+        let _t = Thread::spawn(move|| {
             let mut p = sleeper();
             p.set_timeout(Some(10));
             assert_eq!(p.wait().err().unwrap().kind, TimedOut);
             p.signal_kill().unwrap();
             tx.send(());
         });
-        spawn(move|| {
+        let _t = Thread::spawn(move|| {
             let mut p = sleeper();
             p.set_timeout(Some(10));
             assert_eq!(p.wait().err().unwrap().kind, TimedOut);

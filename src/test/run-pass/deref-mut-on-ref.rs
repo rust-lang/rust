@@ -10,6 +10,8 @@
 
 // Test that `&mut T` implements `DerefMut<T>`
 
+use std::ops::DerefMut;
+
 fn inc<T:DerefMut<int>>(mut t: T) {
     *t += 1;
 }

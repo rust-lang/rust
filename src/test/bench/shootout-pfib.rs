@@ -20,8 +20,10 @@
 
 extern crate getopts;
 
+use std::comm::{channel, Sender};
 use std::os;
 use std::result::Result::{Ok, Err};
+use std::str::from_str;
 use std::thread::Thread;
 use std::time::Duration;
 

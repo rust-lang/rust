@@ -23,6 +23,7 @@ use std::io::{fs, TempDir};
 use std::io;
 use std::os;
 use std::task;
+use std::comm::channel;
 
 fn test_tempdir() {
     let path = {

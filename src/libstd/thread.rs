@@ -440,13 +440,15 @@ impl<T: Send> Drop for JoinGuard<T> {
 
 #[cfg(test)]
 mod test {
-    use prelude::*;
+    use prelude::v1::*;
+
     use any::{Any, AnyRefExt};
     use boxed::BoxAny;
+    use comm::{channel, Sender};
     use result;
     use std::io::{ChanReader, ChanWriter};
-    use thunk::Thunk;
     use super::{Thread, Builder};
+    use thunk::Thunk;
 
     // !!! These tests are dangerous. If something is buggy, they will hang, !!!
     // !!! instead of exiting cleanly. This might wedge the buildbots.       !!!

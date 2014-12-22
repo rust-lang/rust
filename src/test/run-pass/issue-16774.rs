@@ -10,6 +10,8 @@
 
 #![feature(unboxed_closures)]
 
+use std::ops::{Deref, DerefMut};
+
 struct X(Box<int>);
 
 static mut DESTRUCTOR_RAN: bool = false;

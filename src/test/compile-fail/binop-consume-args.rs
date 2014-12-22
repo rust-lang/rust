@@ -10,6 +10,8 @@
 
 // Test that binary operators consume their arguments
 
+use std::ops::{Add, Sub, Mul, Div, Rem, BitAnd, BitXor, BitOr, Shl, Shr};
+
 fn add<A: Add<B, ()>, B>(lhs: A, rhs: B) {
     lhs + rhs;
     drop(lhs);  //~ ERROR use of moved value: `lhs`

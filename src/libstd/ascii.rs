@@ -315,8 +315,8 @@ static ASCII_UPPERCASE_MAP: [u8; 256] = [
 
 #[cfg(test)]
 mod tests {
+    use prelude::v1::*;
     use super::*;
-    use prelude::*;
     use char::from_u32;
 
     #[test]

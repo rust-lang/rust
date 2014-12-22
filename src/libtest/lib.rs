@@ -49,8 +49,6 @@ use self::TestEvent::*;
 use self::NamePadding::*;
 use self::OutputLocation::*;
 
-use std::any::{Any, AnyRefExt};
-use std::collections::BTreeMap;
 use stats::Stats;
 use getopts::{OptGroup, optflag, optopt};
 use regex::Regex;
@@ -58,7 +56,10 @@ use serialize::{json, Decodable, Encodable};
 use term::Terminal;
 use term::color::{Color, RED, YELLOW, GREEN, CYAN};
 
+use std::any::{Any, AnyRefExt};
 use std::cmp;
+use std::collections::BTreeMap;
+use std::comm::{channel, Sender};
 use std::f64;
 use std::fmt::Show;
 use std::fmt;
@@ -69,11 +70,10 @@ use std::io;
 use std::iter::repeat;
 use std::num::{Float, FloatMath, Int};
 use std::os;
-use std::str::FromStr;
-use std::string::String;
+use std::str::{FromStr, from_str};
 use std::thread::{mod, Thread};
-use std::time::Duration;
 use std::thunk::{Thunk, Invoke};
+use std::time::Duration;
 
 // to be used by rustc to compile tests in libtest
 pub mod test {
@@ -1466,6 +1466,7 @@ mod tests {
                StaticTestName, DynTestName, DynTestFn, ShouldFail};
     use std::io::TempDir;
     use std::thunk::Thunk;
+    use std::comm::channel;
 
     #[test]
     pub fn do_not_run_ignored_tests() {

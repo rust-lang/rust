@@ -12,9 +12,9 @@ extern crate libc;
 
 use std::io::process::Command;
 use std::iter::IteratorExt;
+use std::str::from_str;
 
 use libc::funcs::posix88::unistd;
-
 
 // The output from "ps -A -o pid,ppid,args" should look like this:
 //   PID  PPID COMMAND

@@ -214,7 +214,7 @@ impl<T:Rand> Rand for Option<T> {
 
 #[cfg(test)]
 mod tests {
-    use std::prelude::*;
+    use std::prelude::v1::*;
     use std::rand::{Rng, thread_rng, Open01, Closed01};
 
     struct ConstantRng(u64);

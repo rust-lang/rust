@@ -8,8 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::fmt;
 use std::default::Default;
+use std::fmt;
+use std::iter::FromIterator;
+use std::ops::Deref;
 use std::vec;
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 

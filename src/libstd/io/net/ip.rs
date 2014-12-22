@@ -544,7 +544,7 @@ impl<'a> ToSocketAddr for &'a str {
 
 #[cfg(test)]
 mod test {
-    use prelude::*;
+    use prelude::v1::*;
     use super::*;
     use str::FromStr;
 

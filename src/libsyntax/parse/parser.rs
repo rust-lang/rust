@@ -84,11 +84,12 @@ use owned_slice::OwnedSlice;
 
 use std::collections::HashSet;
 use std::io::fs::PathExtensions;
+use std::iter;
 use std::mem;
 use std::num::Float;
 use std::rc::Rc;
-use std::iter;
 use std::slice;
+use std::str::from_str;
 
 bitflags! {
     flags Restrictions: u8 {

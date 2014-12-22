@@ -13,6 +13,7 @@
 #![feature(unboxed_closures)]
 
 use std::ops::Fn;
+use std::ops::Add;
 
 struct G;
 

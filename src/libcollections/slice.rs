@@ -89,15 +89,19 @@
 
 use alloc::boxed::Box;
 use core::borrow::{BorrowFrom, BorrowFromMut, ToOwned};
-use core::cmp;
-use core::iter::{range_step, MultiplicativeIterator};
+use core::clone::Clone;
+use core::cmp::Ordering::{mod, Greater, Less};
+use core::cmp::{mod, Ord};
+use core::iter::{Iterator, IteratorExt, IteratorCloneExt};
+use core::iter::{range, range_step, MultiplicativeIterator};
 use core::kinds::Sized;
 use core::mem::size_of;
 use core::mem;
-use core::ops::{FnMut,SliceMut};
-use core::prelude::{Clone, Greater, Iterator, IteratorExt, Less, None, Option};
-use core::prelude::{Ord, Ordering, PtrExt, Some, range, IteratorCloneExt, Result};
+use core::ops::{FnMut, SliceMut};
+use core::option::Option::{mod, Some, None};
+use core::ptr::PtrExt;
 use core::ptr;
+use core::result::Result;
 use core::slice as core_slice;
 use self::Direction::*;
 

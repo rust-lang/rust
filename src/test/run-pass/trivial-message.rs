@@ -13,6 +13,8 @@
   message.
  */
 
+use std::comm::channel;
+
 pub fn main() {
     let (tx, rx) = channel();
     tx.send(42i);

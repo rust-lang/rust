@@ -13,6 +13,8 @@
 
 #![feature(unboxed_closures)]
 
+use std::num::ToPrimitive;
+
 fn doit<T,F>(val: T, f: &F)
     where F : Fn(T)
 {

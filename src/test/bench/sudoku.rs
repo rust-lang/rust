@@ -12,11 +12,12 @@
 
 #![allow(non_snake_case)]
 
-use std::io;
-use std::io::stdio::StdReader;
 use std::io::BufferedReader;
+use std::io::stdio::StdReader;
+use std::io;
 use std::num::Int;
 use std::os;
+use std::str::from_str;
 
 // Computes a single solution to a given 9x9 sudoku
 //

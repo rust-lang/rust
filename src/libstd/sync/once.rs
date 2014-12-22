@@ -122,10 +122,11 @@ impl Once {
 
 #[cfg(test)]
 mod test {
-    use prelude::*;
+    use prelude::v1::*;
 
     use thread::Thread;
     use super::{ONCE_INIT, Once};
+    use comm::channel;
 
     #[test]
     fn smoke_once() {
@@ -145,7 +146,7 @@ mod test {
         let (tx, rx) = channel();
         for _ in range(0u, 10) {
             let tx = tx.clone();
-            spawn(move|| {
+            Thread::spawn(move|| {
                 for _ in range(0u, 4) { Thread::yield_now() }
                 unsafe {
                     O.doit(|| {
@@ -155,7 +156,7 @@ mod test {
                     assert!(run);
                 }
                 tx.send(());
-            });
+            }).detach();
         }
 
         unsafe {

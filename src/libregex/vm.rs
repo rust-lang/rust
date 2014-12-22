@@ -37,6 +37,7 @@ pub use self::MatchKind::*;
 pub use self::StepState::*;
 
 use std::cmp;
+use std::cmp::Ordering::{mod, Less, Equal, Greater};
 use std::mem;
 use std::iter::repeat;
 use std::slice::SliceExt;

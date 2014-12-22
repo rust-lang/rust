@@ -520,8 +520,11 @@ impl Writer for StdWriter {
 
 #[cfg(test)]
 mod tests {
+    use prelude::v1::*;
+
     use super::*;
-    use prelude::*;
+    use comm::channel;
+    use thread::Thread;
 
     #[test]
     fn smoke() {
@@ -537,7 +540,7 @@ mod tests {
 
         let (tx, rx) = channel();
         let (mut r, w) = (ChanReader::new(rx), ChanWriter::new(tx));
-        spawn(move|| {
+        let _t = Thread::spawn(move|| {
             set_stdout(box w);
             println!("hello!");
         });
@@ -550,7 +553,7 @@ mod tests {
 
         let (tx, rx) = channel();
         let (mut r, w) = (ChanReader::new(rx), ChanWriter::new(tx));
-        spawn(move|| {
+        let _t = Thread::spawn(move || -> () {
             set_stderr(box w);
             panic!("my special message");
         });

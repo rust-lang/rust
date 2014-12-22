@@ -15,7 +15,7 @@
 #![allow(unsigned_negation)]
 #![doc(primitive = "f32")]
 
-use prelude::*;
+use prelude::v1::*;
 
 use intrinsics;
 use libc::c_int;

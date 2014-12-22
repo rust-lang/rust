@@ -16,6 +16,7 @@ use ext::tt::transcribe::tt_next_token;
 use parse::token;
 use parse::token::{str_to_ident};
 
+use std::borrow::IntoCow;
 use std::char;
 use std::fmt;
 use std::mem::replace;
@@ -358,7 +359,7 @@ impl<'a> StringReader<'a> {
 
     pub fn nextnextch(&self) -> Option<char> {
         let offset = self.byte_offset(self.pos).to_uint();
-        let s = self.filemap.deref().src[];
+        let s = self.filemap.src.as_slice();
         if offset >= s.len() { return None }
         let str::CharRange { next, .. } = s.char_range_at(offset);
         if next < s.len() {

@@ -19,6 +19,7 @@
 // ignore-lexer-test FIXME #15679
 
 use std::os;
+use std::str::from_str;
 use std::sync::{Arc, Future, Mutex, Condvar};
 use std::time::Duration;
 use std::uint;
