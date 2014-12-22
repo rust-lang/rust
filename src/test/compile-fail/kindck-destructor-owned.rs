@@ -27,7 +27,6 @@ struct Bar<'a> {
 }
 
 impl<'a> Drop for Bar<'a> {
-//~^ ERROR E0141
     fn drop(&mut self) {
     }
 }

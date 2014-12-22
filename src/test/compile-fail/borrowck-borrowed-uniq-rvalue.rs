@@ -14,10 +14,11 @@ extern crate collections;
 use std::collections::HashMap;
 
 fn main() {
+    let tmp;
     let mut buggy_map: HashMap<uint, &uint> = HashMap::new();
     buggy_map.insert(42, &*box 1); //~ ERROR borrowed value does not live long enough
 
-    // but it is ok if we use a temporary
-    let tmp = box 2;
+    // but it is ok if we use a temporary that outlives `buggy_map`.
+    tmp = box 2;
     buggy_map.insert(43, &*tmp);
 }
