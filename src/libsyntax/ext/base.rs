@@ -166,6 +166,47 @@ pub trait MacResult {
     }
 }
 
+/// Single type implementing MacResult with Option fields for all the types
+/// MacResult can return, and a Default impl that fills in None.
+pub struct MacGeneral {
+    expr: Option<P<ast::Expr>>,
+    pat: Option<P<ast::Pat>>,
+    items: Option<SmallVector<P<ast::Item>>>,
+    methods: Option<SmallVector<P<ast::Method>>>,
+    def: Option<MacroDef>
+}
+impl MacGeneral {
+    pub fn new(expr: Option<P<ast::Expr>>,
+               pat: Option<P<ast::Pat>>,
+               items: Option<SmallVector<P<ast::Items>>>,
+               methods: Option<SmallVector<P<ast::Method>>>,
+               def: Option<MacroDef>)
+        -> Box<MacResult+'static> {
+        box MacGeneral { expr: expr, pat: pat, items: items,
+            methods: methods, def: def } as Box<MacResult+'static>
+    }
+    pub fn Default() -> Box<MacResult+'static> {
+        box MacGeneral { expr: None, pat: None, items: None
+            methods: None, def: None} as Box<MacResult+'static>
+    }
+}
+impl MacResult for MacGeneral {
+    fn make_expr(self: Box<MacGeneral>) -> Option<P<ast::Expr>> {
+        self.expr
+    }
+    fn make_pat(self: Box<MacGeneral>) -> Option<P<ast::Pat>> {
+        self.pat
+    }
+    fn make_items(self: Box<MacGeneral>) -> Option<SmallVector<P<ast::Item>>> {
+        self.items
+    }
+    fn make_methods(self: Box<Self>) -> Option<SmallVector<P<ast::Method>>> {
+        self.methods
+    }
+    fn make_def(&mut self) -> Option<MacroDef> {
+        self.def
+    }
+}
 /// A convenience type for macros that return a single expression.
 pub struct MacExpr {
     e: P<ast::Expr>
@@ -204,7 +245,7 @@ impl MacResult for MacPat {
         Some(self.p)
     }
 }
-/// A type for macros that return multiple items.
+/// A convenience type for macros that return multiple items.
 pub struct MacItems {
     items: SmallVector<P<ast::Item>>
 }
@@ -220,6 +261,59 @@ impl MacResult for MacItems {
         Some(self.items)
     }
 }
+
+/// A convenience type for macros that return a single statement
+pub struct MacStmt {
+    stmt: P<ast::Stmt>,
+}
+
+impl MacStmt {
+    pub fn new(stmt: P<ast::Stmt>) -> MacStmt {
+        MacStmt{ stmt: stmt }
+    }
+}
+
+impl MacResult for MacStmt {
+    fn make_stmt(self: Box<MacStmt>) -> Option<P<ast::Stmt>> {
+        Some(self.stmt)
+    }
+}
+
+
+/// A convenience type for macros that return a macro def
+pub struct MacDef {
+    def: Option<MacroDef>
+}
+
+impl MacDef {
+    pub fn new(def: MacroDef) -> MacDef {
+        MacDef{ def: Some(def) }
+    }
+}
+
+impl MacResult for MacDef {
+    fn make_def(&mut self) -> Option<MacroDef> {
+        Some(self.def.take().expect("empty MacDef"))
+    }
+}
+
+/// A convenience type for macros that return methods
+pub struct MacMethods {
+    methods: SmallVector<P<ast::Method>>
+}
+
+impl MacMethods {
+    pub fn new(methods: SmallVector<P<ast::Method>>) -> MacMethods {
+        MacMethods{ methods: methods }
+    }
+}
+
+impl MacResult for MacMethods {
+    fn make_methods(self: Box<MacMethods>) -> Option<SmallVector<P<ast::Method>>> {
+        Some(self.methods)
+    }
+}
+
 
 /// Fill-in macro expansion result, to allow compilation to continue
 /// after hitting errors.
