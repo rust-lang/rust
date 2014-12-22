@@ -286,7 +286,6 @@ pub fn trans_for<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     debug!("iterator type is {}, datum type is {}",
            ppaux::ty_to_string(bcx.tcx(), iterator_type),
            ppaux::ty_to_string(bcx.tcx(), iterator_datum.ty));
-
     let lliterator = load_ty(bcx, iterator_datum.val, iterator_datum.ty);
 
     // Create our basic blocks and set up our loop cleanups.
@@ -365,8 +364,6 @@ pub fn trans_for<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                        pat,
                                        llpayload,
                                        binding_cleanup_scope_id);
-
-    debuginfo::create_for_loop_var_metadata(body_bcx_in, pat);
 
     // Codegen the body.
     body_bcx_out = trans_block(body_bcx_out, body, expr::Ignore);

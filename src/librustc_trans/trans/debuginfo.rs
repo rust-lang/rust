@@ -1049,43 +1049,6 @@ pub fn create_argument_metadata(bcx: Block, arg: &ast::Arg) {
     })
 }
 
-/// Creates debug information for the given for-loop variable.
-///
-/// Adds the created metadata nodes directly to the crate's IR.
-pub fn create_for_loop_var_metadata(bcx: Block, pat: &ast::Pat) {
-    if fn_should_be_ignored(bcx.fcx) {
-        return;
-    }
-
-    let def_map = &bcx.tcx().def_map;
-
-    pat_util::pat_bindings(def_map, pat, |_, node_id, span, spanned_ident| {
-        let datum = match bcx.fcx.lllocals.borrow().get(&node_id).cloned() {
-            Some(datum) => datum,
-            None => {
-                bcx.sess().span_bug(span,
-                    format!("no entry in lllocals table for {}",
-                            node_id).as_slice());
-            }
-        };
-
-        if unsafe { llvm::LLVMIsAAllocaInst(datum.val) } == ptr::null_mut() {
-            bcx.sess().span_bug(span, "debuginfo::create_for_loop_var_metadata() - \
-                                       Referenced variable location is not an alloca!");
-        }
-
-        let scope_metadata = scope_metadata(bcx.fcx, node_id, span);
-
-        declare_local(bcx,
-                      spanned_ident.node,
-                      datum.ty,
-                      scope_metadata,
-                      DirectVariable { alloca: datum.val },
-                      LocalVariable,
-                      span);
-    })
-}
-
 pub fn get_cleanup_debug_loc_for_ast_node<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                                     node_id: ast::NodeId,
                                                     node_span: Span,
