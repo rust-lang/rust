@@ -10,18 +10,12 @@
 
 //! Exposes the NonZero lang item which provides optimization hints.
 
-use cmp::Eq;
-use intrinsics;
-use kinds::Copy;
 use ops::Deref;
-use option::Option;
-use option::Option::Some;
-use ptr::{null, null_mut, RawPtr, RawMutPtr};
 
 /// A wrapper type for raw pointers and integers that will never be
 /// NULL or 0 that might allow certain optimizations.
 #[lang="non_zero"]
-#[deriving(Clone, PartialEq, Eq, PartialOrd)]
+#[deriving(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Show)]
 #[experimental]
 pub struct NonZero<T>(T);
 
@@ -34,65 +28,10 @@ impl<T> NonZero<T> {
     }
 }
 
-impl<T: Copy> Copy for NonZero<T> {}
-
 impl<T> Deref<T> for NonZero<T> {
     #[inline]
     fn deref<'a>(&'a self) -> &'a T {
         let NonZero(ref inner) = *self;
         inner
-    }
-}
-
-impl<T> RawPtr<T> for NonZero<*const T> {
-    #[inline]
-    fn null() -> NonZero<*const T> { NonZero(null()) }
-
-    #[inline]
-    fn is_null(&self) -> bool { false }
-
-    #[inline]
-    fn to_uint(&self) -> uint {
-        **self as uint
-    }
-
-    #[inline]
-    unsafe fn offset(self, count: int) -> NonZero<*const T> {
-        NonZero(intrinsics::offset(*self, count))
-    }
-
-    #[inline]
-    unsafe fn as_ref<'a>(&self) -> Option<&'a T> {
-        Some(&***self)
-    }
-}
-
-impl<T> RawPtr<T> for NonZero<*mut T> {
-    #[inline]
-    fn null() -> NonZero<*mut T> { NonZero(null_mut()) }
-
-    #[inline]
-    fn is_null(&self) -> bool { false }
-
-    #[inline]
-    fn to_uint(&self) -> uint {
-        **self as uint
-    }
-
-    #[inline]
-    unsafe fn offset(self, count: int) -> NonZero<*mut T> {
-        NonZero(intrinsics::offset(*self as *const T, count) as *mut T)
-    }
-
-    #[inline]
-    unsafe fn as_ref<'a>(&self) -> Option<&'a T> {
-        Some(&***self)
-    }
-}
-
-impl<T> RawMutPtr<T> for NonZero<*mut T> {
-    #[inline]
-    unsafe fn as_mut<'a>(&self) -> Option<&'a mut T> {
-        Some(&mut ***self)
     }
 }
