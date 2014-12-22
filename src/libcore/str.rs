@@ -336,7 +336,7 @@ impl<'a> DoubleEndedIterator<(uint, char)> for CharIndices<'a> {
 #[stable]
 #[deriving(Clone)]
 pub struct Bytes<'a> {
-    inner: Map<&'a u8, u8, slice::Items<'a, u8>, BytesFn>,
+    inner: Map<&'a u8, u8, slice::Iter<'a, u8>, BytesFn>,
 }
 
 /// A temporary new type wrapper that ensures that the `Bytes` iterator

@@ -827,8 +827,12 @@ impl Path {
         let s = if self.has_nonsemantic_trailing_slash() {
                     self.repr[0..self.repr.len()-1]
                 } else { self.repr[] };
-        let idx = s.rfind(if !prefix_is_verbatim(self.prefix) { is_sep }
-                          else { is_sep_verbatim });
+        let sep_test: fn(char) -> bool = if !prefix_is_verbatim(self.prefix) {
+            is_sep
+        } else {
+            is_sep_verbatim
+        };
+        let idx = s.rfind(sep_test);
         let prefixlen = self.prefix_len();
         self.sepidx = idx.and_then(|x| if x < prefixlen { None } else { Some(x) });
     }

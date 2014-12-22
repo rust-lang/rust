@@ -88,14 +88,14 @@ use core::fmt;
 use core::iter::{Cloned, Chain, Enumerate, Repeat, Skip, Take};
 use core::iter;
 use core::num::Int;
-use core::slice::{Items, MutItems};
+use core::slice::{Iter, IterMut};
 use core::{u8, u32, uint};
 
 use core::hash;
 use Vec;
 
-type Blocks<'a> = Cloned<Items<'a, u32>>;
-type MutBlocks<'a> = MutItems<'a, u32>;
+type Blocks<'a> = Cloned<Iter<'a, u32>>;
+type MutBlocks<'a> = IterMut<'a, u32>;
 type MatchWords<'a> = Chain<Enumerate<Blocks<'a>>, Skip<Take<Enumerate<Repeat<u32>>>>>;
 
 fn reverse_bits(byte: u8) -> u8 {
