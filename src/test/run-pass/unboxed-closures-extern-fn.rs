@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Checks that extern fn points implement the full range of Fn traits.
+// Checks that extern fn pointers implement the full range of Fn traits.
 
-#![feature(unboxed_closure_sugar)]
-#![feature(overloaded_calls)]
+#![feature(unboxed_closures)]
+#![feature(unboxed_closures)]
 
 use std::ops::{Fn,FnMut,FnOnce};
 

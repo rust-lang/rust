@@ -13,9 +13,9 @@
 extern crate "issue-11680" as other;
 
 fn main() {
-    let _b = other::Bar(1);
+    let _b = other::Foo::Bar(1);
     //~^ ERROR: variant `Bar` is private
 
-    let _b = other::test::Bar(1);
+    let _b = other::test::Foo::Bar(1);
     //~^ ERROR: variant `Bar` is private
 }

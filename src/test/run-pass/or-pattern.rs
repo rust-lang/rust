@@ -11,11 +11,11 @@
 enum blah { a(int, int, uint), b(int, int), c, }
 
 fn or_alt(q: blah) -> int {
-    match q { a(x, y, _) | b(x, y) => { return x + y; } c => { return 0; } }
+    match q { blah::a(x, y, _) | blah::b(x, y) => { return x + y; } blah::c => { return 0; } }
 }
 
 pub fn main() {
-    assert_eq!(or_alt(c), 0);
-    assert_eq!(or_alt(a(10, 100, 0u)), 110);
-    assert_eq!(or_alt(b(20, 200)), 220);
+    assert_eq!(or_alt(blah::c), 0);
+    assert_eq!(or_alt(blah::a(10, 100, 0u)), 110);
+    assert_eq!(or_alt(blah::b(20, 200)), 220);
 }

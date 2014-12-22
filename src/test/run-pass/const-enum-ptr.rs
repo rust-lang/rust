@@ -9,11 +9,11 @@
 // except according to those terms.
 
 enum E { V0, V1(int) }
-static C: &'static E = &V0;
+static C: &'static E = &E::V0;
 
 pub fn main() {
     match *C {
-        V0 => (),
+        E::V0 => (),
         _ => panic!()
     }
 }

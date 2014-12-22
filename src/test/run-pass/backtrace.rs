@@ -10,17 +10,13 @@
 
 // no-pretty-expanded FIXME #15189
 // ignore-windows FIXME #13259
-extern crate native;
+
+#![feature(unboxed_closures)]
 
 use std::os;
 use std::io::process::Command;
 use std::finally::Finally;
 use std::str;
-
-#[start]
-fn start(argc: int, argv: *const *const u8) -> int {
-    native::start(argc, argv, main)
-}
 
 #[inline(never)]
 fn foo() {
@@ -32,7 +28,7 @@ fn foo() {
 
 #[inline(never)]
 fn double() {
-    (|| {
+    (|&mut:| {
         panic!("once");
     }).finally(|| {
         panic!("twice");
@@ -64,7 +60,9 @@ fn runtest(me: &str) {
     let out = p.wait_with_output().unwrap();
     assert!(!out.status.success());
     let s = str::from_utf8(out.error.as_slice()).unwrap();
-    assert!(s.contains("stack backtrace") && s.contains("double::h"),
+    // loosened the following from double::h to double:: due to
+    // spurious failures on mac, 32bit, optimized
+    assert!(s.contains("stack backtrace") && s.contains("double::"),
             "bad output3: {}", s);
 
     // Make sure a stack trace isn't printed too many times

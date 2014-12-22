@@ -17,11 +17,13 @@ use ext::deriving::generic::ty::*;
 use parse::token::InternedString;
 use ptr::P;
 
-pub fn expand_deriving_clone(cx: &mut ExtCtxt,
-                             span: Span,
-                             mitem: &MetaItem,
-                             item: &Item,
-                             push: |P<Item>|) {
+pub fn expand_deriving_clone<F>(cx: &mut ExtCtxt,
+                                span: Span,
+                                mitem: &MetaItem,
+                                item: &Item,
+                                push: F) where
+    F: FnOnce(P<Item>),
+{
     let inline = cx.meta_word(span, InternedString::new("inline"));
     let attrs = vec!(cx.attribute(span, inline));
     let trait_def = TraitDef {
@@ -52,7 +54,7 @@ fn cs_clone(
     name: &str,
     cx: &mut ExtCtxt, trait_span: Span,
     substr: &Substructure) -> P<Expr> {
-    let ctor_ident;
+    let ctor_path;
     let all_fields;
     let fn_path = vec![
         cx.ident_of("std"),
@@ -60,7 +62,7 @@ fn cs_clone(
         cx.ident_of("Clone"),
         cx.ident_of("clone"),
     ];
-    let subcall = |field: &FieldInfo| {
+    let subcall = |&: field: &FieldInfo| {
         let args = vec![cx.expr_addr_of(field.span, field.self_.clone())];
 
         cx.expr_call_global(field.span, fn_path.clone(), args)
@@ -68,11 +70,11 @@ fn cs_clone(
 
     match *substr.fields {
         Struct(ref af) => {
-            ctor_ident = substr.type_ident;
+            ctor_path = cx.path(trait_span, vec![substr.type_ident]);
             all_fields = af;
         }
         EnumMatching(_, variant, ref af) => {
-            ctor_ident = variant.node.name;
+            ctor_path = cx.path(trait_span, vec![substr.type_ident, variant.node.name]);
             all_fields = af;
         },
         EnumNonMatchingCollapsed (..) => {
@@ -91,7 +93,8 @@ fn cs_clone(
     if all_fields.len() >= 1 && all_fields[0].name.is_none() {
         // enum-like
         let subcalls = all_fields.iter().map(subcall).collect();
-        cx.expr_call_ident(trait_span, ctor_ident, subcalls)
+        let path = cx.expr_path(ctor_path);
+        cx.expr_call(trait_span, path, subcalls)
     } else {
         // struct-like
         let fields = all_fields.iter().map(|field| {
@@ -109,9 +112,9 @@ fn cs_clone(
 
         if fields.is_empty() {
             // no fields, so construct like `None`
-            cx.expr_ident(trait_span, ctor_ident)
+            cx.expr_path(ctor_path)
         } else {
-            cx.expr_struct_ident(trait_span, ctor_ident, fields)
+            cx.expr_struct(trait_span, ctor_path, fields)
         }
     }
 }

@@ -10,16 +10,19 @@
 //
 // ignore-lexer-test FIXME #15883
 
+pub use self::BucketState::*;
+
 use clone::Clone;
 use cmp;
 use hash::{Hash, Hasher};
 use iter::{Iterator, count};
-use kinds::{Sized, marker};
+use kinds::{Copy, Sized, marker};
 use mem::{min_align_of, size_of};
 use mem;
 use num::{Int, UnsignedInt};
 use ops::{Deref, DerefMut, Drop};
-use option::{Some, None, Option};
+use option::Option;
+use option::Option::{Some, None};
 use ptr::{RawPtr, copy_nonoverlapping_memory, zero_memory};
 use ptr;
 use rt::heap::{allocate, deallocate};
@@ -78,11 +81,15 @@ struct RawBucket<K, V> {
     val:  *mut V
 }
 
+impl<K,V> Copy for RawBucket<K,V> {}
+
 pub struct Bucket<K, V, M> {
     raw:   RawBucket<K, V>,
     idx:   uint,
     table: M
 }
+
+impl<K,V,M:Copy> Copy for Bucket<K,V,M> {}
 
 pub struct EmptyBucket<K, V, M> {
     raw:   RawBucket<K, V>,
@@ -117,7 +124,7 @@ struct GapThenFull<K, V, M> {
 
 /// A hash that is not zero, since we use a hash of zero to represent empty
 /// buckets.
-#[deriving(PartialEq)]
+#[deriving(PartialEq, Copy)]
 pub struct SafeHash {
     hash: u64,
 }
@@ -204,7 +211,7 @@ impl<K, V, M> Bucket<K, V, M> {
 }
 
 impl<K, V, M: Deref<RawTable<K, V>>> Bucket<K, V, M> {
-    pub fn new(table: M, hash: &SafeHash) -> Bucket<K, V, M> {
+    pub fn new(table: M, hash: SafeHash) -> Bucket<K, V, M> {
         Bucket::at_index(table, hash.inspect() as uint)
     }
 
@@ -489,9 +496,9 @@ impl<K, V, M: Deref<RawTable<K, V>>> GapThenFull<K, V, M> {
 /// Rounds up to a multiple of a power of two. Returns the closest multiple
 /// of `target_alignment` that is higher or equal to `unrounded`.
 ///
-/// # Failure
+/// # Panics
 ///
-/// Fails if `target_alignment` is not a power of two.
+/// Panics if `target_alignment` is not a power of two.
 fn round_up_to_next(unrounded: uint, target_alignment: uint) -> uint {
     assert!(target_alignment.is_power_of_two());
     (unrounded + target_alignment - 1) & !(target_alignment - 1)
@@ -716,7 +723,7 @@ impl<'a, K, V> Iterator<RawBucket<K, V>> for RawBuckets<'a, K, V> {
 }
 
 /// An iterator that moves out buckets in reverse order. It leaves the table
-/// in an an inconsistent state and should only be used for dropping
+/// in an inconsistent state and should only be used for dropping
 /// the table's remaining entries. It's used in the implementation of Drop.
 struct RevMoveBuckets<'a, K, V> {
     raw: RawBucket<K, V>,

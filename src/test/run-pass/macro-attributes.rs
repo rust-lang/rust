@@ -27,7 +27,7 @@ macro_rules! compiles_fine {
 }
 
 // item
-compiles_fine!(#[foo])
+compiles_fine!(#[foo]);
 
 pub fn main() {
     // statement

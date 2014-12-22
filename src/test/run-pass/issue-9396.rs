@@ -14,7 +14,7 @@ use std::time::Duration;
 
 pub fn main() {
     let (tx, rx) = channel();
-    spawn(proc (){
+    spawn(move||{
         let mut timer = Timer::new().unwrap();
         timer.sleep(Duration::milliseconds(10));
         tx.send(());

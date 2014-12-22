@@ -15,11 +15,10 @@
 // makes all other generics or inline functions that it references
 // reachable as well.
 
-use driver::config;
 use middle::def;
 use middle::ty;
-use middle::typeck;
 use middle::privacy;
+use session::config;
 use util::nodemap::NodeSet;
 
 use std::collections::HashSet;
@@ -56,7 +55,7 @@ fn item_might_be_inlined(item: &ast::Item) -> bool {
     }
 
     match item.node {
-        ast::ItemImpl(ref generics, _, _, _) |
+        ast::ItemImpl(_, ref generics, _, _, _) |
         ast::ItemFn(_, _, _, ref generics, _) => {
             generics_require_inlining(generics)
         }
@@ -137,9 +136,9 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ReachableContext<'a, 'tcx> {
                 }
             }
             ast::ExprMethodCall(..) => {
-                let method_call = typeck::MethodCall::expr(expr.id);
+                let method_call = ty::MethodCall::expr(expr.id);
                 match (*self.tcx.method_map.borrow())[method_call].origin {
-                    typeck::MethodStatic(def_id) => {
+                    ty::MethodStatic(def_id) => {
                         if is_local(def_id) {
                             if self.def_id_represents_local_inlined_item(def_id) {
                                 self.worklist.push(def_id.node)
@@ -217,7 +216,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                                       .map
                                       .expect_item(impl_did.node)
                                       .node {
-                                ast::ItemImpl(ref generics, _, _, _) => {
+                                ast::ItemImpl(_, ref generics, _, _, _) => {
                                     generics_require_inlining(generics)
                                 }
                                 _ => false
@@ -264,18 +263,12 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
             // functions may still participate in some form of native interface,
             // but all other rust-only interfaces can be private (they will not
             // participate in linkage after this product is produced)
-            match *node {
-                ast_map::NodeItem(item) => {
-                    match item.node {
-                        ast::ItemFn(_, _, abi, _, _) => {
-                            if abi != abi::Rust {
-                                self.reachable_symbols.insert(search_item);
-                            }
-                        }
-                        _ => {}
+            if let ast_map::NodeItem(item) = *node {
+                if let ast::ItemFn(_, _, abi, _, _) = item.node {
+                    if abi != abi::Rust {
+                        self.reachable_symbols.insert(search_item);
                     }
                 }
-                _ => {}
             }
         } else {
             // If we are building a library, then reachable symbols will

@@ -65,7 +65,7 @@ impl Sudoku {
         return true;
     }
 
-    pub fn read(mut reader: BufferedReader<StdReader>) -> Sudoku {
+    pub fn read(mut reader: &mut BufferedReader<StdReader>) -> Sudoku {
         /* assert first line is exactly "9,9" */
         assert!(reader.read_line().unwrap() == "9,9".to_string());
 
@@ -284,7 +284,7 @@ fn main() {
     let mut sudoku = if use_default {
         Sudoku::from_vec(&DEFAULT_SUDOKU)
     } else {
-        Sudoku::read(io::stdin())
+        Sudoku::read(&mut *io::stdin().lock())
     };
     sudoku.solve();
     sudoku.write(&mut io::stdout());

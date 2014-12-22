@@ -15,7 +15,7 @@
 // I *think* it's the same, more or less.
 
 use std::os;
-use std::task;
+use std::thread::Thread;
 use std::time::Duration;
 use std::uint;
 
@@ -32,8 +32,8 @@ fn server(requests: &Receiver<request>, responses: &Sender<uint>) {
     let mut done = false;
     while !done {
         match requests.recv_opt() {
-          Ok(get_count) => { responses.send(count.clone()); }
-          Ok(bytes(b)) => {
+          Ok(request::get_count) => { responses.send(count.clone()); }
+          Ok(request::bytes(b)) => {
             //println!("server: received {} bytes", b);
             count += b;
           }
@@ -58,10 +58,10 @@ fn run(args: &[String]) {
         let mut worker_results = Vec::new();
         let from_parent = if workers == 1 {
             let (to_child, from_parent) = channel();
-            worker_results.push(task::try_future(proc() {
+            worker_results.push(Thread::spawn(move|| {
                 for _ in range(0u, size / workers) {
                     //println!("worker {}: sending {} bytes", i, num_bytes);
-                    to_child.send(bytes(num_bytes));
+                    to_child.send(request::bytes(num_bytes));
                 }
                 //println!("worker {} exiting", i);
             }));
@@ -70,22 +70,22 @@ fn run(args: &[String]) {
             let (to_child, from_parent) = channel();
             for _ in range(0u, workers) {
                 let to_child = to_child.clone();
-                worker_results.push(task::try_future(proc() {
+                worker_results.push(Thread::spawn(move|| {
                     for _ in range(0u, size / workers) {
                         //println!("worker {}: sending {} bytes", i, num_bytes);
-                        to_child.send(bytes(num_bytes));
+                        to_child.send(request::bytes(num_bytes));
                     }
                     //println!("worker {} exiting", i);
                 }));
             }
             from_parent
         };
-        task::spawn(proc() {
+        Thread::spawn(move|| {
             server(&from_parent, &to_parent);
-        });
+        }).detach();
 
         for r in worker_results.into_iter() {
-            r.unwrap();
+            let _ = r.join();
         }
 
         //println!("sending stop message");

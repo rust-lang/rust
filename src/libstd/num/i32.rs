@@ -10,14 +10,9 @@
 
 //! Operations and constants for signed 32-bits integers (`i32` type)
 
-#![unstable]
+#![stable]
 #![doc(primitive = "i32")]
-
-use from_str::FromStr;
-use num::FromStrRadix;
-use num::strconv;
-use option::Option;
 
 pub use core::i32::{BITS, BYTES, MIN, MAX};
 
-int_module!(i32)
+int_module! { i32 }

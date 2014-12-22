@@ -14,17 +14,17 @@ enum Foo {
     Boo,
 }
 
-static X: Foo = Bar;
+static X: Foo = Foo::Bar;
 
 pub fn main() {
     match X {
-        Bar => {}
-        Baz | Boo => panic!()
+        Foo::Bar => {}
+        Foo::Baz | Foo::Boo => panic!()
     }
     match Y {
-        Baz => {}
-        Bar | Boo => panic!()
+        Foo::Baz => {}
+        Foo::Bar | Foo::Boo => panic!()
     }
 }
 
-static Y: Foo = Baz;
+static Y: Foo = Foo::Baz;

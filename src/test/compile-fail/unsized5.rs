@@ -7,7 +7,6 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-#![feature(struct_variant)]
 
 // Test `Sized?` types not allowed in fields (except the last one).
 
@@ -30,6 +29,8 @@ struct S4 {
 }
 enum E<Sized? X> {
     V1(X, int), //~ERROR `core::kinds::Sized` is not implemented
+}
+enum F<Sized? X> {
     V2{f1: X, f: int}, //~ERROR `core::kinds::Sized` is not implemented
 }
 

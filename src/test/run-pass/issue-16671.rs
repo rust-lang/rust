@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-android seems to block forever
+
 #![forbid(warnings)]
 
 // Pretty printing tests complain about `use std::predule::*`
@@ -16,9 +18,11 @@
 // A var moved into a proc, that has a mutable loan path should
 // not trigger a misleading unused_mut warning.
 
+use std::thread::Thread;
+
 pub fn main() {
     let mut stdin = std::io::stdin();
-    spawn(proc() {
-        let _ = stdin.lines();
-    });
+    Thread::spawn(move|| {
+        let _ = stdin.read_to_end();
+    }).detach();
 }

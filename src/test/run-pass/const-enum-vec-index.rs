@@ -9,29 +9,29 @@
 // except according to those terms.
 
 enum E { V1(int), V0 }
-const C: &'static [E] = &[V0, V1(0xDEADBEE)];
+const C: &'static [E] = &[E::V0, E::V1(0xDEADBEE)];
 static C0: E = C[0];
 static C1: E = C[1];
-const D: &'static [E, ..2] = &[V0, V1(0xDEADBEE)];
+const D: &'static [E, ..2] = &[E::V0, E::V1(0xDEADBEE)];
 static D0: E = C[0];
 static D1: E = C[1];
 
 pub fn main() {
     match C0 {
-        V0 => (),
+        E::V0 => (),
         _ => panic!()
     }
     match C1 {
-        V1(n) => assert!(n == 0xDEADBEE),
+        E::V1(n) => assert!(n == 0xDEADBEE),
         _ => panic!()
     }
 
     match D0 {
-        V0 => (),
+        E::V0 => (),
         _ => panic!()
     }
     match D1 {
-        V1(n) => assert!(n == 0xDEADBEE),
+        E::V1(n) => assert!(n == 0xDEADBEE),
         _ => panic!()
     }
 }

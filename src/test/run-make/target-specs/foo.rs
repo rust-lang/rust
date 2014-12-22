@@ -11,6 +11,9 @@
 #![feature(lang_items)]
 #![no_std]
 
+#[lang="copy"]
+trait Copy { }
+
 #[lang="sized"]
 trait Sized { }
 

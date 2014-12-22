@@ -16,7 +16,6 @@
 
 #![crate_name = "syntax"]
 #![experimental]
-#![license = "MIT/ASL2"]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
@@ -25,7 +24,8 @@
 
 #![allow(unknown_features)]
 #![feature(macro_rules, globs, default_type_params, phase, slicing_syntax)]
-#![feature(quote, struct_variant, unsafe_destructor, import_shadowing)]
+#![feature(quote, unsafe_destructor)]
+#![feature(unboxed_closures)]
 
 extern crate arena;
 extern crate fmt_macros;

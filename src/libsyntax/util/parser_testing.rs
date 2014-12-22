@@ -31,7 +31,9 @@ pub fn string_to_parser<'a>(ps: &'a ParseSess, source_str: String) -> Parser<'a>
                                source_str)
 }
 
-fn with_error_checking_parse<T>(s: String, f: |&mut Parser| -> T) -> T {
+fn with_error_checking_parse<T, F>(s: String, f: F) -> T where
+    F: FnOnce(&mut Parser) -> T,
+{
     let ps = new_parse_sess();
     let mut p = string_to_parser(&ps, s);
     let x = f(&mut p);
@@ -64,6 +66,13 @@ pub fn string_to_item (source_str : String) -> Option<P<ast::Item>> {
 pub fn string_to_stmt(source_str : String) -> P<ast::Stmt> {
     with_error_checking_parse(source_str, |p| {
         p.parse_stmt(Vec::new())
+    })
+}
+
+/// Parse a string, return a view item
+pub fn string_to_view_item (source_str : String) -> ast::ViewItem {
+    with_error_checking_parse(source_str, |p| {
+        p.parse_view_item(Vec::new())
     })
 }
 

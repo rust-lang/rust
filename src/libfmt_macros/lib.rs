@@ -16,18 +16,26 @@
 
 #![crate_name = "fmt_macros"]
 #![experimental]
-#![license = "MIT/ASL2"]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
-#![feature(macro_rules, globs, import_shadowing)]
+#![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
+       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
+       html_root_url = "http://doc.rust-lang.org/nightly/",
+       html_playground_url = "http://play.rust-lang.org/")]
 
-use std::char;
+#![feature(macro_rules, globs)]
+pub use self::Piece::*;
+pub use self::Position::*;
+pub use self::Alignment::*;
+pub use self::Flag::*;
+pub use self::Count::*;
+
 use std::str;
 use std::string;
 
 /// A piece is a portion of the format string which represents the next part
 /// to emit. These are emitted as a stream by the `Parser` class.
-#[deriving(PartialEq)]
+#[deriving(Copy, PartialEq)]
 pub enum Piece<'a> {
     /// A literal string which should directly be emitted
     String(&'a str),
@@ -37,7 +45,7 @@ pub enum Piece<'a> {
 }
 
 /// Representation of an argument specification.
-#[deriving(PartialEq)]
+#[deriving(Copy, PartialEq)]
 pub struct Argument<'a> {
     /// Where to find this argument
     pub position: Position<'a>,
@@ -46,7 +54,7 @@ pub struct Argument<'a> {
 }
 
 /// Specification for the formatting of an argument in the format string.
-#[deriving(PartialEq)]
+#[deriving(Copy, PartialEq)]
 pub struct FormatSpec<'a> {
     /// Optionally specified character to fill alignment with
     pub fill: Option<char>,
@@ -65,7 +73,7 @@ pub struct FormatSpec<'a> {
 }
 
 /// Enum describing where an argument for a format can be located.
-#[deriving(PartialEq)]
+#[deriving(Copy, PartialEq)]
 pub enum Position<'a> {
     /// The argument will be in the next position. This is the default.
     ArgumentNext,
@@ -76,7 +84,7 @@ pub enum Position<'a> {
 }
 
 /// Enum of alignments which are supported.
-#[deriving(PartialEq)]
+#[deriving(Copy, PartialEq)]
 pub enum Alignment {
     /// The value will be aligned to the left.
     AlignLeft,
@@ -90,7 +98,7 @@ pub enum Alignment {
 
 /// Various flags which can be applied to format strings. The meaning of these
 /// flags is defined by the formatters themselves.
-#[deriving(PartialEq)]
+#[deriving(Copy, PartialEq)]
 pub enum Flag {
     /// A `+` will be used to denote positive numbers.
     FlagSignPlus,
@@ -106,7 +114,7 @@ pub enum Flag {
 
 /// A count is used for the precision and width parameters of an integer, and
 /// can reference either an argument or a literal integer.
-#[deriving(PartialEq)]
+#[deriving(Copy, PartialEq)]
 pub enum Count<'a> {
     /// The count is specified explicitly.
     CountIs(uint),
@@ -163,7 +171,7 @@ impl<'a> Iterator<Piece<'a>> for Parser<'a> {
 
 impl<'a> Parser<'a> {
     /// Creates a new parser for the given format string
-    pub fn new<'a>(s: &'a str) -> Parser<'a> {
+    pub fn new(s: &'a str) -> Parser<'a> {
         Parser {
             input: s,
             cur: s.char_indices(),
@@ -216,7 +224,7 @@ impl<'a> Parser<'a> {
     fn ws(&mut self) {
         loop {
             match self.cur.clone().next() {
-                Some((_, c)) if char::is_whitespace(c) => { self.cur.next(); }
+                Some((_, c)) if c.is_whitespace() => { self.cur.next(); }
                 Some(..) | None => { return }
             }
         }
@@ -256,7 +264,7 @@ impl<'a> Parser<'a> {
             Some(i) => { ArgumentIs(i) }
             None => {
                 match self.cur.clone().next() {
-                    Some((_, c)) if char::is_alphabetic(c) => {
+                    Some((_, c)) if c.is_alphabetic() => {
                         ArgumentNamed(self.word())
                     }
                     _ => ArgumentNext
@@ -379,7 +387,7 @@ impl<'a> Parser<'a> {
     /// characters.
     fn word(&mut self) -> &'a str {
         let start = match self.cur.clone().next() {
-            Some((pos, c)) if char::is_XID_start(c) => {
+            Some((pos, c)) if c.is_xid_start() => {
                 self.cur.next();
                 pos
             }
@@ -388,7 +396,7 @@ impl<'a> Parser<'a> {
         let mut end;
         loop {
             match self.cur.clone().next() {
-                Some((_, c)) if char::is_XID_continue(c) => {
+                Some((_, c)) if c.is_xid_continue() => {
                     self.cur.next();
                 }
                 Some((pos, _)) => { end = pos; break }
@@ -406,7 +414,7 @@ impl<'a> Parser<'a> {
         loop {
             match self.cur.clone().next() {
                 Some((_, c)) => {
-                    match char::to_digit(c, 10) {
+                    match c.to_digit(10) {
                         Some(i) => {
                             cur = cur * 10 + i;
                             found = true;
@@ -432,7 +440,7 @@ mod tests {
 
     fn same(fmt: &'static str, p: &[Piece<'static>]) {
         let mut parser = Parser::new(fmt);
-        assert!(p == parser.collect::<Vec<Piece<'static>>>().as_slice());
+        assert!(p == parser.collect::<Vec<Piece<'static>>>());
     }
 
     fn fmtdflt() -> FormatSpec<'static> {
@@ -454,12 +462,12 @@ mod tests {
 
     #[test]
     fn simple() {
-        same("asdf", [String("asdf")]);
-        same("a{{b", [String("a"), String("{b")]);
-        same("a}}b", [String("a"), String("}b")]);
-        same("a}}", [String("a"), String("}")]);
-        same("}}", [String("}")]);
-        same("\\}}", [String("\\"), String("}")]);
+        same("asdf", &[String("asdf")]);
+        same("a{{b", &[String("a"), String("{b")]);
+        same("a}}b", &[String("a"), String("}b")]);
+        same("a}}", &[String("a"), String("}")]);
+        same("}}", &[String("}")]);
+        same("\\}}", &[String("\\"), String("}")]);
     }
 
     #[test] fn invalid01() { musterr("{") }
@@ -470,28 +478,28 @@ mod tests {
 
     #[test]
     fn format_nothing() {
-        same("{}", [NextArgument(Argument {
+        same("{}", &[NextArgument(Argument {
             position: ArgumentNext,
             format: fmtdflt(),
         })]);
     }
     #[test]
     fn format_position() {
-        same("{3}", [NextArgument(Argument {
+        same("{3}", &[NextArgument(Argument {
             position: ArgumentIs(3),
             format: fmtdflt(),
         })]);
     }
     #[test]
     fn format_position_nothing_else() {
-        same("{3:}", [NextArgument(Argument {
+        same("{3:}", &[NextArgument(Argument {
             position: ArgumentIs(3),
             format: fmtdflt(),
         })]);
     }
     #[test]
     fn format_type() {
-        same("{3:a}", [NextArgument(Argument {
+        same("{3:a}", &[NextArgument(Argument {
             position: ArgumentIs(3),
             format: FormatSpec {
                 fill: None,
@@ -505,7 +513,7 @@ mod tests {
     }
     #[test]
     fn format_align_fill() {
-        same("{3:>}", [NextArgument(Argument {
+        same("{3:>}", &[NextArgument(Argument {
             position: ArgumentIs(3),
             format: FormatSpec {
                 fill: None,
@@ -516,7 +524,7 @@ mod tests {
                 ty: "",
             },
         })]);
-        same("{3:0<}", [NextArgument(Argument {
+        same("{3:0<}", &[NextArgument(Argument {
             position: ArgumentIs(3),
             format: FormatSpec {
                 fill: Some('0'),
@@ -527,7 +535,7 @@ mod tests {
                 ty: "",
             },
         })]);
-        same("{3:*<abcd}", [NextArgument(Argument {
+        same("{3:*<abcd}", &[NextArgument(Argument {
             position: ArgumentIs(3),
             format: FormatSpec {
                 fill: Some('*'),
@@ -541,7 +549,7 @@ mod tests {
     }
     #[test]
     fn format_counts() {
-        same("{:10s}", [NextArgument(Argument {
+        same("{:10s}", &[NextArgument(Argument {
             position: ArgumentNext,
             format: FormatSpec {
                 fill: None,
@@ -552,7 +560,7 @@ mod tests {
                 ty: "s",
             },
         })]);
-        same("{:10$.10s}", [NextArgument(Argument {
+        same("{:10$.10s}", &[NextArgument(Argument {
             position: ArgumentNext,
             format: FormatSpec {
                 fill: None,
@@ -563,7 +571,7 @@ mod tests {
                 ty: "s",
             },
         })]);
-        same("{:.*s}", [NextArgument(Argument {
+        same("{:.*s}", &[NextArgument(Argument {
             position: ArgumentNext,
             format: FormatSpec {
                 fill: None,
@@ -574,7 +582,7 @@ mod tests {
                 ty: "s",
             },
         })]);
-        same("{:.10$s}", [NextArgument(Argument {
+        same("{:.10$s}", &[NextArgument(Argument {
             position: ArgumentNext,
             format: FormatSpec {
                 fill: None,
@@ -585,7 +593,7 @@ mod tests {
                 ty: "s",
             },
         })]);
-        same("{:a$.b$s}", [NextArgument(Argument {
+        same("{:a$.b$s}", &[NextArgument(Argument {
             position: ArgumentNext,
             format: FormatSpec {
                 fill: None,
@@ -599,7 +607,7 @@ mod tests {
     }
     #[test]
     fn format_flags() {
-        same("{:-}", [NextArgument(Argument {
+        same("{:-}", &[NextArgument(Argument {
             position: ArgumentNext,
             format: FormatSpec {
                 fill: None,
@@ -610,7 +618,7 @@ mod tests {
                 ty: "",
             },
         })]);
-        same("{:+#}", [NextArgument(Argument {
+        same("{:+#}", &[NextArgument(Argument {
             position: ArgumentNext,
             format: FormatSpec {
                 fill: None,
@@ -624,7 +632,7 @@ mod tests {
     }
     #[test]
     fn format_mixture() {
-        same("abcd {3:a} efg", [String("abcd "), NextArgument(Argument {
+        same("abcd {3:a} efg", &[String("abcd "), NextArgument(Argument {
             position: ArgumentIs(3),
             format: FormatSpec {
                 fill: None,

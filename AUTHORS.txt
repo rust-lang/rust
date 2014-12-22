@@ -121,6 +121,7 @@ Cole Mickens <cole.mickens@gmail.com>
 Colin Davidson <colrdavidson@gmail.com>
 Colin Sherratt <colin.sherratt@gmail.com>
 Conrad Kleinespel <conradk@conradk.com>
+Corey Farwell <coreyf+rust@rwell.org>
 Corey Ford <corey@coreyford.name>
 Corey Richardson <corey@octayn.net>
 DJUrsus <colinvh@divitu.com>

@@ -11,7 +11,7 @@
 // Test that the self param space is not used in a conflicting
 // manner by unboxed closures within a default method on a trait
 
-#![feature(unboxed_closures, overloaded_calls)]
+#![feature(unboxed_closures)]
 
 trait Tr {
     fn foo(&self);

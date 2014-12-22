@@ -13,8 +13,9 @@
 fn main() {
     let n = 1;
     let a = [0, ..n]; //~ ERROR expected constant integer for repeat count, found variable
-    let b = [0, ..()]; //~ ERROR expected positive integer for repeat count, found ()
-    //~^ ERROR: expected `uint`, found `()`
+    let b = [0, ..()];
+//~^ ERROR expected constant integer for repeat count, found non-constant expression
+//~^^ ERROR: expected `uint`, found `()`
     let c = [0, ..true]; //~ ERROR expected positive integer for repeat count, found boolean
     //~^ ERROR: expected `uint`, found `bool`
     let d = [0, ..0.5]; //~ ERROR expected positive integer for repeat count, found float

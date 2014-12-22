@@ -10,14 +10,11 @@
 
 //! Operations and constants for unsigned 8-bits integers (`u8` type)
 
-#![unstable]
+#![stable]
 #![doc(primitive = "u8")]
-
-use from_str::FromStr;
-use num::FromStrRadix;
-use num::strconv;
-use option::Option;
 
 pub use core::u8::{BITS, BYTES, MIN, MAX};
 
-uint_module!(u8)
+use ops::FnOnce;
+
+uint_module! { u8 }

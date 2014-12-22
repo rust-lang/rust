@@ -8,12 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(struct_variant)]
-
 enum Foo {
     Variant { x: uint }
 }
 
 fn main() {
-    let f = Variant(42u); //~ ERROR expected function, found `Foo`
+    let f = Foo::Variant(42u); //~ ERROR uses it like a function
 }

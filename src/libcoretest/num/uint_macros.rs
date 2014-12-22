@@ -31,11 +31,11 @@ mod tests {
 
     #[test]
     fn test_bitwise_operators() {
-        assert!(0b1110 as $T == (0b1100 as $T).bitor(&(0b1010 as $T)));
-        assert!(0b1000 as $T == (0b1100 as $T).bitand(&(0b1010 as $T)));
-        assert!(0b0110 as $T == (0b1100 as $T).bitxor(&(0b1010 as $T)));
-        assert!(0b1110 as $T == (0b0111 as $T).shl(&1u));
-        assert!(0b0111 as $T == (0b1110 as $T).shr(&1u));
+        assert!(0b1110 as $T == (0b1100 as $T).bitor(0b1010 as $T));
+        assert!(0b1000 as $T == (0b1100 as $T).bitand(0b1010 as $T));
+        assert!(0b0110 as $T == (0b1100 as $T).bitxor(0b1010 as $T));
+        assert!(0b1110 as $T == (0b0111 as $T).shl(1u));
+        assert!(0b0111 as $T == (0b1110 as $T).shr(1u));
         assert!(MAX - (0b1011 as $T) == (0b1011 as $T).not());
     }
 
@@ -124,4 +124,4 @@ mod tests {
         assert!(5u.checked_div(0) == None);
     }
 }
-))
+));

@@ -15,8 +15,8 @@ enum list<T> { cons(Box<T>, Box<list<T>>), nil, }
 
 pub fn main() {
     let _a: list<int> =
-        cons::<int>(box 10,
-        box cons::<int>(box 12,
-        box cons::<int>(box 13,
-        box nil::<int>)));
+        list::cons::<int>(box 10,
+        box list::cons::<int>(box 12,
+        box list::cons::<int>(box 13,
+        box list::nil::<int>)));
 }

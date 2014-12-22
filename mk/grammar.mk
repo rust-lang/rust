@@ -30,17 +30,25 @@ endef
 $(BG):
 	$(Q)mkdir -p $(BG)
 
-$(BG)RustLexer.class: $(SG)RustLexer.g4
+$(BG)RustLexer.class: $(BG) $(SG)RustLexer.g4
 	$(Q)$(CFG_ANTLR4) -o $(B)grammar $(SG)RustLexer.g4
 	$(Q)$(CFG_JAVAC) -d $(BG) $(BG)RustLexer.java
 
-$(BG)verify: $(SG)verify.rs rustc-stage2-H-$(CFG_BUILD) $(LD)stamp.regex_macros $(LD)stamp.rustc
-	$(Q)$(RUSTC) -O --out-dir $(BG) -L $(L) $(SG)verify.rs
+check-build-lexer-verifier: $(BG)verify
+
+ifeq ($(NO_REBUILD),)
+VERIFY_DEPS :=  rustc-stage2-H-$(CFG_BUILD) $(LD)stamp.regex_macros $(LD)stamp.rustc
+else
+VERIFY_DEPS :=
+endif
+
+$(BG)verify: $(BG) $(SG)verify.rs $(VERIFY_DEPS)
+	$(Q)$(RUSTC) --out-dir $(BG) -L $(L) $(SG)verify.rs
 
 ifdef CFG_JAVAC
 ifdef CFG_ANTLR4
 ifdef CFG_GRUN
-check-lexer: $(BG) $(BG)RustLexer.class $(BG)verify
+check-lexer: $(BG) $(BG)RustLexer.class check-build-lexer-verifier
 	$(info Verifying libsyntax against the reference lexer ...)
 	$(Q)$(SG)check.sh $(S) "$(BG)" \
 		"$(CFG_GRUN)" "$(BG)verify" "$(BG)RustLexer.tokens"

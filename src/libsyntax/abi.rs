@@ -8,13 +8,25 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+pub use self::Os::*;
+pub use self::Abi::*;
+pub use self::Architecture::*;
+pub use self::AbiArchitecture::*;
+
 use std::fmt;
 
-#[deriving(PartialEq)]
-pub enum Os { OsWindows, OsMacos, OsLinux, OsAndroid, OsFreebsd, OsiOS,
-              OsDragonfly }
+#[deriving(Copy, PartialEq)]
+pub enum Os {
+    OsWindows,
+    OsMacos,
+    OsLinux,
+    OsAndroid,
+    OsFreebsd,
+    OsiOS,
+    OsDragonfly,
+}
 
-#[deriving(PartialEq, Eq, Hash, Encodable, Decodable, Clone)]
+#[deriving(Copy, PartialEq, Eq, Hash, Encodable, Decodable, Clone)]
 pub enum Abi {
     // NB: This ordering MUST match the AbiDatas array below.
     // (This is ensured by the test indices_are_correct().)
@@ -35,7 +47,7 @@ pub enum Abi {
 }
 
 #[allow(non_camel_case_types)]
-#[deriving(PartialEq)]
+#[deriving(Copy, PartialEq)]
 pub enum Architecture {
     X86,
     X86_64,
@@ -44,6 +56,7 @@ pub enum Architecture {
     Mipsel
 }
 
+#[deriving(Copy)]
 pub struct AbiData {
     abi: Abi,
 
@@ -51,6 +64,7 @@ pub struct AbiData {
     name: &'static str,
 }
 
+#[deriving(Copy)]
 pub enum AbiArchitecture {
     /// Not a real ABI (e.g., intrinsic)
     RustArch,

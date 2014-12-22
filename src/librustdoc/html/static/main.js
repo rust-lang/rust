@@ -313,7 +313,8 @@
             for (var i = results.length - 1; i > 0; i -= 1) {
                 if (results[i].word === results[i - 1].word &&
                     results[i].item.ty === results[i - 1].item.ty &&
-                    results[i].item.path === results[i - 1].item.path)
+                    results[i].item.path === results[i - 1].item.path &&
+                    (results[i].item.parent || {}).name === (results[i - 1].item.parent || {}).name)
                 {
                     results[i].id = -1;
                 }
@@ -566,8 +567,8 @@
                          "method",
                          "structfield",
                          "variant",
-                         "ffi",
-                         "ffs",
+                         "ffi", // retained for backward compatibility
+                         "ffs", // retained for backward compatibility
                          "macro",
                          "primitive",
                          "associatedtype",
@@ -707,8 +708,8 @@
                 var code = $('<code>').append(structs[j]);
                 $.each(code.find('a'), function(idx, a) {
                     var href = $(a).attr('href');
-                    if (!href.startsWith('http')) {
-                        $(a).attr('href', rootPath + $(a).attr('href'));
+                    if (href && !href.startsWith('http')) {
+                        $(a).attr('href', rootPath + href);
                     }
                 });
                 var li = $('<li>').append(code);

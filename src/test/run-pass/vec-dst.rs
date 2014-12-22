@@ -8,17 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn sub_expr() {
-    // Test for a &[T] => &&[T] coercion in sub-expression position
-    // (surprisingly, this can cause errors which are not caused by either of:
-    //    `let x = vec.slice_mut(0, 2);`
-    //    `foo(vec.slice_mut(0, 2));` ).
-    let mut vec: Vec<int> = vec!(1, 2, 3, 4);
-    let b: &mut [int] = [1, 2];
-    assert!(vec.slice_mut(0, 2) == b);
-}
-
-fn index() {
+pub fn main() {
     // Tests for indexing into box/& [T, ..n]
     let x: [int, ..3] = [1, 2, 3];
     let mut x: Box<[int, ..3]> = box x;
@@ -39,9 +29,4 @@ fn index() {
     assert!(x[0] == 1);
     assert!(x[1] == 45);
     assert!(x[2] == 3);
-}
-
-pub fn main() {
-    sub_expr();
-    index();
 }

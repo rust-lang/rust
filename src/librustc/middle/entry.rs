@@ -9,8 +9,7 @@
 // except according to those terms.
 
 
-use driver::config;
-use driver::session::Session;
+use session::{config, Session};
 use syntax::ast::{Name, NodeId, Item, ItemFn};
 use syntax::ast_map;
 use syntax::attr;
@@ -81,7 +80,7 @@ fn find_item(item: &Item, ctxt: &mut EntryContext) {
     match item.node {
         ItemFn(..) => {
             if item.ident.name == ctxt.main_name {
-                 ctxt.ast_map.with_path(item.id, |mut path| {
+                 ctxt.ast_map.with_path(item.id, |path| {
                         if path.count() == 1 {
                             // This is a top-level function so can be 'main'
                             if ctxt.main_fn.is_none() {

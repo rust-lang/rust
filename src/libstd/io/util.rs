@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*! Utility implementations of Reader and Writer */
+//! Utility implementations of Reader and Writer
 
 use prelude::*;
 use cmp;
@@ -28,7 +28,11 @@ impl<R: Reader> LimitReader<R> {
     }
 
     /// Consumes the `LimitReader`, returning the underlying `Reader`.
-    pub fn unwrap(self) -> R { self.inner }
+    pub fn into_inner(self) -> R { self.inner }
+
+    /// Deprecated, use into_inner() instead
+    #[deprecated = "renamed to into_inner"]
+    pub fn unwrap(self) -> R { self.into_inner() }
 
     /// Returns the number of bytes that can be read before the `LimitReader`
     /// will return EOF.
@@ -77,6 +81,7 @@ impl<R: Buffer> Buffer for LimitReader<R> {
 }
 
 /// A `Writer` which ignores bytes written to it, like /dev/null.
+#[deriving(Copy)]
 pub struct NullWriter;
 
 impl Writer for NullWriter {
@@ -85,6 +90,7 @@ impl Writer for NullWriter {
 }
 
 /// A `Reader` which returns an infinite stream of 0 bytes, like /dev/zero.
+#[deriving(Copy)]
 pub struct ZeroReader;
 
 impl Reader for ZeroReader {
@@ -105,6 +111,7 @@ impl Buffer for ZeroReader {
 }
 
 /// A `Reader` which is always at EOF, like /dev/null.
+#[deriving(Copy)]
 pub struct NullReader;
 
 impl Reader for NullReader {
@@ -207,10 +214,14 @@ impl<R: Reader, W: Writer> TeeReader<R, W> {
 
     /// Consumes the `TeeReader`, returning the underlying `Reader` and
     /// `Writer`.
-    pub fn unwrap(self) -> (R, W) {
+    pub fn into_inner(self) -> (R, W) {
         let TeeReader { reader, writer } = self;
         (reader, writer)
     }
+
+    /// Deprecated, use into_inner() instead
+    #[deprecated = "renamed to into_inner"]
+    pub fn unwrap(self) -> (R, W) { self.into_inner() }
 }
 
 impl<R: Reader, W: Writer> Reader for TeeReader<R, W> {
@@ -225,7 +236,7 @@ impl<R: Reader, W: Writer> Reader for TeeReader<R, W> {
 pub fn copy<R: Reader, W: Writer>(r: &mut R, w: &mut W) -> io::IoResult<()> {
     let mut buf = [0, ..super::DEFAULT_BUF_SIZE];
     loop {
-        let len = match r.read(buf) {
+        let len = match r.read(&mut buf) {
             Ok(len) => len,
             Err(ref e) if e.kind == io::EndOfFile => return Ok(()),
             Err(e) => return Err(e),
@@ -265,7 +276,7 @@ impl<T: Iterator<u8>> Reader for IterReader<T> {
 
 #[cfg(test)]
 mod test {
-    use io::{MemReader, MemWriter, BufReader, AsRefReader};
+    use io::{MemReader, ByRefReader};
     use io;
     use boxed::Box;
     use super::*;
@@ -352,7 +363,7 @@ mod test {
 
         let mut multi = MultiWriter::new(vec!(box TestWriter as Box<Writer>,
                                               box TestWriter as Box<Writer>));
-        multi.write([1, 2, 3]).unwrap();
+        multi.write(&[1, 2, 3]).unwrap();
         assert_eq!(2, unsafe { writes });
         assert_eq!(0, unsafe { flushes });
         multi.flush().unwrap();
@@ -371,24 +382,23 @@ mod test {
     #[test]
     fn test_tee_reader() {
         let mut r = TeeReader::new(MemReader::new(vec!(0, 1, 2)),
-                                   MemWriter::new());
+                                   Vec::new());
         assert_eq!(vec!(0, 1, 2), r.read_to_end().unwrap());
         let (_, w) = r.unwrap();
-        assert_eq!(vec!(0, 1, 2), w.unwrap());
+        assert_eq!(vec!(0, 1, 2), w);
     }
 
     #[test]
     fn test_copy() {
         let mut r = MemReader::new(vec!(0, 1, 2, 3, 4));
-        let mut w = MemWriter::new();
+        let mut w = Vec::new();
         copy(&mut r, &mut w).unwrap();
-        assert_eq!(vec!(0, 1, 2, 3, 4), w.unwrap());
+        assert_eq!(vec!(0, 1, 2, 3, 4), w);
     }
 
     #[test]
     fn limit_reader_buffer() {
-        let data = "0123456789\n0123456789\n";
-        let mut r = BufReader::new(data.as_bytes());
+        let r = &mut b"0123456789\n0123456789\n";
         {
             let mut r = LimitReader::new(r.by_ref(), 3);
             assert_eq!(r.read_line(), Ok("012".to_string()));
@@ -413,25 +423,25 @@ mod test {
     fn test_iter_reader() {
         let mut r = IterReader::new(range(0u8, 8));
         let mut buf = [0, 0, 0];
-        let len = r.read(buf).unwrap();
+        let len = r.read(&mut buf).unwrap();
         assert_eq!(len, 3);
         assert!(buf == [0, 1, 2]);
 
-        let len = r.read(buf).unwrap();
+        let len = r.read(&mut buf).unwrap();
         assert_eq!(len, 3);
         assert!(buf == [3, 4, 5]);
 
-        let len = r.read(buf).unwrap();
+        let len = r.read(&mut buf).unwrap();
         assert_eq!(len, 2);
         assert!(buf == [6, 7, 5]);
 
-        assert_eq!(r.read(buf).unwrap_err().kind, io::EndOfFile);
+        assert_eq!(r.read(&mut buf).unwrap_err().kind, io::EndOfFile);
     }
 
     #[test]
     fn iter_reader_zero_length() {
         let mut r = IterReader::new(range(0u8, 8));
         let mut buf = [];
-        assert_eq!(Ok(0), r.read(buf));
+        assert_eq!(Ok(0), r.read(&mut buf));
     }
 }

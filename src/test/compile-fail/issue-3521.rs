@@ -16,5 +16,5 @@ fn main() {
         Bar = foo //~ ERROR attempt to use a non-constant value in a constant
     }
 
-    println!("{}", Bar);
+    println!("{}", Stuff::Bar);
 }

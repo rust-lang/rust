@@ -13,6 +13,6 @@
 enum opt<T> { none, }
 
 pub fn main() {
-    let x = none::<int>;
-    match x { none::<int> => { println!("hello world"); } }
+    let x = opt::none::<int>;
+    match x { opt::none::<int> => { println!("hello world"); } }
 }

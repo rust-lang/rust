@@ -89,8 +89,7 @@ use libc;
 use c_str::CString;
 use mem;
 use ptr;
-use sync::atomic;
-use rt::mutex;
+use sync::{atomic, Mutex};
 use io::{mod, IoError, IoResult};
 use prelude::*;
 
@@ -126,7 +125,7 @@ impl Drop for Event {
 
 struct Inner {
     handle: libc::HANDLE,
-    lock: mutex::NativeMutex,
+    lock: Mutex<()>,
     read_closed: atomic::AtomicBool,
     write_closed: atomic::AtomicBool,
 }
@@ -135,7 +134,7 @@ impl Inner {
     fn new(handle: libc::HANDLE) -> Inner {
         Inner {
             handle: handle,
-            lock: unsafe { mutex::NativeMutex::new() },
+            lock: Mutex::new(()),
             read_closed: atomic::AtomicBool::new(false),
             write_closed: atomic::AtomicBool::new(false),
         }
@@ -329,7 +328,7 @@ impl UnixStream {
         }
     }
 
-    fn handle(&self) -> libc::HANDLE { self.inner.handle }
+    pub fn handle(&self) -> libc::HANDLE { self.inner.handle }
 
     fn read_closed(&self) -> bool {
         self.inner.read_closed.load(atomic::SeqCst)
@@ -395,7 +394,7 @@ impl UnixStream {
         loop {
             // Process a timeout if one is pending
             let wait_succeeded = await(self.handle(), self.read_deadline,
-                                       [overlapped.hEvent]);
+                                       &[overlapped.hEvent]);
 
             let ret = unsafe {
                 libc::GetOverlappedResult(self.handle(),
@@ -459,7 +458,7 @@ impl UnixStream {
                 }
                 // Process a timeout if one is pending
                 let wait_succeeded = await(self.handle(), self.write_deadline,
-                                           [overlapped.hEvent]);
+                                           &[overlapped.hEvent]);
                 let ret = unsafe {
                     libc::GetOverlappedResult(self.handle(),
                                               &mut overlapped,
@@ -585,6 +584,10 @@ impl UnixListener {
             }),
         })
     }
+
+    pub fn handle(&self) -> libc::HANDLE {
+        self.handle
+    }
 }
 
 impl Drop for UnixListener {
@@ -660,8 +663,8 @@ impl UnixAcceptor {
             if err == libc::ERROR_IO_PENDING as libc::DWORD {
                 // Process a timeout if one is pending
                 let wait_succeeded = await(handle, self.deadline,
-                                           [self.inner.abort.handle(),
-                                            overlapped.hEvent]);
+                                           &[self.inner.abort.handle(),
+                                             overlapped.hEvent]);
 
                 // This will block until the overlapped I/O is completed. The
                 // timeout was previously handled, so this will either block in
@@ -728,6 +731,10 @@ impl UnixAcceptor {
         } else {
             Ok(())
         }
+    }
+
+    pub fn handle(&self) -> libc::HANDLE {
+        self.listener.handle()
     }
 }
 

@@ -16,7 +16,7 @@ trait Get {
 }
 
 fn get(x: int) -> <int as Get>::Value {}
-//~^ ERROR this associated type is not allowed in this context
+//~^ ERROR unsupported
 
 struct Struct {
     x: int,
@@ -24,7 +24,7 @@ struct Struct {
 
 impl Struct {
     fn uhoh<T>(foo: <T as Get>::Value) {}
-    //~^ ERROR this associated type is not allowed in this context
+    //~^ ERROR no suitable bound on `T`
 }
 
 fn main() {

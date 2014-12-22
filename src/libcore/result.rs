@@ -38,8 +38,8 @@
 //!         return Err("invalid header length");
 //!     }
 //!     match header[0] {
-//!         1 => Ok(Version1),
-//!         2 => Ok(Version2),
+//!         1 => Ok(Version::Version1),
+//!         2 => Ok(Version::Version2),
 //!         _ => Err("invalid version")
 //!     }
 //! }
@@ -57,7 +57,7 @@
 //!
 //! Pattern matching on `Result`s is clear and straightforward for
 //! simple cases, but `Result` comes with some convenience methods
-//! that make working it more succinct.
+//! that make working with it more succinct.
 //!
 //! ```
 //! let good_result: Result<int, int> = Ok(10);
@@ -222,70 +222,28 @@
 //! # #![feature(macro_rules)]
 //! macro_rules! try(
 //!     ($e:expr) => (match $e { Ok(e) => e, Err(e) => return Err(e) })
-//! )
+//! );
 //! # fn main() { }
 //! ```
 //!
 //! `try!` is imported by the prelude, and is available everywhere.
-//!
-//! # `Result` and `Option`
-//!
-//! The `Result` and [`Option`](../option/index.html) types are
-//! similar and complementary: they are often employed to indicate a
-//! lack of a return value; and they are trivially converted between
-//! each other, so `Result`s are often handled by first converting to
-//! `Option` with the [`ok`](type.Result.html#method.ok) and
-//! [`err`](type.Result.html#method.ok) methods.
-//!
-//! Whereas `Option` only indicates the lack of a value, `Result` is
-//! specifically for error reporting, and carries with it an error
-//! value.  Sometimes `Option` is used for indicating errors, but this
-//! is only for simple cases and is generally discouraged. Even when
-//! there is no useful error value to return, prefer `Result<T, ()>`.
-//!
-//! Converting to an `Option` with `ok()` to handle an error:
-//!
-//! ```
-//! use std::io::Timer;
-//! let mut t = Timer::new().ok().expect("failed to create timer!");
-//! ```
-//!
-//! # `Result` vs. `panic!`
-//!
-//! `Result` is for recoverable errors; `panic!` is for unrecoverable
-//! errors. Callers should always be able to avoid panics if they
-//! take the proper precautions, for example, calling `is_some()`
-//! on an `Option` type before calling `unwrap`.
-//!
-//! The suitability of `panic!` as an error handling mechanism is
-//! limited by Rust's lack of any way to "catch" and resume execution
-//! from a thrown exception. Therefore using panics for error
-//! handling requires encapsulating code that may panic in a task.
-//! Calling the `panic!` macro, or invoking `panic!` indirectly should be
-//! avoided as an error reporting strategy. Panics is only for
-//! unrecoverable errors and a panicking task is typically the sign of
-//! a bug.
-//!
-//! A module that instead returns `Results` is alerting the caller
-//! that panics are possible, and providing precise control over how
-//! it is handled.
-//!
-//! Furthermore, panics may not be recoverable at all, depending on
-//! the context. The caller of `panic!` should assume that execution
-//! will not resume after the panic, that a panic is catastrophic.
 
 #![stable]
+
+use self::Result::*;
 
 use std::fmt::Show;
 use slice;
 use slice::AsSlice;
-use iter::{Iterator, DoubleEndedIterator, FromIterator, ExactSize};
-use option::{None, Option, Some};
+use iter::{Iterator, IteratorExt, DoubleEndedIterator, FromIterator, ExactSizeIterator};
+use option::Option;
+use option::Option::{None, Some};
+use ops::{FnMut, FnOnce};
 
 /// `Result` is a type that represents either success (`Ok`) or failure (`Err`).
 ///
 /// See the [`std::result`](index.html) module documentation for details.
-#[deriving(Clone, PartialEq, PartialOrd, Eq, Ord, Show)]
+#[deriving(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Show, Hash)]
 #[must_use]
 #[stable]
 pub enum Result<T, E> {
@@ -458,7 +416,7 @@ impl<T, E> Result<T, E> {
     /// assert_eq!(x, Ok("Silver"));
     ///
     /// let mut x: Result<&str, uint> = Err(45);
-    /// assert!(x.as_mut_slice() == []);
+    /// assert!(x.as_mut_slice().is_empty());
     /// ```
     #[inline]
     #[unstable = "waiting for mut conventions"]
@@ -488,15 +446,14 @@ impl<T, E> Result<T, E> {
     /// ignoring I/O and parse errors:
     ///
     /// ```
-    /// use std::io::{BufReader, IoResult};
+    /// use std::io::IoResult;
     ///
-    /// let buffer = "1\n2\n3\n4\n";
-    /// let mut reader = BufReader::new(buffer.as_bytes());
+    /// let mut buffer = &mut b"1\n2\n3\n4\n";
     ///
     /// let mut sum = 0;
     ///
-    /// while !reader.eof() {
-    ///     let line: IoResult<String> = reader.read_line();
+    /// while !buffer.is_empty() {
+    ///     let line: IoResult<String> = buffer.read_line();
     ///     // Convert the string line to a number using `map` and `from_str`
     ///     let val: IoResult<int> = line.map(|line| {
     ///         from_str::<int>(line.as_slice().trim_right()).unwrap_or(0)
@@ -509,7 +466,7 @@ impl<T, E> Result<T, E> {
     /// ```
     #[inline]
     #[unstable = "waiting for unboxed closures"]
-    pub fn map<U>(self, op: |T| -> U) -> Result<U,E> {
+    pub fn map<U, F: FnOnce(T) -> U>(self, op: F) -> Result<U,E> {
         match self {
           Ok(t) => Ok(op(t)),
           Err(e) => Err(e)
@@ -535,7 +492,7 @@ impl<T, E> Result<T, E> {
     /// ```
     #[inline]
     #[unstable = "waiting for unboxed closures"]
-    pub fn map_err<F>(self, op: |E| -> F) -> Result<T,F> {
+    pub fn map_err<F, O: FnOnce(E) -> F>(self, op: O) -> Result<T,F> {
         match self {
           Ok(t) => Ok(t),
           Err(e) => Err(op(e))
@@ -655,7 +612,7 @@ impl<T, E> Result<T, E> {
     /// ```
     #[inline]
     #[unstable = "waiting for unboxed closures"]
-    pub fn and_then<U>(self, op: |T| -> Result<U, E>) -> Result<U, E> {
+    pub fn and_then<U, F: FnOnce(T) -> Result<U, E>>(self, op: F) -> Result<U, E> {
         match self {
             Ok(t) => op(t),
             Err(e) => Err(e),
@@ -709,7 +666,7 @@ impl<T, E> Result<T, E> {
     /// ```
     #[inline]
     #[unstable = "waiting for unboxed closures"]
-    pub fn or_else<F>(self, op: |E| -> Result<T, F>) -> Result<T, F> {
+    pub fn or_else<F, O: FnOnce(E) -> Result<T, F>>(self, op: O) -> Result<T, F> {
         match self {
             Ok(t) => Ok(t),
             Err(e) => op(e),
@@ -751,7 +708,7 @@ impl<T, E> Result<T, E> {
     /// ```
     #[inline]
     #[unstable = "waiting for conventions"]
-    pub fn unwrap_or_else(self, op: |E| -> T) -> T {
+    pub fn unwrap_or_else<F: FnOnce(E) -> T>(self, op: F) -> T {
         match self {
             Ok(t) => t,
             Err(e) => op(e)
@@ -875,12 +832,13 @@ impl<A> DoubleEndedIterator<A> for Item<A> {
     }
 }
 
-impl<A> ExactSize<A> for Item<A> {}
+impl<A> ExactSizeIterator<A> for Item<A> {}
 
 /////////////////////////////////////////////////////////////////////////////
-// Free functions
+// FromIterator
 /////////////////////////////////////////////////////////////////////////////
 
+#[stable]
 impl<A, E, V: FromIterator<A>> FromIterator<Result<A, E>> for Result<V, E> {
     /// Takes each element in the `Iterator`: if it is an `Err`, no further
     /// elements are taken, and the `Err` is returned. Should no `Err` occur, a
@@ -933,6 +891,10 @@ impl<A, E, V: FromIterator<A>> FromIterator<Result<A, E>> for Result<V, E> {
     }
 }
 
+/////////////////////////////////////////////////////////////////////////////
+// FromIterator
+/////////////////////////////////////////////////////////////////////////////
+
 /// Perform a fold operation over the result values from an iterator.
 ///
 /// If an `Err` is encountered, it is immediately returned.
@@ -942,10 +904,11 @@ impl<A, E, V: FromIterator<A>> FromIterator<Result<A, E>> for Result<V, E> {
 pub fn fold<T,
             V,
             E,
+            F: FnMut(V, T) -> V,
             Iter: Iterator<Result<T, E>>>(
             mut iterator: Iter,
             mut init: V,
-            f: |V, T| -> V)
+            mut f: F)
             -> Result<V, E> {
     for t in iterator {
         match t {

@@ -21,7 +21,7 @@ pub fn main() {
             Ok(f) => {
                 let mut f = f;
                 for _ in range(0u, 1000) {
-                    f.write([0]);
+                    f.write(&[0]);
                 }
             }
         }

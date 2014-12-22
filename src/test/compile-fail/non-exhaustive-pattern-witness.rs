@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(advanced_slice_patterns, struct_variant)]
+#![feature(advanced_slice_patterns)]
 
 struct Foo {
     first: bool,
@@ -32,19 +32,19 @@ fn struct_with_a_nested_enum_and_vector() {
 }
 
 fn enum_with_multiple_missing_variants() {
-    match Red {
+    match Color::Red {
     //~^ ERROR non-exhaustive patterns: `Red` not covered
-        CustomRGBA { .. } => ()
+        Color::CustomRGBA { .. } => ()
     }
 }
 
 fn enum_struct_variant() {
-    match Red {
+    match Color::Red {
     //~^ ERROR non-exhaustive patterns: `CustomRGBA { a: true, .. }` not covered
-        Red => (),
-        Green => (),
-        CustomRGBA { a: false, r: _, g: _, b: 0 } => (),
-        CustomRGBA { a: false, r: _, g: _, b: _ } => ()
+        Color::Red => (),
+        Color::Green => (),
+        Color::CustomRGBA { a: false, r: _, g: _, b: 0 } => (),
+        Color::CustomRGBA { a: false, r: _, g: _, b: _ } => ()
     }
 }
 
@@ -54,15 +54,15 @@ enum Enum {
 }
 
 fn vectors_with_nested_enums() {
-    let x: &'static [Enum] = [First, Second(false)];
+    let x: &'static [Enum] = &[Enum::First, Enum::Second(false)];
     match x {
     //~^ ERROR non-exhaustive patterns: `[Second(true), Second(false)]` not covered
         [] => (),
         [_] => (),
-        [First, _] => (),
-        [Second(true), First] => (),
-        [Second(true), Second(true)] => (),
-        [Second(false), _] => (),
+        [Enum::First, _] => (),
+        [Enum::Second(true), Enum::First] => (),
+        [Enum::Second(true), Enum::Second(true)] => (),
+        [Enum::Second(false), _] => (),
         [_, _, tail.., _] => ()
     }
 }

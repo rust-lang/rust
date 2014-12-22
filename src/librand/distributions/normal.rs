@@ -28,6 +28,7 @@ use distributions::{ziggurat, ziggurat_tables, Sample, IndependentSample};
 /// Generate Normal Random
 /// Samples*](http://www.doornik.com/research/ziggurat.pdf). Nuffield
 /// College, Oxford
+#[deriving(Copy)]
 pub struct StandardNormal(pub f64);
 
 impl Rand for StandardNormal {
@@ -83,6 +84,7 @@ impl Rand for StandardNormal {
 /// let v = normal.ind_sample(&mut rand::task_rng());
 /// println!("{} is from a N(2, 9) distribution", v)
 /// ```
+#[deriving(Copy)]
 pub struct Normal {
     mean: f64,
     std_dev: f64,
@@ -90,7 +92,11 @@ pub struct Normal {
 
 impl Normal {
     /// Construct a new `Normal` distribution with the given mean and
-    /// standard deviation. Fails if `std_dev < 0`.
+    /// standard deviation.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `std_dev < 0`.
     pub fn new(mean: f64, std_dev: f64) -> Normal {
         assert!(std_dev >= 0.0, "Normal::new called with `std_dev` < 0");
         Normal {
@@ -126,13 +132,18 @@ impl IndependentSample<f64> for Normal {
 /// let v = log_normal.ind_sample(&mut rand::task_rng());
 /// println!("{} is from an ln N(2, 9) distribution", v)
 /// ```
+#[deriving(Copy)]
 pub struct LogNormal {
     norm: Normal
 }
 
 impl LogNormal {
     /// Construct a new `LogNormal` distribution with the given mean
-    /// and standard deviation. Fails if `std_dev < 0`.
+    /// and standard deviation.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `std_dev < 0`.
     pub fn new(mean: f64, std_dev: f64) -> LogNormal {
         assert!(std_dev >= 0.0, "LogNormal::new called with `std_dev` < 0");
         LogNormal { norm: Normal::new(mean, std_dev) }

@@ -12,4 +12,4 @@
 
 enum clam<T> { a(T), }
 
-pub fn main() { let _c = a(3i); }
+pub fn main() { let _c = clam::a(3i); }

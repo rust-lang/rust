@@ -10,21 +10,21 @@
 
 use std::cmp::PartialEq;
 
-trait MyNum : Add<Self,Self> + Sub<Self,Self> + Mul<Self,Self> + PartialEq { }
+trait MyNum : Add<Self,Self> + Sub<Self,Self> + Mul<Self,Self> + PartialEq + Clone { }
 
-#[deriving(Show)]
+#[deriving(Clone, Show)]
 struct MyInt { val: int }
 
 impl Add<MyInt, MyInt> for MyInt {
-    fn add(&self, other: &MyInt) -> MyInt { mi(self.val + other.val) }
+    fn add(self, other: MyInt) -> MyInt { mi(self.val + other.val) }
 }
 
 impl Sub<MyInt, MyInt> for MyInt {
-    fn sub(&self, other: &MyInt) -> MyInt { mi(self.val - other.val) }
+    fn sub(self, other: MyInt) -> MyInt { mi(self.val - other.val) }
 }
 
 impl Mul<MyInt, MyInt> for MyInt {
-    fn mul(&self, other: &MyInt) -> MyInt { mi(self.val * other.val) }
+    fn mul(self, other: MyInt) -> MyInt { mi(self.val * other.val) }
 }
 
 impl PartialEq for MyInt {
@@ -35,7 +35,7 @@ impl PartialEq for MyInt {
 impl MyNum for MyInt {}
 
 fn f<T:MyNum>(x: T, y: T) -> (T, T, T) {
-    return (x + y, x - y, x * y);
+    return (x.clone() + y.clone(), x.clone() - y.clone(), x * y);
 }
 
 fn mi(v: int) -> MyInt { MyInt { val: v } }

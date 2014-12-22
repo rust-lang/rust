@@ -15,5 +15,5 @@ impl Drop for Two {
     }
 }
 fn main() {
-    let k = A;
+    let k = Two::A;
 }

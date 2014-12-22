@@ -49,7 +49,7 @@ fn main() {
     foog(x, &[box 1i]);
 
     struct T<'a> {
-        t: [&'a Foo+'a, ..2]
+        t: [&'a (Foo+'a), ..2]
     }
     let _n = T {
         t: [&1i, &2i]
@@ -64,7 +64,7 @@ fn main() {
     };
 
     struct F<'b> {
-        t: &'b [&'b Foo+'b]
+        t: &'b [&'b (Foo+'b)]
     }
     let _n = F {
         t: &[&1i, &2i]
@@ -72,11 +72,11 @@ fn main() {
     let r = &1i;
     let r: [&Foo, ..2] = [r, ..2];
     let _n = F {
-        t: r
+        t: &r
     };
     let x: [&Foo, ..2] = [&1i, &2i];
     let _n = F {
-        t: x
+        t: &x
     };
 
     struct M<'a> {
@@ -87,6 +87,6 @@ fn main() {
     };
     let x: [Box<Foo>, ..2] = [box 1i, box 2i];
     let _n = M {
-        t: x
+        t: &x
     };
 }

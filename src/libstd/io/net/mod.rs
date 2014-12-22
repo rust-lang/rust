@@ -11,8 +11,9 @@
 //! Networking I/O
 
 use io::{IoError, IoResult, InvalidInput};
-use option::None;
-use result::{Ok, Err};
+use ops::FnMut;
+use option::Option::None;
+use result::Result::{Ok, Err};
 use self::ip::{SocketAddr, ToSocketAddr};
 
 pub use self::addrinfo::get_host_addresses;
@@ -23,8 +24,10 @@ pub mod udp;
 pub mod ip;
 pub mod pipe;
 
-fn with_addresses<A: ToSocketAddr, T>(addr: A, action: |SocketAddr| -> IoResult<T>)
-    -> IoResult<T> {
+fn with_addresses<A, T, F>(addr: A, mut action: F) -> IoResult<T> where
+    A: ToSocketAddr,
+    F: FnMut(SocketAddr) -> IoResult<T>,
+{
     const DEFAULT_ERROR: IoError = IoError {
         kind: InvalidInput,
         desc: "no addresses found for hostname",

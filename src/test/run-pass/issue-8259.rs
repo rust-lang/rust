@@ -11,6 +11,6 @@
 // aux-build:issue-8259.rs
 
 extern crate "issue-8259" as other;
-static a: other::Foo<'static> = other::A;
+static a: other::Foo<'static> = other::Foo::A;
 
 pub fn main() {}

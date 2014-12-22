@@ -100,6 +100,8 @@ struct Planet {
     mass: f64,
 }
 
+impl Copy for Planet {}
+
 fn advance(bodies: &mut [Planet, ..N_BODIES], dt: f64, steps: int) {
     for _ in range(0, steps) {
         let mut b_slice = bodies.as_mut_slice();
@@ -179,11 +181,11 @@ fn main() {
     let mut bodies = BODIES;
 
     offset_momentum(&mut bodies);
-    println!("{:.9f}", energy(&bodies));
+    println!("{:.9}", energy(&bodies));
 
     advance(&mut bodies, 0.01, n);
 
-    println!("{:.9f}", energy(&bodies));
+    println!("{:.9}", energy(&bodies));
 }
 
 /// Pop a mutable reference off the head of a slice, mutating the slice to no

@@ -8,18 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(struct_variant)]
-
 enum E {
     Foo{f: int},
     Bar,
 }
 
 pub fn main() {
-    let e = Foo{f: 0};
+    let e = E::Foo{f: 0};
     match e {
-        Foo{f: 1} => panic!(),
-        Foo{..} => (),
+        E::Foo{f: 1} => panic!(),
+        E::Foo{..} => (),
         _ => panic!(),
     }
 }

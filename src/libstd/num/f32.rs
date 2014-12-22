@@ -10,19 +10,17 @@
 
 //! Operations and constants for 32-bits floats (`f32` type)
 
-#![experimental]
+#![stable]
 #![allow(missing_docs)]
 #![allow(unsigned_negation)]
 #![doc(primitive = "f32")]
 
 use prelude::*;
 
-use from_str::FromStr;
 use intrinsics;
 use libc::c_int;
 use num::{Float, FloatMath};
 use num::strconv;
-use num;
 
 pub use core::f32::{RADIX, MANTISSA_DIGITS, DIGITS, EPSILON, MIN_VALUE};
 pub use core::f32::{MIN_POS_VALUE, MAX_VALUE, MIN_EXP, MAX_EXP, MIN_10_EXP};
@@ -70,6 +68,7 @@ mod cmath {
     }
 }
 
+#[unstable = "trait is unstable"]
 impl FloatMath for f32 {
     /// Constructs a floating point number by multiplying `x` by 2 raised to the
     /// power of `exp`
@@ -250,6 +249,7 @@ impl FloatMath for f32 {
 ///
 /// * num - The float value
 #[inline]
+#[experimental = "may be removed or relocated"]
 pub fn to_string(num: f32) -> String {
     let (r, _) = strconv::float_to_str_common(
         num, 10u, true, strconv::SignNeg, strconv::DigAll, strconv::ExpNone, false);
@@ -262,6 +262,7 @@ pub fn to_string(num: f32) -> String {
 ///
 /// * num - The float value
 #[inline]
+#[experimental = "may be removed or relocated"]
 pub fn to_str_hex(num: f32) -> String {
     let (r, _) = strconv::float_to_str_common(
         num, 16u, true, strconv::SignNeg, strconv::DigAll, strconv::ExpNone, false);
@@ -276,6 +277,7 @@ pub fn to_str_hex(num: f32) -> String {
 /// * num - The float value
 /// * radix - The base to use
 #[inline]
+#[experimental = "may be removed or relocated"]
 pub fn to_str_radix_special(num: f32, rdx: uint) -> (String, bool) {
     strconv::float_to_str_common(num, rdx, true,
                            strconv::SignNeg, strconv::DigAll, strconv::ExpNone, false)
@@ -289,6 +291,7 @@ pub fn to_str_radix_special(num: f32, rdx: uint) -> (String, bool) {
 /// * num - The float value
 /// * digits - The number of significant digits
 #[inline]
+#[experimental = "may be removed or relocated"]
 pub fn to_str_exact(num: f32, dig: uint) -> String {
     let (r, _) = strconv::float_to_str_common(
         num, 10u, true, strconv::SignNeg, strconv::DigExact(dig), strconv::ExpNone, false);
@@ -303,6 +306,7 @@ pub fn to_str_exact(num: f32, dig: uint) -> String {
 /// * num - The float value
 /// * digits - The number of significant digits
 #[inline]
+#[experimental = "may be removed or relocated"]
 pub fn to_str_digits(num: f32, dig: uint) -> String {
     let (r, _) = strconv::float_to_str_common(
         num, 10u, true, strconv::SignNeg, strconv::DigMax(dig), strconv::ExpNone, false);
@@ -318,6 +322,7 @@ pub fn to_str_digits(num: f32, dig: uint) -> String {
 /// * digits - The number of digits after the decimal point
 /// * upper - Use `E` instead of `e` for the exponent sign
 #[inline]
+#[experimental = "may be removed or relocated"]
 pub fn to_str_exp_exact(num: f32, dig: uint, upper: bool) -> String {
     let (r, _) = strconv::float_to_str_common(
         num, 10u, true, strconv::SignNeg, strconv::DigExact(dig), strconv::ExpDec, upper);
@@ -333,79 +338,17 @@ pub fn to_str_exp_exact(num: f32, dig: uint, upper: bool) -> String {
 /// * digits - The number of digits after the decimal point
 /// * upper - Use `E` instead of `e` for the exponent sign
 #[inline]
+#[experimental = "may be removed or relocated"]
 pub fn to_str_exp_digits(num: f32, dig: uint, upper: bool) -> String {
     let (r, _) = strconv::float_to_str_common(
         num, 10u, true, strconv::SignNeg, strconv::DigMax(dig), strconv::ExpDec, upper);
     r
 }
 
-#[inline]
-#[deprecated="Use `FromStrRadix::from_str_radix(src, 16)`"]
-pub fn from_str_hex(src: &str) -> Option<f32> {
-    strconv::from_str_radix_float(src, 16)
-}
-
-impl FromStr for f32 {
-    /// Convert a string in base 10 to a float.
-    /// Accepts an optional decimal exponent.
-    ///
-    /// This function accepts strings such as
-    ///
-    /// * '3.14'
-    /// * '+3.14', equivalent to '3.14'
-    /// * '-3.14'
-    /// * '2.5E10', or equivalently, '2.5e10'
-    /// * '2.5E-10'
-    /// * '.' (understood as 0)
-    /// * '5.'
-    /// * '.5', or, equivalently,  '0.5'
-    /// * '+inf', 'inf', '-inf', 'NaN'
-    ///
-    /// Leading and trailing whitespace represent an error.
-    ///
-    /// # Arguments
-    ///
-    /// * src - A string
-    ///
-    /// # Return value
-    ///
-    /// `None` if the string did not represent a valid number.  Otherwise,
-    /// `Some(n)` where `n` is the floating-point number represented by `src`.
-    #[inline]
-    fn from_str(src: &str) -> Option<f32> {
-        strconv::from_str_radix_float(src, 10u)
-    }
-}
-
-impl num::FromStrRadix for f32 {
-    /// Convert a string in a given base to a float.
-    ///
-    /// Due to possible conflicts, this function does **not** accept
-    /// the special values `inf`, `-inf`, `+inf` and `NaN`, **nor**
-    /// does it recognize exponents of any kind.
-    ///
-    /// Leading and trailing whitespace represent an error.
-    ///
-    /// # Arguments
-    ///
-    /// * src - A string
-    /// * radix - The base to use. Must lie in the range [2 .. 36]
-    ///
-    /// # Return value
-    ///
-    /// `None` if the string did not represent a valid number. Otherwise,
-    /// `Some(n)` where `n` is the floating-point number represented by `src`.
-    #[inline]
-    fn from_str_radix(src: &str, radix: uint) -> Option<f32> {
-        strconv::from_str_radix_float(src, radix)
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use f32::*;
     use num::*;
-    use num;
 
     #[test]
     fn test_min_nan() {
@@ -420,8 +363,8 @@ mod tests {
     }
 
     #[test]
-    fn test_num() {
-        num::test_num(10f32, 2f32);
+    fn test_num_f32() {
+        test_num(10f32, 2f32);
     }
 
     #[test]
@@ -727,8 +670,8 @@ mod tests {
         let inf: f32 = Float::infinity();
         let neg_inf: f32 = Float::neg_infinity();
         let nan: f32 = Float::nan();
-        assert_eq!(match inf.frexp() { (x, _) => x }, inf)
-        assert_eq!(match neg_inf.frexp() { (x, _) => x }, neg_inf)
+        assert_eq!(match inf.frexp() { (x, _) => x }, inf);
+        assert_eq!(match neg_inf.frexp() { (x, _) => x }, neg_inf);
         assert!(match nan.frexp() { (x, _) => x.is_nan() })
     }
 

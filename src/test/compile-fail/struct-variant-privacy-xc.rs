@@ -9,8 +9,6 @@
 // except according to those terms.
 
 // aux-build:struct_variant_privacy.rs
-#![feature(struct_variant)]
-
 extern crate struct_variant_privacy;
 
 fn f(b: struct_variant_privacy::Bar) { //~ ERROR enum `Bar` is private

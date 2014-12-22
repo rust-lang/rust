@@ -16,6 +16,8 @@ pub struct TwoU8s {
     one: u8, two: u8
 }
 
+impl Copy for TwoU8s {}
+
 #[link(name = "rust_test_helpers")]
 extern {
     pub fn rust_dbg_extern_identity_TwoU8s(v: TwoU8s) -> TwoU8s;

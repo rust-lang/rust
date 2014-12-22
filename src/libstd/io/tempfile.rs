@@ -14,10 +14,11 @@ use io::{fs, IoResult};
 use io;
 use libc;
 use ops::Drop;
-use option::{Option, None, Some};
+use option::Option;
+use option::Option::{None, Some};
 use os;
 use path::{Path, GenericPath};
-use result::{Ok, Err};
+use result::Result::{Ok, Err};
 use sync::atomic;
 
 /// A wrapper for a path to temporary directory implementing automatic
@@ -35,7 +36,8 @@ impl TempDir {
     /// If no directory can be created, `Err` is returned.
     pub fn new_in(tmpdir: &Path, suffix: &str) -> IoResult<TempDir> {
         if !tmpdir.is_absolute() {
-            return TempDir::new_in(&os::make_absolute(tmpdir), suffix);
+            let abs_tmpdir = try!(os::make_absolute(tmpdir));
+            return TempDir::new_in(&abs_tmpdir, suffix);
         }
 
         static CNT: atomic::AtomicUint = atomic::INIT_ATOMIC_UINT;
@@ -72,10 +74,14 @@ impl TempDir {
     /// Unwrap the wrapped `std::path::Path` from the `TempDir` wrapper.
     /// This discards the wrapper so that the automatic deletion of the
     /// temporary directory is prevented.
-    pub fn unwrap(self) -> Path {
+    pub fn into_inner(self) -> Path {
         let mut tmpdir = self;
         tmpdir.path.take().unwrap()
     }
+
+    /// Deprecated, use into_inner() instead
+    #[deprecated = "renamed to into_inner()"]
+    pub fn unwrap(self) -> Path { self.into_inner() }
 
     /// Access the wrapped `std::path::Path` to the temporary directory.
     pub fn path<'a>(&'a self) -> &'a Path {

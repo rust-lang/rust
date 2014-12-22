@@ -10,21 +10,20 @@
 //
 // ignore-lexer-test FIXME #15883
 
+use borrow::BorrowFrom;
 use cmp::{Eq, Equiv, PartialEq};
 use core::kinds::Sized;
 use default::Default;
 use fmt::Show;
 use fmt;
 use hash::{Hash, Hasher, RandomSipHasher};
-use iter::{Iterator, FromIterator, FilterMap, Chain, Repeat, Zip, Extend};
-use iter;
-use option::{Some, None};
-use result::{Ok, Err};
+use iter::{Iterator, IteratorExt, FromIterator, Map, FilterMap, Chain, Repeat, Zip, Extend, repeat};
+use option::Option::{Some, None, mod};
+use result::Result::{Ok, Err};
 
-use super::map::{HashMap, Entries, MoveEntries, INITIAL_CAPACITY};
+use super::map::{HashMap, MoveEntries, Keys, INITIAL_CAPACITY};
 
 // FIXME(conventions): implement BitOr, BitAnd, BitXor, and Sub
-// FIXME(conventions): update capacity management to match other collections (no auto-shrink)
 
 
 // Future Optimization (FIXME!)
@@ -171,7 +170,28 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
         HashSet { map: HashMap::with_capacity_and_hasher(capacity, hasher) }
     }
 
-    /// Reserve space for at least `n` elements in the hash table.
+    /// Returns the number of elements the set can hold without reallocating.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::HashSet;
+    /// let set: HashSet<int> = HashSet::with_capacity(100);
+    /// assert!(set.capacity() >= 100);
+    /// ```
+    #[inline]
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    pub fn capacity(&self) -> uint {
+        self.map.capacity()
+    }
+
+    /// Reserves capacity for at least `additional` more elements to be inserted
+    /// in the `HashSet`. The collection may reserve more space to avoid
+    /// frequent reallocations.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the new allocation size overflows `uint`.
     ///
     /// # Example
     ///
@@ -180,51 +200,35 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     /// let mut set: HashSet<int> = HashSet::new();
     /// set.reserve(10);
     /// ```
-    pub fn reserve(&mut self, n: uint) {
-        self.map.reserve(n)
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    pub fn reserve(&mut self, additional: uint) {
+        self.map.reserve(additional)
     }
 
-    /// Returns true if the hash set contains a value equivalent to the
-    /// given query value.
+    /// Shrinks the capacity of the set as much as possible. It will drop
+    /// down as much as possible while maintaining the internal rules
+    /// and possibly leaving some space in accordance with the resize policy.
     ///
     /// # Example
     ///
-    /// This is a slightly silly example where we define the number's
-    /// parity as the equivalance class. It is important that the
-    /// values hash the same, which is why we implement `Hash`.
-    ///
     /// ```
     /// use std::collections::HashSet;
-    /// use std::hash::Hash;
-    /// use std::hash::sip::SipState;
     ///
-    /// #[deriving(Eq, PartialEq)]
-    /// struct EvenOrOdd {
-    ///     num: uint
-    /// };
-    ///
-    /// impl Hash for EvenOrOdd {
-    ///     fn hash(&self, state: &mut SipState) {
-    ///         let parity = self.num % 2;
-    ///         parity.hash(state);
-    ///     }
-    /// }
-    ///
-    /// impl Equiv<EvenOrOdd> for EvenOrOdd {
-    ///     fn equiv(&self, other: &EvenOrOdd) -> bool {
-    ///         self.num % 2 == other.num % 2
-    ///     }
-    /// }
-    ///
-    /// let mut set = HashSet::new();
-    /// set.insert(EvenOrOdd { num: 3u });
-    ///
-    /// assert!(set.contains_equiv(&EvenOrOdd { num: 3u }));
-    /// assert!(set.contains_equiv(&EvenOrOdd { num: 5u }));
-    /// assert!(!set.contains_equiv(&EvenOrOdd { num: 4u }));
-    /// assert!(!set.contains_equiv(&EvenOrOdd { num: 2u }));
-    ///
+    /// let mut set: HashSet<int> = HashSet::with_capacity(100);
+    /// set.insert(1);
+    /// set.insert(2);
+    /// assert!(set.capacity() >= 100);
+    /// set.shrink_to_fit();
+    /// assert!(set.capacity() >= 2);
     /// ```
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    pub fn shrink_to_fit(&mut self) {
+        self.map.shrink_to_fit()
+    }
+
+    /// Deprecated: use `contains` and `BorrowFrom`.
+    #[deprecated = "use contains and BorrowFrom"]
+    #[allow(deprecated)]
     pub fn contains_equiv<Sized? Q: Hash<S> + Equiv<T>>(&self, value: &Q) -> bool {
       self.map.contains_key_equiv(value)
     }
@@ -247,7 +251,7 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn iter<'a>(&'a self) -> SetItems<'a, T> {
-        self.map.keys()
+        SetItems { iter: self.map.keys() }
     }
 
     /// Creates a consuming iterator, that is, one that moves each value out
@@ -272,7 +276,9 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn into_iter(self) -> SetMoveItems<T> {
-        self.map.into_iter().map(|(k, _)| k)
+        fn first<A, B>((a, _): (A, B)) -> A { a }
+
+        SetMoveItems { iter: self.map.into_iter().map(first) }
     }
 
     /// Visit the values representing the difference.
@@ -299,10 +305,13 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn difference<'a>(&'a self, other: &'a HashSet<T, H>) -> SetAlgebraItems<'a, T, H> {
-        Repeat::new(other).zip(self.iter())
-            .filter_map(|(other, elt)| {
-                if !other.contains(elt) { Some(elt) } else { None }
-            })
+        fn filter<'a, T, S, H>((other, elt): (&HashSet<T, H>, &'a T)) -> Option<&'a T> where
+            T: Eq + Hash<S>, H: Hasher<S>
+        {
+            if !other.contains(elt) { Some(elt) } else { None }
+        }
+
+        SetAlgebraItems { iter: repeat(other).zip(self.iter()).filter_map(filter) }
     }
 
     /// Visit the values representing the symmetric difference.
@@ -327,8 +336,8 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn symmetric_difference<'a>(&'a self, other: &'a HashSet<T, H>)
-        -> Chain<SetAlgebraItems<'a, T, H>, SetAlgebraItems<'a, T, H>> {
-        self.difference(other).chain(other.difference(self))
+        -> SymDifferenceItems<'a, T, H> {
+        SymDifferenceItems { iter: self.difference(other).chain(other.difference(self)) }
     }
 
     /// Visit the values representing the intersection.
@@ -349,12 +358,14 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     /// assert_eq!(diff, [2i, 3].iter().map(|&x| x).collect());
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn intersection<'a>(&'a self, other: &'a HashSet<T, H>)
-        -> SetAlgebraItems<'a, T, H> {
-        Repeat::new(other).zip(self.iter())
-            .filter_map(|(other, elt)| {
-                if other.contains(elt) { Some(elt) } else { None }
-            })
+    pub fn intersection<'a>(&'a self, other: &'a HashSet<T, H>) -> SetAlgebraItems<'a, T, H> {
+        fn filter<'a, T, S, H>((other, elt): (&HashSet<T, H>, &'a T)) -> Option<&'a T> where
+            T: Eq + Hash<S>, H: Hasher<S>
+        {
+            if other.contains(elt) { Some(elt) } else { None }
+        }
+
+        SetAlgebraItems { iter: repeat(other).zip(self.iter()).filter_map(filter) }
     }
 
     /// Visit the values representing the union.
@@ -375,9 +386,8 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     /// assert_eq!(diff, [1i, 2, 3, 4].iter().map(|&x| x).collect());
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn union<'a>(&'a self, other: &'a HashSet<T, H>)
-        -> Chain<SetItems<'a, T>, SetAlgebraItems<'a, T, H>> {
-        self.iter().chain(other.difference(self))
+    pub fn union<'a>(&'a self, other: &'a HashSet<T, H>) -> UnionItems<'a, T, H> {
+        UnionItems { iter: self.iter().chain(other.difference(self)) }
     }
 
     /// Return the number of elements in the set
@@ -427,6 +437,10 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
 
     /// Returns `true` if the set contains a value.
     ///
+    /// The value may be any borrowed form of the set's value type, but
+    /// `Hash` and `Eq` on the borrowed form *must* match those for
+    /// the value type.
+    ///
     /// # Example
     ///
     /// ```
@@ -437,7 +451,11 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     /// assert_eq!(set.contains(&4), false);
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn contains(&self, value: &T) -> bool { self.map.contains_key(value) }
+    pub fn contains<Sized? Q>(&self, value: &Q) -> bool
+        where Q: BorrowFrom<T> + Hash<S> + Eq
+    {
+        self.map.contains_key(value)
+    }
 
     /// Returns `true` if the set has no elements in common with `other`.
     /// This is equivalent to checking for an empty intersection.
@@ -527,6 +545,10 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     /// Removes a value from the set. Returns `true` if the value was
     /// present in the set.
     ///
+    /// The value may be any borrowed form of the set's value type, but
+    /// `Hash` and `Eq` on the borrowed form *must* match those for
+    /// the value type.
+    ///
     /// # Example
     ///
     /// ```
@@ -539,7 +561,11 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     /// assert_eq!(set.remove(&2), false);
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn remove(&mut self, value: &T) -> bool { self.map.remove(value).is_some() }
+    pub fn remove<Sized? Q>(&mut self, value: &Q) -> bool
+        where Q: BorrowFrom<T> + Hash<S> + Eq
+    {
+        self.map.remove(value).is_some()
+    }
 }
 
 impl<T: Eq + Hash<S>, S, H: Hasher<S>> PartialEq for HashSet<T, H> {
@@ -567,7 +593,7 @@ impl<T: Eq + Hash<S> + fmt::Show, S, H: Hasher<S>> fmt::Show for HashSet<T, H> {
 
 impl<T: Eq + Hash<S>, S, H: Hasher<S> + Default> FromIterator<T> for HashSet<T, H> {
     fn from_iter<I: Iterator<T>>(iter: I) -> HashSet<T, H> {
-        let (lower, _) = iter.size_hint();
+        let lower = iter.size_hint().0;
         let mut set = HashSet::with_capacity_and_hasher(lower, Default::default());
         set.extend(iter);
         set
@@ -582,33 +608,76 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S> + Default> Extend<T> for HashSet<T, H> {
     }
 }
 
+#[stable]
 impl<T: Eq + Hash<S>, S, H: Hasher<S> + Default> Default for HashSet<T, H> {
+    #[stable]
     fn default() -> HashSet<T, H> {
         HashSet::with_hasher(Default::default())
     }
 }
 
 /// HashSet iterator
-pub type SetItems<'a, K> =
-    iter::Map<'static, (&'a K, &'a ()), &'a K, Entries<'a, K, ()>>;
+pub struct SetItems<'a, K: 'a> {
+    iter: Keys<'a, K, ()>
+}
 
 /// HashSet move iterator
-pub type SetMoveItems<K> =
-    iter::Map<'static, (K, ()), K, MoveEntries<K, ()>>;
+pub struct SetMoveItems<K> {
+    iter: Map<(K, ()), K, MoveEntries<K, ()>, fn((K, ())) -> K>
+}
 
 // `Repeat` is used to feed the filter closure an explicit capture
 // of a reference to the other set
-/// Set operations iterator
-pub type SetAlgebraItems<'a, T, H> =
-    FilterMap<'static, (&'a HashSet<T, H>, &'a T), &'a T,
-              Zip<Repeat<&'a HashSet<T, H>>, SetItems<'a, T>>>;
+/// Set operations iterator, used directly for intersection and difference
+pub struct SetAlgebraItems<'a, T: 'a, H: 'a> {
+    iter: FilterMap<
+        (&'a HashSet<T, H>, &'a T),
+        &'a T,
+        Zip<Repeat<&'a HashSet<T, H>>, SetItems<'a, T>>,
+        for<'b> fn((&HashSet<T, H>, &'b T)) -> Option<&'b T>,
+    >
+}
+
+/// Symmetric difference iterator.
+pub struct SymDifferenceItems<'a, T: 'a, H: 'a> {
+    iter: Chain<SetAlgebraItems<'a, T, H>, SetAlgebraItems<'a, T, H>>
+}
+
+/// Set union iterator.
+pub struct UnionItems<'a, T: 'a, H: 'a> {
+    iter: Chain<SetItems<'a, T>, SetAlgebraItems<'a, T, H>>
+}
+
+impl<'a, K> Iterator<&'a K> for SetItems<'a, K> {
+    fn next(&mut self) -> Option<&'a K> { self.iter.next() }
+    fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
+}
+
+impl<K> Iterator<K> for SetMoveItems<K> {
+    fn next(&mut self) -> Option<K> { self.iter.next() }
+    fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
+}
+
+impl<'a, T, H> Iterator<&'a T> for SetAlgebraItems<'a, T, H> {
+    fn next(&mut self) -> Option<&'a T> { self.iter.next() }
+    fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
+}
+
+impl<'a, T, H> Iterator<&'a T> for SymDifferenceItems<'a, T, H> {
+    fn next(&mut self) -> Option<&'a T> { self.iter.next() }
+    fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
+}
+
+impl<'a, T, H> Iterator<&'a T> for UnionItems<'a, T, H> {
+    fn next(&mut self) -> Option<&'a T> { self.iter.next() }
+    fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
+}
 
 #[cfg(test)]
 mod test_set {
     use prelude::*;
 
     use super::HashSet;
-    use slice::PartialEqSlicePrelude;
 
     #[test]
     fn test_disjoint() {
@@ -806,7 +875,7 @@ mod test_set {
         };
 
         let v = hs.into_iter().collect::<Vec<char>>();
-        assert!(['a', 'b'][] == v.as_slice() || ['b', 'a'][] == v.as_slice());
+        assert!(['a', 'b'] == v || ['b', 'a'] == v);
     }
 
     #[test]
@@ -841,7 +910,7 @@ mod test_set {
 
         let set_str = format!("{}", set);
 
-        assert!(set_str == "{1, 2}".to_string() || set_str == "{2, 1}".to_string());
-        assert_eq!(format!("{}", empty), "{}".to_string());
+        assert!(set_str == "{1, 2}" || set_str == "{2, 1}");
+        assert_eq!(format!("{}", empty), "{}");
     }
 }

@@ -17,12 +17,14 @@ pub use self::imp::OsRng;
 mod imp {
     extern crate libc;
 
+    use self::OsRngInner::*;
+
     use io::{IoResult, File};
     use path::Path;
     use rand::Rng;
     use rand::reader::ReaderRng;
-    use result::{Ok, Err};
-    use slice::SlicePrelude;
+    use result::Result::{Ok, Err};
+    use slice::SliceExt;
     use mem;
     use os::errno;
 
@@ -115,7 +117,8 @@ mod imp {
     ///   `/dev/urandom`, or from `getrandom(2)` system call if available.
     /// - Windows: calls `CryptGenRandom`, using the default cryptographic
     ///   service provider with the `PROV_RSA_FULL` type.
-    /// - iOS: calls SecRandomCopyBytes as /dev/(u)random is sandboxed
+    /// - iOS: calls SecRandomCopyBytes as /dev/(u)random is sandboxed.
+    ///
     /// This does not block.
     pub struct OsRng {
         inner: OsRngInner,
@@ -171,9 +174,9 @@ mod imp {
     use mem;
     use os;
     use rand::Rng;
-    use result::{Ok};
+    use result::Result::{Ok};
     use self::libc::{c_int, size_t};
-    use slice::{SlicePrelude};
+    use slice::SliceExt;
 
     /// A random number generator that retrieves randomness straight from
     /// the operating system. Platform sources:
@@ -182,10 +185,13 @@ mod imp {
     ///   `/dev/urandom`, or from `getrandom(2)` system call if available.
     /// - Windows: calls `CryptGenRandom`, using the default cryptographic
     ///   service provider with the `PROV_RSA_FULL` type.
-    /// - iOS: calls SecRandomCopyBytes as /dev/(u)random is sandboxed
+    /// - iOS: calls SecRandomCopyBytes as /dev/(u)random is sandboxed.
+    ///
     /// This does not block.
+    #[allow(missing_copy_implementations)]
     pub struct OsRng {
-        marker: marker::NoCopy
+        // dummy field to ensure that this struct cannot be constructed outside of this module
+        _dummy: (),
     }
 
     #[repr(C)]
@@ -203,19 +209,19 @@ mod imp {
     impl OsRng {
         /// Create a new `OsRng`.
         pub fn new() -> IoResult<OsRng> {
-            Ok(OsRng {marker: marker::NoCopy} )
+            Ok(OsRng { _dummy: () })
         }
     }
 
     impl Rng for OsRng {
         fn next_u32(&mut self) -> u32 {
             let mut v = [0u8, .. 4];
-            self.fill_bytes(v);
+            self.fill_bytes(&mut v);
             unsafe { mem::transmute(v) }
         }
         fn next_u64(&mut self) -> u64 {
             let mut v = [0u8, .. 8];
-            self.fill_bytes(v);
+            self.fill_bytes(&mut v);
             unsafe { mem::transmute(v) }
         }
         fn fill_bytes(&mut self, v: &mut [u8]) {
@@ -238,10 +244,10 @@ mod imp {
     use ops::Drop;
     use os;
     use rand::Rng;
-    use result::{Ok, Err};
+    use result::Result::{Ok, Err};
     use self::libc::{DWORD, BYTE, LPCSTR, BOOL};
     use self::libc::types::os::arch::extra::{LONG_PTR};
-    use slice::{SlicePrelude};
+    use slice::SliceExt;
 
     type HCRYPTPROV = LONG_PTR;
 
@@ -252,7 +258,8 @@ mod imp {
     ///   `/dev/urandom`, or from `getrandom(2)` system call if available.
     /// - Windows: calls `CryptGenRandom`, using the default cryptographic
     ///   service provider with the `PROV_RSA_FULL` type.
-    /// - iOS: calls SecRandomCopyBytes as /dev/(u)random is sandboxed
+    /// - iOS: calls SecRandomCopyBytes as /dev/(u)random is sandboxed.
+    ///
     /// This does not block.
     pub struct OsRng {
         hcryptprov: HCRYPTPROV
@@ -296,12 +303,12 @@ mod imp {
     impl Rng for OsRng {
         fn next_u32(&mut self) -> u32 {
             let mut v = [0u8, .. 4];
-            self.fill_bytes(v);
+            self.fill_bytes(&mut v);
             unsafe { mem::transmute(v) }
         }
         fn next_u64(&mut self) -> u64 {
             let mut v = [0u8, .. 8];
-            self.fill_bytes(v);
+            self.fill_bytes(&mut v);
             unsafe { mem::transmute(v) }
         }
         fn fill_bytes(&mut self, v: &mut [u8]) {
@@ -333,7 +340,7 @@ mod test {
 
     use super::OsRng;
     use rand::Rng;
-    use task;
+    use thread::Thread;
 
     #[test]
     fn test_os_rng() {
@@ -343,7 +350,7 @@ mod test {
         r.next_u64();
 
         let mut v = [0u8, .. 1000];
-        r.fill_bytes(v);
+        r.fill_bytes(&mut v);
     }
 
     #[test]
@@ -353,25 +360,26 @@ mod test {
         for _ in range(0u, 20) {
             let (tx, rx) = channel();
             txs.push(tx);
-            task::spawn(proc() {
+
+            Thread::spawn(move|| {
                 // wait until all the tasks are ready to go.
                 rx.recv();
 
                 // deschedule to attempt to interleave things as much
                 // as possible (XXX: is this a good test?)
                 let mut r = OsRng::new().unwrap();
-                task::deschedule();
+                Thread::yield_now();
                 let mut v = [0u8, .. 1000];
 
                 for _ in range(0u, 100) {
                     r.next_u32();
-                    task::deschedule();
+                    Thread::yield_now();
                     r.next_u64();
-                    task::deschedule();
-                    r.fill_bytes(v);
-                    task::deschedule();
+                    Thread::yield_now();
+                    r.fill_bytes(&mut v);
+                    Thread::yield_now();
                 }
-            })
+            }).detach();
         }
 
         // start all the tasks

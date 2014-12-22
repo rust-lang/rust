@@ -16,21 +16,22 @@
 
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
-#![license = "MIT/ASL2"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/nightly/",
        html_playground_url = "http://play.rust-lang.org/")]
-#![feature(phase)]
+#![feature(phase, globs)]
 
 #[cfg(test)] #[phase(plugin, link)] extern crate log;
 
 extern crate serialize;
 extern crate libc;
 
+pub use self::ParseError::*;
+use self::Fmt::*;
+
 use std::fmt::Show;
 use std::fmt;
-use std::io::BufReader;
 use std::num::SignedInt;
 use std::string::String;
 use std::time::Duration;
@@ -75,8 +76,12 @@ mod imp {
 }
 
 /// A record specifying a time value in seconds and nanoseconds.
-#[deriving(Clone, PartialEq, Eq, PartialOrd, Ord, Encodable, Decodable, Show)]
-pub struct Timespec { pub sec: i64, pub nsec: i32 }
+#[deriving(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Encodable, Decodable, Show)]
+pub struct Timespec {
+    pub sec: i64,
+    pub nsec: i32,
+}
+
 /*
  * Timespec assumes that pre-epoch Timespecs have negative sec and positive
  * nsec fields. Darwin's and Linux's struct timespec functions handle pre-
@@ -92,6 +97,8 @@ impl Timespec {
     }
 }
 
+// NOTE(stage0): Remove impl after a snapshot
+#[cfg(stage0)]
 impl Add<Duration, Timespec> for Timespec {
     fn add(&self, other: &Duration) -> Timespec {
         let d_sec = other.num_seconds();
@@ -112,6 +119,29 @@ impl Add<Duration, Timespec> for Timespec {
     }
 }
 
+#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
+impl Add<Duration, Timespec> for Timespec {
+    fn add(self, other: Duration) -> Timespec {
+        let d_sec = other.num_seconds();
+        // It is safe to unwrap the nanoseconds, because there cannot be
+        // more than one second left, which fits in i64 and in i32.
+        let d_nsec = (other - Duration::seconds(d_sec))
+                     .num_nanoseconds().unwrap() as i32;
+        let mut sec = self.sec + d_sec;
+        let mut nsec = self.nsec + d_nsec;
+        if nsec >= NSEC_PER_SEC {
+            nsec -= NSEC_PER_SEC;
+            sec += 1;
+        } else if nsec < 0 {
+            nsec += NSEC_PER_SEC;
+            sec -= 1;
+        }
+        Timespec::new(sec, nsec)
+    }
+}
+
+// NOTE(stage0): Remove impl after a snapshot
+#[cfg(stage0)]
 impl Sub<Timespec, Duration> for Timespec {
     fn sub(&self, other: &Timespec) -> Duration {
         let sec = self.sec - other.sec;
@@ -120,10 +150,17 @@ impl Sub<Timespec, Duration> for Timespec {
     }
 }
 
-/**
- * Returns the current time as a `timespec` containing the seconds and
- * nanoseconds since 1970-01-01T00:00:00Z.
- */
+#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
+impl Sub<Timespec, Duration> for Timespec {
+    fn sub(self, other: Timespec) -> Duration {
+        let sec = self.sec - other.sec;
+        let nsec = self.nsec - other.nsec;
+        Duration::seconds(sec) + Duration::nanoseconds(nsec as i64)
+    }
+}
+
+/// Returns the current time as a `timespec` containing the seconds and
+/// nanoseconds since 1970-01-01T00:00:00Z.
 pub fn get_time() -> Timespec {
     unsafe {
         let (sec, nsec) = os_get_time();
@@ -168,10 +205,8 @@ pub fn get_time() -> Timespec {
 }
 
 
-/**
- * Returns the current value of a high-resolution performance counter
- * in nanoseconds since an unspecified epoch.
- */
+/// Returns the current value of a high-resolution performance counter
+/// in nanoseconds since an unspecified epoch.
 pub fn precise_time_ns() -> u64 {
     return os_precise_time_ns();
 
@@ -215,10 +250,8 @@ pub fn precise_time_ns() -> u64 {
 }
 
 
-/**
- * Returns the current value of a high-resolution performance counter
- * in seconds since an unspecified epoch.
- */
+/// Returns the current value of a high-resolution performance counter
+/// in seconds since an unspecified epoch.
 pub fn precise_time_s() -> f64 {
     return (precise_time_ns() as f64) / 1000000000.;
 }
@@ -233,7 +266,7 @@ pub fn tzset() {
 /// also called a broken-down time value.
 // FIXME: use c_int instead of i32?
 #[repr(C)]
-#[deriving(Clone, PartialEq, Eq, Show)]
+#[deriving(Clone, Copy, PartialEq, Eq, Show)]
 pub struct Tm {
     /// Seconds after the minute - [0, 60]
     pub tm_sec: i32,
@@ -343,12 +376,10 @@ impl Tm {
         at_utc(self.to_timespec())
     }
 
-    /**
-     * Returns a TmFmt that outputs according to the `asctime` format in ISO
-     * C, in the local timezone.
-     *
-     * Example: "Thu Jan  1 00:00:00 1970"
-     */
+    /// Returns a TmFmt that outputs according to the `asctime` format in ISO
+    /// C, in the local timezone.
+    ///
+    /// Example: "Thu Jan  1 00:00:00 1970"
     pub fn ctime(&self) -> TmFmt {
         TmFmt {
             tm: self,
@@ -356,12 +387,10 @@ impl Tm {
         }
     }
 
-    /**
-     * Returns a TmFmt that outputs according to the `asctime` format in ISO
-     * C.
-     *
-     * Example: "Thu Jan  1 00:00:00 1970"
-     */
+    /// Returns a TmFmt that outputs according to the `asctime` format in ISO
+    /// C.
+    ///
+    /// Example: "Thu Jan  1 00:00:00 1970"
     pub fn asctime(&self) -> TmFmt {
         TmFmt {
             tm: self,
@@ -377,12 +406,10 @@ impl Tm {
         })
     }
 
-    /**
-     * Returns a TmFmt that outputs according to RFC 822.
-     *
-     * local: "Thu, 22 Mar 2012 07:53:18 PST"
-     * utc:   "Thu, 22 Mar 2012 14:53:18 GMT"
-     */
+    /// Returns a TmFmt that outputs according to RFC 822.
+    ///
+    /// local: "Thu, 22 Mar 2012 07:53:18 PST"
+    /// utc:   "Thu, 22 Mar 2012 14:53:18 GMT"
     pub fn rfc822(&self) -> TmFmt {
         if self.tm_gmtoff == 0_i32 {
             TmFmt {
@@ -397,12 +424,10 @@ impl Tm {
         }
     }
 
-    /**
-     * Returns a TmFmt that outputs according to RFC 822 with Zulu time.
-     *
-     * local: "Thu, 22 Mar 2012 07:53:18 -0700"
-     * utc:   "Thu, 22 Mar 2012 14:53:18 -0000"
-     */
+    /// Returns a TmFmt that outputs according to RFC 822 with Zulu time.
+    ///
+    /// local: "Thu, 22 Mar 2012 07:53:18 -0700"
+    /// utc:   "Thu, 22 Mar 2012 14:53:18 -0000"
     pub fn rfc822z(&self) -> TmFmt {
         TmFmt {
             tm: self,
@@ -410,13 +435,11 @@ impl Tm {
         }
     }
 
-    /**
-     * Returns a TmFmt that outputs according to RFC 3339. RFC 3339 is
-     * compatible with ISO 8601.
-     *
-     * local: "2012-02-22T07:53:18-07:00"
-     * utc:   "2012-02-22T14:53:18Z"
-     */
+    /// Returns a TmFmt that outputs according to RFC 3339. RFC 3339 is
+    /// compatible with ISO 8601.
+    ///
+    /// local: "2012-02-22T07:53:18-07:00"
+    /// utc:   "2012-02-22T14:53:18Z"
     pub fn rfc3339<'a>(&'a self) -> TmFmt {
         TmFmt {
             tm: self,
@@ -425,7 +448,7 @@ impl Tm {
     }
 }
 
-#[deriving(PartialEq)]
+#[deriving(Copy, PartialEq)]
 pub enum ParseError {
     InvalidSecond,
     InvalidMinute,
@@ -599,8 +622,8 @@ impl<'a> fmt::Show for TmFmt<'a> {
 
             match ch {
                 'G' => write!(fmt, "{}", year),
-                'g' => write!(fmt, "{:02d}", (year % 100 + 100) % 100),
-                'V' => write!(fmt, "{:02d}", days / 7 + 1),
+                'g' => write!(fmt, "{:02}", (year % 100 + 100) % 100),
+                'V' => write!(fmt, "{:02}", days / 7 + 1),
                 _ => Ok(())
             }
         }
@@ -660,7 +683,7 @@ impl<'a> fmt::Show for TmFmt<'a> {
                 11 => "Dec",
                 _  => return die()
               },
-              'C' => return write!(fmt, "{:02d}", (tm.tm_year as int + 1900) / 100),
+              'C' => return write!(fmt, "{:02}", (tm.tm_year as int + 1900) / 100),
               'c' => {
                     try!(parse_type(fmt, 'a', tm));
                     try!(' '.fmt(fmt));
@@ -679,9 +702,9 @@ impl<'a> fmt::Show for TmFmt<'a> {
                     try!('/'.fmt(fmt));
                     return parse_type(fmt, 'y', tm);
               }
-              'd' => return write!(fmt, "{:02d}", tm.tm_mday),
-              'e' => return write!(fmt, "{:2d}", tm.tm_mday),
-              'f' => return write!(fmt, "{:09d}", tm.tm_nsec),
+              'd' => return write!(fmt, "{:02}", tm.tm_mday),
+              'e' => return write!(fmt, "{:2}", tm.tm_mday),
+              'f' => return write!(fmt, "{:09}", tm.tm_nsec),
               'F' => {
                     try!(parse_type(fmt, 'Y', tm));
                     try!('-'.fmt(fmt));
@@ -691,23 +714,23 @@ impl<'a> fmt::Show for TmFmt<'a> {
               }
               'G' => return iso_week(fmt, 'G', tm),
               'g' => return iso_week(fmt, 'g', tm),
-              'H' => return write!(fmt, "{:02d}", tm.tm_hour),
+              'H' => return write!(fmt, "{:02}", tm.tm_hour),
               'I' => {
                 let mut h = tm.tm_hour;
                 if h == 0 { h = 12 }
                 if h > 12 { h -= 12 }
-                return write!(fmt, "{:02d}", h)
+                return write!(fmt, "{:02}", h)
               }
-              'j' => return write!(fmt, "{:03d}", tm.tm_yday + 1),
-              'k' => return write!(fmt, "{:2d}", tm.tm_hour),
+              'j' => return write!(fmt, "{:03}", tm.tm_yday + 1),
+              'k' => return write!(fmt, "{:2}", tm.tm_hour),
               'l' => {
                 let mut h = tm.tm_hour;
                 if h == 0 { h = 12 }
                 if h > 12 { h -= 12 }
-                return write!(fmt, "{:2d}", h)
+                return write!(fmt, "{:2}", h)
               }
-              'M' => return write!(fmt, "{:02d}", tm.tm_min),
-              'm' => return write!(fmt, "{:02d}", tm.tm_mon + 1),
+              'M' => return write!(fmt, "{:02}", tm.tm_min),
+              'm' => return write!(fmt, "{:02}", tm.tm_mon + 1),
               'n' => "\n",
               'P' => if (tm.tm_hour as int) < 12 { "am" } else { "pm" },
               'p' => if (tm.tm_hour as int) < 12 { "AM" } else { "PM" },
@@ -725,7 +748,7 @@ impl<'a> fmt::Show for TmFmt<'a> {
                     try!(' '.fmt(fmt));
                     return parse_type(fmt, 'p', tm);
               }
-              'S' => return write!(fmt, "{:02d}", tm.tm_sec),
+              'S' => return write!(fmt, "{:02}", tm.tm_sec),
               's' => return write!(fmt, "{}", tm.to_timespec().sec),
               'T' | 'X' => {
                     try!(parse_type(fmt, 'H', tm));
@@ -735,7 +758,7 @@ impl<'a> fmt::Show for TmFmt<'a> {
                     return parse_type(fmt, 'S', tm);
               }
               't' => "\t",
-              'U' => return write!(fmt, "{:02d}", (tm.tm_yday - tm.tm_wday + 7) / 7),
+              'U' => return write!(fmt, "{:02}", (tm.tm_yday - tm.tm_wday + 7) / 7),
               'u' => {
                 let i = tm.tm_wday as int;
                 return (if i == 0 { 7 } else { i }).fmt(fmt);
@@ -749,19 +772,19 @@ impl<'a> fmt::Show for TmFmt<'a> {
                   return parse_type(fmt, 'Y', tm);
               }
               'W' => {
-                  return write!(fmt, "{:02d}",
+                  return write!(fmt, "{:02}",
                                  (tm.tm_yday - (tm.tm_wday - 1 + 7) % 7 + 7) / 7)
               }
               'w' => return (tm.tm_wday as int).fmt(fmt),
               'Y' => return (tm.tm_year as int + 1900).fmt(fmt),
-              'y' => return write!(fmt, "{:02d}", (tm.tm_year as int + 1900) % 100),
+              'y' => return write!(fmt, "{:02}", (tm.tm_year as int + 1900) % 100),
               'Z' => if tm.tm_gmtoff == 0_i32 { "GMT"} else { "" }, // FIXME (#2350): support locale
               'z' => {
                 let sign = if tm.tm_gmtoff > 0_i32 { '+' } else { '-' };
                 let mut m = tm.tm_gmtoff.abs() / 60_i32;
                 let h = m / 60_i32;
                 m -= h * 60_i32;
-                return write!(fmt, "{}{:02d}{:02d}", sign, h, m);
+                return write!(fmt, "{}{:02}{:02}", sign, h, m);
               }
               '+' => return tm.rfc3339().fmt(fmt),
               '%' => "%",
@@ -803,7 +826,7 @@ impl<'a> fmt::Show for TmFmt<'a> {
                     let mut m = self.tm.tm_gmtoff.abs() / 60_i32;
                     let h = m / 60_i32;
                     m -= h * 60_i32;
-                    write!(fmt, "{}{}{:02d}:{:02d}", s, sign, h as int, m as int)
+                    write!(fmt, "{}{}{:02}:{:02}", s, sign, h as int, m as int)
                 }
             }
         }
@@ -904,7 +927,7 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ParseError> {
     fn parse_type(s: &str, pos: uint, ch: char, tm: &mut Tm)
       -> Result<uint, ParseError> {
         match ch {
-          'A' => match match_strs(s, pos, [
+          'A' => match match_strs(s, pos, &[
               ("Sunday", 0_i32),
               ("Monday", 1_i32),
               ("Tuesday", 2_i32),
@@ -916,7 +939,7 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ParseError> {
             Some(item) => { let (v, pos) = item; tm.tm_wday = v; Ok(pos) }
             None => Err(InvalidDay)
           },
-          'a' => match match_strs(s, pos, [
+          'a' => match match_strs(s, pos, &[
               ("Sun", 0_i32),
               ("Mon", 1_i32),
               ("Tue", 2_i32),
@@ -928,7 +951,7 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ParseError> {
             Some(item) => { let (v, pos) = item; tm.tm_wday = v; Ok(pos) }
             None => Err(InvalidDay)
           },
-          'B' => match match_strs(s, pos, [
+          'B' => match match_strs(s, pos, &[
               ("January", 0_i32),
               ("February", 1_i32),
               ("March", 2_i32),
@@ -945,7 +968,7 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ParseError> {
             Some(item) => { let (v, pos) = item; tm.tm_mon = v; Ok(pos) }
             None => Err(InvalidMonth)
           },
-          'b' | 'h' => match match_strs(s, pos, [
+          'b' | 'h' => match match_strs(s, pos, &[
               ("Jan", 0_i32),
               ("Feb", 1_i32),
               ("Mar", 2_i32),
@@ -1071,13 +1094,13 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ParseError> {
           }
           'n' => parse_char(s, pos, '\n'),
           'P' => match match_strs(s, pos,
-                                  [("am", 0_i32), ("pm", 12_i32)]) {
+                                  &[("am", 0_i32), ("pm", 12_i32)]) {
 
             Some(item) => { let (v, pos) = item; tm.tm_hour += v; Ok(pos) }
             None => Err(InvalidHour)
           },
           'p' => match match_strs(s, pos,
-                                  [("AM", 0_i32), ("PM", 12_i32)]) {
+                                  &[("AM", 0_i32), ("PM", 12_i32)]) {
 
             Some(item) => { let (v, pos) = item; tm.tm_hour += v; Ok(pos) }
             None => Err(InvalidHour)
@@ -1201,7 +1224,7 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ParseError> {
         }
     }
 
-    let mut rdr = BufReader::new(format.as_bytes());
+    let mut rdr: &[u8] = format.as_bytes();
     let mut tm = Tm {
         tm_sec: 0_i32,
         tm_min: 0_i32,
@@ -1225,13 +1248,13 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ParseError> {
         let next = range.next;
 
         let mut buf = [0];
-        let c = match rdr.read(buf) {
+        let c = match (&mut rdr).read(&mut buf) {
             Ok(..) => buf[0] as char,
             Err(..) => break
         };
         match c {
             '%' => {
-                let ch = match rdr.read(buf) {
+                let ch = match (&mut rdr).read(&mut buf) {
                     Ok(..) => buf[0] as char,
                     Err(..) => break
                 };
@@ -1247,7 +1270,7 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ParseError> {
         }
     }
 
-    if pos == len && rdr.tell().unwrap() == format.len() as u64 {
+    if pos == len && (&mut rdr).is_empty() {
         Ok(Tm {
             tm_sec: tm.tm_sec,
             tm_min: tm.tm_min,
@@ -1277,7 +1300,7 @@ mod tests {
                 InvalidFormatSpecifier};
 
     use std::f64;
-    use std::result::{Err, Ok};
+    use std::result::Result::{Err, Ok};
     use std::time::Duration;
     use self::test::Bencher;
 
@@ -1579,8 +1602,8 @@ mod tests {
 
         debug!("test_ctime: {} {}", utc.asctime(), local.asctime());
 
-        assert_eq!(utc.asctime().to_string(), "Fri Feb 13 23:31:30 2009".to_string());
-        assert_eq!(local.asctime().to_string(), "Fri Feb 13 15:31:30 2009".to_string());
+        assert_eq!(utc.asctime().to_string(), "Fri Feb 13 23:31:30 2009");
+        assert_eq!(local.asctime().to_string(), "Fri Feb 13 15:31:30 2009");
     }
 
     fn test_ctime() {
@@ -1592,8 +1615,8 @@ mod tests {
 
         debug!("test_ctime: {} {}", utc.ctime(), local.ctime());
 
-        assert_eq!(utc.ctime().to_string(), "Fri Feb 13 15:31:30 2009".to_string());
-        assert_eq!(local.ctime().to_string(), "Fri Feb 13 15:31:30 2009".to_string());
+        assert_eq!(utc.ctime().to_string(), "Fri Feb 13 15:31:30 2009");
+        assert_eq!(local.ctime().to_string(), "Fri Feb 13 15:31:30 2009");
     }
 
     fn test_strftime() {
@@ -1603,56 +1626,56 @@ mod tests {
         let utc = at_utc(time);
         let local = at(time);
 
-        assert_eq!(local.strftime("").unwrap().to_string(), "".to_string());
-        assert_eq!(local.strftime("%A").unwrap().to_string(), "Friday".to_string());
-        assert_eq!(local.strftime("%a").unwrap().to_string(), "Fri".to_string());
-        assert_eq!(local.strftime("%B").unwrap().to_string(), "February".to_string());
-        assert_eq!(local.strftime("%b").unwrap().to_string(), "Feb".to_string());
-        assert_eq!(local.strftime("%C").unwrap().to_string(), "20".to_string());
+        assert_eq!(local.strftime("").unwrap().to_string(), "");
+        assert_eq!(local.strftime("%A").unwrap().to_string(), "Friday");
+        assert_eq!(local.strftime("%a").unwrap().to_string(), "Fri");
+        assert_eq!(local.strftime("%B").unwrap().to_string(), "February");
+        assert_eq!(local.strftime("%b").unwrap().to_string(), "Feb");
+        assert_eq!(local.strftime("%C").unwrap().to_string(), "20");
         assert_eq!(local.strftime("%c").unwrap().to_string(),
-                   "Fri Feb 13 15:31:30 2009".to_string());
-        assert_eq!(local.strftime("%D").unwrap().to_string(), "02/13/09".to_string());
-        assert_eq!(local.strftime("%d").unwrap().to_string(), "13".to_string());
-        assert_eq!(local.strftime("%e").unwrap().to_string(), "13".to_string());
-        assert_eq!(local.strftime("%F").unwrap().to_string(), "2009-02-13".to_string());
-        assert_eq!(local.strftime("%f").unwrap().to_string(), "000054321".to_string());
-        assert_eq!(local.strftime("%G").unwrap().to_string(), "2009".to_string());
-        assert_eq!(local.strftime("%g").unwrap().to_string(), "09".to_string());
-        assert_eq!(local.strftime("%H").unwrap().to_string(), "15".to_string());
-        assert_eq!(local.strftime("%h").unwrap().to_string(), "Feb".to_string());
-        assert_eq!(local.strftime("%I").unwrap().to_string(), "03".to_string());
-        assert_eq!(local.strftime("%j").unwrap().to_string(), "044".to_string());
-        assert_eq!(local.strftime("%k").unwrap().to_string(), "15".to_string());
-        assert_eq!(local.strftime("%l").unwrap().to_string(), " 3".to_string());
-        assert_eq!(local.strftime("%M").unwrap().to_string(), "31".to_string());
-        assert_eq!(local.strftime("%m").unwrap().to_string(), "02".to_string());
-        assert_eq!(local.strftime("%n").unwrap().to_string(), "\n".to_string());
-        assert_eq!(local.strftime("%P").unwrap().to_string(), "pm".to_string());
-        assert_eq!(local.strftime("%p").unwrap().to_string(), "PM".to_string());
-        assert_eq!(local.strftime("%R").unwrap().to_string(), "15:31".to_string());
-        assert_eq!(local.strftime("%r").unwrap().to_string(), "03:31:30 PM".to_string());
-        assert_eq!(local.strftime("%S").unwrap().to_string(), "30".to_string());
-        assert_eq!(local.strftime("%s").unwrap().to_string(), "1234567890".to_string());
-        assert_eq!(local.strftime("%T").unwrap().to_string(), "15:31:30".to_string());
-        assert_eq!(local.strftime("%t").unwrap().to_string(), "\t".to_string());
-        assert_eq!(local.strftime("%U").unwrap().to_string(), "06".to_string());
-        assert_eq!(local.strftime("%u").unwrap().to_string(), "5".to_string());
-        assert_eq!(local.strftime("%V").unwrap().to_string(), "07".to_string());
-        assert_eq!(local.strftime("%v").unwrap().to_string(), "13-Feb-2009".to_string());
-        assert_eq!(local.strftime("%W").unwrap().to_string(), "06".to_string());
-        assert_eq!(local.strftime("%w").unwrap().to_string(), "5".to_string());
+                   "Fri Feb 13 15:31:30 2009");
+        assert_eq!(local.strftime("%D").unwrap().to_string(), "02/13/09");
+        assert_eq!(local.strftime("%d").unwrap().to_string(), "13");
+        assert_eq!(local.strftime("%e").unwrap().to_string(), "13");
+        assert_eq!(local.strftime("%F").unwrap().to_string(), "2009-02-13");
+        assert_eq!(local.strftime("%f").unwrap().to_string(), "000054321");
+        assert_eq!(local.strftime("%G").unwrap().to_string(), "2009");
+        assert_eq!(local.strftime("%g").unwrap().to_string(), "09");
+        assert_eq!(local.strftime("%H").unwrap().to_string(), "15");
+        assert_eq!(local.strftime("%h").unwrap().to_string(), "Feb");
+        assert_eq!(local.strftime("%I").unwrap().to_string(), "03");
+        assert_eq!(local.strftime("%j").unwrap().to_string(), "044");
+        assert_eq!(local.strftime("%k").unwrap().to_string(), "15");
+        assert_eq!(local.strftime("%l").unwrap().to_string(), " 3");
+        assert_eq!(local.strftime("%M").unwrap().to_string(), "31");
+        assert_eq!(local.strftime("%m").unwrap().to_string(), "02");
+        assert_eq!(local.strftime("%n").unwrap().to_string(), "\n");
+        assert_eq!(local.strftime("%P").unwrap().to_string(), "pm");
+        assert_eq!(local.strftime("%p").unwrap().to_string(), "PM");
+        assert_eq!(local.strftime("%R").unwrap().to_string(), "15:31");
+        assert_eq!(local.strftime("%r").unwrap().to_string(), "03:31:30 PM");
+        assert_eq!(local.strftime("%S").unwrap().to_string(), "30");
+        assert_eq!(local.strftime("%s").unwrap().to_string(), "1234567890");
+        assert_eq!(local.strftime("%T").unwrap().to_string(), "15:31:30");
+        assert_eq!(local.strftime("%t").unwrap().to_string(), "\t");
+        assert_eq!(local.strftime("%U").unwrap().to_string(), "06");
+        assert_eq!(local.strftime("%u").unwrap().to_string(), "5");
+        assert_eq!(local.strftime("%V").unwrap().to_string(), "07");
+        assert_eq!(local.strftime("%v").unwrap().to_string(), "13-Feb-2009");
+        assert_eq!(local.strftime("%W").unwrap().to_string(), "06");
+        assert_eq!(local.strftime("%w").unwrap().to_string(), "5");
         // FIXME (#2350): support locale
-        assert_eq!(local.strftime("%X").unwrap().to_string(), "15:31:30".to_string());
+        assert_eq!(local.strftime("%X").unwrap().to_string(), "15:31:30");
         // FIXME (#2350): support locale
-        assert_eq!(local.strftime("%x").unwrap().to_string(), "02/13/09".to_string());
-        assert_eq!(local.strftime("%Y").unwrap().to_string(), "2009".to_string());
-        assert_eq!(local.strftime("%y").unwrap().to_string(), "09".to_string());
+        assert_eq!(local.strftime("%x").unwrap().to_string(), "02/13/09");
+        assert_eq!(local.strftime("%Y").unwrap().to_string(), "2009");
+        assert_eq!(local.strftime("%y").unwrap().to_string(), "09");
         // FIXME (#2350): support locale
-        assert_eq!(local.strftime("%Z").unwrap().to_string(), "".to_string());
-        assert_eq!(local.strftime("%z").unwrap().to_string(), "-0800".to_string());
+        assert_eq!(local.strftime("%Z").unwrap().to_string(), "");
+        assert_eq!(local.strftime("%z").unwrap().to_string(), "-0800");
         assert_eq!(local.strftime("%+").unwrap().to_string(),
-                   "2009-02-13T15:31:30-08:00".to_string());
-        assert_eq!(local.strftime("%%").unwrap().to_string(), "%".to_string());
+                   "2009-02-13T15:31:30-08:00");
+        assert_eq!(local.strftime("%%").unwrap().to_string(), "%");
 
          let invalid_specifiers = ["%E", "%J", "%K", "%L", "%N", "%O", "%o", "%Q", "%q"];
         for &sp in invalid_specifiers.iter() {
@@ -1661,16 +1684,16 @@ mod tests {
         assert_eq!(local.strftime("%").unwrap_err(), MissingFormatConverter);
         assert_eq!(local.strftime("%A %").unwrap_err(), MissingFormatConverter);
 
-        assert_eq!(local.asctime().to_string(), "Fri Feb 13 15:31:30 2009".to_string());
-        assert_eq!(local.ctime().to_string(), "Fri Feb 13 15:31:30 2009".to_string());
-        assert_eq!(local.rfc822z().to_string(), "Fri, 13 Feb 2009 15:31:30 -0800".to_string());
-        assert_eq!(local.rfc3339().to_string(), "2009-02-13T15:31:30-08:00".to_string());
+        assert_eq!(local.asctime().to_string(), "Fri Feb 13 15:31:30 2009");
+        assert_eq!(local.ctime().to_string(), "Fri Feb 13 15:31:30 2009");
+        assert_eq!(local.rfc822z().to_string(), "Fri, 13 Feb 2009 15:31:30 -0800");
+        assert_eq!(local.rfc3339().to_string(), "2009-02-13T15:31:30-08:00");
 
-        assert_eq!(utc.asctime().to_string(), "Fri Feb 13 23:31:30 2009".to_string());
-        assert_eq!(utc.ctime().to_string(), "Fri Feb 13 15:31:30 2009".to_string());
-        assert_eq!(utc.rfc822().to_string(), "Fri, 13 Feb 2009 23:31:30 GMT".to_string());
-        assert_eq!(utc.rfc822z().to_string(), "Fri, 13 Feb 2009 23:31:30 -0000".to_string());
-        assert_eq!(utc.rfc3339().to_string(), "2009-02-13T23:31:30Z".to_string());
+        assert_eq!(utc.asctime().to_string(), "Fri Feb 13 23:31:30 2009");
+        assert_eq!(utc.ctime().to_string(), "Fri Feb 13 15:31:30 2009");
+        assert_eq!(utc.rfc822().to_string(), "Fri, 13 Feb 2009 23:31:30 GMT");
+        assert_eq!(utc.rfc822z().to_string(), "Fri, 13 Feb 2009 23:31:30 -0000");
+        assert_eq!(utc.rfc3339().to_string(), "2009-02-13T23:31:30Z");
     }
 
     fn test_timespec_eq_ord() {

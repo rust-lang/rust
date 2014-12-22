@@ -15,10 +15,10 @@ use std::ptr;
 pub fn main() {
     let mut test = TestDescAndFn {
         desc: TestDesc {
-            name: DynTestName("test".to_string()),
+            name: TestName::DynTestName("test".to_string()),
             should_fail: false
         },
-        testfn: DynTestFn(proc() ()),
+        testfn: TestFn::DynTestFn(22),
     };
     do_swap(&mut test);
 }
@@ -34,8 +34,8 @@ pub enum TestName {
 }
 
 pub enum TestFn {
-    DynTestFn(proc():'static),
-    DynBenchFn(proc(&mut int):'static)
+    DynTestFn(int),
+    DynBenchFn(int),
 }
 
 pub struct TestDesc {

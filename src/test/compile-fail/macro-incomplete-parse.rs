@@ -26,10 +26,10 @@ macro_rules! ignored_pat {
     () => ( 1, 2 ) //~ ERROR macro expansion ignores token `,`
 }
 
-ignored_item!()
+ignored_item!();
 
 fn main() {
-    ignored_expr!()
+    ignored_expr!();
     match 1 {
         ignored_pat!() => (),
         _ => (),

@@ -16,20 +16,18 @@
 #![allow(unused_must_use)]
 
 use std::fmt;
-use std::io::MemWriter;
 use std::io;
-use std::str;
 
 struct A;
 struct B;
 struct C;
 
-impl fmt::Signed for A {
+impl fmt::LowerHex for A {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write("aloha".as_bytes())
     }
 }
-impl fmt::Signed for B {
+impl fmt::UpperHex for B {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write("adios".as_bytes())
     }
@@ -40,7 +38,7 @@ impl fmt::Show for C {
     }
 }
 
-macro_rules! t(($a:expr, $b:expr) => { assert_eq!($a.as_slice(), $b) })
+macro_rules! t(($a:expr, $b:expr) => { assert_eq!($a.as_slice(), $b) });
 
 pub fn main() {
     // Various edge cases without formats
@@ -57,71 +55,71 @@ pub fn main() {
     t!(format!("{}", 'a'), "a");
 
     // At least exercise all the formats
-    t!(format!("{:b}", true), "true");
-    t!(format!("{:c}", '☃'), "☃");
-    t!(format!("{:d}", 10i), "10");
-    t!(format!("{:i}", 10i), "10");
-    t!(format!("{:u}", 10u), "10");
+    t!(format!("{}", true), "true");
+    t!(format!("{}", '☃'), "☃");
+    t!(format!("{}", 10i), "10");
+    t!(format!("{}", 10i), "10");
+    t!(format!("{}", 10u), "10");
     t!(format!("{:o}", 10u), "12");
     t!(format!("{:x}", 10u), "a");
     t!(format!("{:X}", 10u), "A");
-    t!(format!("{:s}", "foo"), "foo");
-    t!(format!("{:s}", "foo".to_string()), "foo");
+    t!(format!("{}", "foo"), "foo");
+    t!(format!("{}", "foo".to_string()), "foo");
     t!(format!("{:p}", 0x1234 as *const int), "0x1234");
     t!(format!("{:p}", 0x1234 as *mut int), "0x1234");
-    t!(format!("{:d}", A), "aloha");
-    t!(format!("{:d}", B), "adios");
-    t!(format!("foo {:s} ☃☃☃☃☃☃", "bar"), "foo bar ☃☃☃☃☃☃");
+    t!(format!("{:x}", A), "aloha");
+    t!(format!("{:X}", B), "adios");
+    t!(format!("foo {} ☃☃☃☃☃☃", "bar"), "foo bar ☃☃☃☃☃☃");
     t!(format!("{1} {0}", 0i, 1i), "1 0");
     t!(format!("{foo} {bar}", foo=0i, bar=1i), "0 1");
     t!(format!("{foo} {1} {bar} {0}", 0i, 1i, foo=2i, bar=3i), "2 1 3 0");
     t!(format!("{} {0}", "a"), "a a");
     t!(format!("{foo_bar}", foo_bar=1i), "1");
-    t!(format!("{:d}", 5i + 5i), "10");
+    t!(format!("{}", 5i + 5i), "10");
     t!(format!("{:#4}", C), "☃123");
 
     let a: &fmt::Show = &1i;
     t!(format!("{}", a), "1");
 
     // Formatting strings and their arguments
-    t!(format!("{:s}", "a"), "a");
-    t!(format!("{:4s}", "a"), "a   ");
-    t!(format!("{:4s}", "☃"), "☃   ");
-    t!(format!("{:>4s}", "a"), "   a");
-    t!(format!("{:<4s}", "a"), "a   ");
-    t!(format!("{:^5s}", "a"),  "  a  ");
-    t!(format!("{:^5s}", "aa"), " aa  ");
-    t!(format!("{:^4s}", "a"),  " a  ");
-    t!(format!("{:^4s}", "aa"), " aa ");
-    t!(format!("{:.4s}", "a"), "a");
-    t!(format!("{:4.4s}", "a"), "a   ");
-    t!(format!("{:4.4s}", "aaaaaaaaaaaaaaaaaa"), "aaaa");
-    t!(format!("{:<4.4s}", "aaaaaaaaaaaaaaaaaa"), "aaaa");
-    t!(format!("{:>4.4s}", "aaaaaaaaaaaaaaaaaa"), "aaaa");
-    t!(format!("{:^4.4s}", "aaaaaaaaaaaaaaaaaa"), "aaaa");
-    t!(format!("{:>10.4s}", "aaaaaaaaaaaaaaaaaa"), "aaaa");
-    t!(format!("{:2.4s}", "aaaaa"), "aaaa");
-    t!(format!("{:2.4s}", "aaaa"), "aaaa");
-    t!(format!("{:2.4s}", "aaa"), "aaa");
-    t!(format!("{:2.4s}", "aa"), "aa");
-    t!(format!("{:2.4s}", "a"), "a ");
-    t!(format!("{:0>2s}", "a"), "0a");
-    t!(format!("{:.*s}", 4, "aaaaaaaaaaaaaaaaaa"), "aaaa");
-    t!(format!("{:.1$s}", "aaaaaaaaaaaaaaaaaa", 4), "aaaa");
-    t!(format!("{:.a$s}", "aaaaaaaaaaaaaaaaaa", a=4), "aaaa");
-    t!(format!("{:1$s}", "a", 4), "a   ");
-    t!(format!("{1:0$s}", 4, "a"), "a   ");
-    t!(format!("{:a$s}", "a", a=4), "a   ");
-    t!(format!("{:-#s}", "a"), "a");
-    t!(format!("{:+#s}", "a"), "a");
+    t!(format!("{}", "a"), "a");
+    t!(format!("{:4}", "a"), "a   ");
+    t!(format!("{:4}", "☃"), "☃   ");
+    t!(format!("{:>4}", "a"), "   a");
+    t!(format!("{:<4}", "a"), "a   ");
+    t!(format!("{:^5}", "a"),  "  a  ");
+    t!(format!("{:^5}", "aa"), " aa  ");
+    t!(format!("{:^4}", "a"),  " a  ");
+    t!(format!("{:^4}", "aa"), " aa ");
+    t!(format!("{:.4}", "a"), "a");
+    t!(format!("{:4.4}", "a"), "a   ");
+    t!(format!("{:4.4}", "aaaaaaaaaaaaaaaaaa"), "aaaa");
+    t!(format!("{:<4.4}", "aaaaaaaaaaaaaaaaaa"), "aaaa");
+    t!(format!("{:>4.4}", "aaaaaaaaaaaaaaaaaa"), "aaaa");
+    t!(format!("{:^4.4}", "aaaaaaaaaaaaaaaaaa"), "aaaa");
+    t!(format!("{:>10.4}", "aaaaaaaaaaaaaaaaaa"), "aaaa");
+    t!(format!("{:2.4}", "aaaaa"), "aaaa");
+    t!(format!("{:2.4}", "aaaa"), "aaaa");
+    t!(format!("{:2.4}", "aaa"), "aaa");
+    t!(format!("{:2.4}", "aa"), "aa");
+    t!(format!("{:2.4}", "a"), "a ");
+    t!(format!("{:0>2}", "a"), "0a");
+    t!(format!("{:.*}", 4, "aaaaaaaaaaaaaaaaaa"), "aaaa");
+    t!(format!("{:.1$}", "aaaaaaaaaaaaaaaaaa", 4), "aaaa");
+    t!(format!("{:.a$}", "aaaaaaaaaaaaaaaaaa", a=4), "aaaa");
+    t!(format!("{:1$}", "a", 4), "a   ");
+    t!(format!("{1:0$}", 4, "a"), "a   ");
+    t!(format!("{:a$}", "a", a=4), "a   ");
+    t!(format!("{:-#}", "a"), "a");
+    t!(format!("{:+#}", "a"), "a");
 
     // Some float stuff
-    t!(format!("{:f}", 1.0f32), "1");
-    t!(format!("{:f}", 1.0f64), "1");
-    t!(format!("{:.3f}", 1.0f64), "1.000");
-    t!(format!("{:10.3f}", 1.0f64),   "     1.000");
-    t!(format!("{:+10.3f}", 1.0f64),  "    +1.000");
-    t!(format!("{:+10.3f}", -1.0f64), "    -1.000");
+    t!(format!("{:}", 1.0f32), "1");
+    t!(format!("{:}", 1.0f64), "1");
+    t!(format!("{:.3}", 1.0f64), "1.000");
+    t!(format!("{:10.3}", 1.0f64),   "     1.000");
+    t!(format!("{:+10.3}", 1.0f64),  "    +1.000");
+    t!(format!("{:+10.3}", -1.0f64), "    -1.000");
 
     t!(format!("{:e}", 1.2345e6f32), "1.2345e6");
     t!(format!("{:e}", 1.2345e6f64), "1.2345e6");
@@ -161,17 +159,17 @@ pub fn main() {
 // Basic test to make sure that we can invoke the `write!` macro with an
 // io::Writer instance.
 fn test_write() {
-    let mut buf = MemWriter::new();
+    let mut buf = Vec::new();
     write!(&mut buf as &mut io::Writer, "{}", 3i);
     {
         let w = &mut buf as &mut io::Writer;
         write!(w, "{foo}", foo=4i);
-        write!(w, "{:s}", "hello");
+        write!(w, "{}", "hello");
         writeln!(w, "{}", "line");
         writeln!(w, "{foo}", foo="bar");
     }
 
-    let s = str::from_utf8(buf.unwrap().as_slice()).unwrap().to_string();
+    let s = String::from_utf8(buf).unwrap();
     t!(s, "34helloline\nbar\n");
 }
 
@@ -188,14 +186,14 @@ fn test_print() {
 // Just make sure that the macros are defined, there's not really a lot that we
 // can do with them just yet (to test the output)
 fn test_format_args() {
-    let mut buf = MemWriter::new();
+    let mut buf = Vec::new();
     {
         let w = &mut buf as &mut io::Writer;
         format_args!(|args| { write!(w, "{}", args); }, "{}", 1i);
         format_args!(|args| { write!(w, "{}", args); }, "test");
         format_args!(|args| { write!(w, "{}", args); }, "{test}", test=3i);
     }
-    let s = str::from_utf8(buf.unwrap().as_slice()).unwrap().to_string();
+    let s = String::from_utf8(buf).unwrap();
     t!(s, "1test3");
 
     let s = format_args!(fmt::format, "hello {}", "world");

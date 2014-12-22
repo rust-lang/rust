@@ -312,6 +312,7 @@
 
 #![allow(unused_variables)]
 
+use self::Univariant::Unit;
 
 struct Struct {
     a: i64,

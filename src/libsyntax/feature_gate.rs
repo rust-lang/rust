@@ -17,6 +17,7 @@
 //!
 //! Features are enabled in programs via the crate-level attributes of
 //! `#![feature(...)]` with a comma-separated list of features.
+use self::Status::*;
 
 use abi::RustIntrinsic;
 use ast::NodeId;
@@ -31,13 +32,11 @@ use parse::token;
 
 use std::slice;
 
-/// This is a list of all known features since the beginning of time. This list
-/// can never shrink, it may only be expanded (in order to prevent old programs
-/// from failing to compile). The status of each feature may change, however.
+// if you change this list without updating src/doc/reference.md, @cmr will be sad
 static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("globs", Active),
     ("macro_rules", Active),
-    ("struct_variant", Active),
+    ("struct_variant", Accepted),
     ("asm", Active),
     ("managed_boxes", Removed),
     ("non_ascii_idents", Active),
@@ -57,8 +56,6 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("quote", Active),
     ("linkage", Active),
     ("struct_inherit", Removed),
-    ("overloaded_calls", Active),
-    ("unboxed_closure_sugar", Active),
 
     ("quad_precision_float", Removed),
 
@@ -66,19 +63,20 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("unboxed_closures", Active),
     ("import_shadowing", Active),
     ("advanced_slice_patterns", Active),
-    ("tuple_indexing", Active),
+    ("tuple_indexing", Accepted),
     ("associated_types", Active),
     ("visible_private_types", Active),
     ("slicing_syntax", Active),
 
-    ("if_let", Active),
-    ("while_let", Active),
-
-    // if you change this list without updating src/doc/reference.md, cmr will be sad
+    ("if_let", Accepted),
+    ("while_let", Accepted),
 
     // A temporary feature gate used to enable parser extensions needed
     // to bootstrap fix for #5723.
     ("issue_5723_bootstrap", Accepted),
+
+    // A way to temporary opt out of opt in copy. This will *never* be accepted.
+    ("opt_out_copy", Active),
 
     // These are used to test this portion of the compiler, they don't actually
     // mean anything
@@ -99,24 +97,27 @@ enum Status {
 }
 
 /// A set of features to be used by later passes.
+#[deriving(Copy)]
 pub struct Features {
     pub default_type_params: bool,
-    pub overloaded_calls: bool,
+    pub unboxed_closures: bool,
     pub rustc_diagnostic_macros: bool,
     pub import_shadowing: bool,
     pub visible_private_types: bool,
     pub quote: bool,
+    pub opt_out_copy: bool,
 }
 
 impl Features {
     pub fn new() -> Features {
         Features {
             default_type_params: false,
-            overloaded_calls: false,
+            unboxed_closures: false,
             rustc_diagnostic_macros: false,
             import_shadowing: false,
             visible_private_types: false,
             quote: false,
+            opt_out_copy: false,
         }
     }
 }
@@ -137,13 +138,13 @@ impl<'a> Context<'a> {
     }
 
     fn has_feature(&self, feature: &str) -> bool {
-        self.features.iter().any(|n| n.as_slice() == feature)
+        self.features.iter().any(|&n| n == feature)
     }
 }
 
 impl<'a, 'v> Visitor<'v> for Context<'a> {
-    fn visit_ident(&mut self, sp: Span, id: ast::Ident) {
-        if !token::get_ident(id).get().is_ascii() {
+    fn visit_name(&mut self, sp: Span, name: ast::Name) {
+        if !token::get_name(name).get().is_ascii() {
             self.gate_feature("non_ascii_idents", sp,
                               "non-ascii idents are not fully supported.");
         }
@@ -152,13 +153,10 @@ impl<'a, 'v> Visitor<'v> for Context<'a> {
     fn visit_view_item(&mut self, i: &ast::ViewItem) {
         match i.node {
             ast::ViewItemUse(ref path) => {
-                match path.node {
-                    ast::ViewPathGlob(..) => {
-                        self.gate_feature("globs", path.span,
-                                          "glob import statements are \
-                                           experimental and possibly buggy");
-                    }
-                    _ => {}
+                if let ast::ViewPathGlob(..) = path.node {
+                    self.gate_feature("globs", path.span,
+                                      "glob import statements are \
+                                       experimental and possibly buggy");
                 }
             }
             ast::ViewItemExternCrate(..) => {
@@ -176,27 +174,18 @@ impl<'a, 'v> Visitor<'v> for Context<'a> {
 
     fn visit_item(&mut self, i: &ast::Item) {
         for attr in i.attrs.iter() {
-            if attr.name().equiv(&("thread_local")) {
+            if attr.name() == "thread_local" {
                 self.gate_feature("thread_local", i.span,
                                   "`#[thread_local]` is an experimental feature, and does not \
                                   currently handle destructors. There is no corresponding \
                                   `#[task_local]` mapping to the task model");
+            } else if attr.name() == "linkage" {
+                self.gate_feature("linkage", i.span,
+                                  "the `linkage` attribute is experimental \
+                                   and not portable across platforms")
             }
         }
         match i.node {
-            ast::ItemEnum(ref def, _) => {
-                for variant in def.variants.iter() {
-                    match variant.node.kind {
-                        ast::StructVariantKind(..) => {
-                            self.gate_feature("struct_variant", variant.span,
-                                              "enum struct variants are \
-                                               experimental and possibly buggy");
-                        }
-                        _ => {}
-                    }
-                }
-            }
-
             ast::ItemForeignMod(ref foreign_module) => {
                 if attr::contains_name(i.attrs.as_slice(), "link_args") {
                     self.gate_feature("link_args", i.span,
@@ -225,7 +214,7 @@ impl<'a, 'v> Visitor<'v> for Context<'a> {
                 }
             }
 
-            ast::ItemImpl(_, _, _, ref items) => {
+            ast::ItemImpl(_, _, _, _, ref items) => {
                 if attr::contains_name(i.attrs.as_slice(),
                                        "unsafe_destructor") {
                     self.gate_feature("unsafe_destructor",
@@ -305,13 +294,10 @@ impl<'a, 'v> Visitor<'v> for Context<'a> {
     }
 
     fn visit_ty(&mut self, t: &ast::Ty) {
-        match t.node {
-            ast::TyClosure(ref closure) => {
-                // this used to be blocked by a feature gate, but it should just
-                // be plain impossible right now
-                assert!(closure.onceness != ast::Once);
-            },
-            _ => {}
+        if let ast::TyClosure(ref closure) =  t.node {
+            // this used to be blocked by a feature gate, but it should just
+            // be plain impossible right now
+            assert!(closure.onceness != ast::Once);
         }
 
         visit::walk_ty(self, t);
@@ -319,29 +305,10 @@ impl<'a, 'v> Visitor<'v> for Context<'a> {
 
     fn visit_expr(&mut self, e: &ast::Expr) {
         match e.node {
-            ast::ExprUnboxedFn(..) => {
-                self.gate_feature("unboxed_closures",
-                                  e.span,
-                                  "unboxed closures are a work-in-progress \
-                                   feature with known bugs");
-            }
-            ast::ExprTupField(..) => {
-                self.gate_feature("tuple_indexing",
-                                  e.span,
-                                  "tuple indexing is experimental");
-            }
-            ast::ExprIfLet(..) => {
-                self.gate_feature("if_let", e.span,
-                                  "`if let` syntax is experimental");
-            }
             ast::ExprSlice(..) => {
                 self.gate_feature("slicing_syntax",
                                   e.span,
                                   "slicing syntax is experimental");
-            }
-            ast::ExprWhileLet(..) => {
-                self.gate_feature("while_let", e.span,
-                                  "`while let` syntax is experimental");
             }
             _ => {}
         }
@@ -389,7 +356,7 @@ impl<'a, 'v> Visitor<'v> for Context<'a> {
                 fn_decl: &'v ast::FnDecl,
                 block: &'v ast::Block,
                 span: Span,
-                _: NodeId) {
+                _node_id: NodeId) {
         match fn_kind {
             visit::FkItemFn(_, _, _, abi) if abi == RustIntrinsic => {
                 self.gate_feature("intrinsics",
@@ -432,7 +399,7 @@ pub fn check_crate(span_handler: &SpanHandler, krate: &ast::Crate) -> (Features,
                         }
                     };
                     match KNOWN_FEATURES.iter()
-                                        .find(|& &(n, _)| name.equiv(&n)) {
+                                        .find(|& &(n, _)| name == n) {
                         Some(&(name, Active)) => { cx.features.push(name); }
                         Some(&(_, Removed)) => {
                             span_handler.span_err(mi.span, "feature has been removed");
@@ -454,12 +421,12 @@ pub fn check_crate(span_handler: &SpanHandler, krate: &ast::Crate) -> (Features,
 
     (Features {
         default_type_params: cx.has_feature("default_type_params"),
-        overloaded_calls: cx.has_feature("overloaded_calls"),
+        unboxed_closures: cx.has_feature("unboxed_closures"),
         rustc_diagnostic_macros: cx.has_feature("rustc_diagnostic_macros"),
         import_shadowing: cx.has_feature("import_shadowing"),
         visible_private_types: cx.has_feature("visible_private_types"),
         quote: cx.has_feature("quote"),
+        opt_out_copy: cx.has_feature("opt_out_copy"),
     },
     unknown_features)
 }
-

@@ -10,14 +10,11 @@
 
 //! Operations and constants for unsigned 16-bits integers (`u16` type)
 
-#![unstable]
+#![stable]
 #![doc(primitive = "u16")]
-
-use from_str::FromStr;
-use num::FromStrRadix;
-use num::strconv;
-use option::Option;
 
 pub use core::u16::{BITS, BYTES, MIN, MAX};
 
-uint_module!(u16)
+use ops::FnOnce;
+
+uint_module! { u16 }

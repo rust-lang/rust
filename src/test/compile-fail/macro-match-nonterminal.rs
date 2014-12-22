@@ -10,7 +10,7 @@
 
 #![feature(macro_rules)]
 
-macro_rules! test ( ($a, $b) => (()); ) //~ ERROR Cannot transcribe
+macro_rules! test ( ($a, $b) => (()); ); //~ ERROR Cannot transcribe
 
 fn main() {
     test!()

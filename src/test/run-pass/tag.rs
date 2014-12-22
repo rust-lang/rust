@@ -14,16 +14,16 @@ enum colour { red(int, int), green, }
 impl PartialEq for colour {
     fn eq(&self, other: &colour) -> bool {
         match *self {
-            red(a0, b0) => {
+            colour::red(a0, b0) => {
                 match (*other) {
-                    red(a1, b1) => a0 == a1 && b0 == b1,
-                    green => false,
+                    colour::red(a1, b1) => a0 == a1 && b0 == b1,
+                    colour::green => false,
                 }
             }
-            green => {
+            colour::green => {
                 match (*other) {
-                    red(..) => false,
-                    green => true
+                    colour::red(..) => false,
+                    colour::green => true
                 }
             }
         }
@@ -31,6 +31,6 @@ impl PartialEq for colour {
     fn ne(&self, other: &colour) -> bool { !(*self).eq(other) }
 }
 
-fn f() { let x = red(1, 2); let y = green; assert!((x != y)); }
+fn f() { let x = colour::red(1, 2); let y = colour::green; assert!((x != y)); }
 
 pub fn main() { f(); }

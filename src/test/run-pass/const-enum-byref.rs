@@ -9,12 +9,12 @@
 // except according to those terms.
 
 enum E { V, VV(int) }
-static C: E = V;
+static C: E = E::V;
 
 fn f(a: &E) {
     match *a {
-        V => {}
-        VV(..) => panic!()
+        E::V => {}
+        E::VV(..) => panic!()
     }
 }
 

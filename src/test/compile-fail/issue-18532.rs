@@ -12,11 +12,10 @@
 // when a type error or unconstrained type variable propagates
 // into it.
 
-#![feature(overloaded_calls)]
+#![feature(unboxed_closures)]
 
 fn main() {
     (return)((),());
     //~^ ERROR the type of this value must be known
-    //~^^ ERROR the type of this value must be known
-    //~^^^ ERROR cannot use call notation
+    //~| ERROR this function takes 1 parameter
 }

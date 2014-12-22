@@ -12,32 +12,32 @@
 use std::cmp;
 use std::ops;
 
-#[deriving(Show)]
+#[deriving(Copy, Show)]
 struct Point {
     x: int,
     y: int
 }
 
 impl ops::Add<Point,Point> for Point {
-    fn add(&self, other: &Point) -> Point {
-        Point {x: self.x + (*other).x, y: self.y + (*other).y}
+    fn add(self, other: Point) -> Point {
+        Point {x: self.x + other.x, y: self.y + other.y}
     }
 }
 
 impl ops::Sub<Point,Point> for Point {
-    fn sub(&self, other: &Point) -> Point {
-        Point {x: self.x - (*other).x, y: self.y - (*other).y}
+    fn sub(self, other: Point) -> Point {
+        Point {x: self.x - other.x, y: self.y - other.y}
     }
 }
 
 impl ops::Neg<Point> for Point {
-    fn neg(&self) -> Point {
+    fn neg(self) -> Point {
         Point {x: -self.x, y: -self.y}
     }
 }
 
 impl ops::Not<Point> for Point {
-    fn not(&self) -> Point {
+    fn not(self) -> Point {
         Point {x: !self.x, y: !self.y }
     }
 }
@@ -73,6 +73,7 @@ pub fn main() {
     assert_eq!(q.y, !(p.y));
 
     // Issue #1733
-    let result: proc(int) = proc(_)();
     result(p[true]);
 }
+
+fn result(i: int) { }

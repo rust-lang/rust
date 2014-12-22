@@ -19,6 +19,7 @@ f = open(sys.argv[1], 'wb')
 components = sys.argv[2].split(' ')
 components = [i for i in components if i]  # ignore extra whitespaces
 enable_static = sys.argv[3]
+llconfig = sys.argv[4]
 
 f.write("""// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
@@ -44,69 +45,47 @@ def run(args):
         sys.exit(1)
     return out
 
-for llconfig in sys.argv[4:]:
-    f.write("\n")
+f.write("\n")
 
-    out = run([llconfig, '--host-target'])
-    arch, os = out.split('-', 1)
-    arch = 'x86' if arch == 'i686' or arch == 'i386' else arch
-    if 'darwin' in os:
-        os = 'macos'
-    elif 'linux' in os:
-        os = 'linux'
-    elif 'freebsd' in os:
-        os = 'freebsd'
-    elif 'dragonfly' in os:
-        os = 'dragonfly'
-    elif 'android' in os:
-        os = 'android'
-    elif 'win' in os or 'mingw' in os:
-        os = 'windows'
-    cfg = [
-        "target_arch = \"" + arch + "\"",
-        "target_os = \"" + os + "\"",
-    ]
+version = run([llconfig, '--version']).strip()
 
-    f.write("#[cfg(all(" + ', '.join(cfg) + "))]\n")
+# LLVM libs
+if version < '3.5':
+    args = [llconfig, '--libs']
+else:
+    args = [llconfig, '--libs', '--system-libs']
 
-    version = run([llconfig, '--version']).strip()
+args.extend(components)
+out = run(args)
+for lib in out.strip().replace("\n", ' ').split(' '):
+    lib = lib.strip()[2:] # chop of the leading '-l'
+    f.write("#[link(name = \"" + lib + "\"")
+    # LLVM libraries are all static libraries
+    if 'LLVM' in lib:
+        f.write(", kind = \"static\"")
+    f.write(")]\n")
 
-    # LLVM libs
-    if version < '3.5':
-      args = [llconfig, '--libs']
-    else:
-      args = [llconfig, '--libs', '--system-libs']
-    args.extend(components)
-    out = run(args)
-    for lib in out.strip().replace("\n", ' ').split(' '):
-        lib = lib.strip()[2:] # chop of the leading '-l'
-        f.write("#[link(name = \"" + lib + "\"")
-        # LLVM libraries are all static libraries
-        if 'LLVM' in lib:
-            f.write(", kind = \"static\"")
-        f.write(")]\n")
-
-    # llvm-config before 3.5 didn't have a system-libs flag
-    if version < '3.5':
-      if os == 'win32':
+# llvm-config before 3.5 didn't have a system-libs flag
+if version < '3.5':
+    if os == 'win32':
         f.write("#[link(name = \"imagehlp\")]")
 
-    # LLVM ldflags
-    out = run([llconfig, '--ldflags'])
-    for lib in out.strip().split(' '):
-        if lib[:2] == "-l":
-            f.write("#[link(name = \"" + lib[2:] + "\")]\n")
+# LLVM ldflags
+out = run([llconfig, '--ldflags'])
+for lib in out.strip().split(' '):
+    if lib[:2] == "-l":
+        f.write("#[link(name = \"" + lib[2:] + "\")]\n")
 
-    # C++ runtime library
-    out = run([llconfig, '--cxxflags'])
-    if enable_static == '1':
-      assert('stdlib=libc++' not in out)
-      f.write("#[link(name = \"stdc++\", kind = \"static\")]\n")
-    else:
-      if 'stdlib=libc++' in out:
+# C++ runtime library
+out = run([llconfig, '--cxxflags'])
+if enable_static == '1':
+    assert('stdlib=libc++' not in out)
+    f.write("#[link(name = \"stdc++\", kind = \"static\")]\n")
+else:
+    if 'stdlib=libc++' in out:
         f.write("#[link(name = \"c++\")]\n")
-      else:
+    else:
         f.write("#[link(name = \"stdc++\")]\n")
 
-    # Attach everything to an extern block
-    f.write("extern {}\n")
+# Attach everything to an extern block
+f.write("extern {}\n")

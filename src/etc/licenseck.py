@@ -38,10 +38,8 @@ exceptions = [
     "rt/isaac/randport.cpp", # public domain
     "rt/isaac/rand.h", # public domain
     "rt/isaac/standard.h", # public domain
-    "libsync/mpsc_queue.rs", # BSD
-    "libsync/spsc_queue.rs", # BSD
-    "libsync/mpmc_bounded_queue.rs", # BSD
-    "libsync/mpsc_intrusive.rs", # BSD
+    "libstd/comm/mpsc_queue.rs", # BSD
+    "libstd/comm/spsc_queue.rs", # BSD
     "test/bench/shootout-binarytrees.rs", # BSD
     "test/bench/shootout-chameneos-redux.rs", # BSD
     "test/bench/shootout-fannkuch-redux.rs", # BSD

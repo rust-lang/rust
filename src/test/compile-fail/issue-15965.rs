@@ -10,9 +10,10 @@
 
 fn main() {
     return
-        { return () } //~ ERROR the type of this value must be known in this context
-    () //~^ ERROR the type of this value must be known in this context
-//~^^ ERROR notation; the first type parameter for the function trait is neither a tuple nor unit
-//~^^^ ERROR overloaded calls are experimental
+        { return () }
+//~^ ERROR the type of this value must be known in this context
+//~| ERROR this function takes 1 parameter
+//~| ERROR mismatched types
+    ()
     ;
 }

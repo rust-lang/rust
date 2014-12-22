@@ -18,6 +18,6 @@ enum Foo { A(marker::NoSync) }
 fn bar<T: Sync>(_: T) {}
 
 fn main() {
-    let x = A(marker::NoSync);
+    let x = Foo::A(marker::NoSync);
     bar(&x); //~ ERROR the trait `core::kinds::Sync` is not implemented
 }

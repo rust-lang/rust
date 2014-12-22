@@ -15,15 +15,17 @@ enum newtype {
     newvar(int)
 }
 
+impl Copy for newtype {}
+
 pub fn main() {
 
     // Test that borrowck treats enums with a single variant
     // specially.
 
     let x = &Cell::new(5);
-    let y = &Cell::new(newvar(3));
+    let y = &Cell::new(newtype::newvar(3));
     let z = match y.get() {
-      newvar(b) => {
+      newtype::newvar(b) => {
         x.set(x.get() + 1);
         x.get() * b
       }

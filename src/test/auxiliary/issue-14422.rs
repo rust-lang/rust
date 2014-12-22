@@ -25,6 +25,8 @@ mod src {
 
         pub struct A;
 
+        impl Copy for A {}
+
         pub fn make() -> B { A }
 
         impl A {

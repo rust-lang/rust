@@ -41,7 +41,7 @@
 // no-pretty-expanded FIXME #15189
 
 #![allow(non_snake_case)]
-#![feature(unboxed_closures, overloaded_calls)]
+#![feature(unboxed_closures)]
 
 use std::iter::AdditiveIterator;
 use std::mem;
@@ -59,7 +59,7 @@ fn main() {
     } else {
         from_str(args[1].as_slice()).unwrap()
     });
-    println!("{:.9f}", answer);
+    println!("{:.9}", answer);
 }
 
 fn spectralnorm(n: uint) -> f64 {
@@ -124,7 +124,7 @@ fn parallel<'a, T, F>(v: &'a mut [T], f: F)
         // boundary.
         let f = &f as *const _ as *const uint;
         let raw = chunk.repr();
-        spawn(proc() {
+        spawn(move|| {
             let f = f as *const F;
             unsafe { (*f)(i * size, mem::transmute(raw)) }
             drop(tx)

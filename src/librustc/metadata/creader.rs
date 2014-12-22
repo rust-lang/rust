@@ -13,8 +13,7 @@
 //! Validates all used crates and extern libraries and loads their metadata
 
 use back::svh::Svh;
-use driver::session::Session;
-use driver::driver;
+use session::{config, Session};
 use metadata::cstore;
 use metadata::cstore::{CStore, CrateSource};
 use metadata::decoder;
@@ -106,7 +105,7 @@ fn warn_if_multiple_versions(diag: &SpanHandler, cstore: &CStore) {
 }
 
 fn visit_crate(e: &Env, c: &ast::Crate) {
-    for a in c.attrs.iter().filter(|m| m.name().equiv(&("link_args"))) {
+    for a in c.attrs.iter().filter(|m| m.name() == "link_args") {
         match a.value_str() {
             Some(ref linkarg) => e.sess.cstore.add_used_link_args(linkarg.get()),
             None => { /* fallthrough */ }
@@ -206,7 +205,7 @@ fn visit_item(e: &Env, i: &ast::Item) {
 
             // First, add all of the custom link_args attributes
             let link_args = i.attrs.iter()
-                .filter_map(|at| if at.name().equiv(&("link_args")) {
+                .filter_map(|at| if at.name() == "link_args" {
                     Some(at)
                 } else {
                     None
@@ -221,7 +220,7 @@ fn visit_item(e: &Env, i: &ast::Item) {
 
             // Next, process all of the #[link(..)]-style arguments
             let link_args = i.attrs.iter()
-                .filter_map(|at| if at.name().equiv(&("link")) {
+                .filter_map(|at| if at.name() == "link" {
                     Some(at)
                 } else {
                     None
@@ -231,17 +230,19 @@ fn visit_item(e: &Env, i: &ast::Item) {
                 match m.meta_item_list() {
                     Some(items) => {
                         let kind = items.iter().find(|k| {
-                            k.name().equiv(&("kind"))
+                            k.name() == "kind"
                         }).and_then(|a| a.value_str());
                         let kind = match kind {
                             Some(k) => {
-                                if k.equiv(&("static")) {
+                                if k == "static" {
                                     cstore::NativeStatic
                                 } else if e.sess.target.target.options.is_like_osx
-                                          && k.equiv(&("framework")) {
+                                          && k == "framework" {
                                     cstore::NativeFramework
-                                } else if k.equiv(&("framework")) {
+                                } else if k == "framework" {
                                     cstore::NativeFramework
+                                } else if k == "dylib" {
+                                    cstore::NativeUnknown
                                 } else {
                                     e.sess.span_err(m.span,
                                         format!("unknown kind: `{}`",
@@ -252,7 +253,7 @@ fn visit_item(e: &Env, i: &ast::Item) {
                             None => cstore::NativeUnknown
                         };
                         let n = items.iter().find(|n| {
-                            n.name().equiv(&("name"))
+                            n.name() == "name"
                         }).and_then(|a| a.value_str());
                         let n = match n {
                             Some(n) => n,
@@ -274,9 +275,11 @@ fn visit_item(e: &Env, i: &ast::Item) {
     }
 }
 
-fn register_native_lib(sess: &Session, span: Option<Span>, name: String,
-                       kind: cstore::NativeLibaryKind) {
-    if name.as_slice().is_empty() {
+fn register_native_lib(sess: &Session,
+                       span: Option<Span>,
+                       name: String,
+                       kind: cstore::NativeLibraryKind) {
+    if name.is_empty() {
         match span {
             Some(span) => {
                 sess.span_err(span, "#[link(name = \"\")] given with \
@@ -303,7 +306,7 @@ fn existing_match(e: &Env, name: &str,
                   hash: Option<&Svh>) -> Option<ast::CrateNum> {
     let mut ret = None;
     e.sess.cstore.iter_crate_data(|cnum, data| {
-        if data.name.as_slice() != name { return }
+        if data.name != name { return }
 
         match hash {
             Some(hash) if *hash == data.hash() => { ret = Some(cnum); return }
@@ -321,7 +324,7 @@ fn existing_match(e: &Env, name: &str,
         // `source` stores paths which are normalized which may be different
         // from the strings on the command line.
         let source = e.sess.cstore.get_used_crate_source(cnum).unwrap();
-        match e.sess.opts.externs.find_equiv(name) {
+        match e.sess.opts.externs.get(name) {
             Some(locs) => {
                 let found = locs.iter().any(|l| {
                     let l = fs::realpath(&Path::new(l.as_slice())).ok();
@@ -453,7 +456,7 @@ impl<'a> PluginMetadataReader<'a> {
     pub fn read_plugin_metadata(&mut self, krate: &ast::ViewItem) -> PluginMetadata {
         let info = extract_crate_info(&self.env, krate).unwrap();
         let target_triple = self.env.sess.opts.target_triple.as_slice();
-        let is_cross = target_triple != driver::host_triple();
+        let is_cross = target_triple != config::host_triple();
         let mut should_link = info.should_link && !is_cross;
         let mut load_ctxt = loader::Context {
             sess: self.env.sess,
@@ -462,7 +465,7 @@ impl<'a> PluginMetadataReader<'a> {
             crate_name: info.name.as_slice(),
             hash: None,
             filesearch: self.env.sess.host_filesearch(),
-            triple: driver::host_triple(),
+            triple: config::host_triple(),
             root: &None,
             rejected_via_hash: vec!(),
             rejected_via_triple: vec!(),
@@ -479,7 +482,7 @@ impl<'a> PluginMetadataReader<'a> {
                 if decoder::get_plugin_registrar_fn(lib.metadata.as_slice()).is_some() {
                     let message = format!("crate `{}` contains a plugin_registrar fn but \
                                   only a version for triple `{}` could be found (need {})",
-                                  info.ident, target_triple, driver::host_triple());
+                                  info.ident, target_triple, config::host_triple());
                     self.env.sess.span_err(krate.span, message.as_slice());
                     // need to abort now because the syntax expansion
                     // code will shortly attempt to load and execute

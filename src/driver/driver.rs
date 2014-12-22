@@ -12,6 +12,6 @@
 extern crate "rustdoc" as this;
 
 #[cfg(rustc)]
-extern crate "rustc" as this;
+extern crate "rustc_driver" as this;
 
 fn main() { this::main() }

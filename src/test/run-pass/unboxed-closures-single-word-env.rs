@@ -11,7 +11,7 @@
 // Ensures that single-word environments work right in unboxed closures.
 // These take a different path in codegen.
 
-#![feature(overloaded_calls, unboxed_closures)]
+#![feature(unboxed_closures)]
 
 fn a<F:Fn(int, int) -> int>(f: F) -> int {
     f(1, 2)

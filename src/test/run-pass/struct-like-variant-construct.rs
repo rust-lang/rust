@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(struct_variant)]
-
 enum Foo {
     Bar {
         a: int,
@@ -22,5 +20,5 @@ enum Foo {
 }
 
 pub fn main() {
-    let _x = Bar { a: 2, b: 3 };
+    let _x = Foo::Bar { a: 2, b: 3 };
 }

@@ -20,8 +20,8 @@ pub struct Struct;
 impl Foo for Struct {}
 
 pub fn main() {
-    match A(box Struct as Box<Foo+'static>) {
-        A(_a) => 0i,
+    match Thing::A(box Struct as Box<Foo+'static>) {
+        Thing::A(_a) => 0i,
     };
 }
 

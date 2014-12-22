@@ -14,6 +14,8 @@ static mut COUNT: u64 = 1;
 
 struct Foo;
 
+impl Copy for Foo {}
+
 trait Bar {
     fn foo1(&self);
     fn foo2(self);

@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use core::cell::*;
+use core::default::Default;
 use std::mem::drop;
 
 #[test]
@@ -28,10 +29,10 @@ fn smoketest_cell() {
 #[test]
 fn cell_has_sensible_show() {
     let x = Cell::new("foo bar");
-    assert!(format!("{}", x).as_slice().contains(x.get()));
+    assert!(format!("{}", x).contains(x.get()));
 
     x.set("baz qux");
-    assert!(format!("{}", x).as_slice().contains(x.get()));
+    assert!(format!("{}", x).contains(x.get()));
 }
 
 #[test]
@@ -39,11 +40,11 @@ fn ref_and_refmut_have_sensible_show() {
     let refcell = RefCell::new("foo");
 
     let refcell_refmut = refcell.borrow_mut();
-    assert!(format!("{}", refcell_refmut).as_slice().contains("foo"));
+    assert!(format!("{}", refcell_refmut).contains("foo"));
     drop(refcell_refmut);
 
     let refcell_ref = refcell.borrow();
-    assert!(format!("{}", refcell_ref).as_slice().contains("foo"));
+    assert!(format!("{}", refcell_ref).contains("foo"));
     drop(refcell_ref);
 }
 
@@ -145,4 +146,16 @@ fn as_unsafe_cell() {
     let r2: RefCell<uint> = RefCell::new(0u);
     unsafe { *r2.as_unsafe_cell().get() = 1u; }
     assert_eq!(1u, *r2.borrow());
+}
+
+#[test]
+fn cell_default() {
+    let cell: Cell<u32> = Default::default();
+    assert_eq!(0, cell.get());
+}
+
+#[test]
+fn refcell_default() {
+    let cell: RefCell<u64> = Default::default();
+    assert_eq!(0, *cell.borrow());
 }

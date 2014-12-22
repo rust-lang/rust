@@ -13,10 +13,12 @@
 #![experimental]
 
 use {fmt, i64};
-use ops::{Add, Sub, Mul, Div, Neg};
-use option::{Option, Some, None};
+use ops::{Add, Sub, Mul, Div, Neg, FnOnce};
+use option::Option;
+use option::Option::{Some, None};
 use num::Int;
-use result::{Result, Ok, Err};
+use result::Result;
+use result::Result::{Ok, Err};
 
 /// The number of nanoseconds in a microsecond.
 const NANOS_PER_MICRO: i32 = 1000;
@@ -37,14 +39,14 @@ const SECS_PER_DAY: i64 = 86400;
 /// The number of (non-leap) seconds in a week.
 const SECS_PER_WEEK: i64 = 604800;
 
-macro_rules! try_opt(
+macro_rules! try_opt {
     ($e:expr) => (match $e { Some(v) => v, None => return None })
-)
+}
 
 
 /// ISO 8601 time duration with nanosecond precision.
 /// This also allows for the negative duration; see individual methods for details.
-#[deriving(Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[deriving(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Duration {
     secs: i64,
     nanos: i32, // Always 0 <= nanos < NANOS_PER_SEC
@@ -65,7 +67,7 @@ pub const MAX: Duration = Duration {
 impl Duration {
     /// Makes a new `Duration` with given number of weeks.
     /// Equivalent to `Duration::seconds(weeks * 7 * 24 * 60 * 60), with overflow checks.
-    /// Fails when the duration is out of bounds.
+    /// Panics when the duration is out of bounds.
     #[inline]
     pub fn weeks(weeks: i64) -> Duration {
         let secs = weeks.checked_mul(SECS_PER_WEEK).expect("Duration::weeks out of bounds");
@@ -74,7 +76,7 @@ impl Duration {
 
     /// Makes a new `Duration` with given number of days.
     /// Equivalent to `Duration::seconds(days * 24 * 60 * 60)` with overflow checks.
-    /// Fails when the duration is out of bounds.
+    /// Panics when the duration is out of bounds.
     #[inline]
     pub fn days(days: i64) -> Duration {
         let secs = days.checked_mul(SECS_PER_DAY).expect("Duration::days out of bounds");
@@ -83,7 +85,7 @@ impl Duration {
 
     /// Makes a new `Duration` with given number of hours.
     /// Equivalent to `Duration::seconds(hours * 60 * 60)` with overflow checks.
-    /// Fails when the duration is out of bounds.
+    /// Panics when the duration is out of bounds.
     #[inline]
     pub fn hours(hours: i64) -> Duration {
         let secs = hours.checked_mul(SECS_PER_HOUR).expect("Duration::hours ouf of bounds");
@@ -92,7 +94,7 @@ impl Duration {
 
     /// Makes a new `Duration` with given number of minutes.
     /// Equivalent to `Duration::seconds(minutes * 60)` with overflow checks.
-    /// Fails when the duration is out of bounds.
+    /// Panics when the duration is out of bounds.
     #[inline]
     pub fn minutes(minutes: i64) -> Duration {
         let secs = minutes.checked_mul(SECS_PER_MINUTE).expect("Duration::minutes out of bounds");
@@ -100,7 +102,7 @@ impl Duration {
     }
 
     /// Makes a new `Duration` with given number of seconds.
-    /// Fails when the duration is more than `i64::MAX` milliseconds
+    /// Panics when the duration is more than `i64::MAX` milliseconds
     /// or less than `i64::MIN` milliseconds.
     #[inline]
     pub fn seconds(seconds: i64) -> Duration {
@@ -136,7 +138,7 @@ impl Duration {
 
     /// Runs a closure, returning the duration of time it took to run the
     /// closure.
-    pub fn span(f: ||) -> Duration {
+    pub fn span<F>(f: F) -> Duration where F: FnOnce() {
         let before = super::precise_time_ns();
         f();
         Duration::nanoseconds((super::precise_time_ns() - before) as i64)
@@ -260,6 +262,8 @@ impl Duration {
     }
 }
 
+// NOTE(stage0): Remove impl after a snapshot
+#[cfg(stage0)]
 impl Neg<Duration> for Duration {
     #[inline]
     fn neg(&self) -> Duration {
@@ -271,6 +275,20 @@ impl Neg<Duration> for Duration {
     }
 }
 
+#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
+impl Neg<Duration> for Duration {
+    #[inline]
+    fn neg(self) -> Duration {
+        if self.nanos == 0 {
+            Duration { secs: -self.secs, nanos: 0 }
+        } else {
+            Duration { secs: -self.secs - 1, nanos: NANOS_PER_SEC - self.nanos }
+        }
+    }
+}
+
+// NOTE(stage0): Remove impl after a snapshot
+#[cfg(stage0)]
 impl Add<Duration,Duration> for Duration {
     fn add(&self, rhs: &Duration) -> Duration {
         let mut secs = self.secs + rhs.secs;
@@ -283,6 +301,21 @@ impl Add<Duration,Duration> for Duration {
     }
 }
 
+#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
+impl Add<Duration, Duration> for Duration {
+    fn add(self, rhs: Duration) -> Duration {
+        let mut secs = self.secs + rhs.secs;
+        let mut nanos = self.nanos + rhs.nanos;
+        if nanos >= NANOS_PER_SEC {
+            nanos -= NANOS_PER_SEC;
+            secs += 1;
+        }
+        Duration { secs: secs, nanos: nanos }
+    }
+}
+
+// NOTE(stage0): Remove impl after a snapshot
+#[cfg(stage0)]
 impl Sub<Duration,Duration> for Duration {
     fn sub(&self, rhs: &Duration) -> Duration {
         let mut secs = self.secs - rhs.secs;
@@ -295,6 +328,21 @@ impl Sub<Duration,Duration> for Duration {
     }
 }
 
+#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
+impl Sub<Duration, Duration> for Duration {
+    fn sub(self, rhs: Duration) -> Duration {
+        let mut secs = self.secs - rhs.secs;
+        let mut nanos = self.nanos - rhs.nanos;
+        if nanos < 0 {
+            nanos += NANOS_PER_SEC;
+            secs -= 1;
+        }
+        Duration { secs: secs, nanos: nanos }
+    }
+}
+
+// NOTE(stage0): Remove impl after a snapshot
+#[cfg(stage0)]
 impl Mul<i32,Duration> for Duration {
     fn mul(&self, rhs: &i32) -> Duration {
         // Multiply nanoseconds as i64, because it cannot overflow that way.
@@ -305,12 +353,44 @@ impl Mul<i32,Duration> for Duration {
     }
 }
 
+#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
+impl Mul<i32, Duration> for Duration {
+    fn mul(self, rhs: i32) -> Duration {
+        // Multiply nanoseconds as i64, because it cannot overflow that way.
+        let total_nanos = self.nanos as i64 * rhs as i64;
+        let (extra_secs, nanos) = div_mod_floor_64(total_nanos, NANOS_PER_SEC as i64);
+        let secs = self.secs * rhs as i64 + extra_secs;
+        Duration { secs: secs, nanos: nanos as i32 }
+    }
+}
+
+// NOTE(stage0): Remove impl after a snapshot
+#[cfg(stage0)]
 impl Div<i32,Duration> for Duration {
     fn div(&self, rhs: &i32) -> Duration {
         let mut secs = self.secs / *rhs as i64;
         let carry = self.secs - secs * *rhs as i64;
         let extra_nanos = carry * NANOS_PER_SEC as i64 / *rhs as i64;
         let mut nanos = self.nanos / *rhs + extra_nanos as i32;
+        if nanos >= NANOS_PER_SEC {
+            nanos -= NANOS_PER_SEC;
+            secs += 1;
+        }
+        if nanos < 0 {
+            nanos += NANOS_PER_SEC;
+            secs -= 1;
+        }
+        Duration { secs: secs, nanos: nanos }
+    }
+}
+
+#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
+impl Div<i32, Duration> for Duration {
+    fn div(self, rhs: i32) -> Duration {
+        let mut secs = self.secs / rhs as i64;
+        let carry = self.secs - secs * rhs as i64;
+        let extra_nanos = carry * NANOS_PER_SEC as i64 / rhs as i64;
+        let mut nanos = self.nanos / rhs + extra_nanos as i32;
         if nanos >= NANOS_PER_SEC {
             nanos -= NANOS_PER_SEC;
             secs += 1;
@@ -387,8 +467,8 @@ fn div_rem_64(this: i64, other: i64) -> (i64, i64) {
 mod tests {
     use super::{Duration, MIN, MAX};
     use {i32, i64};
-    use option::{Some, None};
-    use to_string::ToString;
+    use option::Option::{Some, None};
+    use string::ToString;
 
     #[test]
     fn test_duration() {
@@ -538,27 +618,20 @@ mod tests {
 
     #[test]
     fn test_duration_fmt() {
-        assert_eq!(Duration::zero().to_string(), "PT0S".to_string());
-        assert_eq!(Duration::days(42).to_string(), "P42D".to_string());
-        assert_eq!(Duration::days(-42).to_string(), "-P42D".to_string());
-        assert_eq!(Duration::seconds(42).to_string(), "PT42S".to_string());
-        assert_eq!(Duration::milliseconds(42).to_string(), "PT0.042S".to_string());
-        assert_eq!(Duration::microseconds(42).to_string(), "PT0.000042S".to_string());
-        assert_eq!(Duration::nanoseconds(42).to_string(), "PT0.000000042S".to_string());
+        assert_eq!(Duration::zero().to_string(), "PT0S");
+        assert_eq!(Duration::days(42).to_string(), "P42D");
+        assert_eq!(Duration::days(-42).to_string(), "-P42D");
+        assert_eq!(Duration::seconds(42).to_string(), "PT42S");
+        assert_eq!(Duration::milliseconds(42).to_string(), "PT0.042S");
+        assert_eq!(Duration::microseconds(42).to_string(), "PT0.000042S");
+        assert_eq!(Duration::nanoseconds(42).to_string(), "PT0.000000042S");
         assert_eq!((Duration::days(7) + Duration::milliseconds(6543)).to_string(),
-                   "P7DT6.543S".to_string());
-        assert_eq!(Duration::seconds(-86401).to_string(), "-P1DT1S".to_string());
-        assert_eq!(Duration::nanoseconds(-1).to_string(), "-PT0.000000001S".to_string());
+                   "P7DT6.543S");
+        assert_eq!(Duration::seconds(-86401).to_string(), "-P1DT1S");
+        assert_eq!(Duration::nanoseconds(-1).to_string(), "-PT0.000000001S");
 
         // the format specifier should have no effect on `Duration`
         assert_eq!(format!("{:30}", Duration::days(1) + Duration::milliseconds(2345)),
-                   "P1DT2.345S".to_string());
-    }
-
-    #[test]
-    fn span() {
-        use io::timer::sleep;
-        let dur = Duration::span(|| sleep(Duration::milliseconds(5)));
-        assert!(dur > Duration::milliseconds(1));
+                   "P1DT2.345S");
     }
 }

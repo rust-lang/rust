@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(overloaded_calls, unboxed_closures)]
+#![feature(unboxed_closures)]
 
 fn each<'a,T,F:FnMut(&'a T)>(x: &'a [T], mut f: F) {
     for val in x.iter() {
@@ -19,6 +19,6 @@ fn each<'a,T,F:FnMut(&'a T)>(x: &'a [T], mut f: F) {
 fn main() {
     let mut sum = 0u;
     let elems = [ 1u, 2, 3, 4, 5 ];
-    each(elems, |&mut: val: &uint| sum += *val);
+    each(&elems, |&mut: val: &uint| sum += *val);
     assert_eq!(sum, 15);
 }

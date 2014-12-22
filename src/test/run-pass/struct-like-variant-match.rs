@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(struct_variant)]
-
 enum Foo {
     Bar {
         x: int,
@@ -23,11 +21,11 @@ enum Foo {
 
 fn f(x: &Foo) {
     match *x {
-        Baz { x: x, y: y } => {
+        Foo::Baz { x: x, y: y } => {
             assert_eq!(x, 1.0);
             assert_eq!(y, 2.0);
         }
-        Bar { y: y, x: x } => {
+        Foo::Bar { y: y, x: x } => {
             assert_eq!(x, 1);
             assert_eq!(y, 2);
         }
@@ -35,8 +33,8 @@ fn f(x: &Foo) {
 }
 
 pub fn main() {
-    let x = Bar { x: 1, y: 2 };
+    let x = Foo::Bar { x: 1, y: 2 };
     f(&x);
-    let y = Baz { x: 1.0, y: 2.0 };
+    let y = Foo::Baz { x: 1.0, y: 2.0 };
     f(&y);
 }

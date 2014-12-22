@@ -16,7 +16,7 @@ macro_rules! vec [
         $(_temp.push($e);)*
         _temp
     })
-]
+];
 
 pub fn main() {
     let my_vec = vec![1i, 2, 3, 4, 5];

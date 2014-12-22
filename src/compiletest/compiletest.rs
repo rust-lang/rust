@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #![crate_type = "bin"]
-#![feature(phase, slicing_syntax)]
+#![feature(phase, slicing_syntax, globs, unboxed_closures)]
 
 #![deny(warnings)]
 
@@ -22,7 +22,8 @@ extern crate regex;
 use std::os;
 use std::io;
 use std::io::fs;
-use std::from_str::FromStr;
+use std::str::FromStr;
+use std::thunk::{Thunk};
 use getopts::{optopt, optflag, reqopt};
 use common::Config;
 use common::{Pretty, DebugInfoGdb, DebugInfoLldb, Codegen};
@@ -286,6 +287,9 @@ pub fn test_opts(config: &Config) -> test::TestOpts {
         test_shard: config.test_shard.clone(),
         nocapture: false,
         color: test::AutoColor,
+        show_boxplot: false,
+        boxplot_width: 50,
+        show_all_stats: false,
     }
 }
 
@@ -343,7 +347,7 @@ pub fn make_test(config: &Config, testfile: &Path, f: || -> test::TestFn)
         desc: test::TestDesc {
             name: make_test_name(config, testfile),
             ignore: header::is_test_ignored(config, testfile),
-            should_fail: false
+            should_fail: test::ShouldFail::No,
         },
         testfn: f(),
     }
@@ -366,16 +370,16 @@ pub fn make_test_closure(config: &Config, testfile: &Path) -> test::TestFn {
     let config = (*config).clone();
     // FIXME (#9639): This needs to handle non-utf8 paths
     let testfile = testfile.as_str().unwrap().to_string();
-    test::DynTestFn(proc() {
+    test::DynTestFn(Thunk::new(move || {
         runtest::run(config, testfile)
-    })
+    }))
 }
 
 pub fn make_metrics_test_closure(config: &Config, testfile: &Path) -> test::TestFn {
     let config = (*config).clone();
     // FIXME (#9639): This needs to handle non-utf8 paths
     let testfile = testfile.as_str().unwrap().to_string();
-    test::DynMetricFn(proc(mm) {
+    test::DynMetricFn(box move |: mm: &mut test::MetricMap| {
         runtest::run_metrics(config, testfile, mm)
     })
 }
@@ -390,7 +394,7 @@ fn extract_gdb_version(full_version_line: Option<String>) -> Option<String> {
 
             match re.captures(full_version_line) {
                 Some(captures) => {
-                    Some(captures.at(2).to_string())
+                    Some(captures.at(2).unwrap_or("").to_string())
                 }
                 None => {
                     println!("Could not extract GDB version from line '{}'",
@@ -424,7 +428,7 @@ fn extract_lldb_version(full_version_line: Option<String>) -> Option<String> {
 
             match re.captures(full_version_line) {
                 Some(captures) => {
-                    Some(captures.at(1).to_string())
+                    Some(captures.at(1).unwrap_or("").to_string())
                 }
                 None => {
                     println!("Could not extract LLDB version from line '{}'",

@@ -12,7 +12,7 @@ use metadata::csearch;
 use middle::def::DefFn;
 use middle::subst::Subst;
 use middle::ty::{TransmuteRestriction, ctxt, ty_bare_fn};
-use middle::ty;
+use middle::ty::{mod, Ty};
 
 use syntax::abi::RustIntrinsic;
 use syntax::ast::DefId;
@@ -23,11 +23,11 @@ use syntax::parse::token;
 use syntax::visit::Visitor;
 use syntax::visit;
 
-fn type_size_is_affected_by_type_parameters(tcx: &ty::ctxt, typ: ty::t)
-                                            -> bool {
+fn type_size_is_affected_by_type_parameters<'tcx>(tcx: &ty::ctxt<'tcx>, typ: Ty<'tcx>)
+                                                  -> bool {
     let mut result = false;
     ty::maybe_walk_ty(typ, |typ| {
-        match ty::get(typ).sty {
+        match typ.sty {
             ty::ty_uniq(_) | ty::ty_ptr(_) | ty::ty_rptr(..) |
             ty::ty_bare_fn(..) | ty::ty_closure(..) => {
                 false
@@ -73,7 +73,7 @@ struct IntrinsicCheckingVisitor<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx> IntrinsicCheckingVisitor<'a, 'tcx> {
     fn def_id_is_transmute(&self, def_id: DefId) -> bool {
-        let intrinsic = match ty::get(ty::lookup_item_type(self.tcx, def_id).ty).sty {
+        let intrinsic = match ty::lookup_item_type(self.tcx, def_id).ty.sty {
             ty::ty_bare_fn(ref bfty) => bfty.abi == RustIntrinsic,
             _ => return false
         };
@@ -96,7 +96,7 @@ impl<'a, 'tcx> IntrinsicCheckingVisitor<'a, 'tcx> {
         }
     }
 
-    fn check_transmute(&self, span: Span, from: ty::t, to: ty::t, id: ast::NodeId) {
+    fn check_transmute(&self, span: Span, from: Ty<'tcx>, to: Ty<'tcx>, id: ast::NodeId) {
         if type_size_is_affected_by_type_parameters(self.tcx, from) {
             span_err!(self.tcx.sess, span, E0139,
                       "cannot transmute from a type that contains type parameters");
@@ -118,31 +118,26 @@ impl<'a, 'tcx> IntrinsicCheckingVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx, 'v> Visitor<'v> for IntrinsicCheckingVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &ast::Expr) {
-        match expr.node {
-            ast::ExprPath(..) => {
-                match ty::resolve_expr(self.tcx, expr) {
-                    DefFn(did, _) if self.def_id_is_transmute(did) => {
-                        let typ = ty::node_id_to_type(self.tcx, expr.id);
-                        match ty::get(typ).sty {
-                            ty_bare_fn(ref bare_fn_ty)
-                                    if bare_fn_ty.abi == RustIntrinsic => {
-                                if let ty::FnConverging(to) = bare_fn_ty.sig.output {
-                                    let from = bare_fn_ty.sig.inputs[0];
-                                    self.check_transmute(expr.span, from, to, expr.id);
-                                }
-                            }
-                            _ => {
-                                self.tcx
-                                    .sess
-                                    .span_bug(expr.span,
-                                              "transmute wasn't a bare fn?!");
+        if let ast::ExprPath(..) = expr.node {
+            match ty::resolve_expr(self.tcx, expr) {
+                DefFn(did, _) if self.def_id_is_transmute(did) => {
+                    let typ = ty::node_id_to_type(self.tcx, expr.id);
+                    match typ.sty {
+                        ty_bare_fn(ref bare_fn_ty) if bare_fn_ty.abi == RustIntrinsic => {
+                            if let ty::FnConverging(to) = bare_fn_ty.sig.0.output {
+                                let from = bare_fn_ty.sig.0.inputs[0];
+                                self.check_transmute(expr.span, from, to, expr.id);
                             }
                         }
+                        _ => {
+                            self.tcx
+                                .sess
+                                .span_bug(expr.span, "transmute wasn't a bare fn?!");
+                        }
                     }
-                    _ => {}
                 }
+                _ => {}
             }
-            _ => {}
         }
 
         visit::walk_expr(self, expr);
@@ -153,4 +148,3 @@ pub fn check_crate(tcx: &ctxt) {
     visit::walk_crate(&mut IntrinsicCheckingVisitor { tcx: tcx },
                       tcx.map.krate());
 }
-

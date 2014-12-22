@@ -28,6 +28,8 @@ struct MyType {
     dummy: uint
 }
 
+impl Copy for MyType {}
+
 impl MyTrait for MyType {
     fn get(&self) -> MyType { (*self).clone() }
 }

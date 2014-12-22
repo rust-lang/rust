@@ -19,33 +19,33 @@ enum Other {
 }
 
 fn main() {
-    match Baz {
-        ::Bar(3) => panic!(),
-        ::Bar(_) if false => panic!(),
-        ::Bar(..) if false => panic!(),
-        ::Bar(_n) => panic!(),
-        ::Baz => {}
+    match Foo::Baz {
+        ::Foo::Bar(3) => panic!(),
+        ::Foo::Bar(_) if false => panic!(),
+        ::Foo::Bar(..) if false => panic!(),
+        ::Foo::Bar(_n) => panic!(),
+        ::Foo::Baz => {}
     }
-    match Bar(3) {
-        ::Bar(3) => {}
-        ::Bar(_) if false => panic!(),
-        ::Bar(..) if false => panic!(),
-        ::Bar(_n) => panic!(),
-        ::Baz => panic!(),
+    match Foo::Bar(3) {
+        ::Foo::Bar(3) => {}
+        ::Foo::Bar(_) if false => panic!(),
+        ::Foo::Bar(..) if false => panic!(),
+        ::Foo::Bar(_n) => panic!(),
+        ::Foo::Baz => panic!(),
     }
-    match Bar(4) {
-        ::Bar(3) => panic!(),
-        ::Bar(_) if false => panic!(),
-        ::Bar(..) if false => panic!(),
-        ::Bar(n) => assert_eq!(n, 4),
-        ::Baz => panic!(),
+    match Foo::Bar(4) {
+        ::Foo::Bar(3) => panic!(),
+        ::Foo::Bar(_) if false => panic!(),
+        ::Foo::Bar(..) if false => panic!(),
+        ::Foo::Bar(n) => assert_eq!(n, 4),
+        ::Foo::Baz => panic!(),
     }
 
-    match Other1(Baz) {
-        ::Other1(::Baz) => {}
-        ::Other1(::Bar(_)) => {}
-        ::Other2(::Baz, ::Bar(_)) => {}
-        ::Other2(::Bar(..), ::Baz) => {}
-        ::Other2(..) => {}
+    match Other::Other1(Foo::Baz) {
+        ::Other::Other1(::Foo::Baz) => {}
+        ::Other::Other1(::Foo::Bar(_)) => {}
+        ::Other::Other2(::Foo::Baz, ::Foo::Bar(_)) => {}
+        ::Other::Other2(::Foo::Bar(..), ::Foo::Baz) => {}
+        ::Other::Other2(..) => {}
     }
 }

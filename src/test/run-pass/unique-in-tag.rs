@@ -11,9 +11,9 @@
 fn test1() {
     enum bar { u(Box<int>), w(int), }
 
-    let x = u(box 10);
+    let x = bar::u(box 10);
     assert!(match x {
-      u(a) => {
+      bar::u(a) => {
         println!("{}", a);
         *a
       }

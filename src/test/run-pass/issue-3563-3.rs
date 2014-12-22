@@ -29,6 +29,8 @@ struct Point {
     y: int,
 }
 
+impl Copy for Point {}
+
 // Represents an offset on a canvas. (This has the same structure as a Point.
 // but different semantics).
 struct Size {
@@ -36,10 +38,14 @@ struct Size {
     height: int,
 }
 
+impl Copy for Size {}
+
 struct Rect {
     top_left: Point,
     size: Size,
 }
+
+impl Copy for Rect {}
 
 // Contains the information needed to do shape rendering via ASCII art.
 struct AsciiArt {

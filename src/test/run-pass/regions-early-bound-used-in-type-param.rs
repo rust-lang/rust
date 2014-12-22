@@ -19,6 +19,8 @@ struct Box<T> {
     t: T
 }
 
+impl<T:Copy> Copy for Box<T> {}
+
 impl<T:Clone> Get<T> for Box<T> {
     fn get(&self) -> T {
         self.t.clone()

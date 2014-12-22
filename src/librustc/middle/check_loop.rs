@@ -7,19 +7,21 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+use self::Context::*;
 
-use driver::session::Session;
+use session::Session;
 
 use syntax::ast;
 use syntax::codemap::Span;
 use syntax::visit::Visitor;
 use syntax::visit;
 
-#[deriving(Clone, PartialEq)]
+#[deriving(Clone, Copy, PartialEq)]
 enum Context {
     Normal, Loop, Closure
 }
 
+#[deriving(Copy)]
 struct CheckLoopVisitor<'a> {
     sess: &'a Session,
     cx: Context
@@ -47,9 +49,7 @@ impl<'a, 'v> Visitor<'v> for CheckLoopVisitor<'a> {
                 self.visit_expr(&**e);
                 self.with_context(Loop, |v| v.visit_block(&**b));
             }
-            ast::ExprFnBlock(_, _, ref b) |
-            ast::ExprProc(_, ref b) |
-            ast::ExprUnboxedFn(_, _, _, ref b) => {
+            ast::ExprClosure(_, _, _, ref b) => {
                 self.with_context(Closure, |v| v.visit_block(&**b));
             }
             ast::ExprBreak(_) => self.require_loop("break", e.span),
@@ -60,7 +60,9 @@ impl<'a, 'v> Visitor<'v> for CheckLoopVisitor<'a> {
 }
 
 impl<'a> CheckLoopVisitor<'a> {
-    fn with_context(&mut self, cx: Context, f: |&mut CheckLoopVisitor<'a>|) {
+    fn with_context<F>(&mut self, cx: Context, f: F) where
+        F: FnOnce(&mut CheckLoopVisitor<'a>),
+    {
         let old_cx = self.cx;
         self.cx = cx;
         f(self);

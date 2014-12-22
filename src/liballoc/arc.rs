@@ -14,6 +14,7 @@
 //! between tasks.
 
 use core::atomic;
+use core::borrow::BorrowFrom;
 use core::clone::Clone;
 use core::fmt::{mod, Show};
 use core::cmp::{Eq, Ord, PartialEq, PartialOrd, Ordering};
@@ -22,7 +23,8 @@ use core::kinds::{Sync, Send};
 use core::mem::{min_align_of, size_of, drop};
 use core::mem;
 use core::ops::{Drop, Deref};
-use core::option::{Some, None, Option};
+use core::option::Option;
+use core::option::Option::{Some, None};
 use core::ptr::RawPtr;
 use core::ptr;
 use heap::deallocate;
@@ -37,6 +39,7 @@ use heap::deallocate;
 ///
 /// ```rust
 /// use std::sync::Arc;
+/// use std::thread::Thread;
 ///
 /// fn main() {
 ///     let numbers = Vec::from_fn(100, |i| i as f32);
@@ -45,11 +48,11 @@ use heap::deallocate;
 ///     for _ in range(0u, 10) {
 ///         let child_numbers = shared_numbers.clone();
 ///
-///         spawn(proc() {
+///         Thread::spawn(move || {
 ///             let local_numbers = child_numbers.as_slice();
 ///
 ///             // Work with the local numbers
-///         });
+///         }).detach();
 ///     }
 /// }
 /// ```
@@ -119,6 +122,16 @@ impl<T> Arc<T> {
     }
 }
 
+/// Get the number of weak references to this value.
+#[inline]
+#[experimental]
+pub fn weak_count<T>(this: &Arc<T>) -> uint { this.inner().weak.load(atomic::SeqCst) - 1 }
+
+/// Get the number of strong references to this value.
+#[inline]
+#[experimental]
+pub fn strong_count<T>(this: &Arc<T>) -> uint { this.inner().strong.load(atomic::SeqCst) }
+
 #[unstable = "waiting on stability of Clone"]
 impl<T> Clone for Arc<T> {
     /// Duplicate an atomically reference counted wrapper.
@@ -141,6 +154,12 @@ impl<T> Clone for Arc<T> {
         // [1]: (www.boost.org/doc/libs/1_55_0/doc/html/atomic/usage_examples.html)
         self.inner().strong.fetch_add(1, atomic::Relaxed);
         Arc { _ptr: self._ptr }
+    }
+}
+
+impl<T> BorrowFrom<Arc<T>> for T {
+    fn borrow_from(owned: &Arc<T>) -> &T {
+        &**owned
     }
 }
 
@@ -305,7 +324,9 @@ impl<T: fmt::Show> fmt::Show for Arc<T> {
     }
 }
 
+#[stable]
 impl<T: Default + Sync + Send> Default for Arc<T> {
+    #[stable]
     fn default() -> Arc<T> { Arc::new(Default::default()) }
 }
 
@@ -316,12 +337,13 @@ mod tests {
     use std::comm::channel;
     use std::mem::drop;
     use std::ops::Drop;
-    use std::option::{Option, Some, None};
+    use std::option::Option;
+    use std::option::Option::{Some, None};
     use std::str::Str;
     use std::sync::atomic;
     use std::task;
     use std::vec::Vec;
-    use super::{Arc, Weak};
+    use super::{Arc, Weak, weak_count, strong_count};
     use std::sync::Mutex;
 
     struct Canary(*mut atomic::AtomicUint);
@@ -346,7 +368,7 @@ mod tests {
 
         let (tx, rx) = channel();
 
-        task::spawn(proc() {
+        task::spawn(move || {
             let arc_v: Arc<Vec<int>> = rx.recv();
             assert_eq!((*arc_v)[3], 4);
         });
@@ -466,9 +488,52 @@ mod tests {
     }
 
     #[test]
+    fn test_strong_count() {
+        let a = Arc::new(0u32);
+        assert!(strong_count(&a) == 1);
+        let w = a.downgrade();
+        assert!(strong_count(&a) == 1);
+        let b = w.upgrade().expect("");
+        assert!(strong_count(&b) == 2);
+        assert!(strong_count(&a) == 2);
+        drop(w);
+        drop(a);
+        assert!(strong_count(&b) == 1);
+        let c = b.clone();
+        assert!(strong_count(&b) == 2);
+        assert!(strong_count(&c) == 2);
+    }
+
+    #[test]
+    fn test_weak_count() {
+        let a = Arc::new(0u32);
+        assert!(strong_count(&a) == 1);
+        assert!(weak_count(&a) == 0);
+        let w = a.downgrade();
+        assert!(strong_count(&a) == 1);
+        assert!(weak_count(&a) == 1);
+        let x = w.clone();
+        assert!(weak_count(&a) == 2);
+        drop(w);
+        drop(x);
+        assert!(strong_count(&a) == 1);
+        assert!(weak_count(&a) == 0);
+        let c = a.clone();
+        assert!(strong_count(&a) == 2);
+        assert!(weak_count(&a) == 0);
+        let d = c.downgrade();
+        assert!(weak_count(&c) == 1);
+        assert!(strong_count(&c) == 2);
+
+        drop(a);
+        drop(c);
+        drop(d);
+    }
+
+    #[test]
     fn show_arc() {
         let a = Arc::new(5u32);
-        assert!(format!("{}", a).as_slice() == "5")
+        assert!(format!("{}", a) == "5")
     }
 
     // Make sure deriving works with Arc<T>

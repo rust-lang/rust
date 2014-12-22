@@ -10,13 +10,19 @@
 
 #![allow(missing_docs)]
 
+pub use self::ExponentFormat::*;
+pub use self::SignificantDigits::*;
+pub use self::SignFormat::*;
+
 use char;
+use char::Char;
 use fmt;
-use iter::{range, DoubleEndedIterator};
+use iter::{range, DoubleEndedIteratorExt};
 use num::{Float, FPNaN, FPInfinite, ToPrimitive};
 use num::cast;
-use result::Ok;
-use slice::{mod, SlicePrelude};
+use ops::FnOnce;
+use result::Result::Ok;
+use slice::{mod, SliceExt};
 use str::StrPrelude;
 
 /// A flag that specifies whether to use exponential (scientific) notation.
@@ -49,37 +55,37 @@ pub enum SignFormat {
 
 static DIGIT_E_RADIX: uint = ('e' as uint) - ('a' as uint) + 11u;
 
-/**
- * Converts a number to its string representation as a byte vector.
- * This is meant to be a common base implementation for all numeric string
- * conversion functions like `to_string()` or `to_str_radix()`.
- *
- * # Arguments
- * - `num`           - The number to convert. Accepts any number that
- *                     implements the numeric traits.
- * - `radix`         - Base to use. Accepts only the values 2-36. If the exponential notation
- *                     is used, then this base is only used for the significand. The exponent
- *                     itself always printed using a base of 10.
- * - `negative_zero` - Whether to treat the special value `-0` as
- *                     `-0` or as `+0`.
- * - `sign`          - How to emit the sign. See `SignFormat`.
- * - `digits`        - The amount of digits to use for emitting the fractional
- *                     part, if any. See `SignificantDigits`.
- * - `exp_format`   - Whether or not to use the exponential (scientific) notation.
- *                    See `ExponentFormat`.
- * - `exp_capital`   - Whether or not to use a capital letter for the exponent sign, if
- *                     exponential notation is desired.
- * - `f`             - A closure to invoke with the bytes representing the
- *                     float.
- *
- * # Failure
- * - Fails if `radix` < 2 or `radix` > 36.
- * - Fails if `radix` > 14 and `exp_format` is `ExpDec` due to conflict
- *   between digit and exponent sign `'e'`.
- * - Fails if `radix` > 25 and `exp_format` is `ExpBin` due to conflict
- *   between digit and exponent sign `'p'`.
- */
-pub fn float_to_str_bytes_common<T: Float, U>(
+/// Converts a number to its string representation as a byte vector.
+/// This is meant to be a common base implementation for all numeric string
+/// conversion functions like `to_string()` or `to_str_radix()`.
+///
+/// # Arguments
+///
+/// - `num`           - The number to convert. Accepts any number that
+///                     implements the numeric traits.
+/// - `radix`         - Base to use. Accepts only the values 2-36. If the exponential notation
+///                     is used, then this base is only used for the significand. The exponent
+///                     itself always printed using a base of 10.
+/// - `negative_zero` - Whether to treat the special value `-0` as
+///                     `-0` or as `+0`.
+/// - `sign`          - How to emit the sign. See `SignFormat`.
+/// - `digits`        - The amount of digits to use for emitting the fractional
+///                     part, if any. See `SignificantDigits`.
+/// - `exp_format`   - Whether or not to use the exponential (scientific) notation.
+///                    See `ExponentFormat`.
+/// - `exp_capital`   - Whether or not to use a capital letter for the exponent sign, if
+///                     exponential notation is desired.
+/// - `f`             - A closure to invoke with the bytes representing the
+///                     float.
+///
+/// # Panics
+///
+/// - Panics if `radix` < 2 or `radix` > 36.
+/// - Panics if `radix` > 14 and `exp_format` is `ExpDec` due to conflict
+///   between digit and exponent sign `'e'`.
+/// - Panics if `radix` > 25 and `exp_format` is `ExpBin` due to conflict
+///   between digit and exponent sign `'p'`.
+pub fn float_to_str_bytes_common<T: Float, U, F>(
     num: T,
     radix: uint,
     negative_zero: bool,
@@ -87,8 +93,10 @@ pub fn float_to_str_bytes_common<T: Float, U>(
     digits: SignificantDigits,
     exp_format: ExponentFormat,
     exp_upper: bool,
-    f: |&[u8]| -> U
-) -> U {
+    f: F
+) -> U where
+    F: FnOnce(&[u8]) -> U,
+{
     assert!(2 <= radix && radix <= 36);
     match exp_format {
         ExpDec if radix >= DIGIT_E_RADIX       // decimal exponent 'e'
@@ -218,7 +226,7 @@ pub fn float_to_str_bytes_common<T: Float, U>(
         // round the remaining ones.
         if limit_digits && dig == digit_count {
             let ascii2value = |chr: u8| {
-                char::to_digit(chr as char, radix).unwrap()
+                (chr as char).to_digit(radix).unwrap()
             };
             let value2ascii = |val: uint| {
                 char::from_digit(val, radix).unwrap() as u8
@@ -315,7 +323,7 @@ pub fn float_to_str_bytes_common<T: Float, U>(
                 }
             }
 
-            let mut filler = Filler { buf: buf, end: &mut end };
+            let mut filler = Filler { buf: &mut buf, end: &mut end };
             match sign {
                 SignNeg => {
                     let _ = format_args!(|args| {

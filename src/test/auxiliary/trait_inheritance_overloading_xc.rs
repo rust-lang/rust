@@ -10,24 +10,24 @@
 
 use std::cmp::PartialEq;
 
-pub trait MyNum : Add<Self,Self> + Sub<Self,Self> + Mul<Self,Self> + PartialEq {
+pub trait MyNum : Add<Self,Self> + Sub<Self,Self> + Mul<Self,Self> + PartialEq + Clone {
 }
 
-#[deriving(Show)]
+#[deriving(Clone, Show)]
 pub struct MyInt {
     pub val: int
 }
 
 impl Add<MyInt, MyInt> for MyInt {
-    fn add(&self, other: &MyInt) -> MyInt { mi(self.val + other.val) }
+    fn add(self, other: MyInt) -> MyInt { mi(self.val + other.val) }
 }
 
 impl Sub<MyInt, MyInt> for MyInt {
-    fn sub(&self, other: &MyInt) -> MyInt { mi(self.val - other.val) }
+    fn sub(self, other: MyInt) -> MyInt { mi(self.val - other.val) }
 }
 
 impl Mul<MyInt, MyInt> for MyInt {
-    fn mul(&self, other: &MyInt) -> MyInt { mi(self.val * other.val) }
+    fn mul(self, other: MyInt) -> MyInt { mi(self.val * other.val) }
 }
 
 impl PartialEq for MyInt {

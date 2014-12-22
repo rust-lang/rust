@@ -69,7 +69,8 @@
 // gdb-command:continue
 
 #![allow(unused_variables)]
-#![feature(struct_variant)]
+
+use self::Opt::{Empty, Val};
 
 enum Opt<T> {
     Empty,

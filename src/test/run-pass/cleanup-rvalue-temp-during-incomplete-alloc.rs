@@ -24,7 +24,7 @@
 // It's unclear how likely such a bug is to recur, but it seems like a
 // scenario worth testing.
 
-use std::task;
+use std::thread::Thread;
 
 enum Conzabble {
     Bickwick(Foo)
@@ -41,9 +41,9 @@ fn get_bar(x: uint) -> Vec<uint> { vec!(x * 2) }
 pub fn fails() {
     let x = 2;
     let mut y = Vec::new();
-    y.push(box Bickwick(do_it(get_bar(x).as_slice())));
+    y.push(box Conzabble::Bickwick(do_it(get_bar(x).as_slice())));
 }
 
 pub fn main() {
-    task::try(fails);
+    Thread::spawn(fails).join();
 }

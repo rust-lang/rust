@@ -15,7 +15,6 @@
 
 #[phase(plugin, link)]
 extern crate log;
-extern crate native;
 
 use log::{set_logger, Logger, LogRecord};
 use std::fmt;
@@ -30,17 +29,10 @@ impl Logger for MyWriter {
     }
 }
 
-#[start]
-fn start(argc: int, argv: *const *const u8) -> int {
-    native::start(argc, argv, proc() {
-        main();
-    })
-}
-
 fn main() {
     let (tx, rx) = channel();
     let (mut r, w) = (ChanReader::new(rx), ChanWriter::new(tx));
-    spawn(proc() {
+    spawn(move|| {
         set_logger(box MyWriter(w) as Box<Logger+Send>);
         debug!("debug");
         info!("info");

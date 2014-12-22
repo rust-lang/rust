@@ -20,6 +20,6 @@ struct Test<'a> {
 pub fn main() {
     let test = Test {
         args: &[],
-        io: &[CreatePipe(true)]
+        io: &[StdioContainer::CreatePipe(true)]
     };
 }

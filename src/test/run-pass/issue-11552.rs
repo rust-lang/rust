@@ -19,11 +19,11 @@ enum Noun
 fn fas(n: &Noun) -> Noun
 {
     match n {
-        &Cell(box Atom(2), box Cell(ref a, _)) => (**a).clone(),
+        &Noun::Cell(box Noun::Atom(2), box Noun::Cell(ref a, _)) => (**a).clone(),
         _ => panic!("Invalid fas pattern")
     }
 }
 
 pub fn main() {
-    fas(&Cell(box Atom(2), box Cell(box Atom(2), box Atom(3))));
+    fas(&Noun::Cell(box Noun::Atom(2), box Noun::Cell(box Noun::Atom(2), box Noun::Atom(3))));
 }

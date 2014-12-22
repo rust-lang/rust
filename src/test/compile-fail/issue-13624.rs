@@ -8,15 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(struct_variant)]
-
 mod a {
   pub enum Enum {
     EnumStructVariant { x: u8, y: u8, z: u8 }
   }
 
   pub fn get_enum_struct_variant() -> () {
-    EnumStructVariant { x: 1, y: 2, z: 3 }
+    Enum::EnumStructVariant { x: 1, y: 2, z: 3 }
 //~^ ERROR mismatched types: expected `()`, found `a::Enum` (expected (), found enum a::Enum)
   }
 }
@@ -28,7 +26,7 @@ mod b {
     fn test_enum_struct_variant() {
       let enum_struct_variant = ::a::get_enum_struct_variant();
       match enum_struct_variant {
-        a::EnumStructVariant { x, y, z } => {
+        a::Enum::EnumStructVariant { x, y, z } => {
         //~^ ERROR mismatched types: expected `()`, found `a::Enum`
         //         (expected (), found enum a::Enum)
         }

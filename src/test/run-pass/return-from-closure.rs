@@ -23,8 +23,7 @@ fn surrounding() {
     return_works(10);
     return_works(20);
 
-
-    let return_works_proc = proc(n: int) {
+    let return_works_proc = |: n: int| {
         unsafe { calls += 1 }
 
         if n >= 0 { return; }

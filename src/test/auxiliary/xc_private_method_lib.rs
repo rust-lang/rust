@@ -31,13 +31,13 @@ pub enum Enum {
 
 impl Enum {
     fn static_meth_enum() -> Enum {
-        Variant2(10)
+        Enum::Variant2(10)
     }
 
     fn meth_enum(&self) -> int {
         match *self {
-            Variant1(x) |
-            Variant2(x) => x
+            Enum::Variant1(x) |
+            Enum::Variant2(x) => x
         }
     }
 }

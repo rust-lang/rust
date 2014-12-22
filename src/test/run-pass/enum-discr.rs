@@ -23,8 +23,8 @@ enum Hero {
 }
 
 pub fn main() {
-    let pet: Animal = Snake;
-    let hero: Hero = Superman;
+    let pet: Animal = Animal::Snake;
+    let hero: Hero = Hero::Superman;
     assert!(pet as uint == 3);
     assert!(hero as int == -2);
 }

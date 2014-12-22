@@ -92,49 +92,35 @@ fragment CHAR_ESCAPE
   | 'U' HEXIT HEXIT HEXIT HEXIT HEXIT HEXIT HEXIT HEXIT
   ;
 
+fragment SUFFIX
+  : IDENT
+  ;
+
 LIT_CHAR
-  : '\'' ( '\\' CHAR_ESCAPE | ~[\\'\n\t\r] ) '\''
+  : '\'' ( '\\' CHAR_ESCAPE | ~[\\'\n\t\r] ) '\'' SUFFIX?
   ;
 
 LIT_BYTE
-  : 'b\'' ( '\\' ( [xX] HEXIT HEXIT | [nrt\\'"0] ) | ~[\\'\n\t\r] ) '\''
-  ;
-
-fragment INT_SUFFIX
-  : 'i'
-  | 'i8'
-  | 'i16'
-  | 'i32'
-  | 'i64'
-  | 'u'
-  | 'u8'
-  | 'u16'
-  | 'u32'
-  | 'u64'
+  : 'b\'' ( '\\' ( [xX] HEXIT HEXIT | [nrt\\'"0] ) | ~[\\'\n\t\r] ) '\'' SUFFIX?
   ;
 
 LIT_INTEGER
-  : [0-9][0-9_]* INT_SUFFIX?
-  | '0b' [01][01_]* INT_SUFFIX?
-  | '0o' [0-7][0-7_]* INT_SUFFIX?
-  | '0x' [0-9a-fA-F][0-9a-fA-F_]* INT_SUFFIX?
-  ;
-
-fragment FLOAT_SUFFIX
-  : 'f32'
-  | 'f64'
+  : [0-9][0-9_]* SUFFIX?
+  | '0b' [01][01_]* SUFFIX?
+  | '0o' [0-7][0-7_]* SUFFIX?
+  | '0x' [0-9a-fA-F][0-9a-fA-F_]* SUFFIX?
   ;
 
 LIT_FLOAT
-  : [0-9][0-9_]* ('.' | ('.' [0-9][0-9_]*)? ([eE] [-+]? [0-9][0-9_]*)? FLOAT_SUFFIX?)
+  : [0-9][0-9_]* ('.' | ('.' [0-9][0-9_]*)? ([eE] [-+]? [0-9][0-9_]*)? SUFFIX?)
   ;
 
 LIT_STR
-  : '"' ('\\\n' | '\\\r\n' | '\\' CHAR_ESCAPE | .)*? '"'
+  : '"' ('\\\n' | '\\\r\n' | '\\' CHAR_ESCAPE | .)*? '"' SUFFIX?
   ;
 
-LIT_BINARY : 'b' LIT_STR ;
-LIT_BINARY_RAW : 'rb' LIT_STR_RAW ;
+LIT_BINARY : 'b' LIT_STR SUFFIX?;
+LIT_BINARY_RAW : 'rb' LIT_STR_RAW SUFFIX?;
 
 /* this is a bit messy */
 
@@ -148,7 +134,7 @@ fragment LIT_STR_RAW_INNER2
   ;
 
 LIT_STR_RAW
-  : 'r' LIT_STR_RAW_INNER
+  : 'r' LIT_STR_RAW_INNER SUFFIX?
   ;
 
 IDENT : XID_start XID_continue* ;

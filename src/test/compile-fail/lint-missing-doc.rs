@@ -10,13 +10,16 @@
 
 // When denying at the crate level, be sure to not get random warnings from the
 // injected intrinsics by the compiler.
-#![feature(struct_variant)]
 #![feature(globs)]
 #![deny(missing_docs)]
 #![allow(dead_code)]
+#![allow(missing_copy_implementations)]
 
 //! Some garbage docs for the crate here
 #![doc="More garbage"]
+
+type Typedef = String;
+pub type PubTypedef = String; //~ ERROR: missing documentation
 
 struct Foo {
     a: int,
@@ -106,8 +109,7 @@ enum Baz {
 
 pub enum PubBaz { //~ ERROR: missing documentation
     PubBazA { //~ ERROR: missing documentation
-        pub a: int, //~ ERROR: missing documentation
-        b: int
+        a: int, //~ ERROR: missing documentation
     },
 }
 
@@ -116,15 +118,13 @@ pub enum PubBaz2 {
     /// dox
     PubBaz2A {
         /// dox
-        pub a: int,
-        b: int
+        a: int,
     },
 }
 
 #[allow(missing_docs)]
 pub enum PubBaz3 {
     PubBaz3A {
-        pub a: int,
         b: int
     },
 }

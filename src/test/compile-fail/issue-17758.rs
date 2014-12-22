@@ -15,7 +15,7 @@ trait Foo<'a> {
     fn foo(&'a self);
     fn bar(&self) {
         self.foo();
-        //~^ ERROR mismatched types: expected `&'a Self`, found `&Self` (lifetime mismatch)
+        //~^ ERROR cannot infer
     }
 }
 

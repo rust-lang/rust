@@ -36,9 +36,9 @@ pub fn main() {
            None, "None",
            Some(-20000i16), "Some(-20000)");
     check!(Either<u8, i8>, 2,
-           Left(132u8), "Left(132)",
-           Right(-32i8), "Right(-32)");
+           Either::Left(132u8), "Left(132)",
+           Either::Right(-32i8), "Right(-32)");
     check!(Either<u8, i16>, 4,
-           Left(132u8), "Left(132)",
-           Right(-20000i16), "Right(-20000)");
+           Either::Left(132u8), "Left(132)",
+           Either::Right(-20000i16), "Right(-20000)");
 }

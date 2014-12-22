@@ -8,6 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+pub use self::Level::*;
+pub use self::RenderSpan::*;
+pub use self::ColorConfig::*;
+use self::Destination::*;
+
 use codemap::{Pos, Span};
 use codemap;
 use diagnostics;
@@ -23,7 +28,7 @@ use term;
 /// maximum number of lines we will print for each error; arbitrary.
 static MAX_LINES: uint = 6u;
 
-#[deriving(Clone)]
+#[deriving(Clone, Copy)]
 pub enum RenderSpan {
     /// A FullSpan renders with both with an initial line for the
     /// message, prefixed by file:linenum, followed by a summary of
@@ -49,7 +54,7 @@ impl RenderSpan {
     }
 }
 
-#[deriving(Clone)]
+#[deriving(Clone, Copy)]
 pub enum ColorConfig {
     Auto,
     Always,
@@ -66,10 +71,12 @@ pub trait Emitter {
 /// This structure is used to signify that a task has panicked with a fatal error
 /// from the diagnostics. You can use this with the `Any` trait to figure out
 /// how a rustc task died (if so desired).
+#[deriving(Copy)]
 pub struct FatalError;
 
 /// Signifies that the compiler died with an explicit call to `.bug`
 /// or `.span_bug` rather than a failed assertion, etc.
+#[deriving(Copy)]
 pub struct ExplicitBug;
 
 /// A span-handler is like a handler but also
@@ -215,7 +222,7 @@ pub fn mk_handler(e: Box<Emitter + Send>) -> Handler {
     }
 }
 
-#[deriving(PartialEq, Clone)]
+#[deriving(Copy, PartialEq, Clone)]
 pub enum Level {
     Bug,
     Fatal,
@@ -431,9 +438,11 @@ fn highlight_lines(err: &mut EmitterWriter,
         elided = true;
     }
     // Print the offending lines
-    for line in display_lines.iter() {
-        try!(write!(&mut err.dst, "{}:{} {}\n", fm.name, *line + 1,
-                    fm.get_line(*line as int)));
+    for &line_number in display_lines.iter() {
+        if let Some(line) = fm.get_line(line_number) {
+            try!(write!(&mut err.dst, "{}:{} {}\n", fm.name,
+                        line_number + 1, line));
+        }
     }
     if elided {
         let last_line = display_lines[display_lines.len() - 1u];
@@ -460,24 +469,26 @@ fn highlight_lines(err: &mut EmitterWriter,
         for _ in range(0, skip) {
             s.push(' ');
         }
-        let orig = fm.get_line(lines.lines[0] as int);
-        for pos in range(0u, left-skip) {
-            let cur_char = orig.as_bytes()[pos] as char;
-            // Whenever a tab occurs on the previous line, we insert one on
-            // the error-point-squiggly-line as well (instead of a space).
-            // That way the squiggly line will usually appear in the correct
-            // position.
-            match cur_char {
-                '\t' => s.push('\t'),
-                _ => s.push(' '),
-            };
+        if let Some(orig) = fm.get_line(lines.lines[0]) {
+            for pos in range(0u, left - skip) {
+                let cur_char = orig.as_bytes()[pos] as char;
+                // Whenever a tab occurs on the previous line, we insert one on
+                // the error-point-squiggly-line as well (instead of a space).
+                // That way the squiggly line will usually appear in the correct
+                // position.
+                match cur_char {
+                    '\t' => s.push('\t'),
+                    _ => s.push(' '),
+                };
+            }
         }
+
         try!(write!(&mut err.dst, "{}", s));
         let mut s = String::from_str("^");
         let hi = cm.lookup_char_pos(sp.hi);
         if hi.col != lo.col {
             // the ^ already takes up one space
-            let num_squigglies = hi.col.to_uint()-lo.col.to_uint()-1u;
+            let num_squigglies = hi.col.to_uint() - lo.col.to_uint() - 1u;
             for _ in range(0, num_squigglies) {
                 s.push('~');
             }
@@ -505,16 +516,22 @@ fn custom_highlight_lines(w: &mut EmitterWriter,
 
     let lines = lines.lines.as_slice();
     if lines.len() > MAX_LINES {
-        try!(write!(&mut w.dst, "{}:{} {}\n", fm.name,
-                    lines[0] + 1, fm.get_line(lines[0] as int)));
-        try!(write!(&mut w.dst, "...\n"));
-        let last_line = lines[lines.len()-1];
-        try!(write!(&mut w.dst, "{}:{} {}\n", fm.name,
-                    last_line + 1, fm.get_line(last_line as int)));
-    } else {
-        for line in lines.iter() {
+        if let Some(line) = fm.get_line(lines[0]) {
             try!(write!(&mut w.dst, "{}:{} {}\n", fm.name,
-                        *line + 1, fm.get_line(*line as int)));
+                        lines[0] + 1, line));
+        }
+        try!(write!(&mut w.dst, "...\n"));
+        let last_line_number = lines[lines.len() - 1];
+        if let Some(last_line) = fm.get_line(last_line_number) {
+            try!(write!(&mut w.dst, "{}:{} {}\n", fm.name,
+                        last_line_number + 1, last_line));
+        }
+    } else {
+        for &line_number in lines.iter() {
+            if let Some(line) = fm.get_line(line_number) {
+                try!(write!(&mut w.dst, "{}:{} {}\n", fm.name,
+                            line_number + 1, line));
+            }
         }
     }
     let last_line_start = format!("{}:{} ", fm.name, lines[lines.len()-1]+1);
@@ -556,7 +573,9 @@ fn print_macro_backtrace(w: &mut EmitterWriter,
     cs.map_or(Ok(()), |call_site| print_macro_backtrace(w, cm, call_site))
 }
 
-pub fn expect<T>(diag: &SpanHandler, opt: Option<T>, msg: || -> String) -> T {
+pub fn expect<T, M>(diag: &SpanHandler, opt: Option<T>, msg: M) -> T where
+    M: FnOnce() -> String,
+{
     match opt {
         Some(t) => t,
         None => diag.handler().bug(msg().as_slice()),

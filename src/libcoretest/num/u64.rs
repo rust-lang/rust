@@ -8,4 +8,4 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-uint_module!(u64, u64)
+uint_module!(u64, u64);

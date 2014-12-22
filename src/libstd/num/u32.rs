@@ -10,14 +10,11 @@
 
 //! Operations and constants for unsigned 32-bits integers (`u32` type)
 
-#![unstable]
+#![stable]
 #![doc(primitive = "u32")]
-
-use from_str::FromStr;
-use num::FromStrRadix;
-use num::strconv;
-use option::Option;
 
 pub use core::u32::{BITS, BYTES, MIN, MAX};
 
-uint_module!(u32)
+use ops::FnOnce;
+
+uint_module! { u32 }

@@ -19,7 +19,7 @@
 //
 // compile-flags: -g
 
-#![feature(unboxed_closures, overloaded_calls)]
+#![feature(unboxed_closures)]
 
 use std::ptr;
 

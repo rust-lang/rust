@@ -113,7 +113,7 @@ $(foreach cvar,CC CXX CPP CFLAGS CXXFLAGS CPPFLAGS, \
 
 CFG_RLIB_GLOB=lib$(1)-*.rlib
 
-include $(wildcard $(CFG_SRC_DIR)mk/cfg/*)
+include $(wildcard $(CFG_SRC_DIR)mk/cfg/*.mk)
 
 # The -Qunused-arguments sidesteps spurious warnings from clang
 define FILTER_FLAGS

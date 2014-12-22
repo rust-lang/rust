@@ -24,9 +24,11 @@ pub struct Toc {
     /// both of which end up in the same `Toc` as they have the same
     /// parent (Main).
     ///
+    /// ```text
     /// # Main
     /// ### A
     /// ## B
+    /// ```
     entries: Vec<TocEntry>
 }
 
@@ -78,6 +80,7 @@ impl TocBuilder {
     ///
     /// Example:
     ///
+    /// ```text
     /// ## A
     /// # B
     /// # C
@@ -86,6 +89,7 @@ impl TocBuilder {
     /// ### F
     /// #### G
     /// ### H
+    /// ```
     ///
     /// If we are considering H (i.e. level 3), then A and B are in
     /// self.top_level, D is in C.children, and C, E, F, G are in

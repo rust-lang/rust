@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(overloaded_calls)]
+#![feature(overloaded_calls, unboxed_closures)]
 
 // Make sure we don't ICE when making an overloaded call with the
 // wrong arity.
 
 fn _foo<F: Fn()> (f: F) {
-    |t| f(t); //~ ERROR E0058
+    |t| f(t); //~ ERROR E0057
 }
 
 fn main() {}

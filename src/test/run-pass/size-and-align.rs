@@ -12,16 +12,16 @@ enum clam<T> { a(T, int), b, }
 
 fn uhoh<T>(v: Vec<clam<T>> ) {
     match v[1] {
-      a::<T>(ref _t, ref u) => {
+      clam::a::<T>(ref _t, ref u) => {
           println!("incorrect");
           println!("{}", u);
           panic!();
       }
-      b::<T> => { println!("correct"); }
+      clam::b::<T> => { println!("correct"); }
     }
 }
 
 pub fn main() {
-    let v: Vec<clam<int>> = vec!(b::<int>, b::<int>, a::<int>(42, 17));
+    let v: Vec<clam<int>> = vec!(clam::b::<int>, clam::b::<int>, clam::a::<int>(42, 17));
     uhoh::<int>(v);
 }

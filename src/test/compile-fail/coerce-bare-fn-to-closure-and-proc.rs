@@ -12,10 +12,8 @@ fn foo() {}
 
 fn main() {
     let f = foo;
+
     let f_closure: || = f;
-    //~^ ERROR: cannot coerce non-statically resolved bare fn to closure
-    //~^^ HELP: consider embedding the function in a closure
-    let f_proc: proc() = f;
     //~^ ERROR: cannot coerce non-statically resolved bare fn to closure
     //~^^ HELP: consider embedding the function in a closure
 }

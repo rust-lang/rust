@@ -14,6 +14,7 @@
 
 use std::io;
 use std::fmt;
+use square::{bot, wall, rock, lambda, closed_lift, open_lift, earth, empty};
 
 enum square {
     bot,
@@ -63,7 +64,7 @@ fn read_board_grid<rdr:'static + io::Reader>(mut input: rdr)
     let mut input: &mut io::Reader = &mut input;
     let mut grid = Vec::new();
     let mut line = [0, ..10];
-    input.read(line);
+    input.read(&mut line);
     let mut row = Vec::new();
     for c in line.iter() {
         row.push(square_from_char(*c as char))

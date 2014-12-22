@@ -21,8 +21,8 @@ mod alder {
 }
 
 pub fn main() {
-  let _pettygrove: burnside = couch;
-  let _quimby: everett = flanders;
-  let _raleigh: irving = johnson;
+  let _pettygrove: burnside = burnside::couch;
+  let _quimby: everett = everett::flanders;
+  let _raleigh: irving = irving::johnson;
   let _savier: marshall;
 }

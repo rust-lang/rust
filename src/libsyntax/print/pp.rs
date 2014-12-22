@@ -59,22 +59,26 @@
 //! line (which it can't) and so naturally place the content on its own line to
 //! avoid combining it with other lines and making matters even worse.
 
+pub use self::PrintStackBreak::*;
+pub use self::Breaks::*;
+pub use self::Token::*;
+
 use std::io;
 use std::string;
 
-#[deriving(Clone, PartialEq)]
+#[deriving(Clone, Copy, PartialEq)]
 pub enum Breaks {
     Consistent,
     Inconsistent,
 }
 
-#[deriving(Clone)]
+#[deriving(Clone, Copy)]
 pub struct BreakToken {
     offset: int,
     blank_space: int
 }
 
-#[deriving(Clone)]
+#[deriving(Clone, Copy)]
 pub struct BeginToken {
     offset: int,
     breaks: Breaks
@@ -143,11 +147,13 @@ pub fn buf_str(toks: Vec<Token>,
     return s.into_string();
 }
 
+#[deriving(Copy)]
 pub enum PrintStackBreak {
     Fits,
     Broken(Breaks),
 }
 
+#[deriving(Copy)]
 pub struct PrintStackElem {
     offset: int,
     pbreak: PrintStackBreak

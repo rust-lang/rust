@@ -76,6 +76,9 @@
 //! Remaining input: ``
 //! eof: [a $( a )* a b ·]
 
+pub use self::NamedMatch::*;
+pub use self::ParseResult::*;
+use self::TokenTreeOrTokenTreeVec::*;
 
 use ast;
 use ast::{TokenTree, Ident};
@@ -511,7 +514,7 @@ pub fn parse_nt(p: &mut Parser, name: &str) -> Nonterminal {
       "stmt" => token::NtStmt(p.parse_stmt(Vec::new())),
       "pat" => token::NtPat(p.parse_pat()),
       "expr" => token::NtExpr(p.parse_expr()),
-      "ty" => token::NtTy(p.parse_ty(false /* no need to disambiguate*/)),
+      "ty" => token::NtTy(p.parse_ty()),
       // this could be handled like a token, since it is one
       "ident" => match p.token {
         token::Ident(sn,b) => { p.bump(); token::NtIdent(box sn,b) }
@@ -522,7 +525,7 @@ pub fn parse_nt(p: &mut Parser, name: &str) -> Nonterminal {
         }
       },
       "path" => {
-        token::NtPath(box p.parse_path(LifetimeAndTypesWithoutColons).path)
+        token::NtPath(box p.parse_path(LifetimeAndTypesWithoutColons))
       }
       "meta" => token::NtMeta(p.parse_meta_item()),
       "tt" => {

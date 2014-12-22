@@ -60,9 +60,9 @@ fn main() {
 
     let empty_struct = EmptyStruct;
 
-    let c_style_enum1 = CStyleEnumVar1;
-    let c_style_enum2 = CStyleEnumVar2;
-    let c_style_enum3 = CStyleEnumVar3;
+    let c_style_enum1 = CStyleEnum::CStyleEnumVar1;
+    let c_style_enum2 = CStyleEnum::CStyleEnumVar2;
+    let c_style_enum3 = CStyleEnum::CStyleEnumVar3;
 
     zzz(); // #break
 }

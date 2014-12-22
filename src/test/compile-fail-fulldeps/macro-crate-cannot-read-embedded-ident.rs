@@ -11,7 +11,7 @@
 // aux-build:macro_crate_test.rs
 // ignore-stage1
 // ignore-android
-// error-pattern: unknown start of token: \x00
+// error-pattern: unknown start of token: \u{0}
 
 // Issue #15750 and #15962 : this test is checking that the standard
 // parser rejects embedded idents.  pnkfelix did not want to attempt

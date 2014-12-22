@@ -20,12 +20,12 @@ fn get<T:Get,U:Get>(x: T, y: U) -> Get::Value {}
 
 trait Other {
     fn uhoh<U:Get>(&self, foo: U, bar: <Self as Get>::Value) {}
-    //~^ ERROR this associated type is not allowed in this context
+    //~^ ERROR no suitable bound on `Self`
 }
 
 impl<T:Get> Other for T {
     fn uhoh<U:Get>(&self, foo: U, bar: <(T, U) as Get>::Value) {}
-    //~^ ERROR this associated type is not allowed in this context
+    //~^ ERROR currently unsupported
 }
 
 trait Grab {

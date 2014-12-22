@@ -42,7 +42,6 @@
 // lldb-check:[...]$2 = TheOnlyCase(123234)
 
 #![allow(unused_variables)]
-#![feature(struct_variant)]
 
 // The first element is to ensure proper alignment, irrespective of the machines word size. Since
 // the size of the discriminant value is machine dependent, this has be taken into account when
@@ -67,15 +66,15 @@ fn main() {
     // 0b01111100011111000111110001111100 = 2088533116
     // 0b0111110001111100 = 31868
     // 0b01111100 = 124
-    let the_a = box TheA { x: 0, y: 8970181431921507452 };
+    let the_a = box ABC::TheA { x: 0, y: 8970181431921507452 };
 
     // 0b0001000100010001000100010001000100010001000100010001000100010001 = 1229782938247303441
     // 0b00010001000100010001000100010001 = 286331153
     // 0b0001000100010001 = 4369
     // 0b00010001 = 17
-    let the_b = box TheB (0, 286331153, 286331153);
+    let the_b = box ABC::TheB (0, 286331153, 286331153);
 
-    let univariant = box TheOnlyCase(123234);
+    let univariant = box Univariant::TheOnlyCase(123234);
 
     zzz(); // #break
 }

@@ -10,26 +10,26 @@
 //
 // ignore-lexer-test FIXME #15679
 
-/*!
- * Unicode-intensive string manipulations.
- *
- * This module provides functionality to `str` that requires the Unicode
- * methods provided by the UnicodeChar trait.
- */
+//! Unicode-intensive string manipulations.
+//!
+//! This module provides functionality to `str` that requires the Unicode methods provided by the
+//! UnicodeChar trait.
 
+use self::GraphemeState::*;
 use core::cmp;
-use core::slice::SlicePrelude;
-use core::iter::{Filter, AdditiveIterator, Iterator, DoubleEndedIterator};
+use core::slice::SliceExt;
+use core::iter::{Filter, AdditiveIterator, Iterator, IteratorExt};
+use core::iter::{DoubleEndedIterator, DoubleEndedIteratorExt};
 use core::kinds::Sized;
-use core::option::{Option, None, Some};
+use core::option::Option;
+use core::option::Option::{None, Some};
 use core::str::{CharSplits, StrPrelude};
-use u_char;
 use u_char::UnicodeChar;
 use tables::grapheme::GraphemeCat;
 
 /// An iterator over the words of a string, separated by a sequence of whitespace
-pub type Words<'a> =
-    Filter<'a, &'a str, CharSplits<'a, extern "Rust" fn(char) -> bool>>;
+/// FIXME: This should be opaque
+pub type Words<'a> = Filter<&'a str, CharSplits<'a, fn(char) -> bool>, fn(&&str) -> bool>;
 
 /// Methods for Unicode string slices
 pub trait UnicodeStrPrelude for Sized? {
@@ -45,8 +45,8 @@ pub trait UnicodeStrPrelude for Sized? {
     /// # Example
     ///
     /// ```rust
-    /// let gr1 = "a\u0310e\u0301o\u0308\u0332".graphemes(true).collect::<Vec<&str>>();
-    /// let b: &[_] = &["a\u0310", "e\u0301", "o\u0308\u0332"];
+    /// let gr1 = "a\u{0310}e\u{0301}o\u{0308}\u{0332}".graphemes(true).collect::<Vec<&str>>();
+    /// let b: &[_] = &["a\u{0310}", "e\u{0301}", "o\u{0308}\u{0332}"];
     /// assert_eq!(gr1.as_slice(), b);
     /// let gr2 = "a\r\nb🇷🇺🇸🇹".graphemes(true).collect::<Vec<&str>>();
     /// let b: &[_] = &["a", "\r\n", "b", "🇷🇺🇸🇹"];
@@ -142,14 +142,17 @@ impl UnicodeStrPrelude for str {
 
     #[inline]
     fn words(&self) -> Words {
-        self.split(u_char::is_whitespace).filter(|s| !s.is_empty())
+        fn is_not_empty(s: &&str) -> bool { !s.is_empty() }
+        fn is_whitespace(c: char) -> bool { c.is_whitespace() }
+
+        self.split(is_whitespace).filter(is_not_empty)
     }
 
     #[inline]
-    fn is_whitespace(&self) -> bool { self.chars().all(u_char::is_whitespace) }
+    fn is_whitespace(&self) -> bool { self.chars().all(|c| c.is_whitespace()) }
 
     #[inline]
-    fn is_alphanumeric(&self) -> bool { self.chars().all(u_char::is_alphanumeric) }
+    fn is_alphanumeric(&self) -> bool { self.chars().all(|c| c.is_alphanumeric()) }
 
     #[inline]
     fn width(&self, is_cjk: bool) -> uint {
@@ -163,12 +166,12 @@ impl UnicodeStrPrelude for str {
 
     #[inline]
     fn trim_left(&self) -> &str {
-        self.trim_left_chars(u_char::is_whitespace)
+        self.trim_left_chars(|&: c: char| c.is_whitespace())
     }
 
     #[inline]
     fn trim_right(&self) -> &str {
-        self.trim_right_chars(u_char::is_whitespace)
+        self.trim_right_chars(|&: c: char| c.is_whitespace())
     }
 }
 

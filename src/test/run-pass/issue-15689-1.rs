@@ -14,5 +14,5 @@ enum Test<'a> {
 }
 
 fn main() {
-    assert!(Slice(&1) == Slice(&1))
+    assert!(Test::Slice(&1) == Test::Slice(&1))
 }

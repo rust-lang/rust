@@ -33,9 +33,12 @@
 //
 // [1] - http://swtch.com/~rsc/regex/regex3.html
 
+pub use self::MatchKind::*;
+pub use self::StepState::*;
+
 use std::cmp;
 use std::mem;
-use std::slice::SlicePrelude;
+use std::slice::SliceExt;
 use compile::{
     Program,
     Match, OneChar, CharClass, Any, EmptyBegin, EmptyEnd, EmptyWordBoundary,
@@ -47,6 +50,7 @@ use unicode::regex::PERLW;
 pub type CaptureLocs = Vec<Option<uint>>;
 
 /// Indicates the type of match to be performed by the VM.
+#[deriving(Copy)]
 pub enum MatchKind {
     /// Only checks if a match exists or not. Does not return location.
     Exists,
@@ -91,6 +95,7 @@ struct Nfa<'r, 't> {
 
 /// Indicates the next action to take after a single non-empty instruction
 /// is processed.
+#[deriving(Copy)]
 pub enum StepState {
     /// This is returned if and only if a Match instruction is reached and
     /// we only care about the existence of a match. It instructs the VM to
@@ -144,7 +149,7 @@ impl<'r, 't> Nfa<'r, 't> {
                 // jump ahead quickly. If it can't be found, then we can bail
                 // out early.
                 if self.prog.prefix.len() > 0 && clist.size == 0 {
-                    let needle = self.prog.prefix.as_slice().as_bytes();
+                    let needle = self.prog.prefix.as_bytes();
                     let haystack = self.input.as_bytes()[self.ic..];
                     match find_prefix(needle, haystack) {
                         None => break,

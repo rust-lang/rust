@@ -7,16 +7,17 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+pub use self::MaybeTyped::*;
 
-use rustc::driver::{config, driver, session};
+use rustc_driver::driver;
+use rustc::session::{mod, config};
 use rustc::middle::{privacy, ty};
 use rustc::lint;
-use rustc::back::link;
+use rustc_trans::back::link;
 
 use syntax::{ast, ast_map, codemap, diagnostic};
 
 use std::cell::RefCell;
-use std::os;
 use std::collections::{HashMap, HashSet};
 use arena::TypedArena;
 
@@ -82,17 +83,17 @@ pub fn run_core(libs: Vec<Path>, cfgs: Vec<String>, externs: Externs,
 
     // Parse, resolve, and typecheck the given crate.
 
-    let input = driver::FileInput(cpath.clone());
+    let input = config::Input::File(cpath.clone());
 
     let warning_lint = lint::builtin::WARNINGS.name_lower();
 
     let sessopts = config::Options {
-        maybe_sysroot: Some(os::self_exe_path().unwrap().dir_path()),
+        maybe_sysroot: None,
         addl_lib_search_paths: RefCell::new(libs),
         crate_types: vec!(config::CrateTypeRlib),
         lint_opts: vec!((warning_lint, lint::Allow)),
         externs: externs,
-        target_triple: triple.unwrap_or(driver::host_triple().to_string()),
+        target_triple: triple.unwrap_or(config::host_triple().to_string()),
         cfg: config::parse_cfgspecs(cfgs),
         ..config::basic_options().clone()
     };
@@ -121,7 +122,7 @@ pub fn run_core(libs: Vec<Path>, cfgs: Vec<String>, externs: Externs,
     let ast_map = driver::assign_node_ids_and_map(&sess, &mut forest);
 
     let type_arena = TypedArena::new();
-    let driver::CrateAnalysis {
+    let ty::CrateAnalysis {
         exported_items, public_items, ty_cx, ..
     } = driver::phase_3_run_analysis_passes(sess, ast_map, &type_arena, name);
 

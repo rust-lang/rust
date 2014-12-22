@@ -10,4 +10,4 @@
 
 extern crate "issue-13872-1" as foo;
 
-pub use foo::B;
+pub use foo::A::B;

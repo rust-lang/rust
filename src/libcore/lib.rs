@@ -49,7 +49,6 @@
 
 #![crate_name = "core"]
 #![experimental]
-#![license = "MIT/ASL2"]
 #![crate_type = "rlib"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
@@ -57,9 +56,10 @@
        html_playground_url = "http://play.rust-lang.org/")]
 
 #![no_std]
-#![allow(unknown_features)]
+#![allow(unknown_features, raw_pointer_deriving)]
 #![feature(globs, intrinsics, lang_items, macro_rules, phase)]
 #![feature(simd, unsafe_destructor, slicing_syntax)]
+#![feature(default_type_params, unboxed_closures)]
 #![deny(missing_docs)]
 
 mod macros;
@@ -108,6 +108,7 @@ pub mod default;
 pub mod any;
 pub mod atomic;
 pub mod bool;
+pub mod borrow;
 pub mod cell;
 pub mod char;
 pub mod panicking;
@@ -120,6 +121,7 @@ pub mod simd;
 pub mod slice;
 pub mod str;
 pub mod tuple;
+pub mod hash;
 // FIXME #15320: primitive documentation needs top-level modules, this
 // should be `core::tuple::unit`.
 #[path = "tuple/unit.rs"]
@@ -141,4 +143,5 @@ mod std {
     pub use kinds;
     pub use option;
     pub use fmt;
+    pub use hash;
 }

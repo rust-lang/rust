@@ -13,7 +13,7 @@
 struct A;
 
 macro_rules! make_thirteen_method {() => (fn thirteen(&self)->int {13})}
-impl A { make_thirteen_method!() }
+impl A { make_thirteen_method!(); }
 
 fn main() {
     assert_eq!(A.thirteen(),13);

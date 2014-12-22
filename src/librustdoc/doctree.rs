@@ -10,6 +10,8 @@
 
 //! This module is used to store stuff from Rust's AST in a more convenient
 //! manner (and with prettier names) before cleaning.
+pub use self::StructType::*;
+pub use self::TypeBound::*;
 
 use syntax;
 use syntax::codemap::Span;
@@ -68,7 +70,7 @@ impl Module {
     }
 }
 
-#[deriving(Show, Clone, Encodable, Decodable)]
+#[deriving(Copy, Show, Clone, Encodable, Decodable)]
 pub enum StructType {
     /// A normal struct
     Plain,
@@ -125,7 +127,7 @@ pub struct Function {
     pub name: Ident,
     pub vis: ast::Visibility,
     pub stab: Option<attr::Stability>,
-    pub fn_style: ast::FnStyle,
+    pub unsafety: ast::Unsafety,
     pub whence: Span,
     pub generics: ast::Generics,
 }
@@ -166,6 +168,7 @@ pub struct Constant {
 }
 
 pub struct Trait {
+    pub unsafety: ast::Unsafety,
     pub name: Ident,
     pub items: Vec<ast::TraitItem>, //should be TraitItem
     pub generics: ast::Generics,
@@ -175,9 +178,11 @@ pub struct Trait {
     pub whence: Span,
     pub vis: ast::Visibility,
     pub stab: Option<attr::Stability>,
+    pub default_unbound: Option<ast::TraitRef> // FIXME(tomjakubowski)
 }
 
 pub struct Impl {
+    pub unsafety: ast::Unsafety,
     pub generics: ast::Generics,
     pub trait_: Option<ast::TraitRef>,
     pub for_: P<ast::Ty>,

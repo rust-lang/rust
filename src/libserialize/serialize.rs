@@ -39,58 +39,61 @@ pub trait Encoder<E> {
     fn emit_str(&mut self, v: &str) -> Result<(), E>;
 
     // Compound types:
-    fn emit_enum(&mut self, name: &str, f: |&mut Self| -> Result<(), E>) -> Result<(), E>;
+    fn emit_enum<F>(&mut self, name: &str, f: F) -> Result<(), E> where
+        F: FnOnce(&mut Self) -> Result<(), E>;
 
-    fn emit_enum_variant(&mut self,
-                         v_name: &str,
-                         v_id: uint,
-                         len: uint,
-                         f: |&mut Self| -> Result<(), E>) -> Result<(), E>;
-    fn emit_enum_variant_arg(&mut self,
-                             a_idx: uint,
-                             f: |&mut Self| -> Result<(), E>) -> Result<(), E>;
+    fn emit_enum_variant<F>(&mut self, v_name: &str,
+                            v_id: uint,
+                            len: uint,
+                            f: F) -> Result<(), E> where
+        F: FnOnce(&mut Self) -> Result<(), E>;
+    fn emit_enum_variant_arg<F>(&mut self, a_idx: uint, f: F) -> Result<(), E> where
+        F: FnOnce(&mut Self) -> Result<(), E>;
 
-    fn emit_enum_struct_variant(&mut self,
-                                v_name: &str,
-                                v_id: uint,
-                                len: uint,
-                                f: |&mut Self| -> Result<(), E>) -> Result<(), E>;
-    fn emit_enum_struct_variant_field(&mut self,
-                                      f_name: &str,
-                                      f_idx: uint,
-                                      f: |&mut Self| -> Result<(), E>) -> Result<(), E>;
+    fn emit_enum_struct_variant<F>(&mut self, v_name: &str,
+                                   v_id: uint,
+                                   len: uint,
+                                   f: F) -> Result<(), E> where
+        F: FnOnce(&mut Self) -> Result<(), E>;
+    fn emit_enum_struct_variant_field<F>(&mut self,
+                                         f_name: &str,
+                                         f_idx: uint,
+                                         f: F) -> Result<(), E> where
+        F: FnOnce(&mut Self) -> Result<(), E>;
 
-    fn emit_struct(&mut self,
-                   name: &str,
-                   len: uint,
-                   f: |&mut Self| -> Result<(), E>) -> Result<(), E>;
-    fn emit_struct_field(&mut self,
-                         f_name: &str,
-                         f_idx: uint,
-                         f: |&mut Self| -> Result<(), E>) -> Result<(), E>;
+    fn emit_struct<F>(&mut self, name: &str, len: uint, f: F) -> Result<(), E> where
+        F: FnOnce(&mut Self) -> Result<(), E>;
+    fn emit_struct_field<F>(&mut self, f_name: &str, f_idx: uint, f: F) -> Result<(), E> where
+        F: FnOnce(&mut Self) -> Result<(), E>;
 
-    fn emit_tuple(&mut self, len: uint, f: |&mut Self| -> Result<(), E>) -> Result<(), E>;
-    fn emit_tuple_arg(&mut self, idx: uint, f: |&mut Self| -> Result<(), E>) -> Result<(), E>;
+    fn emit_tuple<F>(&mut self, len: uint, f: F) -> Result<(), E> where
+        F: FnOnce(&mut Self) -> Result<(), E>;
+    fn emit_tuple_arg<F>(&mut self, idx: uint, f: F) -> Result<(), E> where
+        F: FnOnce(&mut Self) -> Result<(), E>;
 
-    fn emit_tuple_struct(&mut self,
-                         name: &str,
-                         len: uint,
-                         f: |&mut Self| -> Result<(), E>) -> Result<(), E>;
-    fn emit_tuple_struct_arg(&mut self,
-                             f_idx: uint,
-                             f: |&mut Self| -> Result<(), E>) -> Result<(), E>;
+    fn emit_tuple_struct<F>(&mut self, name: &str, len: uint, f: F) -> Result<(), E> where
+        F: FnOnce(&mut Self) -> Result<(), E>;
+    fn emit_tuple_struct_arg<F>(&mut self, f_idx: uint, f: F) -> Result<(), E> where
+        F: FnOnce(&mut Self) -> Result<(), E>;
 
     // Specialized types:
-    fn emit_option(&mut self, f: |&mut Self| -> Result<(), E>) -> Result<(), E>;
+    fn emit_option<F>(&mut self, f: F) -> Result<(), E> where
+        F: FnOnce(&mut Self) -> Result<(), E>;
     fn emit_option_none(&mut self) -> Result<(), E>;
-    fn emit_option_some(&mut self, f: |&mut Self| -> Result<(), E>) -> Result<(), E>;
+    fn emit_option_some<F>(&mut self, f: F) -> Result<(), E> where
+        F: FnOnce(&mut Self) -> Result<(), E>;
 
-    fn emit_seq(&mut self, len: uint, f: |this: &mut Self| -> Result<(), E>) -> Result<(), E>;
-    fn emit_seq_elt(&mut self, idx: uint, f: |this: &mut Self| -> Result<(), E>) -> Result<(), E>;
+    fn emit_seq<F>(&mut self, len: uint, f: F) -> Result<(), E> where
+        F: FnOnce(&mut Self) -> Result<(), E>;
+    fn emit_seq_elt<F>(&mut self, idx: uint, f: F) -> Result<(), E> where
+        F: FnOnce(&mut Self) -> Result<(), E>;
 
-    fn emit_map(&mut self, len: uint, f: |&mut Self| -> Result<(), E>) -> Result<(), E>;
-    fn emit_map_elt_key(&mut self, idx: uint, f: |&mut Self| -> Result<(), E>) -> Result<(), E>;
-    fn emit_map_elt_val(&mut self, idx: uint, f: |&mut Self| -> Result<(), E>) -> Result<(), E>;
+    fn emit_map<F>(&mut self, len: uint, f: F) -> Result<(), E> where
+        F: FnOnce(&mut Self) -> Result<(), E>;
+    fn emit_map_elt_key<F>(&mut self, idx: uint, f: F) -> Result<(), E> where
+        F: FnMut(&mut Self) -> Result<(), E>;
+    fn emit_map_elt_val<F>(&mut self, idx: uint, f: F) -> Result<(), E> where
+        F: FnOnce(&mut Self) -> Result<(), E>;
 }
 
 pub trait Decoder<E> {
@@ -113,57 +116,57 @@ pub trait Decoder<E> {
     fn read_str(&mut self) -> Result<String, E>;
 
     // Compound types:
-    fn read_enum<T>(&mut self, name: &str, f: |&mut Self| -> Result<T, E>) -> Result<T, E>;
+    fn read_enum<T, F>(&mut self, name: &str, f: F) -> Result<T, E> where
+        F: FnOnce(&mut Self) -> Result<T, E>;
 
-    fn read_enum_variant<T>(&mut self,
-                            names: &[&str],
-                            f: |&mut Self, uint| -> Result<T, E>)
-                            -> Result<T, E>;
-    fn read_enum_variant_arg<T>(&mut self,
-                                a_idx: uint,
-                                f: |&mut Self| -> Result<T, E>)
-                                -> Result<T, E>;
+    fn read_enum_variant<T, F>(&mut self, names: &[&str], f: F) -> Result<T, E> where
+        F: FnMut(&mut Self, uint) -> Result<T, E>;
+    fn read_enum_variant_arg<T, F>(&mut self, a_idx: uint, f: F) -> Result<T, E> where
+        F: FnOnce(&mut Self) -> Result<T, E>;
 
-    fn read_enum_struct_variant<T>(&mut self,
-                                   names: &[&str],
-                                   f: |&mut Self, uint| -> Result<T, E>)
-                                   -> Result<T, E>;
-    fn read_enum_struct_variant_field<T>(&mut self,
-                                         &f_name: &str,
-                                         f_idx: uint,
-                                         f: |&mut Self| -> Result<T, E>)
-                                         -> Result<T, E>;
+    fn read_enum_struct_variant<T, F>(&mut self, names: &[&str], f: F) -> Result<T, E> where
+        F: FnMut(&mut Self, uint) -> Result<T, E>;
+    fn read_enum_struct_variant_field<T, F>(&mut self,
+                                            &f_name: &str,
+                                            f_idx: uint,
+                                            f: F)
+                                            -> Result<T, E> where
+        F: FnOnce(&mut Self) -> Result<T, E>;
 
-    fn read_struct<T>(&mut self, s_name: &str, len: uint, f: |&mut Self| -> Result<T, E>)
-                      -> Result<T, E>;
-    fn read_struct_field<T>(&mut self,
-                            f_name: &str,
-                            f_idx: uint,
-                            f: |&mut Self| -> Result<T, E>)
-                            -> Result<T, E>;
+    fn read_struct<T, F>(&mut self, s_name: &str, len: uint, f: F) -> Result<T, E> where
+        F: FnOnce(&mut Self) -> Result<T, E>;
+    fn read_struct_field<T, F>(&mut self,
+                               f_name: &str,
+                               f_idx: uint,
+                               f: F)
+                               -> Result<T, E> where
+        F: FnOnce(&mut Self) -> Result<T, E>;
 
-    fn read_tuple<T>(&mut self, len: uint, f: |&mut Self| -> Result<T, E>) -> Result<T, E>;
-    fn read_tuple_arg<T>(&mut self, a_idx: uint, f: |&mut Self| -> Result<T, E>) -> Result<T, E>;
+    fn read_tuple<T, F>(&mut self, len: uint, f: F) -> Result<T, E> where
+        F: FnOnce(&mut Self) -> Result<T, E>;
+    fn read_tuple_arg<T, F>(&mut self, a_idx: uint, f: F) -> Result<T, E> where
+        F: FnOnce(&mut Self) -> Result<T, E>;
 
-    fn read_tuple_struct<T>(&mut self,
-                            s_name: &str,
-                            len: uint,
-                            f: |&mut Self| -> Result<T, E>)
-                            -> Result<T, E>;
-    fn read_tuple_struct_arg<T>(&mut self,
-                                a_idx: uint,
-                                f: |&mut Self| -> Result<T, E>)
-                                -> Result<T, E>;
+    fn read_tuple_struct<T, F>(&mut self, s_name: &str, len: uint, f: F) -> Result<T, E> where
+        F: FnOnce(&mut Self) -> Result<T, E>;
+    fn read_tuple_struct_arg<T, F>(&mut self, a_idx: uint, f: F) -> Result<T, E> where
+        F: FnOnce(&mut Self) -> Result<T, E>;
 
     // Specialized types:
-    fn read_option<T>(&mut self, f: |&mut Self, bool| -> Result<T, E>) -> Result<T, E>;
+    fn read_option<T, F>(&mut self, f: F) -> Result<T, E> where
+        F: FnMut(&mut Self, bool) -> Result<T, E>;
 
-    fn read_seq<T>(&mut self, f: |&mut Self, uint| -> Result<T, E>) -> Result<T, E>;
-    fn read_seq_elt<T>(&mut self, idx: uint, f: |&mut Self| -> Result<T, E>) -> Result<T, E>;
+    fn read_seq<T, F>(&mut self, f: F) -> Result<T, E> where
+        F: FnOnce(&mut Self, uint) -> Result<T, E>;
+    fn read_seq_elt<T, F>(&mut self, idx: uint, f: F) -> Result<T, E> where
+        F: FnOnce(&mut Self) -> Result<T, E>;
 
-    fn read_map<T>(&mut self, f: |&mut Self, uint| -> Result<T, E>) -> Result<T, E>;
-    fn read_map_elt_key<T>(&mut self, idx: uint, f: |&mut Self| -> Result<T, E>) -> Result<T, E>;
-    fn read_map_elt_val<T>(&mut self, idx: uint, f: |&mut Self| -> Result<T, E>) -> Result<T, E>;
+    fn read_map<T, F>(&mut self, f: F) -> Result<T, E> where
+        F: FnOnce(&mut Self, uint) -> Result<T, E>;
+    fn read_map_elt_key<T, F>(&mut self, idx: uint, f: F) -> Result<T, E> where
+        F: FnOnce(&mut Self) -> Result<T, E>;
+    fn read_map_elt_val<T, F>(&mut self, idx: uint, f: F) -> Result<T, E> where
+        F: FnOnce(&mut Self) -> Result<T, E>;
 
     // Failure
     fn error(&mut self, err: &str) -> E;
@@ -471,7 +474,9 @@ impl<E, D:Decoder<E>,T:Decodable<D, E>> Decodable<D, E> for Option<T> {
     }
 }
 
-macro_rules! peel(($name:ident, $($other:ident,)*) => (tuple!($($other,)*)))
+macro_rules! peel {
+    ($name:ident, $($other:ident,)*) => (tuple! { $($other,)* })
+}
 
 /// Evaluates to the number of identifiers passed to it, for example: `count_idents!(a, b, c) == 3
 macro_rules! count_idents {
@@ -479,7 +484,7 @@ macro_rules! count_idents {
     ($_i:ident $(, $rest:ident)*) => { 1 + count_idents!($($rest),*) }
 }
 
-macro_rules! tuple (
+macro_rules! tuple {
     () => ();
     ( $($name:ident,)+ ) => (
         impl<E, D:Decoder<E>,$($name:Decodable<D, E>),*> Decodable<D,E> for ($($name,)*) {
@@ -508,9 +513,9 @@ macro_rules! tuple (
                 })
             }
         }
-        peel!($($name,)*)
+        peel! { $($name,)* }
     )
-)
+}
 
 tuple! { T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, }
 
@@ -585,13 +590,14 @@ impl<E, D:Decoder<E>,T:Decodable<D, E>+Send+Sync> Decodable<D, E> for Arc<T> {
 // Helper routines
 
 pub trait EncoderHelpers<E> {
-    fn emit_from_vec<T>(&mut self,
-                        v: &[T],
-                        f: |&mut Self, v: &T| -> Result<(), E>) -> Result<(), E>;
+    fn emit_from_vec<T, F>(&mut self, v: &[T], f: F) -> Result<(), E> where
+        F: FnMut(&mut Self, &T) -> Result<(), E>;
 }
 
 impl<E, S:Encoder<E>> EncoderHelpers<E> for S {
-    fn emit_from_vec<T>(&mut self, v: &[T], f: |&mut S, &T| -> Result<(), E>) -> Result<(), E> {
+    fn emit_from_vec<T, F>(&mut self, v: &[T], mut f: F) -> Result<(), E> where
+        F: FnMut(&mut S, &T) -> Result<(), E>,
+    {
         self.emit_seq(v.len(), |this| {
             for (i, e) in v.iter().enumerate() {
                 try!(this.emit_seq_elt(i, |this| {
@@ -604,11 +610,14 @@ impl<E, S:Encoder<E>> EncoderHelpers<E> for S {
 }
 
 pub trait DecoderHelpers<E> {
-    fn read_to_vec<T>(&mut self, f: |&mut Self| -> Result<T, E>) -> Result<Vec<T>, E>;
+    fn read_to_vec<T, F>(&mut self, f: F) -> Result<Vec<T>, E> where
+        F: FnMut(&mut Self) -> Result<T, E>;
 }
 
 impl<E, D:Decoder<E>> DecoderHelpers<E> for D {
-    fn read_to_vec<T>(&mut self, f: |&mut D| -> Result<T, E>) -> Result<Vec<T>, E> {
+    fn read_to_vec<T, F>(&mut self, mut f: F) -> Result<Vec<T>, E> where F:
+        FnMut(&mut D) -> Result<T, E>,
+    {
         self.read_seq(|this, len| {
             let mut v = Vec::with_capacity(len);
             for i in range(0, len) {

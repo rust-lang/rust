@@ -23,11 +23,9 @@ use syntax::parse::token;
 use rustc::lint::{Context, LintPass, LintPassObject, LintArray};
 use rustc::plugin::Registry;
 
-declare_lint!(TEST_LINT, Warn,
-              "Warn about items named 'lintme'")
+declare_lint!(TEST_LINT, Warn, "Warn about items named 'lintme'");
 
-declare_lint!(PLEASE_LINT, Warn,
-              "Warn about items named 'pleaselintme'")
+declare_lint!(PLEASE_LINT, Warn, "Warn about items named 'pleaselintme'");
 
 struct Pass;
 

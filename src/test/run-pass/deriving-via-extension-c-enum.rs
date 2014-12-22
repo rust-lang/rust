@@ -16,8 +16,8 @@ enum Foo {
 }
 
 pub fn main() {
-    let a = Bar;
-    let b = Bar;
+    let a = Foo::Bar;
+    let b = Foo::Bar;
     assert_eq!(a, b);
     assert!(!(a != b));
     assert!(a.eq(&b));

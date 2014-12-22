@@ -10,6 +10,11 @@
 
 // Functions dealing with attributes and meta items
 
+pub use self::InlineAttr::*;
+pub use self::StabilityLevel::*;
+pub use self::ReprAttr::*;
+pub use self::IntType::*;
+
 use ast;
 use ast::{AttrId, Attribute, Attribute_, MetaItem, MetaWord, MetaNameValue, MetaList};
 use codemap::{Span, Spanned, spanned, dummy_spanned};
@@ -20,21 +25,20 @@ use parse::token::InternedString;
 use parse::token;
 use ptr::P;
 
-use std::collections::HashSet;
+use std::cell::{RefCell, Cell};
 use std::collections::BitvSet;
+use std::collections::HashSet;
 
-local_data_key!(used_attrs: BitvSet)
+thread_local! { static USED_ATTRS: RefCell<BitvSet> = RefCell::new(BitvSet::new()) }
 
 pub fn mark_used(attr: &Attribute) {
-    let mut used = used_attrs.replace(None).unwrap_or_else(|| BitvSet::new());
     let AttrId(id) = attr.node.id;
-    used.insert(id);
-    used_attrs.replace(Some(used));
+    USED_ATTRS.with(|slot| slot.borrow_mut().insert(id));
 }
 
 pub fn is_used(attr: &Attribute) -> bool {
     let AttrId(id) = attr.node.id;
-    used_attrs.get().map_or(false, |used| used.contains(&id))
+    USED_ATTRS.with(|slot| slot.borrow().contains(&id))
 }
 
 pub trait AttrMetaMethods {
@@ -42,8 +46,8 @@ pub trait AttrMetaMethods {
         name == self.name().get()
     }
 
-    /// Retrieve the name of the meta item, e.g. foo in #[foo],
-    /// #[foo="bar"] and #[foo(bar)]
+    /// Retrieve the name of the meta item, e.g. `foo` in `#[foo]`,
+    /// `#[foo="bar"]` and `#[foo(bar)]`
     fn name(&self) -> InternedString;
 
     /// Gets the string value if self is a MetaNameValue variant
@@ -111,7 +115,8 @@ impl AttrMetaMethods for P<MetaItem> {
 
 pub trait AttributeMethods {
     fn meta<'a>(&'a self) -> &'a MetaItem;
-    fn with_desugared_doc<T>(&self, f: |&Attribute| -> T) -> T;
+    fn with_desugared_doc<T, F>(&self, f: F) -> T where
+        F: FnOnce(&Attribute) -> T;
 }
 
 impl AttributeMethods for Attribute {
@@ -123,7 +128,9 @@ impl AttributeMethods for Attribute {
     /// Convert self to a normal #[doc="foo"] comment, if it is a
     /// comment like `///` or `/** */`. (Returns self unchanged for
     /// non-sugared doc attributes.)
-    fn with_desugared_doc<T>(&self, f: |&Attribute| -> T) -> T {
+    fn with_desugared_doc<T, F>(&self, f: F) -> T where
+        F: FnOnce(&Attribute) -> T,
+    {
         if self.node.is_sugared_doc {
             let comment = self.value_str().unwrap();
             let meta = mk_name_value_item_str(
@@ -162,11 +169,14 @@ pub fn mk_word_item(name: InternedString) -> P<MetaItem> {
     P(dummy_spanned(MetaWord(name)))
 }
 
-local_data_key!(next_attr_id: uint)
+thread_local! { static NEXT_ATTR_ID: Cell<uint> = Cell::new(0) }
 
 pub fn mk_attr_id() -> AttrId {
-    let id = next_attr_id.replace(None).unwrap_or(0);
-    next_attr_id.replace(Some(id + 1));
+    let id = NEXT_ATTR_ID.with(|slot| {
+        let r = slot.get();
+        slot.set(r + 1);
+        r
+    });
     AttrId(id)
 }
 
@@ -267,7 +277,7 @@ pub fn find_crate_name(attrs: &[Attribute]) -> Option<InternedString> {
     first_attr_value_str_by_name(attrs, "crate_name")
 }
 
-#[deriving(PartialEq)]
+#[deriving(Copy, PartialEq)]
 pub enum InlineAttr {
     InlineNone,
     InlineHint,
@@ -280,11 +290,11 @@ pub fn find_inline_attr(attrs: &[Attribute]) -> InlineAttr {
     // FIXME (#2809)---validate the usage of #[inline] and #[inline]
     attrs.iter().fold(InlineNone, |ia,attr| {
         match attr.node.value.node {
-            MetaWord(ref n) if n.equiv(&("inline")) => {
+            MetaWord(ref n) if *n == "inline" => {
                 mark_used(attr);
                 InlineHint
             }
-            MetaList(ref n, ref items) if n.equiv(&("inline")) => {
+            MetaList(ref n, ref items) if *n == "inline" => {
                 mark_used(attr);
                 if contains_name(items.as_slice(), "always") {
                     InlineAlways
@@ -337,7 +347,7 @@ pub struct Stability {
 }
 
 /// The available stability levels.
-#[deriving(Encodable,Decodable,PartialEq,PartialOrd,Clone,Show)]
+#[deriving(Copy,Encodable,Decodable,PartialEq,PartialOrd,Clone,Show)]
 pub enum StabilityLevel {
     Deprecated,
     Experimental,
@@ -402,7 +412,7 @@ pub fn require_unique_names(diagnostic: &SpanHandler, metas: &[P<MetaItem>]) {
 pub fn find_repr_attrs(diagnostic: &SpanHandler, attr: &Attribute) -> Vec<ReprAttr> {
     let mut acc = Vec::new();
     match attr.node.value.node {
-        ast::MetaList(ref s, ref items) if s.equiv(&("repr")) => {
+        ast::MetaList(ref s, ref items) if *s == "repr" => {
             mark_used(attr);
             for item in items.iter() {
                 match item.node {
@@ -454,7 +464,7 @@ fn int_type_of_word(s: &str) -> Option<IntType> {
     }
 }
 
-#[deriving(PartialEq, Show, Encodable, Decodable)]
+#[deriving(Copy, PartialEq, Show, Encodable, Decodable)]
 pub enum ReprAttr {
     ReprAny,
     ReprInt(Span, IntType),
@@ -473,7 +483,7 @@ impl ReprAttr {
     }
 }
 
-#[deriving(Eq, Hash, PartialEq, Show, Encodable, Decodable)]
+#[deriving(Copy, Eq, Hash, PartialEq, Show, Encodable, Decodable)]
 pub enum IntType {
     SignedInt(ast::IntTy),
     UnsignedInt(ast::UintTy)

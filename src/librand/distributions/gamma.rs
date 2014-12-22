@@ -12,6 +12,9 @@
 
 //! The Gamma and derived distributions.
 
+use self::GammaRepr::*;
+use self::ChiSquaredRepr::*;
+
 use core::num::Float;
 
 use {Rng, Open01};
@@ -92,7 +95,7 @@ impl Gamma {
     /// Construct an object representing the `Gamma(shape, scale)`
     /// distribution.
     ///
-    /// Fails if `shape <= 0` or `scale <= 0`.
+    /// Panics if `shape <= 0` or `scale <= 0`.
     pub fn new(shape: f64, scale: f64) -> Gamma {
         assert!(shape > 0.0, "Gamma::new called with shape <= 0");
         assert!(scale > 0.0, "Gamma::new called with scale <= 0");
@@ -205,7 +208,7 @@ enum ChiSquaredRepr {
 
 impl ChiSquared {
     /// Create a new chi-squared distribution with degrees-of-freedom
-    /// `k`. Fails if `k < 0`.
+    /// `k`. Panics if `k < 0`.
     pub fn new(k: f64) -> ChiSquared {
         let repr = if k == 1.0 {
             DoFExactlyOne
@@ -258,7 +261,7 @@ pub struct FisherF {
 
 impl FisherF {
     /// Create a new `FisherF` distribution, with the given
-    /// parameter. Fails if either `m` or `n` are not positive.
+    /// parameter. Panics if either `m` or `n` are not positive.
     pub fn new(m: f64, n: f64) -> FisherF {
         assert!(m > 0.0, "FisherF::new called with `m < 0`");
         assert!(n > 0.0, "FisherF::new called with `n < 0`");
@@ -299,7 +302,7 @@ pub struct StudentT {
 
 impl StudentT {
     /// Create a new Student t distribution with `n` degrees of
-    /// freedom. Fails if `n <= 0`.
+    /// freedom. Panics if `n <= 0`.
     pub fn new(n: f64) -> StudentT {
         assert!(n > 0.0, "StudentT::new called with `n <= 0`");
         StudentT {

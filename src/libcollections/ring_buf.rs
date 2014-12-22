@@ -11,38 +11,109 @@
 //! This crate implements a double-ended queue with `O(1)` amortized inserts and removals from both
 //! ends of the container. It also has `O(1)` indexing like a vector. The contained elements are
 //! not required to be copyable, and the queue will be sendable if the contained type is sendable.
-//! Its interface `Deque` is defined in `collections`.
 
 use core::prelude::*;
 
-use core::cmp;
 use core::default::Default;
 use core::fmt;
 use core::iter;
-use core::slice;
-use std::hash::{Writer, Hash};
+use core::raw::Slice as RawSlice;
+use core::ptr;
+use core::kinds::marker;
+use core::mem;
+use core::num::{Int, UnsignedInt};
 
-use vec::Vec;
+use std::hash::{Writer, Hash};
+use std::cmp;
+
+use alloc::heap;
 
 static INITIAL_CAPACITY: uint = 8u; // 2^3
 static MINIMUM_CAPACITY: uint = 2u;
 
 // FIXME(conventions): implement shrink_to_fit. Awkward with the current design, but it should
 // be scrapped anyway. Defer to rewrite?
-// FIXME(conventions): implement into_iter
 
-
-/// `RingBuf` is a circular buffer that implements `Deque`.
-#[deriving(Clone)]
+/// `RingBuf` is a circular buffer, which can be used as a double-ended queue efficiently.
 pub struct RingBuf<T> {
-    nelts: uint,
-    lo: uint,
-    elts: Vec<Option<T>>
+    // tail and head are pointers into the buffer. Tail always points
+    // to the first element that could be read, Head always points
+    // to where data should be written.
+    // If tail == head the buffer is empty. The length of the ringbuf
+    // is defined as the distance between the two.
+
+    tail: uint,
+    head: uint,
+    cap: uint,
+    ptr: *mut T
 }
 
+impl<T: Clone> Clone for RingBuf<T> {
+    fn clone(&self) -> RingBuf<T> {
+        self.iter().map(|t| t.clone()).collect()
+    }
+}
+
+#[unsafe_destructor]
+impl<T> Drop for RingBuf<T> {
+    fn drop(&mut self) {
+        self.clear();
+        unsafe {
+            if mem::size_of::<T>() != 0 {
+                heap::deallocate(self.ptr as *mut u8,
+                                 self.cap * mem::size_of::<T>(),
+                                 mem::min_align_of::<T>())
+            }
+        }
+    }
+}
+
+#[stable]
 impl<T> Default for RingBuf<T> {
+    #[stable]
     #[inline]
     fn default() -> RingBuf<T> { RingBuf::new() }
+}
+
+impl<T> RingBuf<T> {
+    /// Turn ptr into a slice
+    #[inline]
+    unsafe fn buffer_as_slice(&self) -> &[T] {
+        mem::transmute(RawSlice { data: self.ptr as *const T, len: self.cap })
+    }
+
+    /// Moves an element out of the buffer
+    #[inline]
+    unsafe fn buffer_read(&mut self, off: uint) -> T {
+        ptr::read(self.ptr.offset(off as int) as *const T)
+    }
+
+    /// Writes an element into the buffer, moving it.
+    #[inline]
+    unsafe fn buffer_write(&mut self, off: uint, t: T) {
+        ptr::write(self.ptr.offset(off as int), t);
+    }
+
+    /// Returns true iff the buffer is at capacity
+    #[inline]
+    fn is_full(&self) -> bool { self.cap - self.len() == 1 }
+
+    /// Returns the index in the underlying buffer for a given logical element index.
+    #[inline]
+    fn wrap_index(&self, idx: uint) -> uint { wrap_index(idx, self.cap) }
+
+    /// Copies a contiguous block of memory len long from src to dst
+    #[inline]
+    unsafe fn copy(&self, dst: uint, src: uint, len: uint) {
+        debug_assert!(dst + len <= self.cap, "dst={} src={} len={} cap={}", dst, src, len,
+                      self.cap);
+        debug_assert!(src + len <= self.cap, "dst={} src={} len={} cap={}", dst, src, len,
+                      self.cap);
+        ptr::copy_memory(
+            self.ptr.offset(dst as int),
+            self.ptr.offset(src as int) as *const T,
+            len);
+    }
 }
 
 impl<T> RingBuf<T> {
@@ -55,13 +126,32 @@ impl<T> RingBuf<T> {
     /// Creates an empty `RingBuf` with space for at least `n` elements.
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn with_capacity(n: uint) -> RingBuf<T> {
-        RingBuf{nelts: 0, lo: 0,
-              elts: Vec::from_fn(cmp::max(MINIMUM_CAPACITY, n), |_| None)}
+        // +1 since the ringbuffer always leaves one space empty
+        let cap = cmp::max(n + 1, MINIMUM_CAPACITY).next_power_of_two();
+        let size = cap.checked_mul(mem::size_of::<T>())
+                      .expect("capacity overflow");
+
+        let ptr = if mem::size_of::<T>() != 0 {
+            unsafe {
+                let ptr = heap::allocate(size, mem::min_align_of::<T>())  as *mut T;;
+                if ptr.is_null() { ::alloc::oom() }
+                ptr
+            }
+        } else {
+            heap::EMPTY as *mut T
+        };
+
+        RingBuf {
+            tail: 0,
+            head: 0,
+            cap: cap,
+            ptr: ptr
+        }
     }
 
     /// Retrieves an element in the `RingBuf` by index.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::collections::RingBuf;
@@ -74,15 +164,17 @@ impl<T> RingBuf<T> {
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn get(&self, i: uint) -> Option<&T> {
-        match self.elts.get(i) {
-            None => None,
-            Some(opt) => opt.as_ref(),
+        if i < self.len() {
+            let idx = self.wrap_index(self.tail + i);
+            unsafe { Some(&*self.ptr.offset(idx as int)) }
+        } else {
+            None
         }
     }
 
     /// Retrieves an element in the `RingBuf` mutably by index.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::collections::RingBuf;
@@ -102,9 +194,11 @@ impl<T> RingBuf<T> {
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn get_mut(&mut self, i: uint) -> Option<&mut T> {
-        match self.elts.get_mut(i) {
-            None => None,
-            Some(opt) => opt.as_mut(),
+        if i < self.len() {
+            let idx = self.wrap_index(self.tail + i);
+            unsafe { Some(&mut *self.ptr.offset(idx as int)) }
+        } else {
+            None
         }
     }
 
@@ -114,7 +208,7 @@ impl<T> RingBuf<T> {
     ///
     /// Fails if there is no element with either index.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::collections::RingBuf;
@@ -130,34 +224,27 @@ impl<T> RingBuf<T> {
     pub fn swap(&mut self, i: uint, j: uint) {
         assert!(i < self.len());
         assert!(j < self.len());
-        let ri = self.raw_index(i);
-        let rj = self.raw_index(j);
-        self.elts.as_mut_slice().swap(ri, rj);
-    }
-
-    /// Returns the index in the underlying `Vec` for a given logical element
-    /// index.
-    fn raw_index(&self, idx: uint) -> uint {
-        raw_index(self.lo, self.elts.len(), idx)
+        let ri = self.wrap_index(self.tail + i);
+        let rj = self.wrap_index(self.tail + j);
+        unsafe {
+            ptr::swap(self.ptr.offset(ri as int), self.ptr.offset(rj as int))
+        }
     }
 
     /// Returns the number of elements the `RingBuf` can hold without
     /// reallocating.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::RingBuf;
     ///
     /// let buf: RingBuf<int> = RingBuf::with_capacity(10);
-    /// assert_eq!(buf.capacity(), 10);
+    /// assert!(buf.capacity() >= 10);
     /// ```
     #[inline]
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn capacity(&self) -> uint {
-        // FXIME(Gankro): not the actual usable capacity if you use reserve/reserve_exact
-        self.elts.capacity()
-    }
+    pub fn capacity(&self) -> uint { self.cap - 1 }
 
     /// Reserves the minimum capacity for exactly `additional` more elements to be inserted in the
     /// given `RingBuf`. Does nothing if the capacity is already sufficient.
@@ -170,7 +257,7 @@ impl<T> RingBuf<T> {
     ///
     /// Panics if the new capacity overflows `uint`.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::RingBuf;
@@ -181,8 +268,7 @@ impl<T> RingBuf<T> {
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn reserve_exact(&mut self, additional: uint) {
-        // FIXME(Gankro): this is just wrong. The ringbuf won't actually use this space
-        self.elts.reserve_exact(additional);
+        self.reserve(additional);
     }
 
     /// Reserves capacity for at least `additional` more elements to be inserted in the given
@@ -192,7 +278,7 @@ impl<T> RingBuf<T> {
     ///
     /// Panics if the new capacity overflows `uint`.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::RingBuf;
@@ -203,13 +289,74 @@ impl<T> RingBuf<T> {
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn reserve(&mut self, additional: uint) {
-        // FIXME(Gankro): this is just wrong. The ringbuf won't actually use this space
-        self.elts.reserve(additional);
+        let new_len = self.len() + additional;
+        assert!(new_len + 1 > self.len(), "capacity overflow");
+        if new_len > self.capacity() {
+            let count = (new_len + 1).next_power_of_two();
+            assert!(count >= new_len + 1);
+
+            if mem::size_of::<T>() != 0 {
+                let old = self.cap * mem::size_of::<T>();
+                let new = count.checked_mul(mem::size_of::<T>())
+                               .expect("capacity overflow");
+                unsafe {
+                    self.ptr = heap::reallocate(self.ptr as *mut u8,
+                                                old,
+                                                new,
+                                                mem::min_align_of::<T>()) as *mut T;
+                    if self.ptr.is_null() { ::alloc::oom() }
+                }
+            }
+
+            // Move the shortest contiguous section of the ring buffer
+            //    T             H
+            //   [o o o o o o o . ]
+            //    T             H
+            // A [o o o o o o o . . . . . . . . . ]
+            //        H T
+            //   [o o . o o o o o ]
+            //          T             H
+            // B [. . . o o o o o o o . . . . . . ]
+            //              H T
+            //   [o o o o o . o o ]
+            //              H                 T
+            // C [o o o o o . . . . . . . . . o o ]
+
+            let oldcap = self.cap;
+            self.cap = count;
+
+            if self.tail <= self.head { // A
+                // Nop
+            } else if self.head < oldcap - self.tail { // B
+                unsafe {
+                    ptr::copy_nonoverlapping_memory(
+                        self.ptr.offset(oldcap as int),
+                        self.ptr as *const T,
+                        self.head
+                    );
+                }
+                self.head += oldcap;
+                debug_assert!(self.head > self.tail);
+            } else { // C
+                unsafe {
+                    ptr::copy_nonoverlapping_memory(
+                        self.ptr.offset((count - (oldcap - self.tail)) as int),
+                        self.ptr.offset(self.tail as int) as *const T,
+                        oldcap - self.tail
+                    );
+                }
+                self.tail = count - (oldcap - self.tail);
+                debug_assert!(self.head < self.tail);
+            }
+            debug_assert!(self.head < self.cap);
+            debug_assert!(self.tail < self.cap);
+            debug_assert!(self.cap.count_ones() == 1);
+        }
     }
 
     /// Returns a front-to-back iterator.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::collections::RingBuf;
@@ -223,12 +370,16 @@ impl<T> RingBuf<T> {
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn iter(&self) -> Items<T> {
-        Items{index: 0, rindex: self.nelts, lo: self.lo, elts: self.elts.as_slice()}
+        Items {
+            tail: self.tail,
+            head: self.head,
+            ring: unsafe { self.buffer_as_slice() }
+        }
     }
 
-    /// Returns a front-to-back iterator which returns mutable references.
+    /// Returns a front-to-back iterator that returns mutable references.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::collections::RingBuf;
@@ -244,38 +395,27 @@ impl<T> RingBuf<T> {
     /// assert_eq!(buf.iter_mut().collect::<Vec<&mut int>>()[], b);
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn iter_mut(&mut self) -> MutItems<T> {
-        let start_index = raw_index(self.lo, self.elts.len(), 0);
-        let end_index = raw_index(self.lo, self.elts.len(), self.nelts);
+    pub fn iter_mut<'a>(&'a mut self) -> MutItems<'a, T> {
+        MutItems {
+            tail: self.tail,
+            head: self.head,
+            cap: self.cap,
+            ptr: self.ptr,
+            marker: marker::ContravariantLifetime::<'a>,
+        }
+    }
 
-        // Divide up the array
-        if end_index <= start_index {
-            // Items to iterate goes from:
-            //    start_index to self.elts.len()
-            // and then
-            //    0 to end_index
-            let (temp, remaining1) = self.elts.split_at_mut(start_index);
-            let (remaining2, _) = temp.split_at_mut(end_index);
-            MutItems {
-                remaining1: remaining1.iter_mut(),
-                remaining2: remaining2.iter_mut(),
-                nelts: self.nelts,
-            }
-        } else {
-            // Items to iterate goes from start_index to end_index:
-            let (empty, elts) = self.elts.split_at_mut(0);
-            let remaining1 = elts[mut start_index..end_index];
-            MutItems {
-                remaining1: remaining1.iter_mut(),
-                remaining2: empty.iter_mut(),
-                nelts: self.nelts,
-            }
+    /// Consumes the list into an iterator yielding elements by value.
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    pub fn into_iter(self) -> MoveItems<T> {
+        MoveItems {
+            inner: self,
         }
     }
 
     /// Returns the number of elements in the `RingBuf`.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::RingBuf;
@@ -286,11 +426,11 @@ impl<T> RingBuf<T> {
     /// assert_eq!(v.len(), 1);
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn len(&self) -> uint { self.nelts }
+    pub fn len(&self) -> uint { count(self.tail, self.head, self.cap) }
 
     /// Returns true if the buffer contains no elements
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::RingBuf;
@@ -305,7 +445,7 @@ impl<T> RingBuf<T> {
 
     /// Clears the buffer, removing all values.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::RingBuf;
@@ -317,15 +457,15 @@ impl<T> RingBuf<T> {
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn clear(&mut self) {
-        for x in self.elts.iter_mut() { *x = None }
-        self.nelts = 0;
-        self.lo = 0;
+        while self.pop_front().is_some() {}
+        self.head = 0;
+        self.tail = 0;
     }
 
     /// Provides a reference to the front element, or `None` if the sequence is
     /// empty.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::RingBuf;
@@ -339,13 +479,13 @@ impl<T> RingBuf<T> {
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn front(&self) -> Option<&T> {
-        if self.nelts > 0 { Some(&self[0]) } else { None }
+        if !self.is_empty() { Some(&self[0]) } else { None }
     }
 
     /// Provides a mutable reference to the front element, or `None` if the
     /// sequence is empty.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::RingBuf;
@@ -363,13 +503,13 @@ impl<T> RingBuf<T> {
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn front_mut(&mut self) -> Option<&mut T> {
-        if self.nelts > 0 { Some(&mut self[0]) } else { None }
+        if !self.is_empty() { Some(&mut self[0]) } else { None }
     }
 
     /// Provides a reference to the back element, or `None` if the sequence is
     /// empty.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::RingBuf;
@@ -383,13 +523,13 @@ impl<T> RingBuf<T> {
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn back(&self) -> Option<&T> {
-        if self.nelts > 0 { Some(&self[self.nelts - 1]) } else { None }
+        if !self.is_empty() { Some(&self[self.len() - 1]) } else { None }
     }
 
     /// Provides a mutable reference to the back element, or `None` if the
     /// sequence is empty.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::RingBuf;
@@ -407,14 +547,14 @@ impl<T> RingBuf<T> {
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn back_mut(&mut self) -> Option<&mut T> {
-        let nelts = self.nelts;
-        if nelts > 0 { Some(&mut self[nelts - 1]) } else { None }
+        let len = self.len();
+        if !self.is_empty() { Some(&mut self[len - 1]) } else { None }
     }
 
     /// Removes the first element and returns it, or `None` if the sequence is
     /// empty.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::RingBuf;
@@ -429,17 +569,18 @@ impl<T> RingBuf<T> {
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn pop_front(&mut self) -> Option<T> {
-        let result = self.elts[self.lo].take();
-        if result.is_some() {
-            self.lo = (self.lo + 1u) % self.elts.len();
-            self.nelts -= 1u;
+        if self.is_empty() {
+            None
+        } else {
+            let tail = self.tail;
+            self.tail = self.wrap_index(self.tail + 1);
+            unsafe { Some(self.buffer_read(tail)) }
         }
-        result
     }
 
     /// Inserts an element first in the sequence.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::RingBuf;
@@ -451,14 +592,14 @@ impl<T> RingBuf<T> {
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn push_front(&mut self, t: T) {
-        if self.nelts == self.elts.len() {
-            grow(self.nelts, &mut self.lo, &mut self.elts);
+        if self.is_full() {
+            self.reserve(1);
+            debug_assert!(!self.is_full());
         }
-        if self.lo == 0u {
-            self.lo = self.elts.len() - 1u;
-        } else { self.lo -= 1u; }
-        self.elts[self.lo] = Some(t);
-        self.nelts += 1u;
+
+        self.tail = self.wrap_index(self.tail - 1);
+        let tail = self.tail;
+        unsafe { self.buffer_write(tail, t); }
     }
 
     /// Deprecated: Renamed to `push_back`.
@@ -469,7 +610,7 @@ impl<T> RingBuf<T> {
 
     /// Appends an element to the back of a buffer
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::collections::RingBuf;
@@ -481,12 +622,14 @@ impl<T> RingBuf<T> {
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn push_back(&mut self, t: T) {
-        if self.nelts == self.elts.len() {
-            grow(self.nelts, &mut self.lo, &mut self.elts);
+        if self.is_full() {
+            self.reserve(1);
+            debug_assert!(!self.is_full());
         }
-        let hi = self.raw_index(self.nelts);
-        self.elts[hi] = Some(t);
-        self.nelts += 1u;
+
+        let head = self.head;
+        self.head = self.wrap_index(self.head + 1);
+        unsafe { self.buffer_write(head, t) }
     }
 
     /// Deprecated: Renamed to `pop_back`.
@@ -498,7 +641,7 @@ impl<T> RingBuf<T> {
     /// Removes the last element from a buffer and returns it, or `None` if
     /// it is empty.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::collections::RingBuf;
@@ -511,38 +654,420 @@ impl<T> RingBuf<T> {
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn pop_back(&mut self) -> Option<T> {
-        if self.nelts > 0 {
-            self.nelts -= 1;
-            let hi = self.raw_index(self.nelts);
-            self.elts[hi].take()
-        } else {
+        if self.is_empty() {
             None
+        } else {
+            self.head = self.wrap_index(self.head - 1);
+            let head = self.head;
+            unsafe { Some(self.buffer_read(head)) }
         }
     }
+
+    /// Inserts an element at position `i` within the ringbuf. Whichever
+    /// end is closer to the insertion point will be moved to make room,
+    /// and all the affected elements will be moved to new positions.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `i` is greater than ringbuf's length
+    ///
+    /// # Example
+    /// ```rust
+    /// use std::collections::RingBuf;
+    ///
+    /// let mut buf = RingBuf::new();
+    /// buf.push_back(10i);
+    /// buf.push_back(12);
+    /// buf.insert(1,11);
+    /// assert_eq!(Some(&11), buf.get(1));
+    /// ```
+    pub fn insert(&mut self, i: uint, t: T) {
+        assert!(i <= self.len(), "index out of bounds");
+        if self.is_full() {
+            self.reserve(1);
+            debug_assert!(!self.is_full());
+        }
+
+        // Move the least number of elements in the ring buffer and insert
+        // the given object
+        //
+        // At most len/2 - 1 elements will be moved. O(min(n, n-i))
+        //
+        // There are three main cases:
+        //  Elements are contiguous
+        //      - special case when tail is 0
+        //  Elements are discontiguous and the insert is in the tail section
+        //  Elements are discontiguous and the insert is in the head section
+        //
+        // For each of those there are two more cases:
+        //  Insert is closer to tail
+        //  Insert is closer to head
+        //
+        // Key: H - self.head
+        //      T - self.tail
+        //      o - Valid element
+        //      I - Insertion element
+        //      A - The element that should be after the insertion point
+        //      M - Indicates element was moved
+
+        let idx = self.wrap_index(self.tail + i);
+
+        let distance_to_tail = i;
+        let distance_to_head = self.len() - i;
+
+        let contiguous = self.tail <= self.head;
+
+        match (contiguous, distance_to_tail <= distance_to_head, idx >= self.tail) {
+            (true, true, _) if i == 0 => {
+                // push_front
+                //
+                //       T
+                //       I             H
+                //      [A o o o o o o . . . . . . . . .]
+                //
+                //                       H         T
+                //      [A o o o o o o o . . . . . I]
+                //
+
+                self.tail = self.wrap_index(self.tail - 1);
+            },
+            (true, true, _) => unsafe {
+                // contiguous, insert closer to tail:
+                //
+                //             T   I         H
+                //      [. . . o o A o o o o . . . . . .]
+                //
+                //           T               H
+                //      [. . o o I A o o o o . . . . . .]
+                //           M M
+                //
+                // contiguous, insert closer to tail and tail is 0:
+                //
+                //
+                //       T   I         H
+                //      [o o A o o o o . . . . . . . . .]
+                //
+                //                       H             T
+                //      [o I A o o o o o . . . . . . . o]
+                //       M                             M
+
+                let new_tail = self.wrap_index(self.tail - 1);
+
+                self.copy(new_tail, self.tail, 1);
+                // Already moved the tail, so we only copy `i - 1` elements.
+                self.copy(self.tail, self.tail + 1, i - 1);
+
+                self.tail = new_tail;
+            },
+            (true, false, _) => unsafe {
+                //  contiguous, insert closer to head:
+                //
+                //             T       I     H
+                //      [. . . o o o o A o o . . . . . .]
+                //
+                //             T               H
+                //      [. . . o o o o I A o o . . . . .]
+                //                       M M M
+
+                self.copy(idx + 1, idx, self.head - idx);
+                self.head = self.wrap_index(self.head + 1);
+            },
+            (false, true, true) => unsafe {
+                // discontiguous, insert closer to tail, tail section:
+                //
+                //                   H         T   I
+                //      [o o o o o o . . . . . o o A o o]
+                //
+                //                   H       T
+                //      [o o o o o o . . . . o o I A o o]
+                //                           M M
+
+                self.copy(self.tail - 1, self.tail, i);
+                self.tail -= 1;
+            },
+            (false, false, true) => unsafe {
+                // discontiguous, insert closer to head, tail section:
+                //
+                //           H             T         I
+                //      [o o . . . . . . . o o o o o A o]
+                //
+                //             H           T
+                //      [o o o . . . . . . o o o o o I A]
+                //       M M M                         M
+
+                // copy elements up to new head
+                self.copy(1, 0, self.head);
+
+                // copy last element into empty spot at bottom of buffer
+                self.copy(0, self.cap - 1, 1);
+
+                // move elements from idx to end forward not including ^ element
+                self.copy(idx + 1, idx, self.cap - 1 - idx);
+
+                self.head += 1;
+            },
+            (false, true, false) if idx == 0 => unsafe {
+                // discontiguous, insert is closer to tail, head section,
+                // and is at index zero in the internal buffer:
+                //
+                //       I                   H     T
+                //      [A o o o o o o o o o . . . o o o]
+                //
+                //                           H   T
+                //      [A o o o o o o o o o . . o o o I]
+                //                               M M M
+
+                // copy elements up to new tail
+                self.copy(self.tail - 1, self.tail, self.cap - self.tail);
+
+                // copy last element into empty spot at bottom of buffer
+                self.copy(self.cap - 1, 0, 1);
+
+                self.tail -= 1;
+            },
+            (false, true, false) => unsafe {
+                // discontiguous, insert closer to tail, head section:
+                //
+                //             I             H     T
+                //      [o o o A o o o o o o . . . o o o]
+                //
+                //                           H   T
+                //      [o o I A o o o o o o . . o o o o]
+                //       M M                     M M M M
+
+                // copy elements up to new tail
+                self.copy(self.tail - 1, self.tail, self.cap - self.tail);
+
+                // copy last element into empty spot at bottom of buffer
+                self.copy(self.cap - 1, 0, 1);
+
+                // move elements from idx-1 to end forward not including ^ element
+                self.copy(0, 1, idx - 1);
+
+                self.tail -= 1;
+            },
+            (false, false, false) => unsafe {
+                // discontiguous, insert closer to head, head section:
+                //
+                //               I     H           T
+                //      [o o o o A o o . . . . . . o o o]
+                //
+                //                     H           T
+                //      [o o o o I A o o . . . . . o o o]
+                //                 M M M
+
+                self.copy(idx + 1, idx, self.head - idx);
+                self.head += 1;
+            }
+        }
+
+        // tail might've been changed so we need to recalculate
+        let new_idx = self.wrap_index(self.tail + i);
+        unsafe {
+            self.buffer_write(new_idx, t);
+        }
+    }
+
+    /// Removes and returns the element at position `i` from the ringbuf.
+    /// Whichever end is closer to the removal point will be moved to make
+    /// room, and all the affected elements will be moved to new positions.
+    /// Returns `None` if `i` is out of bounds.
+    ///
+    /// # Example
+    /// ```rust
+    /// use std::collections::RingBuf;
+    ///
+    /// let mut buf = RingBuf::new();
+    /// buf.push_back(5i);
+    /// buf.push_back(10i);
+    /// buf.push_back(12i);
+    /// buf.push_back(15);
+    /// buf.remove(2);
+    /// assert_eq!(Some(&15), buf.get(2));
+    /// ```
+    #[unstable = "matches collection reform specification; waiting on panic semantics"]
+    pub fn remove(&mut self, i: uint) -> Option<T> {
+        if self.is_empty() || self.len() <= i {
+            return None;
+        }
+
+        // There are three main cases:
+        //  Elements are contiguous
+        //  Elements are discontiguous and the removal is in the tail section
+        //  Elements are discontiguous and the removal is in the head section
+        //      - special case when elements are technically contiguous,
+        //        but self.head = 0
+        //
+        // For each of those there are two more cases:
+        //  Insert is closer to tail
+        //  Insert is closer to head
+        //
+        // Key: H - self.head
+        //      T - self.tail
+        //      o - Valid element
+        //      x - Element marked for removal
+        //      R - Indicates element that is being removed
+        //      M - Indicates element was moved
+
+        let idx = self.wrap_index(self.tail + i);
+
+        let elem = unsafe {
+            Some(self.buffer_read(idx))
+        };
+
+        let distance_to_tail = i;
+        let distance_to_head = self.len() - i;
+
+        let contiguous = self.tail <= self.head;
+
+        match (contiguous, distance_to_tail <= distance_to_head, idx >= self.tail) {
+            (true, true, _) => unsafe {
+                // contiguous, remove closer to tail:
+                //
+                //             T   R         H
+                //      [. . . o o x o o o o . . . . . .]
+                //
+                //               T           H
+                //      [. . . . o o o o o o . . . . . .]
+                //               M M
+
+                self.copy(self.tail + 1, self.tail, i);
+                self.tail += 1;
+            },
+            (true, false, _) => unsafe {
+                // contiguous, remove closer to head:
+                //
+                //             T       R     H
+                //      [. . . o o o o x o o . . . . . .]
+                //
+                //             T           H
+                //      [. . . o o o o o o . . . . . . .]
+                //                     M M
+
+                self.copy(idx, idx + 1, self.head - idx - 1);
+                self.head -= 1;
+            },
+            (false, true, true) => unsafe {
+                // discontiguous, remove closer to tail, tail section:
+                //
+                //                   H         T   R
+                //      [o o o o o o . . . . . o o x o o]
+                //
+                //                   H           T
+                //      [o o o o o o . . . . . . o o o o]
+                //                               M M
+
+                self.copy(self.tail + 1, self.tail, i);
+                self.tail = self.wrap_index(self.tail + 1);
+            },
+            (false, false, false) => unsafe {
+                // discontiguous, remove closer to head, head section:
+                //
+                //               R     H           T
+                //      [o o o o x o o . . . . . . o o o]
+                //
+                //                   H             T
+                //      [o o o o o o . . . . . . . o o o]
+                //               M M
+
+                self.copy(idx, idx + 1, self.head - idx - 1);
+                self.head -= 1;
+            },
+            (false, false, true) => unsafe {
+                // discontiguous, remove closer to head, tail section:
+                //
+                //             H           T         R
+                //      [o o o . . . . . . o o o o o x o]
+                //
+                //           H             T
+                //      [o o . . . . . . . o o o o o o o]
+                //       M M                         M M
+                //
+                // or quasi-discontiguous, remove next to head, tail section:
+                //
+                //       H                 T         R
+                //      [. . . . . . . . . o o o o o x o]
+                //
+                //                         T           H
+                //      [. . . . . . . . . o o o o o o .]
+                //                                   M
+
+                // draw in elements in the tail section
+                self.copy(idx, idx + 1, self.cap - idx - 1);
+
+                // Prevents underflow.
+                if self.head != 0 {
+                    // copy first element into empty spot
+                    self.copy(self.cap - 1, 0, 1);
+
+                    // move elements in the head section backwards
+                    self.copy(0, 1, self.head - 1);
+                }
+
+                self.head = self.wrap_index(self.head - 1);
+            },
+            (false, true, false) => unsafe {
+                // discontiguous, remove closer to tail, head section:
+                //
+                //           R               H     T
+                //      [o o x o o o o o o o . . . o o o]
+                //
+                //                           H       T
+                //      [o o o o o o o o o o . . . . o o]
+                //       M M M                       M M
+
+                // draw in elements up to idx
+                self.copy(1, 0, idx);
+
+                // copy last element into empty spot
+                self.copy(0, self.cap - 1, 1);
+
+                // move elements from tail to end forward, excluding the last one
+                self.copy(self.tail + 1, self.tail, self.cap - self.tail - 1);
+
+                self.tail = self.wrap_index(self.tail + 1);
+            }
+        }
+
+        return elem;
+    }
+}
+
+/// Returns the index in the underlying buffer for a given logical element index.
+#[inline]
+fn wrap_index(index: uint, size: uint) -> uint {
+    // size is always a power of 2
+    index & (size - 1)
+}
+
+/// Calculate the number of elements left to be read in the buffer
+#[inline]
+fn count(tail: uint, head: uint, size: uint) -> uint {
+    // size is always a power of 2
+    (head - tail) & (size - 1)
 }
 
 /// `RingBuf` iterator.
 pub struct Items<'a, T:'a> {
-    lo: uint,
-    index: uint,
-    rindex: uint,
-    elts: &'a [Option<T>],
+    ring: &'a [T],
+    tail: uint,
+    head: uint
 }
 
 impl<'a, T> Iterator<&'a T> for Items<'a, T> {
     #[inline]
     fn next(&mut self) -> Option<&'a T> {
-        if self.index == self.rindex {
+        if self.tail == self.head {
             return None;
         }
-        let raw_index = raw_index(self.lo, self.elts.len(), self.index);
-        self.index += 1;
-        Some(self.elts[raw_index].as_ref().unwrap())
+        let tail = self.tail;
+        self.tail = wrap_index(self.tail + 1, self.ring.len());
+        unsafe { Some(self.ring.unsafe_get(tail)) }
     }
 
     #[inline]
     fn size_hint(&self) -> (uint, Option<uint>) {
-        let len = self.rindex - self.index;
+        let len = count(self.tail, self.head, self.ring.len());
         (len, Some(len))
     }
 }
@@ -550,129 +1075,114 @@ impl<'a, T> Iterator<&'a T> for Items<'a, T> {
 impl<'a, T> DoubleEndedIterator<&'a T> for Items<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a T> {
-        if self.index == self.rindex {
+        if self.tail == self.head {
             return None;
         }
-        self.rindex -= 1;
-        let raw_index = raw_index(self.lo, self.elts.len(), self.rindex);
-        Some(self.elts[raw_index].as_ref().unwrap())
+        self.head = wrap_index(self.head - 1, self.ring.len());
+        unsafe { Some(self.ring.unsafe_get(self.head)) }
     }
 }
 
-impl<'a, T> ExactSize<&'a T> for Items<'a, T> {}
+impl<'a, T> ExactSizeIterator<&'a T> for Items<'a, T> {}
 
 impl<'a, T> RandomAccessIterator<&'a T> for Items<'a, T> {
     #[inline]
-    fn indexable(&self) -> uint { self.rindex - self.index }
+    fn indexable(&self) -> uint {
+        let (len, _) = self.size_hint();
+        len
+    }
 
     #[inline]
     fn idx(&mut self, j: uint) -> Option<&'a T> {
         if j >= self.indexable() {
             None
         } else {
-            let raw_index = raw_index(self.lo, self.elts.len(), self.index + j);
-            Some(self.elts[raw_index].as_ref().unwrap())
+            let idx = wrap_index(self.tail + j, self.ring.len());
+            unsafe { Some(self.ring.unsafe_get(idx)) }
         }
     }
 }
 
+// FIXME This was implemented differently from Items because of a problem
+//       with returning the mutable reference. I couldn't find a way to
+//       make the lifetime checker happy so, but there should be a way.
 /// `RingBuf` mutable iterator.
 pub struct MutItems<'a, T:'a> {
-    remaining1: slice::MutItems<'a, Option<T>>,
-    remaining2: slice::MutItems<'a, Option<T>>,
-    nelts: uint,
+    ptr: *mut T,
+    tail: uint,
+    head: uint,
+    cap: uint,
+    marker: marker::ContravariantLifetime<'a>,
 }
 
 impl<'a, T> Iterator<&'a mut T> for MutItems<'a, T> {
     #[inline]
     fn next(&mut self) -> Option<&'a mut T> {
-        if self.nelts == 0 {
+        if self.tail == self.head {
             return None;
         }
-        self.nelts -= 1;
-        match self.remaining1.next() {
-            Some(ptr) => return Some(ptr.as_mut().unwrap()),
-            None => {}
-        }
-        match self.remaining2.next() {
-            Some(ptr) => return Some(ptr.as_mut().unwrap()),
-            None => unreachable!(),
+        let tail = self.tail;
+        self.tail = wrap_index(self.tail + 1, self.cap);
+
+        unsafe {
+            Some(&mut *self.ptr.offset(tail as int))
         }
     }
 
     #[inline]
     fn size_hint(&self) -> (uint, Option<uint>) {
-        (self.nelts, Some(self.nelts))
+        let len = count(self.tail, self.head, self.cap);
+        (len, Some(len))
     }
 }
 
 impl<'a, T> DoubleEndedIterator<&'a mut T> for MutItems<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a mut T> {
-        if self.nelts == 0 {
+        if self.tail == self.head {
             return None;
         }
-        self.nelts -= 1;
-        match self.remaining2.next_back() {
-            Some(ptr) => return Some(ptr.as_mut().unwrap()),
-            None => {}
-        }
-        match self.remaining1.next_back() {
-            Some(ptr) => return Some(ptr.as_mut().unwrap()),
-            None => unreachable!(),
+        self.head = wrap_index(self.head - 1, self.cap);
+
+        unsafe {
+            Some(&mut *self.ptr.offset(self.head as int))
         }
     }
 }
 
-impl<'a, T> ExactSize<&'a mut T> for MutItems<'a, T> {}
+impl<'a, T> ExactSizeIterator<&'a mut T> for MutItems<'a, T> {}
 
-/// Grow is only called on full elts, so nelts is also len(elts), unlike
-/// elsewhere.
-fn grow<T>(nelts: uint, loptr: &mut uint, elts: &mut Vec<Option<T>>) {
-    assert_eq!(nelts, elts.len());
-    let lo = *loptr;
-    elts.reserve_exact(nelts);
-    let newlen = elts.capacity();
+// A by-value RingBuf iterator
+pub struct MoveItems<T> {
+    inner: RingBuf<T>,
+}
 
-    /* fill with None */
-    for _ in range(elts.len(), newlen) {
-        elts.push(None);
+impl<T> Iterator<T> for MoveItems<T> {
+    #[inline]
+    fn next(&mut self) -> Option<T> {
+        self.inner.pop_front()
     }
 
-    /*
-      Move the shortest half into the newly reserved area.
-      lo ---->|
-      nelts ----------->|
-        [o o o|o o o o o]
-      A [. . .|o o o o o o o o|. . . . .]
-      B [o o o|. . . . . . . .|o o o o o]
-     */
-
-    assert!(newlen - nelts/2 >= nelts);
-    if lo <= (nelts - lo) { // A
-        for i in range(0u, lo) {
-            elts.as_mut_slice().swap(i, nelts + i);
-        }
-    } else {                // B
-        for i in range(lo, nelts) {
-            elts.as_mut_slice().swap(i, newlen - nelts + i);
-        }
-        *loptr += newlen - nelts;
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        let len = self.inner.len();
+        (len, Some(len))
     }
 }
 
-/// Returns the index in the underlying `Vec` for a given logical element index.
-fn raw_index(lo: uint, len: uint, index: uint) -> uint {
-    if lo >= len - index {
-        lo + index - len
-    } else {
-        lo + index
+impl<T> DoubleEndedIterator<T> for MoveItems<T> {
+    #[inline]
+    fn next_back(&mut self) -> Option<T> {
+        self.inner.pop_back()
     }
 }
+
+
+impl<T> ExactSizeIterator<T> for MoveItems<T> {}
 
 impl<A: PartialEq> PartialEq for RingBuf<A> {
     fn eq(&self, other: &RingBuf<A>) -> bool {
-        self.nelts == other.nelts &&
+        self.len() == other.len() &&
             self.iter().zip(other.iter()).all(|(a, b)| a.eq(b))
     }
     fn ne(&self, other: &RingBuf<A>) -> bool {
@@ -707,22 +1217,14 @@ impl<S: Writer, A: Hash<S>> Hash<S> for RingBuf<A> {
 impl<A> Index<uint, A> for RingBuf<A> {
     #[inline]
     fn index<'a>(&'a self, i: &uint) -> &'a A {
-        let idx = self.raw_index(*i);
-        match self.elts[idx] {
-            None => panic!(),
-            Some(ref v) => v,
-        }
+        self.get(*i).expect("Out of bounds access")
     }
 }
 
 impl<A> IndexMut<uint, A> for RingBuf<A> {
     #[inline]
     fn index_mut<'a>(&'a mut self, i: &uint) -> &'a mut A {
-        let idx = self.raw_index(*i);
-        match *(&mut self.elts[idx]) {
-            None => panic!(),
-            Some(ref mut v) => v
-        }
+        self.get_mut(*i).expect("Out of bounds access")
     }
 }
 
@@ -758,14 +1260,17 @@ impl<T: fmt::Show> fmt::Show for RingBuf<T> {
 
 #[cfg(test)]
 mod tests {
+    use self::Taggy::*;
+    use self::Taggypar::*;
+    use prelude::*;
+    use core::cmp;
+    use core::iter;
     use std::fmt::Show;
-    use std::prelude::*;
     use std::hash;
     use test::Bencher;
     use test;
 
     use super::RingBuf;
-    use vec::Vec;
 
     #[test]
     #[allow(deprecated)]
@@ -888,33 +1393,95 @@ mod tests {
     #[bench]
     fn bench_new(b: &mut test::Bencher) {
         b.iter(|| {
-            let _: RingBuf<u64> = RingBuf::new();
+            let ring: RingBuf<u64> = RingBuf::new();
+            test::black_box(ring);
         })
     }
 
     #[bench]
-    fn bench_push_back(b: &mut test::Bencher) {
-        let mut deq = RingBuf::new();
+    fn bench_push_back_100(b: &mut test::Bencher) {
+        let mut deq = RingBuf::with_capacity(101);
         b.iter(|| {
-            deq.push_back(0i);
-        })
-    }
-
-    #[bench]
-    fn bench_push_front(b: &mut test::Bencher) {
-        let mut deq = RingBuf::new();
-        b.iter(|| {
-            deq.push_front(0i);
-        })
-    }
-
-    #[bench]
-    fn bench_grow(b: &mut test::Bencher) {
-        let mut deq = RingBuf::new();
-        b.iter(|| {
-            for _ in range(0i, 65) {
-                deq.push_front(1i);
+            for i in range(0i, 100) {
+                deq.push_back(i);
             }
+            deq.head = 0;
+            deq.tail = 0;
+        })
+    }
+
+    #[bench]
+    fn bench_push_front_100(b: &mut test::Bencher) {
+        let mut deq = RingBuf::with_capacity(101);
+        b.iter(|| {
+            for i in range(0i, 100) {
+                deq.push_front(i);
+            }
+            deq.head = 0;
+            deq.tail = 0;
+        })
+    }
+
+    #[bench]
+    fn bench_pop_back_100(b: &mut test::Bencher) {
+        let mut deq: RingBuf<int> = RingBuf::with_capacity(101);
+
+        b.iter(|| {
+            deq.head = 100;
+            deq.tail = 0;
+            while !deq.is_empty() {
+                test::black_box(deq.pop_back());
+            }
+        })
+    }
+
+    #[bench]
+    fn bench_pop_front_100(b: &mut test::Bencher) {
+        let mut deq: RingBuf<int> = RingBuf::with_capacity(101);
+
+        b.iter(|| {
+            deq.head = 100;
+            deq.tail = 0;
+            while !deq.is_empty() {
+                test::black_box(deq.pop_front());
+            }
+        })
+    }
+
+    #[bench]
+    fn bench_grow_1025(b: &mut test::Bencher) {
+        b.iter(|| {
+            let mut deq = RingBuf::new();
+            for i in range(0i, 1025) {
+                deq.push_front(i);
+            }
+            test::black_box(deq);
+        })
+    }
+
+    #[bench]
+    fn bench_iter_1000(b: &mut test::Bencher) {
+        let ring: RingBuf<int> = range(0i, 1000).collect();
+
+        b.iter(|| {
+            let mut sum = 0;
+            for &i in ring.iter() {
+                sum += i;
+            }
+            test::black_box(sum);
+        })
+    }
+
+    #[bench]
+    fn bench_mut_iter_1000(b: &mut test::Bencher) {
+        let mut ring: RingBuf<int> = range(0i, 1000).collect();
+
+        b.iter(|| {
+            let mut sum = 0;
+            for i in ring.iter_mut() {
+                sum += *i;
+            }
+            test::black_box(sum);
         })
     }
 
@@ -1034,11 +1601,11 @@ mod tests {
         let mut d = RingBuf::new();
         d.push_back(0u64);
         d.reserve(50);
-        assert!(d.capacity() >= 64);
+        assert!(d.capacity() >= 51);
         let mut d = RingBuf::new();
         d.push_back(0u32);
         d.reserve(50);
-        assert!(d.capacity() >= 64);
+        assert!(d.capacity() >= 51);
     }
 
     #[test]
@@ -1060,7 +1627,7 @@ mod tests {
         }
         {
             let b: &[_] = &[&0,&1,&2,&3,&4];
-            assert_eq!(d.iter().collect::<Vec<&int>>().as_slice(), b);
+            assert_eq!(d.iter().collect::<Vec<&int>>(), b);
         }
 
         for i in range(6i, 9) {
@@ -1068,7 +1635,7 @@ mod tests {
         }
         {
             let b: &[_] = &[&8,&7,&6,&0,&1,&2,&3,&4];
-            assert_eq!(d.iter().collect::<Vec<&int>>().as_slice(), b);
+            assert_eq!(d.iter().collect::<Vec<&int>>(), b);
         }
 
         let mut it = d.iter();
@@ -1091,14 +1658,14 @@ mod tests {
         }
         {
             let b: &[_] = &[&4,&3,&2,&1,&0];
-            assert_eq!(d.iter().rev().collect::<Vec<&int>>().as_slice(), b);
+            assert_eq!(d.iter().rev().collect::<Vec<&int>>(), b);
         }
 
         for i in range(6i, 9) {
             d.push_front(i);
         }
         let b: &[_] = &[&4,&3,&2,&1,&0,&6,&7,&8];
-        assert_eq!(d.iter().rev().collect::<Vec<&int>>().as_slice(), b);
+        assert_eq!(d.iter().rev().collect::<Vec<&int>>(), b);
     }
 
     #[test]
@@ -1163,14 +1730,73 @@ mod tests {
     }
 
     #[test]
+    fn test_into_iter() {
+
+        // Empty iter
+        {
+            let d: RingBuf<int> = RingBuf::new();
+            let mut iter = d.into_iter();
+
+            assert_eq!(iter.size_hint(), (0, Some(0)));
+            assert_eq!(iter.next(), None);
+            assert_eq!(iter.size_hint(), (0, Some(0)));
+        }
+
+        // simple iter
+        {
+            let mut d = RingBuf::new();
+            for i in range(0i, 5) {
+                d.push_back(i);
+            }
+
+            let b = vec![0,1,2,3,4];
+            assert_eq!(d.into_iter().collect::<Vec<int>>(), b);
+        }
+
+        // wrapped iter
+        {
+            let mut d = RingBuf::new();
+            for i in range(0i, 5) {
+                d.push_back(i);
+            }
+            for i in range(6, 9) {
+                d.push_front(i);
+            }
+
+            let b = vec![8,7,6,0,1,2,3,4];
+            assert_eq!(d.into_iter().collect::<Vec<int>>(), b);
+        }
+
+        // partially used
+        {
+            let mut d = RingBuf::new();
+            for i in range(0i, 5) {
+                d.push_back(i);
+            }
+            for i in range(6, 9) {
+                d.push_front(i);
+            }
+
+            let mut it = d.into_iter();
+            assert_eq!(it.size_hint(), (8, Some(8)));
+            assert_eq!(it.next(), Some(8));
+            assert_eq!(it.size_hint(), (7, Some(7)));
+            assert_eq!(it.next_back(), Some(4));
+            assert_eq!(it.size_hint(), (6, Some(6)));
+            assert_eq!(it.next(), Some(7));
+            assert_eq!(it.size_hint(), (5, Some(5)));
+        }
+    }
+
+    #[test]
     fn test_from_iter() {
-        use std::iter;
+        use core::iter;
         let v = vec!(1i,2,3,4,5,6,7);
         let deq: RingBuf<int> = v.iter().map(|&x| x).collect();
         let u: Vec<int> = deq.iter().map(|&x| x).collect();
         assert_eq!(u, v);
 
-        let mut seq = iter::count(0u, 2).take(256);
+        let seq = iter::count(0u, 2).take(256);
         let deq: RingBuf<uint> = seq.collect();
         for (i, &x) in deq.iter().enumerate() {
             assert_eq!(2*i, x);
@@ -1250,11 +1876,259 @@ mod tests {
     #[test]
     fn test_show() {
         let ringbuf: RingBuf<int> = range(0i, 10).collect();
-        assert!(format!("{}", ringbuf).as_slice() == "[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]");
+        assert!(format!("{}", ringbuf) == "[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]");
 
         let ringbuf: RingBuf<&str> = vec!["just", "one", "test", "more"].iter()
                                                                         .map(|&s| s)
                                                                         .collect();
-        assert!(format!("{}", ringbuf).as_slice() == "[just, one, test, more]");
+        assert!(format!("{}", ringbuf) == "[just, one, test, more]");
+    }
+
+    #[test]
+    fn test_drop() {
+        static mut drops: uint = 0;
+        struct Elem;
+        impl Drop for Elem {
+            fn drop(&mut self) {
+                unsafe { drops += 1; }
+            }
+        }
+
+        let mut ring = RingBuf::new();
+        ring.push_back(Elem);
+        ring.push_front(Elem);
+        ring.push_back(Elem);
+        ring.push_front(Elem);
+        drop(ring);
+
+        assert_eq!(unsafe {drops}, 4);
+    }
+
+    #[test]
+    fn test_drop_with_pop() {
+        static mut drops: uint = 0;
+        struct Elem;
+        impl Drop for Elem {
+            fn drop(&mut self) {
+                unsafe { drops += 1; }
+            }
+        }
+
+        let mut ring = RingBuf::new();
+        ring.push_back(Elem);
+        ring.push_front(Elem);
+        ring.push_back(Elem);
+        ring.push_front(Elem);
+
+        drop(ring.pop_back());
+        drop(ring.pop_front());
+        assert_eq!(unsafe {drops}, 2);
+
+        drop(ring);
+        assert_eq!(unsafe {drops}, 4);
+    }
+
+    #[test]
+    fn test_drop_clear() {
+        static mut drops: uint = 0;
+        struct Elem;
+        impl Drop for Elem {
+            fn drop(&mut self) {
+                unsafe { drops += 1; }
+            }
+        }
+
+        let mut ring = RingBuf::new();
+        ring.push_back(Elem);
+        ring.push_front(Elem);
+        ring.push_back(Elem);
+        ring.push_front(Elem);
+        ring.clear();
+        assert_eq!(unsafe {drops}, 4);
+
+        drop(ring);
+        assert_eq!(unsafe {drops}, 4);
+    }
+
+    #[test]
+    fn test_reserve_grow() {
+        // test growth path A
+        // [T o o H] -> [T o o H . . . . ]
+        let mut ring = RingBuf::with_capacity(4);
+        for i in range(0i, 3) {
+            ring.push_back(i);
+        }
+        ring.reserve(7);
+        for i in range(0i, 3) {
+            assert_eq!(ring.pop_front(), Some(i));
+        }
+
+        // test growth path B
+        // [H T o o] -> [. T o o H . . . ]
+        let mut ring = RingBuf::with_capacity(4);
+        for i in range(0i, 1) {
+            ring.push_back(i);
+            assert_eq!(ring.pop_front(), Some(i));
+        }
+        for i in range(0i, 3) {
+            ring.push_back(i);
+        }
+        ring.reserve(7);
+        for i in range(0i, 3) {
+            assert_eq!(ring.pop_front(), Some(i));
+        }
+
+        // test growth path C
+        // [o o H T] -> [o o H . . . . T ]
+        let mut ring = RingBuf::with_capacity(4);
+        for i in range(0i, 3) {
+            ring.push_back(i);
+            assert_eq!(ring.pop_front(), Some(i));
+        }
+        for i in range(0i, 3) {
+            ring.push_back(i);
+        }
+        ring.reserve(7);
+        for i in range(0i, 3) {
+            assert_eq!(ring.pop_front(), Some(i));
+        }
+    }
+
+    #[test]
+    fn test_get() {
+        let mut ring = RingBuf::new();
+        ring.push_back(0i);
+        assert_eq!(ring.get(0), Some(&0));
+        assert_eq!(ring.get(1), None);
+
+        ring.push_back(1);
+        assert_eq!(ring.get(0), Some(&0));
+        assert_eq!(ring.get(1), Some(&1));
+        assert_eq!(ring.get(2), None);
+
+        ring.push_back(2);
+        assert_eq!(ring.get(0), Some(&0));
+        assert_eq!(ring.get(1), Some(&1));
+        assert_eq!(ring.get(2), Some(&2));
+        assert_eq!(ring.get(3), None);
+
+        assert_eq!(ring.pop_front(), Some(0));
+        assert_eq!(ring.get(0), Some(&1));
+        assert_eq!(ring.get(1), Some(&2));
+        assert_eq!(ring.get(2), None);
+
+        assert_eq!(ring.pop_front(), Some(1));
+        assert_eq!(ring.get(0), Some(&2));
+        assert_eq!(ring.get(1), None);
+
+        assert_eq!(ring.pop_front(), Some(2));
+        assert_eq!(ring.get(0), None);
+        assert_eq!(ring.get(1), None);
+    }
+
+    #[test]
+    fn test_get_mut() {
+        let mut ring = RingBuf::new();
+        for i in range(0i, 3) {
+            ring.push_back(i);
+        }
+
+        match ring.get_mut(1) {
+            Some(x) => *x = -1,
+            None => ()
+        };
+
+        assert_eq!(ring.get_mut(0), Some(&mut 0));
+        assert_eq!(ring.get_mut(1), Some(&mut -1));
+        assert_eq!(ring.get_mut(2), Some(&mut 2));
+        assert_eq!(ring.get_mut(3), None);
+
+        assert_eq!(ring.pop_front(), Some(0));
+        assert_eq!(ring.get_mut(0), Some(&mut -1));
+        assert_eq!(ring.get_mut(1), Some(&mut 2));
+        assert_eq!(ring.get_mut(2), None);
+    }
+
+    #[test]
+    fn test_insert() {
+        // This test checks that every single combination of tail position, length, and
+        // insertion position is tested. Capacity 15 should be large enough to cover every case.
+
+        let mut tester = RingBuf::with_capacity(15);
+        // can't guarantee we got 15, so have to get what we got.
+        // 15 would be great, but we will definitely get 2^k - 1, for k >= 4, or else
+        // this test isn't covering what it wants to
+        let cap = tester.capacity();
+
+
+        // len is the length *after* insertion
+        for len in range(1, cap) {
+            // 0, 1, 2, .., len - 1
+            let expected = iter::count(0, 1).take(len).collect();
+            for tail_pos in range(0, cap) {
+                for to_insert in range(0, len) {
+                    tester.tail = tail_pos;
+                    tester.head = tail_pos;
+                    for i in range(0, len) {
+                        if i != to_insert {
+                            tester.push_back(i);
+                        }
+                    }
+                    tester.insert(to_insert, to_insert);
+                    assert!(tester.tail < tester.cap);
+                    assert!(tester.head < tester.cap);
+                    assert_eq!(tester, expected);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_remove() {
+        // This test checks that every single combination of tail position, length, and
+        // removal position is tested. Capacity 15 should be large enough to cover every case.
+
+        let mut tester = RingBuf::with_capacity(15);
+        // can't guarantee we got 15, so have to get what we got.
+        // 15 would be great, but we will definitely get 2^k - 1, for k >= 4, or else
+        // this test isn't covering what it wants to
+        let cap = tester.capacity();
+
+        // len is the length *after* removal
+        for len in range(0, cap - 1) {
+            // 0, 1, 2, .., len - 1
+            let expected = iter::count(0, 1).take(len).collect();
+            for tail_pos in range(0, cap) {
+                for to_remove in range(0, len + 1) {
+                    tester.tail = tail_pos;
+                    tester.head = tail_pos;
+                    for i in range(0, len) {
+                        if i == to_remove {
+                            tester.push_back(1234);
+                        }
+                        tester.push_back(i);
+                    }
+                    if to_remove == len {
+                        tester.push_back(1234);
+                    }
+                    tester.remove(to_remove);
+                    assert!(tester.tail < tester.cap);
+                    assert!(tester.head < tester.cap);
+                    assert_eq!(tester, expected);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_front() {
+        let mut ring = RingBuf::new();
+        ring.push_back(10i);
+        ring.push_back(20i);
+        assert_eq!(ring.front(), Some(&10));
+        ring.pop_front();
+        assert_eq!(ring.front(), Some(&20));
+        ring.pop_front();
+        assert_eq!(ring.front(), None);
     }
 }

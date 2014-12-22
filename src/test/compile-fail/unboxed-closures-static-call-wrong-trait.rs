@@ -12,6 +12,6 @@
 
 fn main() {
     let mut_ = |&mut: x| x;
-    mut_.call((0i, )); //~ ERROR type `closure` does not implement
+    mut_.call((0i, )); //~ ERROR does not implement any method in scope named `call`
 }
 

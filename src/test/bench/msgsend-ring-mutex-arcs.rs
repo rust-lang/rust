@@ -19,28 +19,30 @@
 // ignore-lexer-test FIXME #15679
 
 use std::os;
-use std::sync::{Arc, Future, Mutex};
+use std::sync::{Arc, Future, Mutex, Condvar};
 use std::time::Duration;
 use std::uint;
 
 // A poor man's pipe.
-type pipe = Arc<Mutex<Vec<uint>>>;
+type pipe = Arc<(Mutex<Vec<uint>>, Condvar)>;
 
 fn send(p: &pipe, msg: uint) {
-    let mut arr = p.lock();
+    let &(ref lock, ref cond) = &**p;
+    let mut arr = lock.lock();
     arr.push(msg);
-    arr.cond.signal();
+    cond.notify_one();
 }
 fn recv(p: &pipe) -> uint {
-    let mut arr = p.lock();
+    let &(ref lock, ref cond) = &**p;
+    let mut arr = lock.lock();
     while arr.is_empty() {
-        arr.cond.wait();
+        cond.wait(&arr);
     }
     arr.pop().unwrap()
 }
 
 fn init() -> (pipe,pipe) {
-    let m = Arc::new(Mutex::new(Vec::new()));
+    let m = Arc::new((Mutex::new(Vec::new()), Condvar::new()));
     ((&m).clone(), m)
 }
 
@@ -87,7 +89,7 @@ fn main() {
             //println!("spawning %?", i);
             let (new_chan, num_port) = init();
             let num_chan_2 = num_chan.clone();
-            let new_future = Future::spawn(proc() {
+            let new_future = Future::spawn(move|| {
                 thread_ring(i, msg_per_task, num_chan_2, num_port)
             });
             futures.push(new_future);

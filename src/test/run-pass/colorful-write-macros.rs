@@ -10,7 +10,7 @@
 
 // no-pretty-expanded
 
-#![allow(unused_must_use, dead_code)]
+#![allow(unused_must_use, dead_code, deprecated)]
 #![feature(macro_rules)]
 
 use std::io::MemWriter;
@@ -18,7 +18,7 @@ use std::fmt;
 use std::fmt::FormatWriter;
 
 struct Foo<'a> {
-    writer: &'a mut Writer+'a,
+    writer: &'a mut (Writer+'a),
     other: &'a str,
 }
 

@@ -19,6 +19,8 @@ extern crate arena;
 extern crate collections;
 extern crate libc;
 
+use TypeStructure::{TypeInt, TypeFunction};
+use AstKind::{ExprInt, ExprVar, ExprLambda};
 use arena::Arena;
 use std::collections::HashMap;
 use std::mem;
@@ -30,6 +32,9 @@ enum TypeStructure<'tcx> {
     TypeInt,
     TypeFunction(Type<'tcx>, Type<'tcx>),
 }
+
+impl<'tcx> Copy for TypeStructure<'tcx> {}
+
 impl<'tcx> PartialEq for TypeStructure<'tcx> {
     fn eq(&self, other: &TypeStructure<'tcx>) -> bool {
         match (*self, *other) {
@@ -91,6 +96,8 @@ struct NodeId {
     id: uint
 }
 
+impl Copy for NodeId {}
+
 type Ast<'ast> = &'ast AstStructure<'ast>;
 
 struct AstStructure<'ast> {
@@ -98,11 +105,15 @@ struct AstStructure<'ast> {
     kind: AstKind<'ast>
 }
 
+impl<'ast> Copy for AstStructure<'ast> {}
+
 enum AstKind<'ast> {
     ExprInt,
     ExprVar(uint),
     ExprLambda(Ast<'ast>),
 }
+
+impl<'ast> Copy for AstKind<'ast> {}
 
 fn compute_types<'tcx,'ast>(tcx: &mut TypeContext<'tcx,'ast>,
                             ast: Ast<'ast>) -> Type<'tcx>

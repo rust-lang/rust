@@ -14,12 +14,12 @@ enum t3 { c(T2, uint), }
 
 fn m(input: t3) -> int {
     match input {
-      c(T2 {x: a(m), ..}, _) => { return m; }
-      c(T2 {x: b(m), y: y}, z) => { return ((m + z) as int) + y; }
+      t3::c(T2 {x: t1::a(m), ..}, _) => { return m; }
+      t3::c(T2 {x: t1::b(m), y: y}, z) => { return ((m + z) as int) + y; }
     }
 }
 
 pub fn main() {
-    assert_eq!(m(c(T2 {x: a(10), y: 5}, 4u)), 10);
-    assert_eq!(m(c(T2 {x: b(10u), y: 5}, 4u)), 19);
+    assert_eq!(m(t3::c(T2 {x: t1::a(10), y: 5}, 4u)), 10);
+    assert_eq!(m(t3::c(T2 {x: t1::b(10u), y: 5}, 4u)), 19);
 }

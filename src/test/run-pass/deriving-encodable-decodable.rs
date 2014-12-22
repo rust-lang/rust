@@ -13,13 +13,10 @@
 
 // ignore-test FIXME(#5121)
 
-#![feature(struct_variant)]
-
 extern crate rand;
 extern crate rbml;
 extern crate serialize;
 
-use std::io::MemWriter;
 use rand::{random, Rand};
 use rbml;
 use rbml::Doc;
@@ -59,10 +56,10 @@ struct G<T> {
 fn roundtrip<'a, T: Rand + Eq + Encodable<Encoder<'a>> +
                     Decodable<Decoder<'a>>>() {
     let obj: T = random();
-    let mut w = MemWriter::new();
+    let mut w = Vec::new();
     let mut e = Encoder::new(&mut w);
     obj.encode(&mut e);
-    let doc = rbml::Doc::new(@w.get_ref());
+    let doc = rbml::Doc::new(@w[]);
     let mut dec = Decoder::new(doc);
     let obj2 = Decodable::decode(&mut dec);
     assert!(obj == obj2);

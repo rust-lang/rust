@@ -36,8 +36,8 @@ pub fn main()
 // assert!(check_strs(fmt!("%?", ETag(@~["foo".to_string()], @"bar".to_string())),
 //                    "ETag(@~[ ~\"foo\" ], @~\"bar\")"));
 
-    let t = Text("foo".to_string());
-    let u = Section(vec!["alpha".to_string()],
+    let t = Token::Text("foo".to_string());
+    let u = Token::Section(vec!["alpha".to_string()],
                     true,
                     vec![t],
                     "foo".to_string(),

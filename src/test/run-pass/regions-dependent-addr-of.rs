@@ -29,6 +29,8 @@ struct C {
     f: int
 }
 
+impl Copy for C {}
+
 fn get_v1(a: &A) -> &int {
     // Region inferencer must deduce that &v < L2 < L1
     let foo = &a.value; // L1

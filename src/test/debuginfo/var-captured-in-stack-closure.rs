@@ -28,6 +28,19 @@
 // gdb-command:print *owned
 // gdb-check:$5 = 6
 
+// gdb-command:continue
+
+// gdb-command:print variable
+// gdb-check:$6 = 2
+// gdb-command:print constant
+// gdb-check:$7 = 2
+// gdb-command:print a_struct
+// gdb-check:$8 = {a = -3, b = 4.5, c = 5}
+// gdb-command:print *struct_ref
+// gdb-check:$9 = {a = -3, b = 4.5, c = 5}
+// gdb-command:print *owned
+// gdb-check:$10 = 6
+
 
 // === LLDB TESTS ==================================================================================
 
@@ -44,6 +57,20 @@
 // lldb-command:print *owned
 // lldb-check:[...]$4 = 6
 
+// lldb-command:continue
+
+// lldb-command:print variable
+// lldb-check:[...]$5 = 2
+// lldb-command:print constant
+// lldb-check:[...]$6 = 2
+// lldb-command:print a_struct
+// lldb-check:[...]$7 = Struct { a: -3, b: 4.5, c: 5 }
+// lldb-command:print *struct_ref
+// lldb-check:[...]$8 = Struct { a: -3, b: 4.5, c: 5 }
+// lldb-command:print *owned
+// lldb-check:[...]$9 = 6
+
+#![feature(unboxed_closures)]
 #![allow(unused_variables)]
 
 struct Struct {
@@ -65,12 +92,22 @@ fn main() {
     let struct_ref = &a_struct;
     let owned = box 6;
 
-    let closure = || {
-        zzz(); // #break
-        variable = constant + a_struct.a + struct_ref.a + *owned;
-    };
+    {
+        let closure = || {
+            zzz(); // #break
+            variable = constant + a_struct.a + struct_ref.a + *owned;
+        };
 
-    closure();
+        closure();
+    }
+
+    {
+        let mut unboxed_closure = |&mut:| {
+            zzz(); // #break
+            variable = constant + a_struct.a + struct_ref.a + *owned;
+        };
+        unboxed_closure();
+    }
 }
 
 fn zzz() {()}

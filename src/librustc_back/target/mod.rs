@@ -200,7 +200,7 @@ impl Target {
     pub fn adjust_abi(&self, abi: abi::Abi) -> abi::Abi {
         match abi {
             abi::System => {
-                if self.options.is_like_windows && self.arch.as_slice() == "x86" {
+                if self.options.is_like_windows && self.arch == "x86" {
                     abi::Stdcall
                 } else {
                     abi::C
@@ -250,13 +250,13 @@ impl Target {
             } );
             ($key_name:ident, list) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
-                obj.find(name[]).map(|o| o.as_list()
+                obj.find(name[]).map(|o| o.as_array()
                     .map(|v| base.options.$key_name = v.iter()
                         .map(|a| a.as_string().unwrap().to_string()).collect()
                         )
                     );
             } );
-        )
+        );
 
         key!(cpu);
         key!(linker);
@@ -308,7 +308,6 @@ impl Target {
             ( $($name:ident),+ ) => (
                 {
                     let target = target.replace("-", "_");
-                    let target = target.as_slice();
                     if false { }
                     $(
                         else if target == stringify!($name) {
@@ -326,7 +325,7 @@ impl Target {
                     }
                 }
             )
-        )
+        );
 
         load_specific!(
             x86_64_unknown_linux_gnu,
@@ -349,7 +348,7 @@ impl Target {
 
             x86_64_pc_windows_gnu,
             i686_pc_windows_gnu
-        )
+        );
 
 
         let path = Path::new(target);

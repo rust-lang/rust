@@ -46,19 +46,19 @@ unsafe fn test_triangle() -> bool {
     static PRINT : bool = false;
 
     unsafe fn allocate(size: uint, align: uint) -> *mut u8 {
-        if PRINT { println!("allocate(size={:u} align={:u})", size, align); }
+        if PRINT { println!("allocate(size={} align={})", size, align); }
 
         let ret = heap::allocate(size, align);
         if ret.is_null() { alloc::oom() }
 
-        if PRINT { println!("allocate(size={:u} align={:u}) ret: 0x{:010x}",
+        if PRINT { println!("allocate(size={} align={}) ret: 0x{:010x}",
                             size, align, ret as uint);
         }
 
         ret
     }
     unsafe fn deallocate(ptr: *mut u8, size: uint, align: uint) {
-        if PRINT { println!("deallocate(ptr=0x{:010x} size={:u} align={:u})",
+        if PRINT { println!("deallocate(ptr=0x{:010x} size={} align={})",
                             ptr as uint, size, align);
         }
 
@@ -66,7 +66,7 @@ unsafe fn test_triangle() -> bool {
     }
     unsafe fn reallocate(ptr: *mut u8, old_size: uint, size: uint, align: uint) -> *mut u8 {
         if PRINT {
-            println!("reallocate(ptr=0x{:010x} old_size={:u} size={:u} align={:u})",
+            println!("reallocate(ptr=0x{:010x} old_size={} size={} align={})",
                      ptr as uint, old_size, size, align);
         }
 
@@ -74,7 +74,7 @@ unsafe fn test_triangle() -> bool {
         if ret.is_null() { alloc::oom() }
 
         if PRINT {
-            println!("reallocate(ptr=0x{:010x} old_size={:u} size={:u} align={:u}) \
+            println!("reallocate(ptr=0x{:010x} old_size={} size={} align={}) \
                       ret: 0x{:010x}",
                      ptr as uint, old_size, size, align, ret as uint);
         }

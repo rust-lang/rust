@@ -80,7 +80,7 @@
 //! circle, both centered at the origin. Since the area of a unit circle is π,
 //! we have:
 //!
-//! ```notrust
+//! ```text
 //!     (area of unit circle) / (area of square) = π / 4
 //! ```
 //!
@@ -224,11 +224,10 @@
 use cell::RefCell;
 use clone::Clone;
 use io::IoResult;
-use iter::Iterator;
+use iter::{Iterator, IteratorExt};
 use mem;
-use option::{Some, None};
 use rc::Rc;
-use result::{Ok, Err};
+use result::Result::{Ok, Err};
 use vec::Vec;
 
 #[cfg(not(target_word_size="64"))]
@@ -246,7 +245,10 @@ pub mod reader;
 
 /// The standard RNG. This is designed to be efficient on the current
 /// platform.
-pub struct StdRng { rng: IsaacWordRng }
+#[deriving(Copy)]
+pub struct StdRng {
+    rng: IsaacWordRng,
+}
 
 impl StdRng {
     /// Create a randomly seeded instance of `StdRng`.
@@ -337,24 +339,18 @@ pub struct TaskRng {
 /// explicitly select an RNG, e.g. `IsaacRng` or `Isaac64Rng`.
 pub fn task_rng() -> TaskRng {
     // used to make space in TLS for a random number generator
-    local_data_key!(TASK_RNG_KEY: Rc<RefCell<TaskRngInner>>)
+    thread_local!(static TASK_RNG_KEY: Rc<RefCell<TaskRngInner>> = {
+        let r = match StdRng::new() {
+            Ok(r) => r,
+            Err(e) => panic!("could not initialize task_rng: {}", e)
+        };
+        let rng = reseeding::ReseedingRng::new(r,
+                                               TASK_RNG_RESEED_THRESHOLD,
+                                               TaskRngReseeder);
+        Rc::new(RefCell::new(rng))
+    });
 
-    match TASK_RNG_KEY.get() {
-        None => {
-            let r = match StdRng::new() {
-                Ok(r) => r,
-                Err(e) => panic!("could not initialize task_rng: {}", e)
-            };
-            let rng = reseeding::ReseedingRng::new(r,
-                                                   TASK_RNG_RESEED_THRESHOLD,
-                                                   TaskRngReseeder);
-            let rng = Rc::new(RefCell::new(rng));
-            TASK_RNG_KEY.replace(Some(rng.clone()));
-
-            TaskRng { rng: rng }
-        }
-        Some(rng) => TaskRng { rng: rng.clone() }
-    }
+    TaskRng { rng: TASK_RNG_KEY.with(|t| t.clone()) }
 }
 
 impl Rng for TaskRng {
@@ -522,7 +518,7 @@ mod test {
     #[test]
     fn test_choose() {
         let mut r = task_rng();
-        assert_eq!(r.choose([1i, 1, 1]).map(|&x|x), Some(1));
+        assert_eq!(r.choose(&[1i, 1, 1]).map(|&x|x), Some(1));
 
         let v: &[int] = &[];
         assert_eq!(r.choose(v), None);
@@ -534,18 +530,18 @@ mod test {
         let empty: &mut [int] = &mut [];
         r.shuffle(empty);
         let mut one = [1i];
-        r.shuffle(one);
+        r.shuffle(&mut one);
         let b: &[_] = &[1];
-        assert_eq!(one.as_slice(), b);
+        assert_eq!(one, b);
 
         let mut two = [1i, 2];
-        r.shuffle(two);
+        r.shuffle(&mut two);
         assert!(two == [1, 2] || two == [2, 1]);
 
         let mut x = [1i, 1, 1];
-        r.shuffle(x);
+        r.shuffle(&mut x);
         let b: &[_] = &[1, 1, 1];
-        assert_eq!(x.as_slice(), b);
+        assert_eq!(x, b);
     }
 
     #[test]
@@ -553,9 +549,9 @@ mod test {
         let mut r = task_rng();
         r.gen::<int>();
         let mut v = [1i, 1, 1];
-        r.shuffle(v);
+        r.shuffle(&mut v);
         let b: &[_] = &[1, 1, 1];
-        assert_eq!(v.as_slice(), b);
+        assert_eq!(v, b);
         assert_eq!(r.gen_range(0u, 1u), 0u);
     }
 
@@ -673,7 +669,7 @@ mod bench {
     #[bench]
     fn rand_shuffle_100(b: &mut Bencher) {
         let mut rng = weak_rng();
-        let x : &mut[uint] = [1,..100];
+        let x : &mut[uint] = &mut [1,..100];
         b.iter(|| {
             rng.shuffle(x);
         })

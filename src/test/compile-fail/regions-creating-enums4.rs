@@ -14,7 +14,7 @@ enum ast<'a> {
 }
 
 fn mk_add_bad2<'a,'b>(x: &'a ast<'a>, y: &'a ast<'a>, z: &ast) -> ast<'b> {
-    add(x, y) //~ ERROR cannot infer
+    ast::add(x, y) //~ ERROR cannot infer
 }
 
 fn main() {

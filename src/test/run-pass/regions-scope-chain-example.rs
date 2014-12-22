@@ -32,11 +32,11 @@ struct Context<'a> {
 impl<'a> Context<'a> {
     fn foo(&mut self, scope: Scope) {
         let link = if 1i < 2 {
-            let l = Link(scope);
+            let l = ScopeChain::Link(scope);
             self.take_scope(&l);
             l
         } else {
-            Link(scope)
+            ScopeChain::Link(scope)
         };
         self.take_scope(&link);
     }

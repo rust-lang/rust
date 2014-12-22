@@ -16,7 +16,7 @@ use std::os;
 /// returned path does not contain any symlinks in its hierarchy.
 pub fn realpath(original: &Path) -> io::IoResult<Path> {
     static MAX_LINKS_FOLLOWED: uint = 256;
-    let original = os::make_absolute(original);
+    let original = os::make_absolute(original).unwrap();
 
     // Right now lstat on windows doesn't work quite well
     if cfg!(windows) {
@@ -37,7 +37,7 @@ pub fn realpath(original: &Path) -> io::IoResult<Path> {
 
             match fs::lstat(&result) {
                 Err(..) => break,
-                Ok(ref stat) if stat.kind != io::TypeSymlink => break,
+                Ok(ref stat) if stat.kind != io::FileType::Symlink => break,
                 Ok(..) => {
                     followed += 1;
                     let path = try!(fs::readlink(&result));

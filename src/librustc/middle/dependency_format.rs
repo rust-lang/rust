@@ -63,8 +63,8 @@
 
 use syntax::ast;
 
-use driver::session;
-use driver::config;
+use session;
+use session::config;
 use metadata::cstore;
 use metadata::csearch;
 use middle::ty;
@@ -233,7 +233,7 @@ fn add_library(sess: &session::Session,
 
 fn attempt_static(sess: &session::Session) -> Option<DependencyList> {
     let crates = sess.cstore.get_used_crates(cstore::RequireStatic);
-    if crates.iter().all(|&(_, ref p)| p.is_some()) {
+    if crates.iter().by_ref().all(|&(_, ref p)| p.is_some()) {
         Some(crates.into_iter().map(|_| Some(cstore::RequireStatic)).collect())
     } else {
         None

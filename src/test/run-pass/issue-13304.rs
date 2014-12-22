@@ -37,7 +37,7 @@ fn parent() {
 }
 
 fn child() {
-    for line in io::stdin().lines() {
+    for line in io::stdin().lock().lines() {
         println!("{}", line.unwrap());
     }
 }

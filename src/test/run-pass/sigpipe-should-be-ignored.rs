@@ -21,7 +21,7 @@ fn test() {
     let mut writer = PipeStream::open(writer);
     drop(reader);
 
-    let _ = writer.write([1]);
+    let _ = writer.write(&[1]);
 }
 
 fn main() {

@@ -11,6 +11,8 @@
 // Enable this to squash warnings due to exporting pieces of the representation
 // for use with the regex! macro. See lib.rs for explanation.
 
+pub use self::Inst::*;
+
 use std::cmp;
 use parse;
 use parse::{
@@ -64,7 +66,7 @@ pub enum Inst {
     Jump(InstIdx),
 
     // Jumps to the instruction at the first index given. If that leads to
-    // a failing state, then the instruction at the second index given is
+    // a panic state, then the instruction at the second index given is
     // tried.
     Split(InstIdx, InstIdx),
 }

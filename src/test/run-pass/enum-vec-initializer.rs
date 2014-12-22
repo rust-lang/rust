@@ -12,11 +12,11 @@ enum Flopsy {
     Bunny = 2
 }
 
-const BAR:uint = Bunny as uint;
+const BAR:uint = Flopsy::Bunny as uint;
 const BAR2:uint = BAR;
 
 pub fn main() {
-    let _v = [0i, .. Bunny as uint];
+    let _v = [0i, .. Flopsy::Bunny as uint];
     let _v = [0i, .. BAR];
     let _v = [0i, .. BAR2];
     const BAR3:uint = BAR2;

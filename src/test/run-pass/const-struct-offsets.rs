@@ -18,6 +18,6 @@ struct Bar {
     v: Foo
 }
 
-static bar: Bar = Bar { i: 0, v: IntVal(0) };
+static bar: Bar = Bar { i: 0, v: Foo::IntVal(0) };
 
 pub fn main() {}

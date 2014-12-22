@@ -20,12 +20,14 @@ use core::num::Int;
 // FIXME(contentions): implement union family of methods? (general design may be wrong here)
 
 #[deriving(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-/// A specialized `Set` implementation to use enum types.
+/// A specialized set implementation to use enum types.
 pub struct EnumSet<E> {
     // We must maintain the invariant that no bits are set
     // for which no variant exists
     bits: uint
 }
+
+impl<E> Copy for EnumSet<E> {}
 
 impl<E:CLike+fmt::Show> fmt::Show for EnumSet<E> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
@@ -42,27 +44,25 @@ impl<E:CLike+fmt::Show> fmt::Show for EnumSet<E> {
     }
 }
 
-/**
-An interface for casting C-like enum to uint and back.
-A typically implementation is as below.
-
-```{rust,ignore}
-#[repr(uint)]
-enum Foo {
-    A, B, C
-}
-
-impl CLike for Foo {
-    fn to_uint(&self) -> uint {
-        *self as uint
-    }
-
-    fn from_uint(v: uint) -> Foo {
-        unsafe { mem::transmute(v) }
-    }
-}
-```
-*/
+/// An interface for casting C-like enum to uint and back.
+/// A typically implementation is as below.
+///
+/// ```{rust,ignore}
+/// #[repr(uint)]
+/// enum Foo {
+///     A, B, C
+/// }
+///
+/// impl CLike for Foo {
+///     fn to_uint(&self) -> uint {
+///         *self as uint
+///     }
+///
+///     fn from_uint(v: uint) -> Foo {
+///         unsafe { mem::transmute(v) }
+///     }
+/// }
+/// ```
 pub trait CLike {
     /// Converts a C-like enum to a `uint`.
     fn to_uint(&self) -> uint;
@@ -183,26 +183,62 @@ impl<E:CLike> EnumSet<E> {
     }
 }
 
+// NOTE(stage0): Remove impl after a snapshot
+#[cfg(stage0)]
 impl<E:CLike> Sub<EnumSet<E>, EnumSet<E>> for EnumSet<E> {
     fn sub(&self, e: &EnumSet<E>) -> EnumSet<E> {
         EnumSet {bits: self.bits & !e.bits}
     }
 }
 
+#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
+impl<E:CLike> Sub<EnumSet<E>, EnumSet<E>> for EnumSet<E> {
+    fn sub(self, e: EnumSet<E>) -> EnumSet<E> {
+        EnumSet {bits: self.bits & !e.bits}
+    }
+}
+
+// NOTE(stage0): Remove impl after a snapshot
+#[cfg(stage0)]
 impl<E:CLike> BitOr<EnumSet<E>, EnumSet<E>> for EnumSet<E> {
     fn bitor(&self, e: &EnumSet<E>) -> EnumSet<E> {
         EnumSet {bits: self.bits | e.bits}
     }
 }
 
+#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
+impl<E:CLike> BitOr<EnumSet<E>, EnumSet<E>> for EnumSet<E> {
+    fn bitor(self, e: EnumSet<E>) -> EnumSet<E> {
+        EnumSet {bits: self.bits | e.bits}
+    }
+}
+
+// NOTE(stage0): Remove impl after a snapshot
+#[cfg(stage0)]
 impl<E:CLike> BitAnd<EnumSet<E>, EnumSet<E>> for EnumSet<E> {
     fn bitand(&self, e: &EnumSet<E>) -> EnumSet<E> {
         EnumSet {bits: self.bits & e.bits}
     }
 }
 
+#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
+impl<E:CLike> BitAnd<EnumSet<E>, EnumSet<E>> for EnumSet<E> {
+    fn bitand(self, e: EnumSet<E>) -> EnumSet<E> {
+        EnumSet {bits: self.bits & e.bits}
+    }
+}
+
+// NOTE(stage0): Remove impl after a snapshot
+#[cfg(stage0)]
 impl<E:CLike> BitXor<EnumSet<E>, EnumSet<E>> for EnumSet<E> {
     fn bitxor(&self, e: &EnumSet<E>) -> EnumSet<E> {
+        EnumSet {bits: self.bits ^ e.bits}
+    }
+}
+
+#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
+impl<E:CLike> BitXor<EnumSet<E>, EnumSet<E>> for EnumSet<E> {
+    fn bitxor(self, e: EnumSet<E>) -> EnumSet<E> {
         EnumSet {bits: self.bits ^ e.bits}
     }
 }
@@ -259,12 +295,13 @@ impl<E:CLike> Extend<E> for EnumSet<E> {
 
 #[cfg(test)]
 mod test {
-    use std::prelude::*;
-    use std::mem;
+    use self::Foo::*;
+    use prelude::*;
+    use core::mem;
 
     use super::{EnumSet, CLike};
 
-    #[deriving(PartialEq, Show)]
+    #[deriving(Copy, PartialEq, Show)]
     #[repr(uint)]
     enum Foo {
         A, B, C
@@ -289,11 +326,11 @@ mod test {
     #[test]
     fn test_show() {
         let mut e = EnumSet::new();
-        assert_eq!("{}", e.to_string().as_slice());
+        assert_eq!("{}", e.to_string());
         e.insert(A);
-        assert_eq!("{A}", e.to_string().as_slice());
+        assert_eq!("{A}", e.to_string());
         e.insert(C);
-        assert_eq!("{A, C}", e.to_string().as_slice());
+        assert_eq!("{A, C}", e.to_string());
     }
 
     #[test]
@@ -372,7 +409,7 @@ mod test {
 
         assert!(e1.is_subset(&e2));
         assert!(e2.is_superset(&e1));
-        assert!(!e3.is_superset(&e2))
+        assert!(!e3.is_superset(&e2));
         assert!(!e2.is_superset(&e3))
     }
 
@@ -398,24 +435,24 @@ mod test {
     fn test_iterator() {
         let mut e1: EnumSet<Foo> = EnumSet::new();
 
-        let elems: Vec<Foo> = e1.iter().collect();
-        assert!(elems.is_empty())
+        let elems: ::vec::Vec<Foo> = e1.iter().collect();
+        assert!(elems.is_empty());
 
         e1.insert(A);
-        let elems = e1.iter().collect();
-        assert_eq!(vec![A], elems)
+        let elems: ::vec::Vec<_> = e1.iter().collect();
+        assert_eq!(vec![A], elems);
 
         e1.insert(C);
-        let elems = e1.iter().collect();
-        assert_eq!(vec![A,C], elems)
+        let elems: ::vec::Vec<_> = e1.iter().collect();
+        assert_eq!(vec![A,C], elems);
 
         e1.insert(C);
-        let elems = e1.iter().collect();
-        assert_eq!(vec![A,C], elems)
+        let elems: ::vec::Vec<_> = e1.iter().collect();
+        assert_eq!(vec![A,C], elems);
 
         e1.insert(B);
-        let elems = e1.iter().collect();
-        assert_eq!(vec![A,B,C], elems)
+        let elems: ::vec::Vec<_> = e1.iter().collect();
+        assert_eq!(vec![A,B,C], elems);
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -432,42 +469,43 @@ mod test {
         e2.insert(C);
 
         let e_union = e1 | e2;
-        let elems = e_union.iter().collect();
-        assert_eq!(vec![A,B,C], elems)
+        let elems: ::vec::Vec<_> = e_union.iter().collect();
+        assert_eq!(vec![A,B,C], elems);
 
         let e_intersection = e1 & e2;
-        let elems = e_intersection.iter().collect();
-        assert_eq!(vec![C], elems)
+        let elems: ::vec::Vec<_> = e_intersection.iter().collect();
+        assert_eq!(vec![C], elems);
 
         // Another way to express intersection
         let e_intersection = e1 - (e1 - e2);
-        let elems = e_intersection.iter().collect();
-        assert_eq!(vec![C], elems)
+        let elems: ::vec::Vec<_> = e_intersection.iter().collect();
+        assert_eq!(vec![C], elems);
 
         let e_subtract = e1 - e2;
-        let elems = e_subtract.iter().collect();
-        assert_eq!(vec![A], elems)
+        let elems: ::vec::Vec<_> = e_subtract.iter().collect();
+        assert_eq!(vec![A], elems);
 
         // Bitwise XOR of two sets, aka symmetric difference
         let e_symmetric_diff = e1 ^ e2;
-        let elems = e_symmetric_diff.iter().collect();
-        assert_eq!(vec![A,B], elems)
+        let elems: ::vec::Vec<_> = e_symmetric_diff.iter().collect();
+        assert_eq!(vec![A,B], elems);
 
         // Another way to express symmetric difference
         let e_symmetric_diff = (e1 - e2) | (e2 - e1);
-        let elems = e_symmetric_diff.iter().collect();
-        assert_eq!(vec![A,B], elems)
+        let elems: ::vec::Vec<_> = e_symmetric_diff.iter().collect();
+        assert_eq!(vec![A,B], elems);
 
         // Yet another way to express symmetric difference
         let e_symmetric_diff = (e1 | e2) - (e1 & e2);
-        let elems = e_symmetric_diff.iter().collect();
-        assert_eq!(vec![A,B], elems)
+        let elems: ::vec::Vec<_> = e_symmetric_diff.iter().collect();
+        assert_eq!(vec![A,B], elems);
     }
 
     #[test]
     #[should_fail]
     fn test_overflow() {
         #[allow(dead_code)]
+        #[deriving(Copy)]
         #[repr(uint)]
         enum Bar {
             V00, V01, V02, V03, V04, V05, V06, V07, V08, V09,
@@ -478,6 +516,7 @@ mod test {
             V50, V51, V52, V53, V54, V55, V56, V57, V58, V59,
             V60, V61, V62, V63, V64, V65, V66, V67, V68, V69,
         }
+
         impl CLike for Bar {
             fn to_uint(&self) -> uint {
                 *self as uint
@@ -488,6 +527,6 @@ mod test {
             }
         }
         let mut set = EnumSet::new();
-        set.insert(V64);
+        set.insert(Bar::V64);
     }
 }

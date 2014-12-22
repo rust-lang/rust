@@ -8,10 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+pub use self::NamesIter::*;
+pub use self::Regex::*;
+
 use std::collections::HashMap;
 use std::fmt;
-use std::from_str::from_str;
-use std::str::{MaybeOwned, Owned, Slice};
+use std::str::CowString;
 
 use compile::Program;
 use parse;
@@ -124,6 +126,7 @@ pub struct ExDynamic {
 }
 
 #[doc(hidden)]
+#[deriving(Copy)]
 pub struct ExNative {
     #[doc(hidden)]
     pub original: &'static str,
@@ -134,7 +137,9 @@ pub struct ExNative {
 }
 
 impl Clone for ExNative {
-    fn clone(&self) -> ExNative { *self }
+    fn clone(&self) -> ExNative {
+        *self
+    }
 }
 
 impl fmt::Show for Regex {
@@ -267,9 +272,9 @@ impl Regex {
     /// let re = regex!(r"'([^']+)'\s+\((\d{4})\)");
     /// let text = "Not my favorite movie: 'Citizen Kane' (1941).";
     /// let caps = re.captures(text).unwrap();
-    /// assert_eq!(caps.at(1), "Citizen Kane");
-    /// assert_eq!(caps.at(2), "1941");
-    /// assert_eq!(caps.at(0), "'Citizen Kane' (1941)");
+    /// assert_eq!(caps.at(1), Some("Citizen Kane"));
+    /// assert_eq!(caps.at(2), Some("1941"));
+    /// assert_eq!(caps.at(0), Some("'Citizen Kane' (1941)"));
     /// # }
     /// ```
     ///
@@ -285,9 +290,9 @@ impl Regex {
     /// let re = regex!(r"'(?P<title>[^']+)'\s+\((?P<year>\d{4})\)");
     /// let text = "Not my favorite movie: 'Citizen Kane' (1941).";
     /// let caps = re.captures(text).unwrap();
-    /// assert_eq!(caps.name("title"), "Citizen Kane");
-    /// assert_eq!(caps.name("year"), "1941");
-    /// assert_eq!(caps.at(0), "'Citizen Kane' (1941)");
+    /// assert_eq!(caps.name("title"), Some("Citizen Kane"));
+    /// assert_eq!(caps.name("year"), Some("1941"));
+    /// assert_eq!(caps.at(0), Some("'Citizen Kane' (1941)"));
     /// # }
     /// ```
     ///
@@ -423,11 +428,12 @@ impl Regex {
     ///
     /// ```rust
     /// # #![feature(phase)]
+    /// # #![feature(unboxed_closures)]
     /// # extern crate regex; #[phase(plugin)] extern crate regex_macros;
     /// # use regex::Captures; fn main() {
     /// let re = regex!(r"([^,\s]+),\s+(\S+)");
-    /// let result = re.replace("Springsteen, Bruce", |caps: &Captures| {
-    ///     format!("{} {}", caps.at(2), caps.at(1))
+    /// let result = re.replace("Springsteen, Bruce", |&: caps: &Captures| {
+    ///     format!("{} {}", caps.at(2).unwrap_or(""), caps.at(1).unwrap_or(""))
     /// });
     /// assert_eq!(result.as_slice(), "Bruce Springsteen");
     /// # }
@@ -559,29 +565,29 @@ pub struct NoExpand<'t>(pub &'t str);
 /// Replacer describes types that can be used to replace matches in a string.
 pub trait Replacer {
     /// Returns a possibly owned string that is used to replace the match
-    /// corresponding the the `caps` capture group.
+    /// corresponding to the `caps` capture group.
     ///
     /// The `'a` lifetime refers to the lifetime of a borrowed string when
     /// a new owned string isn't needed (e.g., for `NoExpand`).
-    fn reg_replace<'a>(&'a mut self, caps: &Captures) -> MaybeOwned<'a>;
+    fn reg_replace<'a>(&'a mut self, caps: &Captures) -> CowString<'a>;
 }
 
 impl<'t> Replacer for NoExpand<'t> {
-    fn reg_replace<'a>(&'a mut self, _: &Captures) -> MaybeOwned<'a> {
+    fn reg_replace<'a>(&'a mut self, _: &Captures) -> CowString<'a> {
         let NoExpand(s) = *self;
-        Slice(s)
+        s.into_cow()
     }
 }
 
 impl<'t> Replacer for &'t str {
-    fn reg_replace<'a>(&'a mut self, caps: &Captures) -> MaybeOwned<'a> {
-        Owned(caps.expand(*self))
+    fn reg_replace<'a>(&'a mut self, caps: &Captures) -> CowString<'a> {
+        caps.expand(*self).into_cow()
     }
 }
 
-impl<'t> Replacer for |&Captures|: 't -> String {
-    fn reg_replace<'a>(&'a mut self, caps: &Captures) -> MaybeOwned<'a> {
-        Owned((*self)(caps))
+impl<F> Replacer for F where F: FnMut(&Captures) -> String {
+    fn reg_replace<'a>(&'a mut self, caps: &Captures) -> CowString<'a> {
+        (*self)(caps).into_cow()
     }
 }
 
@@ -705,27 +711,25 @@ impl<'t> Captures<'t> {
         Some((self.locs[s].unwrap(), self.locs[e].unwrap()))
     }
 
-    /// Returns the matched string for the capture group `i`.
-    /// If `i` isn't a valid capture group or didn't match anything, then the
-    /// empty string is returned.
-    pub fn at(&self, i: uint) -> &'t str {
+    /// Returns the matched string for the capture group `i`.  If `i` isn't
+    /// a valid capture group or didn't match anything, then `None` is
+    /// returned.
+    pub fn at(&self, i: uint) -> Option<&'t str> {
         match self.pos(i) {
-            None => "",
-            Some((s, e)) => {
-                self.text.slice(s, e)
-            }
+            None => None,
+            Some((s, e)) => Some(self.text.slice(s, e))
         }
     }
 
-    /// Returns the matched string for the capture group named `name`.
-    /// If `name` isn't a valid capture group or didn't match anything, then
-    /// the empty string is returned.
-    pub fn name(&self, name: &str) -> &'t str {
+    /// Returns the matched string for the capture group named `name`.  If
+    /// `name` isn't a valid capture group or didn't match anything, then
+    /// `None` is returned.
+    pub fn name(&self, name: &str) -> Option<&'t str> {
         match self.named {
-            None => "",
+            None => None,
             Some(ref h) => {
-                match h.find_equiv(name) {
-                    None => "",
+                match h.get(name) {
+                    None => None,
                     Some(i) => self.at(*i),
                 }
             }
@@ -761,12 +765,13 @@ impl<'t> Captures<'t> {
         // How evil can you get?
         // FIXME: Don't use regexes for this. It's completely unnecessary.
         let re = Regex::new(r"(^|[^$]|\b)\$(\w+)").unwrap();
-        let text = re.replace_all(text, |refs: &Captures| -> String {
-            let (pre, name) = (refs.at(1), refs.at(2));
+        let text = re.replace_all(text, |&mut: refs: &Captures| -> String {
+            let pre = refs.at(1).unwrap_or("");
+            let name = refs.at(2).unwrap_or("");
             format!("{}{}", pre,
                     match from_str::<uint>(name.as_slice()) {
-                None => self.name(name).to_string(),
-                Some(i) => self.at(i).to_string(),
+                None => self.name(name).unwrap_or("").to_string(),
+                Some(i) => self.at(i).unwrap_or("").to_string(),
             })
         });
         let re = Regex::new(r"\$\$").unwrap();
@@ -795,7 +800,7 @@ impl<'t> Iterator<&'t str> for SubCaptures<'t> {
     fn next(&mut self) -> Option<&'t str> {
         if self.idx < self.caps.len() {
             self.idx += 1;
-            Some(self.caps.at(self.idx - 1))
+            Some(self.caps.at(self.idx - 1).unwrap_or(""))
         } else {
             None
         }
@@ -915,7 +920,7 @@ fn exec_slice(re: &Regex, which: MatchKind,
               input: &str, s: uint, e: uint) -> CaptureLocs {
     match *re {
         Dynamic(ExDynamic { ref prog, .. }) => vm::run(which, prog, input, s, e),
-        Native(ExNative { prog, .. }) => prog(which, input, s, e),
+        Native(ExNative { ref prog, .. }) => (*prog)(which, input, s, e),
     }
 }
 

@@ -8,62 +8,56 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
-
-Cross-platform path support
-
-This module implements support for two flavors of paths. `PosixPath` represents
-a path on any unix-like system, whereas `WindowsPath` represents a path on
-Windows. This module also exposes a typedef `Path` which is equal to the
-appropriate platform-specific path variant.
-
-Both `PosixPath` and `WindowsPath` implement a trait `GenericPath`, which
-contains the set of methods that behave the same for both paths. They each also
-implement some methods that could not be expressed in `GenericPath`, yet behave
-identically for both path flavors, such as `.components()`.
-
-The three main design goals of this module are 1) to avoid unnecessary
-allocation, 2) to behave the same regardless of which flavor of path is being
-used, and 3) to support paths that cannot be represented in UTF-8 (as Linux has
-no restriction on paths beyond disallowing NUL).
-
-## Usage
-
-Usage of this module is fairly straightforward. Unless writing platform-specific
-code, `Path` should be used to refer to the platform-native path.
-
-Creation of a path is typically done with either `Path::new(some_str)` or
-`Path::new(some_vec)`. This path can be modified with `.push()` and
-`.pop()` (and other setters). The resulting Path can either be passed to another
-API that expects a path, or can be turned into a `&[u8]` with `.as_vec()` or a
-`Option<&str>` with `.as_str()`. Similarly, attributes of the path can be queried
-with methods such as `.filename()`. There are also methods that return a new
-path instead of modifying the receiver, such as `.join()` or `.dir_path()`.
-
-Paths are always kept in normalized form. This means that creating the path
-`Path::new("a/b/../c")` will return the path `a/c`. Similarly any attempt
-to mutate the path will always leave it in normalized form.
-
-When rendering a path to some form of output, there is a method `.display()`
-which is compatible with the `format!()` parameter `{}`. This will render the
-path as a string, replacing all non-utf8 sequences with the Replacement
-Character (U+FFFD). As such it is not suitable for passing to any API that
-actually operates on the path; it is only intended for display.
-
-## Example
-
-```rust
-use std::io::fs::PathExtensions;
-
-let mut path = Path::new("/tmp/path");
-println!("path: {}", path.display());
-path.set_filename("foo");
-path.push("bar");
-println!("new path: {}", path.display());
-println!("path exists: {}", path.exists());
-```
-
-*/
+//! Cross-platform path support
+//!
+//! This module implements support for two flavors of paths. `PosixPath` represents a path on any
+//! unix-like system, whereas `WindowsPath` represents a path on Windows. This module also exposes
+//! a typedef `Path` which is equal to the appropriate platform-specific path variant.
+//!
+//! Both `PosixPath` and `WindowsPath` implement a trait `GenericPath`, which contains the set of
+//! methods that behave the same for both paths. They each also implement some methods that could
+//! not be expressed in `GenericPath`, yet behave identically for both path flavors, such as
+//! `.components()`.
+//!
+//! The three main design goals of this module are 1) to avoid unnecessary allocation, 2) to behave
+//! the same regardless of which flavor of path is being used, and 3) to support paths that cannot
+//! be represented in UTF-8 (as Linux has no restriction on paths beyond disallowing NUL).
+//!
+//! ## Usage
+//!
+//! Usage of this module is fairly straightforward. Unless writing platform-specific code, `Path`
+//! should be used to refer to the platform-native path.
+//!
+//! Creation of a path is typically done with either `Path::new(some_str)` or
+//! `Path::new(some_vec)`. This path can be modified with `.push()` and `.pop()` (and other
+//! setters). The resulting Path can either be passed to another API that expects a path, or can be
+//! turned into a `&[u8]` with `.as_vec()` or a `Option<&str>` with `.as_str()`. Similarly,
+//! attributes of the path can be queried with methods such as `.filename()`. There are also
+//! methods that return a new path instead of modifying the receiver, such as `.join()` or
+//! `.dir_path()`.
+//!
+//! Paths are always kept in normalized form. This means that creating the path
+//! `Path::new("a/b/../c")` will return the path `a/c`. Similarly any attempt to mutate the path
+//! will always leave it in normalized form.
+//!
+//! When rendering a path to some form of output, there is a method `.display()` which is
+//! compatible with the `format!()` parameter `{}`. This will render the path as a string,
+//! replacing all non-utf8 sequences with the Replacement Character (U+FFFD). As such it is not
+//! suitable for passing to any API that actually operates on the path; it is only intended for
+//! display.
+//!
+//! ## Example
+//!
+//! ```rust
+//! use std::io::fs::PathExtensions;
+//!
+//! let mut path = Path::new("/tmp/path");
+//! println!("path: {}", path.display());
+//! path.set_filename("foo");
+//! path.push("bar");
+//! println!("new path: {}", path.display());
+//! println!("path exists: {}", path.exists());
+//! ```
 
 #![experimental]
 
@@ -71,13 +65,14 @@ use core::kinds::Sized;
 use c_str::CString;
 use clone::Clone;
 use fmt;
-use iter::Iterator;
-use option::{Option, None, Some};
+use iter::IteratorExt;
+use option::Option;
+use option::Option::{None, Some};
 use str;
-use str::{MaybeOwned, Str, StrPrelude};
+use str::{CowString, MaybeOwned, Str, StrPrelude};
 use string::String;
-use slice::{AsSlice, CloneSliceAllocPrelude};
-use slice::{PartialEqSlicePrelude, SlicePrelude};
+use slice::{AsSlice, CloneSliceExt};
+use slice::{PartialEqSliceExt, SliceExt};
 use vec::Vec;
 
 /// Typedef for POSIX file paths.
@@ -154,9 +149,9 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// # }
     /// ```
     ///
-    /// # Failure
+    /// # Panics
     ///
-    /// Fails the task if the path contains a NUL.
+    /// Panics the task if the path contains a NUL.
     ///
     /// See individual Path impls for additional restrictions.
     #[inline]
@@ -443,9 +438,9 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// # }
     /// ```
     ///
-    /// # Failure
+    /// # Panics
     ///
-    /// Fails the task if the filename contains a NUL.
+    /// Panics the task if the filename contains a NUL.
     #[inline]
     fn set_filename<T: BytesContainer>(&mut self, filename: T) {
         assert!(!contains_nul(&filename));
@@ -469,9 +464,9 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// # }
     /// ```
     ///
-    /// # Failure
+    /// # Panics
     ///
-    /// Fails the task if the extension contains a NUL.
+    /// Panics the task if the extension contains a NUL.
     fn set_extension<T: BytesContainer>(&mut self, extension: T) {
         assert!(!contains_nul(&extension));
 
@@ -518,9 +513,9 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// # }
     /// ```
     ///
-    /// # Failure
+    /// # Panics
     ///
-    /// Fails the task if the filename contains a NUL.
+    /// Panics the task if the filename contains a NUL.
     #[inline]
     fn with_filename<T: BytesContainer>(&self, filename: T) -> Self {
         let mut p = self.clone();
@@ -543,9 +538,9 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// # }
     /// ```
     ///
-    /// # Failure
+    /// # Panics
     ///
-    /// Fails the task if the extension contains a NUL.
+    /// Panics the task if the extension contains a NUL.
     #[inline]
     fn with_extension<T: BytesContainer>(&self, extension: T) -> Self {
         let mut p = self.clone();
@@ -602,9 +597,9 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// # }
     /// ```
     ///
-    /// # Failure
+    /// # Panics
     ///
-    /// Fails the task if the path contains a NUL.
+    /// Panics the task if the path contains a NUL.
     #[inline]
     fn push<T: BytesContainer>(&mut self, path: T) {
         assert!(!contains_nul(&path));
@@ -671,9 +666,9 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// # }
     /// ```
     ///
-    /// # Failure
+    /// # Panics
     ///
-    /// Fails the task if the path contains a NUL.
+    /// Panics the task if the path contains a NUL.
     #[inline]
     fn join<T: BytesContainer>(&self, path: T) -> Self {
         let mut p = self.clone();
@@ -830,7 +825,7 @@ pub struct Display<'a, P:'a> {
 
 impl<'a, P: GenericPath> fmt::Show for Display<'a, P> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.as_maybe_owned().as_slice().fmt(f)
+        self.as_cow().fmt(f)
     }
 }
 
@@ -840,7 +835,7 @@ impl<'a, P: GenericPath> Display<'a, P> {
     /// If the path is not UTF-8, invalid sequences will be replaced with the
     /// Unicode replacement char. This involves allocation.
     #[inline]
-    pub fn as_maybe_owned(&self) -> MaybeOwned<'a> {
+    pub fn as_cow(&self) -> CowString<'a> {
         String::from_utf8_lossy(if self.filename {
             match self.path.filename() {
                 None => {
@@ -936,8 +931,6 @@ fn contains_nul<T: BytesContainer>(v: &T) -> bool {
 #[cfg(test)]
 mod tests {
     use prelude::*;
-    use super::{GenericPath, PosixPath, WindowsPath};
-    use c_str::ToCStr;
 
     #[test]
     fn test_cstring() {
@@ -947,6 +940,6 @@ mod tests {
 
         let input = r"\foo\bar\baz";
         let path: WindowsPath = WindowsPath::new(input.to_c_str());
-        assert_eq!(path.as_str().unwrap(), input.as_slice());
+        assert_eq!(path.as_str().unwrap(), input);
     }
 }

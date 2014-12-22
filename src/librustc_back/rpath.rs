@@ -14,17 +14,22 @@ use std::os;
 use std::io::IoError;
 use syntax::ast;
 
-pub struct RPathConfig<'a> {
+pub struct RPathConfig<F, G> where
+    F: FnOnce() -> Path,
+    G: FnMut(&Path) -> Result<Path, IoError>,
+{
     pub used_crates: Vec<(ast::CrateNum, Option<Path>)>,
     pub out_filename: Path,
     pub is_like_osx: bool,
     pub has_rpath: bool,
-    pub get_install_prefix_lib_path: ||:'a -> Path,
-    pub realpath: |&Path|:'a -> Result<Path, IoError>
+    pub get_install_prefix_lib_path: F,
+    pub realpath: G,
 }
 
-pub fn get_rpath_flags(config: RPathConfig) -> Vec<String> {
-
+pub fn get_rpath_flags<F, G>(config: RPathConfig<F, G>) -> Vec<String> where
+    F: FnOnce() -> Path,
+    G: FnMut(&Path) -> Result<Path, IoError>,
+{
     // No rpath on windows
     if !config.has_rpath {
         return Vec::new();
@@ -52,8 +57,10 @@ fn rpaths_to_flags(rpaths: &[String]) -> Vec<String> {
     return ret;
 }
 
-fn get_rpaths(mut config: RPathConfig,
-              libs: &[Path]) -> Vec<String> {
+fn get_rpaths<F, G>(mut config: RPathConfig<F, G>, libs: &[Path]) -> Vec<String> where
+    F: FnOnce() -> Path,
+    G: FnMut(&Path) -> Result<Path, IoError>,
+{
     debug!("output: {}", config.out_filename.display());
     debug!("libs:");
     for libpath in libs.iter() {
@@ -86,13 +93,18 @@ fn get_rpaths(mut config: RPathConfig,
     return rpaths;
 }
 
-fn get_rpaths_relative_to_output(config: &mut RPathConfig,
-                                 libs: &[Path]) -> Vec<String> {
+fn get_rpaths_relative_to_output<F, G>(config: &mut RPathConfig<F, G>,
+                                       libs: &[Path]) -> Vec<String> where
+    F: FnOnce() -> Path,
+    G: FnMut(&Path) -> Result<Path, IoError>,
+{
     libs.iter().map(|a| get_rpath_relative_to_output(config, a)).collect()
 }
 
-fn get_rpath_relative_to_output(config: &mut RPathConfig,
-                                lib: &Path) -> String {
+fn get_rpath_relative_to_output<F, G>(config: &mut RPathConfig<F, G>, lib: &Path) -> String where
+    F: FnOnce() -> Path,
+    G: FnMut(&Path) -> Result<Path, IoError>,
+{
     use std::os;
 
     // Mac doesn't appear to support $ORIGIN
@@ -102,9 +114,9 @@ fn get_rpath_relative_to_output(config: &mut RPathConfig,
         "$ORIGIN"
     };
 
-    let mut lib = (config.realpath)(&os::make_absolute(lib)).unwrap();
+    let mut lib = (config.realpath)(&os::make_absolute(lib).unwrap()).unwrap();
     lib.pop();
-    let mut output = (config.realpath)(&os::make_absolute(&config.out_filename)).unwrap();
+    let mut output = (config.realpath)(&os::make_absolute(&config.out_filename).unwrap()).unwrap();
     output.pop();
     let relative = lib.path_relative_from(&output);
     let relative = relative.expect("could not create rpath relative to output");
@@ -114,9 +126,12 @@ fn get_rpath_relative_to_output(config: &mut RPathConfig,
             relative.as_str().expect("non-utf8 component in path"))
 }
 
-fn get_install_prefix_rpath(config: RPathConfig) -> String {
+fn get_install_prefix_rpath<F, G>(config: RPathConfig<F, G>) -> String where
+    F: FnOnce() -> Path,
+    G: FnMut(&Path) -> Result<Path, IoError>,
+{
     let path = (config.get_install_prefix_lib_path)();
-    let path = os::make_absolute(&path);
+    let path = os::make_absolute(&path).unwrap();
     // FIXME (#9639): This needs to handle non-utf8 paths
     path.as_str().expect("non-utf8 component in rpath").to_string()
 }
@@ -140,31 +155,31 @@ mod test {
 
     #[test]
     fn test_rpaths_to_flags() {
-        let flags = rpaths_to_flags([
+        let flags = rpaths_to_flags(&[
             "path1".to_string(),
             "path2".to_string()
         ]);
         assert_eq!(flags,
-                   vec!("-Wl,-rpath,path1".to_string(),
-                        "-Wl,-rpath,path2".to_string()));
+                   ["-Wl,-rpath,path1",
+                    "-Wl,-rpath,path2"]);
     }
 
     #[test]
     fn test_minimize1() {
-        let res = minimize_rpaths([
+        let res = minimize_rpaths(&[
             "rpath1".to_string(),
             "rpath2".to_string(),
             "rpath1".to_string()
         ]);
-        assert!(res.as_slice() == [
-            "rpath1".to_string(),
-            "rpath2".to_string()
+        assert!(res == [
+            "rpath1",
+            "rpath2",
         ]);
     }
 
     #[test]
     fn test_minimize2() {
-        let res = minimize_rpaths([
+        let res = minimize_rpaths(&[
             "1a".to_string(),
             "2".to_string(),
             "2".to_string(),
@@ -176,11 +191,11 @@ mod test {
             "4a".to_string(),
             "3".to_string()
         ]);
-        assert!(res.as_slice() == [
-            "1a".to_string(),
-            "2".to_string(),
-            "4a".to_string(),
-            "3".to_string()
+        assert!(res == [
+            "1a",
+            "2",
+            "4a",
+            "3",
         ]);
     }
 
@@ -196,7 +211,7 @@ mod test {
             realpath: |p| Ok(p.clone())
         };
         let res = get_rpath_relative_to_output(config, &Path::new("lib/libstd.so"));
-        assert_eq!(res.as_slice(), "$ORIGIN/../lib");
+        assert_eq!(res, "$ORIGIN/../lib");
     }
 
     #[test]
@@ -211,7 +226,7 @@ mod test {
             realpath: |p| Ok(p.clone())
         };
         let res = get_rpath_relative_to_output(config, &Path::new("lib/libstd.so"));
-        assert_eq!(res.as_slice(), "$ORIGIN/../lib");
+        assert_eq!(res, "$ORIGIN/../lib");
     }
 
     #[test]
@@ -226,7 +241,7 @@ mod test {
             realpath: |p| Ok(p.clone())
         };
         let res = get_rpath_relative_to_output(config, &Path::new("lib/libstd.so"));
-        assert_eq!(res.as_slice(), "$ORIGIN/../lib");
+        assert_eq!(res, "$ORIGIN/../lib");
     }
 
     #[test]
@@ -241,6 +256,6 @@ mod test {
             realpath: |p| Ok(p.clone())
         };
         let res = get_rpath_relative_to_output(config, &Path::new("lib/libstd.so"));
-        assert_eq!(res.as_slice(), "@loader_path/../lib");
+        assert_eq!(res, "@loader_path/../lib");
     }
 }

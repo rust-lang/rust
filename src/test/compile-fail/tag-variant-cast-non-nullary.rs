@@ -16,6 +16,6 @@ enum non_nullary {
 }
 
 fn main() {
-    let v = nullary;
+    let v = non_nullary::nullary;
     let val = v as int;
 }

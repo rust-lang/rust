@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use self::TargetLocation::*;
+
 use common::Config;
 use common::{CompileFail, Pretty, RunFail, RunPass, RunPassValgrind, DebugInfoGdb};
 use common::{Codegen, DebugInfoLldb};
@@ -30,7 +32,7 @@ use std::io;
 use std::os;
 use std::str;
 use std::string::String;
-use std::task;
+use std::thread::Thread;
 use std::time::Duration;
 use test::MetricMap;
 
@@ -399,7 +401,7 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
             procsrv::run("",
                          config.adb_path.as_slice(),
                          None,
-                         [
+                         &[
                             "push".to_string(),
                             exe_file.as_str().unwrap().to_string(),
                             config.adb_test_dir.clone()
@@ -411,7 +413,7 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
             procsrv::run("",
                          config.adb_path.as_slice(),
                          None,
-                         [
+                         &[
                             "forward".to_string(),
                             "tcp:5039".to_string(),
                             "tcp:5039".to_string()
@@ -432,7 +434,7 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
                                                       config.adb_path
                                                             .as_slice(),
                                                       None,
-                                                      [
+                                                      &[
                                                         "shell".to_string(),
                                                         adb_arg.clone()
                                                       ],
@@ -443,9 +445,9 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
             loop {
                 //waiting 1 second for gdbserver start
                 timer::sleep(Duration::milliseconds(1000));
-                let result = task::try(proc() {
+                let result = Thread::spawn(move || {
                     tcp::TcpStream::connect("127.0.0.1:5039").unwrap();
-                });
+                }).join();
                 if result.is_err() {
                     continue;
                 }
@@ -746,7 +748,7 @@ fn run_debuginfo_lldb_test(config: &Config, props: &TestProps, testfile: &Path) 
         cmd.arg(lldb_script_path)
            .arg(test_executable)
            .arg(debugger_script)
-           .env_set_all([("PYTHONPATH", config.lldb_python_dir.clone().unwrap().as_slice())]);
+           .env_set_all(&[("PYTHONPATH", config.lldb_python_dir.clone().unwrap().as_slice())]);
 
         let (status, out, err) = match cmd.spawn() {
             Ok(process) => {
@@ -988,7 +990,7 @@ fn check_expected_errors(expected_errors: Vec<errors::ExpectedError> ,
         let i = s.chars();
         let c : Vec<char> = i.map( |c| {
             if c.is_ascii() {
-                c.to_ascii().to_lowercase().to_char()
+                c.to_ascii().to_lowercase().as_char()
             } else {
                 c
             }
@@ -1142,11 +1144,11 @@ struct ProcRes {
 
 fn compile_test(config: &Config, props: &TestProps,
                 testfile: &Path) -> ProcRes {
-    compile_test_(config, props, testfile, [])
+    compile_test_(config, props, testfile, &[])
 }
 
 fn jit_test(config: &Config, props: &TestProps, testfile: &Path) -> ProcRes {
-    compile_test_(config, props, testfile, ["--jit".to_string()])
+    compile_test_(config, props, testfile, &["--jit".to_string()])
 }
 
 fn compile_test_(config: &Config, props: &TestProps,
@@ -1159,7 +1161,7 @@ fn compile_test_(config: &Config, props: &TestProps,
     let args = make_compile_args(config,
                                  props,
                                  link_args,
-                                 |a, b| ThisFile(make_exe_name(a, b)), testfile);
+                                 |a, b| TargetLocation::ThisFile(make_exe_name(a, b)), testfile);
     compose_and_run_compiler(config, props, testfile, args, None)
 }
 
@@ -1217,7 +1219,7 @@ fn compose_and_run_compiler(
                               crate_type,
                               |a,b| {
                                   let f = make_lib_name(a, b, testfile);
-                                  ThisDirectory(f.dir_path())
+                                  TargetLocation::ThisDirectory(f.dir_path())
                               },
                               &abs_ab);
         let auxres = compose_and_run(config,
@@ -1294,11 +1296,11 @@ fn make_compile_args(config: &Config,
         args.push("prefer-dynamic".to_string());
     }
     let path = match xform_file {
-        ThisFile(path) => {
+        TargetLocation::ThisFile(path) => {
             args.push("-o".to_string());
             path
         }
-        ThisDirectory(path) => {
+        TargetLocation::ThisDirectory(path) => {
             args.push("--out-dir".to_string());
             path
         }
@@ -1507,7 +1509,7 @@ fn _arm_exec_compiled_test(config: &Config,
     let copy_result = procsrv::run("",
                                    config.adb_path.as_slice(),
                                    None,
-                                   [
+                                   &[
                                     "push".to_string(),
                                     args.prog.clone(),
                                     config.adb_test_dir.clone()
@@ -1564,7 +1566,7 @@ fn _arm_exec_compiled_test(config: &Config,
 
     let mut exitcode: int = 0;
     for c in exitcode_out.as_slice().chars() {
-        if !c.is_digit() { break; }
+        if !c.is_numeric() { break; }
         exitcode = exitcode * 10 + match c {
             '0' ... '9' => c as int - ('0' as int),
             _ => 101,
@@ -1624,7 +1626,7 @@ fn _arm_push_aux_shared_library(config: &Config, testfile: &Path) {
             let copy_result = procsrv::run("",
                                            config.adb_path.as_slice(),
                                            None,
-                                           [
+                                           &[
                                             "push".to_string(),
                                             file.as_str()
                                                 .unwrap()
@@ -1670,7 +1672,8 @@ fn compile_test_and_save_bitcode(config: &Config, props: &TestProps,
     let args = make_compile_args(config,
                                  props,
                                  link_args,
-                                 |a, b| ThisDirectory(output_base_name(a, b).dir_path()),
+                                 |a, b| TargetLocation::ThisDirectory(
+                                     output_base_name(a, b).dir_path()),
                                  testfile);
     compose_and_run_compiler(config, props, testfile, args, None)
 }

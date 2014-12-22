@@ -8,21 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
-Primitive traits representing basic 'kinds' of types
-
-Rust types can be classified in various useful ways according to
-intrinsic properties of the type. These classifications, often called
-'kinds', are represented as traits.
-
-They cannot be implemented by user code, but are instead implemented
-by the compiler automatically for the types to which they apply.
-
-*/
+//! Primitive traits representing basic 'kinds' of types
+//!
+//! Rust types can be classified in various useful ways according to
+//! intrinsic properties of the type. These classifications, often called
+//! 'kinds', are represented as traits.
+//!
+//! They cannot be implemented by user code, but are instead implemented
+//! by the compiler automatically for the types to which they apply.
 
 /// Types able to be transferred across task boundaries.
 #[lang="send"]
-pub trait Send for Sized? {
+pub trait Send for Sized? : 'static {
     // empty.
 }
 
@@ -94,6 +91,8 @@ pub trait Sync for Sized? {
 /// implemented using unsafe code. In that case, you may want to embed
 /// some of the marker types below into your type.
 pub mod marker {
+    use super::Copy;
+
     /// A marker type whose type parameter `T` is considered to be
     /// covariant with respect to the type itself. This is (typically)
     /// used to indicate that an instance of the type `T` is being stored
@@ -132,8 +131,10 @@ pub mod marker {
     /// (for example, `S<&'static int>` is a subtype of `S<&'a int>`
     /// for some lifetime `'a`, but not the other way around).
     #[lang="covariant_type"]
-    #[deriving(PartialEq,Clone)]
+    #[deriving(Clone, PartialEq, Eq, PartialOrd, Ord)]
     pub struct CovariantType<T>;
+
+    impl<T> Copy for CovariantType<T> {}
 
     /// A marker type whose type parameter `T` is considered to be
     /// contravariant with respect to the type itself. This is (typically)
@@ -175,8 +176,10 @@ pub mod marker {
     /// function requires arguments of type `T`, it must also accept
     /// arguments of type `U`, hence such a conversion is safe.
     #[lang="contravariant_type"]
-    #[deriving(PartialEq,Clone)]
+    #[deriving(Clone, PartialEq, Eq, PartialOrd, Ord)]
     pub struct ContravariantType<T>;
+
+    impl<T> Copy for ContravariantType<T> {}
 
     /// A marker type whose type parameter `T` is considered to be
     /// invariant with respect to the type itself. This is (typically)
@@ -200,8 +203,10 @@ pub mod marker {
     /// never written, but in fact `Cell` uses unsafe code to achieve
     /// interior mutability.
     #[lang="invariant_type"]
-    #[deriving(PartialEq,Clone)]
+    #[deriving(Clone, PartialEq, Eq, PartialOrd, Ord)]
     pub struct InvariantType<T>;
+
+    impl<T> Copy for InvariantType<T> {}
 
     /// As `CovariantType`, but for lifetime parameters. Using
     /// `CovariantLifetime<'a>` indicates that it is ok to substitute
@@ -220,7 +225,7 @@ pub mod marker {
     /// For more information about variance, refer to this Wikipedia
     /// article <http://en.wikipedia.org/wiki/Variance_%28computer_science%29>.
     #[lang="covariant_lifetime"]
-    #[deriving(PartialEq,Clone)]
+    #[deriving(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
     pub struct CovariantLifetime<'a>;
 
     /// As `ContravariantType`, but for lifetime parameters. Using
@@ -236,7 +241,7 @@ pub mod marker {
     /// For more information about variance, refer to this Wikipedia
     /// article <http://en.wikipedia.org/wiki/Variance_%28computer_science%29>.
     #[lang="contravariant_lifetime"]
-    #[deriving(PartialEq,Clone)]
+    #[deriving(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
     pub struct ContravariantLifetime<'a>;
 
     /// As `InvariantType`, but for lifetime parameters. Using
@@ -247,34 +252,39 @@ pub mod marker {
     /// and this pointer is itself stored in an inherently mutable
     /// location (such as a `Cell`).
     #[lang="invariant_lifetime"]
-    #[deriving(PartialEq,Clone)]
+    #[deriving(Clone, PartialEq, Eq, PartialOrd, Ord)]
     pub struct InvariantLifetime<'a>;
+
+    impl<'a> Copy for InvariantLifetime<'a> {}
 
     /// A type which is considered "not sendable", meaning that it cannot
     /// be safely sent between tasks, even if it is owned. This is
     /// typically embedded in other types, such as `Gc`, to ensure that
     /// their instances remain thread-local.
     #[lang="no_send_bound"]
-    #[deriving(PartialEq,Clone)]
+    #[deriving(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
     pub struct NoSend;
 
     /// A type which is considered "not POD", meaning that it is not
     /// implicitly copyable. This is typically embedded in other types to
     /// ensure that they are never copied, even if they lack a destructor.
     #[lang="no_copy_bound"]
-    #[deriving(PartialEq,Clone)]
+    #[deriving(Clone, PartialEq, Eq, PartialOrd, Ord)]
+    #[allow(missing_copy_implementations)]
     pub struct NoCopy;
 
     /// A type which is considered "not sync", meaning that
     /// its contents are not threadsafe, hence they cannot be
     /// shared between tasks.
     #[lang="no_sync_bound"]
-    #[deriving(PartialEq,Clone)]
+    #[deriving(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
     pub struct NoSync;
 
     /// A type which is considered managed by the GC. This is typically
     /// embedded in other types.
     #[lang="managed_bound"]
-    #[deriving(PartialEq,Clone)]
+    #[deriving(Clone, PartialEq, Eq, PartialOrd, Ord)]
+    #[allow(missing_copy_implementations)]
     pub struct Managed;
 }
+

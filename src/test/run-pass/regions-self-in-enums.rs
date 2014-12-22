@@ -14,10 +14,10 @@ enum int_wrapper<'a> {
 
 pub fn main() {
     let x = 3;
-    let y = int_wrapper_ctor(&x);
+    let y = int_wrapper::int_wrapper_ctor(&x);
     let mut z : &int;
     match y {
-        int_wrapper_ctor(zz) => { z = zz; }
+        int_wrapper::int_wrapper_ctor(zz) => { z = zz; }
     }
     println!("{}", *z);
 }

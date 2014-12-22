@@ -9,6 +9,6 @@
 // except according to those terms.
 
 fn main() {
-    format!("{:d}", "3");
-    //~^ ERROR: the trait `core::fmt::Signed` is not implemented
+    format!("{:X}", "3");
+    //~^ ERROR: the trait `core::fmt::UpperHex` is not implemented
 }

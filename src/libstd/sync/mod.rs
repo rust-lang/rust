@@ -17,17 +17,27 @@
 
 #![experimental]
 
-#[stable]
-pub use core_sync::atomic;
+pub use alloc::arc::{Arc, Weak};
 
-pub use core_sync::{deque, mpmc_bounded_queue, mpsc_queue, spsc_queue};
-pub use core_sync::{Arc, Weak, Mutex, MutexGuard, Condvar, Barrier};
-pub use core_sync::{RWLock, RWLockReadGuard, RWLockWriteGuard};
-pub use core_sync::{Semaphore, SemaphoreGuard};
-pub use core_sync::one::{Once, ONCE_INIT};
+pub use self::mutex::{Mutex, MutexGuard, StaticMutex, StaticMutexGuard, MUTEX_INIT};
+pub use self::rwlock::{RWLock, StaticRWLock, RWLOCK_INIT};
+pub use self::rwlock::{RWLockReadGuard, RWLockWriteGuard};
+pub use self::rwlock::{StaticRWLockReadGuard, StaticRWLockWriteGuard};
+pub use self::condvar::{Condvar, StaticCondvar, CONDVAR_INIT, AsMutexGuard};
+pub use self::once::{Once, ONCE_INIT};
+pub use self::semaphore::{Semaphore, SemaphoreGuard};
+pub use self::barrier::Barrier;
 
 pub use self::future::Future;
 pub use self::task_pool::TaskPool;
 
+pub mod atomic;
+mod barrier;
+mod condvar;
 mod future;
+mod mutex;
+mod once;
+mod poison;
+mod rwlock;
+mod semaphore;
 mod task_pool;

@@ -14,12 +14,9 @@ struct Foo<'a,'b> {
 }
 
 impl<'a,'b> Foo<'a,'b> {
-    // The number of errors is related to the way invariance works.
     fn bar(self: Foo<'b,'a>) {}
     //~^ ERROR mismatched types: expected `Foo<'a, 'b>`, found `Foo<'b, 'a>`
     //~^^ ERROR mismatched types: expected `Foo<'a, 'b>`, found `Foo<'b, 'a>`
-    //~^^^ ERROR mismatched types: expected `Foo<'b, 'a>`, found `Foo<'a, 'b>`
-    //~^^^^ ERROR mismatched types: expected `Foo<'b, 'a>`, found `Foo<'a, 'b>`
 }
 
 fn main() {}

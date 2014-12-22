@@ -16,5 +16,5 @@ enum E {
 }
 
 pub fn main() {
-    let _ = A.clone();
+    let _ = E::A.clone();
 }

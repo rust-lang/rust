@@ -7,9 +7,10 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+pub use self::Mode::*;
 
-use std::from_str::FromStr;
 use std::fmt;
+use std::str::FromStr;
 use regex::Regex;
 
 #[deriving(Clone, PartialEq)]
@@ -23,6 +24,8 @@ pub enum Mode {
     DebugInfoLldb,
     Codegen
 }
+
+impl Copy for Mode {}
 
 impl FromStr for Mode {
     fn from_str(s: &str) -> Option<Mode> {

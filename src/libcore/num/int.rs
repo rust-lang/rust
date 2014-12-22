@@ -13,6 +13,6 @@
 #![unstable]
 #![doc(primitive = "int")]
 
-#[cfg(target_word_size = "32")] int_module!(int, 32)
-#[cfg(target_word_size = "64")] int_module!(int, 64)
+#[cfg(target_word_size = "32")] int_module! { int, 32 }
+#[cfg(target_word_size = "64")] int_module! { int, 64 }
 

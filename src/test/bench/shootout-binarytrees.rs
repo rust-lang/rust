@@ -51,19 +51,19 @@ enum Tree<'a> {
 
 fn item_check(t: &Tree) -> int {
     match *t {
-        Nil => 0,
-        Node(l, r, i) => i + item_check(l) - item_check(r)
+        Tree::Nil => 0,
+        Tree::Node(l, r, i) => i + item_check(l) - item_check(r)
     }
 }
 
 fn bottom_up_tree<'r>(arena: &'r TypedArena<Tree<'r>>, item: int, depth: int)
                   -> &'r Tree<'r> {
     if depth > 0 {
-        arena.alloc(Node(bottom_up_tree(arena, 2 * item - 1, depth - 1),
-                         bottom_up_tree(arena, 2 * item, depth - 1),
-                         item))
+        arena.alloc(Tree::Node(bottom_up_tree(arena, 2 * item - 1, depth - 1),
+                               bottom_up_tree(arena, 2 * item, depth - 1),
+                               item))
     } else {
-        arena.alloc(Nil)
+        arena.alloc(Tree::Nil)
     }
 }
 
@@ -93,9 +93,9 @@ fn main() {
     let long_lived_tree = bottom_up_tree(&long_lived_arena, 0, max_depth);
 
     let mut messages = range_step(min_depth, max_depth + 1, 2).map(|depth| {
-            use std::num::pow;
-            let iterations = pow(2i, (max_depth - depth + min_depth) as uint);
-            Future::spawn(proc() {
+            use std::num::Int;
+            let iterations = 2i.pow((max_depth - depth + min_depth) as uint);
+            Future::spawn(move|| {
                 let mut chk = 0;
                 for i in range(1, iterations + 1) {
                     let arena = TypedArena::new();

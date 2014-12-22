@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(struct_variant)]
-
 use std::fmt;
 
 #[deriving(Show)]
@@ -41,11 +39,11 @@ impl fmt::Show for Custom {
 }
 
 pub fn main() {
-    assert_eq!(B1.to_string(), "B1".to_string());
-    assert_eq!(B2.to_string(), "B2".to_string());
-    assert_eq!(C1(3).to_string(), "C1(3)".to_string());
-    assert_eq!(C2(B2).to_string(), "C2(B2)".to_string());
-    assert_eq!(D1{ a: 2 }.to_string(), "D1 { a: 2 }".to_string());
+    assert_eq!(B::B1.to_string(), "B1".to_string());
+    assert_eq!(B::B2.to_string(), "B2".to_string());
+    assert_eq!(C::C1(3).to_string(), "C1(3)".to_string());
+    assert_eq!(C::C2(B::B2).to_string(), "C2(B2)".to_string());
+    assert_eq!(D::D1{ a: 2 }.to_string(), "D1 { a: 2 }".to_string());
     assert_eq!(E.to_string(), "E".to_string());
     assert_eq!(F(3).to_string(), "F(3)".to_string());
     assert_eq!(G(3, 4).to_string(), "G(3, 4)".to_string());

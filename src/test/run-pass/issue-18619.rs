@@ -11,5 +11,5 @@
 use std::io::FileType;
 
 pub fn main() {
-    let _ = FileType::TypeFile.clone();
+    let _ = FileType::RegularFile.clone();
 }

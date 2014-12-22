@@ -160,6 +160,7 @@ r##"<!DOCTYPE html>
 }
 
 pub fn redirect(dst: &mut io::Writer, url: &str) -> io::IoResult<()> {
+    // <script> triggers a redirect before refresh, so this is fine.
     write!(dst,
 r##"<!DOCTYPE html>
 <html lang="en">
@@ -167,6 +168,8 @@ r##"<!DOCTYPE html>
     <meta http-equiv="refresh" content="0;URL={url}">
 </head>
 <body>
+    <p>Redirecting to <a href="{url}">{url}</a>...</p>
+    <script>location.replace("{url}" + location.search + location.hash);</script>
 </body>
 </html>"##,
     url = url,

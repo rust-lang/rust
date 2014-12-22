@@ -10,8 +10,6 @@
 
 // compile-flags: --cfg foo
 
-#![feature(struct_variant)]
-
 struct Foo {
     #[cfg(fail)]
     bar: baz,
@@ -46,9 +44,9 @@ pub fn main() {
     let _f = Foo { foo: 3 };
     let _f = Foo2 { foo: 3 };
 
-    match Bar1_1 {
-        Bar1_1 => {}
+    match Bar1::Bar1_1 {
+        Bar1::Bar1_1 => {}
     }
 
-    let _f = Bar3_1 { bar: 3 };
+    let _f = Bar3::Bar3_1 { bar: 3 };
 }

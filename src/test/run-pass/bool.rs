@@ -16,30 +16,30 @@ fn main() {
     assert_eq!(false != true, true);
     assert_eq!(false.ne(&false), false);
 
-    assert_eq!(false.bitand(&false), false);
-    assert_eq!(true.bitand(&false), false);
-    assert_eq!(false.bitand(&true), false);
-    assert_eq!(true.bitand(&true), true);
+    assert_eq!(false.bitand(false), false);
+    assert_eq!(true.bitand(false), false);
+    assert_eq!(false.bitand(true), false);
+    assert_eq!(true.bitand(true), true);
 
     assert_eq!(false & false, false);
     assert_eq!(true & false, false);
     assert_eq!(false & true, false);
     assert_eq!(true & true, true);
 
-    assert_eq!(false.bitor(&false), false);
-    assert_eq!(true.bitor(&false), true);
-    assert_eq!(false.bitor(&true), true);
-    assert_eq!(true.bitor(&true), true);
+    assert_eq!(false.bitor(false), false);
+    assert_eq!(true.bitor(false), true);
+    assert_eq!(false.bitor(true), true);
+    assert_eq!(true.bitor(true), true);
 
     assert_eq!(false | false, false);
     assert_eq!(true | false, true);
     assert_eq!(false | true, true);
     assert_eq!(true | true, true);
 
-    assert_eq!(false.bitxor(&false), false);
-    assert_eq!(true.bitxor(&false), true);
-    assert_eq!(false.bitxor(&true), true);
-    assert_eq!(true.bitxor(&true), false);
+    assert_eq!(false.bitxor(false), false);
+    assert_eq!(true.bitxor(false), true);
+    assert_eq!(false.bitxor(true), true);
+    assert_eq!(true.bitxor(true), false);
 
     assert_eq!(false ^ false, false);
     assert_eq!(true ^ false, true);

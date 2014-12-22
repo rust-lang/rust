@@ -15,9 +15,10 @@ enum IntList {
 
 fn tail(source_list: &IntList) -> IntList {
     match source_list {
-        &Cons(val, box ref next_list) => tail(next_list),
-        &Cons(val, box Nil)           => Cons(val, box Nil),
-        //~^ ERROR: unreachable pattern
+        &IntList::Cons(val, box ref next_list) => tail(next_list),
+        &IntList::Cons(val, box Nil)           => IntList::Cons(val, box Nil),
+//~^ ERROR unreachable pattern
+//~^^ WARN pattern binding `Nil` is named the same as one of the variants of the type `IntList`
         _                          => panic!()
     }
 }

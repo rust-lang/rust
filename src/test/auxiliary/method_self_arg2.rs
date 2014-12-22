@@ -16,6 +16,8 @@ pub fn get_count() -> u64 { unsafe { COUNT } }
 
 pub struct Foo;
 
+impl Copy for Foo {}
+
 impl Foo {
     pub fn run_trait(self) {
         unsafe { COUNT *= 17; }

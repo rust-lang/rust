@@ -16,5 +16,5 @@ enum E<T,U> {
 }
 
 pub fn main() {
-    let _ = A::<int, int>(1i).clone();
+    let _ = E::A::<int, int>(1i).clone();
 }

@@ -8,12 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
-
-Module that constructs a control-flow graph representing an item.
-Uses `Graph` as the underlying representation.
-
-*/
+//! Module that constructs a control-flow graph representing an item.
+//! Uses `Graph` as the underlying representation.
 
 use middle::graph;
 use middle::ty;
@@ -30,6 +26,7 @@ pub struct CFG {
     pub exit: CFGIndex,
 }
 
+#[deriving(Copy)]
 pub struct CFGNodeData {
     pub id: ast::NodeId
 }

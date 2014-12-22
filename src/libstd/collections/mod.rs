@@ -24,8 +24,8 @@
 //! Rust's collections can be grouped into four major categories:
 //!
 //! * Sequences: `Vec`, `RingBuf`, `DList`, `BitV`
-//! * Maps: `HashMap`, `BTreeMap`, `TreeMap`, `TrieMap`, `VecMap`, `LruCache`
-//! * Sets: `HashSet`, `BTreeSet`, `TreeSet`, `TrieSet`, `BitVSet`, `EnumSet`
+//! * Maps: `HashMap`, `BTreeMap`, `VecMap`
+//! * Sets: `HashSet`, `BTreeSet`, `BitVSet`
 //! * Misc: `BinaryHeap`
 //!
 //! # When Should You Use Which Collection?
@@ -64,16 +64,6 @@
 //! * You want to be able to get all of the entries in order on-demand.
 //! * You want a sorted map.
 //!
-//! ### Use a `TreeMap` when:
-//! * You want a `BTreeMap`, but can't tolerate inconsistent performance.
-//! * You want a `BTreeMap`, but have *very large* keys or values.
-//! * You want a `BTreeMap`, but have keys that are expensive to compare.
-//! * You want a `BTreeMap`, but you accept arbitrary untrusted inputs.
-//!
-//! ### Use a `TrieMap` when:
-//! * You want a `HashMap`, but with many potentially large `uint` keys.
-//! * You want a `BTreeMap`, but with potentially large `uint` keys.
-//!
 //! ### Use a `VecMap` when:
 //! * You want a `HashMap` but with known to be small `uint` keys.
 //! * You want a `BTreeMap`, but with known to be small `uint` keys.
@@ -90,17 +80,10 @@
 //! ### Use a `BitVSet` when:
 //! * You want a `VecSet`.
 //!
-//! ### Use an `EnumSet` when:
-//! * You want a C-like enum, stored in a single `uint`.
-//!
 //! ### Use a `BinaryHeap` when:
 //! * You want to store a bunch of elements, but only ever want to process the "biggest"
 //! or "most important" one at any given time.
 //! * You want a priority queue.
-//!
-//! ### Use an `LruCache` when:
-//! * You want a cache that discards infrequently used items when it becomes full.
-//! * You want a least-recently-used cache.
 //!
 //! # Correct and Efficient Usage of Collections
 //!
@@ -329,15 +312,21 @@
 #![experimental]
 
 pub use core_collections::{BinaryHeap, Bitv, BitvSet, BTreeMap, BTreeSet};
-pub use core_collections::{DList, EnumSet, RingBuf};
-pub use core_collections::{TreeMap, TreeSet, TrieMap, TrieSet, VecMap};
+pub use core_collections::{DList, RingBuf, VecMap};
 
-pub use core_collections::{binary_heap, bitv, bitv_set, btree_map, btree_set, dlist, enum_set};
-pub use core_collections::{ring_buf, tree_map, tree_set, trie_map, trie_set, vec_map};
+/// Deprecated: Moved to collect-rs: https://github.com/Gankro/collect-rs/
+#[deprecated = "Moved to collect-rs: https://github.com/Gankro/collect-rs/"]
+pub use core_collections::EnumSet;
+
+pub use core_collections::{binary_heap, bitv, bitv_set, btree_map, btree_set};
+pub use core_collections::{dlist, ring_buf, vec_map};
+
+/// Deprecated: Moved to collect-rs: https://github.com/Gankro/collect-rs/
+#[deprecated = "Moved to collect-rs: https://github.com/Gankro/collect-rs/"]
+pub use core_collections::enum_set;
 
 pub use self::hash_map::HashMap;
 pub use self::hash_set::HashSet;
-pub use self::lru_cache::LruCache;
 
 mod hash;
 
@@ -350,5 +339,3 @@ pub mod hash_set {
     //! A hashset
     pub use super::hash::set::*;
 }
-
-pub mod lru_cache;

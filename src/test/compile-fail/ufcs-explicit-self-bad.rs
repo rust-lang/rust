@@ -14,7 +14,6 @@ struct Foo {
 
 impl Foo {
     fn foo(self: int, x: int) -> int {  //~ ERROR mismatched self type
-//~^ ERROR not a valid type for `self`
         self.f + x
     }
 }
@@ -25,13 +24,24 @@ struct Bar<T> {
 
 impl<T> Bar<T> {
     fn foo(self: Bar<int>, x: int) -> int { //~ ERROR mismatched self type
-//~^ ERROR not a valid type for `self`
         x
     }
     fn bar(self: &Bar<uint>, x: int) -> int {   //~ ERROR mismatched self type
-//~^ ERROR not a valid type for `self`
         x
     }
+}
+
+trait SomeTrait {
+    fn dummy1(&self);
+    fn dummy2(&self);
+    fn dummy3(&self);
+}
+
+impl<'a, T> SomeTrait for &'a Bar<T> {
+    fn dummy1(self: &&'a Bar<T>) { }
+    fn dummy2(self: &Bar<T>) {} //~ ERROR mismatched self type
+    fn dummy3(self: &&Bar<T>) {} //~ ERROR lifetime mismatch
+    //~^ ERROR lifetime mismatch
 }
 
 fn main() {

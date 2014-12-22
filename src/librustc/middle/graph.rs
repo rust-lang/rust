@@ -8,35 +8,31 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
-
-A graph module for use in dataflow, region resolution, and elsewhere.
-
-# Interface details
-
-You customize the graph by specifying a "node data" type `N` and an
-"edge data" type `E`. You can then later gain access (mutable or
-immutable) to these "user-data" bits. Currently, you can only add
-nodes or edges to the graph. You cannot remove or modify them once
-added. This could be changed if we have a need.
-
-# Implementation details
-
-The main tricky thing about this code is the way that edges are
-stored. The edges are stored in a central array, but they are also
-threaded onto two linked lists for each node, one for incoming edges
-and one for outgoing edges. Note that every edge is a member of some
-incoming list and some outgoing list.  Basically you can load the
-first index of the linked list from the node data structures (the
-field `first_edge`) and then, for each edge, load the next index from
-the field `next_edge`). Each of those fields is an array that should
-be indexed by the direction (see the type `Direction`).
-
-*/
+//! A graph module for use in dataflow, region resolution, and elsewhere.
+//!
+//! # Interface details
+//!
+//! You customize the graph by specifying a "node data" type `N` and an
+//! "edge data" type `E`. You can then later gain access (mutable or
+//! immutable) to these "user-data" bits. Currently, you can only add
+//! nodes or edges to the graph. You cannot remove or modify them once
+//! added. This could be changed if we have a need.
+//!
+//! # Implementation details
+//!
+//! The main tricky thing about this code is the way that edges are
+//! stored. The edges are stored in a central array, but they are also
+//! threaded onto two linked lists for each node, one for incoming edges
+//! and one for outgoing edges. Note that every edge is a member of some
+//! incoming list and some outgoing list.  Basically you can load the
+//! first index of the linked list from the node data structures (the
+//! field `first_edge`) and then, for each edge, load the next index from
+//! the field `next_edge`). Each of those fields is an array that should
+//! be indexed by the direction (see the type `Direction`).
 
 #![allow(dead_code)] // still WIP
 
-use std::fmt::{Formatter, FormatError, Show};
+use std::fmt::{Formatter, Error, Show};
 use std::uint;
 
 pub struct Graph<N,E> {
@@ -57,25 +53,25 @@ pub struct Edge<E> {
 }
 
 impl<E: Show> Show for Edge<E> {
-    fn fmt(&self, f: &mut Formatter) -> Result<(), FormatError> {
+    fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
         write!(f, "Edge {{ next_edge: [{}, {}], source: {}, target: {}, data: {} }}",
                self.next_edge[0], self.next_edge[1], self.source,
                self.target, self.data)
     }
 }
 
-#[deriving(Clone, PartialEq, Show)]
+#[deriving(Clone, Copy, PartialEq, Show)]
 pub struct NodeIndex(pub uint);
 #[allow(non_upper_case_globals)]
 pub const InvalidNodeIndex: NodeIndex = NodeIndex(uint::MAX);
 
-#[deriving(PartialEq, Show)]
+#[deriving(Copy, PartialEq, Show)]
 pub struct EdgeIndex(pub uint);
 #[allow(non_upper_case_globals)]
 pub const InvalidEdgeIndex: EdgeIndex = EdgeIndex(uint::MAX);
 
 // Use a private field here to guarantee no more instances are created:
-#[deriving(Show)]
+#[deriving(Copy, Show)]
 pub struct Direction { repr: uint }
 #[allow(non_upper_case_globals)]
 pub const Outgoing: Direction = Direction { repr: 0 };
@@ -219,39 +215,43 @@ impl<N,E> Graph<N,E> {
     ///////////////////////////////////////////////////////////////////////////
     // Iterating over nodes, edges
 
-    pub fn each_node<'a>(&'a self, f: |NodeIndex, &'a Node<N>| -> bool) -> bool {
+    pub fn each_node<'a, F>(&'a self, mut f: F) -> bool where
+        F: FnMut(NodeIndex, &'a Node<N>) -> bool,
+    {
         //! Iterates over all edges defined in the graph.
         self.nodes.iter().enumerate().all(|(i, node)| f(NodeIndex(i), node))
     }
 
-    pub fn each_edge<'a>(&'a self, f: |EdgeIndex, &'a Edge<E>| -> bool) -> bool {
+    pub fn each_edge<'a, F>(&'a self, mut f: F) -> bool where
+        F: FnMut(EdgeIndex, &'a Edge<E>) -> bool,
+    {
         //! Iterates over all edges defined in the graph
         self.edges.iter().enumerate().all(|(i, edge)| f(EdgeIndex(i), edge))
     }
 
-    pub fn each_outgoing_edge<'a>(&'a self,
-                                  source: NodeIndex,
-                                  f: |EdgeIndex, &'a Edge<E>| -> bool)
-                                  -> bool {
+    pub fn each_outgoing_edge<'a, F>(&'a self, source: NodeIndex, f: F) -> bool where
+        F: FnMut(EdgeIndex, &'a Edge<E>) -> bool,
+    {
         //! Iterates over all outgoing edges from the node `from`
 
         self.each_adjacent_edge(source, Outgoing, f)
     }
 
-    pub fn each_incoming_edge<'a>(&'a self,
-                                  target: NodeIndex,
-                                  f: |EdgeIndex, &'a Edge<E>| -> bool)
-                                  -> bool {
+    pub fn each_incoming_edge<'a, F>(&'a self, target: NodeIndex, f: F) -> bool where
+        F: FnMut(EdgeIndex, &'a Edge<E>) -> bool,
+    {
         //! Iterates over all incoming edges to the node `target`
 
         self.each_adjacent_edge(target, Incoming, f)
     }
 
-    pub fn each_adjacent_edge<'a>(&'a self,
-                                  node: NodeIndex,
-                                  dir: Direction,
-                                  f: |EdgeIndex, &'a Edge<E>| -> bool)
-                                  -> bool {
+    pub fn each_adjacent_edge<'a, F>(&'a self,
+                                     node: NodeIndex,
+                                     dir: Direction,
+                                     mut f: F)
+                                     -> bool where
+        F: FnMut(EdgeIndex, &'a Edge<E>) -> bool,
+    {
         //! Iterates over all edges adjacent to the node `node`
         //! in the direction `dir` (either `Outgoing` or `Incoming)
 
@@ -275,11 +275,9 @@ impl<N,E> Graph<N,E> {
     // variables or other bitsets. This method facilitates such a
     // computation.
 
-    pub fn iterate_until_fixed_point<'a>(&'a self,
-                                         op: |iter_index: uint,
-                                              edge_index: EdgeIndex,
-                                              edge: &'a Edge<E>|
-                                              -> bool) {
+    pub fn iterate_until_fixed_point<'a, F>(&'a self, mut op: F) where
+        F: FnMut(uint, EdgeIndex, &'a Edge<E>) -> bool,
+    {
         let mut iteration = 0;
         let mut changed = true;
         while changed {
@@ -292,7 +290,9 @@ impl<N,E> Graph<N,E> {
     }
 }
 
-pub fn each_edge_index(max_edge_index: EdgeIndex, f: |EdgeIndex| -> bool) {
+pub fn each_edge_index<F>(max_edge_index: EdgeIndex, mut f: F) where
+    F: FnMut(EdgeIndex) -> bool,
+{
     let mut i = 0;
     let n = max_edge_index.get();
     while i < n {
@@ -419,31 +419,31 @@ mod test {
     fn each_adjacent_from_a() {
         let graph = create_graph();
         test_adjacent_edges(&graph, NodeIndex(0), "A",
-                            [],
-                            [("AB", "B")]);
+                            &[],
+                            &[("AB", "B")]);
     }
 
     #[test]
     fn each_adjacent_from_b() {
         let graph = create_graph();
         test_adjacent_edges(&graph, NodeIndex(1), "B",
-                            [("FB", "F"), ("AB", "A"),],
-                            [("BD", "D"), ("BC", "C"),]);
+                            &[("FB", "F"), ("AB", "A"),],
+                            &[("BD", "D"), ("BC", "C"),]);
     }
 
     #[test]
     fn each_adjacent_from_c() {
         let graph = create_graph();
         test_adjacent_edges(&graph, NodeIndex(2), "C",
-                            [("EC", "E"), ("BC", "B")],
-                            []);
+                            &[("EC", "E"), ("BC", "B")],
+                            &[]);
     }
 
     #[test]
     fn each_adjacent_from_d() {
         let graph = create_graph();
         test_adjacent_edges(&graph, NodeIndex(3), "D",
-                            [("BD", "B")],
-                            [("DE", "E")]);
+                            &[("BD", "B")],
+                            &[("DE", "E")]);
     }
 }

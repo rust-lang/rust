@@ -13,4 +13,4 @@
 
 enum mlist { cons(int, mlist), nil, }
 
-fn main() { let a = cons(10, cons(11, nil)); }
+fn main() { let a = mlist::cons(10, mlist::cons(11, mlist::nil)); }

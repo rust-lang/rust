@@ -45,7 +45,7 @@ impl PipeStream {
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ```{rust,no_run}
     /// # #![allow(unused_must_use)]
     /// extern crate libc;
     ///
@@ -86,8 +86,8 @@ impl PipeStream {
     }
 }
 
-impl sys_common::AsFileDesc for PipeStream {
-    fn as_fd(&self) -> &sys::fs::FileDesc {
+impl sys_common::AsInner<sys::fs::FileDesc> for PipeStream {
+    fn as_inner(&self) -> &sys::fs::FileDesc {
         &*self.inner
     }
 }
@@ -123,14 +123,14 @@ mod test {
         let out = PipeStream::open(writer);
         let mut input = PipeStream::open(reader);
         let (tx, rx) = channel();
-        spawn(proc() {
+        spawn(move|| {
             let mut out = out;
-            out.write([10]).unwrap();
+            out.write(&[10]).unwrap();
             rx.recv(); // don't close the pipe until the other read has finished
         });
 
         let mut buf = [0, ..10];
-        input.read(buf).unwrap();
+        input.read(&mut buf).unwrap();
         tx.send(());
     }
 }

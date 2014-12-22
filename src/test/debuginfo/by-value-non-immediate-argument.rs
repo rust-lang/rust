@@ -71,8 +71,6 @@
 // lldb-check:[...]$6 = Case1 { x: 0, y: 8970181431921507452 }
 // lldb-command:continue
 
-#![feature(struct_variant)]
-
 #[deriving(Clone)]
 struct Struct {
     a: int,
@@ -125,7 +123,7 @@ fn main() {
     // 0b01111100011111000111110001111100 = 2088533116
     // 0b0111110001111100 = 31868
     // 0b01111100 = 124
-    by_val_enum(Case1 { x: 0, y: 8970181431921507452 });
+    by_val_enum(Enum::Case1 { x: 0, y: 8970181431921507452 });
 }
 
 fn zzz() { () }

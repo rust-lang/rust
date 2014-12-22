@@ -19,7 +19,7 @@ fn check_log<T: std::fmt::Show>(exp: String, v: T) {
 }
 
 pub fn main() {
-    let mut x = Some(a(22u));
+    let mut x = Some(foo::a(22u));
     let exp = "Some(a(22))".to_string();
     let act = format!("{}", x);
     assert_eq!(act, exp);

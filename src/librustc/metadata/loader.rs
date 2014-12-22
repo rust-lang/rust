@@ -120,7 +120,7 @@
 //!
 //! The compiler accepts a flag of this form a number of times:
 //!
-//! ```notrust
+//! ```text
 //! --extern crate-name=path/to/the/crate.rlib
 //! ```
 //!
@@ -152,7 +152,7 @@
 //!
 //! and the compiler would be invoked as:
 //!
-//! ```notrust
+//! ```text
 //! rustc a.rs --extern b1=path/to/libb1.rlib --extern b2=path/to/libb2.rlib
 //! ```
 //!
@@ -178,7 +178,7 @@
 //! dependencies, not the upstream transitive dependencies. Consider this
 //! dependency graph:
 //!
-//! ```notrust
+//! ```text
 //! A.1   A.2
 //! |     |
 //! |     |
@@ -214,7 +214,7 @@
 
 use back::archive::{METADATA_FILENAME};
 use back::svh::Svh;
-use driver::session::Session;
+use session::Session;
 use llvm;
 use llvm::{False, ObjectFile, mk_section_iter};
 use llvm::archive_ro::ArchiveRO;
@@ -234,7 +234,6 @@ use std::io::fs::PathExtensions;
 use std::io;
 use std::ptr;
 use std::slice;
-use std::string;
 use std::time::Duration;
 
 use flate;
@@ -307,7 +306,8 @@ impl<'a> Context<'a> {
             format!("found possibly newer version of crate `{}`",
                     self.ident)
         } else if self.rejected_via_triple.len() > 0 {
-            format!("found incorrect triple for crate `{}`", self.ident)
+            format!("couldn't find crate `{}` with expected target triple {}",
+                    self.ident, self.triple)
         } else {
             format!("can't find crate for `{}`", self.ident)
         };
@@ -318,15 +318,12 @@ impl<'a> Context<'a> {
         };
         self.sess.span_err(self.span, message.as_slice());
 
-        let mismatches = self.rejected_via_triple.iter();
         if self.rejected_via_triple.len() > 0 {
-            self.sess.span_note(self.span,
-                                format!("expected triple of {}",
-                                        self.triple).as_slice());
+            let mismatches = self.rejected_via_triple.iter();
             for (i, &CrateMismatch{ ref path, ref got }) in mismatches.enumerate() {
                 self.sess.fileline_note(self.span,
-                    format!("crate `{}` path {}{}, triple {}: {}",
-                            self.ident, "#", i+1, got, path.display()).as_slice());
+                    format!("crate `{}`, path #{}, triple {}: {}",
+                            self.ident, i+1, got, path.display()).as_slice());
             }
         }
         if self.rejected_via_hash.len() > 0 {
@@ -367,7 +364,7 @@ impl<'a> Context<'a> {
         let dypair = self.dylibname();
 
         // want: crate_name.dir_part() + prefix + crate_name.file_part + "-"
-        let dylib_prefix = format!("{}{}", dypair.ref0(), self.crate_name);
+        let dylib_prefix = format!("{}{}", dypair.0, self.crate_name);
         let rlib_prefix = format!("lib{}", self.crate_name);
 
         let mut candidates = HashMap::new();
@@ -395,8 +392,8 @@ impl<'a> Context<'a> {
                 (file.slice(rlib_prefix.len(), file.len() - ".rlib".len()),
                  true)
             } else if file.starts_with(dylib_prefix.as_slice()) &&
-                      file.ends_with(dypair.ref1().as_slice()) {
-                (file.slice(dylib_prefix.len(), file.len() - dypair.ref1().len()),
+                      file.ends_with(dypair.1.as_slice()) {
+                (file.slice(dylib_prefix.len(), file.len() - dypair.1.len()),
                  false)
             } else {
                 return FileDoesntMatch
@@ -548,7 +545,7 @@ impl<'a> Context<'a> {
     fn crate_matches(&mut self, crate_data: &[u8], libpath: &Path) -> bool {
         if self.should_match_name {
             match decoder::maybe_get_crate_name(crate_data) {
-                Some(ref name) if self.crate_name == name.as_slice() => {}
+                Some(ref name) if self.crate_name == *name => {}
                 _ => { info!("Rejecting via crate name"); return false }
             }
         }
@@ -563,7 +560,7 @@ impl<'a> Context<'a> {
             None => { debug!("triple not present"); return false }
             Some(t) => t,
         };
-        if triple.as_slice() != self.triple {
+        if triple != self.triple {
             info!("Rejecting via crate triple: expected {} got {}", self.triple, triple);
             self.rejected_via_triple.push(CrateMismatch {
                 path: libpath.clone(),
@@ -598,7 +595,7 @@ impl<'a> Context<'a> {
     }
 
     fn find_commandline_library(&mut self) -> Option<Library> {
-        let locs = match self.sess.opts.externs.find_equiv(self.crate_name) {
+        let locs = match self.sess.opts.externs.get(self.crate_name) {
             Some(s) => s,
             None => return None,
         };
@@ -743,21 +740,19 @@ fn get_metadata_section_imp(is_osx: bool, filename: &Path) -> Result<MetadataBlo
         while llvm::LLVMIsSectionIteratorAtEnd(of.llof, si.llsi) == False {
             let mut name_buf = ptr::null();
             let name_len = llvm::LLVMRustGetSectionName(si.llsi, &mut name_buf);
-            let name = string::raw::from_buf_len(name_buf as *const u8,
-                                              name_len as uint);
+            let name = String::from_raw_buf_len(name_buf as *const u8,
+                                                name_len as uint);
             debug!("get_metadata_section: name {}", name);
-            if read_meta_section_name(is_osx).as_slice() == name.as_slice() {
+            if read_meta_section_name(is_osx) == name {
                 let cbuf = llvm::LLVMGetSectionContents(si.llsi);
                 let csz = llvm::LLVMGetSectionSize(si.llsi) as uint;
-                let mut found =
-                    Err(format!("metadata not found: '{}'", filename.display()));
                 let cvbuf: *const u8 = cbuf as *const u8;
                 let vlen = encoder::metadata_encoding_version.len();
                 debug!("checking {} bytes of metadata-version stamp",
                        vlen);
                 let minsz = cmp::min(vlen, csz);
-                let version_ok = slice::raw::buf_as_slice(cvbuf, minsz,
-                    |buf0| buf0 == encoder::metadata_encoding_version);
+                let buf0 = slice::from_raw_buf(&cvbuf, minsz);
+                let version_ok = buf0 == encoder::metadata_encoding_version;
                 if !version_ok {
                     return Err((format!("incompatible metadata version found: '{}'",
                                         filename.display())));
@@ -766,19 +761,10 @@ fn get_metadata_section_imp(is_osx: bool, filename: &Path) -> Result<MetadataBlo
                 let cvbuf1 = cvbuf.offset(vlen as int);
                 debug!("inflating {} bytes of compressed metadata",
                        csz - vlen);
-                slice::raw::buf_as_slice(cvbuf1, csz-vlen, |bytes| {
-                    match flate::inflate_bytes(bytes) {
-                        Some(inflated) => found = Ok(MetadataVec(inflated)),
-                        None => {
-                            found =
-                                Err(format!("failed to decompress \
-                                             metadata for: '{}'",
-                                            filename.display()))
-                        }
-                    }
-                });
-                if found.is_ok() {
-                    return found;
+                let bytes = slice::from_raw_buf(&cvbuf1, csz-vlen);
+                match flate::inflate_bytes(bytes) {
+                    Some(inflated) => return Ok(MetadataVec(inflated)),
+                    None => {}
                 }
             }
             llvm::LLVMMoveToNextSection(si.llsi);

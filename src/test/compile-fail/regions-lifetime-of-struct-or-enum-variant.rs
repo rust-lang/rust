@@ -24,7 +24,7 @@ fn structLifetime<'a>() -> &'a Test {
 }
 
 fn variantLifetime<'a>() -> &'a MyEnum {
-  let testValue = &Variant1; //~ ERROR borrowed value does not live long enough
+  let testValue = &MyEnum::Variant1; //~ ERROR borrowed value does not live long enough
   testValue
 }
 

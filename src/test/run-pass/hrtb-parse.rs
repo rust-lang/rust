@@ -11,6 +11,7 @@
 // Test that we can parse all the various places that a `for` keyword
 // can appear representing universal quantification.
 
+#![feature(unboxed_closures)]
 #![allow(unused_variables)]
 #![allow(dead_code)]
 
@@ -41,8 +42,6 @@ fn foo23(t: for<'a> unsafe extern "C" fn(int) -> int) { }
 
 fn foo30(t: for<'a> |int| -> int) { }
 fn foo31(t: for<'a> unsafe |int| -> int) { }
-
-//fn foo40(t: for<'a> proc(int) -> int) { }
 
 fn main() {
 }

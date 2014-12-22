@@ -49,7 +49,7 @@ fn test_tag() {
 
     let i = &Cell::new(0i);
     {
-        let _a = t0(r(i));
+        let _a = t::t0(r(i));
     }
     assert_eq!(i.get(), 1);
 }

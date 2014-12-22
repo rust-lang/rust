@@ -10,8 +10,8 @@
 
 // error-pattern:called `Result::unwrap()` on an `Err` value
 
-use std::result;
+use std::result::Result::Err;
 
 fn main() {
-    println!("{}", result::Err::<int,String>("kitty".to_string()).unwrap());
+    println!("{}", Err::<int,String>("kitty".to_string()).unwrap());
 }

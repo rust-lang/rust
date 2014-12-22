@@ -55,7 +55,7 @@ pub struct Range<X> {
 
 impl<X: SampleRange + PartialOrd> Range<X> {
     /// Create a new `Range` instance that samples uniformly from
-    /// `[low, high)`. Fails if `low >= high`.
+    /// `[low, high)`. Panics if `low >= high`.
     pub fn new(low: X, high: X) -> Range<X> {
         assert!(low < high, "Range::new called with `low >= high`");
         SampleRange::construct_range(low, high)
@@ -185,9 +185,9 @@ mod tests {
         macro_rules! t (
             ($($ty:ty),*) => {{
                 $(
-                   let v: &[($ty, $ty)] = [(0, 10),
-                                           (10, 127),
-                                           (Int::min_value(), Int::max_value())];
+                   let v: &[($ty, $ty)] = &[(0, 10),
+                                            (10, 127),
+                                            (Int::min_value(), Int::max_value())];
                    for &(low, high) in v.iter() {
                         let mut sampler: Range<$ty> = Range::new(low, high);
                         for _ in range(0u, 1000) {
@@ -210,10 +210,10 @@ mod tests {
         macro_rules! t (
             ($($ty:ty),*) => {{
                 $(
-                   let v: &[($ty, $ty)] = [(0.0, 100.0),
-                                           (-1e35, -1e25),
-                                           (1e-35, 1e-25),
-                                           (-1e35, 1e35)];
+                   let v: &[($ty, $ty)] = &[(0.0, 100.0),
+                                            (-1e35, -1e25),
+                                            (1e-35, 1e-25),
+                                            (-1e35, 1e35)];
                    for &(low, high) in v.iter() {
                         let mut sampler: Range<$ty> = Range::new(low, high);
                         for _ in range(0u, 1000) {

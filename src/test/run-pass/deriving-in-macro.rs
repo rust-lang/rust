@@ -17,8 +17,8 @@ macro_rules! define_vec (
             pub struct bar;
         }
     )
-)
+);
 
-define_vec!()
+define_vec!();
 
 pub fn main() {}

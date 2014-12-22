@@ -66,6 +66,9 @@
 
 #![allow(unused_variables)]
 
+use self::AnEnum::{OneHundred, OneThousand, OneMillion};
+use self::AnotherEnum::{MountainView, Toronto, Vienna};
+
 enum AnEnum {
     OneHundred = 100,
     OneThousand = 1000,

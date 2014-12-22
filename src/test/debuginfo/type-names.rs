@@ -167,15 +167,13 @@
 
 
 // CLOSURES
-// gdb-command:whatis some_proc
-// gdb-check:type = struct (once proc(int, u8) -> (int, u8), uint)
-
 // gdb-command:whatis stack_closure1
 // gdb-check:type = struct (&mut|int|, uint)
 
 // gdb-command:whatis stack_closure2
 // gdb-check:type = struct (&mut|i8, f32| -> f32, uint)
 
+use self::Enum1::{Variant1_1, Variant1_2};
 use std::ptr;
 
 struct Struct1;
@@ -187,6 +185,7 @@ enum Enum1 {
 }
 
 mod Mod1 {
+    pub use self::Enum2::{Variant2_1, Variant2_2};
     pub struct Struct2;
 
     pub enum Enum2 {
@@ -195,6 +194,7 @@ mod Mod1 {
     }
 
     pub mod Mod2 {
+        pub use self::Enum3::{Variant3_1, Variant3_2};
         pub struct Struct3;
 
         pub enum Enum3<T> {
@@ -319,8 +319,6 @@ fn main() {
     // how that maps to rustc's internal representation of these forms.
     // Once closures have reached their 1.0 form, the tests below should
     // probably be expanded.
-    let some_proc = (proc(a:int, b:u8) (a, b), 0u);
-
     let stack_closure1 = (|x:int| {}, 0u);
     let stack_closure2 = (|x:i8, y: f32| { (x as f32) + y }, 0u);
 

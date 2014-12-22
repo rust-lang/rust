@@ -11,7 +11,7 @@
 use std::time::Duration;
 
 fn main() {
-    std::task::spawn(proc() customtask());
+    std::task::spawn(move|| customtask());
 }
 
 fn customtask() {

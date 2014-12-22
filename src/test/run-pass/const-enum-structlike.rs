@@ -8,18 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(struct_variant)]
-
 enum E {
     S0 { s: String },
     S1 { u: uint }
 }
 
-static C: E = S1 { u: 23 };
+static C: E = E::S1 { u: 23 };
 
 pub fn main() {
     match C {
-        S0 { .. } => panic!(),
-        S1 { u } => assert!(u == 23)
+        E::S0 { .. } => panic!(),
+        E::S1 { u } => assert!(u == 23)
     }
 }

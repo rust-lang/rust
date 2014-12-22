@@ -19,7 +19,7 @@ fn test32() { assert_send::<Vec<int> >(); }
 
 // but not if they own a bad thing
 fn test40<'a>(_: &'a int) {
-    assert_send::<Box<&'a int>>(); //~ ERROR does not fulfill the required lifetime
+    assert_send::<Box<&'a int>>(); //~ ERROR declared lifetime bound not satisfied
 }
 
 fn main() { }

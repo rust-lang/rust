@@ -41,7 +41,7 @@ fn sink(_res: option<close_res>) { }
 
 pub fn main() {
     let c = &Cell::new(true);
-    sink(none);
-    sink(some(close_res(c)));
+    sink(option::none);
+    sink(option::some(close_res(c)));
     assert!(!c.get());
 }

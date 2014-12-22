@@ -8,32 +8,67 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
- * Implementations of things like `Eq` for fixed-length arrays
- * up to a certain length. Eventually we should able to generalize
- * to all lengths.
- */
+//! Implementations of things like `Eq` for fixed-length arrays
+//! up to a certain length. Eventually we should able to generalize
+//! to all lengths.
 
-#![stable]
 #![experimental] // not yet reviewed
 
-use cmp::*;
-use option::{Option};
+use clone::Clone;
+use cmp::{PartialEq, Eq, PartialOrd, Ord, Ordering};
+use fmt;
+use kinds::Copy;
+use ops::Deref;
+use option::Option;
 
 // macro for implementing n-ary tuple functions and operations
 macro_rules! array_impls {
     ($($N:expr)+) => {
         $(
+            #[unstable = "waiting for Clone to stabilize"]
+            impl<T:Copy> Clone for [T, ..$N] {
+                fn clone(&self) -> [T, ..$N] {
+                    *self
+                }
+            }
+
+            #[unstable = "waiting for Show to stabilize"]
+            impl<T:fmt::Show> fmt::Show for [T, ..$N] {
+                fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                    fmt::Show::fmt(&self[], f)
+                }
+            }
+
             #[unstable = "waiting for PartialEq to stabilize"]
-            impl<T:PartialEq> PartialEq for [T, ..$N] {
+            impl<A, B> PartialEq<[B, ..$N]> for [A, ..$N] where A: PartialEq<B> {
                 #[inline]
-                fn eq(&self, other: &[T, ..$N]) -> bool {
+                fn eq(&self, other: &[B, ..$N]) -> bool {
                     self[] == other[]
                 }
                 #[inline]
-                fn ne(&self, other: &[T, ..$N]) -> bool {
+                fn ne(&self, other: &[B, ..$N]) -> bool {
                     self[] != other[]
                 }
+            }
+
+            impl<'a, A, B, Rhs> PartialEq<Rhs> for [A, ..$N] where
+                A: PartialEq<B>,
+                Rhs: Deref<[B]>,
+            {
+                #[inline(always)]
+                fn eq(&self, other: &Rhs) -> bool { PartialEq::eq(self[], &**other) }
+                #[inline(always)]
+                fn ne(&self, other: &Rhs) -> bool { PartialEq::ne(self[], &**other) }
+            }
+
+            impl<'a, A, B, Lhs> PartialEq<[B, ..$N]> for Lhs where
+                A: PartialEq<B>,
+                Lhs: Deref<[A]>
+            {
+                #[inline(always)]
+                fn eq(&self, other: &[B, ..$N]) -> bool { PartialEq::eq(&**self, other[]) }
+                #[inline(always)]
+                fn ne(&self, other: &[B, ..$N]) -> bool { PartialEq::ne(&**self, other[]) }
             }
 
             #[unstable = "waiting for Eq to stabilize"]

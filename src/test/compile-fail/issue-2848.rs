@@ -17,7 +17,7 @@ mod bar {
 }
 
 fn main() {
-    use bar::{alpha, charlie};
+    use bar::foo::{alpha, charlie};
     match alpha {
       alpha | beta => {} //~ ERROR variable `beta` from pattern #2 is not bound in pattern #1
       charlie => {}

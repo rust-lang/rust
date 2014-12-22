@@ -8,5 +8,5 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: unresolved name `this_does_nothing_what_the`.
+// error-pattern: unresolved name `this_does_nothing_what_the`
 fn main() { println!("doing"); this_does_nothing_what_the; println!("boing"); }

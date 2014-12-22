@@ -98,13 +98,13 @@ mod cross_crate {
         let _ = FrozenUnitStruct;
         let _ = LockedUnitStruct;
 
-        let _ = DeprecatedVariant; //~ ERROR use of deprecated item
-        let _ = ExperimentalVariant; //~ ERROR use of experimental item
-        let _ = UnstableVariant; //~ ERROR use of unstable item
-        let _ = UnmarkedVariant; //~ ERROR use of unmarked item
-        let _ = StableVariant;
-        let _ = FrozenVariant;
-        let _ = LockedVariant;
+        let _ = Enum::DeprecatedVariant; //~ ERROR use of deprecated item
+        let _ = Enum::ExperimentalVariant; //~ ERROR use of experimental item
+        let _ = Enum::UnstableVariant; //~ ERROR use of unstable item
+        let _ = Enum::UnmarkedVariant; //~ ERROR use of unmarked item
+        let _ = Enum::StableVariant;
+        let _ = Enum::FrozenVariant;
+        let _ = Enum::LockedVariant;
 
         let _ = DeprecatedTupleStruct (1); //~ ERROR use of deprecated item
         let _ = ExperimentalTupleStruct (1); //~ ERROR use of experimental item
@@ -171,8 +171,8 @@ mod inheritance {
         experimental_mod::experimental(); //~ ERROR use of experimental item
         experimental_mod::stable();
 
-        let _ = ExperimentalVariant; //~ ERROR use of experimental item
-        let _ = StableVariant;
+        let _ = Experimental::ExperimentalVariant; //~ ERROR use of experimental item
+        let _ = Experimental::StableVariant;
 
         let x: uint = 0;
         x.experimental(); //~ ERROR use of experimental item
@@ -420,13 +420,13 @@ mod this_crate {
         let _ = FrozenUnitStruct;
         let _ = LockedUnitStruct;
 
-        let _ = DeprecatedVariant; //~ ERROR use of deprecated item
-        let _ = ExperimentalVariant;
-        let _ = UnstableVariant;
-        let _ = UnmarkedVariant;
-        let _ = StableVariant;
-        let _ = FrozenVariant;
-        let _ = LockedVariant;
+        let _ = Enum::DeprecatedVariant; //~ ERROR use of deprecated item
+        let _ = Enum::ExperimentalVariant;
+        let _ = Enum::UnstableVariant;
+        let _ = Enum::UnmarkedVariant;
+        let _ = Enum::StableVariant;
+        let _ = Enum::FrozenVariant;
+        let _ = Enum::LockedVariant;
 
         let _ = DeprecatedTupleStruct (1); //~ ERROR use of deprecated item
         let _ = ExperimentalTupleStruct (1);
@@ -457,6 +457,20 @@ mod this_crate {
         foo.trait_unstable_text();
         foo.trait_unmarked();
         foo.trait_stable();
+    }
+
+    #[deprecated]
+    fn test_fn_body() {
+        fn fn_in_body() {}
+        fn_in_body();
+    }
+
+    impl MethodTester {
+        #[deprecated]
+        fn test_method_body(&self) {
+            fn fn_in_body() {}
+            fn_in_body();
+        }
     }
 
     #[deprecated]

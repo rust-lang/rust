@@ -9,16 +9,16 @@
 // except according to those terms.
 
 use std::io::{ChanReader, ChanWriter};
-use std::task::TaskBuilder;
+use std::thread;
 
 fn main() {
     let (tx, rx) = channel();
     let mut reader = ChanReader::new(rx);
     let stderr = ChanWriter::new(tx);
 
-    let res = TaskBuilder::new().stderr(box stderr as Box<Writer + Send>).try(proc() -> () {
+    let res = thread::Builder::new().stderr(box stderr as Box<Writer + Send>).spawn(move|| -> () {
         panic!("Hello, world!")
-    });
+    }).join();
     assert!(res.is_err());
 
     let output = reader.read_to_string().unwrap();

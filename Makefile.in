@@ -198,6 +198,8 @@ include $(CFG_SRC_DIR)mk/rustllvm.mk
 include $(CFG_SRC_DIR)mk/docs.mk
 # LLVM
 include $(CFG_SRC_DIR)mk/llvm.mk
+# Rules for installing debugger scripts
+include $(CFG_SRC_DIR)mk/debuggers.mk
 
 ######################################################################
 # Secondary makefiles, conditionalized for speed

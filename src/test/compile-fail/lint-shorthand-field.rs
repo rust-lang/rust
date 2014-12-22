@@ -57,8 +57,8 @@ fn main() {
 
         enum Foo { x }
 
-        match (Bar { x: x }) {
-            Bar { x: x } => {},
+        match (Bar { x: Foo::x }) {
+            Bar { x: Foo::x } => {},
         }
     }
 }

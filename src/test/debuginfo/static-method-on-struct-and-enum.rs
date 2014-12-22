@@ -54,8 +54,6 @@
 // lldb-check:[...]$4 = 5
 // lldb-command:continue
 
-#![feature(struct_variant)]
-
 struct Struct {
     x: int
 }

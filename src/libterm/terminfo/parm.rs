@@ -10,10 +10,13 @@
 
 //! Parameterized string expansion
 
-use std::char;
+pub use self::Param::*;
+use self::States::*;
+use self::FormatState::*;
+use self::FormatOp::*;
 use std::mem::replace;
 
-#[deriving(PartialEq)]
+#[deriving(Copy, PartialEq)]
 enum States {
     Nothing,
     Percent,
@@ -30,7 +33,7 @@ enum States {
     SeekIfEndPercent(int)
 }
 
-#[deriving(PartialEq)]
+#[deriving(Copy, PartialEq)]
 enum FormatState {
     FormatStateFlags,
     FormatStateWidth,
@@ -77,17 +80,15 @@ impl Variables {
     }
 }
 
-/**
-  Expand a parameterized capability
-
-  # Arguments
-  * `cap`    - string to expand
-  * `params` - vector of params for %p1 etc
-  * `vars`   - Variables struct for %Pa etc
-
-  To be compatible with ncurses, `vars` should be the same between calls to `expand` for
-  multiple capabilities for the same terminal.
-  */
+/// Expand a parameterized capability
+///
+/// # Arguments
+/// * `cap`    - string to expand
+/// * `params` - vector of params for %p1 etc
+/// * `vars`   - Variables struct for %Pa etc
+///
+/// To be compatible with ncurses, `vars` should be the same between calls to `expand` for
+/// multiple capabilities for the same terminal.
 pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
     -> Result<Vec<u8> , String> {
     let mut state = Nothing;
@@ -293,7 +294,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
             },
             PushParam => {
                 // params are 1-indexed
-                stack.push(mparams[match char::to_digit(cur, 10) {
+                stack.push(mparams[match cur.to_digit(10) {
                     Some(d) => d - 1,
                     None => return Err("bad param number".to_string())
                 }].clone());
@@ -441,7 +442,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
     Ok(output)
 }
 
-#[deriving(PartialEq)]
+#[deriving(Copy, PartialEq)]
 struct Flags {
     width: uint,
     precision: uint,
@@ -458,6 +459,7 @@ impl Flags {
     }
 }
 
+#[deriving(Copy)]
 enum FormatOp {
     FormatDigit,
     FormatOctal,
@@ -492,8 +494,8 @@ fn format(val: Param, op: FormatOp, flags: Flags) -> Result<Vec<u8> ,String> {
     let mut s = match val {
         Number(d) => {
             let s = match (op, flags.sign) {
-                (FormatDigit, true)  => format!("{:+d}", d).into_bytes(),
-                (FormatDigit, false) => format!("{:d}", d).into_bytes(),
+                (FormatDigit, true)  => format!("{:+}", d).into_bytes(),
+                (FormatDigit, false) => format!("{}", d).into_bytes(),
                 (FormatOctal, _)     => format!("{:o}", d).into_bytes(),
                 (FormatHex, _)       => format!("{:x}", d).into_bytes(),
                 (FormatHEX, _)       => format!("{:X}", d).into_bytes(),
@@ -528,11 +530,9 @@ fn format(val: Param, op: FormatOp, flags: Flags) -> Result<Vec<u8> ,String> {
                     }
                 }
                 FormatHEX => {
-                    s = s.as_slice()
-                         .to_ascii()
-                         .to_uppercase()
-                         .into_bytes()
-                         .into_iter()
+                    s = s.to_ascii()
+                         .iter()
+                         .map(|b| b.to_uppercase().as_byte())
                          .collect();
                     if flags.alternate {
                         let s_ = replace(&mut s, vec!(b'0', b'X'));
@@ -576,29 +576,29 @@ fn format(val: Param, op: FormatOp, flags: Flags) -> Result<Vec<u8> ,String> {
 #[cfg(test)]
 mod test {
     use super::{expand,Param,Words,Variables,Number};
-    use std::result::Ok;
+    use std::result::Result::Ok;
 
     #[test]
     fn test_basic_setabf() {
         let s = b"\\E[48;5;%p1%dm";
-        assert_eq!(expand(s, [Number(1)], &mut Variables::new()).unwrap(),
-                   "\\E[48;5;1m".bytes().collect());
+        assert_eq!(expand(s, &[Number(1)], &mut Variables::new()).unwrap(),
+                   "\\E[48;5;1m".bytes().collect::<Vec<_>>());
     }
 
     #[test]
     fn test_multiple_int_constants() {
-        assert_eq!(expand(b"%{1}%{2}%d%d", [], &mut Variables::new()).unwrap(),
-                   "21".bytes().collect());
+        assert_eq!(expand(b"%{1}%{2}%d%d", &[], &mut Variables::new()).unwrap(),
+                   "21".bytes().collect::<Vec<_>>());
     }
 
     #[test]
     fn test_op_i() {
         let mut vars = Variables::new();
         assert_eq!(expand(b"%p1%d%p2%d%p3%d%i%p1%d%p2%d%p3%d",
-                          [Number(1),Number(2),Number(3)], &mut vars),
-                   Ok("123233".bytes().collect()));
-        assert_eq!(expand(b"%p1%d%p2%d%i%p1%d%p2%d", [], &mut vars),
-                   Ok("0011".bytes().collect()));
+                          &[Number(1),Number(2),Number(3)], &mut vars),
+                   Ok("123233".bytes().collect::<Vec<_>>()));
+        assert_eq!(expand(b"%p1%d%p2%d%i%p1%d%p2%d", &[], &mut vars),
+                   Ok("0011".bytes().collect::<Vec<_>>()));
     }
 
     #[test]
@@ -615,7 +615,7 @@ mod test {
 
         let caps = ["%d", "%c", "%s", "%Pa", "%l", "%!", "%~"];
         for &cap in caps.iter() {
-            let res = get_res("", cap, [], vars);
+            let res = get_res("", cap, &[], vars);
             assert!(res.is_err(),
                     "Op {} succeeded incorrectly with 0 stack entries", cap);
             let p = if cap == "%s" || cap == "%l" {
@@ -623,19 +623,19 @@ mod test {
             } else {
                 Number(97)
             };
-            let res = get_res("%p1", cap, [p], vars);
+            let res = get_res("%p1", cap, &[p], vars);
             assert!(res.is_ok(),
                     "Op {} failed with 1 stack entry: {}", cap, res.unwrap_err());
         }
         let caps = ["%+", "%-", "%*", "%/", "%m", "%&", "%|", "%A", "%O"];
         for &cap in caps.iter() {
-            let res = expand(cap.as_bytes(), [], vars);
+            let res = expand(cap.as_bytes(), &[], vars);
             assert!(res.is_err(),
                     "Binop {} succeeded incorrectly with 0 stack entries", cap);
-            let res = get_res("%{1}", cap, [], vars);
+            let res = get_res("%{1}", cap, &[], vars);
             assert!(res.is_err(),
                     "Binop {} succeeded incorrectly with 1 stack entry", cap);
-            let res = get_res("%{1}%{2}", cap, [], vars);
+            let res = get_res("%{1}%{2}", cap, &[], vars);
             assert!(res.is_ok(),
                     "Binop {} failed with 2 stack entries: {}", cap, res.unwrap_err());
         }
@@ -643,7 +643,7 @@ mod test {
 
     #[test]
     fn test_push_bad_param() {
-        assert!(expand(b"%pa", [], &mut Variables::new()).is_err());
+        assert!(expand(b"%pa", &[], &mut Variables::new()).is_err());
     }
 
     #[test]
@@ -651,15 +651,15 @@ mod test {
         let v = [('<', [1u8, 0u8, 0u8]), ('=', [0u8, 1u8, 0u8]), ('>', [0u8, 0u8, 1u8])];
         for &(op, bs) in v.iter() {
             let s = format!("%{{1}}%{{2}}%{}%d", op);
-            let res = expand(s.as_bytes(), [], &mut Variables::new());
+            let res = expand(s.as_bytes(), &[], &mut Variables::new());
             assert!(res.is_ok(), res.unwrap_err());
             assert_eq!(res.unwrap(), vec!(b'0' + bs[0]));
             let s = format!("%{{1}}%{{1}}%{}%d", op);
-            let res = expand(s.as_bytes(), [], &mut Variables::new());
+            let res = expand(s.as_bytes(), &[], &mut Variables::new());
             assert!(res.is_ok(), res.unwrap_err());
             assert_eq!(res.unwrap(), vec!(b'0' + bs[1]));
             let s = format!("%{{2}}%{{1}}%{}%d", op);
-            let res = expand(s.as_bytes(), [], &mut Variables::new());
+            let res = expand(s.as_bytes(), &[], &mut Variables::new());
             assert!(res.is_ok(), res.unwrap_err());
             assert_eq!(res.unwrap(), vec!(b'0' + bs[2]));
         }
@@ -669,18 +669,18 @@ mod test {
     fn test_conditionals() {
         let mut vars = Variables::new();
         let s = b"\\E[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;m";
-        let res = expand(s, [Number(1)], &mut vars);
+        let res = expand(s, &[Number(1)], &mut vars);
         assert!(res.is_ok(), res.unwrap_err());
         assert_eq!(res.unwrap(),
-                   "\\E[31m".bytes().collect());
-        let res = expand(s, [Number(8)], &mut vars);
+                   "\\E[31m".bytes().collect::<Vec<_>>());
+        let res = expand(s, &[Number(8)], &mut vars);
         assert!(res.is_ok(), res.unwrap_err());
         assert_eq!(res.unwrap(),
-                   "\\E[90m".bytes().collect());
-        let res = expand(s, [Number(42)], &mut vars);
+                   "\\E[90m".bytes().collect::<Vec<_>>());
+        let res = expand(s, &[Number(42)], &mut vars);
         assert!(res.is_ok(), res.unwrap_err());
         assert_eq!(res.unwrap(),
-                   "\\E[38;5;42m".bytes().collect());
+                   "\\E[38;5;42m".bytes().collect::<Vec<_>>());
     }
 
     #[test]
@@ -688,17 +688,17 @@ mod test {
         let mut varstruct = Variables::new();
         let vars = &mut varstruct;
         assert_eq!(expand(b"%p1%s%p2%2s%p3%2s%p4%.2s",
-                          [Words("foo".to_string()),
-                           Words("foo".to_string()),
-                           Words("f".to_string()),
-                           Words("foo".to_string())], vars),
-                   Ok("foofoo ffo".bytes().collect()));
-        assert_eq!(expand(b"%p1%:-4.2s", [Words("foo".to_string())], vars),
-                   Ok("fo  ".bytes().collect()));
+                          &[Words("foo".to_string()),
+                            Words("foo".to_string()),
+                            Words("f".to_string()),
+                            Words("foo".to_string())], vars),
+                   Ok("foofoo ffo".bytes().collect::<Vec<_>>()));
+        assert_eq!(expand(b"%p1%:-4.2s", &[Words("foo".to_string())], vars),
+                   Ok("fo  ".bytes().collect::<Vec<_>>()));
 
-        assert_eq!(expand(b"%p1%d%p1%.3d%p1%5d%p1%:+d", [Number(1)], vars),
-                   Ok("1001    1+1".bytes().collect()));
-        assert_eq!(expand(b"%p1%o%p1%#o%p2%6.4x%p2%#6.4X", [Number(15), Number(27)], vars),
-                   Ok("17017  001b0X001B".bytes().collect()));
+        assert_eq!(expand(b"%p1%d%p1%.3d%p1%5d%p1%:+d", &[Number(1)], vars),
+                   Ok("1001    1+1".bytes().collect::<Vec<_>>()));
+        assert_eq!(expand(b"%p1%o%p1%#o%p2%6.4x%p2%#6.4X", &[Number(15), Number(27)], vars),
+                   Ok("17017  001b0X001B".bytes().collect::<Vec<_>>()));
     }
 }

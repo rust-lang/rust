@@ -14,6 +14,8 @@ static mut COUNT: uint = 1;
 
 struct Foo;
 
+impl Copy for Foo {}
+
 impl Foo {
     fn foo(self, x: &Foo) {
         unsafe { COUNT *= 2; }

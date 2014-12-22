@@ -12,53 +12,44 @@
 
 //! Numeric traits and functions for the built-in numeric types.
 
+#![stable]
 #![allow(missing_docs)]
 
-use intrinsics;
+pub use self::FPCategory::*;
+
 use {int, i8, i16, i32, i64};
 use {uint, u8, u16, u32, u64};
 use {f32, f64};
+use char::Char;
 use clone::Clone;
 use cmp::{PartialEq, Eq};
 use cmp::{PartialOrd, Ord};
+use intrinsics;
+use iter::IteratorExt;
 use kinds::Copy;
 use mem::size_of;
 use ops::{Add, Sub, Mul, Div, Rem, Neg};
 use ops::{Not, BitAnd, BitOr, BitXor, Shl, Shr};
-use option::{Option, Some, None};
+use option::Option;
+use option::Option::{Some, None};
+use str::{FromStr, from_str, StrPrelude};
 
 /// Simultaneous division and remainder
 #[inline]
-pub fn div_rem<T: Div<T, T> + Rem<T, T>>(x: T, y: T) -> (T, T) {
-    (x / y, x % y)
+#[deprecated = "use division and remainder directly"]
+pub fn div_rem<T: Clone + Div<T, T> + Rem<T, T>>(x: T, y: T) -> (T, T) {
+    (x.clone() / y.clone(), x % y)
 }
 
 /// Raises a `base` to the power of `exp`, using exponentiation by squaring.
-///
-/// # Example
-///
-/// ```rust
-/// use std::num;
-///
-/// assert_eq!(num::pow(2i, 4), 16);
-/// ```
 #[inline]
-pub fn pow<T: Int>(mut base: T, mut exp: uint) -> T {
-    if exp == 1 { base }
-    else {
-        let mut acc: T = Int::one();
-        while exp > 0 {
-            if (exp & 1) == 1 {
-                acc = acc * base;
-            }
-            base = base * base;
-            exp = exp >> 1;
-        }
-        acc
-    }
+#[deprecated = "Use Int::pow() instead, as in 2i.pow(4)"]
+pub fn pow<T: Int>(base: T, exp: uint) -> T {
+    base.pow(exp)
 }
 
 /// A built-in signed or unsigned integer.
+#[unstable = "recently settled as part of numerics reform"]
 pub trait Int
     : Copy + Clone
     + NumCast
@@ -193,7 +184,7 @@ pub trait Int
     /// ```
     fn swap_bytes(self) -> Self;
 
-    /// Convert a integer from big endian to the target's endianness.
+    /// Convert an integer from big endian to the target's endianness.
     ///
     /// On big endian this is a no-op. On little endian the bytes are swapped.
     ///
@@ -215,7 +206,7 @@ pub trait Int
         if cfg!(target_endian = "big") { x } else { x.swap_bytes() }
     }
 
-    /// Convert a integer from little endian to the target's endianness.
+    /// Convert an integer from little endian to the target's endianness.
     ///
     /// On little endian this is a no-op. On big endian the bytes are swapped.
     ///
@@ -294,7 +285,7 @@ pub trait Int
     /// ```
     fn checked_add(self, other: Self) -> Option<Self>;
 
-    /// Checked integer subtraction. Computes `self + other`, returning `None`
+    /// Checked integer subtraction. Computes `self - other`, returning `None`
     /// if underflow occurred.
     ///
     /// # Example
@@ -307,7 +298,7 @@ pub trait Int
     /// ```
     fn checked_sub(self, other: Self) -> Option<Self>;
 
-    /// Checked integer multiplication. Computes `self + other`, returning
+    /// Checked integer multiplication. Computes `self * other`, returning
     /// `None` if underflow or overflow occurred.
     ///
     /// # Example
@@ -320,8 +311,8 @@ pub trait Int
     /// ```
     fn checked_mul(self, other: Self) -> Option<Self>;
 
-    /// Checked integer division. Computes `self + other` returning `None` if
-    /// `self == 0` or the operation results in underflow or overflow.
+    /// Checked integer division. Computes `self / other`, returning `None` if
+    /// `other == 0` or the operation results in underflow or overflow.
     ///
     /// # Example
     ///
@@ -356,6 +347,29 @@ pub trait Int
             None                         => Int::max_value(),
         }
     }
+
+    /// Raises self to the power of `exp`, using exponentiation by squaring.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use std::num::Int;
+    ///
+    /// assert_eq!(2i.pow(4), 16);
+    /// ```
+    #[inline]
+    fn pow(self, mut exp: uint) -> Self {
+        let mut base = self;
+        let mut acc: Self = Int::one();
+        while exp > 0 {
+            if (exp & 1) == 1 {
+                acc = acc * base;
+            }
+            base = base * base;
+            exp /= 2;
+        }
+        acc
+    }
 }
 
 macro_rules! checked_op {
@@ -374,6 +388,7 @@ macro_rules! uint_impl {
      $add_with_overflow:path,
      $sub_with_overflow:path,
      $mul_with_overflow:path) => {
+        #[unstable = "trait is unstable"]
         impl Int for $T {
             #[inline]
             fn zero() -> $T { 0 }
@@ -443,67 +458,68 @@ macro_rules! uint_impl {
 /// consistency with the other `bswap` intrinsics.
 unsafe fn bswap8(x: u8) -> u8 { x }
 
-uint_impl!(u8 = u8, 8,
+uint_impl! { u8 = u8, 8,
     intrinsics::ctpop8,
     intrinsics::ctlz8,
     intrinsics::cttz8,
     bswap8,
     intrinsics::u8_add_with_overflow,
     intrinsics::u8_sub_with_overflow,
-    intrinsics::u8_mul_with_overflow)
+    intrinsics::u8_mul_with_overflow }
 
-uint_impl!(u16 = u16, 16,
+uint_impl! { u16 = u16, 16,
     intrinsics::ctpop16,
     intrinsics::ctlz16,
     intrinsics::cttz16,
     intrinsics::bswap16,
     intrinsics::u16_add_with_overflow,
     intrinsics::u16_sub_with_overflow,
-    intrinsics::u16_mul_with_overflow)
+    intrinsics::u16_mul_with_overflow }
 
-uint_impl!(u32 = u32, 32,
+uint_impl! { u32 = u32, 32,
     intrinsics::ctpop32,
     intrinsics::ctlz32,
     intrinsics::cttz32,
     intrinsics::bswap32,
     intrinsics::u32_add_with_overflow,
     intrinsics::u32_sub_with_overflow,
-    intrinsics::u32_mul_with_overflow)
+    intrinsics::u32_mul_with_overflow }
 
-uint_impl!(u64 = u64, 64,
+uint_impl! { u64 = u64, 64,
     intrinsics::ctpop64,
     intrinsics::ctlz64,
     intrinsics::cttz64,
     intrinsics::bswap64,
     intrinsics::u64_add_with_overflow,
     intrinsics::u64_sub_with_overflow,
-    intrinsics::u64_mul_with_overflow)
+    intrinsics::u64_mul_with_overflow }
 
 #[cfg(target_word_size = "32")]
-uint_impl!(uint = u32, 32,
+uint_impl! { uint = u32, 32,
     intrinsics::ctpop32,
     intrinsics::ctlz32,
     intrinsics::cttz32,
     intrinsics::bswap32,
     intrinsics::u32_add_with_overflow,
     intrinsics::u32_sub_with_overflow,
-    intrinsics::u32_mul_with_overflow)
+    intrinsics::u32_mul_with_overflow }
 
 #[cfg(target_word_size = "64")]
-uint_impl!(uint = u64, 64,
+uint_impl! { uint = u64, 64,
     intrinsics::ctpop64,
     intrinsics::ctlz64,
     intrinsics::cttz64,
     intrinsics::bswap64,
     intrinsics::u64_add_with_overflow,
     intrinsics::u64_sub_with_overflow,
-    intrinsics::u64_mul_with_overflow)
+    intrinsics::u64_mul_with_overflow }
 
 macro_rules! int_impl {
     ($T:ty = $ActualT:ty, $UnsignedT:ty, $BITS:expr,
      $add_with_overflow:path,
      $sub_with_overflow:path,
      $mul_with_overflow:path) => {
+        #[unstable = "trait is unstable"]
         impl Int for $T {
             #[inline]
             fn zero() -> $T { 0 }
@@ -563,39 +579,40 @@ macro_rules! int_impl {
     }
 }
 
-int_impl!(i8 = i8, u8, 8,
+int_impl! { i8 = i8, u8, 8,
     intrinsics::i8_add_with_overflow,
     intrinsics::i8_sub_with_overflow,
-    intrinsics::i8_mul_with_overflow)
+    intrinsics::i8_mul_with_overflow }
 
-int_impl!(i16 = i16, u16, 16,
+int_impl! { i16 = i16, u16, 16,
     intrinsics::i16_add_with_overflow,
     intrinsics::i16_sub_with_overflow,
-    intrinsics::i16_mul_with_overflow)
+    intrinsics::i16_mul_with_overflow }
 
-int_impl!(i32 = i32, u32, 32,
+int_impl! { i32 = i32, u32, 32,
     intrinsics::i32_add_with_overflow,
     intrinsics::i32_sub_with_overflow,
-    intrinsics::i32_mul_with_overflow)
+    intrinsics::i32_mul_with_overflow }
 
-int_impl!(i64 = i64, u64, 64,
+int_impl! { i64 = i64, u64, 64,
     intrinsics::i64_add_with_overflow,
     intrinsics::i64_sub_with_overflow,
-    intrinsics::i64_mul_with_overflow)
+    intrinsics::i64_mul_with_overflow }
 
 #[cfg(target_word_size = "32")]
-int_impl!(int = i32, u32, 32,
+int_impl! { int = i32, u32, 32,
     intrinsics::i32_add_with_overflow,
     intrinsics::i32_sub_with_overflow,
-    intrinsics::i32_mul_with_overflow)
+    intrinsics::i32_mul_with_overflow }
 
 #[cfg(target_word_size = "64")]
-int_impl!(int = i64, u64, 64,
+int_impl! { int = i64, u64, 64,
     intrinsics::i64_add_with_overflow,
     intrinsics::i64_sub_with_overflow,
-    intrinsics::i64_mul_with_overflow)
+    intrinsics::i64_mul_with_overflow }
 
 /// A built-in two's complement integer.
+#[unstable = "recently settled as part of numerics reform"]
 pub trait SignedInt
     : Int
     + Neg<Self>
@@ -646,54 +663,60 @@ macro_rules! signed_int_impl {
     }
 }
 
-signed_int_impl!(i8)
-signed_int_impl!(i16)
-signed_int_impl!(i32)
-signed_int_impl!(i64)
-signed_int_impl!(int)
+signed_int_impl! { i8 }
+signed_int_impl! { i16 }
+signed_int_impl! { i32 }
+signed_int_impl! { i64 }
+signed_int_impl! { int }
 
 /// A built-in unsigned integer.
+#[unstable = "recently settled as part of numerics reform"]
 pub trait UnsignedInt: Int {
     /// Returns `true` iff `self == 2^k` for some `k`.
+    #[inline]
     fn is_power_of_two(self) -> bool {
-        (self - Int::one()) & self == Int::zero()
+        (self - Int::one()) & self == Int::zero() && !(self == Int::zero())
     }
 
     /// Returns the smallest power of two greater than or equal to `self`.
+    /// Unspecified behavior on overflow.
     #[inline]
     fn next_power_of_two(self) -> Self {
-        let halfbits = size_of::<Self>() * 4;
-        let mut tmp = self - Int::one();
-        let mut shift = 1u;
-        while shift <= halfbits {
-            tmp = tmp | (tmp >> shift);
-            shift = shift << 1u;
-        }
-        tmp + Int::one()
+        let bits = size_of::<Self>() * 8;
+        let one: Self = Int::one();
+        one << ((bits - (self - one).leading_zeros()) % bits)
     }
 
     /// Returns the smallest power of two greater than or equal to `n`. If the
     /// next power of two is greater than the type's maximum value, `None` is
     /// returned, otherwise the power of two is wrapped in `Some`.
     fn checked_next_power_of_two(self) -> Option<Self> {
-        let halfbits = size_of::<Self>() * 4;
-        let mut tmp = self - Int::one();
-        let mut shift = 1u;
-        while shift <= halfbits {
-            tmp = tmp | (tmp >> shift);
-            shift = shift << 1u;
+        let npot = self.next_power_of_two();
+        if npot >= self {
+            Some(npot)
+        } else {
+            None
         }
-        tmp.checked_add(Int::one())
     }
 }
 
+#[unstable = "trait is unstable"]
 impl UnsignedInt for uint {}
+
+#[unstable = "trait is unstable"]
 impl UnsignedInt for u8 {}
+
+#[unstable = "trait is unstable"]
 impl UnsignedInt for u16 {}
+
+#[unstable = "trait is unstable"]
 impl UnsignedInt for u32 {}
+
+#[unstable = "trait is unstable"]
 impl UnsignedInt for u64 {}
 
 /// A generic trait for converting a value to a number.
+#[experimental = "trait is likely to be removed"]
 pub trait ToPrimitive {
     /// Converts the value of `self` to an `int`.
     #[inline]
@@ -763,7 +786,7 @@ pub trait ToPrimitive {
     }
 }
 
-macro_rules! impl_to_primitive_int_to_int(
+macro_rules! impl_to_primitive_int_to_int {
     ($SrcT:ty, $DstT:ty, $slf:expr) => (
         {
             if size_of::<$SrcT>() <= size_of::<$DstT>() {
@@ -780,9 +803,9 @@ macro_rules! impl_to_primitive_int_to_int(
             }
         }
     )
-)
+}
 
-macro_rules! impl_to_primitive_int_to_uint(
+macro_rules! impl_to_primitive_int_to_uint {
     ($SrcT:ty, $DstT:ty, $slf:expr) => (
         {
             let zero: $SrcT = Int::zero();
@@ -794,9 +817,9 @@ macro_rules! impl_to_primitive_int_to_uint(
             }
         }
     )
-)
+}
 
-macro_rules! impl_to_primitive_int(
+macro_rules! impl_to_primitive_int {
     ($T:ty) => (
         impl ToPrimitive for $T {
             #[inline]
@@ -827,15 +850,15 @@ macro_rules! impl_to_primitive_int(
             fn to_f64(&self) -> Option<f64> { Some(*self as f64) }
         }
     )
-)
+}
 
-impl_to_primitive_int!(int)
-impl_to_primitive_int!(i8)
-impl_to_primitive_int!(i16)
-impl_to_primitive_int!(i32)
-impl_to_primitive_int!(i64)
+impl_to_primitive_int! { int }
+impl_to_primitive_int! { i8 }
+impl_to_primitive_int! { i16 }
+impl_to_primitive_int! { i32 }
+impl_to_primitive_int! { i64 }
 
-macro_rules! impl_to_primitive_uint_to_int(
+macro_rules! impl_to_primitive_uint_to_int {
     ($DstT:ty, $slf:expr) => (
         {
             let max_value: $DstT = Int::max_value();
@@ -846,9 +869,9 @@ macro_rules! impl_to_primitive_uint_to_int(
             }
         }
     )
-)
+}
 
-macro_rules! impl_to_primitive_uint_to_uint(
+macro_rules! impl_to_primitive_uint_to_uint {
     ($SrcT:ty, $DstT:ty, $slf:expr) => (
         {
             if size_of::<$SrcT>() <= size_of::<$DstT>() {
@@ -864,9 +887,9 @@ macro_rules! impl_to_primitive_uint_to_uint(
             }
         }
     )
-)
+}
 
-macro_rules! impl_to_primitive_uint(
+macro_rules! impl_to_primitive_uint {
     ($T:ty) => (
         impl ToPrimitive for $T {
             #[inline]
@@ -897,15 +920,15 @@ macro_rules! impl_to_primitive_uint(
             fn to_f64(&self) -> Option<f64> { Some(*self as f64) }
         }
     )
-)
+}
 
-impl_to_primitive_uint!(uint)
-impl_to_primitive_uint!(u8)
-impl_to_primitive_uint!(u16)
-impl_to_primitive_uint!(u32)
-impl_to_primitive_uint!(u64)
+impl_to_primitive_uint! { uint }
+impl_to_primitive_uint! { u8 }
+impl_to_primitive_uint! { u16 }
+impl_to_primitive_uint! { u32 }
+impl_to_primitive_uint! { u64 }
 
-macro_rules! impl_to_primitive_float_to_float(
+macro_rules! impl_to_primitive_float_to_float {
     ($SrcT:ty, $DstT:ty, $slf:expr) => (
         if size_of::<$SrcT>() <= size_of::<$DstT>() {
             Some($slf as $DstT)
@@ -919,9 +942,9 @@ macro_rules! impl_to_primitive_float_to_float(
             }
         }
     )
-)
+}
 
-macro_rules! impl_to_primitive_float(
+macro_rules! impl_to_primitive_float {
     ($T:ty) => (
         impl ToPrimitive for $T {
             #[inline]
@@ -952,12 +975,13 @@ macro_rules! impl_to_primitive_float(
             fn to_f64(&self) -> Option<f64> { impl_to_primitive_float_to_float!($T, f64, *self) }
         }
     )
-)
+}
 
-impl_to_primitive_float!(f32)
-impl_to_primitive_float!(f64)
+impl_to_primitive_float! { f32 }
+impl_to_primitive_float! { f64 }
 
 /// A generic trait for converting a number to a value.
+#[experimental = "trait is likely to be removed"]
 pub trait FromPrimitive {
     /// Convert an `int` to return an optional value of this type. If the
     /// value cannot be represented by this value, the `None` is returned.
@@ -1039,66 +1063,78 @@ pub trait FromPrimitive {
 }
 
 /// A utility function that just calls `FromPrimitive::from_int`.
+#[experimental = "likely to be removed"]
 pub fn from_int<A: FromPrimitive>(n: int) -> Option<A> {
     FromPrimitive::from_int(n)
 }
 
 /// A utility function that just calls `FromPrimitive::from_i8`.
+#[experimental = "likely to be removed"]
 pub fn from_i8<A: FromPrimitive>(n: i8) -> Option<A> {
     FromPrimitive::from_i8(n)
 }
 
 /// A utility function that just calls `FromPrimitive::from_i16`.
+#[experimental = "likely to be removed"]
 pub fn from_i16<A: FromPrimitive>(n: i16) -> Option<A> {
     FromPrimitive::from_i16(n)
 }
 
 /// A utility function that just calls `FromPrimitive::from_i32`.
+#[experimental = "likely to be removed"]
 pub fn from_i32<A: FromPrimitive>(n: i32) -> Option<A> {
     FromPrimitive::from_i32(n)
 }
 
 /// A utility function that just calls `FromPrimitive::from_i64`.
+#[experimental = "likely to be removed"]
 pub fn from_i64<A: FromPrimitive>(n: i64) -> Option<A> {
     FromPrimitive::from_i64(n)
 }
 
 /// A utility function that just calls `FromPrimitive::from_uint`.
+#[experimental = "likely to be removed"]
 pub fn from_uint<A: FromPrimitive>(n: uint) -> Option<A> {
     FromPrimitive::from_uint(n)
 }
 
 /// A utility function that just calls `FromPrimitive::from_u8`.
+#[experimental = "likely to be removed"]
 pub fn from_u8<A: FromPrimitive>(n: u8) -> Option<A> {
     FromPrimitive::from_u8(n)
 }
 
 /// A utility function that just calls `FromPrimitive::from_u16`.
+#[experimental = "likely to be removed"]
 pub fn from_u16<A: FromPrimitive>(n: u16) -> Option<A> {
     FromPrimitive::from_u16(n)
 }
 
 /// A utility function that just calls `FromPrimitive::from_u32`.
+#[experimental = "likely to be removed"]
 pub fn from_u32<A: FromPrimitive>(n: u32) -> Option<A> {
     FromPrimitive::from_u32(n)
 }
 
 /// A utility function that just calls `FromPrimitive::from_u64`.
+#[experimental = "likely to be removed"]
 pub fn from_u64<A: FromPrimitive>(n: u64) -> Option<A> {
     FromPrimitive::from_u64(n)
 }
 
 /// A utility function that just calls `FromPrimitive::from_f32`.
+#[experimental = "likely to be removed"]
 pub fn from_f32<A: FromPrimitive>(n: f32) -> Option<A> {
     FromPrimitive::from_f32(n)
 }
 
 /// A utility function that just calls `FromPrimitive::from_f64`.
+#[experimental = "likely to be removed"]
 pub fn from_f64<A: FromPrimitive>(n: f64) -> Option<A> {
     FromPrimitive::from_f64(n)
 }
 
-macro_rules! impl_from_primitive(
+macro_rules! impl_from_primitive {
     ($T:ty, $to_ty:ident) => (
         impl FromPrimitive for $T {
             #[inline] fn from_int(n: int) -> Option<$T> { n.$to_ty() }
@@ -1117,20 +1153,20 @@ macro_rules! impl_from_primitive(
             #[inline] fn from_f64(n: f64) -> Option<$T> { n.$to_ty() }
         }
     )
-)
+}
 
-impl_from_primitive!(int, to_int)
-impl_from_primitive!(i8, to_i8)
-impl_from_primitive!(i16, to_i16)
-impl_from_primitive!(i32, to_i32)
-impl_from_primitive!(i64, to_i64)
-impl_from_primitive!(uint, to_uint)
-impl_from_primitive!(u8, to_u8)
-impl_from_primitive!(u16, to_u16)
-impl_from_primitive!(u32, to_u32)
-impl_from_primitive!(u64, to_u64)
-impl_from_primitive!(f32, to_f32)
-impl_from_primitive!(f64, to_f64)
+impl_from_primitive! { int, to_int }
+impl_from_primitive! { i8, to_i8 }
+impl_from_primitive! { i16, to_i16 }
+impl_from_primitive! { i32, to_i32 }
+impl_from_primitive! { i64, to_i64 }
+impl_from_primitive! { uint, to_uint }
+impl_from_primitive! { u8, to_u8 }
+impl_from_primitive! { u16, to_u16 }
+impl_from_primitive! { u32, to_u32 }
+impl_from_primitive! { u64, to_u64 }
+impl_from_primitive! { f32, to_f32 }
+impl_from_primitive! { f64, to_f64 }
 
 /// Cast from one machine scalar to another.
 ///
@@ -1144,18 +1180,20 @@ impl_from_primitive!(f64, to_f64)
 /// ```
 ///
 #[inline]
+#[experimental = "likely to be removed"]
 pub fn cast<T: NumCast,U: NumCast>(n: T) -> Option<U> {
     NumCast::from(n)
 }
 
 /// An interface for casting between machine scalars.
+#[experimental = "trait is likely to be removed"]
 pub trait NumCast: ToPrimitive {
     /// Creates a number from another value that can be converted into a primitive via the
     /// `ToPrimitive` trait.
     fn from<T: ToPrimitive>(n: T) -> Option<Self>;
 }
 
-macro_rules! impl_num_cast(
+macro_rules! impl_num_cast {
     ($T:ty, $conv:ident) => (
         impl NumCast for $T {
             #[inline]
@@ -1166,23 +1204,24 @@ macro_rules! impl_num_cast(
             }
         }
     )
-)
+}
 
-impl_num_cast!(u8,    to_u8)
-impl_num_cast!(u16,   to_u16)
-impl_num_cast!(u32,   to_u32)
-impl_num_cast!(u64,   to_u64)
-impl_num_cast!(uint,  to_uint)
-impl_num_cast!(i8,    to_i8)
-impl_num_cast!(i16,   to_i16)
-impl_num_cast!(i32,   to_i32)
-impl_num_cast!(i64,   to_i64)
-impl_num_cast!(int,   to_int)
-impl_num_cast!(f32,   to_f32)
-impl_num_cast!(f64,   to_f64)
+impl_num_cast! { u8,    to_u8 }
+impl_num_cast! { u16,   to_u16 }
+impl_num_cast! { u32,   to_u32 }
+impl_num_cast! { u64,   to_u64 }
+impl_num_cast! { uint,  to_uint }
+impl_num_cast! { i8,    to_i8 }
+impl_num_cast! { i16,   to_i16 }
+impl_num_cast! { i32,   to_i32 }
+impl_num_cast! { i64,   to_i64 }
+impl_num_cast! { int,   to_int }
+impl_num_cast! { f32,   to_f32 }
+impl_num_cast! { f64,   to_f64 }
 
 /// Used for representing the classification of floating point numbers
-#[deriving(PartialEq, Show)]
+#[deriving(Copy, PartialEq, Show)]
+#[unstable = "may be renamed"]
 pub enum FPCategory {
     /// "Not a Number", often obtained by dividing by zero
     FPNaN,
@@ -1202,6 +1241,7 @@ pub enum FPCategory {
 //
 // FIXME(#8888): Several of these functions have a parameter named
 //               `unused_self`. Removing it requires #8888 to be fixed.
+#[unstable = "recently settled as part of numerics reform"]
 pub trait Float
     : Copy + Clone
     + NumCast
@@ -1319,38 +1359,51 @@ pub trait Float
     /// Take the reciprocal (inverse) square root of a number, `1/sqrt(x)`.
     fn rsqrt(self) -> Self;
 
-    // FIXME (#5527): These should be associated constants
-
     /// Archimedes' constant.
+    #[deprecated = "use f32::consts or f64::consts instead"]
     fn pi() -> Self;
     /// 2.0 * pi.
+    #[deprecated = "use f32::consts or f64::consts instead"]
     fn two_pi() -> Self;
     /// pi / 2.0.
+    #[deprecated = "use f32::consts or f64::consts instead"]
     fn frac_pi_2() -> Self;
     /// pi / 3.0.
+    #[deprecated = "use f32::consts or f64::consts instead"]
     fn frac_pi_3() -> Self;
     /// pi / 4.0.
+    #[deprecated = "use f32::consts or f64::consts instead"]
     fn frac_pi_4() -> Self;
     /// pi / 6.0.
+    #[deprecated = "use f32::consts or f64::consts instead"]
     fn frac_pi_6() -> Self;
     /// pi / 8.0.
+    #[deprecated = "use f32::consts or f64::consts instead"]
     fn frac_pi_8() -> Self;
     /// 1.0 / pi.
+    #[deprecated = "use f32::consts or f64::consts instead"]
     fn frac_1_pi() -> Self;
     /// 2.0 / pi.
+    #[deprecated = "use f32::consts or f64::consts instead"]
     fn frac_2_pi() -> Self;
     /// 2.0 / sqrt(pi).
+    #[deprecated = "use f32::consts or f64::consts instead"]
     fn frac_2_sqrtpi() -> Self;
 
     /// Euler's number.
+    #[deprecated = "use f32::consts or f64::consts instead"]
     fn e() -> Self;
     /// log2(e).
+    #[deprecated = "use f32::consts or f64::consts instead"]
     fn log2_e() -> Self;
     /// log10(e).
+    #[deprecated = "use f32::consts or f64::consts instead"]
     fn log10_e() -> Self;
     /// ln(2.0).
+    #[deprecated = "use f32::consts or f64::consts instead"]
     fn ln_2() -> Self;
     /// ln(10.0).
+    #[deprecated = "use f32::consts or f64::consts instead"]
     fn ln_10() -> Self;
 
     /// Returns `e^(self)`, (the exponential function).
@@ -1372,6 +1425,290 @@ pub trait Float
     fn to_radians(self) -> Self;
 }
 
+/// A generic trait for converting a string with a radix (base) to a value
+#[experimental = "might need to return Result"]
+pub trait FromStrRadix {
+    fn from_str_radix(str: &str, radix: uint) -> Option<Self>;
+}
+
+/// A utility function that just calls FromStrRadix::from_str_radix.
+#[experimental = "might need to return Result"]
+pub fn from_str_radix<T: FromStrRadix>(str: &str, radix: uint) -> Option<T> {
+    FromStrRadix::from_str_radix(str, radix)
+}
+
+macro_rules! from_str_radix_float_impl {
+    ($T:ty) => {
+        #[experimental = "might need to return Result"]
+        impl FromStr for $T {
+            /// Convert a string in base 10 to a float.
+            /// Accepts an optional decimal exponent.
+            ///
+            /// This function accepts strings such as
+            ///
+            /// * '3.14'
+            /// * '+3.14', equivalent to '3.14'
+            /// * '-3.14'
+            /// * '2.5E10', or equivalently, '2.5e10'
+            /// * '2.5E-10'
+            /// * '.' (understood as 0)
+            /// * '5.'
+            /// * '.5', or, equivalently,  '0.5'
+            /// * '+inf', 'inf', '-inf', 'NaN'
+            ///
+            /// Leading and trailing whitespace represent an error.
+            ///
+            /// # Arguments
+            ///
+            /// * src - A string
+            ///
+            /// # Return value
+            ///
+            /// `None` if the string did not represent a valid number.  Otherwise,
+            /// `Some(n)` where `n` is the floating-point number represented by `src`.
+            #[inline]
+            fn from_str(src: &str) -> Option<$T> {
+                from_str_radix(src, 10)
+            }
+        }
+
+        #[experimental = "might need to return Result"]
+        impl FromStrRadix for $T {
+            /// Convert a string in a given base to a float.
+            ///
+            /// Due to possible conflicts, this function does **not** accept
+            /// the special values `inf`, `-inf`, `+inf` and `NaN`, **nor**
+            /// does it recognize exponents of any kind.
+            ///
+            /// Leading and trailing whitespace represent an error.
+            ///
+            /// # Arguments
+            ///
+            /// * src - A string
+            /// * radix - The base to use. Must lie in the range [2 .. 36]
+            ///
+            /// # Return value
+            ///
+            /// `None` if the string did not represent a valid number. Otherwise,
+            /// `Some(n)` where `n` is the floating-point number represented by `src`.
+            fn from_str_radix(src: &str, radix: uint) -> Option<$T> {
+               assert!(radix >= 2 && radix <= 36,
+                       "from_str_radix_float: must lie in the range `[2, 36]` - found {}",
+                       radix);
+
+                // Special values
+                match src {
+                    "inf"   => return Some(Float::infinity()),
+                    "-inf"  => return Some(Float::neg_infinity()),
+                    "NaN"   => return Some(Float::nan()),
+                    _       => {},
+                }
+
+                let (is_positive, src) =  match src.slice_shift_char() {
+                    None             => return None,
+                    Some(('-', ""))  => return None,
+                    Some(('-', src)) => (false, src),
+                    Some((_, _))     => (true,  src),
+                };
+
+                // The significand to accumulate
+                let mut sig = if is_positive { 0.0 } else { -0.0 };
+                // Necessary to detect overflow
+                let mut prev_sig = sig;
+                let mut cs = src.chars().enumerate();
+                // Exponent prefix and exponent index offset
+                let mut exp_info = None::<(char, uint)>;
+
+                // Parse the integer part of the significand
+                for (i, c) in cs {
+                    match c.to_digit(radix) {
+                        Some(digit) => {
+                            // shift significand one digit left
+                            sig = sig * (radix as $T);
+
+                            // add/subtract current digit depending on sign
+                            if is_positive {
+                                sig = sig + ((digit as int) as $T);
+                            } else {
+                                sig = sig - ((digit as int) as $T);
+                            }
+
+                            // Detect overflow by comparing to last value, except
+                            // if we've not seen any non-zero digits.
+                            if prev_sig != 0.0 {
+                                if is_positive && sig <= prev_sig
+                                    { return Some(Float::infinity()); }
+                                if !is_positive && sig >= prev_sig
+                                    { return Some(Float::neg_infinity()); }
+
+                                // Detect overflow by reversing the shift-and-add process
+                                if is_positive && (prev_sig != (sig - digit as $T) / radix as $T)
+                                    { return Some(Float::infinity()); }
+                                if !is_positive && (prev_sig != (sig + digit as $T) / radix as $T)
+                                    { return Some(Float::neg_infinity()); }
+                            }
+                            prev_sig = sig;
+                        },
+                        None => match c {
+                            'e' | 'E' | 'p' | 'P' => {
+                                exp_info = Some((c, i + 1));
+                                break;  // start of exponent
+                            },
+                            '.' => {
+                                break;  // start of fractional part
+                            },
+                            _ => {
+                                return None;
+                            },
+                        },
+                    }
+                }
+
+                // If we are not yet at the exponent parse the fractional
+                // part of the significand
+                if exp_info.is_none() {
+                    let mut power = 1.0;
+                    for (i, c) in cs {
+                        match c.to_digit(radix) {
+                            Some(digit) => {
+                                // Decrease power one order of magnitude
+                                power = power / (radix as $T);
+                                // add/subtract current digit depending on sign
+                                sig = if is_positive {
+                                    sig + (digit as $T) * power
+                                } else {
+                                    sig - (digit as $T) * power
+                                };
+                                // Detect overflow by comparing to last value
+                                if is_positive && sig < prev_sig
+                                    { return Some(Float::infinity()); }
+                                if !is_positive && sig > prev_sig
+                                    { return Some(Float::neg_infinity()); }
+                                prev_sig = sig;
+                            },
+                            None => match c {
+                                'e' | 'E' | 'p' | 'P' => {
+                                    exp_info = Some((c, i + 1));
+                                    break; // start of exponent
+                                },
+                                _ => {
+                                    return None; // invalid number
+                                },
+                            },
+                        }
+                    }
+                }
+
+                // Parse and calculate the exponent
+                let exp = match exp_info {
+                    Some((c, offset)) => {
+                        let base = match c {
+                            'E' | 'e' if radix == 10 => 10u as $T,
+                            'P' | 'p' if radix == 16 => 2u as $T,
+                            _ => return None,
+                        };
+
+                        // Parse the exponent as decimal integer
+                        let src = src[offset..];
+                        let (is_positive, exp) = match src.slice_shift_char() {
+                            Some(('-', src)) => (false, from_str::<uint>(src)),
+                            Some(('+', src)) => (true,  from_str::<uint>(src)),
+                            Some((_, _))     => (true,  from_str::<uint>(src)),
+                            None             => return None,
+                        };
+
+                        match (is_positive, exp) {
+                            (true,  Some(exp)) => base.powi(exp as i32),
+                            (false, Some(exp)) => 1.0 / base.powi(exp as i32),
+                            (_, None)          => return None,
+                        }
+                    },
+                    None => 1.0, // no exponent
+                };
+
+                Some(sig * exp)
+            }
+        }
+    }
+}
+from_str_radix_float_impl! { f32 }
+from_str_radix_float_impl! { f64 }
+
+macro_rules! from_str_radix_int_impl {
+    ($T:ty) => {
+        #[experimental = "might need to return Result"]
+        impl FromStr for $T {
+            #[inline]
+            fn from_str(src: &str) -> Option<$T> {
+                from_str_radix(src, 10)
+            }
+        }
+
+        #[experimental = "might need to return Result"]
+        impl FromStrRadix for $T {
+            fn from_str_radix(src: &str, radix: uint) -> Option<$T> {
+                assert!(radix >= 2 && radix <= 36,
+                       "from_str_radix_int: must lie in the range `[2, 36]` - found {}",
+                       radix);
+
+                let is_signed_ty = (0 as $T) > Int::min_value();
+
+                match src.slice_shift_char() {
+                    Some(('-', src)) if is_signed_ty => {
+                        // The number is negative
+                        let mut result = 0;
+                        for c in src.chars() {
+                            let x = match c.to_digit(radix) {
+                                Some(x) => x,
+                                None => return None,
+                            };
+                            result = match result.checked_mul(radix as $T) {
+                                Some(result) => result,
+                                None => return None,
+                            };
+                            result = match result.checked_sub(x as $T) {
+                                Some(result) => result,
+                                None => return None,
+                            };
+                        }
+                        Some(result)
+                    },
+                    Some((_, _)) => {
+                        // The number is signed
+                        let mut result = 0;
+                        for c in src.chars() {
+                            let x = match c.to_digit(radix) {
+                                Some(x) => x,
+                                None => return None,
+                            };
+                            result = match result.checked_mul(radix as $T) {
+                                Some(result) => result,
+                                None => return None,
+                            };
+                            result = match result.checked_add(x as $T) {
+                                Some(result) => result,
+                                None => return None,
+                            };
+                        }
+                        Some(result)
+                    },
+                    None => None,
+                }
+            }
+        }
+    }
+}
+from_str_radix_int_impl! { int }
+from_str_radix_int_impl! { i8 }
+from_str_radix_int_impl! { i16 }
+from_str_radix_int_impl! { i32 }
+from_str_radix_int_impl! { i64 }
+from_str_radix_int_impl! { uint }
+from_str_radix_int_impl! { u8 }
+from_str_radix_int_impl! { u16 }
+from_str_radix_int_impl! { u32 }
+from_str_radix_int_impl! { u64 }
+
 // DEPRECATED
 
 macro_rules! trait_impl {
@@ -1389,17 +1726,17 @@ pub trait Num: PartialEq + Zero + One
              + Mul<Self,Self>
              + Div<Self,Self>
              + Rem<Self,Self> {}
-trait_impl!(Num for uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64)
+trait_impl! { Num for uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64 }
 
 #[deprecated = "Generalised unsigned numbers are no longer supported"]
 #[allow(deprecated)]
 pub trait Unsigned: Num {}
-trait_impl!(Unsigned for uint u8 u16 u32 u64)
+trait_impl! { Unsigned for uint u8 u16 u32 u64 }
 
 #[deprecated = "Use `Float` or `Int`"]
 #[allow(deprecated)]
 pub trait Primitive: Copy + Clone + Num + NumCast + PartialOrd {}
-trait_impl!(Primitive for uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64)
+trait_impl! { Primitive for uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64 }
 
 #[deprecated = "The generic `Zero` trait will be removed soon."]
 pub trait Zero: Add<Self, Self> {
@@ -1419,18 +1756,18 @@ macro_rules! zero_impl {
         }
     }
 }
-zero_impl!(uint, 0u)
-zero_impl!(u8,   0u8)
-zero_impl!(u16,  0u16)
-zero_impl!(u32,  0u32)
-zero_impl!(u64,  0u64)
-zero_impl!(int, 0i)
-zero_impl!(i8,  0i8)
-zero_impl!(i16, 0i16)
-zero_impl!(i32, 0i32)
-zero_impl!(i64, 0i64)
-zero_impl!(f32, 0.0f32)
-zero_impl!(f64, 0.0f64)
+zero_impl! { uint, 0u }
+zero_impl! { u8,   0u8 }
+zero_impl! { u16,  0u16 }
+zero_impl! { u32,  0u32 }
+zero_impl! { u64,  0u64 }
+zero_impl! { int, 0i }
+zero_impl! { i8,  0i8 }
+zero_impl! { i16, 0i16 }
+zero_impl! { i32, 0i32 }
+zero_impl! { i64, 0i64 }
+zero_impl! { f32, 0.0f32 }
+zero_impl! { f64, 0.0f64 }
 
 #[deprecated = "The generic `One` trait will be removed soon."]
 pub trait One: Mul<Self, Self> {
@@ -1447,18 +1784,18 @@ macro_rules! one_impl {
         }
     }
 }
-one_impl!(uint, 1u)
-one_impl!(u8,  1u8)
-one_impl!(u16, 1u16)
-one_impl!(u32, 1u32)
-one_impl!(u64, 1u64)
-one_impl!(int, 1i)
-one_impl!(i8,  1i8)
-one_impl!(i16, 1i16)
-one_impl!(i32, 1i32)
-one_impl!(i64, 1i64)
-one_impl!(f32, 1.0f32)
-one_impl!(f64, 1.0f64)
+one_impl! { uint, 1u }
+one_impl! { u8,  1u8 }
+one_impl! { u16, 1u16 }
+one_impl! { u32, 1u32 }
+one_impl! { u64, 1u64 }
+one_impl! { int, 1i }
+one_impl! { i8,  1i8 }
+one_impl! { i16, 1i16 }
+one_impl! { i32, 1i32 }
+one_impl! { i64, 1i64 }
+one_impl! { f32, 1.0f32 }
+one_impl! { f64, 1.0f64 }
 
 #[deprecated = "Use `UnsignedInt::next_power_of_two`"]
 pub fn next_power_of_two<T: UnsignedInt>(n: T) -> T {
@@ -1491,15 +1828,15 @@ macro_rules! bounded_impl {
         }
     };
 }
-bounded_impl!(uint, uint::MIN, uint::MAX)
-bounded_impl!(u8, u8::MIN, u8::MAX)
-bounded_impl!(u16, u16::MIN, u16::MAX)
-bounded_impl!(u32, u32::MIN, u32::MAX)
-bounded_impl!(u64, u64::MIN, u64::MAX)
-bounded_impl!(int, int::MIN, int::MAX)
-bounded_impl!(i8, i8::MIN, i8::MAX)
-bounded_impl!(i16, i16::MIN, i16::MAX)
-bounded_impl!(i32, i32::MIN, i32::MAX)
-bounded_impl!(i64, i64::MIN, i64::MAX)
-bounded_impl!(f32, f32::MIN_VALUE, f32::MAX_VALUE)
-bounded_impl!(f64, f64::MIN_VALUE, f64::MAX_VALUE)
+bounded_impl! { uint, uint::MIN, uint::MAX }
+bounded_impl! { u8, u8::MIN, u8::MAX }
+bounded_impl! { u16, u16::MIN, u16::MAX }
+bounded_impl! { u32, u32::MIN, u32::MAX }
+bounded_impl! { u64, u64::MIN, u64::MAX }
+bounded_impl! { int, int::MIN, int::MAX }
+bounded_impl! { i8, i8::MIN, i8::MAX }
+bounded_impl! { i16, i16::MIN, i16::MAX }
+bounded_impl! { i32, i32::MIN, i32::MAX }
+bounded_impl! { i64, i64::MIN, i64::MAX }
+bounded_impl! { f32, f32::MIN_VALUE, f32::MAX_VALUE }
+bounded_impl! { f64, f64::MIN_VALUE, f64::MAX_VALUE }

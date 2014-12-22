@@ -17,16 +17,12 @@ use parse::token::*;
 use parse::token;
 use ptr::P;
 
-/**
-*
-* Quasiquoting works via token trees.
-*
-* This is registered as a set of expression syntax extension called quote!
-* that lifts its argument token-tree to an AST representing the
-* construction of the same token tree, with token::SubstNt interpreted
-* as antiquotes (splices).
-*
-*/
+///  Quasiquoting works via token trees.
+///
+///  This is registered as a set of expression syntax extension called quote!
+///  that lifts its argument token-tree to an AST representing the
+///  construction of the same token tree, with token::SubstNt interpreted
+///  as antiquotes (splices).
 
 pub mod rt {
     use ast;
@@ -90,21 +86,21 @@ pub mod rt {
     */
 
     // FIXME: Move this trait to pprust and get rid of *_to_str?
-    pub trait ToSource {
+    pub trait ToSource for Sized? {
         // Takes a thing and generates a string containing rust code for it.
         fn to_source(&self) -> String;
     }
 
     // FIXME (Issue #16472): This should go away after ToToken impls
     // are revised to go directly to token-trees.
-    trait ToSourceWithHygiene : ToSource {
+    trait ToSourceWithHygiene for Sized? : ToSource {
         // Takes a thing and generates a string containing rust code
         // for it, encoding Idents as special byte sequences to
         // maintain hygiene across serialization and deserialization.
         fn to_source_with_hygiene(&self) -> String;
     }
 
-    macro_rules! impl_to_source(
+    macro_rules! impl_to_source {
         (P<$t:ty>, $pp:ident) => (
             impl ToSource for P<$t> {
                 fn to_source(&self) -> String {
@@ -129,7 +125,7 @@ pub mod rt {
                 }
             }
         );
-    )
+    }
 
     fn slice_to_source<'a, T: ToSource>(sep: &'static str, xs: &'a [T]) -> String {
         xs.iter()
@@ -148,21 +144,21 @@ pub mod rt {
             .to_string()
     }
 
-    macro_rules! impl_to_source_slice(
+    macro_rules! impl_to_source_slice {
         ($t:ty, $sep:expr) => (
-            impl<'a> ToSource for &'a [$t] {
+            impl ToSource for [$t] {
                 fn to_source(&self) -> String {
-                    slice_to_source($sep, *self)
+                    slice_to_source($sep, self)
                 }
             }
 
-            impl<'a> ToSourceWithHygiene for &'a [$t] {
+            impl ToSourceWithHygiene for [$t] {
                 fn to_source_with_hygiene(&self) -> String {
-                    slice_to_source_with_hygiene($sep, *self)
+                    slice_to_source_with_hygiene($sep, self)
                 }
             }
         )
-    )
+    }
 
     impl ToSource for ast::Ident {
         fn to_source(&self) -> String {
@@ -176,18 +172,18 @@ pub mod rt {
         }
     }
 
-    impl_to_source!(ast::Ty, ty_to_string)
-    impl_to_source!(ast::Block, block_to_string)
-    impl_to_source!(ast::Arg, arg_to_string)
-    impl_to_source!(Generics, generics_to_string)
-    impl_to_source!(P<ast::Item>, item_to_string)
-    impl_to_source!(P<ast::Method>, method_to_string)
-    impl_to_source!(P<ast::Stmt>, stmt_to_string)
-    impl_to_source!(P<ast::Expr>, expr_to_string)
-    impl_to_source!(P<ast::Pat>, pat_to_string)
-    impl_to_source!(ast::Arm, arm_to_string)
-    impl_to_source_slice!(ast::Ty, ", ")
-    impl_to_source_slice!(P<ast::Item>, "\n\n")
+    impl_to_source! { ast::Ty, ty_to_string }
+    impl_to_source! { ast::Block, block_to_string }
+    impl_to_source! { ast::Arg, arg_to_string }
+    impl_to_source! { Generics, generics_to_string }
+    impl_to_source! { P<ast::Item>, item_to_string }
+    impl_to_source! { P<ast::Method>, method_to_string }
+    impl_to_source! { P<ast::Stmt>, stmt_to_string }
+    impl_to_source! { P<ast::Expr>, expr_to_string }
+    impl_to_source! { P<ast::Pat>, pat_to_string }
+    impl_to_source! { ast::Arm, arm_to_string }
+    impl_to_source_slice! { ast::Ty, ", " }
+    impl_to_source_slice! { P<ast::Item>, "\n\n" }
 
     impl ToSource for ast::Attribute_ {
         fn to_source(&self) -> String {
@@ -200,14 +196,14 @@ pub mod rt {
         }
     }
 
-    impl<'a> ToSource for &'a str {
+    impl ToSource for str {
         fn to_source(&self) -> String {
             let lit = dummy_spanned(ast::LitStr(
-                    token::intern_and_get_ident(*self), ast::CookedStr));
+                    token::intern_and_get_ident(self), ast::CookedStr));
             pprust::lit_to_string(&lit)
         }
     }
-    impl<'a> ToSourceWithHygiene for &'a str {
+    impl ToSourceWithHygiene for str {
         fn to_source_with_hygiene(&self) -> String {
             self.to_source()
         }
@@ -248,7 +244,7 @@ pub mod rt {
         }
     }
 
-    macro_rules! impl_to_source_int(
+    macro_rules! impl_to_source_int {
         (signed, $t:ty, $tag:ident) => (
             impl ToSource for $t {
                 fn to_source(&self) -> String {
@@ -276,23 +272,23 @@ pub mod rt {
                 }
             }
         );
-    )
+    }
 
-    impl_to_source_int!(signed, int, TyI)
-    impl_to_source_int!(signed, i8,  TyI8)
-    impl_to_source_int!(signed, i16, TyI16)
-    impl_to_source_int!(signed, i32, TyI32)
-    impl_to_source_int!(signed, i64, TyI64)
+    impl_to_source_int! { signed, int, TyI }
+    impl_to_source_int! { signed, i8,  TyI8 }
+    impl_to_source_int! { signed, i16, TyI16 }
+    impl_to_source_int! { signed, i32, TyI32 }
+    impl_to_source_int! { signed, i64, TyI64 }
 
-    impl_to_source_int!(unsigned, uint, TyU)
-    impl_to_source_int!(unsigned, u8,   TyU8)
-    impl_to_source_int!(unsigned, u16,  TyU16)
-    impl_to_source_int!(unsigned, u32,  TyU32)
-    impl_to_source_int!(unsigned, u64,  TyU64)
+    impl_to_source_int! { unsigned, uint, TyU }
+    impl_to_source_int! { unsigned, u8,   TyU8 }
+    impl_to_source_int! { unsigned, u16,  TyU16 }
+    impl_to_source_int! { unsigned, u32,  TyU32 }
+    impl_to_source_int! { unsigned, u64,  TyU64 }
 
     // Alas ... we write these out instead. All redundant.
 
-    macro_rules! impl_to_tokens(
+    macro_rules! impl_to_tokens {
         ($t:ty) => (
             impl ToTokens for $t {
                 fn to_tokens(&self, cx: &ExtCtxt) -> Vec<TokenTree> {
@@ -300,9 +296,9 @@ pub mod rt {
                 }
             }
         )
-    )
+    }
 
-    macro_rules! impl_to_tokens_lifetime(
+    macro_rules! impl_to_tokens_lifetime {
         ($t:ty) => (
             impl<'a> ToTokens for $t {
                 fn to_tokens(&self, cx: &ExtCtxt) -> Vec<TokenTree> {
@@ -310,36 +306,36 @@ pub mod rt {
                 }
             }
         )
-    )
+    }
 
-    impl_to_tokens!(ast::Ident)
-    impl_to_tokens!(P<ast::Item>)
-    impl_to_tokens!(P<ast::Pat>)
-    impl_to_tokens!(ast::Arm)
-    impl_to_tokens!(P<ast::Method>)
-    impl_to_tokens_lifetime!(&'a [P<ast::Item>])
-    impl_to_tokens!(ast::Ty)
-    impl_to_tokens_lifetime!(&'a [ast::Ty])
-    impl_to_tokens!(Generics)
-    impl_to_tokens!(P<ast::Stmt>)
-    impl_to_tokens!(P<ast::Expr>)
-    impl_to_tokens!(ast::Block)
-    impl_to_tokens!(ast::Arg)
-    impl_to_tokens!(ast::Attribute_)
-    impl_to_tokens_lifetime!(&'a str)
-    impl_to_tokens!(())
-    impl_to_tokens!(char)
-    impl_to_tokens!(bool)
-    impl_to_tokens!(int)
-    impl_to_tokens!(i8)
-    impl_to_tokens!(i16)
-    impl_to_tokens!(i32)
-    impl_to_tokens!(i64)
-    impl_to_tokens!(uint)
-    impl_to_tokens!(u8)
-    impl_to_tokens!(u16)
-    impl_to_tokens!(u32)
-    impl_to_tokens!(u64)
+    impl_to_tokens! { ast::Ident }
+    impl_to_tokens! { P<ast::Item> }
+    impl_to_tokens! { P<ast::Pat> }
+    impl_to_tokens! { ast::Arm }
+    impl_to_tokens! { P<ast::Method> }
+    impl_to_tokens_lifetime! { &'a [P<ast::Item>] }
+    impl_to_tokens! { ast::Ty }
+    impl_to_tokens_lifetime! { &'a [ast::Ty] }
+    impl_to_tokens! { Generics }
+    impl_to_tokens! { P<ast::Stmt> }
+    impl_to_tokens! { P<ast::Expr> }
+    impl_to_tokens! { ast::Block }
+    impl_to_tokens! { ast::Arg }
+    impl_to_tokens! { ast::Attribute_ }
+    impl_to_tokens_lifetime! { &'a str }
+    impl_to_tokens! { () }
+    impl_to_tokens! { char }
+    impl_to_tokens! { bool }
+    impl_to_tokens! { int }
+    impl_to_tokens! { i8 }
+    impl_to_tokens! { i16 }
+    impl_to_tokens! { i32 }
+    impl_to_tokens! { i64 }
+    impl_to_tokens! { uint }
+    impl_to_tokens! { u8 }
+    impl_to_tokens! { u16 }
+    impl_to_tokens! { u32 }
+    impl_to_tokens! { u64 }
 
     pub trait ExtParseUtils {
         fn parse_item(&self, s: String) -> P<ast::Item>;
@@ -454,9 +450,7 @@ pub fn expand_quote_ty(cx: &mut ExtCtxt,
                        sp: Span,
                        tts: &[ast::TokenTree])
                        -> Box<base::MacResult+'static> {
-    let e_param_colons = cx.expr_lit(sp, ast::LitBool(false));
-    let expanded = expand_parse_call(cx, sp, "parse_ty",
-                                     vec!(e_param_colons), tts);
+    let expanded = expand_parse_call(cx, sp, "parse_ty", vec!(), tts);
     base::MacExpr::new(expanded)
 }
 
@@ -542,6 +536,16 @@ fn mk_delim(cx: &ExtCtxt, sp: Span, delim: token::DelimToken) -> P<ast::Expr> {
 
 #[allow(non_upper_case_globals)]
 fn mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> P<ast::Expr> {
+    macro_rules! mk_lit {
+        ($name: expr, $suffix: expr, $($args: expr),*) => {{
+            let inner = cx.expr_call(sp, mk_token_path(cx, sp, $name), vec![$($args),*]);
+            let suffix = match $suffix {
+                Some(name) => cx.expr_some(sp, mk_name(cx, sp, ast::Ident::new(name))),
+                None => cx.expr_none(sp)
+            };
+            cx.expr_call(sp, mk_token_path(cx, sp, "Literal"), vec![inner, suffix])
+        }}
+    }
     match *tok {
         token::BinOp(binop) => {
             return cx.expr_call(sp, mk_token_path(cx, sp, "BinOp"), vec!(mk_binop(cx, sp, binop)));
@@ -560,38 +564,32 @@ fn mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> P<ast::Expr> {
                                 vec![mk_delim(cx, sp, delim)]);
         }
 
-        token::LitByte(i) => {
+        token::Literal(token::Byte(i), suf) => {
             let e_byte = mk_name(cx, sp, i.ident());
-
-            return cx.expr_call(sp, mk_token_path(cx, sp, "LitByte"), vec!(e_byte));
+            return mk_lit!("Byte", suf, e_byte);
         }
 
-        token::LitChar(i) => {
+        token::Literal(token::Char(i), suf) => {
             let e_char = mk_name(cx, sp, i.ident());
-
-            return cx.expr_call(sp, mk_token_path(cx, sp, "LitChar"), vec!(e_char));
+            return mk_lit!("Char", suf, e_char);
         }
 
-        token::LitInteger(i) => {
+        token::Literal(token::Integer(i), suf) => {
             let e_int = mk_name(cx, sp, i.ident());
-            return cx.expr_call(sp, mk_token_path(cx, sp, "LitInteger"), vec!(e_int));
+            return mk_lit!("Integer", suf, e_int);
         }
 
-        token::LitFloat(fident) => {
+        token::Literal(token::Float(fident), suf) => {
             let e_fident = mk_name(cx, sp, fident.ident());
-            return cx.expr_call(sp, mk_token_path(cx, sp, "LitFloat"), vec!(e_fident));
+            return mk_lit!("Float", suf, e_fident);
         }
 
-        token::LitStr(ident) => {
-            return cx.expr_call(sp,
-                                mk_token_path(cx, sp, "LitStr"),
-                                vec!(mk_name(cx, sp, ident.ident())));
+        token::Literal(token::Str_(ident), suf) => {
+            return mk_lit!("Str_", suf, mk_name(cx, sp, ident.ident()))
         }
 
-        token::LitStrRaw(ident, n) => {
-            return cx.expr_call(sp,
-                                mk_token_path(cx, sp, "LitStrRaw"),
-                                vec!(mk_name(cx, sp, ident.ident()), cx.expr_uint(sp, n)));
+        token::Literal(token::StrRaw(ident, n), suf) => {
+            return mk_lit!("StrRaw", suf, mk_name(cx, sp, ident.ident()), cx.expr_uint(sp, n))
         }
 
         token::Ident(ident, style) => {

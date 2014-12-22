@@ -20,6 +20,8 @@
 //! Other than that, the implementation is pretty straightforward in terms of
 //! the other two implementations of timers with nothing *that* new showing up.
 
+pub use self::Req::*;
+
 use libc;
 use ptr;
 use comm;
@@ -30,7 +32,7 @@ use sys_common::helper_thread::Helper;
 use prelude::*;
 use io::IoResult;
 
-helper_init!(static HELPER: Helper<Req>)
+helper_init! { static HELPER: Helper<Req> }
 
 pub trait Callback {
     fn call(&mut self);

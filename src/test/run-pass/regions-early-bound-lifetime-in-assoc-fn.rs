@@ -30,8 +30,8 @@ pub trait Decodable<'v, D: Decoder<'v>> {
 impl<'v, D: Decoder<'v>> Decodable<'v, D> for () {
     fn decode(d: &mut D) -> () {
         match d.read() {
-            A(..) => (),
-            B => Decodable::decode(d),
+            Value::A(..) => (),
+            Value::B => Decodable::decode(d),
         }
     }
 }

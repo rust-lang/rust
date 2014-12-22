@@ -24,15 +24,15 @@ macro_rules! test(
     ($id:ident, $e:expr) => (
         fn foo(t: T) -> int {
             match t {
-                A($id) => $e,
-                B($id) => $e
+                T::A($id) => $e,
+                T::B($id) => $e
             }
         }
     )
-)
+);
 
-test!(y, 10 + (y as int))
+test!(y, 10 + (y as int));
 
 pub fn main() {
-    foo(A(20));
+    foo(T::A(20));
 }

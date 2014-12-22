@@ -16,6 +16,6 @@ enum Numbers {
 pub fn main() {
     println!("{}", 1i);
     println!("{}", 2.0f64);
-    println!("{}", Three);
+    println!("{}", Numbers::Three);
     println!("{}", vec!(4i));
 }

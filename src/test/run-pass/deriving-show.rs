@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(struct_variant, macro_rules)]
+#![feature(macro_rules)]
 
 #[deriving(Show)]
 struct Unit;
@@ -36,7 +36,7 @@ pub fn main() {
     t!(Unit, "Unit");
     t!(Tuple(1, 2), "Tuple(1, 2)");
     t!(Struct { x: 1, y: 2 }, "Struct { x: 1, y: 2 }");
-    t!(Nullary, "Nullary");
-    t!(Variant(1, 2), "Variant(1, 2)");
-    t!(StructVariant { x: 1, y: 2 }, "StructVariant { x: 1, y: 2 }");
+    t!(Enum::Nullary, "Nullary");
+    t!(Enum::Variant(1, 2), "Variant(1, 2)");
+    t!(Enum::StructVariant { x: 1, y: 2 }, "StructVariant { x: 1, y: 2 }");
 }

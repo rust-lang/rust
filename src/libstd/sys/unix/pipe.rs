@@ -12,8 +12,7 @@ use alloc::arc::Arc;
 use libc;
 use c_str::CString;
 use mem;
-use rt::mutex;
-use sync::atomic;
+use sync::{atomic, Mutex};
 use io::{mod, IoResult, IoError};
 use prelude::*;
 
@@ -60,12 +59,12 @@ struct Inner {
 
     // Unused on Linux, where this lock is not necessary.
     #[allow(dead_code)]
-    lock: mutex::NativeMutex
+    lock: Mutex<()>,
 }
 
 impl Inner {
     fn new(fd: fd_t) -> Inner {
-        Inner { fd: fd, lock: unsafe { mutex::NativeMutex::new() } }
+        Inner { fd: fd, lock: Mutex::new(()) }
     }
 }
 
@@ -133,7 +132,7 @@ impl UnixStream {
         }
     }
 
-    fn fd(&self) -> fd_t { self.inner.fd }
+    pub fn fd(&self) -> fd_t { self.inner.fd }
 
     #[cfg(target_os = "linux")]
     fn lock_nonblocking(&self) {}
@@ -150,8 +149,8 @@ impl UnixStream {
 
     pub fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
         let fd = self.fd();
-        let dolock = || self.lock_nonblocking();
-        let doread = |nb| unsafe {
+        let dolock = |&:| self.lock_nonblocking();
+        let doread = |&mut: nb| unsafe {
             let flags = if nb {c::MSG_DONTWAIT} else {0};
             libc::recv(fd,
                        buf.as_mut_ptr() as *mut libc::c_void,
@@ -163,8 +162,8 @@ impl UnixStream {
 
     pub fn write(&mut self, buf: &[u8]) -> IoResult<()> {
         let fd = self.fd();
-        let dolock = || self.lock_nonblocking();
-        let dowrite = |nb: bool, buf: *const u8, len: uint| unsafe {
+        let dolock = |&: | self.lock_nonblocking();
+        let dowrite = |&: nb: bool, buf: *const u8, len: uint| unsafe {
             let flags = if nb {c::MSG_DONTWAIT} else {0};
             libc::send(fd,
                        buf as *const _,
@@ -222,7 +221,7 @@ impl UnixListener {
         })
     }
 
-    fn fd(&self) -> fd_t { self.inner.fd }
+    pub fn fd(&self) -> fd_t { self.inner.fd }
 
     pub fn listen(self) -> IoResult<UnixAcceptor> {
         match unsafe { libc::listen(self.fd(), 128) } {
@@ -260,7 +259,7 @@ struct AcceptorInner {
 }
 
 impl UnixAcceptor {
-    fn fd(&self) -> fd_t { self.inner.listener.fd() }
+    pub fn fd(&self) -> fd_t { self.inner.listener.fd() }
 
     pub fn accept(&mut self) -> IoResult<UnixStream> {
         let deadline = if self.deadline == 0 {None} else {Some(self.deadline)};
@@ -281,8 +280,8 @@ impl UnixAcceptor {
                     fd => return Ok(UnixStream::new(Arc::new(Inner::new(fd)))),
                 }
             }
-            try!(await([self.fd(), self.inner.reader.fd()],
-                             deadline, Readable));
+            try!(await(&[self.fd(), self.inner.reader.fd()],
+                       deadline, Readable));
         }
 
         Err(eof())
@@ -295,7 +294,7 @@ impl UnixAcceptor {
     pub fn close_accept(&mut self) -> IoResult<()> {
         self.inner.closed.store(true, atomic::SeqCst);
         let fd = FileDesc::new(self.inner.writer.fd(), false);
-        match fd.write([0]) {
+        match fd.write(&[0]) {
             Ok(..) => Ok(()),
             Err(..) if wouldblock() => Ok(()),
             Err(e) => Err(e),

@@ -49,7 +49,9 @@
 // lldb-check:[...]$3 = TheOnlyCase { a: -1 }
 
 #![allow(unused_variables)]
-#![feature(struct_variant)]
+
+use self::Regular::{Case1, Case2, Case3};
+use self::Univariant::TheOnlyCase;
 
 // The first element is to ensure proper alignment, irrespective of the machines word size. Since
 // the size of the discriminant value is machine dependent, this has be taken into account when

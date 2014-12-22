@@ -13,6 +13,9 @@
 #![allow(experimental)]
 #![allow(non_upper_case_globals)]
 
+pub use self::StdioContainer::*;
+pub use self::ProcessExit::*;
+
 use prelude::*;
 
 use fmt;
@@ -27,6 +30,7 @@ use hash::Hash;
 use std::hash::sip::SipState;
 use io::pipe::{PipeStream, PipePair};
 use path::BytesContainer;
+use thread::Thread;
 
 use sys;
 use sys::fs::FileDesc;
@@ -233,8 +237,8 @@ impl Command {
                 // if the env is currently just inheriting from the parent's,
                 // materialize the parent's env into a hashtable.
                 self.env = Some(os::env_as_bytes().into_iter()
-                                   .map(|(k, v)| (EnvKey(k.as_slice().to_c_str()),
-                                                  v.as_slice().to_c_str()))
+                                   .map(|(k, v)| (EnvKey(k.to_c_str()),
+                                                  v.to_c_str()))
                                    .collect());
                 self.env.as_mut().unwrap()
             }
@@ -457,7 +461,7 @@ pub struct ProcessOutput {
 }
 
 /// Describes what to do with a standard io stream for a child process.
-#[deriving(Clone)]
+#[deriving(Clone, Copy)]
 pub enum StdioContainer {
     /// This stream will be ignored. This is the equivalent of attaching the
     /// stream to `/dev/null`
@@ -479,7 +483,7 @@ pub enum StdioContainer {
 
 /// Describes the result of a process after it has terminated.
 /// Note that Windows have no signals, so the result is usually ExitStatus.
-#[deriving(PartialEq, Eq, Clone)]
+#[deriving(PartialEq, Eq, Clone, Copy)]
 pub enum ProcessExit {
     /// Normal termination with an exit status.
     ExitStatus(int),
@@ -686,10 +690,12 @@ impl Process {
         fn read(stream: Option<io::PipeStream>) -> Receiver<IoResult<Vec<u8>>> {
             let (tx, rx) = channel();
             match stream {
-                Some(stream) => spawn(proc() {
-                    let mut stream = stream;
-                    tx.send(stream.read_to_end())
-                }),
+                Some(stream) => {
+                    Thread::spawn(move |:| {
+                        let mut stream = stream;
+                        tx.send(stream.read_to_end())
+                    }).detach();
+                }
                 None => tx.send(Ok(Vec::new()))
             }
             rx
@@ -736,8 +742,6 @@ impl Drop for Process {
 #[cfg(test)]
 mod tests {
     #![allow(unused_imports)]
-
-    extern crate native;
 
     use super::*;
     use prelude::*;
@@ -809,7 +813,7 @@ mod tests {
     fn stdout_works() {
         let mut cmd = Command::new("echo");
         cmd.arg("foobar").stdout(CreatePipe(false, true));
-        assert_eq!(run_output(cmd), "foobar\n".to_string());
+        assert_eq!(run_output(cmd), "foobar\n");
     }
 
     #[cfg(all(unix, not(target_os="android")))]
@@ -819,7 +823,7 @@ mod tests {
         cmd.arg("-c").arg("pwd")
            .cwd(&Path::new("/"))
            .stdout(CreatePipe(false, true));
-        assert_eq!(run_output(cmd), "/\n".to_string());
+        assert_eq!(run_output(cmd), "/\n");
     }
 
     #[cfg(all(unix, not(target_os="android")))]
@@ -834,7 +838,7 @@ mod tests {
         drop(p.stdin.take());
         let out = read_all(p.stdout.as_mut().unwrap() as &mut Reader);
         assert!(p.wait().unwrap().success());
-        assert_eq!(out, "foobar\n".to_string());
+        assert_eq!(out, "foobar\n");
     }
 
     #[cfg(not(target_os="android"))]
@@ -899,7 +903,7 @@ mod tests {
         let output_str = str::from_utf8(output.as_slice()).unwrap();
 
         assert!(status.success());
-        assert_eq!(output_str.trim().to_string(), "hello".to_string());
+        assert_eq!(output_str.trim().to_string(), "hello");
         // FIXME #7224
         if !running_on_valgrind() {
             assert_eq!(error, Vec::new());
@@ -940,7 +944,7 @@ mod tests {
         let output_str = str::from_utf8(output.as_slice()).unwrap();
 
         assert!(status.success());
-        assert_eq!(output_str.trim().to_string(), "hello".to_string());
+        assert_eq!(output_str.trim().to_string(), "hello");
         // FIXME #7224
         if !running_on_valgrind() {
             assert_eq!(error, Vec::new());
@@ -971,8 +975,8 @@ mod tests {
         let prog = pwd_cmd().spawn().unwrap();
 
         let output = String::from_utf8(prog.wait_with_output().unwrap().output).unwrap();
-        let parent_dir = os::getcwd();
-        let child_dir = Path::new(output.as_slice().trim());
+        let parent_dir = os::getcwd().unwrap();
+        let child_dir = Path::new(output.trim());
 
         let parent_stat = parent_dir.stat().unwrap();
         let child_stat = child_dir.stat().unwrap();
@@ -986,11 +990,11 @@ mod tests {
         use os;
         // test changing to the parent of os::getcwd() because we know
         // the path exists (and os::getcwd() is not expected to be root)
-        let parent_dir = os::getcwd().dir_path();
+        let parent_dir = os::getcwd().unwrap().dir_path();
         let prog = pwd_cmd().cwd(&parent_dir).spawn().unwrap();
 
         let output = String::from_utf8(prog.wait_with_output().unwrap().output).unwrap();
-        let child_dir = Path::new(output.as_slice().trim());
+        let child_dir = Path::new(output.trim());
 
         let parent_stat = parent_dir.stat().unwrap();
         let child_stat = child_dir.stat().unwrap();
@@ -1030,8 +1034,7 @@ mod tests {
         for &(ref k, ref v) in r.iter() {
             // don't check windows magical empty-named variables
             assert!(k.is_empty() ||
-                    output.as_slice()
-                          .contains(format!("{}={}", *k, *v).as_slice()),
+                    output.contains(format!("{}={}", *k, *v).as_slice()),
                     "output doesn't contain `{}={}`\n{}",
                     k, v, output);
         }
@@ -1049,12 +1052,10 @@ mod tests {
         for &(ref k, ref v) in r.iter() {
             // don't check android RANDOM variables
             if *k != "RANDOM".to_string() {
-                assert!(output.as_slice()
-                              .contains(format!("{}={}",
+                assert!(output.contains(format!("{}={}",
                                                 *k,
                                                 *v).as_slice()) ||
-                        output.as_slice()
-                              .contains(format!("{}=\'{}\'",
+                        output.contains(format!("{}=\'{}\'",
                                                 *k,
                                                 *v).as_slice()));
             }
@@ -1083,7 +1084,7 @@ mod tests {
         let result = prog.wait_with_output().unwrap();
         let output = String::from_utf8_lossy(result.output.as_slice()).into_string();
 
-        assert!(output.as_slice().contains("RUN_TEST_NEW_ENV=123"),
+        assert!(output.contains("RUN_TEST_NEW_ENV=123"),
                 "didn't find RUN_TEST_NEW_ENV inside of:\n\n{}", output);
     }
 
@@ -1093,7 +1094,7 @@ mod tests {
         let result = prog.wait_with_output().unwrap();
         let output = String::from_utf8_lossy(result.output.as_slice()).into_string();
 
-        assert!(output.as_slice().contains("RUN_TEST_NEW_ENV=123"),
+        assert!(output.contains("RUN_TEST_NEW_ENV=123"),
                 "didn't find RUN_TEST_NEW_ENV inside of:\n\n{}", output);
     }
 
@@ -1153,14 +1154,14 @@ mod tests {
     fn wait_timeout2() {
         let (tx, rx) = channel();
         let tx2 = tx.clone();
-        spawn(proc() {
+        spawn(move|| {
             let mut p = sleeper();
             p.set_timeout(Some(10));
             assert_eq!(p.wait().err().unwrap().kind, TimedOut);
             p.signal_kill().unwrap();
             tx.send(());
         });
-        spawn(proc() {
+        spawn(move|| {
             let mut p = sleeper();
             p.set_timeout(Some(10));
             assert_eq!(p.wait().err().unwrap().kind, TimedOut);
@@ -1190,7 +1191,7 @@ mod tests {
             Path::new("/dev/null")
         };
 
-        let mut fdes = match fs::open(&path, Truncate, Write) {
+        let fdes = match fs::open(&path, Truncate, Write) {
             Ok(f) => f,
             Err(_) => panic!("failed to open file descriptor"),
         };

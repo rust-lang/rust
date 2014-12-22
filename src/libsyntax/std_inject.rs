@@ -22,10 +22,10 @@ use util::small_vector::SmallVector;
 
 use std::mem;
 
-pub fn maybe_inject_crates_ref(krate: ast::Crate, alt_std_name: Option<String>, any_exe: bool)
+pub fn maybe_inject_crates_ref(krate: ast::Crate, alt_std_name: Option<String>)
                                -> ast::Crate {
     if use_std(&krate) {
-        inject_crates_ref(krate, alt_std_name, any_exe)
+        inject_crates_ref(krate, alt_std_name)
     } else {
         krate
     }
@@ -43,17 +43,12 @@ fn use_std(krate: &ast::Crate) -> bool {
     !attr::contains_name(krate.attrs.as_slice(), "no_std")
 }
 
-fn use_start(krate: &ast::Crate) -> bool {
-    !attr::contains_name(krate.attrs.as_slice(), "no_start")
-}
-
 fn no_prelude(attrs: &[ast::Attribute]) -> bool {
     attr::contains_name(attrs, "no_implicit_prelude")
 }
 
 struct StandardLibraryInjector<'a> {
     alt_std_name: Option<String>,
-    any_exe: bool,
 }
 
 impl<'a> fold::Folder for StandardLibraryInjector<'a> {
@@ -80,23 +75,6 @@ impl<'a> fold::Folder for StandardLibraryInjector<'a> {
             span: DUMMY_SP
         });
 
-        if use_start(&krate) && self.any_exe {
-            let visible_rt_name = "rt";
-            let actual_rt_name = "native";
-            // Gensym the ident so it can't be named
-            let visible_rt_name = token::gensym_ident(visible_rt_name);
-            let actual_rt_name = token::intern_and_get_ident(actual_rt_name);
-
-            vis.push(ast::ViewItem {
-                node: ast::ViewItemExternCrate(visible_rt_name,
-                                               Some((actual_rt_name, ast::CookedStr)),
-                                               ast::DUMMY_NODE_ID),
-                attrs: Vec::new(),
-                vis: ast::Inherited,
-                span: DUMMY_SP
-            });
-        }
-
         // `extern crate` must be precede `use` items
         mem::swap(&mut vis, &mut krate.module.view_items);
         krate.module.view_items.extend(vis.into_iter());
@@ -118,12 +96,9 @@ impl<'a> fold::Folder for StandardLibraryInjector<'a> {
     }
 }
 
-fn inject_crates_ref(krate: ast::Crate,
-                     alt_std_name: Option<String>,
-                     any_exe: bool) -> ast::Crate {
+fn inject_crates_ref(krate: ast::Crate, alt_std_name: Option<String>) -> ast::Crate {
     let mut fold = StandardLibraryInjector {
         alt_std_name: alt_std_name,
-        any_exe: any_exe,
     };
     fold.fold_crate(krate)
 }

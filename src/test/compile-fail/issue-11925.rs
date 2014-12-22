@@ -11,7 +11,7 @@
 fn main() {
     let r = {
         let x = box 42i;
-        let f = proc() &x; //~ ERROR: `x` does not live long enough
+        let f = move|:| &x; //~ ERROR: `x` does not live long enough
         f()
     };
 

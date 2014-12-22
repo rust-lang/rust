@@ -7,10 +7,12 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+use self::Either::*;
 
 use ast::{Block, Crate, DeclLocal, ExprMac, PatMac};
 use ast::{Local, Ident, MacInvocTT};
-use ast::{ItemMac, Mrk, Stmt, StmtDecl, StmtMac, StmtExpr, StmtSemi};
+use ast::{ItemMac, MacStmtWithSemicolon, Mrk, Stmt, StmtDecl, StmtMac};
+use ast::{StmtExpr, StmtSemi};
 use ast::TokenTree;
 use ast;
 use ext::mtwt;
@@ -159,7 +161,7 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
             // `_ => [<elseopt> | ()]`
             let else_arm = {
                 let pat_under = fld.cx.pat_wild(span);
-                let else_expr = elseopt.unwrap_or_else(|| fld.cx.expr_lit(span, ast::LitNil));
+                let else_expr = elseopt.unwrap_or_else(|| fld.cx.expr_tuple(span, vec![]));
                 fld.cx.arm(span, vec![pat_under], else_expr)
             };
 
@@ -206,19 +208,13 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
             fld.cx.expr(span, ast::ExprForLoop(pat, head, body, opt_ident))
         }
 
-        ast::ExprFnBlock(capture_clause, fn_decl, block) => {
+        ast::ExprClosure(capture_clause, opt_kind, fn_decl, block) => {
             let (rewritten_fn_decl, rewritten_block)
                 = expand_and_rename_fn_decl_and_block(fn_decl, block, fld);
-            let new_node = ast::ExprFnBlock(capture_clause,
+            let new_node = ast::ExprClosure(capture_clause,
+                                            opt_kind,
                                             rewritten_fn_decl,
                                             rewritten_block);
-            P(ast::Expr{id:id, node: new_node, span: fld.new_span(span)})
-        }
-
-        ast::ExprProc(fn_decl, block) => {
-            let (rewritten_fn_decl, rewritten_block)
-                = expand_and_rename_fn_decl_and_block(fn_decl, block, fld);
-            let new_node = ast::ExprProc(rewritten_fn_decl, rewritten_block);
             P(ast::Expr{id:id, node: new_node, span: fld.new_span(span)})
         }
 
@@ -236,11 +232,13 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
 /// of expansion and the mark which must be applied to the result.
 /// Our current interface doesn't allow us to apply the mark to the
 /// result until after calling make_expr, make_items, etc.
-fn expand_mac_invoc<T>(mac: ast::Mac, span: codemap::Span,
-                       parse_thunk: |Box<MacResult>|->Option<T>,
-                       mark_thunk: |T,Mrk|->T,
-                       fld: &mut MacroExpander)
-                       -> Option<T>
+fn expand_mac_invoc<T, F, G>(mac: ast::Mac, span: codemap::Span,
+                             parse_thunk: F,
+                             mark_thunk: G,
+                             fld: &mut MacroExpander)
+                             -> Option<T> where
+    F: FnOnce(Box<MacResult>) -> Option<T>,
+    G: FnOnce(T, Mrk) -> T,
 {
     match mac.node {
         // it would almost certainly be cleaner to pass the whole
@@ -357,7 +355,7 @@ fn expand_loop_block(loop_block: P<Block>,
 
 // eval $e with a new exts frame.
 // must be a macro so that $e isn't evaluated too early.
-macro_rules! with_exts_frame (
+macro_rules! with_exts_frame {
     ($extsboxexpr:expr,$macros_escape:expr,$e:expr) =>
     ({$extsboxexpr.push_frame();
       $extsboxexpr.info().macros_escape = $macros_escape;
@@ -365,7 +363,7 @@ macro_rules! with_exts_frame (
       $extsboxexpr.pop_frame();
       result
      })
-)
+}
 
 // When we enter a module, record it, for the sake of `module!`
 pub fn expand_item(it: P<ast::Item>, fld: &mut MacroExpander)
@@ -410,12 +408,19 @@ pub fn expand_item(it: P<ast::Item>, fld: &mut MacroExpander)
     let mut new_items = match it.node {
         ast::ItemMac(..) => expand_item_mac(it, fld),
         ast::ItemMod(_) | ast::ItemForeignMod(_) => {
-            fld.cx.mod_push(it.ident);
+            let valid_ident =
+                it.ident.name != parse::token::special_idents::invalid.name;
+
+            if valid_ident {
+                fld.cx.mod_push(it.ident);
+            }
             let macro_escape = contains_macro_escape(new_attrs.as_slice());
             let result = with_exts_frame!(fld.cx.syntax_env,
                                           macro_escape,
                                           noop_fold_item(it, fld));
-            fld.cx.mod_pop();
+            if valid_ident {
+                fld.cx.mod_pop();
+            }
             result
         },
         _ => {
@@ -632,8 +637,8 @@ pub fn expand_item_mac(it: P<ast::Item>, fld: &mut MacroExpander)
 // I don't understand why this returns a vector... it looks like we're
 // half done adding machinery to allow macros to expand into multiple statements.
 fn expand_stmt(s: Stmt, fld: &mut MacroExpander) -> SmallVector<P<Stmt>> {
-    let (mac, semi) = match s.node {
-        StmtMac(mac, semi) => (mac, semi),
+    let (mac, style) = match s.node {
+        StmtMac(mac, style) => (mac, style),
         _ => return expand_non_macro_stmt(s, fld)
     };
     let expanded_stmt = match expand_mac_invoc(mac, s.span,
@@ -649,7 +654,7 @@ fn expand_stmt(s: Stmt, fld: &mut MacroExpander) -> SmallVector<P<Stmt>> {
     let fully_expanded = fld.fold_stmt(expanded_stmt);
     fld.cx.bt_pop();
 
-    if semi {
+    if style == MacStmtWithSemicolon {
         fully_expanded.into_iter().map(|s| s.map(|Spanned {node, span}| {
             Spanned {
                 node: match node {
@@ -1017,16 +1022,17 @@ fn expand_method(m: P<ast::Method>, fld: &mut MacroExpander) -> SmallVector<P<as
                                  |meths, mark| meths.move_map(|m| mark_method(m, mark)),
                                  fld);
 
-            let new_methods = match maybe_new_methods {
-                Some(methods) => methods,
+            match maybe_new_methods {
+                Some(methods) => {
+                    // expand again if necessary
+                    let new_methods = methods.into_iter()
+                                             .flat_map(|m| fld.fold_method(m).into_iter())
+                                             .collect();
+                    fld.cx.bt_pop();
+                    new_methods
+                }
                 None => SmallVector::zero()
-            };
-
-            // expand again if necessary
-            let new_methods = new_methods.into_iter()
-                                  .flat_map(|m| fld.fold_method(m).into_iter()).collect();
-            fld.cx.bt_pop();
-            new_methods
+            }
         }
     })
 }
@@ -1319,7 +1325,7 @@ mod test {
     // make sure that macros can't escape fns
     #[should_fail]
     #[test] fn macros_cant_escape_fns_test () {
-        let src = "fn bogus() {macro_rules! z (() => (3+4))}\
+        let src = "fn bogus() {macro_rules! z (() => (3+4));}\
                    fn inty() -> int { z!() }".to_string();
         let sess = parse::new_parse_sess();
         let crate_ast = parse::parse_crate_from_source_str(
@@ -1333,7 +1339,7 @@ mod test {
     // make sure that macros can't escape modules
     #[should_fail]
     #[test] fn macros_cant_escape_mods_test () {
-        let src = "mod foo {macro_rules! z (() => (3+4))}\
+        let src = "mod foo {macro_rules! z (() => (3+4));}\
                    fn inty() -> int { z!() }".to_string();
         let sess = parse::new_parse_sess();
         let crate_ast = parse::parse_crate_from_source_str(
@@ -1345,7 +1351,7 @@ mod test {
 
     // macro_escape modules should allow macros to escape
     #[test] fn macros_can_escape_flattened_mods_test () {
-        let src = "#[macro_escape] mod foo {macro_rules! z (() => (3+4))}\
+        let src = "#[macro_escape] mod foo {macro_rules! z (() => (3+4));}\
                    fn inty() -> int { z!() }".to_string();
         let sess = parse::new_parse_sess();
         let crate_ast = parse::parse_crate_from_source_str(
@@ -1397,13 +1403,13 @@ mod test {
 
     #[test] fn macro_tokens_should_match(){
         expand_crate_str(
-            "macro_rules! m((a)=>(13)) fn main(){m!(a);}".to_string());
+            "macro_rules! m((a)=>(13)) ;fn main(){m!(a);}".to_string());
     }
 
     // should be able to use a bound identifier as a literal in a macro definition:
     #[test] fn self_macro_parsing(){
         expand_crate_str(
-            "macro_rules! foo ((zz) => (287u;))
+            "macro_rules! foo ((zz) => (287u;));
             fn f(zz : int) {foo!(zz);}".to_string()
             );
     }
@@ -1446,16 +1452,16 @@ mod test {
                 ("fn main () {let x: int = 13;x;}",
                  vec!(vec!(0)), false),
                 // the use of b after the + should be renamed, the other one not:
-                ("macro_rules! f (($x:ident) => (b + $x)) fn a() -> int { let b = 13; f!(b)}",
+                ("macro_rules! f (($x:ident) => (b + $x)); fn a() -> int { let b = 13; f!(b)}",
                  vec!(vec!(1)), false),
                 // the b before the plus should not be renamed (requires marks)
-                ("macro_rules! f (($x:ident) => ({let b=9; ($x + b)})) fn a() -> int { f!(b)}",
+                ("macro_rules! f (($x:ident) => ({let b=9; ($x + b)})); fn a() -> int { f!(b)}",
                  vec!(vec!(1)), false),
                 // the marks going in and out of letty should cancel, allowing that $x to
                 // capture the one following the semicolon.
                 // this was an awesome test case, and caught a *lot* of bugs.
-                ("macro_rules! letty(($x:ident) => (let $x = 15;))
-                  macro_rules! user(($x:ident) => ({letty!($x); $x}))
+                ("macro_rules! letty(($x:ident) => (let $x = 15;));
+                  macro_rules! user(($x:ident) => ({letty!($x); $x}));
                   fn main() -> int {user!(z)}",
                  vec!(vec!(0)), false)
                 );
@@ -1483,7 +1489,7 @@ mod test {
     #[test] fn issue_6994(){
         run_renaming_test(
             &("macro_rules! g (($x:ident) =>
-              ({macro_rules! f(($y:ident)=>({let $y=3;$x}));f!($x)}))
+              ({macro_rules! f(($y:ident)=>({let $y=3;$x}));f!($x)}));
               fn a(){g!(z)}",
               vec!(vec!(0)),false),
             0)
@@ -1493,7 +1499,7 @@ mod test {
     // fn z() {match 8 {x_1 => {match 9 {x_2 | x_2 if x_2 == x_1 => x_2 + x_1}}}}
     #[test] fn issue_9384(){
         run_renaming_test(
-            &("macro_rules! bad_macro (($ex:expr) => ({match 9 {x | x if x == $ex => x + $ex}}))
+            &("macro_rules! bad_macro (($ex:expr) => ({match 9 {x | x if x == $ex => x + $ex}}));
               fn z() {match 8 {x => bad_macro!(x)}}",
               // NB: the third "binding" is the repeat of the second one.
               vec!(vec!(1,3),vec!(0,2),vec!(0,2)),
@@ -1506,8 +1512,8 @@ mod test {
     // fn main(){let g1_1 = 13; g1_1}}
     #[test] fn pat_expand_issue_15221(){
         run_renaming_test(
-            &("macro_rules! inner ( ($e:pat ) => ($e))
-              macro_rules! outer ( ($e:pat ) => (inner!($e)))
+            &("macro_rules! inner ( ($e:pat ) => ($e));
+              macro_rules! outer ( ($e:pat ) => (inner!($e)));
               fn main() { let outer!(g) = 13; g;}",
               vec!(vec!(0)),
               true),
@@ -1522,8 +1528,8 @@ mod test {
     // method expands to fn get_x(&self_0, x_1:int) {self_0 + self_2 + x_3 + x_1}
     #[test] fn method_arg_hygiene(){
         run_renaming_test(
-            &("macro_rules! inject_x (()=>(x))
-              macro_rules! inject_self (()=>(self))
+            &("macro_rules! inject_x (()=>(x));
+              macro_rules! inject_self (()=>(self));
               struct A;
               impl A{fn get_x(&self, x: int) {self + inject_self!() + inject_x!() + x;} }",
               vec!(vec!(0),vec!(3)),
@@ -1537,8 +1543,8 @@ mod test {
         run_renaming_test(
             &("struct A;
               macro_rules! add_method (($T:ty) =>
-              (impl $T {  fn thingy(&self) {self;} }))
-              add_method!(A)",
+              (impl $T {  fn thingy(&self) {self;} }));
+              add_method!(A);",
               vec!(vec!(0)),
               true),
             0)
@@ -1548,29 +1554,18 @@ mod test {
     // expands to fn q(x_1:int){fn g(x_2:int){x_2 + x_1};}
     #[test] fn issue_9383(){
         run_renaming_test(
-            &("macro_rules! bad_macro (($ex:expr) => (fn g(x:int){ x + $ex }))
+            &("macro_rules! bad_macro (($ex:expr) => (fn g(x:int){ x + $ex }));
               fn q(x:int) { bad_macro!(x); }",
               vec!(vec!(1),vec!(0)),true),
             0)
     }
 
-    // closure arg hygiene (ExprFnBlock)
+    // closure arg hygiene (ExprClosure)
     // expands to fn f(){(|x_1 : int| {(x_2 + x_1)})(3);}
     #[test] fn closure_arg_hygiene(){
         run_renaming_test(
-            &("macro_rules! inject_x (()=>(x))
+            &("macro_rules! inject_x (()=>(x));
             fn f(){(|x : int| {(inject_x!() + x)})(3);}",
-              vec!(vec!(1)),
-              true),
-            0)
-    }
-
-    // closure arg hygiene (ExprProc)
-    // expands to fn f(){(proc(x_1 : int) {(x_2 + x_1)})(3);}
-    #[test] fn closure_arg_hygiene_2(){
-        run_renaming_test(
-            &("macro_rules! inject_x (()=>(x))
-              fn f(){ (proc(x : int){(inject_x!() + x)})(3); }",
               vec!(vec!(1)),
               true),
             0)
@@ -1579,9 +1574,9 @@ mod test {
     // macro_rules in method position. Sadly, unimplemented.
     #[test] fn macro_in_method_posn(){
         expand_crate_str(
-            "macro_rules! my_method (() => (fn thirteen(&self) -> int {13}))
+            "macro_rules! my_method (() => (fn thirteen(&self) -> int {13}));
             struct A;
-            impl A{ my_method!()}
+            impl A{ my_method!(); }
             fn f(){A.thirteen;}".to_string());
     }
 
@@ -1592,7 +1587,7 @@ mod test {
             &("macro_rules! item { ($i:item) => {$i}}
               struct Entries;
               macro_rules! iterator_impl {
-              () => { item!( impl Entries { fn size_hint(&self) { self;}})}}
+              () => { item!( impl Entries { fn size_hint(&self) { self;}});}}
               iterator_impl! { }",
               vec!(vec!(0)), true),
             0)
@@ -1672,9 +1667,9 @@ mod test {
     }
 
     #[test] fn fmt_in_macro_used_inside_module_macro() {
-        let crate_str = "macro_rules! fmt_wrap(($b:expr)=>($b.to_string()))
-macro_rules! foo_module (() => (mod generated { fn a() { let xx = 147; fmt_wrap!(xx);}}))
-foo_module!()
+        let crate_str = "macro_rules! fmt_wrap(($b:expr)=>($b.to_string()));
+macro_rules! foo_module (() => (mod generated { fn a() { let xx = 147; fmt_wrap!(xx);}}));
+foo_module!();
 ".to_string();
         let cr = expand_crate_str(crate_str);
         // find the xx binding

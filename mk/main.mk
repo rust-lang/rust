@@ -190,11 +190,14 @@ endif
 # Target-and-rule "utility variables"
 ######################################################################
 
-define DEF_X
+define DEF_FOR_TARGET
 X_$(1) := $(CFG_EXE_SUFFIX_$(1))
+ifndef CFG_LLVM_TARGET_$(1)
+CFG_LLVM_TARGET_$(1) := $(1)
+endif
 endef
 $(foreach target,$(CFG_TARGET), \
-  $(eval $(call DEF_X,$(target))))
+  $(eval $(call DEF_FOR_TARGET,$(target))))
 
 # "Source" files we generate in builddir along the way.
 GENERATED :=
@@ -332,7 +335,15 @@ define SREQ
 # Destinations of artifacts for the host compiler
 HROOT$(1)_H_$(3) = $(3)/stage$(1)
 HBIN$(1)_H_$(3) = $$(HROOT$(1)_H_$(3))/bin
+ifeq ($$(CFG_WINDOWSY_$(3)),1)
 HLIB$(1)_H_$(3) = $$(HROOT$(1)_H_$(3))/$$(CFG_LIBDIR_RELATIVE)
+else
+ifeq ($(1),0)
+HLIB$(1)_H_$(3) = $$(HROOT$(1)_H_$(3))/lib
+else
+HLIB$(1)_H_$(3) = $$(HROOT$(1)_H_$(3))/$$(CFG_LIBDIR_RELATIVE)
+endif
+endif
 
 # Destinations of artifacts for target architectures
 TROOT$(1)_T_$(2)_H_$(3) = $$(HLIB$(1)_H_$(3))/rustlib/$(2)
@@ -345,7 +356,8 @@ HSREQ$(1)_H_$(3) = $$(HBIN$(1)_H_$(3))/rustc$$(X_$(3))
 else
 HSREQ$(1)_H_$(3) = \
 	$$(HBIN$(1)_H_$(3))/rustc$$(X_$(3)) \
-	$$(MKFILE_DEPS)
+	$$(MKFILE_DEPS) \
+	tmp/install-debugger-scripts$(1)_H_$(3).done
 endif
 
 # Prerequisites for using the stageN compiler to build target artifacts
@@ -359,7 +371,8 @@ TSREQ$(1)_T_$(2)_H_$(3) = \
 SREQ$(1)_T_$(2)_H_$(3) = \
 	$$(TSREQ$(1)_T_$(2)_H_$(3)) \
 	$$(foreach dep,$$(TARGET_CRATES), \
-	    $$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$$(dep))
+	    $$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$$(dep)) \
+	tmp/install-debugger-scripts$(1)_T_$(2)_H_$(3).done
 
 # Prerequisites for a working stageN compiler and complete set of target
 # libraries

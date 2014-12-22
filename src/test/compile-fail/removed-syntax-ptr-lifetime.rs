@@ -8,4 +8,4 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-type bptr = &lifetime/int; //~ ERROR expected `;`, found `/`
+type bptr = &lifetime/int; //~ ERROR expected one of `(`, `+`, `::`, or `;`, found `/`

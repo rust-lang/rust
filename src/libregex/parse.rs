@@ -8,12 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+pub use self::Ast::*;
+pub use self::Repeater::*;
+pub use self::Greed::*;
+use self::BuildAst::*;
+
 use std::char;
 use std::cmp;
 use std::fmt;
 use std::iter;
 use std::num;
-use std::slice;
+use std::slice::BinarySearchResult;
 
 /// Static data containing Unicode ranges for general categories and scripts.
 use unicode::regex::{UNICODE_CLASSES, PERLD, PERLS, PERLW};
@@ -72,7 +77,7 @@ pub enum Repeater {
     OneMore,
 }
 
-#[deriving(Show, Clone)]
+#[deriving(Copy, Show, Clone)]
 pub enum Greed {
     Greedy,
     Ungreedy,
@@ -217,7 +222,7 @@ impl<'a> Parser<'a> {
                 },
                 '(' => {
                     if self.peek_is(1, '?') {
-                        try!(self.expect('?'))
+                        try!(self.expect('?'));
                         try!(self.parse_group_opts())
                     } else {
                         self.caps += 1;
@@ -366,7 +371,7 @@ impl<'a> Parser<'a> {
     fn parse_class(&mut self) -> Result<(), Error> {
         let negated =
             if self.peek_is(1, '^') {
-                try!(self.expect('^'))
+                try!(self.expect('^'));
                 FLAG_NEGATED
             } else {
                 FLAG_EMPTY
@@ -518,11 +523,11 @@ impl<'a> Parser<'a> {
 
         // Parse the min and max values from the regex.
         let (mut min, mut max): (uint, Option<uint>);
-        if !inner.as_slice().contains(",") {
+        if !inner.contains(",") {
             min = try!(self.parse_uint(inner.as_slice()));
             max = Some(min);
         } else {
-            let pieces: Vec<&str> = inner.as_slice().splitn(1, ',').collect();
+            let pieces: Vec<&str> = inner.splitn(1, ',').collect();
             let (smin, smax) = (pieces[0], pieces[1]);
             if smin.len() == 0 {
                 return self.err("Max repetitions cannot be specified \
@@ -590,7 +595,7 @@ impl<'a> Parser<'a> {
     // Parses all escape sequences.
     // Assumes that '\' is the current character.
     fn parse_escape(&mut self) -> Result<Ast, Error> {
-        try!(self.noteof("an escape sequence following a '\\'"))
+        try!(self.noteof("an escape sequence following a '\\'"));
 
         let c = self.cur();
         if is_punct(c) {
@@ -632,7 +637,7 @@ impl<'a> Parser<'a> {
         let negated = if self.cur() == 'P' { FLAG_NEGATED } else { FLAG_EMPTY };
         let mut name: String;
         if self.peek_is(1, '{') {
-            try!(self.expect('{'))
+            try!(self.expect('{'));
             let closer =
                 match self.pos('}') {
                     Some(i) => i,
@@ -670,10 +675,10 @@ impl<'a> Parser<'a> {
         let mut end = start + 1;
         let (d2, d3) = (self.peek(1), self.peek(2));
         if d2 >= Some('0') && d2 <= Some('7') {
-            try!(self.noteof("expected octal character in [0-7]"))
+            try!(self.noteof("expected octal character in [0-7]"));
             end += 1;
             if d3 >= Some('0') && d3 <= Some('7') {
-                try!(self.noteof("expected octal character in [0-7]"))
+                try!(self.noteof("expected octal character in [0-7]"));
                 end += 1;
             }
         }
@@ -691,7 +696,7 @@ impl<'a> Parser<'a> {
     // Assumes that \x has been read.
     fn parse_hex(&mut self) -> Result<Ast, Error> {
         if !self.peek_is(1, '{') {
-            try!(self.expect('{'))
+            try!(self.expect('{'));
             return self.parse_hex_two()
         }
         let start = self.chari + 2;
@@ -716,7 +721,7 @@ impl<'a> Parser<'a> {
         let (start, end) = (self.chari, self.chari + 2);
         let bad = self.slice(start - 2, self.chars.len());
         try!(self.noteof(format!("Invalid hex escape sequence '{}'",
-                                 bad).as_slice()))
+                                 bad).as_slice()));
         self.parse_hex_digits(self.slice(start, end).as_slice())
     }
 
@@ -736,7 +741,7 @@ impl<'a> Parser<'a> {
     // is '<'.
     // When done, parser will be at the closing '>' character.
     fn parse_named_capture(&mut self) -> Result<(), Error> {
-        try!(self.noteof("a capture name"))
+        try!(self.noteof("a capture name"));
         let closer =
             match self.pos('>') {
                 Some(i) => i,
@@ -746,7 +751,7 @@ impl<'a> Parser<'a> {
             return self.err("Capture names must have at least 1 character.")
         }
         let name = self.slice(self.chari, closer);
-        if !name.as_slice().chars().all(is_valid_cap) {
+        if !name.chars().all(is_valid_cap) {
             return self.err(
                 "Capture names can only have underscores, letters and digits.")
         }
@@ -766,7 +771,8 @@ impl<'a> Parser<'a> {
     // character.
     fn parse_group_opts(&mut self) -> Result<(), Error> {
         if self.peek_is(1, 'P') && self.peek_is(2, '<') {
-            try!(self.expect('P')) try!(self.expect('<'))
+            try!(self.expect('P'));
+            try!(self.expect('<'));
             return self.parse_named_capture()
         }
         let start = self.chari;
@@ -774,7 +780,8 @@ impl<'a> Parser<'a> {
         let mut sign = 1i;
         let mut saw_flag = false;
         loop {
-            try!(self.noteof("expected non-empty set of flags or closing ')'"))
+            try!(self.noteof(
+                    "expected non-empty set of flags or closing ')'"));
             match self.cur() {
                 'i' => { flags = flags | FLAG_NOCASE;     saw_flag = true},
                 'm' => { flags = flags | FLAG_MULTI;      saw_flag = true},
@@ -816,7 +823,7 @@ impl<'a> Parser<'a> {
     // If it is, then the next character is consumed.
     fn get_next_greedy(&mut self) -> Result<Greed, Error> {
         Ok(if self.peek_is(1, '?') {
-            try!(self.expect('?'))
+            try!(self.expect('?'));
             Ungreedy
         } else {
             Greedy
@@ -831,8 +838,9 @@ impl<'a> Parser<'a> {
     // Otherwise, an error will be returned.
     // Generally, `allow_start` is only true when you're *not* expecting an
     // opening parenthesis.
-    fn pos_last(&self, allow_start: bool, pred: |&BuildAst| -> bool)
-               -> Result<uint, Error> {
+    fn pos_last<P>(&self, allow_start: bool, pred: P) -> Result<uint, Error> where
+        P: FnMut(&BuildAst) -> bool,
+   {
         let from = match self.stack.iter().rev().position(pred) {
             Some(i) => i,
             None => {
@@ -880,8 +888,9 @@ impl<'a> Parser<'a> {
     // build_from combines all AST elements starting at 'from' in the
     // parser's stack using 'mk' to combine them. If any such element is not an
     // AST then it is popped off the stack and ignored.
-    fn build_from(&mut self, from: uint, mk: |Ast, Ast| -> Ast)
-                 -> Result<Ast, Error> {
+    fn build_from<F>(&mut self, from: uint, mut mk: F) -> Result<Ast, Error> where
+        F: FnMut(Ast, Ast) -> Ast,
+    {
         if from >= self.stack.len() {
             return self.err("Empty group or alternate not allowed.")
         }
@@ -1022,8 +1031,8 @@ fn is_valid_cap(c: char) -> bool {
 
 fn find_class(classes: NamedClasses, name: &str) -> Option<Vec<(char, char)>> {
     match classes.binary_search(|&(s, _)| s.cmp(name)) {
-        slice::Found(i) => Some(classes[i].val1().to_vec()),
-        slice::NotFound(_) => None,
+        BinarySearchResult::Found(i) => Some(classes[i].1.to_vec()),
+        BinarySearchResult::NotFound(_) => None,
     }
 }
 

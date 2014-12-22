@@ -7,6 +7,7 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+use self::LockstepIterSize::*;
 
 use ast;
 use ast::{TokenTree, TtDelimited, TtToken, TtSequence, Ident};
@@ -94,7 +95,7 @@ fn lookup_cur_matched_by_matched(r: &TtReader, start: Rc<NamedMatch>) -> Rc<Name
 }
 
 fn lookup_cur_matched(r: &TtReader, name: Ident) -> Option<Rc<NamedMatch>> {
-    let matched_opt = r.interpolations.find_copy(&name);
+    let matched_opt = r.interpolations.get(&name).cloned();
     matched_opt.map(|s| lookup_cur_matched_by_matched(r, s))
 }
 
@@ -105,6 +106,8 @@ enum LockstepIterSize {
     LisContradiction(String),
 }
 
+// NOTE(stage0): Remove impl after a snapshot
+#[cfg(stage0)]
 impl Add<LockstepIterSize, LockstepIterSize> for LockstepIterSize {
     fn add(&self, other: &LockstepIterSize) -> LockstepIterSize {
         match *self {
@@ -116,6 +119,28 @@ impl Add<LockstepIterSize, LockstepIterSize> for LockstepIterSize {
                 LisConstraint(r_len, _) if l_len == r_len => self.clone(),
                 LisConstraint(r_len, r_id) => {
                     let l_n = token::get_ident(l_id);
+                    let r_n = token::get_ident(r_id);
+                    LisContradiction(format!("inconsistent lockstep iteration: \
+                                              '{}' has {} items, but '{}' has {}",
+                                              l_n, l_len, r_n, r_len).to_string())
+                }
+            },
+        }
+    }
+}
+
+#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
+impl Add<LockstepIterSize, LockstepIterSize> for LockstepIterSize {
+    fn add(self, other: LockstepIterSize) -> LockstepIterSize {
+        match self {
+            LisUnconstrained => other,
+            LisContradiction(_) => self,
+            LisConstraint(l_len, ref l_id) => match other {
+                LisUnconstrained => self.clone(),
+                LisContradiction(_) => other,
+                LisConstraint(r_len, _) if l_len == r_len => self.clone(),
+                LisConstraint(r_len, r_id) => {
+                    let l_n = token::get_ident(l_id.clone());
                     let r_n = token::get_ident(r_id);
                     LisContradiction(format!("inconsistent lockstep iteration: \
                                               '{}' has {} items, but '{}' has {}",

@@ -16,10 +16,10 @@ pub fn main() {
     enum t { tag1(String), tag2, }
 
 
-    match tag1("test".to_string()) {
-      tag2 => panic!(),
-      tag1(ref s) if "test" != s.as_slice() => panic!(),
-      tag1(ref s) if "test" == s.as_slice() => (),
+    match t::tag1("test".to_string()) {
+      t::tag2 => panic!(),
+      t::tag1(ref s) if "test" != s.as_slice() => panic!(),
+      t::tag1(ref s) if "test" == s.as_slice() => (),
       _ => panic!()
     }
 

@@ -13,5 +13,5 @@
 #![unstable]
 #![doc(primitive = "uint")]
 
-uint_module!(uint, int, ::int::BITS)
+uint_module! { uint, int, ::int::BITS }
 

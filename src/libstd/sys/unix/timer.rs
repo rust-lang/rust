@@ -46,6 +46,8 @@
 //!
 //! Note that all time units in this file are in *milliseconds*.
 
+pub use self::Req::*;
+
 use libc;
 use mem;
 use os;
@@ -58,7 +60,7 @@ use sys_common::helper_thread::Helper;
 use prelude::*;
 use io::IoResult;
 
-helper_init!(static HELPER: Helper<Req>)
+helper_init! { static HELPER: Helper<Req> }
 
 pub trait Callback {
     fn call(&mut self);
@@ -193,7 +195,7 @@ fn helper(input: libc::c_int, messages: Receiver<Req>, _: ()) {
 
                 // drain the file descriptor
                 let mut buf = [0];
-                assert_eq!(fd.read(buf).ok().unwrap(), 1);
+                assert_eq!(fd.read(&mut buf).ok().unwrap(), 1);
             }
 
             -1 if os::errno() == libc::EINTR as uint => {}

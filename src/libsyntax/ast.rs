@@ -10,6 +10,55 @@
 
 // The Rust abstract syntax tree.
 
+pub use self::AsmDialect::*;
+pub use self::AttrStyle::*;
+pub use self::BindingMode::*;
+pub use self::BinOp::*;
+pub use self::BlockCheckMode::*;
+pub use self::CaptureClause::*;
+pub use self::Decl_::*;
+pub use self::ExplicitSelf_::*;
+pub use self::Expr_::*;
+pub use self::FloatTy::*;
+pub use self::FunctionRetTy::*;
+pub use self::ForeignItem_::*;
+pub use self::ImplItem::*;
+pub use self::InlinedItem::*;
+pub use self::IntTy::*;
+pub use self::Item_::*;
+pub use self::KleeneOp::*;
+pub use self::Lit_::*;
+pub use self::LitIntType::*;
+pub use self::LocalSource::*;
+pub use self::Mac_::*;
+pub use self::MacStmtStyle::*;
+pub use self::MatchSource::*;
+pub use self::MetaItem_::*;
+pub use self::Method_::*;
+pub use self::Mutability::*;
+pub use self::Onceness::*;
+pub use self::Pat_::*;
+pub use self::PathListItem_::*;
+pub use self::PatWildKind::*;
+pub use self::PrimTy::*;
+pub use self::Sign::*;
+pub use self::Stmt_::*;
+pub use self::StrStyle::*;
+pub use self::StructFieldKind::*;
+pub use self::TokenTree::*;
+pub use self::TraitItem::*;
+pub use self::Ty_::*;
+pub use self::TyParamBound::*;
+pub use self::UintTy::*;
+pub use self::UnboxedClosureKind::*;
+pub use self::UnOp::*;
+pub use self::UnsafeSource::*;
+pub use self::VariantKind::*;
+pub use self::ViewItem_::*;
+pub use self::ViewPath_::*;
+pub use self::Visibility::*;
+pub use self::PathParameters::*;
+
 use codemap::{Span, Spanned, DUMMY_SP, ExpnId};
 use abi::Abi;
 use ast_util;
@@ -31,7 +80,7 @@ use serialize::{Encodable, Decodable, Encoder, Decoder};
 /// table) and a SyntaxContext to track renaming and
 /// macro expansion per Flatt et al., "Macros
 /// That Work Together"
-#[deriving(Clone, Hash, PartialOrd, Eq, Ord)]
+#[deriving(Clone, Copy, Hash, PartialOrd, Eq, Ord)]
 pub struct Ident {
     pub name: Name,
     pub ctxt: SyntaxContext
@@ -46,7 +95,7 @@ impl Ident {
     }
 
     pub fn encode_with_hygiene(&self) -> String {
-        format!("\x00name_{:u},ctxt_{:u}\x00",
+        format!("\x00name_{},ctxt_{}\x00",
                 self.name.uint(),
                 self.ctxt)
     }
@@ -109,7 +158,7 @@ pub const ILLEGAL_CTXT : SyntaxContext = 1;
 
 /// A name is a part of an identifier, representing a string or gensym. It's
 /// the result of interning.
-#[deriving(Eq, Ord, PartialEq, PartialOrd, Hash, Encodable, Decodable, Clone)]
+#[deriving(Copy, Eq, Ord, PartialEq, PartialOrd, Hash, Encodable, Decodable, Clone)]
 pub struct Name(pub u32);
 
 impl Name {
@@ -148,7 +197,7 @@ impl<D:Decoder<E>, E> Decodable<D, E> for Ident {
 /// Function name (not all functions have names)
 pub type FnIdent = Option<Ident>;
 
-#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+#[deriving(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub struct Lifetime {
     pub id: NodeId,
     pub span: Span,
@@ -200,6 +249,7 @@ impl PathParameters {
         AngleBracketedParameters(AngleBracketedParameterData {
             lifetimes: Vec::new(),
             types: OwnedSlice::empty(),
+            bindings: OwnedSlice::empty(),
         })
     }
 
@@ -227,11 +277,9 @@ impl PathParameters {
         }
     }
 
+    /// Returns the types that the user wrote. Note that these do not necessarily map to the type
+    /// parameters in the parenthesized case.
     pub fn types(&self) -> Vec<&P<Ty>> {
-        /*!
-         * Returns the types that the user wrote. Note that these do not
-         * necessarily map to the type parameters in the parenthesized case.
-         */
         match *self {
             AngleBracketedParameters(ref data) => {
                 data.types.iter().collect()
@@ -254,6 +302,17 @@ impl PathParameters {
             }
         }
     }
+
+    pub fn bindings(&self) -> Vec<&P<TypeBinding>> {
+        match *self {
+            AngleBracketedParameters(ref data) => {
+                data.bindings.iter().collect()
+            }
+            ParenthesizedParameters(_) => {
+                Vec::new()
+            }
+        }
+    }
 }
 
 /// A path like `Foo<'a, T>`
@@ -263,11 +322,14 @@ pub struct AngleBracketedParameterData {
     pub lifetimes: Vec<Lifetime>,
     /// The type parameters for this path segment, if present.
     pub types: OwnedSlice<P<Ty>>,
+    /// Bindings (equality constraints) on associated types, if present.
+    /// E.g., `Foo<A=Bar>`.
+    pub bindings: OwnedSlice<P<TypeBinding>>,
 }
 
 impl AngleBracketedParameterData {
     fn is_empty(&self) -> bool {
-        self.lifetimes.is_empty() && self.types.is_empty()
+        self.lifetimes.is_empty() && self.types.is_empty() && self.bindings.is_empty()
     }
 }
 
@@ -285,7 +347,7 @@ pub type CrateNum = u32;
 
 pub type NodeId = u32;
 
-#[deriving(Clone, Eq, Ord, PartialOrd, PartialEq, Encodable, Decodable, Hash, Show)]
+#[deriving(Clone, Copy, Eq, Ord, PartialOrd, PartialEq, Encodable, Decodable, Hash, Show)]
 pub struct DefId {
     pub krate: CrateNum,
     pub node: NodeId,
@@ -351,11 +413,25 @@ pub struct WhereClause {
 }
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
-pub struct WherePredicate {
+pub enum WherePredicate {
+    BoundPredicate(WhereBoundPredicate),
+    EqPredicate(WhereEqPredicate)
+}
+
+#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+pub struct WhereBoundPredicate {
     pub id: NodeId,
     pub span: Span,
     pub ident: Ident,
     pub bounds: OwnedSlice<TyParamBound>,
+}
+
+#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+pub struct WhereEqPredicate {
+    pub id: NodeId,
+    pub span: Span,
+    pub path: Path,
+    pub ty: P<Ty>,
 }
 
 /// The set of MetaItems that define the compilation environment of the crate,
@@ -429,13 +505,13 @@ pub struct FieldPat {
     pub is_shorthand: bool,
 }
 
-#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+#[deriving(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum BindingMode {
     BindByRef(Mutability),
     BindByValue(Mutability),
 }
 
-#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+#[deriving(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum PatWildKind {
     /// Represents the wildcard pattern `_`
     PatWildSingle,
@@ -473,13 +549,13 @@ pub enum Pat_ {
     PatMac(Mac),
 }
 
-#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+#[deriving(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum Mutability {
     MutMutable,
     MutImmutable,
 }
 
-#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+#[deriving(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum BinOp {
     BiAdd,
     BiSub,
@@ -501,7 +577,7 @@ pub enum BinOp {
     BiGt,
 }
 
-#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+#[deriving(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum UnOp {
     UnUniq,
     UnDeref,
@@ -522,13 +598,25 @@ pub enum Stmt_ {
     /// Expr with trailing semi-colon (may have any type):
     StmtSemi(P<Expr>, NodeId),
 
-    /// bool: is there a trailing semi-colon?
-    StmtMac(Mac, bool),
+    StmtMac(Mac, MacStmtStyle),
+}
+
+#[deriving(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+pub enum MacStmtStyle {
+    /// The macro statement had a trailing semicolon, e.g. `foo! { ... };`
+    /// `foo!(...);`, `foo![...];`
+    MacStmtWithSemicolon,
+    /// The macro statement had braces; e.g. foo! { ... }
+    MacStmtWithBraces,
+    /// The macro statement had parentheses or brackets and no semicolon; e.g.
+    /// `foo!(...)`. All of these will end up being converted into macro
+    /// expressions.
+    MacStmtWithoutBraces,
 }
 
 /// Where a local declaration came from: either a true `let ... =
 /// ...;`, or one desugared from the pattern of a for loop.
-#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+#[deriving(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum LocalSource {
     LocalLet,
     LocalFor,
@@ -575,13 +663,13 @@ pub struct Field {
 
 pub type SpannedIdent = Spanned<Ident>;
 
-#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+#[deriving(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum BlockCheckMode {
     DefaultBlock,
     UnsafeBlock(UnsafeSource),
 }
 
-#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+#[deriving(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum UnsafeSource {
     CompilerGenerated,
     UserProvided,
@@ -597,7 +685,7 @@ pub struct Expr {
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum Expr_ {
     /// First expr is the place; second expr is the value.
-    ExprBox(P<Expr>, P<Expr>),
+    ExprBox(Option<P<Expr>>, P<Expr>),
     ExprVec(Vec<P<Expr>>),
     ExprCall(P<Expr>, Vec<P<Expr>>),
     ExprMethodCall(SpannedIdent, Vec<P<Ty>>, Vec<P<Expr>>),
@@ -618,15 +706,13 @@ pub enum Expr_ {
     // FIXME #6993: change to Option<Name> ... or not, if these are hygienic.
     ExprLoop(P<Block>, Option<Ident>),
     ExprMatch(P<Expr>, Vec<Arm>, MatchSource),
-    ExprFnBlock(CaptureClause, P<FnDecl>, P<Block>),
-    ExprProc(P<FnDecl>, P<Block>),
-    ExprUnboxedFn(CaptureClause, UnboxedClosureKind, P<FnDecl>, P<Block>),
+    ExprClosure(CaptureClause, Option<UnboxedClosureKind>, P<FnDecl>, P<Block>),
     ExprBlock(P<Block>),
 
     ExprAssign(P<Expr>, P<Expr>),
     ExprAssignOp(BinOp, P<Expr>, P<Expr>),
-    ExprField(P<Expr>, SpannedIdent, Vec<P<Ty>>),
-    ExprTupField(P<Expr>, Spanned<uint>, Vec<P<Ty>>),
+    ExprField(P<Expr>, SpannedIdent),
+    ExprTupField(P<Expr>, Spanned<uint>),
     ExprIndex(P<Expr>, P<Expr>),
     ExprSlice(P<Expr>, Option<P<Expr>>, Option<P<Expr>>, Mutability),
 
@@ -657,22 +743,22 @@ pub enum Expr_ {
 ///
 ///     <Vec<T> as SomeTrait>::SomeAssociatedItem
 ///      ^~~~~     ^~~~~~~~~   ^~~~~~~~~~~~~~~~~~
-///      for_type  trait_name  item_name
+///      self_type  trait_name  item_name
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub struct QPath {
-    pub for_type: P<Ty>,
-    pub trait_name: Path,
+    pub self_type: P<Ty>,
+    pub trait_ref: P<TraitRef>,
     pub item_name: Ident,
 }
 
-#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+#[deriving(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum MatchSource {
     MatchNormal,
     MatchIfLetDesugar,
     MatchWhileLetDesugar,
 }
 
-#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+#[deriving(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum CaptureClause {
     CaptureByValue,
     CaptureByRef,
@@ -728,7 +814,7 @@ pub struct SequenceRepetition {
 
 /// A Kleene-style [repetition operator](http://en.wikipedia.org/wiki/Kleene_star)
 /// for token sequences.
-#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+#[deriving(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum KleeneOp {
     ZeroOrMore,
     OneOrMore,
@@ -789,7 +875,7 @@ impl TokenTree {
                     tts: vec![TtToken(sp, token::Ident(token::str_to_ident("doc"),
                                                        token::Plain)),
                               TtToken(sp, token::Eq),
-                              TtToken(sp, token::LitStr(name))],
+                              TtToken(sp, token::Literal(token::Str_(name), None))],
                     close_span: sp,
                 }))
             }
@@ -843,7 +929,7 @@ pub enum Mac_ {
     MacInvocTT(Path, Vec<TokenTree> , SyntaxContext),   // new macro-invocation
 }
 
-#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+#[deriving(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum StrStyle {
     CookedStr,
     RawStr(uint)
@@ -851,13 +937,13 @@ pub enum StrStyle {
 
 pub type Lit = Spanned<Lit_>;
 
-#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+#[deriving(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum Sign {
     Minus,
     Plus
 }
 
-impl<T: Int> Sign {
+impl<T> Sign where T: Int {
     pub fn new(n: T) -> Sign {
         if n < Int::zero() {
             Minus
@@ -867,7 +953,7 @@ impl<T: Int> Sign {
     }
 }
 
-#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+#[deriving(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum LitIntType {
     SignedIntLit(IntTy, Sign),
     UnsignedIntLit(UintTy),
@@ -893,7 +979,6 @@ pub enum Lit_ {
     LitInt(u64, LitIntType),
     LitFloat(InternedString, FloatTy),
     LitFloatUnsuffixed(InternedString),
-    LitNil,
     LitBool(bool),
 }
 
@@ -918,7 +1003,7 @@ pub struct TypeField {
 pub struct TypeMethod {
     pub ident: Ident,
     pub attrs: Vec<Attribute>,
-    pub fn_style: FnStyle,
+    pub unsafety: Unsafety,
     pub abi: Abi,
     pub decl: P<FnDecl>,
     pub generics: Generics,
@@ -961,7 +1046,7 @@ pub struct Typedef {
     pub typ: P<Ty>,
 }
 
-#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash)]
+#[deriving(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash)]
 pub enum IntTy {
     TyI,
     TyI8,
@@ -986,7 +1071,7 @@ impl IntTy {
     }
 }
 
-#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash)]
+#[deriving(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash)]
 pub enum UintTy {
     TyU,
     TyU8,
@@ -1011,7 +1096,7 @@ impl fmt::Show for UintTy {
     }
 }
 
-#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash)]
+#[deriving(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash)]
 pub enum FloatTy {
     TyF32,
     TyF64,
@@ -1031,6 +1116,16 @@ impl FloatTy {
     }
 }
 
+// Bind a type to an associated type: `A=Foo`.
+#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+pub struct TypeBinding {
+    pub id: NodeId,
+    pub ident: Ident,
+    pub ty: P<Ty>,
+    pub span: Span,
+}
+
+
 // NB PartialEq method appears below.
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub struct Ty {
@@ -1040,7 +1135,7 @@ pub struct Ty {
 }
 
 /// Not represented directly in the AST, referred to by name through a ty_path.
-#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+#[deriving(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum PrimTy {
     TyInt(IntTy),
     TyUint(UintTy),
@@ -1050,7 +1145,7 @@ pub enum PrimTy {
     TyChar
 }
 
-#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash)]
+#[deriving(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash)]
 pub enum Onceness {
     Once,
     Many
@@ -1069,7 +1164,7 @@ impl fmt::Show for Onceness {
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub struct ClosureTy {
     pub lifetimes: Vec<LifetimeDef>,
-    pub fn_style: FnStyle,
+    pub unsafety: Unsafety,
     pub onceness: Onceness,
     pub decl: P<FnDecl>,
     pub bounds: TyParamBounds,
@@ -1077,7 +1172,7 @@ pub struct ClosureTy {
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub struct BareFnTy {
-    pub fn_style: FnStyle,
+    pub unsafety: Unsafety,
     pub abi: Abi,
     pub lifetimes: Vec<LifetimeDef>,
     pub decl: P<FnDecl>
@@ -1086,12 +1181,6 @@ pub struct BareFnTy {
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 /// The different kinds of types recognized by the compiler
 pub enum Ty_ {
-    /// The unit type (`()`)
-    TyNil,
-    /// The bottom type (`!`)
-    TyBot,
-    TyUniq(P<Ty>),
-    /// An array (`[T]`)
     TyVec(P<Ty>),
     /// A fixed length array (`[T, ..n]`)
     TyFixedLengthVec(P<Ty>, P<Expr>),
@@ -1101,8 +1190,6 @@ pub enum Ty_ {
     TyRptr(Option<Lifetime>, MutTy),
     /// A closure (e.g. `|uint| -> bool`)
     TyClosure(P<ClosureTy>),
-    /// A procedure (e.g `proc(uint) -> bool`)
-    TyProc(P<ClosureTy>),
     /// A bare function (e.g. `fn(uint) -> bool`)
     TyBareFn(P<BareFnTy>),
     /// A tuple (`(A, B, C, D,...)`)
@@ -1110,9 +1197,11 @@ pub enum Ty_ {
     /// A path (`module::module::...::Type`) or primitive
     ///
     /// Type parameters are stored in the Path itself
-    TyPath(Path, Option<TyParamBounds>, NodeId), // for #7264; see above
+    TyPath(Path, NodeId),
+    /// Something like `A+B`. Note that `B` must always be a path.
+    TyObjectSum(P<Ty>, TyParamBounds),
     /// A type like `for<'a> Foo<&'a Bar>`
-    TyPolyTraitRef(P<PolyTraitRef>),
+    TyPolyTraitRef(TyParamBounds),
     /// A "qualified path", e.g. `<Vec<T> as SomeTrait>::SomeType`
     TyQPath(P<QPath>),
     /// No-op; kept solely so that we can pretty-print faithfully
@@ -1124,7 +1213,7 @@ pub enum Ty_ {
     TyInfer,
 }
 
-#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+#[deriving(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum AsmDialect {
     AsmAtt,
     AsmIntel
@@ -1136,7 +1225,7 @@ pub struct InlineAsm {
     pub asm_str_style: StrStyle,
     pub outputs: Vec<(InternedString, P<Expr>, bool)>,
     pub inputs: Vec<(InternedString, P<Expr>)>,
-    pub clobbers: InternedString,
+    pub clobbers: Vec<InternedString>,
     pub volatile: bool,
     pub alignstack: bool,
     pub dialect: AsmDialect,
@@ -1175,35 +1264,41 @@ impl Arg {
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub struct FnDecl {
     pub inputs: Vec<Arg>,
-    pub output: P<Ty>,
-    pub cf: RetStyle,
+    pub output: FunctionRetTy,
     pub variadic: bool
 }
 
-#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash)]
-pub enum FnStyle {
-    /// Declared with "unsafe fn"
-    UnsafeFn,
-    /// Declared with "fn"
-    NormalFn,
+#[deriving(Copy, Clone, PartialEq, Eq, Encodable, Decodable, Hash)]
+pub enum Unsafety {
+    Unsafe,
+    Normal,
 }
 
-impl fmt::Show for FnStyle {
+impl fmt::Show for Unsafety {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            NormalFn => "normal".fmt(f),
-            UnsafeFn => "unsafe".fmt(f),
+            Unsafety::Normal => "normal".fmt(f),
+            Unsafety::Unsafe => "unsafe".fmt(f),
         }
     }
 }
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
-pub enum RetStyle {
+pub enum FunctionRetTy {
     /// Functions with return type ! that always
     /// raise an error or exit (i.e. never return to the caller)
-    NoReturn,
+    NoReturn(Span),
     /// Everything else
-    Return,
+    Return(P<Ty>),
+}
+
+impl FunctionRetTy {
+    pub fn span(&self) -> Span {
+        match *self {
+            NoReturn(span) => span,
+            Return(ref ty) => ty.span
+        }
+    }
 }
 
 /// Represents the kind of 'self' associated with a method
@@ -1236,7 +1331,7 @@ pub enum Method_ {
              Generics,
              Abi,
              ExplicitSelf,
-             FnStyle,
+             Unsafety,
              P<FnDecl>,
              P<Block>,
              Visibility),
@@ -1290,10 +1385,10 @@ pub struct Variant_ {
 
 pub type Variant = Spanned<Variant_>;
 
-#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+#[deriving(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum PathListItem_ {
-    PathListIdent { pub name: Ident, pub id: NodeId },
-    PathListMod { pub id: NodeId }
+    PathListIdent { name: Ident, id: NodeId },
+    PathListMod { id: NodeId }
 }
 
 impl PathListItem_ {
@@ -1349,13 +1444,13 @@ pub type Attribute = Spanned<Attribute_>;
 /// Distinguishes between Attributes that decorate items and Attributes that
 /// are contained as statements within items. These two cases need to be
 /// distinguished for pretty-printing.
-#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+#[deriving(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum AttrStyle {
     AttrOuter,
     AttrInner,
 }
 
-#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+#[deriving(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub struct AttrId(pub uint);
 
 /// Doc-comments are promoted to attributes that have is_sugared_doc = true
@@ -1387,7 +1482,7 @@ pub struct PolyTraitRef {
     pub trait_ref: TraitRef
 }
 
-#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+#[deriving(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum Visibility {
     Public,
     Inherited,
@@ -1421,7 +1516,7 @@ impl StructField_ {
 
 pub type StructField = Spanned<StructField_>;
 
-#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+#[deriving(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum StructFieldKind {
     NamedField(Ident, Visibility),
     /// Element of a tuple-like struct
@@ -1464,19 +1559,21 @@ pub struct Item {
 pub enum Item_ {
     ItemStatic(P<Ty>, Mutability, P<Expr>),
     ItemConst(P<Ty>, P<Expr>),
-    ItemFn(P<FnDecl>, FnStyle, Abi, Generics, P<Block>),
+    ItemFn(P<FnDecl>, Unsafety, Abi, Generics, P<Block>),
     ItemMod(Mod),
     ItemForeignMod(ForeignMod),
     ItemTy(P<Ty>, Generics),
     ItemEnum(EnumDef, Generics),
     ItemStruct(P<StructDef>, Generics),
     /// Represents a Trait Declaration
-    ItemTrait(Generics,
+    ItemTrait(Unsafety,
+              Generics,
               Option<TraitRef>, // (optional) default bound not required for Self.
                                 // Currently, only Sized makes sense here.
               TyParamBounds,
               Vec<TraitItem>),
-    ItemImpl(Generics,
+    ItemImpl(Unsafety,
+             Generics,
              Option<TraitRef>, // (optional) trait this impl implements
              P<Ty>, // self
              Vec<ImplItem>),
@@ -1527,7 +1624,7 @@ impl ForeignItem_ {
     }
 }
 
-#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+#[deriving(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum UnboxedClosureKind {
     FnUnboxedClosureKind,
     FnMutUnboxedClosureKind,

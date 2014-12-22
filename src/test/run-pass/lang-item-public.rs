@@ -13,6 +13,7 @@
 // ignore-windows #13361
 
 #![no_std]
+#![feature(lang_items)]
 
 extern crate "lang-item-public" as lang_lib;
 

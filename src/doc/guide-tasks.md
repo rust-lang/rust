@@ -1,5 +1,7 @@
 % The Rust Tasks and Communication Guide
 
+**NOTE** This guide is badly out of date an needs to be rewritten.
+
 # Introduction
 
 Rust provides safe concurrent abstractions through a number of core library
@@ -22,17 +24,18 @@ from shared mutable state.
 At its simplest, creating a task is a matter of calling the `spawn` function
 with a closure argument. `spawn` executes the closure in the new task.
 
-```{rust}
+```{rust,ignore}
 # use std::task::spawn;
 
 // Print something profound in a different task using a named function
 fn print_message() { println!("I am running in a different task!"); }
 spawn(print_message);
 
-// Alternatively, use a `proc` expression instead of a named function.
-// The `proc` expression evaluates to an (unnamed) proc.
-// That proc will call `println!(...)` when the spawned task runs.
-spawn(proc() println!("I am also running in a different task!") );
+// Alternatively, use a `move ||` expression instead of a named function.
+// `||` expressions evaluate to an unnamed closure. The `move` keyword
+// indicates that the closure should take ownership of any variables it
+// touches.
+spawn(move || println!("I am also running in a different task!"));
 ```
 
 In Rust, a task is not a concept that appears in the language semantics.
@@ -40,20 +43,25 @@ Instead, Rust's type system provides all the tools necessary to implement safe
 concurrency: particularly, ownership. The language leaves the implementation
 details to the standard library.
 
-The `spawn` function has a very simple type signature: `fn spawn(f: proc():
-Send)`. Because it accepts only procs, and procs contain only owned data,
-`spawn` can safely move the entire proc and all its associated state into an
-entirely different task for execution. Like any closure, the function passed to
-`spawn` may capture an environment that it carries across tasks.
+The `spawn` function has the type signature: `fn
+spawn<F:FnOnce()+Send>(f: F)`.  This indicates that it takes as
+argument a closure (of type `F`) that it will run exactly once. This
+closure is limited to capturing `Send`-able data from its environment
+(that is, data which is deeply owned). Limiting the closure to `Send`
+ensures that `spawn` can safely move the entire closure and all its
+associated state into an entirely different task for execution.
 
-```{rust}
+```{rust,ignore}
 # use std::task::spawn;
 # fn generate_task_number() -> int { 0 }
 // Generate some state locally
 let child_task_number = generate_task_number();
 
-spawn(proc() {
-    // Capture it in the remote task
+spawn(move || {
+    // Capture it in the remote task. The `move` keyword indicates
+    // that this closure should move `child_task_number` into its
+    // environment, rather than capturing a reference into the
+    // enclosing stack frame.
     println!("I am child number {}", child_task_number);
 });
 ```
@@ -69,12 +77,12 @@ The simplest way to create a channel is to use the `channel` function to create 
 of a channel, and a **receiver** is the receiving endpoint. Consider the following
 example of calculating two results concurrently:
 
-```{rust}
+```{rust,ignore}
 # use std::task::spawn;
 
 let (tx, rx): (Sender<int>, Receiver<int>) = channel();
 
-spawn(proc() {
+spawn(move || {
     let result = some_expensive_computation();
     tx.send(result);
 });
@@ -90,7 +98,7 @@ stream for sending and receiving integers (the left-hand side of the `let`,
 `(tx, rx)`, is an example of a destructuring let: the pattern separates a tuple
 into its component parts).
 
-```{rust}
+```{rust,ignore}
 let (tx, rx): (Sender<int>, Receiver<int>) = channel();
 ```
 
@@ -98,11 +106,11 @@ The child task will use the sender to send data to the parent task, which will
 wait to receive the data on the receiver. The next statement spawns the child
 task.
 
-```{rust}
+```{rust,ignore}
 # use std::task::spawn;
 # fn some_expensive_computation() -> int { 42 }
 # let (tx, rx) = channel();
-spawn(proc() {
+spawn(move || {
     let result = some_expensive_computation();
     tx.send(result);
 });
@@ -117,7 +125,7 @@ computation, then sends the result over the captured channel.
 Finally, the parent continues with some other expensive computation, then waits
 for the child's result to arrive on the receiver:
 
-```{rust}
+```{rust,ignore}
 # fn some_other_expensive_computation() {}
 # let (tx, rx) = channel::<int>();
 # tx.send(0);
@@ -135,26 +143,26 @@ results across a number of tasks? The following program is ill-typed:
 # fn some_expensive_computation() -> int { 42 }
 let (tx, rx) = channel();
 
-spawn(proc() {
+spawn(move || {
     tx.send(some_expensive_computation());
 });
 
 // ERROR! The previous spawn statement already owns the sender,
 // so the compiler will not allow it to be captured again
-spawn(proc() {
+spawn(move || {
     tx.send(some_expensive_computation());
 });
 ```
 
 Instead we can clone the `tx`, which allows for multiple senders.
 
-```{rust}
+```{rust,ignore}
 let (tx, rx) = channel();
 
 for init_val in range(0u, 3) {
     // Create a new channel handle to distribute to the child task
     let child_tx = tx.clone();
-    spawn(proc() {
+    spawn(move || {
         child_tx.send(some_expensive_computation(init_val));
     });
 }
@@ -173,13 +181,13 @@ Note that the above cloning example is somewhat contrived since you could also
 simply use three `Sender` pairs, but it serves to illustrate the point. For
 reference, written with multiple streams, it might look like the example below.
 
-```{rust}
+```{rust,ignore}
 # use std::task::spawn;
 
 // Create a vector of ports, one for each child task
 let rxs = Vec::from_fn(3, |init_val| {
     let (tx, rx) = channel();
-    spawn(proc() {
+    spawn(move || {
         tx.send(some_expensive_computation(init_val));
     });
     rx
@@ -197,7 +205,7 @@ getting the result later.
 
 The basic example below illustrates this.
 
-```{rust}
+```{rust,ignore}
 use std::sync::Future;
 
 # fn main() {
@@ -207,7 +215,7 @@ fn fib(n: u64) -> u64 {
     12586269025
 }
 
-let mut delayed_fib = Future::spawn(proc() fib(50));
+let mut delayed_fib = Future::spawn(move || fib(50));
 make_a_sandwich();
 println!("fib(50) = {}", delayed_fib.get())
 # }
@@ -224,7 +232,7 @@ called.
 Here is another example showing how futures allow you to background
 computations. The workload will be distributed on the available cores.
 
-```{rust}
+```{rust,ignore}
 # use std::num::Float;
 # use std::sync::Future;
 fn partial_sum(start: uint) -> f64 {
@@ -236,7 +244,7 @@ fn partial_sum(start: uint) -> f64 {
 }
 
 fn main() {
-    let mut futures = Vec::from_fn(200, |ind| Future::spawn( proc() { partial_sum(ind) }));
+    let mut futures = Vec::from_fn(200, |ind| Future::spawn(move || partial_sum(ind)));
 
     let mut final_res = 0f64;
     for ft in futures.iter_mut()  {
@@ -262,7 +270,7 @@ Here is a small example showing how to use Arcs. We wish to run concurrently
 several computations on a single large vector of floats. Each task needs the
 full vector to perform its duty.
 
-```{rust}
+```{rust,ignore}
 use std::num::Float;
 use std::rand;
 use std::sync::Arc;
@@ -278,7 +286,7 @@ fn main() {
     for num in range(1u, 10) {
         let task_numbers = numbers_arc.clone();
 
-        spawn(proc() {
+        spawn(move || {
             println!("{}-norm = {}", num, pnorm(task_numbers.as_slice(), num));
         });
     }
@@ -289,7 +297,7 @@ The function `pnorm` performs a simple computation on the vector (it computes
 the sum of its items at the power given as argument and takes the inverse power
 of this value). The Arc on the vector is created by the line:
 
-```{rust}
+```{rust,ignore}
 # use std::rand;
 # use std::sync::Arc;
 # fn main() {
@@ -303,7 +311,7 @@ the wrapper and not its contents. Within the task's procedure, the captured
 Arc reference can be used as a shared reference to the underlying vector as
 if it were local.
 
-```{rust}
+```{rust,ignore}
 # use std::rand;
 # use std::sync::Arc;
 # fn pnorm(nums: &[f64], p: uint) -> f64 { 4.0 }
@@ -312,7 +320,7 @@ if it were local.
 # let numbers_arc = Arc::new(numbers);
 # let num = 4;
 let task_numbers = numbers_arc.clone();
-spawn(proc() {
+spawn(move || {
     // Capture task_numbers and use it as if it was the underlying vector
     println!("{}-norm = {}", num, pnorm(task_numbers.as_slice(), num));
 });
@@ -340,17 +348,17 @@ and `()`, callers can pattern-match on a result to check whether it's an `Ok`
 result with an `int` field (representing a successful result) or an `Err` result
 (representing termination with an error).
 
-```{rust}
-# use std::task;
+```{rust,ignore}
+# use std::thread::Thread;
 # fn some_condition() -> bool { false }
 # fn calculate_result() -> int { 0 }
-let result: Result<int, Box<std::any::Any + Send>> = task::try(proc() {
+let result: Result<int, Box<std::any::Any + Send>> = Thread::spawn(move || {
     if some_condition() {
         calculate_result()
     } else {
         panic!("oops!");
     }
-});
+}).join();
 assert!(result.is_err());
 ```
 

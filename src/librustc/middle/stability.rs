@@ -43,7 +43,9 @@ struct Annotator {
 impl Annotator {
     // Determine the stability for a node based on its attributes and inherited
     // stability. The stability is recorded in the index and used as the parent.
-    fn annotate(&mut self, id: NodeId, attrs: &Vec<Attribute>, f: |&mut Annotator|) {
+    fn annotate<F>(&mut self, id: NodeId, attrs: &Vec<Attribute>, f: F) where
+        F: FnOnce(&mut Annotator),
+    {
         match attr::find_stability(attrs.as_slice()) {
             Some(stab) => {
                 self.index.local.insert(id, stab.clone());
@@ -69,24 +71,21 @@ impl<'v> Visitor<'v> for Annotator {
     fn visit_item(&mut self, i: &Item) {
         self.annotate(i.id, &i.attrs, |v| visit::walk_item(v, i));
 
-        match i.node {
-            ast::ItemStruct(ref sd, _) => {
-                sd.ctor_id.map(|id| {
-                    self.annotate(id, &i.attrs, |_| {})
-                });
-            }
-            _ => {}
+        if let ast::ItemStruct(ref sd, _) = i.node {
+            sd.ctor_id.map(|id| {
+                self.annotate(id, &i.attrs, |_| {})
+            });
         }
     }
 
-    fn visit_fn(&mut self, fk: FnKind<'v>, fd: &'v FnDecl,
-                b: &'v Block, s: Span, _: NodeId) {
-        match fk {
-            FkMethod(_, _, meth) => {
-                self.annotate(meth.id, &meth.attrs, |v| visit::walk_fn(v, fk, fd, b, s));
-            }
-            _ => visit::walk_fn(self, fk, fd, b, s)
+    fn visit_fn(&mut self, fk: FnKind<'v>, _: &'v FnDecl,
+                _: &'v Block, _: Span, _: NodeId) {
+        if let FkMethod(_, _, meth) = fk {
+            // Methods are not already annotated, so we annotate it
+            self.annotate(meth.id, &meth.attrs, |_| {});
         }
+        // Items defined in a function body have no reason to have
+        // a stability attribute, so we don't recurse.
     }
 
     fn visit_trait_item(&mut self, t: &TraitItem) {
@@ -139,7 +138,7 @@ pub fn lookup(tcx: &ty::ctxt, id: DefId) -> Option<Stability> {
             lookup(tcx, trait_method_id)
         }
         _ if is_local(id) => {
-            tcx.stability.borrow().local.find_copy(&id.node)
+            tcx.stability.borrow().local.get(&id.node).cloned()
         }
         _ => {
             let stab = csearch::get_stability(&tcx.sess.cstore, id);

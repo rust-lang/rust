@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(overloaded_calls)]
+#![feature(overloaded_calls, unboxed_closures)]
 
 fn a<F:Fn(int, int) -> int>(mut f: F) {
     let g = &mut f;

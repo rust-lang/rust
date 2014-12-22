@@ -9,8 +9,6 @@
 // except according to those terms.
 //
 // ignore-lexer-test FIXME #15879
-#![feature(struct_variant)]
-
 
 // Test sized-ness checking in substitution.
 

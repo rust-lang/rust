@@ -30,11 +30,11 @@ enum SafeEnum {
 }
 
 // These should be ok
-static STATIC1: SafeEnum = Variant1;
-static STATIC2: SafeEnum = Variant2(0);
+static STATIC1: SafeEnum = SafeEnum::Variant1;
+static STATIC2: SafeEnum = SafeEnum::Variant2(0);
 
 // This one should fail
-static STATIC3: SafeEnum = Variant3(WithDtor);
+static STATIC3: SafeEnum = SafeEnum::Variant3(WithDtor);
 //~^ ERROR statics are not allowed to have destructors
 
 
@@ -51,9 +51,9 @@ impl Drop for UnsafeEnum {
 }
 
 
-static STATIC4: UnsafeEnum = Variant5;
+static STATIC4: UnsafeEnum = UnsafeEnum::Variant5;
 //~^ ERROR statics are not allowed to have destructors
-static STATIC5: UnsafeEnum = Variant6(0);
+static STATIC5: UnsafeEnum = UnsafeEnum::Variant6(0);
 //~^ ERROR statics are not allowed to have destructors
 
 
@@ -64,22 +64,25 @@ struct SafeStruct {
 
 
 // Struct fields are safe, hence this static should be safe
-static STATIC6: SafeStruct = SafeStruct{field1: Variant1, field2: Variant2(0)};
+static STATIC6: SafeStruct = SafeStruct{field1: SafeEnum::Variant1, field2: SafeEnum::Variant2(0)};
 
 // field2 has an unsafe value, hence this should fail
-static STATIC7: SafeStruct = SafeStruct{field1: Variant1, field2: Variant3(WithDtor)};
+static STATIC7: SafeStruct = SafeStruct{field1: SafeEnum::Variant1,
+                                        field2: SafeEnum::Variant3(WithDtor)};
 //~^ ERROR statics are not allowed to have destructors
 
 // Test variadic constructor for structs. The base struct should be examined
 // as well as every field present in the constructor.
 // This example shouldn't fail because all the fields are safe.
-static STATIC8: SafeStruct = SafeStruct{field1: Variant1,
-                                        ..SafeStruct{field1: Variant1, field2: Variant1}};
+static STATIC8: SafeStruct = SafeStruct{field1: SafeEnum::Variant1,
+                                        ..SafeStruct{field1: SafeEnum::Variant1,
+                                                     field2: SafeEnum::Variant1}};
 
 // This example should fail because field1 in the base struct is not safe
-static STATIC9: SafeStruct = SafeStruct{field1: Variant1,
-                                        ..SafeStruct{field1: Variant3(WithDtor), field2: Variant1}};
-//~^ ERROR statics are not allowed to have destructors
+static STATIC9: SafeStruct = SafeStruct{field1: SafeEnum::Variant1,
+                                        ..SafeStruct{field1: SafeEnum::Variant3(WithDtor),
+                                                     field2: SafeEnum::Variant1}};
+//~^^ ERROR statics are not allowed to have destructors
 
 struct UnsafeStruct;
 
@@ -103,14 +106,15 @@ static mut STATIC12: UnsafeStruct = UnsafeStruct;
 //~^ ERROR mutable statics are not allowed to have destructors
 //~^^ ERROR statics are not allowed to have destructors
 
-static mut STATIC13: SafeStruct = SafeStruct{field1: Variant1, field2: Variant3(WithDtor)};
+static mut STATIC13: SafeStruct = SafeStruct{field1: SafeEnum::Variant1,
 //~^ ERROR mutable statics are not allowed to have destructors
-//~^^ ERROR: statics are not allowed to have destructors
+                                             field2: SafeEnum::Variant3(WithDtor)};
+//~^ ERROR: statics are not allowed to have destructors
 
 static mut STATIC14: SafeStruct = SafeStruct {
 //~^ ERROR mutable statics are not allowed to have destructors
-    field1: Variant1,
-    field2: Variant4("str".to_string())
+    field1: SafeEnum::Variant1,
+    field2: SafeEnum::Variant4("str".to_string())
 };
 
 static STATIC15: &'static [Box<MyOwned>] = &[
@@ -123,7 +127,7 @@ static STATIC16: (&'static Box<MyOwned>, &'static Box<MyOwned>) = (
     &box MyOwned, //~ ERROR statics are not allowed to have custom pointers
 );
 
-static mut STATIC17: SafeEnum = Variant1;
+static mut STATIC17: SafeEnum = SafeEnum::Variant1;
 //~^ ERROR mutable statics are not allowed to have destructors
 
 static STATIC19: Box<int> =

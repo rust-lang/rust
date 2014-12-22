@@ -13,6 +13,8 @@ use std::cell::Cell;
 
 struct Point {x: int, y: int, z: int}
 
+impl Copy for Point {}
+
 fn f(p: &Cell<Point>) {
     assert!((p.get().z == 12));
     p.set(Point {x: 10, y: 11, z: 13});

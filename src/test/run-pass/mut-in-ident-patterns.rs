@@ -34,7 +34,7 @@ pub fn main() {
        Baz(f32, u8)
     }
 
-    let (x, mut y) = (32i, Foo(21));
+    let (x, mut y) = (32i, Bar::Foo(21));
 
     match x {
         mut z @ 32 => {
@@ -46,15 +46,15 @@ pub fn main() {
     }
 
     check_bar(&y);
-    y = Baz(10.0, 3);
+    y = Bar::Baz(10.0, 3);
     check_bar(&y);
 
     fn check_bar(y: &Bar) {
         match y {
-            &Foo(a) => {
+            &Bar::Foo(a) => {
                 assert_eq!(a, 21);
             }
-            &Baz(a, b) => {
+            &Bar::Baz(a, b) => {
                 assert_eq!(a, 10.0);
                 assert_eq!(b, 3);
             }

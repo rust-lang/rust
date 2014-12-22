@@ -22,13 +22,13 @@ fn test10() { assert_send::<&'static mut int>(); }
 
 // otherwise lifetime pointers are not ok
 fn test20<'a>(_: &'a int) {
-    assert_send::<&'a int>(); //~ ERROR does not fulfill the required lifetime
+    assert_send::<&'a int>(); //~ ERROR declared lifetime bound not satisfied
 }
 fn test21<'a>(_: &'a int) {
-    assert_send::<&'a str>(); //~ ERROR does not fulfill the required lifetime
+    assert_send::<&'a str>(); //~ ERROR declared lifetime bound not satisfied
 }
 fn test22<'a>(_: &'a int) {
-    assert_send::<&'a [int]>(); //~ ERROR does not fulfill the required lifetime
+    assert_send::<&'a [int]>(); //~ ERROR declared lifetime bound not satisfied
 }
 
 fn main() { }

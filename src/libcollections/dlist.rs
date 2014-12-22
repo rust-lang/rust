@@ -10,10 +10,8 @@
 
 //! A doubly-linked list with owned nodes.
 //!
-//! The `DList` allows pushing and popping elements at either end.
-//!
-//! `DList` implements the trait `Deque`. It should be imported with
-//! `use collections::Deque`.
+//! The `DList` allows pushing and popping elements at either end and is thus
+//! efficiently usable as a double-ended queue.
 
 // DList is constructed like a singly-linked list over the field `next`.
 // including the last link being None; each Node owns its `next` field.
@@ -39,7 +37,12 @@ pub struct DList<T> {
 }
 
 type Link<T> = Option<Box<Node<T>>>;
-struct Rawlink<T> { p: *mut T }
+
+struct Rawlink<T> {
+    p: *mut T,
+}
+
+impl<T> Copy for Rawlink<T> {}
 
 struct Node<T> {
     next: Link<T>,
@@ -58,6 +61,8 @@ pub struct Items<'a, T:'a> {
 impl<'a, T> Clone for Items<'a, T> {
     fn clone(&self) -> Items<'a, T> { *self }
 }
+
+impl<'a,T> Copy for Items<'a,T> {}
 
 /// An iterator over mutable references to the items of a `DList`.
 pub struct MutItems<'a, T:'a> {
@@ -187,8 +192,10 @@ impl<T> DList<T> {
     }
 }
 
+#[stable]
 impl<T> Default for DList<T> {
     #[inline]
+    #[stable]
     fn default() -> DList<T> { DList::new() }
 }
 
@@ -204,7 +211,7 @@ impl<T> DList<T> {
     ///
     /// If the list is empty, does nothing.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::collections::DList;
@@ -231,7 +238,7 @@ impl<T> DList<T> {
     ///
     /// If the list is empty, does nothing.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::collections::DList;
@@ -258,7 +265,7 @@ impl<T> DList<T> {
     ///
     /// This operation should compute in O(1) time.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::collections::DList;
@@ -299,7 +306,7 @@ impl<T> DList<T> {
     ///
     /// This operation should compute in O(1) time.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::collections::DList;
@@ -328,7 +335,7 @@ impl<T> DList<T> {
     ///
     /// This operation should compute in O(N) time.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::collections::DList;
@@ -346,18 +353,16 @@ impl<T> DList<T> {
     ///     println!("{}", e); // prints 2, then 4, then 11, then 7, then 8
     /// }
     /// ```
-    pub fn insert_when(&mut self, elt: T, f: |&T, &T| -> bool) {
-        {
-            let mut it = self.iter_mut();
-            loop {
-                match it.peek_next() {
-                    None => break,
-                    Some(x) => if f(x, &elt) { break }
-                }
-                it.next();
+    pub fn insert_when<F>(&mut self, elt: T, mut f: F) where F: FnMut(&T, &T) -> bool {
+        let mut it = self.iter_mut();
+        loop {
+            match it.peek_next() {
+                None => break,
+                Some(x) => if f(x, &elt) { break }
             }
-            it.insert_next(elt);
+            it.next();
         }
+        it.insert_next(elt);
     }
 
     /// Merges `other` into this `DList`, using the function `f`.
@@ -366,7 +371,7 @@ impl<T> DList<T> {
     /// put `a` in the result if `f(a, b)` is true, and otherwise `b`.
     ///
     /// This operation should compute in O(max(N, M)) time.
-    pub fn merge(&mut self, mut other: DList<T>, f: |&T, &T| -> bool) {
+    pub fn merge<F>(&mut self, mut other: DList<T>, mut f: F) where F: FnMut(&T, &T) -> bool {
         {
             let mut it = self.iter_mut();
             loop {
@@ -500,7 +505,7 @@ impl<T> DList<T> {
 
     /// Appends an element to the back of a list
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::collections::DList;
@@ -524,7 +529,7 @@ impl<T> DList<T> {
     /// Removes the last element from a list and returns it, or `None` if
     /// it is empty.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::collections::DList;
@@ -607,7 +612,7 @@ impl<'a, A> DoubleEndedIterator<&'a A> for Items<'a, A> {
     }
 }
 
-impl<'a, A> ExactSize<&'a A> for Items<'a, A> {}
+impl<'a, A> ExactSizeIterator<&'a A> for Items<'a, A> {}
 
 impl<'a, A> Iterator<&'a mut A> for MutItems<'a, A> {
     #[inline]
@@ -645,7 +650,7 @@ impl<'a, A> DoubleEndedIterator<&'a mut A> for MutItems<'a, A> {
     }
 }
 
-impl<'a, A> ExactSize<&'a mut A> for MutItems<'a, A> {}
+impl<'a, A> ExactSizeIterator<&'a mut A> for MutItems<'a, A> {}
 
 /// Allows mutating a `DList` while iterating.
 pub trait ListInsertion<A> {
@@ -689,7 +694,7 @@ impl<'a, A> ListInsertion<A> for MutItems<'a, A> {
     }
 
     #[inline]
-    fn peek_next<'a>(&'a mut self) -> Option<&'a mut A> {
+    fn peek_next(&mut self) -> Option<&mut A> {
         if self.nelem == 0 {
             return None
         }
@@ -783,14 +788,14 @@ impl<S: Writer, A: Hash<S>> Hash<S> for DList<A> {
 
 #[cfg(test)]
 mod tests {
-    use std::prelude::*;
+    use prelude::*;
     use std::rand;
     use std::hash;
+    use std::task::spawn;
     use test::Bencher;
     use test;
 
     use super::{DList, Node, ListInsertion};
-    use vec::Vec;
 
     pub fn check_links<T>(list: &DList<T>) {
         let mut len = 0u;
@@ -926,7 +931,7 @@ mod tests {
         let mut m = list_from(v.as_slice());
         m.prepend(list_from(u.as_slice()));
         check_links(&m);
-        u.extend(v.as_slice().iter().map(|&b| b));
+        u.extend(v.iter().map(|&b| b));
         assert_eq!(u.len(), m.len());
         for elt in u.into_iter() {
             assert_eq!(m.pop_front(), Some(elt))
@@ -945,7 +950,7 @@ mod tests {
         let mut m = list_from(v.as_slice());
         m.rotate_backward(); check_links(&m);
         m.rotate_forward(); check_links(&m);
-        assert_eq!(v.iter().collect::<Vec<&int>>(), m.iter().collect());
+        assert_eq!(v.iter().collect::<Vec<&int>>(), m.iter().collect::<Vec<_>>());
         m.rotate_forward(); check_links(&m);
         m.rotate_forward(); check_links(&m);
         m.pop_front(); check_links(&m);
@@ -953,7 +958,7 @@ mod tests {
         m.rotate_backward(); check_links(&m);
         m.push_front(9); check_links(&m);
         m.rotate_forward(); check_links(&m);
-        assert_eq!(vec![3i,9,5,1,2], m.into_iter().collect());
+        assert_eq!(vec![3i,9,5,1,2], m.into_iter().collect::<Vec<_>>());
     }
 
     #[test]
@@ -1088,8 +1093,8 @@ mod tests {
 
     #[test]
     fn test_merge() {
-        let mut m = list_from([0i, 1, 3, 5, 6, 7, 2]);
-        let n = list_from([-1i, 0, 0, 7, 7, 9]);
+        let mut m = list_from(&[0i, 1, 3, 5, 6, 7, 2]);
+        let n = list_from(&[-1i, 0, 0, 7, 7, 9]);
         let len = m.len() + n.len();
         m.merge(n, |a, b| a <= b);
         assert_eq!(m.len(), len);
@@ -1129,26 +1134,26 @@ mod tests {
 
     #[test]
     fn test_send() {
-        let n = list_from([1i,2,3]);
-        spawn(proc() {
+        let n = list_from(&[1i,2,3]);
+        spawn(move || {
             check_links(&n);
             let a: &[_] = &[&1,&2,&3];
-            assert_eq!(a, n.iter().collect::<Vec<&int>>().as_slice());
+            assert_eq!(a, n.iter().collect::<Vec<&int>>());
         });
     }
 
     #[test]
     fn test_eq() {
-        let mut n: DList<u8> = list_from([]);
-        let mut m = list_from([]);
+        let mut n: DList<u8> = list_from(&[]);
+        let mut m = list_from(&[]);
         assert!(n == m);
         n.push_front(1);
         assert!(n != m);
         m.push_back(1);
         assert!(n == m);
 
-        let n = list_from([2i,3,4]);
-        let m = list_from([1i,2,3]);
+        let n = list_from(&[2i,3,4]);
+        let m = list_from(&[1i,2,3]);
         assert!(n != m);
     }
 
@@ -1172,8 +1177,8 @@ mod tests {
 
     #[test]
     fn test_ord() {
-        let n: DList<int> = list_from([]);
-        let m = list_from([1i,2,3]);
+        let n: DList<int> = list_from(&[]);
+        let m = list_from(&[1i,2,3]);
         assert!(n < m);
         assert!(m > n);
         assert!(n <= n);
@@ -1183,29 +1188,29 @@ mod tests {
     #[test]
     fn test_ord_nan() {
         let nan = 0.0f64/0.0;
-        let n = list_from([nan]);
-        let m = list_from([nan]);
+        let n = list_from(&[nan]);
+        let m = list_from(&[nan]);
         assert!(!(n < m));
         assert!(!(n > m));
         assert!(!(n <= m));
         assert!(!(n >= m));
 
-        let n = list_from([nan]);
-        let one = list_from([1.0f64]);
+        let n = list_from(&[nan]);
+        let one = list_from(&[1.0f64]);
         assert!(!(n < one));
         assert!(!(n > one));
         assert!(!(n <= one));
         assert!(!(n >= one));
 
-        let u = list_from([1.0f64,2.0,nan]);
-        let v = list_from([1.0f64,2.0,3.0]);
+        let u = list_from(&[1.0f64,2.0,nan]);
+        let v = list_from(&[1.0f64,2.0,3.0]);
         assert!(!(u < v));
         assert!(!(u > v));
         assert!(!(u <= v));
         assert!(!(u >= v));
 
-        let s = list_from([1.0f64,2.0,4.0,2.0]);
-        let t = list_from([1.0f64,2.0,3.0,2.0]);
+        let s = list_from(&[1.0f64,2.0,4.0,2.0]);
+        let t = list_from(&[1.0f64,2.0,3.0,2.0]);
         assert!(!(s < t));
         assert!(s > one);
         assert!(!(s <= one));
@@ -1224,12 +1229,12 @@ mod tests {
     #[test]
     fn test_show() {
         let list: DList<int> = range(0i, 10).collect();
-        assert!(list.to_string().as_slice() == "[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]");
+        assert!(list.to_string() == "[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]");
 
         let list: DList<&str> = vec!["just", "one", "test", "more"].iter()
                                                                    .map(|&s| s)
                                                                    .collect();
-        assert!(list.to_string().as_slice() == "[just, one, test, more]");
+        assert!(list.to_string() == "[just, one, test, more]");
     }
 
     #[cfg(test)]

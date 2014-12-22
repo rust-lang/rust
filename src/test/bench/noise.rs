@@ -21,6 +21,8 @@ struct Vec2 {
     y: f32,
 }
 
+impl Copy for Vec2 {}
+
 fn lerp(a: f32, b: f32, v: f32) -> f32 { a * (1.0 - v) + b * v }
 
 fn smooth(v: f32) -> f32 { v * v * (3.0 - 2.0 * v) }
@@ -52,7 +54,7 @@ impl Noise2DContext {
         for (i, x) in permutations.iter_mut().enumerate() {
             *x = i as i32;
         }
-        rng.shuffle(permutations);
+        rng.shuffle(&mut permutations);
 
         Noise2DContext { rgradients: rgradients, permutations: permutations }
     }
@@ -115,7 +117,7 @@ fn main() {
     for y in range(0u, 256) {
         for x in range(0u, 256) {
             let idx = (pixels[y*256+x] / 0.2) as uint;
-            print!("{:c}", symbols[idx]);
+            print!("{}", symbols[idx]);
         }
         print!("\n");
     }

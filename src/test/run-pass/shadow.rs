@@ -13,8 +13,8 @@ fn foo(c: Vec<int> ) {
     let mut b: Vec<int> = Vec::new();
 
 
-    match none::<int> {
-        some::<int>(_) => {
+    match t::none::<int> {
+        t::some::<int>(_) => {
             for _i in c.iter() {
                 println!("{}", a);
                 let a = 17i;

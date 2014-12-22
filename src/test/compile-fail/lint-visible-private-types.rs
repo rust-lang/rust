@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(struct_variant)]
 #![deny(visible_private_types)]
 #![allow(dead_code)]
 #![crate_type="lib"]
@@ -57,8 +56,7 @@ struct Bar {
 pub enum Baz {
     Baz1(Private<int>), //~ ERROR private type in exported type signature
     Baz2 {
-        pub x: Private<int>, //~ ERROR private type in exported type signature
-        y: Private<int>
+        y: Private<int> //~ ERROR private type in exported type signature
     },
 }
 

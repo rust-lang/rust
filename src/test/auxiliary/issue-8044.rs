@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(struct_variant)]
-
 pub struct BTree<V> {
     pub node: TreeItem<V>,
 }
@@ -19,7 +17,7 @@ pub enum TreeItem<V> {
 }
 
 pub fn leaf<V>(value: V) -> TreeItem<V> {
-    TreeLeaf { value: value }
+    TreeItem::TreeLeaf { value: value }
 }
 
 fn main() {

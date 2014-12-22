@@ -19,8 +19,9 @@
 //
 // * Functions called by the compiler itself.
 
+pub use self::LangItem::*;
 
-use driver::session::Session;
+use session::Session;
 use metadata::csearch::each_lang_item;
 use middle::ty;
 use middle::weak_lang_items;
@@ -44,7 +45,7 @@ macro_rules! lets_do_this {
         $( $variant:ident, $name:expr, $method:ident; )*
     ) => {
 
-#[deriving(FromPrimitive, PartialEq, Eq, Hash)]
+#[deriving(Copy, FromPrimitive, PartialEq, Eq, Hash)]
 pub enum LangItem {
     $($variant),*
 }
@@ -111,6 +112,22 @@ impl LanguageItems {
         }
     }
 
+    pub fn fn_trait_kind(&self, id: ast::DefId) -> Option<ty::UnboxedClosureKind> {
+        let def_id_kinds = [
+            (self.fn_trait(), ty::FnUnboxedClosureKind),
+            (self.fn_mut_trait(), ty::FnMutUnboxedClosureKind),
+            (self.fn_once_trait(), ty::FnOnceUnboxedClosureKind),
+            ];
+
+        for &(opt_def_id, kind) in def_id_kinds.iter() {
+            if Some(id) == opt_def_id {
+                return Some(kind);
+            }
+        }
+
+        None
+    }
+
     $(
         #[allow(dead_code)]
         pub fn $method(&self) -> Option<ast::DefId> {
@@ -131,7 +148,7 @@ impl<'a, 'v> Visitor<'v> for LanguageItemCollector<'a> {
     fn visit_item(&mut self, item: &ast::Item) {
         match extract(item.attrs.as_slice()) {
             Some(value) => {
-                let item_index = self.item_refs.find_equiv(&value).map(|x| *x);
+                let item_index = self.item_refs.get(value.get()).map(|x| *x);
 
                 match item_index {
                     Some(item_index) => {

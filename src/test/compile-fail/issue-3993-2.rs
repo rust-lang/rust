@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use zoo::{duck, goose};
+use zoo::bird::{duck, goose};
 
 mod zoo {
     pub enum bird {

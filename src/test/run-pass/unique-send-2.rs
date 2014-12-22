@@ -20,7 +20,7 @@ pub fn main() {
     let mut expected = 0u;
     for i in range(0u, n) {
         let tx = tx.clone();
-        task::spawn(proc() {
+        task::spawn(move|| {
             child(&tx, i)
         });
         expected += i;

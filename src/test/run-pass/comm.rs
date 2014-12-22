@@ -12,7 +12,7 @@ use std::task;
 
 pub fn main() {
     let (tx, rx) = channel();
-    let _t = task::spawn(proc() { child(&tx) });
+    let _t = task::spawn(move|| { child(&tx) });
     let y = rx.recv();
     println!("received");
     println!("{}", y);

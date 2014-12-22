@@ -15,6 +15,8 @@ struct Value {
     n: int
 }
 
+impl Copy for Value {}
+
 impl Value {
     fn squared(mut self) -> Value {
         self.n *= self.n;

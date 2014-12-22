@@ -3,7 +3,6 @@
 #![feature(globs)]
 #[phase(plugin, link)]
 extern crate "std" as std;
-extern crate "native" as rt;
 #[prelude_import]
 use std::prelude::*;
 // Copyright 2014 The Rust Project Developers. See the COPYRIGHT
@@ -39,22 +38,9 @@ pub fn bar() {
          () => {
              #[inline]
              #[allow(dead_code)]
-             static __STATIC_FMTSTR: [&'static str, ..(1u as uint)] =
-                 ([("test" as &'static str)] as [&'static str, ..1]);
-             let __args_vec =
-                 (&([] as [core::fmt::Argument<'_>, ..0]) as
-                     &[core::fmt::Argument<'_>, ..0]);
-             let __args =
-                 (unsafe {
-                      ((::std::fmt::Arguments::new as
-                           unsafe fn(&'static [&'static str], &'a [core::fmt::Argument<'a>]) -> core::fmt::Arguments<'a>)((__STATIC_FMTSTR
-                                                                                                                              as
-                                                                                                                              [&'static str, ..1]),
-                                                                                                                          (__args_vec
-                                                                                                                              as
-                                                                                                                              &[core::fmt::Argument<'_>, ..0]))
-                          as core::fmt::Arguments<'_>)
-                  } as core::fmt::Arguments<'_>);
+             static __STATIC_FMTSTR: &'static [&'static str] =
+                 (&([("test" as &'static str)] as [&'static str, ..1]) as
+                     &'static [&'static str, ..1]);
 
 
 
@@ -64,7 +50,16 @@ pub fn bar() {
 
 
              ((::std::fmt::format as
-                  fn(&core::fmt::Arguments<'_>) -> collections::string::String)((&(__args
+                  fn(&core::fmt::Arguments<'_>) -> collections::string::String)((&((::std::fmt::Arguments::new
+                                                                                       as
+                                                                                       fn(&[&str], &[core::fmt::Argument<'_>]) -> core::fmt::Arguments<'_>)((__STATIC_FMTSTR
+                                                                                                                                                                as
+                                                                                                                                                                &'static [&'static str]),
+                                                                                                                                                            (&([]
+                                                                                                                                                                  as
+                                                                                                                                                                  [core::fmt::Argument<'_>, ..0])
+                                                                                                                                                                as
+                                                                                                                                                                &[core::fmt::Argument<'_>, ..0]))
                                                                                       as
                                                                                       core::fmt::Arguments<'_>)
                                                                                     as

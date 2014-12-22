@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+pub use self::SyntaxExtension::*;
+
 use ast;
 use ast::Name;
 use codemap;
@@ -55,7 +57,7 @@ impl ItemDecorator for fn(&mut ExtCtxt, Span, &ast::MetaItem, &ast::Item, |P<ast
               meta_item: &ast::MetaItem,
               item: &ast::Item,
               push: |P<ast::Item>|) {
-        (*self)(ecx, sp, meta_item, item, push)
+        self.clone()(ecx, sp, meta_item, item, push)
     }
 }
 
@@ -75,7 +77,7 @@ impl ItemModifier for fn(&mut ExtCtxt, Span, &ast::MetaItem, P<ast::Item>) -> P<
               meta_item: &ast::MetaItem,
               item: P<ast::Item>)
               -> P<ast::Item> {
-        (*self)(ecx, span, meta_item, item)
+        self.clone()(ecx, span, meta_item, item)
     }
 }
 
@@ -89,7 +91,7 @@ pub trait TTMacroExpander {
 }
 
 pub type MacroExpanderFn =
-    fn<'cx>(&'cx mut ExtCtxt, Span, &[ast::TokenTree]) -> Box<MacResult+'cx>;
+    for<'cx> fn(&'cx mut ExtCtxt, Span, &[ast::TokenTree]) -> Box<MacResult+'cx>;
 
 impl TTMacroExpander for MacroExpanderFn {
     fn expand<'cx>(&self,
@@ -97,7 +99,7 @@ impl TTMacroExpander for MacroExpanderFn {
                    span: Span,
                    token_tree: &[ast::TokenTree])
                    -> Box<MacResult+'cx> {
-        (*self)(ecx, span, token_tree)
+        self.clone()(ecx, span, token_tree)
     }
 }
 
@@ -111,7 +113,7 @@ pub trait IdentMacroExpander {
 }
 
 pub type IdentMacroExpanderFn =
-    fn<'cx>(&'cx mut ExtCtxt, Span, ast::Ident, Vec<ast::TokenTree>) -> Box<MacResult+'cx>;
+    for<'cx> fn(&'cx mut ExtCtxt, Span, ast::Ident, Vec<ast::TokenTree>) -> Box<MacResult+'cx>;
 
 impl IdentMacroExpander for IdentMacroExpanderFn {
     fn expand<'cx>(&self,
@@ -120,7 +122,7 @@ impl IdentMacroExpander for IdentMacroExpanderFn {
                    ident: ast::Ident,
                    token_tree: Vec<ast::TokenTree> )
                    -> Box<MacResult+'cx> {
-        (*self)(cx, sp, ident, token_tree)
+        self.clone()(cx, sp, ident, token_tree)
     }
 }
 
@@ -208,7 +210,7 @@ pub struct MacItems {
 }
 
 impl MacItems {
-    pub fn new<I: Iterator<P<ast::Item>>>(mut it: I) -> Box<MacResult+'static> {
+    pub fn new<I: Iterator<P<ast::Item>>>(it: I) -> Box<MacResult+'static> {
         box MacItems { items: it.collect() } as Box<MacResult+'static>
     }
 }
@@ -221,6 +223,7 @@ impl MacResult for MacItems {
 
 /// Fill-in macro expansion result, to allow compilation to continue
 /// after hitting errors.
+#[deriving(Copy)]
 pub struct DummyResult {
     expr_only: bool,
     span: Span
@@ -248,7 +251,7 @@ impl DummyResult {
     pub fn raw_expr(sp: Span) -> P<ast::Expr> {
         P(ast::Expr {
             id: ast::DUMMY_NODE_ID,
-            node: ast::ExprLit(P(codemap::respan(sp, ast::LitNil))),
+            node: ast::ExprLit(P(codemap::respan(sp, ast::LitBool(false)))),
             span: sp,
         })
     }
@@ -359,9 +362,6 @@ fn initial_syntax_expander_table(ecfg: &expand::ExpansionConfig) -> SyntaxEnv {
     syntax_expanders.insert(intern("format_args"),
                             builtin_normal_expander(
                                 ext::format::expand_format_args));
-    syntax_expanders.insert(intern("format_args_method"),
-                            builtin_normal_expander(
-                                ext::format::expand_format_args_method));
     syntax_expanders.insert(intern("env"),
                             builtin_normal_expander(
                                     ext::env::expand_env));
@@ -414,9 +414,9 @@ fn initial_syntax_expander_table(ecfg: &expand::ExpansionConfig) -> SyntaxEnv {
     syntax_expanders.insert(intern("line"),
                             builtin_normal_expander(
                                     ext::source_util::expand_line));
-    syntax_expanders.insert(intern("col"),
+    syntax_expanders.insert(intern("column"),
                             builtin_normal_expander(
-                                    ext::source_util::expand_col));
+                                    ext::source_util::expand_column));
     syntax_expanders.insert(intern("file"),
                             builtin_normal_expander(
                                     ext::source_util::expand_file));
@@ -467,8 +467,8 @@ pub struct ExtCtxt<'a> {
 }
 
 impl<'a> ExtCtxt<'a> {
-    pub fn new<'a>(parse_sess: &'a parse::ParseSess, cfg: ast::CrateConfig,
-                   ecfg: expand::ExpansionConfig) -> ExtCtxt<'a> {
+    pub fn new(parse_sess: &'a parse::ParseSess, cfg: ast::CrateConfig,
+               ecfg: expand::ExpansionConfig) -> ExtCtxt<'a> {
         let env = initial_syntax_expander_table(&ecfg);
         ExtCtxt {
             parse_sess: parse_sess,
@@ -528,7 +528,7 @@ impl<'a> ExtCtxt<'a> {
         let mut call_site = None;
         loop {
             let expn_info = self.codemap().with_expn_info(expn_id, |ei| {
-                ei.map(|ei| (ei.call_site, ei.callee.name.as_slice() == "include"))
+                ei.map(|ei| (ei.call_site, ei.callee.name == "include"))
             });
             match expn_info {
                 None => break,

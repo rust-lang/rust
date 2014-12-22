@@ -75,7 +75,11 @@ def full_snapshot_name(date, rev, platform, hsh):
 
 
 def get_kernel(triple):
-    os_name = triple.split('-')[2]
+    t = triple.split('-')
+    if len(t) == 2:
+      os_name = t[1]
+    else:
+      os_name = t[2]
     if os_name == "windows":
         return "winnt"
     if os_name == "darwin":

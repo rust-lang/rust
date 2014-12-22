@@ -7,6 +7,8 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+use self::SmallVectorRepr::*;
+use self::MoveItemsRepr::*;
 
 use std::mem;
 use std::slice;
@@ -169,7 +171,7 @@ impl<T> Iterator<T> for MoveItems<T> {
 }
 
 impl<T> MoveMap<T> for SmallVector<T> {
-    fn move_map(self, f: |T| -> T) -> SmallVector<T> {
+    fn move_map<F>(self, mut f: F) -> SmallVector<T> where F: FnMut(T) -> T {
         let repr = match self.repr {
             Zero => Zero,
             One(v) => One(f(v)),
@@ -222,10 +224,10 @@ mod test {
         assert_eq!(Vec::new(), v);
 
         let v = SmallVector::one(1i);
-        assert_eq!(vec!(1i), v.into_iter().collect());
+        assert_eq!(vec!(1i), v.into_iter().collect::<Vec<_>>());
 
         let v = SmallVector::many(vec!(1i, 2i, 3i));
-        assert_eq!(vec!(1i, 2i, 3i), v.into_iter().collect());
+        assert_eq!(vec!(1i, 2i, 3i), v.into_iter().collect::<Vec<_>>());
     }
 
     #[test]

@@ -55,21 +55,21 @@ enum t {
 impl cmp::PartialEq for t {
     fn eq(&self, other: &t) -> bool {
         match *self {
-            tag1 => {
+            t::tag1 => {
                 match (*other) {
-                    tag1 => true,
+                    t::tag1 => true,
                     _ => false
                 }
             }
-            tag2(e0a) => {
+            t::tag2(e0a) => {
                 match (*other) {
-                    tag2(e0b) => e0a == e0b,
+                    t::tag2(e0b) => e0a == e0b,
                     _ => false
                 }
             }
-            tag3(e0a, e1a, e2a) => {
+            t::tag3(e0a, e1a, e2a) => {
                 match (*other) {
-                    tag3(e0b, e1b, e2b) =>
+                    t::tag3(e0b, e1b, e2b) =>
                         e0a == e0b && e1a == e1b && e2a == e2b,
                     _ => false
                 }
@@ -81,16 +81,16 @@ impl cmp::PartialEq for t {
 
 fn test_tag() {
     let (tx, rx) = channel();
-    tx.send(tag1);
-    tx.send(tag2(10));
-    tx.send(tag3(10, 11u8, 'A'));
+    tx.send(t::tag1);
+    tx.send(t::tag2(10));
+    tx.send(t::tag3(10, 11u8, 'A'));
     let mut t1: t;
     t1 = rx.recv();
-    assert_eq!(t1, tag1);
+    assert_eq!(t1, t::tag1);
     t1 = rx.recv();
-    assert_eq!(t1, tag2(10));
+    assert_eq!(t1, t::tag2(10));
     t1 = rx.recv();
-    assert_eq!(t1, tag3(10, 11u8, 'A'));
+    assert_eq!(t1, t::tag3(10, 11u8, 'A'));
 }
 
 fn test_chan() {

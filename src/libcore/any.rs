@@ -71,8 +71,9 @@
 
 #![stable]
 
-use mem::{transmute, transmute_copy};
-use option::{Option, Some, None};
+use mem::{transmute};
+use option::Option;
+use option::Option::{Some, None};
 use raw::TraitObject;
 use intrinsics::TypeId;
 
@@ -88,6 +89,7 @@ use intrinsics::TypeId;
 #[stable]
 pub trait Any: 'static {
     /// Get the `TypeId` of `self`
+    #[experimental = "this method will likely be replaced by an associated static"]
     fn get_type_id(&self) -> TypeId;
 }
 
@@ -117,7 +119,6 @@ pub trait AnyRefExt<'a> {
 #[stable]
 impl<'a> AnyRefExt<'a> for &'a Any {
     #[inline]
-    #[stable]
     fn is<T: 'static>(self) -> bool {
         // Get TypeId of the type this function is instantiated with
         let t = TypeId::of::<T>();
@@ -130,12 +131,11 @@ impl<'a> AnyRefExt<'a> for &'a Any {
     }
 
     #[inline]
-    #[unstable = "naming conventions around acquiring references may change"]
     fn downcast_ref<T: 'static>(self) -> Option<&'a T> {
         if self.is::<T>() {
             unsafe {
                 // Get the raw representation of the trait object
-                let to: TraitObject = transmute_copy(&self);
+                let to: TraitObject = transmute(self);
 
                 // Extract the data pointer
                 Some(transmute(to.data))
@@ -159,12 +159,11 @@ pub trait AnyMutRefExt<'a> {
 #[stable]
 impl<'a> AnyMutRefExt<'a> for &'a mut Any {
     #[inline]
-    #[unstable = "naming conventions around acquiring references may change"]
     fn downcast_mut<T: 'static>(self) -> Option<&'a mut T> {
         if self.is::<T>() {
             unsafe {
                 // Get the raw representation of the trait object
-                let to: TraitObject = transmute_copy(&self);
+                let to: TraitObject = transmute(self);
 
                 // Extract the data pointer
                 Some(transmute(to.data))

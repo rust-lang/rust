@@ -30,10 +30,10 @@ fn main() {
         _ => unreachable!()
     }
 
-    let e = Variant2;
+    let e = Enum::Variant2;
     drop(e);
     match e { //~ ERROR use of moved value
-        Variant1 => unreachable!(),
-        Variant2 => ()
+        Enum::Variant1 => unreachable!(),
+        Enum::Variant2 => ()
     }
 }

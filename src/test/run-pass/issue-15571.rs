@@ -45,7 +45,7 @@ fn match_on_binding() {
 
 fn match_on_upvar() {
     let mut foo = Some(box 8i);
-    (proc() {
+    let f = move|:| {
         match foo {
             None => {},
             Some(x) => {
@@ -53,7 +53,8 @@ fn match_on_upvar() {
             }
         }
         println!("'{}'", foo.unwrap());
-    })();
+    };
+    f();
 }
 
 fn main() {

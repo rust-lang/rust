@@ -79,8 +79,8 @@ impl<'a, T> List<'a, T> {
 impl<'a, T> Iterator<&'a T> for ListIterator<'a, T> {
     fn next(&mut self) -> Option<&'a T> {
         match *self.cur {
-            Nil => None,
-            Cons(ref elt, next) => {
+            List::Nil => None,
+            List::Cons(ref elt, next) => {
                 self.cur = next;
                 Some(elt)
             }
@@ -295,7 +295,7 @@ fn search(
         for m in masks_at[id].iter().filter(|&m| board & *m == 0) {
             // This check is too costly.
             //if is_board_unfeasible(board | m, masks) {continue;}
-            search(masks, board | *m, i + 1, Cons(*m, &cur), data);
+            search(masks, board | *m, i + 1, List::Cons(*m, &cur), data);
         }
     }
 }
@@ -310,9 +310,9 @@ fn par_search(masks: Vec<Vec<Vec<u64>>>) -> Data {
         let masks = masks.clone();
         let tx = tx.clone();
         let m = *m;
-        spawn(proc() {
+        spawn(move|| {
             let mut data = Data::new();
-            search(&*masks, m, 1, Cons(m, &Nil), &mut data);
+            search(&*masks, m, 1, List::Cons(m, &List::Nil), &mut data);
             tx.send(data);
         });
     }

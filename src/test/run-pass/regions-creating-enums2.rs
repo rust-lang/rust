@@ -14,7 +14,7 @@ enum ast<'a> {
 }
 
 fn mk_add_ok<'r>(x: &'r ast<'r>, y: &'r ast<'r>) -> ast<'r> {
-    add(x, y)
+    ast::add(x, y)
 }
 
 pub fn main() {

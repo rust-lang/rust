@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(unboxed_closure_sugar, unboxed_closures, overloaded_calls)]
+#![feature(unboxed_closures, overloaded_calls)]
 
 use std::ops::FnMut;
 

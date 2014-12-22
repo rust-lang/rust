@@ -11,7 +11,7 @@
 #![macro_escape]
 #![doc(hidden)]
 
-macro_rules! int_module (($T:ty, $bits:expr) => (
+macro_rules! int_module { ($T:ty, $bits:expr) => (
 
 // FIXME(#11621): Should be deprecated once CTFE is implemented in favour of
 // calling the `mem::size_of` function.
@@ -32,4 +32,5 @@ pub const MIN: $T = (-1 as $T) << (BITS - 1);
 #[unstable]
 pub const MAX: $T = !MIN;
 
-))
+) }
+

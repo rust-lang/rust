@@ -13,31 +13,62 @@ https://github.com/rust-lang/rust/issues
 
 Your concerns are probably the same as someone else's.
 
-
-High-level concepts
+The crates of rustc
 ===================
 
-Rustc consists of the following subdirectories:
+Rustc consists of four crates altogether: `libsyntax`, `librustc`,
+`librustc_back`, and `librustc_trans` (the names and divisions are not
+set in stone and may change; in general, a finer-grained division of
+crates is preferable):
 
-front/    - front-end: attributes, conditional compilation
-middle/   - middle-end: name resolution, typechecking, LLVM code
+- `libsyntax` contains those things concerned purely with syntax --
+  that is, the AST, parser, pretty-printer, lexer, macro expander, and
+  utilities for traversing ASTs -- are in a separate crate called
+  "syntax", whose files are in ./../libsyntax, where . is the current
+  directory (that is, the parent directory of front/, middle/, back/,
+  and so on).
+
+- `librustc` (the current directory) contains the high-level analysis
+  passes, such as the type checker, borrow checker, and so forth.
+  It is the heart of the compiler.
+
+- `librustc_back` contains some very low-level details that are
+  specific to different LLVM targets and so forth.
+
+- `librustc_trans` contains the code to convert from Rust IR into LLVM
+  IR, and then from LLVM IR into machine code, as well as the main
+  driver that orchestrates all the other passes and various other bits
+  of miscellany. In general it contains code that runs towards the
+  end of the compilation process.
+  
+Roughly speaking the "order" of the three crates is as follows:
+
+    libsyntax -> librustc -> librustc_trans
+    |                                     |
+    +-----------------+-------------------+
+                      |
+             librustc_trans/driver
+
+Here the role of `librustc_trans/driver` is to invoke the compiler
+from libsyntax, then the analysis phases from librustc, and finally
+the lowering and codegen passes from librustc_trans.
+
+Modules in the rustc crate
+==========================
+
+The rustc crate itself consists of the following subdirectories
+(mostly, but not entirely, in their own directories):
+
+session  - options and data that pertain to the compilation session as a whole
+middle   - middle-end: name resolution, typechecking, LLVM code
                   generation
-back/     - back-end: linking and ABI
-metadata/ - encoder and decoder for data required by
+metadata - encoder and decoder for data required by
                     separate compilation
-driver/   - command-line processing, main() entrypoint
-util/     - ubiquitous types and helper functions
-lib/      - bindings to LLVM
+util     - ubiquitous types and helper functions
+lib      - bindings to LLVM
 
-The files concerned purely with syntax -- that is, the AST, parser,
-pretty-printer, lexer, macro expander, and utilities for traversing
-ASTs -- are in a separate crate called "syntax", whose files are in
-./../libsyntax, where . is the current directory (that is, the parent
-directory of front/, middle/, back/, and so on).
-
-The entry-point for the compiler is main() in lib.rs, and
-this file sequences the various parts together.
-
+The entry-point for the compiler is main() in the librustc_trans
+crate. But the 
 
 The 3 central data structures:
 ------------------------------
@@ -66,10 +97,10 @@ The 3 central data structures:
     compilation.  Most variants in the ast::ty tag have a
     corresponding variant in the ty::sty tag.
 
-#3: lib/llvm.rs defines the exported types ValueRef, TypeRef,
-    BasicBlockRef, and several others. Each of these is an opaque
-    pointer to an LLVM type, manipulated through the lib::llvm
-    interface.
+#3: lib/llvm.rs (in librustc_trans) defines the exported types
+    ValueRef, TypeRef, BasicBlockRef, and several others. Each of
+    these is an opaque pointer to an LLVM type, manipulated through
+    the lib::llvm interface.
 
 
 Control and information flow within the compiler:
@@ -87,7 +118,7 @@ Control and information flow within the compiler:
   structures. The driver passes environments to each compiler pass
   that needs to refer to them.
 
-- Finally middle/trans.rs translates the Rust AST to LLVM bitcode in a
-  type-directed way. When it's finished synthesizing LLVM values,
-  rustc asks LLVM to write them out in some form (.bc, .o) and
-  possibly run the system linker.
+- Finally, the `trans` module in `librustc_trans` translates the Rust
+  AST to LLVM bitcode in a type-directed way. When it's finished
+  synthesizing LLVM values, rustc asks LLVM to write them out in some
+  form (.bc, .o) and possibly run the system linker.

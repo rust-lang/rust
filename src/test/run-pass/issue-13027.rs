@@ -179,9 +179,9 @@ fn misc() {
     // This test basically mimics how trace_macros! macro is implemented,
     // which is a rare combination of vector patterns, multiple wild-card
     // patterns and guard functions.
-    let r = match [Bar(0, false)].as_slice() {
-        [Bar(_, pred)] if pred => 1i,
-        [Bar(_, pred)] if !pred => 2i,
+    let r = match [Foo::Bar(0, false)].as_slice() {
+        [Foo::Bar(_, pred)] if pred => 1i,
+        [Foo::Bar(_, pred)] if !pred => 2i,
         _ => 0i,
     };
     assert_eq!(2i, r);

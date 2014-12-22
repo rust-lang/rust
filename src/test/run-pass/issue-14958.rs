@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(overloaded_calls)]
+#![feature(unboxed_closures)]
 
 trait Foo {}
 
 struct Bar;
 
-impl<'a> std::ops::Fn<(&'a Foo+'a,), ()> for Bar {
+impl<'a> std::ops::Fn<(&'a (Foo+'a),), ()> for Bar {
     extern "rust-call" fn call(&self, _: (&'a Foo,)) {}
 }
 

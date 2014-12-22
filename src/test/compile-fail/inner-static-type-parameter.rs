@@ -13,7 +13,7 @@
 enum Bar<T> { What }
 
 fn foo<T>() {
-    static a: Bar<T> = What;
+    static a: Bar<T> = Bar::What;
     //~^ ERROR: cannot use an outer type parameter in this context
 }
 

@@ -15,10 +15,11 @@
 //! and definition contexts*. J. Funct. Program. 22, 2 (March 2012), 181-216.
 //! DOI=10.1017/S0956796812000093 http://dx.doi.org/10.1017/S0956796812000093
 
+pub use self::SyntaxContext_::*;
+
 use ast::{Ident, Mrk, Name, SyntaxContext};
 
 use std::cell::RefCell;
-use std::rc::Rc;
 use std::collections::HashMap;
 use std::collections::hash_map::{Occupied, Vacant};
 
@@ -38,7 +39,7 @@ pub struct SCTable {
     rename_memo: RefCell<HashMap<(SyntaxContext,Ident,Name),SyntaxContext>>,
 }
 
-#[deriving(PartialEq, Encodable, Decodable, Hash, Show)]
+#[deriving(Copy, PartialEq, Encodable, Decodable, Hash, Show)]
 pub enum SyntaxContext_ {
     EmptyCtxt,
     Mark (Mrk,SyntaxContext),
@@ -102,17 +103,11 @@ pub fn apply_renames(renames: &RenameList, ctxt: SyntaxContext) -> SyntaxContext
 }
 
 /// Fetch the SCTable from TLS, create one if it doesn't yet exist.
-pub fn with_sctable<T>(op: |&SCTable| -> T) -> T {
-    local_data_key!(sctable_key: Rc<SCTable>)
-
-    match sctable_key.get() {
-        Some(ts) => op(&**ts),
-        None => {
-            let ts = Rc::new(new_sctable_internal());
-            sctable_key.replace(Some(ts.clone()));
-            op(&*ts)
-        }
-    }
+pub fn with_sctable<T, F>(op: F) -> T where
+    F: FnOnce(&SCTable) -> T,
+{
+    thread_local!(static SCTABLE_KEY: SCTable = new_sctable_internal());
+    SCTABLE_KEY.with(move |slot| op(slot))
 }
 
 // Make a fresh syntax context table with EmptyCtxt in slot zero
@@ -129,7 +124,7 @@ fn new_sctable_internal() -> SCTable {
 pub fn display_sctable(table: &SCTable) {
     error!("SC table:");
     for (idx,val) in table.table.borrow().iter().enumerate() {
-        error!("{:4u} : {}",idx,val);
+        error!("{:4} : {}",idx,val);
     }
 }
 
@@ -137,6 +132,16 @@ pub fn display_sctable(table: &SCTable) {
 pub fn clear_tables() {
     with_sctable(|table| {
         *table.table.borrow_mut() = Vec::new();
+        *table.mark_memo.borrow_mut() = HashMap::new();
+        *table.rename_memo.borrow_mut() = HashMap::new();
+    });
+    with_resolve_table_mut(|table| *table = HashMap::new());
+}
+
+/// Reset the tables to their initial state
+pub fn reset_tables() {
+    with_sctable(|table| {
+        *table.table.borrow_mut() = vec!(EmptyCtxt, IllegalCtxt);
         *table.mark_memo.borrow_mut() = HashMap::new();
         *table.rename_memo.borrow_mut() = HashMap::new();
     });
@@ -162,17 +167,14 @@ type ResolveTable = HashMap<(Name,SyntaxContext),Name>;
 
 // okay, I admit, putting this in TLS is not so nice:
 // fetch the SCTable from TLS, create one if it doesn't yet exist.
-fn with_resolve_table_mut<T>(op: |&mut ResolveTable| -> T) -> T {
-    local_data_key!(resolve_table_key: Rc<RefCell<ResolveTable>>)
+fn with_resolve_table_mut<T, F>(op: F) -> T where
+    F: FnOnce(&mut ResolveTable) -> T,
+{
+    thread_local!(static RESOLVE_TABLE_KEY: RefCell<ResolveTable> = {
+        RefCell::new(HashMap::new())
+    });
 
-    match resolve_table_key.get() {
-        Some(ts) => op(&mut *ts.borrow_mut()),
-        None => {
-            let ts = Rc::new(RefCell::new(HashMap::new()));
-            resolve_table_key.replace(Some(ts.clone()));
-            op(&mut *ts.borrow_mut())
-        }
-    }
+    RESOLVE_TABLE_KEY.with(move |slot| op(&mut *slot.borrow_mut()))
 }
 
 /// Resolve a syntax object to a name, per MTWT.
@@ -278,6 +280,7 @@ fn xor_push(marks: &mut Vec<Mrk>, mark: Mrk) {
 
 #[cfg(test)]
 mod tests {
+    use self::TestSC::*;
     use ast::{EMPTY_CTXT, Ident, Mrk, Name, SyntaxContext};
     use super::{resolve, xor_push, apply_mark_internal, new_sctable_internal};
     use super::{apply_rename_internal, apply_renames, marksof_internal, resolve_internal};

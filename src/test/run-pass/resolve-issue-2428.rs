@@ -10,4 +10,4 @@
 
 const foo: int = 4 >> 1;
 enum bs { thing = foo }
-pub fn main() { assert!((thing as int == foo)); }
+pub fn main() { assert!((bs::thing as int == foo)); }

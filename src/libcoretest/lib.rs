@@ -7,7 +7,8 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-#![feature(globs, unsafe_destructor, macro_rules, slicing_syntax)]
+#![feature(globs, unsafe_destructor, macro_rules, slicing_syntax, default_type_params)]
+#![feature(unboxed_closures)]
 
 extern crate core;
 extern crate test;
@@ -20,6 +21,7 @@ mod char;
 mod cmp;
 mod finally;
 mod fmt;
+mod hash;
 mod iter;
 mod mem;
 mod num;

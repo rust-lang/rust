@@ -8,6 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+pub use self::BinOpToken::*;
+pub use self::Nonterminal::*;
+pub use self::DelimToken::*;
+pub use self::IdentStyle::*;
+pub use self::Lit::*;
+pub use self::Token::*;
+
 use ast;
 use ext::mtwt;
 use ptr::P;
@@ -21,7 +28,7 @@ use std::path::BytesContainer;
 use std::rc::Rc;
 
 #[allow(non_camel_case_types)]
-#[deriving(Clone, Encodable, Decodable, PartialEq, Eq, Hash, Show)]
+#[deriving(Clone, Copy, Encodable, Decodable, PartialEq, Eq, Hash, Show)]
 pub enum BinOpToken {
     Plus,
     Minus,
@@ -36,7 +43,7 @@ pub enum BinOpToken {
 }
 
 /// A delimeter token
-#[deriving(Clone, Encodable, Decodable, PartialEq, Eq, Hash, Show)]
+#[deriving(Clone, Copy, Encodable, Decodable, PartialEq, Eq, Hash, Show)]
 pub enum DelimToken {
     /// A round parenthesis: `(` or `)`
     Paren,
@@ -46,11 +53,36 @@ pub enum DelimToken {
     Brace,
 }
 
-#[deriving(Clone, Encodable, Decodable, PartialEq, Eq, Hash, Show)]
+#[deriving(Clone, Copy, Encodable, Decodable, PartialEq, Eq, Hash, Show)]
 pub enum IdentStyle {
     /// `::` follows the identifier with no whitespace in-between.
     ModName,
     Plain,
+}
+
+#[deriving(Clone, Copy, Encodable, Decodable, PartialEq, Eq, Hash, Show)]
+pub enum Lit {
+    Byte(ast::Name),
+    Char(ast::Name),
+    Integer(ast::Name),
+    Float(ast::Name),
+    Str_(ast::Name),
+    StrRaw(ast::Name, uint), /* raw str delimited by n hash symbols */
+    Binary(ast::Name),
+    BinaryRaw(ast::Name, uint), /* raw binary str delimited by n hash symbols */
+}
+
+impl Lit {
+    pub fn short_name(&self) -> &'static str {
+        match *self {
+            Byte(_) => "byte",
+            Char(_) => "char",
+            Integer(_) => "integer",
+            Float(_) => "float",
+            Str_(_) | StrRaw(..) => "str",
+            Binary(_) | BinaryRaw(..) => "binary str"
+        }
+    }
 }
 
 #[allow(non_camel_case_types)]
@@ -92,14 +124,7 @@ pub enum Token {
     CloseDelim(DelimToken),
 
     /* Literals */
-    LitByte(ast::Name),
-    LitChar(ast::Name),
-    LitInteger(ast::Name),
-    LitFloat(ast::Name),
-    LitStr(ast::Name),
-    LitStrRaw(ast::Name, uint), /* raw str delimited by n hash symbols */
-    LitBinary(ast::Name),
-    LitBinaryRaw(ast::Name, uint), /* raw binary str delimited by n hash symbols */
+    Literal(Lit, Option<ast::Name>),
 
     /* Name components */
     Ident(ast::Ident, IdentStyle),
@@ -139,14 +164,7 @@ impl Token {
             Ident(_, _)                 => true,
             Underscore                  => true,
             Tilde                       => true,
-            LitByte(_)                  => true,
-            LitChar(_)                  => true,
-            LitInteger(_)               => true,
-            LitFloat(_)                 => true,
-            LitStr(_)                   => true,
-            LitStrRaw(_, _)             => true,
-            LitBinary(_)                => true,
-            LitBinaryRaw(_, _)          => true,
+            Literal(_, _)               => true,
             Pound                       => true,
             At                          => true,
             Not                         => true,
@@ -167,15 +185,8 @@ impl Token {
     /// Returns `true` if the token is any literal
     pub fn is_lit(&self) -> bool {
         match *self {
-            LitByte(_)          => true,
-            LitChar(_)          => true,
-            LitInteger(_)       => true,
-            LitFloat(_)         => true,
-            LitStr(_)           => true,
-            LitStrRaw(_, _)     => true,
-            LitBinary(_)        => true,
-            LitBinaryRaw(_, _)  => true,
-            _                   => false,
+            Literal(_, _) => true,
+            _          => false,
         }
     }
 
@@ -410,16 +421,16 @@ macro_rules! declare_special_idents_and_keywords {(
         )*
     }
 
-    /**
-     * All the valid words that have meaning in the Rust language.
-     *
-     * Rust keywords are either 'strict' or 'reserved'.  Strict keywords may not
-     * appear as identifiers at all. Reserved keywords are not used anywhere in
-     * the language and may not appear as identifiers.
-     */
+    /// All the valid words that have meaning in the Rust language.
+    ///
+    /// Rust keywords are either 'strict' or 'reserved'.  Strict keywords may not
+    /// appear as identifiers at all. Reserved keywords are not used anywhere in
+    /// the language and may not appear as identifiers.
     pub mod keywords {
+        pub use self::Keyword::*;
         use ast;
 
+        #[deriving(Copy)]
         pub enum Keyword {
             $( $sk_variant, )*
             $( $rk_variant, )*
@@ -548,15 +559,16 @@ pub type IdentInterner = StrInterner;
 // fresh one.
 // FIXME(eddyb) #8726 This should probably use a task-local reference.
 pub fn get_ident_interner() -> Rc<IdentInterner> {
-    local_data_key!(key: Rc<::parse::token::IdentInterner>)
-    match key.get() {
-        Some(interner) => interner.clone(),
-        None => {
-            let interner = Rc::new(mk_fresh_ident_interner());
-            key.replace(Some(interner.clone()));
-            interner
-        }
-    }
+    thread_local!(static KEY: Rc<::parse::token::IdentInterner> = {
+        Rc::new(mk_fresh_ident_interner())
+    });
+    KEY.with(|k| k.clone())
+}
+
+/// Reset the ident interner to its initial state.
+pub fn reset_ident_interner() {
+    let interner = get_ident_interner();
+    interner.reset(mk_fresh_ident_interner());
 }
 
 /// Represents a string stored in the task-local interner. Because the
@@ -612,9 +624,32 @@ impl fmt::Show for InternedString {
     }
 }
 
+#[allow(deprecated)]
 impl<'a> Equiv<&'a str> for InternedString {
     fn equiv(&self, other: & &'a str) -> bool {
         (*other) == self.string.as_slice()
+    }
+}
+
+impl<'a> PartialEq<&'a str> for InternedString {
+    #[inline(always)]
+    fn eq(&self, other: & &'a str) -> bool {
+        PartialEq::eq(self.string.as_slice(), *other)
+    }
+    #[inline(always)]
+    fn ne(&self, other: & &'a str) -> bool {
+        PartialEq::ne(self.string.as_slice(), *other)
+    }
+}
+
+impl<'a> PartialEq<InternedString > for &'a str {
+    #[inline(always)]
+    fn eq(&self, other: &InternedString) -> bool {
+        PartialEq::eq(*self, other.string.as_slice())
+    }
+    #[inline(always)]
+    fn ne(&self, other: &InternedString) -> bool {
+        PartialEq::ne(*self, other.string.as_slice())
     }
 }
 

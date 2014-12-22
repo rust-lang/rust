@@ -53,7 +53,7 @@ struct S7_Option {
 // Placing packed structs in statics should work
 static TEST_S4: S4 = S4 { a: 1, b: [2, 3, 4] };
 static TEST_S5: S5 = S5 { a: 3, b: 67 };
-static TEST_S3_Foo: S3_Foo = S3_Foo { a: 1, b: 2, c: Baz };
+static TEST_S3_Foo: S3_Foo = S3_Foo { a: 1, b: 2, c: Foo::Baz };
 
 
 pub fn main() {

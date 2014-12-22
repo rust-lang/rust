@@ -38,10 +38,10 @@ pub fn expand_line(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     base::MacExpr::new(cx.expr_uint(topmost, loc.line))
 }
 
-/* col!(): expands to the current column number */
-pub fn expand_col(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
+/* column!(): expands to the current column number */
+pub fn expand_column(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                   -> Box<base::MacResult+'static> {
-    base::check_zero_tts(cx, sp, tts, "col!");
+    base::check_zero_tts(cx, sp, tts, "column!");
 
     let topmost = cx.original_span_in_file();
     let loc = cx.codemap().lookup_char_pos(topmost.lo);

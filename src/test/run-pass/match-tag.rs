@@ -20,17 +20,17 @@ enum color {
 fn process(c: color) -> int {
     let mut x: int;
     match c {
-      rgb(r, _, _) => { x = r; }
-      rgba(_, _, _, a) => { x = a; }
-      hsl(_, s, _) => { x = s; }
+      color::rgb(r, _, _) => { x = r; }
+      color::rgba(_, _, _, a) => { x = a; }
+      color::hsl(_, s, _) => { x = s; }
     }
     return x;
 }
 
 pub fn main() {
-    let gray: color = rgb(127, 127, 127);
-    let clear: color = rgba(50, 150, 250, 0);
-    let red: color = hsl(0, 255, 255);
+    let gray: color = color::rgb(127, 127, 127);
+    let clear: color = color::rgba(50, 150, 250, 0);
+    let red: color = color::hsl(0, 255, 255);
     assert_eq!(process(gray), 127);
     assert_eq!(process(clear), 0);
     assert_eq!(process(red), 255);
