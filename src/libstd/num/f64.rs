@@ -359,6 +359,7 @@ pub fn to_str_exp_digits(num: f64, dig: uint, upper: bool) -> String {
 mod tests {
     use f64::*;
     use num::*;
+    use num::FpCategory as Fp;
 
     #[test]
     fn test_min_nan() {
@@ -623,13 +624,13 @@ mod tests {
         let neg_inf: f64 = Float::neg_infinity();
         let zero: f64 = Float::zero();
         let neg_zero: f64 = Float::neg_zero();
-        assert_eq!(nan.classify(), FPNaN);
-        assert_eq!(inf.classify(), FPInfinite);
-        assert_eq!(neg_inf.classify(), FPInfinite);
-        assert_eq!(zero.classify(), FPZero);
-        assert_eq!(neg_zero.classify(), FPZero);
-        assert_eq!(1e-307f64.classify(), FPNormal);
-        assert_eq!(1e-308f64.classify(), FPSubnormal);
+        assert_eq!(nan.classify(), Fp::Nan);
+        assert_eq!(inf.classify(), Fp::Infinite);
+        assert_eq!(neg_inf.classify(), Fp::Infinite);
+        assert_eq!(zero.classify(), Fp::Zero);
+        assert_eq!(neg_zero.classify(), Fp::Zero);
+        assert_eq!(1e-307f64.classify(), Fp::Normal);
+        assert_eq!(1e-308f64.classify(), Fp::Subnormal);
     }
 
     #[test]
