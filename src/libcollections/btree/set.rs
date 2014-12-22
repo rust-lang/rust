@@ -448,30 +448,6 @@ impl<T: Ord> Default for BTreeSet<T> {
 }
 
 #[unstable = "matches collection reform specification, waiting for dust to settle"]
-// NOTE(stage0): Remove impl after a snapshot
-#[cfg(stage0)]
-impl<T: Ord + Clone> Sub<BTreeSet<T>,BTreeSet<T>> for BTreeSet<T> {
-    /// Returns the difference of `self` and `rhs` as a new `BTreeSet<T>`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::collections::BTreeSet;
-    ///
-    /// let a: BTreeSet<int> = vec![1,2,3].into_iter().collect();
-    /// let b: BTreeSet<int> = vec![3,4,5].into_iter().collect();
-    ///
-    /// let result: BTreeSet<int> = a - b;
-    /// let result_vec: Vec<int> = result.into_iter().collect();
-    /// assert_eq!(result_vec, vec![1,2]);
-    /// ```
-    fn sub(&self, rhs: &BTreeSet<T>) -> BTreeSet<T> {
-        self.difference(rhs).cloned().collect()
-    }
-}
-
-#[unstable = "matches collection reform specification, waiting for dust to settle"]
-#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
 impl<'a, 'b, T: Ord + Clone> Sub<&'b BTreeSet<T>, BTreeSet<T>> for &'a BTreeSet<T> {
     /// Returns the difference of `self` and `rhs` as a new `BTreeSet<T>`.
     ///
@@ -493,30 +469,6 @@ impl<'a, 'b, T: Ord + Clone> Sub<&'b BTreeSet<T>, BTreeSet<T>> for &'a BTreeSet<
 }
 
 #[unstable = "matches collection reform specification, waiting for dust to settle"]
-// NOTE(stage0): Remove impl after a snapshot
-#[cfg(stage0)]
-impl<T: Ord + Clone> BitXor<BTreeSet<T>,BTreeSet<T>> for BTreeSet<T> {
-    /// Returns the symmetric difference of `self` and `rhs` as a new `BTreeSet<T>`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::collections::BTreeSet;
-    ///
-    /// let a: BTreeSet<int> = vec![1,2,3].into_iter().collect();
-    /// let b: BTreeSet<int> = vec![2,3,4].into_iter().collect();
-    ///
-    /// let result: BTreeSet<int> = a ^ b;
-    /// let result_vec: Vec<int> = result.into_iter().collect();
-    /// assert_eq!(result_vec, vec![1,4]);
-    /// ```
-    fn bitxor(&self, rhs: &BTreeSet<T>) -> BTreeSet<T> {
-        self.symmetric_difference(rhs).cloned().collect()
-    }
-}
-
-#[unstable = "matches collection reform specification, waiting for dust to settle"]
-#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
 impl<'a, 'b, T: Ord + Clone> BitXor<&'b BTreeSet<T>, BTreeSet<T>> for &'a BTreeSet<T> {
     /// Returns the symmetric difference of `self` and `rhs` as a new `BTreeSet<T>`.
     ///
@@ -538,30 +490,6 @@ impl<'a, 'b, T: Ord + Clone> BitXor<&'b BTreeSet<T>, BTreeSet<T>> for &'a BTreeS
 }
 
 #[unstable = "matches collection reform specification, waiting for dust to settle"]
-// NOTE(stage0): Remove impl after a snapshot
-#[cfg(stage0)]
-impl<T: Ord + Clone> BitAnd<BTreeSet<T>,BTreeSet<T>> for BTreeSet<T> {
-    /// Returns the intersection of `self` and `rhs` as a new `BTreeSet<T>`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::collections::BTreeSet;
-    ///
-    /// let a: BTreeSet<int> = vec![1,2,3].into_iter().collect();
-    /// let b: BTreeSet<int> = vec![2,3,4].into_iter().collect();
-    ///
-    /// let result: BTreeSet<int> = a & b;
-    /// let result_vec: Vec<int> = result.into_iter().collect();
-    /// assert_eq!(result_vec, vec![2,3]);
-    /// ```
-    fn bitand(&self, rhs: &BTreeSet<T>) -> BTreeSet<T> {
-        self.intersection(rhs).cloned().collect()
-    }
-}
-
-#[unstable = "matches collection reform specification, waiting for dust to settle"]
-#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
 impl<'a, 'b, T: Ord + Clone> BitAnd<&'b BTreeSet<T>, BTreeSet<T>> for &'a BTreeSet<T> {
     /// Returns the intersection of `self` and `rhs` as a new `BTreeSet<T>`.
     ///
@@ -583,30 +511,6 @@ impl<'a, 'b, T: Ord + Clone> BitAnd<&'b BTreeSet<T>, BTreeSet<T>> for &'a BTreeS
 }
 
 #[unstable = "matches collection reform specification, waiting for dust to settle"]
-// NOTE(stage0): Remove impl after a snapshot
-#[cfg(stage0)]
-impl<T: Ord + Clone> BitOr<BTreeSet<T>,BTreeSet<T>> for BTreeSet<T> {
-    /// Returns the union of `self` and `rhs` as a new `BTreeSet<T>`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::collections::BTreeSet;
-    ///
-    /// let a: BTreeSet<int> = vec![1,2,3].into_iter().collect();
-    /// let b: BTreeSet<int> = vec![3,4,5].into_iter().collect();
-    ///
-    /// let result: BTreeSet<int> = a | b;
-    /// let result_vec: Vec<int> = result.into_iter().collect();
-    /// assert_eq!(result_vec, vec![1,2,3,4,5]);
-    /// ```
-    fn bitor(&self, rhs: &BTreeSet<T>) -> BTreeSet<T> {
-        self.union(rhs).cloned().collect()
-    }
-}
-
-#[unstable = "matches collection reform specification, waiting for dust to settle"]
-#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
 impl<'a, 'b, T: Ord + Clone> BitOr<&'b BTreeSet<T>, BTreeSet<T>> for &'a BTreeSet<T> {
     /// Returns the union of `self` and `rhs` as a new `BTreeSet<T>`.
     ///

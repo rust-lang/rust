@@ -43,7 +43,8 @@ struct Annotator {
 impl Annotator {
     // Determine the stability for a node based on its attributes and inherited
     // stability. The stability is recorded in the index and used as the parent.
-    fn annotate<F>(&mut self, id: NodeId, attrs: &Vec<Attribute>, f: F) where
+    fn annotate<F>(&mut self, id: NodeId, use_parent: bool,
+                   attrs: &Vec<Attribute>, f: F) where
         F: FnOnce(&mut Annotator),
     {
         match attr::find_stability(attrs.as_slice()) {
@@ -60,7 +61,9 @@ impl Annotator {
                 }
             }
             None => {
-                self.parent.clone().map(|stab| self.index.local.insert(id, stab));
+                if use_parent {
+                    self.parent.clone().map(|stab| self.index.local.insert(id, stab));
+                }
                 f(self);
             }
         }
@@ -69,11 +72,24 @@ impl Annotator {
 
 impl<'v> Visitor<'v> for Annotator {
     fn visit_item(&mut self, i: &Item) {
-        self.annotate(i.id, &i.attrs, |v| visit::walk_item(v, i));
+        // FIXME (#18969): the following is a hack around the fact
+        // that we cannot currently annotate the stability of
+        // `deriving`.  Basically, we do *not* allow stability
+        // inheritance on trait implementations, so that derived
+        // implementations appear to be unannotated. This then allows
+        // derived implementations to be automatically tagged with the
+        // stability of the trait. This is WRONG, but expedient to get
+        // libstd stabilized for the 1.0 release.
+        let use_parent = match i.node {
+            ast::ItemImpl(_, _, Some(_), _, _) => false,
+            _ => true,
+        };
+
+        self.annotate(i.id, use_parent, &i.attrs, |v| visit::walk_item(v, i));
 
         if let ast::ItemStruct(ref sd, _) = i.node {
             sd.ctor_id.map(|id| {
-                self.annotate(id, &i.attrs, |_| {})
+                self.annotate(id, true, &i.attrs, |_| {})
             });
         }
     }
@@ -82,7 +98,7 @@ impl<'v> Visitor<'v> for Annotator {
                 _: &'v Block, _: Span, _: NodeId) {
         if let FkMethod(_, _, meth) = fk {
             // Methods are not already annotated, so we annotate it
-            self.annotate(meth.id, &meth.attrs, |_| {});
+            self.annotate(meth.id, true, &meth.attrs, |_| {});
         }
         // Items defined in a function body have no reason to have
         // a stability attribute, so we don't recurse.
@@ -101,15 +117,21 @@ impl<'v> Visitor<'v> for Annotator {
 
             TypeTraitItem(ref typedef) => (typedef.ty_param.id, &typedef.attrs),
         };
-        self.annotate(id, attrs, |v| visit::walk_trait_item(v, t));
+        self.annotate(id, true, attrs, |v| visit::walk_trait_item(v, t));
     }
 
     fn visit_variant(&mut self, var: &Variant, g: &'v Generics) {
-        self.annotate(var.node.id, &var.node.attrs, |v| visit::walk_variant(v, var, g))
+        self.annotate(var.node.id, true, &var.node.attrs,
+                      |v| visit::walk_variant(v, var, g))
     }
 
     fn visit_struct_field(&mut self, s: &StructField) {
-        self.annotate(s.node.id, &s.node.attrs, |v| visit::walk_struct_field(v, s));
+        self.annotate(s.node.id, true, &s.node.attrs,
+                      |v| visit::walk_struct_field(v, s));
+    }
+
+    fn visit_foreign_item(&mut self, i: &ast::ForeignItem) {
+        self.annotate(i.id, true, &i.attrs, |_| {});
     }
 }
 
@@ -123,7 +145,8 @@ impl Index {
             },
             parent: None
         };
-        annotator.annotate(ast::CRATE_NODE_ID, &krate.attrs, |v| visit::walk_crate(v, krate));
+        annotator.annotate(ast::CRATE_NODE_ID, true, &krate.attrs,
+                           |v| visit::walk_crate(v, krate));
         annotator.index
     }
 }
@@ -135,16 +158,29 @@ pub fn lookup(tcx: &ty::ctxt, id: DefId) -> Option<Stability> {
     match ty::trait_item_of_item(tcx, id) {
         Some(ty::MethodTraitItemId(trait_method_id))
                 if trait_method_id != id => {
-            lookup(tcx, trait_method_id)
+            return lookup(tcx, trait_method_id)
         }
-        _ if is_local(id) => {
-            tcx.stability.borrow().local.get(&id.node).cloned()
-        }
-        _ => {
-            let stab = csearch::get_stability(&tcx.sess.cstore, id);
-            let mut index = tcx.stability.borrow_mut();
-            (*index).extern_cache.insert(id, stab.clone());
-            stab
-        }
+        _ => {}
     }
+
+    let item_stab = if is_local(id) {
+        tcx.stability.borrow().local.get(&id.node).cloned()
+    } else {
+        let stab = csearch::get_stability(&tcx.sess.cstore, id);
+        let mut index = tcx.stability.borrow_mut();
+        (*index).extern_cache.insert(id, stab.clone());
+        stab
+    };
+
+    item_stab.or_else(|| {
+        if let Some(trait_id) = ty::trait_id_of_impl(tcx, id) {
+            // FIXME (#18969): for the time being, simply use the
+            // stability of the trait to determine the stability of any
+            // unmarked impls for it. See FIXME above for more details.
+
+            lookup(tcx, trait_id)
+        } else {
+            None
+        }
+    })
 }

@@ -63,7 +63,7 @@ fn read_board_grid<rdr:'static + io::Reader>(mut input: rdr)
                    -> Vec<Vec<square>> {
     let mut input: &mut io::Reader = &mut input;
     let mut grid = Vec::new();
-    let mut line = [0, ..10];
+    let mut line = [0; 10];
     input.read(&mut line);
     let mut row = Vec::new();
     for c in line.iter() {

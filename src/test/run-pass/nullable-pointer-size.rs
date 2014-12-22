@@ -12,7 +12,7 @@
 
 use std::mem;
 
-enum E<T> { Thing(int, T), Nothing((), ((), ()), [i8, ..0]) }
+enum E<T> { Thing(int, T), Nothing((), ((), ()), [i8; 0]) }
 struct S<T>(int, T);
 
 // These are macros so we get useful assert messages.

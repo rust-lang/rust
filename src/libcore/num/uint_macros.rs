@@ -18,10 +18,9 @@ pub const BITS : uint = $bits;
 #[unstable]
 pub const BYTES : uint = ($bits / 8);
 
-#[unstable]
+#[stable]
 pub const MIN: $T = 0 as $T;
-#[unstable]
+#[stable]
 pub const MAX: $T = 0 as $T - 1 as $T;
 
 ) }
-

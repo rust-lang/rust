@@ -37,7 +37,7 @@ use util::nodemap::{FnvHashMap, NodeSet};
 use lint::{Context, LintPass, LintArray};
 
 use std::{cmp, slice};
-use std::collections::hash_map::{Occupied, Vacant};
+use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::num::SignedInt;
 use std::{i8, i16, i32, i64, u8, u16, u32, u64, f32, f64};
 use syntax::{abi, ast, ast_map};
@@ -1157,9 +1157,9 @@ impl LintPass for UnusedParens {
             ast::ExprIf(ref cond, _, _) => (cond, "`if` condition", true),
             ast::ExprWhile(ref cond, _, _) => (cond, "`while` condition", true),
             ast::ExprMatch(ref head, _, source) => match source {
-                ast::MatchNormal => (head, "`match` head expression", true),
-                ast::MatchIfLetDesugar => (head, "`if let` head expression", true),
-                ast::MatchWhileLetDesugar => (head, "`while let` head expression", true),
+                ast::MatchSource::Normal => (head, "`match` head expression", true),
+                ast::MatchSource::IfLetDesugar { .. } => (head, "`if let` head expression", true),
+                ast::MatchSource::WhileLetDesugar => (head, "`while let` head expression", true),
             },
             ast::ExprRet(Some(ref value)) => (value, "`return` value", false),
             ast::ExprAssign(_, ref value) => (value, "assigned value", false),

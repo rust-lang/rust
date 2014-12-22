@@ -21,7 +21,7 @@ impl Bar for Foo {}
 pub fn main() {
     // With a vec of ints.
     let f1 = Fat { ptr: [1, 2, 3] };
-    let f2: &Fat<[int, ..3]> = &f1;
+    let f2: &Fat<[int; 3]> = &f1;
     let f3: &mut Fat<[int]> = f2; //~ ERROR mismatched types
 
     // With a trait.

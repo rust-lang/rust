@@ -11,7 +11,7 @@
 // Issue #16205.
 
 struct Foo {
-    a: [Box<int>, ..3],
+    a: [Box<int>; 3],
 }
 
 fn main() {

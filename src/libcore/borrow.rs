@@ -137,6 +137,7 @@ pub enum Cow<'a, T, Sized? B: 'a> where B: ToOwned<T> {
     Owned(T)
 }
 
+#[stable]
 impl<'a, T, Sized? B> Clone for Cow<'a, T, B> where B: ToOwned<T> {
     fn clone(&self) -> Cow<'a, T, B> {
         match *self {

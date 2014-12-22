@@ -324,7 +324,7 @@ fn main() {
     let f = Foo { x: y }; // -+ f goes into scope
     // stuff              //  |
                           //  |
-}                         // -+ f & y go out of scope
+}                         // -+ f and y go out of scope
 ```
 
 Our `f` lives within the scope of `y`, so everything works. What if it didn't?
@@ -342,7 +342,7 @@ fn main() {
         let y = &5i;          // ---+ y goes into scope
         let f = Foo { x: y }; // ---+ f goes into scope
         x = &f.x;             //  | | error here
-    }                         // ---+ f & y go out of scope
+    }                         // ---+ f and y go out of scope
                               //  |
     println!("{}", x);        //  |
 }                             // -+ x goes out of scope
@@ -395,7 +395,7 @@ struct Wheel {
 }
 
 fn main() {
-    let car = Car { name: "DeLorian".to_string() };
+    let car = Car { name: "DeLorean".to_string() };
 
     for _ in range(0u, 4) {
         Wheel { size: 360, owner: car };
@@ -431,7 +431,7 @@ struct Wheel {
 }
 
 fn main() {
-    let car = Car { name: "DeLorian".to_string() };
+    let car = Car { name: "DeLorean".to_string() };
 
     let car_owner = Rc::new(car);
 

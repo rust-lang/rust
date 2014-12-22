@@ -168,12 +168,12 @@ struct RcBox<T> {
 
 /// An immutable reference-counted pointer type.
 ///
-/// See the [module level documentation](../index.html) for more.
+/// See the [module level documentation](../index.html) for more details.
 #[unsafe_no_drop_flag]
 #[stable]
 pub struct Rc<T> {
-    // FIXME #12808: strange names to try to avoid interfering with
-    // field accesses of the contained type via Deref
+    // FIXME #12808: strange names to try to avoid interfering with field accesses of the contained
+    // type via Deref
     _ptr: *mut RcBox<T>,
     _nosend: marker::NoSend,
     _noshare: marker::NoSync
@@ -193,11 +193,9 @@ impl<T> Rc<T> {
     pub fn new(value: T) -> Rc<T> {
         unsafe {
             Rc {
-                // there is an implicit weak pointer owned by all the
-                // strong pointers, which ensures that the weak
-                // destructor never frees the allocation while the
-                // strong destructor is running, even if the weak
-                // pointer is stored inside the strong one.
+                // there is an implicit weak pointer owned by all the strong pointers, which
+                // ensures that the weak destructor never frees the allocation while the strong
+                // destructor is running, even if the weak pointer is stored inside the strong one.
                 _ptr: transmute(box RcBox {
                     value: value,
                     strong: Cell::new(1),
@@ -341,11 +339,10 @@ impl<T: Clone> Rc<T> {
         if !is_unique(self) {
             *self = Rc::new((**self).clone())
         }
-        // This unsafety is ok because we're guaranteed that the pointer
-        // returned is the *only* pointer that will ever be returned to T. Our
-        // reference count is guaranteed to be 1 at this point, and we required
-        // the `Rc<T>` itself to be `mut`, so we're returning the only possible
-        // reference to the inner value.
+        // This unsafety is ok because we're guaranteed that the pointer returned is the *only*
+        // pointer that will ever be returned to T. Our reference count is guaranteed to be 1 at
+        // this point, and we required the `Rc<T>` itself to be `mut`, so we're returning the only
+        // possible reference to the inner value.
         let inner = unsafe { &mut *self._ptr };
         &mut inner.value
     }
@@ -399,8 +396,8 @@ impl<T> Drop for Rc<T> {
                 if self.strong() == 0 {
                     ptr::read(&**self); // destroy the contained object
 
-                    // remove the implicit "strong weak" pointer now
-                    // that we've destroyed the contents.
+                    // remove the implicit "strong weak" pointer now that we've destroyed the
+                    // contents.
                     self.dec_weak();
 
                     if self.weak() == 0 {
@@ -413,7 +410,7 @@ impl<T> Drop for Rc<T> {
     }
 }
 
-#[unstable = "Clone is unstable."]
+#[stable]
 impl<T> Clone for Rc<T> {
     /// Makes a clone of the `Rc<T>`.
     ///
@@ -687,8 +684,8 @@ impl<T> Drop for Weak<T> {
         unsafe {
             if !self._ptr.is_null() {
                 self.dec_weak();
-                // the weak count starts at 1, and will only go to
-                // zero if all the strong pointers have disappeared.
+                // the weak count starts at 1, and will only go to zero if all the strong pointers
+                // have disappeared.
                 if self.weak() == 0 {
                     deallocate(self._ptr as *mut u8, size_of::<RcBox<T>>(),
                                min_align_of::<RcBox<T>>())

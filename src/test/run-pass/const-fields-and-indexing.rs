@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-const x : [int, ..4] = [1,2,3,4];
+const x : [int; 4] = [1,2,3,4];
 static p : int = x[2];
 const y : &'static [int] = &[1,2,3,4];
 static q : int = y[2];

@@ -15,6 +15,7 @@ use ast::{ItemMac, MacStmtWithSemicolon, Mrk, Stmt, StmtDecl, StmtMac};
 use ast::{StmtExpr, StmtSemi};
 use ast::TokenTree;
 use ast;
+use ast_util::path_to_ident;
 use ext::mtwt;
 use ext::build::AstBuilder;
 use attr;
@@ -35,6 +36,30 @@ use visit::Visitor;
 enum Either<L,R> {
     Left(L),
     Right(R)
+}
+
+pub fn expand_type(t: P<ast::Ty>,
+                   fld: &mut MacroExpander,
+                   impl_ty: Option<P<ast::Ty>>)
+                   -> P<ast::Ty> {
+    debug!("expanding type {} with impl_ty {}", t, impl_ty);
+    let t = match (t.node.clone(), impl_ty) {
+        // Expand uses of `Self` in impls to the concrete type.
+        (ast::Ty_::TyPath(ref path, _), Some(ref impl_ty)) => {
+            let path_as_ident = path_to_ident(path);
+            // Note unhygenic comparison here. I think this is correct, since
+            // even though `Self` is almost just a type parameter, the treatment
+            // for this expansion is as if it were a keyword.
+            if path_as_ident.is_some() &&
+               path_as_ident.unwrap().name == token::special_idents::type_self.name {
+                impl_ty.clone()
+            } else {
+                t
+            }
+        }
+        _ => t
+    };
+    fold::noop_fold_ty(t, fld)
 }
 
 pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
@@ -97,7 +122,7 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
             // `match <expr> { ... }`
             let arms = vec![pat_arm, break_arm];
             let match_expr = fld.cx.expr(span,
-                                         ast::ExprMatch(expr, arms, ast::MatchWhileLetDesugar));
+                                    ast::ExprMatch(expr, arms, ast::MatchSource::WhileLetDesugar));
 
             // `[opt_ident]: loop { ... }`
             let loop_block = fld.cx.block_expr(match_expr);
@@ -158,6 +183,8 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
                 arms
             };
 
+            let contains_else_clause = elseopt.is_some();
+
             // `_ => [<elseopt> | ()]`
             let else_arm = {
                 let pat_under = fld.cx.pat_wild(span);
@@ -170,7 +197,11 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
             arms.extend(else_if_arms.into_iter());
             arms.push(else_arm);
 
-            let match_expr = fld.cx.expr(span, ast::ExprMatch(expr, arms, ast::MatchIfLetDesugar));
+            let match_expr = fld.cx.expr(span,
+                                         ast::ExprMatch(expr, arms,
+                                                ast::MatchSource::IfLetDesugar {
+                                                    contains_else_clause: contains_else_clause,
+                                                }));
             fld.fold_expr(match_expr)
         }
 
@@ -1059,6 +1090,14 @@ fn expand_and_rename_fn_decl_and_block(fn_decl: P<ast::FnDecl>, block: P<ast::Bl
 /// A tree-folder that performs macro expansion
 pub struct MacroExpander<'a, 'b:'a> {
     pub cx: &'a mut ExtCtxt<'b>,
+    // The type of the impl currently being expanded.
+    current_impl_type: Option<P<ast::Ty>>,
+}
+
+impl<'a, 'b> MacroExpander<'a, 'b> {
+    pub fn new(cx: &'a mut ExtCtxt<'b>) -> MacroExpander<'a, 'b> {
+        MacroExpander { cx: cx, current_impl_type: None }
+    }
 }
 
 impl<'a, 'b> Folder for MacroExpander<'a, 'b> {
@@ -1071,7 +1110,14 @@ impl<'a, 'b> Folder for MacroExpander<'a, 'b> {
     }
 
     fn fold_item(&mut self, item: P<ast::Item>) -> SmallVector<P<ast::Item>> {
-        expand_item(item, self)
+        let prev_type = self.current_impl_type.clone();
+        if let ast::Item_::ItemImpl(_, _, _, ref ty, _) = item.node {
+            self.current_impl_type = Some(ty.clone());
+        }
+
+        let result = expand_item(item, self);
+        self.current_impl_type = prev_type;
+        result
     }
 
     fn fold_item_underscore(&mut self, item: ast::Item_) -> ast::Item_ {
@@ -1092,6 +1138,11 @@ impl<'a, 'b> Folder for MacroExpander<'a, 'b> {
 
     fn fold_method(&mut self, method: P<ast::Method>) -> SmallVector<P<ast::Method>> {
         expand_method(method, self)
+    }
+
+    fn fold_ty(&mut self, t: P<ast::Ty>) -> P<ast::Ty> {
+        let impl_type = self.current_impl_type.clone();
+        expand_type(t, self, impl_type)
     }
 
     fn new_span(&mut self, span: Span) -> Span {
@@ -1138,9 +1189,7 @@ pub fn expand_crate(parse_sess: &parse::ParseSess,
                     user_exts: Vec<NamedSyntaxExtension>,
                     c: Crate) -> Crate {
     let mut cx = ExtCtxt::new(parse_sess, c.config.clone(), cfg);
-    let mut expander = MacroExpander {
-        cx: &mut cx,
-    };
+    let mut expander = MacroExpander::new(&mut cx);
 
     for ExportedMacros { crate_name, macros } in imported_macros.into_iter() {
         let name = format!("<{} macros>", token::get_ident(crate_name))

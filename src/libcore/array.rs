@@ -25,7 +25,7 @@ use option::Option;
 macro_rules! array_impls {
     ($($N:expr)+) => {
         $(
-            #[unstable = "waiting for Clone to stabilize"]
+            #[stable]
             impl<T:Copy> Clone for [T, ..$N] {
                 fn clone(&self) -> [T, ..$N] {
                     *self
@@ -115,4 +115,3 @@ array_impls! {
     20 21 22 23 24 25 26 27 28 29
     30 31 32
 }
-

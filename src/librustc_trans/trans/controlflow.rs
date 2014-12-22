@@ -112,8 +112,17 @@ pub fn trans_block<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     if dest != expr::Ignore {
         let block_ty = node_id_type(bcx, b.id);
+
         if b.expr.is_none() || type_is_zero_size(bcx.ccx(), block_ty) {
             dest = expr::Ignore;
+        } else if b.expr.is_some() {
+            // If the block has an expression, but that expression isn't reachable,
+            // don't save into the destination given, ignore it.
+            if let Some(ref cfg) = bcx.fcx.cfg {
+                if !cfg.node_is_reachable(b.expr.as_ref().unwrap().id) {
+                    dest = expr::Ignore;
+                }
+            }
         }
     }
 
@@ -277,6 +286,7 @@ pub fn trans_for<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     debug!("iterator type is {}, datum type is {}",
            ppaux::ty_to_string(bcx.tcx(), iterator_type),
            ppaux::ty_to_string(bcx.tcx(), iterator_datum.ty));
+
     let lliterator = load_ty(bcx, iterator_datum.val, iterator_datum.ty);
 
     // Create our basic blocks and set up our loop cleanups.
@@ -355,6 +365,8 @@ pub fn trans_for<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                        pat,
                                        llpayload,
                                        binding_cleanup_scope_id);
+
+    debuginfo::create_for_loop_var_metadata(body_bcx_in, pat);
 
     // Codegen the body.
     body_bcx_out = trans_block(body_bcx_out, body, expr::Ignore);

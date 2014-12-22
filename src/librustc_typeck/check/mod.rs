@@ -2042,7 +2042,7 @@ fn try_overloaded_call<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                  -> bool {
     // Bail out if the callee is a bare function or a closure. We check those
     // manually.
-    match *structure_of(fcx, callee.span, callee_type) {
+    match structurally_resolved_type(fcx, callee.span, callee_type).sty {
         ty::ty_bare_fn(_) | ty::ty_closure(_) => return false,
         _ => {}
     }
@@ -2717,10 +2717,9 @@ fn check_lit<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         ast::LitInt(_, ast::SignedIntLit(t, _)) => ty::mk_mach_int(t),
         ast::LitInt(_, ast::UnsignedIntLit(t)) => ty::mk_mach_uint(t),
         ast::LitInt(_, ast::UnsuffixedIntLit(_)) => {
-            let opt_ty = expected.map_to_option(fcx, |sty| {
-                match *sty {
-                    ty::ty_int(i) => Some(ty::mk_mach_int(i)),
-                    ty::ty_uint(i) => Some(ty::mk_mach_uint(i)),
+            let opt_ty = expected.map_to_option(fcx, |ty| {
+                match ty.sty {
+                    ty::ty_int(_) | ty::ty_uint(_) => Some(ty),
                     ty::ty_char => Some(ty::mk_mach_uint(ast::TyU8)),
                     ty::ty_ptr(..) => Some(ty::mk_mach_uint(ast::TyU)),
                     ty::ty_bare_fn(..) => Some(ty::mk_mach_uint(ast::TyU)),
@@ -2732,9 +2731,9 @@ fn check_lit<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         }
         ast::LitFloat(_, t) => ty::mk_mach_float(t),
         ast::LitFloatUnsuffixed(_) => {
-            let opt_ty = expected.map_to_option(fcx, |sty| {
-                match *sty {
-                    ty::ty_float(i) => Some(ty::mk_mach_float(i)),
+            let opt_ty = expected.map_to_option(fcx, |ty| {
+                match ty.sty {
+                    ty::ty_float(_) => Some(ty),
                     _ => None
                 }
             });
@@ -2910,7 +2909,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         let fn_ty = fcx.expr_ty(f);
 
         // Extract the function signature from `in_fty`.
-        let fn_sty = structure_of(fcx, f.span, fn_ty);
+        let fn_ty = structurally_resolved_type(fcx, f.span, fn_ty);
 
         // This is the "default" function signature, used in case of error.
         // In that case, we check each argument against "error" in order to
@@ -2921,7 +2920,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
             variadic: false
         });
 
-        let fn_sig = match *fn_sty {
+        let fn_sig = match fn_ty.sty {
             ty::ty_bare_fn(ty::BareFnTy {ref sig, ..}) |
             ty::ty_closure(box ty::ClosureTy {ref sig, ..}) => sig,
             _ => {
@@ -3655,9 +3654,9 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         }
       }
       ast::ExprUnary(unop, ref oprnd) => {
-        let expected_inner = expected.map(fcx, |sty| {
+        let expected_inner = expected.map(fcx, |ty| {
             match unop {
-                ast::UnUniq => match *sty {
+                ast::UnUniq => match ty.sty {
                     ty::ty_uniq(ty) => {
                         ExpectHasType(ty)
                     }
@@ -3746,9 +3745,11 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
       }
       ast::ExprAddrOf(mutbl, ref oprnd) => {
         let expected = expected.only_has_type();
-        let hint = expected.map(fcx, |sty| {
-            match *sty { ty::ty_rptr(_, ref mt) | ty::ty_ptr(ref mt) => ExpectHasType(mt.ty),
-                         _ => NoExpectation }
+        let hint = expected.map(fcx, |ty| {
+            match ty.sty {
+                ty::ty_rptr(_, ref mt) | ty::ty_ptr(ref mt) => ExpectHasType(mt.ty),
+                _ => NoExpectation
+            }
         });
         let lvalue_pref = match mutbl {
             ast::MutMutable => PreferMutLvalue,
@@ -3918,8 +3919,8 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
             fcx.write_nil(id);
         }
       }
-      ast::ExprMatch(ref discrim, ref arms, _) => {
-        _match::check_match(fcx, expr, &**discrim, arms.as_slice(), expected);
+      ast::ExprMatch(ref discrim, ref arms, match_src) => {
+        _match::check_match(fcx, expr, &**discrim, arms.as_slice(), expected, match_src);
       }
       ast::ExprClosure(_, opt_kind, ref decl, ref body) => {
           closure::check_expr_closure(fcx, expr, opt_kind, &**decl, &**body, expected);
@@ -4037,9 +4038,9 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
       }
       ast::ExprTup(ref elts) => {
         let expected = expected.only_has_type();
-        let flds = expected.map_to_option(fcx, |sty| {
-            match *sty {
-                ty::ty_tup(ref flds) => Some((*flds).clone()),
+        let flds = expected.map_to_option(fcx, |ty| {
+            match ty.sty {
+                ty::ty_tup(ref flds) => Some(flds[]),
                 _ => None
             }
         });
@@ -4304,20 +4305,20 @@ impl<'tcx> Expectation<'tcx> {
     }
 
     fn map<'a, F>(self, fcx: &FnCtxt<'a, 'tcx>, unpack: F) -> Expectation<'tcx> where
-        F: FnOnce(&ty::sty<'tcx>) -> Expectation<'tcx>
+        F: FnOnce(Ty<'tcx>) -> Expectation<'tcx>
     {
         match self.resolve(fcx) {
             NoExpectation => NoExpectation,
-            ExpectCastableToType(t) | ExpectHasType(t) => unpack(&t.sty),
+            ExpectCastableToType(ty) | ExpectHasType(ty) => unpack(ty),
         }
     }
 
     fn map_to_option<'a, O, F>(self, fcx: &FnCtxt<'a, 'tcx>, unpack: F) -> Option<O> where
-        F: FnOnce(&ty::sty<'tcx>) -> Option<O>,
+        F: FnOnce(Ty<'tcx>) -> Option<O>,
     {
         match self.resolve(fcx) {
             NoExpectation => None,
-            ExpectCastableToType(t) | ExpectHasType(t) => unpack(&t.sty),
+            ExpectCastableToType(ty) | ExpectHasType(ty) => unpack(ty),
         }
     }
 }
@@ -5318,12 +5319,6 @@ pub fn structurally_resolved_type<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>, sp: Span,
     }
 
     ty
-}
-
-// Returns the one-level-deep structure of the given type.
-pub fn structure_of<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>, sp: Span, typ: Ty<'tcx>)
-                        -> &'tcx ty::sty<'tcx> {
-    &structurally_resolved_type(fcx, sp, typ).sty
 }
 
 // Returns true if b contains a break that can exit from b

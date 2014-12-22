@@ -53,6 +53,7 @@ use core::cmp::max;
 use core::default::Default;
 use core::fmt;
 use core::hash::{mod, Hash};
+use core::iter::repeat;
 use core::kinds::marker::{ContravariantLifetime, InvariantType};
 use core::mem;
 use core::num::{Int, UnsignedInt};
@@ -411,6 +412,33 @@ impl<T: Clone> Vec<T> {
         }
     }
 
+    /// Resizes the `Vec` in-place so that `len()` is equal to `new_len`.
+    ///
+    /// Calls either `extend()` or `truncate()` depending on whether `new_len`
+    /// is larger than the current value of `len()` or not.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut vec = vec!["hello"];
+    /// vec.resize(3, "world");
+    /// assert_eq!(vec, vec!["hello", "world", "world"]);
+    ///
+    /// let mut vec = vec![1i, 2, 3, 4];
+    /// vec.resize(2, 0);
+    /// assert_eq!(vec, vec![1, 2]);
+    /// ```
+    #[unstable = "matches collection reform specification; waiting for dust to settle"]
+    pub fn resize(&mut self, new_len: uint, value: T) {
+        let len = self.len();
+
+        if new_len > len {
+            self.extend(repeat(value).take(new_len - len));
+        } else {
+            self.truncate(new_len);
+        }
+    }
+
     /// Partitions a vector based on a predicate.
     ///
     /// Clones the elements of the vector, partitioning them into two `Vec<T>`s
@@ -442,7 +470,7 @@ impl<T: Clone> Vec<T> {
     }
 }
 
-#[unstable]
+#[stable]
 impl<T:Clone> Clone for Vec<T> {
     fn clone(&self) -> Vec<T> { self.as_slice().to_vec() }
 
@@ -1334,34 +1362,11 @@ impl<T> AsSlice<T> for Vec<T> {
     }
 }
 
-// NOTE(stage0): Remove impl after a snapshot
-#[cfg(stage0)]
-impl<T: Clone, Sized? V: AsSlice<T>> Add<V, Vec<T>> for Vec<T> {
-    #[inline]
-    fn add(&self, rhs: &V) -> Vec<T> {
-        let mut res = Vec::with_capacity(self.len() + rhs.as_slice().len());
-        res.push_all(self.as_slice());
-        res.push_all(rhs.as_slice());
-        res
-    }
-}
-
-
-#[cfg(not(stage0))]  // NOTE(stage0): Remove impl after a snapshot
 impl<'a, T: Clone> Add<&'a [T], Vec<T>> for Vec<T> {
     #[inline]
     fn add(mut self, rhs: &[T]) -> Vec<T> {
         self.push_all(rhs);
         self
-    }
-}
-
-#[cfg(not(stage0))]  // NOTE(stage0): Remove impl after a snapshot
-impl<'a, T: Clone> Add<Vec<T>, Vec<T>> for &'a [T] {
-    #[inline]
-    fn add(self, mut rhs: Vec<T>) -> Vec<T> {
-        rhs.push_all(self);
-        rhs
     }
 }
 

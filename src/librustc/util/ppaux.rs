@@ -93,8 +93,9 @@ pub fn explain_region_and_span(cx: &ctxt, region: ty::Region)
               ast::ExprMethodCall(..) => {
                 explain_span(cx, "method call", expr.span)
               },
-              ast::ExprMatch(_, _, ast::MatchIfLetDesugar) => explain_span(cx, "if let", expr.span),
-              ast::ExprMatch(_, _, ast::MatchWhileLetDesugar) => {
+              ast::ExprMatch(_, _, ast::MatchSource::IfLetDesugar { .. }) =>
+                  explain_span(cx, "if let", expr.span),
+              ast::ExprMatch(_, _, ast::MatchSource::WhileLetDesugar) => {
                   explain_span(cx, "while let", expr.span)
               },
               ast::ExprMatch(..) => explain_span(cx, "match", expr.span),
@@ -452,7 +453,7 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
         ty_vec(t, sz) => {
             let inner_str = ty_to_string(cx, t);
             match sz {
-                Some(n) => format!("[{}, ..{}]", inner_str, n),
+                Some(n) => format!("[{}; {}]", inner_str, n),
                 None => format!("[{}]", inner_str),
             }
         }
@@ -532,7 +533,13 @@ pub fn parameterized<'tcx>(cx: &ctxt<'tcx>,
     if cx.lang_items.fn_trait_kind(did).is_some() {
         format!("{}({}){}",
                 base,
-                strs[0][1 .. strs[0].len() - (strs[0].ends_with(",)") as uint+1)],
+                if strs[0].starts_with("(") && strs[0].ends_with(",)") {
+                    strs[0][1 .. strs[0].len() - 2] // Remove '(' and ',)'
+                } else if strs[0].starts_with("(") && strs[0].ends_with(")") {
+                    strs[0][1 .. strs[0].len() - 1] // Remove '(' and ')'
+                } else {
+                    strs[0][]
+                },
                 if &*strs[1] == "()" { String::new() } else { format!(" -> {}", strs[1]) })
     } else if strs.len() > 0 {
         format!("{}<{}>", base, strs.connect(", "))

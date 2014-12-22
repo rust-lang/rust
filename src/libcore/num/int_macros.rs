@@ -24,13 +24,12 @@ pub const BYTES : uint = ($bits / 8);
 
 // FIXME(#11621): Should be deprecated once CTFE is implemented in favour of
 // calling the `Bounded::min_value` function.
-#[unstable]
+#[stable]
 pub const MIN: $T = (-1 as $T) << (BITS - 1);
 // FIXME(#9837): Compute MIN like this so the high bits that shouldn't exist are 0.
 // FIXME(#11621): Should be deprecated once CTFE is implemented in favour of
 // calling the `Bounded::max_value` function.
-#[unstable]
+#[stable]
 pub const MAX: $T = !MIN;
 
 ) }
-

@@ -22,6 +22,7 @@ use core::option::Option;
 use core::raw::TraitObject;
 use core::result::Result;
 use core::result::Result::{Ok, Err};
+use core::ops::{Deref, DerefMut};
 
 /// A value that represents the global exchange heap. This is the default
 /// place that the `box` keyword allocates into when no place is supplied.
@@ -57,7 +58,7 @@ impl<T> Default for Box<[T]> {
     fn default() -> Box<[T]> { box [] }
 }
 
-#[unstable]
+#[stable]
 impl<T: Clone> Clone for Box<T> {
     /// Returns a copy of the owned box.
     #[inline]
@@ -147,6 +148,14 @@ impl fmt::Show for Box<Any+'static> {
     }
 }
 
+impl<Sized? T> Deref<T> for Box<T> {
+    fn deref(&self) -> &T { &**self }
+}
+
+impl<Sized? T> DerefMut<T> for Box<T> {
+    fn deref_mut(&mut self) -> &mut T { &mut **self }
+}
+
 #[cfg(test)]
 mod test {
     #[test]
@@ -192,5 +201,11 @@ mod test {
         assert_eq!(s, "&Any");
         let s = format!("{}", b);
         assert_eq!(s, "&Any");
+    }
+
+    #[test]
+    fn deref() {
+        fn homura<T: Deref<i32>>(_: T) { }
+        homura(box 765i32);
     }
 }

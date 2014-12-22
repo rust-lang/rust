@@ -480,7 +480,7 @@ pub fn list_metadata(sess: &Session, path: &Path,
 /// The diagnostic emitter yielded to the procedure should be used for reporting
 /// errors of the compiler.
 pub fn monitor<F:FnOnce()+Send>(f: F) {
-    static STACK_SIZE: uint = 32000000; // 32MB
+    static STACK_SIZE: uint = 8 * 1024 * 1024; // 8MB
 
     let (tx, rx) = channel();
     let w = io::ChanWriter::new(tx);
