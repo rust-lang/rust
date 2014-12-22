@@ -3418,7 +3418,8 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                                 substitutions: subst::Substs<'tcx>,
                                                 field_types: &[ty::field_ty],
                                                 ast_fields: &[ast::Field],
-                                                check_completeness: bool)  {
+                                                check_completeness: bool,
+                                                enum_id_opt: Option<ast::DefId>)  {
         let tcx = fcx.ccx.tcx;
 
         let mut class_field_map = FnvHashMap::new();
@@ -3437,13 +3438,24 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
             match pair {
                 None => {
                     fcx.type_error_message(
-                      field.ident.span,
-                      |actual| {
-                          format!("structure `{}` has no field named `{}`",
-                                  actual, token::get_ident(field.ident.node))
-                      },
-                      struct_ty,
-                      None);
+                        field.ident.span,
+                        |actual| match enum_id_opt {
+                            Some(enum_id) => {
+                                let variant_type = ty::enum_variant_with_id(tcx,
+                                                                            enum_id,
+                                                                            class_id);
+                                format!("struct variant `{}::{}` has no field named `{}`",
+                                        actual, variant_type.name.as_str(),
+                                        token::get_ident(field.ident.node))
+                            }
+                            None => {
+                                format!("structure `{}` has no field named `{}`",
+                                        actual,
+                                        token::get_ident(field.ident.node))
+                            }
+                        },
+                        struct_ty,
+                        None);
                     error_happened = true;
                 }
                 Some((_, true)) => {
@@ -3524,7 +3536,8 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                        struct_substs,
                                        class_fields[],
                                        fields,
-                                       base_expr.is_none());
+                                       base_expr.is_none(),
+                                       None);
         if ty::type_is_error(fcx.node_ty(id)) {
             struct_type = ty::mk_err();
         }
@@ -3566,7 +3579,8 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                        substitutions,
                                        variant_fields[],
                                        fields,
-                                       true);
+                                       true,
+                                       Some(enum_id));
         fcx.write_ty(id, enum_type);
     }
 
