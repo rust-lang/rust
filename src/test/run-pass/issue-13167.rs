@@ -11,7 +11,7 @@
 use std::slice;
 
 pub struct PhfMapEntries<'a, T: 'a> {
-    iter: slice::Items<'a, (&'static str, T)>,
+    iter: slice::Iter<'a, (&'static str, T)>,
 }
 
 impl<'a, T> Iterator<(&'static str, &'a T)> for PhfMapEntries<'a, T> {

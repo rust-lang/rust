@@ -540,8 +540,8 @@ impl Regex {
 }
 
 pub enum NamesIter<'a> {
-    NamesIterNative(::std::slice::Items<'a, Option<&'static str>>),
-    NamesIterDynamic(::std::slice::Items<'a, Option<String>>)
+    NamesIterNative(::std::slice::Iter<'a, Option<&'static str>>),
+    NamesIterDynamic(::std::slice::Iter<'a, Option<String>>)
 }
 
 impl<'a> Iterator<Option<String>> for NamesIter<'a> {

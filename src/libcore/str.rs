@@ -185,7 +185,7 @@ Section: Iterators
 /// Created with the method `.chars()`.
 #[deriving(Clone, Copy)]
 pub struct Chars<'a> {
-    iter: slice::Items<'a, u8>
+    iter: slice::Iter<'a, u8>
 }
 
 // Return the initial codepoint accumulator for the first byte.
@@ -866,7 +866,7 @@ Section: Misc
 /// `iter` reset such that it is pointing at the first byte in the
 /// invalid sequence.
 #[inline(always)]
-fn run_utf8_validation_iterator(iter: &mut slice::Items<u8>)
+fn run_utf8_validation_iterator(iter: &mut slice::Iter<u8>)
                                 -> Result<(), Utf8Error> {
     let whole = iter.as_slice();
     loop {
@@ -1574,7 +1574,6 @@ impl<'a> Default for &'a str {
     #[stable]
     fn default() -> &'a str { "" }
 }
-
 
 impl<'a> Iterator<&'a str> for Lines<'a> {
     #[inline]

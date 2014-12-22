@@ -130,7 +130,7 @@ struct Table {
 
 struct Items<'a> {
     cur: Option<&'a Entry>,
-    items: slice::Items<'a, Option<Box<Entry>>>,
+    items: slice::Iter<'a, Option<Box<Entry>>>,
 }
 
 impl Table {

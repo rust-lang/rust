@@ -18,7 +18,7 @@ use middle::ty_fold::{mod, TypeFoldable, TypeFolder};
 use util::ppaux::Repr;
 
 use std::fmt;
-use std::slice::Items;
+use std::slice::Iter;
 use std::vec::Vec;
 use syntax::codemap::{Span, DUMMY_SP};
 
@@ -400,7 +400,7 @@ impl<T> VecPerParamSpace<T> {
         &self.get_slice(space)[index]
     }
 
-    pub fn iter<'a>(&'a self) -> Items<'a,T> {
+    pub fn iter<'a>(&'a self) -> Iter<'a,T> {
         self.content.iter()
     }
 
