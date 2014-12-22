@@ -12,6 +12,8 @@
 
 extern crate libc;
 
+use std::c_str::ToCStr;
+
 mod mlibc {
     use libc::{c_char, c_long, c_longlong};
 

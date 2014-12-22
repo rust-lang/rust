@@ -447,11 +447,9 @@ static dot_dot_static: &'static [u8] = b"..";
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use prelude::Option::{mod, Some, None};
-    use prelude::{Vec, Clone, AsSlice, SliceExt, CloneSliceExt, IteratorExt};
-    use prelude::{DoubleEndedIteratorExt, Str, StrExt, ToString, GenericPath};
+    use prelude::v1::*;
     use str;
+    use super::*;
 
     macro_rules! t {
         (s: $path:expr, $exp:expr) => (
@@ -1239,7 +1237,7 @@ mod bench {
     extern crate test;
     use self::test::Bencher;
     use super::*;
-    use prelude::*;
+    use prelude::v1::*;
 
     #[bench]
     fn join_home_dir(b: &mut Bencher) {

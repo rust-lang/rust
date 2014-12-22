@@ -19,21 +19,23 @@ pub use self::Entry::*;
 
 use core::prelude::*;
 
-use self::StackOp::*;
-use super::node::{mod, Node, Found, GoDown};
-use super::node::{Traversal, MutTraversal, MoveTraversal};
-use super::node::TraversalItem::{mod, Elem, Edge};
-use super::node::ForceResult::{Leaf, Internal};
 use core::borrow::BorrowFrom;
-use std::hash::{Writer, Hash};
+use core::cmp::Ordering;
 use core::default::Default;
-use core::{iter, fmt, mem};
 use core::fmt::Show;
-use core::iter::Map;
+use core::hash::{Writer, Hash};
+use core::iter::{Map, FromIterator};
+use core::ops::{Index, IndexMut};
+use core::{iter, fmt, mem};
 
 use ring_buf::RingBuf;
 
 use self::Continuation::{Continue, Finished};
+use self::StackOp::*;
+use super::node::ForceResult::{Leaf, Internal};
+use super::node::TraversalItem::{mod, Elem, Edge};
+use super::node::{Traversal, MutTraversal, MoveTraversal};
+use super::node::{mod, Node, Found, GoDown};
 
 // FIXME(conventions): implement bounded iterators
 
@@ -495,6 +497,7 @@ mod stack {
     use core::prelude::*;
     use core::kinds::marker;
     use core::mem;
+    use core::ops::{Deref, DerefMut};
     use super::BTreeMap;
     use super::super::node::{mod, Node, Fit, Split, Internal, Leaf};
     use super::super::node::handle;

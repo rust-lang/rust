@@ -14,7 +14,7 @@
 #![allow(missing_docs)]
 #![doc(primitive = "f64")]
 
-use prelude::*;
+use prelude::v1::*;
 
 use intrinsics;
 use libc::c_int;

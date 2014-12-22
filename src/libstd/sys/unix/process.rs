@@ -7,22 +7,23 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+
+use prelude::v1::*;
 use self::Req::*;
 
-use libc::{mod, pid_t, c_void, c_int};
-use c_str::CString;
+use c_str::{CString, ToCStr};
+use collections;
+use comm::{channel, Sender, Receiver};
+use hash::Hash;
+use io::process::{ProcessExit, ExitStatus, ExitSignal};
 use io::{mod, IoResult, IoError, EndOfFile};
+use libc::{mod, pid_t, c_void, c_int};
 use mem;
 use os;
-use ptr;
-use prelude::*;
-use io::process::{ProcessExit, ExitStatus, ExitSignal};
-use collections;
 use path::BytesContainer;
-use hash::Hash;
-
-use sys::{mod, retry, c, wouldblock, set_nonblocking, ms_to_timeval};
+use ptr;
 use sys::fs::FileDesc;
+use sys::{mod, retry, c, wouldblock, set_nonblocking, ms_to_timeval};
 use sys_common::helper_thread::Helper;
 use sys_common::{AsInner, mkerr_libc, timeout};
 

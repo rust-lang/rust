@@ -13,7 +13,7 @@
 // FIXME: move various extern bindings from here into liblibc or
 // something similar
 
-use prelude::*;
+use prelude::v1::*;
 
 use fmt;
 use io::{IoResult, IoError};

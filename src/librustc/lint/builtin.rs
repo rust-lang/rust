@@ -36,10 +36,11 @@ use util::ppaux::{ty_to_string};
 use util::nodemap::{FnvHashMap, NodeSet};
 use lint::{Context, LintPass, LintArray};
 
-use std::{cmp, slice};
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::num::SignedInt;
+use std::{cmp, slice};
 use std::{i8, i16, i32, i64, u8, u16, u32, u64, f32, f64};
+
 use syntax::{abi, ast, ast_map};
 use syntax::ast_util::is_shift_binop;
 use syntax::attr::{mod, AttrMetaMethods};

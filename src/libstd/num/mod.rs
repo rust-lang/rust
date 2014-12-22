@@ -147,7 +147,7 @@ pub fn test_num<T>(ten: T, two: T) where
 
 #[cfg(test)]
 mod tests {
-    use prelude::*;
+    use prelude::v1::*;
     use super::*;
     use i8;
     use i16;
@@ -800,7 +800,7 @@ mod bench {
     extern crate test;
     use self::test::Bencher;
     use num::Int;
-    use prelude::*;
+    use prelude::v1::*;
 
     #[bench]
     fn bench_pow_function(b: &mut Bencher) {

@@ -10,6 +10,8 @@
 
 // Test that `&T` and `&mut T` implement `Deref<T>`
 
+use std::ops::Deref;
+
 fn deref<U:Copy,T:Deref<U>>(t: T) -> U {
     *t
 }

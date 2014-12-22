@@ -16,6 +16,7 @@ mod tests {
     use core::$T_i::*;
     use core::num::Int;
     use num;
+    use core::ops::{BitOr, BitAnd, BitXor, Shl, Shr, Not};
 
     #[test]
     fn test_overflows() {

@@ -25,6 +25,7 @@ use rustc::middle::def::Export;
 use syntax::ast;
 use syntax::parse::token;
 
+use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
 
 struct ExportRecorder<'a, 'b:'a, 'tcx:'b> {

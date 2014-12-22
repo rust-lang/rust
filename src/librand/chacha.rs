@@ -206,7 +206,7 @@ impl Rand for ChaChaRng {
 
 #[cfg(test)]
 mod test {
-    use std::prelude::*;
+    use std::prelude::v1::*;
 
     use core::iter::order;
     use {Rng, SeedableRng};

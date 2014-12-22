@@ -15,12 +15,14 @@
 use core::prelude::*;
 
 use core::borrow::{Cow, IntoCow};
+use core::cmp::Equiv;
 use core::default::Default;
 use core::fmt;
 use core::hash;
+use core::iter::FromIterator;
 use core::mem;
+use core::ops::{mod, Deref, Add};
 use core::ptr;
-use core::ops;
 use core::raw::Slice as RawSlice;
 use unicode::str as unicode_str;
 use unicode::str::Utf16Item;

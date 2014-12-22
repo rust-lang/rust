@@ -14,6 +14,7 @@
 extern crate libc;
 
 use std::io::TempDir;
+use std::c_str::ToCStr;
 use std::io::fs::PathExtensions;
 use std::io::fs;
 use std::io;

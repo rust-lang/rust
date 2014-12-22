@@ -10,13 +10,14 @@
 
 #![allow(missing_docs)]
 
-use std::collections::hash_map;
+use std::cmp::Ordering::{mod, Less, Greater, Equal};
 use std::collections::hash_map::Entry::{Occupied, Vacant};
+use std::collections::hash_map;
 use std::fmt::Show;
 use std::hash::Hash;
 use std::io;
 use std::mem;
-use std::num::{Float, FloatMath};
+use std::num::{Float, FloatMath, FromPrimitive};
 
 fn local_cmp<T:Float>(x: T, y: T) -> Ordering {
     // arbitrarily decide that NaNs are larger than everything.

@@ -10,7 +10,7 @@
 
 #![experimental]
 
-use prelude::*;
+use prelude::v1::*;
 
 use any::{Any, AnyRefExt};
 use cell::RefCell;

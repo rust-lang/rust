@@ -83,7 +83,7 @@ impl<'a, T: Send> DerefMut<T> for ExclusiveGuard<'a, T> {
 
 #[cfg(test)]
 mod tests {
-    use prelude::*;
+    use prelude::v1::*;
     use sync::Arc;
     use super::Exclusive;
     use task;

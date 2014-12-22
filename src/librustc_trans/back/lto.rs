@@ -20,6 +20,7 @@ use rustc::util::common::time;
 use libc;
 use flate;
 
+use std::c_str::ToCStr;
 use std::iter;
 use std::mem;
 use std::num::Int;

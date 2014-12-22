@@ -25,6 +25,8 @@
 //! wrapper that performs encoding/decoding, this implementation should switch
 //! to working in raw UTF-16, with such a wrapper around it.
 
+use prelude::v1::*;
+
 use super::c::{ReadConsoleW, WriteConsoleW, GetConsoleMode, SetConsoleMode};
 use super::c::{ERROR_ILLEGAL_CHARACTER};
 use super::c::{ENABLE_ECHO_INPUT, ENABLE_EXTENDED_FLAGS};
@@ -34,7 +36,6 @@ use libc::{c_int, HANDLE, LPDWORD, DWORD, LPVOID};
 use libc::{get_osfhandle, CloseHandle};
 use libc::types::os::arch::extra::LPCVOID;
 use io::{mod, IoError, IoResult, MemReader};
-use prelude::*;
 use ptr;
 use str::from_utf8;
 

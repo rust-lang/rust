@@ -18,9 +18,11 @@ pub use self::TraversalItem::*;
 
 use core::prelude::*;
 
-use core::{slice, mem, ptr, cmp, num, raw};
-use core::iter::Zip;
 use core::borrow::BorrowFrom;
+use core::cmp::Ordering::{Greater, Less, Equal};
+use core::iter::Zip;
+use core::ops::{Deref, DerefMut};
+use core::{slice, mem, ptr, cmp, num, raw};
 use alloc::heap;
 
 /// Represents the result of an Insertion: either the item fit, or the node had to split

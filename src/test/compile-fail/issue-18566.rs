@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::ops::Deref;
+
 struct MyPtr<'a>(&'a mut uint);
 impl<'a> Deref<uint> for MyPtr<'a> {
     fn deref<'b>(&'b self) -> &'b uint { self.0 }

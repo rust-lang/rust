@@ -25,6 +25,7 @@ use trans::type_of;
 use middle::ty::{mod, Ty};
 use middle::subst::{Subst, Substs};
 use std::cmp;
+use std::c_str::ToCStr;
 use libc::c_uint;
 use syntax::abi::{Cdecl, Aapcs, C, Win64, Abi};
 use syntax::abi::{RustIntrinsic, Rust, RustCall, Stdcall, Fastcall, System};

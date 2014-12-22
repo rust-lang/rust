@@ -9,14 +9,14 @@
 // except according to those terms.
 
 use std::cell::RefCell;
+use std::comm::channel;
 use std::dynamic_lib::DynamicLibrary;
 use std::io::{Command, TempDir};
 use std::io;
 use std::os;
 use std::str;
-use std::string::String;
-use std::thunk::Thunk;
 use std::thread::Thread;
+use std::thunk::Thunk;
 
 use std::collections::{HashSet, HashMap};
 use testing;

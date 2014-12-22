@@ -54,6 +54,8 @@ use rustc::metadata;
 use rustc::DIAGNOSTICS;
 
 use std::any::AnyRefExt;
+use std::cmp::Ordering::Equal;
+use std::comm::channel;
 use std::io;
 use std::iter::repeat;
 use std::os;

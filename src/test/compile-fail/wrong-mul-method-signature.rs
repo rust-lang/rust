@@ -13,6 +13,8 @@
 // (In this case the mul method should take &f64 and not f64)
 // See: #11450
 
+use std::ops::Mul;
+
 struct Vec1 {
     x: f64
 }

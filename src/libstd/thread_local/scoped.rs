@@ -40,7 +40,7 @@
 
 #![macro_escape]
 
-use prelude::*;
+use prelude::v1::*;
 
 // macro hygiene sure would be nice, wouldn't it?
 #[doc(hidden)] pub use self::imp::KeyInner;
@@ -238,7 +238,7 @@ mod imp {
 #[cfg(test)]
 mod tests {
     use cell::Cell;
-    use prelude::*;
+    use prelude::v1::*;
 
     #[test]
     fn smoke() {

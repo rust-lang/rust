@@ -15,7 +15,7 @@
 #![allow(non_camel_case_types)]
 
 use libc;
-use prelude::*;
+use prelude::v1::*;
 
 pub const WSADESCRIPTION_LEN: uint = 256;
 pub const WSASYS_STATUS_LEN: uint = 128;
@@ -133,7 +133,7 @@ pub mod compat {
     use intrinsics::{atomic_store_relaxed, transmute};
     use iter::IteratorExt;
     use libc::types::os::arch::extra::{LPCWSTR, HMODULE, LPCSTR, LPVOID};
-    use prelude::*;
+    use prelude::v1::*;
 
     extern "system" {
         fn GetModuleHandleW(lpModuleName: LPCWSTR) -> HMODULE;

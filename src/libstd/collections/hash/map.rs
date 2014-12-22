@@ -87,7 +87,7 @@ impl DefaultResizePolicy {
 
 #[test]
 fn test_resize_policy() {
-    use prelude::*;
+    use prelude::v1::*;
     let rp = DefaultResizePolicy;
     for n in range(0u, 1000) {
         assert!(rp.min_capacity(rp.usable_capacity(n)) <= n);
@@ -1473,8 +1473,9 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S> + Default> Extend<(K, V)> for HashMap<K
 
 #[cfg(test)]
 mod test_map {
-    use prelude::*;
+    use prelude::v1::*;
 
+    use cmp::Equiv;
     use super::HashMap;
     use super::Entry::{Occupied, Vacant};
     use hash;

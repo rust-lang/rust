@@ -32,10 +32,9 @@ extern crate libc;
 pub use self::ParseError::*;
 use self::Fmt::*;
 
-use std::fmt::Show;
-use std::fmt;
+use std::fmt::{mod, Show};
 use std::num::SignedInt;
-use std::string::String;
+use std::ops::{Add, Sub};
 use std::time::Duration;
 
 static NSEC_PER_SEC: i32 = 1_000_000_000_i32;

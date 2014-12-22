@@ -8,23 +8,23 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use prelude::v1::*;
 use self::SocketStatus::*;
 use self::InAddr::*;
 
-use alloc::arc::Arc;
+use c_str::ToCStr;
+use io::net::addrinfo;
+use io::net::ip::{SocketAddr, IpAddr, Ipv4Addr, Ipv6Addr};
+use io::{IoResult, IoError};
 use libc::{mod, c_char, c_int};
 use mem;
 use num::Int;
 use ptr::{mod, null, null_mut};
-use io::net::ip::{SocketAddr, IpAddr, Ipv4Addr, Ipv6Addr};
-use io::net::addrinfo;
-use io::{IoResult, IoError};
 use sys::{mod, retry, c, sock_t, last_error, last_net_error, last_gai_error, close_sock,
           wrlen, msglen_t, os, wouldblock, set_nonblocking, timer, ms_to_timeval,
           decode_error_detailed};
-use sync::{Mutex, MutexGuard};
+use sync::{Arc, Mutex, MutexGuard};
 use sys_common::{mod, keep_going, short_write, timeout};
-use prelude::*;
 use cmp;
 use io;
 

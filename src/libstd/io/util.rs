@@ -10,7 +10,7 @@
 
 //! Utility implementations of Reader and Writer
 
-use prelude::*;
+use prelude::v1::*;
 use cmp;
 use io;
 use slice::bytes::MutableByteVector;
@@ -280,7 +280,7 @@ mod test {
     use io;
     use boxed::Box;
     use super::*;
-    use prelude::*;
+    use prelude::v1::*;
 
     #[test]
     fn test_limit_reader_unlimited() {
