@@ -28,7 +28,7 @@ use std::path::BytesContainer;
 use std::rc::Rc;
 
 #[allow(non_camel_case_types)]
-#[deriving(Clone, Copy, Encodable, Decodable, PartialEq, Eq, Hash, Show)]
+#[deriving(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Show, Copy)]
 pub enum BinOpToken {
     Plus,
     Minus,
@@ -43,7 +43,7 @@ pub enum BinOpToken {
 }
 
 /// A delimeter token
-#[deriving(Clone, Copy, Encodable, Decodable, PartialEq, Eq, Hash, Show)]
+#[deriving(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Show, Copy)]
 pub enum DelimToken {
     /// A round parenthesis: `(` or `)`
     Paren,
@@ -53,14 +53,14 @@ pub enum DelimToken {
     Brace,
 }
 
-#[deriving(Clone, Copy, Encodable, Decodable, PartialEq, Eq, Hash, Show)]
+#[deriving(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Show, Copy)]
 pub enum IdentStyle {
     /// `::` follows the identifier with no whitespace in-between.
     ModName,
     Plain,
 }
 
-#[deriving(Clone, Copy, Encodable, Decodable, PartialEq, Eq, Hash, Show)]
+#[deriving(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Show, Copy)]
 pub enum Lit {
     Byte(ast::Name),
     Char(ast::Name),
@@ -86,7 +86,7 @@ impl Lit {
 }
 
 #[allow(non_camel_case_types)]
-#[deriving(Clone, Encodable, Decodable, PartialEq, Eq, Hash, Show)]
+#[deriving(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Show)]
 pub enum Token {
     /* Expression-operator symbols. */
     Eq,
@@ -334,7 +334,7 @@ impl Token {
     }
 }
 
-#[deriving(Clone, Encodable, Decodable, PartialEq, Eq, Hash)]
+#[deriving(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash)]
 /// For interpolation during macro expansion.
 pub enum Nonterminal {
     NtItem(P<ast::Item>),

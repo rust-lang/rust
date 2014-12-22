@@ -57,17 +57,17 @@
 //!
 //! Rust provides a mechanism for low boilerplate encoding & decoding of values to and from JSON via
 //! the serialization API.
-//! To be able to encode a piece of data, it must implement the `serialize::Encodable` trait.
-//! To be able to decode a piece of data, it must implement the `serialize::Decodable` trait.
+//! To be able to encode a piece of data, it must implement the `serialize::RustcEncodable` trait.
+//! To be able to decode a piece of data, it must implement the `serialize::RustcDecodable` trait.
 //! The Rust compiler provides an annotation to automatically generate the code for these traits:
-//! `#[deriving(Decodable, Encodable)]`
+//! `#[deriving(RustcDecodable, RustcEncodable)]`
 //!
 //! The JSON API provides an enum `json::Json` and a trait `ToJson` to encode objects.
 //! The `ToJson` trait provides a `to_json` method to convert an object into a `json::Json` value.
 //! A `json::Json` value can be encoded as a string or buffer using the functions described above.
 //! You can also use the `json::Encoder` object, which implements the `Encoder` trait.
 //!
-//! When using `ToJson` the `Encodable` trait implementation is not mandatory.
+//! When using `ToJson` the `RustcEncodable` trait implementation is not mandatory.
 //!
 //! # Examples of use
 //!
@@ -127,7 +127,7 @@
 //!     }
 //! }
 //!
-//! // Only generate `Encodable` trait implementation
+//! // Only generate `RustcEncodable` trait implementation
 //! #[deriving(Encodable)]
 //! pub struct ComplexNumRecord {
 //!     uid: u8,
@@ -405,7 +405,7 @@ impl<'a> Encoder<'a> {
     }
 
     /// Encode the specified struct into a json [u8]
-    pub fn buffer_encode<T:Encodable<Encoder<'a>, io::IoError>>(object: &T) -> Vec<u8>  {
+    pub fn buffer_encode<T: Encodable<Encoder<'a>, io::IoError>>(object: &T) -> Vec<u8>  {
         //Serialize the object in a string using a writer
         let mut m = Vec::new();
         // FIXME(14302) remove the transmute and unsafe block.
@@ -2428,7 +2428,7 @@ mod tests {
     use std::num::Float;
     use std::string;
 
-    #[deriving(Decodable, Eq, PartialEq, Show)]
+    #[deriving(RustcDecodable, Eq, PartialEq, Show)]
     struct OptionData {
         opt: Option<uint>,
     }
@@ -2455,20 +2455,20 @@ mod tests {
                                 ExpectedError("Number".to_string(), "false".to_string()));
     }
 
-    #[deriving(PartialEq, Encodable, Decodable, Show)]
+    #[deriving(PartialEq, RustcEncodable, RustcDecodable, Show)]
     enum Animal {
         Dog,
         Frog(string::String, int)
     }
 
-    #[deriving(PartialEq, Encodable, Decodable, Show)]
+    #[deriving(PartialEq, RustcEncodable, RustcDecodable, Show)]
     struct Inner {
         a: (),
         b: uint,
         c: Vec<string::String>,
     }
 
-    #[deriving(PartialEq, Encodable, Decodable, Show)]
+    #[deriving(PartialEq, RustcEncodable, RustcDecodable, Show)]
     struct Outer {
         inner: Vec<Inner>,
     }
@@ -3009,7 +3009,7 @@ mod tests {
         );
     }
 
-    #[deriving(Decodable)]
+    #[deriving(RustcDecodable)]
     struct FloatStruct {
         f: f64,
         a: Vec<f64>
@@ -3058,7 +3058,7 @@ mod tests {
             Err(SyntaxError(EOFWhileParsingObject, 3u, 8u)));
     }
 
-    #[deriving(Decodable)]
+    #[deriving(RustcDecodable)]
     #[allow(dead_code)]
     struct DecodeStruct {
         x: f64,
@@ -3066,7 +3066,7 @@ mod tests {
         z: string::String,
         w: Vec<DecodeStruct>
     }
-    #[deriving(Decodable)]
+    #[deriving(RustcDecodable)]
     enum DecodeEnum {
         A(f64),
         B(string::String)
