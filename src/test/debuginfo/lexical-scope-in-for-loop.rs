@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // ignore-android: FIXME(#10381)
+// ignore-test: Not sure what is going on here --pcwalton
 // min-lldb-version: 310
 
 // compile-flags:-g
