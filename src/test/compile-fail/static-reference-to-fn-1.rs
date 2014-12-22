@@ -24,7 +24,7 @@ fn foo() -> Option<int> {
 
 fn create() -> A<'static> {
     A {
-        func: &foo, //~ ERROR borrowed value does not live long enough
+        func: &foo, //~ ERROR mismatched types
     }
 }
 

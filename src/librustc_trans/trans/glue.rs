@@ -226,7 +226,7 @@ fn trans_struct_drop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     let fty = ty::lookup_item_type(bcx.tcx(), dtor_did).ty.subst(bcx.tcx(), substs);
     let self_ty = match fty.sty {
-        ty::ty_bare_fn(ref f) => {
+        ty::ty_bare_fn(_, ref f) => {
             assert!(f.sig.0.inputs.len() == 1);
             f.sig.0.inputs[0]
         }
@@ -289,6 +289,7 @@ fn trans_struct_drop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }
 
         let dtor_ty = ty::mk_ctor_fn(bcx.tcx(),
+                                     class_did,
                                      &[get_drop_glue_type(bcx.ccx(), t)],
                                      ty::mk_nil(bcx.tcx()));
         let (_, variant_cx) = invoke(variant_cx, dtor_addr, args[], dtor_ty, None, false);

@@ -293,7 +293,8 @@ pub enum Variance {
 
 #[deriving(Clone, Show)]
 pub enum AutoAdjustment<'tcx> {
-    AdjustAddEnv(ty::TraitStore),
+    AdjustAddEnv(ast::DefId, ty::TraitStore),
+    AdjustReifyFnPointer(ast::DefId), // go from a fn-item type to a fn-pointer type
     AdjustDerefRef(AutoDerefRef<'tcx>)
 }
 
@@ -1245,11 +1246,17 @@ pub enum sty<'tcx> {
     ty_vec(Ty<'tcx>, Option<uint>), // Second field is length.
     ty_ptr(mt<'tcx>),
     ty_rptr(Region, mt<'tcx>),
-    ty_bare_fn(BareFnTy<'tcx>),
+
+    // If the def-id is Some(_), then this is the type of a specific
+    // fn item. Otherwise, if None(_), it a fn pointer type.
+    ty_bare_fn(Option<DefId>, BareFnTy<'tcx>),
+
     ty_closure(Box<ClosureTy<'tcx>>),
     ty_trait(Box<TyTrait<'tcx>>),
     ty_struct(DefId, Substs<'tcx>),
+
     ty_unboxed_closure(DefId, Region, Substs<'tcx>),
+
     ty_tup(Vec<Ty<'tcx>>),
 
     ty_param(ParamTy), // type parameter
@@ -2181,7 +2188,7 @@ impl FlagComputation {
                 self.add_tys(ts[]);
             }
 
-            &ty_bare_fn(ref f) => {
+            &ty_bare_fn(_, ref f) => {
                 self.add_fn_sig(&f.sig);
             }
 
@@ -2342,15 +2349,19 @@ pub fn mk_closure<'tcx>(cx: &ctxt<'tcx>, fty: ClosureTy<'tcx>) -> Ty<'tcx> {
     mk_t(cx, ty_closure(box fty))
 }
 
-pub fn mk_bare_fn<'tcx>(cx: &ctxt<'tcx>, fty: BareFnTy<'tcx>) -> Ty<'tcx> {
-    mk_t(cx, ty_bare_fn(fty))
+pub fn mk_bare_fn<'tcx>(cx: &ctxt<'tcx>,
+                        opt_def_id: Option<ast::DefId>,
+                        fty: BareFnTy<'tcx>) -> Ty<'tcx> {
+    mk_t(cx, ty_bare_fn(opt_def_id, fty))
 }
 
 pub fn mk_ctor_fn<'tcx>(cx: &ctxt<'tcx>,
+                        def_id: ast::DefId,
                         input_tys: &[Ty<'tcx>],
                         output: Ty<'tcx>) -> Ty<'tcx> {
     let input_args = input_tys.iter().map(|ty| *ty).collect();
     mk_bare_fn(cx,
+               Some(def_id),
                BareFnTy {
                    unsafety: ast::Unsafety::Normal,
                    abi: abi::Rust,
@@ -2449,7 +2460,7 @@ pub fn maybe_walk_ty<'tcx>(ty: Ty<'tcx>, f: |Ty<'tcx>| -> bool) {
             }
         }
         ty_tup(ref ts) => { for tt in ts.iter() { maybe_walk_ty(*tt, |x| f(x)); } }
-        ty_bare_fn(ref ft) => {
+        ty_bare_fn(_, ref ft) => {
             for a in ft.sig.0.inputs.iter() { maybe_walk_ty(*a, |x| f(x)); }
             if let ty::FnConverging(output) = ft.sig.0.output {
                 maybe_walk_ty(output, f);
@@ -2932,7 +2943,7 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
             // Scalar and unique types are sendable, and durable
             ty_infer(ty::FreshIntTy(_)) |
             ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
-            ty_bare_fn(_) | ty::ty_char => {
+            ty_bare_fn(..) | ty::ty_char => {
                 TC::None
             }
 
@@ -3267,7 +3278,7 @@ pub fn is_instantiable<'tcx>(cx: &ctxt<'tcx>, r_ty: Ty<'tcx>) -> bool {
             ty_uint(_) |
             ty_float(_) |
             ty_str |
-            ty_bare_fn(_) |
+            ty_bare_fn(..) |
             ty_closure(_) |
             ty_infer(_) |
             ty_err |
@@ -3563,6 +3574,13 @@ pub fn type_is_bare_fn(ty: Ty) -> bool {
     }
 }
 
+pub fn type_is_bare_fn_item(ty: Ty) -> bool {
+    match ty.sty {
+        ty_bare_fn(Some(_), _) => true,
+        _ => false
+    }
+}
+
 pub fn type_is_fp(ty: Ty) -> bool {
     match ty.sty {
       ty_infer(FloatVar(_)) | ty_float(_) => true,
@@ -3795,7 +3813,7 @@ pub fn node_id_item_substs<'tcx>(cx: &ctxt<'tcx>, id: ast::NodeId) -> ItemSubsts
 
 pub fn fn_is_variadic(fty: Ty) -> bool {
     match fty.sty {
-        ty_bare_fn(ref f) => f.sig.0.variadic,
+        ty_bare_fn(_, ref f) => f.sig.0.variadic,
         ty_closure(ref f) => f.sig.0.variadic,
         ref s => {
             panic!("fn_is_variadic() called on non-fn type: {}", s)
@@ -3805,7 +3823,7 @@ pub fn fn_is_variadic(fty: Ty) -> bool {
 
 pub fn ty_fn_sig<'tcx>(fty: Ty<'tcx>) -> &'tcx PolyFnSig<'tcx> {
     match fty.sty {
-        ty_bare_fn(ref f) => &f.sig,
+        ty_bare_fn(_, ref f) => &f.sig,
         ty_closure(ref f) => &f.sig,
         ref s => {
             panic!("ty_fn_sig() called on non-fn type: {}", s)
@@ -3816,7 +3834,7 @@ pub fn ty_fn_sig<'tcx>(fty: Ty<'tcx>) -> &'tcx PolyFnSig<'tcx> {
 /// Returns the ABI of the given function.
 pub fn ty_fn_abi(fty: Ty) -> abi::Abi {
     match fty.sty {
-        ty_bare_fn(ref f) => f.abi,
+        ty_bare_fn(_, ref f) => f.abi,
         ty_closure(ref f) => f.abi,
         _ => panic!("ty_fn_abi() called on non-fn type"),
     }
@@ -3843,7 +3861,7 @@ pub fn ty_closure_store(fty: Ty) -> TraitStore {
 
 pub fn ty_fn_ret<'tcx>(fty: Ty<'tcx>) -> FnOutput<'tcx> {
     match fty.sty {
-        ty_bare_fn(ref f) => f.sig.0.output,
+        ty_bare_fn(_, ref f) => f.sig.0.output,
         ty_closure(ref f) => f.sig.0.output,
         ref s => {
             panic!("ty_fn_ret() called on non-fn type: {}", s)
@@ -3853,7 +3871,7 @@ pub fn ty_fn_ret<'tcx>(fty: Ty<'tcx>) -> FnOutput<'tcx> {
 
 pub fn is_fn_ty(fty: Ty) -> bool {
     match fty.sty {
-        ty_bare_fn(_) => true,
+        ty_bare_fn(..) => true,
         ty_closure(_) => true,
         _ => false
     }
@@ -3978,9 +3996,9 @@ pub fn adjust_ty<'tcx, F>(cx: &ctxt<'tcx>,
     return match adjustment {
         Some(adjustment) => {
             match *adjustment {
-                AdjustAddEnv(store) => {
+                AdjustAddEnv(_, store) => {
                     match unadjusted_ty.sty {
-                        ty::ty_bare_fn(ref b) => {
+                        ty::ty_bare_fn(Some(_), ref b) => {
                             let bounds = ty::ExistentialBounds {
                                 region_bound: ReStatic,
                                 builtin_bounds: all_builtin_bounds(),
@@ -3997,7 +4015,21 @@ pub fn adjust_ty<'tcx, F>(cx: &ctxt<'tcx>,
                         }
                         ref b => {
                             cx.sess.bug(
-                                format!("add_env adjustment on non-bare-fn: \
+                                format!("add_env adjustment on non-fn-item: \
+                                         {}",
+                                        b).as_slice());
+                        }
+                    }
+                }
+
+                AdjustReifyFnPointer(_) => {
+                    match unadjusted_ty.sty {
+                        ty::ty_bare_fn(Some(_), ref b) => {
+                            ty::mk_bare_fn(cx, None, (*b).clone())
+                        }
+                        ref b => {
+                            cx.sess.bug(
+                                format!("AdjustReifyFnPointer adjustment on non-fn-item: \
                                          {}",
                                         b)[]);
                         }
@@ -4356,7 +4388,8 @@ pub fn ty_sort_string<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> String {
         ty_vec(_, None) => "slice".to_string(),
         ty_ptr(_) => "*-ptr".to_string(),
         ty_rptr(_, _) => "&-ptr".to_string(),
-        ty_bare_fn(_) => "extern fn".to_string(),
+        ty_bare_fn(Some(_), _) => format!("fn item"),
+        ty_bare_fn(None, _) => "fn pointer".to_string(),
         ty_closure(_) => "fn".to_string(),
         ty_trait(ref inner) => {
             format!("trait {}", item_path_str(cx, inner.principal.def_id()))
@@ -4546,6 +4579,10 @@ pub fn note_and_explain_type_err(cx: &ctxt, err: &type_err) {
             note_and_explain_region(cx,
                                     "concrete lifetime that was found is ",
                                     conc_region, "");
+        }
+        terr_regions_overly_polymorphic(_, ty::ReInfer(ty::ReVar(_))) => {
+            // don't bother to print out the message below for
+            // inference variables, it's not very illuminating.
         }
         terr_regions_overly_polymorphic(_, conc_region) => {
             note_and_explain_region(cx,
@@ -5887,8 +5924,9 @@ pub fn hash_crate_independent<'tcx>(tcx: &ctxt<'tcx>, ty: Ty<'tcx>, svh: &Svh) -
                     region(state, r);
                     mt(state, m);
                 }
-                ty_bare_fn(ref b) => {
+                ty_bare_fn(opt_def_id, ref b) => {
                     byte!(14);
+                    hash!(opt_def_id);
                     hash!(b.unsafety);
                     hash!(b.abi);
                     fn_sig(state, &b.sig);
@@ -6203,7 +6241,7 @@ pub fn accumulate_lifetimes_in_type(accumulator: &mut Vec<ty::Region>,
             ty_str |
             ty_vec(_, _) |
             ty_ptr(_) |
-            ty_bare_fn(_) |
+            ty_bare_fn(..) |
             ty_tup(_) |
             ty_param(_) |
             ty_infer(_) |
@@ -6255,6 +6293,7 @@ impl<'tcx> AutoAdjustment<'tcx> {
     pub fn is_identity(&self) -> bool {
         match *self {
             AdjustAddEnv(..) => false,
+            AdjustReifyFnPointer(..) => false,
             AdjustDerefRef(ref r) => r.is_identity(),
         }
     }
@@ -6370,8 +6409,11 @@ impl DebruijnIndex {
 impl<'tcx> Repr<'tcx> for AutoAdjustment<'tcx> {
     fn repr(&self, tcx: &ctxt<'tcx>) -> String {
         match *self {
-            AdjustAddEnv(ref trait_store) => {
-                format!("AdjustAddEnv({})", trait_store)
+            AdjustAddEnv(def_id, ref trait_store) => {
+                format!("AdjustAddEnv({},{})", def_id.repr(tcx), trait_store)
+            }
+            AdjustReifyFnPointer(def_id) => {
+                format!("AdjustAddEnv({})", def_id.repr(tcx))
             }
             AdjustDerefRef(ref data) => {
                 data.repr(tcx)

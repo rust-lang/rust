@@ -37,7 +37,10 @@ impl BasicBlock {
 
     pub fn pred_iter(self) -> Preds {
         fn is_a_terminator_inst(user: &Value) -> bool { user.is_a_terminator_inst() }
+        let is_a_terminator_inst: fn(&Value) -> bool = is_a_terminator_inst;
+
         fn get_parent(user: Value) -> BasicBlock { user.get_parent().unwrap() }
+        let get_parent: fn(Value) -> BasicBlock = get_parent;
 
         self.as_value().user_iter()
             .filter(is_a_terminator_inst)

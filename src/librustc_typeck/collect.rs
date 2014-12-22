@@ -211,6 +211,8 @@ pub fn get_enum_variant_types<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
     // Create a set of parameter types shared among all the variants.
     for variant in variants.iter() {
+        let variant_def_id = local_def(variant.node.id);
+
         // Nullary enum constructors get turned into constants; n-ary enum
         // constructors get turned into functions.
         let result_ty = match variant.node.kind {
@@ -246,7 +248,7 @@ pub fn get_enum_variant_types<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             ty: result_ty
         };
 
-        tcx.tcache.borrow_mut().insert(local_def(variant.node.id), pty);
+        tcx.tcache.borrow_mut().insert(variant_def_id, pty);
 
         write_ty_to_tcx(tcx, variant.node.id, result_ty);
     }
@@ -353,7 +355,7 @@ fn collect_trait_methods<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             m.def_id,
             Polytype {
                 generics: m.generics.clone(),
-                ty: ty::mk_bare_fn(ccx.tcx, m.fty.clone()) });
+                ty: ty::mk_bare_fn(ccx.tcx, Some(m.def_id), m.fty.clone()) });
     }
 
     fn ty_method_of_trait_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
@@ -519,6 +521,7 @@ fn convert_methods<'a,'tcx,'i,I>(ccx: &CrateCtxt<'a, 'tcx>,
             tcx.sess.span_err(m.span, "duplicate method in trait impl");
         }
 
+        let m_def_id = local_def(m.id);
         let mty = Rc::new(ty_of_method(ccx,
                                        convert_method_context,
                                        container,
@@ -526,13 +529,13 @@ fn convert_methods<'a,'tcx,'i,I>(ccx: &CrateCtxt<'a, 'tcx>,
                                        untransformed_rcvr_ty,
                                        rcvr_ty_generics,
                                        rcvr_visibility));
-        let fty = ty::mk_bare_fn(tcx, mty.fty.clone());
+        let fty = ty::mk_bare_fn(tcx, Some(m_def_id), mty.fty.clone());
         debug!("method {} (id {}) has type {}",
                 m.pe_ident().repr(tcx),
                 m.id,
                 fty.repr(tcx));
         tcx.tcache.borrow_mut().insert(
-            local_def(m.id),
+            m_def_id,
             Polytype {
                 generics: mty.generics.clone(),
                 ty: fty
@@ -1461,7 +1464,7 @@ pub fn ty_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, it: &ast::Item)
             };
             let pty = Polytype {
                 generics: ty_generics,
-                ty: ty::mk_bare_fn(ccx.tcx, tofd)
+                ty: ty::mk_bare_fn(ccx.tcx, Some(local_def(it.id)), tofd)
             };
             debug!("type of {} (id {}) is {}",
                     token::get_ident(it.ident),
@@ -2138,6 +2141,7 @@ pub fn ty_of_foreign_fn_decl<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
     let t_fn = ty::mk_bare_fn(
         ccx.tcx,
+        None,
         ty::BareFnTy {
             abi: abi,
             unsafety: ast::Unsafety::Unsafe,

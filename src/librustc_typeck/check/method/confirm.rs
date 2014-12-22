@@ -113,7 +113,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
         self.add_obligations(&pick, &method_bounds_substs, &method_bounds);
 
         // Create the final `MethodCallee`.
-        let fty = ty::mk_bare_fn(self.tcx(), ty::BareFnTy {
+        let fty = ty::mk_bare_fn(self.tcx(), None, ty::BareFnTy {
             sig: ty::Binder(method_sig),
             unsafety: pick.method_ty.fty.unsafety,
             abi: pick.method_ty.fty.abi.clone(),
@@ -466,7 +466,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
     fn fixup_derefs_on_method_receiver_if_necessary(&self,
                                                     method_callee: &MethodCallee) {
         let sig = match method_callee.ty.sty {
-            ty::ty_bare_fn(ref f) => f.sig.clone(),
+            ty::ty_bare_fn(_, ref f) => f.sig.clone(),
             ty::ty_closure(ref f) => f.sig.clone(),
             _ => return,
         };

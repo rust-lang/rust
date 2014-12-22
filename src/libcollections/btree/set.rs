@@ -126,6 +126,7 @@ impl<T> BTreeSet<T> {
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn into_iter(self) -> IntoIter<T> {
         fn first<A, B>((a, _): (A, B)) -> A { a }
+        let first: fn((T, ())) -> T = first; // coerce to fn pointer
 
         IntoIter { iter: self.map.into_iter().map(first) }
     }

@@ -144,6 +144,7 @@ impl<V> VecMap<V> {
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn keys<'r>(&'r self) -> Keys<'r, V> {
         fn first<A, B>((a, _): (A, B)) -> A { a }
+        let first: fn((uint, &'r V)) -> uint = first; // coerce to fn pointer
 
         Keys { iter: self.iter().map(first) }
     }
@@ -153,6 +154,7 @@ impl<V> VecMap<V> {
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn values<'r>(&'r self) -> Values<'r, V> {
         fn second<A, B>((_, b): (A, B)) -> B { b }
+        let second: fn((uint, &'r V)) -> &'r V = second; // coerce to fn pointer
 
         Values { iter: self.iter().map(second) }
     }
@@ -239,6 +241,7 @@ impl<V> VecMap<V> {
         fn filter<A>((i, v): (uint, Option<A>)) -> Option<(uint, A)> {
             v.map(|v| (i, v))
         }
+        let filter: fn((uint, Option<V>)) -> Option<(uint, V)> = filter; // coerce to fn ptr
 
         let values = replace(&mut self.v, vec!());
         IntoIter { iter: values.into_iter().enumerate().filter_map(filter) }
