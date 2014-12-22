@@ -7,8 +7,6 @@
 # Key Terminology
 
 - `macro`: anything invokable as `foo!(...)` in source code.
-- `syntax extension`: a plugin to `rustc` that can provide macros or special
-  handling for certain attributes.
 - `MBE`: macro-by-example, a macro defined by `macro_rules`.
 - `matcher`: the left-hand-side of a rule in a `macro_rules` invocation.
 - `macro parser`: the bit of code in the Rust parser that will parse the input
@@ -41,7 +39,7 @@ possible to lift these restrictions backwards compatibly if desired.
 In current Rust, the `macro_rules` parser is very liberal in what it accepts
 in a matcher. This can cause problems, because it is possible to write an
 MBE which corresponds to an ambiguous grammar. When an MBE is invoked, if the
-macro parser encounters an amibuity while parsing, it will bail out with a
+macro parser encounters an ambiguity while parsing, it will bail out with a
 "local ambiguity" error. As an example for this, take the following MBE:
 
 ```rust
