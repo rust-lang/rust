@@ -1120,7 +1120,7 @@ impl<T> Vec<T> {
         }
 
         unsafe {
-            let end = *self.ptr.offset(self.len as int);
+            let end = (*self.ptr).offset(self.len as int);
             ptr::write(&mut *end, value);
             self.len += 1;
         }
