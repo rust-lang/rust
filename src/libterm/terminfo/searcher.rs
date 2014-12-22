@@ -61,13 +61,13 @@ pub fn get_dbpath_for_term(term: &str) -> Option<Box<Path>> {
     for p in dirs_to_search.iter() {
         if p.exists() {
             let f = first_char.to_string();
-            let newp = p.join_many(&[f.as_slice(), term]);
+            let newp = p.join_many(&[f[], term]);
             if newp.exists() {
                 return Some(box newp);
             }
             // on some installations the dir is named after the hex of the char (e.g. OS X)
             let f = format!("{:x}", first_char as uint);
-            let newp = p.join_many(&[f.as_slice(), term]);
+            let newp = p.join_many(&[f[], term]);
             if newp.exists() {
                 return Some(box newp);
             }

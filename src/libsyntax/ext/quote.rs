@@ -474,7 +474,7 @@ pub fn expand_quote_stmt(cx: &mut ExtCtxt,
 }
 
 fn ids_ext(strs: Vec<String> ) -> Vec<ast::Ident> {
-    strs.iter().map(|str| str_to_ident((*str).as_slice())).collect()
+    strs.iter().map(|str| str_to_ident((*str)[])).collect()
 }
 
 fn id_ext(str: &str) -> ast::Ident {
@@ -676,7 +676,7 @@ fn mk_tt(cx: &ExtCtxt, tt: &ast::TokenTree) -> Vec<P<ast::Stmt>> {
             for i in range(0, tt.len()) {
                 seq.push(tt.get_tt(i));
             }
-            mk_tts(cx, seq.as_slice())
+            mk_tts(cx, seq[])
         }
         ast::TtToken(sp, ref tok) => {
             let e_sp = cx.expr_ident(sp, id_ext("_sp"));
@@ -765,7 +765,7 @@ fn expand_tts(cx: &ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     let stmt_let_tt = cx.stmt_let(sp, true, id_ext("tt"), cx.expr_vec_ng(sp));
 
     let mut vector = vec!(stmt_let_sp, stmt_let_tt);
-    vector.extend(mk_tts(cx, tts.as_slice()).into_iter());
+    vector.extend(mk_tts(cx, tts[]).into_iter());
     let block = cx.expr_block(
         cx.block_all(sp,
                      Vec::new(),

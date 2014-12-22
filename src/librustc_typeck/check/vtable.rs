@@ -77,7 +77,7 @@ pub fn check_object_cast<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 source_expr.span,
                 format!("can only cast an boxed pointer \
                          to a boxed object, not a {}",
-                        ty::ty_sort_string(fcx.tcx(), source_ty)).as_slice());
+                        ty::ty_sort_string(fcx.tcx(), source_ty))[]);
         }
 
         (_, &ty::ty_rptr(..)) => {
@@ -85,7 +85,7 @@ pub fn check_object_cast<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 source_expr.span,
                 format!("can only cast a &-pointer \
                          to an &-object, not a {}",
-                        ty::ty_sort_string(fcx.tcx(), source_ty)).as_slice());
+                        ty::ty_sort_string(fcx.tcx(), source_ty))[]);
         }
 
         _ => {
@@ -164,7 +164,7 @@ fn check_object_safety_inner<'tcx>(tcx: &ty::ctxt<'tcx>,
             trait_name);
 
         for msg in errors {
-            tcx.sess.note(msg.as_slice());
+            tcx.sess.note(msg[]);
         }
     }
 
@@ -455,7 +455,7 @@ pub fn maybe_report_ambiguity<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                     format!(
                         "unable to infer enough type information about `{}`; type annotations \
                          required",
-                        self_ty.user_string(fcx.tcx())).as_slice());
+                        self_ty.user_string(fcx.tcx()))[]);
             } else {
                 fcx.tcx().sess.span_err(
                     obligation.cause.span,
@@ -464,7 +464,7 @@ pub fn maybe_report_ambiguity<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                          locate the impl of the trait `{}` for \
                          the type `{}`; type annotations required",
                         trait_ref.user_string(fcx.tcx()),
-                        self_ty.user_string(fcx.tcx())).as_slice());
+                        self_ty.user_string(fcx.tcx()))[]);
                 note_obligation_cause(fcx, obligation);
             }
         }
@@ -477,7 +477,7 @@ pub fn maybe_report_ambiguity<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                  cannot locate the impl of the trait `{}` for \
                  the type `{}`",
                 trait_ref.user_string(fcx.tcx()),
-                self_ty.user_string(fcx.tcx())).as_slice());
+                self_ty.user_string(fcx.tcx()))[]);
     }
 }
 

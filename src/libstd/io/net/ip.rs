@@ -25,8 +25,8 @@ use ops::FnOnce;
 use option::Option;
 use option::Option::{None, Some};
 use result::Result::{Ok, Err};
-use str::{FromStr, StrPrelude};
 use slice::{CloneSliceExt, SliceExt};
+use str::{FromStr, StrExt};
 use vec::Vec;
 
 pub type Port = u16;

@@ -58,12 +58,12 @@ pub fn compile_input(sess: Session,
             let outputs = build_output_filenames(input,
                                                  outdir,
                                                  output,
-                                                 krate.attrs.as_slice(),
+                                                 krate.attrs[],
                                                  &sess);
-            let id = link::find_crate_name(Some(&sess), krate.attrs.as_slice(),
+            let id = link::find_crate_name(Some(&sess), krate.attrs[],
                                            input);
             let expanded_crate
-                = match phase_2_configure_and_expand(&sess, krate, id.as_slice(),
+                = match phase_2_configure_and_expand(&sess, krate, id[],
                                                      addl_plugins) {
                     None => return,
                     Some(k) => k
@@ -75,7 +75,7 @@ pub fn compile_input(sess: Session,
         let mut forest = ast_map::Forest::new(expanded_crate);
         let ast_map = assign_node_ids_and_map(&sess, &mut forest);
 
-        write_out_deps(&sess, input, &outputs, id.as_slice());
+        write_out_deps(&sess, input, &outputs, id[]);
 
         if stop_after_phase_2(&sess) { return; }
 
@@ -163,9 +163,9 @@ pub fn phase_2_configure_and_expand(sess: &Session,
     let time_passes = sess.time_passes();
 
     *sess.crate_types.borrow_mut() =
-        collect_crate_types(sess, krate.attrs.as_slice());
+        collect_crate_types(sess, krate.attrs[]);
     *sess.crate_metadata.borrow_mut() =
-        collect_crate_metadata(sess, krate.attrs.as_slice());
+        collect_crate_metadata(sess, krate.attrs[]);
 
     time(time_passes, "gated feature checking", (), |_| {
         let (features, unknown_features) =
@@ -257,8 +257,8 @@ pub fn phase_2_configure_and_expand(sess: &Session,
             if cfg!(windows) {
                 _old_path = os::getenv("PATH").unwrap_or(_old_path);
                 let mut new_path = sess.host_filesearch().get_dylib_search_paths();
-                new_path.extend(os::split_paths(_old_path.as_slice()).into_iter());
-                os::setenv("PATH", os::join_paths(new_path.as_slice()).unwrap());
+                new_path.extend(os::split_paths(_old_path[]).into_iter());
+                os::setenv("PATH", os::join_paths(new_path[]).unwrap());
             }
             let cfg = syntax::ext::expand::ExpansionConfig {
                 crate_name: crate_name.to_string(),
@@ -503,7 +503,7 @@ pub fn phase_5_run_llvm_passes(sess: &Session,
         time(sess.time_passes(), "LLVM passes", (), |_|
             write::run_passes(sess,
                               trans,
-                              sess.opts.output_types.as_slice(),
+                              sess.opts.output_types[],
                               outputs));
     }
 
@@ -517,14 +517,14 @@ pub fn phase_6_link_output(sess: &Session,
                            outputs: &OutputFilenames) {
     let old_path = os::getenv("PATH").unwrap_or_else(||String::new());
     let mut new_path = sess.host_filesearch().get_tools_search_paths();
-    new_path.extend(os::split_paths(old_path.as_slice()).into_iter());
-    os::setenv("PATH", os::join_paths(new_path.as_slice()).unwrap());
+    new_path.extend(os::split_paths(old_path[]).into_iter());
+    os::setenv("PATH", os::join_paths(new_path[]).unwrap());
 
     time(sess.time_passes(), "linking", (), |_|
          link::link_binary(sess,
                            trans,
                            outputs,
-                           trans.link.crate_name.as_slice()));
+                           trans.link.crate_name[]));
 
     os::setenv("PATH", old_path);
 }
@@ -613,7 +613,7 @@ fn write_out_deps(sess: &Session,
         // write Makefile-compatible dependency rules
         let files: Vec<String> = sess.codemap().files.borrow()
                                    .iter().filter(|fmap| fmap.is_real_file())
-                                   .map(|fmap| escape_dep_filename(fmap.name.as_slice()))
+                                   .map(|fmap| escape_dep_filename(fmap.name[]))
                                    .collect();
         let mut file = try!(io::File::create(&deps_filename));
         for path in out_filenames.iter() {
@@ -627,7 +627,7 @@ fn write_out_deps(sess: &Session,
         Ok(()) => {}
         Err(e) => {
             sess.fatal(format!("error writing dependencies to `{}`: {}",
-                               deps_filename.display(), e).as_slice());
+                               deps_filename.display(), e)[]);
         }
     }
 }
@@ -698,7 +698,7 @@ pub fn collect_crate_types(session: &Session,
         if !res {
             session.warn(format!("dropping unsupported crate type `{}` \
                                    for target `{}`",
-                                 *crate_type, session.opts.target_triple).as_slice());
+                                 *crate_type, session.opts.target_triple)[]);
         }
 
         res

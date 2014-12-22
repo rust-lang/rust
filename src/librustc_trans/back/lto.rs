@@ -53,21 +53,21 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
             Some(p) => p,
             None => {
                 sess.fatal(format!("could not find rlib for: `{}`",
-                                   name).as_slice());
+                                   name)[]);
             }
         };
 
         let archive = ArchiveRO::open(&path).expect("wanted an rlib");
         let file = path.filename_str().unwrap();
-        let file = file.slice(3, file.len() - 5); // chop off lib/.rlib
+        let file = file[3..file.len() - 5]; // chop off lib/.rlib
         debug!("reading {}", file);
         for i in iter::count(0u, 1) {
             let bc_encoded = time(sess.time_passes(),
-                                  format!("check for {}.{}.bytecode.deflate", name, i).as_slice(),
+                                  format!("check for {}.{}.bytecode.deflate", name, i)[],
                                   (),
                                   |_| {
                                       archive.read(format!("{}.{}.bytecode.deflate",
-                                                           file, i).as_slice())
+                                                           file, i)[])
                                   });
             let bc_encoded = match bc_encoded {
                 Some(data) => data,
@@ -75,7 +75,7 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
                     if i == 0 {
                         // No bitcode was found at all.
                         sess.fatal(format!("missing compressed bytecode in {}",
-                                           path.display()).as_slice());
+                                           path.display())[]);
                     }
                     // No more bitcode files to read.
                     break;
@@ -98,12 +98,12 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
                             Some(inflated) => inflated,
                             None => {
                                 sess.fatal(format!("failed to decompress bc of `{}`",
-                                                   name).as_slice())
+                                                   name)[])
                             }
                         }
                     } else {
                         sess.fatal(format!("Unsupported bytecode format version {}",
-                                           version).as_slice())
+                                           version)[])
                     }
                 })
             } else {
@@ -114,7 +114,7 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
                         Some(bc) => bc,
                         None => {
                             sess.fatal(format!("failed to decompress bc of `{}`",
-                                               name).as_slice())
+                                               name)[])
                         }
                     }
                 })
@@ -123,7 +123,7 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
             let ptr = bc_decoded.as_slice().as_ptr();
             debug!("linking {}, part {}", name, i);
             time(sess.time_passes(),
-                 format!("ll link {}.{}", name, i).as_slice(),
+                 format!("ll link {}.{}", name, i)[],
                  (),
                  |()| unsafe {
                 if !llvm::LLVMRustLinkInExternalBitcode(llmod,
@@ -131,7 +131,7 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
                                                         bc_decoded.len() as libc::size_t) {
                     write::llvm_err(sess.diagnostic().handler(),
                                     format!("failed to load bc of `{}`",
-                                            name.as_slice()));
+                                            name[]));
                 }
             });
         }

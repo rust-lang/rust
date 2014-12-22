@@ -105,7 +105,7 @@ impl<'a, 'ast, 'v> Visitor<'v> for CheckItemRecursionVisitor<'a, 'ast> {
                           _ => {
                             self.sess.span_err(e.span,
                               format!("expected item, found {}",
-                                      self.ast_map.node_to_string(def_id.node)).as_slice());
+                                      self.ast_map.node_to_string(def_id.node))[]);
                             return;
                           },
                         }

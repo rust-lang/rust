@@ -138,7 +138,7 @@ impl<'a, 'tcx> Wf<'a, 'tcx> {
             ty::ty_open(_) => {
                 self.tcx.sess.bug(
                     format!("Unexpected type encountered while doing wf check: {}",
-                            ty.repr(self.tcx)).as_slice());
+                            ty.repr(self.tcx))[]);
             }
         }
     }

@@ -115,7 +115,7 @@ pub fn expand_meta_deriving(cx: &mut ExtCtxt,
                                 cx.span_err(titem.span,
                                             format!("unknown `deriving` \
                                                      trait: `{}`",
-                                                    *tname).as_slice());
+                                                    *tname)[]);
                             }
                         };
                     }

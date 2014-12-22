@@ -117,7 +117,7 @@ fn lookup_variant_by_id<'a>(tcx: &'a ty::ctxt,
             None => None,
             Some(ast_map::NodeItem(it)) => match it.node {
                 ast::ItemEnum(ast::EnumDef { ref variants }, _) => {
-                    variant_expr(variants.as_slice(), variant_def.node)
+                    variant_expr(variants[], variant_def.node)
                 }
                 _ => None
             },
@@ -138,7 +138,7 @@ fn lookup_variant_by_id<'a>(tcx: &'a ty::ctxt,
                     // NOTE this doesn't do the right thing, it compares inlined
                     // NodeId's to the original variant_def's NodeId, but they
                     // come from different crates, so they will likely never match.
-                    variant_expr(variants.as_slice(), variant_def.node).map(|e| e.id)
+                    variant_expr(variants[], variant_def.node).map(|e| e.id)
                 }
                 _ => None
             },
@@ -364,7 +364,7 @@ pub fn const_expr_to_pat(tcx: &ty::ctxt, expr: &Expr) -> P<ast::Pat> {
 pub fn eval_const_expr(tcx: &ty::ctxt, e: &Expr) -> const_val {
     match eval_const_expr_partial(tcx, e) {
         Ok(r) => r,
-        Err(s) => tcx.sess.span_fatal(e.span, s.as_slice())
+        Err(s) => tcx.sess.span_fatal(e.span, s[])
     }
 }
 
@@ -603,7 +603,7 @@ pub fn lit_to_const(lit: &ast::Lit) -> const_val {
         ast::LitInt(n, ast::UnsignedIntLit(_)) => const_uint(n),
         ast::LitFloat(ref n, _) |
         ast::LitFloatUnsuffixed(ref n) => {
-            const_float(from_str::<f64>(n.get()).unwrap() as f64)
+            const_float(n.get().parse::<f64>().unwrap() as f64)
         }
         ast::LitBool(b) => const_bool(b)
     }

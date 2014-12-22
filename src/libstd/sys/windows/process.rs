@@ -122,7 +122,7 @@ impl Process {
 
         use mem;
         use iter::{Iterator, IteratorExt};
-        use str::StrPrelude;
+        use str::StrExt;
 
         if cfg.gid().is_some() || cfg.uid().is_some() {
             return Err(IoError {

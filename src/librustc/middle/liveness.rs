@@ -323,7 +323,7 @@ impl<'a, 'tcx> IrMaps<'a, 'tcx> {
             self.tcx
                 .sess
                 .span_bug(span, format!("no variable registered for id {}",
-                                        node_id).as_slice());
+                                        node_id)[]);
           }
         }
     }
@@ -594,7 +594,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             self.ir.tcx.sess.span_bug(
                 span,
                 format!("no live node registered for node {}",
-                        node_id).as_slice());
+                        node_id)[]);
           }
         }
     }
@@ -1129,7 +1129,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
           // Uninteresting cases: just propagate in rev exec order
 
           ast::ExprVec(ref exprs) => {
-            self.propagate_through_exprs(exprs.as_slice(), succ)
+            self.propagate_through_exprs(exprs[], succ)
           }
 
           ast::ExprRepeat(ref element, ref count) => {
@@ -1154,7 +1154,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             } else {
                 succ
             };
-            let succ = self.propagate_through_exprs(args.as_slice(), succ);
+            let succ = self.propagate_through_exprs(args[], succ);
             self.propagate_through_expr(&**f, succ)
           }
 
@@ -1167,11 +1167,11 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             } else {
                 succ
             };
-            self.propagate_through_exprs(args.as_slice(), succ)
+            self.propagate_through_exprs(args[], succ)
           }
 
           ast::ExprTup(ref exprs) => {
-            self.propagate_through_exprs(exprs.as_slice(), succ)
+            self.propagate_through_exprs(exprs[], succ)
           }
 
           ast::ExprBinary(op, ref l, ref r) if ast_util::lazy_binop(op) => {

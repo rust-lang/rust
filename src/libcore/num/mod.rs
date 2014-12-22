@@ -32,7 +32,7 @@ use ops::{Add, Sub, Mul, Div, Rem, Neg};
 use ops::{Not, BitAnd, BitOr, BitXor, Shl, Shr};
 use option::Option;
 use option::Option::{Some, None};
-use str::{FromStr, from_str, StrPrelude};
+use str::{FromStr, from_str, StrExt};
 
 /// Simultaneous division and remainder
 #[inline]

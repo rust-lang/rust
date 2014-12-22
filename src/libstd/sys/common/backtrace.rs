@@ -8,12 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use io::{IoResult, Writer};
-use iter::{Iterator, IteratorExt};
-use option::Option::{Some, None};
-use result::Result::{Ok, Err};
-use str::{StrPrelude, from_str};
-use unicode::char::UnicodeChar;
+use prelude::*;
+
+use io::IoResult;
 
 #[cfg(target_word_size = "64")] pub const HEX_WIDTH: uint = 18;
 #[cfg(target_word_size = "32")] pub const HEX_WIDTH: uint = 10;
@@ -85,7 +82,7 @@ pub fn demangle(writer: &mut Writer, s: &str) -> IoResult<()> {
             while rest.char_at(0).is_numeric() {
                 rest = rest.slice_from(1);
             }
-            let i: uint = from_str(inner.slice_to(inner.len() - rest.len())).unwrap();
+            let i: uint = inner.slice_to(inner.len() - rest.len()).parse().unwrap();
             inner = rest.slice_from(i);
             rest = rest.slice_to(i);
             while rest.len() > 0 {
