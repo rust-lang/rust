@@ -409,7 +409,7 @@ impl<'a> LifetimeContext<'a> {
         self.sess.span_err(
             lifetime_ref.span,
             format!("use of undeclared lifetime name `{}`",
-                    token::get_name(lifetime_ref.name)).as_slice());
+                    token::get_name(lifetime_ref.name))[]);
     }
 
     fn check_lifetime_defs(&mut self, old_scope: Scope, lifetimes: &Vec<ast::LifetimeDef>) {
@@ -423,7 +423,7 @@ impl<'a> LifetimeContext<'a> {
                         lifetime.lifetime.span,
                         format!("illegal lifetime parameter name: `{}`",
                                 token::get_name(lifetime.lifetime.name))
-                            .as_slice());
+                            []);
                 }
             }
 
@@ -437,7 +437,7 @@ impl<'a> LifetimeContext<'a> {
                         format!("lifetime name `{}` declared twice in \
                                 the same scope",
                                 token::get_name(lifetime_j.lifetime.name))
-                            .as_slice());
+                            []);
                 }
             }
 

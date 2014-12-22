@@ -488,7 +488,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
                                  format!("the trait `Copy` may not be \
                                           implemented for this type; field \
                                           `{}` does not implement `Copy`",
-                                         token::get_name(name)).as_slice())
+                                         token::get_name(name))[])
                 }
                 Err(ty::VariantDoesNotImplementCopy(name)) => {
                     tcx.sess
@@ -496,7 +496,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
                                  format!("the trait `Copy` may not be \
                                           implemented for this type; variant \
                                           `{}` does not implement `Copy`",
-                                         token::get_name(name)).as_slice())
+                                         token::get_name(name))[])
                 }
                 Err(ty::TypeIsStructural) => {
                     tcx.sess

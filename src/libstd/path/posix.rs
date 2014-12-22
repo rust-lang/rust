@@ -401,7 +401,10 @@ impl Path {
     /// Returns an iterator that yields each component of the path as Option<&str>.
     /// See components() for details.
     pub fn str_components<'a>(&'a self) -> StrComponents<'a> {
-        self.components().map(str::from_utf8)
+        fn from_utf8(s: &[u8]) -> Option<&str> {
+            str::from_utf8(s).ok()
+        }
+        self.components().map(from_utf8)
     }
 }
 

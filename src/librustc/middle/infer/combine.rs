@@ -141,7 +141,7 @@ pub trait Combine<'tcx> {
                             for _ in a_regions.iter() {
                                 invariance.push(ty::Invariant);
                             }
-                            invariance.as_slice()
+                            invariance[]
                         }
                     };
 
@@ -411,7 +411,7 @@ pub fn super_tys<'tcx, C: Combine<'tcx>>(this: &C,
             format!("{}: bot and var types should have been handled ({},{})",
                     this.tag(),
                     a.repr(this.infcx().tcx),
-                    b.repr(this.infcx().tcx)).as_slice());
+                    b.repr(this.infcx().tcx))[]);
       }
 
       (&ty::ty_err, _) | (_, &ty::ty_err) => {

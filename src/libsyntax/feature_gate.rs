@@ -133,7 +133,7 @@ impl<'a> Context<'a> {
             self.span_handler.span_err(span, explain);
             self.span_handler.span_help(span, format!("add #![feature({})] to the \
                                                        crate attributes to enable",
-                                                      feature).as_slice());
+                                                      feature)[]);
         }
     }
 
@@ -187,7 +187,7 @@ impl<'a, 'v> Visitor<'v> for Context<'a> {
         }
         match i.node {
             ast::ItemForeignMod(ref foreign_module) => {
-                if attr::contains_name(i.attrs.as_slice(), "link_args") {
+                if attr::contains_name(i.attrs[], "link_args") {
                     self.gate_feature("link_args", i.span,
                                       "the `link_args` attribute is not portable \
                                        across platforms, it is recommended to \
@@ -201,14 +201,14 @@ impl<'a, 'v> Visitor<'v> for Context<'a> {
             }
 
             ast::ItemFn(..) => {
-                if attr::contains_name(i.attrs.as_slice(), "plugin_registrar") {
+                if attr::contains_name(i.attrs[], "plugin_registrar") {
                     self.gate_feature("plugin_registrar", i.span,
                                       "compiler plugins are experimental and possibly buggy");
                 }
             }
 
             ast::ItemStruct(..) => {
-                if attr::contains_name(i.attrs.as_slice(), "simd") {
+                if attr::contains_name(i.attrs[], "simd") {
                     self.gate_feature("simd", i.span,
                                       "SIMD types are experimental and possibly buggy");
                 }
@@ -285,7 +285,7 @@ impl<'a, 'v> Visitor<'v> for Context<'a> {
     }
 
     fn visit_foreign_item(&mut self, i: &ast::ForeignItem) {
-        if attr::contains_name(i.attrs.as_slice(), "linkage") {
+        if attr::contains_name(i.attrs[], "linkage") {
             self.gate_feature("linkage", i.span,
                               "the `linkage` attribute is experimental \
                                and not portable across platforms")

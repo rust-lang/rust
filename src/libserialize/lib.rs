@@ -32,6 +32,7 @@ extern crate test;
 
 #[phase(plugin, link)]
 extern crate log;
+extern crate unicode;
 
 extern crate collections;
 

@@ -316,14 +316,14 @@ impl<'a> Context<'a> {
             &Some(ref r) => format!("{} which `{}` depends on",
                                     message, r.ident)
         };
-        self.sess.span_err(self.span, message.as_slice());
+        self.sess.span_err(self.span, message[]);
 
         if self.rejected_via_triple.len() > 0 {
             let mismatches = self.rejected_via_triple.iter();
             for (i, &CrateMismatch{ ref path, ref got }) in mismatches.enumerate() {
                 self.sess.fileline_note(self.span,
                     format!("crate `{}`, path #{}, triple {}: {}",
-                            self.ident, i+1, got, path.display()).as_slice());
+                            self.ident, i+1, got, path.display())[]);
             }
         }
         if self.rejected_via_hash.len() > 0 {
@@ -333,7 +333,7 @@ impl<'a> Context<'a> {
             for (i, &CrateMismatch{ ref path, .. }) in mismatches.enumerate() {
                 self.sess.fileline_note(self.span,
                     format!("crate `{}` path {}{}: {}",
-                            self.ident, "#", i+1, path.display()).as_slice());
+                            self.ident, "#", i+1, path.display())[]);
             }
             match self.root {
                 &None => {}
@@ -341,7 +341,7 @@ impl<'a> Context<'a> {
                     for (i, path) in r.paths().iter().enumerate() {
                         self.sess.fileline_note(self.span,
                             format!("crate `{}` path #{}: {}",
-                                    r.ident, i+1, path.display()).as_slice());
+                                    r.ident, i+1, path.display())[]);
                     }
                 }
             }
@@ -387,7 +387,7 @@ impl<'a> Context<'a> {
                 None => return FileDoesntMatch,
                 Some(file) => file,
             };
-            let (hash, rlib) = if file.starts_with(rlib_prefix.as_slice()) &&
+            let (hash, rlib) = if file.starts_with(rlib_prefix[]) &&
                     file.ends_with(".rlib") {
                 (file.slice(rlib_prefix.len(), file.len() - ".rlib".len()),
                  true)
@@ -448,26 +448,26 @@ impl<'a> Context<'a> {
             _ => {
                 self.sess.span_err(self.span,
                     format!("multiple matching crates for `{}`",
-                            self.crate_name).as_slice());
+                            self.crate_name)[]);
                 self.sess.note("candidates:");
                 for lib in libraries.iter() {
                     match lib.dylib {
                         Some(ref p) => {
                             self.sess.note(format!("path: {}",
-                                                   p.display()).as_slice());
+                                                   p.display())[]);
                         }
                         None => {}
                     }
                     match lib.rlib {
                         Some(ref p) => {
                             self.sess.note(format!("path: {}",
-                                                   p.display()).as_slice());
+                                                   p.display())[]);
                         }
                         None => {}
                     }
                     let data = lib.metadata.as_slice();
                     let name = decoder::get_crate_name(data);
-                    note_crate_name(self.sess.diagnostic(), name.as_slice());
+                    note_crate_name(self.sess.diagnostic(), name[]);
                 }
                 None
             }
@@ -521,11 +521,11 @@ impl<'a> Context<'a> {
                                    format!("multiple {} candidates for `{}` \
                                             found",
                                            flavor,
-                                           self.crate_name).as_slice());
+                                           self.crate_name)[]);
                 self.sess.span_note(self.span,
                                     format!(r"candidate #1: {}",
                                             ret.as_ref().unwrap()
-                                               .display()).as_slice());
+                                               .display())[]);
                 error = 1;
                 ret = None;
             }
@@ -533,7 +533,7 @@ impl<'a> Context<'a> {
                 error += 1;
                 self.sess.span_note(self.span,
                                     format!(r"candidate #{}: {}", error,
-                                            lib.display()).as_slice());
+                                            lib.display())[]);
                 continue
             }
             *slot = Some(metadata);
@@ -608,17 +608,17 @@ impl<'a> Context<'a> {
         let mut rlibs = HashSet::new();
         let mut dylibs = HashSet::new();
         {
-            let mut locs = locs.iter().map(|l| Path::new(l.as_slice())).filter(|loc| {
+            let mut locs = locs.iter().map(|l| Path::new(l[])).filter(|loc| {
                 if !loc.exists() {
                     sess.err(format!("extern location for {} does not exist: {}",
-                                     self.crate_name, loc.display()).as_slice());
+                                     self.crate_name, loc.display())[]);
                     return false;
                 }
                 let file = match loc.filename_str() {
                     Some(file) => file,
                     None => {
                         sess.err(format!("extern location for {} is not a file: {}",
-                                         self.crate_name, loc.display()).as_slice());
+                                         self.crate_name, loc.display())[]);
                         return false;
                     }
                 };
@@ -626,12 +626,12 @@ impl<'a> Context<'a> {
                     return true
                 } else {
                     let (ref prefix, ref suffix) = dylibname;
-                    if file.starts_with(prefix.as_slice()) && file.ends_with(suffix.as_slice()) {
+                    if file.starts_with(prefix[]) && file.ends_with(suffix[]) {
                         return true
                     }
                 }
                 sess.err(format!("extern location for {} is of an unknown type: {}",
-                                 self.crate_name, loc.display()).as_slice());
+                                 self.crate_name, loc.display())[]);
                 false
             });
 
@@ -664,7 +664,7 @@ impl<'a> Context<'a> {
 }
 
 pub fn note_crate_name(diag: &SpanHandler, name: &str) {
-    diag.handler().note(format!("crate name: {}", name).as_slice());
+    diag.handler().note(format!("crate name: {}", name)[]);
 }
 
 impl ArchiveMetadata {

@@ -55,6 +55,7 @@ use rustc::DIAGNOSTICS;
 
 use std::any::AnyRefExt;
 use std::io;
+use std::iter::repeat;
 use std::os;
 use std::thread;
 
@@ -88,12 +89,12 @@ fn run_compiler(args: &[String]) {
     let descriptions = diagnostics::registry::Registry::new(&DIAGNOSTICS);
     match matches.opt_str("explain") {
         Some(ref code) => {
-            match descriptions.find_description(code.as_slice()) {
+            match descriptions.find_description(code[]) {
                 Some(ref description) => {
                     println!("{}", description);
                 }
                 None => {
-                    early_error(format!("no extended information for {}", code).as_slice());
+                    early_error(format!("no extended information for {}", code)[]);
                 }
             }
             return;
@@ -119,7 +120,7 @@ fn run_compiler(args: &[String]) {
             early_error("no input filename given");
         }
         1u => {
-            let ifile = matches.free[0].as_slice();
+            let ifile = matches.free[0][];
             if ifile == "-" {
                 let contents = io::stdin().read_to_end().unwrap();
                 let src = String::from_utf8(contents).unwrap();
@@ -138,7 +139,7 @@ fn run_compiler(args: &[String]) {
     }
 
     let pretty = matches.opt_default("pretty", "normal").map(|a| {
-        pretty::parse_pretty(&sess, a.as_slice())
+        pretty::parse_pretty(&sess, a[])
     });
     match pretty.into_iter().next() {
         Some((ppm, opt_uii)) => {
@@ -261,7 +262,8 @@ Available lint options:
         .map(|&s| s.name.width(true))
         .max().unwrap_or(0);
     let padded = |x: &str| {
-        let mut s = " ".repeat(max_name_len - x.char_len());
+        let mut s = repeat(" ").take(max_name_len - x.chars().count())
+                               .collect::<String>();
         s.push_str(x);
         s
     };
@@ -274,7 +276,7 @@ Available lint options:
         for lint in lints.into_iter() {
             let name = lint.name_lower().replace("_", "-");
             println!("    {}  {:7.7}  {}",
-                     padded(name.as_slice()), lint.default_level.as_str(), lint.desc);
+                     padded(name[]), lint.default_level.as_str(), lint.desc);
         }
         println!("\n");
     };
@@ -287,7 +289,8 @@ Available lint options:
         .map(|&(s, _)| s.width(true))
         .max().unwrap_or(0);
     let padded = |x: &str| {
-        let mut s = " ".repeat(max_name_len - x.char_len());
+        let mut s = repeat(" ").take(max_name_len - x.chars().count())
+                               .collect::<String>();
         s.push_str(x);
         s
     };
@@ -303,7 +306,7 @@ Available lint options:
             let desc = to.into_iter().map(|x| x.as_str().replace("_", "-"))
                          .collect::<Vec<String>>().connect(", ");
             println!("    {}  {}",
-                     padded(name.as_slice()), desc);
+                     padded(name[]), desc);
         }
         println!("\n");
     };
@@ -367,10 +370,10 @@ pub fn handle_options(mut args: Vec<String>) -> Option<getopts::Matches> {
     }
 
     let matches =
-        match getopts::getopts(args.as_slice(), config::optgroups().as_slice()) {
+        match getopts::getopts(args[], config::optgroups()[]) {
             Ok(m) => m,
             Err(f) => {
-                early_error(f.to_string().as_slice());
+                early_error(f.to_string()[]);
             }
         };
 
@@ -518,7 +521,7 @@ pub fn monitor<F:FnOnce()+Send>(f: F) {
                     "run with `RUST_BACKTRACE=1` for a backtrace".to_string(),
                 ];
                 for note in xs.iter() {
-                    emitter.emit(None, note.as_slice(), None, diagnostic::Note)
+                    emitter.emit(None, note[], None, diagnostic::Note)
                 }
 
                 match r.read_to_string() {
@@ -526,8 +529,7 @@ pub fn monitor<F:FnOnce()+Send>(f: F) {
                     Err(e) => {
                         emitter.emit(None,
                                      format!("failed to read internal \
-                                              stderr: {}",
-                                             e).as_slice(),
+                                              stderr: {}", e)[],
                                      None,
                                      diagnostic::Error)
                     }

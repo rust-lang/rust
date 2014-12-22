@@ -512,7 +512,7 @@ pub fn begin_unwind_fmt(msg: &fmt::Arguments, file_line: &(&'static str, uint)) 
     let mut v = Vec::new();
     let _ = write!(&mut VecWriter { v: &mut v }, "{}", msg);
 
-    let msg = box String::from_utf8_lossy(v.as_slice()).into_string();
+    let msg = box String::from_utf8_lossy(v.as_slice()).into_owned();
     begin_unwind_inner(msg, file_line)
 }
 

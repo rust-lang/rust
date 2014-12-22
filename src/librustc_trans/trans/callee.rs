@@ -122,7 +122,7 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
                     expr.span,
                     format!("type of callee is neither bare-fn nor closure: \
                              {}",
-                            bcx.ty_to_string(datum.ty)).as_slice());
+                            bcx.ty_to_string(datum.ty))[]);
             }
         }
     }
@@ -208,7 +208,7 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
                 bcx.tcx().sess.span_bug(
                     ref_expr.span,
                     format!("cannot translate def {} \
-                             to a callable thing!", def).as_slice());
+                             to a callable thing!", def)[]);
             }
         }
     }
@@ -288,7 +288,7 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
 
             _ => {
                 tcx.sess.bug(format!("trans_fn_pointer_shim invoked on invalid type: {}",
-                                           bare_fn_ty.repr(tcx)).as_slice());
+                                           bare_fn_ty.repr(tcx))[]);
             }
         };
     let tuple_input_ty = ty::mk_tup(tcx, input_tys.to_vec());
@@ -310,7 +310,7 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
     let llfn =
         decl_internal_rust_fn(ccx,
                               tuple_fn_ty,
-                              function_name.as_slice());
+                              function_name[]);
 
     //
     let block_arena = TypedArena::new();
@@ -345,7 +345,7 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
                            None,
                            bare_fn_ty,
                            |bcx, _| Callee { bcx: bcx, data: Fn(llfnpointer) },
-                           ArgVals(llargs.as_slice()),
+                           ArgVals(llargs[]),
                            dest).bcx;
 
     finish_fn(&fcx, bcx, output_ty);
@@ -813,7 +813,7 @@ pub fn trans_call_inner<'a, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
 
         bcx = foreign::trans_native_call(bcx, callee_ty,
                                          llfn, opt_llretslot.unwrap(),
-                                         llargs.as_slice(), arg_tys);
+                                         llargs[], arg_tys);
     }
 
     fcx.pop_and_trans_custom_cleanup_scope(bcx, arg_cleanup_scope);

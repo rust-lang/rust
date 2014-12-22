@@ -24,7 +24,7 @@ use result::Result::{Ok, Err};
 use result;
 use slice::SliceExt;
 use slice;
-use str::StrPrelude;
+use str::{StrExt, Utf8Error};
 
 pub use self::num::radix;
 pub use self::num::Radix;
@@ -792,6 +792,19 @@ impl<'b, T: Show> Show for Ref<'b, T> {
 impl<'b, T: Show> Show for RefMut<'b, T> {
     fn fmt(&self, f: &mut Formatter) -> Result {
         (*(self.deref())).fmt(f)
+    }
+}
+
+impl Show for Utf8Error {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        match *self {
+            Utf8Error::InvalidByte(n) => {
+                write!(f, "invalid utf-8: invalid byte at index {}", n)
+            }
+            Utf8Error::TooShort => {
+                write!(f, "invalid utf-8: byte slice too short")
+            }
+        }
     }
 }
 

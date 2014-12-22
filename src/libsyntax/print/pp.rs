@@ -139,12 +139,12 @@ pub fn buf_str(toks: Vec<Token>,
         }
         s.push_str(format!("{}={}",
                            szs[i],
-                           tok_str(toks[i].clone())).as_slice());
+                           tok_str(toks[i].clone()))[]);
         i += 1u;
         i %= n;
     }
     s.push(']');
-    return s.into_string();
+    s
 }
 
 #[deriving(Copy)]
@@ -601,7 +601,7 @@ impl Printer {
             assert_eq!(l, len);
             // assert!(l <= space);
             self.space -= len;
-            self.print_str(s.as_slice())
+            self.print_str(s[])
           }
           Eof => {
             // Eof should never get here.

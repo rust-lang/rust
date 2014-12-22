@@ -12,7 +12,8 @@
 
 #![allow(non_camel_case_types)]
 
-use option::Option::{Some, None};
+use prelude::*;
+
 use os;
 use sync::atomic;
 

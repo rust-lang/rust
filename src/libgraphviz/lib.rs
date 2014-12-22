@@ -448,8 +448,8 @@ impl<'a> LabelText<'a> {
     /// Renders text as string suitable for a label in a .dot file.
     pub fn escape(&self) -> String {
         match self {
-            &LabelStr(ref s) => (&**s).escape_default(),
-            &EscStr(ref s) => LabelText::escape_str(s.as_slice()),
+            &LabelStr(ref s) => s.escape_default(),
+            &EscStr(ref s) => LabelText::escape_str(s[]),
         }
     }
 
@@ -475,10 +475,10 @@ impl<'a> LabelText<'a> {
 
     /// Puts `suffix` on a line below this label, with a blank line separator.
     pub fn suffix_line(self, suffix: LabelText) -> LabelText<'static> {
-        let mut prefix = self.pre_escaped_content().into_string();
+        let mut prefix = self.pre_escaped_content().into_owned();
         let suffix = suffix.pre_escaped_content();
         prefix.push_str(r"\n\n");
-        prefix.push_str(suffix.as_slice());
+        prefix.push_str(suffix[]);
         EscStr(prefix.into_cow())
     }
 }
@@ -671,7 +671,7 @@ mod tests {
 
     impl<'a> Labeller<'a, Node, &'a Edge> for LabelledGraph {
         fn graph_id(&'a self) -> Id<'a> {
-            Id::new(self.name.as_slice()).unwrap()
+            Id::new(self.name[]).unwrap()
         }
         fn node_id(&'a self, n: &Node) -> Id<'a> {
             id_name(n)
@@ -735,7 +735,7 @@ mod tests {
     fn test_input(g: LabelledGraph) -> IoResult<String> {
         let mut writer = Vec::new();
         render(&g, &mut writer).unwrap();
-        (&mut writer.as_slice()).read_to_string()
+        (&mut writer[]).read_to_string()
     }
 
     // All of the tests use raw-strings as the format for the expected outputs,
@@ -847,7 +847,7 @@ r#"digraph hasse_diagram {
                  edge(1, 3, ";"),    edge(2, 3, ";"   )));
 
         render(&g, &mut writer).unwrap();
-        let r = (&mut writer.as_slice()).read_to_string();
+        let r = (&mut writer[]).read_to_string();
 
         assert_eq!(r.unwrap(),
 r#"digraph syntax_tree {

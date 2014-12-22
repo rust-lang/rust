@@ -1082,7 +1082,7 @@ mod tests {
 
         let prog = env_cmd().env_set_all(new_env.as_slice()).spawn().unwrap();
         let result = prog.wait_with_output().unwrap();
-        let output = String::from_utf8_lossy(result.output.as_slice()).into_string();
+        let output = String::from_utf8_lossy(result.output.as_slice()).to_string();
 
         assert!(output.contains("RUN_TEST_NEW_ENV=123"),
                 "didn't find RUN_TEST_NEW_ENV inside of:\n\n{}", output);
@@ -1092,7 +1092,7 @@ mod tests {
     fn test_add_to_env() {
         let prog = env_cmd().env("RUN_TEST_NEW_ENV", "123").spawn().unwrap();
         let result = prog.wait_with_output().unwrap();
-        let output = String::from_utf8_lossy(result.output.as_slice()).into_string();
+        let output = String::from_utf8_lossy(result.output.as_slice()).to_string();
 
         assert!(output.contains("RUN_TEST_NEW_ENV=123"),
                 "didn't find RUN_TEST_NEW_ENV inside of:\n\n{}", output);

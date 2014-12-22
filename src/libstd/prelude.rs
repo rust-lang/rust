@@ -79,11 +79,11 @@
 #[doc(no_inline)] pub use result::Result;
 #[doc(no_inline)] pub use result::Result::{Ok, Err};
 #[doc(no_inline)] pub use io::{Buffer, Writer, Reader, Seek, BufferPrelude};
-#[doc(no_inline)] pub use str::{Str, StrVector, StrPrelude};
-#[doc(no_inline)] pub use str::{StrAllocating, UnicodeStrPrelude};
 #[doc(no_inline)] pub use core::prelude::{Tuple1, Tuple2, Tuple3, Tuple4};
 #[doc(no_inline)] pub use core::prelude::{Tuple5, Tuple6, Tuple7, Tuple8};
 #[doc(no_inline)] pub use core::prelude::{Tuple9, Tuple10, Tuple11, Tuple12};
+#[doc(no_inline)] pub use str::{Str, StrVector};
+#[doc(no_inline)] pub use str::StrExt;
 #[doc(no_inline)] pub use slice::AsSlice;
 #[doc(no_inline)] pub use slice::{VectorVector, PartialEqSliceExt};
 #[doc(no_inline)] pub use slice::{CloneSliceExt, OrdSliceExt, SliceExt};

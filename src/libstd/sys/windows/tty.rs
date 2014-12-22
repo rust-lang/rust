@@ -111,7 +111,7 @@ impl TTY {
     }
 
     pub fn write(&mut self, buf: &[u8]) -> IoResult<()> {
-        let utf16 = match from_utf8(buf) {
+        let utf16 = match from_utf8(buf).ok() {
             Some(utf8) => {
                 utf8.utf16_units().collect::<Vec<u16>>()
             }
