@@ -664,17 +664,17 @@ pub fn short_optgroups() -> Vec<getopts::OptGroup> {
                              assumed.", "NAME[:KIND]"),
         optmulti("", "crate-type", "Comma separated list of types of crates
                                     for the compiler to emit",
-                 "[bin|lib|rlib|dylib|staticlib|dep-info]"),
+                 "[bin|lib|rlib|dylib|staticlib]"),
         optopt("", "crate-name", "Specify the name of the crate being built",
                "NAME"),
         optmulti("", "emit", "Comma separated list of types of output for \
                               the compiler to emit",
-                 "[asm|llvm-bc|llvm-ir|obj|link]"),
+                 "[asm|llvm-bc|llvm-ir|obj|link|dep-info]"),
         optmulti("", "print", "Comma separated list of compiler information to \
                                print on stdout",
                  "[crate-name|output-file-names|sysroot]"),
-        optflag("g",  "",  "Equivalent to --debuginfo=2"),
-        optflag("O", "", "Equivalent to --opt-level=2"),
+        optflag("g",  "",  "Equivalent to -C debuginfo=2"),
+        optflag("O", "", "Equivalent to -C opt-level=2"),
         optopt("o", "", "Write output to <filename>", "FILENAME"),
         optopt("",  "out-dir", "Write output to compiler-chosen filename \
                                 in <dir>", "DIR"),
