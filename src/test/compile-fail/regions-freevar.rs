@@ -12,7 +12,7 @@ fn wants_static_fn(_x: ||: 'static) {}
 
 fn main() {
     let i = 3i;
-    wants_static_fn(|| {
+    wants_static_fn(|| { //~ ERROR closure outlives stack frame
         println!("i={}", i); //~ ERROR captured variable `i` does not outlive
     })
 }
