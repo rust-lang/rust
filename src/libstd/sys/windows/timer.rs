@@ -29,7 +29,7 @@ use comm;
 use sys::c;
 use sys::fs::FileDesc;
 use sys_common::helper_thread::Helper;
-use prelude::*;
+use prelude::v1::*;
 use io::IoResult;
 
 helper_init! { static HELPER: Helper<Req> }

@@ -335,10 +335,11 @@ mod imp {
 
 #[cfg(test)]
 mod test {
-    use prelude::*;
+    use prelude::v1::*;
 
-    use super::OsRng;
+    use comm::channel;
     use rand::Rng;
+    use super::OsRng;
     use thread::Thread;
 
     #[test]

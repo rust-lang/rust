@@ -23,6 +23,7 @@ use vec::Vec;
 /// # Example
 ///
 /// ```
+/// use std::comm::channel;
 /// use std::io::ChanReader;
 ///
 /// let (tx, rx) = channel();
@@ -114,6 +115,7 @@ impl Reader for ChanReader {
 ///
 /// ```
 /// # #![allow(unused_must_use)]
+/// use std::comm::channel;
 /// use std::io::ChanWriter;
 ///
 /// let (tx, rx) = channel();
@@ -154,7 +156,9 @@ impl Writer for ChanWriter {
 
 #[cfg(test)]
 mod test {
-    use prelude::*;
+    use prelude::v1::*;
+
+    use comm::channel;
     use super::*;
     use io;
     use thread::Thread;

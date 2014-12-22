@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::cmp::Ordering::{Equal, Less, Greater};
+
 #[test]
 fn test_clone() {
     let a = (1i, "2");

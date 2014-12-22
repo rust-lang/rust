@@ -449,6 +449,7 @@ impl<T, E> Result<T, E> {
     ///
     /// ```
     /// use std::io::IoResult;
+    /// use std::str::from_str;
     ///
     /// let mut buffer = &mut b"1\n2\n3\n4\n";
     ///

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use prelude::*;
+use prelude::v1::*;
 
 use sync::atomic::{mod, AtomicUint};
 use sync::{mutex, StaticMutexGuard};
@@ -262,11 +262,13 @@ impl StaticCondvar {
 
 #[cfg(test)]
 mod tests {
-    use prelude::*;
+    use prelude::v1::*;
 
-    use time::Duration;
+    use comm::channel;
     use super::{StaticCondvar, CONDVAR_INIT};
     use sync::{StaticMutex, MUTEX_INIT, Condvar, Mutex, Arc};
+    use thread::Thread;
+    use time::Duration;
 
     #[test]
     fn smoke() {
@@ -289,7 +291,7 @@ mod tests {
         static M: StaticMutex = MUTEX_INIT;
 
         let g = M.lock();
-        spawn(move|| {
+        let _t = Thread::spawn(move|| {
             let _g = M.lock();
             C.notify_one();
         });
@@ -307,7 +309,7 @@ mod tests {
         for _ in range(0, N) {
             let data = data.clone();
             let tx = tx.clone();
-            spawn(move|| {
+            Thread::spawn(move|| {
                 let &(ref lock, ref cond) = &*data;
                 let mut cnt = lock.lock();
                 *cnt += 1;
@@ -318,7 +320,7 @@ mod tests {
                     cond.wait(&cnt);
                 }
                 tx.send(());
-            });
+            }).detach();
         }
         drop(tx);
 
@@ -341,7 +343,7 @@ mod tests {
 
         let g = M.lock();
         assert!(!C.wait_timeout(&g, Duration::nanoseconds(1000)));
-        spawn(move|| {
+        let _t = Thread::spawn(move|| {
             let _g = M.lock();
             C.notify_one();
         });
@@ -358,7 +360,7 @@ mod tests {
         static C: StaticCondvar = CONDVAR_INIT;
 
         let g = M1.lock();
-        spawn(move|| {
+        let _t = Thread::spawn(move|| {
             let _g = M1.lock();
             C.notify_one();
         });

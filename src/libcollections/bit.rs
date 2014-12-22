@@ -82,16 +82,19 @@
 
 use core::prelude::*;
 
+use core::cmp::Ordering;
 use core::cmp;
 use core::default::Default;
 use core::fmt;
-use core::iter::{Cloned, Chain, Enumerate, Repeat, Skip, Take};
-use core::iter;
+use core::hash;
+use core::iter::RandomAccessIterator;
+use core::iter::{Chain, Enumerate, Repeat, Skip, Take, repeat, Cloned};
+use core::iter::{mod, FromIterator};
 use core::num::Int;
+use core::ops::Index;
 use core::slice::{Iter, IterMut};
 use core::{u8, u32, uint};
 
-use core::hash;
 use Vec;
 
 type Blocks<'a> = Cloned<Iter<'a, u32>>;

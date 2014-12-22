@@ -40,8 +40,9 @@
 
 #![feature(slicing_syntax)]
 
-use std::{cmp, iter, mem};
+use std::str::from_str;
 use std::sync::Future;
+use std::{cmp, iter, mem};
 
 fn rotate(x: &mut [i32]) {
     let mut prev = x[0];

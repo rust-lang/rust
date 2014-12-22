@@ -17,6 +17,7 @@ use ext::base;
 use ext::build::AstBuilder;
 use std::ascii::AsciiExt;
 
+use std::ascii::AsciiCast;
 
 pub fn expand_syntax_ext<'cx>(cx: &'cx mut ExtCtxt,
                               sp: Span,

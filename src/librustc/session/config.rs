@@ -394,6 +394,7 @@ macro_rules! cgoptions {
 
     mod cgsetters {
         use super::{CodegenOptions, Passes, SomePasses, AllPasses};
+        use std::str::from_str;
 
         $(
             pub fn $opt(cg: &mut CodegenOptions, v: Option<&str>) -> bool {

@@ -16,6 +16,8 @@
 use core::prelude::*;
 use core::fmt;
 use core::num::Int;
+use core::iter::FromIterator;
+use core::ops::{Sub, BitOr, BitAnd, BitXor};
 
 // FIXME(contentions): implement union family of methods? (general design may be wrong here)
 

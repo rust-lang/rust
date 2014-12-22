@@ -47,6 +47,7 @@
 use std::io;
 use std::os;
 use std::simd::f64x2;
+use std::str::from_str;
 use std::sync::{Arc, Future};
 
 const ITER: int = 50;

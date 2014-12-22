@@ -11,7 +11,9 @@
 /// This module provides linkage between rustc::middle::graph and
 /// libgraphviz traits.
 
-/// For clarity, rename the graphviz crate locally to dot.
+use std::borrow::IntoCow;
+
+// For clarity, rename the graphviz crate locally to dot.
 use graphviz as dot;
 
 use syntax::ast;

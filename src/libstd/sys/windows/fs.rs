@@ -21,7 +21,7 @@ use ptr;
 use str;
 use io;
 
-use prelude::*;
+use prelude::v1::*;
 use sys;
 use sys::os;
 use sys_common::{keep_going, eof, mkerr_libc};

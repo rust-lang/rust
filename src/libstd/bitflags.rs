@@ -205,7 +205,7 @@ macro_rules! bitflags {
             }
         }
 
-        impl BitOr<$BitFlags, $BitFlags> for $BitFlags {
+        impl ::std::ops::BitOr<$BitFlags, $BitFlags> for $BitFlags {
             /// Returns the union of the two sets of flags.
             #[inline]
             fn bitor(self, other: $BitFlags) -> $BitFlags {
@@ -213,7 +213,7 @@ macro_rules! bitflags {
             }
         }
 
-        impl BitXor<$BitFlags, $BitFlags> for $BitFlags {
+        impl ::std::ops::BitXor<$BitFlags, $BitFlags> for $BitFlags {
             /// Returns the left flags, but with all the right flags toggled.
             #[inline]
             fn bitxor(self, other: $BitFlags) -> $BitFlags {
@@ -221,7 +221,7 @@ macro_rules! bitflags {
             }
         }
 
-        impl BitAnd<$BitFlags, $BitFlags> for $BitFlags {
+        impl ::std::ops::BitAnd<$BitFlags, $BitFlags> for $BitFlags {
             /// Returns the intersection between the two sets of flags.
             #[inline]
             fn bitand(self, other: $BitFlags) -> $BitFlags {
@@ -229,7 +229,7 @@ macro_rules! bitflags {
             }
         }
 
-        impl Sub<$BitFlags, $BitFlags> for $BitFlags {
+        impl ::std::ops::Sub<$BitFlags, $BitFlags> for $BitFlags {
             /// Returns the set difference of the two sets of flags.
             #[inline]
             fn sub(self, other: $BitFlags) -> $BitFlags {
@@ -239,7 +239,7 @@ macro_rules! bitflags {
 
         // NOTE(stage0): Remove impl after a snapshot
         #[cfg(stage0)]
-        impl Not<$BitFlags> for $BitFlags {
+        impl ::std::ops::Not<$BitFlags> for $BitFlags {
             /// Returns the complement of this set of flags.
             #[inline]
             fn not(&self) -> $BitFlags {
@@ -248,7 +248,7 @@ macro_rules! bitflags {
         }
 
         #[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
-        impl Not<$BitFlags> for $BitFlags {
+        impl ::std::ops::Not<$BitFlags> for $BitFlags {
             /// Returns the complement of this set of flags.
             #[inline]
             fn not(self) -> $BitFlags {

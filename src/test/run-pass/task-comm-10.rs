@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 use std::task;
+use std::comm::{channel, Sender};
 
 fn start(tx: &Sender<Sender<String>>) {
     let (tx2, rx) = channel();

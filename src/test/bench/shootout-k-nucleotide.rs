@@ -43,7 +43,6 @@
 #![feature(slicing_syntax)]
 
 use std::ascii::OwnedAsciiExt;
-use std::string::String;
 use std::slice;
 use std::sync::{Arc, Future};
 

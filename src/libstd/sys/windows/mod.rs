@@ -18,9 +18,10 @@
 
 extern crate libc;
 
+use prelude::v1::*;
+
 use num;
 use mem;
-use prelude::*;
 use io::{mod, IoResult, IoError};
 use sync::{Once, ONCE_INIT};
 

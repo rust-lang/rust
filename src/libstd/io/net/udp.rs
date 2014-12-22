@@ -248,11 +248,14 @@ impl Writer for UdpStream {
 #[cfg(test)]
 #[allow(experimental)]
 mod test {
-    use super::*;
-    use io::net::ip::*;
+    use prelude::v1::*;
+
+    use comm::channel;
     use io::*;
+    use io::net::ip::*;
     use io::test::*;
-    use prelude::*;
+    use super::*;
+    use thread::Thread;
 
     // FIXME #11530 this fails on android because tests are run as root
     #[cfg_attr(any(windows, target_os = "android"), ignore)]
@@ -272,7 +275,7 @@ mod test {
         let (tx1, rx1) = channel();
         let (tx2, rx2) = channel();
 
-        spawn(move|| {
+        let _t = Thread::spawn(move|| {
             match UdpSocket::bind(client_ip) {
                 Ok(ref mut client) => {
                     rx1.recv();
@@ -307,7 +310,7 @@ mod test {
         let client_ip = next_test_ip6();
         let (tx, rx) = channel::<()>();
 
-        spawn(move|| {
+        let _t = Thread::spawn(move|| {
             match UdpSocket::bind(client_ip) {
                 Ok(ref mut client) => {
                     rx.recv();
@@ -343,7 +346,7 @@ mod test {
         let (tx1, rx1) = channel();
         let (tx2, rx2) = channel();
 
-        spawn(move|| {
+        let _t = Thread::spawn(move|| {
             let send_as = |ip, val: &[u8]| {
                 match UdpSocket::bind(ip) {
                     Ok(client) => {
@@ -387,7 +390,7 @@ mod test {
         let (tx1, rx1) = channel();
         let (tx2, rx2) = channel();
 
-        spawn(move|| {
+        let _t = Thread::spawn(move|| {
             match UdpSocket::bind(client_ip) {
                 Ok(client) => {
                     let client = box client;
@@ -449,7 +452,7 @@ mod test {
         let mut sock1 = UdpSocket::bind(addr1).unwrap();
         let sock2 = UdpSocket::bind(addr2).unwrap();
 
-        spawn(move|| {
+        let _t = Thread::spawn(move|| {
             let mut sock2 = sock2;
             let mut buf = [0, 0];
             assert_eq!(sock2.recv_from(&mut buf), Ok((1, addr1)));
@@ -461,7 +464,7 @@ mod test {
 
         let (tx1, rx1) = channel();
         let (tx2, rx2) = channel();
-        spawn(move|| {
+        let _t = Thread::spawn(move|| {
             let mut sock3 = sock3;
             rx1.recv();
             sock3.send_to(&[1], addr2).unwrap();
@@ -482,7 +485,7 @@ mod test {
         let (tx1, rx) = channel();
         let tx2 = tx1.clone();
 
-        spawn(move|| {
+        let _t = Thread::spawn(move|| {
             let mut sock2 = sock2;
             sock2.send_to(&[1], addr1).unwrap();
             rx.recv();
@@ -493,7 +496,7 @@ mod test {
         let sock3 = sock1.clone();
 
         let (done, rx) = channel();
-        spawn(move|| {
+        let _t = Thread::spawn(move|| {
             let mut sock3 = sock3;
             let mut buf = [0, 0];
             sock3.recv_from(&mut buf).unwrap();
@@ -517,7 +520,7 @@ mod test {
         let (tx, rx) = channel();
         let (serv_tx, serv_rx) = channel();
 
-        spawn(move|| {
+        let _t = Thread::spawn(move|| {
             let mut sock2 = sock2;
             let mut buf = [0, 1];
 
@@ -533,7 +536,7 @@ mod test {
 
         let (done, rx) = channel();
         let tx2 = tx.clone();
-        spawn(move|| {
+        let _t = Thread::spawn(move|| {
             let mut sock3 = sock3;
             match sock3.send_to(&[1], addr2) {
                 Ok(..) => { let _ = tx2.send_opt(()); }
@@ -561,7 +564,7 @@ mod test {
 
         let (tx, rx) = channel();
         let (tx2, rx2) = channel();
-        spawn(move|| {
+        let _t = Thread::spawn(move|| {
             let mut a = a2;
             assert_eq!(a.recv_from(&mut [0]), Ok((1, addr1)));
             assert_eq!(a.send_to(&[0], addr1), Ok(()));

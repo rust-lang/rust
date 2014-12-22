@@ -172,7 +172,7 @@ impl<T> AsSlice<T> for CVec<T> {
 
 #[cfg(test)]
 mod tests {
-    use prelude::*;
+    use prelude::v1::*;
 
     use super::CVec;
     use libc;

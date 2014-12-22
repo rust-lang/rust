@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use std::thread::Thread;
+use std::comm::{channel, Sender};
 
 pub fn main() { test00(); }
 

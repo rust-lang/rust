@@ -104,10 +104,12 @@ impl<'a> Drop for SemaphoreGuard<'a> {
 
 #[cfg(test)]
 mod tests {
-    use prelude::*;
+    use prelude::v1::*;
 
     use sync::Arc;
     use super::Semaphore;
+    use comm::channel;
+    use thread::Thread;
 
     #[test]
     fn test_sem_acquire_release() {
@@ -127,7 +129,7 @@ mod tests {
     fn test_sem_as_mutex() {
         let s = Arc::new(Semaphore::new(1));
         let s2 = s.clone();
-        spawn(move|| {
+        let _t = Thread::spawn(move|| {
             let _g = s2.access();
         });
         let _g = s.access();
@@ -139,7 +141,7 @@ mod tests {
         let (tx, rx) = channel();
         let s = Arc::new(Semaphore::new(0));
         let s2 = s.clone();
-        spawn(move|| {
+        let _t = Thread::spawn(move|| {
             s2.acquire();
             tx.send(());
         });
@@ -150,7 +152,7 @@ mod tests {
         let (tx, rx) = channel();
         let s = Arc::new(Semaphore::new(0));
         let s2 = s.clone();
-        spawn(move|| {
+        let _t = Thread::spawn(move|| {
             s2.release();
             let _ = rx.recv();
         });
@@ -166,7 +168,7 @@ mod tests {
         let s2 = s.clone();
         let (tx1, rx1) = channel();
         let (tx2, rx2) = channel();
-        spawn(move|| {
+        let _t = Thread::spawn(move|| {
             let _g = s2.access();
             let _ = rx2.recv();
             tx1.send(());
@@ -183,11 +185,11 @@ mod tests {
         let (tx, rx) = channel();
         {
             let _g = s.access();
-            spawn(move|| {
+            Thread::spawn(move|| {
                 tx.send(());
                 drop(s2.access());
                 tx.send(());
-            });
+            }).detach();
             rx.recv(); // wait for child to come alive
         }
         rx.recv(); // wait for child to be done

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::ops::Mul;
+
 struct Vec2 {
     x: f64,
     y: f64

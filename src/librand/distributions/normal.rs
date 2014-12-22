@@ -160,7 +160,7 @@ impl IndependentSample<f64> for LogNormal {
 
 #[cfg(test)]
 mod tests {
-    use std::prelude::*;
+    use std::prelude::v1::*;
 
     use distributions::{Sample, IndependentSample};
     use super::{Normal, LogNormal};
@@ -200,7 +200,7 @@ mod tests {
 #[cfg(test)]
 mod bench {
     extern crate test;
-    use std::prelude::*;
+    use std::prelude::v1::*;
     use self::test::Bencher;
     use std::mem::size_of;
     use distributions::{Sample};

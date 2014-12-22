@@ -12,7 +12,7 @@
 
 #![allow(non_camel_case_types)]
 
-use prelude::*;
+use prelude::v1::*;
 
 use os;
 use sync::atomic;
@@ -39,7 +39,7 @@ pub fn log_enabled() -> bool {
 
 #[cfg(test)]
 mod test {
-    use prelude::*;
+    use prelude::v1::*;
     use sys_common;
     macro_rules! t { ($a:expr, $b:expr) => ({
         let mut m = Vec::new();

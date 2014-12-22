@@ -40,11 +40,12 @@
 
 #![feature(slicing_syntax)]
 
-use std::io;
-use std::io::{BufferedWriter, File};
 use std::cmp::min;
+use std::io::{BufferedWriter, File};
+use std::io;
 use std::num::Float;
 use std::os;
+use std::str::from_str;
 
 const LINE_LENGTH: uint = 60;
 const IM: u32 = 139968;

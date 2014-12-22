@@ -27,6 +27,8 @@
 //! # Example
 //!
 //! ```rust
+//! use std::comm::channel;
+//!
 //! let (tx1, rx1) = channel();
 //! let (tx2, rx2) = channel();
 //!
@@ -335,9 +337,11 @@ impl Iterator<*mut Handle<'static, ()>> for Packets {
 #[cfg(test)]
 #[allow(unused_imports)]
 mod test {
-    use prelude::*;
+    use prelude::v1::*;
 
     use super::*;
+    use comm::*;
+    use thread::Thread;
 
     // Don't use the libstd version so we can pull in the right Select structure
     // (std::comm points at the wrong one)
@@ -357,7 +361,8 @@ mod test {
         })
     }
 
-    test! { fn smoke() {
+    #[test]
+    fn smoke() {
         let (tx1, rx1) = channel::<int>();
         let (tx2, rx2) = channel::<int>();
         tx1.send(1);
@@ -379,9 +384,10 @@ mod test {
         select! {
             bar = rx2.recv_opt() => { assert_eq!(bar, Err(())); }
         }
-    } }
+    }
 
-    test! { fn smoke2() {
+    #[test]
+    fn smoke2() {
         let (_tx1, rx1) = channel::<int>();
         let (_tx2, rx2) = channel::<int>();
         let (_tx3, rx3) = channel::<int>();
@@ -395,9 +401,10 @@ mod test {
             _foo = rx4.recv() => { panic!("4") },
             foo = rx5.recv() => { assert_eq!(foo, 4); }
         }
-    } }
+    }
 
-    test! { fn closed() {
+    #[test]
+    fn closed() {
         let (_tx1, rx1) = channel::<int>();
         let (tx2, rx2) = channel::<int>();
         drop(tx2);
@@ -406,14 +413,15 @@ mod test {
             _a1 = rx1.recv_opt() => { panic!() },
             a2 = rx2.recv_opt() => { assert_eq!(a2, Err(())); }
         }
-    } }
+    }
 
-    test! { fn unblocks() {
+    #[test]
+    fn unblocks() {
         let (tx1, rx1) = channel::<int>();
         let (_tx2, rx2) = channel::<int>();
         let (tx3, rx3) = channel::<int>();
 
-        spawn(move|| {
+        let _t = Thread::spawn(move|| {
             for _ in range(0u, 20) { Thread::yield_now(); }
             tx1.send(1);
             rx3.recv();
@@ -429,14 +437,15 @@ mod test {
             a = rx1.recv_opt() => { assert_eq!(a, Err(())); },
             _b = rx2.recv() => { panic!() }
         }
-    } }
+    }
 
-    test! { fn both_ready() {
+    #[test]
+    fn both_ready() {
         let (tx1, rx1) = channel::<int>();
         let (tx2, rx2) = channel::<int>();
         let (tx3, rx3) = channel::<()>();
 
-        spawn(move|| {
+        let _t = Thread::spawn(move|| {
             for _ in range(0u, 20) { Thread::yield_now(); }
             tx1.send(1);
             tx2.send(2);
@@ -454,15 +463,16 @@ mod test {
         assert_eq!(rx1.try_recv(), Err(Empty));
         assert_eq!(rx2.try_recv(), Err(Empty));
         tx3.send(());
-    } }
+    }
 
-    test! { fn stress() {
+    #[test]
+    fn stress() {
         static AMT: int = 10000;
         let (tx1, rx1) = channel::<int>();
         let (tx2, rx2) = channel::<int>();
         let (tx3, rx3) = channel::<()>();
 
-        spawn(move|| {
+        let _t = Thread::spawn(move|| {
             for i in range(0, AMT) {
                 if i % 2 == 0 {
                     tx1.send(i);
@@ -480,14 +490,15 @@ mod test {
             }
             tx3.send(());
         }
-    } }
+    }
 
-    test! { fn cloning() {
+    #[test]
+    fn cloning() {
         let (tx1, rx1) = channel::<int>();
         let (_tx2, rx2) = channel::<int>();
         let (tx3, rx3) = channel::<()>();
 
-        spawn(move|| {
+        let _t = Thread::spawn(move|| {
             rx3.recv();
             tx1.clone();
             assert_eq!(rx3.try_recv(), Err(Empty));
@@ -501,14 +512,15 @@ mod test {
             _i2 = rx2.recv() => panic!()
         }
         tx3.send(());
-    } }
+    }
 
-    test! { fn cloning2() {
+    #[test]
+    fn cloning2() {
         let (tx1, rx1) = channel::<int>();
         let (_tx2, rx2) = channel::<int>();
         let (tx3, rx3) = channel::<()>();
 
-        spawn(move|| {
+        let _t = Thread::spawn(move|| {
             rx3.recv();
             tx1.clone();
             assert_eq!(rx3.try_recv(), Err(Empty));
@@ -522,13 +534,14 @@ mod test {
             _i2 = rx2.recv() => panic!()
         }
         tx3.send(());
-    } }
+    }
 
-    test! { fn cloning3() {
+    #[test]
+    fn cloning3() {
         let (tx1, rx1) = channel::<()>();
         let (tx2, rx2) = channel::<()>();
         let (tx3, rx3) = channel::<()>();
-        spawn(move|| {
+        let _t = Thread::spawn(move|| {
             let s = Select::new();
             let mut h1 = s.handle(&rx1);
             let mut h2 = s.handle(&rx2);
@@ -542,44 +555,49 @@ mod test {
         drop(tx1.clone());
         tx2.send(());
         rx3.recv();
-    } }
+    }
 
-    test! { fn preflight1() {
+    #[test]
+    fn preflight1() {
         let (tx, rx) = channel();
         tx.send(());
         select! {
             () = rx.recv() => {}
         }
-    } }
+    }
 
-    test! { fn preflight2() {
+    #[test]
+    fn preflight2() {
         let (tx, rx) = channel();
         tx.send(());
         tx.send(());
         select! {
             () = rx.recv() => {}
         }
-    } }
+    }
 
-    test! { fn preflight3() {
+    #[test]
+    fn preflight3() {
         let (tx, rx) = channel();
         drop(tx.clone());
         tx.send(());
         select! {
             () = rx.recv() => {}
         }
-    } }
+    }
 
-    test! { fn preflight4() {
+    #[test]
+    fn preflight4() {
         let (tx, rx) = channel();
         tx.send(());
         let s = Select::new();
         let mut h = s.handle(&rx);
         unsafe { h.add(); }
         assert_eq!(s.wait2(false), h.id);
-    } }
+    }
 
-    test! { fn preflight5() {
+    #[test]
+    fn preflight5() {
         let (tx, rx) = channel();
         tx.send(());
         tx.send(());
@@ -587,9 +605,10 @@ mod test {
         let mut h = s.handle(&rx);
         unsafe { h.add(); }
         assert_eq!(s.wait2(false), h.id);
-    } }
+    }
 
-    test! { fn preflight6() {
+    #[test]
+    fn preflight6() {
         let (tx, rx) = channel();
         drop(tx.clone());
         tx.send(());
@@ -597,18 +616,20 @@ mod test {
         let mut h = s.handle(&rx);
         unsafe { h.add(); }
         assert_eq!(s.wait2(false), h.id);
-    } }
+    }
 
-    test! { fn preflight7() {
+    #[test]
+    fn preflight7() {
         let (tx, rx) = channel::<()>();
         drop(tx);
         let s = Select::new();
         let mut h = s.handle(&rx);
         unsafe { h.add(); }
         assert_eq!(s.wait2(false), h.id);
-    } }
+    }
 
-    test! { fn preflight8() {
+    #[test]
+    fn preflight8() {
         let (tx, rx) = channel();
         tx.send(());
         drop(tx);
@@ -617,9 +638,10 @@ mod test {
         let mut h = s.handle(&rx);
         unsafe { h.add(); }
         assert_eq!(s.wait2(false), h.id);
-    } }
+    }
 
-    test! { fn preflight9() {
+    #[test]
+    fn preflight9() {
         let (tx, rx) = channel();
         drop(tx.clone());
         tx.send(());
@@ -629,12 +651,13 @@ mod test {
         let mut h = s.handle(&rx);
         unsafe { h.add(); }
         assert_eq!(s.wait2(false), h.id);
-    } }
+    }
 
-    test! { fn oneshot_data_waiting() {
+    #[test]
+    fn oneshot_data_waiting() {
         let (tx1, rx1) = channel();
         let (tx2, rx2) = channel();
-        spawn(move|| {
+        let _t = Thread::spawn(move|| {
             select! {
                 () = rx1.recv() => {}
             }
@@ -644,16 +667,17 @@ mod test {
         for _ in range(0u, 100) { Thread::yield_now() }
         tx1.send(());
         rx2.recv();
-    } }
+    }
 
-    test! { fn stream_data_waiting() {
+    #[test]
+    fn stream_data_waiting() {
         let (tx1, rx1) = channel();
         let (tx2, rx2) = channel();
         tx1.send(());
         tx1.send(());
         rx1.recv();
         rx1.recv();
-        spawn(move|| {
+        let _t = Thread::spawn(move|| {
             select! {
                 () = rx1.recv() => {}
             }
@@ -663,15 +687,16 @@ mod test {
         for _ in range(0u, 100) { Thread::yield_now() }
         tx1.send(());
         rx2.recv();
-    } }
+    }
 
-    test! { fn shared_data_waiting() {
+    #[test]
+    fn shared_data_waiting() {
         let (tx1, rx1) = channel();
         let (tx2, rx2) = channel();
         drop(tx1.clone());
         tx1.send(());
         rx1.recv();
-        spawn(move|| {
+        let _t = Thread::spawn(move|| {
             select! {
                 () = rx1.recv() => {}
             }
@@ -681,32 +706,35 @@ mod test {
         for _ in range(0u, 100) { Thread::yield_now() }
         tx1.send(());
         rx2.recv();
-    } }
+    }
 
-    test! { fn sync1() {
+    #[test]
+    fn sync1() {
         let (tx, rx) = sync_channel::<int>(1);
         tx.send(1);
         select! {
             n = rx.recv() => { assert_eq!(n, 1); }
         }
-    } }
+    }
 
-    test! { fn sync2() {
+    #[test]
+    fn sync2() {
         let (tx, rx) = sync_channel::<int>(0);
-        spawn(move|| {
+        let _t = Thread::spawn(move|| {
             for _ in range(0u, 100) { Thread::yield_now() }
             tx.send(1);
         });
         select! {
             n = rx.recv() => { assert_eq!(n, 1); }
         }
-    } }
+    }
 
-    test! { fn sync3() {
+    #[test]
+    fn sync3() {
         let (tx1, rx1) = sync_channel::<int>(0);
         let (tx2, rx2): (Sender<int>, Receiver<int>) = channel();
-        spawn(move|| { tx1.send(1); });
-        spawn(move|| { tx2.send(2); });
+        let _t = Thread::spawn(move|| { tx1.send(1); });
+        let _t = Thread::spawn(move|| { tx2.send(2); });
         select! {
             n = rx1.recv() => {
                 assert_eq!(n, 1);
@@ -717,5 +745,5 @@ mod test {
                 assert_eq!(rx1.recv(), 1);
             }
         }
-    } }
+    }
 }

@@ -11,6 +11,8 @@
 // Test that we still see borrowck errors of various kinds when using
 // indexing and autoderef in combination.
 
+use std::ops::{Index, IndexMut};
+
 struct Foo {
     x: int,
     y: int,

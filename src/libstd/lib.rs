@@ -264,6 +264,7 @@ mod std {
     pub use cell; // used for tls!
     pub use thread_local; // used for thread_local!
     pub use kinds; // used for tls!
+    pub use ops; // used for bitflags!
 
     // The test runner calls ::std::os::args() but really wants realstd
     #[cfg(test)] pub use realstd::os as os;

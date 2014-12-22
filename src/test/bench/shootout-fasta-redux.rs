@@ -44,6 +44,7 @@ use std::cmp::min;
 use std::io::{stdout, IoResult};
 use std::os;
 use std::slice::bytes::copy_memory;
+use std::str::from_str;
 
 const LINE_LEN: uint = 60;
 const LOOKUP_SIZE: uint = 4 * 1024;

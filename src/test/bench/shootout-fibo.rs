@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use std::os;
+use std::str::from_str;
 
 fn fib(n: int) -> int {
     if n < 2 {
