@@ -319,9 +319,10 @@ pub use self::TrySendError::*;
 use self::Flavor::*;
 
 use alloc::arc::Arc;
+use core::kinds;
 use core::kinds::marker;
 use core::mem;
-use core::cell::{UnsafeCell, RacyCell};
+use core::cell::UnsafeCell;
 
 pub use self::select::{Select, Handle};
 use self::select::StartResult;
@@ -1023,6 +1024,32 @@ impl<T: Send> Drop for Receiver<T> {
         }
     }
 }
+
+/// A version of `UnsafeCell` intended for use in concurrent data
+/// structures (for example, you might put it in an `Arc`).
+pub struct RacyCell<T>(pub UnsafeCell<T>);
+
+impl<T> RacyCell<T> {
+    /// DOX
+    pub fn new(value: T) -> RacyCell<T> {
+        RacyCell(UnsafeCell { value: value })
+    }
+
+    /// DOX
+    pub unsafe fn get(&self) -> *mut T {
+        self.0.get()
+    }
+
+    /// DOX
+    pub unsafe fn into_inner(self) -> T {
+        self.0.into_inner()
+    }
+}
+
+unsafe impl<T:Send> Send for RacyCell<T> { }
+
+unsafe impl<T> kinds::Sync for RacyCell<T> { } // Oh dear
+
 
 #[cfg(test)]
 mod test {

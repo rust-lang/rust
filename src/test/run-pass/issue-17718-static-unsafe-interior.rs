@@ -9,7 +9,8 @@
 // except according to those terms.
 
 use std::kinds::marker;
-use std::cell::{UnsafeCell, RacyCell};
+use std::comm::RacyCell;
+use std::cell::UnsafeCell;
 
 struct MyUnsafe<T> {
     value: RacyCell<T>

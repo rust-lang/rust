@@ -127,7 +127,7 @@
 use any::Any;
 use borrow::IntoCow;
 use boxed::Box;
-use cell::RacyCell;
+use comm::RacyCell;
 use clone::Clone;
 use kinds::{Send, Sync};
 use ops::{Drop, FnOnce};

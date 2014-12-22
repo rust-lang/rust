@@ -10,8 +10,9 @@
 
 use prelude::*;
 
-use cell::{UnsafeCell, RacyCell};
-use kinds::{marker, Sync};
+use comm::RacyCell;
+use cell::UnsafeCell;
+use kinds::marker;
 use sync::{poison, AsMutexGuard};
 use sys_common::mutex as sys;
 
