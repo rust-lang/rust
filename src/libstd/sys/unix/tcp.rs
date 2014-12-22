@@ -8,12 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use prelude::v1::*;
+
 use io::net::ip;
 use io::IoResult;
 use libc;
 use mem;
 use ptr;
-use prelude::*;
 use super::{last_error, last_net_error, retry, sock_t};
 use sync::{Arc, atomic};
 use sys::fs::FileDesc;

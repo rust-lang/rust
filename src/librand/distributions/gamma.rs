@@ -323,7 +323,7 @@ impl IndependentSample<f64> for StudentT {
 
 #[cfg(test)]
 mod test {
-    use std::prelude::*;
+    use std::prelude::v1::*;
 
     use distributions::{Sample, IndependentSample};
     use super::{ChiSquared, StudentT, FisherF};
@@ -385,7 +385,7 @@ mod test {
 #[cfg(test)]
 mod bench {
     extern crate test;
-    use std::prelude::*;
+    use std::prelude::v1::*;
     use self::test::Bencher;
     use std::mem::size_of;
     use distributions::IndependentSample;

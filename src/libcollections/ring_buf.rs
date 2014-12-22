@@ -14,14 +14,16 @@
 
 use core::prelude::*;
 
+use core::cmp::Ordering;
 use core::default::Default;
 use core::fmt;
-use core::iter;
-use core::raw::Slice as RawSlice;
-use core::ptr;
+use core::iter::{mod, FromIterator, RandomAccessIterator};
 use core::kinds::marker;
 use core::mem;
 use core::num::{Int, UnsignedInt};
+use core::ops::{Index, IndexMut};
+use core::ptr;
+use core::raw::Slice as RawSlice;
 
 use std::hash::{Writer, Hash};
 use std::cmp;

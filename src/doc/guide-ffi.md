@@ -450,6 +450,8 @@ them.
 
 ~~~no_run
 extern crate libc;
+
+use std::c_str::ToCStr;
 use std::ptr;
 
 #[link(name = "readline")]

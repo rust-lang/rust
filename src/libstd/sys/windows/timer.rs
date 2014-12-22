@@ -21,16 +21,17 @@
 //! the other two implementations of timers with nothing *that* new showing up.
 
 use self::Req::*;
+use prelude::v1::*;
 
 use libc;
 use ptr;
 use comm;
 
+use comm::{channel, Sender, Receiver};
+use io::IoResult;
 use sys::c;
 use sys::fs::FileDesc;
 use sys_common::helper_thread::Helper;
-use prelude::*;
-use io::IoResult;
 
 helper_init! { static HELPER: Helper<Req> }
 

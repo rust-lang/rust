@@ -82,17 +82,19 @@
 
 use core::prelude::*;
 
+use core::cmp::Ordering;
 use core::cmp;
 use core::default::Default;
 use core::fmt;
+use core::hash;
 use core::iter::{Cloned, Chain, Enumerate, Repeat, Skip, Take, repeat};
-use core::iter;
+use core::iter::{mod, FromIterator, RandomAccessIterator};
 use core::num::Int;
-use core::slice;
+use core::ops::Index;
+use core::slice::{Iter, IterMut};
 use core::{u8, u32, uint};
 use bitv_set; //so meta
 
-use core::hash;
 use Vec;
 
 type Blocks<'a> = Cloned<slice::Iter<'a, u32>>;
@@ -2507,7 +2509,7 @@ mod tests {
 
 #[cfg(test)]
 mod bitv_bench {
-    use std::prelude::*;
+    use std::prelude::v1::*;
     use std::rand;
     use std::rand::Rng;
     use std::u32;
@@ -3002,7 +3004,7 @@ mod bitv_set_test {
 
 #[cfg(test)]
 mod bitv_set_bench {
-    use std::prelude::*;
+    use std::prelude::v1::*;
     use std::rand;
     use std::rand::Rng;
     use std::u32;

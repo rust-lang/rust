@@ -46,19 +46,19 @@
 //!
 //! Note that all time units in this file are in *milliseconds*.
 
+use prelude::v1::*;
 use self::Req::*;
 
+use comm::{mod, channel, Sender, Receiver};
+use io::IoResult;
 use libc;
 use mem;
 use os;
 use ptr;
 use sync::atomic;
-use comm;
 use sys::c;
 use sys::fs::FileDesc;
 use sys_common::helper_thread::Helper;
-use prelude::*;
-use io::IoResult;
 
 helper_init! { static HELPER: Helper<Req> }
 

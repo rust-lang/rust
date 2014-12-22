@@ -13,8 +13,9 @@
 //! hierarchy, with item counts for every stability level per module. A parent
 //! module's count includes its children's.
 
-use std::ops::Add;
+use std::cmp::Ordering;
 use std::num::Zero;
+use std::ops::Add;
 
 use syntax::attr::{Deprecated, Experimental, Unstable, Stable, Frozen, Locked};
 use syntax::ast::Public;

@@ -153,11 +153,12 @@ impl<T: Send> Drop for Queue<T> {
 
 #[cfg(test)]
 mod tests {
-    use prelude::*;
+    use prelude::v1::*;
 
-    use alloc::arc::Arc;
-
+    use comm::channel;
     use super::{Queue, Data, Empty, Inconsistent};
+    use sync::Arc;
+    use thread::Thread;
 
     #[test]
     fn test_full() {
@@ -181,12 +182,12 @@ mod tests {
         for _ in range(0, nthreads) {
             let tx = tx.clone();
             let q = q.clone();
-            spawn(move|| {
+            Thread::spawn(move|| {
                 for i in range(0, nmsgs) {
                     q.push(i);
                 }
                 tx.send(());
-            });
+            }).detach();
         }
 
         let mut i = 0u;

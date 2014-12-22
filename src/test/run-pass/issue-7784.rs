@@ -10,6 +10,8 @@
 
 #![feature(advanced_slice_patterns)]
 
+use std::ops::Add;
+
 fn foo<T: Add<T, T> + Clone>([x, y, z]: [T; 3]) -> (T, T, T) {
     (x.clone(), x.clone() + y.clone(), x + y + z)
 }

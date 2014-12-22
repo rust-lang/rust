@@ -17,6 +17,8 @@
 // `use` directives.
 //
 
+use std::ops::{Deref, DerefMut};
+
 use Resolver;
 use Namespace::{TypeNS, ValueNS};
 

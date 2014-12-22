@@ -11,6 +11,8 @@
 // Tests the ability for the Self type in default methods to use
 // capabilities granted by builtin kinds as supertraits.
 
+use std::comm::{Sender, channel};
+
 trait Foo : Send {
     fn foo(self, tx: Sender<Self>) {
         tx.send(self);

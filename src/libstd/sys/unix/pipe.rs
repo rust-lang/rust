@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use alloc::arc::Arc;
+use prelude::v1::*;
+
 use libc;
 use c_str::CString;
 use mem;
-use sync::{atomic, Mutex};
+use sync::{atomic, Arc, Mutex};
 use io::{mod, IoResult, IoError};
-use prelude::*;
 
 use sys::{mod, timer, retry, c, set_nonblocking, wouldblock};
 use sys::fs::{fd_t, FileDesc};

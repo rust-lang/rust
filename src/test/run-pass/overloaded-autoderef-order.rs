@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use std::rc::Rc;
+use std::ops::Deref;
 
 struct DerefWrapper<X, Y> {
     x: X,
@@ -30,6 +31,8 @@ impl<X, Y> Deref<Y> for DerefWrapper<X, Y> {
 }
 
 mod priv_test {
+    use std::ops::Deref;
+
     pub struct DerefWrapperHideX<X, Y> {
         x: X,
         pub y: Y

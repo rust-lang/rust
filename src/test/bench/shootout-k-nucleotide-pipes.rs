@@ -18,12 +18,15 @@
 extern crate collections;
 
 use std::ascii::{AsciiExt, OwnedAsciiExt};
+use std::cmp::Ordering::{mod, Less, Greater, Equal};
 use std::collections::HashMap;
+use std::comm::{channel, Sender, Receiver};
 use std::mem::replace;
 use std::num::Float;
 use std::option;
 use std::os;
-use std::string::String;
+use std::string::IntoString;
+use std::thread::Thread;
 
 fn f64_cmp(x: f64, y: f64) -> Ordering {
     // arbitrarily decide that NaNs are larger than everything.
@@ -167,9 +170,9 @@ fn main() {
 
         let (to_child, from_parent) = channel();
 
-        spawn(move|| {
+        Thread::spawn(move|| {
             make_sequence_processor(sz, &from_parent, &to_parent_);
-        });
+        }).detach();
 
         to_child
     }).collect::<Vec<Sender<Vec<u8> >> >();

@@ -61,8 +61,9 @@ use syntax::parse::token::{mod, special_idents};
 use syntax::codemap::{Span, DUMMY_SP};
 use syntax::visit::{mod, Visitor};
 
-use std::rc::Rc;
 use std::mem::replace;
+use std::ops::{Deref, DerefMut};
+use std::rc::Rc;
 
 // Specifies how duplicates should be handled when adding a child item if
 // another item exists with the same name in some namespace.

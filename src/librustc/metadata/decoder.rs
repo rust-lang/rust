@@ -32,13 +32,15 @@ use middle::ty::{ImplContainer, TraitContainer};
 use middle::ty::{mod, Ty};
 use middle::astencode::vtable_decoder_helpers;
 
+use std::collections::HashMap;
 use std::hash::Hash;
 use std::hash;
 use std::io::extensions::u64_from_be_bytes;
 use std::io;
-use std::collections::hash_map::HashMap;
+use std::num::FromPrimitive;
 use std::rc::Rc;
 use std::str;
+
 use rbml::reader;
 use rbml;
 use serialize::Decodable;

@@ -225,9 +225,10 @@ fn in_ms_u64(d: Duration) -> u64 {
 
 #[cfg(test)]
 mod test {
-    use prelude::*;
+    use prelude::v1::*;
 
     use super::Timer;
+    use thread::Thread;
     use time::Duration;
 
     #[test]
@@ -357,9 +358,9 @@ mod test {
         let mut timer = Timer::new().unwrap();
         let timer_rx = timer.periodic(Duration::milliseconds(1000));
 
-        spawn(move|| {
+        Thread::spawn(move|| {
             let _ = timer_rx.recv_opt();
-        });
+        }).detach();
 
         // when we drop the TimerWatcher we're going to destroy the channel,
         // which must wake up the task on the other end
@@ -371,9 +372,9 @@ mod test {
         let mut timer = Timer::new().unwrap();
         let timer_rx = timer.periodic(Duration::milliseconds(1000));
 
-        spawn(move|| {
+        Thread::spawn(move|| {
             let _ = timer_rx.recv_opt();
-        });
+        }).detach();
 
         timer.oneshot(Duration::milliseconds(1));
     }
@@ -384,9 +385,9 @@ mod test {
         let mut timer = Timer::new().unwrap();
         let timer_rx = timer.periodic(Duration::milliseconds(1000));
 
-        spawn(move|| {
+        Thread::spawn(move|| {
             let _ = timer_rx.recv_opt();
-        });
+        }).detach();
 
         timer.sleep(Duration::milliseconds(1));
     }

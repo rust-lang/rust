@@ -40,7 +40,9 @@
 
 // no-pretty-expanded FIXME #15189
 
+use std::comm::channel;
 use std::sync::Arc;
+use std::thread::Thread;
 
 //
 // Utilities.
@@ -310,11 +312,11 @@ fn par_search(masks: Vec<Vec<Vec<u64>>>) -> Data {
         let masks = masks.clone();
         let tx = tx.clone();
         let m = *m;
-        spawn(move|| {
+        Thread::spawn(move|| {
             let mut data = Data::new();
             search(&*masks, m, 1, List::Cons(m, &List::Nil), &mut data);
             tx.send(data);
-        });
+        }).detach();
     }
 
     // collecting the results

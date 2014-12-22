@@ -89,10 +89,11 @@ impl Barrier {
 
 #[cfg(test)]
 mod tests {
-    use prelude::*;
+    use prelude::v1::*;
 
     use sync::{Arc, Barrier};
-    use comm::Empty;
+    use comm::{channel, Empty};
+    use thread::Thread;
 
     #[test]
     fn test_barrier() {
@@ -102,10 +103,10 @@ mod tests {
         for _ in range(0u, 9) {
             let c = barrier.clone();
             let tx = tx.clone();
-            spawn(move|| {
+            Thread::spawn(move|| {
                 c.wait();
                 tx.send(true);
-            });
+            }).detach();
         }
 
         // At this point, all spawned tasks should be blocked,

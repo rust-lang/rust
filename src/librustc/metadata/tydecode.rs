@@ -25,7 +25,6 @@ use middle::ty::{mod, AsPredicate, Ty};
 
 use std::rc::Rc;
 use std::str;
-use std::string::String;
 use syntax::abi;
 use syntax::ast;
 use syntax::parse::token;

@@ -23,6 +23,7 @@ use syntax::diagnostic;
 use syntax::diagnostic::{Emitter, Handler, Level, mk_handler};
 
 use std::c_str::{ToCStr, CString};
+use std::comm::channel;
 use std::io::Command;
 use std::io::fs;
 use std::iter::Unfold;

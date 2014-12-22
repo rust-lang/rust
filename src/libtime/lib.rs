@@ -30,10 +30,9 @@ extern crate libc;
 pub use self::ParseError::*;
 use self::Fmt::*;
 
-use std::fmt::Show;
-use std::fmt;
+use std::fmt::{mod, Show};
 use std::num::SignedInt;
-use std::string::String;
+use std::ops::{Add, Sub};
 use std::time::Duration;
 
 static NSEC_PER_SEC: i32 = 1_000_000_000_i32;
@@ -1274,6 +1273,7 @@ mod tests {
     #[cfg(windows)]
     fn set_time_zone() {
         use libc;
+        use std::c_str::ToCStr;
         // Windows crt doesn't see any environment variable set by
         // `SetEnvironmentVariable`, which `os::setenv` internally uses.
         // It is why we use `putenv` here.

@@ -20,12 +20,13 @@
 //! can be created in the future and there must be no active timers at that
 //! time.
 
-use prelude::*;
+use prelude::v1::*;
 
 use cell::UnsafeCell;
+use comm::{channel, Sender, Receiver};
 use mem;
-use sync::{StaticMutex, StaticCondvar};
 use rt;
+use sync::{StaticMutex, StaticCondvar};
 use sys::helper_signal;
 
 use thread::Thread;

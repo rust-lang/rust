@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use std::task;
+use std::comm::{channel, Sender};
 
 #[deriving(PartialEq, Show)]
 enum Message {

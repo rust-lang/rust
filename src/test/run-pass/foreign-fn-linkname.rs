@@ -11,10 +11,10 @@
 // ignore-fast doesn't like extern crate
 
 extern crate libc;
+use std::c_str::ToCStr;
 
 mod mlibc {
-    extern crate libc;
-    use self::libc::{c_char, size_t};
+    use libc::{c_char, size_t};
 
     extern {
         #[link_name = "strlen"]

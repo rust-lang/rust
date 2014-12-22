@@ -10,6 +10,7 @@
 
 #![feature(unboxed_closures)]
 
+use std::thread::Thread;
 use std::mem;
 
 fn main() {
@@ -19,7 +20,7 @@ fn main() {
     // Check that both closures are capturing by value
     assert_eq!(1, mem::size_of_val(&closure));
 
-    spawn(move|| {
+    Thread::spawn(move|| {
         let ok = closure;
-    })
+    }).join().ok().unwrap();
 }

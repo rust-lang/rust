@@ -10,6 +10,8 @@
 
 #![allow(dead_assignment)]
 
+use std::comm::channel;
+
 pub fn main() { test00(); }
 
 fn test00() {
