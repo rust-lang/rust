@@ -14,32 +14,42 @@
 
 pub use self::Ordering::*;
 
+use kinds::Sync;
+
 use intrinsics;
-use cell::{UnsafeCell, RacyCell};
+use cell::UnsafeCell;
 
 /// A boolean type which can be safely shared between threads.
 #[stable]
 pub struct AtomicBool {
-    v: RacyCell<uint>,
+    v: UnsafeCell<uint>,
 }
+
+unsafe impl Sync for AtomicBool {}
 
 /// A signed integer type which can be safely shared between threads.
 #[stable]
 pub struct AtomicInt {
-    v: RacyCell<int>,
+    v: UnsafeCell<int>,
 }
+
+unsafe impl Sync for AtomicInt {}
 
 /// An unsigned integer type which can be safely shared between threads.
 #[stable]
 pub struct AtomicUint {
-    v: RacyCell<uint>,
+    v: UnsafeCell<uint>,
 }
+
+unsafe impl Sync for AtomicUint {}
 
 /// A raw pointer type which can be safely shared between threads.
 #[stable]
 pub struct AtomicPtr<T> {
-    p: RacyCell<uint>,
+    p: UnsafeCell<uint>,
 }
+
+unsafe impl<T> Sync for AtomicPtr<T> {}
 
 /// Atomic memory orderings
 ///
@@ -80,15 +90,15 @@ pub enum Ordering {
 /// An `AtomicBool` initialized to `false`.
 #[unstable = "may be renamed, pending conventions for static initalizers"]
 pub const INIT_ATOMIC_BOOL: AtomicBool =
-        AtomicBool { v: RacyCell(UnsafeCell { value: 0 }) };
+        AtomicBool { v: UnsafeCell { value: 0 } };
 /// An `AtomicInt` initialized to `0`.
 #[unstable = "may be renamed, pending conventions for static initalizers"]
 pub const INIT_ATOMIC_INT: AtomicInt =
-        AtomicInt { v: RacyCell(UnsafeCell { value: 0 }) };
+        AtomicInt { v: UnsafeCell { value: 0 } };
 /// An `AtomicUint` initialized to `0`.
 #[unstable = "may be renamed, pending conventions for static initalizers"]
 pub const INIT_ATOMIC_UINT: AtomicUint =
-        AtomicUint { v: RacyCell(UnsafeCell { value: 0 }) };
+        AtomicUint { v: UnsafeCell { value: 0, } };
 
 // NB: Needs to be -1 (0b11111111...) to make fetch_nand work correctly
 const UINT_TRUE: uint = -1;
@@ -108,7 +118,7 @@ impl AtomicBool {
     #[stable]
     pub fn new(v: bool) -> AtomicBool {
         let val = if v { UINT_TRUE } else { 0 };
-        AtomicBool { v: RacyCell::new(val) }
+        AtomicBool { v: UnsafeCell::new(val) }
     }
 
     /// Loads a value from the bool.
@@ -348,7 +358,7 @@ impl AtomicInt {
     #[inline]
     #[stable]
     pub fn new(v: int) -> AtomicInt {
-        AtomicInt {v: RacyCell::new(v)}
+        AtomicInt {v: UnsafeCell::new(v)}
     }
 
     /// Loads a value from the int.
@@ -534,7 +544,7 @@ impl AtomicUint {
     #[inline]
     #[stable]
     pub fn new(v: uint) -> AtomicUint {
-        AtomicUint { v: RacyCell::new(v) }
+        AtomicUint { v: UnsafeCell::new(v) }
     }
 
     /// Loads a value from the uint.
@@ -721,7 +731,7 @@ impl<T> AtomicPtr<T> {
     #[inline]
     #[stable]
     pub fn new(p: *mut T) -> AtomicPtr<T> {
-        AtomicPtr { p: RacyCell::new(p as uint) }
+        AtomicPtr { p: UnsafeCell::new(p as uint) }
     }
 
     /// Loads a value from the pointer.

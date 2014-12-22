@@ -8,8 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use comm::RacyCell;
+use cell::UnsafeCell;
 use kinds::Sync;
-use cell::{UnsafeCell, RacyCell};
 use sys::sync as ffi;
 use sys_common::mutex;
 

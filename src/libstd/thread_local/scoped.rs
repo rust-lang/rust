@@ -196,11 +196,10 @@ impl<T> Key<T> {
 
 #[cfg(not(any(windows, target_os = "android", target_os = "ios")))]
 mod imp {
-    use std::cell::UnsafeCell;
+    use std::comm::RacyCell;
 
-    // SNAP c9f6d69 switch to `Cell`
     #[doc(hidden)]
-    pub struct KeyInner<T> { pub inner: UnsafeCell<*mut T> }
+    pub struct KeyInner<T> { pub inner: RacyCell<*mut T> }
 
     unsafe impl<T> ::kinds::Sync for KeyInner<T> { }
 

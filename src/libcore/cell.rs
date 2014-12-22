@@ -158,7 +158,7 @@
 use clone::Clone;
 use cmp::PartialEq;
 use default::Default;
-use kinds::{marker, Copy, Send, Sync};
+use kinds::{marker, Copy};
 use ops::{Deref, DerefMut, Drop};
 use option::Option;
 use option::Option::{None, Some};
@@ -555,28 +555,3 @@ impl<T> UnsafeCell<T> {
     #[deprecated = "renamed to into_inner()"]
     pub unsafe fn unwrap(self) -> T { self.into_inner() }
 }
-
-/// A version of `UnsafeCell` intended for use in concurrent data
-/// structures (for example, you might put it in an `Arc`).
-pub struct RacyCell<T>(pub UnsafeCell<T>);
-
-impl<T> RacyCell<T> {
-    /// DOX
-    pub fn new(value: T) -> RacyCell<T> {
-        RacyCell(UnsafeCell { value: value })
-    }
-
-    /// DOX
-    pub unsafe fn get(&self) -> *mut T {
-        self.0.get()
-    }
-
-    /// DOX
-    pub unsafe fn into_inner(self) -> T {
-        self.0.into_inner()
-    }
-}
-
-unsafe impl<T:Send> Send for RacyCell<T> { }
-
-unsafe impl<T> Sync for RacyCell<T> { } // Oh dear
