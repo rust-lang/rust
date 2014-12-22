@@ -887,9 +887,11 @@ impl<'a> Add<&'a str, String> for String {
 
 #[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
 impl<'a> Add<String, String> for &'a str {
-    fn add(self, mut other: String) -> String {
-        other.push_str(self);
-        other
+    fn add(self, other: String) -> String {
+        let mut s = String::with_capacity(self.len() + other.len());
+        s.push_str(self);
+        s.push_str(&*other);
+        s
     }
 }
 
