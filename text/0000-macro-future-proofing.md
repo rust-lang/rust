@@ -81,7 +81,7 @@ allowed tokens for the given NT's fragment specifier, and is defined below.
 `F` is used for representing the separator in complex NTs.  In `$($foo:ty),+`,
 `F` would be `,`, and for `$($foo:ty)+`, `F` would be `EOF`.
 
-*input*: a token tree `M` representing a matcher, and optionally a token `F`
+*input*: a token tree `M` representing a matcher and a token `F`
 
 *output*: whether M is valid
 
@@ -89,9 +89,9 @@ allowed tokens for the given NT's fragment specifier, and is defined below.
 2. For each token `T` in `M`:
     1. If `T` is not an NT, continue.
     2. If `T` is a simple NT, look ahead to the next token `T'` in `M`. If
-       `T'` is `EOF`, replace `T'` with `F` if present. If `T'` is in the set
+       `T'` is `EOF`, replace `T'` with `F`. If `T'` is in the set
        `FOLLOW(NT)`, `T'` is EOF, `T'` is any NT, or `T'` is any identifier,
-       continue.
+       continue. Else, reject.
     3. Else, `T` is a complex NT.
         1. If `T` has the form `$(...)+` or `$(...)*`, run the algorithm on
            the contents with `F` set to `EOF`. If it accepts, continue, else,
@@ -101,8 +101,8 @@ allowed tokens for the given NT's fragment specifier, and is defined below.
            continue, else, reject.
 
 This algorithm should be run on every matcher in every `macro_rules`
-invocation. If it rejects a matcher, an error should be emitted and
-compilation should not complete.
+invocation, with `F` as `EOF`. If it rejects a matcher, an error should be
+emitted and compilation should not complete.
 
 The current legal fragment specifiers are: `item`, `block`, `stmt`, `pat`,
 `expr`, `ty`, `ident`, `path`, `meta`, and `tt`.
