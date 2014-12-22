@@ -219,7 +219,7 @@ pub fn get_enum_variant_types<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             ast::TupleVariantKind(ref args) if args.len() > 0 => {
                 let rs = ExplicitRscope;
                 let input_tys: Vec<_> = args.iter().map(|va| ccx.to_ty(&rs, &*va.ty)).collect();
-                ty::mk_ctor_fn(tcx, input_tys[], enum_ty)
+                ty::mk_ctor_fn(tcx, variant_def_id, input_tys[], enum_ty)
             }
 
             ast::TupleVariantKind(_) => {
@@ -1282,6 +1282,7 @@ pub fn convert_struct<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                         |field| (*tcx.tcache.borrow())[
                             local_def(field.node.id)].ty).collect();
                 let ctor_fn_ty = ty::mk_ctor_fn(tcx,
+                                                local_def(ctor_id),
                                                 inputs[],
                                                 selfty);
                 write_ty_to_tcx(tcx, ctor_id, ctor_fn_ty);

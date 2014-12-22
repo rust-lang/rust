@@ -189,7 +189,7 @@ pub fn load_self() -> Option<Vec<u8>> {
         if sz == 0 { return None; }
         let mut v: Vec<u8> = Vec::with_capacity(sz as uint);
         let err = sysctl(mib.as_mut_ptr(), mib.len() as ::libc::c_uint,
-                         v.as_mut_ptr() as *mut c_void, &mut sz,
+                         v.as_mut_ptr() as *mut libc::c_void, &mut sz,
                          ptr::null_mut(), 0u as libc::size_t);
         if err != 0 { return None; }
         if sz == 0 { return None; }

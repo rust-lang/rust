@@ -404,7 +404,7 @@ pub fn is_utf16(v: &[u16]) -> bool {
 /// of `u16`s.
 #[deriving(Clone)]
 pub struct Utf16Items<'a> {
-    iter: slice::Items<'a, u16>
+    iter: slice::Iter<'a, u16>
 }
 /// The possibilities for values decoded from a `u16` stream.
 #[deriving(PartialEq, Eq, Clone, Show)]

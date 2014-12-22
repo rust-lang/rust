@@ -606,17 +606,6 @@ pub fn get_wrapper_for_bare_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                          fn_ptr: ValueRef,
                                          is_local: bool) -> ValueRef {
 
-    let def_id = match def {
-        def::DefFn(did, _) | def::DefStaticMethod(did, _) |
-        def::DefVariant(_, did, _) | def::DefStruct(did) => did,
-        _ => {
-            ccx.sess().bug(format!("get_wrapper_for_bare_fn: \
-                                    expected a statically resolved fn, got \
-                                    {}",
-                                    def)[]);
-        }
-    };
-
     match ccx.closure_bare_wrapper_cache().borrow().get(&fn_ptr) {
         Some(&llval) => return llval,
         None => {}
