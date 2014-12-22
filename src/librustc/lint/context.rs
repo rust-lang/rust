@@ -460,6 +460,14 @@ impl<'a, 'tcx> Context<'a, 'tcx> {
         self.lookup_and_emit(lint, Some(span), msg);
     }
 
+    /// Calls span_note unless the lint level is 'Allow'.
+    pub fn span_lint_note(&self, lint: &'static Lint, span: Span, msg: &str) {
+        match lint.default_level {
+            Allow => ,
+            _ => self.lookup_and_emit(lint, Some(span), msg);
+        }
+    }
+
     /// Merge the lints specified by any lint attributes into the
     /// current lint context, call the provided function, then reset the
     /// lints in effect to their previous state.
