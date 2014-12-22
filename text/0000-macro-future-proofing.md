@@ -33,7 +33,7 @@ fragment specifier.
 # Summary
 
 Future-proof the allowed forms that input to an MBE can take by requiring
-certain delimiters following meta variables in a matcher.
+certain delimiters following NTs in a matcher.
 
 # Motivation
 
