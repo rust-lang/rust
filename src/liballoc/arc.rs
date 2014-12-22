@@ -139,7 +139,7 @@ struct ArcInner<T> {
     data: T,
 }
 
-impl<T: Sync + Send> Arc<T> {
+impl<T> Arc<T> {
     /// Constructs a new `Arc<T>`.
     ///
     /// # Examples

@@ -10,7 +10,6 @@
 
 use prelude::*;
 
-use comm::RacyCell;
 use cell::UnsafeCell;
 use kinds::marker;
 use sync::{poison, AsMutexGuard};
@@ -71,7 +70,7 @@ pub struct Mutex<T> {
     // time, so to ensure that the native mutex is used correctly we box the
     // inner lock to give it a constant address.
     inner: Box<StaticMutex>,
-    data: RacyCell<T>,
+    data: UnsafeCell<T>,
 }
 
 unsafe impl<T:Send> Send for Mutex<T> { }
@@ -101,7 +100,7 @@ unsafe impl<T:Send> Sync for Mutex<T> { }
 /// ```
 pub struct StaticMutex {
     lock: sys::Mutex,
-    poison: RacyCell<poison::Flag>,
+    poison: UnsafeCell<poison::Flag>,
 }
 
 unsafe impl Sync for StaticMutex {}
@@ -132,7 +131,7 @@ pub struct StaticMutexGuard {
 /// other mutex constants.
 pub const MUTEX_INIT: StaticMutex = StaticMutex {
     lock: sys::MUTEX_INIT,
-    poison: RacyCell(UnsafeCell { value: poison::Flag { failed: false } }),
+    poison: UnsafeCell { value: poison::Flag { failed: false } },
 };
 
 impl<T: Send> Mutex<T> {
@@ -140,7 +139,7 @@ impl<T: Send> Mutex<T> {
     pub fn new(t: T) -> Mutex<T> {
         Mutex {
             inner: box MUTEX_INIT,
-            data: RacyCell::new(t),
+            data: UnsafeCell::new(t),
         }
     }
 
