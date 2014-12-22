@@ -113,7 +113,7 @@ pub struct Upvar {
 // different kinds of pointers:
 #[deriving(Clone, Copy, PartialEq, Eq, Hash, Show)]
 pub enum PointerKind {
-    UniquePtr,
+    Unique,
     BorrowedPtr(ty::BorrowKind, ty::Region),
     Implicit(ty::BorrowKind, ty::Region),     // Implicit deref of a borrowed ptr.
     UnsafePtr(ast::Mutability)
@@ -199,7 +199,7 @@ pub fn opt_deref_kind(t: Ty) -> Option<deref_kind> {
     match t.sty {
         ty::ty_uniq(_) |
         ty::ty_closure(box ty::ClosureTy {store: ty::UniqTraitStore, ..}) => {
-            Some(deref_ptr(UniquePtr))
+            Some(deref_ptr(Unique))
         }
 
         ty::ty_rptr(r, mt) => {
@@ -315,7 +315,7 @@ impl MutabilityCategory {
     pub fn from_pointer_kind(base_mutbl: MutabilityCategory,
                              ptr: PointerKind) -> MutabilityCategory {
         match ptr {
-            UniquePtr => {
+            Unique => {
                 base_mutbl.inherit()
             }
             BorrowedPtr(borrow_kind, _) | Implicit(borrow_kind, _) => {
@@ -1351,7 +1351,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                           Implicit(..) => {
                             "dereference (dereference is implicit, due to indexing)".to_string()
                           }
-                          UniquePtr => format!("dereference of `{}`", ptr_sigil(pk)),
+                          Unique => format!("dereference of `{}`", ptr_sigil(pk)),
                           _ => format!("dereference of `{}`-pointer", ptr_sigil(pk))
                       }
                   }
@@ -1412,7 +1412,7 @@ impl<'tcx> cmt_<'tcx> {
             }
             cat_downcast(ref b, _) |
             cat_interior(ref b, _) |
-            cat_deref(ref b, _, UniquePtr) => {
+            cat_deref(ref b, _, Unique) => {
                 b.guarantor()
             }
         }
@@ -1431,7 +1431,7 @@ impl<'tcx> cmt_<'tcx> {
             cat_deref(ref b, _, BorrowedPtr(ty::UniqueImmBorrow, _)) |
             cat_deref(ref b, _, Implicit(ty::UniqueImmBorrow, _)) |
             cat_downcast(ref b, _) |
-            cat_deref(ref b, _, UniquePtr) |
+            cat_deref(ref b, _, Unique) |
             cat_interior(ref b, _) => {
                 // Aliasability depends on base cmt
                 b.freely_aliasable(ctxt)
@@ -1523,7 +1523,7 @@ impl<'tcx> Repr<'tcx> for categorization<'tcx> {
 
 pub fn ptr_sigil(ptr: PointerKind) -> &'static str {
     match ptr {
-        UniquePtr => "Box",
+        Unique => "Box",
         BorrowedPtr(ty::ImmBorrow, _) |
         Implicit(ty::ImmBorrow, _) => "&",
         BorrowedPtr(ty::MutBorrow, _) |
