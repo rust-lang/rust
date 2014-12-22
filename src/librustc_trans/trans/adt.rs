@@ -228,16 +228,16 @@ fn represent_type_uncached<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                         let st = mk_struct(cx, cases[discr].tys[],
                                            false, t);
                         match cases[discr].find_ptr(cx) {
-                            Some(ref pf) if pf.len() == 1 && st.fields.len() == 1 => {
+                            Some(ref df) if df.len() == 1 && st.fields.len() == 1 => {
                                 return RawNullablePointer {
                                     nndiscr: discr as Disr,
                                     nnty: st.fields[0],
                                     nullfields: cases[1 - discr].tys.clone()
                                 };
                             }
-                            Some(pf) => {
-                                let mut discrfield = vec![0];
-                                discrfield.extend(pf.into_iter());
+                            Some(mut discrfield) => {
+                                discrfield.push(0);
+                                discrfield.reverse();
                                 return StructWrappedNullablePointer {
                                     nndiscr: discr as Disr,
                                     nonnull: st,
@@ -245,7 +245,7 @@ fn represent_type_uncached<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                     nullfields: cases[1 - discr].tys.clone()
                                 };
                             }
-                            None => { }
+                            None => {}
                         }
                     }
                     discr += 1;
@@ -338,24 +338,27 @@ struct Case<'tcx> {
 /// This represents the (GEP) indices to follow to get to the discriminant field
 pub type DiscrField = Vec<uint>;
 
-fn find_discr_field_candidate<'tcx>(tcx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> Option<DiscrField> {
+fn find_discr_field_candidate<'tcx>(tcx: &ty::ctxt<'tcx>,
+                                    ty: Ty<'tcx>,
+                                    mut path: DiscrField) -> Option<DiscrField> {
     match ty.sty {
-        // &T/&mut T/Box<T> could either be a thin or fat pointer depending on T
-        ty::ty_rptr(_, ty::mt { ty, .. }) | ty::ty_uniq(ty) => match ty.sty {
-            // &[T] and &str are a pointer and length pair
-            ty::ty_vec(_, None) | ty::ty_str => Some(vec![FAT_PTR_ADDR]),
-
-            ty::ty_struct(..) if !ty::type_is_sized(tcx, ty) => Some(vec![FAT_PTR_ADDR]),
-
-            // Any other &T is just a pointer
-            _ => Some(vec![])
+        // Fat &T/&mut T/Box<T> i.e. T is [T], str, or Trait
+        ty::ty_rptr(_, ty::mt { ty, .. }) | ty::ty_uniq(ty) if !ty::type_is_sized(tcx, ty) => {
+            path.push(FAT_PTR_ADDR);
+            Some(path)
         },
 
+        // Regular thin pointer: &T/&mut T/Box<T>
+        ty::ty_rptr(..) | ty::ty_uniq(..) => Some(path),
+
         // Functions are just pointers
-        ty::ty_bare_fn(..) => Some(vec![]),
+        ty::ty_bare_fn(..) => Some(path),
 
         // Closures are a pair of pointers: the code and environment
-        ty::ty_closure(..) => Some(vec![FAT_PTR_ADDR]),
+        ty::ty_closure(..) => {
+            path.push(FAT_PTR_ADDR);
+            Some(path)
+        },
 
         // Is this the NonZero lang item wrapping a pointer or integer type?
         ty::ty_struct(did, ref substs) if Some(did) == tcx.lang_items.non_zero() => {
@@ -363,8 +366,10 @@ fn find_discr_field_candidate<'tcx>(tcx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> Optio
             assert_eq!(nonzero_fields.len(), 1);
             let nonzero_field = ty::lookup_field_type(tcx, did, nonzero_fields[0].id, substs);
             match nonzero_field.sty {
-                ty::ty_ptr(..) | ty::ty_int(..) |
-                ty::ty_uint(..) => Some(vec![0]),
+                ty::ty_ptr(..) | ty::ty_int(..) | ty::ty_uint(..) => {
+                    path.push(0);
+                    Some(path)
+                },
                 _ => None
             }
         },
@@ -375,13 +380,9 @@ fn find_discr_field_candidate<'tcx>(tcx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> Optio
             let fields = ty::lookup_struct_fields(tcx, def_id);
             for (j, field) in fields.iter().enumerate() {
                 let field_ty = ty::lookup_field_type(tcx, def_id, field.id, substs);
-                match find_discr_field_candidate(tcx, field_ty) {
-                    Some(v) => {
-                        let mut discrfield = vec![j];
-                        discrfield.extend(v.into_iter());
-                        return Some(discrfield);
-                    }
-                    None => continue
+                if let Some(mut fpath) = find_discr_field_candidate(tcx, field_ty, path.clone()) {
+                    fpath.push(j);
+                    return Some(fpath);
                 }
             }
             None
@@ -390,13 +391,9 @@ fn find_discr_field_candidate<'tcx>(tcx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> Optio
         // Can we use one of the fields in this tuple?
         ty::ty_tup(ref tys) => {
             for (j, &ty) in tys.iter().enumerate() {
-                match find_discr_field_candidate(tcx, ty) {
-                    Some(v) => {
-                        let mut discrfield = vec![j];
-                        discrfield.extend(v.into_iter());
-                        return Some(discrfield);
-                    }
-                    None => continue
+                if let Some(mut fpath) = find_discr_field_candidate(tcx, ty, path.clone()) {
+                    fpath.push(j);
+                    return Some(fpath);
                 }
             }
             None
@@ -405,13 +402,11 @@ fn find_discr_field_candidate<'tcx>(tcx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> Optio
         // Is this a fixed-size array of something non-zero
         // with at least one element?
         ty::ty_vec(ety, Some(d)) if d > 0 => {
-            match find_discr_field_candidate(tcx, ety) {
-                Some(v) => {
-                    let mut discrfield = vec![0];
-                    discrfield.extend(v.into_iter());
-                    return Some(discrfield);
-                }
-                None => None
+            if let Some(mut vpath) = find_discr_field_candidate(tcx, ety, path) {
+                vpath.push(0);
+                Some(vpath)
+            } else {
+                None
             }
         },
 
@@ -427,13 +422,9 @@ impl<'tcx> Case<'tcx> {
 
     fn find_ptr<'a>(&self, cx: &CrateContext<'a, 'tcx>) -> Option<DiscrField> {
         for (i, &ty) in self.tys.iter().enumerate() {
-            match find_discr_field_candidate(cx.tcx(), ty) {
-                Some(v) => {
-                    let mut discrfield = vec![i];
-                    discrfield.extend(v.into_iter());
-                    return Some(discrfield);
-                }
-                None => continue
+            if let Some(mut path) = find_discr_field_candidate(cx.tcx(), ty, vec![]) {
+                path.push(i);
+                return Some(path);
             }
         }
         None
