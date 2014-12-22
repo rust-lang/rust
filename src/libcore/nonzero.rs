@@ -12,14 +12,30 @@
 
 use ops::Deref;
 
+/// Unsafe trait to indicate what types are usable with the NonZero struct
+pub unsafe trait Zeroable {}
+
+unsafe impl<T> Zeroable for *const T {}
+unsafe impl<T> Zeroable for *mut T {}
+unsafe impl Zeroable for int {}
+unsafe impl Zeroable for uint {}
+unsafe impl Zeroable for i8 {}
+unsafe impl Zeroable for u8 {}
+unsafe impl Zeroable for i16 {}
+unsafe impl Zeroable for u16 {}
+unsafe impl Zeroable for i32 {}
+unsafe impl Zeroable for u32 {}
+unsafe impl Zeroable for i64 {}
+unsafe impl Zeroable for u64 {}
+
 /// A wrapper type for raw pointers and integers that will never be
 /// NULL or 0 that might allow certain optimizations.
 #[lang="non_zero"]
 #[deriving(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Show)]
 #[experimental]
-pub struct NonZero<T>(T);
+pub struct NonZero<T: Zeroable>(T);
 
-impl<T> NonZero<T> {
+impl<T: Zeroable> NonZero<T> {
     /// Create an instance of NonZero with the provided value.
     /// You must indeed ensure that the value is actually "non-zero".
     #[inline(always)]
@@ -28,10 +44,48 @@ impl<T> NonZero<T> {
     }
 }
 
-impl<T> Deref<T> for NonZero<T> {
+impl<T: Zeroable> Deref<T> for NonZero<T> {
     #[inline]
     fn deref<'a>(&'a self) -> &'a T {
         let NonZero(ref inner) = *self;
         inner
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::NonZero;
+
+    #[test]
+    fn test_create_nonzero_instance() {
+        let _a = unsafe {
+            NonZero::new(21)
+        };
+    }
+
+    #[test]
+    fn test_size_nonzero_in_option() {
+        use mem::size_of;
+        use option::Option;
+
+        assert_eq!(size_of::<NonZero<u32>>(), size_of::<Option<NonZero<u32>>>());
+    }
+
+    #[test]
+    fn test_match_on_nonzero_option() {
+        use option::Some;
+
+        let a = Some(unsafe {
+            NonZero::new(42)
+        });
+        match a {
+            Some(val) => assert_eq!(*val, 42),
+            None => panic!("unexpected None while matching on Some(NonZero(_))")
+        }
+
+        match unsafe { NonZero::new(43) } {
+            Some(val) => assert_eq!(*val, 43),
+            None => panic!("unexpected None while matching on Some(NonZero(_))")
+        }
     }
 }
