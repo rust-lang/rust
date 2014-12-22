@@ -69,6 +69,7 @@
 
 use clone::Clone;
 use cmp::*;
+use cmp::Ordering::*;
 use default::Default;
 use option::Option;
 use option::Option::Some;
