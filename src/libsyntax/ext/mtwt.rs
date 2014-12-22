@@ -39,7 +39,7 @@ pub struct SCTable {
     rename_memo: RefCell<HashMap<(SyntaxContext,Ident,Name),SyntaxContext>>,
 }
 
-#[deriving(Copy, PartialEq, Encodable, Decodable, Hash, Show)]
+#[deriving(PartialEq, RustcEncodable, RustcDecodable, Hash, Show, Copy)]
 pub enum SyntaxContext_ {
     EmptyCtxt,
     Mark (Mrk,SyntaxContext),

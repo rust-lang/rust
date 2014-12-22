@@ -343,7 +343,7 @@ pub fn empty_generics() -> Generics {
 // ______________________________________________________________________
 // Enumerating the IDs which appear in an AST
 
-#[deriving(Copy, Encodable, Decodable, Show)]
+#[deriving(RustcEncodable, RustcDecodable, Show, Copy)]
 pub struct IdRange {
     pub min: NodeId,
     pub max: NodeId,

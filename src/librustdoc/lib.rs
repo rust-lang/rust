@@ -32,6 +32,8 @@ extern crate syntax;
 extern crate "test" as testing;
 #[phase(plugin, link)] extern crate log;
 
+extern crate "serialize" as rustc_serialize; // used by deriving
+
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::collections::hash_map::Entry::{Occupied, Vacant};

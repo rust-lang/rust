@@ -25,7 +25,7 @@ use clean::{TypeTraitItem, ViewItemItem, PrimitiveItem, Stability};
 
 use html::render::cache;
 
-#[deriving(Zero, Encodable, Decodable, PartialEq, Eq)]
+#[deriving(Zero, RustcEncodable, RustcDecodable, PartialEq, Eq)]
 /// The counts for each stability level.
 #[deriving(Copy)]
 pub struct Counts {
@@ -73,7 +73,7 @@ impl Counts {
     }
 }
 
-#[deriving(Encodable, Decodable, PartialEq, Eq)]
+#[deriving(RustcEncodable, RustcDecodable, PartialEq, Eq)]
 /// A summarized module, which includes total counts and summarized children
 /// modules.
 pub struct ModuleSummary {

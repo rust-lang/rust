@@ -187,8 +187,8 @@ impl RegionSubsts {
 ///////////////////////////////////////////////////////////////////////////
 // ParamSpace
 
-#[deriving(Copy, PartialOrd, Ord, PartialEq, Eq,
-           Clone, Hash, Encodable, Decodable, Show)]
+#[deriving(PartialOrd, Ord, PartialEq, Eq, Copy,
+           Clone, Hash, RustcEncodable, RustcDecodable, Show)]
 pub enum ParamSpace {
     TypeSpace,  // Type parameters attached to a type definition, trait, or impl
     SelfSpace,  // Self parameter on a trait
@@ -224,7 +224,7 @@ impl ParamSpace {
 /// Vector of things sorted by param space. Used to keep
 /// the set of things declared on the type, self, or method
 /// distinct.
-#[deriving(PartialEq, Eq, Clone, Hash, Encodable, Decodable)]
+#[deriving(PartialEq, Eq, Clone, Hash, RustcEncodable, RustcDecodable)]
 pub struct VecPerParamSpace<T> {
     // This was originally represented as a tuple with one Vec<T> for
     // each variant of ParamSpace, and that remains the abstraction
