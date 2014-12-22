@@ -82,7 +82,9 @@ allowed tokens for the given NT's fragment specifier, and is defined below.
 `F` would be `,`, and for `$($foo:ty)+`, `F` would be `EOF`.
 
 *input*: a token tree `M` representing a matcher, and optionally a token `F`
+
 *output*: whether M is valid
+
 1. If there are no tokens in `M`, accept.
 2. For each token `T` in `M`:
     1. If `T` is not an NT, continue.
