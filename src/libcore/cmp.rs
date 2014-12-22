@@ -41,7 +41,7 @@
 
 #![stable]
 
-pub use self::Ordering::*;
+use self::Ordering::*;
 
 use kinds::Sized;
 use option::Option::{mod, Some, None};
