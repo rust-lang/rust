@@ -505,28 +505,28 @@ impl<T> PartialOrd for *mut T {
 
 /// A wrapper around a raw `*mut T` that indicates that the possessor
 /// of this wrapper owns the referent. This in turn implies that the
-/// `UniquePtr<T>` is `Send`/`Sync` if `T` is `Send`/`Sync`, unlike a
+/// `Unique<T>` is `Send`/`Sync` if `T` is `Send`/`Sync`, unlike a
 /// raw `*mut T` (which conveys no particular ownership semantics).
 /// Useful for building abstractions like `Vec<T>` or `Box<T>`, which
 /// internally use raw pointers to manage the memory that they own.
-pub struct UniquePtr<T>(pub *mut T);
+pub struct Unique<T>(pub *mut T);
 
-/// `UniquePtr` pointers are `Send` if `T` is `Send` because the data they
+/// `Unique` pointers are `Send` if `T` is `Send` because the data they
 /// reference is unaliased. Note that this aliasing invariant is
 /// unenforced by the type system; the abstraction using the
-/// `UniquePtr` must enforce it.
-unsafe impl<T:Send> Send for UniquePtr<T> { }
+/// `Unique` must enforce it.
+unsafe impl<T:Send> Send for Unique<T> { }
 
-/// `UniquePtr` pointers are `Sync` if `T` is `Sync` because the data they
+/// `Unique` pointers are `Sync` if `T` is `Sync` because the data they
 /// reference is unaliased. Note that this aliasing invariant is
 /// unenforced by the type system; the abstraction using the
-/// `UniquePtr` must enforce it.
-unsafe impl<T:Sync> Sync for UniquePtr<T> { }
+/// `Unique` must enforce it.
+unsafe impl<T:Sync> Sync for Unique<T> { }
 
-impl<T> UniquePtr<T> {
-    /// Returns a null UniquePtr.
-    pub fn null() -> UniquePtr<T> {
-        UniquePtr(RawPtr::null())
+impl<T> Unique<T> {
+    /// Returns a null Unique.
+    pub fn null() -> Unique<T> {
+        Unique(RawPtr::null())
     }
 
     /// Return an (unsafe) pointer into the memory owned by `self`.

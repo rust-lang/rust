@@ -291,9 +291,9 @@ fn add_fragment_siblings<'tcx>(this: &MoveData<'tcx>,
             add_fragment_siblings(this, tcx, gathered_fragments, loan_parent.clone(), origin_id);
         }
 
-        // *LV for UniquePtr consumes the contents of the box (at
+        // *LV for Unique consumes the contents of the box (at
         // least when it is non-copy...), so propagate inward.
-        LpExtend(ref loan_parent, _, LpDeref(mc::UniquePtr)) => {
+        LpExtend(ref loan_parent, _, LpDeref(mc::Unique)) => {
             add_fragment_siblings(this, tcx, gathered_fragments, loan_parent.clone(), origin_id);
         }
 
