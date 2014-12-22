@@ -190,6 +190,17 @@ fn represent_type_uncached<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                   dtor);
             }
 
+            if cases.len() == 1 && cases[0].discr == 0 {
+                // Equivalent to a struct/tuple/newtype.
+                // (Typechecking will reject discriminant-sizing attrs.)
+                assert_eq!(hint, attr::ReprAny);
+                let mut ftys = cases[0].tys.clone();
+                if dtor { ftys.push(ty::mk_bool()); }
+                return Univariant(mk_struct(cx, ftys.as_slice(), false, t),
+                                  dtor);
+            }
+
+
             if !dtor && cases.iter().all(|c| c.tys.len() == 0) {
                 // All bodies empty -> intlike
                 let discrs: Vec<u64> = cases.iter().map(|c| c.discr).collect();
@@ -210,16 +221,6 @@ fn represent_type_uncached<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                       discriminants",
                                       ty::item_path_str(cx.tcx(),
                                                         def_id)).as_slice());
-            }
-
-            if cases.len() == 1 {
-                // Equivalent to a struct/tuple/newtype.
-                // (Typechecking will reject discriminant-sizing attrs.)
-                assert_eq!(hint, attr::ReprAny);
-                let mut ftys = cases[0].tys.clone();
-                if dtor { ftys.push(ty::mk_bool()); }
-                return Univariant(mk_struct(cx, ftys.as_slice(), false, t),
-                                  dtor);
             }
 
             if !dtor && cases.len() == 2 && hint == attr::ReprAny {
