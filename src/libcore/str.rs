@@ -1310,6 +1310,7 @@ impl StrExt for str {
             else { line }
         }
 
+        let f: fn(&str) -> &str = f; // coerce to fn pointer
         LinesAny { inner: self.lines().map(f) }
     }
 

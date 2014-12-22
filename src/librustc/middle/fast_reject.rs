@@ -83,7 +83,7 @@ pub fn simplify_type(tcx: &ty::ctxt,
         ty::ty_closure(ref f) => {
             Some(FunctionSimplifiedType(f.sig.0.inputs.len()))
         }
-        ty::ty_bare_fn(ref f) => {
+        ty::ty_bare_fn(_, ref f) => {
             Some(FunctionSimplifiedType(f.sig.0.inputs.len()))
         }
         ty::ty_param(_) => {

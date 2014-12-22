@@ -13,7 +13,6 @@ pub use self::ClosureKind::*;
 use back::abi;
 use back::link::mangle_internal_name_by_path_and_seq;
 use llvm::ValueRef;
-use middle::def;
 use middle::mem_categorization::Typer;
 use trans::adt;
 use trans::base::*;
@@ -603,7 +602,7 @@ pub fn trans_unboxed_closure<'blk, 'tcx>(
 
 pub fn get_wrapper_for_bare_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                          closure_ty: Ty<'tcx>,
-                                         def: def::Def,
+                                         def_id: ast::DefId,
                                          fn_ptr: ValueRef,
                                          is_local: bool) -> ValueRef {
 
@@ -697,11 +696,11 @@ pub fn get_wrapper_for_bare_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
 pub fn make_closure_from_bare_fn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                              closure_ty: Ty<'tcx>,
-                                             def: def::Def,
+                                             def_id: ast::DefId,
                                              fn_ptr: ValueRef)
                                              -> DatumBlock<'blk, 'tcx, Expr>  {
     let scratch = rvalue_scratch_datum(bcx, closure_ty, "__adjust");
-    let wrapper = get_wrapper_for_bare_fn(bcx.ccx(), closure_ty, def, fn_ptr, true);
+    let wrapper = get_wrapper_for_bare_fn(bcx.ccx(), closure_ty, def_id, fn_ptr, true);
     fill_fn_pair(bcx, scratch.val, wrapper, C_null(Type::i8p(bcx.ccx())));
 
     DatumBlock::new(bcx, scratch.to_expr_datum())

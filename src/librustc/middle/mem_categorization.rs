@@ -441,8 +441,8 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
 
             Some(adjustment) => {
                 match *adjustment {
-                    ty::AdjustAddEnv(..) => {
-                        debug!("cat_expr(AdjustAddEnv): {}",
+                    ty::AdjustAddEnv(..) | ty::AdjustReifyFnPointer(..) => {
+                        debug!("cat_expr(AdjustAddEnv|AdjustReifyFnPointer): {}",
                                expr.repr(self.tcx()));
                         // Convert a bare fn to a closure by adding NULL env.
                         // Result is an rvalue.

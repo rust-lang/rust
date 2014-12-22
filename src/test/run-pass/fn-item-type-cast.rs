@@ -8,23 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait MyTrait {
-    fn foo(&self);
-}
+// Test explicit coercions from a fn item type to a fn pointer type.
 
-impl<A, B, C> MyTrait for fn(A, B) -> C {
-    fn foo(&self) {}
-}
+fn foo(x: int) -> int { x * 2 }
+fn bar(x: int) -> int { x * 4 }
+type IntMap = fn(int) -> int;
 
-fn bar<T: MyTrait>(t: &T) {
-    t.foo()
-}
+fn eq<T>(x: T, y: T) { }
 
-fn thing(a: int, b: int) -> int {
-    a + b
-}
+static TEST: Option<IntMap> = Some(foo as IntMap);
 
 fn main() {
-    let thing: fn(int, int) -> int = thing; // coerce to fn type
-    bar(&thing);
+    let f = foo as IntMap;
+
+    let f = if true { foo as IntMap } else { bar as IntMap };
+    assert_eq!(f(4), 8);
+
+    eq(foo as IntMap, bar as IntMap);
 }

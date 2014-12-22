@@ -65,17 +65,21 @@ const HOEDOWN_EXTENSIONS: libc::c_uint =
 
 type hoedown_document = libc::c_void;  // this is opaque to us
 
+type blockcodefn = extern "C" fn(*mut hoedown_buffer, *const hoedown_buffer,
+                                 *const hoedown_buffer, *mut libc::c_void);
+
+type headerfn = extern "C" fn(*mut hoedown_buffer, *const hoedown_buffer,
+                              libc::c_int, *mut libc::c_void);
+
 #[repr(C)]
 struct hoedown_renderer {
     opaque: *mut hoedown_html_renderer_state,
-    blockcode: Option<extern "C" fn(*mut hoedown_buffer, *const hoedown_buffer,
-                                    *const hoedown_buffer, *mut libc::c_void)>,
+    blockcode: Option<blockcodefn>,
     blockquote: Option<extern "C" fn(*mut hoedown_buffer, *const hoedown_buffer,
                                      *mut libc::c_void)>,
     blockhtml: Option<extern "C" fn(*mut hoedown_buffer, *const hoedown_buffer,
                                     *mut libc::c_void)>,
-    header: Option<extern "C" fn(*mut hoedown_buffer, *const hoedown_buffer,
-                                 libc::c_int, *mut libc::c_void)>,
+    header: Option<headerfn>,
     other: [libc::size_t, ..28],
 }
 
@@ -281,8 +285,8 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
             toc_builder: if print_toc {Some(TocBuilder::new())} else {None}
         };
         (*(*renderer).opaque).opaque = &mut opaque as *mut _ as *mut libc::c_void;
-        (*renderer).blockcode = Some(block);
-        (*renderer).header = Some(header);
+        (*renderer).blockcode = Some(block as blockcodefn);
+        (*renderer).header = Some(header as headerfn);
 
         let document = hoedown_document_new(renderer, HOEDOWN_EXTENSIONS, 16);
         hoedown_document_render(document, ob, s.as_ptr(),
@@ -354,8 +358,8 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
     unsafe {
         let ob = hoedown_buffer_new(DEF_OUNIT);
         let renderer = hoedown_html_renderer_new(0, 0);
-        (*renderer).blockcode = Some(block);
-        (*renderer).header = Some(header);
+        (*renderer).blockcode = Some(block as blockcodefn);
+        (*renderer).header = Some(header as headerfn);
         (*(*renderer).opaque).opaque = tests as *mut _ as *mut libc::c_void;
 
         let document = hoedown_document_new(renderer, HOEDOWN_EXTENSIONS, 16);

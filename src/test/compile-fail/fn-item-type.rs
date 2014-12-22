@@ -8,23 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait MyTrait {
-    fn foo(&self);
-}
+// Test that the types of distinct fn items are not compatible by
+// default. See also `run-pass/fn-item-type-*.rs`.
 
-impl<A, B, C> MyTrait for fn(A, B) -> C {
-    fn foo(&self) {}
-}
+fn foo(x: int) -> int { x * 2 }
+fn bar(x: int) -> int { x * 4 }
 
-fn bar<T: MyTrait>(t: &T) {
-    t.foo()
-}
-
-fn thing(a: int, b: int) -> int {
-    a + b
-}
+fn eq<T>(x: T, y: T) { }
 
 fn main() {
-    let thing: fn(int, int) -> int = thing; // coerce to fn type
-    bar(&thing);
+    let f = if true { foo } else { bar };
+    //~^ ERROR expected fn item, found a different fn item
+
+    eq(foo, bar);
+    //~^ ERROR expected fn item, found a different fn item
 }

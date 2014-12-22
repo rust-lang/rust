@@ -651,7 +651,8 @@ impl Path {
             None if repr.as_bytes()[0] == SEP_BYTE => repr[1..],
             None => repr
         };
-        let ret = s.split_terminator(SEP).map(Some);
+        let some: fn(&'a str) -> Option<&'a str> = Some; // coerce to fn ptr
+        let ret = s.split_terminator(SEP).map(some);
         ret
     }
 
@@ -662,6 +663,7 @@ impl Path {
             #![inline]
             x.unwrap().as_bytes()
         }
+        let convert: for<'b> fn(Option<&'b str>) -> &'b [u8] = convert; // coerce to fn ptr
         self.str_components().map(convert)
     }
 
@@ -1044,7 +1046,11 @@ fn parse_prefix<'a>(mut path: &'a str) -> Option<PathPrefix> {
 
 // None result means the string didn't need normalizing
 fn normalize_helper<'a>(s: &'a str, prefix: Option<PathPrefix>) -> (bool, Option<Vec<&'a str>>) {
-    let f = if !prefix_is_verbatim(prefix) { is_sep } else { is_sep_verbatim };
+    let f: fn(char) -> bool = if !prefix_is_verbatim(prefix) {
+        is_sep
+    } else {
+        is_sep_verbatim
+    };
     let is_abs = s.len() > prefix_len(prefix) && f(s.char_at(prefix_len(prefix)));
     let s_ = s[prefix_len(prefix)..];
     let s_ = if is_abs { s_[1..] } else { s_ };

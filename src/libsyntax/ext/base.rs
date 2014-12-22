@@ -50,14 +50,16 @@ pub trait ItemDecorator {
               push: |P<ast::Item>|);
 }
 
-impl ItemDecorator for fn(&mut ExtCtxt, Span, &ast::MetaItem, &ast::Item, |P<ast::Item>|) {
+impl<F> ItemDecorator for F
+    where F : Fn(&mut ExtCtxt, Span, &ast::MetaItem, &ast::Item, |P<ast::Item>|)
+{
     fn expand(&self,
               ecx: &mut ExtCtxt,
               sp: Span,
               meta_item: &ast::MetaItem,
               item: &ast::Item,
               push: |P<ast::Item>|) {
-        self.clone()(ecx, sp, meta_item, item, push)
+        (*self)(ecx, sp, meta_item, item, push)
     }
 }
 
@@ -70,14 +72,16 @@ pub trait ItemModifier {
               -> P<ast::Item>;
 }
 
-impl ItemModifier for fn(&mut ExtCtxt, Span, &ast::MetaItem, P<ast::Item>) -> P<ast::Item> {
+impl<F> ItemModifier for F
+    where F : Fn(&mut ExtCtxt, Span, &ast::MetaItem, P<ast::Item>) -> P<ast::Item>
+{
     fn expand(&self,
               ecx: &mut ExtCtxt,
               span: Span,
               meta_item: &ast::MetaItem,
               item: P<ast::Item>)
               -> P<ast::Item> {
-        self.clone()(ecx, span, meta_item, item)
+        (*self)(ecx, span, meta_item, item)
     }
 }
 
@@ -93,13 +97,15 @@ pub trait TTMacroExpander {
 pub type MacroExpanderFn =
     for<'cx> fn(&'cx mut ExtCtxt, Span, &[ast::TokenTree]) -> Box<MacResult+'cx>;
 
-impl TTMacroExpander for MacroExpanderFn {
+impl<F> TTMacroExpander for F
+    where F : for<'cx> Fn(&'cx mut ExtCtxt, Span, &[ast::TokenTree]) -> Box<MacResult+'cx>
+{
     fn expand<'cx>(&self,
                    ecx: &'cx mut ExtCtxt,
                    span: Span,
                    token_tree: &[ast::TokenTree])
                    -> Box<MacResult+'cx> {
-        self.clone()(ecx, span, token_tree)
+        (*self)(ecx, span, token_tree)
     }
 }
 
@@ -115,14 +121,18 @@ pub trait IdentMacroExpander {
 pub type IdentMacroExpanderFn =
     for<'cx> fn(&'cx mut ExtCtxt, Span, ast::Ident, Vec<ast::TokenTree>) -> Box<MacResult+'cx>;
 
-impl IdentMacroExpander for IdentMacroExpanderFn {
+impl<F> IdentMacroExpander for F
+    where F : for<'cx> Fn(&'cx mut ExtCtxt, Span, ast::Ident,
+                          Vec<ast::TokenTree>) -> Box<MacResult+'cx>
+{
     fn expand<'cx>(&self,
                    cx: &'cx mut ExtCtxt,
                    sp: Span,
                    ident: ast::Ident,
                    token_tree: Vec<ast::TokenTree> )
-                   -> Box<MacResult+'cx> {
-        self.clone()(cx, sp, ident, token_tree)
+                   -> Box<MacResult+'cx>
+    {
+        (*self)(cx, sp, ident, token_tree)
     }
 }
 

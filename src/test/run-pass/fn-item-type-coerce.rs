@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,16 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern fn foopy() {}
+// Test implicit coercions from a fn item type to a fn pointer type.
 
-static f: extern "C" fn() = foopy;
-static s: S = S { f: foopy };
+fn foo(x: int) -> int { x * 2 }
+fn bar(x: int) -> int { x * 4 }
+type IntMap = fn(int) -> int;
 
-struct S {
-    f: extern "C" fn()
-}
+fn eq<T>(x: T, y: T) { }
 
-pub fn main() {
-    assert!(foopy as extern "C" fn() == f);
-    assert!(f == s.f);
+fn main() {
+    let f: IntMap = foo;
+
+    eq::<IntMap>(foo, bar);
 }

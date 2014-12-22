@@ -74,7 +74,7 @@ struct IntrinsicCheckingVisitor<'a, 'tcx: 'a> {
 impl<'a, 'tcx> IntrinsicCheckingVisitor<'a, 'tcx> {
     fn def_id_is_transmute(&self, def_id: DefId) -> bool {
         let intrinsic = match ty::lookup_item_type(self.tcx, def_id).ty.sty {
-            ty::ty_bare_fn(ref bfty) => bfty.abi == RustIntrinsic,
+            ty::ty_bare_fn(_, ref bfty) => bfty.abi == RustIntrinsic,
             _ => return false
         };
         if def_id.krate == ast::LOCAL_CRATE {
@@ -123,7 +123,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for IntrinsicCheckingVisitor<'a, 'tcx> {
                 DefFn(did, _) if self.def_id_is_transmute(did) => {
                     let typ = ty::node_id_to_type(self.tcx, expr.id);
                     match typ.sty {
-                        ty_bare_fn(ref bare_fn_ty) if bare_fn_ty.abi == RustIntrinsic => {
+                        ty_bare_fn(_, ref bare_fn_ty) if bare_fn_ty.abi == RustIntrinsic => {
                             if let ty::FnConverging(to) = bare_fn_ty.sig.0.output {
                                 let from = bare_fn_ty.sig.0.inputs[0];
                                 self.check_transmute(expr.span, from, to, expr.id);
