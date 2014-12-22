@@ -228,6 +228,7 @@ impl<T> RingBuf<T> {
     /// assert_eq!(buf[0], 5);
     /// assert_eq!(buf[2], 3);
     /// ```
+    #[stable]
     pub fn swap(&mut self, i: uint, j: uint) {
         assert!(i < self.len());
         assert!(j < self.len());
@@ -546,7 +547,7 @@ impl<T> RingBuf<T> {
     /// d.push_back(2i);
     /// assert_eq!(d.front(), Some(&1i));
     /// ```
-    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    #[stable]
     pub fn front(&self) -> Option<&T> {
         if !self.is_empty() { Some(&self[0]) } else { None }
     }
@@ -570,7 +571,7 @@ impl<T> RingBuf<T> {
     /// }
     /// assert_eq!(d.front(), Some(&9i));
     /// ```
-    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    #[stable]
     pub fn front_mut(&mut self) -> Option<&mut T> {
         if !self.is_empty() { Some(&mut self[0]) } else { None }
     }
@@ -590,7 +591,7 @@ impl<T> RingBuf<T> {
     /// d.push_back(2i);
     /// assert_eq!(d.back(), Some(&2i));
     /// ```
-    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    #[stable]
     pub fn back(&self) -> Option<&T> {
         if !self.is_empty() { Some(&self[self.len() - 1]) } else { None }
     }
@@ -614,7 +615,7 @@ impl<T> RingBuf<T> {
     /// }
     /// assert_eq!(d.back(), Some(&9i));
     /// ```
-    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    #[stable]
     pub fn back_mut(&mut self) -> Option<&mut T> {
         let len = self.len();
         if !self.is_empty() { Some(&mut self[len - 1]) } else { None }
