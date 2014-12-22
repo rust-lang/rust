@@ -33,7 +33,8 @@ fragment specifier.
 # Summary
 
 Future-proof the allowed forms that input to an MBE can take by requiring
-certain delimiters following NTs in a matcher.
+certain delimiters following NTs in a matcher. In the future, it will be
+possible to lift these restrictions backwards compatibly if desired.
 
 # Motivation
 
@@ -73,9 +74,52 @@ rather than any possible arbitrary matcher.
 
 # Detailed design
 
-This is the bulk of the RFC. Explain the design in enough detail for somebody familiar
-with the language to understand, and for somebody familiar with the compiler to implement.
-This should get into specifics and corner-cases, and include examples of how the feature is used.
+The algorithm for recognizing valid matchers `M` follows. Note that a matcher
+is merely a token tree. A "simple NT" is an NT without repetitions. That is,
+`$foo:ty` is a simple NT but `$($foo:ty)+` is not. `FOLLOW(NT)` is the set of
+allowed tokens for the given NT's fragment specifier, and is defined below.
+`F` is used for representing the separator in complex NTs.  In `$($foo:ty),+`,
+`F` would be `,`, and for `$($foo:ty)+`, `F` would be `EOF`.
+
+*input*: a token tree `M` representing a matcher, and optionally a token `F`
+*output*: whether M is valid
+1. If there are no tokens in `M`, accept.
+2. For each token `T` in `M`:
+    1. If `T` is not an NT, continue.
+    2. If `T` is a simple NT, look ahead to the next token `T'` in `M`. If
+       `T'` is `EOF`, replace `T'` with `F` if present. If `T'` is in the set
+       `FOLLOW(NT)`, `T'` is EOF, `T'` is any NT, or `T'` is any identifier,
+       continue.
+    3. Else, `T` is a complex NT.
+        1. If `T` has the form `$(...)+` or `$(...)*`, run the algorithm on
+           the contents with `F` set to `EOF`. If it accepts, continue, else,
+           reject.
+        2. If `T` has the form `$(...)U+` or $(...)U*` for some token `U`, run
+           the algorithm on the contents with `F` set to `U`. If it accepts,
+           continue, else, reject.
+
+This algorithm should be run on every matcher in every `macro_rules`
+invocation. If it rejects a matcher, an error should be emitted and
+compilation should not complete.
+
+The current legal fragment specifiers are: `item`, `block`, `stmt`, `pat`,
+`expr`, `ty`, `ident`, `path`, `meta`, and `tt`.
+
+- `FOLLOW(item)` = `{}`
+- `FOLLOW(block)` = `FOLLOW(expr)`
+- `FOLLOW(stmt)` = `FOLLOW(expr)`
+- `FOLLOW(pat)` = `{FatArrow, Comma}`
+- `FOLLOW(expr)` = `{Comma, FatArrow, CloseBrace, CloseParen, Lit}` (where
+  `Lit` is any numeric literal)
+- `FOLLOW(ty)` = `{Comma, Eq, Gt, Lt, RArrow, FatArrow, OpenBrace, OpenParen,
+  CloseBrace, CloseParen}`
+- `FOLLOW(ident)` = any token
+- `FOLLOW(path)` = any token
+- `FOLLOW(meta)` = any token
+- `FOLLOW(tt)` = any token
+
+**Note**: the `FOLLOW` sets as given are based on every MBE in the Rust
+distribution, but should probably be tuned before the RFC is accepted.
 
 # Drawbacks
 
@@ -101,3 +145,5 @@ reasonable freedom.
    freeze Rust's syntax for fear of accidentally breaking a macro.
 
 # Unresolved questions
+
+Are the given `FOLLOW` sets adequate?
