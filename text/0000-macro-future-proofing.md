@@ -23,7 +23,7 @@ Example:
 
 ```rust
 macro_rules! i_am_an_mbe {
-    (start $foo:expr end) => ($foo),
+    (start $foo:expr end) => ($foo)
 }
 ```
 
