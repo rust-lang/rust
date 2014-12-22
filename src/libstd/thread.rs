@@ -127,7 +127,7 @@
 use any::Any;
 use borrow::IntoCow;
 use boxed::Box;
-use comm::RacyCell;
+use cell::UnsafeCell;
 use clone::Clone;
 use kinds::{Send, Sync};
 use ops::{Drop, FnOnce};
@@ -211,8 +211,8 @@ impl Builder {
     }
 
     fn spawn_inner<T: Send>(self, f: Thunk<(), T>) -> JoinGuard<T> {
-        let my_packet = Arc::new(RacyCell::new(None));
-        let their_packet = my_packet.clone();
+        let my_packet = Packet(Arc::new(UnsafeCell::new(None)));
+        let their_packet = Packet(my_packet.0.clone());
 
         let Builder { name, stack_size, stdout, stderr } = self;
 
@@ -266,7 +266,7 @@ impl Builder {
                 }
             };
             unsafe {
-                *their_packet.get() = Some(match (output, try_result) {
+                *their_packet.0.get() = Some(match (output, try_result) {
                     (Some(data), Ok(_)) => Ok(data),
                     (None, Err(cause)) => Err(cause),
                     _ => unreachable!()
@@ -383,6 +383,11 @@ impl thread_info::NewThread for Thread {
 /// A thread that completes without panicking is considered to exit successfully.
 pub type Result<T> = ::result::Result<T, Box<Any + Send>>;
 
+struct Packet<T>(Arc<UnsafeCell<Option<Result<T>>>>);
+
+unsafe impl<T:'static+Send> Send for Packet<T> {}
+unsafe impl<T> Sync for Packet<T> {}
+
 #[must_use]
 /// An RAII-style guard that will block until thread termination when dropped.
 ///
@@ -391,8 +396,10 @@ pub struct JoinGuard<T> {
     native: imp::rust_thread,
     thread: Thread,
     joined: bool,
-    packet: Arc<RacyCell<Option<Result<T>>>>,
+    packet: Packet<T>,
 }
+
+unsafe impl<T: Send> Sync for JoinGuard<T> {}
 
 impl<T: Send> JoinGuard<T> {
     /// Extract a handle to the thread this guard will join on.
@@ -410,7 +417,7 @@ impl<T: Send> JoinGuard<T> {
         unsafe { imp::join(self.native) };
         self.joined = true;
         unsafe {
-            (*self.packet.get()).take().unwrap()
+            (*self.packet.0.get()).take().unwrap()
         }
     }
 

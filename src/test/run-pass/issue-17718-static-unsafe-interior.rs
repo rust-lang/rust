@@ -9,29 +9,32 @@
 // except according to those terms.
 
 use std::kinds::marker;
-use std::comm::RacyCell;
 use std::cell::UnsafeCell;
 
 struct MyUnsafe<T> {
-    value: RacyCell<T>
+    value: UnsafeCell<T>
 }
 
 impl<T> MyUnsafe<T> {
     fn forbidden(&self) {}
 }
 
+impl<T: Send> Sync for MyUnsafe<T> {}
+
 enum UnsafeEnum<T> {
     VariantSafe,
-    VariantUnsafe(RacyCell<T>)
+    VariantUnsafe(UnsafeCell<T>)
 }
+
+impl<T: Send> Sync for UnsafeEnum<T> {}
 
 static STATIC1: UnsafeEnum<int> = UnsafeEnum::VariantSafe;
 
-static STATIC2: RacyCell<int> = RacyCell(UnsafeCell { value: 1 });
-const CONST: RacyCell<int> = RacyCell(UnsafeCell { value: 1 });
+static STATIC2: UnsafeCell<int> = UnsafeCell { value: 1 };
+const CONST: UnsafeCell<int> = UnsafeCell { value: 1 };
 static STATIC3: MyUnsafe<int> = MyUnsafe{value: CONST};
 
-static STATIC4: &'static RacyCell<int> = &STATIC2;
+static STATIC4: &'static UnsafeCell<int> = &STATIC2;
 
 struct Wrap<T> {
     value: T
@@ -39,13 +42,11 @@ struct Wrap<T> {
 
 unsafe impl<T: Send> Sync for Wrap<T> {}
 
-static UNSAFE: RacyCell<int> = RacyCell(UnsafeCell{value: 1});
-static WRAPPED_UNSAFE: Wrap<&'static RacyCell<int>> = Wrap { value: &UNSAFE };
+static UNSAFE: UnsafeCell<int> = UnsafeCell{value: 1};
+static WRAPPED_UNSAFE: Wrap<&'static UnsafeCell<int>> = Wrap { value: &UNSAFE };
 
 fn main() {
     let a = &STATIC1;
 
     STATIC3.forbidden()
 }
-
-
