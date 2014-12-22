@@ -2855,8 +2855,8 @@ mod tests {
         assert_eq!(from_str("\"\\r\""), Ok(String("\r".into_string())));
         assert_eq!(from_str("\"\\t\""), Ok(String("\t".into_string())));
         assert_eq!(from_str(" \"foo\" "), Ok(String("foo".into_string())));
-        assert_eq!(from_str("\"\\u12ab\""), Ok(String("\u{12ab}".into_string())));
-        assert_eq!(from_str("\"\\uAB12\""), Ok(String("\u{AB12}".into_string())));
+        assert_eq!(from_str("\"\\u{12ab}\""), Ok(String("\u{12ab}".into_string())));
+        assert_eq!(from_str("\"\\u{AB12}\""), Ok(String("\u{AB12}".into_string())));
     }
 
     #[test]
@@ -2868,8 +2868,8 @@ mod tests {
                  ("\"\\n\"", "\n"),
                  ("\"\\r\"", "\r"),
                  ("\"\\t\"", "\t"),
-                 ("\"\\u12ab\"", "\u{12ab}"),
-                 ("\"\\uAB12\"", "\u{AB12}")];
+                 ("\"\\u{12ab}\"", "\u{12ab}"),
+                 ("\"\\u{AB12}\"", "\u{AB12}")];
 
         for &(i, o) in s.iter() {
             let v: string::String = super::decode(i).unwrap();

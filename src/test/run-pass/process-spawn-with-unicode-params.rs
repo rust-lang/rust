@@ -31,7 +31,7 @@ fn main() {
     let my_ext  = my_path.extension_str().unwrap_or("");
 
     // some non-ASCII characters
-    let blah       = "\u03c0\u042f\u97f3\u00e6\u221e";
+    let blah       = "\u{3c0}\u{42f}\u{97f3}\u{e6}\u{221e}";
 
     let child_name = "child";
     let child_dir  = format!("process-spawn-with-unicode-params-{}", blah);

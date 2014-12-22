@@ -248,10 +248,9 @@ cases mentioned in [Number literals](#number-literals) below.
 | `\\` | Backslash |
 
 ##### Unicode escapes
-|   | Name |
-|---|------|
-| `\u7FFF` | 16-bit character code (exactly 4 digits) |
-| `\U7EEEFFFF` | 32-bit character code (exactly 8 digits) |
+|   | Name       |
+|---|------------|
+| `\u{7FF}` | Unicode code point value (1 to 6 digits) |
 
 ##### Numbers
 
