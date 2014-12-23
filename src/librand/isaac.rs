@@ -29,7 +29,8 @@ const RAND_SIZE_UINT: uint = 1 << (RAND_SIZE_LEN as uint);
 ///
 /// [1]: Bob Jenkins, [*ISAAC: A fast cryptographic random number
 /// generator*](http://www.burtleburtle.net/bob/rand/isaacafa.html)
-#[deriving(Copy)]
+
+#[allow(missing_copy_implementations)]
 pub struct IsaacRng {
     cnt: u32,
     rsl: [u32, ..RAND_SIZE_UINT],
@@ -51,7 +52,7 @@ impl IsaacRng {
     /// Create an ISAAC random number generator using the default
     /// fixed seed.
     pub fn new_unseeded() -> IsaacRng {
-        let mut rng = EMPTY;
+        let mut rng = EMPTY.clone();
         rng.init(false);
         rng
     }
@@ -179,6 +180,19 @@ impl IsaacRng {
     }
 }
 
+impl Clone for IsaacRng {
+    fn clone(&self) -> IsaacRng {
+        IsaacRng {
+            cnt: self.cnt,
+            rsl: self.rsl,
+            mem: self.mem,
+            a: self.a,
+            b: self.b,
+            c: self.c
+        }
+    }
+}
+
 impl Rng for IsaacRng {
     #[inline]
     fn next_u32(&mut self) -> u32 {
@@ -226,7 +240,7 @@ impl<'a> SeedableRng<&'a [u32]> for IsaacRng {
     /// constructed with a given seed will generate the same sequence
     /// of values as all other generators constructed with that seed.
     fn from_seed(seed: &'a [u32]) -> IsaacRng {
-        let mut rng = EMPTY;
+        let mut rng = EMPTY.clone();
         rng.reseed(seed);
         rng
     }
@@ -234,7 +248,7 @@ impl<'a> SeedableRng<&'a [u32]> for IsaacRng {
 
 impl Rand for IsaacRng {
     fn rand<R: Rng>(other: &mut R) -> IsaacRng {
-        let mut ret = EMPTY;
+        let mut ret = EMPTY.clone();
         unsafe {
             let ptr = ret.rsl.as_mut_ptr() as *mut u8;
 
@@ -264,7 +278,7 @@ const RAND_SIZE_64: uint = 1 << RAND_SIZE_64_LEN;
 ///
 /// [1]: Bob Jenkins, [*ISAAC: A fast cryptographic random number
 /// generator*](http://www.burtleburtle.net/bob/rand/isaacafa.html)
-#[deriving(Copy)]
+#[allow(missing_copy_implementations)]
 pub struct Isaac64Rng {
     cnt: uint,
     rsl: [u64, .. RAND_SIZE_64],
@@ -285,7 +299,7 @@ impl Isaac64Rng {
     /// Create a 64-bit ISAAC random number generator using the
     /// default fixed seed.
     pub fn new_unseeded() -> Isaac64Rng {
-        let mut rng = EMPTY_64;
+        let mut rng = EMPTY_64.clone();
         rng.init(false);
         rng
     }
@@ -415,6 +429,19 @@ impl Isaac64Rng {
     }
 }
 
+impl Clone for Isaac64Rng {
+    fn clone(&self) -> Isaac64Rng {
+        Isaac64Rng {
+            cnt: self.cnt,
+            rsl: self.rsl,
+            mem: self.mem,
+            a: self.a,
+            b: self.b,
+            c: self.c
+        }
+    }
+}
+
 impl Rng for Isaac64Rng {
     // FIXME #7771: having next_u32 like this should be unnecessary
     #[inline]
@@ -460,7 +487,7 @@ impl<'a> SeedableRng<&'a [u64]> for Isaac64Rng {
     /// constructed with a given seed will generate the same sequence
     /// of values as all other generators constructed with that seed.
     fn from_seed(seed: &'a [u64]) -> Isaac64Rng {
-        let mut rng = EMPTY_64;
+        let mut rng = EMPTY_64.clone();
         rng.reseed(seed);
         rng
     }
@@ -468,7 +495,7 @@ impl<'a> SeedableRng<&'a [u64]> for Isaac64Rng {
 
 impl Rand for Isaac64Rng {
     fn rand<R: Rng>(other: &mut R) -> Isaac64Rng {
-        let mut ret = EMPTY_64;
+        let mut ret = EMPTY_64.clone();
         unsafe {
             let ptr = ret.rsl.as_mut_ptr() as *mut u8;
 
