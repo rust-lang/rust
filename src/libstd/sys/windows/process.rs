@@ -467,6 +467,7 @@ fn free_handle(handle: *mut ()) {
 
 #[cfg(test)]
 mod tests {
+    use c_str::ToCStr;
 
     #[test]
     fn test_make_command_line() {
