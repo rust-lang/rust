@@ -102,6 +102,7 @@ use util::ppaux;
 use syntax::codemap::Span;
 use syntax::print::pprust::*;
 use syntax::{ast, ast_map, abi};
+use syntax::ast_util::local_def;
 
 #[cfg(stage0)]
 mod diagnostics;
@@ -196,7 +197,7 @@ fn require_same_types<'a, 'tcx, M>(tcx: &ty::ctxt<'tcx>,
                               format!("{}: {}",
                                       msg(),
                                       ty::type_err_to_str(tcx,
-                                                          terr)).as_slice());
+                                                          terr))[]);
             ty::note_and_explain_type_err(tcx, terr);
             false
         }
@@ -224,7 +225,7 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
                 }
                 _ => ()
             }
-            let se_ty = ty::mk_bare_fn(tcx, ty::BareFnTy {
+            let se_ty = ty::mk_bare_fn(tcx, Some(local_def(main_id)), ty::BareFnTy {
                 unsafety: ast::Unsafety::Normal,
                 abi: abi::Rust,
                 sig: ty::Binder(ty::FnSig {
@@ -245,7 +246,7 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
                               format!("main has a non-function type: found \
                                        `{}`",
                                       ppaux::ty_to_string(tcx,
-                                                       main_t)).as_slice());
+                                                       main_t))[]);
         }
     }
 }
@@ -256,7 +257,7 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
     let tcx = ccx.tcx;
     let start_t = ty::node_id_to_type(tcx, start_id);
     match start_t.sty {
-        ty::ty_bare_fn(_) => {
+        ty::ty_bare_fn(..) => {
             match tcx.map.find(start_id) {
                 Some(ast_map::NodeItem(it)) => {
                     match it.node {
@@ -272,7 +273,7 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
                 _ => ()
             }
 
-            let se_ty = ty::mk_bare_fn(tcx, ty::BareFnTy {
+            let se_ty = ty::mk_bare_fn(tcx, Some(local_def(start_id)), ty::BareFnTy {
                 unsafety: ast::Unsafety::Normal,
                 abi: abi::Rust,
                 sig: ty::Binder(ty::FnSig {
@@ -296,8 +297,7 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
             tcx.sess.span_bug(start_span,
                               format!("start has a non-function type: found \
                                        `{}`",
-                                      ppaux::ty_to_string(tcx,
-                                                       start_t)).as_slice());
+                                      ppaux::ty_to_string(tcx, start_t))[]);
         }
     }
 }

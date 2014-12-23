@@ -13,6 +13,7 @@
 extern crate core;
 extern crate test;
 extern crate libc;
+extern crate unicode;
 
 mod any;
 mod atomic;

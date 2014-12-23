@@ -15,7 +15,7 @@ fn a<'a, 'b>(x: &mut &'a int, y: &mut &'b int) where 'b: 'a {
 
 fn b<'a, 'b>(x: &mut &'a int, y: &mut &'b int) {
     // Illegal now because there is no `'b:'a` declaration.
-    *x = *y; //~ ERROR mismatched types
+    *x = *y; //~ ERROR cannot infer
 }
 
 fn c<'a,'b>(x: &mut &'a int, y: &mut &'b int) {

@@ -65,7 +65,7 @@ impl LanguageItems {
         }
     }
 
-    pub fn items<'a>(&'a self) -> Enumerate<slice::Items<'a, Option<ast::DefId>>> {
+    pub fn items<'a>(&'a self) -> Enumerate<slice::Iter<'a, Option<ast::DefId>>> {
         self.items.iter().enumerate()
     }
 

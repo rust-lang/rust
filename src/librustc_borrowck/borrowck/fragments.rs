@@ -124,12 +124,12 @@ pub fn instrument_move_fragments<'tcx>(this: &MoveData<'tcx>,
         let attrs : &[ast::Attribute];
         attrs = match tcx.map.find(id) {
             Some(ast_map::NodeItem(ref item)) =>
-                item.attrs.as_slice(),
+                item.attrs[],
             Some(ast_map::NodeImplItem(&ast::MethodImplItem(ref m))) =>
-                m.attrs.as_slice(),
+                m.attrs[],
             Some(ast_map::NodeTraitItem(&ast::ProvidedMethod(ref m))) =>
-                m.attrs.as_slice(),
-            _ => [].as_slice(),
+                m.attrs[],
+            _ => [][],
         };
 
         let span_err =
@@ -145,7 +145,7 @@ pub fn instrument_move_fragments<'tcx>(this: &MoveData<'tcx>,
         for (i, mpi) in vec_rc.iter().enumerate() {
             let render = || this.path_loan_path(*mpi).user_string(tcx);
             if span_err {
-                tcx.sess.span_err(sp, format!("{}: `{}`", kind, render()).as_slice());
+                tcx.sess.span_err(sp, format!("{}: `{}`", kind, render())[]);
             }
             if print {
                 println!("id:{} {}[{}] `{}`", id, kind, i, render());
@@ -157,7 +157,7 @@ pub fn instrument_move_fragments<'tcx>(this: &MoveData<'tcx>,
         for (i, f) in vec_rc.iter().enumerate() {
             let render = || f.loan_path_user_string(this, tcx);
             if span_err {
-                tcx.sess.span_err(sp, format!("{}: `{}`", kind, render()).as_slice());
+                tcx.sess.span_err(sp, format!("{}: `{}`", kind, render())[]);
             }
             if print {
                 println!("id:{} {}[{}] `{}`", id, kind, i, render());
@@ -199,11 +199,11 @@ pub fn fixup_fragment_sets<'tcx>(this: &MoveData<'tcx>, tcx: &ty::ctxt<'tcx>) {
     // First, filter out duplicates
     moved.sort();
     moved.dedup();
-    debug!("fragments 1 moved: {}", path_lps(moved.as_slice()));
+    debug!("fragments 1 moved: {}", path_lps(moved[]));
 
     assigned.sort();
     assigned.dedup();
-    debug!("fragments 1 assigned: {}", path_lps(assigned.as_slice()));
+    debug!("fragments 1 assigned: {}", path_lps(assigned[]));
 
     // Second, build parents from the moved and assigned.
     for m in moved.iter() {
@@ -223,14 +223,14 @@ pub fn fixup_fragment_sets<'tcx>(this: &MoveData<'tcx>, tcx: &ty::ctxt<'tcx>) {
 
     parents.sort();
     parents.dedup();
-    debug!("fragments 2 parents: {}", path_lps(parents.as_slice()));
+    debug!("fragments 2 parents: {}", path_lps(parents[]));
 
     // Third, filter the moved and assigned fragments down to just the non-parents
-    moved.retain(|f| non_member(*f, parents.as_slice()));
-    debug!("fragments 3 moved: {}", path_lps(moved.as_slice()));
+    moved.retain(|f| non_member(*f, parents[]));
+    debug!("fragments 3 moved: {}", path_lps(moved[]));
 
-    assigned.retain(|f| non_member(*f, parents.as_slice()));
-    debug!("fragments 3 assigned: {}", path_lps(assigned.as_slice()));
+    assigned.retain(|f| non_member(*f, parents[]));
+    debug!("fragments 3 assigned: {}", path_lps(assigned[]));
 
     // Fourth, build the leftover from the moved, assigned, and parents.
     for m in moved.iter() {
@@ -248,16 +248,16 @@ pub fn fixup_fragment_sets<'tcx>(this: &MoveData<'tcx>, tcx: &ty::ctxt<'tcx>) {
 
     unmoved.sort();
     unmoved.dedup();
-    debug!("fragments 4 unmoved: {}", frag_lps(unmoved.as_slice()));
+    debug!("fragments 4 unmoved: {}", frag_lps(unmoved[]));
 
     // Fifth, filter the leftover fragments down to its core.
     unmoved.retain(|f| match *f {
         AllButOneFrom(_) => true,
-        Just(mpi) => non_member(mpi, parents.as_slice()) &&
-            non_member(mpi, moved.as_slice()) &&
-            non_member(mpi, assigned.as_slice())
+        Just(mpi) => non_member(mpi, parents[]) &&
+            non_member(mpi, moved[]) &&
+            non_member(mpi, assigned[])
     });
-    debug!("fragments 5 unmoved: {}", frag_lps(unmoved.as_slice()));
+    debug!("fragments 5 unmoved: {}", frag_lps(unmoved[]));
 
     // Swap contents back in.
     fragments.unmoved_fragments = unmoved;
@@ -434,7 +434,7 @@ fn add_fragment_siblings_for_extension<'tcx>(this: &MoveData<'tcx>,
             let msg = format!("type {} ({}) is not fragmentable",
                               parent_ty.repr(tcx), sty_and_variant_info);
             let opt_span = origin_id.and_then(|id|tcx.map.opt_span(id));
-            tcx.sess.opt_span_bug(opt_span, msg.as_slice())
+            tcx.sess.opt_span_bug(opt_span, msg[])
         }
     }
 }

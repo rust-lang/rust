@@ -141,7 +141,7 @@ pub trait Combine<'tcx> {
                             for _ in a_regions.iter() {
                                 invariance.push(ty::Invariant);
                             }
-                            invariance.as_slice()
+                            invariance[]
                         }
                     };
 
@@ -411,7 +411,7 @@ pub fn super_tys<'tcx, C: Combine<'tcx>>(this: &C,
             format!("{}: bot and var types should have been handled ({},{})",
                     this.tag(),
                     a.repr(this.infcx().tcx),
-                    b.repr(this.infcx().tcx)).as_slice());
+                    b.repr(this.infcx().tcx))[]);
       }
 
       (&ty::ty_err, _) | (_, &ty::ty_err) => {
@@ -568,11 +568,12 @@ pub fn super_tys<'tcx, C: Combine<'tcx>>(this: &C,
         }
       }
 
-      (&ty::ty_bare_fn(ref a_fty), &ty::ty_bare_fn(ref b_fty)) => {
-        this.bare_fn_tys(a_fty, b_fty).and_then(|fty| {
-            Ok(ty::mk_bare_fn(tcx, fty))
-        })
-      }
+        (&ty::ty_bare_fn(a_opt_def_id, ref a_fty), &ty::ty_bare_fn(b_opt_def_id, ref b_fty))
+            if a_opt_def_id == b_opt_def_id =>
+        {
+            let fty = try!(this.bare_fn_tys(a_fty, b_fty));
+            Ok(ty::mk_bare_fn(tcx, a_opt_def_id, fty))
+        }
 
       (&ty::ty_closure(ref a_fty), &ty::ty_closure(ref b_fty)) => {
         this.closure_tys(&**a_fty, &**b_fty).and_then(|fty| {

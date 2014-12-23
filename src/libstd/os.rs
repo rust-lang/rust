@@ -52,7 +52,7 @@ use result::Result;
 use result::Result::{Err, Ok};
 use slice::{AsSlice, SliceExt};
 use slice::CloneSliceExt;
-use str::{Str, StrPrelude, StrAllocating};
+use str::{Str, StrExt};
 use string::{String, ToString};
 use sync::atomic::{AtomicInt, INIT_ATOMIC_INT, SeqCst};
 use vec::Vec;
@@ -134,8 +134,8 @@ fn with_env_lock<T, F>(f: F) -> T where
 /// ```
 pub fn env() -> Vec<(String,String)> {
     env_as_bytes().into_iter().map(|(k,v)| {
-        let k = String::from_utf8_lossy(k.as_slice()).into_string();
-        let v = String::from_utf8_lossy(v.as_slice()).into_string();
+        let k = String::from_utf8_lossy(k.as_slice()).into_owned();
+        let v = String::from_utf8_lossy(v.as_slice()).into_owned();
         (k,v)
     }).collect()
 }
@@ -185,7 +185,7 @@ pub fn env_as_bytes() -> Vec<(Vec<u8>,Vec<u8>)> {
 /// }
 /// ```
 pub fn getenv(n: &str) -> Option<String> {
-    getenv_as_bytes(n).map(|v| String::from_utf8_lossy(v.as_slice()).into_string())
+    getenv_as_bytes(n).map(|v| String::from_utf8_lossy(v.as_slice()).into_owned())
 }
 
 #[cfg(unix)]
@@ -707,7 +707,7 @@ fn real_args_as_bytes() -> Vec<Vec<u8>> {
 fn real_args() -> Vec<String> {
     real_args_as_bytes().into_iter()
                         .map(|v| {
-                            String::from_utf8_lossy(v.as_slice()).into_string()
+                            String::from_utf8_lossy(v.as_slice()).into_owned()
                         }).collect()
 }
 
@@ -729,7 +729,7 @@ fn real_args() -> Vec<String> {
         // Push it onto the list.
         let ptr = ptr as *const u16;
         let buf = slice::from_raw_buf(&ptr, len);
-        let opt_s = String::from_utf16(::str::truncate_utf16_at_nul(buf));
+        let opt_s = String::from_utf16(sys::os::truncate_utf16_at_nul(buf));
         opt_s.expect("CommandLineToArgvW returned invalid UTF-16")
     });
 

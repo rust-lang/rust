@@ -18,6 +18,6 @@ struct S {
 }
 
 pub fn main() {
-    assert!(foopy == f);
+    assert!(foopy as extern "C" fn() == f);
     assert!(f == s.f);
 }

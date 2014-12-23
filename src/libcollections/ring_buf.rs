@@ -228,6 +228,7 @@ impl<T> RingBuf<T> {
     /// assert_eq!(buf[0], 5);
     /// assert_eq!(buf[2], 3);
     /// ```
+    #[stable]
     pub fn swap(&mut self, i: uint, j: uint) {
         assert!(i < self.len());
         assert!(j < self.len());
@@ -376,8 +377,8 @@ impl<T> RingBuf<T> {
     /// assert_eq!(buf.iter().collect::<Vec<&int>>().as_slice(), b);
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn iter(&self) -> Items<T> {
-        Items {
+    pub fn iter(&self) -> Iter<T> {
+        Iter {
             tail: self.tail,
             head: self.head,
             ring: unsafe { self.buffer_as_slice() }
@@ -402,8 +403,8 @@ impl<T> RingBuf<T> {
     /// assert_eq!(buf.iter_mut().collect::<Vec<&mut int>>()[], b);
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn iter_mut<'a>(&'a mut self) -> MutItems<'a, T> {
-        MutItems {
+    pub fn iter_mut<'a>(&'a mut self) -> IterMut<'a, T> {
+        IterMut {
             tail: self.tail,
             head: self.head,
             cap: self.cap,
@@ -414,8 +415,8 @@ impl<T> RingBuf<T> {
 
     /// Consumes the list into an iterator yielding elements by value.
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn into_iter(self) -> MoveItems<T> {
-        MoveItems {
+    pub fn into_iter(self) -> IntoIter<T> {
+        IntoIter {
             inner: self,
         }
     }
@@ -546,7 +547,7 @@ impl<T> RingBuf<T> {
     /// d.push_back(2i);
     /// assert_eq!(d.front(), Some(&1i));
     /// ```
-    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    #[stable]
     pub fn front(&self) -> Option<&T> {
         if !self.is_empty() { Some(&self[0]) } else { None }
     }
@@ -570,7 +571,7 @@ impl<T> RingBuf<T> {
     /// }
     /// assert_eq!(d.front(), Some(&9i));
     /// ```
-    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    #[stable]
     pub fn front_mut(&mut self) -> Option<&mut T> {
         if !self.is_empty() { Some(&mut self[0]) } else { None }
     }
@@ -590,7 +591,7 @@ impl<T> RingBuf<T> {
     /// d.push_back(2i);
     /// assert_eq!(d.back(), Some(&2i));
     /// ```
-    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    #[stable]
     pub fn back(&self) -> Option<&T> {
         if !self.is_empty() { Some(&self[self.len() - 1]) } else { None }
     }
@@ -614,7 +615,7 @@ impl<T> RingBuf<T> {
     /// }
     /// assert_eq!(d.back(), Some(&9i));
     /// ```
-    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    #[stable]
     pub fn back_mut(&mut self) -> Option<&mut T> {
         let len = self.len();
         if !self.is_empty() { Some(&mut self[len - 1]) } else { None }
@@ -1122,13 +1123,13 @@ fn count(tail: uint, head: uint, size: uint) -> uint {
 }
 
 /// `RingBuf` iterator.
-pub struct Items<'a, T:'a> {
+pub struct Iter<'a, T:'a> {
     ring: &'a [T],
     tail: uint,
     head: uint
 }
 
-impl<'a, T> Iterator<&'a T> for Items<'a, T> {
+impl<'a, T> Iterator<&'a T> for Iter<'a, T> {
     #[inline]
     fn next(&mut self) -> Option<&'a T> {
         if self.tail == self.head {
@@ -1146,7 +1147,7 @@ impl<'a, T> Iterator<&'a T> for Items<'a, T> {
     }
 }
 
-impl<'a, T> DoubleEndedIterator<&'a T> for Items<'a, T> {
+impl<'a, T> DoubleEndedIterator<&'a T> for Iter<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a T> {
         if self.tail == self.head {
@@ -1157,9 +1158,9 @@ impl<'a, T> DoubleEndedIterator<&'a T> for Items<'a, T> {
     }
 }
 
-impl<'a, T> ExactSizeIterator<&'a T> for Items<'a, T> {}
+impl<'a, T> ExactSizeIterator<&'a T> for Iter<'a, T> {}
 
-impl<'a, T> RandomAccessIterator<&'a T> for Items<'a, T> {
+impl<'a, T> RandomAccessIterator<&'a T> for Iter<'a, T> {
     #[inline]
     fn indexable(&self) -> uint {
         let (len, _) = self.size_hint();
@@ -1177,11 +1178,11 @@ impl<'a, T> RandomAccessIterator<&'a T> for Items<'a, T> {
     }
 }
 
-// FIXME This was implemented differently from Items because of a problem
+// FIXME This was implemented differently from Iter because of a problem
 //       with returning the mutable reference. I couldn't find a way to
 //       make the lifetime checker happy so, but there should be a way.
 /// `RingBuf` mutable iterator.
-pub struct MutItems<'a, T:'a> {
+pub struct IterMut<'a, T:'a> {
     ptr: *mut T,
     tail: uint,
     head: uint,
@@ -1189,7 +1190,7 @@ pub struct MutItems<'a, T:'a> {
     marker: marker::ContravariantLifetime<'a>,
 }
 
-impl<'a, T> Iterator<&'a mut T> for MutItems<'a, T> {
+impl<'a, T> Iterator<&'a mut T> for IterMut<'a, T> {
     #[inline]
     fn next(&mut self) -> Option<&'a mut T> {
         if self.tail == self.head {
@@ -1210,7 +1211,7 @@ impl<'a, T> Iterator<&'a mut T> for MutItems<'a, T> {
     }
 }
 
-impl<'a, T> DoubleEndedIterator<&'a mut T> for MutItems<'a, T> {
+impl<'a, T> DoubleEndedIterator<&'a mut T> for IterMut<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a mut T> {
         if self.tail == self.head {
@@ -1224,14 +1225,14 @@ impl<'a, T> DoubleEndedIterator<&'a mut T> for MutItems<'a, T> {
     }
 }
 
-impl<'a, T> ExactSizeIterator<&'a mut T> for MutItems<'a, T> {}
+impl<'a, T> ExactSizeIterator<&'a mut T> for IterMut<'a, T> {}
 
 // A by-value RingBuf iterator
-pub struct MoveItems<T> {
+pub struct IntoIter<T> {
     inner: RingBuf<T>,
 }
 
-impl<T> Iterator<T> for MoveItems<T> {
+impl<T> Iterator<T> for IntoIter<T> {
     #[inline]
     fn next(&mut self) -> Option<T> {
         self.inner.pop_front()
@@ -1244,14 +1245,14 @@ impl<T> Iterator<T> for MoveItems<T> {
     }
 }
 
-impl<T> DoubleEndedIterator<T> for MoveItems<T> {
+impl<T> DoubleEndedIterator<T> for IntoIter<T> {
     #[inline]
     fn next_back(&mut self) -> Option<T> {
         self.inner.pop_back()
     }
 }
 
-impl<T> ExactSizeIterator<T> for MoveItems<T> {}
+impl<T> ExactSizeIterator<T> for IntoIter<T> {}
 
 /// A draining RingBuf iterator
 pub struct Drain<'a, T: 'a> {

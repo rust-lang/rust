@@ -16,7 +16,7 @@
 //! them in the future to instead emit any format desired.
 
 use std::fmt;
-use std::string::String;
+use std::iter::repeat;
 
 use syntax::ast;
 use syntax::ast_util;
@@ -198,12 +198,12 @@ fn resolved_path(w: &mut fmt::Formatter, did: ast::DefId, p: &clean::Path,
     path(w, p, print_all,
         |cache, loc| {
             if ast_util::is_local(did) || cache.inlined.contains(&did) {
-                Some(("../".repeat(loc.len())).to_string())
+                Some(repeat("../").take(loc.len()).collect::<String>())
             } else {
                 match cache.extern_locations[did.krate] {
                     render::Remote(ref s) => Some(s.to_string()),
                     render::Local => {
-                        Some(("../".repeat(loc.len())).to_string())
+                        Some(repeat("../").take(loc.len()).collect::<String>())
                     }
                     render::Unknown => None,
                 }
@@ -324,7 +324,7 @@ fn primitive_link(f: &mut fmt::Formatter,
             let len = CURRENT_LOCATION_KEY.with(|s| s.borrow().len());
             let len = if len == 0 {0} else {len - 1};
             try!(write!(f, "<a href='{}primitive.{}.html'>",
-                        "../".repeat(len),
+                        repeat("../").take(len).collect::<String>(),
                         prim.to_url_str()));
             needs_termination = true;
         }
@@ -337,7 +337,7 @@ fn primitive_link(f: &mut fmt::Formatter,
                 render::Remote(ref s) => Some(s.to_string()),
                 render::Local => {
                     let len = CURRENT_LOCATION_KEY.with(|s| s.borrow().len());
-                    Some("../".repeat(len))
+                    Some(repeat("../").take(len).collect::<String>())
                 }
                 render::Unknown => None,
             };

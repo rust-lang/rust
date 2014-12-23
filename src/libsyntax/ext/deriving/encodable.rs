@@ -97,6 +97,16 @@ use ext::deriving::generic::ty::*;
 use parse::token;
 use ptr::P;
 
+pub fn expand_deriving_rustc_encodable<F>(cx: &mut ExtCtxt,
+                                          span: Span,
+                                          mitem: &MetaItem,
+                                          item: &Item,
+                                          push: F) where
+    F: FnOnce(P<Item>),
+{
+    expand_deriving_encodable_imp(cx, span, mitem, item, push, "rustc_serialize")
+}
+
 pub fn expand_deriving_encodable<F>(cx: &mut ExtCtxt,
                                     span: Span,
                                     mitem: &MetaItem,
@@ -104,17 +114,28 @@ pub fn expand_deriving_encodable<F>(cx: &mut ExtCtxt,
                                     push: F) where
     F: FnOnce(P<Item>),
 {
+    expand_deriving_encodable_imp(cx, span, mitem, item, push, "serialize")
+}
+
+fn expand_deriving_encodable_imp<F>(cx: &mut ExtCtxt,
+                                    span: Span,
+                                    mitem: &MetaItem,
+                                    item: &Item,
+                                    push: F,
+                                    krate: &'static str) where
+    F: FnOnce(P<Item>),
+{
     let trait_def = TraitDef {
         span: span,
         attributes: Vec::new(),
-        path: Path::new_(vec!("serialize", "Encodable"), None,
+        path: Path::new_(vec!(krate, "Encodable"), None,
                          vec!(box Literal(Path::new_local("__S")),
                               box Literal(Path::new_local("__E"))), true),
         additional_bounds: Vec::new(),
         generics: LifetimeBounds {
             lifetimes: Vec::new(),
             bounds: vec!(("__S", None, vec!(Path::new_(
-                            vec!("serialize", "Encoder"), None,
+                            vec!(krate, "Encoder"), None,
                             vec!(box Literal(Path::new_local("__E"))), true))),
                          ("__E", None, vec!()))
         },
@@ -162,8 +183,7 @@ fn encodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
                 let name = match name {
                     Some(id) => token::get_ident(id),
                     None => {
-                        token::intern_and_get_ident(format!("_field{}",
-                                                            i).as_slice())
+                        token::intern_and_get_ident(format!("_field{}", i)[])
                     }
                 };
                 let enc = cx.expr_method_call(span, self_.clone(),

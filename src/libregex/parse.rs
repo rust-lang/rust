@@ -286,7 +286,7 @@ impl<'a> Parser<'a> {
             true => Ok(()),
             false => {
                 self.err(format!("Expected {} but got EOF.",
-                                 expected).as_slice())
+                                 expected)[])
             }
         }
     }
@@ -295,10 +295,10 @@ impl<'a> Parser<'a> {
         match self.next_char() {
             true if self.cur() == expected => Ok(()),
             true => self.err(format!("Expected '{}' but got '{}'.",
-                                     expected, self.cur()).as_slice()),
+                                     expected, self.cur())[]),
             false => {
                 self.err(format!("Expected '{}' but got EOF.",
-                                 expected).as_slice())
+                                 expected)[])
             }
         }
     }
@@ -443,14 +443,14 @@ impl<'a> Parser<'a> {
                         Literal(c3, _) => c2 = c3, // allow literal escapes below
                         ast =>
                             return self.err(format!("Expected a literal, but got {}.",
-                                                    ast).as_slice()),
+                                                    ast)[]),
                     }
                 }
                 if c2 < c {
                     return self.err(format!("Invalid character class \
                                              range '{}-{}'",
                                             c,
-                                            c2).as_slice())
+                                            c2)[])
                 }
                 ranges.push((c, self.cur()))
             } else {
@@ -488,7 +488,7 @@ impl<'a> Parser<'a> {
                 FLAG_EMPTY
             };
         let name = self.slice(name_start, closer - 1);
-        match find_class(ASCII_CLASSES, name.as_slice()) {
+        match find_class(ASCII_CLASSES, name[]) {
             None => None,
             Some(ranges) => {
                 self.chari = closer;
@@ -513,7 +513,7 @@ impl<'a> Parser<'a> {
                     return self.err(format!("No closing brace for counted \
                                              repetition starting at position \
                                              {}.",
-                                            start).as_slice())
+                                            start)[])
                 }
             };
         self.chari = closer;
@@ -524,7 +524,7 @@ impl<'a> Parser<'a> {
         // Parse the min and max values from the regex.
         let (mut min, mut max): (uint, Option<uint>);
         if !inner.contains(",") {
-            min = try!(self.parse_uint(inner.as_slice()));
+            min = try!(self.parse_uint(inner[]));
             max = Some(min);
         } else {
             let pieces: Vec<&str> = inner.splitn(1, ',').collect();
@@ -546,19 +546,19 @@ impl<'a> Parser<'a> {
         if min > MAX_REPEAT {
             return self.err(format!(
                 "{} exceeds maximum allowed repetitions ({})",
-                min, MAX_REPEAT).as_slice());
+                min, MAX_REPEAT)[]);
         }
         if max.is_some() {
             let m = max.unwrap();
             if m > MAX_REPEAT {
                 return self.err(format!(
                     "{} exceeds maximum allowed repetitions ({})",
-                    m, MAX_REPEAT).as_slice());
+                    m, MAX_REPEAT)[]);
             }
             if m < min {
                 return self.err(format!(
                     "Max repetitions ({}) cannot be smaller than min \
-                     repetitions ({}).", m, min).as_slice());
+                     repetitions ({}).", m, min)[]);
             }
         }
 
@@ -622,8 +622,7 @@ impl<'a> Parser<'a> {
                 Ok(AstClass(ranges, flags))
             }
             _ => {
-                self.err(format!("Invalid escape sequence '\\\\{}'",
-                                 c).as_slice())
+                self.err(format!("Invalid escape sequence '\\\\{}'", c)[])
             }
         }
     }
@@ -643,7 +642,7 @@ impl<'a> Parser<'a> {
                     Some(i) => i,
                     None => return self.err(format!(
                         "Missing '}}' for unclosed '{{' at position {}",
-                        self.chari).as_slice()),
+                        self.chari)[]),
                 };
             if closer - self.chari + 1 == 0 {
                 return self.err("No Unicode class name found.")
@@ -657,10 +656,10 @@ impl<'a> Parser<'a> {
             name = self.slice(self.chari + 1, self.chari + 2);
             self.chari += 1;
         }
-        match find_class(UNICODE_CLASSES, name.as_slice()) {
+        match find_class(UNICODE_CLASSES, name[]) {
             None => {
                 return self.err(format!("Could not find Unicode class '{}'",
-                                        name).as_slice())
+                                        name)[])
             }
             Some(ranges) => {
                 Ok(AstClass(ranges, negated | (self.flags & FLAG_NOCASE)))
@@ -683,11 +682,11 @@ impl<'a> Parser<'a> {
             }
         }
         let s = self.slice(start, end);
-        match num::from_str_radix::<u32>(s.as_slice(), 8) {
+        match num::from_str_radix::<u32>(s[], 8) {
             Some(n) => Ok(Literal(try!(self.char_from_u32(n)), FLAG_EMPTY)),
             None => {
                 self.err(format!("Could not parse '{}' as octal number.",
-                                 s).as_slice())
+                                 s)[])
             }
         }
     }
@@ -705,12 +704,12 @@ impl<'a> Parser<'a> {
                 None => {
                     return self.err(format!("Missing '}}' for unclosed \
                                              '{{' at position {}",
-                                            start).as_slice())
+                                            start)[])
                 }
                 Some(i) => i,
             };
         self.chari = closer;
-        self.parse_hex_digits(self.slice(start, closer).as_slice())
+        self.parse_hex_digits(self.slice(start, closer)[])
     }
 
     // Parses a two-digit hex number.
@@ -730,8 +729,7 @@ impl<'a> Parser<'a> {
         match num::from_str_radix::<u32>(s, 16) {
             Some(n) => Ok(Literal(try!(self.char_from_u32(n)), FLAG_EMPTY)),
             None => {
-                self.err(format!("Could not parse '{}' as hex number.",
-                                 s).as_slice())
+                self.err(format!("Could not parse '{}' as hex number.", s)[])
             }
         }
     }
@@ -757,7 +755,7 @@ impl<'a> Parser<'a> {
         }
         if self.names.contains(&name) {
             return self.err(format!("Duplicate capture group name '{}'.",
-                                    name).as_slice())
+                                    name)[])
         }
         self.names.push(name.clone());
         self.chari = closer;
@@ -791,7 +789,7 @@ impl<'a> Parser<'a> {
                     if sign < 0 {
                         return self.err(format!(
                             "Cannot negate flags twice in '{}'.",
-                            self.slice(start, self.chari + 1)).as_slice())
+                            self.slice(start, self.chari + 1))[])
                     }
                     sign = -1;
                     saw_flag = false;
@@ -802,7 +800,7 @@ impl<'a> Parser<'a> {
                         if !saw_flag {
                             return self.err(format!(
                                 "A valid flag does not follow negation in '{}'",
-                                self.slice(start, self.chari + 1)).as_slice())
+                                self.slice(start, self.chari + 1))[])
                         }
                         flags = flags ^ flags;
                     }
@@ -814,7 +812,7 @@ impl<'a> Parser<'a> {
                     return Ok(())
                 }
                 _ => return self.err(format!(
-                    "Unrecognized flag '{}'.", self.cur()).as_slice()),
+                    "Unrecognized flag '{}'.", self.cur())[]),
             }
         }
     }
@@ -908,11 +906,11 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_uint(&self, s: &str) -> Result<uint, Error> {
-        match from_str::<uint>(s) {
+        match s.parse::<uint>() {
             Some(i) => Ok(i),
             None => {
                 self.err(format!("Expected an unsigned integer but got '{}'.",
-                                 s).as_slice())
+                                 s)[])
             }
         }
     }
@@ -922,8 +920,7 @@ impl<'a> Parser<'a> {
             Some(c) => Ok(c),
             None => {
                 self.err(format!("Could not decode '{}' to unicode \
-                                  character.",
-                                 n).as_slice())
+                                  character.", n)[])
             }
         }
     }

@@ -37,7 +37,7 @@
 //!
 //! ## Structs
 //!
-//! There are several structs that are useful for slices, such as `Items`, which
+//! There are several structs that are useful for slices, such as `Iter`, which
 //! represents iteration over a slice.
 //!
 //! ## Traits
@@ -104,7 +104,7 @@ use self::Direction::*;
 use vec::Vec;
 
 pub use core::slice::{Chunks, AsSlice, SplitsN, Windows};
-pub use core::slice::{Items, MutItems, PartialEqSliceExt};
+pub use core::slice::{Iter, IterMut, PartialEqSliceExt};
 pub use core::slice::{ImmutableIntSlice, MutableIntSlice};
 pub use core::slice::{MutSplits, MutChunks, Splits};
 pub use core::slice::{bytes, mut_ref_slice, ref_slice};
@@ -771,7 +771,7 @@ pub trait SliceExt<T> for Sized? {
 
     /// Returns an iterator over the slice
     #[unstable = "iterator type may change"]
-    fn iter(&self) -> Items<T>;
+    fn iter(&self) -> Iter<T>;
 
     /// Returns an iterator over subslices separated by elements that match
     /// `pred`.  The matched element is not contained in the subslices.
@@ -970,7 +970,7 @@ pub trait SliceExt<T> for Sized? {
 
     /// Returns an iterator that allows modifying each value
     #[unstable = "waiting on iterator type name conventions"]
-    fn iter_mut(&mut self) -> MutItems<T>;
+    fn iter_mut(&mut self) -> IterMut<T>;
 
     /// Returns a mutable pointer to the first element of a slice, or `None` if it is empty
     #[unstable = "name may change"]
@@ -1137,7 +1137,7 @@ impl<T> SliceExt<T> for [T] {
     }
 
     #[inline]
-    fn iter<'a>(&'a self) -> Items<'a, T> {
+    fn iter<'a>(&'a self) -> Iter<'a, T> {
         core_slice::SliceExt::iter(self)
     }
 
@@ -1246,7 +1246,7 @@ impl<T> SliceExt<T> for [T] {
     }
 
     #[inline]
-    fn iter_mut<'a>(&'a mut self) -> MutItems<'a, T> {
+    fn iter_mut<'a>(&'a mut self) -> IterMut<'a, T> {
         core_slice::SliceExt::iter_mut(self)
     }
 

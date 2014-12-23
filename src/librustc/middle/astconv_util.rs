@@ -48,7 +48,7 @@ pub fn ast_ty_to_prim_ty<'tcx>(tcx: &ty::ctxt<'tcx>, ast_ty: &ast::Ty)
                 None => {
                     tcx.sess.span_bug(ast_ty.span,
                                       format!("unbound path {}",
-                                              path.repr(tcx)).as_slice())
+                                              path.repr(tcx))[])
                 }
                 Some(&d) => d
             };

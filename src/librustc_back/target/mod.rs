@@ -224,7 +224,7 @@ impl Target {
                 Some(val) => val,
                 None =>
                     handler.fatal((format!("Field {} in target specification is required", name))
-                                  .as_slice())
+                                  [])
             }
         };
 
@@ -365,7 +365,7 @@ impl Target {
 
         let target_path = os::getenv("RUST_TARGET_PATH").unwrap_or(String::new());
 
-        let paths = os::split_paths(target_path.as_slice());
+        let paths = os::split_paths(target_path[]);
         // FIXME 16351: add a sane default search path?
 
         for dir in paths.iter() {

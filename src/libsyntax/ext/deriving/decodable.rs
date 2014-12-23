@@ -21,6 +21,16 @@ use parse::token::InternedString;
 use parse::token;
 use ptr::P;
 
+pub fn expand_deriving_rustc_decodable<F>(cx: &mut ExtCtxt,
+                                          span: Span,
+                                          mitem: &MetaItem,
+                                          item: &Item,
+                                          push: F) where
+    F: FnOnce(P<Item>),
+{
+    expand_deriving_decodable_imp(cx, span, mitem, item, push, "rustc_serialize")
+}
+
 pub fn expand_deriving_decodable<F>(cx: &mut ExtCtxt,
                                     span: Span,
                                     mitem: &MetaItem,
@@ -28,17 +38,28 @@ pub fn expand_deriving_decodable<F>(cx: &mut ExtCtxt,
                                     push: F) where
     F: FnOnce(P<Item>),
 {
+    expand_deriving_decodable_imp(cx, span, mitem, item, push, "serialize")
+}
+
+fn expand_deriving_decodable_imp<F>(cx: &mut ExtCtxt,
+                                    span: Span,
+                                    mitem: &MetaItem,
+                                    item: &Item,
+                                    push: F,
+                                    krate: &'static str) where
+    F: FnOnce(P<Item>),
+{
     let trait_def = TraitDef {
         span: span,
         attributes: Vec::new(),
-        path: Path::new_(vec!("serialize", "Decodable"), None,
+        path: Path::new_(vec!(krate, "Decodable"), None,
                          vec!(box Literal(Path::new_local("__D")),
                               box Literal(Path::new_local("__E"))), true),
         additional_bounds: Vec::new(),
         generics: LifetimeBounds {
             lifetimes: Vec::new(),
             bounds: vec!(("__D", None, vec!(Path::new_(
-                            vec!("serialize", "Decoder"), None,
+                            vec!(krate, "Decoder"), None,
                             vec!(box Literal(Path::new_local("__E"))), true))),
                          ("__E", None, vec!()))
         },
@@ -54,7 +75,7 @@ pub fn expand_deriving_decodable<F>(cx: &mut ExtCtxt,
                                                box Literal(Path::new_local("__E"))), true)),
                 attributes: Vec::new(),
                 combine_substructure: combine_substructure(|a, b, c| {
-                    decodable_substructure(a, b, c)
+                    decodable_substructure(a, b, c, krate)
                 }),
             })
     };
@@ -63,9 +84,10 @@ pub fn expand_deriving_decodable<F>(cx: &mut ExtCtxt,
 }
 
 fn decodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
-                          substr: &Substructure) -> P<Expr> {
+                          substr: &Substructure,
+                          krate: &str) -> P<Expr> {
     let decoder = substr.nonself_args[0].clone();
-    let recurse = vec!(cx.ident_of("serialize"),
+    let recurse = vec!(cx.ident_of(krate),
                     cx.ident_of("Decodable"),
                     cx.ident_of("decode"));
     // throw an underscore in front to suppress unused variable warnings
@@ -174,7 +196,7 @@ fn decode_static_fields<F>(cx: &mut ExtCtxt,
                 let fields = fields.iter().enumerate().map(|(i, &span)| {
                     getarg(cx, span,
                            token::intern_and_get_ident(format!("_field{}",
-                                                               i).as_slice()),
+                                                               i)[]),
                            i)
                 }).collect();
 

@@ -189,7 +189,7 @@ impl<'tcx,C> HigherRankedRelations<'tcx> for C
                 span,
                 format!("region {} is not associated with \
                          any bound region from A!",
-                        r0).as_slice())
+                        r0)[])
         }
     }
 
@@ -339,7 +339,7 @@ fn var_ids<'tcx, T: Combine<'tcx>>(combiner: &T,
             r => {
                 combiner.infcx().tcx.sess.span_bug(
                     combiner.trace().origin.span(),
-                    format!("found non-region-vid: {}", r).as_slice());
+                    format!("found non-region-vid: {}", r)[]);
             }
         }).collect()
 }

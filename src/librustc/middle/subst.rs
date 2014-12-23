@@ -18,7 +18,7 @@ use middle::ty_fold::{mod, TypeFoldable, TypeFolder};
 use util::ppaux::Repr;
 
 use std::fmt;
-use std::slice::Items;
+use std::slice::Iter;
 use std::vec::Vec;
 use syntax::codemap::{Span, DUMMY_SP};
 
@@ -187,8 +187,8 @@ impl RegionSubsts {
 ///////////////////////////////////////////////////////////////////////////
 // ParamSpace
 
-#[deriving(Copy, PartialOrd, Ord, PartialEq, Eq,
-           Clone, Hash, Encodable, Decodable, Show)]
+#[deriving(PartialOrd, Ord, PartialEq, Eq, Copy,
+           Clone, Hash, RustcEncodable, RustcDecodable, Show)]
 pub enum ParamSpace {
     TypeSpace,  // Type parameters attached to a type definition, trait, or impl
     SelfSpace,  // Self parameter on a trait
@@ -224,7 +224,7 @@ impl ParamSpace {
 /// Vector of things sorted by param space. Used to keep
 /// the set of things declared on the type, self, or method
 /// distinct.
-#[deriving(PartialEq, Eq, Clone, Hash, Encodable, Decodable)]
+#[deriving(PartialEq, Eq, Clone, Hash, RustcEncodable, RustcDecodable)]
 pub struct VecPerParamSpace<T> {
     // This was originally represented as a tuple with one Vec<T> for
     // each variant of ParamSpace, and that remains the abstraction
@@ -400,7 +400,7 @@ impl<T> VecPerParamSpace<T> {
         &self.get_slice(space)[index]
     }
 
-    pub fn iter<'a>(&'a self) -> Items<'a,T> {
+    pub fn iter<'a>(&'a self) -> Iter<'a,T> {
         self.content.iter()
     }
 
@@ -620,7 +620,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for SubstFolder<'a, 'tcx> {
                                      (space={}, index={})",
                                     region_name.as_str(),
                                     self.root_ty.repr(self.tcx()),
-                                    space, i).as_slice());
+                                    space, i)[]);
                             }
                         }
                 }
@@ -677,7 +677,7 @@ impl<'a,'tcx> SubstFolder<'a,'tcx> {
                             p.space,
                             p.idx,
                             self.root_ty.repr(self.tcx()),
-                            self.substs.repr(self.tcx())).as_slice());
+                            self.substs.repr(self.tcx()))[]);
             }
         };
 

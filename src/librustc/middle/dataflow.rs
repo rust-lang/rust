@@ -311,7 +311,7 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
                 let mut t = on_entry.to_vec();
                 self.apply_gen_kill(cfgidx, t.as_mut_slice());
                 temp_bits = t;
-                temp_bits.as_slice()
+                temp_bits[]
             }
         };
         debug!("{} each_bit_for_node({}, cfgidx={}) bits={}",
@@ -420,7 +420,7 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
                 let bits = self.kills.slice_mut(start, end);
                 debug!("{} add_kills_from_flow_exits flow_exit={} bits={} [before]",
                        self.analysis_name, flow_exit, mut_bits_to_string(bits));
-                bits.clone_from_slice(orig_kills.as_slice());
+                bits.clone_from_slice(orig_kills[]);
                 debug!("{} add_kills_from_flow_exits flow_exit={} bits={} [after]",
                        self.analysis_name, flow_exit, mut_bits_to_string(bits));
             }
@@ -553,7 +553,7 @@ fn bits_to_string(words: &[uint]) -> String {
         let mut v = word;
         for _ in range(0u, uint::BYTES) {
             result.push(sep);
-            result.push_str(format!("{:02x}", v & 0xFF).as_slice());
+            result.push_str(format!("{:02x}", v & 0xFF)[]);
             v >>= 8;
             sep = '-';
         }

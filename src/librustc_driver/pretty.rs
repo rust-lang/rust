@@ -30,7 +30,10 @@ use rustc_borrowck::graphviz as borrowck_dot;
 
 use syntax::ast;
 use syntax::ast_map::{mod, blocks, NodePrinter};
+use syntax::codemap;
+use syntax::fold::{mod, Folder};
 use syntax::print::{pp, pprust};
+use syntax::ptr::P;
 
 use graphviz as dot;
 
@@ -42,6 +45,7 @@ use arena::TypedArena;
 #[deriving(Copy, PartialEq, Show)]
 pub enum PpSourceMode {
     PpmNormal,
+    PpmEveryBodyLoops,
     PpmExpanded,
     PpmTyped,
     PpmIdentified,
@@ -55,26 +59,36 @@ pub enum PpMode {
     PpmFlowGraph,
 }
 
-pub fn parse_pretty(sess: &Session, name: &str) -> (PpMode, Option<UserIdentifiedItem>) {
+pub fn parse_pretty(sess: &Session,
+                    name: &str,
+                    extended: bool) -> (PpMode, Option<UserIdentifiedItem>) {
     let mut split = name.splitn(1, '=');
     let first = split.next().unwrap();
     let opt_second = split.next();
-    let first = match first {
-        "normal"       => PpmSource(PpmNormal),
-        "expanded"     => PpmSource(PpmExpanded),
-        "typed"        => PpmSource(PpmTyped),
-        "expanded,identified" => PpmSource(PpmExpandedIdentified),
-        "expanded,hygiene" => PpmSource(PpmExpandedHygiene),
-        "identified"   => PpmSource(PpmIdentified),
-        "flowgraph"    => PpmFlowGraph,
+    let first = match (first, extended) {
+        ("normal", _)       => PpmSource(PpmNormal),
+        ("everybody_loops", true) => PpmSource(PpmEveryBodyLoops),
+        ("expanded", _)     => PpmSource(PpmExpanded),
+        ("typed", _)        => PpmSource(PpmTyped),
+        ("expanded,identified", _) => PpmSource(PpmExpandedIdentified),
+        ("expanded,hygiene", _) => PpmSource(PpmExpandedHygiene),
+        ("identified", _)   => PpmSource(PpmIdentified),
+        ("flowgraph", true)    => PpmFlowGraph,
         _ => {
-            sess.fatal(format!(
-                "argument to `pretty` must be one of `normal`, \
-                 `expanded`, `flowgraph=<nodeid>`, `typed`, `identified`, \
-                 or `expanded,identified`; got {}", name).as_slice());
+            if extended {
+                sess.fatal(format!(
+                    "argument to `xpretty` must be one of `normal`, \
+                     `expanded`, `flowgraph=<nodeid>`, `typed`, `identified`, \
+                     `expanded,identified`, or `everybody_loops`; got {}", name).as_slice());
+            } else {
+                sess.fatal(format!(
+                    "argument to `pretty` must be one of `normal`, \
+                     `expanded`, `typed`, `identified`, \
+                     or `expanded,identified`; got {}", name).as_slice());
+            }
         }
     };
-    let opt_second = opt_second.and_then::<UserIdentifiedItem, _>(from_str);
+    let opt_second = opt_second.and_then(|s| s.parse::<UserIdentifiedItem>());
     (first, opt_second)
 }
 
@@ -105,7 +119,7 @@ impl PpSourceMode {
         F: FnOnce(&PrinterSupport, B) -> A,
     {
         match *self {
-            PpmNormal | PpmExpanded => {
+            PpmNormal | PpmEveryBodyLoops | PpmExpanded => {
                 let annotation = NoAnn { sess: sess, ast_map: ast_map };
                 f(&annotation, payload)
             }
@@ -276,7 +290,7 @@ impl<'tcx> pprust::PpAnn for TypedAnnotation<'tcx> {
                 try!(pp::word(&mut s.s,
                               ppaux::ty_to_string(
                                   tcx,
-                                  ty::expr_ty(tcx, expr)).as_slice()));
+                                  ty::expr_ty(tcx, expr))[]));
                 s.pclose()
             }
             _ => Ok(())
@@ -311,7 +325,7 @@ pub enum UserIdentifiedItem {
 
 impl FromStr for UserIdentifiedItem {
     fn from_str(s: &str) -> Option<UserIdentifiedItem> {
-        from_str(s).map(ItemViaNode).or_else(|| {
+        s.parse().map(ItemViaNode).or_else(|| {
             let v : Vec<_> = s.split_str("::")
                 .map(|x|x.to_string())
                 .collect();
@@ -322,7 +336,7 @@ impl FromStr for UserIdentifiedItem {
 
 enum NodesMatchingUII<'a, 'ast: 'a> {
     NodesMatchingDirect(option::IntoIter<ast::NodeId>),
-    NodesMatchingSuffix(ast_map::NodesMatchingSuffix<'a, 'ast, String>),
+    NodesMatchingSuffix(ast_map::NodesMatchingSuffix<'a, 'ast>),
 }
 
 impl<'a, 'ast> Iterator<ast::NodeId> for NodesMatchingUII<'a, 'ast> {
@@ -348,7 +362,7 @@ impl UserIdentifiedItem {
             ItemViaNode(node_id) =>
                 NodesMatchingDirect(Some(node_id).into_iter()),
             ItemViaPath(ref parts) =>
-                NodesMatchingSuffix(map.nodes_matching_suffix(parts.as_slice())),
+                NodesMatchingSuffix(map.nodes_matching_suffix(parts[])),
         }
     }
 
@@ -360,7 +374,7 @@ impl UserIdentifiedItem {
                         user_option,
                         self.reconstructed_input(),
                         is_wrong_because);
-            sess.fatal(message.as_slice())
+            sess.fatal(message[])
         };
 
         let mut saw_node = ast::DUMMY_NODE_ID;
@@ -384,6 +398,7 @@ impl UserIdentifiedItem {
 fn needs_ast_map(ppm: &PpMode, opt_uii: &Option<UserIdentifiedItem>) -> bool {
     match *ppm {
         PpmSource(PpmNormal) |
+        PpmSource(PpmEveryBodyLoops) |
         PpmSource(PpmIdentified) => opt_uii.is_some(),
 
         PpmSource(PpmExpanded) |
@@ -397,6 +412,7 @@ fn needs_ast_map(ppm: &PpMode, opt_uii: &Option<UserIdentifiedItem>) -> bool {
 fn needs_expansion(ppm: &PpMode) -> bool {
     match *ppm {
         PpmSource(PpmNormal) |
+        PpmSource(PpmEveryBodyLoops) |
         PpmSource(PpmIdentified) => false,
 
         PpmSource(PpmExpanded) |
@@ -407,6 +423,64 @@ fn needs_expansion(ppm: &PpMode) -> bool {
     }
 }
 
+struct ReplaceBodyWithLoop {
+    within_static_or_const: bool,
+}
+
+impl ReplaceBodyWithLoop {
+    fn new() -> ReplaceBodyWithLoop {
+        ReplaceBodyWithLoop { within_static_or_const: false }
+    }
+}
+
+impl fold::Folder for ReplaceBodyWithLoop {
+    fn fold_item_underscore(&mut self, i: ast::Item_) -> ast::Item_ {
+        match i {
+            ast::ItemStatic(..) | ast::ItemConst(..) => {
+                self.within_static_or_const = true;
+                let ret = fold::noop_fold_item_underscore(i, self);
+                self.within_static_or_const = false;
+                return ret;
+            }
+            _ => {
+                fold::noop_fold_item_underscore(i, self)
+            }
+        }
+    }
+
+
+    fn fold_block(&mut self, b: P<ast::Block>) -> P<ast::Block> {
+        fn expr_to_block(rules: ast::BlockCheckMode,
+                         e: Option<P<ast::Expr>>) -> P<ast::Block> {
+            P(ast::Block {
+                expr: e,
+                view_items: vec![], stmts: vec![], rules: rules,
+                id: ast::DUMMY_NODE_ID, span: codemap::DUMMY_SP,
+            })
+        }
+
+        if !self.within_static_or_const {
+
+            let empty_block = expr_to_block(ast::DefaultBlock, None);
+            let loop_expr = P(ast::Expr {
+                node: ast::ExprLoop(empty_block, None),
+                id: ast::DUMMY_NODE_ID, span: codemap::DUMMY_SP
+            });
+
+            expr_to_block(b.rules, Some(loop_expr))
+
+        } else {
+            fold::noop_fold_block(b, self)
+        }
+    }
+
+    // in general the pretty printer processes unexpanded code, so
+    // we override the default `fold_mac` method which panics.
+    fn fold_mac(&mut self, _macro: ast::Mac) -> ast::Mac {
+        fold::noop_fold_mac(_macro, self)
+    }
+}
+
 pub fn pretty_print_input(sess: Session,
                           cfg: ast::CrateConfig,
                           input: &Input,
@@ -414,12 +488,20 @@ pub fn pretty_print_input(sess: Session,
                           opt_uii: Option<UserIdentifiedItem>,
                           ofile: Option<Path>) {
     let krate = driver::phase_1_parse_input(&sess, cfg, input);
+
+    let krate = if let PpmSource(PpmEveryBodyLoops) = ppm {
+        let mut fold = ReplaceBodyWithLoop::new();
+        fold.fold_crate(krate)
+    } else {
+        krate
+    };
+
     let id = link::find_crate_name(Some(&sess), krate.attrs.as_slice(), input);
 
     let is_expanded = needs_expansion(&ppm);
     let compute_ast_map = needs_ast_map(&ppm, &opt_uii);
     let krate = if compute_ast_map {
-        match driver::phase_2_configure_and_expand(&sess, krate, id.as_slice(), None) {
+        match driver::phase_2_configure_and_expand(&sess, krate, id[], None) {
             None => return,
             Some(k) => k
         }
@@ -438,7 +520,7 @@ pub fn pretty_print_input(sess: Session,
     };
 
     let src_name = driver::source_name(input);
-    let src = sess.codemap().get_filemap(src_name.as_slice())
+    let src = sess.codemap().get_filemap(src_name[])
                             .src.as_bytes().to_vec();
     let mut rdr = MemReader::new(src);
 
@@ -499,7 +581,7 @@ pub fn pretty_print_input(sess: Session,
             debug!("pretty printing flow graph for {}", opt_uii);
             let uii = opt_uii.unwrap_or_else(|| {
                 sess.fatal(format!("`pretty flowgraph=..` needs NodeId (int) or
-                                     unique path suffix (b::c::d)").as_slice())
+                                     unique path suffix (b::c::d)")[])
 
             });
             let ast_map = ast_map.expect("--pretty flowgraph missing ast_map");
@@ -507,7 +589,7 @@ pub fn pretty_print_input(sess: Session,
 
             let node = ast_map.find(nodeid).unwrap_or_else(|| {
                 sess.fatal(format!("--pretty flowgraph couldn't find id: {}",
-                                   nodeid).as_slice())
+                                   nodeid)[])
             });
 
             let code = blocks::Code::from_node(node);
@@ -526,8 +608,8 @@ pub fn pretty_print_input(sess: Session,
                     // point to what was found, if there's an
                     // accessible span.
                     match ast_map.opt_span(nodeid) {
-                        Some(sp) => sess.span_fatal(sp, message.as_slice()),
-                        None => sess.fatal(message.as_slice())
+                        Some(sp) => sess.span_fatal(sp, message[]),
+                        None => sess.fatal(message[])
                     }
                 }
             }
@@ -587,7 +669,7 @@ fn print_flowgraph<W:io::Writer>(variants: Vec<borrowck_dot::Variant>,
             let m = "graphviz::render failed";
             io::IoError {
                 detail: Some(match orig_detail {
-                    None => m.into_string(),
+                    None => m.to_string(),
                     Some(d) => format!("{}: {}", m, d)
                 }),
                 ..ioerr

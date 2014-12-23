@@ -458,7 +458,7 @@ impl<T, E> Result<T, E> {
     ///     let line: IoResult<String> = buffer.read_line();
     ///     // Convert the string line to a number using `map` and `from_str`
     ///     let val: IoResult<int> = line.map(|line| {
-    ///         from_str::<int>(line.as_slice().trim_right()).unwrap_or(0)
+    ///         line.as_slice().trim_right().parse::<int>().unwrap_or(0)
     ///     });
     ///     // Add the value if there were no errors, otherwise add 0
     ///     sum += val.ok().unwrap_or(0);

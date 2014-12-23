@@ -102,7 +102,7 @@ impl Type {
     }
 
     pub fn int(ccx: &CrateContext) -> Type {
-        match ccx.tcx().sess.target.target.target_word_size.as_slice() {
+        match ccx.tcx().sess.target.target.target_word_size[] {
             "32" => Type::i32(ccx),
             "64" => Type::i64(ccx),
             tws => panic!("Unsupported target word size for int: {}", tws),

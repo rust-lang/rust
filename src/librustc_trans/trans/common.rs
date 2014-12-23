@@ -117,7 +117,7 @@ pub fn gensym_name(name: &str) -> PathElem {
     let num = token::gensym(name).uint();
     // use one colon which will get translated to a period by the mangler, and
     // we're guaranteed that `num` is globally unique for this crate.
-    PathName(token::gensym(format!("{}:{}", name, num).as_slice()))
+    PathName(token::gensym(format!("{}:{}", name, num)[]))
 }
 
 #[deriving(Copy)]
@@ -436,7 +436,7 @@ impl<'blk, 'tcx> BlockS<'blk, 'tcx> {
             Some(v) => v.clone(),
             None => {
                 self.tcx().sess.bug(format!(
-                    "no def associated with node id {}", nid).as_slice());
+                    "no def associated with node id {}", nid)[]);
             }
         }
     }
@@ -817,7 +817,7 @@ pub fn fulfill_obligation<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                 span,
                 format!("Encountered error `{}` selecting `{}` during trans",
                         e.repr(tcx),
-                        trait_ref.repr(tcx)).as_slice())
+                        trait_ref.repr(tcx))[])
         }
     };
 
@@ -844,7 +844,7 @@ pub fn fulfill_obligation<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                     span,
                     format!("Encountered errors `{}` fulfilling `{}` during trans",
                             errors.repr(tcx),
-                            trait_ref.repr(tcx)).as_slice());
+                            trait_ref.repr(tcx))[]);
             }
         }
     }
@@ -892,7 +892,7 @@ pub fn node_id_substs<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             format!("type parameters for node {} include inference types: \
                      {}",
                     node,
-                    substs.repr(bcx.tcx())).as_slice());
+                    substs.repr(bcx.tcx()))[]);
     }
 
     let substs = substs.erase_regions();
@@ -909,8 +909,8 @@ pub fn langcall(bcx: Block,
         Err(s) => {
             let msg = format!("{} {}", msg, s);
             match span {
-                Some(span) => bcx.tcx().sess.span_fatal(span, msg.as_slice()),
-                None => bcx.tcx().sess.fatal(msg.as_slice()),
+                Some(span) => bcx.tcx().sess.span_fatal(span, msg[]),
+                None => bcx.tcx().sess.fatal(msg[]),
             }
         }
     }

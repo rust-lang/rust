@@ -65,17 +65,21 @@ const HOEDOWN_EXTENSIONS: libc::c_uint =
 
 type hoedown_document = libc::c_void;  // this is opaque to us
 
+type blockcodefn = extern "C" fn(*mut hoedown_buffer, *const hoedown_buffer,
+                                 *const hoedown_buffer, *mut libc::c_void);
+
+type headerfn = extern "C" fn(*mut hoedown_buffer, *const hoedown_buffer,
+                              libc::c_int, *mut libc::c_void);
+
 #[repr(C)]
 struct hoedown_renderer {
     opaque: *mut hoedown_html_renderer_state,
-    blockcode: Option<extern "C" fn(*mut hoedown_buffer, *const hoedown_buffer,
-                                    *const hoedown_buffer, *mut libc::c_void)>,
+    blockcode: Option<blockcodefn>,
     blockquote: Option<extern "C" fn(*mut hoedown_buffer, *const hoedown_buffer,
                                      *mut libc::c_void)>,
     blockhtml: Option<extern "C" fn(*mut hoedown_buffer, *const hoedown_buffer,
                                     *mut libc::c_void)>,
-    header: Option<extern "C" fn(*mut hoedown_buffer, *const hoedown_buffer,
-                                 libc::c_int, *mut libc::c_void)>,
+    header: Option<headerfn>,
     other: [libc::size_t, ..28],
 }
 
@@ -174,7 +178,7 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
                 let rlang = slice::from_raw_buf(&(*lang).data,
                                                 (*lang).size as uint);
                 let rlang = str::from_utf8(rlang).unwrap();
-                if LangString::parse(rlang).notrust {
+                if !LangString::parse(rlang).rust {
                     (my_opaque.dfltblk)(ob, orig_text, lang,
                                         opaque as *mut libc::c_void);
                     true
@@ -281,8 +285,8 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
             toc_builder: if print_toc {Some(TocBuilder::new())} else {None}
         };
         (*(*renderer).opaque).opaque = &mut opaque as *mut _ as *mut libc::c_void;
-        (*renderer).blockcode = Some(block);
-        (*renderer).header = Some(header);
+        (*renderer).blockcode = Some(block as blockcodefn);
+        (*renderer).header = Some(header as headerfn);
 
         let document = hoedown_document_new(renderer, HOEDOWN_EXTENSIONS, 16);
         hoedown_document_render(document, ob, s.as_ptr(),
@@ -320,7 +324,7 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
                 let s = str::from_utf8(lang).unwrap();
                 LangString::parse(s)
             };
-            if block_info.notrust { return }
+            if !block_info.rust { return }
             let text = slice::from_raw_buf(&(*text).data, (*text).size as uint);
             let opaque = opaque as *mut hoedown_html_renderer_state;
             let tests = &mut *((*opaque).opaque as *mut ::test::Collector);
@@ -354,8 +358,8 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
     unsafe {
         let ob = hoedown_buffer_new(DEF_OUNIT);
         let renderer = hoedown_html_renderer_new(0, 0);
-        (*renderer).blockcode = Some(block);
-        (*renderer).header = Some(header);
+        (*renderer).blockcode = Some(block as blockcodefn);
+        (*renderer).header = Some(header as headerfn);
         (*(*renderer).opaque).opaque = tests as *mut _ as *mut libc::c_void;
 
         let document = hoedown_document_new(renderer, HOEDOWN_EXTENSIONS, 16);
@@ -373,7 +377,7 @@ struct LangString {
     should_fail: bool,
     no_run: bool,
     ignore: bool,
-    notrust: bool,
+    rust: bool,
     test_harness: bool,
 }
 
@@ -383,7 +387,7 @@ impl LangString {
             should_fail: false,
             no_run: false,
             ignore: false,
-            notrust: false,
+            rust: false,
             test_harness: false,
         }
     }
@@ -403,14 +407,13 @@ impl LangString {
                 "should_fail" => { data.should_fail = true; seen_rust_tags = true; },
                 "no_run" => { data.no_run = true; seen_rust_tags = true; },
                 "ignore" => { data.ignore = true; seen_rust_tags = true; },
-                "notrust" => { data.notrust = true; seen_rust_tags = true; },
-                "rust" => { data.notrust = false; seen_rust_tags = true; },
+                "rust" => { data.rust = true; seen_rust_tags = true; },
                 "test_harness" => { data.test_harness = true; seen_rust_tags = true; }
                 _ => { seen_other_tags = true }
             }
         }
 
-        data.notrust |= seen_other_tags && !seen_rust_tags;
+        data.rust |=  !seen_other_tags || seen_rust_tags;
 
         data
     }
@@ -452,28 +455,27 @@ mod tests {
     #[test]
     fn test_lang_string_parse() {
         fn t(s: &str,
-             should_fail: bool, no_run: bool, ignore: bool, notrust: bool, test_harness: bool) {
+            should_fail: bool, no_run: bool, ignore: bool, rust: bool, test_harness: bool) {
             assert_eq!(LangString::parse(s), LangString {
                 should_fail: should_fail,
                 no_run: no_run,
                 ignore: ignore,
-                notrust: notrust,
+                rust: rust,
                 test_harness: test_harness,
             })
         }
 
-        t("", false,false,false,false,false);
-        t("rust", false,false,false,false,false);
-        t("sh", false,false,false,true,false);
-        t("notrust", false,false,false,true,false);
-        t("ignore", false,false,true,false,false);
-        t("should_fail", true,false,false,false,false);
-        t("no_run", false,true,false,false,false);
-        t("test_harness", false,false,false,false,true);
-        t("{.no_run .example}", false,true,false,false,false);
-        t("{.sh .should_fail}", true,false,false,false,false);
-        t("{.example .rust}", false,false,false,false,false);
-        t("{.test_harness .rust}", false,false,false,false,true);
+        t("", false,false,false,true,false);
+        t("rust", false,false,false,true,false);
+        t("sh", false,false,false,false,false);
+        t("ignore", false,false,true,true,false);
+        t("should_fail", true,false,false,true,false);
+        t("no_run", false,true,false,true,false);
+        t("test_harness", false,false,false,true,true);
+        t("{.no_run .example}", false,true,false,true,false);
+        t("{.sh .should_fail}", true,false,false,true,false);
+        t("{.example .rust}", false,false,false,true,false);
+        t("{.test_harness .rust}", false,false,false,true,true);
     }
 
     #[test]

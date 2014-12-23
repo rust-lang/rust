@@ -20,7 +20,7 @@ use syntax::ast_util::local_def;
 
 use std::cell::RefCell;
 
-#[deriving(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+#[deriving(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Show)]
 pub enum Def {
     DefFn(ast::DefId, bool /* is_ctor */),
     DefStaticMethod(/* method */ ast::DefId, MethodProvenance),
@@ -73,13 +73,13 @@ pub struct Export {
     pub def_id: ast::DefId, // The definition of the target.
 }
 
-#[deriving(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+#[deriving(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Show)]
 pub enum MethodProvenance {
     FromTrait(ast::DefId),
     FromImpl(ast::DefId),
 }
 
-#[deriving(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
+#[deriving(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Show)]
 pub enum TyParamProvenance {
     FromSelf(ast::DefId),
     FromParam(ast::DefId),

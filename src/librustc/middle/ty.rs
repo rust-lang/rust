@@ -246,7 +246,7 @@ pub struct mt<'tcx> {
     pub mutbl: ast::Mutability,
 }
 
-#[deriving(Clone, Copy, PartialEq, Eq, Hash, Encodable, Decodable, Show)]
+#[deriving(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Show)]
 pub enum TraitStore {
     /// Box<Trait>
     UniqTraitStore,
@@ -277,13 +277,13 @@ pub enum ast_ty_to_ty_cache_entry<'tcx> {
     atttce_resolved(Ty<'tcx>)  /* resolved to a type, irrespective of region */
 }
 
-#[deriving(Clone, PartialEq, Decodable, Encodable)]
+#[deriving(Clone, PartialEq, RustcDecodable, RustcEncodable)]
 pub struct ItemVariances {
     pub types: VecPerParamSpace<Variance>,
     pub regions: VecPerParamSpace<Variance>,
 }
 
-#[deriving(Clone, Copy, PartialEq, Decodable, Encodable, Show)]
+#[deriving(Clone, PartialEq, RustcDecodable, RustcEncodable, Show, Copy)]
 pub enum Variance {
     Covariant,      // T<A> <: T<B> iff A <: B -- e.g., function return type
     Invariant,      // T<A> <: T<B> iff B == A -- e.g., type of mutable cell
@@ -293,7 +293,8 @@ pub enum Variance {
 
 #[deriving(Clone, Show)]
 pub enum AutoAdjustment<'tcx> {
-    AdjustAddEnv(ty::TraitStore),
+    AdjustAddEnv(ast::DefId, ty::TraitStore),
+    AdjustReifyFnPointer(ast::DefId), // go from a fn-item type to a fn-pointer type
     AdjustDerefRef(AutoDerefRef<'tcx>)
 }
 
@@ -430,7 +431,7 @@ pub fn type_of_adjust<'tcx>(cx: &ctxt<'tcx>, adj: &AutoAdjustment<'tcx>) -> Opti
     }
 }
 
-#[deriving(Clone, Copy, Encodable, Decodable, PartialEq, PartialOrd, Show)]
+#[deriving(Clone, Copy, RustcEncodable, RustcDecodable, PartialEq, PartialOrd, Show)]
 pub struct param_index {
     pub space: subst::ParamSpace,
     pub index: uint
@@ -510,7 +511,7 @@ pub struct MethodCall {
     pub adjustment: ExprAdjustment
 }
 
-#[deriving(Clone, Copy, PartialEq, Eq, Hash, Show, Encodable, Decodable)]
+#[deriving(Clone, PartialEq, Eq, Hash, Show, RustcEncodable, RustcDecodable, Copy)]
 pub enum ExprAdjustment {
     NoAdjustment,
     AutoDeref(uint),
@@ -973,7 +974,7 @@ pub struct ParamTy {
 /// is the outer fn.
 ///
 /// [dbi]: http://en.wikipedia.org/wiki/De_Bruijn_index
-#[deriving(Clone, Copy, PartialEq, Eq, Hash, Encodable, Decodable, Show)]
+#[deriving(Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Show, Copy)]
 pub struct DebruijnIndex {
     // We maintain the invariant that this is never 0. So 1 indicates
     // the innermost binder. To ensure this, create with `DebruijnIndex::new`.
@@ -981,7 +982,7 @@ pub struct DebruijnIndex {
 }
 
 /// Representation of regions:
-#[deriving(Clone, Copy, PartialEq, Eq, Hash, Encodable, Decodable, Show)]
+#[deriving(Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Show, Copy)]
 pub enum Region {
     // Region bound in a type or fn declaration which will be
     // substituted 'early' -- that is, at the same time when type
@@ -1028,7 +1029,7 @@ pub struct UpvarId {
     pub closure_expr_id: ast::NodeId,
 }
 
-#[deriving(Clone, Copy, PartialEq, Eq, Hash, Show, Encodable, Decodable)]
+#[deriving(Clone, PartialEq, Eq, Hash, Show, RustcEncodable, RustcDecodable, Copy)]
 pub enum BorrowKind {
     /// Data must be immutable and is aliasable.
     ImmBorrow,
@@ -1121,7 +1122,7 @@ pub enum BorrowKind {
 /// - Through mutation, the borrowed upvars can actually escape
 ///   the closure, so sometimes it is necessary for them to be larger
 ///   than the closure lifetime itself.
-#[deriving(Copy, PartialEq, Clone, Encodable, Decodable, Show)]
+#[deriving(PartialEq, Clone, RustcEncodable, RustcDecodable, Show, Copy)]
 pub struct UpvarBorrow {
     pub kind: BorrowKind,
     pub region: ty::Region,
@@ -1146,7 +1147,8 @@ impl Region {
     }
 }
 
-#[deriving(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash, Encodable, Decodable, Show)]
+#[deriving(Clone, PartialEq, PartialOrd, Eq, Ord, Hash,
+           RustcEncodable, RustcDecodable, Show, Copy)]
 /// A "free" region `fr` can be interpreted as "some region
 /// at least as big as the scope `fr.scope`".
 pub struct FreeRegion {
@@ -1154,7 +1156,8 @@ pub struct FreeRegion {
     pub bound_region: BoundRegion
 }
 
-#[deriving(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash, Encodable, Decodable, Show)]
+#[deriving(Clone, PartialEq, PartialOrd, Eq, Ord, Hash,
+           RustcEncodable, RustcDecodable, Show, Copy)]
 pub enum BoundRegion {
     /// An anonymous region parameter for a given fn (&T)
     BrAnon(uint),
@@ -1243,11 +1246,17 @@ pub enum sty<'tcx> {
     ty_vec(Ty<'tcx>, Option<uint>), // Second field is length.
     ty_ptr(mt<'tcx>),
     ty_rptr(Region, mt<'tcx>),
-    ty_bare_fn(BareFnTy<'tcx>),
+
+    // If the def-id is Some(_), then this is the type of a specific
+    // fn item. Otherwise, if None(_), it a fn pointer type.
+    ty_bare_fn(Option<DefId>, BareFnTy<'tcx>),
+
     ty_closure(Box<ClosureTy<'tcx>>),
     ty_trait(Box<TyTrait<'tcx>>),
     ty_struct(DefId, Substs<'tcx>),
+
     ty_unboxed_closure(DefId, Region, Substs<'tcx>),
+
     ty_tup(Vec<Ty<'tcx>>),
 
     ty_param(ParamTy), // type parameter
@@ -1412,7 +1421,8 @@ pub struct ExistentialBounds {
 
 pub type BuiltinBounds = EnumSet<BuiltinBound>;
 
-#[deriving(Copy, Clone, Encodable, PartialEq, Eq, Decodable, Hash, Show)]
+#[deriving(Clone, RustcEncodable, PartialEq, Eq, RustcDecodable, Hash,
+           Show, Copy)]
 #[repr(uint)]
 pub enum BuiltinBound {
     BoundSend,
@@ -1463,7 +1473,7 @@ pub struct FloatVid {
     pub index: uint
 }
 
-#[deriving(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash)]
+#[deriving(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy)]
 pub struct RegionVid {
     pub index: uint
 }
@@ -1485,7 +1495,7 @@ pub enum InferTy {
     FreshIntTy(uint),
 }
 
-#[deriving(Clone, Copy, Encodable, Decodable, Eq, Hash, Show)]
+#[deriving(Clone, RustcEncodable, RustcDecodable, Eq, Hash, Show, Copy)]
 pub enum InferRegion {
     ReVar(RegionVid),
     ReSkolemized(uint, BoundRegion)
@@ -1571,7 +1581,7 @@ pub struct TypeParameterDef<'tcx> {
     pub default: Option<Ty<'tcx>>,
 }
 
-#[deriving(Encodable, Decodable, Clone, Show)]
+#[deriving(RustcEncodable, RustcDecodable, Clone, Show)]
 pub struct RegionParameterDef {
     pub name: ast::Name,
     pub def_id: ast::DefId,
@@ -1891,7 +1901,7 @@ impl<'tcx> ParameterEnvironment<'tcx> {
             _ => {
                 cx.sess.bug(format!("ParameterEnvironment::from_item(): \
                                      `{}` is not an item",
-                                    cx.map.node_to_string(id)).as_slice())
+                                    cx.map.node_to_string(id))[])
             }
         }
     }
@@ -1960,7 +1970,7 @@ impl UnboxedClosureKind {
         };
         match result {
             Ok(trait_did) => trait_did,
-            Err(err) => cx.sess.fatal(err.as_slice()),
+            Err(err) => cx.sess.fatal(err[]),
         }
     }
 }
@@ -2178,7 +2188,7 @@ impl FlagComputation {
                 self.add_tys(ts[]);
             }
 
-            &ty_bare_fn(ref f) => {
+            &ty_bare_fn(_, ref f) => {
                 self.add_fn_sig(&f.sig);
             }
 
@@ -2339,15 +2349,19 @@ pub fn mk_closure<'tcx>(cx: &ctxt<'tcx>, fty: ClosureTy<'tcx>) -> Ty<'tcx> {
     mk_t(cx, ty_closure(box fty))
 }
 
-pub fn mk_bare_fn<'tcx>(cx: &ctxt<'tcx>, fty: BareFnTy<'tcx>) -> Ty<'tcx> {
-    mk_t(cx, ty_bare_fn(fty))
+pub fn mk_bare_fn<'tcx>(cx: &ctxt<'tcx>,
+                        opt_def_id: Option<ast::DefId>,
+                        fty: BareFnTy<'tcx>) -> Ty<'tcx> {
+    mk_t(cx, ty_bare_fn(opt_def_id, fty))
 }
 
 pub fn mk_ctor_fn<'tcx>(cx: &ctxt<'tcx>,
+                        def_id: ast::DefId,
                         input_tys: &[Ty<'tcx>],
                         output: Ty<'tcx>) -> Ty<'tcx> {
     let input_args = input_tys.iter().map(|ty| *ty).collect();
     mk_bare_fn(cx,
+               Some(def_id),
                BareFnTy {
                    unsafety: ast::Unsafety::Normal,
                    abi: abi::Rust,
@@ -2446,7 +2460,7 @@ pub fn maybe_walk_ty<'tcx>(ty: Ty<'tcx>, f: |Ty<'tcx>| -> bool) {
             }
         }
         ty_tup(ref ts) => { for tt in ts.iter() { maybe_walk_ty(*tt, |x| f(x)); } }
-        ty_bare_fn(ref ft) => {
+        ty_bare_fn(_, ref ft) => {
             for a in ft.sig.0.inputs.iter() { maybe_walk_ty(*a, |x| f(x)); }
             if let ty::FnConverging(output) = ft.sig.0.output {
                 maybe_walk_ty(output, f);
@@ -2596,7 +2610,7 @@ pub fn sequence_element_type<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
         ty_str => mk_mach_uint(ast::TyU8),
         ty_open(ty) => sequence_element_type(cx, ty),
         _ => cx.sess.bug(format!("sequence_element_type called on non-sequence value: {}",
-                                 ty_to_string(cx, ty)).as_slice()),
+                                 ty_to_string(cx, ty))[]),
     }
 }
 
@@ -2929,7 +2943,7 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
             // Scalar and unique types are sendable, and durable
             ty_infer(ty::FreshIntTy(_)) |
             ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
-            ty_bare_fn(_) | ty::ty_char => {
+            ty_bare_fn(..) | ty::ty_char => {
                 TC::None
             }
 
@@ -2972,7 +2986,7 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
             ty_struct(did, ref substs) => {
                 let flds = struct_fields(cx, did, substs);
                 let mut res =
-                    TypeContents::union(flds.as_slice(),
+                    TypeContents::union(flds[],
                                         |f| tc_mt(cx, f.mt, cache));
 
                 if !lookup_repr_hints(cx, did).contains(&attr::ReprExtern) {
@@ -2989,21 +3003,21 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
                 // FIXME(#14449): `borrowed_contents` below assumes `&mut`
                 // unboxed closure.
                 let upvars = unboxed_closure_upvars(cx, did, substs);
-                TypeContents::union(upvars.as_slice(),
+                TypeContents::union(upvars[],
                                     |f| tc_ty(cx, f.ty, cache)) |
                     borrowed_contents(r, MutMutable)
             }
 
             ty_tup(ref tys) => {
-                TypeContents::union(tys.as_slice(),
+                TypeContents::union(tys[],
                                     |ty| tc_ty(cx, *ty, cache))
             }
 
             ty_enum(did, ref substs) => {
                 let variants = substd_enum_variants(cx, did, substs);
                 let mut res =
-                    TypeContents::union(variants.as_slice(), |variant| {
-                        TypeContents::union(variant.args.as_slice(),
+                    TypeContents::union(variants[], |variant| {
+                        TypeContents::union(variant.args[],
                                             |arg_ty| {
                             tc_ty(cx, *arg_ty, cache)
                         })
@@ -3068,7 +3082,7 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
                 kind_bounds_to_contents(
                     cx,
                     tp_def.bounds.builtin_bounds,
-                    tp_def.bounds.trait_bounds.as_slice())
+                    tp_def.bounds.trait_bounds[])
             }
 
             ty_infer(_) => {
@@ -3264,7 +3278,7 @@ pub fn is_instantiable<'tcx>(cx: &ctxt<'tcx>, r_ty: Ty<'tcx>) -> bool {
             ty_uint(_) |
             ty_float(_) |
             ty_str |
-            ty_bare_fn(_) |
+            ty_bare_fn(..) |
             ty_closure(_) |
             ty_infer(_) |
             ty_err |
@@ -3560,6 +3574,13 @@ pub fn type_is_bare_fn(ty: Ty) -> bool {
     }
 }
 
+pub fn type_is_bare_fn_item(ty: Ty) -> bool {
+    match ty.sty {
+        ty_bare_fn(Some(_), _) => true,
+        _ => false
+    }
+}
+
 pub fn type_is_fp(ty: Ty) -> bool {
     match ty.sty {
       ty_infer(FloatVar(_)) | ty_float(_) => true,
@@ -3658,7 +3679,7 @@ pub fn close_type<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
     match ty.sty {
         ty_open(ty) => mk_rptr(cx, ReStatic, mt {ty: ty, mutbl:ast::MutImmutable}),
         _ => cx.sess.bug(format!("Trying to close a non-open type {}",
-                                 ty_to_string(cx, ty)).as_slice())
+                                 ty_to_string(cx, ty))[])
     }
 }
 
@@ -3759,7 +3780,7 @@ pub fn node_id_to_trait_ref<'tcx>(cx: &ctxt<'tcx>, id: ast::NodeId)
         Some(ty) => ty.clone(),
         None => cx.sess.bug(
             format!("node_id_to_trait_ref: no trait ref for node `{}`",
-                    cx.map.node_to_string(id)).as_slice())
+                    cx.map.node_to_string(id))[])
     }
 }
 
@@ -3772,7 +3793,7 @@ pub fn node_id_to_type<'tcx>(cx: &ctxt<'tcx>, id: ast::NodeId) -> Ty<'tcx> {
        Some(ty) => ty,
        None => cx.sess.bug(
            format!("node_id_to_type: no type for node `{}`",
-                   cx.map.node_to_string(id)).as_slice())
+                   cx.map.node_to_string(id))[])
     }
 }
 
@@ -3792,7 +3813,7 @@ pub fn node_id_item_substs<'tcx>(cx: &ctxt<'tcx>, id: ast::NodeId) -> ItemSubsts
 
 pub fn fn_is_variadic(fty: Ty) -> bool {
     match fty.sty {
-        ty_bare_fn(ref f) => f.sig.0.variadic,
+        ty_bare_fn(_, ref f) => f.sig.0.variadic,
         ty_closure(ref f) => f.sig.0.variadic,
         ref s => {
             panic!("fn_is_variadic() called on non-fn type: {}", s)
@@ -3802,7 +3823,7 @@ pub fn fn_is_variadic(fty: Ty) -> bool {
 
 pub fn ty_fn_sig<'tcx>(fty: Ty<'tcx>) -> &'tcx PolyFnSig<'tcx> {
     match fty.sty {
-        ty_bare_fn(ref f) => &f.sig,
+        ty_bare_fn(_, ref f) => &f.sig,
         ty_closure(ref f) => &f.sig,
         ref s => {
             panic!("ty_fn_sig() called on non-fn type: {}", s)
@@ -3813,7 +3834,7 @@ pub fn ty_fn_sig<'tcx>(fty: Ty<'tcx>) -> &'tcx PolyFnSig<'tcx> {
 /// Returns the ABI of the given function.
 pub fn ty_fn_abi(fty: Ty) -> abi::Abi {
     match fty.sty {
-        ty_bare_fn(ref f) => f.abi,
+        ty_bare_fn(_, ref f) => f.abi,
         ty_closure(ref f) => f.abi,
         _ => panic!("ty_fn_abi() called on non-fn type"),
     }
@@ -3840,7 +3861,7 @@ pub fn ty_closure_store(fty: Ty) -> TraitStore {
 
 pub fn ty_fn_ret<'tcx>(fty: Ty<'tcx>) -> FnOutput<'tcx> {
     match fty.sty {
-        ty_bare_fn(ref f) => f.sig.0.output,
+        ty_bare_fn(_, ref f) => f.sig.0.output,
         ty_closure(ref f) => f.sig.0.output,
         ref s => {
             panic!("ty_fn_ret() called on non-fn type: {}", s)
@@ -3850,7 +3871,7 @@ pub fn ty_fn_ret<'tcx>(fty: Ty<'tcx>) -> FnOutput<'tcx> {
 
 pub fn is_fn_ty(fty: Ty) -> bool {
     match fty.sty {
-        ty_bare_fn(_) => true,
+        ty_bare_fn(..) => true,
         ty_closure(_) => true,
         _ => false
     }
@@ -3865,7 +3886,7 @@ pub fn ty_region(tcx: &ctxt,
             tcx.sess.span_bug(
                 span,
                 format!("ty_region() invoked on an inappropriate ty: {}",
-                        s).as_slice());
+                        s)[]);
         }
     }
 }
@@ -3926,11 +3947,11 @@ pub fn expr_span(cx: &ctxt, id: NodeId) -> Span {
         Some(f) => {
             cx.sess.bug(format!("Node id {} is not an expr: {}",
                                 id,
-                                f).as_slice());
+                                f)[]);
         }
         None => {
             cx.sess.bug(format!("Node id {} is not present \
-                                in the node map", id).as_slice());
+                                in the node map", id)[]);
         }
     }
 }
@@ -3946,14 +3967,14 @@ pub fn local_var_name_str(cx: &ctxt, id: NodeId) -> InternedString {
                     cx.sess.bug(
                         format!("Variable id {} maps to {}, not local",
                                 id,
-                                pat).as_slice());
+                                pat)[]);
                 }
             }
         }
         r => {
             cx.sess.bug(format!("Variable id {} maps to {}, not local",
                                 id,
-                                r).as_slice());
+                                r)[]);
         }
     }
 }
@@ -3975,9 +3996,9 @@ pub fn adjust_ty<'tcx, F>(cx: &ctxt<'tcx>,
     return match adjustment {
         Some(adjustment) => {
             match *adjustment {
-                AdjustAddEnv(store) => {
+                AdjustAddEnv(_, store) => {
                     match unadjusted_ty.sty {
-                        ty::ty_bare_fn(ref b) => {
+                        ty::ty_bare_fn(Some(_), ref b) => {
                             let bounds = ty::ExistentialBounds {
                                 region_bound: ReStatic,
                                 builtin_bounds: all_builtin_bounds(),
@@ -3994,9 +4015,23 @@ pub fn adjust_ty<'tcx, F>(cx: &ctxt<'tcx>,
                         }
                         ref b => {
                             cx.sess.bug(
-                                format!("add_env adjustment on non-bare-fn: \
+                                format!("add_env adjustment on non-fn-item: \
                                          {}",
                                         b).as_slice());
+                        }
+                    }
+                }
+
+                AdjustReifyFnPointer(_) => {
+                    match unadjusted_ty.sty {
+                        ty::ty_bare_fn(Some(_), ref b) => {
+                            ty::mk_bare_fn(cx, None, (*b).clone())
+                        }
+                        ref b => {
+                            cx.sess.bug(
+                                format!("AdjustReifyFnPointer adjustment on non-fn-item: \
+                                         {}",
+                                        b)[]);
                         }
                     }
                 }
@@ -4024,7 +4059,7 @@ pub fn adjust_ty<'tcx, F>(cx: &ctxt<'tcx>,
                                                 {}",
                                                 i,
                                                 ty_to_string(cx, adjusted_ty))
-                                                          .as_slice());
+                                                          []);
                                 }
                             }
                         }
@@ -4087,7 +4122,7 @@ pub fn unsize_ty<'tcx>(cx: &ctxt<'tcx>,
             }
             _ => cx.sess.span_bug(span,
                                   format!("UnsizeLength with bad sty: {}",
-                                          ty_to_string(cx, ty)).as_slice())
+                                          ty_to_string(cx, ty))[])
         },
         &UnsizeStruct(box ref k, tp_index) => match ty.sty {
             ty_struct(did, ref substs) => {
@@ -4099,7 +4134,7 @@ pub fn unsize_ty<'tcx>(cx: &ctxt<'tcx>,
             }
             _ => cx.sess.span_bug(span,
                                   format!("UnsizeStruct with bad sty: {}",
-                                          ty_to_string(cx, ty)).as_slice())
+                                          ty_to_string(cx, ty))[])
         },
         &UnsizeVtable(TyTrait { ref principal, bounds }, _) => {
             mk_trait(cx, (*principal).clone(), bounds)
@@ -4112,7 +4147,7 @@ pub fn resolve_expr(tcx: &ctxt, expr: &ast::Expr) -> def::Def {
         Some(&def) => def,
         None => {
             tcx.sess.span_bug(expr.span, format!(
-                "no def-map entry for expr {}", expr.id).as_slice());
+                "no def-map entry for expr {}", expr.id)[]);
         }
     }
 }
@@ -4206,7 +4241,7 @@ pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
                         expr.span,
                         format!("uncategorized def for expr {}: {}",
                                 expr.id,
-                                def).as_slice());
+                                def)[]);
                 }
             }
         }
@@ -4331,7 +4366,7 @@ pub fn field_idx_strict(tcx: &ctxt, name: ast::Name, fields: &[field])
         token::get_name(name),
         fields.iter()
               .map(|f| token::get_name(f.name).get().to_string())
-              .collect::<Vec<String>>()).as_slice());
+              .collect::<Vec<String>>())[]);
 }
 
 pub fn impl_or_trait_item_idx(id: ast::Name, trait_items: &[ImplOrTraitItem])
@@ -4353,7 +4388,8 @@ pub fn ty_sort_string<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> String {
         ty_vec(_, None) => "slice".to_string(),
         ty_ptr(_) => "*-ptr".to_string(),
         ty_rptr(_, _) => "&-ptr".to_string(),
-        ty_bare_fn(_) => "extern fn".to_string(),
+        ty_bare_fn(Some(_), _) => format!("fn item"),
+        ty_bare_fn(None, _) => "fn pointer".to_string(),
         ty_closure(_) => "fn".to_string(),
         ty_trait(ref inner) => {
             format!("trait {}", item_path_str(cx, inner.principal.def_id()))
@@ -4544,6 +4580,10 @@ pub fn note_and_explain_type_err(cx: &ctxt, err: &type_err) {
                                     "concrete lifetime that was found is ",
                                     conc_region, "");
         }
+        terr_regions_overly_polymorphic(_, ty::ReInfer(ty::ReVar(_))) => {
+            // don't bother to print out the message below for
+            // inference variables, it's not very illuminating.
+        }
         terr_regions_overly_polymorphic(_, conc_region) => {
             note_and_explain_region(cx,
                                     "expected concrete lifetime is ",
@@ -4565,7 +4605,7 @@ pub fn provided_trait_methods<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
                 match item.node {
                     ItemTrait(_, _, _, _, ref ms) => {
                         let (_, p) =
-                            ast_util::split_trait_methods(ms.as_slice());
+                            ast_util::split_trait_methods(ms[]);
                         p.iter()
                          .map(|m| {
                             match impl_or_trait_item(
@@ -4584,14 +4624,14 @@ pub fn provided_trait_methods<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
                     _ => {
                         cx.sess.bug(format!("provided_trait_methods: `{}` is \
                                              not a trait",
-                                            id).as_slice())
+                                            id)[])
                     }
                 }
             }
             _ => {
                 cx.sess.bug(format!("provided_trait_methods: `{}` is not a \
                                      trait",
-                                    id).as_slice())
+                                    id)[])
             }
         }
     } else {
@@ -4827,7 +4867,7 @@ impl<'tcx> VariantInfo<'tcx> {
             },
             ast::StructVariantKind(ref struct_def) => {
 
-                let fields: &[StructField] = struct_def.fields.as_slice();
+                let fields: &[StructField] = struct_def.fields[];
 
                 assert!(fields.len() > 0);
 
@@ -4978,7 +5018,7 @@ pub fn enum_variants<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
                                                 cx.sess
                                                   .span_err(e.span,
                                                             format!("expected constant: {}",
-                                                                    *err).as_slice());
+                                                                    *err)[]);
                                             }
                                         },
                                     None => {}
@@ -5258,7 +5298,7 @@ pub fn lookup_struct_fields(cx: &ctxt, did: ast::DefId) -> Vec<field_ty> {
             _ => {
                 cx.sess.bug(
                     format!("ID not mapped to struct fields: {}",
-                            cx.map.node_to_string(did.node)).as_slice());
+                            cx.map.node_to_string(did.node))[]);
             }
         }
     } else {
@@ -5291,7 +5331,7 @@ pub fn struct_fields<'tcx>(cx: &ctxt<'tcx>, did: ast::DefId, substs: &Substs<'tc
 pub fn tup_fields<'tcx>(v: &[Ty<'tcx>]) -> Vec<field<'tcx>> {
     v.iter().enumerate().map(|(i, &f)| {
        field {
-            name: token::intern(i.to_string().as_slice()),
+            name: token::intern(i.to_string()[]),
             mt: mt {
                 ty: f,
                 mutbl: MutImmutable
@@ -5470,7 +5510,7 @@ pub fn eval_repeat_count(tcx: &ctxt, count_expr: &ast::Expr) -> uint {
             };
             tcx.sess.span_err(count_expr.span, format!(
                 "expected positive integer for repeat count, found {}",
-                found).as_slice());
+                found)[]);
         }
         Err(_) => {
             let found = match count_expr.node {
@@ -5485,7 +5525,7 @@ pub fn eval_repeat_count(tcx: &ctxt, count_expr: &ast::Expr) -> uint {
             };
             tcx.sess.span_err(count_expr.span, format!(
                 "expected constant integer for repeat count, found {}",
-                found).as_slice());
+                found)[]);
         }
     }
     0
@@ -5884,8 +5924,9 @@ pub fn hash_crate_independent<'tcx>(tcx: &ctxt<'tcx>, ty: Ty<'tcx>, svh: &Svh) -
                     region(state, r);
                     mt(state, m);
                 }
-                ty_bare_fn(ref b) => {
+                ty_bare_fn(opt_def_id, ref b) => {
                     byte!(14);
+                    hash!(opt_def_id);
                     hash!(b.unsafety);
                     hash!(b.abi);
                     fn_sig(state, &b.sig);
@@ -6200,7 +6241,7 @@ pub fn accumulate_lifetimes_in_type(accumulator: &mut Vec<ty::Region>,
             ty_str |
             ty_vec(_, _) |
             ty_ptr(_) |
-            ty_bare_fn(_) |
+            ty_bare_fn(..) |
             ty_tup(_) |
             ty_param(_) |
             ty_infer(_) |
@@ -6223,7 +6264,7 @@ pub fn accumulate_lifetimes_in_type(accumulator: &mut Vec<ty::Region>,
 }
 
 /// A free variable referred to in a function.
-#[deriving(Copy, Encodable, Decodable)]
+#[deriving(Copy, RustcEncodable, RustcDecodable)]
 pub struct Freevar {
     /// The variable being accessed free.
     pub def: def::Def,
@@ -6244,7 +6285,7 @@ pub fn with_freevars<T, F>(tcx: &ty::ctxt, fid: ast::NodeId, f: F) -> T where
 {
     match tcx.freevars.borrow().get(&fid) {
         None => f(&[]),
-        Some(d) => f(d.as_slice())
+        Some(d) => f(d[])
     }
 }
 
@@ -6252,6 +6293,7 @@ impl<'tcx> AutoAdjustment<'tcx> {
     pub fn is_identity(&self) -> bool {
         match *self {
             AdjustAddEnv(..) => false,
+            AdjustReifyFnPointer(..) => false,
             AdjustDerefRef(ref r) => r.is_identity(),
         }
     }
@@ -6367,8 +6409,11 @@ impl DebruijnIndex {
 impl<'tcx> Repr<'tcx> for AutoAdjustment<'tcx> {
     fn repr(&self, tcx: &ctxt<'tcx>) -> String {
         match *self {
-            AdjustAddEnv(ref trait_store) => {
-                format!("AdjustAddEnv({})", trait_store)
+            AdjustAddEnv(def_id, ref trait_store) => {
+                format!("AdjustAddEnv({},{})", def_id.repr(tcx), trait_store)
+            }
+            AdjustReifyFnPointer(def_id) => {
+                format!("AdjustAddEnv({})", def_id.repr(tcx))
             }
             AdjustDerefRef(ref data) => {
                 data.repr(tcx)

@@ -239,8 +239,8 @@ impl<T: Ord> BinaryHeap<T> {
     /// }
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn iter(&self) -> Items<T> {
-        Items { iter: self.data.iter() }
+    pub fn iter(&self) -> Iter<T> {
+        Iter { iter: self.data.iter() }
     }
 
     /// Creates a consuming iterator, that is, one that moves each value out of
@@ -260,8 +260,8 @@ impl<T: Ord> BinaryHeap<T> {
     /// }
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn into_iter(self) -> MoveItems<T> {
-        MoveItems { iter: self.data.into_iter() }
+    pub fn into_iter(self) -> IntoIter<T> {
+        IntoIter { iter: self.data.into_iter() }
     }
 
     /// Returns the greatest item in a queue, or `None` if it is empty.
@@ -272,15 +272,16 @@ impl<T: Ord> BinaryHeap<T> {
     /// use std::collections::BinaryHeap;
     ///
     /// let mut heap = BinaryHeap::new();
-    /// assert_eq!(heap.top(), None);
+    /// assert_eq!(heap.peek(), None);
     ///
     /// heap.push(1i);
     /// heap.push(5i);
     /// heap.push(2i);
-    /// assert_eq!(heap.top(), Some(&5i));
+    /// assert_eq!(heap.peek(), Some(&5i));
     ///
     /// ```
-    pub fn top(&self) -> Option<&T> {
+    #[stable]
+    pub fn peek(&self) -> Option<&T> {
         self.data.get(0)
     }
 
@@ -388,7 +389,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// heap.push(1i);
     ///
     /// assert_eq!(heap.len(), 3);
-    /// assert_eq!(heap.top(), Some(&5i));
+    /// assert_eq!(heap.peek(), Some(&5i));
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn push(&mut self, item: T) {
@@ -412,7 +413,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// assert_eq!(heap.push_pop(3i), 5);
     /// assert_eq!(heap.push_pop(9i), 9);
     /// assert_eq!(heap.len(), 2);
-    /// assert_eq!(heap.top(), Some(&3i));
+    /// assert_eq!(heap.peek(), Some(&3i));
     /// ```
     pub fn push_pop(&mut self, mut item: T) -> T {
         match self.data.get_mut(0) {
@@ -442,7 +443,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// assert_eq!(heap.replace(1i), None);
     /// assert_eq!(heap.replace(3i), Some(1i));
     /// assert_eq!(heap.len(), 1);
-    /// assert_eq!(heap.top(), Some(&3i));
+    /// assert_eq!(heap.peek(), Some(&3i));
     /// ```
     pub fn replace(&mut self, mut item: T) -> Option<T> {
         if !self.is_empty() {
@@ -571,11 +572,11 @@ impl<T: Ord> BinaryHeap<T> {
 }
 
 /// `BinaryHeap` iterator.
-pub struct Items<'a, T: 'a> {
-    iter: slice::Items<'a, T>,
+pub struct Iter <'a, T: 'a> {
+    iter: slice::Iter<'a, T>,
 }
 
-impl<'a, T> Iterator<&'a T> for Items<'a, T> {
+impl<'a, T> Iterator<&'a T> for Iter<'a, T> {
     #[inline]
     fn next(&mut self) -> Option<&'a T> { self.iter.next() }
 
@@ -583,19 +584,19 @@ impl<'a, T> Iterator<&'a T> for Items<'a, T> {
     fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
 }
 
-impl<'a, T> DoubleEndedIterator<&'a T> for Items<'a, T> {
+impl<'a, T> DoubleEndedIterator<&'a T> for Iter<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a T> { self.iter.next_back() }
 }
 
-impl<'a, T> ExactSizeIterator<&'a T> for Items<'a, T> {}
+impl<'a, T> ExactSizeIterator<&'a T> for Iter<'a, T> {}
 
 /// An iterator that moves out of a `BinaryHeap`.
-pub struct MoveItems<T> {
-    iter: vec::MoveItems<T>,
+pub struct IntoIter<T> {
+    iter: vec::IntoIter<T>,
 }
 
-impl<T> Iterator<T> for MoveItems<T> {
+impl<T> Iterator<T> for IntoIter<T> {
     #[inline]
     fn next(&mut self) -> Option<T> { self.iter.next() }
 
@@ -603,12 +604,12 @@ impl<T> Iterator<T> for MoveItems<T> {
     fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
 }
 
-impl<T> DoubleEndedIterator<T> for MoveItems<T> {
+impl<T> DoubleEndedIterator<T> for IntoIter<T> {
     #[inline]
     fn next_back(&mut self) -> Option<T> { self.iter.next_back() }
 }
 
-impl<T> ExactSizeIterator<T> for MoveItems<T> {}
+impl<T> ExactSizeIterator<T> for IntoIter<T> {}
 
 /// An iterator that drains a `BinaryHeap`.
 pub struct Drain<'a, T: 'a> {
@@ -714,13 +715,13 @@ mod tests {
     }
 
     #[test]
-    fn test_top_and_pop() {
+    fn test_peek_and_pop() {
         let data = vec!(2u, 4, 6, 2, 1, 8, 10, 3, 5, 7, 0, 9, 1);
         let mut sorted = data.clone();
         sorted.sort();
         let mut heap = BinaryHeap::from_vec(data);
         while !heap.is_empty() {
-            assert_eq!(heap.top().unwrap(), sorted.last().unwrap());
+            assert_eq!(heap.peek().unwrap(), sorted.last().unwrap());
             assert_eq!(heap.pop().unwrap(), sorted.pop().unwrap());
         }
     }
@@ -729,44 +730,44 @@ mod tests {
     fn test_push() {
         let mut heap = BinaryHeap::from_vec(vec!(2i, 4, 9));
         assert_eq!(heap.len(), 3);
-        assert!(*heap.top().unwrap() == 9);
+        assert!(*heap.peek().unwrap() == 9);
         heap.push(11);
         assert_eq!(heap.len(), 4);
-        assert!(*heap.top().unwrap() == 11);
+        assert!(*heap.peek().unwrap() == 11);
         heap.push(5);
         assert_eq!(heap.len(), 5);
-        assert!(*heap.top().unwrap() == 11);
+        assert!(*heap.peek().unwrap() == 11);
         heap.push(27);
         assert_eq!(heap.len(), 6);
-        assert!(*heap.top().unwrap() == 27);
+        assert!(*heap.peek().unwrap() == 27);
         heap.push(3);
         assert_eq!(heap.len(), 7);
-        assert!(*heap.top().unwrap() == 27);
+        assert!(*heap.peek().unwrap() == 27);
         heap.push(103);
         assert_eq!(heap.len(), 8);
-        assert!(*heap.top().unwrap() == 103);
+        assert!(*heap.peek().unwrap() == 103);
     }
 
     #[test]
     fn test_push_unique() {
         let mut heap = BinaryHeap::from_vec(vec!(box 2i, box 4, box 9));
         assert_eq!(heap.len(), 3);
-        assert!(*heap.top().unwrap() == box 9);
+        assert!(*heap.peek().unwrap() == box 9);
         heap.push(box 11);
         assert_eq!(heap.len(), 4);
-        assert!(*heap.top().unwrap() == box 11);
+        assert!(*heap.peek().unwrap() == box 11);
         heap.push(box 5);
         assert_eq!(heap.len(), 5);
-        assert!(*heap.top().unwrap() == box 11);
+        assert!(*heap.peek().unwrap() == box 11);
         heap.push(box 27);
         assert_eq!(heap.len(), 6);
-        assert!(*heap.top().unwrap() == box 27);
+        assert!(*heap.peek().unwrap() == box 27);
         heap.push(box 3);
         assert_eq!(heap.len(), 7);
-        assert!(*heap.top().unwrap() == box 27);
+        assert!(*heap.peek().unwrap() == box 27);
         heap.push(box 103);
         assert_eq!(heap.len(), 8);
-        assert!(*heap.top().unwrap() == box 103);
+        assert!(*heap.peek().unwrap() == box 103);
     }
 
     #[test]
@@ -831,9 +832,9 @@ mod tests {
     }
 
     #[test]
-    fn test_empty_top() {
+    fn test_empty_peek() {
         let empty = BinaryHeap::<int>::new();
-        assert!(empty.top().is_none());
+        assert!(empty.peek().is_none());
     }
 
     #[test]

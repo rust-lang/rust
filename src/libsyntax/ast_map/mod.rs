@@ -73,9 +73,9 @@ impl<'a> Iterator<PathElem> for LinkedPath<'a> {
     }
 }
 
-// HACK(eddyb) move this into libstd (value wrapper for slice::Items).
+// HACK(eddyb) move this into libstd (value wrapper for slice::Iter).
 #[deriving(Clone)]
-pub struct Values<'a, T:'a>(pub slice::Items<'a, T>);
+pub struct Values<'a, T:'a>(pub slice::Iter<'a, T>);
 
 impl<'a, T: Copy> Iterator<T> for Values<'a, T> {
     fn next(&mut self) -> Option<T> {
@@ -95,7 +95,7 @@ pub fn path_to_string<PI: Iterator<PathElem>>(path: PI) -> String {
         if !s.is_empty() {
             s.push_str("::");
         }
-        s.push_str(e.as_slice());
+        s.push_str(e[]);
         s
     }).to_string()
 }
@@ -472,20 +472,20 @@ impl<'ast> Map<'ast> {
         F: FnOnce(Option<&[Attribute]>) -> T,
     {
         let attrs = match self.get(id) {
-            NodeItem(i) => Some(i.attrs.as_slice()),
-            NodeForeignItem(fi) => Some(fi.attrs.as_slice()),
+            NodeItem(i) => Some(i.attrs[]),
+            NodeForeignItem(fi) => Some(fi.attrs[]),
             NodeTraitItem(ref tm) => match **tm {
-                RequiredMethod(ref type_m) => Some(type_m.attrs.as_slice()),
-                ProvidedMethod(ref m) => Some(m.attrs.as_slice()),
-                TypeTraitItem(ref typ) => Some(typ.attrs.as_slice()),
+                RequiredMethod(ref type_m) => Some(type_m.attrs[]),
+                ProvidedMethod(ref m) => Some(m.attrs[]),
+                TypeTraitItem(ref typ) => Some(typ.attrs[]),
             },
             NodeImplItem(ref ii) => {
                 match **ii {
-                    MethodImplItem(ref m) => Some(m.attrs.as_slice()),
-                    TypeImplItem(ref t) => Some(t.attrs.as_slice()),
+                    MethodImplItem(ref m) => Some(m.attrs[]),
+                    TypeImplItem(ref t) => Some(t.attrs[]),
                 }
             }
-            NodeVariant(ref v) => Some(v.node.attrs.as_slice()),
+            NodeVariant(ref v) => Some(v.node.attrs[]),
             // unit/tuple structs take the attributes straight from
             // the struct definition.
             // FIXME(eddyb) make this work again (requires access to the map).
@@ -504,8 +504,8 @@ impl<'ast> Map<'ast> {
     /// the iterator will produce node id's for items with paths
     /// such as `foo::bar::quux`, `bar::quux`, `other::bar::quux`, and
     /// any other such items it can find in the map.
-    pub fn nodes_matching_suffix<'a, S:Str>(&'a self, parts: &'a [S])
-                                 -> NodesMatchingSuffix<'a, 'ast, S> {
+    pub fn nodes_matching_suffix<'a>(&'a self, parts: &'a [String])
+                                 -> NodesMatchingSuffix<'a, 'ast> {
         NodesMatchingSuffix {
             map: self,
             item_name: parts.last().unwrap(),
@@ -565,14 +565,14 @@ impl<'ast> Map<'ast> {
     }
 }
 
-pub struct NodesMatchingSuffix<'a, 'ast:'a, S:'a> {
+pub struct NodesMatchingSuffix<'a, 'ast:'a> {
     map: &'a Map<'ast>,
-    item_name: &'a S,
-    in_which: &'a [S],
+    item_name: &'a String,
+    in_which: &'a [String],
     idx: NodeId,
 }
 
-impl<'a, 'ast, S:Str> NodesMatchingSuffix<'a, 'ast, S> {
+impl<'a, 'ast> NodesMatchingSuffix<'a, 'ast> {
     /// Returns true only if some suffix of the module path for parent
     /// matches `self.in_which`.
     ///
@@ -586,7 +586,7 @@ impl<'a, 'ast, S:Str> NodesMatchingSuffix<'a, 'ast, S> {
                 None => return false,
                 Some((node_id, name)) => (node_id, name),
             };
-            if part.as_slice() != mod_name.as_str() {
+            if part[] != mod_name.as_str() {
                 return false;
             }
             cursor = self.map.get_parent(mod_id);
@@ -624,12 +624,12 @@ impl<'a, 'ast, S:Str> NodesMatchingSuffix<'a, 'ast, S> {
     // We are looking at some node `n` with a given name and parent
     // id; do their names match what I am seeking?
     fn matches_names(&self, parent_of_n: NodeId, name: Name) -> bool {
-        name.as_str() == self.item_name.as_slice() &&
+        name.as_str() == self.item_name[] &&
             self.suffix_matches(parent_of_n)
     }
 }
 
-impl<'a, 'ast, S:Str> Iterator<NodeId> for NodesMatchingSuffix<'a, 'ast, S> {
+impl<'a, 'ast> Iterator<NodeId> for NodesMatchingSuffix<'a, 'ast> {
     fn next(&mut self) -> Option<NodeId> {
         loop {
             let idx = self.idx;
@@ -1037,7 +1037,7 @@ impl<'a> NodePrinter for pprust::State<'a> {
 
 fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
     let id_str = format!(" (id={})", id);
-    let id_str = if include_id { id_str.as_slice() } else { "" };
+    let id_str = if include_id { id_str[] } else { "" };
 
     match map.find(id) {
         Some(NodeItem(item)) => {

@@ -43,7 +43,7 @@ use ops::{Deref, DerefMut, FnOnce};
 use result::Result::{Ok, Err};
 use rt;
 use slice::SliceExt;
-use str::StrPrelude;
+use str::StrExt;
 use string::String;
 use sys::{fs, tty};
 use sync::{Arc, Mutex, MutexGuard, Once, ONCE_INIT};

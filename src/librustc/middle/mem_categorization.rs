@@ -238,7 +238,7 @@ pub fn deref_kind<'tcx>(tcx: &ty::ctxt<'tcx>, t: Ty<'tcx>) -> deref_kind {
       None => {
         tcx.sess.bug(
             format!("deref_kind() invoked on non-derefable type {}",
-                    ty_to_string(tcx, t)).as_slice());
+                    ty_to_string(tcx, t))[]);
       }
     }
 }
@@ -441,8 +441,8 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
 
             Some(adjustment) => {
                 match *adjustment {
-                    ty::AdjustAddEnv(..) => {
-                        debug!("cat_expr(AdjustAddEnv): {}",
+                    ty::AdjustAddEnv(..) | ty::AdjustReifyFnPointer(..) => {
+                        debug!("cat_expr(AdjustAddEnv|AdjustReifyFnPointer): {}",
                                expr.repr(self.tcx()));
                         // Convert a bare fn to a closure by adding NULL env.
                         // Result is an rvalue.
@@ -635,7 +635,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                           span,
                           format!("Upvar of non-closure {} - {}",
                                   fn_node_id,
-                                  ty.repr(self.tcx())).as_slice());
+                                  ty.repr(self.tcx()))[]);
                   }
               }
           }
@@ -917,7 +917,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                 self.tcx().sess.span_bug(
                     node.span(),
                     format!("Explicit deref of non-derefable type: {}",
-                            base_cmt.ty.repr(self.tcx())).as_slice());
+                            base_cmt.ty.repr(self.tcx()))[]);
             }
         }
     }
@@ -996,7 +996,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                         self.tcx().sess.span_bug(
                             elt.span(),
                             format!("Explicit index of non-index type `{}`",
-                                    base_cmt.ty.repr(self.tcx())).as_slice());
+                                    base_cmt.ty.repr(self.tcx()))[]);
                     }
                 }
             }

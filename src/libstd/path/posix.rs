@@ -390,6 +390,7 @@ impl Path {
         let v = if self.repr[0] == SEP_BYTE {
             self.repr[1..]
         } else { self.repr.as_slice() };
+        let is_sep_byte: fn(&u8) -> bool = is_sep_byte; // coerce to fn ptr
         let mut ret = v.split(is_sep_byte);
         if v.is_empty() {
             // consume the empty "" component
@@ -401,7 +402,11 @@ impl Path {
     /// Returns an iterator that yields each component of the path as Option<&str>.
     /// See components() for details.
     pub fn str_components<'a>(&'a self) -> StrComponents<'a> {
-        self.components().map(str::from_utf8)
+        fn from_utf8(s: &[u8]) -> Option<&str> {
+            str::from_utf8(s).ok()
+        }
+        let f: fn(&[u8]) -> Option<&str> = from_utf8; // coerce to fn ptr
+        self.components().map(f)
     }
 }
 

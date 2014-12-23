@@ -45,7 +45,7 @@ impl<T> OwnedSlice<T> {
         &*self.data
     }
 
-    pub fn move_iter(self) -> vec::MoveItems<T> {
+    pub fn move_iter(self) -> vec::IntoIter<T> {
         self.into_vec().into_iter()
     }
 

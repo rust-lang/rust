@@ -56,33 +56,36 @@ use self::RecompositionState::*;
 use self::DecompositionType::*;
 
 use core::borrow::{BorrowFrom, Cow, ToOwned};
+use core::char::Char;
 use core::clone::Clone;
+use core::cmp::{Equiv, PartialEq, Eq, PartialOrd, Ord, Ordering};
+use core::cmp;
 use core::default::Default;
 use core::fmt;
 use core::hash;
-use core::char::Char;
-use core::cmp::{mod, Eq, Equiv, Ord, Ordering, PartialEq, PartialOrd};
-use core::iter::{range, AdditiveIterator, Iterator, IteratorExt};
+use core::iter::AdditiveIterator;
+use core::iter::{mod, range, Iterator, IteratorExt};
 use core::kinds::Sized;
+use core::ops;
 use core::option::Option::{mod, Some, None};
-use core::slice::{AsSlice, SliceExt};
+use core::slice::AsSlice;
+use core::str as core_str;
+use unicode::str::{UnicodeStr, Utf16Encoder};
 
 use ring_buf::RingBuf;
+use slice::SliceExt;
 use string::String;
 use unicode;
 use vec::Vec;
 
-pub use core::str::{from_utf8, CharEq, Chars, CharOffsets};
-pub use core::str::{Bytes, CharSplits};
-pub use core::str::{CharSplitsN, AnyLines, MatchIndices, StrSplits};
-pub use core::str::{Utf16Encoder, Utf16CodeUnits};
-pub use core::str::{eq_slice, is_utf8, is_utf16, Utf16Items};
-pub use core::str::{Utf16Item, ScalarValue, LoneSurrogate, utf16_items};
-pub use core::str::{truncate_utf16_at_nul, utf8_char_width, CharRange};
-pub use core::str::{FromStr, from_str};
-pub use core::str::{Str, StrPrelude};
+pub use core::str::{from_utf8, CharEq, Chars, CharIndices};
+pub use core::str::{Bytes, CharSplits, is_utf8};
+pub use core::str::{CharSplitsN, Lines, LinesAny, MatchIndices, StrSplits};
+pub use core::str::{CharRange};
+pub use core::str::{FromStr, from_str, Utf8Error};
+pub use core::str::Str;
 pub use core::str::{from_utf8_unchecked, from_c_str};
-pub use unicode::str::{UnicodeStrPrelude, Words, Graphemes, GraphemeIndices};
+pub use unicode::str::{Words, Graphemes, GraphemeIndices};
 
 // FIXME(conventions): ensure bit/char conventions are followed by str's API
 
@@ -91,6 +94,7 @@ Section: Creating a string
 */
 
 /// Methods for vectors of strings.
+#[unstable = "functionality may be replaced with iterators"]
 pub trait StrVector for Sized? {
     /// Concatenates a vector of strings.
     ///
@@ -117,6 +121,7 @@ pub trait StrVector for Sized? {
     fn connect(&self, sep: &str) -> String;
 }
 
+#[allow(deprecated)]
 impl<S: Str> StrVector for [S] {
     fn concat(&self) -> String {
         if self.is_empty() {
@@ -129,7 +134,7 @@ impl<S: Str> StrVector for [S] {
         let mut result = String::with_capacity(len);
 
         for s in self.iter() {
-            result.push_str(s.as_slice())
+            result.push_str(s.as_slice());
         }
 
         result
@@ -379,6 +384,21 @@ impl<'a> Iterator<char> for Recompositions<'a> {
     }
 }
 
+/// External iterator for a string's UTF16 codeunits.
+/// Use with the `std::iter` module.
+#[deriving(Clone)]
+pub struct Utf16Units<'a> {
+    encoder: Utf16Encoder<Chars<'a>>
+}
+
+impl<'a> Iterator<u16> for Utf16Units<'a> {
+    #[inline]
+    fn next(&mut self) -> Option<u16> { self.encoder.next() }
+
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) { self.encoder.size_hint() }
+}
+
 /// Replaces all occurrences of one string with another.
 ///
 /// # Arguments
@@ -394,21 +414,15 @@ impl<'a> Iterator<char> for Recompositions<'a> {
 /// # Examples
 ///
 /// ```rust
+/// # #![allow(deprecated)]
 /// use std::str;
 /// let string = "orange";
 /// let new_string = str::replace(string, "or", "str");
 /// assert_eq!(new_string.as_slice(), "strange");
 /// ```
+#[deprecated = "call the inherent method instead"]
 pub fn replace(s: &str, from: &str, to: &str) -> String {
-    let mut result = String::new();
-    let mut last_end = 0;
-    for (start, end) in s.match_indices(from) {
-        result.push_str(unsafe { s.slice_unchecked(last_end, start) });
-        result.push_str(to);
-        last_end = end;
-    }
-    result.push_str(unsafe { s.slice_unchecked(last_end, s.len()) });
-    result
+    s.replace(from, to)
 }
 
 /*
@@ -434,7 +448,7 @@ Section: MaybeOwned
 /// A string type that can hold either a `String` or a `&str`.
 /// This can be useful as an optimization when an allocation is sometimes
 /// needed but not always.
-#[deprecated = "use std::str::CowString"]
+#[deprecated = "use std::string::CowString"]
 pub enum MaybeOwned<'a> {
     /// A borrowed string.
     Slice(&'a str),
@@ -443,9 +457,10 @@ pub enum MaybeOwned<'a> {
 }
 
 /// A specialization of `CowString` to be sendable.
+#[deprecated = "use std::string::CowString<'static>"]
 pub type SendStr = CowString<'static>;
 
-#[deprecated = "use std::str::CowString"]
+#[deprecated = "use std::string::CowString"]
 impl<'a> MaybeOwned<'a> {
     /// Returns `true` if this `MaybeOwned` wraps an owned string.
     ///
@@ -483,6 +498,7 @@ impl<'a> MaybeOwned<'a> {
 
     /// Return the number of bytes in this string.
     #[inline]
+    #[allow(deprecated)]
     pub fn len(&self) -> uint { self.as_slice().len() }
 
     /// Returns true if the string contains no bytes
@@ -545,7 +561,8 @@ impl<'a> IntoMaybeOwned<'a> for MaybeOwned<'a> {
     fn into_maybe_owned(self) -> MaybeOwned<'a> { self }
 }
 
-#[deprecated = "use std::str::CowString"]
+#[deprecated = "use std::string::CowString"]
+#[allow(deprecated)]
 impl<'a> PartialEq for MaybeOwned<'a> {
     #[inline]
     fn eq(&self, other: &MaybeOwned) -> bool {
@@ -553,10 +570,10 @@ impl<'a> PartialEq for MaybeOwned<'a> {
     }
 }
 
-#[deprecated = "use std::str::CowString"]
+#[deprecated = "use std::string::CowString"]
 impl<'a> Eq for MaybeOwned<'a> {}
 
-#[deprecated = "use std::str::CowString"]
+#[deprecated = "use std::string::CowString"]
 impl<'a> PartialOrd for MaybeOwned<'a> {
     #[inline]
     fn partial_cmp(&self, other: &MaybeOwned) -> Option<Ordering> {
@@ -564,16 +581,17 @@ impl<'a> PartialOrd for MaybeOwned<'a> {
     }
 }
 
-#[deprecated = "use std::str::CowString"]
+#[deprecated = "use std::string::CowString"]
 impl<'a> Ord for MaybeOwned<'a> {
     #[inline]
+    #[allow(deprecated)]
     fn cmp(&self, other: &MaybeOwned) -> Ordering {
         self.as_slice().cmp(other.as_slice())
     }
 }
 
 #[allow(deprecated)]
-#[deprecated = "use std::str::CowString"]
+#[deprecated = "use std::string::CowString"]
 impl<'a, S: Str> Equiv<S> for MaybeOwned<'a> {
     #[inline]
     fn equiv(&self, other: &S) -> bool {
@@ -581,9 +599,9 @@ impl<'a, S: Str> Equiv<S> for MaybeOwned<'a> {
     }
 }
 
-#[deprecated = "use std::str::CowString"]
+#[deprecated = "use std::string::CowString"]
+#[allow(deprecated)]
 impl<'a> Str for MaybeOwned<'a> {
-    #[allow(deprecated)]
     #[inline]
     fn as_slice<'b>(&'b self) -> &'b str {
         match *self {
@@ -593,19 +611,7 @@ impl<'a> Str for MaybeOwned<'a> {
     }
 }
 
-#[deprecated = "use std::str::CowString"]
-impl<'a> StrAllocating for MaybeOwned<'a> {
-    #[allow(deprecated)]
-    #[inline]
-    fn into_string(self) -> String {
-        match self {
-            Slice(s) => String::from_str(s),
-            Owned(s) => s
-        }
-    }
-}
-
-#[deprecated = "use std::str::CowString"]
+#[deprecated = "use std::string::CowString"]
 impl<'a> Clone for MaybeOwned<'a> {
     #[allow(deprecated)]
     #[inline]
@@ -617,14 +623,15 @@ impl<'a> Clone for MaybeOwned<'a> {
     }
 }
 
-#[deprecated = "use std::str::CowString"]
+#[deprecated = "use std::string::CowString"]
 impl<'a> Default for MaybeOwned<'a> {
     #[allow(deprecated)]
     #[inline]
     fn default() -> MaybeOwned<'a> { Slice("") }
 }
 
-#[deprecated = "use std::str::CowString"]
+#[deprecated = "use std::string::CowString"]
+#[allow(deprecated)]
 impl<'a, H: hash::Writer> hash::Hash<H> for MaybeOwned<'a> {
     #[inline]
     fn hash(&self, hasher: &mut H) {
@@ -632,7 +639,7 @@ impl<'a, H: hash::Writer> hash::Hash<H> for MaybeOwned<'a> {
     }
 }
 
-#[deprecated = "use std::str::CowString"]
+#[deprecated = "use std::string::CowString"]
 impl<'a> fmt::Show for MaybeOwned<'a> {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -650,10 +657,15 @@ impl BorrowFrom<String> for str {
 
 #[unstable = "trait is unstable"]
 impl ToOwned<String> for str {
-    fn to_owned(&self) -> String { self.into_string() }
+    fn to_owned(&self) -> String {
+        unsafe {
+            String::from_utf8_unchecked(self.as_bytes().to_owned())
+        }
+    }
 }
 
 /// Unsafe string operations.
+#[deprecated]
 pub mod raw {
     pub use core::str::raw::{from_utf8, c_str_to_static_slice, slice_bytes};
     pub use core::str::raw::{slice_unchecked};
@@ -664,46 +676,25 @@ Section: CowString
 */
 
 /// A clone-on-write string
+#[deprecated = "use std::string::CowString instead"]
 pub type CowString<'a> = Cow<'a, String, str>;
-
-impl<'a> Str for CowString<'a> {
-    #[inline]
-    fn as_slice<'b>(&'b self) -> &'b str {
-        (**self).as_slice()
-    }
-}
 
 /*
 Section: Trait implementations
 */
 
 /// Any string that can be represented as a slice.
-pub trait StrAllocating: Str {
-    /// Converts `self` into a `String`, not making a copy if possible.
-    fn into_string(self) -> String;
-
+pub trait StrExt for Sized?: ops::Slice<uint, str> {
     /// Escapes each char in `s` with `char::escape_default`.
+    #[unstable = "return type may change to be an iterator"]
     fn escape_default(&self) -> String {
-        let me = self.as_slice();
-        let mut out = String::with_capacity(me.len());
-        for c in me.chars() {
-            for c in c.escape_default() {
-                out.push(c);
-            }
-        }
-        out
+        self.chars().flat_map(|c| c.escape_default()).collect()
     }
 
     /// Escapes each char in `s` with `char::escape_unicode`.
+    #[unstable = "return type may change to be an iterator"]
     fn escape_unicode(&self) -> String {
-        let me = self.as_slice();
-        let mut out = String::with_capacity(me.len());
-        for c in me.chars() {
-            for c in c.escape_unicode() {
-                out.push(c);
-            }
-        }
-        out
+        self.chars().flat_map(|c| c.escape_unicode()).collect()
     }
 
     /// Replaces all occurrences of one string with another.
@@ -730,25 +721,31 @@ pub trait StrAllocating: Str {
     /// // not found, so no change.
     /// assert_eq!(s.replace("cookie monster", "little lamb"), s);
     /// ```
+    #[unstable = "awaiting pattern/matcher stabilization"]
     fn replace(&self, from: &str, to: &str) -> String {
-        replace(self.as_slice(), from, to)
+        let mut result = String::new();
+        let mut last_end = 0;
+        for (start, end) in self.match_indices(from) {
+            result.push_str(unsafe { self.slice_unchecked(last_end, start) });
+            result.push_str(to);
+            last_end = end;
+        }
+        result.push_str(unsafe { self.slice_unchecked(last_end, self.len()) });
+        result
     }
 
     /// Given a string, makes a new string with repeated copies of it.
+    #[deprecated = "use repeat(self).take(n).collect() instead"]
     fn repeat(&self, nn: uint) -> String {
-        let me = self.as_slice();
-        let mut ret = String::with_capacity(nn * me.len());
-        for _ in range(0, nn) {
-            ret.push_str(me);
-        }
-        ret
+        iter::repeat(self[]).take(nn).collect()
     }
 
     /// Returns the Levenshtein Distance between two strings.
+    #[deprecated = "this function will be removed"]
     fn lev_distance(&self, t: &str) -> uint {
-        let me = self.as_slice();
-        if me.is_empty() { return t.char_len(); }
-        if t.is_empty() { return me.char_len(); }
+        let me = self[];
+        if me.is_empty() { return t.chars().count(); }
+        if t.is_empty() { return me.chars().count(); }
 
         let mut dcol = Vec::from_fn(t.len() + 1, |x| x);
         let mut t_last = 0;
@@ -780,9 +777,10 @@ pub trait StrAllocating: Str {
     /// Returns an iterator over the string in Unicode Normalization Form D
     /// (canonical decomposition).
     #[inline]
+    #[unstable = "this functionality may be moved to libunicode"]
     fn nfd_chars<'a>(&'a self) -> Decompositions<'a> {
         Decompositions {
-            iter: self.as_slice().chars(),
+            iter: self[].chars(),
             buffer: Vec::new(),
             sorted: false,
             kind: Canonical
@@ -792,9 +790,10 @@ pub trait StrAllocating: Str {
     /// Returns an iterator over the string in Unicode Normalization Form KD
     /// (compatibility decomposition).
     #[inline]
+    #[unstable = "this functionality may be moved to libunicode"]
     fn nfkd_chars<'a>(&'a self) -> Decompositions<'a> {
         Decompositions {
-            iter: self.as_slice().chars(),
+            iter: self[].chars(),
             buffer: Vec::new(),
             sorted: false,
             kind: Compatible
@@ -804,6 +803,7 @@ pub trait StrAllocating: Str {
     /// An Iterator over the string in Unicode Normalization Form C
     /// (canonical decomposition followed by canonical composition).
     #[inline]
+    #[unstable = "this functionality may be moved to libunicode"]
     fn nfc_chars<'a>(&'a self) -> Recompositions<'a> {
         Recompositions {
             iter: self.nfd_chars(),
@@ -817,6 +817,7 @@ pub trait StrAllocating: Str {
     /// An Iterator over the string in Unicode Normalization Form KC
     /// (compatibility decomposition followed by canonical composition).
     #[inline]
+    #[unstable = "this functionality may be moved to libunicode"]
     fn nfkc_chars<'a>(&'a self) -> Recompositions<'a> {
         Recompositions {
             iter: self.nfkd_chars(),
@@ -826,30 +827,944 @@ pub trait StrAllocating: Str {
             last_ccc: None
         }
     }
-}
 
-impl<'a> StrAllocating for &'a str {
+    /// Returns true if one string contains another
+    ///
+    /// # Arguments
+    ///
+    /// - needle - The string to look for
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// assert!("bananas".contains("nana"));
+    /// ```
+    #[unstable = "awaiting pattern/matcher stabilization"]
+    fn contains(&self, needle: &str) -> bool {
+        core_str::StrExt::contains(self[], needle)
+    }
+
+    /// Returns true if a string contains a char.
+    ///
+    /// # Arguments
+    ///
+    /// - needle - The char to look for
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// assert!("hello".contains_char('e'));
+    /// ```
+    #[unstable = "awaiting pattern/matcher stabilization"]
+    fn contains_char(&self, needle: char) -> bool {
+        core_str::StrExt::contains_char(self[], needle)
+    }
+
+    /// An iterator over the characters of `self`. Note, this iterates
+    /// over Unicode code-points, not Unicode graphemes.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let v: Vec<char> = "abc åäö".chars().collect();
+    /// assert_eq!(v, vec!['a', 'b', 'c', ' ', 'å', 'ä', 'ö']);
+    /// ```
+    #[stable]
+    fn chars(&self) -> Chars {
+        core_str::StrExt::chars(self[])
+    }
+
+    /// An iterator over the bytes of `self`
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let v: Vec<u8> = "bors".bytes().collect();
+    /// assert_eq!(v, b"bors".to_vec());
+    /// ```
+    #[stable]
+    fn bytes(&self) -> Bytes {
+        core_str::StrExt::bytes(self[])
+    }
+
+    /// An iterator over the characters of `self` and their byte offsets.
+    #[stable]
+    fn char_indices(&self) -> CharIndices {
+        core_str::StrExt::char_indices(self[])
+    }
+
+    /// An iterator over substrings of `self`, separated by characters
+    /// matched by `sep`.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let v: Vec<&str> = "Mary had a little lamb".split(' ').collect();
+    /// assert_eq!(v, vec!["Mary", "had", "a", "little", "lamb"]);
+    ///
+    /// let v: Vec<&str> = "abc1def2ghi".split(|&: c: char| c.is_numeric()).collect();
+    /// assert_eq!(v, vec!["abc", "def", "ghi"]);
+    ///
+    /// let v: Vec<&str> = "lionXXtigerXleopard".split('X').collect();
+    /// assert_eq!(v, vec!["lion", "", "tiger", "leopard"]);
+    ///
+    /// let v: Vec<&str> = "".split('X').collect();
+    /// assert_eq!(v, vec![""]);
+    /// ```
+    #[unstable = "awaiting pattern/matcher stabilization"]
+    fn split<Sep: CharEq>(&self, sep: Sep) -> CharSplits<Sep> {
+        core_str::StrExt::split(self[], sep)
+    }
+
+    /// An iterator over substrings of `self`, separated by characters
+    /// matched by `sep`, restricted to splitting at most `count`
+    /// times.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let v: Vec<&str> = "Mary had a little lambda".splitn(2, ' ').collect();
+    /// assert_eq!(v, vec!["Mary", "had", "a little lambda"]);
+    ///
+    /// let v: Vec<&str> = "abc1def2ghi".splitn(1, |&: c: char| c.is_numeric()).collect();
+    /// assert_eq!(v, vec!["abc", "def2ghi"]);
+    ///
+    /// let v: Vec<&str> = "lionXXtigerXleopard".splitn(2, 'X').collect();
+    /// assert_eq!(v, vec!["lion", "", "tigerXleopard"]);
+    ///
+    /// let v: Vec<&str> = "abcXdef".splitn(0, 'X').collect();
+    /// assert_eq!(v, vec!["abcXdef"]);
+    ///
+    /// let v: Vec<&str> = "".splitn(1, 'X').collect();
+    /// assert_eq!(v, vec![""]);
+    /// ```
+    #[unstable = "awaiting pattern/matcher stabilization"]
+    fn splitn<Sep: CharEq>(&self, count: uint, sep: Sep) -> CharSplitsN<Sep> {
+        core_str::StrExt::splitn(self[], count, sep)
+    }
+
+    /// An iterator over substrings of `self`, separated by characters
+    /// matched by `sep`.
+    ///
+    /// Equivalent to `split`, except that the trailing substring
+    /// is skipped if empty (terminator semantics).
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let v: Vec<&str> = "A.B.".split_terminator('.').collect();
+    /// assert_eq!(v, vec!["A", "B"]);
+    ///
+    /// let v: Vec<&str> = "A..B..".split_terminator('.').collect();
+    /// assert_eq!(v, vec!["A", "", "B", ""]);
+    ///
+    /// let v: Vec<&str> = "Mary had a little lamb".split(' ').rev().collect();
+    /// assert_eq!(v, vec!["lamb", "little", "a", "had", "Mary"]);
+    ///
+    /// let v: Vec<&str> = "abc1def2ghi".split(|&: c: char| c.is_numeric()).rev().collect();
+    /// assert_eq!(v, vec!["ghi", "def", "abc"]);
+    ///
+    /// let v: Vec<&str> = "lionXXtigerXleopard".split('X').rev().collect();
+    /// assert_eq!(v, vec!["leopard", "tiger", "", "lion"]);
+    /// ```
+    #[unstable = "awaiting pattern/matcher stabilization"]
+    fn split_terminator<Sep: CharEq>(&self, sep: Sep) -> CharSplits<Sep> {
+        core_str::StrExt::split_terminator(self[], sep)
+    }
+
+    /// An iterator over substrings of `self`, separated by characters
+    /// matched by `sep`, starting from the end of the string.
+    /// Restricted to splitting at most `count` times.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let v: Vec<&str> = "Mary had a little lamb".rsplitn(2, ' ').collect();
+    /// assert_eq!(v, vec!["lamb", "little", "Mary had a"]);
+    ///
+    /// let v: Vec<&str> = "abc1def2ghi".rsplitn(1, |&: c: char| c.is_numeric()).collect();
+    /// assert_eq!(v, vec!["ghi", "abc1def"]);
+    ///
+    /// let v: Vec<&str> = "lionXXtigerXleopard".rsplitn(2, 'X').collect();
+    /// assert_eq!(v, vec!["leopard", "tiger", "lionX"]);
+    /// ```
+    #[unstable = "awaiting pattern/matcher stabilization"]
+    fn rsplitn<Sep: CharEq>(&self, count: uint, sep: Sep) -> CharSplitsN<Sep> {
+        core_str::StrExt::rsplitn(self[], count, sep)
+    }
+
+    /// An iterator over the start and end indices of the disjoint
+    /// matches of `sep` within `self`.
+    ///
+    /// That is, each returned value `(start, end)` satisfies
+    /// `self.slice(start, end) == sep`. For matches of `sep` within
+    /// `self` that overlap, only the indices corresponding to the
+    /// first match are returned.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let v: Vec<(uint, uint)> = "abcXXXabcYYYabc".match_indices("abc").collect();
+    /// assert_eq!(v, vec![(0,3), (6,9), (12,15)]);
+    ///
+    /// let v: Vec<(uint, uint)> = "1abcabc2".match_indices("abc").collect();
+    /// assert_eq!(v, vec![(1,4), (4,7)]);
+    ///
+    /// let v: Vec<(uint, uint)> = "ababa".match_indices("aba").collect();
+    /// assert_eq!(v, vec![(0, 3)]); // only the first `aba`
+    /// ```
+    #[unstable = "awaiting pattern/matcher stabilization"]
+    fn match_indices<'a>(&'a self, sep: &'a str) -> MatchIndices<'a> {
+        core_str::StrExt::match_indices(self[], sep)
+    }
+
+    /// An iterator over the substrings of `self` separated by `sep`.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let v: Vec<&str> = "abcXXXabcYYYabc".split_str("abc").collect();
+    /// assert_eq!(v, vec!["", "XXX", "YYY", ""]);
+    ///
+    /// let v: Vec<&str> = "1abcabc2".split_str("abc").collect();
+    /// assert_eq!(v, vec!["1", "", "2"]);
+    /// ```
+    #[unstable = "awaiting pattern/matcher stabilization"]
+    fn split_str<'a>(&'a self, s: &'a str) -> StrSplits<'a> {
+        core_str::StrExt::split_str(self[], s)
+    }
+
+    /// An iterator over the lines of a string (subsequences separated
+    /// by `\n`). This does not include the empty string after a
+    /// trailing `\n`.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let four_lines = "foo\nbar\n\nbaz\n";
+    /// let v: Vec<&str> = four_lines.lines().collect();
+    /// assert_eq!(v, vec!["foo", "bar", "", "baz"]);
+    /// ```
+    #[stable]
+    fn lines(&self) -> Lines {
+        core_str::StrExt::lines(self[])
+    }
+
+    /// An iterator over the lines of a string, separated by either
+    /// `\n` or `\r\n`. As with `.lines()`, this does not include an
+    /// empty trailing line.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let four_lines = "foo\r\nbar\n\r\nbaz\n";
+    /// let v: Vec<&str> = four_lines.lines_any().collect();
+    /// assert_eq!(v, vec!["foo", "bar", "", "baz"]);
+    /// ```
+    #[stable]
+    fn lines_any(&self) -> LinesAny {
+        core_str::StrExt::lines_any(self[])
+    }
+
+    /// Returns the number of Unicode code points (`char`) that a
+    /// string holds.
+    ///
+    /// This does not perform any normalization, and is `O(n)`, since
+    /// UTF-8 is a variable width encoding of code points.
+    ///
+    /// *Warning*: The number of code points in a string does not directly
+    /// correspond to the number of visible characters or width of the
+    /// visible text due to composing characters, and double- and
+    /// zero-width ones.
+    ///
+    /// See also `.len()` for the byte length.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # #![allow(deprecated)]
+    /// // composed forms of `ö` and `é`
+    /// let c = "Löwe 老虎 Léopard"; // German, Simplified Chinese, French
+    /// // decomposed forms of `ö` and `é`
+    /// let d = "Lo\u{0308}we 老虎 Le\u{0301}opard";
+    ///
+    /// assert_eq!(c.char_len(), 15);
+    /// assert_eq!(d.char_len(), 17);
+    ///
+    /// assert_eq!(c.len(), 21);
+    /// assert_eq!(d.len(), 23);
+    ///
+    /// // the two strings *look* the same
+    /// println!("{}", c);
+    /// println!("{}", d);
+    /// ```
+    #[deprecated = "call .chars().count() instead"]
+    fn char_len(&self) -> uint {
+        core_str::StrExt::char_len(self[])
+    }
+
+    /// Returns a slice of the given string from the byte range
+    /// [`begin`..`end`).
+    ///
+    /// This operation is `O(1)`.
+    ///
+    /// Panics when `begin` and `end` do not point to valid characters
+    /// or point beyond the last character of the string.
+    ///
+    /// See also `slice_to` and `slice_from` for slicing prefixes and
+    /// suffixes of strings, and `slice_chars` for slicing based on
+    /// code point counts.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let s = "Löwe 老虎 Léopard";
+    /// assert_eq!(s.slice(0, 1), "L");
+    ///
+    /// assert_eq!(s.slice(1, 9), "öwe 老");
+    ///
+    /// // these will panic:
+    /// // byte 2 lies within `ö`:
+    /// // s.slice(2, 3);
+    ///
+    /// // byte 8 lies within `老`
+    /// // s.slice(1, 8);
+    ///
+    /// // byte 100 is outside the string
+    /// // s.slice(3, 100);
+    /// ```
+    #[unstable = "use slice notation [a..b] instead"]
+    fn slice(&self, begin: uint, end: uint) -> &str {
+        core_str::StrExt::slice(self[], begin, end)
+    }
+
+    /// Returns a slice of the string from `begin` to its end.
+    ///
+    /// Equivalent to `self.slice(begin, self.len())`.
+    ///
+    /// Panics when `begin` does not point to a valid character, or is
+    /// out of bounds.
+    ///
+    /// See also `slice`, `slice_to` and `slice_chars`.
+    #[unstable = "use slice notation [a..] instead"]
+    fn slice_from(&self, begin: uint) -> &str {
+        core_str::StrExt::slice_from(self[], begin)
+    }
+
+    /// Returns a slice of the string from the beginning to byte
+    /// `end`.
+    ///
+    /// Equivalent to `self.slice(0, end)`.
+    ///
+    /// Panics when `end` does not point to a valid character, or is
+    /// out of bounds.
+    ///
+    /// See also `slice`, `slice_from` and `slice_chars`.
+    #[unstable = "use slice notation [0..a] instead"]
+    fn slice_to(&self, end: uint) -> &str {
+        core_str::StrExt::slice_to(self[], end)
+    }
+
+    /// Returns a slice of the string from the character range
+    /// [`begin`..`end`).
+    ///
+    /// That is, start at the `begin`-th code point of the string and
+    /// continue to the `end`-th code point. This does not detect or
+    /// handle edge cases such as leaving a combining character as the
+    /// first code point of the string.
+    ///
+    /// Due to the design of UTF-8, this operation is `O(end)`.
+    /// See `slice`, `slice_to` and `slice_from` for `O(1)`
+    /// variants that use byte indices rather than code point
+    /// indices.
+    ///
+    /// Panics if `begin` > `end` or the either `begin` or `end` are
+    /// beyond the last character of the string.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let s = "Löwe 老虎 Léopard";
+    /// assert_eq!(s.slice_chars(0, 4), "Löwe");
+    /// assert_eq!(s.slice_chars(5, 7), "老虎");
+    /// ```
+    #[unstable = "may have yet to prove its worth"]
+    fn slice_chars(&self, begin: uint, end: uint) -> &str {
+        core_str::StrExt::slice_chars(self[], begin, end)
+    }
+
+    /// Takes a bytewise (not UTF-8) slice from a string.
+    ///
+    /// Returns the substring from [`begin`..`end`).
+    ///
+    /// Caller must check both UTF-8 character boundaries and the boundaries of
+    /// the entire slice as well.
+    #[stable]
+    unsafe fn slice_unchecked(&self, begin: uint, end: uint) -> &str {
+        core_str::StrExt::slice_unchecked(self[], begin, end)
+    }
+
+    /// Returns true if `needle` is a prefix of the string.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// assert!("banana".starts_with("ba"));
+    /// ```
+    #[unstable = "awaiting pattern/matcher stabilization"]
+    fn starts_with(&self, needle: &str) -> bool {
+        core_str::StrExt::starts_with(self[], needle)
+    }
+
+    /// Returns true if `needle` is a suffix of the string.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// assert!("banana".ends_with("nana"));
+    /// ```
+    #[unstable = "awaiting pattern/matcher stabilization"]
+    fn ends_with(&self, needle: &str) -> bool {
+        core_str::StrExt::ends_with(self[], needle)
+    }
+
+    /// Returns a string with characters that match `to_trim` removed from the left and the right.
+    ///
+    /// # Arguments
+    ///
+    /// * to_trim - a character matcher
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// assert_eq!("11foo1bar11".trim_chars('1'), "foo1bar");
+    /// let x: &[_] = &['1', '2'];
+    /// assert_eq!("12foo1bar12".trim_chars(x), "foo1bar");
+    /// assert_eq!("123foo1bar123".trim_chars(|&: c: char| c.is_numeric()), "foo1bar");
+    /// ```
+    #[unstable = "awaiting pattern/matcher stabilization"]
+    fn trim_chars<C: CharEq>(&self, to_trim: C) -> &str {
+        core_str::StrExt::trim_chars(self[], to_trim)
+    }
+
+    /// Returns a string with leading `chars_to_trim` removed.
+    ///
+    /// # Arguments
+    ///
+    /// * to_trim - a character matcher
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// assert_eq!("11foo1bar11".trim_left_chars('1'), "foo1bar11");
+    /// let x: &[_] = &['1', '2'];
+    /// assert_eq!("12foo1bar12".trim_left_chars(x), "foo1bar12");
+    /// assert_eq!("123foo1bar123".trim_left_chars(|&: c: char| c.is_numeric()), "foo1bar123");
+    /// ```
+    #[unstable = "awaiting pattern/matcher stabilization"]
+    fn trim_left_chars<C: CharEq>(&self, to_trim: C) -> &str {
+        core_str::StrExt::trim_left_chars(self[], to_trim)
+    }
+
+    /// Returns a string with trailing `chars_to_trim` removed.
+    ///
+    /// # Arguments
+    ///
+    /// * to_trim - a character matcher
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// assert_eq!("11foo1bar11".trim_right_chars('1'), "11foo1bar");
+    /// let x: &[_] = &['1', '2'];
+    /// assert_eq!("12foo1bar12".trim_right_chars(x), "12foo1bar");
+    /// assert_eq!("123foo1bar123".trim_right_chars(|&: c: char| c.is_numeric()), "123foo1bar");
+    /// ```
+    #[unstable = "awaiting pattern/matcher stabilization"]
+    fn trim_right_chars<C: CharEq>(&self, to_trim: C) -> &str {
+        core_str::StrExt::trim_right_chars(self[], to_trim)
+    }
+
+    /// Check that `index`-th byte lies at the start and/or end of a
+    /// UTF-8 code point sequence.
+    ///
+    /// The start and end of the string (when `index == self.len()`)
+    /// are considered to be boundaries.
+    ///
+    /// Panics if `index` is greater than `self.len()`.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let s = "Löwe 老虎 Léopard";
+    /// assert!(s.is_char_boundary(0));
+    /// // start of `老`
+    /// assert!(s.is_char_boundary(6));
+    /// assert!(s.is_char_boundary(s.len()));
+    ///
+    /// // second byte of `ö`
+    /// assert!(!s.is_char_boundary(2));
+    ///
+    /// // third byte of `老`
+    /// assert!(!s.is_char_boundary(8));
+    /// ```
+    #[unstable = "naming is uncertain with container conventions"]
+    fn is_char_boundary(&self, index: uint) -> bool {
+        core_str::StrExt::is_char_boundary(self[], index)
+    }
+
+    /// Pluck a character out of a string and return the index of the next
+    /// character.
+    ///
+    /// This function can be used to iterate over the Unicode characters of a
+    /// string.
+    ///
+    /// # Example
+    ///
+    /// This example manually iterates through the characters of a
+    /// string; this should normally be done by `.chars()` or
+    /// `.char_indices`.
+    ///
+    /// ```rust
+    /// use std::str::CharRange;
+    ///
+    /// let s = "中华Việt Nam";
+    /// let mut i = 0u;
+    /// while i < s.len() {
+    ///     let CharRange {ch, next} = s.char_range_at(i);
+    ///     println!("{}: {}", i, ch);
+    ///     i = next;
+    /// }
+    /// ```
+    ///
+    /// This outputs:
+    ///
+    /// ```text
+    /// 0: 中
+    /// 3: 华
+    /// 6: V
+    /// 7: i
+    /// 8: ệ
+    /// 11: t
+    /// 12:
+    /// 13: N
+    /// 14: a
+    /// 15: m
+    /// ```
+    ///
+    /// # Arguments
+    ///
+    /// * s - The string
+    /// * i - The byte offset of the char to extract
+    ///
+    /// # Return value
+    ///
+    /// A record {ch: char, next: uint} containing the char value and the byte
+    /// index of the next Unicode character.
+    ///
+    /// # Panics
+    ///
+    /// If `i` is greater than or equal to the length of the string.
+    /// If `i` is not the index of the beginning of a valid UTF-8 character.
+    #[unstable = "naming is uncertain with container conventions"]
+    fn char_range_at(&self, start: uint) -> CharRange {
+        core_str::StrExt::char_range_at(self[], start)
+    }
+
+    /// Given a byte position and a str, return the previous char and its position.
+    ///
+    /// This function can be used to iterate over a Unicode string in reverse.
+    ///
+    /// Returns 0 for next index if called on start index 0.
+    ///
+    /// # Panics
+    ///
+    /// If `i` is greater than the length of the string.
+    /// If `i` is not an index following a valid UTF-8 character.
+    #[unstable = "naming is uncertain with container conventions"]
+    fn char_range_at_reverse(&self, start: uint) -> CharRange {
+        core_str::StrExt::char_range_at_reverse(self[], start)
+    }
+
+    /// Plucks the character starting at the `i`th byte of a string.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let s = "abπc";
+    /// assert_eq!(s.char_at(1), 'b');
+    /// assert_eq!(s.char_at(2), 'π');
+    /// assert_eq!(s.char_at(4), 'c');
+    /// ```
+    ///
+    /// # Panics
+    ///
+    /// If `i` is greater than or equal to the length of the string.
+    /// If `i` is not the index of the beginning of a valid UTF-8 character.
+    #[unstable = "naming is uncertain with container conventions"]
+    fn char_at(&self, i: uint) -> char {
+        core_str::StrExt::char_at(self[], i)
+    }
+
+    /// Plucks the character ending at the `i`th byte of a string.
+    ///
+    /// # Panics
+    ///
+    /// If `i` is greater than the length of the string.
+    /// If `i` is not an index following a valid UTF-8 character.
+    #[unstable = "naming is uncertain with container conventions"]
+    fn char_at_reverse(&self, i: uint) -> char {
+        core_str::StrExt::char_at_reverse(self[], i)
+    }
+
+    /// Work with the byte buffer of a string as a byte slice.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// assert_eq!("bors".as_bytes(), b"bors");
+    /// ```
+    #[stable]
+    fn as_bytes(&self) -> &[u8] {
+        core_str::StrExt::as_bytes(self[])
+    }
+
+    /// Returns the byte index of the first character of `self` that
+    /// matches `search`.
+    ///
+    /// # Return value
+    ///
+    /// `Some` containing the byte index of the last matching character
+    /// or `None` if there is no match
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let s = "Löwe 老虎 Léopard";
+    ///
+    /// assert_eq!(s.find('L'), Some(0));
+    /// assert_eq!(s.find('é'), Some(14));
+    ///
+    /// // the first space
+    /// assert_eq!(s.find(|&: c: char| c.is_whitespace()), Some(5));
+    ///
+    /// // neither are found
+    /// let x: &[_] = &['1', '2'];
+    /// assert_eq!(s.find(x), None);
+    /// ```
+    #[unstable = "awaiting pattern/matcher stabilization"]
+    fn find<C: CharEq>(&self, search: C) -> Option<uint> {
+        core_str::StrExt::find(self[], search)
+    }
+
+    /// Returns the byte index of the last character of `self` that
+    /// matches `search`.
+    ///
+    /// # Return value
+    ///
+    /// `Some` containing the byte index of the last matching character
+    /// or `None` if there is no match.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let s = "Löwe 老虎 Léopard";
+    ///
+    /// assert_eq!(s.rfind('L'), Some(13));
+    /// assert_eq!(s.rfind('é'), Some(14));
+    ///
+    /// // the second space
+    /// assert_eq!(s.rfind(|&: c: char| c.is_whitespace()), Some(12));
+    ///
+    /// // searches for an occurrence of either `1` or `2`, but neither are found
+    /// let x: &[_] = &['1', '2'];
+    /// assert_eq!(s.rfind(x), None);
+    /// ```
+    #[unstable = "awaiting pattern/matcher stabilization"]
+    fn rfind<C: CharEq>(&self, search: C) -> Option<uint> {
+        core_str::StrExt::rfind(self[], search)
+    }
+
+    /// Returns the byte index of the first matching substring
+    ///
+    /// # Arguments
+    ///
+    /// * `needle` - The string to search for
+    ///
+    /// # Return value
+    ///
+    /// `Some` containing the byte index of the first matching substring
+    /// or `None` if there is no match.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let s = "Löwe 老虎 Léopard";
+    ///
+    /// assert_eq!(s.find_str("老虎 L"), Some(6));
+    /// assert_eq!(s.find_str("muffin man"), None);
+    /// ```
+    #[unstable = "awaiting pattern/matcher stabilization"]
+    fn find_str(&self, needle: &str) -> Option<uint> {
+        core_str::StrExt::find_str(self[], needle)
+    }
+
+    /// Retrieves the first character from a string slice and returns
+    /// it. This does not allocate a new string; instead, it returns a
+    /// slice that point one character beyond the character that was
+    /// shifted. If the string does not contain any characters,
+    /// None is returned instead.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let s = "Löwe 老虎 Léopard";
+    /// let (c, s1) = s.slice_shift_char().unwrap();
+    /// assert_eq!(c, 'L');
+    /// assert_eq!(s1, "öwe 老虎 Léopard");
+    ///
+    /// let (c, s2) = s1.slice_shift_char().unwrap();
+    /// assert_eq!(c, 'ö');
+    /// assert_eq!(s2, "we 老虎 Léopard");
+    /// ```
+    #[unstable = "awaiting conventions about shifting and slices"]
+    fn slice_shift_char(&self) -> Option<(char, &str)> {
+        core_str::StrExt::slice_shift_char(self[])
+    }
+
+    /// Returns the byte offset of an inner slice relative to an enclosing outer slice.
+    ///
+    /// Panics if `inner` is not a direct slice contained within self.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let string = "a\nb\nc";
+    /// let lines: Vec<&str> = string.lines().collect();
+    ///
+    /// assert!(string.subslice_offset(lines[0]) == 0); // &"a"
+    /// assert!(string.subslice_offset(lines[1]) == 2); // &"b"
+    /// assert!(string.subslice_offset(lines[2]) == 4); // &"c"
+    /// ```
+    #[unstable = "awaiting pattern/matcher stabilization"]
+    fn subslice_offset(&self, inner: &str) -> uint {
+        core_str::StrExt::subslice_offset(self[], inner)
+    }
+
+    /// Return an unsafe pointer to the strings buffer.
+    ///
+    /// The caller must ensure that the string outlives this pointer,
+    /// and that it is not reallocated (e.g. by pushing to the
+    /// string).
+    #[stable]
     #[inline]
-    fn into_string(self) -> String {
-        String::from_str(self)
+    fn as_ptr(&self) -> *const u8 {
+        core_str::StrExt::as_ptr(self[])
+    }
+
+    /// Return an iterator of `u16` over the string encoded as UTF-16.
+    #[unstable = "this functionality may only be provided by libunicode"]
+    fn utf16_units(&self) -> Utf16Units {
+        Utf16Units { encoder: Utf16Encoder::new(self[].chars()) }
+    }
+
+    /// Return the number of bytes in this string
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// assert_eq!("foo".len(), 3);
+    /// assert_eq!("ƒoo".len(), 4);
+    /// ```
+    #[stable]
+    #[inline]
+    fn len(&self) -> uint {
+        core_str::StrExt::len(self[])
+    }
+
+    /// Returns true if this slice contains no bytes
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// assert!("".is_empty());
+    /// ```
+    #[inline]
+    #[stable]
+    fn is_empty(&self) -> bool {
+        core_str::StrExt::is_empty(self[])
+    }
+
+    /// Parse this string into the specified type.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// assert_eq!("4".parse::<u32>(), Some(4));
+    /// assert_eq!("j".parse::<u32>(), None);
+    /// ```
+    #[inline]
+    #[unstable = "this method was just created"]
+    fn parse<F: FromStr>(&self) -> Option<F> {
+        FromStr::from_str(self[])
+    }
+
+    /// Returns an iterator over the
+    /// [grapheme clusters](http://www.unicode.org/reports/tr29/#Grapheme_Cluster_Boundaries)
+    /// of the string.
+    ///
+    /// If `is_extended` is true, the iterator is over the *extended grapheme clusters*;
+    /// otherwise, the iterator is over the *legacy grapheme clusters*.
+    /// [UAX#29](http://www.unicode.org/reports/tr29/#Grapheme_Cluster_Boundaries)
+    /// recommends extended grapheme cluster boundaries for general processing.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let gr1 = "a\u{310}e\u{301}o\u{308}\u{332}".graphemes(true).collect::<Vec<&str>>();
+    /// let b: &[_] = &["a\u{310}", "e\u{301}", "o\u{308}\u{332}"];
+    /// assert_eq!(gr1.as_slice(), b);
+    /// let gr2 = "a\r\nb🇷🇺🇸🇹".graphemes(true).collect::<Vec<&str>>();
+    /// let b: &[_] = &["a", "\r\n", "b", "🇷🇺🇸🇹"];
+    /// assert_eq!(gr2.as_slice(), b);
+    /// ```
+    #[unstable = "this functionality may only be provided by libunicode"]
+    fn graphemes(&self, is_extended: bool) -> Graphemes {
+        UnicodeStr::graphemes(self[], is_extended)
+    }
+
+    /// Returns an iterator over the grapheme clusters of self and their byte offsets.
+    /// See `graphemes()` method for more information.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let gr_inds = "a̐éö̲\r\n".grapheme_indices(true).collect::<Vec<(uint, &str)>>();
+    /// let b: &[_] = &[(0u, "a̐"), (3, "é"), (6, "ö̲"), (11, "\r\n")];
+    /// assert_eq!(gr_inds.as_slice(), b);
+    /// ```
+    #[unstable = "this functionality may only be provided by libunicode"]
+    fn grapheme_indices(&self, is_extended: bool) -> GraphemeIndices {
+        UnicodeStr::grapheme_indices(self[], is_extended)
+    }
+
+    /// An iterator over the words of a string (subsequences separated
+    /// by any sequence of whitespace). Sequences of whitespace are
+    /// collapsed, so empty "words" are not included.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let some_words = " Mary   had\ta little  \n\t lamb";
+    /// let v: Vec<&str> = some_words.words().collect();
+    /// assert_eq!(v, vec!["Mary", "had", "a", "little", "lamb"]);
+    /// ```
+    #[stable]
+    fn words(&self) -> Words {
+        UnicodeStr::words(self[])
+    }
+
+    /// Returns true if the string contains only whitespace.
+    ///
+    /// Whitespace characters are determined by `char::is_whitespace`.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # #![allow(deprecated)]
+    /// assert!(" \t\n".is_whitespace());
+    /// assert!("".is_whitespace());
+    ///
+    /// assert!( !"abc".is_whitespace());
+    /// ```
+    #[deprecated = "use .chars().all(|c| c.is_whitespace())"]
+    fn is_whitespace(&self) -> bool {
+        UnicodeStr::is_whitespace(self[])
+    }
+
+    /// Returns true if the string contains only alphanumeric code
+    /// points.
+    ///
+    /// Alphanumeric characters are determined by `char::is_alphanumeric`.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # #![allow(deprecated)]
+    /// assert!("Löwe老虎Léopard123".is_alphanumeric());
+    /// assert!("".is_alphanumeric());
+    ///
+    /// assert!( !" &*~".is_alphanumeric());
+    /// ```
+    #[deprecated = "use .chars().all(|c| c.is_alphanumeric())"]
+    fn is_alphanumeric(&self) -> bool {
+        UnicodeStr::is_alphanumeric(self[])
+    }
+
+    /// Returns a string's displayed width in columns, treating control
+    /// characters as zero-width.
+    ///
+    /// `is_cjk` determines behavior for characters in the Ambiguous category:
+    /// if `is_cjk` is `true`, these are 2 columns wide; otherwise, they are 1.
+    /// In CJK locales, `is_cjk` should be `true`, else it should be `false`.
+    /// [Unicode Standard Annex #11](http://www.unicode.org/reports/tr11/)
+    /// recommends that these characters be treated as 1 column (i.e.,
+    /// `is_cjk` = `false`) if the locale is unknown.
+    #[unstable = "this functionality may only be provided by libunicode"]
+    fn width(&self, is_cjk: bool) -> uint {
+        UnicodeStr::width(self[], is_cjk)
+    }
+
+    /// Returns a string with leading and trailing whitespace removed.
+    #[stable]
+    fn trim(&self) -> &str {
+        UnicodeStr::trim(self[])
+    }
+
+    /// Returns a string with leading whitespace removed.
+    #[stable]
+    fn trim_left(&self) -> &str {
+        UnicodeStr::trim_left(self[])
+    }
+
+    /// Returns a string with trailing whitespace removed.
+    #[stable]
+    fn trim_right(&self) -> &str {
+        UnicodeStr::trim_right(self[])
+    }
+
+    /// Deprecated, call `.to_owned()` instead from the `std::borrow::ToOwned`
+    /// trait.
+    #[deprecated = "call `.to_owned()` on `std::borrow::ToOwned` instead"]
+    fn into_string(&self) -> String {
+        self[].to_owned()
     }
 }
+
+impl StrExt for str {}
 
 #[cfg(test)]
 mod tests {
-    use prelude::*;
-    use core::default::Default;
-    use core::iter::AdditiveIterator;
-    use super::{eq_slice, from_utf8, is_utf8, is_utf16, raw};
-    use super::truncate_utf16_at_nul;
-    use super::MaybeOwned::{Owned, Slice};
+    use std::iter::AdditiveIterator;
+    use std::iter::range;
+    use std::default::Default;
+    use std::char::Char;
+    use std::clone::Clone;
+    use std::cmp::{Ord, PartialOrd, Equiv};
+    use std::cmp::Ordering::{Equal, Greater, Less};
+    use std::option::Option::{mod, Some, None};
+    use std::result::Result::{Ok, Err};
+    use std::ptr::RawPtr;
+    use std::iter::{Iterator, IteratorExt, DoubleEndedIteratorExt};
 
-    #[test]
-    fn test_eq_slice() {
-        assert!((eq_slice("foobar".slice(0, 3), "foo")));
-        assert!((eq_slice("barfoo".slice(3, 6), "foo")));
-        assert!((!eq_slice("foo1", "foo2")));
-    }
+    use super::*;
+    use super::MaybeOwned::{Owned, Slice};
+    use std::slice::{AsSlice, SliceExt};
+    use string::{String, ToString};
+    use vec::Vec;
+    use slice::CloneSliceExt;
+
+    use unicode::char::UnicodeChar;
 
     #[test]
     fn test_le() {
@@ -1380,6 +2295,7 @@ mod tests {
 
     #[test]
     fn test_is_utf16() {
+        use unicode::str::is_utf16;
         macro_rules! pos ( ($($e:expr),*) => { { $(assert!(is_utf16($e));)* } });
 
         // non-surrogates
@@ -1539,28 +2455,6 @@ mod tests {
         assert!("a".contains_char('a'));
         assert!(!"abc".contains_char('d'));
         assert!(!"".contains_char('a'));
-    }
-
-    #[test]
-    fn test_truncate_utf16_at_nul() {
-        let v = [];
-        let b: &[u16] = &[];
-        assert_eq!(truncate_utf16_at_nul(&v), b);
-
-        let v = [0, 2, 3];
-        assert_eq!(truncate_utf16_at_nul(&v), b);
-
-        let v = [1, 0, 3];
-        let b: &[u16] = &[1];
-        assert_eq!(truncate_utf16_at_nul(&v), b);
-
-        let v = [1, 2, 0];
-        let b: &[u16] = &[1, 2];
-        assert_eq!(truncate_utf16_at_nul(&v), b);
-
-        let v = [1, 2, 3];
-        let b: &[u16] = &[1, 2, 3];
-        assert_eq!(truncate_utf16_at_nul(&v), b);
     }
 
     #[test]
@@ -1812,27 +2706,6 @@ mod tests {
         let data = "\n \tMäry   häd\tä  little lämb\nLittle lämb\n";
         let words: Vec<&str> = data.words().collect();
         assert_eq!(words, vec!["Märy", "häd", "ä", "little", "lämb", "Little", "lämb"])
-    }
-
-    #[test]
-    fn test_lev_distance() {
-        use core::char::{ from_u32, MAX };
-        // Test bytelength agnosticity
-        for c in range(0u32, MAX as u32)
-                 .filter_map(|i| from_u32(i))
-                 .map(|i| String::from_char(1, i)) {
-            assert_eq!(c[].lev_distance(c[]), 0);
-        }
-
-        let a = "\nMäry häd ä little lämb\n\nLittle lämb\n";
-        let b = "\nMary häd ä little lämb\n\nLittle lämb\n";
-        let c = "Mary häd ä little lämb\n\nLittle lämb\n";
-        assert_eq!(a.lev_distance(b), 1);
-        assert_eq!(b.lev_distance(a), 1);
-        assert_eq!(a.lev_distance(c), 2);
-        assert_eq!(c.lev_distance(a), 2);
-        assert_eq!(b.lev_distance(c), 1);
-        assert_eq!(c.lev_distance(b), 1);
     }
 
     #[test]
@@ -2385,13 +3258,13 @@ mod tests {
     #[test]
     fn test_str_from_utf8() {
         let xs = b"hello";
-        assert_eq!(from_utf8(xs), Some("hello"));
+        assert_eq!(from_utf8(xs), Ok("hello"));
 
         let xs = "ศไทย中华Việt Nam".as_bytes();
-        assert_eq!(from_utf8(xs), Some("ศไทย中华Việt Nam"));
+        assert_eq!(from_utf8(xs), Ok("ศไทย中华Việt Nam"));
 
         let xs = b"hello\xFF";
-        assert_eq!(from_utf8(xs), None);
+        assert_eq!(from_utf8(xs), Err(Utf8Error::TooShort));
     }
 
     #[test]
@@ -2440,8 +3313,8 @@ mod tests {
 
     #[test]
     fn test_maybe_owned_into_string() {
-        assert_eq!(Slice("abcde").into_string(), String::from_str("abcde"));
-        assert_eq!(Owned(String::from_str("abcde")).into_string(),
+        assert_eq!(Slice("abcde").to_string(), String::from_str("abcde"));
+        assert_eq!(Owned(String::from_str("abcde")).to_string(),
                    String::from_str("abcde"));
     }
 

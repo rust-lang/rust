@@ -1010,8 +1010,8 @@ in the original declaration.
 Finally, because fields have names, we can access the field through dot
 notation: `origin.x`.
 
-The values in structs are immutable, like other bindings in Rust. However, you
-can use `mut` to make them mutable:
+The values in structs are immutable by default, like other bindings in Rust.
+Use `mut` to make them mutable:
 
 ```{rust}
 struct Point {
@@ -2257,10 +2257,10 @@ a function for that:
 let input = io::stdin().read_line()
                        .ok()
                        .expect("Failed to read line");
-let input_num: Option<uint> = from_str(input.as_slice());
+let input_num: Option<uint> = input.parse();
 ```
 
-The `from_str` function takes in a `&str` value and converts it into something.
+The `parse` function takes in a `&str` value and converts it into something.
 We tell it what kind of something with a type hint. Remember our type hint with
 `random()`? It looked like this:
 
@@ -2279,8 +2279,8 @@ In this case, we say `x` is a `uint` explicitly, so Rust is able to properly
 tell `random()` what to generate. In a similar fashion, both of these work:
 
 ```{rust,ignore}
-let input_num = from_str::<uint>("5");       // input_num: Option<uint>
-let input_num: Option<uint> = from_str("5"); // input_num: Option<uint>
+let input_num = "5".parse::<uint>();         // input_num: Option<uint>
+let input_num: Option<uint> = "5".parse();   // input_num: Option<uint>
 ```
 
 Anyway, with us now converting our input to a number, our code looks like this:
@@ -2301,7 +2301,7 @@ fn main() {
     let input = io::stdin().read_line()
                            .ok()
                            .expect("Failed to read line");
-    let input_num: Option<uint> = from_str(input.as_slice());
+    let input_num: Option<uint> = input.parse();
 
     println!("You guessed: {}", input_num);
 
@@ -2350,7 +2350,7 @@ fn main() {
     let input = io::stdin().read_line()
                            .ok()
                            .expect("Failed to read line");
-    let input_num: Option<uint> = from_str(input.as_slice());
+    let input_num: Option<uint> = input.parse();
 
     let num = match input_num {
         Some(num) => num,
@@ -2395,7 +2395,7 @@ Uh, what? But we did!
 
 ... actually, we didn't. See, when you get a line of input from `stdin()`,
 you get all the input. Including the `\n` character from you pressing Enter.
-Therefore, `from_str()` sees the string `"5\n"` and says "nope, that's not a
+Therefore, `parse()` sees the string `"5\n"` and says "nope, that's not a
 number; there's non-number stuff in there!" Luckily for us, `&str`s have an easy
 method we can use defined on them: `trim()`. One small modification, and our
 code looks like this:
@@ -2416,7 +2416,7 @@ fn main() {
     let input = io::stdin().read_line()
                            .ok()
                            .expect("Failed to read line");
-    let input_num: Option<uint> = from_str(input.as_slice().trim());
+    let input_num: Option<uint> = input.trim().parse();
 
     let num = match input_num {
         Some(num) => num,
@@ -2491,7 +2491,7 @@ fn main() {
         let input = io::stdin().read_line()
                                .ok()
                                .expect("Failed to read line");
-        let input_num: Option<uint> = from_str(input.as_slice().trim());
+        let input_num: Option<uint> = input.trim().parse();
 
         let num = match input_num {
             Some(num) => num,
@@ -2566,7 +2566,7 @@ fn main() {
         let input = io::stdin().read_line()
                                .ok()
                                .expect("Failed to read line");
-        let input_num: Option<uint> = from_str(input.as_slice().trim());
+        let input_num: Option<uint> = input.trim().parse();
 
         let num = match input_num {
             Some(num) => num,
@@ -2621,7 +2621,7 @@ fn main() {
         let input = io::stdin().read_line()
                                .ok()
                                .expect("Failed to read line");
-        let input_num: Option<uint> = from_str(input.as_slice().trim());
+        let input_num: Option<uint> = input.trim().parse();
 
         let num = match input_num {
             Some(num) => num,
@@ -2697,7 +2697,7 @@ fn main() {
         let input = io::stdin().read_line()
                                .ok()
                                .expect("Failed to read line");
-        let input_num: Option<uint> = from_str(input.as_slice().trim());
+        let input_num: Option<uint> = input.trim().parse();
 
         let num = match input_num {
             Some(num) => num,

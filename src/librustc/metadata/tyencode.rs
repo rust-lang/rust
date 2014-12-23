@@ -123,8 +123,13 @@ pub fn enc_ty<'a, 'tcx>(w: &mut SeekableMemWriter, cx: &ctxt<'a, 'tcx>, t: Ty<'t
             mywrite!(w, "f");
             enc_closure_ty(w, cx, &**f);
         }
-        ty::ty_bare_fn(ref f) => {
+        ty::ty_bare_fn(Some(def_id), ref f) => {
             mywrite!(w, "F");
+            mywrite!(w, "{}|", (cx.ds)(def_id));
+            enc_bare_fn_ty(w, cx, f);
+        }
+        ty::ty_bare_fn(None, ref f) => {
+            mywrite!(w, "G");
             enc_bare_fn_ty(w, cx, f);
         }
         ty::ty_infer(_) => {

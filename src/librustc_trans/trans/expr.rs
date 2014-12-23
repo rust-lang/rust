@@ -54,7 +54,7 @@ use trans::inline;
 use trans::tvec;
 use trans::type_of;
 use middle::ty::{struct_fields, tup_fields};
-use middle::ty::{AdjustDerefRef, AdjustAddEnv, AutoUnsafe};
+use middle::ty::{AdjustDerefRef, AdjustReifyFnPointer, AdjustAddEnv, AutoUnsafe};
 use middle::ty::{AutoPtr};
 use middle::ty::{mod, Ty};
 use middle::ty::MethodCall;
@@ -177,8 +177,12 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
            datum.to_string(bcx.ccx()),
            adjustment.repr(bcx.tcx()));
     match adjustment {
-        AdjustAddEnv(..) => {
-            datum = unpack_datum!(bcx, add_env(bcx, expr, datum));
+        AdjustAddEnv(def_id, _) => {
+            datum = unpack_datum!(bcx, add_env(bcx, def_id, expr, datum));
+        }
+        AdjustReifyFnPointer(_def_id) => {
+            // FIXME(#19925) once fn item types are
+            // zero-sized, we'll need to do something here
         }
         AdjustDerefRef(ref adj) => {
             let (autoderefs, use_autoref) = match adj.autoref {
@@ -311,7 +315,7 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                     unsized_info(bcx, k, id, ty_substs[tp_index], |t| t)
                 }
                 _ => bcx.sess().bug(format!("UnsizeStruct with bad sty: {}",
-                                          bcx.ty_to_string(unadjusted_ty)).as_slice())
+                                          bcx.ty_to_string(unadjusted_ty))[])
             },
             &ty::UnsizeVtable(ty::TyTrait { ref principal, .. }, _) => {
                 let substs = principal.substs().with_self_ty(unadjusted_ty).erase_regions();
@@ -442,7 +446,7 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         let unboxed_ty = match datum_ty.sty {
             ty::ty_uniq(t) => t,
             _ => bcx.sess().bug(format!("Expected ty_uniq, found {}",
-                                        bcx.ty_to_string(datum_ty)).as_slice())
+                                        bcx.ty_to_string(datum_ty))[])
         };
         let result_ty = ty::mk_uniq(tcx, ty::unsize_ty(tcx, unboxed_ty, k, expr.span));
 
@@ -466,6 +470,7 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 
     fn add_env<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                           def_id: ast::DefId,
                            expr: &ast::Expr,
                            datum: Datum<'tcx, Expr>)
                            -> DatumBlock<'blk, 'tcx, Expr> {
@@ -477,8 +482,7 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
         let closure_ty = expr_ty_adjusted(bcx, expr);
         let fn_ptr = datum.to_llscalarish(bcx);
-        let def = ty::resolve_expr(bcx.tcx(), expr);
-        closure::make_closure_from_bare_fn(bcx, closure_ty, def, fn_ptr)
+        closure::make_closure_from_bare_fn(bcx, closure_ty, def_id, fn_ptr)
     }
 }
 
@@ -660,7 +664,7 @@ fn trans_datum_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 expr.span,
                 format!("trans_rvalue_datum_unadjusted reached \
                          fall-through case: {}",
-                        expr.node).as_slice());
+                        expr.node)[]);
         }
     }
 }
@@ -1007,7 +1011,7 @@ fn trans_rvalue_stmt_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 expr.span,
                 format!("trans_rvalue_stmt_unadjusted reached \
                          fall-through case: {}",
-                        expr.node).as_slice());
+                        expr.node)[]);
         }
     }
 }
@@ -1033,14 +1037,14 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             controlflow::trans_if(bcx, expr.id, &**cond, &**thn, els.as_ref().map(|e| &**e), dest)
         }
         ast::ExprMatch(ref discr, ref arms, _) => {
-            _match::trans_match(bcx, expr, &**discr, arms.as_slice(), dest)
+            _match::trans_match(bcx, expr, &**discr, arms[], dest)
         }
         ast::ExprBlock(ref blk) => {
             controlflow::trans_block(bcx, &**blk, dest)
         }
         ast::ExprStruct(_, ref fields, ref base) => {
             trans_struct(bcx,
-                         fields.as_slice(),
+                         fields[],
                          base.as_ref().map(|e| &**e),
                          expr.span,
                          expr.id,
@@ -1052,7 +1056,7 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             trans_adt(bcx,
                       expr_ty(bcx, expr),
                       0,
-                      numbered_fields.as_slice(),
+                      numbered_fields[],
                       None,
                       dest,
                       Some(NodeInfo { id: expr.id, span: expr.span }))
@@ -1096,13 +1100,13 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 trans_overloaded_call(bcx,
                                       expr,
                                       &**f,
-                                      args.as_slice(),
+                                      args[],
                                       Some(dest))
             } else {
                 callee::trans_call(bcx,
                                    expr,
                                    &**f,
-                                   callee::ArgExprs(args.as_slice()),
+                                   callee::ArgExprs(args[]),
                                    dest)
             }
         }
@@ -1110,7 +1114,7 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             callee::trans_method_call(bcx,
                                       expr,
                                       &*args[0],
-                                      callee::ArgExprs(args.as_slice()),
+                                      callee::ArgExprs(args[]),
                                       dest)
         }
         ast::ExprBinary(op, ref lhs, ref rhs) => {
@@ -1159,7 +1163,7 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 expr.span,
                 format!("trans_rvalue_dps_unadjusted reached fall-through \
                          case: {}",
-                        expr.node).as_slice());
+                        expr.node)[]);
         }
     }
 }
@@ -1207,7 +1211,7 @@ fn trans_def_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         _ => {
             bcx.tcx().sess.span_bug(ref_expr.span, format!(
                 "Non-DPS def {} referened by {}",
-                def, bcx.node_id_to_string(ref_expr.id)).as_slice());
+                def, bcx.node_id_to_string(ref_expr.id))[]);
         }
     }
 }
@@ -1234,7 +1238,7 @@ fn trans_def_fn_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             bcx.tcx().sess.span_bug(ref_expr.span, format!(
                     "trans_def_fn_unadjusted invoked on: {} for {}",
                     def,
-                    ref_expr.repr(bcx.tcx())).as_slice());
+                    ref_expr.repr(bcx.tcx()))[]);
         }
     };
 
@@ -1257,7 +1261,7 @@ pub fn trans_local_var<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 None => {
                     bcx.sess().bug(format!(
                         "trans_local_var: no llval for upvar {} found",
-                        nid).as_slice());
+                        nid)[]);
                 }
             }
         }
@@ -1267,7 +1271,7 @@ pub fn trans_local_var<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 None => {
                     bcx.sess().bug(format!(
                         "trans_local_var: no datum for local/arg {} found",
-                        nid).as_slice());
+                        nid)[]);
                 }
             };
             debug!("take_local(nid={}, v={}, ty={})",
@@ -1277,7 +1281,7 @@ pub fn trans_local_var<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         _ => {
             bcx.sess().unimpl(format!(
                 "unsupported def type in trans_local_var: {}",
-                def).as_slice());
+                def)[]);
         }
     }
 }
@@ -1294,11 +1298,11 @@ pub fn with_field_tys<'tcx, R, F>(tcx: &ty::ctxt<'tcx>,
 {
     match ty.sty {
         ty::ty_struct(did, ref substs) => {
-            op(0, struct_fields(tcx, did, substs).as_slice())
+            op(0, struct_fields(tcx, did, substs)[])
         }
 
         ty::ty_tup(ref v) => {
-            op(0, tup_fields(v.as_slice()).as_slice())
+            op(0, tup_fields(v[])[])
         }
 
         ty::ty_enum(_, ref substs) => {
@@ -1308,7 +1312,7 @@ pub fn with_field_tys<'tcx, R, F>(tcx: &ty::ctxt<'tcx>,
                     tcx.sess.bug(format!(
                         "cannot get field types from the enum type {} \
                          without a node ID",
-                        ty.repr(tcx)).as_slice());
+                        ty.repr(tcx))[]);
                 }
                 Some(node_id) => {
                     let def = tcx.def_map.borrow()[node_id].clone();
@@ -1319,7 +1323,7 @@ pub fn with_field_tys<'tcx, R, F>(tcx: &ty::ctxt<'tcx>,
                             op(variant_info.disr_val,
                                struct_fields(tcx,
                                              variant_id,
-                                             substs).as_slice())
+                                             substs)[])
                         }
                         _ => {
                             tcx.sess.bug("resolve didn't map this expr to a \
@@ -1333,7 +1337,7 @@ pub fn with_field_tys<'tcx, R, F>(tcx: &ty::ctxt<'tcx>,
         _ => {
             tcx.sess.bug(format!(
                 "cannot get field types from the type {}",
-                ty.repr(tcx)).as_slice());
+                ty.repr(tcx))[]);
         }
     }
 }
@@ -1388,7 +1392,7 @@ fn trans_struct<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         trans_adt(bcx,
                   ty,
                   discr,
-                  numbered_fields.as_slice(),
+                  numbered_fields[],
                   optbase,
                   dest,
                   Some(NodeInfo { id: expr_id, span: expr_span }))
@@ -2025,7 +2029,7 @@ fn trans_imm_cast<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                             t_in.repr(bcx.tcx()),
                                             k_in,
                                             t_out.repr(bcx.tcx()),
-                                            k_out).as_slice())
+                                            k_out)[])
                 }
             }
         }
@@ -2034,7 +2038,7 @@ fn trans_imm_cast<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                     t_in.repr(bcx.tcx()),
                                     k_in,
                                     t_out.repr(bcx.tcx()),
-                                    k_out).as_slice())
+                                    k_out)[])
     };
     return immediate_rvalue_bcx(bcx, newval, t_out).to_expr_datumblock();
 }
@@ -2196,7 +2200,7 @@ fn deref_once<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             bcx.tcx().sess.span_bug(
                 expr.span,
                 format!("deref invoked on expr of illegal type {}",
-                        datum.ty.repr(bcx.tcx())).as_slice());
+                        datum.ty.repr(bcx.tcx()))[]);
         }
     };
 

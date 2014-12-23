@@ -31,6 +31,16 @@ use libc::types::os::arch::extra::DWORD;
 
 const BUF_BYTES : uint = 2048u;
 
+/// Return a slice of `v` ending at (and not including) the first NUL
+/// (0).
+pub fn truncate_utf16_at_nul<'a>(v: &'a [u16]) -> &'a [u16] {
+    match v.iter().position(|c| *c == 0) {
+        // don't include the 0
+        Some(i) => v[..i],
+        None => v
+    }
+}
+
 pub fn errno() -> uint {
     use libc::types::os::arch::extra::DWORD;
 
@@ -87,7 +97,7 @@ pub fn error_string(errnum: i32) -> String {
             return format!("OS Error {} (FormatMessageW() returned error {})", errnum, fm_err);
         }
 
-        let msg = String::from_utf16(::str::truncate_utf16_at_nul(&buf));
+        let msg = String::from_utf16(truncate_utf16_at_nul(&buf));
         match msg {
             Some(msg) => format!("OS Error {}: {}", errnum, msg),
             None => format!("OS Error {} (FormatMessageW() returned invalid UTF-16)", errnum),
@@ -158,7 +168,7 @@ pub fn getcwd() -> IoResult<Path> {
         }
     }
 
-    match String::from_utf16(::str::truncate_utf16_at_nul(&buf)) {
+    match String::from_utf16(truncate_utf16_at_nul(&buf)) {
         Some(ref cwd) => Ok(Path::new(cwd)),
         None => Err(IoError {
             kind: OtherIoError,
@@ -269,7 +279,7 @@ pub fn load_self() -> Option<Vec<u8>> {
     unsafe {
         fill_utf16_buf_and_decode(|buf, sz| {
             libc::GetModuleFileNameW(0u as libc::DWORD, buf, sz)
-        }).map(|s| s.into_string().into_bytes())
+        }).map(|s| s.to_string().into_bytes())
     }
 }
 
@@ -292,5 +302,32 @@ pub fn page_size() -> uint {
         libc::GetSystemInfo(&mut info);
 
         return info.dwPageSize as uint;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::truncate_utf16_at_nul;
+
+    #[test]
+    fn test_truncate_utf16_at_nul() {
+        let v = [];
+        let b: &[u16] = &[];
+        assert_eq!(truncate_utf16_at_nul(&v), b);
+
+        let v = [0, 2, 3];
+        assert_eq!(truncate_utf16_at_nul(&v), b);
+
+        let v = [1, 0, 3];
+        let b: &[u16] = &[1];
+        assert_eq!(truncate_utf16_at_nul(&v), b);
+
+        let v = [1, 2, 0];
+        let b: &[u16] = &[1, 2];
+        assert_eq!(truncate_utf16_at_nul(&v), b);
+
+        let v = [1, 2, 3];
+        let b: &[u16] = &[1, 2, 3];
+        assert_eq!(truncate_utf16_at_nul(&v), b);
     }
 }

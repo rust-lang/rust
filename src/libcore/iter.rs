@@ -2612,6 +2612,9 @@ pub fn iterate<T, F>(seed: T, f: F) -> Iterate<T, F> where
         val.clone()
     }
 
+    // coerce to a fn pointer
+    let next: fn(&mut IterateState<T,F>) -> Option<T> = next;
+
     Unfold::new((f, Some(seed), true), next)
 }
 

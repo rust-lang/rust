@@ -228,7 +228,7 @@ impl CString {
     #[inline]
     pub fn as_str<'a>(&'a self) -> Option<&'a str> {
         let buf = self.as_bytes_no_nul();
-        str::from_utf8(buf)
+        str::from_utf8(buf).ok()
     }
 
     /// Return a CString iterator.
