@@ -23,8 +23,8 @@ Unlike most of the types that are present in Rust, the types computed
 for each item are in fact polytypes.  In "layman's terms", this means
 that they are generic types that may have type parameters (more
 mathematically phrased, they are universally quantified over a set of
-type parameters).  Polytypes are represented by an instance of
-`ty::Polytype`.  This combines the core type along with a list of the
+type parameters).  TypeSchemes are represented by an instance of
+`ty::TypeScheme`.  This combines the core type along with a list of the
 bounds for each parameter.  Type parameters themselves are represented
 as `ty_param()` instances.
 
@@ -43,7 +43,7 @@ use middle::resolve_lifetime;
 use middle::subst;
 use middle::subst::{Substs};
 use middle::ty::{AsPredicate, ImplContainer, ImplOrTraitItemContainer, TraitContainer};
-use middle::ty::{mod, RegionEscape, Ty, Polytype};
+use middle::ty::{mod, RegionEscape, Ty, TypeScheme};
 use middle::ty_fold::{mod, TypeFolder, TypeFoldable};
 use middle::infer;
 use rscope::*;
@@ -70,8 +70,8 @@ use syntax::visit;
 pub fn collect_item_types(ccx: &CrateCtxt) {
     fn collect_intrinsic_type(ccx: &CrateCtxt,
                               lang_item: ast::DefId) {
-        let ty::Polytype { ty, .. } =
-            ccx.get_item_ty(lang_item);
+        let ty::TypeScheme { ty, .. } =
+            ccx.get_item_type_scheme(lang_item);
         ccx.tcx.intrinsic_defs.borrow_mut().insert(lang_item, ty);
     }
 
@@ -154,7 +154,7 @@ impl<'a,'tcx> ToTy<'tcx> for CrateCtxt<'a,'tcx> {
 impl<'a, 'tcx> AstConv<'tcx> for CrateCtxt<'a, 'tcx> {
     fn tcx(&self) -> &ty::ctxt<'tcx> { self.tcx }
 
-    fn get_item_ty(&self, id: ast::DefId) -> ty::Polytype<'tcx> {
+    fn get_item_type_scheme(&self, id: ast::DefId) -> ty::TypeScheme<'tcx> {
         if id.krate != ast::LOCAL_CRATE {
             return csearch::get_type(self.tcx, id)
         }
@@ -170,8 +170,8 @@ impl<'a, 'tcx> AstConv<'tcx> for CrateCtxt<'a, 'tcx> {
             }
             x => {
                 self.tcx.sess.bug(format!("unexpected sort of node \
-                                           in get_item_ty(): {}",
-                                          x)[]);
+                                           in get_item_type_scheme(): {}",
+                                          x).as_slice());
             }
         }
     }
@@ -227,7 +227,7 @@ pub fn get_enum_variant_types<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             }
 
             ast::StructVariantKind(ref struct_def) => {
-                let pty = Polytype {
+                let scheme = TypeScheme {
                     generics: ty_generics_for_type_or_impl(
                         ccx,
                         generics,
@@ -235,12 +235,12 @@ pub fn get_enum_variant_types<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                     ty: enum_ty
                 };
 
-                convert_struct(ccx, &**struct_def, pty, variant.node.id);
+                convert_struct(ccx, &**struct_def, scheme, variant.node.id);
                 enum_ty
             }
         };
 
-        let pty = Polytype {
+        let scheme = TypeScheme {
             generics: ty_generics_for_type_or_impl(
                           ccx,
                           generics,
@@ -248,7 +248,7 @@ pub fn get_enum_variant_types<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             ty: result_ty
         };
 
-        tcx.tcache.borrow_mut().insert(variant_def_id, pty);
+        tcx.tcache.borrow_mut().insert(variant_def_id, scheme);
 
         write_ty_to_tcx(tcx, variant.node.id, result_ty);
     }
@@ -353,7 +353,7 @@ fn collect_trait_methods<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     fn make_method_ty<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, m: &ty::Method<'tcx>) {
         ccx.tcx.tcache.borrow_mut().insert(
             m.def_id,
-            Polytype {
+            TypeScheme {
                 generics: m.generics.clone(),
                 ty: ty::mk_bare_fn(ccx.tcx, Some(m.def_id), ccx.tcx.mk_bare_fn(m.fty.clone())) });
     }
@@ -416,7 +416,7 @@ pub fn convert_field<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     write_ty_to_tcx(ccx.tcx, v.node.id, tt);
     /* add the field to the tcache */
     ccx.tcx.tcache.borrow_mut().insert(local_def(v.node.id),
-                                       ty::Polytype {
+                                       ty::TypeScheme {
                                            generics: struct_generics.clone(),
                                            ty: tt
                                        });
@@ -536,7 +536,7 @@ fn convert_methods<'a,'tcx,'i,I>(ccx: &CrateCtxt<'a, 'tcx>,
                 fty.repr(tcx));
         tcx.tcache.borrow_mut().insert(
             m_def_id,
-            Polytype {
+            TypeScheme {
                 generics: mty.generics.clone(),
                 ty: fty
             });
@@ -1034,11 +1034,11 @@ pub fn convert(ccx: &CrateCtxt, it: &ast::Item) {
         // These don't define types.
         ast::ItemForeignMod(_) | ast::ItemMod(_) | ast::ItemMac(_) => {}
         ast::ItemEnum(ref enum_definition, ref generics) => {
-            let pty = ty_of_item(ccx, it);
-            write_ty_to_tcx(tcx, it.id, pty.ty);
+            let scheme = ty_of_item(ccx, it);
+            write_ty_to_tcx(tcx, it.id, scheme.ty);
             get_enum_variant_types(ccx,
-                                   pty.ty,
-                                   enum_definition.variants[],
+                                   scheme.ty,
+                                   enum_definition.variants.as_slice(),
                                    generics);
         },
         ast::ItemImpl(_,
@@ -1058,7 +1058,7 @@ pub fn convert(ccx: &CrateCtxt, it: &ast::Item) {
             tcx.tcache
                .borrow_mut()
                .insert(local_def(it.id),
-                       Polytype {
+                       TypeScheme {
                         generics: ty_generics.clone(),
                         ty: selfty,
                        });
@@ -1105,7 +1105,7 @@ pub fn convert(ccx: &CrateCtxt, it: &ast::Item) {
                         tcx.tcache
                            .borrow_mut()
                            .insert(local_def(typedef.id),
-                                   Polytype {
+                                   TypeScheme {
                                     generics: ty::Generics::empty(),
                                     ty: typ,
                                    });
@@ -1202,12 +1202,12 @@ pub fn convert(ccx: &CrateCtxt, it: &ast::Item) {
         },
         ast::ItemStruct(ref struct_def, _) => {
             // Write the class type.
-            let pty = ty_of_item(ccx, it);
-            write_ty_to_tcx(tcx, it.id, pty.ty);
+            let scheme = ty_of_item(ccx, it);
+            write_ty_to_tcx(tcx, it.id, scheme.ty);
 
-            tcx.tcache.borrow_mut().insert(local_def(it.id), pty.clone());
+            tcx.tcache.borrow_mut().insert(local_def(it.id), scheme.clone());
 
-            convert_struct(ccx, &**struct_def, pty, it.id);
+            convert_struct(ccx, &**struct_def, scheme, it.id);
         },
         ast::ItemTy(_, ref generics) => {
             ensure_no_ty_param_bounds(ccx, it.span, generics, "type");
@@ -1218,22 +1218,22 @@ pub fn convert(ccx: &CrateCtxt, it: &ast::Item) {
             // This call populates the type cache with the converted type
             // of the item in passing. All we have to do here is to write
             // it into the node type table.
-            let pty = ty_of_item(ccx, it);
-            write_ty_to_tcx(tcx, it.id, pty.ty);
+            let scheme = ty_of_item(ccx, it);
+            write_ty_to_tcx(tcx, it.id, scheme.ty);
         },
     }
 }
 
 pub fn convert_struct<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                 struct_def: &ast::StructDef,
-                                pty: ty::Polytype<'tcx>,
+                                scheme: ty::TypeScheme<'tcx>,
                                 id: ast::NodeId) {
     let tcx = ccx.tcx;
 
     // Write the type of each of the members and check for duplicate fields.
     let mut seen_fields: FnvHashMap<ast::Name, Span> = FnvHashMap::new();
     let field_tys = struct_def.fields.iter().map(|f| {
-        let result = convert_field(ccx, &pty.generics, f, local_def(id));
+        let result = convert_field(ccx, &scheme.generics, f, local_def(id));
 
         if result.name != special_idents::unnamed_field.name {
             let dup = match seen_fields.get(&result.name) {
@@ -1258,7 +1258,7 @@ pub fn convert_struct<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
     tcx.struct_fields.borrow_mut().insert(local_def(id), Rc::new(field_tys));
 
-    let substs = mk_item_substs(ccx, &pty.generics);
+    let substs = mk_item_substs(ccx, &scheme.generics);
     let selfty = ty::mk_struct(tcx, local_def(id), tcx.mk_substs(substs));
 
     // If this struct is enum-like or tuple-like, create the type of its
@@ -1270,7 +1270,7 @@ pub fn convert_struct<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                 // Enum-like.
                 write_ty_to_tcx(tcx, ctor_id, selfty);
 
-                tcx.tcache.borrow_mut().insert(local_def(ctor_id), pty);
+                tcx.tcache.borrow_mut().insert(local_def(ctor_id), scheme);
             } else if struct_def.fields[0].node.kind.is_unnamed() {
                 // Tuple-like.
                 let inputs: Vec<_> = struct_def.fields.iter().map(
@@ -1282,8 +1282,8 @@ pub fn convert_struct<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                                 selfty);
                 write_ty_to_tcx(tcx, ctor_id, ctor_fn_ty);
                 tcx.tcache.borrow_mut().insert(local_def(ctor_id),
-                                  Polytype {
-                    generics: pty.generics,
+                                  TypeScheme {
+                    generics: scheme.generics,
                     ty: ctor_fn_ty
                 });
             }
@@ -1302,10 +1302,10 @@ pub fn convert_foreign(ccx: &CrateCtxt, i: &ast::ForeignItem) {
     // convenient way to extract the ABI. - ndm
     let abi = ccx.tcx.map.get_foreign_abi(i.id);
 
-    let pty = ty_of_foreign_item(ccx, i, abi);
-    write_ty_to_tcx(ccx.tcx, i.id, pty.ty);
+    let scheme = ty_of_foreign_item(ccx, i, abi);
+    write_ty_to_tcx(ccx.tcx, i.id, scheme.ty);
 
-    ccx.tcx.tcache.borrow_mut().insert(local_def(i.id), pty);
+    ccx.tcx.tcache.borrow_mut().insert(local_def(i.id), scheme);
 }
 
 fn get_trait_def<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
@@ -1429,19 +1429,19 @@ pub fn trait_def_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 }
 
 pub fn ty_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, it: &ast::Item)
-                            -> ty::Polytype<'tcx> {
+                            -> ty::TypeScheme<'tcx> {
     let def_id = local_def(it.id);
     let tcx = ccx.tcx;
-    if let Some(pty) = tcx.tcache.borrow().get(&def_id) {
-        return pty.clone();
+    if let Some(scheme) = tcx.tcache.borrow().get(&def_id) {
+        return scheme.clone();
     }
     match it.node {
         ast::ItemStatic(ref t, _, _) | ast::ItemConst(ref t, _) => {
             let typ = ccx.to_ty(&ExplicitRscope, &**t);
-            let pty = no_params(typ);
+            let scheme = no_params(typ);
 
-            tcx.tcache.borrow_mut().insert(local_def(it.id), pty.clone());
-            return pty;
+            tcx.tcache.borrow_mut().insert(local_def(it.id), scheme.clone());
+            return scheme;
         }
         ast::ItemFn(ref decl, unsafety, abi, ref generics, _) => {
             let ty_generics = ty_generics_for_fn_or_method(
@@ -1456,27 +1456,27 @@ pub fn ty_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, it: &ast::Item)
                 };
                 astconv::ty_of_bare_fn(&fcx, unsafety, abi, &**decl)
             };
-            let pty = Polytype {
+            let scheme = TypeScheme {
                 generics: ty_generics,
                 ty: ty::mk_bare_fn(ccx.tcx, Some(local_def(it.id)), ccx.tcx.mk_bare_fn(tofd))
             };
             debug!("type of {} (id {}) is {}",
                     token::get_ident(it.ident),
                     it.id,
-                    pty.repr(tcx));
+                    scheme.repr(tcx));
 
-            ccx.tcx.tcache.borrow_mut().insert(local_def(it.id), pty.clone());
-            return pty;
+            ccx.tcx.tcache.borrow_mut().insert(local_def(it.id), scheme.clone());
+            return scheme;
         }
         ast::ItemTy(ref t, ref generics) => {
             match tcx.tcache.borrow_mut().get(&local_def(it.id)) {
-                Some(pty) => return pty.clone(),
+                Some(scheme) => return scheme.clone(),
                 None => { }
             }
 
-            let pty = {
+            let scheme = {
                 let ty = ccx.to_ty(&ExplicitRscope, &**t);
-                Polytype {
+                TypeScheme {
                     generics: ty_generics_for_type_or_impl(
                                   ccx,
                                   generics,
@@ -1485,8 +1485,8 @@ pub fn ty_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, it: &ast::Item)
                 }
             };
 
-            tcx.tcache.borrow_mut().insert(local_def(it.id), pty.clone());
-            return pty;
+            tcx.tcache.borrow_mut().insert(local_def(it.id), scheme.clone());
+            return scheme;
         }
         ast::ItemEnum(_, ref generics) => {
             // Create a new generic polytype.
@@ -1496,13 +1496,13 @@ pub fn ty_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, it: &ast::Item)
                 DontCreateTypeParametersForAssociatedTypes);
             let substs = mk_item_substs(ccx, &ty_generics);
             let t = ty::mk_enum(tcx, local_def(it.id), tcx.mk_substs(substs));
-            let pty = Polytype {
+            let scheme = TypeScheme {
                 generics: ty_generics,
                 ty: t
             };
 
-            tcx.tcache.borrow_mut().insert(local_def(it.id), pty.clone());
-            return pty;
+            tcx.tcache.borrow_mut().insert(local_def(it.id), scheme.clone());
+            return scheme;
         }
         ast::ItemTrait(..) => {
             tcx.sess.span_bug(it.span, "invoked ty_of_item on trait");
@@ -1514,13 +1514,13 @@ pub fn ty_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, it: &ast::Item)
                 DontCreateTypeParametersForAssociatedTypes);
             let substs = mk_item_substs(ccx, &ty_generics);
             let t = ty::mk_struct(tcx, local_def(it.id), tcx.mk_substs(substs));
-            let pty = Polytype {
+            let scheme = TypeScheme {
                 generics: ty_generics,
                 ty: t
             };
 
-            tcx.tcache.borrow_mut().insert(local_def(it.id), pty.clone());
-            return pty;
+            tcx.tcache.borrow_mut().insert(local_def(it.id), scheme.clone());
+            return scheme;
         }
         ast::ItemImpl(..) | ast::ItemMod(_) |
         ast::ItemForeignMod(_) | ast::ItemMac(_) => panic!(),
@@ -1529,7 +1529,7 @@ pub fn ty_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, it: &ast::Item)
 
 pub fn ty_of_foreign_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                     it: &ast::ForeignItem,
-                                    abi: abi::Abi) -> ty::Polytype<'tcx>
+                                    abi: abi::Abi) -> ty::TypeScheme<'tcx>
 {
     match it.node {
         ast::ForeignItemFn(ref fn_decl, ref generics) => {
@@ -1540,7 +1540,7 @@ pub fn ty_of_foreign_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                   abi)
         }
         ast::ForeignItemStatic(ref t, _) => {
-            ty::Polytype {
+            ty::TypeScheme {
                 generics: ty::Generics::empty(),
                 ty: ast_ty_to_ty(ccx, &ExplicitRscope, &**t)
             }
@@ -2107,7 +2107,7 @@ pub fn ty_of_foreign_fn_decl<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                        def_id: ast::DefId,
                                        ast_generics: &ast::Generics,
                                        abi: abi::Abi)
-                                       -> ty::Polytype<'tcx> {
+                                       -> ty::TypeScheme<'tcx> {
     for i in decl.inputs.iter() {
         match (*i).pat.node {
             ast::PatIdent(_, _, _) => (),
@@ -2144,16 +2144,16 @@ pub fn ty_of_foreign_fn_decl<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             abi: abi,
             unsafety: ast::Unsafety::Unsafe,
             sig: ty::Binder(ty::FnSig {inputs: input_tys,
-                            output: output,
-                            variadic: decl.variadic})
-        }));
-    let pty = Polytype {
+                                       output: output,
+                                       variadic: decl.variadic}),
+        });
+    let scheme = TypeScheme {
         generics: ty_generics_for_fn_or_method,
         ty: t_fn
     };
 
-    ccx.tcx.tcache.borrow_mut().insert(def_id, pty.clone());
-    return pty;
+    ccx.tcx.tcache.borrow_mut().insert(def_id, scheme.clone());
+    return scheme;
 }
 
 pub fn mk_item_substs<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,

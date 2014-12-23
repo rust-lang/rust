@@ -929,9 +929,9 @@ impl<'tcx> Repr<'tcx> for ast::DefId {
     }
 }
 
-impl<'tcx> Repr<'tcx> for ty::Polytype<'tcx> {
+impl<'tcx> Repr<'tcx> for ty::TypeScheme<'tcx> {
     fn repr(&self, tcx: &ctxt<'tcx>) -> String {
-        format!("Polytype {{generics: {}, ty: {}}}",
+        format!("TypeScheme {{generics: {}, ty: {}}}",
                 self.generics.repr(tcx),
                 self.ty.repr(tcx))
     }

@@ -147,8 +147,8 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                                                         item.span,
                                                         region::CodeExtent::from_node_id(item.id),
                                                         Some(&mut this.cache));
-            let polytype = ty::lookup_item_type(fcx.tcx(), local_def(item.id));
-            let item_ty = polytype.ty.subst(fcx.tcx(), &fcx.inh.param_env.free_substs);
+            let type_scheme = ty::lookup_item_type(fcx.tcx(), local_def(item.id));
+            let item_ty = type_scheme.ty.subst(fcx.tcx(), &fcx.inh.param_env.free_substs);
             bounds_checker.check_traits_in_ty(item_ty);
         });
     }
@@ -313,14 +313,14 @@ impl<'cx,'tcx> TypeFolder<'tcx> for BoundsChecker<'cx,'tcx> {
         match t.sty{
             ty::ty_struct(type_id, substs) |
             ty::ty_enum(type_id, substs) => {
-                let polytype = ty::lookup_item_type(self.fcx.tcx(), type_id);
+                let type_scheme = ty::lookup_item_type(self.fcx.tcx(), type_id);
 
                 if self.binding_count == 0 {
                     self.fcx.add_obligations_for_parameters(
                         traits::ObligationCause::new(self.span,
                                                      self.fcx.body_id,
                                                      traits::ItemObligation(type_id)),
-                        &polytype.generics.to_bounds(self.tcx(), substs));
+                        &type_scheme.generics.to_bounds(self.tcx(), substs));
                 } else {
                     // There are two circumstances in which we ignore
                     // region obligations.
@@ -344,7 +344,7 @@ impl<'cx,'tcx> TypeFolder<'tcx> for BoundsChecker<'cx,'tcx> {
                     //
                     // (I believe we should do the same for traits, but
                     // that will require an RFC. -nmatsakis)
-                    let bounds = polytype.generics.to_bounds(self.tcx(), substs);
+                    let bounds = type_scheme.generics.to_bounds(self.tcx(), substs);
                     let bounds = filter_to_trait_obligations(bounds);
                     self.fcx.add_obligations_for_parameters(
                         traits::ObligationCause::new(self.span,

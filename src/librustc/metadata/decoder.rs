@@ -387,7 +387,7 @@ pub fn get_trait_def<'tcx>(cdata: Cmd,
 }
 
 pub fn get_type<'tcx>(cdata: Cmd, id: ast::NodeId, tcx: &ty::ctxt<'tcx>)
-    -> ty::Polytype<'tcx> {
+    -> ty::TypeScheme<'tcx> {
 
     let item = lookup_item(id, cdata.data());
 
@@ -396,7 +396,7 @@ pub fn get_type<'tcx>(cdata: Cmd, id: ast::NodeId, tcx: &ty::ctxt<'tcx>)
 
     let generics = doc_generics(item, tcx, cdata, tag_item_generics);
 
-    ty::Polytype {
+    ty::TypeScheme {
         generics: generics,
         ty: t
     }

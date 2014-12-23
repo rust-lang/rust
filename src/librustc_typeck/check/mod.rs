@@ -91,7 +91,7 @@ use middle::pat_util::{mod, pat_id_map};
 use middle::region::CodeExtent;
 use middle::subst::{mod, Subst, Substs, VecPerParamSpace, ParamSpace};
 use middle::traits;
-use middle::ty::{FnSig, VariantInfo, Polytype};
+use middle::ty::{FnSig, VariantInfo, TypeScheme};
 use middle::ty::{Disr, ParamTy, ParameterEnvironment};
 use middle::ty::{mod, Ty};
 use middle::ty::liberate_late_bound_regions;
@@ -1510,7 +1510,7 @@ fn check_cast(fcx: &FnCtxt,
 impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
     fn tcx(&self) -> &ty::ctxt<'tcx> { self.ccx.tcx }
 
-    fn get_item_ty(&self, id: ast::DefId) -> ty::Polytype<'tcx> {
+    fn get_item_type_scheme(&self, id: ast::DefId) -> ty::TypeScheme<'tcx> {
         ty::lookup_item_type(self.tcx(), id)
     }
 
@@ -1739,14 +1739,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             def_id: ast::DefId)
                             -> TypeAndSubsts<'tcx>
     {
-        let polytype =
+        let type_scheme =
             ty::lookup_item_type(self.tcx(), def_id);
         let substs =
             self.infcx().fresh_substs_for_generics(
                 span,
-                &polytype.generics);
+                &type_scheme.generics);
         let bounds =
-            polytype.generics.to_bounds(self.tcx(), &substs);
+            type_scheme.generics.to_bounds(self.tcx(), &substs);
         self.add_obligations_for_parameters(
             traits::ObligationCause::new(
                 span,
@@ -1754,7 +1754,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 traits::ItemObligation(def_id)),
             &bounds);
         let monotype =
-            polytype.ty.subst(self.tcx(), &substs);
+            type_scheme.ty.subst(self.tcx(), &substs);
 
         TypeAndSubsts {
             ty: monotype,
@@ -3829,7 +3829,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
       }
       ast::ExprPath(ref pth) => {
           let defn = lookup_def(fcx, pth.span, id);
-          let pty = polytype_for_def(fcx, expr.span, defn);
+          let pty = type_scheme_for_def(fcx, expr.span, defn);
           instantiate_path(fcx, pth, pty, defn, expr.span, expr.id);
 
           // We always require that the type provided as the value for
@@ -4922,10 +4922,10 @@ pub fn lookup_def(fcx: &FnCtxt, sp: Span, id: ast::NodeId) -> def::Def {
 }
 
 // Returns the type parameter count and the type for the given definition.
-pub fn polytype_for_def<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
-                                  sp: Span,
-                                  defn: def::Def)
-                                  -> Polytype<'tcx> {
+pub fn type_scheme_for_def<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
+                                     sp: Span,
+                                     defn: def::Def)
+                                     -> TypeScheme<'tcx> {
     match defn {
       def::DefLocal(nid) | def::DefUpvar(nid, _, _) => {
           let typ = fcx.local_ty(sp, nid);
@@ -4969,15 +4969,15 @@ pub fn polytype_for_def<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 // number of type parameters and type.
 pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                   path: &ast::Path,
-                                  polytype: Polytype<'tcx>,
+                                  type_scheme: TypeScheme<'tcx>,
                                   def: def::Def,
                                   span: Span,
                                   node_id: ast::NodeId) {
-    debug!("instantiate_path(path={}, def={}, node_id={}, polytype={})",
+    debug!("instantiate_path(path={}, def={}, node_id={}, type_scheme={})",
            path.repr(fcx.tcx()),
            def.repr(fcx.tcx()),
            node_id,
-           polytype.repr(fcx.tcx()));
+           type_scheme.repr(fcx.tcx()));
 
     // We need to extract the type parameters supplied by the user in
     // the path `path`. Due to the current setup, this is a bit of a
@@ -5102,8 +5102,8 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
     // Next, examine the definition, and determine how many type
     // parameters we expect from each space.
-    let type_defs = &polytype.generics.types;
-    let region_defs = &polytype.generics.regions;
+    let type_defs = &type_scheme.generics.types;
+    let region_defs = &type_scheme.generics.regions;
 
     // Now that we have categorized what space the parameters for each
     // segment belong to, let's sort out the parameters that the user
@@ -5151,12 +5151,12 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     // the fn itself). Those should be replaced with fresh variables
     // now. These can appear either on the type being referenced, or
     // on the associated bounds.
-    let bounds = polytype.generics.to_bounds(fcx.tcx(), &substs);
+    let bounds = type_scheme.generics.to_bounds(fcx.tcx(), &substs);
     let (ty_late_bound, bounds) =
         fcx.infcx().replace_late_bound_regions_with_fresh_var(
             span,
             infer::FnCall,
-            &ty::Binder((polytype.ty, bounds))).0;
+            &ty::Binder((type_scheme.ty, bounds))).0;
 
     debug!("after late-bounds have been replaced: ty_late_bound={}", ty_late_bound.repr(fcx.tcx()));
     debug!("after late-bounds have been replaced: bounds={}", bounds.repr(fcx.tcx()));
