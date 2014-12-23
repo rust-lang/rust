@@ -603,14 +603,6 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Context<'a, 'tcx> {
         })
     }
 
-    fn visit_view_item(&mut self, i: &ast::ViewItem) {
-        self.with_lint_attrs(&i.attrs[], |cx| {
-            run_lints!(cx, check_view_item, i);
-            cx.visit_ids(|v| v.visit_view_item(i));
-            visit::walk_view_item(cx, i);
-        })
-    }
-
     fn visit_pat(&mut self, p: &ast::Pat) {
         run_lints!(self, check_pat, p);
         visit::walk_pat(self, p);

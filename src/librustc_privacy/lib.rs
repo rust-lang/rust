@@ -830,6 +830,38 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
     fn visit_item(&mut self, item: &ast::Item) {
+        match item.node {
+            ast::ItemUse(ref vpath) => {
+                match vpath.node {
+                    ast::ViewPathSimple(..) | ast::ViewPathGlob(..) => {}
+                    ast::ViewPathList(ref prefix, ref list) => {
+                        for pid in list.iter() {
+                            match pid.node {
+                                ast::PathListIdent { id, name } => {
+                                    debug!("privacy - ident item {}", id);
+                                    let seg = ast::PathSegment {
+                                        identifier: name,
+                                        parameters: ast::PathParameters::none(),
+                                    };
+                                    let segs = vec![seg];
+                                    let path = ast::Path {
+                                        global: false,
+                                        span: pid.span,
+                                        segments: segs,
+                                    };
+                                    self.check_path(pid.span, id, &path);
+                                }
+                                ast::PathListMod { id } => {
+                                    debug!("privacy - mod item {}", id);
+                                    self.check_path(pid.span, id, prefix);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            _ => {}
+        }
         let orig_curitem = replace(&mut self.curitem, item.id);
         visit::walk_item(self, item);
         self.curitem = orig_curitem;
@@ -924,42 +956,6 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
         }
 
         visit::walk_expr(self, expr);
-    }
-
-    fn visit_view_item(&mut self, a: &ast::ViewItem) {
-        match a.node {
-            ast::ViewItemExternCrate(..) => {}
-            ast::ViewItemUse(ref vpath) => {
-                match vpath.node {
-                    ast::ViewPathSimple(..) | ast::ViewPathGlob(..) => {}
-                    ast::ViewPathList(ref prefix, ref list, _) => {
-                        for pid in list.iter() {
-                            match pid.node {
-                                ast::PathListIdent { id, name } => {
-                                    debug!("privacy - ident item {}", id);
-                                    let seg = ast::PathSegment {
-                                        identifier: name,
-                                        parameters: ast::PathParameters::none(),
-                                    };
-                                    let segs = vec![seg];
-                                    let path = ast::Path {
-                                        global: false,
-                                        span: pid.span,
-                                        segments: segs,
-                                    };
-                                    self.check_path(pid.span, id, &path);
-                                }
-                                ast::PathListMod { id } => {
-                                    debug!("privacy - mod item {}", id);
-                                    self.check_path(pid.span, id, prefix);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        visit::walk_view_item(self, a);
     }
 
     fn visit_pat(&mut self, pattern: &ast::Pat) {
@@ -1069,23 +1065,6 @@ impl<'a, 'tcx, 'v> Visitor<'v> for SanePrivacyVisitor<'a, 'tcx> {
         visit::walk_fn(self, fk, fd, b, s);
         self.in_fn = orig_in_fn;
     }
-
-    fn visit_view_item(&mut self, i: &ast::ViewItem) {
-        match i.vis {
-            ast::Inherited => {}
-            ast::Public => {
-                if self.in_fn {
-                    self.tcx.sess.span_err(i.span, "unnecessary `pub`, imports \
-                                                    in functions are never \
-                                                    reachable");
-                } else if let ast::ViewItemExternCrate(..) = i.node {
-                    self.tcx.sess.span_err(i.span, "`pub` visibility \
-                                                    is not allowed");
-                }
-            }
-        }
-        visit::walk_view_item(self, i);
-    }
 }
 
 impl<'a, 'tcx> SanePrivacyVisitor<'a, 'tcx> {
@@ -1162,7 +1141,7 @@ impl<'a, 'tcx> SanePrivacyVisitor<'a, 'tcx> {
 
             ast::ItemConst(..) | ast::ItemStatic(..) | ast::ItemStruct(..) |
             ast::ItemFn(..) | ast::ItemMod(..) | ast::ItemTy(..) |
-            ast::ItemMac(..) => {}
+            ast::ItemExternCrate(_) | ast::ItemUse(_) | ast::ItemMac(..) => {}
         }
     }
 
@@ -1219,6 +1198,7 @@ impl<'a, 'tcx> SanePrivacyVisitor<'a, 'tcx> {
                 }
             }
 
+            ast::ItemExternCrate(_) | ast::ItemUse(_) |
             ast::ItemStatic(..) | ast::ItemConst(..) |
             ast::ItemFn(..) | ast::ItemMod(..) | ast::ItemTy(..) |
             ast::ItemMac(..) => {}
@@ -1521,11 +1501,9 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
 
 
     // we don't need to introspect into these at all: an
-    // expression/block context can't possibly contain exported
-    // things, and neither do view_items. (Making them no-ops stops us
-    // from traversing the whole AST without having to be super
-    // careful about our `walk_...` calls above.)
-    fn visit_view_item(&mut self, _: &ast::ViewItem) {}
+    // expression/block context can't possibly contain exported things.
+    // (Making them no-ops stops us from traversing the whole AST without
+    // having to be super careful about our `walk_...` calls above.)
     fn visit_block(&mut self, _: &ast::Block) {}
     fn visit_expr(&mut self, _: &ast::Expr) {}
 }
