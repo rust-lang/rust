@@ -23,7 +23,7 @@ use middle::ty::RegionEscape;
 use middle::ty::{ImplContainer, ImplOrTraitItemId, MethodTraitItemId};
 use middle::ty::{ParameterEnvironment, TypeTraitItemId, lookup_item_type};
 use middle::ty::{Ty, ty_bool, ty_char, ty_closure, ty_enum, ty_err};
-use middle::ty::{ty_param, Polytype, ty_ptr};
+use middle::ty::{ty_param, TypeScheme, ty_ptr};
 use middle::ty::{ty_rptr, ty_struct, ty_trait, ty_tup};
 use middle::ty::{ty_str, ty_vec, ty_float, ty_infer, ty_int, ty_open};
 use middle::ty::{ty_uint, ty_unboxed_closure, ty_uniq, ty_bare_fn};
@@ -206,7 +206,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
         debug!("instantiate_default_methods(impl_id={}, trait_ref={})",
                impl_id, trait_ref.repr(tcx));
 
-        let impl_poly_type = ty::lookup_item_type(tcx, impl_id);
+        let impl_type_scheme = ty::lookup_item_type(tcx, impl_id);
 
         let prov = ty::provided_trait_methods(tcx, trait_ref.def_id);
         for trait_method in prov.iter() {
@@ -221,7 +221,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
                 Rc::new(subst_receiver_types_in_method_ty(
                     tcx,
                     impl_id,
-                    &impl_poly_type,
+                    &impl_type_scheme,
                     trait_ref,
                     new_did,
                     &**trait_method,
@@ -233,7 +233,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
             // construct the polytype for the method based on the
             // method_ty.  it will have all the generics from the
             // impl, plus its own.
-            let new_polytype = ty::Polytype {
+            let new_polytype = ty::TypeScheme {
                 generics: new_method_ty.generics.clone(),
                 ty: ty::mk_bare_fn(tcx, Some(new_did),
                                    tcx.mk_bare_fn(new_method_ty.fty.clone()))
@@ -275,7 +275,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
     }
 
     fn get_self_type_for_implementation(&self, impl_did: DefId)
-                                        -> Polytype<'tcx> {
+                                        -> TypeScheme<'tcx> {
         self.crate_context.tcx.tcache.borrow()[impl_did].clone()
     }
 
@@ -535,7 +535,7 @@ fn enforce_trait_manually_implementable(tcx: &ty::ctxt, sp: Span, trait_def_id: 
 
 fn subst_receiver_types_in_method_ty<'tcx>(tcx: &ty::ctxt<'tcx>,
                                            impl_id: ast::DefId,
-                                           impl_poly_type: &ty::Polytype<'tcx>,
+                                           impl_type_scheme: &ty::TypeScheme<'tcx>,
                                            trait_ref: &ty::TraitRef<'tcx>,
                                            new_def_id: ast::DefId,
                                            method: &ty::Method<'tcx>,
@@ -554,10 +554,10 @@ fn subst_receiver_types_in_method_ty<'tcx>(tcx: &ty::ctxt<'tcx>,
     for &space in [subst::TypeSpace, subst::SelfSpace].iter() {
         method_generics.types.replace(
             space,
-            impl_poly_type.generics.types.get_slice(space).to_vec());
+            impl_type_scheme.generics.types.get_slice(space).to_vec());
         method_generics.regions.replace(
             space,
-            impl_poly_type.generics.regions.get_slice(space).to_vec());
+            impl_type_scheme.generics.regions.get_slice(space).to_vec());
     }
 
     debug!("subst_receiver_types_in_method_ty: method_generics={}",

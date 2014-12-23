@@ -159,8 +159,8 @@ fn lookup_def_ccx(ccx: &CrateCtxt, sp: Span, id: ast::NodeId)
     lookup_def_tcx(ccx.tcx, sp, id)
 }
 
-fn no_params<'tcx>(t: Ty<'tcx>) -> ty::Polytype<'tcx> {
-    ty::Polytype {
+fn no_params<'tcx>(t: Ty<'tcx>) -> ty::TypeScheme<'tcx> {
+    ty::TypeScheme {
         generics: ty::Generics {
             types: VecPerParamSpace::empty(),
             regions: VecPerParamSpace::empty(),

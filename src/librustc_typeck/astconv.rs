@@ -16,11 +16,11 @@
 //! somewhat differently during the collect and check phases,
 //! particularly with respect to looking up the types of top-level
 //! items.  In the collect phase, the crate context is used as the
-//! `AstConv` instance; in this phase, the `get_item_ty()` function
+//! `AstConv` instance; in this phase, the `get_item_type_scheme()` function
 //! triggers a recursive call to `ty_of_item()`  (note that
 //! `ast_ty_to_ty()` will detect recursive types and report an error).
 //! In the check phase, when the FnCtxt is used as the `AstConv`,
-//! `get_item_ty()` just looks up the item type in `tcx.tcache`.
+//! `get_item_type_scheme()` just looks up the item type in `tcx.tcache`.
 //!
 //! The `RegionScope` trait controls what happens when the user does
 //! not specify a region in some location where a region is required
@@ -70,7 +70,7 @@ use syntax::print::pprust;
 
 pub trait AstConv<'tcx> {
     fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx>;
-    fn get_item_ty(&self, id: ast::DefId) -> ty::Polytype<'tcx>;
+    fn get_item_type_scheme(&self, id: ast::DefId) -> ty::TypeScheme<'tcx>;
     fn get_trait_def(&self, id: ast::DefId) -> Rc<ty::TraitDef<'tcx>>;
 
     /// Return an (optional) substitution to convert bound type parameters that
@@ -650,10 +650,10 @@ pub fn ast_path_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
     -> TypeAndSubsts<'tcx>
 {
     let tcx = this.tcx();
-    let ty::Polytype {
+    let ty::TypeScheme {
         generics,
         ty: decl_ty
-    } = this.get_item_ty(did);
+    } = this.get_item_type_scheme(did);
 
     let substs = ast_path_substs_for_ty(this,
                                         rscope,
@@ -678,10 +678,10 @@ pub fn ast_path_to_ty_relaxed<'tcx,AC,RS>(
     where AC : AstConv<'tcx>, RS : RegionScope
 {
     let tcx = this.tcx();
-    let ty::Polytype {
+    let ty::TypeScheme {
         generics,
         ty: decl_ty
-    } = this.get_item_ty(did);
+    } = this.get_item_type_scheme(did);
 
     let wants_params =
         generics.has_type_params(TypeSpace) || generics.has_region_params(TypeSpace);

@@ -695,7 +695,7 @@ pub struct ctxt<'tcx> {
     pub map: ast_map::Map<'tcx>,
     pub intrinsic_defs: RefCell<DefIdMap<Ty<'tcx>>>,
     pub freevars: RefCell<FreevarMap>,
-    pub tcache: RefCell<DefIdMap<Polytype<'tcx>>>,
+    pub tcache: RefCell<DefIdMap<TypeScheme<'tcx>>>,
     pub rcache: RefCell<FnvHashMap<creader_cache_key, Ty<'tcx>>>,
     pub short_names_cache: RefCell<FnvHashMap<Ty<'tcx>, String>>,
     pub tc_cache: RefCell<FnvHashMap<Ty<'tcx>, TypeContents>>,
@@ -2029,18 +2029,23 @@ impl<'tcx> ParameterEnvironment<'tcx> {
     }
 }
 
-/// A polytype.
+/// A "type scheme", in ML terminology, is a type combined with some
+/// set of generic types that the type is, well, generic over. In Rust
+/// terms, it is the "type" of a fn item or struct -- this type will
+/// include various generic parameters that must be substituted when
+/// the item/struct is referenced. That is called converting the type
+/// scheme to a monotype.
 ///
 /// - `generics`: the set of type parameters and their bounds
 /// - `ty`: the base types, which may reference the parameters defined
 ///   in `generics`
 #[deriving(Clone, Show)]
-pub struct Polytype<'tcx> {
+pub struct TypeScheme<'tcx> {
     pub generics: Generics<'tcx>,
     pub ty: Ty<'tcx>
 }
 
-/// As `Polytype` but for a trait ref.
+/// As `TypeScheme` but for a trait ref.
 pub struct TraitDef<'tcx> {
     pub unsafety: ast::Unsafety,
 
@@ -5102,7 +5107,7 @@ pub fn enum_variant_with_id<'tcx>(cx: &ctxt<'tcx>,
 // the type cache. Returns the type parameters and type.
 pub fn lookup_item_type<'tcx>(cx: &ctxt<'tcx>,
                               did: ast::DefId)
-                              -> Polytype<'tcx> {
+                              -> TypeScheme<'tcx> {
     lookup_locally_or_in_crate_store(
         "tcache", did, &mut *cx.tcache.borrow_mut(),
         || csearch::get_type(cx, did))
