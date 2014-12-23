@@ -3817,6 +3817,20 @@ mod tests {
         assert_eq!(None::<int>.to_json(), Null);
     }
 
+    #[test]
+    fn test_encode_hashmap_with_arbitrary_key() {
+        use std::str::from_utf8;
+        use std::io::Writer;
+        use std::collections::HashMap;
+        struct ArbitraryType(uint);
+        let mut hm: HashMap<ArbitraryType, bool> = HashMap::new();
+        hm.insert(ArbitraryType(1), true);
+        let mut mem_buf = Vec::new();
+        let mut encoder = Encoder::new_compact(&mut mem_buf as &mut io::Writer);
+        let result = hm.encode(&mut encoder);
+        assert_eq!(result, BadHashmapKey);
+    }
+
     #[bench]
     fn bench_streaming_small(b: &mut Bencher) {
         b.iter( || {
