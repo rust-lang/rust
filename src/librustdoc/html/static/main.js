@@ -689,8 +689,10 @@
                 if (crates[i] == window.currentCrate) {
                     klass += ' current';
                 }
+                var desc = rawSearchIndex[crates[i]].items[0][3];
                 div.append($('<a>', {'href': '../' + crates[i] + '/index.html',
-                                    'class': klass}).text(crates[i]));
+                                     'title': desc.replace(/\n/g, ' '),
+                                     'class': klass}).text(crates[i]));
             }
             sidebar.append(div);
         }
