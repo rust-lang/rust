@@ -4183,9 +4183,6 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                   // A slice, rather than an index. Special cased for now (KILLME).
                   let base_t = structurally_resolved_type(fcx, expr.span, base_t);
 
-                  if lvalue_pref == PreferMutLvalue {
-                    println!("mutable lvalue_pref");
-                  }
                   let result =
                       autoderef_for_index(fcx, &**base, base_t, lvalue_pref, |adj_ty, adj| {
                           try_overloaded_slice_step(fcx,
@@ -4299,42 +4296,49 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
           // bounds because right the range structs do not have any. If we add
           // some bounds, then we'll need to check `t_start` against them here.
 
-          let range_type = if idx_type == Some(ty::mk_err()) {
-            ty::mk_err()
-          } else if idx_type.is_none() {
-            // Neither start nor end => FullRange
-            if let Some(did) = tcx.lang_items.full_range_struct() {
-                let substs = Substs::new_type(vec![], vec![]);
-                ty::mk_struct(tcx, did, substs)
-            } else {
+          let range_type = match idx_type {
+            Some(idx_type) if ty::type_is_error(idx_type) => {
                 ty::mk_err()
             }
-          } else {
-            // Find the did from the appropriate lang item.
-            let did = match (start, end) {
-                (&Some(_), &Some(_)) => tcx.lang_items.range_struct(),
-                (&Some(_), &None) => tcx.lang_items.range_from_struct(),
-                (&None, &Some(_)) => tcx.lang_items.range_to_struct(),
-                (&None, &None) => {
-                    tcx.sess.span_bug(expr.span,"full range should be dealt with above")
+            Some(idx_type) => {
+                // Find the did from the appropriate lang item.
+                let did = match (start, end) {
+                    (&Some(_), &Some(_)) => tcx.lang_items.range_struct(),
+                    (&Some(_), &None) => tcx.lang_items.range_from_struct(),
+                    (&None, &Some(_)) => tcx.lang_items.range_to_struct(),
+                    (&None, &None) => {
+                        tcx.sess.span_bug(expr.span, "full range should be dealt with above")
+                    }
+                };
+
+                if let Some(did) = did {
+                    let polytype = ty::lookup_item_type(tcx, did);
+                    let substs = Substs::new_type(vec![idx_type], vec![]);
+                    let bounds = polytype.generics.to_bounds(tcx, &substs);
+                    fcx.add_obligations_for_parameters(
+                        traits::ObligationCause::new(expr.span,
+                                                     fcx.body_id,
+                                                     traits::ItemObligation(did)),
+                        &bounds);
+
+                    ty::mk_struct(tcx, did, tcx.mk_substs(substs))
+                } else {
+                    tcx.sess.span_err(expr.span, "No lang item for range syntax");
+                    ty::mk_err()
                 }
-            };
-
-            if let Some(did) = did {
-                let polytype = ty::lookup_item_type(tcx, did);
-                let substs = Substs::new_type(vec![idx_type.unwrap()], vec![]);
-                let bounds = polytype.generics.to_bounds(tcx, &substs);
-                fcx.add_obligations_for_parameters(
-                    traits::ObligationCause::new(expr.span,
-                                                 fcx.body_id,
-                                                 traits::ItemObligation(did)),
-                    &bounds);
-
-                ty::mk_struct(tcx, did, tcx.mk_substs(substs))
-            } else {
-                ty::mk_err()
+            }
+            None => {
+                // Neither start nor end => FullRange
+                if let Some(did) = tcx.lang_items.full_range_struct() {
+                    let substs = Substs::new_type(vec![], vec![]);
+                    ty::mk_struct(tcx, did, tcx.mk_substs(substs))
+                } else {
+                    tcx.sess.span_err(expr.span, "No lang item for range syntax");
+                    ty::mk_err()
+                }
             }
           };
+
           fcx.write_ty(id, range_type);
        }
 
