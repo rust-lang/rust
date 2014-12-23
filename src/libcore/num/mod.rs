@@ -15,8 +15,6 @@
 #![stable]
 #![allow(missing_docs)]
 
-pub use self::FPCategory::*;
-
 use {int, i8, i16, i32, i64};
 use {uint, u8, u16, u32, u64};
 use {f32, f64};
@@ -1222,17 +1220,17 @@ impl_num_cast! { f64,   to_f64 }
 /// Used for representing the classification of floating point numbers
 #[deriving(Copy, PartialEq, Show)]
 #[unstable = "may be renamed"]
-pub enum FPCategory {
+pub enum FpCategory {
     /// "Not a Number", often obtained by dividing by zero
-    FPNaN,
+    Nan,
     /// Positive or negative infinity
-    FPInfinite ,
+    Infinite ,
     /// Positive or negative zero
-    FPZero,
-    /// De-normalized floating point representation (less precise than `FPNormal`)
-    FPSubnormal,
+    Zero,
+    /// De-normalized floating point representation (less precise than `Normal`)
+    Subnormal,
     /// A regular floating point number
-    FPNormal,
+    Normal,
 }
 
 /// A built-in floating point number.
@@ -1277,7 +1275,7 @@ pub trait Float
     /// Returns true if this number is neither zero, infinite, denormal, or NaN.
     fn is_normal(self) -> bool;
     /// Returns the category that this number falls into.
-    fn classify(self) -> FPCategory;
+    fn classify(self) -> FpCategory;
 
     // FIXME (#5527): These should be associated constants
 
