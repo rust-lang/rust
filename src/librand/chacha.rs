@@ -12,7 +12,6 @@
 
 use core::prelude::*;
 use core::num::Int;
-
 use {Rng, SeedableRng, Rand};
 
 const KEY_WORDS    : uint =  8; // 8 words for the 256-bit key
@@ -28,8 +27,7 @@ const CHACHA_ROUNDS: uint = 20; // Cryptographically secure from 8 upwards as of
 ///
 /// [1]: D. J. Bernstein, [*ChaCha, a variant of
 /// Salsa20*](http://cr.yp.to/chacha.html)
-
-#[derive(Copy)]
+#[deriving(Copy, Clone)]
 pub struct ChaChaRng {
     buffer:  [u32; STATE_WORDS], // Internal buffer of output
     state:   [u32; STATE_WORDS], // Initial state

@@ -385,22 +385,12 @@ pub trait SeedableRng<Seed>: Rng {
 /// RNGs"](http://www.jstatsoft.org/v08/i14/paper). *Journal of
 /// Statistical Software*. Vol. 8 (Issue 14).
 #[allow(missing_copy_implementations)]
+#[deriving(Clone)]
 pub struct XorShiftRng {
     x: u32,
     y: u32,
     z: u32,
     w: u32,
-}
-
-impl Clone for XorShiftRng {
-    fn clone(&self) -> XorShiftRng {
-        XorShiftRng {
-            x: self.x,
-            y: self.y,
-            z: self.z,
-            w: self.w,
-        }
-    }
 }
 
 impl XorShiftRng {
@@ -507,6 +497,7 @@ pub struct Closed01<F>(pub F);
 #[cfg(not(test))]
 mod std {
     pub use core::{option, fmt}; // panic!()
+    pub use core::clone; // derive Clone
     pub use core::kinds;
 }
 
