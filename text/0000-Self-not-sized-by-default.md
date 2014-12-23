@@ -75,7 +75,7 @@ object `Foo` implements the trait `Foo`.
 
 [RFC 255]: https://github.com/rust-lang/rfcs/blob/master/text/0255-object-safety.md
 [RFC 490]: https://github.com/rust-lang/rfcs/blob/master/text/0490-dst-syntax.md
-[this branch]: https://github.com/nikomatsakis/rust/commits/impl-trait-for-trait-2
+[this branch]: https://github.com/nikomatsakis/rust/tree/impl-trait-for-trait-2
 [this commit]: https://github.com/nikomatsakis/rust/commit/d08a08ab82031b6f935bdaf160a28d9520ded1ab
 
 # Drawbacks
