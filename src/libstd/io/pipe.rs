@@ -114,7 +114,7 @@ impl Writer for PipeStream {
 mod test {
     use prelude::v1::*;
 
-    use comm::channel;
+    use sync::mpsc::channel;
     use thread::Thread;
 
     #[test]
@@ -129,11 +129,11 @@ mod test {
         let _t = Thread::spawn(move|| {
             let mut out = out;
             out.write(&[10]).unwrap();
-            rx.recv(); // don't close the pipe until the other read has finished
+            rx.recv().unwrap(); // don't close the pipe until the other read has finished
         });
 
         let mut buf = [0, ..10];
         input.read(&mut buf).unwrap();
-        tx.send(());
+        tx.send(()).unwrap();
     }
 }

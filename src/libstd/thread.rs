@@ -443,7 +443,7 @@ mod test {
 
     use any::{Any, AnyRefExt};
     use boxed::BoxAny;
-    use comm::{channel, Sender};
+    use sync::mpsc::{channel, Sender};
     use result;
     use std::io::{ChanReader, ChanWriter};
     use super::{Thread, Builder};
@@ -470,9 +470,9 @@ mod test {
     fn test_run_basic() {
         let (tx, rx) = channel();
         Thread::spawn(move|| {
-            tx.send(());
+            tx.send(()).unwrap();
         }).detach();
-        rx.recv();
+        rx.recv().unwrap();
     }
 
     #[test]
@@ -505,7 +505,7 @@ mod test {
             let tx = tx.clone();
             Thread::spawn(move|| {
                 if i == 0 {
-                    tx.send(());
+                    tx.send(()).unwrap();
                 } else {
                     f(i - 1, tx);
                 }
@@ -513,7 +513,7 @@ mod test {
 
         }
         f(10, tx);
-        rx.recv();
+        rx.recv().unwrap();
     }
 
     #[test]
@@ -522,11 +522,11 @@ mod test {
 
         Thread::spawn(move|| {
             Thread::spawn(move|| {
-                tx.send(());
+                tx.send(()).unwrap();
             }).detach();
         }).detach();
 
-        rx.recv();
+        rx.recv().unwrap();
     }
 
     fn avoid_copying_the_body<F>(spawnfn: F) where F: FnOnce(Thunk) {
@@ -537,10 +537,10 @@ mod test {
 
         spawnfn(Thunk::new(move|| {
             let x_in_child = (&*x) as *const int as uint;
-            tx.send(x_in_child);
+            tx.send(x_in_child).unwrap();
         }));
 
-        let x_in_child = rx.recv();
+        let x_in_child = rx.recv().unwrap();
         assert_eq!(x_in_parent, x_in_child);
     }
 

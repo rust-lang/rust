@@ -245,7 +245,7 @@ mod test {
     use sync::Arc;
     use super::Queue;
     use thread::Thread;
-    use comm::channel;
+    use sync::mpsc::channel;
 
     #[test]
     fn smoke() {
@@ -332,12 +332,12 @@ mod test {
                         }
                     }
                 }
-                tx.send(());
+                tx.send(()).unwrap();
             });
             for _ in range(0i, 100000) {
                 q.push(1);
             }
-            rx.recv();
+            rx.recv().unwrap();
         }
     }
 }

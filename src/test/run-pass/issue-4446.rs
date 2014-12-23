@@ -9,15 +9,15 @@
 // except according to those terms.
 
 use std::io::println;
-use std::comm::channel;
+use std::sync::mpsc::channel;
 use std::thread::Thread;
 
 pub fn main() {
     let (tx, rx) = channel();
 
-    tx.send("hello, world");
+    tx.send("hello, world").unwrap();
 
     Thread::spawn(move|| {
-        println(rx.recv());
+        println(rx.recv().unwrap());
     }).join().ok().unwrap();
 }

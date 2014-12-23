@@ -59,7 +59,6 @@ use term::color::{Color, RED, YELLOW, GREEN, CYAN};
 use std::any::{Any, AnyRefExt};
 use std::cmp;
 use std::collections::BTreeMap;
-use std::comm::{channel, Sender};
 use std::f64;
 use std::fmt::Show;
 use std::fmt;
@@ -71,6 +70,7 @@ use std::iter::repeat;
 use std::num::{Float, FloatMath, Int};
 use std::os;
 use std::str::{FromStr, from_str};
+use std::sync::mpsc::{channel, Sender};
 use std::thread::{mod, Thread};
 use std::thunk::{Thunk, Invoke};
 use std::time::Duration;
@@ -1021,7 +1021,7 @@ fn run_tests<F>(opts: &TestOpts,
             pending += 1;
         }
 
-        let (desc, result, stdout) = rx.recv();
+        let (desc, result, stdout) = rx.recv().unwrap();
         if concurrency != 1 {
             try!(callback(TeWait(desc.clone(), PadNone)));
         }
@@ -1034,7 +1034,7 @@ fn run_tests<F>(opts: &TestOpts,
     for b in filtered_benchs_and_metrics.into_iter() {
         try!(callback(TeWait(b.desc.clone(), b.testfn.padding())));
         run_test(opts, !opts.run_benchmarks, b, tx.clone());
-        let (test, result, stdout) = rx.recv();
+        let (test, result, stdout) = rx.recv().unwrap();
         try!(callback(TeResult(test, result, stdout)));
     }
     Ok(())
@@ -1111,7 +1111,7 @@ pub fn run_test(opts: &TestOpts,
     let TestDescAndFn {desc, testfn} = test;
 
     if force_ignore || desc.ignore {
-        monitor_ch.send((desc, TrIgnored, Vec::new()));
+        monitor_ch.send((desc, TrIgnored, Vec::new())).unwrap();
         return;
     }
 
@@ -1138,31 +1138,31 @@ pub fn run_test(opts: &TestOpts,
             let result_guard = cfg.spawn(move || { testfn.invoke(()) });
             let stdout = reader.read_to_end().unwrap().into_iter().collect();
             let test_result = calc_result(&desc, result_guard.join());
-            monitor_ch.send((desc.clone(), test_result, stdout));
+            monitor_ch.send((desc.clone(), test_result, stdout)).unwrap();
         }).detach();
     }
 
     match testfn {
         DynBenchFn(bencher) => {
             let bs = ::bench::benchmark(|harness| bencher.run(harness));
-            monitor_ch.send((desc, TrBench(bs), Vec::new()));
+            monitor_ch.send((desc, TrBench(bs), Vec::new())).unwrap();
             return;
         }
         StaticBenchFn(benchfn) => {
             let bs = ::bench::benchmark(|harness| (benchfn.clone())(harness));
-            monitor_ch.send((desc, TrBench(bs), Vec::new()));
+            monitor_ch.send((desc, TrBench(bs), Vec::new())).unwrap();
             return;
         }
         DynMetricFn(f) => {
             let mut mm = MetricMap::new();
             f.invoke(&mut mm);
-            monitor_ch.send((desc, TrMetrics(mm), Vec::new()));
+            monitor_ch.send((desc, TrMetrics(mm), Vec::new())).unwrap();
             return;
         }
         StaticMetricFn(f) => {
             let mut mm = MetricMap::new();
             f(&mut mm);
-            monitor_ch.send((desc, TrMetrics(mm), Vec::new()));
+            monitor_ch.send((desc, TrMetrics(mm), Vec::new())).unwrap();
             return;
         }
         DynTestFn(f) => run_test_inner(desc, monitor_ch, opts.nocapture, f),
@@ -1466,7 +1466,7 @@ mod tests {
                StaticTestName, DynTestName, DynTestFn, ShouldFail};
     use std::io::TempDir;
     use std::thunk::Thunk;
-    use std::comm::channel;
+    use std::sync::mpsc::channel;
 
     #[test]
     pub fn do_not_run_ignored_tests() {
@@ -1481,7 +1481,7 @@ mod tests {
         };
         let (tx, rx) = channel();
         run_test(&TestOpts::new(), false, desc, tx);
-        let (_, res, _) = rx.recv();
+        let (_, res, _) = rx.recv().unwrap();
         assert!(res != TrOk);
     }
 
@@ -1498,7 +1498,7 @@ mod tests {
         };
         let (tx, rx) = channel();
         run_test(&TestOpts::new(), false, desc, tx);
-        let (_, res, _) = rx.recv();
+        let (_, res, _) = rx.recv().unwrap();
         assert!(res == TrIgnored);
     }
 
@@ -1515,7 +1515,7 @@ mod tests {
         };
         let (tx, rx) = channel();
         run_test(&TestOpts::new(), false, desc, tx);
-        let (_, res, _) = rx.recv();
+        let (_, res, _) = rx.recv().unwrap();
         assert!(res == TrOk);
     }
 
@@ -1532,7 +1532,7 @@ mod tests {
         };
         let (tx, rx) = channel();
         run_test(&TestOpts::new(), false, desc, tx);
-        let (_, res, _) = rx.recv();
+        let (_, res, _) = rx.recv().unwrap();
         assert!(res == TrOk);
     }
 
@@ -1549,7 +1549,7 @@ mod tests {
         };
         let (tx, rx) = channel();
         run_test(&TestOpts::new(), false, desc, tx);
-        let (_, res, _) = rx.recv();
+        let (_, res, _) = rx.recv().unwrap();
         assert!(res == TrFailed);
     }
 
@@ -1566,7 +1566,7 @@ mod tests {
         };
         let (tx, rx) = channel();
         run_test(&TestOpts::new(), false, desc, tx);
-        let (_, res, _) = rx.recv();
+        let (_, res, _) = rx.recv().unwrap();
         assert!(res == TrFailed);
     }
 

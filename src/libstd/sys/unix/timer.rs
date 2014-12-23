@@ -49,13 +49,13 @@
 use prelude::v1::*;
 use self::Req::*;
 
-use comm::{mod, channel, Sender, Receiver};
 use io::IoResult;
 use libc;
 use mem;
 use os;
 use ptr;
 use sync::atomic;
+use sync::mpsc::{channel, Sender, Receiver, TryRecvError};
 use sys::c;
 use sys::fs::FileDesc;
 use sys_common::helper_thread::Helper;
@@ -168,7 +168,7 @@ fn helper(input: libc::c_int, messages: Receiver<Req>, _: ()) {
             1 => {
                 loop {
                     match messages.try_recv() {
-                        Err(comm::Disconnected) => {
+                        Err(TryRecvError::Disconnected) => {
                             assert!(active.len() == 0);
                             break 'outer;
                         }
@@ -179,7 +179,7 @@ fn helper(input: libc::c_int, messages: Receiver<Req>, _: ()) {
                             match dead.iter().position(|&(i, _)| id == i) {
                                 Some(i) => {
                                     let (_, i) = dead.remove(i).unwrap();
-                                    ack.send(i);
+                                    ack.send(i).unwrap();
                                     continue
                                 }
                                 None => {}
@@ -187,7 +187,7 @@ fn helper(input: libc::c_int, messages: Receiver<Req>, _: ()) {
                             let i = active.iter().position(|i| i.id == id);
                             let i = i.expect("no timer found");
                             let t = active.remove(i).unwrap();
-                            ack.send(t);
+                            ack.send(t).unwrap();
                         }
                         Err(..) => break
                     }
@@ -271,7 +271,7 @@ impl Timer {
             None => {
                 let (tx, rx) = channel();
                 HELPER.send(RemoveTimer(self.id, tx));
-                rx.recv()
+                rx.recv().unwrap()
             }
         }
     }

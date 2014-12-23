@@ -37,7 +37,7 @@ use sys_common::mutex as sys;
 /// ```rust
 /// use std::sync::{Arc, Mutex};
 /// use std::thread::Thread;
-/// use std::comm::channel;
+/// use std::sync::mpsc::channel;
 ///
 /// const N: uint = 10;
 ///
@@ -58,13 +58,13 @@ use sys_common::mutex as sys;
 ///         let mut data = data.lock();
 ///         *data += 1;
 ///         if *data == N {
-///             tx.send(());
+///             tx.send(()).unwrap();
 ///         }
 ///         // the lock is unlocked here when `data` goes out of scope.
 ///     }).detach();
 /// }
 ///
-/// rx.recv();
+/// rx.recv().unwrap();
 /// ```
 pub struct Mutex<T> {
     // Note that this static mutex is in a *box*, not inlined into the struct
@@ -284,7 +284,7 @@ impl Drop for StaticMutexGuard {
 mod test {
     use prelude::v1::*;
 
-    use comm::channel;
+    use sync::mpsc::channel;
     use sync::{Arc, Mutex, StaticMutex, MUTEX_INIT, Condvar};
     use thread::Thread;
 
@@ -329,14 +329,14 @@ mod test {
         let (tx, rx) = channel();
         for _ in range(0, K) {
             let tx2 = tx.clone();
-            Thread::spawn(move|| { inc(); tx2.send(()); }).detach();
+            Thread::spawn(move|| { inc(); tx2.send(()).unwrap(); }).detach();
             let tx2 = tx.clone();
-            Thread::spawn(move|| { inc(); tx2.send(()); }).detach();
+            Thread::spawn(move|| { inc(); tx2.send(()).unwrap(); }).detach();
         }
 
         drop(tx);
         for _ in range(0, 2 * K) {
-            rx.recv();
+            rx.recv().unwrap();
         }
         assert_eq!(unsafe {CNT}, J * K * 2);
         unsafe {
@@ -357,7 +357,7 @@ mod test {
         let (tx, rx) = channel();
         let _t = Thread::spawn(move|| {
             // wait until parent gets in
-            rx.recv();
+            rx.recv().unwrap();
             let &(ref lock, ref cvar) = &*packet2.0;
             let mut lock = lock.lock();
             *lock = true;
@@ -366,7 +366,7 @@ mod test {
 
         let &(ref lock, ref cvar) = &*packet.0;
         let lock = lock.lock();
-        tx.send(());
+        tx.send(()).unwrap();
         assert!(!*lock);
         while !*lock {
             cvar.wait(&lock);
@@ -381,7 +381,7 @@ mod test {
         let (tx, rx) = channel();
 
         let _t = Thread::spawn(move || -> () {
-            rx.recv();
+            rx.recv().unwrap();
             let &(ref lock, ref cvar) = &*packet2.0;
             let _g = lock.lock();
             cvar.notify_one();
@@ -391,7 +391,7 @@ mod test {
 
         let &(ref lock, ref cvar) = &*packet.0;
         let lock = lock.lock();
-        tx.send(());
+        tx.send(()).unwrap();
         while *lock == 1 {
             cvar.wait(&lock);
         }
@@ -421,9 +421,9 @@ mod test {
             let lock = arc2.lock();
             let lock2 = lock.lock();
             assert_eq!(*lock2, 1);
-            tx.send(());
+            tx.send(()).unwrap();
         });
-        rx.recv();
+        rx.recv().unwrap();
     }
 
     #[test]

@@ -16,7 +16,7 @@
 
 extern crate trait_superkinds_in_metadata;
 
-use std::comm::{channel, Sender, Receiver};
+use std::sync::mpsc::{channel, Sender, Receiver};
 use trait_superkinds_in_metadata::{RequiresRequiresShareAndSend, RequiresShare};
 
 #[deriving(PartialEq)]
@@ -26,11 +26,11 @@ impl <T: Sync> RequiresShare for X<T> { }
 impl <T: Sync+Send> RequiresRequiresShareAndSend for X<T> { }
 
 fn foo<T: RequiresRequiresShareAndSend>(val: T, chan: Sender<T>) {
-    chan.send(val);
+    chan.send(val).unwrap();
 }
 
 pub fn main() {
     let (tx, rx): (Sender<X<int>>, Receiver<X<int>>) = channel();
     foo(X(31337i), tx);
-    assert!(rx.recv() == X(31337i));
+    assert!(rx.recv().unwrap() == X(31337i));
 }

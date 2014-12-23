@@ -449,7 +449,6 @@ static dot_dot_static: &'static [u8] = b"..";
 mod tests {
     use prelude::v1::*;
     use str;
-    use super::*;
 
     macro_rules! t {
         (s: $path:expr, $exp:expr) => (

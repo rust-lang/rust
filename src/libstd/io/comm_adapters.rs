@@ -10,7 +10,7 @@
 
 use clone::Clone;
 use cmp;
-use comm::{Sender, Receiver};
+use sync::mpsc::{Sender, Receiver};
 use io;
 use option::Option::{None, Some};
 use result::Result::{Ok, Err};
@@ -23,7 +23,7 @@ use vec::Vec;
 /// # Example
 ///
 /// ```
-/// use std::comm::channel;
+/// use std::sync::mpsc::channel;
 /// use std::io::ChanReader;
 ///
 /// let (tx, rx) = channel();
@@ -59,11 +59,11 @@ impl Buffer for ChanReader {
     fn fill_buf<'a>(&'a mut self) -> IoResult<&'a [u8]> {
         if self.pos >= self.buf.len() {
             self.pos = 0;
-            match self.rx.recv_opt() {
+            match self.rx.recv() {
                 Ok(bytes) => {
                     self.buf = bytes;
                 },
-                Err(()) => {
+                Err(..) => {
                     self.closed = true;
                     self.buf = Vec::new();
                 }
@@ -115,7 +115,7 @@ impl Reader for ChanReader {
 ///
 /// ```
 /// # #![allow(unused_must_use)]
-/// use std::comm::channel;
+/// use std::sync::mpsc::channel;
 /// use std::io::ChanWriter;
 ///
 /// let (tx, rx) = channel();
@@ -143,7 +143,7 @@ impl Clone for ChanWriter {
 
 impl Writer for ChanWriter {
     fn write(&mut self, buf: &[u8]) -> IoResult<()> {
-        self.tx.send_opt(buf.to_vec()).map_err(|_| {
+        self.tx.send(buf.to_vec()).map_err(|_| {
             io::IoError {
                 kind: io::BrokenPipe,
                 desc: "Pipe closed",
@@ -158,7 +158,7 @@ impl Writer for ChanWriter {
 mod test {
     use prelude::v1::*;
 
-    use comm::channel;
+    use sync::mpsc::channel;
     use super::*;
     use io;
     use thread::Thread;
@@ -167,11 +167,11 @@ mod test {
     fn test_rx_reader() {
         let (tx, rx) = channel();
         Thread::spawn(move|| {
-          tx.send(vec![1u8, 2u8]);
-          tx.send(vec![]);
-          tx.send(vec![3u8, 4u8]);
-          tx.send(vec![5u8, 6u8]);
-          tx.send(vec![7u8, 8u8]);
+          tx.send(vec![1u8, 2u8]).unwrap();
+          tx.send(vec![]).unwrap();
+          tx.send(vec![3u8, 4u8]).unwrap();
+          tx.send(vec![5u8, 6u8]).unwrap();
+          tx.send(vec![7u8, 8u8]).unwrap();
         }).detach();
 
         let mut reader = ChanReader::new(rx);
@@ -209,12 +209,12 @@ mod test {
     fn test_rx_buffer() {
         let (tx, rx) = channel();
         Thread::spawn(move|| {
-          tx.send(b"he".to_vec());
-          tx.send(b"llo wo".to_vec());
-          tx.send(b"".to_vec());
-          tx.send(b"rld\nhow ".to_vec());
-          tx.send(b"are you?".to_vec());
-          tx.send(b"".to_vec());
+          tx.send(b"he".to_vec()).unwrap();
+          tx.send(b"llo wo".to_vec()).unwrap();
+          tx.send(b"".to_vec()).unwrap();
+          tx.send(b"rld\nhow ".to_vec()).unwrap();
+          tx.send(b"are you?".to_vec()).unwrap();
+          tx.send(b"".to_vec()).unwrap();
         }).detach();
 
         let mut reader = ChanReader::new(rx);
@@ -234,7 +234,7 @@ mod test {
         writer.write_be_u32(42).unwrap();
 
         let wanted = vec![0u8, 0u8, 0u8, 42u8];
-        let got = match Thread::spawn(move|| { rx.recv() }).join() {
+        let got = match Thread::spawn(move|| { rx.recv().unwrap() }).join() {
             Ok(got) => got,
             Err(_) => panic!(),
         };
