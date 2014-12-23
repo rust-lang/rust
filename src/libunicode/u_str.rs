@@ -521,7 +521,7 @@ impl<I> Iterator<u16> for Utf16Encoder<I> where I: Iterator<char> {
 
         let mut buf = [0u16, ..2];
         self.chars.next().map(|ch| {
-            let n = ch.encode_utf16(buf[mut]).unwrap_or(0);
+            let n = ch.encode_utf16(buf.as_mut_slice()).unwrap_or(0);
             if n == 2 { self.extra = buf[1]; }
             buf[0]
         })

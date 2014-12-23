@@ -519,8 +519,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                                                                 ret_ty), 1, true)
                         }
                         None => {
-                            let base_cmt = if_ok!(self.cat_expr(&**base));
-                            self.cat_index(expr, base_cmt)
+                            self.cat_index(expr, self.cat_expr(&**base))
                         }
                     }
                 }

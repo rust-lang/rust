@@ -1074,18 +1074,18 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let (did, fields, ty_params) = match (start, end) {
                 (&Some(ref start), &Some(ref end)) => {
                     // Desugar to Range
-                    let fields = vec!(make_field("start", start.clone()),
-                                      make_field("end", end.clone()));
+                    let fields = vec![make_field("start", start.clone()),
+                                      make_field("end", end.clone())];
                     (tcx.lang_items.range_struct(), fields, vec![node_id_type(bcx, start.id)])
                 }
                 (&Some(ref start), &None) => {
                     // Desugar to RangeFrom
-                    let fields = vec!(make_field("start", start.clone()));
+                    let fields = vec![make_field("start", start.clone())];
                     (tcx.lang_items.range_from_struct(), fields, vec![node_id_type(bcx, start.id)])
                 }
                 (&None, &Some(ref end)) => {
                     // Desugar to RangeTo
-                    let fields = vec!(make_field("end", end.clone()));
+                    let fields = vec![make_field("end", end.clone())];
                     (tcx.lang_items.range_to_struct(), fields, vec![node_id_type(bcx, end.id)])
                 }
                 _ => {
