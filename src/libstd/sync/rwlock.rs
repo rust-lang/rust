@@ -60,7 +60,7 @@ pub struct RWLock<T> {
     data: UnsafeCell<T>,
 }
 
-/// Structure representing a staticaly allocated RWLock.
+/// Structure representing a statically allocated RWLock.
 ///
 /// This structure is intended to be used inside of a `static` and will provide
 /// automatic global access as well as lazy initialization. The internal
