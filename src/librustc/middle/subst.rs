@@ -487,6 +487,7 @@ impl<T> VecPerParamSpace<T> {
     }
 }
 
+#[deriving(Clone)]
 pub struct EnumeratedItems<'a,T:'a> {
     vec: &'a VecPerParamSpace<T>,
     space_index: uint,
