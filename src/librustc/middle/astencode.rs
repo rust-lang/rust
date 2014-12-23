@@ -332,8 +332,6 @@ impl Folder for NestedItemsDropper {
                 }
             }).collect();
             let blk_sans_items = P(ast::Block {
-                view_items: Vec::new(), // I don't know if we need the view_items
-                                        // here, but it doesn't break tests!
                 stmts: stmts_sans_items,
                 expr: expr,
                 id: id,
