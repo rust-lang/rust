@@ -39,7 +39,7 @@ impl Ascii {
         self.chr
     }
 
-    /// Deprecated: use `as_byte` isntead.
+    /// Deprecated: use `as_byte` instead.
     #[deprecated = "use as_byte"]
     pub fn to_byte(self) -> u8 {
         self.as_byte()
@@ -52,7 +52,7 @@ impl Ascii {
         self.chr as char
     }
 
-    /// Deprecated: use `as_char` isntead.
+    /// Deprecated: use `as_char` instead.
     #[deprecated = "use as_char"]
     pub fn to_char(self) -> char {
         self.as_char()

@@ -547,7 +547,7 @@ impl<T: Send> Sender<T> {
     /// so it is possible for a send to succeed (the other end is alive), but
     /// then the other end could immediately disconnect.
     ///
-    /// The purpose of this functionality is to propagate panicks among tasks.
+    /// The purpose of this functionality is to propagate panics among tasks.
     /// If a panic is not desired, then consider using the `send_opt` method
     #[experimental = "this function is being considered candidate for removal \
                       to adhere to the general guidelines of rust"]
@@ -790,7 +790,7 @@ impl<T: Send> Receiver<T> {
     ///
     /// Similar to channels, this method will trigger a task panic if the
     /// other end of the channel has hung up (been deallocated). The purpose of
-    /// this is to propagate panicks among tasks.
+    /// this is to propagate panics among tasks.
     ///
     /// If a panic is not desired, then there are two options:
     ///

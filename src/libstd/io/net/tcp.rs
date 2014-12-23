@@ -319,7 +319,7 @@ impl TcpListener {
     /// to this listener. The port allocated can be queried via the
     /// `socket_name` function.
     ///
-    /// The address type can be any implementor of `ToSocketAddr` trait. See its
+    /// The address type can be any implementer of `ToSocketAddr` trait. See its
     /// documentation for concrete examples.
     pub fn bind<A: ToSocketAddr>(addr: A) -> IoResult<TcpListener> {
         super::with_addresses(addr, |addr| {
