@@ -838,8 +838,8 @@ trait rbml_writer_helpers<'tcx> {
                           predicate: &ty::Predicate<'tcx>);
     fn emit_trait_ref<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>,
                           ty: &ty::TraitRef<'tcx>);
-    fn emit_polytype<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>,
-                         pty: ty::Polytype<'tcx>);
+    fn emit_type_scheme<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>,
+                            type_scheme: ty::TypeScheme<'tcx>);
     fn emit_substs<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>,
                        substs: &subst::Substs<'tcx>);
     fn emit_existential_bounds(&mut self, ecx: &e::EncodeContext, bounds: &ty::ExistentialBounds);
@@ -951,33 +951,33 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
         });
     }
 
-    fn emit_polytype<'b>(&mut self,
-                         ecx: &e::EncodeContext<'b, 'tcx>,
-                         pty: ty::Polytype<'tcx>) {
+    fn emit_type_scheme<'b>(&mut self,
+                            ecx: &e::EncodeContext<'b, 'tcx>,
+                            type_scheme: ty::TypeScheme<'tcx>) {
         use serialize::Encoder;
 
-        self.emit_struct("Polytype", 2, |this| {
+        self.emit_struct("TypeScheme", 2, |this| {
             this.emit_struct_field("generics", 0, |this| {
                 this.emit_struct("Generics", 2, |this| {
                     this.emit_struct_field("types", 0, |this| {
                         Ok(encode_vec_per_param_space(
-                            this, &pty.generics.types,
+                            this, &type_scheme.generics.types,
                             |this, def| this.emit_type_param_def(ecx, def)))
                     });
                     this.emit_struct_field("regions", 1, |this| {
                         Ok(encode_vec_per_param_space(
-                            this, &pty.generics.regions,
+                            this, &type_scheme.generics.regions,
                             |this, def| def.encode(this).unwrap()))
                     });
                     this.emit_struct_field("predicates", 2, |this| {
                         Ok(encode_vec_per_param_space(
-                            this, &pty.generics.predicates,
+                            this, &type_scheme.generics.predicates,
                             |this, def| this.emit_predicate(ecx, def)))
                     })
                 })
             });
             this.emit_struct_field("ty", 1, |this| {
-                Ok(this.emit_ty(ecx, pty.ty))
+                Ok(this.emit_ty(ecx, type_scheme.ty))
             })
         });
     }
@@ -1252,11 +1252,11 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
     }
 
     let lid = ast::DefId { krate: ast::LOCAL_CRATE, node: id };
-    for &pty in tcx.tcache.borrow().get(&lid).iter() {
+    for &type_scheme in tcx.tcache.borrow().get(&lid).iter() {
         rbml_w.tag(c::tag_table_tcache, |rbml_w| {
             rbml_w.id(id);
             rbml_w.tag(c::tag_table_val, |rbml_w| {
-                rbml_w.emit_polytype(ecx, pty.clone());
+                rbml_w.emit_type_scheme(ecx, type_scheme.clone());
             })
         })
     }
@@ -1369,8 +1369,8 @@ trait rbml_decoder_decoder_helpers<'tcx> {
                                    -> ty::TypeParameterDef<'tcx>;
     fn read_predicate<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
                               -> ty::Predicate<'tcx>;
-    fn read_polytype<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
-                             -> ty::Polytype<'tcx>;
+    fn read_type_scheme<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
+                                -> ty::TypeScheme<'tcx>;
     fn read_existential_bounds<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
                                        -> ty::ExistentialBounds;
     fn read_substs<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
@@ -1591,10 +1591,10 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
         }).unwrap()
     }
 
-    fn read_polytype<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
-                             -> ty::Polytype<'tcx> {
-        self.read_struct("Polytype", 2, |this| {
-            Ok(ty::Polytype {
+    fn read_type_scheme<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
+                                -> ty::TypeScheme<'tcx> {
+        self.read_struct("TypeScheme", 2, |this| {
+            Ok(ty::TypeScheme {
                 generics: this.read_struct_field("generics", 0, |this| {
                     this.read_struct("Generics", 2, |this| {
                         Ok(ty::Generics {
@@ -1939,9 +1939,9 @@ fn decode_side_tables(dcx: &DecodeContext,
                            .insert(id, capture_mode);
                     }
                     c::tag_table_tcache => {
-                        let pty = val_dsr.read_polytype(dcx);
+                        let type_scheme = val_dsr.read_type_scheme(dcx);
                         let lid = ast::DefId { krate: ast::LOCAL_CRATE, node: id };
-                        dcx.tcx.tcache.borrow_mut().insert(lid, pty);
+                        dcx.tcx.tcache.borrow_mut().insert(lid, type_scheme);
                     }
                     c::tag_table_param_defs => {
                         let bounds = val_dsr.read_type_param_def(dcx);

@@ -142,7 +142,7 @@ fn encode_item_variances(rbml_w: &mut Encoder,
 
 fn encode_bounds_and_type<'a, 'tcx>(rbml_w: &mut Encoder,
                                     ecx: &EncodeContext<'a, 'tcx>,
-                                    pty: &ty::Polytype<'tcx>) {
+                                    pty: &ty::TypeScheme<'tcx>) {
     encode_generics(rbml_w, ecx, &pty.generics, tag_item_generics);
     encode_type(ecx, rbml_w, pty.ty);
 }

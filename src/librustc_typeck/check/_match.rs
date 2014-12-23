@@ -79,9 +79,9 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
         }
         ast::PatEnum(..) | ast::PatIdent(..) if pat_is_const(&tcx.def_map, pat) => {
             let const_did = tcx.def_map.borrow()[pat.id].clone().def_id();
-            let const_pty = ty::lookup_item_type(tcx, const_did);
-            fcx.write_ty(pat.id, const_pty.ty);
-            demand::suptype(fcx, pat.span, expected, const_pty.ty);
+            let const_scheme = ty::lookup_item_type(tcx, const_did);
+            fcx.write_ty(pat.id, const_scheme.ty);
+            demand::suptype(fcx, pat.span, expected, const_scheme.ty);
         }
         ast::PatIdent(bm, ref path, ref sub) if pat_is_binding(&tcx.def_map, pat) => {
             let typ = fcx.local_ty(pat.span, pat.id);
@@ -395,16 +395,16 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>, pat: &ast::Pat,
     let enum_def = def.variant_def_ids()
         .map_or_else(|| def.def_id(), |(enum_def, _)| enum_def);
 
-    let ctor_pty = ty::lookup_item_type(tcx, enum_def);
-    let path_ty = if ty::is_fn_ty(ctor_pty.ty) {
-        ty::Polytype {
-            ty: ty::ty_fn_ret(ctor_pty.ty).unwrap(),
-            ..ctor_pty
+    let ctor_scheme = ty::lookup_item_type(tcx, enum_def);
+    let path_scheme = if ty::is_fn_ty(ctor_scheme.ty) {
+        ty::TypeScheme {
+            ty: ty::ty_fn_ret(ctor_scheme.ty).unwrap(),
+            ..ctor_scheme
         }
     } else {
-        ctor_pty
+        ctor_scheme
     };
-    instantiate_path(pcx.fcx, path, path_ty, def, pat.span, pat.id);
+    instantiate_path(pcx.fcx, path, path_scheme, def, pat.span, pat.id);
 
     let pat_ty = fcx.node_ty(pat.id);
     demand::eqtype(fcx, pat.span, expected, pat_ty);
