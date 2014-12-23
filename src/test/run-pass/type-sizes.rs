@@ -26,7 +26,7 @@ enum e2 {
 }
 
 enum e3 {
-    a([u64, ..0], u32), b
+    a([u16, ..0], u8), b
 }
 
 pub fn main() {
@@ -51,5 +51,5 @@ pub fn main() {
 
     assert_eq!(size_of::<e1>(), 8 as uint);
     assert_eq!(size_of::<e2>(), 8 as uint);
-    assert_eq!(size_of::<e3>(), 16 as uint);
+    assert_eq!(size_of::<e3>(), 4 as uint);
 }
