@@ -1100,10 +1100,17 @@ enum Ordering {
 ```
 
 An `Ordering` can only be _one_ of `Less`, `Equal`, or `Greater` at any given
-time. Here's an example:
+time.
+
+Because `Ordering` is provided by the standard library, we can use the `use`
+keyword to use it in our code. We'll learn more about `use` later, but it's
+used to bring names into scope.
+
+Here's an example of how to use `Ordering`:
 
 ```{rust}
-# use std::cmp::Ordering;
+use std::cmp::Ordering;
+
 fn cmp(a: int, b: int) -> Ordering {
     if a < b { Ordering::Less }
     else if a > b { Ordering::Greater }
@@ -1126,18 +1133,25 @@ fn main() {
 }
 ```
 
-`cmp` is a function that compares two things, and returns an `Ordering`. We
-return either `Less`, `Greater`, or `Equal`, depending on if the two values
-are greater, less, or equal.
+There's a symbol here we haven't seen before: the double colon (`::`).
+This is used to indicate a namesapce. In this case, `Ordering` lives in
+the `cmp` submodule of the `std` module. We'll talk more about modules
+later in the guide. For now, all you need to know is that you can `use`
+things from the standard library if you need them.
+
+Okay, let's talk about the actual code in the example. `cmp` is a function that
+compares two things, and returns an `Ordering`. We return either
+`Ordering::Less`, `Ordering::Greater`, or `Ordering::Equal`, depending on if
+the two values are greater, less, or equal. Note that each variant of the
+`enum` is namespaced under the `enum` itself: it's `Ordering::Greater` not
+`Greater`.
 
 The `ordering` variable has the type `Ordering`, and so contains one of the
-three values. We can then do a bunch of `if`/`else` comparisons to check
-which one it is.
-
-However, repeated `if`/`else` comparisons get quite tedious. Rust has a feature
-that not only makes them nicer to read, but also makes sure that you never
-miss a case. Before we get to that, though, let's talk about another kind of
-enum: one with values.
+three values. We can then do a bunch of `if`/`else` comparisons to check which
+one it is. However, repeated `if`/`else` comparisons get quite tedious. Rust
+has a feature that not only makes them nicer to read, but also makes sure that
+you never miss a case. Before we get to that, though, let's talk about another
+kind of enum: one with values.
 
 This enum has two variants, one of which has a value:
 
@@ -1170,18 +1184,19 @@ enum StringResult {
     ErrorReason(String),
 }
 ```
-Where a `StringResult` is either a `StringOK`, with the result of a computation, or an
-`ErrorReason` with a `String` explaining what caused the computation to fail. These kinds of
-`enum`s are actually very useful and are even part of the standard library.
+Where a `StringResult` is either a `StringResult::StringOK`, with the result of
+a computation, or an `StringResult::ErrorReason` with a `String` explaining
+what caused the computation to fail. These kinds of `enum`s are actually very
+useful and are even part of the standard library.
 
-Enum variants are namespaced under the enum names. For example, here is an example of using
-our `StringResult`:
+Here is an example of using our `StringResult`:
 
 ```rust
-# enum StringResult {
-#     StringOK(String),
-#     ErrorReason(String),
-# }
+enum StringResult {
+    StringOK(String),
+    ErrorReason(String),
+}
+
 fn respond(greeting: &str) -> StringResult {
     if greeting == "Hello" {
         StringResult::StringOK("Good morning!".to_string())
@@ -1191,10 +1206,7 @@ fn respond(greeting: &str) -> StringResult {
 }
 ```
 
-Notice that we need both the enum name and the variant name: `StringResult::StringOK`, but
-we didn't need to with `Ordering` – we just said `Greater` rather than `Ordering::Greater`.
-There's a reason: the Rust prelude imports the variants of `Ordering` as well as the enum
-itself. We can use the `use` keyword to do something similar with `StringResult`:
+That's a lot of typing! We can use the `use` keyword to make it shorter:
 
 ```rust
 use StringResult::StringOK;
@@ -1216,12 +1228,11 @@ fn respond(greeting: &str) -> StringResult {
 }
 ```
 
-We'll learn more about `use` later, but it's used to bring names into scope. `use` declarations
-must come before anything else, which looks a little strange in this example, since we `use`
-the variants before we define them. Anyway, in the body of `respond`, we can just say `StringOK`
-now, rather than the full `StringResult::StringOK`. Importing variants can be convenient, but can
-also cause name conflicts, so do this with caution. It's considered good style to rarely import
-variants for this reason.
+`use` declarations must come before anything else, which looks a little strange in this example,
+since we `use` the variants before we define them. Anyway, in the body of `respond`, we can just
+say `StringOK` now, rather than the full `StringResult::StringOK`. Importing variants can be
+convenient, but can also cause name conflicts, so do this with caution. It's considered good style
+to rarely import variants for this reason.
 
 As you can see, `enum`s with values are quite a powerful tool for data representation,
 and can be even more useful when they're generic across types. Before we get to generics,
@@ -1275,7 +1286,8 @@ for every possible value of `x`, and so our program will compile successfully.
 section on enums?
 
 ```{rust}
-# use std::cmp::Ordering;
+use std::cmp::Ordering;
+
 fn cmp(a: int, b: int) -> Ordering {
     if a < b { Ordering::Less }
     else if a > b { Ordering::Greater }
@@ -1301,7 +1313,8 @@ fn main() {
 We can re-write this as a `match`:
 
 ```{rust}
-# use std::cmp::Ordering;
+use std::cmp::Ordering;
+
 fn cmp(a: int, b: int) -> Ordering {
     if a < b { Ordering::Less }
     else if a > b { Ordering::Greater }
@@ -1362,7 +1375,8 @@ side of a `let` binding or directly where an expression is used. We could
 also implement the previous line like this:
 
 ```{rust}
-# use std::cmp::Ordering;
+use std::cmp::Ordering;
+
 fn cmp(a: int, b: int) -> Ordering {
     if a < b { Ordering::Less }
     else if a > b { Ordering::Greater }
