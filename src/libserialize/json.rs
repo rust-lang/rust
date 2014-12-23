@@ -442,17 +442,43 @@ enum EmittingMapKeyState {
     EmittedValidMapKey,
 }
 
+enum EncodingFormat {
+    Compact,
+    Pretty {
+        curr_indent: uint,
+        indent: uint
+    }
+}
+
 /// A structure for implementing serialization to JSON.
 pub struct Encoder<'a> {
     writer: &'a mut (io::Writer+'a),
     emitting_map_key: EmittingMapKeyState,
+    format : EncodingFormat,
 }
 
 impl<'a> Encoder<'a> {
     /// Creates a new JSON encoder whose output will be written to the writer
-    /// specified.
-    pub fn new(writer: &'a mut io::Writer) -> Encoder<'a> {
-        Encoder { writer: writer, emitting_map_key: EmittingMapKeyState::NotEmitting, }
+    /// specified. The resulting JSON will be as compact as possible.
+    pub fn new_compact(writer: &'a mut io::Writer) -> Encoder<'a> {
+        Encoder {
+            writer: writer,
+            emitting_map_key: EmittingMapKeyState::NotEmitting,
+            format: EncodingFormat::Compact,
+        }
+    }
+
+    /// Creates a new JSON encoder whose output will be written to the writer
+    /// specified. The resulting JSON will be formatted in a humanly readable fashion.
+    pub fn new_pretty(writer: &'a mut io::Writer) -> Encoder<'a> {
+        Encoder {
+            writer: writer,
+            emitting_map_key: EmittingMapKeyState::NotEmitting,
+            format: EncodingFormat::Pretty {
+                curr_indent: 0,
+                indent: 2,
+            }
+        }
     }
 
     /// Encode the specified struct into a json [u8]
@@ -461,11 +487,24 @@ impl<'a> Encoder<'a> {
         let mut m = Vec::new();
         // FIXME(14302) remove the transmute and unsafe block.
         unsafe {
-            let mut encoder = Encoder::new(&mut m as &mut io::Writer);
+            let mut encoder = Encoder::new_compact(&mut m as &mut io::Writer);
             // Vec<u8> never Errs
             let _ = object.encode(transmute(&mut encoder));
         }
         m
+    }
+
+    /// Set the number of spaces to indent for each level.
+    /// This is safe to set during encoding.
+    pub fn set_indent(&mut self, new_indent: uint) {
+        if let EncodingFormat::Pretty{ref mut curr_indent, ref mut indent} = self.format {
+            // self.indent very well could be 0 so we need to use checked division.
+            let level = curr_indent.checked_div(*indent).unwrap_or(0);
+            *indent = new_indent;
+            *curr_indent = level * *indent;
+        } else {
+            panic!("cannot set indentation for compact json encoding");
+        }
     }
 }
 
@@ -482,37 +521,7 @@ macro_rules! emit_enquoted_if_mapkey {
     }
 }
 
-/// Another encoder for JSON, but prints out human-readable JSON instead of
-/// compact data
-pub struct PrettyEncoder<'a> {
-    writer: &'a mut (io::Writer+'a),
-    curr_indent: uint,
-    indent: uint,
-    emitting_map_key: EmittingMapKeyState,
-}
-
-impl<'a> PrettyEncoder<'a> {
-    /// Creates a new encoder whose output will be written to the specified writer
-    pub fn new(writer: &'a mut io::Writer) -> PrettyEncoder<'a> {
-        PrettyEncoder {
-            writer: writer,
-            curr_indent: 0,
-            indent: 2,
-            emitting_map_key: EmittingMapKeyState::NotEmitting,
-        }
-    }
-
-    /// Set the number of spaces to indent for each level.
-    /// This is safe to set during encoding.
-    pub fn set_indent(&mut self, indent: uint) {
-        // self.indent very well could be 0 so we need to use checked division.
-        let level = self.curr_indent.checked_div(self.indent).unwrap_or(0);
-        self.indent = indent;
-        self.curr_indent = level * self.indent;
-    }
-}
-
-impl<'a> ::Encoder<EncoderError> for PrettyEncoder<'a> {
+impl<'a> ::Encoder<EncoderError> for Encoder<'a> {
     fn emit_nil(&mut self) -> EncodeResult { try!(write!(self.writer, "null")); Ok(()) }
 
     fn emit_uint(&mut self, v: uint) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
@@ -553,7 +562,7 @@ impl<'a> ::Encoder<EncoderError> for PrettyEncoder<'a> {
     }
 
     fn emit_enum<F>(&mut self, _name: &str, f: F) -> EncodeResult where
-        F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
+        F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
         f(self)
     }
@@ -564,39 +573,55 @@ impl<'a> ::Encoder<EncoderError> for PrettyEncoder<'a> {
                             cnt: uint,
                             f: F)
                             -> EncodeResult where
-        F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
+        F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
+        // enums are encoded as strings or objects
+        // Bunny => "Bunny"
+        // Kangaroo(34,"William") => {"variant": "Kangaroo", "fields": [34,"William"]}
         if cnt == 0 {
             escape_str(self.writer, name)
         } else {
-            try!(write!(self.writer, "{{\n"));
-            self.curr_indent += self.indent;
-            try!(spaces(self.writer, self.curr_indent));
-            try!(write!(self.writer, "\"variant\": "));
-            try!(escape_str(self.writer, name));
-            try!(write!(self.writer, ",\n"));
-            try!(spaces(self.writer, self.curr_indent));
-            try!(write!(self.writer, "\"fields\": [\n"));
-            self.curr_indent += self.indent;
+            if let EncodingFormat::Pretty{ref mut curr_indent, indent} = self.format {
+                try!(write!(self.writer, "{{\n"));
+                *curr_indent += indent;
+                try!(spaces(self.writer, *curr_indent));
+                try!(write!(self.writer, "\"variant\": "));
+                try!(escape_str(self.writer, name));
+                try!(write!(self.writer, ",\n"));
+                try!(spaces(self.writer, *curr_indent));
+                try!(write!(self.writer, "\"fields\": [\n"));
+                *curr_indent += indent;
+            } else {
+                try!(write!(self.writer, "{{\"variant\":"));
+                try!(escape_str(self.writer, name));
+                try!(write!(self.writer, ",\"fields\":["));
+            }
             try!(f(self));
-            self.curr_indent -= self.indent;
-            try!(write!(self.writer, "\n"));
-            try!(spaces(self.writer, self.curr_indent));
-            self.curr_indent -= self.indent;
-            try!(write!(self.writer, "]\n"));
-            try!(spaces(self.writer, self.curr_indent));
-            try!(write!(self.writer, "}}"));
+            if let EncodingFormat::Pretty{ref mut curr_indent, indent} = self.format {
+                *curr_indent -= indent;
+                try!(write!(self.writer, "\n"));
+                try!(spaces(self.writer, *curr_indent));
+                *curr_indent -= indent;
+                try!(write!(self.writer, "]\n"));
+                try!(spaces(self.writer, *curr_indent));
+                try!(write!(self.writer, "}}"));
+            } else {
+                try!(write!(self.writer, "]}}"));
+            }
             Ok(())
         }
     }
 
     fn emit_enum_variant_arg<F>(&mut self, idx: uint, f: F) -> EncodeResult where
-        F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
+        F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
         if idx != 0 {
-            try!(write!(self.writer, ",\n"));
+            try!(write!(self.writer, ","));
         }
-        try!(spaces(self.writer, self.curr_indent));
+        if let EncodingFormat::Pretty{curr_indent, ..} = self.format {
+            try!(write!(self.writer, "\n"));
+            try!(spaces(self.writer, curr_indent));
+        }
         f(self)
     }
 
@@ -605,7 +630,7 @@ impl<'a> ::Encoder<EncoderError> for PrettyEncoder<'a> {
                                    id: uint,
                                    cnt: uint,
                                    f: F) -> EncodeResult where
-        F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
+        F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
         self.emit_enum_variant(name, id, cnt, f)
     }
@@ -614,132 +639,151 @@ impl<'a> ::Encoder<EncoderError> for PrettyEncoder<'a> {
                                          _: &str,
                                          idx: uint,
                                          f: F) -> EncodeResult where
-        F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
+        F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
         self.emit_enum_variant_arg(idx, f)
     }
 
 
     fn emit_struct<F>(&mut self, _: &str, len: uint, f: F) -> EncodeResult where
-        F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
+        F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
         if len == 0 {
             try!(write!(self.writer, "{{}}"));
         } else {
             try!(write!(self.writer, "{{"));
-            self.curr_indent += self.indent;
+            if let EncodingFormat::Pretty{ref mut curr_indent, indent} = self.format {
+                *curr_indent += indent;
+            }
             try!(f(self));
-            self.curr_indent -= self.indent;
-            try!(write!(self.writer, "\n"));
-            try!(spaces(self.writer, self.curr_indent));
+            if let EncodingFormat::Pretty{ref mut curr_indent, indent} = self.format {
+                *curr_indent -= indent;
+                try!(write!(self.writer, "\n"));
+                try!(spaces(self.writer, *curr_indent));
+            }
             try!(write!(self.writer, "}}"));
         }
         Ok(())
     }
 
     fn emit_struct_field<F>(&mut self, name: &str, idx: uint, f: F) -> EncodeResult where
-        F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
+        F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
-        if idx == 0 {
-            try!(write!(self.writer, "\n"));
-        } else {
-            try!(write!(self.writer, ",\n"));
+        if idx != 0 {
+            try!(write!(self.writer, ","));
         }
-        try!(spaces(self.writer, self.curr_indent));
+        if let EncodingFormat::Pretty{curr_indent, ..} = self.format {
+            try!(write!(self.writer, "\n"));
+            try!(spaces(self.writer, curr_indent));
+        }
         try!(escape_str(self.writer, name));
-        try!(write!(self.writer, ": "));
+        if let EncodingFormat::Pretty{..} = self.format {
+            try!(write!(self.writer, ": "));
+        } else {
+            try!(write!(self.writer, ":"));
+        }
         f(self)
     }
 
     fn emit_tuple<F>(&mut self, len: uint, f: F) -> EncodeResult where
-        F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
+        F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
         self.emit_seq(len, f)
     }
     fn emit_tuple_arg<F>(&mut self, idx: uint, f: F) -> EncodeResult where
-        F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
+        F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
         self.emit_seq_elt(idx, f)
     }
 
     fn emit_tuple_struct<F>(&mut self, _: &str, len: uint, f: F) -> EncodeResult where
-        F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
+        F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
         self.emit_seq(len, f)
     }
     fn emit_tuple_struct_arg<F>(&mut self, idx: uint, f: F) -> EncodeResult where
-        F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
+        F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
         self.emit_seq_elt(idx, f)
     }
 
     fn emit_option<F>(&mut self, f: F) -> EncodeResult where
-        F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
+        F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
         f(self)
     }
     fn emit_option_none(&mut self) -> EncodeResult { self.emit_nil() }
     fn emit_option_some<F>(&mut self, f: F) -> EncodeResult where
-        F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
+        F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
         f(self)
     }
 
     fn emit_seq<F>(&mut self, len: uint, f: F) -> EncodeResult where
-        F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
+        F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
         if len == 0 {
             try!(write!(self.writer, "[]"));
         } else {
             try!(write!(self.writer, "["));
-            self.curr_indent += self.indent;
+            if let EncodingFormat::Pretty{ref mut curr_indent, indent} = self.format {
+                *curr_indent += indent;
+            }
             try!(f(self));
-            self.curr_indent -= self.indent;
-            try!(write!(self.writer, "\n"));
-            try!(spaces(self.writer, self.curr_indent));
+            if let EncodingFormat::Pretty{ref mut curr_indent, indent} = self.format {
+                *curr_indent -= indent;
+                try!(write!(self.writer, "\n"));
+                try!(spaces(self.writer, *curr_indent));
+            }
             try!(write!(self.writer, "]"));
         }
         Ok(())
     }
 
     fn emit_seq_elt<F>(&mut self, idx: uint, f: F) -> EncodeResult where
-        F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
+        F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
-        if idx == 0 {
-            try!(write!(self.writer, "\n"));
-        } else {
-            try!(write!(self.writer, ",\n"));
+        if idx != 0 {
+            try!(write!(self.writer, ","));
         }
-        try!(spaces(self.writer, self.curr_indent));
+        if let EncodingFormat::Pretty{ref mut curr_indent, ..} = self.format {
+            try!(write!(self.writer, "\n"));
+            try!(spaces(self.writer, *curr_indent));
+        }
         f(self)
     }
 
     fn emit_map<F>(&mut self, len: uint, f: F) -> EncodeResult where
-        F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
+        F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
         if len == 0 {
             try!(write!(self.writer, "{{}}"));
         } else {
             try!(write!(self.writer, "{{"));
-            self.curr_indent += self.indent;
+            if let EncodingFormat::Pretty{ref mut curr_indent, indent} = self.format {
+                *curr_indent += indent;
+            }
             try!(f(self));
-            self.curr_indent -= self.indent;
-            try!(write!(self.writer, "\n"));
-            try!(spaces(self.writer, self.curr_indent));
+            if let EncodingFormat::Pretty{ref mut curr_indent, indent} = self.format {
+                *curr_indent -= indent;
+                try!(write!(self.writer, "\n"));
+                try!(spaces(self.writer, *curr_indent));
+            }
             try!(write!(self.writer, "}}"));
         }
         Ok(())
     }
 
     fn emit_map_elt_key<F>(&mut self, idx: uint, f: F) -> EncodeResult where
-        F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
+        F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
-        if idx == 0 {
-            try!(write!(self.writer, "\n"));
-        } else {
-            try!(write!(self.writer, ",\n"));
+        if idx != 0 {
+            try!(write!(self.writer, ","));
         }
-        try!(spaces(self.writer, self.curr_indent));
+        if let EncodingFormat::Pretty{curr_indent, ..} = self.format {
+            try!(write!(self.writer, "\n"));
+            try!(spaces(self.writer, curr_indent));
+        }
         self.emitting_map_key = EmittingMapKeyState::Emitting;
         try!(f(self));
         if self.emitting_map_key == EmittingMapKeyState::EmittedValidMapKey {
@@ -751,9 +795,13 @@ impl<'a> ::Encoder<EncoderError> for PrettyEncoder<'a> {
     }
 
     fn emit_map_elt_val<F>(&mut self, _idx: uint, f: F) -> EncodeResult where
-        F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
+        F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
-        try!(write!(self.writer, ": "));
+        if let EncodingFormat::Pretty{..} = self.format {
+            try!(write!(self.writer, ": "));
+        } else {
+            try!(write!(self.writer, ":"));
+        }
         f(self)
     }
 }
@@ -776,14 +824,14 @@ impl<E: ::Encoder<S>, S> Encodable<E, S> for Json {
 impl Json {
     /// Encodes a json value into an io::writer. Uses a single line.
     pub fn to_writer(&self, writer: &mut io::Writer) -> EncodeResult {
-        let mut encoder = Encoder::new(writer);
+        let mut encoder = Encoder::new_compact(writer);
         self.encode(&mut encoder)
     }
 
     /// Encodes a json value into an io::writer.
     /// Pretty-prints in a more readable format.
     pub fn to_pretty_writer(&self, writer: &mut io::Writer) -> EncodeResult {
-        let mut encoder = PrettyEncoder::new(writer);
+        let mut encoder = Encoder::new_pretty(writer);
         self.encode(&mut encoder)
     }
 
@@ -2296,7 +2344,7 @@ mod tests {
     use super::DecoderError::*;
     use super::JsonEvent::*;
     use super::StackElement::*;
-    use super::{PrettyEncoder, Json, from_str, DecodeResult, DecoderError, JsonEvent, Parser,
+    use super::{Json, from_str, DecodeResult, DecoderError, JsonEvent, Parser,
                 StackElement, Stack, Encoder, Decoder};
     use std::{i64, u64, f32, f64, io};
     use std::collections::BTreeMap;
@@ -2540,14 +2588,14 @@ mod tests {
         let animal = Dog;
         assert_eq!(
             with_str_writer(|writer| {
-                let mut encoder = Encoder::new(writer);
+                let mut encoder = Encoder::new_compact(writer);
                 animal.encode(&mut encoder).unwrap();
             }),
             "\"Dog\""
         );
         assert_eq!(
             with_str_writer(|writer| {
-                let mut encoder = PrettyEncoder::new(writer);
+                let mut encoder = PrettyEncoder::new_compact(writer);
                 animal.encode(&mut encoder).unwrap();
             }),
             "\"Dog\""
@@ -2556,14 +2604,14 @@ mod tests {
         let animal = Frog("Henry".to_string(), 349);
         assert_eq!(
             with_str_writer(|writer| {
-                let mut encoder = Encoder::new(writer);
+                let mut encoder = Encoder::new_compact(writer);
                 animal.encode(&mut encoder).unwrap();
             }),
             "{\"variant\":\"Frog\",\"fields\":[\"Henry\",349]}"
         );
         assert_eq!(
             with_str_writer(|writer| {
-                let mut encoder = PrettyEncoder::new(writer);
+                let mut encoder = PrettyEncoder::new_pretty(writer);
                 animal.encode(&mut encoder).unwrap();
             }),
             "{\n  \
@@ -2579,13 +2627,13 @@ mod tests {
     macro_rules! check_encoder_for_simple {
         ($value:expr, $expected:expr) => ({
             let s = with_str_writer(|writer| {
-                let mut encoder = Encoder::new(writer);
+                let mut encoder = Encoder::new_compact(writer);
                 $value.encode(&mut encoder).unwrap();
             });
             assert_eq!(s, $expected);
 
             let s = with_str_writer(|writer| {
-                let mut encoder = PrettyEncoder::new(writer);
+                let mut encoder = Encoder::new_pretty(writer);
                 $value.encode(&mut encoder).unwrap();
             });
             assert_eq!(s, $expected);

@@ -1211,7 +1211,7 @@ impl MetricMap {
     pub fn save(&self, p: &Path) -> json::EncodeResult {
         let mut file = try!(File::create(p));
         let MetricMap(ref map) = *self;
-        let mut enc = json::PrettyEncoder::new(&mut file);
+        let mut enc = json::Encoder::new_pretty(&mut file);
         map.encode(&mut enc)
     }
 

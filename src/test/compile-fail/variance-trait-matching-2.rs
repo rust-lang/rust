@@ -21,7 +21,7 @@ pub fn buffer_encode<'a,
     let mut m = Vec::new();
     {
         let mut encoder =
-            serialize::json::Encoder::new(&mut m as &mut io::Writer);
+            serialize::json::Encoder::new_compact(&mut m as &mut io::Writer);
         //~^ ERROR `m` does not live long enough
         to_encode_object.encode(&mut encoder);
     }

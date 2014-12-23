@@ -1095,7 +1095,7 @@ impl Context {
         try!(self.recurse(stability.name.clone(), |this| {
             let json_dst = &this.dst.join("stability.json");
             let mut json_out = BufferedWriter::new(try!(File::create(json_dst)));
-            try!(stability.encode(&mut json::Encoder::new(&mut json_out)));
+            try!(stability.encode(&mut json::Encoder::new_compact(&mut json_out)));
 
             let mut title = stability.name.clone();
             title.push_str(" - Stability dashboard");
