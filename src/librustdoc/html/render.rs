@@ -66,6 +66,10 @@ use html::markdown::Markdown;
 use html::markdown;
 use stability_summary;
 
+/// A pair of name and its optional document.
+#[deriving(Clone, Eq, Ord, PartialEq, PartialOrd)]
+pub struct NameDoc(String, Option<String>);
+
 /// Major driving force in all rustdoc rendering. This contains information
 /// about where in the tree-like hierarchy rendering is occurring and controls
 /// how the current page is being rendered.
@@ -95,7 +99,7 @@ pub struct Context {
     /// functions), and the value is the list of containers belonging to this
     /// header. This map will change depending on the surrounding context of the
     /// page.
-    pub sidebar: HashMap<String, Vec<String>>,
+    pub sidebar: HashMap<String, Vec<NameDoc>>,
     /// This flag indicates whether [src] links should be generated or not. If
     /// the source files are present in the html rendering, then this will be
     /// `true`.
@@ -1245,7 +1249,7 @@ impl Context {
         }
     }
 
-    fn build_sidebar(&self, m: &clean::Module) -> HashMap<String, Vec<String>> {
+    fn build_sidebar(&self, m: &clean::Module) -> HashMap<String, Vec<NameDoc>> {
         let mut map = HashMap::new();
         for item in m.items.iter() {
             if self.ignore_private_item(item) { continue }
@@ -1262,7 +1266,7 @@ impl Context {
             let short = short.to_string();
             let v = map.entry(short).get().unwrap_or_else(
                 |vacant_entry| vacant_entry.insert(Vec::with_capacity(1)));
-            v.push(myname);
+            v.push(NameDoc(myname, Some(shorter_line(item.doc_value()))));
         }
 
         for (_, items) in map.iter_mut() {
@@ -1474,6 +1478,11 @@ fn shorter<'a>(s: Option<&'a str>) -> &'a str {
         },
         None => ""
     }
+}
+
+#[inline]
+fn shorter_line(s: Option<&str>) -> String {
+    shorter(s).replace("\n", " ")
 }
 
 fn document(w: &mut fmt::Formatter, item: &clean::Item) -> fmt::Result {
@@ -2213,21 +2222,22 @@ impl<'a> fmt::String for Sidebar<'a> {
                 None => return Ok(())
             };
             try!(write!(w, "<div class='block {}'><h2>{}</h2>", short, longty));
-            for item in items.iter() {
+            for &NameDoc(ref name, ref doc) in items.iter() {
                 let curty = shortty(cur).to_static_str();
-                let class = if cur.name.as_ref().unwrap() == item &&
+                let class = if cur.name.as_ref().unwrap() == name &&
                                short == curty { "current" } else { "" };
-                try!(write!(w, "<a class='{ty} {class}' href='{href}{path}'>\
-                                {name}</a>",
+                try!(write!(w, "<a class='{ty} {class}' href='{href}{path}' \
+                                title='{title}'>{name}</a>",
                        ty = short,
                        class = class,
                        href = if curty == "mod" {"../"} else {""},
                        path = if short == "mod" {
-                           format!("{}/index.html", item.as_slice())
+                           format!("{}/index.html", name.as_slice())
                        } else {
-                           format!("{}.{}.html", short, item.as_slice())
+                           format!("{}.{}.html", short, name.as_slice())
                        },
-                       name = item.as_slice()));
+                       title = doc.as_ref().unwrap().as_slice(),
+                       name = name.as_slice()));
             }
             try!(write!(w, "</div>"));
             Ok(())
