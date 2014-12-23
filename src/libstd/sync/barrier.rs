@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use kinds::{Send, Sync};
 use sync::{Mutex, Condvar};
 
 /// A barrier enables multiple tasks to synchronize the beginning
@@ -35,11 +36,17 @@ pub struct Barrier {
     num_threads: uint,
 }
 
+unsafe impl Send for Barrier {}
+unsafe impl Sync for Barrier {}
+
 // The inner state of a double barrier
 struct BarrierState {
     count: uint,
     generation_id: uint,
 }
+
+unsafe impl Send for BarrierState {}
+unsafe impl Sync for BarrierState {}
 
 impl Barrier {
     /// Create a new barrier that can block a given number of threads.

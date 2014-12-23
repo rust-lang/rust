@@ -58,6 +58,9 @@ use time::Duration;
 /// ```
 pub struct Condvar { inner: Box<StaticCondvar> }
 
+unsafe impl Send for Condvar {}
+unsafe impl Sync for Condvar {}
+
 /// Statically allocated condition variables.
 ///
 /// This structure is identical to `Condvar` except that it is suitable for use
@@ -74,6 +77,9 @@ pub struct StaticCondvar {
     inner: sys::Condvar,
     mutex: AtomicUint,
 }
+
+unsafe impl Send for StaticCondvar {}
+unsafe impl Sync for StaticCondvar {}
 
 /// Constant initializer for a statically allocated condition variable.
 pub const CONDVAR_INIT: StaticCondvar = StaticCondvar {
