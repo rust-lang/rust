@@ -1295,9 +1295,6 @@ impl<A: PartialEq> PartialEq for RingBuf<A> {
         self.len() == other.len() &&
             self.iter().zip(other.iter()).all(|(a, b)| a.eq(b))
     }
-    fn ne(&self, other: &RingBuf<A>) -> bool {
-        !self.eq(other)
-    }
 }
 
 impl<A: Eq> Eq for RingBuf<A> {}

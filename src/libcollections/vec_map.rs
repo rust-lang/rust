@@ -60,7 +60,6 @@ use vec::Vec;
 /// months.clear();
 /// assert!(months.is_empty());
 /// ```
-#[deriving(PartialEq, Eq)]
 pub struct VecMap<V> {
     v: Vec<Option<V>>,
 }
@@ -491,6 +490,14 @@ impl<V:Clone> VecMap<V> {
         self.insert(key, new_val).is_none()
     }
 }
+
+impl<V: PartialEq> PartialEq for VecMap<V> {
+    fn eq(&self, other: &VecMap<V>) -> bool {
+        iter::order::eq(self.iter(), other.iter())
+    }
+}
+
+impl<V: Eq> Eq for VecMap<V> {}
 
 impl<V: PartialOrd> PartialOrd for VecMap<V> {
     #[inline]
@@ -954,6 +961,10 @@ mod test_map {
         assert!(!b.insert(0, 5).is_none());
         assert!(a != b);
         assert!(b.insert(5, 19).is_none());
+        assert!(a == b);
+
+        a = VecMap::new();
+        b = VecMap::with_capacity(1);
         assert!(a == b);
     }
 
