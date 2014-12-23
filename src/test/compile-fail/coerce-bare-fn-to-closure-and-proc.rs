@@ -8,12 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Test that coercions from fn item types are ok, but not fn pointer
+// types to closures/procs are not allowed.
+
 fn foo() {}
 
-fn main() {
+fn fn_item_type() {
     let f = foo;
 
     let f_closure: || = f;
-    //~^ ERROR: cannot coerce non-statically resolved bare fn to closure
-    //~^^ HELP: consider embedding the function in a closure
 }
+
+fn fn_pointer_type() {
+    let f = foo as fn();
+    let f_closure: || = f;
+    //~^ ERROR: mismatched types
+}
+
+fn main() { }

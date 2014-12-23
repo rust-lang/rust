@@ -26,7 +26,7 @@ pub enum Os {
     OsDragonfly,
 }
 
-#[deriving(Copy, PartialEq, Eq, Hash, Encodable, Decodable, Clone)]
+#[deriving(PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Clone, Copy)]
 pub enum Abi {
     // NB: This ordering MUST match the AbiDatas array below.
     // (This is ensured by the test indices_are_correct().)

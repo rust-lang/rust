@@ -91,7 +91,7 @@ fn lang_start(main: *const u8, argc: int, argv: *const *const u8) -> int {
         // created. Note that this isn't necessary in general for new threads,
         // but we just do this to name the main thread and to give it correct
         // info about the stack bounds.
-        let thread: Thread = NewThread::new(Some("<main>".into_string()));
+        let thread: Thread = NewThread::new(Some("<main>".to_string()));
         thread_info::set((my_stack_bottom, my_stack_top),
                          sys::thread::guard::main(),
                          thread);

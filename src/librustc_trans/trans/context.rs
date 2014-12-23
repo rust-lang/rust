@@ -284,7 +284,7 @@ impl<'tcx> SharedCrateContext<'tcx> {
             // such as a function name in the module.
             // 1. http://llvm.org/bugs/show_bug.cgi?id=11479
             let llmod_id = format!("{}.{}.rs", crate_name, i);
-            let local_ccx = LocalCrateContext::new(&shared_ccx, llmod_id.as_slice());
+            let local_ccx = LocalCrateContext::new(&shared_ccx, llmod_id[]);
             shared_ccx.local_ccxs.push(local_ccx);
         }
 
@@ -374,7 +374,7 @@ impl<'tcx> LocalCrateContext<'tcx> {
                                           .target
                                           .target
                                           .data_layout
-                                          .as_slice());
+                                          []);
 
             let dbg_cx = if shared.tcx.sess.opts.debuginfo != NoDebugInfo {
                 Some(debuginfo::CrateDebugContext::new(llmod))
@@ -726,7 +726,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
     pub fn report_overbig_object(&self, obj: Ty<'tcx>) -> ! {
         self.sess().fatal(
             format!("the type `{}` is too big for the current architecture",
-                    obj.repr(self.tcx())).as_slice())
+                    obj.repr(self.tcx()))[])
     }
 }
 

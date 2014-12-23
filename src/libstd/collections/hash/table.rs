@@ -664,17 +664,17 @@ impl<K, V> RawTable<K, V> {
         }
     }
 
-    pub fn iter_mut(&mut self) -> MutEntries<K, V> {
-        MutEntries {
+    pub fn iter_mut(&mut self) -> IterMut<K, V> {
+        IterMut {
             iter: self.raw_buckets(),
             elems_left: self.size(),
         }
     }
 
-    pub fn into_iter(self) -> MoveEntries<K, V> {
+    pub fn into_iter(self) -> IntoIter<K, V> {
         let RawBuckets { raw, hashes_end, .. } = self.raw_buckets();
         // Replace the marker regardless of lifetime bounds on parameters.
-        MoveEntries {
+        IntoIter {
             iter: RawBuckets {
                 raw: raw,
                 hashes_end: hashes_end,
@@ -776,13 +776,13 @@ pub struct Entries<'a, K: 'a, V: 'a> {
 }
 
 /// Iterator over mutable references to entries in a table.
-pub struct MutEntries<'a, K: 'a, V: 'a> {
+pub struct IterMut<'a, K: 'a, V: 'a> {
     iter: RawBuckets<'a, K, V>,
     elems_left: uint,
 }
 
 /// Iterator over the entries in a table, consuming the table.
-pub struct MoveEntries<K, V> {
+pub struct IntoIter<K, V> {
     table: RawTable<K, V>,
     iter: RawBuckets<'static, K, V>
 }
@@ -809,7 +809,7 @@ impl<'a, K, V> Iterator<(&'a K, &'a V)> for Entries<'a, K, V> {
     }
 }
 
-impl<'a, K, V> Iterator<(&'a K, &'a mut V)> for MutEntries<'a, K, V> {
+impl<'a, K, V> Iterator<(&'a K, &'a mut V)> for IterMut<'a, K, V> {
     fn next(&mut self) -> Option<(&'a K, &'a mut V)> {
         self.iter.next().map(|bucket| {
             self.elems_left -= 1;
@@ -825,7 +825,7 @@ impl<'a, K, V> Iterator<(&'a K, &'a mut V)> for MutEntries<'a, K, V> {
     }
 }
 
-impl<K, V> Iterator<(SafeHash, K, V)> for MoveEntries<K, V> {
+impl<K, V> Iterator<(SafeHash, K, V)> for IntoIter<K, V> {
     fn next(&mut self) -> Option<(SafeHash, K, V)> {
         self.iter.next().map(|bucket| {
             self.table.size -= 1;

@@ -36,7 +36,7 @@ impl ExternalHtml {
 pub fn load_string(input: &Path) -> io::IoResult<Option<String>> {
     let mut f = try!(io::File::open(input));
     let d = try!(f.read_to_end());
-    Ok(str::from_utf8(d.as_slice()).map(|s| s.to_string()))
+    Ok(str::from_utf8(d.as_slice()).map(|s| s.to_string()).ok())
 }
 
 macro_rules! load_or_return {

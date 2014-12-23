@@ -118,7 +118,7 @@ pub fn check_intrinsics(ccx: &CrateContext) {
                             ""
                         } else {
                             "s"
-                        }).as_slice());
+                        })[]);
         }
         if ty::type_is_fat_ptr(ccx.tcx(), transmute_restriction.to) ||
            ty::type_is_fat_ptr(ccx.tcx(), transmute_restriction.from) {
@@ -150,7 +150,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     let tcx = bcx.tcx();
 
     let ret_ty = match callee_ty.sty {
-        ty::ty_bare_fn(ref f) => f.sig.0.output,
+        ty::ty_bare_fn(_, ref f) => f.sig.0.output,
         _ => panic!("expected bare_fn in trans_intrinsic_call")
     };
     let foreign_item = tcx.map.expect_foreign_item(node);

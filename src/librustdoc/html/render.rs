@@ -42,8 +42,8 @@ use std::fmt;
 use std::io::fs::PathExtensions;
 use std::io::{fs, File, BufferedWriter, BufferedReader};
 use std::io;
+use std::iter::repeat;
 use std::str;
-use std::string::String;
 use std::sync::Arc;
 
 use externalfiles::ExternalHtml;
@@ -1186,7 +1186,8 @@ impl Context {
                                     &Sidebar{ cx: cx, item: it },
                                     &Item{ cx: cx, item: it }));
             } else {
-                let mut url = "../".repeat(cx.current.len());
+                let mut url = repeat("../").take(cx.current.len())
+                                           .collect::<String>();
                 match cache().paths.get(&it.def_id) {
                     Some(&(ref names, _)) => {
                         for name in names[..names.len() - 1].iter() {
@@ -1382,7 +1383,8 @@ impl<'a> fmt::Show for Item<'a> {
             let amt = if self.ismodule() { cur.len() - 1 } else { cur.len() };
             for (i, component) in cur.iter().enumerate().take(amt) {
                 try!(write!(fmt, "<a href='{}index.html'>{}</a>::<wbr>",
-                            "../".repeat(cur.len() - i - 1),
+                            repeat("../").take(cur.len() - i - 1)
+                                         .collect::<String>(),
                             component.as_slice()));
             }
         }

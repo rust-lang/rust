@@ -28,7 +28,7 @@ $(TMPDIR)/%.pp: %.rs
 
 $(TMPDIR)/%.dot: %.rs
 	$(eval $(call FIND_LAST_BLOCK,$<))
-	$(RUSTC_LIB) --pretty flowgraph=$(LASTBLOCKNUM_$<) $< -o $@.tmp
+	$(RUSTC_LIB) -Z unstable-options --xpretty flowgraph=$(LASTBLOCKNUM_$<) $< -o $@.tmp
 	cat $@.tmp | sed -e 's@ (id=[0-9]*)@@g' \
                          -e 's@\[label=""\]@@' \
                          -e 's@digraph [a-zA-Z0-9_]* @digraph block @' \

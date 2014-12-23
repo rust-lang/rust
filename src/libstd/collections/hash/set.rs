@@ -11,20 +11,19 @@
 // ignore-lexer-test FIXME #15883
 
 use borrow::BorrowFrom;
+use clone::Clone;
 use cmp::{Eq, Equiv, PartialEq};
 use core::kinds::Sized;
 use default::Default;
 use fmt::Show;
 use fmt;
 use hash::{Hash, Hasher, RandomSipHasher};
-use iter::{Iterator, IteratorExt, FromIterator, Map, Chain, Extend};
+use iter::{Iterator, IteratorExt, IteratorCloneExt, FromIterator, Map, Chain, Extend};
+use ops::{BitOr, BitAnd, BitXor, Sub};
 use option::Option::{Some, None, mod};
 use result::Result::{Ok, Err};
 
-use super::map::{mod, HashMap, MoveEntries, Keys, INITIAL_CAPACITY};
-
-// FIXME(conventions): implement BitOr, BitAnd, BitXor, and Sub
-
+use super::map::{mod, HashMap, Keys, INITIAL_CAPACITY};
 
 // Future Optimization (FIXME!)
 // =============================
@@ -277,6 +276,7 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn into_iter(self) -> IntoIter<T> {
         fn first<A, B>((a, _): (A, B)) -> A { a }
+        let first: fn((T, ())) -> T = first;
 
         IntoIter { iter: self.map.into_iter().map(first) }
     }
@@ -419,6 +419,8 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn drain(&mut self) -> Drain<T> {
         fn first<A, B>((a, _): (A, B)) -> A { a }
+        let first: fn((T, ())) -> T = first; // coerce to fn pointer
+
         Drain { iter: self.map.drain().map(first) }
     }
 
@@ -618,6 +620,118 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S> + Default> Default for HashSet<T, H> {
     }
 }
 
+#[unstable = "matches collection reform specification, waiting for dust to settle"]
+impl<'a, 'b, T: Eq + Hash<S> + Clone, S, H: Hasher<S> + Default>
+BitOr<&'b HashSet<T, H>, HashSet<T, H>> for &'a HashSet<T, H> {
+    /// Returns the union of `self` and `rhs` as a new `HashSet<T, H>`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::HashSet;
+    ///
+    /// let a: HashSet<int> = vec![1, 2, 3].into_iter().collect();
+    /// let b: HashSet<int> = vec![3, 4, 5].into_iter().collect();
+    ///
+    /// let set: HashSet<int> = &a | &b;
+    ///
+    /// let mut i = 0;
+    /// let expected = [1, 2, 3, 4, 5];
+    /// for x in set.iter() {
+    ///     assert!(expected.contains(x));
+    ///     i += 1;
+    /// }
+    /// assert_eq!(i, expected.len());
+    /// ```
+    fn bitor(self, rhs: &HashSet<T, H>) -> HashSet<T, H> {
+        self.union(rhs).cloned().collect()
+    }
+}
+
+#[unstable = "matches collection reform specification, waiting for dust to settle"]
+impl<'a, 'b, T: Eq + Hash<S> + Clone, S, H: Hasher<S> + Default>
+BitAnd<&'b HashSet<T, H>, HashSet<T, H>> for &'a HashSet<T, H> {
+    /// Returns the intersection of `self` and `rhs` as a new `HashSet<T, H>`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::HashSet;
+    ///
+    /// let a: HashSet<int> = vec![1, 2, 3].into_iter().collect();
+    /// let b: HashSet<int> = vec![2, 3, 4].into_iter().collect();
+    ///
+    /// let set: HashSet<int> = &a & &b;
+    ///
+    /// let mut i = 0;
+    /// let expected = [2, 3];
+    /// for x in set.iter() {
+    ///     assert!(expected.contains(x));
+    ///     i += 1;
+    /// }
+    /// assert_eq!(i, expected.len());
+    /// ```
+    fn bitand(self, rhs: &HashSet<T, H>) -> HashSet<T, H> {
+        self.intersection(rhs).cloned().collect()
+    }
+}
+
+#[unstable = "matches collection reform specification, waiting for dust to settle"]
+impl<'a, 'b, T: Eq + Hash<S> + Clone, S, H: Hasher<S> + Default>
+BitXor<&'b HashSet<T, H>, HashSet<T, H>> for &'a HashSet<T, H> {
+    /// Returns the symmetric difference of `self` and `rhs` as a new `HashSet<T, H>`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::HashSet;
+    ///
+    /// let a: HashSet<int> = vec![1, 2, 3].into_iter().collect();
+    /// let b: HashSet<int> = vec![3, 4, 5].into_iter().collect();
+    ///
+    /// let set: HashSet<int> = &a ^ &b;
+    ///
+    /// let mut i = 0;
+    /// let expected = [1, 2, 4, 5];
+    /// for x in set.iter() {
+    ///     assert!(expected.contains(x));
+    ///     i += 1;
+    /// }
+    /// assert_eq!(i, expected.len());
+    /// ```
+    fn bitxor(self, rhs: &HashSet<T, H>) -> HashSet<T, H> {
+        self.symmetric_difference(rhs).cloned().collect()
+    }
+}
+
+#[unstable = "matches collection reform specification, waiting for dust to settle"]
+impl<'a, 'b, T: Eq + Hash<S> + Clone, S, H: Hasher<S> + Default>
+Sub<&'b HashSet<T, H>, HashSet<T, H>> for &'a HashSet<T, H> {
+    /// Returns the difference of `self` and `rhs` as a new `HashSet<T, H>`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::HashSet;
+    ///
+    /// let a: HashSet<int> = vec![1, 2, 3].into_iter().collect();
+    /// let b: HashSet<int> = vec![3, 4, 5].into_iter().collect();
+    ///
+    /// let set: HashSet<int> = &a - &b;
+    ///
+    /// let mut i = 0;
+    /// let expected = [1, 2];
+    /// for x in set.iter() {
+    ///     assert!(expected.contains(x));
+    ///     i += 1;
+    /// }
+    /// assert_eq!(i, expected.len());
+    /// ```
+    fn sub(self, rhs: &HashSet<T, H>) -> HashSet<T, H> {
+        self.difference(rhs).cloned().collect()
+    }
+}
+
 /// HashSet iterator
 pub struct Iter<'a, K: 'a> {
     iter: Keys<'a, K, ()>
@@ -625,7 +739,7 @@ pub struct Iter<'a, K: 'a> {
 
 /// HashSet move iterator
 pub struct IntoIter<K> {
-    iter: Map<(K, ()), K, MoveEntries<K, ()>, fn((K, ())) -> K>
+    iter: Map<(K, ()), K, map::IntoIter<K, ()>, fn((K, ())) -> K>
 }
 
 /// HashSet drain iterator

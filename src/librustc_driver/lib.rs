@@ -55,6 +55,7 @@ use rustc::DIAGNOSTICS;
 
 use std::any::AnyRefExt;
 use std::io;
+use std::iter::repeat;
 use std::os;
 use std::thread;
 
@@ -88,12 +89,12 @@ fn run_compiler(args: &[String]) {
     let descriptions = diagnostics::registry::Registry::new(&DIAGNOSTICS);
     match matches.opt_str("explain") {
         Some(ref code) => {
-            match descriptions.find_description(code.as_slice()) {
+            match descriptions.find_description(code[]) {
                 Some(ref description) => {
                     println!("{}", description);
                 }
                 None => {
-                    early_error(format!("no extended information for {}", code).as_slice());
+                    early_error(format!("no extended information for {}", code)[]);
                 }
             }
             return;
@@ -119,7 +120,7 @@ fn run_compiler(args: &[String]) {
             early_error("no input filename given");
         }
         1u => {
-            let ifile = matches.free[0].as_slice();
+            let ifile = matches.free[0][];
             if ifile == "-" {
                 let contents = io::stdin().read_to_end().unwrap();
                 let src = String::from_utf8(contents).unwrap();
@@ -138,8 +139,19 @@ fn run_compiler(args: &[String]) {
     }
 
     let pretty = matches.opt_default("pretty", "normal").map(|a| {
-        pretty::parse_pretty(&sess, a.as_slice())
+        // stable pretty-print variants only
+        pretty::parse_pretty(&sess, a.as_slice(), false)
     });
+    let pretty = if pretty.is_none() &&
+        sess.debugging_opt(config::UNSTABLE_OPTIONS) {
+            matches.opt_str("xpretty").map(|a| {
+                // extended with unstable pretty-print variants
+                pretty::parse_pretty(&sess, a.as_slice(), true)
+            })
+        } else {
+            pretty
+        };
+
     match pretty.into_iter().next() {
         Some((ppm, opt_uii)) => {
             pretty::pretty_print_input(sess, cfg, &input, ppm, opt_uii, ofile);
@@ -196,12 +208,16 @@ pub fn version(binary: &str, matches: &getopts::Matches) {
     }
 }
 
-fn usage(verbose: bool) {
+fn usage(verbose: bool, include_unstable_options: bool) {
     let groups = if verbose {
-        config::optgroups()
+        config::rustc_optgroups()
     } else {
-        config::short_optgroups()
+        config::rustc_short_optgroups()
     };
+    let groups : Vec<_> = groups.into_iter()
+        .filter(|x| include_unstable_options || x.is_stable())
+        .map(|x|x.opt_group)
+        .collect();
     let message = format!("Usage: rustc [OPTIONS] INPUT");
     let extra_help = if verbose {
         ""
@@ -261,7 +277,8 @@ Available lint options:
         .map(|&s| s.name.width(true))
         .max().unwrap_or(0);
     let padded = |x: &str| {
-        let mut s = " ".repeat(max_name_len - x.char_len());
+        let mut s = repeat(" ").take(max_name_len - x.chars().count())
+                               .collect::<String>();
         s.push_str(x);
         s
     };
@@ -274,7 +291,7 @@ Available lint options:
         for lint in lints.into_iter() {
             let name = lint.name_lower().replace("_", "-");
             println!("    {}  {:7.7}  {}",
-                     padded(name.as_slice()), lint.default_level.as_str(), lint.desc);
+                     padded(name[]), lint.default_level.as_str(), lint.desc);
         }
         println!("\n");
     };
@@ -287,7 +304,8 @@ Available lint options:
         .map(|&(s, _)| s.width(true))
         .max().unwrap_or(0);
     let padded = |x: &str| {
-        let mut s = " ".repeat(max_name_len - x.char_len());
+        let mut s = repeat(" ").take(max_name_len - x.chars().count())
+                               .collect::<String>();
         s.push_str(x);
         s
     };
@@ -303,7 +321,7 @@ Available lint options:
             let desc = to.into_iter().map(|x| x.as_str().replace("_", "-"))
                          .collect::<Vec<String>>().connect(", ");
             println!("    {}  {}",
-                     padded(name.as_slice()), desc);
+                     padded(name[]), desc);
         }
         println!("\n");
     };
@@ -362,20 +380,45 @@ pub fn handle_options(mut args: Vec<String>) -> Option<getopts::Matches> {
     let _binary = args.remove(0).unwrap();
 
     if args.is_empty() {
-        usage(false);
+        // user did not write `-v` nor `-Z unstable-options`, so do not
+        // include that extra information.
+        usage(false, false);
         return None;
     }
 
     let matches =
-        match getopts::getopts(args.as_slice(), config::optgroups().as_slice()) {
+        match getopts::getopts(args[], config::optgroups()[]) {
             Ok(m) => m,
-            Err(f) => {
-                early_error(f.to_string().as_slice());
+            Err(f_stable_attempt) => {
+                // redo option parsing, including unstable options this time,
+                // in anticipation that the mishandled option was one of the
+                // unstable ones.
+                let all_groups : Vec<getopts::OptGroup>
+                    = config::rustc_optgroups().into_iter().map(|x|x.opt_group).collect();
+                match getopts::getopts(args.as_slice(), all_groups.as_slice()) {
+                    Ok(m_unstable) => {
+                        let r = m_unstable.opt_strs("Z");
+                        let include_unstable_options = r.iter().any(|x| *x == "unstable-options");
+                        if include_unstable_options {
+                            m_unstable
+                        } else {
+                            early_error(f_stable_attempt.to_string().as_slice());
+                        }
+                    }
+                    Err(_) => {
+                        // ignore the error from the unstable attempt; just
+                        // pass the error we got from the first try.
+                        early_error(f_stable_attempt.to_string().as_slice());
+                    }
+                }
             }
         };
 
+    let r = matches.opt_strs("Z");
+    let include_unstable_options = r.iter().any(|x| *x == "unstable-options");
+
     if matches.opt_present("h") || matches.opt_present("help") {
-        usage(matches.opt_present("verbose"));
+        usage(matches.opt_present("verbose"), include_unstable_options);
         return None;
     }
 
@@ -518,7 +561,7 @@ pub fn monitor<F:FnOnce()+Send>(f: F) {
                     "run with `RUST_BACKTRACE=1` for a backtrace".to_string(),
                 ];
                 for note in xs.iter() {
-                    emitter.emit(None, note.as_slice(), None, diagnostic::Note)
+                    emitter.emit(None, note[], None, diagnostic::Note)
                 }
 
                 match r.read_to_string() {
@@ -526,8 +569,7 @@ pub fn monitor<F:FnOnce()+Send>(f: F) {
                     Err(e) => {
                         emitter.emit(None,
                                      format!("failed to read internal \
-                                              stderr: {}",
-                                             e).as_slice(),
+                                              stderr: {}", e)[],
                                      None,
                                      diagnostic::Error)
                     }

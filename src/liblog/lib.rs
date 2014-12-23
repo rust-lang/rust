@@ -164,7 +164,7 @@
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/nightly/",
        html_playground_url = "http://play.rust-lang.org/")]
-#![feature(macro_rules, unboxed_closures)]
+#![feature(macro_rules, unboxed_closures, slicing_syntax)]
 #![deny(missing_docs)]
 
 extern crate regex;
@@ -280,7 +280,7 @@ pub fn log(level: u32, loc: &'static LogLocation, args: &fmt::Arguments) {
     // Test the literal string from args against the current filter, if there
     // is one.
     match unsafe { FILTER.as_ref() } {
-        Some(filter) if !filter.is_match(args.to_string().as_slice()) => return,
+        Some(filter) if !filter.is_match(args.to_string()[]) => return,
         _ => {}
     }
 
@@ -370,12 +370,12 @@ pub fn mod_enabled(level: u32, module: &str) -> bool {
 
 fn enabled(level: u32,
            module: &str,
-           iter: slice::Items<directive::LogDirective>)
+           iter: slice::Iter<directive::LogDirective>)
            -> bool {
     // Search for the longest match, the vector is assumed to be pre-sorted.
     for directive in iter.rev() {
         match directive.name {
-            Some(ref name) if !module.starts_with(name.as_slice()) => {},
+            Some(ref name) if !module.starts_with(name[]) => {},
             Some(..) | None => {
                 return level <= directive.level
             }
@@ -390,7 +390,7 @@ fn enabled(level: u32,
 /// `Once` primitive (and this function is called from that primitive).
 fn init() {
     let (mut directives, filter) = match os::getenv("RUST_LOG") {
-        Some(spec) => directive::parse_logging_spec(spec.as_slice()),
+        Some(spec) => directive::parse_logging_spec(spec[]),
         None => (Vec::new(), None),
     };
 

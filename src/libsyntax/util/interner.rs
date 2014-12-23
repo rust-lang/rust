@@ -95,41 +95,37 @@ pub struct RcStr {
     string: Rc<String>,
 }
 
+impl RcStr {
+    pub fn new(string: &str) -> RcStr {
+        RcStr {
+            string: Rc::new(string.to_string()),
+        }
+    }
+}
+
 impl Eq for RcStr {}
 
 impl Ord for RcStr {
     fn cmp(&self, other: &RcStr) -> Ordering {
-        self.as_slice().cmp(other.as_slice())
-    }
-}
-
-impl Str for RcStr {
-    #[inline]
-    fn as_slice<'a>(&'a self) -> &'a str {
-        let s: &'a str = self.string.as_slice();
-        s
+        self[].cmp(other[])
     }
 }
 
 impl fmt::Show for RcStr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use std::fmt::Show;
-        self.as_slice().fmt(f)
+        self[].fmt(f)
     }
 }
 
 impl BorrowFrom<RcStr> for str {
     fn borrow_from(owned: &RcStr) -> &str {
-        owned.string.as_slice()
+        owned.string[]
     }
 }
 
-impl RcStr {
-    pub fn new(string: &str) -> RcStr {
-        RcStr {
-            string: Rc::new(string.into_string()),
-        }
-    }
+impl Deref<str> for RcStr {
+    fn deref(&self) -> &str { self.string[] }
 }
 
 /// A StrInterner differs from Interner<String> in that it accepts

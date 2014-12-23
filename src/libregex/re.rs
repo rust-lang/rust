@@ -417,7 +417,7 @@ impl Regex {
     /// # extern crate regex; #[phase(plugin)] extern crate regex_macros;
     /// # fn main() {
     /// let re = regex!("[^01]+");
-    /// assert_eq!(re.replace("1078910", "").as_slice(), "1010");
+    /// assert_eq!(re.replace("1078910", ""), "1010");
     /// # }
     /// ```
     ///
@@ -435,7 +435,7 @@ impl Regex {
     /// let result = re.replace("Springsteen, Bruce", |&: caps: &Captures| {
     ///     format!("{} {}", caps.at(2).unwrap_or(""), caps.at(1).unwrap_or(""))
     /// });
-    /// assert_eq!(result.as_slice(), "Bruce Springsteen");
+    /// assert_eq!(result, "Bruce Springsteen");
     /// # }
     /// ```
     ///
@@ -450,7 +450,7 @@ impl Regex {
     /// # fn main() {
     /// let re = regex!(r"(?P<last>[^,\s]+),\s+(?P<first>\S+)");
     /// let result = re.replace("Springsteen, Bruce", "$first $last");
-    /// assert_eq!(result.as_slice(), "Bruce Springsteen");
+    /// assert_eq!(result, "Bruce Springsteen");
     /// # }
     /// ```
     ///
@@ -469,7 +469,7 @@ impl Regex {
     ///
     /// let re = regex!(r"(?P<last>[^,\s]+),\s+(\S+)");
     /// let result = re.replace("Springsteen, Bruce", NoExpand("$2 $last"));
-    /// assert_eq!(result.as_slice(), "$2 $last");
+    /// assert_eq!(result, "$2 $last");
     /// # }
     /// ```
     pub fn replace<R: Replacer>(&self, text: &str, rep: R) -> String {
@@ -505,19 +505,19 @@ impl Regex {
             }
 
             let (s, e) = cap.pos(0).unwrap(); // captures only reports matches
-            new.push_str(text.slice(last_match, s));
-            new.push_str(rep.reg_replace(&cap).as_slice());
+            new.push_str(text[last_match..s]);
+            new.push_str(rep.reg_replace(&cap)[]);
             last_match = e;
         }
-        new.push_str(text.slice(last_match, text.len()));
+        new.push_str(text[last_match..text.len()]);
         return new;
     }
 
     /// Returns the original string of this regex.
     pub fn as_str<'a>(&'a self) -> &'a str {
         match *self {
-            Dynamic(ExDynamic { ref original, .. }) => original.as_slice(),
-            Native(ExNative { ref original, .. }) => original.as_slice(),
+            Dynamic(ExDynamic { ref original, .. }) => original[],
+            Native(ExNative { ref original, .. }) => original[],
         }
     }
 
@@ -540,8 +540,8 @@ impl Regex {
 }
 
 pub enum NamesIter<'a> {
-    NamesIterNative(::std::slice::Items<'a, Option<&'static str>>),
-    NamesIterDynamic(::std::slice::Items<'a, Option<String>>)
+    NamesIterNative(::std::slice::Iter<'a, Option<&'static str>>),
+    NamesIterDynamic(::std::slice::Iter<'a, Option<String>>)
 }
 
 impl<'a> Iterator<Option<String>> for NamesIter<'a> {
@@ -608,13 +608,13 @@ impl<'r, 't> Iterator<&'t str> for RegexSplits<'r, 't> {
                 if self.last >= text.len() {
                     None
                 } else {
-                    let s = text.slice(self.last, text.len());
+                    let s = text[self.last..text.len()];
                     self.last = text.len();
                     Some(s)
                 }
             }
             Some((s, e)) => {
-                let matched = text.slice(self.last, s);
+                let matched = text[self.last..s];
                 self.last = e;
                 Some(matched)
             }
@@ -642,7 +642,7 @@ impl<'r, 't> Iterator<&'t str> for RegexSplitsN<'r, 't> {
         } else {
             self.cur += 1;
             if self.cur >= self.limit {
-                Some(text.slice(self.splits.last, text.len()))
+                Some(text[self.splits.last..text.len()])
             } else {
                 self.splits.next()
             }
@@ -769,13 +769,13 @@ impl<'t> Captures<'t> {
             let pre = refs.at(1).unwrap_or("");
             let name = refs.at(2).unwrap_or("");
             format!("{}{}", pre,
-                    match from_str::<uint>(name.as_slice()) {
+                    match name.parse::<uint>() {
                 None => self.name(name).unwrap_or("").to_string(),
                 Some(i) => self.at(i).unwrap_or("").to_string(),
             })
         });
         let re = Regex::new(r"\$\$").unwrap();
-        re.replace_all(text.as_slice(), NoExpand("$"))
+        re.replace_all(text[], NoExpand("$"))
     }
 
     /// Returns the number of captured groups.

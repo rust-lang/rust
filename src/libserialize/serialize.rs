@@ -308,13 +308,13 @@ impl<E, S:Encoder<E>> Encodable<S, E> for str {
 
 impl<E, S:Encoder<E>> Encodable<S, E> for String {
     fn encode(&self, s: &mut S) -> Result<(), E> {
-        s.emit_str(self.as_slice())
+        s.emit_str(self[])
     }
 }
 
 impl<E, D:Decoder<E>> Decodable<D, E> for String {
     fn decode(d: &mut D) -> Result<String, E> {
-        Ok(String::from_str(try!(d.read_str()).as_slice()))
+        d.read_str()
     }
 }
 

@@ -132,7 +132,7 @@ pub fn decode_inlined_item<'tcx>(cdata: &cstore::crate_metadata,
             // Do an Option dance to use the path after it is moved below.
             let s = ast_map::path_to_string(ast_map::Values(path.iter()));
             path_as_str = Some(s);
-            path_as_str.as_ref().map(|x| x.as_slice())
+            path_as_str.as_ref().map(|x| x[])
         });
         let mut ast_dsr = reader::Decoder::new(ast_doc);
         let from_id_range = Decodable::decode(&mut ast_dsr).unwrap();
@@ -1007,14 +1007,21 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
 
         self.emit_enum("AutoAdjustment", |this| {
             match *adj {
-                ty::AdjustAddEnv(store) => {
-                    this.emit_enum_variant("AutoAddEnv", 0, 1, |this| {
-                        this.emit_enum_variant_arg(0, |this| store.encode(this))
+                ty::AdjustAddEnv(def_id, store) => {
+                    this.emit_enum_variant("AdjustAddEnv", 0, 2, |this| {
+                        this.emit_enum_variant_arg(0, |this| def_id.encode(this));
+                        this.emit_enum_variant_arg(1, |this| store.encode(this))
+                    })
+                }
+
+                ty::AdjustReifyFnPointer(def_id) => {
+                    this.emit_enum_variant("AdjustReifyFnPointer", 1, 2, |this| {
+                        this.emit_enum_variant_arg(0, |this| def_id.encode(this))
                     })
                 }
 
                 ty::AdjustDerefRef(ref auto_deref_ref) => {
-                    this.emit_enum_variant("AutoDerefRef", 1, 1, |this| {
+                    this.emit_enum_variant("AdjustDerefRef", 2, 2, |this| {
                         this.emit_enum_variant_arg(0,
                             |this| Ok(this.emit_auto_deref_ref(ecx, auto_deref_ref)))
                     })
@@ -1648,12 +1655,20 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
             this.read_enum_variant(&variants, |this, i| {
                 Ok(match i {
                     0 => {
+                        let def_id: ast::DefId =
+                            this.read_def_id(dcx);
                         let store: ty::TraitStore =
                             this.read_enum_variant_arg(0, |this| Decodable::decode(this)).unwrap();
 
-                        ty::AdjustAddEnv(store.tr(dcx))
+                        ty::AdjustAddEnv(def_id, store.tr(dcx))
                     }
                     1 => {
+                        let def_id: ast::DefId =
+                            this.read_def_id(dcx);
+
+                        ty::AdjustReifyFnPointer(def_id)
+                    }
+                    2 => {
                         let auto_deref_ref: ty::AutoDerefRef =
                             this.read_enum_variant_arg(0,
                                 |this| Ok(this.read_auto_deref_ref(dcx))).unwrap();
@@ -1876,7 +1891,7 @@ fn decode_side_tables(dcx: &DecodeContext,
             None => {
                 dcx.tcx.sess.bug(
                     format!("unknown tag found in side tables: {:x}",
-                            tag).as_slice());
+                            tag)[]);
             }
             Some(value) => {
                 let val_doc = entry_doc.get(c::tag_table_val as uint);
@@ -1961,7 +1976,7 @@ fn decode_side_tables(dcx: &DecodeContext,
                     _ => {
                         dcx.tcx.sess.bug(
                             format!("unknown tag found in side tables: {:x}",
-                                    tag).as_slice());
+                                    tag)[]);
                     }
                 }
             }

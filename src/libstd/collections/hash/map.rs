@@ -838,8 +838,9 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// }
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn keys(&self) -> Keys<K, V> {
+    pub fn keys<'a>(&'a self) -> Keys<'a, K, V> {
         fn first<A, B>((a, _): (A, B)) -> A { a }
+        let first: fn((&'a K,&'a V)) -> &'a K = first; // coerce to fn ptr
 
         Keys { inner: self.iter().map(first) }
     }
@@ -862,8 +863,9 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// }
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn values(&self) -> Values<K, V> {
+    pub fn values<'a>(&'a self) -> Values<'a, K, V> {
         fn second<A, B>((_, b): (A, B)) -> B { b }
+        let second: fn((&'a K,&'a V)) -> &'a V = second; // coerce to fn ptr
 
         Values { inner: self.iter().map(second) }
     }
@@ -914,8 +916,8 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// }
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn iter_mut(&mut self) -> MutEntries<K, V> {
-        MutEntries { inner: self.table.iter_mut() }
+    pub fn iter_mut(&mut self) -> IterMut<K, V> {
+        IterMut { inner: self.table.iter_mut() }
     }
 
     /// Creates a consuming iterator, that is, one that moves each key-value
@@ -936,10 +938,11 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// let vec: Vec<(&str, int)> = map.into_iter().collect();
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn into_iter(self) -> MoveEntries<K, V> {
+    pub fn into_iter(self) -> IntoIter<K, V> {
         fn last_two<A, B, C>((_, b, c): (A, B, C)) -> (B, C) { (b, c) }
+        let last_two: fn((SafeHash, K, V)) -> (K, V) = last_two;
 
-        MoveEntries {
+        IntoIter {
             inner: self.table.into_iter().map(last_two)
         }
     }
@@ -1007,6 +1010,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn drain(&mut self) -> Drain<K, V> {
         fn last_two<A, B, C>((_, b, c): (A, B, C)) -> (B, C) { (b, c) }
+        let last_two: fn((SafeHash, K, V)) -> (K, V) = last_two; // coerce to fn pointer
 
         Drain {
             inner: self.table.drain().map(last_two),
@@ -1306,16 +1310,16 @@ pub struct Entries<'a, K: 'a, V: 'a> {
 }
 
 /// HashMap mutable values iterator
-pub struct MutEntries<'a, K: 'a, V: 'a> {
-    inner: table::MutEntries<'a, K, V>
+pub struct IterMut<'a, K: 'a, V: 'a> {
+    inner: table::IterMut<'a, K, V>
 }
 
 /// HashMap move iterator
-pub struct MoveEntries<K, V> {
+pub struct IntoIter<K, V> {
     inner: iter::Map<
         (SafeHash, K, V),
         (K, V),
-        table::MoveEntries<K, V>,
+        table::IntoIter<K, V>,
         fn((SafeHash, K, V)) -> (K, V),
     >
 }
@@ -1374,12 +1378,12 @@ impl<'a, K, V> Iterator<(&'a K, &'a V)> for Entries<'a, K, V> {
     #[inline] fn size_hint(&self) -> (uint, Option<uint>) { self.inner.size_hint() }
 }
 
-impl<'a, K, V> Iterator<(&'a K, &'a mut V)> for MutEntries<'a, K, V> {
+impl<'a, K, V> Iterator<(&'a K, &'a mut V)> for IterMut<'a, K, V> {
     #[inline] fn next(&mut self) -> Option<(&'a K, &'a mut V)> { self.inner.next() }
     #[inline] fn size_hint(&self) -> (uint, Option<uint>) { self.inner.size_hint() }
 }
 
-impl<K, V> Iterator<(K, V)> for MoveEntries<K, V> {
+impl<K, V> Iterator<(K, V)> for IntoIter<K, V> {
     #[inline] fn next(&mut self) -> Option<(K, V)> { self.inner.next() }
     #[inline] fn size_hint(&self) -> (uint, Option<uint>) { self.inner.size_hint() }
 }

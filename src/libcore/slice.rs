@@ -67,7 +67,7 @@ pub trait SliceExt<T> for Sized? {
     fn slice_from<'a>(&'a self, start: uint) -> &'a [T];
     fn slice_to<'a>(&'a self, end: uint) -> &'a [T];
     fn split_at<'a>(&'a self, mid: uint) -> (&'a [T], &'a [T]);
-    fn iter<'a>(&'a self) -> Items<'a, T>;
+    fn iter<'a>(&'a self) -> Iter<'a, T>;
     fn split<'a, P>(&'a self, pred: P) -> Splits<'a, T, P>
                     where P: FnMut(&T) -> bool;
     fn splitn<'a, P>(&'a self, n: uint, pred: P) -> SplitsN<Splits<'a, T, P>>
@@ -92,7 +92,7 @@ pub trait SliceExt<T> for Sized? {
     fn slice_mut<'a>(&'a mut self, start: uint, end: uint) -> &'a mut [T];
     fn slice_from_mut<'a>(&'a mut self, start: uint) -> &'a mut [T];
     fn slice_to_mut<'a>(&'a mut self, end: uint) -> &'a mut [T];
-    fn iter_mut<'a>(&'a mut self) -> MutItems<'a, T>;
+    fn iter_mut<'a>(&'a mut self) -> IterMut<'a, T>;
     fn head_mut<'a>(&'a mut self) -> Option<&'a mut T>;
     fn tail_mut<'a>(&'a mut self) -> &'a mut [T];
     fn init_mut<'a>(&'a mut self) -> &'a mut [T];
@@ -141,15 +141,15 @@ impl<T> SliceExt<T> for [T] {
     }
 
     #[inline]
-    fn iter<'a>(&'a self) -> Items<'a, T> {
+    fn iter<'a>(&'a self) -> Iter<'a, T> {
         unsafe {
             let p = self.as_ptr();
             if mem::size_of::<T>() == 0 {
-                Items{ptr: p,
+                Iter{ptr: p,
                       end: (p as uint + self.len()) as *const T,
                       marker: marker::ContravariantLifetime::<'a>}
             } else {
-                Items{ptr: p,
+                Iter{ptr: p,
                       end: p.offset(self.len() as int),
                       marker: marker::ContravariantLifetime::<'a>}
             }
@@ -286,15 +286,15 @@ impl<T> SliceExt<T> for [T] {
     }
 
     #[inline]
-    fn iter_mut<'a>(&'a mut self) -> MutItems<'a, T> {
+    fn iter_mut<'a>(&'a mut self) -> IterMut<'a, T> {
         unsafe {
             let p = self.as_mut_ptr();
             if mem::size_of::<T>() == 0 {
-                MutItems{ptr: p,
+                IterMut{ptr: p,
                          end: (p as uint + self.len()) as *mut T,
                          marker: marker::ContravariantLifetime::<'a>}
             } else {
-                MutItems{ptr: p,
+                IterMut{ptr: p,
                          end: p.offset(self.len() as int),
                          marker: marker::ContravariantLifetime::<'a>}
             }
@@ -655,7 +655,7 @@ impl<'a, T> Default for &'a [T] {
 // Iterators
 //
 
-// The shared definition of the `Item` and `MutItems` iterators
+// The shared definition of the `Item` and `IterMut` iterators
 macro_rules! iterator {
     (struct $name:ident -> $ptr:ty, $elem:ty) => {
         #[experimental = "needs review"]
@@ -738,14 +738,14 @@ macro_rules! make_slice {
 
 /// Immutable slice iterator
 #[experimental = "needs review"]
-pub struct Items<'a, T: 'a> {
+pub struct Iter<'a, T: 'a> {
     ptr: *const T,
     end: *const T,
     marker: marker::ContravariantLifetime<'a>
 }
 
 #[experimental]
-impl<'a, T> ops::Slice<uint, [T]> for Items<'a, T> {
+impl<'a, T> ops::Slice<uint, [T]> for Iter<'a, T> {
     fn as_slice_(&self) -> &[T] {
         self.as_slice()
     }
@@ -763,7 +763,7 @@ impl<'a, T> ops::Slice<uint, [T]> for Items<'a, T> {
     }
 }
 
-impl<'a, T> Items<'a, T> {
+impl<'a, T> Iter<'a, T> {
     /// View the underlying data as a subslice of the original data.
     ///
     /// This has the same lifetime as the original slice, and so the
@@ -774,20 +774,20 @@ impl<'a, T> Items<'a, T> {
     }
 }
 
-impl<'a,T> Copy for Items<'a,T> {}
+impl<'a,T> Copy for Iter<'a,T> {}
 
-iterator!{struct Items -> *const T, &'a T}
+iterator!{struct Iter -> *const T, &'a T}
 
 #[experimental = "needs review"]
-impl<'a, T> ExactSizeIterator<&'a T> for Items<'a, T> {}
+impl<'a, T> ExactSizeIterator<&'a T> for Iter<'a, T> {}
 
 #[stable]
-impl<'a, T> Clone for Items<'a, T> {
-    fn clone(&self) -> Items<'a, T> { *self }
+impl<'a, T> Clone for Iter<'a, T> {
+    fn clone(&self) -> Iter<'a, T> { *self }
 }
 
 #[experimental = "needs review"]
-impl<'a, T> RandomAccessIterator<&'a T> for Items<'a, T> {
+impl<'a, T> RandomAccessIterator<&'a T> for Iter<'a, T> {
     #[inline]
     fn indexable(&self) -> uint {
         let (exact, _) = self.size_hint();
@@ -813,14 +813,14 @@ impl<'a, T> RandomAccessIterator<&'a T> for Items<'a, T> {
 
 /// Mutable slice iterator.
 #[experimental = "needs review"]
-pub struct MutItems<'a, T: 'a> {
+pub struct IterMut<'a, T: 'a> {
     ptr: *mut T,
     end: *mut T,
     marker: marker::ContravariantLifetime<'a>,
 }
 
 #[experimental]
-impl<'a, T> ops::Slice<uint, [T]> for MutItems<'a, T> {
+impl<'a, T> ops::Slice<uint, [T]> for IterMut<'a, T> {
     fn as_slice_<'b>(&'b self) -> &'b [T] {
         make_slice!(T -> &'b [T]: self.ptr, self.end)
     }
@@ -839,7 +839,7 @@ impl<'a, T> ops::Slice<uint, [T]> for MutItems<'a, T> {
 }
 
 #[experimental]
-impl<'a, T> ops::SliceMut<uint, [T]> for MutItems<'a, T> {
+impl<'a, T> ops::SliceMut<uint, [T]> for IterMut<'a, T> {
     fn as_mut_slice_<'b>(&'b mut self) -> &'b mut [T] {
         make_slice!(T -> &'b mut [T]: self.ptr, self.end)
     }
@@ -857,7 +857,7 @@ impl<'a, T> ops::SliceMut<uint, [T]> for MutItems<'a, T> {
     }
 }
 
-impl<'a, T> MutItems<'a, T> {
+impl<'a, T> IterMut<'a, T> {
     /// View the underlying data as a subslice of the original data.
     ///
     /// To avoid creating `&mut` references that alias, this is forced
@@ -870,10 +870,10 @@ impl<'a, T> MutItems<'a, T> {
     }
 }
 
-iterator!{struct MutItems -> *mut T, &'a mut T}
+iterator!{struct IterMut -> *mut T, &'a mut T}
 
 #[experimental = "needs review"]
-impl<'a, T> ExactSizeIterator<&'a mut T> for MutItems<'a, T> {}
+impl<'a, T> ExactSizeIterator<&'a mut T> for IterMut<'a, T> {}
 
 /// An abstraction over the splitting iterators, so that splitn, splitn_mut etc
 /// can be implemented once.

@@ -37,6 +37,7 @@
 extern crate getopts;
 extern crate regex;
 extern crate serialize;
+extern crate "serialize" as rustc_serialize;
 extern crate term;
 
 pub use self::TestFn::*;
@@ -65,6 +66,7 @@ use std::io::fs::PathExtensions;
 use std::io::stdio::StdWriter;
 use std::io::{File, ChanReader, ChanWriter};
 use std::io;
+use std::iter::repeat;
 use std::num::{Float, FloatMath, Int};
 use std::os;
 use std::str::FromStr;
@@ -121,7 +123,7 @@ impl TestDesc {
     fn padded_name(&self, column_count: uint, align: NamePadding) -> String {
         let mut name = String::from_str(self.name.as_slice());
         let fill = column_count.saturating_sub(name.len());
-        let mut pad = " ".repeat(fill);
+        let mut pad = repeat(" ").take(fill).collect::<String>();
         match align {
             PadNone => name,
             PadOnLeft => {
@@ -213,7 +215,7 @@ pub struct TestDescAndFn {
     pub testfn: TestFn,
 }
 
-#[deriving(Clone, Copy, Encodable, Decodable, PartialEq, Show)]
+#[deriving(Clone, RustcEncodable, RustcDecodable, PartialEq, Show, Copy)]
 pub struct Metric {
     value: f64,
     noise: f64
@@ -426,7 +428,7 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
 
     let ratchet_noise_percent = matches.opt_str("ratchet-noise-percent");
     let ratchet_noise_percent =
-        ratchet_noise_percent.map(|s| from_str::<f64>(s.as_slice()).unwrap());
+        ratchet_noise_percent.map(|s| s.as_slice().parse::<f64>().unwrap());
 
     let save_metrics = matches.opt_str("save-metrics");
     let save_metrics = save_metrics.map(|s| Path::new(s));
@@ -489,7 +491,8 @@ pub fn opt_shard(maybestr: Option<String>) -> Option<(uint,uint)> {
         None => None,
         Some(s) => {
             let mut it = s.split('.');
-            match (it.next().and_then(from_str::<uint>), it.next().and_then(from_str::<uint>),
+            match (it.next().and_then(|s| s.parse::<uint>()),
+                   it.next().and_then(|s| s.parse::<uint>()),
                    it.next()) {
                 (Some(a), Some(b), None) => {
                     if a <= 0 || a > b {

@@ -709,7 +709,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let all_bounds =
             util::transitive_bounds(
-                self.tcx(), caller_trait_refs.as_slice());
+                self.tcx(), caller_trait_refs[]);
 
         let matching_bounds =
             all_bounds.filter(
@@ -762,7 +762,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 self.tcx().sess.span_bug(
                     obligation.cause.span,
                     format!("No entry for unboxed closure: {}",
-                            closure_def_id.repr(self.tcx())).as_slice());
+                            closure_def_id.repr(self.tcx()))[]);
             }
         };
 
@@ -795,7 +795,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             // provide an impl, but only for suitable `fn` pointers
-            ty::ty_bare_fn(ty::BareFnTy {
+            ty::ty_bare_fn(_, ty::BareFnTy {
                 unsafety: ast::Unsafety::Normal,
                 abi: abi::Rust,
                 sig: ty::Binder(ty::FnSig {
@@ -984,7 +984,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::ty_int(_) |
             ty::ty_bool |
             ty::ty_float(_) |
-            ty::ty_bare_fn(_) |
+            ty::ty_bare_fn(..) |
             ty::ty_char => {
                 // safe for everything
                 Ok(If(Vec::new()))
@@ -1281,7 +1281,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 self.tcx().sess.bug(
                     format!(
                         "asked to assemble builtin bounds of unexpected type: {}",
-                        self_ty.repr(self.tcx())).as_slice());
+                        self_ty.repr(self.tcx()))[]);
             }
         };
 
@@ -1436,7 +1436,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 self.tcx().sess.span_bug(
                     obligation.cause.span,
                     format!("builtin bound for {} was ambig",
-                            obligation.repr(self.tcx())).as_slice());
+                            obligation.repr(self.tcx()))[]);
             }
         }
     }
@@ -1543,7 +1543,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let self_ty = self.infcx.shallow_resolve(obligation.self_ty());
         let sig = match self_ty.sty {
-            ty::ty_bare_fn(ty::BareFnTy {
+            ty::ty_bare_fn(_, ty::BareFnTy {
                 unsafety: ast::Unsafety::Normal,
                 abi: abi::Rust,
                 ref sig
@@ -1554,7 +1554,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 self.tcx().sess.span_bug(
                     obligation.cause.span,
                     format!("Fn pointer candidate for inappropriate self type: {}",
-                            self_ty.repr(self.tcx())).as_slice());
+                            self_ty.repr(self.tcx()))[]);
             }
         };
 
@@ -1595,7 +1595,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 self.tcx().sess.span_bug(
                     obligation.cause.span,
                     format!("No entry for unboxed closure: {}",
-                            closure_def_id.repr(self.tcx())).as_slice());
+                            closure_def_id.repr(self.tcx()))[]);
             }
         };
 
@@ -1692,8 +1692,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 self.tcx().sess.bug(
                     format!("Impl {} was matchable against {} but now is not",
                             impl_def_id.repr(self.tcx()),
-                            obligation.repr(self.tcx()))
-                        .as_slice());
+                            obligation.repr(self.tcx()))[]);
             }
         }
     }

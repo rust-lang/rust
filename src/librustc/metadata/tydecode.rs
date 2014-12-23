@@ -233,7 +233,7 @@ fn parse_trait_store(st: &mut PState, conv: conv_did) -> ty::TraitStore {
         '&' => ty::RegionTraitStore(parse_region(st, conv), parse_mutability(st)),
         c => {
             st.tcx.sess.bug(format!("parse_trait_store(): bad input '{}'",
-                                    c).as_slice())
+                                    c)[])
         }
     }
 }
@@ -287,7 +287,7 @@ fn parse_bound_region(st: &mut PState, conv: conv_did) -> ty::BoundRegion {
         }
         '[' => {
             let def = parse_def(st, RegionParameter, |x,y| conv(x,y));
-            let ident = token::str_to_ident(parse_str(st, ']').as_slice());
+            let ident = token::str_to_ident(parse_str(st, ']')[]);
             ty::BrNamed(def, ident.name)
         }
         'f' => {
@@ -318,7 +318,7 @@ fn parse_region(st: &mut PState, conv: conv_did) -> ty::Region {
         assert_eq!(next(st), '|');
         let index = parse_uint(st);
         assert_eq!(next(st), '|');
-        let nm = token::str_to_ident(parse_str(st, ']').as_slice());
+        let nm = token::str_to_ident(parse_str(st, ']')[]);
         ty::ReEarlyBound(node_id, space, index, nm.name)
       }
       'f' => {
@@ -453,7 +453,11 @@ fn parse_ty<'a, 'tcx>(st: &mut PState<'a, 'tcx>, conv: conv_did) -> Ty<'tcx> {
         return ty::mk_closure(st.tcx, parse_closure_ty(st, |x,y| conv(x,y)));
       }
       'F' => {
-        return ty::mk_bare_fn(st.tcx, parse_bare_fn_ty(st, |x,y| conv(x,y)));
+          let def_id = parse_def(st, NominalType, |x,y| conv(x,y));
+          return ty::mk_bare_fn(st.tcx, Some(def_id), parse_bare_fn_ty(st, |x,y| conv(x,y)));
+      }
+      'G' => {
+          return ty::mk_bare_fn(st.tcx, None, parse_bare_fn_ty(st, |x,y| conv(x,y)));
       }
       '#' => {
         let pos = parse_hex(st);
@@ -560,7 +564,7 @@ fn parse_abi_set(st: &mut PState) -> abi::Abi {
     assert_eq!(next(st), '[');
     scan(st, |c| c == ']', |bytes| {
         let abi_str = str::from_utf8(bytes).unwrap();
-        abi::lookup(abi_str.as_slice()).expect(abi_str)
+        abi::lookup(abi_str[]).expect(abi_str)
     })
 }
 
@@ -639,12 +643,12 @@ pub fn parse_def_id(buf: &[u8]) -> ast::DefId {
     let crate_part = buf[0u..colon_idx];
     let def_part = buf[colon_idx + 1u..len];
 
-    let crate_num = match str::from_utf8(crate_part).and_then(from_str::<uint>) {
+    let crate_num = match str::from_utf8(crate_part).ok().and_then(|s| s.parse::<uint>()) {
        Some(cn) => cn as ast::CrateNum,
        None => panic!("internal error: parse_def_id: crate number expected, found {}",
                      crate_part)
     };
-    let def_num = match str::from_utf8(def_part).and_then(from_str::<uint>) {
+    let def_num = match str::from_utf8(def_part).ok().and_then(|s| s.parse::<uint>()) {
        Some(dn) => dn as ast::NodeId,
        None => panic!("internal error: parse_def_id: id expected, found {}",
                      def_part)

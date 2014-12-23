@@ -678,7 +678,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                         self.tcx().sess.span_bug(
                             callee.span,
                             format!("unexpected callee type {}",
-                                    callee_ty.repr(self.tcx())).as_slice())
+                                    callee_ty.repr(self.tcx()))[])
                     }
                 };
                 match overloaded_call_type {
@@ -824,10 +824,12 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
             None => { }
             Some(adjustment) => {
                 match *adjustment {
-                    ty::AdjustAddEnv(..) => {
-                        // Creating a closure consumes the input and stores it
-                        // into the resulting rvalue.
-                        debug!("walk_adjustment(AutoAddEnv)");
+                    ty::AdjustAddEnv(..) |
+                    ty::AdjustReifyFnPointer(..) => {
+                        // Creating a closure/fn-pointer consumes the
+                        // input and stores it into the resulting
+                        // rvalue.
+                        debug!("walk_adjustment(AutoAddEnv|AdjustReifyFnPointer)");
                         let cmt_unadjusted =
                             return_if_err!(self.mc.cat_expr_unadjusted(expr));
                         self.delegate_consume(expr.id, expr.span, cmt_unadjusted);
@@ -869,7 +871,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                         ty::ty_rptr(r, ref m) => (m.mutbl, r),
                         _ => self.tcx().sess.span_bug(expr.span,
                                 format!("bad overloaded deref type {}",
-                                    method_ty.repr(self.tcx())).as_slice())
+                                    method_ty.repr(self.tcx()))[])
                     };
                     let bk = ty::BorrowKind::from_mutbl(m);
                     self.delegate.borrow(expr.id, expr.span, cmt,
@@ -1186,7 +1188,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                             // pattern.
 
                             let msg = format!("Pattern has unexpected type: {}", def);
-                            tcx.sess.span_bug(pat.span, msg.as_slice())
+                            tcx.sess.span_bug(pat.span, msg[])
                         }
 
                         Some(def) => {
@@ -1195,7 +1197,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                             // should not resolve.
 
                             let msg = format!("Pattern has unexpected def: {}", def);
-                            tcx.sess.span_bug(pat.span, msg.as_slice())
+                            tcx.sess.span_bug(pat.span, msg[])
                         }
                     }
                 }

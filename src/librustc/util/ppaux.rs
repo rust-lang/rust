@@ -55,12 +55,12 @@ pub fn note_and_explain_region(cx: &ctxt,
       (ref str, Some(span)) => {
         cx.sess.span_note(
             span,
-            format!("{}{}{}", prefix, *str, suffix).as_slice());
+            format!("{}{}{}", prefix, *str, suffix)[]);
         Some(span)
       }
       (ref str, None) => {
         cx.sess.note(
-            format!("{}{}{}", prefix, *str, suffix).as_slice());
+            format!("{}{}{}", prefix, *str, suffix)[]);
         None
       }
     }
@@ -254,12 +254,14 @@ pub fn vec_map_to_string<T, F>(ts: &[T], f: F) -> String where
 
 pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
     fn bare_fn_to_string<'tcx>(cx: &ctxt<'tcx>,
+                               opt_def_id: Option<ast::DefId>,
                                unsafety: ast::Unsafety,
                                abi: abi::Abi,
                                ident: Option<ast::Ident>,
                                sig: &ty::PolyFnSig<'tcx>)
                                -> String {
         let mut s = String::new();
+
         match unsafety {
             ast::Unsafety::Normal => {}
             ast::Unsafety::Unsafe => {
@@ -269,7 +271,7 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
         };
 
         if abi != abi::Rust {
-            s.push_str(format!("extern {} ", abi.to_string()).as_slice());
+            s.push_str(format!("extern {} ", abi.to_string())[]);
         };
 
         s.push_str("fn");
@@ -284,6 +286,16 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
 
         push_sig_to_string(cx, &mut s, '(', ')', sig, "");
 
+        match opt_def_id {
+            Some(def_id) => {
+                s.push_str(" {");
+                let path_str = ty::item_path_str(cx, def_id);
+                s.push_str(path_str[]);
+                s.push_str("}");
+            }
+            None => { }
+        }
+
         s
     }
 
@@ -293,7 +305,7 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
         match cty.store {
             ty::UniqTraitStore => {}
             ty::RegionTraitStore(region, _) => {
-                s.push_str(region_to_string(cx, "", true, region).as_slice());
+                s.push_str(region_to_string(cx, "", true, region)[]);
             }
         }
 
@@ -312,7 +324,7 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
                 assert_eq!(cty.onceness, ast::Once);
                 s.push_str("proc");
                 push_sig_to_string(cx, &mut s, '(', ')', &cty.sig,
-                                   bounds_str.as_slice());
+                                   bounds_str[]);
             }
             ty::RegionTraitStore(..) => {
                 match cty.onceness {
@@ -320,7 +332,7 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
                     ast::Once => s.push_str("once ")
                 }
                 push_sig_to_string(cx, &mut s, '|', '|', &cty.sig,
-                                   bounds_str.as_slice());
+                                   bounds_str[]);
             }
         }
 
@@ -353,7 +365,7 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
             ty::FnConverging(t) => {
                 if !ty::type_is_nil(t) {
                    s.push_str(" -> ");
-                   s.push_str(ty_to_string(cx, t).as_slice());
+                   s.push_str(ty_to_string(cx, t)[]);
                 }
             }
             ty::FnDiverging => {
@@ -390,7 +402,7 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
         }
         ty_rptr(r, ref tm) => {
             let mut buf = region_ptr_to_string(cx, r);
-            buf.push_str(mt_to_string(cx, tm).as_slice());
+            buf.push_str(mt_to_string(cx, tm)[]);
             buf
         }
         ty_open(typ) =>
@@ -400,7 +412,7 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
                 .iter()
                 .map(|elem| ty_to_string(cx, *elem))
                 .collect::<Vec<_>>();
-            match strs.as_slice() {
+            match strs[] {
                 [ref string] => format!("({},)", string),
                 strs => format!("({})", strs.connect(", "))
             }
@@ -408,8 +420,8 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
         ty_closure(ref f) => {
             closure_to_string(cx, &**f)
         }
-        ty_bare_fn(ref f) => {
-            bare_fn_to_string(cx, f.unsafety, f.abi, None, &f.sig)
+        ty_bare_fn(opt_def_id, ref f) => {
+            bare_fn_to_string(cx, opt_def_id, f.unsafety, f.abi, None, &f.sig)
         }
         ty_infer(infer_ty) => infer_ty_to_string(cx, infer_ty),
         ty_err => "[type error]".to_string(),
@@ -551,7 +563,7 @@ pub fn parameterized<'tcx>(cx: &ctxt<'tcx>,
 pub fn ty_to_short_str<'tcx>(cx: &ctxt<'tcx>, typ: Ty<'tcx>) -> String {
     let mut s = typ.repr(cx).to_string();
     if s.len() >= 32u {
-        s = s.slice(0u, 32u).to_string();
+        s = s[0u..32u].to_string();
     }
     return s;
 }
@@ -616,7 +628,7 @@ impl<'tcx, T:Repr<'tcx>> Repr<'tcx> for [T] {
 
 impl<'tcx, T:Repr<'tcx>> Repr<'tcx> for OwnedSlice<T> {
     fn repr(&self, tcx: &ctxt<'tcx>) -> String {
-        repr_vec(tcx, self.as_slice())
+        repr_vec(tcx, self[])
     }
 }
 
@@ -624,7 +636,7 @@ impl<'tcx, T:Repr<'tcx>> Repr<'tcx> for OwnedSlice<T> {
 // autoderef cannot convert the &[T] handler
 impl<'tcx, T:Repr<'tcx>> Repr<'tcx> for Vec<T> {
     fn repr(&self, tcx: &ctxt<'tcx>) -> String {
-        repr_vec(tcx, self.as_slice())
+        repr_vec(tcx, self[])
     }
 }
 

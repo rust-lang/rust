@@ -95,7 +95,7 @@ pub fn get_item_path(tcx: &ty::ctxt, def: ast::DefId) -> Vec<ast_map::PathElem> 
 
     // FIXME #1920: This path is not always correct if the crate is not linked
     // into the root namespace.
-    let mut r = vec![ast_map::PathMod(token::intern(cdata.name.as_slice()))];
+    let mut r = vec![ast_map::PathMod(token::intern(cdata.name[]))];
     r.push_all(path.as_slice());
     r
 }

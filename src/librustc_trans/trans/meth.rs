@@ -77,7 +77,7 @@ pub fn trans_impl(ccx: &CrateContext,
         match *impl_item {
             ast::MethodImplItem(ref method) => {
                 if method.pe_generics().ty_params.len() == 0u {
-                    let trans_everywhere = attr::requests_inline(method.attrs.as_slice());
+                    let trans_everywhere = attr::requests_inline(method.attrs[]);
                     for (ref ccx, is_origin) in ccx.maybe_iter(trans_everywhere) {
                         let llfn = get_item_val(ccx, method.id);
                         trans_fn(ccx,
@@ -293,7 +293,7 @@ pub fn trans_static_method_callee(bcx: Block,
         _ => {
             bcx.tcx().sess.bug(
                 format!("static call to invalid vtable: {}",
-                        vtbl.repr(bcx.tcx())).as_slice());
+                        vtbl.repr(bcx.tcx()))[]);
         }
     }
 }
@@ -375,7 +375,7 @@ fn trans_monomorphized_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         traits::VtableParam(..) => {
             bcx.sess().bug(
                 format!("resolved vtable bad vtable {} in trans",
-                        vtable.repr(bcx.tcx())).as_slice());
+                        vtable.repr(bcx.tcx()))[]);
         }
     }
 }
@@ -477,7 +477,7 @@ pub fn trans_trait_callee_from_llval<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     debug!("(translating trait callee) loading method");
     // Replace the self type (&Self or Box<Self>) with an opaque pointer.
     let llcallee_ty = match callee_ty.sty {
-        ty::ty_bare_fn(ref f) if f.abi == Rust || f.abi == RustCall => {
+        ty::ty_bare_fn(_, ref f) if f.abi == Rust || f.abi == RustCall => {
             type_of_rust_fn(ccx,
                             Some(Type::i8p(ccx)),
                             f.sig.0.inputs.slice_from(1),
@@ -566,7 +566,7 @@ pub fn get_vtable<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 bcx.sess().bug(
                     format!("resolved vtable for {} to bad vtable {} in trans",
                             trait_ref.repr(bcx.tcx()),
-                            vtable.repr(bcx.tcx())).as_slice());
+                            vtable.repr(bcx.tcx()))[]);
             }
         }
     });
@@ -598,7 +598,7 @@ pub fn make_vtable<I: Iterator<ValueRef>>(ccx: &CrateContext,
     let components: Vec<_> = head.into_iter().chain(ptrs).collect();
 
     unsafe {
-        let tbl = C_struct(ccx, components.as_slice(), false);
+        let tbl = C_struct(ccx, components[], false);
         let sym = token::gensym("vtable");
         let vt_gvar = format!("vtable{}", sym.uint()).with_c_str(|buf| {
             llvm::LLVMAddGlobal(ccx.llmod(), val_ty(tbl).to_ref(), buf)
@@ -639,7 +639,8 @@ fn emit_vtable_methods<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                        m.repr(tcx),
                        substs.repr(tcx));
                 if m.generics.has_type_params(subst::FnSpace) ||
-                   ty::type_has_self(ty::mk_bare_fn(tcx, m.fty.clone())) {
+                    ty::type_has_self(ty::mk_bare_fn(tcx, None, m.fty.clone()))
+                {
                     debug!("(making impl vtable) method has self or type \
                             params: {}",
                            token::get_name(name));

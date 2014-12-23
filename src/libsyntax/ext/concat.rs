@@ -40,14 +40,14 @@ pub fn expand_syntax_ext(cx: &mut base::ExtCtxt,
                     ast::LitInt(i, ast::UnsignedIntLit(_)) |
                     ast::LitInt(i, ast::SignedIntLit(_, ast::Plus)) |
                     ast::LitInt(i, ast::UnsuffixedIntLit(ast::Plus)) => {
-                        accumulator.push_str(format!("{}", i).as_slice());
+                        accumulator.push_str(format!("{}", i)[]);
                     }
                     ast::LitInt(i, ast::SignedIntLit(_, ast::Minus)) |
                     ast::LitInt(i, ast::UnsuffixedIntLit(ast::Minus)) => {
-                        accumulator.push_str(format!("-{}", i).as_slice());
+                        accumulator.push_str(format!("-{}", i)[]);
                     }
                     ast::LitBool(b) => {
-                        accumulator.push_str(format!("{}", b).as_slice());
+                        accumulator.push_str(format!("{}", b)[]);
                     }
                     ast::LitByte(..) |
                     ast::LitBinary(..) => {
@@ -62,5 +62,5 @@ pub fn expand_syntax_ext(cx: &mut base::ExtCtxt,
     }
     base::MacExpr::new(cx.expr_str(
             sp,
-            token::intern_and_get_ident(accumulator.as_slice())))
+            token::intern_and_get_ident(accumulator[])))
 }

@@ -16,120 +16,41 @@
 //! UnicodeChar trait.
 
 use self::GraphemeState::*;
+use core::prelude::*;
+
+use core::char;
 use core::cmp;
-use core::slice::SliceExt;
-use core::iter::{Filter, AdditiveIterator, Iterator, IteratorExt};
-use core::iter::{DoubleEndedIterator, DoubleEndedIteratorExt};
-use core::kinds::Sized;
-use core::option::Option;
-use core::option::Option::{None, Some};
-use core::str::{CharSplits, StrPrelude};
+use core::iter::{Filter, AdditiveIterator};
+use core::mem;
+use core::num::Int;
+use core::slice;
+use core::str::CharSplits;
+
 use u_char::UnicodeChar;
 use tables::grapheme::GraphemeCat;
 
 /// An iterator over the words of a string, separated by a sequence of whitespace
 /// FIXME: This should be opaque
-pub type Words<'a> = Filter<&'a str, CharSplits<'a, fn(char) -> bool>, fn(&&str) -> bool>;
+#[stable]
+pub struct Words<'a> {
+    inner: Filter<&'a str, CharSplits<'a, fn(char) -> bool>, fn(&&str) -> bool>,
+}
 
 /// Methods for Unicode string slices
-pub trait UnicodeStrPrelude for Sized? {
-    /// Returns an iterator over the
-    /// [grapheme clusters](http://www.unicode.org/reports/tr29/#Grapheme_Cluster_Boundaries)
-    /// of the string.
-    ///
-    /// If `is_extended` is true, the iterator is over the *extended grapheme clusters*;
-    /// otherwise, the iterator is over the *legacy grapheme clusters*.
-    /// [UAX#29](http://www.unicode.org/reports/tr29/#Grapheme_Cluster_Boundaries)
-    /// recommends extended grapheme cluster boundaries for general processing.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// let gr1 = "a\u{0310}e\u{0301}o\u{0308}\u{0332}".graphemes(true).collect::<Vec<&str>>();
-    /// let b: &[_] = &["a\u{0310}", "e\u{0301}", "o\u{0308}\u{0332}"];
-    /// assert_eq!(gr1.as_slice(), b);
-    /// let gr2 = "a\r\nb🇷🇺🇸🇹".graphemes(true).collect::<Vec<&str>>();
-    /// let b: &[_] = &["a", "\r\n", "b", "🇷🇺🇸🇹"];
-    /// assert_eq!(gr2.as_slice(), b);
-    /// ```
+#[allow(missing_docs)] // docs in libcollections
+pub trait UnicodeStr for Sized? {
     fn graphemes<'a>(&'a self, is_extended: bool) -> Graphemes<'a>;
-
-    /// Returns an iterator over the grapheme clusters of self and their byte offsets.
-    /// See `graphemes()` method for more information.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// let gr_inds = "a̐éö̲\r\n".grapheme_indices(true).collect::<Vec<(uint, &str)>>();
-    /// let b: &[_] = &[(0u, "a̐"), (3, "é"), (6, "ö̲"), (11, "\r\n")];
-    /// assert_eq!(gr_inds.as_slice(), b);
-    /// ```
     fn grapheme_indices<'a>(&'a self, is_extended: bool) -> GraphemeIndices<'a>;
-
-    /// An iterator over the words of a string (subsequences separated
-    /// by any sequence of whitespace). Sequences of whitespace are
-    /// collapsed, so empty "words" are not included.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// let some_words = " Mary   had\ta little  \n\t lamb";
-    /// let v: Vec<&str> = some_words.words().collect();
-    /// assert_eq!(v, vec!["Mary", "had", "a", "little", "lamb"]);
-    /// ```
     fn words<'a>(&'a self) -> Words<'a>;
-
-    /// Returns true if the string contains only whitespace.
-    ///
-    /// Whitespace characters are determined by `char::is_whitespace`.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// assert!(" \t\n".is_whitespace());
-    /// assert!("".is_whitespace());
-    ///
-    /// assert!( !"abc".is_whitespace());
-    /// ```
     fn is_whitespace(&self) -> bool;
-
-    /// Returns true if the string contains only alphanumeric code
-    /// points.
-    ///
-    /// Alphanumeric characters are determined by `char::is_alphanumeric`.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// assert!("Löwe老虎Léopard123".is_alphanumeric());
-    /// assert!("".is_alphanumeric());
-    ///
-    /// assert!( !" &*~".is_alphanumeric());
-    /// ```
     fn is_alphanumeric(&self) -> bool;
-
-    /// Returns a string's displayed width in columns, treating control
-    /// characters as zero-width.
-    ///
-    /// `is_cjk` determines behavior for characters in the Ambiguous category:
-    /// if `is_cjk` is `true`, these are 2 columns wide; otherwise, they are 1.
-    /// In CJK locales, `is_cjk` should be `true`, else it should be `false`.
-    /// [Unicode Standard Annex #11](http://www.unicode.org/reports/tr11/)
-    /// recommends that these characters be treated as 1 column (i.e.,
-    /// `is_cjk` = `false`) if the locale is unknown.
     fn width(&self, is_cjk: bool) -> uint;
-
-    /// Returns a string with leading and trailing whitespace removed.
     fn trim<'a>(&'a self) -> &'a str;
-
-    /// Returns a string with leading whitespace removed.
     fn trim_left<'a>(&'a self) -> &'a str;
-
-    /// Returns a string with trailing whitespace removed.
     fn trim_right<'a>(&'a self) -> &'a str;
 }
 
-impl UnicodeStrPrelude for str {
+impl UnicodeStr for str {
     #[inline]
     fn graphemes(&self, is_extended: bool) -> Graphemes {
         Graphemes { string: self, extended: is_extended, cat: None, catb: None }
@@ -143,9 +64,12 @@ impl UnicodeStrPrelude for str {
     #[inline]
     fn words(&self) -> Words {
         fn is_not_empty(s: &&str) -> bool { !s.is_empty() }
-        fn is_whitespace(c: char) -> bool { c.is_whitespace() }
+        let is_not_empty: fn(&&str) -> bool = is_not_empty; // coerce to fn pointer
 
-        self.split(is_whitespace).filter(is_not_empty)
+        fn is_whitespace(c: char) -> bool { c.is_whitespace() }
+        let is_whitespace: fn(char) -> bool = is_whitespace; // coerce to fn pointer
+
+        Words { inner: self.split(is_whitespace).filter(is_not_empty) }
     }
 
     #[inline]
@@ -427,4 +351,196 @@ impl<'a> DoubleEndedIterator<&'a str> for Graphemes<'a> {
         self.string = self.string.slice_to(idx);
         Some(retstr)
     }
+}
+
+// https://tools.ietf.org/html/rfc3629
+static UTF8_CHAR_WIDTH: [u8, ..256] = [
+1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1, // 0x1F
+1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1, // 0x3F
+1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1, // 0x5F
+1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1, // 0x7F
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, // 0x9F
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, // 0xBF
+0,0,2,2,2,2,2,2,2,2,2,2,2,2,2,2,
+2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2, // 0xDF
+3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3, // 0xEF
+4,4,4,4,4,0,0,0,0,0,0,0,0,0,0,0, // 0xFF
+];
+
+/// Given a first byte, determine how many bytes are in this UTF-8 character
+#[inline]
+pub fn utf8_char_width(b: u8) -> uint {
+    return UTF8_CHAR_WIDTH[b as uint] as uint;
+}
+
+/// Determines if a vector of `u16` contains valid UTF-16
+pub fn is_utf16(v: &[u16]) -> bool {
+    let mut it = v.iter();
+    macro_rules! next { ($ret:expr) => {
+            match it.next() { Some(u) => *u, None => return $ret }
+        }
+    }
+    loop {
+        let u = next!(true);
+
+        match char::from_u32(u as u32) {
+            Some(_) => {}
+            None => {
+                let u2 = next!(false);
+                if u < 0xD7FF || u > 0xDBFF ||
+                    u2 < 0xDC00 || u2 > 0xDFFF { return false; }
+            }
+        }
+    }
+}
+
+/// An iterator that decodes UTF-16 encoded codepoints from a vector
+/// of `u16`s.
+#[deriving(Clone)]
+pub struct Utf16Items<'a> {
+    iter: slice::Iter<'a, u16>
+}
+/// The possibilities for values decoded from a `u16` stream.
+#[deriving(PartialEq, Eq, Clone, Show)]
+pub enum Utf16Item {
+    /// A valid codepoint.
+    ScalarValue(char),
+    /// An invalid surrogate without its pair.
+    LoneSurrogate(u16)
+}
+
+impl Copy for Utf16Item {}
+
+impl Utf16Item {
+    /// Convert `self` to a `char`, taking `LoneSurrogate`s to the
+    /// replacement character (U+FFFD).
+    #[inline]
+    pub fn to_char_lossy(&self) -> char {
+        match *self {
+            Utf16Item::ScalarValue(c) => c,
+            Utf16Item::LoneSurrogate(_) => '\u{FFFD}'
+        }
+    }
+}
+
+impl<'a> Iterator<Utf16Item> for Utf16Items<'a> {
+    fn next(&mut self) -> Option<Utf16Item> {
+        let u = match self.iter.next() {
+            Some(u) => *u,
+            None => return None
+        };
+
+        if u < 0xD800 || 0xDFFF < u {
+            // not a surrogate
+            Some(Utf16Item::ScalarValue(unsafe {mem::transmute(u as u32)}))
+        } else if u >= 0xDC00 {
+            // a trailing surrogate
+            Some(Utf16Item::LoneSurrogate(u))
+        } else {
+            // preserve state for rewinding.
+            let old = self.iter;
+
+            let u2 = match self.iter.next() {
+                Some(u2) => *u2,
+                // eof
+                None => return Some(Utf16Item::LoneSurrogate(u))
+            };
+            if u2 < 0xDC00 || u2 > 0xDFFF {
+                // not a trailing surrogate so we're not a valid
+                // surrogate pair, so rewind to redecode u2 next time.
+                self.iter = old;
+                return Some(Utf16Item::LoneSurrogate(u))
+            }
+
+            // all ok, so lets decode it.
+            let c = ((u - 0xD800) as u32 << 10 | (u2 - 0xDC00) as u32) + 0x1_0000;
+            Some(Utf16Item::ScalarValue(unsafe {mem::transmute(c)}))
+        }
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        let (low, high) = self.iter.size_hint();
+        // we could be entirely valid surrogates (2 elements per
+        // char), or entirely non-surrogates (1 element per char)
+        (low / 2, high)
+    }
+}
+
+/// Create an iterator over the UTF-16 encoded codepoints in `v`,
+/// returning invalid surrogates as `LoneSurrogate`s.
+///
+/// # Example
+///
+/// ```rust
+/// use unicode::str::Utf16Item::{ScalarValue, LoneSurrogate};
+///
+/// // 𝄞mus<invalid>ic<invalid>
+/// let v = [0xD834, 0xDD1E, 0x006d, 0x0075,
+///          0x0073, 0xDD1E, 0x0069, 0x0063,
+///          0xD834];
+///
+/// assert_eq!(unicode::str::utf16_items(&v).collect::<Vec<_>>(),
+///            vec![ScalarValue('𝄞'),
+///                 ScalarValue('m'), ScalarValue('u'), ScalarValue('s'),
+///                 LoneSurrogate(0xDD1E),
+///                 ScalarValue('i'), ScalarValue('c'),
+///                 LoneSurrogate(0xD834)]);
+/// ```
+pub fn utf16_items<'a>(v: &'a [u16]) -> Utf16Items<'a> {
+    Utf16Items { iter : v.iter() }
+}
+
+/// Iterator adaptor for encoding `char`s to UTF-16.
+#[deriving(Clone)]
+pub struct Utf16Encoder<I> {
+    chars: I,
+    extra: u16
+}
+
+impl<I> Utf16Encoder<I> {
+    /// Create an UTF-16 encoder from any `char` iterator.
+    pub fn new(chars: I) -> Utf16Encoder<I> where I: Iterator<char> {
+        Utf16Encoder { chars: chars, extra: 0 }
+    }
+}
+
+impl<I> Iterator<u16> for Utf16Encoder<I> where I: Iterator<char> {
+    #[inline]
+    fn next(&mut self) -> Option<u16> {
+        if self.extra != 0 {
+            let tmp = self.extra;
+            self.extra = 0;
+            return Some(tmp);
+        }
+
+        let mut buf = [0u16, ..2];
+        self.chars.next().map(|ch| {
+            let n = ch.encode_utf16(buf[mut]).unwrap_or(0);
+            if n == 2 { self.extra = buf[1]; }
+            buf[0]
+        })
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        let (low, high) = self.chars.size_hint();
+        // every char gets either one u16 or two u16,
+        // so this iterator is between 1 or 2 times as
+        // long as the underlying iterator.
+        (low, high.and_then(|n| n.checked_mul(2)))
+    }
+}
+
+impl<'a> Iterator<&'a str> for Words<'a> {
+    fn next(&mut self) -> Option<&'a str> { self.inner.next() }
+}
+impl<'a> DoubleEndedIterator<&'a str> for Words<'a> {
+    fn next_back(&mut self) -> Option<&'a str> { self.inner.next_back() }
 }

@@ -21,7 +21,8 @@ pub use self::CallArgs::*;
 use arena::TypedArena;
 use back::{abi,link};
 use session;
-use llvm::{ValueRef, get_param};
+use llvm::{ValueRef};
+use llvm::get_param;
 use llvm;
 use metadata::csearch;
 use middle::def;
@@ -122,7 +123,7 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
                     expr.span,
                     format!("type of callee is neither bare-fn nor closure: \
                              {}",
-                            bcx.ty_to_string(datum.ty)).as_slice());
+                            bcx.ty_to_string(datum.ty))[]);
             }
         }
     }
@@ -158,7 +159,7 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
                 }
             }
             def::DefFn(did, _) if match expr_ty.sty {
-                ty::ty_bare_fn(ref f) => f.abi == synabi::RustIntrinsic,
+                ty::ty_bare_fn(_, ref f) => f.abi == synabi::RustIntrinsic,
                 _ => false
             } => {
                 let substs = node_id_substs(bcx, ExprId(ref_expr.id));
@@ -208,7 +209,7 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
                 bcx.tcx().sess.span_bug(
                     ref_expr.span,
                     format!("cannot translate def {} \
-                             to a callable thing!", def).as_slice());
+                             to a callable thing!", def)[]);
             }
         }
     }
@@ -275,24 +276,26 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
 
     // Construct the "tuply" version of `bare_fn_ty`. It takes two arguments: `self`,
     // which is the fn pointer, and `args`, which is the arguments tuple.
-    let (input_tys, output_ty) =
+    let (opt_def_id, input_tys, output_ty) =
         match bare_fn_ty.sty {
-            ty::ty_bare_fn(ty::BareFnTy { unsafety: ast::Unsafety::Normal,
+            ty::ty_bare_fn(opt_def_id,
+                           ty::BareFnTy { unsafety: ast::Unsafety::Normal,
                                           abi: synabi::Rust,
                                           sig: ty::Binder(ty::FnSig { inputs: ref input_tys,
                                                                       output: output_ty,
                                                                       variadic: false })}) =>
             {
-                (input_tys, output_ty)
+                (opt_def_id, input_tys, output_ty)
             }
 
             _ => {
                 tcx.sess.bug(format!("trans_fn_pointer_shim invoked on invalid type: {}",
-                                           bare_fn_ty.repr(tcx)).as_slice());
+                                           bare_fn_ty.repr(tcx))[]);
             }
         };
     let tuple_input_ty = ty::mk_tup(tcx, input_tys.to_vec());
     let tuple_fn_ty = ty::mk_bare_fn(tcx,
+                                     opt_def_id,
                                      ty::BareFnTy { unsafety: ast::Unsafety::Normal,
                                                     abi: synabi::RustCall,
                                                     sig: ty::Binder(ty::FnSig {
@@ -310,7 +313,7 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
     let llfn =
         decl_internal_rust_fn(ccx,
                               tuple_fn_ty,
-                              function_name.as_slice());
+                              function_name[]);
 
     //
     let block_arena = TypedArena::new();
@@ -345,7 +348,7 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
                            None,
                            bare_fn_ty,
                            |bcx, _| Callee { bcx: bcx, data: Fn(llfnpointer) },
-                           ArgVals(llargs.as_slice()),
+                           ArgVals(llargs[]),
                            dest).bcx;
 
     finish_fn(&fcx, bcx, output_ty);
@@ -655,7 +658,7 @@ pub fn trans_call_inner<'a, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
     let mut bcx = callee.bcx;
 
     let (abi, ret_ty) = match callee_ty.sty {
-        ty::ty_bare_fn(ref f) => (f.abi, f.sig.0.output),
+        ty::ty_bare_fn(_, ref f) => (f.abi, f.sig.0.output),
         ty::ty_closure(ref f) => (f.abi, f.sig.0.output),
         _ => panic!("expected bare rust fn or closure in trans_call_inner")
     };
@@ -813,7 +816,7 @@ pub fn trans_call_inner<'a, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
 
         bcx = foreign::trans_native_call(bcx, callee_ty,
                                          llfn, opt_llretslot.unwrap(),
-                                         llargs.as_slice(), arg_tys);
+                                         llargs[], arg_tys);
     }
 
     fcx.pop_and_trans_custom_cleanup_scope(bcx, arg_cleanup_scope);

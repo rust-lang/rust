@@ -199,7 +199,7 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
                                                                        infer::FnCall,
                                                                        &fn_sig).0;
     let transformed_self_ty = fn_sig.inputs[0];
-    let fty = ty::mk_bare_fn(tcx, ty::BareFnTy {
+    let fty = ty::mk_bare_fn(tcx, None, ty::BareFnTy {
         sig: ty::Binder(fn_sig),
         unsafety: bare_fn_ty.unsafety,
         abi: bare_fn_ty.abi.clone(),
@@ -269,7 +269,7 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
                                 span,
                                 format!(
                                     "trait method is &self but first arg is: {}",
-                                    transformed_self_ty.repr(fcx.tcx())).as_slice());
+                                    transformed_self_ty.repr(fcx.tcx()))[]);
                         }
                     }
                 }
@@ -279,7 +279,7 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
                         span,
                         format!(
                             "unexpected explicit self type in operator method: {}",
-                            method_ty.explicit_self).as_slice());
+                            method_ty.explicit_self)[]);
                 }
             }
         }
@@ -333,7 +333,7 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             if is_field {
                 cx.sess.span_note(span,
                     format!("use `(s.{0})(...)` if you meant to call the \
-                            function stored in the `{0}` field", method_ustring).as_slice());
+                            function stored in the `{0}` field", method_ustring)[]);
             }
 
             if static_sources.len() > 0 {

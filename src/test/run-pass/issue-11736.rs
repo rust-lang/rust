@@ -16,7 +16,7 @@ use std::num::Float;
 fn main() {
     // Generate sieve of Eratosthenes for n up to 1e6
     let n = 1000000u;
-    let mut sieve = Bitv::with_capacity(n+1, true);
+    let mut sieve = Bitv::from_elem(n+1, true);
     let limit: uint = (n as f32).sqrt() as uint;
     for i in range(2, limit+1) {
         if sieve[i] {

@@ -23,7 +23,8 @@
        html_root_url = "http://doc.rust-lang.org/nightly/",
        html_playground_url = "http://play.rust-lang.org/")]
 
-#![feature(macro_rules, globs)]
+#![feature(macro_rules, globs, slicing_syntax)]
+
 pub use self::Piece::*;
 pub use self::Position::*;
 pub use self::Alignment::*;
@@ -136,7 +137,7 @@ pub enum Count<'a> {
 /// necessary there's probably lots of room for improvement performance-wise.
 pub struct Parser<'a> {
     input: &'a str,
-    cur: str::CharOffsets<'a>,
+    cur: str::CharIndices<'a>,
     /// Error messages accumulated during parsing
     pub errors: Vec<string::String>,
 }
@@ -208,13 +209,11 @@ impl<'a> Parser<'a> {
                 self.cur.next();
             }
             Some((_, other)) => {
-                self.err(format!("expected `{}`, found `{}`",
-                                 c,
-                                 other).as_slice());
+                self.err(format!("expected `{}`, found `{}`", c, other)[]);
             }
             None => {
                 self.err(format!("expected `{}` but string was terminated",
-                                 c).as_slice());
+                                 c)[]);
             }
         }
     }
@@ -237,12 +236,12 @@ impl<'a> Parser<'a> {
             // we may not consume the character, so clone the iterator
             match self.cur.clone().next() {
                 Some((pos, '}')) | Some((pos, '{')) => {
-                    return self.input.slice(start, pos);
+                    return self.input[start..pos];
                 }
                 Some(..) => { self.cur.next(); }
                 None => {
                     self.cur.next();
-                    return self.input.slice(start, self.input.len());
+                    return self.input[start..self.input.len()];
                 }
             }
         }
@@ -282,7 +281,7 @@ impl<'a> Parser<'a> {
             flags: 0,
             precision: CountImplied,
             width: CountImplied,
-            ty: self.input.slice(0, 0),
+            ty: self.input[0..0],
         };
         if !self.consume(':') { return spec }
 
@@ -391,7 +390,7 @@ impl<'a> Parser<'a> {
                 self.cur.next();
                 pos
             }
-            Some(..) | None => { return self.input.slice(0, 0); }
+            Some(..) | None => { return self.input[0..0]; }
         };
         let mut end;
         loop {
@@ -403,7 +402,7 @@ impl<'a> Parser<'a> {
                 None => { end = self.input.len(); break }
             }
         }
-        self.input.slice(start, end)
+        self.input[start..end]
     }
 
     /// Optionally parses an integer at the current position. This doesn't deal

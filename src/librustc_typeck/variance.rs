@@ -556,7 +556,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             None => {
                 self.tcx().sess.bug(format!(
                         "no inferred index entry for {}",
-                        self.tcx().map.node_to_string(param_id)).as_slice());
+                        self.tcx().map.node_to_string(param_id))[]);
             }
         }
     }
@@ -814,12 +814,13 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 }
             }
 
-            ty::ty_bare_fn(ty::BareFnTy { ref sig, .. }) |
+            ty::ty_bare_fn(_, ty::BareFnTy { ref sig, .. }) |
             ty::ty_closure(box ty::ClosureTy {
                     ref sig,
                     store: ty::UniqTraitStore,
                     ..
-                }) => {
+                }) =>
+            {
                 self.add_constraints_from_sig(sig, variance);
             }
 
@@ -834,7 +835,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 self.tcx().sess.bug(
                     format!("unexpected type encountered in \
                             variance inference: {}",
-                            ty.repr(self.tcx())).as_slice());
+                            ty.repr(self.tcx()))[]);
             }
         }
     }
@@ -911,7 +912,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                     .sess
                     .bug(format!("unexpected region encountered in variance \
                                   inference: {}",
-                                 region.repr(self.tcx())).as_slice());
+                                 region.repr(self.tcx()))[]);
             }
         }
     }
@@ -1046,7 +1047,7 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
             // attribute and report an error with various results if found.
             if ty::has_attr(tcx, item_def_id, "rustc_variance") {
                 let found = item_variances.repr(tcx);
-                tcx.sess.span_err(tcx.map.span(item_id), found.as_slice());
+                tcx.sess.span_err(tcx.map.span(item_id), found[]);
             }
 
             let newly_added = tcx.item_variance_map.borrow_mut()

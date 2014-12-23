@@ -72,7 +72,7 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
                                     callee::DontAutorefArg)
         })
     }).collect::<Vec<_>>();
-    inputs.push_all(ext_inputs.as_slice());
+    inputs.push_all(ext_inputs[]);
 
     // no failure occurred preparing operands, no need to cleanup
     fcx.pop_custom_cleanup_scope(temp_scope);
@@ -92,18 +92,18 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
         if !clobbers.is_empty() {
             clobbers.push(',');
         }
-        clobbers.push_str(more_clobbers.as_slice());
+        clobbers.push_str(more_clobbers[]);
     }
 
     // Add the clobbers to our constraints list
     if clobbers.len() != 0 && constraints.len() != 0 {
         constraints.push(',');
-        constraints.push_str(clobbers.as_slice());
+        constraints.push_str(clobbers[]);
     } else {
-        constraints.push_str(clobbers.as_slice());
+        constraints.push_str(clobbers[]);
     }
 
-    debug!("Asm Constraints: {}", constraints.as_slice());
+    debug!("Asm Constraints: {}", constraints[]);
 
     let num_outputs = outputs.len();
 
@@ -113,7 +113,7 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
     } else if num_outputs == 1 {
         output_types[0]
     } else {
-        Type::struct_(bcx.ccx(), output_types.as_slice(), false)
+        Type::struct_(bcx.ccx(), output_types[], false)
     };
 
     let dialect = match ia.dialect {
@@ -126,7 +126,7 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
             InlineAsmCall(bcx,
                           a,
                           c,
-                          inputs.as_slice(),
+                          inputs[],
                           output_type,
                           ia.volatile,
                           ia.alignstack,
