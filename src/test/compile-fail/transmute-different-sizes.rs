@@ -21,7 +21,7 @@ unsafe fn f() {
 
 unsafe fn g<T>(x: &T) {
     let _: i8 = transmute(x);
-    //~^ ERROR transmute called on types with different sizes
+    //~^ ERROR transmute called on types with potentially different sizes
 }
 
 fn main() {}
