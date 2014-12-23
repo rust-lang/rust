@@ -179,6 +179,13 @@ impl IsaacRng {
     }
 }
 
+// Cannot be derived because [u32; 256] does not implement Clone
+impl Clone for IsaacRng {
+    fn clone(&self) -> IsaacRng {
+        *self
+    }
+}
+
 impl Rng for IsaacRng {
     #[inline]
     fn next_u32(&mut self) -> u32 {
@@ -415,6 +422,13 @@ impl Isaac64Rng {
     }
 }
 
+// Cannot be derived because [u32; 256] does not implement Clone
+impl Clone for Isaac64Rng {
+    fn clone(&self) -> Isaac64Rng {
+        *self
+    }
+}
+
 impl Rng for Isaac64Rng {
     // FIXME #7771: having next_u32 like this should be unnecessary
     #[inline]
@@ -484,6 +498,7 @@ impl Rand for Isaac64Rng {
         return ret;
     }
 }
+
 
 #[cfg(test)]
 mod test {
