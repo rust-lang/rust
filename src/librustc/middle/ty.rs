@@ -4212,10 +4212,14 @@ pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
                 }
 
                 def::DefStruct(_) => {
-                    match expr_ty(tcx, expr).sty {
-                        ty_bare_fn(..) => RvalueDatumExpr,
-                        _ => RvalueDpsExpr
-                    }
+                    match tcx.node_types.borrow().get(&expr.id) {
+                        Some(ty) => match ty.sty {
+                            ty_bare_fn(..) => RvalueDatumExpr,
+                            _ => RvalueDpsExpr
+                        },
+                        // See ExprCast below for why types might be missing.
+                        None => RvalueDatumExpr
+                     }
                 }
 
                 // Special case: A unit like struct's constructor must be called without () at the
