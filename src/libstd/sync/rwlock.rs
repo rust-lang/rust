@@ -363,7 +363,7 @@ mod tests {
     use prelude::v1::*;
 
     use rand::{mod, Rng};
-    use comm::channel;
+    use sync::mpsc::channel;
     use thread::Thread;
     use sync::{Arc, RWLock, StaticRWLock, RWLOCK_INIT};
 
@@ -408,7 +408,7 @@ mod tests {
             }).detach();
         }
         drop(tx);
-        let _ = rx.recv_opt();
+        let _ = rx.recv();
         unsafe { R.destroy(); }
     }
 
@@ -475,7 +475,7 @@ mod tests {
                 Thread::yield_now();
                 *lock = tmp + 1;
             }
-            tx.send(());
+            tx.send(()).unwrap();
         }).detach();
 
         // Readers try to catch the writer in the act
@@ -494,7 +494,7 @@ mod tests {
         }
 
         // Wait for writer to finish
-        rx.recv();
+        rx.recv().unwrap();
         let lock = arc.read();
         assert_eq!(*lock, 10);
     }

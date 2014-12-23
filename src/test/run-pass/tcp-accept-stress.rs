@@ -13,7 +13,7 @@
 //              quite quickly and it takes a few seconds for the sockets to get
 //              recycled.
 
-use std::comm::channel;
+use std::sync::mpsc::channel;
 use std::io::{TcpListener, Listener, Acceptor, EndOfFile, TcpStream};
 use std::sync::{atomic, Arc};
 use std::thread::Thread;

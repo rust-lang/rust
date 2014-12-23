@@ -264,8 +264,8 @@ impl StaticCondvar {
 mod tests {
     use prelude::v1::*;
 
-    use comm::channel;
     use super::{StaticCondvar, CONDVAR_INIT};
+    use sync::mpsc::channel;
     use sync::{StaticMutex, MUTEX_INIT, Condvar, Mutex, Arc};
     use thread::Thread;
     use time::Duration;
@@ -314,25 +314,25 @@ mod tests {
                 let mut cnt = lock.lock();
                 *cnt += 1;
                 if *cnt == N {
-                    tx.send(());
+                    tx.send(()).unwrap();
                 }
                 while *cnt != 0 {
                     cond.wait(&cnt);
                 }
-                tx.send(());
+                tx.send(()).unwrap();
             }).detach();
         }
         drop(tx);
 
         let &(ref lock, ref cond) = &*data;
-        rx.recv();
+        rx.recv().unwrap();
         let mut cnt = lock.lock();
         *cnt = 0;
         cond.notify_all();
         drop(cnt);
 
         for _ in range(0, N) {
-            rx.recv();
+            rx.recv().unwrap();
         }
     }
 

@@ -14,7 +14,7 @@
 #[phase(plugin,link)]
 extern crate log;
 
-use std::comm::{channel, Sender, Receiver};
+use std::sync::mpsc::{channel, Sender, Receiver};
 use std::thread::Thread;
 
 pub struct ChannelLogger {
@@ -30,7 +30,7 @@ impl ChannelLogger {
 
 impl log::Logger for ChannelLogger {
     fn log(&mut self, record: &log::LogRecord) {
-        self.tx.send(format!("{}", record.args));
+        self.tx.send(format!("{}", record.args)).unwrap();
     }
 }
 
@@ -49,9 +49,9 @@ pub fn main() {
         info!("f1o");
     });
 
-    assert_eq!(rx.recv().as_slice(), "foo");
-    assert_eq!(rx.recv().as_slice(), "foo bar");
-    assert_eq!(rx.recv().as_slice(), "bar foo");
-    assert_eq!(rx.recv().as_slice(), "f1o");
-    assert!(rx.recv_opt().is_err());
+    assert_eq!(rx.recv().unwrap().as_slice(), "foo");
+    assert_eq!(rx.recv().unwrap().as_slice(), "foo bar");
+    assert_eq!(rx.recv().unwrap().as_slice(), "bar foo");
+    assert_eq!(rx.recv().unwrap().as_slice(), "f1o");
+    assert!(rx.recv().is_err());
 }

@@ -27,20 +27,20 @@
 //! # Example
 //!
 //! ```rust
-//! use std::comm::channel;
+//! use std::sync::mpsc::channel;
 //!
 //! let (tx1, rx1) = channel();
 //! let (tx2, rx2) = channel();
 //!
-//! tx1.send(1i);
-//! tx2.send(2i);
+//! tx1.send(1i).unwrap();
+//! tx2.send(2i).unwrap();
 //!
 //! select! {
 //!     val = rx1.recv() => {
-//!         assert_eq!(val, 1i);
+//!         assert_eq!(val.unwrap(), 1i);
 //!     },
 //!     val = rx2.recv() => {
-//!         assert_eq!(val, 2i);
+//!         assert_eq!(val.unwrap(), 2i);
 //!     }
 //! }
 //! ```
@@ -61,8 +61,8 @@ use core::kinds::marker;
 use core::mem;
 use core::uint;
 
-use comm::Receiver;
-use comm::blocking::{mod, SignalToken};
+use sync::mpsc::{Receiver, RecvError};
+use sync::mpsc::blocking::{mod, SignalToken};
 
 /// The "receiver set" of the select interface. This structure is used to manage
 /// a set of receivers which are being selected over.
@@ -247,13 +247,10 @@ impl<'rx, T: Send> Handle<'rx, T> {
     #[inline]
     pub fn id(&self) -> uint { self.id }
 
-    /// Receive a value on the underlying receiver. Has the same semantics as
-    /// `Receiver.recv`
-    pub fn recv(&mut self) -> T { self.rx.recv() }
     /// Block to receive a value on the underlying receiver, returning `Some` on
     /// success or `None` if the channel disconnects. This function has the same
-    /// semantics as `Receiver.recv_opt`
-    pub fn recv_opt(&mut self) -> Result<T, ()> { self.rx.recv_opt() }
+    /// semantics as `Receiver.recv`
+    pub fn recv(&mut self) -> Result<T, RecvError> { self.rx.recv() }
 
     /// Adds this handle to the receiver set that the handle was created from. This
     /// method can be called multiple times, but it has no effect if `add` was
@@ -339,9 +336,9 @@ impl Iterator<*mut Handle<'static, ()>> for Packets {
 mod test {
     use prelude::v1::*;
 
-    use super::*;
-    use comm::*;
     use thread::Thread;
+    use super::*;
+    use sync::mpsc::*;
 
     // Don't use the libstd version so we can pull in the right Select structure
     // (std::comm points at the wrong one)
@@ -349,7 +346,6 @@ mod test {
         (
             $($name:pat = $rx:ident.$meth:ident() => $code:expr),+
         ) => ({
-            use comm::Select;
             let sel = Select::new();
             $( let mut $rx = sel.handle(&$rx); )+
             unsafe {
@@ -365,24 +361,24 @@ mod test {
     fn smoke() {
         let (tx1, rx1) = channel::<int>();
         let (tx2, rx2) = channel::<int>();
-        tx1.send(1);
+        tx1.send(1).unwrap();
         select! {
-            foo = rx1.recv() => { assert_eq!(foo, 1); },
+            foo = rx1.recv() => { assert_eq!(foo.unwrap(), 1); },
             _bar = rx2.recv() => { panic!() }
         }
-        tx2.send(2);
+        tx2.send(2).unwrap();
         select! {
             _foo = rx1.recv() => { panic!() },
-            bar = rx2.recv() => { assert_eq!(bar, 2) }
+            bar = rx2.recv() => { assert_eq!(bar.unwrap(), 2) }
         }
         drop(tx1);
         select! {
-            foo = rx1.recv_opt() => { assert_eq!(foo, Err(())); },
+            foo = rx1.recv() => { assert!(foo.is_err()); },
             _bar = rx2.recv() => { panic!() }
         }
         drop(tx2);
         select! {
-            bar = rx2.recv_opt() => { assert_eq!(bar, Err(())); }
+            bar = rx2.recv() => { assert!(bar.is_err()); }
         }
     }
 
@@ -393,13 +389,13 @@ mod test {
         let (_tx3, rx3) = channel::<int>();
         let (_tx4, rx4) = channel::<int>();
         let (tx5, rx5) = channel::<int>();
-        tx5.send(4);
+        tx5.send(4).unwrap();
         select! {
             _foo = rx1.recv() => { panic!("1") },
             _foo = rx2.recv() => { panic!("2") },
             _foo = rx3.recv() => { panic!("3") },
             _foo = rx4.recv() => { panic!("4") },
-            foo = rx5.recv() => { assert_eq!(foo, 4); }
+            foo = rx5.recv() => { assert_eq!(foo.unwrap(), 4); }
         }
     }
 
@@ -410,8 +406,8 @@ mod test {
         drop(tx2);
 
         select! {
-            _a1 = rx1.recv_opt() => { panic!() },
-            a2 = rx2.recv_opt() => { assert_eq!(a2, Err(())); }
+            _a1 = rx1.recv() => { panic!() },
+            a2 = rx2.recv() => { assert!(a2.is_err()); }
         }
     }
 
@@ -423,18 +419,18 @@ mod test {
 
         let _t = Thread::spawn(move|| {
             for _ in range(0u, 20) { Thread::yield_now(); }
-            tx1.send(1);
-            rx3.recv();
+            tx1.send(1).unwrap();
+            rx3.recv().unwrap();
             for _ in range(0u, 20) { Thread::yield_now(); }
         });
 
         select! {
-            a = rx1.recv() => { assert_eq!(a, 1); },
+            a = rx1.recv() => { assert_eq!(a.unwrap(), 1); },
             _b = rx2.recv() => { panic!() }
         }
-        tx3.send(1);
+        tx3.send(1).unwrap();
         select! {
-            a = rx1.recv_opt() => { assert_eq!(a, Err(())); },
+            a = rx1.recv() => { assert!(a.is_err()) },
             _b = rx2.recv() => { panic!() }
         }
     }
@@ -447,22 +443,22 @@ mod test {
 
         let _t = Thread::spawn(move|| {
             for _ in range(0u, 20) { Thread::yield_now(); }
-            tx1.send(1);
-            tx2.send(2);
-            rx3.recv();
+            tx1.send(1).unwrap();
+            tx2.send(2).unwrap();
+            rx3.recv().unwrap();
         });
 
         select! {
-            a = rx1.recv() => { assert_eq!(a, 1); },
-            a = rx2.recv() => { assert_eq!(a, 2); }
+            a = rx1.recv() => { assert_eq!(a.unwrap(), 1); },
+            a = rx2.recv() => { assert_eq!(a.unwrap(), 2); }
         }
         select! {
-            a = rx1.recv() => { assert_eq!(a, 1); },
-            a = rx2.recv() => { assert_eq!(a, 2); }
+            a = rx1.recv() => { assert_eq!(a.unwrap(), 1); },
+            a = rx2.recv() => { assert_eq!(a.unwrap(), 2); }
         }
-        assert_eq!(rx1.try_recv(), Err(Empty));
-        assert_eq!(rx2.try_recv(), Err(Empty));
-        tx3.send(());
+        assert_eq!(rx1.try_recv(), Err(TryRecvError::Empty));
+        assert_eq!(rx2.try_recv(), Err(TryRecvError::Empty));
+        tx3.send(()).unwrap();
     }
 
     #[test]
@@ -475,20 +471,20 @@ mod test {
         let _t = Thread::spawn(move|| {
             for i in range(0, AMT) {
                 if i % 2 == 0 {
-                    tx1.send(i);
+                    tx1.send(i).unwrap();
                 } else {
-                    tx2.send(i);
+                    tx2.send(i).unwrap();
                 }
-                rx3.recv();
+                rx3.recv().unwrap();
             }
         });
 
         for i in range(0, AMT) {
             select! {
-                i1 = rx1.recv() => { assert!(i % 2 == 0 && i == i1); },
-                i2 = rx2.recv() => { assert!(i % 2 == 1 && i == i2); }
+                i1 = rx1.recv() => { assert!(i % 2 == 0 && i == i1.unwrap()); },
+                i2 = rx2.recv() => { assert!(i % 2 == 1 && i == i2.unwrap()); }
             }
-            tx3.send(());
+            tx3.send(()).unwrap();
         }
     }
 
@@ -499,19 +495,19 @@ mod test {
         let (tx3, rx3) = channel::<()>();
 
         let _t = Thread::spawn(move|| {
-            rx3.recv();
+            rx3.recv().unwrap();
             tx1.clone();
-            assert_eq!(rx3.try_recv(), Err(Empty));
-            tx1.send(2);
-            rx3.recv();
+            assert_eq!(rx3.try_recv(), Err(TryRecvError::Empty));
+            tx1.send(2).unwrap();
+            rx3.recv().unwrap();
         });
 
-        tx3.send(());
+        tx3.send(()).unwrap();
         select! {
             _i1 = rx1.recv() => {},
             _i2 = rx2.recv() => panic!()
         }
-        tx3.send(());
+        tx3.send(()).unwrap();
     }
 
     #[test]
@@ -521,19 +517,19 @@ mod test {
         let (tx3, rx3) = channel::<()>();
 
         let _t = Thread::spawn(move|| {
-            rx3.recv();
+            rx3.recv().unwrap();
             tx1.clone();
-            assert_eq!(rx3.try_recv(), Err(Empty));
-            tx1.send(2);
-            rx3.recv();
+            assert_eq!(rx3.try_recv(), Err(TryRecvError::Empty));
+            tx1.send(2).unwrap();
+            rx3.recv().unwrap();
         });
 
-        tx3.send(());
+        tx3.send(()).unwrap();
         select! {
             _i1 = rx1.recv() => {},
             _i2 = rx2.recv() => panic!()
         }
-        tx3.send(());
+        tx3.send(()).unwrap();
     }
 
     #[test]
@@ -548,31 +544,31 @@ mod test {
             unsafe { h2.add(); }
             unsafe { h1.add(); }
             assert_eq!(s.wait(), h2.id);
-            tx3.send(());
+            tx3.send(()).unwrap();
         });
 
         for _ in range(0u, 1000) { Thread::yield_now(); }
         drop(tx1.clone());
-        tx2.send(());
-        rx3.recv();
+        tx2.send(()).unwrap();
+        rx3.recv().unwrap();
     }
 
     #[test]
     fn preflight1() {
         let (tx, rx) = channel();
-        tx.send(());
+        tx.send(()).unwrap();
         select! {
-            () = rx.recv() => {}
+            _n = rx.recv() => {}
         }
     }
 
     #[test]
     fn preflight2() {
         let (tx, rx) = channel();
-        tx.send(());
-        tx.send(());
+        tx.send(()).unwrap();
+        tx.send(()).unwrap();
         select! {
-            () = rx.recv() => {}
+            _n = rx.recv() => {}
         }
     }
 
@@ -580,16 +576,16 @@ mod test {
     fn preflight3() {
         let (tx, rx) = channel();
         drop(tx.clone());
-        tx.send(());
+        tx.send(()).unwrap();
         select! {
-            () = rx.recv() => {}
+            _n = rx.recv() => {}
         }
     }
 
     #[test]
     fn preflight4() {
         let (tx, rx) = channel();
-        tx.send(());
+        tx.send(()).unwrap();
         let s = Select::new();
         let mut h = s.handle(&rx);
         unsafe { h.add(); }
@@ -599,8 +595,8 @@ mod test {
     #[test]
     fn preflight5() {
         let (tx, rx) = channel();
-        tx.send(());
-        tx.send(());
+        tx.send(()).unwrap();
+        tx.send(()).unwrap();
         let s = Select::new();
         let mut h = s.handle(&rx);
         unsafe { h.add(); }
@@ -611,7 +607,7 @@ mod test {
     fn preflight6() {
         let (tx, rx) = channel();
         drop(tx.clone());
-        tx.send(());
+        tx.send(()).unwrap();
         let s = Select::new();
         let mut h = s.handle(&rx);
         unsafe { h.add(); }
@@ -631,9 +627,9 @@ mod test {
     #[test]
     fn preflight8() {
         let (tx, rx) = channel();
-        tx.send(());
+        tx.send(()).unwrap();
         drop(tx);
-        rx.recv();
+        rx.recv().unwrap();
         let s = Select::new();
         let mut h = s.handle(&rx);
         unsafe { h.add(); }
@@ -644,9 +640,9 @@ mod test {
     fn preflight9() {
         let (tx, rx) = channel();
         drop(tx.clone());
-        tx.send(());
+        tx.send(()).unwrap();
         drop(tx);
-        rx.recv();
+        rx.recv().unwrap();
         let s = Select::new();
         let mut h = s.handle(&rx);
         unsafe { h.add(); }
@@ -659,34 +655,34 @@ mod test {
         let (tx2, rx2) = channel();
         let _t = Thread::spawn(move|| {
             select! {
-                () = rx1.recv() => {}
+                _n = rx1.recv() => {}
             }
-            tx2.send(());
+            tx2.send(()).unwrap();
         });
 
         for _ in range(0u, 100) { Thread::yield_now() }
-        tx1.send(());
-        rx2.recv();
+        tx1.send(()).unwrap();
+        rx2.recv().unwrap();
     }
 
     #[test]
     fn stream_data_waiting() {
         let (tx1, rx1) = channel();
         let (tx2, rx2) = channel();
-        tx1.send(());
-        tx1.send(());
-        rx1.recv();
-        rx1.recv();
+        tx1.send(()).unwrap();
+        tx1.send(()).unwrap();
+        rx1.recv().unwrap();
+        rx1.recv().unwrap();
         let _t = Thread::spawn(move|| {
             select! {
-                () = rx1.recv() => {}
+                _n = rx1.recv() => {}
             }
-            tx2.send(());
+            tx2.send(()).unwrap();
         });
 
         for _ in range(0u, 100) { Thread::yield_now() }
-        tx1.send(());
-        rx2.recv();
+        tx1.send(()).unwrap();
+        rx2.recv().unwrap();
     }
 
     #[test]
@@ -694,26 +690,26 @@ mod test {
         let (tx1, rx1) = channel();
         let (tx2, rx2) = channel();
         drop(tx1.clone());
-        tx1.send(());
-        rx1.recv();
+        tx1.send(()).unwrap();
+        rx1.recv().unwrap();
         let _t = Thread::spawn(move|| {
             select! {
-                () = rx1.recv() => {}
+                _n = rx1.recv() => {}
             }
-            tx2.send(());
+            tx2.send(()).unwrap();
         });
 
         for _ in range(0u, 100) { Thread::yield_now() }
-        tx1.send(());
-        rx2.recv();
+        tx1.send(()).unwrap();
+        rx2.recv().unwrap();
     }
 
     #[test]
     fn sync1() {
         let (tx, rx) = sync_channel::<int>(1);
-        tx.send(1);
+        tx.send(1).unwrap();
         select! {
-            n = rx.recv() => { assert_eq!(n, 1); }
+            n = rx.recv() => { assert_eq!(n.unwrap(), 1); }
         }
     }
 
@@ -722,10 +718,10 @@ mod test {
         let (tx, rx) = sync_channel::<int>(0);
         let _t = Thread::spawn(move|| {
             for _ in range(0u, 100) { Thread::yield_now() }
-            tx.send(1);
+            tx.send(1).unwrap();
         });
         select! {
-            n = rx.recv() => { assert_eq!(n, 1); }
+            n = rx.recv() => { assert_eq!(n.unwrap(), 1); }
         }
     }
 
@@ -733,16 +729,18 @@ mod test {
     fn sync3() {
         let (tx1, rx1) = sync_channel::<int>(0);
         let (tx2, rx2): (Sender<int>, Receiver<int>) = channel();
-        let _t = Thread::spawn(move|| { tx1.send(1); });
-        let _t = Thread::spawn(move|| { tx2.send(2); });
+        let _t = Thread::spawn(move|| { tx1.send(1).unwrap(); });
+        let _t = Thread::spawn(move|| { tx2.send(2).unwrap(); });
         select! {
             n = rx1.recv() => {
+                let n = n.unwrap();
                 assert_eq!(n, 1);
-                assert_eq!(rx2.recv(), 2);
+                assert_eq!(rx2.recv().unwrap(), 2);
             },
             n = rx2.recv() => {
+                let n = n.unwrap();
                 assert_eq!(n, 2);
-                assert_eq!(rx1.recv(), 1);
+                assert_eq!(rx1.recv().unwrap(), 1);
             }
         }
     }

@@ -28,10 +28,10 @@ use core::cmp;
 use core::int;
 use thread::Thread;
 
+use sync::mpsc::blocking::{mod, SignalToken};
+use sync::mpsc::spsc_queue as spsc;
+use sync::mpsc::Receiver;
 use sync::atomic;
-use comm::spsc_queue as spsc;
-use comm::Receiver;
-use comm::blocking::{mod, SignalToken};
 
 const DISCONNECTED: int = int::MIN;
 #[cfg(test)]

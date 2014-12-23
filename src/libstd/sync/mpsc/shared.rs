@@ -26,10 +26,10 @@ use core::cmp;
 use core::int;
 
 use sync::{atomic, Mutex, MutexGuard};
-use comm::mpsc_queue as mpsc;
-use comm::blocking::{mod, SignalToken};
-use comm::select::StartResult;
-use comm::select::StartResult::*;
+use sync::mpsc::mpsc_queue as mpsc;
+use sync::mpsc::blocking::{mod, SignalToken};
+use sync::mpsc::select::StartResult;
+use sync::mpsc::select::StartResult::*;
 use thread::Thread;
 
 const DISCONNECTED: int = int::MIN;

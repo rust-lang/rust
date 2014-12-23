@@ -1485,6 +1485,7 @@ mod test_map {
 
     struct KindaIntLike(int);
 
+    #[allow(deprecated)]
     impl Equiv<int> for KindaIntLike {
         fn equiv(&self, other: &int) -> bool {
             let KindaIntLike(this) = *self;
@@ -1812,7 +1813,7 @@ mod test_map {
     }
 
     #[test]
-    #[allow(experimental)]
+    #[allow(deprecated)]
     fn test_pop_equiv() {
         let mut m = HashMap::new();
         m.insert(1i, 2i);

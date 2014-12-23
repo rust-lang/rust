@@ -2452,7 +2452,7 @@ mod tests {
 
 #[cfg(test)]
 mod bitv_bench {
-    use std::prelude::*;
+    use std::prelude::v1::*;
     use std::rand;
     use std::rand::Rng;
     use std::u32;
@@ -2947,7 +2947,7 @@ mod bitv_set_test {
 
 #[cfg(test)]
 mod bitv_set_bench {
-    use std::prelude::*;
+    use std::prelude::v1::*;
     use std::rand;
     use std::rand::Rng;
     use std::u32;

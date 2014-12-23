@@ -1203,8 +1203,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                         let glob_map = &self.analysis.glob_map;
                         let glob_map = glob_map.as_ref().unwrap();
                         if glob_map.contains_key(&id) {
-                            let names = glob_map.index(&id);
-                            for n in names.iter() {
+                            for n in glob_map[id].iter() {
                                 if name_string.len() > 0 {
                                     name_string.push_str(", ");
                                 }

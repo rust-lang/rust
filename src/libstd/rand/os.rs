@@ -337,7 +337,7 @@ mod imp {
 mod test {
     use prelude::v1::*;
 
-    use comm::channel;
+    use sync::mpsc::channel;
     use rand::Rng;
     use super::OsRng;
     use thread::Thread;
@@ -363,7 +363,7 @@ mod test {
 
             Thread::spawn(move|| {
                 // wait until all the tasks are ready to go.
-                rx.recv();
+                rx.recv().unwrap();
 
                 // deschedule to attempt to interleave things as much
                 // as possible (XXX: is this a good test?)
@@ -384,7 +384,7 @@ mod test {
 
         // start all the tasks
         for tx in txs.iter() {
-            tx.send(())
+            tx.send(()).unwrap();
         }
     }
 }

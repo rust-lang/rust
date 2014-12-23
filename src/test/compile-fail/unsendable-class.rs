@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::comm::channel;
+use std::sync::mpsc::channel;
 
 // Test that a class with an unsendable field can't be
 // sent

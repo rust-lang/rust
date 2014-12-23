@@ -543,7 +543,7 @@ mod tests {
     use prelude::v1::*;
 
     use super::*;
-    use comm::channel;
+    use sync::mpsc::channel;
     use thread::Thread;
 
     #[test]

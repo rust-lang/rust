@@ -13,7 +13,7 @@
   message.
  */
 
-use std::comm::channel;
+use std::sync::mpsc::channel;
 
 pub fn main() {
     let (tx, rx) = channel();
