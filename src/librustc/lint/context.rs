@@ -447,7 +447,7 @@ impl<'a, 'tcx> Context<'a, 'tcx> {
             Some(&pair) => pair,
         };
 
-        raw_emit_lint(&self.tcx.sess, lint, (level, src), span, msg);
+        raw_emit_lint(self.sess(), lint, (level, src), span, msg);
     }
 
     /// Emit a lint at the appropriate level, with no associated span.
@@ -460,12 +460,41 @@ impl<'a, 'tcx> Context<'a, 'tcx> {
         self.lookup_and_emit(lint, Some(span), msg);
     }
 
-    /// Emit a lint at the appropriate level, for a particular span, 
-    /// unless the lint level is 'Allow'.
+    /// Calls span_note unless the lint level is Allow, in which case
+    /// it does nothing.
     pub fn span_lint_note(&self, lint: &'static Lint, span: Span, msg: &str) {
-        match lint.default_level {
-            Allow => (),
-            _ => self.lookup_and_emit(lint, Some(span), msg);
+        let (level, source) = match self.lints.levels.get(&LintId::of(lint)) {
+            None => return,
+            Some(&(Warn, source)) => {
+                let lint_id = LintId::of(builtin::WARNINGS);
+                (self.lints.get_level_source(lint_id).0, source)
+            }
+            Some(&pair) => pair,
+        };
+        if level == Allow { return }
+
+        let name = lint.name_lower();
+        let mut note = None;
+        let msg = match source {
+            Default => {
+                format!("{}, #[{}({})] on by default", msg,
+                        level.as_str(), name)
+            },
+            CommandLine => {
+                format!("{} [-{} {}]", msg,
+                        match level {
+                            Warn => 'W', Deny => 'D', Forbid => 'F',
+                            Allow => panic!()
+                        }, name.replace("_", "-"))
+            },
+            Node(source) => {
+                note = Some(source);
+                msg.to_string()
+            }
+        };
+
+        for span in note.into_iter() {
+            sess.span_note(span, "lint level defined here");
         }
     }
 
