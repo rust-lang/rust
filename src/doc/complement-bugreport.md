@@ -34,7 +34,7 @@ miss out on valid bug reports.
 It generally helps our diagnosis to include your specific OS (for example: Mac OS X 10.8.3,
 Windows 7, Ubuntu 12.04) and your hardware architecture (for example: i686, x86_64).
 It's also helpful to provide the exact version and host by copying the output of
-re-running the erroneous rustc command with the `--version=verbose` flag, which will
+re-running the erroneous rustc command with the `--version --verbose` flags, which will
 produce something like this:
 
 ```text
