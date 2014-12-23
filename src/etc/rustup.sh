@@ -441,7 +441,7 @@ install_package() {
     install_script="$2"
 
     msg "Extracting ${tarball_name}"
-    (cd "${CFG_TMP_DIR}" && "${CFG_TAR}" -xvf "${tarball_name}")
+    (cd "${CFG_TMP_DIR}" && "${CFG_TAR}" -xzf "${tarball_name}")
     if [ $? -ne 0 ]; then
         rm -Rf "${CFG_TMP_DIR}"
         err "failed to unpack installer"
