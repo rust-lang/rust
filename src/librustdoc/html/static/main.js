@@ -669,6 +669,18 @@
             search();
         }
 
+        function plainSummaryLine(markdown) {
+            var str = markdown.replace(/\n/g, ' ')
+            str = str.replace(/</g, "&lt;")
+            str = str.replace(/>/g, "&gt;")
+            str = str.replace(/"/g, "&quot;")
+            str = str.replace(/'/g, "&#39;")
+            str = str.replace(/^#+? (.+?)/, "$1")
+            str = str.replace(/\[(.*?)\]\(.*?\)/g, "$1")
+            str = str.replace(/\[(.*?)\]\[.*?\]/g, "$1")
+            return str;
+        }
+
         index = buildIndex(rawSearchIndex);
         startSearch();
 
@@ -691,7 +703,7 @@
                 }
                 var desc = rawSearchIndex[crates[i]].items[0][3];
                 div.append($('<a>', {'href': '../' + crates[i] + '/index.html',
-                                     'title': desc.replace(/\n/g, ' '),
+                                     'title': plainSummaryLine(desc),
                                      'class': klass}).text(crates[i]));
             }
             sidebar.append(div);
