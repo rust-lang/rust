@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
+use arena::TypedArena;
 use back::abi;
-use llvm;
-use llvm::ValueRef;
+use back::link;
+use llvm::{mod, ValueRef, get_param};
 use metadata::csearch;
-use middle::subst::{Substs};
+use middle::subst::{Subst, Substs};
 use middle::subst::VecPerParamSpace;
 use middle::subst;
 use middle::traits;
@@ -370,6 +370,10 @@ fn trans_monomorphized_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let llfn = trans_fn_pointer_shim(bcx.ccx(), fn_ty);
             Callee { bcx: bcx, data: Fn(llfn) }
         }
+        traits::VtableObject(ref data) => {
+            let llfn = trans_object_shim(bcx.ccx(), data.object_ty, trait_id, n_method);
+            Callee { bcx: bcx, data: Fn(llfn) }
+        }
         traits::VtableBuiltin(..) |
         traits::VtableParam(..) => {
             bcx.sess().bug(
@@ -503,6 +507,137 @@ pub fn trans_trait_callee_from_llval<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     };
 }
 
+/// Generate a shim function that allows an object type like `SomeTrait` to
+/// implement the type `SomeTrait`. Imagine a trait definition:
+///
+///    trait SomeTrait { fn get(&self) -> int; ... }
+///
+/// And a generic bit of code:
+///
+///    fn foo<T:SomeTrait>(t: &T) {
+///        let x = SomeTrait::get;
+///        x(t)
+///    }
+///
+/// What is the value of `x` when `foo` is invoked with `T=SomeTrait`?
+/// The answer is that it it is a shim function generate by this
+/// routine:
+///
+///    fn shim(t: &SomeTrait) -> int {
+///        // ... call t.get() virtually ...
+///    }
+///
+/// In fact, all virtual calls can be thought of as normal trait calls
+/// that go through this shim function.
+pub fn trans_object_shim<'a, 'tcx>(
+    ccx: &'a CrateContext<'a, 'tcx>,
+    object_ty: Ty<'tcx>,
+    trait_id: ast::DefId,
+    method_offset_in_trait: uint)
+    -> ValueRef
+{
+    let _icx = push_ctxt("trans_object_shim");
+    let tcx = ccx.tcx();
+
+    debug!("trans_object_shim(object_ty={}, trait_id={}, n_method={})",
+           object_ty.repr(tcx),
+           trait_id.repr(tcx),
+           method_offset_in_trait);
+
+    let object_trait_ref =
+        match object_ty.sty {
+            ty::ty_trait(ref data) => {
+                data.principal_trait_ref_with_self_ty(tcx, object_ty)
+            }
+            _ => {
+                tcx.sess.bug(format!("trans_object_shim() called on non-object: {}",
+                                     object_ty.repr(tcx)).as_slice());
+            }
+        };
+
+    // Upcast to the trait in question and extract out the substitutions.
+    let upcast_trait_ref = traits::upcast(ccx.tcx(), object_trait_ref.clone(), trait_id).unwrap();
+    let object_substs = upcast_trait_ref.substs().clone().erase_regions();
+    debug!("trans_object_shim: object_substs={}", object_substs.repr(tcx));
+
+    // Lookup the type of this method as deeclared in the trait and apply substitutions.
+    let method_ty = match ty::trait_item(tcx, trait_id, method_offset_in_trait) {
+        ty::MethodTraitItem(method) => method,
+        ty::TypeTraitItem(_) => {
+            tcx.sess.bug("can't create a method shim for an associated type")
+        }
+    };
+    let fty = method_ty.fty.subst(tcx, &object_substs);
+    let fty = tcx.mk_bare_fn(fty);
+    debug!("trans_object_shim: fty={}", fty.repr(tcx));
+
+    //
+    let method_bare_fn_ty =
+        ty::mk_bare_fn(tcx, None, fty);
+    let function_name =
+        link::mangle_internal_name_by_type_and_seq(ccx, method_bare_fn_ty, "object_shim");
+    let llfn =
+        decl_internal_rust_fn(ccx, method_bare_fn_ty, function_name.as_slice());
+
+    //
+    let block_arena = TypedArena::new();
+    let empty_substs = Substs::trans_empty();
+    let fcx = new_fn_ctxt(ccx,
+                          llfn,
+                          ast::DUMMY_NODE_ID,
+                          false,
+                          fty.sig.0.output,
+                          &empty_substs,
+                          None,
+                          &block_arena);
+    let mut bcx = init_function(&fcx, false, fty.sig.0.output);
+
+    // the first argument (`self`) will be a trait object
+    let llobject = get_param(fcx.llfn, fcx.arg_pos(0) as u32);
+
+    debug!("trans_object_shim: llobject={}",
+           bcx.val_to_string(llobject));
+
+    // the remaining arguments will be, well, whatever they are
+    let llargs: Vec<_> =
+        fty.sig.0.inputs[1..].iter()
+        .enumerate()
+        .map(|(i, _)| {
+            let llarg = get_param(fcx.llfn, fcx.arg_pos(i+1) as u32);
+            debug!("trans_object_shim: input #{} == {}",
+                   i, bcx.val_to_string(llarg));
+            llarg
+        })
+        .collect();
+    assert!(!fcx.needs_ret_allocas);
+
+    let dest =
+        fcx.llretslotptr.get().map(
+            |_| expr::SaveIn(fcx.get_ret_slot(bcx, fty.sig.0.output, "ret_slot")));
+
+    let method_offset_in_vtable =
+        traits::get_vtable_index_of_object_method(bcx.tcx(),
+                                                  object_trait_ref.clone(),
+                                                  trait_id,
+                                                  method_offset_in_trait);
+    debug!("trans_object_shim: method_offset_in_vtable={}",
+           method_offset_in_vtable);
+
+    bcx = trans_call_inner(bcx,
+                           None,
+                           method_bare_fn_ty,
+                           |bcx, _| trans_trait_callee_from_llval(bcx,
+                                                                  method_bare_fn_ty,
+                                                                  method_offset_in_vtable,
+                                                                  llobject),
+                           ArgVals(llargs.as_slice()),
+                           dest).bcx;
+
+    finish_fn(&fcx, bcx, fty.sig.0.output);
+
+    llfn
+}
+
 /// Creates a returns a dynamic vtable for the given type and vtable origin.
 /// This is used only for objects.
 ///
@@ -559,6 +694,14 @@ pub fn get_vtable<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             traits::VtableFnPointer(bare_fn_ty) => {
                 let llfn = vec![trans_fn_pointer_shim(bcx.ccx(), bare_fn_ty)];
                 llfn.into_iter()
+            }
+            traits::VtableObject(ref data) => {
+                // this would imply that the Self type being erased is
+                // an object type; this cannot happen because we
+                // cannot cast an unsized type into a trait object
+                bcx.sess().bug(
+                    format!("cannot get vtable for an object type: {}",
+                            data.repr(bcx.tcx())).as_slice());
             }
             traits::VtableParam => {
                 bcx.sess().bug(

@@ -238,6 +238,12 @@ impl<'tcx, N> fmt::Show for VtableImplData<'tcx, N> {
     }
 }
 
+impl<'tcx> fmt::Show for super::VtableObjectData<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "VtableObject(...)")
+    }
+}
+
 /// See `super::obligations_for_generics`
 pub fn predicates_for_generics<'tcx>(tcx: &ty::ctxt<'tcx>,
                                      cause: ObligationCause<'tcx>,
@@ -366,6 +372,10 @@ impl<'tcx, N:Repr<'tcx>> Repr<'tcx> for super::Vtable<'tcx, N> {
                 format!("VtableFnPointer({})",
                         d.repr(tcx)),
 
+            super::VtableObject(ref d) =>
+                format!("VtableObject({})",
+                        d.repr(tcx)),
+
             super::VtableParam =>
                 format!("VtableParam"),
 
@@ -388,6 +398,13 @@ impl<'tcx, N:Repr<'tcx>> Repr<'tcx> for super::VtableBuiltinData<N> {
     fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
         format!("VtableBuiltin(nested={})",
                 self.nested.repr(tcx))
+    }
+}
+
+impl<'tcx> Repr<'tcx> for super::VtableObjectData<'tcx> {
+    fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
+        format!("VtableObject(object_ty={})",
+                self.object_ty.repr(tcx))
     }
 }
 

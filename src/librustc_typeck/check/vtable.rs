@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use check::{FnCtxt, structurally_resolved_type};
-use middle::subst::{FnSpace, SelfSpace};
 use middle::traits::{mod, ObjectSafetyViolation, MethodViolationCode};
 use middle::traits::{Obligation, ObligationCause};
 use middle::traits::report_fulfillment_errors;
