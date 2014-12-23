@@ -8,14 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+extern crate core;
+
 fn assert_send<T:Send>() { }
 
-// unsafe ptrs are ok unless they point at unsendable things
-fn test70() {
-    assert_send::<*mut int>();
-}
 fn test71<'a>() {
-    assert_send::<*mut &'a int>(); //~ ERROR declared lifetime bound not satisfied
+    assert_send::<*mut &'a int>();
+    //~^ ERROR the trait `core::kinds::Send` is not implemented for the type
 }
 
 fn main() {

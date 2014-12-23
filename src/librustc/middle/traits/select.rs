@@ -1928,6 +1928,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
     }
 
+    #[allow(unused_comparisons)]
     fn derived_cause(&self,
                      obligation: &TraitObligation<'tcx>,
                      variant: fn(Rc<ty::Binder<ty::TraitRef<'tcx>>>,
@@ -1945,7 +1946,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
          * reporting.
          */
 
-        if obligation.recursion_depth == 0 {
+        // NOTE(flaper87): As of now, it keeps track of the whole error
+        // chain. Ideally, we should have a way to configure this either
+        // by using -Z verbose or just a CLI argument.
+        if obligation.recursion_depth >= 0 {
             ObligationCause::new(obligation.cause.span,
                                  obligation.trait_ref.def_id().node,
                                  variant(obligation.trait_ref.clone(),

@@ -37,6 +37,7 @@ fn main() {
 
     task::spawn(move|| {
         //~^ ERROR `core::kinds::Send` is not implemented
+        //~^^ ERROR `core::kinds::Send` is not implemented
         let y = x;
         println!("{}", y);
     });
