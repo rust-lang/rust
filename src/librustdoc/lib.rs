@@ -468,7 +468,7 @@ fn json_input(input: &str) -> Result<Output, String> {
 /// Outputs the crate/plugin json as a giant json blob at the specified
 /// destination.
 fn json_output(krate: clean::Crate, res: Vec<plugins::PluginJson> ,
-               dst: Path) -> io::IoResult<()> {
+               dst: Path) -> json::EncodeResult {
     // {
     //   "schema": version,
     //   "crate": { parsed crate ... },

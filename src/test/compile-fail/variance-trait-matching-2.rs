@@ -12,9 +12,10 @@ extern crate serialize;
 
 use std::io;
 use serialize::{Encodable, Encoder};
+use serialize::json;
 
 pub fn buffer_encode<'a,
-                     T:Encodable<serialize::json::Encoder<'a>,io::IoError>>(
+                     T:Encodable<json::Encoder<'a>,json::EncoderError>>(
                      to_encode_object: &T)
                      -> Vec<u8> {
     let mut m = Vec::new();
