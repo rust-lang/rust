@@ -16,4 +16,5 @@ fn main() {
     let x = Rc::new(5i);
     bar(x);
     //~^ ERROR `core::kinds::Send` is not implemented
+    //~^^ ERROR `core::kinds::Send` is not implemented
 }

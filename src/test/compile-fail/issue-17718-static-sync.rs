@@ -14,6 +14,6 @@ struct Foo { marker: marker::NoSync }
 
 static FOO: uint = 3;
 static BAR: Foo = Foo { marker: marker::NoSync };
-//~^ ERROR: shared static items must have a type which implements Sync
+//~^ ERROR: the trait `core::kinds::Sync` is not implemented
 
 fn main() {}
