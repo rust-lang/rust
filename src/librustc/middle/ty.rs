@@ -62,7 +62,7 @@ use middle::ty_fold::{mod, TypeFoldable, TypeFolder};
 use util::ppaux::{note_and_explain_region, bound_region_ptr_to_string};
 use util::ppaux::{trait_store_to_string, ty_to_string};
 use util::ppaux::{Repr, UserString};
-use util::common::{indenter, memoized, ErrorReported};
+use util::common::{memoized, ErrorReported};
 use util::nodemap::{NodeMap, NodeSet, DefIdMap, DefIdSet};
 use util::nodemap::{FnvHashMap};
 
@@ -590,16 +590,33 @@ pub enum vtable_origin<'tcx> {
 pub type ObjectCastMap<'tcx> = RefCell<NodeMap<Rc<ty::PolyTraitRef<'tcx>>>>;
 
 /// A restriction that certain types must be the same size. The use of
-/// `transmute` gives rise to these restrictions.
+/// `transmute` gives rise to these restrictions. These generally
+/// cannot be checked until trans; therefore, each call to `transmute`
+/// will push one or more such restriction into the
+/// `transmute_restrictions` vector during `intrinsicck`. They are
+/// then checked during `trans` by the fn `check_intrinsics`.
 #[deriving(Copy)]
 pub struct TransmuteRestriction<'tcx> {
-    /// The span from whence the restriction comes.
+    /// The span whence the restriction comes.
     pub span: Span,
+
     /// The type being transmuted from.
-    pub from: Ty<'tcx>,
+    pub original_from: Ty<'tcx>,
+
     /// The type being transmuted to.
-    pub to: Ty<'tcx>,
-    /// NodeIf of the transmute intrinsic.
+    pub original_to: Ty<'tcx>,
+
+    /// The type being transmuted from, with all type parameters
+    /// substituted for an arbitrary representative. Not to be shown
+    /// to the end user.
+    pub substituted_from: Ty<'tcx>,
+
+    /// The type being transmuted to, with all type parameters
+    /// substituted for an arbitrary representative. Not to be shown
+    /// to the end user.
+    pub substituted_to: Ty<'tcx>,
+
+    /// NodeId of the transmute intrinsic.
     pub id: ast::NodeId,
 }
 
@@ -2856,6 +2873,7 @@ def_type_content_sets! {
         // Things that are interior to the value (first nibble):
         InteriorUnsized                     = 0b0000_0000__0000_0000__0001,
         InteriorUnsafe                      = 0b0000_0000__0000_0000__0010,
+        InteriorParam                       = 0b0000_0000__0000_0000__0100,
         // InteriorAll                         = 0b00000000__00000000__1111,
 
         // Things that are owned by the value (second and third nibbles):
@@ -2908,6 +2926,10 @@ impl TypeContents {
 
     pub fn is_sized(&self, _: &ctxt) -> bool {
         !self.intersects(TC::Nonsized)
+    }
+
+    pub fn interior_param(&self) -> bool {
+        self.intersects(TC::InteriorParam)
     }
 
     pub fn interior_unsafe(&self) -> bool {
@@ -3038,7 +3060,7 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
             }
 
             ty_closure(ref c) => {
-                closure_contents(cx, &**c) | TC::ReachesFfiUnsafe
+                closure_contents(&**c) | TC::ReachesFfiUnsafe
             }
 
             ty_uniq(typ) => {
@@ -3049,7 +3071,7 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
             }
 
             ty_trait(box TyTrait { bounds, .. }) => {
-                object_contents(cx, bounds) | TC::ReachesFfiUnsafe | TC::Nonsized
+                object_contents(bounds) | TC::ReachesFfiUnsafe | TC::Nonsized
             }
 
             ty_ptr(ref mt) => {
@@ -3159,26 +3181,7 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
                 apply_lang_items(cx, did, res)
             }
 
-            ty_param(p) => {
-                // We only ever ask for the kind of types that are defined in
-                // the current crate; therefore, the only type parameters that
-                // could be in scope are those defined in the current crate.
-                // If this assertion fails, it is likely because of a
-                // failure of the cross-crate inlining code to translate a
-                // def-id.
-                assert_eq!(p.def_id.krate, ast::LOCAL_CRATE);
-
-                let ty_param_defs = cx.ty_param_defs.borrow();
-                let tp_def = &(*ty_param_defs)[p.def_id.node];
-                kind_bounds_to_contents(
-                    cx,
-                    tp_def.bounds.builtin_bounds,
-                    tp_def.bounds.trait_bounds[])
-            }
-
-            ty_infer(_) => {
-                // This occurs during coherence, but shouldn't occur at other
-                // times.
+            ty_param(_) => {
                 TC::All
             }
 
@@ -3188,6 +3191,7 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
                 result.unsafe_pointer() | TC::Nonsized
             }
 
+            ty_infer(_) |
             ty_err => {
                 cx.sess.bug("asked to compute contents of error type");
             }
@@ -3227,10 +3231,10 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
         b | (TC::ReachesBorrowed).when(region != ty::ReStatic)
     }
 
-    fn closure_contents(cx: &ctxt, cty: &ClosureTy) -> TypeContents {
+    fn closure_contents(cty: &ClosureTy) -> TypeContents {
         // Closure contents are just like trait contents, but with potentially
         // even more stuff.
-        let st = object_contents(cx, cty.bounds);
+        let st = object_contents(cty.bounds);
 
         let st = match cty.store {
             UniqTraitStore => {
@@ -3244,47 +3248,18 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
         st
     }
 
-    fn object_contents(cx: &ctxt,
-                       bounds: ExistentialBounds)
-                       -> TypeContents {
-        // These are the type contents of the (opaque) interior
-        kind_bounds_to_contents(cx, bounds.builtin_bounds, &[])
-    }
-
-    fn kind_bounds_to_contents<'tcx>(cx: &ctxt<'tcx>,
-                                     bounds: BuiltinBounds,
-                                     traits: &[Rc<PolyTraitRef<'tcx>>])
-                                     -> TypeContents {
-        let _i = indenter();
-        let mut tc = TC::All;
-        each_inherited_builtin_bound(cx, bounds, traits, |bound| {
+    fn object_contents(bounds: ExistentialBounds) -> TypeContents {
+        // These are the type contents of the (opaque) interior. We
+        // make no assumptions (other than that it cannot have an
+        // in-scope type parameter within, which makes no sense).
+        let mut tc = TC::All - TC::InteriorParam;
+        for bound in bounds.builtin_bounds.iter() {
             tc = tc - match bound {
                 BoundSync | BoundSend | BoundCopy => TC::None,
                 BoundSized => TC::Nonsized,
             };
-        });
-        return tc;
-
-        // Iterates over all builtin bounds on the type parameter def, including
-        // those inherited from traits with builtin-kind-supertraits.
-        fn each_inherited_builtin_bound<'tcx, F>(cx: &ctxt<'tcx>,
-                                                 bounds: BuiltinBounds,
-                                                 traits: &[Rc<PolyTraitRef<'tcx>>],
-                                                 mut f: F) where
-            F: FnMut(BuiltinBound),
-        {
-            for bound in bounds.iter() {
-                f(bound);
-            }
-
-            each_bound_trait_and_supertraits(cx, traits, |trait_ref| {
-                let trait_def = lookup_trait_def(cx, trait_ref.def_id());
-                for bound in trait_def.bounds.builtin_bounds.iter() {
-                    f(bound);
-                }
-                true
-            });
         }
+        return tc;
     }
 }
 
