@@ -605,9 +605,6 @@ impl<'a, Sized? T: Show> Show for &'a T {
 impl<'a, Sized? T: Show> Show for &'a mut T {
     fn fmt(&self, f: &mut Formatter) -> Result { (**self).fmt(f) }
 }
-impl<'a> Show for &'a (Show+'a) {
-    fn fmt(&self, f: &mut Formatter) -> Result { (*self).fmt(f) }
-}
 
 impl Show for bool {
     fn fmt(&self, f: &mut Formatter) -> Result {

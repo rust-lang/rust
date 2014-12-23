@@ -217,6 +217,9 @@ pub enum Vtable<'tcx, N> {
     /// for some type parameter.
     VtableParam,
 
+    /// Virtual calls through an object
+    VtableObject(VtableObjectData<'tcx>),
+
     /// Successful resolution for a builtin trait.
     VtableBuiltin(VtableBuiltinData<N>),
 
@@ -250,6 +253,13 @@ pub struct VtableImplData<'tcx, N> {
 #[deriving(Show,Clone)]
 pub struct VtableBuiltinData<N> {
     pub nested: subst::VecPerParamSpace<N>
+}
+
+/// A vtable for some object-safe trait `Foo` automatically derived
+/// for the object type `Foo`.
+#[deriving(PartialEq,Eq,Clone)]
+pub struct VtableObjectData<'tcx> {
+    pub object_ty: Ty<'tcx>,
 }
 
 /// True if neither the trait nor self type is local. Note that `impl_def_id` must refer to an impl
@@ -372,6 +382,7 @@ impl<'tcx, N> Vtable<'tcx, N> {
             VtableFnPointer(..) => (&[]).iter(),
             VtableUnboxedClosure(..) => (&[]).iter(),
             VtableParam => (&[]).iter(),
+            VtableObject(_) => (&[]).iter(),
             VtableBuiltin(ref i) => i.iter_nested(),
         }
     }
@@ -382,6 +393,7 @@ impl<'tcx, N> Vtable<'tcx, N> {
             VtableFnPointer(ref sig) => VtableFnPointer((*sig).clone()),
             VtableUnboxedClosure(d, ref s) => VtableUnboxedClosure(d, s.clone()),
             VtableParam => VtableParam,
+            VtableObject(ref p) => VtableObject(p.clone()),
             VtableBuiltin(ref b) => VtableBuiltin(b.map_nested(op)),
         }
     }
@@ -394,6 +406,7 @@ impl<'tcx, N> Vtable<'tcx, N> {
             VtableFnPointer(sig) => VtableFnPointer(sig),
             VtableUnboxedClosure(d, s) => VtableUnboxedClosure(d, s),
             VtableParam => VtableParam,
+            VtableObject(p) => VtableObject(p),
             VtableBuiltin(no) => VtableBuiltin(no.map_move_nested(op)),
         }
     }

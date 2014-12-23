@@ -503,6 +503,15 @@ impl<'tcx, N: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::Vtable<'tcx, N>
             }
             traits::VtableParam => traits::VtableParam,
             traits::VtableBuiltin(ref d) => traits::VtableBuiltin(d.fold_with(folder)),
+            traits::VtableObject(ref d) => traits::VtableObject(d.fold_with(folder)),
+        }
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for traits::VtableObjectData<'tcx> {
+    fn fold_with<F:TypeFolder<'tcx>>(&self, folder: &mut F) -> traits::VtableObjectData<'tcx> {
+        traits::VtableObjectData {
+            object_ty: self.object_ty.fold_with(folder)
         }
     }
 }
