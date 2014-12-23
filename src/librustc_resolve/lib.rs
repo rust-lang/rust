@@ -65,10 +65,10 @@ use syntax::ast::{DefId, Expr, ExprAgain, ExprBreak, ExprField};
 use syntax::ast::{ExprClosure, ExprForLoop, ExprLoop, ExprWhile, ExprMethodCall};
 use syntax::ast::{ExprPath, ExprQPath, ExprStruct, FnDecl};
 use syntax::ast::{ForeignItemFn, ForeignItemStatic, Generics};
-use syntax::ast::{Ident, ImplItem, Item, ItemConst, ItemEnum, ItemFn};
-use syntax::ast::{ItemForeignMod, ItemImpl, ItemMac, ItemMod, ItemStatic};
-use syntax::ast::{ItemStruct, ItemTrait, ItemTy, Local, LOCAL_CRATE};
-use syntax::ast::{MethodImplItem, Mod, Name, NodeId};
+use syntax::ast::{Ident, ImplItem, Item, ItemConst, ItemEnum, ItemExternCrate};
+use syntax::ast::{ItemFn, ItemForeignMod, ItemImpl, ItemMac, ItemMod, ItemStatic};
+use syntax::ast::{ItemStruct, ItemTrait, ItemTy, ItemUse};
+use syntax::ast::{Local, MethodImplItem, Mod, Name, NodeId};
 use syntax::ast::{Pat, PatEnum, PatIdent, PatLit};
 use syntax::ast::{PatRange, PatStruct, Path};
 use syntax::ast::{PolyTraitRef, PrimTy, SelfExplicit};
@@ -1139,7 +1139,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     }
 
     fn get_trait_name(&self, did: DefId) -> Name {
-        if did.krate == LOCAL_CRATE {
+        if did.krate == ast::LOCAL_CRATE {
             self.ast_map.expect_item(did.node).ident.name
         } else {
             csearch::get_trait_name(&self.session.cstore, did)
@@ -2966,9 +2966,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 });
             }
 
-           ItemMac(..) => {
+            ItemExternCrate(_) | ItemUse(_) | ItemMac(..) => {
                 // do nothing, these are just around to be encoded
-           }
+            }
         }
     }
 

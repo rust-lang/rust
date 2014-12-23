@@ -39,9 +39,9 @@ use rustc::middle::subst::FnSpace;
 use syntax::ast::{Block, Crate};
 use syntax::ast::{DeclItem, DefId};
 use syntax::ast::{ForeignItem, ForeignItemFn, ForeignItemStatic};
-use syntax::ast::{Item, ItemConst, ItemEnum, ItemFn};
+use syntax::ast::{Item, ItemConst, ItemEnum, ItemExternCrate, ItemFn};
 use syntax::ast::{ItemForeignMod, ItemImpl, ItemMac, ItemMod, ItemStatic};
-use syntax::ast::{ItemStruct, ItemTrait, ItemTy};
+use syntax::ast::{ItemStruct, ItemTrait, ItemTy, ItemUse};
 use syntax::ast::{MethodImplItem, Name, NamedField, NodeId};
 use syntax::ast::{PathListIdent, PathListMod};
 use syntax::ast::{Public, SelfStatic};
@@ -50,8 +50,7 @@ use syntax::ast::StructVariantKind;
 use syntax::ast::TupleVariantKind;
 use syntax::ast::TyObjectSum;
 use syntax::ast::{TypeImplItem, UnnamedField};
-use syntax::ast::{Variant, ViewItem, ViewItemExternCrate};
-use syntax::ast::{ViewItemUse, ViewPathGlob, ViewPathList, ViewPathSimple};
+use syntax::ast::{Variant, ViewPathGlob, ViewPathList, ViewPathSimple};
 use syntax::ast::{Visibility};
 use syntax::ast::TyPath;
 use syntax::ast;
@@ -238,11 +237,6 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
     }
 
     fn block_needs_anonymous_module(&mut self, block: &Block) -> bool {
-        // If the block has view items, we need an anonymous module.
-        if block.view_items.len() > 0 {
-            return true;
-        }
-
         // Check each statement.
         for statement in block.stmts.iter() {
             match statement.node {
@@ -262,7 +256,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
             }
         }
 
-        // If we found neither view items nor items, we don't need to create
+        // If we found no items, we don't need to create
         // an anonymous module.
 
         return false;
@@ -280,6 +274,133 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
         let modifiers = if is_public { PUBLIC } else { DefModifiers::empty() } | IMPORTABLE;
 
         match item.node {
+            ItemUse(ref view_path) => {
+                // Extract and intern the module part of the path. For
+                // globs and lists, the path is found directly in the AST;
+                // for simple paths we have to munge the path a little.
+                let module_path = match view_path.node {
+                    ViewPathSimple(_, ref full_path) => {
+                        full_path.segments
+                            .init()
+                            .iter().map(|ident| ident.identifier.name)
+                            .collect()
+                    }
+
+                    ViewPathGlob(ref module_ident_path) |
+                    ViewPathList(ref module_ident_path, _) => {
+                        module_ident_path.segments
+                            .iter().map(|ident| ident.identifier.name).collect()
+                    }
+                };
+
+                // Build up the import directives.
+                let shadowable = item.attrs.iter().any(|attr| {
+                    attr.name() == token::get_name(special_idents::prelude_import.name)
+                });
+                let shadowable = if shadowable {
+                    Shadowable::Always
+                } else {
+                    Shadowable::Never
+                };
+
+                match view_path.node {
+                    ViewPathSimple(binding, ref full_path) => {
+                        let source_name =
+                            full_path.segments.last().unwrap().identifier.name;
+                        if token::get_name(source_name).get() == "mod" ||
+                           token::get_name(source_name).get() == "self" {
+                            self.resolve_error(view_path.span,
+                                "`self` imports are only allowed within a { } list");
+                        }
+
+                        let subclass = SingleImport(binding.name,
+                                                    source_name);
+                        self.build_import_directive(&**parent,
+                                                    module_path,
+                                                    subclass,
+                                                    view_path.span,
+                                                    item.id,
+                                                    is_public,
+                                                    shadowable);
+                    }
+                    ViewPathList(_, ref source_items) => {
+                        // Make sure there's at most one `mod` import in the list.
+                        let mod_spans = source_items.iter().filter_map(|item| match item.node {
+                            PathListMod { .. } => Some(item.span),
+                            _ => None
+                        }).collect::<Vec<Span>>();
+                        if mod_spans.len() > 1 {
+                            self.resolve_error(mod_spans[0],
+                                "`self` import can only appear once in the list");
+                            for other_span in mod_spans.iter().skip(1) {
+                                self.session.span_note(*other_span,
+                                    "another `self` import appears here");
+                            }
+                        }
+
+                        for source_item in source_items.iter() {
+                            let (module_path, name) = match source_item.node {
+                                PathListIdent { name, .. } =>
+                                    (module_path.clone(), name.name),
+                                PathListMod { .. } => {
+                                    let name = match module_path.last() {
+                                        Some(name) => *name,
+                                        None => {
+                                            self.resolve_error(source_item.span,
+                                                "`self` import can only appear in an import list \
+                                                 with a non-empty prefix");
+                                            continue;
+                                        }
+                                    };
+                                    let module_path = module_path.init();
+                                    (module_path.to_vec(), name)
+                                }
+                            };
+                            self.build_import_directive(
+                                &**parent,
+                                module_path,
+                                SingleImport(name, name),
+                                source_item.span,
+                                source_item.node.id(),
+                                is_public,
+                                shadowable);
+                        }
+                    }
+                    ViewPathGlob(_) => {
+                        self.build_import_directive(&**parent,
+                                                    module_path,
+                                                    GlobImport,
+                                                    view_path.span,
+                                                    item.id,
+                                                    is_public,
+                                                    shadowable);
+                    }
+                }
+                parent.clone()
+            }
+
+            ItemExternCrate(_) => {
+                // n.b. we don't need to look at the path option here, because cstore already did
+                for &crate_id in self.session.cstore
+                                     .find_extern_mod_stmt_cnum(item.id).iter() {
+                    let def_id = DefId { krate: crate_id, node: 0 };
+                    self.external_exports.insert(def_id);
+                    let parent_link = ModuleParentLink(parent.downgrade(), name);
+                    let external_module = Rc::new(Module::new(parent_link,
+                                                              Some(def_id),
+                                                              NormalModuleKind,
+                                                              false,
+                                                              true));
+                    debug!("(build reduced graph for item) found extern `{}`",
+                            self.module_to_string(&*external_module));
+                    self.check_for_conflicts_between_external_crates(&**parent, name, sp);
+                    parent.external_module_children.borrow_mut()
+                          .insert(name, external_module.clone());
+                    self.build_reduced_graph_for_external_crate(&external_module);
+                }
+                parent.clone()
+            }
+
             ItemMod(..) => {
                 let name_bindings = self.add_child(name, parent, ForbidDuplicateModules, sp);
 
@@ -648,145 +769,6 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
         child.define_type(DefVariant(item_id,
                                      local_def(variant.node.id), is_exported),
                           variant.span, PUBLIC | IMPORTABLE);
-    }
-
-    /// Constructs the reduced graph for one 'view item'. View items consist
-    /// of imports and use directives.
-    fn build_reduced_graph_for_view_item(&mut self, view_item: &ViewItem, parent: &Rc<Module>) {
-        match view_item.node {
-            ViewItemUse(ref view_path) => {
-                // Extract and intern the module part of the path. For
-                // globs and lists, the path is found directly in the AST;
-                // for simple paths we have to munge the path a little.
-                let module_path = match view_path.node {
-                    ViewPathSimple(_, ref full_path, _) => {
-                        full_path.segments
-                            .init()
-                            .iter().map(|ident| ident.identifier.name)
-                            .collect()
-                    }
-
-                    ViewPathGlob(ref module_ident_path, _) |
-                    ViewPathList(ref module_ident_path, _, _) => {
-                        module_ident_path.segments
-                            .iter().map(|ident| ident.identifier.name).collect()
-                    }
-                };
-
-                // Build up the import directives.
-                let is_public = view_item.vis == ast::Public;
-                let shadowable =
-                    view_item.attrs
-                             .iter()
-                             .any(|attr| {
-                                 attr.name() == token::get_name(
-                                    special_idents::prelude_import.name)
-                             });
-                let shadowable = if shadowable {
-                    Shadowable::Always
-                } else {
-                    Shadowable::Never
-                };
-
-                match view_path.node {
-                    ViewPathSimple(binding, ref full_path, id) => {
-                        let source_name =
-                            full_path.segments.last().unwrap().identifier.name;
-                        if token::get_name(source_name).get() == "mod" ||
-                           token::get_name(source_name).get() == "self" {
-                            self.resolve_error(view_path.span,
-                                "`self` imports are only allowed within a { } list");
-                        }
-
-                        let subclass = SingleImport(binding.name,
-                                                    source_name);
-                        self.build_import_directive(&**parent,
-                                                    module_path,
-                                                    subclass,
-                                                    view_path.span,
-                                                    id,
-                                                    is_public,
-                                                    shadowable);
-                    }
-                    ViewPathList(_, ref source_items, _) => {
-                        // Make sure there's at most one `mod` import in the list.
-                        let mod_spans = source_items.iter().filter_map(|item| match item.node {
-                            PathListMod { .. } => Some(item.span),
-                            _ => None
-                        }).collect::<Vec<Span>>();
-                        if mod_spans.len() > 1 {
-                            self.resolve_error(mod_spans[0],
-                                "`self` import can only appear once in the list");
-                            for other_span in mod_spans.iter().skip(1) {
-                                self.session.span_note(*other_span,
-                                    "another `self` import appears here");
-                            }
-                        }
-
-                        for source_item in source_items.iter() {
-                            let (module_path, name) = match source_item.node {
-                                PathListIdent { name, .. } =>
-                                    (module_path.clone(), name.name),
-                                PathListMod { .. } => {
-                                    let name = match module_path.last() {
-                                        Some(name) => *name,
-                                        None => {
-                                            self.resolve_error(source_item.span,
-                                                "`self` import can only appear in an import list \
-                                                 with a non-empty prefix");
-                                            continue;
-                                        }
-                                    };
-                                    let module_path = module_path.init();
-                                    (module_path.to_vec(), name)
-                                }
-                            };
-                            self.build_import_directive(
-                                &**parent,
-                                module_path,
-                                SingleImport(name, name),
-                                source_item.span,
-                                source_item.node.id(),
-                                is_public,
-                                shadowable);
-                        }
-                    }
-                    ViewPathGlob(_, id) => {
-                        self.build_import_directive(&**parent,
-                                                    module_path,
-                                                    GlobImport,
-                                                    view_path.span,
-                                                    id,
-                                                    is_public,
-                                                    shadowable);
-                    }
-                }
-            }
-
-            ViewItemExternCrate(name, _, node_id) => {
-                // n.b. we don't need to look at the path option here, because cstore already did
-                for &crate_id in self.session.cstore
-                                     .find_extern_mod_stmt_cnum(node_id).iter() {
-                    let def_id = DefId { krate: crate_id, node: 0 };
-                    self.external_exports.insert(def_id);
-                    let parent_link = ModuleParentLink(parent.downgrade(), name.name);
-                    let external_module = Rc::new(Module::new(parent_link,
-                                                              Some(def_id),
-                                                              NormalModuleKind,
-                                                              false,
-                                                              true));
-                    debug!("(build reduced graph for item) found extern `{}`",
-                            self.module_to_string(&*external_module));
-                    self.check_for_conflicts_between_external_crates(
-                        &**parent,
-                        name.name,
-                        view_item.span);
-                    parent.external_module_children.borrow_mut()
-                          .insert(name.name, external_module.clone());
-                    self.build_reduced_graph_for_external_crate(&external_module);
-                }
-            }
-        }
     }
 
     /// Constructs the reduced graph for one foreign item.
@@ -1268,10 +1250,6 @@ impl<'a, 'b, 'v, 'tcx> Visitor<'v> for BuildReducedGraphVisitor<'a, 'b, 'tcx> {
             };
             visit::walk_foreign_item(&mut v, foreign_item);
         })
-    }
-
-    fn visit_view_item(&mut self, view_item: &ViewItem) {
-        self.builder.build_reduced_graph_for_view_item(view_item, &self.parent);
     }
 
     fn visit_block(&mut self, block: &Block) {
