@@ -379,7 +379,7 @@ The first thing we'll learn about are 'variable bindings.' They look like this:
 
 ```{rust}
 fn main() {
-    let x = 5i;
+    let x = 5i32;
 }
 ```
 
@@ -394,14 +394,15 @@ hand side of a `let` expression is a full pattern, not just a variable name.
 This means we can do things like:
 
 ```{rust}
-let (x, y) = (1i, 2i);
+let (x, y) = (1i32, 2i32);
 ```
 
 After this expression is evaluated, `x` will be one, and `y` will be two.
 Patterns are really powerful, but this is about all we can do with them so far.
 So let's just keep this in the back of our minds as we go forward.
 
-By the way, in these examples, `i` indicates that the number is an integer.
+By the way, in these examples, `i32` indicates that the number is a 32-bit
+integer.
 
 Rust is a statically typed language, which means that we specify our types up
 front. So why does our first example compile? Well, Rust has this thing called
@@ -411,18 +412,18 @@ doesn't require you to actually type it out.
 We can add the type if we want to, though. Types come after a colon (`:`):
 
 ```{rust}
-let x: int = 5;
+let x: i32 = 5;
 ```
 
 If I asked you to read this out loud to the rest of the class, you'd say "`x`
-is a binding with the type `int` and the value `five`."
+is a binding with the type `i32` and the value `five`."
 
 In future examples, we may annotate the type in a comment. The examples will
 look like this:
 
 ```{rust}
 fn main() {
-    let x = 5i; // x: int
+    let x = 5i32; // x: i32
 }
 ```
 
@@ -433,23 +434,23 @@ include them to help you understand what the types that Rust infers are.
 By default, bindings are **immutable**. This code will not compile:
 
 ```{ignore}
-let x = 5i;
-x = 10i;
+let x = 5i32;
+x = 10i32;
 ```
 
 It will give you this error:
 
 ```text
 error: re-assignment of immutable variable `x`
-     x = 10i;
-     ^~~~~~~
+     x = 10i32;
+     ^~~~~~~~~
 ```
 
 If you want a binding to be mutable, you can use `mut`:
 
 ```{rust}
-let mut x = 5i; // mut x: int
-x = 10i;
+let mut x = 5i32; // mut x: i32
+x = 10i32;
 ```
 
 There is no single reason that bindings are immutable by default, but we can
@@ -483,14 +484,14 @@ src/main.rs:2     let x;
 Giving it a type will compile, though:
 
 ```{ignore}
-let x: int;
+let x: i32;
 ```
 
 Let's try it out. Change your `src/main.rs` file to look like this:
 
 ```{rust}
 fn main() {
-    let x: int;
+    let x: i32;
 
     println!("Hello world!");
 }
@@ -502,7 +503,7 @@ but it will still print "Hello, world!":
 ```text
    Compiling hello_world v0.0.1 (file:///home/you/projects/hello_world)
 src/main.rs:2:9: 2:10 warning: unused variable: `x`, #[warn(unused_variable)] on by default
-src/main.rs:2     let x: int;
+src/main.rs:2     let x: i32;
                       ^
 ```
 
@@ -512,7 +513,7 @@ do that. Change your program to look like this:
 
 ```{rust,ignore}
 fn main() {
-    let x: int;
+    let x: i32;
 
     println!("The value of x is: {}", x);
 }
@@ -563,9 +564,9 @@ multiple paths can be taken.
 In the case of `if`, there is one choice that leads down two paths:
 
 ```rust
-let x = 5i;
+let x = 5i32;
 
-if x == 5i {
+if x == 5i32 {
     println!("x is five!");
 }
 ```
@@ -577,9 +578,9 @@ the block is executed. If it's `false`, then it is not.
 If you want something to happen in the `false` case, use an `else`:
 
 ```{rust}
-let x = 5i;
+let x = 5i32;
 
-if x == 5i {
+if x == 5i32 {
     println!("x is five!");
 } else {
     println!("x is not five :(");
@@ -590,21 +591,21 @@ This is all pretty standard. However, you can also do this:
 
 
 ```{rust}
-let x = 5i;
+let x = 5i32;
 
-let y = if x == 5i {
-    10i
+let y = if x == 5i32 {
+    10i32
 } else {
-    15i
-}; // y: int
+    15i32
+}; // y: i32
 ```
 
 Which we can (and probably should) write like this:
 
 ```{rust}
-let x = 5i;
+let x = 5i32;
 
-let y = if x == 5i { 10i } else { 15i }; // y: int
+let y = if x == 5i32 { 10i32 } else { 15i32 }; // y: i32
 ```
 
 This reveals two interesting things about Rust: it is an expression-based
@@ -636,15 +637,15 @@ In Rust, however, using `let` to introduce a binding is _not_ an expression. The
 following will produce a compile-time error:
 
 ```{ignore}
-let x = (let y = 5i); // expected identifier, found keyword `let`
+let x = (let y = 5i32); // expected identifier, found keyword `let`
 ```
 
 The compiler is telling us here that it was expecting to see the beginning of
 an expression, and a `let` can only begin a statement, not an expression.
 
-Note that assigning to an already-bound variable (e.g. `y = 5i`) is still an
+Note that assigning to an already-bound variable (e.g. `y = 5i32`) is still an
 expression, although its value is not particularly useful. Unlike C, where an
-assignment evaluates to the assigned value (e.g. `5i` in the previous example),
+assignment evaluates to the assigned value (e.g. `5i32` in the previous example),
 in Rust the value of an assignment is the unit type `()` (which we'll cover later).
 
 The second kind of statement in Rust is the **expression statement**. Its
@@ -659,9 +660,9 @@ What is this exception that makes us say 'almost?' You saw it already, in this
 code:
 
 ```{rust}
-let x = 5i;
+let x = 5i32;
 
-let y: int = if x == 5i { 10i } else { 15i };
+let y: i32 = if x == 5i32 { 10i32 } else { 15i32 };
 ```
 
 Note that I've added the type annotation to `y`, to specify explicitly that I
@@ -670,20 +671,20 @@ want `y` to be an integer.
 This is not the same as this, which won't compile:
 
 ```{ignore}
-let x = 5i;
+let x = 5i32;
 
-let y: int = if x == 5i { 10i; } else { 15i; };
+let y: i32 = if x == 5i32 { 10i32; } else { 15i32; };
 ```
 
 Note the semicolons after the 10 and 15. Rust will give us the following error:
 
 ```text
-error: mismatched types: expected `int` but found `()` (expected int but found ())
+error: mismatched types: expected `i32` but found `()` (expected i32 but found ())
 ```
 
 We expected an integer, but we got `()`. `()` is pronounced 'unit', and is a
 special type in Rust's type system. In Rust, `()` is _not_ a valid value for a
-variable of type `int`. It's only a valid value for variables of the type `()`,
+variable of type `i32`. It's only a valid value for variables of the type `()`,
 which aren't very useful. Remember how we said statements don't return a value?
 Well, that's the purpose of unit in this case. The semicolon turns any
 expression into a statement by throwing away its value and returning unit
@@ -714,7 +715,7 @@ fn foo() {
 So, what about taking arguments? Here's a function that prints a number:
 
 ```{rust}
-fn print_number(x: int) {
+fn print_number(x: i32) {
     println!("x is: {}", x);
 }
 ```
@@ -726,7 +727,7 @@ fn main() {
     print_number(5);
 }
 
-fn print_number(x: int) {
+fn print_number(x: i32) {
     println!("x is: {}", x);
 }
 ```
@@ -741,7 +742,7 @@ fn main() {
     print_sum(5, 6);
 }
 
-fn print_sum(x: int, y: int) {
+fn print_sum(x: i32, y: i32) {
     println!("sum is: {}", x + y);
 }
 ```
@@ -774,7 +775,7 @@ sweet spot between full inference and no inference.
 What about returning a value? Here's a function that adds one to an integer:
 
 ```{rust}
-fn add_one(x: int) -> int {
+fn add_one(x: i32) -> i32 {
     x + 1
 }
 ```
@@ -785,7 +786,7 @@ Rust functions return exactly one value, and you declare the type after an
 You'll note the lack of a semicolon here. If we added it in:
 
 ```{ignore}
-fn add_one(x: int) -> int {
+fn add_one(x: i32) -> i32 {
     x + 1;
 }
 ```
@@ -794,7 +795,7 @@ We would get an error:
 
 ```text
 error: not all control paths return a value
-fn add_one(x: int) -> int {
+fn add_one(x: i32) -> i32 {
      x + 1;
 }
 
@@ -804,7 +805,7 @@ help: consider removing this semicolon:
 ```
 
 Remember our earlier discussions about semicolons and `()`? Our function claims
-to return an `int`, but with a semicolon, it would return `()` instead. Rust
+to return an `i32`, but with a semicolon, it would return `()` instead. Rust
 realizes this probably isn't what we want, and suggests removing the semicolon.
 
 This is very much like our `if` statement before: the result of the block
@@ -818,7 +819,7 @@ semicolon in a return position would cause a bug.
 But what about early returns? Rust does have a keyword for that, `return`:
 
 ```{rust}
-fn foo(x: int) -> int {
+fn foo(x: i32) -> i32 {
     if x < 5 { return x; }
 
     x + 1
@@ -829,7 +830,7 @@ Using a `return` as the last line of a function works, but is considered poor
 style:
 
 ```{rust}
-fn foo(x: int) -> int {
+fn foo(x: i32) -> i32 {
     if x < 5 { return x; }
 
     return x + 1;
@@ -852,7 +853,7 @@ and **doc comment**s.
 ```{rust}
 // Line comments are anything after '//' and extend to the end of the line.
 
-let x = 5i; // this is also a line comment.
+let x = 5i32; // this is also a line comment.
 
 // If you have a long explanation for something, you can put line comments next
 // to each other. Put a space between the // and your comment so that it's
@@ -900,19 +901,19 @@ The first compound data type we're going to talk about are called **tuple**s.
 Tuples are an ordered list of a fixed size. Like this:
 
 ```rust
-let x = (1i, "hello");
+let x = (1i32, "hello");
 ```
 
 The parentheses and commas form this two-length tuple. Here's the same code, but
 with the type annotated:
 
 ```rust
-let x: (int, &str) = (1, "hello");
+let x: (i32, &str) = (1, "hello");
 ```
 
 As you can see, the type of a tuple looks just like the tuple, but with each
 position having a type name rather than the value. Careful readers will also
-note that tuples are heterogeneous: we have an `int` and a `&str` in this tuple.
+note that tuples are heterogeneous: we have an `i32` and a `&str` in this tuple.
 You haven't seen `&str` as a type before, and we'll discuss the details of
 strings later. In systems programming languages, strings are a bit more complex
 than in other languages. For now, just read `&str` as "a string slice," and
@@ -922,7 +923,7 @@ You can access the fields in a tuple through a **destructuring let**. Here's
 an example:
 
 ```rust
-let (x, y, z) = (1i, 2i, 3i);
+let (x, y, z) = (1i32, 2i32, 3i32);
 
 println!("x is {}", x);
 ```
@@ -940,8 +941,8 @@ destructuring. You can assign one tuple into another, if they have the same
 arity and contained types.
 
 ```rust
-let mut x = (1i, 2i); // x: (int, int)
-let y = (2i, 3i);     // y: (int, int)
+let mut x = (1i32, 2i32); // x: (i32, i32)
+let y = (2i32, 3i32);     // y: (i32, i32)
 
 x = y;
 ```
@@ -950,8 +951,8 @@ You can also check for equality with `==`. Again, this will only compile if the
 tuples have the same type.
 
 ```rust
-let x = (1i, 2i, 3i);
-let y = (2i, 2i, 4i);
+let x = (1i32, 2i32, 3i32);
+let y = (2i32, 2i32, 4i32);
 
 if x == y {
     println!("yes");
@@ -965,10 +966,10 @@ This will print `no`, because some of the values aren't equal.
 One other use of tuples is to return multiple values from a function:
 
 ```rust
-fn next_two(x: int) -> (int, int) { (x + 1i, x + 2i) }
+fn next_two(x: i32) -> (i32, i32) { (x + 1i32, x + 2i32) }
 
 fn main() {
-    let (x, y) = next_two(5i);
+    let (x, y) = next_two(5i32);
     println!("x, y = {}, {}", x, y);
 }
 ```
@@ -988,12 +989,12 @@ difference: structs give each element that they contain a name, called a
 
 ```rust
 struct Point {
-    x: int,
-    y: int,
+    x: i32,
+    y: i32,
 }
 
 fn main() {
-    let origin = Point { x: 0i, y: 0i }; // origin: Point
+    let origin = Point { x: 0i32, y: 0i32 }; // origin: Point
 
     println!("The origin is at ({}, {})", origin.x, origin.y);
 }
@@ -1015,12 +1016,12 @@ Use `mut` to make them mutable:
 
 ```{rust}
 struct Point {
-    x: int,
-    y: int,
+    x: i32,
+    y: i32,
 }
 
 fn main() {
-    let mut point = Point { x: 0i, y: 0i };
+    let mut point = Point { x: 0i32, y: 0i32 };
 
     point.x = 5;
 
@@ -1038,8 +1039,8 @@ don't:
 
 
 ```{rust}
-struct Color(int, int, int);
-struct Point(int, int, int);
+struct Color(i32, i32, i32);
+struct Point(i32, i32, i32);
 ```
 
 These two will not be equal, even if they have the same values:
@@ -1054,15 +1055,15 @@ It is almost always better to use a struct than a tuple struct. We would write
 
 ```{rust}
 struct Color {
-    red: int,
-    blue: int,
-    green: int,
+    red: i32,
+    blue: i32,
+    green: i32,
 }
 
 struct Point {
-    x: int,
-    y: int,
-    z: int,
+    x: i32,
+    y: i32,
+    z: i32,
 }
 ```
 
@@ -1074,7 +1075,7 @@ tuple struct with only one element. We call this a 'newtype,' because it lets
 you create a new type that's a synonym for another one:
 
 ```{rust}
-struct Inches(int);
+struct Inches(i32);
 
 let length = Inches(10);
 
@@ -1103,15 +1104,15 @@ An `Ordering` can only be _one_ of `Less`, `Equal`, or `Greater` at any given
 time. Here's an example:
 
 ```{rust}
-fn cmp(a: int, b: int) -> Ordering {
+fn cmp(a: i32, b: i32) -> Ordering {
     if a < b { Less }
     else if a > b { Greater }
     else { Equal }
 }
 
 fn main() {
-    let x = 5i;
-    let y = 10i;
+    let x = 5i32;
+    let y = 10i32;
 
     let ordering = cmp(x, y); // ordering: Ordering
 
@@ -1142,21 +1143,21 @@ This enum has two variants, one of which has a value:
 
 ```{rust}
 enum OptionalInt {
-    Value(int),
+    Value(i32),
     Missing,
 }
 ```
 
-This enum represents an `int` that we may or may not have. In the `Missing`
+This enum represents an `i32` that we may or may not have. In the `Missing`
 case, we have no value, but in the `Value` case, we do. This enum is specific
-to `int`s, though. We can make it usable by any type, but we haven't quite
+to `i32`s, though. We can make it usable by any type, but we haven't quite
 gotten there yet!
 
 You can also have any number of values in an enum:
 
 ```{rust}
 enum OptionalColor {
-    Color(int, int, int),
+    Color(i32, i32, i32),
     Missing,
 }
 ```
@@ -1238,7 +1239,7 @@ Rust has a keyword, `match`, that allows you to replace complicated `if`/`else`
 groupings with something more powerful. Check it out:
 
 ```{rust}
-let x = 5i;
+let x = 5i32;
 
 match x {
     1 => println!("one"),
@@ -1265,7 +1266,7 @@ error: non-exhaustive patterns: `_` not covered
 
 In other words, Rust is trying to tell us we forgot a value. Because `x` is an
 integer, Rust knows that it can have a number of different values – for example,
-`6i`. Without the `_`, however, there is no arm that could match, and so Rust refuses
+`6i32`. Without the `_`, however, there is no arm that could match, and so Rust refuses
 to compile. `_` acts like a 'catch-all arm'. If none of the other arms match,
 the arm with `_` will, and since we have this catch-all arm, we now have an arm
 for every possible value of `x`, and so our program will compile successfully.
@@ -1274,15 +1275,15 @@ for every possible value of `x`, and so our program will compile successfully.
 section on enums?
 
 ```{rust}
-fn cmp(a: int, b: int) -> Ordering {
+fn cmp(a: i32, b: i32) -> Ordering {
     if a < b { Less }
     else if a > b { Greater }
     else { Equal }
 }
 
 fn main() {
-    let x = 5i;
-    let y = 10i;
+    let x = 5i32;
+    let y = 10i32;
 
     let ordering = cmp(x, y);
 
@@ -1299,15 +1300,15 @@ fn main() {
 We can re-write this as a `match`:
 
 ```{rust}
-fn cmp(a: int, b: int) -> Ordering {
+fn cmp(a: i32, b: i32) -> Ordering {
     if a < b { Less }
     else if a > b { Greater }
     else { Equal }
 }
 
 fn main() {
-    let x = 5i;
-    let y = 10i;
+    let x = 5i32;
+    let y = 10i32;
 
     match cmp(x, y) {
         Less    => println!("less"),
@@ -1328,7 +1329,7 @@ make sure to cover all of our bases.
 
 ```{rust}
 enum OptionalInt {
-    Value(int),
+    Value(i32),
     Missing,
 }
 
@@ -1350,7 +1351,7 @@ fn main() {
 
 That is how you can get and use the values contained in `enum`s.
 It can also allow us to handle errors or unexpected computations; for example, a
-function that is not guaranteed to be able to compute a result (an `int` here)
+function that is not guaranteed to be able to compute a result (an `i32` here)
 could return an `OptionalInt`, and we would handle that value with a `match`.
 As you can see, `enum` and `match` used together are quite useful!
 
@@ -1359,15 +1360,15 @@ side of a `let` binding or directly where an expression is used. We could
 also implement the previous line like this:
 
 ```{rust}
-fn cmp(a: int, b: int) -> Ordering {
+fn cmp(a: i32, b: i32) -> Ordering {
     if a < b { Less }
     else if a > b { Greater }
     else { Equal }
 }
 
 fn main() {
-    let x = 5i;
-    let y = 10i;
+    let x = 5i32;
+    let y = 10i32;
 
     println!("{}", match cmp(x, y) {
         Less    => "less",
@@ -1399,8 +1400,8 @@ for (x = 0; x < 10; x++) {
 Instead, it looks like this:
 
 ```{rust}
-for x in range(0i, 10i) {
-    println!("{}", x); // x: int
+for x in range(0i32, 10i32) {
+    println!("{}", x); // x: i32
 }
 ```
 
@@ -1435,7 +1436,7 @@ The other kind of looping construct in Rust is the `while` loop. It looks like
 this:
 
 ```{rust}
-let mut x = 5u;       // mut x: uint
+let mut x = 5u32;     // mut x: u32
 let mut done = false; // mut done: bool
 
 while !done {
@@ -1472,7 +1473,7 @@ can do with safety and code generation, so you should always prefer
 Let's take a look at that `while` loop we had earlier:
 
 ```{rust}
-let mut x = 5u;
+let mut x = 5u32;
 let mut done = false;
 
 while !done {
@@ -1489,7 +1490,7 @@ modifying iteration: `break` and `continue`.
 In this case, we can write the loop in a better way with `break`:
 
 ```{rust}
-let mut x = 5u;
+let mut x = 5u32;
 
 loop {
     x += x - 3;
@@ -1504,7 +1505,7 @@ We now loop forever with `loop` and use `break` to break out early.
 iteration. This will only print the odd numbers:
 
 ```{rust}
-for x in range(0i, 10i) {
+for x in range(0i32, 10i32) {
     if x % 2 == 0 { continue; }
 
     println!("{}", x);
@@ -1600,8 +1601,8 @@ things. The most basic is the **array**, a fixed-size list of elements of the
 same type. By default, arrays are immutable.
 
 ```{rust}
-let a = [1i, 2i, 3i];     // a: [int, ..3]
-let mut m = [1i, 2i, 3i]; // mut m: [int, ..3]
+let a = [1i32, 2i32, 3i32];     // a: [i32, ..3]
+let mut m = [1i32, 2i32, 3i32]; // mut m: [i32, ..3]
 ```
 
 You can create an array with a given number of elements, all initialized to the
@@ -1609,10 +1610,10 @@ same value, with `[val, ..N]` syntax. The compiler ensures that arrays are
 always initialized.
 
 There's a shorthand for initializing each element of an array to the same
-value. In this example, each element of `a` will be initialized to `0i`:
+value. In this example, each element of `a` will be initialized to `0i32`:
 
 ```{rust}
-let a = [0i, ..20]; // a: [int, ..20]
+let a = [0i32, ..20]; // a: [i32, ..20]
 ```
 
 Arrays have type `[T,..N]`. We'll talk about this `T` notation later, when we
@@ -1623,7 +1624,7 @@ You can get the number of elements in an array `a` with `a.len()`, and use
 number in order:
 
 ```{rust}
-let a = [1i, 2, 3]; // Only the first item needs a type suffix
+let a = [1i32, 2, 3]; // Only the first item needs a type suffix
 
 println!("a has {} elements", a.len());
 for e in a.iter() {
@@ -1652,7 +1653,7 @@ later). Vectors are to arrays what `String` is to `&str`. You can create them
 with the `vec!` macro:
 
 ```{rust}
-let v = vec![1i, 2, 3]; // v: Vec<int>
+let v = vec![1i32, 2, 3]; // v: Vec<i32>
 ```
 
 (Notice that unlike the `println!` macro we've used in the past, we use square
@@ -1663,7 +1664,7 @@ You can get the length of, iterate over, and subscript vectors just like
 arrays. In addition, (mutable) vectors can grow automatically:
 
 ```{rust}
-let mut nums = vec![1i, 2, 3]; // mut nums: Vec<int>
+let mut nums = vec![1i32, 2, 3]; // mut nums: Vec<i32>
 
 nums.push(4);
 
@@ -1680,7 +1681,7 @@ Slices have a length, can be mutable or not, and in many ways behave like
 arrays:
 
 ```{rust}
-let a = [0i, 1, 2, 3, 4];
+let a = [0i32, 1, 2, 3, 4];
 let middle = a.slice(1, 4);     // A slice of a: just the elements [1,2,3]
 
 for e in middle.iter() {
@@ -1772,7 +1773,7 @@ Do you remember this code?
 
 ```{rust}
 enum OptionalInt {
-    Value(int),
+    Value(i32),
     Missing,
 }
 
@@ -1804,7 +1805,7 @@ where there's no standard input. Because of this, `read_line` returns a type
 very similar to our `OptionalInt`: an `IoResult<T>`. We haven't talked about
 `IoResult<T>` yet because it is the **generic** form of our `OptionalInt`.
 Until then, you can think of it as being the same thing, just for any type –
-not just `int`s.
+not just `i32`s.
 
 Rust provides a method on these `IoResult<T>`s called `ok()`, which does the
 same thing as our `match` statement but assumes that we have a valid value.
@@ -1986,7 +1987,7 @@ use std::rand;
 fn main() {
     println!("Guess the number!");
 
-    let secret_number = (rand::random() % 100i) + 1i; // secret_number: int
+    let secret_number = (rand::random() % 100i32) + 1i32); // secret_number: i32
 
     println!("The secret number is: {}", secret_number);
 
@@ -2018,8 +2019,8 @@ Let's try to compile this using `cargo build`:
 $ cargo build
    Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
 src/main.rs:7:26: 7:34 error: the type of this value must be known in this context
-src/main.rs:7     let secret_number = (rand::random() % 100i) + 1i;
-                                       ^~~~~~~~
+src/main.rs:7     let secret_number = (rand::random() % 100i32) + 1i32;
+                                       ^~~~~~~~~~~~~~
 error: aborting due to previous error
 ```
 
@@ -2027,15 +2028,15 @@ It didn't work! Rust says "the type of this value must be known in this
 context." What's up with that? Well, as it turns out, `rand::random()` can
 generate many kinds of random values, not just integers. And in this case, Rust
 isn't sure what kind of value `random()` should generate. So we have to help
-it. With number literals, we just add an `i` onto the end to tell Rust they're
+it. With number literals, we just add an `i32` onto the end to tell Rust they're
 integers, but that does not work with functions. There's a different syntax,
 and it looks like this:
 
 ```{rust,ignore}
-rand::random::<int>();
+rand::random::<i32>();
 ```
 
-This says "please give me a random `int` value." We can change our code to use
+This says "please give me a random `i32` value." We can change our code to use
 this hint:
 
 ```{rust,no_run}
@@ -2045,7 +2046,7 @@ use std::rand;
 fn main() {
     println!("Guess the number!");
 
-    let secret_number = (rand::random::<int>() % 100i) + 1i;
+    let secret_number = (rand::random::<i32>() % 100i32) + 1i32;
 
     println!("The secret number is: {}", secret_number);
 
@@ -2098,7 +2099,7 @@ use std::rand;
 fn main() {
     println!("Guess the number!");
 
-    let secret_number = (rand::random::<uint>() % 100u) + 1u;
+    let secret_number = (rand::random::<u32>() % 100u32) + 1u32;
 
     println!("The secret number is: {}", secret_number);
 
@@ -2141,7 +2142,7 @@ use std::rand;
 fn main() {
     println!("Guess the number!");
 
-    let secret_number = (rand::random::<uint>() % 100u) + 1u;
+    let secret_number = (rand::random::<u32>() % 100u32) + 1u32;
 
     println!("The secret number is: {}", secret_number);
 
@@ -2161,7 +2162,7 @@ fn main() {
     }
 }
 
-fn cmp(a: int, b: int) -> Ordering {
+fn cmp(a: i32, b: i32) -> Ordering {
     if a < b { Less }
     else if a > b { Greater }
     else { Equal }
@@ -2173,10 +2174,10 @@ If we try to compile, we'll get some errors:
 ```bash
 $ cargo build
    Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
-src/main.rs:20:15: 20:20 error: mismatched types: expected `int` but found `collections::string::String` (expected int but found struct collections::string::String)
+src/main.rs:20:15: 20:20 error: mismatched types: expected `i32` but found `collections::string::String` (expected i32 but found struct collections::string::String)
 src/main.rs:20     match cmp(input, secret_number) {
                              ^~~~~
-src/main.rs:20:22: 20:35 error: mismatched types: expected `int` but found `uint` (expected int but found uint)
+src/main.rs:20:22: 20:35 error: mismatched types: expected `i32` but found `u32` (expected i32 but found u32)
 src/main.rs:20     match cmp(input, secret_number) {
                                     ^~~~~~~~~~~~~
 error: aborting due to 2 previous errors
@@ -2186,7 +2187,7 @@ This often happens when writing Rust programs, and is one of Rust's greatest
 strengths. You try out some code, see if it compiles, and Rust tells you that
 you've done something wrong. In this case, our `cmp` function works on integers,
 but we've given it unsigned integers. In this case, the fix is easy, because
-we wrote the `cmp` function! Let's change it to take `uint`s:
+we wrote the `cmp` function! Let's change it to take `u32`s:
 
 ```{rust,ignore}
 use std::io;
@@ -2195,7 +2196,7 @@ use std::rand;
 fn main() {
     println!("Guess the number!");
 
-    let secret_number = (rand::random::<uint>() % 100u) + 1u;
+    let secret_number = (rand::random::<u32>() % 100u32) + 1u32;
 
     println!("The secret number is: {}", secret_number);
 
@@ -2215,7 +2216,7 @@ fn main() {
     }
 }
 
-fn cmp(a: uint, b: uint) -> Ordering {
+fn cmp(a: u32, b: u32) -> Ordering {
     if a < b { Less }
     else if a > b { Greater }
     else { Equal }
@@ -2227,13 +2228,13 @@ And try compiling again:
 ```bash
 $ cargo build
    Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
-src/main.rs:20:15: 20:20 error: mismatched types: expected `uint` but found `collections::string::String` (expected uint but found struct collections::string::String)
+src/main.rs:20:15: 20:20 error: mismatched types: expected `u32` but found `collections::string::String` (expected u32 but found struct collections::string::String)
 src/main.rs:20     match cmp(input, secret_number) {
                              ^~~~~
 error: aborting due to previous error
 ```
 
-This error is similar to the last one: we expected to get a `uint`, but we got
+This error is similar to the last one: we expected to get a `u32`, but we got
 a `String` instead! That's because our `input` variable is coming from the
 standard input, and you can guess anything. Try it:
 
@@ -2250,14 +2251,14 @@ Oops! Also, you'll note that we just ran our program even though it didn't compi
 This works because the older version we did successfully compile was still lying
 around. Gotta be careful!
 
-Anyway, we have a `String`, but we need a `uint`. What to do? Well, there's
+Anyway, we have a `String`, but we need a `u32`. What to do? Well, there's
 a function for that:
 
 ```{rust,ignore}
 let input = io::stdin().read_line()
                        .ok()
                        .expect("Failed to read line");
-let input_num: Option<uint> = input.parse();
+let input_num: Option<u32> = input.parse();
 ```
 
 The `parse` function takes in a `&str` value and converts it into something.
@@ -2265,22 +2266,22 @@ We tell it what kind of something with a type hint. Remember our type hint with
 `random()`? It looked like this:
 
 ```{rust,ignore}
-rand::random::<uint>();
+rand::random::<u32>();
 ```
 
 There's an alternate way of providing a hint too, and that's declaring the type
 in a `let`:
 
 ```{rust,ignore}
-let x: uint = rand::random();
+let x: u32 = rand::random();
 ```
 
-In this case, we say `x` is a `uint` explicitly, so Rust is able to properly
+In this case, we say `x` is a `u32` explicitly, so Rust is able to properly
 tell `random()` what to generate. In a similar fashion, both of these work:
 
 ```{rust,ignore}
-let input_num = "5".parse::<uint>();         // input_num: Option<uint>
-let input_num: Option<uint> = "5".parse();   // input_num: Option<uint>
+let input_num = "5".parse::<u32>();         // input_num: Option<u32>
+let input_num: Option<u32> = "5".parse();   // input_num: Option<u32>
 ```
 
 Anyway, with us now converting our input to a number, our code looks like this:
@@ -2292,7 +2293,7 @@ use std::rand;
 fn main() {
     println!("Guess the number!");
 
-    let secret_number = (rand::random::<uint>() % 100u) + 1u;
+    let secret_number = (rand::random::<u32>() % 100u32) + 1u32;
 
     println!("The secret number is: {}", secret_number);
 
@@ -2301,7 +2302,7 @@ fn main() {
     let input = io::stdin().read_line()
                            .ok()
                            .expect("Failed to read line");
-    let input_num: Option<uint> = input.parse();
+    let input_num: Option<u32> = input.parse();
 
     println!("You guessed: {}", input_num);
 
@@ -2312,7 +2313,7 @@ fn main() {
     }
 }
 
-fn cmp(a: uint, b: uint) -> Ordering {
+fn cmp(a: u32, b: u32) -> Ordering {
     if a < b { Less }
     else if a > b { Greater }
     else { Equal }
@@ -2324,13 +2325,13 @@ Let's try it out!
 ```bash
 $ cargo build
    Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
-src/main.rs:22:15: 22:24 error: mismatched types: expected `uint` but found `core::option::Option<uint>` (expected uint but found enum core::option::Option)
+src/main.rs:22:15: 22:24 error: mismatched types: expected `u32` but found `core::option::Option<u32>` (expected u32 but found enum core::option::Option)
 src/main.rs:22     match cmp(input_num, secret_number) {
                              ^~~~~~~~~
 error: aborting due to previous error
 ```
 
-Oh yeah! Our `input_num` has the type `Option<uint>`, rather than `uint`. We
+Oh yeah! Our `input_num` has the type `Option<u32>`, rather than `u32`. We
 need to unwrap the Option. If you remember from before, `match` is a great way
 to do that. Try this code:
 
@@ -2341,7 +2342,7 @@ use std::rand;
 fn main() {
     println!("Guess the number!");
 
-    let secret_number = (rand::random::<uint>() % 100u) + 1u;
+    let secret_number = (rand::random::<u32>() % 100u32) + 1u32;
 
     println!("The secret number is: {}", secret_number);
 
@@ -2350,7 +2351,7 @@ fn main() {
     let input = io::stdin().read_line()
                            .ok()
                            .expect("Failed to read line");
-    let input_num: Option<uint> = input.parse();
+    let input_num: Option<u32> = input.parse();
 
     let num = match input_num {
         Some(num) => num,
@@ -2370,14 +2371,14 @@ fn main() {
     }
 }
 
-fn cmp(a: uint, b: uint) -> Ordering {
+fn cmp(a: u32, b: u32) -> Ordering {
     if a < b { Less }
     else if a > b { Greater }
     else { Equal }
 }
 ```
 
-We use a `match` to either give us the `uint` inside of the `Option`, or else
+We use a `match` to either give us the `u32` inside of the `Option`, or else
 print an error message and return. Let's give this a shot:
 
 ```bash
@@ -2407,7 +2408,7 @@ use std::rand;
 fn main() {
     println!("Guess the number!");
 
-    let secret_number = (rand::random::<uint>() % 100u) + 1u;
+    let secret_number = (rand::random::<u32>() % 100u32) + 1u32;
 
     println!("The secret number is: {}", secret_number);
 
@@ -2416,7 +2417,7 @@ fn main() {
     let input = io::stdin().read_line()
                            .ok()
                            .expect("Failed to read line");
-    let input_num: Option<uint> = input.trim().parse();
+    let input_num: Option<u32> = input.trim().parse();
 
     let num = match input_num {
         Some(num) => num,
@@ -2436,7 +2437,7 @@ fn main() {
     }
 }
 
-fn cmp(a: uint, b: uint) -> Ordering {
+fn cmp(a: u32, b: u32) -> Ordering {
     if a < b { Less }
     else if a > b { Greater }
     else { Equal }
@@ -2480,7 +2481,7 @@ use std::rand;
 fn main() {
     println!("Guess the number!");
 
-    let secret_number = (rand::random::<uint>() % 100u) + 1u;
+    let secret_number = (rand::random::<u32>() % 100u32) + 1u32;
 
     println!("The secret number is: {}", secret_number);
 
@@ -2491,7 +2492,7 @@ fn main() {
         let input = io::stdin().read_line()
                                .ok()
                                .expect("Failed to read line");
-        let input_num: Option<uint> = input.trim().parse();
+        let input_num: Option<u32> = input.trim().parse();
 
         let num = match input_num {
             Some(num) => num,
@@ -2512,7 +2513,7 @@ fn main() {
     }
 }
 
-fn cmp(a: uint, b: uint) -> Ordering {
+fn cmp(a: u32, b: u32) -> Ordering {
     if a < b { Less }
     else if a > b { Greater }
     else { Equal }
@@ -2555,7 +2556,7 @@ use std::rand;
 fn main() {
     println!("Guess the number!");
 
-    let secret_number = (rand::random::<uint>() % 100u) + 1u;
+    let secret_number = (rand::random::<u32>() % 100u32) + 1u32;
 
     println!("The secret number is: {}", secret_number);
 
@@ -2566,7 +2567,7 @@ fn main() {
         let input = io::stdin().read_line()
                                .ok()
                                .expect("Failed to read line");
-        let input_num: Option<uint> = input.trim().parse();
+        let input_num: Option<u32> = input.trim().parse();
 
         let num = match input_num {
             Some(num) => num,
@@ -2590,7 +2591,7 @@ fn main() {
     }
 }
 
-fn cmp(a: uint, b: uint) -> Ordering {
+fn cmp(a: u32, b: u32) -> Ordering {
     if a < b { Less }
     else if a > b { Greater }
     else { Equal }
@@ -2610,7 +2611,7 @@ use std::rand;
 fn main() {
     println!("Guess the number!");
 
-    let secret_number = (rand::random::<uint>() % 100u) + 1u;
+    let secret_number = (rand::random::<u32>() % 100u32) + 1u32;
 
     println!("The secret number is: {}", secret_number);
 
@@ -2621,7 +2622,7 @@ fn main() {
         let input = io::stdin().read_line()
                                .ok()
                                .expect("Failed to read line");
-        let input_num: Option<uint> = input.trim().parse();
+        let input_num: Option<u32> = input.trim().parse();
 
         let num = match input_num {
             Some(num) => num,
@@ -2645,7 +2646,7 @@ fn main() {
     }
 }
 
-fn cmp(a: uint, b: uint) -> Ordering {
+fn cmp(a: u32, b: u32) -> Ordering {
     if a < b { Less }
     else if a > b { Greater }
     else { Equal }
@@ -2688,7 +2689,7 @@ use std::rand;
 fn main() {
     println!("Guess the number!");
 
-    let secret_number = (rand::random::<uint>() % 100u) + 1u;
+    let secret_number = (rand::random::<u32>() % 100u32) + 1u32;
 
     loop {
 
@@ -2697,7 +2698,7 @@ fn main() {
         let input = io::stdin().read_line()
                                .ok()
                                .expect("Failed to read line");
-        let input_num: Option<uint> = input.trim().parse();
+        let input_num: Option<u32> = input.trim().parse();
 
         let num = match input_num {
             Some(num) => num,
@@ -2721,7 +2722,7 @@ fn main() {
     }
 }
 
-fn cmp(a: uint, b: uint) -> Ordering {
+fn cmp(a: u32, b: u32) -> Ordering {
     if a < b { Less }
     else if a > b { Greater }
     else { Equal }
@@ -2877,7 +2878,7 @@ Here's a very basic test:
 ```{rust}
 #[test]
 fn is_one_equal_to_one() {
-    assert_eq!(1i, 1i);
+    assert_eq!(1i32, 1i32);
 }
 ```
 
@@ -3178,9 +3179,9 @@ to look like this:
 ```{rust,ignore}
 #[test]
 fn math_checks_out() {
-    let result = add_three_times_four(5i);
+    let result = add_three_times_four(5i32);
 
-    assert_eq!(32i, result);
+    assert_eq!(32i32, result);
 }
 ```
 
@@ -3190,7 +3191,7 @@ And try to run the test:
 $ cargo test
    Compiling testing v0.0.1 (file:///home/you/projects/testing)
 /home/you/projects/testing/tests/lib.rs:3:18: 3:38 error: unresolved name `add_three_times_four`.
-/home/you/projects/testing/tests/lib.rs:3     let result = add_three_times_four(5i);
+/home/you/projects/testing/tests/lib.rs:3     let result = add_three_times_four(5i32);
                                                            ^~~~~~~~~~~~~~~~~~~~
 error: aborting due to previous error
 Build failed, waiting for other jobs to finish...
@@ -3211,7 +3212,7 @@ and put this in it:
 
 ```{rust}
 # fn main() {}
-pub fn add_three_times_four(x: int) -> int {
+pub fn add_three_times_four(x: i32) -> i32 {
     (x + 3) * 4
 }
 ```
@@ -3238,9 +3239,9 @@ use testing::add_three_times_four;
 
 #[test]
 fn math_checks_out() {
-    let result = add_three_times_four(5i);
+    let result = add_three_times_four(5i32);
 
-    assert_eq!(32i, result);
+    assert_eq!(32i32, result);
 }
 ```
 
@@ -3284,13 +3285,13 @@ some unit tests to test those.
 Change your `src/lib.rs` to look like this:
 
 ```{rust,ignore}
-pub fn add_three_times_four(x: int) -> int {
+pub fn add_three_times_four(x: i32) -> i32 {
     times_four(add_three(x))
 }
 
-fn add_three(x: int) -> int { x + 3 }
+fn add_three(x: i32) -> i32 { x + 3 }
 
-fn times_four(x: int) -> int { x * 4 }
+fn times_four(x: i32) -> i32 { x * 4 }
 ```
 
 If you run `cargo test`, you should get the same output:
@@ -3334,16 +3335,16 @@ use testing::add_three;
 
 #[test]
 fn math_checks_out() {
-    let result = add_three_times_four(5i);
+    let result = add_three_times_four(5i32);
 
-    assert_eq!(32i, result);
+    assert_eq!(32i32, result);
 }
 
 #[test]
 fn test_add_three() {
-    let result = add_three(5i);
+    let result = add_three(5i32);
 
-    assert_eq!(8i, result);
+    assert_eq!(8i32, result);
 }
 ```
 
@@ -3360,13 +3361,13 @@ Right. It's private. So external, integration tests won't work. We need a
 unit test. Open up your `src/lib.rs` and add this:
 
 ```{rust,ignore}
-pub fn add_three_times_four(x: int) -> int {
+pub fn add_three_times_four(x: i32) -> i32 {
     times_four(add_three(x))
 }
 
-fn add_three(x: int) -> int { x + 3 }
+fn add_three(x: i32) -> i32 { x + 3 }
 
-fn times_four(x: int) -> int { x * 4 }
+fn times_four(x: i32) -> i32 { x * 4 }
 
 #[cfg(test)]
 mod test {
@@ -3375,16 +3376,16 @@ mod test {
 
     #[test]
     fn test_add_three() {
-        let result = add_three(5i);
+        let result = add_three(5i32);
 
-        assert_eq!(8i, result);
+        assert_eq!(8i32, result);
     }
 
     #[test]
     fn test_times_four() {
-        let result = times_four(5i);
+        let result = times_four(5i32);
 
-        assert_eq!(20i, result);
+        assert_eq!(20i32, result);
     }
 }
 ```
@@ -3466,7 +3467,7 @@ References are created using the ampersand (`&`). Here's a simple
 reference:
 
 ```{rust}
-let x = 5i;
+let x = 5i32;
 let y = &x;
 ```
 
@@ -3474,10 +3475,10 @@ let y = &x;
 rather than the reference itself) `y`, we use the asterisk (`*`):
 
 ```{rust}
-let x = 5i;
+let x = 5i32;
 let y = &x;
 
-assert_eq!(5i, *y);
+assert_eq!(5i32, *y);
 ```
 
 Like any `let` binding, references are immutable by default.
@@ -3485,7 +3486,7 @@ Like any `let` binding, references are immutable by default.
 You can declare that functions take a reference:
 
 ```{rust}
-fn add_one(x: &int) -> int { *x + 1 }
+fn add_one(x: &i32) -> i32 { *x + 1 }
 
 fn main() {
     assert_eq!(6, add_one(&5));
@@ -3500,7 +3501,7 @@ Because references are immutable, you can have multiple references that
 **alias** (point to the same place):
 
 ```{rust}
-let x = 5i;
+let x = 5i32;
 let y = &x;
 let z = &x;
 ```
@@ -3508,14 +3509,14 @@ let z = &x;
 We can make a mutable reference by using `&mut` instead of `&`:
 
 ```{rust}
-let mut x = 5i;
+let mut x = 5i32;
 let y = &mut x;
 ```
 
 Note that `x` must also be mutable. If it isn't, like this:
 
 ```{rust,ignore}
-let x = 5i;
+let x = 5i32;
 let y = &mut x;
 ```
 
@@ -3541,7 +3542,7 @@ Rust will also prevent us from creating two mutable references that alias.
 This won't work:
 
 ```{rust,ignore}
-let mut x = 5i;
+let mut x = 5i32;
 let y = &mut x;
 let z = &mut x;
 ```
@@ -3557,7 +3558,7 @@ note: previous borrow of `x` occurs here; the mutable borrow prevents subsequent
                   ^
 note: previous borrow ends here
  fn main() {
-     let mut x = 5i;
+     let mut x = 5i32;
      let y = &mut x;
      let z = &mut x;
  }
@@ -3638,7 +3639,7 @@ all of Rust. Let's see this syntax in action:
 
 ```{rust}
 {
-    let x = 5i; // x is the owner of this integer, which is memory on the stack.
+    let x = 5i32; // x is the owner of this integer, which is memory on the stack.
 
     // other code here...
 
@@ -3646,11 +3647,11 @@ all of Rust. Let's see this syntax in action:
 
 /// this function borrows an integer. It's given back automatically when the
 /// function returns.
-fn foo(x: &int) -> &int { x }
+fn foo(x: &i32) -> &i32 { x }
 
 {
     // x is the owner of the integer, which is memory on the stack.
-    let x = 5i;
+    let x = 5i32;
 
     // privilege 2: you may lend that resource to as many borrowers as you like
     let y = &x;
@@ -3663,7 +3664,7 @@ fn foo(x: &int) -> &int { x }
 
 {
     // x is the owner of this integer, which is memory on the stack.
-    let mut x = 5i;
+    let mut x = 5i32;
 
     // privilege 3: you may lend that resource to a single borrower, mutably
     let y = &mut x;
@@ -3689,7 +3690,7 @@ violation of the restrictions placed on owners who lend something out mutably.
 The code:
 
 ```{rust,ignore}
-let mut x = 5i;
+let mut x = 5i32;
 let y = &mut x;
 let z = &mut x;
 ```
@@ -3705,7 +3706,7 @@ note: previous borrow of `x` occurs here; the mutable borrow prevents subsequent
                   ^
 note: previous borrow ends here
  fn main() {
-     let mut x = 5i;
+     let mut x = 5i32;
      let y = &mut x;
      let z = &mut x;
  }
@@ -3738,7 +3739,7 @@ we can't change `x` until the borrow is over.
 ```text
 note: previous borrow ends here
  fn main() {
-     let mut x = 5i;
+     let mut x = 5i32;
      let y = &mut x;
      let z = &mut x;
  }
@@ -3799,7 +3800,7 @@ an integer `5` and makes `x` a pointer to it:
 
 ```{rust}
 {
-    let x = box 5i;
+    let x = box 5i32;
     println!("{}", *x);     // Prints 5
 }
 ```
@@ -3815,7 +3816,7 @@ The Rust code above will do the same thing as the following C code:
 
 ```{c,ignore}
 {
-    int *x = (int *)malloc(sizeof(int));
+    i32 *x = (i32 *)malloc(sizeof(i32));
     if (!x) abort();
     *x = 5;
     printf("%d\n", *x);
@@ -3830,7 +3831,7 @@ Boxes are the sole owner of their contents, so you cannot take a mutable
 reference to them and then use the original box:
 
 ```{rust,ignore}
-let mut x = box 5i;
+let mut x = box 5i32;
 let y = &mut x;
 
 *x; // you might expect 5, but this is actually an error
@@ -3851,7 +3852,7 @@ As long as `y` is borrowing the contents, we cannot use `x`. After `y` is
 done borrowing the value, we can use it again. This works fine:
 
 ```{rust}
-let mut x = box 5i;
+let mut x = box 5i32;
 
 {
     let y = &mut x;
@@ -3886,7 +3887,7 @@ To create an `Rc` value, use `Rc::new()`. To create a second owner, use the
 ```{rust}
 use std::rc::Rc;
 
-let x = Rc::new(5i);
+let x = Rc::new(5i32);
 let y = x.clone();
 
 println!("{} {}", *x, *y);      // Prints 5 5
@@ -3915,7 +3916,7 @@ A quick refresher: you can match against literals directly, and `_` acts as an
 'any' case:
 
 ```{rust}
-let x = 1i;
+let x = 1i32;
 
 match x {
     1 => println!("one"),
@@ -3928,7 +3929,7 @@ match x {
 You can match multiple patterns with `|`:
 
 ```{rust}
-let x = 1i;
+let x = 1i32;
 
 match x {
     1 | 2 => println!("one or two"),
@@ -3940,7 +3941,7 @@ match x {
 You can match a range of values with `...`:
 
 ```{rust}
-let x = 1i;
+let x = 1i32;
 
 match x {
     1 ... 5 => println!("one through five"),
@@ -3954,7 +3955,7 @@ If you're matching multiple things, via a `|` or a `...`, you can bind
 the value to a name with `@`:
 
 ```{rust}
-let x = 1i;
+let x = 1i32;
 
 match x {
     e @ 1 ... 5 => println!("got a range element {}", e),
@@ -3967,14 +3968,14 @@ ignore the value and type in the variant:
 
 ```{rust}
 enum OptionalInt {
-    Value(int),
+    Value(i32),
     Missing,
 }
 
-let x = OptionalInt::Value(5i);
+let x = OptionalInt::Value(5i32);
 
 match x {
-    OptionalInt::Value(..) => println!("Got an int!"),
+    OptionalInt::Value(..) => println!("Got an i32!"),
     OptionalInt::Missing   => println!("No such luck."),
 }
 ```
@@ -3983,15 +3984,15 @@ You can introduce **match guards** with `if`:
 
 ```{rust}
 enum OptionalInt {
-    Value(int),
+    Value(i32),
     Missing,
 }
 
-let x = OptionalInt::Value(5i);
+let x = OptionalInt::Value(5i32);
 
 match x {
-    OptionalInt::Value(i) if i > 5 => println!("Got an int bigger than five!"),
-    OptionalInt::Value(..) => println!("Got an int!"),
+    OptionalInt::Value(i32) if i32 > 5 => println!("Got an i32 bigger than five!"),
+    OptionalInt::Value(..) => println!("Got an i32!"),
     OptionalInt::Missing   => println!("No such luck."),
 }
 ```
@@ -4000,33 +4001,33 @@ If you're matching on a pointer, you can use the same syntax as you declared it
 with. First, `&`:
 
 ```{rust}
-let x = &5i;
+let x = &5i32;
 
 match x {
     &val => println!("Got a value: {}", val),
 }
 ```
 
-Here, the `val` inside the `match` has type `int`. In other words, the left-hand
-side of the pattern destructures the value. If we have `&5i`, then in `&val`, `val`
-would be `5i`.
+Here, the `val` inside the `match` has type `i32`. In other words, the left-hand
+side of the pattern destructures the value. If we have `&5i32`, then in `&val`, `val`
+would be `5i32`.
 
 If you want to get a reference, use the `ref` keyword:
 
 ```{rust}
-let x = 5i;
+let x = 5i32;
 
 match x {
     ref r => println!("Got a reference to {}", r),
 }
 ```
 
-Here, the `r` inside the `match` has the type `&int`. In other words, the `ref`
+Here, the `r` inside the `match` has the type `&i32`. In other words, the `ref`
 keyword _creates_ a reference, for use in the pattern. If you need a mutable
 reference, `ref mut` will work in the same way:
 
 ```{rust}
-let mut x = 5i;
+let mut x = 5i32;
 
 match x {
     ref mut mr => println!("Got a mutable reference to {}", mr),
@@ -4038,11 +4039,11 @@ If you have a struct, you can destructure it inside of a pattern:
 ```{rust}
 # #![allow(non_shorthand_field_patterns)]
 struct Point {
-    x: int,
-    y: int,
+    x: i32,
+    y: i32,
 }
 
-let origin = Point { x: 0i, y: 0i };
+let origin = Point { x: 0i32, y: 0i32 };
 
 match origin {
     Point { x: x, y: y } => println!("({},{})", x, y),
@@ -4054,11 +4055,11 @@ If we only care about some of the values, we don't have to give them all names:
 ```{rust}
 # #![allow(non_shorthand_field_patterns)]
 struct Point {
-    x: int,
-    y: int,
+    x: i32,
+    y: i32,
 }
 
-let origin = Point { x: 0i, y: 0i };
+let origin = Point { x: 0i32, y: 0i32 };
 
 match origin {
     Point { x: x, .. } => println!("x is {}", x),
@@ -4070,11 +4071,11 @@ You can do this kind of match on any member, not just the first:
 ```{rust}
 # #![allow(non_shorthand_field_patterns)]
 struct Point {
-    x: int,
-    y: int,
+    x: i32,
+    y: i32,
 }
 
-let origin = Point { x: 0i, y: 0i };
+let origin = Point { x: 0i32, y: 0i32 };
 
 match origin {
     Point { y: y, .. } => println!("y is {}", y),
@@ -4204,9 +4205,9 @@ arguments, really powerful things are possible.
 Let's make a closure:
 
 ```{rust}
-let add_one = |x| { 1i + x };
+let add_one = |x| { 1i32 + x };
 
-println!("The sum of 5 plus 1 is {}.", add_one(5i));
+println!("The sum of 5 plus 1 is {}.", add_one(5i32));
 ```
 
 We create a closure using the `|...| { ... }` syntax, and then we create a
@@ -4216,8 +4217,8 @@ binding name and two parentheses, just like we would for a named function.
 Let's compare syntax. The two are pretty close:
 
 ```{rust}
-let add_one = |x: int| -> int { 1i + x };
-fn  add_one   (x: int) -> int { 1i + x }
+let add_one = |x: i32| -> i32 { 1i32 + x };
+fn  add_one   (x: i32) -> i32 { 1i32 + x }
 ```
 
 As you may have noticed, closures infer their argument and return types, so you
@@ -4230,7 +4231,7 @@ this:
 
 ```{rust}
 fn main() {
-    let x = 5i;
+    let x = 5i32;
 
     let printer = || { println!("x is: {}", x); };
 
@@ -4246,11 +4247,11 @@ defined. The closure borrows any variables it uses, so this will error:
 
 ```{rust,ignore}
 fn main() {
-    let mut x = 5i;
+    let mut x = 5i32;
 
     let printer = || { println!("x is: {}", x); };
 
-    x = 6i; // error: cannot assign to `x` because it is borrowed
+    x = 6i32; // error: cannot assign to `x` because it is borrowed
 }
 ```
 
@@ -4270,65 +4271,65 @@ now. We'll talk about them more in the "Tasks" section of the guide.
 Closures are most useful as an argument to another function. Here's an example:
 
 ```{rust}
-fn twice(x: int, f: |int| -> int) -> int {
+fn twice(x: i32, f: |i32| -> i32) -> i32 {
     f(x) + f(x)
 }
 
 fn main() {
-    let square = |x: int| { x * x };
+    let square = |x: i32| { x * x };
 
-    twice(5i, square); // evaluates to 50
+    twice(5i32, square); // evaluates to 50
 }
 ```
 
 Let's break the example down, starting with `main`:
 
 ```{rust}
-let square = |x: int| { x * x };
+let square = |x: i32| { x * x };
 ```
 
 We've seen this before. We make a closure that takes an integer, and returns
 its square.
 
 ```{rust,ignore}
-twice(5i, square); // evaluates to 50
+twice(5i32, square); // evaluates to 50
 ```
 
 This line is more interesting. Here, we call our function, `twice`, and we pass
 it two arguments: an integer, `5`, and our closure, `square`. This is just like
 passing any other two variable bindings to a function, but if you've never
 worked with closures before, it can seem a little complex. Just think: "I'm
-passing two variables: one is an int, and one is a function."
+passing two variables: one is an i32, and one is a function."
 
 Next, let's look at how `twice` is defined:
 
 ```{rust,ignore}
-fn twice(x: int, f: |int| -> int) -> int {
+fn twice(x: i32, f: |i32| -> i32) -> i32 {
 ```
 
 `twice` takes two arguments, `x` and `f`. That's why we called it with two
-arguments. `x` is an `int`, we've done that a ton of times. `f` is a function,
-though, and that function takes an `int` and returns an `int`. Notice
-how the `|int| -> int` syntax looks a lot like our definition of `square`
+arguments. `x` is an `i32`, we've done that a ton of times. `f` is a function,
+though, and that function takes an `i32` and returns an `i32`. Notice
+how the `|i32| -> i32` syntax looks a lot like our definition of `square`
 above, if we added the return type in:
 
 ```{rust}
-let square = |x: int| -> int { x * x };
-//           |int|    -> int
+let square = |x: i32| -> i32 { x * x };
+//           |i32|    -> i32
 ```
 
-This function takes an `int` and returns an `int`.
+This function takes an `i32` and returns an `i32`.
 
 This is the most complicated function signature we've seen yet! Give it a read
 a few times until you can see how it works. It takes a teeny bit of practice, and
 then it's easy.
 
-Finally, `twice` returns an `int` as well.
+Finally, `twice` returns an `i32` as well.
 
 Okay, let's look at the body of `twice`:
 
 ```{rust}
-fn twice(x: int, f: |int| -> int) -> int {
+fn twice(x: i32, f: |i32| -> i32) -> i32 {
   f(x) + f(x)
 }
 ```
@@ -4346,12 +4347,12 @@ If we didn't want to give `square` a name, we could just define it inline.
 This example is the same as the previous one:
 
 ```{rust}
-fn twice(x: int, f: |int| -> int) -> int {
+fn twice(x: i32, f: |i32| -> i32) -> i32 {
     f(x) + f(x)
 }
 
 fn main() {
-    twice(5i, |x: int| { x * x }); // evaluates to 50
+    twice(5i32, |x: i32| { x * x }); // evaluates to 50
 }
 ```
 
@@ -4359,14 +4360,14 @@ A named function's name can be used wherever you'd use a closure. Another
 way of writing the previous example:
 
 ```{rust}
-fn twice(x: int, f: |int| -> int) -> int {
+fn twice(x: i32, f: |i32| -> i32) -> i32 {
     f(x) + f(x)
 }
 
-fn square(x: int) -> int { x * x }
+fn square(x: i32) -> i32 { x * x }
 
 fn main() {
-    twice(5i, square); // evaluates to 50
+    twice(5i32, square); // evaluates to 50
 }
 ```
 
@@ -4384,7 +4385,7 @@ Let's talk about loops.
 Remember Rust's `for` loop? Here's an example:
 
 ```{rust}
-for x in range(0i, 10i) {
+for x in range(0i32, 10i32) {
     println!("{}", x);
 }
 ```
@@ -4396,7 +4397,7 @@ call the `.next()` method on repeatedly, and it gives us a sequence of things.
 Like this:
 
 ```{rust}
-let mut range = range(0i, 10i);
+let mut range = range(0i32, 10i32);
 
 loop {
     match range.next() {
@@ -4411,8 +4412,8 @@ loop {
 We make a mutable binding to the return value of `range`, which is our iterator.
 We then `loop`, with an inner `match`. This `match` is used on the result of
 `range.next()`, which gives us a reference to the next value of the iterator.
-`next` returns an `Option<int>`, in this case, which will be `Some(int)` when
-we have a value and `None` once we run out. If we get `Some(int)`, we print it
+`next` returns an `Option<i32>`, in this case, which will be `Some(i32)` when
+we have a value and `None` once we run out. If we get `Some(i32)`, we print it
 out, and if we get `None`, we `break` out of the loop.
 
 This code sample is basically the same as our `for` loop version. The `for`
@@ -4429,9 +4430,9 @@ primitive. For example, if you needed to iterate over the contents of
 a vector, you may be tempted to write this:
 
 ```{rust}
-let nums = vec![1i, 2i, 3i];
+let nums = vec![1i32, 2i32, 3i32];
 
-for i in range(0u, nums.len()) {
+for i in range(0, nums.len()) {
     println!("{}", nums[i]);
 }
 ```
@@ -4441,7 +4442,7 @@ vectors returns an iterator that iterates through a reference to each element
 of the vector in turn. So write this:
 
 ```{rust}
-let nums = vec![1i, 2i, 3i];
+let nums = vec![1i32, 2i32, 3i32];
 
 for num in nums.iter() {
     println!("{}", num);
@@ -4452,18 +4453,18 @@ There are two reasons for this. First, this more directly expresses what we
 mean. We iterate through the entire vector, rather than iterating through
 indexes, and then indexing the vector. Second, this version is more efficient:
 the first version will have extra bounds checking because it used indexing,
-`nums[i]`. But since we yield a reference to each element of the vector in turn
+`nums[i32]`. But since we yield a reference to each element of the vector in turn
 with the iterator, there's no bounds checking in the second example. This is
 very common with iterators: we can ignore unnecessary bounds checks, but still
 know that we're safe.
 
 There's another detail here that's not 100% clear because of how `println!`
-works. `num` is actually of type `&int`. That is, it's a reference to an `int`,
-not an `int` itself. `println!` handles the dereferencing for us, so we don't
+works. `num` is actually of type `&i32`. That is, it's a reference to an `i32`,
+not an `i32` itself. `println!` handles the dereferencing for us, so we don't
 see it. This code works fine too:
 
 ```{rust}
-let nums = vec![1i, 2i, 3i];
+let nums = vec![1i32, 2i32, 3i32];
 
 for num in nums.iter() {
     println!("{}", *num);
@@ -4497,7 +4498,7 @@ The most common consumer is `collect()`. This code doesn't quite compile,
 but it shows the intention:
 
 ```{rust,ignore}
-let one_to_one_hundred = range(1i, 101i).collect();
+let one_to_one_hundred = range(1i32, 101i32).collect();
 ```
 
 As you can see, we call `collect()` on our iterator. `collect()` takes
@@ -4507,7 +4508,7 @@ type of things you want to collect, and so you need to let it know.
 Here's the version that does compile:
 
 ```{rust}
-let one_to_one_hundred = range(1i, 101i).collect::<Vec<int>>();
+let one_to_one_hundred = range(1i32, 101i32).collect::<Vec<i32>>();
 ```
 
 If you remember, the `::<>` syntax allows us to give a type hint,
@@ -4517,7 +4518,7 @@ and so we tell it that we want a vector of integers.
 is one:
 
 ```{rust}
-let greater_than_forty_two = range(0i, 100i)
+let greater_than_forty_two = range(0i32, 100i32)
                              .find(|x| *x > 42);
 
 match greater_than_forty_two {
@@ -4534,8 +4535,8 @@ element, `find` returns an `Option` rather than the element itself.
 Another important consumer is `fold`. Here's what it looks like:
 
 ```{rust}
-let sum = range(1i, 4i)
-              .fold(0i, |sum, x| sum + x);
+let sum = range(1i32, 4i32)
+              .fold(0i32, |sum, x| sum + x);
 ```
 
 `fold()` is a consumer that looks like this:
@@ -4551,24 +4552,24 @@ in this iterator:
 
 | base | accumulator | element | closure result |
 |------|-------------|---------|----------------|
-| 0i   | 0i          | 1i      | 1i             |
-| 0i   | 1i          | 2i      | 3i             |
-| 0i   | 3i          | 3i      | 6i             |
+| 0i32 | 0i32        | 1i32    | 1i32           |
+| 0i32 | 1i32        | 2i32    | 3i32           |
+| 0i32 | 3i32        | 3i32    | 6i32           |
 
 We called `fold()` with these arguments:
 
 ```{rust}
-# range(1i, 4i)
-.fold(0i, |sum, x| sum + x);
+# range(1i32, 4i32)
+.fold(0i32, |sum, x| sum + x);
 ```
 
-So, `0i` is our base, `sum` is our accumulator, and `x` is our element.  On the
-first iteration, we set `sum` to `0i`, and `x` is the first element of `nums`,
-`1i`. We then add `sum` and `x`, which gives us `0i + 1i = 1i`. On the second
+So, `0i32` is our base, `sum` is our accumulator, and `x` is our element.  On the
+first iteration, we set `sum` to `0i32`, and `x` is the first element of `nums`,
+`1i32`. We then add `sum` and `x`, which gives us `0i32 + 1i32 = 1i32`. On the second
 iteration, that value becomes our accumulator, `sum`, and the element is
-the second element of the array, `2i`. `1i + 2i = 3i`, and so that becomes
+the second element of the array, `2i32`. `1i32 + 2i32 = 3i32`, and so that becomes
 the value of the accumulator for the last iteration. On that iteration,
-`x` is the last element, `3i`, and `3i + 3i = 6i`, which is our final
+`x` is the last element, `3i32`, and `3i32 + 3i32 = 6i32`, which is our final
 result for our sum. `1 + 2 + 3 = 6`, and that's the result we got.
 
 Whew. `fold` can be a bit strange the first few times you see it, but once it
@@ -4589,14 +4590,14 @@ This code, for example, does not actually generate the numbers
 `1-100`, and just creates a value that represents the sequence:
 
 ```{rust}
-let nums = range(1i, 100i);
+let nums = range(1i32, 100i32);
 ```
 
 Since we didn't do anything with the range, it didn't generate the sequence.
 Let's add the consumer:
 
 ```{rust}
-let nums = range(1i, 100i).collect::<Vec<int>>();
+let nums = range(1i32, 100i32).collect::<Vec<i32>>();
 ```
 
 Now, `collect()` will require that `range()` give it some numbers, and so
@@ -4607,7 +4608,7 @@ which you've used before. `iter()` can turn a vector into a simple iterator
 that gives you each element in turn:
 
 ```{rust}
-let nums = [1i, 2i, 3i];
+let nums = [1i32, 2i32, 3i32];
 
 for num in nums.iter() {
    println!("{}", num);
@@ -4618,12 +4619,12 @@ These two basic iterators should serve you well. There are some more
 advanced iterators, including ones that are infinite. Like `count`:
 
 ```{rust}
-std::iter::count(1i, 5i);
+std::iter::count(1i32, 5i32);
 ```
 
 This iterator counts up from one, adding five each time. It will give
 you a new integer every time, forever (well, technically, until it reaches the
-maximum number representable by an `int`). But since iterators are lazy,
+maximum number representable by an `i32`). But since iterators are lazy,
 that's okay! You probably don't want to use `collect()` on it, though...
 
 That's enough about iterators. Iterator adapters are the last concept
@@ -4635,7 +4636,7 @@ we need to talk about with regards to iterators. Let's get to it!
 a new iterator. The simplest one is called `map`:
 
 ```{rust,ignore}
-range(1i, 100i).map(|x| x + 1i);
+range(1i32, 100i32).map(|x| x + 1i32);
 ```
 
 `map` is called upon another iterator, and produces a new iterator where each
@@ -4646,15 +4647,15 @@ compile the example, you'll get a warning:
 ```text
 warning: unused result which must be used: iterator adaptors are lazy and
          do nothing unless consumed, #[warn(unused_must_use)] on by default
- range(1i, 100i).map(|x| x + 1i);
- ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ range(1i32, 100i32).map(|x| x + 1i32);
+ ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ```
 
 Laziness strikes again! That closure will never execute. This example
 doesn't print any numbers:
 
 ```{rust,ignore}
-range(1i, 100i).map(|x| println!("{}", x));
+range(1i32, 100i32).map(|x| println!("{}", x));
 ```
 
 If you are trying to execute a closure on an iterator for its side effects,
@@ -4666,7 +4667,7 @@ has no side effect on the original iterator. Let's try it out with our infinite
 iterator from before, `count()`:
 
 ```{rust}
-for i in std::iter::count(1i, 5i).take(5) {
+for i in std::iter::count(1i32, 5i32).take(5) {
     println!("{}", i);
 }
 ```
@@ -4686,7 +4687,7 @@ returns `true` or `false`. The new iterator `filter()` produces
 only the elements that that closure returns `true` for:
 
 ```{rust}
-for i in range(1i, 100i).filter(|&x| x % 2 == 0) {
+for i in range(1i32, 100i32).filter(|&x| x % 2 == 0) {
     println!("{}", i);
 }
 ```
@@ -4701,11 +4702,11 @@ You can chain all three things together: start with an iterator, adapt it
 a few times, and then consume the result. Check it out:
 
 ```{rust}
-range(1i, 1000i)
+range(1i32, 1000i32)
     .filter(|&x| x % 2 == 0)
     .filter(|&x| x % 3 == 0)
     .take(5)
-    .collect::<Vec<int>>();
+    .collect::<Vec<i32>>();
 ```
 
 This will give you a vector containing `6`, `12`, `18`, `24`, and `30`.
@@ -4724,7 +4725,7 @@ multiple types of arguments. For example, remember our `OptionalInt` type?
 
 ```{rust}
 enum OptionalInt {
-    Value(int),
+    Value(i32),
     Missing,
 }
 ```
@@ -4759,26 +4760,26 @@ we substitute that type for the same type used in the generic. Here's an
 example of using `Option<T>`, with some extra type annotations:
 
 ```{rust}
-let x: Option<int> = Some(5i);
+let x: Option<i32> = Some(5i32);
 ```
 
-In the type declaration, we say `Option<int>`. Note how similar this looks to
-`Option<T>`. So, in this particular `Option`, `T` has the value of `int`. On
-the right-hand side of the binding, we do make a `Some(T)`, where `T` is `5i`.
-Since that's an `int`, the two sides match, and Rust is happy. If they didn't
+In the type declaration, we say `Option<i32>`. Note how similar this looks to
+`Option<T>`. So, in this particular `Option`, `T` has the value of `i32`. On
+the right-hand side of the binding, we do make a `Some(T)`, where `T` is `5i32`.
+Since that's an `i32`, the two sides match, and Rust is happy. If they didn't
 match, we'd get an error:
 
 ```{rust,ignore}
-let x: Option<f64> = Some(5i);
+let x: Option<f64> = Some(5i32);
 // error: mismatched types: expected `core::option::Option<f64>`
-// but found `core::option::Option<int>` (expected f64 but found int)
+// but found `core::option::Option<i32>` (expected f64 but found i32)
 ```
 
 That doesn't mean we can't make `Option<T>`s that hold an `f64`! They just have to
 match up:
 
 ```{rust}
-let x: Option<int> = Some(5i);
+let x: Option<i32> = Some(5i32);
 let y: Option<f64> = Some(5.0f64);
 ```
 
@@ -5042,25 +5043,25 @@ As you can see, `print_area` is now generic, but also ensures that we
 have passed in the correct types. If we pass in an incorrect type:
 
 ```{rust,ignore}
-print_area(5i);
+print_area(5i32);
 ```
 
 We get a compile-time error:
 
 ```text
-error: failed to find an implementation of trait main::HasArea for int
+error: failed to find an implementation of trait main::HasArea for i32
 ```
 
 So far, we've only added trait implementations to structs, but you can
 implement a trait for any type. So technically, we _could_ implement
-`HasArea` for `int`:
+`HasArea` for `i32`:
 
 ```{rust}
 trait HasArea {
     fn area(&self) -> f64;
 }
 
-impl HasArea for int {
+impl HasArea for i32 {
     fn area(&self) -> f64 {
         println!("this is silly");
 
@@ -5068,7 +5069,7 @@ impl HasArea for int {
     }
 }
 
-5i.area();
+5i32.area();
 ```
 
 It is considered poor style to implement methods on such primitive types, even
@@ -5156,13 +5157,13 @@ fn main() {
 }
 ```
 
-This means that even if someone does something bad like add methods to `int`,
+This means that even if someone does something bad like add methods to `i32`,
 it won't affect you, unless you `use` that trait.
 
 There's one more restriction on implementing traits. Either the trait or the
 type you're writing the `impl` for must be inside your crate. So, we could
-implement the `HasArea` type for `int`, because `HasArea` is in our crate.  But
-if we tried to implement `Float`, a trait provided by Rust, for `int`, we could
+implement the `HasArea` type for `i32`, because `HasArea` is in our crate.  But
+if we tried to implement `Float`, a trait provided by Rust, for `i32`, we could
 not, because both the trait and the type aren't in our crate.
 
 One last thing about traits: generic functions with a trait bound use
@@ -5244,7 +5245,7 @@ touches.  This implies that those variables are not usable from the
 parent task after the child task is spawned:
 
 ```{rust,ignore}
-let mut x = vec![1i, 2i, 3i];
+let mut x = vec![1i32, 2i32, 3i32];
 
 spawn(move || {
     println!("The value of x[0] is: {}", x[0]);
@@ -5317,7 +5318,7 @@ use std::sync::Future;
 let mut delayed_value = Future::spawn(move || {
     // just return anything for examples' sake
 
-    12345i
+    12345i32
 });
 println!("value = {}", delayed_value.get());
 ```
@@ -5385,7 +5386,7 @@ a function, but it would be worse. Why? Well, what macros allow you to do
 is write code that generates more code. So when we call `println!` like this:
 
 ```{rust}
-let x = 5i;
+let x = 5i32;
 println!("x is: {}", x);
 ```
 
@@ -5405,7 +5406,7 @@ called `print.rs`:
 
 ```{rust}
 fn main() {
-    let x = 5i;
+    let x = 5i32;
     println!("x is: {}", x);
 }
 ```
@@ -5423,7 +5424,7 @@ extern crate "native" as rt;
 #[prelude_import]
 use std::prelude::*;
 fn main() {
-    let x = 5i;
+    let x = 5i32;
     match (&x,) {
         (__arg0,) => {
             #[inline]
@@ -5441,7 +5442,7 @@ fn main() {
 }
 ```
 
-Whew! This isn't too terrible. You can see that we still `let x = 5i`,
+Whew! This isn't too terrible. You can see that we still `let x = 5i32`,
 but then things get a little bit hairy. Three more bindings get set: a
 static format string, an argument vector, and the arguments. We then
 invoke the `println_args` function with the generated arguments.
