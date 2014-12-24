@@ -465,6 +465,11 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                 assert!(overloaded);
             }
 
+            ast::ExprRange(ref start, ref end) => {
+                self.consume_expr(&**start);
+                end.as_ref().map(|e| self.consume_expr(&**e));
+            }
+
             ast::ExprCall(ref callee, ref args) => {    // callee(args)
                 self.walk_callee(expr, &**callee);
                 self.consume_exprs(args);

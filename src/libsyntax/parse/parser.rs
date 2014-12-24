@@ -26,7 +26,7 @@ use ast::{Expr, Expr_, ExprAddrOf, ExprMatch, ExprAgain};
 use ast::{ExprAssign, ExprAssignOp, ExprBinary, ExprBlock, ExprBox};
 use ast::{ExprBreak, ExprCall, ExprCast};
 use ast::{ExprField, ExprTupField, ExprClosure, ExprIf, ExprIfLet, ExprIndex, ExprSlice};
-use ast::{ExprLit, ExprLoop, ExprMac};
+use ast::{ExprLit, ExprLoop, ExprMac, ExprRange};
 use ast::{ExprMethodCall, ExprParen, ExprPath};
 use ast::{ExprRepeat, ExprRet, ExprStruct, ExprTup, ExprUnary};
 use ast::{ExprVec, ExprWhile, ExprWhileLet, ExprForLoop, Field, FnDecl};
@@ -95,7 +95,8 @@ bitflags! {
         const UNRESTRICTED                  = 0b0000,
         const RESTRICTION_STMT_EXPR         = 0b0001,
         const RESTRICTION_NO_BAR_OP         = 0b0010,
-        const RESTRICTION_NO_STRUCT_LITERAL = 0b0100
+        const RESTRICTION_NO_STRUCT_LITERAL = 0b0100,
+        const RESTRICTION_NO_DOTS           = 0b1000,
     }
 }
 
@@ -1547,7 +1548,7 @@ impl<'a> Parser<'a> {
 
             // Parse the `; e` in `[ int; e ]`
             // where `e` is a const expression
-            let t = match self.maybe_parse_fixed_vstore() {
+            let t = match self.maybe_parse_fixed_length_of_vec() {
                 None => TyVec(t),
                 Some(suffix) => TyFixedLengthVec(t, suffix)
             };
@@ -1707,12 +1708,12 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn maybe_parse_fixed_vstore(&mut self) -> Option<P<ast::Expr>> {
+    pub fn maybe_parse_fixed_length_of_vec(&mut self) -> Option<P<ast::Expr>> {
         if self.check(&token::Comma) &&
                 self.look_ahead(1, |t| *t == token::DotDot) {
             self.bump();
             self.bump();
-            Some(self.parse_expr())
+            Some(self.parse_expr_res(RESTRICTION_NO_DOTS))
         } else if self.check(&token::Semi) {
             self.bump();
             Some(self.parse_expr())
@@ -2130,12 +2131,20 @@ impl<'a> Parser<'a> {
         ExprIndex(expr, idx)
     }
 
-    pub fn mk_slice(&mut self, expr: P<Expr>,
+    pub fn mk_slice(&mut self,
+                    expr: P<Expr>,
                     start: Option<P<Expr>>,
                     end: Option<P<Expr>>,
                     mutbl: Mutability)
                     -> ast::Expr_ {
         ExprSlice(expr, start, end, mutbl)
+    }
+
+    pub fn mk_range(&mut self,
+                    start: P<Expr>,
+                    end: Option<P<Expr>>)
+                    -> ast::Expr_ {
+        ExprRange(start, end)
     }
 
     pub fn mk_field(&mut self, expr: P<Expr>, ident: ast::SpannedIdent) -> ast::Expr_ {
@@ -2615,7 +2624,7 @@ impl<'a> Parser<'a> {
                     }
                     // e[e] | e[e..] | e[e..e]
                     _ => {
-                        let ix = self.parse_expr();
+                        let ix = self.parse_expr_res(RESTRICTION_NO_DOTS);
                         match self.token {
                             // e[e..] | e[e..e]
                             token::DotDot => {
@@ -2628,7 +2637,7 @@ impl<'a> Parser<'a> {
                                     }
                                     // e[e..e]
                                     _ => {
-                                        let e2 = self.parse_expr();
+                                        let e2 = self.parse_expr_res(RESTRICTION_NO_DOTS);
                                         self.commit_expr_expecting(&*e2,
                                             token::CloseDelim(token::Bracket));
                                         Some(e2)
@@ -2654,6 +2663,21 @@ impl<'a> Parser<'a> {
                 }
               }
 
+              // A range expression, either `expr..expr` or `expr..`.
+              token::DotDot if !self.restrictions.contains(RESTRICTION_NO_DOTS) => {
+                self.bump();
+
+                let opt_end = if self.token.can_begin_expr() {
+                    let end = self.parse_expr_res(RESTRICTION_NO_DOTS);
+                    Some(end)
+                } else {
+                    None
+                };
+
+                let hi = self.span.hi;
+                let range = self.mk_range(e, opt_end);
+                return self.mk_expr(lo, hi, range);
+              }
               _ => return e
             }
         }

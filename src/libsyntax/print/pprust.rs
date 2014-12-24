@@ -1759,6 +1759,13 @@ impl<'a> State<'a> {
                 }
                 try!(word(&mut self.s, "]"));
             }
+            ast::ExprRange(ref start, ref end) => {
+                try!(self.print_expr(&**start));
+                try!(word(&mut self.s, ".."));
+                if let &Some(ref e) = end {
+                    try!(self.print_expr(&**e));
+                }
+            }
             ast::ExprPath(ref path) => try!(self.print_path(path, true)),
             ast::ExprBreak(opt_ident) => {
                 try!(word(&mut self.s, "break"));
