@@ -377,9 +377,10 @@ Now that you've got the tools down, let's actually learn more about the Rust
 language itself. These are the basics that will serve you well through the rest
 of your time with Rust.
 
-# Variable bindings
+# Variables and `let` bindings
 
-The first thing we'll learn about are 'variable bindings.' They look like this:
+Rust, like many languages, has several ways of introducing variables. The first
+we'll learn about are **`let` bindings**. They look like this:
 
 ```{rust}
 fn main() {
@@ -387,30 +388,32 @@ fn main() {
 }
 ```
 
-Putting `fn main() {` in each example is a bit tedious, so we'll leave that out
-in the future. If you're following along, make sure to edit your `main()`
-function, rather than leaving it off. Otherwise, you'll get an error.
+**Note**: Wrapping `fn main() { }` around each example is tedious, so we'll act
+like it's implied and stop explicitly writing it. As you follow along, make sure
+to edit your `main()` function rather than leaving it off. Otherwise, you'll get
+an error.
 
-In many languages, this is called a 'variable.' But Rust's variable bindings
-have a few tricks up their sleeves. Rust has a very powerful feature called
-'pattern matching' that we'll get into detail with later, but the left
-hand side of a `let` expression is a full pattern, not just a variable name.
-This means we can do things like:
+Here we have a `let` binding which declares a variable `x` and initializes it to
+the value 5. This is simple enough, but Rust's `let` bindings have a few tricks
+up their sleeves. Rust has a powerful feature called **pattern matching** that
+we'll discuss in detail later. The left hand side of a `let` binding is a
+**pattern**, not just a variable name. This means we can do things like:
 
 ```{rust}
 let (x, y) = (1i, 2i);
 ```
 
-After this expression is evaluated, `x` will be one, and `y` will be two.
-Patterns are really powerful, but this is about all we can do with them so far.
-So let's just keep this in the back of our minds as we go forward.
+After this statement is evaluated, `x` will be 1, and `y` will be 2. Patterns
+are really powerful, but this is about all we can do with them so far. So let's
+keep this in the back of our minds as we go forward.
 
-By the way, in these examples, `i` indicates that the number is an integer.
+**Note**: In these examples, `i` indicates that the number is an integer.
 
 Rust is a statically typed language, which means that we specify our types up
-front. So why does our first example compile? Well, Rust has this thing called
-"type inference." If it can figure out what the type of something is, Rust
-doesn't require you to actually type it out.
+front. So why does our first example compile? Well, Rust can perform **type
+inference** on our code. If it can figure out what the type of something is
+based on how it's used, you aren't required to annotate your variables with
+types.
 
 We can add the type if we want to, though. Types come after a colon (`:`):
 
@@ -418,23 +421,7 @@ We can add the type if we want to, though. Types come after a colon (`:`):
 let x: int = 5;
 ```
 
-If I asked you to read this out loud to the rest of the class, you'd say "`x`
-is a binding with the type `int` and the value `five`."
-
-In future examples, we may annotate the type in a comment. The examples will
-look like this:
-
-```{rust}
-fn main() {
-    let x = 5i; // x: int
-}
-```
-
-Note the similarities between this annotation and the syntax you use with `let`.
-Including these kinds of comments is not idiomatic Rust, but we'll occasionally
-include them to help you understand what the types that Rust infers are.
-
-By default, bindings are **immutable**. This code will not compile:
+By default, variables are **immutable**. This code will not compile:
 
 ```{ignore}
 let x = 5i;
@@ -447,6 +434,9 @@ It will give you this error:
 error: re-assignment of immutable variable `x`
      x = 10i;
      ^~~~~~~
+note: prior assignment occurs here
+     let x = 5i;
+         ^
 ```
 
 If you want a binding to be mutable, you can use `mut`:
@@ -459,38 +449,41 @@ x = 10i;
 There is no single reason that bindings are immutable by default, but we can
 think about it through one of Rust's primary focuses: safety. If you forget to
 say `mut`, the compiler will catch it, and let you know that you have mutated
-something you may not have cared to mutate. If bindings were mutable by
-default, the compiler would not be able to tell you this. If you _did_ intend
-mutation, then the solution is quite easy: add `mut`.
+something you may not have cared to mutate. If bindings were mutable by default,
+the compiler would not be able to tell you this. If you _did_ intend mutation,
+then the solution is quite easy: add `mut`.
 
 There are other good reasons to avoid mutable state when possible, but they're
 out of the scope of this guide. In general, you can often avoid explicit
-mutation, and so it is preferable in Rust. That said, sometimes, mutation is
-what you need, so it's not verboten.
+mutation, so it is preferable in Rust. That said, sometimes mutation is what you
+need, so it's not verboten.
 
-Let's get back to bindings. Rust variable bindings have one more aspect that
-differs from other languages: bindings are required to be initialized with a
-value before you're allowed to use them. If we try...
+Let's get back to bindings. Rust `let` bindings have one more aspect that
+differs from other languages: they cannot be left uninitialized:
 
 ```{ignore}
 let x;
 ```
 
-...we'll get an error:
+We'll get an error:
 
 ```text
-src/main.rs:2:9: 2:10 error: cannot determine a type for this local variable: unconstrained type
+src/main.rs:2:9: 2:10 error: unable to infer enough type information to locate the impl of the trait `core::kinds::Sized` for the type `<generic #1>`; type annotations required
+src/main.rs:2     let x;
+                      ^
+src/main.rs:2:9: 2:10 note: all local variables must have a statically known size
 src/main.rs:2     let x;
                       ^
 ```
 
-Giving it a type will compile, though:
+The compiler can't determine the type since `x` is never used or
+initialized. Giving it a type will allow it to compile, though:
 
 ```{ignore}
 let x: int;
 ```
 
-Let's try it out. Change your `src/main.rs` file to look like this:
+Let's try it out. Change our `src/main.rs` file to look like this:
 
 ```{rust}
 fn main() {
@@ -500,8 +493,8 @@ fn main() {
 }
 ```
 
-You can use `cargo build` on the command line to build it. You'll get a warning,
-but it will still print "Hello, world!":
+You can use `cargo run` on the command line to build and run it. You'll get a
+warning, but it will still print "Hello, world!":
 
 ```text
    Compiling hello_world v0.0.1 (file:///home/you/projects/hello_world)
@@ -510,9 +503,9 @@ src/main.rs:2     let x: int;
                       ^
 ```
 
-Rust warns us that we never use the variable binding, but since we never use it,
-no harm, no foul. Things change if we try to actually use this `x`, however. Let's
-do that. Change your program to look like this:
+Rust warns us that we never use the variable, but since we never use it, no
+harm, no foul. Things change if we try to actually use `x`, however. Let's do
+that. Change our program to look like this:
 
 ```{rust,ignore}
 fn main() {
@@ -522,7 +515,7 @@ fn main() {
 }
 ```
 
-And try to build it. You'll get an error:
+Try to build it. You'll get an error:
 
 ```{bash}
 $ cargo build
@@ -538,21 +531,20 @@ error: aborting due to previous error
 Could not compile `hello_world`.
 ```
 
-Rust will not let us use a value that has not been initialized. Next, let's
-talk about this stuff we've added to `println!`.
+Rust will not let us use a value that has not been initialized. But let us take
+a moment to talk about the new usage of `println!`.
 
-If you include two curly braces (`{}`, some call them moustaches...) in your
-string to print, Rust will interpret this as a request to interpolate some sort
-of value. **String interpolation** is a computer science term that means "stick
-in the middle of a string." We add a comma, and then `x`, to indicate that we
-want `x` to be the value we're interpolating. The comma is used to separate
-arguments we pass to functions and macros, if you're passing more than one.
+If you include two curly braces in your string argument to `println!`, `rustc`
+will expect an additional `println!` argument for each pair of curly braces. The
+additional arguments will be **interpolated** into the string before being
+printed. In our case, we told `println!` to expect one additional argument, and
+then provided the variable `x`.
 
-When you just use the curly braces, Rust will attempt to display the
-value in a meaningful way by checking out its type. If you want to specify the
-format in a more detailed manner, there are a [wide number of options
-available](std/fmt/index.html). For now, we'll just stick to the default:
-integers aren't very complicated to print.
+When you just use the curly braces, Rust will attempt to display the value in a
+meaningful way by checking out its type. If you want to specify the format in a
+more detailed manner, there are a
+[wide number of options available](std/fmt/index.html). For now, we'll just
+stick to the default: integers aren't very complicated to print.
 
 # `if`
 
@@ -560,11 +552,7 @@ Rust's take on `if` is not particularly complex, but it's much more like the
 `if` you'll find in a dynamically typed language than in a more traditional
 systems language. So let's talk about it, to make sure you grasp the nuances.
 
-`if` is a specific form of a more general concept, the 'branch.' The name comes
-from a branch in a tree: a decision point, where depending on a choice,
-multiple paths can be taken.
-
-In the case of `if`, there is one choice that leads down two paths:
+Here's a simple example:
 
 ```rust
 let x = 5i;
@@ -574,11 +562,10 @@ if x == 5i {
 }
 ```
 
-If we changed the value of `x` to something else, this line would not print.
-More specifically, if the expression after the `if` evaluates to `true`, then
-the block is executed. If it's `false`, then it is not.
+As we might expect, the block is executed when the `if` guard expression
+evaluates to `true`. If it's `false`, the block is skipped.
 
-If you want something to happen in the `false` case, use an `else`:
+Here we can see an `else` block:
 
 ```{rust}
 let x = 5i;
@@ -590,8 +577,8 @@ if x == 5i {
 }
 ```
 
-This is all pretty standard. However, you can also do this:
-
+This is all pretty standard. However, we can also use `if` as an expression
+which, when evaluated, produces a value which can be bound to a variable:
 
 ```{rust}
 let x = 5i;
@@ -603,7 +590,7 @@ let y = if x == 5i {
 }; // y: int
 ```
 
-Which we can (and probably should) write like this:
+We can also write it like this, which might make things more clear:
 
 ```{rust}
 let x = 5i;
@@ -612,20 +599,20 @@ let y = if x == 5i { 10i } else { 15i }; // y: int
 ```
 
 This reveals two interesting things about Rust: it is an expression-based
-language, and semicolons are different from semicolons in other 'curly brace
-and semicolon'-based languages. These two things are related.
+language, and semicolons are different than in other "curly brace and
+semicolon"-based languages. These two things are related.
 
 ## Expressions vs. Statements
 
 Rust is primarily an expression based language. There are only two kinds of
 statements, and everything else is an expression.
 
-So what's the difference? Expressions return a value, and statements do not.
-In many languages, `if` is a statement, and therefore, `let x = if ...` would
-make no sense. But in Rust, `if` is an expression, which means that it returns
-a value. We can then use this value to initialize the binding.
+So what's the difference? Expressions return a value, and statements do not. In
+many languages, `if` is a statement, and therefore, `let x = if ...` would make
+no sense. But in Rust, `if` is an expression, which means that it returns a
+value. We can then use this value as an initializer for the `let` binding.
 
-Speaking of which, bindings are a kind of the first of Rust's two statements.
+Speaking of which, `let` bindings are a kind of the first of Rust's two statements.
 The proper name is a **declaration statement**. So far, `let` is the only kind
 of declaration statement we've seen. Let's talk about that some more.
 
@@ -646,21 +633,20 @@ let x = (let y = 5i); // expected identifier, found keyword `let`
 The compiler is telling us here that it was expecting to see the beginning of
 an expression, and a `let` can only begin a statement, not an expression.
 
-Note that assigning to an already-bound variable (e.g. `y = 5i`) is still an
-expression, although its value is not particularly useful. Unlike C, where an
-assignment evaluates to the assigned value (e.g. `5i` in the previous example),
-in Rust the value of an assignment is the unit type `()` (which we'll cover later).
+> Note that assigning to an already-bound variable (e.g. `y = 5i`) is still an
+> expression, although its value is not particularly useful. Unlike C, where an
+> assignment evaluates to the assigned value (e.g. `5i` in the previous
+> example), in Rust the value of an assignment is the unit type `()` (which
+> we'll cover later).
 
-The second kind of statement in Rust is the **expression statement**. Its
-purpose is to turn any expression into a statement. In practical terms, Rust's
-grammar expects statements to follow other statements. This means that you use
-semicolons to separate expressions from each other. This means that Rust
-looks a lot like most other languages that require you to use semicolons
-at the end of every line, and you will see semicolons at the end of almost
-every line of Rust code you see.
+The second kind of statement in Rust is the **expression statement**. We turn
+expressions into expression statements by placing semicolons at the end of
+expressions. The purpose is to trigger any side effects of evaluating the
+expression and discard the value of the expression. This means Rust looks a lot
+like most other languages that require you to use semicolons at the end of every
+line, except you won't see semicolons in places you might otherwise expect them.
 
-What is this exception that makes us say 'almost?' You saw it already, in this
-code:
+For example, this code lacks semicolons in the blocks of the `if` expression:
 
 ```{rust}
 let x = 5i;
@@ -668,10 +654,7 @@ let x = 5i;
 let y: int = if x == 5i { 10i } else { 15i };
 ```
 
-Note that I've added the type annotation to `y`, to specify explicitly that I
-want `y` to be an integer.
-
-This is not the same as this, which won't compile:
+This is not the same as the following example, which won't compile:
 
 ```{ignore}
 let x = 5i;
@@ -682,7 +665,9 @@ let y: int = if x == 5i { 10i; } else { 15i; };
 Note the semicolons after the 10 and 15. Rust will give us the following error:
 
 ```text
-error: mismatched types: expected `int` but found `()` (expected int but found ())
+error: mismatched types: expected `int`, found `()` (expected int, found ())
+     let y: int = if x == 5i {10i;} else {15i;};
+                  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ```
 
 We expected an integer, but we got `()`. `()` is pronounced 'unit', and is a
@@ -693,8 +678,8 @@ Well, that's the purpose of unit in this case. The semicolon turns any
 expression into a statement by throwing away its value and returning unit
 instead.
 
-There's one more time in which you won't see a semicolon at the end of a line
-of Rust code. For that, we'll need our next concept: functions.
+There's one more time in which you won't see a semicolon at the end of a line of
+Rust code. For that, we'll need our next concept: functions.
 
 # Functions
 
@@ -735,8 +720,9 @@ fn print_number(x: int) {
 }
 ```
 
-As you can see, function arguments work very similar to `let` declarations:
-you add a type to the argument name, after a colon.
+As you can see, function arguments work very similar to `let` declarations: you
+add a type to the argument name, after a colon. However, unlike `let`, you
+_must_ declare the types of function arguments.
 
 Here's a complete program that adds two numbers together and prints them:
 
@@ -750,11 +736,7 @@ fn print_sum(x: int, y: int) {
 }
 ```
 
-You separate arguments with a comma, both when you call the function, as well
-as when you declare it.
-
-Unlike `let`, you _must_ declare the types of function arguments. This does
-not work:
+But this does not work:
 
 ```{ignore}
 fn print_number(x, y) {
@@ -762,18 +744,19 @@ fn print_number(x, y) {
 }
 ```
 
-You get this error:
+We get this error:
 
 ```text
 hello.rs:5:18: 5:19 error: expected `:` but found `,`
 hello.rs:5 fn print_number(x, y) {
+                            ^
 ```
 
 This is a deliberate design decision. While full-program inference is possible,
-languages which have it, like Haskell, often suggest that documenting your
-types explicitly is a best-practice. We agree that forcing functions to declare
-types while allowing for inference inside of function bodies is a wonderful
-sweet spot between full inference and no inference.
+languages which have it, like Haskell, often suggest that documenting your types
+explicitly is a best practice. Forcing functions to declare types while allowing
+for inference inside of function bodies is a wonderful sweet spot between full
+inference and no inference.
 
 What about returning a value? Here's a function that adds one to an integer:
 
@@ -783,7 +766,7 @@ fn add_one(x: int) -> int {
 }
 ```
 
-Rust functions return exactly one value, and you declare the type after an
+Rust functions return exactly one value, and we declare the return type after an
 'arrow', which is a dash (`-`) followed by a greater-than sign (`>`).
 
 You'll note the lack of a semicolon here. If we added it in:
@@ -841,7 +824,7 @@ fn foo(x: int) -> int {
 ```
 
 There are some additional ways to define functions, but they involve features
-that we haven't learned about yet, so let's just leave it at that for now.
+that we haven't learned about yet, so we'l leave it at that for now.
 
 
 # Comments
