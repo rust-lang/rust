@@ -1895,7 +1895,7 @@ authors = ["Your Name <you@example.com>"]
 Cargo gets this information from your environment. If it's not correct, go ahead
 and fix that.
 
-Finally, Cargo generated a hello, world for us. Check out `src/main.rs`:
+Finally, Cargo generated a "Hello, world!" for us. Check out `src/main.rs`:
 
 ```{rust}
 fn main() {
