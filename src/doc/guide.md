@@ -1604,10 +1604,6 @@ let a = [1i, 2i, 3i];     // a: [int, ..3]
 let mut m = [1i, 2i, 3i]; // mut m: [int, ..3]
 ```
 
-You can create an array with a given number of elements, all initialized to the
-same value, with `[val, ..N]` syntax. The compiler ensures that arrays are
-always initialized.
-
 There's a shorthand for initializing each element of an array to the same
 value. In this example, each element of `a` will be initialized to `0i`:
 
