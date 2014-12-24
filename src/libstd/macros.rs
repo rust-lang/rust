@@ -621,10 +621,14 @@ pub mod builtin {
     /// # Example
     ///
     /// ```rust,ignore
-    /// let secret_key = include_bin!("secret-key.bin");
+    /// let secret_key = include_bytes!("secret-key.bin");
     /// ```
     #[macro_export]
-    macro_rules! include_bin { ($file:expr) => ({ /* compiler built-in */ }) }
+    macro_rules! include_bytes { ($file:expr) => ({ /* compiler built-in */ }) }
+
+    /// Deprecated alias for `include_bytes!()`.
+    #[macro_export]
+    macro_rules! include_bin { ($file:expr) => ({ /* compiler built-in */}) }
 
     /// Expands to a string that represents the current module path.
     ///

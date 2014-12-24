@@ -43,8 +43,8 @@ fn main() {
 
     include_str!(invalid); //~ ERROR
     include_str!("i'd be quite surprised if a file with this name existed"); //~ ERROR
-    include_bin!(invalid); //~ ERROR
-    include_bin!("i'd be quite surprised if a file with this name existed"); //~ ERROR
+    include_bytes!(invalid); //~ ERROR
+    include_bytes!("i'd be quite surprised if a file with this name existed"); //~ ERROR
 
     trace_macros!(invalid); //~ ERROR
 }
