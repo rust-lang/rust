@@ -1782,9 +1782,9 @@ impl LintPass for Stability {
         if self.is_internal(cx, item.span) { return }
 
         match item.node {
-            ast::ItemTrait(_, _, _, ref supertraits, _) => {
+            ast::ItemTrait(_, _, ref supertraits, _) => {
                 for t in supertraits.iter() {
-                    if let ast::TraitTyParamBound(ref t) = *t {
+                    if let ast::TraitTyParamBound(ref t, _) = *t {
                         let id = ty::trait_ref_to_def_id(cx.tcx, &t.trait_ref);
                         self.lint(cx, id, t.trait_ref.path.span);
                     }

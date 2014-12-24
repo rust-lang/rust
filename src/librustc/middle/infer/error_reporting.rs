@@ -1043,7 +1043,6 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                 ident: ty_param.ident,
                 id: ty_param.id,
                 bounds: bounds,
-                unbound: ty_param.unbound.clone(),
                 default: ty_param.default.clone(),
                 span: ty_param.span,
             }
@@ -1063,7 +1062,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                     // be passing down a map.
                     ast::RegionTyParamBound(lt)
                 }
-                &ast::TraitTyParamBound(ref poly_tr) => {
+                &ast::TraitTyParamBound(ref poly_tr, modifier) => {
                     let tr = &poly_tr.trait_ref;
                     let last_seg = tr.path.segments.last().unwrap();
                     let mut insert = Vec::new();
@@ -1087,7 +1086,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                             path: new_path,
                             ref_id: tr.ref_id,
                         }
-                    })
+                    }, modifier)
                 }
             }
         })
