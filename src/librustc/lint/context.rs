@@ -447,7 +447,7 @@ impl<'a, 'tcx> Context<'a, 'tcx> {
             Some(&pair) => pair,
         };
 
-        raw_emit_lint(&self.tcx.sess, lint, (level, src), span, msg);
+        raw_emit_lint(self.sess(), lint, (level, src), span, msg);
     }
 
     /// Emit a lint at the appropriate level, with no associated span.
@@ -458,6 +458,15 @@ impl<'a, 'tcx> Context<'a, 'tcx> {
     /// Emit a lint at the appropriate level, for a particular span.
     pub fn span_lint(&self, lint: &'static Lint, span: Span, msg: &str) {
         self.lookup_and_emit(lint, Some(span), msg);
+    }
+
+    /// This calls span_note unless the lint level is Allow, in which case
+    /// it does nothing.
+    pub fn span_lint_note(&self, lint: &'static Lint, span: Span, msg: &str) {
+        match lint.default_level {
+            Allow => (),
+            _ => self.sess().span_note(span, msg),
+        }
     }
 
     /// Merge the lints specified by any lint attributes into the
@@ -477,11 +486,11 @@ impl<'a, 'tcx> Context<'a, 'tcx> {
         for result in gather_attrs(attrs).into_iter() {
             let v = match result {
                 Err(span) => {
-                    self.tcx.sess.span_err(span, "malformed lint attribute");
+                    self.sess().span_err(span, "malformed lint attribute");
                     continue;
                 }
                 Ok((lint_name, level, span)) => {
-                    match self.lints.find_lint(lint_name.get(), &self.tcx.sess, Some(span)) {
+                    match self.lints.find_lint(lint_name.get(), self.sess(), Some(span)) {
                         Some(lint_id) => vec![(lint_id, level, span)],
                         None => {
                             match self.lints.lint_groups.get(lint_name.get()) {
@@ -505,7 +514,7 @@ impl<'a, 'tcx> Context<'a, 'tcx> {
                 let now = self.lints.get_level_source(lint_id).0;
                 if now == Forbid && level != Forbid {
                     let lint_name = lint_id.as_str();
-                    self.tcx.sess.span_err(span,
+                    self.sess().span_err(span,
                                            format!("{}({}) overruled by outer forbid({})",
                                                    level.as_str(), lint_name,
                                                    lint_name).as_slice());
@@ -714,7 +723,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Context<'a, 'tcx> {
 // Output any lints that were previously added to the session.
 impl<'a, 'tcx> IdVisitingOperation for Context<'a, 'tcx> {
     fn visit_id(&mut self, id: ast::NodeId) {
-        match self.tcx.sess.lints.borrow_mut().remove(&id) {
+        match self.sess().lints.borrow_mut().remove(&id) {
             None => {}
             Some(lints) => {
                 for (lint_id, span, msg) in lints.into_iter() {
