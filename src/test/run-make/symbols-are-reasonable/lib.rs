@@ -9,7 +9,7 @@
 // except according to those terms.
 
 pub static X: &'static str = "foobarbaz";
-pub static Y: &'static [u8] = include_bin!("lib.rs");
+pub static Y: &'static [u8] = include_bytes!("lib.rs");
 
 trait Foo {}
 impl Foo for uint {}

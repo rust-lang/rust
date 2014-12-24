@@ -148,7 +148,7 @@ fn main() {
     use std::io::{stdio, MemReader, BufferedReader};
 
     let rdr = if os::getenv("RUST_BENCH").is_some() {
-        let foo = include_bin!("shootout-k-nucleotide.data");
+        let foo = include_bytes!("shootout-k-nucleotide.data");
         box MemReader::new(foo.to_vec()) as Box<Reader>
     } else {
         box stdio::stdin() as Box<Reader>
